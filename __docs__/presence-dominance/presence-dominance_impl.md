@@ -63,6 +63,7 @@ Dismissible card on Owner Dashboard reinforcing official link adoption.
 **File:** `src/components/.../OwnerDashboard/BehaviorNudgeCard.tsx`  
 **Visibility:** When `ENABLE_BEHAVIOR_NUDGES` AND `ENABLE_OBP` are both true  
 **Dismissal:** localStorage (`behavior_nudge_dismissed_{storeId}`)
+**Diagnostics:** Dismiss-state load/save failures and official-link copy failures log `owner_dashboard_behavior_nudge_dismiss_load_failed`, `owner_dashboard_behavior_nudge_dismiss_save_failed`, and `owner_dashboard_behavior_nudge_copy_failed` with bounded store/link/dismiss-key presence-length metadata only.
 
 ### Phase 2: OBPLinkCard Enhancement
 
@@ -91,6 +92,8 @@ Enhanced with "official link" framing, Copy/WhatsApp buttons, adoption tips.
 
 **File:** `src/app/(global-pages)/msg-preview/[sessionId]/page.tsx`  
 **Tips:** Save in WhatsApp, add to Instagram bio, share with staff.
+**Failure copy:** Publish and correction-submit failures use fixed public-safe copy. Post-publish Copy Link falls through from rejected Clipboard API writes to acknowledged textarea fallback before copied feedback, and the page may still branch on the safe `maxReached` flag, but it does not show raw `/api/msg-preview/*` response text.
+**Handoff diagnostics:** Post-publish Copy Link and WhatsApp failures use fixed public-safe copy, WhatsApp opens use `noopener,noreferrer`, and diagnostics log only session/link presence-length plus message/URL length metadata.
 
 ---
 
@@ -101,6 +104,8 @@ Enhanced with "official link" framing, Copy/WhatsApp buttons, adoption tips.
 - [x] Copy/share uses client-side APIs only
 - [x] No PII exposed in share content
 - [x] Feature flag gated (`ENABLE_BEHAVIOR_NUDGES`)
+- [x] Public preview publish/fix failures use fixed copy instead of raw route response text
+- [x] Public preview post-publish Copy/WhatsApp handoff failures are bounded and browser-local
 
 ---
 

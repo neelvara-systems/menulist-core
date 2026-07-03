@@ -35,12 +35,14 @@ import {
 } from '@lib/publicApi/auth';
 import { checkRateLimit } from '@lib/rateLimit';
 import { getRateLimitForFeature } from '@lib/rateLimit/configs';
-import { secureError } from '@lib/security/secureLogger';
+import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
+import { readBoundedJsonBody } from '@lib/security/boundedRequestBody';
 import { coreSearch } from '@lib/search/searchCore';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
 const MAX_QUERY_LENGTH = 500;
+const WIDGET_SEARCH_MAX_BODY_BYTES = ANSWERLATTICE_CHAT_IMAGE_MAX_BASE64_LENGTH + (64 * 1024);
 const WIDGET_AUTH_CACHE_TTL_MS = 15_000;
 const WidgetVisitorSchema = z.object({
     id: z.string().max(120).optional(),
@@ -182,11 +184,9 @@ export async function POST(request: NextRequest) {
         const tId = Number(storeData.tenantId || storeData.tId);
         const sId = Number(storeData.id || storeId);
         if (!Number.isFinite(tId) || !Number.isFinite(sId) || tId <= 0 || sId <= 0) {
-            secureError(
-                '[Widget Search] Invalid API key workspace context',
-                new Error('Authenticated API key does not resolve to a valid tenant/store'),
-                { storeId }
-            );
+            logRuntimeFailure('answerlattice_widget_search_invalid_workspace_context', undefined, {
+                ...getBoundedRuntimeStringContext('storeId', storeId),
+            });
             return jsonResponse(request, { error: 'Invalid API key' }, { status: 401 });
         }
 
@@ -197,7 +197,19 @@ export async function POST(request: NextRequest) {
         }
 
         // Parse and validate request body
-        const validation = WidgetSearchRequestSchema.safeParse(await request.json().catch(() => null));
+        const bodyResult = await readBoundedJsonBody(request, WIDGET_SEARCH_MAX_BODY_BYTES, {
+            invalidJsonMessage: 'Query is required',
+            tooLargeMessage: 'Request body too large',
+        });
+        if (bodyResult.ok === false) {
+            return jsonResponse(
+                request,
+                { error: bodyResult.response.status === 413 ? 'Request body too large' : 'Query is required' },
+                { status: bodyResult.response.status },
+            );
+        }
+
+        const validation = WidgetSearchRequestSchema.safeParse(bodyResult.data);
         if (!validation.success) {
             return jsonResponse(request, { error: 'Query is required' }, { status: 400 });
         }
@@ -239,7 +251,11 @@ export async function POST(request: NextRequest) {
                 imageBuffer = { imageBase64, mimeType: imageMimeType };
             } catch (error) {
                 // Graceful degradation — continue without image
-                secureError('[Widget Search] Image upload failed', error as Error, { tId, sId });
+                logRuntimeFailure('answerlattice_widget_search_image_upload_failed', error, {
+                    ...getBoundedRuntimeStringContext('tenantId', tId),
+                    ...getBoundedRuntimeStringContext('storeId', sId),
+                    ...getBoundedRuntimeStringContext('imageMimeType', body.imageMimeType),
+                });
                 imageBuffer = undefined;
             }
         }
@@ -350,7 +366,11 @@ export async function POST(request: NextRequest) {
                 tokenCountSource: result.aiProviderTokenUsage?.tokenCountSource || 'none',
                 uId: 'widget',
             }).catch((error) => {
-                secureError('[Widget Search] Operation log failed', error as Error, { tId, sId });
+                logRuntimeFailure('answerlattice_widget_search_operation_log_failed', error, {
+                    ...getBoundedRuntimeStringContext('tenantId', tId),
+                    ...getBoundedRuntimeStringContext('storeId', sId),
+                    ...getBoundedRuntimeStringContext('searchHistoryId', result.searchHistoryId),
+                });
             });
         }
 
@@ -374,7 +394,7 @@ export async function POST(request: NextRequest) {
                 }
             );
         }
-        secureError('[Widget Search] Error', err as Error);
+        logRuntimeFailure('answerlattice_widget_search_failed', err);
         return jsonResponse(
             request,
             { error: 'Something went wrong. Please try again.' },

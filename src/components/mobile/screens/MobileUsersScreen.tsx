@@ -1,7 +1,16 @@
 'use client'
 
 import { createStaffUser, fetchStaffUsers, forceSignOutStaffUser, removeStaffFromStore, requestStaffPasswordReset, updateStaffUser } from '@lib/staffManagement/client';
-import { buildStaffLoginDetailsText, copyTextToClipboard, openWhatsAppWebShare, shareStaffLoginDetails, type StaffLoginDetailsShareInput } from '@lib/staffManagement/shareLoginDetails';
+import { getBoundedStaffStringContext, logStaffClientFailure } from '@lib/staffManagement/diagnostics';
+import {
+    buildStaffLoginDetailsText,
+    copyTextToClipboard,
+    hasStaffLoginClipboardWrite,
+    hasStaffLoginCopyFallback,
+    openWhatsAppWebShare,
+    shareStaffLoginDetails,
+    type StaffLoginDetailsShareInput,
+} from '@lib/staffManagement/shareLoginDetails';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { UserDataType } from '@type/platform/user';
 import { theme } from 'antd';
@@ -18,6 +27,8 @@ interface MobileUsersScreenProps {
 type StaffLoginDetailsPopupState = StaffLoginDetailsShareInput & {
     title: string;
 };
+
+type MobileStaffLogContext = Record<string, boolean | number | string | undefined>;
 
 const userHasCurrentStore = (user: any, storeId: number | string | undefined) => (
     Boolean(storeId)
@@ -55,12 +66,14 @@ function StaffLoginCopyRow({
 
 function StaffLoginDetailsPanel({
     countryCode,
+    diagnosticContext,
     dialCode,
     phoneNumber,
     staffLoginId,
     temporaryPasscode,
 }: {
     countryCode?: string;
+    diagnosticContext: MobileStaffLogContext;
     dialCode?: string;
     phoneNumber?: string;
     staffLoginId: string;
@@ -69,15 +82,49 @@ function StaffLoginDetailsPanel({
     const { token } = theme.useToken();
     const details = { countryCode, dialCode, phoneNumber, staffLoginId, temporaryPasscode };
     const fullText = buildStaffLoginDetailsText(details);
+    const buildLoginShareLogContext = (flow: string, metadata: MobileStaffLogContext = {}): MobileStaffLogContext => ({
+        ...diagnosticContext,
+        flow,
+        hasCountryCode: Boolean(countryCode),
+        hasDialCode: Boolean(dialCode),
+        hasPhoneNumber: Boolean(phoneNumber),
+        fullTextLength: fullText.length,
+        ...getBoundedStaffStringContext('staffLoginId', staffLoginId),
+        ...getBoundedStaffStringContext('temporaryPasscode', temporaryPasscode),
+        ...metadata,
+    });
+    const getCopySupportContext = (): MobileStaffLogContext => ({
+        hasClipboardWrite: hasStaffLoginClipboardWrite(),
+        hasCopyFallback: hasStaffLoginCopyFallback(),
+    });
 
     const copyValue = async (value: string, label: string) => {
         const copied = await copyTextToClipboard(value);
+        if (!copied) {
+            logStaffClientFailure('mobile_staff_login_details_copy_failed', new Error('staff_login_details_copy_failed'), buildLoginShareLogContext('copy_login_detail', {
+                ...getBoundedStaffStringContext('copyLabel', label),
+                ...getCopySupportContext(),
+                copyValueLength: value.length,
+            }));
+        }
         Toast.show({ content: copied ? `${label} copied` : `Could not copy ${label.toLowerCase()}`, duration: 1500 });
     };
 
     const shareOnWhatsApp = async () => {
         const opened = openWhatsAppWebShare(details);
         const copied = await copyTextToClipboard(fullText);
+        if (!opened) {
+            logStaffClientFailure('mobile_staff_login_details_whatsapp_open_failed', new Error('staff_login_details_whatsapp_open_failed'), buildLoginShareLogContext('whatsapp_login_details', {
+                copiedFallback: copied,
+            }));
+        }
+        if (!copied) {
+            logStaffClientFailure('mobile_staff_login_details_copy_failed', new Error('staff_login_details_copy_failed'), buildLoginShareLogContext('whatsapp_fallback_copy', {
+                ...getCopySupportContext(),
+                copyValueLength: fullText.length,
+                whatsappOpened: opened,
+            }));
+        }
         Toast.show({
             content: opened
                 ? copied ? 'WhatsApp opened. Login details copied too.' : 'WhatsApp opened'
@@ -90,7 +137,17 @@ function StaffLoginDetailsPanel({
         const result = await shareStaffLoginDetails(details);
         if (result === 'cancelled') return;
         if (result !== 'shared') {
+            logStaffClientFailure('mobile_staff_login_details_native_share_failed', new Error('staff_login_details_native_share_failed'), buildLoginShareLogContext('native_share_login_details', {
+                ...getBoundedStaffStringContext('shareResult', result),
+            }));
             const copied = await copyTextToClipboard(fullText);
+            if (!copied) {
+                logStaffClientFailure('mobile_staff_login_details_copy_failed', new Error('staff_login_details_copy_failed'), buildLoginShareLogContext('native_share_fallback_copy', {
+                    ...getCopySupportContext(),
+                    copyValueLength: fullText.length,
+                    ...getBoundedStaffStringContext('shareResult', result),
+                }));
+            }
             Toast.show({
                 content: copied ? 'Login details copied' : 'Could not share login details',
                 duration: 1500,
@@ -147,6 +204,16 @@ export default function MobileUsersScreen({ onBack }: MobileUsersScreenProps) {
     const canAssignRoles = userPermissions?.canAssignRoles === true;
     const defaultStaffCountryCode = (storeDetails as any)?.countryCode || '';
     const defaultStaffDialCode = (storeDetails as any)?.dialCode || '';
+    const buildMobileStaffLogContext = (flow: string, metadata: MobileStaffLogContext = {}): MobileStaffLogContext => ({
+        surface: 'mobile_users',
+        flow,
+        canAssignRoles,
+        canManageUsers,
+        userCount: users.length,
+        ...getBoundedStaffStringContext('tenantId', storeDetails?.tenantId),
+        ...getBoundedStaffStringContext('storeId', storeDetails?.storeId),
+        ...metadata,
+    });
 
     useEffect(() => {
         let cancelled = false;
@@ -164,8 +231,11 @@ export default function MobileUsersScreen({ onBack }: MobileUsersScreenProps) {
                 setUsersList(data.users || []);
                 setStaffStores(data.stores || []);
             })
-            .catch((err: any) => {
-                if (!cancelled) Toast.show({ content: err?.message || 'Failed to load staff', duration: 2000 });
+            .catch((err) => {
+                if (!cancelled) {
+                    logStaffClientFailure('mobile_staff_users_load_failed', err, buildMobileStaffLogContext('load_staff'));
+                    Toast.show({ content: 'Failed to load staff', duration: 2000 });
+                }
             })
             .finally(() => {
                 if (!cancelled) setIsLoadingUsers(false);
@@ -222,15 +292,22 @@ export default function MobileUsersScreen({ onBack }: MobileUsersScreenProps) {
             setNewUserEmail('');
             setNewUserPhone('');
             setNewUserRole('');
-        } catch (err: any) {
-            const errorMessages: Record<string, string> = {
+        } catch (err) {
+            const knownStaffCreateCopy: Record<string, string> = {
                 ALREADY_ASSIGNED: 'User already assigned to this store',
                 EMAIL_EXISTS: 'Email already used',
                 EMAIL_OTHER_TENANT: 'This email belongs to another business',
                 INVALID_EMAIL: 'Invalid email address',
                 ROLE_ASSIGNMENT_FORBIDDEN: 'You cannot assign this role',
             };
-            Toast.show({ content: errorMessages[err.code] || err?.message || 'Failed to add user', duration: 2000 });
+            const errorCode = err && typeof err === 'object' && 'code' in err ? String((err as { code?: unknown }).code || '') : '';
+            logStaffClientFailure('mobile_staff_create_user_failed', err, buildMobileStaffLogContext('create_staff', {
+                hasName: Boolean(newUserName.trim()),
+                hasEmail: Boolean(newUserEmail.trim()),
+                hasPhone: Boolean(newUserPhone.trim()),
+                ...getBoundedStaffStringContext('roleId', newUserRole),
+            }));
+            Toast.show({ content: knownStaffCreateCopy[errorCode] || 'Failed to add user', duration: 2000 });
         } finally {
             setIsAdding(false);
         }
@@ -246,8 +323,12 @@ export default function MobileUsersScreen({ onBack }: MobileUsersScreenProps) {
             });
             setUsersList(users.map((item: any) => item.id === user.id ? response.user : item));
             Toast.show({ content: user.active ? t('userDeactivated') : t('userActivated'), duration: 1500 });
-        } catch (err: any) {
-            Toast.show({ content: err?.message || t('failedToUpdate'), duration: 2000 });
+        } catch (err) {
+            logStaffClientFailure('mobile_staff_active_toggle_failed', err, buildMobileStaffLogContext('toggle_active', {
+                nextActive: !user.active,
+                ...getBoundedStaffStringContext('userId', user.id),
+            }));
+            Toast.show({ content: t('failedToUpdate'), duration: 2000 });
         } finally {
             setIsUpdatingUser(false);
         }
@@ -269,8 +350,12 @@ export default function MobileUsersScreen({ onBack }: MobileUsersScreenProps) {
             setUsersList(users.map((item: any) => item.id === user.id ? response.user : item));
             setSelectedUser(response.user as any);
             Toast.show({ content: 'Staff member updated', duration: 1200 });
-        } catch (err: any) {
-            Toast.show({ content: err?.message || t('failedToUpdate'), duration: 2000 });
+        } catch (err) {
+            logStaffClientFailure('mobile_staff_role_change_failed', err, buildMobileStaffLogContext('change_role', {
+                ...getBoundedStaffStringContext('userId', user.id),
+                ...getBoundedStaffStringContext('roleId', roleId),
+            }));
+            Toast.show({ content: t('failedToUpdate'), duration: 2000 });
         } finally {
             setIsUpdatingUser(false);
         }
@@ -289,8 +374,11 @@ export default function MobileUsersScreen({ onBack }: MobileUsersScreenProps) {
                 : users.map((item: any) => item.id === user.id ? response.user : item));
             setSelectedUser(null);
             Toast.show({ content: 'Staff member removed', duration: 1500 });
-        } catch (err: any) {
-            Toast.show({ content: err?.message || t('failedToUpdate'), duration: 2000 });
+        } catch (err) {
+            logStaffClientFailure('mobile_staff_remove_failed', err, buildMobileStaffLogContext('remove_staff', {
+                ...getBoundedStaffStringContext('userId', user.id),
+            }));
+            Toast.show({ content: t('failedToUpdate'), duration: 2000 });
         } finally {
             setIsUpdatingUser(false);
         }
@@ -321,8 +409,11 @@ export default function MobileUsersScreen({ onBack }: MobileUsersScreenProps) {
             } else {
                 Toast.show({ content: 'Staff access reset', duration: 1500 });
             }
-        } catch (err: any) {
-            Toast.show({ content: err?.message || 'Could not reset staff access', duration: 2000 });
+        } catch (err) {
+            logStaffClientFailure('mobile_staff_password_reset_failed', err, buildMobileStaffLogContext('reset_staff_access', {
+                ...getBoundedStaffStringContext('userId', user.id),
+            }));
+            Toast.show({ content: 'Could not reset staff access', duration: 2000 });
         } finally {
             setIsUpdatingUser(false);
         }
@@ -341,8 +432,11 @@ export default function MobileUsersScreen({ onBack }: MobileUsersScreenProps) {
                 setSelectedUser(data.user as any);
             }
             Toast.show({ content: 'Staff member signed out', duration: 1500 });
-        } catch (err: any) {
-            Toast.show({ content: err?.message || 'Could not sign out staff member', duration: 2000 });
+        } catch (err) {
+            logStaffClientFailure('mobile_staff_force_signout_failed', err, buildMobileStaffLogContext('force_signout_staff', {
+                ...getBoundedStaffStringContext('userId', user.id),
+            }));
+            Toast.show({ content: 'Could not sign out staff member', duration: 2000 });
         } finally {
             setIsUpdatingUser(false);
         }
@@ -591,6 +685,7 @@ export default function MobileUsersScreen({ onBack }: MobileUsersScreenProps) {
                         <Flex gap={12} style={{ overflowY: 'auto', padding: 16 }} vertical>
                             <StaffLoginDetailsPanel
                                 countryCode={staffLoginDetails.countryCode}
+                                diagnosticContext={buildMobileStaffLogContext('login_details_share')}
                                 dialCode={staffLoginDetails.dialCode}
                                 phoneNumber={staffLoginDetails.phoneNumber}
                                 staffLoginId={staffLoginDetails.staffLoginId}

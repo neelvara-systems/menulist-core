@@ -1,3 +1,5 @@
+import { MENU_EXTRACTION_JOB_LIMITS } from '@data/shared/menuExtractionJob';
+
 // ============================
 // FILE UPLOAD LIMITS
 // ============================
@@ -12,9 +14,13 @@ export const MAX_TOTAL_UPLOAD_SIZE = 200 * 1024 * 1024; // 200MB total per sessi
 // Warning threshold (show warning but don't block)
 export const WARN_FILE_SIZE = 30 * 1024 * 1024; // 30MB - warn user about large file
 
+// Extraction job file/page limits. Keep this aligned with the backend request schema
+// so oversized batches are blocked before client Storage upload.
+export const MAX_MENU_EXTRACTION_FILES = MENU_EXTRACTION_JOB_LIMITS.MAX_FILES;
+
 // PDF processing limits
-export const MAX_PDF_PAGES = 50; // Maximum pages to process per PDF
-export const WARN_PDF_PAGES = 30; // Show warning for PDFs with many pages
+export const MAX_PDF_PAGES = MAX_MENU_EXTRACTION_FILES; // Maximum pages to process per PDF
+export const WARN_PDF_PAGES = Math.max(10, MAX_PDF_PAGES - 3); // Show warning for PDFs with many pages
 
 // File processing timeout
 export const PROCESSING_TIMEOUT = 120000; // 2 minutes

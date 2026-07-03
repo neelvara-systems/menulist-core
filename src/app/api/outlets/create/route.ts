@@ -20,11 +20,13 @@ import {
     updateRazorpaySubscriptionQuantity,
 } from "@lib/billing/subscriptionProviderSync";
 import { invalidateOwnerBusinessAssistantPacketCache } from "@lib/ownerBusinessAssistant/server/contextPacketCache";
+import { getBoundedMultiOutletStringContext, logMultiOutletFailure } from "@lib/multiOutlet/diagnostics";
 import { buildUserStoreAccessUpdate } from "@lib/multiOutlet/serverStoreAccess";
 import { requireAnyStorePermissionForStoreData } from "@lib/permissions/server";
 import { checkRateLimit } from "@lib/rateLimit";
+import { readBoundedJsonBody } from "@lib/security/boundedRequestBody";
 import { validateAPIInput } from "@lib/security/inputValidation";
-import { secureError } from "@lib/security/secureLogger";
+import { touchDigitalScreenContentVersionForStoreServer } from "@lib/screen/serverScreenInvalidation";
 import { parseSummaryProjects } from "@lib/firestore/parseSummaryProjects";
 import { buildSummaryProjectPayload } from "@lib/firestore/summaryProjectsWriter";
 import { DEFAULT_OUTLET_POLICY } from "@type/multiOutlet.types";
@@ -33,10 +35,32 @@ import { revalidateTag } from "next/cache";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { verifyTenantAccess, withAuth } from "../../../../middleware/auth";
+import { hashPublicRateLimitValue } from "src/middleware/publicApi";
 
 const schema = z.object({ outletName: z.string().min(1).max(200) });
+const OUTLET_ACTION_MAX_BODY_BYTES = 8 * 1024;
+const OUTLET_CREATE_LOCK_HELD_CODE = "LOCK_HELD";
+
+class OutletCreateLockHeldError extends Error {
+    readonly code = OUTLET_CREATE_LOCK_HELD_CODE;
+
+    constructor() {
+        super(OUTLET_CREATE_LOCK_HELD_CODE);
+        this.name = "OutletCreateLockHeldError";
+    }
+}
+
+const isOutletCreateLockHeldError = (error: unknown): error is OutletCreateLockHeldError => (
+    error instanceof OutletCreateLockHeldError
+    || (
+        typeof error === "object"
+        && error !== null
+        && (error as { code?: unknown }).code === OUTLET_CREATE_LOCK_HELD_CODE
+    )
+);
 
 class OutletBillingUpdateError extends Error {
+    cause: unknown;
     reason: "UPI_SUBSCRIPTION_QUANTITY_UNSUPPORTED" | "PROVIDER_QUANTITY_UPDATE_FAILED";
 
     constructor(
@@ -49,6 +73,16 @@ class OutletBillingUpdateError extends Error {
         this.reason = reason;
     }
 }
+
+const getOutletCreateLogContext = (
+    tenantId: number,
+    storeId: number,
+    extra: Record<string, boolean | number | string | null | undefined> = {},
+) => ({
+    ...getBoundedMultiOutletStringContext("tenantId", tenantId),
+    ...getBoundedMultiOutletStringContext("storeId", storeId),
+    ...extra,
+});
 
 const resolveSummaryNameForSlug = (value: unknown, fallback: string): string => {
     if (typeof value === "string" && value.trim()) return value.trim();
@@ -120,7 +154,8 @@ export const POST = withAuth(async (request, session) => {
     if (!verifyTenantAccess(session, tenantId, storeId, request)) {
         return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
-    const rlResult = await checkRateLimit({ key: `outlet:${tenantId}`, limit: 5, window: 3600 });
+    const tenantRateLimitHash = hashPublicRateLimitValue(tenantId);
+    const rlResult = await checkRateLimit({ key: `outlet:${tenantRateLimitHash}`, limit: 5, window: 3600 });
     if (!rlResult.allowed) {
         return NextResponse.json({ error: "Too many requests" }, { status: 429 });
     }
@@ -137,7 +172,11 @@ export const POST = withAuth(async (request, session) => {
     let subscriptionQuantityUpdated = false;
 
     try {
-        const body = await request.json();
+        const bodyResult = await readBoundedJsonBody(request, OUTLET_ACTION_MAX_BODY_BYTES, {
+            invalidJsonMessage: "Invalid input",
+        });
+        if (bodyResult.ok === false) return bodyResult.response;
+        const body = bodyResult.data as any;
         const v = validateAPIInput(schema, body);
         if (!v.success) return NextResponse.json({ error: "Invalid input" }, { status: 400 });
         const { outletName } = v.data;
@@ -187,11 +226,14 @@ export const POST = withAuth(async (request, session) => {
         }
         const shouldMarkCurrentStoreAsMasterInTenant = masterPromoted || masterListRepairNeeded;
 
-        // Enforce outlet count limit (excludes master store)
+        // Enforce outlet count limit against active outlets only. Deactivated
+        // outlets preserve history, but should not block replacement locations.
         const maxOutlets = FEATURE_FLAGS.MAX_OUTLETS_PER_TENANT;
         if (maxOutlets > 0) {
             const currentOutlets = initialStoresList.filter((s: any) => (
-                Number(s?.storeId) !== Number(storeId) && !s.isMaster
+                Number(s?.storeId) !== Number(storeId)
+                && !s.isMaster
+                && s?.active !== false
             )).length;
             if (currentOutlets >= maxOutlets) {
                 return NextResponse.json({ error: `Maximum ${maxOutlets} outlets reached` }, { status: 400 });
@@ -238,7 +280,7 @@ export const POST = withAuth(async (request, session) => {
             const data = tenantDoc.data();
             if (data?.outletCreationLock) {
                 const lockAge = Date.now() - (data.outletCreationLockAt?.toMillis() || 0);
-                if (lockAge < 300_000) throw new Error("LOCK_HELD");
+                if (lockAge < 300_000) throw new OutletCreateLockHeldError();
             }
             t.update(tenantRef, {
                 outletCreationLock: true,
@@ -455,6 +497,11 @@ export const POST = withAuth(async (request, session) => {
             revalidateTag(`store-${storeId}`);
         }
         revalidateTag('client-stores');
+        revalidateTag('screen-data');
+        await touchDigitalScreenContentVersionForStoreServer(result.newStoreId, 'outletCreate');
+        if (masterPromoted) {
+            await touchDigitalScreenContentVersionForStoreServer(storeId, 'outletCreateMasterPromoted');
+        }
         await Promise.all([
             invalidateOwnerBusinessAssistantPacketCache({
                 tId: tenantId,
@@ -481,37 +528,66 @@ export const POST = withAuth(async (request, session) => {
             quantity: subId ? newQty : null,
         });
     } catch (error) {
-        const errMsg = (error as Error).message;
         const isBillingUpdateError = error instanceof OutletBillingUpdateError;
 
         // Handle lock contention gracefully
-        if (errMsg === "LOCK_HELD") {
+        if (isOutletCreateLockHeldError(error)) {
             return NextResponse.json({ error: "Another outlet is being created" }, { status: 409 });
         }
 
-        secureError(
-            isBillingUpdateError ? "[Outlets] Billing provider quantity update failed" : "[Outlets] Create failed",
-            error as Error,
-            { tenantId, storeId },
-        );
+        if (isBillingUpdateError) {
+            const billingError = error as OutletBillingUpdateError;
+            logMultiOutletFailure(
+                billingError.reason === "UPI_SUBSCRIPTION_QUANTITY_UNSUPPORTED"
+                    ? "multi_outlet_billing_upi_quantity_update_unsupported"
+                    : "multi_outlet_billing_provider_quantity_update_failed",
+                billingError.cause,
+                getOutletCreateLogContext(tenantId, storeId, {
+                    reason: billingError.reason,
+                    previousQty,
+                    newQty,
+                    ...getBoundedMultiOutletStringContext("providerSubscriptionId", providerSubId),
+                }),
+            );
+        } else {
+            logMultiOutletFailure(
+                "multi_outlet_create_failed",
+                error,
+                getOutletCreateLogContext(tenantId, storeId, {
+                    lockAcquired,
+                    billingUpdated,
+                    subscriptionQuantityUpdated,
+                }),
+            );
+        }
 
         // BE1: If billing updated but internal creation failed, revert Razorpay quantity
         if (billingUpdated && providerSubId) {
             try {
                 await updateRazorpaySubscriptionQuantity(providerSubId, previousQty);
             } catch (revertErr) {
-                secureError("[Outlets] CRITICAL: Billing revert failed", revertErr as Error, {
-                    tenantId, storeId, previousQty,
-                });
+                logMultiOutletFailure(
+                    "multi_outlet_billing_provider_quantity_revert_failed",
+                    revertErr,
+                    getOutletCreateLogContext(tenantId, storeId, {
+                        previousQty,
+                        ...getBoundedMultiOutletStringContext("providerSubscriptionId", providerSubId),
+                    }),
+                );
             }
         }
         if (subscriptionQuantityUpdated && subId) {
             try {
                 await updateSubscription(subId, { quantity: previousQty });
             } catch (revertErr) {
-                secureError("[Outlets] CRITICAL: Subscription quantity revert failed", revertErr as Error, {
-                    tenantId, storeId, previousQty,
-                });
+                logMultiOutletFailure(
+                    "multi_outlet_subscription_quantity_revert_failed",
+                    revertErr,
+                    getOutletCreateLogContext(tenantId, storeId, {
+                        previousQty,
+                        ...getBoundedMultiOutletStringContext("subscriptionId", subId),
+                    }),
+                );
             }
         }
 
@@ -519,7 +595,16 @@ export const POST = withAuth(async (request, session) => {
         if (lockAcquired) {
             try {
                 await db.doc(`${DB_COLLECTIONS.TENANTS}/${tenantId}`).update({ outletCreationLock: false });
-            } catch (_) { /* best-effort */ }
+            } catch (lockReleaseError) {
+                logMultiOutletFailure(
+                    "multi_outlet_create_lock_release_failed",
+                    lockReleaseError,
+                    getOutletCreateLogContext(tenantId, storeId, {
+                        billingUpdated,
+                        subscriptionQuantityUpdated,
+                    }),
+                );
+            }
         }
 
         if (isBillingUpdateError) {

@@ -1,7 +1,13 @@
 # 🤖 Firebase App Check - Complete Guide
 
 **Last Updated**: November 5, 2025  
-**Status**: ⚠️ Code Ready (Needs Environment Setup)
+**Status**: Code/setup guide; not current launch certification
+
+---
+
+## Current Launch Boundary
+
+Current release approval requires the active [production-readiness audit](../../audits/menulist-production-readiness-audit.md) and [External Certification Runbook](../../production-readiness/external-certification-runbook.md) evidence, current App Check environment setup verification, provider token smoke, Firebase deploy evidence where enforcement changes, and browser/device QA for the release target. This guide records code/setup requirements; it is not production-launch approval.
 
 ---
 
@@ -125,8 +131,8 @@ export function initializeFirebaseAppCheck(firebaseApp: FirebaseApp) {
 #### Finding Your Firebase Project in Dropdown
 
 The dropdown might show:
-- ✅ `ecomsai` (Firebase project name)
-- ✅ `ecomsai-abc123` (Project ID)
+- ✅ `menulist-qa` (MenuList QA/staging Firebase project)
+- ✅ `menulist` (MenuList production Firebase project)
 - ✅ `MenuList AI` (GCP project name)
 
 **Verify**: Hover over project → Should show Project ID
@@ -507,8 +513,8 @@ export const secureFunction = onCall(
 - Cost: $0-10/month (likely free initially)
 - Security Impact: 🔴 **CRITICAL** (blocks bots, prevents abuse)
 
-**Status**: Code Ready → Needs 15min Setup → Production Ready  
-**Priority**: HIGH (Don't launch without this!)
+**Status**: Code ready -> environment setup required -> external launch gates required
+**Priority**: HIGH (required before launch certification)
 
 ---
 

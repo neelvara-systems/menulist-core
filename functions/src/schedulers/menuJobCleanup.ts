@@ -1,7 +1,7 @@
 /**
  * Menu Image Processing Job Cleanup Schedulers
  * 
- * Spec Reference: MENU-IMAGE-PROCESSING-JOB-QUEUE-SPEC.md Section 8.2 and 8.7
+ * Spec Reference: menu-image-processing-job-queue-spec.md Section 8.2 and 8.7
  * 
  * Two scheduled functions:
  * 1. cleanupStuckJobs - Runs every 15 min, marks stuck jobs as failed
@@ -84,7 +84,11 @@ async function createExtractionAlert(params: {
  * Find jobs that are stuck in "processing" state past their timeout
  * and mark them as failed with retryable error.
  */
-export async function cleanupStuckJobsLogic(): Promise<{ cleaned: number; jobIds: string[] }> {
+export async function cleanupStuckJobsLogic(): Promise<{
+    cleaned: number;
+    sampleJobCount: number;
+    sampleJobIdLengthTotal: number;
+}> {
     const logger = functions.logger;
 
     logger.info('[cleanupStuckJobs] Starting cleanup');
@@ -98,11 +102,15 @@ export async function cleanupStuckJobsLogic(): Promise<{ cleaned: number; jobIds
 
     if (stuckJobs.empty) {
         logger.info('[cleanupStuckJobs] No stuck jobs found');
-        return { cleaned: 0, jobIds: [] };
+        return {
+            cleaned: 0,
+            sampleJobCount: 0,
+            sampleJobIdLengthTotal: 0,
+        };
     }
 
     const batch = firestoreAdmin.batch();
-    const jobIds = stuckJobs.docs.map((doc) => doc.id);
+    const sampleJobIds = stuckJobs.docs.slice(0, 5).map((doc) => doc.id);
 
     stuckJobs.docs.forEach((doc) => {
         batch.update(doc.ref, {
@@ -121,7 +129,11 @@ export async function cleanupStuckJobsLogic(): Promise<{ cleaned: number; jobIds
 
     logger.info(`[cleanupStuckJobs] Marked ${stuckJobs.size} stuck jobs as failed`);
 
-    return { cleaned: stuckJobs.size, jobIds };
+    return {
+        cleaned: stuckJobs.size,
+        sampleJobCount: sampleJobIds.length,
+        sampleJobIdLengthTotal: sampleJobIds.reduce((total, jobId) => total + jobId.length, 0),
+    };
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

@@ -9,7 +9,8 @@ import {
 import { getAnswerlatticeRetentionFields, type AnswerlatticeRetentionKey } from '@lib/answerlattice/dataRetention';
 import { admin } from '@lib/firebase/firebaseAdmin';
 import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
-import { secureError, secureLog } from '@lib/security/secureLogger';
+import { getBoundedNotificationStringContext, logNotificationFailure } from '@lib/notifications/notificationDiagnostics';
+import { secureLog } from '@lib/security/secureLogger';
 import { createHash } from 'crypto';
 import type { Firestore } from 'firebase-admin/firestore';
 import { FieldValue, Timestamp } from 'firebase-admin/firestore';
@@ -90,6 +91,18 @@ function sanitizeForFirestore(value: any): any {
         );
     }
     return value;
+}
+
+function getOwnerNotificationDeliveryError(result?: OwnerNotificationChannelResult): string | null {
+    if (!result || result.ok) return null;
+    const { error, skippedReason } = result;
+    if (typeof skippedReason === 'string' && skippedReason.length > 0) {
+        return skippedReason;
+    }
+    if (typeof error === 'string' && error.length > 0) {
+        return error;
+    }
+    return 'owner_notification_delivery_failed';
 }
 
 function getDedupeKey(input: EnqueueOwnerNotificationInput): string {
@@ -210,7 +223,7 @@ async function writeDelivery(params: {
         templateKey: params.templateKey,
         templateVersion: params.templateVersion,
         providerMessageId: params.result?.providerMessageId || null,
-        error: params.result?.error || params.result?.skippedReason || null,
+        error: getOwnerNotificationDeliveryError(params.result),
         attempt: 1,
         createdAt,
         sentAt: params.status === 'sent' ? createdAt : null,
@@ -245,18 +258,18 @@ export async function enqueueOwnerNotification(
 
     const registryEntry = getOwnerNotificationRegistryEntry(input.productId, input.triggerType);
     if (!registryEntry) {
-        secureError('[OwnerNotifications] Unknown trigger', new Error('Unknown owner notification trigger'), {
-            productId: input.productId,
-            triggerType: input.triggerType,
+        logNotificationFailure('owner_notification_unknown_trigger', undefined, {
+            ...getBoundedNotificationStringContext('productId', input.productId),
+            ...getBoundedNotificationStringContext('triggerType', input.triggerType),
         });
         return { eventId: '', status: 'skipped' };
     }
 
     const db = getDbForProduct(input.productId);
     if (!db) {
-        secureError('[OwnerNotifications] Firestore target unavailable', new Error('Notification Firestore target unavailable'), {
-            productId: input.productId,
-            triggerType: input.triggerType,
+        logNotificationFailure('owner_notification_firestore_target_unavailable', undefined, {
+            ...getBoundedNotificationStringContext('productId', input.productId),
+            ...getBoundedNotificationStringContext('triggerType', input.triggerType),
         });
         return { eventId: '', status: 'skipped' };
     }
@@ -483,9 +496,9 @@ export async function processOwnerNotificationEvent(
         }, { merge: true });
 
         secureLog('[OwnerNotifications] Event processed', {
-            productId: event.productId,
-            triggerType: event.triggerType,
-            eventId,
+            ...getBoundedNotificationStringContext('productId', event.productId),
+            ...getBoundedNotificationStringContext('triggerType', event.triggerType),
+            ...getBoundedNotificationStringContext('eventId', eventId),
             status,
             sent,
             failed,
@@ -496,11 +509,14 @@ export async function processOwnerNotificationEvent(
     } catch (error) {
         await eventRef.set({
             status: 'failed',
-            error: error instanceof Error ? error.message : 'unknown_error',
+            error: 'owner_notification_processing_failed',
             processedAt: Timestamp.now(),
             updatedAt: Timestamp.now(),
         }, { merge: true });
-        secureError('[OwnerNotifications] Processing failed', error as Error, { productId, eventId });
+        logNotificationFailure('owner_notification_processing_failed', error, {
+            ...getBoundedNotificationStringContext('productId', productId),
+            ...getBoundedNotificationStringContext('eventId', eventId),
+        });
         return { eventId, status: 'failed', sent: 0, failed: 1, skipped: 0 };
     }
 }

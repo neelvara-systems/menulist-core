@@ -9,6 +9,7 @@
  * - `menu-store-${storeId}` → project data, decision blocks
  * - `store-${storeId}` → store details
  * - `client-stores` → public lookup and OBP summary helpers
+ * - `screen-data` → digital screen SSR reads
  *
  * 3-Year Freeze: Without instant invalidation, price changes
  * could show stale data for up to 60s — unacceptable for infra product.
@@ -16,6 +17,7 @@
 "use server";
 
 import { invalidateOwnerBusinessAssistantPacketCache } from "@lib/ownerBusinessAssistant/server/contextPacketCache";
+import { touchDigitalScreenContentVersionForStoreServer } from "@lib/screen/serverScreenInvalidation";
 import { revalidateTag } from "next/cache";
 
 export async function revalidateMenuCache(
@@ -25,6 +27,8 @@ export async function revalidateMenuCache(
     revalidateTag(`menu-store-${storeId}`);
     revalidateTag(`store-${storeId}`);
     revalidateTag('client-stores');
+    revalidateTag('screen-data');
+    await touchDigitalScreenContentVersionForStoreServer(storeId, 'revalidateMenuCache');
     await invalidateOwnerBusinessAssistantPacketCache({
         tId: options.tId,
         sId: storeId,

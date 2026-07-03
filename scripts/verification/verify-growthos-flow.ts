@@ -28,6 +28,12 @@ function assertCheck(condition: unknown, name: string, detail?: string): void {
     checks.push({ detail, name });
 }
 
+function assertTextOrder(text: string, first: string, second: string, name: string): void {
+    const firstIndex = text.indexOf(first);
+    const secondIndex = text.indexOf(second);
+    assertCheck(firstIndex !== -1 && secondIndex !== -1 && firstIndex < secondIndex, name);
+}
+
 function readFilesRecursive(root: string): string[] {
     if (!fs.existsSync(root)) return [];
     return fs.readdirSync(root, { withFileTypes: true }).flatMap((entry) => {
@@ -71,6 +77,40 @@ function scanDeferredGrowthOSSurface(): string[] {
     return files.flatMap((file) => {
         const text = fs.readFileSync(file, "utf8");
         return forbidden
+            .filter((token) => text.includes(token))
+            .map((token) => `${path.relative(process.cwd(), file)}:${token}`);
+	    });
+}
+
+function scanGrowthOSMenuIntelligenceConsumers(): string[] {
+    const roots = [
+        "src/app/api/growthos",
+        "src/components/mobile/components/GrowthKitsMobileCard.tsx",
+        "src/components/templates/main-app/growthos",
+        "src/database/growthos",
+        "src/lib/growthos",
+    ];
+    const cmiTokens = [
+        "getMenuIntelligence",
+        "getItemPresentation",
+        "getItemsByPriority",
+        "MENU_INTELLIGENCE",
+        "MenuIntelligenceState",
+        "menuIntelligence",
+        "@lib/intelligence",
+        "src/lib/intelligence",
+    ];
+    const files = roots.flatMap((root) => {
+        const fullPath = path.resolve(root);
+        if (fs.existsSync(fullPath) && fs.statSync(fullPath).isDirectory()) {
+            return readFilesRecursive(fullPath);
+        }
+        return [fullPath];
+    }).filter((file) => fs.existsSync(file) && /\.(ts|tsx)$/.test(file));
+
+    return files.flatMap((file) => {
+        const text = fs.readFileSync(file, "utf8");
+        return cmiTokens
             .filter((token) => text.includes(token))
             .map((token) => `${path.relative(process.cwd(), file)}:${token}`);
     });
@@ -145,6 +185,18 @@ function scanRetiredCampaignDalExports(): string[] {
 }
 
 function scanGrowthOSApiJsonGuards(): string[] {
+    const parser = fs.readFileSync(path.resolve("src/lib/validation/growthosSchemas.ts"), "utf8");
+    const parserFailures: string[] = [];
+    if (!parser.includes("readBoundedJsonBody")) {
+        parserFailures.push("src/lib/validation/growthosSchemas.ts:missing-readBoundedJsonBody");
+    }
+    if (!parser.includes("GROWTHOS_API_MAX_BODY_BYTES")) {
+        parserFailures.push("src/lib/validation/growthosSchemas.ts:missing-body-cap");
+    }
+    if (parser.includes("request.json()")) {
+        parserFailures.push("src/lib/validation/growthosSchemas.ts:raw-request-json");
+    }
+
     const routeFiles = [
         "src/app/api/growthos/actions/refresh/route.ts",
         "src/app/api/growthos/kits/generate/route.ts",
@@ -152,7 +204,7 @@ function scanGrowthOSApiJsonGuards(): string[] {
         "src/app/api/growthos/reviews/suggest/route.ts",
     ];
 
-    return routeFiles.flatMap((file) => {
+    return parserFailures.concat(routeFiles.flatMap((file) => {
         const text = fs.readFileSync(path.resolve(file), "utf8");
         const failures: string[] = [];
         if (!text.includes("parseGrowthOSJsonBody")) {
@@ -165,7 +217,67 @@ function scanGrowthOSApiJsonGuards(): string[] {
             failures.push(`${file}:raw-request-json`);
         }
         return failures;
-    });
+    }));
+}
+
+function scanGrowthOSApiDiagnostics(): string[] {
+    const routeFiles = [
+        "src/app/api/growthos/actions/refresh/route.ts",
+        "src/app/api/growthos/kits/generate/route.ts",
+        "src/app/api/growthos/kits/export/route.ts",
+        "src/app/api/growthos/reviews/suggest/route.ts",
+    ];
+    const diagnostics = fs.readFileSync(path.resolve("src/lib/growthos/diagnostics.ts"), "utf8");
+    const failures: string[] = [];
+
+    if (!diagnostics.includes("logGrowthOSApiFailure")) {
+        failures.push("src/lib/growthos/diagnostics.ts:missing-logGrowthOSApiFailure");
+    }
+    if (!diagnostics.includes("getGrowthOSSourceErrorContext")) {
+        failures.push("src/lib/growthos/diagnostics.ts:missing-source-error-context");
+    }
+    if (!diagnostics.includes("getGrowthOSSecurityLogContext")) {
+        failures.push("src/lib/growthos/diagnostics.ts:missing-security-log-context");
+    }
+    if (!diagnostics.includes("getBoundedSecurityRouteContext")) {
+        failures.push("src/lib/growthos/diagnostics.ts:missing-bounded-security-route-context");
+    }
+    if (!diagnostics.includes("new Error(failureCode)")) {
+        failures.push("src/lib/growthos/diagnostics.ts:missing-fixed-error-code-capture");
+    }
+    if (diagnostics.includes("error instanceof Error ? error.message") || diagnostics.includes("String(error)")) {
+        failures.push("src/lib/growthos/diagnostics.ts:raw-error-text");
+    }
+
+    return failures.concat(routeFiles.flatMap((file) => {
+        const text = fs.readFileSync(path.resolve(file), "utf8");
+        const routeFailures: string[] = [];
+        if (!text.includes("logGrowthOSApiFailure(")) {
+            routeFailures.push(`${file}:missing-logGrowthOSApiFailure`);
+        }
+        if (!text.includes("getGrowthOSBoundedStringContext(\"userId\"")) {
+            routeFailures.push(`${file}:missing-bounded-user-context`);
+        }
+        if (!text.includes("getGrowthOSSecurityLogContext")) {
+            routeFailures.push(`${file}:missing-bounded-security-context`);
+        }
+        if (text.includes("buildSecurityContext")) {
+            routeFailures.push(`${file}:raw-security-context`);
+        }
+        if (text.includes("error: errorMsg")) {
+            routeFailures.push(`${file}:raw-validation-error-context`);
+        }
+        if (text.includes("attemptedProjectId: projectId") || text.includes("attemptedKitId: kitId")) {
+            routeFailures.push(`${file}:raw-attempted-id-context`);
+        }
+        if (text.includes("logger.error(\"GrowthOS")) {
+            routeFailures.push(`${file}:raw-growthos-logger-error`);
+        }
+        if (text.includes("userId: session?.uId || session?.user?.id")) {
+            routeFailures.push(`${file}:raw-user-id-context`);
+        }
+        return routeFailures;
+    }));
 }
 
 
@@ -360,11 +472,17 @@ const entitlement = evaluateGrowthOSEntitlement({
     storeId: storeData.storeId,
 });
 const deferredMatches = scanDeferredGrowthOSSurface();
+const growthOSCmiConsumers = scanGrowthOSMenuIntelligenceConsumers();
 const retiredTodayPromptMatches = scanRetiredTodayActionPrompts();
 const deletedTodayGenerationFiles = scanDeletedTodayGenerationFiles();
 const retiredGlobalTodayPollingMatches = scanRetiredGlobalTodayPolling();
 const retiredCampaignDalExports = scanRetiredCampaignDalExports();
 const growthOSApiJsonGuardFailures = scanGrowthOSApiJsonGuards();
+const growthOSApiDiagnosticFailures = scanGrowthOSApiDiagnostics();
+const growthOSPage = fs.readFileSync(path.resolve("src/components/templates/main-app/growthos/index.tsx"), "utf8");
+const growthOSMobileCard = fs.readFileSync(path.resolve("src/components/mobile/components/GrowthKitsMobileCard.tsx"), "utf8");
+const growthOSClientDal = fs.readFileSync(path.resolve("src/database/growthos/index.ts"), "utf8");
+const growthOSReviewSuggestRoute = fs.readFileSync(path.resolve("src/app/api/growthos/reviews/suggest/route.ts"), "utf8");
 
 assertCheck(FEATURE_FLAGS.ENABLE_GROWTHOS_ADDON === true, "GrowthOS master flag is enabled");
 assertCheck(FEATURE_FLAGS.GROWTHOS_ADDON_ACCESS === "paid", "GrowthOS access defaults to paid plan gate");
@@ -461,7 +579,83 @@ assertCheck(deletedTodayGenerationFiles.length === 0, "retired Today generation 
 assertCheck(retiredGlobalTodayPollingMatches.length === 0, "retired global Today polling provider is absent", retiredGlobalTodayPollingMatches.join(", "));
 assertCheck(retiredCampaignDalExports.length === 0, "retired campaign generation DAL exports are absent", retiredCampaignDalExports.join(", "));
 assertCheck(growthOSApiJsonGuardFailures.length === 0, "GrowthOS APIs return 400 for invalid JSON instead of generic 500", growthOSApiJsonGuardFailures.join(", "));
+assertCheck(growthOSApiDiagnosticFailures.length === 0, "GrowthOS APIs use bounded fixed-code diagnostics", growthOSApiDiagnosticFailures.join(", "));
+assertCheck(growthOSReviewSuggestRoute.includes("hashPublicRateLimitValue"), "GrowthOS review guard hashes rate-limit key segments");
+assertCheck(growthOSReviewSuggestRoute.includes("userRateLimitHash"), "GrowthOS review guard computes hashed user limiter segment");
+assertCheck(growthOSReviewSuggestRoute.includes("tenantRateLimitHash"), "GrowthOS review guard computes hashed tenant limiter segment");
+assertCheck(growthOSReviewSuggestRoute.includes("key: `growthos-review:${userRateLimitHash}:${tenantRateLimitHash}`"), "GrowthOS review guard stores hashed limiter segments");
+assertCheck(!growthOSReviewSuggestRoute.includes("key: `growthos-review:${session.uId || session.user?.id}:${session.tId}`"), "GrowthOS review guard does not store raw session identifiers in limiter keys");
 assertCheck(deferredMatches.length === 0, "deferred GrowthOS scope has no provider, posting, offer, order, or ROI hooks", deferredMatches.join(", "));
+assertCheck(growthOSCmiConsumers.length === 0, "GrowthOS does not consume CMI/menuIntelligence until its own feature loop certifies that boundary", growthOSCmiConsumers.join(", "));
+assertCheck(growthOSPage.includes("GROWTHOS_REFRESH_FAILED_DESCRIPTION"), "GrowthOS owner failure notifications use fixed descriptions");
+assertCheck(!growthOSPage.includes("(error as Error).message"), "GrowthOS owner failure notifications do not show raw exception messages");
+[
+    "desktop_growthos_refresh_failed",
+    "desktop_growthos_generate_failed",
+    "desktop_growthos_copy_failed",
+    "desktop_growthos_share_failed",
+    "desktop_growthos_download_failed",
+    "desktop_growthos_mark_used_failed",
+    "desktop_growthos_review_reply_failed",
+    "desktop_growthos_review_reply_copy_failed",
+].forEach((failureCode) => {
+    assertCheck(growthOSPage.includes(failureCode), `Desktop Growth Kits must log ${failureCode}`);
+});
+assertCheck(growthOSPage.includes("desktop_growthos_copy_clipboard_unavailable"), "Desktop Growth Kits must define unavailable clipboard failure code");
+assertCheck(growthOSPage.includes("desktop_growthos_copy_fallback_failed"), "Desktop Growth Kits must define fallback copy failure code");
+assertCheck(growthOSPage.includes("hasDesktopGrowthOSClipboardWrite"), "Desktop Growth Kits must check Clipboard API support");
+assertCheck(growthOSPage.includes("hasDesktopGrowthOSCopyFallback"), "Desktop Growth Kits must check textarea fallback support");
+assertCheck(growthOSPage.includes("getDesktopGrowthOSCopySupportContext"), "Desktop Growth Kits must centralize copy support diagnostics");
+assertCheck(growthOSPage.includes('hasClipboardWrite: hasDesktopGrowthOSClipboardWrite()'), "Desktop Growth Kits must log Clipboard API support metadata");
+assertCheck(growthOSPage.includes('hasCopyFallback: hasDesktopGrowthOSCopyFallback()'), "Desktop Growth Kits must log textarea fallback support metadata");
+assertCheck(growthOSPage.includes('const copied = document.execCommand("copy");'), "Desktop Growth Kits textarea copy must check acknowledgement");
+assertCheck(growthOSPage.includes('logGrowthOSApiFailure("[GrowthOS Desktop] Operation failed"'), "Desktop Growth Kits must use bounded GrowthOS diagnostics");
+assertCheck(growthOSPage.includes('getGrowthOSBoundedStringContext("projectId", selectedProjectId)'), "Desktop Growth Kits must bound project id diagnostics");
+assertCheck(growthOSPage.includes('getGrowthOSBoundedStringContext("storeId", storeDetails?.storeId)'), "Desktop Growth Kits must bound store id diagnostics");
+assertCheck(growthOSPage.includes('getGrowthOSBoundedStringContext("outputId", output?.id)'), "Desktop Growth Kits must bound output id diagnostics");
+assertCheck(growthOSPage.includes("outputTextLength: output?.text?.length || 0"), "Desktop Growth Kits must log only output text length");
+assertCheck(growthOSPage.includes("reviewTextLength: reviewText.trim().length"), "Desktop Growth Kits must log only review text length");
+assertCheck(growthOSPage.includes("reviewReplyTextLength: reviewResult.reply.length"), "Desktop Growth Kits must log only review reply text length");
+assertTextOrder(growthOSPage, 'const copied = await copyToClipboard(output.text);', 'await recordUse(output, "copy");', "Desktop Growth Kits must record copy only after copy succeeds");
+assertTextOrder(growthOSPage, 'if (!copied) throw new Error("desktop_growthos_share_fallback_copy_failed");', 'await recordUse(output, "share");', "Desktop Growth Kits must record share only after native share or fallback copy succeeds");
+assertTextOrder(growthOSPage, 'downloadText(`${output.destination}.txt`, output.text);', 'await recordUse(output, "download");', "Desktop Growth Kits must record download only after download starts");
+assertCheck(!growthOSPage.includes('onClick={() => copyToClipboard(reviewResult.reply || "")}'), "Desktop Growth Kits review reply copy must not be fire-and-forget");
+[
+    "mobile_growthos_refresh_failed",
+    "mobile_growthos_generate_failed",
+    "mobile_growthos_copy_failed",
+    "mobile_growthos_share_failed",
+    "mobile_growthos_mark_used_failed",
+].forEach((failureCode) => {
+    assertCheck(growthOSMobileCard.includes(failureCode), `Mobile Growth Kits must log ${failureCode}`);
+});
+assertCheck(growthOSMobileCard.includes("mobile_growthos_copy_clipboard_unavailable"), "Mobile Growth Kits must define unavailable clipboard failure code");
+assertCheck(growthOSMobileCard.includes("mobile_growthos_copy_fallback_failed"), "Mobile Growth Kits must define fallback copy failure code");
+assertCheck(growthOSMobileCard.includes("hasMobileGrowthOSClipboardWrite"), "Mobile Growth Kits must check Clipboard API support");
+assertCheck(growthOSMobileCard.includes("hasMobileGrowthOSCopyFallback"), "Mobile Growth Kits must check textarea fallback support");
+assertCheck(growthOSMobileCard.includes("getMobileGrowthOSCopySupportContext"), "Mobile Growth Kits must centralize copy support diagnostics");
+assertCheck(growthOSMobileCard.includes("hasClipboardWrite: hasMobileGrowthOSClipboardWrite()"), "Mobile Growth Kits must log Clipboard API support metadata");
+assertCheck(growthOSMobileCard.includes("hasCopyFallback: hasMobileGrowthOSCopyFallback()"), "Mobile Growth Kits must log textarea fallback support metadata");
+assertCheck(growthOSMobileCard.includes("const copied = document.execCommand('copy');"), "Mobile Growth Kits textarea copy must check acknowledgement");
+assertCheck(growthOSMobileCard.includes("logGrowthOSApiFailure('[GrowthOS Mobile] Operation failed'"), "Mobile Growth Kits must use bounded GrowthOS diagnostics");
+assertCheck(growthOSMobileCard.includes("getGrowthOSBoundedStringContext('projectId', projectId)"), "Mobile Growth Kits must bound project id diagnostics");
+assertCheck(growthOSMobileCard.includes("getGrowthOSBoundedStringContext('kitId', latestKit?.id)"), "Mobile Growth Kits must bound kit id diagnostics");
+assertCheck(growthOSMobileCard.includes("getGrowthOSBoundedStringContext('outputId', output?.id)"), "Mobile Growth Kits must bound output id diagnostics");
+assertCheck(growthOSMobileCard.includes("outputTextLength: output?.text?.length || 0"), "Mobile Growth Kits must log only output text length");
+assertTextOrder(growthOSMobileCard, "const copied = await copyText(output.text);", "await record(output, 'copy');", "Mobile Growth Kits must record copy only after copy succeeds");
+assertTextOrder(growthOSMobileCard, "if (!copied) throw new Error('mobile_growthos_share_fallback_copy_failed');", "await record(output, 'share');", "Mobile Growth Kits must record share only after native share or fallback copy succeeds");
+assertCheck(!growthOSMobileCard.includes("(error as Error).message"), "Mobile Growth Kits failure toasts must not show raw exception messages");
+assertCheck(!growthOSClientDal.includes("payload?.message || payload?.error"), "GrowthOS client helper does not throw raw API response text");
+assertCheck(growthOSClientDal.includes("GROWTHOS_CLIENT_REQUEST_POLICY"), "GrowthOS client helper defines a shared browser request policy");
+assertCheck(growthOSClientDal.includes('cache: "no-store"'), "GrowthOS client requests bypass browser cache");
+assertCheck(growthOSClientDal.includes('credentials: "same-origin"'), "GrowthOS client requests keep credentials same-origin");
+assertCheck(growthOSClientDal.includes('redirect: "manual"'), "GrowthOS client requests do not follow redirects");
+assertCheck((growthOSClientDal.match(/\.\.\.GROWTHOS_CLIENT_REQUEST_POLICY/g) || []).length >= 4, "GrowthOS client POSTs spread the shared request policy");
+assertCheck(growthOSClientDal.includes("readJsonResponseWithLimit<unknown>(response, GROWTHOS_CLIENT_RESPONSE_JSON_MAX_BYTES)"), "GrowthOS client helper uses bounded response JSON parsing");
+assertCheck(growthOSClientDal.includes("growthos_client_response_parse_failed"), "GrowthOS client helper logs malformed or oversized response parsing failures");
+assertCheck(growthOSClientDal.includes("growthos_client_response_rejected"), "GrowthOS client helper logs rejected response envelopes");
+assertCheck(growthOSClientDal.includes("growthos_client_response_invalid"), "GrowthOS client helper logs invalid successful response envelopes");
+assertCheck(!growthOSClientDal.includes("response.json().catch(() => null)"), "GrowthOS client helper must not silently swallow response parse failures");
 
 console.log(JSON.stringify({
     checkedAt: new Date().toISOString(),

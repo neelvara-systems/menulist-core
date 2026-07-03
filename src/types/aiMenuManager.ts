@@ -437,6 +437,7 @@ export interface AiMenuManagerCommandRequest {
     uploadRefs?: Array<{ storagePath: string; mimeType: string; size: number }>;
     composerContext?: AiMenuManagerCommandContextSelection;
     clientContextVersion?: string;
+    replaceOperationId?: string;
     idempotencyKey: string;
 }
 

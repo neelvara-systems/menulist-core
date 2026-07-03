@@ -14,15 +14,58 @@ import { isReservedSubdomain } from "@constant/reservedSlugs";
 import { getMenuUrl } from "@constant/urls";
 import { admin } from "@lib/firebase/firebaseAdmin";
 import { requireAnyStorePermission } from "@lib/permissions/server";
+import { checkRateLimit } from "@lib/rateLimit";
+import { getRateLimitForFeature } from "@lib/rateLimit/configs";
 import { slugify } from "@lib/utils/slugify";
 import { NextRequest, NextResponse } from "next/server";
+import { hashPublicRateLimitValue } from "src/middleware/publicApi";
 import { withAuth } from "../../../../middleware/auth";
 
 // Minimum subdomain length
 const MIN_SUBDOMAIN_LENGTH = 3;
 const MAX_SUBDOMAIN_LENGTH = 63; // DNS label max
+const SUBDOMAIN_CHECK_RATE_LIMIT_KEY = "subdomain-check";
+
+const checkSubdomainReadRateLimit = async (session: any) => {
+    const rateLimitConfig = getRateLimitForFeature("DATA_READ");
+    const userId = session?.uId || session?.user?.id || "unknown";
+    const tenantId = session?.tId || session?.user?.tenantId || "unknown";
+    const storeId = session?.sId || session?.user?.storeId || "unknown";
+    const userRateLimitHash = hashPublicRateLimitValue(userId);
+    const tenantRateLimitHash = hashPublicRateLimitValue(tenantId);
+    const storeRateLimitHash = hashPublicRateLimitValue(storeId);
+
+    const rateLimit = await checkRateLimit({
+        key: `${SUBDOMAIN_CHECK_RATE_LIMIT_KEY}:${userRateLimitHash}:${tenantRateLimitHash}:${storeRateLimitHash}`,
+        ...rateLimitConfig,
+    });
+
+    if (rateLimit.allowed) return null;
+
+    const waitSeconds = Math.max(1, Math.ceil((rateLimit.resetAt - Date.now()) / 1000));
+    return NextResponse.json(
+        {
+            available: false,
+            reason: "Too many requests. Please try again later.",
+            retryAfter: waitSeconds,
+            resetAt: rateLimit.resetAt,
+        },
+        {
+            headers: {
+                "Retry-After": String(waitSeconds),
+                "X-RateLimit-Limit": String(rateLimitConfig.limit),
+                "X-RateLimit-Remaining": String(rateLimit.remaining),
+                "X-RateLimit-Reset": String(rateLimit.resetAt),
+            },
+            status: 429,
+        },
+    );
+};
 
 export const GET = withAuth(async (request: NextRequest, session) => {
+    const rateLimitResponse = await checkSubdomainReadRateLimit(session);
+    if (rateLimitResponse) return rateLimitResponse;
+
     const permissionError = await requireAnyStorePermission(request, session, [PERMISSIONS.MANAGE_PUBLIC_PRESENCE], "Subdomain");
     if (permissionError) return permissionError;
 

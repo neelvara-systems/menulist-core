@@ -6,21 +6,36 @@
  */
 
 import * as Sentry from '@sentry/nextjs';
-import { applyMonitoringContext, getSanitizedMonitoringContext, isSentryMonitoringEnabled } from './sentryShared';
+import { sanitizeErrorForLog, sanitizeLogData } from '@lib/security/secureLogger';
+import {
+  applyMonitoringContext,
+  getSanitizedMonitoringContext,
+  getSanitizedMonitoringMessage,
+  isSentryMonitoringEnabled,
+} from './sentryShared';
 
 const isDev = process.env.NODE_ENV === 'development';
 const hasMonitoring = isSentryMonitoringEnabled;
 const isServer = typeof window === 'undefined';
 const shouldWriteInfoLog = isDev || isServer;
 
+const sanitizeLoggerConsoleValue = (value: unknown): unknown => {
+  if (value === undefined) return '';
+  if (value instanceof Error) return sanitizeErrorForLog(value);
+  if (typeof value === 'string') return sanitizeLogData({ value }).value;
+  if (value && typeof value === 'object') return sanitizeLogData({ value }).value;
+  return value;
+};
+
 const addBreadcrumb = (message: string, category: string, data?: Record<string, unknown>, level: 'info' | 'warning' | 'error' = 'info') => {
   if (!hasMonitoring) return;
 
+  const safeMessage = getSanitizedMonitoringMessage(message);
   Sentry.addBreadcrumb({
     category,
     data: getSanitizedMonitoringContext(data),
     level,
-    message,
+    message: safeMessage,
     timestamp: Date.now() / 1000,
   });
 };
@@ -33,21 +48,22 @@ const captureWithScope = (
 ): string | undefined => {
   if (!hasMonitoring) return undefined;
 
+  const safeMessage = getSanitizedMonitoringMessage(message);
   return Sentry.withScope((scope) => {
     scope.setLevel(level);
     applyMonitoringContext(scope, context);
 
     if (error instanceof Error) {
-      scope.setFingerprint([message, error.name]);
+      scope.setFingerprint([safeMessage, error.name]);
       return Sentry.captureException(error);
     }
 
     if (error) {
       scope.setContext('error_payload', getSanitizedMonitoringContext({ error }));
-      return Sentry.captureMessage(message, level);
+      return Sentry.captureMessage(safeMessage, level);
     }
 
-    return Sentry.captureMessage(message, level);
+    return Sentry.captureMessage(safeMessage, level);
   });
 };
 
@@ -61,10 +77,11 @@ export const logger = {
    * Prod: Server console info + Sentry breadcrumb
    */
   info(message: string, data?: any) {
+    const sanitizedData = sanitizeLoggerConsoleValue(data);
     if (isDev) {
-      console.info('%c[INFO]', 'background: blue; color: white; padding: 2px 6px; border-radius: 3px;', message, data || '');
+      console.info('%c[INFO]', 'background: blue; color: white; padding: 2px 6px; border-radius: 3px;', message, sanitizedData || '');
     } else if (shouldWriteInfoLog) {
-      console.info(`[INFO] ${message}`, data || '');
+      console.info(`[INFO] ${message}`, sanitizedData || '');
     }
 
     addBreadcrumb(message, 'log', data, 'info');
@@ -76,10 +93,11 @@ export const logger = {
    * Prod: Console warn
    */
   warn(message: string, data?: any) {
+    const sanitizedData = sanitizeLoggerConsoleValue(data);
     if (isDev) {
-      console.warn('%c[WARN]', 'background: orange; color: white; padding: 2px 6px; border-radius: 3px;', message, data || '');
+      console.warn('%c[WARN]', 'background: orange; color: white; padding: 2px 6px; border-radius: 3px;', message, sanitizedData || '');
     } else {
-      console.warn(`[WARN] ${message}`, data || '');
+      console.warn(`[WARN] ${message}`, sanitizedData || '');
     }
 
     addBreadcrumb(message, 'log', data, 'warning');
@@ -91,10 +109,12 @@ export const logger = {
    * Prod: Console error (monitoring service placeholder)
    */
   error(message: string, error?: Error | unknown, context?: any): string | undefined {
+    const sanitizedError = sanitizeLoggerConsoleValue(error);
+    const sanitizedContext = sanitizeLoggerConsoleValue(context);
     if (isDev) {
-      console.error('%c[ERROR]', 'background: red; color: white; padding: 2px 6px; border-radius: 3px;', message, error, context || '');
+      console.error('%c[ERROR]', 'background: red; color: white; padding: 2px 6px; border-radius: 3px;', message, sanitizedError, sanitizedContext || '');
     } else {
-      console.error(`[ERROR] ${message}`, error, context || '');
+      console.error(`[ERROR] ${message}`, sanitizedError, sanitizedContext || '');
     }
 
     return captureWithScope('error', message, error, context);
@@ -105,8 +125,9 @@ export const logger = {
    * Prod: Does nothing (no overhead)
    */
   debug(message: string, data?: any) {
+    const sanitizedData = sanitizeLoggerConsoleValue(data);
     if (isDev) {
-      console.debug('%c[DEBUG]', 'background: green; color: white; padding: 2px 6px; border-radius: 3px;', message, data || '');
+      console.debug('%c[DEBUG]', 'background: green; color: white; padding: 2px 6px; border-radius: 3px;', message, sanitizedData || '');
     }
   },
 
@@ -115,8 +136,9 @@ export const logger = {
    * Prod: Does nothing
    */
   trace(message: string, data?: any) {
+    const sanitizedData = sanitizeLoggerConsoleValue(data);
     if (isDev) {
-      console.trace('%c[TRACE]', 'background: yellow; color: black; padding: 2px 6px; border-radius: 3px;', message, data || '');
+      console.trace('%c[TRACE]', 'background: yellow; color: black; padding: 2px 6px; border-radius: 3px;', message, sanitizedData || '');
     }
   },
 
@@ -125,8 +147,9 @@ export const logger = {
    * Prod: Does nothing
    */
   log(message: string, data?: any) {
+    const sanitizedData = sanitizeLoggerConsoleValue(data);
     if (isDev) {
-      console.log('%c[LOG]', 'background: gray; color: white; padding: 2px 6px; border-radius: 3px;', message, data || '');
+      console.log('%c[LOG]', 'background: gray; color: white; padding: 2px 6px; border-radius: 3px;', message, sanitizedData || '');
     }
   },
 
@@ -144,6 +167,7 @@ export const logger = {
     details: any,
     severity: 'low' | 'medium' | 'high' | 'critical' = 'medium'
   ) {
+    const sanitizedDetails = sanitizeLoggerConsoleValue(details);
     const severityColors = {
       low: '#fbbf24',      // yellow
       medium: '#f97316',   // orange
@@ -163,29 +187,30 @@ export const logger = {
         `%c${severityEmojis[severity]} SECURITY [${severity.toUpperCase()}]`,
         `background: ${severityColors[severity]}; color: white; padding: 4px 8px; border-radius: 4px; font-weight: bold;`,
         event,
-        details
+        sanitizedDetails
       );
     } else {
       const logFn = severity === 'critical' || severity === 'high' ? console.error : console.warn;
-      logFn(`[SECURITY:${severity.toUpperCase()}] ${event}`, details);
+      logFn(`[SECURITY:${severity.toUpperCase()}] ${event}`, sanitizedDetails);
     }
 
     if (!hasMonitoring) return;
 
     const category = this.categorizeEvent(event);
+    const safeEvent = getSanitizedMonitoringMessage(event);
     Sentry.withScope((scope) => {
       scope.setLevel(severity === 'critical' ? 'fatal' : severity === 'high' ? 'error' : 'warning');
       scope.setTag('type', 'security');
       scope.setTag('category', category);
       scope.setTag('severity', severity);
-      scope.setFingerprint(['security', category, event]);
+      scope.setFingerprint(['security', category, safeEvent]);
       applyMonitoringContext(scope, {
         ...details,
         category,
         severity,
         type: 'security',
       });
-      Sentry.captureMessage(event);
+      Sentry.captureMessage(safeEvent);
     });
   },
 
@@ -236,30 +261,38 @@ export function setUserContext(user: {
 }) {
   if (!hasMonitoring) return;
 
-  Sentry.setUser({
-    email: user.email,
+  const emailLength = String(user.email || '').length;
+  const nameLength = String(user.name || '').length;
+  const storeNameLength = String(user.storeName || '').length;
+  const tenantNameLength = String(user.tenantName || '').length;
+  const userContext = getSanitizedMonitoringContext({
+    emailLength,
+    emailPresent: emailLength > 0,
     id: user.id,
-    username: [user.name, user.tenantName, user.storeName].filter(Boolean).join(' | ') || undefined,
-  });
-
-  Sentry.setTag('tenantId', String(user.tId || 'unknown'));
-  Sentry.setTag('storeId', String(user.sId || 'unknown'));
-  Sentry.setTag('role', String(user.role || 'unknown'));
-  Sentry.setTag('subscriptionPlan', String(user.subscriptionPlan || 'unknown'));
-  Sentry.setTag('subscriptionStatus', String(user.subscriptionStatus || 'unknown'));
-
-  Sentry.setContext('user_details', getSanitizedMonitoringContext({
-    email: user.email,
-    id: user.id,
-    name: user.name,
+    nameLength,
+    namePresent: nameLength > 0,
     role: user.role,
-    storeName: user.storeName,
+    storeNameLength,
+    storeNamePresent: storeNameLength > 0,
     subscriptionPlan: user.subscriptionPlan,
     subscriptionStatus: user.subscriptionStatus,
-    tenantName: user.tenantName,
+    tenantNameLength,
+    tenantNamePresent: tenantNameLength > 0,
     tId: user.tId,
     sId: user.sId,
-  }));
+  }) || {};
+
+  Sentry.setUser({
+    id: String(userContext.id || 'user_present'),
+  });
+
+  Sentry.setTag('tenantId', String(userContext.tId || 'unknown'));
+  Sentry.setTag('storeId', String(userContext.sId || 'unknown'));
+  Sentry.setTag('role', String(userContext.role || 'unknown'));
+  Sentry.setTag('subscriptionPlan', String(userContext.subscriptionPlan || 'unknown'));
+  Sentry.setTag('subscriptionStatus', String(userContext.subscriptionStatus || 'unknown'));
+
+  Sentry.setContext('user_details', userContext);
 }
 
 /**
@@ -279,7 +312,7 @@ export function trackAPICall(
   statusCode?: number,
   duration?: number
 ) {
-  addBreadcrumb(`API ${method} ${endpoint}`, 'api', {
+  addBreadcrumb(`API ${method}`, 'api', {
     duration,
     endpoint,
     method,
@@ -287,7 +320,11 @@ export function trackAPICall(
   }, statusCode && statusCode >= 400 ? 'warning' : 'info');
 
   if (statusCode && statusCode >= 400 && isDev) {
-    console.warn(`❌ API call failed: ${method} ${endpoint} (${statusCode})`);
+    console.warn('API call failed', sanitizeLoggerConsoleValue(getSanitizedMonitoringContext({
+      endpoint,
+      method,
+      statusCode,
+    })));
   }
 }
 
@@ -295,10 +332,16 @@ export function trackAPICall(
  * Track user actions for debugging
  */
 export function trackUserAction(action: string, details?: Record<string, any>) {
-  addBreadcrumb(action, 'user', details, 'info');
+  addBreadcrumb('User action', 'user', {
+    action,
+    details,
+  }, 'info');
 
   if (isDev) {
-    console.log(`👤 User action: ${action}`, details || '');
+    console.log('User action', sanitizeLoggerConsoleValue(getSanitizedMonitoringContext({
+      action,
+      details,
+    })));
   }
 }
 
@@ -309,7 +352,7 @@ export function trackNavigation(from: string, to: string) {
   addBreadcrumb('Navigation', 'navigation', { from, to }, 'info');
 
   if (isDev) {
-    console.log(`🧭 Navigated: ${from} → ${to}`);
+    console.log('Navigation', sanitizeLoggerConsoleValue(getSanitizedMonitoringContext({ from, to })));
   }
 }
 
@@ -317,10 +360,16 @@ export function trackNavigation(from: string, to: string) {
  * Track important business events
  */
 export function trackBusinessEvent(event: string, details?: Record<string, any>) {
-  addBreadcrumb(event, 'business', details, 'info');
+  addBreadcrumb('Business event', 'business', {
+    details,
+    event,
+  }, 'info');
 
   if (isDev) {
-    console.log(`💼 Business event: ${event}`, details || '');
+    console.log('Business event', sanitizeLoggerConsoleValue(getSanitizedMonitoringContext({
+      details,
+      event,
+    })));
   }
 }
 

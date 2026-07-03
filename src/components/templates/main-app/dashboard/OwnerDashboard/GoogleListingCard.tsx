@@ -14,9 +14,10 @@
  */
 
 import { FEATURE_FLAGS } from '@config/features';
+import { getBoundedStoreStringContext, logStoreDataFailure } from '@database/stores/storeDiagnostics';
 import { generateOBPUrl } from '@lib/obp/generateOBPUrl';
 import { StoreDataType } from '@type/platform/store';
-import { updateStore } from '@database/stores';
+import { assertStoreUpdateSucceeded, updateStore } from '@database/stores';
 import { Button, Card, Flex, Typography, message, theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import { useState } from 'react';
@@ -25,6 +26,58 @@ import { LuCheck, LuCopy, LuExternalLink, LuStore } from 'react-icons/lu';
 const { Text } = Typography;
 // Google Business Profile blue is a brand cue; surrounding card chrome uses Ant tokens.
 const GOOGLE_BUSINESS_PROFILE_BLUE = '#4285F4';
+const OWNER_GOOGLE_LISTING_COPY_UNAVAILABLE = 'owner_dashboard_google_listing_copy_unavailable';
+const OWNER_GOOGLE_LISTING_COPY_FALLBACK_FAILED = 'owner_dashboard_google_listing_copy_fallback_failed';
+
+const hasOwnerGoogleListingClipboardWrite = (): boolean => (
+    typeof navigator !== 'undefined'
+    && Boolean(navigator.clipboard)
+    && typeof navigator.clipboard.writeText === 'function'
+);
+
+const hasOwnerGoogleListingCopyFallback = (): boolean => (
+    typeof document !== 'undefined'
+    && typeof document.createElement === 'function'
+    && typeof document.execCommand === 'function'
+    && Boolean(document.body)
+);
+
+const copyOwnerGoogleListingLink = async (value: string): Promise<void> => {
+    let clipboardWriteError: unknown;
+
+    if (hasOwnerGoogleListingClipboardWrite()) {
+        try {
+            await navigator.clipboard.writeText(value);
+            return;
+        } catch (error) {
+            clipboardWriteError = error;
+            // Continue to the acknowledged textarea fallback before showing failure copy.
+        }
+    }
+
+    if (!hasOwnerGoogleListingCopyFallback()) {
+        throw clipboardWriteError || new Error(OWNER_GOOGLE_LISTING_COPY_UNAVAILABLE);
+    }
+
+    const textarea = document.createElement('textarea');
+    textarea.value = value;
+    textarea.setAttribute('readonly', '');
+    textarea.style.position = 'fixed';
+    textarea.style.left = '-9999px';
+    textarea.style.top = '0';
+    document.body.appendChild(textarea);
+    textarea.focus();
+    textarea.select();
+
+    try {
+        const copied = document.execCommand('copy');
+        if (!copied) {
+            throw new Error(OWNER_GOOGLE_LISTING_COPY_FALLBACK_FAILED);
+        }
+    } finally {
+        document.body.removeChild(textarea);
+    }
+};
 
 interface GoogleListingCardProps {
     storeDetails: StoreDataType;
@@ -44,39 +97,75 @@ export default function GoogleListingCard({ storeDetails, onStoreUpdate }: Googl
     if (!obpUrl) return null;
 
     const isUpdated = storeDetails?.publicPresence?.googleLinkUpdated === true;
+    const buildGoogleListingCardLogContext = (
+        action: string,
+        metadata: Record<string, boolean | number | string | undefined> = {},
+    ) => ({
+        surface: 'owner_dashboard_google_listing_card',
+        action,
+        googleLinkUpdated: isUpdated,
+        ...getBoundedStoreStringContext('storeId', storeDetails?.storeId),
+        ...getBoundedStoreStringContext('tenantId', (storeDetails as any)?.tenantId),
+        ...getBoundedStoreStringContext('subdomain', storeDetails?.subdomain),
+        ...getBoundedStoreStringContext('customDomain', storeDetails?.customDomain),
+        ...getBoundedStoreStringContext('obpUrl', obpUrl),
+        ...metadata,
+    });
 
     const handleCopy = async () => {
         try {
-            await navigator.clipboard.writeText(obpUrl);
+            await copyOwnerGoogleListingLink(obpUrl);
             setCopied(true);
             message.success(t('googleListing.linkCopied'));
             setTimeout(() => setCopied(false), 2000);
-        } catch {
+        } catch (error) {
+            logStoreDataFailure('owner_dashboard_google_listing_copy_failed', error, buildGoogleListingCardLogContext('copy_obp_link', {
+                hasClipboardWrite: hasOwnerGoogleListingClipboardWrite(),
+                hasCopyFallback: hasOwnerGoogleListingCopyFallback(),
+            }));
             message.error(t('googleListing.couldNotCopy'));
+        }
+    };
+
+    const handleOpenGoogle = () => {
+        try {
+            const opened = window.open('https://business.google.com/', '_blank', 'noopener,noreferrer');
+            if (!opened) {
+                throw new Error('owner_dashboard_google_listing_open_blocked');
+            }
+        } catch (error) {
+            logStoreDataFailure('owner_dashboard_google_listing_open_failed', error, buildGoogleListingCardLogContext('open_google_profile', {
+                target: 'google_business_profile',
+            }));
+            message.error('Could not open Google Business Profile');
         }
     };
 
     const handleMarkDone = async () => {
         setSaving(true);
         try {
+            const googleLinkUpdatedAt = new Date().toISOString();
+            const nextPublicPresence = {
+                ...(storeDetails.publicPresence || {}),
+                googleLinkUpdated: true,
+                googleLinkUpdatedAt,
+            };
             const updates = {
                 storeId: storeDetails.storeId,
-                publicPresence: {
-                    ...(storeDetails.publicPresence || {}),
-                    googleLinkUpdated: true,
-                    googleLinkUpdatedAt: new Date().toISOString(),
-                },
+                publicPresence: nextPublicPresence,
             };
-            await updateStore(updates);
+            const writeResult = await updateStore(updates);
+            assertStoreUpdateSucceeded(
+                writeResult,
+                storeDetails.storeId,
+                'owner_dashboard_google_listing_store_update_rejected',
+            );
             onStoreUpdate?.({
-                publicPresence: {
-                    ...(storeDetails.publicPresence || {}),
-                    googleLinkUpdated: true,
-                    googleLinkUpdatedAt: new Date().toISOString(),
-                },
+                publicPresence: nextPublicPresence,
             } as any);
             message.success(t('googleListing.markedUpdated'));
-        } catch {
+        } catch (error) {
+            logStoreDataFailure('owner_dashboard_google_listing_mark_done_failed', error, buildGoogleListingCardLogContext('mark_google_link_done'));
             message.error(t('googleListing.couldNotSave'));
         } finally {
             setSaving(false);
@@ -153,7 +242,7 @@ export default function GoogleListingCard({ storeDetails, onStoreUpdate }: Googl
                     <Button
                         size="small"
                         icon={<LuExternalLink size={12} />}
-                        onClick={() => window.open('https://business.google.com/', '_blank', 'noopener,noreferrer')}
+                        onClick={handleOpenGoogle}
                         style={{ minHeight: 32 }}
                     >
                         {t('googleListing.openGoogle')}

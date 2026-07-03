@@ -688,7 +688,7 @@ export async function attemptCanonicalRetrieval(
             canonical: false,
             matchedEntityIds: [],
             confidence: 'none',
-            fallbackReason: `retrieval_error: ${(error as Error).message}`,
+            fallbackReason: 'retrieval_error',
         };
     }
 }

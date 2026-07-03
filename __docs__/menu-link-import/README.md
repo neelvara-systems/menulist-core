@@ -33,6 +33,7 @@ Owner-provided URL -> protected API -> URL safety gate -> DNS-pinned direct acqu
 - No Gemini URL Context as canonical ingestion.
 - No new crawler/vendor dependency in v1.
 - No overlapping link import while local photo/PDF files are waiting to be uploaded in the same project.
+- Browser job-creation requests stay same-origin, uncached, and manual-redirect before bounded acknowledgement parsing.
 
 ## External Validation Notes
 

@@ -5,6 +5,8 @@
 **Architecture:** Job Queue (Firebase Cloud Functions)
 **Last Updated:** June 11, 2026
 
+**Launch boundary:** This implementation note is AI extraction source evidence, not current production certification. Current launch approval requires the active [production-readiness audit](../../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../../production-readiness/external-certification-runbook.md) evidence, resolved QA Firebase Functions/Storage deploy blockers, provider smoke, authenticated browser/mobile QA, and production-host smoke for the target release.
+
 ---
 
 ## Architecture Overview
@@ -264,8 +266,17 @@ export const processMenuImagesJob = onDocumentCreated(
     const jobId = event.params.jobId;
     const jobData = event.data?.data();
 
+    logger.info("[processMenuImagesJob] Job created.", {
+      triggerName: "processMenuImagesJob",
+      jobIdLength: jobId.length,
+    });
+
     if (!jobData) {
-      logger.error(`[processMenuImagesJob] No data for job ${jobId}`);
+      logger.error("[processMenuImagesJob] No data associated with the event trigger.", {
+        failureCode: "FUNCTIONS_PRODUCTION_TRIGGER_DATA_MISSING",
+        triggerName: "processMenuImagesJob",
+        jobIdLength: jobId.length,
+      });
       return;
     }
 
@@ -289,7 +300,7 @@ export const dev_triggerProcessMenuImages = onCall(
     }
 
     await processMenuImagesJobLogic(jobId, jobData);
-    return { success: true };
+    return { success: true, message: "Successfully triggered processing." };
   },
 );
 ```
@@ -298,7 +309,7 @@ export const dev_triggerProcessMenuImages = onCall(
 
 `functions/src/triggers/shared.ts` still exports `processMenuImages` for compatibility, but the callable now fails closed with `failed-precondition` and does not invoke Gemini. Production extraction must enter through `menuImageProcessingJobs` so the protected API route, source allowlists, tenant checks, identity checks, retry metadata, cleanup scheduler, and public cache invalidation stay on one path.
 
-Deployment of this callable hardening was attempted on June 11, 2026 with `firebase deploy --only functions:processMenuImages --project ecomsai`; Firebase blocked the deploy during Secret Manager validation because billing is disabled on the `ecomsai` project.
+Deployment of this callable hardening was attempted on June 11, 2026 with `firebase deploy --only functions:processMenuImages --project ecomsai`; Firebase blocked the deploy during Secret Manager validation because billing is disabled on the `ecomsai` project. That `ecomsai` target is historical evidence only; current callable retry evidence belongs to the External Certification Runbook Gate 1 flow with `menulist-qa` after `npm run verify:functions-deploy-preflight`, and production still requires QA evidence plus explicit production deploy approval.
 
 ### Main Processing Logic
 
@@ -620,8 +631,8 @@ npm run dev
 | -------------------------------------------------------- | --------------------- |
 | `_spec.md`                                               | Product specification |
 | `_marketing.md`                                          | Sales collateral      |
-| `../Assessments/MENU-IMAGE-PROCESSING-JOB-QUEUE-SPEC.md` | Full job queue spec   |
-| `../Assessments/ASSESSMENT-02-AI-EXTRACTION.md`          | Original assessment   |
+| `../Assessments/menu-image-processing-job-queue-spec.md` | Full job queue spec   |
+| `../Assessments/assessment-02-ai-extraction.md`          | Original assessment   |
 
 ---
 
@@ -814,7 +825,7 @@ Full pipeline stress-test completed. See `failure-mode-scale-audit.md` for compl
 
 ---
 
-_Document Status: ✅ PRODUCTION READY — Last updated March 13, 2026_
+_Document Status: Historical AI extraction implementation evidence - not current launch certification_
 _Production Audit: Completed March 13, 2026 — GO ✅ (80/80), 1 bug fixed, 0 TypeScript errors_
 _Failure Mode Audit: Completed March 13, 2026 — 3 bugs fixed, 0 TypeScript errors_
 _Edge Case Simulation: Completed March 13, 2026 — 1,085 scenarios, 4 bugs fixed, 0 TypeScript errors_

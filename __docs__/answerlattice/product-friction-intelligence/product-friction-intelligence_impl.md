@@ -308,7 +308,7 @@ functions-answerlattice/src/answerlattice/frictionInsight.ts         — Weekly 
 
 src/types/answerlattice/index.ts                                — Additive types (AnswerlatticeFrictionDailyStat, etc.)
 src/database/answerlattice/frictionStats.ts                     — Frontend DAL for reading friction data
-src/hooks/answerlattice/useFrictionInsights.ts                  — SWR hook for GovernanceHub
+src/hooks/answerlattice/useFrictionInsights.ts                  — SWR hook for GovernanceHub; failed loads use fixed local dashboard copy
 src/components/templates/answerlattice/governance/FrictionTab.tsx — UI tab component
 ```
 

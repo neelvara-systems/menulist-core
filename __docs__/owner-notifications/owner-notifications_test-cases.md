@@ -1,6 +1,6 @@
 # Owner Notifications - Test Cases
 
-**Status:** Ready for implementation planning
+**Status:** Implemented source-gate coverage; provider and manual recovery smokes require a configured non-production environment
 **Date:** 2026-06-02
 
 ## Test Matrix
@@ -71,12 +71,11 @@
 
 ## Automated Verification Targets
 
-Recommended scripts:
+Source-gate script:
 
-- `npm run verify:owner-notifications`
-- `npm run verify:owner-notifications:dry-run`
+- `npm run verify:menulist-api-tenant-safety`
 
-Dry-run should validate:
+The source gate validates:
 
 - Registry shape
 - Required metadata
@@ -86,6 +85,10 @@ Dry-run should validate:
 - Dedupe key generation
 - WhatsApp consent skip policy
 - Current migration map coverage
+- Platform dashboard response parsing, request policy, bounded action bodies, and recovery-action guards
+- Owner notification app-side and Functions WhatsApp response parsing caps
+
+Provider dry-run coverage remains manual because it depends on non-production SMTP, WhatsApp template/session setup, and platform-user access to `/ops/owner-notifications`.
 
 ## Typecheck Requirements
 

@@ -1,9 +1,11 @@
 export const dynamic = 'force-dynamic';
 import { FEATURE_FLAGS } from "@config/features";
 import { DB_COLLECTIONS } from "@constant/database";
+import { getBoundedResellerApiStringContext, logResellerApiFailure } from "@lib/billing/resellerApiDiagnostics";
 import { admin } from "@lib/firebase/firebaseAdmin";
 import { NextResponse } from "next/server";
 import { withAuth } from "../../../../middleware/auth";
+import { applyResellerReadRateLimit } from "../readRateLimit";
 
 /**
  * GET /api/reseller/profile — Get reseller's own profile
@@ -17,6 +19,9 @@ export const GET = withAuth(async (request, session) => {
         if (!FEATURE_FLAGS.ENABLE_RESELLER_DASHBOARD) {
             return NextResponse.json({ error: "Feature not available." }, { status: 404 });
         }
+
+        const rateLimitResponse = await applyResellerReadRateLimit(session, "profile");
+        if (rateLimitResponse) return rateLimitResponse;
 
         const resellerId = session.user.id;
         const db = admin.firestore();
@@ -48,7 +53,9 @@ export const GET = withAuth(async (request, session) => {
         return NextResponse.json({ profile });
 
     } catch (error) {
-        console.error('[Reseller Profile] Failed:', error);
+        logResellerApiFailure('reseller_profile_route_failed', error, {
+            ...getBoundedResellerApiStringContext('userId', session.uId || session.user?.id),
+        });
         return NextResponse.json(
             { error: 'Failed to fetch profile.' },
             { status: 500 }

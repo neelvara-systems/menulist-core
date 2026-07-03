@@ -1,7 +1,7 @@
 # Ticket System — Technical Implementation Blueprint
 
 > **Version:** 1.0.0
-> **Last Updated:** 2026-05-13
+> **Last Updated:** 2026-07-02
 > **Audience:** Developers
 > **Source:** Codebase forensic audit (code is truth)
 
@@ -41,7 +41,7 @@ The Ticket System is a **client-side DAL feature** with no API routes. All opera
 | `src/components/templates/platform/supportTickets/index.tsx`                | —     | **Root orchestrator** — 3-view Segmented navigation (Analytics Dashboard, Ticket Queue, Deleted/Trash). Uses one platform-wide `subscribeSupportTickets()` listener as the active-ticket initial load and live sync source. CSV export with 3 column configs (full, minimal, analytics). Deleted tickets lazy-loaded on trash view access. Fullscreen `Spin` loading state.                                      |
 | `src/components/templates/platform/supportTickets/AnalyticsView.tsx`        | 471   | **Analytics dashboard** — Performance metrics: avg first response time, avg resolution time, high priority count, needs attention count. SLA compliance rate (%), SLA breached count, SLA at risk count. Tickets by status (progress bars with percentages), tickets by category (progress bars), tickets by priority (color-coded cards). All calculated client-side from ticket data via `useMemo`. Uses `calculateSLAStatus()` for SLA metrics. |
 | `src/components/templates/platform/supportTickets/exportConfig.ts`          | 218   | **CSV export columns** — 3 configurations: `ticketCSVColumns` (14 columns — full export with SLA status/time remaining), `ticketCSVColumnsMinimal` (7 columns — quick export), `ticketAnalyticsColumns` (8 columns — first response time, resolution time, SLA breached flag). Uses `calculateSLAStatus()` and `formatTimestampForCSV()`.                                                                                                          |
-| `src/components/templates/platform/supportTickets/PlatformTicketsView.tsx`  | 271   | Admin dashboard — `forwardRef` with `exportFilteredTickets` ref method. Full table view with all filters (status, priority, category, client, dateRange, tags, SLA, longRunning). Soft delete with `updateTicket({ deleted: true })`. Opens detail drawer on row click. High-priority rows highlighted red.                                                                                                                                        |
+| `src/components/templates/platform/supportTickets/PlatformTicketsView.tsx`  | 271   | Admin dashboard — `forwardRef` with `exportFilteredTickets` ref method. Full table view with all filters (status, priority, category, client, dateRange, tags, SLA, longRunning). Soft delete/restore passes the selected ticket `tId/sId` into `updateTicket()` so partial writes preserve ticket ownership scope. Opens detail drawer on row click. High-priority rows highlighted red.                                                                                                                                        |
 | `src/components/templates/platform/supportTickets/TicketDetailView.tsx`     | 211   | Detail drawer (1200px) — Two-column layout. Left: `TicketActions` panel (380px). Right: `ConversationTimeline`. Status changes auto-inject system messages. Footer: Close/Mark Resolved/Update buttons differ by `from` prop (client vs platform). Esc keyboard shortcut to close.                                                                                                                                                                 |
 | `src/components/templates/platform/supportTickets/TicketActions.tsx`        | 254   | Properties panel — Shows displayId (monospace), subject (sanitized, 200 char), message (sanitized, 1000 char), priority badge, created date. Platform view: requester info (tenant/store/email/phone), editable status/priority/category dropdowns, attachments gallery (image preview + file links), internal notes (TextArea) + tags (multi-select). Client view: read-only status/priority/category + timestamps.                               |
 | `src/components/templates/platform/supportTickets/TicketFiltersBar.tsx`     | 255   | Filter bar — Search input + filter drawer (8 filter types). Badge shows active filter count. Long-running tag shown inline. "Create Ticket" button (not in trash view). Clear All button in drawer.                                                                                                                                                                                                                                                |
@@ -49,6 +49,10 @@ The Ticket System is a **client-side DAL feature** with no API routes. All opera
 | `src/components/templates/platform/supportTickets/TicketTableColumns.tsx`   | 242   | Table column definitions — 8 columns: ID (monospace, sortable), Subject (ellipsis, sortable), Category (pill tag), Status (badge), Priority (colored dot), Created (datetime, default sort desc), Updated (datetime), Action (dropdown menu). High-priority row styling. Actions: View as Client / Edit / Delete (active) or View / Restore (trash). Delete has confirmation modal.                                                                |
 | `src/components/templates/platform/supportTickets/TicketLogsView.tsx`       | 58    | Browser logs modal — Renders captured client logs with level-colored tags (info=blue, warn=orange, error=red), timestamps, raw user-agent string, and parsed browser/OS/device details when ticket debugging context exists.                                                                                                                                                                                                                         |
 | `src/components/templates/platform/supportTickets/ConversationTimeline.tsx` | 297   | Chat-style messaging — Renders `user` messages as chat bubbles (blue=current user, white=other), `system` messages as centered italic with dashed border. Backwards compatible (converts old `statuses[].remark` to messages if `messages[]` empty). Reply form with sanitization (1000 char max). Auto-scroll on new messages. Ctrl+Enter keyboard shortcut.                                                                                      |
+
+Non-image ticket attachments in `TicketActions.tsx` and `TicketDetailView.tsx` open in a new tab with `noopener,noreferrer`, check the returned browser window, and log `answerlattice_ticket_attachment_open_failed` if the browser blocks or rejects the handoff. Diagnostics use bounded ticket/attachment URL/name/type presence-length metadata only, and the UI shows fixed `Unable to open attachment` copy. This is a browser-handoff boundary only; it does not change attachment upload, tenant-scoped Storage paths, ticket messages, status updates, or support-ticket writes.
+
+When product surfaces are enabled, `TicketDetailView.tsx` awaits `rebuildProductSurfaceContentSummaryWithDiagnostics()` after the confirmed ticket write and before success copy. Refresh failures log `answerlattice_ticket_summary_refresh_after_update_failed` with bounded ticket metadata and show fixed contextual-help refresh warning copy; the ticket write still succeeds. Ticket resolution signal emission remains non-blocking, but import or emit failures now log `answerlattice_ticket_resolution_signal_import_failed` or `answerlattice_ticket_resolution_signal_emit_failed` instead of using silent catches.
 
 ### 2.4 Shared Atoms
 
@@ -60,14 +64,14 @@ The Ticket System is a **client-side DAL feature** with no API routes. All opera
 
 ### 2.5 Database Layer
 
-**File:** `src/database/tickets/index.ts` (322 lines)
+**File:** `src/database/tickets/index.ts`
 
 | Function                                                                      | Signature                               |  Reads   |        Writes         | Notes                                                                             |
 | ----------------------------------------------------------------------------- | --------------------------------------- | :------: | :-------------------: | --------------------------------------------------------------------------------- |
-| `addTicket(data)`                                                             | `SupportTicketType → SupportTicketType` |    0     |     1 + N storage     | Captures browser logs + compact client debugging context, uploads attachments, uses `requestBodyComposer` |
-| `updateTicket(data)`                                                          | `any → any`                             |    0     |     1 + N storage     | Merge update, handles file uploads                                                |
-| `addTicketMessage(ticketId, currentMessages, message, attachments)`           | → `TicketMessage`                       |    0     |     1 + N storage     | Appends to messages array. **No DB read** — takes current messages as param       |
-| `updateTicketStatus(ticketId, currentStatuses, newStatus, remark, changedBy)` | → `{status, statusEntry}`               |    0     |           1           | Appends to statuses audit trail. **No DB read** — takes current statuses as param |
+| `addTicket(data)`                                                             | `SupportTicketType → SupportTicketType` |    0     |     1 + N storage     | Captures browser logs + compact client debugging context, uploads attachments, uses `requestBodyComposer`, requires `assertSupportTicketCreateSucceeded()` before UI state advances |
+| `updateTicket(data)`                                                          | `any → any`                             |    0     |     1 + N storage     | Merge update, handles file uploads, requires `assertSupportTicketUpdateSucceeded()` before UI state advances. Non-platform callers must pass the selected ticket `tId/sId`; platform partial updates without explicit ticket scope strip composer-injected `tId/sId` before merge so existing ticket ownership is not overwritten |
+| `addTicketMessage(ticketId, currentMessages, message, attachments, scope)`    | → `SupportTicketMessageAddResult`       |    0     |     1 + N storage     | Appends to messages array. **No DB read** — takes current messages as param; requires `assertSupportTicketMessageAddSucceeded()` before UI state advances. Non-platform replies must pass selected ticket `tId/sId` in `scope` |
+| `updateTicketStatus(ticketId, currentStatuses, newStatus, remark, changedBy, scope)` | → `SupportTicketStatusUpdateResult`     |    0     |           1           | Appends to statuses audit trail. **No DB read** — takes current statuses as param; returns explicit acknowledgement for future direct callers. Non-platform direct callers must pass selected ticket `tId/sId` in `scope` |
 | `deleteTicket(data)`                                                          | → `null`                                |    0     | 1 + N storage deletes | **Hard delete** + file cleanup                                                    |
 | `restoreTicket(data)`                                                         | → `any`                                 |    0     |           1           | Calls `updateTicket({ deleted: false })`                                          |
 | `getTicketById(id)`                                                           | `string → SupportTicketType`            |    1     |           0           | Single doc get                                                                    |
@@ -83,6 +87,7 @@ The Ticket System is a **client-side DAL feature** with no API routes. All opera
 - `startLogCapture()`: Started for authenticated app sessions by `src/providers/sessionProvider.tsx`; keeps the last 5 sanitized browser logs for ticket submission.
 - `getClientDebugContext()`: Captures a capped user-agent string and timestamp once during ticket creation so support can inspect the raw string and parsed browser/OS/device details without additional reads.
 - Ticket queries use the active NextAuth session values for `tId` and `sId`; Answerlattice documents keep the standard `pId`/`tId`/`sId` shape.
+- Ticket mutation helpers use `requireSupportTicketMutationScope()` before partial `setDoc(..., { merge: true })` writes. Owner/client sessions must provide the selected ticket scope and it must match the active session. Platform support sessions may update tickets across tenants, but the DAL removes composer-injected `tId/sId` when no explicit ticket scope is supplied so partial platform updates cannot reset ticket ownership to platform defaults.
 
 ### 2.6 Types
 
@@ -132,10 +137,13 @@ AddSupportTicket form submit
   → addTicket(payload) [DAL]
     → requestBodyComposer (injects tId, sId, uId, timestamps)
     → Upload attachments via uploadImage (tenant-scoped paths)
-    → addDoc to supportTickets collection
+  → addDoc to supportTickets collection
+  → assertSupportTicketCreateSucceeded(result)
   → updateItem in cache (position: 'first')
   → Show success message with displayId
 ```
+
+AI escalation ticket creation follows the same acknowledgement contract. HelpChat calls `addTicket()` with `source: 'ai_escalation'` and requires `assertSupportTicketCreateSucceeded()` before showing escalation success copy.
 
 ### 3.2 Message Reply (Both sides)
 
@@ -143,11 +151,13 @@ AddSupportTicket form submit
 ConversationTimeline form submit
   → Sanitize message (sanitizeFeedbackComment, 1000 chars)
   → Build TicketMessage object with sender info + Timestamp.now()
-  → addTicketMessage(ticketId, currentMessages, newMessage) [DAL]
+  → addTicketMessage(ticketId, currentMessages, newMessage, undefined, { tId, sId }) [DAL]
+    → requireSupportTicketMutationScope(scope, 'support_ticket_message')
     → Upload attachments if any
     → Append to messages array (no DB read — uses passed currentMessages)
-    → setDoc merge
-  → Update local state (onMessageAdded callback)
+    → setDoc merge with explicit scope or scope fields stripped for platform partial updates
+  → assertSupportTicketMessageAddSucceeded(result, ticketId, messageId)
+  → Update local state (onMessageAdded callback) with acknowledged message payload
   → No second DB write
 ```
 
@@ -159,6 +169,7 @@ TicketDetailView handleTicketUpdate({ status: newStatus })
   → If changed: create system message ("Status changed from X to Y")
   → Append system message to messages array
   → updateTicket({ ...updatePayload, id }) [DAL]
+  → assertSupportTicketUpdateSucceeded(result, id)
   → onUpdate callback (updates parent state)
   → Close drawer
 ```
@@ -257,7 +268,7 @@ TicketView mount
 | ------------------------- | --------------------------------------------------------------------- | :------------------------------: |
 | `addTicket`               | `addSupportTicket/index.tsx`                                          |                ✅                |
 | `updateTicket`            | `PlatformTicketsView.tsx`, `TicketDetailView.tsx`                     |                ✅                |
-| `addTicketMessage`        | `ConversationTimeline.tsx`                                            |                ✅                |
+| `addTicketMessage`        | `ConversationTimeline.tsx`                                            |       ✅ acknowledgement guarded       |
 | `updateTicketStatus`      | Not directly called (status changes go through `updateTicket`)        | ⚠️ Available but unused directly |
 | `deleteTicket`            | Not called from UI (platform uses soft delete via `updateTicket`)     | ⚠️ Available but unused from UI  |
 | `restoreTicket`           | Not called directly (restore uses `updateTicket({ deleted: false })`) |     ⚠️ Available but unused      |

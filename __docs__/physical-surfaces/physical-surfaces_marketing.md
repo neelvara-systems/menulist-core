@@ -1,10 +1,14 @@
 # Physical Surfaces — Marketing & Positioning
 
 **Created:** January 11, 2026  
-**Status:** Ready for Use  
+**Status:** Legacy positioning evidence; not current launch certification
 **Parent Doc:** `physical-surfaces_spec.md`
 
 ---
+
+## Launch Boundary
+
+This marketing note describes the legacy campaign-based Physical Surfaces concept. Menu Kit is now the canonical physical surface system for identity surfaces. Do not use this note as current launch, website, or sales approval without the active [production-readiness audit](../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../production-readiness/external-certification-runbook.md), current Menu Kit/print-output evidence, browser/mobile output QA, visual print artifact review, and target deploy evidence.
 
 ## One-Line Pitch
 
@@ -147,5 +151,5 @@ No additional charge. No separate SKU.
 
 ---
 
-**Document Status:** Ready for launch  
+**Document Status:** Legacy positioning evidence; not current launch approval
 **Dependencies:** Feature implementation complete

@@ -123,7 +123,7 @@ export const FUNCTION_FLAGS = {
      * 
      * Requires: RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET as Firebase secrets
      * 
-     * @see __docs__/razorpay/ACTIVE_SUBSCRIPTION_FLOW.md
+     * @see __docs__/razorpay/active-subscription-flow.md
      */
     ENABLE_SUBSCRIPTION_RECONCILIATION: true,
 
@@ -241,7 +241,7 @@ export const FUNCTION_FLAGS = {
      *
      * @see __docs__/reseller-dashboard/reseller-dashboard_impl.md
      */
-    ENABLE_RESELLER_DASHBOARD: false,
+    ENABLE_RESELLER_DASHBOARD: true,
 
     // ═══════════════════════════════════════════════════════════════
     // INFRASTRUCTURE LAYER (AI Discovery & Machine Readability)
@@ -249,16 +249,16 @@ export const FUNCTION_FLAGS = {
     // @see __docs__/discovery-infrastructure/README.md
     // ═══════════════════════════════════════════════════════════════
 
-    /** Offering Taxonomy System — Phase 1A (static data, zero cost) */
+    /** Offering Taxonomy System — disabled builder utility (static data, zero cost) */
     ENABLE_INFRASTRUCTURE_TAXONOMY: false,
 
-    /** Field-Level Provenance Metadata — Phase 1B */
+    /** Field-Level Provenance Metadata — disabled utility types */
     ENABLE_INFRASTRUCTURE_PROVENANCE: false,
 
-    /** Semantic Attribute Registry — Phase 1C (static data, zero cost) */
+    /** Semantic Attribute Registry — disabled builder utility (static data, zero cost) */
     ENABLE_INFRASTRUCTURE_SEMANTIC_ATTRIBUTES: false,
 
-    /** Business Entity Discovery Index — Phase 2 (nightly scheduler, PUBLIC data only) */
+    /** Business Entity Discovery Index — disabled builder utility, PUBLIC data only */
     ENABLE_INFRASTRUCTURE_DISCOVERY_INDEX: false,
 
     // ═══════════════════════════════════════════════════════════════
@@ -278,6 +278,17 @@ export const FUNCTION_FLAGS = {
      * @see __docs__/public-menu-entry/public-menu-entry_impl.md
      */
     ENABLE_PUBLIC_MENU_ENTRY: true,
+
+    /**
+     * Maps Place Check — owner/admin-only public place evidence check.
+     *
+     * Uses Gemini with Google Maps grounding through the existing GenAI
+     * Functions gateway. Defaults off because each grounded result can carry
+     * provider cost and source-display obligations.
+     *
+     * @see __docs__/menulist-tools/maps-place-check/
+     */
+    ENABLE_PUBLIC_TRUTH_MAPS_PLACE_CHECK: false,
 
     /**
      * Menu Link Import — owner-provided public menu links.
@@ -319,6 +330,8 @@ export const FUNCTION_FLAGS = {
 export const FUNCTION_RETENTION_CONFIG = {
     AI_OPERATION_DETAIL_RETENTION_DAYS: 14,
     AI_OPERATION_LOG_MODE: 'accounting_only' as 'accounting_only' | 'detailed',
+    IMAGE_BATCH_ITEMS_RETENTION_DAYS: 7,
+    IMAGE_BATCH_JOB_RETENTION_DAYS: 30,
     IMAGE_BATCH_STATUS_HISTORY_LIMIT: 20,
     MENU_EXTRACTION_DETAIL_RETENTION_HOURS: 2,
     MENU_SNAPSHOT_RETENTION_DAYS: 90,

@@ -3,6 +3,7 @@
 import Confetti from '@atoms/Confetti';
 import { AIEnhancementPack, Currency } from '@data/common';
 import { aiEnhancementPacksList } from '@data/PlatformPlansList';
+import { getBoundedPaymentStringContext, logPaymentFailure } from '@hook/paymentDiagnostics';
 import usePaymentHandler from '@hook/usePaymentHandler';
 import { useToast } from '@shadcnhooks/use-toast';
 import { FirestoreSubscriptionDoc } from '@type/razorpay';
@@ -30,6 +31,13 @@ const CreditPacksCtaSection: React.FC<CreditPacksCtaSectionProps> = ({ currency,
         setIsLoading(action.type === "loader/startLoader");
     }
     const { handleTopupPurchase } = usePaymentHandler(handleLoader);
+    const buildCreditPaymentLogContext = (flow: string, metadata: Record<string, unknown> = {}) => ({
+        surface: 'website_pricing_credit_packs',
+        flow,
+        currency: normalizedCurrency,
+        hasActiveSubscription: Boolean(activeSubscription),
+        ...metadata,
+    });
 
     const handleCreditsCardClick = (pack: AIEnhancementPack) => {
         try {
@@ -47,12 +55,16 @@ const CreditPacksCtaSection: React.FC<CreditPacksCtaSectionProps> = ({ currency,
                         return;
                     }
                     toast({ variant: 'destructive', title: 'Error', description: 'An error occurred during the final setup. Please contact support.' });
-                    console.error('Credit Payment flow failed in handleCreditsCardClick', error);
+                    logPaymentFailure('payment_pricing_credit_pack_failed', error, buildCreditPaymentLogContext('credit_pack_click', {
+                        ...getBoundedPaymentStringContext('packId', pack.packId),
+                    }));
                 });
         } catch (error) {
             setIsLoading(false);
             toast({ variant: 'destructive', title: 'Error', description: 'An error occurred during the final setup. Please contact support.' });
-            console.error('Credit Payment flow failed in handleCreditsCardClick', error);
+            logPaymentFailure('payment_pricing_credit_pack_failed', error, buildCreditPaymentLogContext('credit_pack_click', {
+                ...getBoundedPaymentStringContext('packId', pack.packId),
+            }));
         }
     }
 

@@ -18,6 +18,7 @@ import { getLocalizedText } from '@lib/localization/text';
 import { getMenuItemImageAltText } from '@lib/media/altText';
 import { getDecisionFactArray, getDecisionFactNumber, getDecisionFactString, getNutritionFact } from '@lib/menu/itemDecisionFacts';
 import { normalizePublicMenuImages } from '@lib/menu/publicMenuImages';
+import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import PublicImageViewer from '@/components/shared/media/PublicImageViewer';
 import { formatMenuPrice } from '@lib/pricing/formatMenuPrice';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -31,6 +32,8 @@ import { MenuMoodConfig } from '../designSystem';
 import { menuBottomSheetMotion, menuDialogMotion, menuSpringTransition } from './menuMotion';
 
 type ItemShareMethod = 'native_share' | 'copy_link';
+const PUBLIC_MENU_PDP_ITEM_SHARE_CLIPBOARD_UNAVAILABLE = 'public_menu_pdp_item_share_clipboard_unavailable';
+const PUBLIC_MENU_PDP_ITEM_SHARE_COPY_FALLBACK_FAILED = 'public_menu_pdp_item_share_copy_fallback_failed';
 
 interface PDPModalProps {
     item: any;
@@ -55,10 +58,41 @@ interface PDPModalProps {
     onShare?: (method: ItemShareMethod) => void;
 }
 
+function hasPdpItemShareClipboardWrite(): boolean {
+    return (
+        typeof navigator !== 'undefined'
+        && Boolean(navigator.clipboard)
+        && typeof navigator.clipboard.writeText === 'function'
+    );
+}
+
+function hasPdpItemShareCopyFallback(): boolean {
+    return (
+        typeof document !== 'undefined'
+        && typeof document.createElement === 'function'
+        && typeof document.execCommand === 'function'
+        && Boolean(document.body)
+    );
+}
+
 async function copyTextToClipboard(text: string): Promise<void> {
-    if (navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(text);
-        return;
+    let clipboardWriteError: unknown;
+
+    if (hasPdpItemShareClipboardWrite()) {
+        try {
+            await navigator.clipboard.writeText(text);
+            return;
+        } catch (error) {
+            clipboardWriteError = error;
+            // Continue to the acknowledged textarea fallback before showing failure copy.
+        }
+    }
+
+    if (!hasPdpItemShareCopyFallback()) {
+        const unavailableError = clipboardWriteError || new Error(PUBLIC_MENU_PDP_ITEM_SHARE_CLIPBOARD_UNAVAILABLE);
+        throw Object.assign(unavailableError instanceof Error ? unavailableError : new Error(PUBLIC_MENU_PDP_ITEM_SHARE_CLIPBOARD_UNAVAILABLE), {
+            code: PUBLIC_MENU_PDP_ITEM_SHARE_CLIPBOARD_UNAVAILABLE,
+        });
     }
 
     const textArea = document.createElement('textarea');
@@ -68,10 +102,20 @@ async function copyTextToClipboard(text: string): Promise<void> {
     textArea.style.top = '0';
     textArea.style.opacity = '0';
     textArea.setAttribute('readonly', 'true');
-    document.body.appendChild(textArea);
-    textArea.select();
-    document.execCommand('copy');
-    document.body.removeChild(textArea);
+    try {
+        document.body.appendChild(textArea);
+        textArea.select();
+        const copied = document.execCommand('copy');
+        if (!copied) {
+            throw Object.assign(new Error(PUBLIC_MENU_PDP_ITEM_SHARE_COPY_FALLBACK_FAILED), {
+                code: PUBLIC_MENU_PDP_ITEM_SHARE_COPY_FALLBACK_FAILED,
+            });
+        }
+    } finally {
+        if (textArea.parentNode) {
+            textArea.parentNode.removeChild(textArea);
+        }
+    }
 }
 
 function getCompactShareText(value: string): string {
@@ -439,7 +483,17 @@ function PDPModal({
             await copyTextToClipboard(itemShareUrl);
             onShare?.('copy_link');
             setShareStatus('Link copied');
-        } catch {
+        } catch (error) {
+            logRuntimeFailure('public_menu_pdp_item_share_copy_failed', error, {
+                ...getBoundedRuntimeStringContext('itemId', item?.id),
+                ...getBoundedRuntimeStringContext('itemShareUrl', itemShareUrl),
+                ...getBoundedRuntimeStringContext('shareTitle', shareTitle),
+                ...getBoundedRuntimeStringContext('language', language),
+                imageCount,
+                hasNativeShare: typeof navigator !== 'undefined' && typeof navigator.share === 'function',
+                hasClipboardWrite: hasPdpItemShareClipboardWrite(),
+                hasCopyFallback: hasPdpItemShareCopyFallback(),
+            });
             setShareStatus('Could not share');
         } finally {
             setIsSharingItem(false);

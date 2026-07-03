@@ -2,8 +2,8 @@
 
 > **Feature:** Manual Store Creation + Multi-Chain Support  
 > **Status:** ✅ Implemented  
-> **Last Updated:** June 11, 2026
-> **Version:** 2.1
+> **Last Updated:** July 1, 2026
+> **Version:** 2.2
 
 > **Scope:** Platform admin store CRUD and multi-chain store creation. For outlet-specific onboarding flow, see [Store Onboarding](../multi-outlet-consistency/store-onboarding/). For permissions, see [Roles & Permissions](../roles-permissions/).
 
@@ -25,7 +25,8 @@
 - **Internal admin tool** for platform operators to manually create tenants and stores
 - Access restricted to users with `ECOMSAI_PLATFORM_USER_ROLE`
 - Entry points: desktop Platform settings plus mobile More → Platform for Entity Blocks, Tenants, Stores, and Users management
-- Platform administrators can block tenants, stores, or users through Entity Blocks without changing `active` or `deleted` lifecycle fields. Block actions write `blocked` plus `blockDetails` audit metadata on the affected entity; tenant and store blocks are also enforced on public menu/OBP lookup paths.
+- Platform administrators can block tenants, stores, or users through Entity Blocks without changing `active` or `deleted` lifecycle fields. Block actions write `blocked` plus `blockDetails` audit metadata on the affected entity; tenant and store blocks are also enforced on public menu/OBP lookup paths. Browser acknowledgements are capped and must echo the requested entity ID plus blocked state before desktop or mobile local state shows success.
+- Platform tenant create/update actions in `TenantDetailsModal` require tenant DAL acknowledgement before the drawer closes. DAL fallback values keep the drawer open, log `platform_tenant_save_failed`, and show fixed failure copy.
 
 ### Multi-Chain State ✅ (Implemented)
 
@@ -85,11 +86,11 @@ Multi-chain business owners can add their own outlet stores via the Add Outlet m
 
 | Operation            | Function                    | Collections Updated                                                  |
 | -------------------- | --------------------------- | -------------------------------------------------------------------- |
-| Create Store         | `addStore()`                | `stores`, `platformSummary/default`, `platformSummary/storesSummary` |
+| Create Store         | `addStore()`                | `stores`, `platformSummary/default`, `platformSummary/storesSummary`, public cache refresh |
 | Update Store         | `updateStore()`             | `stores`, `platformSummary/storesSummary` when summary fields change |
 | Manage custom domain | `POST/GET/DELETE /api/domain` | `stores`; public cache tags `menu-store-{storeId}`, `store-{storeId}`, `client-stores` |
-| Manage time-slot presets | `updateTimeSlotPresets()`, `updatePresetInAllCategories()`, `removePresetFromAllCategories()` | `stores`; changed `projects/{tId}/{sId}` docs only when assigned category windows need edit/delete cleanup |
-| Block/unblock Entity | `POST /api/platform/entity-blocks` via `updatePlatformEntityBlockState()` | `tenants`, `stores`, or `users`; store blocks sync public summary/cache, and tenant blocks update `platformSummary/storesSummary.stores.{storeId}.tenantBlocked` before revalidating affected stores |
+| Manage time-slot presets | `updateTimeSlotPresets()`, `updatePresetInAllCategories()`, `removePresetFromAllCategories()` | `stores`; changed `projects/{tId}/{sId}` docs only when assigned category windows need edit/delete cleanup. Store writes and project cascades require acknowledgements before local success state. Failed desktop save/delete diagnostics use bounded Business Settings logging only. |
+| Block/unblock Entity | `POST /api/platform/entity-blocks` via `updatePlatformEntityBlockState()` | `tenants`, `stores`, or `users`; platform-only route rejects bodies above 64KB before entity reads, store blocks sync public summary/cache, tenant blocks update `stores/{storeId}.tenantBlocked` plus `platformSummary/storesSummary.stores.{storeId}.tenantBlocked` before revalidating affected stores, and browser requests use no-store cache, same-origin credentials, manual redirects, 64KB response caps, and `success` / entity-id / blocked-state validation |
 | Link Store to Tenant | `updateTenantsStoreslist()` | `tenants`                                                            |
 | Get Next Store ID    | `getPlatformSummary()`      | Read `platformSummary/default`                                       |
 

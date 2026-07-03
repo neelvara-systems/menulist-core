@@ -10,10 +10,13 @@
  */
 
 import { Timestamp } from 'firebase-admin/firestore';
+import * as functions from 'firebase-functions';
 import { DB_COLLECTIONS } from '../constants/database';
 import { firestoreAdmin as db } from '../firebaseAdmin';
+import { getMonitoringErrorContext } from './diagnostics';
 
 const OPS_SYSTEM_DOC = `${DB_COLLECTIONS.OPS_CONFIG}/system`;
+const logger = functions.logger;
 
 // ================================================================
 // CORE FUNCTIONS
@@ -37,7 +40,11 @@ export async function isAlertsMuted(): Promise<boolean> {
     const now = Timestamp.now();
     return mutedUntil.toMillis() > now.toMillis();
   } catch (error) {
-    console.error('[DeployMute] Error checking mute status:', error);
+    logger.error('[DeployMute] Error checking mute status', {
+      failureCode: 'FUNCTIONS_DEPLOY_MUTE_CHECK_FAILED',
+      failOpen: true,
+      error: getMonitoringErrorContext(error),
+    });
     return false; // Fail-open: allow alerts on error
   }
 }
@@ -56,7 +63,10 @@ export async function muteAlerts(durationMinutes: number = 20): Promise<void> {
     { merge: true }
   );
 
-  console.info(`[DeployMute] Alerts muted for ${durationMinutes} minutes until ${mutedUntil.toDate().toISOString()}`);
+  logger.info('[DeployMute] Alerts muted', {
+    durationMinutes,
+    mutedUntil: mutedUntil.toDate().toISOString(),
+  });
 }
 
 /**
@@ -68,5 +78,5 @@ export async function unmuteAlerts(): Promise<void> {
     { merge: true }
   );
 
-  console.info('[DeployMute] Alerts unmuted');
+  logger.info('[DeployMute] Alerts unmuted');
 }

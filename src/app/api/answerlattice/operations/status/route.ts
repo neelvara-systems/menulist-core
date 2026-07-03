@@ -11,10 +11,11 @@ import {
     normalizeAnswerlatticeTimeZone,
 } from '@lib/answerlattice/schedulerSettings';
 import { requireAnswerlatticePermission } from '@lib/answerlattice/accessControl';
+import { buildAnswerlatticeRateLimitKey } from '@lib/answerlattice/rateLimitKeys';
 import { resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
 import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
 import { checkRateLimit } from '@lib/rateLimit';
-import { secureError } from '@lib/security/secureLogger';
+import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import type { AnswerlatticeOwnerOperationStatus } from '@type/answerlattice';
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '../../../../../middleware/auth';
@@ -92,20 +93,20 @@ export const GET = withAuth(async (request: NextRequest, session) => {
         return NextResponse.json({ error: 'Answerlattice operations status is not enabled.' }, { status: 403 });
     }
 
-    const permission = await requireAnswerlatticePermission(request, session, ANSWERLATTICE_PERMISSION_KEYS.VIEW_READINESS);
-    if (permission.response) return permission.response;
-
     const scope = resolveSessionScope(session);
     if (!scope) return NextResponse.json({ error: 'Not onboarded' }, { status: 400 });
 
     const rateLimit = await checkRateLimit({
-        key: `answerlattice-operations-status:${scope.tenantId}:${scope.storeId}`,
+        key: buildAnswerlatticeRateLimitKey('answerlattice-operations-status', scope.tenantId, scope.storeId),
         limit: 60,
         window: 60,
     });
     if (!rateLimit.allowed) {
         return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
     }
+
+    const permission = await requireAnswerlatticePermission(request, session, ANSWERLATTICE_PERMISSION_KEYS.VIEW_READINESS);
+    if (permission.response) return permission.response;
 
     const db = getAnswerlatticeDb();
     if (!db) return NextResponse.json({ error: 'Answerlattice Firebase is not configured' }, { status: 503 });
@@ -199,7 +200,10 @@ export const GET = withAuth(async (request: NextRequest, session) => {
             },
         });
     } catch (error) {
-        secureError('[Answerlattice Operations] Failed to load scheduler status', error as Error, { tId, sId });
+        logRuntimeFailure('answerlattice_operations_status_load_failed', error, {
+            ...getBoundedRuntimeStringContext('tenantId', tId),
+            ...getBoundedRuntimeStringContext('storeId', sId),
+        });
         return NextResponse.json({ error: 'Failed to load operations status' }, { status: 500 });
     }
 });

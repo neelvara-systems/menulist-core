@@ -12,7 +12,7 @@ export const dynamic = 'force-dynamic';
  * 3. This route creates: tenant, store, user update, Razorpay subscription
  * 4. User completes payment → subscription activates via existing webhook
  *
- * During beta: creates subscription with $0 plan (no Razorpay needed)
+ * Creates a paid Razorpay subscription in pending state. No unpaid plan is created.
  *
  * @see __docs__/answerlattice/client-onboarding/
  */
@@ -20,8 +20,9 @@ export const dynamic = 'force-dynamic';
 import { FEATURE_FLAGS } from '@config/features';
 import { DB_COLLECTIONS } from '@constant/database';
 import { PRODUCT_IDS } from '@constant/product';
-import { getAnswerlatticeBetaPlan, getAnswerlatticePlanById } from '@data/answerlattice/plans';
+import { getAnswerlatticePlanById } from '@data/answerlattice/plans';
 import { getOwnerRoleId } from '@data/defaultRoles';
+import { buildAnswerlatticeRateLimitKey } from '@lib/answerlattice/rateLimitKeys';
 import { ANSWERLATTICE_PRODUCT_ACCOUNT_KEY } from '@lib/answerlattice/sessionScope';
 import { buildAnswerlatticeWidgetApiStateWithNewKey } from '@lib/answerlattice/widgetKeyManager';
 import {
@@ -43,7 +44,8 @@ import { admin } from '@lib/firebase/firebaseAdmin';
 import { createTenantStoreInTransaction } from '@lib/onboarding/createTenantStore';
 import { checkRateLimit } from '@lib/rateLimit';
 import { getRateLimitForFeature } from '@lib/rateLimit/configs';
-import { secureError } from '@lib/security/secureLogger';
+import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
+import { readBoundedJsonBody } from '@lib/security/boundedRequestBody';
 import { FirestoreSubscriptionDoc } from '@type/razorpay';
 import { hashApiKey } from '@lib/publicApi/auth';
 import { writeLogEntry } from 'logs/utils';
@@ -61,7 +63,7 @@ const OptionalEmailSchema = z.preprocess(
     (value) => typeof value === 'string' && value.trim() === '' ? undefined : value,
     z.string().trim().email().max(160).optional(),
 );
-const BillingModelSchema = z.enum(['free', 'subscription', 'usage', 'one_time', 'not_sure']);
+const BillingModelSchema = z.enum(['subscription', 'usage', 'one_time', 'not_sure']);
 const OnboardRequestSchema = z.object({
     companyName: z.string().trim().min(2).max(120),
     productName: z.string().trim().max(120).optional(),
@@ -71,10 +73,11 @@ const OnboardRequestSchema = z.object({
     primarySurfaces: z.array(z.string().trim().min(1).max(80)).max(8).optional().default([]),
     timeZone: z.string().trim().max(80).optional(),
     businessDayEndTime: z.string().trim().regex(/^([01]\d|2[0-3]):([0-5]\d)$/).optional(),
-    planId: z.string().trim().max(80).optional().default('answerlattice_beta'),
+    planId: z.string().trim().max(80).optional().default('answerlattice_starter'),
     interval: z.enum(['MONTH', 'YEAR']).optional().default('MONTH'),
     currency: z.enum(['INR', 'USD']).optional().default('INR'),
 });
+const ANSWERLATTICE_ONBOARD_MAX_BODY_BYTES = 32 * 1024;
 
 const ONBOARDING_SURFACE_TEMPLATES: Record<string, {
     label: string;
@@ -329,6 +332,9 @@ const syncDefaultAuthProductAccount = async (params: {
 
 export const POST = withAuth(async (request: NextRequest, session) => {
     const userId = session.user.id;
+    let tenantIdForLog: number | string | undefined;
+    let storeIdForLog: number | string | undefined;
+    const userIdForLog: string | undefined = userId;
 
     try {
         // 0. Feature flag check — widget flag acts as the Answerlattice distribution gate
@@ -339,6 +345,19 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             );
         }
 
+        // 1. Rate limit before Firestore reads or durable onboarding writes.
+        const rateLimitConfig = getRateLimitForFeature('PAYMENT_ONBOARDING');
+        const rateLimitResult = await checkRateLimit({
+            key: buildAnswerlatticeRateLimitKey('answerlattice-onboard', userId),
+            ...rateLimitConfig,
+        });
+        if (!rateLimitResult.allowed) {
+            return NextResponse.json({
+                error: 'Too many attempts. Please try again later.',
+                resetAt: rateLimitResult.resetAt,
+            }, { status: 429 });
+        }
+
         const db = getAnswerlatticeDb();
         if (!db) {
             return NextResponse.json(
@@ -347,7 +366,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             );
         }
 
-        // 1. Verify user doesn't already have an Answerlattice tenant. A separate
+        // 2. Verify user doesn't already have an Answerlattice tenant. A separate
         // tenant/store on the same login must not block Answerlattice onboarding.
         const existingProductAccount = (session.user as any)?.productAccounts?.[ANSWERLATTICE_PRODUCT_ACCOUNT_KEY];
         const existingAnswerlatticeUser = await getAnswerlatticeUserByEmail(db, session.user.email);
@@ -361,21 +380,19 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             );
         }
 
-        // 2. Rate limiting
-        const rateLimitConfig = getRateLimitForFeature('PAYMENT_ONBOARDING');
-        const rateLimitResult = await checkRateLimit({
-            key: `answerlattice-onboard:${userId}`,
-            ...rateLimitConfig,
+        // 3. Parse input
+        const bodyResult = await readBoundedJsonBody(request, ANSWERLATTICE_ONBOARD_MAX_BODY_BYTES, {
+            invalidJsonMessage: 'Company name is required (min 2 chars).',
+            tooLargeMessage: 'Request body too large.',
         });
-        if (!rateLimitResult.allowed) {
-            return NextResponse.json({
-                error: 'Too many attempts. Please try again later.',
-                resetAt: rateLimitResult.resetAt,
-            }, { status: 429 });
+        if (bodyResult.ok === false) {
+            return NextResponse.json(
+                { error: bodyResult.response.status === 413 ? 'Request body too large.' : 'Company name is required (min 2 chars).' },
+                { status: bodyResult.response.status },
+            );
         }
 
-        // 3. Parse input
-        const validation = OnboardRequestSchema.safeParse(await request.json());
+        const validation = OnboardRequestSchema.safeParse(bodyResult.data);
         if (!validation.success) {
             return NextResponse.json({ error: 'Company name is required (min 2 chars).' }, { status: 400 });
         }
@@ -394,12 +411,14 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         } = validation.data;
 
         // 4. Resolve plan
-        const plan = planId === 'answerlattice_beta'
-            ? getAnswerlatticeBetaPlan()
-            : getAnswerlatticePlanById(planId, interval);
+        const plan = getAnswerlatticePlanById(planId, interval);
 
         if (!plan) {
             return NextResponse.json({ error: 'Plan not found.' }, { status: 404 });
+        }
+        const selectedPrice = currency === 'USD' ? plan.priceUSD.price : plan.priceINR.price;
+        if (!Number.isFinite(selectedPrice) || selectedPrice <= 0) {
+            return NextResponse.json({ error: 'Paid plan is required.' }, { status: 400 });
         }
 
         await writeLogEntry({
@@ -488,6 +507,8 @@ export const POST = withAuth(async (request: NextRequest, session) => {
 
             return { tenantId: core.tenantId, storeId: core.storeId, storeName: core.storeName };
         });
+        tenantIdForLog = result.tenantId;
+        storeIdForLog = result.storeId;
 
         await syncDefaultAuthProductAccount({
             userId,
@@ -507,9 +528,10 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         }).then((count) => {
             initialSurfaceCount = count;
         }).catch((surfaceError) => {
-            secureError('[Answerlattice Onboard] Initial surface bootstrap failed', surfaceError as Error, {
-                tenantId: result.tenantId,
-                storeId: result.storeId,
+            logRuntimeFailure('answerlattice_onboard_initial_surface_bootstrap_failed', surfaceError, {
+                ...getBoundedRuntimeStringContext('tenantId', result.tenantId),
+                ...getBoundedRuntimeStringContext('storeId', result.storeId),
+                ...getBoundedRuntimeStringContext('userId', userIdForLog),
             });
         });
 
@@ -521,9 +543,10 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             timeZone: schedulerTimeZone,
             businessDayEndTime: schedulerBusinessDayEndTime,
         }).catch((summaryError) => {
-            secureError('[Answerlattice Onboard] Tenant summary sync failed', summaryError as Error, {
-                tenantId: result.tenantId,
-                storeId: result.storeId,
+            logRuntimeFailure('answerlattice_onboard_tenant_summary_sync_failed', summaryError, {
+                ...getBoundedRuntimeStringContext('tenantId', result.tenantId),
+                ...getBoundedRuntimeStringContext('storeId', result.storeId),
+                ...getBoundedRuntimeStringContext('userId', userIdForLog),
             });
         });
 
@@ -538,198 +561,123 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 });
             }
         }).catch((bundleInitError) => {
-            secureError('[Answerlattice Onboard] Compiled context control-plane init failed', bundleInitError as Error, {
-                tenantId: result.tenantId,
-                storeId: result.storeId,
+            logRuntimeFailure('answerlattice_onboard_context_control_plane_init_failed', bundleInitError, {
+                ...getBoundedRuntimeStringContext('tenantId', result.tenantId),
+                ...getBoundedRuntimeStringContext('storeId', result.storeId),
+                ...getBoundedRuntimeStringContext('userId', userIdForLog),
             });
         });
 
-        // 6. Create Subscription (Beta: free, no Razorpay needed; paid: Razorpay recurring)
-        const isBeta = planId === 'answerlattice_beta';
-        let subscriptionId = isBeta
-            ? `answerlattice_beta_${result.tenantId}_${result.storeId}_${Date.now()}`
-            : `answerlattice_${result.tenantId}_${result.storeId}_${Date.now()}`;
+        // 6. Create Subscription (paid Razorpay recurring only)
+        let subscriptionId = `answerlattice_${result.tenantId}_${result.storeId}_${Date.now()}`;
         let razorpaySubscription: any = null;
         let subscriptionSummary: Record<string, any> | null = null;
 
-        if (isBeta) {
-            // Beta: Create free subscription directly (no Razorpay)
-            const betaEnd = new Date();
-            betaEnd.setMonth(betaEnd.getMonth() + 6); // 6-month beta
+        const { getOrCreateRazorpayPlan } = await import('@lib/razorpay/plan-handler');
+        const { razorpayClient } = await import('@lib/razorpay/razorpay');
+        const price = selectedPrice;
+        const monthlyCredits = currency === 'USD' ? plan.priceUSD.monthlyCredits : plan.priceINR.monthlyCredits;
+        const razorpayPlanId = await getOrCreateRazorpayPlan({
+            productId: PRODUCT_IDS.ANSWERLATTICE,
+            price,
+            currency,
+            interval,
+            userType: 'B2B',
+            planId: plan.planId,
+        });
+        const totalCount = interval === 'MONTH' ? 36 : 3;
 
-            const subscriptionPayload: Omit<FirestoreSubscriptionDoc, 'id'> = {
-                paymentProvider: 'razorpay',
-                providerSubscriptionId: subscriptionId,
-                providerPlanId: '',
-                userId,
-                name: session.user.name || '',
-                email: session.user.email || '',
+        razorpaySubscription = await razorpayClient.subscriptions.create({
+            plan_id: razorpayPlanId,
+            total_count: totalCount,
+            quantity: 1,
+            notes: {
+                productId: PRODUCT_IDS.ANSWERLATTICE,
+                pId: PRODUCT_IDS.ANSWERLATTICE,
                 tenantId: result.tenantId,
                 storeId: result.storeId,
                 tId: result.tenantId,
                 sId: result.storeId,
-                pId: PRODUCT_IDS.ANSWERLATTICE,
-                productId: PRODUCT_IDS.ANSWERLATTICE,
-                planType: 'MONTH',
+                userId,
+                uId: userId,
                 userType: 'B2B',
-                currency: 'INR',
-                amount: 0,
-                status: 'active',
-                lastWebhook: null,
-                planId: 'answerlattice_beta',
-                planName: 'Answerlattice Beta',
-                cycleStartDate: admin.firestore.Timestamp.now() as any,
-                subscriptionEndDate: admin.firestore.Timestamp.fromDate(betaEnd) as any,
-                subscriptionStartDate: admin.firestore.Timestamp.now() as any,
-                pastDueSinceAt: null as any,
-                totalPaymentsNeededCount: 0,
-                totalPaymentsMadeCount: 0,
-                cycleEndDate: admin.firestore.Timestamp.fromDate(betaEnd) as any,
-                renewsOn: null as any,
-                monthlyCreditsAllowance: plan.priceINR.monthlyCredits,
-                monthlyCredits: plan.priceINR.monthlyCredits,
-                topUpCredits: 0,
-                creditsLastResetMonth: new Date().getFullYear() * 100 + (new Date().getMonth() + 1),
-                shortUrl: '',
-                paymentMethod: { type: 'beta', brand: '', last4: '', upiId: '', upiTransactionId: '' },
-                statuses: [{
-                    status: 'active',
-                    timestamp: admin.firestore.Timestamp.now() as any,
-                    amount: 0,
-                    currency: 'INR',
-                    remark: 'Answerlattice Beta — 6 months free access',
-                }],
-                billingHistory: [],
-                quantity: 1,
-                billingMode: 'auto' as any,
-                onboardingSource: 'ANSWERLATTICE_ONBOARDING' as any,
-            };
-
-            await createAnswerlatticeSubscription(db, subscriptionId, subscriptionPayload);
-            subscriptionSummary = {
-                id: subscriptionId,
-                providerSubscriptionId: subscriptionId,
-                planId: 'answerlattice_beta',
-                planName: 'Answerlattice Beta',
-                status: 'active',
-                currency: 'INR',
-                amount: 0,
-                isBeta: true,
-                subscriptionEndDate: admin.firestore.Timestamp.fromDate(betaEnd),
-                monthlyCreditsAllowance: plan.priceINR.monthlyCredits,
-                monthlyCredits: plan.priceINR.monthlyCredits,
-                topUpCredits: 0,
-                creditsLastResetMonth: subscriptionPayload.creditsLastResetMonth,
-                updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-            };
-        } else {
-            const { getOrCreateRazorpayPlan } = await import('@lib/razorpay/plan-handler');
-            const { razorpayClient } = await import('@lib/razorpay/razorpay');
-            const price = currency === 'USD' ? plan.priceUSD.price : plan.priceINR.price;
-            const monthlyCredits = currency === 'USD' ? plan.priceUSD.monthlyCredits : plan.priceINR.monthlyCredits;
-            const razorpayPlanId = await getOrCreateRazorpayPlan({
-                productId: PRODUCT_IDS.ANSWERLATTICE,
-                price,
-                currency,
+                planId: plan.planId,
                 interval,
-                userType: 'B2B',
-                planId: plan.planId,
-            });
-            const totalCount = interval === 'MONTH' ? 36 : 3;
-
-            razorpaySubscription = await razorpayClient.subscriptions.create({
-                plan_id: razorpayPlanId,
-                total_count: totalCount,
-                quantity: 1,
-                notes: {
-                    productId: PRODUCT_IDS.ANSWERLATTICE,
-                    pId: PRODUCT_IDS.ANSWERLATTICE,
-                    tenantId: result.tenantId,
-                    storeId: result.storeId,
-                    tId: result.tenantId,
-                    sId: result.storeId,
-                    userId,
-                    uId: userId,
-                    userType: 'B2B',
-                    planId: plan.planId,
-                    interval,
-                    currency,
-                    name: session.user.name,
-                    email: session.user.email,
-                    price,
-                    remainingCredits: 0,
-                    onboardingSource: 'ANSWERLATTICE_ONBOARDING',
-                },
-            });
-            subscriptionId = razorpaySubscription.id;
-
-            const subscriptionPayload: Omit<FirestoreSubscriptionDoc, 'id'> = {
-                paymentProvider: 'razorpay',
-                providerSubscriptionId: razorpaySubscription.id,
-                providerPlanId: razorpayPlanId,
-                userId,
-                name: session.user.name || '',
-                email: session.user.email || '',
-                tenantId: result.tenantId,
-                storeId: result.storeId,
-                tId: result.tenantId,
-                sId: result.storeId,
-                pId: PRODUCT_IDS.ANSWERLATTICE,
-                productId: PRODUCT_IDS.ANSWERLATTICE,
-                planType: interval,
-                userType: 'B2B',
                 currency,
-                amount: price,
-                status: 'pending',
-                lastWebhook: null,
-                planId: plan.planId,
-                planName: plan.name,
-                cycleStartDate: null as any,
-                subscriptionEndDate: null as any,
-                subscriptionStartDate: null as any,
-                pastDueSinceAt: null as any,
-                totalPaymentsNeededCount: razorpaySubscription.total_count,
-                totalPaymentsMadeCount: 0,
-                cycleEndDate: null as any,
-                renewsOn: null as any,
-                monthlyCreditsAllowance: monthlyCredits,
-                monthlyCredits,
-                topUpCredits: 0,
-                creditsLastResetMonth: new Date().getFullYear() * 100 + (new Date().getMonth() + 1),
-                shortUrl: razorpaySubscription.short_url || '',
-                paymentMethod: { type: '', brand: '', last4: '', upiId: '', upiTransactionId: '' },
-                statuses: [{
-                    status: 'pending',
-                    timestamp: admin.firestore.Timestamp.now() as any,
-                    amount: price,
-                    currency,
-                    remark: 'Answerlattice paid subscription initiated',
-                }],
-                billingHistory: [],
-                quantity: 1,
-                billingMode: 'auto' as any,
-                onboardingSource: 'ANSWERLATTICE_ONBOARDING' as any,
-            };
+                name: session.user.name,
+                email: session.user.email,
+                price,
+                remainingCredits: 0,
+                onboardingSource: 'ANSWERLATTICE_ONBOARDING',
+            },
+        });
+        subscriptionId = razorpaySubscription.id;
 
-            await createAnswerlatticeSubscription(db, razorpaySubscription.id, subscriptionPayload);
-            subscriptionSummary = {
-                id: razorpaySubscription.id,
-                providerSubscriptionId: razorpaySubscription.id,
-                planId: plan.planId,
-                planName: plan.name,
+        const subscriptionPayload: Omit<FirestoreSubscriptionDoc, 'id'> = {
+            paymentProvider: 'razorpay',
+            providerSubscriptionId: razorpaySubscription.id,
+            providerPlanId: razorpayPlanId,
+            userId,
+            name: session.user.name || '',
+            email: session.user.email || '',
+            tenantId: result.tenantId,
+            storeId: result.storeId,
+            tId: result.tenantId,
+            sId: result.storeId,
+            pId: PRODUCT_IDS.ANSWERLATTICE,
+            productId: PRODUCT_IDS.ANSWERLATTICE,
+            planType: interval,
+            userType: 'B2B',
+            currency,
+            amount: price,
+            status: 'pending',
+            lastWebhook: null,
+            planId: plan.planId,
+            planName: plan.name,
+            cycleStartDate: null as any,
+            subscriptionEndDate: null as any,
+            subscriptionStartDate: null as any,
+            pastDueSinceAt: null as any,
+            totalPaymentsNeededCount: razorpaySubscription.total_count,
+            totalPaymentsMadeCount: 0,
+            cycleEndDate: null as any,
+            renewsOn: null as any,
+            monthlyCreditsAllowance: monthlyCredits,
+            monthlyCredits,
+            topUpCredits: 0,
+            creditsLastResetMonth: new Date().getFullYear() * 100 + (new Date().getMonth() + 1),
+            shortUrl: razorpaySubscription.short_url || '',
+            paymentMethod: { type: '', brand: '', last4: '', upiId: '', upiTransactionId: '' },
+            statuses: [{
                 status: 'pending',
+                timestamp: admin.firestore.Timestamp.now() as any,
+                amount: price,
                 currency,
-                amount: price,
-                isBeta: false,
-                subscriptionEndDate: null,
-                monthlyCreditsAllowance: monthlyCredits,
-                monthlyCredits,
-                topUpCredits: 0,
-                creditsLastResetMonth: subscriptionPayload.creditsLastResetMonth,
-                updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-            };
-        }
+                remark: 'Answerlattice paid subscription initiated',
+            }],
+            billingHistory: [],
+            quantity: 1,
+            billingMode: 'auto' as any,
+            onboardingSource: 'ANSWERLATTICE_ONBOARDING' as any,
+        };
 
+        await createAnswerlatticeSubscription(db, razorpaySubscription.id, subscriptionPayload);
+        subscriptionSummary = {
+            id: razorpaySubscription.id,
+            providerSubscriptionId: razorpaySubscription.id,
+            planId: plan.planId,
+            planName: plan.name,
+            status: 'pending',
+            currency,
+            amount: price,
+            isBeta: false,
+            subscriptionEndDate: null,
+            monthlyCreditsAllowance: monthlyCredits,
+            monthlyCredits,
+            topUpCredits: 0,
+            creditsLastResetMonth: subscriptionPayload.creditsLastResetMonth,
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        };
         // 7. Generate API key for the widget
         const apiKey = `al_${randomUUID().replace(/-/g, '')}`;
         const apiKeyHash = hashApiKey(apiKey);
@@ -769,17 +717,26 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             plan: {
                 id: plan.planId,
                 name: plan.name,
-                isBeta,
+                isBeta: false,
             },
             initialSurfaceCount,
         });
 
     } catch (error) {
-        secureError('[Answerlattice Onboard] Failed', error as Error, { userId });
+        logRuntimeFailure('answerlattice_onboard_failed', error, {
+            ...getBoundedRuntimeStringContext('tenantId', tenantIdForLog),
+            ...getBoundedRuntimeStringContext('storeId', storeIdForLog),
+            ...getBoundedRuntimeStringContext('userId', userIdForLog),
+        });
         await writeLogEntry({
             logFileName: LOG_FILE,
             logType: 'ANSWERLATTICE_ONBOARD_ERROR',
-            data: { userId, error: (error as Error).message },
+            data: {
+                failureCode: 'answerlattice_onboard_failed',
+                ...getBoundedRuntimeStringContext('tenantId', tenantIdForLog),
+                ...getBoundedRuntimeStringContext('storeId', storeIdForLog),
+                ...getBoundedRuntimeStringContext('userId', userIdForLog),
+            },
         });
         return NextResponse.json(
             { error: 'Failed to create account. Please try again.' },

@@ -5,13 +5,15 @@
 **Internal Slug:** `owner-business-assistant`
 **Product:** MenuList
 **Status:** Implemented as a read-only Business Health and grounded answer surface
-**Last Updated:** June 17, 2026
+**Last Updated:** June 30, 2026
 
 ## Current Decision
 
 Business Health is not a generic chatbot and is not an action system. It is a read-only operating surface that helps an owner understand store health, selected-menu analytics, feedback signals, source coverage, and supported business questions from compact precomputed data.
 
 Owner-initiated work now belongs to AI Menu Manager / Menu Manager. Business Health must not prepare action drafts, render action sheets, execute owner commands, mutate public truth, or create workflow records for actions.
+
+**Owner Business Health boundary source gate:** `npm run verify:owner-business-health-boundary` source-gates the read-only Business Health runtime: `/business-health`, bounded `/api/owner-business-assistant/*` read/answer/feedback routes, 256KB read-model response parsing, 32KB answer request cap, 8KB feedback request cap, selected-store scope checks, `VIEW_ANALYTICS` permission checks, MobileShell read-only screen behavior, removed action surfaces, and ledger coverage. It is source/docs verification only; browser/mobile QA, provider smoke, scheduler fixture evidence, Firebase deploy, Vercel deploy, production build, live Firestore writes, Storage writes, and production-host smoke remain outside this checkpoint.
 
 The accepted product shape is:
 
@@ -71,10 +73,10 @@ Implemented:
 1. Feature flags in `src/config/features.ts` and Cloud Functions flags in `functions/src/constants/features.ts`.
 2. Shared constants, schemas, types, context-packet builder, deterministic answer resolver, refusals, and domain capability matrix.
 3. Scheduler-built current health, daily snapshots, optional analytics index, and multi-location summary docs.
-4. Protected APIs under `/api/owner-business-assistant/*` for read-only current health, analytics, answer, thread, feedback, and locations behavior.
+4. Protected APIs under `/api/owner-business-assistant/*` for read-only current health, analytics, answer, thread, feedback, and locations behavior. Browser read-model hooks parse current, analytics, locations, and thread responses through a shared 256KB bounded reader before caching or rendering. Feedback writes keep the existing `DATA_WRITE` limiter and reject JSON bodies above 8KB before validation, selected-store scope checks, permission checks, or Firestore writes.
 5. Desktop dashboard card, analytics strip, full route, suggested questions, answer follow-ups, source/freshness disclosure, and priority checks.
 6. MobileShell More sub-screen, `/business-health` route mapping, and mobile Business Health screen.
-7. Optional bounded thread-doc history, answer-event logging, feedback, source coverage metrics, and platform monitor.
+7. Optional bounded thread-doc history, answer-event logging, feedback, source coverage metrics, and platform monitor. The platform monitor uses the same 256KB bounded response reader before rendering answer-event, source-coverage, feedback, and cost/read metric state.
 
 Removed:
 
@@ -87,7 +89,7 @@ Removed:
 ## Current Default Posture
 
 - Business Health is cache-first and read-only.
-- Provider-backed typed answers remain controlled by existing Business Health AI flags, SAFE_MODE, rate limits, validation, and AI accounting.
+- Provider-backed typed answers remain controlled by existing Business Health AI flags, SAFE_MODE, rate limits, a 32KB answer request body cap, validation, and AI accounting.
 - Public menu/store writes remain outside Business Health.
 - Menu operations are routed conceptually to Menu Manager, not duplicated in this feature.
 - Public copy remains calm and proof-based.

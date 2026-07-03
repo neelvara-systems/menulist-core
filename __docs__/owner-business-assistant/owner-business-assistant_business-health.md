@@ -10,6 +10,10 @@ Business Health gives the owner a compact AI health check for current store and 
 
 Public positioning may call Business Health an AI health check or AI diagnostic layer. That wording does not change the runtime boundary: Business Health checks and explains; AI Menu Manager owns approved menu operations.
 
+## Owner Business Health boundary source gate
+
+`npm run verify:owner-business-health-boundary` verifies this read-only AI diagnostic runtime against the current route, API, desktop, mobile, and ledger source boundary. Business Health must not update menu/store/outlet/staff/public truth, create action drafts, render approval sheets, or bypass Menu Manager operation ownership.
+
 ## Active Capability
 
 - Current health summary

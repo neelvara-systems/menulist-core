@@ -14,9 +14,13 @@
 import { DB_COLLECTIONS } from "@constant/database";
 import { replaceUndefined } from "@lib/apiHelper";
 import { firebaseClient as db } from "@lib/firebase/firebaseClient";
-import { secureError, secureLog } from "@lib/security/secureLogger";
 import type { LogMOLParams, MOLEvent } from "@type/mol.types";
 import { collection, doc, setDoc, Timestamp } from "firebase/firestore";
+import {
+    getBoundedPricingStringContext,
+    logPricingDiagnostic,
+    logPricingFailure,
+} from "./pricingDiagnostics";
 
 /**
  * Log a MOL event (fire-and-forget, non-blocking)
@@ -49,17 +53,18 @@ export async function logMOLEvent(params: LogMOLParams): Promise<void> {
         // Write to Firestore
         await setDoc(eventRef, event);
 
-        secureLog("[MOL] Event logged", {
-            type: params.type,
-            projectId: params.projectId,
+        logPricingDiagnostic("pricing_mol_event_logged", {
+            eventType: params.type,
             entityType: params.entityType,
+            ...getBoundedPricingStringContext("projectId", params.projectId),
         });
     } catch (error) {
         // MOL logging should NEVER block operations
         // Log the error but don't throw
-        secureError("[MOL] Failed to log event", error as Error, {
-            type: params.type,
-            projectId: params.projectId,
+        logPricingFailure("pricing_mol_event_log_failed", error, {
+            eventType: params.type,
+            entityType: params.entityType,
+            ...getBoundedPricingStringContext("projectId", params.projectId),
         });
     }
 }

@@ -13,6 +13,8 @@ const MENU_DAILY_CACHE_DAYS = 45;
 const CUSTOMER_APP_DAILY_CACHE_DAYS = 45;
 const INTELLIGENCE_ITEM_LIMIT = 250;
 const DASHBOARD_ITEM_LIMIT = 75;
+const OWNER_ACTION_RECEIPT_LIMIT = 20;
+const OWNER_ACTION_RESULT_MIN_SESSIONS = 10;
 
 export interface OwnerDashboardAISummaryPayload {
     markdown: string;
@@ -82,6 +84,32 @@ interface CatalogInsightContext {
     itemsById: Record<string, CatalogInsightItem>;
     categoriesById: Record<string, CatalogInsightCategory>;
     itemsByCategoryId: Record<string, CatalogInsightItem[]>;
+}
+
+interface OwnerActionReceiptResult {
+    status: 'pending' | 'improved' | 'no_clear_change' | 'not_enough_data';
+    label: string;
+    message: string;
+    checkedAt?: string;
+    checkAfterLocalDate?: string;
+    baselineValue?: number;
+    resultValue?: number;
+}
+
+interface OwnerActionReceipt {
+    receiptId: string;
+    actionId: string;
+    actionType: string;
+    actionTitle: string;
+    actionLabel: string;
+    metricLabel?: string;
+    status: 'marked_done' | 'improved' | 'no_clear_change' | 'not_enough_data';
+    markedDoneAt: any;
+    markedBy?: string;
+    baselineLocalDate?: string;
+    checkAfterLocalDate: string;
+    baselineSnapshot?: Record<string, any>;
+    result?: OwnerActionReceiptResult;
 }
 
 function getDashboardSummaryDocId(tId: string, sId: string, projectId: string): string {
@@ -198,7 +226,9 @@ function aggregateDailyDocs(docs: Record<string, any>[]): Record<string, any> {
         viewsByContent: {},
         menuSessionsBySource: {},
         actionSessionsBySource: {},
+        actionSessionsByOpenHoursState: {},
         menuActionClicksBySource: {},
+        menuActionClicksByOpenHoursState: {},
         menuViewsByLanguage: {},
         menuSessionsByLanguage: {},
         languageAdoptions: {},
@@ -254,7 +284,9 @@ function aggregateDailyDocs(docs: Record<string, any>[]): Record<string, any> {
         mergeMapField(result.viewsByContent, readAnalyticsMap(doc, 'viewsByContent'));
         mergeMapField(result.menuSessionsBySource, readAnalyticsMap(doc, 'menuSessionsBySource'));
         mergeMapField(result.actionSessionsBySource, readAnalyticsMap(doc, 'actionSessionsBySource'));
+        mergeMapField(result.actionSessionsByOpenHoursState, readAnalyticsMap(doc, 'actionSessionsByOpenHoursState'));
         mergeMapField(result.menuActionClicksBySource, readAnalyticsMap(doc, 'menuActionClicksBySource'));
+        mergeMapField(result.menuActionClicksByOpenHoursState, readAnalyticsMap(doc, 'menuActionClicksByOpenHoursState'));
         mergeMapField(result.menuViewsByLanguage, readAnalyticsMap(doc, 'menuViewsByLanguage'));
         mergeMapField(result.menuSessionsByLanguage, readAnalyticsMap(doc, 'menuSessionsByLanguage'));
         mergeMapField(result.languageAdoptions, readAnalyticsMap(doc, 'languageAdoptions'));
@@ -321,6 +353,131 @@ function getDashboardMetrics(data: Record<string, any> = {}) {
     };
 }
 
+function normalizeOwnerActionReceipts(raw: any): Record<string, OwnerActionReceipt> {
+    if (!raw || typeof raw !== 'object') return {};
+    return Object.entries(raw)
+        .filter(([, value]) => value && typeof value === 'object')
+        .slice(-OWNER_ACTION_RECEIPT_LIMIT)
+        .reduce<Record<string, OwnerActionReceipt>>((acc, [key, value]) => {
+            const receipt = value as Partial<OwnerActionReceipt>;
+            if (!receipt.receiptId || !receipt.actionId || !receipt.checkAfterLocalDate) return acc;
+            acc[key] = receipt as OwnerActionReceipt;
+            return acc;
+        }, {});
+}
+
+function getActionReceiptMetrics(period: any): Record<string, number> {
+    return period?.metrics || {};
+}
+
+function buildOwnerActionReceiptResult(
+    receipt: OwnerActionReceipt,
+    settlementDate: string,
+    comparisonMetrics: Record<string, number>,
+): OwnerActionReceiptResult {
+    if (receipt.result?.status && receipt.result.status !== 'pending') {
+        return receipt.result;
+    }
+
+    if (receipt.checkAfterLocalDate && settlementDate < receipt.checkAfterLocalDate) {
+        return {
+            status: 'pending',
+            label: 'Marked',
+            message: `Marked done. MenuList will check settled results after ${receipt.checkAfterLocalDate}.`,
+            checkAfterLocalDate: receipt.checkAfterLocalDate,
+        };
+    }
+
+    const resultSessions = Number(comparisonMetrics.menuSessions || 0);
+    if (resultSessions < OWNER_ACTION_RESULT_MIN_SESSIONS) {
+        return {
+            status: 'not_enough_data',
+            label: 'Not enough data yet',
+            message: 'Not enough settled visits yet to judge this change.',
+            checkedAt: settlementDate,
+            checkAfterLocalDate: receipt.checkAfterLocalDate,
+        };
+    }
+
+    const baseline = receipt.baselineSnapshot || {};
+    const baselineActionRate = Number(baseline.actionRate || 0);
+    const resultActionRate = Number(comparisonMetrics.actionRate || 0);
+    const baselineActions = Number(baseline.menuActionClicks || baseline.actionSessions || 0);
+    const resultActions = Number(comparisonMetrics.menuActionClicks || comparisonMetrics.actionSessions || 0);
+    const improved = resultActionRate >= baselineActionRate + 3 || resultActions > baselineActions;
+
+    if (improved) {
+        return {
+            status: 'improved',
+            label: 'Improved',
+            message: `After this change, action rate moved from ${baselineActionRate}% to ${resultActionRate}%.`,
+            checkedAt: settlementDate,
+            baselineValue: baselineActionRate,
+            resultValue: resultActionRate,
+        };
+    }
+
+    return {
+        status: 'no_clear_change',
+        label: 'No clear change yet',
+        message: `After this change, action rate is ${resultActionRate}%. Keep watching before changing again.`,
+        checkedAt: settlementDate,
+        baselineValue: baselineActionRate,
+        resultValue: resultActionRate,
+    };
+}
+
+function attachOwnerActionReceipts(
+    ownerActionPlan: any,
+    receipts: Record<string, OwnerActionReceipt>,
+    settlementDate: string,
+    comparisonMetrics: Record<string, number>,
+) {
+    if (!ownerActionPlan) return { ownerActionPlan, receipts };
+    const updatedReceipts = Object.entries(receipts).reduce<Record<string, OwnerActionReceipt>>((acc, [receiptId, receipt]) => {
+        const result = buildOwnerActionReceiptResult(receipt, settlementDate, comparisonMetrics);
+        acc[receiptId] = {
+            ...receipt,
+            status: result.status === 'pending' ? receipt.status : result.status,
+            result,
+        };
+        return acc;
+    }, {});
+    const receiptByActionId = Object.values(updatedReceipts).reduce<Record<string, OwnerActionReceipt>>((acc, receipt) => {
+        acc[receipt.actionId] = receipt;
+        return acc;
+    }, {});
+    const currentActions = ownerActionPlan.actions || [];
+    const currentActionIds = new Set(currentActions.map((action: any) => action.id));
+    const receiptOnlyActions = Object.values(updatedReceipts)
+        .filter((receipt) => !currentActionIds.has(receipt.actionId))
+        .slice(-3)
+        .map((receipt) => ({
+            id: `receipt_${receipt.receiptId}`,
+            type: 'action_result',
+            title: receipt.actionTitle,
+            description: receipt.result?.message || 'MenuList is checking settled results for this action.',
+            reason: 'You marked this action as done.',
+            actionLabel: receipt.actionLabel,
+            metricLabel: receipt.metricLabel,
+            priority: 'low',
+            receipt,
+            result: receipt.result,
+        }));
+
+    return {
+        receipts: updatedReceipts,
+        ownerActionPlan: {
+            ...ownerActionPlan,
+            actions: currentActions.map((action: any) => {
+                const receipt = receiptByActionId[action.id];
+                return receipt ? { ...action, receipt, result: receipt.result } : action;
+            }).concat(receiptOnlyActions),
+            receipts: updatedReceipts,
+        },
+    };
+}
+
 function getMenuActions(data: Record<string, any> = {}) {
     return {
         call: data.menuActionClicks?.call || 0,
@@ -354,6 +511,80 @@ function topMapEntries(map?: Record<string, number>, names?: Record<string, stri
         .filter((item) => typeof item.clicks === 'number' && item.clicks > 0)
         .sort((a, b) => b.clicks - a.clicks)
         .slice(0, 5);
+}
+
+function buildItemStatusLabel(input: {
+    views: number;
+    clicks: number;
+    recommendationClicks: number;
+    unavailableTaps: number;
+}): { statusLabel?: string; statusTone?: 'success' | 'warning' | 'default'; statusReason?: string } {
+    const totalActionTaps = input.clicks + input.recommendationClicks;
+    if (input.unavailableTaps > 0) {
+        return {
+            statusLabel: 'Unavailable demand',
+            statusTone: 'warning',
+            statusReason: `${input.unavailableTaps} unavailable taps`,
+        };
+    }
+    if (input.clicks >= 5 || input.recommendationClicks >= 3) {
+        return {
+            statusLabel: 'Strong item',
+            statusTone: 'success',
+            statusReason: `${totalActionTaps} item taps`,
+        };
+    }
+    if (input.views >= 5 && totalActionTaps === 0) {
+        return {
+            statusLabel: 'Needs work',
+            statusTone: 'warning',
+            statusReason: `${input.views} views, no taps`,
+        };
+    }
+    if (input.views >= 5) {
+        return {
+            statusLabel: 'Getting attention',
+            statusTone: 'default',
+            statusReason: `${input.views} views`,
+        };
+    }
+    return {};
+}
+
+function topItemEntries(data: Record<string, any> = {}) {
+    const viewsByItem = data.viewsByItem || {};
+    const clicksByItem = data.clicksByItem || {};
+    const recommendationClicksByItem = data.recommendationClicksByItem || {};
+    const unavailableItemTapsByItem = data.unavailableItemTapsByItem || {};
+    const itemIds = new Set<string>([
+        ...Object.keys(viewsByItem),
+        ...Object.keys(clicksByItem),
+        ...Object.keys(recommendationClicksByItem),
+        ...Object.keys(unavailableItemTapsByItem),
+    ]);
+
+    return Array.from(itemIds)
+        .map((itemId) => {
+            const views = Number(viewsByItem[itemId]) || 0;
+            const clicks = Number(clicksByItem[itemId]) || 0;
+            const recommendationClicks = Number(recommendationClicksByItem[itemId]) || 0;
+            const unavailableTaps = Number(unavailableItemTapsByItem[itemId]) || 0;
+            const status = buildItemStatusLabel({ views, clicks, recommendationClicks, unavailableTaps });
+            return {
+                itemId,
+                name: data.itemNames?.[itemId],
+                clicks,
+                views,
+                recommendationClicks,
+                unavailableTaps,
+                ...status,
+                score: clicks + recommendationClicks + unavailableTaps + (views * 0.25),
+            };
+        })
+        .filter((item) => item.score > 0)
+        .sort((a, b) => b.score - a.score)
+        .slice(0, 5)
+        .map(({ score, ...item }) => item);
 }
 
 function topSearchTerms(map?: Record<string, number>) {
@@ -458,6 +689,24 @@ function sourceQualityEntries(data: Record<string, any> = {}) {
         .filter((entry) => entry.menuSessions > 0 || entry.actionClicks > 0)
         .sort((a, b) => (b.actionSessions - a.actionSessions) || (b.menuSessions - a.menuSessions))
         .slice(0, 6);
+}
+
+function openHoursActionBreakdown(data: Record<string, any> = {}) {
+    const actionClicks = readAnalyticsMap(data, 'menuActionClicksByOpenHoursState');
+    const actionSessions = readAnalyticsMap(data, 'actionSessionsByOpenHoursState');
+    const open = Number(actionClicks.open) || 0;
+    const closed = Number(actionClicks.closed) || 0;
+    const unknown = Number(actionClicks.unknown) || 0;
+    const total = open + closed + unknown;
+    return {
+        open,
+        closed,
+        unknown,
+        actionSessionsOpen: Number(actionSessions.open) || 0,
+        actionSessionsClosed: Number(actionSessions.closed) || 0,
+        actionSessionsUnknown: Number(actionSessions.unknown) || 0,
+        closedShare: total > 0 ? Math.round((closed / total) * 100) : 0,
+    };
 }
 
 function trafficBreakdownEntries(data: Record<string, any> = {}, field: string) {
@@ -949,17 +1198,31 @@ function buildOwnerActionCandidates(data: Record<string, any> = {}, catalog?: Ca
     const sourceQuality = sourceQualityEntries(data);
     const bestSource = sourceQuality[0];
     const peakHour = topHourlyEntry(data.hourlyViews);
+    const openHoursBreakdown = openHoursActionBreakdown(data);
 
     if (topZeroSearch) {
         candidates.push({
-            id: 'search-vocabulary',
-            type: 'search_vocabulary',
-            title: 'Add the words customers search for',
-            description: `Customers searched for "${topZeroSearch.term}" but did not get a match.`,
+            id: 'search-fix',
+            type: 'search_fix',
+            title: 'Fix no-result searches',
+            description: `Customers searched for "${topZeroSearch.term}" but did not get a match. Add it, rename an item, or map it to the closest existing item.`,
             reason: `${topZeroSearch.count} no-result searches`,
-            actionLabel: 'Review menu wording',
+            actionLabel: 'Add or map this search',
             metricLabel: `${topZeroSearch.count} misses`,
             priority: 'high',
+        });
+    }
+
+    if (openHoursBreakdown.closed >= 2) {
+        candidates.push({
+            id: 'closed-hours-actions',
+            type: 'closed_hours_actions',
+            title: 'Customers tried to act while closed',
+            description: 'Customers tapped Call, WhatsApp, Directions, Reserve, or Order while the business looked closed.',
+            reason: `${openHoursBreakdown.closed} actions while closed`,
+            actionLabel: 'Check hours and after-hours message',
+            metricLabel: `${openHoursBreakdown.closedShare}% while closed`,
+            priority: openHoursBreakdown.closed >= 5 ? 'high' : 'medium',
         });
     }
 
@@ -1208,7 +1471,9 @@ function compactAnalyticsDay(date: string, data: Record<string, any>) {
         viewsByContent: topMap(readAnalyticsMap(data, 'viewsByContent'), DASHBOARD_ITEM_LIMIT),
         menuSessionsBySource: topMap(readAnalyticsMap(data, 'menuSessionsBySource'), DASHBOARD_ITEM_LIMIT),
         actionSessionsBySource: topMap(readAnalyticsMap(data, 'actionSessionsBySource'), DASHBOARD_ITEM_LIMIT),
+        actionSessionsByOpenHoursState: topMap(readAnalyticsMap(data, 'actionSessionsByOpenHoursState'), 3),
         menuActionClicksBySource: topMap(readAnalyticsMap(data, 'menuActionClicksBySource'), DASHBOARD_ITEM_LIMIT),
+        menuActionClicksByOpenHoursState: topMap(readAnalyticsMap(data, 'menuActionClicksByOpenHoursState'), 3),
         menuViewsByLanguage: topMap(readAnalyticsMap(data, 'menuViewsByLanguage'), DASHBOARD_ITEM_LIMIT),
         menuSessionsByLanguage: topMap(readAnalyticsMap(data, 'menuSessionsByLanguage'), DASHBOARD_ITEM_LIMIT),
         languageAdoptions: topMap(readAnalyticsMap(data, 'languageAdoptions'), DASHBOARD_ITEM_LIMIT),
@@ -1337,11 +1602,12 @@ function buildDailyView(data: Record<string, any>, date: string) {
         date,
         metrics: getDashboardMetrics(data),
         blockPerformance: getBlockPerformance(data),
-        topItems: topMapEntries(data.clicksByItem, data.itemNames),
+        topItems: topItemEntries(data),
         topCategories: topCategoryEntries(data),
         topLanguages: topLanguageEntries(data),
         topAttributeFilters: topAttributeFilters(data),
         menuActions: getMenuActions(data),
+        openHoursActionBreakdown: openHoursActionBreakdown(data),
         topSearchTerms: topSearchTerms(data.searchTerms),
         topZeroResultSearchTerms: topSearchTerms(data.zeroResultSearchTerms),
         unavailableItems: topMapEntries(data.unavailableItemTapsByItem, data.itemNames),
@@ -1361,11 +1627,12 @@ function buildPeriodView(aggregated: Record<string, any>) {
     return {
         metrics: getDashboardMetrics(aggregated),
         blockPerformance: getBlockPerformance(aggregated),
-        topItems: topMapEntries(aggregated.clicksByItem, aggregated.itemNames),
+        topItems: topItemEntries(aggregated),
         topCategories: topCategoryEntries(aggregated),
         topLanguages: topLanguageEntries(aggregated),
         topAttributeFilters: topAttributeFilters(aggregated),
         menuActions: getMenuActions(aggregated),
+        openHoursActionBreakdown: openHoursActionBreakdown(aggregated),
         topSearchTerms: topSearchTerms(aggregated.searchTerms),
         topZeroResultSearchTerms: topSearchTerms(aggregated.zeroResultSearchTerms),
         unavailableItems: topMapEntries(aggregated.unavailableItemTapsByItem, aggregated.itemNames),
@@ -1604,12 +1871,25 @@ async function writeMenuDashboardSummary(
     const shouldGenerateActionPlan = canUseAnalyticsAi
         && actionPlanCandidates.length > 0
         && ((actionPlanInput.menuSessions || 0) >= 3 || (actionPlanInput.totalViews || 0) >= 3);
-    const ownerActionPlan = canUseAnalyticsAi ? (reusableActionPlan || {
+    const generatedOwnerActionPlan = canUseAnalyticsAi ? (reusableActionPlan || {
         ...(shouldGenerateActionPlan
             ? await generateOwnerActionPlan(actionPlanCandidates)
             : { generatedBy: 'rules' as const, actions: actionPlanCandidates }),
         fingerprint: actionPlanFingerprint,
     }) : undefined;
+    const existingOwnerActionReceipts = normalizeOwnerActionReceipts(
+        existingDashboard?.ownerActionReceipts
+        || existingDashboard?.ownerActionPlan?.receipts
+        || existingDashboard?.overview?.ownerActionPlan?.receipts,
+    );
+    const ownerActionReceiptState = attachOwnerActionReceipts(
+        generatedOwnerActionPlan,
+        existingOwnerActionReceipts,
+        settlementDate,
+        getActionReceiptMetrics(weekly || wtd || monthly || mtd || yesterday),
+    );
+    const ownerActionPlan = ownerActionReceiptState.ownerActionPlan;
+    const ownerActionReceipts = ownerActionReceiptState.receipts;
     const ownerConfidence = buildOwnerConfidence(actionPlanInput);
     const sourceQuality = sourceQualityEntries(actionPlanInput);
 
@@ -1652,10 +1932,11 @@ async function writeMenuDashboardSummary(
         },
         blockPerformance: getBlockPerformance(summary),
         topCategories: topCategoryEntries(summary),
-        topItems: topMapEntries(summary.clicksByItem, summary.itemNames),
+        topItems: topItemEntries(summary),
         topLanguages: topLanguageEntries(summary),
         topAttributeFilters: topAttributeFilters(summary),
         menuActions: getMenuActions(summary),
+        openHoursActionBreakdown: openHoursActionBreakdown(summary),
         topSearchTerms: topSearchTerms(summary.searchTerms),
         topZeroResultSearchTerms: topSearchTerms(summary.zeroResultSearchTerms),
         unavailableItems: topMapEntries(summary.unavailableItemTapsByItem, summary.itemNames),
@@ -1698,6 +1979,7 @@ async function writeMenuDashboardSummary(
         historicalWeeks,
         overall,
         ownerActionPlan,
+        ownerActionReceipts,
         ownerConfidence,
         sourceQuality,
         analyticsAiEntitlement,

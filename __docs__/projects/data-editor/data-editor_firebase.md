@@ -1,9 +1,11 @@
 # Data Editor — Firebase Cost Tracking
 
 **Feature:** Visual Menu Data Editor  
-**Status:** ✅ Production Ready  
+**Status:** Firebase cost evidence; not current launch certification
 **Last Updated:** February 7, 2026  
 **Priority:** HIGH — Core editing experience. Every save = Firestore write. Most frequently used feature.
+
+**Launch boundary:** This Firebase cost note documents expected read/write patterns. Current release approval requires the active [production-readiness audit](../../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../../production-readiness/external-certification-runbook.md) evidence, browser/mobile editor QA, publish/cache evidence for edited public truth, and deploy evidence for the target environment.
 
 ---
 

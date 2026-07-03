@@ -41,7 +41,7 @@ export function OwnerAssistantPanel({ current, projectId, questions, storeScopeK
       const result = await ask(question, suggestedQuestionId);
       if (threadId || result?.threadId) void refreshThread();
     } catch (error) {
-      message.error(error instanceof Error ? error.message : 'Business Health could not answer that');
+      message.error('Business Health could not answer that.');
     }
   };
 

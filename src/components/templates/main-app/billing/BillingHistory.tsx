@@ -1,8 +1,9 @@
 'use client'
 
 import { BillingHistoryItem } from '@type/razorpay';
+import { getBoundedPaymentStringContext, logPaymentFailure } from '@hook/paymentDiagnostics';
 import { formatDateTime } from '@util/dateTime';
-import { Button, Card, Empty, Flex, Space, Table, Tag, Tooltip, Typography, theme } from 'antd';
+import { Button, Card, Empty, Flex, Space, Table, Tag, Tooltip, Typography, message, theme } from 'antd';
 import { useFormatter } from 'next-intl';
 import { LuExternalLink, LuPackage, LuReceipt, LuZap } from 'react-icons/lu';
 
@@ -11,9 +12,10 @@ const { Text } = Typography;
 interface BillingHistoryProps {
     billingHistory: BillingHistoryItem[];
     fetchBillingHistory: () => void;
+    diagnosticContext?: Record<string, boolean | number | string | null | undefined>;
 }
 
-const BillingHistory = ({ billingHistory, fetchBillingHistory }: BillingHistoryProps) => {
+const BillingHistory = ({ billingHistory, fetchBillingHistory, diagnosticContext }: BillingHistoryProps) => {
     const { token } = theme.useToken();
     const formatter = useFormatter();
     // A simple currency formatter (replace with your existing useFormatCurrency hook if preferred)
@@ -22,6 +24,27 @@ const BillingHistory = ({ billingHistory, fetchBillingHistory }: BillingHistoryP
             style: 'currency',
             currency: currency.toUpperCase(),
         }).format(amount / 100);
+    };
+    const handleOpenInvoice = (record: BillingHistoryItem) => {
+        if (!record.invoiceUrl) return;
+        try {
+            const opened = window.open(record.invoiceUrl, '_blank', 'noopener,noreferrer');
+            if (!opened) {
+                throw new Error('desktop_billing_invoice_open_blocked');
+            }
+        } catch (error) {
+            logPaymentFailure('payment_desktop_billing_invoice_open_failed', error, {
+                ...diagnosticContext,
+                surface: 'desktop_billing_history',
+                flow: 'invoice_open',
+                ...getBoundedPaymentStringContext('invoiceUrl', record.invoiceUrl),
+                ...getBoundedPaymentStringContext('invoiceId', record.invoiceId),
+                ...getBoundedPaymentStringContext('billingHistoryItemId', record.id),
+                ...getBoundedPaymentStringContext('billingHistoryItemType', record.type),
+                ...getBoundedPaymentStringContext('invoiceStatus', record.status),
+            });
+            message.error('Could not open invoice.');
+        }
     };
 
     const columns = [
@@ -95,7 +118,7 @@ const BillingHistory = ({ billingHistory, fetchBillingHistory }: BillingHistoryP
                             type="text"
                             shape="circle"
                             icon={<LuExternalLink />}
-                            onClick={() => window.open(record.invoiceUrl, '_blank')}
+                            onClick={() => handleOpenInvoice(record)}
                         />
                     </Tooltip>
                 );

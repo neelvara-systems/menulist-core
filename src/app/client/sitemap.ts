@@ -20,10 +20,10 @@
  *   4. `previousSlugs[]` entries are NEVER indexed — they 301 to canonical.
  *   5. For multi-outlet tenants (isMaster === true with outlets), include
  *      each active outlet's root (`/{outletSlug}`) and its active projects
- *      (`/{outletSlug}/{projectSlug}`). Outlets without `outletSlug` are
- *      filtered out (G-12).
+ *      (`/{outletSlug}/{projectSlug}`). Outlets without a safe `outletSlug`
+ *      and projects without a safe `projectSlug` are filtered out (G-12).
  *
- * @see __docs__/client-menu/PUBLIC-ROUTING-DOCTRINE.md §8, A-08
+ * @see __docs__/client-menu/public-routing-doctrine.md §8, A-08
  * @see __docs__/discovery-infrastructure/deep-architecture-audit.md — freshness
  */
 
@@ -33,6 +33,7 @@ import { firestoreAdmin } from '@lib/firebase/firebaseAdmin';
 import { parseSummaryProjects } from '@lib/firestore/parseSummaryProjects';
 import { parseSummaryStores } from '@lib/firestore/parseSummaryStores';
 import { isPlatformEntityBlocked } from '@lib/platform/entityBlock';
+import { normalizePublicOutletSlug, normalizePublicProjectSlug } from '@lib/publicRouting/pathSegments';
 import { evaluatePublicTruthIndexability } from '@lib/seo/publicTruthIndexing';
 import { MetadataRoute } from 'next';
 import { unstable_cache } from 'next/cache';
@@ -178,7 +179,7 @@ const getProjectsForSitemap = unstable_cache(
                 if (p?.active === false) continue;
                 if (p?.deleted === true) continue;
                 if (p?.isSpecialMenu === true) continue;
-                const slug = typeof p?.slug === 'string' ? p.slug.trim() : '';
+                const slug = normalizePublicProjectSlug(p?.slug);
                 if (!slug) continue;
                 entries.push({
                     slug,
@@ -208,20 +209,21 @@ const getOutletsForSitemap = unstable_cache(
             if (summarySnap.exists) {
                 const stores = parseSummaryStores(summarySnap.data());
                 const summaryOutlets = Object.entries(stores)
-                    .filter(([storeId, data]: [string, any]) => {
+                    .map(([storeId, data]: [string, any]) => {
                         if (String(data?.storeId || storeId) === masterStoreId) return false;
                         if (data?.tId !== tenantId) return false;
                         if (data?.active === false) return false;
                         if (isPlatformEntityBlocked(data)) return false;
-                        const outletSlug = typeof data?.outletSlug === 'string' ? data.outletSlug.trim() : '';
-                        return Boolean(outletSlug);
+                        const outletSlug = normalizePublicOutletSlug(data?.outletSlug);
+                        if (!outletSlug) return null;
+                        return {
+                            outletSlug,
+                            storeId: String(data.storeId || storeId),
+                            modifiedOn: readModifiedOn(data.modifiedOn),
+                            publicStore: buildSitemapPublicStore(String(data.storeId || storeId), data),
+                        };
                     })
-                    .map(([storeId, data]: [string, any]) => ({
-                        outletSlug: data.outletSlug.trim(),
-                        storeId: String(data.storeId || storeId),
-                        modifiedOn: readModifiedOn(data.modifiedOn),
-                        publicStore: buildSitemapPublicStore(String(data.storeId || storeId), data),
-                    }))
+                    .filter((entry): entry is OutletSitemapEntry => Boolean(entry))
                     .sort((a, b) => a.outletSlug.localeCompare(b.outletSlug));
 
                 if (summaryOutlets.length > 0) return summaryOutlets;
@@ -236,8 +238,8 @@ const getOutletsForSitemap = unstable_cache(
             for (const d of snapshot.docs) {
                 if (d.id === masterStoreId) continue;
                 const data = d.data() as Record<string, any>;
-                const outletSlug = typeof data?.outletSlug === 'string' ? data.outletSlug.trim() : '';
-                // A-08 + G-12: outlets missing a slug are not routable; skip.
+                const outletSlug = normalizePublicOutletSlug(data?.outletSlug);
+                // A-08 + G-12: outlets missing a safe slug are not routable; skip.
                 if (!outletSlug) continue;
                 outlets.push({
                     outletSlug,

@@ -15,31 +15,24 @@
  * - Category E (Output Stability) via drift counters
  * - Category F (Cost & Performance) via telemetry
  * 
- * @see __docs__/internal-tracking/MOL-V0-IMPLEMENTATION-PLAN.md
- * @see __docs__/internal-tracking/MENULIST-INTERNAL-TRACKING-SYSTEM.md
+ * @see __docs__/internal-tracking/mol-v0-implementation-plan.md
+ * @see __docs__/internal-tracking/menulist-internal-tracking-system.md
  */
 
 import * as admin from 'firebase-admin';
 import { FieldValue, Timestamp } from 'firebase-admin/firestore';
 import { DB_COLLECTIONS } from '../constants/database';
 import { logTelemetry, startTimer } from '../telemetry/logger';
+import { analyticsLogger, getAnalyticsErrorContext, getAnalyticsIdContext } from './analyticsDiagnostics';
 
 // ================================================================
 // TYPES
 // ================================================================
 
 interface MenuChangeLogEntry {
-    id: string;
-    projectId: string;
     itemId?: string;
-    categoryId?: string;
     changeType: MenuChangeType;
-    oldValue: any;
-    newValue: any;
-    changedBy: string;
     timestamp: Timestamp;
-    tId?: string;
-    sId?: string;
 }
 
 type MenuChangeType =
@@ -100,6 +93,23 @@ const ROLLING_WINDOW_DAYS = 30;
 const STALE_PRICE_THRESHOLD_DAYS = 180;
 const AVAILABILITY_CHURN_THRESHOLD = 10;
 const HIGH_VOLATILITY_THRESHOLD = 5;
+const PROJECT_DRIFT_FAILURE = 'PROJECT_DRIFT_METRICS_FAILED';
+const STORE_DRIFT_FAILURE = 'STORE_DRIFT_METRICS_FAILED';
+const DRIFT_CHANGE_TYPES = new Set<MenuChangeType>([
+    'PRICE',
+    'AVAILABILITY',
+    'ITEM_ADDED',
+    'ITEM_REMOVED',
+    'ITEM_ACTIVE',
+    'CATEGORY_ADDED',
+    'CATEGORY_REMOVED',
+    'CATEGORY_REORDER',
+    'ITEM_REORDER',
+    'NAME_CHANGE',
+    'DESCRIPTION_CHANGE',
+    'IMAGE_CHANGE',
+    'STRUCTURE',
+]);
 
 // ================================================================
 // HELPER FUNCTIONS
@@ -180,7 +190,16 @@ async function processProjectDriftMetrics(
     const changesByItem = new Map<string, MenuChangeLogEntry[]>();
 
     for (const doc of changesSnapshot.docs) {
-        const change = { id: doc.id, ...doc.data() } as MenuChangeLogEntry;
+        const data = doc.data() || {};
+        const changeType = data.changeType as MenuChangeType;
+        if (!DRIFT_CHANGE_TYPES.has(changeType)) continue;
+        if (!data.timestamp || typeof data.timestamp.toMillis !== 'function') continue;
+
+        const change = {
+            itemId: typeof data.itemId === 'string' ? data.itemId : undefined,
+            changeType,
+            timestamp: data.timestamp as Timestamp,
+        };
         if (!change.itemId) continue;
 
         const existing = changesByItem.get(change.itemId) || [];
@@ -261,7 +280,7 @@ export async function processMenuDriftMetricsForAllStores(): Promise<DriftMetric
     const db = admin.firestore();
     const timer = startTimer();
 
-    console.log('[MenuDriftMetrics] Starting nightly drift computation...');
+    analyticsLogger.info('[MenuDriftMetrics] Starting nightly drift computation');
 
     const result: DriftMetricsResult = {
         processed: 0,
@@ -281,7 +300,9 @@ export async function processMenuDriftMetricsForAllStores(): Promise<DriftMetric
         const storesSummary = storesSummaryDoc.exists ? storesSummaryDoc.data()?.stores || {} : {};
         const storeIds = Object.keys(storesSummary);
 
-        console.log(`[MenuDriftMetrics] Found ${storeIds.length} stores to process`);
+        analyticsLogger.info('[MenuDriftMetrics] Stores found to process', {
+            storeCount: storeIds.length,
+        });
 
         for (const sId of storeIds) {
             const storeInfo = storesSummary[sId];
@@ -333,25 +354,41 @@ export async function processMenuDriftMetricsForAllStores(): Promise<DriftMetric
                         result.readsCount += projectResult.reads;
                         result.writesCount += projectResult.writes;
                     } catch (projectError: any) {
-                        result.errors.push(`Project ${projectId}: ${projectError.message}`);
+                        result.errors.push(PROJECT_DRIFT_FAILURE);
+                        analyticsLogger.warn('[MenuDriftMetrics] Project processing failed', {
+                            projectId: getAnalyticsIdContext(projectId),
+                            storeId: getAnalyticsIdContext(sId),
+                            tenantId: getAnalyticsIdContext(tId),
+                            error: getAnalyticsErrorContext(projectError),
+                        });
                     }
                 }
             } catch (storeError: any) {
-                result.errors.push(`Store ${sId}: ${storeError.message}`);
+                result.errors.push(STORE_DRIFT_FAILURE);
+                analyticsLogger.warn('[MenuDriftMetrics] Store processing failed', {
+                    storeId: getAnalyticsIdContext(sId),
+                    tenantId: getAnalyticsIdContext(tId),
+                    error: getAnalyticsErrorContext(storeError),
+                });
             }
         }
 
         result.processed = result.itemsProcessed;
 
-        // Log summary
-        console.log(`[MenuDriftMetrics] Computation complete:`);
-        console.log(`  - Stores processed: ${result.storesProcessed}`);
-        console.log(`  - Projects processed: ${result.projectsProcessed}`);
-        console.log(`  - Items processed: ${result.itemsProcessed}`);
-        console.log(`  - Reads: ${result.readsCount}, Writes: ${result.writesCount}`);
+        analyticsLogger.info('[MenuDriftMetrics] Computation complete', {
+            storesProcessed: result.storesProcessed,
+            projectsProcessed: result.projectsProcessed,
+            itemsProcessed: result.itemsProcessed,
+            readsCount: result.readsCount,
+            writesCount: result.writesCount,
+            errors: result.errors.length,
+        });
 
         if (result.errors.length > 0) {
-            console.warn(`[MenuDriftMetrics] Errors (${result.errors.length}):`, result.errors.slice(0, 5));
+            analyticsLogger.warn('[MenuDriftMetrics] Computation completed with errors', {
+                errorCount: result.errors.length,
+                sampleCodes: Array.from(new Set(result.errors)).slice(0, 5),
+            });
         }
 
         // Log telemetry
@@ -380,12 +417,14 @@ export async function processMenuDriftMetricsForAllStores(): Promise<DriftMetric
 
         return result;
     } catch (error: any) {
-        console.error('[MenuDriftMetrics] Fatal error:', error);
+        analyticsLogger.error('[MenuDriftMetrics] Fatal error', {
+            error: getAnalyticsErrorContext(error),
+        });
 
         await logTelemetry('menuDriftMetricsFn', {
             status: 'failed',
             runTime: timer.getElapsed(),
-            error: error.message,
+            error: 'MENU_DRIFT_METRICS_FATAL',
             startedAt: timer.stop().startedAt,
             completedAt: Timestamp.now(),
         });

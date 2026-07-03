@@ -21,14 +21,20 @@ import {
     requireAnswerlatticePermission,
     requireAnswerlatticeTeamPermission,
 } from '@lib/answerlattice/accessControl';
+import {
+    getAnswerlatticeSecurityLogContext,
+    getBoundedAnswerlatticeStringContext,
+    logAnswerlatticeFailure,
+} from '@lib/answerlattice/diagnostics';
+import { buildAnswerlatticeRateLimitKey } from '@lib/answerlattice/rateLimitKeys';
 import { answerlatticeAuthAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
 import { admin, authAdmin, firestoreAdmin } from '@lib/firebase/firebaseAdmin';
 import { logger } from '@lib/monitoring/logger';
 import { normalizePhoneNumberForStorage } from '@lib/phone/phoneNumber';
 import { checkRateLimit } from '@lib/rateLimit';
 import { getRateLimitForFeature } from '@lib/rateLimit/configs';
+import { readBoundedJsonBody } from '@lib/security/boundedRequestBody';
 import { validateAPIInput } from '@lib/security/inputValidation';
-import { buildSecurityContext } from '@lib/security/securityContext';
 import { randomBytes } from 'crypto';
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
@@ -38,6 +44,29 @@ const STAFF_LOGIN_ID_PREFIX = '77';
 const STAFF_AUTH_MODE_EMAIL = 'email';
 const STAFF_AUTH_MODE_OWNER_PASSCODE = 'owner_passcode';
 const STAFF_STORE_USER_QUERY_LIMIT = 500;
+const ANSWERLATTICE_STAFF_MUTATION_MAX_BODY_BYTES = 16 * 1024;
+const FIREBASE_AUTH_SEND_OOB_CODE_URL = 'https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode';
+const ANSWERLATTICE_STAFF_PASSWORD_RESET_PROVIDER_TIMEOUT_MS = 10_000;
+const ANSWERLATTICE_STAFF_POLICY_ERROR_CODES = {
+    LAST_OWNER: 'LAST_OWNER',
+    SELF_UPDATE_BLOCKED: 'SELF_UPDATE_BLOCKED',
+} as const;
+
+type AnswerlatticeStaffPolicyErrorCode = typeof ANSWERLATTICE_STAFF_POLICY_ERROR_CODES[keyof typeof ANSWERLATTICE_STAFF_POLICY_ERROR_CODES];
+
+class AnswerlatticeStaffPolicyError extends Error {
+    readonly code: AnswerlatticeStaffPolicyErrorCode;
+
+    constructor(code: AnswerlatticeStaffPolicyErrorCode) {
+        super(code);
+        this.name = 'AnswerlatticeStaffPolicyError';
+        this.code = code;
+    }
+}
+
+const getAnswerlatticeStaffPolicyErrorCode = (error: unknown): AnswerlatticeStaffPolicyErrorCode | null => (
+    error instanceof AnswerlatticeStaffPolicyError ? error.code : null
+);
 
 const optionalTrimmedStringSchema = (max: number) => z.preprocess((value) => {
     if (value === undefined || value === null) return undefined;
@@ -148,6 +177,25 @@ const jsonError = (error: string, status: number, code?: string) => (
     NextResponse.json({ error, code }, { status })
 );
 
+const readAnswerlatticeStaffMutationBody = async (request: NextRequest) => {
+    const bodyResult = await readBoundedJsonBody(request, ANSWERLATTICE_STAFF_MUTATION_MAX_BODY_BYTES, {
+        invalidJsonMessage: 'Invalid input',
+        tooLargeMessage: 'Request body too large',
+    });
+    if (bodyResult.ok === true) return { data: bodyResult.data, success: true as const };
+
+    const isTooLarge = bodyResult.response.status === 413;
+    return {
+        error: isTooLarge ? 'Request body too large' : 'Invalid JSON',
+        response: jsonError(
+            isTooLarge ? 'Request body too large' : 'Invalid input',
+            isTooLarge ? 413 : 400,
+            isTooLarge ? 'REQUEST_TOO_LARGE' : 'INVALID_INPUT',
+        ),
+        success: false as const,
+    };
+};
+
 const getValidationLogError = (validation: { success: boolean; error?: string }) => (
     validation.success ? 'Invalid input' : validation.error || 'Invalid input'
 );
@@ -188,19 +236,33 @@ const applyRateLimit = async (
 ) => {
     const config = getRateLimitForFeature(feature);
     const result = await checkRateLimit({
-        key: `${keyPrefix}:${session?.uId || session?.user?.id || getRequestIp(request)}`,
+        key: buildAnswerlatticeRateLimitKey(keyPrefix, session?.uId || session?.user?.id || getRequestIp(request)),
         ...config,
     });
     if (result.allowed) return null;
 
     logger.security('Rate Limit Exceeded', {
-        ...buildSecurityContext(session, request),
-        endpoint: request.nextUrl.pathname,
-        feature,
+        ...getAnswerlatticeSecurityLogContext(session, request, request.nextUrl.pathname, {
+            ...getBoundedAnswerlatticeStringContext('feature', feature),
+            ...getBoundedAnswerlatticeStringContext('keyPrefix', keyPrefix),
+        }),
     }, 'medium');
 
     return NextResponse.json({ error: 'Too many requests. Please wait before trying again.' }, { status: 429 });
 };
+
+const getAnswerlatticeSecurityDetailsContext = (
+    details: Record<string, unknown>,
+): Record<string, boolean | number | string | null | undefined> => (
+    Object.entries(details).reduce<Record<string, boolean | number | string | null | undefined>>((acc, [key, value]) => {
+        if (value === undefined || value === null || typeof value === 'boolean') {
+            acc[key] = value as boolean | null | undefined;
+            return acc;
+        }
+        Object.assign(acc, getBoundedAnswerlatticeStringContext(key, value));
+        return acc;
+    }, {})
+);
 
 const logSecurity = (
     event: string,
@@ -210,9 +272,12 @@ const logSecurity = (
     severity: 'low' | 'medium' | 'high' | 'critical' = 'high',
 ) => {
     logger.security(event, {
-        ...buildSecurityContext(session, request),
-        endpoint: request.nextUrl.pathname,
-        ...details,
+        ...getAnswerlatticeSecurityLogContext(
+            session,
+            request,
+            request.nextUrl.pathname,
+            getAnswerlatticeSecurityDetailsContext(details),
+        ),
     }, severity);
 };
 
@@ -274,25 +339,63 @@ const resolveStaffLoginUsername = (value?: string | null) => normalizeStaffLogin
 
 const getFirebaseAuthApiKey = () => process.env.FIREBASE_API_KEY;
 
+const normalizeFirebaseAuthApiKey = (value?: string) => {
+    const apiKey = String(value || '').trim();
+    if (!apiKey || /[\s\x00-\x1F\x7F]/.test(apiKey)) return null;
+    return apiKey;
+};
+
+const buildFirebasePasswordResetEndpoint = (apiKey: string) => {
+    const endpoint = new URL(FIREBASE_AUTH_SEND_OOB_CODE_URL);
+    endpoint.searchParams.set('key', apiKey);
+    return endpoint.toString();
+};
+
+const getPasswordResetProviderLogContext = (email: string, response?: Response) => ({
+    provider: 'firebase_auth_send_oob_code',
+    ...getBoundedAnswerlatticeStringContext('email', email),
+    responseOk: response?.ok,
+    responseStatus: response?.status,
+});
+
 const sendFirebasePasswordResetEmail = async (email: string) => {
-    const apiKey = getFirebaseAuthApiKey();
+    const apiKey = normalizeFirebaseAuthApiKey(getFirebaseAuthApiKey());
     if (!apiKey) {
         return { ok: false, error: 'FIREBASE_API_KEY_MISSING' };
     }
 
-    const response = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode?key=${apiKey}`, {
-        body: JSON.stringify({
-            email,
-            requestType: 'PASSWORD_RESET',
-        }),
-        headers: { 'Content-Type': 'application/json' },
-        method: 'POST',
-    });
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), ANSWERLATTICE_STAFF_PASSWORD_RESET_PROVIDER_TIMEOUT_MS);
 
-    if (response.ok) return { ok: true };
-    const data = await response.json().catch(() => ({}));
-    const apiError = data?.error?.message || 'PASSWORD_RESET_EMAIL_FAILED';
-    return { ok: false, error: apiError };
+    try {
+        const response = await fetch(buildFirebasePasswordResetEndpoint(apiKey), {
+            body: JSON.stringify({
+                email,
+                requestType: 'PASSWORD_RESET',
+            }),
+            headers: { 'Content-Type': 'application/json' },
+            method: 'POST',
+            redirect: 'manual',
+            signal: controller.signal,
+        });
+
+        if (response.ok) return { ok: true };
+        logAnswerlatticeFailure(
+            'answerlattice_staff_password_reset_provider_rejected',
+            undefined,
+            getPasswordResetProviderLogContext(email, response),
+        );
+    } catch (error) {
+        logAnswerlatticeFailure(
+            'answerlattice_staff_password_reset_provider_failed',
+            error,
+            getPasswordResetProviderLogContext(email),
+        );
+    } finally {
+        clearTimeout(timeout);
+    }
+
+    return { ok: false, error: 'PASSWORD_RESET_EMAIL_FAILED' };
 };
 
 const serializeTimestamp = (value: any) => {
@@ -607,12 +710,12 @@ const ensureAnotherActiveOwner = async (
         ));
     });
 
-    if (!hasOtherOwner) throw new Error('LAST_OWNER');
+    if (!hasOtherOwner) throw new AnswerlatticeStaffPolicyError(ANSWERLATTICE_STAFF_POLICY_ERROR_CODES.LAST_OWNER);
 };
 
 const ensureNotSelfDestructive = (session: any, targetUserId: string) => {
     if (targetUserId && (session?.uId === targetUserId || session?.user?.id === targetUserId)) {
-        throw new Error('SELF_UPDATE_BLOCKED');
+        throw new AnswerlatticeStaffPolicyError(ANSWERLATTICE_STAFF_POLICY_ERROR_CODES.SELF_UPDATE_BLOCKED);
     }
 };
 
@@ -684,7 +787,13 @@ export const createAnswerlatticeStaffUser = async (request: NextRequest, session
     if (response) return response;
     if (!access) return jsonError('Forbidden', 403, 'FORBIDDEN');
 
-    const validation = validateAPIInput(CreateAnswerlatticeStaffSchema, await request.json().catch(() => ({})));
+    const bodyResult = await readAnswerlatticeStaffMutationBody(request);
+    if (!bodyResult.success) {
+        logSecurity('Input Validation Failed - Answerlattice Staff Create', session, request, { error: bodyResult.error }, 'medium');
+        return bodyResult.response;
+    }
+
+    const validation = validateAPIInput(CreateAnswerlatticeStaffSchema, bodyResult.data);
     if (!validation.success) {
         logSecurity('Input Validation Failed - Answerlattice Staff Create', session, request, { error: getValidationLogError(validation) }, 'medium');
         return jsonError('Invalid input', 400, 'INVALID_INPUT');
@@ -842,7 +951,13 @@ export const updateAnswerlatticeStaffUser = async (request: NextRequest, session
     if (response) return response;
     if (!access) return jsonError('Forbidden', 403, 'FORBIDDEN');
 
-    const validation = validateAPIInput(UpdateAnswerlatticeStaffSchema, await request.json().catch(() => ({})));
+    const bodyResult = await readAnswerlatticeStaffMutationBody(request);
+    if (!bodyResult.success) {
+        logSecurity('Input Validation Failed - Answerlattice Staff Update', session, request, { error: bodyResult.error }, 'medium');
+        return bodyResult.response;
+    }
+
+    const validation = validateAPIInput(UpdateAnswerlatticeStaffSchema, bodyResult.data);
     if (!validation.success) {
         logSecurity('Input Validation Failed - Answerlattice Staff Update', session, request, { error: getValidationLogError(validation) }, 'medium');
         return jsonError('Invalid input', 400, 'INVALID_INPUT');
@@ -884,8 +999,9 @@ export const updateAnswerlatticeStaffUser = async (request: NextRequest, session
             await ensureAnotherActiveOwner(access.scope.tenantId, access.scope.storeId, input.userId);
         }
     } catch (error: any) {
-        if (error?.message === 'SELF_UPDATE_BLOCKED') return jsonError('You cannot remove or deactivate your own access.', 409, 'SELF_UPDATE_BLOCKED');
-        if (error?.message === 'LAST_OWNER') return jsonError('Add another Owner before removing this access.', 409, 'LAST_OWNER');
+        const policyErrorCode = getAnswerlatticeStaffPolicyErrorCode(error);
+        if (policyErrorCode === ANSWERLATTICE_STAFF_POLICY_ERROR_CODES.SELF_UPDATE_BLOCKED) return jsonError('You cannot remove or deactivate your own access.', 409, 'SELF_UPDATE_BLOCKED');
+        if (policyErrorCode === ANSWERLATTICE_STAFF_POLICY_ERROR_CODES.LAST_OWNER) return jsonError('Add another Owner before removing this access.', 409, 'LAST_OWNER');
         throw error;
     }
 
@@ -1004,7 +1120,8 @@ export const removeAnswerlatticeStaffUser = async (request: NextRequest, session
         try {
             await ensureAnotherActiveOwner(access.scope.tenantId, access.scope.storeId, input.userId);
         } catch (error: any) {
-            if (error?.message === 'LAST_OWNER') return jsonError('Add another Owner before removing this access.', 409, 'LAST_OWNER');
+            const policyErrorCode = getAnswerlatticeStaffPolicyErrorCode(error);
+            if (policyErrorCode === ANSWERLATTICE_STAFF_POLICY_ERROR_CODES.LAST_OWNER) return jsonError('Add another Owner before removing this access.', 409, 'LAST_OWNER');
             throw error;
         }
     }
@@ -1074,7 +1191,13 @@ export const requestAnswerlatticeStaffPasswordReset = async (request: NextReques
     if (response) return response;
     if (!access) return jsonError('Forbidden', 403, 'FORBIDDEN');
 
-    const validation = validateAPIInput(UserIdSchema, await request.json().catch(() => ({})));
+    const bodyResult = await readAnswerlatticeStaffMutationBody(request);
+    if (!bodyResult.success) {
+        logSecurity('Input Validation Failed - Answerlattice Staff Password Reset', session, request, { error: bodyResult.error }, 'medium');
+        return bodyResult.response;
+    }
+
+    const validation = validateAPIInput(UserIdSchema, bodyResult.data);
     if (!validation.success) {
         logSecurity('Input Validation Failed - Answerlattice Staff Password Reset', session, request, { error: getValidationLogError(validation) }, 'medium');
         return jsonError('Invalid input', 400, 'INVALID_INPUT');
@@ -1170,7 +1293,13 @@ export const forceSignOutAnswerlatticeStaffUser = async (request: NextRequest, s
     if (response) return response;
     if (!access) return jsonError('Forbidden', 403, 'FORBIDDEN');
 
-    const validation = validateAPIInput(UserIdSchema, await request.json().catch(() => ({})));
+    const bodyResult = await readAnswerlatticeStaffMutationBody(request);
+    if (!bodyResult.success) {
+        logSecurity('Input Validation Failed - Answerlattice Staff Force Signout', session, request, { error: bodyResult.error }, 'medium');
+        return bodyResult.response;
+    }
+
+    const validation = validateAPIInput(UserIdSchema, bodyResult.data);
     if (!validation.success) {
         logSecurity('Input Validation Failed - Answerlattice Staff Force Signout', session, request, { error: getValidationLogError(validation) }, 'medium');
         return jsonError('Invalid input', 400, 'INVALID_INPUT');
@@ -1262,7 +1391,13 @@ export const saveAnswerlatticeRoleDefinition = async (request: NextRequest, sess
     if (response) return response;
     if (!access) return jsonError('Forbidden', 403, 'FORBIDDEN');
 
-    const validation = validateAPIInput(SaveAnswerlatticeRoleSchema, await request.json().catch(() => ({})));
+    const bodyResult = await readAnswerlatticeStaffMutationBody(request);
+    if (!bodyResult.success) {
+        logSecurity('Input Validation Failed - Answerlattice Role Save', session, request, { error: bodyResult.error }, 'medium');
+        return bodyResult.response;
+    }
+
+    const validation = validateAPIInput(SaveAnswerlatticeRoleSchema, bodyResult.data);
     if (!validation.success) {
         logSecurity('Input Validation Failed - Answerlattice Role Save', session, request, { error: getValidationLogError(validation) }, 'medium');
         return jsonError('Invalid input', 400, 'INVALID_INPUT');

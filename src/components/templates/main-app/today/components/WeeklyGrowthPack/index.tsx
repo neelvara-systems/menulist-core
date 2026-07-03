@@ -1,4 +1,11 @@
-import { copyTodayGrowthPackText, TodayReadyActionKind, TodayWeeklyGrowthPack } from '@lib/today/weeklyGrowthPack';
+import { logCampaignFailure } from '@lib/campaigns/campaignDiagnostics';
+import {
+    copyTodayGrowthPackText,
+    getTodayGrowthPackCopyLogContext,
+    TodayReadyActionKind,
+    TodayWeeklyGrowthPack,
+    type TodayGrowthPackAsset,
+} from '@lib/today/weeklyGrowthPack';
 import { Button, Card, Typography, notification } from 'antd';
 import { LuAlertTriangle, LuCopy, LuMegaphone, LuShieldCheck } from 'react-icons/lu';
 import styles from '../../styles.module.scss';
@@ -22,11 +29,19 @@ const actionKindIcon = {
 };
 
 const WeeklyGrowthPack = ({ pack }: WeeklyGrowthPackProps) => {
-    const handleCopy = async (copy: string, title: string) => {
-        const copied = await copyTodayGrowthPackText(copy);
+    const handleCopy = async (asset: TodayGrowthPackAsset) => {
+        const copied = await copyTodayGrowthPackText(asset.copy, {
+            onFailure: (failureStage, error) => {
+                logCampaignFailure(
+                    'today_weekly_growth_pack_copy_failed',
+                    error,
+                    getTodayGrowthPackCopyLogContext(pack, asset, failureStage),
+                );
+            },
+        });
         if (copied) {
             notification.success({
-                message: `${title} copied`,
+                message: `${asset.title} copied`,
                 placement: 'bottomRight',
             });
             return;
@@ -82,7 +97,7 @@ const WeeklyGrowthPack = ({ pack }: WeeklyGrowthPackProps) => {
                         </div>
                         <Button
                             icon={<LuCopy />}
-                            onClick={() => void handleCopy(asset.copy, asset.title)}
+                            onClick={() => void handleCopy(asset)}
                         >
                             Copy
                         </Button>

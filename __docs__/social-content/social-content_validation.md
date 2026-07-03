@@ -1,8 +1,10 @@
-# ✅ FINAL PRODUCTION VALIDATION REPORT - Social Content (Today Tab)
+# Historical Validation Report - Social Content (Today Tab)
 
 **Date:** January 11, 2026  
-**Status:** ✅ SHIP READY  
-**Quality Gate:** PASS
+**Status:** Historical validation evidence
+**Quality Gate:** Historical pass
+
+> **Launch boundary (July 2, 2026):** This report is historical source-verification evidence only. It is not current release approval. Current release approval still requires the active production-readiness audit, External Certification Runbook evidence, current source gates including `npm run verify:public-business-truth`, Today desktop/mobile/browser QA, campaign AI/provider smoke where enabled, target deploy evidence, and production-host smoke.
 
 ---
 
@@ -87,7 +89,7 @@
 
 ---
 
-## 🚀 PRODUCTION READINESS
+## Historical Readiness Evidence
 
 - ✅ Mobile-first responsive
 - ✅ 3-year extensible architecture
@@ -114,7 +116,7 @@
 
 ---
 
-## 🚀 PRODUCTION QUALITY GATE: PASS
+## Historical Quality Gate: Source Evidence Only
 
 | Metric             | Value |
 | ------------------ | ----- |
@@ -123,11 +125,11 @@
 | TypeScript Errors  | 0     |
 | Security Issues    | 0     |
 
-**Ready For:** Vercel deploy + SMB testing
+**Current Release Boundary:** Requires the active production-readiness audit, External Certification Runbook evidence, current source gates including `npm run verify:public-business-truth`, Today desktop/mobile/browser QA, campaign AI/provider smoke where enabled, target deploy evidence, and production-host smoke before this evidence can support a release.
 
 ---
 
-**Document Status:** ✅ COMPLETE  
+**Document Status:** Historical evidence retained
 **Quality Gate Passed:** January 11, 2026  
 **Validated By:** Cascade AI  
-**Status:** SHIP READY
+**Status:** Historical source evidence only; not current release approval

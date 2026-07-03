@@ -2,7 +2,7 @@
  * File Messages Types
  * 
  * Per-file processing warnings/errors from AI extraction.
- * Spec: MENU-IMAGE-PROCESSING-JOB-QUEUE-SPEC.md Section 8.14
+ * Spec: menu-image-processing-job-queue-spec.md Section 8.14
  */
 
 export type FileMessageStatus = "error" | "warning";

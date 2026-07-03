@@ -2,8 +2,8 @@
 
 **Feature Name:** Customer App (Installable Customer-Facing Menu)  
 **Document Type:** Marketing & Sales Strategy  
-**Status:** 📋 Ready for Implementation  
-**Last Updated:** April 18, 2026  
+**Status:** Source-backed marketing draft; publish/use with current Customer App runtime boundary
+**Last Updated:** July 2, 2026
 **Audience:** Sales, Marketing, CEO
 
 ---
@@ -376,5 +376,5 @@ Use this in pricing pages and feature comparisons:
 
 ---
 
-_Document Status: 📋 READY FOR IMPLEMENTATION_  
-_Last Updated: April 18, 2026_
+_Document Status: Source-backed marketing draft; not standalone launch certification_
+_Last Updated: July 2, 2026_

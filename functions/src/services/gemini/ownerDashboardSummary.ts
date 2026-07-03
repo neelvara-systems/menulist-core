@@ -17,6 +17,16 @@
 
 import { OWNER_ANALYTICS_AI_MODEL } from '../../constants/ai';
 import { genAIClient } from '../../genAiClient';
+import { geminiLogger, getGeminiErrorContext } from './geminiDiagnostics';
+
+const GEMINI_OWNER_DASHBOARD_SUMMARY_EMPTY_RESPONSE = 'GEMINI_OWNER_DASHBOARD_SUMMARY_EMPTY_RESPONSE';
+const GEMINI_OWNER_DASHBOARD_SUMMARY_FAILED = 'GEMINI_OWNER_DASHBOARD_SUMMARY_FAILED';
+const GEMINI_OWNER_DASHBOARD_DAILY_EMPTY_RESPONSE = 'GEMINI_OWNER_DASHBOARD_DAILY_EMPTY_RESPONSE';
+const GEMINI_OWNER_DASHBOARD_DAILY_FAILED = 'GEMINI_OWNER_DASHBOARD_DAILY_FAILED';
+const GEMINI_OWNER_DASHBOARD_MONTHLY_EMPTY_RESPONSE = 'GEMINI_OWNER_DASHBOARD_MONTHLY_EMPTY_RESPONSE';
+const GEMINI_OWNER_DASHBOARD_MONTHLY_FAILED = 'GEMINI_OWNER_DASHBOARD_MONTHLY_FAILED';
+const GEMINI_OWNER_DASHBOARD_INVALID_RESPONSE = 'GEMINI_OWNER_DASHBOARD_INVALID_RESPONSE';
+const GEMINI_OWNER_DASHBOARD_PARSE_FAILED = 'GEMINI_OWNER_DASHBOARD_PARSE_FAILED';
 
 // ================================================================
 // TYPES
@@ -214,7 +224,12 @@ export async function generateOwnerDashboardSummary(
     metrics: OwnerDashboardMetrics
 ): Promise<OwnerDashboardSummaryResult> {
     try {
-        console.log(`[Gemini] Generating owner dashboard summary for ${metrics.weekStart} to ${metrics.weekEnd}`);
+        geminiLogger.info('[Gemini] Generating owner dashboard summary', {
+            period: metrics.period,
+            weekStart: metrics.weekStart,
+            weekEnd: metrics.weekEnd,
+            menuVisits: metrics.menuVisits,
+        });
 
         // Skip if no meaningful data
         if (metrics.menuVisits === 0) {
@@ -237,7 +252,7 @@ export async function generateOwnerDashboardSummary(
             },
         });
         const text = geminiResult.text;
-        if (!text) throw new Error('Empty response from Gemini');
+        if (!text) throw new Error(GEMINI_OWNER_DASHBOARD_SUMMARY_EMPTY_RESPONSE);
 
         // Parse JSON response
         const parsed = parseGeminiResponse(text);
@@ -250,12 +265,21 @@ export async function generateOwnerDashboardSummary(
             bulletPoints: parsed.bulletPoints,
         };
 
-        console.log(`[Gemini] Owner dashboard summary generated successfully`);
+        geminiLogger.info('[Gemini] Owner dashboard summary generated successfully', {
+            bulletCount: parsed.bulletPoints.length,
+        });
 
         return finalResult;
 
     } catch (error) {
-        console.error('[Gemini] Error generating owner dashboard summary:', error);
+        geminiLogger.error('[Gemini] Owner dashboard summary generation failed', {
+            failureCode: GEMINI_OWNER_DASHBOARD_SUMMARY_FAILED,
+            period: metrics.period,
+            weekStart: metrics.weekStart,
+            weekEnd: metrics.weekEnd,
+            menuVisits: metrics.menuVisits,
+            error: getGeminiErrorContext(error),
+        });
 
         // Fallback response if Gemini fails
         return generateFallbackSummary(metrics);
@@ -285,7 +309,7 @@ function parseGeminiResponse(text: string, maxBullets: number = 5): { bulletPoin
 
         // Validate structure
         if (!parsed.bulletPoints || !Array.isArray(parsed.bulletPoints)) {
-            throw new Error('Invalid response: missing bulletPoints array');
+            throw new Error(GEMINI_OWNER_DASHBOARD_INVALID_RESPONSE);
         }
 
         // Limit to maxBullets
@@ -294,9 +318,14 @@ function parseGeminiResponse(text: string, maxBullets: number = 5): { bulletPoin
         };
 
     } catch (error) {
-        console.error('[Gemini] Failed to parse response:', error);
+        geminiLogger.error('[Gemini] Failed to parse owner dashboard response', {
+            failureCode: GEMINI_OWNER_DASHBOARD_PARSE_FAILED,
+            responseLength: text.length,
+            maxBullets,
+            error: getGeminiErrorContext(error),
+        });
 
-        throw new Error(`Failed to parse Gemini response: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        throw new Error(GEMINI_OWNER_DASHBOARD_PARSE_FAILED);
     }
 }
 
@@ -441,7 +470,11 @@ export async function generateDailyAISummary(
     metrics: DailyDashboardMetrics
 ): Promise<OwnerDashboardSummaryResult> {
     try {
-        console.log(`[Gemini] Generating daily summary for ${metrics.date}`);
+        geminiLogger.info('[Gemini] Generating daily owner dashboard summary', {
+            period: metrics.period,
+            date: metrics.date,
+            menuVisits: metrics.menuVisits,
+        });
 
         // Skip if no meaningful data
         if (metrics.menuVisits === 0) {
@@ -463,11 +496,15 @@ export async function generateDailyAISummary(
             },
         });
         const text = geminiResult.text;
-        if (!text) throw new Error('Empty response from Gemini');
+        if (!text) throw new Error(GEMINI_OWNER_DASHBOARD_DAILY_EMPTY_RESPONSE);
 
         const parsed = parseGeminiResponse(text, 2); // Max 2 bullets
 
         const markdown = `### Yesterday\n\n${parsed.bulletPoints.map(bp => `• ${bp}`).join('\n')}`;
+
+        geminiLogger.info('[Gemini] Daily owner dashboard summary generated successfully', {
+            bulletCount: parsed.bulletPoints.length,
+        });
 
         return {
             markdown,
@@ -475,7 +512,13 @@ export async function generateDailyAISummary(
         };
 
     } catch (error) {
-        console.error('[Gemini] Error generating daily summary:', error);
+        geminiLogger.error('[Gemini] Daily owner dashboard summary generation failed', {
+            failureCode: GEMINI_OWNER_DASHBOARD_DAILY_FAILED,
+            period: metrics.period,
+            date: metrics.date,
+            menuVisits: metrics.menuVisits,
+            error: getGeminiErrorContext(error),
+        });
         return generateDailyFallback(metrics);
     }
 }
@@ -590,7 +633,13 @@ export async function generateMonthlyAISummary(
     metrics: MonthlyDashboardMetrics
 ): Promise<OwnerDashboardSummaryResult> {
     try {
-        console.log(`[Gemini] Generating monthly summary for ${metrics.monthStart} to ${metrics.monthEnd}`);
+        geminiLogger.info('[Gemini] Generating monthly owner dashboard summary', {
+            period: metrics.period,
+            monthStart: metrics.monthStart,
+            monthEnd: metrics.monthEnd,
+            daysWithData: metrics.daysWithData,
+            menuVisits: metrics.menuVisits,
+        });
 
         // Skip if no meaningful data
         if (metrics.menuVisits === 0) {
@@ -612,11 +661,15 @@ export async function generateMonthlyAISummary(
             },
         });
         const text = geminiResult.text;
-        if (!text) throw new Error('Empty response from Gemini');
+        if (!text) throw new Error(GEMINI_OWNER_DASHBOARD_MONTHLY_EMPTY_RESPONSE);
 
         const parsed = parseGeminiResponse(text, 3); // Max 3 bullets
 
         const markdown = `### This month in summary\n\n${parsed.bulletPoints.map(bp => `• ${bp}`).join('\n')}`;
+
+        geminiLogger.info('[Gemini] Monthly owner dashboard summary generated successfully', {
+            bulletCount: parsed.bulletPoints.length,
+        });
 
         return {
             markdown,
@@ -624,7 +677,15 @@ export async function generateMonthlyAISummary(
         };
 
     } catch (error) {
-        console.error('[Gemini] Error generating monthly summary:', error);
+        geminiLogger.error('[Gemini] Monthly owner dashboard summary generation failed', {
+            failureCode: GEMINI_OWNER_DASHBOARD_MONTHLY_FAILED,
+            period: metrics.period,
+            monthStart: metrics.monthStart,
+            monthEnd: metrics.monthEnd,
+            daysWithData: metrics.daysWithData,
+            menuVisits: metrics.menuVisits,
+            error: getGeminiErrorContext(error),
+        });
         return generateMonthlyFallback(metrics);
     }
 }

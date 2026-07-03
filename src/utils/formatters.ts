@@ -10,6 +10,7 @@ import {
   defaultTimeFormatString,
   TIME_FORMATS
 } from '@lib/localization/config';
+import { logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { getCookie } from 'cookies-next';
 import { DateTimeFormatOptions, useFormatter, useLocale } from 'next-intl';
 
@@ -120,7 +121,7 @@ export const getUserDateFormatOptions = (): DateTimeFormatOptions => {
     return { day, month, year } as DateTimeFormatOptions;
   } catch (e) {
     // If any error occurs, use system default
-    console.error('Error getting date format:', e);
+    logRuntimeFailure('date_format_preference_read_failed', e);
     return defaultDateFormat;
   }
 };
@@ -146,7 +147,7 @@ export const getUserTimeFormatOptions = (): DateTimeFormatOptions => {
     return { hour, minute, hour12: hour12Str === 'true' } as DateTimeFormatOptions;
   } catch (e) {
     // If any error occurs, use system default
-    console.error('Error getting time format:', e);
+    logRuntimeFailure('time_format_preference_read_failed', e);
     return defaultTimeFormat;
   }
 };

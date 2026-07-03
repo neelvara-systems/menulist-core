@@ -29,7 +29,7 @@ Current production contract:
 - Public agents may read and summarize owner-published facts, then route users to official handoff links when those links exist.
 - Public agents must not directly mutate menu prices, hours, item availability, business identity, POS state, payments, billing, or owner settings.
 - Unknown or missing facts must remain unknown, especially allergens, gluten-free preparation, halal/vegan status, live stock, and availability details not explicitly published by the business.
-- WebMCP is treated as a future browser-agent enhancement, not the current production contract. Any WebMCP implementation must be feature-flagged, visible in the UI, scoped to read-only or pending-suggestion workflows, and covered by evals before release.
+- WebMCP is treated as a conditional browser-agent enhancement, not the current production contract. Any WebMCP implementation must be feature-flagged, visible in the UI, scoped to read-only or pending-suggestion workflows, and covered by evals before release.
 
 ---
 
@@ -48,10 +48,10 @@ Current production contract:
 
 | Document                                                                   | Layer                                                                       | Status                               |
 | -------------------------------------------------------------------------- | --------------------------------------------------------------------------- | ------------------------------------ |
-| [taxonomy-system.md](./taxonomy-system.md)                                 | Phase 1A — Offering Taxonomy (95+ categories, 20 cuisines, 14 dietary tags) | ✅ BUILT (flag OFF)                  |
-| [provenance-metadata.md](./provenance-metadata.md)                         | Phase 1B — Field-Level Provenance (6 trackable fields)                      | ✅ UTILITIES BUILT (flag OFF, not wired) |
-| [semantic-attributes.md](./semantic-attributes.md)                         | Phase 1C — Semantic Attribute Registry (17 attributes)                      | ✅ BUILT (flag OFF)                  |
-| [business-entity-index.md](./business-entity-index.md)                     | Phase 2A — Business Entity Index (types + builder)                          | ✅ BUILT (flag OFF, needs scheduler) |
+| [taxonomy-system.md](./taxonomy-system.md)                                 | Offering Taxonomy (95+ categories, 20 cuisines, 14 dietary tags)            | ✅ BUILT (flag OFF)                  |
+| [provenance-metadata.md](./provenance-metadata.md)                         | Field-Level Provenance (6 trackable fields)                                 | ✅ UTILITIES BUILT (flag OFF, not wired) |
+| [semantic-attributes.md](./semantic-attributes.md)                         | Semantic Attribute Registry (17 attributes)                                 | ✅ BUILT (flag OFF)                  |
+| [business-entity-index.md](./business-entity-index.md)                     | Business Entity Index (types + pure builder)                                | ✅ BUILT (flag OFF, no scheduler/query API active) |
 | [data-consumers-and-distribution.md](./data-consumers-and-distribution.md) | Consumer Map — Who uses this data, how                                      | ✅ DOCUMENTED                        |
 
 ### SEO/AEO (Schema.org Implementation — SHIPPED)
@@ -188,14 +188,16 @@ src/lib/infrastructure/            # Discovery infrastructure (BUILT, flags OFF)
 | `businessAttributes: {...}`            | object | amenityFeature + paymentAccepted schema | ✅ On StoreDataType |
 | `publicPresence: {...}`                | object | OBP descriptor, reservation/order URLs  | ✅ On StoreDataType |
 
-## Activation Roadmap
+## Conditional Activation Gates
 
-| Phase           | What                                                               | When                |
-| --------------- | ------------------------------------------------------------------ | ------------------- |
-| **Phase 1A-1C** | Activate taxonomy + provenance + semantics in extraction + nightly | At 50+ businesses   |
-| **Phase 2A**    | Wire Business Entity Index into nightly scheduler                  | At 100+ businesses  |
-| **Phase 3**     | Generic webhooks + API v2 + Standard feeds                         | At ecosystem demand |
-| **Phase 4**     | Discovery API for machines (NOT for humans)                        | At query volume     |
+These utilities are not current launch scope. Turning them on requires a scoped audit, feature-flag review, Firebase cost note, security review for cross-tenant reads, docs parity, and source-gate coverage before any deploy.
+
+| Capability                                | Current source state                                      | Activation gate                         |
+| ----------------------------------------- | --------------------------------------------------------- | --------------------------------------- |
+| Taxonomy + provenance + semantics wiring  | Utilities exist; feature flags are off                    | Extraction/nightly design approval      |
+| Business Entity Index scheduler wiring    | Pure builder and type exist; no writer/query API is active | Cross-tenant public-data audit          |
+| Generic webhooks + API v2 + standard feeds | Not built                                                 | Ecosystem demand plus API/security plan |
+| Machine discovery API                     | Not built                                                 | Query volume plus index/source proof    |
 
 ## Entity Identity Rules (INVARIANTS)
 
@@ -288,8 +290,8 @@ MenuList is infrastructure, not SaaS. The primary metric is **dataset coverage**
 
 | Date         | Change                                                                                                                                                          |
 | ------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Feb 16, 2026 | Phase 1 SHIPPED: GeoCoordinates, sameAs, businessType mapping, priceRange, dateModified, dietary tags, availability, shared schema utilities                    |
-| Feb 22, 2026 | Phase 2 SHIPPED: FAQ schema, BreadcrumbList, dateModified on menu, servesCuisine, sitemap enhancement                                                           |
+| Feb 16, 2026 | Schema milestone shipped: GeoCoordinates, sameAs, businessType mapping, priceRange, dateModified, dietary tags, availability, shared schema utilities           |
+| Feb 22, 2026 | Search-authority milestone shipped: BreadcrumbList, dateModified on menu, servesCuisine, sitemap enhancement; generated hidden OBP FAQPage was later retired    |
 | Mar 10, 2026 | Infrastructure expansion: Taxonomy (95+ categories), Provenance (6 fields), Semantics (17 attributes), Entity Index (types + builder) — all feature-flagged OFF |
 | Mar 10, 2026 | Deep architecture audit (20-layer GEO/AEO) + 24-layer infrastructure audit                                                                                      |
 | Mar 10, 2026 | **CODE FIXES:** cuisineTypes on StoreDataType, explicit AI bot rules in robots.txt, publisher Organization in schema, sitemap real timestamps, Disallow /api/   |

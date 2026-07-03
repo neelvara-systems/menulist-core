@@ -30,6 +30,7 @@ import { getStoreOpenStatus } from "@lib/obp/hoursStatus";
 import { resolveHoursOutput } from "@lib/outputControl";
 import { resolveMenuListAttributionPolicy } from "@lib/platform/menuListBranding";
 import { isPlatformEntityBlocked } from "@lib/platform/entityBlock";
+import { normalizePublicOutletSlug } from "@lib/publicRouting/pathSegments";
 import { StoreDataType } from "@type/platform/store";
 import { unstable_cache } from "next/cache";
 import OBPLanguageSwitcher from "./OBPLanguageSwitcher";
@@ -88,7 +89,7 @@ const getSummaryOutletsForTenant = unstable_cache(
         // Old summaries only contain name/type fields, so they cannot power
         // customer-routable location cards. Use collection fallback until the
         // next store/outlet save backfills summary routing fields.
-        const hasRoutableOutlet = tenantStores.some((entry) => entry.outletSlug);
+        const hasRoutableOutlet = tenantStores.some((entry) => normalizePublicOutletSlug(entry.outletSlug));
         if (!hasRoutableOutlet) return null;
 
         return tenantStores.sort((a, b) => {
@@ -167,11 +168,16 @@ export default async function BrandOBPContent({ store, baseUrl, requestedLanguag
     const contentLanguage = resolveStorePublicLanguage(store, requestedLanguage);
     const t = getOBPTranslations(getNextIntlLocaleForPublicLanguage(contentLanguage));
     const allOutlets = await getOutletsForTenant(store.tenantId, store.storeId);
-    // G-12 (§11 PUBLIC-ROUTING-DOCTRINE): only outlets with a real outletSlug
-    // are ever routable and linkable. The outlet-create API guarantees a slug
-    // on every new outlet; anything missing a slug here is structurally
-    // broken and should not be exposed to customers.
-    const outlets = allOutlets.filter((o: any) => !!o?.outletSlug);
+    // G-12 (§11 PUBLIC-ROUTING-DOCTRINE): only outlets with a safe, real
+    // outletSlug are ever routable and linkable. The outlet-create API writes
+    // safe slugs, but legacy summary/collection data can drift, so public
+    // rendering still validates the stored segment before emitting hrefs.
+    const outlets = allOutlets
+        .map((outlet) => ({
+            ...outlet,
+            publicOutletSlug: normalizePublicOutletSlug(outlet.outletSlug),
+        }))
+        .filter((outlet): outlet is OutletInfo & { publicOutletSlug: string } => Boolean(outlet.publicOutletSlug));
 
     const pp = store?.publicPresence || {};
     const accentColor = resolveOBPAccentColor(pp);
@@ -259,8 +265,8 @@ export default async function BrandOBPContent({ store, baseUrl, requestedLanguag
                     // that used to live here was removed because it would
                     // produce indexable URLs that aren't owner-chosen.
                     const outletUrl = showLanguageSwitcher
-                        ? appendPublicLanguageParam(`${baseUrl}/${outlet.outletSlug}`, contentLanguage)
-                        : `${baseUrl}/${outlet.outletSlug}`;
+                        ? appendPublicLanguageParam(`${baseUrl}/${outlet.publicOutletSlug}`, contentLanguage)
+                        : `${baseUrl}/${outlet.publicOutletSlug}`;
 
                     return (
                         <a

@@ -21,6 +21,7 @@
 import { firebaseClient } from "@lib/firebase/firebaseClient";
 import { DB_COLLECTIONS } from "@constant/database";
 import { formatScreenPrice, getScreenDietType, normalizeScreenCategoryName, truncateScreenText } from "@lib/screen/screenContent";
+import { getBoundedScreenStringContext, logScreenDisplayFailure } from "@lib/screen/screenDiagnostics";
 import { getPublicScreenStateDocId } from "@lib/screen/publicScreenState";
 import { guardedReload as _guardedReload, guardedReloadWithJitter as _guardedReloadWithJitter } from "@lib/screen/utils";
 import { MenuItemForSlide, ScreenStoreInfo } from "@type/campaigns";
@@ -32,6 +33,11 @@ import ScreenAttribution from "./ScreenAttribution";
 
 // Auto-pagination timing (per spec: 15-20 seconds per page)
 const PAGE_DURATION_MS = 18000; // 18 seconds
+const SCREEN_SEEN_REQUEST_POLICY = {
+    cache: 'no-store' as RequestCache,
+    credentials: 'same-origin' as RequestCredentials,
+    redirect: 'manual' as RequestRedirect,
+};
 
 // Bind guardedReload to this component's identity for unique localStorage key
 const guardedReload = () => _guardedReload('menuboard');
@@ -153,12 +159,14 @@ export default function MenuBoardDisplay({ initialData }: MenuBoardProps) {
                 if (cached) {
                     const parsed = JSON.parse(cached);
                     if (parsed.menuItems?.length > 0) {
-                        console.log(`[MenuBoard] Using cached data (${parsed.menuItems.length} items)`);
                         return parsed.menuItems;
                     }
                 }
-            } catch {
-                // Silent fail
+            } catch (error) {
+                logScreenDisplayFailure('digital_screen_menuboard_cache_read_failed', error, {
+                    ...getBoundedScreenStringContext('token', token),
+                    ...getBoundedScreenStringContext('storeId', storeId),
+                });
             }
         }
         return initialItems;
@@ -188,10 +196,14 @@ export default function MenuBoardDisplay({ initialData }: MenuBoardProps) {
                 contentVersion: contentVersionRef.current,
                 timestamp: Date.now()
             }));
-        } catch {
-            // Silent fail — localStorage might be full
+        } catch (error) {
+            logScreenDisplayFailure('digital_screen_menuboard_cache_write_failed', error, {
+                ...getBoundedScreenStringContext('token', token),
+                ...getBoundedScreenStringContext('storeId', storeId),
+                itemCount: menuItems.length,
+            });
         }
-    }, [cacheKey, menuItems, storeInfo]);
+    }, [cacheKey, menuItems, storeId, storeInfo, token]);
 
     // Auto-pagination timer
     useEffect(() => {
@@ -222,7 +234,10 @@ export default function MenuBoardDisplay({ initialData }: MenuBoardProps) {
                 }
             }
         }, (error) => {
-            console.warn('[MenuBoard] Snapshot error:', error);
+            logScreenDisplayFailure('digital_screen_menuboard_listener_failed', error, {
+                ...getBoundedScreenStringContext('storeId', storeId),
+                currentVersion: contentVersionRef.current,
+            });
             setIsOffline(true);
         });
 
@@ -233,7 +248,6 @@ export default function MenuBoardDisplay({ initialData }: MenuBoardProps) {
     useEffect(() => {
         const fallbackRefresh = setInterval(() => {
             if (isOffline) {
-                console.log('[MenuBoard] Offline fallback refresh attempt');
                 guardedReload();
             }
         }, 30 * 60 * 1000);
@@ -245,16 +259,27 @@ export default function MenuBoardDisplay({ initialData }: MenuBoardProps) {
         const todayKey = `screen_seen_${token}_${new Date().toISOString().slice(0, 10)}`;
         if (!localStorage.getItem(todayKey)) {
             fetch('/api/screen/seen', {
+                ...SCREEN_SEEN_REQUEST_POLICY,
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ token, storeId }),
             })
-                .then(() => {
+                .then((response) => {
+                    if (!response.ok) {
+                        logScreenDisplayFailure('digital_screen_menuboard_seen_signal_rejected', new Error('screen_seen_signal_rejected'), {
+                            ...getBoundedScreenStringContext('token', token),
+                            ...getBoundedScreenStringContext('storeId', storeId),
+                            responseStatus: response.status,
+                        });
+                        return;
+                    }
                     localStorage.setItem(todayKey, '1');
-                    console.log('[MenuBoard] Daily seen signal sent');
                 })
-                .catch(() => {
-                    console.warn('[MenuBoard] Daily seen signal failed (will retry tomorrow)');
+                .catch((error) => {
+                    logScreenDisplayFailure('digital_screen_menuboard_seen_signal_failed', error, {
+                        ...getBoundedScreenStringContext('token', token),
+                        ...getBoundedScreenStringContext('storeId', storeId),
+                    });
                 });
         }
     }, [token, storeId]);
@@ -283,20 +308,34 @@ export default function MenuBoardDisplay({ initialData }: MenuBoardProps) {
 
     // Per ChatGPT review v3: Auto-fullscreen recovery
     const [showFullscreenHint, setShowFullscreenHint] = useState(false);
-    useEffect(() => {
-        const handleFullscreenChange = () => {
-            if (!document.fullscreenElement) {
-                setShowFullscreenHint(true);
+	    useEffect(() => {
+	        const handleFullscreenChange = () => {
+	            if (!document.fullscreenElement) {
+	                setShowFullscreenHint(true);
                 setTimeout(() => setShowFullscreenHint(false), 10000);
             } else {
                 setShowFullscreenHint(false);
             }
         };
-        document.addEventListener('fullscreenchange', handleFullscreenChange);
-        return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
-    }, []);
+	        document.addEventListener('fullscreenchange', handleFullscreenChange);
+	        return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+	    }, []);
 
-    const currentCategories = pages[currentPage] || [];
+	    const handleFullscreenHintClick = () => {
+	        const fullscreenRequest = document.documentElement.requestFullscreen?.();
+	        if (fullscreenRequest) {
+	            fullscreenRequest.catch((error) => {
+	                logScreenDisplayFailure('digital_screen_menuboard_fullscreen_request_failed', error, {
+	                    ...getBoundedScreenStringContext('token', token),
+	                    ...getBoundedScreenStringContext('storeId', storeId),
+	                    component: 'menuboard',
+	                });
+	            });
+	        }
+	        setShowFullscreenHint(false);
+	    };
+
+	    const currentCategories = pages[currentPage] || [];
 
     // Category accent colors — restrained high-contrast palette for TV readability
     const ACCENT_COLORS = [
@@ -312,13 +351,10 @@ export default function MenuBoardDisplay({ initialData }: MenuBoardProps) {
         <div className="menu-board">
             {/* Fullscreen recovery hint */}
             {showFullscreenHint && (
-                <div
-                    className="fullscreen-hint"
-                    onClick={() => {
-                        document.documentElement.requestFullscreen?.().catch(() => { });
-                        setShowFullscreenHint(false);
-                    }}
-                >
+	                <div
+	                    className="fullscreen-hint"
+	                    onClick={handleFullscreenHintClick}
+	                >
                     Tap to return to fullscreen
                 </div>
             )}

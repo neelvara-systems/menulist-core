@@ -1,8 +1,8 @@
 # Stores Management — Technical Implementation
 
 > **Audience:** Developers  
-> **Last Updated:** June 11, 2026
-> **Version:** 1.1
+> **Last Updated:** June 30, 2026
+> **Version:** 1.2
 
 ---
 
@@ -249,6 +249,14 @@ export const updateStore = async (data: any) => {
 
 Updates the `storesList` array in tenant document when store is added or name changes.
 
+### Tenant Details Modal Write Acknowledgement
+
+**Location:** `src/components/templates/platform/tenants/tenantDetailsModal.tsx`
+
+Tenant create/update actions must await `addTenant()` or `updateTenant()` and call `assertTenantUpdateSucceeded()` before closing the drawer. Rejected acknowledgements use `platform_tenant_create_rejected` or `platform_tenant_update_rejected`, log `platform_tenant_save_failed`, and keep the drawer open.
+
+This does not add Firestore operations. It only prevents local UI success after `apiCallComposer()` returns a fallback value for a failed tenant write.
+
 ---
 
 ## Firestore Schema
@@ -433,6 +441,8 @@ Categories store `presetId` plus copied `startTime` / `endTime` values so public
 - Creating a preset writes only `stores/{storeId}.timeSlotPresets`.
 - Editing a preset writes `stores/{storeId}.timeSlotPresets`, then `updatePresetInAllCategories()` updates only current-store project docs that reference the preset and revalidates their public cache.
 - Deleting a preset writes `stores/{storeId}.timeSlotPresets`, then `removePresetFromAllCategories()` removes matching category windows from changed projects and revalidates their public cache.
+- Edit/delete cascades must require `assertProjectPresetCascadeSucceeded()` before local preset state or success copy changes. Rejected acknowledgements use desktop `business_settings_time_slot_preset_cascade_*_rejected` or mobile `mobile_time_slot_preset_cascade_*_rejected` codes and route through the existing bounded save/delete failure handlers.
+- Failed desktop preset save/delete actions use `src/components/templates/main-app/businessSettings/utils/businessSettingsDiagnostics.ts` with `business_settings_time_slot_preset_save_failed` and `business_settings_time_slot_preset_delete_failed`. Diagnostics record only bounded tenant/store/preset/label/time presence and length metadata plus source error metadata; raw preset labels, store IDs, tenant IDs, preset IDs, category/project payloads, and provider/browser exceptions must not be direct-console logged.
 
 ---
 

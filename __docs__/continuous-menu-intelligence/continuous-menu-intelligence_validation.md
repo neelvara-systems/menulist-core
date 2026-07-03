@@ -4,9 +4,11 @@
 
 **Generated:** January 8, 2026  
 **Last Updated:** January 8, 2026 (Post Code Review)  
-**Status:** ✅ **READY FOR TESTING**  
-**Implementation:** 100% Complete (All Parts 1-5)  
+**Status:** Historical validation evidence
+**Implementation:** Historical implementation evidence (All Parts 1-5)
 **Code Review:** ✅ **COMPLETED** (3 issues found and fixed)
+
+**Launch boundary:** This January 2026 report is historical implementation-validation evidence. Current release approval still requires the active [production-readiness audit](../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../production-readiness/external-certification-runbook.md) evidence, target feature-flag review, scoped `menulist-qa` deploy evidence, current scheduler behavior checks, and browser/device QA where the release uses CMI surfaces.
 
 ---
 
@@ -197,12 +199,14 @@ Per spec: CMI has **no UI**. It runs silently in the background.
 
 ---
 
-## ✅ FINAL VERDICT: READY FOR TESTING
+## Historical Validation Result: Source Evidence Only
 
 - **Total Files:** 10
 - **Lines of Code:** ~1,200
 - **Spec Compliance:** 95% (19/20 items)
 - **Blocking Issues:** 0
+- **Current Release Approval:** Not granted by this report
+- **Required Current Evidence:** Active production-readiness audit, External Certification Runbook evidence, target feature-flag review, scoped `menulist-qa` deploy evidence, current scheduler behavior checks, and browser/device QA where the release uses CMI surfaces
 
 ---
 
@@ -211,10 +215,11 @@ Per spec: CMI has **no UI**. It runs silently in the background.
 ### 1. Deploy Functions
 
 ```bash
-cd functions
-npm run build
-firebase deploy --only functions:computeDecisionBlocksScores
+npm run verify:functions-deploy-preflight
+firebase deploy --project menulist-qa --config firebase.json --only functions:computeDecisionBlocksScores --non-interactive
 ```
+
+Run this against `menulist-qa` first. Production deploy requires QA evidence and explicit production deploy approval.
 
 ### 2. Trigger Manual Test
 
@@ -295,7 +300,7 @@ Per impl.md Section "The 6 Production Metrics":
 
 ### Code Changes from Feedback
 
-**None required.** ChatGPT feedback validated the implementation as production-ready.
+**None required for the January implementation slice.** ChatGPT feedback confirmed architecture/spec alignment, but it is not current launch approval.
 
 ### TAI Maturity Assessment
 
@@ -307,7 +312,7 @@ Per impl.md Section "The 6 Production Metrics":
 
 ---
 
-## FINAL STATUS: READY FOR PRODUCTION
+## Final Status: Historical Validation Evidence
 
 **Post-Feedback Validation:**
 
@@ -315,6 +320,7 @@ Per impl.md Section "The 6 Production Metrics":
 - Implementation matches spec 100%
 - No code changes required
 - Strategic recommendations flagged for non-engineering teams
+- Current launch approval remains gated by the active production-readiness audit and External Certification Runbook evidence.
 
 ---
 
@@ -326,7 +332,7 @@ ChatGPT correctly identified: **"Having a rule ≠ surviving pressure to break i
 
 **Gap Identified:** Kill List was engineering constraint, not organizational law.
 
-**Resolution:** Created `__docs__/governance/AUTHORITY_MANIFESTO.md`
+**Resolution:** Created the [archived authority manifesto](../archive/superseded-governance-2026-01/authority-manifesto.md)
 
 | Component                | Status  |
 | ------------------------ | ------- |
@@ -361,7 +367,7 @@ _Governance Layer Added: January 9, 2026_
 
 **Date:** January 11, 2026  
 **Reviewer:** Cascade AI  
-**Status:** ✅ SHIP READY
+**Status:** Historical source evidence
 
 ### Quality Gate Results
 
@@ -411,7 +417,7 @@ _Governance Layer Added: January 9, 2026_
 
 ---
 
-## 🚀 PRODUCTION QUALITY GATE: PASS
+## Historical Quality Gate: Source Evidence Only
 
 | Metric             | Value |
 | ------------------ | ----- |
@@ -420,10 +426,10 @@ _Governance Layer Added: January 9, 2026_
 | TypeScript Errors  | 0     |
 | Security Issues    | 0     |
 
-**Ready For:** Cloud Functions deploy + SMB testing
+**Current Release Boundary:** Requires the active production-readiness audit, External Certification Runbook evidence, target feature-flag review, scoped `menulist-qa` deploy evidence, current scheduler behavior checks, and browser/device QA where the release uses CMI surfaces before this evidence can support a release.
 
 ---
 
 **Quality Gate Passed:** January 11, 2026  
 **Validated By:** Cascade AI  
-**Status:** SHIP READY
+**Status:** Historical source evidence only; not current release approval

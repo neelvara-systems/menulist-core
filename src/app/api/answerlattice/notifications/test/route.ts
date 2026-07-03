@@ -12,11 +12,12 @@ import { ANSWERLATTICE_PERMISSION_KEYS } from '@constant/answerlattice/permissio
 import { DB_COLLECTIONS } from '@constant/database';
 import { PRODUCT_IDS } from '@constant/product';
 import { requireAnswerlatticePermission } from '@lib/answerlattice/accessControl';
+import { buildAnswerlatticeRateLimitKey } from '@lib/answerlattice/rateLimitKeys';
 import { resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
 import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
 import { getNotificationReadiness, sendNotification } from '@lib/notifications';
 import { checkRateLimit } from '@lib/rateLimit';
-import { secureError } from '@lib/security/secureLogger';
+import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '../../../../../middleware/auth';
 
@@ -36,35 +37,35 @@ const resolveSessionScope = (session: any): { tenantId: number; storeId: number 
 };
 
 export const POST = withAuth(async (request: NextRequest, session) => {
-    const permission = await requireAnswerlatticePermission(request, session, ANSWERLATTICE_PERMISSION_KEYS.VIEW_READINESS);
-    if (permission.response) return permission.response;
-
     const scope = resolveSessionScope(session);
     if (!scope) {
         return NextResponse.json({ error: 'Not onboarded' }, { status: 400 });
     }
 
-    const db = getAnswerlatticeDb();
-    if (!db) {
-        return NextResponse.json({ error: 'Answerlattice Firebase is not configured' }, { status: 503 });
-    }
-
-    const readiness = getNotificationReadiness(PRODUCT_IDS.ANSWERLATTICE);
-    if (!readiness.enabled) {
-        return NextResponse.json({ error: 'Answerlattice notifications are not enabled', readiness }, { status: 403 });
-    }
-    if (!readiness.smtpConfigured) {
-        return NextResponse.json({ error: 'SMTP sender is not configured', readiness }, { status: 503 });
-    }
-
     try {
         const rateLimitResult = await checkRateLimit({
-            key: `answerlattice-notification-test:${scope.storeId}`,
+            key: buildAnswerlatticeRateLimitKey('answerlattice-notification-test', scope.storeId),
             limit: 3,
             window: 60 * 60,
         });
         if (!rateLimitResult.allowed) {
             return NextResponse.json({ error: 'Too many test emails. Try again later.' }, { status: 429 });
+        }
+
+        const permission = await requireAnswerlatticePermission(request, session, ANSWERLATTICE_PERMISSION_KEYS.VIEW_READINESS);
+        if (permission.response) return permission.response;
+
+        const db = getAnswerlatticeDb();
+        if (!db) {
+            return NextResponse.json({ error: 'Answerlattice Firebase is not configured' }, { status: 503 });
+        }
+
+        const readiness = getNotificationReadiness(PRODUCT_IDS.ANSWERLATTICE);
+        if (!readiness.enabled) {
+            return NextResponse.json({ error: 'Answerlattice notifications are not enabled', readiness }, { status: 403 });
+        }
+        if (!readiness.smtpConfigured) {
+            return NextResponse.json({ error: 'SMTP sender is not configured', readiness }, { status: 503 });
         }
 
         const storeSnap = await db.collection(DB_COLLECTIONS.STORES).doc(String(scope.storeId)).get();
@@ -105,9 +106,9 @@ export const POST = withAuth(async (request: NextRequest, session) => {
 
         return NextResponse.json({ sent: true, recipientEmail: supportEmail, readiness });
     } catch (error) {
-        secureError('[Answerlattice Notifications] Test email failed', error as Error, {
-            tenantId: scope.tenantId,
-            storeId: scope.storeId,
+        logRuntimeFailure('answerlattice_notification_test_failed', error, {
+            ...getBoundedRuntimeStringContext('tenantId', scope.tenantId),
+            ...getBoundedRuntimeStringContext('storeId', scope.storeId),
         });
         return NextResponse.json({ error: 'Failed to send test notification' }, { status: 500 });
     }

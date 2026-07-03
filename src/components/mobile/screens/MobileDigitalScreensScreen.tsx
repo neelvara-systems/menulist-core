@@ -1,12 +1,19 @@
 'use client'
 
-import { getScreenState, initializeScreenState, removePinnedSlide, updatePinnedSlideCaption, updateScreenSettings, uploadScreenSlide } from '@database/campaigns';
+import { assertDigitalScreenMutationSucceeded, getScreenState, initializeScreenState, removePinnedSlide, updatePinnedSlideCaption, updateScreenSettings, uploadScreenSlide } from '@database/campaigns';
 import { getMediaProfileAcceptAttribute } from '@lib/media/imageProfiles';
 import { prepareMediaImage, toPreparedUploadName, type MediaImageCropIntent, type PreparedMediaImage } from '@lib/media/prepareMediaImage';
 import MediaImageCard from '@/components/shared/media/MediaImageCard';
 import MediaImageAdjustModal from '@/components/shared/media/MediaImageAdjustModal';
 import { generateOBPUrl } from '@lib/obp/generateOBPUrl';
 import { normalizeOwnerSlideCaption } from '@lib/screen/screenContent';
+import {
+    copyScreenTextToClipboard,
+    getBoundedScreenStringContext,
+    hasScreenClipboardWrite,
+    hasScreenCopyFallback,
+    logScreenSettingsFailure,
+} from '@lib/screen/screenDiagnostics';
 import { buildScreenUrl } from '@lib/screen/utils';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import type { ScreenSlide } from '@type/campaigns';
@@ -192,6 +199,33 @@ export default function MobileDigitalScreensScreen({ onBack }: MobileDigitalScre
     const lastSeenLabel = useMemo(() => formatLastSeen(screenLastSeenAt), [screenLastSeenAt]);
     const hasSeenSignal = Boolean(timestampToDate(screenLastSeenAt));
     const canUpload = pinnedSlides.length < MAX_UPLOADS;
+    const buildMobileDigitalScreenLogContext = (flow: string, metadata: Record<string, boolean | number | string | null | undefined> = {}) => ({
+        surface: 'mobile_digital_screens',
+        flow,
+        hasScreenUrl: Boolean(screenUrl),
+        ownerOverrideEnabled: ownerOverride,
+        pinnedSlideCount: pinnedSlides.length,
+        ...getBoundedScreenStringContext('publicBaseUrl', publicBaseUrl),
+        ...getBoundedScreenStringContext('subdomain', storeDetails?.subdomain),
+        hasCustomDomain: Boolean(storeDetails?.customDomain),
+        ...metadata,
+    });
+
+    const handleOpenScreenLink = (url: string, type: ScreenMode) => {
+        try {
+            const opened = window.open(url, '_blank', 'noopener,noreferrer');
+            if (!opened) {
+                throw new Error('mobile_digital_screen_link_open_blocked');
+            }
+        } catch (error) {
+            logScreenSettingsFailure('mobile_digital_screen_link_open_failed', error, buildMobileDigitalScreenLogContext('link_open', {
+                mode: type,
+                ...getBoundedScreenStringContext('screenOpenUrl', url),
+            }));
+            Toast.show({ content: 'Unable to open screen link' });
+        }
+    };
+
     const sortedSlides = useMemo(
         () => [...pinnedSlides].sort((left, right) => {
             const leftTime = left.validUntil?.toMillis ? left.validUntil.toMillis() : 0;
@@ -230,7 +264,8 @@ export default function MobileDigitalScreensScreen({ onBack }: MobileDigitalScre
             setScreenLastSeenAt(state.screenLastSeenAt || null);
             setOwnerOverride(state.ownerOverrideEnabled || false);
             setPinnedSlides(state.pinnedSlides || []);
-        } catch {
+        } catch (error) {
+            logScreenSettingsFailure('mobile_digital_screen_state_load_failed', error, buildMobileDigitalScreenLogContext('load_state'));
             Toast.show({ content: t('failedToLoad'), duration: 2000 });
         } finally {
             setLoading(false);
@@ -243,7 +278,7 @@ export default function MobileDigitalScreensScreen({ onBack }: MobileDigitalScre
 
     const handleCopy = async (url: string, type: 'menu' | 'highlights') => {
         try {
-            await navigator.clipboard.writeText(url);
+            await copyScreenTextToClipboard(url);
             if (type === 'menu') {
                 setCopiedMenu(true);
                 setTimeout(() => setCopiedMenu(false), 2000);
@@ -252,17 +287,31 @@ export default function MobileDigitalScreensScreen({ onBack }: MobileDigitalScre
                 setTimeout(() => setCopiedHighlights(false), 2000);
             }
             Toast.show({ content: t('linkCopied'), duration: 1500 });
-        } catch {
+        } catch (error) {
+            logScreenSettingsFailure('mobile_digital_screen_link_copy_failed', error, buildMobileDigitalScreenLogContext('link_copy', {
+                mode: type,
+                hasSeenSignal,
+                hasClipboardWrite: hasScreenClipboardWrite(),
+                hasCopyFallback: hasScreenCopyFallback(),
+                ...getBoundedScreenStringContext('screenCopyUrl', url),
+            }));
             Toast.show({ content: t('failedToCopy'), duration: 2000 });
         }
     };
 
     const handleOverrideToggle = async (enabled: boolean) => {
         try {
-            await updateScreenSettings({ ownerOverrideEnabled: enabled });
+            const updateResult = await updateScreenSettings({ ownerOverrideEnabled: enabled });
+            assertDigitalScreenMutationSucceeded(
+                updateResult,
+                'mobile_digital_screen_override_update_rejected',
+            );
             setOwnerOverride(enabled);
             Toast.show({ content: enabled ? t('uploadsPrioritized') : t('systemContentRestored'), duration: 1500 });
-        } catch {
+        } catch (error) {
+            logScreenSettingsFailure('mobile_digital_screen_override_toggle_failed', error, buildMobileDigitalScreenLogContext('override_toggle', {
+                desiredEnabled: enabled,
+            }));
             Toast.show({ content: t('failedToUpdate'), duration: 2000 });
         }
     };
@@ -297,8 +346,12 @@ export default function MobileDigitalScreensScreen({ onBack }: MobileDigitalScre
                 type: prepared.mimeType,
                 url: prepared.dataUrl,
             });
-        } catch (error: any) {
-            Toast.show({ content: error?.message || t('failedToUpdate'), duration: 2000 });
+        } catch (error) {
+            logScreenSettingsFailure('mobile_digital_screen_slide_prepare_failed', error, buildMobileDigitalScreenLogContext('slide_prepare', {
+                fileSizeBytes: file.size,
+                ...getBoundedScreenStringContext('fileType', file.type),
+            }));
+            Toast.show({ content: t('failedToUpdate'), duration: 2000 });
         }
     };
 
@@ -311,8 +364,13 @@ export default function MobileDigitalScreensScreen({ onBack }: MobileDigitalScre
             setPendingSlide(null);
             setPendingSlideCaption('');
             await fetchState();
-        } catch (error: any) {
-            Toast.show({ content: error?.message || t('failedToUpdate'), duration: 2000 });
+        } catch (error) {
+            logScreenSettingsFailure('mobile_digital_screen_slide_upload_failed', error, buildMobileDigitalScreenLogContext('slide_upload', {
+                hasPendingSlide: Boolean(pendingSlide),
+                ...getBoundedScreenStringContext('mediaProfile', pendingSlide.mediaProfile),
+                ...getBoundedScreenStringContext('mediaVariant', pendingSlide.mediaVariant),
+            }));
+            Toast.show({ content: t('failedToUpdate'), duration: 2000 });
         } finally {
             setUploading(false);
         }
@@ -322,14 +380,21 @@ export default function MobileDigitalScreensScreen({ onBack }: MobileDigitalScre
         setSavingCaptionId(slideId);
         try {
             const nextCaption = normalizeOwnerSlideCaption(editingSlideCaption);
-            await updatePinnedSlideCaption(slideId, nextCaption);
+            const updateResult = await updatePinnedSlideCaption(slideId, nextCaption);
+            assertDigitalScreenMutationSucceeded(
+                updateResult,
+                'mobile_digital_screen_caption_update_rejected',
+            );
             setPinnedSlides((previous) => previous.map((slide) => (
                 slide.id === slideId ? { ...slide, caption: nextCaption } : slide
             )));
             setEditingSlideId(null);
             setEditingSlideCaption('');
             Toast.show({ content: 'Slide name updated', duration: 1500 });
-        } catch {
+        } catch (error) {
+            logScreenSettingsFailure('mobile_digital_screen_caption_update_failed', error, buildMobileDigitalScreenLogContext('caption_update', {
+                ...getBoundedScreenStringContext('slideId', slideId),
+            }));
             Toast.show({ content: t('failedToUpdate'), duration: 2000 });
         } finally {
             setSavingCaptionId(null);
@@ -338,10 +403,17 @@ export default function MobileDigitalScreensScreen({ onBack }: MobileDigitalScre
 
     const handleDeleteSlide = async (slideId: string) => {
         try {
-            await removePinnedSlide(slideId);
+            const deleteResult = await removePinnedSlide(slideId);
+            assertDigitalScreenMutationSucceeded(
+                deleteResult,
+                'mobile_digital_screen_slide_delete_rejected',
+            );
             setPinnedSlides((previous) => previous.filter((slide) => slide.id !== slideId));
             Toast.show({ content: 'Slide removed', duration: 1500 });
-        } catch {
+        } catch (error) {
+            logScreenSettingsFailure('mobile_digital_screen_slide_delete_failed', error, buildMobileDigitalScreenLogContext('slide_delete', {
+                ...getBoundedScreenStringContext('slideId', slideId),
+            }));
             Toast.show({ content: t('failedToUpdate'), duration: 2000 });
         }
     };
@@ -394,7 +466,7 @@ export default function MobileDigitalScreensScreen({ onBack }: MobileDigitalScre
                     icon={<LuMonitor color={token.colorPrimary} size={18} />}
                     mode="menu"
                     onCopy={() => void handleCopy(screenUrl, 'menu')}
-                    onOpen={() => window.open(screenUrl, '_blank', 'noopener,noreferrer')}
+                    onOpen={() => handleOpenScreenLink(screenUrl, 'menu')}
                     title={t('menuBoard')}
                 />
 
@@ -405,7 +477,7 @@ export default function MobileDigitalScreensScreen({ onBack }: MobileDigitalScre
                     icon={<LuPlay color={token.colorInfo} size={18} />}
                     mode="highlights"
                     onCopy={() => void handleCopy(highlightsUrl, 'highlights')}
-                    onOpen={() => window.open(highlightsUrl, '_blank', 'noopener,noreferrer')}
+                    onOpen={() => handleOpenScreenLink(highlightsUrl, 'highlights')}
                     title={t('highlights')}
                 />
 

@@ -13,10 +13,12 @@ export const dynamic = 'force-dynamic';
 
 import { FEATURE_FLAGS } from '@config/features';
 import { DB_COLLECTIONS } from '@constant/database';
+import { getBoundedGuestFeedbackStringContext, logGuestFeedbackFailure } from '@database/guestFeedback/guestFeedbackDiagnostics';
 import { logFeedbackMOLEventAdmin, submitGuestFeedbackAdmin } from '@database/guestFeedback/server';
 import { firestoreAdmin } from '@lib/firebase/firebaseAdmin';
+import { normalizeGuestFeedbackReviewUrl } from '@lib/feedback/guestFeedbackSubmitResponse';
 import { isPlatformEntityBlocked } from '@lib/platform/entityBlock';
-import { secureError } from '@lib/security/secureLogger';
+import { readBoundedJsonBody } from '@lib/security/boundedRequestBody';
 import { withCORS } from '@lib/security/corsValidation';
 import { guestFeedbackSubmitSchema } from '@lib/validation/apiSchemas';
 import { NextRequest, NextResponse } from 'next/server';
@@ -26,6 +28,8 @@ import {
     validateHoneypot,
     verifyTurnstileToken,
 } from 'src/middleware/publicApi';
+
+const PUBLIC_FEEDBACK_SUBMIT_MAX_BODY_BYTES = 16 * 1024;
 
 type EffectiveFeedbackDefaults = {
     collectComment: boolean;
@@ -81,18 +85,19 @@ async function postGuestFeedback(req: NextRequest) {
     if (rateLimitResponse) return rateLimitResponse;
 
     // 3. Parse request body
-    let body: unknown;
-    try {
-        body = await req.json();
-    } catch {
+    const bodyResult = await readBoundedJsonBody(req, PUBLIC_FEEDBACK_SUBMIT_MAX_BODY_BYTES);
+    if (bodyResult.ok === false) {
         return NextResponse.json(
-            { success: false, error: 'Invalid JSON body.' },
-            { status: 400 }
+            {
+                success: false,
+                error: bodyResult.response.status === 413 ? 'Request body too large.' : 'Invalid JSON body.',
+            },
+            { status: bodyResult.response.status }
         );
     }
 
     // 4. Validate with Zod schema
-    const validation = guestFeedbackSubmitSchema.safeParse(body);
+    const validation = guestFeedbackSubmitSchema.safeParse(bodyResult.data);
     if (!validation.success) {
         return NextResponse.json(
             {
@@ -139,10 +144,14 @@ async function postGuestFeedback(req: NextRequest) {
         const storeRef = firestoreAdmin
             .collection(DB_COLLECTIONS.STORES)
             .doc(String(data.sId));
+        const tenantRef = firestoreAdmin
+            .collection(DB_COLLECTIONS.TENANTS)
+            .doc(String(data.tId));
 
-        const [projectDoc, storeDoc] = await Promise.all([
+        const [projectDoc, storeDoc, tenantDoc] = await Promise.all([
             projectRef.get(),
             storeRef.get(),
+            tenantRef.get(),
         ]);
 
         if (!projectDoc.exists) {
@@ -191,6 +200,13 @@ async function postGuestFeedback(req: NextRequest) {
             );
         }
 
+        if (!tenantDoc.exists || isPlatformEntityBlocked(tenantDoc.data())) {
+            return NextResponse.json(
+                { success: false, error: 'Invalid store.' },
+                { status: 400 }
+            );
+        }
+
         if (storeData?.feedbackEnabled === false) {
             return NextResponse.json(
                 { success: false, error: 'Feedback is disabled for this business.' },
@@ -199,13 +215,18 @@ async function postGuestFeedback(req: NextRequest) {
         }
 
         storeFeedbackDefaults = resolveFeedbackDefaults(storeData?.feedbackDefaults || null);
-        reviewUrl = storeData?.reviewUrl || storeData?.publicPresence?.googleReviewUrl || null;
+        reviewUrl = normalizeGuestFeedbackReviewUrl(storeData?.reviewUrl)
+            || normalizeGuestFeedbackReviewUrl(storeData?.publicPresence?.googleReviewUrl)
+            || null;
     } catch (error) {
-        secureError(
-            '[PublicFeedback] Project/store verification error',
-            error instanceof Error ? error : new Error(String(error)),
-            { tId: data.tId, sId: data.sId, projectId: data.projectId },
-        );
+        logGuestFeedbackFailure('public_guest_feedback_scope_verification_failed', error, {
+            ...getBoundedGuestFeedbackStringContext('tenantId', data.tId),
+            ...getBoundedGuestFeedbackStringContext('storeId', data.sId),
+            ...getBoundedGuestFeedbackStringContext('projectId', data.projectId),
+            source: data.source,
+            rating: data.rating,
+            hasCaptchaToken: Boolean(data.captchaToken),
+        });
         return NextResponse.json(
             { success: false, error: 'Unable to verify feedback settings.' },
             { status: 500 }
@@ -254,11 +275,17 @@ async function postGuestFeedback(req: NextRequest) {
             { status: 201 }
         );
     } catch (error) {
-        secureError(
-            '[PublicFeedback] Submit error',
-            error instanceof Error ? error : new Error(String(error)),
-            { tId: data.tId, sId: data.sId, projectId: data.projectId },
-        );
+        logGuestFeedbackFailure('public_guest_feedback_submit_failed', error, {
+            ...getBoundedGuestFeedbackStringContext('tenantId', data.tId),
+            ...getBoundedGuestFeedbackStringContext('storeId', data.sId),
+            ...getBoundedGuestFeedbackStringContext('projectId', data.projectId),
+            source: data.source,
+            rating: data.rating,
+            hasComment: Boolean(effectiveMessage),
+            hasName: Boolean(effectiveName),
+            hasPhone: Boolean(effectivePhone),
+            hasEmail: Boolean(effectiveEmail),
+        });
         return NextResponse.json(
             { success: false, error: 'Failed to submit feedback.' },
             { status: 500 }

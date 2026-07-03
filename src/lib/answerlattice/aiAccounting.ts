@@ -2,10 +2,10 @@ import { getUnitCost, isFreeTierAction } from '@constant/AI/unitCosts';
 import { DB_COLLECTIONS } from '@constant/database';
 import { PRODUCT_IDS } from '@constant/product';
 import { AiOperationLogInput, recordAiOperation } from '@lib/ai/operationLog';
+import { getAnswerlatticeScopeLogContext, getBoundedAnswerlatticeStringContext, logAnswerlatticeFailure } from '@lib/answerlattice/diagnostics';
 import { getActiveProductSubscriptionForStore } from '@lib/billing/productBillingServer';
 import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
 import { admin } from '@lib/firebase/firebaseAdmin';
-import { logger } from '@lib/monitoring/logger';
 import type { FirestoreSubscriptionDoc } from '@type/razorpay';
 
 export type AnswerlatticeAiScope = {
@@ -54,6 +54,29 @@ type FinalizeAnswerlatticeAiAccountingResult = {
 };
 
 const db = answerlatticeFirestoreAdmin as FirebaseFirestore.Firestore;
+
+const getAnswerlatticeAccountingContextShape = (context?: Record<string, unknown>) => ({
+    contextPresent: Boolean(context),
+    contextKeyCount: context ? Object.keys(context).length : 0,
+});
+
+const getAnswerlatticeAiAccountingLogContext = (
+    scope: AnswerlatticeAiScope,
+    input: AiOperationLogInput,
+    logLabel: string,
+    unitsConsumed: number,
+    capacitySubscription: unknown,
+    context?: Record<string, unknown>,
+) => ({
+    ...getAnswerlatticeScopeLogContext(scope),
+    ...getBoundedAnswerlatticeStringContext('action', input.action),
+    ...getBoundedAnswerlatticeStringContext('logLabel', logLabel),
+    ...getBoundedAnswerlatticeStringContext('productId', PRODUCT_IDS.ANSWERLATTICE),
+    ...getBoundedAnswerlatticeStringContext('userId', input.uId),
+    ...getAnswerlatticeAccountingContextShape(context),
+    hasCapacitySubscription: Boolean(capacitySubscription),
+    unitsConsumed,
+});
 
 const toMillis = (value: any): number => {
     if (!value) return 0;
@@ -295,7 +318,11 @@ export async function finalizeAnswerlatticeAiOperationAccounting({
     try {
         transactionId = await recordAnswerlatticeAiOperation(scope, operationInput, actor);
     } catch (operationLogError) {
-        logger.error(`${logLabel} Answerlattice operation log failed`, operationLogError, context);
+        logAnswerlatticeFailure(
+            'answerlattice_ai_accounting_operation_log_failed',
+            operationLogError,
+            getAnswerlatticeAiAccountingLogContext(scope, operationInput, logLabel, unitsConsumed, capacitySubscription, context),
+        );
     }
 
     if (capacitySubscription && unitsConsumed > 0) {
@@ -305,7 +332,11 @@ export async function finalizeAnswerlatticeAiOperationAccounting({
                 throw new Error(`${logLabel} Answerlattice credit consumption returned no balance`);
             }
         } catch (creditConsumptionError) {
-            logger.error(`${logLabel} Answerlattice credit consumption failed`, creditConsumptionError, context);
+            logAnswerlatticeFailure(
+                'answerlattice_ai_accounting_credit_consumption_failed',
+                creditConsumptionError,
+                getAnswerlatticeAiAccountingLogContext(scope, operationInput, logLabel, unitsConsumed, capacitySubscription, context),
+            );
             throw creditConsumptionError;
         }
 
@@ -331,7 +362,11 @@ export async function finalizeAnswerlatticeAiOperationAccounting({
                         modifiedOn: admin.firestore.FieldValue.serverTimestamp(),
                     }, { merge: true });
             } catch (operationUpdateError) {
-                logger.error(`${logLabel} Answerlattice operation balance update failed`, operationUpdateError, context);
+                logAnswerlatticeFailure(
+                    'answerlattice_ai_accounting_operation_balance_update_failed',
+                    operationUpdateError,
+                    getAnswerlatticeAiAccountingLogContext(scope, operationInput, logLabel, unitsConsumed, capacitySubscription, context),
+                );
             }
         }
     }

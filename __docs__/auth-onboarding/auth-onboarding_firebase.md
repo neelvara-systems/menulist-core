@@ -1,19 +1,27 @@
 # Auth Onboarding — Firebase Cost Tracking
 
-**Feature:** Authentication & Onboarding Flow  
-**Status:** ✅ Production Ready  
-**Last Updated:** February 7, 2026  
+**Feature:** Authentication & Onboarding Flow
+**Status:** Firebase cost evidence; not current launch certification
+**Last Updated:** July 1, 2026
 **Priority:** HIGH — Every new user triggers Firebase Auth + Firestore writes.
 
 ---
 
 ## Summary
 
-- **Collections Used:** `users`, `tenants`, `stores`, `sessions`
+- **Collections Used:** `users`, `tenants`, `stores`, `platformSummary`, `sessions`
 - **Storage Buckets:** None
 - **Cloud Functions:** None (NextAuth handles auth server-side)
 - **Firebase Auth:** Google Sign-In via NextAuth.js → Firebase Admin SDK
 - **Estimated Monthly Cost:** **Low** — Per-signup cost, not per-session
+
+## Current Launch Boundary
+
+This cost note documents the source-level Firebase Auth and Firestore cost profile for the implemented onboarding path. It is not current production-launch approval by itself.
+
+Current release approval still requires the active [production-readiness audit](../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../production-readiness/external-certification-runbook.md) evidence, Firebase Auth custom-claims/token smoke, Firestore rules/deploy evidence where auth/onboarding rules change, Razorpay sandbox onboarding evidence, provider-failure compensation evidence, cost monitoring for signup/payment paths, and target-environment deploy smoke.
+
+The local source gate does not create Firebase Auth users, mint live custom tokens, write Firestore onboarding documents, call Razorpay, deploy Firebase, deploy Vercel, run browser/device QA, run a production build, or certify production-host behavior.
 
 ---
 
@@ -34,6 +42,7 @@
 | Create user doc | `users` | First-time signup | Per new user | 1 | User profile, role, tenant/store assignment. |
 | Create tenant doc | `tenants` | New tenant onboarding | Per new tenant | 1 | Billing entity, subscription info. |
 | Create store doc | `stores` | New store setup | Per new store | 1 | Full store config with defaults. |
+| Provider-failure compensation | `users`, `tenants`, `stores`, `platformSummary/storesSummary` | Razorpay plan/subscription setup fails after local onboarding transaction | Failure only | 3-4 | Marks tenant/store inactive, clears failed user mapping when it matches the just-created scope, and hides the store from summary-backed public reads. |
 | Update last login | `users/{userId}` | Each login | Per login | 1 | `lastLoginAt` timestamp. |
 | Session management | NextAuth (JWT) | Login/logout | Per session | 0 | JWT-based — no Firestore session writes. |
 

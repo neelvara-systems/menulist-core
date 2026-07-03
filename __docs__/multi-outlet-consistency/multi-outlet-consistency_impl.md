@@ -2,13 +2,15 @@
 
 **Feature:** #4 — Multi-Outlet Brand Consistency  
 **Document Type:** Technical Blueprint (Dev-Only)  
-**Status:** ✅ Controlled Owner Testing Ready (full MenuList certification pending)
+**Status:** Implemented source evidence; not current launch certification
 **Stack:** Next.js 14 + Firebase (Firestore)  
 **Constraints:** 3-year architecture freeze • backwards-compatible • feature-flagged  
 **Default:** OFF (`ENABLE_MULTI_OUTLET: false`)  
 **Original Date:** January 19, 2026  
-**Last Reviewed:** June 11, 2026
+**Last Reviewed:** July 2, 2026
 **Author:** Lead Architect
+
+> **Launch Boundary:** This technical blueprint records Multi-Outlet implementation source evidence, not current production-launch approval. Current release approval requires the active [production-readiness audit](../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../production-readiness/external-certification-runbook.md) evidence, `npm run verify:multi-location-boundary`, desktop/mobile Locations browser QA, linked outlet save QA, Razorpay sandbox evidence where billing is involved, Firebase deploy evidence where rules/functions change, and target-environment smoke.
 
 > **Post-Implementation Notes (Feb 13, 2026):** This blueprint was the original technical plan. The core architecture below remains accurate. The following were added during implementation and have their own dedicated docs:
 >
@@ -23,6 +25,14 @@
 > - **May 20, 2026 completion pass:** master/local extraction records now persist `extractionIdAliases` for ID stability, outlet-only local changes stamp `outletLocalState` in the same write, public item links fall back cleanly when a deleted local item is requested, and mobile has master-update review/history parity with desktop.
 > - **May 27, 2026 outlet policy hardening:** mobile/desktop policy controls share `OUTLET_POLICY_CATEGORIES`, and `processMenuImagesJob` now checks linked outlet `canUseMenuExtraction` before extraction provider processing.
 > - **June 11, 2026 production audit:** outlet creation no longer writes subscription quantity when `ENABLE_OUTLET_BILLING` is off; deactivation validates the canonical target `stores/{outletSId}` doc before Admin writes; inactive outlets are excluded from project propagation, brand propagation, and master-delete linked-outlet scans; inactive outlet rename is rejected; desktop/mobile active outlet counters now exclude inactive outlets.
+> - **June 29, 2026 master job status response hardening:** `useMasterJobStatus()` calls `/api/projects/master-job-status` with same-origin credentials, no-store cache policy, and manual redirect handling, then parses the response through an 8KB bounded JSON parser and requires the inactive/active response envelope before updating outlet editor blocking state.
+> - **June 29, 2026 diagnostics hardening:** `updateOutletPolicy()` now parses `/api/outlets/policy` acknowledgements through a 16KB bounded JSON parser, logs bounded `multi_outlet_outlet_policy_response_parse_failed` diagnostics for malformed responses, and requires `success: true`, `masterPromoted`, and a complete boolean `outletPolicy` before desktop/mobile policy state updates.
+> - **June 29, 2026 linked outlet save response hardening:** `src/lib/multiOutlet/linkedOutletSaveResponse.ts` provides the shared 2MB `/api/projects/outlet-save` acknowledgement parser. `updateProject()`, linked outlet `publishProject()`, and linked-outlet extraction review applies require `success: true` plus matching `projectId` / `masterProjectId` before returning the saved project to editor, publish, or review-apply flows.
+> - **June 30, 2026 linked outlet save request hardening:** editor save, linked outlet publish, and extraction review apply now share `LINKED_OUTLET_SAVE_REQUEST_POLICY` so `/api/projects/outlet-save` browser requests use same-origin credentials, no-store cache policy, and manual redirect handling before the existing 2MB response parser and acknowledgement shape guard.
+> - **July 1, 2026 extraction review apply acknowledgement hardening:** desktop and mobile review applies pass the owner-approved selected-change count into `applyExtractionChanges()`. The shared apply helper refuses no-op or partial apply counts before project/job writes, and both review surfaces require the returned `projectId`, `jobId`, mode, completion flag, and applied count before showing success.
+> - **July 1, 2026 multi-location source gate:** Multi-location boundary source gate: `npm run verify:multi-location-boundary` locks outlet create/deactivate/rename/policy route admission, linked outlet project-save policy enforcement, desktop/mobile bounded acknowledgements, MobileShell Locations routing, and docs/audit parity. The gate is source-only and does not run browser, Razorpay, Firebase deploy, or live Firestore smoke.
+> - **July 1, 2026 desktop rename failure-path hardening:** Desktop `OutletRenameModal` now parses the bounded `/api/outlets/rename` response before the non-OK branch, records the safe `currentSlug` field for same-slug rejection diagnostics, and keeps fixed owner copy. `verify:multi-location-boundary` also checks required public/screen cache invalidation tags without depending on quote style.
+> - **July 2, 2026 active-cap hardening:** `POST /api/outlets/create` now enforces `MAX_OUTLETS_PER_TENANT` against active non-master outlets only, matching billing quantity, desktop/mobile counters, public visibility, and deactivation-as-replacement-slot behavior.
 
 ---
 
@@ -1872,7 +1882,7 @@ User Action → Handler → setProjectData() → Local State Update
 
 ---
 
-**DOCUMENT STATUS:** ✅ Implementation Blueprint Ready  
-**LAST UPDATED:** January 25, 2026  
-**VERSION:** 3.0  
+**DOCUMENT STATUS:** Historical implementation blueprint/source evidence - not current launch certification
+**LAST UPDATED:** January 25, 2026
+**VERSION:** 3.0
 **SIGNATURE:** Lead Architect

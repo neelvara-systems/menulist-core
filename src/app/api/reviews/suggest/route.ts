@@ -4,8 +4,8 @@ export const dynamic = 'force-dynamic';
  *
  * POST /api/reviews/suggest — Generate AI reply for a pasted review
  *
- * Standalone tool: works WITHOUT GBP API.
- * Owner pastes review text + rating → gets professional reply suggestion.
+ * Dormant reply-assist endpoint. Owner-pasted review suggestions stay disabled
+ * until the reviews reputation parent flag and GBP-backed ingestion are enabled.
  *
  * @see __docs__/reputation-protection/reputation-protection_impl.md
  */
@@ -14,20 +14,29 @@ import { FEATURE_FLAGS } from '@config/features';
 import { GEMINI_MODELS } from '@constant/AI/models';
 import { AI_ACTIONS_TYPES, CHARGE_PER_CREDIT, TOKENS_PER_CREDIT } from '@constant/common';
 import { getOurChargePaise, getRealCostPaise, getUnitCost } from '@constant/AI/unitCosts';
+import { PERMISSIONS } from '@constant/permissions';
 import { finalizeAiOperationAccounting } from '@lib/ai/accounting';
 import { checkAICapacity } from '@lib/ai/capacityCheck';
 import { genAIClient } from '@lib/google/genAi';
+import { getAIRouteSecurityContext } from '@lib/google/genAi/diagnostics';
+import { requireAnyStorePermission } from '@lib/permissions/server';
 import { checkRateLimit } from '@lib/rateLimit';
-import { buildSecurityContext } from '@lib/security/securityContext';
+import { readBoundedJsonBody } from '@lib/security/boundedRequestBody';
+import { getSafeZodValidationDetails } from '@lib/security/inputValidation';
 import { logger } from '@lib/monitoring/logger';
+import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { NextRequest, NextResponse } from 'next/server';
+import { hashPublicRateLimitValue } from 'src/middleware/publicApi';
 import { z } from 'zod';
 import { verifyTenantAccess, withAuth } from '../../../../middleware/auth';
 
+const REVIEW_PROMPT_TEXT_MAX_LENGTH = 2000;
+const REVIEW_BUSINESS_TYPE_MAX_LENGTH = 80;
+
 const SuggestSchema = z.object({
-    reviewText: z.string().min(1).max(2000),
+    reviewText: z.string().min(1).max(REVIEW_PROMPT_TEXT_MAX_LENGTH),
     rating: z.number().int().min(1).max(5),
-    businessType: z.string().optional(),
+    businessType: z.string().max(REVIEW_BUSINESS_TYPE_MAX_LENGTH).optional(),
 });
 
 const REPLY_SYSTEM_PROMPT = `You are writing a public reply to a customer review on behalf of a business.
@@ -101,6 +110,38 @@ const FALLBACK_REPLIES: Record<string, string> = {
 
 const ACTION = AI_ACTIONS_TYPES.REVIEW_REPLY_SUGGESTION;
 const AI_MODEL = GEMINI_MODELS.TEXT_GEN;
+const REVIEW_SUGGEST_MAX_BODY_BYTES = 16 * 1024;
+
+function sanitizeReviewPromptText(value: unknown, maxLength = REVIEW_PROMPT_TEXT_MAX_LENGTH) {
+    if (typeof value !== 'string') return '';
+
+    return value
+        .replace(/[\u0000-\u001f\u007f]/g, ' ')
+        .replace(/[{}<>`$\\]/g, '')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .slice(0, maxLength)
+        .trim();
+}
+
+function getReviewSuggestLogContext(
+    session: any,
+    metadata: {
+        businessType?: unknown;
+        rating?: unknown;
+        usedFallback?: boolean;
+    } = {},
+) {
+    return {
+        endpoint: '/api/reviews/suggest',
+        ...getBoundedRuntimeStringContext('tenantId', session.tId),
+        ...getBoundedRuntimeStringContext('storeId', session.sId),
+        ...getBoundedRuntimeStringContext('userId', session.uId),
+        ...getBoundedRuntimeStringContext('businessType', metadata.businessType),
+        rating: typeof metadata.rating === 'number' ? metadata.rating : null,
+        usedFallback: Boolean(metadata.usedFallback),
+    };
+}
 
 export const POST = withAuth(async (request: NextRequest, session) => {
     if (!FEATURE_FLAGS.ENABLE_REVIEWS_REPUTATION || !FEATURE_FLAGS.ENABLE_AI_REPLY_ASSIST) {
@@ -112,8 +153,9 @@ export const POST = withAuth(async (request: NextRequest, session) => {
     if (safeModeResponse) return safeModeResponse;
 
     // Rate limiting — 10 suggestions per minute per user
+    const userRateLimitHash = hashPublicRateLimitValue(session.uId);
     const rateLimitResult = await checkRateLimit({
-        key: `review-suggest:${session.uId}`,
+        key: `review-suggest:${userRateLimitHash}`,
         limit: 10,
         window: 60,
     });
@@ -126,22 +168,38 @@ export const POST = withAuth(async (request: NextRequest, session) => {
 
     if (!verifyTenantAccess(session, session.tId, session.sId, request)) {
         logger.security('Tenant Access Violation - Review Suggest API', {
-            ...buildSecurityContext(session, request),
+            ...getAIRouteSecurityContext(session, request),
             endpoint: '/api/reviews/suggest',
         }, 'critical');
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    const body = await request.json();
-    const validation = SuggestSchema.safeParse(body);
+    const bodyResult = await readBoundedJsonBody(request, REVIEW_SUGGEST_MAX_BODY_BYTES);
+    if (bodyResult.ok === false) return bodyResult.response;
+
+    const validation = SuggestSchema.safeParse(bodyResult.data);
     if (!validation.success) {
         return NextResponse.json(
-            { error: 'Validation failed', details: validation.error.flatten() },
+            { error: 'Validation failed', details: getSafeZodValidationDetails(validation.error) },
             { status: 400 },
         );
     }
 
     const { reviewText, rating, businessType } = validation.data;
+    const promptReviewText = sanitizeReviewPromptText(reviewText, REVIEW_PROMPT_TEXT_MAX_LENGTH);
+    const promptBusinessType = sanitizeReviewPromptText(businessType, REVIEW_BUSINESS_TYPE_MAX_LENGTH);
+    if (!promptReviewText) {
+        return NextResponse.json({ error: 'Validation failed' }, { status: 400 });
+    }
+
+    const permissionError = await requireAnyStorePermission(
+        request,
+        session,
+        [PERMISSIONS.MANAGE_FEEDBACK],
+        'Review reply',
+    );
+    if (permissionError) return permissionError;
+
     const capacityCheck = await checkAICapacity(session.tId, session.sId, ACTION);
     if (!capacityCheck.allowed) {
         return NextResponse.json({
@@ -154,8 +212,8 @@ export const POST = withAuth(async (request: NextRequest, session) => {
 
     // Build prompt with optional industry constraints
     let systemPrompt = REPLY_SYSTEM_PROMPT;
-    if (businessType) {
-        const normalizedType = businessType.toLowerCase();
+    if (promptBusinessType) {
+        const normalizedType = promptBusinessType.toLowerCase();
         for (const [key, constraint] of Object.entries(INDUSTRY_CONSTRAINTS)) {
             if (normalizedType.includes(key)) {
                 systemPrompt += constraint;
@@ -164,7 +222,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         }
     }
 
-    const userPrompt = `INPUT REVIEW:\n"${reviewText.slice(0, 2000)}"\n\nRATING:\n${rating}\n\nNow write the reply.`;
+    const userPrompt = `INPUT REVIEW:\n${JSON.stringify(promptReviewText)}\n\nRATING:\n${rating}\n\nNow write the reply.`;
 
     try {
         const startTime = Date.now();
@@ -214,7 +272,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 input: {
                     action: ACTION,
                     billingMode: 'billable',
-                    businessType: businessType || null,
+                    businessType: promptBusinessType || null,
                     chargePerCredit: CHARGE_PER_CREDIT,
                     clientResponse: {
                         rating,
@@ -229,7 +287,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                     model: AI_MODEL,
                     processingTime,
                     rating,
-                    reviewLength: reviewText.length,
+                    reviewLength: promptReviewText.length,
                     tokenPerCredit: TOKENS_PER_CREDIT,
                     unitsConsumed,
                     realCostPaise: getRealCostPaise(ACTION),
@@ -241,10 +299,11 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             transactionId = accounting.transactionId;
             remainingBalance = accounting.remainingBalance;
         } catch (transactionError) {
-            logger.error('Failed to record review reply AI transaction', transactionError, {
-                endpoint: '/api/reviews/suggest',
-                userId: session.uId,
-            });
+            logRuntimeFailure('review_reply_accounting_failed', transactionError, getReviewSuggestLogContext(session, {
+                businessType: promptBusinessType,
+                rating,
+                usedFallback,
+            }));
             return NextResponse.json({ error: 'Review reply accounting failed' }, { status: 500 });
         }
 

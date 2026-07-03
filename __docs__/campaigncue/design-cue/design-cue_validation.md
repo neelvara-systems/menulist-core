@@ -21,7 +21,7 @@ Provider-backed model assistance is not active. The model route exists only as a
 | CampaignCue wiring | `src/components/templates/campaigncue/CampaignCueWorkspaceApp.tsx`, `src/app/(campaigncue)/campaigncue/app/editor-test/CampaignCueEditorTestClient.tsx` |
 | API boundary | `src/app/api/campaigncue/design-cue/turns/route.ts`, `src/lib/validation/campaigncueDesignCueSchemas.ts` |
 | Verification | `scripts/verification/verify-campaigncue-runtime.js` |
-| Docs | `__docs__/campaigncue/design-cue/*`, `__docs__/campaigncue/README.md`, `__docs__/campaigncue/creative-studio/*`, `__docs__/shared-creative-editor/*`, `__docs__/CHANGELOG.md` |
+| Docs | `__docs__/campaigncue/design-cue/*`, `__docs__/campaigncue/README.md`, `__docs__/campaigncue/creative-studio/*`, `__docs__/shared-creative-editor/*`, `__docs__/changelog.md` |
 
 ## Issues Found And Fixed
 

@@ -9,6 +9,7 @@ import { firebaseClient } from "@lib/firebase/firebaseClient";
 import { STORAGE_CACHE_CONTROL } from "@lib/storage/cacheControl";
 import { AssetsCategoryType, CraftBuilderAssetsTypesType } from "@type/assets";
 import { arrayRemove, arrayUnion, deleteDoc, doc, getDocs, updateDoc } from "firebase/firestore";
+import { getStaticAssetEntityLogContext, logStaticAssetDiagnostic, logStaticAssetFailure } from "./staticDiagnostics";
 
 const COLLECTION = `${DB_COLLECTIONS.COMMON}/${DB_COLLECTIONS.ASSETS}/`;
 
@@ -49,7 +50,6 @@ export const addAssetsCategory = async (type: CraftBuilderAssetsTypesType, data:
             data = await getPreviewUrl(type, data);
             const docRef = await addDoc(await getCollectionRef(type), await requestBodyComposer(data));
             const newId = docRef.id
-            console.log("Document written with ID: ", newId);
             return { ...data, id: newId };
         },
         type,
@@ -63,8 +63,7 @@ export const updateAssetsCategory = async (type: CraftBuilderAssetsTypesType, da
         async () => {
             data = await getPreviewUrl(type, data);
             const collectionDocRef = await getDocRef(type, docId);
-            const docRef = await updateDoc(collectionDocRef, await requestBodyComposer(data));
-            console.log("Document written with ID: ", collectionDocRef.id);
+            await updateDoc(collectionDocRef, await requestBodyComposer(data));
             return { ...data };
         },
         type,
@@ -97,7 +96,13 @@ export const deleteAssetsCategory = async (type: CraftBuilderAssetsTypesType, ca
                     // Wait for all deletion promises to resolve
                     await Promise.all(deletePromises);
                 } catch (e) {
-                    console.log("Unbale to delete siome files")
+                    logStaticAssetFailure('static_asset_category_file_cleanup_failed', e, {
+                        ...getStaticAssetEntityLogContext(type, categoryDetails.id),
+                        fileCount: filesTodelete.length,
+                        hasCategoryPreview: Boolean(categoryDetails.preview),
+                        subCategoryCount: categoryDetails?.subCategories?.length || 0,
+                        itemCount: categoryDetails?.items?.length || 0,
+                    });
                 }
             }
             const collectionDocRef = await getDocRef(type, categoryDetails.id);
@@ -116,8 +121,7 @@ export const addAssetsSubCategory = async (type: CraftBuilderAssetsTypesType, da
             data = await getPreviewUrl(type, data);
             const collectionDocRef = await getDocRef(type, docId);
             // Update the parent category's subCategories array using arrayUnion
-            const docRef = await updateDoc(collectionDocRef, { subCategories: arrayUnion(data) });
-            console.log("Document written with ID: ", collectionDocRef.id);
+            await updateDoc(collectionDocRef, { subCategories: arrayUnion(data) });
             return { ...data };
         },
         type,
@@ -138,10 +142,14 @@ export const updateAssetsSubCategory = async (type: CraftBuilderAssetsTypesType,
                 // Update the parent category's subCategories array using arrayUnion
                 const newSubCats = [...parentCategory.subCategories];
                 newSubCats[subcategoryIndex] = data;
-                const docRef = await updateDoc(collectionDocRef, { subCategories: newSubCats });
+                await updateDoc(collectionDocRef, { subCategories: newSubCats });
                 return { ...data };
             } else {
-                console.error("Subcategory not found.");
+                logStaticAssetDiagnostic('static_asset_subcategory_missing', getStaticAssetEntityLogContext(
+                    type,
+                    parentCategory.id,
+                    data?.id,
+                ));
                 return ERROR_RESPONSE
             }
         },
@@ -168,12 +176,17 @@ export const deleteAssetsSubCategory = async (type: CraftBuilderAssetsTypesType,
                     // Wait for all deletion promises to resolve
                     await Promise.all(deletePromises);
                 } catch (e) {
-                    console.log("Unbale to delete siome files")
+                    logStaticAssetFailure('static_asset_subcategory_file_cleanup_failed', e, {
+                        ...getStaticAssetEntityLogContext(type, parentCategory.id, categoryDetails.id),
+                        fileCount: filesTodelete.length,
+                        hasCategoryPreview: Boolean(categoryDetails.preview),
+                        itemCount: categoryDetails?.items?.length || 0,
+                    });
                 }
             }
             const collectionDocRef = await getDocRef(type, parentCategory.id);
             // Update the parent category's subCategories array using arrayUnion
-            const docRef = await updateDoc(collectionDocRef, { subCategories: arrayRemove(categoryDetails) });
+            await updateDoc(collectionDocRef, { subCategories: arrayRemove(categoryDetails) });
             return SUCCESS_RESPONSE
         },
         type,
@@ -189,6 +202,15 @@ export const addAssetsItem = async (type: CraftBuilderAssetsTypesType, data: any
             const collectionDocRef = await getDocRef(type, parentCategory.id);
             if (Boolean(subCategory?.id)) {
                 const subcategoryIndex = parentCategory.subCategories.findIndex(subcategory => subcategory.id === subCategory.id);
+                if (subcategoryIndex === -1) {
+                    logStaticAssetDiagnostic('static_asset_item_subcategory_missing', getStaticAssetEntityLogContext(
+                        type,
+                        parentCategory.id,
+                        subCategory.id,
+                        data?.id,
+                    ));
+                    return ERROR_RESPONSE
+                }
                 const newSubCats = [...parentCategory.subCategories];
                 newSubCats[subcategoryIndex].items.push(data);
                 await updateDoc(collectionDocRef, { subCategories: newSubCats });
@@ -196,7 +218,6 @@ export const addAssetsItem = async (type: CraftBuilderAssetsTypesType, data: any
                 await updateDoc(collectionDocRef, { items: arrayUnion(data) });
             }
             // Update the parent category's subCategories array using arrayUnion
-            console.log("Document written with ID: ", collectionDocRef.id);
             return { ...data };
         },
         type,
@@ -214,18 +235,44 @@ export const updateAssetsItem = async (type: CraftBuilderAssetsTypesType, data: 
             const collectionDocRef = await getDocRef(type, parentCategory.id);
             if (Boolean(subCategory?.id)) {
                 const subcategoryIndex = parentCategory.subCategories.findIndex(subcategory => subcategory.id === subCategory.id);
+                if (subcategoryIndex === -1) {
+                    logStaticAssetDiagnostic('static_asset_item_update_subcategory_missing', getStaticAssetEntityLogContext(
+                        type,
+                        parentCategory.id,
+                        subCategory.id,
+                        data?.id,
+                    ));
+                    return ERROR_RESPONSE
+                }
                 const newSubCats = [...parentCategory.subCategories];
                 let iIndex = newSubCats[subcategoryIndex].items.findIndex(i => i.id == data.id)
+                if (iIndex === -1) {
+                    logStaticAssetDiagnostic('static_asset_item_update_item_missing', getStaticAssetEntityLogContext(
+                        type,
+                        parentCategory.id,
+                        subCategory.id,
+                        data?.id,
+                    ));
+                    return ERROR_RESPONSE
+                }
                 newSubCats[subcategoryIndex].items[iIndex] = data;
                 await updateDoc(collectionDocRef, { subCategories: newSubCats });
             } else {
                 const newItems = [...parentCategory.items];
                 let iIndex = parentCategory.items.findIndex(i => i.id == data.id)
+                if (iIndex === -1) {
+                    logStaticAssetDiagnostic('static_asset_item_update_item_missing', getStaticAssetEntityLogContext(
+                        type,
+                        parentCategory.id,
+                        undefined,
+                        data?.id,
+                    ));
+                    return ERROR_RESPONSE
+                }
                 newItems[iIndex] = data;
                 await updateDoc(collectionDocRef, { items: newItems });
             }
             // Update the parent category's subCategories array using arrayUnion
-            console.log("Document written with ID: ", collectionDocRef.id);
             return { ...data };
         },
         type,
@@ -244,13 +291,40 @@ export const deleteAssetsItem = async (type: CraftBuilderAssetsTypesType, data: 
 
             if (Boolean(subCategory?.id)) {
                 const subcategoryIndex = parentCategory.subCategories.findIndex(subcategory => subcategory.id === subCategory.id);
+                if (subcategoryIndex === -1) {
+                    logStaticAssetDiagnostic('static_asset_item_delete_subcategory_missing', getStaticAssetEntityLogContext(
+                        type,
+                        parentCategory.id,
+                        subCategory.id,
+                        data?.id,
+                    ));
+                    return ERROR_RESPONSE
+                }
                 const newSubCats = [...parentCategory.subCategories];
                 let iIndex = newSubCats[subcategoryIndex].items.findIndex(i => i.id == data.id)
+                if (iIndex === -1) {
+                    logStaticAssetDiagnostic('static_asset_item_delete_item_missing', getStaticAssetEntityLogContext(
+                        type,
+                        parentCategory.id,
+                        subCategory.id,
+                        data?.id,
+                    ));
+                    return ERROR_RESPONSE
+                }
                 newSubCats[subcategoryIndex].items.splice(iIndex, 1);
                 await updateDoc(collectionDocRef, { subCategories: newSubCats });
             } else {
                 const newItems = [...parentCategory.items];
                 let iIndex = parentCategory.items.findIndex(i => i.id == data.id)
+                if (iIndex === -1) {
+                    logStaticAssetDiagnostic('static_asset_item_delete_item_missing', getStaticAssetEntityLogContext(
+                        type,
+                        parentCategory.id,
+                        undefined,
+                        data?.id,
+                    ));
+                    return ERROR_RESPONSE
+                }
                 newItems.splice(iIndex, 1);
                 await updateDoc(collectionDocRef, { items: newItems });
             }

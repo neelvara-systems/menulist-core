@@ -1,7 +1,9 @@
 # Upload & File Processing
 
 **Sub-feature of:** Projects (Menu Digitization)  
-**Status:** ✅ Production Ready
+**Status:** Implemented source evidence; not current launch certification
+
+> **Launch Boundary:** This README records upload source evidence, not current production-launch approval. Current release approval requires the active [production-readiness audit](../../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../../production-readiness/external-certification-runbook.md) evidence, `npm run verify:menu-extraction-pipeline`, browser/mobile upload QA, Storage quota/rules evidence, provider/extraction smoke, target deploy evidence, and production-host smoke.
 
 ---
 
@@ -26,7 +28,7 @@ Upload & File Processing is the entry point for digitizing menus. Users upload p
 ### Supported Files
 
 - **Images:** JPG, PNG, WebP (max 10MB each)
-- **PDFs:** Up to 50 pages (max 50MB each)
+- **PDFs:** Up to 15 pages per extraction job (max 50MB each)
 - **Session:** 200MB total per upload session
 
 ### Key Files
@@ -54,11 +56,11 @@ The following files have been **consolidated** into this folder:
 
 | Legacy File                                            | Status         |
 | ------------------------------------------------------ | -------------- |
-| `Assessments/ASSESSMENT-01-UPLOAD.md`                  | → Consolidated |
+| `Assessments/assessment-01-upload.md`                  | → Consolidated |
 | `01-UPLOAD-FILE-PROCESSING.md`                         | → Consolidated |
-| `development_done/1-IMPLEMENTATION-UPLOAD-COMPLETE.md` | → Consolidated |
-| `development_done/1-TESTING-GUIDE-UPLOAD.md`           | → Consolidated |
-| `development_done/1-CROSS-CHECK-UPLOAD.md`             | → Consolidated |
+| `development_done/1-implementation-upload-complete.md` | → Consolidated |
+| `development_done/1-testing-guide-upload.md`           | → Consolidated |
+| `development_done/1-cross-check-upload.md`             | → Consolidated |
 
 ---
 

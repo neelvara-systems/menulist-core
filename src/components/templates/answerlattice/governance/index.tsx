@@ -25,6 +25,8 @@ import {
     toAnswerlatticeDashboardRoute,
 } from '@constant/answerlattice/navigations';
 import { getBrandingConfig, saveBrandingConfig } from '@database/answerlattice/branding';
+import { getBoundedAnswerlatticeStringContext, logAnswerlatticeFailure } from '@lib/answerlattice/diagnostics';
+import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';
 import EntityCandidateReview from '@/components/templates/answerlattice/EntityCandidateReview';
 import MutationProposalReview from '@/components/templates/answerlattice/MutationProposalReview';
 import { AnswerlatticeBrandingConfig } from '@type/answerlattice';
@@ -65,6 +67,85 @@ interface GovernanceHubProps {
     initialTab?: string;
 }
 
+const ANSWERLATTICE_GOVERNANCE_TRANSLATION_RESPONSE_JSON_MAX_BYTES = 16 * 1024;
+const ANSWERLATTICE_GOVERNANCE_TRANSLATION_FAILED = 'Translation failed';
+const ANSWERLATTICE_GOVERNANCE_TRANSLATION_REQUEST_POLICY: Pick<RequestInit, 'cache' | 'credentials' | 'redirect'> = {
+    cache: 'no-store',
+    credentials: 'same-origin',
+    redirect: 'manual',
+};
+
+type GovernanceTranslationResponse = {
+    articleId: string;
+    locale: string;
+    translatedTitle: string;
+    translatedBy: 'ai';
+};
+
+const isRecord = (value: unknown): value is Record<string, unknown> => (
+    Boolean(value) && typeof value === 'object' && !Array.isArray(value)
+);
+
+const isGovernanceTranslationResponse = (value: unknown): value is GovernanceTranslationResponse => (
+    isRecord(value)
+    && typeof value.articleId === 'string'
+    && typeof value.locale === 'string'
+    && typeof value.translatedTitle === 'string'
+    && value.translatedBy === 'ai'
+);
+
+const getGovernanceTranslationResponseContext = (
+    response: Response,
+    articleId: string,
+    locale: string,
+) => ({
+    ...getBoundedAnswerlatticeStringContext('articleId', articleId),
+    ...getBoundedAnswerlatticeStringContext('targetLocale', locale),
+    responseOk: response.ok,
+    responseStatus: response.status,
+});
+
+const readGovernanceTranslationResponse = async (
+    response: Response,
+    articleId: string,
+    locale: string,
+): Promise<GovernanceTranslationResponse> => {
+    let payload: unknown = null;
+    try {
+        payload = await readJsonResponseWithLimit<unknown>(
+            response,
+            ANSWERLATTICE_GOVERNANCE_TRANSLATION_RESPONSE_JSON_MAX_BYTES,
+        );
+    } catch (error) {
+        logAnswerlatticeFailure(
+            'answerlattice_governance_translation_response_parse_failed',
+            error,
+            getGovernanceTranslationResponseContext(response, articleId, locale),
+        );
+        throw new Error(ANSWERLATTICE_GOVERNANCE_TRANSLATION_FAILED);
+    }
+
+    if (!response.ok) {
+        logAnswerlatticeFailure(
+            'answerlattice_governance_translation_response_rejected',
+            undefined,
+            getGovernanceTranslationResponseContext(response, articleId, locale),
+        );
+        throw new Error(ANSWERLATTICE_GOVERNANCE_TRANSLATION_FAILED);
+    }
+
+    if (!isGovernanceTranslationResponse(payload)) {
+        logAnswerlatticeFailure(
+            'answerlattice_governance_translation_response_invalid',
+            undefined,
+            getGovernanceTranslationResponseContext(response, articleId, locale),
+        );
+        throw new Error(ANSWERLATTICE_GOVERNANCE_TRANSLATION_FAILED);
+    }
+
+    return payload;
+};
+
 export default function GovernanceHub({ tId = 0, sId = 0, initialTab }: GovernanceHubProps) {
     const router = useRouter();
     const pathname = usePathname();
@@ -85,7 +166,14 @@ export default function GovernanceHub({ tId = 0, sId = 0, initialTab }: Governan
     // Load branding config if white-label is enabled
     useEffect(() => {
         if (FEATURE_FLAGS.ENABLE_ANSWERLATTICE_WHITE_LABEL && tId && sId) {
-            getBrandingConfig(tId, sId).then(setBrandingConfig).catch(() => { });
+            getBrandingConfig(tId, sId)
+                .then(setBrandingConfig)
+                .catch((error) => {
+                    logAnswerlatticeFailure('answerlattice_governance_branding_config_load_failed', error, {
+                        ...getBoundedAnswerlatticeStringContext('tenantId', tId),
+                        ...getBoundedAnswerlatticeStringContext('storeId', sId),
+                    });
+                });
         }
     }, [tId, sId]);
 
@@ -96,15 +184,22 @@ export default function GovernanceHub({ tId = 0, sId = 0, initialTab }: Governan
     }, [tId, sId]);
 
     const handleTranslateArticle = useCallback(async (articleId: string, locale: string) => {
-        const res = await fetch('/api/answerlattice/translate', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ articleId, targetLocale: locale }),
-        });
-        if (!res.ok) {
-            const err = await res.json().catch(() => ({ error: 'Translation failed' }));
-            throw new Error(err.error || 'Translation failed');
+        let res: Response;
+        try {
+            res = await fetch('/api/answerlattice/translate', {
+                ...ANSWERLATTICE_GOVERNANCE_TRANSLATION_REQUEST_POLICY,
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ articleId, targetLocale: locale }),
+            });
+        } catch (error) {
+            logAnswerlatticeFailure('answerlattice_governance_translation_request_failed', error, {
+                ...getBoundedAnswerlatticeStringContext('articleId', articleId),
+                ...getBoundedAnswerlatticeStringContext('targetLocale', locale),
+            });
+            throw new Error(ANSWERLATTICE_GOVERNANCE_TRANSLATION_FAILED);
         }
+        await readGovernanceTranslationResponse(res, articleId, locale);
     }, []);
 
     const tabItems = useMemo(() => {

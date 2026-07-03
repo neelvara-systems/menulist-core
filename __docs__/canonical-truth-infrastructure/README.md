@@ -6,8 +6,6 @@
 
 | Document | Audience | Purpose |
 |----------|----------|---------|
-| [Spec](canonical-truth-infrastructure_spec.md) | CEO/PM | Business requirements, why this matters |
-| [Impl](canonical-truth-infrastructure_impl.md) | Developers | Technical blueprint, schemas, file paths |
 | [Firebase](canonical-truth-infrastructure_firebase.md) | Cost Control | Every read/write with cost estimates |
 | [Phase 0 Verification](canonical-truth-infrastructure_phase0-verification.md) | Developers | Codebase audit results |
 

@@ -103,7 +103,7 @@ function AnalyticsDashboard() {
                     <Card>
                         <Alert
                             message={t('errorLoadingAnalytics' as any)}
-                            description={error.message}
+                            description="Try again later."
                             type="error"
                             showIcon
                         />

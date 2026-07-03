@@ -3,9 +3,15 @@ export const dynamic = 'force-dynamic';
 import { DB_COLLECTIONS } from "@constant/database";
 import { FEATURE_FLAGS } from "@config/features";
 import { admin, authAdmin } from "@lib/firebase/firebaseAdmin";
-import { logger } from "@lib/monitoring/logger";
+import {
+    getBoundedFirebaseAdminStringContext,
+    logFirebaseAdminDiagnostic,
+} from "@lib/firebase/firebaseAdminDiagnostics";
 import { invalidateOwnerBusinessAssistantPacketCache } from "@lib/ownerBusinessAssistant/server/contextPacketCache";
 import { buildPlatformBlockDetails } from "@lib/platform/entityBlock";
+import { readBoundedJsonBody } from "@lib/security/boundedRequestBody";
+import { getSafeZodValidationDetails } from "@lib/security/inputValidation";
+import { touchDigitalScreenContentVersionForStoreServer } from "@lib/screen/serverScreenInvalidation";
 import { revalidateTag } from "next/cache";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
@@ -14,10 +20,16 @@ import { withPlatformAuth } from "../../../../middleware/auth";
 const EntityBlockRequestSchema = z.object({
     blocked: z.boolean(),
     entity: z.record(z.any()).optional(),
-    entityId: z.union([z.string().min(1), z.number()]),
+    entityId: z.union([
+        z.string().trim().min(1).max(160).refine((value) => !value.includes('/')),
+        z.number(),
+    ]),
     entityType: z.enum(['tenant', 'store', 'user']),
     reason: z.string().trim().min(1).max(500),
 });
+const PLATFORM_ENTITY_BLOCK_MAX_BODY_BYTES = 64 * 1024;
+const TENANT_STORE_BLOCK_BATCH_LIMIT = 450;
+const TENANT_STORE_SCOPE_FIELDS = ['tenantId', 'tId'] as const;
 
 function getEntityDocRef(db: admin.firestore.Firestore, entityType: 'tenant' | 'store' | 'user', entityId: string | number) {
     if (entityType === 'tenant') {
@@ -29,45 +41,93 @@ function getEntityDocRef(db: admin.firestore.Firestore, entityType: 'tenant' | '
     return db.collection(DB_COLLECTIONS.USERS).doc(String(entityId));
 }
 
-async function getTenantStoreIds(db: admin.firestore.Firestore, tenantId: string | number, tenantBlocked: boolean): Promise<string[]> {
+function getTenantStoreQueryValues(tenantId: string | number): Array<string | number> {
+    const tenantIdString = String(tenantId);
+    const tenantIdNumber = Number(tenantId);
+
+    if (!Number.isFinite(tenantIdNumber)) {
+        return [tenantIdString];
+    }
+
+    return [tenantIdNumber, tenantIdString];
+}
+
+async function getDirectTenantStoreIds(db: admin.firestore.Firestore, tenantId: string | number): Promise<string[]> {
+    const storeIds = new Set<string>();
+    const snapshots = await Promise.all(
+        getTenantStoreQueryValues(tenantId).flatMap((tenantQueryValue) => TENANT_STORE_SCOPE_FIELDS.map((field) => db
+            .collection(DB_COLLECTIONS.STORES)
+            .where(field, '==', tenantQueryValue)
+            .get())),
+    );
+
+    snapshots.forEach((snapshot) => {
+        snapshot.docs.forEach((doc) => storeIds.add(doc.id));
+    });
+
+    return Array.from(storeIds);
+}
+
+async function syncTenantBlockedToStoreDocs(
+    db: admin.firestore.Firestore,
+    directStoreIds: string[],
+    tenantBlocked: boolean,
+): Promise<void> {
+    if (!directStoreIds.length) return;
+
+    let batch = db.batch();
+    let operations = 0;
+
+    for (const storeId of directStoreIds) {
+        batch.update(db.collection(DB_COLLECTIONS.STORES).doc(String(storeId)), {
+            tenantBlocked,
+            tenantBlockedSyncedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+        operations += 1;
+
+        if (operations >= TENANT_STORE_BLOCK_BATCH_LIMIT) {
+            await batch.commit();
+            batch = db.batch();
+            operations = 0;
+        }
+    }
+
+    if (operations > 0) {
+        await batch.commit();
+    }
+}
+
+async function syncTenantStoreBlockState(db: admin.firestore.Firestore, tenantId: string | number, tenantBlocked: boolean): Promise<string[]> {
     const summaryRef = db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc('storesSummary');
-    const summarySnap = await summaryRef.get();
+    const [summarySnap, directStoreIds] = await Promise.all([
+        summaryRef.get(),
+        getDirectTenantStoreIds(db, tenantId),
+    ]);
     const stores = summarySnap.exists ? (summarySnap.data()?.stores || {}) : {};
     const summaryStoreIds = Object.entries(stores)
-        .filter(([, store]: [string, any]) => String(store?.tId ?? '') === String(tenantId))
+        .filter(([, store]: [string, any]) => String(store?.tId ?? store?.tenantId ?? '') === String(tenantId))
         .map(([storeId]) => storeId);
+    const affectedStoreIds = Array.from(new Set([...summaryStoreIds, ...directStoreIds]));
 
-    if (summaryStoreIds.length) {
+    if (affectedStoreIds.length) {
+        await syncTenantBlockedToStoreDocs(db, directStoreIds, tenantBlocked);
         await summaryRef.set({
             lastUpdated: admin.firestore.FieldValue.serverTimestamp(),
             stores: Object.fromEntries(
-                summaryStoreIds.map((storeId) => [storeId, { tenantBlocked }]),
-            ),
-        }, { merge: true });
-        return summaryStoreIds;
-    }
-
-    const storesSnap = await db.collection(DB_COLLECTIONS.STORES)
-        .where('tenantId', '==', Number(tenantId))
-        .get();
-    const fallbackStoreIds = storesSnap.docs.map((doc) => doc.id);
-
-    if (fallbackStoreIds.length) {
-        await summaryRef.set({
-            lastUpdated: admin.firestore.FieldValue.serverTimestamp(),
-            stores: Object.fromEntries(
-                fallbackStoreIds.map((storeId) => [storeId, { tenantBlocked }]),
+                affectedStoreIds.map((storeId) => [storeId, { tenantBlocked }]),
             ),
         }, { merge: true });
     }
 
-    return fallbackStoreIds;
+    return affectedStoreIds;
 }
 
 async function revalidateStorePublicCache(storeId: string | number, tenantId?: string | number) {
     revalidateTag(`menu-store-${storeId}`);
     revalidateTag(`store-${storeId}`);
     revalidateTag('client-stores');
+    revalidateTag('screen-data');
+    await touchDigitalScreenContentVersionForStoreServer(storeId, 'platformEntityBlocks');
     await invalidateOwnerBusinessAssistantPacketCache({
         tId: tenantId,
         sId: storeId,
@@ -103,10 +163,12 @@ async function syncUserBlockAuthState({
         return { authDisabled: shouldDisable, authSynced: true };
     } catch (error: any) {
         if (error?.code === "auth/user-not-found") {
-            logger.warn("[platform] Firebase Auth user missing during user block sync", {
+            logFirebaseAdminDiagnostic("platform_entity_block_auth_user_missing", {
                 blocked,
-                reason,
-                userId: entity?.id,
+                hasEmail: email.length > 0,
+                hasFirebaseUid: firebaseUid.length > 0,
+                ...getBoundedFirebaseAdminStringContext("reason", reason),
+                ...getBoundedFirebaseAdminStringContext("userId", entity?.id),
             });
             return { authDisabled: blocked, authSynced: false };
         }
@@ -120,12 +182,16 @@ export const POST = withPlatformAuth(async (request: NextRequest, session) => {
         return NextResponse.json({ error: "Platform entity blocks are disabled" }, { status: 404 });
     }
 
-    const body = await request.json().catch(() => ({}));
-    const validation = EntityBlockRequestSchema.safeParse(body);
+    const bodyResult = await readBoundedJsonBody(request, PLATFORM_ENTITY_BLOCK_MAX_BODY_BYTES, {
+        invalidJsonMessage: "Invalid input",
+    });
+    if (bodyResult.ok === false) return bodyResult.response;
+
+    const validation = EntityBlockRequestSchema.safeParse(bodyResult.data);
 
     if (!validation.success) {
         return NextResponse.json(
-            { error: "Invalid input", details: validation.error.flatten() },
+            { error: "Invalid input", details: getSafeZodValidationDetails(validation.error) },
             { status: 400 },
         );
     }
@@ -159,13 +225,23 @@ export const POST = withPlatformAuth(async (request: NextRequest, session) => {
     });
 
     if (entityType === 'tenant') {
-        const tenantId = Number(existingEntity.tenantId ?? entityId);
-        await docRef.update({
-            blocked,
-            blockDetails,
-        });
+        const tenantId = existingEntity.tenantId ?? entityId;
+        let affectedStoreIds: string[] = [];
 
-        const affectedStoreIds = await getTenantStoreIds(db, tenantId, blocked);
+        if (blocked) {
+            affectedStoreIds = await syncTenantStoreBlockState(db, tenantId, true);
+            await docRef.update({
+                blocked,
+                blockDetails,
+            });
+        } else {
+            await docRef.update({
+                blocked,
+                blockDetails,
+            });
+            affectedStoreIds = await syncTenantStoreBlockState(db, tenantId, false);
+        }
+
         await Promise.all(affectedStoreIds.map((storeId) => revalidateStorePublicCache(storeId, tenantId)));
 
         return NextResponse.json({

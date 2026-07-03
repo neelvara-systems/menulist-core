@@ -15,7 +15,7 @@ Modify:
 - `src/config/features.ts`
 - `src/components/templates/main-app/projects/editorView/ImageUploadModal.tsx`
 - `src/components/mobile/sheets/ItemEditSheet.tsx`
-- `__docs__/CHANGELOG.md`
+- `__docs__/changelog.md`
 - `__docs__/item-photo-capture-assist/item-photo-capture-assist_validation.md`
 
 ## Existing Code Reuse
@@ -45,6 +45,8 @@ The new component creates a local image input. It does not write Firestore, crea
 - `needsFrame`
 
 The result is display-only and is not persisted.
+
+If browser-local image sampling fails, the helper keeps the existing ready-to-save fallback and logs bounded `item_photo_readiness_stats_failed` diagnostics with prepared-image dimensions, size, image type, MIME type presence/length, and data URL presence only. It does not log raw image data, filenames, checksums, or media IDs.
 
 ### Browser camera fallback
 

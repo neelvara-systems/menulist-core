@@ -45,6 +45,10 @@
 
 > June 23, 2026 placeholder-backed service industry note: `/industries/salons-spas`, `/industries/service-list-businesses`, and `/industries/local-service-businesses` are now in the public discovery set with existing industry-page metadata and WebPage/BreadcrumbList structured data. The pages use visibly labelled sample/demo placeholder SVGs until routed demo screenshots or permissioned proof are available. Do not use the placeholders as customer proof in Product Hunt, paid traffic, broad outreach, or final launch visuals.
 
+> June 30, 2026 current AI/search discovery refresh: primary-source review still shows no Google-only AI schema, no `llms.txt` ranking lever, and no special AI Overview/AI Mode submission path. The valid changes are operational: OpenAI's current crawler docs add `OAI-AdsBot` for ad validation, tenant robots now give named crawlers the same private-route disallows as the generic crawler group, and public menu JSON-LD now includes stable `@id`, `mainEntityOfPage`, and `inLanguage` signals plus language on `Menu` / `OfferCatalog`. Live host checks still show `menulist.online` serves the app while canonicalizing to `menulist.ai`, and `menulist.ai` still serves a `/lander` shell with a `/lander` sitemap, so Search Console remains blocked until production host alignment is fixed.
+
+> June 30, 2026 Public Truth Check route note: `/tools/public-truth-check` is registered in `PLATFORM_DISCOVERY_PAGES`, `public/sitemap.xml`, `public/llms.txt`, and `public/llms-full.txt`. It is a browser-local self-report tool: no external fetch, no report-state Firebase write, no provider call, no AI/search check, and no ranking/citation promise. Its optional follow-up form reuses the existing bounded public contact route after consent.
+
 ---
 
 ## 1. SEO Foundation
@@ -65,6 +69,7 @@
 | Owner PWA Dashboard | Owner PWA Dashboard - MenuList \| Manage MenuList From Your Phone | `(website)/features/owner-phone-dashboard/page.tsx` |
 | Analytics        | Analytics - MenuList \| Customer Signals in the Owner Dashboard | `(website)/features/analytics/page.tsx` |
 | WhatsApp Onboarding | WhatsApp Menu and Service List Onboarding \| MenuList        | `(website)/whatsapp/page.tsx`        |
+| Public Truth Check | Public Truth Check - MenuList \| Check Your Customer Source | `(website)/tools/public-truth-check/page.tsx` |
 | Menu Quality Validation | Menu Quality Validation - MenuList \| Catch Menu Issues Before Customers See Them | `(website)/features/menu-quality-validation/page.tsx` |
 | Business Health  | Business Health - MenuList \| AI Health Check for Your Menu            | `(website)/features/business-health/page.tsx` |
 | Customer Feedback Loop | Customer Feedback Loop - MenuList \| Private Guest Feedback        | `(website)/features/customer-feedback-loop/page.tsx` |
@@ -94,6 +99,7 @@
 | Features       | See how MenuList moves from current menu or service list to prepared review, official customer link, QR, print, owner updates, feedback, and Business Health. |
 | Analytics      | MenuList shows today, daily, weekly, monthly, and overall customer activity from the public menu, Official Business Page, and customer app in the owner dashboard. |
 | WhatsApp Onboarding | Send a menu, service list, rate card, package list, or PDF on WhatsApp. MenuList prepares a preview, publishes after approval, and sends back one official customer link. |
+| Public Truth Check | Check whether a business has clear public facts for its menu or service list, hours, location, contact, action links, and current customer source. |
 | Business Health | Business Health is an AI health check for your menu and public presence. It shows what needs attention and keeps real changes inside approved AI Menu Manager or owner-screen flows. |
 | Customer Feedback Loop | Let customers send private feedback from the menu, Official Business Page, QR, or direct link so owners can review issues and keep the public source correct. |
 | How It Works   | Start with your current menu. MenuList prepares the owner-reviewed source behind the customer-facing menu and related public links.   |

@@ -1,6 +1,6 @@
 # Special Menu Switching — Help Documentation
 
-**Status:** 🧊 FROZEN — Structurally Complete, Flag OFF. See `__docs__/constitution/14-feature-lifecycle-doctrine.md`  
+**Status:** ✅ IMPLEMENTED — Active behind `ENABLE_SPECIAL_MENU_SWITCHING`; expansion remains governed by `__docs__/constitution/14-feature-lifecycle-doctrine.md`
 **Author:** Cascade (Lead Architect)  
 **Date:** February 20, 2026  
 **Audience:** Existing customers (non-technical SMB owners)

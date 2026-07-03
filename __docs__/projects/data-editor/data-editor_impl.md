@@ -1,8 +1,10 @@
 # Data Editor — Implementation
 
 **Feature:** Visual Menu Data Editor  
-**Status:** ✅ Production Ready  
+**Status:** Implemented source evidence; not current launch certification
 **Last Updated:** January 2026
+
+**Launch boundary:** This implementation note documents the menu data editor. Current release approval requires the active [production-readiness audit](../../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../../production-readiness/external-certification-runbook.md) evidence, browser/mobile editor QA, publish/cache evidence for edited public truth, and deploy evidence for the target environment.
 
 ---
 
@@ -491,8 +493,8 @@ setHasChanges(hasRealChanges);
 | `_spec.md`                                                | Product specification             |
 | `_marketing.md`                                           | Sales collateral                  |
 | `../Editor/`                                              | Detailed component docs (8 files) |
-| `../Assessments/ASSESSMENT-03-EDITOR.md`                  | Original assessment               |
-| `../development_done/3-IMPLEMENTATION-EDITOR-COMPLETE.md` | Implementation details            |
+| `../Assessments/assessment-03-editor.md`                  | Original assessment               |
+| `../development_done/3-implementation-editor-complete.md` | Implementation details            |
 
 ---
 
@@ -546,4 +548,4 @@ setHasChanges(hasRealChanges);
 
 ---
 
-_Document Status: ✅ PRODUCTION READY_
+_Document Status: Historical data-editor implementation evidence - not current launch certification_

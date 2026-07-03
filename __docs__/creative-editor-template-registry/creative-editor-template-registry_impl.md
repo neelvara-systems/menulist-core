@@ -82,6 +82,8 @@ creative-editor/templates/platform/{businessCategory}/{templateId}/document.json
 creative-editor/templates/user/{tenantId}/{storeId}/{templateId}/document.json
 ```
 
+Template document saves and opens both enforce `MAX_DOCUMENT_BYTES` in `src/lib/creative-editor/templateRegistryDal.ts`. If a stored document blob exceeds the cap, the DAL throws the fixed `TEMPLATE_DOCUMENT_TOO_LARGE` local error before decoding JSON.
+
 User template previews use the same Storage store scope:
 
 ```text
@@ -105,6 +107,8 @@ The registry is a client-side DAL because it does not need AI, server-only crede
 Returns bounded metadata summaries. It does not return full documents. `platform` reads one resolved category catalog; `user` reads the current store's single bounded `default` index doc. The printable asset route filters the returned summaries by `productId`, `sourceSurface`, and `assetTypeId` in UI state, so switching asset tabs does not refetch Firestore.
 
 Registry calls are intentionally route/editor-managed client DAL operations. The `/assets` route owns inline loading and fallback states, so an unavailable optional registry catalog does not trigger a global app error while generated templates remain usable. Save, open, and delete operations preserve feature-specific errors for the editor or route UI instead of returning global composer fallback arrays.
+
+Expected local registry failures use typed local error codes mapped to fixed copy, including not found, document-too-large, missing account scope, user-template save failure, and platform-template save failure. The wrapper maps Firebase Storage quota/permission indicators to fixed copy and falls back to the caller's fixed load/open/save/update/delete message for all other exceptions; it must not branch on raw `Error.message` text.
 
 ### `listCreativeEditorPlatformTemplateCatalog`
 
@@ -191,7 +195,7 @@ The flow is enabled by feature flags. Turning off `ENABLE_PRINTABLE_ASSET_USER_T
 ## Failure Behavior
 
 - If platform catalog or registry list fails, generated templates still render.
-- If Storage is unavailable during user save, save fails without corrupting the existing index; the editor stays open.
+- If Storage is unavailable during user save, save fails without corrupting the existing index; the editor stays open. Quota and permission messages are derived from structured Storage error code/status/name indicators, while owner-visible local validation errors stay allowlisted.
 - If save fails, the editor stays open and shows a message.
 - If a saved template document is missing, the owner sees a failure message; generated templates still work.
 - Template previews are stored in Storage only when the editor provides a bounded preview data URL; no preview base64 is written into Firestore metadata.

@@ -252,6 +252,9 @@ function rewriteWithProductHeaders(
     if (basePath) {
         response.headers.set('x-product-base-path', basePath);
     }
+    if (productConfig.id === 'neelvara' && basePath === '/nv') {
+        response.headers.set('X-Robots-Tag', 'noindex, nofollow');
+    }
 
     return response;
 }
@@ -279,9 +282,9 @@ function isInvalidCampaignCuePublicFeaturePath(pathname: string): boolean {
 
 const MYCODEX_PRODUCT_ALIAS_ROUTES: Array<{
     prefix: string;
-    productId: Extract<ProductSiteId, 'menulist' | 'constantlayer' | 'answerlattice' | 'campaigncue'>;
+    productId: Extract<ProductSiteId, 'menulist' | 'neelvara' | 'answerlattice' | 'campaigncue'>;
 }> = [
-    { prefix: '/cl', productId: 'constantlayer' },
+    { prefix: '/nv', productId: 'neelvara' },
     { prefix: '/ml', productId: 'menulist' },
     { prefix: '/al', productId: 'answerlattice' },
     { prefix: '/cc', productId: 'campaigncue' },
@@ -550,7 +553,7 @@ export async function middleware(request: NextRequest) {
     }
 
     // Internal/test-only aliases for portfolio/product landing pages:
-    // /cl -> ConstantLayer, /ml -> MenuList, /al -> Answerlattice, /cc -> CampaignCue,
+    // /nv -> Neelvara, /ml -> MenuList, /al -> Answerlattice, /cc -> CampaignCue,
     // /sd -> SignalDesk private app.
     // Production canonical domains continue through the normal product routing.
     // These are path aliases only; product slugs, env names, and Firebase
@@ -581,7 +584,7 @@ export async function middleware(request: NextRequest) {
                 const campaignCueWorkspacePath = getCampaignCueWorkspaceRewritePath(strippedPath);
                 url.pathname = campaignCueWorkspacePath ||
                     `${product.internalBasePath}${strippedPath === '/' ? '' : strippedPath}`;
-            } else if (product.id === 'constantlayer') {
+            } else if (product.id === 'neelvara') {
                 url.pathname = `${product.internalBasePath}${strippedPath === '/' ? '' : strippedPath}`;
             } else {
                 url.pathname = strippedPath === '/product' ? '/how-it-works' : strippedPath;
@@ -685,7 +688,7 @@ export async function middleware(request: NextRequest) {
             }
             const productWebsitePath = product.id === 'answerlattice'
                 ? buildAnswerlatticeWebsiteRewritePath(product.internalBasePath, strippedPath)
-                : product.id === 'constantlayer' && strippedPath === '/'
+                : product.id === 'neelvara' && strippedPath === '/'
                     ? `${product.internalBasePath}/home`
                     : `${product.internalBasePath}${strippedPath === '/' ? '' : strippedPath}`;
             url.pathname = answerlatticeDashboardPath || campaignCueWorkspacePath || productWebsitePath;

@@ -1,10 +1,14 @@
 # Hours + Holiday Accuracy — Marketing & Sales Copy
 
 **Document Type:** Sales & Marketing Collateral  
-**Status:** ✅ READY FOR USE  
+**Status:** Historical planning copy - not current public copy
 **Priority:** P0 (Feature #2 — LOCKED)  
 **Target Audience:** Premium SMB (India + Non-India)  
 **Tone:** Calm, premium, outcome-focused
+
+> Current boundary: Do not publish this as current public copy until a source-backed holiday/exception runtime exists.
+>
+> Current source-backed claim is limited to owner-set weekly working hours, public open/closed status, Today quick-hours edits, and time-slot presets. Holiday calendars and date-specific exception managers are not shipped.
 
 ---
 
@@ -20,11 +24,11 @@ Alternate: **Hours & Holiday Handling**
 
 ### One-liner (30 seconds)
 
-> **"Your hours stay correct. Even on holidays."**
+> **"Your menu shows the right open or closed status from your saved hours."**
 
 ### Extended (60 seconds)
 
-> "Wrong hours cost trust instantly — a customer shows up, you're closed. MenuList keeps your open/closed status accurate across your menu, screens, and staff view. Set your weekly hours once. Add holiday handling if you want. Everything stays consistent without you remembering to update."
+> "Wrong hours cost trust instantly — a customer shows up, you're closed. MenuList keeps your open/closed status accurate across your menu, screens, and staff view from the hours you set."
 
 ---
 
@@ -36,8 +40,8 @@ Premium restaurants and cafés lose customers and trust when:
 
 - Guests arrive to find the place closed
 - Menu says "open" but Google says "closed"
-- Staff doesn't know today's hours during a holiday
-- Special event closures aren't reflected anywhere
+- Staff doesn't know whether today's hours changed
+- One-off closures are not reflected before customers scan
 
 Every owner carries the same background anxiety:
 
@@ -48,9 +52,9 @@ Every owner carries the same background anxiety:
 MenuList handles hours like it handles your menu — set once, stays correct.
 
 - **Weekly schedule** — Define your regular hours once
-- **Holiday calendar** — Enable automatic closure for major holidays
-- **Exceptions** — Add special hours or closures when needed
-- **Consistent everywhere** — Menu, screens, and staff view all show the same status
+- **Open/closed status** — MenuList computes the current status from saved hours
+- **Temporary closure path** — Use Temporary Status or today's hours for one-off changes
+- **Consistent everywhere** — Menu, screens, and staff view all use the same store truth
 
 ### The Promise
 
@@ -66,7 +70,7 @@ MenuList handles hours like it handles your menu — set once, stays correct.
 
 - Customer drives 20 minutes, finds you closed
 - Menu says open, reality says closed
-- Staff confusion during holidays
+- Staff confusion when hours change
 - The constant anxiety: "Did we update?"
 
 ### Slide 2: The Solution
@@ -74,8 +78,8 @@ MenuList handles hours like it handles your menu — set once, stays correct.
 **"Hours that stay correct"**
 
 - Set weekly hours once
-- Enable holiday calendar (India/Global)
-- Add exceptions when needed
+- Use Temporary Status for one-off closures
+- Keep customer-facing status tied to store truth
 - Consistent across all surfaces
 
 ### Slide 3: Key Features
@@ -83,8 +87,8 @@ MenuList handles hours like it handles your menu — set once, stays correct.
 **What you get:**
 
 - **Weekly schedule** — Simple day-by-day hours
-- **Holiday handling** — Auto-closures for major holidays
-- **Exception manager** — Special hours or closures
+- **Temporary closure path** — Use Temporary Status or today's hours for one-off changes
+- **Time-slot presets** — Keep menu category windows aligned with store truth
 - **Status display** — "Open now" / "Closed" / "Opens at..."
 
 ### Slide 4: Differentiation
@@ -94,18 +98,18 @@ MenuList handles hours like it handles your menu — set once, stays correct.
 | Others                             | MenuList                        |
 | ---------------------------------- | ------------------------------- |
 | Update hours in 5 different places | One source of truth             |
-| Forget to update for holidays      | Automatic holiday handling      |
+| Forget to update a one-off closure | Temporary Status path           |
 | Staff doesn't know today's hours   | Staff view shows current status |
-| Manual updates after every event   | Exception manager handles it    |
+| Category windows drift from hours  | Time-slot presets use store truth |
 
 ### Slide 5: Use Cases
 
 **Real scenarios solved:**
 
-1. **Diwali week** — Enable India holiday calendar, hours auto-update
-2. **Private event** — Add exception "Closed for private party"
-3. **Extended hours** — Add exception with special timing
-4. **Split shifts** — Morning + evening windows, closed afternoon
+1. **Closed today** — Set Temporary Status before customers scan
+2. **Extended hours** — Update today's hours when service runs late
+3. **Regular hours changed** — Update weekly working hours once
+4. **Category windows** — Use time-slot presets for menu availability windows
 
 ### Slide 6: The Outcome
 

@@ -1,14 +1,16 @@
 # Store Onboarding — Razorpay Billing Architecture for Multi-Outlet
 
 **Feature:** #4C-B — Multi-Outlet Billing (Razorpay Quantity Model)  
-**Status:** ✅ Production Ready  
+**Status:** Billing implementation evidence; not current launch certification
 **Original Date:** February 12, 2026  
-**Last Reviewed:** May 20, 2026
+**Last Reviewed:** July 2, 2026
 **Author:** Cascade (Primary Master — Full Codebase Access)  
 **Inputs:** ChatGPT billing architecture discussion (3 sessions) + codebase cross-check  
 **Governance:** `IDE_PROMPTS/00. MASTER RULES & WORKFLOW.md` (overrides all)  
 **Related:** `store-onboarding-flow_impl.md` (internal creation flow — PATH 2)  
-**Razorpay Reference:** `__docs__/razorpay/ACTIVE_SUBSCRIPTION_FLOW.md` (existing billing architecture)
+**Razorpay Reference:** `__docs__/razorpay/active-subscription-flow.md` (existing billing architecture)
+
+> **Launch Boundary:** This implementation plan records Multi-Outlet billing source evidence, not current production-launch approval. Current release approval requires the active [production-readiness audit](../../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../../production-readiness/external-certification-runbook.md) evidence, `npm run verify:multi-location-boundary`, Razorpay sandbox evidence for quantity update/replacement subscription paths, desktop/mobile Billing and Locations browser QA, Firebase deploy evidence where rules/functions change, and target-environment smoke.
 
 ---
 
@@ -306,8 +308,9 @@ export const POST = withAuth(async (request, session) => {
   }
 
   // 2. Rate limit
+  const tenantRateLimitHash = hashPublicRateLimitValue(tenantId);
   const rateLimit = await checkRateLimit({
-    key: `outlet:${tenantId}`,
+    key: `outlet:${tenantRateLimitHash}`,
     ...getRateLimitForFeature("DATA_WRITE"),
   });
   if (!rateLimit.allowed) return rateLimitResponse(rateLimit);
@@ -813,6 +816,8 @@ For manual/offline prepaid subscriptions, `Update Razorpay quantity` is skipped.
 
 For UPI-backed Razorpay subscriptions where provider quantity update is unsupported, outlet creation returns 402 before internal store/project writes after the provider rejection. The recovery path is desktop/mobile Billing: create a replacement same-plan Razorpay subscription with `quantity = max(currentPaidLocations + 1, activeStoreCount + 1)`, verify it, expire/cancel the old subscription through `/api/razorpay/upgrade-subscription`, and then retry outlet creation. That adds one pending subscription write during checkout and avoids unpaid stores.
 
+Diagnostics for outlet billing-provider failures are bounded. `POST /api/outlets/create` and `POST /api/outlets/deactivate` log stable `multi_outlet_*` codes with tenant/store/outlet/provider/subscription ID presence and length metadata plus source error name/code/status only. The outlet-deactivated success security event also uses bounded tenant/master/outlet metadata instead of raw IDs. Raw Razorpay provider messages and route exception messages are not written through `secureError()` or `logger.security()`. Local route-only sentinels for create-lock contention and deactivate invalid-target transaction failures use typed local errors with stable codes instead of raw `Error.message` branching.
+
 ### 13.2 Ongoing — Outlet Access Check
 
 | Operation                                 | Cost                          |
@@ -887,7 +892,7 @@ Outlet fallback adds 1 extra read per session init for outlet users. At Firestor
 
 ---
 
-**DOCUMENT STATUS:** 📋 IMPLEMENTATION PLAN READY  
+**DOCUMENT STATUS:** Billing implementation evidence - not current launch certification
 **COMPANION:** `store-onboarding-flow_impl.md` (PATH 2 — Internal Creation)  
 **NEXT:** Execute tasks BT1-BT15 in order (billing), then T1-T25 (internal)  
 **GOVERNANCE:** All decisions aligned with MenuList Constitution + Security Rules + 3-Year Freeze  

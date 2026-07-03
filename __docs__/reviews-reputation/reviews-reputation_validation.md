@@ -85,8 +85,8 @@ Status: 🔒 SPEC LOCKED (Post-Feedback Revision)
 
 ---
 
-**VALIDATION STATUS:** ✅ COMPLETE  
-**READY FOR:** Team review, implementation (after GBP API access)
+**VALIDATION STATUS:** Historical docs-alignment evidence only; not current implementation or launch approval
+**CURRENT BOUNDARY:** Implementation remains blocked until GBP API access, ingestion evidence, owner mount-point review, active source gates, and target-environment smoke exist.
 
 ---
 

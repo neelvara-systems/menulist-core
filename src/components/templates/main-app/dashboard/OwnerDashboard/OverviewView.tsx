@@ -32,9 +32,10 @@ const { useToken } = theme;
 interface OverviewViewProps {
     data: OverviewData | null;
     qualitySignalsSlot?: React.ReactNode;
+    projectId?: string | null;
 }
 
-const OverviewView: React.FC<OverviewViewProps> = ({ data, qualitySignalsSlot }) => {
+const OverviewView: React.FC<OverviewViewProps> = ({ data, qualitySignalsSlot, projectId }) => {
     const { token } = useToken();
     const t = useTranslations('Dashboard.owner');
     const primaryTagStyle = {
@@ -207,6 +208,7 @@ const OverviewView: React.FC<OverviewViewProps> = ({ data, qualitySignalsSlot })
                 sourceQuality={sourceQuality}
                 analyticsAiEntitlement={analyticsAiEntitlement}
                 title={t('actionPlan.menuIntelligenceTitle')}
+                projectId={projectId}
             />
 
             {/* AI Summary (if available) */}

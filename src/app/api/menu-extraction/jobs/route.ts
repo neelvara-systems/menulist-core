@@ -13,8 +13,16 @@ import {
   MENU_LINK_IMPORT_MIME_TYPES,
   normalizeProjectJobSource,
 } from "@data/shared/menuExtractionJob";
+import { MENU_EXTRACTION_PROJECT_DOCUMENT_SIZE_LIMITS } from "@data/shared/menuExtractionProjectSize";
 import { MenuIntakeFileInput } from "@data/shared/menuIntakeIdentity";
 import { firestoreAdmin, storageAdmin } from "@lib/firebase/firebaseAdmin";
+import {
+  getBoundedMenuProcessingStringContext,
+  getMenuProcessingJobLogContext,
+  getMenuProcessingProjectLogContext,
+  logMenuProcessingDiagnostic,
+  logMenuProcessingFailure,
+} from "@lib/firebase/menuProcessingDiagnostics";
 import {
   isAllowedUploadUrl,
   isSupportedMenuIntakeMimeType,
@@ -25,17 +33,38 @@ import {
 import { checkSafeMode } from "@lib/ops/safeMode";
 import { checkRateLimit } from "@lib/rateLimit";
 import { getRateLimitForFeature } from "@lib/rateLimit/configs";
-import { secureError, secureLog } from "@lib/security/secureLogger";
+import { readBoundedJsonBody } from "@lib/security/boundedRequestBody";
+import { getSafeZodValidationDetails } from "@lib/security/inputValidation";
 import crypto from "crypto";
 import { Timestamp } from "firebase-admin/firestore";
 import { NextRequest, NextResponse } from "next/server";
 import { verifyTenantAccess, withAuth } from "src/middleware/auth";
+import { hashPublicRateLimitValue } from "src/middleware/publicApi";
 import { z } from "zod";
 
 const ACTIVE_JOB_STATUSES = ["pending", "processing", "preview_ready"];
+const MENU_EXTRACTION_JOB_MAX_BODY_BYTES = 128 * 1024;
 const MENU_LINK_IMPORT_MIME_TYPE_SET = new Set<string>(MENU_LINK_IMPORT_MIME_TYPES);
 const OWNER_UPLOAD_DEDUPE_VERSION = 1;
 const OWNER_UPLOAD_COMPLETED_REUSE_WINDOW_MS = 24 * 60 * 60 * 1000;
+const MENU_EXTRACTION_PROJECT_DOCUMENT_SIZE_ERROR =
+  "This menu is already large. Reset it or create a new menu before uploading more files.";
+
+const getMenuExtractionJobRouteLogContext = (params: {
+  jobId?: unknown;
+  projectId?: unknown;
+  reason?: unknown;
+  sId?: unknown;
+  tId?: unknown;
+  uId?: unknown;
+}) => ({
+  ...getMenuProcessingJobLogContext(params.jobId),
+  ...getMenuProcessingProjectLogContext(params.projectId),
+  ...getBoundedMenuProcessingStringContext("tenantId", params.tId),
+  ...getBoundedMenuProcessingStringContext("storeId", params.sId),
+  ...getBoundedMenuProcessingStringContext("userId", params.uId),
+  ...getBoundedMenuProcessingStringContext("reason", params.reason),
+});
 
 const JobFileSchema = z.object({
   uid: z.string().min(1).max(120),
@@ -165,6 +194,26 @@ function normalizeTargetLanguages(languages: Array<{ code: string; name: string 
   return deduped.length ? deduped : [{ code: "en", name: "English" }];
 }
 
+function estimateJsonUtf8Bytes(value: unknown): number {
+  try {
+    return Buffer.byteLength(JSON.stringify(value), "utf8");
+  } catch {
+    return Number.MAX_SAFE_INTEGER;
+  }
+}
+
+function getProjectedProjectDocumentSize(projectData: Record<string, any>, incomingFileCount: number) {
+  const currentBytes = estimateJsonUtf8Bytes(projectData);
+  const projectedBytes = currentBytes +
+    (incomingFileCount * MENU_EXTRACTION_PROJECT_DOCUMENT_SIZE_LIMITS.PRE_AI_EXTRACTED_DATA_BYTES_PER_FILE);
+
+  return {
+    currentBytes,
+    projectedBytes,
+    limitBytes: MENU_EXTRACTION_PROJECT_DOCUMENT_SIZE_LIMITS.SAVE_SAFE_BYTES,
+  };
+}
+
 async function findExistingActiveJob(projectId: string, userId: string): Promise<ExistingJobMatch | null> {
   const snapshot = await firestoreAdmin
     .collection(DB_COLLECTIONS.MENU_IMAGE_PROCESSING_JOBS)
@@ -289,11 +338,14 @@ async function deleteUnreferencedOwnerUploadFiles(params: {
   const results = await Promise.allSettled(deletions);
   const failed = results.filter((result) => result.status === "rejected").length;
   if (failed > 0) {
-    secureLog("[MenuExtractionJob] Duplicate owner upload cleanup partially failed", {
+    logMenuProcessingDiagnostic("menu_extraction_owner_upload_cleanup_partially_failed", {
+      ...getMenuExtractionJobRouteLogContext({
+        reason: params.reason,
+        sId: params.ids.sId,
+        tId: params.ids.tId,
+      }),
       failed,
-      reason: params.reason,
-      tenantId: params.ids.tId,
-      storeId: params.ids.sId,
+      fileCount: params.files.length,
     });
   }
 }
@@ -403,21 +455,6 @@ export const POST = withAuth(async (request: NextRequest, session) => {
   const safeModeResponse = await checkSafeMode();
   if (safeModeResponse) return safeModeResponse;
 
-  let body: unknown;
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ success: false, error: "Invalid JSON" }, { status: 400 });
-  }
-
-  const validation = RequestSchema.safeParse(body);
-  if (!validation.success) {
-    return NextResponse.json(
-      { success: false, error: "Check the uploaded menu files.", details: validation.error.flatten() },
-      { status: 400 },
-    );
-  }
-
   const ids = {
     tId: String(session.tId || ""),
     sId: String(session.sId || ""),
@@ -426,6 +463,32 @@ export const POST = withAuth(async (request: NextRequest, session) => {
 
   if (!verifyTenantAccess(session, ids.tId, ids.sId, request)) {
     return NextResponse.json({ success: false, error: "Forbidden" }, { status: 403 });
+  }
+
+  const userRateLimitHash = hashPublicRateLimitValue(ids.uId);
+  const tenantRateLimitHash = hashPublicRateLimitValue(ids.tId);
+  const storeRateLimitHash = hashPublicRateLimitValue(ids.sId);
+  const parseGate = await checkRateLimit({
+    key: `menu-extraction-job-request:${userRateLimitHash}:${tenantRateLimitHash}:${storeRateLimitHash}`,
+    ...getRateLimitForFeature("FILE_UPLOAD"),
+  });
+  if (!parseGate.allowed) {
+    const waitSeconds = Math.max(1, Math.ceil((parseGate.resetAt - Date.now()) / 1000));
+    return NextResponse.json(
+      { success: false, error: "Too many upload requests. Please wait before trying again.", retryAfter: waitSeconds },
+      { status: 429, headers: { "Retry-After": String(waitSeconds) } },
+    );
+  }
+
+  const bodyResult = await readBoundedJsonBody(request, MENU_EXTRACTION_JOB_MAX_BODY_BYTES);
+  if (bodyResult.ok === false) return bodyResult.response;
+
+  const validation = RequestSchema.safeParse(bodyResult.data);
+  if (!validation.success) {
+    return NextResponse.json(
+      { success: false, error: "Check the uploaded menu files.", details: getSafeZodValidationDetails(validation.error) },
+      { status: 400 },
+    );
   }
 
   const { projectId } = validation.data;
@@ -535,11 +598,15 @@ export const POST = withAuth(async (request: NextRequest, session) => {
           reason: "completed_job_reuse",
           reusedJobData: reusableCompletedJob.data,
         });
-        secureLog("[MenuExtractionJob] Reusing completed owner upload job", {
-          jobId: reusableCompletedJob.id,
-          projectId,
-          tenantId: ids.tId,
-          storeId: ids.sId,
+        logMenuProcessingDiagnostic("menu_extraction_reusing_completed_owner_upload_job", {
+          ...getMenuExtractionJobRouteLogContext({
+            jobId: reusableCompletedJob.id,
+            projectId,
+            sId: ids.sId,
+            tId: ids.tId,
+            uId: ids.uId,
+          }),
+          fileCount: requestedFiles.length,
         });
         return NextResponse.json({
           success: true,
@@ -551,8 +618,38 @@ export const POST = withAuth(async (request: NextRequest, session) => {
       }
     }
 
+    const documentSizeGate = getProjectedProjectDocumentSize(projectData, requestedFiles.length);
+    if (documentSizeGate.projectedBytes > documentSizeGate.limitBytes) {
+      if (!validation.data.retriedFromJobId && jobSource === MENU_EXTRACTION_SOURCES.OWNER_UPLOAD) {
+        await deleteUnreferencedOwnerUploadFiles({
+          files: requestedFiles,
+          ids,
+          reason: "project_document_size_gate",
+        });
+      }
+
+      logMenuProcessingDiagnostic("menu_extraction_project_document_size_gate_blocked", {
+        ...getMenuExtractionJobRouteLogContext({
+          projectId,
+          reason: "project_document_size_gate",
+          sId: ids.sId,
+          tId: ids.tId,
+          uId: ids.uId,
+        }),
+        currentBytes: documentSizeGate.currentBytes,
+        fileCount: requestedFiles.length,
+        limitBytes: documentSizeGate.limitBytes,
+        projectedBytes: documentSizeGate.projectedBytes,
+      });
+
+      return NextResponse.json(
+        { success: false, error: MENU_EXTRACTION_PROJECT_DOCUMENT_SIZE_ERROR },
+        { status: 413 },
+      );
+    }
+
     const rateLimit = await checkRateLimit({
-      key: `menu-extraction-job:${ids.uId}:${ids.tId}:${ids.sId}`,
+      key: `menu-extraction-job:${userRateLimitHash}:${tenantRateLimitHash}:${storeRateLimitHash}`,
       ...getRateLimitForFeature("AI_EXPENSIVE"),
     });
     if (!rateLimit.allowed) {
@@ -676,12 +773,16 @@ export const POST = withAuth(async (request: NextRequest, session) => {
       updatedAt: now,
     });
 
-    secureLog("[MenuExtractionJob] Owner job created", {
+    logMenuProcessingDiagnostic("menu_extraction_owner_job_created", {
+      ...getMenuExtractionJobRouteLogContext({
+        jobId: jobRef.id,
+        projectId,
+        sId: ids.sId,
+        tId: ids.tId,
+        uId: ids.uId,
+      }),
       filesCount: filesForJob.length,
-      jobId: jobRef.id,
-      projectId,
-      tenantId: ids.tId,
-      storeId: ids.sId,
+      targetLanguageCount: targetLanguages.length,
     });
 
     return NextResponse.json({
@@ -695,7 +796,9 @@ export const POST = withAuth(async (request: NextRequest, session) => {
       return NextResponse.json({ success: false, error: error.clientMessage }, { status: error.status });
     }
 
-    secureError("[MenuExtractionJob] Job creation failed", error as Error, { projectId });
+    logMenuProcessingFailure("menu_extraction_owner_job_creation_failed", error, {
+      ...getMenuExtractionJobRouteLogContext({ projectId }),
+    });
     return NextResponse.json(
       { success: false, error: "Could not start menu extraction." },
       { status: 500 },

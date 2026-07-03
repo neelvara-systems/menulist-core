@@ -1,5 +1,11 @@
 # 🔐 API Security Implementation Status
 
+**Status:** Historical implementation checklist; not current launch certification
+
+## Current Launch Boundary
+
+Current release approval requires the active [production-readiness audit](../../audits/menulist-production-readiness-audit.md) and [External Certification Runbook](../../production-readiness/external-certification-runbook.md) evidence, current API route inventory, auth/validation/rate-limit source review, security-event smoke, and browser/API QA for the release target. This checklist is historical implementation evidence; it is not production-launch approval.
+
 ## ✅ **Completed (3/13 routes)**
 
 | Route | Status | Sentry | Validation |
@@ -301,7 +307,7 @@ Once all routes are secured:
 ✅ **Attack detection** - Sentry alerts for all abuse attempts  
 ✅ **Audit trail** - Complete log of security events  
 ✅ **OWASP compliance** - A03: Injection Prevention ✓  
-✅ **Production-ready** - Enterprise-grade security  
+✅ **Security posture evidence** - Reconfirm current route inventory and launch gates before release
 
 ---
 

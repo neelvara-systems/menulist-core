@@ -1,7 +1,7 @@
 # Menu Presence Monitor — Implementation Plan
 
-> **Version:** 2.3 (activation-proof summary)
-> **Last Updated:** June 24, 2026
+> **Version:** 2.7 (focused boundary source gate)
+> **Last Updated:** July 2, 2026
 > **Audience:** Developers
 
 ---
@@ -16,6 +16,12 @@ Menu Presence Monitor is a **pure UI component** embedded in the Use MenuList pa
 - **Activation-proof summary** from `buildStarterActivationSummary()` so owners and SignalDesk can tell whether an action was MenuList-recorded or owner-confirmed
 
 Zero new collections. Zero new API routes. Client-side DAL only.
+
+Failed desktop copy/confirm/remove actions use `use_menulist_presence_official_link_copy_failed`, `use_menulist_presence_confirm_failed`, and `use_menulist_presence_remove_failed` through Use MenuList diagnostics. Failed mobile copy/confirm/remove actions use `mobile_presence_official_link_copy_failed`, `mobile_presence_confirm_failed`, and `mobile_presence_remove_failed` through mobile owner diagnostics. Official-link copied feedback must wait for Clipboard API or acknowledged textarea fallback success, and failed copy diagnostics may include clipboard/fallback support booleans. Business Settings' embedded Presence Monitor wrapper logs `business_settings_presence_screen_links_load_failed` through Business Settings diagnostics when local screen-link loading fails; embedded official-link copy remains owned by the shared Presence Monitor component. Context is limited to bounded store/tenant, project/link, surface ID/key, active-count, starter-signal, screen-link, domain-presence, clipboard/fallback support, and source error metadata. Do not log raw official business links, store names, surface labels, owner-entered values, or browser/Firestore exception text.
+
+`updateMenuPresence()` returns a typed `MenuPresenceUpdateResult` with `success: true`, `storeId`, `surface`, and `confirmed`. Desktop and mobile callers must call `assertMenuPresenceUpdateSucceeded()` before changing local presence state, showing success copy, or closing/clearing the selected surface. If the DAL wrapper returns a fallback value after a failed write, the existing bounded confirm/remove failure handlers must run instead.
+
+`updateMenuPresence()` and `recordStarterActivationSignal()` must call the active-session store guard before any store write. A passed store that does not match the active session must reject with `menu_presence_store_scope_mismatch` or `starter_activation_signal_store_scope_mismatch` before writing `menuPresence` or `starterActivationSignals`.
 
 ---
 
@@ -162,8 +168,8 @@ src/config/features.ts           # Modified — add ENABLE_MENU_PRESENCE_MONITOR
    - Receives `UseMenuListData` + store's `menuPresence` field
    - Builds surface list: 3 auto-detected + 3 manual
    - Renders compact Card with rows: icon + label + status + action button
-   - "I added it" button → calls `updateMenuPresence(surface, true)`
-   - "✕" button on confirmed rows → calls `updateMenuPresence(surface, false)`
+   - "I added it" button -> calls `updateMenuPresence(surface, true)` and asserts the typed acknowledgement before local success state
+   - Remove button on confirmed rows -> calls `updateMenuPresence(surface, false)` and asserts the typed acknowledgement before local removal state
    - Progress indicator: "X ready/confirmed"
    - Activation proof panel: "X of 2 done" plus MenuList-recorded vs owner-confirmed counts
 3. Embed in `useMenuList/index.tsx` between Quick Actions and Share section
@@ -173,8 +179,8 @@ src/config/features.ts           # Modified — add ENABLE_MENU_PRESENCE_MONITOR
 ### Phase 3: Mobile UI (~45 min)
 
 1. Create mobile `PresenceMonitor.tsx` using antd-mobile components
-2. Same data/logic as desktop, different UI (List component, SwipeAction for remove)
-3. Embed in `MobileShareScreen.tsx`
+2. Same data/logic as desktop, different UI: antd-mobile `List` plus a bottom-sheet `Popup` with explicit copy/open/mark-as-added/remove buttons
+3. Reach from Mobile More > Search & Discovery > Discovery Setup through `MobilePresenceMonitorScreen`
 4. Show the same activation-proof summary using mobile translation keys
 
 ### Phase 4: Type Check + Polish (~15 min)
@@ -182,6 +188,7 @@ src/config/features.ts           # Modified — add ENABLE_MENU_PRESENCE_MONITOR
 1. Run `npx tsc --noEmit` — zero errors
 2. Verify feature flag gates work (OFF = component not rendered)
 3. Run `npm run verify:menulist-activation-concierge`
+4. Run `npm run verify:menu-presence-monitor-boundary` after changes to desktop/mobile Presence Monitor, Business Settings Search & Discovery wiring, Mobile More routing, `updateMenuPresence()`, `recordStarterActivationSignal()`, or starter activation proof.
 
 ---
 

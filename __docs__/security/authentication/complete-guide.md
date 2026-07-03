@@ -1,7 +1,13 @@
 # 🔐 Authentication & Authorization - Complete Guide
 
 **Last Updated**: November 5, 2025  
-**Status**: ✅ Production Ready
+**Status**: Security implementation guide; not current launch certification
+
+---
+
+## Current Launch Boundary
+
+Current security launch approval requires the active [production-readiness audit](../../audits/menulist-production-readiness-audit.md) and [External Certification Runbook](../../production-readiness/external-certification-runbook.md) evidence, current auth route/source review against the mandatory security rules, QA/staging index deploy evidence for required indexes, auth browser/API smoke, and no sensitive logging or tenant-isolation regression. This guide records implementation patterns; it is not production-launch approval.
 
 ---
 
@@ -22,7 +28,7 @@
 
 ## Overview
 
-MenuListAI uses a production-grade authentication system with enterprise security features:
+MenuListAI uses an authentication system with security controls documented here:
 
 - ✅ **NextAuth.js** for session management
 - ✅ **Firebase Auth** for credential verification
@@ -628,9 +634,12 @@ await db.collection('authSecurityEvents')
 ### Deploy Firestore Indexes
 
 ```bash
-# Deploy indexes from firestore-indexes-auth.json
-firebase deploy --only firestore:indexes
+# Deploy indexes from the active Firebase config to QA first
+npm run verify:env-targets
+firebase deploy --only firestore:indexes --project menulist-qa --config firebase.json
 ```
+
+Production index deploy requires QA evidence and explicit production approval.
 
 ### Firestore Security Rules
 
@@ -784,18 +793,18 @@ console.log(`Deleted ${oldEvents.size} old security events`);
 
 ## Summary
 
-✅ **Production-ready authentication system** with:
+Documented authentication controls include:
 - Automatic brute force protection
 - Role-based access control
 - Multi-tenant isolation
 - Comprehensive security logging
-- 100% test coverage
-- Full Sentry integration
+- Security-event test coverage expectations
+- Sentry logging integration points
 
-**14 API routes protected** | **112 lines removed** | **0 security gaps**
+Historical implementation note: 14 API routes were documented as protected and 112 lines removed in the November 2025 review. Reconfirm the current route inventory before launch.
 
 ---
 
 **Last Reviewed**: November 5, 2025  
 **Next Review**: February 5, 2026  
-**Status**: ✅ Production Ready
+**Status**: Security implementation guide; not current launch certification

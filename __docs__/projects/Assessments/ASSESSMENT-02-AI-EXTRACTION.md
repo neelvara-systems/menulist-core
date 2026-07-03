@@ -1,12 +1,13 @@
 # 🤖 AI Data Extraction Assessment
 
-**Feature**: OCR & Menu Extraction with Gemini  
-**Risk Level**: 🔴 HIGH → ✅ RESOLVED  
-**Production Ready**: ❌ NO → ✅ YES (after testing)  
-**Implementation Status**: ✅ **COMPLETED** on Nov 14, 2025  
-**Code Review**: ✅ **COMPLETED** on Nov 28, 2025  
-**Implementation Doc**: [2-IMPLEMENTATION-AI-EXTRACTION-COMPLETE.md](./development_done/2-IMPLEMENTATION-AI-EXTRACTION-COMPLETE.md)  
-**Code Review Doc**: [ASSESSMENT-02-AI-EXTRACTION-CODE-REVIEW.md](./ASSESSMENT-02-AI-EXTRACTION-CODE-REVIEW.md)
+**Feature**: OCR & Menu Extraction with Gemini
+**Risk Level**: 🔴 HIGH → ✅ RESOLVED
+**Historical Result**: Targeted OCR/menu-extraction fixes recorded as completed after testing
+**Launch Boundary**: Historical assessment result only; not current launch certification. Current release approval requires the active [production-readiness audit](../../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../../production-readiness/external-certification-runbook.md) evidence, AI accounting/source gates, provider smoke, browser/mobile upload-to-review QA, and target-environment deploy evidence.
+**Implementation Status**: ✅ **COMPLETED** on Nov 14, 2025
+**Code Review**: ✅ **COMPLETED** on Nov 28, 2025
+**Implementation Doc**: [2-implementation-ai-extraction-complete.md](../development_done/2-implementation-ai-extraction-complete.md)
+**Code Review Doc**: ASSESSMENT-02-AI-EXTRACTION-CODE-REVIEW.md was a local review artifact and is no longer present in the active docs tree.
 
 ---
 
@@ -43,7 +44,7 @@
 
 ### 🎯 Next Steps
 
-1. Run testing checklist from [2-TESTING-GUIDE-AI-EXTRACTION.md](./development_done/2-TESTING-GUIDE-AI-EXTRACTION.md)
+1. Run testing checklist from [2-testing-guide-ai-extraction.md](../development_done/2-testing-guide-ai-extraction.md)
 2. Implement budget tracking before production
 3. Move to next assessment
 
@@ -666,4 +667,4 @@ describe("AI Extraction", () => {
 
 ---
 
-**Next**: [Editor Assessment →](./ASSESSMENT-03-EDITOR.md)
+**Next**: [Editor Assessment →](./assessment-03-editor.md)

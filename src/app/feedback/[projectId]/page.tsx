@@ -17,6 +17,7 @@ import { DB_COLLECTIONS } from '@constant/database';
 import MenuBreadcrumb from '@/app/client/[[...slug]]/MenuBreadcrumb';
 import { firestoreAdmin } from '@lib/firebase/firebaseAdmin';
 import { getBrandStoreLabel } from '@lib/businessIdentity/names';
+import { getBoundedPublicFeedbackStringContext, logPublicFeedbackPageFailure } from '@lib/feedback/publicFeedbackDiagnostics';
 import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
 import { resolveOBPAccentColor } from '@lib/obp/accentColor';
 import { getPublicBusinessDescription } from '@lib/obp/getPublicBusinessDescription';
@@ -65,7 +66,6 @@ async function getProjectData(projectId: string) {
         // Parse tId and sId from projectId
         const parsed = parseProjectId(projectId);
         if (!parsed) {
-            console.error('[FeedbackPage] Invalid projectId format:', projectId);
             return null;
         }
 
@@ -101,7 +101,9 @@ async function getProjectData(projectId: string) {
             sId,
         };
     } catch (error) {
-        console.error('[FeedbackPage] Error fetching project:', error);
+        logPublicFeedbackPageFailure('public_feedback_page_project_fetch_failed', error, {
+            ...getBoundedPublicFeedbackStringContext('projectId', projectId),
+        });
         return null;
     }
 }
@@ -205,7 +207,10 @@ async function getStoreInfo(tId: number, sId: number): Promise<StoreInfo | null>
             tempStatus: storeData.tempStatus,
         };
     } catch (error) {
-        console.error('[FeedbackPage] Error fetching store info:', error);
+        logPublicFeedbackPageFailure('public_feedback_page_store_fetch_failed', error, {
+            ...getBoundedPublicFeedbackStringContext('tenantId', tId),
+            ...getBoundedPublicFeedbackStringContext('storeId', sId),
+        });
         return null;
     }
 }

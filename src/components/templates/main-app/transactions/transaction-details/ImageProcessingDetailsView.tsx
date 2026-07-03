@@ -104,7 +104,7 @@ const renderExtractedMenuItems = (
 const ImageProcessingDetailsView: React.FC<ImageProcessingDetailsViewProps> = ({ transaction }) => {
     const t = useTranslations('Transactions');
     const { files, targetLanguages, clientResponse } = transaction;
-    const { tenantDetails, storeDetails } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext);
+    const { storeDetails } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext);
     const currencySymbol = storeDetails?.currencySymbol || '₹';
 
     const categories = clientResponse?.data?.categories || [];
@@ -141,31 +141,21 @@ const ImageProcessingDetailsView: React.FC<ImageProcessingDetailsViewProps> = ({
                 <div style={{ flex: '1 1 45%', minWidth: '300px' }}>
                     <Typography.Title level={5}>{t('extractedContent')}</Typography.Title>
                     <div style={{ maxHeight: 400, overflow: 'auto' }}>
-                        {tenantDetails?.businessEntityType === 'B2B' ? (
-                            // Raw JSON for B2B
-                            <pre style={{ whiteSpace: 'pre-wrap', fontSize: '12px' }}>
-                                {JSON.stringify(clientResponse, null, 2)}
-                            </pre>
-                        ) : (
-                            // Formatted view for others
-                            <>
-                                {categories.length > 0 && (
-                                    <div style={{ marginBottom: '16px' }}>
-                                        <Typography.Text strong>{t('menuCategories')}</Typography.Text>
-                                        {categories.map((category: any) => (
-                                            <Tag key={category.id} color="blue" style={{ margin: '4px' }}>
-                                                {category.name?.en || t('unnamedCategory')}
-                                            </Tag>
-                                        ))}
-                                    </div>
-                                )}
+                        {categories.length > 0 && (
+                            <div style={{ marginBottom: '16px' }}>
+                                <Typography.Text strong>{t('menuCategories')}</Typography.Text>
+                                {categories.map((category: any) => (
+                                    <Tag key={category.id} color="blue" style={{ margin: '4px' }}>
+                                        {category.name?.en || t('unnamedCategory')}
+                                    </Tag>
+                                ))}
+                            </div>
+                        )}
 
-                                {renderExtractedMenuItems(clientResponse, categories, currencySymbol, t)}
+                        {renderExtractedMenuItems(clientResponse, categories, currencySymbol, t)}
 
-                                {items.length === 0 && categories.length === 0 && (
-                                    <Typography.Text>{t('noMenuItemsOrCategoriesFound')}</Typography.Text>
-                                )}
-                            </>
+                        {items.length === 0 && categories.length === 0 && (
+                            <Typography.Text>{t('noMenuItemsOrCategoriesFound')}</Typography.Text>
                         )}
                     </div>
                 </div>

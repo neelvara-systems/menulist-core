@@ -1,9 +1,11 @@
 # Compliance Pages — Domain Activation Infrastructure
 
-**Status:** 🟡 Implementation Ready  
-**Feature Flag:** `ENABLE_COMPLIANCE_PAGES`  
-**Version:** 1.0  
-**Date:** March 18, 2026
+**Status:** 🟢 Runtime implemented; source verifiers active
+**Feature Flag:** `ENABLE_COMPLIANCE_PAGES`
+**Version:** 1.2
+**Date:** July 2, 2026
+**Last Hardened:** July 2, 2026
+**Local Source Gate:** `npm run verify:compliance-pages-boundary`
 
 ---
 
@@ -33,14 +35,16 @@ Static privacy policy, terms, and refund policy pages served on custom domains (
 
 | File                                                   | Purpose                                                |
 | ------------------------------------------------------ | ------------------------------------------------------ |
-| `src/app/_client/compliance/CompliancePageContent.tsx` | SSR compliance page renderer                           |
-| `src/lib/compliance/templates.ts`                      | Privacy + Terms template generation + input extraction |
+| `src/app/client/compliance/CompliancePageContent.tsx`  | SSR compliance page renderer                           |
+| `src/lib/compliance/templates.ts`                      | Privacy, Terms, and Refund template generation + input extraction |
 | `src/lib/compliance/sanitizer.ts`                      | Content sanitization for custom overrides              |
+| `src/lib/auth/browserRequestPolicy.ts`                 | Shared authenticated browser request boundary          |
 | `src/app/api/compliance/route.ts`                      | GET/POST compliance data (withAuth + Zod)              |
 | `src/database/compliance/index.ts`                     | DAL functions (CRUD)                                   |
 | `src/config/features.ts`                               | `ENABLE_COMPLIANCE_PAGES` flag                         |
-| `src/app/_client/[[...slug]]/page.tsx`                 | Route intercept for /privacy and /terms                |
-| `src/app/_client/obp/OBPContent.tsx`                   | Footer links (Privacy · Terms)                         |
+| `src/app/client/[[...slug]]/page.tsx`                  | Route intercept for `/privacy`, `/terms`, and `/refund` |
+| `src/app/client/obp/OBPResolvedSurface.tsx`            | OBP policy links                                       |
+| `src/components/templates/main-app/projects/b2cView/output/MenuFooter.tsx` | Public menu policy links               |
 
 ---
 
@@ -48,21 +52,24 @@ Static privacy policy, terms, and refund policy pages served on custom domains (
 
 | Flag                      | Default | Purpose                                 |
 | ------------------------- | ------- | --------------------------------------- |
-| `ENABLE_COMPLIANCE_PAGES` | `false` | Master kill switch for compliance pages |
+| `ENABLE_COMPLIANCE_PAGES` | `true` | Master kill switch for compliance pages |
 
 ---
 
 ## Architecture Summary
 
 ```
-Custom Domain Request → Middleware → /_client/compliance/privacy
-                                   → /_client/compliance/terms
+Custom Domain Request → Middleware → /client/privacy
+                                   → /client/terms
+                                   → /client/refund
 
 Subdomain Request → brand.menulist.ai/privacy → same pages
 
 Generation: Pure template substitution (zero AI, zero cost)
 Storage: compliancePages collection (1 doc per store)
 Override: Plain text only, sanitized, max 15K chars
+Owner editor API calls: shared authenticated browser request policy, bounded response parsing
+Local gate: npm run verify:compliance-pages-boundary
 ```
 
 ---

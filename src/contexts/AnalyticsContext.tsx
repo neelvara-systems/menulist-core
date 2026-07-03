@@ -12,6 +12,7 @@
 'use client';
 
 import { notification } from 'antd';
+import { logAnalyticsFailure } from '@lib/analytics/analyticsDiagnostics';
 import React, { createContext, ReactNode, useCallback, useContext, useState } from 'react';
 
 // ================================================================
@@ -167,10 +168,13 @@ export function useAsyncAction() {
         return result;
       } catch (error) {
         const message = errorMessage || 'An error occurred while fetching data';
-        const description = error instanceof Error ? error.message : 'Unknown error';
+        const description = 'Please try again.';
 
         showError(message, description);
-        console.error('[Analytics Action Error]:', error);
+        logAnalyticsFailure('chat_analytics_action_failed', error, {
+          hasSuccessMessage: Boolean(successMessage),
+          hasErrorMessage: Boolean(errorMessage),
+        });
 
         return null;
       } finally {

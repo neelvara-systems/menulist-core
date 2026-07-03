@@ -2,9 +2,11 @@
 
 ## Implementation Status
 
-**Status:** Implemented on June 6, 2026. Editor-backed printable customization added June 15, 2026. Four-module QR quiet-zone hardening added June 25, 2026.
+**Status:** Implemented on June 6, 2026. Editor-backed printable customization added June 15, 2026. Four-module QR quiet-zone hardening added June 25, 2026. Route permission parity hardened July 1, 2026.
 
 The feature is live as a guarded owner route at `/assets`, with `/use-menulist/print-assets` kept as a compatibility route. Desktop and mobile both use the same asset type catalog, template family catalog, and `renderPrintableAsset()` adapter. Non-menu printable assets render from shared `CreativeEditorDocument` templates; desktop can open the generated document in the shared editor for governed customization before download.
+
+Route permission note: `/assets`, `/use-menulist/print-assets`, and `/use-menulist/menu-card-export` are covered by the shared owner permission matcher for daily-action output access: menu sharing, publish, or menu management. This matches the mobile More screen's Assets and Print Menu admission gate.
 
 ## Current Codebase Truth
 

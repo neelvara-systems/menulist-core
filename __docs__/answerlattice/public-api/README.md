@@ -26,7 +26,7 @@ It does not expose raw KB article editing, ticket workflow automation, outbound 
 | Endpoint | Method | Purpose | Firebase behavior |
 | --- | --- | --- | --- |
 | `/api/answerlattice/public/v1/answers` | `POST` | Canonical-first answer retrieval using query, version, scope, and optional context | Reads entity index, latest release, and active canonical answers from Answerlattice Firestore |
-| `/api/answerlattice/public/v1/entities` | `GET` | Read-only entity registry for stable ontology IDs | Reads capped tenant entity list from Answerlattice Firestore |
+| `/api/answerlattice/public/v1/entities` | `GET` | Read-only entity registry for stable ontology IDs | Reads compiled entity-index bundle first when enabled and ready; falls back to capped tenant entity list from Answerlattice Firestore |
 | `/api/answerlattice/public/v1/signals` | `POST` | Ingest external ticket/chat/escalation signals | Writes one `answerlattice_signalEvents` document through the server signal emitter |
 
 All endpoints:

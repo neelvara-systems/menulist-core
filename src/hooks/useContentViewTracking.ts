@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { useClientAuthSession } from '@hook/useClientAuthSession';
+import { getBoundedHookStringContext, logHookFailure } from '@hook/hookDiagnostics';
 import { addRecentlyViewedEntry } from '@lib/recentlyViewed';
 
 type ContentType = 'article' | 'changelog' | 'faq' | 'workflow';
@@ -65,7 +66,15 @@ export const useContentViewTracking = (data: BaseViewTrackingData | null) => {
             });
         } catch (error) {
             // Fail silently - don't break the UI if tracking fails
-            console.warn(`Unable to persist recently viewed ${data.type}`, error);
+            logHookFailure('content_view_tracking_persist_failed', error, {
+                contentType: data.type,
+                hasMeta: Boolean(data.meta && Object.keys(data.meta).length > 0),
+                metaKeyCount: data.meta ? Object.keys(data.meta).length : 0,
+                ...getBoundedHookStringContext('userId', user.id),
+                ...getBoundedHookStringContext('contentId', data.id),
+                ...getBoundedHookStringContext('title', data.title),
+                ...getBoundedHookStringContext('href', data.href || window.location.pathname),
+            });
         }
     }, [data?.id, user?.id, data?.type, data?.href, data?.meta]);
 };

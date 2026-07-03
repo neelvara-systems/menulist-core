@@ -1,8 +1,10 @@
 # Owner Notifications - Spec
 
-**Status:** Ready for implementation planning
+**Status:** Implemented source evidence; not current launch certification
 **Date:** 2026-06-02
 **Audience:** Product, engineering, support, platform owner
+
+> **Current release boundary (July 2, 2026):** This specification records owner-notification architecture and source evidence only. It is not current production-launch approval. Current owner-notification release approval requires the active [production-readiness audit](../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../production-readiness/external-certification-runbook.md) evidence, `npm run verify:owner-notifications-boundary`, scoped provider smoke for SMTP/WhatsApp where enabled, platform recovery monitor browser QA, target Firebase deploy evidence where Functions logic changes, target Vercel deploy evidence where app routes change, and production-host smoke.
 
 ## Executive Summary
 

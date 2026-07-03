@@ -23,6 +23,9 @@ const MAX_RELEASES = 100;
 const MAX_CHANGELOG_PAGES = 5;
 const PUBLIC_CACHE_CONTROL = 'public, max-age=31536000, immutable';
 const PRIVATE_CACHE_CONTROL = 'private, max-age=300';
+const ANSWERLATTICE_CONTEXT_BUNDLE_CHANGELOG_LOAD_FAILED = 'ANSWERLATTICE_CONTEXT_BUNDLE_CHANGELOG_LOAD_FAILED';
+const ANSWERLATTICE_CONTEXT_BUNDLE_MANIFEST_UPLOAD_FAILED = 'ANSWERLATTICE_CONTEXT_BUNDLE_MANIFEST_UPLOAD_FAILED';
+const ANSWERLATTICE_CONTEXT_BUNDLE_REPAIR_FAILED = 'ANSWERLATTICE_CONTEXT_BUNDLE_REPAIR_FAILED';
 
 type BuildStatus = 'ready' | 'skipped' | 'superseded' | 'failed';
 
@@ -34,6 +37,33 @@ export interface ContextBundleRepairResult {
     bytesTotal: number;
     routes: number;
     error?: string;
+}
+
+function getContextBundleSourceErrorContext(error: unknown): {
+    sourceErrorName: string | null;
+    sourceErrorCode: string | number | null;
+    sourceStatusCode: number | null;
+} {
+    const source = error && typeof error === 'object' ? error as Record<string, unknown> : {};
+    const sourceStatusCode = typeof source.status === 'number'
+        ? source.status
+        : (typeof source.statusCode === 'number' ? source.statusCode : null);
+
+    return {
+        sourceErrorName: typeof source.name === 'string' ? source.name : null,
+        sourceErrorCode: typeof source.code === 'string' || typeof source.code === 'number' ? source.code : null,
+        sourceStatusCode,
+    };
+}
+
+function getContextBundleScopeContext(tId?: number, sId?: number): {
+    hasTenantScope: boolean;
+    hasStoreScope: boolean;
+} {
+    return {
+        hasTenantScope: Number.isFinite(tId),
+        hasStoreScope: Number.isFinite(sId),
+    };
 }
 
 const stableStringify = (value: any): string => {
@@ -257,9 +287,9 @@ const loadChangelogEntries = async (tId: number, sId: number) => {
             .slice(0, 100);
     } catch (error) {
         logger.warn('[Answerlattice Context Bundle] Changelog load skipped', {
-            tId,
-            sId,
-            error: error instanceof Error ? error.message : String(error),
+            failureCode: ANSWERLATTICE_CONTEXT_BUNDLE_CHANGELOG_LOAD_FAILED,
+            ...getContextBundleScopeContext(tId, sId),
+            ...getContextBundleSourceErrorContext(error),
         });
         return [];
     }
@@ -278,6 +308,30 @@ const uploadObject = async (path: string, value: any, cacheControl: string) => {
         },
     });
     return { path, bytes, hash, contentType: 'application/json; charset=utf-8', cacheControl };
+};
+
+const uploadManifestObjectBestEffort = async (
+    path: string,
+    value: any,
+    cacheControl: string,
+    context: {
+        tId: number;
+        sId: number;
+        bundleVersion: number;
+        visibility: 'public' | 'private';
+    },
+) => {
+    try {
+        await uploadObject(path, value, cacheControl);
+    } catch (error) {
+        logger.error('[Answerlattice Context Bundle] Manifest upload failed', {
+            failureCode: ANSWERLATTICE_CONTEXT_BUNDLE_MANIFEST_UPLOAD_FAILED,
+            ...getContextBundleScopeContext(context.tId, context.sId),
+            bundleVersion: context.bundleVersion,
+            visibility: context.visibility,
+            ...getContextBundleSourceErrorContext(error),
+        });
+    }
 };
 
 const loadSourceData = async (tId: number, sId: number) => {
@@ -627,8 +681,18 @@ export const repairCompiledContextBundle = async (tId: number, sId: number): Pro
             requestedBy: 'system:answerlattice_nightly',
         };
 
-        await uploadObject(getPublicBundlePath(publicBundleId, bundleVersion, 'manifest.json'), manifest, PUBLIC_CACHE_CONTROL).catch(() => undefined);
-        await uploadObject(getPrivateBundlePath(tenantId, storeId, bundleVersion, 'manifest.json'), manifest, PRIVATE_CACHE_CONTROL).catch(() => undefined);
+        await uploadManifestObjectBestEffort(
+            getPublicBundlePath(publicBundleId, bundleVersion, 'manifest.json'),
+            manifest,
+            PUBLIC_CACHE_CONTROL,
+            { tId: tenantId, sId: storeId, bundleVersion, visibility: 'public' },
+        );
+        await uploadManifestObjectBestEffort(
+            getPrivateBundlePath(tenantId, storeId, bundleVersion, 'manifest.json'),
+            manifest,
+            PRIVATE_CACHE_CONTROL,
+            { tId: tenantId, sId: storeId, bundleVersion, visibility: 'private' },
+        );
         await manifestRef.set(manifest, { merge: true });
         await lockRef.set({ status: 'released', completedAt: FieldValue.serverTimestamp() }, { merge: true });
 
@@ -640,7 +704,6 @@ export const repairCompiledContextBundle = async (tId: number, sId: number): Pro
             routes: stats.routes,
         };
     } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
         await manifestRef.set({
             schemaVersion: SCHEMA_VERSION,
             pId: 'AL',
@@ -656,7 +719,8 @@ export const repairCompiledContextBundle = async (tId: number, sId: number): Pro
         await lockRef.set({
             status: 'failed',
             completedAt: FieldValue.serverTimestamp(),
-            error: message.slice(0, 500),
+            error: ANSWERLATTICE_CONTEXT_BUNDLE_REPAIR_FAILED,
+            ...getContextBundleSourceErrorContext(error),
         }, { merge: true });
         return {
             status: 'failed',
@@ -664,7 +728,7 @@ export const repairCompiledContextBundle = async (tId: number, sId: number): Pro
             bundleVersion: Number(existingManifest?.bundleVersion || existingManifest?.activeVersion || 0),
             bytesTotal: Number(existingManifest?.stats?.bytesTotal || 0),
             routes: Number(existingManifest?.stats?.routes || 0),
-            error: message.slice(0, 500),
+            error: ANSWERLATTICE_CONTEXT_BUNDLE_REPAIR_FAILED,
         };
     }
 };

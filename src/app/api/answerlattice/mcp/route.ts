@@ -3,8 +3,10 @@ export const dynamic = 'force-dynamic';
 import { FEATURE_FLAGS } from '@config/features';
 import { verifyAnswerlatticeMcpSessionToken } from '@lib/answerlattice/mcpSession';
 import { ANSWERLATTICE_MCP_TOOLS, handleAnswerlatticeMcpToolCall } from '@lib/answerlattice/mcpTools';
+import { buildAnswerlatticeRateLimitKey } from '@lib/answerlattice/rateLimitKeys';
 import { checkRateLimit } from '@lib/rateLimit';
-import { secureError } from '@lib/security/secureLogger';
+import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
+import { readBoundedJsonBody } from '@lib/security/boundedRequestBody';
 import { NextRequest, NextResponse } from 'next/server';
 
 type JsonRpcRequest = {
@@ -13,6 +15,8 @@ type JsonRpcRequest = {
     method?: string;
     params?: any;
 };
+
+const ANSWERLATTICE_MCP_MAX_BODY_BYTES = 16 * 1024;
 
 const jsonRpcResult = (id: JsonRpcRequest['id'], result: any) => NextResponse.json({ jsonrpc: '2.0', id, result });
 const jsonRpcError = (id: JsonRpcRequest['id'], code: number, message: string, status = 200) => NextResponse.json({
@@ -38,7 +42,7 @@ export async function POST(request: NextRequest) {
     }
 
     const rateLimit = await checkRateLimit({
-        key: `answerlattice-mcp-tool:${session.tId}:${session.sId}`,
+        key: buildAnswerlatticeRateLimitKey('answerlattice-mcp-tool', session.tId, session.sId),
         limit: 120,
         window: 60,
     });
@@ -47,7 +51,17 @@ export async function POST(request: NextRequest) {
     }
 
     try {
-        const body = await request.json().catch(() => null) as JsonRpcRequest;
+        const bodyResult = await readBoundedJsonBody(request, ANSWERLATTICE_MCP_MAX_BODY_BYTES);
+        if (bodyResult.ok === false) {
+            return jsonRpcError(
+                null,
+                bodyResult.response.status === 413 ? -32004 : -32700,
+                bodyResult.response.status === 413 ? 'Request body too large' : 'Parse error',
+                bodyResult.response.status,
+            );
+        }
+
+        const body = bodyResult.data as JsonRpcRequest;
         if (!body || body.jsonrpc !== '2.0' || !body.method) {
             return jsonRpcError(null, -32600, 'Invalid Request');
         }
@@ -75,9 +89,9 @@ export async function POST(request: NextRequest) {
 
         return jsonRpcError(body.id, -32601, 'Method not found');
     } catch (error) {
-        secureError('[Answerlattice MCP] JSON-RPC request failed', error as Error, {
-            tId: session.tId,
-            sId: session.sId,
+        logRuntimeFailure('answerlattice_mcp_json_rpc_failed', error, {
+            ...getBoundedRuntimeStringContext('tenantId', session.tId),
+            ...getBoundedRuntimeStringContext('storeId', session.sId),
         });
         return jsonRpcError(null, -32603, 'Internal error');
     }

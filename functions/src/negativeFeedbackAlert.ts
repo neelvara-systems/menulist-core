@@ -1,8 +1,35 @@
 // @ts-nocheck
-// TODO: Update to Firebase Functions v2 API before using this file
+// Dormant legacy trigger. Keep excluded from function exports until upgraded to the current Functions API.
 import * as functions from 'firebase-functions';
 import * as admin from 'firebase-admin';
 import { DB_COLLECTIONS } from './constants/database';
+import { validateNetworkTargetUrl } from './utils/networkTarget';
+
+const logger = functions.logger;
+const NEGATIVE_FEEDBACK_SLACK_TARGET_REJECTED = 'NEGATIVE_FEEDBACK_SLACK_TARGET_REJECTED';
+
+const getStringContext = (label: string, value: unknown) => {
+    const normalized = value === undefined || value === null ? '' : String(value);
+    return {
+        [`${label}Present`]: normalized.length > 0,
+        [`${label}Length`]: normalized.length,
+    };
+};
+
+const getErrorContext = (error: unknown) => (
+    error && typeof error === 'object'
+        ? {
+            sourceErrorName: (error as Error).name || 'Error',
+            sourceErrorCode: 'code' in error ? String((error as any).code).slice(0, 64) : undefined,
+        }
+        : { sourceErrorName: typeof error }
+);
+
+const getSlackTargetContext = (result: { addressCount?: number; error?: string; errorName?: string }) => ({
+    addressCount: result.addressCount || 0,
+    targetError: typeof result.error === 'string' ? result.error.slice(0, 80) : undefined,
+    targetErrorName: typeof result.errorName === 'string' ? result.errorName.slice(0, 80) : undefined,
+});
 
 /**
  * REAL-TIME ALERT: Negative Feedback Trigger
@@ -13,13 +40,7 @@ import { DB_COLLECTIONS } from './constants/database';
  * 
  * Cost: Minimal - only triggers on feedback changes (not every message)
  * 
- * Setup:
- * 1. Configure Slack webhook URL in Firebase Config:
- *    firebase functions:config:set slack.webhook_url="YOUR_WEBHOOK_URL"
- * 
- * 2. Or use email via SendGrid/Firebase Extensions
- * 
- * 3. Deploy: firebase deploy --only functions:onNegativeFeedback
+ * This file is not exported from functions/src/index.ts.
  */
 
 export const onNegativeFeedback = functions.firestore
@@ -57,19 +78,22 @@ export const onNegativeFeedback = functions.firestore
                     aiAnswer: afterMsg.craftedAnswer || 'N/A',
                     feedbackComments: afterMsg.feedback.comments || 'No comment provided',
                     reasonsToImprove: afterMsg.feedback.reasonsToImprove || [],
-                    conversationUrl: `https://your-domain.com/platform/chat-management?session=${sessionId}`
+                    conversationPath: `/platform/chat-management?session=${encodeURIComponent(sessionId)}`
                 };
 
-                // Send alerts (you can enable multiple channels)
                 await Promise.all([
                     sendSlackAlert(alertData),
-                    // sendEmailAlert(alertData), // Uncomment if using email
                     logToFirestore(alertData) // Keep record of all alerts
                 ]);
 
-                console.log('Negative feedback alert sent:', alertData);
-            }
-        }
+                logger.info('Negative feedback alert processed', {
+                    ...getStringContext('sessionId', sessionId),
+                    userIdPresent: Boolean(after.uId),
+                    tenantIdPresent: Boolean(after.tId),
+                    reasonCount: Array.isArray(alertData.reasonsToImprove) ? alertData.reasonsToImprove.length : 0,
+                });
+	            }
+	        }
 
         return null;
     });
@@ -81,11 +105,21 @@ async function sendSlackAlert(data: any) {
     const webhookUrl = functions.config().slack?.webhook_url;
     
     if (!webhookUrl) {
-        console.warn('Slack webhook URL not configured. Skipping Slack alert.');
+        logger.warn('Negative feedback Slack webhook missing');
         return;
     }
 
     try {
+        const targetValidation = await validateNetworkTargetUrl(String(webhookUrl));
+        if (!targetValidation.valid || !targetValidation.normalizedUrl) {
+            logger.warn('Negative feedback Slack webhook target rejected', {
+                failureCode: NEGATIVE_FEEDBACK_SLACK_TARGET_REJECTED,
+                ...getStringContext('sessionId', data.sessionId),
+                ...getSlackTargetContext(targetValidation),
+            });
+            return;
+        }
+
         const fetch = (await import('node-fetch')).default;
         
         const message = {
@@ -125,67 +159,32 @@ async function sendSlackAlert(data: any) {
                         text: `*AI Answer:*\n${data.aiAnswer.substring(0, 200)}${data.aiAnswer.length > 200 ? '...' : ''}`
                     }
                 },
-                {
-                    type: 'section',
-                    text: {
-                        type: 'mrkdwn',
-                        text: `*Feedback:*\n"${data.feedbackComments}"`
-                    }
-                },
-                {
-                    type: 'actions',
-                    elements: [
-                        {
-                            type: 'button',
-                            text: {
-                                type: 'plain_text',
-                                text: 'View Full Conversation'
-                            },
-                            url: data.conversationUrl,
-                            style: 'primary'
-                        }
-                    ]
-                }
+	                {
+	                    type: 'section',
+	                    text: {
+	                        type: 'mrkdwn',
+	                        text: `*Feedback:*\n"${data.feedbackComments}"`
+	                    }
+	                }
             ]
         };
 
-        await fetch(webhookUrl, {
+        await fetch(targetValidation.normalizedUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(message)
         });
 
-        console.log('Slack alert sent successfully');
-    } catch (error) {
-        console.error('Failed to send Slack alert:', error);
-    }
-}
-
-/**
- * Send email alert (optional - requires SendGrid or similar)
- */
-async function sendEmailAlert(data: any) {
-    // Example using SendGrid:
-    // const sgMail = require('@sendgrid/mail');
-    // sgMail.setApiKey(functions.config().sendgrid.api_key);
-    // 
-    // const msg = {
-    //     to: 'support@your-domain.com',
-    //     from: 'alerts@your-domain.com',
-    //     subject: `Negative Feedback Alert - User ${data.userId}`,
-    //     html: `
-    //         <h2>Negative Feedback Received</h2>
-    //         <p><strong>User:</strong> ${data.userId}</p>
-    //         <p><strong>Question:</strong> ${data.userQuestion}</p>
-    //         <p><strong>Feedback:</strong> "${data.feedbackComments}"</p>
-    //         <a href="${data.conversationUrl}">View Full Conversation</a>
-    //     `
-    // };
-    // 
-    // await sgMail.send(msg);
-    
-    console.log('Email alert would be sent here (not configured)');
-}
+        logger.info('Negative feedback Slack alert sent', {
+            ...getStringContext('sessionId', data.sessionId),
+        });
+	    } catch (error) {
+	        logger.error('Negative feedback Slack alert failed', {
+	            ...getStringContext('sessionId', data.sessionId),
+	            ...getErrorContext(error),
+	        });
+	    }
+	}
 
 /**
  * Log alert to Firestore for record-keeping
@@ -199,7 +198,10 @@ async function logToFirestore(data: any) {
                 createdOn: admin.firestore.FieldValue.serverTimestamp(),
                 resolved: false // Can be updated later by support team
             });
-    } catch (error) {
-        console.error('Failed to log alert to Firestore:', error);
-    }
-}
+	    } catch (error) {
+	        logger.error('Negative feedback alert Firestore write failed', {
+	            ...getStringContext('sessionId', data.sessionId),
+	            ...getErrorContext(error),
+	        });
+	    }
+	}

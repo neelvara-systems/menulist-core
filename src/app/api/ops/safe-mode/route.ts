@@ -18,13 +18,18 @@ import { DB_COLLECTIONS } from '@constant/database';
 import { PLATFORM_NOTIFICATION_TRIGGER_TYPES } from '@data/shared/platformNotificationRegistry';
 import { logger } from '@lib/monitoring/logger';
 import { createAlert } from '@lib/ops/alerts';
+import { getBoundedOpsStringContext, logOpsFailure } from '@lib/ops/opsDiagnostics';
 import { checkRateLimit } from '@lib/rateLimit';
+import { readBoundedJsonBody } from '@lib/security/boundedRequestBody';
 import { validateAPIInput } from '@lib/security/inputValidation';
-import { buildSecurityContext } from '@lib/security/securityContext';
+import { getBoundedSecurityRouteContext } from '@lib/security/securityDiagnostics';
 import { Timestamp, getFirestore } from 'firebase-admin/firestore';
 import { NextResponse } from 'next/server';
+import { hashPublicRateLimitValue } from 'src/middleware/publicApi';
 import { z } from 'zod';
 import { withAuth } from '../../../../middleware/auth';
+
+const OPS_SAFE_MODE_MAX_BODY_BYTES = 2 * 1024;
 
 const SafeModeRequestSchema = z.object({
   action: z.enum(['activate', 'deactivate']),
@@ -37,12 +42,34 @@ function getOperatorId(session: any): string {
 
 export const POST = withAuth(async (request, session) => {
   try {
-    const body = await request.json().catch(() => ({}));
-    const validation = validateAPIInput(SafeModeRequestSchema, body);
+    const operatorId = getOperatorId(session);
+    const operatorRateLimitHash = hashPublicRateLimitValue(operatorId);
+    const rateLimit = await checkRateLimit({
+      key: `ops-safe-mode:${operatorRateLimitHash}`,
+      limit: 10,
+      window: 60 * 60,
+    });
+    if (!rateLimit.allowed) {
+      const retryAfter = Math.max(1, Math.ceil((rateLimit.resetAt - Date.now()) / 1000));
+      logger.security('Ops SAFE_MODE rate limited', {
+        ...getBoundedSecurityRouteContext(session, request),
+      }, 'high');
+      return NextResponse.json(
+        { error: 'Too many SAFE_MODE toggle attempts', retryAfter },
+        { status: 429, headers: { 'Retry-After': String(retryAfter) } },
+      );
+    }
+
+    const bodyResult = await readBoundedJsonBody(request, OPS_SAFE_MODE_MAX_BODY_BYTES, {
+      invalidJsonMessage: 'Invalid input',
+    });
+    if (bodyResult.ok === false) return bodyResult.response;
+
+    const validation = validateAPIInput(SafeModeRequestSchema, bodyResult.data);
 
     if (validation.success === false) {
       logger.security('Ops SAFE_MODE input validation failed', {
-        ...buildSecurityContext(session, request),
+        ...getBoundedSecurityRouteContext(session, request),
         details: validation.error,
       }, 'medium');
       return NextResponse.json(
@@ -52,24 +79,6 @@ export const POST = withAuth(async (request, session) => {
     }
 
     const { action, reason } = validation.data;
-    const operatorId = getOperatorId(session);
-    const rateLimit = await checkRateLimit({
-      key: `ops-safe-mode:${operatorId}`,
-      limit: 10,
-      window: 60 * 60,
-    });
-    if (!rateLimit.allowed) {
-      const retryAfter = Math.max(1, Math.ceil((rateLimit.resetAt - Date.now()) / 1000));
-      logger.security('Ops SAFE_MODE rate limited', {
-        ...buildSecurityContext(session, request),
-        action,
-      }, 'high');
-      return NextResponse.json(
-        { error: 'Too many SAFE_MODE toggle attempts', retryAfter },
-        { status: 429, headers: { 'Retry-After': String(retryAfter) } },
-      );
-    }
-
     const db = getFirestore();
     const opsRef = db.collection(DB_COLLECTIONS.OPS_CONFIG).doc('system');
 
@@ -82,8 +91,8 @@ export const POST = withAuth(async (request, session) => {
       }, { merge: true });
 
       logger.security('SAFE_MODE Activated', {
-        ...buildSecurityContext(session, request),
-        reason: reason || 'Manual activation',
+        ...getBoundedSecurityRouteContext(session, request),
+        ...getBoundedOpsStringContext('reason', reason || 'Manual activation'),
       }, 'critical');
 
       await createAlert({
@@ -110,7 +119,7 @@ export const POST = withAuth(async (request, session) => {
       }, { merge: true });
 
       logger.security('SAFE_MODE Deactivated', {
-        ...buildSecurityContext(session, request),
+        ...getBoundedSecurityRouteContext(session, request),
       }, 'high');
 
       await createAlert({
@@ -131,7 +140,10 @@ export const POST = withAuth(async (request, session) => {
       return NextResponse.json({ success: true, SAFE_MODE: false });
     }
   } catch (error) {
-    logger.error('[API /ops/safe-mode] Error', error, buildSecurityContext(session, request));
+    logOpsFailure('ops_safe_mode_route_failed', error, {
+      ...getBoundedOpsStringContext('userId', getOperatorId(session)),
+      ...getBoundedOpsStringContext('requestPath', request.nextUrl.pathname),
+    });
     return NextResponse.json(
       { error: 'Failed to toggle SAFE_MODE' },
       { status: 500 }

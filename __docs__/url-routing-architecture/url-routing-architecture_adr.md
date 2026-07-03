@@ -1,8 +1,9 @@
 # URL Routing Architecture — Architecture Decision Records (ADRs)
 
 > **Last Updated:** May 30, 2026
-> **Version:** 2.1 (Phase 1 + Phase 2 + Product-Domain Guardrails)
+> **Version:** 2.1 (Slug + Canonical + Product-Domain Guardrails)
 > **Purpose:** Single source of truth for WHY decisions were made. Future sessions read this FIRST.
+> **Local Source Gate:** `npm run verify:url-routing-boundary`
 
 ---
 

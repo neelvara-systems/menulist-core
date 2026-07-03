@@ -162,13 +162,7 @@ Implemented rules enforce:
 
 Firestore rules were changed and deployed during implementation, then hardened so GrowthOS summary writes stay server-owned and kit/export writes cannot bypass the API.
 
-Deployment evidence:
-
-```txt
-firebase deploy --only firestore:rules --project ecomsai
-```
-
-Result: rules compiled successfully and were released to `cloud.firestore` for project `ecomsai`.
+Historical deployment evidence: `firebase deploy --only firestore:rules --project ecomsai` released rules to `cloud.firestore` for project `ecomsai`. This is historical evidence only; do not reuse it as current deployment guidance. Current MenuList rules deploy evidence must target `menulist-qa` first with `firebase.json`, then production only after QA evidence and explicit production approval.
 
 ## 8. Implemented Cost Optimizations
 
@@ -181,6 +175,8 @@ Implemented V1 optimizations:
 - summary refresh skips Firestore writes when the normalized summary did not change
 - export route reuses store entitlement data and recomputes only the current source snapshot instead of reloading the full GrowthOS context
 - summary latest-kit status is written after export only when status or stale state changed
+- client request policy pins no-store cache, same-origin credentials, and manual redirect handling before existing bounded response parsing
+- client response parsing is bounded to 64 KB and logs diagnostics only; it adds no Firebase reads/writes/deletes
 - deterministic dry-run coverage is available through `npm run verify:growthos`
 
 ## 9. AI Provider Cost
@@ -242,3 +238,17 @@ Do not ship until:
 | Multi-Outlet Localized Kits | Pilot. Per selected store only; no brand-wide background refresh. |
 | Used History UI | Pilot. Paginated `growthosExports`; no aggregate dashboard unless proven necessary. |
 | Low-Data Mobile Access | V1 latest-kit fallback uses local state. No extra Firestore writes. |
+
+## 13. Sales Pack Failure Diagnostics
+
+Failed desktop and mobile Sales Pack refresh, prepare, copy, share, download, review-reply, review-reply copy, and mark-used actions log bounded GrowthOS diagnostics only. Context is limited to project/store/tenant/kit/action/output/destination presence-length metadata, state booleans, clipboard/fallback support booleans, output/review/reply text length, and normalized source error metadata.
+
+Copy/share/download export rows are written only after the browser handoff succeeds. If clipboard, native share, fallback copy, or download startup fails, the owner sees fixed copy and no `growthosExports` execution signal is created.
+
+Cost impact: this reduces false failed-handoff writes and adds no Firestore reads/writes/deletes beyond existing successful export behavior, Storage operations, Cloud Functions logic, provider calls, scheduler work, rules, indexes, routes, owner-facing settings, Firebase deploy requirement, or Vercel deploy.
+
+## 14. API Security-Log Boundary
+
+GrowthOS refresh, generate, export, and review-guard routes now log invalid JSON, validation failures, and tenant violations with bounded route/session metadata plus endpoint/method/validation-error/attempted-id presence-length fields. They no longer spread raw `buildSecurityContext()` output into those security events.
+
+Cost impact: this changes route security-log metadata only. It adds no Firestore reads/writes/deletes, Storage operations, Cloud Functions logic, provider calls, scheduler work, rules, indexes, routes, owner-facing settings, Firebase deploy requirement, or Vercel deploy action. Existing successful refresh, generation, export recording, review-guard behavior, entitlement checks, rate limits, and API responses are unchanged.

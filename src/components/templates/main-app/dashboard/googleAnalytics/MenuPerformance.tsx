@@ -1,6 +1,7 @@
 'use client';
 
 import { useOfferingLabels } from '@hook/useOfferingLabels';
+import { getBoundedAnalyticsStringContext, logAnalyticsFailure } from '@lib/analytics/analyticsDiagnostics';
 import { fetchMenuItemStats } from '@services/analytics';
 import { Card, Space, Table, Tag, Tooltip, Typography, theme } from 'antd';
 import React, { useEffect, useState } from 'react';
@@ -42,16 +43,20 @@ const MenuPerformance: React.FC<MenuPerformanceProps> = ({ propertyId, dateRange
                 const response = await fetchMenuItemStats(propertyId, dateRange);
 
                 const items = response?.rows?.map(row => ({
-                    name: row.dimensionValues[0].value,
-                    category: row.dimensionValues[1].value,
-                    views: parseInt(row.metricValues[0].value),
-                    revenue: parseFloat(row.metricValues[1].value),
-                    orders: parseInt(row.metricValues[2].value)
+                    name: row.dimensionValues?.[1]?.value || row.dimensionValues?.[0]?.value || 'Unknown item',
+                    category: row.dimensionValues?.[0]?.value || 'Uncategorized',
+                    views: parseInt(row.metricValues?.[0]?.value || '0', 10),
+                    revenue: parseFloat(row.metricValues?.[2]?.value || '0'),
+                    orders: parseInt(row.metricValues?.[1]?.value || '0', 10)
                 })) || [];
 
                 setMenuItems(items.sort((a, b) => b.views - a.views));
             } catch (error) {
-                console.error('Error fetching menu stats:', error);
+                logAnalyticsFailure('dashboard_google_menu_performance_load_failed', error, {
+                    ...getBoundedAnalyticsStringContext('propertyId', propertyId),
+                    ...getBoundedAnalyticsStringContext('startDate', dateRange.startDate),
+                    ...getBoundedAnalyticsStringContext('endDate', dateRange.endDate),
+                });
             }
             setLoading(false);
         };

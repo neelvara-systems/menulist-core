@@ -13,6 +13,7 @@ import { getStoreByCustomDomain, getStoreBySubdomain } from '@lib/firestore/clie
 import { getStoreContextName } from '@lib/businessIdentity/names';
 import { getResolvedAnalyticsPreferences } from '@lib/analytics/preferences';
 import { getTenantFromHeaders } from '@lib/multiTenant/getTenantFromHeaders';
+import { normalizeOBPGoogleMapsUrl } from '@lib/obp/publicLinks';
 import PwaDirectionsHandoffClient from './PwaDirectionsHandoffClient';
 
 export const dynamic = 'force-dynamic';
@@ -20,8 +21,8 @@ export const revalidate = 0;
 
 function buildMapsUrl(store: any): string | null {
     // 1. Owner-provided direct URL wins.
-    const direct = store?.publicPresence?.googleMapsUrl;
-    if (typeof direct === 'string' && direct.trim().length > 0) return direct;
+    const direct = normalizeOBPGoogleMapsUrl(store?.publicPresence?.googleMapsUrl);
+    if (direct) return direct;
 
     // 2. Construct a maps search URL from the address components.
     const parts = [

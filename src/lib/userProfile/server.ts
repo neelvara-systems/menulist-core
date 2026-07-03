@@ -1,10 +1,23 @@
 import { DB_COLLECTIONS } from "@constant/database";
+import {
+  getAuthSessionLogContext,
+  getBoundedAuthStringContext,
+  logAuthDiagnostic,
+  logAuthFailure,
+} from "@lib/auth/authDiagnostics";
 import { admin, firestoreAdmin } from "@lib/firebase/firebaseAdmin";
 import { logger } from "@lib/monitoring/logger";
 import { normalizePhoneNumberForStorage } from "@lib/phone/phoneNumber";
+import { checkRateLimit } from "@lib/rateLimit";
+import { getRateLimitForFeature } from "@lib/rateLimit/configs";
+import { readBoundedJsonBody } from "@lib/security/boundedRequestBody";
 import { validateAPIInput } from "@lib/security/inputValidation";
-import { buildSecurityContext } from "@lib/security/securityContext";
+import {
+  getBoundedSecurityRouteContext,
+  getBoundedSecurityStringContext,
+} from "@lib/security/securityDiagnostics";
 import { NextRequest, NextResponse } from "next/server";
+import { hashPublicRateLimitValue } from "src/middleware/publicApi";
 import { z } from "zod";
 
 const UpdateProfileSchema = z.object({
@@ -19,6 +32,8 @@ const UpdateProfileSchema = z.object({
   phoneNumber: z.string().trim().max(40).optional(),
 });
 
+const USER_PROFILE_UPDATE_MAX_BODY_BYTES = 4 * 1024;
+
 export async function updateCurrentUserProfile(request: NextRequest, session: any) {
   try {
     const userId = String(session?.uId || session?.user?.id || "");
@@ -26,13 +41,27 @@ export async function updateCurrentUserProfile(request: NextRequest, session: an
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     }
 
-    const body = await request.json();
-    const validation = validateAPIInput(UpdateProfileSchema, body);
+    const userRateLimitHash = hashPublicRateLimitValue(userId);
+    const profileWriteLimit = await checkRateLimit({
+      key: `profile-update:${userRateLimitHash}`,
+      ...getRateLimitForFeature("DATA_WRITE"),
+    });
+    if (!profileWriteLimit.allowed) {
+      return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+    }
+
+    const bodyResult = await readBoundedJsonBody(request, USER_PROFILE_UPDATE_MAX_BODY_BYTES, {
+      invalidJsonMessage: "Invalid profile details",
+      tooLargeMessage: "Request body too large",
+    });
+    if (bodyResult.ok === false) return bodyResult.response;
+
+    const validation = validateAPIInput(UpdateProfileSchema, bodyResult.data);
     if (validation.success === false) {
       logger.security("Input Validation Failed - Update Profile", {
-        ...buildSecurityContext(session, request),
-        endpoint: request.nextUrl.pathname,
-        error: validation.error,
+        ...getBoundedSecurityRouteContext(session, request),
+        ...getBoundedSecurityStringContext("endpoint", request.nextUrl.pathname),
+        ...getBoundedSecurityStringContext("validationError", validation.error),
       }, "medium");
 
       return NextResponse.json({ error: "Invalid profile details" }, { status: 400 });
@@ -77,22 +106,26 @@ export async function updateCurrentUserProfile(request: NextRequest, session: an
     updates.modifiedOn = admin.firestore.Timestamp.now();
 
     await userRef.update(updates);
+    const updatedFieldNames = Object.keys(updates).filter((key) => key !== "modifiedOn");
 
-    logger.info("[update-profile] Updated profile", {
-      ...buildSecurityContext(session, request),
-      endpoint: request.nextUrl.pathname,
-      updatedFields: Object.keys(updates),
+    logAuthDiagnostic("profile_update_succeeded", {
+      ...getAuthSessionLogContext(session),
+      ...getBoundedAuthStringContext("endpoint", request.nextUrl.pathname),
+      updatedFieldCount: updatedFieldNames.length,
+      updatedName: updatedFieldNames.includes("name"),
+      updatedDisplayEmail: updatedFieldNames.includes("displayEmail"),
+      updatedPhone: updatedFieldNames.some((key) => key.startsWith("phone") || key === "countryCode" || key === "dialCode"),
     });
 
     return NextResponse.json({
       success: true,
-      updated: Object.keys(updates).filter((key) => key !== "modifiedOn"),
+      updated: updatedFieldNames,
       updates: Object.fromEntries(Object.entries(updates).filter(([key]) => key !== "modifiedOn")),
     });
   } catch (error) {
-    logger.error("[update-profile] Error", error, {
-      ...buildSecurityContext(session, request),
-      endpoint: request.nextUrl.pathname,
+    logAuthFailure("profile_update_failed", error, {
+      ...getAuthSessionLogContext(session),
+      ...getBoundedAuthStringContext("endpoint", request.nextUrl.pathname),
     });
     return NextResponse.json({ error: "Internal error" }, { status: 500 });
   }

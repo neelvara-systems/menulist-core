@@ -4,6 +4,7 @@ import {
     monitoringDsn,
     monitoringEnvironment,
     monitoringRelease,
+    sanitizeMonitoringEvent,
     shouldSendMonitoringEvent,
 } from './src/lib/monitoring/sentryShared';
 
@@ -16,7 +17,7 @@ if (isSentryMonitoringEnabled && monitoringDsn.server) {
         tracesSampleRate: monitoringEnvironment === 'development' ? 1.0 : 0.1,
         sendDefaultPii: false,
         beforeSend(event, hint) {
-            return shouldSendMonitoringEvent(hint) ? event : null;
+            return shouldSendMonitoringEvent(hint) ? sanitizeMonitoringEvent(event) : null;
         },
     });
 }

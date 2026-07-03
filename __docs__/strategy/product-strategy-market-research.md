@@ -3,7 +3,9 @@
 > **Document Type:** Product Strategy & Competitive Analysis  
 > **Created:** November 25, 2025  
 > **Purpose:** Foundational research for digital catalog platform targeting SMBs (restaurants, salons, spas)  
-> **Status:** Strategic Planning Phase
+> **Status:** Historical market-research reference; not current launch certification
+
+> **Launch Boundary:** This market-research note is retained for historical strategy context. It is not the current public-beta scope or launch approval. Current MenuList launch readiness is decided by the active [production-readiness audit](../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../production-readiness/external-certification-runbook.md) evidence, current source verifiers, browser/mobile QA, provider/deploy evidence where relevant, and production-host smoke.
 
 ---
 
@@ -158,7 +160,7 @@ Most competitors either:
 
 ## ⚡ MVP-Only Features (Hard Boundary)
 
-> **STRICT RULE:** Only these 4 features are allowed before public beta. Everything else is Phase 2+.
+> **Historical MVP filter:** In November 2025, this note limited public-beta scope to four features. Do not use this section as current launch approval or current public-beta scope; use the active production-readiness audit and External Certification Runbook evidence instead.
 
 ### What IS in MVP
 

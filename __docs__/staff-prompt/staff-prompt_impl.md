@@ -1,11 +1,19 @@
 # Staff Prompt Mode — Implementation Plan
 
 **Created:** January 11, 2026  
-**Status:** 🔧 **DEV-READY**  
+**Status:** Historical implementation plan; active runtime is read-only Today summary display; not current launch certification
 **Audience:** Engineering only  
 **Parent Spec:** `@__docs__/staff-prompt/staff-prompt_spec.md`
 
 > **Runtime note (June 11, 2026):** The standalone helper implementation described below is historical. Active code reads `staffPrompt` from `platformSummary/campaigns_{sId}` through `getTodayCampaigns()` and renders it read-only in Today/mobile Today only when `eligible` is true.
+
+---
+
+## Current Runtime Boundary
+
+This implementation plan is historical source evidence. Active code does not include a standalone `src/lib/staff-prompt` generator, provider call, staff-facing route, owner setting, mobile-only write, or public Staff Prompt landing page.
+
+Current release approval requires the active [production-readiness audit](../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../production-readiness/external-certification-runbook.md) evidence, `npm run verify:staff-prompt-runtime`, authenticated desktop/mobile Today QA with an eligible target-store `staffPrompt`, target deploy evidence, and production-host smoke. If the release scope claims generated prompts end-to-end, upstream summary-writer evidence for `platformSummary/campaigns_{sId}.staffPrompt` is also required.
 
 ---
 
@@ -510,7 +518,7 @@ No new rate limiting needed — uses existing campaign sync.
 
 ```bash
 # Verify types compile
-npm run type-check
+npx tsc --noEmit --incremental false
 
 # Run dev server and check Today tab
 npm run dev
@@ -533,6 +541,8 @@ npm run dev
 
 ## Progress Tracking
 
+The table below is the January 2026 implementation-plan checklist. It is not current release approval and does not override the active runtime boundary above.
+
 | Phase                 | Status      | Completion Date |
 | --------------------- | ----------- | --------------- |
 | Types & Constants     | [ ] Pending | —               |
@@ -545,6 +555,6 @@ npm run dev
 
 ---
 
-**Document Status:** 🔧 DEV-READY  
+**Document Status:** Historical implementation plan; not current implementation or launch approval
 **Estimated Effort:** 3 days  
 **Priority:** P1

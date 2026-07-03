@@ -39,10 +39,15 @@ const requiredFiles = [
   'src/components/mobile/components/MobileQrCodeSheet.tsx',
   'src/components/mobile/screens/MobileMenuScreen.tsx',
   'src/components/mobile/components/MobileMenuCommandSheet.tsx',
+  'src/components/templates/main-app/useMenuList/useMenuListDiagnostics.ts',
   'src/components/mobile/screens/MobileMoreScreen.tsx',
   'src/app/(main)/use-menulist/print-assets/page.tsx',
   '__docs__/menu-card-export/menu-card-export_firebase.md',
+  '__docs__/menu-card-export/menu-card-export_helpdoc.md',
+  '__docs__/menu-card-export/menu-card-export_marketing.md',
+  '__docs__/menu-card-export/menu-card-export_website.md',
   '__docs__/menu-card-export/menu-card-export_test-cases.md',
+  '__docs__/menu-card-export/menu-card-export_validation.md',
   '__docs__/print-assets/README.md',
   '__docs__/print-assets/print-assets_spec.md',
   '__docs__/print-assets/print-assets_impl.md',
@@ -55,6 +60,11 @@ const requiredFiles = [
   '__docs__/print-menu-surfaces/print-menu-surfaces_impl.md',
   '__docs__/print-menu-surfaces/print-menu-surfaces_firebase.md',
   '__docs__/print-menu-surfaces/print-menu-surfaces_mobile-support.md',
+  '__docs__/physical-surfaces/README.md',
+  '__docs__/physical-surfaces/physical-surfaces_code-review.md',
+  '__docs__/physical-surfaces/physical-surfaces_validation.md',
+  '__docs__/physical-surfaces/physical-surfaces_marketing.md',
+  '__docs__/physical-surfaces/physical-surfaces_logic-verification.md',
 ];
 
 const failures = [];
@@ -81,6 +91,191 @@ const features = fs.readFileSync(path.join(root, 'src/config/features.ts'), 'utf
 });
 
 const printAssetCatalog = fs.readFileSync(path.join(root, 'src/lib/print-assets/printAssetCatalog.ts'), 'utf8');
+const menuCardExportCoreDocs = [
+  {
+    label: 'Menu Card Export README',
+    content: fs.readFileSync(path.join(root, '__docs__/menu-card-export/README.md'), 'utf8'),
+  },
+  {
+    label: 'Menu Card Export spec',
+    content: fs.readFileSync(path.join(root, '__docs__/menu-card-export/menu-card-export_spec.md'), 'utf8'),
+  },
+  {
+    label: 'Menu Card Export implementation',
+    content: fs.readFileSync(path.join(root, '__docs__/menu-card-export/menu-card-export_impl.md'), 'utf8'),
+  },
+  {
+    label: 'Menu Card Export mobile support',
+    content: fs.readFileSync(path.join(root, '__docs__/menu-card-export/menu-card-export_mobile-support.md'), 'utf8'),
+  },
+];
+const menuCardExportCollateralDocs = [
+  {
+    label: 'Menu Card Export helpdoc',
+    content: fs.readFileSync(path.join(root, '__docs__/menu-card-export/menu-card-export_helpdoc.md'), 'utf8'),
+  },
+  {
+    label: 'Menu Card Export marketing',
+    content: fs.readFileSync(path.join(root, '__docs__/menu-card-export/menu-card-export_marketing.md'), 'utf8'),
+  },
+  {
+    label: 'Menu Card Export website',
+    content: fs.readFileSync(path.join(root, '__docs__/menu-card-export/menu-card-export_website.md'), 'utf8'),
+  },
+];
+const menuCardExportValidation = fs.readFileSync(path.join(root, '__docs__/menu-card-export/menu-card-export_validation.md'), 'utf8');
+const menuCardExportTestCases = fs.readFileSync(path.join(root, '__docs__/menu-card-export/menu-card-export_test-cases.md'), 'utf8');
+const physicalSurfacesReadme = fs.readFileSync(path.join(root, '__docs__/physical-surfaces/README.md'), 'utf8');
+const physicalSurfacesCodeReview = fs.readFileSync(path.join(root, '__docs__/physical-surfaces/physical-surfaces_code-review.md'), 'utf8');
+const physicalSurfacesValidation = fs.readFileSync(path.join(root, '__docs__/physical-surfaces/physical-surfaces_validation.md'), 'utf8');
+const physicalSurfacesMarketing = fs.readFileSync(path.join(root, '__docs__/physical-surfaces/physical-surfaces_marketing.md'), 'utf8');
+const physicalSurfacesLogicVerification = fs.readFileSync(path.join(root, '__docs__/physical-surfaces/physical-surfaces_logic-verification.md'), 'utf8');
+
+[
+  'Validated implementation evidence; not current launch certification',
+  'Current release approval requires the active [production-readiness audit]',
+  'External Certification Runbook',
+  'Digital Menu Output Constitution checks for print/menu outputs',
+  'visual PDF and print-shop artifact review',
+  'Current launch certification still requires the active audit/runbook gates above.',
+].forEach((token) => {
+  if (!menuCardExportValidation.includes(token)) failures.push(`Menu Card Export validation doc missing launch-boundary token: ${token}`);
+});
+[
+  '**Status:** Production ready after deterministic auto-design and Pro/Premium layout suggestion hardening',
+  'Ready for production release from code, cost, route, real-data runtime, and artifact validation.',
+].forEach((token) => {
+  if (menuCardExportValidation.includes(token)) failures.push(`Menu Card Export validation doc must not keep stale launch-certification token: ${token}`);
+});
+[
+  'Test-case evidence; not current launch certification',
+  'Current release approval requires the active [production-readiness audit]',
+  'External Certification Runbook',
+  'Digital Menu Output Constitution checks for print/menu outputs',
+  'Authenticated browser click-through remains an external certification gate before a Vercel release.',
+].forEach((token) => {
+  if (!menuCardExportTestCases.includes(token)) failures.push(`Menu Card Export test-cases doc missing launch-boundary token: ${token}`);
+});
+[
+  '**Status:** Production-ready baseline; Pro/Premium layout suggestion added',
+  'Menu Card Export is release-ready for the client-first PDF/packet path after the automated gates and real-data runtime checks below.',
+].forEach((token) => {
+  if (menuCardExportTestCases.includes(token)) failures.push(`Menu Card Export test-cases doc must not keep stale launch-certification token: ${token}`);
+});
+const menuCardExportCoreDocTokens = [
+  'not current launch certification',
+  'Current release boundary (July 2, 2026)',
+  'External Certification Runbook',
+  'Digital Menu Output Constitution checks',
+  '`npm run verify:menu-card-export`',
+  'authenticated desktop/mobile browser QA',
+  'visual PDF and print-shop artifact review',
+  'provider smoke for the AI advisor where enabled',
+  'target deploy evidence',
+  'production-host smoke',
+];
+const menuCardExportCoreForbiddenTokens = [
+  '**Status:** Production-ready client-first route with Pro/Premium layout suggestion',
+  '**Status:** Production-ready client-first with Pro/Premium layout suggestion',
+  '**Status:** Production-ready route entry with dedicated mobile Print Menu screen',
+];
+menuCardExportCoreDocs.forEach(({ label, content }) => {
+  menuCardExportCoreDocTokens.forEach((token) => {
+    if (!content.includes(token)) failures.push(`${label} missing launch-boundary token: ${token}`);
+  });
+  menuCardExportCoreForbiddenTokens.forEach((token) => {
+    if (content.includes(token)) failures.push(`${label} must not keep stale launch-certification token: ${token}`);
+  });
+  if (/^\*\*Status:\*\*.*[Pp]roduction-ready/m.test(content)) {
+    failures.push(`${label} must not keep a production-ready status line`);
+  }
+});
+const menuCardExportCollateralTokens = [
+  'source evidence only',
+  'not current sales, demo, support, website-publication, or launch approval',
+  'Current collateral approval requires',
+  'External Certification Runbook',
+  'Digital Menu Output Constitution checks',
+  '`npm run verify:menu-card-export`',
+  'authenticated desktop/mobile browser QA',
+  'visual PDF and print-shop artifact review',
+  'provider smoke for the AI advisor where enabled',
+  'target deploy evidence',
+  'production-host smoke',
+];
+const menuCardExportCollateralForbiddenTokens = [
+  '**Status:** Ready for support use; screenshots pending',
+  '**Status:** Ready for founder demos and support positioning',
+  '**Status:** Dedicated owner-facing feature page active via Print-ready Kit',
+];
+menuCardExportCollateralDocs.forEach(({ label, content }) => {
+  menuCardExportCollateralTokens.forEach((token) => {
+    if (!content.includes(token)) failures.push(`${label} missing collateral-boundary token: ${token}`);
+  });
+  menuCardExportCollateralForbiddenTokens.forEach((token) => {
+    if (content.includes(token)) failures.push(`${label} must not keep stale collateral-approval token: ${token}`);
+  });
+});
+[
+  '⚠️ LEGACY — Superseded by [Menu Kit]',
+  'For all new physical surface work, use Menu Kit.',
+  'Maintenance note: the legacy Today/mobile Hours download buttons are still active',
+].forEach((token) => {
+  if (!physicalSurfacesReadme.includes(token)) failures.push(`Physical Surfaces README missing legacy boundary token: ${token}`);
+});
+[
+  'Historical code-review evidence for legacy campaign surfaces; not current launch certification',
+  'Menu Kit is the canonical physical surface system for identity surfaces.',
+  'Current release approval for any active physical/print output requires the active [production-readiness audit]',
+  'All reviewed bugs were fixed for this historical code-review scope. This is not current launch certification.',
+].forEach((token) => {
+  if (!physicalSurfacesCodeReview.includes(token)) failures.push(`Physical Surfaces code review missing launch-boundary token: ${token}`);
+});
+[
+  'Historical implementation validation for legacy campaign surfaces; not current launch certification',
+  'Menu Kit is now the canonical physical surface system for identity surfaces.',
+  'Current release approval for active physical/print output requires the active [production-readiness audit]',
+  'Historical Validation Result: Source Evidence Only',
+  'Evidence Scope:** Historical implementation validation only.',
+].forEach((token) => {
+  if (!physicalSurfacesValidation.includes(token)) failures.push(`Physical Surfaces validation missing launch-boundary token: ${token}`);
+});
+[
+  'Legacy positioning evidence; not current launch certification',
+  'Menu Kit is now the canonical physical surface system for identity surfaces.',
+  'Do not use this note as current launch, website, or sales approval',
+  'Legacy positioning evidence; not current launch approval',
+].forEach((token) => {
+  if (!physicalSurfacesMarketing.includes(token)) failures.push(`Physical Surfaces marketing missing launch-boundary token: ${token}`);
+});
+[
+  'Historical logic verification evidence for legacy campaign surfaces; not current launch certification',
+  'Menu Kit is now the canonical physical surface system for identity surfaces.',
+  'Current release approval for active physical/print output requires the active production-readiness audit',
+  '`npm run verify:menu-card-export`',
+  'Digital Menu Output Constitution checks',
+  'browser/mobile output QA',
+  'visual print artifact review',
+  'Historical Logic Verification Result: Source Evidence Only',
+].forEach((token) => {
+  if (!physicalSurfacesLogicVerification.includes(token)) failures.push(`Physical Surfaces logic verification missing launch-boundary token: ${token}`);
+});
+[
+  ['Physical Surfaces code review', physicalSurfacesCodeReview, 'Production ready.'],
+  ['Physical Surfaces validation', physicalSurfacesValidation, '**Ready For:** Vercel deploy + SMB testing'],
+  ['Physical Surfaces validation', physicalSurfacesValidation, '## ✅ FINAL VERDICT: SHIP READY'],
+  ['Physical Surfaces validation', physicalSurfacesValidation, '## 🚀 PRODUCTION QUALITY GATE: PASS'],
+  ['Physical Surfaces validation', physicalSurfacesValidation, '**Status:** SHIP READY'],
+  ['Physical Surfaces marketing', physicalSurfacesMarketing, '**Status:** Ready for Use'],
+  ['Physical Surfaces marketing', physicalSurfacesMarketing, '**Document Status:** Ready for launch'],
+  ['Physical Surfaces logic verification', physicalSurfacesLogicVerification, '**Status:** ✅ **DEPLOYABLE**'],
+  ['Physical Surfaces logic verification', physicalSurfacesLogicVerification, 'PRODUCTION READINESS: SAFE'],
+  ['Physical Surfaces logic verification', physicalSurfacesLogicVerification, '## FINAL VERDICT: ✅ DEPLOYABLE'],
+  ['Physical Surfaces logic verification', physicalSurfacesLogicVerification, 'Physical Surfaces logic verification complete. All 5 flows verified. Zero critical issues.'],
+].forEach(([label, content, token]) => {
+  if (content.includes(token)) failures.push(`${label} must not keep stale launch-certification token: ${token}`);
+});
+
 [
   'PRINT_ASSET_MENU_KIT_INDEX',
   'table_tent: 0',
@@ -177,6 +372,7 @@ const route = fs.readFileSync(path.join(root, 'src/components/templates/main-app
 });
 
 const controller = fs.readFileSync(path.join(root, 'src/hooks/useMenuCardExportController.ts'), 'utf8');
+const designAdvisorClient = fs.readFileSync(path.join(root, 'src/services/ai/menuCardExport/getDesignAdviceViaAPI.ts'), 'utf8');
 [
   'getExistingProjectsListWithoutLoader',
   'loadedProjectId',
@@ -195,12 +391,38 @@ const controller = fs.readFileSync(path.join(root, 'src/hooks/useMenuCardExportC
   'visiblePresets',
   'FEATURE_FLAGS.ENABLE_MENU_CARD_EXPORT_HISTORY',
   'saveLocalMenuCardExport',
+  'MENU_CARD_ADVICE_PLAN_REQUIRED_MESSAGE',
+  'MENU_CARD_ADVICE_CAPACITY_MESSAGE',
 ].forEach((token) => {
   if (!controller.includes(token)) failures.push(`Shared controller missing token: ${token}`);
 });
 if (controller.includes('getProjectsListWithoutLoader')) {
   failures.push('Cost guard failed: controller must not use the auto-creating project list helper');
 }
+if (controller.includes('setAdviceError(error.message)')) {
+  failures.push('Shared controller must not render raw Menu Card advice exception messages');
+}
+
+[
+  "import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';",
+  'MENU_CARD_DESIGN_ADVISOR_RESPONSE_JSON_MAX_BYTES = 16 * 1024',
+  'readMenuCardDesignAdvisorResponseJson',
+  'readJsonResponseWithLimit<T>',
+  'ai_menu_card_design_advisor_response_parse_failed',
+  "'plan_gate'",
+  "'recommendation'",
+  "getBoundedAiServiceStringContext('projectId'",
+  "getBoundedAiServiceStringContext('sourceHash'",
+].forEach((token) => {
+  if (!designAdvisorClient.includes(token)) failures.push(`Menu Card design-advisor client response parsing missing token: ${token}`);
+});
+[
+  'response.json().catch(() => ({}))',
+  'const responseJson = await response.json()',
+  'errorJson?.details',
+].forEach((token) => {
+  if (designAdvisorClient.includes(token)) failures.push(`Menu Card design-advisor client must not use unsafe response parse token: ${token}`);
+});
 
 const mobileExportScreen = fs.readFileSync(path.join(root, 'src/components/mobile/menu-card-export/MobileMenuCardExportScreen.tsx'), 'utf8');
 [
@@ -506,6 +728,7 @@ const legacyMenuPdfGenerator = fs.readFileSync(path.join(root, 'src/lib/export/m
 });
 
 const desktopUseMenuList = fs.readFileSync(path.join(root, 'src/components/templates/main-app/useMenuList/index.tsx'), 'utf8');
+const useMenuListDiagnostics = fs.readFileSync(path.join(root, 'src/components/templates/main-app/useMenuList/useMenuListDiagnostics.ts'), 'utf8');
 [
   "view = 'overview'",
   "view === 'print-assets'",
@@ -538,6 +761,59 @@ if (desktopUseMenuList.includes('result.assets[')) {
   failures.push('Desktop Use MenuList must generate individual Menu Kit files by asset key, not result.assets[index]');
 }
 [
+  { label: 'Desktop Use MenuList', source: desktopUseMenuList },
+  { label: 'Use MenuList diagnostics helper', source: useMenuListDiagnostics },
+].forEach(({ label, source }) => {
+  [
+    'console.error(',
+    'console.warn(',
+    'console.log(',
+    'console.debug(',
+  ].forEach((token) => {
+    if (source.includes(token)) failures.push(`${label} must not use direct runtime console logging: ${token}`);
+  });
+});
+[
+  'use_menulist_load_failed',
+  'use_menulist_starter_signal_failed',
+  'use_menulist_copy_failed',
+  'use_menulist_open_failed',
+  'use_menulist_menu_kit_download_failed',
+  'use_menulist_menu_kit_asset_download_failed',
+  'use_menulist_menu_kit_asset_preview_failed',
+  'use_menulist_qr_download_failed',
+  'use_menulist_pdf_download_failed',
+  'use_menulist_feedback_qr_download_failed',
+].forEach((token) => {
+  if (!desktopUseMenuList.includes(token)) failures.push(`Desktop Use MenuList missing bounded diagnostic code: ${token}`);
+});
+[
+  "window.open(url, '_blank', 'noopener,noreferrer')",
+  "throw new Error('use_menulist_open_blocked')",
+  "getBoundedUseMenuListStringContext('url', url)",
+  "getBoundedUseMenuListStringContext('label', label)",
+].forEach((token) => {
+  if (!desktopUseMenuList.includes(token)) failures.push(`Desktop Use MenuList missing bounded open handoff token: ${token}`);
+});
+if (desktopUseMenuList.includes("window.open(url, '_blank');")) {
+  failures.push("Desktop Use MenuList must not open output links without noopener,noreferrer");
+}
+[
+  'secureError',
+  "'[Use MenuList] Operation failed'",
+  'getBoundedUseMenuListStringContext',
+  'sourceErrorName',
+  'sourceErrorCode',
+  'sourceStatusCode',
+].forEach((token) => {
+  if (!useMenuListDiagnostics.includes(token)) failures.push(`Use MenuList diagnostics helper missing token: ${token}`);
+});
+[
+  "[UseMenuList] Error loading data:",
+].forEach((token) => {
+  if (desktopUseMenuList.includes(token)) failures.push(`Desktop Use MenuList must not keep old raw diagnostic string: ${token}`);
+});
+[
   'window.location.href = buildPrintAssetsUrl',
   'window.location.href = buildMenuCardExportUrl',
   'window.location.assign(buildPrintAssetsUrl',
@@ -564,6 +840,21 @@ const projectShareModal = fs.readFileSync(path.join(root, 'src/components/templa
 ].forEach((token) => {
   if (!projectShareModal.includes(token)) failures.push(`Project Share modal print copy missing brand PDF context token: ${token}`);
 });
+[
+  'logExportFailure',
+  'project_share_structured_export_failed',
+  'project_share_pdf_generation_failed',
+  "getBoundedExportStringContext('shareUrl'",
+  "getBoundedExportStringContext('currencyCode'",
+].forEach((token) => {
+  if (!projectShareModal.includes(token)) failures.push(`Project Share modal export diagnostics missing token: ${token}`);
+});
+[
+  "console.error('[ShareModal] Structured export failed:'",
+  "console.error('[ShareModal] PDF generation failed:'",
+].forEach((token) => {
+  if (projectShareModal.includes(token)) failures.push(`Project Share modal must not use raw export diagnostic ${token}`);
+});
 
 const menuKitSection = fs.readFileSync(path.join(root, 'src/components/templates/main-app/projects/b2cView/shareModal/MenuKitSection.tsx'), 'utf8');
 [
@@ -574,9 +865,28 @@ const menuKitSection = fs.readFileSync(path.join(root, 'src/components/templates
 ].forEach((token) => {
   if (!menuKitSection.includes(token)) failures.push(`Project Share Menu Kit section missing key-based asset token: ${token}`);
 });
+[
+  'logExportFailure',
+  'project_share_menu_kit_generation_failed',
+  'project_share_menu_kit_asset_generation_failed',
+  'getMenuKitExportLogContext',
+  "getBoundedExportStringContext('menuUrl'",
+  'hasMenuModifiedOn',
+  'assetKey',
+].forEach((token) => {
+  if (!menuKitSection.includes(token)) failures.push(`Project Share Menu Kit section diagnostics missing token: ${token}`);
+});
 if (menuKitSection.includes('result.assets[')) {
   failures.push('Project Share Menu Kit section must generate individual files by asset key, not result.assets[index]');
 }
+[
+  'secureError(',
+  "'[MenuKit] Generation failed'",
+  'new Error(String(error))',
+  'error instanceof Error ? error',
+].forEach((token) => {
+  if (menuKitSection.includes(token)) failures.push(`Project Share Menu Kit section must not use raw diagnostic token: ${token}`);
+});
 
 const menuKitBrandTokens = fs.readFileSync(path.join(root, 'src/lib/menu-kit/brandTokens.ts'), 'utf8');
 [
@@ -1054,11 +1364,27 @@ const apiSchemas = fs.readFileSync(path.join(root, 'src/lib/validation/apiSchema
 
 const advisorPrompt = fs.readFileSync(path.join(root, 'src/app/api/menu-card-export/design-advisor/prompt.ts'), 'utf8');
 [
+  'const PROMPT_INPUT_TEXT_MAX_LENGTH = 300;',
+  'const PROMPT_INPUT_LIST_ITEM_MAX_LENGTH = 120;',
+  'const PROMPT_INPUT_LIST_MAX_ITEMS = 20;',
+  'function sanitizePromptText(',
+  ".replace(/[\\u0000-\\u001f\\u007f]/g, ' ')",
+  ".replace(/[{}<>`$\\\\]/g, '')",
+  'function buildPromptPayload(',
+  'JSON.stringify(promptPayload.sourceSummary)',
+  'JSON.stringify(promptPayload.preflightWarnings)',
   'autoDesignLabel',
   'autoDesignReason',
   'businessProfile',
 ].forEach((token) => {
   if (!advisorPrompt.includes(token)) failures.push(`AI advisor prompt missing auto-design token: ${token}`);
+});
+[
+  'JSON.stringify(payload.sourceSummary)',
+  'JSON.stringify(payload.preflightWarnings)',
+  '`Source hash: ${payload.sourceHash}`',
+].forEach((token) => {
+  if (advisorPrompt.includes(token)) failures.push(`AI advisor prompt must not use raw prompt payload token: ${token}`);
 });
 
 const projectDal = fs.readFileSync(path.join(root, 'src/database/projects/index.ts'), 'utf8');
@@ -1143,6 +1469,7 @@ console.log('- PDF metadata, deterministic filenames, and print-shop source summ
 console.log('- Local history exists');
 console.log('- Desktop and mobile screens use the shared export controller');
 console.log('- Dashboard and mobile output actions use the same controller pipeline');
+console.log('- Share modal export and PDF failures use bounded diagnostics');
 console.log('- Dedicated mobile Print Menu screen exists');
 console.log('- Mobile Share, Menu, and More entry points open the MobileShell Print Menu screen');
 console.log('- Mobile Print Menu stays inside the PWA shell without route bypass or forced reloads');

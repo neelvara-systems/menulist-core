@@ -1,11 +1,19 @@
 # Auth & Onboarding — Documentation Hub
 
-> **Feature:** Authentication, Signup, Onboarding & Payment Flow  
-> **Status:** ✅ Production Ready  
-> **Last Updated:** January 26, 2026  
-> **Version:** 2.0
+> **Feature:** Authentication, Signup, Onboarding & Payment Flow
+> **Status:** Implemented source evidence; not current launch certification
+> **Last Updated:** July 2, 2026
+> **Version:** 2.1
 
 ---
+
+## Current Launch Boundary
+
+This hub documents the implemented MenuList auth, onboarding, and first-payment source path. It is not current production-launch approval by itself.
+
+Current release approval still requires the active [production-readiness audit](../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../production-readiness/external-certification-runbook.md) evidence, auth browser/API smoke across login, claim-account, sign-out, and store-switch flows, Razorpay sandbox onboarding and verification evidence, mobile browser onboarding/payment QA, Firebase Auth custom-claims evidence, App Check/session-cookie review, and target-environment deploy smoke.
+
+The local source gates confirm current code wiring only. They do not run Google OAuth, Razorpay checkout, live Firebase Auth token minting, Firestore writes, browser/device QA, Firebase deploys, Vercel deploys, a production build, or production-host behavior.
 
 ## Quick Navigation
 
@@ -153,5 +161,6 @@ transaction.update(userRef, {
 
 | Version | Date         | Changes                                          |
 | ------- | ------------ | ------------------------------------------------ |
+| 2.1     | Jul 2, 2026  | Clarified source-evidence boundary and launch certification gates |
 | 2.0     | Jan 26, 2026 | Consolidated docs, added role assignment context |
 | 1.0     | Nov 7, 2025  | Initial authentication guide                     |

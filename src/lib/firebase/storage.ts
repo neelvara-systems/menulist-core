@@ -1,4 +1,5 @@
 import { getDownloadURL, getStorage, ref, uploadBytesResumable, type FirebaseStorage, type UploadMetadata } from 'firebase/storage';
+import { getBoundedStringLogContext, logStorageHelperFailure } from '@database/storage/storageDiagnostics';
 
 interface UploadResult {
   downloadURL: string;
@@ -28,8 +29,15 @@ export const uploadFile = (
         onProgress(progress);
       },
       (error) => {
-        console.error('Upload failed:', error);
-        reject(error);
+        logStorageHelperFailure('firebase_storage_upload_failed', error, {
+          ...getBoundedStringLogContext('storagePath', storagePath),
+          ...getBoundedStringLogContext('fileName', file.name),
+          ...getBoundedStringLogContext('fileType', file.type),
+          fileSize: file.size,
+          metadataPresent: Boolean(metadata),
+          storageOverridePresent: Boolean(storageOverride),
+        });
+        reject(new Error('Failed to upload file'));
       },
       async () => {
         try {
@@ -43,7 +51,15 @@ export const uploadFile = (
             gsUri
           });
         } catch (error) {
-          reject(error);
+          logStorageHelperFailure('firebase_storage_download_url_failed', error, {
+            ...getBoundedStringLogContext('storagePath', storagePath),
+            ...getBoundedStringLogContext('fileName', file.name),
+            ...getBoundedStringLogContext('fileType', file.type),
+            fileSize: file.size,
+            metadataPresent: Boolean(metadata),
+            storageOverridePresent: Boolean(storageOverride),
+          });
+          reject(new Error('Failed to upload file'));
         }
       }
     );

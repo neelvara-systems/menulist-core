@@ -3,8 +3,12 @@
 **Assessment Date**: November 28, 2025  
 **Feature**: Multi-Language Support & AI Translation  
 **Status**: ✅ FIXES IMPLEMENTED  
-**Production Ready**: ✅ YES (after testing)  
+**Historical Result**: Historical assessment result only; not current launch certification
 **Risk Level**: ✅ RESOLVED
+
+---
+
+**Launch boundary:** This November 2025 assessment records completed fixes for the Multi-Language feature. Current release approval requires the active [production-readiness audit](../../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../../production-readiness/external-certification-runbook.md) evidence, target feature-flag/provider review, deploy evidence for the target environment, and browser/mobile QA for translated menu flows.
 
 ---
 
@@ -714,7 +718,7 @@ They'll be hidden but can be restored later.
 
 ## Conclusion
 
-The Multi-Language feature is now **production-ready** with all critical technical and UX issues resolved. Key achievements include:
+The Multi-Language feature had all critical technical and UX issues resolved in this historical assessment. Do not treat this assessment as current production deployment approval without active production-readiness audit evidence, External Certification Runbook evidence, target environment deploy evidence, and browser/mobile QA for translated menu flows. Key achievements include:
 
 - **AI Language Detection**: Automatically detects menu language during OCR and sets it as primary
 - **Primary Language Lock**: First language cannot be removed, clearly marked with lock icon

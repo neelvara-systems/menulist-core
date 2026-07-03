@@ -48,6 +48,8 @@
 
 **Decision:** PARTIAL — No dedicated mobile screen in MobileShell needed (one-time flow, not operational). But the **preview page** (`/msg-preview/[sessionId]`) MUST be mobile-first responsive since owners will open it from their messaging app on their phone.
 
+June 29 response-parsing hardening: the mobile-first preview page now uses the shared browser parser for preview load, approve, and fix responses. Malformed successful responses do not update mobile page state, and no MobileShell route or mobile-specific data loader was added.
+
 ---
 
 ## What Needs Mobile Optimization

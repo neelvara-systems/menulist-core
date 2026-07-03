@@ -5,6 +5,11 @@ import { Alert, Button, Card, Flex, Input, Modal, Select, Typography, theme } fr
 import { useTranslations } from 'next-intl';
 import { useEffect, useState } from 'react';
 import { ProjectMetadata } from '../types';
+import {
+    getBoundedProjectPageStringContext,
+    getProjectPageProjectLogContext,
+    logProjectPageFailure,
+} from '../utils/projectPageDiagnostics';
 
 const { Text } = Typography;
 const { useToken } = theme;
@@ -72,7 +77,12 @@ export const ProjectDuplicateModal = ({ open, project, onCancel, onDuplicate }: 
             await onDuplicate(nameValue, descriptionValue || undefined, localizedName, localizedDescription);
             onCancel();
         } catch (error) {
-            console.error('Duplicate failed:', error);
+            logProjectPageFailure('projects_page_duplicate_modal_submit_failed', error, {
+                ...getProjectPageProjectLogContext(project?.projectId),
+                ...getBoundedProjectPageStringContext('selectedLanguage', selectedLanguage),
+                ...getBoundedProjectPageStringContext('duplicateName', nameValue),
+                languageCount: languages.length,
+            });
         } finally {
             setLoading(false);
         }

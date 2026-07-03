@@ -7,6 +7,110 @@
 
 ---
 
+## July 1, 2026 - Owner SEO/AEO Value Layer Verification
+
+### Trigger
+
+Founder asked to check what exists, identify useful SMB-owner improvements still missing from the SEO/AEO system, and implement the valid work without adding public snapshots.
+
+### Scope
+
+- Public Truth owner readiness modules in desktop/mobile Business Health.
+- Google Business Profile handoff guide in Official Business Page settings.
+- Visible customer quick answers on Official Business Pages.
+- Locale, diagnostic, cost, mobile, and SEO launch documentation parity.
+
+### Checks Performed
+
+```bash
+git diff --check -- src/lib/public-truth-tools/ownerPublicTruthReadiness.ts src/components/templates/main-app/businessSettings/tabs/GoogleListingGuide.tsx src/components/templates/main-app/businessSettings/tabs/OfficialPageTab.tsx src/app/client/obp/OBPResolvedSurface.tsx src/app/client/obp/obp.module.scss public/locales/menulist.ai/en-US.json public/locales/menulist.ai/hi-IN.json scripts/verification/verify-public-truth-check.js scripts/verification/verify-public-business-truth.js __docs__/menulist-tools/public-truth-tools/README.md __docs__/menulist-tools/public-truth-tools/public-truth-tools_impl.md __docs__/menulist-tools/public-truth-tools/public-truth-tools_firebase.md __docs__/menulist-tools/public-truth-tools/public-truth-tools_mobile-support.md __docs__/menulist-tools/public-truth-check/public-truth-check_validation.md __docs__/menulist-tools/public-truth-check/public-truth-check_mobile-support.md __docs__/official-business-page/official-business-page_impl.md __docs__/official-business-page/official-business-page_firebase.md __docs__/owner-business-assistant/owner-business-assistant_impl.md __docs__/owner-business-assistant/owner-business-assistant_architecture.md __docs__/menulist-seo-launch/menulist-seo-launch_consultant-ledger.md __docs__/menulist-seo-launch/menulist-seo-launch_action-register.md __docs__/changelog.md
+npm run verify:public-truth-check
+node scripts/verification/verify-public-business-truth.js
+npm run verify:owner-business-assistant
+npm run lint -- --file src/lib/public-truth-tools/ownerPublicTruthReadiness.ts --file src/components/templates/main-app/businessSettings/tabs/GoogleListingGuide.tsx --file src/components/templates/main-app/businessSettings/tabs/OfficialPageTab.tsx --file src/app/client/obp/OBPResolvedSurface.tsx
+node - <<'NODE'
+const fs=require('fs');
+for (const f of ['public/locales/menulist.ai/en-US.json','public/locales/menulist.ai/hi-IN.json']) {
+  JSON.parse(fs.readFileSync(f,'utf8'));
+}
+console.log('Touched locale JSON parsed');
+NODE
+npx tsc --noEmit --incremental false --pretty false
+```
+
+### Result
+
+| Check | Result |
+| --- | --- |
+| Diff whitespace check | Pass |
+| Public Truth verifier | Pass |
+| Public business truth verifier | Pass |
+| Owner Business Assistant hardening verifier | Pass |
+| Focused lint | Pass |
+| Touched locale JSON parse | Pass |
+| Full TypeScript | Blocked by pre-existing media-admin worktree errors in `src/database/storage/uploadBase64MediaImageAdmin.ts` and untracked `src/lib/media/prepareMediaImageAdmin.ts` |
+
+### Notes
+
+- No Firebase rules, indexes, or Cloud Function logic changed, so no Firebase deploy was required.
+- No Vercel deploy was run.
+- The TypeScript blocker is unrelated to this SEO/OBP/Public Truth pass and was left untouched.
+
+---
+
+## June 30, 2026 - AI/Search Discovery Refresh Verification
+
+### Trigger
+
+Founder asked for current web research around search and AI discovery because the market is changing quickly, and asked Codex to do the valid work while keeping public snapshots out of scope.
+
+### Scope
+
+- Primary-source review of Google AI/search guidance, structured data policy, OpenAI crawler docs, IndexNow, and current AI crawler docs.
+- Named crawler allowlist and public/tenant robots parity.
+- Public menu JSON-LD identity and language signals.
+- SEO launch action register, consultant ledger, and main website SEO/AEO docs.
+- Live host refresh for the current canonical-host blocker.
+
+### Checks Performed
+
+```bash
+curl -sSI https://menulist.ai/
+curl -sSI https://menulist.ai/robots.txt
+curl -sSI https://menulist.ai/sitemap.xml
+curl -sSI https://menulist.online/
+curl -sS https://menulist.ai/
+curl -sS https://menulist.ai/robots.txt
+curl -sS https://menulist.ai/sitemap.xml
+curl -sS https://menulist.online/robots.txt
+curl -sS https://menulist.online/sitemap.xml
+git diff --check -- src/lib/seo/discoveryPolicy.ts public/robots.txt src/app/client/robots.ts src/app/client/robots/route.ts 'src/app/client/[[...slug]]/page.tsx' __docs__/main-website/main-website_seo-aeo.md __docs__/main-website/main-website_resources-plan.md __docs__/main-website/main-website_seo-aeo-marketing-brief.md __docs__/menulist-seo-launch/menulist-seo-launch_action-register.md __docs__/menulist-seo-launch/menulist-seo-launch_code-readiness-checklist.md __docs__/menulist-seo-launch/menulist-seo-launch_consultant-ledger.md
+npm run verify:agent-readiness
+npm run lint -- --file src/lib/seo/discoveryPolicy.ts --file src/app/client/robots.ts --file src/app/client/robots/route.ts --file 'src/app/client/[[...slug]]/page.tsx'
+npx tsc --noEmit --incremental false --pretty false
+```
+
+### Result
+
+All code-side verification passed.
+
+Live host checks still show the same owner/deployment blocker:
+
+- `https://menulist.online/` returns the MenuList app and emits `https://menulist.ai` as the canonical URL.
+- `https://menulist.online/robots.txt` returns the repo public robots policy and advertises `Sitemap: https://menulist.ai/sitemap.xml`.
+- `https://menulist.online/sitemap.xml` returns platform sitemap URLs under `https://menulist.ai`.
+- `https://menulist.ai/` returns a static `/lander` redirect shell.
+- `https://menulist.ai/robots.txt` returns a minimal shell robots file.
+- `https://menulist.ai/sitemap.xml` lists only `https://menulist.ai/lander`.
+
+### Remaining SEO/Discovery Blockers
+
+- Search Console verification, sitemap submission, and URL inspection remain blocked until `menulist.ai` serves the MenuList app or the canonical host strategy is deliberately changed.
+- IndexNow remains deferred until host/key strategy, publish triggers, abuse limits, and noindex gates are designed.
+- No public snapshot/CDN implementation was added in this pass.
+
+---
+
 ## June 23, 2026 - Placeholder-Backed Service Industry Route Verification
 
 ### Trigger
@@ -412,7 +516,7 @@ Founder clarified that MenuList should not target one market only. Restaurants, 
 - `__docs__/menulist-seo-launch/menulist-seo-launch_consultant-ledger.md`
 - `__docs__/main-website/main-website_seo-aeo-marketing-brief.md`
 - `__docs__/menulist-marketing-distribution/`
-- `__docs__/CHANGELOG.md`
+- `__docs__/changelog.md`
 
 ### Findings Fixed
 
@@ -455,7 +559,7 @@ Founder asked to cross-check everything after the MenuList SEO launch workstream
 - `__docs__/main-website/main-website_content.md`
 - `__docs__/main-website/main-website_design-system.md`
 - `__docs__/main-website/main-website_seo-aeo-marketing-brief.md`
-- `__docs__/CHANGELOG.md`
+- `__docs__/changelog.md`
 - `public/llms.txt`
 - `public/llms-full.txt`
 - `public/locales/menulist.ai/*.json`
@@ -524,6 +628,7 @@ These were present in the dirty worktree and were not treated as SEO launch work
 ```bash
 npm run verify:agent-readiness
 npm run verify:website-resource-locales
+npm run verify:website-public-copy-boundary
 node - <<'NODE'
 const fs=require('fs');
 const path='public/locales/menulist.ai';

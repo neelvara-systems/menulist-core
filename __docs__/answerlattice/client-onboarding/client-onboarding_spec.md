@@ -28,11 +28,11 @@ Allow external SaaS founders to create an Answerlattice account via self-service
 
 | Plan | Price | Limits | Target |
 |------|-------|--------|--------|
-| **Beta** | $0/mo (6 months) | 200 entities, 500 answers, 200 articles, widget + API | Design partners |
-| Starter | ₹2,999/mo | 50 entities, 50 answers, 50 articles, widget only | Small SaaS |
-| Pro | ₹7,999/mo | 200 entities, 500 answers, 200 articles, widget + API | Mid-market SaaS |
+| Starter | ₹999/mo | 50 entities, 50 answers, 50 articles, widget only | Small SaaS |
+| Growth | ₹2,999/mo | 200 entities, 500 answers, 200 articles, widget | Growing SaaS |
+| Studio | ₹6,999/mo | 800 entities, 2,000 answers, 800 articles, up to 5 workspaces | Agencies and dev studios |
 
-Beta plan is the default during private beta. Paid plans activate when beta period ends.
+No active Answerlattice onboarding path creates an unpaid plan. Public onboarding defaults to paid Starter and creates a pending Razorpay subscription.
 
 ---
 
@@ -43,7 +43,7 @@ Beta plan is the default during private beta. Paid plans activate when beta peri
 | Tenant | `tenants` | Company profile, onboardingSource: ANSWERLATTICE_ONBOARDING, productId: AL |
 | Store | `stores` | Product workspace, roles, widget key auto-generated |
 | User update | `users` | Answerlattice project user gets tenantId + storeId; default auth user gets `productAccounts.AL` bridge only |
-| Subscription | `subscriptions` | Beta: active immediately, 6-month window. Paid: Razorpay subscription starts as pending and activates through the existing payment webhook/reconciliation flow |
+| Subscription | `subscriptions` | Razorpay subscription starts as pending and activates through the existing payment webhook/reconciliation flow |
 | Widget key | store.answerlatticeWidgetApi | Initial `al_*` widget key returned after onboarding; the store-doc key manager persists `keyHashes`, `keysByHash`, display prefix/suffix, purpose, productId, widget scopes, and encrypted copy material when configured |
 | Tenant summary | `platformSummary/answerlatticeTenantsSummary` | Tenant/store registry used by Answerlattice schedulers without scanning entity collections |
 
@@ -64,7 +64,8 @@ Beta plan is the default during private beta. Paid plans activate when beta peri
 
 | Date | Version | Change |
 |------|---------|--------|
+| 2026-06-30 | 1.3.0 | Removed beta-era onboarding path; public onboarding uses paid Starter by default |
 | 2026-05-25 | 1.2.1 | Updated onboarding widget-key contract to the bounded store-doc key manager shape. |
 | 2026-05-21 | 1.2.0 | Updated separate-product onboarding contract: default user bridge, Answerlattice tenant summary, and `answerlatticeWidgetApi` key storage |
 | 2026-05-16 | 1.1.0 | Paid plans wired to Razorpay subscription flow |
-| 2026-03-07 | 1.0.0 | Initial spec: beta plan, Google OAuth, self-service |
+| 2026-03-07 | 1.0.0 | Initial beta-era spec, Google OAuth, self-service |

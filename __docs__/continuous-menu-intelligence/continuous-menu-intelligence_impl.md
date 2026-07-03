@@ -591,7 +591,7 @@ src/
 | Decision Blocks customer runtime uses store-local category slots | Fixed | `DecisionBlocks.tsx` receives `storeTimeZone` from `MenuPageNew`. |
 | CMI DAL never hides menu items | Verified | `getItemPresentation()` always returns `visible: true`; `getItemsByPriority()` sorts and does not filter out items. |
 | Downstream GrowthOS/screen presentation | Not certified in this slice | Queued for the remaining feature inventory audit. |
-| Function deployment | Pending | Cloud Function deploy is pending because targeted Firebase Functions deploy fails on `ecomsai` billing-disabled Secret Manager 403 after local function build/lint passes. |
+| Function deployment | Pending | Older deploy evidence referenced the retired `ecomsai` target. Current retry evidence must use `npm run verify:functions-deploy-preflight`, then the scoped `menulist-qa` Firebase Functions target from `__docs__/production-readiness/external-certification-runbook.md` Gate 1. Production deploy requires QA evidence and explicit production deploy approval. |
 
 ---
 
@@ -601,7 +601,7 @@ src/
 
 #### Test 1: Nightly Job Execution
 
-1. Deploy function to staging: `firebase deploy --only functions:computeDecisionBlocksScores`
+1. Run `npm run verify:functions-deploy-preflight`, then deploy only the affected MenuList Functions to `menulist-qa` through `__docs__/production-readiness/external-certification-runbook.md` Gate 1.
 2. Trigger manually via Firebase Console OR use `triggerDecisionBlocksScoring` callable
 3. Verify BOTH outputs are written:
    - `projects/{tId}/{sId}/{projectId}.publicDecisionBlocks`

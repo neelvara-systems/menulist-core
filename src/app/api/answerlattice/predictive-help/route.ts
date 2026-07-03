@@ -22,10 +22,13 @@ import { AnswerlatticeContextSchema } from '@lib/validation/contextSchema';
 import { handlePublicApiCorsPreflight, hashApiKey, hasPublicApiCredentialScope, isRequestOriginAllowed, validatePublicApiKey, withPublicApiCors } from '@lib/publicApi/auth';
 import { checkRateLimit } from '@lib/rateLimit';
 import { getRateLimitForFeature } from '@lib/rateLimit/configs';
-import { secureError } from '@lib/security/secureLogger';
+import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
+import { readBoundedJsonBody } from '@lib/security/boundedRequestBody';
 import type { AnswerlatticeContextPayload } from '@type/answerlattice';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
+
+const PREDICTIVE_HELP_MAX_BODY_BYTES = 4 * 1024;
 
 const PredictiveHelpRequestSchema = z.object({
     page: z.string().trim().min(1).max(200),
@@ -112,11 +115,9 @@ export async function POST(request: NextRequest) {
         const tId = Number(storeData.tenantId || storeData.tId);
         const sId = Number(storeData.id || storeId);
         if (!Number.isFinite(tId) || !Number.isFinite(sId) || tId <= 0 || sId <= 0) {
-            secureError(
-                '[Answerlattice Predictive Help] Invalid API key workspace context',
-                new Error('Authenticated API key does not resolve to a valid tenant/store'),
-                { storeId }
-            );
+            logRuntimeFailure('answerlattice_predictive_help_invalid_workspace_context', undefined, {
+                ...getBoundedRuntimeStringContext('storeId', storeId),
+            });
             return emptyCorsResponse(request, { status: 204 });
         }
 
@@ -125,7 +126,12 @@ export async function POST(request: NextRequest) {
             return emptyCorsResponse(request, { status: 204 });
         }
 
-        const validation = PredictiveHelpRequestSchema.safeParse(await request.json().catch(() => null));
+        const bodyResult = await readBoundedJsonBody(request, PREDICTIVE_HELP_MAX_BODY_BYTES);
+        if (bodyResult.ok === false) {
+            return emptyCorsResponse(request, { status: 204 });
+        }
+
+        const validation = PredictiveHelpRequestSchema.safeParse(bodyResult.data);
         if (!validation.success) {
             return emptyCorsResponse(request, { status: 204 });
         }
@@ -158,7 +164,7 @@ export async function POST(request: NextRequest) {
         return withPublicApiCors(NextResponse.json({ suggestion }), request);
 
     } catch (error) {
-        secureError('[Answerlattice Predictive Help] Error', error as Error);
+        logRuntimeFailure('answerlattice_predictive_help_failed', error);
         // Graceful degradation — never return errors to widget
         return emptyCorsResponse(request, { status: 204 });
     }

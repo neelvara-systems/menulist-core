@@ -2,114 +2,61 @@
 
 import { useTranslations } from 'next-intl';
 import { useState } from 'react';
-import { LuChevronDown } from 'react-icons/lu';
+import { LuArrowRight, LuChevronDown } from 'react-icons/lu';
 import AnimateOnScroll, { AnimateStaggerChild } from '../shared/AnimateOnScroll';
 import SectionHeading from '../shared/SectionHeading';
 import SectionWrapper from '../shared/SectionWrapper';
+import Link from '../shared/WebsiteLink';
 
-const FAQ_COUNT = 16;
+const HOME_FAQ_INDEXES = [0, 1, 7, 10, 11, 12];
+
+function serializeJsonLd(data: Record<string, unknown>): string {
+  return JSON.stringify(data).replace(/</g, '\\u003c');
+}
 
 export default function FaqSection() {
   const t = useTranslations('Website');
-  const faqs = Array.from({ length: FAQ_COUNT }, (_, i) => ({
-    q: t(`Faq.q${i}`),
-    a: t(`Faq.a${i}`),
+  const faqs = HOME_FAQ_INDEXES.map((faqIndex) => ({
+    q: t(`Faq.q${faqIndex}`),
+    a: t(`Faq.a${faqIndex}`),
   }));
   const [openIndex, setOpenIndex] = useState<number | null>(null);
 
   return (
-    <SectionWrapper variant="subtle">
+    <SectionWrapper variant="subtle" className="ws-home-faq">
       <AnimateOnScroll>
         <SectionHeading
           title={t('Faq.title')}
           highlightedText={t('Faq.highlight')}
+          subtitle={t('Faq.homeSubtitle')}
           centered
         />
       </AnimateOnScroll>
 
-      <div
-        style={{
-          maxWidth: '720px',
-          margin: 'var(--ws-space-12) auto 0',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 'var(--ws-space-3)',
-        }}
-      >
+      <div className="ws-home-faq__list">
         {faqs.map((faq, i) => {
           const isOpen = openIndex === i;
           return (
             <AnimateStaggerChild key={faq.q} index={i}>
-              <div
-                style={{
-                  backgroundColor: isOpen ? 'var(--ws-bg-primary)' : 'var(--ws-bg-primary)',
-                  border: '1px solid var(--ws-border-default)',
-                  borderRadius: 'var(--ws-radius-lg)',
-                  overflow: 'hidden',
-                  transition: 'box-shadow 0.2s ease',
-                  boxShadow: isOpen ? '0 2px 12px rgba(37,99,235,0.08)' : 'none',
-                }}
-              >
+              <div className="ws-home-faq__item" data-open={isOpen}>
                 <button
                   onClick={() => setOpenIndex(isOpen ? null : i)}
-                  style={{
-                    width: '100%',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    gap: 'var(--ws-space-4)',
-                    padding: 'var(--ws-space-5) var(--ws-space-6)',
-                    background: 'none',
-                    border: 'none',
-                    cursor: 'pointer',
-                    textAlign: 'left',
-                  }}
+                  className="ws-home-faq__trigger"
                   aria-expanded={isOpen}
                 >
-                  <span
-                    className="ws-body-sm"
-                    style={{
-                      fontWeight: 600,
-                      color: isOpen ? 'var(--ws-brand-secondary)' : 'var(--ws-text-primary)',
-                      lineHeight: 1.5,
-                      transition: 'color 0.2s ease',
-                    }}
-                  >
-                    {faq.q}
-                  </span>
+                  <span>{faq.q}</span>
                   <LuChevronDown
                     size={18}
-                    color={isOpen ? 'var(--ws-brand-secondary)' : 'var(--ws-text-muted)'}
-                    style={{
-                      flexShrink: 0,
-                      transition: 'transform 0.3s ease, color 0.2s ease',
-                      transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)',
-                    }}
+                    aria-hidden="true"
                   />
                 </button>
 
-                {/* Smooth height animation via max-height transition */}
                 <div
-                  style={{
-                    maxHeight: isOpen ? '400px' : '0px',
-                    overflow: 'hidden',
-                    transition: 'max-height 0.35s ease',
-                  }}
+                  className="ws-home-faq__answer-wrap"
+                  data-open={isOpen}
                 >
-                  <div
-                    style={{
-                      padding: 'var(--ws-space-4) var(--ws-space-6) var(--ws-space-6)',
-                      borderTop: '1px solid var(--ws-border-subtle)',
-                    }}
-                  >
-                    <p
-                      className="ws-body-sm"
-                      style={{
-                        lineHeight: 1.7,
-                      }}
-                    >
-                      {faq.a}
-                    </p>
+                  <div className="ws-home-faq__answer">
+                    <p>{faq.a}</p>
                   </div>
                 </div>
               </div>
@@ -118,11 +65,17 @@ export default function FaqSection() {
         })}
       </div>
 
+      <AnimateOnScroll className="ws-home-faq__more" delay={0.08}>
+        <Link href="/faq">
+          {t('Faq.viewAllCta')} <LuArrowRight size={16} />
+        </Link>
+      </AnimateOnScroll>
+
       {/* FAQ schema for SEO */}
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
-          __html: JSON.stringify({
+          __html: serializeJsonLd({
             '@context': 'https://schema.org',
             '@type': 'FAQPage',
             mainEntity: faqs.map((f) => ({

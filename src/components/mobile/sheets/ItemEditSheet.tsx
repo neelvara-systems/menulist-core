@@ -26,6 +26,12 @@ import type { ExtractedDataAttribute, ExtractedDataItem, NewItemMetadataAPIParam
 import { translateItem } from '../../templates/main-app/projects/utils/translationsUtils';
 import { Button, Card, Collapse, Dialog, Flex, Image, Input, NavBar, Popup, Select, Switch, Text, TextArea, Toast } from '../antd';
 import type { MobileMenuItemType } from '../types';
+import {
+    getBoundedMobileProjectStringContext,
+    getMobileProjectLogContext,
+    getMobileProjectStoreLogContext,
+    logMobileProjectFailure,
+} from '../utils/mobileProjectDiagnostics';
 import { MENU_SHEET_CONTAINER_STYLE, MENU_SHEET_ROUNDED_BODY_STYLE } from './menuSheetLayout';
 
 type LocalizedAttribute = ExtractedDataAttribute & {
@@ -371,7 +377,13 @@ export default function ItemEditSheet({
             const prepared = await prepareMediaImage(file, 'menuItem');
             setImagePreview(prepared.dataUrl);
         } catch (error) {
-            Toast.show({ content: error instanceof Error ? error.message : t('imageTooLarge'), duration: 2200 });
+            logMobileProjectFailure('mobile_item_image_prepare_failed', error, {
+                ...getMobileProjectLogContext(projectData?.projectId, projectData?.masterProjectId),
+                ...getMobileProjectStoreLogContext(storeDetails?.storeId, storeDetails?.tenantId),
+                ...getBoundedMobileProjectStringContext('fileName', file.name),
+                ...getBoundedMobileProjectStringContext('itemId', item?.id || item?.rawItem?.id),
+            });
+            Toast.show({ content: t('imageTooLarge'), duration: 2200 });
         } finally {
             if (imageInputRef.current) imageInputRef.current.value = '';
         }

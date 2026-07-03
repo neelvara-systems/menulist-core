@@ -131,7 +131,7 @@ Complete these in order. Do not skip to production until QA passes.
 7. [ ] Configure budget alerts, spend monitoring, and model/project quota checks for the Google Cloud project that owns each Gemini key.
 8. [ ] Deploy MenuList QA Functions after secrets exist:
    ```bash
-   firebase deploy --only functions:menulistMaintenanceScheduler --project menulist-qa --config firebase.json
+   firebase deploy --project menulist-qa --config firebase.json --only functions:menulistMaintenanceScheduler --non-interactive
    ```
 9. [ ] Deploy Answerlattice QA Functions after project access is fixed:
    ```bash
@@ -182,7 +182,7 @@ Code references:
 - Firebase aliases: `.firebaserc`
 - Main env templates: `.env.staging.example`, `.env.production.example`
 
-Note: the code also contains ConstantLayer as a static product target. It is not
+Note: the code also contains Neelvara as a static product target. It is not
 part of this setup request and must not receive Firebase or third-party env work
 unless its deployment contract is changed first.
 
@@ -716,9 +716,9 @@ from.
 | AI | `GEMINI_AI_KEY`, `GEMINI_API_KEY`, `GEMINI_AI_KEY_2`, `GEMINI_AI_KEY_3`, `GEMINI_AI_KEY_4`, `OPENAI_API_KEY` | Google AI Studio and optional OpenAI |
 | Payments | `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, `RAZORPAY_WEBHOOK_SECRET`, `NEXT_PUBLIC_RAZORPAY_KEY_ID`, `CRON_SECRET`, `INTERNAL_BILLING_EMAIL`, `GCP_BUDGET_WEBHOOK_SECRET` | Razorpay plus generated internal secrets |
 | Cache and revalidation | `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`, `REVALIDATION_SECRET` | Upstash plus generated secret |
-| Cloud Tasks | `BATCH_IMAGE_GENERATION_WORKER_URL`, `BATCH_IMAGE_GENERATION_QUEUE_ID`, `BATCH_IMAGE_GENERATION_WORKER_SECRET` | Google Cloud Tasks |
+| Cloud Tasks | `FIREBASE_PROJECT_ID`, `FIREBASE_PROJECT_LOCATION`, `BATCH_IMAGE_GENERATION_WORKER_URL`, `BATCH_IMAGE_GENERATION_QUEUE_ID`, `BATCH_IMAGE_GENERATION_WORKER_SECRET` | Google Cloud Tasks |
 | Analytics/media | `GA_CLIENT_EMAIL`, `GA_PRIVATE_KEY`, `GA_PROJECT_ID`, `NEXT_PUBLIC_GA_MEASUREMENT_ID`, `NEXT_PUBLIC_CLARITY_ID`, `NEXT_PUBLIC_UNSPLASH_API_CLIENTID`, `NEXT_PUBLIC_PIXABAY_API_CLIENTID`, `NEXT_PUBLIC_PEXELS_API_CLIENTID`, `NEXT_PUBLIC_GOOGLE_MAPS_EMBED_API_KEY` | GA4, Clarity, media APIs, Maps |
-| Sentry | `SENTRY_DSN`, `NEXT_PUBLIC_SENTRY_DEV_DSN`, `NEXT_PUBLIC_SENTRY_DSN`, `SENTRY_AUTH_TOKEN`, `SENTRY_ORG`, `SENTRY_PROJECT`, `SENTRY_RELEASE`, `SENTRY_ENABLED_IN_EMULATOR` | Sentry |
+| Sentry | `SENTRY_DSN`, `SENTRY_DEV_DSN`, `NEXT_PUBLIC_SENTRY_DEV_DSN`, `NEXT_PUBLIC_SENTRY_DSN`, `SENTRY_AUTH_TOKEN`, `SENTRY_ORG`, `SENTRY_PROJECT`, `SENTRY_RELEASE`, `SENTRY_ENABLED_IN_EMULATOR` | Sentry |
 | App Check and emulators | `NEXT_PUBLIC_RECAPTCHA_SITE_KEY`, `NEXT_PUBLIC_FIREBASE_APPCHECK_DEBUG_TOKEN`, `NEXT_PUBLIC_USE_EMULATORS`, `FUNCTIONS_EMULATOR`, `FIRESTORE_EMULATOR_HOST`, `FIREBASE_STORAGE_EMULATOR_HOST`, `FIREBASE_AUTH_EMULATOR_HOST` | reCAPTCHA/App Check and local emulator settings |
 | Email and alerts | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `INTERNAL_NOTIFICATION_EMAIL`, `INTERNAL_NOTIFICATION_WHATSAPP`, `PLATFORM_ALERT_EMAIL_TO`, `PLATFORM_ALERT_WHATSAPP_TO`, `PLATFORM_ALERT_WHATSAPP_TEMPLATE_NAME`, `PLATFORM_ALERT_WHATSAPP_TEMPLATE_LANGUAGE`, `PLATFORM_ALERT_WHATSAPP_SESSION_ACTIVE`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`, `SLACK_WEBHOOK_URL` | SMTP provider, Telegram, Slack |
 | WhatsApp and OTP | `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_APP_SECRET`, `WHATSAPP_VERIFY_TOKEN`, `WHATSAPP_OTP_TEMPLATE_NAME`, `WHATSAPP_OTP_TEMPLATE_LANGUAGE`, `WHATSAPP_OTP_ALLOW_TEXT_FALLBACK`, `PHONE_OTP_DEV_CODE`, `PHONE_OTP_DEV_SKIP_SEND`, `PHONE_OTP_DEBUG_RESPONSE`, `MESSAGING_ONBOARDING_PROVIDERS`, `NEXT_PUBLIC_MSG_PREVIEW_BASE_URL` | Meta WhatsApp and internal OTP policy |
@@ -726,6 +726,10 @@ from.
 | Menu link import | `MENU_LINK_IMPORT_CHROME_PATH`, `MENU_LINK_IMPORT_CHROME_NO_SANDBOX` | local/server browser capability |
 | Vercel API | `VERCEL_TOKEN`, `VERCEL_PROJECT_ID`, `VERCEL_TEAM_ID` | Vercel project settings/API tokens |
 | Optional webhooks | `GITHUB_WEBHOOK_SECRET`, `SHOPIFY_WEBHOOK_SECRET` | GitHub/Shopify dashboard |
+
+Firebase Admin credential and local ADC diagnostics use `src/lib/firebase/firebaseAdminDiagnostics.ts`. Do not debug these paths by logging service-account file paths, service-account JSON, private keys, client emails, raw credential errors, or ADC exception text. Use the bounded Admin bootstrap codes guarded by `npm run verify:auth-security-failure-matrix`.
+
+Startup environment validation diagnostics use `src/lib/env/envDiagnostics.ts`. Do not debug missing env setup by logging secret values or full local `.env` contents. The runtime diagnostic records missing/warning counts and product-stage failure codes; this document remains the source for exact variables to configure.
 
 Commented legacy API envs seen in old code are not part of the active setup:
 
@@ -737,8 +741,14 @@ Commented legacy API envs seen in old code are not part of the active setup:
 Do not add them unless that commented legacy API path is intentionally revived.
 
 Verification-only local envs are also not part of Vercel or production setup.
-For example, `MOBILE_QA_PROJECT_ID` is read by a mobile QA script when that
-script is run manually, but it is not a required staging/production env var.
+For example, the owner mobile certification harness can read
+`MOBILE_QA_ENV_FILE`, `MOBILE_QA_BASE_URL`, `MOBILE_QA_OUTPUT_DIR`,
+`MOBILE_QA_DEBUG_PORT`, `MOBILE_QA_CDP_TIMEOUT_MS`,
+`MOBILE_QA_REQUIRE_EXPLICIT_FIXTURE`, `MOBILE_QA_EMAIL`,
+`MOBILE_QA_STORE_ID`, `MOBILE_QA_PROJECT_ID`, and
+`MOBILE_QA_PROJECT_NAME` when the script is run manually. These are not
+required staging/production env vars and must not be added to Vercel as app
+runtime configuration.
 
 ## Phase 5: Configure Firebase Secret Manager
 
@@ -1057,15 +1067,17 @@ Checklist:
 - [ ] Set `WHATSAPP_OTP_TEMPLATE_LANGUAGE`.
 - [ ] Configure owner/platform alert template only if platform WhatsApp alerts
       are enabled.
-- [ ] Confirm `ENABLE_MESSAGING_ONBOARDING=true` is present in the target
-      MenuList Functions env file.
+- [ ] Keep `ENABLE_MESSAGING_ONBOARDING=false` until real WhatsApp secrets and
+      Meta webhook registration exist for the target.
+- [ ] Set `ENABLE_MESSAGING_ONBOARDING=true` only for the target being smoked
+      after those prerequisites are complete.
 - [ ] Set the same values in MenuList Firebase Secret Manager when Functions
       need WhatsApp.
 
 Leave WhatsApp secret values blank until a real provider setup exists. Do not use
-dummy values to make a deploy look configured. The messaging onboarding feature
-flag is enabled in MenuList env templates, so the operational blocker is real
-provider credentials plus webhook registration.
+dummy values to make a deploy look configured. Checked-in MenuList env templates
+keep messaging onboarding processing off, so the operational blocker remains real
+provider credentials plus webhook registration before enabling the target.
 
 ### 10. SMTP email
 
@@ -1236,16 +1248,26 @@ Functions env files, and Secret Manager values exist.
 MenuList staging:
 
 ```bash
-firebase deploy --project menulist-qa --config firebase.json --only firestore:rules,firestore:indexes,storage
-firebase deploy --project menulist-qa --config firebase.json --only functions
+firebase deploy --project menulist-qa --config firebase.json --only firestore:rules,firestore:indexes,storage --non-interactive
+npm run verify:functions-deploy-preflight
+firebase deploy --project menulist-qa --config firebase.json --only functions:processMenuImages,functions:processMenuImagesJob,functions:menulistMaintenanceScheduler,functions:computeDecisionBlocksScores,functions:triggerDecisionBlocksScoring,functions:triggerStoreNightlyScheduler,functions:verifyMenuPublish --non-interactive
 ```
+
+MenuList production Firebase infrastructure deploys require staging evidence and explicit production approval in the active session. For the current Storage rules cutover, record Gate 2A QA evidence in `__docs__/production-readiness/external-certification-runbook.md` before production Storage rules deploy approval.
 
 MenuList production:
 
 ```bash
-firebase deploy --project menulist --config firebase.json --only firestore:rules,firestore:indexes,storage
-firebase deploy --project menulist --config firebase.json --only functions
+firebase deploy --project menulist --config firebase.json --only firestore:rules,firestore:indexes,storage --non-interactive
+npm run verify:functions-deploy-preflight
+firebase deploy --project menulist --config firebase.json --only functions:processMenuImages,functions:processMenuImagesJob,functions:menulistMaintenanceScheduler,functions:computeDecisionBlocksScores,functions:triggerDecisionBlocksScoring,functions:triggerStoreNightlyScheduler,functions:verifyMenuPublish --non-interactive
 ```
+
+For MenuList production-readiness certification, use the exact Gate 1 evidence
+format in `__docs__/production-readiness/external-certification-runbook.md`.
+Do not replace the scoped target list with a broad `--only functions` deploy
+unless a separate fresh-infrastructure rollout has reviewed the full function
+inventory and explicitly widened the target.
 
 Answerlattice staging:
 

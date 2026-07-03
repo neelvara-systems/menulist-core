@@ -1,7 +1,7 @@
 # Ops Alerting Delivery — Firebase Cost Analysis
 
 **Created:** February 20, 2026
-**Last Updated:** June 2, 2026
+**Last Updated:** June 30, 2026
 
 ---
 
@@ -35,6 +35,14 @@ Deployment note: WhatsApp outbound secrets are currently included in `SECRET_GRO
 | Create manual alert | 1 alert write + mute-check read when alert delivery is enabled | Operator action |
 
 Dashboard filters are applied over the bounded recent-alert window to avoid composite indexes and avoid unbounded scans. The dashboard does not open realtime listeners.
+
+The browser monitor caps `/api/ops/platform-notifications` load and action response JSON at 256KB and validates the returned snapshot/action envelope before updating UI state. This adds no Firestore reads/writes/deletes, provider calls, Cloud Function logic, rules, indexes, Firebase deploy requirement, or Vercel deploy action.
+
+The June 30 platform notification Ops security-log boundary cleanup adds no Firestore reads/writes/deletes, provider calls, API routes, Cloud Function logic, rules, indexes, Firebase deploy requirement, or Vercel deploy action. `/api/ops/platform-notifications` query validation, action rate-limit, and action-validation security events now use bounded route metadata, and invalid attempted action text is summarized as presence/length metadata.
+
+The June 30 platform notification message-copy acknowledgement is browser-local only. It adds no Firestore reads/writes/deletes, provider calls, API routes, Cloud Function logic, rules, indexes, Firebase deploy requirement, or Vercel deploy action. Prefilled Email/WhatsApp message copy feedback waits for Clipboard API success or acknowledged textarea fallback success, and failed copy diagnostics record only bounded support metadata.
+
+The June 30 platform notification dashboard request-boundary hardening is browser-local only. It adds no Firestore reads/writes/deletes, provider calls, API routes, Cloud Function logic, rules, indexes, Firebase deploy requirement, or Vercel deploy action. Existing load/action response caps stay unchanged; browser requests now use no-store cache policy, same-origin credentials, and manual redirect handling before response validation.
 
 ### SAFE_MODE Alert Emission
 
@@ -78,6 +86,7 @@ SAFE_MODE toggles are rare emergency actions and are platform-role protected plu
 | Service | Cost | Notes |
 |---------|------|-------|
 | Telegram Bot API | FREE | No limits for bot messages to private channels |
+| Slack webhook | 0 Firestore cost | Daily chat aggregation and dormant negative-feedback alerts use the configured legacy Slack webhook only when present |
 | SMTP email | Provider cost | Requires SMTP Secret Manager values before Functions can send automatically |
 | WhatsApp Cloud API | Provider/conversation cost | Sends approved template by default; text fallback only when an active session is configured |
 
@@ -89,5 +98,22 @@ SAFE_MODE toggles are rare emergency actions and are platform-role protected plu
 - Feature flags: `ENABLE_PLATFORM_ALERT_EMAIL` and `ENABLE_PLATFORM_ALERT_WHATSAPP` — channel-specific disable
 - Alert cooldown in existing framework prevents spam
 - Deploy mute window prevents false alarm writes
+- SAFE_MODE, mute-alerts, and platform notification action APIs keep platform-role gates and store only HMAC-hashed operator key material in rate-limit keys. SAFE_MODE and mute-alerts security events use bounded route metadata instead of raw session/request context, and SAFE_MODE reason text is summarized as presence/length in security logs. This changes no Firestore read/write count and adds no rules, indexes, provider calls, Cloud Function logic, or deploy requirement.
 - Fire-and-forget delivery — Telegram, Email, and WhatsApp failures do not cause retries
+- Platform Email/WhatsApp failure diagnostics log bounded channel failure codes and presence/length context only. This adds no Firestore reads/writes, no retry queue, no provider payload changes, and no new collections; the Functions helper change requires a scoped Firebase Functions deploy after validation.
+- Alert-rule creation failure diagnostics inspect existing `createAlert()` promise results and log bounded failed/triggered counts only. This adds no Firestore reads/writes/deletes, retry queue, provider calls, alert schema fields, rules, or indexes; the Functions helper change requires a scoped Firebase Functions deploy after validation.
 - `metadata.platformDeliverySuppressed` prevents low-value scheduler heartbeat events from sending Email/WhatsApp
+- Telegram alert delivery validates the configured bot-token shape and URL-encodes the bot-token path segment before calling the fixed Telegram Bot API endpoint. This adds no Firestore reads/writes, new provider calls, retry queue, alert collection changes, or new secrets; invalid Telegram token configuration skips only Telegram delivery with bounded diagnostics. The Functions source change requires a scoped Firebase Functions deploy after validation.
+- App-side Telegram alert delivery uses manual redirect handling and logs bounded non-2xx provider status diagnostics. This adds no Firestore reads/writes, new provider calls, retry queue, alert collection changes, Cloud Function logic, Firebase deploy requirement, or Firebase deploy action. No Vercel deploy was run.
+- Platform WhatsApp delivery URL-encodes the configured phone-number ID before the existing Meta Graph `/messages` request. This adds no Firebase reads/writes, provider calls, new retry queue, or alert collection changes, but the Functions source change requires a scoped Firebase Functions deploy after validation.
+- Configured Slack webhook delivery validates the webhook URL with the shared Functions public HTTPS/DNS target guard before outbound fetch. This adds one DNS lookup when Slack is configured, no Firestore reads/writes, no retry queue, and no provider payload changes, but the Functions source change requires a scoped Firebase Functions deploy after validation.
+
+Deployment of the June 28, 2026 Telegram bot-token path guard was attempted with `firebase deploy --only functions:menulistMaintenanceScheduler,functions:verifyMenuPublish,functions:gcpBudgetAlertWebhook,functions:computeDecisionBlocksScores,functions:triggerStoreNightlyScheduler,functions:triggerDecisionBlocksScoring,functions:messagingOnboarding,functions:msgExtractionWatcher --project menulist-qa --non-interactive`. The predeploy lint/build completed, but Firebase failed to read `menulist-qa` project metadata through Cloud Resource Manager with HTTP 403: caller does not have permission.
+
+Deployment of the June 28, 2026 Meta Graph endpoint-ID encoding change was attempted with `firebase deploy --only functions:messagingOnboarding,functions:menulistMaintenanceScheduler,functions:verifyMenuPublish,functions:gcpBudgetAlertWebhook,functions:computeDecisionBlocksScores,functions:triggerDecisionBlocksScoring,functions:triggerStoreNightlyScheduler,functions:triggerSchedulerManually --project menulist-qa --non-interactive`. The predeploy lint/build completed, but Firebase failed to read `menulist-qa` project metadata through Cloud Resource Manager with HTTP 403: caller does not have permission.
+
+Deployment of the June 28, 2026 Slack webhook target-validation change was attempted with `firebase deploy --only functions:menulistMaintenanceScheduler,functions:triggerSchedulerManually,functions:backfillAggregates --project menulist-qa --non-interactive`. The predeploy lint/build completed, but Firebase failed to read `menulist-qa` project metadata through Cloud Resource Manager with HTTP 403: caller does not have permission.
+
+Deployment of the June 29, 2026 platform Email/WhatsApp failure-diagnostics change was attempted with `PATH="$HOME/.nvm/versions/node/v20.20.2/bin:$PATH" firebase deploy --only functions:menulistMaintenanceScheduler,functions:verifyMenuPublish,functions:gcpBudgetAlertWebhook,functions:forceRepublish,functions:backfillStoresSummary,functions:messagingOnboarding,functions:msgExtractionWatcher,functions:computeDecisionBlocksScores,functions:triggerDecisionBlocksScoring,functions:triggerStoreNightlyScheduler --project menulist-qa --non-interactive`. The predeploy lint/build completed, but Firebase failed to read `menulist-qa` project metadata through Cloud Resource Manager with HTTP 403: caller does not have permission.
+
+Deployment of the June 29, 2026 alert-rule creation failure diagnostic change was attempted with `PATH="$HOME/.nvm/versions/node/v20.20.2/bin:$PATH" firebase deploy --only functions:menulistMaintenanceScheduler,functions:verifyMenuPublish,functions:gcpBudgetAlertWebhook,functions:forceRepublish,functions:backfillStoresSummary,functions:messagingOnboarding,functions:msgExtractionWatcher,functions:computeDecisionBlocksScores,functions:triggerDecisionBlocksScoring,functions:triggerStoreNightlyScheduler --project menulist-qa --non-interactive`. The predeploy lint/build completed, but Firebase failed to read `menulist-qa` project metadata through Cloud Resource Manager with HTTP 403: caller does not have permission.

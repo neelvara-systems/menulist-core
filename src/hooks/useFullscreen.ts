@@ -1,4 +1,5 @@
 import { useAppDispatch } from '@hook/useAppDispatch';
+import { logHookFailure } from '@hook/hookDiagnostics';
 import { getMobileUiLocaleText } from '@lib/localization/mobileUiLocale';
 import { toggleFullscreenMode } from '@reduxSlices/clientThemeConfig';
 import { showErrorToast, showSuccessToast } from '@reduxSlices/toast';
@@ -36,7 +37,11 @@ export const useFullscreen = () => {
                 dispatch(showSuccessToast(localeText.fullscreenDisabled));
             }
         } catch (err) {
-            console.error('Fullscreen error:', err);
+            logHookFailure('fullscreen_toggle_failed', err, {
+                hasFullscreenElement: Boolean(document.fullscreenElement),
+                canRequestFullscreen: Boolean(document.documentElement.requestFullscreen),
+                canExitFullscreen: Boolean(document.exitFullscreen),
+            });
             dispatch(showErrorToast(localeText.fullscreenUnsupported));
         }
     }, [dispatch]);

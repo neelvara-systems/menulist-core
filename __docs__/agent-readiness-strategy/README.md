@@ -35,8 +35,8 @@ MenuList already has **deep schema.org structured data** on OBP and menu pages. 
 1. **Enhanced `/llms.txt`** — Structured capability description following the llmstxt.org standard
 2. **`/llms-full.txt`** — Extended data format documentation for deeper LLM context
 3. **Shared discovery policy** — Platform sitemap and crawler rules now use shared route/crawler constants
-4. **Feature flag placeholder** — `ENABLE_AGENT_DISCOVERY` for future agent-facing endpoints
-5. **Strategic documentation** — Long-term positioning guide for the B2A (Business-to-Agent) future
+4. **Reserved feature flag** — `ENABLE_AGENT_DISCOVERY` is disabled and not connected to any route
+5. **Strategic documentation** — Long-term positioning guide for agent-readable public business truth
 
 **What this is NOT:**
 - ❌ Public API / developer platform
@@ -52,7 +52,7 @@ MenuList already has **deep schema.org structured data** on OBP and menu pages. 
 |------|---------|--------|
 | `public/llms.txt` | LLM-friendly site description (enhanced) | MODIFIED |
 | `public/llms-full.txt` | Extended LLM context with data format details | NEW |
-| `src/config/features.ts` | Feature flag placeholder | MODIFIED |
+| `src/config/features.ts` | Reserved disabled flag | MODIFIED |
 | `src/lib/schema/index.ts` | Shared schema.org utilities (existing) | UNCHANGED |
 | `src/lib/seo/discoveryPolicy.ts` | Shared platform route and crawler discovery policy | ADDED |
 | `src/lib/seo/publicMetadata.ts` | Shared public preview metadata normalization | ADDED |
@@ -77,10 +77,10 @@ MenuList already has **deep schema.org structured data** on OBP and menu pages. 
 ## Feature Flag
 
 ```typescript
-ENABLE_AGENT_DISCOVERY: false  // Placeholder for future agent-facing endpoints
+ENABLE_AGENT_DISCOVERY: false  // Reserved only; no current source reads this flag
 ```
 
-Currently a **placeholder only**. The llms.txt enhancement ships without a flag (static files, always served). The flag is for future agent API endpoints.
+Currently a **reserved disabled flag only**. The `llms.txt` and `llms-full.txt` discovery layer ships without a flag because those are static public files. No current MenuList route, API, or Cloud Function reads `ENABLE_AGENT_DISCOVERY`.
 
 ---
 

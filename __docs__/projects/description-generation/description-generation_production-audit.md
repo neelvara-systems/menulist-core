@@ -3,7 +3,13 @@
 **Feature:** AI-Powered Menu Item Description Generation  
 **Audit Date:** March 14, 2026  
 **Auditor:** Cascade  
-**Status:** In Progress (Task 1 of 4 complete)
+**Status:** Historical code-audit evidence; not current launch certification
+
+---
+
+## Current Launch Boundary
+
+This March 2026 audit is historical description-generation code-audit evidence. It is not current production deployment approval. Current release approval requires the active [production-readiness audit](../../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../../production-readiness/external-certification-runbook.md) evidence, target feature-flag/provider review, AI accounting/source gates, provider smoke, browser/mobile editor QA, and deploy evidence for the target environment.
 
 ---
 
@@ -258,7 +264,7 @@
 | Prompt Engineering    | 10/10  | Hardened with anti-hallucination        |
 | Frontend UX           | 10/10  | Authority-first, zero jargon            |
 | Edge Cases            | 9/10   | JSON parse error could be more specific |
-| Overall               | 9.5/10 | Production ready                        |
+| Overall               | 9.5/10 | Historical code-audit score; not current launch certification |
 
 **Verdict: ✅ ARCHITECTURE AUDIT PASSED**
 
@@ -921,13 +927,13 @@ YES. Description generation:
 | Task 3: Nuclear Scale & Cost Audit | 9.5/10 | PASSED  |
 | Task 4: Founder Paranoia Audit     | 9.5/10 | PASSED  |
 
-### Overall Production Readiness
+### Historical Code-Audit Result
 
 **Score: 9.4/10**
 
-**Verdict: GO - Production Ready**
+**Verdict:** Historical GO for the reviewed code-audit scope; not current launch certification.
 
-**Conditions:** None blocking. All bugs found were fixed during audit. `tsc --noEmit` passes with zero errors.
+**Conditions recorded in this audit:** None blocking for the reviewed code-audit scope. All bugs found were fixed during audit. `tsc --noEmit` passed at that point. Current release approval still requires the launch boundary above.
 
 **Remaining recommendations (non-blocking, P3):**
 

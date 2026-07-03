@@ -18,6 +18,7 @@ export const ANSWERLATTICE_CONTEXT_PRIVATE_ROOT = `${ANSWERLATTICE_CONTEXT_BUNDL
 export const ANSWERLATTICE_CONTEXT_BUNDLE_LIMITS: AnswerlatticeContextBundleLimits = {
     maxPublicBootstrapBytes: 50_000,
     maxPublicRouteBytes: 50_000,
+    maxPrivateObjectBytes: 2 * 1024 * 1024,
     maxMcpResponseBytes: 24_000,
     maxMcpToolCallsPerMinute: 60,
 };

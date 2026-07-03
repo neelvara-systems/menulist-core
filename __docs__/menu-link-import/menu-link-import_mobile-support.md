@@ -21,4 +21,4 @@ Mobile support is required because menu setup is an owner workflow and owners of
 
 ## Parity
 
-Desktop and mobile call the same `createMenuLinkImportJob` client helper and protected API route. Both route into the same `menuImageProcessingJobs` and review path.
+Desktop and mobile call the same `createMenuLinkImportJob` client helper and protected API route. Both submit the job-create request with same-origin credentials, `no-store` cache policy, and manual redirect handling before bounded acknowledgement parsing, then route into the same `menuImageProcessingJobs` and review path.

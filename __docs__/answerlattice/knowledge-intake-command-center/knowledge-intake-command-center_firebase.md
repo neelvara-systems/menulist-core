@@ -151,6 +151,8 @@ Published intake output flows through the existing KB, FAQ, product-surface, and
 
 Intake source metadata and usage-ledger metadata are bounded before write. Usage-ledger reservations fail closed unless the action is one of the supported Answerlattice intake actions (`answerlattice_intake_ocr`, `answerlattice_intake_transcription`, or `answerlattice_intake_embedding`), so a future caller cannot accidentally process paid intake work as a zero-unit unknown action. Active-license checks read the store subscription mirror first, then use a direct subscription doc or capped tenant/store subscription query only when the mirror is missing/stale. Canonical answer proposal review items must carry at least one related entity before acceptance/publish so downstream governance approval is never blocked by an entity-less proposal.
 
+Knowledge Intake routes that pass a `rateLimitKey` through `requireAnswerlatticeKnowledgeIntakeContext()` keep their existing workspace-scoped throttle values, but blocked requests now return private no-store retry metadata and write a bounded security event before any paid or mutating intake work continues.
+
 Paid media extraction now writes both ledgers:
 
 - `answerlattice_intakeUsageLedger` remains the support-credit reservation, settlement, and refund source of truth, including monthly-vs-top-up debit source, before/after balances, token counts, and token count source.
@@ -168,6 +170,7 @@ Implemented internal platform-owner monitor:
 - API: `/api/platform/answerlattice-intake`
 - flag: `ENABLE_ANSWERLATTICE_INTAKE_PLATFORM_MONITOR`
 - auth: `platformRole === 'PLATFORM'`
+- read admission: shared `DATA_READ` gate after query validation and before tenant summary, scheduler-log, job, or usage-ledger reads
 - reads on initial refresh:
   - 1 `platformSummary/answerlatticeTenantsSummary` document for workspace selection
   - up to 8 `answerlattice_schedulerRunLogs` ordered by `startedAt desc`
@@ -179,9 +182,12 @@ Implemented internal platform-owner monitor:
 - writes: none
 - listeners: none
 - provider calls: none
+- browser response validation: 0 Firestore reads/writes; monitor snapshot and retry responses are parsed through a 512 KB bounded reader before UI state changes
 - scheduler triggers: only when a platform admin explicitly clicks **Retry selected nightly**
 
 This monitor is intentionally platform-owned and scoped. It exists so Answerlattice operators can verify intake adoption, failed jobs, paid media usage, refund behavior, and nightly summary health without opening individual tenant dashboards or scanning source/review-item collections. The manual retry action posts the selected `tId/sId` to the existing `triggerAnswerlatticeNightly` function, so recovery runs for one workspace instead of forcing all tenants.
+
+The manual retry API validates the configured trigger target before the outbound fetch. Production accepts only `https://us-central1-answerlattice-qa.cloudfunctions.net/triggerAnswerlatticeNightly` or `https://us-central1-answerlattice.cloudfunctions.net/triggerAnswerlatticeNightly`; development may use a localhost emulator URL with the same trigger path. The target then passes through the app-server DNS guard, and the route fetches the normalized URL only with manual redirect handling. Target rejection, redirect responses, and manual retry failures log or return fixed runtime responses with bounded target or tenant/store metadata. The manual trigger response body is capped at 512 KB, sanitized to scheduler status/run/task-count metadata, and required for successful retry acknowledgement. This adds one DNS lookup per valid manual retry and no Firestore reads/writes beyond the existing workspace-summary read, no new collections, no Cloud Function logic changes, no retry queue, no public route, no owner setting, and no Firebase deploy requirement.
 
 ### 4.3 Bucketed Intake Directory
 
@@ -595,6 +601,7 @@ When implemented with this contract:
 - active progress can use polling or one short-lived active-job listener only
 - no scheduler crawl runs by default
 - discovered-but-skipped website URLs live in Storage manifests, not Firestore
+- selected URL fetch bodies are streamed and capped before text normalization; non-streaming responses fail closed unless they declare a safe content length
 - unchanged selected URLs skip AI/provider work and most writes
 - one active expensive job per workspace avoids accidental provider/function fanout
 - credit reservation/settlement prevents hidden overrun and releases unused reserved credits
@@ -604,12 +611,16 @@ When implemented with this contract:
 - product-surface summary rebuild happens once per affected publish batch, not once per output item
 - nightly jobs use source-version manifests only when a source changed
 
+Knowledge Intake client response validation and request-policy hardening add no Firestore reads, writes, deletes, listeners, API routes, provider calls, Storage operations, scheduler work, cache invalidations, or support-credit ledger changes. The browser calls now pin no-store cache, same-origin credentials, and manual redirect handling, then reject malformed, oversized, rejected, or wrong-shape responses before local intake state, entity-option cache, bundle refresh, or success copy advances.
+
 ---
 
 ## 14. Version History
 
 | Date | Version | Change |
 | --- | --- | --- |
+| 2026-06-30 | 2.1.3 | Documented shared Knowledge Intake browser request policy with no Firebase cost-shape change. |
+| 2026-06-30 | 2.1.2 | Documented bounded Knowledge Intake client response validation with no Firebase cost-shape change. |
 | 2026-06-20 | 2.1.1 | Added token count source and support-credit debit breakdown to media extraction accounting notes. |
 | 2026-05-31 | 1.0.0 | Initial Firebase/cost contract for Knowledge Intake Command Center. |
 | 2026-05-31 | 1.1.0 | Added website link discovery cost model, selected-source Firestore rules, and unchanged-link refresh skip rules. |

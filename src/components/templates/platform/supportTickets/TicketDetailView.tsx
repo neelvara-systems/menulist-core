@@ -3,9 +3,11 @@
 import DateTimeDisplay from '@atoms/DateTimeDisplay';
 import { FEATURE_FLAGS } from '@config/features';
 import { ANSWERLATTICE_GOVERNANCE_TABS, getAnswerlatticeGovernanceRoute, toAnswerlatticeDashboardRoute } from '@constant/answerlattice/navigations';
-import { rebuildProductSurfaceContentSummary } from '@database/answerlattice/productSurfaces';
-import { updateTicket } from '@database/tickets';
+import { rebuildProductSurfaceContentSummaryWithDiagnostics } from '@database/answerlattice/productSurfaces';
+import { assertSupportTicketUpdateSucceeded, updateTicket } from '@database/tickets';
 import { useAppDispatch } from '@hook/useAppDispatch';
+import { getBoundedAnswerlatticeStringContext } from '@lib/answerlattice/diagnostics';
+import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { sanitizeFeedbackComment } from '@lib/sanitization';
 import SupportTicketCategory from '@organisms/SupportTicket/SupportTicketCategory';
 import SupportTicketPriority from '@organisms/SupportTicket/SupportTicketPriority';
@@ -42,6 +44,26 @@ function TicketDetailView({ activeTicket, onUpdate, setSelectedTicket, from }: T
     const isMobile = !screens.md;
     const isClientView = from === "client";
     const currentHostname = typeof window === 'undefined' ? undefined : window.location.hostname;
+
+    const handleAttachmentOpen = (item: { url?: string; name?: string; type?: string; size?: number }) => {
+        try {
+            const opened = window.open(item.url, '_blank', 'noopener,noreferrer');
+            if (!opened) {
+                throw new Error('answerlattice_ticket_attachment_open_blocked');
+            }
+        } catch (error) {
+            logRuntimeFailure('answerlattice_ticket_attachment_open_failed', error, {
+                surface: 'ticket_detail_view',
+                ...getBoundedRuntimeStringContext('ticketId', ticket?.id),
+                ...getBoundedRuntimeStringContext('ticketDisplayId', ticket?.displayId),
+                ...getBoundedRuntimeStringContext('attachmentUrl', item.url),
+                ...getBoundedRuntimeStringContext('attachmentName', item.name),
+                ...getBoundedRuntimeStringContext('attachmentType', item.type),
+                attachmentSizePresent: typeof item.size === 'number',
+            });
+            message.error('Unable to open attachment');
+        }
+    };
 
     useEffect(() => {
         setTicket(activeTicket);
@@ -92,15 +114,39 @@ function TicketDetailView({ activeTicket, onUpdate, setSelectedTicket, from }: T
 
         dispatch(startLoader('Updating ticket...'));
         try {
-            const res = await updateTicket({ ...updatePayload, id: ticket.id });
+            const res = await updateTicket({
+                ...updatePayload,
+                id: ticket.id,
+                tId: ticket.tId,
+                sId: ticket.sId,
+            });
+            assertSupportTicketUpdateSucceeded(
+                res,
+                ticket.id,
+                'platform_ticket_detail_update_rejected',
+            );
             onUpdate({ ...res, ...updatePayload, id: ticket.id });
+            let summaryRefreshSucceeded = true;
             if (FEATURE_FLAGS.ENABLE_ANSWERLATTICE_PRODUCT_SURFACES) {
-                rebuildProductSurfaceContentSummary().catch(() => undefined);
+                summaryRefreshSucceeded = await rebuildProductSurfaceContentSummaryWithDiagnostics({
+                    failureCode: 'answerlattice_ticket_summary_refresh_after_update_failed',
+                    context: {
+                        ...getBoundedAnswerlatticeStringContext('ticketId', ticket.id),
+                        ...getBoundedAnswerlatticeStringContext('ticketDisplayId', ticket.displayId),
+                        ...getBoundedAnswerlatticeStringContext('ticketStatus', updatePayload.status || ticket.status),
+                        ...getBoundedAnswerlatticeStringContext('ticketCategory', updatePayload.category || ticket.category),
+                    },
+                });
             }
 
             // Ticket → Knowledge Loop (Item #9): emit enriched resolution signal
             // Fire-and-forget — never blocks ticket update flow
             if (statusChanged && (values.status === SUPPORT_TICKET_STATUS.RESOLVED || values.status === SUPPORT_TICKET_STATUS.CLOSED)) {
+                const resolutionSignalLogContext = {
+                    ...getBoundedRuntimeStringContext('ticketId', ticket.id),
+                    ...getBoundedRuntimeStringContext('ticketDisplayId', ticket.displayId),
+                    ...getBoundedRuntimeStringContext('ticketStatus', values.status),
+                };
                 import('@lib/answerlattice/signalEmitter').then(({ emitTicketResolutionSignal }) => {
                     emitTicketResolutionSignal({
                         ticketId: ticket.id,
@@ -110,12 +156,20 @@ function TicketDetailView({ activeTicket, onUpdate, setSelectedTicket, from }: T
                         tId: Number(ticket.tId),
                         sId: Number(ticket.sId),
                         resolvedBy: session.user.email || session.user.name || 'unknown',
-                    }).catch(() => { /* fire-and-forget */ });
-                }).catch(() => { /* dynamic import fail — non-blocking */ });
+                    }).catch((error) => {
+                        logRuntimeFailure('answerlattice_ticket_resolution_signal_emit_failed', error, resolutionSignalLogContext);
+                    });
+                }).catch((error) => {
+                    logRuntimeFailure('answerlattice_ticket_resolution_signal_import_failed', error, resolutionSignalLogContext);
+                });
             }
 
             setSelectedTicket(null);
-            message.success('Ticket updated successfully.');
+            if (summaryRefreshSucceeded) {
+                message.success('Ticket updated successfully.');
+            } else {
+                message.warning('Ticket updated, but contextual help refresh failed. Try Refresh after checking product surfaces.');
+            }
         } catch (error) {
             message.error('Failed to update ticket.');
         } finally {
@@ -319,7 +373,7 @@ function TicketDetailView({ activeTicket, onUpdate, setSelectedTicket, from }: T
                             key={index}
                             block
                             icon={<LuFile />}
-                            onClick={() => window.open(item.url, '_blank')}
+                            onClick={() => handleAttachmentOpen(item)}
                             style={{ height: 44, justifyContent: 'flex-start' }}
                         >
                             <Text ellipsis style={{ maxWidth: '100%' }}>{item.name}</Text>

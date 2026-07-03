@@ -13,12 +13,13 @@ import { ANSWERLATTICE_PERMISSION_KEYS } from '@constant/answerlattice/permissio
 import { DB_COLLECTIONS } from '@constant/database';
 import { requireAnswerlatticePermission } from '@lib/answerlattice/accessControl';
 import { buildAnswerlatticeAgentPacketJson, renderAnswerlatticeAgentPrompt } from '@lib/answerlattice/installContract/contract';
+import { buildAnswerlatticeRateLimitKey } from '@lib/answerlattice/rateLimitKeys';
 import { resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
 import { normalizeAnswerlatticeWidgetApiState } from '@lib/answerlattice/widgetKeyManager';
 import { normalizeWidgetAllowedOrigins, normalizeWidgetConfig } from '@lib/answerlattice/widgetConfig';
 import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
 import { checkRateLimit } from '@lib/rateLimit';
-import { secureError } from '@lib/security/secureLogger';
+import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '../../../../middleware/auth';
 
@@ -32,29 +33,29 @@ export const GET = withAuth(async (request: NextRequest, session) => {
         return NextResponse.json({ error: 'Answerlattice agent install is not enabled.' }, { status: 403 });
     }
 
-    const permission = await requireAnswerlatticePermission(request, session, ANSWERLATTICE_PERMISSION_KEYS.MANAGE_WIDGET);
-    if (permission.response) return permission.response;
-
     const scope = resolveAnswerlatticeSessionScope(session);
     if (!scope?.tenantId || !scope?.storeId) {
         return NextResponse.json({ error: 'Not onboarded' }, { status: 400 });
     }
 
-    const db = getAnswerlatticeDb();
-    if (!db) {
-        return NextResponse.json({ error: 'Answerlattice Firebase is not configured' }, { status: 503 });
-    }
-
-    const rateLimitResult = await checkRateLimit({
-        key: `answerlattice-widget-agent-packet:${scope.storeId}`,
-        limit: 30,
-        window: 60,
-    });
-    if (!rateLimitResult.allowed) {
-        return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
-    }
-
     try {
+        const rateLimitResult = await checkRateLimit({
+            key: buildAnswerlatticeRateLimitKey('answerlattice-widget-agent-packet', scope.storeId),
+            limit: 30,
+            window: 60,
+        });
+        if (!rateLimitResult.allowed) {
+            return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
+        }
+
+        const permission = await requireAnswerlatticePermission(request, session, ANSWERLATTICE_PERMISSION_KEYS.MANAGE_WIDGET);
+        if (permission.response) return permission.response;
+
+        const db = getAnswerlatticeDb();
+        if (!db) {
+            return NextResponse.json({ error: 'Answerlattice Firebase is not configured' }, { status: 503 });
+        }
+
         const storeSnap = await db.collection(DB_COLLECTIONS.STORES).doc(String(scope.storeId)).get();
         if (!storeSnap.exists) {
             return NextResponse.json({ error: 'Store not found' }, { status: 404 });
@@ -79,9 +80,9 @@ export const GET = withAuth(async (request: NextRequest, session) => {
             prompt: renderAnswerlatticeAgentPrompt(input),
         });
     } catch (error) {
-        secureError('[Answerlattice Widget Agent Packet] Failed to build packet', error as Error, {
-            storeId: scope.storeId,
-            tenantId: scope.tenantId,
+        logRuntimeFailure('answerlattice_widget_agent_packet_failed', error, {
+            ...getBoundedRuntimeStringContext('tenantId', scope.tenantId),
+            ...getBoundedRuntimeStringContext('storeId', scope.storeId),
         });
         return NextResponse.json({ error: 'Failed to build install packet' }, { status: 500 });
     }

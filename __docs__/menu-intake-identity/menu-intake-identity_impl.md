@@ -1,7 +1,7 @@
 # Menu Intake Identity — Implementation
 
 **Status:** Implemented  
-**Last Updated:** June 2, 2026
+**Last Updated:** June 30, 2026
 
 ---
 
@@ -38,6 +38,8 @@ Upload UI
 `POST /api/menu-intake-identity`
 
 Protected by `withAuth()`.
+
+Desktop and mobile call this route through `runMenuIntakeIdentityPreflight()`, which sends the browser request with same-origin credentials, `no-store` cache policy, and manual redirect handling before the 32KB bounded acknowledgement parser accepts the response shape.
 
 Input:
 
@@ -97,6 +99,7 @@ The lower-level `analyzeMenuIntakeIdentity()` helper can also run without an aut
 - Server-side file fetch is restricted to the configured Firebase Storage bucket.
 - Logs do not include raw file contents, tokens, or full URLs.
 - Browser clients no longer create `menuImageProcessingJobs` directly.
+- Browser preflight requests stay same-origin, uncached, and manual-redirect before bounded response parsing.
 - Public draft identity checks run server-side with platform IDs and public billing metadata; they do not read owner tenant/store/project documents.
 
 ## Cost

@@ -103,7 +103,7 @@ Intended integration when `ENABLE_INFRASTRUCTURE_PROVENANCE` is activated:
 | ------------------------- | ---------------------------------------------------- | ---------------------- |
 | AI Extraction Pipeline    | Not wired yet; intended call: `stampAIExtraction()` after Gemini extraction | During menu processing |
 | Editor Save               | Not wired yet; intended call: `detectChangedFields()` + `stampOwnerEdit()` on save | Owner edits            |
-| Discovery Index (Phase 2) | Not wired yet; intended read of `_provenance` confidence for trust scoring | Nightly scheduler      |
+| Discovery Index candidate | Not wired yet; intended read of `_provenance` confidence for trust scoring only after scheduler approval | Conditional scheduler |
 | sanitizeForClient         | Strip `_provenance` before public exposure           | SSR page render        |
 
 ## 6. Feature Flag

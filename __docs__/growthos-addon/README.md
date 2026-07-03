@@ -114,6 +114,10 @@ Implemented V1 scope:
 - Firestore rules for `platformSummary/growthos_{sId}`, `growthosKits`, and `growthosExports`
 - no direct posting, scheduler, image generation, offer builder, used-history UI, ROI, or provider call in V1
 
+June 29 hardening note: the guarded review-reply route keeps the same 10/minute throttle but hashes the user and tenant limiter key segments before calling the shared rate-limit provider, so raw session identifiers are not stored in Upstash key names.
+
+June 30 security-log boundary note: GrowthOS refresh, generate, export, and review-guard routes now use bounded route/session metadata for invalid-JSON, validation-failure, and tenant-violation security events. They no longer spread raw `buildSecurityContext()` output into Growth Kits security logs.
+
 ## June 1, 2026 Owner-Value Hardening Update
 
 The owner-facing Today surface is now framed as `Today's Sales Pack`, not as a generic module card.
@@ -138,6 +142,9 @@ Implementation rules added:
 - the mobile trigger gate uses the existing GrowthOS summary read and must not refresh, generate, export, or write anything until the owner taps an action
 - the legacy Social Content `Generate Today Action` owner path is retired; existing prepared Today campaigns can still be completed/skipped, but new generated action creation belongs to GrowthOS / `Today's Sales Pack`
 - the desktop module may remain `Growth Kits`, but its core panel must describe the same daily Sales Pack loop
+- desktop Growth Kits failure notifications use fixed owner-safe descriptions for refresh, pack generation, copy, share, download, mark-used, and review-reply actions; browser or route exception messages are not shown to owners
+- GrowthOS client helpers throw the caller's fixed fallback copy for failed API responses; route `message` / `error` response text is not copied into owner flows
+- GrowthOS desktop and mobile copy/share handoffs log clipboard/fallback support metadata and show copied feedback only after Clipboard API success or acknowledged textarea fallback success.
 
 Implementation evidence:
 
@@ -253,3 +260,10 @@ Current runtime posture:
 ## Cost Impact Of This Documentation
 
 Runtime Firebase cost remains zero while the master flag is off. When enabled, cost is owner-action driven: summary read, bounded refresh/generate reads, changed-only summary writes, kit write, and export write/status updates.
+
+## June 29 Runtime Hardening
+
+- `src/lib/validation/growthosSchemas.ts` now caps shared GrowthOS JSON API bodies at 16KB through `readBoundedJsonBody()` before route-level Zod validation.
+- Refresh, generate, export, and review-suggest routes still apply their existing feature gates, rate limits, tenant checks, entitlement checks, validation, and fixed failure copy. Oversized bodies now fail before JSON parsing.
+- `scripts/verification/verify-growthos-flow.ts` now guards the shared parser cap and rejects raw `request.json()` usage in the GrowthOS API parser path.
+- June 30 browser request hardening: `src/database/growthos/index.ts` now sends GrowthOS refresh, generate, export, and review-reply POSTs with no-store cache, same-origin credentials, and manual redirect handling before bounded response parsing. This changes no route behavior, Firestore reads/writes/deletes, rules/indexes, Cloud Functions, Firebase deploy requirement, or Vercel deploy action.

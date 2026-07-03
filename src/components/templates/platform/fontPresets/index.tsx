@@ -4,6 +4,7 @@
 import Saperator from "@atoms/Saperator";
 import { addFontPreset, deletFontPreset, getFontPresets, updateFontPreset } from "@database/static/fontPresets";
 import { useAppDispatch } from "@hook/useAppDispatch";
+import { getBoundedRuntimeStringContext, logRuntimeFailure } from "@lib/runtime/runtimeDiagnostics";
 import EditorWrapper from "@organisms/editor/editorWrapper";
 import { showSuccessToast } from "@reduxSlices/toast";
 import { addFontFaceStyle, getBase64, getBase64Length, removeObjRef } from "@util/utils";
@@ -11,7 +12,6 @@ import { Button, Divider, Flex, Input, InputNumber, Popconfirm, theme, Typograph
 import FontFaceObserver from 'fontfaceobserver';
 import { Fragment, useEffect, useRef, useState } from "react";
 import { LuArrowUpDown, LuPlusCircle, LuRefreshCcw, LuTrash, LuUpload, LuUploadCloud, LuX } from "react-icons/lu";
-import logger from "src/loggers";
 import SortFontModal from "./sortFontModal";
 const { Text } = Typography;
 
@@ -42,8 +42,9 @@ function FontPresets() {
 
     useEffect(() => {
         getFontPresets().then((res) => {
-            logger.debug("res", res)
             setFontsList(res)
+        }).catch((error) => {
+            logRuntimeFailure('platform_font_presets_load_failed', error);
         })
         
         // Initialize the canvas context
@@ -123,7 +124,9 @@ function FontPresets() {
                     whiteTextUrl
                 });
             }).catch((err) => {
-                console.log(err);
+                logRuntimeFailure('platform_font_preset_preview_failed', err, {
+                    ...getBoundedRuntimeStringContext('fontCode', fontDetails.code),
+                });
             });
         }
     };

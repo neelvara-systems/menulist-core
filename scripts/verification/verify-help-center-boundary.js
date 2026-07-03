@@ -1,0 +1,140 @@
+#!/usr/bin/env node
+
+const fs = require('fs');
+const path = require('path');
+
+const ROOT = path.resolve(__dirname, '..', '..');
+
+function read(relativePath) {
+  return fs.readFileSync(path.join(ROOT, relativePath), 'utf8');
+}
+
+function assert(condition, message) {
+  if (!condition) {
+    throw new Error(message);
+  }
+}
+
+function assertIncludes(content, needle, label) {
+  assert(content.includes(needle), `${label} must include ${needle}`);
+}
+
+function assertNotIncludes(content, needle, label) {
+  assert(!content.includes(needle), `${label} must not include ${needle}`);
+}
+
+function verifySearchBoundary() {
+  const searchRoute = read('src/app/api/helpCenter/search-kb/route.ts');
+  const sessionScope = read('src/lib/answerlattice/sessionScope.ts');
+  const searchResponse = read('src/lib/search/helpCenterSearchResponse.ts');
+  const helpChatApi = read('src/components/templates/main-app/helpChat/api.ts');
+  const aiSearchModal = read('src/components/organisms/AISearchModal/AiSearchBarComponent.tsx');
+
+  assertIncludes(searchRoute, 'withAuth(async (request: NextRequest, session)', 'Help Center search API auth boundary');
+  assertIncludes(searchRoute, 'checkAIOperationLimit()', 'Help Center search API AI rate limit');
+  assertIncludes(searchRoute, 'const HELP_CENTER_SEARCH_MAX_BODY_BYTES = 64 * 1024;', 'Help Center search API request cap');
+  assertIncludes(searchRoute, 'readBoundedJsonBody(request, HELP_CENTER_SEARCH_MAX_BODY_BYTES)', 'Help Center search API bounded body parser');
+  assertIncludes(searchRoute, 'getSafeZodValidationDetails(error)', 'Help Center search API safe validation details');
+  assertIncludes(searchRoute, 'isAnswerlatticeSupportClientRoute(refererUrl?.pathname)', 'MenuList Help Center Answerlattice route detector');
+  assertIncludes(searchRoute, 'resolveAnswerlatticeSessionScope(session)', 'MenuList Help Center Answerlattice scoped account check');
+  assertIncludes(searchRoute, 'getAnswerlatticeScopedSession(session)', 'MenuList Help Center Answerlattice scoped session');
+  assertIncludes(searchRoute, "source: 'help_center_search'", 'Help Center search AI operation source');
+  assertIncludes(searchRoute, 'answerlattice_search_operation_log_failed', 'Help Center search operation-log failure code');
+  assertIncludes(searchRoute, 'answerlattice_help_center_search_failed', 'Help Center search top-level failure code');
+  assertNotIncludes(searchRoute, 'request.json()', 'Help Center search API unbounded JSON parser');
+  assertNotIncludes(searchRoute, 'error.issues.map', 'Help Center search API raw Zod issue mapping');
+  assertNotIncludes(searchRoute, 'message: err.message', 'Help Center search API raw exception response');
+
+  assertIncludes(sessionScope, "normalizedPath === '/help-center' || normalizedPath.startsWith('/help-center/')", 'Answerlattice support client route scope');
+  assertIncludes(sessionScope, 'getAnswerlatticeScopedSession', 'Answerlattice scoped session helper');
+
+  assertIncludes(searchResponse, 'HELP_CENTER_SEARCH_RESPONSE_JSON_MAX_BYTES = 1024 * 1024', 'Help Center browser response cap');
+  assertIncludes(searchResponse, 'HELP_CENTER_SEARCH_REQUEST_POLICY', 'Help Center browser request policy');
+  assertIncludes(searchResponse, "cache: 'no-store'", 'Help Center browser no-store policy');
+  assertIncludes(searchResponse, "credentials: 'same-origin'", 'Help Center browser same-origin credentials');
+  assertIncludes(searchResponse, "redirect: 'manual'", 'Help Center browser manual redirect policy');
+  assertIncludes(searchResponse, 'readJsonResponseWithLimit<unknown>', 'Help Center browser bounded response parser');
+  assertIncludes(searchResponse, 'isHelpCenterSearchResponse', 'Help Center browser response shape guard');
+
+  assertIncludes(helpChatApi, '...HELP_CENTER_SEARCH_REQUEST_POLICY', 'Help Chat search request policy');
+  assertIncludes(helpChatApi, "readHelpCenterSearchResponse(response, 'help_chat')", 'Help Chat bounded response parser');
+  assertNotIncludes(helpChatApi, 'response.json()', 'Help Chat direct JSON parser');
+
+  assertIncludes(aiSearchModal, '...HELP_CENTER_SEARCH_REQUEST_POLICY', 'AI Search modal request policy');
+  assertIncludes(aiSearchModal, "readHelpCenterSearchResponse(response, 'ai_search_modal')", 'AI Search modal bounded response parser');
+  assertIncludes(aiSearchModal, 'getHelpCenterSearchClientFailureMessage(error, AI_SEARCH_FAILED_MESSAGE)', 'AI Search modal fixed local failure copy');
+  assertNotIncludes(aiSearchModal, 'response.json()', 'AI Search modal direct JSON parser');
+}
+
+function verifyMobileBoundary() {
+  const mobileShell = read('src/components/mobile/MobileShell.tsx');
+  const mobileMoreScreen = read('src/components/mobile/screens/MobileMoreScreen.tsx');
+  const mobileHelpScreen = read('src/components/mobile/screens/MobileHelpScreen.tsx');
+
+  assertIncludes(mobileShell, 'const HELP_CENTER_TAB_TO_MORE_SCREEN', 'MobileShell Help Center route map');
+  assertIncludes(mobileShell, "return HELP_CENTER_TAB_TO_MORE_SCREEN[tab] || 'answerlatticeHelp';", 'MobileShell Help Center fallback');
+  assertIncludes(mobileShell, "normalizedPathname === '/help-center' || normalizedPathname.startsWith('/help-center/')", 'MobileShell Help Center direct route detection');
+  assertIncludes(mobileMoreScreen, "else if (subScreen === 'answerlatticeHelp') subScreenContent = <MobileHelpScreen", 'Mobile More Help Center entry');
+  assertIncludes(mobileMoreScreen, 'initialTab="kb"', 'Mobile More Help Center docs tab');
+  assertIncludes(mobileMoreScreen, 'initialTab="ticket"', 'Mobile More Help Center support tab');
+  assertIncludes(mobileMoreScreen, 'initialTab="changelog"', 'Mobile More Help Center release notes tab');
+  assertIncludes(mobileHelpScreen, "const isDirectHelpCenterRoute = pathSegments[0] === 'help-center';", 'Mobile Help Center direct route awareness');
+  assertIncludes(mobileHelpScreen, 'const requestedArticleId = requestedPathTab === \'kb\'', 'Mobile Help Center article deep link');
+  assertIncludes(mobileHelpScreen, 'const requestedChangelogId = requestedPathTab === \'changelog\'', 'Mobile Help Center changelog deep link');
+  assertIncludes(mobileHelpScreen, "window.history.replaceState(null, '', '/dashboard#mobile/more');", 'Mobile Help Center shell back target');
+  assertIncludes(mobileHelpScreen, 'min-height: 44px;', 'Mobile Help Center touch target floor');
+}
+
+function verifyTicketBoundary() {
+  const ticketsDal = read('src/database/tickets/index.ts');
+  const firestoreRules = read('firestore-answerlattice.rules');
+  const ticketHistoryView = read('src/components/templates/main-app/helpCenter/TicketHistoryView.tsx');
+  const ticketDetailView = read('src/components/templates/platform/supportTickets/TicketDetailView.tsx');
+  const conversationTimeline = read('src/components/templates/platform/supportTickets/ConversationTimeline.tsx');
+  const platformTicketsView = read('src/components/templates/platform/supportTickets/PlatformTicketsView.tsx');
+
+  assertIncludes(ticketsDal, 'getScopedTicketConstraints(session)', 'Support ticket platform/client scoped query helper');
+  assertIncludes(ticketsDal, 'where("tId", "==", session.tId)', 'Store ticket read tenant scope');
+  assertIncludes(ticketsDal, 'where("sId", "==", session.sId)', 'Store ticket read store scope');
+  assertIncludes(ticketsDal, 'requireSupportTicketMutationScope', 'Support ticket mutation scope guard');
+  assertIncludes(ticketsDal, 'getSessionSupportTicketScope(session)', 'Support ticket session scope resolver');
+  assertIncludes(ticketsDal, 'support_ticket_update', 'Support ticket update scope rejection code base');
+  assertIncludes(ticketsDal, 'support_ticket_message', 'Support ticket message scope rejection code base');
+  assertIncludes(ticketsDal, 'delete updateData.tId;', 'Support ticket platform partial update tenant preserve');
+  assertIncludes(ticketsDal, 'delete updateData.sId;', 'Support ticket platform partial update store preserve');
+  assertIncludes(ticketsDal, 'applySupportTicketMutationScope(updateData, mutationScope);', 'Support ticket mutation scope application');
+
+  assertIncludes(firestoreRules, 'match /supportTickets/{docId}', 'Answerlattice support ticket rules block');
+  assertIncludes(firestoreRules, 'allow update: if isAnswerlatticeScopedUpdateWithSupportControl();', 'Answerlattice support ticket scoped update rule');
+  assertIncludes(firestoreRules, 'request.resource.data.tId == resource.data.tId', 'Answerlattice rules stable tenant scope');
+  assertIncludes(firestoreRules, 'request.resource.data.sId == resource.data.sId', 'Answerlattice rules stable store scope');
+
+  assertIncludes(ticketHistoryView, 'from="client"', 'MenuList Help Center ticket detail client mode');
+  assertIncludes(ticketDetailView, 'const isClientView = from === "client";', 'Support ticket client view flag');
+  assertIncludes(ticketDetailView, 'tId: ticket.tId', 'Support ticket detail mutation tenant scope');
+  assertIncludes(ticketDetailView, 'sId: ticket.sId', 'Support ticket detail mutation store scope');
+  assertIncludes(ticketDetailView, '{!isClientView && (', 'Support ticket client view hides platform-only actions/logs');
+  assertIncludes(conversationTimeline, '{ tId: ticket.tId, sId: ticket.sId }', 'Support ticket reply mutation scope');
+  assertIncludes(platformTicketsView, 'tId: ticket.tId', 'Support ticket table mutation tenant scope');
+  assertIncludes(platformTicketsView, 'sId: ticket.sId', 'Support ticket table mutation store scope');
+}
+
+function verifyDocsBoundary() {
+  const inventory = read('FEATURE_SWEEP_MASTER_INVENTORY.md');
+  const report = read('FEATURE_SWEEP_MASTER_REPORT.md');
+  const audit = read('__docs__/audits/menulist-production-readiness-audit.md');
+  const changelog = read('__docs__/CHANGELOG.md');
+
+  assertIncludes(inventory, 'help_center | Owner Help Center', 'Help Center inventory row');
+  assertIncludes(inventory, 'scoped ticket mutation gate passed', 'Help Center inventory scoped ticket status');
+  assertIncludes(report, 'Help Center Answerlattice Support Boundary', 'Help Center sweep report checkpoint');
+  assertIncludes(audit, 'Help Center Answerlattice support boundary checkpoint', 'Help Center production audit checkpoint');
+  assertIncludes(changelog, 'Help Center Answerlattice Support Boundary', 'Help Center changelog entry');
+}
+
+verifySearchBoundary();
+verifyMobileBoundary();
+verifyTicketBoundary();
+verifyDocsBoundary();
+
+console.log('Help Center boundary verification passed');

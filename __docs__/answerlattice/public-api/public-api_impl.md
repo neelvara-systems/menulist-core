@@ -1,7 +1,7 @@
 # Answerlattice Public API — Implementation
 
 > **Status:** Implemented
-> **Last Updated:** 2026-06-16
+> **Last Updated:** 2026-06-29
 
 ---
 
@@ -53,7 +53,9 @@ Widget credentials are intentionally separate:
 
 ### `GET /api/answerlattice/public/v1/entities`
 
-- Reads a capped tenant entity list from Answerlattice Firestore.
+- Reads compiled private entity-index bundle context first when bundle reads are enabled and ready.
+- Falls back to a capped tenant entity list from Answerlattice Firestore when bundles are disabled, missing, not ready, or unavailable.
+- Logs `answerlattice_public_entities_bundle_manifest_load_failed` or `answerlattice_public_entities_bundle_object_load_failed` when a bundle manifest/object read throws before falling back.
 - Filters by optional `type` and `status` in memory to avoid adding more composite index requirements.
 - Defaults to public-visible statuses: `active` and `beta`.
 - Supports `ETag` and short private cache headers.
@@ -76,7 +78,7 @@ Widget credentials are intentionally separate:
 - Hash-only Answerlattice keys skip the legacy raw-key fallback query.
 - Rate limiting runs before key validation.
 - Answer retrieval does not call Gemini/RAG.
-- Entity registry reads are capped at 200 documents.
+- Entity registry uses compiled context first when available; Firestore fallback reads are capped at 200 documents.
 - Signal ingestion writes one signal document and uses deterministic document IDs for explicit source/request IDs so retries do not append duplicate signal rows.
 
 ---

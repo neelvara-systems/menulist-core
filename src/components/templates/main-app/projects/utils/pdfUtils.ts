@@ -6,7 +6,12 @@
  */
 
 import { message } from 'antd';
+import {
+    getBoundedMenuProcessingStringContext,
+    logMenuProcessingFailure,
+} from '@lib/firebase/menuProcessingDiagnostics';
 import { generateMenuFileUid } from '../utils';
+import { MAX_PDF_PAGES, WARN_PDF_PAGES } from '../constants';
 
 const PDFJS_CDN_SRC = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
 const PDFJS_WORKER_SRC = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
@@ -69,8 +74,8 @@ let processedFiles: string[] = [];
  * 
  * Features:
  * - Prevents memory leaks by cleaning up canvases
- * - Limits to 50 pages per PDF to prevent browser crashes
- * - Shows warnings for large PDFs (>30 pages)
+ * - Limits pages per PDF to the shared extraction job file cap
+ * - Shows warnings for large PDFs near that cap
  * - Handles corrupted PDFs gracefully
  * - Tracks processing time
  * 
@@ -79,9 +84,22 @@ let processedFiles: string[] = [];
  * @param storeId - Store identifier
  * @returns Promise<Array> - Array of converted image objects
  */
-export const convertPdfToImages = async (pdfFile: any[], tenantId: any, storeId: any) => {
+type ConvertPdfToImagesOptions = {
+    maxPages?: number;
+};
+
+export const convertPdfToImages = async (
+    pdfFile: any[],
+    tenantId: any,
+    storeId: any,
+    options: ConvertPdfToImagesOptions = {},
+) => {
     const convertedImages: any[] = [];
     const canvases: HTMLCanvasElement[] = []; // Track canvases for cleanup
+    const requestedPageLimit = typeof options.maxPages === 'number' && Number.isFinite(options.maxPages)
+        ? Math.floor(options.maxPages)
+        : MAX_PDF_PAGES;
+    const pageLimit = Math.max(0, Math.min(MAX_PDF_PAGES, requestedPageLimit));
 
     return new Promise(async (resolve) => {
         if (!pdfFile?.length) {
@@ -92,7 +110,6 @@ export const convertPdfToImages = async (pdfFile: any[], tenantId: any, storeId:
         // Lazy load pdfjs-dist
         const pdfjs = await ensurePdfLibLoaded();
 
-        console.log("🔄 Started PDF conversion");
         const startTime = Date.now();
 
         try {
@@ -120,20 +137,22 @@ export const convertPdfToImages = async (pdfFile: any[], tenantId: any, storeId:
                 }
 
                 const totalPages = pdf.numPages;
-                console.log(`📄 Processing ${file.name}: ${totalPages} pages`);
 
-                // Check page limit (50 max as per requirements)
-                if (totalPages > 50) {
+                // Keep page limit aligned with backend extraction job file cap and the caller's remaining upload slots.
+                if (totalPages > MAX_PDF_PAGES || totalPages > pageLimit) {
+                    const limitMessage = pageLimit < MAX_PDF_PAGES
+                        ? `"${file.name}" has ${totalPages} pages. This upload has ${pageLimit} page${pageLimit === 1 ? '' : 's'} left. Remove selected files or split the PDF.`
+                        : `"${file.name}" has ${totalPages} pages. Maximum allowed is ${MAX_PDF_PAGES} pages per PDF. Please split the PDF into smaller files.`;
                     message.error({
-                        content: `"${file.name}" has ${totalPages} pages. Maximum allowed is 50 pages per PDF. Please split the PDF into smaller files.`,
+                        content: limitMessage,
                         duration: 8
                     });
                     pdf.cleanup();
                     continue; // Skip this file
                 }
 
-                // Show warning for large PDFs (30+ pages)
-                if (totalPages > 30) {
+                // Show warning for large PDFs close to the processing cap.
+                if (totalPages > WARN_PDF_PAGES) {
                     message.warning({
                         content: `"${file.name}" has ${totalPages} pages. This will take a few minutes to process and may use significant AI credits.`,
                         duration: 8
@@ -152,7 +171,11 @@ export const convertPdfToImages = async (pdfFile: any[], tenantId: any, storeId:
                     // Use willReadFrequently: false for better performance
                     const context = canvas.getContext('2d', { willReadFrequently: false });
                     if (!context) {
-                        console.error('Failed to get canvas context');
+                        logMenuProcessingFailure('menu_pdf_conversion_canvas_context_missing', undefined, {
+                            ...getBoundedMenuProcessingStringContext('fileUid', file.uid),
+                            pageIndex: i,
+                            totalPages,
+                        });
                         continue;
                     }
 
@@ -186,19 +209,11 @@ export const convertPdfToImages = async (pdfFile: any[], tenantId: any, storeId:
 
                     // Clean up page
                     page.cleanup();
-
-                    // Log progress every 10 pages
-                    if (i % 10 === 0) {
-                        console.log(`  ✓ Processed ${i}/${totalPages} pages`);
-                    }
                 }
 
                 // Clean up PDF document
                 pdf.cleanup();
             }
-
-            const processingTime = Date.now() - startTime;
-            console.log(`✅ PDF conversion complete: ${(processingTime / 1000).toFixed(2)}s`);
 
             // Reset processed files tracker
             processedFiles = [];
@@ -206,7 +221,11 @@ export const convertPdfToImages = async (pdfFile: any[], tenantId: any, storeId:
             resolve(convertedImages);
 
         } catch (error) {
-            console.error('❌ Error converting PDF:', error);
+            logMenuProcessingFailure('menu_pdf_conversion_failed', error, {
+                fileCount: pdfFile.length,
+                convertedImageCount: convertedImages.length,
+                elapsedMs: Date.now() - startTime,
+            });
             message.error({
                 content: 'Failed to convert PDF. Please try again or contact support if the issue persists.',
                 duration: 6
@@ -219,7 +238,6 @@ export const convertPdfToImages = async (pdfFile: any[], tenantId: any, storeId:
                 canvas.width = 0;
                 canvas.height = 0;
             });
-            console.log(`🧹 Cleaned up ${canvases.length} canvases`);
         }
     });
 };

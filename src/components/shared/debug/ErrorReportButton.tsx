@@ -1,7 +1,19 @@
 'use client';
 
 import { getClientConsoleSnapshot } from '@lib/debug/clientConsoleBuffer';
+import {
+    DEPLOYMENT_VERSION_REQUEST_POLICY,
+    readDeploymentVersionResponse,
+} from '@lib/deployment/versionResponse';
 import { logger } from '@lib/monitoring/logger';
+import {
+    copyRuntimeTextToClipboard,
+    getBoundedRuntimeStringContext,
+    hasRuntimeClipboardWrite,
+    hasRuntimeCopyFallback,
+    logRuntimeFailure,
+} from '@lib/runtime/runtimeDiagnostics';
+import { sanitizeErrorForLog } from '@lib/security/secureLogger';
 import type { CSSProperties } from 'react';
 import { useState } from 'react';
 
@@ -35,15 +47,10 @@ async function getBuildDiagnostics(): Promise<BuildDiagnostics> {
     if (typeof window === 'undefined') return getClientBuildDiagnostics();
 
     try {
-        const response = await fetch('/api/version', { cache: 'no-store' });
+        const response = await fetch('/api/version', DEPLOYMENT_VERSION_REQUEST_POLICY);
         if (!response.ok) return getClientBuildDiagnostics();
-        const data = await response.json() as {
-            buildCreatedAt?: string;
-            buildId?: string;
-            deploymentUrl?: string;
-            env?: string;
-            shortBuildId?: string;
-        };
+        const data = await readDeploymentVersionResponse(response, 'error_report');
+        if (!data) return getClientBuildDiagnostics();
 
         return {
             buildCreatedAt: data.buildCreatedAt,
@@ -61,7 +68,7 @@ function getRuntimeDiagnostics(error?: Error & { digest?: string }) {
     if (typeof window === 'undefined') {
         return {
             digest: error?.digest,
-            errorMessage: error?.message,
+            error: error ? sanitizeErrorForLog(error) : undefined,
             errorName: error?.name,
         };
     }
@@ -69,7 +76,7 @@ function getRuntimeDiagnostics(error?: Error & { digest?: string }) {
     return {
         console: getClientConsoleSnapshot(),
         digest: error?.digest,
-        errorMessage: error?.message,
+        error: error ? sanitizeErrorForLog(error) : undefined,
         errorName: error?.name,
         location: window.location.href,
         routePath: window.location.pathname,
@@ -127,7 +134,9 @@ export default function ErrorReportButton({
             }));
             setStatus('sent');
         } catch (reportError) {
-            console.error('[ErrorReportButton] Could not send diagnostics', reportError);
+            logRuntimeFailure('error_report_send_failed', reportError, {
+                ...getBoundedRuntimeStringContext('source', source),
+            });
             setStatus('idle');
         }
     };
@@ -141,11 +150,17 @@ export default function ErrorReportButton({
         });
 
         try {
-            await navigator.clipboard.writeText(diagnostics);
+            await copyRuntimeTextToClipboard(diagnostics);
             setCopyStatus('copied');
             window.setTimeout(() => setCopyStatus('idle'), 1800);
         } catch (copyError) {
-            console.error('[ErrorReportButton] Could not copy diagnostics', copyError);
+            logRuntimeFailure('error_report_copy_failed', copyError, {
+                diagnosticsLength: diagnostics.length,
+                hasReportId: Boolean(reportId),
+                hasClipboardWrite: hasRuntimeClipboardWrite(),
+                hasCopyFallback: hasRuntimeCopyFallback(),
+                ...getBoundedRuntimeStringContext('source', source),
+            });
         }
     };
 

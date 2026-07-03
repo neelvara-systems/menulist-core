@@ -14,8 +14,15 @@ import { generateMessageTemplates, getTodayHours, MessageTemplate, type MessageT
 import { Button, Card, Flex, message, Typography } from 'antd';
 import { useMemo, useState } from 'react';
 import { LuCheck, LuCopy, LuMessageCircle, LuMessageSquare } from 'react-icons/lu';
+import {
+    getBoundedUseMenuListStringContext,
+    logUseMenuListFailure,
+    type UseMenuListLogContext,
+} from './useMenuListDiagnostics';
 
 const { Title, Text } = Typography;
+const USE_MENULIST_COMMUNICATION_KIT_COPY_UNAVAILABLE = 'use_menulist_communication_kit_copy_unavailable';
+const USE_MENULIST_COMMUNICATION_KIT_COPY_FALLBACK_FAILED = 'use_menulist_communication_kit_copy_fallback_failed';
 
 interface CommunicationKitProps {
     storeName: string;
@@ -27,6 +34,61 @@ interface CommunicationKitProps {
     workingHours?: Record<string, string>;
     timeZone?: string;
     themeToken: any;
+    diagnosticContext?: UseMenuListLogContext;
+}
+
+function hasUseMenuListCommunicationKitClipboardWrite(): boolean {
+    return typeof navigator !== 'undefined' && typeof navigator.clipboard?.writeText === 'function';
+}
+
+function hasUseMenuListCommunicationKitCopyFallback(): boolean {
+    return typeof document !== 'undefined'
+        && Boolean(document.body)
+        && typeof document.createElement === 'function'
+        && typeof document.execCommand === 'function';
+}
+
+async function copyUseMenuListCommunicationKitMessage(copyMessage: string): Promise<void> {
+    let clipboardWriteError: unknown;
+
+    if (hasUseMenuListCommunicationKitClipboardWrite()) {
+        try {
+            await navigator.clipboard.writeText(copyMessage);
+            return;
+        } catch (error) {
+            clipboardWriteError = error;
+        }
+    }
+
+    if (!hasUseMenuListCommunicationKitCopyFallback()) {
+        throw Object.assign(new Error(USE_MENULIST_COMMUNICATION_KIT_COPY_UNAVAILABLE), {
+            code: USE_MENULIST_COMMUNICATION_KIT_COPY_UNAVAILABLE,
+            clipboardWriteRejected: Boolean(clipboardWriteError),
+        });
+    }
+
+    const textarea = document.createElement('textarea');
+    textarea.value = copyMessage;
+    textarea.readOnly = true;
+    textarea.setAttribute('aria-hidden', 'true');
+    textarea.style.position = 'fixed';
+    textarea.style.left = '-9999px';
+    textarea.style.top = '0';
+
+    document.body.appendChild(textarea);
+    textarea.select();
+    textarea.setSelectionRange(0, textarea.value.length);
+
+    try {
+        const copied = document.execCommand('copy');
+        if (!copied) {
+            throw Object.assign(new Error(USE_MENULIST_COMMUNICATION_KIT_COPY_FALLBACK_FAILED), {
+                code: USE_MENULIST_COMMUNICATION_KIT_COPY_FALLBACK_FAILED,
+            });
+        }
+    } finally {
+        document.body.removeChild(textarea);
+    }
 }
 
 export default function CommunicationKit({
@@ -39,6 +101,7 @@ export default function CommunicationKit({
     workingHours,
     timeZone,
     themeToken,
+    diagnosticContext,
 }: CommunicationKitProps) {
     const todayResult = useMemo(() => getTodayHours(workingHours, timeZone), [workingHours, timeZone]);
 
@@ -56,6 +119,19 @@ export default function CommunicationKit({
     const templates = useMemo(() => generateMessageTemplates(input), [input]);
     const copyTemplates = useMemo(() => generateMessageTemplates(withEntrySource(input, 'copy_link')), [input]);
     const whatsappTemplates = useMemo(() => generateMessageTemplates(withEntrySource(input, 'whatsapp')), [input]);
+    const communicationDiagnosticContext = useMemo<UseMenuListLogContext>(() => ({
+        ...diagnosticContext,
+        ...getBoundedUseMenuListStringContext('storeName', storeName),
+        ...getBoundedUseMenuListStringContext('businessType', businessType),
+        ...getBoundedUseMenuListStringContext('businessCategory', businessCategory),
+        ...getBoundedUseMenuListStringContext('menuLink', menuLink),
+        ...getBoundedUseMenuListStringContext('address', address),
+        ...getBoundedUseMenuListStringContext('phone', phone),
+        ...getBoundedUseMenuListStringContext('timeZone', timeZone),
+        hasWorkingHours: Boolean(workingHours),
+        isClosedToday: todayResult.isClosed,
+        templateCount: templates.length,
+    }), [address, businessCategory, businessType, diagnosticContext, menuLink, phone, storeName, templates.length, timeZone, todayResult.isClosed, workingHours]);
 
     return (
         <div>
@@ -72,6 +148,7 @@ export default function CommunicationKit({
                     <MessageCard
                         key={tmpl.id}
                         copyMessage={copyTemplates.find((entry) => entry.id === tmpl.id)?.message || tmpl.message}
+                        diagnosticContext={communicationDiagnosticContext}
                         template={tmpl}
                         themeToken={themeToken}
                         whatsappMessage={whatsappTemplates.find((entry) => entry.id === tmpl.id)?.message || tmpl.message}
@@ -93,27 +170,54 @@ function withEntrySource(input: MessageTemplateInput, entrySource: AnalyticsEntr
 
 interface MessageCardProps {
     copyMessage: string;
+    diagnosticContext?: UseMenuListLogContext;
     template: MessageTemplate;
     themeToken: any;
     whatsappMessage: string;
 }
 
-function MessageCard({ copyMessage, template, themeToken, whatsappMessage }: MessageCardProps) {
+function MessageCard({ copyMessage, diagnosticContext, template, themeToken, whatsappMessage }: MessageCardProps) {
     const [copied, setCopied] = useState(false);
+
+    const buildCommunicationKitLogContext = (action: 'copy' | 'whatsapp_open'): UseMenuListLogContext => ({
+        ...diagnosticContext,
+        ...getBoundedUseMenuListStringContext('templateId', template.id),
+        ...getBoundedUseMenuListStringContext('templateTitle', template.title),
+        action,
+        copyMessageLength: copyMessage.length,
+        whatsappMessageLength: whatsappMessage.length,
+    });
 
     const handleCopy = async () => {
         try {
-            await navigator.clipboard.writeText(copyMessage);
+            await copyUseMenuListCommunicationKitMessage(copyMessage);
             setCopied(true);
             message.success('Message copied');
             setTimeout(() => setCopied(false), 2000);
-        } catch {
+        } catch (error) {
+            logUseMenuListFailure('use_menulist_communication_kit_copy_failed', error, {
+                ...buildCommunicationKitLogContext('copy'),
+                hasClipboardWrite: hasUseMenuListCommunicationKitClipboardWrite(),
+                hasCopyFallback: hasUseMenuListCommunicationKitCopyFallback(),
+            });
             message.error('Failed to copy');
         }
     };
 
     const handleWhatsApp = () => {
-        window.open(`https://wa.me/?text=${encodeURIComponent(whatsappMessage)}`, '_blank');
+        const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(whatsappMessage)}`;
+        try {
+            const opened = window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
+            if (!opened) {
+                throw new Error('use_menulist_communication_kit_whatsapp_open_blocked');
+            }
+        } catch (error) {
+            logUseMenuListFailure('use_menulist_communication_kit_whatsapp_open_failed', error, {
+                ...buildCommunicationKitLogContext('whatsapp_open'),
+                whatsappUrlLength: whatsappUrl.length,
+            });
+            message.error('Failed to open WhatsApp');
+        }
     };
 
     return (

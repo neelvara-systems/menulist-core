@@ -2,7 +2,10 @@ export const dynamic = "force-dynamic";
 
 import {
     applySignalDeskRateLimit,
+    getBoundedSignalDeskStringContext,
+    getSignalDeskAccessLogContext,
     isSignalDeskMobileRequest,
+    logSignalDeskFailure,
     logSignalDeskValidationFailure,
     parseSignalDeskJsonBody,
     requireSignalDeskAccess,
@@ -10,7 +13,6 @@ import {
 } from "@lib/signaldesk/apiGuards";
 import { recordSignalDeskMobileActionBlockedServer, setSignalDeskKillSwitchServer } from "@lib/signaldesk/server";
 import { validateAPIInput } from "@lib/security/inputValidation";
-import { secureError } from "@lib/security/secureLogger";
 import type { SignalDeskPermission } from "@type/signaldesk";
 import { withAuth } from "@/middleware/auth";
 import type { NextRequest } from "next/server";
@@ -47,11 +49,10 @@ export const POST = withAuth(async (request: NextRequest, session) => {
     if (validation.success !== true) {
         logSignalDeskValidationFailure({
             action: "kill-switch",
-            details: validation.error,
             request,
             session,
         });
-        return NextResponse.json({ error: "Invalid input", details: validation.error }, { status: 400 });
+        return NextResponse.json({ error: "Invalid input" }, { status: 400 });
     }
     const validatedInput = validation.data;
 
@@ -87,9 +88,17 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         });
         return NextResponse.json({ data: killSwitch });
     } catch (error) {
-        secureError("[SignalDesk API] Kill switch update failed", error as Error, {
-            userId: accessResult.access.userId,
-        });
+        logSignalDeskFailure(
+            "signaldesk_kill_switch_update_failed",
+            error,
+            {
+                route: "/api/signaldesk/kill-switches",
+                ...getSignalDeskAccessLogContext(accessResult.access),
+                ...getBoundedSignalDeskStringContext("scope", validatedInput.scope),
+                ...getBoundedSignalDeskStringContext("status", validatedInput.status),
+                mobileRequest: isSignalDeskMobileRequest(request),
+            },
+        );
         return NextResponse.json({ error: "Failed to update SignalDesk pause" }, { status: 500 });
     }
 });

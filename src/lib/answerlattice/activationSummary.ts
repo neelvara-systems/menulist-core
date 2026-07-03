@@ -87,7 +87,7 @@ const normalizeSubscription = (value: Record<string, any> | null | undefined): A
         status: value.status || null,
         currency: value.currency || null,
         amount: Number.isFinite(Number(value.amount)) ? Number(value.amount) : null,
-        isBeta: value.planId === 'answerlattice_beta' || String(value.providerSubscriptionId || value.id || '').startsWith('answerlattice_beta_'),
+        isBeta: false,
         subscriptionEndDate: value.subscriptionEndDate || value.cycleEndDate || null,
     };
 };
@@ -266,7 +266,7 @@ export function buildAnswerlatticeActivationSummary(params: {
             title: 'License active',
             description: subscriptionStatus === 'pending'
                 ? 'Payment is pending. Keep setup moving, but resolve billing before launch.'
-                : 'Subscription or beta license is recorded for this workspace.',
+                : 'Paid subscription is recorded for this workspace.',
             status: licenseStatus,
             route: ANSWERLATTICE_ROUTES.SETTINGS,
             actionLabel: 'Check License',

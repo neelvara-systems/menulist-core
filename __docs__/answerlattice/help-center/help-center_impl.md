@@ -1,7 +1,7 @@
 # Help Center — Technical Implementation Blueprint
 
-> **Version:** 1.0.1
-> **Last Updated:** 2026-05-25
+> **Version:** 1.0.4
+> **Last Updated:** 2026-07-02
 > **Audience:** Developers
 > **Source:** Codebase forensic audit (code is truth)
 
@@ -114,6 +114,7 @@ Both the Help Center route and Widget route are **thin auth wrappers** that call
 | `LocalSearchResults.tsx`     | —     | Local article search results                                          |
 | `DevOnlyClearDataButton.tsx` | —     | Dev-only data clearing utility                                        |
 | `SessionCard.tsx`            | —     | Chat session card in history list                                     |
+| `helpChatDiagnostics.ts`     | —     | Bounded client diagnostics for draft storage and feedback submission state |
 
 **Hooks:** `hooks/`
 
@@ -304,32 +305,37 @@ Both the Help Center route and Widget route are **thin auth wrappers** that call
 
 | Function                       | Reads    | Writes | Notes                                               |
 | ------------------------------ | -------- | ------ | --------------------------------------------------- |
-| `getCategories()`              | All docs | 0      | Returns first doc (single-doc pattern)              |
-| `deleteCategory(data)`         | 0        | 1      | Overwrites entire categories doc                    |
-| `addCategory(category)`        | 0        | 1      | Field path update `categories.{id}`                 |
-| `updateCategory(category)`     | 0        | 1      | Field path update                                   |
-| `updateArticleInParent(...)`   | 0        | 1      | Updates article metadata in parent category/section |
-| `deleteArticleFromParent(...)` | 0        | 1      | Removes article from parent                         |
+| `getCategories()`              | 1        | 0      | Reads scoped categories doc with platform legacy fallback |
+| `deleteCategory(data)`         | 0        | 1      | Overwrites categories map; returns acknowledged categories mutation |
+| `addCategory(category)`        | 0        | 1      | Merge update `categories.{id}`; returns acknowledged category |
+| `updateCategory(category)`     | 0        | 1      | Merge update; returns acknowledged category         |
+| `updateArticleInParent(...)`   | 0        | 1      | Updates article metadata in parent category/section; returns acknowledged categories mutation |
+| `deleteArticleFromParent(...)` | 0        | 1      | Removes article from parent; returns acknowledged categories mutation |
 
-**Architecture:** All categories stored in a SINGLE document (`kb_categories/categories`) as a nested map. Sections are arrays within categories. Articles have metadata references in their parent.
+**Architecture:** Categories are stored in a scoped document (`kb_categories/categories_{tId}_{sId}`) as a nested map, with a legacy platform fallback. Sections are arrays within categories. Articles have metadata references in their parent.
 
 ### 3.3 Chat Sessions (`src/database/chatSessions/index.ts`)
 
 | Function                                                  | Reads | Writes      | Notes                                         |
 | --------------------------------------------------------- | ----- | ----------- | --------------------------------------------- |
 | `uploadChatImage(image, session)`                         | 0     | 1 (storage) | Tenant-scoped storage path                    |
-| `saveChatSession(data)`                                   | 0     | 1           | `apiCallComposerClientWithoutLoader`          |
-| `updateChatSession(sessionId, updates)`                   | 0     | 1           | Merge update                                  |
-| `deleteChatSession(sessionId)`                            | 0     | 1           | Hard delete                                   |
+| `saveChatSession(data)`                                   | 0     | 1           | `apiCallComposerClientWithoutLoader`; new-session UI requires persisted session acknowledgement before selecting it |
+| `updateChatSession(sessionId, updates)`                   | 0     | 1           | Merge update; returns explicit `{ success, sessionId, updatedFields }` acknowledgement |
+| `deleteChatSession(sessionId)`                            | 0     | 1           | Hard delete; returns explicit `{ success, sessionId, deleted, storageFilesDeleted }` acknowledgement |
 | `getUserChatSessions(session)`                            | N     | 0           | `tId + uId` scoped, ordered by modifiedOn     |
 | `getChatSessionById(sessionId)`                           | 1     | 0           | Admin use                                     |
-| `updateMessageFeedback(sessionId, messageId, feedback)`   | 1     | 1           | Read-modify-write on messages array           |
-| `updateSessionInternalNote(sessionId, noteJson, session)` | 0     | 1           | Admin notes                                   |
+| `updateMessageFeedback(sessionId, messageId, feedback)`   | 1     | 1           | Read-modify-write on messages array; returns explicit `{ success, sessionId, messageId }` acknowledgement |
+| `updateSessionInternalNote(sessionId, noteJson, session)` | 0     | 1           | Admin notes; returns explicit `{ success, sessionId, note }` acknowledgement |
+| `batchUpdateSessionMetadata(sessionIds, metadata)`        | 0     | N batch     | Batch admin metadata update; returns explicit `{ success, sessionIds, updatedCount, updatedFields }` acknowledgement |
 | `getAllChatSessionsForAdmin(session, filters)`            | N+1   | 0           | Paginated with client-side search             |
 | `getChatStatistics(session, dateRange)`                   | N     | 0           | Full scan (EXPENSIVE - use optimized version) |
 | `getTopQuestions(session, limitCount)`                    | N     | 0           | Full scan                                     |
 | `getKnowledgeGaps(session)`                               | N     | 0           | Full scan                                     |
 | `getChatVolumeOverTime(session, days)`                    | N     | 0           | Date-range filtered                           |
+
+New-session saves require `assertChatSessionSaveSucceeded()` before HelpChat inserts the saved session or selects its ID. Existing-session send/retry persistence remains a non-blocking UI path, but `updateChatSession()` now returns an explicit acknowledgement and failed or malformed merge results must emit the bounded `help_chat_session_persist_failed` diagnostic with fixed reason labels and presence/length metadata only. Rename and platform metadata saves require `assertChatSessionUpdateSucceeded()` before success copy or parent session state updates. HelpChat deletes require `assertChatSessionDeleteSucceeded()` before success copy; if the acknowledgement fails, the handler reloads sessions and restores the active-session/search snapshot. Platform internal-note and batch-status saves require `assertChatSessionInternalNoteUpdateSucceeded()` or `assertChatSessionBatchMetadataUpdateSucceeded()` before note state, selected conversation state, batch selection state, or success copy advances. This preserves the current Firestore operation count while making failed chat-session writes visible for support-truth monitoring.
+
+HelpChat answer feedback writes both the `aiSearchHistory` feedback row and the chat-session message feedback mirror before changing local feedback state or showing thank-you copy. `submitSearchFeedback()` requires `assertAiSearchHistoryFeedbackUpdateSucceeded()` and `assertChatMessageFeedbackUpdateSucceeded()` acknowledgements; malformed or fallback write results route through the existing `help_chat_feedback_up_submit_failed` / `help_chat_feedback_down_submit_failed` bounded diagnostics. Negative-feedback signal emission still runs only after both feedback writes are acknowledged.
 
 ### 3.4 Chat Analytics (`src/database/chatAnalytics/index.ts`)
 
@@ -344,14 +350,20 @@ Both the Help Center route and Widget route are **thin auth wrappers** that call
 | `aggregateDailyStats(session, date)`                    | N (day)        | 1      | Creates daily aggregate doc |
 | `getLastAnalyticsUpdate(session)`                       | 1              | 0      | Data freshness check        |
 
+The optimized chat analytics DAL uses `src/database/chatAnalytics/diagnostics.ts` for bounded fallback diagnostics. If today's live session read fails, `getChatStatisticsOptimized()` and `getChatDashboardAggregatesOptimized()` continue with historical aggregates and log `answerlattice_chat_analytics_today_live_stats_failed` with bounded tenant/store/day metadata and source error name/code/status only. Raw Firestore/provider errors and session payloads are not direct-console logged.
+
+The Help Center search wrapper, search core, browser clients, and visual query helper keep failure diagnostics bounded. `src/app/api/helpCenter/search-kb/route.ts` records `answerlattice_search_operation_log_failed` and `answerlattice_help_center_search_failed` with source error name/code/status only. Search request validation returns the shared safe Zod detail payload with issue count, field path, and issue code only; it does not echo raw Zod issue messages. `src/lib/search/searchCore.ts` records image fallback, image fetch HTTP failure, product-surface context, FAQ retrieval, vector search, answer-JSON parse, instant-cache stage, canonical cache-version, instant-cache write invocation/import, and perf-log write failures with stable codes plus bounded metadata; it does not persist exception messages, raw image fetch status text, or AI response previews. Trusted image URL fetches use the shared bounded response reader so oversized image streams are rejected before full buffering. `src/lib/answerlattice/instantCache.ts` logs Redis lookup, stale-delete, and write failures with bounded tenant/store/entity/version/count context while continuing to degrade to the live retrieval pipeline. `src/components/organisms/AISearchModal/AiSearchBarComponent.tsx` and `src/components/templates/main-app/helpChat/api.ts` use fixed client failure copy instead of raw search-route response text. `src/components/organisms/AISearchModal/ActionButtons.tsx`, `src/components/templates/main-app/helpChat/hooks/useChatHandlers.ts`, and platform `chatManagement/MessageBubble.tsx` now check Clipboard API support before answer/message copy, await copy acknowledgement, and log unavailable/rejected copy attempts with bounded metadata before fixed local copy. `src/lib/vectorEmbeddings/index.ts` records `answerlattice_image_query_generation_failed` for failed image-to-search-context generation, throws generic image-query failure text, caps Gemini text extracted for vector/chat helpers before downstream parsing, and logs only prompt/query length plus provider-response length/truncation metadata for image-query success breadcrumbs. These changes do not alter canonical-first retrieval, FAQ fallback, embedding/vector search, RAG fallback, cache behavior, AI operation accounting, or tenant/store scoping.
+
+The article embedding route keeps its failure logs bounded as well. `src/app/api/helpCenter/article-embedding/route.ts` records stable `embedding_operation_log_failed` and `embedding_generation_failed` codes plus source error name/code/status metadata only; it does not persist raw exception text while preserving existing embedding generation, cache writes, and AI operation accounting.
+
 ### 3.5 Support Tickets (`src/database/tickets/index.ts`)
 
 | Function                                                                      | Reads    | Writes                | Notes                                      |
 | ----------------------------------------------------------------------------- | -------- | --------------------- | ------------------------------------------ |
-| `addTicket(data)`                                                             | 0        | 1+N (files)           | Captures browser logs, uploads attachments |
-| `updateTicket(data)`                                                          | 0        | 1+N (files)           | Merge update with file uploads             |
-| `addTicketMessage(ticketId, currentMessages, message, attachments)`           | 0        | 1+N (files)           | Appends to messages array                  |
-| `updateTicketStatus(ticketId, currentStatuses, newStatus, remark, changedBy)` | 0        | 1                     | Appends to statuses audit trail            |
+| `addTicket(data)`                                                             | 0        | 1+N (files)           | Captures browser logs, uploads attachments; returns explicit `{ success, id, displayId }` acknowledgement |
+| `updateTicket(data)`                                                          | 0        | 1+N (files)           | Merge update with file uploads. Non-platform callers pass selected ticket `tId/sId`; platform partial updates without explicit ticket scope strip composer-injected `tId/sId` before merge |
+| `addTicketMessage(ticketId, currentMessages, message, attachments, scope)`    | 0        | 1+N (files)           | Appends to messages array; returns explicit acknowledgement required before reply success UI advances. Owner/client callers pass selected ticket `tId/sId` in `scope` |
+| `updateTicketStatus(ticketId, currentStatuses, newStatus, remark, changedBy, scope)` | 0        | 1                     | Appends to statuses audit trail; returns explicit acknowledgement for future direct callers. Owner/client direct callers pass selected ticket `tId/sId` in `scope` |
 | `deleteTicket(data)`                                                          | 0        | 1+N (storage deletes) | Hard delete + file cleanup                 |
 | `restoreTicket(data)`                                                         | 0        | 1                     | Sets deleted=false                         |
 | `getTicketById(id)`                                                           | 1        | 0                     | Single doc get                             |
@@ -359,6 +371,8 @@ Both the Help Center route and Widget route are **thin auth wrappers** that call
 | `getSupportTickets(includeDeleted)`                                           | N        | 0                     | All tickets (platform admin)               |
 | `subscribeSupportTickets(onUpdate, onError)`                                  | Listener | 0                     | Real-time `onSnapshot`                     |
 | `subscribeStoreTickets(onUpdate, onError)`                                    | Listener | 0                     | Store-scoped real-time                     |
+
+Ticket mutation hardening: `src/database/tickets/index.ts` validates selected ticket `tId/sId` for non-platform partial updates before `setDoc(..., { merge: true })`. Platform support sessions can still operate across tenant tickets, but platform partial updates without explicit selected-ticket scope strip composer-injected `tId/sId` so they do not overwrite existing ticket ownership. This preserves the existing one-write/no-read reply and status-update cost profile.
 
 ### 3.6 Changelog (`src/database/changelog/index.ts`)
 
@@ -394,16 +408,16 @@ Both the Help Center route and Widget route are **thin auth wrappers** that call
 | ----------------------------------------------- | ----- | ------ | -------------------------------- |
 | `addAiSearchHistory(data)`                      | 0     | 1      | Save search response for caching |
 | `findCachedSearchByCacheKey(cacheKey, session)` | 1     | 0      | Cache lookup by key + tId        |
-| `updateAiSearchHistoryWithFeedback(data)`       | 0     | 1      | Add feedback to search record    |
+| `updateAiSearchHistoryWithFeedback(data)`       | 0     | 1      | Add feedback to search record; returns explicit `{ success, searchHistoryId, updatedFields }` acknowledgement |
 
 ### 3.10 Query Embeddings (`src/database/queryEmbeddings/index.ts`)
 
-| Function                                       | Reads | Writes | Notes                     |
-| ---------------------------------------------- | ----- | ------ | ------------------------- |
-| `getCachedEmbedding(cacheKey)`                 | 1     | 1      | Read + increment hitCount |
-| `saveCachedEmbedding(cacheKey, query, vector)` | 0     | 1      | Cache vector for reuse    |
+| Function                                       | Reads | Writes | Notes                                                        |
+| ---------------------------------------------- | ----- | ------ | ------------------------------------------------------------ |
+| `getCachedEmbedding(cacheKey)`                 | 1     | 0-1    | Read; stale rows return null and attempt best-effort cleanup |
+| `saveCachedEmbedding(cacheKey, query, vector)` | 0     | 1      | Cache vector for reuse with Answerlattice retention fields   |
 
-**Note:** Uses `firestoreAdmin` (server-side) — this DAL is called from API routes, not client.
+**Note:** Uses `firestoreAdmin` (server-side) - this DAL is called from API routes, not client. Stale cleanup failures log `answerlattice_query_embedding_stale_delete_failed` with bounded cache-key presence/length and cache age only.
 
 ### 3.11 KB Generation Jobs (`src/database/kb-generation/jobs.ts`)
 
@@ -496,10 +510,10 @@ Re-embeds articles when category/section titles change. Uses `genrateEmbedding()
 
 ### 5.3 Regenerate Embedding
 
-**File:** `functions/src/logic/regenerateEmbedding.ts`
+**File:** `functions/src/logic/regenerateEmbedding.ts` and `functions-answerlattice/src/logic/regenerateEmbedding.ts`
 **Trigger:** HTTPS callable
 
-Re-generates embedding for a single article by ID.
+Re-generates embedding for a single article by ID. Failed regeneration logs stable `ANSWERLATTICE_REGENERATE_EMBEDDING_*` codes with article ID length and source error name/code/status metadata only. Callable errors use fixed retry copy and stable details codes rather than raw article IDs or provider/runtime exception text.
 
 ### 5.4 Feedback Intelligence
 
@@ -623,6 +637,16 @@ Alerts on negative feedback patterns.
 | `useTicketCache`    | `src/hooks/useTicketCache.ts`    | SWR cache for tickets     |
 | `useChangelogCache` | `src/hooks/useChangelogCache.ts` | SWR cache for changelog   |
 | `useFeedback`       | `src/hooks/useFeedback.ts`       | Feedback state management |
+
+These client hooks and browser storage helpers use `src/hooks/hookDiagnostics.ts` for bounded failure diagnostics. Normal cache hits, misses, clears, realtime updates, LRU evictions, recently-viewed writes, and content-feedback storage paths stay quiet. Failed fetch/update/localStorage paths log normalized `answerlattice_*`, `recently_viewed_*`, or `content_feedback_storage_*` failure codes with bounded content/page/cache counts, user/content length metadata, value lengths, counts, and source error metadata only; they do not log raw article IDs, ticket IDs, feedback comments, localStorage payloads, cache payloads, Firestore documents, or browser/provider error objects.
+
+The shared callable client wrapper in `src/lib/firebase/functions.ts` also uses bounded secure diagnostics for Answerlattice manual re-embed and approved-job publish trigger failures. `regenerateEmbedding` and `publishApprovedJobFn` failures log normalized `answerlattice_*_callable_failed` codes with bounded article/job metadata and source error name/code/status only; they do not direct-console raw callable/provider errors or publish payload contents.
+
+Server-side KB callable, task worker, and publish finalizer implementations in `functions/src/logic/regenerateEmbedding.ts`, `functions/src/logic/publishApprovedJob.ts`, `functions/src/logic/embedArticleWorker.ts`, `functions/src/logic/finalizePublish.ts`, `functions-answerlattice/src/logic/regenerateEmbedding.ts`, `functions-answerlattice/src/logic/publishApprovedJob.ts`, and `functions-answerlattice/src/logic/embedArticleWorker.ts` use stable `ANSWERLATTICE_*` failure codes, bounded article/job ID length metadata, and source error name/code/status only. Failed publish records keep the existing `errorMessage` field but store fixed `Publishing failed` / `Finalize publish failed` text instead of raw provider/runtime exception text.
+
+The shared production and dev trigger wrappers in `functions/src/triggers/production.ts` and `functions/src/dev-triggers.ts` also log bounded job/request metadata only for KB generation and publish finalization. They do not log raw job IDs, raw dev request payloads, or caught error objects.
+
+KB source generation and embedding helpers in `functions/src/logic/startGeneration.ts`, `functions/src/utils/aiUtils.ts`, `functions/src/triggers/shared.ts`, `functions-answerlattice/src/utils/aiUtils.ts`, and `functions-answerlattice/src/index.ts` also use fixed failure text and stable `ANSWERLATTICE_*` codes. They do not log generated KB payloads, raw AI response text, raw provider error objects, raw article/job IDs, raw temporary file paths, or raw callable caller IDs.
 
 ---
 

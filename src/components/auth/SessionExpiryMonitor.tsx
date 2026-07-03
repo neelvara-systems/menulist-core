@@ -1,7 +1,10 @@
 'use client';
 
 import { NAVIGARIONS_ROUTINGS } from '@constant/navigations';
+import { logAuthFailure } from '@lib/auth/authDiagnostics';
+import { AUTH_BROWSER_REQUEST_POLICY } from '@lib/auth/browserRequestPolicy';
 import { signOutSession } from '@lib/auth/client';
+import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';
 import { Button, Flex, Modal, Typography } from 'antd';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
@@ -10,7 +13,54 @@ import { LuClock, LuLogOut, LuShield } from 'react-icons/lu';
 
 const { Text, Title } = Typography;
 const ACCESS_STATUS_INTERVAL_MS = 30 * 1000;
+const ACCESS_STATUS_RESPONSE_JSON_MAX_BYTES = 8 * 1024;
 const ACCOUNT_ACCESS_ENDED_MESSAGE = 'Account access has ended';
+const ACCESS_STATUS_REQUEST_POLICY: RequestInit = {
+    ...AUTH_BROWSER_REQUEST_POLICY,
+    headers: {
+        Accept: 'application/json',
+    },
+};
+
+type AccessStatusResponse = {
+    valid?: boolean;
+    reason?: unknown;
+    message?: unknown;
+};
+
+const getAccessStatusReason = (value: unknown, fallback: string): string => (
+    typeof value === 'string' && value.trim().length > 0 ? value : fallback
+);
+
+const getAccessStatusResponseLogContext = (response: Response) => ({
+    responseOk: response.ok,
+    responseStatus: response.status,
+    responseType: response.type,
+    maxBytes: ACCESS_STATUS_RESPONSE_JSON_MAX_BYTES,
+});
+
+const isManualRedirectResponse = (response: Response): boolean => (
+    response.type === 'opaqueredirect' || (response.status >= 300 && response.status < 400)
+);
+
+const readAccessStatusResponseJson = async (
+    response: Response,
+): Promise<{ payload: AccessStatusResponse | null; parseFailed: boolean }> => {
+    try {
+        return {
+            payload: await readJsonResponseWithLimit<AccessStatusResponse>(
+                response,
+                ACCESS_STATUS_RESPONSE_JSON_MAX_BYTES,
+            ),
+            parseFailed: false,
+        };
+    } catch (error) {
+        logAuthFailure('auth_access_status_response_parse_failed', error, {
+            ...getAccessStatusResponseLogContext(response),
+        });
+        return { payload: null, parseFailed: true };
+    }
+};
 
 const getAccessEndedCopy = (reason?: string) => {
     if (reason === 'HTTP_401') {
@@ -59,7 +109,7 @@ const getAccessEndedCopy = (reason?: string) => {
  * - Only shows modal if user was previously authenticated
  * - Uses localStorage to track authentication state
  * 
- * @see ASSESSMENT-05-SECURITY.md Task 16: Session Timeout Handling
+ * @see assessment-05-security.md Task 16: Session Timeout Handling
  */
 export default function SessionExpiryMonitor() {
     const { data: session, status } = useSession();
@@ -152,27 +202,43 @@ export default function SessionExpiryMonitor() {
 
         accessCheckInFlight.current = true;
         try {
-            const response = await fetch('/api/auth/access-status', {
-                cache: 'no-store',
-                credentials: 'same-origin',
-                headers: {
-                    Accept: 'application/json',
-                },
-            });
-            const data = await response.json().catch(() => ({}));
+            const response = await fetch('/api/auth/access-status', ACCESS_STATUS_REQUEST_POLICY);
 
-            if (data?.valid === false) {
-                await endAccess(data?.reason || `HTTP_${response.status}`);
+            if (isManualRedirectResponse(response)) {
+                logAuthFailure('auth_access_status_response_redirected', new Error('auth_access_status_response_redirected'), {
+                    ...getAccessStatusResponseLogContext(response),
+                });
+                await endAccess('HTTP_401');
                 return;
             }
+
+            const { payload, parseFailed } = await readAccessStatusResponseJson(response);
 
             if (response.status === 401) {
                 await endAccess('HTTP_401');
                 return;
             }
 
-            if (response.status === 403 && data?.message === ACCOUNT_ACCESS_ENDED_MESSAGE) {
-                await endAccess(data?.reason || 'ACCOUNT_ACCESS_ENDED');
+            if (parseFailed) {
+                return;
+            }
+
+            if (payload && (typeof payload !== 'object' || Array.isArray(payload))) {
+                logAuthFailure('auth_access_status_response_invalid', new Error('auth_access_status_response_invalid'), {
+                    ...getAccessStatusResponseLogContext(response),
+                });
+                return;
+            }
+
+            const data = payload || {};
+
+            if (data.valid === false) {
+                await endAccess(getAccessStatusReason(data.reason, `HTTP_${response.status}`));
+                return;
+            }
+
+            if (response.status === 403 && data.message === ACCOUNT_ACCESS_ENDED_MESSAGE) {
+                await endAccess(getAccessStatusReason(data.reason, 'ACCOUNT_ACCESS_ENDED'));
             }
         } catch {
             // Ignore transient network failures. The next focus/interval check will retry.

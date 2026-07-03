@@ -9,7 +9,13 @@
 
 import { AI_MODEL } from '../../constants/ai';
 import { genAIClient } from '../../genAiClient';
+import { geminiLogger, getGeminiErrorContext } from './geminiDiagnostics';
 import { feedbackAnalysisPrompt } from './prompts/v1/feedbackAnalysis.prompt';
+
+const GEMINI_FEEDBACK_ANALYSIS_EMPTY_RESPONSE = 'GEMINI_FEEDBACK_ANALYSIS_EMPTY_RESPONSE';
+const GEMINI_FEEDBACK_ANALYSIS_FAILED = 'GEMINI_FEEDBACK_ANALYSIS_FAILED';
+const GEMINI_FEEDBACK_ANALYSIS_INVALID_RESPONSE = 'GEMINI_FEEDBACK_ANALYSIS_INVALID_RESPONSE';
+const GEMINI_FEEDBACK_ANALYSIS_PARSE_FAILED = 'GEMINI_FEEDBACK_ANALYSIS_PARSE_FAILED';
 
 // ================================================================
 // TYPES
@@ -39,7 +45,9 @@ export async function generateFeedbackAnalysis(
   feedback: Array<{ message: string; timestamp: string; context?: string }>
 ): Promise<FeedbackAnalysisResult> {
   try {
-    console.log(`[Gemini] Analyzing ${feedback.length} feedback items`);
+    geminiLogger.info('[Gemini] Analyzing feedback items', {
+      itemCount: feedback.length,
+    });
 
     // Prepare feedback summary for Gemini
     const feedbackText = feedback
@@ -63,18 +71,24 @@ export async function generateFeedbackAnalysis(
     });
     const text = result.text;
     if (!text) {
-      throw new Error('Empty response from Gemini');
+      throw new Error(GEMINI_FEEDBACK_ANALYSIS_EMPTY_RESPONSE);
     }
 
     // Parse JSON response
     const parsed = parseGeminiResponse(text);
 
-    console.log(`[Gemini] Analysis complete: ${parsed.themes.length} themes identified`);
+    geminiLogger.info('[Gemini] Feedback analysis complete', {
+      themeCount: parsed.themes.length,
+    });
 
     return parsed;
 
   } catch (error) {
-    console.error('[Gemini] Error generating feedback analysis:', error);
+    geminiLogger.error('[Gemini] Feedback analysis failed', {
+      failureCode: GEMINI_FEEDBACK_ANALYSIS_FAILED,
+      itemCount: feedback.length,
+      error: getGeminiErrorContext(error),
+    });
 
     // Fallback response if Gemini fails
     return {
@@ -115,7 +129,7 @@ function parseGeminiResponse(text: string): FeedbackAnalysisResult {
 
     // Validate structure
     if (!parsed.themes || !Array.isArray(parsed.themes)) {
-      throw new Error('Invalid response: missing themes array');
+      throw new Error(GEMINI_FEEDBACK_ANALYSIS_INVALID_RESPONSE);
     }
 
     // Ensure all required fields exist
@@ -133,9 +147,12 @@ function parseGeminiResponse(text: string): FeedbackAnalysisResult {
     };
 
   } catch (error) {
-    console.error('[Gemini] Failed to parse response:', error);
+    geminiLogger.error('[Gemini] Failed to parse feedback analysis response', {
+      failureCode: GEMINI_FEEDBACK_ANALYSIS_PARSE_FAILED,
+      error: getGeminiErrorContext(error),
+    });
 
-    throw new Error(`Failed to parse Gemini response: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    throw new Error(GEMINI_FEEDBACK_ANALYSIS_PARSE_FAILED);
   }
 }
 

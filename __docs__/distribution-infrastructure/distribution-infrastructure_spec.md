@@ -688,8 +688,8 @@ No engagement metrics. Success = owner forgets MenuList exists (because it just 
 - `__docs__/constitution/06-internal-tracking.md` — Allowed metrics
 
 **New docs (if implementation approved):**
-- `__docs__/distribution-infrastructure/distribution-infrastructure_impl.md` — Technical implementation
-- `__docs__/distribution-infrastructure/distribution-infrastructure_firebase.md` — Firestore schema, indexes, security rules
+- Future implementation doc under `__docs__/distribution-infrastructure/` — Technical implementation
+- Future Firebase/cost doc under `__docs__/distribution-infrastructure/` — Firestore schema, indexes, security rules
 
 ---
 

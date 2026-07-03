@@ -6,7 +6,7 @@ import { getCanonicalProjectSourceLanguage } from '@lib/localization/languagePol
 import TimeSlotPresetForm, { DEFAULT_PRESET_COLORS } from '@atoms/timeSlotPresetForm';
 import { FEATURE_FLAGS } from '@config/features';
 import { AI_ACTIONS_TYPES } from '@constant/common';
-import { generatePresetId, updateTimeSlotPresets } from '@database/stores';
+import { assertTimeSlotPresetUpdateSucceeded, generatePresetId, updateTimeSlotPresets } from '@database/stores';
 import { validateTimeSlots } from '@hook/useTimedCategories';
 import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from '@providers/platformProviders/platformGlobalDataProvider';
 import { useAppDispatch } from '@hook/useAppDispatch';
@@ -23,6 +23,7 @@ import { LuCheck, LuClock, LuExternalLink, LuFileImage, LuLock, LuPlus, LuSparkl
 import GlobalLanguagesList from '@data/languages';
 import { CategoryTimeSlot, ExtractedDataCategory, Project, ProjectFileType } from '../types';
 import { sanitizeUserInput } from '../utils';
+import { getBoundedMenuEditorStringContext, getMenuEditorProjectLogContext, logMenuEditorFailure } from '../utils/editorDiagnostics';
 import { clearStaleCategoryTranslations, translateCategory } from '../utils/translationsUtils';
 
 interface EditCategoryModalProps {
@@ -190,11 +191,10 @@ const EditCategoryModal = ({
 
             const updatedPresets = [...timeSlotPresets, created];
 
-            // Update context immediately
-            setStoreDetails({ ...storeDetails, timeSlotPresets: updatedPresets });
-
             // Persist to DB
-            await updateTimeSlotPresets(storeDetails.storeId, updatedPresets);
+            const writeResult = await updateTimeSlotPresets(storeDetails.storeId, updatedPresets);
+            assertTimeSlotPresetUpdateSucceeded(writeResult);
+            setStoreDetails({ ...storeDetails, timeSlotPresets: updatedPresets });
 
             // Auto-assign the new preset
             handleTogglePreset(created);
@@ -203,7 +203,14 @@ const EditCategoryModal = ({
             setNewPresetData({ label: '', startTime: '09:00', endTime: '17:00', color: DEFAULT_PRESET_COLORS[updatedPresets.length % DEFAULT_PRESET_COLORS.length] });
             antdMessage.success('Preset created and assigned');
         } catch (error) {
-            console.error('Failed to persist preset:', error);
+            logMenuEditorFailure('menu_editor_time_slot_preset_create_failed', error, {
+                ...getMenuEditorProjectLogContext(projectData.projectId, (projectData as { masterProjectId?: unknown }).masterProjectId),
+                ...getBoundedMenuEditorStringContext('fileId', fileData.uid),
+                ...getBoundedMenuEditorStringContext('categoryId', categoryData?.id),
+                ...getBoundedMenuEditorStringContext('storeId', storeDetails.storeId),
+                ...getBoundedMenuEditorStringContext('tenantId', storeDetails.tenantId),
+                presetCount: timeSlotPresets.length,
+            });
             antdMessage.error('Failed to create preset');
         } finally {
             setSavingPreset(false);

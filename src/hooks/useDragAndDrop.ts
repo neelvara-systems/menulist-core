@@ -1,5 +1,14 @@
 import { message } from 'antd';
 import { useState } from 'react';
+import { getSafeUiErrorMessage } from '@lib/errors/uiErrorMessages';
+
+const DROP_FILE_FALLBACK_ERROR = 'File could not be uploaded.';
+const DROP_FILE_TYPE_ERROR = 'File type is not allowed.';
+
+function getDropFileSizeError(maxSize: number): string {
+    const sizeMB = (maxSize / (1024 * 1024)).toFixed(1);
+    return `File is too large. Maximum size is ${sizeMB}MB.`;
+}
 
 export interface UseDragAndDropOptions {
     onFilesDrop: (files: File[]) => void;
@@ -26,7 +35,7 @@ export interface UseDragAndDropReturn {
  * @example
  * ```tsx
  * const { isDragging, dragHandlers } = useDragAndDrop({
- *   onFilesDrop: (files) => console.log(files),
+ *   onFilesDrop: (files) => setFiles(files),
  *   accept: ['image/*'],
  *   maxFiles: 1,
  *   maxSize: 5 * 1024 * 1024 // 5MB
@@ -120,21 +129,20 @@ export const useDragAndDrop = ({
             if (validateFile) {
                 const validation = validateFile(file);
                 if (!validation.valid) {
-                    errors.push(validation.error || `Invalid file: ${file.name}`);
+                    errors.push(getSafeUiErrorMessage(validation.error, DROP_FILE_FALLBACK_ERROR));
                     continue;
                 }
             }
 
             // Type validation
             if (!validateFileType(file)) {
-                errors.push(`File type not allowed: ${file.name}`);
+                errors.push(DROP_FILE_TYPE_ERROR);
                 continue;
             }
 
             // Size validation
             if (!validateFileSize(file)) {
-                const sizeMB = (maxSize! / (1024 * 1024)).toFixed(1);
-                errors.push(`File too large: ${file.name} (max ${sizeMB}MB)`);
+                errors.push(getDropFileSizeError(maxSize!));
                 continue;
             }
 
@@ -143,7 +151,7 @@ export const useDragAndDrop = ({
 
         // Show errors if any
         if (errors.length > 0) {
-            errors.forEach(error => message.error(error));
+            errors.forEach((safeError) => message.error(safeError));
         }
 
         // Call callback with valid files

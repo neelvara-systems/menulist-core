@@ -3,7 +3,9 @@
 **Date:** January 11, 2026  
 **Latest Verification:** May 7, 2026
 **Target Feature:** decision-intelligence  
-**Status:** ✅ **DEPLOYABLE**
+**Status:** Historical logic verification evidence; not current launch certification
+
+> **Current release boundary (July 2, 2026):** This logic-verification report preserves January/May 2026 source evidence only. It is not current release approval. Current Decision Intelligence approval requires the active production-readiness audit, External Certification Runbook evidence, `npm run verify:agent-readiness`, `npm run verify:functions-deploy-preflight`, scoped scheduler deploy evidence, current decision-block scoring checks, browser/mobile customer-menu QA, public cache/deploy evidence, target deploy evidence, and production-host smoke.
 
 ---
 
@@ -25,7 +27,7 @@ The implementation was re-checked against the current codebase and corrected for
 DECISION BLOCKS LOGIC AUDIT
 TOTAL FLOWS VERIFIED: 7
 CRITICAL ISSUES: 0
-PRODUCTION READINESS: SAFE
+EVIDENCE SCOPE: HISTORICAL SOURCE VERIFICATION ONLY
 COVERAGE: 100% (7/7 flows)
 ```
 
@@ -453,9 +455,9 @@ precomputedBlocks (prop) → useMemo → blocks → map → Button components
 
 ---
 
-## FINAL VERDICT: ✅ DEPLOYABLE
+## Historical Logic Verification Result: Source Evidence Only
 
-**Decision Blocks logic verification complete. All 7 flows verified. Zero critical issues.**
+**This report is historical Decision Blocks flow evidence only, not current release approval. Current certification still requires the active production-readiness audit, External Certification Runbook evidence, current source gates, scoped scheduler deploy evidence, current decision-block scoring checks, browser/mobile customer-menu QA, public cache/deploy evidence, target deploy evidence, and production-host smoke.**
 
 ---
 

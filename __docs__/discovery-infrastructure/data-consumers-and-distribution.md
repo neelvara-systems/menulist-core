@@ -51,8 +51,8 @@ This document maps every data consumer type, how they discover MenuList data, wh
 6. Cites joespizza.menulist.ai/menu as source
 ```
 
-**What's NOT yet done (future):**
-- No real-time API for AI agents to query (Phase 3-4)
+**What's NOT active in the current source contract:**
+- No real-time API for AI agents to query beyond the gated Public API v1 pull endpoints
 - No change notification webhooks for AI to track updates
 - No discovery API for geo + category queries across businesses
 
@@ -163,9 +163,9 @@ Owner edits menu → 25s debounce → buildMenuSnapshot() → POST to webhook UR
               │               │                       │
     ┌─────────┼────────┐      │              ┌────────┼────────┐
     │         │        │      │              │                 │
-  Google   AI Engines  End    POS           External         Future:
-  Search   (Perplexity Users  Systems       Apps             AI Agent
-  (SEO)    ChatGPT,    (QR,  (Toast,                        APIs
+  Google   AI Engines  End    POS           External       Conditional
+  Search   (Perplexity Users  Systems       Apps           machine APIs
+  (SEO)    ChatGPT,    (QR,  (Toast,                       after audit
            Gemini)     link)  Square)
 ```
 
@@ -177,10 +177,10 @@ Owner edits menu → 25s debounce → buildMenuSnapshot() → POST to webhook UR
 | **llms.txt discovery file** | ✅ Done | — |
 | **Freshness signals (dateModified)** | ✅ Done | — |
 | **Entity alignment (sameAs)** | ✅ Done | — |
-| **Cross-business discovery API** | ❌ Not built | Phase 4 — requires businessEntityIndex + Discovery API |
-| **Change notification feed** | ❌ Not built | Phase 3 — generic webhook subscription system |
-| **OpenAPI machine-readable spec** | ❌ Not built | Phase 3 — API v2 with Swagger/OpenAPI |
-| **Bulk structured data export** | ❌ Not built | Phase 4 — dataset export endpoint |
+| **Cross-business discovery API** | ❌ Not built | Requires active businessEntityIndex writer/query design |
+| **Change notification feed** | ❌ Not built | Requires generic webhook subscription system |
+| **OpenAPI machine-readable spec** | ❌ Not built | Requires audited API v2 contract |
+| **Bulk structured data export** | ❌ Not built | Requires scoped dataset export design |
 
 ## 5. Priority Actions for AI Discoverability
 
@@ -194,11 +194,11 @@ Owner edits menu → 25s debounce → buildMenuSnapshot() → POST to webhook UR
 7. ✅ GeoCoordinates for local discovery
 8. ✅ sameAs for entity alignment
 
-### Future (When Ecosystem Demands It)
-1. 🔜 Business Entity Index (Phase 2) — cross-business queryable index
-2. 🔜 Generic Webhook System (Phase 3) — change notifications for external consumers
-3. 🔜 API v2 with OpenAPI spec (Phase 3) — machine-readable API documentation
-4. 🔜 Discovery API (Phase 4) — geo + category + attribute search endpoint
+### Conditional Work (Only With Scoped Approval)
+1. Business Entity Index scheduler/query wiring — cross-business queryable index, using public data only
+2. Generic Webhook System — change notifications for external consumers
+3. API v2 with OpenAPI spec — machine-readable API documentation
+4. Discovery API — geo + category + attribute search endpoint
 
 ## 6. How Each AI Engine Specifically Discovers Data
 

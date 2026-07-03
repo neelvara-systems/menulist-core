@@ -1,7 +1,7 @@
 # AI QnA Chatbot — Firebase Cost & Operations Tracking
 
 > **Version:** 1.0.0
-> **Last Updated:** 2026-03-02
+> **Last Updated:** 2026-06-30
 > **Audience:** Developers, Ops
 > **Source:** Codebase forensic audit
 
@@ -52,6 +52,8 @@
 | **Avg Doc Size** | 3-4 KB (768-dimension vector as number array) |
 | **Growth Rate** | Per-unique-query |
 | **Uses Admin SDK** | Yes — `firestoreAdmin` (server-side only) |
+| **Retention** | 30-day `expiresAt`, Firestore TTL override, stale-read cleanup, scheduler cleanup by `createdAt` |
+| **Cleanup Diagnostics** | `answerlattice_query_embedding_stale_delete_failed` with bounded cache-key presence/length and cache age only |
 
 ---
 
@@ -215,6 +217,12 @@
 | **Client-side filtering** | No extra queries | Search/feedback filters on fetched data |
 | **apiCallComposerClientWithoutLoader** | Better UX | Chat operations don't block global UI |
 
+HelpChat answer-feedback acknowledgement hardening is cost-neutral. Feedback submission still performs the existing `aiSearchHistory` feedback merge and `chatSessions` message feedback mirror, but `submitSearchFeedback()` now requires explicit acknowledgements from both writes before local feedback state, thank-you copy, or negative-feedback signal emission advances. This adds no Firestore reads/writes/deletes beyond existing feedback writes, no Storage operations, no routes, no Cloud Functions, no indexes, no rules, and no deployment requirement.
+
+HelpChat session-delete acknowledgement hardening is also cost-neutral. The delete path still performs the existing session read, best-effort Storage cleanup for attached chat images, and one chat-session delete, but the UI now requires explicit delete acknowledgement before success copy and restores the previous active-session/search state if acknowledgement fails.
+
+HelpChat message copy, AI Search answer copy, and ArticleView link copy acknowledgement hardening is browser-local and cost-neutral. `src/lib/answerlattice/supportClipboard.ts` checks Clipboard API support, falls back to a textarea copy path only when available, and requires `document.execCommand('copy') === true` before copied feedback appears. This adds no Firestore reads/writes/deletes, no Storage operations, no Firebase Auth operations, no API routes, no Cloud Functions, no indexes, no rules, no provider calls, and no deployment requirement.
+
 ---
 
 ## 8. Document Growth Risk
@@ -232,7 +240,7 @@ Messages stored as array. Each message ~200-1000 bytes (with references, feedbac
 **Mitigation:** Typical conversations have 5-20 messages. Long assistant-mode conversations could grow large. No current limit enforced.
 
 ### queryEmbeddings
-Each doc ~3-4 KB (768-dim vector). No TTL/expiry.
+Each doc ~3-4 KB (768-dim vector). New rows get 30-day retention fields, stale cache reads skip the row and attempt best-effort cleanup, and cleanup failures log `answerlattice_query_embedding_stale_delete_failed` with bounded metadata.
 
 | Unique Queries | Collection Size | Risk |
 |:--------------:|:--------------:|:----:|
@@ -240,4 +248,4 @@ Each doc ~3-4 KB (768-dim vector). No TTL/expiry.
 | 10,000 | ~40 MB | ✅ Fine |
 | 100,000 | ~400 MB | ⚠️ Storage cost |
 
-**Mitigation:** Storage cost is low ($0.108/GiB/month). No cleanup needed at current scale.
+**Mitigation:** Firestore TTL coverage plus stale-read cleanup and scheduler cleanup keep the collection bounded without blocking answer retrieval.

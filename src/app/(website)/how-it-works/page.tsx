@@ -7,13 +7,13 @@ import '@/styles/website.css';
 import { Metadata } from 'next';
 
 export const metadata: Metadata = {
-    title: 'How MenuList Works — From Current List to Customer Link',
+    title: 'How MenuList Works - From Current List to Customer Link',
     description: 'Start from a menu, catalogue, price list, service list, photo, PDF, existing link, or typed items. MenuList prepares the owner-reviewed version, then keeps supported updates approval-based.',
     alternates: {
         canonical: '/how-it-works',
     },
     openGraph: {
-        title: 'How MenuList Works — From Current List to Customer Link',
+        title: 'How MenuList Works - From Current List to Customer Link',
         description: 'Start from a menu, catalogue, price list, service list, photo, PDF, existing link, or typed items. MenuList prepares the owner-reviewed version, then keeps supported updates approval-based.',
         url: '/how-it-works',
     },

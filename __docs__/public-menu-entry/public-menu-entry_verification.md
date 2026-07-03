@@ -2,7 +2,7 @@
 
 **Version:** 1.0
 **Status:** ✅ PRODUCTION AUDIT PASSED WITH EXTERNAL CONDITIONS
-**Last Updated:** June 3, 2026
+**Last Updated:** July 1, 2026
 
 ---
 
@@ -27,6 +27,25 @@ Not covered as a live external flow:
 
 - Real WhatsApp Cloud API webhook/media delivery
 - Hosted Razorpay recurring checkout UI completion
+
+## Local Static Verification — July 1, 2026
+
+Command:
+
+```bash
+npm run verify:menu-extraction-pipeline
+```
+
+Result:
+
+```text
+PASS: Public create-menu preview status and full fetches share auth, expiry, and missing-draft handling
+```
+
+Notes:
+
+- The preview client now uses the same response-status handler for the lightweight `statusOnly=1` poll and the full-result fetch that follows a completed status.
+- The guard keeps `401` on the sign-in path, `410` on the expired-draft state, `404` on the missing-draft state, and all other rejected responses on fixed localized load-failure copy.
 
 ---
 

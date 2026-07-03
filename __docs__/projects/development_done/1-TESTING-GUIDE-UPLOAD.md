@@ -310,7 +310,7 @@ Console Errors:
 
 **Blocker Issues:** _______________
 
-**Ready for Production:** Yes / No
+**Launch Certification Evidence:** This checklist is historical support only; not current launch certification. Record upload/browser/mobile/Storage results in the active [production-readiness audit](../../audits/menulist-production-readiness-audit.md) and [External Certification Runbook](../../production-readiness/external-certification-runbook.md).
 
 ---
 
@@ -328,4 +328,4 @@ If you only have 5 minutes, run these critical tests:
 
 ---
 
-**Next:** After all tests pass → Move to [ASSESSMENT-02-AI-EXTRACTION.md](./ASSESSMENT-02-AI-EXTRACTION.md)
+**Next:** After all tests pass → Move to [assessment-02-ai-extraction.md](../Assessments/assessment-02-ai-extraction.md)

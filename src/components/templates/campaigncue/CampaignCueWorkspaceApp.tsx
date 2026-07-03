@@ -34,6 +34,9 @@ import {
 import type { CampaignCueOutputPickerItem } from "@constant/campaigncue/outputPicker";
 import { useAppDispatch } from "@hook/useAppDispatch";
 import { useAppSelector } from "@hook/useAppSelector";
+import { createTimestampedRuntimeId } from "@lib/runtime/randomId";
+import { getBoundedRuntimeStringContext, logRuntimeFailure } from "@lib/runtime/runtimeDiagnostics";
+import { readJsonResponseWithLimit } from "@lib/security/boundedResponseBody";
 import { FEATURE_FLAGS } from "@config/features";
 import { runCampaignCueCreativeEditorAiTool } from "@lib/campaigncue/creativeEditorAiTools";
 import { buildCampaignCueDailyDesk } from "@lib/campaigncue/dailyDesk";
@@ -222,6 +225,153 @@ const noticeTone = (notice: string) => (
     /blocked|could|failed|not|unavailable|error/i.test(notice) ? "red" : "green"
 );
 
+const getCampaignCueWorkspaceFailureNotice = (_error: unknown, fallback: string) => fallback;
+const CAMPAIGNCUE_WORKSPACE_RESPONSE_JSON_MAX_BYTES = 4 * 1024 * 1024;
+const CAMPAIGNCUE_HANDOFF_COPY_CLIPBOARD_UNAVAILABLE = "campaigncue_handoff_copy_clipboard_unavailable";
+const CAMPAIGNCUE_HANDOFF_COPY_FALLBACK_FAILED = "campaigncue_handoff_copy_fallback_failed";
+
+type CampaignCueWorkspaceResponseResult<T> =
+    | { code?: undefined; ok: true; data: T; status: number }
+    | { code?: string; ok: false; status: number };
+
+const isRecord = (value: unknown): value is Record<string, unknown> => (
+    Boolean(value) && typeof value === "object" && !Array.isArray(value)
+);
+
+const isFiniteNumber = (value: unknown): value is number => (
+    typeof value === "number" && Number.isFinite(value)
+);
+
+const isDataEnvelope = (value: unknown): value is { data: unknown } => (
+    isRecord(value) && "data" in value
+);
+
+const isRecordData = (value: unknown): value is Record<string, unknown> => isRecord(value);
+
+const isCampaignCueOverviewData = (value: unknown): value is CampaignCueOverview => (
+    isRecord(value)
+    && isRecord(value.workspace)
+    && isRecord(value.businessBrain)
+    && isRecord(value.dailyDesk)
+    && Array.isArray(value.campaigns)
+    && Array.isArray(value.assets)
+    && Array.isArray(value.sourceInputs)
+    && Array.isArray(value.locations)
+);
+
+const isCueLayerBootPackageData = (value: unknown): value is CampaignCueCueLayerBootPackage => (
+    isRecord(value)
+    && isRecord(value.design)
+    && isRecord(value.document)
+);
+
+const isCueLayerAutosaveData = (
+    value: unknown,
+): value is { design?: CampaignCueCueLayerDesign; revision: number } => (
+    isRecord(value)
+    && isFiniteNumber(value.revision)
+    && (value.design === undefined || isRecord(value.design))
+);
+
+const isCueLayerUploadResultData = (value: unknown): value is CampaignCueCueLayerUploadResult => (
+    isRecord(value)
+    && isRecord(value.design)
+    && isCueLayerBootPackageData(value.boot)
+);
+
+const isAssetDownloadData = (value: unknown): value is { url: string } => (
+    isRecord(value)
+    && typeof value.url === "string"
+    && value.url.length > 0
+);
+
+const isCampaignCueWorkspaceResponseCode = (payload: unknown): string | undefined => (
+    isRecord(payload) && typeof payload.code === "string" ? payload.code : undefined
+);
+
+const readCampaignCueWorkspaceData = async <T,>(
+    response: Response,
+    operation: string,
+    isValidData: (value: unknown) => value is T,
+): Promise<CampaignCueWorkspaceResponseResult<T>> => {
+    const context = {
+        surface: "campaigncue_workspace",
+        ...getBoundedRuntimeStringContext("operation", operation),
+        responseOk: response.ok,
+        responseStatus: response.status,
+    };
+    let payload: unknown;
+
+    try {
+        payload = await readJsonResponseWithLimit<unknown>(
+            response,
+            CAMPAIGNCUE_WORKSPACE_RESPONSE_JSON_MAX_BYTES,
+        );
+    } catch (error) {
+        logRuntimeFailure("campaigncue_workspace_response_parse_failed", error, context);
+        return { ok: false, status: response.status };
+    }
+
+    if (!response.ok) {
+        logRuntimeFailure("campaigncue_workspace_response_rejected", undefined, context);
+        return { code: isCampaignCueWorkspaceResponseCode(payload), ok: false, status: response.status };
+    }
+
+    if (!isDataEnvelope(payload) || !isValidData(payload.data)) {
+        logRuntimeFailure("campaigncue_workspace_response_invalid", undefined, context);
+        return { ok: false, status: response.status };
+    }
+
+    return { data: payload.data, ok: true, status: response.status };
+};
+
+const buildCampaignCueHandoffCopyError = (code: string) => Object.assign(new Error(code), { code });
+
+const hasCampaignCueHandoffClipboardWrite = () => (
+    typeof navigator !== "undefined" && Boolean(navigator.clipboard?.writeText)
+);
+
+const hasCampaignCueHandoffCopyFallback = () => (
+    typeof document !== "undefined"
+    && Boolean(document.body)
+    && typeof document.createElement === "function"
+    && typeof document.execCommand === "function"
+);
+
+const copyCampaignCueHandoffValueToClipboard = async (value: string) => {
+    if (hasCampaignCueHandoffClipboardWrite()) {
+        try {
+            await navigator.clipboard.writeText(value);
+            return;
+        } catch {
+            // Continue to the acknowledged textarea fallback before surfacing failure.
+        }
+    }
+
+    if (!hasCampaignCueHandoffCopyFallback()) {
+        throw buildCampaignCueHandoffCopyError(CAMPAIGNCUE_HANDOFF_COPY_CLIPBOARD_UNAVAILABLE);
+    }
+
+    const textarea = document.createElement("textarea");
+    textarea.value = value;
+    textarea.setAttribute("readonly", "");
+    textarea.style.position = "fixed";
+    textarea.style.left = "-9999px";
+    textarea.style.top = "0";
+    document.body.appendChild(textarea);
+    textarea.focus();
+    textarea.select();
+
+    try {
+        const copied = document.execCommand("copy");
+        if (!copied) {
+            throw buildCampaignCueHandoffCopyError(CAMPAIGNCUE_HANDOFF_COPY_FALLBACK_FAILED);
+        }
+    } finally {
+        document.body.removeChild(textarea);
+    }
+};
+
 const cueLayerDesignTone = (status?: string) => {
     if (status === "ready") return "green";
     if (status === "failed" || status === "cancelled") return "red";
@@ -271,7 +421,7 @@ const providerOwnerSummary = (provider: CampaignCueProviderStatus) => {
     return provider.reason;
 };
 
-const buildIdempotencyKey = (prefix: string) => `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+const buildIdempotencyKey = (prefix: string) => createTimestampedRuntimeId(prefix, 8);
 
 const formatMegabytes = (bytes: number) => `${Math.max(1, Math.floor(bytes / (1024 * 1024)))} MB`;
 
@@ -1483,13 +1633,17 @@ export default function CampaignCueWorkspaceApp() {
                 cache: "no-store",
                 credentials: "include",
             });
-            const payload = await res.json().catch(() => ({}));
-            if (!res.ok) {
+            const payload = await readCampaignCueWorkspaceData(
+                res,
+                "workspace_load",
+                isCampaignCueOverviewData,
+            );
+            if (!payload.ok) {
                 setState({
-                    code: payload?.code,
+                    code: payload.code,
                     loading: false,
-                    error: payload?.error || "CampaignCue is unavailable.",
-                    status: res.status,
+                    error: "CampaignCue is unavailable.",
+                    status: payload.status,
                 });
                 return;
             }
@@ -1517,7 +1671,7 @@ export default function CampaignCueWorkspaceApp() {
         } catch (error) {
             setPackTemplateState((current) => ({
                 ...current,
-                error: error instanceof Error ? error.message : "Templates could not be loaded.",
+                error: getCampaignCueWorkspaceFailureNotice(error, "Templates could not be loaded."),
                 loading: false,
             }));
         }
@@ -1546,7 +1700,7 @@ export default function CampaignCueWorkspaceApp() {
         if (cueLayerAutosaveTimeoutRef.current) window.clearTimeout(cueLayerAutosaveTimeoutRef.current);
         cueLayerAutosaveTimeoutRef.current = window.setTimeout(() => {
             void saveCueLayerDocumentNow(editorDraftDocument).catch((error) => {
-                setNotice(error instanceof Error ? error.message : "Reusable image autosave failed.");
+                setNotice(getCampaignCueWorkspaceFailureNotice(error, "Reusable image autosave failed."));
             });
         }, 1800);
         return () => {
@@ -1578,8 +1732,12 @@ export default function CampaignCueWorkspaceApp() {
                 cache: "no-store",
                 credentials: "include",
             });
-            const payload = await res.json().catch(() => ({}));
-            if (res.ok) setCueLayerDesigns(payload.data || []);
+            const payload = await readCampaignCueWorkspaceData<CampaignCueCueLayerDesign[]>(
+                res,
+                "cue_layers_designs_load",
+                (value): value is CampaignCueCueLayerDesign[] => Array.isArray(value),
+            );
+            if (payload.ok) setCueLayerDesigns(payload.data);
         } catch {
             setCueLayerDesigns([]);
         }
@@ -1604,12 +1762,16 @@ export default function CampaignCueWorkspaceApp() {
                 cache: "no-store",
                 credentials: "include",
             });
-            const payload = await res.json().catch(() => ({}));
-            if (!res.ok) {
-                setNotice(payload?.error || "Reusable image could not open.");
+            const payload = await readCampaignCueWorkspaceData(
+                res,
+                "cue_layers_boot_load",
+                isCueLayerBootPackageData,
+            );
+            if (!payload.ok) {
+                setNotice("Reusable image could not open.");
                 return;
             }
-            openCueLayerBootPackage(payload.data as CampaignCueCueLayerBootPackage);
+            openCueLayerBootPackage(payload.data);
         } finally {
             setBusyKey(null);
         }
@@ -1633,12 +1795,16 @@ export default function CampaignCueWorkspaceApp() {
                 idempotencyKey: buildIdempotencyKey("cue_layers_save"),
             }),
         });
-        const payload = await res.json().catch(() => ({}));
-        if (!res.ok) {
-            throw new Error(payload?.error || "Reusable image could not be saved.");
+        const payload = await readCampaignCueWorkspaceData(
+            res,
+            "cue_layers_autosave",
+            isCueLayerAutosaveData,
+        );
+        if (!payload.ok) {
+            throw new Error("Reusable image could not be saved.");
         }
-        const revision = Number(payload?.data?.revision || activeCueLayerRevision);
-        const design = payload?.data?.design as CampaignCueCueLayerDesign | undefined;
+        const revision = Number(payload.data.revision || activeCueLayerRevision);
+        const design = payload.data.design;
         if (design?.id) {
             setActiveCueLayerDesign(design);
             setCueLayerDesigns((current) => replaceBounded(current, design, CAMPAIGNCUE_PAGE_SIZE));
@@ -1678,14 +1844,17 @@ export default function CampaignCueWorkspaceApp() {
                     width: dimensions.width,
                 }),
             });
-            const payload = await res.json().catch(() => ({}));
-            if (!res.ok) {
-                setNotice(payload?.error || "Image could not be prepared for reuse.");
+            const payload = await readCampaignCueWorkspaceData(
+                res,
+                "cue_layers_upload",
+                isCueLayerUploadResultData,
+            );
+            if (!payload.ok) {
+                setNotice("Image could not be prepared for reuse.");
                 return;
             }
-            const result = payload.data as CampaignCueCueLayerUploadResult;
-            setCueLayerDesigns((current) => prependBounded(current, result.design, CAMPAIGNCUE_PAGE_SIZE));
-            openCueLayerBootPackage(result.boot);
+            setCueLayerDesigns((current) => prependBounded(current, payload.data.design, CAMPAIGNCUE_PAGE_SIZE));
+            openCueLayerBootPackage(payload.data.boot);
             setNotice("Reusable image ready. Original preserved.");
         } finally {
             setBusyKey(null);
@@ -1706,8 +1875,8 @@ export default function CampaignCueWorkspaceApp() {
                     expectedRevision: activeCueLayerRevision,
                 }),
             });
-            const payload = await res.json().catch(() => ({}));
-            setNotice(res.ok ? "Original fallback is available." : payload?.error || "Fallback could not be prepared.");
+            const payload = await readCampaignCueWorkspaceData(res, "cue_layers_repair", isRecordData);
+            setNotice(payload.ok ? "Original fallback is available." : "Fallback could not be prepared.");
         } finally {
             setBusyKey(null);
         }
@@ -1804,19 +1973,25 @@ export default function CampaignCueWorkspaceApp() {
                     idempotencyKey: buildIdempotencyKey("create"),
                 }),
             });
-            const payload = await res.json().catch(() => ({}));
-            if (!res.ok) {
-                setNotice(payload?.error || "Campaign pack could not be created.");
+            const payload = await readCampaignCueWorkspaceData<{
+                campaign?: CampaignCueCampaign;
+                replayed?: boolean;
+            }>(
+                res,
+                "campaign_create",
+                isRecordData,
+            );
+            if (!payload.ok) {
+                setNotice("Campaign pack could not be created.");
                 return;
             }
             setNotice(templateDraft ? "Campaign pack created from reusable base." : "Campaign pack created.");
             setTab("campaigns");
-            const result = payload?.data as { campaign?: CampaignCueCampaign; replayed?: boolean };
-            if (result?.campaign) {
+            if (payload.data.campaign) {
                 updateOverview((current) => ({
                     ...current,
-                    analytics: result.replayed ? current.analytics : bumpAnalytics(current, "campaign_created"),
-                    campaigns: prependBounded(current.campaigns, result.campaign as CampaignCueCampaign, CAMPAIGNCUE_PAGE_SIZE),
+                    analytics: payload.data.replayed ? current.analytics : bumpAnalytics(current, "campaign_created"),
+                    campaigns: prependBounded(current.campaigns, payload.data.campaign as CampaignCueCampaign, CAMPAIGNCUE_PAGE_SIZE),
                 }));
             }
         } finally {
@@ -1834,13 +2009,17 @@ export default function CampaignCueWorkspaceApp() {
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(businessDraft),
             });
-            const payload = await res.json().catch(() => ({}));
-            if (!res.ok) {
-                setNotice(payload?.error || "Business details could not be saved.");
+            const payload = await readCampaignCueWorkspaceData<Partial<CampaignCueOverview>>(
+                res,
+                "business_details_save",
+                isRecordData,
+            );
+            if (!payload.ok) {
+                setNotice("Business details could not be saved.");
                 return;
             }
             setNotice("Business details saved.");
-            const result = payload?.data as Partial<CampaignCueOverview>;
+            const result = payload.data;
             if (result?.businessBrain && result?.workspace) {
                 updateOverview((current) => ({
                     ...current,
@@ -1868,15 +2047,19 @@ export default function CampaignCueWorkspaceApp() {
                     expiresAt: parseDateTimeLocal(sourceDraft.expiresAt, businessDraft.timezone) || undefined,
                 }),
             });
-            const payload = await res.json().catch(() => ({}));
-            if (!res.ok) {
-                setNotice(payload?.error || "Source input could not be saved.");
+            const payload = await readCampaignCueWorkspaceData(
+                res,
+                "source_input_create",
+                (value): value is CampaignCueSourceInput => isRecord(value) && typeof value.id === "string",
+            );
+            if (!payload.ok) {
+                setNotice("Source input could not be saved.");
                 return;
             }
             setSourceDraft({ expiresAt: "", label: "", sourceType: "manual_note", status: "needs_review", value: "" });
             setNotice("Source input saved.");
-            const sourceInput = payload?.data as CampaignCueSourceInput | undefined;
-            if (sourceInput?.id) {
+            const sourceInput = payload.data;
+            if (sourceInput.id) {
                 updateOverview((current) => ({
                     ...current,
                     sourceFacts: [
@@ -1901,15 +2084,19 @@ export default function CampaignCueWorkspaceApp() {
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(locationDraft),
             });
-            const payload = await res.json().catch(() => ({}));
-            if (!res.ok) {
-                setNotice(payload?.error || "Location could not be saved.");
+            const payload = await readCampaignCueWorkspaceData(
+                res,
+                "location_create",
+                (value): value is CampaignCueLocation => isRecord(value) && typeof value.id === "string",
+            );
+            if (!payload.ok) {
+                setNotice("Location could not be saved.");
                 return;
             }
             setLocationDraft({ locality: "", name: "", status: "draft" });
             setNotice("Location saved.");
-            const location = payload?.data as CampaignCueLocation | undefined;
-            if (location?.id) {
+            const location = payload.data;
+            if (location.id) {
                 updateOverview((current) => ({
                     ...current,
                     locations: prependBounded(current.locations, location, CAMPAIGNCUE_PAGE_SIZE),
@@ -1957,9 +2144,17 @@ export default function CampaignCueWorkspaceApp() {
                     idempotencyKey: buildIdempotencyKey(action),
                 }),
             });
-            const payload = await res.json().catch(() => ({}));
-            if (!res.ok) {
-                setNotice(payload?.error || "Action could not be recorded.");
+            const payload = await readCampaignCueWorkspaceData<{
+                campaign?: CampaignCueCampaign | null;
+                replayed?: boolean;
+                schedule?: CampaignCueOverview["schedules"][number] | null;
+            }>(
+                res,
+                "campaign_action_record",
+                isRecordData,
+            );
+            if (!payload.ok) {
+                setNotice("Action could not be recorded.");
                 return;
             }
             if (action === "download" && output) {
@@ -1975,19 +2170,18 @@ export default function CampaignCueWorkspaceApp() {
             } else {
                 setNotice("Action recorded.");
             }
-            const result = payload?.data as { campaign?: CampaignCueCampaign | null; replayed?: boolean; schedule?: CampaignCueOverview["schedules"][number] | null };
-            if (result?.campaign) {
+            if (payload.data.campaign) {
                 updateOverview((current) => ({
                     ...current,
-                    analytics: result.replayed ? current.analytics : bumpAnalytics(current, action),
-                    campaigns: replaceBounded(current.campaigns, result.campaign as CampaignCueCampaign, CAMPAIGNCUE_PAGE_SIZE),
-                    schedules: result.schedule
-                        ? prependBounded(current.schedules, result.schedule, CAMPAIGNCUE_PAGE_SIZE)
+                    analytics: payload.data.replayed ? current.analytics : bumpAnalytics(current, action),
+                    campaigns: replaceBounded(current.campaigns, payload.data.campaign as CampaignCueCampaign, CAMPAIGNCUE_PAGE_SIZE),
+                    schedules: payload.data.schedule
+                        ? prependBounded(current.schedules, payload.data.schedule, CAMPAIGNCUE_PAGE_SIZE)
                         : current.schedules,
                 }));
             }
         } catch (error) {
-            setNotice(error instanceof Error ? error.message : "Action could not be completed.");
+            setNotice(getCampaignCueWorkspaceFailureNotice(error, "Action could not be completed."));
         } finally {
             setBusyKey(null);
         }
@@ -2010,9 +2204,13 @@ export default function CampaignCueWorkspaceApp() {
                         .filter(Boolean),
                 }),
             });
-            const payload = await res.json().catch(() => ({}));
-            if (!res.ok) {
-                setNotice(payload?.error || "Asset could not be registered.");
+            const payload = await readCampaignCueWorkspaceData(
+                res,
+                "asset_register",
+                (value): value is CampaignCueAsset => isRecord(value) && typeof value.id === "string",
+            );
+            if (!payload.ok) {
+                setNotice("Asset could not be registered.");
                 return;
             }
             setAssetDraft({
@@ -2024,8 +2222,8 @@ export default function CampaignCueWorkspaceApp() {
                 tags: "",
             });
             setNotice("Asset registered.");
-            const asset = payload?.data as CampaignCueAsset | undefined;
-            if (asset?.id) {
+            const asset = payload.data;
+            if (asset.id) {
                 updateOverview((current) => ({
                     ...current,
                     assets: prependBounded(current.assets, asset, CAMPAIGNCUE_PAGE_SIZE),
@@ -2048,12 +2246,12 @@ export default function CampaignCueWorkspaceApp() {
                 cache: "no-store",
                 credentials: "include",
             });
-            const payload = await res.json().catch(() => ({}));
-            if (!res.ok) {
-                setNotice(payload?.error || "Asset download is unavailable.");
+            const payload = await readCampaignCueWorkspaceData(res, "asset_download", isAssetDownloadData);
+            if (!payload.ok) {
+                setNotice("Asset download is unavailable.");
                 return;
             }
-            const url = payload?.data?.url;
+            const url = payload.data.url;
             if (typeof url !== "string" || !url) {
                 setNotice("Asset download is unavailable.");
                 return;
@@ -2101,7 +2299,7 @@ export default function CampaignCueWorkspaceApp() {
                 : "Reusable campaign pack saved.");
             await loadPackTemplates(data);
         } catch (error) {
-            setNotice(error instanceof Error ? error.message : "Reusable campaign pack could not be saved.");
+            setNotice(getCampaignCueWorkspaceFailureNotice(error, "Reusable campaign pack could not be saved."));
         } finally {
             setBusyKey(null);
         }
@@ -2166,7 +2364,7 @@ export default function CampaignCueWorkspaceApp() {
                     : template.title,
             });
         } catch (error) {
-            setNotice(error instanceof Error ? error.message : "Campaign pack template could not be opened.");
+            setNotice(getCampaignCueWorkspaceFailureNotice(error, "Campaign pack template could not be opened."));
         } finally {
             setBusyKey(null);
         }
@@ -2250,12 +2448,18 @@ export default function CampaignCueWorkspaceApp() {
                         sourceRevision: savedRevision ?? activeCueLayerRevision,
                     }),
                 });
-                const payload = await res.json().catch(() => ({}));
-                if (!res.ok) {
-                    setNotice(payload?.error || "Reusable export could not be saved.");
+                const payload = await readCampaignCueWorkspaceData<{
+                    asset?: CampaignCueAsset;
+                }>(
+                    res,
+                    "cue_layers_export",
+                    isRecordData,
+                );
+                if (!payload.ok) {
+                    setNotice("Reusable export could not be saved.");
                     return;
                 }
-                const asset = payload?.data?.asset as CampaignCueAsset | undefined;
+                const asset = payload.data.asset;
                 if (asset?.id) {
                     updateOverview((current) => ({
                         ...current,
@@ -2289,13 +2493,17 @@ export default function CampaignCueWorkspaceApp() {
                     channel: metadata.channel,
                 }),
             });
-            const payload = await res.json().catch(() => ({}));
-            if (!res.ok) {
-                setNotice(payload?.error || "Creative asset could not be saved.");
+            const payload = await readCampaignCueWorkspaceData(
+                res,
+                "creative_asset_save",
+                (value): value is CampaignCueAsset => isRecord(value) && typeof value.id === "string",
+            );
+            if (!payload.ok) {
+                setNotice("Creative asset could not be saved.");
                 return;
             }
-            const asset = payload?.data as CampaignCueAsset | undefined;
-            if (asset?.id) {
+            const asset = payload.data;
+            if (asset.id) {
                 updateOverview((current) => ({
                     ...current,
                     assets: prependBounded(current.assets, asset, CAMPAIGNCUE_PAGE_SIZE),
@@ -2396,14 +2604,19 @@ export default function CampaignCueWorkspaceApp() {
     const primaryCreateOpportunityId = dailyDesk.primaryOpportunity?.id || firstOpportunity?.id;
     const primaryCreateBlockedReason = campaignCreationBlockedReason(primaryCreateOpportunityId);
     const openDeskTarget = (target: CampaignCueWorkspaceTabKey) => setTab(target);
-    const copyHandoffValue = (value: string) => {
-        if (typeof navigator === "undefined" || !navigator.clipboard) {
-            setNotice("Copy is unavailable in this browser.");
-            return;
+    const copyHandoffValue = async (value: string) => {
+        try {
+            await copyCampaignCueHandoffValueToClipboard(value);
+            setNotice("Copied.");
+        } catch (error) {
+            logRuntimeFailure("campaigncue_handoff_copy_failed", error, {
+                hasClipboardWrite: hasCampaignCueHandoffClipboardWrite(),
+                hasCopyFallback: hasCampaignCueHandoffCopyFallback(),
+                surface: "campaigncue_workspace",
+                valueLength: value.length,
+            });
+            setNotice(hasCampaignCueHandoffClipboardWrite() ? "Copy failed." : "Copy is unavailable in this browser.");
         }
-        void navigator.clipboard.writeText(value)
-            .then(() => setNotice("Copied."))
-            .catch(() => setNotice("Copy failed."));
     };
     const runDailyDeskPrimaryAction = () => {
         if (dailyDesk.summary.actionKind === "campaign_pack" && !dailyDesk.readyPack) {

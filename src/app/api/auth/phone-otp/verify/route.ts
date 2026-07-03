@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
 import { FEATURE_FLAGS } from '@config/features';
+import { getBoundedAuthStringContext, logAuthFailure } from '@lib/auth/authDiagnostics';
 import {
     hashRequestValueForPhoneOtp,
     PhoneOtpError,
@@ -9,7 +10,8 @@ import {
 } from '@lib/auth/phoneOtp';
 import { checkRateLimit } from '@lib/rateLimit';
 import { getRateLimitForFeature } from '@lib/rateLimit/configs';
-import { secureError, secureLog } from '@lib/security/secureLogger';
+import { readBoundedJsonBody } from '@lib/security/boundedRequestBody';
+import { secureLog } from '@lib/security/secureLogger';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
@@ -17,12 +19,19 @@ const bodySchema = z.object({
     challengeId: z.string().trim().min(12).max(128),
     code: z.string().trim().regex(/^\d{4,8}$/),
 });
+const PHONE_OTP_VERIFY_MAX_BODY_BYTES = 1024;
 
 const getRequestIp = (request: NextRequest) => (
     request.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
     || request.headers.get('x-real-ip')?.trim()
     || 'unknown'
 );
+
+const getPhoneOtpVerifyFailureLogContext = (request: NextRequest) => ({
+    endpoint: '/api/auth/phone-otp/verify',
+    ...getBoundedAuthStringContext('requestIp', getRequestIp(request)),
+    ...getBoundedAuthStringContext('userAgent', request.headers.get('user-agent')),
+});
 
 const rateLimitResponse = (resetAt: number) => (
     NextResponse.json(
@@ -42,15 +51,8 @@ export async function POST(request: NextRequest) {
     }
 
     try {
-        const rawBody = await request.json().catch(() => null);
-        const parsed = bodySchema.safeParse(rawBody);
-        if (!parsed.success) {
-            return NextResponse.json({ error: 'Enter the verification code.' }, { status: 400 });
-        }
-
         const verifyRateConfig = getRateLimitForFeature('AUTH_PHONE_OTP_VERIFY');
         const ipHash = hashRequestValueForPhoneOtp(getRequestIp(request));
-        const challengeHash = hashRequestValueForPhoneOtp(parsed.data.challengeId);
 
         const ipRate = await checkRateLimit({
             key: `auth-phone-otp-verify:ip:${ipHash}`,
@@ -58,6 +60,17 @@ export async function POST(request: NextRequest) {
         });
         if (!ipRate.allowed) return rateLimitResponse(ipRate.resetAt);
 
+        const bodyResult = await readBoundedJsonBody(request, PHONE_OTP_VERIFY_MAX_BODY_BYTES, {
+            invalidJsonMessage: 'Enter the verification code.',
+        });
+        if (bodyResult.ok === false) return bodyResult.response;
+        const rawBody = bodyResult.data;
+        const parsed = bodySchema.safeParse(rawBody);
+        if (!parsed.success) {
+            return NextResponse.json({ error: 'Enter the verification code.' }, { status: 400 });
+        }
+
+        const challengeHash = hashRequestValueForPhoneOtp(parsed.data.challengeId);
         const challengeRate = await checkRateLimit({
             key: `auth-phone-otp-verify:challenge:${challengeHash}`,
             ...verifyRateConfig,
@@ -71,6 +84,8 @@ export async function POST(request: NextRequest) {
 
         return NextResponse.json({
             success: true,
+            action: 'verify',
+            challengeId: parsed.data.challengeId,
             loginToken: verified.loginToken,
             expiresInSeconds: verified.expiresInSeconds,
             phoneMasked: verified.phoneMasked,
@@ -92,7 +107,11 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        secureError('[Phone OTP] Verify route failed', error as Error);
+        logAuthFailure(
+            'phone_otp_verify_route_failed',
+            error,
+            getPhoneOtpVerifyFailureLogContext(request),
+        );
         return NextResponse.json({ error: 'Could not verify code. Please try again.' }, { status: 500 });
     }
 }

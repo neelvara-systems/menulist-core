@@ -1,7 +1,7 @@
 'use client'
 
 import { AI_ACTIONS_TYPES } from '@constant/common';
-import { updateProjectMetadata } from '@database/projects';
+import { assertProjectUpdateSucceeded, updateProjectMetadata } from '@database/projects';
 import { getOwnerLabels } from '@config/businessLabels';
 import { getProjectDescriptionContentLength, getProjectDescriptionTone } from '@lib/ai/projectAIPreferences';
 import { getMissingProjectPublicContentGaps, getProjectDefaultLanguage } from '@lib/localization/projectContent';
@@ -497,7 +497,12 @@ export default function BulkActionsSheet({
                 }
 
                 if (Object.keys(projectMetadataTranslationUpdate).length > 0) {
-                    await updateProjectMetadata(updated.projectId, projectMetadataTranslationUpdate);
+                    const metadataTranslationResult = await updateProjectMetadata(updated.projectId, projectMetadataTranslationUpdate);
+                    assertProjectUpdateSucceeded(
+                        metadataTranslationResult,
+                        updated.projectId,
+                        'mobile_bulk_actions_project_metadata_translation_update_rejected',
+                    );
                 }
 
                 const repairSummaryParts = [

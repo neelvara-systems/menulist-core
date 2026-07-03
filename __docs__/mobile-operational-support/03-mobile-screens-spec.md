@@ -1,10 +1,14 @@
 # Mobile Screens Specification
 
-**Created:** February 14, 2026  
-**Status:** 📋 SPEC COMPLETE — Ready for implementation  
-**Author:** Lead Architect (Cascade)  
-**Source:** ChatGPT Brainstorm + Codebase Analysis + Mobile UI Doctrine  
+**Created:** February 14, 2026
+**Status:** Source-bounded mobile reference; not current implementation approval or launch certification
+**Author:** Lead Architect (Cascade)
+**Source:** ChatGPT Brainstorm + Codebase Analysis + Mobile UI Doctrine
 **Depends On:** `02-mobile-ui-doctrine.md`
+
+## Current Release Boundary
+
+This document is a mobile screen reference and inventory. It does not approve new mobile screens, current launch readiness, or production certification by itself. Current mobile approval requires the active [production-readiness audit](../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../production-readiness/external-certification-runbook.md) evidence, `npm run verify:mobile-shell-route-map`, the relevant feature-specific mobile/source gate, authenticated owner-shell mobile QA, real-device QA where camera/share/PWA behavior is in scope, target deploy evidence, and production-host smoke.
 
 ---
 
@@ -36,7 +40,7 @@
 | #   | Screen              | File                               | Desktop Equivalent          | Frequency |
 | --- | ------------------- | ---------------------------------- | --------------------------- | --------- |
 | 10  | Feedback Detail     | `MobileFeedbackDetail.tsx`         | Feedback detail modal       | Daily     |
-| 11  | Public Info         | `MobilePublicInfoScreen.tsx`       | BusinessSettings > Location | Monthly   |
+| 11  | Brand Settings      | `MobileBasicSettingsScreen.tsx`    | BusinessSettings > Basic + Location | Monthly   |
 | 12  | Billing             | `MobileBillingScreen.tsx`          | BillingPage                 | Monthly   |
 | 13  | Dashboard           | `MobileDashboardScreen.tsx`        | OwnerDashboard              | Weekly    |
 | 14  | Staff               | `MobileUsersScreen.tsx`            | UsersListPage               | Monthly   |
@@ -402,11 +406,13 @@ const { storeDetails } = useContext(PlatformGlobalDataContext);
 import { useTodayCampaigns } from "@template/main-app/today/hooks/useTodayCampaigns";
 import { useCampaignActions } from "@template/main-app/today/hooks/useCampaignActions";
 // todayCampaigns.primary → today's main campaign card
-// completeCampaign() → mark as shared
-// skipCampaign() → skip for today
+// completeCampaign() → mark as shared after campaign/export acknowledgement
+// skipCampaign() → skip for today after campaign/status acknowledgement
 ```
 
 ### Today Actions Behavior
+
+Runtime boundary (July 1, 2026): mobile Today uses the same campaign completion and skip acknowledgement guards as desktop. A local Today state update or success toast requires the shaped returned Today state plus matching campaign identity. Download-surface feedback requires the returned surface and `download` method to match the requested action. `apiCallComposer()` fallback values do not count as completed or skipped actions.
 
 - If no campaign today → section hidden entirely (silence = feature, per doctrine)
 - If campaign exists → show single card with content preview + "Share on WhatsApp" button
@@ -603,17 +609,17 @@ Quick distribution of menu link. Owners constantly send "here is our menu" to cu
 
 ---
 
-## Screen 8 — Public Info Screen
+## Screen 8 — Brand Settings Screen
 
 ### Purpose
 
-Edit customer-facing business identity. Low frequency but important for accuracy.
+Edit customer-facing business identity, contact details, address, map coordinates, business type, GSTIN, and logo. Low frequency but important for accuracy. This is the active More > Business Profile path; the old standalone public-info screen is not part of the mobile shell.
 
 ### Layout
 
 ```
 ┌─────────────────────────────┐
-│  ← Back    Public Info      │
+│  ← Back    Brand Settings   │
 ├─────────────────────────────┤
 │                             │
 │  Business Name              │
@@ -729,7 +735,7 @@ Container for all low-frequency features. Clean list.
 │                             │
 │  ┌─────────────────────────┐│
 │  │ 📤  Share Menu & QR     ││  → Screen 7
-│  │ 🏪  Public Info         ││  → Screen 8
+│  │ 🏪  Brand Settings      ││  → Screen 8
 │  │ 💳  Plan & Billing      ││  → Screen 9
 │  └─────────────────────────┘│
 │                             │
@@ -792,7 +798,7 @@ If single outlet: Hide "Switch Outlet" entirely.
 
 ### Phase 4: Polish (2-3 days)
 
-- Screen 8: Public Info Screen
+- Screen 8: Brand Settings Screen
 - Screen 9: Billing Screen
 - Screen 10: More Screen
 - PWA manifest updates

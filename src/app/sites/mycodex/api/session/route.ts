@@ -14,7 +14,12 @@ import {
     sanitizeMyCodexReturnTo,
     validateMyCodexCredentials,
 } from '@lib/mycodex/auth';
+import { readBoundedFormDataBody } from '@lib/security/boundedRequestBody';
 import { validateAPIInput } from '@lib/security/inputValidation';
+import { getBoundedSecurityStringContext } from '@lib/security/securityDiagnostics';
+import { hashPublicRateLimitValue } from 'src/middleware/publicApi';
+
+const MYCODEX_LOGIN_FORM_MAX_BODY_BYTES = 8 * 1024;
 
 const MyCodexLoginSchema = z.object({
     username: z.string().min(1).max(128).transform((value) => value.trim()),
@@ -55,9 +60,33 @@ const redirectToLogin = (request: NextRequest, error: string, returnTo: string |
 
 export async function POST(request: NextRequest) {
     let rawBody: Record<string, FormDataEntryValue | null> = {};
+    const requestIp = getRequestIp(request);
+    const requestIpHash = hashPublicRateLimitValue(requestIp);
+
+    const rateLimit = await checkRateLimit({
+        key: `mycodex-login:${requestIpHash}`,
+        ...getRateLimitForFeature('AUTH_LOGIN'),
+    });
+
+    if (!rateLimit.allowed) {
+        logger.security('MyCodex Login Rate Limit Exceeded', {
+            endpoint: request.nextUrl.pathname,
+            ...getBoundedSecurityStringContext('requestIpHash', requestIpHash),
+        }, 'medium');
+
+        return redirectToLogin(request, 'rate-limit', '/');
+    }
 
     try {
-        const formData = await request.formData();
+        const formDataResult = await readBoundedFormDataBody(request, MYCODEX_LOGIN_FORM_MAX_BODY_BYTES, {
+            invalidFormDataMessage: 'Invalid login form.',
+            tooLargeMessage: 'Login form is too large.',
+        });
+        if (formDataResult.ok === false) {
+            return redirectToLogin(request, 'input', '/');
+        }
+
+        const formData = formDataResult.formData;
         rawBody = {
             username: formData.get('username'),
             password: formData.get('password'),
@@ -67,24 +96,10 @@ export async function POST(request: NextRequest) {
         return redirectToLogin(request, 'input', '/');
     }
 
-    const rateLimit = await checkRateLimit({
-        key: `mycodex-login:${getRequestIp(request)}`,
-        ...getRateLimitForFeature('AUTH_LOGIN'),
-    });
-
-    if (!rateLimit.allowed) {
-        logger.security('MyCodex Login Rate Limit Exceeded', {
-            endpoint: request.nextUrl.pathname,
-            ip: getRequestIp(request),
-        }, 'medium');
-
-        return redirectToLogin(request, 'rate-limit', String(rawBody.returnTo || '/'));
-    }
-
     if (!getMyCodexExpectedCredentials()) {
         logger.security('MyCodex Login Attempt While Unconfigured', {
             endpoint: request.nextUrl.pathname,
-            ip: getRequestIp(request),
+            ...getBoundedSecurityStringContext('requestIpHash', requestIpHash),
         }, 'high');
 
         return redirectToLogin(request, 'config', String(rawBody.returnTo || '/'));
@@ -99,7 +114,7 @@ export async function POST(request: NextRequest) {
     if (validation.success === false) {
         logger.security('MyCodex Login Input Validation Failed', {
             endpoint: request.nextUrl.pathname,
-            ip: getRequestIp(request),
+            ...getBoundedSecurityStringContext('requestIpHash', requestIpHash),
             error: validation.error,
         }, 'medium');
 
@@ -110,8 +125,8 @@ export async function POST(request: NextRequest) {
     if (!validateMyCodexCredentials(username, password)) {
         logger.security('MyCodex Login Failed', {
             endpoint: request.nextUrl.pathname,
-            ip: getRequestIp(request),
-            username,
+            ...getBoundedSecurityStringContext('requestIpHash', requestIpHash),
+            ...getBoundedSecurityStringContext('username', username),
         }, 'medium');
 
         return redirectToLogin(request, 'invalid', returnTo);
@@ -121,7 +136,7 @@ export async function POST(request: NextRequest) {
     if (!sessionToken) {
         logger.security('MyCodex Session Token Creation Failed', {
             endpoint: request.nextUrl.pathname,
-            ip: getRequestIp(request),
+            ...getBoundedSecurityStringContext('requestIpHash', requestIpHash),
         }, 'high');
 
         return redirectToLogin(request, 'config', returnTo);

@@ -7,7 +7,7 @@
  */
 
 import { getSpecialMenuCapabilities } from '@config/specialMenuConfig';
-import { getProjectDataWithoutLoader, updateProjectMetadata, updateProjectWithoutLoader } from '@database/projects';
+import { assertProjectUpdateSucceeded, getProjectDataWithoutLoader, updateProjectMetadata, updateProjectWithoutLoader } from '@database/projects';
 import type { SpecialMenuListItem } from '@hook/useSpecialMenus';
 import { useSpecialMenus } from '@hook/useSpecialMenus';
 import { CANONICAL_SOURCE_LANGUAGE } from '@lib/localization/languagePolicy';
@@ -32,6 +32,11 @@ import { Button, Card, Dialog, DotLoading, Empty, Flex, Input, NavBar, Popup, Se
 import MobileLocalizedLanguageSelector from '../components/MobileLocalizedLanguageSelector';
 import MobileSettingsScreenHeader from '../components/MobileSettingsScreenHeader';
 import { useMobileProjects } from '../providers/MobileProjectsProvider';
+import {
+    getBoundedMobileOwnerStringContext,
+    getMobileOwnerStoreLogContext,
+    logMobileOwnerFailure,
+} from '../utils/mobileOwnerDiagnostics';
 
 interface MobileSpecialMenuScreenProps {
     onBack: () => void;
@@ -298,7 +303,15 @@ function CreateSpecialMenuSheet({
             );
             setDisplayNameDrafts(nextDrafts);
             Toast.show({ content: 'Special menu name translations added.', duration: 1800 });
-        } catch {
+        } catch (error) {
+            logMobileOwnerFailure('mobile_special_menu_name_translation_failed', error, {
+                ...getMobileOwnerStoreLogContext(storeDetails?.storeId, storeDetails?.tenantId),
+                ...getBoundedMobileOwnerStringContext('baseProjectId', baseProjectId),
+                ...getBoundedMobileOwnerStringContext('defaultBaseProjectId', defaultBaseProjectId),
+                ...getBoundedMobileOwnerStringContext('selectedLanguage', selectedLanguage),
+                managedLanguageCount: managedLanguages.length,
+                displayNameLength: String(displayNameDrafts[selectedLanguage] || '').length,
+            });
             Toast.show({ content: 'Could not translate the special menu name.', duration: 1800 });
         } finally {
             setIsTranslatingPublicContent(false);
@@ -491,6 +504,7 @@ function EditSpecialMenuSheet({
     const t = useTranslations('MobileSpecialMenu');
     const tProjectSelector = useTranslations('MobileProjectSelector');
     const tSettings = useTranslations('Settings');
+    const { storeDetails } = useContext(PlatformGlobalDataContext);
     const { token } = theme.useToken();
     const [managedLanguages, setManagedLanguages] = useState<string[]>(['en']);
     const [selectedLanguage, setSelectedLanguage] = useState<string>('en');
@@ -654,7 +668,7 @@ function EditSpecialMenuSheet({
                 return;
             }
 
-            await updateProjectWithoutLoader({
+            const projectTranslationResult = await updateProjectWithoutLoader({
                 projectId: item.projectId,
                 ...(translated.name ? { name: translated.name } : {}),
                 ...(translated.description ? { description: translated.description } : {}),
@@ -671,13 +685,23 @@ function EditSpecialMenuSheet({
                     },
                 } : {}),
             } as any);
+            assertProjectUpdateSucceeded(
+                projectTranslationResult,
+                item.projectId,
+                'mobile_special_menu_public_content_translation_project_update_rejected',
+            );
 
             const metadataUpdate: Record<string, any> = {};
             if (translated.name) metadataUpdate.name = translated.name;
             if (translated.description) metadataUpdate.description = translated.description;
             if (translated.specialMenuDisplayName) metadataUpdate.specialMenuDisplayName = translated.specialMenuDisplayName;
             if (Object.keys(metadataUpdate).length > 0) {
-                await updateProjectMetadata(item.projectId, metadataUpdate);
+                const metadataTranslationResult = await updateProjectMetadata(item.projectId, metadataUpdate);
+                assertProjectUpdateSucceeded(
+                    metadataTranslationResult,
+                    item.projectId,
+                    'mobile_special_menu_public_content_translation_metadata_update_rejected',
+                );
             }
 
             const nextDisplayNameDrafts = buildLocalizedDrafts(
@@ -693,7 +717,18 @@ function EditSpecialMenuSheet({
             setInitialDisplayNameDrafts(nextDisplayNameDrafts);
             setInitialDescriptionDrafts(nextDescriptionDrafts);
             Toast.show({ content: 'Project public content translations added.', duration: 1800 });
-        } catch {
+        } catch (error) {
+            logMobileOwnerFailure('mobile_special_menu_project_public_content_translation_failed', error, {
+                ...getMobileOwnerStoreLogContext(storeDetails?.storeId, storeDetails?.tenantId),
+                ...getBoundedMobileOwnerStringContext('projectId', item?.projectId),
+                ...getBoundedMobileOwnerStringContext('selectedLanguage', selectedLanguage),
+                ...getBoundedMobileOwnerStringContext('referenceLanguage', referenceLanguage),
+                managedLanguageCount: managedLanguages.length,
+                displayNameLength: String(displayNameDrafts[selectedLanguage] || '').length,
+                descriptionLength: String(descriptionDrafts[selectedLanguage] || '').length,
+                hasInitialDisplayNameDrafts: Object.keys(initialDisplayNameDrafts).length > 0,
+                hasInitialDescriptionDrafts: Object.keys(initialDescriptionDrafts).length > 0,
+            });
             Toast.show({ content: 'Could not translate project public content.', duration: 1800 });
         } finally {
             setIsTranslatingPublicContent(false);
@@ -1131,7 +1166,7 @@ export default function MobileSpecialMenuScreen({ onBack, onOpenMenuTab }: Mobil
         const result = await createSpecialMenu(payload);
 
         if (!result.success || !result.projectId) {
-            Toast.show({ content: result.error || t('failedToCreate'), duration: 2200 });
+            Toast.show({ content: t('failedToCreate'), duration: 2200 });
             return;
         }
 
@@ -1157,7 +1192,7 @@ export default function MobileSpecialMenuScreen({ onBack, onOpenMenuTab }: Mobil
         const result = await updateSpecialMenu(payload);
 
         if (!result.success) {
-            Toast.show({ content: result.error || tProjectSelector('saveFailed'), duration: 2200 });
+            Toast.show({ content: tProjectSelector('saveFailed'), duration: 2200 });
             return;
         }
 
@@ -1171,7 +1206,7 @@ export default function MobileSpecialMenuScreen({ onBack, onOpenMenuTab }: Mobil
             Toast.show({ content: t('specialMenuEnded'), icon: 'success', duration: 1500 });
             return;
         }
-        Toast.show({ content: result.error || t('failedToEnd'), duration: 2000 });
+        Toast.show({ content: t('failedToEnd'), duration: 2000 });
     };
 
     const handleCancel = async (projectId: string) => {
@@ -1180,7 +1215,7 @@ export default function MobileSpecialMenuScreen({ onBack, onOpenMenuTab }: Mobil
             Toast.show({ content: t('specialMenuCancelled'), icon: 'success', duration: 1500 });
             return;
         }
-        Toast.show({ content: result.error || t('failedToCancel'), duration: 2000 });
+        Toast.show({ content: t('failedToCancel'), duration: 2000 });
     };
 
     const activeOrScheduled = [...(activeMenu ? [activeMenu] : []), ...scheduledMenus];

@@ -1,6 +1,6 @@
 'use client'
 
-import { applyExtractionChanges, discardExtractionChanges } from '@lib/extraction/applyChanges';
+import { applyExtractionChanges, discardExtractionChanges, isAcknowledgedApplyChangesResult } from '@lib/extraction/applyChanges';
 import { updateApplyPlan } from '@lib/extraction/comparisonEngine';
 import type {
     ComparisonEngineOutput,
@@ -14,6 +14,11 @@ import {
     setSafePreviewApprovals,
 } from '@lib/extraction/reviewPreview';
 import { clearMenuProcessingJobDismissal, markMenuProcessingJobAsDismissed } from '@lib/extraction/menuProcessingDismissal';
+import {
+    getMenuProcessingJobLogContext,
+    getMenuProcessingProjectLogContext,
+    logMenuProcessingFailure,
+} from '@lib/firebase/menuProcessingDiagnostics';
 import { useTranslations } from 'next-intl';
 import { useCallback, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
@@ -188,11 +193,17 @@ export default function ExtractionReviewSheet({
                 projectId,
                 applyPlan,
                 jobId,
+                expectedChangeCount: totalChanges,
                 primaryLang,
             });
 
-            if (!result.success) {
-                throw new Error(result.error || t('applyChangesFailed'));
+            if (!isAcknowledgedApplyChangesResult(result, {
+                appliedChangeCount: totalChanges,
+                jobId,
+                mode: applyPlan.mode,
+                projectId,
+            })) {
+                throw new Error('mobile_extraction_review_apply_failed');
             }
 
             Toast.show({
@@ -202,9 +213,12 @@ export default function ExtractionReviewSheet({
             });
             onSaveComplete();
         } catch (error: any) {
-            console.error('[MobileExtractionReview] Failed to apply changes:', error);
+            logMenuProcessingFailure('mobile_extraction_review_apply_failed', error, {
+                ...getMenuProcessingProjectLogContext(projectId),
+                ...getMenuProcessingJobLogContext(jobId),
+            });
             Toast.show({
-                content: error?.message || t('applyChangesFailed'),
+                content: t('applyChangesFailed'),
                 duration: 2200,
             });
         } finally {
@@ -230,7 +244,9 @@ export default function ExtractionReviewSheet({
             onDiscard();
         } catch (error) {
             clearMenuProcessingJobDismissal(jobId);
-            console.error('[MobileExtractionReview] Failed to discard changes:', error);
+            logMenuProcessingFailure('mobile_extraction_review_discard_failed', error, {
+                ...getMenuProcessingJobLogContext(jobId),
+            });
             Toast.show({ content: t('discardChangesFailed'), duration: 2200 });
         } finally {
             setIsDiscarding(false);
@@ -245,7 +261,9 @@ export default function ExtractionReviewSheet({
             onDiscard();
         } catch (error) {
             clearMenuProcessingJobDismissal(jobId);
-            console.error('[MobileExtractionReview] Failed to close empty review:', error);
+            logMenuProcessingFailure('mobile_extraction_review_close_empty_failed', error, {
+                ...getMenuProcessingJobLogContext(jobId),
+            });
             Toast.show({ content: t('discardChangesFailed'), duration: 2200 });
         } finally {
             setIsDiscarding(false);

@@ -2,7 +2,7 @@
 
 **Owner-Facing Name:** Business Health
 **Status:** Implemented read-only runtime
-**Last Updated:** June 17, 2026
+**Last Updated:** July 1, 2026
 
 ## Implementation Contract
 
@@ -33,11 +33,12 @@ Active routes:
 
 - `GET /api/owner-business-assistant/current`
 - `GET /api/owner-business-assistant/analytics`
-- `POST /api/owner-business-assistant/answer`
+- browser callers for current, analytics, locations, thread, and platform monitor read models use `src/lib/ownerBusinessAssistant/clientResponses.ts`, backed by the shared Business Health request policy plus `readJsonResponseWithLimit()` with a 256KB cap. Malformed, oversized, non-OK, or invalid successful read-model responses log `owner_business_assistant_{current|analytics|locations|thread|monitor}_response_{rejected|parse_failed|invalid}` with bounded URL/scope/status metadata before the caller fails closed.
+- `POST /api/owner-business-assistant/answer`; browser callers use the same Business Health request policy and parse the answer response through `readOwnerBusinessAssistantAnswerResponseJson()`, backed by `readJsonResponseWithLimit()` with a 32KB cap. Malformed or oversized responses log `owner_business_assistant_answer_response_parse_failed` with bounded project/store/suggested-question/status metadata only, and successful responses must include `data` before the owner answer or thread ID is accepted.
 - `GET /api/owner-business-assistant/locations`
 - session/thread routes where the thread flag is enabled
-- feedback routes where feedback logging is enabled
-- `GET /api/platform/owner-business-assistant/monitor`
+- feedback routes where feedback logging is enabled; `POST /api/owner-business-assistant/feedback` uses the `DATA_WRITE` limiter with hashed owner, tenant, and store key segments, then an 8KB bounded JSON body before Zod validation, selected-store scope resolution, `VIEW_ANALYTICS` permission, and the feedback document write. The browser feedback hook uses the shared no-store/same-origin/manual-redirect request policy and requires the bounded `{ data: { success: true } }` acknowledgement before returning success.
+- `GET /api/platform/owner-business-assistant/monitor`; applies the shared `DATA_READ` gate before answer-event/feedback reads, sanitizes stored answer/feedback text for platform display, and the browser monitor validates the 256KB response envelope before rendering answer-event, source-coverage, feedback, and cost/read metrics. Unexpected route failures log `owner_business_assistant_monitor_route_failed` with bounded request-path metadata and source error name/code/status only.
 
 Removed route class:
 
@@ -46,11 +47,13 @@ Removed route class:
 Route requirements:
 
 - authenticate the owner session
+- require `VIEW_ANALYTICS` for the desktop `/business-health` route, matching the mobile Business Health entry gate
 - validate tenant/store/project access
 - validate payloads with schemas before reads/provider calls
 - rate-limit provider-backed answers before model calls
 - keep errors generic
 - avoid sensitive logs
+- keep browser answer response parsing bounded and fail closed on malformed answer payloads
 - keep read/write metrics compact
 
 ## Server Library
@@ -100,6 +103,7 @@ Desktop surfaces:
 - location summary
 - question composer
 - read-only priority checks
+- Public Truth readiness card with eight read-only modules: basics, QR link health, menu/service clarity, WhatsApp action link, hours, photo/visual identity, Google profile handoff, and menu freshness
 - source/freshness disclosure
 
 Removed desktop surface:
@@ -118,6 +122,7 @@ Mobile surfaces:
 - mobile analytics strip
 - mobile question composer
 - read-only checks and answers
+- compact Public Truth readiness modules from the shared owner hook, including Google profile handoff and menu freshness
 
 Removed mobile surface:
 
@@ -158,3 +163,6 @@ The platform monitor must not show operation usage or recent operation records.
 - desktop/mobile operation sheets are absent
 - context packets do not include an operation catalog
 - Business Health remains cache-first and bounded
+- current, analytics, locations, thread, and platform monitor callers use the shared bounded read-model response parser and do not call `response.json()` directly
+- answer hook response parsing is capped, logs `owner_business_assistant_answer_response_parse_failed`, rejects invalid response shape through the owner-safe error sentinel, and does not use `response.json().catch(() => null)`
+- platform monitor route and browser response failures use bounded runtime diagnostics

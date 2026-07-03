@@ -6,6 +6,10 @@
 **Applies:** 3-Year Architecture Freeze Rule  
 **Note:** This spec describes campaign-based recommendation surfaces. The strategically stronger approach (identity infrastructure surfaces) is implemented in Menu Kit. See `_archive/chatgpt-review.md` for the full strategic analysis.
 
+## Current Release Boundary
+
+This document is historical strategy/spec evidence only. It is not current implementation approval, deploy approval, or launch certification. Active physical/print output approval routes through the current Menu Kit and Menu Card Export source truth, the active [production-readiness audit](../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../production-readiness/external-certification-runbook.md) evidence, Digital Menu Output Constitution checks, `npm run verify:menu-card-export`, browser/mobile output QA, visual print artifact review, target deploy evidence, and production-host smoke.
+
 ---
 
 ## Executive Summary
@@ -406,6 +410,6 @@ This separation prevents re-thinking loops. Owner sees printed surfaces as "depl
 
 ---
 
-**Document Status:** Ready for implementation  
-**Estimated Effort:** 2 weeks total  
+**Document Status:** Historical legacy spec; not current implementation approval
+**Estimated Effort:** 2 weeks total
 **Priority:** P1 (after screen hardening)

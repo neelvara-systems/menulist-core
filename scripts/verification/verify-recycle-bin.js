@@ -144,12 +144,9 @@ console.log(`SUMMARY: ${passCount} passed, ${failCount} failed`);
 console.log('='.repeat(60) + '\n');
 
 if (failCount === 0) {
-  console.log('✅ ALL CHECKS PASSED - Ready for manual testing!\n');
-  console.log('Next steps:');
-  console.log('1. Start dev server: npm run dev');
-  console.log('2. Open: http://localhost:3000');
-  console.log('3. Navigate to Support Tickets (Admin Panel)');
-  console.log('4. Follow test plan in: TICKET_RECYCLE_BIN_TEST_PLAN.md\n');
+  console.log('✅ ALL CHECKS PASSED - recycle-bin source gate passed.\n');
+  console.log('Scope: static/source verification for ticket soft-delete, trash view, and restore wiring.');
+  console.log('Not covered: authenticated browser smoke, visual QA, live Firestore reads/writes, Firebase deploy, Vercel deploy, or production-host behavior.\n');
   process.exit(0);
 } else {
   console.log('❌ SOME CHECKS FAILED - Review implementation\n');

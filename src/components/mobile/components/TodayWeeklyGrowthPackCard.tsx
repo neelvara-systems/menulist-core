@@ -1,6 +1,13 @@
 'use client'
 
-import { copyTodayGrowthPackText, TodayReadyActionKind, TodayWeeklyGrowthPack } from '@lib/today/weeklyGrowthPack';
+import { logCampaignFailure } from '@lib/campaigns/campaignDiagnostics';
+import {
+    copyTodayGrowthPackText,
+    getTodayGrowthPackCopyLogContext,
+    TodayReadyActionKind,
+    TodayWeeklyGrowthPack,
+    type TodayGrowthPackAsset,
+} from '@lib/today/weeklyGrowthPack';
 import { theme } from 'antd';
 import { LuAlertTriangle, LuCopy, LuMegaphone, LuShieldCheck } from 'react-icons/lu';
 import { Button, Card, Flex, Tag, Text, Toast } from '../antd';
@@ -23,10 +30,18 @@ const actionKindIcon = {
 
 export default function TodayWeeklyGrowthPackCard({ pack }: TodayWeeklyGrowthPackCardProps) {
     const { token } = theme.useToken();
-    const handleCopy = async (copy: string, title: string) => {
-        const copied = await copyTodayGrowthPackText(copy);
+    const handleCopy = async (asset: TodayGrowthPackAsset) => {
+        const copied = await copyTodayGrowthPackText(asset.copy, {
+            onFailure: (failureStage, error) => {
+                logCampaignFailure(
+                    'today_weekly_growth_pack_copy_failed',
+                    error,
+                    getTodayGrowthPackCopyLogContext(pack, asset, failureStage),
+                );
+            },
+        });
         Toast.show({
-            content: copied ? `${title} copied` : 'Could not copy. Select and copy manually.',
+            content: copied ? `${asset.title} copied` : 'Could not copy. Select and copy manually.',
             duration: copied ? 1400 : 2200,
         });
     };
@@ -100,7 +115,7 @@ export default function TodayWeeklyGrowthPackCard({ pack }: TodayWeeklyGrowthPac
                                 </Flex>
                                 <Button
                                     fill="outline"
-                                    onClick={() => void handleCopy(asset.copy, asset.title)}
+                                    onClick={() => void handleCopy(asset)}
                                     size="small"
                                     style={{ minHeight: 44 }}
                                 >

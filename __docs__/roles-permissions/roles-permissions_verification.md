@@ -1,8 +1,8 @@
 # Roles & Permissions — Final Verification
 
-**Feature:** Staff management and permissions  
-**Status:** Code path passed; environment action noted  
-**Last Updated:** May 27, 2026
+**Feature:** Staff management and permissions
+**Status:** Code path passed; environment action noted
+**Last Updated:** July 1, 2026
 
 ---
 
@@ -52,6 +52,10 @@ This verification covered the end-to-end staff and permissions flow from the cur
 | Shared default role mirror | Passed: `src/data/shared/defaultRoles.ts` matches `functions/src/sharedData/defaultRoles.ts`. |
 | Staff share helper smoke | Passed: `countryCode: "IN"` + local phone produces `919876543210`; WhatsApp Web URL includes `phone=919876543210`. |
 | Staff/role API auth wrapper sweep | Passed: staff CRUD, staff password reset, force sign-out, role CRUD, access-status, and change-password routes are wrapped with `withAuth()`. |
+| Access-status read gate | Passed by source verifier: `/api/auth/access-status` applies the shared `DATA_READ` gate before user/tenant/store reads and returns throttles without `valid: false`. |
+| Staff client response boundary | Passed by source verifier: shared staff/role client responses are capped at 256KB, parse failures and invalid successful envelopes have bounded diagnostic codes, and direct `response.json().catch(() => ({}))` parsing is absent. |
+| Staff mutation identity boundary | Passed by source verifier: create/update/remove/reset/sign-out acknowledgements require returned `user.id` to match returned `userId` before desktop or mobile staff state can advance. |
+| Staff/Roles route parity source gate | Passed by source verifier: `npm run verify:staff-roles-route-parity` locks desktop aliases, mobile More permission gates, shared client usage, and docs/audit parity. |
 | Sensitive log sweep for touched staff routes | Passed: no direct `console.error`, `console.log`, `secureLog`, or manual `getServerSession()` remains in `change-password` / staff API code paths. |
 | `npm run lint` | Passed. |
 | `npx tsc --noEmit --incremental false --pretty false` | Passed. |
@@ -87,7 +91,7 @@ Executed against `http://localhost:3000` using the configured Firebase project a
 | Auth and tenant isolation | Passed | Staff APIs validate active authenticated sessions, tenant/store scope, role assignment authority, and last-owner protection. |
 | Session revocation | Passed | Owner reset, owner force sign-out, deactivate/remove, and platform block flow converge on session revocation fields plus Firebase Auth token revocation/disabled state where needed. |
 | Permission completeness | Passed | The 29-permission taxonomy is present across constants, UI categories, labels, initial data, and default roles. |
-| Mobile parity | Passed by code/build | Mobile staff, roles, More screen, and shell filtering share the same permission contract as desktop. |
+| Mobile parity | Passed by code/build/source gates | Mobile staff, roles, More screen, and shell filtering share the same permission contract as desktop. |
 | Firebase cost | Passed with update | Docs now account for staff list/admin reads, rare writes, access-status reads while visible, and zero-cost copy/share actions. |
 | Rate-limit environment | Action needed | Local `.env` has an Upstash Redis host that does not resolve: `prepared-ant-28434.upstash.io`. The current rate limiter fails open by design on Upstash errors, so staff flow testing completed, but production `UPSTASH_REDIS_REST_URL` / token must be verified or replaced before relying on auth-sensitive rate limiting in production. |
 

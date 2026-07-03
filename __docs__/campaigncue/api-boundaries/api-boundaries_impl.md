@@ -69,7 +69,11 @@ Protected endpoints return safe owner/operator codes:
 | `CAMPAIGNCUE_IDEMPOTENCY_CONFLICT` | `409` | A duplicate request is still running or the idempotency key was reused for another action/campaign. |
 | `CAMPAIGNCUE_RUNTIME_ERROR` | `500` | Unexpected server failure after auth/scope validation. |
 
-The workspace app must map `CAMPAIGNCUE_FIREBASE_UNAVAILABLE` to a setup-blocked state. Do not expose service-account details, private keys, raw provider tokens, or full Firebase error metadata to the browser.
+The workspace app must map `CAMPAIGNCUE_FIREBASE_UNAVAILABLE` to a setup-blocked state. Do not expose service-account details, private keys, raw provider tokens, or full Firebase error metadata to the browser. Runtime setup-blocker detection uses structured Firebase/Admin error indicators such as code, status, reason, domain, and service; it must not parse raw provider exception text. API route diagnostics use `logCampaignCueServerError()` so caught exceptions are recorded as fixed failure-code errors with source name/code/status metadata and bounded identifier presence/length context instead of raw exception capture.
+
+Security events from the shared CampaignCue API guard use bounded route/session metadata. Tenant violations, rate-limit rejections, malformed JSON, and Design Cue validation failures log endpoint/method/scope/error presence-length fields instead of raw `buildSecurityContext()` output or raw validation messages.
+
+Browser callers must not treat HTTP success or a parsed object as acknowledgement by itself. The CampaignCue workspace app parses route responses through a 4 MB bounded reader and requires the documented `{ data }` envelope for workspace load, CueLayers boot/save/upload/repair/export, campaign create/action, business details, source input, location, asset registration, asset download, and editor-export flows before mutating local state. Parse, rejection, and invalid-shape failures log fixed CampaignCue workspace diagnostics and keep fixed product copy.
 
 ## Acceptance
 

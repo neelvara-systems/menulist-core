@@ -46,7 +46,7 @@ Surface perception vs underlying architecture:
   - Customers open a menu, official business page, QR link, screen, or saved customer app.
   - Chains see a master menu and outlet controls.
 - Underlying architecture:
-  - Public route resolution maps tenant/subdomain/custom domain/outlet/project slugs into immutable store/project identity (`__docs__/client-menu/PUBLIC-ROUTING-DOCTRINE.md:24-31`, `__docs__/client-menu/PUBLIC-ROUTING-DOCTRINE.md:153-172`).
+  - Public route resolution maps tenant/subdomain/custom domain/outlet/project slugs into immutable store/project identity (`__docs__/client-menu/public-routing-doctrine.md:24-31`, `__docs__/client-menu/public-routing-doctrine.md:153-172`).
   - SSR public menus and OBP use cached Firestore reads, deterministic fallback behavior, cache tags, and schema output (`__docs__/client-menu/_impl.md:59-99`, `src/app/client/[[...slug]]/page.tsx:88-122`, `src/app/api/revalidate/menu/route.ts:1-84`).
   - Owner writes invalidate public cache across menu and OBP surfaces (`src/database/projects/index.ts:847-852`, `src/database/projects/index.ts:1146-1160`, `src/lib/cache/publicClientCache.ts:17-78`).
   - Multi-outlet menus are resolved at read-time by merging master data with outlet overrides, instead of relying on brittle copied data (`__docs__/multi-outlet-consistency/README.md:120-152`, `src/lib/multiOutlet/resolveProject.ts:169-235`).
@@ -140,7 +140,7 @@ Surface perception vs underlying architecture:
   - Operational consequence: broken or ambiguous URLs after renames, outlet additions, default menu changes.
   - Customer-facing consequence: customer does not reach the expected official page/menu.
   - How MenuList solves/reduces it: deterministic public-routing doctrine, immutable IDs, slug aliases/redirects, OBP root, `/menu` fallback.
-  - Evidence: routing doctrine locks tenant URL -> OBP, QR permanence, canonical URL rules, ID vs slug model, deterministic resolver order (`__docs__/client-menu/PUBLIC-ROUTING-DOCTRINE.md:24-31`, `__docs__/client-menu/PUBLIC-ROUTING-DOCTRINE.md:153-190`).
+  - Evidence: routing doctrine locks tenant URL -> OBP, QR permanence, canonical URL rules, ID vs slug model, deterministic resolver order (`__docs__/client-menu/public-routing-doctrine.md:24-31`, `__docs__/client-menu/public-routing-doctrine.md:153-190`).
   - Visible or infrastructural: infrastructural; visible as working links.
 - Problem: multi-location inconsistency.
   - Who feels it: chain owner/HQ.
@@ -257,7 +257,7 @@ Surface perception vs underlying architecture:
   - Customer visibility: customers see current output.
   - Defensibility: high operational reliability.
 - Signal: deterministic public routing doctrine.
-  - Evidence: doctrine locks OBP root, immutable IDs, canonical URL per resource, no heuristic routing, 3 cached-read performance bound (`__docs__/client-menu/PUBLIC-ROUTING-DOCTRINE.md:24-31`, `__docs__/client-menu/PUBLIC-ROUTING-DOCTRINE.md:174-210`).
+  - Evidence: doctrine locks OBP root, immutable IDs, canonical URL per resource, no heuristic routing, 3 cached-read performance bound (`__docs__/client-menu/public-routing-doctrine.md:24-31`, `__docs__/client-menu/public-routing-doctrine.md:174-210`).
   - Why it matters strategically: protects QR permanence and public trust.
   - Customer visibility: links keep working.
   - Defensibility: high because it prevents URL chaos.
@@ -488,7 +488,7 @@ Surface perception vs underlying architecture:
   - Evidence: current pricing and website copy already express "one system" and "go live in minutes" (`src/components/website/pricing-pages/index.tsx:163-172`, `src/components/website/pricing-pages/index.tsx:284-323`).
 - Default-presence dynamics:
   - OBP root and `/menu` alias make MenuList the default public endpoint.
-  - Evidence: routing doctrine locks tenant root to OBP and `/menu` fallback (`__docs__/client-menu/PUBLIC-ROUTING-DOCTRINE.md:73-85`, `__docs__/client-menu/PUBLIC-ROUTING-DOCTRINE.md:146-151`).
+  - Evidence: routing doctrine locks tenant root to OBP and `/menu` fallback (`__docs__/client-menu/public-routing-doctrine.md:73-85`, `__docs__/client-menu/public-routing-doctrine.md:146-151`).
 - Long-term moat layers:
   - Canonical public URLs, public API, schema, POS delivery, multi-outlet graph, event history, customer app installs, and public placement footprint.
 - Currently weak or not yet defensible:
@@ -655,7 +655,7 @@ CTA angle directions:
 - Public runtime:
   - `src/app/client/[[...slug]]/page.tsx`: public route resolver, project lookup, special menu logic, metadata/schema, cached rendering. Marketing value: product truth behind "official/current links."
   - `__docs__/client-menu/_impl.md`: customer-facing menu implementation and infrastructure hardening. Marketing value: credible public-output proof.
-  - `__docs__/client-menu/PUBLIC-ROUTING-DOCTRINE.md`: public URL doctrine, OBP root, QR permanence, ID/slug rules. Marketing value: authority/URL permanence narrative.
+  - `__docs__/client-menu/public-routing-doctrine.md`: public URL doctrine, OBP root, QR permanence, ID/slug rules. Marketing value: authority/URL permanence narrative.
   - `src/components/templates/website/clientWebsite/index.tsx`: customer menu renderer, analytics/PWA/controller mount. Marketing value: customer-facing runtime proof.
 - Official Business Page:
   - `src/app/client/obp/OBPContent.tsx`: server-side OBP data resolution, menu info, brand/outlet OBP branching. Marketing value: official page as real infrastructure.

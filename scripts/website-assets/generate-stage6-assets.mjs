@@ -332,6 +332,50 @@ function drawPublicMenuPhone(ctx, x, y, w, h, compact = false, options = {}) {
   drawMenuContent(ctx, content, compact, options);
 }
 
+function drawServiceListPhone(ctx, x, y, w, h) {
+  const box = drawPhoneShell(ctx, x, y, w, h);
+  const pad = 22;
+  rounded(ctx, box.x + pad, box.y + 10, 34, 34, 13, '#fdf2f8', '#fbcfe8');
+  text(ctx, 'GR', box.x + pad + 17, box.y + 18, { size: 12, weight: 800, color: '#9d174d', align: 'center' });
+  text(ctx, 'Glow Room', box.x + pad + 46, box.y + 9, { size: 15, weight: 800, maxWidth: box.w - 88, lineHeight: 18 });
+  text(ctx, 'Services and packages', box.x + pad + 46, box.y + 32, { size: 10, color: C.muted });
+
+  rounded(ctx, box.x + pad, box.y + 74, box.w - pad * 2, 38, 13, '#f8fafc', C.border);
+  text(ctx, 'Search services...', box.x + pad + 16, box.y + 85, { size: 12, color: C.muted });
+
+  let cx = box.x + pad;
+  ['Popular', 'Hair', 'Nails'].forEach((label, index) => {
+    const active = index === 0;
+    const res = pill(ctx, label, cx, box.y + 128, {
+      fill: active ? C.blue : C.white,
+      stroke: active ? C.blue : C.border,
+      color: active ? C.white : C.muted,
+      size: 11,
+      padX: 10,
+      padY: 7,
+    });
+    cx += res.width + 7;
+  });
+
+  rounded(ctx, box.x + pad, box.y + 176, box.w - pad * 2, 38, 12, '#f8fafc', C.border);
+  text(ctx, 'Top services', box.x + pad + 14, box.y + 187, { size: 12, weight: 800 });
+
+  const services = [
+    { name: 'Haircut + style', price: 'Rs. 900', color: '#ec4899' },
+    { name: 'Gel manicure', price: 'Rs. 750', color: '#8b5cf6' },
+    { name: 'Skin cleanup', price: 'Rs. 1,200', color: '#06b6d4' },
+  ];
+
+  let itemY = box.y + 232;
+  for (const item of services) {
+    rounded(ctx, box.x + pad, itemY, box.w - pad * 2, 74, 16, C.white, C.border);
+    imageTile(ctx, box.x + pad + 14, itemY + 16, 38, 38, item.color);
+    text(ctx, item.name, box.x + pad + 66, itemY + 14, { size: 11, weight: 800, maxWidth: box.w - pad * 2 - 90, lineHeight: 13 });
+    text(ctx, item.price, box.x + pad + 66, itemY + 45, { size: 10, weight: 800, color: C.blue });
+    itemY += 84;
+  }
+}
+
 function drawBrowserFrame(ctx, x, y, w, h, url) {
   shadow(ctx, 34, 'rgba(15, 23, 42, 0.14)', 0, 18);
   rounded(ctx, x, y, w, h, 24, C.white, C.border);
@@ -484,7 +528,7 @@ function drawObpBrowser(ctx, x, y, w, h) {
   drawObpContent(ctx, box);
 }
 
-function drawSourceCard(ctx, x, y, w, h, title = demo.source) {
+function drawSourceCard(ctx, x, y, w, h, title = demo.source, options = {}) {
   shadow(ctx, 24, 'rgba(37, 99, 235, 0.14)', 0, 12);
   rounded(ctx, x, y, w, h, 22, C.white, '#bfdbfe');
   clearShadow(ctx);
@@ -495,7 +539,7 @@ function drawSourceCard(ctx, x, y, w, h, title = demo.source) {
     size: 12,
   });
   text(ctx, title, x + 22, y + 68, { size: 24, weight: 800, maxWidth: w - 44, lineHeight: 29 });
-  const rows = [
+  const rows = options.rows ?? [
     ['Menu', 'Current'],
     ['Business details', 'Approved'],
     ['Public status', 'Visible'],
@@ -545,22 +589,28 @@ function drawOgImage() {
   const { canvas, ctx } = makeCanvas(1200, 630, '#f8fbff');
   logoMark(ctx, 70, 62, 48);
   text(ctx, 'MenuList', 132, 70, { size: 25, weight: 800, color: C.ink });
-  text(ctx, 'One official menu source customers can trust.', 70, 150, {
+  text(ctx, 'One official customer link for menus and services.', 70, 150, {
     size: 48,
     weight: 800,
     maxWidth: 510,
     lineHeight: 56,
   });
-  text(ctx, 'Upload your current menu. Review the prepared version. Publish the public menu, page, QR and share link from the same approved source.', 72, 335, {
+  text(ctx, 'Start from a menu, service list, price list, or catalogue. Review before publishing. Use one current link for QR, WhatsApp, Instagram and print.', 72, 350, {
     size: 20,
     color: C.muted,
     maxWidth: 505,
     lineHeight: 29,
   });
-  drawSourceCard(ctx, 640, 88, 245, 260, 'Owner-approved source');
-  drawPublicMenuPhone(ctx, 922, 64, 220, 540, true);
+  drawSourceCard(ctx, 640, 88, 245, 260, 'Owner-approved public list', {
+    rows: [
+      ['Public list', 'Current'],
+      ['Business details', 'Approved'],
+      ['Customer link', 'Live'],
+    ],
+  });
+  drawServiceListPhone(ctx, 922, 64, 220, 540);
   pill(ctx, 'Review before publishing', 70, 520, { fill: C.white, stroke: C.border, color: C.ink, size: 14 });
-  pill(ctx, 'QR and public link included', 285, 520, { fill: C.white, stroke: C.border, color: C.ink, size: 14 });
+  pill(ctx, 'QR and customer link included', 285, 520, { fill: C.white, stroke: C.border, color: C.ink, size: 14 });
   pill(ctx, 'No desktop required', 530, 520, { fill: C.white, stroke: C.border, color: C.ink, size: 14 });
   return canvas;
 }

@@ -3,6 +3,8 @@
  * Tools for monitoring and improving app performance
  */
 
+import { getBoundedRuntimeStringContext, logRuntimeDiagnostic, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
+
 // ================================================================
 // PERFORMANCE MONITORING
 // ================================================================
@@ -18,7 +20,10 @@ export function measureRenderTime(componentName: string): () => void {
     const duration = endTime - startTime;
 
     if (duration > 100) {
-      console.warn(`[Performance] ${componentName} render took ${duration.toFixed(2)}ms`);
+      logRuntimeDiagnostic('component_render_slow', {
+        durationMs: Number(duration.toFixed(2)),
+        ...getBoundedRuntimeStringContext('componentName', componentName),
+      }, { developmentOnly: true });
     }
   };
 }
@@ -77,7 +82,9 @@ export function lazyWithRetry<T extends React.ComponentType<any>>(
             return;
           }
 
-          console.warn(`[Performance] Component import failed, retrying... (${retriesLeft} left)`);
+          logRuntimeFailure('component_import_retry_scheduled', error, {
+            retriesLeft,
+          }, { developmentOnly: true });
           setTimeout(() => attemptImport(retriesLeft - 1), 1000);
         });
     };

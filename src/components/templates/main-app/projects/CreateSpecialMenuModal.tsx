@@ -19,6 +19,12 @@ import dayjs from "dayjs";
 import { useTranslations } from "next-intl";
 import { useContext, useMemo, useState } from "react";
 import { LuCalendar, LuInfo } from "react-icons/lu";
+import {
+    getBoundedProjectPageStringContext,
+    getProjectPageProjectLogContext,
+    getProjectPageStoreLogContext,
+    logProjectPageFailure,
+} from "./utils/projectPageDiagnostics";
 
 const { Text, Paragraph } = Typography;
 
@@ -97,7 +103,7 @@ export default function CreateSpecialMenuModal({
                 setSelectedLanguage(referenceLanguage);
                 onClose();
             } else {
-                message.error(result.error || "Failed to create special menu");
+                message.error("Could not create special menu.");
             }
         } catch {
             // Form validation error — handled by antd
@@ -135,8 +141,15 @@ export default function CreateSpecialMenuModal({
             );
             setDisplayNameDrafts(nextDrafts);
             message.success("Special menu name translations added.");
-        } catch (error: any) {
-            message.error(error?.message || "Could not translate the special menu name.");
+        } catch (error) {
+            logProjectPageFailure('projects_page_special_menu_name_translation_failed', error, {
+                ...getProjectPageProjectLogContext(baseProjectId),
+                ...getProjectPageStoreLogContext(storeDetails?.storeId, storeDetails?.tenantId),
+                ...getBoundedProjectPageStringContext('selectedLanguage', selectedLanguage),
+                languageCount: managedLanguages.length,
+                draftCount: Object.keys(displayNameDrafts).length,
+            });
+            message.error("Could not translate the special menu name.");
         } finally {
             setIsTranslatingPublicContent(false);
         }
@@ -150,7 +163,7 @@ export default function CreateSpecialMenuModal({
             onOk={handleSubmit}
             okText="Create Special Menu"
             confirmLoading={loading}
-            destroyOnClose
+            destroyOnHidden
             width={520}
         >
             <Paragraph type="secondary" style={{ marginBottom: 16 }}>

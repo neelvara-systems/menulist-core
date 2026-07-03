@@ -2,7 +2,7 @@
 
 import { REFRESH_INTERVALS } from '@constant/metrics';
 import { getConversationsPaginated } from '@database/chatAnalytics';
-import { batchUpdateSessionMetadata } from '@database/chatSessions';
+import { assertChatSessionBatchMetadataUpdateSucceeded, batchUpdateSessionMetadata } from '@database/chatSessions';
 import { useClientAuthSession } from '@hook/useClientAuthSession';
 import { useDebounceValue } from '@hook/useDebounce';
 import { getAnswerlatticeCustomerIdentity } from '@lib/answerlattice/customerIdentity';
@@ -417,7 +417,12 @@ function ConversationsList() {
     const handleBatchStatusUpdate = async (status: string) => {
         if (selectedIds.length === 0) return;
         try {
-            await batchUpdateSessionMetadata(selectedIds, { adminStatus: status });
+            const batchUpdateResult = await batchUpdateSessionMetadata(selectedIds, { adminStatus: status });
+            assertChatSessionBatchMetadataUpdateSucceeded(
+                batchUpdateResult,
+                selectedIds,
+                'platform_chat_batch_status_update_rejected',
+            );
             setAllSessions(prev => prev.map(s =>
                 selectedIds.includes(s.id!) ? { ...s, adminStatus: status as ChatSession['adminStatus'] } : s
             ));

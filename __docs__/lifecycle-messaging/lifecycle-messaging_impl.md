@@ -135,6 +135,8 @@ All templates follow infrastructure tone:
 | `functions/src/messaging/providers/resend.ts` | nodemailer SMTP adapter (file named resend.ts but uses nodemailer) |
 | `functions/src/messaging/templates.ts`        | All email templates (subject + HTML body)                          |
 
+`functions/src/messaging/messagingEngine.ts` logs identifiers as presence/length metadata and caps source error name/code/status values before recording failure diagnostics. This applies to idempotency, store lookup, message-log write, owner-notification fallback, renewal/suspension reminder, retry, and digest failure paths without changing send, rate-limit, retry, or message-log behavior.
+
 ### Frontend (types + entry point)
 
 | File                                  | Purpose                                                                       |

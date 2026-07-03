@@ -21,4 +21,6 @@
 | Active audio mini-player | Mini-player stays above the home indicator and leaves scroll-to-top tappable. |
 | Toast message | Toast stays above the home indicator. |
 | Login/offline screens | Centered content stays inside safe area. |
+| Oversized login form POST | The session route rejects the submission through the fixed `input` login error without parsing unbounded form data. |
+| Repeated login attempts | The session route applies `AUTH_LOGIN` rate limiting before form parsing or credential validation. |
 | Desktop reader | Layout remains unchanged. |

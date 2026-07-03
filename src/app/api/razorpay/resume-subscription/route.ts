@@ -8,55 +8,60 @@ import {
     safeSyncProductSubscriptionEntitlementFromSubscription,
     updateProductSubscription,
 } from "@lib/billing/productBillingServer";
+import {
+    getBoundedRazorpaySecurityContext,
+    getBoundedRazorpayStringContext,
+    getRazorpayFailureLogData,
+    getRazorpaySubscriptionMutationLogContext,
+    logRazorpayNonBlockingFailure,
+} from "@lib/billing/razorpayDiagnostics";
 import { isAnswerlatticeBillingProduct, normalizeBillingProductId } from "@lib/billing/productBillingPlans";
 import { validateTransition } from "@lib/billing/subscriptionStateMachine";
 import { logger } from "@lib/monitoring/logger";
 import { razorpayClient } from "@lib/razorpay/razorpay";
+import { readBoundedJsonBody } from "@lib/security/boundedRequestBody";
 import { validateAPIInput } from "@lib/security/inputValidation";
-import { buildSecurityContext } from "@lib/security/securityContext";
 import { ResumeSubscriptionRequestSchema } from "@lib/validation/apiSchemas";
 import { Timestamp } from "firebase/firestore";
 import { writeLogEntry } from 'logs/utils';
 import { NextResponse } from 'next/server';
+import { hashPublicRateLimitValue } from "src/middleware/publicApi";
 import { verifyTenantAccess, withAuth } from "../../../../middleware/auth";
 
 const LOG_FILE = "razorpay-subscription.log";
-
-const summarizeSubscriptionForMutationLog = (subscription: any) => ({
-    subscriptionId: subscription?.id || subscription?.providerSubscriptionId,
-    providerSubscriptionId: subscription?.providerSubscriptionId,
-    status: subscription?.status,
-    tenantId: subscription?.tenantId,
-    storeId: subscription?.storeId,
-    planId: subscription?.planId,
-    quantity: subscription?.quantity,
-});
+const RAZORPAY_PAYMENT_ACTION_MAX_BODY_BYTES = 8 * 1024;
 
 export const POST = withAuth(async (request, session) => {
     const userId = session.user.id;
+    let subscriptionForLog: any = null;
     try {
         if (!isFeatureEnabled('ENABLE_SUBSCRIPTION_PAUSE')) {
             return NextResponse.json({ error: "Subscription resume is not available." }, { status: 404 });
         }
 
         // 🔒 RATE LIMITING: Prevent rapid-fire subscription mutations
+        const userRateLimitHash = hashPublicRateLimitValue(userId);
         const { checkRateLimit } = await import('@lib/rateLimit');
         const { getRateLimitForFeature } = await import('@lib/rateLimit/configs');
-        const rl = await checkRateLimit({ key: `sub-mutate:${userId}`, ...getRateLimitForFeature('SUBSCRIPTION_MUTATION') });
+        const rl = await checkRateLimit({ key: `sub-mutate:${userRateLimitHash}`, ...getRateLimitForFeature('SUBSCRIPTION_MUTATION') });
         if (!rl.allowed) {
             return NextResponse.json({ error: "Too many attempts. Please wait before trying again." }, { status: 429 });
         }
 
-        const body = await request.json();
+        const bodyResult = await readBoundedJsonBody(request, RAZORPAY_PAYMENT_ACTION_MAX_BODY_BYTES, {
+            invalidJsonMessage: 'Invalid input',
+        });
+        if (bodyResult.ok === false) return bodyResult.response;
+        const body = bodyResult.data as any;
         const validation = validateAPIInput(ResumeSubscriptionRequestSchema, body);
         if (!validation.success) {
             const errorMsg = 'error' in validation ? validation.error : 'Invalid input';
             logger.security('Input Validation Failed', {
-                ...buildSecurityContext(session, request),
+                ...getBoundedRazorpaySecurityContext(session, request),
                 endpoint: '/api/razorpay/resume-subscription',
                 error: errorMsg,
                 attemptedData: {
-                    productId: body?.productId,
+                    ...getBoundedRazorpayStringContext('productId', body?.productId),
                     hasSubscriptionId: !!body?.subscriptionId,
                 },
             }, 'critical');
@@ -94,16 +99,16 @@ export const POST = withAuth(async (request, session) => {
         if (!internalSub || !internalSub.providerSubscriptionId) {
             return NextResponse.json({ error: "No subscription found to resume." }, { status: 404 });
         }
+        subscriptionForLog = internalSub;
 
         // 🔒 CRITICAL: Verify subscription belongs to user's tenant/store
         if (internalSub.tenantId !== Number(tenantId) || internalSub.storeId !== Number(storeId)) {
             logger.security('Unauthorized Subscription Resume Attempt', {
-                ...buildSecurityContext(session, request),
+                ...getBoundedRazorpaySecurityContext(session, request),
                 endpoint: '/api/razorpay/resume-subscription',
                 error: 'User attempted to resume subscription for different tenant/store',
-                productId,
-                subscriptionTenantId: internalSub.tenantId,
-                subscriptionStoreId: internalSub.storeId,
+                ...getBoundedRazorpayStringContext('productId', productId),
+                ...getRazorpaySubscriptionMutationLogContext(internalSub),
             }, 'critical');
 
             return NextResponse.json(
@@ -123,7 +128,7 @@ export const POST = withAuth(async (request, session) => {
         await writeLogEntry({
             logFileName: LOG_FILE,
             logType: 'RAZORPAY_RESUME_SUBSCRIPTION_FLOW',
-            data: summarizeSubscriptionForMutationLog(internalSub),
+            data: getRazorpaySubscriptionMutationLogContext(internalSub),
         });
 
         // Call Razorpay Resume API — resume_at: "now" is the only request param per Razorpay docs
@@ -134,7 +139,7 @@ export const POST = withAuth(async (request, session) => {
         await writeLogEntry({
             logFileName: LOG_FILE,
             logType: 'RAZORPAY_RESUME_SUBSCRIPTION_FLOW_SUCCESS',
-            data: summarizeSubscriptionForMutationLog(internalSub),
+            data: getRazorpaySubscriptionMutationLogContext(internalSub),
         });
 
         // Update internal record
@@ -173,27 +178,41 @@ export const POST = withAuth(async (request, session) => {
                         planName: internalSub.planName || 'Subscription',
                         sentAt: new Date().toISOString(),
                     },
-                }).catch(() => { /* non-blocking */ });
-            } catch { /* non-blocking */ }
+                }).catch((notificationError) => {
+                    logRazorpayNonBlockingFailure('razorpay_resume_subscription_lifecycle_message_failed', notificationError, {
+                        eventType: 'SUBSCRIPTION_RESUMED',
+                        ...getBoundedRazorpayStringContext('subscriptionId', internalSub.id),
+                        ...getBoundedRazorpayStringContext('providerSubscriptionId', internalSub.providerSubscriptionId),
+                        ...getBoundedRazorpayStringContext('tenantId', internalSub.tenantId),
+                        ...getBoundedRazorpayStringContext('storeId', internalSub.storeId),
+                        ...getBoundedRazorpayStringContext('userId', userId),
+                    });
+                });
+            } catch (notificationImportError) {
+                logRazorpayNonBlockingFailure('razorpay_resume_subscription_lifecycle_message_import_failed', notificationImportError, {
+                    eventType: 'SUBSCRIPTION_RESUMED',
+                    ...getBoundedRazorpayStringContext('subscriptionId', internalSub.id),
+                    ...getBoundedRazorpayStringContext('providerSubscriptionId', internalSub.providerSubscriptionId),
+                    ...getBoundedRazorpayStringContext('tenantId', internalSub.tenantId),
+                    ...getBoundedRazorpayStringContext('storeId', internalSub.storeId),
+                    ...getBoundedRazorpayStringContext('userId', userId),
+                });
+            }
         }
 
-        logger.info('Subscription resumed successfully', {
-            subscriptionId: internalSub.id,
-            userId: session.user.id,
-        });
+        logger.info('Subscription resumed successfully', getRazorpaySubscriptionMutationLogContext(internalSub));
 
         return NextResponse.json({ success: true, message: "Subscription resumed successfully." });
     } catch (error) {
-        logger.error('Subscription resume failed', error, {
-            api: 'resume-subscription',
-            userId
+        const failureData = getRazorpayFailureLogData('razorpay_resume_subscription_failed', error, {
+            ...getRazorpaySubscriptionMutationLogContext(subscriptionForLog),
+            ...getBoundedRazorpayStringContext('userId', userId),
         });
+        logger.error('Subscription resume failed', new Error('razorpay_resume_subscription_failed'), failureData);
         await writeLogEntry({
             logFileName: LOG_FILE,
             logType: 'RAZORPAY_RESUME_SUBSCRIPTION_ERROR',
-            data: {
-                message: error instanceof Error ? error.message : 'Unknown error',
-            },
+            data: failureData,
         });
         return NextResponse.json({ error: 'Failed to resume subscription' }, { status: 500 });
     }

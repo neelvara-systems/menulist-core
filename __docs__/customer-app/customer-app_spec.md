@@ -2,8 +2,8 @@
 
 **Feature Name:** Customer App (Installable Customer-Facing Menu)  
 **Document Type:** Product Requirements Document (PRD)  
-**Status:** 📋 Ready for Implementation  
-**Last Updated:** April 18, 2026  
+**Status:** Runtime implemented and source-gated; manual device QA still required
+**Last Updated:** July 2, 2026
 **Audience:** Product, CEO, Business Teams, Non-Technical Stakeholders
 
 ---
@@ -755,5 +755,5 @@ This creates natural lock-in without contracts.
 
 ---
 
-_Document Status: 📋 READY FOR IMPLEMENTATION_  
-_Last Updated: April 18, 2026_
+_Document Status: Source-gated runtime evidence; not standalone launch certification_
+_Last Updated: July 2, 2026_

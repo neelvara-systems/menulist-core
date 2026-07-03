@@ -2,6 +2,7 @@
 
 import { FEATURE_FLAGS } from '@config/features';
 import { getExistingProjectsListWithoutLoader } from '@database/projects';
+import { getBoundedStoreStringContext, logStoreDataFailure } from '@database/stores/storeDiagnostics';
 import { isOBPAnalyticsEnabled } from '@lib/analytics/preferences';
 import { withAnalyticsSource } from '@lib/analytics/sourceAttribution';
 import { trackOBPShare } from '@lib/analytics/unified';
@@ -17,7 +18,67 @@ import { QRCodeCanvas } from 'qrcode.react';
 import { useEffect, useState } from 'react';
 import { LuCheck, LuCopy, LuExternalLink, LuGlobe, LuMessageCircle, LuQrCode } from 'react-icons/lu';
 
-const { Text, Title } = Typography;
+const { Text } = Typography;
+type OBPShareMethod = 'copy_link' | 'copy_message' | 'whatsapp';
+
+const OBP_LINK_CARD_COPY_UNAVAILABLE = 'obp_link_card_copy_unavailable';
+const OBP_LINK_CARD_COPY_FALLBACK_FAILED = 'obp_link_card_copy_fallback_failed';
+const OBP_LINK_CARD_MESSAGE_COPY_UNAVAILABLE = 'obp_link_card_message_copy_unavailable';
+const OBP_LINK_CARD_MESSAGE_COPY_FALLBACK_FAILED = 'obp_link_card_message_copy_fallback_failed';
+
+const hasOBPLinkCardClipboardWrite = (): boolean => (
+    typeof navigator !== 'undefined'
+    && Boolean(navigator.clipboard)
+    && typeof navigator.clipboard.writeText === 'function'
+);
+
+const hasOBPLinkCardCopyFallback = (): boolean => (
+    typeof document !== 'undefined'
+    && typeof document.createElement === 'function'
+    && typeof document.execCommand === 'function'
+    && Boolean(document.body)
+);
+
+const copyOBPLinkCardText = async (
+    value: string,
+    unavailableCode: string,
+    fallbackFailureCode: string,
+): Promise<void> => {
+    let clipboardWriteError: unknown;
+
+    if (hasOBPLinkCardClipboardWrite()) {
+        try {
+            await navigator.clipboard.writeText(value);
+            return;
+        } catch (error) {
+            clipboardWriteError = error;
+            // Continue to the acknowledged textarea fallback before showing failure copy.
+        }
+    }
+
+    if (!hasOBPLinkCardCopyFallback()) {
+        throw clipboardWriteError || new Error(unavailableCode);
+    }
+
+    const textarea = document.createElement('textarea');
+    textarea.value = value;
+    textarea.setAttribute('readonly', '');
+    textarea.style.position = 'fixed';
+    textarea.style.left = '-9999px';
+    textarea.style.top = '0';
+    document.body.appendChild(textarea);
+    textarea.focus();
+    textarea.select();
+
+    try {
+        const copied = document.execCommand('copy');
+        if (!copied) {
+            throw new Error(fallbackFailureCode);
+        }
+    } finally {
+        document.body.removeChild(textarea);
+    }
+};
 
 interface OBPLinkCardProps {
     storeDetails: StoreDataType;
@@ -47,8 +108,13 @@ export default function OBPLinkCard({ storeDetails }: OBPLinkCardProps) {
                 if (!def || cancelled) return;
                 const slug = def.slug || (def.name ? slugify(def.name) : undefined);
                 setDefaultSlug(slug);
-            } catch {
-                // Silent fallback — Layer 2 handles the alias URL gracefully.
+            } catch (error) {
+                logStoreDataFailure('obp_link_card_default_project_load_failed', error, {
+                    surface: 'obp_link_card',
+                    action: 'load_default_project',
+                    ...getBoundedStoreStringContext('storeId', storeDetails?.storeId),
+                    ...getBoundedStoreStringContext('tenantId', (storeDetails as any)?.tenantId),
+                });
             }
         })();
         return () => { cancelled = true; };
@@ -70,15 +136,52 @@ export default function OBPLinkCard({ storeDetails }: OBPLinkCardProps) {
     const obpCopyUrl = withAnalyticsSource(obpUrl, 'copy_link');
     const obpWhatsAppUrl = withAnalyticsSource(obpUrl, 'whatsapp');
     const obpOpenUrl = withAnalyticsSource(obpUrl, 'direct');
+    const activeQrUrl = withAnalyticsSource(qrType === 'menu' ? menuUrl : obpUrl, 'qr');
+    const buildOBPLinkCardLogContext = (
+        action: string,
+        metadata: Record<string, boolean | number | string | undefined> = {},
+    ) => ({
+        surface: 'obp_link_card',
+        action,
+        hasDefaultSlug: Boolean(defaultSlug),
+        hasLogo: Boolean((storeDetails as any)?.logo),
+        obpTrackingEnabled,
+        qrType,
+        ...getBoundedStoreStringContext('storeId', storeDetails?.storeId),
+        ...getBoundedStoreStringContext('tenantId', (storeDetails as any)?.tenantId),
+        ...getBoundedStoreStringContext('obpUrl', obpUrl),
+        ...getBoundedStoreStringContext('menuUrl', menuUrl),
+        ...metadata,
+    });
+    const recordOBPShare = (shareMethod: OBPShareMethod, action: string) => {
+        if (!storeId || !obpTrackingEnabled) return;
+        trackOBPShare(storeId, shareMethod, {
+            storeTimeZone: storeDetails?.timeZone,
+            businessDayEndTime: storeDetails?.businessDayEndTime,
+        }).catch((error) => {
+            logStoreDataFailure('obp_link_card_share_tracking_failed', error, buildOBPLinkCardLogContext(action, {
+                shareMethod,
+            }));
+        });
+    };
 
     const handleCopy = async () => {
         try {
-            await navigator.clipboard.writeText(obpCopyUrl);
+            await copyOBPLinkCardText(
+                obpCopyUrl,
+                OBP_LINK_CARD_COPY_UNAVAILABLE,
+                OBP_LINK_CARD_COPY_FALLBACK_FAILED,
+            );
             setCopied(true);
             message.success('Link copied');
             setTimeout(() => setCopied(false), 2000);
-            if (storeId && obpTrackingEnabled) trackOBPShare(storeId, 'copy_link', { storeTimeZone: storeDetails?.timeZone, businessDayEndTime: storeDetails?.businessDayEndTime }).catch(() => { });
-        } catch {
+            recordOBPShare('copy_link', 'track_copy_link');
+        } catch (error) {
+            logStoreDataFailure('obp_link_card_copy_failed', error, buildOBPLinkCardLogContext('copy_link', {
+                ...getBoundedStoreStringContext('copyUrl', obpCopyUrl),
+                hasClipboardWrite: hasOBPLinkCardClipboardWrite(),
+                hasCopyFallback: hasOBPLinkCardCopyFallback(),
+            }));
             message.error('Could not copy link');
         }
     };
@@ -86,10 +189,19 @@ export default function OBPLinkCard({ storeDetails }: OBPLinkCardProps) {
     const handleCopyMessage = async () => {
         const msg = `Here's our menu, timings & location:\n${obpCopyUrl}`;
         try {
-            await navigator.clipboard.writeText(msg);
+            await copyOBPLinkCardText(
+                msg,
+                OBP_LINK_CARD_MESSAGE_COPY_UNAVAILABLE,
+                OBP_LINK_CARD_MESSAGE_COPY_FALLBACK_FAILED,
+            );
             message.success('Message copied — paste it in WhatsApp or anywhere');
-            if (storeId && obpTrackingEnabled) trackOBPShare(storeId, 'copy_message', { storeTimeZone: storeDetails?.timeZone, businessDayEndTime: storeDetails?.businessDayEndTime }).catch(() => { });
-        } catch {
+            recordOBPShare('copy_message', 'track_copy_message');
+        } catch (error) {
+            logStoreDataFailure('obp_link_card_copy_message_failed', error, buildOBPLinkCardLogContext('copy_message', {
+                copyMessageLength: msg.length,
+                hasClipboardWrite: hasOBPLinkCardClipboardWrite(),
+                hasCopyFallback: hasOBPLinkCardCopyFallback(),
+            }));
             message.error('Could not copy message');
         }
     };
@@ -97,12 +209,34 @@ export default function OBPLinkCard({ storeDetails }: OBPLinkCardProps) {
     const handleWhatsAppShare = () => {
         const storeName = getBrandName(storeDetails, 'our business');
         const msg = `${storeName} — menu, timings & contact:\n${obpWhatsAppUrl}`;
-        window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
-        if (storeId && obpTrackingEnabled) trackOBPShare(storeId, 'whatsapp', { storeTimeZone: storeDetails?.timeZone, businessDayEndTime: storeDetails?.businessDayEndTime }).catch(() => { });
+        const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(msg)}`;
+        try {
+            const opened = window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
+            if (!opened) {
+                throw new Error('obp_link_card_whatsapp_open_blocked');
+            }
+            recordOBPShare('whatsapp', 'track_whatsapp');
+        } catch (error) {
+            logStoreDataFailure('obp_link_card_whatsapp_open_failed', error, buildOBPLinkCardLogContext('whatsapp_open', {
+                whatsappMessageLength: msg.length,
+                whatsappUrlLength: whatsappUrl.length,
+            }));
+            message.error('Could not open WhatsApp');
+        }
     };
 
     const handleOpen = () => {
-        window.open(obpOpenUrl, '_blank', 'noopener,noreferrer');
+        try {
+            const opened = window.open(obpOpenUrl, '_blank', 'noopener,noreferrer');
+            if (!opened) {
+                throw new Error('obp_link_card_open_blocked');
+            }
+        } catch (error) {
+            logStoreDataFailure('obp_link_card_open_failed', error, buildOBPLinkCardLogContext('open_link', {
+                ...getBoundedStoreStringContext('openUrl', obpOpenUrl),
+            }));
+            message.error('Could not open link');
+        }
     };
 
     const handleDownloadQr = async () => {
@@ -121,12 +255,13 @@ export default function OBPLinkCard({ storeDetails }: OBPLinkCardProps) {
             });
             downloadQrCode(dataUrl, buildQrCodeFilename(`${qrName}-${qrType}`, 'qr'));
             message.success('QR code downloaded');
-        } catch {
+        } catch (error) {
+            logStoreDataFailure('obp_link_card_qr_download_failed', error, buildOBPLinkCardLogContext('download_qr', {
+                ...getBoundedStoreStringContext('qrUrl', activeQrUrl),
+            }));
             message.error('Could not download QR code');
         }
     };
-
-    const activeQrUrl = withAnalyticsSource(qrType === 'menu' ? menuUrl : obpUrl, 'qr');
 
     return (
         <Card style={{ marginBottom: 16 }}>

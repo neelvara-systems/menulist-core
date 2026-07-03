@@ -2,13 +2,18 @@
 
 import { RESELLER_CAPS } from '@config/resellerPricing';
 import { ECOMSAI_PLATFORM_USER_ROLE } from '@constant/user';
+import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';
+import { RESELLER_REQUEST_POLICY } from '@template/main-app/reseller/resellerDiagnostics';
 import type { ResellerProfile } from '@type/reseller';
 import { formatInrPaise } from '@util/formatters';
+import { getBoundedMobileOwnerStringContext, logMobileOwnerFailure } from '../utils/mobileOwnerDiagnostics';
 import { useSession } from 'next-auth/react';
 import { useEffect, useMemo, useState } from 'react';
 import { LuPencil, LuPlus, LuRefreshCw, LuUsers } from 'react-icons/lu';
 import { Button, Card, Empty, Flex, Input, Spin, Switch, Tag, Text, TextArea, Title, Toast } from '../antd';
 import MobileSettingsScreenHeader from '../components/MobileSettingsScreenHeader';
+
+const MOBILE_RESELLER_MANAGEMENT_RESPONSE_JSON_MAX_BYTES = 64 * 1024;
 
 type ResellerDraft = {
     active: boolean;
@@ -35,16 +40,146 @@ type ResellerMonthlySummary = {
         clientCount: number;
         transactionCount: number;
         offlineCollectedPaise: number;
+        onlineActivePaise: number;
         onlinePendingPaise: number;
+        recognizedRevenuePaise: number;
         totalExpectedPaise: number;
     }>;
     totals: {
         clientCount: number;
         transactionCount: number;
         offlineCollectedPaise: number;
+        onlineActivePaise: number;
         onlinePendingPaise: number;
+        recognizedRevenuePaise: number;
         totalExpectedPaise: number;
     };
+};
+
+type ResellerProfilesResponse = {
+    profiles: ResellerProfile[];
+};
+
+type ResellerManagementSaveResponse = {
+    action: 'created' | 'updated';
+    profileId: string;
+    success: true;
+};
+
+type MobileResellerManagementLogContext = Record<string, boolean | number | string | null | undefined>;
+
+const createMobileResellerManagementStatusError = (
+    failureCode: string,
+    status?: number,
+): Error & { code: string; status?: number } => Object.assign(new Error(failureCode), {
+    code: failureCode,
+    status,
+});
+
+const isRecord = (value: unknown): value is Record<string, unknown> => (
+    Boolean(value) && typeof value === 'object' && !Array.isArray(value)
+);
+
+const isFiniteNumber = (value: unknown): value is number => (
+    typeof value === 'number' && Number.isFinite(value)
+);
+
+const isNonEmptyString = (value: unknown): value is string => (
+    typeof value === 'string' && value.trim().length > 0
+);
+
+const isValidMobileResellerProfile = (value: unknown): value is ResellerProfile => (
+    isRecord(value)
+    && isNonEmptyString(value.id)
+    && isNonEmptyString(value.name)
+    && isNonEmptyString(value.phone)
+    && isNonEmptyString(value.email)
+    && isNonEmptyString(value.username)
+    && typeof value.active === 'boolean'
+    && isFiniteNumber(value.maxOfflineActivations)
+    && isFiniteNumber(value.currentActiveOfflineStores)
+    && isFiniteNumber(value.totalStoresOnboarded)
+    && isFiniteNumber(value.totalOnlineStores)
+    && isFiniteNumber(value.totalOfflineStores)
+    && isFiniteNumber(value.totalRevenueCollectedPaise)
+    && isFiniteNumber(value.totalTransactions)
+);
+
+const isValidMobileResellerProfilesResponse = (data: unknown): data is ResellerProfilesResponse => (
+    isRecord(data)
+    && Array.isArray(data.profiles)
+    && data.profiles.every(isValidMobileResellerProfile)
+);
+
+const isValidMobileMonthlySummaryTotals = (value: unknown): value is ResellerMonthlySummary['totals'] => (
+    isRecord(value)
+    && isFiniteNumber(value.clientCount)
+    && isFiniteNumber(value.transactionCount)
+    && isFiniteNumber(value.offlineCollectedPaise)
+    && isFiniteNumber(value.onlineActivePaise)
+    && isFiniteNumber(value.onlinePendingPaise)
+    && isFiniteNumber(value.recognizedRevenuePaise)
+    && isFiniteNumber(value.totalExpectedPaise)
+);
+
+const isValidMobileMonthlySummaryRow = (value: unknown): value is ResellerMonthlySummary['resellers'][number] => (
+    isRecord(value)
+    && isNonEmptyString(value.resellerId)
+    && isNonEmptyString(value.resellerName)
+    && typeof value.resellerEmail === 'string'
+    && isFiniteNumber(value.clientCount)
+    && isFiniteNumber(value.transactionCount)
+    && isFiniteNumber(value.offlineCollectedPaise)
+    && isFiniteNumber(value.onlineActivePaise)
+    && isFiniteNumber(value.onlinePendingPaise)
+    && isFiniteNumber(value.recognizedRevenuePaise)
+    && isFiniteNumber(value.totalExpectedPaise)
+);
+
+const isValidMobileResellerMonthlySummary = (data: unknown): data is ResellerMonthlySummary => (
+    isRecord(data)
+    && isNonEmptyString(data.month)
+    && Array.isArray(data.resellers)
+    && data.resellers.every(isValidMobileMonthlySummaryRow)
+    && isValidMobileMonthlySummaryTotals(data.totals)
+);
+
+const isValidMobileResellerManagementSaveResponse = (data: unknown): data is ResellerManagementSaveResponse => (
+    isRecord(data)
+    && data.success === true
+    && isNonEmptyString(data.profileId)
+    && (data.action === 'created' || data.action === 'updated')
+);
+
+const isExpectedMobileResellerManagementSaveResponse = (
+    data: unknown,
+    expectedProfileId?: string,
+): data is ResellerManagementSaveResponse => (
+    isValidMobileResellerManagementSaveResponse(data)
+    && (
+        data.action === 'created'
+        || (isNonEmptyString(expectedProfileId) && data.profileId === expectedProfileId)
+    )
+);
+
+const readMobileResellerManagementResponse = async (
+    response: Response,
+    context: MobileResellerManagementLogContext,
+): Promise<unknown> => {
+    try {
+        return await readJsonResponseWithLimit<unknown>(
+            response,
+            MOBILE_RESELLER_MANAGEMENT_RESPONSE_JSON_MAX_BYTES,
+        );
+    } catch (error) {
+        logMobileOwnerFailure('mobile_reseller_management_response_parse_failed', error, {
+            ...context,
+            maxBytes: MOBILE_RESELLER_MANAGEMENT_RESPONSE_JSON_MAX_BYTES,
+            responseOk: response.ok,
+            responseStatus: response.status,
+        });
+        throw error;
+    }
 };
 
 const emptyDraft = (): ResellerDraft => ({
@@ -93,6 +228,15 @@ export default function MobileResellerManagementScreen({ onBack }: { onBack: () 
     const [editingProfile, setEditingProfile] = useState<ResellerProfile | null>(null);
     const [draft, setDraft] = useState<ResellerDraft>(emptyDraft);
     const isEditing = Boolean(editingProfile);
+    const buildResellerMobileLogContext = (flow: string, metadata: Record<string, boolean | number | string | null | undefined> = {}) => ({
+        surface: 'mobile_reseller_management',
+        flow,
+        isEditing,
+        hasEditingProfile: Boolean(editingProfile?.id),
+        profileCount: profiles.length,
+        ...getBoundedMobileOwnerStringContext('platformRole', platformRole),
+        ...metadata,
+    });
 
     const stats = useMemo(() => ({
         active: profiles.filter((profile) => profile.active).length,
@@ -108,12 +252,23 @@ export default function MobileResellerManagementScreen({ onBack }: { onBack: () 
     const loadProfiles = async () => {
         setLoading(true);
         try {
-            const response = await fetch('/api/reseller/manage');
-            if (!response.ok) throw new Error('Could not load reseller profiles');
-            const data = await response.json();
-            setProfiles(data.profiles || []);
-        } catch (error: any) {
-            Toast.show({ content: error?.message || 'Could not load reseller profiles', duration: 2200 });
+            const response = await fetch('/api/reseller/manage', RESELLER_REQUEST_POLICY);
+            if (!response.ok) {
+                throw createMobileResellerManagementStatusError('mobile_reseller_profiles_rejected', response.status);
+            }
+            const data = await readMobileResellerManagementResponse(response, buildResellerMobileLogContext('profiles_load'));
+            if (!isValidMobileResellerProfilesResponse(data)) {
+                const invalidResponseError = createMobileResellerManagementStatusError('mobile_reseller_management_profiles_response_invalid', response.status);
+                logMobileOwnerFailure('mobile_reseller_management_profiles_response_invalid', invalidResponseError, buildResellerMobileLogContext('profiles_load', {
+                    responseOk: response.ok,
+                    responseStatus: response.status,
+                }));
+                throw invalidResponseError;
+            }
+            setProfiles(data.profiles);
+        } catch (error) {
+            logMobileOwnerFailure('mobile_reseller_profiles_load_failed', error, buildResellerMobileLogContext('profiles_load'));
+            Toast.show({ content: 'Could not load reseller profiles', duration: 2200 });
         } finally {
             setLoading(false);
         }
@@ -122,12 +277,23 @@ export default function MobileResellerManagementScreen({ onBack }: { onBack: () 
     const loadMonthlySummary = async () => {
         setMonthlyLoading(true);
         try {
-            const response = await fetch('/api/reseller/monthly-summary');
-            if (!response.ok) throw new Error('Could not load monthly reseller summary');
-            const data = await response.json();
+            const response = await fetch('/api/reseller/monthly-summary', RESELLER_REQUEST_POLICY);
+            if (!response.ok) {
+                throw createMobileResellerManagementStatusError('mobile_reseller_monthly_summary_rejected', response.status);
+            }
+            const data = await readMobileResellerManagementResponse(response, buildResellerMobileLogContext('monthly_summary_load'));
+            if (!isValidMobileResellerMonthlySummary(data)) {
+                const invalidResponseError = createMobileResellerManagementStatusError('mobile_reseller_management_monthly_summary_response_invalid', response.status);
+                logMobileOwnerFailure('mobile_reseller_management_monthly_summary_response_invalid', invalidResponseError, buildResellerMobileLogContext('monthly_summary_load', {
+                    responseOk: response.ok,
+                    responseStatus: response.status,
+                }));
+                throw invalidResponseError;
+            }
             setMonthlySummary(data);
-        } catch (error: any) {
-            Toast.show({ content: error?.message || 'Could not load monthly reseller summary', duration: 2200 });
+        } catch (error) {
+            logMobileOwnerFailure('mobile_reseller_monthly_summary_load_failed', error, buildResellerMobileLogContext('monthly_summary_load'));
+            Toast.show({ content: 'Could not load monthly reseller summary', duration: 2200 });
         } finally {
             setMonthlyLoading(false);
         }
@@ -185,18 +351,48 @@ export default function MobileResellerManagementScreen({ onBack }: { onBack: () 
             if (editingProfile?.id) payload.profileId = editingProfile.id;
 
             const response = await fetch('/api/reseller/manage', {
+                ...RESELLER_REQUEST_POLICY,
                 body: JSON.stringify(payload),
                 headers: { 'Content-Type': 'application/json' },
                 method: 'POST',
             });
-            const data = await response.json().catch(() => ({}));
-            if (!response.ok) throw new Error(data.error || 'Could not save reseller');
+            if (!response.ok) {
+                throw createMobileResellerManagementStatusError('mobile_reseller_save_rejected', response.status);
+            }
 
-            Toast.show({ content: `Reseller ${data.action || 'saved'} successfully`, duration: 1800, icon: 'success' });
+            const data = await readMobileResellerManagementResponse(response, buildResellerMobileLogContext('save_profile', {
+                requestedActive: draft.active,
+                responseOk: response.ok,
+                responseStatus: response.status,
+                ...getBoundedMobileOwnerStringContext('draftEmail', draft.email),
+                ...getBoundedMobileOwnerStringContext('draftUsername', draft.username),
+                ...getBoundedMobileOwnerStringContext('draftPhone', draft.phone),
+            }));
+            if (!isExpectedMobileResellerManagementSaveResponse(data, editingProfile?.id)) {
+                const invalidResponseError = createMobileResellerManagementStatusError('mobile_reseller_management_save_response_invalid', response.status);
+                logMobileOwnerFailure('mobile_reseller_management_save_response_invalid', invalidResponseError, buildResellerMobileLogContext('save_profile', {
+                    hasExpectedProfileId: isRecord(data) && data.profileId === editingProfile?.id,
+                    requestedActive: draft.active,
+                    responseOk: response.ok,
+                    responseStatus: response.status,
+                    ...getBoundedMobileOwnerStringContext('draftEmail', draft.email),
+                    ...getBoundedMobileOwnerStringContext('draftUsername', draft.username),
+                    ...getBoundedMobileOwnerStringContext('draftPhone', draft.phone),
+                }));
+                throw invalidResponseError;
+            }
+
+            Toast.show({ content: `Reseller ${data.action} successfully`, duration: 1800, icon: 'success' });
             closeEditor();
             await loadProfiles();
-        } catch (error: any) {
-            Toast.show({ content: error?.message || 'Could not save reseller', duration: 2400 });
+        } catch (error) {
+            logMobileOwnerFailure('mobile_reseller_save_failed', error, buildResellerMobileLogContext('save_profile', {
+                requestedActive: draft.active,
+                ...getBoundedMobileOwnerStringContext('draftEmail', draft.email),
+                ...getBoundedMobileOwnerStringContext('draftUsername', draft.username),
+                ...getBoundedMobileOwnerStringContext('draftPhone', draft.phone),
+            }));
+            Toast.show({ content: 'Could not save reseller', duration: 2400 });
         } finally {
             setSaving(false);
         }

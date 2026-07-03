@@ -1,4 +1,11 @@
-import { executeSurface, generateWhatsAppMessage } from '@lib/campaigns/executionSurfaces';
+import {
+    copyCampaignTextToClipboard,
+    executeSurface,
+    generateWhatsAppMessage,
+    getCampaignClipboardSupportContext,
+    type SurfaceExecutionResult,
+} from '@lib/campaigns/executionSurfaces';
+import { getBoundedCampaignStringContext, logCampaignFailure } from '@lib/campaigns/campaignDiagnostics';
 import { generateProjectUrl } from '@lib/utils/slugify';
 import { ExecutionSurface } from '@type/campaigns';
 
@@ -14,6 +21,17 @@ export interface PerformTodaySurfaceActionParams {
     imageUrl?: string;
 }
 
+type TodayDownloadSurface = Exclude<ExecutionSurface, 'whatsapp_message' | 'whatsapp_status'>;
+
+const isAcknowledgedTodayDownloadSurfaceResult = (
+    result: SurfaceExecutionResult,
+    expectedSurface: TodayDownloadSurface,
+) => (
+    result.success === true
+    && result.surface === expectedSurface
+    && result.method === 'download'
+);
+
 export function buildTodayMenuLink(
     subdomain?: string,
     customDomain?: string,
@@ -24,7 +42,11 @@ export function buildTodayMenuLink(
     try {
         return generateProjectUrl(subdomain, customDomain, projectName, false);
     } catch (error) {
-        console.error('[TodayActionExecutor] Failed to build project link:', error);
+        logCampaignFailure('today_campaign_project_link_build_failed', error, {
+            ...getBoundedCampaignStringContext('subdomain', subdomain),
+            ...getBoundedCampaignStringContext('customDomain', customDomain),
+            ...getBoundedCampaignStringContext('projectName', projectName),
+        });
         return undefined;
     }
 }
@@ -45,8 +67,15 @@ export async function performTodaySurfaceAction(
         menuLink,
     });
 
-    if (!result.success) {
-        throw new Error(result.error || 'Action failed');
+    if (!isAcknowledgedTodayDownloadSurfaceResult(result, surface)) {
+        if (result.success) {
+            logCampaignFailure('today_campaign_surface_acknowledgement_invalid', undefined, {
+                ...getBoundedCampaignStringContext('expectedSurface', surface),
+                ...getBoundedCampaignStringContext('resultSurface', result.surface),
+                ...getBoundedCampaignStringContext('resultMethod', result.method),
+            });
+        }
+        throw new Error('Campaign action failed');
     }
 
     if (surface === 'print_poster') {
@@ -77,14 +106,37 @@ async function handleWhatsAppAction(
     const message = generateWhatsAppMessage(itemName, menuLink);
     const shareUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
 
-    const openedWindow = window.open(shareUrl, '_blank');
+    let openedWindow: Window | null = null;
+    try {
+        openedWindow = window.open(shareUrl, '_blank', 'noopener,noreferrer');
+        if (!openedWindow) {
+            throw new Error('today_campaign_whatsapp_open_blocked');
+        }
+    } catch (error) {
+        logCampaignFailure('today_campaign_whatsapp_open_failed', error, {
+            ...getBoundedCampaignStringContext('surface', surface),
+            ...getBoundedCampaignStringContext('itemName', itemName),
+            hasMenuLink: Boolean(menuLink),
+            messageLength: message.length,
+            shareUrlLength: shareUrl.length,
+        });
+    }
 
     let copied = false;
     try {
-        await copyToClipboard(message);
+        await copyCampaignTextToClipboard(message, {
+            documentUnavailable: 'today_campaign_clipboard_document_unavailable',
+            fallbackFailed: 'today_campaign_textarea_copy_returned_false',
+        });
         copied = true;
     } catch (error) {
-        console.error('[TodayActionExecutor] Failed to copy WhatsApp message:', error);
+        logCampaignFailure('today_campaign_whatsapp_message_copy_failed', error, {
+            ...getBoundedCampaignStringContext('surface', surface),
+            ...getBoundedCampaignStringContext('itemName', itemName),
+            hasMenuLink: Boolean(menuLink),
+            messageLength: message.length,
+            ...getCampaignClipboardSupportContext(),
+        });
     }
 
     if (!openedWindow && !copied) {
@@ -106,20 +158,4 @@ async function handleWhatsAppAction(
             ? 'Your message was copied and WhatsApp was opened. Choose the chat and send it when ready.'
             : 'WhatsApp was opened with a ready message. Choose the chat and send it when ready.',
     };
-}
-
-async function copyToClipboard(text: string): Promise<void> {
-    if (navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(text);
-        return;
-    }
-
-    const textArea = document.createElement('textarea');
-    textArea.value = text;
-    textArea.style.position = 'fixed';
-    textArea.style.left = '-999999px';
-    document.body.appendChild(textArea);
-    textArea.select();
-    document.execCommand('copy');
-    document.body.removeChild(textArea);
 }

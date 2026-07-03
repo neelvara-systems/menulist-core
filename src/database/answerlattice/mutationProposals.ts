@@ -19,12 +19,70 @@ import { addDoc, collection, doc, getDoc, getDocs, limit, orderBy, query, runTra
 import { answerlatticeRequestBodyComposer } from '@lib/answerlattice/documentComposer';
 import { apiCallComposer } from "@lib/apiHelper/apiCallComposer";
 import { answerlatticeFirebaseClient } from "@lib/firebase/answerlatticeFirebaseClient";
+import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
+import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';
 import { AnswerlatticeMutationProposal } from "@type/answerlattice";
 
+const ANSWERLATTICE_DRAFT_REGENERATION_FAILED = 'Draft generation failed';
+const ANSWERLATTICE_DRAFT_REGENERATION_RESPONSE_MAX_BYTES = 16 * 1024;
+const ANSWERLATTICE_DRAFT_REGENERATION_REQUEST_POLICY: RequestInit = {
+    cache: 'no-store',
+    credentials: 'same-origin',
+    redirect: 'manual',
+};
 const COLLECTION = DB_COLLECTIONS.ANSWERLATTICE_MUTATION_PROPOSALS;
 
 const getCollectionRef = () => collection(answerlatticeFirebaseClient, COLLECTION);
 const getDocRef = (docId: string) => doc(answerlatticeFirebaseClient, COLLECTION, docId);
+
+type DraftRegenerationResponse = {
+    ok?: boolean;
+    success: true;
+};
+
+const isDraftRegenerationResponse = (value: unknown): value is DraftRegenerationResponse => (
+    Boolean(value)
+    && typeof value === 'object'
+    && !Array.isArray(value)
+    && (value as { success?: unknown }).success === true
+);
+
+const getDraftRegenerationResponseLogContext = (response: Response, proposalId: string) => ({
+    surface: 'answerlattice_mutation_proposals',
+    ...getBoundedRuntimeStringContext('proposalId', proposalId),
+    responseOk: response.ok,
+    responseStatus: response.status,
+});
+
+const readDraftRegenerationResponse = async (
+    response: Response,
+    proposalId: string,
+): Promise<DraftRegenerationResponse> => {
+    const context = getDraftRegenerationResponseLogContext(response, proposalId);
+    let payload: unknown;
+
+    try {
+        payload = await readJsonResponseWithLimit<unknown>(
+            response,
+            ANSWERLATTICE_DRAFT_REGENERATION_RESPONSE_MAX_BYTES,
+        );
+    } catch (error) {
+        logRuntimeFailure('answerlattice_draft_regeneration_response_parse_failed', error, context);
+        throw new Error(ANSWERLATTICE_DRAFT_REGENERATION_FAILED);
+    }
+
+    if (!response.ok) {
+        logRuntimeFailure('answerlattice_draft_regeneration_response_rejected', undefined, context);
+        throw new Error(ANSWERLATTICE_DRAFT_REGENERATION_FAILED);
+    }
+
+    if (!isDraftRegenerationResponse(payload)) {
+        logRuntimeFailure('answerlattice_draft_regeneration_response_invalid', undefined, context);
+        throw new Error(ANSWERLATTICE_DRAFT_REGENERATION_FAILED);
+    }
+
+    return payload;
+};
 
 /**
  * Get all mutation proposals for a tenant+store
@@ -95,6 +153,7 @@ export const regenerateMutationProposalDraft = async (proposalId: string, regene
     return apiCallComposer(
         async () => {
             const response = await fetch('/api/answerlattice/mutation-proposals/regenerate-draft', {
+                ...ANSWERLATTICE_DRAFT_REGENERATION_REQUEST_POLICY,
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -102,12 +161,7 @@ export const regenerateMutationProposalDraft = async (proposalId: string, regene
                 body: JSON.stringify({ proposalId, regeneratedBy }),
             });
 
-            const result = await response.json().catch(() => ({}));
-            if (!response.ok) {
-                throw new Error(result?.error || 'Draft generation failed');
-            }
-
-            return result;
+            return readDraftRegenerationResponse(response, proposalId);
         },
         { proposalId },
         'regenerateMutationProposalDraft',

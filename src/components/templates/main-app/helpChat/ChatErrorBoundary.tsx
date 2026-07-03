@@ -1,9 +1,11 @@
 'use client'
 
-import { logger } from '@lib/monitoring/logger';
 import { Button, Card, Flex, Result } from 'antd';
 import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { LuRefreshCw } from 'react-icons/lu';
+import { getBoundedHelpChatStringContext, logHelpChatFailure } from './helpChatDiagnostics';
+
+const HELP_CHAT_ERROR_BOUNDARY_TRIGGERED = 'help_chat_error_boundary_triggered';
 
 interface Props {
     children: ReactNode;
@@ -32,8 +34,12 @@ class ChatErrorBoundary extends Component<Props, State> {
     }
 
     componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-        logger.error('Help chat error boundary triggered', error, {
-            componentStack: errorInfo.componentStack,
+        logHelpChatFailure(HELP_CHAT_ERROR_BOUNDARY_TRIGGERED, error, {
+            componentStackFrameCount: errorInfo.componentStack
+                .split('\n')
+                .filter((line) => line.trim().length > 0)
+                .length,
+            ...getBoundedHelpChatStringContext('componentStack', errorInfo.componentStack),
         });
     }
 

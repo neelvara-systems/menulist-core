@@ -94,7 +94,16 @@ match /{document=**} {
 
 ### Extraction File Storage
 
-Menu images uploaded for extraction use the **legacy storage pattern**:
+Menu images uploaded by the current project DAL use the tenant-scoped project storage pattern:
+
+```
+projects/files/{tId}/{sId}/{fileId}
+projects/generated/{tId}/{sId}/{fileId}
+projects/edited/{tId}/{sId}/{fileId}
+projects/custom/{tId}/{sId}/{fileId}
+```
+
+Legacy files and potentially older deployed clients may still reference the **legacy storage pattern**:
 
 ```
 MenuListAi/project/files/{fileId}
@@ -103,7 +112,14 @@ MenuListAi/project/edited/{projectId}/{fileId}
 MenuListAi/project/custom/{projectId}/{fileId}
 ```
 
-**Current rules:**
+**Current scoped rules:**
+```
+allow read: if belongsToStore(tId, sId);
+allow write: if belongsToStore(tId, sId) && fileType.matches('^(files|assets|itemImages|project-images|custom|generated|edited)$') && isValidImageOrDocumentUpload();
+allow delete: if belongsToStore(tId, sId);
+```
+
+**Legacy compatibility rules:**
 ```
 allow read: if isAuthenticated();
 allow write: if isAuthenticated() && isValidImageUpload();
@@ -118,7 +134,7 @@ allow delete: if isAuthenticated();
 | Authentication required for write | ✅ |
 | File type validation (MIME whitelist) | ✅ `image/(jpeg|png|webp|gif)` |
 | File size limit | ✅ 10MB max |
-| Tenant isolation | ⚠️ ADVISORY — legacy pattern lacks tenant scoping |
+| Tenant isolation | 🔧 PARTIAL — active writes are tenant-scoped; legacy compatibility paths lack tenant scoping |
 | Default deny for unknown paths | ✅ |
 
 ### Advisory: Legacy Storage Lacks Tenant Isolation
@@ -130,8 +146,9 @@ The legacy `MenuListAi/project/files/{fileId}` path only checks `isAuthenticated
 3. The Cloud Function accesses files via the download URL embedded in the job document
 4. The Firestore rules now prevent reading other users' job documents (which contain file URLs)
 
-**Risk:** LOW — requires knowing the exact file path, and download URLs include access tokens.  
-**Recommendation:** Migrate to tenant-scoped storage pattern (`MenuListAi/project/files/{tId}/{sId}/{fileId}`) in a future session. The `generateStoragePath()` utility already exists at `src/lib/storage/pathGenerator.ts`.
+**Risk:** LOW — requires knowing the exact file path, and download URLs include access tokens.
+
+**July 2026 hardening note:** active project fallback uploads now route through `generateStoragePath()` to `projects/files/{tId}/{sId}/{fileId}`. Legacy project Storage paths are read-only in `storage.rules`: older files may still be read by authenticated users for compatibility, but `MenuListAi/project/files/`, `generated/`, `edited/`, and `custom/` no longer accept new writes or deletes.
 
 ---
 
@@ -250,7 +267,9 @@ allow create: if isAuthenticated()
 **Severity:** LOW  
 **Impact:** Theoretical cross-tenant file access if file path is known
 
-**Details:** `MenuListAi/project/files/{fileId}` only checks `isAuthenticated()`. However, file paths are unpredictable (include timestamps + UIDs) and download URLs include access tokens.
+**Details:** The remaining advisory applies to legacy `MenuListAi/project/files/{fileId}` objects/rules, which only check `isAuthenticated()`. However, file paths are unpredictable (include timestamps + UIDs) and download URLs include access tokens.
+
+**July 2026 hardening note:** active project fallback uploads now route through `generateStoragePath()` to the tenant-scoped `projects/files/{tId}/{sId}/{fileId}` path. Legacy project Storage paths are read-only in `storage.rules`, so old references can still be read while new legacy writes/deletes are denied.
 
 ### A2 — ADVISORY: Flat Collections Lack Tenant-Level Read Filtering
 

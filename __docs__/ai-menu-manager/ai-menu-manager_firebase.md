@@ -2,7 +2,7 @@
 
 **Status:** Initial implementation validated - cost model active for implemented foundation
 **Cost posture:** Firestore cost is the top constraint
-**Last Updated:** June 19, 2026
+**Last Updated:** June 30, 2026
 
 ---
 
@@ -16,10 +16,11 @@ Estimated default cost at 1,000 stores with 10 AMM commands per store per month:
 
 - Session/inbox reads: low, because one compact session doc is the default load.
 - Proposal writes: zero for normal deterministic cards; proportional only to server-backed/durable cards.
-- Project writes: same cost as manual action because AMM uses existing project update path.
+- Project writes: same cost as manual action because AMM uses existing project update path. Desktop and mobile approval flows require project-write acknowledgement before local project state or executed receipts update; this adds no extra read/write. Failed project-update receipt/proposal completion diagnostics change only failure logging and add no Firestore operations beyond the already-attempted completion writes.
 - AI/provider accounting: existing AI operation accounting where reused.
 - Read-only domain answers: no provider call and no extra Firestore read; one compact session write when the owner sends the question.
 - Storage: low unless generated images/import artifacts are used heavily.
+- Browser-local copy/open/download card actions add no Firestore operations. Local-action hardening changes only bounded runtime diagnostics for failed desktop/mobile card actions, blocked URL opens, unavailable clipboard support, and failed textarea-copy fallbacks.
 
 ---
 
@@ -94,6 +95,22 @@ Job-card polling must be bounded:
 - stop polling when the proposal reaches terminal status.
 - never poll all historical proposals.
 
+### Server Fallback Request Admission
+
+The normal deterministic AMM path stays client-DAL-first. Server fallback routes are capped before schema validation or Firestore work:
+
+- `POST /api/ai-menu-manager/command`: `DATA_WRITE` rate limit, then 64KB bounded JSON, then selected-store scope and project/proposal reads.
+- `POST /api/ai-menu-manager/proposals/{proposalId}/actions`: `DATA_WRITE` rate limit, then 16KB bounded JSON, then selected-store scope and proposal/project checks.
+- `POST /api/ai-menu-manager/proposals/{proposalId}/complete`: `DATA_WRITE` rate limit, then 16KB bounded JSON, then selected-store scope and proposal/project checks.
+
+Rejected malformed, oversized, or rate-limited fallback requests add no AMM session/proposal writes and do not reach selected project/proposal reads.
+
+Browser response parsing is also bounded. The shared AMM client API reader caps command, inbox, proposal-action, and completion response JSON at 64KB and logs `ai_menu_manager_response_parse_failed` for malformed, oversized, or empty successful responses. This does not add Firestore reads/writes/deletes; it only makes bad acknowledgement bodies visible before the existing fixed owner failure path runs.
+
+June 30 browser request-policy hardening is Firebase-cost neutral. Command fallback, inbox fallback, proposal action, and proposal completion browser calls now use same-origin credentials, `no-store` cache policy, and manual redirect handling before the shared 64KB response reader runs. This changes no compact session writes, proposal writes, project writes, provider calls, route ordering, Firestore rules/indexes, Cloud Functions, Firebase deploy requirement, or Vercel deploy action.
+
+June 29 shared guard hardening is Firebase-cost neutral. The AMM API guard keeps the same route-specific prefixes, `DATA_WRITE` limits, and request ordering, but hashes owner, tenant, and store key segments before storage in Upstash and records only presence/length metadata for rate-limit and selected-store violation scope diagnostics. June 30 follow-up: the same guard now uses bounded route security metadata for selected-store, tenant-access, rate-limit, and invalid-request security events instead of raw `buildSecurityContext()` output. This resets existing AMM fallback buckets once and changes no Firestore reads/writes/deletes, provider calls, cache invalidations, rules, indexes, schema fields, or owner UI behavior.
+
 ---
 
 ## Collections
@@ -147,6 +164,7 @@ Every executable adapter must mirror the cost class declared in [ai-menu-manager
 | Load current session summary | `aiMenuManagerSessions` | AMM route open | 1 | Contains compact messages, full pending operation cards, receipts. |
 | Load active pending proposal cards | `aiMenuManagerProposals` | Server-backed adapters only | 0 by default | Deterministic selected-project cards do not read proposal docs. |
 | Load menu context packet | `projects` or cache | Command only when cache miss | 0-1 | Prefer cached packet keyed by project update marker. |
+| Permission fallback inbox | `aiMenuManagerSessions` and `aiMenuManagerProposals` | Only after direct session read returns Firestore `permission-denied` | bounded server read | Authenticated API enforces `MANAGE_MENU` without widening client rules. The fallback must not scan historical sessions. |
 
 Cost rule: opening AMM should not query all proposals, all messages, all menu items, and all past receipts. The normal screen open reads the current selected-project daily session doc only; proposal docs are reserved for server-backed adapters.
 
@@ -165,10 +183,12 @@ Cost rule: AMM context packets are built for the selected store and selected pro
 | Choose Work on context | none | Composer context picker | 0 | 0 | Uses the selected project already loaded in memory. Item/category selections only rewrite the next owner message before resolver execution. |
 | Pick starter card | none | Empty-state contextual starter | 0 | 0 | Starter cards are derived from the selected project already loaded in memory and only draft text or open the second suggestion layer. |
 | Browse suggestion groups | none | Opening desktop inline tray or mobile sheet | 0 | 0 | Suggestions and second-layer guided choices are derived from the selected project already loaded in memory. Selecting a final option only fills the composer. |
-| Pick clarification option | none | Card option row click | 0 | 0 | Option rows draft the next owner message locally and do not create a new card until the owner sends it. |
+| Pick clarification option | `aiMenuManagerSessions` | Card option row click | 0 additional | 1 compact session write | Clarification choices submit the selected answer, remove the old clarification, and create the next card in one compact session write. No proposal doc and no separate cancel write. |
+| Short follow-up to one pending card | `aiMenuManagerSessions` | "Actually 25", "Try warmer", "Restore it" | 0 additional | 1 compact session write | The DAL uses the loaded compact session snapshot to rewrite the resolver input, replace the previous pending card, and keep the owner text as typed. |
 | Answer selected-menu question | selected project already loaded | Questions like "What should I fix today?" or "Which items have no photos?" | 0 additional | included in compact session write | Uses `system_context_answer` from the loaded context packet; no provider call, no proposal doc, no external lookup. |
 | Store pending operation | `aiMenuManagerSessions` | Actionable card | included above | included above | Full card plus exact patch/hash/base-project marker is capped in `pendingOperations`. |
 | Create proposal doc | `aiMenuManagerProposals` | Server-backed adapters only | 0 | N | Only when secrets/jobs/external policy/durable ledger require the server path. |
+| Permission fallback command | `aiMenuManagerSessions` + `aiMenuManagerProposals` | Only after direct compact-session write returns Firestore `permission-denied` | bounded server reads | up to 1 session/proposal write | Sends only the bounded command payload, not full project/session JSON. This is an exception for `MANAGE_MENU` users whose Firebase Auth token cannot directly write the compact session. |
 
 ### Approve Card
 
@@ -186,6 +206,8 @@ If several approved cards share the same project, risk class, and approval scope
 AMM must treat `storeId` and `projectId` as the current selector context. Store-level actions use the selected store. Project-level actions use the selected project. Cross-project, all-project, or all-store behavior is not the default and requires an explicit scope proposal before execution.
 
 Production hardening note: deterministic client approval rebuilds the selected-project context and rejects stale cards when the stored base hash no longer matches. Server-backed approval and completion requests must echo the selected `projectId` and `actionType`; the server verifies them against the proposal before locking or completing the card.
+
+Permission fallback note: when the server-backed fallback is used only because direct compact-session access was denied, the additional proposal/session cost is accepted to preserve tenant security without broadening Firestore rules. The fallback remains bounded, rate-limited, schema-validated, and payload-limited; it must not become the default deterministic path.
 
 Scale estimate for two successful deterministic project operations after the screen is already open:
 
@@ -240,6 +262,7 @@ Mobile AMM action costs must follow the existing manual mobile screen costs:
 Cost optimization scope found in the mobile sweep:
 
 - Mobile share/export operations should remain browser-local by default.
+- Desktop and mobile AMM local copy actions remain `C0 local`: rejected Clipboard API writes retry the acknowledged textarea fallback and do not create proposal detail, artifact docs, or extra reads.
 - Feedback link copy/open and feedback QR download are `C0 local` card controls. AMM may keep the compact card/receipt summary only; it must not write QR image data, base64 payloads, or extra artifact docs for this flow.
 - Mobile action adapters should reuse the existing mobile screen DAL/API; do not add mobile-only AMM collections.
 - Bounded read cards such as feedback inbox, digital screen status, POS test, domain verify, and integration status need explicit result caps and stop conditions.
@@ -358,5 +381,6 @@ Before implementation can be accepted:
 - [ ] Job-card polling stops on background, terminal status, and hidden card state.
 - [ ] Generated drafts/debug artifacts use Storage retention or existing cleanup discipline.
 - [ ] Rules are explicit docs only after owner approval.
+- [ ] Desktop/mobile UI failure handling adds no extra reads/writes and persists only generic project-update failure text.
 - [ ] `git diff --check` passes.
 - [ ] Dedicated verifier reports no unregistered write adapters.

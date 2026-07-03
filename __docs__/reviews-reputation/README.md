@@ -3,7 +3,7 @@
 **Feature:** Reviews & Reputation  
 **Status:** 🔒 SPEC LOCKED — Runtime infrastructure present, product disabled until GBP API access granted
 **Version:** 1.0  
-**Last Updated:** June 11, 2026
+**Last Updated:** July 1, 2026
 
 ---
 
@@ -20,7 +20,7 @@
 | Document                                                                      | Purpose                              |
 | ----------------------------------------------------------------------------- | ------------------------------------ |
 | [ChatGPT Critical Review](./_archive/CHATGPT-CONVERSATION-CRITICAL-REVIEW.md) | Original ChatGPT conversation review |
-| [Initial Spec](./_archive/REVIEWS_REPUTATION_SPEC.md)                         | First locked spec (superseded)       |
+| [Initial Spec](./_archive/reviews-reputation_spec-old.md)                      | First locked spec (superseded)       |
 
 ---
 
@@ -73,6 +73,14 @@ ENABLE_AI_REPLY_ASSIST: false; // Requires ENABLE_REVIEWS_REPUTATION
 - `ENABLE_REVIEWS_REPUTATION` and `ENABLE_AI_REPLY_ASSIST` are disabled by default.
 - `/api/reviews/states` returns only booleans, is parent-flag gated, rate-limited, and queries non-expired `reviewsState` documents.
 - `/api/reviews/suggest` is also parent-flag gated and SAFE_MODE guarded. It remains a suggestion-only route; MenuList does not auto-post review replies.
+- Review-state and review-suggest limiter keys store only HMAC-hashed owner, tenant, and store key material.
+- June 28, 2026: `/api/reviews/states` fetch failures and `/api/reviews/suggest` accounting-failure diagnostics use bounded runtime metadata only; route behavior and disabled feature status are unchanged.
+- June 29, 2026: desktop Review Reply copy failures log `desktop_review_reply_copy_failed` with bounded review/reply length metadata only. Pasted review text and generated reply text are not logged, and disabled feature status is unchanged.
+- June 30, 2026: `ReputationGuard` calls `/api/reviews/states` with no-store cache policy, same-origin credentials, and manual redirect handling, then parses the response through a 16KB bounded guard before updating passive warning state. Malformed, oversized, rejected, redirected, or invalid acknowledgements log bounded runtime diagnostics only; disabled/unmounted feature status is unchanged.
+- June 30, 2026: `ReviewReplyTool` submits `/api/reviews/suggest` with same-origin credentials, no-store cache policy, and manual redirect handling, then parses the response through a 16KB bounded response guard and requires `{ success: true, reply }` before showing a generated reply or incrementing attempts. Disabled/unmounted feature status and the no-auto-post boundary are unchanged.
+- June 30, 2026: `/api/reviews/suggest` normalizes pasted review text and business type before prompt construction, escapes review text through JSON string serialization, and records sanitized prompt length/business type metadata for accounting. Disabled/unmounted feature status and the no-auto-post boundary are unchanged.
+- June 30, 2026: `ReviewReplyTool` copied feedback waits for Clipboard API success or acknowledged textarea fallback success; failed copy diagnostics include clipboard/fallback support booleans while keeping pasted review text and generated reply text out of logs. Disabled/unmounted feature status and the no-auto-post boundary are unchanged.
+- July 1, 2026: `ReviewReplyTool` now requires the suggestion envelope to include `source: "ai" | "fallback"` as well as `success: true` and a non-empty `reply` before showing a generated reply or incrementing attempts. Disabled/unmounted feature status and the no-auto-post boundary are unchanged.
 - `ReputationGuard` and `ReviewReplyTool` exist as components but are not mounted in the owner dashboard while the feature is disabled.
 - No GBP ingestion Cloud Function is active in this repo snapshot; full review product launch remains blocked.
 

@@ -10,6 +10,7 @@
 import { getSessionId } from '@lib/analytics/session';
 import { trackEvent, TrackingEvent } from '@lib/analytics/unified';
 import { detectInstalled } from './installDetection';
+import { getBoundedPwaStringContext, logPwaTrackingFailure } from './pwaDiagnostics';
 
 export type ShortcutSource =
   | 'menu'
@@ -88,7 +89,14 @@ export async function detectAndTrackShortcutLaunch(
     });
     return source;
   } catch (err) {
-    console.warn('[pwa] detectAndTrackShortcutLaunch failed:', err);
+    logPwaTrackingFailure('customer_app_shortcut_tracking_failed', err, {
+      ...getBoundedPwaStringContext('storeId', storeId),
+      ...getBoundedPwaStringContext('tenantId', tenantId),
+      ...getBoundedPwaStringContext('shortcutSource', source),
+      hasStoreTimeZone: Boolean(storeTimeZone),
+      hasBusinessDayEndTime: Boolean(businessDayEndTime),
+      includeLocation,
+    });
     return null;
   }
 }

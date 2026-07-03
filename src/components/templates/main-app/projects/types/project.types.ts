@@ -349,6 +349,7 @@ export interface Project {
     active?: boolean; // Default: true - set to false to disable project
     deleted?: boolean; // Soft delete flag
     deletedAt?: Timestamp; // When the project was deleted
+    isDefault?: boolean; // Show at root URL when accessing via subdomain/custom domain
     /** Snapshot of platformSummary data kept while soft-deleted for lossless restore. */
     deletedSummary?: Partial<ProjectSummaryData>;
 

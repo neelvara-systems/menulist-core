@@ -121,8 +121,9 @@ This loop is the default for every non-trivial repo request. The user does not n
 
 ### Technology Stack Decisions
 
-- **Next.js 14.2.5**: Frozen for 3-year period - no upgrades
-- **Dual Platform**: Desktop (Ant Design + SCSS) vs Mobile (antd-mobile + Tailwind)
+- **Pinned package runtime**: Freeze follows the exact versions in `package.json` / lockfiles and is guarded by `npm run verify:dependency-freeze`; no version changes without explicit migration/security scope.
+- **Next.js 14.2.35**: Current pinned runtime for the 3-year freeze window.
+- **Dual Platform**: Desktop (Ant Design + SCSS) vs mobile owner surfaces (Tailwind-driven mobile shell/screens; add `antd-mobile` only through an explicit dependency decision and freeze update)
 - **State Management**: Redux Toolkit + Redux Persist - no alternatives
 - **Backend**: Firebase (Firestore, Functions, Auth) - cost-optimized patterns
 - **Authentication**: NextAuth.js - session management with security guards
@@ -170,7 +171,7 @@ This loop is the default for every non-trivial repo request. The user does not n
 ### Development Gotchas
 
 - **Never Mix Icon Libraries**: Use react-icons/lu (Lucide) only
-- **No Version Upgrades**: 3-year freeze applies to all dependencies
+- **No Version Drift**: 3-year freeze applies to all dependencies; declarations must stay exact and pass `npm run verify:dependency-freeze`
 - **Mobile Files**: Every feature needs `[feature-name]_mobile-support.md`
 - **Feature Flags**: Required in `src/config/features.ts` for all new features
 - **Type Check**: Must pass `npx tsc --noEmit` before completion
@@ -193,7 +194,7 @@ This loop is the default for every non-trivial repo request. The user does not n
 
 ### Mobile Gotchas
 
-- **antd-mobile Components**: Use mobile-native components only
+- **Mobile Components**: Use the current Tailwind-driven mobile shell/screens and shared business logic; do not import `antd-mobile` unless it is intentionally added as a dependency and the freeze verifier is updated.
 - **Tailwind CSS**: Mobile styling layer, don't mix with SCSS modules
 - **Touch Events**: Handle touch interactions properly
 - **Performance**: Mobile-first optimization required
@@ -259,12 +260,13 @@ Do not casually modify these files. If a task requires changes here, read the se
 
 ### Tech Stack Freeze
 
-- **Frameworks**: Next.js 14.2.5, React 18.3.1, TypeScript 5.
-- **UI**: Ant Design 5.20.2 for desktop, antd-mobile 5.x for mobile.
+- **Source of truth**: `package.json`, `package-lock.json`, `functions/package.json`, `functions/package-lock.json`, `functions-answerlattice/package.json`, and `functions-answerlattice/package-lock.json`; enforce with `npm run verify:dependency-freeze`.
+- **Frameworks**: Next.js 14.2.35, React 18.3.1, TypeScript 5.8.3 in the root app.
+- **UI**: Ant Design 5.25.1 for desktop; current mobile owner surfaces are Tailwind-driven and must not import `antd-mobile` unless the dependency is intentionally added and the freeze verifier is updated.
 - **State**: Redux Toolkit 1.9.7 and Redux Persist 6.0.0 only.
-- **Auth**: NextAuth.js 4.24.3.
-- **Backend**: Firebase 10.5.0.
-- **AI SDK**: OpenAI SDK 4.52.2.
+- **Auth**: NextAuth.js 4.24.13.
+- **Backend**: Root Firebase client 11.7.3 and Firebase Admin 12.7.0; MenuList Functions pin Firebase Admin 13.5.0 and Firebase Functions 6.6.0; Answerlattice Functions pin Firebase Admin 12.7.0 and Firebase Functions 5.1.1.
+- **AI SDK**: `@google/genai` 0.12.0.
 - **Editor**: Tiptap v2.11.0.
 - **Styling**: Tailwind CSS for mobile, SASS/SCSS for desktop.
 

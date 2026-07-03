@@ -15,6 +15,7 @@ import { detectInstalled } from './installDetection';
 import { fireInstalledEventOnce, PROMPT_SHOWN_AT_KEY_PREFIX } from './installTracker';
 import { detectPlatform } from './platformDetection';
 import { detectInstallSurface } from './surfaceDetection';
+import { getBoundedPwaStringContext, logPwaTrackingFailure } from './pwaDiagnostics';
 
 const OPENED_FIRED_SESSION_KEY_PREFIX = 'menulist_customerApp_openedFired_';
 
@@ -122,7 +123,15 @@ export async function detectAndTrackAppOpen(
 
     return true;
   } catch (err) {
-    console.warn('[pwa] detectAndTrackAppOpen failed:', err);
+    logPwaTrackingFailure('customer_app_open_tracking_failed', err, {
+      ...getBoundedPwaStringContext('storeId', storeId),
+      ...getBoundedPwaStringContext('tenantId', tenantId),
+      ...getBoundedPwaStringContext('pwaPlatform', platform),
+      ...getBoundedPwaStringContext('pwaInstallSurface', launchSurface),
+      hasStoreTimeZone: Boolean(storeTimeZone),
+      hasBusinessDayEndTime: Boolean(businessDayEndTime),
+      includeLocation,
+    });
     return false;
   }
 }

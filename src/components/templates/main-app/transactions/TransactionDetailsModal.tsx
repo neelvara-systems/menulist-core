@@ -5,7 +5,7 @@ import { AI_ACTIONS_TYPES } from '@constant/common';
 import { formatAiOperationActionLabel, formatAiOperationCredits, getAiOperationOwnerSummary } from '@lib/ai/operationPresentation';
 import { getFormatedDateAndTime, type DateLike } from '@util/dateTime';
 import { formatInrPaise, formatProcessingTime } from '@util/formatters';
-import { Button, Collapse, Descriptions, Divider, Modal, Tag, Typography } from 'antd';
+import { Button, Collapse, Descriptions, Divider, Modal, Tag } from 'antd';
 import { useSession } from 'next-auth/react';
 import { useFormatter, useTranslations } from 'next-intl';
 import React from 'react';
@@ -129,10 +129,6 @@ const TransactionDetailsModal: React.FC<TransactionDetailsModalProps> = ({
                                         <Descriptions.Item label={t('projectId')}>{transaction.projectId || t('notRecorded')}</Descriptions.Item>
                                         <Descriptions.Item label={t('fileId')}>{transaction.fileId || t('notRecorded')}</Descriptions.Item>
                                     </Descriptions>
-                                    <Typography.Text strong>{t('fullAiTransactionObject')}</Typography.Text>
-                                    <pre style={{ background: '#f5f5f5', borderRadius: 6, fontSize: 11, marginTop: 8, maxHeight: 320, overflow: 'auto', padding: 12, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-                                        {JSON.stringify(transaction, null, 2)}
-                                    </pre>
                                 </>
                             ),
                         },

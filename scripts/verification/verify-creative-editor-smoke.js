@@ -108,6 +108,12 @@ function verifyEditorQaHooks() {
   assertIncludes(editor, "margin: 4", "Editor QR defaults use four-module quiet-zone margin");
   assertIncludes(editor, 'lightColor: "#ffffff"', "Editor QR action cards preserve white QR panels");
   assertIncludes(editor, "Reset white scan panel", "Editor can repair legacy non-white QR scan panels");
+  assertIncludes(editor, "copyRuntimeTextToClipboard(suggestionValue.text)", "Editor AI suggestion copy uses acknowledged text clipboard helper");
+  assertIncludes(editor, "copyRuntimeTextToClipboard(dataUrl)", "Editor base64 copy uses acknowledged text clipboard helper");
+  assertIncludes(editor, "hasClipboardWrite: hasRuntimeClipboardWrite()", "Editor text-copy diagnostics include Clipboard API support");
+  assertIncludes(editor, "hasCopyFallback: hasRuntimeCopyFallback()", "Editor text-copy diagnostics include fallback support");
+  assertNotIncludes(editor, "await navigator.clipboard.writeText(suggestionValue.text)", "Editor AI suggestion copy must not use direct Clipboard API success");
+  assertNotIncludes(editor, "await navigator.clipboard.writeText(dataUrl)", "Editor base64 copy must not use direct Clipboard API success");
   assertNotIncludes(editor, "setQrLightColor", "Editor does not expose QR background color state");
   assertNotIncludes(editor, "QR background color", "Editor does not expose raw QR background color controls");
   assertNotIncludes(editor, "templateRegistryDal", "Shared editor does not import product template registry DAL");

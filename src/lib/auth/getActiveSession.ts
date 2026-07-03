@@ -1,18 +1,76 @@
 import LoginUserType from "@type/loginUser";
 import { getAnswerlatticeScopedSession, shouldUseAnswerlatticeClientScopeForRoute } from "@lib/answerlattice/sessionScope";
 import { applyActiveStoreContextToSession } from "@lib/multiOutlet/activeStoreContext";
+import { readJsonResponseWithLimit } from "@lib/security/boundedResponseBody";
+import { AUTH_BROWSER_REQUEST_POLICY } from "./browserRequestPolicy";
+import {
+    createAuthDiagnosticError,
+    getAuthSessionLogContext,
+    getBoundedAuthStringContext,
+    logAuthDiagnostic,
+    logAuthFailure,
+} from "./authDiagnostics";
 
 const CLIENT_SESSION_TTL_MS = 5000;
+const AUTH_SESSION_RESPONSE_JSON_MAX_BYTES = 64 * 1024;
 
 let clientSessionCache: LoginUserType | null = null;
 let clientSessionCacheAt = 0;
 let clientSessionRequest: Promise<LoginUserType | null> | null = null;
 
-const AUTH_LOG_BADGE = 'background: #0f172a; color: #67e8f9; padding: 2px 6px; border-radius: 999px; font-weight: 700;';
-const AUTH_LOG_TEXT = 'color: #0891b2; font-weight: 700;';
-const AUTH_SUCCESS_TEXT = 'color: #16a34a; font-weight: 700;';
-const AUTH_WARN_TEXT = 'color: #f59e0b; font-weight: 700;';
-const AUTH_ERROR_TEXT = 'color: #dc2626; font-weight: 700;';
+const readClientSessionResponseJson = async (response: Response): Promise<unknown> => {
+    try {
+        return await readJsonResponseWithLimit<unknown>(response, AUTH_SESSION_RESPONSE_JSON_MAX_BYTES);
+    } catch (error) {
+        logAuthFailure('auth_session_response_parse_failed', error, {
+            responseOk: response.ok,
+            responseStatus: response.status,
+            maxBytes: AUTH_SESSION_RESPONSE_JSON_MAX_BYTES,
+        });
+        throw createAuthDiagnosticError('Failed to parse session response', {
+            statusCode: response.status,
+        });
+    }
+};
+
+const getClientSessionFromApi = async (): Promise<LoginUserType | null> => {
+    const response = await fetch('/api/auth/session', {
+        ...AUTH_BROWSER_REQUEST_POLICY,
+        headers: {
+            Accept: 'application/json',
+        },
+    });
+
+    if (!response.ok) {
+        throw createAuthDiagnosticError('Failed to fetch session', {
+            statusCode: response.status,
+        });
+    }
+
+    const payload = await readClientSessionResponseJson(response);
+
+    if (!payload) {
+        return null;
+    }
+
+    if (typeof payload !== 'object' || Array.isArray(payload)) {
+        const invalid = createAuthDiagnosticError('Invalid session response', {
+            statusCode: response.status,
+        });
+        logAuthFailure('auth_session_response_invalid', invalid, {
+            responseOk: response.ok,
+            responseStatus: response.status,
+            maxBytes: AUTH_SESSION_RESPONSE_JSON_MAX_BYTES,
+        });
+        throw invalid;
+    }
+
+    if (!(payload as any).user) {
+        return null;
+    }
+
+    return payload as LoginUserType;
+};
 
 const getActiveSession = async () => {
     if (typeof window === 'undefined') {
@@ -27,22 +85,29 @@ const getActiveSession = async () => {
         const scopedSession = shouldUseAnswerlatticeClientScopeForRoute(clientSessionCache, window.location.pathname, window.location.hostname)
             ? getAnswerlatticeScopedSession(clientSessionCache)
             : clientSessionCache;
-        console.log(`%c🔐 Auth%c session cache hit`, AUTH_LOG_BADGE, AUTH_LOG_TEXT, {
+        logAuthDiagnostic('auth_session_cache_hit', {
             ageMs: now - clientSessionCacheAt,
-        });
+            ...getBoundedAuthStringContext('pathname', window.location.pathname),
+            ...getBoundedAuthStringContext('hostname', window.location.hostname),
+        }, { developmentOnly: true });
         return applyActiveStoreContextToSession(scopedSession);
     }
 
     if (clientSessionRequest) {
-        console.log(`%c🔐 Auth%c session request joined`, AUTH_LOG_BADGE, AUTH_WARN_TEXT);
+        logAuthDiagnostic('auth_session_request_joined', {
+            ...getBoundedAuthStringContext('pathname', window.location.pathname),
+            ...getBoundedAuthStringContext('hostname', window.location.hostname),
+        }, { developmentOnly: true });
         return clientSessionRequest;
     }
 
     clientSessionRequest = (async () => {
         try {
-            console.log(`%c🔐 Auth%c session fetch start`, AUTH_LOG_BADGE, AUTH_LOG_TEXT);
-            const { getSession: sessionGetter } = await import('next-auth/react');
-            const session = await sessionGetter();
+            logAuthDiagnostic('auth_session_fetch_start', {
+                ...getBoundedAuthStringContext('pathname', window.location.pathname),
+                ...getBoundedAuthStringContext('hostname', window.location.hostname),
+            }, { developmentOnly: true });
+            const session = await getClientSessionFromApi();
             const sessionWithType = session as unknown as LoginUserType | null;
             clientSessionCache = sessionWithType;
             clientSessionCacheAt = Date.now();
@@ -50,15 +115,12 @@ const getActiveSession = async () => {
                 ? getAnswerlatticeScopedSession(sessionWithType)
                 : sessionWithType;
             const effectiveSession = applyActiveStoreContextToSession(scopedSession);
-            console.log(`%c🔐 Auth%c session fetch success`, AUTH_LOG_BADGE, AUTH_SUCCESS_TEXT, {
-                authenticated: Boolean(effectiveSession?.user),
-                sId: effectiveSession?.sId ?? null,
-                tId: effectiveSession?.tId ?? null,
-            });
+            logAuthDiagnostic('auth_session_fetch_success', getAuthSessionLogContext(effectiveSession), { developmentOnly: true });
             return effectiveSession;
         } catch (error: any) {
-            console.error(`%c🔐 Auth%c session fetch failed`, AUTH_LOG_BADGE, AUTH_ERROR_TEXT, {
-                error: error?.message || 'Unknown error',
+            logAuthFailure('auth_session_fetch_failed', error, {
+                ...getBoundedAuthStringContext('pathname', window.location.pathname),
+                ...getBoundedAuthStringContext('hostname', window.location.hostname),
             });
             throw error;
         } finally {

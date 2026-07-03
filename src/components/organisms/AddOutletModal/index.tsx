@@ -7,6 +7,16 @@
  */
 
 import { FEATURE_FLAGS } from '@config/features';
+import { getBoundedMultiOutletStringContext, logMultiOutletFailure } from '@lib/multiOutlet/diagnostics';
+import {
+    createMultiOutletStatusError,
+    isOutletCreateResponse,
+    isOutletPaymentRequiredResponse,
+    MULTI_OUTLET_ACTION_REQUEST_POLICY,
+    MULTI_OUTLET_ACTION_RESPONSE_JSON_MAX_BYTES,
+    OUTLET_LOCATION_PAYMENT_REQUIRED_CODE,
+} from '@lib/multiOutlet/outletActionResponseGuards';
+import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { DEFAULT_OUTLET_POLICY } from '@type/multiOutlet.types';
 import { FirestoreSubscriptionDoc } from '@type/razorpay';
@@ -21,6 +31,35 @@ interface AddOutletModalProps {
     open: boolean;
     onClose: () => void;
     subscription: FirestoreSubscriptionDoc | null;
+}
+
+function buildAddOutletLogContext(storeDetails: any, tenantDetails: any, outletName: string, needsBillingAction = false) {
+    return {
+        needsBillingAction,
+        ...getBoundedMultiOutletStringContext('storeId', storeDetails?.storeId),
+        ...getBoundedMultiOutletStringContext('tenantId', storeDetails?.tenantId || tenantDetails?.tenantId),
+        ...getBoundedMultiOutletStringContext('outletName', outletName),
+    };
+}
+
+async function readDesktopAddOutletResponse(
+    response: Response,
+    context: Record<string, boolean | number | string | null | undefined>,
+): Promise<unknown> {
+    try {
+        return await readJsonResponseWithLimit<unknown>(
+            response,
+            MULTI_OUTLET_ACTION_RESPONSE_JSON_MAX_BYTES,
+        );
+    } catch (error) {
+        logMultiOutletFailure('desktop_location_outlet_action_response_parse_failed', error, {
+            ...context,
+            maxBytes: MULTI_OUTLET_ACTION_RESPONSE_JSON_MAX_BYTES,
+            responseOk: response.ok,
+            responseStatus: response.status,
+        });
+        throw error;
+    }
 }
 
 export default function AddOutletModal({ open, onClose, subscription }: AddOutletModalProps) {
@@ -58,16 +97,39 @@ export default function AddOutletModal({ open, onClose, subscription }: AddOutle
 
         try {
             const res = await fetch('/api/outlets/create', {
+                ...MULTI_OUTLET_ACTION_REQUEST_POLICY,
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ outletName: outletName.trim() }),
             });
-            const data = await res.json();
+            const data = await readDesktopAddOutletResponse(
+                res,
+                buildAddOutletLogContext(storeDetails, tenantDetails, outletName),
+            );
 
             if (!res.ok) {
-                const needsBillingAction = data.code === 'OUTLET_LOCATION_PAYMENT_REQUIRED' || data.billingAction === 'ADD_PAID_LOCATION';
+                const needsBillingAction = isOutletPaymentRequiredResponse(data);
                 setRequiresBillingAction(needsBillingAction);
-                setError(data.error || 'Failed to create outlet');
+                logMultiOutletFailure(
+                    'desktop_location_create_failed',
+                    createMultiOutletStatusError(
+                        'desktop_location_create_rejected',
+                        res.status,
+                        needsBillingAction ? OUTLET_LOCATION_PAYMENT_REQUIRED_CODE : undefined,
+                    ),
+                    buildAddOutletLogContext(storeDetails, tenantDetails, outletName, needsBillingAction),
+                );
+                setError(needsBillingAction ? 'Add one paid location from Billing, then come back.' : 'Failed to create outlet');
+                return;
+            }
+            if (!isOutletCreateResponse(data)) {
+                const invalidResponseError = createMultiOutletStatusError('desktop_location_create_response_invalid', res.status);
+                logMultiOutletFailure('desktop_location_create_response_invalid', invalidResponseError, {
+                    ...buildAddOutletLogContext(storeDetails, tenantDetails, outletName),
+                    responseOk: res.ok,
+                    responseStatus: res.status,
+                });
+                setError('Failed to create outlet');
                 return;
             }
 
@@ -102,6 +164,11 @@ export default function AddOutletModal({ open, onClose, subscription }: AddOutle
             setOutletName('');
             onClose();
         } catch (e) {
+            logMultiOutletFailure(
+                'desktop_location_create_failed',
+                e,
+                buildAddOutletLogContext(storeDetails, tenantDetails, outletName),
+            );
             setError('Network error. Please try again.');
         } finally {
             setLoading(false);
@@ -116,7 +183,7 @@ export default function AddOutletModal({ open, onClose, subscription }: AddOutle
             onOk={handleCreate}
             okText="Add Outlet"
             okButtonProps={{ loading, disabled: !outletName.trim() || !hasBillingAccess }}
-            destroyOnClose
+            destroyOnHidden
         >
             <Space direction="vertical" size="middle" style={{ width: '100%' }}>
                 <Input

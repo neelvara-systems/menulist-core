@@ -1,13 +1,9 @@
 import { PRODUCT_IDS, type ProductId } from '@constant/product';
 import { requestBodyComposer } from '@lib/apiHelper';
 import getActiveSession from '@lib/auth/getActiveSession';
+import { createRuntimeId } from '@lib/runtime/randomId';
 
-const createTraceId = () => {
-    if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
-        return `al_${crypto.randomUUID()}`;
-    }
-    return `al_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
-};
+const createTraceId = () => createRuntimeId('al');
 
 const normalizeNumber = (value: unknown): number | undefined => {
     const parsed = Number(value);

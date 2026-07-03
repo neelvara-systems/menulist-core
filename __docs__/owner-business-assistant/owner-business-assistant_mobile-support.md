@@ -10,6 +10,10 @@ Mobile Business Health is a `MobileShell` sub-screen. It shows health state, ana
 
 Owner operations from mobile belong to Menu Manager and must use Menu Manager cards, approvals, and existing operation paths.
 
+## Owner Business Health boundary source gate
+
+`npm run verify:owner-business-health-boundary` verifies the MobileShell read-only screen boundary, selected store/project context, answer/read-model request policy, absence of Business Health action sheets, and absence of desktop route bypass through `window.location`. Asking for a mutation does not mutate truth and does not open an action sheet.
+
 ## Required Mobile Behavior
 
 - Entry remains inside `MobileShell`.

@@ -12,6 +12,7 @@ const SUMMARY_ONLY_DOMAINS: OwnerBusinessAssistantDomain[] = [
   'compliance',
   'external',
 ];
+const BUSINESS_HEALTH_DOMAIN: OwnerBusinessAssistantDomain = 'business_health';
 
 export function buildOwnerBusinessDomainCapabilities(
   packet: Pick<OwnerBusinessAssistantContextPacket, 'health' | 'analytics' | 'domainFacts'>,
@@ -19,6 +20,14 @@ export function buildOwnerBusinessDomainCapabilities(
   const supportedFromHealth = new Set(packet.health.supportedDomains?.map((entry) => entry.domain) || []);
 
   return OWNER_BUSINESS_ASSISTANT_DOMAINS.map((domain) => {
+    if (domain === BUSINESS_HEALTH_DOMAIN) {
+      return {
+        domain,
+        status: 'supported',
+        sourceFactIds: packet.health.sourceRefs.map((ref) => ref.id),
+      };
+    }
+
     if (supportedFromHealth.has(domain)) {
       return {
         domain,

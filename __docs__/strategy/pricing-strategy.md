@@ -1,10 +1,12 @@
 # MenuListAi Pricing Strategy
 
-**Status:** ✅ Production Ready
+**Status:** Historical pricing strategy; not current launch certification
 **Last Updated:** December 31, 2025
 **Source:** Strategic pricing discussion and analysis
 
 ---
+
+> **Launch Boundary:** This strategy document is retained as historical pricing evidence, not current production-launch approval. Current pricing and billing release approval requires the active [production-readiness audit](../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../production-readiness/external-certification-runbook.md) evidence, `npm run verify:billing-entitlement-boundary`, Razorpay sandbox evidence, website/pricing copy review, billing browser QA, target deploy evidence, and production-host smoke.
 
 ## May 2026 Update — Starter Activation Supersedes Pay-First Trial
 

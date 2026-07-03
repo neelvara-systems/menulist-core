@@ -2,7 +2,9 @@
 
 **Date**: November 13, 2025  
 **Assessment**: File Upload & Processing  
-**Status**: ✅ VERIFIED & TRACKED
+**Status**: Historical upload cross-check evidence; not current testing approval and not current launch certification
+
+> **Current Release Boundary (July 3, 2026):** This file records the November 2025 upload assessment cross-check only. Current upload testing, deploy, or release approval requires the active [production-readiness audit](../../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../../production-readiness/external-certification-runbook.md) evidence, `npm run verify:agent-readiness`, `npm run verify:menu-extraction-pipeline`, upload/browser/mobile/Storage results, browser/mobile upload QA, Storage quota/rules evidence, target deploy evidence where upload or Storage behavior changes, and production-host smoke.
 
 ---
 
@@ -32,8 +34,8 @@
 
 **Created Files:**
 - ✅ `/src/components/templates/main-app/projects/validation.ts` (NEW - 250 lines)
-- ✅ `__docs__/projects/IMPLEMENTATION-01-UPLOAD-COMPLETE.md` (NEW)
-- ✅ `__docs__/projects/TESTING-GUIDE-UPLOAD.md` (NEW)
+- ✅ `__docs__/projects/development_done/1-implementation-upload-complete.md` (NEW)
+- ✅ `__docs__/projects/development_done/1-testing-guide-upload.md` (NEW)
 
 **Modified Files:**
 - ✅ `/src/components/templates/main-app/projects/constants.ts` (Updated)
@@ -62,7 +64,7 @@
 
 ### **4. Documentation Updates** ✅
 
-#### **ASSESSMENT-01-UPLOAD.md**
+#### **assessment-01-upload.md**
 - ✅ Changed status: "❌ NO" → "✅ YES (after testing)"
 - ✅ Changed risk: "🔴 HIGH" → "✅ RESOLVED"
 - ✅ Added: "Implementation Status: ✅ COMPLETED on Nov 13, 2025"
@@ -190,7 +192,7 @@
 3. ✅ Verify error messages are clear
 
 ### **Next Assessment**
-1. → Move to ASSESSMENT-02-AI-EXTRACTION.md (AI Cost Controls - CRITICAL!)
+1. → Move to assessment-02-ai-extraction.md (AI Cost Controls - CRITICAL!)
 2. Focus on: Budget tracking, rate limiting per user
 
 ---
@@ -198,7 +200,7 @@
 ## 📝 Documentation Quality
 
 **Created Documentation**:
-- ✅ ASSESSMENT-01-UPLOAD.md (updated with completion status)
+- ✅ assessment-01-upload.md (updated with completion status)
 - ✅ IMPLEMENTATION-01-UPLOAD-COMPLETE.md (427 lines, comprehensive)
 - ✅ TESTING-GUIDE-UPLOAD.md (detailed test cases)
 - ✅ production-readiness-assessment.md (updated progress)
@@ -227,14 +229,14 @@
 
 **Status**: ✅ **ASSESSMENT-01 COMPLETE AND VERIFIED**
 
-**Confidence Level**: 🟢 **HIGH** - Ready for testing phase
+**Confidence Level**: Historical high-confidence source review only; not current testing approval or launch certification. Current approval follows the release boundary above.
 
 ---
 
 ## 📊 Tracking Updates Summary
 
 **Files Updated for Tracking**:
-1. ✅ ASSESSMENT-01-UPLOAD.md - Status header + implementation summary
+1. ✅ assessment-01-upload.md - Status header + implementation summary
 2. ✅ production-readiness-assessment.md - Executive summary + tables + checklist
 3. ✅ README.md - Status table + latest update note
 4. ✅ Created memory for future automatic tracking

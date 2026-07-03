@@ -73,6 +73,13 @@ import {
 } from "react-icons/lu";
 import { SOLID_COLORS_LIST } from "@constant/craftBuilder";
 import {
+    copyRuntimeTextToClipboard,
+    getBoundedRuntimeStringContext,
+    hasRuntimeClipboardWrite,
+    hasRuntimeCopyFallback,
+    logRuntimeFailure,
+} from "@lib/runtime/runtimeDiagnostics";
+import {
     buildCreativeEditorArrowElement,
     buildCreativeEditorEggElement,
     buildCreativeEditorEllipseElement,
@@ -1540,6 +1547,31 @@ export default function CreativeEditor({
         `creative-editor-draft:${documentValue.productContext.productId}:${documentValue.productContext.workspaceId || "workspace"}:${sourceLabel}:${initialEditorDocument.id}`
     ), [documentValue.productContext.productId, documentValue.productContext.workspaceId, initialEditorDocument.id, sourceLabel]);
 
+    const showCreativeEditorFailure = (
+        failureCode: string,
+        error: unknown,
+        noticeMessage: string,
+        metadata: Record<string, unknown> = {},
+    ) => {
+        const context: Record<string, boolean | number | string | null | undefined> = {
+            ...getBoundedRuntimeStringContext("productLabel", productLabel),
+            ...getBoundedRuntimeStringContext("sourceLabel", sourceLabel),
+            ...getBoundedRuntimeStringContext("documentId", documentRef.current.id),
+            ...getBoundedRuntimeStringContext("productId", documentRef.current.productContext.productId),
+        };
+
+        Object.entries(metadata).forEach(([key, value]) => {
+            if (typeof value === "boolean" || typeof value === "number") {
+                context[key] = value;
+                return;
+            }
+            Object.assign(context, getBoundedRuntimeStringContext(key, value));
+        });
+
+        logRuntimeFailure(failureCode, error, context);
+        setNotice(noticeMessage);
+    };
+
     const setRightPanelMode = (mode: RightPanelMode) => {
         rightPanelModeRef.current = mode;
         setRightPanelModeState((current) => current === mode ? current : mode);
@@ -2092,7 +2124,7 @@ export default function CreativeEditor({
             scheduleFloatingSelectionToolbarRefresh();
             refreshWorkspaceViewportMetrics();
         } catch (error) {
-            setNotice(error instanceof Error ? error.message : "Canvas could not load.");
+            showCreativeEditorFailure("creative_editor_canvas_load_failed", error, "Canvas could not load.");
         } finally {
             isLoadingRef.current = false;
         }
@@ -2482,7 +2514,7 @@ export default function CreativeEditor({
                 }
             });
         }).catch((error) => {
-            setNotice(error instanceof Error ? error.message : "Fabric could not load.");
+            showCreativeEditorFailure("creative_editor_fabric_load_failed", error, "Fabric could not load.");
         });
         return () => {
             cancelled = true;
@@ -3208,11 +3240,15 @@ export default function CreativeEditor({
 
     const copyAiSuggestion = async (suggestionValue: CreativeEditorAiToolSuggestion) => {
         try {
-            if (!navigator.clipboard?.writeText) throw new Error("Clipboard is unavailable.");
-            await navigator.clipboard.writeText(suggestionValue.text);
+            await copyRuntimeTextToClipboard(suggestionValue.text);
             setNotice("Text copied.");
         } catch (error) {
-            setNotice(error instanceof Error ? error.message : "Copy failed.");
+            showCreativeEditorFailure("creative_editor_ai_suggestion_copy_failed", error, "Copy failed.", {
+                hasClipboardWrite: hasRuntimeClipboardWrite(),
+                hasCopyFallback: hasRuntimeCopyFallback(),
+                suggestionId: suggestionValue.id,
+                suggestionTextLength: suggestionValue.text.length,
+            });
         }
     };
 
@@ -3248,20 +3284,22 @@ export default function CreativeEditor({
             setAiToolResult({ action, result: safeResult });
             setNotice(safeResult.notice || `${action.label} complete.`);
         } catch (error) {
+            showCreativeEditorFailure("creative_editor_ai_tool_failed", error, "Tool failed.", {
+                actionId: action.id,
+            });
             setAiToolResult({
                 action,
                 result: {
                     findings: [
                         {
                             id: "ai-tool-error",
-                            text: error instanceof Error ? error.message : "Tool failed.",
+                            text: "Tool failed.",
                             tone: "warning",
                         },
                     ],
                     notice: "Tool failed.",
                 },
             });
-            setNotice(error instanceof Error ? error.message : "Tool failed.");
         } finally {
             setAiToolBusyId("");
         }
@@ -3301,7 +3339,10 @@ export default function CreativeEditor({
             setDesignCuePatchSet(patchSet);
             setNotice(patchSet.summary || "Design Cue review is ready.");
         } catch (error) {
-            setNotice(error instanceof Error ? error.message : "Design Cue failed.");
+            showCreativeEditorFailure("creative_editor_design_cue_failed", error, "Design Cue failed.", {
+                commandId: request.commandId,
+                source: request.source,
+            });
         } finally {
             setDesignCueBusy(false);
         }
@@ -3363,7 +3404,7 @@ export default function CreativeEditor({
             setDesignCuePatchSet(null);
             setNotice(result.notice || "Design Cue change applied.");
         } catch (error) {
-            setNotice(error instanceof Error ? error.message : "Design Cue apply failed.");
+            showCreativeEditorFailure("creative_editor_design_cue_apply_failed", error, "Design Cue apply failed.");
         } finally {
             setDesignCueBusy(false);
         }
@@ -4200,9 +4241,9 @@ export default function CreativeEditor({
                 await importFabricJson(payload);
                 return;
             }
-            throw new Error("This JSON file is not an editor design.");
+            setNotice("This JSON file is not an editor design.");
         } catch (error) {
-            setNotice(error instanceof Error ? error.message : "Design import failed.");
+            showCreativeEditorFailure("creative_editor_design_import_failed", error, "Design import failed.");
         }
     };
 
@@ -4210,7 +4251,8 @@ export default function CreativeEditor({
         setNotice("");
         try {
             if (!RASTER_IMAGE_MIME_TYPES.has(file.type)) {
-                throw new Error("Use a PNG, JPG, WebP, or GIF image file.");
+                setNotice("Use a PNG, JPG, WebP, or GIF image file.");
+                return;
             }
             const dataUrl = await readFileAsDataUrl(file);
             addElement(buildCreativeEditorImageElement({
@@ -4220,7 +4262,10 @@ export default function CreativeEditor({
                 y: Math.round(documentRef.current.canvas.height * 0.22),
             }));
         } catch (error) {
-            setNotice(error instanceof Error ? error.message : "Image import failed.");
+            showCreativeEditorFailure("creative_editor_image_import_failed", error, "Image import failed.", {
+                fileName: file.name,
+                fileType: file.type,
+            });
         }
     };
 
@@ -4229,7 +4274,8 @@ export default function CreativeEditor({
         setNotice("");
         try {
             if (!RASTER_IMAGE_MIME_TYPES.has(file.type)) {
-                throw new Error("Use a PNG, JPG, WebP, or GIF image file.");
+                setNotice("Use a PNG, JPG, WebP, or GIF image file.");
+                return;
             }
             const dataUrl = await readFileAsDataUrl(file);
             updateSelected({
@@ -4239,7 +4285,10 @@ export default function CreativeEditor({
             } as Partial<CreativeEditorElement>);
             setNotice("Image replaced.");
         } catch (error) {
-            setNotice(error instanceof Error ? error.message : "Image replace failed.");
+            showCreativeEditorFailure("creative_editor_image_replace_failed", error, "Image replace failed.", {
+                fileName: file.name,
+                fileType: file.type,
+            });
         }
     };
 
@@ -4517,25 +4566,30 @@ export default function CreativeEditor({
         try {
             const dataUrl = buildCurrentPngDataUrl();
             if (!navigator.clipboard || typeof ClipboardItem === "undefined") {
-                throw new Error("Image clipboard is not available in this browser.");
+                setNotice("Image clipboard is not available in this browser.");
+                return;
             }
             const blob = await dataUrlToBlob(dataUrl);
             await navigator.clipboard.write([new ClipboardItem({ [blob.type || "image/png"]: blob })]);
             setNotice("PNG copied to clipboard.");
         } catch (error) {
-            setNotice(error instanceof Error ? error.message : "Clipboard copy failed.");
+            showCreativeEditorFailure("creative_editor_png_clipboard_copy_failed", error, "Clipboard copy failed.");
         }
     };
 
     const copyBase64ToClipboard = async () => {
         setNotice("");
+        let dataUrl = "";
         try {
-            const dataUrl = buildCurrentPngDataUrl();
-            if (!navigator.clipboard?.writeText) throw new Error("Text clipboard is not available in this browser.");
-            await navigator.clipboard.writeText(dataUrl);
+            dataUrl = buildCurrentPngDataUrl();
+            await copyRuntimeTextToClipboard(dataUrl);
             setNotice("Base64 PNG copied.");
         } catch (error) {
-            setNotice(error instanceof Error ? error.message : "Base64 copy failed.");
+            showCreativeEditorFailure("creative_editor_base64_clipboard_copy_failed", error, "Base64 copy failed.", {
+                base64TextLength: dataUrl.length,
+                hasClipboardWrite: hasRuntimeClipboardWrite(),
+                hasCopyFallback: hasRuntimeCopyFallback(),
+            });
         }
     };
 
@@ -4738,7 +4792,7 @@ export default function CreativeEditor({
             }));
             setNotice("Export bundle downloaded.");
         } catch (error) {
-            setNotice(error instanceof Error ? error.message : "Export bundle failed.");
+            showCreativeEditorFailure("creative_editor_export_bundle_failed", error, "Export bundle failed.");
         }
     };
 
@@ -4761,7 +4815,9 @@ export default function CreativeEditor({
             setNotice("Asset downloaded.");
             return result;
         } catch (error) {
-            setNotice(error instanceof Error ? error.message : "Export failed.");
+            showCreativeEditorFailure("creative_editor_export_failed", error, "Export failed.", {
+                exportType: type,
+            });
             return null;
         }
     };
@@ -4786,7 +4842,7 @@ export default function CreativeEditor({
             const result = await onTemplateSave({ document: latestDocument, previewDataUrl });
             setNotice(result && "notice" in result ? result.notice || "Template saved." : "Template saved.");
         } catch (error) {
-            setNotice(error instanceof Error ? error.message : "Template save failed.");
+            showCreativeEditorFailure("creative_editor_template_save_failed", error, "Template save failed.");
         }
     };
 

@@ -35,7 +35,7 @@ interface ErrorRecoveryAlertProps {
  * - Dismiss button to clear failures
  * - Collapsible details panel
  * 
- * @see ASSESSMENT-01-UPLOAD.md Task 13: Error Recovery UI
+ * @see assessment-01-upload.md Task 13: Error Recovery UI
  */
 export default function ErrorRecoveryAlert({
     failedFiles,

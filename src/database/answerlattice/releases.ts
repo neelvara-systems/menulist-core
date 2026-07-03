@@ -20,9 +20,51 @@ import { answerlatticeRequestBodyComposer } from '@lib/answerlattice/documentCom
 import { apiCallComposer } from "@lib/apiHelper/apiCallComposer";
 import { markAnswerlatticeCompiledContextSourceChanged } from '@lib/answerlattice/compiledSourceVersionsClient';
 import { answerlatticeFirebaseClient } from "@lib/firebase/answerlatticeFirebaseClient";
+import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { AnswerlatticeRelease } from "@type/answerlattice";
 
 const COLLECTION = DB_COLLECTIONS.ANSWERLATTICE_RELEASES;
+const ANSWERLATTICE_RELEASE_DRIFT_EVALUATION_FAILED = 'ANSWERLATTICE_RELEASE_DRIFT_EVALUATION_FAILED';
+
+type ReleaseActivationErrorLike = Error & {
+    code?: unknown;
+    status?: unknown;
+    statusCode?: unknown;
+};
+
+const getReleaseActivationSourceErrorName = (error: unknown): string | undefined => {
+    if (error === undefined) return undefined;
+    if (error instanceof Error) return error.name || 'Error';
+    return typeof error;
+};
+
+const getReleaseActivationSourceErrorCode = (error: unknown): string | undefined => {
+    if (!error || typeof error !== 'object' || !('code' in error)) return undefined;
+    const code = (error as ReleaseActivationErrorLike).code;
+    if (code === undefined || code === null) return undefined;
+    return String(code).slice(0, 64);
+};
+
+const getReleaseActivationSourceStatusCode = (error: unknown): number | undefined => {
+    if (!error || typeof error !== 'object') return undefined;
+    const statusValue = 'status' in error
+        ? (error as ReleaseActivationErrorLike).status
+        : (error as ReleaseActivationErrorLike).statusCode;
+    const status = Number(statusValue);
+    return Number.isFinite(status) ? status : undefined;
+};
+
+const getReleaseActivationAuditState = (error: unknown) => {
+    const sourceErrorCode = getReleaseActivationSourceErrorCode(error);
+    const sourceStatusCode = getReleaseActivationSourceStatusCode(error);
+
+    return {
+        failureCode: ANSWERLATTICE_RELEASE_DRIFT_EVALUATION_FAILED,
+        sourceErrorName: getReleaseActivationSourceErrorName(error),
+        ...(sourceErrorCode ? { sourceErrorCode } : {}),
+        ...(sourceStatusCode !== undefined ? { sourceStatusCode } : {}),
+    };
+};
 
 const getCollectionRef = () => collection(answerlatticeFirebaseClient, COLLECTION);
 const getDocRef = (docId: string) => doc(answerlatticeFirebaseClient, COLLECTION, docId);
@@ -161,11 +203,17 @@ export const activateRelease = async (releaseId: string) => {
                         entityType: 'release',
                         entityId: releaseId,
                         previousState: null,
-                        newState: { error: error instanceof Error ? error.message : String(error) },
+                        newState: getReleaseActivationAuditState(error),
                         performedBy: 'system:release_activation',
                         timestamp: Timestamp.now(),
                     });
-                } catch { /* audit log failure must not cascade */ }
+                } catch (auditLogError) {
+                    logRuntimeFailure('answerlattice_release_drift_evaluation_audit_log_failed', auditLogError, {
+                        ...getBoundedRuntimeStringContext('releaseId', releaseId),
+                        ...getBoundedRuntimeStringContext('tenantId', release.tId),
+                        ...getBoundedRuntimeStringContext('storeId', release.sId),
+                    });
+                }
             }
 
             // 4. Activate

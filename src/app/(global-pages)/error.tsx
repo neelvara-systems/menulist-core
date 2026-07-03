@@ -1,23 +1,25 @@
 'use client' // Error components must be Client Components
 import ErrorPageThemeWrapper from "@atoms/ErrorPageThemeWrapper";
 import ErrorReportButton from "@/components/shared/debug/ErrorReportButton";
-import { logger } from "@lib/monitoring/logger";
+import { getBoundedRuntimeStringContext, logRuntimeFailure } from "@lib/runtime/runtimeDiagnostics";
 import { clearBrowserCache } from "@util/utils";
 import { Button, Flex, Result, Tooltip, Typography } from "antd";
 import { useEffect } from 'react';
 import { LuMessageCircle, LuRefreshCcw, LuRotateCw } from "react-icons/lu";
 const { Text } = Typography
 
+const GLOBAL_PAGES_ERROR_BOUNDARY_RENDERED = 'global_pages_error_boundary_rendered';
+
 export default function Error({ error, reset }: {
     error: Error & { digest?: string }, reset: () => void
 }) {
 
     useEffect(() => {
-        // Log the error to Sentry
-        logger.error('Global Pages Error Boundary', error, {
-            userAgent: window?.navigator?.userAgent,
-            location: window?.location?.href,
-            digest: error.digest,
+        logRuntimeFailure(GLOBAL_PAGES_ERROR_BOUNDARY_RENDERED, error, {
+            hasDigest: Boolean(error?.digest),
+            ...getBoundedRuntimeStringContext('digest', error?.digest),
+            ...getBoundedRuntimeStringContext('location', window.location.href),
+            ...getBoundedRuntimeStringContext('userAgent', window.navigator.userAgent),
         });
     }, [error])
 

@@ -1,4 +1,4 @@
-import { LuActivity, LuBookOpen, LuBuilding2, LuCalendarCheck2, LuClock3, LuCreditCard, LuDollarSign, LuFolderHeart, LuHeartHandshake, LuHotel, LuLayoutDashboard, LuLayoutTemplate, LuMapPin, LuMessageSquare, LuPrinter, LuQrCode, LuReceipt, LuShare2, LuShieldCheck, LuShieldOff, LuSparkles, LuTicket, LuUsers } from 'react-icons/lu';
+import { LuActivity, LuBarChart3, LuBookOpen, LuBuilding2, LuCalendarCheck2, LuClock3, LuCreditCard, LuDollarSign, LuFolderHeart, LuHeartHandshake, LuHotel, LuLayoutDashboard, LuLayoutTemplate, LuMapPin, LuMessageSquare, LuPrinter, LuQrCode, LuReceipt, LuShare2, LuShieldCheck, LuShieldOff, LuSparkles, LuTicket, LuUsers } from 'react-icons/lu';
 import { MdOutlineManageHistory } from 'react-icons/md';
 import { TbSettingsHeart } from 'react-icons/tb';
 import { ECOMSAI_PLATFORM_USER_ROLE, RESELLER_USER_ROLE } from './user';
@@ -50,6 +50,7 @@ export const NAVIGARIONS_ROUTINGS = {
     FORGOT_PASSWORD: `/forgot-password`,
     PLATFORM_ENTITY_BLOCKS: `/platform/entity-blocks`,
     PLATFORM_ASSET_TEMPLATES: `/platform/asset-templates`,
+    PLATFORM_FOUNDER_MONITOR: `/platform/founder-monitor`,
     PLATFORM_OWNER_BUSINESS_ASSISTANT: `/platform/owner-business-assistant`,
     PLATFORM_COST_POSTURE: `/platform/cost-posture`,
     PLATFORM_PRICING_PLANS: `/platform/pricing-plans`,
@@ -105,9 +106,13 @@ export const SIDEBAR_DASHBOARD_LAYOUT: NavItemType[] = [
     { label: 'Billing', route: NAVIGARIONS_ROUTINGS.BILLING, icon: LuCreditCard },
     { label: 'Help', route: NAVIGARIONS_ROUTINGS.HELP, icon: LuHeartHandshake },
     {
-        label: 'Platform', route: NAVIGARIONS_ROUTINGS.PLATFORM, icon: TbSettingsHeart,
+        label: 'Platform',
+        route: NAVIGARIONS_ROUTINGS.PLATFORM,
+        icon: TbSettingsHeart,
+        allowedPlatformRoles: [ECOMSAI_PLATFORM_USER_ROLE],
         subNav: [
             { label: 'Home', route: NAVIGARIONS_ROUTINGS.PLATFORM, icon: MdOutlineManageHistory },
+            { label: 'Founder Monitor', route: NAVIGARIONS_ROUTINGS.PLATFORM_FOUNDER_MONITOR, icon: LuBarChart3, allowedPlatformRoles: [ECOMSAI_PLATFORM_USER_ROLE] },
             { label: 'Ops Control Room', route: NAVIGARIONS_ROUTINGS.OPS_CONTROL_ROOM, icon: LuActivity },
             { label: 'Scheduler Monitor', route: NAVIGARIONS_ROUTINGS.OPS_SCHEDULER_MONITOR, icon: LuClock3 },
             { label: 'Extraction Monitor', route: NAVIGARIONS_ROUTINGS.OPS_EXTRACTION_MONITOR, icon: LuSparkles },

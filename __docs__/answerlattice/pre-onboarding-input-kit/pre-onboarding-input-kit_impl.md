@@ -26,6 +26,8 @@ No new database collections, background jobs, provider calls, or ingestion APIs 
 | `src/app/sites/answerlattice/resources/page.tsx` | Resource hub link. |
 | `src/lib/answerlattice/installContract/contract.ts` | LLM context link to the pre-onboarding prompt. |
 
+The prompt modal fetches `/pre-onboarding.md` as a same-origin Markdown resource with no-store cache and manual redirect handling, caps the response at 128 KB with `readResponseUint8ArrayWithLimit()`, accepts only `text/markdown` or `text/plain`, and shows fixed load-failure copy. The Copy Prompt action waits for either Clipboard API success or confirmed textarea fallback success before showing copied state; rejected Clipboard API writes fall through to the fallback, and unavailable or failed fallback support keeps the fixed error state instead of reporting success. The direct Markdown route remains available for agents and downloads if the modal cannot load the preview.
+
 ## Folder Output Contract For Clients
 
 The master prompt instructs agents to create:
@@ -110,7 +112,7 @@ If the client needs account-specific onboarding, that happens inside authenticat
 The public page should present pre-onboarding as a preparation aid, not a replacement for Answerlattice. The page should:
 
 - remain the primary human route for all pre-onboarding content;
-- open the master prompt in a modal with copy and `.md` download actions;
+- open the master prompt in a modal with acknowledged copy and `.md` download actions;
 - keep the raw markdown route available for AI agents and direct access;
 - explain expected output;
 - explain privacy review;

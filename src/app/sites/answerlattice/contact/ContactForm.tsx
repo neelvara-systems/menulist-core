@@ -1,6 +1,8 @@
 'use client';
 
 import TurnstileWidget, { isTurnstileClientEnabled, type TurnstileStatus } from '@/components/security/TurnstileWidget';
+import { logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
+import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';
 import { FormEvent, useCallback, useState } from 'react';
 import { LuCheckCircle, LuLoader, LuSend } from 'react-icons/lu';
 
@@ -41,6 +43,35 @@ const fieldClass =
     'min-h-11 w-full rounded-xl border border-white/[0.08] bg-[#0f1023] px-4 py-3 text-sm text-white outline-none transition placeholder:text-[#6b6b8a] focus:border-teal-300/60 focus:ring-2 focus:ring-teal-300/15';
 
 const labelClass = 'mb-2 block text-sm font-semibold text-[#f4f4ff]';
+const ANSWERLATTICE_CONTACT_FAILED_MESSAGE = 'Could not send right now. Please email hello@answerlattice.com.';
+const ANSWERLATTICE_SECURITY_CHECK_REQUIRED_MESSAGE = 'Complete the security check and try again.';
+const ANSWERLATTICE_CONTACT_RESPONSE_JSON_MAX_BYTES = 8 * 1024;
+
+type AnswerlatticeContactResponse = {
+    accepted?: boolean;
+};
+
+type AnswerlatticeContactResponseLogContext = Record<string, boolean | number | string | null | undefined>;
+
+const readAnswerlatticeContactResponseJson = async (
+    response: Response,
+    context: AnswerlatticeContactResponseLogContext,
+): Promise<AnswerlatticeContactResponse | null> => {
+    try {
+        return await readJsonResponseWithLimit<AnswerlatticeContactResponse>(
+            response,
+            ANSWERLATTICE_CONTACT_RESPONSE_JSON_MAX_BYTES,
+        );
+    } catch (error) {
+        logRuntimeFailure('answerlattice_public_contact_response_parse_failed', error, {
+            ...context,
+            responseOk: response.ok,
+            responseStatus: response.status,
+            maxBytes: ANSWERLATTICE_CONTACT_RESPONSE_JSON_MAX_BYTES,
+        });
+        return null;
+    }
+};
 
 const getSourcePath = () => {
     if (typeof window === 'undefined') return '/contact';
@@ -72,9 +103,20 @@ export default function AnswerlatticeContactForm({ basePath = '' }: { basePath?:
     const onSubmit = async (event: FormEvent<HTMLFormElement>) => {
         event.preventDefault();
         setError(null);
+        const sourcePath = getSourcePath();
+        const responseLogContext = {
+            captchaRequired,
+            captchaStatus,
+            hasCaptchaToken: Boolean(captchaToken),
+            hasPhoneNumber: Boolean(form.phoneNumber),
+            hasProductUrl: Boolean(form.productUrl),
+            messageLength: form.message.length,
+            helpTopic: form.helpTopic,
+            sourcePathLength: sourcePath.length,
+        };
 
         if (captchaRequired && !captchaToken) {
-            setError('Complete the security check and try again.');
+            setError(ANSWERLATTICE_SECURITY_CHECK_REQUIRED_MESSAGE);
             return;
         }
 
@@ -83,26 +125,35 @@ export default function AnswerlatticeContactForm({ basePath = '' }: { basePath?:
         try {
             const response = await fetch('/api/answerlattice/public/contact', {
                 method: 'POST',
+                cache: 'no-store',
+                credentials: 'same-origin',
+                redirect: 'manual',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     ...form,
-                    sourcePath: getSourcePath(),
+                    sourcePath,
                     phoneNumber: form.phoneNumber || null,
                     productUrl: form.productUrl || null,
                     captchaToken: captchaToken || undefined,
                 }),
             });
-            const result = await response.json().catch(() => null);
+            const result = await readAnswerlatticeContactResponseJson(response, responseLogContext);
             resetCaptcha();
 
             if (!response.ok || !result?.accepted) {
-                throw new Error(result?.error || 'Could not send right now. Please email hello@answerlattice.com.');
+                if (response.ok) {
+                    logRuntimeFailure('answerlattice_public_contact_response_invalid', new Error('answerlattice_public_contact_response_invalid'), {
+                        ...responseLogContext,
+                        responseStatus: response.status,
+                    });
+                }
+                throw new Error(ANSWERLATTICE_CONTACT_FAILED_MESSAGE);
             }
 
             setSubmitted(true);
             setForm(initialForm);
-        } catch (submitError) {
-            setError(submitError instanceof Error ? submitError.message : 'Could not send right now. Please email hello@answerlattice.com.');
+        } catch {
+            setError(ANSWERLATTICE_CONTACT_FAILED_MESSAGE);
             resetCaptcha();
         } finally {
             setSubmitting(false);

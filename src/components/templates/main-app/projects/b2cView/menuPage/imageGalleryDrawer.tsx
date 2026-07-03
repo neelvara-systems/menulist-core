@@ -38,7 +38,6 @@ export default function ImageGalleryDrawer({ open, onClose, onImageSelect, uploa
         } else {
             getBusinessAssetsByType("images", '').then((res: AssetsCategoryType[]) => {
                 if (Boolean(res)) {
-                    console.log("images", res)
                     setAssetsList({
                         ...assetsList,
                         images: res

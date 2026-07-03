@@ -1,8 +1,27 @@
 # Owner Dashboard - Single Source of Truth
 
-> **Version:** 2.1  
-> **Last Updated:** January 2, 2026  
-> **Status:** Production Ready (with localStorage caching)
+> **Version:** 2.1
+> **Last Updated:** July 2, 2026
+> **Status:** Implemented reference with localStorage caching; not current launch certification
+
+---
+
+> **Launch boundary:** This owner-dashboard reference documents implementation and data-flow behavior. It is not production-launch approval. Current release readiness requires the active [production-readiness audit](../audits/menulist-production-readiness-audit.md), [production-readiness checklist](../production-readiness/README.md), [External Certification Runbook](../production-readiness/external-certification-runbook.md) evidence, `npm run verify:owner-dashboard-today-boundary`, desktop/mobile browser QA, target deploy evidence, and production-host smoke.
+
+---
+
+## Current Runtime Boundary
+
+The current source-backed owner dashboard is a Today-first live dashboard, not an overview-first analytics landing page.
+
+- Desktop `/dashboard` renders `OwnerDashboard`; desktop `/today` renders `TodayScreen`.
+- Mobile `/dashboard` and `/today` enter the `MobileShell` Today tab.
+- Desktop and mobile dashboard callers pass `loadHistorical: showHistorical` to `useOwnerDashboard()` and `useOBPDashboard()`.
+- `showHistorical` starts `false` and changes only when the owner selects a non-today dashboard tab.
+- Past Activity remains disabled unless `ENABLE_PAST_ACTIVITY_HISTORY` is enabled. `/today/history` redirects to `/today` on desktop and falls back to Today in `MobileShell` when disabled.
+- `npm run verify:owner-dashboard-today-boundary` source-gates the route, hook, mobile, campaign acknowledgement, Past Activity, and docs boundary.
+
+This section supersedes older historical examples in this document that describe an overview-first initial load.
 
 ---
 
@@ -167,7 +186,7 @@ A **confirmation dashboard** - not an analytics dashboard. The owner opens it, s
 
 ## 5. Data Flow
 
-### Initial Load (Overview Mode)
+### Initial Load (Today Mode)
 
 ```
 User opens Owner Dashboard
@@ -175,32 +194,31 @@ User opens Owner Dashboard
          ▼
 ┌─────────────────────────────┐
 │ useOwnerDashboard hook      │
-│ viewMode = 'overview'       │
+│ viewMode = 'today'          │
 └────────────┬────────────────┘
              │
     ┌────────┴────────┐
     ▼                 ▼
 ┌────────────┐   ┌────────────┐
-│ Overview   │   │ Overall    │
+│ Today live │   │ OBP Today  │
 │ SWR Fetch  │   │ SWR Fetch  │
 └─────┬──────┘   └─────┬──────┘
       │                │
       ▼                ▼
 ┌─────────────────────────────┐
-│ getOwnerDashboardOverview() │──▶ Parallel fetch:
-│                             │    - getOwnerDashboardWTD()
-│                             │    - getOwnerDashboardMTD()
-│                             │    - getOwnerDashboardDaily()
-│                             │    - getOwnerDashboardHistoricalWeeks()
-│                             │    - getOwnerDashboardWeekly() (for AI summary)
+│ getOwnerDashboardToday()    │──▶ Partial current business-day data:
+│                             │    - menu scans
+│                             │    - item taps
+│                             │    - searches
+│                             │    - customer actions
 └─────────────────────────────┘
              │
              ▼
 ┌─────────────────────────────┐
-│ OverviewView Component      │
-│ - Hero status card          │
-│ - Quick stats               │
-│ - Expandable sections       │
+│ TodaySoFarCard              │
+│ - Live status card          │
+│ - OBP today card            │
+│ - Menu details              │
 └─────────────────────────────┘
 ```
 
@@ -856,10 +874,10 @@ const SWR_CONFIG = {
 ### SWR Keys
 
 ```typescript
-// Overview data (fetched on initial load)
-["ownerDashboard", "overview", tId, sId, projectId][
-  // Overall data (fetched on initial load)
-  ("ownerDashboard", "overall", tId, sId, projectId)
+// Today data (fetched on initial load)
+["ownerDashboard", "today", tId, sId, projectId][
+  // Settled summary (only when loadHistorical is true)
+  ("ownerDashboard", "settled", tId, sId, projectId)
 ][
   // Daily data (lazy - only when viewMode === 'daily')
   ("ownerDashboard", "daily", tId, sId, projectId)
@@ -875,9 +893,9 @@ const SWR_CONFIG = {
 ### Lazy Loading Pattern
 
 ```typescript
-// Only fetch when viewMode matches
+// Only fetch settled period data when loadHistorical is true and viewMode matches
 const { data: weeklyData } = useSWR(
-  canFetch && viewMode === "weekly"
+  canFetch && loadHistorical && viewMode === "weekly"
     ? ["ownerDashboard", "weekly", tId, sId, projectId]
     : null, // null key = no fetch
   () => getOwnerDashboardWeekly(tId!, sId!, projectId!),

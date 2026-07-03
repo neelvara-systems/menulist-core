@@ -13,9 +13,9 @@ import { DB_COLLECTIONS } from "@constant/database";
 import { admin } from "@lib/firebase/firebaseAdmin";
 import { parseSummaryProjects } from "@lib/firestore/parseSummaryProjects";
 import { buildMenuSnapshot } from "@lib/posSync/payloadFormatter";
-import { apiError, generateETag, hashApiKey, logApiRequest, PULL_API_SCHEMA_VERSION, validatePublicApiKey } from "@lib/publicApi/auth";
+import { apiError, buildPullApiResponseHeaders, generateETag, hashApiKey, isMenuListPublicApiTargetAllowed, logApiRequest, PULL_API_SCHEMA_VERSION, validatePublicApiKey } from "@lib/publicApi/auth";
 import { checkRateLimit } from "@lib/rateLimit";
-import { secureError } from "@lib/security/secureLogger";
+import { getBoundedSecurityStringContext, logSecurityFailure } from "@lib/security/securityDiagnostics";
 import { NextRequest, NextResponse } from "next/server";
 
 async function getDefaultPublicMenuProject(
@@ -78,6 +78,12 @@ export async function GET(request: NextRequest) {
 
     // Rate limit per API key
     const apiKeyRateLimitId = hashApiKey(apiKey).slice(0, 16);
+    let failureContext: Record<string, boolean | number | string | null | undefined> = {
+        endpoint: '/api/public/v1/menu',
+        ...getBoundedSecurityStringContext('apiKey', apiKey),
+        ...getBoundedSecurityStringContext('apiKeyRateLimitId', apiKeyRateLimitId),
+    };
+
     const rlResult = await checkRateLimit({ key: `public-api:${apiKeyRateLimitId}`, limit: 60, window: 60 });
     if (!rlResult.allowed) {
         const retryAfter = Math.ceil((rlResult.resetAt - Date.now()) / 1000);
@@ -87,13 +93,21 @@ export async function GET(request: NextRequest) {
     }
 
     try {
-        const result = await validatePublicApiKey(apiKey, { cacheTtlMs: 30_000 });
+        const result = await validatePublicApiKey(apiKey);
         if (!result) {
             return apiError('INVALID_API_KEY', 'Invalid API key', 401);
         }
 
         const { storeData, storeId } = result;
-        const tenantId = storeData.tenantId;
+        if (!(await isMenuListPublicApiTargetAllowed(storeData))) {
+            return apiError('INVALID_API_KEY', 'Invalid API key', 401);
+        }
+        const tenantId = storeData.tenantId ?? storeData.tId;
+        failureContext = {
+            ...failureContext,
+            ...getBoundedSecurityStringContext('tenantId', tenantId),
+            ...getBoundedSecurityStringContext('storeId', storeId),
+        };
 
         // Abuse logging
         logApiRequest(request, storeId, 'GET /menu');
@@ -106,6 +120,10 @@ export async function GET(request: NextRequest) {
         if (!projectData) {
             return apiError('NO_MENU', 'No published menu found', 404);
         }
+        failureContext = {
+            ...failureContext,
+            ...getBoundedSecurityStringContext('projectId', projectData.projectId),
+        };
 
         // Build menu payload using same formatter as POS Webhook Sync
         const menuVersion = Number(projectData.menuVersion || storeData.posSync?.menuVersion || 1);
@@ -129,22 +147,20 @@ export async function GET(request: NextRequest) {
 
         // ETag: conditional request support
         const etag = `"${generateETag(response)}"`;
+        const responseHeaders = buildPullApiResponseHeaders(etag);
         const ifNoneMatch = request.headers.get('if-none-match');
         if (ifNoneMatch === etag) {
             return new NextResponse(null, {
                 status: 304,
-                headers: { 'ETag': etag, 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300' },
+                headers: responseHeaders,
             });
         }
 
         return NextResponse.json(response, {
-            headers: {
-                'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300',
-                'ETag': etag,
-            },
+            headers: responseHeaders,
         });
     } catch (error) {
-        secureError('[Public API] Menu endpoint error', error as Error);
+        logSecurityFailure('public_api_menu_route_failed', error, failureContext);
         return apiError('INTERNAL_ERROR', 'Internal error', 500);
     }
 }

@@ -2,6 +2,7 @@ import { FieldValue, Timestamp } from 'firebase-admin/firestore';
 import * as functions from 'firebase-functions';
 import { HttpsError, onCall } from 'firebase-functions/v2/https';
 import { onSchedule } from 'firebase-functions/v2/scheduler';
+import { getAnalyticsErrorContext, getAnalyticsIdContext } from './analytics/analyticsDiagnostics';
 import { processAuthorityMaturationForAllStores } from './analytics/authorityMaturation';
 import { processGuestFeedbackRetention } from './analytics/guestFeedbackRetention';
 import { processMenuDriftMetricsForAllStores } from './analytics/menuDriftMetrics';
@@ -11,7 +12,6 @@ import { DB_COLLECTIONS, getMenuIntelligenceDocId } from './constants/database';
 import { FUNCTION_FLAGS, FUNCTION_RETENTION_CONFIG } from './constants/features';
 import { ECOMSAI_PLATFORM_USER_ROLE } from './constants/user';
 import { firestoreAdmin } from './firebaseAdmin';
-import { logger as appLogger } from './lib/logger';
 import { flush as flushSentry, initSentry } from './lib/sentry';
 import { PLATFORM_NOTIFICATION_TRIGGER_TYPES } from './sharedData/platformNotificationRegistry';
 import { computeIntelligenceState, fetchCurrentIntelligence, setAuditLogRunContext } from './intelligence/menuIntelligence';
@@ -23,6 +23,42 @@ import { resolveBusinessCategoryOrFallback } from './sharedData/businessTypes';
 import { addDaysToAnalyticsDateKey, getAnalyticsDateRange } from './utils/analyticsDate';
 import { getBusinessAnalyticsDateKey, isAnalyticsSettlementDue, resolveBusinessDayEndTime } from './utils/businessDay';
 import type { OwnerBusinessHealthBuildResult } from './ownerBusinessAssistant/types';
+
+const FEEDBACK_INTELLIGENCE_TASK_FAILED = 'FEEDBACK_INTELLIGENCE_TASK_FAILED';
+const KB_QUALITY_TASK_FAILED = 'KB_QUALITY_TASK_FAILED';
+const WEEKLY_NARRATIVE_TASK_FAILED = 'WEEKLY_NARRATIVE_TASK_FAILED';
+const GUEST_FEEDBACK_RETENTION_TASK_FAILED = 'GUEST_FEEDBACK_RETENTION_TASK_FAILED';
+const SCHEDULER_TASK_FAILED_MESSAGE = 'Scheduler task failed';
+const SCHEDULER_ANALYTICS_SETTLEMENT_FAILED = 'SCHEDULER_ANALYTICS_SETTLEMENT_FAILED';
+const SCHEDULER_OWNER_BUSINESS_HEALTH_FAILED = 'SCHEDULER_OWNER_BUSINESS_HEALTH_FAILED';
+const SCHEDULER_PROJECT_INTELLIGENCE_FAILED = 'SCHEDULER_PROJECT_INTELLIGENCE_FAILED';
+const SCHEDULER_PROJECT_SCORING_FAILED = 'SCHEDULER_PROJECT_SCORING_FAILED';
+const SCHEDULER_STORE_RECOVERY_FAILED = 'SCHEDULER_STORE_RECOVERY_FAILED';
+const SCHEDULER_STORE_SUMMARY_ENRICHMENT_FAILED = 'SCHEDULER_STORE_SUMMARY_ENRICHMENT_FAILED';
+const SCHEDULER_AUTHORITY_MATURATION_FAILED = 'SCHEDULER_AUTHORITY_MATURATION_FAILED';
+const SCHEDULER_MENU_DRIFT_FAILED = 'SCHEDULER_MENU_DRIFT_FAILED';
+const SCHEDULER_SUBSCRIPTION_RECONCILIATION_FAILED = 'SCHEDULER_SUBSCRIPTION_RECONCILIATION_FAILED';
+const SCHEDULER_LIFECYCLE_MESSAGING_FAILED = 'SCHEDULER_LIFECYCLE_MESSAGING_FAILED';
+const SCHEDULER_SPECIAL_MENU_ACTIVATE_FAILED = 'SCHEDULER_SPECIAL_MENU_ACTIVATE_FAILED';
+const SCHEDULER_SPECIAL_MENU_DEACTIVATE_FAILED = 'SCHEDULER_SPECIAL_MENU_DEACTIVATE_FAILED';
+const SCHEDULER_SPECIAL_MENU_STORE_CHECK_FAILED = 'SCHEDULER_SPECIAL_MENU_STORE_CHECK_FAILED';
+const SCHEDULER_SPECIAL_MENU_TASK_FAILED = 'SCHEDULER_SPECIAL_MENU_TASK_FAILED';
+const SCHEDULER_EXTRACTION_LEARNING_FAILED = 'SCHEDULER_EXTRACTION_LEARNING_FAILED';
+const SCHEDULER_STORE_TRUTH_CONFIDENCE_FAILED = 'SCHEDULER_STORE_TRUTH_CONFIDENCE_FAILED';
+const SCHEDULER_STALENESS_CHECK_FAILED = 'SCHEDULER_STALENESS_CHECK_FAILED';
+const SCHEDULER_HEALTH_SIGNALS_FAILED = 'SCHEDULER_HEALTH_SIGNALS_FAILED';
+const SCHEDULER_KB_GENERATION_WATCHDOG_FAILED = 'SCHEDULER_KB_GENERATION_WATCHDOG_FAILED';
+const SCHEDULER_RUN_LOG_PERSIST_FAILED = 'SCHEDULER_RUN_LOG_PERSIST_FAILED';
+const SCHEDULER_NO_STORES_RUN_LOG_PERSIST_FAILED = 'SCHEDULER_NO_STORES_RUN_LOG_PERSIST_FAILED';
+const SCHEDULER_LIFECYCLE_MESSAGE_RETRY_FAILED = 'SCHEDULER_LIFECYCLE_MESSAGE_RETRY_FAILED';
+const SCHEDULER_LIFECYCLE_MESSAGE_DIGEST_FAILED = 'SCHEDULER_LIFECYCLE_MESSAGE_DIGEST_FAILED';
+const SCHEDULER_KB_GENERATION_WATCHDOG_JOB_UPDATE_FAILED = 'SCHEDULER_KB_GENERATION_WATCHDOG_JOB_UPDATE_FAILED';
+const SCHEDULER_DECISION_BLOCKS_FATAL_FAILED = 'SCHEDULER_DECISION_BLOCKS_FATAL_FAILED';
+const SCHEDULER_COMPLETION_ALERT_FAILED = 'SCHEDULER_COMPLETION_ALERT_FAILED';
+const SCHEDULER_MANUAL_STORE_NOT_FOUND = 'SCHEDULER_MANUAL_STORE_NOT_FOUND';
+const SCHEDULER_MANUAL_STORE_TENANT_MISMATCH = 'SCHEDULER_MANUAL_STORE_TENANT_MISMATCH';
+const MANUAL_STORE_NOT_FOUND_MESSAGE = 'Store was not found in storesSummary.';
+const MANUAL_STORE_TENANT_MISMATCH_MESSAGE = 'Store does not match the requested tenant.';
 
 /**
  * UNIFIED NIGHTLY SCHEDULER (Timezone-Aware)
@@ -545,7 +581,14 @@ async function computeForProject(
     );
     if (!prefetchedAnalytics) {
         if (analyticsForScoring.source === 'missing_or_stale') {
-            logger.warn(`[${tId}_${sId}_${projectId}] Missing or stale intelligence snapshot; manual scoring without analytics`);
+            logSchedulerWarn(logger, '[DecisionBlocks] Missing or stale intelligence snapshot; manual scoring without analytics', {
+                tId,
+                sId,
+                projectId,
+                phase: 'project_scoring',
+                operation: 'fetch_analytics_snapshot',
+                source: analyticsForScoring.source,
+            });
         }
     }
 
@@ -629,7 +672,12 @@ async function computeForProject(
     const items = Array.from(itemStatsMap.values()).filter(i => i.itemName);
 
     if (items.length === 0) {
-        logger.info(`[${tId}_${sId}] No items found`);
+        logSchedulerInfo(logger, '[DecisionBlocks] No items found for scoring', {
+            tId,
+            sId,
+            phase: 'project_scoring',
+            operation: 'extract_active_items',
+        });
         return null;
     }
 
@@ -753,8 +801,8 @@ function getSchedulerErrorCode(error: any): string {
     return String(error?.code || error?.details?.code || error?.name || 'unknown_error');
 }
 
-function getSchedulerErrorMessage(error: any): string {
-    return String(error?.message || error?.details?.message || error || 'Unknown scheduler error');
+function getSchedulerErrorMessage(_error: any): string {
+    return SCHEDULER_TASK_FAILED_MESSAGE;
 }
 
 function buildSchedulerFailureDiagnostic(
@@ -767,6 +815,117 @@ function buildSchedulerFailureDiagnostic(
         code: getSchedulerErrorCode(error),
         name: error?.name ? String(error.name) : undefined,
     };
+}
+
+function createSchedulerTaskError(code: string): Error & { code?: string } {
+    const error = new Error(SCHEDULER_TASK_FAILED_MESSAGE) as Error & { code?: string };
+    error.code = code;
+    return error;
+}
+
+function getSchedulerIdLogContext(label: string, value: unknown): Record<string, boolean | number> {
+    const context = getAnalyticsIdContext(value);
+    return {
+        [`${label}Present`]: context.present,
+        [`${label}Length`]: context.length,
+    };
+}
+
+function getSchedulerSourceErrorContext(error: unknown): {
+    sourceErrorName?: string;
+    sourceErrorCode?: string;
+    sourceStatusCode?: number;
+} {
+    const context = getAnalyticsErrorContext(error);
+    return {
+        sourceErrorName: context.name,
+        sourceErrorCode: context.code,
+        sourceStatusCode: context.status,
+    };
+}
+
+function logSchedulerFailure(
+    logger: typeof functions.logger,
+    message: string,
+    failureCode: string,
+    error: unknown,
+    context: {
+        operation?: string;
+        phase?: string;
+        jobId?: unknown;
+        projectId?: unknown;
+        resellerProfileId?: unknown;
+        runLogId?: unknown;
+        sId?: unknown;
+        settlementDate?: string;
+        subscriptionId?: unknown;
+        tId?: unknown;
+    } = {},
+): void {
+    logger.error(message, {
+        failureCode,
+        phase: context.phase,
+        operation: context.operation,
+        settlementDate: context.settlementDate,
+        ...getSchedulerIdLogContext('jobId', context.jobId),
+        ...getSchedulerIdLogContext('tId', context.tId),
+        ...getSchedulerIdLogContext('sId', context.sId),
+        ...getSchedulerIdLogContext('projectId', context.projectId),
+        ...getSchedulerIdLogContext('resellerProfileId', context.resellerProfileId),
+        ...getSchedulerIdLogContext('runLogId', context.runLogId),
+        ...getSchedulerIdLogContext('subscriptionId', context.subscriptionId),
+        ...getSchedulerSourceErrorContext(error),
+    });
+}
+
+function getSchedulerProgressLogContext(context: {
+    metrics?: Record<string, boolean | number | string | null | undefined>;
+    operation?: string;
+    phase?: string;
+    projectId?: unknown;
+    runLogId?: unknown;
+    sId?: unknown;
+    settlementDate?: string;
+    source?: unknown;
+    specialMenuDisplayName?: unknown;
+    storeName?: unknown;
+    subscriptionId?: unknown;
+    tId?: unknown;
+} = {}): Record<string, boolean | number | string | null | undefined> {
+    const metrics = Object.fromEntries(
+        Object.entries(context.metrics || {}).filter(([, value]) => value !== undefined),
+    );
+
+    return {
+        phase: context.phase,
+        operation: context.operation,
+        settlementDate: context.settlementDate,
+        source: typeof context.source === 'string' ? context.source.slice(0, 60) : undefined,
+        ...metrics,
+        ...getSchedulerIdLogContext('tId', context.tId),
+        ...getSchedulerIdLogContext('sId', context.sId),
+        ...getSchedulerIdLogContext('projectId', context.projectId),
+        ...getSchedulerIdLogContext('runLogId', context.runLogId),
+        ...getSchedulerIdLogContext('subscriptionId', context.subscriptionId),
+        ...getSchedulerIdLogContext('storeName', context.storeName),
+        ...getSchedulerIdLogContext('specialMenuDisplayName', context.specialMenuDisplayName),
+    };
+}
+
+function logSchedulerInfo(
+    logger: typeof functions.logger,
+    message: string,
+    context?: Parameters<typeof getSchedulerProgressLogContext>[0],
+): void {
+    logger.info(message, getSchedulerProgressLogContext(context));
+}
+
+function logSchedulerWarn(
+    logger: typeof functions.logger,
+    message: string,
+    context?: Parameters<typeof getSchedulerProgressLogContext>[0],
+): void {
+    logger.warn(message, getSchedulerProgressLogContext(context));
 }
 
 async function runNightlySchedulerForStore(
@@ -793,27 +952,54 @@ async function runNightlySchedulerForStore(
     };
 
     if (storeInfo?.active === false) {
-        logger.info(`Store ${sId}: Inactive, skipping`);
+        logSchedulerInfo(logger, '[DecisionBlocks] Store inactive, skipping', {
+            tId,
+            sId,
+            phase: 'store_scheduler',
+            operation: 'skip_inactive_store',
+        });
         storeRun.skippedCount++;
         return storeRun;
     }
 
     if (!tId) {
-        logger.warn(`Store ${sId} has no tenantId, skipping`);
+        logSchedulerWarn(logger, '[DecisionBlocks] Store missing tenant, skipping', {
+            sId,
+            phase: 'store_scheduler',
+            operation: 'skip_missing_tenant',
+        });
         storeRun.skippedCount++;
         return storeRun;
     }
 
     try {
-        logger.info(`Processing store ${sId} (tenant ${tId})...`);
+        logSchedulerInfo(logger, '[DecisionBlocks] Processing store', {
+            tId,
+            sId,
+            phase: 'store_scheduler',
+            operation: 'process_store',
+        });
 
         const { projectEntries, activeProjectIds, source } = await loadActiveProjectsForScheduler(db, tId, sId);
 
         if (projectEntries.length === 0) {
-            logger.info(`  - Store ${sId}: No active projects found (${source}); analytics settlement still runs`);
+            logSchedulerInfo(logger, '[DecisionBlocks] No active projects found; analytics settlement still runs', {
+                tId,
+                sId,
+                phase: 'store_scheduler',
+                operation: 'load_active_projects',
+                source,
+            });
             storeRun.skippedCount++;
         } else {
-            logger.info(`  Found ${projectEntries.length} active projects for store ${sId} (${source})`);
+            logSchedulerInfo(logger, '[DecisionBlocks] Active projects loaded', {
+                tId,
+                sId,
+                phase: 'store_scheduler',
+                operation: 'load_active_projects',
+                source,
+                metrics: { projectCount: projectEntries.length },
+            });
         }
 
         storeRun.totalProjects += projectEntries.length;
@@ -836,13 +1022,24 @@ async function runNightlySchedulerForStore(
             );
 
             if (settlementDates.length === 0) {
-                logger.info(`  - Store ${sId}: Analytics already settled`);
+                logSchedulerInfo(logger, '[NightlyAnalytics] Analytics already settled', {
+                    tId,
+                    sId,
+                    phase: 'analytics_settlement',
+                    operation: 'get_pending_settlement_dates',
+                });
             }
 
             for (const settlementDate of settlementDates) {
                 const lockRef = await acquireNightlyDateLock(db, tId, sId, settlementDate);
                 if (!lockRef) {
-                    logger.info(`  - Store ${sId}: Settlement ${settlementDate} already locked or completed`);
+                    logSchedulerInfo(logger, '[NightlyAnalytics] Settlement already locked or completed', {
+                        tId,
+                        sId,
+                        settlementDate,
+                        phase: 'analytics_settlement',
+                        operation: 'acquire_settlement_lock',
+                    });
                     continue;
                 }
 
@@ -868,7 +1065,17 @@ async function runNightlySchedulerForStore(
                     if (obpHadData) storeRun.analytics.obpStoresWithData++;
 
                     if (customerAggregation.errors.length > 0) {
-                        logger.error(`  ✗ Store ${sId} analytics (${settlementDate}): ${customerAggregation.errors.length} project aggregation errors`);
+                        logger.error('[NightlyAnalytics] Project aggregation errors detected', {
+                            failureCode: SCHEDULER_ANALYTICS_SETTLEMENT_FAILED,
+                            ...getSchedulerProgressLogContext({
+                                tId,
+                                sId,
+                                settlementDate,
+                                phase: 'analytics_settlement',
+                                operation: 'aggregate_customer_analytics',
+                                metrics: { projectErrorCount: customerAggregation.errors.length },
+                            }),
+                        });
                         throw new Error(`Customer analytics aggregation had ${customerAggregation.errors.length} project errors`);
                     }
 
@@ -893,7 +1100,7 @@ async function runNightlySchedulerForStore(
                     });
                     await completeNightlyDateLock(lockRef, 'completed');
                 } catch (settlementError: any) {
-                    const message = settlementError?.message || String(settlementError);
+                    const message = SCHEDULER_TASK_FAILED_MESSAGE;
                     storeRun.errors.push(buildSchedulerFailureDiagnostic(settlementError, {
                         tId,
                         sId,
@@ -901,11 +1108,12 @@ async function runNightlySchedulerForStore(
                         operation: 'settle_store_date',
                         settlementDate,
                     }));
-                    appLogger.error('[NightlyAnalytics] Store settlement failed', settlementError, {
+                    logSchedulerFailure(logger, '[NightlyAnalytics] Store settlement failed', SCHEDULER_ANALYTICS_SETTLEMENT_FAILED, settlementError, {
                         tId,
                         sId,
                         settlementDate,
                         phase: 'analytics_settlement',
+                        operation: 'settle_store_date',
                     });
                     await updateNightlyState(db, tId, sId, settlementDate, 'failed', 'failed', message);
                     await completeNightlyDateLock(lockRef, 'failed', message);
@@ -916,7 +1124,7 @@ async function runNightlySchedulerForStore(
             storeRun.analytics.storesSucceeded++;
         } catch (analyticsError: any) {
             storeRun.analytics.storesFailed++;
-            throw new Error(`Nightly analytics failed: ${analyticsError.message}`);
+            throw createSchedulerTaskError(SCHEDULER_ANALYTICS_SETTLEMENT_FAILED);
         }
 
         if (FUNCTION_FLAGS.ENABLE_OWNER_BUSINESS_HEALTH) {
@@ -932,10 +1140,11 @@ async function runNightlySchedulerForStore(
                     businessDayEndTime,
                 });
             } catch (ownerBusinessHealthError: any) {
-                appLogger.error('[OwnerBusinessAssistant] Business Health build failed', ownerBusinessHealthError, {
+                logSchedulerFailure(logger, '[OwnerBusinessAssistant] Business Health build failed', SCHEDULER_OWNER_BUSINESS_HEALTH_FAILED, ownerBusinessHealthError, {
                     tId,
                     sId,
                     phase: 'owner_business_health',
+                    operation: 'build_snapshot',
                 });
                 storeRun.ownerBusinessHealth = {
                     enabled: true,
@@ -956,12 +1165,17 @@ async function runNightlySchedulerForStore(
                 const analytics = await fetch7DayAnalytics(db, tId, sId, projectId, storeInfo.timeZone, businessDayEndTime);
                 if (analytics.source === 'missing_or_stale') {
                     storeRun.analytics.intelligenceSnapshotMissing++;
-                    appLogger.warn('[NightlyAnalytics] Missing or stale intelligence snapshot; scoring without analytics', {
+                    logSchedulerWarn(logger, '[NightlyAnalytics] Missing or stale intelligence snapshot; scoring without analytics', {
                         tId,
                         sId,
                         projectId,
-                        expectedLocalDate: addDaysToAnalyticsDateKey(getBusinessAnalyticsDateKey(analyticsRunAt, storeInfo.timeZone, businessDayEndTime), -1),
-                        lastSettledLocalDate: analytics.lastSettledLocalDate || null,
+                        phase: 'project_scoring',
+                        operation: 'fetch_analytics_snapshot',
+                        source: analytics.source,
+                        metrics: {
+                            expectedLocalDate: addDaysToAnalyticsDateKey(getBusinessAnalyticsDateKey(analyticsRunAt, storeInfo.timeZone, businessDayEndTime), -1),
+                            lastSettledLocalDate: analytics.lastSettledLocalDate || null,
+                        },
                     });
                 }
 
@@ -980,7 +1194,13 @@ async function runNightlySchedulerForStore(
                 if (blocks) {
                     await saveDecisionBlocksForProject(db, tId, sId, projectId, blocks);
 
-                    logger.info(`    ✓ Project ${projectId}: Computed decision blocks`);
+                    logSchedulerInfo(logger, '[DecisionBlocks] Computed decision blocks', {
+                        tId,
+                        sId,
+                        projectId,
+                        phase: 'project_scoring',
+                        operation: 'save_decision_blocks',
+                    });
                     storeRun.successCount++;
 
                     try {
@@ -1003,19 +1223,43 @@ async function runNightlySchedulerForStore(
                             const miDocId = getMenuIntelligenceDocId(tId, sId, projectId);
                             await db.collection(DB_COLLECTIONS.MENU_INTELLIGENCE).doc(miDocId).set(intelligence, { merge: true });
 
-                            logger.info(`    ✓ Project ${projectId}: Computed menu intelligence`);
+                            logSchedulerInfo(logger, '[DecisionBlocks] Computed menu intelligence', {
+                                tId,
+                                sId,
+                                projectId,
+                                phase: 'project_intelligence',
+                                operation: 'compute_intelligence_state',
+                            });
                             storeRun.intelligenceSuccess++;
                         }
                     } catch (intError: any) {
-                        logger.error(`    ✗ Project ${projectId} intelligence: ${intError.message}`);
+                        logSchedulerFailure(logger, '[DecisionBlocks] Project intelligence failed', SCHEDULER_PROJECT_INTELLIGENCE_FAILED, intError, {
+                            tId,
+                            sId,
+                            projectId,
+                            phase: 'project_intelligence',
+                            operation: 'compute_intelligence_state',
+                        });
                         storeRun.intelligenceFailed++;
                     }
                 } else {
-                    logger.info(`    - Project ${projectId}: No items to score`);
+                    logSchedulerInfo(logger, '[DecisionBlocks] Project has no items to score', {
+                        tId,
+                        sId,
+                        projectId,
+                        phase: 'project_scoring',
+                        operation: 'compute_project_blocks',
+                    });
                     storeRun.skippedCount++;
                 }
             } catch (error: any) {
-                logger.error(`    ✗ Project ${projectId}: ${error.message}`);
+                logSchedulerFailure(logger, '[DecisionBlocks] Project scoring failed', SCHEDULER_PROJECT_SCORING_FAILED, error, {
+                    tId,
+                    sId,
+                    projectId,
+                    phase: 'project_scoring',
+                    operation: 'decision_blocks_menu_intelligence',
+                });
                 storeRun.failedCount++;
                 storeRun.errors.push(buildSchedulerFailureDiagnostic(error, {
                     tId,
@@ -1042,12 +1286,22 @@ async function runNightlySchedulerForStore(
                     lastPublishedAt: latestModifiedOn || null,
                     projectCount: projectEntries.length,
                 };
-            } catch {
-                // Non-blocking — enrichment failure should never block scoring
+            } catch (enrichmentError) {
+                logSchedulerFailure(logger, '[DecisionBlocks] Store enrichment collection failed', SCHEDULER_STORE_SUMMARY_ENRICHMENT_FAILED, enrichmentError, {
+                    tId,
+                    sId,
+                    phase: 'store_summary_enrichment',
+                    operation: 'collect_store_enrichment',
+                });
             }
         }
     } catch (error: any) {
-        logger.error(`  ✗ Store ${sId}: ${error.message}`);
+        logSchedulerFailure(logger, '[DecisionBlocks] Store scheduler failed', SCHEDULER_STORE_RECOVERY_FAILED, error, {
+            tId,
+            sId,
+            phase: 'store_scheduler',
+            operation: 'store_nightly_recovery',
+        });
         storeRun.failedCount++;
         storeRun.errors.push(buildSchedulerFailureDiagnostic(error, {
             tId,
@@ -1093,8 +1347,10 @@ export const computeDecisionBlocksScores = onSchedule({
     initSentry();
     const logger = functions.logger;
     const currentUTCHour = new Date().getUTCHours();
-    logger.info(`=== Nightly Scheduler (Hour ${currentUTCHour} UTC) ===`);
-    logger.info('Triggered at:', new Date().toISOString());
+    logger.info('[DecisionBlocks] Nightly scheduler started', {
+        currentUTCHour,
+        triggeredAt: new Date().toISOString(),
+    });
 
     const db = firestoreAdmin;
     const runStartTime = Date.now();
@@ -1107,12 +1363,12 @@ export const computeDecisionBlocksScores = onSchedule({
         skippedCount: 0,
         intelligenceSuccess: 0,
         intelligenceFailed: 0,
-        errors: [] as Array<{ tId: string; sId: string; projectId?: string; error: string }>
+        errors: [] as SchedulerFailureDiagnostic[]
     };
 
     try {
         // COST OPTIMIZATION: Use storesSummary instead of fetching all store documents
-        // This reduces N reads to 1 read. See: __docs__/patterns/SUMMARY-DOCUMENT-PATTERN.md
+        // This reduces N reads to 1 read. See: __docs__/patterns/summary-document-pattern.md
         const storesSummaryDoc = await db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc('storesSummary').get();
         const storesSummary = storesSummaryDoc.exists ? storesSummaryDoc.data()?.stores || {} : {};
         const allStoreIds = Object.keys(storesSummary);
@@ -1146,7 +1402,10 @@ export const computeDecisionBlocksScores = onSchedule({
         results.totalStores = storeIds.length;
 
         if (storeIds.length === 0) {
-            logger.info(`No stores scheduled for hour ${currentUTCHour} UTC (${allStoreIds.length} total stores). Exiting.`);
+            logger.info('[DecisionBlocks] No stores scheduled for current hour', {
+                currentUTCHour,
+                totalStoresInPlatform: allStoreIds.length,
+            });
             // Persist minimal run log for audit trail (no telegram — would be 22 alerts/day noise)
             try {
                 await db.collection(DB_COLLECTIONS.SCHEDULER_RUN_LOGS).add({
@@ -1164,11 +1423,20 @@ export const computeDecisionBlocksScores = onSchedule({
                     totalStores: 0,
                     reason: 'no_stores_for_hour',
                 });
-            } catch { /* non-blocking */ }
+            } catch (runLogError) {
+                logSchedulerFailure(logger, '[DecisionBlocks] No-stores run log failed', SCHEDULER_NO_STORES_RUN_LOG_PERSIST_FAILED, runLogError, {
+                    phase: 'scheduler_run',
+                    operation: 'persist_no_stores_run_log',
+                });
+            }
             return;
         }
 
-        logger.info(`Processing ${storeIds.length} of ${allStoreIds.length} stores (currentUTCHour=${currentUTCHour})`);
+        logger.info('[DecisionBlocks] Processing scheduled stores', {
+            currentUTCHour,
+            scheduledStoreCount: storeIds.length,
+            totalStoresInPlatform: allStoreIds.length,
+        });
 
         const analyticsTaskStart = Date.now();
         const analyticsRunAt = new Date(analyticsTaskStart);
@@ -1207,27 +1475,54 @@ export const computeDecisionBlocksScores = onSchedule({
 
             // Skip inactive stores
             if (storeInfo.active === false) {
-                logger.info(`Store ${sId}: Inactive, skipping`);
+                logSchedulerInfo(logger, '[DecisionBlocks] Store inactive, skipping', {
+                    tId,
+                    sId,
+                    phase: 'store_scheduler',
+                    operation: 'skip_inactive_store',
+                });
                 results.skippedCount++;
                 continue;
             }
 
             if (!tId) {
-                logger.warn(`Store ${sId} has no tenantId, skipping`);
+                logSchedulerWarn(logger, '[DecisionBlocks] Store missing tenant, skipping', {
+                    sId,
+                    phase: 'store_scheduler',
+                    operation: 'skip_missing_tenant',
+                });
                 results.skippedCount++;
                 continue;
             }
 
             try {
-                logger.info(`Processing store ${sId} (tenant ${tId})...`);
+                logSchedulerInfo(logger, '[DecisionBlocks] Processing store', {
+                    tId,
+                    sId,
+                    phase: 'store_scheduler',
+                    operation: 'process_store',
+                });
 
                 const { projectEntries, activeProjectIds, source } = await loadActiveProjectsForScheduler(db, tId, sId);
 
                 if (projectEntries.length === 0) {
-                    logger.info(`  - Store ${sId}: No active projects found (${source}); analytics settlement still runs`);
+                    logSchedulerInfo(logger, '[DecisionBlocks] No active projects found; analytics settlement still runs', {
+                        tId,
+                        sId,
+                        phase: 'store_scheduler',
+                        operation: 'load_active_projects',
+                        source,
+                    });
                     results.skippedCount++;
                 } else {
-                    logger.info(`  Found ${projectEntries.length} active projects for store ${sId} (${source})`);
+                    logSchedulerInfo(logger, '[DecisionBlocks] Active projects loaded', {
+                        tId,
+                        sId,
+                        phase: 'store_scheduler',
+                        operation: 'load_active_projects',
+                        source,
+                        metrics: { projectCount: projectEntries.length },
+                    });
                 }
 
                 results.totalProjects += projectEntries.length;
@@ -1241,13 +1536,24 @@ export const computeDecisionBlocksScores = onSchedule({
                     );
 
                     if (settlementDates.length === 0) {
-                        logger.info(`  - Store ${sId}: Analytics already settled`);
+                        logSchedulerInfo(logger, '[NightlyAnalytics] Analytics already settled', {
+                            tId,
+                            sId,
+                            phase: 'analytics_settlement',
+                            operation: 'get_pending_settlement_dates',
+                        });
                     }
 
                     for (const settlementDate of settlementDates) {
                         const lockRef = await acquireNightlyDateLock(db, tId, sId, settlementDate);
                         if (!lockRef) {
-                            logger.info(`  - Store ${sId}: Settlement ${settlementDate} already locked or completed`);
+                            logSchedulerInfo(logger, '[NightlyAnalytics] Settlement already locked or completed', {
+                                tId,
+                                sId,
+                                settlementDate,
+                                phase: 'analytics_settlement',
+                                operation: 'acquire_settlement_lock',
+                            });
                             continue;
                         }
 
@@ -1273,7 +1579,17 @@ export const computeDecisionBlocksScores = onSchedule({
                             if (obpHadData) analyticsResults.obpStoresWithData++;
 
                             if (customerAggregation.errors.length > 0) {
-                                logger.error(`  ✗ Store ${sId} analytics (${settlementDate}): ${customerAggregation.errors.length} project aggregation errors`);
+                                logger.error('[NightlyAnalytics] Project aggregation errors detected', {
+                                    failureCode: SCHEDULER_ANALYTICS_SETTLEMENT_FAILED,
+                                    ...getSchedulerProgressLogContext({
+                                        tId,
+                                        sId,
+                                        settlementDate,
+                                        phase: 'analytics_settlement',
+                                        operation: 'aggregate_customer_analytics',
+                                        metrics: { projectErrorCount: customerAggregation.errors.length },
+                                    }),
+                                });
                                 throw new Error(`Customer analytics aggregation had ${customerAggregation.errors.length} project errors`);
                             }
 
@@ -1298,13 +1614,21 @@ export const computeDecisionBlocksScores = onSchedule({
                             });
                             await completeNightlyDateLock(lockRef, 'completed');
                         } catch (settlementError: any) {
-                            const message = settlementError?.message || String(settlementError);
-                            appLogger.error('[NightlyAnalytics] Store settlement failed', settlementError, {
+                            const message = SCHEDULER_TASK_FAILED_MESSAGE;
+                            logSchedulerFailure(logger, '[NightlyAnalytics] Store settlement failed', SCHEDULER_ANALYTICS_SETTLEMENT_FAILED, settlementError, {
                                 tId,
                                 sId,
                                 settlementDate,
                                 phase: 'analytics_settlement',
+                                operation: 'settle_store_date',
                             });
+                            results.errors.push(buildSchedulerFailureDiagnostic(settlementError, {
+                                tId,
+                                sId,
+                                settlementDate,
+                                phase: 'analytics_settlement',
+                                operation: 'settle_store_date',
+                            }));
                             await updateNightlyState(db, tId, sId, settlementDate, 'failed', 'failed', message);
                             await completeNightlyDateLock(lockRef, 'failed', message);
                             throw settlementError;
@@ -1314,7 +1638,7 @@ export const computeDecisionBlocksScores = onSchedule({
                     analyticsResults.storesSucceeded++;
                 } catch (analyticsError: any) {
                     analyticsResults.storesFailed++;
-                    throw new Error(`Nightly analytics failed: ${analyticsError.message}`);
+                    throw createSchedulerTaskError(SCHEDULER_ANALYTICS_SETTLEMENT_FAILED);
                 }
 
                 if (ownerBusinessHealthBuilder) {
@@ -1334,12 +1658,18 @@ export const computeDecisionBlocksScores = onSchedule({
                         ownerBusinessHealthResults.builderWriteCount += ownerBusinessHealthResult.builderWriteCount;
                     } catch (ownerBusinessHealthError: any) {
                         ownerBusinessHealthResults.storesFailed++;
-                        appLogger.error('[OwnerBusinessAssistant] Business Health build failed', ownerBusinessHealthError, {
+                        logSchedulerFailure(logger, '[OwnerBusinessAssistant] Business Health build failed', SCHEDULER_OWNER_BUSINESS_HEALTH_FAILED, ownerBusinessHealthError, {
                             tId,
                             sId,
                             phase: 'owner_business_health',
+                            operation: 'build_snapshot',
                         });
-                        results.errors.push({ tId, sId, error: ownerBusinessHealthError.message || String(ownerBusinessHealthError) });
+                        results.errors.push(buildSchedulerFailureDiagnostic(ownerBusinessHealthError, {
+                            tId,
+                            sId,
+                            phase: 'owner_business_health',
+                            operation: 'build_snapshot',
+                        }));
                     }
                 }
 
@@ -1353,12 +1683,17 @@ export const computeDecisionBlocksScores = onSchedule({
                         const analytics = await fetch7DayAnalytics(db, tId, sId, projectId, storeInfo.timeZone, businessDayEndTime);
                         if (analytics.source === 'missing_or_stale') {
                             analyticsResults.intelligenceSnapshotMissing++;
-                            appLogger.warn('[NightlyAnalytics] Missing or stale intelligence snapshot; scoring without analytics', {
+                            logSchedulerWarn(logger, '[NightlyAnalytics] Missing or stale intelligence snapshot; scoring without analytics', {
                                 tId,
                                 sId,
                                 projectId,
-                                expectedLocalDate: addDaysToAnalyticsDateKey(getBusinessAnalyticsDateKey(analyticsRunAt, storeInfo.timeZone, businessDayEndTime), -1),
-                                lastSettledLocalDate: analytics.lastSettledLocalDate || null,
+                                phase: 'project_scoring',
+                                operation: 'fetch_analytics_snapshot',
+                                source: analytics.source,
+                                metrics: {
+                                    expectedLocalDate: addDaysToAnalyticsDateKey(getBusinessAnalyticsDateKey(analyticsRunAt, storeInfo.timeZone, businessDayEndTime), -1),
+                                    lastSettledLocalDate: analytics.lastSettledLocalDate || null,
+                                },
                             });
                         }
 
@@ -1378,7 +1713,13 @@ export const computeDecisionBlocksScores = onSchedule({
                             // Save the customer-safe projection on the project document.
                             await saveDecisionBlocksForProject(db, tId, sId, projectId, blocks);
 
-                            logger.info(`    ✓ Project ${projectId}: Computed decision blocks`);
+                            logSchedulerInfo(logger, '[DecisionBlocks] Computed decision blocks', {
+                                tId,
+                                sId,
+                                projectId,
+                                phase: 'project_scoring',
+                                operation: 'save_decision_blocks',
+                            });
                             results.successCount++;
 
                             // Compute Menu Intelligence state (reuses same analytics)
@@ -1403,21 +1744,51 @@ export const computeDecisionBlocksScores = onSchedule({
                                     const miDocId = getMenuIntelligenceDocId(tId, sId, projectId);
                                     await db.collection(DB_COLLECTIONS.MENU_INTELLIGENCE).doc(miDocId).set(intelligence, { merge: true });
 
-                                    logger.info(`    ✓ Project ${projectId}: Computed menu intelligence`);
+                                    logSchedulerInfo(logger, '[DecisionBlocks] Computed menu intelligence', {
+                                        tId,
+                                        sId,
+                                        projectId,
+                                        phase: 'project_intelligence',
+                                        operation: 'compute_intelligence_state',
+                                    });
                                     results.intelligenceSuccess++;
                                 }
                             } catch (intError: any) {
-                                logger.error(`    ✗ Project ${projectId} intelligence: ${intError.message}`);
+                                logSchedulerFailure(logger, '[DecisionBlocks] Project intelligence failed', SCHEDULER_PROJECT_INTELLIGENCE_FAILED, intError, {
+                                    tId,
+                                    sId,
+                                    projectId,
+                                    phase: 'menu_intelligence',
+                                    operation: 'compute_intelligence_state',
+                                });
                                 results.intelligenceFailed++;
                             }
                         } else {
-                            logger.info(`    - Project ${projectId}: No items to score`);
+                            logSchedulerInfo(logger, '[DecisionBlocks] Project has no items to score', {
+                                tId,
+                                sId,
+                                projectId,
+                                phase: 'project_scoring',
+                                operation: 'compute_project_blocks',
+                            });
                             results.skippedCount++;
                         }
                     } catch (error: any) {
-                        logger.error(`    ✗ Project ${projectId}: ${error.message}`);
+                        logSchedulerFailure(logger, '[DecisionBlocks] Project scoring failed', SCHEDULER_PROJECT_SCORING_FAILED, error, {
+                            tId,
+                            sId,
+                            projectId,
+                            phase: 'decision_blocks',
+                            operation: 'compute_project_blocks',
+                        });
                         results.failedCount++;
-                        results.errors.push({ tId, sId, projectId, error: error.message });
+                        results.errors.push(buildSchedulerFailureDiagnostic(error, {
+                            tId,
+                            sId,
+                            projectId,
+                            phase: 'decision_blocks',
+                            operation: 'compute_project_blocks',
+                        }));
                     }
                 }
                 // Infrastructure Compounding 10.3: Collect freshness data for batch write
@@ -1437,15 +1808,30 @@ export const computeDecisionBlocksScores = onSchedule({
                             lastPublishedAt: latestModifiedOn || null,
                             projectCount: projectEntries.length,
                         };
-                    } catch {
-                        // Non-blocking — enrichment failure should never block scoring
+                    } catch (enrichmentError) {
+                        logSchedulerFailure(logger, '[DecisionBlocks] Store enrichment collection failed', SCHEDULER_STORE_SUMMARY_ENRICHMENT_FAILED, enrichmentError, {
+                            tId,
+                            sId,
+                            phase: 'store_summary_enrichment',
+                            operation: 'collect_store_enrichment',
+                        });
                     }
                 }
 
             } catch (error: any) {
-                logger.error(`  ✗ Store ${sId}: ${error.message}`);
+                logSchedulerFailure(logger, '[DecisionBlocks] Store scoring failed', SCHEDULER_STORE_RECOVERY_FAILED, error, {
+                    tId,
+                    sId,
+                    phase: 'store_scheduler',
+                    operation: 'score_store',
+                });
                 results.failedCount++;
-                results.errors.push({ tId, sId, error: error.message });
+                results.errors.push(buildSchedulerFailureDiagnostic(error, {
+                    tId,
+                    sId,
+                    phase: 'store_scheduler',
+                    operation: 'score_store',
+                }));
             }
         }
 
@@ -1466,7 +1852,12 @@ export const computeDecisionBlocksScores = onSchedule({
                 );
                 logger.info(`[10.3] Enriched storesSummary with freshness data for ${Object.keys(storeEnrichment).length} stores (1 write)`);
             } catch (enrichError: any) {
-                logger.warn('[10.3] storesSummary enrichment failed (non-blocking):', enrichError.message);
+                logger.warn('[10.3] storesSummary enrichment failed (non-blocking)', {
+                    failureCode: SCHEDULER_STORE_SUMMARY_ENRICHMENT_FAILED,
+                    phase: 'store_summary_enrichment',
+                    operation: 'persist_enrichment_batch',
+                    ...getSchedulerSourceErrorContext(enrichError),
+                });
             }
         }
 
@@ -1524,13 +1915,16 @@ export const computeDecisionBlocksScores = onSchedule({
             taskResults.push({ name: 'authority_maturation', status: 'success', durationMs: Date.now() - taskStart, details: { processed: maturationResult.processed, phase1: maturationResult.phase1Count, phase2: maturationResult.phase2Count, phase3: maturationResult.phase3Count } });
         } catch (maturationError: any) {
             // Non-blocking - log but continue
-            logger.error('Authority Maturation analysis failed:', maturationError.message);
-            taskResults.push({ name: 'authority_maturation', status: 'failed', error: maturationError.message });
+            logSchedulerFailure(logger, 'Authority Maturation analysis failed', SCHEDULER_AUTHORITY_MATURATION_FAILED, maturationError, {
+                phase: 'authority_maturation',
+                operation: 'process_authority_maturation',
+            });
+            taskResults.push({ name: 'authority_maturation', status: 'failed', error: SCHEDULER_TASK_FAILED_MESSAGE });
         }
 
         // MOL v0: Menu Drift Metrics (Category D & E of Internal Tracking System)
         // Computes 30-day rolling drift counters from menu change logs
-        // @see __docs__/internal-tracking/MOL-V0-IMPLEMENTATION-PLAN.md
+        // @see __docs__/internal-tracking/mol-v0-implementation-plan.md
         try {
             const taskStart = Date.now();
             logger.info('=== Starting Menu Drift Metrics Computation ===');
@@ -1544,8 +1938,11 @@ export const computeDecisionBlocksScores = onSchedule({
             taskResults.push({ name: 'menu_drift', status: driftResult.errors.length > 0 ? 'success' : 'success', durationMs: Date.now() - taskStart, details: { items: driftResult.itemsProcessed, stores: driftResult.storesProcessed, projects: driftResult.projectsProcessed, reads: driftResult.readsCount, writes: driftResult.writesCount, errors: driftResult.errors.length } });
         } catch (driftError: any) {
             // Non-blocking - log but continue
-            logger.error('Menu Drift Metrics computation failed:', driftError.message);
-            taskResults.push({ name: 'menu_drift', status: 'failed', error: driftError.message });
+            logSchedulerFailure(logger, 'Menu Drift Metrics computation failed', SCHEDULER_MENU_DRIFT_FAILED, driftError, {
+                phase: 'menu_drift',
+                operation: 'process_menu_drift_metrics',
+            });
+            taskResults.push({ name: 'menu_drift', status: 'failed', error: SCHEDULER_TASK_FAILED_MESSAGE });
         }
 
         // Guest Feedback Retention (Internal Feedback System)
@@ -1561,10 +1958,17 @@ export const computeDecisionBlocksScores = onSchedule({
                     logger.warn(`  Errors: ${retentionResult.errors}`);
                 }
                 taskResults.push({ name: 'guest_feedback_retention', status: 'success', durationMs: Date.now() - taskStart, details: { deleted: retentionResult.deleted, errors: retentionResult.errors } });
-            } catch (retentionError: any) {
+            } catch (retentionError: unknown) {
                 // Non-blocking - log but continue
-                logger.error('Guest Feedback Retention failed:', retentionError.message);
-                taskResults.push({ name: 'guest_feedback_retention', status: 'failed', error: retentionError.message });
+                logger.error('Guest Feedback Retention failed', {
+                    failureCode: GUEST_FEEDBACK_RETENTION_TASK_FAILED,
+                    error: getAnalyticsErrorContext(retentionError),
+                });
+                taskResults.push({
+                    name: 'guest_feedback_retention',
+                    status: 'failed',
+                    error: GUEST_FEEDBACK_RETENTION_TASK_FAILED,
+                });
             }
         } else {
             taskResults.push({ name: 'guest_feedback_retention', status: 'skipped' });
@@ -1572,7 +1976,7 @@ export const computeDecisionBlocksScores = onSchedule({
 
         // Subscription Reconciliation (Razorpay ↔ Firestore sync)
         // Safety net for webhook failures — syncs status, cycle dates, paid count
-        // @see __docs__/razorpay/ACTIVE_SUBSCRIPTION_FLOW.md
+        // @see __docs__/razorpay/active-subscription-flow.md
         if (FUNCTION_FLAGS.ENABLE_SUBSCRIPTION_RECONCILIATION) {
             try {
                 const taskStart = Date.now();
@@ -1582,8 +1986,11 @@ export const computeDecisionBlocksScores = onSchedule({
                 taskResults.push({ name: 'subscription_reconciliation', status: 'success', durationMs: Date.now() - taskStart, details: { processed: reconcileResult.processed, synced: reconcileResult.synced, errors: reconcileResult.errors } });
             } catch (reconcileError: any) {
                 // Non-blocking - log but continue
-                logger.error('Subscription Reconciliation failed:', reconcileError.message);
-                taskResults.push({ name: 'subscription_reconciliation', status: 'failed', error: reconcileError.message });
+                logSchedulerFailure(logger, 'Subscription Reconciliation failed', SCHEDULER_SUBSCRIPTION_RECONCILIATION_FAILED, reconcileError, {
+                    phase: 'subscription_reconciliation',
+                    operation: 'reconcile_subscriptions',
+                });
+                taskResults.push({ name: 'subscription_reconciliation', status: 'failed', error: SCHEDULER_TASK_FAILED_MESSAGE });
             }
         } else {
             taskResults.push({ name: 'subscription_reconciliation', status: 'skipped' });
@@ -1608,7 +2015,12 @@ export const computeDecisionBlocksScores = onSchedule({
                 if (retryDetails.retried > 0) {
                     logger.info(`Message Retry: ${retryDetails.retried} retried, ${retryDetails.succeeded} succeeded`);
                 }
-            } catch { /* non-blocking */ }
+            } catch (retryError) {
+                logSchedulerFailure(logger, 'Lifecycle Messaging retry task failed', SCHEDULER_LIFECYCLE_MESSAGE_RETRY_FAILED, retryError, {
+                    phase: 'lifecycle_messaging',
+                    operation: 'retry_failed_messages',
+                });
+            }
 
             // Daily messaging digest — solo founder visibility
             let digestDetails = { sent: 0, failed: 0, total: 0 };
@@ -1617,15 +2029,23 @@ export const computeDecisionBlocksScores = onSchedule({
                 if (digestDetails.total > 0) {
                     logger.info(`Messaging Digest: ${digestDetails.sent} sent, ${digestDetails.failed} failed, ${digestDetails.total} total`);
                 }
-            } catch { /* non-blocking */ }
+            } catch (digestError) {
+                logSchedulerFailure(logger, 'Lifecycle Messaging digest task failed', SCHEDULER_LIFECYCLE_MESSAGE_DIGEST_FAILED, digestError, {
+                    phase: 'lifecycle_messaging',
+                    operation: 'daily_message_digest',
+                });
+            }
 
             logger.info('Lifecycle Messaging tasks completed');
             taskResults.push({ name: 'lifecycle_messaging', status: 'success', durationMs: Date.now() - taskStart, details: { retry: retryDetails, digest: digestDetails } });
         } catch (msgError: any) {
             messagingTasksOk = false;
             // Non-blocking - log but continue
-            logger.error('Lifecycle Messaging tasks failed:', msgError.message);
-            taskResults.push({ name: 'lifecycle_messaging', status: 'failed', error: msgError.message });
+            logSchedulerFailure(logger, 'Lifecycle Messaging tasks failed', SCHEDULER_LIFECYCLE_MESSAGING_FAILED, msgError, {
+                phase: 'lifecycle_messaging',
+                operation: 'run_lifecycle_messaging_tasks',
+            });
+            taskResults.push({ name: 'lifecycle_messaging', status: 'failed', error: SCHEDULER_TASK_FAILED_MESSAGE });
         }
 
         // ═══════════════════════════════════════════════════════════════
@@ -1643,6 +2063,7 @@ export const computeDecisionBlocksScores = onSchedule({
                 for (const sId of storeIds) {
                     const storeInfo = storesSummary[sId];
                     if (storeInfo.active === false) continue;
+                    const specialMenuTId = storeInfo.tId != null ? String(storeInfo.tId) : '';
 
                     try {
                         // Read projectsSummary for this store
@@ -1651,8 +2072,6 @@ export const computeDecisionBlocksScores = onSchedule({
                         if (!summaryDoc.exists) continue;
 
                         const projects = summaryDoc.data()?.projects || {};
-                        const tId = storeInfo.tId != null ? String(storeInfo.tId) : '';
-
                         for (const [projectId, projData] of Object.entries(projects) as [string, any][]) {
                             if (!projData.isSpecialMenu) continue;
                             smResult.checked++;
@@ -1665,7 +2084,7 @@ export const computeDecisionBlocksScores = onSchedule({
                             if (status === 'scheduled' && startsAt && startsAt <= now) {
                                 try {
                                     const projectRef = db.collection(DB_COLLECTIONS.PROJECTS)
-                                        .doc(tId).collection(sId).doc(projectId);
+                                        .doc(specialMenuTId).collection(sId).doc(projectId);
                                     await projectRef.update({
                                         '_specialMenu.status': 'active',
                                         '_specialMenu.activatedAt': now.toISOString(),
@@ -1690,12 +2109,27 @@ export const computeDecisionBlocksScores = onSchedule({
                                     await summaryDoc.ref.set({
                                         [`projects.${projectId}.specialMenuStatus`]: 'active',
                                     }, { merge: true });
-                                    await revalidatePublicClientCacheForStore(sId, 'specialMenuSwitching:activate');
+                                    await revalidatePublicClientCacheForStore(sId, 'specialMenuSwitching:activate', {
+                                        touchDigitalScreen: true,
+                                    });
 
-                                    logger.info(`  ✓ Activated special menu "${projData.specialMenuDisplayName}" for store ${sId}`);
+                                    logSchedulerInfo(logger, '[SpecialMenuSwitching] Activated special menu', {
+                                        tId: specialMenuTId,
+                                        sId,
+                                        projectId,
+                                        phase: 'special_menu_switching',
+                                        operation: 'activate_special_menu',
+                                        specialMenuDisplayName: projData.specialMenuDisplayName,
+                                    });
                                     smResult.activated++;
                                 } catch (e: any) {
-                                    logger.error(`  ✗ Failed to activate ${projectId}: ${e.message}`);
+                                    logSchedulerFailure(logger, '[SpecialMenuSwitching] Activate failed', SCHEDULER_SPECIAL_MENU_ACTIVATE_FAILED, e, {
+                                        tId: specialMenuTId,
+                                        sId,
+                                        projectId,
+                                        phase: 'special_menu_switching',
+                                        operation: 'activate_special_menu',
+                                    });
                                     smResult.errors++;
                                 }
                             }
@@ -1704,7 +2138,7 @@ export const computeDecisionBlocksScores = onSchedule({
                             if (status === 'active' && endsAt && endsAt <= now) {
                                 try {
                                     const projectRef = db.collection(DB_COLLECTIONS.PROJECTS)
-                                        .doc(tId).collection(sId).doc(projectId);
+                                        .doc(specialMenuTId).collection(sId).doc(projectId);
                                     await projectRef.update({
                                         '_specialMenu.status': 'expired',
                                         '_specialMenu.deactivatedAt': now.toISOString(),
@@ -1725,18 +2159,38 @@ export const computeDecisionBlocksScores = onSchedule({
                                     await summaryDoc.ref.set({
                                         [`projects.${projectId}.specialMenuStatus`]: 'expired',
                                     }, { merge: true });
-                                    await revalidatePublicClientCacheForStore(sId, 'specialMenuSwitching:deactivate');
+                                    await revalidatePublicClientCacheForStore(sId, 'specialMenuSwitching:deactivate', {
+                                        touchDigitalScreen: true,
+                                    });
 
-                                    logger.info(`  ✓ Deactivated special menu "${projData.specialMenuDisplayName}" for store ${sId}`);
+                                    logSchedulerInfo(logger, '[SpecialMenuSwitching] Deactivated special menu', {
+                                        tId: specialMenuTId,
+                                        sId,
+                                        projectId,
+                                        phase: 'special_menu_switching',
+                                        operation: 'deactivate_special_menu',
+                                        specialMenuDisplayName: projData.specialMenuDisplayName,
+                                    });
                                     smResult.deactivated++;
                                 } catch (e: any) {
-                                    logger.error(`  ✗ Failed to deactivate ${projectId}: ${e.message}`);
+                                    logSchedulerFailure(logger, '[SpecialMenuSwitching] Deactivate failed', SCHEDULER_SPECIAL_MENU_DEACTIVATE_FAILED, e, {
+                                        tId: specialMenuTId,
+                                        sId,
+                                        projectId,
+                                        phase: 'special_menu_switching',
+                                        operation: 'deactivate_special_menu',
+                                    });
                                     smResult.errors++;
                                 }
                             }
                         }
                     } catch (e: any) {
-                        logger.error(`  ✗ Special menu check for store ${sId} failed: ${e.message}`);
+                        logSchedulerFailure(logger, '[SpecialMenuSwitching] Store check failed', SCHEDULER_SPECIAL_MENU_STORE_CHECK_FAILED, e, {
+                            tId: specialMenuTId,
+                            sId,
+                            phase: 'special_menu_switching',
+                            operation: 'check_store_special_menus',
+                        });
                         smResult.errors++;
                     }
                 }
@@ -1744,8 +2198,11 @@ export const computeDecisionBlocksScores = onSchedule({
                 logger.info(`Special Menu Switching: checked ${smResult.checked}, activated ${smResult.activated}, deactivated ${smResult.deactivated}, errors ${smResult.errors}`);
                 taskResults.push({ name: 'special_menu_switching', status: 'success', durationMs: Date.now() - taskStart, details: smResult }); // Per-store errors tracked in details, not task-level failure
             } catch (smError: any) {
-                logger.error('Special Menu Switching check failed:', smError.message);
-                taskResults.push({ name: 'special_menu_switching', status: 'failed', error: smError.message });
+                logSchedulerFailure(logger, 'Special Menu Switching check failed', SCHEDULER_SPECIAL_MENU_TASK_FAILED, smError, {
+                    phase: 'special_menu_switching',
+                    operation: 'run_special_menu_switching',
+                });
+                taskResults.push({ name: 'special_menu_switching', status: 'failed', error: SCHEDULER_TASK_FAILED_MESSAGE });
             }
         } else {
             taskResults.push({ name: 'special_menu_switching', status: 'skipped' });
@@ -1768,8 +2225,11 @@ export const computeDecisionBlocksScores = onSchedule({
                 logger.info(`Extraction Learning: ${learningResult.totalCorrections} corrections aggregated from ${learningResult.storesWithCorrections} stores`);
                 taskResults.push({ name: 'extraction_learning', status: 'success', durationMs: Date.now() - taskStart, details: { corrections: learningResult.totalCorrections, storesProcessed: learningResult.storesProcessed, storesWithCorrections: learningResult.storesWithCorrections, reads: learningResult.readsCount, writes: learningResult.writesCount } });
             } catch (learningError: any) {
-                logger.error('Extraction Learning aggregation failed:', learningError.message);
-                taskResults.push({ name: 'extraction_learning', status: 'failed', error: learningError.message });
+                logSchedulerFailure(logger, 'Extraction Learning aggregation failed', SCHEDULER_EXTRACTION_LEARNING_FAILED, learningError, {
+                    phase: 'extraction_learning',
+                    operation: 'aggregate_owner_corrections',
+                });
+                taskResults.push({ name: 'extraction_learning', status: 'failed', error: SCHEDULER_TASK_FAILED_MESSAGE });
             }
         } else {
             taskResults.push({ name: 'extraction_learning', status: 'skipped' });
@@ -1785,8 +2245,11 @@ export const computeDecisionBlocksScores = onSchedule({
                 logger.info(`Store Truth Confidence: ${truthResult.processed} stores, avg score: ${truthResult.averageScore.toFixed(1)}, stale: ${truthResult.staleCount}`);
                 taskResults.push({ name: 'store_truth_confidence', status: 'success', durationMs: Date.now() - taskStart, details: { processed: truthResult.processed, avgScore: truthResult.averageScore, staleCount: truthResult.staleCount, reads: truthResult.readsCount, writes: truthResult.writesCount } });
             } catch (truthError: any) {
-                logger.error('Store Truth Confidence computation failed:', truthError.message);
-                taskResults.push({ name: 'store_truth_confidence', status: 'failed', error: truthError.message });
+                logSchedulerFailure(logger, 'Store Truth Confidence computation failed', SCHEDULER_STORE_TRUTH_CONFIDENCE_FAILED, truthError, {
+                    phase: 'store_truth_confidence',
+                    operation: 'compute_store_truth_confidence',
+                });
+                taskResults.push({ name: 'store_truth_confidence', status: 'failed', error: SCHEDULER_TASK_FAILED_MESSAGE });
             }
         } else {
             taskResults.push({ name: 'store_truth_confidence', status: 'skipped' });
@@ -1802,82 +2265,14 @@ export const computeDecisionBlocksScores = onSchedule({
                 logger.info(`Staleness Check: ${stalenessResult.staleFound} stale, ${stalenessResult.newStalenessDetected} new detections, ${stalenessResult.skippedRecent} skipped (recent)`);
                 taskResults.push({ name: 'staleness_check', status: 'success', durationMs: Date.now() - taskStart, details: { checked: stalenessResult.checked, staleFound: stalenessResult.staleFound, newDetections: stalenessResult.newStalenessDetected, skippedRecent: stalenessResult.skippedRecent, errors: stalenessResult.errors, reads: stalenessResult.readsCount, writes: stalenessResult.writesCount } });
             } catch (stalenessError: any) {
-                logger.error('Staleness Check failed:', stalenessError.message);
-                taskResults.push({ name: 'staleness_check', status: 'failed', error: stalenessError.message });
+                logSchedulerFailure(logger, 'Staleness Check failed', SCHEDULER_STALENESS_CHECK_FAILED, stalenessError, {
+                    phase: 'staleness_check',
+                    operation: 'check_store_staleness',
+                });
+                taskResults.push({ name: 'staleness_check', status: 'failed', error: SCHEDULER_TASK_FAILED_MESSAGE });
             }
         } else {
             taskResults.push({ name: 'staleness_check', status: 'skipped' });
-        }
-
-        // ═══════════════════════════════════════════════════════════════
-        // RESELLER DASHBOARD — Manual License Expiry Check
-        // Expires offline (billingMode:'manual') subscriptions past validUntil + 7-day grace.
-        // @see __docs__/reseller-dashboard/reseller-dashboard_impl.md §6
-        // ═══════════════════════════════════════════════════════════════
-        if (FUNCTION_FLAGS.ENABLE_RESELLER_DASHBOARD) {
-            try {
-                const taskStart = Date.now();
-                logger.info('=== Starting Reseller License Expiry Check ===');
-
-                const gracePeriodDays = 7;
-                const graceDate = new Date();
-                graceDate.setDate(graceDate.getDate() - gracePeriodDays);
-
-                const expiredSubs = await db.collection(DB_COLLECTIONS.SUBSCRIPTIONS)
-                    .where('billingMode', '==', 'manual')
-                    .where('status', '==', 'active')
-                    .where('validUntil', '<=', Timestamp.fromDate(graceDate))
-                    .get();
-
-                let expiredCount = 0;
-                for (const subDoc of expiredSubs.docs) {
-                    try {
-                        const subData = subDoc.data();
-                        await subDoc.ref.update({
-                            status: 'expired',
-                            statuses: [
-                                ...(subData.statuses || []),
-                                {
-                                    status: 'expired',
-                                    timestamp: Timestamp.now(),
-                                    amount: subData.amount || 0,
-                                    currency: subData.currency || 'INR',
-                                    remark: 'Manual license expired (auto-expiry after grace period)',
-                                },
-                            ],
-                        });
-
-                        // Decrement reseller's concurrent offline count
-                        const resellerProfileId = subData.resellerProfileId || subData.resellerId;
-                        if (resellerProfileId) {
-                            try {
-                                const profileRef = db.collection(DB_COLLECTIONS.RESELLER_PROFILES).doc(resellerProfileId);
-                                await profileRef.update({
-                                    currentActiveOfflineStores: FieldValue.increment(-1),
-                                });
-                            } catch { /* non-blocking */ }
-                        }
-
-                        expiredCount++;
-                        logger.info(`  ✓ Expired manual subscription ${subDoc.id} (store ${subData.storeId})`);
-                    } catch (e: any) {
-                        logger.error(`  ✗ Failed to expire ${subDoc.id}: ${e.message}`);
-                    }
-                }
-
-                logger.info(`Reseller License Expiry: ${expiredSubs.size} checked, ${expiredCount} expired`);
-                taskResults.push({
-                    name: 'reseller_license_expiry',
-                    status: 'success',
-                    durationMs: Date.now() - taskStart,
-                    details: { checked: expiredSubs.size, expired: expiredCount },
-                });
-            } catch (resellerError: any) {
-                logger.error('Reseller License Expiry check failed:', resellerError.message);
-                taskResults.push({ name: 'reseller_license_expiry', status: 'failed', error: resellerError.message });
-            }
-        } else {
-            taskResults.push({ name: 'reseller_license_expiry', status: 'skipped' });
         }
 
         // ═══════════════════════════════════════════════════════════════
@@ -1894,9 +2289,12 @@ export const computeDecisionBlocksScores = onSchedule({
             await processFeedbackIntelligenceForAllStores();
             logger.info('Feedback Intelligence completed');
             taskResults.push({ name: 'feedback_intelligence', status: 'success', durationMs: Date.now() - taskStart });
-        } catch (fiError: any) {
-            logger.error('Feedback Intelligence failed:', fiError.message);
-            taskResults.push({ name: 'feedback_intelligence', status: 'failed', error: fiError.message });
+        } catch (fiError: unknown) {
+            logger.error('Feedback Intelligence failed', {
+                failureCode: FEEDBACK_INTELLIGENCE_TASK_FAILED,
+                error: getAnalyticsErrorContext(fiError),
+            });
+            taskResults.push({ name: 'feedback_intelligence', status: 'failed', error: FEEDBACK_INTELLIGENCE_TASK_FAILED });
         }
 
         // KB Quality Analysis — Score article quality across all stores
@@ -1907,9 +2305,12 @@ export const computeDecisionBlocksScores = onSchedule({
             await processKBQualityForAllStores();
             logger.info('KB Quality Analysis completed');
             taskResults.push({ name: 'kb_quality', status: 'success', durationMs: Date.now() - taskStart });
-        } catch (kbError: any) {
-            logger.error('KB Quality Analysis failed:', kbError.message);
-            taskResults.push({ name: 'kb_quality', status: 'failed', error: kbError.message });
+        } catch (kbError: unknown) {
+            logger.error('KB Quality Analysis failed', {
+                failureCode: KB_QUALITY_TASK_FAILED,
+                error: getAnalyticsErrorContext(kbError),
+            });
+            taskResults.push({ name: 'kb_quality', status: 'failed', error: KB_QUALITY_TASK_FAILED });
         }
 
         // Weekly Narrative — AI digest (Sundays only)
@@ -1925,9 +2326,12 @@ export const computeDecisionBlocksScores = onSchedule({
             } else {
                 taskResults.push({ name: 'weekly_narrative', status: 'skipped', details: { reason: 'not_sunday' } });
             }
-        } catch (wnError: any) {
-            logger.error('Weekly Narrative failed:', wnError.message);
-            taskResults.push({ name: 'weekly_narrative', status: 'failed', error: wnError.message });
+        } catch (wnError: unknown) {
+            logger.error('Weekly Narrative failed', {
+                failureCode: WEEKLY_NARRATIVE_TASK_FAILED,
+                error: getAnalyticsErrorContext(wnError),
+            });
+            taskResults.push({ name: 'weekly_narrative', status: 'failed', error: WEEKLY_NARRATIVE_TASK_FAILED });
         }
 
         // Health Signals — Trust/Loyalty/Risk computation (Sundays only)
@@ -1944,8 +2348,11 @@ export const computeDecisionBlocksScores = onSchedule({
                 taskResults.push({ name: 'health_signals', status: 'skipped', details: { reason: 'not_sunday' } });
             }
         } catch (hsError: any) {
-            logger.error('Health Signals failed:', hsError.message);
-            taskResults.push({ name: 'health_signals', status: 'failed', error: hsError.message });
+            logSchedulerFailure(logger, 'Health Signals failed', SCHEDULER_HEALTH_SIGNALS_FAILED, hsError, {
+                phase: 'health_signals',
+                operation: 'process_health_signals',
+            });
+            taskResults.push({ name: 'health_signals', status: 'failed', error: SCHEDULER_TASK_FAILED_MESSAGE });
         }
 
         // ═══════════════════════════════════════════════════════════════
@@ -1972,7 +2379,13 @@ export const computeDecisionBlocksScores = onSchedule({
                         modifiedOn: Timestamp.now(),
                     });
                     timedOutCount++;
-                } catch { /* non-blocking */ }
+                } catch (jobUpdateError) {
+                    logSchedulerFailure(logger, '[KB Gen Watchdog] Job timeout update failed', SCHEDULER_KB_GENERATION_WATCHDOG_JOB_UPDATE_FAILED, jobUpdateError, {
+                        phase: 'kb_generation_watchdog',
+                        operation: 'mark_stuck_job_failed',
+                        jobId: jobDoc.id,
+                    });
+                }
             }
 
             if (timedOutCount > 0) {
@@ -1985,8 +2398,11 @@ export const computeDecisionBlocksScores = onSchedule({
                 details: { timedOut: timedOutCount },
             });
         } catch (watchdogError: any) {
-            logger.error('KB Gen watchdog failed:', watchdogError.message);
-            taskResults.push({ name: 'kb_generation_watchdog', status: 'failed', error: watchdogError.message });
+            logSchedulerFailure(logger, 'KB Gen watchdog failed', SCHEDULER_KB_GENERATION_WATCHDOG_FAILED, watchdogError, {
+                phase: 'kb_generation_watchdog',
+                operation: 'expire_stuck_kb_generation_jobs',
+            });
+            taskResults.push({ name: 'kb_generation_watchdog', status: 'failed', error: SCHEDULER_TASK_FAILED_MESSAGE });
         }
 
         // ═══════════════════════════════════════════════════════════════
@@ -2040,7 +2456,10 @@ export const computeDecisionBlocksScores = onSchedule({
                 errors: results.errors.slice(0, 50), // Cap errors to prevent large docs
             });
         } catch (logError) {
-            logger.error('[Scheduler] Failed to persist run log:', logError);
+            logSchedulerFailure(logger, '[Scheduler] Failed to persist run log', SCHEDULER_RUN_LOG_PERSIST_FAILED, logError, {
+                phase: 'run_log_persist',
+                operation: 'persist_scheduled_run_log',
+            });
         }
 
         // ═══════════════════════════════════════════════════════════════
@@ -2075,10 +2494,18 @@ export const computeDecisionBlocksScores = onSchedule({
                     }
                     : { suppressPlatformDelivery: true }),
             });
-        } catch { /* non-blocking — if this fails, UptimeRobot is the backstop */ }
+        } catch (alertError) {
+            logSchedulerFailure(logger, '[DecisionBlocks] Completion alert failed', SCHEDULER_COMPLETION_ALERT_FAILED, alertError, {
+                phase: 'scheduled_run',
+                operation: 'create_completion_alert',
+            });
+        }
 
     } catch (error: any) {
-        logger.error('Fatal error in decision blocks scoring:', error);
+        logSchedulerFailure(logger, '[DecisionBlocks] Fatal scheduler error', SCHEDULER_DECISION_BLOCKS_FATAL_FAILED, error, {
+            phase: 'scheduled_run',
+            operation: 'compute_decision_blocks_scores',
+        });
         throw error;
     } finally {
         await flushSentry();
@@ -2174,7 +2601,7 @@ export const triggerStoreNightlyScheduler = onCall({
         const storeInfo = storesSummaryDoc.exists ? storesSummaryDoc.data()?.stores?.[sId] : null;
 
         if (!storeInfo) {
-            const diagnostic = buildSchedulerFailureDiagnostic(new Error(`Store ${sId} was not found in storesSummary`), {
+            const diagnostic = buildSchedulerFailureDiagnostic(createSchedulerTaskError(SCHEDULER_MANUAL_STORE_NOT_FOUND), {
                 tId,
                 sId,
                 phase: 'stores_summary_lookup',
@@ -2188,11 +2615,11 @@ export const triggerStoreNightlyScheduler = onCall({
                 failedCount: 1,
                 errors: [diagnostic],
             });
-            throw new HttpsError('not-found', `Store ${sId} was not found in storesSummary`, { runLogId, diagnostic });
+            throw new HttpsError('not-found', MANUAL_STORE_NOT_FOUND_MESSAGE, { runLogId, diagnostic });
         }
 
         if (String(storeInfo.tId || '') !== tId) {
-            const diagnostic = buildSchedulerFailureDiagnostic(new Error(`Store ${sId} does not belong to tenant ${tId}`), {
+            const diagnostic = buildSchedulerFailureDiagnostic(createSchedulerTaskError(SCHEDULER_MANUAL_STORE_TENANT_MISMATCH), {
                 tId,
                 sId,
                 phase: 'stores_summary_validation',
@@ -2207,15 +2634,17 @@ export const triggerStoreNightlyScheduler = onCall({
                 failedCount: 1,
                 errors: [diagnostic],
             });
-            throw new HttpsError('failed-precondition', `Store ${sId} does not belong to tenant ${tId}`, { runLogId, diagnostic });
+            throw new HttpsError('failed-precondition', MANUAL_STORE_TENANT_MISMATCH_MESSAGE, { runLogId, diagnostic });
         }
 
-        logger.info('Manual store nightly scheduler recovery started', {
-            runLogId,
+        logSchedulerInfo(logger, 'Manual store nightly scheduler recovery started', {
             tId,
             sId,
+            runLogId,
+            phase: 'store_nightly_recovery',
+            operation: 'start_manual_recovery',
             storeName: storeInfo.name || null,
-            active: storeInfo.active !== false,
+            metrics: { active: storeInfo.active !== false },
         });
         await writeRunLog({
             phase: 'store_nightly_recovery',
@@ -2300,19 +2729,27 @@ export const triggerStoreNightlyScheduler = onCall({
             errors: storeRun.errors,
         });
 
-        logger.info('Manual store nightly scheduler recovery completed', {
-            runLogId,
+        logSchedulerInfo(logger, 'Manual store nightly scheduler recovery completed', {
             tId,
             sId,
-            status,
-            totalProjects: storeRun.totalProjects,
-            successCount: storeRun.successCount,
-            failedCount: storeRun.failedCount,
-            intelligenceSuccess: storeRun.intelligenceSuccess,
-            intelligenceFailed: storeRun.intelligenceFailed,
-            analytics: storeRun.analytics,
-            ownerBusinessHealth: storeRun.ownerBusinessHealth,
-            errorCount: storeRun.errors.length,
+            runLogId,
+            phase: 'store_nightly_recovery',
+            operation: 'complete_manual_recovery',
+            metrics: {
+                status,
+                totalProjects: storeRun.totalProjects,
+                successCount: storeRun.successCount,
+                failedCount: storeRun.failedCount,
+                intelligenceSuccess: storeRun.intelligenceSuccess,
+                intelligenceFailed: storeRun.intelligenceFailed,
+                analyticsStoresAttempted: storeRun.analytics.storesAttempted,
+                analyticsStoresSucceeded: storeRun.analytics.storesSucceeded,
+                analyticsStoresFailed: storeRun.analytics.storesFailed,
+                ownerBusinessHealthEnabled: storeRun.ownerBusinessHealth?.enabled,
+                ownerBusinessHealthReadCount: storeRun.ownerBusinessHealth?.builderReadCount,
+                ownerBusinessHealthWriteCount: storeRun.ownerBusinessHealth?.builderWriteCount,
+                errorCount: storeRun.errors.length,
+            },
         });
 
         return {
@@ -2338,11 +2775,12 @@ export const triggerStoreNightlyScheduler = onCall({
             operation: 'triggerStoreNightlyScheduler',
         });
 
-        appLogger.error('[ManualSchedulerRecovery] Failed', error, {
-            runLogId,
+        logSchedulerFailure(logger, '[ManualSchedulerRecovery] Failed', SCHEDULER_STORE_RECOVERY_FAILED, error, {
             tId,
             sId,
-            diagnostic,
+            runLogId,
+            phase: 'manual_recovery_callable',
+            operation: 'triggerStoreNightlyScheduler',
         });
 
         if (!(error instanceof HttpsError)) {
@@ -2356,11 +2794,12 @@ export const triggerStoreNightlyScheduler = onCall({
                     errors: [diagnostic],
                 });
             } catch (logError) {
-                appLogger.error('[ManualSchedulerRecovery] Failed to persist failure run log', logError, {
+                logSchedulerFailure(logger, '[ManualSchedulerRecovery] Failed to persist failure run log', SCHEDULER_RUN_LOG_PERSIST_FAILED, logError, {
                     runLogId,
                     tId,
                     sId,
-                    originalDiagnostic: diagnostic,
+                    phase: 'run_log_persist',
+                    operation: 'persist_manual_failure_run_log',
                 });
             }
         }
@@ -2431,7 +2870,13 @@ export const triggerDecisionBlocksScoring = onCall({
 
     // Case 1: Process single project
     if (tId && sId && projectId) {
-        logger.info(`Manual trigger for project ${projectId} (store ${sId}, tenant ${tId})`);
+        logSchedulerInfo(logger, '[DecisionBlocks] Manual trigger for project', {
+            tId,
+            sId,
+            projectId,
+            phase: 'manual_decision_blocks_trigger',
+            operation: 'score_single_project',
+        });
 
         const storeDoc = await db.collection(DB_COLLECTIONS.STORES).doc(sId).get();
         if (!storeDoc.exists) {
@@ -2469,7 +2914,12 @@ export const triggerDecisionBlocksScoring = onCall({
 
     // Case 2: Process all projects in a single store
     if (tId && sId) {
-        logger.info(`Manual trigger for all projects in store ${sId} (tenant ${tId})`);
+        logSchedulerInfo(logger, '[DecisionBlocks] Manual trigger for store projects', {
+            tId,
+            sId,
+            phase: 'manual_decision_blocks_trigger',
+            operation: 'score_store_projects',
+        });
 
         const storeDoc = await db.collection(DB_COLLECTIONS.STORES).doc(sId).get();
         if (!storeDoc.exists) {

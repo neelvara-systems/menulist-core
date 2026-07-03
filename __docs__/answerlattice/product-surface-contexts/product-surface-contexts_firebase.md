@@ -10,6 +10,7 @@ Operations:
 
 - list surfaces for current Answerlattice tenant/store: one bounded query, limit 300
 - create/update/archive surface: one document write
+- owner save/archive and starter-template creation require an explicit `{ success: true, sourceChanged: true }` DAL acknowledgement before UI state, summary rebuild, reload, or success copy advances
 
 Security:
 
@@ -25,6 +26,7 @@ Operations:
 
 - runtime search/widget: one small read, server-memory cached
 - rebuild: one write
+- browser rebuild requests use no-store cache, same-origin credentials, and manual redirect handling before responses are capped at 64 KB and required to include a valid `summary` object before local summary state or success copy advances
 
 Contents:
 
@@ -69,6 +71,8 @@ The summary rebuild endpoint uses bounded reads:
 Feedback surface assignment does not rebuild the summary because feedback is owner-triage input, not public related-content output.
 
 The rebuild happens on explicit management operations, not every customer page load.
+
+Cached, followed-redirect, malformed, oversized, rejected, or summary-less rebuild responses fail before owner success copy. This does not add Firestore reads/writes; it only pins the browser request boundary and validates the existing rebuild response before the browser treats the summary as refreshed.
 
 ## Indexes
 

@@ -3,6 +3,7 @@
 import { useAppDispatch } from '@hook/useAppDispatch';
 import { usePlatformStoreSummaryOptions } from '@hook/usePlatformStoreSummaryOptions';
 import { getStoreContextName } from '@lib/businessIdentity/names';
+import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from '@providers/platformProviders/platformGlobalDataProvider';
 import { startLoader, stopLoader } from '@reduxSlices/loader';
 import { backfillAggregates } from '@services/chatAnalytics';
@@ -206,8 +207,11 @@ export default function AnalyticsBackfill() {
             }
 
         } catch (error: any) {
-            console.error('Report generation failed:', error);
-            message.error(error.message || 'Report generation failed. Please try again or contact support', 10);
+            logRuntimeFailure('platform_analytics_backfill_failed', error, {
+                ...getBoundedRuntimeStringContext('selectedStoreId', selectedStoreId),
+                days: days || 30,
+            });
+            message.error('Report generation failed. Please try again or contact support', 10);
             setProgress(0);
         } finally {
             setIsProcessing(false);

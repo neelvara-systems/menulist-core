@@ -2,23 +2,23 @@
 
 **Feature Name:** Customer App (Installable Customer-Facing Menu)  
 **Document Type:** Mobile Support Assessment  
-**Status:** 📋 Ready for Implementation  
-**Last Updated:** April 18, 2026  
+**Status:** Runtime implemented; manual device QA still required
+**Last Updated:** June 30, 2026
 **Audience:** Engineering, Product
 
 ---
 
 ## Mobile Relevance Decision
 
-**VERDICT: PARTIAL — Install Prompt UI Only**
+**VERDICT: MOBILE SUPPORTED — Install prompt plus bounded owner settings**
 
 The Customer App feature has two distinct components with different mobile requirements:
 
 | Component                                 | Mobile Relevance | Decision                             |
 | ----------------------------------------- | ---------------- | ------------------------------------ |
 | Install prompt UI on customer-facing menu | YES              | Mobile implementation required       |
-| Owner settings (Surface configuration)    | NO               | Desktop-only, escape hatch available |
-| Icon upload/override                      | NO               | Desktop-only (file management)       |
+| Owner settings (Surface configuration)    | YES              | Mobile settings screen implemented   |
+| Icon upload/override                      | PARTIAL          | Mobile icon picker/override supported with bounded diagnostics |
 
 ---
 
@@ -39,12 +39,12 @@ The Customer App feature has two distinct components with different mobile requi
 
 | Gate          | Test                          | Result     | Reason                       |
 | ------------- | ----------------------------- | ---------- | ---------------------------- |
-| **Frequency** | Daily/multiple times per day? | ❌ FAIL    | One-time setup, rare changes |
-| **Speed**     | Completes in <5 seconds?      | ✅ PASS    | Toggle switches              |
-| **Touch**     | Works with thumb-only?        | ⚠️ PARTIAL | File upload needs precision  |
-| **Value**     | Needed while away from desk?  | ❌ FAIL    | Owner at computer for setup  |
+| **Frequency** | Daily/multiple times per day? | ⚠️ PARTIAL | Rare setup, but useful during launch/onboarding |
+| **Speed**     | Completes in <5 seconds?      | ✅ PASS    | Toggle switches and short-name edits are quick |
+| **Touch**     | Works with thumb-only?        | ✅ PASS    | Mobile screen uses large controls and image picker |
+| **Value**     | Needed while away from desk?  | ✅ PASS    | Owner can finish customer-app setup from phone |
 
-**Result: 2 GATES FAIL → Desktop-only, "Switch to Desktop" escape hatch**
+**Result: MOBILE SUPPORTED → `MobileCustomerAppScreen` implements settings with bounded save diagnostics**
 
 ---
 
@@ -62,14 +62,13 @@ The Customer App feature has two distinct components with different mobile requi
 | Standalone-mode detector         | P0       | Fires `CUSTOMER_APP_OPENED` when app is launched from home screen                              |
 | Shortcut source detector         | P1       | Reads `?entry_source=shortcut-*` query param; fires shortcut-specific event                    |
 | Success feedback                 | P1       | "Added to home screen" confirmation                                                            |
+| Owner settings screen            | P1       | `MobileCustomerAppScreen`; install toggle, promotion toggle, localized short name, icon override |
+| Bounded diagnostics              | P1       | Native prompt, desktop/mobile settings, and desktop/mobile install-link copy failures use `src/lib/pwa/pwaDiagnostics.ts`; install-link copied feedback waits for Clipboard API success or acknowledged textarea fallback success |
 
 ### Out of Scope (Desktop Only)
 
 | Screen/Component              | Reason                         |
 | ----------------------------- | ------------------------------ |
-| Customer App surface settings | One-time configuration         |
-| Icon override upload          | File handling, precision crop  |
-| pwaShortName configuration    | Rare text input                |
 | App preview in settings       | Desktop visual fidelity needed |
 
 ---
@@ -322,5 +321,5 @@ The install prompt inherits theme settings from the customer menu:
 
 ---
 
-_Document Status: 📋 READY FOR IMPLEMENTATION_  
-_Last Updated: April 18, 2026_
+_Document Status: Source-gated runtime evidence; real-device QA still required_
+_Last Updated: July 2, 2026_

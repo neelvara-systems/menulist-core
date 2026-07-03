@@ -2,7 +2,7 @@
 
 **Feature:** Silent Reputation Defense Layer  
 **Status:** 🔒 SPEC LOCKED — Implementation blocked until GBP API access granted  
-**Last Updated:** February 7, 2026  
+**Last Updated:** July 1, 2026
 **Priority:** LOW (currently) — Not yet implemented. Document for future cost planning.
 
 ---
@@ -38,6 +38,18 @@
 ### Deletes
 
 None planned — reviews and replies are immutable records.
+
+### Browser Response Diagnostics
+
+June 30, 2026 review-state request/response hardening is cost-neutral. `ReputationGuard` calls `/api/reviews/states` with no-store cache policy, same-origin credentials, and manual redirect handling, caps response JSON at 16KB, and requires `success: true` plus boolean `hasBlockActive` / `hasEscalationActive` values before updating passive warning state. This adds no Firestore reads/writes/deletes beyond existing valid state checks, Storage operations, provider calls, cache invalidations, rules, indexes, schema changes, Cloud Function logic, owner-facing settings, Firebase deploy requirement, or Vercel deploy action.
+
+June 30, 2026 Review Reply response/request acknowledgement is browser-only hardening. `ReviewReplyTool` submits `/api/reviews/suggest` with same-origin credentials, no-store cache policy, and manual redirect handling, then caps response parsing at 16KB and requires `{ success: true, reply }` before showing a suggestion or incrementing attempts. It adds no Firestore reads/writes/deletes, provider calls, route behavior, AI accounting writes, rules, indexes, Cloud Function logic, Firebase deploy requirement, Vercel deploy action, or owner-facing settings.
+
+June 30, 2026 Review Reply prompt-input normalization is Firebase-cost neutral. `/api/reviews/suggest` still uses the same feature gates, auth, tenant access, 16KB body cap, Zod schema, SAFE_MODE/rate-limit/capacity checks, Gemini call/fallback behavior, AI accounting write, and credit consumption order. The route now caps `businessType`, strips control/template characters from pasted review/business-type prompt inputs, escapes sanitized review text with JSON string serialization, and records sanitized prompt length/business type metadata. This adds no Firestore reads/writes/deletes, Storage operations, provider calls beyond existing valid suggestions, cache invalidations, rules, indexes, Cloud Function logic, owner-facing settings, Firebase deploy requirement, or Vercel deploy action.
+
+June 30, 2026 Review Reply copy acknowledgement is browser-only hardening. `ReviewReplyTool` shows copied feedback only after Clipboard API success or acknowledged textarea fallback success, and failed copy diagnostics add clipboard/fallback support booleans without logging raw pasted review text or generated reply text. It adds no Firestore reads/writes/deletes, Storage operations, provider calls, route behavior, AI accounting writes, rules, indexes, Cloud Function logic, owner-facing settings, Firebase deploy requirement, or Vercel deploy action.
+
+July 1, 2026 Review Reply source acknowledgement is browser-only hardening. `ReviewReplyTool` now requires the successful suggestion envelope to include `source: "ai" | "fallback"` before showing a reply, setting the source badge, syncing balance, or incrementing attempts. It adds no Firestore reads/writes/deletes, Storage operations, provider calls, route behavior, AI accounting writes, rules, indexes, Cloud Function logic, owner-facing settings, Firebase deploy requirement, or Vercel deploy action.
 
 ---
 

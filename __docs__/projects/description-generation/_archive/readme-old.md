@@ -62,7 +62,7 @@ src/components/.../editorView/Modals/
 
 | Legacy File                                           | Status         |
 | ----------------------------------------------------- | -------------- |
-| `Assessments/ASSESSMENT-09-DESCRIPTION-GENERATION.md` | → Consolidated |
+| `Assessments/assessment-09-description-generation.md` | → Consolidated |
 | `07-DESCRIPTION-GENERATION.md`                        | → Consolidated |
 
 ---

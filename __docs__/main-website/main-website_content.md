@@ -1,7 +1,7 @@
 # Website Content — MenuList Main Website (menulist.ai)
 
 **Status:** ✅ CURRENT — Canonical website copy and section map
-**Last Updated:** June 25, 2026
+**Last Updated:** July 3, 2026
 **Governance:** All content follows `02-language-governance.md` + `10-communication-worldbuilding-doctrine.md`  
 **Test:** Every line passes: "Would a busy restaurant owner in Mumbai, reading this on their phone between lunch rush and dinner prep, immediately understand what this means for them?"
 
@@ -19,13 +19,13 @@
 
 > Resources planning note (June 1, 2026): The next content expansion should be an evergreen `/resources` layer, not a chronological blog. Planned resources must keep the same official-source discipline as the homepage: owner-useful quick answers, checklists, worksheets, comparison tables, and practical next steps without ranking guarantees, AI citation promises, or generic restaurant-tech hype. Use `__docs__/main-website/main-website_resources-plan.md` as the tracker before writing or implementing resource copy.
 
-> Resources hardening note (June 2, 2026): The current release scope is not phased. The implemented website has the `/resources` hub, 15 article routes, four industry landing pages, a desktop Resources dropdown, mobile nested resource links, footer resource links, and a compact eight-card homepage bridge titled "Learn how to keep your public menu current." The homepage remains product-led; resource links support discovery and owner education without becoming a blog index.
+> Resources hardening note (June 2, 2026; broad-SMB hub wording tightened June 27, 2026): The current release scope is not phased. The implemented website has the `/resources` hub, 15 article routes, four industry landing pages, a desktop Resources dropdown, mobile nested resource links, footer resource links, and a compact eight-card homepage bridge titled around keeping a public list current. The homepage remains product-led; resource links support discovery and owner education without becoming a blog index. The hub and homepage bridge should use menu/service-list/public-list language where they represent broad SMB acquisition, while individual restaurant/menu SEO articles may stay menu-specific.
 
 > Marketing feedback note (June 2, 2026): The priority English resource and restaurant industry pages now use `Official Menu Source` as the category concept and `current approved menu` as the owner-readable explanation. The accepted WhatsApp, price-change, cleanup, and comparison-page candidates remain documented for later content work; they are not part of the live route set until marketing has reviewed content depth and CTA fit.
 
 > Public truth indexing note (June 2, 2026): The business-page strategy is handled in the customer-facing tenant/OBP/menu discovery layer, not by creating more website articles. Existing public tenant pages now use a central indexability gate for metadata and sitemap inclusion. Marketing should not request keyword-variant restaurant pages, AI-written business pages, or city/category directory pages until owner-approval, source-confidence, and claim/update rules are documented.
 
-> Privacy and analytics note (June 5, 2026; CTA label updated June 22, 2026; vendor boundary tightened June 25, 2026; Plausible website-only layer added June 26, 2026): Main MenuList website analytics are consent-gated. Plausible, Google Analytics, and Microsoft Clarity must not load from `src/app/(website)/layout.tsx` until `WebsiteAnalyticsConsent` records an accepted analytics choice. Plausible is website-only and env-gated by `NEXT_PUBLIC_MENULIST_PLAUSIBLE_DOMAIN`; GA4 remains for paid-ad/conversion continuity; Clarity remains for visual behavior observation. Footer preferences include an Analytics control so visitors can change the choice later. The first-load mobile consent panel must stay compact enough that it does not cover the hero `Create customer link` or `See customer preview` actions. Public website third-party events may include page, entry-page, referrer, UTM, locale, CTA, and target URL context, but they must not send custom repo-generated session identifiers, tenant ids, owner ids, customer ids, emails, phone numbers, or private business identifiers. This does not apply to owner custom-domain compliance pages or customer menu/OBP analytics, which are separate product surfaces with their own settings and privacy rules.
+> Privacy and analytics note (June 5, 2026; CTA label updated June 22, 2026; vendor boundary tightened June 25, 2026; Plausible website-only layer added June 26, 2026; mobile banner compacted June 27, 2026): Main MenuList website analytics are consent-gated. Plausible, Google Analytics, and Microsoft Clarity must not load from `src/app/(website)/layout.tsx` until `WebsiteAnalyticsConsent` records an accepted analytics choice. Plausible is website-only and env-gated by `NEXT_PUBLIC_MENULIST_PLAUSIBLE_DOMAIN`; GA4 remains for paid-ad/conversion continuity; Clarity remains for visual behavior observation. Footer preferences include an Analytics control so visitors can change the choice later. The first-load mobile consent panel must stay compact enough that it does not cover the hero `Create customer link` or `See example customer page` actions. Public website third-party events may include page, entry-page, referrer, UTM, locale, CTA, and target URL context, but they must not send custom repo-generated session identifiers, tenant ids, owner ids, customer ids, emails, phone numbers, or private business identifiers. This does not apply to owner custom-domain compliance pages or customer menu/OBP analytics, which are separate product surfaces with their own settings and privacy rules.
 
 > Business Health website note (June 17, 2026): Business Health may now be promoted as MenuList's AI health check for the menu and public presence. This is a diagnostic-only AI positioning: Business Health checks cached MenuList facts, shows what needs attention, says No action needed when stable, and hands fixes to AI Menu Manager or existing owner screens. Do not call it a chatbot, autonomous business agent, revenue optimizer, prediction system, competitor tracker, or direct public-truth editor.
 
@@ -43,35 +43,43 @@
 
 > Broad SMB homepage runtime copy note (June 22, 2026): the homepage and shared website metadata should no longer depend on food-menu-only examples in the first viewport or core conversion path. Use `menu or service list`, `current list`, `public list`, and `official customer link` where the copy represents MenuList's broad SMB promise. Restaurant/cafe proof can remain on menu-specific resource, industry, and feature pages, but the core homepage must also visibly work for salons, spas, studios, clinics, repair shops, retail counters, and other list-driven SMBs.
 
+> Viral-readiness conversion guard (June 29, 2026): the Marc Lou 32-principle checklist is treated as a validation input, not a pricing or product mandate. For MenuList, preserve the current official-customer-link hero, visible Pricing nav, product proof visual, single primary `/create-menu` action, controlled 7-day setup framing, footer close, and no-fake-testimonial boundary. Keep the Open Graph thumbnail aligned with the broad menu/service-list promise, keep the desktop sticky CTA out of the hero and final CTA by observing section visibility instead of scroll-percentage state, and keep the homepage switching comparison category-based rather than naming competitors or making unsupported superiority claims.
+
+> Public Truth Check tool route note (June 30, 2026): `/tools/public-truth-check` is the first public Public Truth Tools route. It is a browser-local self-report checker that uses entered facts only, returns present/missing/unclear/not-checked rows, supports report copy/download, routes next action to `/create-menu`, and can submit an optional consented follow-up through the existing public contact route. It must not claim external-source crawling, Google/Instagram/WhatsApp updates, ranking, citation, AI/search visibility, report-state storage, or provider-backed checks in the first version.
+
+> MenuList Tools hub route note (July 3, 2026): `/tools` is the public index for the current MenuList Tools portfolio. It groups free public checks by owner job: Public Truth, Menu / Service Clarity, Customer Action Readiness, and Trust / Setup. The hub is static website UI only: it does not run reports, fetch external links, submit contact handoffs, store leads, call providers, inspect Google/social/search surfaces, or promise ranking/citations. Header Resources and footer Start navigation should point to `/tools` without turning the primary website nav into a broad toolbox.
+
+> Non-technical owner copy polish (July 1, 2026): public website copy should read like it is for a busy SMB owner, not an internal product team. Avoid visible jargon such as `PWA`, `crawler`, `structured data`, `schema`, `source-of-truth`, `diagnostic layer`, `signals`, `raw tables`, and generic `dashboard` language unless the page is legal/security/resource-specific or `Owner phone dashboard` is the actual feature label. Prefer `approved list`, `customer link`, `clear public page`, `activity view`, `phone dashboard`, `review before publishing`, and `search and AI tools` where owners need the practical meaning.
+
+> Create-menu preview bridge note (July 2, 2026): the homepage now includes `CreateMenuPreviewSection` immediately after `SwitchComparisonSection`. It is a conversion bridge into `/create-menu`, not a second intake implementation. Copy may invite owners to start from a photo or owned public link, but it must keep the current guardrails explicit: sign in before processing, private owner-bound preview, five preview attempts per day, 24-hour draft expiry, and review before publishing.
+
+> Mobile try-first homepage note (July 3, 2026): the homepage now makes the preview path the first action after the hero. The first-scroll story is `upload or paste current list -> private preview -> review -> publish`, followed by a short before/after block, customer output proof, compact AI Menu Manager + Business Health USP proof, six conversion FAQ questions, and final CTA. The deep operating-loop, setup, surfaces, resources, AI Menu Manager, and Business Health explanations belong on `/how-it-works`, `/features`, `/ai-menu-manager`, `/features/business-health`, `/resources`, and `/faq` rather than in the first mobile scroll.
+
 ---
 
 ## Page 1: Homepage
 
 ### Canonical Implementation Scope
 
-The current homepage is the only default MenuList marketing website. It keeps the strongest first-visit conversion jobs in safer official-source language: public drift pain, upload/review/publish clarity, setup effort removal, customer preview proof, public-surface clarity, rollout proof, FAQ trust, and final CTA confidence. Advanced proof areas stay available in supporting pages/components instead of lengthening the first homepage scroll. The public `/create-menu` funnel now supports both a menu photo and an owner-provided public menu link after sign-in, with the first setup preview still free before payment. It intentionally does **not** edit pricing, payment, subscription, Razorpay, or onboarding runtime logic.
+The current homepage is the only default MenuList marketing website. It keeps the first mobile scroll focused on the strongest owner action: start from the current menu, catalogue, service list, or price list; create a private preview; review it; then publish the customer link. Advanced proof areas stay available in supporting pages/components instead of lengthening the first homepage scroll. The public `/create-menu` funnel still supports both a menu photo and an owner-provided public menu link after sign-in, with setup review positioned as plan-fit evaluation, not as a publishing or sharing plan. It intentionally does **not** edit pricing, payment, subscription, Razorpay, or onboarding runtime logic.
 
 Supporting pages now share the same official-source discipline through shared hero/proof components, owner-readable trust language, safer pricing/setup claims, and a unified website palette. Pricing payment, subscription, Razorpay, auth, and onboarding runtime logic remains protected unless a separate payment-scope task explicitly approves it.
 
 **Current route/component order:**
 
 1. `HeroSection`
-2. `ProblemSection`
-3. `InteractiveWorkflowSection`
-4. `PublicTruthLoopSection`
-5. `WebsiteReplacementBlock`
-6. `AiMenuManagerSection`
-7. `SetupReliefSection`
-8. `SurfacesSection`
-9. `CustomerBrowseSection`
-10. `PreparedForYouSection`
-11. `BusinessHealthSection`
-12. `ResourcesSection`
-13. `FaqSection`
-14. `FinalCtaSection`
-15. `StickyCta`
+2. `CreateMenuPreviewSection`
+3. `BeforeAfterSection`
+4. `CustomerBrowseSection`
+5. `CustomerLinkIncludesSection`
+6. `OwnerProofSection`
+7. `FaqSection`
+8. `FinalCtaSection`
+9. `StickyCta`
 
-**Canonical section policy:** the homepage is intentionally compressed to reduce mobile and first-visit density. `InteractiveWorkflowSection` is the six-stage lifecycle spine, `PublicTruthLoopSection` proves that published surfaces return to the same approved source, and `WebsiteReplacementBlock` answers the lightweight website/customer-link doubt before AI Menu Manager appears. `BusinessHealthSection` is mounted as the single owner-dashboard USP proof after the prepared capability grid and before the education/discovery bridge. `ResourcesSection` remains a compact lower-page education/discovery bridge before FAQ; it must not turn the homepage into a blog index. `RevenuePathSection`, `StatsSection`, `SearchDiscoverySection`, `AnalyticsInsightsSection`, `SmartFeaturesSection`, `BusinessSection`, and `IndustrySection` remain in the repo as supporting components/future page material, but they are not mounted in the current homepage composition.
+**Canonical section policy:** the homepage is intentionally compressed to reduce mobile and first-visit density. `CreateMenuPreviewSection` is the first strong conversion bridge after the hero: it shows the low-risk path from current list to private preview and routes to `/create-menu` without collecting files on the homepage. `BeforeAfterSection` now owns the combined problem + switch comparison story in a short before/after format. `CustomerBrowseSection` shows what customers receive from the approved link. `CustomerLinkIncludesSection` is the compact homepage proof strip for what the customer link includes after approval: official page, QR link, print files, customer actions, phone dashboard, and activity/feedback. `OwnerProofSection` keeps AI Menu Manager and Business Health on the homepage as compact USP proof, while the full stories remain on `/ai-menu-manager` and `/features/business-health`. `FaqSection` shows six conversion-critical questions; `/faq` holds the full 16-question FAQ. `ProblemSection`, `SwitchComparisonSection`, `InteractiveWorkflowSection`, `PublicTruthLoopSection`, `AiMenuManagerSection`, `SetupReliefSection`, `SurfacesSection`, `BusinessHealthSection`, `ResourcesSection`, `RevenuePathSection`, `StatsSection`, `SearchDiscoverySection`, `AnalyticsInsightsSection`, `SmartFeaturesSection`, `BusinessSection`, `IndustrySection`, `WebsiteReplacementBlock`, and `PreparedForYouSection` remain in the repo as supporting components/future page material, but they are not mounted in the current homepage composition.
+
+**Sticky CTA behavior (June 29, 2026):** `StickyCta` is desktop-only and should appear after the hero proof has passed, then hide before the final CTA area. The homepage wraps the hero with `website-sticky-cta-start` and the final CTA with `website-sticky-cta-stop` so the tray is controlled by section visibility, not a scroll-percentage listener.
 
 **Growth Kits placement policy (June 1, 2026; wording aligned June 22, 2026):** do not add GrowthOS, Growth Kits, or `Today's Sales Pack` to the homepage. The homepage must stay focused on the first owner action: start from the current menu or service-list source and publish one official customer-facing version. Growth Kits may be considered later as a small Pro/Premium pricing or Features-page proof point after owner usage validates demand.
 
@@ -83,13 +91,13 @@ Supporting pages now share the same official-source discipline through shared he
 
 **Business Health campaign page policy (June 17, 2026):** `/features/business-health` is the public campaign URL for Business Health. Do not use `/business-health` for public marketing because that route belongs to the logged-in owner app. The campaign page may go deeper than the homepage section and may describe Business Health as an AI health check, but must stay inside the shipped contract: latest MenuList check, public surface status, customer attention, standard cached periods, location state, last checked date, No action needed when stable, and safe handoff to AI Menu Manager or existing owner-screen routing. It must not imply generic chatbot, ask-anything behavior, realtime sales, POS revenue, competitor tracking, predictions, automatic external-platform updates, or direct Business Health-owned public-truth mutation.
 
-**Analytics feature page policy (June 22, 2026):** `/features/analytics` is the dedicated public page for the shipped owner analytics dashboard. It may describe today, overview, daily, weekly, monthly, and overall dashboard views; menu sessions; engaged sessions; item taps; searches; action rate; Official Business Page actions; customer app activity; desktop/mobile owner dashboard availability; and privacy-conscious aggregate reporting. It must not imply customer profiling, heatmaps, exact GPS tracking, revenue attribution, POS revenue, guaranteed sales lift, or a generic BI product. Analytics is linked from the `/features` Menu analytics card and discovery files, not added to the desktop header dropdown in this pass.
+**Analytics feature page policy (June 22, 2026; updated July 1, 2026):** `/features/analytics` is the dedicated public page for the shipped owner analytics dashboard. It may describe today, overview, daily, weekly, monthly, and overall dashboard views; menu sessions; engaged sessions; item taps; item status labels; searches; no-result search fix prompts; unavailable demand; actions while open, closed, or unknown; action rate; Official Business Page actions; customer app activity; desktop/mobile owner dashboard availability; and privacy-conscious aggregate reporting. It must not imply customer profiling, heatmaps, exact GPS tracking, revenue attribution, POS revenue, guaranteed sales lift, or a generic BI product. Analytics is linked from the `/features` Menu analytics card and discovery files.
 
 **WhatsApp onboarding campaign page policy (June 22, 2026):** `/whatsapp` is the public campaign route for the implemented messaging-onboarding flow. It should own the WhatsApp-first wedge without turning MenuList into a WhatsApp replacement, Meta partner claim, automatic catalog-sync claim, or bulk outreach tool. The page may describe sending menus, service lists, rate cards, package lists, catalogs, photos, screenshots, PDFs, and text through the onboarding channel; preview preparation; owner approval before publish; and one official customer link/QR after publish. The live website CTA now uses the supplied test WhatsApp onboarding number `+1 555 657 1424`; production launch still needs the final public WhatsApp account, response owner, operating hours, consent note, and tracking decision.
 
 **AI Menu Manager placement policy (June 17, 2026):** AI Menu Manager is now the website growth hook after the source-to-public workflow. The homepage should first establish one approved MenuList source, then show how AI Menu Manager keeps that source current by message. The dedicated public route is `/ai-menu-manager`. Copy must keep the loop explicit: owner intent -> prepared card -> approval when needed -> existing MenuList operation -> receipt. Unsupported external posting must be described as a manual task/export/handoff, not direct completion. As of v3.6.63, the dedicated page may mention guided item/category/menu-area selection as owner control, but it should not read like UI instructions or weaken the natural-language promise. As of v3.6.73, public AI Menu Manager copy uses approval-based language instead of `AI-powered` shorthand.
 
-**CTA rule:** Primary public CTAs now point to `/create-menu` and should consistently read "Create customer link →" when the CTA represents the broad acquisition funnel. The destination explains the flow publicly, then requires sign-in before accepting a menu, catalogue, price-list, or service-list image or a permission-confirmed public list link. `/get-started` remains a guided setup/sign-in page for owners who need account context, not the first upload funnel. Menu-specific feature/resource pages can still use menu wording when the page itself is explicitly about menu import, menu engineering, QR menus, or restaurant guidance.
+**CTA rule:** Primary public CTAs now point to `/create-menu` and should consistently read "Create customer link →" when the CTA represents the broad acquisition funnel. The homepage hero and `CreateMenuPreviewSection` may use "Start menu preview" when the action is explicitly framed as the private preview-first flow. The destination explains the flow publicly, then requires sign-in before accepting a menu, catalogue, price-list, or service-list image or a permission-confirmed public list link. `/get-started` remains a guided setup/sign-in page for owners who need account context, not the first upload funnel. Menu-specific feature/resource pages can still use menu wording when the page itself is explicitly about menu import, menu engineering, QR menus, or restaurant guidance.
 
 ---
 
@@ -120,13 +128,17 @@ The `/resources` layer is an evergreen MenuList public website surface, not a ch
 
 **Content rule:** Each resource page needs a visible quick answer, practical checklist/comparison/worksheet where relevant, owner-readable caveats, related-resource links, and one intent-matched CTA. Resource copy must not promise ranking, citation, AI answer placement, Google refresh timing, revenue lift, or automatic external-platform sync. Checklist copy controls are allowed only where the page already renders visible checklist content; downloadable template CTAs must stay absent until a real asset exists.
 
-**Navigation rule:** Header navigation is product-led: Features, How it works, Multi-location, Pricing, Resources. Desktop Resources opens a compact dropdown for Menu Engineering, QR Menu Guide, Digital Menu vs PDF, Google Menu Guide, Restaurant Menu SEO, AI Search & Menu Discovery, Official Menu Source, and All Resources. Mobile navigation exposes the same resource links under the Resources entry.
+**Navigation rule:** Header navigation is product-led: Features, How it works, Multi-location, Pricing, Resources. Desktop Resources opens a compact dropdown for MenuList Tools, Menu Engineering, QR Menu Guide, Digital Menu vs PDF, Google Menu Guide, Restaurant Menu SEO, AI Search & Menu Discovery, Official Menu Source, and All Resources. Mobile navigation exposes the same resource links under the Resources entry, with MenuList Tools opening the canonical `/tools` index.
 
-**Homepage resource cards:** The mounted `ResourcesSection` uses eight cards: Menu engineering, QR menu setup, Digital menu vs PDF, Google menu source, Restaurant menu SEO, AI search discovery, Official menu source, and Multi-location control. Keep Menu Source Audit as a high-intent resource page and hub/tool card, not as a homepage card, so the homepage follows the requested strategic cluster.
+**Homepage resource placement:** `ResourcesSection` is no longer mounted on the compressed homepage. Keep resource depth on `/resources`, the Resources dropdown, footer links, and the `/tools` hub so the homepage stays focused on the preview-first conversion path. If a resources bridge is reintroduced later, keep it compact and use the approved eight-card cluster: Menu engineering, QR menu setup, Digital menu vs PDF, Google menu source, Restaurant menu SEO, AI search discovery, Official menu source, and Multi-location control. Keep Menu Source Audit as a high-intent resource page and hub/tool card, not as a homepage card.
+
+**Resources hub layout rule (June 27, 2026):** `/resources` should not render every article as one flat, equal-weight grid. The hub first shows a four-step recommended path using existing article metadata: Menu Source Audit, Official Menu Source, QR Menu Guide, and Official Menu URL Checklist. Below that, article cards are grouped by existing resource clusters and localized cluster labels. Search remains intentionally absent until the static resource set grows beyond what grouped browsing can handle.
 
 **Localization rule:** English long-form resource content is the source of truth. Every active public website-switcher language now has reviewed structured resource coverage: Hindi, Tamil, Telugu, Marathi, Bengali, Arabic, and Spanish. Each pack covers all 15 articles, including long-form sections, checklists, comparison rows, FAQ, metadata, and CTAs. Future languages must stay on English fallback until complete reviewed packs pass `npm run verify:website-resource-locales` and their locale URLs are added to sitemap, `hreflang`, and LLM context.
 
-**Website copy-layer rule (June 10, 2026):** active marketing-surface text should stay in the `Website` locale namespace, including fallback states, placeholders, button labels, helper headings, and accessibility labels. The `/create-menu/preview/[draftId]` page is part of this contract: loading, processing, failure, expiry, empty-state, detected-detail, stats, and claim-form copy must not be hardcoded in the component. Legal policy bodies, static metadata titles, and pricing/account billing internals can remain static unless a dedicated localization pass is planned.
+**Website copy-layer rule (June 10, 2026; contact fallback tightened June 28, 2026; response parsing tightened June 29, 2026; submission handoff tightened June 30, 2026; acknowledgement tightened July 1, 2026):** active marketing-surface text should stay in the `Website` locale namespace, including fallback states, placeholders, button labels, helper headings, and accessibility labels. The `/create-menu/preview/[draftId]` page is part of this contract: loading, processing, failure, expiry, empty-state, detected-detail, stats, and claim-form copy must not be hardcoded in the component. The public contact form uses `Website.Contact.submitFailed` and `Website.Contact.securityCheckRequired` for fixed fallback copy, submits to `/api/public/contact` with same-origin credentials, no-store cache policy, and manual redirect handling, parses API responses through a shared bounded 8KB reader, requires `source: "menulist_public_contact"`, `status: "accepted"`, and the expected help topic before submitted state, logs only `website_contact_response_parse_failed` / `website_contact_response_invalid` metadata, and must not display API response text or browser exception messages. Legal policy bodies, static metadata titles, and pricing/account billing internals can remain static unless a dedicated localization pass is planned.
+
+**Create-menu auth-state rule (June 27, 2026):** `/create-menu` must show a deterministic public landing state for signed-out visitors: sign in, add current list, review before publishing, supported inputs, and the trust line that nothing goes public until review. Session checking may appear only as a small saved-sign-in status, not as the page's primary account state. This preserves sign-in-first upload/link-import behavior while avoiding a loading-first acquisition surface.
 
 ---
 
@@ -163,12 +175,12 @@ Industry pages explain how the same official-source layer applies to common list
 > Start with a photo, PDF, existing menu link, or typed menu. MenuList prepares it for review, then keeps your public menu, business page, QR, print files, customer actions, owner updates, feedback, and health checks connected to the version you approve.
 
 **Primary CTA:** Create customer link →
-**Secondary CTA:** See customer link (`/features/official-business-page`)
-**Micro-trust line:** Start with a 7-day setup. Review the public menu before choosing a paid plan.
+**Secondary CTA:** See example customer page (`/features/official-business-page`)
+**Micro-trust line:** Start with a 7-day setup. Review the public version before choosing a paid plan.
 
 **Proof strip:** Owner-approved · Use as website link · QR and print ready
 
-**Visual:** Official-source composite showing owner source, Official Business Page, customer menu phone preview, and surface pills for QR menu, official page, digital screen, web/link, print/PDF, and saved menu shortcut.
+**Visual:** Localized official-source composite showing owner source, Official Business Page, customer-list phone preview, and surface pills for QR link, official page, digital screen, web/link, print files, and saved customer shortcut. Use live mockup cards backed by `Website.Hero.*` locale keys; do not bake restaurant-only copy into a static screenshot that can drift from the homepage promise.
 
 **Notes:**
 
@@ -182,6 +194,31 @@ Industry pages explain how the same official-source layer applies to common list
 **AI Menu Manager teaser:** Show a compact hero teaser:
 
 > New: AI Menu Manager - Update your list by message
+
+---
+
+### Section 3A — Create Menu Preview Bridge
+
+**Purpose:** Give owners a concrete next action after they understand why scattered public lists drift.
+
+**Headline:**
+
+> See your menu as a customer link.
+
+**Subline:**
+
+> Start from a photo or an owned public link. MenuList prepares a private preview connected to your account.
+
+**CTA:** Start menu preview (`/create-menu`)
+
+**Visible guardrails:**
+
+- Account connected before processing
+- 5 preview attempts per day
+- Drafts expire after 24 hours
+- Nothing becomes public until the owner reviews and confirms
+
+**Policy:** This section must not process uploads, reserve public slugs, show a no-account-needed promise, or imply direct public publishing from the homepage. It is a proof-and-routing bridge into the existing authenticated `/create-menu` flow.
 
 ---
 
@@ -260,7 +297,7 @@ The section now uses a split layout: left-side narrative, right-side public-drif
 
 ### Removed — Redundant Solution Section
 
-The old `SolutionSection` with "One menu. Public places stay aligned.", a central SVG, and six explanatory bullets is no longer mounted. The same category bridge is now covered more clearly by the hero promise, broken-menu problem section, `InteractiveWorkflowSection` source map, setup proof, and public-surface proof. Keeping both made the homepage longer and repeated the same one-source claim before the visitor reached stronger product proof.
+The old `SolutionSection` with "One menu. Public places stay aligned.", a central SVG, and six explanatory bullets is no longer mounted. The same category bridge is now covered more clearly by the hero promise, `CreateMenuPreviewSection`, `BeforeAfterSection`, and customer output proof. Keeping both would lengthen the mobile homepage and repeat the same one-source claim before the visitor reaches the preview-first action.
 
 ---
 
@@ -379,7 +416,7 @@ The old `SolutionSection` with "One menu. Public places stay aligned.", a centra
 
 **Component:** `WebsiteReplacementBlock`
 
-**Mounted on:** homepage after `PublicTruthLoopSection`, `/pricing` after pricing setup controls, and `/features/official-business-page` after the page journey.
+**Mounted on:** `/pricing` after plan cards and owner-choice guidance, and `/features/official-business-page` after the page journey. It is intentionally not mounted on the homepage.
 
 **Title:**
 
@@ -517,6 +554,33 @@ MenuList turns approved menu and business details into visible public pages, ser
 - Trust signals stay visible.
 
 **Visual:** Customer-facing menu preview showing business identity, open/update state, search, section chips, item cards, and prices.
+
+---
+
+### Section 8A — Customer Link Includes Strip
+
+**Purpose:** Show SMB owners that the preview creates more than a plain QR page without reintroducing the heavy `SurfacesSection`.
+
+**Headline:**
+
+> One customer link carries the useful pieces.
+
+**Subline:**
+
+> After review, the same approved link can support the public page, QR, print files, customer actions, owner phone view, and simple activity signals.
+
+**Items:**
+
+| Item | Homepage wording |
+| --- | --- |
+| Official business page | Hours, contact, photos, directions, and the current list in one public place. |
+| QR link | Table, counter, packaging, and poster QR files point to the approved version. |
+| Print files | Paper menus, table cards, and printer handoff files can stay tied to the same list. |
+| Customer actions | Call, WhatsApp, directions, booking, ordering, sharing, and list access stay close. |
+| Phone dashboard | Owners can check and update the important parts from a phone-friendly view. |
+| Activity and feedback | See what customers open and collect wrong-price or missing-item reports. |
+
+**Policy:** Keep this as a compact proof strip between `CustomerBrowseSection` and `OwnerProofSection`. Do not expand it into a full surfaces grid, resources bridge, analytics section, or detailed operations workflow. The deeper stories stay on feature pages.
 
 ---
 
@@ -1028,7 +1092,7 @@ Expose Analytics as a dedicated feature page at `/features/analytics`, linked fr
 
 - Public label is `Analytics`.
 - The page may describe today, overview, daily, weekly, monthly, and overall dashboard views.
-- The page may mention menu sessions, engaged sessions, item taps, searches, no-result searches, action rate, Official Business Page actions, and customer app activity.
+- The page may mention menu sessions, engaged sessions, item taps, item status labels, searches, no-result searches, unavailable demand, actions while open/closed/unknown, action rate, Official Business Page actions, and customer app activity.
 - The page may mention desktop and mobile owner dashboard availability.
 - The page must frame analytics as aggregate owner summaries, not customer profiling or BI.
 - Do not promise revenue lift, exact attribution, POS revenue, heatmaps, hover tracking, exact GPS tracking, or private customer identity collection.
@@ -1383,7 +1447,7 @@ Right-side sticky cards:
 
 **Decision heading:**
 
-> You are buying the system around your approved customer link.
+> Choose by reach, not by feature count.
 
 ---
 
@@ -1393,13 +1457,17 @@ Right-side sticky cards:
 - **INR primary** (auto-detected for India timezone), USD secondary
 - **Monthly/yearly toggle** with savings badge
 - Keep existing plan data from `PlatformPlansList`
-- Each plan card: Plan name, price, billing period, key features, CTA button
+- Show plan cards before the website-doubt explainer and deeper decision education on mobile and desktop.
+- Each plan card: Plan name, price, billing period, best-fit line, public surfaces included, owner controls included, not-included boundary, and CTA button
 - Recommended plan highlighted
-- Plan guidance must leave the choice with the owner: Starter is enough for one current public menu; Pro is for presentation, languages, and owner controls.
+- Plan-card user-facing copy must come from the `Website.Pricing` locale namespace, not hardcoded JSX strings.
+- Plan guidance must leave the choice with the owner: Starter is enough for one official customer link; Pro is for presentation, AI Menu Manager, languages, enhancement credits, and owner controls; Premium is for location governance.
 
 ### CTA on Plan Cards
 
-> Create customer link →
+- Starter: `Start with one customer link`
+- Pro: `Start with Pro setup`
+- Premium: `Set up locations`
 
 ### Below Plans: Credit / Enhancement Packs
 
@@ -1425,9 +1493,9 @@ Right-side sticky cards:
 
 > Yes. Upgrade or downgrade anytime from your dashboard.
 
-**Q: Is there a free trial?**
+**Q: Can I publish without a paid plan?**
 
-> Menu extraction is free and unlimited. To publish and share your menu, choose a plan.
+> No. MenuList has paid plans for businesses that want to publish and share an official customer-facing menu.
 
 **Q: What payment methods do you accept?**
 
@@ -1553,6 +1621,50 @@ Chat-style sequence:
 
 ---
 
+## Page 4C: Public Truth Check (/tools/public-truth-check)
+
+**Purpose:** Public self-report tool for prospects, owners, and agencies to check whether one current business source has the facts customers need before they publish or share it.
+
+**Metadata title:**
+
+> Public Truth Check - MenuList | Check Your Customer Source
+
+**Metadata description:**
+
+> Check whether a business has clear public facts for its menu or service list, hours, location, contact, action links, and current customer source.
+
+**Heading:**
+
+> Check if customers can trust your public business source.
+
+**Subline:**
+
+> Use the facts visible today. MenuList returns a short gap report for the business name, menu or service source, prices, hours, location, contact, action links, photos, and one current customer link.
+
+**Primary action:**
+
+> Run check
+
+**Next action destination:** `/create-menu`
+
+**Implemented behavior:**
+
+1. Owner enters business identity, source type, optional public link, and visible menu/service text.
+2. Owner marks visible facts such as prices, hours, location, contact, actions, and photos.
+3. Browser-local report builder returns `ready`, `missing_basics`, or `unclear` with row-level status.
+4. The report states that external sources and AI/search were not checked and that no ranking promise is made.
+5. The CTA routes to Create Menu so the approved source can become one customer link.
+
+**Boundaries:**
+
+- No external URL fetch.
+- No Firebase reads or writes.
+- No lead/contact storage.
+- No provider or AI/search calls.
+- No ranking, citation, traffic, external-platform update, or answer-placement promise.
+
+---
+
 ## Page 5A: Create Menu (/create-menu)
 
 **Purpose:** Primary public conversion path for starting from the business's current menu, price-list, catalogue, or service-list source and creating the official customer link. The page must not read like a generic digital-menu maker or food-only QR menu tool.
@@ -1597,6 +1709,13 @@ Chat-style sequence:
 **Public powered-by CTA:**
 
 > Create your official customer link
+
+**Success page handoffs (`/create-menu/success`):**
+
+- Copy link failure: `CreateMenuSuccess.copyFailed`
+- WhatsApp open failure: `CreateMenuSuccess.whatsAppFailed`
+- Copy Link success must wait for Clipboard API success or acknowledged textarea fallback success. Rejected Clipboard API writes fall through to the textarea fallback before failure.
+- Both messages must stay localized fixed copy. Do not show browser exception text, API response text, raw public URLs, or generated WhatsApp message bodies.
 
 **Notes:**
 
@@ -1656,11 +1775,11 @@ Chat-style sequence:
 **Contact methods:**
 
 - Email: hello@menulist.ai
-- Website enquiry form persists through `addEnquiry()`.
+- Website enquiry form submits to `POST /api/public/contact` with same-origin credentials, no-store cache policy, and manual redirect handling. The route rate-limits, caps body size, checks honeypot/Turnstile signals, and writes `landingPageEnquiries` through Firebase Admin.
 
 **Notes:**
 
-- Contact page keeps the existing form logic.
+- Contact page keeps the existing form fields and sends them through the bounded public API route.
 - New proof strip reinforces real product team, setup/pricing help, and multi-location planning.
 
 ---
@@ -1866,6 +1985,8 @@ The removed global helper components were useful during early conversion hardeni
 ## Language Governance Compliance Checklist
 
 Stage 7.4 reviewed the homepage copy after the reference-informed layout pass. It corrected internal phrasing, grammar, capitalization, public-surface casing, and spelling drift while preserving the official-source positioning and avoiding unsupported claims.
+
+Source gate: `npm run verify:website-public-copy-boundary` locks the mounted homepage copy, Website locale namespace blocked-claim scan, LLM context files, and the documented unmounted `SmartFeaturesSection` exception.
 
 | Rule                                            | Status                                              |
 | ----------------------------------------------- | --------------------------------------------------- |

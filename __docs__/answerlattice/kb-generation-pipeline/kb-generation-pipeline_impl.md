@@ -1,7 +1,7 @@
 # KB Generation Pipeline — Technical Implementation Blueprint
 
 > **Version:** 1.0.0
-> **Last Updated:** 2026-05-24
+> **Last Updated:** 2026-06-29
 > **Audience:** Developers
 > **Source:** Codebase forensic audit (code is truth)
 
@@ -58,26 +58,44 @@ The KB Generation Pipeline is a **hybrid client + Cloud Functions feature**:
 | `ReconciliationArticleCard.tsx` | Individual article comparison card |
 | `ArticleMetadata.tsx` | Article metadata display for comparison |
 
+KB source-file links in the active job card, job details drawer, and reconciliation metadata open in a new tab with `noopener,noreferrer`, check the returned browser window, and log `answerlattice_kb_source_open_failed` if the browser blocks or rejects the handoff. Diagnostics use bounded job/article/source URL/name/type presence-length metadata only, and the UI shows fixed `Unable to open source` copy. This is a browser-handoff boundary only; it does not change source upload, job processing, article reconciliation, or publish behavior.
+
+KB job status rendering is shared through `getIngestionJobStatusData()` in the active job card, status tag, history preview card, and job details drawer. That shared map covers the seven persisted `INGESTION_JOB_STATUS` values, including `cancelled`. Each renderer keeps an `Unknown` fallback so malformed or older status strings do not crash the job history or detail views.
+
+The active job card and processing progress component must not keep commented test-only progress or status override code. Runtime progress and status displays come only from the persisted `IngestionJob` fields, and the progress component bounds malformed or missing article counts before computing percentage text.
+
 ### 2.2 Database Layer
 
-**File:** `src/database/kb-generation/jobs.ts` (151 lines)
+**File:** `src/database/kb-generation/jobs.ts`
 
 | Function | Reads | Writes | Notes |
 |----------|:-----:|:------:|-------|
 | `getIngestionJobs()` | N | 0 | ALL jobs, NO tenant filter |
 | `getIngestionJobCollectionRef(session)` | 0 | 0 | Returns query ref with tId + sId + active status filter |
 | `getPreviousIngestionJobs(session)` | N | 0 | Completed/failed/cancelled for tenant |
-| `updateJob(jobId, data)` | 0 | 1 | Merge update |
-| `deleteIngestionJob(jobId)` | 1+N | 1+N+storage | Transaction: delete job + articles + categories + storage files |
-| `addIngestionJob(data)` | 0 | 1 | Creates job. Dev: calls `triggerStartGeneration()`. Prod: Firestore trigger fires. |
+| `updateJob(jobId, data)` | 0 | 1 | Merge update; returns acknowledged `{ success, id, updatedFields }` |
+| `deleteIngestionJob(jobId)` | 1+N | 1+N+storage | Transaction: delete job + articles + categories + storage files; returns acknowledged `{ success, jobId, deleted }` |
+| `retryJob(jobId)` | 1 | 1 | Resets failed job to pending; returns acknowledged job write |
+| `cancelJob(jobId)` | 0 | 1 | Marks job cancelled; returns acknowledged job write |
+| `addIngestionJob(data)` | 0 | 1 | Creates job and returns acknowledged job write. Dev: calls `triggerStartGeneration()`. Prod: Firestore trigger fires. |
 
 ### 2.3 Cloud Functions
 
 | File | Trigger | Purpose |
 |------|---------|---------|
 | `functions/src/logic/embedArticleWorker.ts` | Task queue | Re-embeds articles when category/section titles change. Reads article, generates embedding via `genrateEmbedding()`, updates article + increments job counter. |
-| `functions/src/logic/regenerateEmbedding.ts` | HTTPS callable | Re-generates embedding for single article by ID. Uses `FieldValue.vector()` for storage. |
+| `functions/src/logic/regenerateEmbedding.ts` and `functions-answerlattice/src/logic/regenerateEmbedding.ts` | HTTPS callable | Re-generates embedding for single article by ID. Uses `FieldValue.vector()` for storage. |
 | `functions/src/triggers/shared` | Firestore triggers | `embedArticleWorker`, `processMenuImages`, `publishApprovedJobFn`, `regenerateEmbedding` — exported from index.ts |
+
+Client callable failures from `src/lib/firebase/functions.ts` use bounded secure diagnostics. `regenerateEmbedding` and `publishApprovedJobFn` failures record normalized `answerlattice_regenerate_embedding_callable_failed` / `answerlattice_publish_approved_job_callable_failed` codes with bounded article/job metadata and source error name/code/status only. The wrapper keeps the existing generic caller-facing errors and does not log raw Firebase callable/provider errors or publish payload contents.
+
+Server callable, task worker, and publish finalizer failures in the shared/local Functions tree and the separate `functions-answerlattice/` tree use stable `ANSWERLATTICE_REGENERATE_EMBEDDING_*`, `ANSWERLATTICE_PUBLISH_APPROVED_JOB_*`, `ANSWERLATTICE_EMBED_ARTICLE_WORKER_*`, and `ANSWERLATTICE_FINALIZE_PUBLISH_*` codes with bounded article/job ID length and source error metadata only. Failed approved-job records keep the existing `errorMessage` field but store fixed `Publishing failed` / `Finalize publish failed` text.
+
+Shared production and dev trigger wrappers for KB generation/finalization log bounded job/request context only. `functions/src/triggers/production.ts` uses `FUNCTIONS_PRODUCTION_TRIGGER_DATA_MISSING` for missing event snapshots, and `functions/src/dev-triggers.ts` uses fixed dev-trigger failure codes without logging raw job IDs or request payloads.
+
+The lower KB generation and embedding layer is bounded as well. `functions/src/logic/startGeneration.ts` stores fixed `Knowledge generation failed` text on failed jobs, `functions/src/utils/aiUtils.ts` and `functions-answerlattice/src/utils/aiUtils.ts` log stable generation/upload/embedding/similar-article failure codes, and shared/separate KB task/callable wrappers log ID lengths and caller metadata lengths only. Generated KB payloads, raw AI response text, provider exception messages, raw article/job IDs, raw temp paths, and raw callable caller IDs are not logged or persisted as diagnostics.
+
+`JobDetailsDrawer.tsx` renders source files only from the persisted `job.sourceFiles` array. It must not retain dummy icon-review source arrays or temporary preview blocks in the active drawer module, because the same component is mounted in both platform and Answerlattice KB generation routes. The Job ID copy action uses the shared Answerlattice support clipboard helper, waits for Clipboard API success or acknowledged textarea fallback success, and logs `answerlattice_kb_job_id_copy_failed` with bounded job/status/support metadata only before fixed failure copy; raw job IDs are not logged.
 
 ### 2.4 Hooks
 
@@ -111,6 +129,7 @@ UploadModal.handleStartGeneration()
   → addIngestionJob({ sourceFiles: uploadedFiles, status: 'pending' })
     → requestBodyComposer injects tId, sId, uId, timestamps
     → addDoc to kb_generation_jobs
+    → assertIngestionJobWriteSucceeded()
     → [Dev only] triggerStartGeneration(jobId, job) — manually calls Cloud Function
     → [Prod] Firestore onCreate trigger fires automatically
 ```
@@ -127,6 +146,8 @@ Firestore trigger: onCreate on kb_generation_jobs (status=pending)
 ```
 
 ### 3.3 Review + Reconciliation
+
+Review category, section, article, and duplicate-resolution edits call `updateJob()` and must require `assertIngestionJobWriteSucceeded()` before local review state, modal close, or success copy advances. Job-card delete/retry/cancel and job-history delete actions must require `assertIngestionJobWriteSucceeded()` or `assertIngestionJobDeleteSucceeded()` before success copy. Rejected acknowledgement codes use the `kb_generation_*_rejected` pattern and are guarded by `npm run verify:answerlattice-runtime-truth`.
 ```
 KBGenerationTemplate detects activeJob.status === 'needs_review'
   → Check articlesToReview for unresolved items

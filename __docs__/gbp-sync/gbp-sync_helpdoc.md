@@ -1,54 +1,60 @@
 # GBP Sync — Help Documentation
 
 ## Quick Summary
-GBP Sync keeps your Google Business Profile accurate by automatically updating your menu link and alerting you when hours don't match.
 
----
+Google Business Profile sync is not active in MenuList today. Current MenuList support is a manual Google handoff: use your Official Business Page link and menu link when you update Google Business Profile yourself.
 
-## Getting Started
+## Current Source Boundary
 
-### How to connect your Google Business Profile
-1. Go to **Settings** → **Google Sync**
-2. Click **Connect Google Account**
-3. Sign in with the Google account that manages your business listing
-4. Select your business location from the list
-5. Click **Connect**
-6. Done — sync begins automatically
+- `ENABLE_GBP_SYNC` is `false`.
+- Google sync controls are hidden while the flag is off.
+- Google OAuth connection is not available.
+- MenuList does not update Google Business Profile automatically.
+- Owner-managed Google updates remain the current path.
 
----
+## How To Update Google Manually
 
-## How-To Guides
+### Copy Your MenuList Link
 
-### How menu link sync works
-- When you set up or change your menu URL in MenuList, Google is updated automatically
-- No manual action needed — it happens in the background
-- You can verify by checking your Google Business Profile
+1. Open **Use MenuList** or **Share**.
+2. Copy your current menu link or Official Business Page link.
+3. Open Google Business Profile in your Google account.
+4. Paste the MenuList link into the website/menu field that Google allows for your listing.
+5. Save in Google.
 
-### How hours drift detection works
-- Once a week, MenuList compares your hours on Google with your hours in MenuList
-- If they don't match, you see an alert in your dashboard
-- Click **Apply MenuList Hours** to fix Google, or update your MenuList hours if Google is correct
+### Check Your Hours
 
----
+1. Open your MenuList hours settings.
+2. Compare them with the hours shown in Google Business Profile.
+3. If Google is wrong, update Google manually.
+4. If MenuList is wrong, update MenuList first, then copy the corrected information to Google.
+
+## What Is Not Available Yet
+
+- Connect Google account from MenuList
+- Automatic Google menu-link sync
+- Automatic Google hours sync
+- One-click Google hours fix
+- Google review, post, photo, or Q&A automation
+
+Those capabilities require approved Google Business Profile API access, OAuth setup, provider smoke, deploy evidence, browser/device QA, and production-host smoke before they can be documented as active.
 
 ## Troubleshooting
 
-### "Connection failed" when connecting Google
-**Fix:** Make sure you're signing in with the Google account that owns/manages your business listing.
+### I do not see a Google Sync tab
 
-### Hours alert shows but I already fixed it
-**Fix:** The check runs weekly. After you apply the fix, the alert will clear at the next check.
+That is expected. Google sync controls are hidden while `ENABLE_GBP_SYNC` is off and API access is blocked.
 
----
+### Did MenuList already update Google for me?
 
-## Tips
-- 💡 Use the same hours in MenuList and Google — let MenuList be the source of truth
-- 💡 Connect Google early — it's a one-time setup
-- 💡 Check the sync status occasionally in Settings
+No. Until the integration is approved and shipped, MenuList only provides the source links and owner guidance. Google updates are still done in Google Business Profile.
 
 ## Related Features
-- **[Hours & Holiday Accuracy]** — Where you set your working hours
-- **[Stores Management]** — Where your store settings live
+
+- **Official Business Page** — The canonical page Google should point customers to.
+- **Menu Presence Monitor** — Helps owners keep public menu links aligned.
+- **Hours & Holiday Accuracy** — Where working hours are maintained in MenuList.
 
 ## Need More Help?
-- **Email:** support@menulist.ai
+
+Email support@menulist.ai with the business name and the Google listing you want to update.

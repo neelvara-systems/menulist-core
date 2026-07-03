@@ -2,11 +2,13 @@
 
 **Owner-Facing Name:** Business Health
 **Status:** Read-only validation after action-support removal
-**Last Updated:** June 17, 2026
+**Last Updated:** June 29, 2026
 
 ## Validation Decision
 
 Business Health is validated as a read-only health, analytics, and grounded answer surface. Owner operation handling has been removed from this feature because AI Menu Manager / Menu Manager now owns owner-initiated operations.
+
+`npm run verify:owner-business-health-boundary` is the focused read-only boundary gate for the active Business Health route, API, desktop page, MobileShell screen, removed action surfaces, docs, and ledger evidence.
 
 ## Removed and Verified Absent
 
@@ -59,7 +61,7 @@ Business Health must not duplicate that action registry.
 
 ## Firebase Cost Confirmation
 
-Action workflow collections are removed from the active model. The remaining Business Health writes are bounded to existing summary, thread, feedback, and answer-event behavior controlled by Business Health flags.
+Action workflow collections are removed from the active model. The remaining Business Health writes are bounded to existing summary, thread, feedback, and answer-event behavior controlled by Business Health flags. The feedback route now uses shared bounded JSON admission before selected-store scope checks, permission checks, or the feedback write.
 
 No Business Health path should write:
 
@@ -73,6 +75,8 @@ No Business Health path should write:
 
 The active Business Health APIs remain protected read/answer routes with auth, tenant/store/project validation, request validation, rate limiting where provider-backed answering is possible, and generic owner-safe errors.
 
+Browser read-model hooks now send current, analytics, locations, and thread requests with same-origin credentials, no browser cache, and manual redirect handling, then parse responses through a shared bounded reader before SWR cache/state updates. Non-OK, malformed, oversized, or invalid successful read-model envelopes fail closed with bounded diagnostics instead of direct `response.json()` parsing. The answer hook and platform monitor use the same request policy before their bounded response readers.
+
 Removing owner operation handling reduces mutation risk because Business Health no longer exposes a write route for owner operations.
 
 ## Mobile Confirmation
@@ -84,6 +88,7 @@ Mobile Business Health remains inside `MobileShell`. It renders read-only checks
 Required after changes:
 
 - `npm run verify:owner-business-assistant`
+- `npm run verify:menulist-api-tenant-safety`
 - `npx tsc --noEmit --incremental false`
 - `npm run lint`
 - `git diff --check`

@@ -2,7 +2,8 @@ import { DB_COLLECTIONS } from "@constant/database";
 import { ECOMSAI_PLATFORM_USER_ROLE } from "@constant/user";
 import { firestoreAdmin } from "@lib/firebase/firebaseAdmin";
 import { logger } from "@lib/monitoring/logger";
-import { buildSecurityContext } from "@lib/security/securityContext";
+import { isPlatformEntityBlocked } from "@lib/platform/entityBlock";
+import { getBoundedRazorpaySecurityContext, getBoundedRazorpayStringContext } from "@lib/billing/razorpayDiagnostics";
 import { NextRequest } from "next/server";
 
 const getSessionStoreRoleId = (session: any): string | undefined => {
@@ -27,21 +28,41 @@ export const canManageBillingMutation = async (
     }
 
     const storeId = session?.user?.storeId ?? session?.sId;
+    const tenantId = session?.user?.tenantId ?? session?.tId;
     const roleId = getSessionStoreRoleId(session);
 
-    if (!storeId || !roleId) {
+    if (!storeId || !tenantId || !roleId) {
         logger.security('Billing Mutation Authorization Failed', {
-            ...buildSecurityContext(session, request),
+            ...getBoundedRazorpaySecurityContext(session, request),
             endpoint,
-            error: 'Missing store or role for billing mutation',
-            storeId,
-            roleId,
+            error: 'Missing tenant, store, or role for billing mutation',
+            ...getBoundedRazorpayStringContext('billingTenantId', tenantId),
+            ...getBoundedRazorpayStringContext('billingStoreId', storeId),
+            ...getBoundedRazorpayStringContext('roleId', roleId),
         }, 'high');
         return false;
     }
 
     const storeSnap = await firestoreAdmin.collection(DB_COLLECTIONS.STORES).doc(String(storeId)).get();
     const storeData = storeSnap.exists ? storeSnap.data() : null;
+    if (
+        !storeData
+        || Number(storeData?.tenantId) !== Number(tenantId)
+        || storeData.active === false
+        || storeData.deleted === true
+        || isPlatformEntityBlocked(storeData)
+    ) {
+        logger.security('Billing Mutation Authorization Failed', {
+            ...getBoundedRazorpaySecurityContext(session, request),
+            endpoint,
+            error: 'Store unavailable for billing mutation',
+            ...getBoundedRazorpayStringContext('billingTenantId', tenantId),
+            ...getBoundedRazorpayStringContext('billingStoreId', storeId),
+            ...getBoundedRazorpayStringContext('roleId', roleId),
+        }, 'high');
+        return false;
+    }
+
     const storeRole = storeData?.roles?.find(
         (role: any) => role?.active !== false && role?.id === roleId
     );
@@ -55,11 +76,11 @@ export const canManageBillingMutation = async (
     }
 
     logger.security('Billing Mutation Authorization Failed', {
-        ...buildSecurityContext(session, request),
+        ...getBoundedRazorpaySecurityContext(session, request),
         endpoint,
         error: 'User lacks canManageSubscription permission',
-        roleId,
-        storeId,
+        ...getBoundedRazorpayStringContext('billingStoreId', storeId),
+        ...getBoundedRazorpayStringContext('roleId', roleId),
     }, 'high');
 
     return false;

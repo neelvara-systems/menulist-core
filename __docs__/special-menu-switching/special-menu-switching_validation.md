@@ -2,7 +2,7 @@
 
 **Status:** ✅ IMPLEMENTED  
 **Validated:** February 20, 2026  
-**Feature Flag:** `ENABLE_SPECIAL_MENU_SWITCHING: false`
+**Feature Flag:** `ENABLE_SPECIAL_MENU_SWITCHING: true` in frontend and Functions
 
 ---
 
@@ -20,7 +20,7 @@
 | FR-08 | Auto-set temp status banner on activation          | DAL `activateSpecialMenuInternal()` sets `tempStatus.type='special_menu'`           | `src/database/projects/index.ts:1413-1420`                              | ✅     |
 | FR-09 | Business-type-aware mode availability              | `getSpecialMenuCapabilities()` maps businessType → template → modes                 | `src/config/specialMenuConfig.ts:85-89`                                 | ✅     |
 | FR-10 | MCE validation before activation                   | MCE already validates all projects on save (no special handling needed)             | Existing MCE infrastructure                                             | ✅     |
-| FR-11 | Mobile support for management                      | `MobileSpecialMenuScreen` — view, end, cancel                                       | `src/components/mobile/screens/MobileSpecialMenuScreen.tsx`             | ✅     |
+| FR-11 | Mobile support for management                      | `MobileSpecialMenuScreen` — create, edit metadata/schedule, translate public copy, view, end, cancel | `src/components/mobile/screens/MobileSpecialMenuScreen.tsx`             | ✅     |
 | FR-12 | Clear dashboard status indicator                   | `SpecialMenuCard` shows active/scheduled with status badges                         | `src/components/templates/main-app/projects/SpecialMenuCard.tsx`        | ✅     |
 | FR-13 | Cancel/delete scheduled special menu               | DAL `cancelSpecialMenu()` + UI button with confirmation                             | `src/database/projects/index.ts:1522`                                   | ✅     |
 | FR-14 | Edit scheduled (not yet active) special menu       | Owner edits in same project editor (it's a regular project)                         | Existing editor infrastructure                                          | ✅     |
@@ -46,7 +46,7 @@
 | ------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- | -------------------------------------------------------- |
 | `src/components/templates/main-app/projects/types/project.types.ts` | Added `SpecialMenuMetadata`, `_specialMenu` on `Project`, special menu fields on `ProjectSummaryData` | Low — additive only                                      |
 | `src/types/platform/store.ts`                                       | Added `activeSpecialMenuId` on `StoreDataType` (mode derived from project)                            | Low — additive only                                      |
-| `src/config/features.ts`                                            | Added `ENABLE_SPECIAL_MENU_SWITCHING: false`                                                          | Low — new flag, defaults OFF                             |
+| `src/config/features.ts`                                            | `ENABLE_SPECIAL_MENU_SWITCHING: true`                                                                 | Low — guarded active runtime                             |
 | `src/app/_client/[[...slug]]/page.tsx`                              | Added `resolveSpecialMenuOverride()`, `mergeOverlayMenu()`, wired into `MenuContent`                  | Medium — new resolver step after base project resolution |
 | `src/components/templates/main-app/projects/index.tsx`              | Added `SpecialMenuCard` import + render in upload view                                                | Low — additive, feature-flagged                          |
 | `functions/src/decisionBlocksScoring.ts`                            | Added special menu activation/deactivation check in nightly scheduler                                 | Medium — new task in existing scheduler                  |
@@ -84,7 +84,7 @@
 
 | Check                                               | Status                                        |
 | --------------------------------------------------- | --------------------------------------------- |
-| Full feature behind feature flag                    | ✅ `ENABLE_SPECIAL_MENU_SWITCHING: false`     |
+| Full feature behind feature flag                    | ✅ `ENABLE_SPECIAL_MENU_SWITCHING: true` in frontend and Functions |
 | No dependency on future features                    | ✅ Standalone, reuses existing infrastructure |
 | Can be toggled without code changes                 | ✅ Feature flag in `features.ts`              |
 | Architecture extensible (recurring schedules, etc.) | ✅ `_specialMenu` metadata is extensible      |

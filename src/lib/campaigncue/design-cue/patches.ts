@@ -17,8 +17,9 @@ import {
     truncateDesignCueText,
     type CampaignCueDesignCueContext,
 } from "./context";
+import { createTimestampedRuntimeId } from "@lib/runtime/randomId";
 
-const patchId = (prefix: string) => `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+const patchId = (prefix: string) => createTimestampedRuntimeId(prefix, 8);
 
 const includesLoose = (haystack: string, needle?: string) => {
     const normalizedNeedle = cleanDesignCueText(needle).toLowerCase();

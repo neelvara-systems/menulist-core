@@ -18,7 +18,7 @@
  * shape for free when we flip the `WRITE_NESTED` flag (post-migration).
  *
  * @see src/lib/firestore/parseSummaryProjects.ts — companion reader
- * @see __docs__/client-menu/PUBLIC-ROUTING-DOCTRINE.md §18 T3-N-03
+ * @see __docs__/client-menu/public-routing-doctrine.md §18 T3-N-03
  */
 
 /**

@@ -43,6 +43,8 @@
 | Log suggestion signal | 0-1 | WRITE | Only if suggestion shown (fire-and-forget) |
 | **Total per predictive request** | **1-2** | **Mixed** | The widget does not call this endpoint unless config says active triggers exist |
 
+Predictive help diagnostics use fixed runtime failure codes with bounded store metadata and source error name/code/status only; diagnostics do not add Firestore operations or expose raw workspace identifiers.
+
 ### 2.3 — Trigger CRUD (Admin Action)
 
 | Operation | Count | Type | Description |
@@ -192,6 +194,7 @@ Upstash Redis (cooldowns):
 - **Pre-resolved suggestions:** nightly stores canonical answer snippets in the trigger summary, removing the usual runtime answer read
 - **Targeted answer lookup:** nightly loads answers only for active trigger entity IDs, not every active answer in the workspace
 - **Unchanged-write skip:** cache write is skipped when `sourceHash` is unchanged
+- **Bounded diagnostics:** nightly sync failures log fixed `ANSWERLATTICE_PREDICTIVE_TRIGGER_*` codes with source error metadata and scope booleans, not raw exception text or raw tenant/store IDs
 - **Cooldown-first check:** Only resolve canonical answer if cooldown passes
 - **Short-circuit evaluation:** Stop at first matching trigger (priority-sorted)
 

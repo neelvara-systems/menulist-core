@@ -18,6 +18,7 @@
 import * as admin from 'firebase-admin';
 import { Timestamp } from 'firebase-admin/firestore';
 import { DB_COLLECTIONS } from '../constants/database';
+import { analyticsLogger, getAnalyticsErrorContext } from './analyticsDiagnostics';
 
 // ================================================================
 // TYPES
@@ -166,14 +167,14 @@ export async function processAuthorityMaturationForAllStores(): Promise<{
     phase3Count: number;
 }> {
     const db = admin.firestore();
-    console.log('[AuthorityMaturation] Starting nightly analysis...');
+    analyticsLogger.info('[AuthorityMaturation] Starting nightly analysis');
 
     try {
         // Fetch all owner control usage documents
         const snapshot = await db.collection(DB_COLLECTIONS.OWNER_CONTROL_USAGE).get();
 
         if (snapshot.empty) {
-            console.log('[AuthorityMaturation] No usage data found. Skipping.');
+            analyticsLogger.info('[AuthorityMaturation] No usage data found');
             return { processed: 0, phase1Count: 0, phase2Count: 0, phase3Count: 0 };
         }
 
@@ -194,19 +195,27 @@ export async function processAuthorityMaturationForAllStores(): Promise<{
             else phase3Count++;
         }
 
-        // Log summary
-        console.log(`[AuthorityMaturation] Analysis complete:`);
-        console.log(`  - Total stores: ${analyses.length}`);
-        console.log(`  - Phase 1 (Active): ${phase1Count} (${((phase1Count / analyses.length) * 100).toFixed(1)}%)`);
-        console.log(`  - Phase 2 (Passive): ${phase2Count} (${((phase2Count / analyses.length) * 100).toFixed(1)}%)`);
-        console.log(`  - Phase 3 (Dormant): ${phase3Count} (${((phase3Count / analyses.length) * 100).toFixed(1)}%)`);
+        analyticsLogger.info('[AuthorityMaturation] Analysis complete', {
+            totalStores: analyses.length,
+            phase1Count,
+            phase1Percentage: Number(((phase1Count / analyses.length) * 100).toFixed(1)),
+            phase2Count,
+            phase2Percentage: Number(((phase2Count / analyses.length) * 100).toFixed(1)),
+            phase3Count,
+            phase3Percentage: Number(((phase3Count / analyses.length) * 100).toFixed(1)),
+        });
 
         // Log detailed insights for active phase 1 stores (for monitoring)
         const activeStores = analyses.filter(a => a.phase === 'phase1_active');
         if (activeStores.length > 0 && activeStores.length <= 10) {
-            console.log('[AuthorityMaturation] Active stores (high control usage):');
-            activeStores.forEach(a => {
-                console.log(`  - ${a.tId}/${a.sId}: ${a.totalControlUsages} usages, ${a.usageRate.toFixed(2)}/day, trend: ${a.trend}`);
+            analyticsLogger.info('[AuthorityMaturation] Active high-usage stores found', {
+                count: activeStores.length,
+                totalControlUsages: activeStores.reduce((total, store) => total + store.totalControlUsages, 0),
+                maxUsageRate: Math.max(...activeStores.map(store => store.usageRate)),
+                trends: activeStores.reduce<Record<string, number>>((acc, store) => {
+                    acc[store.trend] = (acc[store.trend] || 0) + 1;
+                    return acc;
+                }, {}),
             });
         }
 
@@ -231,7 +240,9 @@ export async function processAuthorityMaturationForAllStores(): Promise<{
             phase3Count,
         };
     } catch (error) {
-        console.error('[AuthorityMaturation] Analysis failed:', error);
+        analyticsLogger.error('[AuthorityMaturation] Analysis failed', {
+            error: getAnalyticsErrorContext(error),
+        });
         throw error;
     }
 }

@@ -2,14 +2,27 @@ export const dynamic = 'force-dynamic';
 
 import { FEATURE_FLAGS } from '@config/features';
 import { DB_COLLECTIONS } from '@constant/database';
+import {
+    getAnswerlatticeSecurityLogContext,
+    getBoundedAnswerlatticeStringContext,
+} from '@lib/answerlattice/diagnostics';
+import { buildAnswerlatticeRateLimitKey } from '@lib/answerlattice/rateLimitKeys';
 import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
-import { secureError } from '@lib/security/secureLogger';
+import { logger } from '@lib/monitoring/logger';
+import { checkRateLimit } from '@lib/rateLimit';
+import { getRateLimitForFeature } from '@lib/rateLimit/configs';
+import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
+import { readBoundedJsonBody } from '@lib/security/boundedRequestBody';
+import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';
+import { getSafeZodValidationDetails } from '@lib/security/inputValidation';
+import { validateServerNetworkTargetUrl } from '@lib/security/serverNetworkTarget';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { withPlatformAuth } from '../../../../middleware/auth';
 
 const TENANT_SUMMARY_DOC_ID = 'answerlatticeTenantsSummary';
 const SCHEDULER_LOG_LIMIT = 8;
+const ANSWERLATTICE_INTAKE_MONITOR_RATE_LIMIT_KEY = 'answerlattice-intake-monitor';
 
 const QuerySchema = z.object({
     limit: z.coerce.number().int().min(5).max(25).optional().default(10),
@@ -26,6 +39,13 @@ const TriggerSchema = z.object({
     tId: z.coerce.number().int().positive(),
     sId: z.coerce.number().int().positive(),
 });
+const ANSWERLATTICE_INTAKE_TRIGGER_MAX_BODY_BYTES = 2 * 1024;
+const ANSWERLATTICE_MANUAL_TRIGGER_RESPONSE_MAX_BYTES = 512 * 1024;
+const ANSWERLATTICE_MANUAL_TRIGGER_PATH = '/triggerAnswerlatticeNightly';
+const ANSWERLATTICE_ALLOWED_PROJECT_IDS = new Set(['answerlattice-qa', 'answerlattice']);
+const ANSWERLATTICE_ALLOWED_MANUAL_TRIGGER_HOSTS = new Set(
+    Array.from(ANSWERLATTICE_ALLOWED_PROJECT_IDS, projectId => `us-central1-${projectId}.cloudfunctions.net`),
+);
 
 const ACTIVE_JOB_STATUSES = new Set(['draft', 'collecting', 'reviewing', 'publishing']);
 
@@ -41,6 +61,24 @@ type TenantOption = {
     schedulerHour?: number | null;
     lastSeenAt?: string | null;
     updatedAt?: string | null;
+};
+
+type ManualTriggerTaskSummary = {
+    name: string;
+    status: string;
+    activity: boolean;
+    durationMs: number | null;
+};
+
+type ManualTriggerResultSummary = {
+    scheduler: string | null;
+    runId: string | null;
+    status: string;
+    trigger: string | null;
+    durationMs: number | null;
+    taskCount: number;
+    failedTaskCount: number;
+    tasks: ManualTriggerTaskSummary[];
 };
 
 function toIso(value: any): string | null {
@@ -72,8 +110,62 @@ function safeNumber(value: unknown): number {
     return Number.isFinite(parsed) ? parsed : 0;
 }
 
+function safeNullableNumber(value: unknown): number | null {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+}
+
 function scopeKey(tId: number, sId: number) {
     return `${tId}_${sId}`;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+    return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
+
+function summarizeManualTriggerTask(value: unknown): ManualTriggerTaskSummary {
+    const task = isRecord(value) ? value : {};
+    return {
+        name: cleanText(task.name, 120) || 'unknown',
+        status: cleanText(task.status, 80) || 'unknown',
+        activity: Boolean(task.activity),
+        durationMs: safeNullableNumber(task.durationMs),
+    };
+}
+
+function buildRejectedManualTriggerResult(response: Response): ManualTriggerResultSummary {
+    return {
+        scheduler: null,
+        runId: null,
+        status: response.status >= 500 ? 'failed' : 'rejected',
+        trigger: null,
+        durationMs: null,
+        taskCount: 0,
+        failedTaskCount: 0,
+        tasks: [],
+    };
+}
+
+function summarizeManualTriggerResult(payload: unknown): ManualTriggerResultSummary | null {
+    if (!isRecord(payload)) return null;
+    const status = cleanText(payload.status, 80);
+    if (!status) return null;
+
+    const rawTasks = Array.isArray(payload.tasks) ? payload.tasks : [];
+    const failedTaskCount = rawTasks.filter((task) => (
+        isRecord(task) && cleanText(task.status, 80) === 'failed'
+    )).length;
+
+    return {
+        scheduler: cleanText(payload.scheduler, 120) || null,
+        runId: cleanText(payload.runId || payload.runLogId, 180) || null,
+        status,
+        trigger: cleanText(payload.trigger, 80) || null,
+        durationMs: safeNullableNumber(payload.durationMs),
+        taskCount: rawTasks.length,
+        failedTaskCount,
+        tasks: rawTasks.slice(0, 10).map(summarizeManualTriggerTask),
+    };
 }
 
 function parseTenantOptions(data: Record<string, any> | undefined): TenantOption[] {
@@ -215,6 +307,66 @@ function buildEmptyStats(latestSchedulerRun: any) {
     };
 }
 
+function isDevelopmentRuntime() {
+    return process.env.NODE_ENV !== 'production';
+}
+
+function isAllowedDevelopmentTriggerTarget(url: URL) {
+    if (!isDevelopmentRuntime()) return false;
+    const hostname = url.hostname.toLowerCase();
+    return (url.protocol === 'http:' || url.protocol === 'https:')
+        && (hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1')
+        && url.pathname.endsWith(ANSWERLATTICE_MANUAL_TRIGGER_PATH);
+}
+
+function isAllowedAnswerlatticeManualTriggerUrl(url: URL) {
+    if (isAllowedDevelopmentTriggerTarget(url)) return true;
+    return url.protocol === 'https:'
+        && ANSWERLATTICE_ALLOWED_MANUAL_TRIGGER_HOSTS.has(url.hostname.toLowerCase())
+        && url.pathname === ANSWERLATTICE_MANUAL_TRIGGER_PATH
+        && !url.search
+        && !url.hash;
+}
+
+async function resolveManualTriggerTarget(triggerUrl: string) {
+    let parsed: URL;
+    try {
+        parsed = new URL(triggerUrl);
+    } catch (error) {
+        return {
+            valid: false as const,
+            error: 'invalid_url',
+            errorName: error instanceof Error ? error.name : typeof error,
+        };
+    }
+
+    if (!isAllowedAnswerlatticeManualTriggerUrl(parsed)) {
+        return {
+            valid: false as const,
+            error: 'disallowed_trigger_target',
+        };
+    }
+
+    const targetValidation = await validateServerNetworkTargetUrl(parsed.toString(), {
+        allowLocalhostInDevelopment: true,
+        allowedProtocols: parsed.protocol === 'http:' ? ['http:'] : ['https:'],
+    });
+    if (!targetValidation.valid || !targetValidation.normalizedUrl) {
+        return {
+            valid: false as const,
+            addressCount: targetValidation.addressCount,
+            error: targetValidation.error || 'network_target_rejected',
+            errorName: targetValidation.errorName,
+        };
+    }
+
+    return {
+        valid: true as const,
+        addressCount: targetValidation.addressCount,
+        normalizedUrl: targetValidation.normalizedUrl,
+    };
+}
+
 async function loadTenantOptions(db: FirebaseFirestore.Firestore) {
     const summarySnap = await db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc(TENANT_SUMMARY_DOC_ID).get();
     return {
@@ -223,21 +375,101 @@ async function loadTenantOptions(db: FirebaseFirestore.Firestore) {
     };
 }
 
+async function checkAnswerlatticeIntakeMonitorReadRateLimit(request: NextRequest, session: any) {
+    const rateLimitConfig = getRateLimitForFeature('DATA_READ');
+    const userId = session?.uId || session?.user?.id || 'platform';
+
+    const rateLimit = await checkRateLimit({
+        key: buildAnswerlatticeRateLimitKey(ANSWERLATTICE_INTAKE_MONITOR_RATE_LIMIT_KEY, userId),
+        ...rateLimitConfig,
+    });
+
+    if (rateLimit.allowed) return null;
+
+    const waitSeconds = Math.max(1, Math.ceil((rateLimit.resetAt - Date.now()) / 1000));
+    logger.security('Rate Limit Exceeded - Answerlattice Intake Monitor', {
+        ...getAnswerlatticeSecurityLogContext(session, request, request.nextUrl.pathname, {
+            ...getBoundedAnswerlatticeStringContext('userId', userId),
+        }),
+        limit: rateLimitConfig.limit,
+        waitSeconds,
+        window: rateLimitConfig.window,
+    }, 'medium');
+
+    return NextResponse.json(
+        {
+            error: 'Too many requests. Please try again later.',
+            retryAfter: waitSeconds,
+            resetAt: rateLimit.resetAt,
+        },
+        {
+            headers: {
+                'Cache-Control': 'private, no-store',
+                'Retry-After': String(waitSeconds),
+                'X-RateLimit-Limit': String(rateLimitConfig.limit),
+                'X-RateLimit-Remaining': String(rateLimit.remaining),
+                'X-RateLimit-Reset': String(rateLimit.resetAt),
+            },
+            status: 429,
+        },
+    );
+}
+
 function getManualTriggerUrl() {
     const explicitUrl = process.env.ANSWERLATTICE_TRIGGER_NIGHTLY_URL || process.env.ANSWERLATTICE_NIGHTLY_TRIGGER_URL;
     if (explicitUrl) return explicitUrl;
     const projectId = process.env.ANSWERLATTICE_FIREBASE_PROJECT_ID || process.env.NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_PROJECT_ID;
-    return projectId ? `https://us-central1-${projectId}.cloudfunctions.net/triggerAnswerlatticeNightly` : '';
+    const normalizedProjectId = String(projectId || '').trim();
+    return ANSWERLATTICE_ALLOWED_PROJECT_IDS.has(normalizedProjectId)
+        ? `https://us-central1-${normalizedProjectId}.cloudfunctions.net${ANSWERLATTICE_MANUAL_TRIGGER_PATH}`
+        : '';
 }
 
-export const GET = withPlatformAuth(async (request: NextRequest) => {
+async function readManualTriggerResponse(
+    response: Response,
+    scope: { tId: number; sId: number },
+): Promise<ManualTriggerResultSummary | null> {
+    let payload: unknown;
+
+    try {
+        payload = await readJsonResponseWithLimit<unknown>(
+            response,
+            ANSWERLATTICE_MANUAL_TRIGGER_RESPONSE_MAX_BYTES,
+        );
+    } catch (error) {
+        logRuntimeFailure('answerlattice_intake_monitor_manual_trigger_response_parse_failed', error, {
+            ...getBoundedRuntimeStringContext('tenantId', scope.tId),
+            ...getBoundedRuntimeStringContext('storeId', scope.sId),
+            responseOk: response.ok,
+            responseStatus: response.status,
+        });
+        return response.ok ? null : buildRejectedManualTriggerResult(response);
+    }
+
+    const result = summarizeManualTriggerResult(payload);
+    if (result) return result;
+
+    if (response.ok) {
+        logRuntimeFailure('answerlattice_intake_monitor_manual_trigger_response_invalid', undefined, {
+            ...getBoundedRuntimeStringContext('tenantId', scope.tId),
+            ...getBoundedRuntimeStringContext('storeId', scope.sId),
+            responseOk: response.ok,
+            responseStatus: response.status,
+        });
+        return null;
+    }
+
+    return buildRejectedManualTriggerResult(response);
+}
+
+export const GET = withPlatformAuth(async (request: NextRequest, session: any) => {
     if (!FEATURE_FLAGS.ENABLE_ANSWERLATTICE_INTAKE_PLATFORM_MONITOR) {
         return NextResponse.json({ error: 'Answerlattice intake monitor is disabled.' }, { status: 404 });
     }
 
     const validation = QuerySchema.safeParse(Object.fromEntries(request.nextUrl.searchParams.entries()));
     if (!validation.success) {
-        return NextResponse.json({ error: 'Invalid query', details: validation.error.flatten() }, { status: 400 });
+        return NextResponse.json({ error: 'Invalid query', details: getSafeZodValidationDetails(validation.error) }, { status: 400 });
     }
 
     const db = answerlatticeFirestoreAdmin as FirebaseFirestore.Firestore;
@@ -249,6 +481,9 @@ export const GET = withPlatformAuth(async (request: NextRequest) => {
     const selectedScope = tId && sId ? { tId, sId } : null;
 
     try {
+        const rateLimitResponse = await checkAnswerlatticeIntakeMonitorReadRateLimit(request, session);
+        if (rateLimitResponse) return rateLimitResponse;
+
         const [tenantSummary, schedulerSnap] = await Promise.all([
             loadTenantOptions(db),
             db.collection(DB_COLLECTIONS.ANSWERLATTICE_SCHEDULER_RUN_LOGS)
@@ -341,8 +576,12 @@ export const GET = withPlatformAuth(async (request: NextRequest) => {
             },
         });
     } catch (error) {
-        secureError('[Answerlattice Intake Monitor] Failed to load snapshot', error as Error, {
-            endpoint: request.nextUrl.pathname,
+        logRuntimeFailure('answerlattice_intake_monitor_snapshot_failed', error, {
+            ...getBoundedRuntimeStringContext('endpoint', request.nextUrl.pathname),
+            ...(selectedScope ? {
+                ...getBoundedRuntimeStringContext('tenantId', selectedScope.tId),
+                ...getBoundedRuntimeStringContext('storeId', selectedScope.sId),
+            } : {}),
         });
         return NextResponse.json({ error: 'Failed to load Answerlattice intake monitor.' }, { status: 500 });
     }
@@ -353,10 +592,20 @@ export const POST = withPlatformAuth(async (request: NextRequest) => {
         return NextResponse.json({ error: 'Answerlattice intake monitor is disabled.' }, { status: 404 });
     }
 
-    const body = await request.json().catch(() => null);
-    const validation = TriggerSchema.safeParse(body);
+    const bodyResult = await readBoundedJsonBody(request, ANSWERLATTICE_INTAKE_TRIGGER_MAX_BODY_BYTES, {
+        invalidJsonMessage: 'Invalid manual trigger payload',
+        tooLargeMessage: 'Request body too large',
+    });
+    if (bodyResult.ok === false) {
+        return NextResponse.json(
+            { error: bodyResult.response.status === 413 ? 'Request body too large' : 'Invalid manual trigger payload' },
+            { status: bodyResult.response.status },
+        );
+    }
+
+    const validation = TriggerSchema.safeParse(bodyResult.data);
     if (!validation.success) {
-        return NextResponse.json({ error: 'Invalid manual trigger payload', details: validation.error.flatten() }, { status: 400 });
+        return NextResponse.json({ error: 'Invalid manual trigger payload', details: getSafeZodValidationDetails(validation.error) }, { status: 400 });
     }
 
     const db = answerlatticeFirestoreAdmin as FirebaseFirestore.Firestore;
@@ -378,21 +627,38 @@ export const POST = withPlatformAuth(async (request: NextRequest) => {
             return NextResponse.json({ error: 'Selected Answerlattice workspace is not present in answerlatticeTenantsSummary.' }, { status: 404 });
         }
 
-        const response = await fetch(triggerUrl, {
+        const triggerTarget = await resolveManualTriggerTarget(triggerUrl);
+        if (!triggerTarget.valid) {
+            logRuntimeFailure('answerlattice_intake_monitor_manual_trigger_target_rejected', new Error('answerlattice_manual_trigger_target_rejected'), {
+                addressCount: 'addressCount' in triggerTarget ? triggerTarget.addressCount || 0 : 0,
+                targetErrorCode: triggerTarget.error,
+                targetErrorName: 'errorName' in triggerTarget ? triggerTarget.errorName : undefined,
+            });
+            return NextResponse.json({ error: 'Answerlattice manual scheduler trigger is not configured.' }, { status: 503 });
+        }
+
+        const response = await fetch(triggerTarget.normalizedUrl, {
             method: 'POST',
+            redirect: 'manual',
             headers: {
                 Authorization: `Bearer ${secret}`,
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({ tId, sId }),
         });
-        const result = await response.json().catch(() => ({}));
+        const result = await readManualTriggerResponse(response, { tId, sId });
 
         if (!response.ok) {
             return NextResponse.json({
-                error: result?.error || 'Answerlattice nightly retry failed.',
-                result,
+                error: 'Answerlattice nightly retry failed.',
+                result: result || buildRejectedManualTriggerResult(response),
             }, { status: response.status });
+        }
+
+        if (!result) {
+            return NextResponse.json({
+                error: 'Answerlattice nightly retry response was invalid.',
+            }, { status: 502 });
         }
 
         return NextResponse.json({
@@ -406,9 +672,9 @@ export const POST = withPlatformAuth(async (request: NextRequest) => {
             },
         });
     } catch (error) {
-        secureError('[Answerlattice Intake Monitor] Manual nightly retry failed', error as Error, {
-            tId,
-            sId,
+        logRuntimeFailure('answerlattice_intake_monitor_manual_retry_failed', error, {
+            ...getBoundedRuntimeStringContext('tenantId', tId),
+            ...getBoundedRuntimeStringContext('storeId', sId),
         });
         return NextResponse.json({ error: 'Failed to trigger selected Answerlattice nightly retry.' }, { status: 500 });
     }

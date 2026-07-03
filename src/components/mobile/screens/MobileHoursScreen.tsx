@@ -2,13 +2,21 @@
 
 import { FEATURE_FLAGS } from '@config/features';
 import { TODAY_FEATURE_GUIDE_SECTIONS, TODAY_FEATURE_GUIDE_TITLE } from '@constant/todayFeatureGuide';
-import { completeCampaign as dbCompleteCampaign, getCampaign, skipCampaign as dbSkipCampaign } from '@database/campaigns';
-import { updateStore } from '@database/stores';
+import {
+    assertCampaignCompleteSucceeded,
+    assertCampaignSkipSucceeded,
+    completeCampaign as dbCompleteCampaign,
+    getCampaign,
+    skipCampaign as dbSkipCampaign,
+} from '@database/campaigns';
+import { assertStoreUpdateSucceeded, updateStore } from '@database/stores';
 import { useTodayCampaigns } from '@hook/useTodayCampaigns';
 import { useGrowthOS } from '@hook/useGrowthOS';
 import { getStoreContextName } from '@lib/businessIdentity/names';
 import { getHoursConfidenceState } from '@lib/outputControl';
 import { buildTodayMenuLink, performTodaySurfaceAction } from '@lib/campaigns/todayActionExecutor';
+import { getBoundedCampaignStringContext, logCampaignFailure } from '@lib/campaigns/campaignDiagnostics';
+import { AUTH_BROWSER_REQUEST_POLICY } from '@lib/auth/browserRequestPolicy';
 import { shouldShowGrowthOSNavigation } from '@lib/growthos/entitlements';
 import { getGrowthOSTodayTriggerState } from '@lib/growthos/todayTrigger';
 import { resolveStoreBrandColor } from '@lib/menu-kit/brandTokens';
@@ -17,6 +25,7 @@ import { generateTentCardPDF } from '@lib/physical-surfaces/tentCardGenerator';
 import { getInactiveItemsReminder, getInactiveReminderDismissKey } from '@lib/today/inactiveItemsReminder';
 import { sortOperationalCampaignsByPriority } from '@lib/today/todayCampaignPrioritizer';
 import { buildTodayWeeklyGrowthPack } from '@lib/today/weeklyGrowthPack';
+import { readTempStatusResponse } from '@lib/tempStatus/clientResponse';
 import { generateProjectUrl } from '@lib/utils/slugify';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { ACTION_TITLES, CampaignType, CONTEXT_TEMPLATES, SURFACE_BUTTON_COPY, TodayCampaignSummary } from '@type/campaigns';
@@ -35,6 +44,7 @@ import MobileTempStatusConfigurator, {
 import GrowthKitsMobileCard from '../components/GrowthKitsMobileCard';
 import TodayWeeklyGrowthPackCard from '../components/TodayWeeklyGrowthPackCard';
 import { useMobileProjects } from '../providers/MobileProjectsProvider';
+import { getBoundedMobileOwnerStringContext, getMobileOwnerStoreLogContext, logMobileOwnerFailure } from '../utils/mobileOwnerDiagnostics';
 import { openMobilePublicLink } from '../utils/openMobilePublicLink';
 
 type TodayStatus = 'open' | 'closed_today' | 'closed_after_hours';
@@ -270,12 +280,25 @@ export default function MobileHoursScreen({ onOpenDashboard, onOpenHistory, onOp
 
         try {
             const res = await fetch('/api/store/temp-status', {
+                ...AUTH_BROWSER_REQUEST_POLICY,
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ action: 'set', type: 'closed_today', expiresAt }),
             });
-            if (!res.ok) throw new Error();
-        } catch {
+            await readTempStatusResponse(res, 'set', {
+                ...getMobileOwnerStoreLogContext(storeDetails?.storeId, (storeDetails as any)?.tenantId),
+                ...getBoundedMobileOwnerStringContext('tempStatusType', 'closed_today'),
+                ...getBoundedMobileOwnerStringContext('expiresAt', expiresAt),
+                hasPreviousStatus: Boolean(previousStatus),
+                hasCustomMessage: false,
+                surface: 'mobile_today_hours',
+            });
+        } catch (error) {
+            logMobileOwnerFailure('mobile_today_close_today_failed', error, {
+                ...getMobileOwnerStoreLogContext(storeDetails?.storeId, (storeDetails as any)?.tenantId),
+                ...getBoundedMobileOwnerStringContext('expiresAt', expiresAt),
+                hasPreviousStatus: Boolean(previousStatus),
+            });
             setStoreDetails((previous: any) => {
                 if (previousStatus) return { ...previous, tempStatus: previousStatus };
                 const { tempStatus, ...rest } = previous || {};
@@ -289,8 +312,11 @@ export default function MobileHoursScreen({ onOpenDashboard, onOpenHistory, onOp
 
     const handleCompleteCampaign = async (campaign: TodayCampaignSummary) => {
         setIsCampaignProcessing(true);
+        let menuLink: string | undefined;
+        let hasCampaignImage = false;
+
         try {
-            const menuLink = buildTodayMenuLink(
+            menuLink = buildTodayMenuLink(
                 storeDetails?.subdomain,
                 storeDetails?.customDomain,
                 selectedProjectSummary?.name,
@@ -298,6 +324,7 @@ export default function MobileHoursScreen({ onOpenDashboard, onOpenHistory, onOp
             const fullCampaign = campaign.primarySurface === 'whatsapp_status' || campaign.primarySurface === 'whatsapp_message'
                 ? null
                 : await getCampaign(campaign.campaignId);
+            hasCampaignImage = Boolean(fullCampaign?.assets?.imageUrl);
             const actionFeedback = await performTodaySurfaceAction({
                 surface: campaign.primarySurface,
                 itemName: campaign.subject?.itemName || 'Item',
@@ -306,11 +333,24 @@ export default function MobileHoursScreen({ onOpenDashboard, onOpenHistory, onOp
             });
             const method = getExportMethod(campaign.primarySurface);
             const result = await dbCompleteCampaign(campaign.campaignId, campaign.projectId, campaign.type, campaign.primarySurface, method);
-            if (result?.today) {
-                await mutate((current) => current ? { ...current, today: result.today } : current, { revalidate: false });
-            }
+            assertCampaignCompleteSucceeded(result, {
+                campaignId: campaign.campaignId,
+                campaignType: campaign.type,
+                method,
+                projectId: campaign.projectId,
+                surface: campaign.primarySurface,
+            });
+            await mutate((current) => current ? { ...current, today: result.today } : current, { revalidate: false });
             Toast.show({ content: actionFeedback.title, duration: 1800 });
-        } catch {
+        } catch (error) {
+            logCampaignFailure('mobile_today_campaign_complete_failed', error, {
+                ...getBoundedCampaignStringContext('campaignId', campaign.campaignId),
+                ...getBoundedCampaignStringContext('projectId', campaign.projectId),
+                ...getBoundedCampaignStringContext('campaignType', campaign.type),
+                ...getBoundedCampaignStringContext('surface', campaign.primarySurface),
+                hasMenuLink: Boolean(menuLink),
+                hasCampaignImage,
+            });
             Toast.show({ content: tToday('failed'), duration: 2000 });
         } finally {
             setIsCampaignProcessing(false);
@@ -321,11 +361,17 @@ export default function MobileHoursScreen({ onOpenDashboard, onOpenHistory, onOp
         setIsCampaignProcessing(true);
         try {
             const result = await dbSkipCampaign(campaignId, type);
-            if (result?.today) {
-                await mutate((current) => current ? { ...current, today: result.today } : current, { revalidate: false });
-            }
+            assertCampaignSkipSucceeded(result, {
+                campaignId,
+                campaignType: type,
+            });
+            await mutate((current) => current ? { ...current, today: result.today } : current, { revalidate: false });
             Toast.show({ content: tToday('skipped'), duration: 1500 });
-        } catch {
+        } catch (error) {
+            logCampaignFailure('mobile_today_campaign_skip_failed', error, {
+                ...getBoundedCampaignStringContext('campaignId', campaignId),
+                ...getBoundedCampaignStringContext('campaignType', type),
+            });
             Toast.show({ content: tToday('failedToSkip'), duration: 2000 });
         } finally {
             setIsCampaignProcessing(false);
@@ -462,7 +508,14 @@ export default function MobileHoursScreen({ onOpenDashboard, onOpenHistory, onOp
             Toast.show({ content: t('failedToUpdate'), duration: 1500 });
             return;
         }
-        openMobilePublicLink(menuUrl);
+        openMobilePublicLink(menuUrl, {
+            flow: 'today_menu_preview_open',
+            metadata: {
+                ...getMobileOwnerStoreLogContext(storeDetails?.storeId, storeDetails?.tenantId),
+                ...getBoundedMobileOwnerStringContext('menuUrl', menuUrl),
+            },
+            source: 'mobile_today_hours',
+        });
     };
 
     const handleSaveTodayHours = async () => {
@@ -481,10 +534,22 @@ export default function MobileHoursScreen({ onOpenDashboard, onOpenHistory, onOp
         setStoreDetails((previous: any) => ({ ...previous, hoursLastUpdatedAt, workingHours: nextHours }));
 
         try {
-            await updateStore({ ...storeDetails, hoursLastUpdatedAt, workingHours: nextHours } as any);
+            const writeResult = await updateStore({ ...storeDetails, hoursLastUpdatedAt, workingHours: nextHours } as any);
+            assertStoreUpdateSucceeded(
+                writeResult,
+                storeDetails.storeId,
+                'mobile_today_hours_store_update_rejected',
+            );
             setIsTodayHoursSheetOpen(false);
             Toast.show({ content: `${todayLabel} hours updated`, duration: 1400 });
-        } catch {
+        } catch (error) {
+            logMobileOwnerFailure('mobile_today_hours_update_failed', error, {
+                ...getMobileOwnerStoreLogContext(storeDetails?.storeId, (storeDetails as any)?.tenantId),
+                ...getBoundedMobileOwnerStringContext('todayKey', todayKey),
+                hasPreviousHours: Object.keys(previousHours).length > 0,
+                hasNextHours: Object.keys(nextHours).length > 0,
+                hasPreviousHoursLastUpdatedAt: Boolean(previousHoursLastUpdatedAt),
+            });
             setStoreDetails((previous: any) => ({
                 ...previous,
                 hoursLastUpdatedAt: previousHoursLastUpdatedAt,
@@ -516,6 +581,7 @@ export default function MobileHoursScreen({ onOpenDashboard, onOpenHistory, onOp
         Toast.show({ content: 'Status set', icon: 'success', duration: 1500 });
         try {
             const res = await fetch('/api/store/temp-status', {
+                ...AUTH_BROWSER_REQUEST_POLICY,
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -525,8 +591,22 @@ export default function MobileHoursScreen({ onOpenDashboard, onOpenHistory, onOp
                     message: tempStatusType === 'custom' ? customTempStatusMessage.trim() : undefined,
                 }),
             });
-            if (!res.ok) throw new Error();
-        } catch {
+            await readTempStatusResponse(res, 'set', {
+                ...getMobileOwnerStoreLogContext(storeDetails?.storeId, (storeDetails as any)?.tenantId),
+                ...getBoundedMobileOwnerStringContext('tempStatusType', tempStatusType),
+                ...getBoundedMobileOwnerStringContext('expiresAt', expiresAt),
+                hasPreviousStatus: Boolean(prevStatus),
+                hasCustomMessage: Boolean(customTempStatusMessage.trim()),
+                surface: 'mobile_today_hours',
+            });
+        } catch (error) {
+            logMobileOwnerFailure('mobile_today_temp_status_set_failed', error, {
+                ...getMobileOwnerStoreLogContext(storeDetails?.storeId, (storeDetails as any)?.tenantId),
+                ...getBoundedMobileOwnerStringContext('tempStatusType', tempStatusType),
+                ...getBoundedMobileOwnerStringContext('expiresAt', expiresAt),
+                hasPreviousStatus: Boolean(prevStatus),
+                hasCustomMessage: Boolean(customTempStatusMessage.trim()),
+            });
             setStoreDetails((prev: any) => ({ ...prev, tempStatus: prevStatus }));
             Toast.show({ content: 'Failed to set status', duration: 2000 });
         } finally {
@@ -540,9 +620,22 @@ export default function MobileHoursScreen({ onOpenDashboard, onOpenHistory, onOp
         setStoreDetails((prev: any) => { const { tempStatus, ...rest } = prev; return rest; });
         Toast.show({ content: 'Status cleared', icon: 'success', duration: 1500 });
         try {
-            const res = await fetch('/api/store/temp-status', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'clear' }) });
-            if (!res.ok) throw new Error();
-        } catch {
+            const res = await fetch('/api/store/temp-status', {
+                ...AUTH_BROWSER_REQUEST_POLICY,
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'clear' }),
+            });
+            await readTempStatusResponse(res, 'clear', {
+                ...getMobileOwnerStoreLogContext(storeDetails?.storeId, (storeDetails as any)?.tenantId),
+                hasPreviousStatus: Boolean(prevStatus),
+                surface: 'mobile_today_hours',
+            });
+        } catch (error) {
+            logMobileOwnerFailure('mobile_today_temp_status_clear_failed', error, {
+                ...getMobileOwnerStoreLogContext(storeDetails?.storeId, (storeDetails as any)?.tenantId),
+                hasPreviousStatus: Boolean(prevStatus),
+            });
             setStoreDetails((prev: any) => {
                 if (prevStatus) return { ...prev, tempStatus: prevStatus };
                 const { tempStatus, ...rest } = prev || {};
@@ -576,7 +669,14 @@ export default function MobileHoursScreen({ onOpenDashboard, onOpenHistory, onOp
             anchor.click();
             URL.revokeObjectURL(url);
             Toast.show({ content: t('tentCardDownloaded'), duration: 1500 });
-        } catch {
+        } catch (error) {
+            logMobileOwnerFailure('mobile_today_tent_card_download_failed', error, {
+                ...getMobileOwnerStoreLogContext(storeDetails?.storeId, (storeDetails as any)?.tenantId),
+                ...getBoundedMobileOwnerStringContext('itemName', tentCard.itemName),
+                ...getBoundedMobileOwnerStringContext('templateId', tentCard.templateId),
+                hasQrUrl: Boolean(tentCard.qrUrl),
+                hasLogoUrl: Boolean(storeLogoUrl),
+            });
             Toast.show({ content: t('tentCardDownloadFailed'), duration: 2000 });
         } finally {
             setIsDownloadingTent(false);
@@ -604,7 +704,14 @@ export default function MobileHoursScreen({ onOpenDashboard, onOpenHistory, onOp
             anchor.click();
             URL.revokeObjectURL(url);
             Toast.show({ content: t('stickerDownloaded'), duration: 1500 });
-        } catch {
+        } catch (error) {
+            logMobileOwnerFailure('mobile_today_sticker_download_failed', error, {
+                ...getMobileOwnerStoreLogContext(storeDetails?.storeId, (storeDetails as any)?.tenantId),
+                ...getBoundedMobileOwnerStringContext('itemName', sticker.itemName),
+                ...getBoundedMobileOwnerStringContext('templateId', sticker.templateId),
+                hasQrUrl: Boolean(sticker.qrUrl),
+                hasLogoUrl: Boolean(storeLogoUrl),
+            });
             Toast.show({ content: t('stickerDownloadFailed'), duration: 2000 });
         } finally {
             setIsDownloadingSticker(false);

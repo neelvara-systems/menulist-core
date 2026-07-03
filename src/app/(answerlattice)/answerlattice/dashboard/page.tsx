@@ -14,10 +14,14 @@ import {
     getAnswerlatticeGovernanceRoute,
     toAnswerlatticeDashboardRoute,
 } from '@constant/answerlattice/navigations';
+import {
+    ANSWERLATTICE_ACTIVATION_DASHBOARD_REQUEST_POLICY,
+    isAnswerlatticeActivationSummaryResponse,
+    readAnswerlatticeActivationDashboardResponse,
+} from '@lib/answerlattice/activationDashboardResponseClient';
 import AnswerlatticeContentWorkbench from '@template/answerlattice/content/AnswerlatticeContentWorkbench';
 import AnswerlatticeCustomerFlowChecklist from '@template/answerlattice/content/AnswerlatticeCustomerFlowChecklist';
 import AnswerlatticeSurfaceReadinessMatrix from '@template/answerlattice/content/AnswerlatticeSurfaceReadinessMatrix';
-import { getAnswerlatticeUiErrorMessage } from '@lib/answerlattice/uiErrors';
 import type { AnswerlatticeActivationStep, AnswerlatticeActivationSummary } from '@type/answerlattice';
 import {
     Alert,
@@ -53,11 +57,7 @@ import {
 } from 'react-icons/lu';
 
 const { Title, Text, Paragraph } = Typography;
-
-type ActivationSummaryResponse = {
-    summary?: AnswerlatticeActivationSummary;
-    error?: string;
-};
+const ANSWERLATTICE_READINESS_METRICS_LOAD_FAILED = 'Could not load readiness metrics';
 
 const STATUS_META = {
     complete: { color: 'success', label: 'Done', icon: LuCheckCircle2 },
@@ -87,14 +87,19 @@ export default function AnswerlatticeDashboardPage() {
         }
 
         try {
-            const response = await fetch('/api/answerlattice/activation/summary', { method: 'GET' });
-            const data: ActivationSummaryResponse = await response.json().catch(() => ({}));
-            if (!response.ok || !data.summary) {
-                throw new Error(data.error || 'Failed to load readiness metrics');
-            }
+            const response = await fetch('/api/answerlattice/activation/summary', {
+                ...ANSWERLATTICE_ACTIVATION_DASHBOARD_REQUEST_POLICY,
+                method: 'GET',
+            });
+            const data = await readAnswerlatticeActivationDashboardResponse(
+                response,
+                'readiness_metrics_load',
+                isAnswerlatticeActivationSummaryResponse,
+                ANSWERLATTICE_READINESS_METRICS_LOAD_FAILED,
+            );
             setSummary(data.summary);
-        } catch (error) {
-            message.error(getAnswerlatticeUiErrorMessage(error, 'Could not load readiness metrics'));
+        } catch {
+            message.error(ANSWERLATTICE_READINESS_METRICS_LOAD_FAILED);
         } finally {
             setLoading(false);
             setRefreshing(false);

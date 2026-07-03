@@ -1,7 +1,7 @@
 # Answerlattice Support Board
 
 > Status: Implemented
-> Last updated: 2026-06-16
+> Last updated: 2026-06-28
 > Product area: Support Control
 > Route: `/answerlattice/support-board`
 
@@ -40,7 +40,8 @@ Every missed support question becomes visible work, every card can hold private 
 | Bounded signal sync | Implemented, gated | `useSupportBoard.ts` reads recent actionable signals and creates cards only when source sync is enabled |
 | Source customer display | Implemented | Ticket, feedback, and signal source cards preserve available requester name, email, phone, source path, and widget session metadata when present |
 | Nightly signal-quality sync | Implemented, gated | `functions-answerlattice/src/answerlattice/supportBoardSync.ts` creates deduped cards for repeated misses, negative feedback, drift, and release impact only when enabled |
-| Compact board summary | Implemented, gated | `platformSummary/supportBoardSummary_{tId}_{sId}` is written by nightly sync only when enabled |
+| Compact board summary | Implemented, gated | `platformSummary/supportBoardSummary_{tId}_{sId}` is written by nightly sync only when enabled; UI summary-read failures log a bounded diagnostic and do not block the board |
+| Nightly diagnostics | Implemented | Support Board nightly success/failure logs use fixed codes, scope booleans, and source error name/code/status only |
 | Private internal notes | Implemented | Embedded capped notes on board cards |
 | Status history | Implemented | Top-level `status` plus capped `statuses[]` activity history |
 | Answer proposal action | Implemented | Creates pending mutation proposal when card has a related entity |
@@ -82,3 +83,5 @@ This feature list is the Answerlattice support-work roadmap. Items must stay ins
 ## Product Boundary
 
 Support Board cards and notes are internal only. They must never render in public help center, hosted help, widget responses, public API responses, or customer-facing docs.
+
+Nightly sync diagnostics are operational only. They must not emit raw tenant/store IDs, source IDs, support text, provider/runtime exception text, or customer/requester metadata.

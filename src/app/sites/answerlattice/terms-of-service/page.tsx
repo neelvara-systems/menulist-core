@@ -54,7 +54,7 @@ const SECTIONS = [
     {
         title: 'Billing and Availability',
         body: [
-            'Paid plans, beta access, support credits, trial periods, limits, and optional onboarding services are shown on the pricing or checkout flow available at the time of purchase.',
+            'Paid plans, support credits, limits, and optional onboarding services are shown on the pricing or checkout flow available at the time of purchase.',
             'AnswerLattice is operated with reasonable care, but no online service can guarantee uninterrupted availability. Maintenance, provider outages, abuse protection, or operational incidents may affect access.',
         ],
     },

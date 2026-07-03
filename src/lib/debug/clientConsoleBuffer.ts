@@ -1,5 +1,7 @@
 'use client';
 
+import { sanitizeErrorForLog } from '@lib/security/secureLogger';
+
 type ConsoleLevel = 'debug' | 'error' | 'info' | 'log' | 'warn';
 
 export type ClientConsoleEntry = {
@@ -32,7 +34,7 @@ function sanitizeText(value: string): string {
 
 function serializeConsoleArg(value: unknown): string {
     if (value instanceof Error) {
-        return sanitizeText(`${value.name}: ${value.message}\n${value.stack || ''}`);
+        return sanitizeText(JSON.stringify(sanitizeErrorForLog(value)));
     }
 
     if (typeof value === 'string') return sanitizeText(value);
@@ -41,11 +43,7 @@ function serializeConsoleArg(value: unknown): string {
         return sanitizeText(JSON.stringify(value, (_key, entryValue) => {
             if (typeof entryValue === 'function') return '[Function]';
             if (entryValue instanceof Error) {
-                return {
-                    message: entryValue.message,
-                    name: entryValue.name,
-                    stack: entryValue.stack?.split('\n').slice(0, 8).join('\n'),
-                };
+                return sanitizeErrorForLog(entryValue);
             }
             return entryValue;
         }));

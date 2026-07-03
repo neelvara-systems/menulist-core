@@ -1,12 +1,20 @@
 # Staff Prompt — Documentation Hub
 
-> **Feature:** AI-Powered Staff Training Prompts  
+> **Feature:** Read-only Today staff line
 > **Status:** Read-only Today summary display retained; standalone helper code removed
-> **Last Updated:** June 1, 2026
+> **Last Updated:** July 1, 2026
 
 ## June 1, 2026 Cleanup
 
 The unused standalone helper files under `src/lib/staff-prompt/` were deleted while removing the old Social Content owner-generation path. Active owner surfaces still read `staffPrompt` from the Today summary and render it when present, but there is no separate staff-prompt generation engine in active code.
+
+## Current Runtime Contract
+
+- Source of truth: `platformSummary/campaigns_{sId}.staffPrompt`.
+- Runtime read path: `getTodayCampaigns()` returns the existing Today summary and suppresses stale summaries.
+- Desktop/mobile display: Today shows the line only when `staffPrompt.eligible` is true.
+- No separate staff-facing route, phone reference view, provider call, owner setting, or mobile-only write exists.
+- Verification: `npm run verify:staff-prompt-runtime`.
 
 ---
 

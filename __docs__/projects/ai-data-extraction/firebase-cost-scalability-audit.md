@@ -17,24 +17,24 @@ The AI Data Extraction pipeline is **economically sustainable at scale**. Fireba
 - **CRITICAL:** `checkExistingActiveJob()` query missing `uId` filter — Firestore security rules reject list queries without `uId == auth.uid`, causing "Missing or insufficient permissions" error on every extraction attempt
 - Missing composite index for `MENULIST_AI_OPERATIONS` collection (monitoring dashboard query would fail)
 
-**Key Risk:** The `MENULIST_AI_OPERATIONS` collection has no TTL/cleanup — it grows unbounded at 1 doc per extraction forever.
+**July 1 update:** The `MENULIST_AI_OPERATIONS` extraction audit ledger now uses compact-not-delete retention. Accounting-only rows retain cost/token fields, response counts, message presence/length, and summarized file metadata instead of raw provider/output payloads. Detailed-mode rows receive `detailExpiresAt` and are pruned by `menulistMaintenanceScheduler.ai_operation_detail_cleanup` when the updated Function is deployed.
 
 ---
 
 ## 1. HIGH-RISK COST AREAS
 
-### 1.1 `MENULIST_AI_OPERATIONS` Collection — Unbounded Growth ⚠️ HIGH
+### 1.1 `MENULIST_AI_OPERATIONS` Collection — Compact Ledger Retention ⚠️ MEDIUM
 
 | Aspect             | Details                                                                                                                                                                                                         |
 | ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Location**       | `functions/src/logic/processMenuImages.ts:317-333` (`addAiOperation()`)                                                                                                                                         |
-| **Problem**        | Every extraction writes 1 document to `MENULIST_AI_OPERATIONS`. **No TTL, no cleanup, no archival.** Documents contain full `clientResponse` (extracted data), `geminiResponse`, `files[]`, `generationConfig`. |
-| **Document Size**  | ~50-200KB per doc (includes `clientResponse` with full extracted menu data)                                                                                                                                     |
-| **Growth Rate**    | 1,000 extractions/month = 12,000 docs/year. 100,000/month = 1.2M docs/year.                                                                                                                                     |
-| **Storage Cost**   | At 100K/month: ~1.2M docs × 100KB avg = ~120GB/year = **~$3.12/month storage**                                                                                                                                  |
+| **Location**       | `functions/src/logic/processMenuImages.ts` (`addAiOperation()` / `compactAiOperationForStorage()`), `functions/src/schedulers/menulistMaintenanceScheduler.ts` (`ai_operation_detail_cleanup`) |
+| **Problem**        | Every extraction still writes one audit row. The current policy keeps the compact row for cost/audit traceability instead of deleting the ledger document. |
+| **Document Size**  | Accounting-only rows store cost/token fields, response counts, message presence/length, summarized file metadata, and minimal generation config. Detailed mode is temporary and receives `detailExpiresAt`. |
+| **Growth Rate**    | 1,000 extractions/month = 12,000 compact rows/year. 100,000/month = 1.2M compact rows/year. |
+| **Storage Cost**   | The previous 100KB/document projection no longer applies in accounting-only mode because raw `clientResponse`, raw provider response, and full file payloads are not retained. |
 | **Read Cost**      | The monitoring dashboard (`getExtractionCostMetrics()`) reads up to 50 docs per load. Currently founder-only, so negligible. But if exposed to all users: expensive.                                            |
-| **Risk**           | At 1M+ docs, single-field index scans become slow. Collection becomes a storage cost sink.                                                                                                                      |
-| **Recommendation** | Add TTL cleanup: delete docs older than 90 days in the nightly scheduler. OR strip `clientResponse` (heavy field) after 7 days, keeping only cost/token metadata.                                               |
+| **Risk**           | The collection still grows by row count. Storage/doc-size risk is mitigated by compaction; query risk remains bounded only while monitoring reads stay capped/platform-only. |
+| **Recommendation** | Keep compact-not-delete retention for audit history, keep monitoring reads capped/platform-only, and keep `ai_operation_detail_cleanup` deployed for detailed-mode rows. Do not delete compact ledger rows unless accounting, owner transaction history, and platform audit retention are redesigned. |
 
 ### 1.2 Project Document Size — Grows With Every Re-Upload ⚠️ MEDIUM-HIGH
 
@@ -44,9 +44,9 @@ The AI Data Extraction pipeline is **economically sustainable at scale**. Fireba
 | **Problem**              | `saveFilesToProject()` APPENDS new file entries to `files[]` array. Each file entry contains full `extractedData` (categories, items, prices, descriptions). Files are NEVER removed — even re-extractions append, they don't replace. |
 | **Document Size Growth** | Per file: ~20-100KB of extracted data. A restaurant uploading 5 menu photos = ~250KB. After 3 re-extractions = ~750KB. After 10 re-uploads = potentially approaching 1MB limit.                                                        |
 | **Firestore Limit**      | 1MB per document.                                                                                                                                                                                                                      |
-| **Current Safeguard**    | None. No check on accumulated `files[]` array size before write.                                                                                                                                                                       |
-| **Risk**                 | A restaurant that frequently re-uploads menus (e.g., seasonal updates) could eventually hit the 1MB limit, causing writes to fail silently or crash.                                                                                   |
-| **Recommendation**       | Either: (a) Mark old file entries as `deleted: true` and strip their `extractedData` after the new extraction succeeds, or (b) Add a pre-write size check with a warning when approaching 800KB.                                       |
+| **Current Safeguard**    | `saveFilesToProject()` estimates the merged project payload before writing, warns above 700KB, and blocks above 900KB. Desktop/mobile upload caps block over-limit pending batches before Storage upload. The protected job route blocks projected oversize appends before AI work, deletes newly uploaded owner source files on that rejection, and returns reset/create-new copy. Verified by `npm run verify:menu-extraction-pipeline`. |
+| **Risk**                 | A restaurant that frequently re-uploads menus (e.g., seasonal updates) can still grow the `files[]` array over time until the guard blocks more appends. This is fail-safe rather than auto-cleaned because older `files[].extractedData` can still be active editor data. |
+| **Recommendation**       | Keep append as the incremental model and keep replacement explicit: owners reset the menu or create a new menu before uploading a full replacement. Do not add automatic stripping unless the editor data model separates source history from live menu data. |
 
 ### 1.3 Job Document Size — `result.combinedData` Can Be Large ⚠️ MEDIUM
 
@@ -69,11 +69,11 @@ The AI Data Extraction pipeline is **economically sustainable at scale**. Fireba
 | Aspect                       | Details                                                                                                                                                                                                                                                                                                                                        |
 | ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Location**                 | `src/database/ops/extraction.ts` (4 query functions)                                                                                                                                                                                                                                                                                           |
-| **Reads Per Dashboard Load** | `getExtractionHealthMetrics()`: up to **100 reads** (last 24h jobs). `getExtractionQualityMetrics()`: up to **50 reads** (last 50 completed jobs). `getRecentExtractionJobs()`: up to **20 reads** (recent job feed). `getExtractionCostMetrics()`: up to **50 reads** (today's AI operations). **Total: up to 220 reads per dashboard load.** |
+| **Reads Per Dashboard Load** | **July 1 update:** `/ops/extraction` uses SWR with a five-minute dedupe window and calls `getExtractionDashboardSnapshot()`, which performs one recent-job query plus one cost query. Cache miss, filter change, or explicit Refresh: up to **150 job reads + 100 cost reads**. Duplicate mounts/revalidations inside five minutes: **0 additional reads**. |
 | **Current Usage**            | Founder-only at `/ops/extraction`. 1 user, infrequent access. **Cost: negligible.**                                                                                                                                                                                                                                                            |
-| **Risk at Scale**            | If dashboard is opened by multiple users or auto-refreshes: 220 reads × 10 loads/day × 30 days = 66,000 reads/month. Still under free tier (50K free reads/day).                                                                                                                                                                               |
+| **Risk at Scale**            | Duplicate dashboard opens are now deduped for five minutes. Scale risk returns only if automatic refresh or broader operator access is added without server-side pre-aggregation.                                                                                                                                                              |
 | **Missing Index**            | **FIXED**: `MENULIST_AI_OPERATIONS` needed composite index for `action + createdAt` query. Added in this audit.                                                                                                                                                                                                                                |
-| **Recommendation**           | Add SWR caching with 5-minute dedup interval. Consider server-side pre-aggregation if dashboard usage increases.                                                                                                                                                                                                                               |
+| **Recommendation**           | ✅ SWR caching with a five-minute dedupe interval is implemented. If automatic refresh or broader operator access is added, use server-side pre-aggregation before enabling it.                                                                                                                                                                |
 
 ### 2.2 Cleanup Scheduler — 3 Unbounded Queries Every 15 Minutes ⚠️ LOW-MEDIUM
 
@@ -110,9 +110,9 @@ The AI Data Extraction pipeline is **economically sustainable at scale**. Fireba
 | Progress update (50%)             | 1     | ~100B      | CF line 210-214                               |
 | Status → completed (with results) | 1     | ~50-200KB  | CF line 301-334                               |
 | Save to project (merge)           | 1     | ~50-200KB  | CF `saveFilesToProject()` line 255            |
-| Record AI operation               | 1     | ~50-200KB  | CF `addAiOperation()` line 327                |
-| **Total per first extraction**    | **6** | ~150-600KB |                                               |
-| **Total per re-extraction**       | **5** | ~100-400KB | (no project save — preview_ready)             |
+| Record AI operation               | 1     | Compact row | CF `addAiOperation()` / `compactAiOperationForStorage()` |
+| **Total per first extraction**    | **6** | ~100-400KB plus compact audit row |                                               |
+| **Total per re-extraction**       | **5** | ~100-400KB plus compact audit row | (no project save — preview_ready)             |
 
 **Cost at 1,000 extractions/month:** 6,000 writes × $0.18/100K = **$0.01/month**. Negligible.
 
@@ -136,7 +136,7 @@ The AI Data Extraction pipeline is **economically sustainable at scale**. Fireba
 **Cost at 1,000 extractions/month:** 3 files avg × 3MB avg × 1000 = 9GB = **$0.23/month**.
 **Cost at 100,000/month:** 900GB = **$23.40/month**.
 
-**Note:** Old images are NOT cleaned up. A restaurant with 50 uploads has 150+ images in Storage forever. At massive scale, consider a Storage lifecycle rule to move images > 1 year to Coldline (~$0.004/GB).
+**July 1 update:** Old source uploads are not deleted, but the repo now includes `infra/storage/menulist-storage-lifecycle.json` to move legacy `MenuListAi/project/files/` objects to `COLDLINE` after 365 days once the bucket lifecycle config is applied. The rule intentionally does not delete owner/source uploads.
 
 ### 3.4 Cloud Function Costs — Dominated by AI Wait Time ✅
 
@@ -257,7 +257,8 @@ Query: `where('createdAt', '>=', cutoff)` + `orderBy('createdAt', 'desc')`.
 
 | Path                                         | Size            | Retention       | Cleanup                 |
 | -------------------------------------------- | --------------- | --------------- | ----------------------- |
-| `MenuListAi/project/files/{timestamp}-{uid}` | 1-5MB per image | Forever         | None                    |
+| `projects/files/{tId}/{sId}/{fileId}`        | 1-5MB per image | Until project/account cleanup is implemented | Tenant/store scoping enables future targeted cleanup |
+| Legacy `MenuListAi/project/files/{timestamp}-{uid}` | 1-5MB per image | 365d then `COLDLINE` when lifecycle config is applied | No delete rule; compatibility path pending app deploy and Storage rules cutover |
 | Gemini File API temp uploads                 | Same images     | 48h auto-expire | Automatic               |
 | CF `/tmp`                                    | Same images     | Ephemeral       | `finally` block cleanup |
 
@@ -274,7 +275,7 @@ Query: `where('createdAt', '>=', cutoff)` + `orderBy('createdAt', 'desc')`.
 | 10,000 extractions  | ~30,000      | ~90GB          | ~1.08TB        | $28.08/yr   |
 | 100,000 extractions | ~300,000     | ~900GB         | ~10.8TB        | $280.80/yr  |
 
-**Risk:** At 100K/month, storage is the second-largest cost after Gemini API. Consider lifecycle rules for images > 12 months.
+**Risk:** At 100K/month, storage is the second-largest cost after Gemini API. SG-1 is code-resolved with a `COLDLINE` lifecycle artifact, but the bucket config must still be applied in QA and then production before this mitigation is live.
 
 ---
 
@@ -323,7 +324,7 @@ Query: `where('createdAt', '>=', cutoff)` + `orderBy('createdAt', 'desc')`.
 
 **Usage Pattern:** Founder-only, opened a few times per week. Cost: effectively $0.00.
 
-**If Auto-Refresh Added:** With 60s refresh interval, 24h active = 1,440 loads × 220 reads = 316,800 reads/day. Still under Firestore free tier (50K free reads/day... this would EXCEED free tier). **Recommendation:** If auto-refresh is added, use 5-minute intervals minimum, or implement server-side aggregation.
+**If Auto-Refresh Added:** Auto-refresh remains disabled. If a 60s refresh interval is added later, it must not rely on the client dashboard query pattern; use server-side pre-aggregation before enabling it. The current five-minute SWR dedupe protects duplicate mounts/revalidations, not a deliberate forced refresh loop.
 
 ---
 
@@ -437,6 +438,7 @@ Scenario C (100K/mo):  ███████████████████
 | **Rate limiting**              | 5 req/min per project via Upstash Redis.                                       | `checkExpensiveAIRateLimit()`                     |
 | **Circuit breaker**            | Stops cascading failures to Gemini API.                                        | `executeWithCircuitBreaker()`                     |
 | **Owner upload fingerprint reuse** | Repeat owner uploads can reuse a recent completed project job based on server-trusted Storage metadata instead of spending another provider extraction. | `POST /api/menu-extraction/jobs` |
+| **Pre-AI project document size gate and reset policy** | Project append jobs estimate the existing project document plus 100KB per incoming file against the shared 900KB save limit before expensive extraction. Desktop and mobile upload flows also block pending batches above the shared 15 file/page extraction cap before Storage upload; mobile passes remaining PDF page slots into conversion before canvas rendering. Oversized owner uploads that reach the route are rejected before AI work, the newly uploaded source files are deleted, and owner-facing copy instructs reset or create-new. The existing project reset flow is the replacement cleanup path and writes `files: []`. | `POST /api/menu-extraction/jobs`; `menuExtractionProjectSize.ts`; `projects/index.tsx`; `ProjectConfirmModal.tsx`; `MenuUploadSheet.tsx` |
 
 ---
 
@@ -446,7 +448,7 @@ Scenario C (100K/mo):  ███████████████████
 
 | #   | Recommendation                                                                                                                                                                            | Effort  | Impact                                                             |
 | --- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- | ------------------------------------------------------------------ |
-| 1   | **Add TTL cleanup for `MENULIST_AI_OPERATIONS`** — delete docs > 90 days in nightly scheduler. Or strip `clientResponse` field after 7 days.                                              | Low     | Prevents unbounded storage growth (120GB/year at 100K/month scale) |
+| 1   | **Keep compact AI operation retention deployed** — accounting-only extraction rows retain compact cost/count metadata; detailed-mode rows are pruned by `ai_operation_detail_cleanup` when `detailExpiresAt` is due. | Done in code; deploy pending for scheduler live effect | Prevents raw response/detail growth while preserving audit and transaction-history rows |
 | 2   | **Add `limit(100)` to 3 cleanup scheduler queries** — `cleanupStuckJobsLogic()`, `cleanupExpiredPreviewJobsLogic()`, `cleanupStuckCancellingJobsLogic()`. Prevents batch commit overflow. | Trivial | Safety at scale                                                    |
 | 3   | **Deploy the new `MENULIST_AI_OPERATIONS` index** — `firebase deploy --only firestore:indexes`                                                                                            | Trivial | Fixes monitoring dashboard crash                                   |
 
@@ -454,7 +456,7 @@ Scenario C (100K/mo):  ███████████████████
 
 | #   | Recommendation                                                                                                                                                                  | Effort | Impact                                              |
 | --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------ | --------------------------------------------------- |
-| 4   | **Add project document size guard** — Before `saveFilesToProject()` writes, estimate doc size. If > 800KB, warn. If > 950KB, refuse write and notify user to clean old uploads. | Medium | Prevents 1MB document limit crash                   |
+| 4   | **Add project document size guard and replacement policy** — Implemented in `saveFilesToProject()` with a 700KB warning and 900KB hard block, plus desktop/mobile pre-Storage 15 file/page batch caps and a pre-AI owner job route gate that projects 100KB per incoming file against the same shared 900KB limit and cleans up newly uploaded source files on rejection. Incremental uploads append by design; replacement uploads use reset/create-new, with reset clearing `files[]` and extracted data. | Done | Prevents silent 1MB document limit crash, prevents over-limit desktop/mobile batches from uploading to Storage, avoids provider spend on clearly oversized append jobs, and keeps cleanup owner-controlled instead of deleting live editor data automatically |
 | 5   | **Storage lifecycle rules** — Move images older than 12 months to Coldline Storage ($0.004/GB vs $0.026/GB).                                                                    | Low    | 85% storage cost reduction for old images           |
 | 6   | **Server-side aggregation for monitoring** — If dashboard auto-refresh is added, pre-compute health metrics in a summary doc updated by the nightly scheduler.                  | Medium | Prevents 300K+ reads/day if dashboard used actively |
 
@@ -479,9 +481,9 @@ Scenario C (100K/mo):  ███████████████████
 | Firebase Storage                   | ✅ SAFE          | Linear, $0.10-23/month at scale                   |
 | Indexes                            | ✅ FIXED         | 1 missing index added                             |
 | Cleanup schedulers                 | ⚠️ LOW           | Need `limit(100)` on 3 queries                    |
-| `MENULIST_AI_OPERATIONS` growth    | ⚠️ HIGH          | No TTL — 120GB/year at 100K/month                 |
+| `MENULIST_AI_OPERATIONS` growth    | ⚠️ MEDIUM        | Compact ledger rows retained; heavy details compacted/pruned by policy |
 | Project document size              | ⚠️ MEDIUM-HIGH   | Files array grows unbounded                       |
-| Monitoring dashboard reads         | ⚠️ LOW           | OK for founder-only; risky with auto-refresh      |
+| Monitoring dashboard reads         | ✅ MITIGATED     | SWR five-minute dedupe for duplicate loads; server pre-aggregation required before any auto-refresh rollout |
 | **Overall System**                 | **✅ COST-SAFE** | Gemini API (84-96%) dominates. Firebase is cheap. |
 
 ---

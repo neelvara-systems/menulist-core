@@ -13,19 +13,27 @@ export const dynamic = 'force-dynamic';
 
 import { FEATURE_FLAGS } from '@config/features';
 import { DB_COLLECTIONS } from '@constant/database';
+import { PERMISSIONS } from '@constant/permissions';
 import { deleteComplianceOverrideServer, getComplianceOverridesServer, saveComplianceOverrideServer } from '@database/compliance/server';
 import { sanitizeComplianceContent } from '@lib/compliance/sanitizer';
 import { composeComplianceContent, extractComplianceInputs, generateComplianceContent } from '@lib/compliance/templates';
 import { firestoreAdmin } from '@lib/firebase/firebaseAdmin';
+import { requireAnyStorePermission } from '@lib/permissions/server';
+import { checkRateLimit } from '@lib/rateLimit';
+import { getRateLimitForFeature } from '@lib/rateLimit/configs';
+import { readBoundedJsonBody } from '@lib/security/boundedRequestBody';
+import { getSafeZodValidationDetails } from '@lib/security/inputValidation';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { withAuth } from '../../../middleware/auth';
+import { hashPublicRateLimitValue } from '../../../middleware/publicApi';
 
 const OverrideSchema = z.object({
     type: z.enum(['privacy', 'terms', 'refund']),
     action: z.enum(['override', 'reset']),
     content: z.string().max(15000).optional(),
 });
+const COMPLIANCE_OVERRIDE_MAX_BODY_BYTES = 32 * 1024;
 
 /**
  * GET /api/compliance — Get compliance pages status for dashboard
@@ -102,11 +110,37 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         return NextResponse.json({ error: 'Not onboarded' }, { status: 400 });
     }
 
-    const body = await request.json();
+    const permissionError = await requireAnyStorePermission(
+        request,
+        session,
+        [PERMISSIONS.MANAGE_PUBLIC_PRESENCE, PERMISSIONS.MANAGE_STORE],
+        'Compliance pages',
+    );
+    if (permissionError) return permissionError;
+
+    const rateLimitConfig = getRateLimitForFeature('DATA_WRITE');
+    const userRateLimitHash = hashPublicRateLimitValue(session.uId || session.user?.id || 'unknown');
+    const storeRateLimitHash = hashPublicRateLimitValue(sId);
+    const rateLimitResult = await checkRateLimit({
+        key: `compliance:${userRateLimitHash}:${storeRateLimitHash}`,
+        ...rateLimitConfig,
+    });
+    if (!rateLimitResult.allowed) {
+        return NextResponse.json({
+            error: 'Too many requests. Please try again later.',
+            resetAt: rateLimitResult.resetAt,
+        }, { status: 429 });
+    }
+
+    const bodyResult = await readBoundedJsonBody(request, COMPLIANCE_OVERRIDE_MAX_BODY_BYTES, {
+        invalidJsonMessage: 'Validation failed',
+    });
+    if (bodyResult.ok === false) return bodyResult.response;
+    const body = bodyResult.data;
     const validation = OverrideSchema.safeParse(body);
     if (!validation.success) {
         return NextResponse.json(
-            { error: 'Validation failed', details: validation.error.flatten() },
+            { error: 'Validation failed', details: getSafeZodValidationDetails(validation.error) },
             { status: 400 },
         );
     }
@@ -134,7 +168,9 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         await saveComplianceOverrideServer(sId, tId, type, sanitized);
 
         return NextResponse.json({
+            action,
             success: true,
+            type,
             message: `${pageLabel} updated with your custom content.`,
         });
     }
@@ -143,7 +179,9 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         await deleteComplianceOverrideServer(sId, type);
 
         return NextResponse.json({
+            action,
             success: true,
+            type,
             message: `${pageLabel} reset to default.`,
         });
     }

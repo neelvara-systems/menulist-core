@@ -1,7 +1,7 @@
 # Answerlattice Help Widget — Implementation Blueprint
 
 > **Version:** 2.4.0
-> **Last Updated:** 2026-05-19
+> **Last Updated:** 2026-06-30
 > **Audience:** Developers
 > **Feature Flags:** `ENABLE_ANSWERLATTICE_WIDGET` (core), `ENABLE_ANSWERLATTICE_CONTEXT_AWARE` (context)
 > **Source:** Codebase audit + ChatGPT review + industry research
@@ -60,6 +60,12 @@ src/components/templates/answerlattice/AnswerlatticeSettings.tsx  # Workspace se
 src/components/templates/answerlattice/widgetManagement/AnswerlatticeWidgetManagement.tsx  # Widget management UI
 src/types/platform/store.ts               # MODIFY: added answerlatticeWidgetApi + widgetConfig + widgetAllowedOrigins fields
 ```
+
+The protected widget-config GET route uses the shared Answerlattice dashboard `DATA_READ` limiter before permission and store reads. Widget-config load, save, and compiled-context stale-mark failures log fixed runtime diagnostic codes with bounded tenant/store metadata. The widget-key management route rate-limits before permission/store work, caps action bodies at 4KB, and logs key-management failures with fixed-code bounded tenant/store/user/action/key metadata.
+
+The Widget Management browser caller sends widget-config, widget-activity, widget-key, and hosted-help settings requests with no-store cache, same-origin credentials, and manual redirect handling, then reads responses through a 256 KB bounded JSON reader before updating local UI state. Each response must match the documented route shape; rejected, malformed, oversized, or wrong-shape responses log fixed `answerlattice_widget_management_response_*` diagnostics and show fixed local copy instead of route-provided error text. Hosted Help settings load remains optional during the main widget settings load, but failures are now visible through `answerlattice_widget_management_hosted_help_load_failed`. Widget key, install-snippet, context-snippet, hosted-help URL, and DNS value copy actions use the shared Answerlattice support clipboard helper, wait for Clipboard API success or acknowledged textarea fallback success, and log `answerlattice_widget_management_copy_failed` with bounded copy-value length/support metadata only before fixed failure copy.
+
+The public iframe `WidgetClient` submits search and feedback requests with same-origin credentials, no-store cache policy, and manual redirect handling. Search success parses through a 256 KB bounded JSON reader and requires the compact widget answer shape (`answer`, optional references, related content, suggestions, procedure, and graph-expansion suggestions) before rendering an assistant message. Malformed, oversized, redirected, rejected, or wrong-shape responses keep fixed public failure copy and log bounded query/session/support metadata only.
 
 ---
 
@@ -162,6 +168,7 @@ Context-aware support remains generic:
 
 - Key create, rename, and delete through `POST /api/answerlattice/widget-key`.
 - Raw key copy is limited to the just-created in-browser value; server-side copy requests return a rotate/create-new-key response.
+- Widget-key action requests are bounded to 4KB and guarded by the workspace key-management rate limit before permission and store reads.
 - Config load/save through `GET`/`PUT /api/answerlattice/widget-config`.
 - Install snippets generated from `src/lib/answerlattice/widgetConfig.ts`.
 - Env-backed install handoff for Next.js, Vite/React, and Nuxt client apps.
@@ -240,6 +247,8 @@ NEXT_PUBLIC_MENULIST_ANSWERLATTICE_WIDGET_SCRIPT_SRC=<optional override>
 Zero-dependency React client. Inline styles only.
 
 v1 features: welcome screen, chat bubbles, canonical badge, owner-answer badge, references, suggested questions, loading dots, error/retry, auto-scroll.
+
+Widget reference and related-article links open in a new tab with `noopener,noreferrer`, check the returned browser window, and log `answerlattice_widget_link_open_failed` when the browser blocks or rejects the handoff. Diagnostics use bounded link URL/id/title/source presence-length metadata only, and the widget shows fixed `Could not open link. Try again.` copy. This does not change widget search, feedback, `aiSearchHistory`, context handling, or retrieval behavior.
 
 v2 additions:
 
@@ -457,7 +466,7 @@ Answer returned with imageProcessed: true
 
 | Component                        | Source                      | Widget Usage                                                                     |
 | -------------------------------- | --------------------------- | -------------------------------------------------------------------------------- |
-| `coreSearch()` Stage 2           | `searchCore.ts`             | Image security validation, inline image handling, Gemini visual context extraction |
+| `coreSearch()` Stage 2           | `searchCore.ts`             | Image security validation, manual redirect handling for stored image fetches, inline image handling, Gemini visual context extraction |
 | `generateSearchQueryFromImage()` | `vectorEmbeddings/index.ts` | Converts image + text prompt → bounded keyword-rich visual search context        |
 | `callGeminiChat()` with image context | `vectorEmbeddings/index.ts` | Passes text visual context to Gemini Flash so the raw image is not uploaded twice |
 | Image size/type validation       | `chatImagePolicy.ts`        | Same 5MB limit, JPEG/PNG/WebP/GIF only                                           |
@@ -561,6 +570,7 @@ Per image query: 1 additional bounded visual-context model call before normal re
 
 | Date       | Version | Change                                                                                                                                                                                                                                                            |
 | ---------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-06-30 | 2.5.3   | Hardened the public iframe WidgetClient search response boundary with same-origin/no-store/manual-redirect requests, a 256 KB bounded response parser, widget-answer shape validation, and bounded diagnostics before rendering assistant messages. |
 | 2026-06-11 | 2.5.2   | Clarified dashboard install snippets so one-time raw widget keys are replaced by an explicit full-key placeholder when the value is no longer visible; saved key identifiers are for dashboard lookup only. |
 | 2026-06-11 | 2.5.1   | Hardened widget key management to one-time raw key display: server-side copy/recovery is disabled, key metadata remains hash-only, and lost keys are rotated by creating a replacement key. |
 | 2026-05-28 | 2.5.0   | Added runtime `hide()`/`show()` controls and made the MenuList owner embed suppress, close, and hide the external Answerlattice widget on mobile or blocked routes so sidebar navigation cannot leave the help iframe over the app. |

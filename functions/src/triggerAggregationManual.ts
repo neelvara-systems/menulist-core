@@ -1,9 +1,16 @@
 import { FieldValue, Firestore, Timestamp } from 'firebase-admin/firestore';
+import * as functions from 'firebase-functions';
 import { HttpsError, onCall } from 'firebase-functions/v2/https';
 import { FUNCTION_MAX_INSTANCES } from './config/secrets';
 import { DB_COLLECTIONS, getChatAnalyticsDocId } from './constants/database';
 import { ECOMSAI_PLATFORM_USER_ROLE } from './constants/user';
 import { firestoreAdmin } from './firebaseAdmin';
+import { getAnalyticsErrorContext, getAnalyticsIdContext } from './analytics/analyticsDiagnostics';
+
+const logger = functions.logger;
+const MANUAL_CHAT_AGGREGATION_DAY_FAILED = 'MANUAL_CHAT_AGGREGATION_DAY_FAILED';
+const MANUAL_CHAT_AGGREGATION_FAILED = 'MANUAL_CHAT_AGGREGATION_FAILED';
+const MANUAL_CHAT_AGGREGATION_STATUS_UPDATE_FAILED = 'MANUAL_CHAT_AGGREGATION_STATUS_UPDATE_FAILED';
 
 /**
  * MANUAL AGGREGATION TRIGGER (PLATFORM OWNER ONLY)
@@ -70,7 +77,11 @@ export const triggerAggregationManual = onCall(functionOptions, async (request) 
         );
     }
 
-    console.log(`[Manual Trigger] Initiated by ${userRole} for tenant ${tId}, store ${storeId}`);
+    logger.info('[ManualChatAggregation] Trigger accepted', {
+        userRole,
+        tId: getAnalyticsIdContext(tId),
+        storeId: getAnalyticsIdContext(storeId),
+    });
 
     // ============================================
     // 2. VALIDATION: Input Parameters
@@ -79,7 +90,10 @@ export const triggerAggregationManual = onCall(functionOptions, async (request) 
     const daysToBackfill = Math.min(Math.max(data.daysToBackfill || 1, 1), 7); // Clamp 1-7
 
     if (daysToBackfill !== (data.daysToBackfill || 1)) {
-        console.warn(`[Manual Trigger] Days clamped from ${data.daysToBackfill} to ${daysToBackfill}`);
+        logger.warn('[ManualChatAggregation] Days clamped', {
+            requestedDays: data.daysToBackfill || 1,
+            daysToBackfill,
+        });
     }
 
     // ============================================
@@ -105,7 +119,11 @@ export const triggerAggregationManual = onCall(functionOptions, async (request) 
             ? Math.floor((Date.now() - lastAttempted.getTime()) / 60000)
             : null;
 
-        console.log(`[Manual Trigger] Aggregation already in progress for store ${storeId} (started ${minutesAgo}m ago)`);
+        logger.info('[ManualChatAggregation] Aggregation already in progress', {
+            tId: getAnalyticsIdContext(tId),
+            storeId: getAnalyticsIdContext(storeId),
+            minutesAgo,
+        });
 
         return {
             status: 'already_running',
@@ -125,7 +143,11 @@ export const triggerAggregationManual = onCall(functionOptions, async (request) 
             'chatAnalytics.lastStatus': 'IN_PROGRESS'
         });
 
-        console.log(`[Manual Trigger] Processing ${daysToBackfill} day(s) for store ${storeId}`);
+        logger.info('[ManualChatAggregation] Processing requested days', {
+            tId: getAnalyticsIdContext(tId),
+            storeId: getAnalyticsIdContext(storeId),
+            daysToBackfill,
+        });
 
         const results = {
             tenantId: tId,
@@ -142,14 +164,22 @@ export const triggerAggregationManual = onCall(functionOptions, async (request) 
             const dateStr = targetDate.toISOString().split('T')[0];
 
             try {
-                console.log(`[Manual Trigger] Processing ${dateStr}...`);
+                logger.info('[ManualChatAggregation] Processing date', {
+                    tId: getAnalyticsIdContext(tId),
+                    storeId: getAnalyticsIdContext(storeId),
+                    date: dateStr,
+                });
 
                 // Check if aggregation already exists
                 const docId = getChatAnalyticsDocId(tId, storeId, dateStr);
                 const existingDoc = await db.collection(DB_COLLECTIONS.CHAT_ANALYTICS).doc(docId).get();
 
                 if (existingDoc.exists) {
-                    console.log(`[Manual Trigger] ${dateStr} already exists. Skipping.`);
+                    logger.info('[ManualChatAggregation] Date already aggregated; skipping', {
+                        tId: getAnalyticsIdContext(tId),
+                        storeId: getAnalyticsIdContext(storeId),
+                        date: dateStr,
+                    });
                     results.daysSkipped++;
                     continue;
                 }
@@ -165,17 +195,31 @@ export const triggerAggregationManual = onCall(functionOptions, async (request) 
                         modifiedOn: FieldValue.serverTimestamp()
                     });
 
-                    console.log(`[Manual Trigger] ✓ ${dateStr}: ${stats.totalChats} chats aggregated`);
+                    logger.info('[ManualChatAggregation] Date aggregation written', {
+                        tId: getAnalyticsIdContext(tId),
+                        storeId: getAnalyticsIdContext(storeId),
+                        date: dateStr,
+                        totalChats: stats.totalChats,
+                    });
                     results.daysProcessed++;
                 } else {
-                    console.log(`[Manual Trigger] - ${dateStr}: No chats`);
+                    logger.info('[ManualChatAggregation] Date had no chats', {
+                        tId: getAnalyticsIdContext(tId),
+                        storeId: getAnalyticsIdContext(storeId),
+                        date: dateStr,
+                    });
                     results.daysSkipped++;
                 }
 
             } catch (dayError) {
-                const errorMsg = dayError instanceof Error ? dayError.message : String(dayError);
-                console.error(`[Manual Trigger] ✗ Failed ${dateStr}:`, errorMsg);
-                results.errors.push(`${dateStr}: ${errorMsg}`);
+                logger.warn('[ManualChatAggregation] Date aggregation failed', {
+                    failureCode: MANUAL_CHAT_AGGREGATION_DAY_FAILED,
+                    tId: getAnalyticsIdContext(tId),
+                    storeId: getAnalyticsIdContext(storeId),
+                    date: dateStr,
+                    error: getAnalyticsErrorContext(dayError),
+                });
+                results.errors.push(`${dateStr}: ${MANUAL_CHAT_AGGREGATION_DAY_FAILED}`);
             }
         }
 
@@ -196,7 +240,12 @@ export const triggerAggregationManual = onCall(functionOptions, async (request) 
                 'chatAnalytics.lastError': FieldValue.delete()
             });
 
-            console.log(`[Manual Trigger] ✓ Success for store ${storeId}`);
+            logger.info('[ManualChatAggregation] Trigger completed successfully', {
+                tId: getAnalyticsIdContext(tId),
+                storeId: getAnalyticsIdContext(storeId),
+                daysProcessed: results.daysProcessed,
+                daysSkipped: results.daysSkipped,
+            });
 
             return {
                 status: 'success',
@@ -207,30 +256,48 @@ export const triggerAggregationManual = onCall(functionOptions, async (request) 
             // Partial success or full failure
             await db.collection(DB_COLLECTIONS.STORES).doc(storeId).update({
                 'chatAnalytics.lastStatus': 'FAILED',
-                'chatAnalytics.lastError': results.errors.join('; ')
+                'chatAnalytics.lastError': MANUAL_CHAT_AGGREGATION_DAY_FAILED
             });
 
-            console.error(`[Manual Trigger] ✗ Failed for store ${storeId}:`, results.errors);
+            logger.warn('[ManualChatAggregation] Trigger completed with failures', {
+                failureCode: MANUAL_CHAT_AGGREGATION_DAY_FAILED,
+                tId: getAnalyticsIdContext(tId),
+                storeId: getAnalyticsIdContext(storeId),
+                errorCount: results.errors.length,
+            });
 
             throw new HttpsError(
                 'internal',
-                `Aggregation failed: ${results.errors.join(', ')}`
+                'Aggregation failed for one or more days. Please try again.'
             );
         }
 
     } catch (error) {
         // Catch-all error handling
-        const errorMessage = error instanceof Error ? error.message : String(error);
+        logger.error('[ManualChatAggregation] Trigger failed', {
+            failureCode: MANUAL_CHAT_AGGREGATION_FAILED,
+            tId: getAnalyticsIdContext(tId),
+            storeId: getAnalyticsIdContext(storeId),
+            error: getAnalyticsErrorContext(error),
+        });
 
         await db.collection(DB_COLLECTIONS.STORES).doc(storeId).update({
             'chatAnalytics.lastStatus': 'FAILED',
-            'chatAnalytics.lastError': errorMessage
+            'chatAnalytics.lastError': MANUAL_CHAT_AGGREGATION_FAILED
         }).catch((err: any) => {
-            console.error(`[Manual Trigger] Failed to update error status:`, err);
+            logger.warn('[ManualChatAggregation] Failed to persist trigger failure status', {
+                failureCode: MANUAL_CHAT_AGGREGATION_STATUS_UPDATE_FAILED,
+                tId: getAnalyticsIdContext(tId),
+                storeId: getAnalyticsIdContext(storeId),
+                error: getAnalyticsErrorContext(err),
+            });
         });
 
-        console.error(`[Manual Trigger] Critical error:`, error);
-        throw error;
+        if (error instanceof HttpsError) {
+            throw error;
+        }
+
+        throw new HttpsError('internal', 'Aggregation failed. Please try again.');
     }
 });
 

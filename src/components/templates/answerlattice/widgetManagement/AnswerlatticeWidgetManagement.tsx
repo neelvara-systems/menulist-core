@@ -56,6 +56,11 @@ import {
 } from '@lib/answerlattice/widgetConfig';
 import { getAnswerlatticeCustomerIdentity } from '@lib/answerlattice/customerIdentity';
 import {
+    copyAnswerlatticeSupportTextToClipboard,
+    hasAnswerlatticeSupportClipboardWrite,
+    hasAnswerlatticeSupportCopyFallback,
+} from '@lib/answerlattice/supportClipboard';
+import {
     ANSWERLATTICE_WIDGET_SCRIPT_URL,
 } from '@lib/answerlattice/installContract/constants';
 import { ANSWERLATTICE_FRAMEWORK_SNIPPETS } from '@lib/answerlattice/installContract/contract';
@@ -65,7 +70,8 @@ import {
     normalizeHostedHelpConfig,
     normalizeHostedHelpDomains,
 } from '@lib/answerlattice/hostedHelpConfig';
-import { getAnswerlatticeUiErrorMessage } from '@lib/answerlattice/uiErrors';
+import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
+import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';
 import { normalizeHostedHelpDomain } from '@constant/answerlattice/hostedHelp';
 import type { AnswerlatticeWidgetRuntimeStatus } from '@type/answerlattice';
 import {
@@ -81,9 +87,25 @@ import {
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 
 const { Title, Text, Paragraph } = Typography;
+const ANSWERLATTICE_WIDGET_MANAGEMENT_COPY_CLIPBOARD_UNAVAILABLE = 'answerlattice_widget_management_copy_clipboard_unavailable';
+const ANSWERLATTICE_WIDGET_MANAGEMENT_COPY_FALLBACK_FAILED = 'answerlattice_widget_management_copy_fallback_failed';
 
 type SnippetType = 'html' | 'env' | 'spa' | 'next' | 'react' | 'vue' | 'vanilla';
 const FULL_WIDGET_KEY_PLACEHOLDER = 'al_full_widget_key_shown_once';
+const ANSWERLATTICE_WIDGET_SETTINGS_LOAD_FAILED = 'Could not load widget settings';
+const ANSWERLATTICE_WIDGET_SETTINGS_SAVE_FAILED = 'Could not save widget settings';
+const ANSWERLATTICE_WIDGET_ACTIVITY_LOAD_FAILED = 'Could not load widget activity';
+const ANSWERLATTICE_WIDGET_KEY_CREATE_FAILED = 'Could not create widget key';
+const ANSWERLATTICE_WIDGET_KEY_RENAME_FAILED = 'Could not rename widget key';
+const ANSWERLATTICE_WIDGET_KEY_DELETE_FAILED = 'Could not delete widget key';
+const ANSWERLATTICE_HOSTED_HELP_SETTINGS_SAVE_FAILED = 'Could not save hosted help settings';
+const ANSWERLATTICE_HOSTED_HELP_DNS_CHECK_FAILED = 'Could not check hosted help DNS';
+const ANSWERLATTICE_WIDGET_MANAGEMENT_RESPONSE_JSON_MAX_BYTES = 256 * 1024;
+const ANSWERLATTICE_WIDGET_MANAGEMENT_REQUEST_POLICY: Pick<RequestInit, 'cache' | 'credentials' | 'redirect'> = {
+    cache: 'no-store',
+    credentials: 'same-origin',
+    redirect: 'manual',
+};
 
 type AnswerlatticeWidgetManagementProps = {
     embeddedMobile?: boolean;
@@ -91,13 +113,13 @@ type AnswerlatticeWidgetManagementProps = {
 };
 
 type WidgetConfigResponse = {
-    config?: Partial<AnswerlatticeWidgetConfig>;
-    allowedOrigins?: string[];
-    keyPrefix?: string | null;
-    hasWidgetKey?: boolean;
-    keys?: WidgetKeySummary[];
-    keyLimit?: number;
-    encryptionConfigured?: boolean;
+    config: Partial<AnswerlatticeWidgetConfig>;
+    allowedOrigins: string[];
+    keyPrefix: string | null;
+    hasWidgetKey: boolean;
+    keys: WidgetKeySummary[];
+    keyLimit: number;
+    encryptionConfigured: boolean;
     runtimeStatus?: AnswerlatticeWidgetRuntimeStatus | null;
 };
 
@@ -136,8 +158,8 @@ type WidgetActivityItem = {
 };
 
 type HostedHelpSettingsResponse = {
-    config?: Partial<AnswerlatticeHostedHelpConfig>;
-    domainStatuses?: HostedHelpDomainStatus[];
+    config: Partial<AnswerlatticeHostedHelpConfig>;
+    domainStatuses: HostedHelpDomainStatus[];
 };
 
 const CONTROL_LABEL_STYLE = { fontSize: 12 } as const;
@@ -150,6 +172,199 @@ type HostedHelpDomainStatus = {
     lastCheckedAt?: string | null;
     verification?: any;
     error?: string | null;
+};
+
+type WidgetManagementResponseKind =
+    | 'widget_config_load'
+    | 'hosted_help_settings_load'
+    | 'widget_activity_load'
+    | 'widget_config_save'
+    | 'widget_key_create'
+    | 'widget_key_rename'
+    | 'widget_key_delete'
+    | 'hosted_help_settings_save'
+    | 'hosted_help_dns_refresh';
+
+const isRecord = (value: unknown): value is Record<string, unknown> => (
+    Boolean(value) && typeof value === 'object' && !Array.isArray(value)
+);
+
+const isFiniteNumber = (value: unknown): value is number => (
+    typeof value === 'number' && Number.isFinite(value)
+);
+
+const isStringArray = (value: unknown): value is string[] => (
+    Array.isArray(value) && value.every(item => typeof item === 'string')
+);
+
+const isNullableString = (value: unknown): value is string | null => (
+    value === null || typeof value === 'string'
+);
+
+const isOptionalNullableString = (value: unknown): value is string | null | undefined => (
+    value === undefined || isNullableString(value)
+);
+
+const isOptionalBoolean = (value: unknown): value is boolean | undefined => (
+    value === undefined || typeof value === 'boolean'
+);
+
+const isWidgetKeySummary = (value: unknown): value is WidgetKeySummary => {
+    if (!isRecord(value)) return false;
+    return typeof value.id === 'string'
+        && typeof value.name === 'string'
+        && typeof value.keyPrefix === 'string'
+        && isOptionalNullableString(value.keySuffix)
+        && typeof value.displayKey === 'string'
+        && isOptionalNullableString(value.createdAt)
+        && isOptionalNullableString(value.updatedAt)
+        && typeof value.copyable === 'boolean'
+        && typeof value.legacy === 'boolean'
+        && (value.status === 'active' || value.status === 'revoked')
+        && typeof value.isActive === 'boolean';
+};
+
+const isWidgetKeySummaryArray = (value: unknown): value is WidgetKeySummary[] => (
+    Array.isArray(value) && value.every(isWidgetKeySummary)
+);
+
+const isWidgetConfigResponse = (value: unknown): value is WidgetConfigResponse => {
+    if (!isRecord(value)) return false;
+    return isRecord(value.config)
+        && isStringArray(value.allowedOrigins)
+        && isNullableString(value.keyPrefix)
+        && typeof value.hasWidgetKey === 'boolean'
+        && isWidgetKeySummaryArray(value.keys)
+        && isFiniteNumber(value.keyLimit)
+        && typeof value.encryptionConfigured === 'boolean'
+        && (value.runtimeStatus === undefined || value.runtimeStatus === null || isRecord(value.runtimeStatus));
+};
+
+const isHostedHelpDomainStatus = (value: unknown): value is HostedHelpDomainStatus => {
+    if (!isRecord(value)) return false;
+    return typeof value.domain === 'string'
+        && (value.status === undefined || value.status === 'pending' || value.status === 'verified' || value.status === 'error')
+        && isOptionalBoolean(value.verified)
+        && isOptionalNullableString(value.verifiedAt)
+        && isOptionalNullableString(value.lastCheckedAt)
+        && isOptionalNullableString(value.error);
+};
+
+const isHostedHelpSettingsResponse = (value: unknown): value is HostedHelpSettingsResponse => (
+    isRecord(value)
+    && isRecord(value.config)
+    && Array.isArray(value.domainStatuses)
+    && value.domainStatuses.every(isHostedHelpDomainStatus)
+);
+
+const isWidgetActivityItem = (value: unknown): value is WidgetActivityItem => {
+    if (!isRecord(value)) return false;
+    return typeof value.id === 'string'
+        && typeof value.query === 'string'
+        && (value.answerPreview === undefined || typeof value.answerPreview === 'string')
+        && isOptionalBoolean(value.canonical)
+        && isOptionalNullableString(value.confidence)
+        && (value.referenceCount === undefined || isFiniteNumber(value.referenceCount))
+        && (value.feedback === undefined || value.feedback === null || value.feedback === 'good' || value.feedback === 'bad')
+        && isOptionalNullableString(value.visitorId)
+        && isOptionalNullableString(value.visitorName)
+        && isOptionalNullableString(value.visitorEmail)
+        && isOptionalNullableString(value.widgetSessionId)
+        && isOptionalNullableString(value.requestOrigin)
+        && isOptionalNullableString(value.requestPath)
+        && isOptionalNullableString(value.contextKey)
+        && isOptionalNullableString(value.surfacePage)
+        && isOptionalNullableString(value.surfaceFeature)
+        && isOptionalNullableString(value.createdAt);
+};
+
+const isWidgetActivityResponse = (value: unknown): value is { items: WidgetActivityItem[] } => (
+    isRecord(value)
+    && Array.isArray(value.items)
+    && value.items.every(isWidgetActivityItem)
+);
+
+type WidgetKeyBaseResponse = {
+    keys: WidgetKeySummary[];
+    keyPrefix: string | null;
+    hasWidgetKey: boolean;
+    encryptionConfigured: boolean;
+    keyLimit: number;
+};
+
+type WidgetKeyCreateResponse = WidgetKeyBaseResponse & {
+    apiKey: string;
+    key: WidgetKeySummary | null;
+    copyable: boolean;
+};
+
+type WidgetKeyMutationResponse = WidgetKeyBaseResponse & {
+    success: true;
+};
+
+const isWidgetKeyBaseResponse = (value: unknown): value is WidgetKeyBaseResponse => (
+    isRecord(value)
+    && isWidgetKeySummaryArray(value.keys)
+    && isNullableString(value.keyPrefix)
+    && typeof value.hasWidgetKey === 'boolean'
+    && typeof value.encryptionConfigured === 'boolean'
+    && isFiniteNumber(value.keyLimit)
+);
+
+const isWidgetKeyCreateResponse = (value: unknown): value is WidgetKeyCreateResponse => {
+    if (!isWidgetKeyBaseResponse(value) || !isRecord(value)) return false;
+    const record = value as Record<string, unknown>;
+    return typeof record.apiKey === 'string'
+        && (record.key === null || isWidgetKeySummary(record.key))
+        && typeof record.copyable === 'boolean';
+};
+
+const isWidgetKeyMutationResponse = (value: unknown): value is WidgetKeyMutationResponse => {
+    if (!isWidgetKeyBaseResponse(value) || !isRecord(value)) return false;
+    const record = value as Record<string, unknown>;
+    return record.success === true;
+};
+
+const getWidgetManagementResponseLogContext = (
+    kind: WidgetManagementResponseKind,
+    response: Response,
+) => ({
+    surface: 'answerlattice_widget_management',
+    ...getBoundedRuntimeStringContext('responseKind', kind),
+    responseOk: response.ok,
+    responseStatus: response.status,
+});
+
+const readWidgetManagementResponse = async <T,>(
+    response: Response,
+    kind: WidgetManagementResponseKind,
+    isValid: (value: unknown) => value is T,
+    failureMessage: string,
+): Promise<T> => {
+    const context = getWidgetManagementResponseLogContext(kind, response);
+    let payload: unknown;
+
+    try {
+        payload = await readJsonResponseWithLimit<unknown>(
+            response,
+            ANSWERLATTICE_WIDGET_MANAGEMENT_RESPONSE_JSON_MAX_BYTES,
+        );
+    } catch (error) {
+        logRuntimeFailure('answerlattice_widget_management_response_parse_failed', error, context);
+        throw new Error(failureMessage);
+    }
+
+    if (!response.ok) {
+        logRuntimeFailure('answerlattice_widget_management_response_rejected', undefined, context);
+        throw new Error(failureMessage);
+    }
+
+    if (!isValid(payload)) {
+        logRuntimeFailure('answerlattice_widget_management_response_invalid', undefined, context);
+        throw new Error(failureMessage);
+    }
+
+    return payload;
 };
 
 function normalizeHostedHelpDnsRecords(config: any, domain: string) {
@@ -306,28 +521,47 @@ export default function AnswerlatticeWidgetManagement({ embeddedMobile = false, 
     const loadSettings = useCallback(async () => {
         setLoading(true);
         try {
-            const res = await fetch('/api/answerlattice/widget-config', { method: 'GET' });
-            const data: WidgetConfigResponse = await res.json().catch(() => ({}));
-            if (!res.ok) throw new Error((data as any).error || 'Failed to load widget settings');
+            const res = await fetch('/api/answerlattice/widget-config', {
+                ...ANSWERLATTICE_WIDGET_MANAGEMENT_REQUEST_POLICY,
+                method: 'GET',
+            });
+            const data = await readWidgetManagementResponse(
+                res,
+                'widget_config_load',
+                isWidgetConfigResponse,
+                ANSWERLATTICE_WIDGET_SETTINGS_LOAD_FAILED,
+            );
             setConfig(normalizeWidgetConfig(data.config));
             setOrigins(normalizeWidgetAllowedOrigins(data.allowedOrigins));
             setKeyPrefix(data.keyPrefix || null);
             setHasWidgetKey(Boolean(data.hasWidgetKey));
-            setWidgetKeys(Array.isArray(data.keys) ? data.keys : []);
+            setWidgetKeys(data.keys);
             setKeyLimit(Number(data.keyLimit || 10));
             setRuntimeStatus(data.runtimeStatus || null);
 
-            const hostedRes = await fetch('/api/answerlattice/hosted-help-settings', { method: 'GET' });
-            const hostedData: HostedHelpSettingsResponse = await hostedRes.json().catch(() => ({}));
-            if (hostedRes.ok) {
+            try {
+                const hostedRes = await fetch('/api/answerlattice/hosted-help-settings', {
+                    ...ANSWERLATTICE_WIDGET_MANAGEMENT_REQUEST_POLICY,
+                    method: 'GET',
+                });
+                const hostedData = await readWidgetManagementResponse(
+                    hostedRes,
+                    'hosted_help_settings_load',
+                    isHostedHelpSettingsResponse,
+                    ANSWERLATTICE_WIDGET_SETTINGS_LOAD_FAILED,
+                );
                 setHostedHelpConfig(normalizeHostedHelpConfig(hostedData.config));
-                setHostedHelpDomainStatuses(hostedData.domainStatuses || []);
+                setHostedHelpDomainStatuses(hostedData.domainStatuses);
                 setHostedHelpDirty(false);
+            } catch (error) {
+                logRuntimeFailure('answerlattice_widget_management_hosted_help_load_failed', error, {
+                    surface: 'answerlattice_widget_management',
+                });
             }
 
             setDirty(false);
-        } catch (error) {
-            message.error(getAnswerlatticeUiErrorMessage(error, 'Could not load widget settings'));
+        } catch {
+            message.error(ANSWERLATTICE_WIDGET_SETTINGS_LOAD_FAILED);
         } finally {
             setLoading(false);
         }
@@ -337,12 +571,19 @@ export default function AnswerlatticeWidgetManagement({ embeddedMobile = false, 
         setActivityLoading(true);
         setActivityError(null);
         try {
-            const res = await fetch('/api/answerlattice/widget-activity', { method: 'GET' });
-            const data: { items?: WidgetActivityItem[]; error?: string } = await res.json().catch(() => ({}));
-            if (!res.ok) throw new Error(data.error || 'Failed to load widget activity');
-            setActivityItems(Array.isArray(data.items) ? data.items : []);
-        } catch (error) {
-            setActivityError(getAnswerlatticeUiErrorMessage(error, 'Could not load widget activity'));
+            const res = await fetch('/api/answerlattice/widget-activity', {
+                ...ANSWERLATTICE_WIDGET_MANAGEMENT_REQUEST_POLICY,
+                method: 'GET',
+            });
+            const data = await readWidgetManagementResponse(
+                res,
+                'widget_activity_load',
+                isWidgetActivityResponse,
+                ANSWERLATTICE_WIDGET_ACTIVITY_LOAD_FAILED,
+            );
+            setActivityItems(data.items);
+        } catch {
+            setActivityError(ANSWERLATTICE_WIDGET_ACTIVITY_LOAD_FAILED);
             setActivityItems([]);
         } finally {
             setActivityLoading(false);
@@ -366,51 +607,61 @@ export default function AnswerlatticeWidgetManagement({ embeddedMobile = false, 
         setSaving(true);
         try {
             const res = await fetch('/api/answerlattice/widget-config', {
+                ...ANSWERLATTICE_WIDGET_MANAGEMENT_REQUEST_POLICY,
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ config, allowedOrigins: origins }),
             });
-            const data: WidgetConfigResponse = await res.json().catch(() => ({}));
-            if (!res.ok) throw new Error((data as any).error || 'Failed to save widget settings');
+            const data = await readWidgetManagementResponse(
+                res,
+                'widget_config_save',
+                isWidgetConfigResponse,
+                ANSWERLATTICE_WIDGET_SETTINGS_SAVE_FAILED,
+            );
             setConfig(normalizeWidgetConfig(data.config));
             setOrigins(normalizeWidgetAllowedOrigins(data.allowedOrigins));
             setKeyPrefix(data.keyPrefix || null);
             setHasWidgetKey(Boolean(data.hasWidgetKey));
-            setWidgetKeys(Array.isArray(data.keys) ? data.keys : widgetKeys);
+            setWidgetKeys(data.keys);
             setKeyLimit(Number(data.keyLimit || keyLimit));
             if ('runtimeStatus' in data) {
                 setRuntimeStatus(data.runtimeStatus || null);
             }
             setDirty(false);
             message.success('Widget settings saved');
-        } catch (error) {
-            message.error(getAnswerlatticeUiErrorMessage(error, 'Could not save widget settings'));
+        } catch {
+            message.error(ANSWERLATTICE_WIDGET_SETTINGS_SAVE_FAILED);
         } finally {
             setSaving(false);
         }
-    }, [config, origins, keyLimit, widgetKeys]);
+    }, [config, origins, keyLimit]);
 
     const handleGenerateKey = useCallback(async () => {
         setGeneratingKey(true);
         try {
             const res = await fetch('/api/answerlattice/widget-key', {
+                ...ANSWERLATTICE_WIDGET_MANAGEMENT_REQUEST_POLICY,
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ action: 'generate', name: `Widget key ${widgetKeys.length + 1}` }),
             });
-            const data = await res.json().catch(() => ({}));
-            if (!res.ok || !data.apiKey) throw new Error(data.error || 'Failed to create widget key');
+            const data = await readWidgetManagementResponse(
+                res,
+                'widget_key_create',
+                isWidgetKeyCreateResponse,
+                ANSWERLATTICE_WIDGET_KEY_CREATE_FAILED,
+            );
             setApiKey(data.apiKey);
             if (data.key?.id) {
                 setRevealedKeys(prev => ({ ...prev, [data.key.id]: data.apiKey }));
             }
             setKeyPrefix(data.keyPrefix || data.key?.keyPrefix || data.apiKey.slice(0, 7));
             setHasWidgetKey(Boolean(data.hasWidgetKey ?? true));
-            setWidgetKeys(Array.isArray(data.keys) ? data.keys : data.key ? [data.key, ...widgetKeys] : widgetKeys);
+            setWidgetKeys(data.keys);
             setKeyLimit(Number(data.keyLimit || keyLimit));
             message.success('Widget key created');
-        } catch (error) {
-            message.error(getAnswerlatticeUiErrorMessage(error, 'Could not create widget key'));
+        } catch {
+            message.error(ANSWERLATTICE_WIDGET_KEY_CREATE_FAILED);
         } finally {
             setGeneratingKey(false);
         }
@@ -432,24 +683,29 @@ export default function AnswerlatticeWidgetManagement({ embeddedMobile = false, 
         setRenamingKey(true);
         try {
             const res = await fetch('/api/answerlattice/widget-key', {
+                ...ANSWERLATTICE_WIDGET_MANAGEMENT_REQUEST_POLICY,
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ action: 'rename', keyId: renameKey.id, name: renameValue }),
             });
-            const data = await res.json().catch(() => ({}));
-            if (!res.ok) throw new Error(data.error || 'Failed to rename widget key');
-            setWidgetKeys(Array.isArray(data.keys) ? data.keys : widgetKeys);
+            const data = await readWidgetManagementResponse(
+                res,
+                'widget_key_rename',
+                isWidgetKeyMutationResponse,
+                ANSWERLATTICE_WIDGET_KEY_RENAME_FAILED,
+            );
+            setWidgetKeys(data.keys);
             setKeyPrefix(data.keyPrefix || keyPrefix);
             setHasWidgetKey(Boolean(data.hasWidgetKey ?? hasWidgetKey));
             setRenameKey(null);
             setRenameValue('');
             message.success('Widget key renamed');
-        } catch (error) {
-            message.error(getAnswerlatticeUiErrorMessage(error, 'Could not rename widget key'));
+        } catch {
+            message.error(ANSWERLATTICE_WIDGET_KEY_RENAME_FAILED);
         } finally {
             setRenamingKey(false);
         }
-    }, [hasWidgetKey, keyPrefix, renameKey, renameValue, widgetKeys]);
+    }, [hasWidgetKey, keyPrefix, renameKey, renameValue]);
 
     const openRenameKey = useCallback((key: WidgetKeySummary) => {
         setRenameKey(key);
@@ -460,13 +716,18 @@ export default function AnswerlatticeWidgetManagement({ embeddedMobile = false, 
         setDeletingKeyId(key.id);
         try {
             const res = await fetch('/api/answerlattice/widget-key', {
+                ...ANSWERLATTICE_WIDGET_MANAGEMENT_REQUEST_POLICY,
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ action: 'delete', keyId: key.id }),
             });
-            const data = await res.json().catch(() => ({}));
-            if (!res.ok) throw new Error(data.error || 'Failed to delete widget key');
-            setWidgetKeys(Array.isArray(data.keys) ? data.keys : widgetKeys.filter(item => item.id !== key.id));
+            const data = await readWidgetManagementResponse(
+                res,
+                'widget_key_delete',
+                isWidgetKeyMutationResponse,
+                ANSWERLATTICE_WIDGET_KEY_DELETE_FAILED,
+            );
+            setWidgetKeys(data.keys);
             setKeyPrefix(data.keyPrefix || null);
             setHasWidgetKey(Boolean(data.hasWidgetKey));
             setRevealedKeys(prev => {
@@ -478,12 +739,12 @@ export default function AnswerlatticeWidgetManagement({ embeddedMobile = false, 
                 setApiKey(null);
             }
             message.success('Widget key deleted');
-        } catch (error) {
-            message.error(getAnswerlatticeUiErrorMessage(error, 'Could not delete widget key'));
+        } catch {
+            message.error(ANSWERLATTICE_WIDGET_KEY_DELETE_FAILED);
         } finally {
             setDeletingKeyId(null);
         }
-    }, [apiKey, revealedKeys, widgetKeys]);
+    }, [apiKey, revealedKeys]);
 
     const addOrigin = useCallback(() => {
         const normalized = normalizeWidgetAllowedOrigin(newOrigin);
@@ -560,18 +821,23 @@ export default function AnswerlatticeWidgetManagement({ embeddedMobile = false, 
         setSavingHostedHelp(true);
         try {
             const res = await fetch('/api/answerlattice/hosted-help-settings', {
+                ...ANSWERLATTICE_WIDGET_MANAGEMENT_REQUEST_POLICY,
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ config: hostedHelpConfig }),
             });
-            const data: HostedHelpSettingsResponse & { error?: string } = await res.json().catch(() => ({}));
-            if (!res.ok) throw new Error(data.error || 'Failed to save hosted help settings');
+            const data = await readWidgetManagementResponse(
+                res,
+                'hosted_help_settings_save',
+                isHostedHelpSettingsResponse,
+                ANSWERLATTICE_HOSTED_HELP_SETTINGS_SAVE_FAILED,
+            );
             setHostedHelpConfig(normalizeHostedHelpConfig(data.config));
-            setHostedHelpDomainStatuses(data.domainStatuses || []);
+            setHostedHelpDomainStatuses(data.domainStatuses);
             setHostedHelpDirty(false);
             message.success('Hosted Help Center settings saved');
-        } catch (error) {
-            message.error(getAnswerlatticeUiErrorMessage(error, 'Could not save hosted help settings'));
+        } catch {
+            message.error(ANSWERLATTICE_HOSTED_HELP_SETTINGS_SAVE_FAILED);
         } finally {
             setSavingHostedHelp(false);
         }
@@ -580,14 +846,21 @@ export default function AnswerlatticeWidgetManagement({ embeddedMobile = false, 
     const refreshHostedHelpDomains = useCallback(async () => {
         setCheckingHostedDomains(true);
         try {
-            const res = await fetch('/api/answerlattice/hosted-help-settings?refreshDomains=1', { method: 'GET' });
-            const data: HostedHelpSettingsResponse & { error?: string } = await res.json().catch(() => ({}));
-            if (!res.ok) throw new Error(data.error || 'Failed to check hosted help DNS');
+            const res = await fetch('/api/answerlattice/hosted-help-settings?refreshDomains=1', {
+                ...ANSWERLATTICE_WIDGET_MANAGEMENT_REQUEST_POLICY,
+                method: 'GET',
+            });
+            const data = await readWidgetManagementResponse(
+                res,
+                'hosted_help_dns_refresh',
+                isHostedHelpSettingsResponse,
+                ANSWERLATTICE_HOSTED_HELP_DNS_CHECK_FAILED,
+            );
             setHostedHelpConfig(normalizeHostedHelpConfig(data.config));
-            setHostedHelpDomainStatuses(data.domainStatuses || []);
+            setHostedHelpDomainStatuses(data.domainStatuses);
             message.success('Hosted Help DNS status updated');
-        } catch (error) {
-            message.error(getAnswerlatticeUiErrorMessage(error, 'Could not check hosted help DNS'));
+        } catch {
+            message.error(ANSWERLATTICE_HOSTED_HELP_DNS_CHECK_FAILED);
         } finally {
             setCheckingHostedDomains(false);
         }
@@ -706,9 +979,19 @@ export default function AnswerlatticeWidgetManagement({ embeddedMobile = false, 
 
     const copyText = useCallback(async (value: string, successMessage = 'Copied') => {
         try {
-            await navigator.clipboard.writeText(value);
+            await copyAnswerlatticeSupportTextToClipboard(value, {
+                unavailable: ANSWERLATTICE_WIDGET_MANAGEMENT_COPY_CLIPBOARD_UNAVAILABLE,
+                fallbackFailed: ANSWERLATTICE_WIDGET_MANAGEMENT_COPY_FALLBACK_FAILED,
+            });
             message.success(successMessage);
-        } catch {
+        } catch (error) {
+            logRuntimeFailure('answerlattice_widget_management_copy_failed', error, {
+                surface: 'answerlattice_widget_management',
+                hasClipboardWrite: hasAnswerlatticeSupportClipboardWrite(),
+                hasCopyFallback: hasAnswerlatticeSupportCopyFallback(),
+                ...getBoundedRuntimeStringContext('copyValue', value),
+                ...getBoundedRuntimeStringContext('successMessage', successMessage),
+            });
             message.error('Unable to copy');
         }
     }, []);

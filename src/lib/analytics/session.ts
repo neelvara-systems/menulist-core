@@ -1,6 +1,7 @@
 /**
  * Session management for analytics tracking
  */
+import { logAnalyticsFailure } from './analyticsDiagnostics';
 import { v4 as uuidv4 } from 'uuid';
 
 const SESSION_ID_KEY = 'menulist_session_id';
@@ -41,7 +42,7 @@ export function getSessionId(): string {
     return newId;
   } catch (error) {
     // Fallback in case sessionStorage is not available
-    console.error('Error accessing sessionStorage:', error);
+    logAnalyticsFailure('analytics_session_get_failed', error);
     return uuidv4();
   }
 }
@@ -60,7 +61,7 @@ export function refreshSession(): void {
       sessionStorage.setItem(SESSION_TIMESTAMP_KEY, Date.now().toString());
     }
   } catch (error) {
-    console.error('Error refreshing session:', error);
+    logAnalyticsFailure('analytics_session_refresh_failed', error);
   }
 }
 
@@ -76,6 +77,6 @@ export function clearSession(): void {
     sessionStorage.removeItem(SESSION_ID_KEY);
     sessionStorage.removeItem(SESSION_TIMESTAMP_KEY);
   } catch (error) {
-    console.error('Error clearing session:', error);
+    logAnalyticsFailure('analytics_session_clear_failed', error);
   }
 }

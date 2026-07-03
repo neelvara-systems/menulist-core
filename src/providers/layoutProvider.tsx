@@ -2,6 +2,7 @@
 
 import AntdLayoutWrapper from '@antdComponent/layoutWrapper';
 import AntdThemeProvider from '@providers/antdThemeProvider';
+import { logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import React, { Component, ErrorInfo, ReactNode } from 'react';
 
 type LayoutProviderProps = {
@@ -18,7 +19,10 @@ class LayoutErrorBoundary extends Component<{ children: ReactNode, fallback: Rea
   }
   
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    console.error('Layout Error Boundary caught error:', error, errorInfo);
+    logRuntimeFailure('layout_error_boundary_render_failed', error, {
+      componentStackPresent: Boolean(errorInfo.componentStack),
+      componentStackLength: errorInfo.componentStack?.length || 0,
+    });
   }
   
   render() {

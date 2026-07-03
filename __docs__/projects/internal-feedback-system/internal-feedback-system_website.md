@@ -1,7 +1,7 @@
 # Internal Feedback System — Website Surface
 
 **Status:** IMPLEMENTED  
-**Last Updated:** June 10, 2026  
+**Last Updated:** July 2, 2026
 **Audience:** Website, product marketing, docs, launch QA
 
 ---
@@ -93,3 +93,11 @@ This website pass does not change:
 - pricing, payment, auth, or customer menu runtime
 
 The website only reflects the already-shipped feature in public copy, route metadata, discovery files, and docs.
+
+---
+
+## 6. Review URL Safety
+
+Review URL safety is a runtime boundary, not a website claim. The public feedback API and guest form normalize any returned review URL through the shared safe-review helper before rendering. Public copy may say owners can configure a Google review link, but it must not imply MenuList accepts arbitrary redirect URLs or routes unhappy guests differently.
+
+Source gate: `npm run verify:guest-feedback-boundary`

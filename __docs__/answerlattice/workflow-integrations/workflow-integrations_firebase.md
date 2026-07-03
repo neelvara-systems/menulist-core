@@ -1,7 +1,7 @@
 # Answerlattice — External Workflow Integrations — Firebase
 
-> **Version:** 1.1.1
-> **Last Updated:** 2026-05-24
+> **Version:** 1.1.11
+> **Last Updated:** 2026-06-29
 > **Audience:** Developers
 > **Firebase Project:** Answerlattice (separate from MenuList's menulist-qa)
 
@@ -81,7 +81,7 @@ Uses existing `platformSummary` collection. No new collection needed.
 
 **Estimated doc size:** ~500-1000 bytes (all adapter configs combined)
 
-**Health summary:** `platformSummary/integrationHealth_{tId}_{sId}` stores sanitized last-success/last-failure state for owner UI. Raw delivery logs are not read by the settings screen.
+**Health summary:** `platformSummary/integrationHealth_{tId}_{sId}` stores sanitized last-success/last-failure state for owner UI. Raw delivery logs are not read by the settings screen. The settings API maps any stored adapter `lastError` to fixed review copy before returning health to the browser.
 
 ---
 
@@ -142,6 +142,14 @@ Collection: answerlattice_integrationDeliveryLogs
 | Update event status (failed) | 1 | Write | $0.0000018 |
 | **Total per delivery (all fail)** | **2R + 6W** | | **~$0.000012** |
 
+Slack webhook delivery now validates the configured webhook target through the Answerlattice Functions public DNS guard before each delivery attempt. This adds one DNS lookup per attempted Slack delivery and no Firestore reads/writes beyond the existing config read, rate-counter transaction, delivery log, health summary, event-status update, and circuit-breaker writes. GitHub owner/repo path-segment encoding and bounded GitHub/Linear success diagnostics add no Firestore reads/writes, provider calls, retry queue, new collection, schema change, or owner-facing setting.
+
+Delivery-log, event-status, and integration-health failure diagnostics are bounded in Functions logger breadcrumbs only. The intended Firestore writes to `answerlattice_integrationDeliveryLogs`, `answerlattice_integrationEvents`, and `platformSummary/integrationHealth_{tId}_{sId}` keep their existing fields and operation counts. Authenticated settings reads use the shared Answerlattice dashboard `DATA_READ` limiter before permission and `platformSummary` reads. The authenticated test-event route now rate-limits before permission/config/event work and logs unexpected failures with fixed-code bounded tenant/store metadata without changing its 1R + 1W cost shape.
+
+Event-bus cap, success, and failure diagnostics are also bounded in Functions logger breadcrumbs only. The intended Firestore write to `answerlattice_integrationEvents` keeps its existing fields and operation count.
+
+The `processIntegrationEvent` entrypoint now bounds event-processing breadcrumbs to event ID presence/length metadata. It still receives the same Firestore event document and passes the raw event ID to the internal processor for required document updates.
+
 ### 3.4 — Nightly Batch Step 13 (per tenant)
 
 | Operation | Count | Type | Cost |
@@ -150,6 +158,8 @@ Collection: answerlattice_integrationDeliveryLogs
 | Write digest event | 0-1 | Write | one nightly summary per tenant with activity |
 | Write critical coverage alert | 0-1 | Write | only when coverage drops below threshold |
 | **Total per tenant per night** | **1R + 0-2W** | | **~$0.000004** |
+
+A failed integration-config read now records `ANSWERLATTICE_INTEGRATION_ADAPTER_CHECK_FAILED` in the scheduler diagnostics and marks only that tenant's workflow integration task failed. It does not add a retry read, event write, delivery attempt, rate-limit counter write, health-summary write, or cleanup query.
 
 ### 3.5 — Retention Cleanup
 
@@ -191,6 +201,28 @@ Firestore TTL deletes expired integration events, delivery logs, and rate counte
 | TTL cleanup | Firestore TTL, no nightly query | no scheduler reads |
 | Cloud Functions | 36,000 invocations | low |
 | **Total** | | **~$0.50/month + external SMTP cost** |
+
+The workflow event processor still writes and updates the existing integration-event, delivery-log, rate-limit, and integration-health documents with the required event and tenant/store keys. June 28, 2026 processor diagnostic cleanup changed logger breadcrumbs only: invalid-event, delivery-attempt, and no-enabled-adapter logs now use stable failure/event metadata, event ID presence/length metadata, and tenant/store scope booleans instead of raw event IDs or raw `tId/sId` values. Firestore read/write counts, TTL behavior, adapter dispatch, rate limits, and health-summary writes are unchanged.
+
+The circuit-breaker helper still writes the same `platformSummary/integrationConfig_{tId}_{sId}` state fields. June 28, 2026 circuit-breaker diagnostic cleanup changed only the opened breadcrumb, which now logs the stable failure code, adapter, failure count, and tenant/store scope booleans instead of raw `tId/sId` values.
+
+Workflow adapters still write the same delivery-log and health-summary rows through the processor. June 28, 2026 adapter failure-text cleanup changed only the `DeliveryResult.error` values for provider/runtime failures: Slack, email, GitHub, and Linear now return fixed local failure text instead of provider response bodies, GraphQL error messages, SMTP exception text, or fetch exception text. Numeric provider status codes and duration remain available for operations.
+
+Deployment of the June 28, 2026 workflow-delivery target guard was attempted with `firebase deploy --only functions:answerlattice --project answerlattice-qa --config firebase-answerlattice.json --non-interactive`. The predeploy build completed, but Firebase failed to read `answerlattice-qa` project metadata through Cloud Resource Manager with HTTP 403: caller does not have permission.
+
+Deployment of the June 28, 2026 delivery-logger diagnostic cleanup was attempted with the same command. The predeploy build completed, but Firebase again failed to read `answerlattice-qa` project metadata through Cloud Resource Manager with HTTP 403: caller does not have permission.
+
+Deployment of the June 28, 2026 event-bus diagnostic cleanup was attempted with the same command. The predeploy build completed, but Firebase again failed to read `answerlattice-qa` project metadata through Cloud Resource Manager with HTTP 403: caller does not have permission.
+
+Deployment of the June 28, 2026 event-processor entrypoint diagnostic cleanup was attempted with the same command. The predeploy build completed, but Firebase again failed to read `answerlattice-qa` project metadata through Cloud Resource Manager with HTTP 403: caller does not have permission.
+
+Deployment of the June 28, 2026 event-processor runtime diagnostic cleanup was attempted with the same command. The predeploy build completed, but Firebase again failed to read `answerlattice-qa` project metadata through Cloud Resource Manager with HTTP 403: caller does not have permission.
+
+Deployment of the June 28, 2026 circuit-breaker diagnostic cleanup was attempted with the same command. The predeploy build completed, but Firebase again failed to read `answerlattice-qa` project metadata through Cloud Resource Manager with HTTP 403: caller does not have permission.
+
+Deployment of the June 28, 2026 adapter failure-text cleanup was attempted with the same command. The predeploy build completed, but Firebase again failed to read `answerlattice-qa` project metadata through Cloud Resource Manager with HTTP 403: caller does not have permission.
+
+Deployment of the June 29, 2026 nightly adapter-check diagnostic cleanup was attempted with the same scoped Answerlattice Functions deploy path after `npm run verify:answerlattice-runtime-truth`, `npm run build` in `functions-answerlattice/`, root `npx tsc --noEmit --incremental false --pretty false`, and `git diff --check` passed. The deploy command `PATH="$HOME/.nvm/versions/node/v20.20.2/bin:$PATH" firebase deploy --only functions:answerlattice --project answerlattice-qa --config ../firebase-answerlattice.json` completed the predeploy build, then failed to read `answerlattice-qa` project metadata through Cloud Resource Manager with HTTP 403: caller does not have permission.
 
 ### External API Costs
 
@@ -246,6 +278,8 @@ Firestore TTL deletes expired integration events, delivery logs, and rate counte
 | `updateCircuitBreaker()` | platformSummary | 1W |
 | `cleanupExpiredEvents()` | Firestore TTL | 0 scheduler reads |
 
+Event-processor side-effect diagnostics do not add Firestore operations. Failed event-status updates, rate-limit checks, email-recipient-limit checks, and circuit-breaker success/failure records now emit bounded Cloud Functions logs with stable `answerlattice_integration_*` failure codes, source error name/code/status metadata, event ID presence/length, tenant/store scope booleans, adapter/status labels, and counts only. Existing fail-closed behavior and delivery-log/health writes are unchanged.
+
 ### Frontend/API Side
 
 | Function | Collection | Operations |
@@ -255,12 +289,24 @@ Firestore TTL deletes expired integration events, delivery logs, and rate counte
 | `POST /api/answerlattice/integrations/test` | platformSummary config + answerlattice_integrationEvents | 1R + 1W via Admin SDK |
 | Settings UI delivery health | platformSummary health | Included in GET; no raw delivery-log reads |
 
+The Settings UI sends integration load/save/test calls with no-store cache, same-origin credentials, and manual redirect handling, then parses responses through a 64 KB bounded response reader and requires the documented safe response shape before local state or success copy advances. This does not change the Firestore cost shape; it only rejects cached, redirected, malformed, oversized, rejected, or wrong-shape browser responses.
+
 ---
 
 ## Version History
 
 | Date | Version | Change |
 |------|---------|--------|
+| 2026-06-29 | 1.1.11 | Recorded nightly adapter-config read failures as bounded failed scheduler tasks without adding Firestore operations. |
+| 2026-06-29 | 1.1.10 | Bounded event-processor side-effect failure diagnostics without adding Firestore operations or changing delivery/rate-limit behavior. |
+| 2026-06-28 | 1.1.9 | Moved integration test route rate limiting before permission/config/event work without changing the 1R + 1W cost shape. |
+| 2026-06-28 | 1.1.8 | Bounded workflow adapter provider/runtime failure text without changing delivery logs or health-summary writes. |
+| 2026-06-28 | 1.1.7 | Bounded workflow integration circuit-breaker-opened breadcrumbs without changing config summary writes. |
+| 2026-06-28 | 1.1.6 | Bounded workflow event processor breadcrumbs without changing delivery, rate-limit, status, or health-summary records. |
+| 2026-06-28 | 1.1.5 | Bounded processIntegrationEvent entrypoint breadcrumbs without changing event processing. |
+| 2026-06-28 | 1.1.4 | Bounded event-bus diagnostics without changing integration-event writes. |
+| 2026-06-28 | 1.1.3 | Bounded delivery logger failure diagnostics without changing delivery-log, event-status, or health-summary writes. |
+| 2026-06-28 | 1.1.2 | Added Slack webhook DNS target validation, GitHub owner/repo path-segment encoding, and bounded GitHub/Linear success diagnostics. |
 | 2026-05-24 | 1.1.1 | Added adapter-day counters and `rate_limited` delivery-log status. |
 | 2026-05-24 | 1.1.0 | Digest-first delivery, Firestore TTL retention, delivery health summary, test endpoint, and persistent rate caps |
 | 2026-03-09 | 1.0.0 | Initial Firebase cost analysis |

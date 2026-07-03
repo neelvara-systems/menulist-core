@@ -1,7 +1,15 @@
 import { BACKGROUND_IMAGES_ORIENTATIONS, SEARCHED_IMAGES_COUNT_PER_REQUEST_PEXELS } from "@constant/common";
+import { getImageProviderRequestLogContext, logImageProviderFailure } from "@lib/imageProviderDiagnostics";
+import {
+    buildImageProviderUrl,
+    IMAGE_PROVIDER_REQUEST_TIMEOUT_MS,
+    normalizeImageProviderOrientation,
+    normalizeImageProviderPage,
+    normalizeImageProviderQuery,
+} from "@lib/imageProviderRequests";
 import { axiosClient } from "../axios/axiosClient";
 
-const SEARCH_API_URL = `https://api.pexels.com/v1/search?`;
+const SEARCH_API_URL = 'https://api.pexels.com/v1/search';
 
 
 export const PEXELS_IMAGE_SIZES = {
@@ -15,10 +23,22 @@ export const PEXELS_IMAGE_SIZES = {
     "tiny": 'tiny'//3kb webp
 }
 export const getPexelsImagesBySearchQuery = (searchQuery: any, orientation = BACKGROUND_IMAGES_ORIENTATIONS.LANDSCAPE, page = 1) => {
+    const normalizedOrientation = normalizeImageProviderOrientation(orientation);
+    const normalizedPage = normalizeImageProviderPage(page);
+    const requestUrl = buildImageProviderUrl(SEARCH_API_URL, {
+        orientation: normalizedOrientation,
+        page: normalizedPage,
+        per_page: SEARCHED_IMAGES_COUNT_PER_REQUEST_PEXELS,
+        query: normalizeImageProviderQuery(searchQuery),
+    });
+
     return new Promise((res, rej) => {
-        axiosClient.GET(`${SEARCH_API_URL}orientation=${orientation}&page=${page}&per_page=${SEARCHED_IMAGES_COUNT_PER_REQUEST_PEXELS}&query=${searchQuery}`, {
-            Accept: "application/json",
-            Authorization: process.env.NEXT_PUBLIC_PEXELS_API_CLIENTID,
+        axiosClient.GET(requestUrl, {
+            headers: {
+                Accept: "application/json",
+                Authorization: process.env.NEXT_PUBLIC_PEXELS_API_CLIENTID || '',
+            },
+            timeout: IMAGE_PROVIDER_REQUEST_TIMEOUT_MS,
         }).then((response) => {
             const data = {
                 total: response.data.total_results,
@@ -27,8 +47,14 @@ export const getPexelsImagesBySearchQuery = (searchQuery: any, orientation = BAC
             }
             res(data);
         }).catch(function (error) {
-            rej(error.response.data);
-            console.log(`Error in api/unsplash/getImages = `, error);
+            logImageProviderFailure('image_provider_pexels_search_failed', error, getImageProviderRequestLogContext({
+                operation: 'search',
+                orientation: normalizedOrientation,
+                page: normalizedPage,
+                provider: 'pexels',
+                query: searchQuery,
+            }));
+            rej('Error while fetching images');
         });
     })
 }

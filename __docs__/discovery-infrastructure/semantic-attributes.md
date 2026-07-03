@@ -74,9 +74,9 @@ StoreSemanticProfile { attributeIds: string[], byGroup: Record<group, string[]> 
 
 | Integration                       | How                                                                            | When              |
 | --------------------------------- | ------------------------------------------------------------------------------ | ----------------- |
-| Discovery Index Builder (Phase 2) | `extractStoreSemanticProfile()` called by `buildBusinessEntityIndexDoc()`      | Nightly scheduler |
-| Schema.org Enhancement (future)   | Replace hardcoded `ATTRIBUTE_LABELS` in `buildAmenityFeatures()` with registry | Page render       |
-| Public API v2 (future)            | Return `semanticAttributes` in structured API response                         | API call          |
+| Discovery Index Builder           | `extractStoreSemanticProfile()` is called by `buildBusinessEntityIndexDoc()`; no writer runs while `ENABLE_INFRASTRUCTURE_DISCOVERY_INDEX` is off | Conditional scheduler |
+| Schema.org enhancement candidate  | Replace hardcoded `ATTRIBUTE_LABELS` in `buildAmenityFeatures()` with registry after schema parity audit | Page render       |
+| Public API v2 candidate           | Return `semanticAttributes` in a structured API response only after API v2 approval | API call          |
 | Extraction-derived OBP defaults   | `businessAttributeSuggestions` and deterministic dietary tags fill missing `store.businessAttributes` only when evidence is high-confidence | First extraction auto-save; owner-approved re-extraction |
 
 ### 5.1 Extraction Defaulting Guardrails

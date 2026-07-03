@@ -2,10 +2,12 @@
 
 **Feature:** AI Extraction Flow Enhancement for Multi-Outlet Compatibility  
 **Document Type:** Technical Analysis & Implementation Plan  
-**Status:** ✅ Production Ready  
+**Status:** Implementation analysis; not current launch certification
 **Original Date:** January 24, 2026  
 **Last Reviewed:** February 13, 2026  
 **Source:** ChatGPT Deep Analysis + Cascade Codebase Cross-Check
+
+> **Launch Boundary:** This file records Multi-Outlet AI extraction analysis and implementation evidence, not current production-launch approval. Current release approval requires the active [production-readiness audit](../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../production-readiness/external-certification-runbook.md) evidence, `npm run verify:multi-location-boundary`, `npm run verify:menu-extraction-pipeline`, linked outlet extraction QA, provider smoke, Firebase deploy evidence where functions/rules change, and target-environment smoke.
 
 ---
 
@@ -59,19 +61,19 @@ This document captures the complete analysis from a ChatGPT conversation regardi
 
 | Document               | Location                                                                   | Purpose                           |
 | ---------------------- | -------------------------------------------------------------------------- | --------------------------------- |
-| **Workflow Explained** | `__docs__/multi-outlet-consistency/ai-extraction-workflow-explained.md`    | **Detailed workflow explanation** |
+| **Workflow Explained** | `__docs__/multi-outlet-consistency/_archive/ai-extraction-workflow-explained.md` | **Detailed workflow explanation** |
 | AI Extraction Spec     | `__docs__/projects/ai-data-extraction/ai-data-extraction_spec.md`          | Product specification             |
 | AI Extraction Impl     | `__docs__/projects/ai-data-extraction/ai-data-extraction_impl.md`          | Technical implementation          |
 | Production Review      | `__docs__/projects/ai-data-extraction/production-review.md`                | Issue analysis & fixes            |
 | Multi-Outlet Impl      | `__docs__/multi-outlet-consistency/multi-outlet-consistency_impl.md`       | Multi-outlet architecture         |
 | Multi-Outlet Tests     | `__docs__/multi-outlet-consistency/multi-outlet-consistency_test-cases.md` | 40 test scenarios                 |
-| Image Processing Flow  | `__docs__/multi-outlet-consistency/image-processing-flow.md`               | Detailed extraction flow          |
+| Image Processing Flow  | `__docs__/multi-outlet-consistency/_archive/image-processing-flow.md`      | Detailed extraction flow          |
 
 ---
 
 ## Part 1: Current State Analysis
 
-> ⚠️ **IMPORTANT CONTEXT:** This document proposes ADDITIONS to the existing flow for multi-outlet compatibility. The current implementation (documented in `MENU-IMAGE-PROCESSING-JOB-QUEUE-SPEC.md`) works correctly for single-store. These changes add a "preview" path for re-extractions to preserve ID stability in multi-outlet chains.
+> ⚠️ **IMPORTANT CONTEXT:** This document proposes ADDITIONS to the existing flow for multi-outlet compatibility. The current implementation (documented in `menu-image-processing-job-queue-spec.md`) works correctly for single-store. These changes add a "preview" path for re-extractions to preserve ID stability in multi-outlet chains.
 
 ### 1.1 Current AI Extraction Flow (Single-Store) - UNCHANGED FOR FIRST EXTRACTION
 
@@ -389,7 +391,7 @@ This decision was revised based on Advanced View UI requirements:
 | Item has new category           | **Stay in new file**                                     |
 | New file with no new categories | Contains only image URL (empty extractedData or minimal) |
 
-**Reference:** `MENU-IMAGE-PROCESSING-JOB-QUEUE-SPEC.md` Section 8.12-8.13 - the `autoMergeItems()` function was designed for this, but actual redistribution back to existing files was noted as "future enhancement".
+**Reference:** `menu-image-processing-job-queue-spec.md` Section 8.12-8.13 - the `autoMergeItems()` function was designed for this, but actual redistribution back to existing files was noted as "future enhancement".
 
 **What to add inside `saveFilesToProject.ts`:**
 
@@ -1555,6 +1557,8 @@ const isFirstExtraction = !hasExistingMenu;
 | `src/components/templates/main-app/projects/jobScreens/ExtractionJobFailureModal.tsx`    | Failure feedback modal   | ✅ Implemented |
 | `src/components/templates/main-app/projects/jobScreens/ExtractionJobBlockingOverlay.tsx` | Hard-block overlay       | ✅ Implemented |
 
+**July 1, 2026 apply acknowledgement:** `applyExtractionChanges()` now receives the owner-approved selected-change count from desktop and mobile review surfaces. It refuses no-op or partial apply counts before project/job writes, then returns the applied `projectId`, `jobId`, mode, completion flag, and applied count. `ExtractionJobReviewScreen` and `ExtractionReviewSheet` require that acknowledgement before success copy or completion callbacks run.
+
 ### Hooks
 
 | File                                | Purpose                         | Status         |
@@ -1598,7 +1602,7 @@ Expected Flow:
    - Runs comparison engine with mode='SINGLE_STORE'
    - Opens ExtractionJobReviewModal
 5. User reviews changes, toggles items, clicks Save
-6. applyExtractionChanges() writes to Firestore (single atomic write)
+6. applyExtractionChanges() verifies the approved count, writes to Firestore (single atomic write), and returns project/job/mode/count acknowledgement
 7. ExtractionJobSuccessModal shows
 
 Result: ✅ Review screen shown, user approves changes
@@ -1741,7 +1745,7 @@ Result: ✅ Outlet blocked, auto-unblocks after the next poll, no manual refresh
 - **REVISED D15**: Items now merge INTO old file where category exists (not stay in new file)
 - Reason: Advanced View accordion UI requires category + items in same file
 - Added detailed D15 explanation in Part 4.3
-- Reference: `MENU-IMAGE-PROCESSING-JOB-QUEUE-SPEC.md` Section 8.12-8.13
+- Reference: `menu-image-processing-job-queue-spec.md` Section 8.12-8.13
 
 **Major Changes in v3.0:**
 
@@ -1763,4 +1767,4 @@ Result: ✅ Outlet blocked, auto-unblocks after the next poll, no manual refresh
 - Updated Implementation Checklist for client-side architecture
 - Added new decisions D8-D13 to Decision Log
 
-**Status:** ✅ READY FOR IMPLEMENTATION
+**Status:** Historical implementation analysis; not current implementation approval or launch certification

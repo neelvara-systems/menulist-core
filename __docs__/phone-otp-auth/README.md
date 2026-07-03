@@ -8,7 +8,9 @@ WhatsApp-first owner authentication for MenuList.
 - `/signin` keeps Google first, then uses one identity field to choose phone OTP, password, or passcode.
 - Google OAuth and existing email/password, phone/passcode, and staff ID credentials remain available from the same page.
 - OTP verification creates or reuses one `users` document, then signs in through the existing NextAuth credentials provider.
+- Start and verify browser success requires route acknowledgements: `action: "start"` plus the accepted purpose before code entry, and `action: "verify"` plus the matching challenge id before the login token is used.
 - Firebase Auth custom claims still sync through `/api/auth/set-claims`; no parallel dashboard auth system exists.
+- Expected OTP errors log code-only. Unexpected start/verify route failures and consumed-token user mismatches use bounded auth diagnostics with request/user metadata presence-length only.
 
 ## Source Files
 

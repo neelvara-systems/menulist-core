@@ -16,10 +16,43 @@
 import * as admin from 'firebase-admin';
 import { Timestamp } from 'firebase-admin/firestore';
 import { HttpsError, onCall } from 'firebase-functions/v2/https';
+import {
+  analyticsLogger,
+  getAnalyticsErrorContext,
+  getAnalyticsIdContext,
+} from '../analytics/analyticsDiagnostics';
 import { generateWeeklyNarrativeForStore } from '../analytics/weeklyNarrative';
 import { FUNCTION_MAX_INSTANCES, SECRETS } from '../config/secrets';
 import { DB_COLLECTIONS, SYSTEM_DOCS } from '../constants/database';
 import { ECOMSAI_PLATFORM_USER_ROLE } from '../constants/user';
+
+const MANUAL_TRIGGER_FEEDBACK_INTELLIGENCE_FAILED = 'MANUAL_TRIGGER_FEEDBACK_INTELLIGENCE_FAILED';
+const MANUAL_TRIGGER_KB_QUALITY_FAILED = 'MANUAL_TRIGGER_KB_QUALITY_FAILED';
+const MANUAL_TRIGGER_WEEKLY_NARRATIVE_FAILED = 'MANUAL_TRIGGER_WEEKLY_NARRATIVE_FAILED';
+const MANUAL_TRIGGER_HEALTH_SIGNALS_FAILED = 'MANUAL_TRIGGER_HEALTH_SIGNALS_FAILED';
+const MANUAL_TRIGGER_FAILED = 'MANUAL_TRIGGER_FAILED';
+const MANUAL_WEEKLY_NARRATIVE_FAILED = 'MANUAL_WEEKLY_NARRATIVE_FAILED';
+const MANUAL_SCHEDULER_LOCK_ACQUIRE_FAILED = 'MANUAL_SCHEDULER_LOCK_ACQUIRE_FAILED';
+const MANUAL_SCHEDULER_LOCK_RELEASE_FAILED = 'MANUAL_SCHEDULER_LOCK_RELEASE_FAILED';
+
+async function runManualSchedulerTask(
+  taskName: string,
+  failureCode: string,
+  task: () => Promise<void>,
+  results: string[],
+): Promise<void> {
+  try {
+    await task();
+    results.push(`${taskName}: success`);
+  } catch (error) {
+    analyticsLogger.error('[ManualTrigger] Task failed', {
+      taskName,
+      failureCode,
+      error: getAnalyticsErrorContext(error),
+    });
+    results.push(`${taskName}: failed (${failureCode})`);
+  }
+}
 
 function assertPlatformOwner(request: { auth?: { token?: Record<string, any> } }, action: string) {
   if (!request.auth) {
@@ -54,7 +87,11 @@ async function acquireLock(): Promise<boolean> {
 
     await lockRef.set({ isRunning: true, startedAt: Timestamp.now(), functionName: 'manualTrigger' }, { merge: true });
     return true;
-  } catch {
+  } catch (error) {
+    analyticsLogger.error('[ManualTrigger] Lock acquire failed', {
+      failureCode: MANUAL_SCHEDULER_LOCK_ACQUIRE_FAILED,
+      error: getAnalyticsErrorContext(error),
+    });
     return false;
   }
 }
@@ -64,7 +101,12 @@ async function releaseLock(): Promise<void> {
     const db = admin.firestore();
     await db.collection(DB_COLLECTIONS.SYSTEM).doc(SYSTEM_DOCS.SCHEDULER_LOCK)
       .set({ isRunning: false, lastRun: Timestamp.now() }, { merge: true });
-  } catch { /* non-blocking */ }
+  } catch (error) {
+    analyticsLogger.error('[ManualTrigger] Lock release failed', {
+      failureCode: MANUAL_SCHEDULER_LOCK_RELEASE_FAILED,
+      error: getAnalyticsErrorContext(error),
+    });
+  }
 }
 
 // ================================================================
@@ -89,7 +131,9 @@ export const triggerSchedulerManually = onCall({
 }, async (request) => {
   assertPlatformOwner(request, 'trigger scheduler');
 
-  console.log('[ManualTrigger] Initiated by:', request.auth?.uid);
+  analyticsLogger.info('[ManualTrigger] Initiated', {
+    requesterId: getAnalyticsIdContext(request.auth?.uid),
+  });
 
   const lockAcquired = await acquireLock();
   if (!lockAcquired) {
@@ -100,43 +144,55 @@ export const triggerSchedulerManually = onCall({
 
   try {
     // Call real worker functions directly (same ones used by decisionBlocksScoring.ts)
-    try {
-      const { processFeedbackIntelligenceForAllStores } = await import('../analytics/feedbackIntelligence');
-      await processFeedbackIntelligenceForAllStores();
-      results.push('feedback_intelligence: success');
-    } catch (e: any) {
-      results.push(`feedback_intelligence: failed (${e.message})`);
-    }
+    await runManualSchedulerTask(
+      'feedback_intelligence',
+      MANUAL_TRIGGER_FEEDBACK_INTELLIGENCE_FAILED,
+      async () => {
+        const { processFeedbackIntelligenceForAllStores } = await import('../analytics/feedbackIntelligence');
+        await processFeedbackIntelligenceForAllStores();
+      },
+      results,
+    );
 
-    try {
-      const { processKBQualityForAllStores } = await import('../analytics/kbQuality');
-      await processKBQualityForAllStores();
-      results.push('kb_quality: success');
-    } catch (e: any) {
-      results.push(`kb_quality: failed (${e.message})`);
-    }
+    await runManualSchedulerTask(
+      'kb_quality',
+      MANUAL_TRIGGER_KB_QUALITY_FAILED,
+      async () => {
+        const { processKBQualityForAllStores } = await import('../analytics/kbQuality');
+        await processKBQualityForAllStores();
+      },
+      results,
+    );
 
-    try {
-      const { processWeeklyNarrativeForAllStores } = await import('../analytics/weeklyNarrative');
-      await processWeeklyNarrativeForAllStores();
-      results.push('weekly_narrative: success');
-    } catch (e: any) {
-      results.push(`weekly_narrative: failed (${e.message})`);
-    }
+    await runManualSchedulerTask(
+      'weekly_narrative',
+      MANUAL_TRIGGER_WEEKLY_NARRATIVE_FAILED,
+      async () => {
+        const { processWeeklyNarrativeForAllStores } = await import('../analytics/weeklyNarrative');
+        await processWeeklyNarrativeForAllStores();
+      },
+      results,
+    );
 
-    try {
-      const { processHealthSignalsForAllStores } = await import('../analytics/healthSignalsComputation');
-      await processHealthSignalsForAllStores();
-      results.push('health_signals: success');
-    } catch (e: any) {
-      results.push(`health_signals: failed (${e.message})`);
-    }
+    await runManualSchedulerTask(
+      'health_signals',
+      MANUAL_TRIGGER_HEALTH_SIGNALS_FAILED,
+      async () => {
+        const { processHealthSignalsForAllStores } = await import('../analytics/healthSignalsComputation');
+        await processHealthSignalsForAllStores();
+      },
+      results,
+    );
 
     return { status: 'success', message: 'Manual trigger completed.', results };
   } catch (error) {
+    analyticsLogger.error('[ManualTrigger] Manual trigger failed', {
+      failureCode: MANUAL_TRIGGER_FAILED,
+      error: getAnalyticsErrorContext(error),
+    });
     throw new HttpsError(
       'internal',
-      'Manual trigger failed: ' + (error instanceof Error ? error.message : 'Unknown error')
+      'Manual trigger failed.'
     );
   } finally {
     await releaseLock();
@@ -175,7 +231,10 @@ export const triggerWeeklyNarrativeManually = onCall({
     );
   }
 
-  console.log(`[Weekly Narrative] Manual trigger for tenant ${tId}, store ${sId}`);
+  analyticsLogger.info('[Weekly Narrative] Manual trigger started', {
+    tenantId: getAnalyticsIdContext(tId),
+    storeId: getAnalyticsIdContext(sId),
+  });
 
   try {
     const result = await generateWeeklyNarrativeForStore(String(tId), String(sId));
@@ -198,10 +257,15 @@ export const triggerWeeklyNarrativeManually = onCall({
       },
     };
   } catch (error) {
-    console.error('[Weekly Narrative] Manual trigger failed:', error);
+    analyticsLogger.error('[Weekly Narrative] Manual trigger failed', {
+      tenantId: getAnalyticsIdContext(tId),
+      storeId: getAnalyticsIdContext(sId),
+      failureCode: MANUAL_WEEKLY_NARRATIVE_FAILED,
+      error: getAnalyticsErrorContext(error),
+    });
     throw new HttpsError(
       'internal',
-      'Weekly narrative generation failed: ' + (error instanceof Error ? error.message : 'Unknown error')
+      'Weekly narrative generation failed.'
     );
   }
 });

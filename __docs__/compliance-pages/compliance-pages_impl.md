@@ -1,13 +1,62 @@
 # Compliance Pages — Implementation Plan
 
-**Status:** 🟡 Implementation Ready  
-**Version:** 1.0  
-**Date:** March 18, 2026  
+**Status:** 🟢 Runtime implemented; source gate active
+**Version:** 1.2
+**Date:** July 2, 2026
 **Audience:** Developers
+**Local Source Gate:** `npm run verify:compliance-pages-boundary`
 
 ---
 
 ## 1. Architecture Overview
+
+## June 30, 2026 - Browser Request Boundary Hardening
+
+Desktop Official Page compliance, embedded Custom Domain compliance, and mobile compliance editor load/save/reset requests must call `/api/compliance` through the shared `AUTH_BROWSER_REQUEST_POLICY` from `src/lib/auth/browserRequestPolicy.ts`. That policy pins `cache: 'no-store'`, `credentials: 'same-origin'`, and `redirect: 'manual'` before bounded response parsing.
+
+This request policy sits alongside the existing response acknowledgement boundary: desktop mutation responses use `readDesktopComplianceMutationResponseJson()` with an 8KB cap, desktop refresh responses use `readDesktopComplianceLoadResponseJson()` with a 32KB cap, mobile mutation responses use `readMobileComplianceMutationResponseJson()` with an 8KB cap, and mobile load responses use `readMobileComplianceLoadResponseJson()` with a 32KB cap. Successful save/reset HTTP responses must include `success: true`, the requested compliance page `type`, and the expected API `action` (`override` for save, `reset` for reset) before local success copy or refreshed page state.
+
+`npm run verify:compliance-pages-boundary`, `npm run verify:public-business-truth`, and `npm run verify:menulist-api-tenant-safety` guard the shared browser request policy boundary for the standalone desktop compliance section, embedded custom-domain compliance section, and mobile compliance editor.
+
+Cost impact: `$0.00`. This changes only browser-side request handling for existing compliance editor calls; it adds no Firestore reads/writes beyond valid existing load/override/reset requests, Storage operations, Cloud Functions, API routes, cache invalidations, rules, indexes, schema fields, provider calls, owner settings, or public page rendering changes.
+
+## July 1, 2026 - Mutation Acknowledgement Shape Hardening
+
+`POST /api/compliance` now returns the requested `type` and API `action` alongside `success: true`. Desktop Official Page compliance, embedded Custom Domain compliance, and mobile compliance editor mutation guards require those fields to match the request before showing save/reset success or refreshing local page state. Invalid successful envelopes log `desktop_compliance_page_response_invalid` or `mobile_compliance_page_response_invalid` with bounded action/type match booleans only.
+
+Cost impact: `$0.00`. This changes only the mutation acknowledgement envelope and browser-side validation. It adds no Firestore reads/writes/deletes beyond existing valid override/reset requests, Storage operations, Cloud Functions, cache invalidations, rules, indexes, schema fields, provider calls, owner settings, or public page rendering changes.
+
+## July 2, 2026 - Sanitizer and Source-Gate Hardening
+
+`src/lib/compliance/sanitizer.ts` now follows this order: sanitize executable/style blocks before tag stripping. This keeps script/style body text from surviving as plain policy copy. `npm run verify:compliance-pages-boundary` runtime-checks the sanitizer, template composition, API admission path, public route intercept, desktop/mobile acknowledgement guards, Firestore rule shape, and active docs parity.
+
+Cost impact: `$0.00`. This changes only string sanitization order and static/source verification. It adds no Firestore reads/writes/deletes, Storage operations, Cloud Functions, cache invalidations, rules, indexes, schema fields, provider calls, owner settings, or public page rendering routes.
+
+## June 29, 2026 - Preview Link Handoff Hardening
+
+Owner preview opens for Privacy, Terms, and Refund pages must use safe browser handoff flags and bounded diagnostics:
+
+- desktop standalone compliance section: `desktop_compliance_page_open_failed`
+- desktop custom-domain embedded compliance section: `desktop_compliance_page_open_failed`
+- mobile compliance editor: `mobile_compliance_page_open_failed`
+
+The diagnostic context may include page type, domain presence/length, and page URL presence/length only. The code must not log raw public compliance URLs, raw owner content, API response text, or browser exception payloads. Preview opens use `noopener,noreferrer` and show fixed owner-facing failure copy when blocked.
+
+Cost impact: `$0.00`. This changes only browser-local preview-open behavior and diagnostics; it adds no Firestore reads/writes, Storage operations, Cloud Functions, API routes, cache invalidations, rules, indexes, schema fields, provider calls, or owner settings.
+
+## June 29, 2026 - Mobile Mutation Response Parse Hardening
+
+Mobile override and reset actions must parse `/api/compliance` mutation responses through `readMobileComplianceMutationResponseJson()`, backed by `readJsonResponseWithLimit()` with an 8KB cap. Malformed or oversized mutation responses log `mobile_compliance_page_response_parse_failed` with bounded compliance type/action/status metadata only. Successful HTTP responses must include `success: true`; missing success logs `mobile_compliance_page_response_invalid` with `mobile_compliance_page_save_response_invalid` or `mobile_compliance_page_reset_response_invalid` and keeps the existing fixed owner-facing failure toast.
+
+Cost impact: `$0.00`. This changes only browser-side mobile response parsing and diagnostics; it adds no Firestore reads/writes, Storage operations, Cloud Functions, API routes, cache invalidations, rules, indexes, schema fields, provider calls, owner settings, or public page rendering changes.
+
+## June 30, 2026 - Desktop Response Acknowledgement Hardening
+
+Desktop Official Page and custom-domain compliance editors must parse `/api/compliance` mutation responses through `readDesktopComplianceMutationResponseJson()`, backed by `readJsonResponseWithLimit()` with an 8KB cap. Successful save/reset HTTP responses must include `success: true`; missing success logs `desktop_compliance_page_response_invalid` with `desktop_compliance_page_save_response_invalid` or `desktop_compliance_page_reset_response_invalid` and keeps fixed owner-facing failure copy.
+
+Desktop compliance refreshes must parse `/api/compliance` GET responses through `readDesktopComplianceLoadResponseJson()` with a 32KB cap. Malformed, oversized, or non-object load responses log `desktop_compliance_pages_load_response_parse_failed` or `desktop_compliance_pages_load_response_invalid`; rejected load responses log `desktop_compliance_pages_load_failed` with `desktop_compliance_pages_load_rejected`.
+
+Cost impact: `$0.00`. This changes only browser-side desktop response parsing and diagnostics; it adds no Firestore reads/writes beyond existing valid override/reset requests and existing refresh reads, Storage operations, Cloud Functions, API routes, cache invalidations, rules, indexes, schema fields, provider calls, owner settings, or public page rendering changes.
 
 ```
 Client Request: abc.com/privacy
@@ -16,10 +65,10 @@ Client Request: abc.com/privacy
 Middleware (src/middleware.ts)
      │ isClient + pathname matches /privacy or /terms
      ▼
-Rewrite: /_client/compliance/privacy
+Rewrite: /client/privacy
      │
      ▼
-Server Component: src/app/_client/compliance/CompliancePageContent.tsx
+Server Component: src/app/client/compliance/CompliancePageContent.tsx
      │
      ├── Resolve store from headers (same pattern as OBP)
      ├── Generate system content from template (pure function, always)
@@ -78,8 +127,8 @@ match /compliancePages/{docId} {
 
 | File                                                   | Purpose                                                | LOC  |
 | ------------------------------------------------------ | ------------------------------------------------------ | ---- |
-| `src/app/_client/compliance/CompliancePageContent.tsx` | SSR page renderer (async server component)             | ~280 |
-| `src/lib/compliance/templates.ts`                      | Privacy + Terms template generation + input extraction | ~200 |
+| `src/app/client/compliance/CompliancePageContent.tsx`  | SSR page renderer (async server component)             | ~280 |
+| `src/lib/compliance/templates.ts`                      | Privacy, Terms, and Refund template generation + input extraction | ~200 |
 | `src/lib/compliance/sanitizer.ts`                      | Content sanitization for custom overrides              | ~55  |
 | `src/app/api/compliance/route.ts`                      | GET (read) + POST (override/reset) with withAuth + Zod | ~165 |
 | `src/database/compliance/index.ts`                     | DAL functions (get, save, override, reset, create)     | ~140 |
@@ -88,8 +137,9 @@ match /compliancePages/{docId} {
 
 | File                                   | Change                                                           |
 | -------------------------------------- | ---------------------------------------------------------------- |
-| `src/app/_client/[[...slug]]/page.tsx` | Route intercept: `/privacy` and `/terms` → CompliancePageContent |
-| `src/app/_client/obp/OBPContent.tsx`   | Footer links (Privacy · Terms) behind feature flag               |
+| `src/app/client/[[...slug]]/page.tsx`  | Route intercept: `/privacy`, `/terms`, and `/refund` → CompliancePageContent |
+| `src/app/client/obp/OBPResolvedSurface.tsx` | OBP policy links behind feature flag                         |
+| `src/components/templates/main-app/projects/b2cView/output/MenuFooter.tsx` | Public menu policy links behind visibility settings |
 | `src/constants/database.ts`            | Add `COMPLIANCE_PAGES` to DB_COLLECTIONS                         |
 | `functions/src/constants/database.ts`  | Mirror `COMPLIANCE_PAGES` constant                               |
 | `firestore.rules`                      | Add public read rule for compliancePages                         |
@@ -102,7 +152,7 @@ match /compliancePages/{docId} {
 
 ```typescript
 function generateComplianceContent(
-  type: "privacy" | "terms",
+  type: "privacy" | "terms" | "refund",
   inputs: {
     businessName: string;
     address: string;
@@ -165,14 +215,14 @@ function generateComplianceContent(
 
 ### POST /api/compliance
 
-**Auth:** `withAuth()` — owner/manager only  
+**Auth:** `withAuth()` plus `MANAGE_PUBLIC_PRESENCE` or `MANAGE_STORE`
 **Purpose:** Save custom override or reset to system
 
 **Request Body:**
 
 ```json
 {
-  "type": "privacy" | "terms",
+  "type": "privacy" | "terms" | "refund",
   "action": "override" | "reset",
   "content": "..." // Required for override, ignored for reset
 }
@@ -180,7 +230,9 @@ function generateComplianceContent(
 
 **Validation (Zod):**
 
-- `type`: enum `['privacy', 'terms']`
+- 32KB bounded JSON body before validation
+- `DATA_WRITE` limiter before parsing or writes; limiter keys hash owner and store segments before storage in Upstash
+- `type`: enum `['privacy', 'terms', 'refund']`
 - `action`: enum `['override', 'reset']`
 - `content`: string, max 15000 chars (for override)
 
@@ -188,7 +240,7 @@ function generateComplianceContent(
 
 ## 6. SSR Page Renderer
 
-### Route: `src/app/_client/compliance/[type]/page.tsx`
+### Route: `src/app/client/[[...slug]]/page.tsx` intercept + `src/app/client/compliance/CompliancePageContent.tsx`
 
 **Server component** — same pattern as OBP.
 
@@ -258,11 +310,11 @@ Add to `OBPContent.tsx` footer:
 
 ## 9. Middleware Routing
 
-The existing middleware already rewrites client domain requests to `/_client/*`. The compliance pages at `/_client/compliance/[type]` will be caught naturally.
+The existing middleware rewrites client domain requests to `/client/*`. The compliance pages are intercepted in `src/app/client/[[...slug]]/page.tsx` when the first slug is `privacy`, `terms`, or `refund`.
 
-No middleware changes needed — the `[[...slug]]` catch-all already handles all paths under `/_client/`.
+No middleware changes are needed for this feature — the current `[[...slug]]` page handles `/client/privacy`, `/client/terms`, and `/client/refund`.
 
-**Wait — correction:** The current `[[...slug]]` page handles menu/project resolution. We need a separate route for compliance pages. The middleware rewrites `abc.com/privacy` → `/_client/privacy`. The `[[...slug]]` page will receive `slug = "privacy"`.
+The middleware rewrites `abc.com/privacy` to `/client/privacy`. The `[[...slug]]` page receives `slug = "privacy"` and renders `CompliancePageContent`.
 
 **Best approach:** Handle inside the existing `[[...slug]]/page.tsx` — detect if slug is "privacy" or "terms", and render the compliance page instead of menu resolution.
 

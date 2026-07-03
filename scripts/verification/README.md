@@ -4,6 +4,24 @@ This directory contains automated verification scripts for MenuList features.
 
 ## Scripts
 
+### run-production-readiness-local.js
+Aggregate local source gate for the current codebase boundary.
+
+**Purpose:**
+- Runs every root `verify:*` script except itself
+- Runs documentation link checks, TypeScript, lint, and `git diff --check`
+- Prints the local-only boundary so a green aggregate is not mistaken for browser QA, provider smoke, deploy, or production-host certification
+
+**Usage:**
+```bash
+npm run verify:production-readiness-local
+```
+
+**Output:**
+- Pass/fail status for every child check
+- Count of passed checks and child `verify:*` scripts
+- Explicit local source-gate boundary for the gates it does not prove
+
 ### verify-recycle-bin.js
 Automated verification script for the Admin Recycle Bin feature in the support ticket system.
 
@@ -29,7 +47,7 @@ node verify-recycle-bin.js
 **Output:**
 - Pass/fail status for each check
 - Summary of all verification results
-- Next steps for manual testing
+- Explicit local source-gate scope and the browser/cloud/deploy gates it does not prove
 
 ### verify-menu-export.js
 Automated verification script for menu data export normalization and workbook generation.

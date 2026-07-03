@@ -3,7 +3,7 @@
 **Status:** ✅ INFRASTRUCTURE BUILT / PRODUCT DISABLED (GBP API blocked — flip flags only when granted)
 **Author:** Cascade (Lead Architect)  
 **Date:** February 19, 2026  
-**Last Runtime Audit:** June 11, 2026
+**Last Runtime Audit:** July 1, 2026
 **Audience:** Developers  
 **Pillar:** 3 of 6
 
@@ -130,17 +130,20 @@ Detailed in `__docs__/reviews-reputation/reviews-reputation_impl.md`. Additional
 - [x] SAFE_MODE on AI suggestion endpoint
 - [ ] Reply text sanitized before posting to Google (deferred — needs GBP API)
 - [x] No PII in reply suggestions
-- [x] RBAC: only store owner/admin can reply
+- [x] RBAC: only users with `canManageFeedback` can generate reply suggestions
 - [x] Feature flag gated (`ENABLE_REVIEWS_REPUTATION` parent flag + `ENABLE_AI_REPLY_ASSIST`)
 
 ## June 11, 2026 Runtime Notes
 
 - `ENABLE_REVIEWS_REPUTATION` and `ENABLE_AI_REPLY_ASSIST` are disabled by default in `src/config/features.ts`.
 - `/api/reviews/states` now returns 404 while the parent flag is off, rate-limits authenticated reads, and checks `autoExpiresAt > now` in the query.
-- `/api/reviews/suggest` now requires both flags and SAFE_MODE before Gemini or accounting work.
+- `/api/reviews/suggest` now requires both flags, SAFE_MODE, rate limiting, a 16KB request body cap, Zod validation, sanitized prompt input, and `canManageFeedback` before AI capacity, Gemini, or accounting work.
+- June 28, 2026: `/api/reviews/suggest` accounting-failure diagnostics use `review_reply_accounting_failed` with bounded tenant/store/user/business-type metadata only. Suggestion generation, capacity checks, accounting behavior, and disabled/unmounted runtime status are unchanged.
+- June 30, 2026: `ReputationGuard` calls `/api/reviews/states` with no-store cache policy, same-origin credentials, and manual redirect handling, then parses the response through a 16KB bounded guard before updating passive warning state. Rejected, redirected, malformed, oversized, or invalid acknowledgements log bounded runtime diagnostics only; route behavior and disabled/unmounted runtime status are unchanged.
+- July 1, 2026: `/api/reviews/suggest` now enforces the shared store permission guard with `canManageFeedback` after bounded input validation and before AI capacity/provider work. This keeps dormant reply-assist scaffolding aligned with the Feedback route permission.
 - No owner dashboard mount point is active for `ReputationGuard` or `ReviewReplyTool` in the current runtime.
 - This route/component scaffolding should not be marketed as a live reviews product until GBP ingestion exists and the owner UI is intentionally mounted.
 
 ---
 
-**Last Updated:** June 11, 2026
+**Last Updated:** July 1, 2026

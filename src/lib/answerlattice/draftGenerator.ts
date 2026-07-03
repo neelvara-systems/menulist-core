@@ -21,6 +21,7 @@ import { getMutationProposalById } from '@database/answerlattice/mutationProposa
 import { getSignalEventsForEntity } from '@database/answerlattice/signalEvents';
 import { AnswerlatticeMutationProposal } from '@type/answerlattice';
 import { Timestamp } from 'firebase/firestore';
+import { getAnswerlatticeScopeLogContext, logAnswerlatticeFailure } from './diagnostics';
 import { buildDraftUserPrompt, DRAFT_PROMPT_VERSION, DRAFT_SYSTEM_PROMPT, parseDraftResponse } from './draftPrompt';
 import type { DraftPromptInput } from './draftPrompt';
 
@@ -216,7 +217,13 @@ export async function regenerateDraftForProposal(
 
         return { success: true };
     } catch (error) {
-        console.error('[Answerlattice Draft] Client-side regeneration failed:', error);
-        return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+        logAnswerlatticeFailure('answerlattice_draft_regeneration_failed', error, {
+            ...getAnswerlatticeScopeLogContext({
+                proposalId,
+                sId,
+                tId,
+            }),
+        });
+        return { success: false, error: 'Draft regeneration failed' };
     }
 }

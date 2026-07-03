@@ -1,4 +1,5 @@
 import { logger } from '@lib/monitoring/logger';
+import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { message } from 'antd';
 
 /**
@@ -97,7 +98,11 @@ export const exportToCSV = <T = any>(
             message.success(`Exported ${data.length} ${data.length === 1 ? 'record' : 'records'} to CSV`);
         }
     } catch (error) {
-        console.error('CSV Export Error:', error);
+        logRuntimeFailure('csv_export_failed', error, {
+            ...getBoundedRuntimeStringContext('filename', filename),
+            recordCount: data.length,
+            columnCount: columns.length,
+        });
         message.error('Failed to export data');
     }
 };
@@ -161,7 +166,11 @@ export const exportToExcel = <T = any>(
             message.success(`Exported ${data.length} ${data.length === 1 ? 'record' : 'records'} to Excel`);
         }
     } catch (error) {
-        console.error('Excel Export Error:', error);
+        logRuntimeFailure('excel_export_failed', error, {
+            ...getBoundedRuntimeStringContext('filename', filename),
+            recordCount: data.length,
+            columnCount: columns.length,
+        });
         message.error('Failed to export data');
     }
 };

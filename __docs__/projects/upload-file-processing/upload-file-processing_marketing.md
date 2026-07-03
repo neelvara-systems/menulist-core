@@ -3,6 +3,24 @@
 **Feature:** File Upload & PDF Processing  
 **Audience:** Sales Team, Marketing, Partners  
 **Last Updated:** January 2026
+**Status:** Historical marketing draft; not current sales, publication, or launch certification
+
+---
+
+## Current Sales/Launch Boundary
+
+This document preserves January 2026 positioning notes only. Do not use it as current sales collateral, website copy, partner copy, or launch approval until release-specific evidence is recorded.
+
+Current Upload & File Processing collateral approval requires:
+
+- Active production-readiness audit evidence.
+- External Certification Runbook evidence.
+- `npm run verify:menu-extraction-pipeline`.
+- Authenticated desktop/mobile upload QA for image and PDF paths.
+- Storage quota/rules/deploy evidence for the target environment.
+- Extraction-job evidence for the target worker path.
+- Target deploy evidence and production-host smoke.
+- Release-specific evidence for any numeric speed, page-count, file-size, or volume claims before those claims are used.
 
 ---
 
@@ -14,7 +32,7 @@
 
 ### 30-Second Pitch
 
-> "Restaurant owners spend hours retyping their menus to get online. With MenuList, you just upload a photo or PDF of your existing menu—even a 30-page one—and our AI reads it for you. No typing, no data entry, no hiring someone to do it. Your menu is digital in minutes, not days."
+> "Restaurant owners spend hours retyping their menus to get online. With MenuList, you upload photos or a PDF of your existing menu, and our AI reads it for you. No typing, no data entry, no hiring someone to do it. Your menu is digital in minutes, not days."
 
 ---
 
@@ -88,7 +106,7 @@ What used to take **hours or days** now takes **minutes**. Restaurant owners can
 
 **"Smart, not basic"**
 
-- Handles multi-page PDFs (up to 50 pages)
+- Handles multi-page PDFs in 15-page extraction batches
 - Works with photos from your phone
 - Detects and warns about duplicates
 - Secure—blocks malicious files
@@ -147,7 +165,7 @@ What used to take **hours or days** now takes **minutes**. Restaurant owners can
 
 ### Social Proof Placeholders
 
-> "I uploaded our 30-page wine list and it just... worked." — _Restaurant Owner, Mumbai_
+> "I uploaded our wine list and it just... worked." — _Restaurant Owner, Mumbai_
 
 > "We saved 6 hours of data entry on our first menu." — _Café Manager, Bangalore_
 
@@ -182,9 +200,9 @@ What used to take **hours or days** now takes **minutes**. Restaurant owners can
 
 **Response:** "You absolutely can. But that's 2-4 hours of work. Our upload feature does it in minutes. Your time is better spent running your restaurant."
 
-### Objection: "My menu is complicated (30 pages, multiple sections)"
+### Objection: "My menu is complicated (many pages, multiple sections)"
 
-**Response:** "Perfect. We handle PDFs up to 50 pages. Each page becomes an image, AI reads every section. The more complex your menu, the more time you save."
+**Response:** "Perfect. Upload it in clear 15-page batches. Each page becomes an image, AI reads every section, and you can review before publishing."
 
 ### Objection: "What if the AI makes mistakes?"
 
@@ -282,4 +300,4 @@ Upload is included in all plans. It's not a premium feature—it's the **core en
 
 ---
 
-_Document Status: ✅ READY FOR USE_
+_Document Status: Historical marketing draft; not current sales or launch certification._

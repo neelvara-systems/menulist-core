@@ -86,7 +86,7 @@ MenuList's Reseller Program turns trusted local contacts into distribution partn
 ## 4. Sales Talking Points
 
 ### Objection: "Why would I do this for free?"
-> "Right now, we're building our network. Early resellers are building relationships with restaurant owners who will use MenuList for years. When we introduce commission later, you'll already have a client base earning you recurring income."
+> "Right now, the reseller program is relationship-based distribution. MenuList does not promise commission or referral payouts in the current program."
 
 ### Objection: "What if the restaurant doesn't want to pay?"
 > "You control the pricing tier. For close contacts, we have special founding rates starting at ₹400/month — that's ₹13/day for a professional digital menu. Most restaurants spend more on paper menus."

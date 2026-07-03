@@ -2,7 +2,7 @@
 
 **Version:** 1.5
 **Status:** ✅ IMPLEMENTED — All code complete, feature flags ON
-**Last Updated:** June 25, 2026 — Premium branded output tokens plus four-module QR quiet-zone hardening
+**Last Updated:** June 30, 2026 — Share-message copy acknowledgement and premium branded output tokens plus four-module QR quiet-zone hardening
 **Companion:** `menu-kit_spec.md` (business requirements)
 
 ---
@@ -68,8 +68,9 @@ src/components/templates/main-app/projects/b2cView/shareModal/index.tsx
     → Add "Menu Kit" section + businessType prop threading
 
 src/components/templates/main-app/projects/b2cView/shareModal/MenuKitSection.tsx (NEW)
-    → Menu Kit UI: ZIP download, mobile Web Share API, copy share message,
-      WhatsApp quick share, GBP hint, businessType-aware staff script
+    → Menu Kit UI: ZIP download, mobile Web Share API, acknowledged copy
+      for share message and staff script, WhatsApp quick share, GBP hint,
+      businessType-aware staff script
 
 src/components/templates/main-app/projects/index.tsx
     → Pass storeDetails.businessType to ShareModal
@@ -296,6 +297,8 @@ Key differences:
 // Loading state during generation
 // Success notification after download
 ```
+
+Failure diagnostics use `src/lib/export/exportDiagnostics.ts` through `project_share_menu_kit_generation_failed`, `project_share_menu_kit_asset_generation_failed`, `project_share_menu_kit_message_copy_failed`, `project_share_menu_kit_staff_script_copy_failed`, and `project_share_menu_kit_whatsapp_open_failed`. Logged context is limited to store/menu URL/short link/business type/business category/locale presence and length metadata, asset key for single-file actions, generated-message/staff-script lengths for copy actions, WhatsApp URL length for blocked WhatsApp opens, and booleans for logo, brand color, plan type, and menu modified timestamp. WhatsApp quick-share opens must use `noopener,noreferrer`. The component must not pass raw browser/provider exceptions, full public URLs, WhatsApp URLs, or generated customer/staff messages directly into `secureError()`.
 
 ### 11. Share Modal Integration
 

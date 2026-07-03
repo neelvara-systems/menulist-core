@@ -27,7 +27,8 @@ import {
 } from '@lib/publicApi/auth';
 import { checkRateLimit } from '@lib/rateLimit';
 import { getRateLimitForFeature } from '@lib/rateLimit/configs';
-import { secureError } from '@lib/security/secureLogger';
+import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
+import { readBoundedJsonBody } from '@lib/security/boundedRequestBody';
 import * as admin from 'firebase-admin';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
@@ -36,6 +37,7 @@ const FeedbackRequestSchema = z.object({
     searchHistoryId: z.string().trim().min(1).max(180),
     isGood: z.boolean(),
 });
+const WIDGET_FEEDBACK_MAX_BODY_BYTES = 2 * 1024;
 const WIDGET_AUTH_CACHE_TTL_MS = 15_000;
 
 const jsonResponse = (
@@ -168,11 +170,9 @@ export async function POST(request: NextRequest) {
         const tId = Number(storeData.tenantId || storeData.tId);
         const sId = Number(storeData.id || storeId);
         if (!Number.isFinite(tId) || !Number.isFinite(sId) || tId <= 0 || sId <= 0) {
-            secureError(
-                '[Widget Feedback] Invalid API key workspace context',
-                new Error('Authenticated API key does not resolve to a valid tenant/store'),
-                { storeId }
-            );
+            logRuntimeFailure('answerlattice_widget_feedback_invalid_workspace_context', undefined, {
+                ...getBoundedRuntimeStringContext('storeId', storeId),
+            });
             return jsonResponse(request, { error: 'Invalid API key' }, { status: 401 });
         }
 
@@ -182,7 +182,19 @@ export async function POST(request: NextRequest) {
         }
 
         // Parse request body
-        const validation = FeedbackRequestSchema.safeParse(await request.json().catch(() => null));
+        const bodyResult = await readBoundedJsonBody(request, WIDGET_FEEDBACK_MAX_BODY_BYTES, {
+            invalidJsonMessage: 'searchHistoryId and isGood are required',
+            tooLargeMessage: 'Request body too large',
+        });
+        if (bodyResult.ok === false) {
+            return jsonResponse(
+                request,
+                { error: bodyResult.response.status === 413 ? 'Request body too large' : 'searchHistoryId and isGood are required' },
+                { status: bodyResult.response.status },
+            );
+        }
+
+        const validation = FeedbackRequestSchema.safeParse(bodyResult.data);
         if (!validation.success) {
             return jsonResponse(request, { error: 'searchHistoryId and isGood are required' }, { status: 400 });
         }
@@ -236,15 +248,20 @@ export async function POST(request: NextRequest) {
                         ...buildWidgetFeedbackContextMetadata(historyData),
                     },
                 });
-            } catch {
+            } catch (signalError) {
                 // Fire-and-forget — signal emission failure never blocks feedback
+                logRuntimeFailure('answerlattice_widget_feedback_signal_emit_failed', signalError, {
+                    ...getBoundedRuntimeStringContext('tenantId', tId),
+                    ...getBoundedRuntimeStringContext('storeId', sId),
+                    ...getBoundedRuntimeStringContext('searchHistoryId', searchHistoryId),
+                });
             }
         }
 
         return jsonResponse(request, { success: true });
 
     } catch (err: any) {
-        secureError('[Widget Feedback] Error', err as Error);
+        logRuntimeFailure('answerlattice_widget_feedback_failed', err);
         return jsonResponse(request, { error: 'Something went wrong' }, { status: 500 });
     }
 }

@@ -2,6 +2,7 @@
 
 import { calculateOfflineLocationTopup } from "@config/resellerPricing";
 import { useResellerDashboard } from "@hook/useResellerDashboard";
+import { readJsonResponseWithLimit } from "@lib/security/boundedResponseBody";
 import { ResellerTransaction } from "@type/reseller";
 import { formatDateTime, type IntlFormatter } from "@util/dateTime";
 import { formatInrPaise } from "@util/formatters";
@@ -11,6 +12,16 @@ import { useFormatter } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { LuCopy, LuExternalLink, LuPlus, LuRefreshCw, LuUsers } from "react-icons/lu";
+import {
+    copyResellerTextToClipboard,
+    createResellerStatusError,
+    getBoundedResellerStringContext,
+    hasResellerClipboardWrite,
+    hasResellerCopyFallback,
+    logResellerFailure,
+    RESELLER_REQUEST_POLICY,
+    type ResellerLogContext,
+} from "./resellerDiagnostics";
 
 const { Title, Text } = Typography;
 
@@ -28,11 +39,81 @@ const STATUS_LABELS: Record<string, string> = {
     cancelled: 'Cancelled',
 };
 
+const RESELLER_ADD_LOCATION_RESPONSE_JSON_MAX_BYTES = 8 * 1024;
+
+type ResellerAddLocationCapacityResponse = {
+    amountExpected?: unknown;
+    locationCount?: unknown;
+    storeId?: unknown;
+    success?: unknown;
+    tenantId?: unknown;
+};
+
+type ResellerAddLocationCapacityExpectation = {
+    locationCount: number;
+    storeId: unknown;
+    tenantId: unknown;
+};
+
 function formatDate(value: any, formatter: IntlFormatter) {
     if (!value) return 'Auto-renew';
     const date = value?.toDate ? value.toDate() : new Date(value);
     if (Number.isNaN(date.getTime())) return 'Auto-renew';
     return formatDateTime(date, 'date', formatter);
+}
+
+function isMatchingResellerEntityId(value: unknown, expected: unknown) {
+    const normalizedValue = String(value ?? '').trim();
+    const normalizedExpected = String(expected ?? '').trim();
+    return normalizedValue.length > 0 && normalizedValue === normalizedExpected;
+}
+
+function isValidAddLocationCapacityResponse(
+    data: ResellerAddLocationCapacityResponse | null,
+    expected: ResellerAddLocationCapacityExpectation,
+): data is ResellerAddLocationCapacityResponse & { amountExpected: number; success: true } {
+    return data?.success === true
+        && typeof data.amountExpected === 'number'
+        && Number.isFinite(data.amountExpected)
+        && data.amountExpected > 0
+        && data.locationCount === expected.locationCount
+        && isMatchingResellerEntityId(data.storeId, expected.storeId)
+        && isMatchingResellerEntityId(data.tenantId, expected.tenantId);
+}
+
+function buildAddLocationResponseShapeContext(
+    data: ResellerAddLocationCapacityResponse | null,
+    expected: ResellerAddLocationCapacityExpectation,
+): ResellerLogContext {
+    return {
+        amountExpectedValid: typeof data?.amountExpected === 'number'
+            && Number.isFinite(data.amountExpected)
+            && data.amountExpected > 0,
+        hasExpectedLocationCount: data?.locationCount === expected.locationCount,
+        hasExpectedStoreId: isMatchingResellerEntityId(data?.storeId, expected.storeId),
+        hasExpectedTenantId: isMatchingResellerEntityId(data?.tenantId, expected.tenantId),
+        success: data?.success === true,
+    };
+}
+
+async function readAddLocationCapacityResponse(
+    response: Response,
+    context: ResellerLogContext,
+): Promise<ResellerAddLocationCapacityResponse | null> {
+    try {
+        return await readJsonResponseWithLimit<ResellerAddLocationCapacityResponse>(
+            response,
+            RESELLER_ADD_LOCATION_RESPONSE_JSON_MAX_BYTES,
+        );
+    } catch (error) {
+        logResellerFailure('desktop_reseller_dashboard_add_location_response_parse_failed', error, {
+            ...context,
+            maxBytes: RESELLER_ADD_LOCATION_RESPONSE_JSON_MAX_BYTES,
+            responseOk: response.ok,
+            responseStatus: response.status,
+        });
+        return null;
+    }
 }
 
 function ResellerDashboard() {
@@ -65,8 +146,16 @@ function ResellerDashboard() {
     const handleAddLocationCapacity = async () => {
         if (!selectedClient) return;
         setAddingLocation(true);
+        const addLocationLogContext: ResellerLogContext = {
+            action: 'add_location_capacity',
+            locationCount,
+            ...getBoundedResellerStringContext('resellerId', resellerId),
+            ...getBoundedResellerStringContext('storeId', selectedClient.storeId),
+            ...getBoundedResellerStringContext('tenantId', selectedClient.tenantId),
+        };
         try {
             const response = await fetch('/api/reseller/add-location-capacity', {
+                ...RESELLER_REQUEST_POLICY,
                 body: JSON.stringify({
                     locationCount,
                     storeId: selectedClient.storeId,
@@ -75,28 +164,84 @@ function ResellerDashboard() {
                 headers: { 'Content-Type': 'application/json' },
                 method: 'POST',
             });
-            const data = await response.json().catch(() => ({}));
-            if (!response.ok) throw new Error(data.error || 'Failed to add location');
+            const data = await readAddLocationCapacityResponse(response, addLocationLogContext);
+            if (!response.ok) throw createResellerStatusError('desktop_reseller_dashboard_add_location_rejected', response.status);
+            const expectedAddLocationResponse: ResellerAddLocationCapacityExpectation = {
+                locationCount,
+                storeId: selectedClient.storeId,
+                tenantId: selectedClient.tenantId,
+            };
+            if (!isValidAddLocationCapacityResponse(data, expectedAddLocationResponse)) {
+                logResellerFailure(
+                    'desktop_reseller_dashboard_add_location_response_invalid',
+                    createResellerStatusError('desktop_reseller_dashboard_add_location_response_invalid', response.status),
+                    {
+                        ...addLocationLogContext,
+                        ...buildAddLocationResponseShapeContext(data, expectedAddLocationResponse),
+                        responseOk: response.ok,
+                        responseStatus: response.status,
+                    },
+                );
+                throw createResellerStatusError('desktop_reseller_dashboard_add_location_response_invalid', response.status);
+            }
             message.success(`Location capacity added. Collect ${formatInrPaise(data.amountExpected)}.`);
             setSelectedClient(null);
             setLocationCount(1);
             refresh();
-        } catch (error: any) {
-            message.error(error?.message || 'Failed to add location');
+        } catch (error) {
+            logResellerFailure('desktop_reseller_dashboard_add_location_failed', error, addLocationLogContext);
+            message.error('Failed to add location');
         } finally {
             setAddingLocation(false);
         }
     };
 
-    const copyPaymentLink = async (link?: string | null) => {
+    const buildResellerDashboardHandoffLogContext = (
+        action: string,
+        record?: ResellerTransaction | null,
+        metadata: ResellerLogContext = {},
+    ): ResellerLogContext => ({
+        action,
+        isPlatform,
+        transactionCount: transactions.length,
+        ...getBoundedResellerStringContext('resellerId', resellerId),
+        ...getBoundedResellerStringContext('storeId', record?.storeId),
+        ...getBoundedResellerStringContext('tenantId', record?.tenantId),
+        ...getBoundedResellerStringContext('subscriptionId', record?.subscriptionId),
+        ...getBoundedResellerStringContext('pricingTier', record?.pricingTier),
+        ...getBoundedResellerStringContext('paymentMode', record?.paymentMode),
+        ...getBoundedResellerStringContext('transactionStatus', record?.status),
+        ...metadata,
+    });
+
+    const copyPaymentLink = async (link?: string | null, record?: ResellerTransaction | null) => {
         if (!link) return;
-        await navigator.clipboard.writeText(link);
-        message.success('Payment link copied.');
+        try {
+            await copyResellerTextToClipboard(link);
+            message.success('Payment link copied.');
+        } catch (error) {
+            logResellerFailure('desktop_reseller_dashboard_payment_link_copy_failed', error, buildResellerDashboardHandoffLogContext('copy_payment_link', record, {
+                ...getBoundedResellerStringContext('paymentLink', link),
+                hasClipboardWrite: hasResellerClipboardWrite(),
+                hasCopyFallback: hasResellerCopyFallback(),
+            }));
+            message.error('Could not copy payment link.');
+        }
     };
 
-    const openPaymentLink = (link?: string | null) => {
+    const openPaymentLink = (link?: string | null, record?: ResellerTransaction | null) => {
         if (!link) return;
-        window.open(link, '_blank', 'noopener,noreferrer');
+        try {
+            const opened = window.open(link, '_blank', 'noopener,noreferrer');
+            if (!opened) {
+                throw new Error('desktop_reseller_dashboard_payment_link_open_blocked');
+            }
+        } catch (error) {
+            logResellerFailure('desktop_reseller_dashboard_payment_link_open_failed', error, buildResellerDashboardHandoffLogContext('open_payment_link', record, {
+                ...getBoundedResellerStringContext('paymentLink', link),
+            }));
+            message.error('Could not open payment link.');
+        }
     };
 
     if (isLoading) {
@@ -200,10 +345,10 @@ function ResellerDashboard() {
                     </Button>
                 ) : hasPendingPaymentLink ? (
                     <Flex gap={8}>
-                        <Button icon={<LuCopy />} size="small" onClick={() => copyPaymentLink(record.subscriptionShortUrl)}>
+                        <Button icon={<LuCopy />} size="small" onClick={() => void copyPaymentLink(record.subscriptionShortUrl, record)}>
                             Copy link
                         </Button>
-                        <Button icon={<LuExternalLink />} size="small" onClick={() => openPaymentLink(record.subscriptionShortUrl)}>
+                        <Button icon={<LuExternalLink />} size="small" onClick={() => openPaymentLink(record.subscriptionShortUrl, record)}>
                             Open
                         </Button>
                     </Flex>
@@ -321,7 +466,7 @@ function ResellerDashboard() {
                 </Card>
             )}
             <Modal
-                destroyOnClose
+                destroyOnHidden
                 okButtonProps={{ disabled: !locationTopup || locationTopup.daysRemaining <= 0, loading: addingLocation }}
                 okText="Record prepaid location"
                 onCancel={() => setSelectedClient(null)}

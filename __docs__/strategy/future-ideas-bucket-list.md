@@ -114,9 +114,9 @@ Safety net when nothing else qualifies:
 - ✅ Confidence gate (formalized thresholds)
 - ⏸️ Direct posting (architecture exists, disabled until 100+ stores)
 
-**Detailed Strategy:** See [social-content-product-strategy.md](./social-content-product-strategy.md)
+**Detailed Strategy:** See [social-content-product-strategy.md](../social-content/social-content-product-strategy.md)
 
-**Priority:** 🔴 HIGH - Ready for implementation
+**Priority:** High-priority historical strategy candidate; not current implementation approval or launch certification
 
 ---
 

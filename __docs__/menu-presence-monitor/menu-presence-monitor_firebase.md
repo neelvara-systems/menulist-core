@@ -1,7 +1,7 @@
 # Menu Presence Monitor — Firebase Cost Tracking
 
-> **Version:** 1.3
-> **Last Updated:** June 24, 2026
+> **Version:** 1.7
+> **Last Updated:** July 2, 2026
 
 ---
 
@@ -22,6 +22,8 @@
 For starter activation stores, confirming Google Business, Instagram Bio, or WhatsApp Profile also writes the matching `starterActivationSignals.actions.*` key in the same `updateDoc()` call. This keeps the distribution activation metric measurable without adding a second write.
 
 `buildStarterActivationSummary()` computes activation proof from the already-loaded `menuPresence` and `starterActivationSignals` fields. It adds no Firestore read, write, listener, query, index, or collection.
+
+`updateMenuPresence()` and `recordStarterActivationSignal()` also verify the active session store before any store write. Valid owner flows add no Firestore read/write beyond the existing write; store-scope mismatches fail before writing `menuPresence` or `starterActivationSignals`.
 
 ## Cost Estimate
 
@@ -44,6 +46,20 @@ The published-menu readiness check uses the already-loaded projects list and doe
 
 None needed. No queries on `menuPresence` field — it's read as part of the store document.
 No indexes are needed for `starterActivationSignals`; it is read as part of the existing store document.
+
+## Diagnostic Hardening
+
+Desktop and mobile presence monitors now log failed official-link copy, surface confirm, and surface remove actions through bounded diagnostics. Official-link copied feedback waits for Clipboard API or acknowledged textarea fallback success, and failed copy diagnostics may include clipboard/fallback support booleans. The Business Settings embedded wrapper logs failed screen-link loading through bounded Business Settings diagnostics; embedded official-link copy remains owned by the shared Presence Monitor component.
+
+Confirm/remove actions also require the typed `updateMenuPresence()` acknowledgement before local presence state, success copy, or selected-surface state changes. A DAL fallback after a failed write reaches the same bounded failure handlers.
+
+The same DAL boundary rejects mismatched active-session stores with `menu_presence_store_scope_mismatch` or `starter_activation_signal_store_scope_mismatch` before the Firestore update is attempted.
+
+This adds no Firestore reads/writes, Storage operations, Cloud Functions, routes, durable artifacts, cache invalidations, indexes, rules, or owner-facing settings. Successful confirm/remove actions still use the existing single `updateMenuPresence()` store write.
+
+## Source Gate
+
+`npm run verify:menu-presence-monitor-boundary` verifies the active-session store guard, `menu_presence_store_scope_mismatch`, `starter_activation_signal_store_scope_mismatch`, typed `MenuPresenceUpdateResult` acknowledgement, desktop/mobile caller acknowledgement checks, bounded diagnostics, and docs parity. It does not run browser/device QA, live confirm/remove writes, Firebase deploys, Vercel deploys, production builds, provider smoke, or production-host checks.
 
 ---
 

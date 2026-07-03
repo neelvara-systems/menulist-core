@@ -1,5 +1,6 @@
 import * as admin from 'firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
+import { logFirebaseAdminDiagnostic } from './firebaseAdminDiagnostics';
 
 // Initialize Firebase Admin if it hasn't been initialized yet
 const DEFAULT_APP_NAME = '[DEFAULT]';
@@ -18,7 +19,10 @@ const firebaseAdminApp = existingDefaultApp || (() => {
             }),
             ...(storageBucket ? { storageBucket } : {}),
         });
-        console.log("🔥 Firebase Admin initialized with explicit credentials (Vercel).");
+        logFirebaseAdminDiagnostic('firebase_admin_initialized', {
+            credentialSource: 'explicit_env',
+            hasStorageBucket: Boolean(storageBucket),
+        });
         return app;
     }
 
@@ -26,7 +30,10 @@ const firebaseAdminApp = existingDefaultApp || (() => {
     const app = admin.initializeApp({
         ...(storageBucket ? { storageBucket } : {}),
     });
-    console.log("🔥 Firebase Admin initialized with ADC (local development).");
+    logFirebaseAdminDiagnostic('firebase_admin_initialized', {
+        credentialSource: 'adc',
+        hasStorageBucket: Boolean(storageBucket),
+    }, { developmentOnly: true });
     return app;
 })();
 

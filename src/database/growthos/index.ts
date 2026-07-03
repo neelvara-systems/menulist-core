@@ -5,9 +5,13 @@ import { doc, getDoc } from "@firebase/firestore";
 import { apiCallComposer } from "@lib/apiHelper/apiCallComposer";
 import getActiveSession from "@lib/auth/getActiveSession";
 import { firebaseClient } from "@lib/firebase/firebaseClient";
+import { getGrowthOSBoundedStringContext, logGrowthOSApiFailure } from "@lib/growthos/diagnostics";
+import { readJsonResponseWithLimit } from "@lib/security/boundedResponseBody";
 import type {
     GrowthOSDestination,
     GrowthOSExportMethod,
+    GrowthOSKit,
+    GrowthOSKitStatus,
     GrowthOSReviewGuardResult,
     GrowthOSReviewTone,
     GrowthOSSummaryDocument,
@@ -17,12 +21,62 @@ const getGrowthOSSummaryDocRef = (session: any) => (
     doc(firebaseClient, DB_COLLECTIONS.PLATFORM_SUMMARY, `${GROWTHOS_SUMMARY_DOC_PREFIX}_${session.sId}`)
 );
 
-async function parseResponse(response: Response, fallbackMessage: string) {
-    const payload = await response.json().catch(() => null);
-    if (!response.ok) {
-        throw new Error(payload?.message || payload?.error || fallbackMessage);
+const GROWTHOS_CLIENT_RESPONSE_JSON_MAX_BYTES = 64 * 1024;
+const GROWTHOS_CLIENT_REQUEST_POLICY: Pick<RequestInit, "cache" | "credentials" | "redirect"> = {
+    cache: "no-store",
+    credentials: "same-origin",
+    redirect: "manual",
+};
+
+type GrowthOSDataResponse<T> = {
+    data: T;
+};
+
+type GrowthOSGenerateResponse = GrowthOSDataResponse<{
+    kit: GrowthOSKit;
+    summary: GrowthOSSummaryDocument;
+}>;
+
+type GrowthOSExportResponse = GrowthOSDataResponse<{
+    exportId?: string;
+    isStale?: boolean;
+    status?: GrowthOSKitStatus | null;
+}>;
+
+async function parseResponse<T = unknown>(
+    response: Response,
+    fallbackMessage: string,
+    operation: string,
+): Promise<T> {
+    let payload: unknown = null;
+    try {
+        payload = await readJsonResponseWithLimit<unknown>(response, GROWTHOS_CLIENT_RESPONSE_JSON_MAX_BYTES);
+    } catch (error) {
+        logGrowthOSApiFailure("[GrowthOS Client] Response parse failed", "growthos_client_response_parse_failed", error, {
+            ...getGrowthOSBoundedStringContext("operation", operation),
+            responseOk: response.ok,
+            responseStatus: response.status,
+        });
+        throw new Error(fallbackMessage);
     }
-    return payload;
+
+    if (!response.ok) {
+        logGrowthOSApiFailure("[GrowthOS Client] Response rejected", "growthos_client_response_rejected", undefined, {
+            ...getGrowthOSBoundedStringContext("operation", operation),
+            responseStatus: response.status,
+        });
+        throw new Error(fallbackMessage);
+    }
+
+    if (!payload || typeof payload !== "object") {
+        logGrowthOSApiFailure("[GrowthOS Client] Response invalid", "growthos_client_response_invalid", undefined, {
+            ...getGrowthOSBoundedStringContext("operation", operation),
+            responseStatus: response.status,
+        });
+        throw new Error(fallbackMessage);
+    }
+
+    return payload as T;
 }
 
 export const getGrowthOSSummary = async (): Promise<GrowthOSSummaryDocument | null> => {
@@ -38,26 +92,31 @@ export const getGrowthOSSummary = async (): Promise<GrowthOSSummaryDocument | nu
     );
 };
 
-export const refreshGrowthOSActions = async (projectId: string, forceRefresh = false) => {
+export const refreshGrowthOSActions = async (
+    projectId: string,
+    forceRefresh = false,
+): Promise<GrowthOSDataResponse<GrowthOSSummaryDocument>> => {
     const response = await fetch("/api/growthos/actions/refresh", {
+        ...GROWTHOS_CLIENT_REQUEST_POLICY,
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ projectId, forceRefresh }),
     });
-    return parseResponse(response, "Failed to refresh Growth Kits");
+    return parseResponse<GrowthOSDataResponse<GrowthOSSummaryDocument>>(response, "Failed to refresh Growth Kits", "refresh_actions");
 };
 
 export const generateGrowthOSKit = async (params: {
     actionId?: string;
     actionType?: string;
     projectId: string;
-}) => {
+}): Promise<GrowthOSGenerateResponse> => {
     const response = await fetch("/api/growthos/kits/generate", {
+        ...GROWTHOS_CLIENT_REQUEST_POLICY,
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(params),
     });
-    return parseResponse(response, "Failed to create Growth Kit");
+    return parseResponse<GrowthOSGenerateResponse>(response, "Failed to create Growth Kit", "generate_kit");
 };
 
 export const recordGrowthOSExport = async (params: {
@@ -65,13 +124,14 @@ export const recordGrowthOSExport = async (params: {
     kitId: string;
     method: GrowthOSExportMethod;
     outputId?: string;
-}) => {
+}): Promise<GrowthOSExportResponse> => {
     const response = await fetch("/api/growthos/kits/export", {
+        ...GROWTHOS_CLIENT_REQUEST_POLICY,
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(params),
     });
-    return parseResponse(response, "Failed to record Growth Kit use");
+    return parseResponse<GrowthOSExportResponse>(response, "Failed to record Growth Kit use", "record_export");
 };
 
 export const suggestGrowthOSReviewReply = async (params: {
@@ -80,9 +140,10 @@ export const suggestGrowthOSReviewReply = async (params: {
     tone?: GrowthOSReviewTone;
 }): Promise<{ result: GrowthOSReviewGuardResult }> => {
     const response = await fetch("/api/growthos/reviews/suggest", {
+        ...GROWTHOS_CLIENT_REQUEST_POLICY,
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(params),
     });
-    return parseResponse(response, "Failed to prepare review reply");
+    return parseResponse<{ result: GrowthOSReviewGuardResult }>(response, "Failed to prepare review reply", "suggest_review_reply");
 };

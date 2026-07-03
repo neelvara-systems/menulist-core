@@ -4,9 +4,12 @@
  */
 
 import { Timestamp } from 'firebase-admin/firestore';
+import * as functions from 'firebase-functions';
 import { ALERT_THRESHOLDS } from '../../../src/constants/analyticsMetrics';
 import { DB_COLLECTIONS } from '../constants/database';
 import { firestoreAdmin as db } from '../firebaseAdmin';
+
+const logger = functions.logger;
 
 // ================================================================
 // TYPES
@@ -31,6 +34,24 @@ export interface SystemHealthReport {
     degradedCount: number;
     downCount: number;
     avgResponseTime: number;
+  };
+}
+
+function getErrorLogContext(error: unknown): { name?: string; code?: string; status?: number } {
+  if (!error || typeof error !== 'object') return {};
+
+  const record = error as Record<string, unknown>;
+  return {
+    name: error instanceof Error ? error.name : undefined,
+    code: typeof record.code === 'string' ? record.code : undefined,
+    status: typeof record.status === 'number' ? record.status : undefined,
+  };
+}
+
+function buildHealthFailureDetails(code: string, error: unknown): Record<string, any> {
+  return {
+    failureCode: code,
+    source: getErrorLogContext(error),
   };
 }
 
@@ -92,7 +113,15 @@ export async function performHealthCheck(tId: string, sId: string): Promise<Syst
   // Store health report
   await storeHealthReport(tId, sId, report);
 
-  console.log(`[Health Check] Completed in ${Date.now() - startTime}ms - Status: ${overall}`);
+  logger.info('[Health Check] Completed', {
+    tId,
+    sId,
+    durationMs: Date.now() - startTime,
+    overall,
+    healthyCount,
+    degradedCount,
+    downCount,
+  });
 
   return report;
 }
@@ -125,7 +154,7 @@ async function checkFirestore(tId: string, sId: string): Promise<HealthMetric> {
       status: 'down',
       lastCheck: new Date(),
       responseTime: Date.now() - startTime,
-      details: { error: error instanceof Error ? error.message : 'Unknown error' },
+      details: buildHealthFailureDetails('FIRESTORE_HEALTH_CHECK_FAILED', error),
     };
   }
 }
@@ -163,7 +192,7 @@ async function checkAIService(tId: string, sId: string): Promise<HealthMetric> {
       component: 'AI Services',
       status: 'down',
       lastCheck: new Date(),
-      details: { error: error instanceof Error ? error.message : 'Unknown error' },
+      details: buildHealthFailureDetails('AI_HEALTH_CHECK_FAILED', error),
     };
   }
 }
@@ -206,7 +235,7 @@ async function checkKBCoverage(tId: string, sId: string): Promise<HealthMetric> 
       component: 'KB Coverage',
       status: 'degraded',
       lastCheck: new Date(),
-      details: { error: error instanceof Error ? error.message : 'Unknown error' },
+      details: buildHealthFailureDetails('KB_HEALTH_CHECK_FAILED', error),
     };
   }
 }
@@ -256,7 +285,7 @@ async function checkErrorRate(tId: string, sId: string): Promise<HealthMetric> {
       component: 'Error Rate',
       status: 'degraded',
       lastCheck: new Date(),
-      details: { error: error instanceof Error ? error.message : 'Unknown error' },
+      details: buildHealthFailureDetails('ERROR_RATE_HEALTH_CHECK_FAILED', error),
     };
   }
 }
@@ -289,7 +318,7 @@ async function checkAnalyticsPipeline(tId: string, sId: string): Promise<HealthM
       component: 'Analytics Pipeline',
       status: 'degraded',
       lastCheck: new Date(),
-      details: { error: error instanceof Error ? error.message : 'Unknown error' },
+      details: buildHealthFailureDetails('ANALYTICS_HEALTH_CHECK_FAILED', error),
     };
   }
 }
@@ -321,7 +350,12 @@ async function storeHealthReport(
         })),
       });
   } catch (error) {
-    console.error('[Health Check] Failed to store health report:', error);
+    logger.error('[Health Check] Failed to store health report', {
+      tId,
+      sId,
+      overall: report.overall,
+      error: getErrorLogContext(error),
+    });
   }
 }
 

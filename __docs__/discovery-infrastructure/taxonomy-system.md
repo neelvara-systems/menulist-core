@@ -24,7 +24,7 @@ MenuList stores category names as free-text `{[lang]: string}`. Two restaurants 
 
 - AI systems cannot query "salons offering hair coloring near me" — must parse free-text
 - Cross-business comparisons impossible — "Starters" ≠ "Appetizers" to machines
-- Discovery index (Phase 2) has no structured categories to filter on
+- A conditional discovery index has no structured categories to filter on unless this utility is deliberately wired
 
 **With taxonomy:**
 
@@ -57,7 +57,7 @@ interface TaxonomyCategory {
   id: string; // e.g., 'food_starters', 'service_hair'
   label: string; // English canonical name
   aliases: string[]; // Known variations for matching
-  parentId?: string; // Hierarchy support (future)
+  parentId?: string; // Reserved hierarchy support
   businessCategory: string; // Which business category
   sortOrder: number; // Default display order
 }
@@ -112,10 +112,10 @@ interface OfferingTag {
 
 | Integration                       | How                                                                      | When              |
 | --------------------------------- | ------------------------------------------------------------------------ | ----------------- |
-| Discovery Index Builder (Phase 2) | `extractTaxonomyFromProject()` called by `buildBusinessEntityIndexDoc()` | Nightly scheduler |
-| AI Extraction (future)            | Extraction prompt uses taxonomy as category naming hint                  | During extraction |
-| Schema.org Enhancement (future)   | Canonical category → schema.org `hasMenuSection` for food or `OfferCatalog` grouping for non-food | Page render       |
-| Public API v2 (future)            | Return `standardCategories` in API response                              | API call          |
+| Discovery Index Builder           | `extractTaxonomyFromProject()` is called by `buildBusinessEntityIndexDoc()`; no writer runs while `ENABLE_INFRASTRUCTURE_DISCOVERY_INDEX` is off | Conditional scheduler |
+| AI extraction candidate           | Extraction prompt uses taxonomy as category naming hint after extraction-audit approval | During extraction |
+| Schema.org enhancement candidate  | Canonical category maps to schema.org `hasMenuSection` for food or `OfferCatalog` grouping for non-food after schema parity audit | Page render       |
+| Public API v2 candidate           | Return `standardCategories` in API response only after API v2 approval   | API call          |
 
 ## 6. Feature Flag
 
@@ -123,10 +123,10 @@ interface OfferingTag {
 
 ## 7. Security & Compliance
 
-- **No cross-tenant data** in Phase 1 — taxonomy is static reference data
+- **No cross-tenant data** in the static taxonomy utility — taxonomy is reference data
 - **No PII** — category names and tags are public business classification
 - **No GDPR/SOC2 impact** — no personal data involved
-- **Cross-tenant aggregation** only happens in Phase 2 (business entity index) with PUBLIC data only
+- **Cross-tenant aggregation** is not active. If the business entity index is wired later, it must use PUBLIC data only.
 
 ## 8. Design Decisions
 

@@ -4,9 +4,11 @@ import { SIGNALDESK_INTEGRATION_ENV } from "@constant/signaldesk/integrations";
 import { SIGNALDESK_PRODUCT_CODE } from "@constant/signaldesk/product";
 import { admin, signaldeskFirestoreAdmin } from "@lib/firebase/signaldeskFirebaseAdmin";
 import { isSignalDeskFirebaseConfigured } from "@lib/firebase/signaldeskConfig";
-import { createHash, createHmac, randomUUID, timingSafeEqual } from "crypto";
+import { getBoundedRuntimeStringContext, logRuntimeFailure } from "@lib/runtime/runtimeDiagnostics";
+import { createHash, createHmac, timingSafeEqual } from "crypto";
 
 type SignalDeskWebhookProvider = "email" | "whatsapp" | "instagram" | "messenger" | "apify";
+type SignalDeskWebhookPayload = Record<string, unknown>;
 
 const getSignalDeskDb = () => {
     if (!isSignalDeskFirebaseConfigured && !process.env.FIRESTORE_EMULATOR_HOST) return null;
@@ -18,6 +20,9 @@ const now = () => admin.firestore.Timestamp.now();
 const increment = (value: number) => admin.firestore.FieldValue.increment(value);
 const env = (key: string) => process.env[key]?.trim() || "";
 const hashValue = (value: string) => createHash("sha256").update(value).digest("hex");
+const SIGNALDESK_WEBHOOK_BODY_PARSE_FAILED = "signaldesk_webhook_body_parse_failed";
+const SIGNALDESK_WEBHOOK_BODY_SHAPE_INVALID = "signaldesk_webhook_body_shape_invalid";
+const SIGNALDESK_WEBHOOK_EVENT_SHAPE_INVALID = "signaldesk_webhook_event_shape_invalid";
 const normalizeWebhookIdentity = (provider: SignalDeskWebhookProvider, identity: string) => {
     const trimmed = String(identity || "").trim();
     if (provider === "email") return trimmed.toLowerCase();
@@ -33,6 +38,51 @@ const safeEqual = (left: string, right: string) => {
         return false;
     }
 };
+
+const isRecord = (value: unknown): value is SignalDeskWebhookPayload => (
+    Boolean(value) && typeof value === "object" && !Array.isArray(value)
+);
+
+const getWebhookPayloadLogContext = (params: { provider: SignalDeskWebhookProvider; rawBody: string }) => ({
+    rawBodyBytes: Buffer.byteLength(params.rawBody, "utf8"),
+    ...getBoundedRuntimeStringContext("rawBodyHash", hashValue(params.rawBody)),
+    product: "signaldesk",
+    provider: params.provider,
+});
+
+const parseSignalDeskWebhookPayload = (params: {
+    provider: SignalDeskWebhookProvider;
+    rawBody: string;
+}): SignalDeskWebhookPayload => {
+    const bodyText = params.rawBody.trim();
+    if (!bodyText) {
+        const error = new Error(SIGNALDESK_WEBHOOK_BODY_SHAPE_INVALID);
+        logRuntimeFailure(SIGNALDESK_WEBHOOK_BODY_SHAPE_INVALID, error, getWebhookPayloadLogContext(params));
+        throw new Error("Invalid SignalDesk webhook payload");
+    }
+
+    let parsed: unknown;
+    try {
+        parsed = JSON.parse(bodyText) as unknown;
+    } catch (error) {
+        logRuntimeFailure(SIGNALDESK_WEBHOOK_BODY_PARSE_FAILED, error, getWebhookPayloadLogContext(params));
+        throw new Error("Invalid SignalDesk webhook payload");
+    }
+
+    if (!isRecord(parsed)) {
+        const error = new Error(SIGNALDESK_WEBHOOK_BODY_SHAPE_INVALID);
+        logRuntimeFailure(SIGNALDESK_WEBHOOK_BODY_SHAPE_INVALID, error, getWebhookPayloadLogContext(params));
+        throw new Error("Invalid SignalDesk webhook payload");
+    }
+
+    return parsed;
+};
+
+const normalizeWebhookString = (value: unknown) => String(value || "").trim();
+const hasWebhookValue = (value: unknown) => normalizeWebhookString(value).length > 0;
+const fallbackWebhookExternalId = (provider: SignalDeskWebhookProvider, rawBody: string) => (
+    `${provider}_${hashValue(rawBody).slice(0, 32)}`
+);
 
 const verifyMetaSignature = (rawBody: string, signature: string | null) => {
     const appSecret = env(SIGNALDESK_INTEGRATION_ENV.META_APP_SECRET);
@@ -67,14 +117,26 @@ export function verifySignalDeskWebhookChallenge(provider: SignalDeskWebhookProv
     return null;
 }
 
-const getProviderEvent = (provider: SignalDeskWebhookProvider, payload: any) => {
+const getProviderEvent = (provider: SignalDeskWebhookProvider, payload: any, rawBody: string) => {
+    const fallbackExternalId = fallbackWebhookExternalId(provider, rawBody);
+
     if (provider === "apify") {
         const resource = payload?.resource || {};
         const eventData = payload?.eventData || {};
-        const runId = String(payload?.runId || resource?.id || eventData?.actorRunId || randomUUID());
-        const status = String(payload?.runStatus || resource?.status || eventData?.status || "received");
+        const hasEventSignal = [
+            payload?.eventType,
+            payload?.runId,
+            payload?.runStatus,
+            resource?.id,
+            resource?.status,
+            eventData?.actorRunId,
+            eventData?.status,
+        ].some(hasWebhookValue);
+        if (!hasEventSignal) return null;
+        const runId = normalizeWebhookString(payload?.runId || resource?.id || eventData?.actorRunId || fallbackExternalId);
+        const status = normalizeWebhookString(payload?.runStatus || resource?.status || eventData?.status || "received");
         return {
-            eventType: String(payload?.eventType || `apify.run.${status.toLowerCase()}`),
+            eventType: normalizeWebhookString(payload?.eventType || `apify.run.${status.toLowerCase()}`),
             externalId: `apify_${runId}`,
             identity: "",
             message: status,
@@ -84,12 +146,25 @@ const getProviderEvent = (provider: SignalDeskWebhookProvider, payload: any) => 
     }
 
     if (provider === "email") {
+        const hasEventSignal = [
+            payload?.event,
+            payload?.type,
+            payload?.eventId,
+            payload?.messageId,
+            payload?.providerMessageId,
+            payload?.id,
+            payload?.email,
+            payload?.recipient,
+            payload?.message,
+            payload?.reason,
+        ].some(hasWebhookValue);
+        if (!hasEventSignal) return null;
         return {
-            eventType: String(payload?.event || payload?.type || "email.event"),
-            externalId: String(payload?.eventId || payload?.messageId || payload?.id || randomUUID()),
-            identity: String(payload?.email || payload?.recipient || "").trim().toLowerCase(),
-            message: String(payload?.message || payload?.reason || ""),
-            providerMessageId: String(payload?.messageId || payload?.providerMessageId || ""),
+            eventType: normalizeWebhookString(payload?.event || payload?.type || "email.event"),
+            externalId: normalizeWebhookString(payload?.eventId || payload?.messageId || payload?.id || fallbackExternalId),
+            identity: normalizeWebhookString(payload?.email || payload?.recipient).toLowerCase(),
+            message: normalizeWebhookString(payload?.message || payload?.reason),
+            providerMessageId: normalizeWebhookString(payload?.messageId || payload?.providerMessageId),
             targetId: payload?.targetId ? String(payload.targetId) : null,
         };
     }
@@ -97,14 +172,31 @@ const getProviderEvent = (provider: SignalDeskWebhookProvider, payload: any) => 
     const value = payload?.entry?.[0]?.changes?.[0]?.value || {};
     const message = value?.messages?.[0] || null;
     const status = value?.statuses?.[0] || null;
+    if (!message && !status) return null;
     return {
         eventType: message ? `${provider}.message` : status ? `${provider}.status` : `${provider}.event`,
-        externalId: String(message?.id || status?.id || randomUUID()),
-        identity: String(message?.from || status?.recipient_id || ""),
-        message: String(message?.text?.body || status?.status || ""),
-        providerMessageId: String(message?.id || status?.id || ""),
+        externalId: normalizeWebhookString(message?.id || status?.id || fallbackExternalId),
+        identity: normalizeWebhookString(message?.from || status?.recipient_id),
+        message: normalizeWebhookString(message?.text?.body || status?.status),
+        providerMessageId: normalizeWebhookString(message?.id || status?.id),
         targetId: null,
     };
+};
+
+const requireProviderEvent = (
+    provider: SignalDeskWebhookProvider,
+    payload: SignalDeskWebhookPayload,
+    rawBody: string,
+) => {
+    const event = getProviderEvent(provider, payload, rawBody);
+    if (event) return event;
+
+    const error = new Error(SIGNALDESK_WEBHOOK_EVENT_SHAPE_INVALID);
+    logRuntimeFailure(SIGNALDESK_WEBHOOK_EVENT_SHAPE_INVALID, error, getWebhookPayloadLogContext({
+        provider,
+        rawBody,
+    }));
+    throw new Error("Invalid SignalDesk webhook event");
 };
 
 async function findTargetByIdentity(db: any, provider: SignalDeskWebhookProvider, identity: string) {
@@ -154,11 +246,13 @@ export async function processSignalDeskProviderWebhook(params: {
         throw new Error("Invalid SignalDesk webhook signature");
     }
 
+    const payload = parseSignalDeskWebhookPayload({
+        provider: params.provider,
+        rawBody: params.rawBody,
+    });
     const db = getSignalDeskDb();
     if (!db) throw new Error("SignalDesk Firebase is not configured");
-
-    const payload = JSON.parse(params.rawBody || "{}");
-    const event = getProviderEvent(params.provider, payload);
+    const event = requireProviderEvent(params.provider, payload, params.rawBody);
     const targetId = event.targetId || await findTargetByIdentity(db, params.provider, event.identity);
     const eventRef = db.collection(SIGNALDESK_COLLECTIONS.WEBHOOK_EVENTS).doc(event.externalId);
     const existingEventSnap = await eventRef.get();

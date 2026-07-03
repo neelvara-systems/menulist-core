@@ -15,7 +15,7 @@ const fs = require("fs");
 const path = require("path");
 
 const DOCS_DIR = path.join(__dirname, "../__docs__");
-const IGNORE_DIRS = ["Single Source of Truth"];
+const IGNORE_DIRS = ["Single Source of Truth", "archive", "_archive"];
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -44,22 +44,30 @@ function getAllMarkdownFiles(dir) {
 
 function extractLinks(content, filePath) {
     const links = [];
-    // Match markdown links: [text](path) — only relative/internal links
-    const linkRegex = /\[([^\]]*)\]\(([^)]+)\)/g;
+    // Match markdown links: [text](path) and [text](<path with parentheses>) — only docs/file links.
+    const linkRegex = /\[([^\]]*)\]\((<[^>]+>|[^)]+)\)/g;
     let match;
     while ((match = linkRegex.exec(content)) !== null) {
-        const target = match[2];
+        let target = match[2];
+        if (target.startsWith("<") && target.endsWith(">")) {
+            target = target.slice(1, -1);
+        }
         // Skip external URLs, anchors, and mailto
         if (
             target.startsWith("http://") ||
             target.startsWith("https://") ||
             target.startsWith("#") ||
-            target.startsWith("mailto:")
+            target.startsWith("mailto:") ||
+            target.includes("://") ||
+            target.startsWith("/")
         ) {
             continue;
         }
         // Strip anchor from target
-        const cleanTarget = target.split("#")[0];
+        const cleanTarget = target
+            .split("#")[0]
+            .replace(/\\_/g, "_")
+            .replace(/^\.\/__docs__\//, "__docs__/");
         if (cleanTarget) {
             links.push({
                 text: match[1],
@@ -73,13 +81,9 @@ function extractLinks(content, filePath) {
     // Match inline references like `__docs__/path/to/file.md`
     const inlineRefRegex = /`(__docs__\/[^`]+\.md)`/g;
     while ((match = inlineRefRegex.exec(content)) !== null) {
-        const target = match[1].replace(
-            /^__docs__\//,
-            ""
-        );
         links.push({
             text: match[1],
-            target: "./" + target,
+            target: match[1],
             line: content.substring(0, match.index).split("\n").length,
             isInlineRef: true,
         });

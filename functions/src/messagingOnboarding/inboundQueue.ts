@@ -27,6 +27,35 @@ const inboundCol = DB_COLLECTIONS.MESSAGING_ONBOARDING_INBOUND_MESSAGES;
 const MAX_INBOUND_ATTEMPTS = 5;
 const STALE_PROCESSING_MS = 10 * 60 * 1000;
 const MAX_TEXT_LENGTH = 2000;
+const INBOUND_PROCESSING_FAILED_CODE = "INBOUND_PROCESSING_FAILED";
+
+function getInboundQueueErrorContext(error: unknown): {
+  errorName: string;
+  errorCode?: string;
+} {
+  if (error instanceof Error) {
+    const code = (error as { code?: unknown }).code;
+    return {
+      errorName: (error.name || "Error").slice(0, 80),
+      ...(code === undefined || code === null ? {} : { errorCode: String(code).slice(0, 64) }),
+    };
+  }
+
+  return {
+    errorName: typeof error,
+  };
+}
+
+function getInboundQueueIdContext(
+  label: string,
+  value: unknown,
+): Record<string, boolean | number> {
+  const normalized = value === undefined || value === null ? "" : String(value);
+  return {
+    [`${label}Present`]: normalized.length > 0,
+    [`${label}Length`]: normalized.length,
+  };
+}
 
 function isAlreadyExistsError(error: unknown): boolean {
   const maybeError = error as { code?: number | string; message?: string };
@@ -91,7 +120,7 @@ export async function enqueueInboundMessage(
     sessionState: "COLLECTING_INPUT",
     userIdMasked: maskUserId(msg.userId),
     metadata: {
-      messageId,
+      ...getInboundQueueIdContext("messageId", messageId),
       messageType: msg.messageType,
       hasMedia: !!msg.media,
     },
@@ -172,7 +201,9 @@ export async function processQueuedInboundMessage(
       eventType: "INBOUND_MESSAGE_PROCESSED",
       sessionState: "COLLECTING_INPUT",
       userIdMasked: maskUserId(msg.userId),
-      metadata: { messageId },
+      metadata: {
+        ...getInboundQueueIdContext("messageId", messageId),
+      },
     });
 
     return "processed";
@@ -182,23 +213,23 @@ export async function processQueuedInboundMessage(
     const exhausted = attempts >= Number(attemptsSnapshot.data()?.maxAttempts || MAX_INBOUND_ATTEMPTS);
     const retryDelayMs = Math.min(15 * 60 * 1000, Math.pow(2, attempts) * 60 * 1000);
     const retryAt = Timestamp.fromMillis(Date.now() + retryDelayMs);
-    const errorMessage = error instanceof Error ? error.message : String(error);
+    const errorContext = getInboundQueueErrorContext(error);
 
     await messageRef.update({
       status: exhausted ? "FAILED" : "PENDING",
       nextAttemptAt: exhausted ? Timestamp.now() : retryAt,
       processingStartedAt: null,
-      lastError: errorMessage.slice(0, 500),
+      lastError: INBOUND_PROCESSING_FAILED_CODE,
       updatedAt: Timestamp.now(),
     });
 
     logger.error("[InboundQueue] Failed to process inbound message", {
-      messageId,
+      ...getInboundQueueIdContext("messageId", messageId),
       provider: msg.provider,
       userIdMasked: maskUserId(msg.userId),
       attempts,
       exhausted,
-      error: errorMessage,
+      ...errorContext,
     });
 
     logOnboardingEvent({
@@ -207,10 +238,13 @@ export async function processQueuedInboundMessage(
       eventType: "INBOUND_MESSAGE_FAILED",
       sessionState: "COLLECTING_INPUT",
       userIdMasked: maskUserId(msg.userId),
-      metadata: { messageId, attempts, exhausted },
+      metadata: {
+        ...getInboundQueueIdContext("messageId", messageId),
+        attempts,
+        exhausted,
+      },
       error: {
-        code: "INBOUND_PROCESSING_FAILED",
-        message: errorMessage.slice(0, 500),
+        code: INBOUND_PROCESSING_FAILED_CODE,
         retryable: !exhausted,
       },
     });

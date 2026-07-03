@@ -2,14 +2,13 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { LuRefreshCw } from 'react-icons/lu';
+import {
+    DEPLOYMENT_VERSION_REQUEST_POLICY,
+    readDeploymentVersionResponse,
+    type DeploymentVersionResponse,
+} from '@lib/deployment/versionResponse';
 
 const DISMISSED_BUILD_KEY = 'menulist_owner_update_dismissed_build';
-
-type VersionResponse = {
-    buildId?: string;
-    shortBuildId?: string;
-    buildCreatedAt?: string;
-};
 
 function getCurrentBuildId(): string {
     return process.env.NEXT_PUBLIC_BUILD_ID || 'unknown';
@@ -27,7 +26,7 @@ function formatBuildTime(value?: string): string {
 }
 
 export default function OwnerAppUpdatePrompt() {
-    const [serverVersion, setServerVersion] = useState<VersionResponse | null>(null);
+    const [serverVersion, setServerVersion] = useState<DeploymentVersionResponse | null>(null);
     const [isDismissed, setIsDismissed] = useState(false);
     const isCheckingRef = useRef(false);
 
@@ -44,9 +43,10 @@ export default function OwnerAppUpdatePrompt() {
         if (!isComparableBuildId(currentBuildId)) return;
         isCheckingRef.current = true;
         try {
-            const response = await fetch('/api/version', { cache: 'no-store' });
+            const response = await fetch('/api/version', DEPLOYMENT_VERSION_REQUEST_POLICY);
             if (!response.ok) return;
-            const data = await response.json() as VersionResponse;
+            const data = await readDeploymentVersionResponse(response, 'owner_update_prompt');
+            if (!data) return;
             if (!isComparableBuildId(data.buildId)) return;
 
             const dismissedBuild =

@@ -2,7 +2,13 @@
 
 **Complete documentation for the MenuListAi Projects feature**  
 **Last Updated**: January 2026  
-**Status**: ✅ Complete & Production Ready
+**Status**: Complete source documentation; not current launch certification
+
+---
+
+**Launch boundary:** This hub links Projects feature documentation and historical assessments. Do not treat a green status in an older feature document as current MenuList production-launch approval. Current release readiness must be decided from the active [production-readiness audit](../audits/menulist-production-readiness-audit.md), [production-readiness checklist](../production-readiness/README.md), [External Certification Runbook](../production-readiness/external-certification-runbook.md) evidence, and `npm run verify:menu-project-editor-boundary` for the current editor/source boundary.
+
+**Project editor boundary source gate:** `npm run verify:menu-project-editor-boundary` covers the `/projects` route, desktop project page mutations, desktop editor save/publish path, project DAL public-cache and Digital Screens invalidation, mobile menu persistence, mobile project selector acknowledgements, mobile bulk-action handoff, active docs, and sweep ledgers. It is not browser/mobile release certification.
 
 ---
 
@@ -12,16 +18,16 @@ Feature-specific documentation in standardized format (`_spec.md`, `_impl.md`, `
 
 | Feature                        | Status          | Location                                                       |
 | ------------------------------ | --------------- | -------------------------------------------------------------- |
-| **Upload & File Processing**   | ✅ Production   | [`upload-file-processing/`](./upload-file-processing/)         |
-| **AI Data Extraction**         | ✅ Production   | [`ai-data-extraction/`](./ai-data-extraction/)                 |
-| **Data Editor**                | ✅ Production   | [`data-editor/`](./data-editor/)                               |
-| **AI Image Generation**        | ✅ Production   | [`ai-image-generation/`](./ai-image-generation/)               |
-| **Description Generation**     | ✅ Production   | [`description-generation/`](./description-generation/)         |
-| **Multi-Language Translation** | ✅ Production   | [`multi-language-translation/`](./multi-language-translation/) |
-| **B2C View**                   | ✅ Production   | [`b2c-view/`](./b2c-view/)                                     |
-| **Image Editing**              | ✅ Production   | [`image-editing/`](./image-editing/)                           |
+| **Upload & File Processing**   | Implemented     | [`upload-file-processing/`](./upload-file-processing/)         |
+| **AI Data Extraction**         | Implemented     | [`ai-data-extraction/`](./ai-data-extraction/)                 |
+| **Data Editor**                | Implemented     | [`data-editor/`](./data-editor/)                               |
+| **AI Image Generation**        | Implemented     | [`ai-image-generation/`](./ai-image-generation/)               |
+| **Description Generation**     | Implemented     | [`description-generation/`](./description-generation/)         |
+| **Multi-Language Translation** | Implemented     | [`multi-language-translation/`](./multi-language-translation/) |
+| **B2C View**                   | Implemented     | [`b2c-view/`](./b2c-view/)                                     |
+| **Image Editing**              | Implemented     | [`ai-image-generation/`](./ai-image-generation/)                |
 | **B2B View**                   | ⚠️ Needs Review | [`b2b-view/`](./b2b-view/)                                     |
-| **Project Management**         | ✅ Production   | [`project-management/`](./project-management/)                 |
+| **Project Management**         | Implemented     | [`project-management/`](./project-management/)                 |
 
 **Each folder contains:**
 
@@ -49,7 +55,7 @@ Feature-specific documentation in standardized format (`_spec.md`, `_impl.md`, `
 | Folder                                          | Purpose                                      | Contents                                |
 | ----------------------------------------------- | -------------------------------------------- | --------------------------------------- |
 | **Feature folders** (e.g., `data-editor/`)      | Consolidated feature documentation           | `_spec.md`, `_impl.md`, `_marketing.md` |
-| **[`/Assessments/`](./Assessments/)**           | Production readiness assessments per feature | `ASSESSMENT-01-UPLOAD.md`               |
+| **[`/Assessments/`](./Assessments/)**           | Historical readiness assessments per feature | `assessment-01-upload.md`               |
 | **[`/development_done/`](./development_done/)** | Completed development documentation          | Implementation completion logs          |
 | **[`/Editor/`](./Editor/)**                     | Detailed editor sub-component docs           | Views, modals, hooks                    |
 | **`/` (Root)**                                  | Cross-cutting technical documentation        | Database, API, Types, Utilities         |
@@ -68,30 +74,30 @@ Feature-specific documentation in standardized format (`_spec.md`, `_impl.md`, `
 | [13-types-interfaces.md](./13-types-interfaces.md) | TypeScript definitions, type guards, examples       | ✅ Complete |
 | [14-utilities.md](./14-utilities.md)               | Helper functions, utilities                         | ✅ Complete |
 
-### **Production Readiness Assessment** 🚀
+### **Historical Readiness Assessments**
 
 #### **Phase 1: Core Infrastructure** ✅ COMPLETE
 
 | File                                                                       | Focus Area                          | Priority     | Status                  |
 | -------------------------------------------------------------------------- | ----------------------------------- | ------------ | ----------------------- |
-| [production-readiness-assessment.md](./production-readiness-assessment.md) | **Master Assessment & Action Plan** | 🟢 Ready     | ✅ **PRODUCTION READY** |
-| [ASSESSMENT-01-UPLOAD.md](./ASSESSMENT-01-UPLOAD.md)                       | File Upload & Processing Issues     | 🔴 Critical  | ✅ **COMPLETED** Nov 13 |
-| [ASSESSMENT-02-AI-EXTRACTION.md](./ASSESSMENT-02-AI-EXTRACTION.md)         | AI Cost Control & Quality           | 🔴 Critical  | ✅ **COMPLETED** Nov 14 |
-| [ASSESSMENT-03-EDITOR.md](./ASSESSMENT-03-EDITOR.md)                       | Data Editor UX & Safety             | 🔴 Critical  | ✅ **COMPLETED** Nov 14 |
-| [ASSESSMENT-04-PERFORMANCE.md](./ASSESSMENT-04-PERFORMANCE.md)             | Performance Optimization            | 🟢 Optimized | ✅ **COMPLETED** Nov 19 |
-| [ASSESSMENT-05-SECURITY.md](./ASSESSMENT-05-SECURITY.md)                   | Security Hardening                  | 🟢 Secure    | ✅ **COMPLETED** Nov 19 |
-| [ASSESSMENT-06-UX-USABILITY.md](./ASSESSMENT-06-UX-USABILITY.md)           | User Experience & Interface         | 🟢 Polished  | ✅ **COMPLETED** Nov 19 |
+| [production-readiness-assessment.md](./production-readiness-assessment.md) | **Historical Master Assessment & Action Plan** | Historical | Current launch approval requires active audit/runbook evidence |
+| [assessment-01-upload.md](./Assessments/assessment-01-upload.md)                       | File Upload & Processing Issues     | 🔴 Critical  | ✅ **COMPLETED** Nov 13 |
+| [assessment-02-ai-extraction.md](./Assessments/assessment-02-ai-extraction.md)         | AI Cost Control & Quality           | 🔴 Critical  | ✅ **COMPLETED** Nov 14 |
+| [assessment-03-editor.md](./Assessments/assessment-03-editor.md)                       | Data Editor UX & Safety             | 🔴 Critical  | ✅ **COMPLETED** Nov 14 |
+| [assessment-04-performance.md](./Assessments/assessment-04-performance.md)             | Performance Optimization            | 🟢 Optimized | ✅ **COMPLETED** Nov 19 |
+| [assessment-05-security.md](./Assessments/assessment-05-security.md)                   | Security Hardening                  | 🟢 Secure    | ✅ **COMPLETED** Nov 19 |
+| [assessment-06-ux-usability.md](./Assessments/assessment-06-ux-usability.md)           | User Experience & Interface         | 🟢 Polished  | ✅ **COMPLETED** Nov 19 |
 
 #### **Phase 2: Core Features** ✅ 67% COMPLETE
 
 | File                                                                                 | Focus Area                         | Priority    | Status                  |
 | ------------------------------------------------------------------------------------ | ---------------------------------- | ----------- | ----------------------- |
-| [ASSESSMENT-07-AI-IMAGE-GENERATION.md](./ASSESSMENT-07-AI-IMAGE-GENERATION.md)       | AI Image Generation & Cost Control | 🟡 Medium   | ✅ **COMPLETED** Nov 20 |
-| [ASSESSMENT-08-IMAGE-EDITING.md](./ASSESSMENT-08-IMAGE-EDITING.md)                   | Image Upload, Editing & Management | 🟡 Medium   | ✅ **COMPLETED** Nov 20 |
-| [ASSESSMENT-09-DESCRIPTION-GENERATION.md](./ASSESSMENT-09-DESCRIPTION-GENERATION.md) | AI Description Generation          | 🟡 Medium   | ✅ **COMPLETED** Nov 20 |
-| [ASSESSMENT-10-B2B-VIEW.md](./ASSESSMENT-10-B2B-VIEW.md)                             | B2B API Integration & JSON Editor  | 🟡 Medium   | ⏳ **NEEDS REVIEW**     |
-| [ASSESSMENT-11-B2C-VIEW.md](./ASSESSMENT-11-B2C-VIEW.md)                             | B2C Menu Builder & Customer UI     | 🔴 Critical | ⏳ **NEEDS REVIEW**     |
-| [ASSESSMENT-12-PROJECT-MANAGEMENT.md](./ASSESSMENT-12-PROJECT-MANAGEMENT.md)         | Project CRUD & Multi-Tenant Safety | 🔴 Critical | ✅ **COMPLETED** Nov 20 |
+| [assessment-07-ai-image-generation.md](./Assessments/assessment-07-ai-image-generation.md)       | AI Image Generation & Cost Control | 🟡 Medium   | ✅ **COMPLETED** Nov 20 |
+| [assessment-08-image-editing.md](./Assessments/assessment-08-image-editing.md)                   | Image Upload, Editing & Management | 🟡 Medium   | ✅ **COMPLETED** Nov 20 |
+| [assessment-09-description-generation.md](./Assessments/assessment-09-description-generation.md) | AI Description Generation          | 🟡 Medium   | ✅ **COMPLETED** Nov 20 |
+| [assessment-10-b2b-view.md](./Assessments/assessment-10-b2b-view.md)                             | B2B API Integration & JSON Editor  | 🟡 Medium   | ⏳ **NEEDS REVIEW**     |
+| [assessment-11-b2c-view.md](./Assessments/assessment-11-b2c-view.md)                             | B2C Menu Builder & Customer UI     | 🔴 Critical | ⏳ **NEEDS REVIEW**     |
+| [assessment-12-project-management.md](./Assessments/assessment-12-project-management.md)         | Project CRUD & Multi-Tenant Safety | 🔴 Critical | ✅ **COMPLETED** Nov 20 |
 
 **Latest Update**: Nov 20, 2025 - Phase 1 complete (100%). Phase 2 now 67% complete (4/6 assessments done). Remaining: B2B View and B2C View assessments. All critical AI security features implemented. 🎯
 
@@ -281,20 +287,20 @@ convertPdfToImages(); // PDF conversion
 
 | Feature                  | Status        | Documentation                                     |
 | ------------------------ | ------------- | ------------------------------------------------- |
-| File Upload & Processing | ✅ Production | [01-UPLOAD](./01-UPLOAD-FILE-PROCESSING.md)       |
-| AI Data Extraction       | ✅ Production | [02-AI-EXTRACTION](./02-AI-DATA-EXTRACTION.md)    |
-| Multi-Language           | ✅ Production | [03-MULTI-LANGUAGE](./03-MULTI-LANGUAGE.md)       |
-| Data Editor              | ✅ Production | [04-DATA-EDITOR](./04-DATA-EDITOR.md)             |
-| AI Image Generation      | ✅ Production | [05-IMAGE-GEN](./05-AI-IMAGE-GENERATION.md)       |
-| Image Management         | ✅ Production | [06-IMAGE-MGMT](./06-IMAGE-EDITING-UPLOAD.md)     |
-| Description Generation   | ✅ Production | [07-DESCRIPTIONS](./07-DESCRIPTION-GENERATION.md) |
-| B2B View (JSON)          | ✅ Production | [08-B2B-VIEW](./08-B2B-VIEW.md)                   |
-| B2C View (Visual)        | ✅ Production | [09-B2C-VIEW](./09-B2C-VIEW.md)                   |
-| Project Management       | ✅ Production | [10-PROJECT-MGMT](./10-PROJECT-MANAGEMENT.md)     |
-| Database Layer           | ✅ Production | [11-DATABASE](./11-database-layer.md)             |
-| API Routes               | ✅ Production | [12-API-ROUTES](./12-api-routes.md)               |
-| Types & Interfaces       | ✅ Production | [13-TYPES](./13-types-interfaces.md)              |
-| Utilities                | ✅ Production | [14-UTILITIES](./14-utilities.md)                 |
+| File Upload & Processing | Implemented | [Upload File Processing](./upload-file-processing/README.md) |
+| AI Data Extraction       | Implemented | [AI Data Extraction](./ai-data-extraction/README.md) |
+| Multi-Language           | Implemented | [Multi-Language Translation](./multi-language-translation/README.md) |
+| Data Editor              | Implemented | [Data Editor](./data-editor/README.md) |
+| AI Image Generation      | Implemented | [AI Image Generation](./ai-image-generation/README.md) |
+| Image Management         | Implemented | [AI Image Generation](./ai-image-generation/README.md) |
+| Description Generation   | Implemented | [Description Generation](./description-generation/README.md) |
+| B2B View (JSON)          | Needs review | [B2B View](./b2b-view/README.md) |
+| B2C View (Visual)        | Implemented | [B2C View](./b2c-view/README.md) |
+| Project Management       | Implemented | [Project Management](./project-management/README.md) |
+| Database Layer           | Implemented | [Database Layer](./11-database-layer.md) |
+| API Routes               | Implemented | [API Routes](./12-api-routes.md) |
+| Types & Interfaces       | Implemented | [Types](./13-types-interfaces.md) |
+| Utilities                | Implemented | [14-UTILITIES](./14-utilities.md)                 |
 
 ---
 

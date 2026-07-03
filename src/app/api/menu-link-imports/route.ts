@@ -11,16 +11,27 @@ import {
     MENU_EXTRACTION_SOURCES,
 } from '@data/shared/menuExtractionJob';
 import { firestoreAdmin, storageAdmin } from '@lib/firebase/firebaseAdmin';
-import { acquireMenuLinkSource, MenuLinkImportError } from '@lib/menu-link-import/sourceAcquisition';
+import {
+    getBoundedMenuProcessingStringContext,
+    getMenuProcessingProjectLogContext,
+    logMenuProcessingDiagnostic,
+    logMenuProcessingFailure,
+} from '@lib/firebase/menuProcessingDiagnostics';
+import {
+    acquireMenuLinkSource,
+    getMenuLinkImportClientMessage,
+    MenuLinkImportError,
+} from '@lib/menu-link-import/sourceAcquisition';
 import { checkSafeMode } from '@lib/ops/safeMode';
 import { checkRateLimit } from '@lib/rateLimit';
 import { getRateLimitForFeature } from '@lib/rateLimit/configs';
-import { secureError, secureLog } from '@lib/security/secureLogger';
+import { readBoundedJsonBody } from '@lib/security/boundedRequestBody';
 import { STORAGE_CACHE_CONTROL } from '@lib/storage/cacheControl';
 import crypto from 'crypto';
 import { Timestamp } from 'firebase-admin/firestore';
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyTenantAccess, withAuth } from 'src/middleware/auth';
+import { hashPublicRateLimitValue } from 'src/middleware/publicApi';
 import { z } from 'zod';
 
 const RequestSchema = z.object({
@@ -30,6 +41,9 @@ const RequestSchema = z.object({
 });
 
 const ACTIVE_JOB_STATUSES = ['pending', 'processing', 'preview_ready'];
+const MENU_LINK_IMPORT_MAX_BODY_BYTES = 8 * 1024;
+const MENU_LINK_IMPORT_STORAGE_CLEANUP_FAILED = 'menu_link_import_storage_cleanup_failed';
+const MENU_LINK_IMPORT_ARTIFACT_CLEANUP_FAILED = 'menu_link_import_artifact_cleanup_failed';
 
 function resolveTargetLanguages(projectData: any): Array<{ code: string; name: string }> {
     const codes = Array.isArray(projectData?.languages) && projectData.languages.length
@@ -73,6 +87,36 @@ function buildDownloadUrl(bucketName: string, storagePath: string, token: string
     return `https://firebasestorage.googleapis.com/v0/b/${bucketName}/o/${encodeURIComponent(storagePath)}?alt=media&token=${token}`;
 }
 
+async function deleteMenuLinkImportStoragePath(
+    storagePath: string,
+    context: { cleanupReason: string; projectId: string },
+): Promise<void> {
+    try {
+        await storageAdmin.bucket().file(storagePath).delete({ ignoreNotFound: true });
+    } catch (error) {
+        logMenuProcessingFailure(MENU_LINK_IMPORT_STORAGE_CLEANUP_FAILED, error, {
+            ...getMenuProcessingProjectLogContext(context.projectId),
+            ...getBoundedMenuProcessingStringContext('storagePath', storagePath),
+            cleanupReason: context.cleanupReason,
+        });
+    }
+}
+
+async function deleteMenuLinkImportArtifactDoc(
+    artifactRef: FirebaseFirestore.DocumentReference,
+    context: { cleanupReason: string; projectId: string },
+): Promise<void> {
+    try {
+        await artifactRef.delete();
+    } catch (error) {
+        logMenuProcessingFailure(MENU_LINK_IMPORT_ARTIFACT_CLEANUP_FAILED, error, {
+            ...getMenuProcessingProjectLogContext(context.projectId),
+            ...getBoundedMenuProcessingStringContext('artifactId', artifactRef.id),
+            cleanupReason: context.cleanupReason,
+        });
+    }
+}
+
 export const POST = withAuth(async (request: NextRequest, session) => {
     if (!FEATURE_FLAGS.ENABLE_MENU_LINK_IMPORT) {
         return NextResponse.json(
@@ -84,21 +128,6 @@ export const POST = withAuth(async (request: NextRequest, session) => {
     const safeModeResponse = await checkSafeMode();
     if (safeModeResponse) return safeModeResponse;
 
-    let body: unknown;
-    try {
-        body = await request.json();
-    } catch {
-        return NextResponse.json({ success: false, error: 'Invalid JSON' }, { status: 400 });
-    }
-
-    const validation = RequestSchema.safeParse(body);
-    if (!validation.success) {
-        return NextResponse.json(
-            { success: false, error: 'Check the menu link and permission confirmation.' },
-            { status: 400 },
-        );
-    }
-
     const ids = {
         tId: String(session.tId || ''),
         sId: String(session.sId || ''),
@@ -109,8 +138,11 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         return NextResponse.json({ success: false, error: 'Forbidden' }, { status: 403 });
     }
 
+    const userRateLimitHash = hashPublicRateLimitValue(ids.uId);
+    const tenantRateLimitHash = hashPublicRateLimitValue(ids.tId);
+    const storeRateLimitHash = hashPublicRateLimitValue(ids.sId);
     const rateLimit = await checkRateLimit({
-        key: `menu-link-import:${ids.uId}:${ids.tId}:${ids.sId}`,
+        key: `menu-link-import:${userRateLimitHash}:${tenantRateLimitHash}:${storeRateLimitHash}`,
         ...getRateLimitForFeature('MENU_LINK_IMPORT'),
     });
     if (!rateLimit.allowed) {
@@ -118,6 +150,17 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         return NextResponse.json(
             { success: false, error: 'Too many import attempts. Please wait before trying again.', retryAfter: waitSeconds },
             { status: 429, headers: { 'Retry-After': String(waitSeconds) } },
+        );
+    }
+
+    const bodyResult = await readBoundedJsonBody(request, MENU_LINK_IMPORT_MAX_BODY_BYTES);
+    if (bodyResult.ok === false) return bodyResult.response;
+
+    const validation = RequestSchema.safeParse(bodyResult.data);
+    if (!validation.success) {
+        return NextResponse.json(
+            { success: false, error: 'Check the menu link and permission confirmation.' },
+            { status: 400 },
         );
     }
 
@@ -195,7 +238,8 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             size: acquisition.size,
             sourceContentType: acquisition.sourceContentType,
             sourceKind: acquisition.sourceKind,
-            sourceTextPreview: acquisition.sourceTextPreview || null,
+            sourceTextLength: acquisition.sourceTextLength || 0,
+            sourceTextPresent: Boolean(acquisition.sourceTextPresent),
             sourceUrl: url.trim(),
             storagePath,
             tId: ids.tId,
@@ -239,11 +283,11 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         });
         jobDocCreated = true;
 
-        secureLog('[MenuLinkImport] Job created', {
-            artifactId: artifactRef.id,
-            jobId: jobRef.id,
-            projectId,
-            sourceKind: acquisition.sourceKind,
+        logMenuProcessingDiagnostic('menu_link_import_job_created', {
+            ...getMenuProcessingProjectLogContext(projectId),
+            ...getBoundedMenuProcessingStringContext('artifactId', artifactRef.id),
+            ...getBoundedMenuProcessingStringContext('jobId', jobRef.id),
+            ...getBoundedMenuProcessingStringContext('sourceKind', acquisition.sourceKind),
         });
 
         return NextResponse.json({
@@ -253,25 +297,36 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         });
     } catch (error) {
         if (error instanceof MenuLinkImportError) {
-            secureLog('[MenuLinkImport] Source rejected', {
-                code: error.code,
-                projectId,
-                status: error.status,
+            logMenuProcessingDiagnostic('menu_link_import_source_rejected', {
+                ...getMenuProcessingProjectLogContext(projectId),
+                ...getBoundedMenuProcessingStringContext('sourceErrorCode', error.code),
+                sourceStatusCode: error.status,
             });
             return NextResponse.json(
-                { success: false, error: error.message, code: error.code },
+                { success: false, error: getMenuLinkImportClientMessage(error), code: error.code },
                 { status: error.status },
             );
         }
 
         if (!jobDocCreated) {
-            await Promise.allSettled(createdStoragePaths.map((path) => storageAdmin.bucket().file(path).delete({ ignoreNotFound: true })));
+            await Promise.all(createdStoragePaths.map((path) => deleteMenuLinkImportStoragePath(path, {
+                cleanupReason: 'job_create_failed',
+                projectId,
+            })));
             if (artifactDocCreated && artifactRefForCleanup) {
-                await artifactRefForCleanup.delete().catch(() => undefined);
+                await deleteMenuLinkImportArtifactDoc(artifactRefForCleanup, {
+                    cleanupReason: 'job_create_failed',
+                    projectId,
+                });
             }
         }
 
-        secureError('[MenuLinkImport] Import failed', error as Error, { projectId });
+        logMenuProcessingFailure('menu_link_import_route_failed', error, {
+            ...getMenuProcessingProjectLogContext(projectId),
+            artifactDocCreated,
+            jobDocCreated,
+            storagePathCount: createdStoragePaths.length,
+        });
         return NextResponse.json(
             { success: false, error: 'We could not read this menu link. Upload a photo/PDF or add the menu manually.' },
             { status: 500 },

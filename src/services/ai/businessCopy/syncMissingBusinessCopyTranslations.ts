@@ -1,7 +1,7 @@
 import { getStoreManagedLanguages, getStorePreferredLanguage } from '@lib/localization/storeContent';
 import { getLocalizedDraftStringList, getPrimaryLocalizedLanguage, getLocalizedText, toLocalizedStringList, toLocalizedText } from '@lib/localization/text';
-import { logger } from '@lib/monitoring/logger';
 import { LanguageType } from '../../../components/templates/main-app/projects/types/common.types';
+import { getBoundedAiServiceStringContext, logAiServiceDiagnostic, logAiServiceFailure } from '../aiServiceDiagnostics';
 import {
     clampValue,
     FIELD_LIMITS,
@@ -13,6 +13,37 @@ import {
 } from './localizeBusinessCopyResult';
 import { BusinessCopyLocalizedFieldKey, getBusinessCopyFieldConfigs } from './fieldConfig';
 import { computeBusinessCopyCoverage } from './translationCoverage';
+
+const BUSINESS_COPY_TRANSLATION_REPAIR_NOOP = 'ai_business_copy_translation_repair_noop';
+const BUSINESS_COPY_TRANSLATION_REPAIR_STARTED = 'ai_business_copy_translation_repair_started';
+const BUSINESS_COPY_TRANSLATION_REPAIR_EMPTY_RESULT = 'ai_business_copy_translation_repair_empty_result';
+const BUSINESS_COPY_TRANSLATION_REPAIR_SUCCEEDED = 'ai_business_copy_translation_repair_succeeded';
+
+const getTranslationRepairLogContext = ({
+    localizedFieldCount,
+    missingFieldCount,
+    projectId,
+    referenceLanguage,
+    repairableGapCount,
+    storeDetails,
+    targetLanguageCount,
+}: {
+    localizedFieldCount?: number;
+    missingFieldCount?: number;
+    projectId?: string;
+    referenceLanguage?: string;
+    repairableGapCount?: number;
+    storeDetails?: any;
+    targetLanguageCount?: number;
+}) => ({
+    ...getBoundedAiServiceStringContext('projectId', projectId),
+    ...getBoundedAiServiceStringContext('storeId', storeDetails?.storeId),
+    ...getBoundedAiServiceStringContext('referenceLanguage', referenceLanguage),
+    localizedFieldCount,
+    missingFieldCount,
+    repairableGapCount,
+    targetLanguageCount,
+});
 
 export default async function syncMissingBusinessCopyTranslations({
     includePwaShortName = true,
@@ -57,11 +88,17 @@ export default async function syncMissingBusinessCopyTranslations({
         if (coverage.repairableGapCount > 0) {
             throw new Error('Business copy translation repair failed: source copy is unavailable.');
         }
-        logger.info('Business copy translation repair no-op', {
-            projectId,
+        logAiServiceDiagnostic(BUSINESS_COPY_TRANSLATION_REPAIR_NOOP, {
+            ...getTranslationRepairLogContext({
+                missingFieldCount: coverage.missingFieldCount,
+                projectId,
+                referenceLanguage,
+                repairableGapCount: coverage.repairableGapCount,
+                storeDetails,
+                targetLanguageCount: 0,
+            }),
             reason: 'no-source-payload',
-            storeId: storeDetails?.storeId,
-        });
+        }, { developmentOnly: true });
         return null;
     }
 
@@ -75,24 +112,28 @@ export default async function syncMissingBusinessCopyTranslations({
         if (coverage.repairableGapCount > 0) {
             throw new Error('Business copy translation repair failed: target languages could not be resolved.');
         }
-        logger.info('Business copy translation repair no-op', {
-            missingFieldCount: coverage.missingFieldCount,
-            projectId,
+        logAiServiceDiagnostic(BUSINESS_COPY_TRANSLATION_REPAIR_NOOP, {
+            ...getTranslationRepairLogContext({
+                missingFieldCount: coverage.missingFieldCount,
+                projectId,
+                referenceLanguage,
+                repairableGapCount: coverage.repairableGapCount,
+                storeDetails,
+                targetLanguageCount: 0,
+            }),
             reason: 'no-missing-target-languages',
-            repairableGapCount: coverage.repairableGapCount,
-            storeId: storeDetails?.storeId,
-        });
+        }, { developmentOnly: true });
         return null;
     }
 
-    logger.info('Business copy translation repair started', {
+    logAiServiceDiagnostic(BUSINESS_COPY_TRANSLATION_REPAIR_STARTED, getTranslationRepairLogContext({
         missingFieldCount: coverage.missingFieldCount,
         projectId,
         referenceLanguage,
         repairableGapCount: coverage.repairableGapCount,
-        storeId: storeDetails?.storeId,
-        targetLanguages: targetLanguages.map((language) => language.code),
-    });
+        storeDetails,
+        targetLanguageCount: targetLanguages.length,
+    }), { developmentOnly: true });
 
     const translatedByLanguage = await translateBatch({
         fileId: `business-copy-coverage-${storeDetails?.storeId || 'store'}-batch`,
@@ -110,13 +151,13 @@ export default async function syncMissingBusinessCopyTranslations({
     });
 
     if (!translatedByLanguage) {
-        logger.warn('Business copy translation repair returned empty translation result', {
+        logAiServiceFailure(BUSINESS_COPY_TRANSLATION_REPAIR_EMPTY_RESULT, undefined, getTranslationRepairLogContext({
             projectId,
             referenceLanguage,
             repairableGapCount: coverage.repairableGapCount,
-            storeId: storeDetails?.storeId,
-            targetLanguages: targetLanguages.map((language) => language.code),
-        });
+            storeDetails,
+            targetLanguageCount: targetLanguages.length,
+        }));
         throw new Error('Business copy translation repair failed.');
     }
 
@@ -154,14 +195,14 @@ export default async function syncMissingBusinessCopyTranslations({
         });
     });
 
-    logger.info('Business copy translation repair succeeded', {
+    logAiServiceDiagnostic(BUSINESS_COPY_TRANSLATION_REPAIR_SUCCEEDED, getTranslationRepairLogContext({
         localizedFieldCount: Object.keys(localized).length,
         projectId,
         referenceLanguage,
         repairableGapCount: coverage.repairableGapCount,
-        storeId: storeDetails?.storeId,
-        targetLanguages: targetLanguages.map((language) => language.code),
-    });
+        storeDetails,
+        targetLanguageCount: targetLanguages.length,
+    }), { developmentOnly: true });
 
     return localized;
 }

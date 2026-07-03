@@ -1,9 +1,9 @@
 # Answerlattice — Founder Onboarding (Knowledge Bootstrap Engine)
 
-> **Status:** DOCUMENTED — Implementation Pending
+> **Status:** Implemented
 > **Version:** 1.0.0
 > **Created:** 2026-03-09
-> **Last Updated:** 2026-03-09
+> **Last Updated:** 2026-06-28
 > **Feature Flag:** `ENABLE_ANSWERLATTICE_FOUNDER_ONBOARDING`
 > **Expansion Tracker:** Item #6
 > **Tier:** A — Required for ICP Adoption
@@ -33,6 +33,8 @@ After KB job publishes (existing pipeline):
 3. **Auto-generate provisional canonical answer drafts** from article content
 4. **Place drafts in review queue** (mutation proposals with `draftStatus: generated`)
 5. **Track onboarding progress** via metrics on the KB generation job
+
+Bootstrap diagnostics use fixed failure codes and bounded source-error metadata. Failed job progress stores a fixed `onboardingBootstrap.errorMessage` code instead of raw exception text. If the failed-status marker write itself fails, the function logs `ANSWERLATTICE_BOOTSTRAP_JOB_STATUS_MARK_FAILED` and still returns the fixed scheduler-facing tenant failure code.
 
 The founder's AI support works immediately via RAG. The canonical layer bootstraps in the background. Founder reviews and approves gradually.
 

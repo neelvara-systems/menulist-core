@@ -1,6 +1,6 @@
 'use client'
 
-import { getFeedbackList } from '@database/guestFeedback';
+import { assertFeedbackListLoadSucceeded, getFeedbackList } from '@database/guestFeedback';
 import { getStoreContextName } from '@lib/businessIdentity/names';
 import { generateOBPUrl } from '@lib/obp/generateOBPUrl';
 import { getFeedbackUrl } from '@lib/utils/feedbackQrCode';
@@ -19,6 +19,12 @@ import MobileQrCodeSheet from '../components/MobileQrCodeSheet';
 import MobileSettingsScreenHeader from '../components/MobileSettingsScreenHeader';
 import { useMobileProjects } from '../providers/MobileProjectsProvider';
 import type { MobileFeedbackItemType as FeedbackItem } from '../types';
+import {
+    getBoundedMobileOwnerStringContext,
+    getMobileOwnerStoreLogContext,
+    logMobileOwnerFailure,
+    type MobileOwnerLogContext,
+} from '../utils/mobileOwnerDiagnostics';
 import { openMobilePublicLink } from '../utils/openMobilePublicLink';
 
 const MobileFeedbackDetail = dynamic(() => import('./MobileFeedbackDetail'), { ssr: false });
@@ -28,11 +34,67 @@ interface MobileFeedbackScreenProps {
 }
 
 const DEFAULT_FEEDBACK_FILTER: 'all' | 'needs_attention' | 'resolved' = 'all';
+const MOBILE_FEEDBACK_LINK_COPY_UNAVAILABLE = 'mobile_feedback_link_copy_unavailable';
+const MOBILE_FEEDBACK_LINK_COPY_FALLBACK_FAILED = 'mobile_feedback_link_copy_fallback_failed';
 
 const FEEDBACK_LIST_CARD_STYLE = {
     borderRadius: 20,
     overflow: 'hidden' as const,
 };
+
+function hasMobileFeedbackClipboardWrite(): boolean {
+    return typeof navigator !== 'undefined' && typeof navigator.clipboard?.writeText === 'function';
+}
+
+function hasMobileFeedbackCopyFallback(): boolean {
+    return typeof document !== 'undefined'
+        && Boolean(document.body)
+        && typeof document.createElement === 'function'
+        && typeof document.execCommand === 'function';
+}
+
+async function copyMobileFeedbackLinkToClipboard(feedbackUrl: string): Promise<void> {
+    let clipboardWriteError: unknown;
+
+    if (hasMobileFeedbackClipboardWrite()) {
+        try {
+            await navigator.clipboard.writeText(feedbackUrl);
+            return;
+        } catch (error) {
+            clipboardWriteError = error;
+        }
+    }
+
+    if (!hasMobileFeedbackCopyFallback()) {
+        throw Object.assign(new Error(MOBILE_FEEDBACK_LINK_COPY_UNAVAILABLE), {
+            code: MOBILE_FEEDBACK_LINK_COPY_UNAVAILABLE,
+            clipboardWriteRejected: Boolean(clipboardWriteError),
+        });
+    }
+
+    const textarea = document.createElement('textarea');
+    textarea.value = feedbackUrl;
+    textarea.readOnly = true;
+    textarea.setAttribute('aria-hidden', 'true');
+    textarea.style.position = 'fixed';
+    textarea.style.left = '-9999px';
+    textarea.style.top = '0';
+
+    document.body.appendChild(textarea);
+    textarea.select();
+    textarea.setSelectionRange(0, textarea.value.length);
+
+    try {
+        const copied = document.execCommand('copy');
+        if (!copied) {
+            throw Object.assign(new Error(MOBILE_FEEDBACK_LINK_COPY_FALLBACK_FAILED), {
+                code: MOBILE_FEEDBACK_LINK_COPY_FALLBACK_FAILED,
+            });
+        }
+    } finally {
+        document.body.removeChild(textarea);
+    }
+}
 
 export default function MobileFeedbackScreen({ onBack }: MobileFeedbackScreenProps) {
     const t = useTranslations('FeedbackInbox');
@@ -57,6 +119,10 @@ export default function MobileFeedbackScreen({ onBack }: MobileFeedbackScreenPro
         try {
             setIsLoading(true);
             const result = await getFeedbackList(targetFilter, 50);
+            assertFeedbackListLoadSucceeded(
+                result,
+                'mobile_feedback_list_load_rejected',
+            );
             const items: FeedbackItem[] = (result?.items || []).map((fb: any) => ({
                 createdAt: fb.createdOn?.toDate?.()?.toISOString?.() || '',
                 customerName: fb.customerName || 'Anonymous',
@@ -70,11 +136,15 @@ export default function MobileFeedbackScreen({ onBack }: MobileFeedbackScreenPro
             }));
             setFeedbackList(items);
         } catch (err) {
-            console.error('Failed to load feedback:', err);
+            logMobileOwnerFailure('mobile_feedback_load_failed', err, {
+                ...getMobileOwnerStoreLogContext(storeDetails?.storeId, storeDetails?.tenantId),
+                ...getBoundedMobileOwnerStringContext('filter', targetFilter),
+                hasSelectedProject: Boolean(selectedProjectId),
+            });
         } finally {
             setIsLoading(false);
         }
-    }, [filter]);
+    }, [filter, selectedProjectId, storeDetails?.storeId, storeDetails?.tenantId]);
 
     useEffect(() => {
         if (storeDetails?.storeId) {
@@ -106,33 +176,76 @@ export default function MobileFeedbackScreen({ onBack }: MobileFeedbackScreenPro
     const feedbackQrUrl = selectedProjectId ? getFeedbackUrl(selectedProjectId, 'feedback_qr', publicBaseUrl) : '';
     const feedbackEnabled = storeDetails?.feedbackEnabled !== false;
     const feedbackReady = feedbackEnabled && Boolean(selectedProjectId);
+    const buildFeedbackLinkLogContext = useCallback((
+        flow: string,
+        metadata: MobileOwnerLogContext = {},
+    ): MobileOwnerLogContext => ({
+        surface: 'mobile_feedback',
+        flow,
+        ...getMobileOwnerStoreLogContext(storeDetails?.storeId, storeDetails?.tenantId),
+        ...getBoundedMobileOwnerStringContext('selectedProjectId', selectedProjectId),
+        ...getBoundedMobileOwnerStringContext('feedbackUrl', feedbackUrl),
+        ...getBoundedMobileOwnerStringContext('feedbackQrUrl', feedbackQrUrl),
+        feedbackEnabled,
+        feedbackReady,
+        hasSelectedProjectSummary: Boolean(selectedProjectSummary),
+        isSpecialMenu: selectedProjectSummary?.isSpecialMenu === true,
+        projectCount: projectsList.length,
+        supportsNativeShare,
+        ...metadata,
+    }), [
+        feedbackEnabled,
+        feedbackQrUrl,
+        feedbackReady,
+        feedbackUrl,
+        projectsList.length,
+        selectedProjectId,
+        selectedProjectSummary,
+        storeDetails?.storeId,
+        storeDetails?.tenantId,
+        supportsNativeShare,
+    ]);
 
     const handleCopyFeedbackLink = async () => {
         if (!feedbackUrl) return;
         try {
-            await navigator.clipboard.writeText(feedbackUrl);
+            await copyMobileFeedbackLinkToClipboard(feedbackUrl);
             Toast.show({ content: t('linkCopied'), duration: 1500 });
-        } catch {
+        } catch (error) {
+            logMobileOwnerFailure('mobile_feedback_link_copy_failed', error, buildFeedbackLinkLogContext('copy_feedback_link', {
+                hasClipboardWrite: hasMobileFeedbackClipboardWrite(),
+                hasCopyFallback: hasMobileFeedbackCopyFallback(),
+            }));
             Toast.show({ content: t('failedToUpdate'), duration: 1500 });
         }
     };
 
     const handleOpenFeedbackLink = () => {
         if (!feedbackUrl) return;
-        openMobilePublicLink(feedbackUrl);
+        openMobilePublicLink(feedbackUrl, {
+            flow: 'feedback_link_open',
+            metadata: buildFeedbackLinkLogContext('open_feedback_link'),
+            source: 'mobile_feedback',
+        });
     };
 
     const handleNativeShare = async () => {
         if (!feedbackUrl || typeof navigator === 'undefined' || typeof navigator.share !== 'function') return;
 
+        const shareText = t('feedbackQrDesc');
+        const shareTitle = t('feedbackQrTitle');
         try {
             await navigator.share({
-                text: t('feedbackQrDesc'),
-                title: t('feedbackQrTitle'),
+                text: shareText,
+                title: shareTitle,
                 url: feedbackUrl,
             });
         } catch (error) {
             if (error instanceof DOMException && error.name === 'AbortError') return;
+            logMobileOwnerFailure('mobile_feedback_native_share_failed', error, buildFeedbackLinkLogContext('native_share_feedback_link', {
+                ...getBoundedMobileOwnerStringContext('shareText', shareText),
+                ...getBoundedMobileOwnerStringContext('shareTitle', shareTitle),
+            }));
             Toast.show({ content: t('failedToUpdate'), duration: 1500 });
         }
     };
@@ -303,6 +416,7 @@ export default function MobileFeedbackScreen({ onBack }: MobileFeedbackScreenPro
                 activePlanType={(storeDetails as any)?.activePlanType}
                 copyErrorMessage={t('failedToUpdate')}
                 copySuccessMessage={t('linkCopied')}
+                diagnosticSource="mobile_feedback_qr"
                 downloadSuccessMessage={t('qrDownloaded')}
                 filename={buildQrCodeFilename(getStoreContextName(storeDetails as any, 'feedback'), 'feedback-qr')}
                 generatingLabel={t('generatingQr')}

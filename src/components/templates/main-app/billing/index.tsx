@@ -7,11 +7,12 @@ import { AIEnhancementPack, Plan } from '@data/common';
 import { aiEnhancementPacksList, getB2BPlansList, getB2CPlansList } from '@data/PlatformPlansList';
 import { getActiveSubscriptionForStore } from '@database/subscriptions';
 import { getBillingHistoryForStore } from '@database/subscriptions/paymentTransactions';
+import { getBoundedPaymentStringContext, logPaymentFailure } from '@hook/paymentDiagnostics';
 import { useAppDispatch } from '@hook/useAppDispatch';
 import usePaymentHandler from '@hook/usePaymentHandler';
+import { AUTH_ACCOUNT_REQUEST_POLICY } from '@lib/auth/accountClientResponses';
 import { refreshFirebaseAuthClaims } from '@lib/auth/firebaseAuthSync';
 import { formatBillingHistoryEvents } from '@lib/billing/billingHistoryFormatter';
-import { logger } from '@lib/monitoring/logger';
 import { getAccessibleStoreSummaries } from '@lib/multiOutlet/storeSwitchAccess';
 import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from '@providers/platformProviders/platformGlobalDataProvider';
 import { startLoader, stopLoader } from '@reduxSlices/loader';
@@ -55,6 +56,14 @@ function BillingPage() {
     const [isPricingModalOpen, setIsPricingModalOpen] = useState<{ action: "upgrade" | "new"; active: boolean }>({ action: "upgrade", active: false });
     const [isCreditsModalOpen, setIsCreditsModalOpen] = useState(false);
     const { onUpgradePlan, onClickPaymentCard, handleTopupPurchase } = usePaymentHandler(dispatch);
+    const buildBillingPaymentLogContext = (flow: string, metadata: Record<string, unknown> = {}) => ({
+        surface: 'desktop_billing',
+        flow,
+        hasActiveSubscription: Boolean(activeSubscription),
+        billingStoreIdPresent: Boolean(billingStoreId),
+        ...getBoundedPaymentStringContext('subscriptionId', activeSubscription?.providerSubscriptionId),
+        ...metadata,
+    });
     const [isSubscriptionFetching, setIsSubscriptionFetching] = useState(false)
     const [isAddingPaidLocation, setIsAddingPaidLocation] = useState(false);
     const [showConfetti, setShowConfetti] = useState(false);
@@ -122,7 +131,10 @@ function BillingPage() {
             setActiveSubscription(subscription);
             setBillingHistory([]);
         } catch (error) {
-            logger.error('Error fetching subscription data', error);
+            logPaymentFailure('payment_desktop_billing_subscription_refetch_failed', error, buildBillingPaymentLogContext('subscription_refetch', {
+                ...getBoundedPaymentStringContext('billingStoreId', billingStoreId),
+                ...getBoundedPaymentStringContext('historyStoreId', effectiveHistoryStoreId),
+            }));
             message.error(t('failedToLoadSubscription'));
         } finally {
             dispatch(stopLoader("Fetching subscription data"));
@@ -131,26 +143,33 @@ function BillingPage() {
     };
 
     const handleBillingStoreChange = async (targetStoreId: number) => {
-        if (targetStoreId === loginStoreId) {
-            if (loginStoreId) await refreshFirebaseAuthClaims(loginStoreId);
-            setActiveStoreContext(null);
-            return;
-        }
-
         try {
+            if (targetStoreId === loginStoreId) {
+                if (loginStoreId) await refreshFirebaseAuthClaims(loginStoreId);
+                setActiveStoreContext(null);
+                return;
+            }
+
             const res = await fetch('/api/auth/switch-store', {
+                ...AUTH_ACCOUNT_REQUEST_POLICY,
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ targetStoreId }),
             });
             if (!res.ok) {
-                const data = await res.json().catch(() => ({}));
-                throw new Error(data.error || 'Store switch failed');
+                const switchError = new Error('billing_store_switch_rejected') as Error & { status?: number };
+                switchError.status = res.status;
+                throw switchError;
             }
             await refreshFirebaseAuthClaims(targetStoreId);
             setActiveStoreContext(targetStoreId);
-        } catch (error: any) {
-            message.error(error?.message || 'Store switch failed');
+        } catch (error) {
+            logPaymentFailure('payment_desktop_billing_store_switch_failed', error, buildBillingPaymentLogContext('store_switch', {
+                returningToLoginStore: targetStoreId === loginStoreId,
+                ...getBoundedPaymentStringContext('targetStoreId', targetStoreId),
+                ...getBoundedPaymentStringContext('loginStoreId', loginStoreId),
+            }));
+            message.error('Store switch failed');
         }
     };
 
@@ -163,7 +182,9 @@ function BillingPage() {
             setIsSuccessModalOpen({ active: true, paymentDetails: { paymentResponse, ...newPlan } });
         } catch (error) {
             message.error(t('paymentFailed'));
-            logger.error('Payment flow failed in handleConfirmUpgrade', error);
+            logPaymentFailure('payment_desktop_billing_upgrade_failed', error, buildBillingPaymentLogContext('confirm_upgrade', {
+                ...getBoundedPaymentStringContext('planId', newPlan.planId),
+            }));
         } finally {
             setIsPricingModalOpen({ active: false, action: "upgrade" });
             dispatch(stopLoader("Upgrading Plan"));
@@ -188,7 +209,10 @@ function BillingPage() {
             await refetchActiveSubscription();
         } catch (error) {
             message.error(t('paymentFailed'));
-            logger.error('Location capacity payment failed in handleAddPaidLocation', error);
+            logPaymentFailure('payment_desktop_billing_paid_location_failed', error, buildBillingPaymentLogContext('add_paid_location', {
+                ...getBoundedPaymentStringContext('planId', currentSubscriptionPlan.planId),
+                quantity: nextPaidLocationCount,
+            }));
         } finally {
             dispatch(stopLoader("Adding paid location"));
             setIsAddingPaidLocation(false);
@@ -213,7 +237,9 @@ function BillingPage() {
                 : previous);
         } catch (error) {
             message.error(t('enhancementsFailed'));
-            logger.error('Enhancement pack purchase failed in handleCreditsPurchase', error);
+            logPaymentFailure('payment_desktop_billing_credit_pack_failed', error, buildBillingPaymentLogContext('credit_pack_purchase', {
+                ...getBoundedPaymentStringContext('packId', packId),
+            }));
         } finally {
             setIsCreditsModalOpen(false);
         }
@@ -321,7 +347,13 @@ function BillingPage() {
             {activeSubscription ? (
                 <>
                     <ActiveSubscriptionCard activeSubscription={activeSubscription} refetchActiveSubscription={refetchActiveSubscription} setIsPricingModalOpen={setIsPricingModalOpen} setIsCreditsModalOpen={setIsCreditsModalOpen} />
-                    <BillingHistory billingHistory={billingHistory} fetchBillingHistory={fetchBillingHistory} />
+                    <BillingHistory
+                        billingHistory={billingHistory}
+                        diagnosticContext={buildBillingPaymentLogContext('billing_history_invoice_open', {
+                            ...getBoundedPaymentStringContext('historyStoreId', effectiveHistoryStoreId),
+                        })}
+                        fetchBillingHistory={fetchBillingHistory}
+                    />
                 </>
             ) : !isSubscriptionFetching ? (
                 <Flex vertical style={{ justifyContent: 'center', alignItems: 'center', height: '100%', width: '100%' }}>

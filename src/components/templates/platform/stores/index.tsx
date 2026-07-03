@@ -3,6 +3,7 @@ import { ECOMSAI_PLATFORM_TENANT_ID } from '@constant/user';
 import { getAllStoresByTenantId } from '@database/stores';
 import { getAllTenants } from '@database/tenants';
 import { useAppDispatch } from '@hook/useAppDispatch';
+import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { startLoader, stopLoader } from '@reduxSlices/loader';
 import { StoreDataType } from '@type/platform/store';
 import { TenantDataType } from '@type/platform/tenant';
@@ -29,7 +30,7 @@ function StoresDashboard({ tenantsList, setTenantsList }) {
                     dispatch(stopLoader(requestId));
                 } catch (error) {
                     dispatch(stopLoader(requestId));
-                    console.error('Error fetching tenants:', error);
+                    logRuntimeFailure('platform_stores_tenants_load_failed', error);
                 }
             };
             fetchTenants();
@@ -47,7 +48,9 @@ function StoresDashboard({ tenantsList, setTenantsList }) {
             } catch (error) {
                 setStoresList([]);
                 dispatch(stopLoader(requestId));
-                console.error('Error fetching stores:', error);
+                logRuntimeFailure('platform_stores_load_failed', error, {
+                    ...getBoundedRuntimeStringContext('tenantId', filterTenant),
+                });
             }
         };
         if (filterTenant || (filterTenant == ECOMSAI_PLATFORM_TENANT_ID)) {
@@ -59,17 +62,17 @@ function StoresDashboard({ tenantsList, setTenantsList }) {
         {
             title: 'ID',
             dataIndex: 'storeId',
-            key: Math.random(),
+            key: 'storeId',
         },
         {
             title: 'Tenant ID',
             dataIndex: 'tenantId',
-            key: Math.random(),
+            key: 'tenantId',
         },
         {
             title: 'Logo',
             dataIndex: 'logo',
-            key: Math.random(),
+            key: 'logo',
             render: (_, record) => (
                 <Flex align='center' justify='flex-start' gap={10}>
                     {record?.logo ? <img src={record?.logo} style={{ width: "auto", height: 50, borderRadius: 25 }} /> : <LuImageOff />}
@@ -79,22 +82,22 @@ function StoresDashboard({ tenantsList, setTenantsList }) {
         {
             title: 'Name',
             dataIndex: 'name',
-            key: Math.random(),
+            key: 'name',
         },
         {
             title: 'Phone Number',
             dataIndex: 'phoneNumber',
-            key: Math.random(),
+            key: 'phoneNumber',
         },
         {
             title: 'Email',
             dataIndex: 'email',
-            key: Math.random(),
+            key: 'email',
         },
         {
             title: 'Verified',
             dataIndex: 'verified',
-            key: Math.random(),
+            key: 'verified',
             render: (_, record) => (
                 <>
                     {record.verified ? <Tag color='green'>Verified</Tag> : <Tag color='warning'>Non Verified</Tag>}
@@ -104,7 +107,7 @@ function StoresDashboard({ tenantsList, setTenantsList }) {
         {
             title: 'Active',
             dataIndex: 'active',
-            key: Math.random(),
+            key: 'active',
             render: (_, record) => (
                 <>
                     {!record.active ? <Tag color='error'>Deactivated</Tag> : <Tag color='green'>Active</Tag>}
@@ -114,7 +117,7 @@ function StoresDashboard({ tenantsList, setTenantsList }) {
         {
             title: 'Blocked',
             dataIndex: 'blocked',
-            key: Math.random(),
+            key: 'blocked',
             render: (_, record) => (
                 <>
                     {(record.blocked || record.bloked) ? <Tag color='error'>Blocked</Tag> : <Tag color='green'>Not Blocked</Tag>}
@@ -124,7 +127,7 @@ function StoresDashboard({ tenantsList, setTenantsList }) {
         {
             title: 'Deleted',
             dataIndex: 'deleted',
-            key: Math.random(),
+            key: 'deleted',
             render: (_, record) => (
                 <>
                     {record.deleted ? <Tag color='red'>Deleted</Tag> : <Tag color='warning'>Not deleted</Tag>}
@@ -134,7 +137,7 @@ function StoresDashboard({ tenantsList, setTenantsList }) {
         {
             title: 'Health',
             dataIndex: 'health',
-            key: Math.random(),
+            key: 'health',
             render: (_, record) => {
                 const health = record?.health;
                 if (!health?.status) return <Tag>—</Tag>;
@@ -201,7 +204,7 @@ function StoresDashboard({ tenantsList, setTenantsList }) {
             </Card>
             <Card title="Stores List">
                 <Table
-                    key={Math.random()}
+                    rowKey={(record: StoreDataType) => record.storeId || `${record.tenantId}-${record.name}`}
                     dataSource={storesList}
                     columns={columns}
                     onRow={(record: StoreDataType) => ({

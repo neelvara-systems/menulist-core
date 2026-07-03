@@ -3,7 +3,7 @@
 **Version:** 1.0
 **Status:** ✅ IMPLEMENTED — Active funnel
 **Feature Flag:** `ENABLE_PUBLIC_MENU_ENTRY`
-**Last Updated:** June 3, 2026
+**Last Updated:** July 1, 2026
 
 ---
 
@@ -98,6 +98,7 @@ Allow any business owner to reach a public upload entry point, sign in, upload a
 | FR-12 | "Add to Google Maps" guidance shown after publish | P1 |
 | FR-13 | Business name + type detected from menu source (AI) | P1 |
 | FR-14 | Mobile-first responsive design | P0 |
+| FR-15 | Existing-account claims fail closed unless the session store exists, belongs to the session tenant, and the store/tenant are eligible public targets | P0 |
 
 ### 3.2 Non-Functional Requirements
 
@@ -158,6 +159,7 @@ Published starter activation: permanent customer URL from getMenuUrl(subdomain)
 | R3 | Quality: poor extraction from phone photos or unreadable links | Show clear fallback: upload a photo or try another public menu link |
 | R4 | Privacy: menu sources submitted by non-owners | Permission confirmation, 24h draft TTL, no raw IP storage, sign-in before public claim/publish |
 | R5 | Storage: unclaimed source artifacts accumulate | 24h TTL auto-cleanup via nightly scheduler |
+| R6 | Stale existing account session writes public menu truth into a blocked/deleted/mismatched store | Claim transaction reads store and tenant eligibility before project/store/summary writes |
 | R6 | SSRF/crawler abuse from public URLs | Same bounded acquisition helper as authenticated Menu Link Import; blocks unsafe protocols, private IPs, unsafe redirects, and unbounded crawling |
 | OQ1 | Should we support PDF file upload in v1? | DECISION: Direct public file upload remains image-only; public links may resolve to readable PDFs through Menu Link Import. |
 | OQ2 | Should preview be editable before publish? | DECISION: No. Edit after publish in dashboard. Keeps flow simple. |

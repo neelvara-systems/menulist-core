@@ -1,4 +1,5 @@
 import { getStoresTickets, getSupportTickets } from '@database/tickets';
+import { logHookFailure } from '@hook/hookDiagnostics';
 import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from '@providers/platformProviders/platformGlobalDataProvider';
 import { SupportTicketType } from '@type/supportTicket';
 import { updateList } from '@util/utils';
@@ -37,7 +38,6 @@ export const useTicketCache = () => {
      */
     const clearCache = useCallback(() => {
         setCachedTickets({ cachedOn: null, tickets: [] });
-        console.log('🗑️ Ticket cache cleared');
     }, [setCachedTickets]);
 
     /**
@@ -69,7 +69,6 @@ export const useTicketCache = () => {
         // STEP 1: Check if force refresh
         // ============================================
         if (options?.forceRefresh) {
-            console.log('🔄 Force refresh all tickets');
             options.onCacheMiss?.();
 
             try {
@@ -82,10 +81,14 @@ export const useTicketCache = () => {
                     tickets
                 });
 
-                console.log(`✅ Fetched ${tickets.length} tickets and cached`);
                 return tickets;
             } catch (error) {
-                console.error('❌ Failed to fetch tickets:', error);
+                logHookFailure('answerlattice_ticket_cache_fetch_failed', error, {
+                    forceRefresh: true,
+                    includeDeleted: Boolean(options.includeDeleted),
+                    maxAge,
+                    cachedTicketCount: cachedTickets?.tickets?.length || 0,
+                });
                 return [];
             }
         }
@@ -100,7 +103,6 @@ export const useTicketCache = () => {
         const isCacheFresh = cacheAge < maxAge;
 
         if (isCacheFresh && cachedTickets?.tickets && cachedTickets.tickets.length > 0) {
-            console.log(`📦 Cache hit - returning ${cachedTickets.tickets.length} tickets (age: ${Math.round(cacheAge / 1000)}s)`);
             options?.onCacheHit?.();
             return cachedTickets.tickets;
         }
@@ -108,7 +110,6 @@ export const useTicketCache = () => {
         // ============================================
         // STEP 3: Cache miss or stale - fetch fresh
         // ============================================
-        console.log('🌐 Cache miss/stale, fetching all tickets');
         options?.onCacheMiss?.();
 
         try {
@@ -121,10 +122,15 @@ export const useTicketCache = () => {
                 tickets
             });
 
-            console.log(`✅ Fetched ${tickets.length} tickets and cached`);
             return tickets;
         } catch (error) {
-            console.error('❌ Failed to fetch tickets:', error);
+            logHookFailure('answerlattice_ticket_cache_fetch_failed', error, {
+                forceRefresh: false,
+                includeDeleted: Boolean(options?.includeDeleted),
+                maxAge,
+                cacheAge: Number.isFinite(cacheAge) ? Math.round(cacheAge) : -1,
+                cachedTicketCount: cachedTickets?.tickets?.length || 0,
+            });
             // Return cached tickets even if stale (fallback)
             return cachedTickets?.tickets || [];
         }
@@ -148,7 +154,6 @@ export const useTicketCache = () => {
             cachedOn: Timestamp.now(),
             tickets
         });
-        console.log(`📝 Updated cache with ${tickets.length} tickets from realtime`);
     }, [setCachedTickets]);
 
     /**
@@ -174,7 +179,6 @@ export const useTicketCache = () => {
             cachedOn: Timestamp.now(),
             tickets: updateList(prev?.tickets || [], ticket, position, matchKey)
         }));
-        console.log(`🔄 Updated ticket in cache: ${ticket.id}`);
     }, [setCachedTickets]);
 
     return {

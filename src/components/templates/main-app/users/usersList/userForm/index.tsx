@@ -2,6 +2,7 @@ import DrawerElement from "@antdComponent/drawerElement"
 import { useAppDispatch } from "@hook/useAppDispatch"
 import { _debounce } from "@hook/useDebounce"
 import { createStaffUser, updateStaffUser } from "@lib/staffManagement/client"
+import { getBoundedStaffStringContext, logStaffClientFailure } from "@lib/staffManagement/diagnostics"
 import type { StaffStoreOption } from "@lib/staffManagement/types"
 import { PlatformGlobalDataContext } from "@providers/platformProviders/platformGlobalDataProvider"
 import { showErrorToast, showSuccessToast, showWarningToast } from "@reduxSlices/toast"
@@ -86,6 +87,18 @@ function UserAddUpdateForm({ canAssignRoles = true, modalData, onCloseModal, sta
         onCloseModal(data)
     }
 
+    const getStaffMutationLogContext = (user: UserDataType, operation: string) => ({
+        operation,
+        ...getBoundedStaffStringContext('tenantId', user?.tenantId || tenantDetails?.tenantId),
+        ...getBoundedStaffStringContext('storeId', user?.storeId || storeDetails?.storeId),
+        ...getBoundedStaffStringContext('userId', user?.id),
+        hasEmail: Boolean(user?.email?.trim()),
+        emailLength: user?.email?.trim()?.length || 0,
+        hasName: Boolean(user?.name?.trim()),
+        hasPhoneNumber: Boolean(user?.phoneNumber),
+        storeCount: Array.isArray(user?.stores) ? user.stores.length : 0,
+    })
+
     const showStaffPasscode = (data: any) => {
         if (!data?.temporaryPasscode || !data?.staffLoginId) return;
         Modal.info({
@@ -94,6 +107,7 @@ function UserAddUpdateForm({ canAssignRoles = true, modalData, onCloseModal, sta
             content: (
                 <StaffLoginDetailsContent
                     countryCode={data.user?.countryCode || userDetails.countryCode}
+                    diagnosticContext={getStaffMutationLogContext(data.user || userDetails, 'login_details_share')}
                     dialCode={data.user?.dialCode || userDetails.dialCode}
                     phoneNumber={data.user?.phoneNumber || userDetails.phoneNumber}
                     staffLoginId={data.staffLoginId}
@@ -117,7 +131,7 @@ function UserAddUpdateForm({ canAssignRoles = true, modalData, onCloseModal, sta
 
         try {
             // Create staff via server API — handles Firebase Auth + Firestore doc creation
-            // @see __docs__/auth/ADR-email-uniqueness-strategy.md
+            // @see __docs__/auth/adr-email-uniqueness-strategy.md
             const currentStore = tenantDetails?.storesList?.find((s: any) => s.storeId === userDetails.storeId);
             const primaryStore = userDetails.stores?.find((store) => store.storeId === userDetails.storeId) || userDetails.stores?.[0];
             const data = await createStaffUser({
@@ -158,9 +172,9 @@ function UserAddUpdateForm({ canAssignRoles = true, modalData, onCloseModal, sta
             } else if (err.code === 'ROLE_ASSIGNMENT_FORBIDDEN') {
                 dispatch(showErrorToast("You cannot assign this role"))
             } else {
-                dispatch(showErrorToast(err.message || "Something went wrong"))
+                dispatch(showErrorToast("Could not create staff member"))
             }
-            console.error("Staff creation error:", err);
+            logStaffClientFailure('staff_create_user_failed', err, getStaffMutationLogContext(userDetails, 'create'))
         }
     }
 
@@ -185,7 +199,8 @@ function UserAddUpdateForm({ canAssignRoles = true, modalData, onCloseModal, sta
                     dispatch(showSuccessToast("User updated successfully"))
                     onClose(response.user || { ...originalUser, ...updatedChanges })
                 }).catch((err: any) => {
-                    dispatch(showErrorToast(err.code === 'ROLE_ASSIGNMENT_FORBIDDEN' ? "You cannot change roles or store access" : err.message || "Something went wrong"))
+                    dispatch(showErrorToast(err.code === 'ROLE_ASSIGNMENT_FORBIDDEN' ? "You cannot change roles or store access" : "Could not update staff member"))
+                    logStaffClientFailure('staff_update_user_failed', err, getStaffMutationLogContext(changesToUpload, 'update'))
                 })
             } else {
                 dispatch(showWarningToast("No changes found"))

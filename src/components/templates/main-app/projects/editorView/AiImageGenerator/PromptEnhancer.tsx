@@ -26,11 +26,7 @@ const PromptEnhancer: React.FC<PromptEnhancerProps> = ({
     if (!prompt) return;
     
     setIsLoading(true);
-    
-    // In a real implementation, this would call an API to generate enhanced prompts
-    // For now, we'll simulate it with some example enhancements
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    
+
     const enhanced = [
       `${prompt}, photorealistic, high detail, professional lighting`,
       `${prompt}, studio quality, commercial photography, sharp focus`,

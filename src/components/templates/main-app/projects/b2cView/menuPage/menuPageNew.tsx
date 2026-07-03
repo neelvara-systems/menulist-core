@@ -17,10 +17,12 @@ import TempStatusBanner from '@atoms/TempStatusBanner';
 import TrustSignals from '@atoms/TrustSignals';
 import { isCategoryVisibleByTime } from '@hook/useTimedCategories';
 import { AnalyticsContext } from '@template/website/clientWebsite/AnalyticsContext';
+import { getAnalyticsTrackingContext, getBoundedAnalyticsStringContext, logAnalyticsFailure } from '@lib/analytics/analyticsDiagnostics';
 import { getResolvedAnalyticsPreferences, isDecisionBlockAnalyticsEnabled } from '@lib/analytics/preferences';
 import { hasTrackedSearchTermInSession, markSearchTermTrackedInSession } from '@lib/analytics/searchDedup';
-import { setMenuAttributeFilterContext, trackItemShare, trackMenuAction, trackSearch, trackUnavailableItemAttempt } from '@lib/analytics/unified';
+import { setMenuAttributeFilterContext, trackItemShare, trackMenuAction, trackSearch, trackUnavailableItemAttempt, type TrackingData } from '@lib/analytics/unified';
 import { resolvePublicBusinessType } from '@lib/businessIdentity/publicBusinessType';
+import { getStoreStatus } from '@lib/hours';
 import { getLocalizedText } from '@lib/localization/text';
 import {
     getDecisionFactArray,
@@ -514,13 +516,18 @@ function MenuPageNew({
         });
         const whatsappHref = whatsappNumber ? `https://wa.me/${whatsappNumber}` : undefined;
         const directionsHref = publicPresence?.googleMapsUrl || (fullAddress ? `https://maps.google.com/?q=${encodeURIComponent(fullAddress)}` : undefined);
-        const analyticsIds = storeDetails?.tenantId && storeDetails?.storeId && projectData?.projectId
+        const hasWorkingHours = !!storeDetails?.workingHours && Object.keys(storeDetails.workingHours).length > 0;
+        const openHoursState: TrackingData['openHoursState'] = hasWorkingHours
+            ? (getStoreStatus(storeDetails.workingHours, storeDetails.timeZone).isOpen ? 'open' : 'closed')
+            : 'unknown';
+        const analyticsIds: Partial<TrackingData> | null = storeDetails?.tenantId && storeDetails?.storeId && projectData?.projectId
             ? {
                 tenantId: storeDetails.tenantId,
                 storeId: String(storeDetails.storeId),
                 projectId: projectData.projectId,
                 storeTimeZone: storeDetails.timeZone,
                 businessDayEndTime: storeDetails.businessDayEndTime,
+                openHoursState,
             }
             : null;
         const trackRecoveryAction = (menuAction: 'call' | 'whatsapp' | 'directions' | 'reserve' | 'order') => {
@@ -573,6 +580,9 @@ function MenuPageNew({
         storeDetails?.state,
         storeDetails?.storeId,
         storeDetails?.tenantId,
+        storeDetails?.timeZone,
+        storeDetails?.workingHours,
+        storeDetails?.businessDayEndTime,
     ]);
 
     // P0.2 - Restore state from sessionStorage on mount (runs once when categories load)
@@ -610,7 +620,18 @@ function MenuPageNew({
                 }
             }
         } catch (e) {
-            // Silent fail - state persistence is non-critical
+            logAnalyticsFailure('public_menu_state_restore_failed', e, {
+                ...getAnalyticsTrackingContext({
+                    tenantId: storeDetails?.tenantId || (storeDetails as any)?.tId,
+                    storeId: storeDetails?.storeId || (storeDetails as any)?._id,
+                    projectId: projectData?.projectId,
+                    storeTimeZone: storeDetails?.timeZone,
+                    businessDayEndTime: storeDetails?.businessDayEndTime,
+                }),
+                ...getBoundedAnalyticsStringContext('storageKey', storageKey),
+                categoryCount: allCategories.length,
+                previewMode,
+            });
         }
 
         setStateRestored(true);
@@ -634,20 +655,36 @@ function MenuPageNew({
         const saveState = () => {
             clearTimeout(saveTimeout);
             saveTimeout = setTimeout(() => {
+                let scrollY = 0;
+                let savedCategoryId: string | null = null;
                 try {
-                    const scrollY = getScrollPosition();
+                    scrollY = getScrollPosition();
                     const firstCategoryId = allCategories[0]?.id || null;
-                    const categoryId = scrollY > 16
+                    savedCategoryId = scrollY > 16
                         ? activeCategory?.id || firstCategoryId
                         : firstCategoryId;
                     const state = {
                         scrollY,
                         filter: activeFilter,
-                        category: categoryId,
+                        category: savedCategoryId,
                     };
                     sessionStorage.setItem(storageKey, JSON.stringify(state));
                 } catch (e) {
-                    // Silent fail - quota exceeded or private browsing
+                    logAnalyticsFailure('public_menu_state_save_failed', e, {
+                        ...getAnalyticsTrackingContext({
+                            tenantId: storeDetails?.tenantId || (storeDetails as any)?.tId,
+                            storeId: storeDetails?.storeId || (storeDetails as any)?._id,
+                            projectId: projectData?.projectId,
+                            storeTimeZone: storeDetails?.timeZone,
+                            businessDayEndTime: storeDetails?.businessDayEndTime,
+                        }),
+                        ...getBoundedAnalyticsStringContext('storageKey', storageKey),
+                        ...getBoundedAnalyticsStringContext('activeFilter', activeFilter),
+                        ...getBoundedAnalyticsStringContext('activeCategoryId', savedCategoryId),
+                        categoryCount: allCategories.length,
+                        scrollY,
+                        previewMode,
+                    });
                 }
             }, 300); // Debounce saves
         };

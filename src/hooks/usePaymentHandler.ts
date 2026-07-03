@@ -3,8 +3,10 @@ import { PRODUCT_IDS, type ProductId } from '@constant/product';
 import { isFeatureEnabled } from '@config/features';
 import { startLoader, stopLoader } from '@reduxSlices/loader';
 import { FirestoreSubscriptionDoc } from '@type/razorpay';
+import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';
 import { useSession } from 'next-auth/react';
 import { useCallback, useState } from 'react';
+import { getBoundedPaymentStringContext, getPaymentFlowLogContext, logPaymentFailure } from './paymentDiagnostics';
 import useRazorpayScript from './useRazorpayScript';
 
 declare global {
@@ -20,6 +22,63 @@ type PaymentHandlerOptions = {
     topupCheckoutName?: string;
 };
 
+const PAYMENT_RESPONSE_JSON_MAX_BYTES = 32 * 1024;
+const PAYMENT_ROUTE_REQUEST_OPTIONS: Pick<RequestInit, 'cache' | 'credentials' | 'redirect'> = {
+    cache: 'no-store',
+    credentials: 'same-origin',
+    redirect: 'manual',
+};
+
+const createPaymentStatusError = (message: string, code: string, status?: number) => {
+    const error = new Error(message) as Error & { code?: string; status?: number };
+    error.code = code;
+    if (typeof status === 'number') {
+        error.status = status;
+    }
+    return error;
+};
+
+type PaymentSubscriptionActionResponse = {
+    success: true;
+    message?: string;
+};
+
+type PaymentSubscriptionVerifyResponse = {
+    success: true;
+    status: 'active';
+};
+
+type PaymentTopupVerifyResponse = {
+    success: true;
+    newCreditBalance: number;
+    alreadyVerified?: boolean;
+};
+
+const isRecord = (value: unknown): value is Record<string, unknown> => (
+    typeof value === 'object' && value !== null
+);
+
+const isPaymentSubscriptionActionResponse = (value: unknown): value is PaymentSubscriptionActionResponse => (
+    isRecord(value) && value.success === true
+);
+
+const isPaymentSubscriptionVerifyResponse = (value: unknown): value is PaymentSubscriptionVerifyResponse => (
+    isRecord(value)
+    && value.success === true
+    && value.status === 'active'
+);
+
+const isPaymentTopupVerifyResponse = (value: unknown): value is PaymentTopupVerifyResponse => (
+    isRecord(value)
+    && value.success === true
+    && typeof value.newCreditBalance === 'number'
+    && Number.isFinite(value.newCreditBalance)
+);
+
+const hasPaymentResponseError = (value: unknown): boolean => (
+    isRecord(value) && 'error' in value && value.error !== undefined && value.error !== null
+);
+
 const usePaymentHandler = (dispatcher: any, options: PaymentHandlerOptions = {}) => {
     const [pendingPlan, setPendingPlan] = useState<{ plan: Plan; currency: Currency } | null>(null);
     const { data: session, update } = useSession();
@@ -31,13 +90,81 @@ const usePaymentHandler = (dispatcher: any, options: PaymentHandlerOptions = {})
     const hasBillingScope = Boolean(productId === PRODUCT_IDS.ANSWERLATTICE
         ? ((session?.user as any)?.productAccounts?.[PRODUCT_IDS.ANSWERLATTICE]?.tenantId || session?.user?.productId === PRODUCT_IDS.ANSWERLATTICE)
         : (session?.user?.tenantId && session?.user?.storeId));
+    const buildPaymentLogContext = useCallback((flow: string, metadata: Record<string, unknown> = {}) => ({
+        ...getPaymentFlowLogContext(flow, productId),
+        hasSession: Boolean(session?.user?.id),
+        hasBillingScope,
+        ...metadata,
+    }), [hasBillingScope, productId, session?.user?.id]);
+    const readPaymentResponseJson = useCallback(async <T,>(
+        response: Response,
+        flow: string,
+        metadata: Record<string, unknown> = {},
+    ): Promise<T | null> => {
+        try {
+            return await readJsonResponseWithLimit<T>(response, PAYMENT_RESPONSE_JSON_MAX_BYTES);
+        } catch (error) {
+            logPaymentFailure('payment_response_parse_failed', error, buildPaymentLogContext(flow, {
+                responseOk: response.ok,
+                responseStatus: response.status,
+                maxBytes: PAYMENT_RESPONSE_JSON_MAX_BYTES,
+                ...metadata,
+            }));
+            return null;
+        }
+    }, [buildPaymentLogContext]);
+
+    const readPaymentSubscriptionActionResponse = useCallback(async (
+        response: Response,
+        flow: string,
+        invalidCode: string,
+        failureMessage: string,
+        metadata: Record<string, unknown> = {},
+    ): Promise<PaymentSubscriptionActionResponse> => {
+        const result = await readPaymentResponseJson<unknown>(response, flow, metadata);
+        if (!isPaymentSubscriptionActionResponse(result)) {
+            logPaymentFailure(invalidCode, undefined, buildPaymentLogContext(flow, {
+                responseOk: response.ok,
+                responseStatus: response.status,
+                hasResultError: hasPaymentResponseError(result),
+                ...metadata,
+            }));
+            throw createPaymentStatusError(failureMessage, invalidCode, response.status);
+        }
+        return result;
+    }, [buildPaymentLogContext, readPaymentResponseJson]);
+
+    const readPaymentVerificationResponse = useCallback(async <T,>(
+        response: Response,
+        flow: string,
+        isValid: (value: unknown) => value is T,
+        rejectedCode: string,
+        invalidCode: string,
+        failureMessage: string,
+        metadata: Record<string, unknown> = {},
+    ): Promise<T> => {
+        const result = await readPaymentResponseJson<unknown>(response, flow, metadata);
+        if (response.ok && isValid(result)) {
+            return result;
+        }
+
+        const failureCode = response.ok ? invalidCode : rejectedCode;
+        logPaymentFailure(failureCode, undefined, buildPaymentLogContext(flow, {
+            responseOk: response.ok,
+            responseStatus: response.status,
+            hasResultError: hasPaymentResponseError(result),
+            ...metadata,
+        }));
+        throw createPaymentStatusError(failureMessage, failureCode, response.status);
+    }, [buildPaymentLogContext, readPaymentResponseJson]);
 
     const createSubscription = async (plan: Plan, currency: Currency, user: any, quantity: number = 1) => {
         return new Promise<void>(async (resolve, reject) => {
+            const subscriptionQuantity = Math.max(1, Number(quantity || 1));
             try {
-                const subscriptionQuantity = Math.max(1, Number(quantity || 1));
                 dispatcher(startLoader("Creating Subscription"));
                 const subResponse = await fetch('/api/razorpay/create-subscription', {
+                    ...PAYMENT_ROUTE_REQUEST_OPTIONS,
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -52,11 +179,29 @@ const usePaymentHandler = (dispatcher: any, options: PaymentHandlerOptions = {})
                 });
 
                 if (!subResponse.ok) {
-                    const errorData = await subResponse.json();
+                    await readPaymentResponseJson(subResponse, 'create_subscription_rejected', {
+                        ...getBoundedPaymentStringContext('planId', plan.planId),
+                        quantity: subscriptionQuantity,
+                    });
                     dispatcher(stopLoader("Creating Subscription"));
-                    throw new Error(errorData.error || 'Failed to create subscription.');
+                    throw createPaymentStatusError(
+                        'Failed to create subscription.',
+                        'payment_subscription_create_rejected',
+                        subResponse.status,
+                    );
                 }
-                const { subscription } = await subResponse.json();
+                const subscriptionPayload = await readPaymentResponseJson<{ subscription?: { id?: string } }>(subResponse, 'create_subscription_response', {
+                    ...getBoundedPaymentStringContext('planId', plan.planId),
+                    quantity: subscriptionQuantity,
+                });
+                const subscription = subscriptionPayload?.subscription;
+                if (!subscription?.id) {
+                    throw createPaymentStatusError(
+                        'Failed to create subscription.',
+                        'payment_subscription_create_response_invalid',
+                        subResponse.status,
+                    );
+                }
                 const options = {
                     key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
                     subscription_id: subscription.id,
@@ -71,7 +216,10 @@ const usePaymentHandler = (dispatcher: any, options: PaymentHandlerOptions = {})
                             resolve({ ...response, subscriptionId: subscription.id });
                         })
                             .catch((error) => {
-                                console.error('Payment flow failed in createSubscription', error);
+                                logPaymentFailure('payment_subscription_verify_failed', error, buildPaymentLogContext('create_subscription_handler', {
+                                    ...getBoundedPaymentStringContext('planId', plan.planId),
+                                    quantity: subscriptionQuantity,
+                                }));
                                 dispatcher(stopLoader("Creating Subscription"));
                                 reject(error);
                             })
@@ -86,7 +234,10 @@ const usePaymentHandler = (dispatcher: any, options: PaymentHandlerOptions = {})
                 paymentObject.open();
             } catch (error) {
                 dispatcher(stopLoader("Creating Subscription"));
-                console.error('Payment flow failed in createSubscription', error);
+                logPaymentFailure('payment_subscription_create_failed', error, buildPaymentLogContext('create_subscription', {
+                    ...getBoundedPaymentStringContext('planId', plan.planId),
+                    quantity: subscriptionQuantity,
+                }));
                 reject(error);
             }
         })
@@ -99,7 +250,6 @@ const usePaymentHandler = (dispatcher: any, options: PaymentHandlerOptions = {})
             return;
         }
         if (!isScriptLoaded) {
-            console.log('Razorpay script not loaded or a payment is already in progress.');
             return;
         }
         return new Promise<void>(async (resolve, reject) => {
@@ -107,99 +257,130 @@ const usePaymentHandler = (dispatcher: any, options: PaymentHandlerOptions = {})
                 const paymentResponse = await createSubscription(plan, currency, session?.user, quantity);
                 resolve(paymentResponse);
             } catch (error) {
-                console.error('Payment flow failed in onClickPaymentCard', error);
+                logPaymentFailure('payment_card_click_failed', error, buildPaymentLogContext('payment_card_click', {
+                    ...getBoundedPaymentStringContext('planId', plan.planId),
+                    quantity: Math.max(1, Number(quantity || 1)),
+                }));
                 reject(error);
             }
         })
     };
 
-    const onCancelSubscription = ({ reason, otherReason, consent }: { reason: string, otherReason: string, consent: boolean }) => {
-        return new Promise<void>(async (resolve, reject) => {
-            const response = await fetch('/api/razorpay/cancel-subscription', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ productId, reason, otherReason, consent }),
-            });
+    const onCancelSubscription = async ({ reason, otherReason, consent }: { reason: string, otherReason: string, consent: boolean }) => {
+        const response = await fetch('/api/razorpay/cancel-subscription', {
+            ...PAYMENT_ROUTE_REQUEST_OPTIONS,
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ productId, reason, otherReason, consent }),
+        });
 
-            if (!response.ok) {
-                const errorData = await response.json();
-                reject(new Error(errorData.error || errorData.message || 'Failed to cancel subscription.'));
-                return;
-            }
-            resolve();
-        })
+        if (!response.ok) {
+            await readPaymentResponseJson(response, 'cancel_subscription_rejected');
+            throw createPaymentStatusError(
+                'Failed to cancel subscription.',
+                'payment_subscription_cancel_rejected',
+                response.status,
+            );
+        }
+
+        await readPaymentSubscriptionActionResponse(
+            response,
+            'cancel_subscription_response',
+            'payment_subscription_cancel_response_invalid',
+            'Failed to cancel subscription.',
+        );
     }
 
-    const onPauseSubscription = ({ reason }: { reason?: string } = {}) => {
-        return new Promise<void>(async (resolve, reject) => {
-            if (!isFeatureEnabled('ENABLE_SUBSCRIPTION_PAUSE')) {
-                reject(new Error('Subscription pause is not available.'));
-                return;
-            }
-            try {
-                const response = await fetch('/api/razorpay/pause-subscription', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ productId, reason }),
-                });
+    const onPauseSubscription = async ({ reason }: { reason?: string } = {}) => {
+        if (!isFeatureEnabled('ENABLE_SUBSCRIPTION_PAUSE')) {
+            throw new Error('Subscription pause is not available.');
+        }
 
-                if (!response.ok) {
-                    const errorData = await response.json();
-                    reject(new Error(errorData.error || 'Failed to pause subscription.'));
-                    return;
-                }
-                resolve();
-            } catch (error) {
-                reject(error);
-            }
-        })
+        const response = await fetch('/api/razorpay/pause-subscription', {
+            ...PAYMENT_ROUTE_REQUEST_OPTIONS,
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ productId, reason }),
+        });
+
+        if (!response.ok) {
+            await readPaymentResponseJson(response, 'pause_subscription_rejected');
+            throw createPaymentStatusError(
+                'Failed to pause subscription.',
+                'payment_subscription_pause_rejected',
+                response.status,
+            );
+        }
+
+        await readPaymentSubscriptionActionResponse(
+            response,
+            'pause_subscription_response',
+            'payment_subscription_pause_response_invalid',
+            'Failed to pause subscription.',
+        );
     }
 
-    const onResumeSubscription = () => {
-        return new Promise<void>(async (resolve, reject) => {
-            if (!isFeatureEnabled('ENABLE_SUBSCRIPTION_PAUSE')) {
-                reject(new Error('Subscription resume is not available.'));
-                return;
-            }
-            try {
-                const response = await fetch('/api/razorpay/resume-subscription', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ productId }),
-                });
+    const onResumeSubscription = async () => {
+        if (!isFeatureEnabled('ENABLE_SUBSCRIPTION_PAUSE')) {
+            throw new Error('Subscription resume is not available.');
+        }
 
-                if (!response.ok) {
-                    const errorData = await response.json();
-                    reject(new Error(errorData.error || 'Failed to resume subscription.'));
-                    return;
-                }
-                resolve();
-            } catch (error) {
-                reject(error);
-            }
-        })
+        const response = await fetch('/api/razorpay/resume-subscription', {
+            ...PAYMENT_ROUTE_REQUEST_OPTIONS,
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ productId }),
+        });
+
+        if (!response.ok) {
+            await readPaymentResponseJson(response, 'resume_subscription_rejected');
+            throw createPaymentStatusError(
+                'Failed to resume subscription.',
+                'payment_subscription_resume_rejected',
+                response.status,
+            );
+        }
+
+        await readPaymentSubscriptionActionResponse(
+            response,
+            'resume_subscription_response',
+            'payment_subscription_resume_response_invalid',
+            'Failed to resume subscription.',
+        );
     }
 
-    const handleUpgradeSubscription = ({ nSi, oSi }: { nSi: string, oSi: string }) => {
-        return new Promise<void>(async (resolve, reject) => {
-            const response = await fetch('/api/razorpay/upgrade-subscription', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ productId, nSi, oSi }),
-            });
+    const handleUpgradeSubscription = async ({ nSi, oSi }: { nSi: string, oSi: string }) => {
+        const actionMetadata = {
+            ...getBoundedPaymentStringContext('newSubscriptionId', nSi),
+            ...getBoundedPaymentStringContext('oldSubscriptionId', oSi),
+        };
+        const response = await fetch('/api/razorpay/upgrade-subscription', {
+            ...PAYMENT_ROUTE_REQUEST_OPTIONS,
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ productId, nSi, oSi }),
+        });
 
-            if (!response.ok) {
-                const errorData = await response.json();
-                reject(new Error(errorData.error || errorData.message || 'Failed to upgrade subscription.'));
-                return;
-            }
-            resolve();
-        })
+        if (!response.ok) {
+            await readPaymentResponseJson(response, 'upgrade_subscription_rejected', actionMetadata);
+            throw createPaymentStatusError(
+                'Failed to upgrade subscription.',
+                'payment_subscription_upgrade_rejected',
+                response.status,
+            );
+        }
+
+        await readPaymentSubscriptionActionResponse(
+            response,
+            'upgrade_subscription_response',
+            'payment_subscription_upgrade_response_invalid',
+            'Failed to upgrade subscription.',
+            actionMetadata,
+        );
     }
 
     const onUpgradePlan = async (currentPlan: FirestoreSubscriptionDoc, newPlan: Plan, currency: Currency, quantity?: number) => {
         if (!isScriptLoaded) {
-            console.log('Razorpay script not loaded or a payment is already in progress.');
             return;
         }
         const targetQuantity = Math.max(1, Number(quantity || currentPlan.quantity || 1));
@@ -209,7 +390,11 @@ const usePaymentHandler = (dispatcher: any, options: PaymentHandlerOptions = {})
                 await handleUpgradeSubscription({ nSi: paymentResponse.subscriptionId, oSi: currentPlan.providerSubscriptionId });
                 resolve(paymentResponse);
             } catch (error) {
-                console.error('Upgrade Payment flow failed in onUpgradePlan', error);
+                logPaymentFailure('payment_upgrade_failed', error, buildPaymentLogContext('upgrade_plan', {
+                    ...getBoundedPaymentStringContext('newPlanId', newPlan.planId),
+                    ...getBoundedPaymentStringContext('oldSubscriptionId', currentPlan.providerSubscriptionId),
+                    quantity: targetQuantity,
+                }));
                 reject(error);
             }
         })
@@ -219,25 +404,41 @@ const usePaymentHandler = (dispatcher: any, options: PaymentHandlerOptions = {})
         return new Promise<any>(async (resolve, reject) => {
             const loaderLabel = "Processing Topup Payment";
             if (!isScriptLoaded) {
-                console.log('Razorpay script not loaded or a payment is already in progress.');
-                reject('Razorpay script not loaded or a payment is already in progress.');
+                reject(new Error('Razorpay checkout is not available.'));
                 return;
             }
             try {
                 dispatcher(startLoader(loaderLabel));
                 const response = await fetch('/api/razorpay/create-topup-order', {
+                    ...PAYMENT_ROUTE_REQUEST_OPTIONS,
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ productId, packId: pack.packId, currency }),
                 });
 
                 if (!response.ok) {
-                    const errorData = await response.json();
+                    await readPaymentResponseJson(response, 'topup_order_create_rejected', {
+                        ...getBoundedPaymentStringContext('packId', pack.packId),
+                    });
                     dispatcher(stopLoader(loaderLabel));
-                    throw new Error(errorData.error || 'Failed to create top-up order.');
+                    throw createPaymentStatusError(
+                        'Failed to create top-up order.',
+                        'payment_topup_order_create_rejected',
+                        response.status,
+                    );
                 }
 
-                const { order } = await response.json();
+                const topupOrderPayload = await readPaymentResponseJson<{ order?: { id?: string } }>(response, 'topup_order_create_response', {
+                    ...getBoundedPaymentStringContext('packId', pack.packId),
+                });
+                const order = topupOrderPayload?.order;
+                if (!order?.id) {
+                    throw createPaymentStatusError(
+                        'Failed to create top-up order.',
+                        'payment_topup_order_create_response_invalid',
+                        response.status,
+                    );
+                }
                 const options = {
                     key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
                     order_id: order.id,
@@ -248,6 +449,7 @@ const usePaymentHandler = (dispatcher: any, options: PaymentHandlerOptions = {})
                         dispatcher(startLoader(loaderLabel));
                         try {
                             const verificationResponse = await fetch('/api/razorpay/verify-topup', {
+                                ...PAYMENT_ROUTE_REQUEST_OPTIONS,
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json' },
                                 body: JSON.stringify({
@@ -258,15 +460,22 @@ const usePaymentHandler = (dispatcher: any, options: PaymentHandlerOptions = {})
                                 }),
                             });
 
-                            const result = await verificationResponse.json();
-                            if (result.success) {
-                                resolve({ ...response, ...result });
-                            } else {
-                                console.error("Verification failed:", result.error);
-                                reject(result.error);
-                            }
+                            const result = await readPaymentVerificationResponse<PaymentTopupVerifyResponse>(
+                                verificationResponse,
+                                'topup_verify_response',
+                                isPaymentTopupVerifyResponse,
+                                'payment_topup_verify_rejected',
+                                'payment_topup_verify_response_invalid',
+                                'Payment verification failed.',
+                                {
+                                    ...getBoundedPaymentStringContext('packId', pack.packId),
+                                },
+                            );
+                            resolve({ ...response, ...result });
                         } catch (error) {
-                            console.error("Verification failed:", error);
+                            logPaymentFailure('payment_topup_verify_failed', error, buildPaymentLogContext('topup_verify', {
+                                ...getBoundedPaymentStringContext('packId', pack.packId),
+                            }));
                             reject(error);
                         } finally {
                             dispatcher(stopLoader(loaderLabel));
@@ -281,7 +490,9 @@ const usePaymentHandler = (dispatcher: any, options: PaymentHandlerOptions = {})
                 const paymentObject = new window.Razorpay(options);
                 paymentObject.open();
             } catch (error) {
-                console.error('Payment failed:', error);
+                logPaymentFailure('payment_topup_failed', error, buildPaymentLogContext('topup_purchase', {
+                    ...getBoundedPaymentStringContext('packId', pack.packId),
+                }));
                 dispatcher(stopLoader(loaderLabel));
                 reject(error);
             }
@@ -293,7 +504,8 @@ const usePaymentHandler = (dispatcher: any, options: PaymentHandlerOptions = {})
             const purchaseIntentString = localStorage.getItem('purchaseIntent');
 
             if (!purchaseIntentString) {
-                console.error('No purchase intent found in local storage.');
+                logPaymentFailure('payment_onboarding_missing_purchase_intent', undefined, buildPaymentLogContext('post_onboarding'));
+                reject(new Error('Purchase intent is missing.'));
                 return;
             }
 
@@ -320,6 +532,7 @@ const usePaymentHandler = (dispatcher: any, options: PaymentHandlerOptions = {})
                 dispatcher(startLoader("Creating your account..."));
 
                 const response = await fetch('/api/onboarding/create-subscription', {
+                    ...PAYMENT_ROUTE_REQUEST_OPTIONS,
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -335,12 +548,32 @@ const usePaymentHandler = (dispatcher: any, options: PaymentHandlerOptions = {})
                 });
 
                 if (!response.ok) {
-                    const errorData = await response.json();
+                    await readPaymentResponseJson(response, 'post_onboarding_subscription_create_rejected', {
+                        ...getBoundedPaymentStringContext('planId', plan.planId),
+                    });
                     dispatcher(stopLoader("Creating your account..."));
-                    throw new Error(errorData.error || 'Onboarding failed');
+                    throw createPaymentStatusError(
+                        'Onboarding failed.',
+                        'payment_onboarding_subscription_create_rejected',
+                        response.status,
+                    );
                 }
 
-                const { subscription, tenantId, storeId } = await response.json();
+                const onboardingPayload = await readPaymentResponseJson<{
+                    subscription?: { id?: string };
+                    tenantId?: string;
+                    storeId?: string;
+                }>(response, 'post_onboarding_subscription_create_response', {
+                    ...getBoundedPaymentStringContext('planId', plan.planId),
+                });
+                const { subscription, tenantId, storeId } = onboardingPayload || {};
+                if (!subscription?.id || !tenantId || !storeId) {
+                    throw createPaymentStatusError(
+                        'Onboarding failed.',
+                        'payment_onboarding_subscription_create_response_invalid',
+                        response.status,
+                    );
+                }
 
                 // Update NextAuth session with new IDs
                 await update({
@@ -365,7 +598,9 @@ const usePaymentHandler = (dispatcher: any, options: PaymentHandlerOptions = {})
                             resolve({ ...response, subscriptionId: subscription.id });
                         })
                             .catch((error) => {
-                                console.error('Payment verification failed', error);
+                                logPaymentFailure('payment_onboarding_subscription_verify_failed', error, buildPaymentLogContext('post_onboarding_verify', {
+                                    ...getBoundedPaymentStringContext('planId', plan.planId),
+                                }));
                                 dispatcher(stopLoader("Verifying payment..."));
                                 reject(error);
                             })
@@ -381,17 +616,18 @@ const usePaymentHandler = (dispatcher: any, options: PaymentHandlerOptions = {})
 
             } catch (error) {
                 dispatcher(stopLoader("Creating your account..."));
-                console.error('Post-onboarding process failed:', error);
+                logPaymentFailure('payment_post_onboarding_failed', error, buildPaymentLogContext('post_onboarding'));
                 reject(error);
             }
         })
-    }, [session, update, isScriptLoaded, productId]); // Add dependencies used inside the function
+    }, [buildPaymentLogContext, dispatcher, session, update]); // Add dependencies used inside the function
 
     const verifySubscriptionPaymentResponse = async (paymentResponse: any) => {
         return new Promise<void>(async (resolve, reject) => {
             if (Boolean(paymentResponse)) {
                 try {
                     const verificationResponse = await fetch('/api/razorpay/verify-subscription', {
+                        ...PAYMENT_ROUTE_REQUEST_OPTIONS,
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
@@ -402,20 +638,25 @@ const usePaymentHandler = (dispatcher: any, options: PaymentHandlerOptions = {})
                         }),
                     });
 
-                    const result = await verificationResponse.json();
-                    console.log("verificationResponse", result)
-                    if (result.success) {
-                        resolve(paymentResponse);
-                    } else {
-                        console.error("Verification failed:", result.error);
-                        reject(result.error);
-                    }
+                    await readPaymentVerificationResponse<PaymentSubscriptionVerifyResponse>(
+                        verificationResponse,
+                        'subscription_verify_response',
+                        isPaymentSubscriptionVerifyResponse,
+                        'payment_subscription_verify_rejected',
+                        'payment_subscription_verify_response_invalid',
+                        'Payment verification failed.',
+                    );
+                    resolve(paymentResponse);
                 } catch (error) {
-                    console.error("Verification failed:", error);
+                    logPaymentFailure('payment_subscription_verify_failed', error, buildPaymentLogContext('subscription_verify'));
                     reject(error);
                 }
             } else {
-                reject("Payment response is missing");
+                logPaymentFailure('payment_subscription_response_missing', undefined, buildPaymentLogContext('subscription_verify'));
+                reject(createPaymentStatusError(
+                    'Payment response is missing.',
+                    'payment_subscription_response_missing',
+                ));
             }
         })
     }

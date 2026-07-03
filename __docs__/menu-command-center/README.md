@@ -4,8 +4,12 @@
 
 **Feature Flag:** `FEATURE_FLAGS.ENABLE_MENU_COMMAND_CENTER`
 **Location:** `src/components/templates/main-app/projects/editorView/`
-**Status:** ✅ Implementation Complete
-**Last Updated:** February 14, 2026
+**Status:** Implemented source documentation; not current launch certification
+**Last Updated:** July 2, 2026
+
+**Launch boundary:** Current release approval still requires the active production-readiness audit, External Certification Runbook evidence, `npm run verify:menu-project-editor-boundary`, authenticated desktop editor QA for bulk pricing, availability, category move, show/hide, preview, undo, and save behavior, mobile bulk availability/show-hide parity QA, public menu output QA after publish, cache/deploy evidence for changed menu truth, target deploy evidence, and production-host smoke.
+
+**Project editor boundary source gate:** `npm run verify:menu-project-editor-boundary` confirms Command Center changes still hand off through the editor and the single `updateProject()` DAL path instead of adding direct Firestore writes or per-item writes.
 
 ---
 
@@ -53,7 +57,7 @@ Editor.tsx → syncChanges() → single updateProject() to Firebase
 
 ---
 
-## Key Files in Codebase (planned)
+## Key Files in Codebase
 
 | Purpose                  | Path                                                                                                      |
 | ------------------------ | --------------------------------------------------------------------------------------------------------- |

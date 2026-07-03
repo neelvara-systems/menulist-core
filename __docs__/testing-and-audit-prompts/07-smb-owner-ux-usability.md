@@ -270,7 +270,7 @@ onboarding text, settings labels, notification text.
 
 Infrastructure language = trust. Assistant language = doubt.
 
-Reference: `__docs__/5YEAR-VISION-2026-COMPLETE.md` (Language Governance appendix)
+Reference: `__docs__/strategy/five-year-vision-2026-complete.md` (Language Governance appendix)
 
 ---
 

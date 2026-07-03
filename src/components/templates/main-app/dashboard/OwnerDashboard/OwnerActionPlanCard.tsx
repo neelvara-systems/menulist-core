@@ -1,12 +1,17 @@
 import {
+    markOwnerActionDone,
+} from '@database/ownerDashboard';
+import {
     AnalyticsAiEntitlement,
+    OwnerActionReceipt,
     OwnerActionPlan,
+    OwnerActionSuggestion,
     OwnerConfidence,
     SourceQuality,
 } from '@template/main-app/projects/types';
-import { Card, Col, Empty, Row, Space, Tag, Typography, theme } from 'antd';
+import { Button, Card, Col, Empty, Row, Space, Tag, Typography, message, theme } from 'antd';
 import { useTranslations } from 'next-intl';
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { LuCheckCircle, LuCompass, LuFlame, LuLock, LuZap } from 'react-icons/lu';
 import styles from './OwnerDashboard.module.scss';
 
@@ -18,6 +23,7 @@ interface OwnerActionPlanCardProps {
     sourceQuality?: SourceQuality[];
     analyticsAiEntitlement?: AnalyticsAiEntitlement;
     title?: string;
+    projectId?: string | null;
 }
 
 const priorityColor: Record<string, string> = {
@@ -32,14 +38,40 @@ const OwnerActionPlanCard: React.FC<OwnerActionPlanCardProps> = ({
     sourceQuality = [],
     analyticsAiEntitlement,
     title,
+    projectId,
 }) => {
     const t = useTranslations('Dashboard.owner');
     const actions = actionPlan?.actions || [];
+    const [localReceipts, setLocalReceipts] = useState<Record<string, OwnerActionReceipt>>({});
+    const [markingActionId, setMarkingActionId] = useState<string | null>(null);
     const bestSource = sourceQuality[0];
     const isPlanLocked = analyticsAiEntitlement
         && !analyticsAiEntitlement.enabled
         && analyticsAiEntitlement.reason !== 'feature_flag_disabled';
     const { token } = theme.useToken();
+
+    useEffect(() => {
+        setLocalReceipts(actionPlan?.receipts || {});
+    }, [actionPlan?.fingerprint, actionPlan?.receipts]);
+
+    const findReceipt = (action: OwnerActionSuggestion) => {
+        if (action.receipt) return action.receipt;
+        return Object.values(localReceipts).find((receipt) => receipt.actionId === action.id);
+    };
+
+    const handleMarkDone = async (action: OwnerActionSuggestion) => {
+        if (!projectId) return;
+        setMarkingActionId(action.id);
+        try {
+            const receipt = await markOwnerActionDone({ projectId, action });
+            setLocalReceipts((prev) => ({ ...prev, [receipt.receiptId]: receipt }));
+            message.success(t('actionPlan.markDoneSaved'));
+        } catch {
+            message.error(t('actionPlan.markDoneFailed'));
+        } finally {
+            setMarkingActionId(null);
+        }
+    };
 
     if (analyticsAiEntitlement?.reason === 'feature_flag_disabled' && actions.length === 0) {
         return null;
@@ -116,6 +148,26 @@ const OwnerActionPlanCard: React.FC<OwnerActionPlanCardProps> = ({
                                             <LuCompass style={{ marginRight: 6 }} />
                                             {action.actionLabel}
                                         </Text>
+                                        {findReceipt(action)?.result ? (
+                                            <Space direction="vertical" size={2}>
+                                                <Tag color={findReceipt(action)?.result?.status === 'improved' ? 'success' : findReceipt(action)?.result?.status === 'pending' ? 'processing' : 'default'}>
+                                                    {findReceipt(action)?.result?.label}
+                                                </Tag>
+                                                <Text type="secondary">
+                                                    {findReceipt(action)?.result?.message}
+                                                </Text>
+                                            </Space>
+                                        ) : projectId ? (
+                                            <Button
+                                                size="small"
+                                                type="primary"
+                                                ghost
+                                                loading={markingActionId === action.id}
+                                                onClick={() => handleMarkDone(action)}
+                                            >
+                                                {t('actionPlan.markDone')}
+                                            </Button>
+                                        ) : null}
                                     </Space>
                                 </Card>
                             </Col>

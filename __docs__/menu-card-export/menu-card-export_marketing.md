@@ -1,8 +1,10 @@
 # Menu Card Export — Internal Marketing Notes
 
-**Status:** Ready for founder demos and support positioning
+**Status:** Source-gated positioning draft; not current sales, demo, or launch approval
 **Audience:** Sales, support, founder demos
 **Last Updated:** June 2, 2026
+
+> **Current collateral boundary (July 2, 2026):** These notes are source evidence only; they are not current sales, demo, support, website-publication, or launch approval. Current collateral approval requires the active [production-readiness audit](../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../production-readiness/external-certification-runbook.md) evidence, Digital Menu Output Constitution checks, `npm run verify:menu-card-export`, authenticated desktop/mobile browser QA, visual PDF and print-shop artifact review, provider smoke for the AI advisor where enabled, target deploy evidence, and production-host smoke.
 
 ---
 

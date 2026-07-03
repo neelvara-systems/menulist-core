@@ -56,7 +56,7 @@ src/components/templates/main-app/projects/b2bView.tsx
 
 | Legacy File                             | Status         |
 | --------------------------------------- | -------------- |
-| `Assessments/ASSESSMENT-10-B2B-VIEW.md` | → Consolidated |
+| `Assessments/assessment-10-b2b-view.md` | → Consolidated |
 
 ---
 

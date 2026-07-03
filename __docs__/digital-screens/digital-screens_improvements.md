@@ -12,10 +12,10 @@
 | Scale          | Current Range | Notes |
 | -------------- | ------------- | ----- |
 | 100 screens    | $0.03-$0.05/mo | Projection hit rate determines lower vs upper bound |
-| 1,000 screens  | $0.27-$0.41/mo | Valid projection avoids the project summary read and project fallback read |
-| 10,000 screens | $2.70-$4.14/mo | Edge cache hits can reduce raw reads further |
+| 1,000 screens  | $0.28-$0.43/mo | Valid projection avoids the project summary read and project fallback read; seen signal uses cached public store eligibility |
+| 10,000 screens | $2.88-$4.32/mo | Edge cache hits can reduce raw reads further |
 
-**Verdict:** Current cost remains negligible. Valid `screen.menuProjection` with base menu slug context reduces the typical cold public screen render from 4 reads to 2 reads before edge cache hits, while fallback still shows actual menu items when projection is stale or unavailable.
+**Verdict:** Current cost remains negligible. Valid `screen.menuProjection` with base menu slug context reduces the typical cold public screen render from 4 reads to 2 reads before edge cache hits, while fallback still shows actual menu items when projection is stale or unavailable. The daily seen signal can add one cached public store eligibility read so inactive, deleted, blocked, or tenant-blocked stores do not refresh liveness state.
 
 ---
 
@@ -390,9 +390,11 @@ const checkHealth = async () => {
 **Owner setup:**
 
 - `ScreenLink.tsx` now renders separate Menu Board and Highlights setup cards with compact URLs, QR blocks, copy/open actions, and last-seen status.
+- `ScreenLink.tsx` now detects blocked Menu Board / Highlights browser opens and logs bounded link metadata only.
 - `DigitalScreenSettings/index.tsx` passes `screenLastSeenAt`, renames the override to "Only custom slides", and makes clear that Menu Board is unaffected.
+- `DigitalScreenSettings/index.tsx` now logs settings load and owner-only override failures through bounded diagnostics; shared owner-control tracking is quiet on success and bounded on failure.
 - `CurrentSlides.tsx` now describes custom slide content accurately instead of implying the generated slide stack is fully listed.
-- `MobileDigitalScreensScreen.tsx` now mirrors desktop setup with TV status, compact screen cards, custom slide controls, and owner-only toggle copy.
+- `MobileDigitalScreensScreen.tsx` now mirrors desktop setup with TV status, compact screen cards, custom slide controls, owner-only toggle copy, and bounded blocked-open diagnostics for screen-link previews.
 
 **TV output:**
 
@@ -464,3 +466,4 @@ const checkHealth = async () => {
 | 10.0    | 2026-06-02 | Codex   | **Owner trust + TV readability hardening:** Setup cards/status, mobile parity, owner-only mode enforcement, ordered Menu Board, screen-grade typography, and public-cache-linked screen version touch.                                                                                       |
 | 11.0    | 2026-06-02 | Codex   | **Content trust hardening:** Shared content normalization, safer price/category/tag parsing, factual labels, evergreen category variety, custom-slide artwork rendering, and caption safety.                                                                                                |
 | 12.0    | 2026-06-06 | Codex   | **Public read hardening:** Added generated available-item `screen.menuProjection` inside existing screen summary state with current-version/base-menu guards and project-read fallback.                                                                                                    |
+| 13.0    | 2026-07-01 | Codex   | **Seen-signal eligibility hardening:** Current cost baseline now includes the possible cached public store eligibility read before daily liveness writes. |

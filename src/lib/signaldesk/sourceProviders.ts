@@ -5,6 +5,8 @@ import {
     SIGNALDESK_GOOGLE_PLACES_TEXT_SEARCH_ENDPOINT,
     SIGNALDESK_INTEGRATION_ENV,
 } from "@constant/signaldesk/integrations";
+import { getBoundedRuntimeStringContext, logRuntimeFailure } from "@lib/runtime/runtimeDiagnostics";
+import { readJsonResponseWithLimit } from "@lib/security/boundedResponseBody";
 import type { SignalDeskSourceProviderId } from "@type/signaldesk";
 
 type SourceProviderInput = {
@@ -32,6 +34,8 @@ type SourceProviderTargetRow = {
 
 const env = (key: string) => process.env[key]?.trim() || "";
 const clampMaxResults = (value: number) => Math.min(Math.max(value, 1), 30);
+const SIGNALDESK_SOURCE_PROVIDER_JSON_MAX_BYTES = 512 * 1024;
+const SIGNALDESK_SOURCE_PROVIDER_RESPONSE_PARSE_FAILED = "signaldesk_source_provider_response_parse_failed";
 const estimateApifyCostCapUsd = (maxResults: number) => (
     Math.min(0.3, Math.max(0.05, clampMaxResults(maxResults) * 0.01))
 );
@@ -44,6 +48,30 @@ const FHRS_BUSINESS_TYPE_IDS: Array<{ id: number; tokens: string[] }> = [
     { id: 7842, tokens: ["hotel", "bed and breakfast", "guest house"] },
     { id: 7841, tokens: ["catering", "caterers"] },
 ];
+
+function createSourceProviderParseError(provider: SignalDeskSourceProviderId, status: number): Error {
+    const error = new Error(SIGNALDESK_SOURCE_PROVIDER_RESPONSE_PARSE_FAILED);
+    (error as any).code = SIGNALDESK_SOURCE_PROVIDER_RESPONSE_PARSE_FAILED;
+    (error as any).provider = provider;
+    (error as any).status = status;
+    return error;
+}
+
+async function readSourceProviderJsonResponse<T>(
+    response: Response,
+    provider: SignalDeskSourceProviderId,
+): Promise<T> {
+    try {
+        return await readJsonResponseWithLimit<T>(response, SIGNALDESK_SOURCE_PROVIDER_JSON_MAX_BYTES);
+    } catch (error) {
+        logRuntimeFailure(SIGNALDESK_SOURCE_PROVIDER_RESPONSE_PARSE_FAILED, error, {
+            product: "signaldesk",
+            responseStatus: response.status,
+            ...getBoundedRuntimeStringContext("provider", provider),
+        });
+        throw createSourceProviderParseError(provider, response.status);
+    }
+}
 
 const firstString = (...values: unknown[]) => {
     for (const value of values) {
@@ -105,6 +133,7 @@ async function runGooglePlacesSearch(input: SourceProviderInput): Promise<Source
             pageSize: clampMaxResults(input.maxResults),
             textQuery,
         }),
+        redirect: "manual",
         headers: {
             "Content-Type": "application/json",
             "X-Goog-Api-Key": apiKey,
@@ -113,8 +142,8 @@ async function runGooglePlacesSearch(input: SourceProviderInput): Promise<Source
         method: "POST",
     });
 
-    const payload = await response.json().catch(() => null);
     if (!response.ok) throw new Error(`Google Places provider failed: ${response.status}`);
+    const payload = await readSourceProviderJsonResponse<any>(response, input.provider);
 
     return (Array.isArray(payload?.places) ? payload.places : [])
         .map((place: any) => normalizePlaceRow(place, input))
@@ -201,6 +230,7 @@ async function runApifySourceSearch(input: SourceProviderInput): Promise<SourceP
             maxCrawledPlacesPerSearch: maxResults,
             searchStringsArray: [textQuery],
         }),
+        redirect: "manual",
         headers: {
             Authorization: `Bearer ${apiToken}`,
             "Content-Type": "application/json",
@@ -208,8 +238,8 @@ async function runApifySourceSearch(input: SourceProviderInput): Promise<SourceP
         method: "POST",
     });
 
-    const payload = await response.json().catch(() => null);
     if (!response.ok) throw new Error(`Apify provider failed: ${response.status}`);
+    const payload = await readSourceProviderJsonResponse<any>(response, input.provider);
 
     const items = Array.isArray(payload)
         ? payload
@@ -279,14 +309,15 @@ async function runFhrsFhisSourceSearch(input: SourceProviderInput): Promise<Sour
     }
 
     const response = await fetch(endpoint.toString(), {
+        redirect: "manual",
         headers: {
             Accept: "application/json",
             "x-api-version": "2",
         },
         method: "GET",
     });
-    const payload = await response.json().catch(() => null);
     if (!response.ok) throw new Error(`FHRS/FHIS provider failed: ${response.status}`);
+    const payload = await readSourceProviderJsonResponse<any>(response, input.provider);
 
     return (Array.isArray(payload?.establishments) ? payload.establishments : [])
         .map((item: any) => normalizeFhrsRow(item, input))

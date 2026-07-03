@@ -29,6 +29,7 @@ import { addAuditLog } from "@database/answerlattice/auditLogs";
 import { getActiveAnswersForEntity } from "@database/answerlattice/canonicalAnswers";
 import { addMutationProposal } from "@database/answerlattice/mutationProposals";
 import { getRecentSignalEvents } from "@database/answerlattice/signalEvents";
+import { getAnswerlatticeScopeLogContext, logAnswerlatticeFailure } from "@lib/answerlattice/diagnostics";
 import {
     ANSWERLATTICE_MUTATION_TYPE,
     ANSWERLATTICE_SIGNAL_TYPE,
@@ -319,7 +320,14 @@ export async function runSignalMutationEngine(
             });
         } catch (error) {
             // Continue with next cluster on failure (graceful degradation)
-            console.error(`Failed to create mutation proposal for entity ${cluster.entityId}:`, error);
+            logAnswerlatticeFailure('answerlattice_mutation_proposal_create_failed', error, {
+                ...getAnswerlatticeScopeLogContext({
+                    entityId: cluster.entityId,
+                    sId,
+                    tId,
+                }),
+                signalCount: cluster.totalCount,
+            });
             result.details.push({
                 entityId: cluster.entityId,
                 mutationType: ANSWERLATTICE_MUTATION_TYPE.CONTENT_REFINEMENT,

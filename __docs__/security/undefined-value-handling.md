@@ -166,6 +166,8 @@ All database operations use `requestBodyComposer()` which automatically calls `r
 
 **Total**: 10+ database modules, 30+ functions
 
+Public MenuList contact submissions no longer call `/database/landingPage/enquiries.ts` directly from the anonymous browser. The website contact page submits to `POST /api/public/contact`, which validates and sanitizes the payload before writing `landingPageEnquiries` through the Firebase Admin SDK.
+
 ---
 
 ### **✅ Server-Side Operations (Manual via `sanitizeForFirestore`)**

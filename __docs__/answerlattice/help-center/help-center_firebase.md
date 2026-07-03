@@ -29,6 +29,12 @@
 | 16 | `changelog_feedback/{tId}/{sId}` | `doc1_{entryId}` | Subcollection | 0.5-5 KB | Per-feedback |
 | 17 | `article_feedback/{tId}/{sId}` | `doc1_{entryId}` | Subcollection | 0.5-5 KB | Per-feedback |
 
+Chat session acknowledgement hardening is cost-neutral. `saveChatSession()` still performs one `chatSessions` create, but HelpChat now requires a persisted session object before selecting the new conversation. `updateChatSession()` still performs one merge write, but returns `{ success, sessionId, updatedFields }`; HelpChat append/retry/rename and platform metadata saves require that acknowledgement or route through the existing bounded failure path. This adds no reads, writes, indexes, rules, Cloud Functions, Storage operations, provider calls, or deployment requirement.
+
+Chat session delete acknowledgement hardening is cost-neutral. `deleteChatSession()` still performs the existing session read, best-effort attached-image cleanup, and one `chatSessions` delete, but HelpChat now requires `{ success, sessionId, deleted, storageFilesDeleted }` before showing delete success. Failed or malformed delete results reload session state and restore the previous active-session/search snapshot. This adds no reads, writes, deletes, Storage operations, indexes, rules, Cloud Functions, routes, schema fields, or deployment requirement beyond the existing delete path.
+
+HelpChat answer-feedback acknowledgement hardening is also cost-neutral. Feedback submission still attempts the existing `aiSearchHistory` feedback merge and `chatSessions` message feedback mirror, but `submitSearchFeedback()` now requires explicit acknowledgements from both writes before local feedback state, thank-you copy, or negative-feedback signal emission advances. This adds no reads, writes, indexes, rules, Cloud Functions, Storage operations, provider calls, routes, schema fields, or deployment requirement.
+
 ---
 
 ## 2. Operations Per Feature
@@ -91,7 +97,7 @@
 
 | Operation | Reads | Writes | External API |
 |-----------|-------|--------|-------------|
-| Rate limit + safe mode checks | 0 | 0 | 1 Upstash when enabled |
+| Scope, safe mode, and rate-limit checks before permission/body/provider work | 0 | 0 | 1 Upstash when enabled |
 | Read target article and verify `tId+sId` | 1 | 0 | — |
 | Gemini translation call, capped at 8,000 source characters | 0 | 0 | 1 Gemini |
 | Bump KB cache/context version | 0 | 2 | — |
@@ -100,6 +106,8 @@
 | **Total** | **2** | **3** | **1 Upstash + 1 Gemini** |
 
 The Languages tab is feature-flagged and does not create a realtime listener. It defaults to the supported Answerlattice locale list when no tenant-level locale setting exists.
+
+Translation route guard changes on 2026-06-28 added no Firestore reads/writes. Unexpected translation and operation-log failures use fixed-code bounded tenant/store/article/locale metadata. The Governance Hub browser caller validates translation responses with a 16 KB bounded reader and the documented article/locale/title response shape before returning to the translation tab. The June 30 provider-output pass caps Gemini translation response text before JSON parsing and fails closed with the existing fixed translation failure response if the provider output exceeds the route ceiling; this adds no reads, writes, cache updates, provider calls, indexes, or Cloud Functions.
 
 ### 2.3 Support Ticket Operations
 

@@ -2,20 +2,104 @@
 
 import { getMenuUrl, normalizeBaseUrl, PLATFORM_DOMAIN } from '@constant/urls';
 import { checkCustomDomainAvailability } from '@database/stores';
-import { Alert, Button, Card, Divider, Input, List, Space, Steps, Tag, Typography } from 'antd';
-import axios from 'axios';
+import { getBoundedStoreStringContext, logStoreDataFailure } from '@database/stores/storeDiagnostics';
+import { AUTH_BROWSER_REQUEST_POLICY } from '@lib/auth/browserRequestPolicy';
+import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';
+import { Alert, Button, Card, Divider, Input, List, message, Space, Steps, Tag, Typography } from 'antd';
 import { useTranslations } from 'next-intl';
 import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import { LuCheck, LuCopy, LuExternalLink, LuGlobe, LuRefreshCw, LuSearch, LuTrash2 } from 'react-icons/lu';
 
 const { Text, Title, Paragraph } = Typography;
+const DOMAIN_SETTINGS_ADD_ERROR = 'Failed to add domain.';
+const DOMAIN_SETTINGS_COPY_ERROR = 'Could not copy. Select and copy manually.';
+const DOMAIN_SETTINGS_OPEN_ERROR = 'Could not open link.';
+const DESKTOP_DOMAIN_SETTINGS_COPY_UNAVAILABLE = 'desktop_domain_settings_copy_unavailable';
+const DESKTOP_DOMAIN_SETTINGS_COPY_FALLBACK_FAILED = 'desktop_domain_settings_copy_fallback_failed';
 
 interface DomainSettingsTabProps {
     scrollRef?: React.RefObject<HTMLDivElement>;
     storeDetails?: any;
     onStoreStateUpdate?: (updates: any) => void;
-    onStoreUpdate?: (updates: any) => void;
+    onStoreUpdate?: (updates: any) => void | Promise<void>;
 }
+
+type DesktopDomainSettingsSubdomainAvailabilityResponse = {
+    available?: boolean;
+    reason?: string;
+    normalized?: string;
+    preview?: string;
+};
+type DesktopDomainSettingsResponsePhase = 'add' | 'status' | 'remove';
+type DesktopDomainSettingsAddResponse = {
+    success?: unknown;
+    domain?: unknown;
+    verified?: unknown;
+    verification?: unknown;
+};
+type DesktopDomainSettingsStatusResponse = {
+    hasDomain?: unknown;
+    domain?: unknown;
+    verified?: unknown;
+    config?: unknown;
+};
+type DesktopDomainSettingsRemoveResponse = {
+    removed?: unknown;
+    success?: unknown;
+};
+
+const DESKTOP_DOMAIN_SETTINGS_SUBDOMAIN_RESPONSE_JSON_MAX_BYTES = 8 * 1024;
+const DESKTOP_DOMAIN_SETTINGS_DOMAIN_RESPONSE_JSON_MAX_BYTES = 32 * 1024;
+
+const hasDesktopDomainSettingsClipboardWrite = (): boolean => (
+    typeof navigator !== 'undefined'
+    && Boolean(navigator.clipboard)
+    && typeof navigator.clipboard.writeText === 'function'
+);
+
+const hasDesktopDomainSettingsCopyFallback = (): boolean => (
+    typeof document !== 'undefined'
+    && typeof document.createElement === 'function'
+    && typeof document.execCommand === 'function'
+    && Boolean(document.body)
+);
+
+const copyDesktopDomainSettingsText = async (value: string): Promise<void> => {
+    let clipboardWriteError: unknown;
+
+    if (hasDesktopDomainSettingsClipboardWrite()) {
+        try {
+            await navigator.clipboard.writeText(value);
+            return;
+        } catch (error) {
+            clipboardWriteError = error;
+            // Continue to the acknowledged textarea fallback before showing failure copy.
+        }
+    }
+
+    if (!hasDesktopDomainSettingsCopyFallback()) {
+        throw clipboardWriteError || new Error(DESKTOP_DOMAIN_SETTINGS_COPY_UNAVAILABLE);
+    }
+
+    const textarea = document.createElement('textarea');
+    textarea.value = value;
+    textarea.setAttribute('readonly', '');
+    textarea.style.position = 'fixed';
+    textarea.style.left = '-9999px';
+    textarea.style.top = '0';
+    document.body.appendChild(textarea);
+    textarea.focus();
+    textarea.select();
+
+    try {
+        const copied = document.execCommand('copy');
+        if (!copied) {
+            throw new Error(DESKTOP_DOMAIN_SETTINGS_COPY_FALLBACK_FAILED);
+        }
+    } finally {
+        document.body.removeChild(textarea);
+    }
+};
 
 function normalizeDnsRecords(config: any, domain: string) {
     const records: { type: string; name: string; value: string }[] = [];
@@ -51,6 +135,98 @@ function normalizeDnsRecords(config: any, domain: string) {
     }
 
     return records;
+}
+
+function getAxiosStatus(error: any): number | undefined {
+    const status = Number(error?.status ?? error?.response?.status);
+    return Number.isFinite(status) ? status : undefined;
+}
+
+function createDomainSettingsError(failureCode: string, status?: number): Error & { code: string; status?: number } {
+    return Object.assign(new Error(failureCode), {
+        code: failureCode,
+        status,
+    });
+}
+
+function buildDomainSettingsLogContext(storeDetails: any, action: string, value?: unknown) {
+    return {
+        action,
+        ...getBoundedStoreStringContext('storeId', storeDetails?.storeId),
+        ...getBoundedStoreStringContext('tenantId', storeDetails?.tenantId),
+        ...getBoundedStoreStringContext('domain', value),
+    };
+}
+
+const isNonEmptyString = (value: unknown): value is string => (
+    typeof value === 'string' && value.trim().length > 0
+);
+
+function normalizeSubdomainAvailabilityResponse(data: DesktopDomainSettingsSubdomainAvailabilityResponse) {
+    return {
+        available: data.available,
+        reason: typeof data.reason === 'string' ? data.reason : undefined,
+        normalized: typeof data.normalized === 'string' ? data.normalized : undefined,
+        preview: typeof data.preview === 'string' ? data.preview : undefined,
+    };
+}
+
+const getDesktopDomainSettingsDomainResponseFailureCodes = (phase: DesktopDomainSettingsResponsePhase) => {
+    switch (phase) {
+        case 'add':
+            return {
+                invalid: 'desktop_domain_settings_add_response_invalid',
+                parse: 'desktop_domain_settings_add_response_parse_failed',
+            };
+        case 'remove':
+            return {
+                invalid: 'desktop_domain_settings_remove_response_invalid',
+                parse: 'desktop_domain_settings_remove_response_parse_failed',
+            };
+        case 'status':
+        default:
+            return {
+                invalid: 'desktop_domain_settings_status_response_invalid',
+                parse: 'desktop_domain_settings_status_response_parse_failed',
+            };
+    }
+};
+
+async function readDesktopDomainSettingsDomainResponseJson<T>(
+    response: Response,
+    phase: DesktopDomainSettingsResponsePhase,
+    context: Record<string, boolean | number | string | null | undefined>,
+): Promise<T | null> {
+    const failureCodes = getDesktopDomainSettingsDomainResponseFailureCodes(phase);
+    const logContext = {
+        ...context,
+        maxBytes: DESKTOP_DOMAIN_SETTINGS_DOMAIN_RESPONSE_JSON_MAX_BYTES,
+        phase,
+        responseOk: response.ok,
+        responseStatus: response.status,
+    };
+
+    let payload: unknown;
+    try {
+        payload = await readJsonResponseWithLimit<unknown>(
+            response,
+            DESKTOP_DOMAIN_SETTINGS_DOMAIN_RESPONSE_JSON_MAX_BYTES,
+        );
+    } catch (error) {
+        logStoreDataFailure(failureCodes.parse, error, logContext);
+        return null;
+    }
+
+    if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+        logStoreDataFailure(
+            failureCodes.invalid,
+            createDomainSettingsError(failureCodes.invalid, response.status),
+            logContext,
+        );
+        return null;
+    }
+
+    return payload as T;
 }
 
 function DomainSettingsTab({ scrollRef, storeDetails, onStoreStateUpdate, onStoreUpdate }: DomainSettingsTabProps) {
@@ -114,46 +290,122 @@ function DomainSettingsTab({ scrollRef, storeDetails, onStoreStateUpdate, onStor
 
         setCheckingSubdomain(true);
         try {
-            const res = await axios.get(`/api/subdomain/check?subdomain=${encodeURIComponent(value.trim())}`);
-            setAvailability(res.data);
-            if (res.data?.normalized) {
-                setSubdomainValue(res.data.normalized);
+            const response = await fetch(
+                `/api/subdomain/check?subdomain=${encodeURIComponent(value.trim())}`,
+                AUTH_BROWSER_REQUEST_POLICY,
+            );
+            let data: DesktopDomainSettingsSubdomainAvailabilityResponse | null = null;
+            try {
+                data = await readJsonResponseWithLimit<DesktopDomainSettingsSubdomainAvailabilityResponse>(
+                    response,
+                    DESKTOP_DOMAIN_SETTINGS_SUBDOMAIN_RESPONSE_JSON_MAX_BYTES,
+                );
+            } catch (error) {
+                logStoreDataFailure('desktop_domain_settings_subdomain_check_response_parse_failed', error, {
+                    ...buildDomainSettingsLogContext(storeDetails, 'check_subdomain_response_parse', value),
+                    responseOk: response.ok,
+                    responseStatus: response.status,
+                    maxBytes: DESKTOP_DOMAIN_SETTINGS_SUBDOMAIN_RESPONSE_JSON_MAX_BYTES,
+                });
             }
-        } catch {
+            if (!response.ok) {
+                if (response.status === 429 && data?.available === false) {
+                    setAvailability({
+                        available: false,
+                        reason: typeof data.reason === 'string' && data.reason.length <= 120
+                            ? data.reason
+                            : 'Could not check availability',
+                    });
+                    return;
+                }
+                throw createDomainSettingsError('desktop_domain_settings_subdomain_check_rejected', response.status);
+            }
+            if (typeof data?.available !== 'boolean') {
+                logStoreDataFailure(
+                    'desktop_domain_settings_subdomain_check_response_invalid',
+                    createDomainSettingsError('desktop_domain_settings_subdomain_check_response_invalid', response.status),
+                    buildDomainSettingsLogContext(storeDetails, 'check_subdomain_response_shape', value),
+                );
+                setAvailability({ available: false, reason: 'Could not check availability' });
+                return;
+            }
+            const normalizedAvailability = normalizeSubdomainAvailabilityResponse(data);
+            setAvailability(normalizedAvailability);
+            if (normalizedAvailability.normalized) {
+                setSubdomainValue(normalizedAvailability.normalized);
+            }
+        } catch (error) {
+            logStoreDataFailure('desktop_domain_settings_subdomain_check_failed', error, buildDomainSettingsLogContext(
+                storeDetails,
+                'check_subdomain',
+                value,
+            ));
             setAvailability({ available: false, reason: 'Could not check availability' });
         } finally {
             setCheckingSubdomain(false);
         }
-    }, []);
+    }, [storeDetails?.storeId, storeDetails?.tenantId]);
 
     const saveSubdomain = useCallback(async () => {
         const nextSubdomain = availability?.normalized || subdomainValue.trim();
         if (!nextSubdomain) return;
         setSavingSubdomain(true);
         try {
-            onStoreUpdate?.({ subdomain: nextSubdomain });
+            await Promise.resolve(onStoreUpdate?.({ subdomain: nextSubdomain }));
             setAvailability((previous) => previous ? { ...previous, normalized: nextSubdomain, preview: nextSubdomain } : previous);
+        } catch (error) {
+            logStoreDataFailure('desktop_domain_settings_subdomain_save_failed', error, buildDomainSettingsLogContext(
+                storeDetails,
+                'save_subdomain',
+                nextSubdomain,
+            ));
+            message.error('Could not save public link.');
         } finally {
             setSavingSubdomain(false);
         }
-    }, [availability?.normalized, onStoreUpdate, subdomainValue]);
+    }, [availability?.normalized, onStoreUpdate, storeDetails, subdomainValue]);
 
     const refreshDomainStatus = useCallback(async () => {
         if (!storeDetails?.customDomain) return;
         setStatusLoading(true);
         setDomainError(null);
         try {
-            const res = await axios.get('/api/domain');
-            setDomainStatus(res.data);
-            if (res.data?.verified) {
+            const response = await fetch('/api/domain', AUTH_BROWSER_REQUEST_POLICY);
+            const data = await readDesktopDomainSettingsDomainResponseJson<DesktopDomainSettingsStatusResponse>(
+                response,
+                'status',
+                buildDomainSettingsLogContext(storeDetails, 'refresh_domain_status_response', storeDetails?.customDomain),
+            );
+            if (!response.ok) {
+                throw createDomainSettingsError('desktop_domain_settings_status_load_rejected', response.status);
+            }
+            if (typeof data?.hasDomain !== 'boolean' || (data.hasDomain && !isNonEmptyString(data.domain))) {
+                logStoreDataFailure(
+                    'desktop_domain_settings_status_response_invalid',
+                    createDomainSettingsError('desktop_domain_settings_status_response_invalid', response.status),
+                    {
+                        ...buildDomainSettingsLogContext(storeDetails, 'refresh_domain_status_response_shape', storeDetails?.customDomain),
+                        hasDomainFlag: typeof data?.hasDomain === 'boolean',
+                        hasDomain: isNonEmptyString(data?.domain),
+                    },
+                );
+                throw createDomainSettingsError('desktop_domain_settings_status_response_invalid', response.status);
+            }
+            setDomainStatus(data);
+            if (data.hasDomain && data.verified === true) {
                 onStoreStateUpdate?.({ domainVerified: true });
             }
-        } catch {
+        } catch (error) {
+            logStoreDataFailure('desktop_domain_settings_status_load_failed', error, buildDomainSettingsLogContext(
+                storeDetails,
+                'refresh_domain_status',
+                storeDetails?.customDomain,
+            ));
             setDomainError(t('dnsVerificationDesc'));
         } finally {
             setStatusLoading(false);
         }
-    }, [onStoreStateUpdate, storeDetails?.customDomain, t]);
+    }, [onStoreStateUpdate, storeDetails, t]);
 
     useEffect(() => {
         void refreshDomainStatus();
@@ -164,23 +416,54 @@ function DomainSettingsTab({ scrollRef, storeDetails, onStoreStateUpdate, onStor
         setDomainLoading(true);
         setDomainError(null);
         try {
-            const res = await axios.post('/api/domain', { domain: domainAvailability?.normalized || domainInput.trim() });
-            const nextDomain = res.data?.domain || domainInput.trim();
+            const requestedDomain = domainAvailability?.normalized || domainInput.trim();
+            const response = await fetch('/api/domain', {
+                ...AUTH_BROWSER_REQUEST_POLICY,
+                headers: { 'Content-Type': 'application/json' },
+                method: 'POST',
+                body: JSON.stringify({ domain: requestedDomain }),
+            });
+            const data = await readDesktopDomainSettingsDomainResponseJson<DesktopDomainSettingsAddResponse>(
+                response,
+                'add',
+                buildDomainSettingsLogContext(storeDetails, 'add_domain_response', requestedDomain),
+            );
+            if (!response.ok) {
+                throw createDomainSettingsError('desktop_domain_settings_add_rejected', response.status);
+            }
+            if (data?.success !== true || !isNonEmptyString(data.domain)) {
+                logStoreDataFailure(
+                    'desktop_domain_settings_add_response_invalid',
+                    createDomainSettingsError('desktop_domain_settings_add_response_invalid', response.status),
+                    {
+                        ...buildDomainSettingsLogContext(storeDetails, 'add_domain_response_shape', requestedDomain),
+                        hasDomain: isNonEmptyString(data?.domain),
+                        success: data?.success === true,
+                    },
+                );
+                throw createDomainSettingsError('desktop_domain_settings_add_response_invalid', response.status);
+            }
+            const nextDomain = data.domain;
             setDomainInput(nextDomain);
             setDomainAvailability({ available: true, normalized: nextDomain });
             setDomainStatus({
                 hasDomain: true,
                 domain: nextDomain,
-                verified: false,
-                config: res.data?.verification,
+                verified: data.verified === true,
+                config: data.verification,
             });
-            onStoreStateUpdate?.({ customDomain: nextDomain, domainVerified: false });
+            onStoreStateUpdate?.({ customDomain: nextDomain, domainVerified: data.verified === true });
         } catch (err: any) {
-            setDomainError(err.response?.data?.error || 'Failed to add domain.');
+            logStoreDataFailure(
+                'desktop_domain_settings_add_failed',
+                createDomainSettingsError('desktop_domain_settings_add_rejected', getAxiosStatus(err)),
+                buildDomainSettingsLogContext(storeDetails, 'add_domain', domainAvailability?.normalized || domainInput),
+            );
+            setDomainError(DOMAIN_SETTINGS_ADD_ERROR);
         } finally {
             setDomainLoading(false);
         }
-    }, [domainInput, onStoreStateUpdate]);
+    }, [domainAvailability?.normalized, domainInput, onStoreStateUpdate, storeDetails]);
 
     const handleCheckDomain = useCallback(async () => {
         if (!normalizedDomainInput) return;
@@ -192,27 +475,171 @@ function DomainSettingsTab({ scrollRef, storeDetails, onStoreStateUpdate, onStor
             if (result?.normalized) {
                 setDomainInput(result.normalized);
             }
-        } catch {
+        } catch (error) {
+            logStoreDataFailure('desktop_domain_settings_custom_domain_check_failed', error, buildDomainSettingsLogContext(
+                storeDetails,
+                'check_custom_domain',
+                normalizedDomainInput,
+            ));
             setDomainAvailability({ available: false, reason: 'Could not check domain right now.' });
         } finally {
             setCheckingDomain(false);
         }
-    }, [normalizedDomainInput, storeDetails?.storeId]);
+    }, [normalizedDomainInput, storeDetails]);
 
     const handleRemoveDomain = useCallback(async () => {
         setDomainLoading(true);
         setDomainError(null);
         try {
-            await axios.delete('/api/domain');
+            const response = await fetch('/api/domain', {
+                ...AUTH_BROWSER_REQUEST_POLICY,
+                method: 'DELETE',
+            });
+            const data = await readDesktopDomainSettingsDomainResponseJson<DesktopDomainSettingsRemoveResponse>(
+                response,
+                'remove',
+                buildDomainSettingsLogContext(storeDetails, 'remove_domain_response', activeDomain),
+            );
+            if (!response.ok) {
+                throw createDomainSettingsError('desktop_domain_settings_remove_rejected', response.status);
+            }
+            if (data?.success !== true || data.removed !== true) {
+                logStoreDataFailure(
+                    'desktop_domain_settings_remove_response_invalid',
+                    createDomainSettingsError('desktop_domain_settings_remove_response_invalid', response.status),
+                    {
+                        ...buildDomainSettingsLogContext(storeDetails, 'remove_domain_response_shape', activeDomain),
+                        removed: data?.removed === true,
+                        success: data?.success === true,
+                    },
+                );
+                throw createDomainSettingsError('desktop_domain_settings_remove_response_invalid', response.status);
+            }
             setDomainStatus(null);
             setDomainInput('');
             onStoreStateUpdate?.({ customDomain: undefined, domainVerified: undefined });
-        } catch {
+        } catch (error) {
+            logStoreDataFailure('desktop_domain_settings_remove_failed', error, buildDomainSettingsLogContext(
+                storeDetails,
+                'remove_domain',
+                activeDomain,
+            ));
             setDomainError('Failed to remove domain.');
         } finally {
             setDomainLoading(false);
         }
-    }, [onStoreStateUpdate]);
+    }, [activeDomain, onStoreStateUpdate, storeDetails]);
+
+    const handleCopySubdomain = useCallback(async () => {
+        if (!subdomainUrl) return;
+        try {
+            await copyDesktopDomainSettingsText(subdomainUrl);
+            setSubdomainCopied(true);
+            setTimeout(() => setSubdomainCopied(false), 2000);
+        } catch (error) {
+            logStoreDataFailure(
+                'desktop_domain_settings_subdomain_copy_failed',
+                error,
+                {
+                    ...buildDomainSettingsLogContext(storeDetails, 'copy_subdomain', subdomainUrl),
+                    ...getBoundedStoreStringContext('copyValue', subdomainUrl),
+                    hasClipboardWrite: hasDesktopDomainSettingsClipboardWrite(),
+                    hasCopyFallback: hasDesktopDomainSettingsCopyFallback(),
+                },
+            );
+            message.error(DOMAIN_SETTINGS_COPY_ERROR);
+        }
+    }, [storeDetails, subdomainUrl]);
+
+    const handleOpenSubdomain = useCallback(() => {
+        if (!subdomainUrl) return;
+        try {
+            const opened = window.open(subdomainUrl, '_blank', 'noopener,noreferrer');
+            if (!opened) {
+                throw createDomainSettingsError('desktop_domain_settings_subdomain_open_blocked');
+            }
+        } catch (error) {
+            logStoreDataFailure(
+                'desktop_domain_settings_subdomain_open_failed',
+                error,
+                {
+                    ...buildDomainSettingsLogContext(storeDetails, 'open_subdomain', subdomainUrl),
+                    ...getBoundedStoreStringContext('openUrl', subdomainUrl),
+                },
+            );
+            message.error(DOMAIN_SETTINGS_OPEN_ERROR);
+        }
+    }, [storeDetails, subdomainUrl]);
+
+    const handleCopyDomainLink = useCallback(async () => {
+        if (!activeDomain) return;
+        const domainUrl = normalizeBaseUrl(activeDomain);
+        try {
+            await copyDesktopDomainSettingsText(domainUrl);
+            setDomainLinkCopied(true);
+            setTimeout(() => setDomainLinkCopied(false), 2000);
+        } catch (error) {
+            logStoreDataFailure(
+                'desktop_domain_settings_domain_copy_failed',
+                error,
+                {
+                    ...buildDomainSettingsLogContext(storeDetails, 'copy_domain', domainUrl),
+                    ...getBoundedStoreStringContext('copyValue', domainUrl),
+                    hasClipboardWrite: hasDesktopDomainSettingsClipboardWrite(),
+                    hasCopyFallback: hasDesktopDomainSettingsCopyFallback(),
+                },
+            );
+            message.error(DOMAIN_SETTINGS_COPY_ERROR);
+        }
+    }, [activeDomain, storeDetails]);
+
+    const handleOpenDomainLink = useCallback(() => {
+        if (!activeDomain) return;
+        const domainUrl = normalizeBaseUrl(activeDomain);
+        try {
+            const opened = window.open(domainUrl, '_blank', 'noopener,noreferrer');
+            if (!opened) {
+                throw createDomainSettingsError('desktop_domain_settings_domain_open_blocked');
+            }
+        } catch (error) {
+            logStoreDataFailure(
+                'desktop_domain_settings_domain_open_failed',
+                error,
+                {
+                    ...buildDomainSettingsLogContext(storeDetails, 'open_domain', domainUrl),
+                    ...getBoundedStoreStringContext('openUrl', domainUrl),
+                },
+            );
+            message.error(DOMAIN_SETTINGS_OPEN_ERROR);
+        }
+    }, [activeDomain, storeDetails]);
+
+    const handleCopyDnsRecord = useCallback(async (
+        record: { type: string; name: string; value: string },
+        index: number,
+    ) => {
+        try {
+            await copyDesktopDomainSettingsText(record.value);
+            setCopiedDnsValue(`${index}`);
+            setTimeout(() => setCopiedDnsValue(null), 2000);
+        } catch (error) {
+            logStoreDataFailure(
+                'desktop_domain_settings_dns_copy_failed',
+                error,
+                {
+                    ...buildDomainSettingsLogContext(storeDetails, 'copy_dns_record', activeDomain),
+                    ...getBoundedStoreStringContext('dnsRecordName', record.name),
+                    ...getBoundedStoreStringContext('dnsRecordType', record.type),
+                    ...getBoundedStoreStringContext('dnsRecordValue', record.value),
+                    dnsRecordCount: dnsRecords.length,
+                    dnsRecordIndex: index,
+                    hasClipboardWrite: hasDesktopDomainSettingsClipboardWrite(),
+                    hasCopyFallback: hasDesktopDomainSettingsCopyFallback(),
+                },
+            );
+            message.error(DOMAIN_SETTINGS_COPY_ERROR);
+        }
+    }, [activeDomain, dnsRecords.length, storeDetails]);
 
     return (
         <Card size="small" ref={scrollRef}>
@@ -247,15 +674,11 @@ function DomainSettingsTab({ scrollRef, storeDetails, onStoreStateUpdate, onStor
                                 <Tag color="blue" icon={<LuGlobe />}>{subdomainUrl.replace(/^https?:\/\//, '')}</Tag>
                                 <Button
                                     icon={subdomainCopied ? <LuCheck /> : <LuCopy />}
-                                    onClick={() => {
-                                        navigator.clipboard.writeText(subdomainUrl);
-                                        setSubdomainCopied(true);
-                                        setTimeout(() => setSubdomainCopied(false), 2000);
-                                    }}
+                                    onClick={() => void handleCopySubdomain()}
                                 >
                                     {subdomainCopied ? t('copied') : t('copy')}
                                 </Button>
-                                <Button icon={<LuExternalLink />} onClick={() => window.open(subdomainUrl, '_blank')}>
+                                <Button icon={<LuExternalLink />} onClick={handleOpenSubdomain}>
                                     {t('open')}
                                 </Button>
                             </Space>
@@ -342,15 +765,11 @@ function DomainSettingsTab({ scrollRef, storeDetails, onStoreStateUpdate, onStor
                             </Tag>
                             <Button
                                 icon={domainLinkCopied ? <LuCheck /> : <LuCopy />}
-                                onClick={() => {
-                                    navigator.clipboard.writeText(normalizeBaseUrl(activeDomain));
-                                    setDomainLinkCopied(true);
-                                    setTimeout(() => setDomainLinkCopied(false), 2000);
-                                }}
+                                onClick={() => void handleCopyDomainLink()}
                             >
                                 {domainLinkCopied ? t('copied') : t('copy')}
                             </Button>
-                            <Button icon={<LuExternalLink />} onClick={() => window.open(normalizeBaseUrl(activeDomain), '_blank')}>
+                            <Button icon={<LuExternalLink />} onClick={handleOpenDomainLink}>
                                 {t('open')}
                             </Button>
                             <Button danger icon={<LuTrash2 />} loading={domainLoading} onClick={() => void handleRemoveDomain()}>
@@ -380,11 +799,7 @@ function DomainSettingsTab({ scrollRef, storeDetails, onStoreStateUpdate, onStor
                                                 <Button
                                                     icon={copiedDnsValue === `${index}` ? <LuCheck /> : <LuCopy />}
                                                     key={`copy-${index}`}
-                                                    onClick={() => {
-                                                        navigator.clipboard.writeText(record.value);
-                                                        setCopiedDnsValue(`${index}`);
-                                                        setTimeout(() => setCopiedDnsValue(null), 2000);
-                                                    }}
+                                                    onClick={() => void handleCopyDnsRecord(record, index)}
                                                     size="small"
                                                     type="text"
                                                 >

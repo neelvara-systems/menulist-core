@@ -8,13 +8,21 @@ import { isValidPrice } from "@lib/extraction/validation";
 import { invalidateOwnerBusinessAssistantPacketCache } from "@lib/ownerBusinessAssistant/server/contextPacketCache";
 import { requireAnyStorePermissionForStoreData } from "@lib/permissions/server";
 import { checkRateLimit } from "@lib/rateLimit";
+import { readBoundedJsonBody } from "@lib/security/boundedRequestBody";
 import { validateAPIInput } from "@lib/security/inputValidation";
-import { secureError } from "@lib/security/secureLogger";
+import { touchDigitalScreenContentVersionForStoreServer } from "@lib/screen/serverScreenInvalidation";
+import {
+    getBoundedMultiOutletStringContext,
+    getMultiOutletProjectLogContext,
+    logMultiOutletFailure,
+    type MultiOutletLogContext,
+} from "@lib/multiOutlet/diagnostics";
 import { DEFAULT_OUTLET_POLICY, LOCAL_CATEGORY_PREFIX, LOCAL_ITEM_PREFIX, type OutletPolicy } from "@type/multiOutlet.types";
 import { revalidateTag } from "next/cache";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { verifyTenantAccess, withAuth } from "../../../../middleware/auth";
+import { hashPublicRateLimitValue } from "src/middleware/publicApi";
 
 const projectIdSchema = z.string().min(1).max(200).regex(/^[a-zA-Z0-9_-]+$/);
 const overrideIdSchema = z.string().min(1).max(200).regex(/^[a-zA-Z0-9_-]+$/);
@@ -58,6 +66,7 @@ const schema = z.object({
         overrides: overridesSchema.optional(),
     }).passthrough(),
 });
+const OUTLET_SAVE_MAX_BODY_BYTES = 2 * 1024 * 1024;
 
 const DANGEROUS_KEYS = new Set(["__proto__", "constructor", "prototype"]);
 const OUTLET_PROJECT_WRITE_FIELDS = [
@@ -331,14 +340,26 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         return NextResponse.json({ error: "Multi-outlet disabled" }, { status: 403 });
     }
 
+    let failureContext: MultiOutletLogContext = {
+        endpoint: "/api/projects/outlet-save",
+        ...getBoundedMultiOutletStringContext("sessionTenantId", session?.tId),
+        ...getBoundedMultiOutletStringContext("sessionStoreId", session?.sId),
+        ...getBoundedMultiOutletStringContext("sessionUserId", session?.uId || session?.user?.id),
+    };
+
     try {
-        const body = await request.json();
+        const bodyResult = await readBoundedJsonBody(request, OUTLET_SAVE_MAX_BODY_BYTES, {
+            invalidJsonMessage: "Invalid input",
+        });
+        if (bodyResult.ok === false) return bodyResult.response;
+        const body = bodyResult.data as any;
+        failureContext = {
+            ...failureContext,
+            ...getMultiOutletProjectLogContext(body?.project?.projectId, body?.project?.masterProjectId),
+        };
         const validation = validateAPIInput(schema, body);
         if (validation.success !== true) {
-            secureError("[Projects] Linked outlet save validation failed", new Error(validation.error), {
-                tenantId: session?.tId,
-                storeId: session?.sId,
-            });
+            logMultiOutletFailure("linked_outlet_save_validation_failed", undefined, failureContext);
             return NextResponse.json({ error: "Invalid input" }, { status: 400 });
         }
 
@@ -353,12 +374,21 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         const outletStoreId = outletProjectRef.sId;
         const masterStoreId = masterProjectRef.sId;
         const currentStoreId = Number(session.sId || session.user?.storeId);
+        failureContext = {
+            ...failureContext,
+            ...getBoundedMultiOutletStringContext("tenantId", tenantId),
+            ...getBoundedMultiOutletStringContext("outletStoreId", outletStoreId),
+            ...getBoundedMultiOutletStringContext("masterStoreId", masterStoreId),
+            ...getBoundedMultiOutletStringContext("currentStoreId", currentStoreId),
+        };
         if (!verifyTenantAccess(session, tenantId, currentStoreId, request)) {
             return NextResponse.json({ error: "Forbidden" }, { status: 403 });
         }
 
+        const userRateLimitHash = hashPublicRateLimitValue(session.uId || session.user?.id || "unknown");
+        const projectRateLimitHash = hashPublicRateLimitValue(project.projectId);
         const rateLimit = await checkRateLimit({
-            key: `outlet-save:${session.uId || session.user?.id}:${project.projectId}`,
+            key: `outlet-save:${userRateLimitHash}:${projectRateLimitHash}`,
             limit: 120,
             window: 60,
         });
@@ -483,6 +513,8 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         revalidateTag(`menu-store-${outletStoreId}`);
         revalidateTag(`store-${outletStoreId}`);
         revalidateTag("client-stores");
+        revalidateTag("screen-data");
+        await touchDigitalScreenContentVersionForStoreServer(outletStoreId, "linkedOutletSave");
         await invalidateOwnerBusinessAssistantPacketCache({
             tId: tenantId,
             sId: outletStoreId,
@@ -491,10 +523,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
 
         return NextResponse.json({ success: true, project: safeProject });
     } catch (error) {
-        secureError("[Projects] Linked outlet save failed", error as Error, {
-            tenantId: session?.tId,
-            storeId: session?.sId,
-        });
+        logMultiOutletFailure("linked_outlet_save_route_failed", error, failureContext);
         return NextResponse.json({ error: "Linked outlet save failed" }, { status: 500 });
     }
 });

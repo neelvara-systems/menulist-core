@@ -9,6 +9,7 @@ import {
     type MediaImageCropIntent,
     type PreparedMediaImage,
 } from '@lib/media/prepareMediaImage';
+import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { Button, Flex, Modal, Typography, message, theme } from 'antd';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { LuCheck, LuMaximize2, LuRefreshCcw, LuRotateCcw, LuRotateCw, LuX } from 'react-icons/lu';
@@ -32,6 +33,7 @@ const DEFAULT_CROP: Required<MediaImageCropIntent> = {
 
 const MIN_ZOOM = 0.1;
 const MAX_ZOOM = 3;
+const MEDIA_IMAGE_ADJUST_FAILED_MESSAGE = 'Could not adjust image.';
 
 function clampZoom(value: number, minZoom = MIN_ZOOM): number {
     if (!Number.isFinite(value)) return DEFAULT_CROP.zoom;
@@ -257,7 +259,11 @@ const MediaImageAdjustModal: React.FC<MediaImageAdjustModalProps> = ({
             await onApply(prepared, crop);
             onClose();
         } catch (error) {
-            message.error(error instanceof Error ? error.message : 'Could not adjust image.');
+            logRuntimeFailure('media_image_adjust_failed', error, {
+                ...getBoundedRuntimeStringContext('fileName', fileName),
+                ...getBoundedRuntimeStringContext('imageType', imageType),
+            });
+            message.error(MEDIA_IMAGE_ADJUST_FAILED_MESSAGE);
         } finally {
             setIsApplying(false);
         }

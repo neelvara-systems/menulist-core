@@ -87,7 +87,7 @@ const AppSettingsPanel = () => {
         placement="right"
         closable={false}
         onClose={() => dispatch(toggleAppSettingsPanel(false))}
-        destroyOnClose={true}
+        destroyOnHidden={true}
         open={isOpen}
         key="app-settings"
         extra={

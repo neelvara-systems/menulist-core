@@ -1,7 +1,7 @@
 # Entity System — Implementation Blueprint
 
-> **Version:** 2.0.0
-> **Last Updated:** 2026-03-08
+> **Version:** 2.0.1
+> **Last Updated:** 2026-06-29
 > **Audience:** Developers
 > **Status:** ENHANCEMENT — 6 targeted changes to existing infrastructure
 
@@ -26,13 +26,13 @@
 
 | File                                         | Functions | Purpose                                       |
 | -------------------------------------------- | --------- | --------------------------------------------- |
-| `src/database/answerlattice/entities.ts`          | 12        | Full entity CRUD + relations + search index   |
+| `src/database/answerlattice/entities.ts`          | 12        | Full entity CRUD + relations + search index; entity creation marks tenant-summary discovery state with bounded failure diagnostics |
 | `src/database/answerlattice/entityCandidates.ts`  | 7         | Candidate lifecycle + promote pipeline        |
 | `src/database/answerlattice/canonicalAnswers.ts`  | 8         | Answers bound to entities via scope.entityIds |
 | `src/database/answerlattice/signalEvents.ts`      | 4         | Signal events with entityId                   |
 | `src/database/answerlattice/mutationProposals.ts` | 7         | Proposals with relatedEntityIds               |
 | `src/database/answerlattice/auditLogs.ts`         | 3         | Audit trail for entity operations             |
-| `src/database/answerlattice/releases.ts`          | 6         | Version management                            |
+| `src/database/answerlattice/releases.ts`          | 6         | Version management; activation keeps advisory drift failures non-blocking while storing fixed audit failure codes and bounded source-error metadata only |
 
 ### 1.3 Core Logic
 
@@ -52,6 +52,8 @@
 | `src/hooks/answerlattice/useCanonicalAnswers.ts`  | Canonical answer CRUD + drift                     |
 | `src/hooks/answerlattice/useEntityCandidates.ts`  | Candidate review + promote                        |
 | `src/hooks/answerlattice/useMutationProposals.ts` | Mutation proposal review                          |
+
+Hook failure states and toasts use fixed local copy. Firestore, callable, provider, route, or browser exception text must not be copied into entity, canonical-answer, candidate, or mutation-proposal dashboard messages.
 
 ### 1.5 Feature Flags (`src/config/features.ts`)
 
@@ -98,6 +100,8 @@ export interface AnswerlatticeEntity {
 **File:** `src/database/answerlattice/entities.ts`
 
 No new functions needed. Existing `updateEntity()` already handles partial updates with merge. The `aliases` field will be writable through the existing update path.
+
+Current `addEntity()` also marks the compiled context `entities` source stale and calls `markAnswerlatticeTenantHasEntities()` so the centralized scheduler can discover newly-active tenants from `platformSummary/answerlatticeTenantsSummary`. That tenant-summary marker remains non-blocking for entity creation, but the browser request now uses no-store cache, same-origin credentials, manual redirect handling, and a 16 KB bounded response reader that requires the `{ success: true }` acknowledgement shape. Failures emit `answerlattice_entity_tenant_summary_marker_failed` through Answerlattice bounded diagnostics with tenant/store/entity presence-length metadata only.
 
 ### 2.3 Hook Changes
 

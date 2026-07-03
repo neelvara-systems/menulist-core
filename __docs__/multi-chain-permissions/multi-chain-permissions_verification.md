@@ -2,7 +2,9 @@
 
 **Feature:** #4B — Multi-Chain Permissions  
 **Last Reviewed:** May 19, 2026  
-**Status:** ✅ Production Ready after final review + production audit
+**Status:** Source-verified evidence; not current launch certification
+
+> **Launch Boundary:** This verification file records source and historical QA evidence, not current production-launch approval. Current release approval requires the active [production-readiness audit](../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../production-readiness/external-certification-runbook.md) evidence, `npm run verify:multi-location-boundary`, permission-policy browser QA, linked outlet save QA, Firebase deploy evidence where rules/functions change, and target-environment smoke.
 
 ## May 19, 2026 Audit Result
 

@@ -12,6 +12,7 @@
 ```
 src/lib/analytics/
 └── unified.ts                        # Core tracking logic
+└── trackBeforeNavigate.ts            # Non-blocking final-action navigation tracking
 
 src/database/analytics/
 └── index.ts                          # Firestore DAL
@@ -39,6 +40,7 @@ functions/src/
 ## Owner Dashboard Parity
 
 - Desktop and mobile owner analytics use the same tab labels and the same menu-detail section builder: `Menu Signals`, `Visitor Sources`, `Campaign Tracking`, `Top Items`, `Categories`, `Customer Actions`, `Search Demand`, `Unavailable Interest`, `Languages`, `Filters`, and `Smart Picks`.
+- Legacy Google Analytics dashboard cards (`MenuPerformance`, `QuickStats`, `LocationInsights`, `TrendAnalysis`) use bounded analytics diagnostics for failed GA fetches. They must not direct-console raw property IDs, date ranges, response payloads, provider errors, or browser exceptions. `src/services/analytics/index.ts` calls legacy analytics routes with same-origin credentials, no-store cache policy, and manual redirect handling, caps response JSON at 1MB, validates report-like response rows, normalizes `/api/analytics/reports` to the returned `report` object expected by the dashboard cards, and logs malformed/invalid responses through bounded analytics diagnostics. `QuickStats` and `TrendAnalysis` read revenue from the route's `totalRevenue` metric index, while unavailable order counts remain `0`. `LocationInsights` also guards zero-total reports so percentages render as `0%` instead of `NaN%`. `DateRangeSelector` keeps visible range changes fail-open, but its `analytics.dashboardPreferences.dateRange` store write requires `assertStoreUpdateSucceeded()` and logs `dashboard_google_date_range_preference_save_failed` through bounded analytics diagnostics when persistence fails.
 - The shared builder lives in `src/lib/analytics/ownerDashboardDetails.ts`; desktop renders it with `MenuAnalyticsDetailsCard`, while mobile renders the same rows with `MobileMenuAnalyticsDetailsCard`.
 - `Today`, `Yesterday`, `This Week`, `This Month`, and `Overall` all use the same section builder. `Overview` renders the same builder for WTD and MTD data.
 - The owner dashboard read adapter normalizes older/lazy period documents so top items, categories, source quality, UTM traffic, search demand, unavailable demand, actions, filters, languages, and Smart Picks stay available when the raw maps exist.
@@ -166,6 +168,7 @@ const handleMenuAction = (menuAction: 'call' | 'whatsapp' | 'directions' | 'rese
 - Avoids tracking hover, scroll, and intermediate UI states
 - The same tracking path is reused in the footer and unavailable-item PDP recovery actions; zero-result search now stays retrieval-only and does not duplicate footer CTAs
 - Writes immediately instead of waiting for the passive-event queue, because these are owner-facing conversion signals.
+- Public menu and OBP final-action links use `trackBeforeNavigate.ts` to wait up to 800ms for tracking on same-tab navigation while preserving modifier-click and `_blank` browser behavior. Failed tracking calls log `public_link_navigation_tracking_failed` with fixed reason labels and bounded href/target presence-length metadata only; navigation still proceeds.
 
 ### Session Milestones and Category Interest
 
@@ -279,6 +282,17 @@ export async function trackAnalyticsEvent(
   await writeAnalyticsEventNow(updateData, tenantId, storeId, projectId, date, storeTimeZone);
 }
 ```
+
+### Diagnostics and Failure Logging
+
+- `src/lib/analytics/analyticsDiagnostics.ts` is the shared diagnostic layer for client analytics helpers, the analytics write queue, `POST /api/public/analytics/track`, owner analytics API routes, Google Analytics report routes, ROI metrics, and the Google Analytics server helper.
+- `src/lib/analytics/unified.ts`, `device.ts`, `geo.ts`, and `session.ts` log only normalized failure codes plus bounded identifier presence/length metadata.
+- `src/database/analytics/index.ts` uses the same bounded diagnostics for queue flush, persisted queue recovery, missing identity, enqueue, and summary update failures.
+- Public analytics route failures log `public_analytics_track_failed` with tenant/store/project presence and length metadata, update-field count, date-request presence, and source error name/code/status metadata only. They must not pass raw route exceptions or raw tenant/store/project IDs to `secureError()`.
+- Public analytics target validation must reject inactive, deleted, platform-blocked, or tenant-blocked stores before preference filtering or Admin SDK writes. The target validator reads the tenant document on 300-second cache misses only; this keeps blocked tenants from refreshing anonymous analytics while preserving the existing coalesced daily-doc write model.
+- Owner analytics API route failures log stable codes such as `analytics_realtime_api_failed`, `analytics_menu_api_failed`, `analytics_locations_api_failed`, `analytics_realtime_detail_api_failed`, and `analytics_roi_metrics_api_failed` with bounded route/query/session metadata and source error name/code/status metadata only. They must not import or call `secureError()` directly.
+- Diagnostics must not log raw tenant IDs, store IDs, project IDs, session IDs, queue keys, user agents, raw GA property IDs, date-range values, geolocation exceptions, GA4 exceptions, or provider exception messages.
+- `npm run verify:menulist-api-tenant-safety` locks this no-direct-console/no-raw-logger contract for the analytics tracking path.
 
 ### Document Key Patterns
 
@@ -546,6 +560,7 @@ firebase functions:shell
 | No analytics in Firestore | projectId missing     | Check prop chain                 |
 | Events not tracking       | Rate limited          | Wait 1 minute                    |
 | GA4 not working           | Missing ID            | Add `googleAnalyticsId` to store |
+| Diagnostics missing       | Verifier failed       | Run `npm run verify:menulist-api-tenant-safety` |
 | Summary not updating      | Nightly scheduler failed | Check `computeDecisionBlocksScores` logs |
 | Old docs not deleted      | TTL cleanup failed    | Manual cleanup                   |
 

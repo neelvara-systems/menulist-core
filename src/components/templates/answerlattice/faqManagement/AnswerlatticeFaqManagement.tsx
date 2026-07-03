@@ -4,6 +4,8 @@ import { FEATURE_FLAGS } from '@config/features';
 import { getEntities } from '@database/answerlattice/entities';
 import {
     archiveFaq,
+    assertAnswerlatticeFaqArchiveSucceeded,
+    assertAnswerlatticeFaqWriteSucceeded,
     getFaqsForSession,
     saveFaq,
 } from '@database/answerlattice/faqs';
@@ -13,7 +15,7 @@ import {
 } from '@database/answerlattice/productSurfaces';
 import { getCategories } from '@database/knowledgeBase/categories';
 import { useClientAuthSession } from '@hook/useClientAuthSession';
-import { getAnswerlatticeUiErrorMessage } from '@lib/answerlattice/uiErrors';
+import { getBoundedAnswerlatticeStringContext, logAnswerlatticeFailure } from '@lib/answerlattice/diagnostics';
 import {
     ANSWERLATTICE_FAQ_SOURCE,
     ANSWERLATTICE_FAQ_STATUS,
@@ -60,6 +62,10 @@ const DEFAULT_FAQ_VALUES = {
     contextKeys: [],
     entityIds: [],
 };
+
+const ANSWERLATTICE_FAQS_LOAD_FAILED = 'Could not load FAQs';
+const ANSWERLATTICE_FAQ_SAVE_FAILED = 'Could not save FAQ';
+const ANSWERLATTICE_FAQ_ARCHIVE_FAILED = 'Could not archive FAQ';
 
 const STATUS_COLORS: Record<string, string> = {
     [ANSWERLATTICE_FAQ_STATUS.DRAFT]: 'default',
@@ -163,8 +169,8 @@ export default function AnswerlatticeFaqManagement() {
             setSelectedFaqId(prev => prev && faqList?.some(faq => faq.id === prev)
                 ? prev
                 : faqList?.[0]?.id || null);
-        } catch (error) {
-            message.error(getAnswerlatticeUiErrorMessage(error, 'Could not load FAQs'));
+        } catch {
+            message.error(ANSWERLATTICE_FAQS_LOAD_FAILED);
         } finally {
             setLoading(false);
         }
@@ -209,6 +215,11 @@ export default function AnswerlatticeFaqManagement() {
                 active: values.status !== ANSWERLATTICE_FAQ_STATUS.ARCHIVED,
                 articleTitle: linkedArticle?.title || values.articleTitle || null,
             });
+            assertAnswerlatticeFaqWriteSucceeded(
+                saved,
+                selectedFaq?.id,
+                'answerlattice_faq_management_save_rejected',
+            );
             const nextFaq = { ...(selectedFaq || {}), ...saved } as AnswerlatticeFaq;
             setFaqs(prev => sortFaqList([
                 ...prev.filter(faq => faq.id !== nextFaq.id),
@@ -221,7 +232,11 @@ export default function AnswerlatticeFaqManagement() {
                     await rebuildProductSurfaceContentSummary();
                 } catch (summaryError) {
                     summaryRefreshFailed = true;
-                    console.error('[Answerlattice FAQ] Product surface summary refresh failed after FAQ save', summaryError);
+                    logAnswerlatticeFailure('answerlattice_faq_summary_refresh_after_save_failed', summaryError, {
+                        ...getBoundedAnswerlatticeStringContext('faqId', nextFaq.id),
+                        ...getBoundedAnswerlatticeStringContext('articleId', values.articleId),
+                        ...getBoundedAnswerlatticeStringContext('faqStatus', values.status),
+                    });
                 }
             }
             if (summaryRefreshFailed) {
@@ -229,8 +244,8 @@ export default function AnswerlatticeFaqManagement() {
                 return;
             }
             message.success(willBePublished ? 'Answer published' : 'Answer saved');
-        } catch (error) {
-            message.error(getAnswerlatticeUiErrorMessage(error, 'Could not save FAQ'));
+        } catch {
+            message.error(ANSWERLATTICE_FAQ_SAVE_FAILED);
         } finally {
             setSaving(false);
         }
@@ -241,7 +256,12 @@ export default function AnswerlatticeFaqManagement() {
         setSaving(true);
         try {
             const wasPublished = selectedFaq.status === ANSWERLATTICE_FAQ_STATUS.PUBLISHED && selectedFaq.active !== false;
-            await archiveFaq(selectedFaq.id);
+            const archived = await archiveFaq(selectedFaq.id);
+            assertAnswerlatticeFaqArchiveSucceeded(
+                archived,
+                selectedFaq.id,
+                'answerlattice_faq_management_archive_rejected',
+            );
             const nextFaq = { ...selectedFaq, status: ANSWERLATTICE_FAQ_STATUS.ARCHIVED, active: false } as AnswerlatticeFaq;
             setFaqs(prev => sortFaqList(prev.map(faq => faq.id === nextFaq.id ? nextFaq : faq)));
             let summaryRefreshFailed = false;
@@ -250,7 +270,11 @@ export default function AnswerlatticeFaqManagement() {
                     await rebuildProductSurfaceContentSummary();
                 } catch (summaryError) {
                     summaryRefreshFailed = true;
-                    console.error('[Answerlattice FAQ] Product surface summary refresh failed after FAQ archive', summaryError);
+                    logAnswerlatticeFailure('answerlattice_faq_summary_refresh_after_archive_failed', summaryError, {
+                        ...getBoundedAnswerlatticeStringContext('faqId', selectedFaq.id),
+                        ...getBoundedAnswerlatticeStringContext('articleId', selectedFaq.articleId),
+                        ...getBoundedAnswerlatticeStringContext('faqStatus', selectedFaq.status),
+                    });
                 }
             }
             if (summaryRefreshFailed) {
@@ -258,8 +282,8 @@ export default function AnswerlatticeFaqManagement() {
                 return;
             }
             message.success('FAQ archived');
-        } catch (error) {
-            message.error(getAnswerlatticeUiErrorMessage(error, 'Could not archive FAQ'));
+        } catch {
+            message.error(ANSWERLATTICE_FAQ_ARCHIVE_FAILED);
         } finally {
             setSaving(false);
         }

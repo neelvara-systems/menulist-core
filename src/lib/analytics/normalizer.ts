@@ -7,6 +7,7 @@
  */
 
 import { METRIC_KEYS } from './registry';
+import { getBoundedAnalyticsStringContext, logAnalyticsFailure } from './analyticsDiagnostics';
 
 // ================================================================
 // NORMALIZED DATA TYPES
@@ -52,6 +53,27 @@ export interface NormalizedTopQuestion {
   category?: string;
   lastAsked?: string;
 }
+
+type AnalyticsNormalizerLogContext = Record<string, boolean | number | string | null | undefined>;
+
+const getAnalyticsNormalizerValidationContext = (metrics: unknown): AnalyticsNormalizerLogContext => {
+  const record = metrics && typeof metrics === 'object'
+    ? metrics as Partial<NormalizedMetrics>
+    : {};
+  const metadata = record.metadata && typeof record.metadata === 'object'
+    ? record.metadata as Partial<NormalizedMetrics['metadata']>
+    : {};
+
+  return {
+    ...getBoundedAnalyticsStringContext('metricsId', record.id),
+    ...getBoundedAnalyticsStringContext('metricsDate', record.date),
+    ...getBoundedAnalyticsStringContext('tenantId', metadata.tenantId),
+    ...getBoundedAnalyticsStringContext('storeId', metadata.storeId),
+    hasMetricsRecord: Boolean(metrics && typeof metrics === 'object'),
+    hasMetricsMap: Boolean(record.metrics && typeof record.metrics === 'object'),
+    hasMetadata: Boolean(record.metadata && typeof record.metadata === 'object'),
+  };
+};
 
 // ================================================================
 // NORMALIZATION FUNCTIONS
@@ -273,7 +295,7 @@ export function validateNormalizedMetrics(
     
     return true;
   } catch (error) {
-    console.error('[Normalizer] Validation error:', error);
+    logAnalyticsFailure('analytics_normalized_metrics_validation_failed', error, getAnalyticsNormalizerValidationContext(metrics));
     return false;
   }
 }

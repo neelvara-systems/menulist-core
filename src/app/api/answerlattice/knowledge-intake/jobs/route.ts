@@ -6,10 +6,16 @@ import {
     serializeIntakeValue,
 } from '@lib/answerlattice/knowledgeIntake';
 import {
+    getAnswerlatticeKnowledgeIntakeLogContext,
+    logAnswerlatticeKnowledgeIntakeFailure,
+} from '@lib/answerlattice/knowledgeIntakeDiagnostics';
+import {
+    getAnswerlatticeKnowledgeIntakeClientErrorMessage,
     getAnswerlatticeKnowledgeIntakeErrorStatus,
     requireAnswerlatticeKnowledgeIntakeContext,
 } from '@lib/answerlattice/knowledgeIntakeApi';
-import { secureError, secureLog } from '@lib/security/secureLogger';
+import { readOptionalBoundedJsonBody } from '@lib/security/boundedRequestBody';
+import { secureLog } from '@lib/security/secureLogger';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { withAuth } from '@/middleware/auth';
@@ -21,6 +27,7 @@ const CreateJobSchema = z.object({
     appUrl: z.string().trim().max(300).optional(),
     targetAudience: z.string().trim().max(160).optional(),
 }).optional();
+const KNOWLEDGE_INTAKE_CREATE_JOB_MAX_BODY_BYTES = 8 * 1024;
 
 export const GET = withAuth(async (request: NextRequest, session) => {
     const access = await requireAnswerlatticeKnowledgeIntakeContext(request, session);
@@ -30,7 +37,9 @@ export const GET = withAuth(async (request: NextRequest, session) => {
         const jobs = await listKnowledgeIntakeJobs(access.context.scope);
         return NextResponse.json({ jobs: serializeIntakeValue(jobs) }, { headers: { 'Cache-Control': 'private, no-store' } });
     } catch (error) {
-        secureError('[Answerlattice Intake] Failed to list jobs', error as Error, access.context.scope);
+        logAnswerlatticeKnowledgeIntakeFailure('[Answerlattice Intake] Failed to list jobs', 'answerlattice_intake_jobs_list_failed', error, {
+            scope: access.context.scope,
+        });
         return NextResponse.json({ error: 'Failed to load knowledge intake jobs.' }, { status: 500 });
     }
 });
@@ -45,14 +54,23 @@ export const POST = withAuth(async (request: NextRequest, session) => {
     if (access.response) return access.response;
 
     try {
-        const body = await request.json().catch(() => ({}));
-        const parsed = CreateJobSchema.parse(body) || {};
-        const job = await createKnowledgeIntakeJob(access.context.scope, parsed, access.context.actor);
-        secureLog('[Answerlattice Intake] Job created', {
-            jobId: job.id,
-            tId: access.context.scope.tId,
-            sId: access.context.scope.sId,
+        const bodyResult = await readOptionalBoundedJsonBody(request, KNOWLEDGE_INTAKE_CREATE_JOB_MAX_BODY_BYTES, {
+            invalidJsonMessage: 'Invalid intake job details.',
+            tooLargeMessage: 'Request body too large.',
         });
+        if (bodyResult.ok === false) {
+            return NextResponse.json(
+                { error: bodyResult.response.status === 413 ? 'Request body too large.' : 'Invalid intake job details.' },
+                { status: bodyResult.response.status },
+            );
+        }
+
+        const parsed = CreateJobSchema.parse(bodyResult.data) || {};
+        const job = await createKnowledgeIntakeJob(access.context.scope, parsed, access.context.actor);
+        secureLog('[Answerlattice Intake] Job created', getAnswerlatticeKnowledgeIntakeLogContext({
+            jobId: job.id,
+            scope: access.context.scope,
+        }));
         return NextResponse.json({ job: serializeIntakeValue(job) });
     } catch (error) {
         if (error instanceof z.ZodError) {
@@ -60,8 +78,10 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         }
         const status = getAnswerlatticeKnowledgeIntakeErrorStatus(error);
         if (status >= 500) {
-            secureError('[Answerlattice Intake] Failed to create job', error as Error, access.context.scope);
+            logAnswerlatticeKnowledgeIntakeFailure('[Answerlattice Intake] Failed to create job', 'answerlattice_intake_job_create_failed', error, {
+                scope: access.context.scope,
+            });
         }
-        return NextResponse.json({ error: status >= 500 ? 'Failed to create knowledge intake job.' : (error instanceof Error ? error.message : 'Failed to create knowledge intake job.') }, { status });
+        return NextResponse.json({ error: getAnswerlatticeKnowledgeIntakeClientErrorMessage(error, 'Failed to create knowledge intake job.') }, { status });
     }
 });

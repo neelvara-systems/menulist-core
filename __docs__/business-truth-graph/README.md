@@ -77,7 +77,7 @@ The Business Truth Graph (BTG) is a **conceptual vocabulary** for describing Men
 | Hours & Holiday Accuracy       | `__docs__/hours-holiday-accuracy/README.md`                       |
 | Temp Status Layer              | `__docs__/temp-status-layer/README.md`                            |
 | Reviews & Reputation           | `__docs__/reviews-reputation/README.md`                           |
-| SEO/AEO Discovery              | `__docs__/seo-aeo-discovery-infrastructure/README.md`             |
+| SEO/AEO Discovery              | `__docs__/discovery-infrastructure/README.md`                     |
 | GBP Sync                       | `__docs__/gbp-sync/README.md`                                     |
 | Official Business Page         | `__docs__/official-business-page/README.md`                       |
 

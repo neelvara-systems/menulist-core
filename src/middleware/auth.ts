@@ -1,17 +1,17 @@
 /**
  * API Route Authentication Middleware
  * ═══════════════════════════════════════════════════════════════
- * 
+ *
  * OWASP A01: Broken Access Control
  * OWASP A05: Security Misconfiguration
- * 
+ *
  * Security Features:
  * - CORS validation (prevents CSRF attacks)
  * - Authentication enforcement
  * - Role-based access control (RBAC)
  * - Session validation
  * - Security event logging
- * 
+ *
  * Usage:
  * import { withAuth } from '@middleware/auth';
  * export const GET = withAuth(async (req, session) => { ... });
@@ -22,7 +22,10 @@ import { logger } from '@lib/monitoring/logger';
 import { isPlatformEntityBlocked } from '@lib/platform/entityBlock';
 import { addCORSHeaders, handleCORSPreflight, validateCORS } from '@lib/security/corsValidation';
 import { secureError } from '@lib/security/secureLogger';
-import { buildSecurityContext } from '@lib/security/securityContext';
+import {
+    getBoundedSecurityRouteContext,
+    getBoundedSecurityStringContext,
+} from '@lib/security/securityDiagnostics';
 import { getServerSession } from 'next-auth';
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -41,9 +44,23 @@ const getSessionAccessDeniedReason = (session: any): string | null => {
     return null;
 };
 
+const getAuthMiddlewareSecurityContext = (
+    session: any,
+    request: NextRequest,
+    extra: Record<string, unknown> = {},
+) => ({
+    ...getBoundedSecurityRouteContext(session, request),
+    ...getBoundedSecurityStringContext('endpoint', request.nextUrl.pathname),
+    ...getBoundedSecurityStringContext('method', request.method),
+    ...Object.entries(extra).reduce<Record<string, boolean | number | string | null | undefined>>((acc, [key, value]) => ({
+        ...acc,
+        ...getBoundedSecurityStringContext(key, value),
+    }), {}),
+});
+
 /**
  * Wraps API route handlers with authentication + CORS validation
- * 
+ *
  * Security Flow:
  * 1. Validate CORS origin (prevent CSRF)
  * 2. Handle OPTIONS preflight requests
@@ -64,11 +81,9 @@ export function withAuth(handler: AuthenticatedHandler, options?: {
             if (corsError) {
                 // Log security event to Sentry
                 logger.security('CORS Validation Failed', {
-                    origin: request.headers.get('origin'),
-                    endpoint: request.nextUrl.pathname,
-                    method: request.method,
-                    ip: request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown',
-                    userAgent: request.headers.get('user-agent') || 'unknown',
+                    ...getAuthMiddlewareSecurityContext(null, request, {
+                        origin: request.headers.get('origin'),
+                    }),
                 }, 'high'); // HIGH severity - potential CSRF attack
 
                 return corsError;
@@ -86,10 +101,9 @@ export function withAuth(handler: AuthenticatedHandler, options?: {
             if (!session || !session.user) {
                 // 🚨 Log authentication failure to Sentry
                 logger.security('Authentication Failed', {
-                    ...buildSecurityContext(null, request),
-                    endpoint: request.nextUrl.pathname,
-                    error: 'No valid session - authentication required',
-                    method: request.method,
+                    ...getAuthMiddlewareSecurityContext(null, request, {
+                        reason: 'No valid session - authentication required',
+                    }),
                 }, 'medium');
 
                 return NextResponse.json(
@@ -101,10 +115,9 @@ export function withAuth(handler: AuthenticatedHandler, options?: {
             const sessionAccessDeniedReason = getSessionAccessDeniedReason(session);
             if (sessionAccessDeniedReason) {
                 logger.security('Authorization Failed - Account Access Ended', {
-                    ...buildSecurityContext(session, request),
-                    endpoint: request.nextUrl.pathname,
-                    error: sessionAccessDeniedReason,
-                    method: request.method,
+                    ...getAuthMiddlewareSecurityContext(session, request, {
+                        reason: sessionAccessDeniedReason,
+                    }),
                 }, 'high');
 
                 return NextResponse.json(
@@ -119,12 +132,11 @@ export function withAuth(handler: AuthenticatedHandler, options?: {
                 if (session.user.platformRole !== options.requiredPlatformRole && session.user.platformRole !== 'PLATFORM') {
                     // 🚨 Log authorization failure to Sentry
                     logger.security('Authorization Failed - Platform Role', {
-                        ...buildSecurityContext(session, request),
-                        endpoint: request.nextUrl.pathname,
-                        error: 'Insufficient platform permissions',
-                        required: options.requiredPlatformRole,
-                        actual: session.user.platformRole,
-                        method: request.method,
+                        ...getAuthMiddlewareSecurityContext(session, request, {
+                            actualPlatformRole: session.user.platformRole,
+                            reason: 'Insufficient platform permissions',
+                            requiredPlatformRole: options.requiredPlatformRole,
+                        }),
                     }, 'high'); // HIGH - privilege escalation attempt
 
                     return NextResponse.json(
@@ -139,12 +151,11 @@ export function withAuth(handler: AuthenticatedHandler, options?: {
                 if (session.user.role !== options.requiredRole) {
                     // 🚨 Log authorization failure to Sentry
                     logger.security('Authorization Failed - Store Role', {
-                        ...buildSecurityContext(session, request),
-                        endpoint: request.nextUrl.pathname,
-                        error: 'Insufficient store permissions',
-                        required: options.requiredRole,
-                        actual: session.user.role,
-                        method: request.method,
+                        ...getAuthMiddlewareSecurityContext(session, request, {
+                            actualRole: session.user.role,
+                            reason: 'Insufficient store permissions',
+                            requiredRole: options.requiredRole,
+                        }),
                     }, 'high'); // HIGH - privilege escalation attempt
 
                     return NextResponse.json(
@@ -162,8 +173,8 @@ export function withAuth(handler: AuthenticatedHandler, options?: {
         } catch (error) {
             // ✅ SECURITY FIX: Use secure logging to prevent sensitive data leakage
             secureError('[Auth Middleware] Error', error as Error, {
-                path: request.nextUrl.pathname,
-                method: request.method
+                ...getBoundedSecurityStringContext('path', request.nextUrl.pathname),
+                ...getBoundedSecurityStringContext('method', request.method),
             });
             return NextResponse.json(
                 { error: 'Internal Server Error' },
@@ -183,7 +194,7 @@ export function withPlatformAuth(handler: AuthenticatedHandler) {
 /**
  * Verify tenant/store ownership in request
  * CRITICAL: Prevents horizontal privilege escalation
- * 
+ *
  * @param session - User session
  * @param requestedTenantId - Tenant ID being accessed
  * @param requestedStoreId - Store ID being accessed (optional)
@@ -210,17 +221,11 @@ export function verifyTenantAccess(
         // 🚨 CRITICAL: Horizontal privilege escalation attempt detected!
         if (request) {
             logger.security('Horizontal Privilege Escalation Attempt - Tenant', {
-                userId: session.user?.id || session.uId,
-                email: session.user?.email,
-                tenantId: session.tId,
-                storeId: session.sId,
-                userAgent: request.headers.get('user-agent') || 'unknown',
-                ip: request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown',
-                endpoint: request.nextUrl.pathname,
-                error: 'User attempted to access different tenant data',
-                attemptedTenantId: requestTenantId,
-                sessionTenantId: sessionTenantId,
-                method: request.method,
+                ...getAuthMiddlewareSecurityContext(session, request, {
+                    attemptedTenantId: requestTenantId,
+                    reason: 'User attempted to access different tenant data',
+                    sessionTenantId,
+                }),
             }, 'critical'); // CRITICAL - privilege escalation!
         }
         return false;
@@ -239,17 +244,11 @@ export function verifyTenantAccess(
             // 🚨 CRITICAL: Store-level privilege escalation attempt!
             if (request) {
                 logger.security('Horizontal Privilege Escalation Attempt - Store', {
-                    userId: session.user?.id || session.uId,
-                    email: session.user?.email,
-                    tenantId: session.tId,
-                    storeId: session.sId,
-                    userAgent: request.headers.get('user-agent') || 'unknown',
-                    ip: request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown',
-                    endpoint: request.nextUrl.pathname,
-                    error: 'User attempted to access different store data',
-                    attemptedStoreId: requestStoreId,
-                    sessionStoreId: sessionStoreId,
-                    method: request.method,
+                    ...getAuthMiddlewareSecurityContext(session, request, {
+                        attemptedStoreId: requestStoreId,
+                        reason: 'User attempted to access different store data',
+                        sessionStoreId,
+                    }),
                 }, 'critical'); // CRITICAL - privilege escalation!
             }
             return false;
@@ -264,11 +263,13 @@ export function verifyTenantAccess(
  * Prevents injection through session data
  */
 export function sanitizeSession(session: any): any {
+    const user = session?.user || {};
+
     return {
         user: {
-            id: session.user?.id,
-            email: session.user?.email,
-            name: session.user?.name
+            id: user.id,
+            email: user.email,
+            name: user.name
         },
         pId: session.pId,
         tId: session.tId,

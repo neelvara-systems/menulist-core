@@ -1,5 +1,6 @@
-import { deleteIngestionJob } from '@database/kb-generation/jobs';
+import { assertIngestionJobDeleteSucceeded, deleteIngestionJob } from '@database/kb-generation/jobs';
 import { useAppDispatch } from '@hook/useAppDispatch';
+import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { startLoader, stopLoader } from '@reduxSlices/loader';
 import { Button, Dropdown, message, Popconfirm } from 'antd';
 import { LuEye, LuMoreVertical, LuTrash } from 'react-icons/lu';
@@ -15,11 +16,14 @@ const JobActionMenu: React.FC<JobActionMenuProps> = ({ jobId, onCardClick }) => 
     const handleDelete = async () => {
         dispatch(startLoader('Deleting job...'));
         try {
-            await deleteIngestionJob(jobId);
+            const result = await deleteIngestionJob(jobId);
+            assertIngestionJobDeleteSucceeded(result, jobId, 'kb_generation_job_history_delete_rejected');
             message.success('Job deleted successfully');
         } catch (error) {
             message.error('Failed to delete job');
-            console.error('Failed to delete job:', error);
+            logRuntimeFailure('platform_kb_job_delete_failed', error, {
+                ...getBoundedRuntimeStringContext('jobId', jobId),
+            });
         } finally {
             dispatch(stopLoader('Deleting job...'));
         }

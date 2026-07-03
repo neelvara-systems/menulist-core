@@ -1,7 +1,7 @@
 # Answerlattice Client Onboarding — Implementation
 
-> **Version:** 1.5.0
-> **Last Updated:** 2026-05-21
+> **Version:** 1.5.1
+> **Last Updated:** 2026-06-30
 > **Audience:** Developers
 
 ---
@@ -29,9 +29,9 @@ src/data/answerlattice/plans.ts                       # Answerlattice plans conf
 1. Verify user doesn't already have `productAccounts.AL` or an Answerlattice-project tenant/store (prevents re-onboarding while allowing existing MenuList owners to add Answerlattice)
 2. Rate limiting (3/hour per user)
 3. Validate input (companyName min 2 chars, optional product URL, optional support email, billing model, selected product surfaces)
-4. Resolve plan (beta default)
+4. Resolve plan (paid Starter default)
 5. Atomic Firestore transaction: create Answerlattice tenant + store + Answerlattice user
-6. Create subscription (beta: free, 6-month window; paid: Razorpay recurring subscription)
+6. Create pending Razorpay recurring subscription
 7. Write the default-auth bridge under `productAccounts.AL` and upsert `platformSummary/answerlatticeTenantsSummary`
 8. Bootstrap initial Answerlattice product surfaces and compact context summary from selected onboarding pages
 9. Generate widget key (`al_` prefix) under `stores/{sId}.answerlatticeWidgetApi`
@@ -58,10 +58,11 @@ src/data/answerlattice/plans.ts                       # Answerlattice plans conf
 
 **Zero external UI deps** — inline styles, no antd/tailwind in the component itself.
 
+The submit client sends `/api/answerlattice/onboard` with same-origin credentials, no-store cache, and manual redirect handling. It parses the route response through a 16 KB bounded JSON reader and requires a valid onboarding result shape (`tenantId`, `storeId`, `apiKey`, `plan`, and optional `subscription`) before refreshing the session, setting success state, or showing the widget key. Malformed, oversized, redirected, rejected, or wrong-shape responses keep the fixed browser failure copy and log bounded diagnostics only.
+
 ### 3. Answerlattice Plans (`src/data/answerlattice/plans.ts`)
 
-**4 plans defined:**
-- `answerlattice_beta` — ₹0/mo, 6 months, controlled launch access
+**3 plans defined:**
 - `answerlattice_starter` — ₹999/mo or ₹9,990/yr
 - `answerlattice_growth` — ₹2,999/mo or ₹29,990/yr
 - `answerlattice_studio` — ₹6,999/mo or ₹69,990/yr
@@ -93,7 +94,7 @@ Request:
   "supportEmail": "support@acme.test",
   "billingModel": "subscription",
   "primarySurfaces": ["billing", "onboarding", "settings"],
-  "planId": "answerlattice_beta",
+  "planId": "answerlattice_starter",
   "interval": "MONTH",
   "currency": "INR"
 }
@@ -104,15 +105,15 @@ Response (success):
 {
   "tenantId": 42,
   "storeId": 43,
-  "subscriptionId": "answerlattice_beta_42_43_1709...",
+  "subscriptionId": "sub_abc123...",
   "apiKey": "al_a1b2c3d4...",
-  "subscription": null,
-  "plan": { "id": "answerlattice_beta", "name": "Beta", "isBeta": true },
+  "subscription": { "id": "sub_abc123", "shortUrl": "https://rzp.io/i/...", "status": "created" },
+  "plan": { "id": "answerlattice_starter", "name": "Starter", "isBeta": false },
   "initialSurfaceCount": 3
 }
 ```
 
-For paid plans, `subscription` contains the Razorpay subscription id, payment URL, and provider status. The Firestore subscription is created as `pending`; activation depends on the shared Razorpay verify/webhook flow, which now derives `productId: 'AL'` from request body or Razorpay notes and updates Answerlattice Firebase.
+`subscription` contains the Razorpay subscription id, payment URL, and provider status. The Firestore subscription is created as `pending`; activation depends on the shared Razorpay verify/webhook flow, which now derives `productId: 'AL'` from request body or Razorpay notes and updates Answerlattice Firebase.
 
 Errors: 400 (already onboarded / invalid input), 401 (not authenticated), 403 (feature unavailable), 429 (rate limited), 500 (server error)
 
@@ -134,6 +135,7 @@ This allows querying Answerlattice-specific tenants without a separate collectio
 
 | Date | Version | Change |
 |------|---------|--------|
+| 2026-06-30 | 1.5.1 | Hardened the get-started client response boundary with same-origin credentials, no-store cache, manual redirect handling, a 16 KB bounded response parser, result-shape validation, and bounded diagnostics before success state |
 | 2026-05-21 | 1.5.0 | Documented product-aware Razorpay activation for paid Answerlattice onboarding |
 | 2026-05-21 | 1.3.0 | Added richer product profile inputs, initial product-surface bootstrap, compact context summary seed, and Starter/Growth/Studio pricing |
 | 2026-05-21 | 1.2.0 | Documented separate-product onboarding sequence: Answerlattice-project user, default-auth `productAccounts.AL` bridge, tenant summary, and `answerlatticeWidgetApi` key |

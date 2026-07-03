@@ -5,10 +5,16 @@ import {
     serializeIntakeValue,
 } from '@lib/answerlattice/knowledgeIntake';
 import {
+    getAnswerlatticeKnowledgeIntakeLogContext,
+    logAnswerlatticeKnowledgeIntakeFailure,
+} from '@lib/answerlattice/knowledgeIntakeDiagnostics';
+import {
+    getAnswerlatticeKnowledgeIntakeClientErrorMessage,
     getAnswerlatticeKnowledgeIntakeErrorStatus,
     requireAnswerlatticeKnowledgeIntakeContext,
 } from '@lib/answerlattice/knowledgeIntakeApi';
-import { secureError, secureLog } from '@lib/security/secureLogger';
+import { readOptionalBoundedJsonBody } from '@lib/security/boundedRequestBody';
+import { secureLog } from '@lib/security/secureLogger';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { withAuth } from '@/middleware/auth';
@@ -25,6 +31,7 @@ const SourceSchema = z.object({
     entityIds: z.array(z.string().trim().max(160)).max(25).optional(),
     metadata: z.record(z.any()).optional(),
 });
+const KNOWLEDGE_INTAKE_SOURCE_MAX_BODY_BYTES = 128 * 1024;
 
 export const POST = withAuth(async (request: NextRequest, session, params: { jobId: string }) => {
     const access = await requireAnswerlatticeKnowledgeIntakeContext(request, session, {
@@ -36,16 +43,25 @@ export const POST = withAuth(async (request: NextRequest, session, params: { job
     if (access.response) return access.response;
 
     try {
-        const body = await request.json().catch(() => ({}));
-        const parsed = SourceSchema.parse(body);
+        const bodyResult = await readOptionalBoundedJsonBody(request, KNOWLEDGE_INTAKE_SOURCE_MAX_BODY_BYTES, {
+            invalidJsonMessage: 'Invalid source details.',
+            tooLargeMessage: 'Request body too large.',
+        });
+        if (bodyResult.ok === false) {
+            return NextResponse.json(
+                { error: bodyResult.response.status === 413 ? 'Request body too large.' : 'Invalid source details.' },
+                { status: bodyResult.response.status },
+            );
+        }
+
+        const parsed = SourceSchema.parse(bodyResult.data);
         const source = await addKnowledgeSource(access.context.scope, params.jobId, parsed, access.context.actor);
-        secureLog('[Answerlattice Intake] Source added', {
+        secureLog('[Answerlattice Intake] Source added', getAnswerlatticeKnowledgeIntakeLogContext({
             jobId: params.jobId,
+            scope: access.context.scope,
             sourceId: source.id,
             sourceType: source.type,
-            tId: access.context.scope.tId,
-            sId: access.context.scope.sId,
-        });
+        }));
         return NextResponse.json({ source: serializeIntakeValue(source) });
     } catch (error) {
         if (error instanceof z.ZodError) {
@@ -53,11 +69,11 @@ export const POST = withAuth(async (request: NextRequest, session, params: { job
         }
         const status = getAnswerlatticeKnowledgeIntakeErrorStatus(error);
         if (status >= 500) {
-            secureError('[Answerlattice Intake] Failed to add source', error as Error, {
-                ...access.context.scope,
+            logAnswerlatticeKnowledgeIntakeFailure('[Answerlattice Intake] Failed to add source', 'answerlattice_intake_source_add_failed', error, {
                 jobId: params.jobId,
+                scope: access.context.scope,
             });
         }
-        return NextResponse.json({ error: error instanceof Error ? error.message : 'Failed to add source.' }, { status });
+        return NextResponse.json({ error: getAnswerlatticeKnowledgeIntakeClientErrorMessage(error, 'Failed to add source.') }, { status });
     }
 });

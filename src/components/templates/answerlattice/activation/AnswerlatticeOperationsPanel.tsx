@@ -15,18 +15,19 @@ import {
     message,
     theme,
 } from 'antd';
-import { getAnswerlatticeUiErrorMessage } from '@lib/answerlattice/uiErrors';
+import {
+    ANSWERLATTICE_ACTIVATION_DASHBOARD_REQUEST_POLICY,
+    isAnswerlatticeOperationsStatusResponse,
+    readAnswerlatticeActivationDashboardResponse,
+} from '@lib/answerlattice/activationDashboardResponseClient';
 import type { AnswerlatticeOperationsStatusSummary, AnswerlatticeOwnerOperationStatus } from '@type/answerlattice';
 import type { CSSProperties } from 'react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { LuClock3, LuRefreshCw, LuServerCog, LuSettings } from 'react-icons/lu';
 
 const { Text } = Typography;
-
-type OperationsStatusResponse = {
-    operations?: AnswerlatticeOperationsStatusSummary;
-    error?: string;
-};
+const ANSWERLATTICE_OPERATIONS_STATUS_LOAD_FAILED = 'Could not load operations status';
+const ANSWERLATTICE_OPERATIONS_LAST_RUN_NEEDS_REVIEW = 'Last run needs review';
 
 const STATUS_COLOR: Record<AnswerlatticeOwnerOperationStatus | 'unknown', string> = {
     success: 'success',
@@ -98,14 +99,19 @@ export default function AnswerlatticeOperationsPanel({
         }
 
         try {
-            const response = await fetch('/api/answerlattice/operations/status', { method: 'GET' });
-            const data: OperationsStatusResponse = await response.json().catch(() => ({}));
-            if (!response.ok || !data.operations) {
-                throw new Error(data.error || 'Failed to load operations status');
-            }
+            const response = await fetch('/api/answerlattice/operations/status', {
+                ...ANSWERLATTICE_ACTIVATION_DASHBOARD_REQUEST_POLICY,
+                method: 'GET',
+            });
+            const data = await readAnswerlatticeActivationDashboardResponse(
+                response,
+                'operations_status_load',
+                isAnswerlatticeOperationsStatusResponse,
+                ANSWERLATTICE_OPERATIONS_STATUS_LOAD_FAILED,
+            );
             setOperations(data.operations);
-        } catch (error) {
-            message.error(getAnswerlatticeUiErrorMessage(error, 'Could not load operations status'));
+        } catch {
+            message.error(ANSWERLATTICE_OPERATIONS_STATUS_LOAD_FAILED);
         } finally {
             setLoading(false);
             setRefreshing(false);
@@ -208,10 +214,7 @@ export default function AnswerlatticeOperationsPanel({
                     </Flex>
                     {operations.masterScheduler.governanceTask.lastError && (
                         <Text type="danger">
-                            {getAnswerlatticeUiErrorMessage(
-                                operations.masterScheduler.governanceTask.lastError,
-                                'Last run needs review',
-                            )}
+                            {ANSWERLATTICE_OPERATIONS_LAST_RUN_NEEDS_REVIEW}
                         </Text>
                     )}
                 </Space>

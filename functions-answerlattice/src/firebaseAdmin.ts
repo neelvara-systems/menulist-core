@@ -12,13 +12,38 @@ import * as admin from 'firebase-admin';
 import * as logger from 'firebase-functions/logger';
 import * as fs from 'fs';
 import * as path from 'path';
-import { VertexAI } from '@google-cloud/vertexai';
 import { getFirestore } from 'firebase-admin/firestore';
 
 type CredentialPrefix = 'FIREBASE' | 'ANSWERLATTICE_FIREBASE';
 
 const normalizeMode = (value?: string) => value?.trim().toLowerCase();
 const normalizePrivateKey = (privateKey: string) => privateKey.replace(/\\n/g, '\n').trim();
+
+function getBoundedFunctionsAdminStringContext(label: string, value: unknown): Record<string, number | boolean> {
+    const text = typeof value === 'string' ? value : '';
+    return {
+        [`${label}Present`]: text.length > 0,
+        [`${label}Length`]: text.length,
+    };
+}
+
+function getFunctionsAdminErrorContext(error: unknown): Record<string, string | number | null> {
+    const source = error as { code?: unknown; status?: unknown; statusCode?: unknown };
+    const code = typeof source?.code === 'string' || typeof source?.code === 'number'
+        ? String(source.code).slice(0, 80)
+        : null;
+    const status = typeof source?.status === 'string' || typeof source?.status === 'number'
+        ? String(source.status).slice(0, 80)
+        : typeof source?.statusCode === 'string' || typeof source?.statusCode === 'number'
+            ? String(source.statusCode).slice(0, 80)
+            : null;
+
+    return {
+        sourceErrorName: error instanceof Error ? (error.name || 'Error').slice(0, 80) : typeof error,
+        sourceErrorCode: code,
+        sourceErrorStatus: status,
+    };
+}
 
 function getAnswerlatticeProjectId(): string | undefined {
     return process.env.ANSWERLATTICE_FIREBASE_PROJECT_ID ||
@@ -56,8 +81,10 @@ function getCredential(prefix: CredentialPrefix): admin.credential.Credential | 
         });
     } catch (error) {
         logger.warn('[Answerlattice Firebase Admin] Ignoring invalid service-account credential. Falling back to runtime credentials when available.', {
+            failureCode: 'answerlattice_functions_admin_env_credential_invalid',
             prefix,
-            error: error instanceof Error ? error.message : String(error),
+            usesProductCredential: prefix === 'ANSWERLATTICE_FIREBASE',
+            ...getFunctionsAdminErrorContext(error),
         });
         return null;
     }
@@ -87,7 +114,9 @@ function getAnswerlatticeServiceAccountFileCredential(): admin.credential.Creden
         });
     } catch (error) {
         logger.warn('[Answerlattice Firebase Admin] Could not load ANSWERLATTICE_GOOGLE_APPLICATION_CREDENTIALS. Falling back to runtime credentials when available.', {
-            error: error instanceof Error ? error.message : String(error),
+            failureCode: 'answerlattice_functions_admin_file_credential_load_failed',
+            ...getBoundedFunctionsAdminStringContext('credentialPath', credentialPath),
+            ...getFunctionsAdminErrorContext(error),
         });
         return null;
     }
@@ -123,7 +152,6 @@ if (!projectId) {
     throw new Error('Answerlattice Firebase project ID could not be determined.');
 }
 
-export const vertexAIClient = new VertexAI({ project: projectId, location: 'us-central1' });
 export const storageAdmin = admin.storage();
 export const authAdmin = admin.auth();
 export { admin };

@@ -1,9 +1,11 @@
 'use client';
 
-import { updateJob } from "@database/kb-generation/jobs";
-import { rebuildProductSurfaceContentSummary } from "@database/answerlattice/productSurfaces";
-import { getArticleById, updateArticle } from "@database/knowledgeBase/articles";
+import { assertIngestionJobWriteSucceeded, updateJob } from "@database/kb-generation/jobs";
+import { rebuildProductSurfaceContentSummaryWithDiagnostics } from "@database/answerlattice/productSurfaces";
+import { FEATURE_FLAGS } from "@config/features";
+import { assertKnowledgeBaseArticleWriteSucceeded, getArticleById, updateArticle } from "@database/knowledgeBase/articles";
 import { useAppDispatch } from "@hook/useAppDispatch";
+import { getBoundedAnswerlatticeStringContext } from '@lib/answerlattice/diagnostics';
 import { publishApprovedJob, PublishApprovedJobPayload, regenerateEmbedding } from '@lib/firebase/functions';
 import { startLoader, stopLoader } from "@reduxSlices/loader";
 import { IngestionJob, IngestionJobArticle, IngestionJobSection, KnowledgeBaseArticleMeta, KnowledgeBaseArticleType, KnowledgeBaseCategoriesType, KnowledgeBaseCategory, KnowledgeBaseSection } from "@type/knowledgeBase";
@@ -70,8 +72,13 @@ function ReviewModal({ open, onClose, job, articlesToReview, onReconciliationReq
                 try {
                     const updatedCategories = { ...categoriesData.categories };
                     delete updatedCategories[categoryId];
+                    const updateResult = await updateJob(job.id, { categories: updatedCategories as any });
+                    assertIngestionJobWriteSucceeded(
+                        updateResult,
+                        job.id,
+                        'kb_generation_review_category_delete_rejected',
+                    );
                     setCategoriesData({ categories: updatedCategories });
-                    await updateJob(job.id, { categories: updatedCategories as any });
                     if (selectedCategory?.id === categoryId) {
                         setSelectedCategory(null);
                         setSelectedSection(null);
@@ -102,8 +109,13 @@ function ReviewModal({ open, onClose, job, articlesToReview, onReconciliationReq
                     if (cat?.sections) {
                         cat.sections = cat.sections.filter((s: IngestionJobSection) => s.id !== sectionId);
                     }
+                    const updateResult = await updateJob(job.id, { categories: updatedCategories as any });
+                    assertIngestionJobWriteSucceeded(
+                        updateResult,
+                        job.id,
+                        'kb_generation_review_section_delete_rejected',
+                    );
                     setCategoriesData({ categories: updatedCategories });
-                    await updateJob(job.id, { categories: updatedCategories as any });
                     if (selectedSection?.id === sectionId) {
                         setSelectedSection(null);
                         setSelectedArticle(null);
@@ -138,8 +150,13 @@ function ReviewModal({ open, onClose, job, articlesToReview, onReconciliationReq
                     } else if (cat?.articles) {
                         cat.articles = cat.articles.filter((a: IngestionJobArticle) => a.id !== articleId);
                     }
+                    const updateResult = await updateJob(job.id, { categories: updatedCategories as any });
+                    assertIngestionJobWriteSucceeded(
+                        updateResult,
+                        job.id,
+                        'kb_generation_review_article_delete_rejected',
+                    );
                     setCategoriesData({ categories: updatedCategories });
-                    await updateJob(job.id, { categories: updatedCategories as any });
                     setSelectedArticle(null);
                     message.success('Article deleted');
                 } catch {
@@ -189,8 +206,21 @@ function ReviewModal({ open, onClose, job, articlesToReview, onReconciliationReq
                 try {
                     const payload: PublishApprovedJobPayload = { jobId: job.id, finalCategories: (categoriesData?.categories || job.categories) as any }
                     await publishApprovedJob(payload);
-                    rebuildProductSurfaceContentSummary().catch(() => undefined);
-                    message.success('Job has been successfully published!');
+                    let summaryRefreshSucceeded = true;
+                    if (FEATURE_FLAGS.ENABLE_ANSWERLATTICE_PRODUCT_SURFACES) {
+                        summaryRefreshSucceeded = await rebuildProductSurfaceContentSummaryWithDiagnostics({
+                            failureCode: 'answerlattice_kb_generation_summary_refresh_after_publish_failed',
+                            context: {
+                                ...getBoundedAnswerlatticeStringContext('jobId', job.id),
+                                publishedArticleCount: Number(job.articlesToEmbedCount || job.articleIds?.length || 0),
+                            },
+                        });
+                    }
+                    if (summaryRefreshSucceeded) {
+                        message.success('Job has been successfully published!');
+                    } else {
+                        message.warning('Job published, but contextual help refresh failed. Try Refresh after checking product surfaces.');
+                    }
                     onClose(); // Close the modal on success
                 } catch (error) {
                     message.error('Failed to publish the job. Please try again.');
@@ -203,50 +233,75 @@ function ReviewModal({ open, onClose, job, articlesToReview, onReconciliationReq
 
     const handleCategorySuccess = async (updatedCategory: any) => {
         dispatch(startLoader('Updating category...'));
-        const updatedCategories = { ...categoriesData?.categories };
-        if (Boolean(updatedCategory.sections?.length)) {
-            updatedCategory.sections.map((section: IngestionJobSection) => {
-                if (Boolean(section.articles?.length)) {
-                    section.articles.map((article: IngestionJobArticle) => {
-                        article.reEmbedding = true;
-                    })
-                }
-            })
-        } else if (Boolean(updatedCategory.articles?.length)) {
-            updatedCategory.articles.map((article: IngestionJobArticle) => {
-                article.reEmbedding = true;
-            })
+        try {
+            const updatedCategories = { ...categoriesData?.categories };
+            if (Boolean(updatedCategory.sections?.length)) {
+                updatedCategory.sections.map((section: IngestionJobSection) => {
+                    if (Boolean(section.articles?.length)) {
+                        section.articles.map((article: IngestionJobArticle) => {
+                            article.reEmbedding = true;
+                        })
+                    }
+                })
+            } else if (Boolean(updatedCategory.articles?.length)) {
+                updatedCategory.articles.map((article: IngestionJobArticle) => {
+                    article.reEmbedding = true;
+                })
+            }
+            updatedCategories[updatedCategory.id] = updatedCategory;
+            const updateResult = await updateJob(job?.id, { categories: updatedCategories as any });
+            assertIngestionJobWriteSucceeded(
+                updateResult,
+                job?.id,
+                'kb_generation_review_category_update_rejected',
+            );
+            setCategoriesData({ categories: updatedCategories });
+            setActiveModal({ type: "", data: null });
+        } catch {
+            message.error('Failed to update category.');
+        } finally {
+            dispatch(stopLoader('Updating category...'));
         }
-        updatedCategories[updatedCategory.id] = updatedCategory;
-        setCategoriesData({ categories: updatedCategories });
-        await updateJob(job?.id, { categories: updatedCategories as any });
-        dispatch(stopLoader('Updating category...'));
-        setActiveModal({ type: "", data: null });
     };
 
     const handleSectionSuccess = async (updatedSection: any) => {
         dispatch(startLoader('Updating section...'));
-        const updatedCategories: any = { ...categoriesData?.categories };
-        let secIndex = updatedCategories[selectedCategory.id].sections.findIndex((section: IngestionJobSection) => section.id === updatedSection.id);
+        try {
+            const updatedCategories: any = { ...categoriesData?.categories };
+            let secIndex = updatedCategories[selectedCategory.id].sections.findIndex((section: IngestionJobSection) => section.id === updatedSection.id);
 
-        if (Boolean(updatedSection.articles?.length)) {
-            updatedSection.articles.map((article: IngestionJobArticle) => {
-                article.reEmbedding = true;
-            })
+            if (Boolean(updatedSection.articles?.length)) {
+                updatedSection.articles.map((article: IngestionJobArticle) => {
+                    article.reEmbedding = true;
+                })
+            }
+
+            updatedCategories[selectedCategory.id].sections[secIndex] = updatedSection;
+            const updateResult = await updateJob(job?.id, { categories: updatedCategories as any });
+            assertIngestionJobWriteSucceeded(
+                updateResult,
+                job?.id,
+                'kb_generation_review_section_update_rejected',
+            );
+            setCategoriesData({ categories: updatedCategories });
+            setActiveModal({ type: "", data: null });
+        } catch {
+            message.error('Failed to update section.');
+        } finally {
+            dispatch(stopLoader('Updating section...'));
         }
-
-        updatedCategories[selectedCategory.id].sections[secIndex] = updatedSection;
-        setCategoriesData({ categories: updatedCategories });
-        await updateJob(job?.id, { categories: updatedCategories as any });
-        dispatch(stopLoader('Updating section...'));
-        setActiveModal({ type: "", data: null });
     };
 
     const handleArticleSaveSuccess = async (savedArticle: KnowledgeBaseArticleType) => {
         dispatch(startLoader('Updating article...'));
         try {
             const isNewArticle = !activeModal.data;
-            await updateArticle(savedArticle);
+            const updatedArticle = await updateArticle(savedArticle);
+            assertKnowledgeBaseArticleWriteSucceeded(
+                updatedArticle,
+                savedArticle.id,
+                'kb_generation_review_article_update_rejected',
+            );
 
             if (job && categoriesData && selectedCategory) {
                 const updatedCategories: any = JSON.parse(JSON.stringify(categoriesData.categories));
@@ -274,8 +329,13 @@ function ReviewModal({ open, onClose, job, articlesToReview, onReconciliationReq
                     }
                 }
 
+                const updateResult = await updateJob(job.id, { categories: updatedCategories as any });
+                assertIngestionJobWriteSucceeded(
+                    updateResult,
+                    job.id,
+                    'kb_generation_review_article_job_update_rejected',
+                );
                 setCategoriesData({ categories: updatedCategories });
-                await updateJob(job.id, { categories: updatedCategories as any });
             }
 
             await regenerateEmbedding(savedArticle.id);

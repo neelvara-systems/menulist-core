@@ -17,8 +17,15 @@
 import { FEATURE_FLAGS } from '@config/features';
 import ImageUploadInput from '@atoms/imageUploadInput';
 import { getMenuUrl, normalizeBaseUrl } from '@constant/urls';
-import { updateStore } from '@database/stores';
-import { resolvePWASettings, updatePWAIconOverride, updatePWASettings, uploadPWAIconOverride } from '@database/pwa';
+import { assertStoreUpdateSucceeded, updateStore } from '@database/stores';
+import {
+    assertPWAIconOverrideUpdateSucceeded,
+    assertPWASettingsUpdateSucceeded,
+    resolvePWASettings,
+    updatePWAIconOverride,
+    updatePWASettings,
+    uploadPWAIconOverride,
+} from '@database/pwa';
 import { deleteFileByUrl } from '@database/storage/deleteFromStorage';
 import { preparePWAIconFile } from '@lib/pwa/iconUploadUtils';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
@@ -44,6 +51,60 @@ import {
 import MobileLocalizedLanguageSelector from '../components/MobileLocalizedLanguageSelector';
 import MobileSettingsScreenHeader from '../components/MobileSettingsScreenHeader';
 import { applyLocalizedDraftMap, getLocalizedStoreValue, getStoreLanguageLabel, getStoreManagedLanguages, getStorePreferredLanguage } from '../utils/localizedStoreContent';
+import { getBoundedPwaStringContext, logPwaTrackingFailure } from '@lib/pwa/pwaDiagnostics';
+
+const CUSTOMER_APP_MOBILE_INSTALL_LINK_COPY_UNAVAILABLE = 'customer_app_mobile_install_link_copy_unavailable';
+const CUSTOMER_APP_MOBILE_INSTALL_LINK_COPY_FALLBACK_FAILED = 'customer_app_mobile_install_link_copy_fallback_failed';
+
+const hasCustomerAppMobileClipboardWrite = (): boolean => (
+    typeof navigator !== 'undefined'
+    && Boolean(navigator.clipboard)
+    && typeof navigator.clipboard.writeText === 'function'
+);
+
+const hasCustomerAppMobileCopyFallback = (): boolean => (
+    typeof document !== 'undefined'
+    && typeof document.createElement === 'function'
+    && typeof document.execCommand === 'function'
+    && Boolean(document.body)
+);
+
+const copyCustomerAppMobileInstallLink = async (value: string): Promise<void> => {
+    let clipboardWriteError: unknown;
+
+    if (hasCustomerAppMobileClipboardWrite()) {
+        try {
+            await navigator.clipboard.writeText(value);
+            return;
+        } catch (error) {
+            clipboardWriteError = error;
+            // Continue to the acknowledged textarea fallback before showing failure copy.
+        }
+    }
+
+    if (!hasCustomerAppMobileCopyFallback()) {
+        throw clipboardWriteError || new Error(CUSTOMER_APP_MOBILE_INSTALL_LINK_COPY_UNAVAILABLE);
+    }
+
+    const textarea = document.createElement('textarea');
+    textarea.value = value;
+    textarea.setAttribute('readonly', '');
+    textarea.style.position = 'fixed';
+    textarea.style.left = '-9999px';
+    textarea.style.top = '0';
+    document.body.appendChild(textarea);
+    textarea.focus();
+    textarea.select();
+
+    try {
+        const copied = document.execCommand('copy');
+        if (!copied) {
+            throw new Error(CUSTOMER_APP_MOBILE_INSTALL_LINK_COPY_FALLBACK_FAILED);
+        }
+    } finally {
+        document.body.removeChild(textarea);
+    }
+};
 
 interface Props {
     onBack: () => void;
@@ -150,16 +211,22 @@ export default function MobileCustomerAppScreen({ onBack }: Props) {
                 );
             }
             if (Object.keys(settingsPatch).length > 0) {
-                await updatePWASettings(storeDetails.storeId, settingsPatch);
+                const settingsResult = await updatePWASettings(storeDetails.storeId, settingsPatch);
+                assertPWASettingsUpdateSucceeded(settingsResult);
                 if ('pwaShortName' in settingsPatch) {
                     const nextBusinessCopyMeta = buildBusinessCopyManualOverrideMeta({
                         existingMeta: storeDetails?.businessCopyMeta,
                         fieldKeys: ['pwaShortName'],
                     });
-                    await updateStore({
+                    const metaResult = await updateStore({
                         businessCopyMeta: nextBusinessCopyMeta,
                         storeId: storeDetails.storeId,
                     });
+                    assertStoreUpdateSucceeded(
+                        metaResult,
+                        storeDetails.storeId,
+                        'customer_app_business_copy_meta_update_rejected',
+                    );
                     setStoreDetails((previous: any) => ({
                         ...previous,
                         businessCopyMeta: nextBusinessCopyMeta,
@@ -188,7 +255,8 @@ export default function MobileCustomerAppScreen({ onBack }: Props) {
                     pwaIconOverrideUrl: uploadedUrl,
                     pwaIconMode: 'override',
                 });
-                nextIconUpdatedAt = iconResult?.pwaIconUpdatedAt;
+                assertPWAIconOverrideUpdateSucceeded(iconResult);
+                nextIconUpdatedAt = iconResult.pwaIconUpdatedAt;
                 if (nextIconUrl && nextIconUrl !== uploadedUrl && nextIconUrl.includes('firebasestorage.googleapis.com')) {
                     void deleteFileByUrl(nextIconUrl);
                 }
@@ -198,7 +266,8 @@ export default function MobileCustomerAppScreen({ onBack }: Props) {
                     pwaIconOverrideUrl: null,
                     pwaIconMode: 'generated',
                 });
-                nextIconUpdatedAt = iconResult?.pwaIconUpdatedAt;
+                assertPWAIconOverrideUpdateSucceeded(iconResult);
+                nextIconUpdatedAt = iconResult.pwaIconUpdatedAt;
                 if (nextIconUrl.includes('firebasestorage.googleapis.com')) {
                     void deleteFileByUrl(nextIconUrl);
                 }
@@ -236,7 +305,15 @@ export default function MobileCustomerAppScreen({ onBack }: Props) {
             setOriginalLocalizedShortNameDrafts(localizedShortNameDrafts);
             Toast.show({ content: 'Customer App settings saved', duration: 1500 });
         } catch (err) {
-            console.error('[MobileCustomerAppScreen] save failed:', err);
+            logPwaTrackingFailure('customer_app_mobile_settings_save_failed', err, {
+                ...getBoundedPwaStringContext('storeId', storeDetails?.storeId),
+                ...getBoundedPwaStringContext('tenantId', storeDetails?.tenantId),
+                enableInstallableApp,
+                promoteInstallation,
+                hasIconChanges,
+                removeIconOnSave,
+                managedLanguageCount: managedLanguages.length,
+            });
             Toast.show({ content: 'Could not save. Please try again.', duration: 2000 });
         } finally {
             setSaving(false);
@@ -321,9 +398,20 @@ export default function MobileCustomerAppScreen({ onBack }: Props) {
     const handleCopyInstallLink = async () => {
         if (!installLink) return;
         try {
-            await navigator.clipboard.writeText(installLink);
+            await copyCustomerAppMobileInstallLink(installLink);
             Toast.show({ content: 'Install link copied', duration: 1500 });
-        } catch {
+        } catch (error) {
+            logPwaTrackingFailure('customer_app_mobile_install_link_copy_failed', error, {
+                ...getBoundedPwaStringContext('storeId', storeDetails?.storeId),
+                ...getBoundedPwaStringContext('tenantId', storeDetails?.tenantId),
+                ...getBoundedPwaStringContext('installLink', installLink),
+                enableInstallableApp,
+                promoteInstallation,
+                hasCustomDomain: Boolean((storeDetails as any)?.customDomain),
+                hasSubdomain: Boolean(storeDetails?.subdomain),
+                hasClipboardWrite: hasCustomerAppMobileClipboardWrite(),
+                hasCopyFallback: hasCustomerAppMobileCopyFallback(),
+            });
             Toast.show({ content: 'Could not copy — please select and copy manually.', duration: 2000 });
         }
     };

@@ -90,7 +90,7 @@ export const MENU_DESIGN_PRESETS: MenuDesignPreset[] = [
     },
     {
         key: 'premium-minimal',
-        label: 'Premium minimal',
+        label: 'Premium & Minimal',
         description: 'Quiet, refined, and price-focused.',
         recommendedFor: 'Fine dining, boutiques, premium services',
         mood: MenuMood.PREMIUM,

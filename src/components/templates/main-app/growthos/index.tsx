@@ -9,6 +9,7 @@ import {
     refreshGrowthOSForProject,
     useGrowthOS,
 } from "@hook/useGrowthOS";
+import { getGrowthOSBoundedStringContext, logGrowthOSApiFailure } from "@lib/growthos/diagnostics";
 import { evaluateGrowthOSEntitlement } from "@lib/growthos/entitlements";
 import { isGrowthOSKitExpired } from "@lib/growthos/readiness";
 import { PlatformGlobalDataContext } from "@providers/platformProviders/platformGlobalDataProvider";
@@ -47,36 +48,80 @@ const resolveName = (name: ProjectSummary["name"], fallback = "Untitled") => {
 };
 
 const getOutputPreview = (output?: GrowthOSOutput) => output?.text || "";
+const GROWTHOS_REFRESH_FAILED_DESCRIPTION = "Try again in a moment.";
+const GROWTHOS_GENERATE_FAILED_DESCRIPTION = "Try preparing the pack again.";
+const GROWTHOS_COPY_FAILED_DESCRIPTION = "Copy the text manually for now.";
+const GROWTHOS_SHARE_FAILED_DESCRIPTION = "Copy the text and share it manually.";
+const GROWTHOS_DOWNLOAD_FAILED_DESCRIPTION = "Copy the text manually for now.";
+const GROWTHOS_MARK_USED_FAILED_DESCRIPTION = "Try again in a moment.";
+const GROWTHOS_REVIEW_REPLY_FAILED_DESCRIPTION = "Try preparing the reply again.";
+const DESKTOP_GROWTHOS_COPY_CLIPBOARD_UNAVAILABLE = "desktop_growthos_copy_clipboard_unavailable";
+const DESKTOP_GROWTHOS_COPY_FALLBACK_FAILED = "desktop_growthos_copy_fallback_failed";
 
-const writeClipboardWithTimeout = (text: string) => (
-    Promise.race([
-        navigator.clipboard.writeText(text),
-        new Promise((_, reject) => window.setTimeout(() => reject(new Error("Clipboard write timed out")), 1200)),
-    ])
+const buildDesktopGrowthOSCopyError = (code: string) => Object.assign(new Error(code), { code });
+
+const hasDesktopGrowthOSClipboardWrite = () => (
+    typeof navigator !== "undefined" && Boolean(navigator.clipboard?.writeText)
 );
 
+const hasDesktopGrowthOSCopyFallback = () => (
+    typeof document !== "undefined"
+    && Boolean(document.body)
+    && typeof document.createElement === "function"
+    && typeof document.execCommand === "function"
+);
+
+const getDesktopGrowthOSCopySupportContext = () => ({
+    hasClipboardWrite: hasDesktopGrowthOSClipboardWrite(),
+    hasCopyFallback: hasDesktopGrowthOSCopyFallback(),
+});
+
+const writeClipboardWithTimeout = async (text: string) => {
+    if (!hasDesktopGrowthOSClipboardWrite()) {
+        throw buildDesktopGrowthOSCopyError(DESKTOP_GROWTHOS_COPY_CLIPBOARD_UNAVAILABLE);
+    }
+
+    await Promise.race([
+        navigator.clipboard.writeText(text),
+        new Promise((_, reject) => window.setTimeout(() => reject(new Error("Clipboard write timed out")), 1200)),
+    ]);
+};
+
 const copyWithTextarea = (text: string) => {
+    if (!hasDesktopGrowthOSCopyFallback()) {
+        throw buildDesktopGrowthOSCopyError(DESKTOP_GROWTHOS_COPY_CLIPBOARD_UNAVAILABLE);
+    }
+
     const textArea = document.createElement("textarea");
     textArea.value = text;
     textArea.style.position = "fixed";
     textArea.style.left = "-999999px";
+    textArea.setAttribute("readonly", "");
     document.body.appendChild(textArea);
+    textArea.focus();
     textArea.select();
-    document.execCommand("copy");
-    document.body.removeChild(textArea);
+
+    try {
+        const copied = document.execCommand("copy");
+        if (!copied) {
+            throw buildDesktopGrowthOSCopyError(DESKTOP_GROWTHOS_COPY_FALLBACK_FAILED);
+        }
+        return true;
+    } finally {
+        document.body.removeChild(textArea);
+    }
 };
 
 const copyToClipboard = async (text: string) => {
-    if (navigator.clipboard?.writeText) {
+    if (hasDesktopGrowthOSClipboardWrite()) {
         try {
             await writeClipboardWithTimeout(text);
-            return;
+            return true;
         } catch {
-            copyWithTextarea(text);
-            return;
+            return copyWithTextarea(text);
         }
     }
-    copyWithTextarea(text);
+    return copyWithTextarea(text);
 };
 
 const downloadText = (filename: string, text: string) => {
@@ -93,6 +138,7 @@ const canUseOutput = (output: GrowthOSOutput) => output.preflight?.status !== "b
 const isStaffBriefOutput = (output: GrowthOSOutput): output is GrowthOSStaffBriefOutput => (
     output.destination === "staff_brief"
 );
+type GrowthOSClientLogContext = Record<string, boolean | number | string | null | undefined>;
 
 const GrowthOSPage = () => {
     const { notification } = App.useApp();
@@ -145,6 +191,36 @@ const GrowthOSPage = () => {
 
     const action = growthOSSummary?.primaryAction || null;
     const secondaryActions = growthOSSummary?.secondaryActions || [];
+    const buildGrowthOSClientLogContext = (
+        flow: string,
+        output?: GrowthOSOutput | null,
+        metadata: GrowthOSClientLogContext = {},
+    ): GrowthOSClientLogContext => ({
+        surface: "desktop_growth_kits",
+        flow,
+        hasLatestKit: Boolean(latestKit),
+        hasPrimaryAction: Boolean(action),
+        isLatestKitStale,
+        outputTextLength: output?.text?.length || 0,
+        ...getGrowthOSBoundedStringContext("projectId", selectedProjectId),
+        ...getGrowthOSBoundedStringContext("storeId", storeDetails?.storeId),
+        ...getGrowthOSBoundedStringContext("tenantId", storeDetails?.tenantId),
+        ...getGrowthOSBoundedStringContext("kitId", latestKit?.id),
+        ...getGrowthOSBoundedStringContext("actionId", action?.id),
+        ...getGrowthOSBoundedStringContext("outputId", output?.id),
+        ...getGrowthOSBoundedStringContext("destination", output?.destination),
+        ...metadata,
+    });
+
+    const logGrowthOSClientFailure = (
+        failureCode: string,
+        error: unknown,
+        flow: string,
+        output?: GrowthOSOutput | null,
+        metadata: GrowthOSClientLogContext = {},
+    ) => {
+        logGrowthOSApiFailure("[GrowthOS Desktop] Operation failed", failureCode, error, buildGrowthOSClientLogContext(flow, output, metadata));
+    };
 
     const selectedProjectOptions = useMemo(() => projects.map((project) => ({
         label: resolveName(project.name),
@@ -162,7 +238,8 @@ const GrowthOSPage = () => {
             await mutate(payload.data, { revalidate: false });
             notification.success({ message: "Menu checked", placement: "bottomRight" });
         } catch (error) {
-            notification.error({ message: "Could not check menu", description: (error as Error).message, placement: "bottomRight" });
+            logGrowthOSClientFailure("desktop_growthos_refresh_failed", error, "refresh");
+            notification.error({ message: "Could not check menu", description: GROWTHOS_REFRESH_FAILED_DESCRIPTION, placement: "bottomRight" });
         } finally {
             setIsRefreshing(false);
         }
@@ -179,7 +256,10 @@ const GrowthOSPage = () => {
             await mutate(payload.data.summary, { revalidate: false });
             notification.success({ message: "Sales Pack ready", placement: "bottomRight" });
         } catch (error) {
-            notification.error({ message: "Could not prepare Sales Pack", description: (error as Error).message, placement: "bottomRight" });
+            logGrowthOSClientFailure("desktop_growthos_generate_failed", error, "generate", null, {
+                ...getGrowthOSBoundedStringContext("requestedActionId", nextAction?.id || action?.id),
+            });
+            notification.error({ message: "Could not prepare Sales Pack", description: GROWTHOS_GENERATE_FAILED_DESCRIPTION, placement: "bottomRight" });
         } finally {
             setIsGenerating(false);
         }
@@ -213,11 +293,13 @@ const GrowthOSPage = () => {
             return;
         }
         try {
+            const copied = await copyToClipboard(output.text);
+            if (!copied) throw new Error("desktop_growthos_copy_failed");
             await recordUse(output, "copy");
-            await copyToClipboard(output.text);
             notification.success({ message: "Copied", placement: "bottomRight" });
         } catch (error) {
-            notification.error({ message: "Could not copy", description: (error as Error).message, placement: "bottomRight" });
+            logGrowthOSClientFailure("desktop_growthos_copy_failed", error, "copy", output, getDesktopGrowthOSCopySupportContext());
+            notification.error({ message: "Could not copy", description: GROWTHOS_COPY_FAILED_DESCRIPTION, placement: "bottomRight" });
         }
     };
 
@@ -231,15 +313,21 @@ const GrowthOSPage = () => {
             return;
         }
         try {
-            await recordUse(output, "share");
             if (navigator.share) {
                 await navigator.share({ text: output.text });
             } else {
-                await copyToClipboard(output.text);
+                const copied = await copyToClipboard(output.text);
+                if (!copied) throw new Error("desktop_growthos_share_fallback_copy_failed");
             }
+            await recordUse(output, "share");
             notification.success({ message: navigator.share ? "Shared" : "Copied", placement: "bottomRight" });
         } catch (error) {
-            notification.error({ message: "Could not share", description: (error as Error).message, placement: "bottomRight" });
+            if (error instanceof DOMException && error.name === "AbortError") return;
+            logGrowthOSClientFailure("desktop_growthos_share_failed", error, "share", output, {
+                ...getDesktopGrowthOSCopySupportContext(),
+                usedNativeShare: Boolean(navigator.share),
+            });
+            notification.error({ message: "Could not share", description: GROWTHOS_SHARE_FAILED_DESCRIPTION, placement: "bottomRight" });
         }
     };
 
@@ -253,11 +341,12 @@ const GrowthOSPage = () => {
             return;
         }
         try {
-            await recordUse(output, "download");
             downloadText(`${output.destination}.txt`, output.text);
+            await recordUse(output, "download");
             notification.success({ message: "Download started", placement: "bottomRight" });
         } catch (error) {
-            notification.error({ message: "Could not download", description: (error as Error).message, placement: "bottomRight" });
+            logGrowthOSClientFailure("desktop_growthos_download_failed", error, "download", output);
+            notification.error({ message: "Could not download", description: GROWTHOS_DOWNLOAD_FAILED_DESCRIPTION, placement: "bottomRight" });
         }
     };
 
@@ -266,7 +355,23 @@ const GrowthOSPage = () => {
             await recordUse(output, "mark_used");
             notification.success({ message: "Marked used", placement: "bottomRight" });
         } catch (error) {
-            notification.error({ message: "Could not mark used", description: (error as Error).message, placement: "bottomRight" });
+            logGrowthOSClientFailure("desktop_growthos_mark_used_failed", error, "mark_used", output);
+            notification.error({ message: "Could not mark used", description: GROWTHOS_MARK_USED_FAILED_DESCRIPTION, placement: "bottomRight" });
+        }
+    };
+
+    const handleReviewReplyCopy = async () => {
+        if (!reviewResult?.reply) return;
+        try {
+            const copied = await copyToClipboard(reviewResult.reply);
+            if (!copied) throw new Error("desktop_growthos_review_reply_copy_failed");
+            notification.success({ message: "Copied", placement: "bottomRight" });
+        } catch (error) {
+            logGrowthOSClientFailure("desktop_growthos_review_reply_copy_failed", error, "review_reply_copy", null, {
+                ...getDesktopGrowthOSCopySupportContext(),
+                reviewReplyTextLength: reviewResult.reply.length,
+            });
+            notification.error({ message: "Could not copy", description: GROWTHOS_COPY_FAILED_DESCRIPTION, placement: "bottomRight" });
         }
     };
 
@@ -280,7 +385,12 @@ const GrowthOSPage = () => {
             });
             setReviewResult(payload.result);
         } catch (error) {
-            notification.error({ message: "Could not prepare reply", description: (error as Error).message, placement: "bottomRight" });
+            logGrowthOSClientFailure("desktop_growthos_review_reply_failed", error, "review_reply", null, {
+                hasReviewText: Boolean(reviewText.trim()),
+                reviewTextLength: reviewText.trim().length,
+                reviewRating,
+            });
+            notification.error({ message: "Could not prepare reply", description: GROWTHOS_REVIEW_REPLY_FAILED_DESCRIPTION, placement: "bottomRight" });
         } finally {
             setIsReviewing(false);
         }
@@ -462,7 +572,7 @@ const GrowthOSPage = () => {
                             <Card size="small" className={styles.reviewResult}>
                                 <Text strong>{reviewResult.recommendation}</Text>
                                 {reviewResult.reply ? <Text className={styles.outputText}>{reviewResult.reply}</Text> : null}
-                                {reviewResult.reply ? <Button onClick={() => copyToClipboard(reviewResult.reply || "")}>Copy reply</Button> : null}
+                                {reviewResult.reply ? <Button onClick={() => void handleReviewReplyCopy()}>Copy reply</Button> : null}
                                 {reviewResult.internalCheckLine ? <Text type="secondary">{reviewResult.internalCheckLine}</Text> : null}
                             </Card>
                         ) : null}

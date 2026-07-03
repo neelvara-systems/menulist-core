@@ -234,6 +234,8 @@ Same SMB owner who uses MenuList — but in a different moment:
 | Staff prompt mode | ✅ Built |
 | Today Screen UI (desktop + mobile) | ✅ Built |
 
+July 1, 2026 runtime note: Today completion/skip actions now require shaped campaign acknowledgements before desktop or mobile UI advances local Today state. Completion is tied to campaign/project/type/surface/method/export identity; skip is tied to campaign/type/status/skip-count; both must include the updated Today state. Today download feedback also requires the returned execution surface and `download` method to match the requested poster, tent-card, or screen action.
+
 ### Core Philosophy
 
 > **Deliver finished outputs, not advice.**

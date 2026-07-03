@@ -1,7 +1,8 @@
 # URL Routing Architecture — Mobile Support Assessment
 
-> **Last Updated:** May 31, 2026
-> **Version:** 1.2
+> **Last Updated:** July 2, 2026
+> **Version:** 1.3
+> **Local Source Gate:** `npm run verify:url-routing-boundary`
 
 ---
 
@@ -33,6 +34,12 @@ Mobile users (customers visiting menus via phone) benefit from this feature auto
 
 No mobile-specific UI, components, or screens needed.
 
+The July 2, 2026 `npm run verify:url-routing-boundary` source gate is mobile-neutral. It validates middleware/domain routing, tenant headers, current `/client` route documentation, and docs parity without adding mobile UI, browser QA, live Firestore reads, provider calls, or deploy steps.
+
+safe outlet path segments are also mobile-neutral. Mobile customers benefit when brand OBP location cards, outlet OBP links, sitemap URLs, and canonical redirects hide invalid legacy outlet slugs instead of opening malformed public paths. This adds no mobile UI, mobile route, owner setting, Firebase write, or separate mobile data path. Source gate: `npm run verify:url-routing-boundary`.
+
+safe project path segments are also mobile-neutral. Mobile customers benefit when menu lookups, old-slug redirects, sitemap URLs, canonical URLs, and OBP menu CTA links hide invalid legacy project slugs instead of opening malformed public paths. This adds no mobile UI, mobile route, owner setting, Firebase write, or separate mobile data path. Source gate: `npm run verify:url-routing-boundary`.
+
 ---
 
 ## Related Mobile Screens
@@ -40,6 +47,7 @@ No mobile-specific UI, components, or screens needed.
 | Screen                     | Relationship                                                                                                                                    |
 | -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
 | `MobileShareScreen`        | Uses `generateProjectUrl()` which relies on `subdomain`/`customDomain` from store data. No changes needed — slug generation is upstream in DAL. |
+| `MobileDomainSettingsScreen` | Manages owner subdomain/custom-domain setup inside the mobile shell. `/api/domain` and `/api/subdomain/check` calls use the shared authenticated browser request policy before bounded response parsing, and remove requires the `{ success: true, removed: true }` delete acknowledgement before clearing local custom-domain state. |
 | `MobileDesignEditorScreen` | No relationship                                                                                                                                 |
 
 ---

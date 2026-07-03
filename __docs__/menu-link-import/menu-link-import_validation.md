@@ -27,7 +27,7 @@
 - `git diff --check` passed again after the final Godirekt docs/runtime updates.
 - Temporary local server (`npx next dev -p 3010`) compiled `/projects` and redirected to `/signin` because no authenticated owner session was available in the in-app browser.
 - Temporary local server compiled `/api/menu-link-imports`; unauthenticated POST returned `401 Unauthorized` through the existing auth guard.
-- After enabling `ENABLE_MENU_LINK_IMPORT` in both app and functions config, `firebase deploy --only functions:processMenuImagesJob --project ecomsai` completed successfully.
+- After enabling `ENABLE_MENU_LINK_IMPORT` in both app and functions config, `firebase deploy --only functions:processMenuImagesJob --project ecomsai` completed successfully. This `ecomsai` deployment is historical validation evidence only; current MenuList Firebase target guidance is the External Certification Runbook Gate 1 flow against `menulist-qa` after `npm run verify:functions-deploy-preflight`, with production gated on QA evidence and explicit production deploy approval.
 - Authenticated Chrome QA on `http://127.0.0.1:3000/projects` verified paste-link flow through review and apply:
   - pasted `https://habibis.menulist.online/bar-menu`,
   - confirmed permission,

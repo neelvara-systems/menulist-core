@@ -19,12 +19,12 @@ function getTenantBaseUrl() {
 
 export function GET() {
     const baseUrl = getTenantBaseUrl();
-    const crawlerRules = DISCOVERY_CRAWLERS
-        .map((crawler) => `User-agent: ${crawler}\nAllow: /`)
-        .join('\n\n');
     const disallowRules = PUBLIC_DISCOVERY_DISALLOWED_PATHS
         .map((path) => `Disallow: ${path}`)
         .join('\n');
+    const crawlerRules = DISCOVERY_CRAWLERS
+        .map((crawler) => `User-agent: ${crawler}\nAllow: /\n${disallowRules}`)
+        .join('\n\n');
 
     return new Response(`${crawlerRules}\n\nUser-agent: *\nAllow: /\n${disallowRules}\n\nSitemap: ${baseUrl}/sitemap.xml\n`, {
         headers: {

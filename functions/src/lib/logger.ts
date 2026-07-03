@@ -28,8 +28,10 @@ export const logger = {
      * Sentry: Added as breadcrumb
      */
     info(message: string, data?: Record<string, any>): void {
-        firebaseLogger.info(message, data || {});
-        Sentry.addBreadcrumb(message, 'log', data, 'info');
+        const safeMessage = Sentry.getSanitizedFunctionSentryMessage(message);
+        const sanitizedData = Sentry.getSanitizedFunctionSentryContext(data) || {};
+        firebaseLogger.info(safeMessage, sanitizedData);
+        Sentry.addBreadcrumb(safeMessage, 'log', data, 'info');
     },
 
     /**
@@ -38,8 +40,10 @@ export const logger = {
      * Sentry: Added as breadcrumb with warning level
      */
     warn(message: string, data?: Record<string, any>): void {
-        firebaseLogger.warn(message, data || {});
-        Sentry.addBreadcrumb(message, 'log', data, 'warning');
+        const safeMessage = Sentry.getSanitizedFunctionSentryMessage(message);
+        const sanitizedData = Sentry.getSanitizedFunctionSentryContext(data) || {};
+        firebaseLogger.warn(safeMessage, sanitizedData);
+        Sentry.addBreadcrumb(safeMessage, 'log', data, 'warning');
     },
 
     /**
@@ -49,17 +53,19 @@ export const logger = {
      */
     error(message: string, error?: Error | unknown, context?: Record<string, any>): void {
         // Log to Firebase
-        firebaseLogger.error(message, { error, ...context });
+        const safeMessage = Sentry.getSanitizedFunctionSentryMessage(message);
+        const sanitizedContext = Sentry.getSanitizedFunctionSentryContext({ error, ...(context || {}) }) || {};
+        firebaseLogger.error(safeMessage, sanitizedContext);
 
         // Capture in Sentry
         if (error) {
             Sentry.captureException(error, {
-                operation: message,
+                operation: safeMessage,
                 details: context,
             });
         } else {
             // If no error object, capture as message
-            Sentry.captureMessage(message, 'error', context);
+            Sentry.captureMessage(safeMessage, 'error', context);
         }
     },
 
@@ -68,7 +74,9 @@ export const logger = {
      * Sentry: Not captured (too verbose)
      */
     debug(message: string, data?: Record<string, any>): void {
-        firebaseLogger.debug(message, data || {});
+        const safeMessage = Sentry.getSanitizedFunctionSentryMessage(message);
+        const sanitizedData = Sentry.getSanitizedFunctionSentryContext(data) || {};
+        firebaseLogger.debug(safeMessage, sanitizedData);
     },
 
     /**
@@ -88,12 +96,13 @@ export const logger = {
             error?: string;
         }
     ): void {
-        const message = `[AI] ${operation}: ${status}`;
+        const message = Sentry.getSanitizedFunctionSentryMessage(`[AI] ${operation}: ${status}`);
+        const sanitizedDetails = Sentry.getSanitizedFunctionSentryContext(details) || {};
 
         if (status === 'error') {
-            firebaseLogger.error(message, details);
+            firebaseLogger.error(message, sanitizedDetails);
         } else {
-            firebaseLogger.info(message, details);
+            firebaseLogger.info(message, sanitizedDetails);
         }
 
         Sentry.trackAICall(operation, status, details);
@@ -105,8 +114,9 @@ export const logger = {
      * Sentry: Added as breadcrumb
      */
     milestone(step: string, data?: Record<string, any>): void {
-        const message = `[Milestone] ${step}`;
-        firebaseLogger.info(message, data || {});
+        const message = Sentry.getSanitizedFunctionSentryMessage(`[Milestone] ${step}`);
+        const sanitizedData = Sentry.getSanitizedFunctionSentryContext(data) || {};
+        firebaseLogger.info(message, sanitizedData);
         Sentry.addBreadcrumb(step, 'milestone', data, 'info');
     },
 
@@ -116,8 +126,12 @@ export const logger = {
      * Sentry: Added with performance context
      */
     performance(operation: string, durationMs: number, data?: Record<string, any>): void {
-        const message = `[Performance] ${operation}: ${durationMs}ms`;
-        firebaseLogger.info(message, { duration_ms: durationMs, ...data });
+        const message = Sentry.getSanitizedFunctionSentryMessage(`[Performance] ${operation}: ${durationMs}ms`);
+        const sanitizedData = Sentry.getSanitizedFunctionSentryContext({
+            duration_ms: durationMs,
+            ...data,
+        }) || {};
+        firebaseLogger.info(message, sanitizedData);
         Sentry.addBreadcrumb(message, 'performance', {
             duration_ms: durationMs,
             ...data

@@ -20,6 +20,8 @@ export const AI_MODEL = "gemini-2.5-flash";
 export const OWNER_ANALYTICS_AI_MODEL = "gemini-2.5-flash-lite";
 export const AI_ADVANCED_MODEL = "gemini-2.5-pro";
 export const AI_EMBEDDING_MODEL = "text-embedding-004";
+// Maps grounding stays flag-off until provider smoke confirms this pinned GenAI path.
+export const MAPS_PLACE_CHECK_MODEL = "gemini-3.5-flash";
 
 /**
  * Extraction prompt version — increment when parallelProcessingPrompt.ts changes

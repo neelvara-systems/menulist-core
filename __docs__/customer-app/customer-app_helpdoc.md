@@ -2,8 +2,8 @@
 
 **Feature Name:** Customer App (Installable Customer-Facing Menu)  
 **Document Type:** Customer-Facing Help Documentation  
-**Status:** 📋 Ready for Implementation  
-**Last Updated:** April 18, 2026  
+**Status:** Source-backed help draft; publish/use with current Customer App runtime boundary
+**Last Updated:** July 2, 2026
 **Audience:** Restaurant owners (non-technical, SMB)
 
 ---
@@ -308,5 +308,5 @@ We typically reply within 2 hours during business hours (9 AM - 7 PM IST).
 
 ---
 
-_Document Status: 📋 READY FOR IMPLEMENTATION_  
-_Last Updated: April 18, 2026_
+_Document Status: Source-backed help draft; not standalone launch certification_
+_Last Updated: July 2, 2026_

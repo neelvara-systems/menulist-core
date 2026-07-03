@@ -7,13 +7,11 @@ import {
     CAMPAIGNCUE_CUE_LAYER_ID_PREFIXES,
     CAMPAIGNCUE_CUE_LAYERS,
 } from "@constant/campaigncue/cueLayers";
-import { CAMPAIGNCUE_PRODUCT_CODE } from "@constant/campaigncue/product";
 import {
     admin,
     campaigncueFirestoreAdmin as firestoreAdmin,
     campaigncueStorageAdmin,
 } from "@lib/firebase/campaigncueFirebaseAdmin";
-import { logger } from "@lib/monitoring/logger";
 import type { CampaignCueAssetInput } from "@lib/validation/campaigncueSchemas";
 import type {
     CampaignCueCueLayerAutosaveInput,
@@ -38,6 +36,7 @@ import {
     buildCampaignCueWorkspaceId,
     createCampaignCueAssetServer,
     ensureCampaignCueWorkspaceServer,
+    logCampaignCueServerError,
     type CampaignCueSessionScope,
 } from "../server";
 import { buildCampaignCueCueLayerProjection } from "./editorProjection";
@@ -798,6 +797,6 @@ export async function exportCampaignCueCueLayerDesignServer(params: {
 }
 
 export function buildCampaignCueCueLayersApiError(error: unknown, fallbackMessage: string) {
-    logger.error("CampaignCue CueLayers API error", error, { productId: CAMPAIGNCUE_PRODUCT_CODE, feature: "cue-layers" });
+    logCampaignCueServerError("CampaignCue CueLayers API error", error, { feature: "cue-layers" });
     return buildCampaignCueApiError(error, fallbackMessage);
 }

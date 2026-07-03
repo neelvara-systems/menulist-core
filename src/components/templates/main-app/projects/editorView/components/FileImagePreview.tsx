@@ -1,4 +1,5 @@
-import { Alert, Button, Divider, Flex, Popover, Space, theme, Tooltip, Typography } from 'antd';
+import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
+import { Alert, Button, Divider, Flex, message, Popover, Space, theme, Tooltip, Typography } from 'antd';
 import { LuAlertTriangle, LuExternalLink, LuEye, LuFileText, LuHelpCircle, LuInfo, LuKeyboard, LuMinus, LuMousePointer2, LuMove, LuPlus, LuRotateCcw, LuTrash, LuXCircle } from 'react-icons/lu';
 import { TbLanguageHiragana } from 'react-icons/tb';
 import { FileMessage, ProjectFileType } from '../../types';
@@ -205,6 +206,26 @@ const SourceFilePreview = ({
         : file.type === 'application/pdf'
             ? 'PDF source'
             : 'Source file';
+    const handleSourceLinkOpen = () => {
+        if (!sourceUrl) return;
+
+        try {
+            const opened = window.open(sourceUrl, '_blank', 'noopener,noreferrer');
+            if (!opened) {
+                throw new Error('project_file_source_link_open_blocked');
+            }
+        } catch (error) {
+            logRuntimeFailure('project_file_source_link_open_failed', error, {
+                surface: 'project_file_image_preview',
+                ...getBoundedRuntimeStringContext('sourceUrl', sourceUrl),
+                ...getBoundedRuntimeStringContext('sourceLabel', sourceLabel),
+                ...getBoundedRuntimeStringContext('source', source),
+                ...getBoundedRuntimeStringContext('fileName', file.name),
+                ...getBoundedRuntimeStringContext('fileType', file.type),
+            });
+            message.error('Unable to open source link');
+        }
+    };
 
     return (
         <Flex gap={10} vertical style={{ position: 'relative', width: '100%', minWidth: 300, paddingRight: 10 }}>
@@ -253,7 +274,7 @@ const SourceFilePreview = ({
                 {sourceUrl ? (
                     <Button
                         icon={<LuExternalLink />}
-                        onClick={() => window.open(sourceUrl, '_blank', 'noopener,noreferrer')}
+                        onClick={handleSourceLinkOpen}
                     >
                         Open source link
                     </Button>

@@ -17,7 +17,8 @@ import {
     INTEGRATION_LIMITS,
     INTEGRATION_EVENT_TYPES,
 } from '../types';
-import { safeText, sanitizeDeliveryError } from '../safety';
+import { safeText } from '../safety';
+import { validateNetworkTargetUrl } from '../../utils/networkTarget';
 
 const SEVERITY_EMOJI: Record<string, string> = {
     critical: '🚨',
@@ -45,6 +46,29 @@ const EVENT_TITLES: Record<string, string> = {
     [INTEGRATION_EVENT_TYPES.AI_FAILURE_RECURRING]: 'Recurring AI Failure',
     [INTEGRATION_EVENT_TYPES.NIGHTLY_SUMMARY]: 'Nightly Summary',
 };
+
+async function resolveSlackWebhookTarget(webhookUrl: string): Promise<{ normalizedUrl: string } | null> {
+    let parsed: URL;
+    try {
+        parsed = new URL(webhookUrl);
+    } catch {
+        return null;
+    }
+
+    if (
+        parsed.protocol !== 'https:' ||
+        parsed.hostname !== 'hooks.slack.com' ||
+        !parsed.pathname.startsWith('/services/') ||
+        Boolean(parsed.search) ||
+        Boolean(parsed.hash)
+    ) {
+        return null;
+    }
+
+    const targetValidation = await validateNetworkTargetUrl(parsed.toString());
+    if (!targetValidation.valid || !targetValidation.normalizedUrl) return null;
+    return { normalizedUrl: targetValidation.normalizedUrl };
+}
 
 function formatEventDetails(event: IntegrationEvent): string {
     const p = event.payload;
@@ -145,11 +169,19 @@ export class SlackAdapter implements IIntegrationAdapter {
 
         try {
             const payload = this.formatPayload(event);
+            const webhookTarget = await resolveSlackWebhookTarget(config.webhookUrl);
+            if (!webhookTarget) {
+                return {
+                    success: false,
+                    error: 'Slack webhook target rejected',
+                    durationMs: Date.now() - startMs,
+                };
+            }
 
             const controller = new AbortController();
             const timeout = setTimeout(() => controller.abort(), INTEGRATION_LIMITS.ADAPTER_TIMEOUT_MS);
 
-            const response = await fetch(config.webhookUrl, {
+            const response = await fetch(webhookTarget.normalizedUrl, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload),
@@ -164,17 +196,16 @@ export class SlackAdapter implements IIntegrationAdapter {
                 return { success: true, statusCode: response.status, durationMs };
             }
 
-            const errorText = await response.text().catch(() => 'Unknown error');
             return {
                 success: false,
                 statusCode: response.status,
-                error: sanitizeDeliveryError(errorText),
+                error: 'Slack delivery returned bad status',
                 durationMs,
             };
-        } catch (error) {
+        } catch {
             return {
                 success: false,
-                error: sanitizeDeliveryError(error),
+                error: 'Slack delivery failed',
                 durationMs: Date.now() - startMs,
             };
         }

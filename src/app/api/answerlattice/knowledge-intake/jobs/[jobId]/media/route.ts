@@ -6,10 +6,16 @@ import {
     serializeIntakeValue,
 } from '@lib/answerlattice/knowledgeIntake';
 import {
+    getAnswerlatticeKnowledgeIntakeLogContext,
+    logAnswerlatticeKnowledgeIntakeFailure,
+} from '@lib/answerlattice/knowledgeIntakeDiagnostics';
+import {
+    getAnswerlatticeKnowledgeIntakeClientErrorMessage,
     getAnswerlatticeKnowledgeIntakeErrorStatus,
     requireAnswerlatticeKnowledgeIntakeContext,
 } from '@lib/answerlattice/knowledgeIntakeApi';
-import { secureError, secureLog } from '@lib/security/secureLogger';
+import { readBoundedFormDataBody } from '@lib/security/boundedRequestBody';
+import { secureLog } from '@lib/security/secureLogger';
 import { ANSWERLATTICE_KNOWLEDGE_INTAKE_CONSTRAINTS } from '@type/answerlattice';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
@@ -19,6 +25,7 @@ const MAX_UPLOAD_BYTES = Math.max(
     ANSWERLATTICE_KNOWLEDGE_INTAKE_CONSTRAINTS.MAX_IMAGE_OCR_BYTES,
     ANSWERLATTICE_KNOWLEDGE_INTAKE_CONSTRAINTS.MAX_MEDIA_TRANSCRIPTION_BYTES,
 );
+const MAX_UPLOAD_BODY_BYTES = MAX_UPLOAD_BYTES + (64 * 1024);
 
 const FormFieldsSchema = z.object({
     title: z.string().trim().max(180).optional(),
@@ -77,7 +84,13 @@ export const POST = withAuth(async (request: NextRequest, session, params: { job
     if (access.response) return access.response;
 
     try {
-        const formData = await request.formData();
+        const formDataResult = await readBoundedFormDataBody(request, MAX_UPLOAD_BODY_BYTES, {
+            invalidFormDataMessage: 'Upload a supported screenshot, audio, or video file.',
+            tooLargeMessage: `File is too large. Maximum intake media size is ${Math.round(MAX_UPLOAD_BYTES / 1024 / 1024)}MB.`,
+        });
+        if (formDataResult.ok === false) return formDataResult.response;
+
+        const formData = formDataResult.formData;
         const file = formData.get('file');
         if (!(file instanceof File)) {
             return NextResponse.json({ error: 'Upload a supported screenshot, audio, or video file.' }, { status: 400 });
@@ -113,14 +126,13 @@ export const POST = withAuth(async (request: NextRequest, session, params: { job
             },
         }, access.context.actor);
 
-        secureLog('[Answerlattice Intake] Media source extracted', {
+        secureLog('[Answerlattice Intake] Media source extracted', getAnswerlatticeKnowledgeIntakeLogContext({
             jobId: params.jobId,
+            scope: access.context.scope,
             sourceId: result.source.id,
             sourceType: result.source.type,
             usageUnits: result.usage.unitsConsumed,
-            tId: access.context.scope.tId,
-            sId: access.context.scope.sId,
-        });
+        }));
 
         return NextResponse.json({
             source: serializeIntakeValue(result.source),
@@ -132,11 +144,11 @@ export const POST = withAuth(async (request: NextRequest, session, params: { job
         }
         const status = getAnswerlatticeKnowledgeIntakeErrorStatus(error);
         if (status >= 500) {
-            secureError('[Answerlattice Intake] Failed to extract media source', error as Error, {
-                ...access.context.scope,
+            logAnswerlatticeKnowledgeIntakeFailure('[Answerlattice Intake] Failed to extract media source', 'answerlattice_intake_media_source_extract_failed', error, {
                 jobId: params.jobId,
+                scope: access.context.scope,
             });
         }
-        return NextResponse.json({ error: error instanceof Error ? error.message : 'Failed to extract media source.' }, { status });
+        return NextResponse.json({ error: getAnswerlatticeKnowledgeIntakeClientErrorMessage(error, 'Failed to extract media source.') }, { status });
     }
 });

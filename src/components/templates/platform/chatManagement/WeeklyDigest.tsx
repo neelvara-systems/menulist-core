@@ -10,6 +10,8 @@
 import DateTimeDisplay from '@atoms/DateTimeDisplay';
 import { useClientAuthSession } from '@hook/useClientAuthSession';
 import { firebaseClient } from '@lib/firebase/firebaseClient';
+import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
+import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';
 import { Alert, Button, Card, Empty, message, Space, Spin, Statistic } from 'antd';
 import { doc, getDoc, Timestamp } from 'firebase/firestore';
 import { motion } from 'framer-motion';
@@ -38,6 +40,103 @@ interface WeeklyNarrative {
 }
 
 type SentimentType = 'positive' | 'neutral' | 'concerning';
+const WEEKLY_DIGEST_RESPONSE_JSON_MAX_BYTES = 64 * 1024;
+const WEEKLY_DIGEST_GENERATE_REQUEST_POLICY: Pick<RequestInit, 'cache' | 'credentials' | 'redirect'> = {
+  cache: 'no-store',
+  credentials: 'same-origin',
+  redirect: 'manual',
+};
+const WEEKLY_DIGEST_GENERATE_FAILED_MESSAGE = 'Generation failed. Please try again later';
+const WEEKLY_DIGEST_LOAD_FAILED_MESSAGE = 'Failed to load weekly digest. Please try again later';
+const WEEKLY_DIGEST_NO_DATA_MESSAGE = 'No analytics data found for the past week. Please run daily aggregation first.';
+
+type WeeklyDigestNoDataResponse = {
+  status: 'no_data';
+  message?: string;
+};
+
+type WeeklyDigestGenerateSuccessResponse = {
+  success: true;
+  message?: string;
+  data: {
+    weekStart: string;
+    weekEnd: string;
+    narrativeLength: number;
+    highlightsCount: number;
+  };
+};
+
+type WeeklyDigestGenerateResponse = WeeklyDigestNoDataResponse | WeeklyDigestGenerateSuccessResponse;
+
+const isRecord = (value: unknown): value is Record<string, unknown> => (
+  Boolean(value) && typeof value === 'object' && !Array.isArray(value)
+);
+
+const isFiniteNumber = (value: unknown): value is number => (
+  typeof value === 'number' && Number.isFinite(value)
+);
+
+const isWeeklyDigestNoDataResponse = (value: unknown): value is WeeklyDigestNoDataResponse => (
+  isRecord(value)
+  && value.status === 'no_data'
+  && (value.message === undefined || typeof value.message === 'string')
+);
+
+const isWeeklyDigestGenerateSuccessResponse = (
+  value: unknown,
+): value is WeeklyDigestGenerateSuccessResponse => (
+  isRecord(value)
+  && value.success === true
+  && isRecord(value.data)
+  && typeof value.data.weekStart === 'string'
+  && typeof value.data.weekEnd === 'string'
+  && isFiniteNumber(value.data.narrativeLength)
+  && isFiniteNumber(value.data.highlightsCount)
+);
+
+const isWeeklyDigestGenerateResponse = (value: unknown): value is WeeklyDigestGenerateResponse => (
+  isWeeklyDigestNoDataResponse(value) || isWeeklyDigestGenerateSuccessResponse(value)
+);
+
+const getWeeklyDigestResponseLogContext = (response: Response) => ({
+  ...getBoundedRuntimeStringContext('responseKind', 'weekly_digest_generate'),
+  responseOk: response.ok,
+  responseStatus: response.status,
+});
+
+const readWeeklyDigestGenerateResponse = async (response: Response): Promise<WeeklyDigestGenerateResponse> => {
+  let payload: unknown = null;
+  try {
+    payload = await readJsonResponseWithLimit<unknown>(response, WEEKLY_DIGEST_RESPONSE_JSON_MAX_BYTES);
+  } catch (error) {
+    logRuntimeFailure(
+      'platform_weekly_digest_generate_response_parse_failed',
+      error,
+      getWeeklyDigestResponseLogContext(response),
+    );
+    throw new Error(WEEKLY_DIGEST_GENERATE_FAILED_MESSAGE);
+  }
+
+  if (!response.ok) {
+    logRuntimeFailure(
+      'platform_weekly_digest_generate_response_rejected',
+      undefined,
+      getWeeklyDigestResponseLogContext(response),
+    );
+    throw new Error(WEEKLY_DIGEST_GENERATE_FAILED_MESSAGE);
+  }
+
+  if (!isWeeklyDigestGenerateResponse(payload)) {
+    logRuntimeFailure(
+      'platform_weekly_digest_generate_response_invalid',
+      undefined,
+      getWeeklyDigestResponseLogContext(response),
+    );
+    throw new Error(WEEKLY_DIGEST_GENERATE_FAILED_MESSAGE);
+  }
+
+  return payload;
+};
 
 // ================================================================
 // COMPONENT
@@ -74,7 +173,8 @@ export default function WeeklyDigest() {
         setDigest(null);
       }
     } catch (error) {
-      message.error('Failed to load weekly digest. Please try again later');
+      logRuntimeFailure('platform_weekly_digest_load_failed', error);
+      message.error(WEEKLY_DIGEST_LOAD_FAILED_MESSAGE);
     } finally {
       setLoading(false);
     }
@@ -87,19 +187,15 @@ export default function WeeklyDigest() {
 
       // Use local generation endpoint (no Cloud Function required)
       const response = await fetch('/api/analytics/weekly-narrative/generate-local', {
+        ...WEEKLY_DIGEST_GENERATE_REQUEST_POLICY,
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.details || 'Generation failed');
-      }
+      const result = await readWeeklyDigestGenerateResponse(response);
 
-      const result = await response.json();
-
-      if (result.data?.status === 'no_data') {
-        message.warning('No analytics data found for the past week. Please run daily aggregation first.');
+      if ('status' in result && result.status === 'no_data') {
+        message.warning(WEEKLY_DIGEST_NO_DATA_MESSAGE);
         return;
       }
 
@@ -108,7 +204,8 @@ export default function WeeklyDigest() {
       // Wait a bit for Cloud Function to complete
       setTimeout(fetchDigest, 5000);
     } catch (error) {
-      message.error(error instanceof Error ? error.message : 'Generation failed. Please try again later');
+      logRuntimeFailure('platform_weekly_digest_generate_failed', error);
+      message.error(WEEKLY_DIGEST_GENERATE_FAILED_MESSAGE);
     } finally {
       setRegenerating(false);
     }

@@ -2,16 +2,16 @@
 
 **Feature:** Menu Image Generation & Editing
 **Status:** Controlled owner testing ready after June 2026 worker/auth/logging hardening
-**Last Updated:** June 11, 2026
+**Last Updated:** July 1, 2026
 **Priority:** HIGH — Most expensive AI feature. Direct Gemini API + Storage costs per generation.
 
 ---
 
 ## Summary
 
-- **Collections Used:** `imageBatchProcessingJobs/{tId}/{sId}`, `projects/{tId}/{sId}` (projectsData)
-- **Storage Buckets:** `media/menuItem/{tId}/{sId}/{entityId}/{fileId}` for item images; `media/menuBackground/...` and `media/projectImage/...` for design/project media through shared media profiles
-- **Cloud Functions:** None (uses API routes + Google Cloud Tasks for batch)
+- **Collections Used:** `imageBatchProcessingJobs/{tId}/{sId}`, `aiImagePromptCache`, `projects/{tId}/{sId}` (projectsData)
+- **Storage Buckets:** `media/menuItem/{tId}/{sId}/{entityId}/{fileId}` for item images; `system/aiImagePromptCache/...` for private reusable batch prompt-cache source objects; `media/menuBackground/...` and `media/projectImage/...` for design/project media through shared media profiles
+- **Cloud Functions:** `menulistMaintenanceScheduler` only for bounded retention cleanup; generation itself uses API routes + Google Cloud Tasks for batch
 - **Estimated Monthly Cost:** **HIGH** — Gemini/Imagen API costs dominate
 
 ---
@@ -26,14 +26,20 @@
 | AI capacity check | `subscriptions/{subscriptionId}` | Before Gemini/provider work | Per request or worker item | 1 | Query/direct helper | Prevents provider spend when credits are unavailable. |
 | Batch job status listener | `imageBatchProcessingJobs/{tId}/{sId}` | Batch generation started | Real-time (onSnapshot) | Up to 5 per update | Query: projectId + status, limit 5 | `useImageBatchJobListener` hook selects the newest visible job client-side. This keeps reads bounded and avoids a new composite index. |
 | Batch worker job read | `imageBatchProcessingJobs/{tId}/{sId}/{jobId}` | Cloud Tasks worker | Per item task | 1 | Direct doc | Verifies job, project, requested item, terminal/idempotent state. |
+| Batch retention cleanup scan | `platformSummary/storesSummary`, `imageBatchProcessingJobs/{tId}/{sId}` | `menulistMaintenanceScheduler` | Daily | Capped to 200 stores, then up to 25 job docs per scanned store | Single-field marker queries: `expiresAt`, `itemsExpiresAt`; bounded legacy status scan | Deletes expired terminal job docs and prunes expired `itemsList` without a new composite index. |
+| Prompt-cache source cleanup scan | `aiImagePromptCache` | `menulistMaintenanceScheduler` | Daily | Up to 25 expired docs | Single-field query: `expiresAt` | Deletes expired prompt-cache source objects before deleting cache docs. No tenant/store media URLs are reused. |
 
 ### Writes
 
 | Operation | Collection | Trigger | Frequency | Docs Written | Fields | Notes |
 |-----------|-----------|---------|-----------|-------------|--------|-------|
-| Create batch job | `imageBatchProcessingJobs/{tId}/{sId}` | User starts batch gen | Per batch request | 1 | Full job doc | Client creates the visible job before trigger call. |
+| Create batch job | `imageBatchProcessingJobs/{tId}/{sId}` | User starts batch gen | Per batch request | 1 | Full job doc | Client creates the visible job before trigger call and requires a returned job ID acknowledgement before calling the batch trigger route. |
 | Register requested item IDs | `imageBatchProcessingJobs/{tId}/{sId}/{jobId}` | Batch trigger validated | Per batch request | 1 | requestedItemIds | Admin SDK write used by worker authorization/idempotency. |
 | Update batch job progress | `imageBatchProcessingJobs/{tId}/{sId}/{jobId}` | Per item processed | Per item | 1 | itemsList, generatedCount, status | Worker uses an Admin SDK transaction to merge the item result and compute the next generated count/status from the latest job doc; no item subcollection. |
+| Mark terminal batch job retention | `imageBatchProcessingJobs/{tId}/{sId}/{jobId}` | Worker or owner action sets `completed`, `failed`, `cancelled`, `finished`, or `discarded` | Per terminal transition | Included in the existing status write | `itemsExpiresAt`, `expiresAt` | `itemsList` is eligible for pruning after 7 days; the job doc is eligible for deletion after 30 days. |
+| Compact retained batch job | `imageBatchProcessingJobs/{tId}/{sId}/{jobId}` | Daily retention cleanup | Daily capped cleanup | 1 per eligible job | Deletes `itemsList`, clears `itemsExpiresAt`, records bounded cleanup counts | `finished` and `cancelled` jobs keep accepted image files safe by pruning metadata only; `completed`, `failed`, and `discarded` jobs also attempt generated-image Storage cleanup first. |
+| Write prompt-cache source doc | `aiImagePromptCache/{cacheKey}` | Batch worker receives a cache-eligible provider result | Per first cache miss | 1 | `sourcePath`, image shape, `expiresAt`, `promptLength`, model/config metadata | Stores no raw prompt; key is a hash of model/config/prompt. |
+| Record prompt-cache hit | `aiImagePromptCache/{cacheKey}` | Batch worker cache hit | Per hit | 1 merge update | `hitCount`, `lastHitAt`, `updatedAt` | Cache hit still copies source bytes into the requesting store's own media path. |
 | Save generated image URL to project | `projects/{tId}/{sId}/{projectId}` | User accepts image | Per accepted image | 1 | files[].extractedData.data.items[].image | Merge update with new image URL after Storage upload. |
 | AI accounting | AI operation/accounting collections + subscription doc | Successful provider response | Per generated/edited image request | 1-2 | operation ledger, balance | Response/provider image bytes are summarized, not stored. |
 
@@ -41,7 +47,8 @@
 
 | Operation | Collection | Trigger | Frequency | Docs Deleted | Soft/Hard | Notes |
 |-----------|-----------|---------|-----------|-------------|-----------|-------|
-| None | — | — | — | — | — | Batch jobs kept for audit. Discarded images not saved. |
+| Delete expired terminal batch job | `imageBatchProcessingJobs/{tId}/{sId}/{jobId}` | Daily retention cleanup when `expiresAt <= now` | Daily capped cleanup | Up to 10 marker-matched docs per scanned store plus 5 legacy candidates | Hard delete | Deletes only terminal-status jobs after the 30-day retention window. |
+| Delete expired prompt-cache source doc | `aiImagePromptCache/{cacheKey}` | Daily retention cleanup when `expiresAt <= now` | Daily capped cleanup | Up to 25 docs | Hard delete | Deletes the cache doc only after its private source object is deleted or already missing; source paths must stay under `system/aiImagePromptCache/`. |
 
 ---
 
@@ -50,7 +57,10 @@
 | Operation | Path Pattern | Trigger | Size | Notes |
 |-----------|-------------|---------|------|-------|
 | Upload accepted single image | `media/menuItem/{tId}/{sId}/{entityId}/{mediaId}_{variant}.{ext}` | User accepts generated image | Profile-bounded | Shared `uploadFile()` media profile path. Public-read image URL is saved only after owner acceptance. |
-| Upload batch worker image | `media/menuItem/{tId}/{sId}/{entityId}/{mediaId}_{variant}.{ext}` | Worker generates item image | Profile MIME/source-size guarded | Admin SDK upload with public Firebase download token; no browser session required. |
+| Upload batch worker image | `media/menuItem/{tId}/{sId}/{entityId}/{mediaId}_{variant}.{ext}` | Worker generates item image | Profile-prepared WebP: max 1200px, 500KB target | Admin SDK upload prepares provider bytes through `prepareMediaImageAdmin()` before Storage save and records original/prepared size metadata; no browser session required. |
+| Upload prompt-cache source image | `system/aiImagePromptCache/v{version}/{cacheKey}.{ext}` | Batch worker cache-eligible first generation | Profile-prepared WebP: max 1200px, 500KB target | Private reusable source object. Cache hits copy bytes into the requesting store's own `media/menuItem/{tId}/{sId}/...` path instead of reusing a tenant URL. |
+| Delete expired prompt-cache source image | `system/aiImagePromptCache/v{version}/{cacheKey}.{ext}` | Daily prompt-cache cleanup | Up to 25 expired sources per run | Scheduler deletes only paths that start with `system/aiImagePromptCache/`; store-owned accepted media is untouched. |
+| Delete abandoned batch worker image | `media/menuItem/{tId}/{sId}/{entityId}/{mediaId}_{variant}.{ext}` | Daily retention cleanup for old `completed`, `failed`, or `discarded` jobs | Capped by eligible jobs and generated URLs | Only URLs in the current tenant/store `media/menuItem/{tId}/{sId}/` prefix are deleted. `finished` and `cancelled` jobs skip Storage deletion to avoid removing owner-accepted project images. |
 
 ---
 
@@ -58,7 +68,7 @@
 
 | Function | Trigger | Frequency | Duration | Memory | Notes |
 |----------|---------|-----------|----------|--------|-------|
-| None directly | — | — | — | — | Uses API routes instead. |
+| `menulistMaintenanceScheduler` | Scheduled Firebase Function | Every 2 minutes wrapper; `image_batch_job_retention_cleanup` runs daily at 04:55 UTC and `ai_image_prompt_cache_cleanup` runs daily at 04:57 UTC | Capped retention passes | 1GiB shared scheduler | Reuses the consolidated maintenance scheduler with per-task cadence and lease. No standalone scheduled Function. |
 
 ## External Services
 
@@ -86,13 +96,18 @@
 - **Capacity before provider work**: Single and worker routes build deterministic prompts first, then check AI capacity using the actual prompt/image quantity before calling Gemini/Imagen.
 - **Batch preflight capacity check**: Batch trigger estimates deterministic prompt/image quantity before enqueuing tasks, so multi-prompt batches are blocked before Cloud Tasks are created when capacity is insufficient.
 - **Batch via Cloud Tasks**: Items are queued independently; each worker validates job/project/item state before provider work.
+- **Batch diagnostics bounded**: Batch trigger, Cloud Tasks enqueue helper, worker failure paths, client listener, and owner result-action failures log stable failure codes, bounded project/job/item/task/count metadata, and source error name/code/status only. Raw Cloud Tasks/provider/browser exceptions and raw item/job/project identifiers are not written into runtime diagnostics.
 - **Bounded prompt/upload concurrency**: Multi-prompt image generation and worker Storage uploads run with small concurrency caps instead of unbounded parallelism.
+- **Generated-image media preparation**: Accepted browser generated images use the shared `prepareMediaImage()` upload path, and batch worker images use `prepareMediaImageAdmin()` before Admin SDK Storage save.
 - **Worker idempotency guard**: Replayed item tasks skip when an item already has generated images.
+- **Batch job retention cleanup**: Terminal jobs receive `itemsExpiresAt` and `expiresAt`; the daily maintenance scheduler prunes heavy `itemsList` payloads after 7 days and deletes terminal job docs after 30 days.
+- **Batch prompt-cache source cleanup**: Cache-eligible batch images write private source objects under `system/aiImagePromptCache/` with an `aiImagePromptCache.expiresAt` marker. `ai_image_prompt_cache_cleanup` deletes expired source objects and docs in a bounded daily pass.
 - **Payload summaries**: Provider responses and reference-image data are summarized in logs/accounting instead of storing image bytes.
+- **Reference-image response cap**: Persisted reference-image URLs are read through the app-server bounded response helper after Storage path, DNS validation, and manual redirect handling, so redirected targets, oversized headers, or oversized streams are rejected before provider upload.
 - **User review before save**: Single generated images are returned as base64 previews and uploaded to Storage only when the owner accepts them.
 
 ### Potential Optimizations
-- **Image caching**: Same item name → same image. Cache by item name hash
+- **Single-image draft cache**: Remains intentionally off until there is a server-owned draft cleanup path; the current single-image route returns base64 previews and performs no Storage write until owner acceptance.
 - **Batch discount**: If Gemini offers batch pricing, migrate from individual calls
 - **Quality tiers**: Offer "quick" (lower quality, cheaper) vs "premium" generation
 
@@ -140,3 +155,15 @@
 | `/api/image-generation/batch-trigger` | POST | 2-4R + 1W | Yes (3/5min) | Project/outlet policy + prompt-count batch capacity, registers requested item IDs, then enqueues Cloud Tasks. |
 | `/api/image-generation/batch-generation` | POST | 2R + Storage uploads + 2-3W on success | Task secret | Reads job + prompt-count capacity, uploads generated images via Admin SDK with bounded concurrency, writes accounting and transactional progress. |
 | `/api/image-editing` | POST | 2-3R + 1-2W on success | Yes (5/min) | Project/outlet policy + AI capacity before provider; accounting write after success. Returns base64 preview. |
+
+Reference-image fetch hardening is behavior-neutral for Firebase usage. Persisted reference images for single generation, batch generation, and image editing must already be in the configured MenuList Firebase Storage bucket and under `media/menuItem/{tId}/{sId}/` or legacy `projects/itemImages/{tId}/{sId}/`; the app server also validates the public DNS target before reading bytes for Gemini and uses manual redirect handling for the final fetch. This adds no Firestore reads/writes/deletes, no Storage writes/deletes, no Cloud Function logic, no rules/indexes/schema/tenant-shape changes, no cache invalidations, and no owner-facing settings. Valid data URL previews and valid scoped item-image download URLs remain supported.
+
+Batch trigger, worker, client listener, owner result-action diagnostic hardening, and owner batch-job acknowledgement hardening are behavior-neutral for Firebase usage. They add no Firestore reads/writes/deletes beyond existing batch job registration/progress writes, owner accept/discard/cancel/retry writes, failed-start marking, and the existing bounded `useImageBatchJobListener` snapshot query; no Storage operations beyond existing worker uploads and existing owner accept/discard cleanup paths; no Firebase Auth operation changes; no Cloud Function logic changes; no extra Cloud Function calls; no indexes; no rules; no cache invalidations; no schema/tenant-shape changes; and no owner-facing settings. Cloud Tasks client initialization is lazy, enqueue/worker failures are logged with bounded metadata only, listener setup/snapshot/debug diagnostics log project/tenant/store/job presence-length metadata only, owner result-action failures log fixed `image_batch_result_*` codes with bounded project/job/count metadata, and owner UI state advances only after matching job/status acknowledgements.
+
+July 1 retention hardening is intentionally not behavior-neutral for Firebase cleanup: terminal batch status writes now add `itemsExpiresAt` and `expiresAt`, and `menulistMaintenanceScheduler` runs `image_batch_job_retention_cleanup` inside the existing leased scheduler. It uses simple per-store marker queries, prunes `itemsList` after 7 days, deletes terminal job docs after 30 days, and attempts Storage deletion only for old `completed`, `failed`, and `discarded` generated-image jobs whose URLs parse to the same tenant/store `media/menuItem/{tId}/{sId}/` prefix. Prompt-cache source retention uses the same scheduler through `ai_image_prompt_cache_cleanup`, which scans up to 25 expired `aiImagePromptCache` docs per run, deletes only source objects under `system/aiImagePromptCache/`, and then deletes the cache docs. No new Firestore index, rule, cache invalidation, owner-facing setting, API route, or standalone scheduled Function is introduced.
+
+July 1 generated-image media preparation changes the batch worker Storage bytes, not the Firestore contract: worker uploads now decode provider data URLs on the app server, apply the existing `menuItem` media profile through `prepareMediaImageAdmin()` (`image/webp`, max 1200px, 500KB target, profile aspect ratio), and save the prepared buffer with original/prepared size metadata. This adds no Firestore reads/writes/deletes, no Storage deletes, no Cloud Function logic, no rules/indexes, no cache invalidations, no owner-facing setting, and no standalone job; production effect waits for the app/Vercel deployment because the changed code is in the Next API/storage helper path.
+
+Image editing prompt-helper diagnostics are bounded only. Missing business type, missing feature, and business-specific prompt failures record business/feature presence and length metadata plus small counts/booleans and source error metadata only. They do not add Firestore reads/writes, Storage operations, provider calls, indexes, cache invalidations, or owner-facing settings.
+
+June 30 image-editing prompt-input normalization is cost-neutral. The active prompt router now strips control/template characters, normalizes whitespace, and applies existing schema-aligned caps to owner prompt text and item name/category/description placeholders before provider prompt construction. `/api/image-editing` also rejects missing generated prompts before Gemini work. This changes no Firestore read/write/delete count, Storage operations beyond existing valid scoped image reads, Cloud Function calls, provider calls beyond existing valid edit requests, cache invalidations, rules, indexes, project schema, owner settings, Firebase deploy requirement, or Vercel deploy action.

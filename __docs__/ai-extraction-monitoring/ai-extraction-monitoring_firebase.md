@@ -2,16 +2,17 @@
 
 **Feature:** Internal monitoring dashboard for the menu extraction pipeline  
 **Status:** ✅ IMPLEMENTED — dashboard reads are consolidated and bounded
-**Last Updated:** June 3, 2026
+**Last Updated:** June 30, 2026
 
 ---
 
 ## Summary
 
-- **Collections Read:** `menuImageProcessingJobs`, `MENULIST_AI_OPERATIONS` (note: `aiUsageLog` from AI System Layer is Phase 2 — not yet implemented)
+- **Collections Read:** `menuImageProcessingJobs`, `MENULIST_AI_OPERATIONS` (no separate `aiUsageLog` collection is read)
 - **Collections Written:** None (read-only dashboard)
 - **New Collections:** None
 - **Estimated Monthly Cost:** ~₹4/month at 10 internal visits/day (read-only queries from existing collections; assumes Firestore read pricing at $0.06/100K reads and ₹83/USD)
+- **Browser-local copy diagnostics:** Job Inspector copy hardening adds no Firestore, Storage, Cloud Function, provider, or cache operations. Failed clipboard handoffs use the existing ops diagnostics boundary with bounded metadata only, including clipboard/fallback support booleans and copied-text length rather than raw extraction payloads.
 
 ---
 
@@ -125,7 +126,7 @@ May already exist — verify before adding:
 
 | Function                           | File                             | Operation                                  | Firestore Cost        |
 | ---------------------------------- | -------------------------------- | ------------------------------------------ | --------------------- |
-| `getExtractionDashboardSnapshot()` | `src/database/ops/extraction.ts` | One recent-job query + one cost query      | Up to 150R + 100R     |
+| `getExtractionDashboardSnapshot()` | `src/database/ops/extraction.ts` | SWR-deduped dashboard snapshot: one recent-job query + one cost query | Cache miss or explicit refresh: up to 150R + 100R; duplicate loads within 5 minutes: 0 additional reads |
 | `getExtractionHealthMetrics()`     | `src/database/ops/extraction.ts` | Compatibility helper, 24h health window    | Up to 100 reads       |
 | `getRecentExtractionJobs()`        | `src/database/ops/extraction.ts` | Compatibility helper, paginated feed       | 20 reads/page default |
 | `getExtractionJobDetails()`        | `src/database/ops/extraction.ts` | Read (getDoc, single doc)                  | 1 read                |
@@ -147,3 +148,5 @@ Dashboard access is enforced at the application level (platformRole check), not 
 ---
 
 _Document Status: ✅ IMPLEMENTED — dashboard snapshot + compatibility DAL helpers working_
+
+July 1 QP-1 hardening adds a five-minute SWR dedupe window in `src/components/templates/main-app/platform/extractionMonitor/index.tsx`. The first platform dashboard load, a filter-key change, or explicit Refresh still performs the bounded snapshot reads above. Duplicate mounts or revalidations inside the dedupe window reuse the cached snapshot, and no automatic refresh interval is enabled. If this dashboard is ever broadened beyond platform-only use or given automatic refresh, server-side pre-aggregation is required before launch.

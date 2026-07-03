@@ -1,6 +1,6 @@
-import { BATCH_IMAGE_GENERATION_JOB_STATUS } from "@constant/AI";
+import { BATCH_IMAGE_GENERATION_JOB_STATUS, type BatchImageGenerationJobStatusType } from "@constant/AI";
 import { DB_COLLECTIONS } from "@constant/database";
-import { collection, getDoc, increment, limit, query, runTransaction, setDoc, where } from "@firebase/firestore";
+import { collection, getDoc, increment, limit, query, runTransaction, setDoc, Timestamp, where } from "@firebase/firestore";
 import { requestBodyComposer } from "@lib/apiHelper";
 import { apiCallComposer } from "@lib/apiHelper/apiCallComposer";
 import getActiveSession from "@lib/auth/getActiveSession";
@@ -11,6 +11,61 @@ import { addDoc, doc } from "firebase/firestore";
 const COLLECTION = DB_COLLECTIONS.IMAGE_BATCH_PROCESSING_JOBS;
 const ACTIVE_BATCH_JOB_QUERY_LIMIT = 5;
 const MAX_STATUS_HISTORY_ENTRIES = 20;
+const DAY_MS = 24 * 60 * 60 * 1000;
+const IMAGE_BATCH_ITEMS_RETENTION_DAYS = 7;
+const IMAGE_BATCH_JOB_RETENTION_DAYS = 30;
+const BATCH_IMAGE_GENERATION_JOB_STATUS_VALUES = new Set<BatchImageGenerationJobStatusType>(
+    Object.values(BATCH_IMAGE_GENERATION_JOB_STATUS),
+);
+const IMAGE_BATCH_TERMINAL_JOB_STATUS_VALUES = new Set<BatchImageGenerationJobStatusType>([
+    BATCH_IMAGE_GENERATION_JOB_STATUS.COMPLETED,
+    BATCH_IMAGE_GENERATION_JOB_STATUS.FAILED,
+    BATCH_IMAGE_GENERATION_JOB_STATUS.CANCELLED,
+    BATCH_IMAGE_GENERATION_JOB_STATUS.FINISHED,
+    BATCH_IMAGE_GENERATION_JOB_STATUS.DISCARDED,
+]);
+
+export type ImageBatchJobUpdateResult = {
+    jobId: string;
+    status?: BatchImageGenerationJobStatusType;
+    success: true;
+};
+
+const isImageBatchJobUpdateResult = (value: unknown): value is ImageBatchJobUpdateResult => (
+    Boolean(value)
+    && typeof value === "object"
+    && !Array.isArray(value)
+    && (value as { success?: unknown }).success === true
+    && typeof (value as { jobId?: unknown }).jobId === "string"
+    && (
+        (value as { status?: unknown }).status === undefined
+        || BATCH_IMAGE_GENERATION_JOB_STATUS_VALUES.has((value as { status: BatchImageGenerationJobStatusType }).status)
+    )
+);
+
+export function assertImageBatchJobCreateSucceeded(
+    result: unknown,
+    rejectionCode = "image_batch_job_create_rejected",
+): asserts result is string {
+    if (typeof result !== "string" || !result.trim()) {
+        throw new Error(rejectionCode);
+    }
+}
+
+export function assertImageBatchJobUpdateSucceeded(
+    result: unknown,
+    expectedJobId?: string,
+    expectedStatus?: BatchImageGenerationJobStatusType,
+    rejectionCode = "image_batch_job_update_rejected",
+): asserts result is ImageBatchJobUpdateResult {
+    if (
+        !isImageBatchJobUpdateResult(result)
+        || (expectedJobId !== undefined && result.jobId !== expectedJobId)
+        || (expectedStatus !== undefined && result.status !== expectedStatus)
+    ) {
+        throw new Error(rejectionCode);
+    }
+}
 
 const getCollectionRef = async () => {
     const session = await getActiveSession();
@@ -32,6 +87,18 @@ export const getBatchImageJobCollectionRef = (session: any, projectId: string) =
 
 const getDocRef = async (docId: any, session: any) => {
     return doc(firebaseClient, `${COLLECTION}/${session.tId}/${session.sId}`, docId)
+}
+
+function getImageBatchRetentionFields(status?: BatchImageGenerationJobStatusType) {
+    if (!status || !IMAGE_BATCH_TERMINAL_JOB_STATUS_VALUES.has(status)) {
+        return {};
+    }
+
+    const now = Date.now();
+    return {
+        expiresAt: Timestamp.fromMillis(now + IMAGE_BATCH_JOB_RETENTION_DAYS * DAY_MS),
+        itemsExpiresAt: Timestamp.fromMillis(now + IMAGE_BATCH_ITEMS_RETENTION_DAYS * DAY_MS),
+    };
 }
 
 export const getImageBatchProcessingJobById = async (id: string, session: any) => {
@@ -67,7 +134,7 @@ export const updateImageBatchProcessingJob = async (data: any, projectId: string
     return await apiCallComposer(
         async () => {
             // Create a copy of the data to work with
-            let processedData = { ...data };
+            let processedData = { ...data, ...getImageBatchRetentionFields(data.status) };
             let specialFields: any = {};
 
             // Handle statusHistory specially if it exists in the data
@@ -108,12 +175,19 @@ export const updateImageBatchProcessingJob = async (data: any, projectId: string
                         ...finalUpdateData,
                     }, { merge: true });
                 });
-                return finalUpdateData;
+                return {
+                    jobId: data.id,
+                    status: finalUpdateData.status,
+                    success: true,
+                } satisfies ImageBatchJobUpdateResult;
             }
             await setDoc(docRef, finalUpdateData, { merge: true });
 
-            // Return the data in a format that matches what the caller expects
-            return finalUpdateData;
+            return {
+                jobId: data.id,
+                status: finalUpdateData.status,
+                success: true,
+            } satisfies ImageBatchJobUpdateResult;
         },
         data,
         "updateImageBatchProcessingJob"

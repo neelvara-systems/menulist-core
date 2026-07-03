@@ -726,7 +726,7 @@ Founder clarified that MenuList should not target one single market and should c
 - `__docs__/main-website/main-website_content.md`
 - `__docs__/main-website/main-website_seo-aeo.md`
 - `__docs__/main-website/main-website_seo-aeo-marketing-brief.md`
-- `__docs__/CHANGELOG.md`
+- `__docs__/changelog.md`
 - `__docs__/menulist-marketing-distribution/menulist-marketing-distribution_action-register.md`
 
 ### Remaining

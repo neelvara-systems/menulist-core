@@ -1,9 +1,9 @@
 # Customer Communication Kit
 
-> **Status:** ✅ IMPLEMENTED — Feature Flag OFF by Default
+> **Status:** IMPLEMENTED — Feature Flag ON
 > **Feature Flag:** `ENABLE_CUSTOMER_COMMUNICATION_KIT`
 > **Route:** Section within Use MenuList page (`/use-menulist`) + dedicated mobile screen
-> **Mobile:** MobileShareScreen enhancement or new MobileCommunicationScreen
+> **Mobile:** Integrated into `MobileShareScreen`
 > **Source:** ChatGPT Owner Features Session (March 15, 2026) → Cascade Review
 
 ## What It Is
@@ -25,7 +25,11 @@ The existing Use MenuList page has a basic "Copy Message" that pastes `{sharePre
 
 ## Architecture Principle
 
-**Pure UI + string templates.** Reads existing store data (name, address, hours, menu link) and generates message strings. Zero new collections. Zero new API routes. Zero Firebase cost.
+**Pure UI + string templates.** Reads existing store data (name, address, hours, menu link) and generates message strings. Zero new collections. Zero new API routes. Zero Firebase cost. Failed copy/share/handoff paths log bounded diagnostics only; raw generated messages and raw public URLs must not be logged.
+
+## Source Gate
+
+Run `npm run verify:communication-kit-boundary` after changes to Customer Communication Kit, Use MenuList sharing, Menu Kit handoffs, printable asset downloads, or the legacy Physical Surfaces boundary. This source gate checks the desktop and mobile template paths, bounded copy/share diagnostics, browser-local Menu Kit and printable output wiring, and the legacy Physical Surfaces launch-boundary docs. Browser/device output QA and print artifact review remain separate release-certification gates.
 
 ## Message Templates (v1 — 5 Templates)
 
@@ -37,7 +41,7 @@ The existing Use MenuList page has a basic "Copy Message" that pastes `{sharePre
 | **Business Info**    | Name + address + hours + phone + menu link | Customer asks "tell me about your restaurant" |
 | **Share with Staff** | Menu link + note for staff to use          | Owner shares link with team                   |
 
-## Key Files (Planned)
+## Key Files
 
 | File                                                                 | Purpose                       |
 | -------------------------------------------------------------------- | ----------------------------- |
@@ -70,4 +74,4 @@ The existing Use MenuList page has a basic "Copy Message" that pastes `{sharePre
 ---
 
 **Created:** March 15, 2026
-**Last Updated:** March 15, 2026
+**Last Updated:** July 2, 2026

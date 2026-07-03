@@ -9,13 +9,16 @@ import { PRODUCT_IDS } from '@constant/product';
 import { requireAnswerlatticePermission } from '@lib/answerlattice/accessControl';
 import { recordAnswerlatticeAiOperation } from '@lib/answerlattice/aiAccounting';
 import { DRAFT_PROMPT_VERSION, DRAFT_SYSTEM_PROMPT, buildDraftUserPrompt, parseDraftResponse } from '@lib/answerlattice/draftPrompt';
+import { buildAnswerlatticeRateLimitKey } from '@lib/answerlattice/rateLimitKeys';
 import { resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
 import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
 import { admin } from '@lib/firebase/firebaseAdmin';
 import { logger } from '@lib/monitoring/logger';
 import { checkRateLimit } from '@lib/rateLimit';
 import { getRateLimitForFeature } from '@lib/rateLimit/configs';
-import { secureError } from '@lib/security/secureLogger';
+import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
+import { readBoundedJsonBody } from '@lib/security/boundedRequestBody';
+import { getSafeZodValidationDetails } from '@lib/security/inputValidation';
 import { callGeminiChatWithMetadata } from '@lib/vectorEmbeddings';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
@@ -25,6 +28,7 @@ const RequestSchema = z.object({
     proposalId: z.string().trim().min(1).max(160),
     regeneratedBy: z.string().trim().max(160).optional(),
 });
+const DRAFT_REGENERATE_MAX_BODY_BYTES = 4 * 1024;
 
 function extractSignalText(metadata?: Record<string, any>): string | null {
     if (!metadata) return null;
@@ -32,21 +36,36 @@ function extractSignalText(metadata?: Record<string, any>): string | null {
     return text && text.length > 5 ? String(text).substring(0, 200) : null;
 }
 
+const getDraftGroundingLogContext = (tId: number, sId: number, entityId: string) => ({
+    ...getBoundedRuntimeStringContext('tenantId', tId),
+    ...getBoundedRuntimeStringContext('storeId', sId),
+    ...getBoundedRuntimeStringContext('entityId', entityId),
+});
+
 async function gatherSignalExamples(tId: number, sId: number, entityId: string): Promise<string[]> {
     const examples: string[] = [];
     const windowStart = new Date();
     windowStart.setDate(windowStart.getDate() - 14);
 
-    const snapshot = await answerlatticeFirestoreAdmin
-        .collection(DB_COLLECTIONS.ANSWERLATTICE_SIGNAL_EVENTS)
-        .where('tId', '==', tId)
-        .where('sId', '==', sId)
-        .where('entityId', '==', entityId)
-        .where('timestamp', '>=', admin.firestore.Timestamp.fromDate(windowStart))
-        .orderBy('timestamp', 'desc')
-        .limit(200)
-        .get()
-        .catch(() => null);
+    let snapshot;
+    try {
+        snapshot = await answerlatticeFirestoreAdmin
+            .collection(DB_COLLECTIONS.ANSWERLATTICE_SIGNAL_EVENTS)
+            .where('tId', '==', tId)
+            .where('sId', '==', sId)
+            .where('entityId', '==', entityId)
+            .where('timestamp', '>=', admin.firestore.Timestamp.fromDate(windowStart))
+            .orderBy('timestamp', 'desc')
+            .limit(200)
+            .get();
+    } catch (error) {
+        logRuntimeFailure(
+            'answerlattice_draft_regeneration_signal_examples_load_failed',
+            error,
+            getDraftGroundingLogContext(tId, sId, entityId),
+        );
+        return examples;
+    }
 
     snapshot?.docs.forEach((doc) => {
         const text = extractSignalText(doc.data().metadata);
@@ -59,15 +78,24 @@ async function gatherSignalExamples(tId: number, sId: number, entityId: string):
 }
 
 async function getExistingAnswerSummaries(tId: number, sId: number, entityId: string): Promise<string[]> {
-    const snapshot = await answerlatticeFirestoreAdmin
-        .collection(DB_COLLECTIONS.ANSWERLATTICE_CANONICAL_ANSWERS)
-        .where('tId', '==', tId)
-        .where('sId', '==', sId)
-        .where('scope.entityIds', 'array-contains', entityId)
-        .where('status', '==', 'active')
-        .limit(3)
-        .get()
-        .catch(() => null);
+    let snapshot;
+    try {
+        snapshot = await answerlatticeFirestoreAdmin
+            .collection(DB_COLLECTIONS.ANSWERLATTICE_CANONICAL_ANSWERS)
+            .where('tId', '==', tId)
+            .where('sId', '==', sId)
+            .where('scope.entityIds', 'array-contains', entityId)
+            .where('status', '==', 'active')
+            .limit(3)
+            .get();
+    } catch (error) {
+        logRuntimeFailure(
+            'answerlattice_draft_regeneration_existing_answers_load_failed',
+            error,
+            getDraftGroundingLogContext(tId, sId, entityId),
+        );
+        return [];
+    }
 
     return snapshot?.docs.map((doc) => {
         const answer = doc.data();
@@ -76,27 +104,27 @@ async function getExistingAnswerSummaries(tId: number, sId: number, entityId: st
 }
 
 export const POST = withAuth(async (request: NextRequest, session) => {
+    let tenantIdForLog: number | string | undefined;
+    let storeIdForLog: number | string | undefined;
+    const userIdForLog = session.uId || session.user?.id;
+    let proposalIdForLog: string | undefined;
+
     try {
-        const permission = await requireAnswerlatticePermission(request, session, ANSWERLATTICE_PERMISSION_KEYS.MANAGE_GOVERNANCE);
-        if (permission.response) return permission.response;
-
-        const validation = RequestSchema.safeParse(await request.json().catch(() => null));
-        if (!validation.success) {
-            return NextResponse.json(
-                { error: 'Invalid draft regeneration request', details: validation.error.flatten() },
-                { status: 400 },
-            );
-        }
-
         const scope = resolveAnswerlatticeSessionScope(session);
+        tenantIdForLog = scope?.tenantId;
+        storeIdForLog = scope?.storeId;
         if (!scope) {
             return NextResponse.json({ error: 'Answerlattice account scope is missing' }, { status: 400 });
         }
 
+        const { checkSafeMode } = await import('@lib/ops/safeMode');
+        const safeModeResponse = await checkSafeMode();
+        if (safeModeResponse) return safeModeResponse;
+
         const rateLimitConfig = getRateLimitForFeature('AI_OPERATION');
-        const userId = session.uId || session.user?.id || 'unknown';
+        const userId = userIdForLog || 'unknown';
         const rateLimit = await checkRateLimit({
-            key: `answerlattice-draft-regenerate:${userId}:${scope.tenantId}:${scope.storeId}`,
+            key: buildAnswerlatticeRateLimitKey('answerlattice-draft-regenerate', userId, scope.tenantId, scope.storeId),
             ...rateLimitConfig,
         });
 
@@ -105,9 +133,9 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             logger.security('Rate Limit Exceeded', {
                 endpoint: '/api/answerlattice/mutation-proposals/regenerate-draft',
                 limit: rateLimitConfig.limit,
-                storeId: scope.storeId,
-                tenantId: scope.tenantId,
-                userId,
+                ...getBoundedRuntimeStringContext('storeId', scope.storeId),
+                ...getBoundedRuntimeStringContext('tenantId', scope.tenantId),
+                ...getBoundedRuntimeStringContext('userId', userId),
                 waitSeconds,
                 window: rateLimitConfig.window,
             }, 'medium');
@@ -130,7 +158,30 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             );
         }
 
+        const permission = await requireAnswerlatticePermission(request, session, ANSWERLATTICE_PERMISSION_KEYS.MANAGE_GOVERNANCE);
+        if (permission.response) return permission.response;
+
+        const bodyResult = await readBoundedJsonBody(request, DRAFT_REGENERATE_MAX_BODY_BYTES, {
+            invalidJsonMessage: 'Invalid draft regeneration request',
+            tooLargeMessage: 'Request body too large',
+        });
+        if (bodyResult.ok === false) {
+            return NextResponse.json(
+                { error: bodyResult.response.status === 413 ? 'Request body too large' : 'Invalid draft regeneration request' },
+                { status: bodyResult.response.status },
+            );
+        }
+
+        const validation = RequestSchema.safeParse(bodyResult.data);
+        if (!validation.success) {
+            return NextResponse.json(
+                { error: 'Invalid draft regeneration request', details: getSafeZodValidationDetails(validation.error) },
+                { status: 400 },
+            );
+        }
+
         const { proposalId, regeneratedBy } = validation.data;
+        proposalIdForLog = proposalId;
         const actor = regeneratedBy || session.user?.email || session.user?.name || String(userId);
         const tenantId = Number(scope.tenantId);
         const storeId = Number(scope.storeId);
@@ -266,8 +317,11 @@ export const POST = withAuth(async (request: NextRequest, session) => {
 
         return NextResponse.json({ ok: true, success: true });
     } catch (error) {
-        secureError('[Answerlattice Draft] Manual regeneration failed', error as Error, {
-            path: request.nextUrl.pathname,
+        logRuntimeFailure('answerlattice_draft_regeneration_failed', error, {
+            ...getBoundedRuntimeStringContext('tenantId', tenantIdForLog),
+            ...getBoundedRuntimeStringContext('storeId', storeIdForLog),
+            ...getBoundedRuntimeStringContext('userId', userIdForLog),
+            ...getBoundedRuntimeStringContext('proposalId', proposalIdForLog),
         });
         return NextResponse.json({ error: 'Could not generate draft' }, { status: 500 });
     }

@@ -1,8 +1,17 @@
 # Platform Pull API — Specification
 
-**Status:** ✅ IMPLEMENTED (v1.1 — hardened Mar 14, 2026)  
+**Status:** ✅ IMPLEMENTED (v1.3 — live key/target revalidation hardened Jul 2, 2026)
 **Date:** February 22, 2026  
 **Audience:** CEO, PM, Clients
+**Last Source Gate Update:** July 2, 2026
+
+---
+
+## Source Gate
+
+Current source/docs parity is guarded by `npm run verify:platform-pull-api-boundary`.
+
+The gate checks the Business Settings Integrations tab key controls, the authenticated key-management route, pull-route key validation, private response headers, target eligibility, menu summary selection, active temporary-status behavior in the business response, bounded diagnostics, and this spec.
 
 ---
 
@@ -71,6 +80,11 @@ Returns full menu data in the same format as POS Webhook Sync payload: categorie
 | FR-10 | `Retry-After` header on 429 responses                 | P1       | ✅     |
 | FR-11 | `schemaVersion` field in all responses                | P0       | ✅     |
 | FR-12 | Abuse logging (IP, user-agent per request)            | P1       | ✅     |
+| FR-13 | Key generate/revoke requires `MANAGE_INTEGRATIONS`    | P0       | ✅     |
+| FR-14 | API-key responses use private cache + `Vary: X-API-Key` | P0       | ✅     |
+| FR-15 | Valid keys only return data for active, non-deleted, non-blocked stores and non-blocked tenants | P0       | ✅     |
+| FR-16 | Pull endpoints revalidate key and store/tenant eligibility on every request; no process-local validation cache | P0       | ✅     |
+| FR-17 | Business Settings Integrations tab can generate, regenerate, copy, and revoke the store's public API key | P0       | ✅     |
 
 ---
 
@@ -101,7 +115,7 @@ Two APIs (business + menu) is the industry standard pattern:
 | Granular item/category endpoints   | Full snapshot architecture. No partials.                                                                          |
 | Identity resolution endpoint       | Deferred. No demand yet. Reserve for future.                                                                      |
 | Multiple API keys per store        | Deferred. Current 1-key model is sufficient.                                                                      |
-| In-memory key cache                | Deferred. Premature optimization at zero traffic.                                                                 |
+| In-memory key cache for MenuList pull endpoints | Rejected for v1. Revocation and store/tenant blocking must take effect on the next request from each server process. |
 | Precomputed snapshots              | Deferred. `menuSnapshots` collection exists but not wired to pull API. On-demand reads are fine at current scale. |
 | Prefixed item IDs (`cat_`, `itm_`) | Deferred. Current AI-generated IDs are stable across edits. Prefix migration would require data migration.        |
 | Single-language-per-request        | Rejected. Multi-lang names `{en: "...", hi: "..."}` are the correct design for infrastructure consumers.          |
@@ -113,7 +127,7 @@ Two APIs (business + menu) is the industry standard pattern:
 | HTTP | Code                  | When                                                |
 | ---- | --------------------- | --------------------------------------------------- |
 | 401  | `MISSING_API_KEY`     | No `X-API-Key` header                               |
-| 401  | `INVALID_API_KEY`     | Key not found or revoked                            |
+| 401  | `INVALID_API_KEY`     | Key not found, revoked, or no longer tied to an eligible public store/tenant |
 | 403  | `FEATURE_DISABLED`    | `ENABLE_PUBLIC_API` is OFF                          |
 | 404  | `NO_MENU`             | Store has no published menu                         |
 | 429  | `RATE_LIMIT_EXCEEDED` | >60 req/min per key. Includes `Retry-After` header. |
@@ -155,5 +169,5 @@ IDs are only retired when an item is permanently deleted.
 
 ---
 
-**Last Updated:** June 20, 2026
+**Last Updated:** July 2, 2026
 **ChatGPT Review:** Session Mar 14, 2026 — 45% accuracy (11/25 already done, 6 valid, 5 deferred, 1 rejected)

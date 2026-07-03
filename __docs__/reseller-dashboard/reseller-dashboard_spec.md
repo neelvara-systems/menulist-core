@@ -369,16 +369,16 @@ This is the **same state machine** from `src/lib/billing/subscriptionStateMachin
 
 **Cap type = concurrent active:** When an offline store expires, the reseller's cap count decrements. This prevents caps from becoming permanently exhausted.
 
-### 8.2 Sunset Plan
+### 8.2 Scale Thresholds
 
-| Phase   | When           | Action                                                   |
-| ------- | -------------- | -------------------------------------------------------- |
-| Phase 1 | 0-100 stores   | Full reseller program active                             |
-| Phase 2 | 100-200 stores | Remove Founder A tier (feature-flag controlled)          |
-| Phase 3 | 200+ stores    | Offline mode disabled, Founder B sunset                  |
-| Phase 4 | 500+ stores    | Reseller becomes referral-only (commission, not pricing) |
+| Scale band       | Configuration decision                                           |
+| ---------------- | ---------------------------------------------------------------- |
+| 0-100 stores     | Full reseller program active                                     |
+| 100-200 stores   | Review Founder A availability and disable the tier if approved   |
+| 200+ stores      | Review offline mode and Founder B availability before expansion  |
+| 500+ stores      | Reassess reseller distribution as a separate audited commercial model |
 
-**Sunset rules are encoded in feature flags** (not relied on discipline). Example: `RESELLER_TIER_FOUNDER_400_ACTIVE: true` → set to `false` at Phase 2 threshold.
+**Sunset rules use source-controlled configuration** (not operator memory). Current tier availability is controlled by `active` on each entry in `src/config/resellerPricing.ts`, and offline payment availability is controlled by `RESELLER_SYSTEM_FLAGS.OFFLINE_MODE_ACTIVE`. Commission or referral payouts are not part of the current runtime.
 
 ### 8.3 Audit Trail
 
@@ -423,8 +423,8 @@ The client has **zero awareness** of the reseller layer:
 6. **Immutable logs** — every transaction recorded, never editable
 7. **Client owns the account** — reseller cannot access client's store after activation
 8. **Same product, different distribution** — client gets identical MenuList experience
-9. **Convergence toward automation** — reseller program is a growth hack, not permanent infrastructure
-10. **No commission system in v1** — future consideration only
+9. **Convergence toward controlled operations** — reseller distribution stays capped and source-configured
+10. **No commission system** — explicitly out of scope unless a separate billing/revenue-share feature is documented, audited, implemented, and verified
 
 ---
 
@@ -442,10 +442,10 @@ The client has **zero awareness** of the reseller layer:
 
 ## 12. Open Questions
 
-1. **Should resellers earn commission?** — Deferred to Phase 2. Currently pure distribution, no financial incentive beyond relationship.
+1. **Should resellers earn commission?** — No current commission runtime exists. Reseller distribution remains relationship-based until a separate audited billing/revenue-share feature exists.
 2. **Should clients be able to convert from offline to online recurring?** — Yes, at renewal time. Same Razorpay flow as self-serve upgrade.
 3. **Should resellers see client analytics?** — No. Resellers see status only, not engagement data.
-4. **Multi-currency for resellers?** — v1 is INR only. USD tiers can be added later with same architecture.
+4. **Multi-currency for resellers?** — Current scope is INR only. Other currencies require a separate pricing, tax, billing, and docs audit before they are exposed.
 
 ---
 

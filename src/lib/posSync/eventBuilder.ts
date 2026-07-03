@@ -8,11 +8,33 @@
  */
 
 import { FEATURE_FLAGS } from "@config/features";
+import { getBoundedSecurityStringContext, logSecurityFailure } from "@lib/security/securityDiagnostics";
 import { PosSyncConfig } from "./types";
 
 const POS_SYNC_DEBOUNCE_MS = 25_000; // 25 seconds
+const POS_SYNC_DELIVERY_TRIGGER_FAILED = 'pos_sync_delivery_trigger_failed';
+const POS_SYNC_DELIVERY_REQUEST_REJECTED = 'pos_sync_delivery_request_rejected';
 
 let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+
+function createPosSyncDeliveryError(code: string, status?: number): Error & { code: string; status?: number } {
+    return Object.assign(new Error(code), {
+        code,
+        status,
+    });
+}
+
+function buildPosSyncDeliveryLogContext(
+    storeId: number,
+    tenantId: number,
+    projectId: string,
+) {
+    return {
+        ...getBoundedSecurityStringContext('storeId', storeId),
+        ...getBoundedSecurityStringContext('tenantId', tenantId),
+        ...getBoundedSecurityStringContext('projectId', projectId),
+    };
+}
 
 /**
  * Trigger POS sync after a menu change (debounced).
@@ -34,6 +56,7 @@ export function triggerPosSyncDebounced(
     if (!FEATURE_FLAGS.ENABLE_POS_SYNC) return;
     if (!posSync?.enabled) return;
     if (!posSync?.webhookUrl) return;
+    if (!posSync?.webhookSecret) return;
 
     if (debounceTimer) {
         clearTimeout(debounceTimer);
@@ -41,8 +64,12 @@ export function triggerPosSyncDebounced(
 
     debounceTimer = setTimeout(() => {
         debounceTimer = null;
-        createDeliveryJob(storeId, tenantId, projectId).catch(() => {
-            // Silent failure — POS sync should never block the UI
+        createDeliveryJob(storeId, tenantId, projectId).catch((error) => {
+            logSecurityFailure(
+                POS_SYNC_DELIVERY_TRIGGER_FAILED,
+                error,
+                buildPosSyncDeliveryLogContext(storeId, tenantId, projectId),
+            );
         });
     }, POS_SYNC_DEBOUNCE_MS);
 }
@@ -67,13 +94,16 @@ async function createDeliveryJob(
     tenantId: number,
     projectId: string,
 ): Promise<void> {
-    try {
-        await fetch('/api/pos-sync/deliver', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ storeId, tenantId, projectId }),
-        });
-    } catch {
-        // Silent — POS sync failures never surface to the owner
+    const response = await fetch('/api/pos-sync/deliver', {
+        method: 'POST',
+        cache: 'no-store',
+        credentials: 'same-origin',
+        redirect: 'manual',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ storeId, tenantId, projectId }),
+    });
+
+    if (!response.ok) {
+        throw createPosSyncDeliveryError(POS_SYNC_DELIVERY_REQUEST_REJECTED, response.status);
     }
 }

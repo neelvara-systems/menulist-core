@@ -22,6 +22,8 @@ const NIGHTLY_STATE_PREFIX = 'answerlatticeNightlyState';
 const NIGHTLY_LOCK_PREFIX = 'answerlatticeNightlyLock';
 const TASK_LEASE_MS = 45 * MINUTE_MS;
 const TENANT_LEASE_MS = 45 * MINUTE_MS;
+const ANSWERLATTICE_MASTER_SCHEDULER_TASK_FAILED = 'ANSWERLATTICE_MASTER_SCHEDULER_TASK_FAILED';
+const ANSWERLATTICE_MASTER_SCHEDULER_LEASE_RELEASE_FAILED = 'ANSWERLATTICE_MASTER_SCHEDULER_LEASE_RELEASE_FAILED';
 
 type AnswerlatticeMasterSchedulerTrigger = 'scheduled' | 'manual';
 type AnswerlatticeMasterSchedulerStatus = 'success' | 'partial' | 'failed' | 'skipped' | 'running';
@@ -60,6 +62,9 @@ interface AnswerlatticeSchedulerTaskSummary {
     activity: boolean;
     details?: Record<string, unknown>;
     error?: string;
+    sourceErrorName?: string | null;
+    sourceErrorCode?: string | number | null;
+    sourceStatusCode?: number | null;
 }
 
 export interface AnswerlatticeMasterSchedulerResult {
@@ -82,8 +87,21 @@ function timestampMillis(value: unknown): number | null {
     return null;
 }
 
-function errorMessage(error: unknown): string {
-    return error instanceof Error ? error.message : String(error || 'Unknown error');
+function getAnswerlatticeMasterSchedulerSourceErrorContext(error: unknown): {
+    sourceErrorName: string | null;
+    sourceErrorCode: string | number | null;
+    sourceStatusCode: number | null;
+} {
+    const source = error && typeof error === 'object' ? error as Record<string, unknown> : {};
+    const sourceStatusCode = typeof source.status === 'number'
+        ? source.status
+        : (typeof source.statusCode === 'number' ? source.statusCode : null);
+
+    return {
+        sourceErrorName: typeof source.name === 'string' ? source.name : null,
+        sourceErrorCode: typeof source.code === 'string' || typeof source.code === 'number' ? source.code : null,
+        sourceStatusCode,
+    };
 }
 
 function resolveTenantSchedule(tenant: AnswerlatticeTenantStore): {
@@ -385,6 +403,9 @@ async function recordTaskOutcome(params: {
                 lastDurationMs: params.summary.durationMs,
                 lastDetails: params.summary.details || {},
                 lastError: params.summary.error || null,
+                lastSourceErrorName: params.summary.sourceErrorName || null,
+                lastSourceErrorCode: params.summary.sourceErrorCode ?? null,
+                lastSourceStatusCode: params.summary.sourceStatusCode ?? null,
                 lastActivity: params.summary.activity === true,
             },
         },
@@ -428,26 +449,31 @@ async function runTask(
         return summary;
     } catch (error) {
         const finishedAt = new Date();
+        const sourceErrorContext = getAnswerlatticeMasterSchedulerSourceErrorContext(error);
         const summary: AnswerlatticeSchedulerTaskSummary = {
             name: task.name,
             status: 'failed',
             durationMs: finishedAt.getTime() - startedAt.getTime(),
             activity: true,
-            error: errorMessage(error),
+            error: ANSWERLATTICE_MASTER_SCHEDULER_TASK_FAILED,
+            ...sourceErrorContext,
         };
         await recordTaskOutcome({ task, runId, startedAt, finishedAt, summary });
         logger.error('[Answerlattice Scheduler] Task failed', {
             task: task.name,
             runId,
-            error: summary.error,
+            failureCode: ANSWERLATTICE_MASTER_SCHEDULER_TASK_FAILED,
+            ...sourceErrorContext,
         });
         return summary;
     } finally {
         await releaseTaskLease(task, lease.leaseId).catch(error => {
+            const sourceErrorContext = getAnswerlatticeMasterSchedulerSourceErrorContext(error);
             logger.error('[Answerlattice Scheduler] Failed to release task lease', {
                 task: task.name,
                 runId,
-                error: errorMessage(error),
+                failureCode: ANSWERLATTICE_MASTER_SCHEDULER_LEASE_RELEASE_FAILED,
+                ...sourceErrorContext,
             });
         });
     }

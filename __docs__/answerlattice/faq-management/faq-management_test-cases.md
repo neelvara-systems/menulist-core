@@ -23,6 +23,12 @@
 2. Confirm linked FAQs move to `needs_review`.
 3. Republish or update the FAQ after checking the answer.
 
+## Failure Acknowledgement
+
+1. Simulate `saveFaq()` or `archiveFaq()` returning a malformed/fallback result.
+2. Confirm `/answerlattice/faqs` shows fixed save/archive failure copy.
+3. Confirm local FAQ state, selected FAQ state, product-surface summary rebuild, and success copy do not advance.
+
 ## Article FAQ Refresh
 
 1. Open a saved article from Knowledge Base.

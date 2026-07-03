@@ -22,9 +22,12 @@
 
 import { replaceUndefined } from "@lib/apiHelper";
 import { firebaseClient as db } from "@lib/firebase/firebaseClient";
-import { secureLog } from "@lib/security/secureLogger";
 import type { EnqueuePDFRegenParams, PDFRegenJob } from "@type/jobs.types";
 import { doc, setDoc, Timestamp } from "firebase/firestore";
+import {
+    getBoundedPricingStringContext,
+    logPricingDiagnostic,
+} from "./pricingDiagnostics";
 
 // ═══════════════════════════════════════════════════════════════
 // FEATURE FLAG - Background PDF regeneration
@@ -53,8 +56,8 @@ export async function enqueuePDFRegen(
 
     // Feature flag check
     if (!ENABLE_BACKGROUND_PDF_REGEN) {
-        secureLog("[PDF Queue] Background regen disabled (feature flag OFF)", {
-            projectId,
+        logPricingDiagnostic("pricing_pdf_regen_disabled", {
+            ...getBoundedPricingStringContext("projectId", projectId),
             targetVersion,
         });
         return;
@@ -64,7 +67,9 @@ export async function enqueuePDFRegen(
     const existingTimer = debounceTimers.get(key);
     if (existingTimer) {
         clearTimeout(existingTimer);
-        secureLog("[PDF Queue] Debounce reset", { projectId });
+        logPricingDiagnostic("pricing_pdf_regen_debounce_reset", {
+            ...getBoundedPricingStringContext("projectId", projectId),
+        });
     }
 
     // Set new debounced timer
@@ -74,8 +79,8 @@ export async function enqueuePDFRegen(
     }, DEBOUNCE_MS);
 
     debounceTimers.set(key, timer);
-    secureLog("[PDF Queue] Regeneration scheduled", {
-        projectId,
+    logPricingDiagnostic("pricing_pdf_regen_scheduled", {
+        ...getBoundedPricingStringContext("projectId", projectId),
         targetVersion,
         debounceMs: DEBOUNCE_MS,
     });
@@ -114,9 +119,9 @@ async function createRegenJob(params: EnqueuePDFRegenParams): Promise<void> {
     });
 
     await setDoc(jobRef, jobData);
-    secureLog("[PDF Queue] Job created", {
-        jobId: jobRef.id,
-        projectId,
+    logPricingDiagnostic("pricing_pdf_regen_job_created", {
+        ...getBoundedPricingStringContext("jobId", jobRef.id),
+        ...getBoundedPricingStringContext("projectId", projectId),
         targetVersion,
     });
 }

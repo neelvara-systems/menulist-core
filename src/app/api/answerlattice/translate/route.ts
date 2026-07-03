@@ -25,12 +25,14 @@ import { requireAnswerlatticePermission } from '@lib/answerlattice/accessControl
 import { recordAnswerlatticeAiOperation } from '@lib/answerlattice/aiAccounting';
 import { bumpAnswerlatticeCacheVersionAdmin } from '@lib/answerlattice/cacheVersionAdmin';
 import { ANSWERLATTICE_CACHE_SOURCES } from '@lib/answerlattice/cacheVersionManifest';
+import { buildAnswerlatticeRateLimitKey } from '@lib/answerlattice/rateLimitKeys';
 import { resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
 import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
 import { genAIClient } from '@lib/google/genAi';
 import { checkRateLimit } from '@lib/rateLimit';
 import { getRateLimitForFeature } from '@lib/rateLimit/configs';
-import { secureError } from '@lib/security/secureLogger';
+import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
+import { readBoundedJsonBody } from '@lib/security/boundedRequestBody';
 import { ANSWERLATTICE_SUPPORTED_LOCALES } from '@type/answerlattice';
 import * as admin from 'firebase-admin';
 import { NextRequest, NextResponse } from 'next/server';
@@ -41,49 +43,75 @@ const TranslateRequestSchema = z.object({
     articleId: z.string().trim().min(1).max(160),
     targetLocale: z.enum(ANSWERLATTICE_SUPPORTED_LOCALES as unknown as [string, ...string[]]),
 });
+const TRANSLATE_ARTICLE_MAX_BODY_BYTES = 4 * 1024;
 const MAX_TRANSLATION_TEXT_FOR_PROMPT = 8000;
 const MAX_TRANSLATED_CONTENT_CHARS = 12000;
 const MAX_TRANSLATED_TITLE_CHARS = 300;
+const TRANSLATION_PROVIDER_RESPONSE_TEXT_MAX_CHARS = 64 * 1024;
+
+type BoundedTranslationProviderResponseText = {
+    originalLength: number;
+    text: string;
+    truncated: boolean;
+};
+
+class AnswerlatticeTranslationProviderOutputError extends Error {
+    readonly code = 'ANSWERLATTICE_TRANSLATION_RESPONSE_TOO_LARGE';
+
+    constructor() {
+        super('ANSWERLATTICE_TRANSLATION_RESPONSE_TOO_LARGE');
+        this.name = 'AnswerlatticeTranslationProviderOutputError';
+    }
+}
 
 const cleanTranslationOutput = (value: unknown, fallback: string, maxLength: number): string => {
     const text = typeof value === 'string' ? value.trim() : '';
     return (text || fallback || '').slice(0, maxLength);
 };
 
-const getTranslationResponseText = (response: any): string => {
+const getRawTranslationResponseText = (response: any): string => {
     if (!response) return '';
     if (typeof response.text === 'function') return String(response.text() || '');
     if (typeof response.text === 'string') return response.text;
     return '';
 };
 
+const getTranslationResponseText = (response: any): BoundedTranslationProviderResponseText => {
+    const rawText = getRawTranslationResponseText(response);
+    return {
+        originalLength: rawText.length,
+        text: rawText.slice(0, TRANSLATION_PROVIDER_RESPONSE_TEXT_MAX_CHARS),
+        truncated: rawText.length > TRANSLATION_PROVIDER_RESPONSE_TEXT_MAX_CHARS,
+    };
+};
+
 export const POST = withAuth(async (request: NextRequest, session) => {
+    let tenantIdForLog: number | string | undefined;
+    let storeIdForLog: number | string | undefined;
+    const userIdForLog = session.uId || session.user?.id;
+    let articleIdForLog: string | undefined;
+    let targetLocaleForLog: string | undefined;
+
     try {
         if (!FEATURE_FLAGS.ENABLE_ANSWERLATTICE_MULTI_LANGUAGE) {
             return NextResponse.json({ error: 'Multi-language is not enabled.' }, { status: 403 });
         }
 
-        const permission = await requireAnswerlatticePermission(request, session, ANSWERLATTICE_PERMISSION_KEYS.MANAGE_KNOWLEDGE);
-        if (permission.response) return permission.response;
+        const sessionScope = resolveAnswerlatticeSessionScope(session);
+        tenantIdForLog = sessionScope?.tenantId;
+        storeIdForLog = sessionScope?.storeId;
+        if (!sessionScope) {
+            return NextResponse.json({ error: 'Not onboarded' }, { status: 400 });
+        }
 
         const { checkSafeMode } = await import('@lib/ops/safeMode');
         const safeModeResponse = await checkSafeMode();
         if (safeModeResponse) return safeModeResponse;
 
-        const requestBody = await request.json().catch(() => null);
-        const validation = TranslateRequestSchema.safeParse(requestBody);
-        if (!validation.success) {
-            return NextResponse.json({ error: `Invalid translation request. Supported locales: ${ANSWERLATTICE_SUPPORTED_LOCALES.join(', ')}` }, { status: 400 });
-        }
-        const { articleId, targetLocale } = validation.data;
-        if (targetLocale === 'en-US') {
-            return NextResponse.json({ error: 'Cannot translate to source locale (en-US).' }, { status: 400 });
-        }
-
         // Rate limiting
         const rateLimitConfig = getRateLimitForFeature('AI_OPERATION');
         const rateLimitResult = await checkRateLimit({
-            key: `answerlattice-translate:${session.user.id}`,
+            key: buildAnswerlatticeRateLimitKey('answerlattice-translate', userIdForLog || 'unknown', sessionScope.tenantId, sessionScope.storeId),
             ...rateLimitConfig,
         });
         if (
@@ -111,10 +139,34 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             );
         }
 
-        const sessionScope = resolveAnswerlatticeSessionScope(session);
-        if (!sessionScope) {
-            return NextResponse.json({ error: 'Not onboarded' }, { status: 400 });
+        const permission = await requireAnswerlatticePermission(request, session, ANSWERLATTICE_PERMISSION_KEYS.MANAGE_KNOWLEDGE);
+        if (permission.response) return permission.response;
+
+        const bodyResult = await readBoundedJsonBody(request, TRANSLATE_ARTICLE_MAX_BODY_BYTES, {
+            invalidJsonMessage: `Invalid translation request. Supported locales: ${ANSWERLATTICE_SUPPORTED_LOCALES.join(', ')}`,
+            tooLargeMessage: 'Request body too large.',
+        });
+        if (bodyResult.ok === false) {
+            return NextResponse.json(
+                {
+                    error: bodyResult.response.status === 413
+                        ? 'Request body too large.'
+                        : `Invalid translation request. Supported locales: ${ANSWERLATTICE_SUPPORTED_LOCALES.join(', ')}`,
+                },
+                { status: bodyResult.response.status },
+            );
         }
+
+        const validation = TranslateRequestSchema.safeParse(bodyResult.data);
+        if (!validation.success) {
+            return NextResponse.json({ error: `Invalid translation request. Supported locales: ${ANSWERLATTICE_SUPPORTED_LOCALES.join(', ')}` }, { status: 400 });
+        }
+        const { articleId, targetLocale } = validation.data;
+        if (targetLocale === 'en-US') {
+            return NextResponse.json({ error: 'Cannot translate to source locale (en-US).' }, { status: 400 });
+        }
+        articleIdForLog = articleId;
+        targetLocaleForLog = targetLocale;
 
         // Fetch article
         const db = answerlatticeFirestoreAdmin;
@@ -199,7 +251,11 @@ Respond in this exact JSON format:
             contents: prompt,
         });
 
-        const responseText = getTranslationResponseText(response);
+        const responseTextResult = getTranslationResponseText(response);
+        if (responseTextResult.truncated) {
+            throw new AnswerlatticeTranslationProviderOutputError();
+        }
+        const responseText = responseTextResult.text;
 
         // Parse response
         let translatedTitle = title;
@@ -262,7 +318,12 @@ Respond in this exact JSON format:
             name: session.user?.name,
             email: session.user?.email,
         }).catch((logError) => {
-            secureError('[Answerlattice Translate] Operation log failed', logError as Error, { articleId, targetLocale });
+            logRuntimeFailure('answerlattice_translation_operation_log_failed', logError, {
+                ...getBoundedRuntimeStringContext('tenantId', sessionScope.tenantId),
+                ...getBoundedRuntimeStringContext('storeId', sessionScope.storeId),
+                ...getBoundedRuntimeStringContext('articleId', articleId),
+                ...getBoundedRuntimeStringContext('targetLocale', targetLocale),
+            });
         });
 
         return NextResponse.json({
@@ -289,7 +350,13 @@ Respond in this exact JSON format:
                 },
             );
         }
-        secureError('[Answerlattice Translate] Failed', error as Error, { userId: session.user.id });
+        logRuntimeFailure('answerlattice_translation_failed', error, {
+            ...getBoundedRuntimeStringContext('tenantId', tenantIdForLog),
+            ...getBoundedRuntimeStringContext('storeId', storeIdForLog),
+            ...getBoundedRuntimeStringContext('userId', userIdForLog),
+            ...getBoundedRuntimeStringContext('articleId', articleIdForLog),
+            ...getBoundedRuntimeStringContext('targetLocale', targetLocaleForLog),
+        });
         return NextResponse.json(
             { error: 'Translation failed. Please try again.' },
             { status: 500 }

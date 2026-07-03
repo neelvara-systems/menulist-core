@@ -140,6 +140,7 @@ export default function FeatureScreenshotProofGallery({ slug }: FeatureScreensho
                     height={screenshot.height}
                     sizes={gallery.screenshots.length === 1 ? '(max-width: 1100px) 100vw, 65vw' : '(max-width: 1100px) 100vw, 50vw'}
                     priority={false}
+                    unoptimized
                   />
                 </figure>
               </article>

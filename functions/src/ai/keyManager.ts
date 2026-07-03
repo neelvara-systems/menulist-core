@@ -21,6 +21,8 @@
 import { GoogleGenAI } from "@google/genai";
 import * as functions from 'firebase-functions';
 
+export const AI_PROVIDER_CONFIG_MISSING_CODE = 'AI_PROVIDER_CONFIG_MISSING';
+
 // ═══════════════════════════════════════════════════════════════
 // TYPES
 // ═══════════════════════════════════════════════════════════════
@@ -71,6 +73,15 @@ const KEY_ENV_VARS = [
     'GEMINI_AI_KEY_4',
 ] as const;
 
+export class AIProviderConfigMissingError extends Error {
+    readonly code = AI_PROVIDER_CONFIG_MISSING_CODE;
+
+    constructor() {
+        super(AI_PROVIDER_CONFIG_MISSING_CODE);
+        this.name = 'AIProviderConfigMissingError';
+    }
+}
+
 // ═══════════════════════════════════════════════════════════════
 // KEY MANAGER CLASS
 // ═══════════════════════════════════════════════════════════════
@@ -107,21 +118,16 @@ export class KeyManager {
         }
 
         if (this.keys.length === 0) {
-            this.logger.warn('[KeyManager] No GEMINI_AI_KEY found in environment variables');
-            // Create a dummy entry so the system doesn't crash at startup
-            this.keys.push({
-                index: 0,
-                key: '',
-                client: new GoogleGenAI({ apiKey: '' }),
-                cooldownUntil: 0,
-                rateLimitHits: 0,
-                totalRequests: 0,
-                totalRateLimits: 0,
+            this.logger.warn('[KeyManager] No Gemini API key found', {
+                configuredKeyCount: 0,
+                candidateSlotCount: KEY_ENV_VARS.length,
+                candidateEnvVarCount: KEY_ENV_VARS.length,
             });
-        } else if (this.keys.length > 1) {
-            this.logger.info(`[KeyManager] Initialized with ${this.keys.length} API keys (key rotation enabled)`);
         } else {
-            this.logger.info(`[KeyManager] Initialized with 1 API key (single key mode)`);
+            this.logger.info('[KeyManager] Initialized', {
+                configuredKeyCount: this.keys.length,
+                keyRotationEnabled: this.keys.length > 1,
+            });
         }
     }
 
@@ -130,6 +136,10 @@ export class KeyManager {
      * Skips keys that are in cooldown.
      */
     getClient(): GoogleGenAI {
+        if (this.keys.length === 0) {
+            throw new AIProviderConfigMissingError();
+        }
+
         const now = Date.now();
 
         // Try to find a non-cooled-down key starting from current index
@@ -156,10 +166,11 @@ export class KeyManager {
             }
         }
 
-        this.logger.warn(
-            `[KeyManager] All ${this.keys.length} keys are in cooldown. ` +
-            `Using key ${shortestCooldownIdx} (cooldown ends in ${Math.ceil(shortestCooldown / 1000)}s)`
-        );
+        this.logger.warn('[KeyManager] All keys are in cooldown', {
+            configuredKeyCount: this.keys.length,
+            selectedKeySlot: shortestCooldownIdx + 1,
+            cooldownSeconds: Math.ceil(shortestCooldown / 1000),
+        });
         this.currentIndex = shortestCooldownIdx;
         this.keys[shortestCooldownIdx].totalRequests++;
         return this.keys[shortestCooldownIdx].client;
@@ -171,6 +182,8 @@ export class KeyManager {
      */
     markCurrentKeyRateLimited(): void {
         const entry = this.keys[this.currentIndex];
+        if (!entry) return;
+
         entry.rateLimitHits++;
         entry.totalRateLimits++;
 
@@ -181,10 +194,12 @@ export class KeyManager {
         );
         entry.cooldownUntil = Date.now() + cooldownMs;
 
-        this.logger.warn(
-            `[KeyManager] Key ${this.currentIndex} rate-limited (hit #${entry.rateLimitHits}). ` +
-            `Cooldown: ${Math.ceil(cooldownMs / 1000)}s. Rotating to next key.`
-        );
+        this.logger.warn('[KeyManager] Key rate limited', {
+            keySlot: this.currentIndex + 1,
+            rateLimitHits: entry.rateLimitHits,
+            cooldownSeconds: Math.ceil(cooldownMs / 1000),
+            keyRotationEnabled: this.keys.length > 1,
+        });
 
         // Advance to next key
         this.currentIndex = (this.currentIndex + 1) % this.keys.length;
@@ -195,6 +210,8 @@ export class KeyManager {
      */
     markCurrentKeySuccess(): void {
         const entry = this.keys[this.currentIndex];
+        if (!entry) return;
+
         if (entry.rateLimitHits > 0) {
             entry.rateLimitHits = 0;
         }
@@ -209,6 +226,10 @@ export class KeyManager {
         return this.keys.some((entry, idx) =>
             idx !== this.currentIndex && entry.cooldownUntil <= now
         );
+    }
+
+    hasConfiguredKeys(): boolean {
+        return this.keys.length > 0;
     }
 
     /**

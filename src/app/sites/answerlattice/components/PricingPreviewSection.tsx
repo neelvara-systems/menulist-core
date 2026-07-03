@@ -13,7 +13,7 @@ const formatPrice = (paise: number) => `₹${Math.round(paise / 100).toLocaleStr
 
 export default function PricingPreviewSection({ basePath = '' }: { basePath?: string }) {
     const plans = getAnswerlatticePlans()
-        .filter((plan) => plan.billingInterval === 'MONTH' && plan.planId !== 'answerlattice_beta')
+        .filter((plan) => plan.billingInterval === 'MONTH')
         .sort((left, right) => left.priceINR.price - right.priceINR.price);
 
     return (
@@ -62,7 +62,7 @@ export default function PricingPreviewSection({ basePath = '' }: { basePath?: st
                         basePath={basePath}
                         href="/get-started"
                         data-answerlattice-event="homepage_pricing_clicked"
-                        data-answerlattice-label="start_beta_from_pricing_preview"
+                        data-answerlattice-label="start_starter_from_pricing_preview"
                         className="al-pricing-preview__button al-pricing-preview__button--primary"
                     >
                         Create workspace

@@ -1,5 +1,6 @@
 'use client';
 
+import { isResponseBodyTooLargeError, readResponseUint8ArrayWithLimit } from '@lib/security/boundedResponseBody';
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import {
     LuCheck,
@@ -17,6 +18,84 @@ type PromptModalProps = {
 };
 
 const PROMPT_FILE_NAME = 'answerlattice-pre-onboarding-master-prompt.md';
+const PRE_ONBOARDING_PROMPT_RESPONSE_MAX_BYTES = 128 * 1024;
+const PRE_ONBOARDING_PROMPT_REQUEST_POLICY: Pick<RequestInit, 'cache' | 'credentials' | 'redirect'> = {
+    cache: 'no-store',
+    credentials: 'same-origin',
+    redirect: 'manual',
+};
+const PRE_ONBOARDING_PROMPT_LOAD_FAILED_MESSAGE = 'The prompt could not be loaded. Use the direct Markdown route again after the page refreshes.';
+const PRE_ONBOARDING_PROMPT_TOO_LARGE_MESSAGE = 'The prompt file is larger than expected. Use the direct Markdown route instead.';
+const PRE_ONBOARDING_PROMPT_ALLOWED_MIME_TYPES = new Set(['text/markdown', 'text/plain']);
+const PRE_ONBOARDING_PROMPT_COPY_UNAVAILABLE = 'answerlattice_pre_onboarding_prompt_copy_unavailable';
+const PRE_ONBOARDING_PROMPT_COPY_FALLBACK_FAILED = 'answerlattice_pre_onboarding_prompt_copy_fallback_failed';
+
+const normalizePreOnboardingPromptMimeType = (value: string | null) => {
+    return (value || '').split(';')[0].trim().toLowerCase();
+};
+
+const readPreOnboardingPromptText = async (response: Response) => {
+    const mimeType = normalizePreOnboardingPromptMimeType(response.headers.get('content-type'));
+    if (mimeType && !PRE_ONBOARDING_PROMPT_ALLOWED_MIME_TYPES.has(mimeType)) {
+        throw new Error(PRE_ONBOARDING_PROMPT_LOAD_FAILED_MESSAGE);
+    }
+
+    const bytes = await readResponseUint8ArrayWithLimit(response, PRE_ONBOARDING_PROMPT_RESPONSE_MAX_BYTES);
+    if (!bytes.byteLength) throw new Error(PRE_ONBOARDING_PROMPT_LOAD_FAILED_MESSAGE);
+    return new TextDecoder('utf-8').decode(bytes);
+};
+
+const getPreOnboardingPromptLoadErrorMessage = (error: unknown) => {
+    if (isResponseBodyTooLargeError(error)) return PRE_ONBOARDING_PROMPT_TOO_LARGE_MESSAGE;
+    return PRE_ONBOARDING_PROMPT_LOAD_FAILED_MESSAGE;
+};
+
+const hasPreOnboardingPromptClipboardWrite = () => (
+    typeof navigator !== 'undefined'
+    && typeof navigator.clipboard?.writeText === 'function'
+);
+
+const hasPreOnboardingPromptCopyFallback = () => (
+    typeof document !== 'undefined'
+    && Boolean(document.body)
+    && typeof document.createElement === 'function'
+    && typeof document.execCommand === 'function'
+);
+
+const copyPreOnboardingPromptToClipboard = async (promptText: string) => {
+    if (hasPreOnboardingPromptClipboardWrite()) {
+        try {
+            await navigator.clipboard.writeText(promptText);
+            return;
+        } catch {
+            // Fall through to the acknowledged textarea fallback for restricted browsers.
+        }
+    }
+
+    if (!hasPreOnboardingPromptCopyFallback()) {
+        throw new Error(PRE_ONBOARDING_PROMPT_COPY_UNAVAILABLE);
+    }
+
+    const textarea = document.createElement('textarea');
+    textarea.value = promptText;
+    textarea.readOnly = true;
+    textarea.setAttribute('aria-hidden', 'true');
+    textarea.style.position = 'fixed';
+    textarea.style.left = '-9999px';
+    textarea.style.top = '0';
+    document.body.appendChild(textarea);
+    textarea.select();
+    textarea.setSelectionRange(0, textarea.value.length);
+
+    try {
+        const copied = document.execCommand('copy');
+        if (!copied) {
+            throw new Error(PRE_ONBOARDING_PROMPT_COPY_FALLBACK_FAILED);
+        }
+    } finally {
+        textarea.remove();
+    }
+};
 
 export default function AnswerlatticePreOnboardingPromptModal({
     basePath = '',
@@ -26,6 +105,7 @@ export default function AnswerlatticePreOnboardingPromptModal({
     const [open, setOpen] = useState(false);
     const [promptText, setPromptText] = useState('');
     const [status, setStatus] = useState<'idle' | 'loading' | 'copied' | 'downloaded' | 'error'>('idle');
+    const [errorMessage, setErrorMessage] = useState(PRE_ONBOARDING_PROMPT_LOAD_FAILED_MESSAGE);
     const dialogTitleId = useId();
     const closeButtonRef = useRef<HTMLButtonElement | null>(null);
 
@@ -36,11 +116,16 @@ export default function AnswerlatticePreOnboardingPromptModal({
 
         setStatus('loading');
         try {
-            const response = await fetch(promptUrl, { headers: { Accept: 'text/markdown' } });
-            if (!response.ok) throw new Error(`Prompt request failed: ${response.status}`);
-            setPromptText(await response.text());
+            const response = await fetch(promptUrl, {
+                ...PRE_ONBOARDING_PROMPT_REQUEST_POLICY,
+                headers: { Accept: 'text/markdown' },
+            });
+            if (!response.ok) throw new Error(PRE_ONBOARDING_PROMPT_LOAD_FAILED_MESSAGE);
+            setPromptText(await readPreOnboardingPromptText(response));
+            setErrorMessage(PRE_ONBOARDING_PROMPT_LOAD_FAILED_MESSAGE);
             setStatus('idle');
-        } catch {
+        } catch (error) {
+            setErrorMessage(getPreOnboardingPromptLoadErrorMessage(error));
             setStatus('error');
         }
     }, [promptText, promptUrl, status]);
@@ -61,7 +146,7 @@ export default function AnswerlatticePreOnboardingPromptModal({
         if (!promptText) return;
 
         try {
-            await navigator.clipboard.writeText(promptText);
+            await copyPreOnboardingPromptToClipboard(promptText);
             setStatus('copied');
         } catch {
             setStatus('error');
@@ -158,7 +243,7 @@ export default function AnswerlatticePreOnboardingPromptModal({
                                     </div>
                                 ) : status === 'error' && !promptText ? (
                                     <div className="flex min-h-[24rem] items-center justify-center px-6 text-center text-sm leading-relaxed text-amber-100">
-                                        The prompt could not be loaded. Use the download route again after the page refreshes.
+                                        {errorMessage}
                                     </div>
                                 ) : (
                                     <pre className="max-h-[56vh] overflow-auto whitespace-pre-wrap break-words p-4 font-mono text-xs leading-relaxed text-[#d6d6ef] sm:text-sm">

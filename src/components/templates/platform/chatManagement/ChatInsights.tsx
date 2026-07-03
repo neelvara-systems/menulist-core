@@ -104,6 +104,10 @@ function InsightsContent() {
   );
 
   // Transform data for UI components
+  const feedbackResponseRate = dashboardData?.summary.totalChats
+    ? Math.round(Math.min(100, Math.max(0, (dashboardData.feedback.total / dashboardData.summary.totalChats) * 100)))
+    : 0;
+
   const summaryMetrics: MetricCardProps[] = dashboardData ? [
     {
       title: 'Total Chats',
@@ -137,11 +141,6 @@ function InsightsContent() {
       title: 'Knowledge Gaps',
       value: dashboardData.summary.knowledgeGaps,
       suffix: '',
-      trend: {
-        value: -10,
-        isPositive: true,
-        label: 'vs last period'
-      },
       icon: <LineChartOutlined />,
     },
   ] : [];
@@ -163,9 +162,10 @@ function InsightsContent() {
     },
     {
       title: 'Response Rate',
-      value: 88,
+      value: feedbackResponseRate,
       suffix: '%',
       status: 'success',
+      tooltip: 'Share of chats with feedback.',
     },
   ] : [];
 
@@ -268,7 +268,7 @@ function InsightsContent() {
               <Alert
                 type="error"
                 message="Data update failed"
-                description={analyticsMetadata?.lastError || 'Unknown error occurred during aggregation.'}
+                description="Retry the update. If it keeps failing, check the analytics job logs."
                 showIcon
                 icon={<LuAlertCircle />}
                 action={

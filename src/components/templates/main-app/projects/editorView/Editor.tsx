@@ -3,10 +3,11 @@ import { FEATURE_FLAGS } from "@config/features";
 import { AI_ACTIONS_TYPES } from "@constant/common";
 import { LANGUAGE_CONSTANTS } from "@constant/languages";
 import GlobalLanguagesList from "@data/languages";
-import { updateProject, updateProjectMetadata } from "@database/projects";
+import { assertProjectUpdateSucceeded, updateProject, updateProjectMetadata } from "@database/projects";
 import { useAppDispatch } from "@hook/useAppDispatch";
 import { useOfferingLabels } from "@hook/useOfferingLabels";
 import { getStoreContextName } from "@lib/businessIdentity/names";
+import { getSafeUiErrorMessage } from "@lib/errors/uiErrorMessages";
 import { getProjectDefaultLanguage } from "@lib/localization/projectContent";
 import { resolveProjectForRender } from "@lib/multiOutlet";
 import { stripResolvedOutletProjectForSave } from "@lib/multiOutlet/outletProjectPersistence";
@@ -71,11 +72,15 @@ import {
 import type { CommandCenterAction } from "../types/commandCenter.types";
 import { associateItemImagesWithProject } from "./utils/associateItemImages";
 import { translateFile } from "../utils/translationsUtils";
+import { getMenuEditorProjectLogContext, logMenuEditorFailure } from "../utils/editorDiagnostics";
+import { getBoundedTranslationStringContext, getTranslationLanguageLogContext, getTranslationScopeLogContext, logTranslationFailure } from "../utils/translationDiagnostics";
 import AiDisclaimerAlert from "./AiDisclaimerAlert";
 import BulkStatusMenuModal from "./BulkStatusMenuModal";
 import CommandCenterModal from "./CommandCenterModal";
 import DecisionBlocksSettingsModal from "./DecisionBlocksSettingsModal";
 import DescriptionGenerationModal from "./DescriptionGenerationModal";
+
+const PUBLISH_GATE_FALLBACK_ERROR = "Menu check needs review before continuing.";
 import EditCategoryModal from "./editCategoryModal";
 import EditItemModal from "./editItemModal";
 import EditorActionsPopover, { EditorAction } from "./EditorActionsPopover";
@@ -288,7 +293,10 @@ function Editor({ selectedProject, onRemove, addFileButton, initialQualityAction
                 }
                 setProjectData(removeObjRef(resolved));
             } catch (error) {
-                console.error("[Multi-outlet] Failed to load resolved project:", error);
+                logMenuEditorFailure('menu_editor_resolved_project_load_failed', error, {
+                    ...getMenuEditorProjectLogContext(activeProject.projectId, activeProject.masterProjectId),
+                    fileCount: activeProject.files?.length ?? 0,
+                });
             }
         };
 
@@ -324,12 +332,17 @@ function Editor({ selectedProject, onRemove, addFileButton, initialQualityAction
 
                 if (!mceResult.verified) {
                     for (const error of mceResult.errors) {
-                        validationErrors.push(error.message);
+                        validationErrors.push(getSafeUiErrorMessage(error.message, PUBLISH_GATE_FALLBACK_ERROR));
                     }
                 }
             } catch (e) {
                 // Silent fail — Publish-Gate failure never blocks owner
-                console.warn("[MCE Publish-Gate] Validation failed (non-blocking):", e);
+                logMenuEditorFailure('menu_editor_publish_gate_validation_failed', e, {
+                    ...getMenuEditorProjectLogContext(projectData.projectId, projectData.masterProjectId),
+                    categoryCount: totalCategories,
+                    itemCount: totalItems,
+                    isOutlet: Boolean(projectData.masterProjectId),
+                });
             }
         }
 
@@ -382,8 +395,16 @@ function Editor({ selectedProject, onRemove, addFileButton, initialQualityAction
                     });
                     if (!proceed) return;
                 }
-            } catch {
-                // Silent fail — quality signals never block publish
+            } catch (e) {
+                logMenuEditorFailure('menu_editor_quality_signals_publish_intercept_failed', e, {
+                    ...getMenuEditorProjectLogContext(projectData.projectId, projectData.masterProjectId),
+                    fileCount: projectData.files?.length || 0,
+                    categoryCount: totalCategories,
+                    itemCount: totalItems,
+                    languageCount: projectData.languages?.length || 0,
+                    isOutlet: Boolean(projectData.masterProjectId),
+                    showItemPrices,
+                });
             }
         }
 
@@ -467,10 +488,16 @@ function Editor({ selectedProject, onRemove, addFileButton, initialQualityAction
 
     const persistEditorProject = useCallback(async (data: Project) => {
         const projectToSave = getProjectForPersistence(data);
-        return updateProject({
+        const persistedProject = await updateProject({
             ...projectToSave,
             projectId: data.projectId || activeProject?.projectId,
         });
+        assertProjectUpdateSucceeded(
+            persistedProject,
+            data.projectId || activeProject?.projectId,
+            'menu_editor_persist_project_update_rejected',
+        );
+        return persistedProject;
     }, [activeProject?.projectId, getProjectForPersistence]);
 
     const applyPersistedEditorProject = useCallback((displayProject: Project, persistedProject?: Project | null) => {
@@ -520,6 +547,11 @@ function Editor({ selectedProject, onRemove, addFileButton, initialQualityAction
                     ...projectToSave,
                     projectId: selectedProject.projectId,
                 });
+                assertProjectUpdateSucceeded(
+                    updatedProject,
+                    selectedProject.projectId,
+                    'menu_editor_sync_changes_project_update_rejected',
+                );
                 if (updatedProject) {
                     setHasChanges(false);
                     hasChangesRef.current = false;
@@ -549,7 +581,14 @@ function Editor({ selectedProject, onRemove, addFileButton, initialQualityAction
                     }
                 }
             } catch (error) {
-                console.error("Syncing changes failed:", error);
+                logMenuEditorFailure('menu_editor_sync_changes_failed', error, {
+                    ...getMenuEditorProjectLogContext(selectedProject.projectId, projectData.masterProjectId),
+                    activeProjectPresent: Boolean(activeProject),
+                    fileCount: projectData.files?.length ?? 0,
+                    categoryCount: totalCategories,
+                    itemCount: totalItems,
+                    isMasterLinked,
+                });
             } finally {
                 dispatch(stopLoader("syncing changes"));
                 setIsSaving(false);
@@ -561,6 +600,9 @@ function Editor({ selectedProject, onRemove, addFileButton, initialQualityAction
             projectData,
             selectedProject.projectId,
             setActiveProject,
+            totalCategories,
+            totalItems,
+            isMasterLinked,
         ],
     );
 
@@ -614,11 +656,21 @@ function Editor({ selectedProject, onRemove, addFileButton, initialQualityAction
                     }
 
                     const savedProject = await updateProject({ ...updated, projectId: updated.projectId });
+                    assertProjectUpdateSucceeded(
+                        savedProject,
+                        updated.projectId,
+                        'menu_editor_project_public_content_project_update_rejected',
+                    );
                     if (Object.keys(projectMetadataTranslationUpdate).length > 0) {
-                        await updateProjectMetadata(updated.projectId, projectMetadataTranslationUpdate);
+                        const metadataResult = await updateProjectMetadata(updated.projectId, projectMetadataTranslationUpdate);
+                        assertProjectUpdateSucceeded(
+                            metadataResult,
+                            updated.projectId,
+                            'menu_editor_project_public_content_metadata_update_rejected',
+                        );
                     }
 
-                    const nextProject = removeObjRef(savedProject || updated);
+                    const nextProject = removeObjRef(savedProject);
                     setProjectData(nextProject);
                     setActiveProject(nextProject);
                     setHasChanges(false);
@@ -628,6 +680,13 @@ function Editor({ selectedProject, onRemove, addFileButton, initialQualityAction
                     if (error instanceof AICapacityError) {
                         message.info('Get more enhancements to continue. Visit Billing to add an enhancement pack.');
                     } else {
+                        logMenuEditorFailure('menu_editor_project_public_content_translation_failed', error, {
+                            ...getMenuEditorProjectLogContext(projectData.projectId, projectData.masterProjectId),
+                            fileCount: projectData.files?.length ?? 0,
+                            categoryCount: totalCategories,
+                            itemCount: totalItems,
+                            isMasterLinked,
+                        });
                         message.error('Could not repair project details.');
                     }
                 } finally {
@@ -789,6 +848,9 @@ function Editor({ selectedProject, onRemove, addFileButton, initialQualityAction
     const handleLanguageToggle = async (
         updatedLanguages: NonNullable<Project["languages"]>,
     ) => {
+        let activeFileId: unknown;
+        let activeSourceLanguageCode: string | undefined;
+        let activeTargetLanguageCode: string | undefined;
         try {
             // Defensive check: Prevent exceeding MAX_LANGUAGES_PER_PROJECT
             if (updatedLanguages.length > LANGUAGE_CONSTANTS.MAX_LANGUAGES_PER_PROJECT) {
@@ -818,10 +880,12 @@ function Editor({ selectedProject, onRemove, addFileButton, initialQualityAction
                     prevData.files?.filter((f) => f.extractedData?.data)?.length || 0;
 
                 const sourceLanguage = getCanonicalProjectSourceLanguage(prevData.languages);
+                activeSourceLanguageCode = sourceLanguage;
                 const sourceLang = GlobalLanguagesList.find(
                     (lang) => lang.code === sourceLanguage,
                 );
                 const languageToAdd = newLanguages[0];
+                activeTargetLanguageCode = languageToAdd;
                 const targetLang = GlobalLanguagesList.find(
                     (lang) => lang.code === languageToAdd,
                 );
@@ -837,6 +901,7 @@ function Editor({ selectedProject, onRemove, addFileButton, initialQualityAction
                         }
 
                         if (file.extractedData?.data) {
+                            activeFileId = file.uid;
                             fileIndex++;
                             setTranslationProgress({
                                 currentFile: fileIndex,
@@ -923,7 +988,12 @@ function Editor({ selectedProject, onRemove, addFileButton, initialQualityAction
             // Save to database
             const persistedProject = await persistEditorProject(prevData);
             if (Object.keys(projectMetadataTranslationUpdate).length > 0) {
-                await updateProjectMetadata(prevData.projectId, projectMetadataTranslationUpdate);
+                const metadataTranslationResult = await updateProjectMetadata(prevData.projectId, projectMetadataTranslationUpdate);
+                assertProjectUpdateSucceeded(
+                    metadataTranslationResult,
+                    prevData.projectId,
+                    'menu_editor_project_public_content_metadata_update_rejected',
+                );
             }
             applyPersistedEditorProject(prevData, persistedProject || undefined);
             setIsLanguageModalOpen(false);
@@ -940,7 +1010,11 @@ function Editor({ selectedProject, onRemove, addFileButton, initialQualityAction
                 antdMessage.info('Get more enhancements to continue. Visit Billing to add an enhancement pack.');
             } else {
                 antdMessage.error("Translation failed. Please try again.");
-                console.error("Translation failed:", error);
+                logTranslationFailure('menu_translation_language_toggle_failed', error, {
+                    ...getTranslationScopeLogContext(projectData.projectId, activeFileId),
+                    ...getTranslationLanguageLogContext(activeTargetLanguageCode, activeSourceLanguageCode),
+                    updatedLanguageCount: updatedLanguages.length,
+                });
             }
         }
     };
@@ -950,9 +1024,12 @@ function Editor({ selectedProject, onRemove, addFileButton, initialQualityAction
     };
 
     const onRetryTranslations = async (file: any) => {
+        let activeSourceLanguageCode: string | undefined;
+        let activeTargetLanguageCode: string | undefined;
         try {
             let prevData = removeObjRef(projectData);
             const sourceLanguage = getCanonicalProjectSourceLanguage(projectData.languages);
+            activeSourceLanguageCode = sourceLanguage;
             const sourceLang = GlobalLanguagesList.find(
                 (lang) => lang.code === sourceLanguage,
             );
@@ -964,6 +1041,7 @@ function Editor({ selectedProject, onRemove, addFileButton, initialQualityAction
                     (gl) => gl.code === lang,
                 );
                 if (targetLanguage) {
+                    activeTargetLanguageCode = targetLanguage.code;
                     setFileProcessingId(file.uid);
                     const {
                         updatedProject,
@@ -1003,7 +1081,12 @@ function Editor({ selectedProject, onRemove, addFileButton, initialQualityAction
                 antdMessage.info('Get more enhancements to continue. Visit Billing to add an enhancement pack.');
             } else {
                 antdMessage.error("Something went wrong, please try again!");
-                console.error("Translation failed:", error);
+                logTranslationFailure('menu_translation_file_retry_failed', error, {
+                    ...getTranslationScopeLogContext(projectData.projectId, file?.uid),
+                    ...getTranslationLanguageLogContext(activeTargetLanguageCode, activeSourceLanguageCode),
+                    ...getBoundedTranslationStringContext('retryFileId', file?.uid),
+                    languageCount: projectData.languages?.length ?? 0,
+                });
             }
             dispatch(stopLoader("retrying translations"));
         }
@@ -1170,17 +1253,6 @@ function Editor({ selectedProject, onRemove, addFileButton, initialQualityAction
                                         ),
                                         value: "traditional",
                                     },
-                                    // TODO: Enable Focus Mode in future
-                                    // {
-                                    //     label: (
-                                    //         <Tooltip title="Focus Mode - Full-width tabs">
-                                    //             <div style={{ padding: '4px 8px' }}>
-                                    //                 <LuMaximize2 size={16} />
-                                    //             </div>
-                                    //         </Tooltip>
-                                    //     ),
-                                    //     value: 'focus'
-                                    // }
                                 ]}
                             />
                             <EditorActionsPopover onActionClick={handleActionClick} isMasterLinked={isMasterLinked} />

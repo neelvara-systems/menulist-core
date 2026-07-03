@@ -11,15 +11,83 @@
  */
 
 import { FEATURE_FLAGS } from '@config/features';
+import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';
+import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
+import {
+    isReputationStateResponse,
+    REPUTATION_STATE_RESPONSE_JSON_MAX_BYTES,
+    type ReputationStateResponse,
+} from '@lib/reviews/reputationStateResponse';
 import { Alert, Card, Space, Typography } from 'antd';
 import { useCallback, useEffect, useState } from 'react';
 import { LuShield } from 'react-icons/lu';
 
 const { Text } = Typography;
+const REPUTATION_STATE_REQUEST_POLICY: RequestInit = {
+    cache: 'no-store',
+    credentials: 'same-origin',
+    redirect: 'manual',
+};
 
 interface ReputationState {
     hasBlockActive: boolean;
     hasEscalationActive: boolean;
+}
+
+const createReputationStateStatusError = (
+    code: string,
+    status?: number,
+): Error & { code: string; status?: number } => Object.assign(new Error(code), {
+    code,
+    status,
+});
+
+const getReputationStateResponseContext = (
+    response: Response,
+): Record<string, boolean | number | string | null | undefined> => ({
+    ...getBoundedRuntimeStringContext('endpoint', '/api/reviews/states'),
+    maxBytes: REPUTATION_STATE_RESPONSE_JSON_MAX_BYTES,
+    responseOk: response.ok,
+    responseStatus: response.status,
+});
+
+async function readReputationStateResponse(
+    response: Response,
+): Promise<ReputationStateResponse | null> {
+    if (!response.ok) {
+        logRuntimeFailure(
+            'reputation_guard_state_response_rejected',
+            createReputationStateStatusError('reputation_guard_state_response_rejected', response.status),
+            getReputationStateResponseContext(response),
+        );
+        return null;
+    }
+
+    let payload: unknown;
+    try {
+        payload = await readJsonResponseWithLimit<unknown>(
+            response,
+            REPUTATION_STATE_RESPONSE_JSON_MAX_BYTES,
+        );
+    } catch (error) {
+        logRuntimeFailure(
+            'reputation_guard_state_response_parse_failed',
+            error,
+            getReputationStateResponseContext(response),
+        );
+        return null;
+    }
+
+    if (!isReputationStateResponse(payload)) {
+        logRuntimeFailure(
+            'reputation_guard_state_response_invalid',
+            createReputationStateStatusError('reputation_guard_state_response_invalid', response.status),
+            getReputationStateResponseContext(response),
+        );
+        return null;
+    }
+
+    return payload;
 }
 
 export default function ReputationGuard() {
@@ -28,14 +96,20 @@ export default function ReputationGuard() {
 
     const fetchState = useCallback(async () => {
         try {
-            const res = await fetch('/api/reviews/states');
-            if (res.ok) {
-                const data = await res.json();
-                if (data.success) {
-                    setState(data.data);
-                }
+            const res = await fetch('/api/reviews/states', REPUTATION_STATE_REQUEST_POLICY);
+            const data = await readReputationStateResponse(res);
+            if (data) {
+                setState(data.data);
             }
-        } catch {
+        } catch (error) {
+            logRuntimeFailure(
+                'reputation_guard_state_request_failed',
+                error,
+                {
+                    ...getBoundedRuntimeStringContext('endpoint', '/api/reviews/states'),
+                    maxBytes: REPUTATION_STATE_RESPONSE_JSON_MAX_BYTES,
+                },
+            );
             // Fail silently — this is a passive notice
         } finally {
             setLoading(false);

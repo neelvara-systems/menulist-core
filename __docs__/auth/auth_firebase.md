@@ -1,9 +1,11 @@
 # Authentication — Firebase Cost Tracking
 
 **Feature:** Authentication System (NextAuth.js + Firebase)  
-**Status:** ✅ Production Ready  
-**Last Updated:** June 11, 2026
+**Status:** Firebase cost evidence; not current launch certification
+**Last Updated:** July 1, 2026
 **Priority:** MEDIUM — Every API call validates auth. Session-based caching minimizes reads.
+
+> **Launch Boundary:** This file records auth Firebase cost evidence, not current production-launch approval. Current release approval requires the active [production-readiness audit](../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../production-readiness/external-certification-runbook.md) evidence, auth browser/API smoke, App Check/session-cookie review, Firebase Auth custom-claims evidence, target deploy evidence, and production-host smoke.
 
 ---
 
@@ -14,6 +16,13 @@
 - **Storage Buckets:** None
 - **Cloud Functions:** None
 - **Estimated Monthly Cost:** **Very Low** — JWT sessions eliminate per-request Firestore reads
+- **Client Bootstrap Diagnostics:** App Check, Firebase client initialization, Firebase Auth sync, and session-provider auth bootstrap failures use bounded secure diagnostics only. Normal sync/success paths stay quiet.
+- **Client Session Response Diagnostics:** `getActiveSession()` reads `/api/auth/session` through a 64KB bounded JSON parser, logs `auth_session_response_parse_failed` or `auth_session_response_invalid` for malformed responses, and keeps normal no-user session responses as `null`.
+- **Client Access-Status Diagnostics:** `SessionExpiryMonitor` reads `/api/auth/access-status` with same-origin credentials, no-store cache policy, and manual redirect handling before the 8KB bounded JSON parser. Redirected responses log `auth_access_status_response_redirected`, malformed or invalid responses log `auth_access_status_response_parse_failed` / `auth_access_status_response_invalid`, and transient malformed responses preserve retry behavior.
+- **Shared Browser Auth Request Policy:** `src/lib/auth/browserRequestPolicy.ts` pins `cache: 'no-store'`, `credentials: 'same-origin'`, and `redirect: 'manual'` for browser auth calls. Session fetch, Firebase claim sync, login claim/setup, Phone OTP start/verify, access-status polling, account profile/password updates, and store switching now inherit that request boundary before their existing bounded response parsers run.
+- **Claim Account Client Acknowledgement:** Login-page claim linking and claim setup read `/api/auth/claim-account` through the bounded auth parser, then require `success: true`, the expected claim mode, and tenant/store identity before clearing the claim token, showing success, or redirecting.
+- **Auth Middleware Security Logs:** `src/middleware/auth.ts` logs CORS, authentication, account-state, platform-role, store-role, tenant-access, and store-access security events with bounded route/session metadata only. Raw `buildSecurityContext()` output, raw IPs, raw user agents, raw emails, and raw tenant/store/user IDs are not spread into central auth middleware security events.
+- **Profile Validation Security Logs:** `src/lib/userProfile/server.ts` logs invalid profile update payloads with bounded route/session metadata and validation-error presence/length only. Raw `buildSecurityContext()` output and raw validation text are not spread into central security logs.
 
 ---
 
@@ -48,6 +57,14 @@ None — users are deactivated (soft delete), never hard deleted.
 | Token verification    | `withAuth()` middleware | Free           | Firebase Admin SDK verifies tokens server-side. |
 | Custom token creation | Session establishment   | Free           | `createCustomToken()` if needed.                |
 
+Client Firebase bootstrap uses `src/lib/firebase/firebaseDiagnostics.ts` for App Check, emulator setup, auth-sync hook, and session-provider auth bootstrap failures. These diagnostics log normalized failure codes, source error name/code, numeric status, and identifier presence/length metadata only; they do not log Firebase users, emails, tenant/store IDs, custom tokens, provider payloads, or raw browser exception objects.
+
+June 29 client session response parsing is Firebase-cost neutral. `src/lib/auth/getActiveSession.ts` reads `/api/auth/session` with same-origin credentials, no-store cache policy, and manual redirect handling, caps response parsing at 64KB, and logs bounded `auth_session_response_parse_failed` / `auth_session_response_invalid` diagnostics before failing through the existing client session fetch failure path. This adds no Firestore reads/writes/deletes, Firebase Auth operations, Storage operations, provider calls, route calls, cache invalidations, rules, indexes, schema changes, Cloud Function logic changes, owner-facing settings, Firebase deploy requirement, or Vercel deploy action.
+
+June 29 auth UI response parsing is Firebase-cost neutral. `src/components/auth/PhoneOtpAuthPanel.tsx` caps phone OTP start/verify response parsing at 8KB, and `src/components/auth/SessionExpiryMonitor.tsx` applies same-origin credentials, no-store cache policy, manual redirect handling, and an 8KB cap before accepting access-status responses. Redirected access-status responses log bounded `auth_access_status_response_redirected` diagnostics and end the browser session through the existing expired-session path. Malformed or invalid responses log bounded `phone_otp_response_parse_failed`, `phone_otp_response_invalid`, `auth_access_status_response_parse_failed`, or `auth_access_status_response_invalid` diagnostics. July 1 tightens Phone OTP success acknowledgement only: start responses must include `action: "start"` plus the accepted purpose, and verify responses must include `action: "verify"` plus the matching challenge id before browser state changes or login-token use. This adds no Firestore reads/writes/deletes, Firebase Auth operations, WhatsApp provider calls, Storage operations, provider calls, route calls, cache invalidations, rules, indexes, schema changes, Cloud Function logic changes, owner-facing settings, Firebase deploy requirement, or Vercel deploy action.
+
+June 30 shared browser auth request policy is Firebase-cost neutral. `src/lib/auth/browserRequestPolicy.ts` centralizes the no-store, same-origin, manual-redirect request boundary now used by `getActiveSession()`, `firebaseAuthSync`, the login claim/set-claims flow, `PhoneOtpAuthPanel`, `SessionExpiryMonitor`, profile/password account calls, and store-switch callers. This changes only browser `fetch` request options before existing route contracts and bounded response parsers run. It adds no Firestore reads/writes/deletes, Firebase Auth operations, WhatsApp provider calls, Storage operations, provider calls, cache invalidations, rules, indexes, schema changes, Cloud Function logic changes, owner-facing settings, Firebase deploy requirement, or Vercel deploy action.
+
 ---
 
 ## New Auth APIs (Added Feb 19, 2026 — Auth Audit)
@@ -59,6 +76,10 @@ None — users are deactivated (soft delete), never hard deleted.
 | Firebase Auth createUser                | —          | Auth Write | Per staff creation | Admin SDK. Staff get Staff ID alias; email staff also get setup email |
 | Firebase Auth sendOobCode               | —          | Auth Write | Per email staff creation | Sends password setup email        |
 | Update staff doc reset metadata         | `users`    | Write      | Per staff creation | `staffLoginId`, `loginUsername`, `phoneUsername`, setup metadata |
+
+Admission guard: staff create/update/reset/signout/role-save helpers use a 16KB bounded JSON body before schema validation, store/tenant authority checks, Firebase Auth work, or Firestore writes. Create/reset/force-signout keep the existing `AUTH_SENSITIVE` limiter; update/role-save keep the existing `DATA_WRITE` limiter.
+
+Password setup email delivery uses the fixed Firebase Auth `sendOobCode` host/path and encodes `FIREBASE_API_KEY` with `URLSearchParams` before the provider call. Malformed local API keys fail before the network request, and provider failures return a fixed local `PASSWORD_RESET_EMAIL_FAILED` code. This does not add Firestore reads/writes or change the one Firebase Auth sendOobCode operation per email staff creation.
 
 ### `POST /api/staff/password-reset`
 
@@ -75,11 +96,20 @@ Owner-triggered reset never stores the staff password or passcode. The temporary
 | Operation                         | Collection | Type       | Frequency               | Notes                               |
 | --------------------------------- | ---------- | ---------- | ----------------------- | ----------------------------------- |
 | Query by claimToken               | `users`    | Read       | Per claim               | 1 doc read (indexed query)          |
+| Final claim-token transaction re-read | `users` | Read       | Per claim               | Re-reads the messaging user doc and verifies the same claim token before ownership writes |
 | Update messaging user doc         | `users`    | Write      | Per claim (Mode 1, 2, 3) | Clear claimToken, update email/name/phone login alias |
-| Update tenant doc                 | `tenants`  | Write      | Per claim (Mode 1 only) | Transfer ownership                  |
-| Update store docs                 | `stores`   | Write      | Per claim (Mode 1 only) | Transfer ownership                  |
+| Read Google user doc              | `users`    | Read       | Mode 1 only             | Transaction read to reject Google users already attached to a tenant |
+| Update tenant doc                 | `tenants`  | Write      | Per claim (Mode 1 and 2) | Transfer ownership or sync claimed owner email |
+| Update store docs                 | `stores`   | Write      | Per claim (Mode 1 and 2) | Sync claimed store email; public cache is revalidated after this write |
+| Revalidate public cache           | Next.js cache | Cache   | Per claim (Mode 1 and 2) | Refresh menu, OBP, store, and client-store tags after store email changes |
 | Firebase Auth createUser/updateUser | —        | Auth Write | Per claim (Mode 2 and 3) | Admin SDK; Mode 3 uses generated messaging email behind phone login |
 | Firebase Auth setCustomUserClaims | —          | Auth Write | Per claim (Mode 2 and 3) | Set tenantId/storeId                |
+
+Admission guard: `AUTH_SENSITIVE` hashed-IP rate limit, then 16KB bounded JSON body before claim-token lookup or Firebase Auth writes. Missing-token diagnostics store only claim-token presence and length metadata.
+
+Claim-token single-use guard: after the indexed token lookup and mode-specific validation, each claim mode performs final ownership writes inside a Firestore transaction that re-reads the messaging user doc and rejects stale, expired, missing-tenant/store, or already consumed claim tokens. This adds one `users` document read per successful claim attempt, plus the existing Google user doc read for Mode 1.
+
+Client response boundary: `src/components/templates/loginPage/index.tsx` caps claim-account response parsing at 32KB through the shared login-page auth parser. Successful Google linking, email/password setup, and WhatsApp phone/passcode setup require an OK HTTP response plus `success: true`, the expected `mode` (`google`, `email-password`, or `whatsapp-phone`), and tenant/store identity before local claim state or success copy changes. Invalid acknowledgements log `login_page_claim_account_response_invalid` with bounded mode/identity presence metadata only. This adds no Firestore reads/writes/deletes, Firebase Auth operations, route calls, rules, indexes, Cloud Function logic changes, Firebase deploy requirement, or Vercel deploy action.
 
 ### `GET /api/auth/validate-claim`
 
@@ -87,12 +117,22 @@ Owner-triggered reset never stores the staff password or passcode. The temporary
 | ------------------- | ---------- | ---- | -------------- | -------------------------- |
 | Query by claimToken | `users`    | Read | Per validation | 1 doc read (indexed query) |
 
+Unexpected route failures are logged through `src/lib/auth/authDiagnostics.ts` with `validate_claim_unexpected_error`, source error name/code/status, and bounded claim-token/request metadata only.
+
+Admission guard: `AUTH_SENSITIVE` hashed-IP rate limit before the claim-token query.
+
+Client response boundary: the login page caps validate-claim response parsing at 32KB and requires `valid: true`, `status: "valid"`, `preview: "claim-token"`, and a non-empty business name before claim setup UI appears. Invalid OK acknowledgements log `login_page_validate_claim_response_invalid` with bounded marker/name presence only. Phone preview values render only when masked. This changes only route/browser acknowledgement shape and adds no Firestore reads/writes/deletes, Firebase Auth operations, rules, indexes, Cloud Function logic, Firebase deploy requirement, or Vercel deploy action.
+
 ### `POST /api/auth/update-profile`
 
 | Operation       | Collection | Type  | Frequency  | Notes                           |
 | --------------- | ---------- | ----- | ---------- | ------------------------------- |
 | Read user doc   | `users`    | Read  | Per update | 1 doc read (by session user ID) |
 | Update user doc | `users`    | Write | Per update | Whitelisted fields only         |
+
+Admission guard: `DATA_WRITE` limiter by HMAC-hashed session user ID, then 4KB bounded JSON body before validation or the user-document read.
+
+Client response boundary: `src/lib/auth/accountClientResponses.ts` caps desktop/mobile profile-update response parsing at 16KB and requires `success: true`, an `updated` array, and an `updates` object before the account UI shows success.
 
 ### `POST /api/auth/change-password`
 
@@ -103,6 +143,12 @@ Owner-triggered reset never stores the staff password or passcode. The temporary
 | Firebase Auth updateUser     | —          | Auth Write | Per change | Set new password               |
 | Update user doc              | `users`    | Write      | Per change | modifiedOn + passwordChangedAt |
 
+Admission guard: `AUTH_SENSITIVE` rate limit by HMAC-hashed authenticated user ID, then 2KB bounded JSON body before Firebase Auth lookup/verification.
+
+Missing Firebase API key, current-password verification exceptions, and unexpected route failures are logged through `src/lib/auth/authDiagnostics.ts` with stable `change_password_*` codes, bounded session/request metadata, and source error name/code/status only.
+
+Client response boundary: `src/lib/auth/accountClientResponses.ts` caps desktop/mobile password-change response parsing at 16KB and requires `success: true` before the account UI shows success.
+
 ---
 
 ## Security Rules
@@ -110,12 +156,48 @@ Owner-triggered reset never stores the staff password or passcode. The temporary
 - All API routes protected with `withAuth()` middleware (except validate-claim and claim-account Mode 2)
 - Multi-tenant isolation via `verifyTenantAccess()` — checks `tId/sId` match session
 - Rate limiting on expensive operations (`checkExpensiveAILimit`)
+- Auth/session mutation routes use hashed rate-limit key material and bounded JSON body admission before expensive auth, claim-token, OTP, or store-switch work.
+- Firebase client bootstrap and auth-sync diagnostics are bounded through `src/lib/firebase/firebaseDiagnostics.ts`; browser success paths do not emit Firebase user/session console logs.
+- Account profile and password browser handoffs are bounded. `src/lib/auth/accountClientResponses.ts` caps `/api/auth/update-profile` and `/api/auth/change-password` responses at 16KB with `auth_account_response_parse_failed` / `auth_account_response_invalid` diagnostics, and desktop/mobile callers use same-origin credentials, no browser cache, and manual redirect handling before showing success.
+- Staff and Platform Users browser handoffs are bounded. `src/lib/staffManagement/client.ts` applies same-origin credentials, no browser cache, and manual redirect handling to staff list, staff mutation, role mutation, and `/api/auth/create-staff` verification calls before bounded response parsing. Invalid successful or rejected create-staff envelopes log `staff_create_compatibility_response_invalid`; malformed or oversized bodies inherit `staff_client_response_parse_failed`. Create-staff compatibility success is limited to `new_user_created` or `existing_user_added_to_store` with returned user identity before Platform Users can mark the user verified; the legacy `EMAIL_EXISTS` compatibility code remains allowlisted.
+- Login-page and Firebase Auth sync browser handoffs are bounded. `src/components/templates/loginPage/index.tsx` sends validate-claim, claim-account, and set-claims requests with the shared auth browser request policy before capping response parsing at 32KB with `login_page_response_parse_failed` / `login_page_response_invalid` diagnostics. `src/lib/auth/firebaseAuthSync.ts` sends `/api/auth/set-claims` sync/refresh requests with the same policy before capping response parsing at 32KB with `firebase_auth_sync_response_parse_failed` / `firebase_auth_sync_response_invalid` diagnostics and before custom tokens are used.
+- Firebase access tokens and refresh tokens must stay inside the Firebase SDK. The unused `src/utils/usersUtils.ts` token extraction helper was removed, and `npm run verify:auth-security-failure-matrix` guards against reintroducing `stsTokenManager`, `accessToken`, or `refreshToken` extraction in user utilities.
 - Generic error messages (no sensitive data leakage)
-- `claim-account` Mode 2 uses 256-bit claim token as authentication (single-use)
+- `claim-account` Mode 2 uses 256-bit claim token as authentication. Claim-account writes re-check and consume the token inside a transaction so duplicate submits cannot both complete ownership writes.
 - `users/{userId}` direct Firestore writes are platform-admin only. Owner/staff profile changes, password changes, staff CRUD, role assignments, and revocation metadata are server API writes.
 - `update-profile` allows only whitelisted fields — no login email changes
 - `change-password` verifies current password before allowing change
 - `create-staff` generates 24-byte cryptographic random password — never exposed
+
+## Diagnostic Cost Boundary
+
+The June 27 Firebase bootstrap diagnostic hardening adds no Firestore reads/writes, Firebase Auth operations, App Check calls, Storage operations, Cloud Functions, cache invalidations, or owner-facing settings. It changes only client-side/internal diagnostics and generic error text for failed auth bootstrap paths. `npm run verify:auth-security-failure-matrix` guards the helper, App Check, Firebase client, auth sync hook/helper, and session-provider auth bootstrap path.
+
+The June 27 Firebase user-token extraction removal adds no runtime cost and changes no live auth flow because `src/utils/usersUtils.ts` had no repo imports. It removes a dead helper that copied Firebase access/refresh tokens into a plain user object and adds source-level verifier coverage against reintroducing that pattern.
+
+The June 29 shared header `StoreSwitcher` diagnostic cleanup adds no Firestore reads/writes/deletes, Storage operations, Cloud Functions, API routes, cache invalidations, rules, indexes, schema changes, owner-facing settings, or Firebase deploy requirement. It keeps the existing `/api/auth/switch-store` call and `refreshFirebaseAuthClaims()` behavior, converts rejected switch responses to a local coded error, and logs bounded current/login/target store, tenant, user, permission, and accessible-store count metadata only.
+
+The June 29 `useAuth` browser auth-state diagnostic cleanup adds no Firestore reads/writes/deletes, Storage operations, Cloud Functions, API routes, cache invalidations, rules, indexes, schema changes, owner-facing settings, or Firebase deploy requirement. It keeps the existing Firebase Auth state listener, token-result lookup, and token retrieval behavior, but replaces raw Firebase UID/email debug logs with development-only `auth_state_changed` and `auth_signed_out` diagnostics that record only user/email presence-length metadata and email verification state.
+
+The June 29 account response diagnostic cleanup adds no Firestore reads/writes/deletes, Firebase Auth operations, Storage operations, Cloud Functions, API routes, cache invalidations, rules, indexes, schema changes, owner-facing settings, Firebase deploy requirement, or Vercel deploy action. It keeps the existing `/api/auth/update-profile` and `/api/auth/change-password` server behavior, but routes desktop/mobile browser responses through the 16KB bounded `src/lib/auth/accountClientResponses.ts` parser with fixed local failure copy and bounded status/code diagnostics.
+
+The June 30 switch-store request-policy hardening adds no Firestore reads/writes/deletes, Firebase Auth operations beyond existing valid claim-refresh attempts, Storage operations, Cloud Functions, API routes, cache invalidations, rules, indexes, schema changes, owner-facing settings, Firebase deploy requirement, or Vercel deploy action. It keeps the existing `/api/auth/switch-store` route and caller-specific fixed failure copy, but sends desktop/mobile switch-store browser requests through the shared auth account request policy: no-store cache, same-origin credentials, and manual redirect handling.
+
+The June 30 account rejection diagnostic parity cleanup adds no Firestore reads/writes/deletes, Firebase Auth operations, Storage operations, Cloud Functions, API routes, cache invalidations, rules, indexes, schema changes, owner-facing settings, Firebase deploy requirement, or Vercel deploy action. It keeps the same desktop/mobile profile and password mutation behavior, but ensures non-OK account responses become local status-only `desktop_account_*_rejected` or `mobile_account_*_rejected` codes after the bounded account parser handles malformed response bodies.
+
+The June 30 platform user verification response cleanup adds no Firestore reads/writes/deletes beyond existing `/api/auth/create-staff` and platform user-update behavior, Firebase Auth operations beyond existing staff creation/lookup, Storage operations, Cloud Functions, API routes, cache invalidations, rules, indexes, schema changes, owner-facing settings, Firebase deploy requirement, or Vercel deploy action. It keeps the existing verification success and `EMAIL_EXISTS` compatibility behavior, but parses the browser response through the shared bounded staff client parser before the Platform Users dashboard marks a user verified.
+
+The July 1 platform staff verification acknowledgement cleanup adds no Firestore reads/writes/deletes beyond existing `/api/auth/create-staff` and platform user-update behavior, Firebase Auth operations beyond existing staff creation/lookup, Storage operations, Cloud Functions, API routes, cache invalidations, rules, indexes, schema changes, owner-facing settings, Firebase deploy requirement, or Vercel deploy action. It narrows accepted create-staff success responses to create-staff modes with returned user identity and keeps only the existing `EMAIL_EXISTS` compatibility rejection as an accepted fallback.
+
+The June 30 platform user update acknowledgement cleanup adds no Firestore reads/writes/deletes beyond the existing platform user document update attempt, Firebase Auth operations beyond existing staff verification behavior, Storage operations beyond existing user media uploads, Cloud Functions, API routes, cache invalidations, rules, indexes, schema changes, owner-facing settings, Firebase deploy requirement, or Vercel deploy action. Platform Users now requires the user DAL result to acknowledge the same user id before updating the table, closing the drawer, or showing success copy.
+
+The June 30 staff login detail copy fallback cleanup adds no Firestore reads/writes/deletes, Firebase Auth operations, Storage operations, Cloud Functions, API routes, cache invalidations, rules, indexes, schema changes, owner-facing settings, Firebase deploy requirement, or Vercel deploy action. Desktop and mobile staff login detail copies now require Clipboard API success or acknowledged textarea fallback success before copied feedback, and failed diagnostics record only clipboard/fallback support booleans plus bounded Staff ID/passcode/text length metadata.
+
+The June 30 auth and staff browser request policy cleanup adds no Firestore reads/writes/deletes beyond the existing valid account, staff, role, and platform staff-verification requests; no Firebase Auth operations beyond existing valid profile/password/staff flows; no Storage operations; no Cloud Function logic changes; no provider calls beyond existing valid password/staff email behavior; no API routes; no public routes; no cache invalidations; no rules; no indexes; no schema changes; no tenant-shape changes; no owner-facing settings; no Firebase deploy requirement; and no Vercel deploy action. It keeps the same bounded response parsers and acknowledgement requirements while adding no-store cache, same-origin credentials, and manual redirect handling to the browser request side.
+
+The June 30 auth route security-log boundary cleanup adds no Firestore reads/writes/deletes, Firebase Auth operations, Storage operations, Cloud Functions, API routes, cache invalidations, rules, indexes, schema changes, owner-facing settings, Firebase deploy requirement, or Vercel deploy action. `/api/auth/access-status`, `/api/auth/change-password`, `/api/auth/switch-store`, and `/api/auth/claim-account` now use `getBoundedSecurityRouteContext()` for security events instead of raw `buildSecurityContext()` output. Valid session polling, password change, store switching, claim-account linking, claim-token behavior, and existing hashed limiter boundaries remain unchanged.
+
+The June 30 auth middleware security-log boundary cleanup adds no Firestore reads/writes/deletes, Firebase Auth operations, Storage operations, Cloud Functions, API routes, cache invalidations, rules, indexes, schema changes, owner-facing settings, Firebase deploy requirement, or Vercel deploy action. `withAuth()` and `verifyTenantAccess()` keep the same CORS validation, session checks, role gates, tenant/store checks, response codes, and Sentry security event severities, but central security payloads now use bounded route/session metadata and length-only reason/role/tenant/store context instead of raw `buildSecurityContext()` output, raw request IPs, raw user agents, raw emails, or raw account identifiers.
 
 ---
 

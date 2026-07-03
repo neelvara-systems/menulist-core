@@ -6,6 +6,13 @@
  */
 
 import { Button, QRCode, Space, Tag, Tooltip, Typography, message, theme } from "antd";
+import {
+    copyScreenTextToClipboard,
+    getBoundedScreenStringContext,
+    hasScreenClipboardWrite,
+    hasScreenCopyFallback,
+    logScreenSettingsFailure,
+} from "@lib/screen/screenDiagnostics";
 import { useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import { LuCheck, LuCopy, LuExternalLink, LuMonitor, LuPlay, LuQrCode } from "react-icons/lu";
@@ -156,9 +163,28 @@ export default function ScreenLink({ screenUrl, screenLastSeenAt }: ScreenLinkPr
     const lastSeenLabel = useMemo(() => formatLastSeen(screenLastSeenAt), [screenLastSeenAt]);
     const hasSeenSignal = Boolean(toDate(screenLastSeenAt));
 
+    const handleOpen = (url: string, type: ScreenMode) => {
+        try {
+            const opened = window.open(url, "_blank", "noopener,noreferrer");
+            if (!opened) {
+                throw new Error("desktop_digital_screen_link_open_blocked");
+            }
+        } catch (error) {
+            logScreenSettingsFailure("desktop_digital_screen_link_open_failed", error, {
+                surface: "desktop_digital_screen_settings",
+                flow: "screen_link_open",
+                mode: type,
+                hasScreenUrl: Boolean(screenUrl),
+                hasSeenSignal,
+                ...getBoundedScreenStringContext("screenOpenUrl", url),
+            });
+            message.error("Unable to open screen link");
+        }
+    };
+
     const handleCopy = async (url: string, type: ScreenMode) => {
         try {
-            await navigator.clipboard.writeText(url);
+            await copyScreenTextToClipboard(url);
             if (type === "menu") {
                 setCopiedMenu(true);
                 setTimeout(() => setCopiedMenu(false), 2000);
@@ -167,7 +193,17 @@ export default function ScreenLink({ screenUrl, screenLastSeenAt }: ScreenLinkPr
                 setTimeout(() => setCopiedHighlights(false), 2000);
             }
             message.success("Screen link copied");
-        } catch {
+        } catch (error) {
+            logScreenSettingsFailure("desktop_digital_screen_link_copy_failed", error, {
+                surface: "desktop_digital_screen_settings",
+                flow: "screen_link_copy",
+                mode: type,
+                hasScreenUrl: Boolean(screenUrl),
+                hasSeenSignal,
+                hasClipboardWrite: hasScreenClipboardWrite(),
+                hasCopyFallback: hasScreenCopyFallback(),
+                ...getBoundedScreenStringContext("screenCopyUrl", url),
+            });
             message.error("Unable to copy screen link");
         }
     };
@@ -194,7 +230,7 @@ export default function ScreenLink({ screenUrl, screenLastSeenAt }: ScreenLinkPr
                     icon={<LuMonitor size={20} />}
                     mode="menu"
                     onCopy={() => void handleCopy(screenUrl, "menu")}
-                    onOpen={() => window.open(screenUrl, "_blank", "noopener,noreferrer")}
+                    onOpen={() => handleOpen(screenUrl, "menu")}
                     qrValue={screenUrl}
                     tag="Counter TV"
                     title="Menu Board"
@@ -206,7 +242,7 @@ export default function ScreenLink({ screenUrl, screenLastSeenAt }: ScreenLinkPr
                     icon={<LuPlay size={20} />}
                     mode="highlights"
                     onCopy={() => void handleCopy(highlightsUrl, "highlights")}
-                    onOpen={() => window.open(highlightsUrl, "_blank", "noopener,noreferrer")}
+                    onOpen={() => handleOpen(highlightsUrl, "highlights")}
                     qrValue={highlightsUrl}
                     tag="Entrance TV"
                     title="Highlights"

@@ -18,7 +18,7 @@ Owner FAQ screen:
 - Bounded product surfaces query.
 - One KB categories doc read for article options.
 - Entity list read only when tenant/store scope is available.
-- FAQ save/archive updates local UI state instead of refetching all owner-screen dependencies.
+- FAQ save/archive updates local UI state instead of refetching all owner-screen dependencies, but only after the FAQ DAL returns an explicit acknowledgement envelope.
 
 Article FAQ refresh:
 
@@ -54,6 +54,7 @@ FAQ save:
 - One KB cache version bump.
 - One Answerlattice public cache tag revalidation for FAQ/KB/context output.
 - Product surface summary rebuild only when the FAQ was or becomes published.
+- Returns `{ success: true, operation: "create" | "update", id }` after the batch commit, cache-version bump, and public cache revalidation. The UI must reject fallback/malformed results before local state or success copy advances.
 
 FAQ archive:
 
@@ -62,6 +63,7 @@ FAQ archive:
 - One KB cache version bump.
 - One Answerlattice public cache tag revalidation for FAQ/KB/context output.
 - Product surface summary rebuild only when the archived FAQ was published.
+- Returns `{ success: true, operation: "archive", id, status: "archived", active: false }` after the batch commit, cache-version bump, and public cache revalidation. The UI must reject fallback/malformed results before local archive state or success copy advances.
 
 Import publish:
 
@@ -71,10 +73,12 @@ Import publish:
 Article FAQ refresh:
 
 - Owner-triggered only from the article modal.
+- Safe mode and the workspace FAQ-generation rate limit run before permission, request-body parsing, linked-FAQ reads, or provider work.
 - One bounded AI generation call, capped at 5 FAQ suggestions.
 - One batch write for new `needs_review` FAQ docs plus one article `faqIds` mirror update.
 - Duplicate questions already linked to the article are skipped before writes.
 - No product-surface summary rebuild and no public cache invalidation until the owner reviews/publishes the FAQ.
+- Browser response validation is cost-neutral: the article modal only rejects malformed, oversized, rejected, or wrong-shape FAQ refresh responses before local FAQ options, linked IDs, or success/info copy advance.
 
 ## Indexes
 
@@ -94,3 +98,5 @@ The public FAQ route now follows the MenuList public menu cache pattern: Vercel/
 The public FAQ and product-surface summary reads sort in Firestore before applying the cap. This keeps the returned set correct when a workspace has more FAQs than the page/query limit, without increasing the number of documents read.
 
 FAQ regeneration is not automatic on every article save. Article saves mark linked FAQs as `needs_review`; owners run `Refresh FAQ suggestions` only when they want new draft suggestions. This avoids repeated AI calls during normal editing and protects owner-reviewed FAQ content from automatic replacement.
+
+FAQ generation completion breadcrumbs, route failures, and best-effort AI-operation log failures use fixed-code bounded diagnostics with tenant/store/article presence and length metadata only. This adds no Firestore reads/writes and does not change the owner-triggered generation cost shape.

@@ -3,7 +3,7 @@
 **Status:** Public launch copy locked for website implementation  
 **Public feature name:** AI Menu Manager  
 **In-app owner label:** Menu Manager, with AI badge where useful  
-**Last Updated:** June 20, 2026
+**Last Updated:** June 27, 2026
 
 ---
 
@@ -105,7 +105,7 @@ Demo examples:
 | Owner message | Prepared output |
 | --- | --- |
 | Cold coffee sold out | Availability card with customer-facing preview |
-| Add mango lassi 99 today special | Today Special draft card with price and placement |
+| Show note: Fresh menu today | Menu note card for the selected menu |
 | Increase all paneer items by ₹20 | Bulk approval card with affected count |
 | Generate image for masala tea | Draft image card before it goes on the menu |
 | Which items have no photos? | Read-only answer from the selected menu |
@@ -124,7 +124,7 @@ Metadata:
 
 ```text
 Title: AI Menu Manager for Restaurants | MenuList
-Description: Prepare price, sold-out, special, photo, import, design, and publishing cards from simple messages. AI prepares the card; you approve before supported changes go live.
+Description: Prepare price, sold-out, menu-note, design, local export, and review/handoff cards from simple messages. AI prepares the card; you approve before supported changes go live.
 ```
 
 Hero:
@@ -137,8 +137,8 @@ Subheadline:
 
 ```text
 AI Menu Manager is an approval-based AI agent for menu operations. Prepare price,
-sold-out, special, photo, import, design, and publishing cards from simple messages
-while MenuList keeps you in control.
+sold-out, menu-note, design, local export, and review/handoff cards from simple
+messages while MenuList keeps you in control.
 ```
 
 Core flow:
@@ -158,6 +158,19 @@ Owner asks about the selected menu
 -> MenuList answers from already-loaded menu data
 -> suggested next messages may be shown
 -> no approval, mutation, provider call, or external lookup happens
+```
+
+Claim boundaries:
+
+```text
+Allowed:
+AI Menu Manager handles verified daily menu operations, selected-menu answers,
+local exports, and unsupported handoffs.
+
+Not allowed unless separately verified:
+every checklist action is executable, direct external posting is live, rule
+execution is live, durable rollback is universal, provider-backed image/import/
+publish execution is complete, or full speech-to-command is production-ready.
 ```
 
 ---
@@ -192,7 +205,7 @@ No. MenuList does not support direct Zomato, Swiggy, Google Business Profile, In
 | --- | --- |
 | Hero visual | AMM workspace with owner message, prepared card, approval controls, and receipt. |
 | Price update | Before/after card with approval. |
-| Sold out | Availability card with restore time. |
+| Sold out | Availability card with before/after customer-facing state. |
 | Generated image | Masala tea draft image card with Use on menu. |
 | Theme update | Menu design preset preview card. |
 | Selected-menu answer | Read-only answer card for menu readiness, missing photos, unavailable items, or next safe actions. |

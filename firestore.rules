@@ -753,9 +753,9 @@ service cloud.firestore {
       allow update, delete: if false;
     }
     
-    // Landing Page Enquiries — Public create
+    // Landing Page Enquiries — public submissions write through /api/public/contact (Admin SDK)
     match /landingPageEnquiries/{docId} {
-      allow create: if true;
+      allow create: if isAuthenticated() && isPlatformAdmin();
       allow read, update: if isAuthenticated() && isPlatformAdmin();
       allow delete: if false;
     }

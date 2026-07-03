@@ -1,9 +1,15 @@
 # Security — Firebase Cost Tracking
 
-**Feature:** Application Security Layer (20 Mandatory Rules)  
-**Status:** ✅ Production Ready  
-**Last Updated:** February 7, 2026  
+**Feature:** Application Security Layer (20 Mandatory Rules)
+**Status:** Firebase cost evidence; not current launch certification
+**Last Updated:** February 7, 2026
 **Priority:** CRITICAL — Security operations embedded in every API call. No incremental cost.
+
+---
+
+## Current Launch Boundary
+
+Current release approval requires the active [production-readiness audit](../audits/menulist-production-readiness-audit.md) and [External Certification Runbook](../production-readiness/external-certification-runbook.md) evidence, current security-source review, QA/deploy evidence for any changed Firestore rules, indexes, Storage rules, or Cloud Functions, and confirmation that cost monitoring covers any security path that now writes Firebase data. This document is Firebase cost evidence only; it is not production-launch approval.
 
 ---
 

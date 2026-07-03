@@ -3,7 +3,7 @@
 > **Status:** IMPLEMENTED AND ENABLED WITH CAPS
 > **Version:** 1.1.0
 > **Created:** 2026-03-09
-> **Last Updated:** 2026-05-22
+> **Last Updated:** 2026-06-28
 > **Feature Flag:** `ENABLE_ANSWERLATTICE_TICKET_KNOWLEDGE`
 > **Expansion Tracker:** Item #9
 > **Depends On:** Item #4 (Automatic Knowledge Creation) — ✅ IMPLEMENTED
@@ -14,6 +14,8 @@
 ## What This Feature Does
 
 Converts resolved support ticket conversations into canonical knowledge. When tickets cluster around the same product entity and get resolved, the system extracts the resolution pattern and proposes a canonical answer draft for founder approval.
+
+Extractor diagnostics use fixed failure codes and bounded source-error/scope metadata. Scheduler-facing extractor errors do not include raw entity IDs, entity names, or exception text.
 
 **The self-improving loop:**
 

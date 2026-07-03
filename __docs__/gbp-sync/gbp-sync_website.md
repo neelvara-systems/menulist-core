@@ -1,33 +1,70 @@
 # GBP Sync — Website Content
 
+## Current Source Boundary
+
+This is not active public website copy for a live Google sync feature.
+
+Current runtime truth:
+
+- `ENABLE_GBP_SYNC` is `false`.
+- Google OAuth/API sync is not shipped.
+- The GBP token store fails closed with `GBP_TOKEN_STORE_DISABLED`.
+- The Google Business Profile card is hidden while the flag is off; the shared Business Settings Integrations tab may still host Platform Pull API controls.
+- Current owner behavior is manual Google handoff using MenuList Official Business Page and menu links.
+
+Public copy must not say MenuList updates Google automatically until API access, OAuth setup, provider smoke, deploy evidence, browser/device QA, and production-host smoke are recorded.
+
 ## Hero Section
-- **Headline:** Your Google Listing, Always Correct
-- **Subheadline:** MenuList keeps your Google Business Profile in sync — correct menu link, accurate hours. Connect once, stay handled.
-- **CTA Text:** Learn More
-- **CTA Link:** /features/google-sync
+
+- **Headline:** Put the right MenuList link on Google
+- **Subheadline:** Use your Official Business Page and menu link as the source when you update Google Business Profile.
+- **CTA Text:** Review Google handoff
+- **CTA Link:** /use-menulist
 
 ## Problem Statement
-Your Google listing shows the wrong menu link. Or worse — your hours are outdated and customers show up when you're closed. You forget to check Google because you're busy running a restaurant.
 
-## Solution Statement
-MenuList automatically keeps your Google Business Profile accurate. Your menu link always points to the right place. If your hours drift, you get alerted. Connect your Google account once and forget about it.
+Customers often check Google before they open a menu. If Google points to an old PDF, a broken site, or old hours, customers lose trust before they reach the business.
 
-## Feature Benefits
+## Current Solution Statement
 
-### 1. Menu Link Always Correct
-When your menu URL changes (new subdomain, custom domain), MenuList updates your Google listing automatically.
+MenuList gives the owner a stable Official Business Page and menu link to use as the Google Business Profile website/menu handoff. Google changes remain owner-managed until the GBP API integration is approved and shipped.
 
-### 2. Hours Drift Detection
-MenuList checks weekly if your Google hours match your MenuList hours. If they don't, you get a simple alert.
+## Current Benefits
 
-### 3. One-Click Hours Fix
-If hours drift is detected, apply your MenuList hours to Google with one click. No logging into Google separately.
+### 1. Canonical Link Ready
+
+The owner has one MenuList link to copy into Google Business Profile instead of guessing which menu URL is current.
+
+### 2. Manual Handoff Stays Clear
+
+Menu Presence Monitor and Official Business Page guidance keep the Google update task explicit. MenuList does not claim it has written to Google.
+
+### 3. Reserved Sync Path Is Bounded
+
+Automatic GBP sync remains a reserved capability. It requires Google API access, OAuth, provider smoke, deploy evidence, and production-host verification before public copy can describe it as active.
 
 ## SEO Meta
-- **Page Title:** Google Business Profile Sync for Restaurants | MenuList
-- **Meta Description:** Keep your Google Business Profile accurate automatically. Menu link sync, hours drift detection, one-click fixes. Connect once, stay handled.
-- **Target Keywords:** Google Business Profile sync, restaurant Google listing, menu link sync, GBP management
+
+- **Page Title:** Google Business Profile Menu Link Handoff | MenuList
+- **Meta Description:** Use MenuList's Official Business Page and menu link as the source when updating Google Business Profile.
+- **Target Keywords:** Google Business Profile menu link, restaurant Google listing, official menu link, MenuList official page
 
 ## Approved Language
-### USE: "Always correct", "connect once", "automatic sync", "hours drift detection"
-### NEVER USE: "AI-powered Google management", "Smart listing optimization", "SEO automation"
+
+### USE
+
+- "Google handoff"
+- "Owner-managed Google update"
+- "Official Business Page link"
+- "MenuList menu link"
+- "Reserved Google sync"
+
+### NEVER USE
+
+- "automatic Google sync"
+- "connect once"
+- "one-click Google fix"
+- "MenuList updates Google automatically"
+- "AI-powered Google management"
+- "Smart listing optimization"
+- "SEO automation"

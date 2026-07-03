@@ -6,8 +6,8 @@ import ScrollToTopButton from '@/components/website/shared/ScrollToTopButton';
 import '@/styles/website.css';
 import { Metadata } from 'next';
 
-const title = 'Analytics - MenuList | Customer Signals in the Owner Dashboard';
-const description = 'MenuList shows today, daily, weekly, monthly, and overall customer activity from the public menu, Official Business Page, and customer app in the owner dashboard.';
+const title = 'Activity View - MenuList | See How Customers Use Your Menu';
+const description = 'MenuList shows simple owner activity views for today, daily, weekly, monthly, and overall customer activity from the public menu, Official Business Page, and saved shortcut.';
 
 export const metadata: Metadata = {
   title,

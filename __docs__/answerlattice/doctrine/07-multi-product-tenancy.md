@@ -250,7 +250,7 @@ Standard MenuList doc. `requestBodyComposer` injects `pId`/`tId`/`sId` from sess
 
 ### Current State
 
-Single Firebase project: **`menulist-qa`**. All products share one Firestore, Auth, Storage, Realtime Database, Cloud Functions, Vertex AI, App Check. One billing account.
+Single Firebase project: **`menulist-qa`**. All products share one Firestore, Auth, Storage, Realtime Database, Cloud Functions, Gemini API credentials, App Check. One billing account.
 
 Answerlattice collections already prefixed `answerlattice_*` (9 collections). MenuList collections unprefixed (legacy).
 
@@ -295,7 +295,7 @@ SurfaceOS, GrowthOS, KitStamp are extensions of MenuList:
 | Auth            | MenuList users (SMB owners, staff)    | Answerlattice platform users + external client admins |
 | Storage         | Menu images, project assets           | KB attachments, ticket attachments (future)      |
 | Cloud Functions | MenuList business logic               | Answerlattice-specific logic (future)                 |
-| Vertex AI       | MenuList AI features                  | Answerlattice RAG, entity extraction                  |
+| Gemini API      | MenuList-owned AI key pool            | Answerlattice-owned AI key pool                       |
 | App Check       | MenuList dashboard                    | Answerlattice dashboard + widget                      |
 | Realtime DB     | MenuList real-time features           | Not needed initially                             |
 
@@ -413,13 +413,15 @@ dashboard/
 | `logic/embedArticleWorker.ts`  | KB article vector embedding (task queue)                          |
 | `logic/regenerateEmbedding.ts` | KB embedding regeneration (callable)                              |
 | `logic/publishApprovedJob.ts`  | KB ingestion publish (callable)                                   |
-| `analytics/kbQuality.ts`       | KB quality analysis via Gemini AI                                 |
-| `services/gemini/kbQuality.ts` | KB quality AI prompts                                             |
+| `analytics/kbQuality.ts`       | Legacy MenuList chat-monitoring boundary: current runtime remains in `functions/src/analytics/kbQuality.ts` and scans MenuList tenant/store data; future extraction needs a deliberate Answerlattice runtime design |
+| `services/gemini/kbQuality.ts` | Legacy MenuList chat-monitoring boundary: current runtime remains in `functions/src/services/gemini/kbQuality.ts`; future extraction needs a deliberate Answerlattice runtime design |
 | `types/knowledgeBase.types.ts` | KB types                                                          |
 
 ### MenuList Functions (stay in `functions/`)
 
 Everything else: menu processing, analytics, messaging, billing, monitoring, decision blocks scoring, customer analytics, alert escalation, admin tools.
+
+Legacy MenuList chat-monitoring boundary: Feedback Intelligence, KB Quality, and Weekly Narrative are still MenuList-hosted platform-admin chat intelligence jobs. They run from `functions/src/`, scan MenuList `tenants`, `stores`, `chatAnalytics`, `aiSearchHistory`, and nested `knowledgeBase` collections, and write MenuList `insights/{tId}/stores/{sId}/ai/*` documents. Do not count them as completed `functions-answerlattice/` runtime migrations or move them without a dedicated Answerlattice tenant-shape, scheduler, cost, and deploy plan.
 
 ### Unified Scheduler Split
 
@@ -433,8 +435,9 @@ Everything else: menu processing, analytics, messaging, billing, monitoring, dec
 ### Deployment
 
 ```bash
-firebase deploy --only functions --project menulist-qa
-firebase deploy --only functions --project menulist
+npm run verify:functions-deploy-preflight
+firebase deploy --project menulist-qa --config firebase.json --only functions:processMenuImages,functions:processMenuImagesJob,functions:menulistMaintenanceScheduler,functions:computeDecisionBlocksScores,functions:triggerDecisionBlocksScoring,functions:triggerStoreNightlyScheduler,functions:verifyMenuPublish --non-interactive
+# MenuList production Functions require QA evidence and explicit production deploy approval.
 firebase deploy --only functions:answerlattice --project answerlattice-qa --config firebase-answerlattice.json
 firebase deploy --only functions:answerlattice --project answerlattice --config firebase-answerlattice.json
 ```

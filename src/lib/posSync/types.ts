@@ -22,6 +22,7 @@ export interface PosSyncConfig {
     lastStatus: PosSyncLastStatus;
     lastError: string;
     menuVersion: number;
+    consecutiveFailures?: number;
     instructionsSentCount: number;
     instructionsSentDate: string;
 }

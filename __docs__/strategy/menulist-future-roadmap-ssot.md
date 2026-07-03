@@ -769,7 +769,7 @@ If MenuList doesn't onboard real stores in 2026, the infrastructure becomes theo
 | Topic                      | Existing Doc                                              | Status                                    |
 | -------------------------- | --------------------------------------------------------- | ----------------------------------------- |
 | Product Strategy           | `__docs__/strategy/product-strategy-2026.md`              | ✅ Current                                |
-| 5-Year Vision              | `__docs__/strategy/5year-vision-2026-complete.md`         | ✅ Current                                |
+| 5-Year Vision              | `__docs__/strategy/five-year-vision-2026-complete.md`         | ✅ Current                                |
 | Feature Spec (complete)    | `__docs__/strategy/menulist-complete-feature-spec.md`     | ✅ Current                                |
 | Expansion Surfaces         | `__docs__/strategy/expansion-surfaces-master-analysis.md` | ✅ Current                                |
 | Future Ideas Bucket        | `__docs__/strategy/future-ideas-bucket-list.md`           | ⚠️ Needs update (pre-dates this analysis) |
@@ -1010,7 +1010,7 @@ If MenuList doesn't onboard real stores in 2026, the infrastructure becomes theo
 - **answerlattice.com Domain Purchased:** Domain acquired. ChatGPT provided domain infrastructure setup recommendations (subdomain structure, HTTPS, email, trademark, social handles).
 - **Answerlattice Support Stack Evaluation:** ChatGPT evaluated Answerlattice against 6-layer SaaS support stack model: Interaction (sufficient), Knowledge (very strong), Answer Generation (complete), Governance (excellent), Signal (sufficient), Operations (intentionally light). Assessment ~85% accurate.
 - **Three "Missing Pieces" Claim — ALL WRONG:** ChatGPT identified 3 items as "the only meaningful gaps": (1) Canonical Coverage Measurement, (2) Signal Entity Resolution, (3) Nightly Governance Scheduler. **All three were already implemented on March 3, 2026.** ChatGPT has zero codebase awareness. `answerlatticeNightly.ts` runs a 7-step batch job including all three plus recurring fallback detection, impact tracking, and confidence auto-adjustment.
-- **Launch Strategy:** Controlled activation → observation → launch. Aligns with existing `ANSWERLATTICE-ACTIVATION-EXPERIMENT.md` (4-week framework with Go/No-Go criteria).
+- **Launch Strategy:** Controlled activation → observation → launch. Aligns with existing `answerlattice-activation-experiment.md` (4-week framework with Go/No-Go criteria).
 - **MenuList as First Client:** MenuList as design partner / Tenant #1. Entity category suggestions for ontology bootstrap (Features, Workflows, States, Errors, Billing). Already documented in doctrine.
 - **10 Failure Modes (HIGH VALUE):** Operational warnings for first deployment. 4 genuinely new (Entity Ontology Collapse, Canonical Answer Overfitting, Admin Cognitive Overload, Governance Loop Breaking). 6 already mitigated in codebase. Weekly governance cycle recommended (Mon: proposals, Wed: drift, Fri: answers).
 
@@ -1018,7 +1018,7 @@ If MenuList doesn't onboard real stores in 2026, the infrastructure becomes theo
 
 **Documents Updated:**
 
-- `__docs__/answerlattice/ANSWERLATTICE-ACTIVATION-EXPERIMENT.md` — Added §10 (10 Failure Modes), §11 (Entity Categories for MenuList), §12 (Authoring Guidelines)
+- `__docs__/answerlattice/answerlattice-activation-experiment.md` — Added §10 (10 Failure Modes), §11 (Entity Categories for MenuList), §12 (Authoring Guidelines)
 - `__docs__/answerlattice/_archive/chatgpt-review-domain-launch-readiness.md` — Full conversation review (NEW)
 
 **Domain Action Items (Business Operations — NOT Engineering):**

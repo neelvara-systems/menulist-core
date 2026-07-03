@@ -23,6 +23,8 @@ research -> dedupe -> score -> gather evidence -> draft -> queue approvals -> ro
 
 Implementation rule: if a workflow can be safely converted into a system-prepared approval packet, do that instead of adding another founder/operator task. Human work should remain at policy, approval, exception, pause, and scale decisions.
 
+Client-side SignalDesk DAL failures use fixed internal-tool copy for overview load, workspace load, action run, and pause updates. Route response text from `src/app/api/signaldesk/*` is not rethrown into the UI. Overview, workspace, action, and kill-switch callers parse route responses through a 1 MB bounded reader, require the documented `{ data }` envelope, and guard overview/workspace shapes before replacing local state. Malformed, oversized, rejected, or wrong-shape route responses now log `signaldesk_client_response_parse_failed`, `signaldesk_client_response_rejected`, or `signaldesk_client_response_invalid` with operation, response status, mobile-client state, and bounded action/section/scope presence/length metadata before preserving the same fixed UI failure copy. The runtime still preserves the existing access, rate-limit, mobile-readonly, and provider-send gates. Overview, workspace, action, kill-switch, and lower-level overview-load failures use `signaldesk_*_failed` diagnostics with bounded user/action/section/scope metadata and source error name/code/status only. Shared API guard security events for validation failures, permission failures, rate limits, and invalid JSON now use `getSignalDeskSecurityLogContext()` over bounded route metadata plus endpoint/method/action/permission/feature presence-length fields instead of raw `buildSecurityContext()` output.
+
 ## Investment-Control Runtime Added
 
 The June 23 investment-control implementation added the internal controls needed before paid provider scale:
@@ -36,7 +38,7 @@ The June 23 investment-control implementation added the internal controls needed
 | Waterfall policy | `signaldeskEnrichmentWaterfalls` stores provider order, requested field, max credits, stop condition, verification requirement, source policy, retention, and active/hold state. |
 | Vendor ledger | `signaldeskVendorRuns` records source-provider and waterfall readiness/blocked states with estimated cost and blocked reason. |
 | FHRS/FHIS source provider | `fhrs-fhis` can import UK official food-business establishment seeds from the FSA API after source policy, provider account, budget governor, and feature-flag checks; contact use is not inferred and raw payloads are not stored. |
-| Research Agent Table | `/signaldesk/mission` can turn a plain-English prompt into a governed provider run, normalized target import, enrichment table rows, pass/fail/unsure scoring, source transparency, idempotency, and market-pod update. |
+| Research Agent Table | `/signaldesk/mission` can turn a plain-English prompt into a governed provider run, normalized target import, enrichment table rows, pass/fail/unsure scoring, source transparency, idempotency, and market-pod update. Exhausted provider source-policy scans log `signaldesk_research_source_policy_scan_failed` with bounded provider and candidate/rejected counts before returning the safe policy-required failure. |
 | Apify source broker | `apify` can run one env-controlled source Actor after source policy, provider approval, env readiness, and provider budget checks; rows are normalized into target imports without storing raw dataset payloads. |
 | Enrichment result | `signaldeskEnrichmentResults` stores normalized field-level result status, confidence, source policy, expiry, and masked value preview when approved source data already has the field. |
 | Approval packet | `signaldeskApprovalPackets` compress target, evidence, draft, suppression, source policy, sender readiness, CTA, risk summary, and recommended action into one owner decision record. |
@@ -54,6 +56,8 @@ The June 23 investment-control implementation added the internal controls needed
 | Self-service CTA | `signaldeskSelfServiceCtas` stores proof/activation CTA copy and is injected into evidence-bound drafts. |
 
 External paid-provider adapters for Apollo, Hunter, ZeroBounce, Firecrawl, Tavily, Exa, Postmark, Resend, Smartlead, Instantly, and lemlist are still not connected. This is intentional: the internal governor and owned email rail exist first, and actual account connection remains an owner decision.
+
+The gated Meta message adapter URL-encodes the selected WhatsApp, Instagram, or Messenger endpoint ID before building the Graph API `/messages` path. Provider send remains disabled by default, but the dormant send path must still preserve safe provider URL construction for future controlled activation.
 
 ## Architecture Decision
 
@@ -319,7 +323,9 @@ MenuList integration must use a narrow outcome bridge. SignalDesk records route 
 - Every mutation writes an audit event.
 - Every send/export writes a decision snapshot.
 - Every webhook must use signature verification where provider supports it.
+- Webhook rejection diagnostics, webhook body parse/shape diagnostics, webhook event-shape diagnostics, API route failure diagnostics, enrichment block summaries, and research-agent blocked audit reasons use stable local codes instead of raw provider, user, action, payload, or exception messages. Signed webhook payloads must contain a provider event signal before any normalized event write, and fallback webhook event IDs are deterministic payload hashes rather than random IDs.
 - Every AI worker must validate typed output before storage.
+- AI provider JSON parse and output-shape failures log `signaldesk_ai_response_parse_failed` or `signaldesk_ai_response_shape_invalid` with bounded model/task/response-length metadata and fail before AI worker run, decision snapshot, operation ledger, eval, spend, timeline, or cost-summary writes.
 
 ## AI Worker Rules
 
@@ -371,7 +377,7 @@ AI may not:
 
 - assisted WhatsApp: implemented as gated handoff/provider-send plumbing
 - Instagram/Messenger inbound routing: implemented as gated webhook/handoff plumbing
-- live source-provider import: implemented for Google Places Text Search, FHRS/FHIS UK establishment seed, and Apify Source Broker with provider source policy, max-result cap, provider budget, and no raw provider payload storage
+- live source-provider import: implemented for Google Places Text Search, FHRS/FHIS UK establishment seed, and Apify Source Broker with provider source policy, max-result cap, provider budget, manual redirect handling, bounded provider JSON parsing, parse-failure diagnostics, and no raw provider payload storage
 - real AI provider assist: implemented through the existing Gemini gateway
 - trust partner rail: implemented for internal testing; real partner outreach/spend still requires active budget policy, founder approval, disclosure review, and manual partner execution
 - Meta paid intent: skipped in this session
@@ -427,7 +433,7 @@ The second implementation slice adds the remaining non-paid, non-deploy runtime 
 
 1. provider integration env names under `MENULIST_SIGNALDESK_*`;
 2. internal `/signaldesk/sources`, `/signaldesk/ai`, and `/signaldesk/channels` pages;
-3. source-provider action using Google Places Text Search, FHRS/FHIS UK official establishment seed, or Apify Source Broker with a required provider source policy, max-result cap, provider account, and budget cap;
+3. source-provider action using Google Places Text Search, FHRS/FHIS UK official establishment seed, or Apify Source Broker with a required provider source policy, max-result cap, provider account, budget cap, manual redirect handling, bounded provider JSON response parsing, and `signaldesk_source_provider_response_parse_failed` diagnostics for malformed successful provider JSON;
 4. FHRS/FHIS normalization for UK food-business establishment rows with no contact-permission inference;
 5. Apify connector/settings readiness, env-controlled Actor ID, normalized target rows, vendor ledger, source health event logging, and webhook status intake;
 6. Foursquare provider placeholder blocked until explicit source approval;
@@ -436,7 +442,7 @@ The second implementation slice adds the remaining non-paid, non-deploy runtime 
 9. signed webhook endpoint for email, WhatsApp, Instagram, Messenger, and Apify providers;
 10. webhook HMAC/shared-secret validation, public rate limiting, normalized event storage, channel/source health updates, and suppression updates where channel events apply;
 11. assisted channel handoff for approved drafts;
-12. SMTP/Meta provider-send adapter behind the global provider-send flag and channel readiness checks;
+12. SMTP/Meta provider-send adapter behind the global provider-send flag, channel readiness checks, manual redirect handling for Meta API calls, bounded Meta response parsing, and `signaldesk_meta_response_parse_failed` diagnostics for malformed successful Meta JSON;
 13. phone, WhatsApp, and Instagram contact identity indexing when source policy allows contact use.
 
 ## Remaining Implementation Gates

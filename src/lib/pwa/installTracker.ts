@@ -16,6 +16,7 @@
 import { getSessionId } from '@lib/analytics/session';
 import { trackEvent, TrackingEvent } from '@lib/analytics/unified';
 import { detectPlatform } from './platformDetection';
+import { getBoundedPwaStringContext, logPwaTrackingFailure } from './pwaDiagnostics';
 import { detectInstallSurface } from './surfaceDetection';
 
 const INSTALL_FIRED_KEY_PREFIX = 'menulist_customerApp_installFired_';
@@ -72,17 +73,31 @@ export async function fireInstalledEventOnce(
 
   // Storage unavailable → still fire (privacy / SSR fallback), no dedup possible.
   if (!isStorageAvailable()) {
-    await trackEvent(TrackingEvent.CUSTOMER_APP_INSTALLED, {
-      storeId: String(storeId),
-      tenantId,
-      sessionId: getSessionId(),
-      storeTimeZone,
-      businessDayEndTime,
-      includeLocation,
-      pwaPlatform: platform,
-      pwaInstallSource: source,
-      pwaInstallSurface: installSurface,
-    });
+    try {
+      await trackEvent(TrackingEvent.CUSTOMER_APP_INSTALLED, {
+        storeId: String(storeId),
+        tenantId,
+        sessionId: getSessionId(),
+        storeTimeZone,
+        businessDayEndTime,
+        includeLocation,
+        pwaPlatform: platform,
+        pwaInstallSource: source,
+        pwaInstallSurface: installSurface,
+      });
+    } catch (err) {
+      logCustomerAppInstallTrackingFailure(err, {
+        storeId,
+        tenantId,
+        storeTimeZone,
+        businessDayEndTime,
+        source,
+        includeLocation,
+        platform,
+        installSurface,
+        storageAvailable: false,
+      });
+    }
     return;
   }
 
@@ -108,8 +123,45 @@ export async function fireInstalledEventOnce(
     window.localStorage.setItem(key, String(Date.now()));
   } catch (err) {
     // Non-fatal — analytics should never break the customer experience.
-    console.warn('[pwa] fireInstalledEventOnce failed:', err);
+    logCustomerAppInstallTrackingFailure(err, {
+      storeId,
+      tenantId,
+      storeTimeZone,
+      businessDayEndTime,
+      source,
+      includeLocation,
+      platform,
+      installSurface,
+      storageAvailable: true,
+    });
   }
+}
+
+function logCustomerAppInstallTrackingFailure(
+  error: unknown,
+  context: {
+    storeId: string | number;
+    tenantId?: string | number;
+    storeTimeZone?: string;
+    businessDayEndTime?: string;
+    source: InstallTrackerOptions['source'];
+    includeLocation: boolean;
+    platform: string;
+    installSurface: string;
+    storageAvailable: boolean;
+  },
+): void {
+  logPwaTrackingFailure('customer_app_install_tracking_failed', error, {
+    ...getBoundedPwaStringContext('storeId', context.storeId),
+    ...getBoundedPwaStringContext('tenantId', context.tenantId),
+    ...getBoundedPwaStringContext('pwaPlatform', context.platform),
+    ...getBoundedPwaStringContext('pwaInstallSource', context.source),
+    ...getBoundedPwaStringContext('pwaInstallSurface', context.installSurface),
+    hasStoreTimeZone: Boolean(context.storeTimeZone),
+    hasBusinessDayEndTime: Boolean(context.businessDayEndTime),
+    includeLocation: context.includeLocation,
+    storageAvailable: context.storageAvailable,
+  });
 }
 
 /**

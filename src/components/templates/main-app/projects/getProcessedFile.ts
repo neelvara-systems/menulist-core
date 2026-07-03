@@ -1,5 +1,6 @@
 import { AI_ACTIONS_TYPES } from "@constant/common";
 import { checkExistingActiveJob, createMenuProcessingJob, MenuFileToProcess, TargetLanguage } from "@lib/firebase/menuProcessing";
+import { getBoundedMenuProcessingStringContext, getMenuProcessingProjectLogContext, logMenuProcessingFailure } from "@lib/firebase/menuProcessingDiagnostics";
 import { logger } from "@lib/monitoring/logger";
 import { ProcessedFileAPIParams } from './types';
 
@@ -81,10 +82,14 @@ async function createProcessingJob({
 
     return { jobId };
 
-  } catch (error: any) {
-    const errorMessage = error?.message || 'Job creation failed';
-    logger.error('[createProcessingJob] Error', new Error(errorMessage), { projectId });
-    throw new Error(`Menu processing failed: ${errorMessage}`);
+  } catch (error) {
+    logMenuProcessingFailure('desktop_menu_upload_job_create_failed', error, {
+      ...getMenuProcessingProjectLogContext(projectId),
+      ...getBoundedMenuProcessingStringContext('action', action),
+      fileCount: files.length,
+      targetLanguageCount: targetLanguages.length,
+    });
+    throw new Error('Menu processing failed. Please try again.');
   }
 }
 

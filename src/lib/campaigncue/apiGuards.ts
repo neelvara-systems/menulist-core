@@ -1,12 +1,25 @@
 import { FEATURE_FLAGS } from "@config/features";
+import { CAMPAIGNCUE_CUE_LAYERS } from "@constant/campaigncue/cueLayers";
 import { CAMPAIGNCUE_RATE_LIMIT_NAMESPACE } from "@constant/campaigncue/product";
 import { checkRateLimit } from "@lib/rateLimit";
 import { getRateLimitForFeature, type RateLimitFeature } from "@lib/rateLimit/configs";
 import { logger } from "@lib/monitoring/logger";
-import { buildSecurityContext } from "@lib/security/securityContext";
+import { readBoundedJsonBody } from "@lib/security/boundedRequestBody";
+import {
+    getBoundedSecurityRouteContext,
+    getBoundedSecurityStringContext,
+} from "@lib/security/securityDiagnostics";
 import { verifyTenantAccess } from "@/middleware/auth";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
+import { hashPublicRateLimitValue } from "src/middleware/publicApi";
+
+const CAMPAIGNCUE_JSON_BODY_MAX_BYTES = Math.max(
+    64 * 1024,
+    Math.ceil(CAMPAIGNCUE_CUE_LAYERS.MAX_EXPORT_BYTES * 1.38)
+        + CAMPAIGNCUE_CUE_LAYERS.MAX_EDITOR_DOCUMENT_BYTES
+        + (128 * 1024),
+);
 
 export const getCampaignCueSessionScope = (session: any) => {
     const tId = session?.tId || session?.user?.tenantId;
@@ -22,6 +35,20 @@ export const getCampaignCueSessionScope = (session: any) => {
         userId: userId ? String(userId) : "",
     };
 };
+
+export type CampaignCueSecurityLogContext = Record<string, boolean | number | string | null | undefined>;
+
+export const getCampaignCueSecurityLogContext = (
+    session: any,
+    request: NextRequest,
+    endpoint = request.nextUrl.pathname,
+    context: CampaignCueSecurityLogContext = {},
+): CampaignCueSecurityLogContext => ({
+    ...getBoundedSecurityRouteContext(session, request),
+    ...getBoundedSecurityStringContext("endpoint", endpoint),
+    ...getBoundedSecurityStringContext("method", request.method),
+    ...context,
+});
 
 export const requireCampaignCueRuntime = () => {
     if (!FEATURE_FLAGS.ENABLE_CAMPAIGNCUE_APP_SHELL) {
@@ -44,10 +71,10 @@ export const requireCampaignCueSessionScope = (
 
     if (!verifyTenantAccess(session, scope.tId, scope.sId, request)) {
         logger.security("Tenant Access Violation - CampaignCue", {
-            ...buildSecurityContext(session, request),
-            endpoint: request.nextUrl.pathname,
-            tenantId: scope.tId,
-            storeId: scope.sId,
+            ...getCampaignCueSecurityLogContext(session, request, request.nextUrl.pathname, {
+                ...getBoundedSecurityStringContext("tenantId", scope.tId),
+                ...getBoundedSecurityStringContext("storeId", scope.sId),
+            }),
         }, "critical");
         return {
             error: NextResponse.json({ error: "Forbidden" }, { status: 403 }),
@@ -66,8 +93,11 @@ export const applyCampaignCueRateLimit = async (params: {
 }) => {
     const scope = getCampaignCueSessionScope(params.session);
     const rateLimitConfig = getRateLimitForFeature(params.feature);
+    const userRateLimitHash = hashPublicRateLimitValue(scope.userId || "unknown");
+    const tenantRateLimitHash = hashPublicRateLimitValue(scope.tId || "_");
+    const storeRateLimitHash = hashPublicRateLimitValue(scope.sId || "_");
     const rateLimit = await checkRateLimit({
-        key: `${CAMPAIGNCUE_RATE_LIMIT_NAMESPACE}:${params.keyPrefix}:${scope.userId || "unknown"}:${scope.tId || "_"}:${scope.sId || "_"}`,
+        key: `${CAMPAIGNCUE_RATE_LIMIT_NAMESPACE}:${params.keyPrefix}:${userRateLimitHash}:${tenantRateLimitHash}:${storeRateLimitHash}`,
         ...rateLimitConfig,
     });
 
@@ -75,13 +105,13 @@ export const applyCampaignCueRateLimit = async (params: {
 
     const waitSeconds = Math.max(1, Math.ceil((rateLimit.resetAt - Date.now()) / 1000));
     logger.security("Rate Limit Exceeded - CampaignCue", {
-        ...buildSecurityContext(params.session, params.request),
-        endpoint: params.request.nextUrl.pathname,
-        feature: params.feature,
+        ...getCampaignCueSecurityLogContext(params.session, params.request, params.request.nextUrl.pathname, {
+            ...getBoundedSecurityStringContext("feature", params.feature),
+            ...getBoundedSecurityStringContext("storeId", scope.sId),
+            ...getBoundedSecurityStringContext("tenantId", scope.tId),
+            ...getBoundedSecurityStringContext("userId", scope.userId),
+        }),
         limit: rateLimitConfig.limit,
-        storeId: scope.sId,
-        tenantId: scope.tId,
-        userId: scope.userId,
         waitSeconds,
         window: rateLimitConfig.window,
     }, "medium");
@@ -110,19 +140,27 @@ export const parseCampaignCueJsonBody = async (params: {
     request: NextRequest;
     session: any;
 }) => {
-    try {
+    const bodyResult = await readBoundedJsonBody(params.request, CAMPAIGNCUE_JSON_BODY_MAX_BYTES, {
+        invalidJsonMessage: "Invalid JSON",
+    });
+
+    if (bodyResult.ok === true) {
         return {
-            data: await params.request.json(),
+            data: bodyResult.data,
             success: true as const,
         };
-    } catch {
-        logger.security(params.logLabel || "Invalid JSON - CampaignCue API", {
-            ...buildSecurityContext(params.session, params.request),
-            endpoint: params.endpoint || params.request.nextUrl.pathname,
-        }, "medium");
-        return {
-            response: NextResponse.json({ error: "Invalid JSON" }, { status: 400 }),
-            success: false as const,
-        };
     }
+
+    logger.security(params.logLabel || "Invalid JSON - CampaignCue API", {
+        ...getCampaignCueSecurityLogContext(
+            params.session,
+            params.request,
+            params.endpoint || params.request.nextUrl.pathname,
+            { status: bodyResult.response.status },
+        ),
+    }, "medium");
+    return {
+        response: bodyResult.response,
+        success: false as const,
+    };
 };

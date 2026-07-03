@@ -3,7 +3,7 @@
 **Status:** Internal draft
 **Audience:** Sales, founder demos, positioning review
 **Public language note:** Public launch copy uses `AI Menu Manager` by founder decision. This is a narrow feature-level exception; MenuList itself is not repositioned as generic AI restaurant software.
-**Last Updated:** June 20, 2026
+**Last Updated:** June 27, 2026
 
 ---
 
@@ -33,7 +33,7 @@ The owner can say:
 - "Cold coffee is over."
 - "Make my menu look premium."
 - "Generate image for masala tea."
-- "Add lunch thali today only."
+- "Show note: Fresh menu today."
 - "What should I fix today?"
 - "Which items have no photos?"
 
@@ -42,6 +42,11 @@ MenuList turns that into a prepared operation card. The owner approves important
 When the owner asks about the selected menu instead of asking for a change, MenuList can show a read-only answer card using the menu data already loaded for that project. These answers can suggest the next message, but they do not approve, mutate, or fetch unrelated external information.
 
 Demo discipline: lead launch demos with executable daily menu ops and selected-menu answer cards. New-item today-special, image generation, import, publish, and rule/rollback flows should be described as draft, review, or handoff cards unless the matching adapter is connected and verified.
+
+Public claim guard:
+
+- Allowed: AI Menu Manager handles verified daily menu operations, selected-menu answers, local exports, and unsupported handoffs.
+- Not allowed unless separately verified: every checklist action is executable, direct external posting, production rule execution, universal rollback, full speech-to-command, staff/billing/account mutation, or provider-backed image/import/publish execution.
 
 ---
 
@@ -81,8 +86,8 @@ Owner types: "Cold coffee over."
 
 AMM shows:
 
-- Mark Cold Coffee unavailable until tomorrow opening
-- Change time option
+- Mark Cold Coffee unavailable
+- Customer-facing preview
 - Apply button
 
 Receipt confirms it is hidden as unavailable.
@@ -164,7 +169,7 @@ Menu generators create a starting menu. AMM handles daily menu operations after 
 Use:
 
 - "Menu update karo. MenuList preview dikhayega. Approval ke baad menu update hoga."
-- "Price, sold out, photos, specials - sab card mein ready."
+- "Price, sold out, photos, menu notes - sab card mein ready."
 - "Owner approval ke bina important change live nahi hota."
 
 Avoid:

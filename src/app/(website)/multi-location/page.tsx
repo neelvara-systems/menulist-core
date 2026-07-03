@@ -7,14 +7,14 @@ import '@/styles/website.css';
 import { Metadata } from 'next';
 
 export const metadata: Metadata = {
-    title: 'Multi-Location Source Management — MenuList | One Source, Every Location',
-    description: 'Manage menus and service lists across locations from one approved source. A master source can keep every outlet aligned without manual coordination.',
+    title: 'Multi-Location Menu Management - MenuList | One Approved List, Every Location',
+    description: 'Manage menus and service lists across locations from one approved list. A master list can keep every outlet aligned without manual coordination.',
     alternates: {
         canonical: '/multi-location',
     },
     openGraph: {
-        title: 'Multi-Location Source Management — MenuList | One Source, Every Location',
-        description: 'Manage menus and service lists across locations from one approved source. A master source can keep every outlet aligned without manual coordination.',
+        title: 'Multi-Location Menu Management - MenuList | One Approved List, Every Location',
+        description: 'Manage menus and service lists across locations from one approved list. A master list can keep every outlet aligned without manual coordination.',
         url: '/multi-location',
     },
 };
@@ -24,8 +24,8 @@ export default function Page() {
         <div className="ws-page">
             <WebsitePageStructuredData
                 path="/multi-location"
-                title="Multi-Location Source Management - MenuList | One Source, Every Location"
-                description="Manage menus and service lists across locations from one approved source. A master source can keep every outlet aligned without manual coordination."
+                title="Multi-Location Menu Management - MenuList | One Approved List, Every Location"
+                description="Manage menus and service lists across locations from one approved list. A master list can keep every outlet aligned without manual coordination."
             />
             <Header />
             <MultiLocationPage />

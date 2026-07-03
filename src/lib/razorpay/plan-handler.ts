@@ -1,6 +1,8 @@
 import { Currency, PlanInterval, UserType } from "../../types/razorpay";
 import { DEFAULT_PRODUCT_ID, type ProductId } from "@constant/product";
+import { getBoundedRazorpayStringContext, getRazorpayFailureLogData } from "@lib/billing/razorpayDiagnostics";
 import { logger } from "@lib/monitoring/logger";
+import { secureError } from "@lib/security/secureLogger";
 import { razorpayClient } from "./razorpay";
 
 interface PlanInfo {
@@ -11,6 +13,40 @@ interface PlanInfo {
     planId: string; // e.g., 'pro', 'starter'
     productId?: ProductId;
 }
+
+type RazorpayPlanLogContextInput = {
+    currency?: unknown;
+    interval?: unknown;
+    legacyLookupKey?: unknown;
+    lookupKey?: unknown;
+    planId?: unknown;
+    price?: number;
+    productId?: unknown;
+    providerPlanId?: unknown;
+    userType?: unknown;
+};
+
+const getRazorpayPlanLogContext = ({
+    currency,
+    interval,
+    legacyLookupKey,
+    lookupKey,
+    planId,
+    price,
+    productId,
+    providerPlanId,
+    userType,
+}: RazorpayPlanLogContextInput) => ({
+    ...getBoundedRazorpayStringContext('lookupKey', lookupKey),
+    ...getBoundedRazorpayStringContext('legacyLookupKey', legacyLookupKey),
+    ...getBoundedRazorpayStringContext('providerPlanId', providerPlanId),
+    ...getBoundedRazorpayStringContext('productId', productId),
+    ...getBoundedRazorpayStringContext('userType', userType),
+    ...getBoundedRazorpayStringContext('planId', planId),
+    ...getBoundedRazorpayStringContext('interval', interval),
+    ...getBoundedRazorpayStringContext('currency', currency),
+    price,
+});
 
 /**
  * Finds an existing Razorpay plan or creates a new one to avoid duplicates.
@@ -24,7 +60,17 @@ export async function getOrCreateRazorpayPlan(planInfo: PlanInfo): Promise<strin
     // 1. Generate a unique, predictable key for this plan variation.
     const lookupKey = `${productId}_${userType}_${planId}_${interval}_${currency}_${price}`.toUpperCase();
     const legacyLookupKey = `${userType}_${planId}_${interval}_${currency}_${price}`.toUpperCase();
-    logger.debug('Searching for Razorpay plan', { lookupKey, productId, userType, planId, interval });
+    const planLogContext = getRazorpayPlanLogContext({
+        currency,
+        interval,
+        legacyLookupKey,
+        lookupKey,
+        planId,
+        price,
+        productId,
+        userType,
+    });
+    logger.debug('Searching for Razorpay plan', planLogContext);
 
     try {
         // 2. Search for an existing plan with this lookupKey.
@@ -37,12 +83,15 @@ export async function getOrCreateRazorpayPlan(planInfo: PlanInfo): Promise<strin
 
         // 3. If a plan is found, return its ID.
         if (foundPlan) {
-            logger.info('Existing Razorpay plan found', { providerPlanId: foundPlan.id, lookupKey, productId });
+            logger.info('Existing Razorpay plan found', {
+                ...planLogContext,
+                ...getBoundedRazorpayStringContext('providerPlanId', foundPlan.id),
+            });
             return foundPlan.id;
         }
 
         // 4. If no plan is found, create a new one.
-        logger.info('Creating new Razorpay plan', { lookupKey, price, currency, interval });
+        logger.info('Creating new Razorpay plan', planLogContext);
 
         const planPayload = {
             period: (interval === "MONTH" ? "monthly" : "yearly") as "monthly" | "yearly",
@@ -60,11 +109,22 @@ export async function getOrCreateRazorpayPlan(planInfo: PlanInfo): Promise<strin
         };
 
         const newPlan = await razorpayClient.plans.create(planPayload);
-        logger.info('Razorpay plan created successfully', { planId: newPlan.id, lookupKey, price, currency });
+        logger.info('Razorpay plan created successfully', {
+            ...planLogContext,
+            ...getBoundedRazorpayStringContext('providerPlanId', newPlan.id),
+        });
 
         return newPlan.id;
     } catch (error) {
-        logger.error('Failed to find or create Razorpay plan', error, { lookupKey, price, currency });
-        throw new Error(`Could not process Razorpay plan: ${(error as Error).message}`);
+        secureError(
+            '[Razorpay] Plan lookup or create failed',
+            new Error('razorpay_plan_lookup_or_create_failed'),
+            getRazorpayFailureLogData(
+                'razorpay_plan_lookup_or_create_failed',
+                error,
+                planLogContext,
+            ),
+        );
+        throw new Error('Could not process Razorpay plan.');
     }
 }

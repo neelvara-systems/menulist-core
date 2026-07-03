@@ -11,12 +11,12 @@
 
 | System | Feature Flag | Status | What It Does |
 |--------|-------------|--------|-------------|
-| SAFE_MODE | `ENABLE_COST_PROTECTION` | OFF | Circuit breaker for expensive AI operations |
-| Telegram Alerts | `ENABLE_OPS_ALERTS` | OFF | Push notifications for system failures |
-| Menu Health Monitor | `ENABLE_MENU_HEALTH_MONITOR` | OFF | Post-publish menu verification |
+| SAFE_MODE | `ENABLE_COST_PROTECTION` | Code gate ON; runtime switch normally OFF | Circuit breaker for expensive AI operations |
+| Telegram Alerts | `ENABLE_OPS_ALERTS` | Code gate ON; secrets/deploy evidence required | Push notifications for system failures |
+| Menu Health Monitor | `ENABLE_MENU_HEALTH_MONITOR` | Code gate ON; deploy/smoke evidence required | Post-publish menu verification |
 | Ops Dashboard | N/A (route-level) | Built | System visibility at `/ops` |
 
-**All flags are OFF by default.** Enable when ready for production.
+Code flags are not a launch approval signal. Check current values in `src/config/features.ts`, then use [External Certification Runbook](./production-readiness/external-certification-runbook.md) evidence before treating provider-backed systems as launch-ready. Do not turn every flag on as a generic launch step.
 
 ---
 
@@ -80,12 +80,12 @@ curl -X POST /api/ops/safe-mode \
 1. Create Telegram bot via @BotFather → get `TELEGRAM_BOT_TOKEN`
 2. Create private channel for alerts
 3. Add bot to channel → get `TELEGRAM_CHAT_ID`
-4. Set Firebase Functions secrets:
+4. Set Firebase Functions secrets in QA first:
    ```bash
-   firebase functions:secrets:set TELEGRAM_BOT_TOKEN
-   firebase functions:secrets:set TELEGRAM_CHAT_ID
+   firebase functions:secrets:set TELEGRAM_BOT_TOKEN --project menulist-qa
+   firebase functions:secrets:set TELEGRAM_CHAT_ID --project menulist-qa
    ```
-5. Set `ENABLE_OPS_ALERTS: true` in `src/config/features.ts`
+5. Confirm `ENABLE_OPS_ALERTS` in `src/config/features.ts`, then record target secret and deploy evidence before production use. Production values require QA alert-delivery evidence and explicit production secret approval before repeating the same commands with `--project menulist`.
 
 ### When Alerts Fire
 Alerts fire automatically when `createAlert()` is called anywhere in the system:
@@ -105,6 +105,8 @@ curl -X POST /api/ops/mute-alerts \
   -d '{"durationMinutes": 20}'
 ```
 
+The mute API is platform-role protected, operator-rate-limited, and rejects bodies above 1KB before writing `ops_config/system`.
+
 ### Files
 | File | Purpose |
 |------|---------|
@@ -118,24 +120,23 @@ curl -X POST /api/ops/mute-alerts \
 ## 3. Menu Health Monitor — When & How
 
 ### Prerequisites
-1. Set `ENABLE_MENU_HEALTH_MONITOR: true` in `src/config/features.ts`
-2. Deploy Cloud Functions: `firebase deploy --only functions`
+1. Confirm `ENABLE_MENU_HEALTH_MONITOR` in `src/config/features.ts`, then record target deploy and post-publish smoke evidence before production use.
+2. Run `npm run verify:functions-deploy-preflight`, then deploy only the affected MenuList Functions to `menulist-qa` through [External Certification Runbook](./production-readiness/external-certification-runbook.md) Gate 1. Production deploy requires QA evidence and explicit production approval.
 
 ### How It Works
-After every publish, call the `verifyMenuPublish` Cloud Function:
+After every publish, call the MenuList `verifyMenuPublish` client wrapper:
 ```typescript
-import { getFunctions, httpsCallable } from 'firebase/functions';
-
-const functions = getFunctions(firebaseApp, 'us-central1');
-const verifyPublish = httpsCallable(functions, 'verifyMenuPublish');
+import { verifyMenuPublish } from '@lib/firebase/functions';
 
 // Call after publish completes
-await verifyPublish({
+void verifyMenuPublish({
   storeId: 'store123',
   tenantId: 'tenant456',
   publicMenuUrl: 'https://joespizza.menulist.ai/menu',
 });
 ```
+
+The wrapper remains fire-and-forget. If the callable import or invocation fails, the frontend logs only bounded metadata: store ID present/length, tenant ID present/length, public URL present/length, and normalized source error name/code/status. It does not log raw public URLs or provider error payloads, and the publish flow still continues.
 
 ### What Gets Checked
 1. HTTP 200 — Menu page loads
@@ -200,7 +201,7 @@ store.health = {
 
 | System | Monthly Cost (50 stores) | Impact |
 |--------|------------------------|--------|
-| SAFE_MODE checks | ~₹0.05 | 1 read per AI route call (cached) |
+| SAFE_MODE checks | ~₹0.05 | Next.js API routes read once per checked call; Cloud Functions cache warm instances |
 | Telegram delivery | ₹0.00 | Telegram API is free |
 | Publish verification | ~₹8 | 1 read + 1 write per publish |
 | Ops dashboard | ~₹0.22 | ~8 reads per page load |
@@ -245,14 +246,14 @@ This document is read by:
 
 ---
 
-## 8. Enabling for Production
+## 8. Production Certification Review
 
 ### Step 1: Set up Telegram (5 minutes)
 1. Create bot via @BotFather
 2. Create channel, add bot
 3. Set secrets in Firebase Functions
 
-### Step 2: Enable feature flags
+### Step 2: Confirm feature flags and target evidence
 ```typescript
 // src/config/features.ts
 ENABLE_COST_PROTECTION: true,    // SAFE_MODE checks
@@ -260,9 +261,12 @@ ENABLE_OPS_ALERTS: true,         // Telegram delivery
 ENABLE_MENU_HEALTH_MONITOR: true, // Post-publish verification
 ```
 
+These source values are necessary but not sufficient. Keep the target launch decision tied to External Certification Runbook evidence for secrets, scoped QA deploys, provider delivery, and production approval.
+
 ### Step 3: Deploy
 ```bash
-firebase deploy --only functions
+npm run verify:functions-deploy-preflight
+# Then use the scoped menulist-qa Functions target set from __docs__/production-readiness/external-certification-runbook.md Gate 1.
 ```
 
 ### Step 4: Set up GCP budget alerts

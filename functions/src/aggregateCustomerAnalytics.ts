@@ -5,6 +5,7 @@ import { firestoreAdmin } from './firebaseAdmin';
 import { logger as appLogger } from './lib/logger';
 import { addDaysToAnalyticsDateKey, getAnalyticsWeekday, parseAnalyticsDateKey } from './utils/analyticsDate';
 import { getBusinessAnalyticsDateKey } from './utils/businessDay';
+import { getAnalyticsErrorContext, getAnalyticsIdContext } from './analytics/analyticsDiagnostics';
 import { CatalogInsightInput, OwnerDashboardAIPayloads, writeDashboardSummaryDocument } from './analytics/dashboardSummaryAggregation';
 import {
     AnalyticsAiEntitlement,
@@ -88,7 +89,9 @@ interface DailyMetrics {
     viewsByEntrySource?: Record<string, number>;
     menuSessionsBySource?: Record<string, number>;
     actionSessionsBySource?: Record<string, number>;
+    actionSessionsByOpenHoursState?: Record<string, number>;
     menuActionClicksBySource?: Record<string, number>;
+    menuActionClicksByOpenHoursState?: Record<string, number>;
     menuViewsByLanguage?: Record<string, number>;
     menuSessionsByLanguage?: Record<string, number>;
     languageAdoptions?: Record<string, number>;
@@ -102,6 +105,7 @@ interface DailyMetrics {
     clicksByCategory?: Record<string, number>;
     hourlyViews?: Record<string, number>;
     hourlyMenuActionClicks?: Record<string, number>;
+    viewsByItem?: Record<string, number>;
     clicksByItem?: Record<string, number>;
     recommendationClicks?: Record<string, number>;
     recommendationClicksByItem?: Record<string, number>;
@@ -145,6 +149,11 @@ interface AggregationResults {
 }
 
 const OBP_PROJECT_ID = 'obp';
+const CUSTOMER_ANALYTICS_WEEKLY_AI_SUMMARY_FAILED = 'CUSTOMER_ANALYTICS_WEEKLY_AI_SUMMARY_FAILED';
+const CUSTOMER_ANALYTICS_MONTHLY_AI_SUMMARY_FAILED = 'CUSTOMER_ANALYTICS_MONTHLY_AI_SUMMARY_FAILED';
+const CUSTOMER_ANALYTICS_DAILY_AI_SUMMARY_FAILED = 'CUSTOMER_ANALYTICS_DAILY_AI_SUMMARY_FAILED';
+const CUSTOMER_ANALYTICS_PROJECT_AGGREGATION_FAILED = 'CUSTOMER_ANALYTICS_PROJECT_AGGREGATION_FAILED';
+const CUSTOMER_ANALYTICS_MANUAL_TRIGGER_FAILED = 'CUSTOMER_ANALYTICS_MANUAL_TRIGGER_FAILED';
 
 function getDashboardSummaryDocId(tId: string, sId: string, projectId: string): string {
     return `${tId}_${sId}_${projectId}_dashboard_summary`;
@@ -305,12 +314,13 @@ export async function aggregateCustomerAnalyticsForStoreDate(
                         results.weeklyAiSummaries++;
                     })().catch((aiError) => {
                         appLogger.warn('[AnalyticsSettlement] Weekly AI summary failed', {
-                            tId,
-                            sId,
-                            projectId,
+                            failureCode: CUSTOMER_ANALYTICS_WEEKLY_AI_SUMMARY_FAILED,
+                            tId: getAnalyticsIdContext(tId),
+                            sId: getAnalyticsIdContext(sId),
+                            projectId: getAnalyticsIdContext(projectId),
                             settlementDate: yesterdayStr,
-                            projectKey,
-                            error: aiError instanceof Error ? aiError.message : String(aiError),
+                            projectKey: getAnalyticsIdContext(projectKey),
+                            error: getAnalyticsErrorContext(aiError),
                         });
                     }));
                 }
@@ -336,12 +346,13 @@ export async function aggregateCustomerAnalyticsForStoreDate(
                         results.monthlyAiSummaries++;
                     })().catch((aiError) => {
                         appLogger.warn('[AnalyticsSettlement] Monthly AI summary failed', {
-                            tId,
-                            sId,
-                            projectId,
+                            failureCode: CUSTOMER_ANALYTICS_MONTHLY_AI_SUMMARY_FAILED,
+                            tId: getAnalyticsIdContext(tId),
+                            sId: getAnalyticsIdContext(sId),
+                            projectId: getAnalyticsIdContext(projectId),
                             settlementDate: yesterdayStr,
-                            projectKey,
-                            error: aiError instanceof Error ? aiError.message : String(aiError),
+                            projectKey: getAnalyticsIdContext(projectKey),
+                            error: getAnalyticsErrorContext(aiError),
                         });
                     }));
                 }
@@ -358,12 +369,13 @@ export async function aggregateCustomerAnalyticsForStoreDate(
                     results.dailyAiSummaries++;
                 })().catch((aiError) => {
                     appLogger.warn('[AnalyticsSettlement] Daily AI summary failed', {
-                        tId,
-                        sId,
-                        projectId,
+                        failureCode: CUSTOMER_ANALYTICS_DAILY_AI_SUMMARY_FAILED,
+                        tId: getAnalyticsIdContext(tId),
+                        sId: getAnalyticsIdContext(sId),
+                        projectId: getAnalyticsIdContext(projectId),
                         settlementDate: yesterdayStr,
-                        projectKey,
-                        error: aiError instanceof Error ? aiError.message : String(aiError),
+                        projectKey: getAnalyticsIdContext(projectKey),
+                        error: getAnalyticsErrorContext(aiError),
                     });
                 }));
             }
@@ -389,14 +401,16 @@ export async function aggregateCustomerAnalyticsForStoreDate(
                 results.documentsDeleted += deletedCount;
             }
         } catch (error: any) {
-            appLogger.error('[AnalyticsSettlement] Project aggregation failed', error, {
-                tId,
-                sId,
-                projectId,
+            appLogger.error('[AnalyticsSettlement] Project aggregation failed', new Error(CUSTOMER_ANALYTICS_PROJECT_AGGREGATION_FAILED), {
+                failureCode: CUSTOMER_ANALYTICS_PROJECT_AGGREGATION_FAILED,
+                tId: getAnalyticsIdContext(tId),
+                sId: getAnalyticsIdContext(sId),
+                projectId: getAnalyticsIdContext(projectId),
                 settlementDate: yesterdayStr,
-                projectKey,
+                projectKey: getAnalyticsIdContext(projectKey),
+                error: getAnalyticsErrorContext(error),
             });
-            results.errors.push({ projectKey, error: error.message });
+            results.errors.push({ projectKey, error: CUSTOMER_ANALYTICS_PROJECT_AGGREGATION_FAILED });
         }
     }
 
@@ -492,7 +506,9 @@ async function updateSummaryDocument(
         'viewsByEntrySource',
         'menuSessionsBySource',
         'actionSessionsBySource',
+        'actionSessionsByOpenHoursState',
         'menuActionClicksBySource',
+        'menuActionClicksByOpenHoursState',
         'menuViewsByLanguage',
         'menuSessionsByLanguage',
         'languageAdoptions',
@@ -509,7 +525,8 @@ async function updateSummaryDocument(
     addMapUpdates('viewsByCategory');
     addMapUpdates('clicksByCategory');
 
-    // Aggregate top items (clicksByItem)
+    // Aggregate top items
+    addMapUpdates('viewsByItem');
     addMapUpdates('clicksByItem');
 
     // Aggregate Decision Blocks rendered - CRITICAL for owner dashboard
@@ -545,6 +562,7 @@ async function updateSummaryDocument(
     }
     const namedItemIds = new Set<string>([
         ...Object.keys(readAnalyticsMap(dailyData as any, 'clicksByItem')),
+        ...Object.keys(readAnalyticsMap(dailyData as any, 'viewsByItem')),
         ...Object.keys(readAnalyticsMap(dailyData as any, 'recommendationClicksByItem')),
         ...Object.keys(unavailableItemTapsByItem),
     ]);
@@ -722,7 +740,9 @@ function buildLateCorrectionSummaryUpdates(
     addMapDelta('viewsByEntrySource', 'viewsByEntrySource');
     addMapDelta('menuSessionsBySource', 'menuSessionsBySource');
     addMapDelta('actionSessionsBySource', 'actionSessionsBySource');
+    addMapDelta('actionSessionsByOpenHoursState', 'actionSessionsByOpenHoursState');
     addMapDelta('menuActionClicksBySource', 'menuActionClicksBySource');
+    addMapDelta('menuActionClicksByOpenHoursState', 'menuActionClicksByOpenHoursState');
     addMapDelta('menuViewsByLanguage', 'menuViewsByLanguage');
     addMapDelta('menuSessionsByLanguage', 'menuSessionsByLanguage');
     addMapDelta('languageAdoptions', 'languageAdoptions');
@@ -736,6 +756,7 @@ function buildLateCorrectionSummaryUpdates(
     addMapDelta('clicksByCategory', 'clicksByCategory');
     addMapDelta('hourlyViews', 'hourlyViews');
     addMapDelta('hourlyMenuActionClicks', 'hourlyMenuActionClicks');
+    addMapDelta('viewsByItem', 'viewsByItem');
     addMapDelta('clicksByItem', 'clicksByItem');
     addMapDelta('decisionBlocksRendered', 'decisionBlocksRendered');
     addMapDelta('recommendationClicks', 'recommendationClicks');
@@ -1016,7 +1037,9 @@ function aggregateDailyDocs(docs: any[]): any {
         viewsByEntrySource: {},
         menuSessionsBySource: {},
         actionSessionsBySource: {},
+        actionSessionsByOpenHoursState: {},
         menuActionClicksBySource: {},
+        menuActionClicksByOpenHoursState: {},
         menuViewsByLanguage: {},
         menuSessionsByLanguage: {},
         languageAdoptions: {},
@@ -1030,6 +1053,7 @@ function aggregateDailyDocs(docs: any[]): any {
         clicksByCategory: {},
         hourlyViews: {},
         hourlyMenuActionClicks: {},
+        viewsByItem: {},
         clicksByItem: {},
         searchTerms: {},
         zeroResultSearchTerms: {},
@@ -1095,7 +1119,9 @@ function aggregateDailyDocs(docs: any[]): any {
         mergeMapField(result.viewsByEntrySource, readAnalyticsMap(doc, 'viewsByEntrySource'));
         mergeMapField(result.menuSessionsBySource, readAnalyticsMap(doc, 'menuSessionsBySource'));
         mergeMapField(result.actionSessionsBySource, readAnalyticsMap(doc, 'actionSessionsBySource'));
+        mergeMapField(result.actionSessionsByOpenHoursState, readAnalyticsMap(doc, 'actionSessionsByOpenHoursState'));
         mergeMapField(result.menuActionClicksBySource, readAnalyticsMap(doc, 'menuActionClicksBySource'));
+        mergeMapField(result.menuActionClicksByOpenHoursState, readAnalyticsMap(doc, 'menuActionClicksByOpenHoursState'));
         mergeMapField(result.menuViewsByLanguage, readAnalyticsMap(doc, 'menuViewsByLanguage'));
         mergeMapField(result.menuSessionsByLanguage, readAnalyticsMap(doc, 'menuSessionsByLanguage'));
         mergeMapField(result.languageAdoptions, readAnalyticsMap(doc, 'languageAdoptions'));
@@ -1109,6 +1135,7 @@ function aggregateDailyDocs(docs: any[]): any {
         mergeMapField(result.clicksByCategory, readAnalyticsMap(doc, 'clicksByCategory'));
         mergeMapField(result.hourlyViews, readAnalyticsMap(doc, 'hourlyViews'));
         mergeMapField(result.hourlyMenuActionClicks, readAnalyticsMap(doc, 'hourlyMenuActionClicks'));
+        mergeMapField(result.viewsByItem, readAnalyticsMap(doc, 'viewsByItem'));
         mergeMapField(result.clicksByItem, readAnalyticsMap(doc, 'clicksByItem'));
         mergeMapField(result.searchTerms, readAnalyticsMap(doc, 'searchTerms'));
         mergeMapField(result.zeroResultSearchTerms, readAnalyticsMap(doc, 'zeroResultSearchTerms'));
@@ -1503,7 +1530,16 @@ export const triggerCustomerAnalyticsManually = onCall({
 
     const { tId, sId, projectId, forceWeekly, forceMonthly } = request.data || {};
 
-    console.log(`[Manual Trigger] User: ${request.auth.uid}, Project: ${tId}_${sId}_${projectId}`);
+    appLogger.info('[ManualCustomerAnalytics] Trigger accepted', {
+        requesterRole,
+        requesterPresent: Boolean(request.auth.uid),
+        tIdLength: String(tId || '').length,
+        sIdLength: String(sId || '').length,
+        projectIdLength: String(projectId || '').length,
+        hasProjectScope: Boolean(tId && sId && projectId),
+        forceWeekly: Boolean(forceWeekly),
+        forceMonthly: Boolean(forceMonthly),
+    });
 
     const db = firestoreAdmin;
     try {
@@ -1549,9 +1585,17 @@ export const triggerCustomerAnalyticsManually = onCall({
         };
 
     } catch (error) {
+        appLogger.error('[ManualCustomerAnalytics] Trigger failed', new Error(CUSTOMER_ANALYTICS_MANUAL_TRIGGER_FAILED), {
+            failureCode: CUSTOMER_ANALYTICS_MANUAL_TRIGGER_FAILED,
+            tId: getAnalyticsIdContext(tId),
+            sId: getAnalyticsIdContext(sId),
+            projectId: getAnalyticsIdContext(projectId),
+            hasProjectScope: Boolean(tId && sId && projectId),
+            error: getAnalyticsErrorContext(error),
+        });
         throw new HttpsError(
             'internal',
-            'Aggregation failed: ' + (error instanceof Error ? error.message : 'Unknown error')
+            'Aggregation failed. Please try again.'
         );
     }
 });

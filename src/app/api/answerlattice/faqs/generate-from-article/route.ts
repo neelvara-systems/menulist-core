@@ -14,11 +14,13 @@ import {
     ANSWERLATTICE_FAQ_GENERATED_PER_ARTICLE_LIMIT,
     normalizeGeneratedFaqs,
 } from '@lib/answerlattice/faqContent';
+import { buildAnswerlatticeRateLimitKey } from '@lib/answerlattice/rateLimitKeys';
 import { resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
 import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
 import { genAIClient } from '@lib/google/genAi';
 import { checkRateLimit } from '@lib/rateLimit';
-import { secureError, secureLog } from '@lib/security/secureLogger';
+import { getBoundedRuntimeStringContext, logRuntimeDiagnostic, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
+import { readBoundedJsonBody } from '@lib/security/boundedRequestBody';
 import { extractPlainTextFromEditorContent } from '@lib/vectorEmbeddings/articleEmbeddings';
 import { ANSWERLATTICE_FAQ_SOURCE, ANSWERLATTICE_FAQ_STATUS } from '@type/answerlattice';
 import { type KnowledgeBaseArticleType } from '@type/knowledgeBase';
@@ -31,7 +33,15 @@ const GenerateFaqRequestSchema = z.object({
     articleId: z.string().trim().min(1).max(180),
 });
 
+const GENERATE_FAQ_FROM_ARTICLE_MAX_BODY_BYTES = 4 * 1024;
 const MAX_ARTICLE_TEXT_FOR_PROMPT = 6000;
+const FAQ_PROVIDER_RESPONSE_TEXT_MAX_CHARS = 32 * 1024;
+
+type BoundedFaqProviderResponseText = {
+    originalLength: number;
+    text: string;
+    truncated: boolean;
+};
 
 const normalizeQuestionKey = (value: unknown): string => (
     typeof value === 'string'
@@ -59,11 +69,20 @@ const extractJsonObject = (value: string): Record<string, unknown> | null => {
     }
 };
 
-const getResponseText = (response: any): string => {
+const getRawResponseText = (response: any): string => {
     if (!response) return '';
     if (typeof response.text === 'function') return String(response.text() || '');
     if (typeof response.text === 'string') return response.text;
     return '';
+};
+
+const getResponseText = (response: any): BoundedFaqProviderResponseText => {
+    const rawText = getRawResponseText(response);
+    return {
+        originalLength: rawText.length,
+        text: rawText.slice(0, FAQ_PROVIDER_RESPONSE_TEXT_MAX_CHARS),
+        truncated: rawText.length > FAQ_PROVIDER_RESPONSE_TEXT_MAX_CHARS,
+    };
 };
 
 const buildFaqPrompt = (article: KnowledgeBaseArticleType, text: string) => {
@@ -107,23 +126,21 @@ ${text.slice(0, MAX_ARTICLE_TEXT_FOR_PROMPT)}`;
 };
 
 export const POST = withAuth(async (request: NextRequest, session) => {
+    let tenantIdForLog: number | string | undefined;
+    let storeIdForLog: number | string | undefined;
+    const userIdForLog = session.uId || session.user?.id;
+    let articleIdForLog: string | undefined;
+
     try {
         if (!FEATURE_FLAGS.ENABLE_ANSWERLATTICE_FAQ_MANAGEMENT) {
             return NextResponse.json({ error: 'FAQ management is not enabled.' }, { status: 404 });
         }
 
-        const permission = await requireAnswerlatticePermission(request, session, ANSWERLATTICE_PERMISSION_KEYS.MANAGE_KNOWLEDGE);
-        if (permission.response) return permission.response;
-
-        const requestBody = await request.json().catch(() => null);
-        const validation = GenerateFaqRequestSchema.safeParse(requestBody);
-        if (!validation.success) {
-            return NextResponse.json({ error: 'Invalid FAQ generation request.' }, { status: 400 });
-        }
-
         const sessionScope = resolveAnswerlatticeSessionScope(session);
         const tenantId = Number(sessionScope?.tenantId);
         const storeId = Number(sessionScope?.storeId);
+        tenantIdForLog = sessionScope?.tenantId;
+        storeIdForLog = sessionScope?.storeId;
         if (!Number.isFinite(tenantId) || tenantId <= 0 || !Number.isFinite(storeId) || storeId <= 0) {
             return NextResponse.json({ error: 'Answerlattice workspace is not available.' }, { status: 400 });
         }
@@ -133,13 +150,33 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         if (safeModeResponse) return safeModeResponse;
 
         const rateLimitResult = await checkRateLimit({
-            key: `answerlattice-faq-generation:${tenantId}:${storeId}:${session.user.id}`,
+            key: buildAnswerlatticeRateLimitKey('answerlattice-faq-generation', tenantId, storeId, userIdForLog || 'unknown'),
             limit: 8,
             window: 3600,
         });
         if (!rateLimitResult.allowed) {
             return NextResponse.json({ error: 'Too many FAQ refresh requests. Try again later.' }, { status: 429 });
         }
+
+        const permission = await requireAnswerlatticePermission(request, session, ANSWERLATTICE_PERMISSION_KEYS.MANAGE_KNOWLEDGE);
+        if (permission.response) return permission.response;
+
+        const bodyResult = await readBoundedJsonBody(request, GENERATE_FAQ_FROM_ARTICLE_MAX_BODY_BYTES, {
+            invalidJsonMessage: 'Invalid FAQ generation request.',
+            tooLargeMessage: 'Request body too large.',
+        });
+        if (bodyResult.ok === false) {
+            return NextResponse.json(
+                { error: bodyResult.response.status === 413 ? 'Request body too large.' : 'Invalid FAQ generation request.' },
+                { status: bodyResult.response.status },
+            );
+        }
+
+        const validation = GenerateFaqRequestSchema.safeParse(bodyResult.data);
+        if (!validation.success) {
+            return NextResponse.json({ error: 'Invalid FAQ generation request.' }, { status: 400 });
+        }
+        articleIdForLog = validation.data.articleId;
 
         const db = answerlatticeFirestoreAdmin;
         if (!db || typeof (db as any).collection !== 'function') {
@@ -204,7 +241,18 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             },
         });
 
-        const parsed = extractJsonObject(getResponseText(response));
+        const responseText = getResponseText(response);
+        if (responseText.truncated) {
+            logRuntimeDiagnostic('answerlattice_faq_provider_response_truncated', {
+                ...getBoundedRuntimeStringContext('tenantId', tenantId),
+                ...getBoundedRuntimeStringContext('storeId', storeId),
+                ...getBoundedRuntimeStringContext('articleId', articleId),
+                providerResponseTextLength: responseText.originalLength,
+                providerResponseTextMaxChars: FAQ_PROVIDER_RESPONSE_TEXT_MAX_CHARS,
+            });
+        }
+
+        const parsed = extractJsonObject(responseText.text);
         const normalizedFaqs = normalizeGeneratedFaqs(parsed?.faqs);
         const uniqueFaqs = normalizedFaqs.filter((faq) => {
             const key = normalizeQuestionKey(faq.question);
@@ -282,13 +330,17 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             name: session.user?.name,
             email: session.user?.email,
         }).catch((logError) => {
-            secureError('[Answerlattice FAQ] Operation log failed', logError as Error, { articleId, tenantId, storeId });
+            logRuntimeFailure('answerlattice_faq_operation_log_failed', logError, {
+                ...getBoundedRuntimeStringContext('tenantId', tenantId),
+                ...getBoundedRuntimeStringContext('storeId', storeId),
+                ...getBoundedRuntimeStringContext('articleId', articleId),
+            });
         });
 
-        secureLog('[Answerlattice FAQ] Article suggestions generated', {
-            articleId,
-            tenantId,
-            storeId,
+        logRuntimeDiagnostic('answerlattice_faq_generation_completed', {
+            ...getBoundedRuntimeStringContext('tenantId', tenantId),
+            ...getBoundedRuntimeStringContext('storeId', storeId),
+            ...getBoundedRuntimeStringContext('articleId', articleId),
             createdCount: createdFaqs.length,
             skippedDuplicateCount: normalizedFaqs.length - createdFaqs.length,
         });
@@ -322,8 +374,11 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 },
             );
         }
-        secureError('[Answerlattice FAQ] Article suggestion generation failed', error as Error, {
-            userId: session.user?.id,
+        logRuntimeFailure('answerlattice_faq_generation_failed', error, {
+            ...getBoundedRuntimeStringContext('tenantId', tenantIdForLog),
+            ...getBoundedRuntimeStringContext('storeId', storeIdForLog),
+            ...getBoundedRuntimeStringContext('userId', userIdForLog),
+            ...getBoundedRuntimeStringContext('articleId', articleIdForLog),
         });
         return NextResponse.json({ error: 'Failed to refresh FAQ suggestions.' }, { status: 500 });
     }

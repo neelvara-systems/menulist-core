@@ -1,9 +1,12 @@
 # 🧪 PRODUCTION TESTING GUIDE
 
-**Purpose:** Step-by-step manual verification of all MenuListAi intelligence features  
-**Audience:** Founder/QA before production launch  
-**Date:** January 11, 2026  
-**Estimated Time:** 2-3 hours for complete verification
+**Purpose:** Historical manual spot-check guide for MenuList intelligence features
+**Audience:** Founder/QA running supplementary manual checks before production launch
+**Date:** January 11, 2026
+**Status:** Companion manual checklist only. The active launch authority is [External Certification Runbook](./production-readiness/external-certification-runbook.md) plus [MenuList Production Readiness Audit](./audits/menulist-production-readiness-audit.md).
+**Estimated Time:** 2-3 hours for complete manual spot-checking
+
+> This guide is not a production-launch approval checklist. Use it only after the local source gates in `npm run verify:production-readiness-local` pass and the relevant External Certification Runbook gate is ready to collect manual evidence.
 
 ---
 
@@ -18,18 +21,17 @@ Before starting, ensure:
 | Test store exists     | At least 1 store with menu data              | ☐      |
 | Menu has 10+ items    | Items with images, prices, categories        | ☐      |
 | Analytics data exists | At least 7 days of simulated views/clicks    | ☐      |
-| Feature flags enabled | All flags `true` in `src/config/features.ts` | ☐      |
+| Feature flags reviewed | Verify the target environment uses the documented launch flag state in `src/config/features.ts`; do not force all flags on. | ☐      |
 
-### Quick Feature Flag Check
+### Quick Feature Flag Review
 
-Open `src/config/features.ts` and verify:
+Feature flags are part of the launch surface, not a blanket "enable everything" switch. Before using this manual checklist:
 
-```typescript
-ENABLE_DECISION_BLOCKS: true; // Line 298
-SOCIAL_CONTENT_ENABLED: true; // Line 337
-DIGITAL_SCREENS_ENABLED: true; // Line 415
-MENU_INTELLIGENCE_ENABLED: true; // Line 439
+```bash
+npm run verify:production-readiness-local
 ```
+
+Then review `src/config/features.ts` for the specific feature under test and record the exact flag state in the production-readiness audit evidence. If a feature is intentionally disabled, do not mark that as a code failure.
 
 ---
 
@@ -588,27 +590,25 @@ Shows ONE sentence for staff to repeat when customers ask "What's good?"
 
 ---
 
-# FINAL PRODUCTION CHECKLIST
+# MANUAL SPOT-CHECK SUMMARY
 
-## Before Going Live
+## Before Recording Manual Evidence
 
 | Category       | Item                                 | Status |
 | -------------- | ------------------------------------ | ------ |
-| **Code**       | All tests above pass                 | ☐      |
-| **Security**   | `withAuth()` on all protected routes | ☐      |
-| **Config**     | Feature flags set correctly          | ☐      |
-| **Config**     | Environment variables in production  | ☐      |
-| **Database**   | Firestore rules deployed             | ☐      |
-| **Monitoring** | Sentry enabled (optional)            | ☐      |
-| **Docs**       | All spec/impl docs current           | ☐      |
+| **Local gates** | `npm run verify:production-readiness-local` passes immediately before the manual run | ☐      |
+| **External gate** | Relevant External Certification Runbook gate is identified | ☐      |
+| **Config**     | Feature flags match the target environment and are recorded in audit evidence | ☐      |
+| **Environment** | Required provider/Firebase/Vercel credentials are real for the target environment | ☐      |
+| **Evidence**   | Exact routes, accounts, devices, and expected results are recorded before testing | ☐      |
 
-## Go-Live Sequence
+## Evidence Sequence
 
-1. **Deploy to staging** → Run all tests above
-2. **Enable for 1 beta store** → Monitor 24 hours
-3. **Check Sentry** → Zero critical errors
-4. **Enable for 10 stores** → Monitor 7 days
-5. **Full rollout** → Enable for all stores
+1. Run the relevant local source gates from the External Certification Runbook.
+2. Run only the manual checks that match the active external gate.
+3. Record evidence in `__docs__/audits/menulist-production-readiness-audit.md`.
+4. Keep the gate open if credentials, devices, provider assets, deploy approval, or production-host evidence are missing.
+5. Do not use this manual guide to approve Firebase deploys, Vercel deploys, or full production launch.
 
 ---
 
@@ -627,7 +627,7 @@ Shows ONE sentence for staff to repeat when customers ask "What's good?"
 
 ---
 
-## Sign-Off
+## Manual Evidence Sign-Off
 
 ```
 ╔══════════════════════════════════════════════════════════════════════════════╗
@@ -635,9 +635,11 @@ Shows ONE sentence for staff to repeat when customers ask "What's good?"
 ║  TESTER: ____________________                                                  ║
 ║  DATE:   ____________________                                                  ║
 ║                                                                                ║
-║  ALL 38 TESTS PASSED: [ ] YES  [ ] NO                                          ║
+║  EXTERNAL RUNBOOK GATE: ____________________                                  ║
 ║                                                                                ║
-║  PRODUCTION READY: [ ] YES  [ ] NO                                             ║
+║  RESULT: [ ] PASSED  [ ] BLOCKED  [ ] FAILED                                  ║
+║                                                                                ║
+║  AUDIT EVIDENCE LOCATION: ____________________________________________         ║
 ║                                                                                ║
 ║  NOTES: _______________________________________________________________        ║
 ║                                                                                ║

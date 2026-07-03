@@ -1,72 +1,76 @@
 # B2C View (Theme Builder) — Help Documentation
 
+**Status:** Source-backed help copy; not current launch certification
+
 ## Quick Summary
-The B2C Preview lets you customize how your digital menu looks to customers — colors, layout, logo, background. Preview changes in real-time before publishing.
+
+The B2C Preview lets you choose a menu style, compatible layout, brand accent, and display settings before publishing the customer menu.
 
 ---
 
 ## How-To Guides
 
-### How to change your menu's color scheme
-1. Go to **Projects** → select your project → **Preview** tab
-2. Find the **Brand** or **Design** section
-3. Click the **Accent Color** picker
-4. Choose your restaurant's brand color
-5. See the change immediately in the preview
-6. Click **Save**
+### How to change the menu style
 
-### How to upload your logo
-1. In the **Preview** tab, find the **Logo** section
-2. Click **Upload Logo**
-3. Select your logo file (PNG recommended, transparent background)
-4. See it appear in the preview
-5. Click **Save**
+1. Go to **Projects** and select your menu project.
+2. Open the customer menu preview/design area.
+3. Choose a menu mood such as Clean, Warm, Premium, Bold, or Fast.
+4. Review the preview.
+5. Save or publish when the preview matches the menu you want customers to see.
+
+### How to set the brand accent
+
+1. Open the design controls.
+2. Choose an accent color.
+3. Check the preview for readability.
+4. Save or publish.
+
+MenuList checks contrast for public menu colors so customer text stays readable.
 
 ### How to change the menu layout
-1. In the **Preview** tab, find **Layout** options
-2. Choose between:
-   - **Vertical** — Standard scrolling list
-   - **Horizontal** — Tab-based category navigation
-3. Pick a **Mood** — casual, elegant, modern
-4. Click **Save**
 
-### How to add a background image
-1. In the **Preview** tab, find **Background** settings
-2. Click **Upload Background**
-3. Select an image
-4. See it applied in the preview
-5. Click **Save**
+1. Open the layout controls.
+2. Choose one of the available layouts shown for the selected mood:
+   - **List** for compact menu sections.
+   - **Grid** for visual menus with item images.
+   - **Card** for larger item cards.
+3. Save or publish.
 
-### How to preview on different devices
-1. In the **Preview** tab, look for device frame buttons
-2. Switch between phone, tablet, desktop, and landscape views
-3. Check that your menu looks good on all sizes
+Some layouts may not appear for every mood. MenuList only shows compatible choices.
+
+### How to use category tabs
+
+1. Open the display settings.
+2. Turn category tabs on or off.
+3. Save or publish.
+
+Category tabs control customer navigation. They are separate from the selected layout.
+
+### How to upload brand media
+
+1. Open the brand media controls where available.
+2. Upload the logo or background image.
+3. Check the customer menu preview.
+4. Save or publish.
 
 ---
 
 ## Troubleshooting
 
 ### My logo looks blurry
-**Fix:** Upload a higher-resolution logo (at least 200x200 pixels). PNG format works best.
 
-### Colors don't match my brand
-**Fix:** Use your exact brand color hex code. Click the color picker and type it in.
+Upload a higher-resolution logo. PNG works best when the logo has a transparent background.
 
-### Preview looks different from actual customer view
-**Why:** Preview is close but not pixel-perfect. Minor differences may exist.
-**Fix:** Scan your QR code on your phone to see the actual customer view.
+### A layout option is missing
+
+The selected mood may not support that layout. Pick one of the layouts MenuList shows for the current mood.
+
+### Preview looks different from the actual customer menu
+
+The preview is close, but the customer menu is the final source. Scan your QR code on your phone after publishing and check the customer view.
 
 ---
 
-## Tips
-- 💡 Use your restaurant's brand color for the accent — consistency matters
-- 💡 Test on your own phone after saving — it's the real customer experience
-- 💡 Simple backgrounds work better than busy ones
-- 💡 Make sure your logo has good contrast with the background
+## Source Boundary
 
-## Related Features
-- **[Client Menu]** — The actual customer-facing menu that uses your theme
-- **[Data Editor]** — Edit menu content that appears in the preview
-
-## Need More Help?
-- **Email:** support@menulist.ai
+This help document is support-copy evidence for the current B2C design presentation source path; it is not current launch certification. Release approval requires the External Certification Runbook, Digital Menu Output Constitution checks, `npm run verify:menu-design-presentation-boundary`, browser/mobile customer-menu QA, public cache/deploy evidence, and target production smoke.

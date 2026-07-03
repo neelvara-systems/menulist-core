@@ -12,6 +12,7 @@ import { getStoreByCustomDomain, getStoreBySubdomain } from '@lib/firestore/clie
 import { getStoreContextName } from '@lib/businessIdentity/names';
 import { getResolvedAnalyticsPreferences } from '@lib/analytics/preferences';
 import { getTenantFromHeaders } from '@lib/multiTenant/getTenantFromHeaders';
+import { normalizeOBPExternalHttpsUrl } from '@lib/obp/publicLinks';
 import PwaExternalRedirectClient from '../PwaExternalRedirectClient';
 
 export const dynamic = 'force-dynamic';
@@ -27,7 +28,7 @@ export default async function PwaReservationHandoffPage() {
 
     if (!store) return notFound();
 
-    const reservationUrl: string | undefined = store.publicPresence?.reservationUrl;
+    const reservationUrl = normalizeOBPExternalHttpsUrl(store.publicPresence?.reservationUrl);
     if (!reservationUrl) return notFound();
 
     const analyticsPreferences = getResolvedAnalyticsPreferences(store.analytics);

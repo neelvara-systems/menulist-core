@@ -22,6 +22,36 @@ import { DB_COLLECTIONS } from '../constants/database';
 import { FUNCTION_FLAGS } from '../constants/features';
 import { firestoreAdmin as db } from '../firebaseAdmin';
 
+const ANSWERLATTICE_FRICTION_AGGREGATION_FAILED = 'ANSWERLATTICE_FRICTION_AGGREGATION_FAILED';
+const ANSWERLATTICE_FRICTION_STATS_CLEANUP_FAILED = 'ANSWERLATTICE_FRICTION_STATS_CLEANUP_FAILED';
+
+function getFrictionAggregationSourceErrorContext(error: unknown): {
+    sourceErrorName: string | null;
+    sourceErrorCode: string | number | null;
+    sourceStatusCode: number | null;
+} {
+    const source = error && typeof error === 'object' ? error as Record<string, unknown> : {};
+    const sourceStatusCode = typeof source.status === 'number'
+        ? source.status
+        : (typeof source.statusCode === 'number' ? source.statusCode : null);
+
+    return {
+        sourceErrorName: typeof source.name === 'string' ? source.name : null,
+        sourceErrorCode: typeof source.code === 'string' || typeof source.code === 'number' ? source.code : null,
+        sourceStatusCode,
+    };
+}
+
+function getFrictionAggregationScopeContext(tId?: number, sId?: number): {
+    hasTenantScope: boolean;
+    hasStoreScope: boolean;
+} {
+    return {
+        hasTenantScope: Number.isFinite(tId),
+        hasStoreScope: Number.isFinite(sId),
+    };
+}
+
 // ═══════════════════════════════════════════════════════════════
 // TYPES (server-side mirrors of src/types/answerlattice/index.ts)
 // ═══════════════════════════════════════════════════════════════
@@ -370,7 +400,11 @@ export async function aggregateFrictionStats(tId: number, sId: number): Promise<
         result.overallHealth = overallHealth;
 
     } catch (error) {
-        logger.error('[Answerlattice Friction] Aggregation failed', { tId, sId, error });
+        logger.error('[Answerlattice Friction] Aggregation failed', {
+            failureCode: ANSWERLATTICE_FRICTION_AGGREGATION_FAILED,
+            ...getFrictionAggregationScopeContext(tId, sId),
+            ...getFrictionAggregationSourceErrorContext(error),
+        });
     }
 
     return result;
@@ -407,7 +441,13 @@ export async function cleanupExpiredFrictionStats(tId: number, sId: number, rete
         }
         await batch.commit();
     } catch (error) {
-        logger.error('[Answerlattice Friction] Stats cleanup failed', { tId, sId, retentionDays, batchLimit, error });
+        logger.error('[Answerlattice Friction] Stats cleanup failed', {
+            failureCode: ANSWERLATTICE_FRICTION_STATS_CLEANUP_FAILED,
+            ...getFrictionAggregationScopeContext(tId, sId),
+            retentionDays,
+            batchLimit,
+            ...getFrictionAggregationSourceErrorContext(error),
+        });
     }
 
     return result;

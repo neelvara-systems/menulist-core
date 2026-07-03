@@ -1,12 +1,24 @@
 # 🔧 GBP SYNC — Implementation Plan
 
 **Feature:** #3 — Google Business Profile Minimal Sync  
-**Version:** 1.0  
-**Status:** 🔶 BLOCKED (Awaiting GBP API Access)  
-**Last Updated:** January 19, 2026  
+**Version:** 1.1
+**Status:** Source scaffold present; provider integration blocked by GBP API/OAuth/provider gates
+**Last Updated:** July 2, 2026
 **Author:** Lead Architect (Cascade)
 
 ---
+
+## Current Runtime Boundary
+
+Current source truth:
+
+- `ENABLE_GBP_SYNC` is `false` in `src/config/features.ts`.
+- `src/database/integrations/gbp.ts` defines the server-only token document shape and path helper, but all token operations throw `GBP_TOKEN_STORE_DISABLED`.
+- `src/components/templates/main-app/businessSettings/tabs/IntegrationsTab.tsx` gates the Google Business Profile card behind `gbpEnabled`; the shared Integrations tab may still show Platform Pull API controls.
+- No active Google OAuth route, callback route, connect-location route, disconnect route, apply-hours route, nightly GBP sync worker, or scheduler task is current runtime.
+- Current owner behavior is manual Google handoff using the Official Business Page/menu link.
+
+This file is a reserved implementation blueprint until API access, OAuth setup, provider smoke, scoped deploy evidence, browser/device QA, and production-host smoke exist.
 
 ## 📊 CHATGPT vs CODEBASE ANALYSIS
 
@@ -188,7 +200,7 @@ INTEGRATIONS: "integrations",
  * - Detects hours drift (read-only)
  * - Manual hours apply button
  *
- * What It Does NOT Do (Phase 1):
+ * What It Does NOT Do (reserved provider scope):
  * - Reviews, posts, photos, Q&A
  * - Auto-hours write without approval
  * - Performance analytics
@@ -326,7 +338,7 @@ Step A: Load tokens
 
 Step B: Read GBP Location
   - Fetch: websiteUri, regularHours
-  - Note: Only read regularHours (ignore specialHours in Phase 1)
+  - Note: Only read regularHours (ignore specialHours in the reserved provider scope)
 
 Step C: Menu Link Decision (websiteUri ONLY)
   Inputs: expectedUrl, currentUrl (from websiteUri), menuLinkMode, isWritable
@@ -391,46 +403,46 @@ match /tenants/{tId}/integrations/{doc=**} {
 
 ---
 
-## 📋 IMPLEMENTATION PHASES
+## Implementation Areas
 
-### Phase 0: Foundation (While Waiting for API Access) — Week 1
+### Source Scaffold
 
 | #   | Task                                   | File                                        | Status |
 | --- | -------------------------------------- | ------------------------------------------- | ------ |
-| 1   | Add `gbp`, `gbpState` to StoreDataType | `src/types/platform/store.ts`               | ⏳     |
-| 2   | Add `INTEGRATIONS` to DB_COLLECTIONS   | `src/constants/database.ts`                 | ⏳     |
-| 3   | Add GBP event types to MOL             | `src/types/mol.types.ts`                    | ⏳     |
-| 4   | Add `ENABLE_GBP_SYNC` feature flag     | `src/config/features.ts`                    | ⏳     |
-| 5   | Create integrations DAL skeleton       | `src/database/integrations/gbp.ts`          | ⏳     |
-| 6   | Add UI stub in Business Settings       | `businessSettings/tabs/IntegrationsTab.tsx` | ⏳     |
+| 1   | Add `gbp`, `gbpState` to StoreDataType | `src/types/platform/store.ts`               | ✅ source scaffold |
+| 2   | Add `INTEGRATIONS` to DB_COLLECTIONS   | `src/constants/database.ts`                 | ✅ source scaffold |
+| 3   | Add GBP event types to MOL             | `src/types/mol.types.ts`                    | ✅ source scaffold |
+| 4   | Add `ENABLE_GBP_SYNC` feature flag     | `src/config/features.ts`                    | ✅ false by default |
+| 5   | Create integrations DAL skeleton       | `src/database/integrations/gbp.ts`          | ✅ fail-closed token store |
+| 6   | Add UI stub in Business Settings       | `businessSettings/tabs/IntegrationsTab.tsx` | ✅ GBP card hidden while flag off |
 
-### Phase 1: OAuth + Connection (After API Access) — Week 1-2
+### Reserved Provider Connection
 
 | #   | Task                             | File                                             | Status |
 | --- | -------------------------------- | ------------------------------------------------ | ------ |
-| 7   | Implement auth-url route         | `api/integrations/gbp/auth-url/route.ts`         | ⏳     |
-| 8   | Implement callback route         | `api/integrations/gbp/callback/route.ts`         | ⏳     |
-| 9   | Implement connect-location route | `api/integrations/gbp/connect-location/route.ts` | ⏳     |
-| 10  | Implement disconnect route       | `api/integrations/gbp/disconnect/route.ts`       | ⏳     |
-| 11  | Add Firestore security rules     | `firestore.rules`                                | ⏳     |
+| 7   | Implement auth-url route         | `api/integrations/gbp/auth-url/route.ts`         | Not current runtime |
+| 8   | Implement callback route         | `api/integrations/gbp/callback/route.ts`         | Not current runtime |
+| 9   | Implement connect-location route | `api/integrations/gbp/connect-location/route.ts` | Not current runtime |
+| 10  | Implement disconnect route       | `api/integrations/gbp/disconnect/route.ts`       | Not current runtime |
+| 11  | Add Firestore security rules     | `firestore.rules`                                | Required before activation |
 
-### Phase 2: Sync + Apply — Week 2-3
+### Reserved Sync And Apply
 
 | #   | Task                         | File                                          | Status |
 | --- | ---------------------------- | --------------------------------------------- | ------ |
-| 12  | Implement nightly sync job   | `functions/src/integrations/gbpSync.ts`       | ⏳     |
-| 13  | Add to master scheduler      | `functions/src/schedulers/masterScheduler.ts` | ⏳     |
-| 14  | Implement apply-hours route  | `api/integrations/gbp/apply-hours/route.ts`   | ⏳     |
-| 15  | Complete Integrations UI tab | `businessSettings/tabs/IntegrationsTab.tsx`   | ⏳     |
+| 12  | Implement sync worker        | `functions/src/integrations/gbpSync.ts`       | Not current runtime |
+| 13  | Add to scheduler             | `functions/src/schedulers/masterScheduler.ts` | Not current runtime |
+| 14  | Implement apply-hours route  | `api/integrations/gbp/apply-hours/route.ts`   | Not current runtime |
+| 15  | Complete Integrations UI tab | `businessSettings/tabs/IntegrationsTab.tsx`   | Hidden scaffold only |
 
-### Phase 3: Hardening — Week 3
+### Required Hardening Before Activation
 
 | #   | Task                         | Status |
 | --- | ---------------------------- | ------ |
-| 16  | Rate limiting implementation | ⏳     |
-| 17  | Error handling + retry logic | ⏳     |
-| 18  | Manual testing               | ⏳     |
-| 19  | Production deployment        | ⏳     |
+| 16  | Rate limiting implementation | Required before activation |
+| 17  | Error handling + retry logic | Required before activation |
+| 18  | Provider smoke and browser/device QA | Required before activation |
+| 19  | Scoped deploy and production-host smoke | Required before activation |
 
 ---
 
@@ -500,7 +512,7 @@ match /tenants/{tId}/integrations/{doc=**} {
 
 ## 🚫 WHAT NOT TO BUILD
 
-Per ChatGPT + Cascade agreement, DO NOT implement in Phase 1:
+Per ChatGPT + Cascade agreement, DO NOT implement in the reserved provider integration:
 
 - ❌ Review response system
 - ❌ Posting/announcements

@@ -2,6 +2,7 @@
 
 import { getSchedulerDashboardSnapshot } from '@database/ops/scheduler';
 import { usePlatformStoreSummaryOptions } from '@hook/usePlatformStoreSummaryOptions';
+import { getBoundedOpsStringContext, logOpsFailure } from '@lib/ops/opsDiagnostics';
 import type { SchedulerHealthSummary, SchedulerRunFilter, SchedulerRunLog, SchedulerRunStatus, SchedulerSettlementSummary, SchedulerTaskResult, SchedulerTrigger } from '@lib/ops/schedulerTypes';
 import { formatDateTime, type IntlFormatter } from '@util/dateTime';
 import { Button, Card, Collapse, Divider, Modal, Select, Spin, Table, Tag, Typography, message, theme } from 'antd';
@@ -93,13 +94,34 @@ function formatDuration(ms: number): string {
     return `${minutes}m ${remainingSeconds}s`;
 }
 
+function formatDetailKey(key: string, index: number): string {
+    const normalized = String(key || '').trim();
+    return /^[a-zA-Z0-9_.:-]{1,48}$/.test(normalized) ? normalized : `detail_${index + 1}`;
+}
+
+function formatDetailValue(value: unknown): string {
+    if (value === undefined || value === null) return '[empty]';
+    if (typeof value === 'number' && Number.isFinite(value)) return String(value);
+    if (typeof value === 'boolean') return value ? 'true' : 'false';
+    if (typeof value === 'string') return `[text:length=${value.length}]`;
+    if (Array.isArray(value)) return `[array:length=${value.length}]`;
+    if (typeof value === 'object') return `[object:keys=${Object.keys(value as Record<string, unknown>).length}]`;
+    return `[${typeof value}]`;
+}
+
+function formatStoredSchedulerError(value: unknown): string {
+    if (value === undefined || value === null || value === '') return '';
+    return `Error recorded: ${formatDetailValue(value)}`;
+}
+
+function formatTaskError(value: unknown): string {
+    return formatStoredSchedulerError(value);
+}
+
 function flattenDetails(details: Record<string, any> | undefined): string {
     if (!details) return '-';
     return Object.entries(details)
-        .map(([k, v]) => {
-            if (typeof v === 'object') return `${k}: ${JSON.stringify(v)}`;
-            return `${k}: ${v}`;
-        })
+        .map(([key, value], index) => `${formatDetailKey(key, index)}: ${formatDetailValue(value)}`)
         .join(' | ');
 }
 
@@ -149,7 +171,12 @@ function SchedulerMonitor() {
             setRunHistory(snapshot.runHistory);
             setSettlement(snapshot.settlement);
         } catch (error) {
-            console.error('[SchedulerMonitor] Failed to load data:', error);
+            logOpsFailure('ops_scheduler_monitor_load_failed', error, {
+                isPlatform,
+                statusFilter: filterStatus,
+                triggerFilter: filterTrigger,
+                ...getBoundedOpsStringContext('platformRole', platformRole),
+            });
             message.error('Failed to load scheduler data');
         } finally {
             setLoading(false);
@@ -192,7 +219,12 @@ function SchedulerMonitor() {
                     await loadData();
                 } catch (error: any) {
                     const runLogId = error?.details?.runLogId;
-                    message.error(`Nightly recovery failed: ${error.message}${runLogId ? ` · Run log: ${runLogId}` : ''}`);
+                    logOpsFailure('ops_scheduler_manual_recovery_failed', error, {
+                        ...getBoundedOpsStringContext('storeId', selectedStore.sId),
+                        ...getBoundedOpsStringContext('tenantId', selectedStore.tId),
+                        ...getBoundedOpsStringContext('runLogId', runLogId),
+                    });
+                    message.error(`Nightly recovery failed${runLogId ? ` · Run log: ${runLogId}` : ''}`);
                 } finally {
                     setTriggerLoading(false);
                 }
@@ -343,7 +375,7 @@ function SchedulerMonitor() {
                                     </Text>
                                 )}
                                 <Text type="secondary" style={{ fontSize: 12, marginLeft: 'auto' }}>
-                                    {task.error || flattenDetails(task.details)}
+                                    {formatTaskError(task.error) || flattenDetails(task.details)}
                                 </Text>
                             </div>
                         ))}
@@ -432,7 +464,7 @@ function SchedulerMonitor() {
                                         .slice(0, 10)
                                         .map((state) => (
                                             <div key={state.id} style={{ fontFamily: 'monospace', fontSize: 12 }}>
-                                                {state.id}: {state.lastAttemptedLocalDate || '-'} / {state.phase || '-'} — {state.error || 'failed'}
+                                                {state.id}: {state.lastAttemptedLocalDate || '-'} / {state.phase || '-'} — {formatStoredSchedulerError(state.error) || 'failed'}
                                             </div>
                                         ))}
                                 </div>
@@ -457,7 +489,7 @@ function SchedulerMonitor() {
                                 <Text>
                                     <Text type="secondary">Store {err.sId}</Text>
                                     {err.projectId && <Text type="secondary"> / Project {err.projectId}</Text>}
-                                    <Text> — {err.error}</Text>
+                                    <Text> — {formatStoredSchedulerError(err.error) || 'failed'}</Text>
                                 </Text>
                             ),
                             children: (
@@ -469,8 +501,8 @@ function SchedulerMonitor() {
                                     <div>Store ID: {err.sId}</div>
                                     {err.projectId && <div>Project ID: {err.projectId}</div>}
                                     {err.settlementDate && <div>Settlement Date: {err.settlementDate}</div>}
-                                    <div style={{ marginTop: 8, color: token.colorError }}>Error: {err.error}</div>
-                                    {err.details && <div style={{ marginTop: 8 }}>Details: {JSON.stringify(err.details)}</div>}
+                                    <div style={{ marginTop: 8, color: token.colorError }}>Error: {formatStoredSchedulerError(err.error) || 'failed'}</div>
+                                    {err.details && <div style={{ marginTop: 8 }}>Details: {flattenDetails(err.details)}</div>}
                                 </div>
                             ),
                         }))}
@@ -534,7 +566,7 @@ function SchedulerMonitor() {
                                             </Tag>
                                             <Text style={{ fontSize: 13 }}>{TASK_LABELS[task.name] || task.name}</Text>
                                             {task.durationMs && <Text type="secondary" style={{ fontSize: 11 }}>{formatDuration(task.durationMs)}</Text>}
-                                            {task.error && <Text type="danger" style={{ fontSize: 11 }}>{task.error}</Text>}
+                                            {formatTaskError(task.error) ? <Text type="danger" style={{ fontSize: 11 }}>{formatTaskError(task.error)}</Text> : null}
                                         </div>
                                     ))}
                                 </div>
@@ -547,7 +579,7 @@ function SchedulerMonitor() {
                                     </Text>
                                     {record.errors.slice(0, 10).map((err, idx) => (
                                         <div key={idx} style={{ fontFamily: 'monospace', fontSize: 11, padding: '2px 0' }}>
-                                            Store {err.sId}{err.projectId ? ` / Project ${err.projectId}` : ''} — {err.error}
+                                            Store {err.sId}{err.projectId ? ` / Project ${err.projectId}` : ''} — {formatStoredSchedulerError(err.error) || 'failed'}
                                         </div>
                                     ))}
                                     {record.errors.length > 10 && (

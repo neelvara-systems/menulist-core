@@ -1,10 +1,12 @@
 export const dynamic = 'force-dynamic';
 import { BetaAnalyticsDataClient } from '@google-analytics/data';
 import { PERMISSIONS } from '@constant/permissions';
+import { getBoundedAnalyticsStringContext, logAnalyticsFailure } from '@lib/analytics/analyticsDiagnostics';
 import { requireConfiguredGoogleAnalyticsProperty, toGoogleAnalyticsPropertyResource } from '@lib/analytics/googlePropertyAccess';
 import { requireAnyStorePermission } from '@lib/permissions/server';
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '../../../../middleware/auth';
+import { applyAnalyticsReadRateLimit } from '../readRateLimit';
 
 const analyticsClient = new BetaAnalyticsDataClient({
     credentials: {
@@ -14,14 +16,24 @@ const analyticsClient = new BetaAnalyticsDataClient({
 });
 
 export const GET = withAuth(async (request: NextRequest, session) => {
+    const rateLimitResponse = await applyAnalyticsReadRateLimit(session, 'menu');
+    if (rateLimitResponse) return rateLimitResponse;
+
     const permissionError = await requireAnyStorePermission(request, session, [PERMISSIONS.VIEW_ANALYTICS], 'Menu analytics');
     if (permissionError) return permissionError;
+
+    let propertyIdForLog: string | null = null;
+    let startDateForLog: string | null = null;
+    let endDateForLog: string | null = null;
 
     try {
         const { searchParams } = new URL(request.url);
         const propertyId = searchParams.get('propertyId');
         const startDate = searchParams.get('startDate');
         const endDate = searchParams.get('endDate');
+        propertyIdForLog = propertyId;
+        startDateForLog = startDate;
+        endDateForLog = endDate;
         
         if (!startDate || !endDate) {
             return NextResponse.json({ 
@@ -48,7 +60,13 @@ export const GET = withAuth(async (request: NextRequest, session) => {
 
         return NextResponse.json(response);
     } catch (error) {
-        console.error('Menu Analytics Error:', error);
+        logAnalyticsFailure('analytics_menu_api_failed', error, {
+            ...getBoundedAnalyticsStringContext('endpoint', '/api/analytics/menu'),
+            ...getBoundedAnalyticsStringContext('endDate', endDateForLog),
+            ...getBoundedAnalyticsStringContext('propertyId', propertyIdForLog),
+            ...getBoundedAnalyticsStringContext('startDate', startDateForLog),
+            ...getBoundedAnalyticsStringContext('userId', session?.uId || session?.user?.id || null),
+        });
         return NextResponse.json({ error: 'Failed to fetch menu analytics' }, { status: 500 });
     }
 });

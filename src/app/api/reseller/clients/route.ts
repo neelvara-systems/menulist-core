@@ -1,9 +1,11 @@
 export const dynamic = 'force-dynamic';
 import { FEATURE_FLAGS } from "@config/features";
 import { DB_COLLECTIONS } from "@constant/database";
+import { getBoundedResellerApiStringContext, logResellerApiFailure } from "@lib/billing/resellerApiDiagnostics";
 import { admin } from "@lib/firebase/firebaseAdmin";
 import { NextResponse } from "next/server";
 import { withAuth } from "../../../../middleware/auth";
+import { applyResellerReadRateLimit } from "../readRateLimit";
 
 /**
  * GET /api/reseller/clients — List reseller's onboarded clients
@@ -18,6 +20,9 @@ export const GET = withAuth(async (request, session) => {
         if (!FEATURE_FLAGS.ENABLE_RESELLER_DASHBOARD) {
             return NextResponse.json({ error: "Feature not available." }, { status: 404 });
         }
+
+        const rateLimitResponse = await applyResellerReadRateLimit(session, "clients");
+        if (rateLimitResponse) return rateLimitResponse;
 
         const isPlatform = session.user.platformRole === 'PLATFORM' || session.platformRole === 'PLATFORM';
         const resellerId = session.user.id;
@@ -80,7 +85,9 @@ export const GET = withAuth(async (request, session) => {
         return NextResponse.json({ transactions });
 
     } catch (error) {
-        console.error('[Reseller Clients] Failed:', error);
+        logResellerApiFailure('reseller_clients_route_failed', error, {
+            ...getBoundedResellerApiStringContext('userId', session.uId || session.user?.id),
+        });
         return NextResponse.json(
             { error: 'Failed to fetch clients.' },
             { status: 500 }

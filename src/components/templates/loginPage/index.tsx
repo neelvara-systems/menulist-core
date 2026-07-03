@@ -9,8 +9,11 @@ import BrandWordmark from '@/components/website/shared/BrandWordmark';
 import PhoneOtpAuthPanel from '@/components/auth/PhoneOtpAuthPanel';
 import { useAppSelector } from "@hook/useAppSelector";
 import { canUseAnswerlatticeManagement, resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
+import { AUTH_BROWSER_REQUEST_POLICY } from '@lib/auth/browserRequestPolicy';
 import { firebaseAuth } from "@lib/firebase/firebaseClient";
 import { syncAnswerlatticeAuthWithCustomToken } from "@lib/firebase/syncAnswerlatticeAuth";
+import { getBoundedAuthStringContext, logAuthFailure } from '@lib/auth/authDiagnostics';
+import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';
 import { getDarkModeState, toggleDarkMode } from "@reduxSlices/clientThemeConfig";
 import { startLoader, stopLoader } from "@reduxSlices/loader";
 import { showErrorToast, showSuccessToast } from "@reduxSlices/toast";
@@ -75,11 +78,18 @@ const LOGIN_ERRORS = {
   "UNREGISTRED": "email-not-registred",
 }
 const { Text } = Typography;
+const CLAIM_ACCOUNT_SETUP_FAILED_MESSAGE = 'Failed to set up account';
+const LOGIN_FAILED_MESSAGE = 'Login failed. Please check your details and try again.';
+const LOGIN_PAGE_RESPONSE_JSON_MAX_BYTES = 32 * 1024;
+const LOGIN_PAGE_ERROR_MESSAGES = new Set([
+  CLAIM_ACCOUNT_SETUP_FAILED_MESSAGE,
+  LOGIN_FAILED_MESSAGE,
+]);
 const JOURNEY_MOTION_MEDIA = '(hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference)';
 const NON_MENULIST_PRODUCT_ROUTE_ROOTS = new Set([
   'answerlattice',
   'campaigncue',
-  'constantlayer',
+  'neelvara',
   'mycodex',
   'sites',
 ]);
@@ -102,6 +112,157 @@ const isNonMenuListProductPath = (pathname: string) => {
 
   const [routeRoot] = pathname.split('/').filter(Boolean);
   return Boolean(routeRoot && NON_MENULIST_PRODUCT_ROUTE_ROOTS.has(routeRoot));
+};
+
+const getLoginPageErrorMessage = (message?: string) => {
+  const normalized = String(message || '').trim();
+  return LOGIN_PAGE_ERROR_MESSAGES.has(normalized) ? normalized : '';
+};
+
+type LoginPageResponseAction = 'validate_claim' | 'set_claims' | 'claim_account';
+
+type LoginClaimValidationResponse = {
+  businessName?: unknown;
+  phone?: unknown;
+  preview?: unknown;
+  status?: unknown;
+  valid?: boolean;
+};
+
+type LoginClaimAccountResponse = {
+  mode?: unknown;
+  storeId?: unknown;
+  success?: boolean;
+  tenantId?: unknown;
+};
+
+type LoginSetClaimsResponse = {
+  answerlatticeCustomToken?: unknown;
+  customToken?: unknown;
+};
+
+type LoginClaimAccountMode = 'email-password' | 'google' | 'whatsapp-phone';
+
+const isNonEmptyString = (value: unknown): value is string => (
+  typeof value === 'string' && value.trim().length > 0
+);
+
+const getOptionalResponseString = (value: unknown): string | undefined => (
+  isNonEmptyString(value) ? value : undefined
+);
+
+const getOptionalMaskedClaimPhone = (value: unknown): string | undefined => {
+  const phone = getOptionalResponseString(value);
+  if (!phone) return undefined;
+  return /^\*{4}\d{2,6}$/.test(phone) ? phone : undefined;
+};
+
+const isClaimIdentityValue = (value: unknown) => {
+  if (typeof value === 'number') return Number.isFinite(value) && value > 0;
+  return isNonEmptyString(value);
+};
+
+const isClaimAccountMode = (value: unknown): value is LoginClaimAccountMode => (
+  value === 'email-password' || value === 'google' || value === 'whatsapp-phone'
+);
+
+const isSuccessfulClaimValidationResponse = (
+  value: LoginClaimValidationResponse | null | undefined,
+): value is LoginClaimValidationResponse & {
+  businessName: string;
+  preview: 'claim-token';
+  status: 'valid';
+  valid: true;
+} => (
+  value?.valid === true
+  && value.preview === 'claim-token'
+  && value.status === 'valid'
+  && isNonEmptyString(value.businessName)
+);
+
+const isSuccessfulClaimAccountResponse = (
+  value: LoginClaimAccountResponse | null | undefined,
+  expectedMode: LoginClaimAccountMode,
+): value is LoginClaimAccountResponse & {
+  mode: LoginClaimAccountMode;
+  storeId: number | string;
+  success: true;
+  tenantId: number | string;
+} => (
+  value?.success === true
+  && value.mode === expectedMode
+  && isClaimIdentityValue(value.tenantId)
+  && isClaimIdentityValue(value.storeId)
+);
+
+const logClaimAccountResponseInvalid = (
+  value: LoginClaimAccountResponse | null | undefined,
+  expectedMode: LoginClaimAccountMode,
+  context: Record<string, boolean | number | string | null | undefined> = {},
+) => {
+  logAuthFailure(
+    'login_page_claim_account_response_invalid',
+    new Error('login_page_claim_account_response_invalid'),
+    {
+      ...context,
+      expectedMode,
+      hasExpectedMode: value?.mode === expectedMode,
+      hasStoreId: isClaimIdentityValue(value?.storeId),
+      hasTenantId: isClaimIdentityValue(value?.tenantId),
+      modeKnown: isClaimAccountMode(value?.mode),
+      success: value?.success === true,
+    },
+  );
+};
+
+const logClaimValidationResponseInvalid = (
+  value: LoginClaimValidationResponse | null | undefined,
+  context: Record<string, boolean | number | string | null | undefined> = {},
+) => {
+  logAuthFailure(
+    'login_page_validate_claim_response_invalid',
+    new Error('login_page_validate_claim_response_invalid'),
+    {
+      ...context,
+      hasBusinessName: isNonEmptyString(value?.businessName),
+      hasExpectedPreview: value?.preview === 'claim-token',
+      hasValidStatus: value?.status === 'valid',
+      responseValid: value?.valid === true,
+    },
+  );
+};
+
+const readLoginPageResponseJson = async <T,>(
+  response: Response,
+  action: LoginPageResponseAction,
+  context: Record<string, boolean | number | string | null | undefined> = {},
+): Promise<T | null> => {
+  const logContext = {
+    ...context,
+    action,
+    maxBytes: LOGIN_PAGE_RESPONSE_JSON_MAX_BYTES,
+    responseOk: response.ok,
+    responseStatus: response.status,
+  };
+
+  let payload: unknown;
+  try {
+    payload = await readJsonResponseWithLimit<unknown>(response, LOGIN_PAGE_RESPONSE_JSON_MAX_BYTES);
+  } catch (error) {
+    logAuthFailure('login_page_response_parse_failed', error, logContext);
+    return null;
+  }
+
+  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+    logAuthFailure(
+      'login_page_response_invalid',
+      new Error('login_page_response_invalid'),
+      logContext,
+    );
+    return null;
+  }
+
+  return payload as T;
 };
 
 function LoginPage() {
@@ -270,19 +431,37 @@ function LoginPage() {
       // Store claim token for post-OAuth processing
       localStorage.setItem('pendingClaimToken', claimToken);
       // Validate the token and get business info
-      fetch(`/api/auth/validate-claim?token=${encodeURIComponent(claimToken)}`)
-        .then(res => res.json())
-        .then(data => {
-          if (data.valid) {
-            setClaimInfo({ businessName: data.businessName, phone: data.phone });
+      const validateClaimToken = async () => {
+        try {
+          const response = await fetch(`/api/auth/validate-claim?token=${encodeURIComponent(claimToken)}`, {
+            ...AUTH_BROWSER_REQUEST_POLICY,
+            headers: { Accept: 'application/json' },
+          });
+          const data = await readLoginPageResponseJson<LoginClaimValidationResponse>(
+            response,
+            'validate_claim',
+            getBoundedAuthStringContext('claimToken', claimToken),
+          );
+          if (response.ok && isSuccessfulClaimValidationResponse(data)) {
+            setClaimInfo({
+              businessName: data.businessName.trim(),
+              phone: getOptionalMaskedClaimPhone(data.phone) || null,
+            });
           } else {
+            if (response.ok) {
+              logClaimValidationResponseInvalid(
+                data,
+                getBoundedAuthStringContext('claimToken', claimToken),
+              );
+            }
             // Token invalid/expired — clear it, let normal login proceed
             localStorage.removeItem('pendingClaimToken');
           }
-        })
-        .catch(() => {
+        } catch {
           localStorage.removeItem('pendingClaimToken');
-        });
+        }
+      };
+      validateClaimToken();
     }
   }, [searchParams]);
 
@@ -300,19 +479,24 @@ function LoginPage() {
             try {
               // Get custom token from server for OAuth users
               const setClaimsResponse = await fetch('/api/auth/set-claims', {
+                ...AUTH_BROWSER_REQUEST_POLICY,
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(getSetClaimsBody({})) // No UID - will create token
               });
 
               if (setClaimsResponse.ok) {
-                const data = await setClaimsResponse.json();
+                const data = await readLoginPageResponseJson<LoginSetClaimsResponse>(
+                  setClaimsResponse,
+                  'set_claims',
+                );
 
-                if (data.customToken) {
+                const customToken = getOptionalResponseString(data?.customToken);
+                if (customToken) {
                   // Sign in with custom token
                   const { signInWithCustomToken } = await import('firebase/auth');
-                  await signInWithCustomToken(firebaseAuth, data.customToken);
-                  await syncAnswerlatticeAuthWithCustomToken(data.answerlatticeCustomToken);
+                  await signInWithCustomToken(firebaseAuth, customToken);
+                  await syncAnswerlatticeAuthWithCustomToken(getOptionalResponseString(data?.answerlatticeCustomToken));
                 }
               }
             } catch {
@@ -322,15 +506,19 @@ function LoginPage() {
             // Ensure custom claims are set
             try {
               const setClaimsResponse = await fetch('/api/auth/set-claims', {
+                ...AUTH_BROWSER_REQUEST_POLICY,
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(getSetClaimsBody({ uid: currentUser.uid }))
               });
 
               if (setClaimsResponse.ok) {
-                const data = await setClaimsResponse.json();
+                const data = await readLoginPageResponseJson<LoginSetClaimsResponse>(
+                  setClaimsResponse,
+                  'set_claims',
+                );
                 await currentUser.getIdToken(true); // Refresh token
-                await syncAnswerlatticeAuthWithCustomToken(data.answerlatticeCustomToken);
+                await syncAnswerlatticeAuthWithCustomToken(getOptionalResponseString(data?.answerlatticeCustomToken));
               }
             } catch {
               // Keep the login flow resilient; token refresh can be retried by downstream guarded calls.
@@ -338,18 +526,23 @@ function LoginPage() {
           } else {
             try {
               const setClaimsResponse = await fetch('/api/auth/set-claims', {
+                ...AUTH_BROWSER_REQUEST_POLICY,
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(getSetClaimsBody({}))
               });
 
               if (setClaimsResponse.ok) {
-                const data = await setClaimsResponse.json();
+                const data = await readLoginPageResponseJson<LoginSetClaimsResponse>(
+                  setClaimsResponse,
+                  'set_claims',
+                );
 
-                if (data.customToken) {
+                const customToken = getOptionalResponseString(data?.customToken);
+                if (customToken) {
                   const { signInWithCustomToken } = await import('firebase/auth');
-                  await signInWithCustomToken(firebaseAuth, data.customToken);
-                  await syncAnswerlatticeAuthWithCustomToken(data.answerlatticeCustomToken);
+                  await signInWithCustomToken(firebaseAuth, customToken);
+                  await syncAnswerlatticeAuthWithCustomToken(getOptionalResponseString(data?.answerlatticeCustomToken));
                 }
               }
             } catch {
@@ -364,13 +557,19 @@ function LoginPage() {
           setClaimProcessing(true);
           try {
             const claimRes = await fetch('/api/auth/claim-account', {
+              ...AUTH_BROWSER_REQUEST_POLICY,
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ claimToken: pendingClaim }),
             });
-            const claimData = await claimRes.json();
+            const claimContext = getBoundedAuthStringContext('claimToken', pendingClaim);
+            const claimData = await readLoginPageResponseJson<LoginClaimAccountResponse>(
+              claimRes,
+              'claim_account',
+              claimContext,
+            );
 
-            if (claimRes.ok && claimData.success) {
+            if (claimRes.ok && isSuccessfulClaimAccountResponse(claimData, 'google')) {
               localStorage.removeItem('pendingClaimToken');
               await updateSession();
               await syncFirebaseAuthForCurrentSession();
@@ -379,6 +578,9 @@ function LoginPage() {
               window.location.href = getSafePostLoginRedirect();
               return;
             } else {
+              if (claimRes.ok) {
+                logClaimAccountResponseInvalid(claimData, 'google', claimContext);
+              }
               // Claim failed — clear token, continue to dashboard normally
               localStorage.removeItem('pendingClaimToken');
             }
@@ -410,6 +612,7 @@ function LoginPage() {
       }
 
       const res = await fetch('/api/auth/claim-account', {
+        ...AUTH_BROWSER_REQUEST_POLICY,
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -419,9 +622,14 @@ function LoginPage() {
           name: claimInfo?.businessName,
         }),
       });
-      const data = await res.json();
+      const claimContext = getBoundedAuthStringContext('claimToken', claimToken);
+      const data = await readLoginPageResponseJson<LoginClaimAccountResponse>(
+        res,
+        'claim_account',
+        claimContext,
+      );
 
-      if (res.ok && data.success) {
+      if (res.ok && isSuccessfulClaimAccountResponse(data, 'email-password')) {
         localStorage.removeItem('pendingClaimToken');
         setClaimSetupSuccess(true);
         setClaimSetupLoginLabel('your email and password');
@@ -430,7 +638,10 @@ function LoginPage() {
         setClaimInfo(null);
         setShowClaimEmailSetup(false);
       } else {
-        dispatch(showErrorToast(data.error || 'Failed to set up account'));
+        if (res.ok) {
+          logClaimAccountResponseInvalid(data, 'email-password', claimContext);
+        }
+        dispatch(showErrorToast(CLAIM_ACCOUNT_SETUP_FAILED_MESSAGE));
       }
     } catch {
       dispatch(showErrorToast('An error occurred. Please try again.'));
@@ -450,6 +661,7 @@ function LoginPage() {
       }
 
       const res = await fetch('/api/auth/claim-account', {
+        ...AUTH_BROWSER_REQUEST_POLICY,
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -459,9 +671,14 @@ function LoginPage() {
           useWhatsappPhone: true,
         }),
       });
-      const data = await res.json();
+      const claimContext = getBoundedAuthStringContext('claimToken', claimToken);
+      const data = await readLoginPageResponseJson<LoginClaimAccountResponse>(
+        res,
+        'claim_account',
+        claimContext,
+      );
 
-      if (res.ok && data.success) {
+      if (res.ok && isSuccessfulClaimAccountResponse(data, 'whatsapp-phone')) {
         localStorage.removeItem('pendingClaimToken');
         setClaimSetupSuccess(true);
         setClaimSetupLoginLabel('your WhatsApp number and passcode');
@@ -469,7 +686,10 @@ function LoginPage() {
         setClaimInfo(null);
         setShowClaimPhoneSetup(false);
       } else {
-        dispatch(showErrorToast(data.error || 'Failed to set up account'));
+        if (res.ok) {
+          logClaimAccountResponseInvalid(data, 'whatsapp-phone', claimContext);
+        }
+        dispatch(showErrorToast(CLAIM_ACCOUNT_SETUP_FAILED_MESSAGE));
       }
     } catch {
       dispatch(showErrorToast('An error occurred. Please try again.'));
@@ -492,7 +712,7 @@ function LoginPage() {
 
       if (response?.error) {
         dispatch(stopLoader(requestId))
-        dispatch(showErrorToast(response.error));
+        dispatch(showErrorToast(LOGIN_FAILED_MESSAGE));
         return;
       }
 
@@ -506,16 +726,20 @@ function LoginPage() {
         // Step 3: Set custom claims on Firebase Auth token
         try {
           const setClaimsResponse = await fetch('/api/auth/set-claims', {
+            ...AUTH_BROWSER_REQUEST_POLICY,
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(getSetClaimsBody({ uid: userCredential.user.uid }))
           });
 
           if (setClaimsResponse.ok) {
-            const data = await setClaimsResponse.json();
+            const data = await readLoginPageResponseJson<LoginSetClaimsResponse>(
+              setClaimsResponse,
+              'set_claims',
+            );
             // Force token refresh to get new claims
             await userCredential.user.getIdToken(true);
-            await syncAnswerlatticeAuthWithCustomToken(data.answerlatticeCustomToken);
+            await syncAnswerlatticeAuthWithCustomToken(getOptionalResponseString(data?.answerlatticeCustomToken));
           }
         } catch {
           // Keep credentials login resilient; downstream guarded calls can refresh claims again.
@@ -545,6 +769,7 @@ function LoginPage() {
     required: "'${name}' is required!",
     // ...
   };
+  const displayErrorMessage = getLoginPageErrorMessage(error.message);
   const renderBrandIntro = (
     statusText: string,
     statusColor: string,
@@ -894,8 +1119,8 @@ function LoginPage() {
                       </Form.Item>
                     </>
                   ) : null}
-                  {error.message && <div className={styles.error}>
-                    {error.message}
+                  {displayErrorMessage && <div className={styles.error}>
+                    {displayErrorMessage}
                   </div>}
                   {!shouldShowSecretInput && !shouldOfferPhoneOtp ? (
                     <Button type="primary" size="large" htmlType="submit" style={{ width: '100%' }} className="login-form-button">Continue with email</Button>

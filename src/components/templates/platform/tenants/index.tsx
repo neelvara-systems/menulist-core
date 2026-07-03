@@ -3,6 +3,7 @@ import { DB_COLLECTIONS } from '@constant/database';
 import { getPlatformSummary } from '@database/platformSummary';
 import { getAllTenants } from '@database/tenants';
 import { useAppDispatch } from '@hook/useAppDispatch';
+import { logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { startLoader, stopLoader } from '@reduxSlices/loader';
 import { StoreDataType } from '@type/platform/store';
 import { TenantDataType } from '@type/platform/tenant';
@@ -31,7 +32,7 @@ function TenantsDashboard({ tenantsList, setTenantsList }) {
                     dispatch(stopLoader(requestId));
                 } catch (error) {
                     dispatch(stopLoader(requestId));
-                    console.error('Error fetching tenants:', error);
+                    logRuntimeFailure('platform_tenants_load_failed', error);
                 }
             };
             fetchTenants();
@@ -42,7 +43,8 @@ function TenantsDashboard({ tenantsList, setTenantsList }) {
     const getPlatformData = () => {
         getPlatformSummary().then((summary) => {
             setPlatformSummary(summary)
-            console.log("summary", summary)
+        }).catch((error) => {
+            logRuntimeFailure('platform_tenants_summary_load_failed', error);
         })
     }
 
@@ -77,16 +79,6 @@ function TenantsDashboard({ tenantsList, setTenantsList }) {
             dataIndex: 'email',
             key: 'email'
         },
-        // {
-        //     title: 'Verified',
-        //     dataIndex: 'verified',
-        //     key: Math.random(),
-        //     render: (_, record) => (
-        //         <>
-        //             {record.verified ? <Tag color='green'>Verified</Tag> : <Tag color='warning'>Non Verified</Tag>}
-        //         </>
-        //     ),
-        // },
         {
             title: 'Active',
             dataIndex: 'active',

@@ -3410,7 +3410,7 @@ interface JobResult {
 - [x] Pass existing project to `saveFilesToProject` (1 read saved)
 - [x] **Total savings: ~35% fewer Firebase operations per job**
 
-See: `MENU-JOB-QUEUE-FIREBASE-OPERATIONS.md` for detailed analysis.
+See: `menu-job-queue-firebase-operations.md` for detailed analysis.
 
 ---
 

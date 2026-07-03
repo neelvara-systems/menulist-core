@@ -26,16 +26,23 @@ import { DB_COLLECTIONS } from '@constant/database';
 import { PERMISSIONS } from '@constant/permissions';
 import { isReservedOutletSlug } from '@constant/reservedSlugs';
 import { admin } from '@lib/firebase/firebaseAdmin';
+import {
+    getBoundedMultiOutletStringContext,
+    logMultiOutletFailure,
+    type MultiOutletLogContext,
+} from '@lib/multiOutlet/diagnostics';
 import { invalidateOwnerBusinessAssistantPacketCache } from '@lib/ownerBusinessAssistant/server/contextPacketCache';
 import { requireAnyStorePermissionForStoreData } from '@lib/permissions/server';
 import { checkRateLimit } from '@lib/rateLimit';
+import { readBoundedJsonBody } from '@lib/security/boundedRequestBody';
 import { validateAPIInput } from '@lib/security/inputValidation';
-import { secureError } from '@lib/security/secureLogger';
+import { touchDigitalScreenContentVersionForStoreServer } from '@lib/screen/serverScreenInvalidation';
 import { slugify } from '@lib/utils/slugify';
 import { revalidateTag } from 'next/cache';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { verifyTenantAccess, withAuth } from '../../../../middleware/auth';
+import { hashPublicRateLimitValue } from 'src/middleware/publicApi';
 
 const MAX_PREVIOUS_OUTLET_SLUGS = 5;
 
@@ -47,6 +54,7 @@ const schema = z.object({
     (v) => Boolean(v.newOutletName || v.newOutletSlug),
     { message: 'Either newOutletName or newOutletSlug is required.' },
 );
+const OUTLET_ACTION_MAX_BODY_BYTES = 8 * 1024;
 
 export const POST = withAuth(async (request, session) => {
     if (!FEATURE_FLAGS.ENABLE_MULTI_OUTLET) {
@@ -59,18 +67,35 @@ export const POST = withAuth(async (request, session) => {
     if (!verifyTenantAccess(session, tenantId, storeId, request)) {
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
-    const rl = await checkRateLimit({ key: `outlet-rename:${tenantId}`, limit: 10, window: 3600 });
+    let failureContext: MultiOutletLogContext = {
+        endpoint: '/api/outlets/rename',
+        ...getBoundedMultiOutletStringContext('tenantId', tenantId),
+        ...getBoundedMultiOutletStringContext('storeId', storeId),
+        ...getBoundedMultiOutletStringContext('userId', session.uId || session.user?.id),
+    };
+    const tenantRateLimitHash = hashPublicRateLimitValue(tenantId);
+    const rl = await checkRateLimit({ key: `outlet-rename:${tenantRateLimitHash}`, limit: 10, window: 3600 });
     if (!rl.allowed) {
         return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
     }
 
     try {
-        const body = await request.json();
+        const bodyResult = await readBoundedJsonBody(request, OUTLET_ACTION_MAX_BODY_BYTES, {
+            invalidJsonMessage: 'Invalid input',
+        });
+        if (bodyResult.ok === false) return bodyResult.response;
+        const body = bodyResult.data as any;
         const v = validateAPIInput(schema, body);
         if (!v.success) {
             return NextResponse.json({ error: 'Invalid input' }, { status: 400 });
         }
         const { outletStoreId, newOutletName, newOutletSlug } = v.data;
+        failureContext = {
+            ...failureContext,
+            ...getBoundedMultiOutletStringContext('outletStoreId', outletStoreId),
+            ...getBoundedMultiOutletStringContext('newOutletName', newOutletName),
+            ...getBoundedMultiOutletStringContext('newOutletSlug', newOutletSlug),
+        };
 
         const db = admin.firestore();
 
@@ -212,6 +237,8 @@ export const POST = withAuth(async (request, session) => {
         revalidateTag(`menu-store-${outletStoreIdStr}`);
         revalidateTag(`store-${outletStoreIdStr}`);
         revalidateTag('client-stores');
+        revalidateTag('screen-data');
+        await touchDigitalScreenContentVersionForStoreServer(outletStoreIdStr, 'outletRename');
         await invalidateOwnerBusinessAssistantPacketCache({
             tId: tenantId,
             sId: outletStoreIdStr,
@@ -224,7 +251,7 @@ export const POST = withAuth(async (request, session) => {
             previousOutletSlugs: cappedChain,
         });
     } catch (error) {
-        secureError('[Outlets] Rename failed', error as Error, { tenantId, storeId });
+        logMultiOutletFailure('outlet_rename_route_failed', error, failureContext);
         return NextResponse.json({ error: 'Outlet rename failed' }, { status: 500 });
     }
 });

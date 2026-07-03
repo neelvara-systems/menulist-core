@@ -1,7 +1,13 @@
 # B2C Menu Layout Constitution Implementation
 
 **Date:** December 21, 2024  
-**Status:** ✅ PRODUCTION READY
+**Status:** Historical implementation note; not current launch certification
+
+---
+
+## Current Launch Boundary
+
+This document records a December 2024 B2C menu layout implementation slice. It is not current launch certification or current production certification. Current customer-facing menu launch approval requires the active [production-readiness audit](../../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../../production-readiness/external-certification-runbook.md) evidence, Digital Menu Output Constitution checks, `npm run verify:menu-design-presentation-boundary`, browser/mobile customer-menu QA, public cache/deploy evidence, and target production smoke.
 
 ---
 

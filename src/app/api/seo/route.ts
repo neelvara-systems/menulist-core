@@ -2,16 +2,18 @@ export const dynamic = 'force-dynamic';
 
 import { getOurChargePaise, getRealCostPaise, getUnitCost } from "@constant/AI/unitCosts";
 import { AI_ACTIONS_TYPES, CHARGE_PER_CREDIT, TOKENS_PER_CREDIT } from "@constant/common";
+import { PERMISSIONS } from "@constant/permissions";
 import { HarmBlockThreshold, HarmCategory } from "@google/genai";
 import { finalizeAiOperationAccounting } from "@lib/ai/accounting";
 import { checkAICapacity } from "@lib/ai/capacityCheck";
 import { getModelName } from "@constant/AI/models";
-import { getAIGatewayDiagnostics, getAIErrorDiagnostics, getPreviewText } from "@lib/google/genAi/diagnostics";
+import { getAIGatewayDiagnostics, getAIErrorDiagnostics, getPreviewText, getAIRouteLogContext, getAIRouteSecurityContext, logAIRouteFailure } from "@lib/google/genAi/diagnostics";
 import { genAIClient } from "@lib/google/genAi";
 import { logger } from "@lib/monitoring/logger";
+import { requireAnyStorePermission } from "@lib/permissions/server";
 import { checkAIOperationLimit } from "@lib/rateLimit/helpers";
+import { readBoundedJsonBody } from "@lib/security/boundedRequestBody";
 import { validateAPIInput } from "@lib/security/inputValidation";
-import { buildSecurityContext } from "@lib/security/securityContext";
 import { SeoGenerationRequestSchema } from "@lib/validation/apiSchemas";
 import { writeErrorLogEntry, writeLogEntry, writeMissingParamsLogEntry } from 'logs/utils';
 import { NextResponse } from 'next/server';
@@ -20,6 +22,7 @@ import seoPrompt, { seoPromptSystemInstruction } from "./prompt";
 
 const AI_MODEL = getModelName('DESCRIPTION_GENERATION');
 const LOG_FILE = "seo-generation.log";
+const SEO_AI_MAX_BODY_BYTES = 256 * 1024;
 
 export const POST = withAuth(async (request, session) => {
     const userId = session.user.id;
@@ -34,24 +37,40 @@ export const POST = withAuth(async (request, session) => {
         const rateLimitResponse = await checkAIOperationLimit();
         if (rateLimitResponse) return rateLimitResponse;
 
-        const rawData = await request.json();
+        const bodyResult = await readBoundedJsonBody(request, SEO_AI_MAX_BODY_BYTES);
+        if (bodyResult.ok === false) return bodyResult.response;
+
+        const rawData = bodyResult.data as any;
         const validation = validateAPIInput(SeoGenerationRequestSchema, rawData);
 
         if (!validation.success) {
             const errorMsg = 'error' in validation ? validation.error : 'Invalid input';
+            const attemptedData = getAIRouteLogContext({
+                categoryCount: Array.isArray(rawData?.menu?.categories) ? rawData.menu.categories.length : 0,
+                itemCount: Array.isArray(rawData?.menu?.items) ? rawData.menu.items.length : 0,
+                storeName: rawData?.store?.name,
+            });
             logger.security('Input Validation Failed', {
-                ...buildSecurityContext(session, request),
+                ...getAIRouteSecurityContext(session, request),
                 endpoint: '/api/seo',
                 error: errorMsg,
+                attemptedData,
             }, 'medium');
-            await writeMissingParamsLogEntry(LOG_FILE, userId, undefined, undefined, rawData);
+            await writeMissingParamsLogEntry(LOG_FILE, userId, undefined, undefined, attemptedData);
             return NextResponse.json({ error: 'Invalid input', details: errorMsg }, { status: 400 });
         }
 
         const payload = validation.data;
         const sourceLangCode = 'unspecified';
+        const permissionError = await requireAnyStorePermission(
+            request,
+            session,
+            [PERMISSIONS.MANAGE_PUBLIC_PRESENCE, PERMISSIONS.MANAGE_STORE],
+            "SEO generation",
+        );
+        if (permissionError) return permissionError;
 
-        logger.info('SEO generation requested', {
+        logger.info('SEO generation requested', getAIRouteLogContext({
             action,
             categoryCount: payload.menu?.categories?.length || 0,
             itemCount: payload.menu?.items?.length || 0,
@@ -61,7 +80,7 @@ export const POST = withAuth(async (request, session) => {
             storeId: session.sId,
             tenantId: session.tId,
             userId,
-        });
+        }));
 
         const capacityCheck = await checkAICapacity(session.tId, session.sId, action);
         if (!capacityCheck.allowed) {
@@ -99,8 +118,7 @@ export const POST = withAuth(async (request, session) => {
             const errorDiagnostics = getAIErrorDiagnostics(generationError);
             const gatewayDiagnostics = getAIGatewayDiagnostics(genAIClient);
 
-            logger.error('SEO generation model call failed', generationError, {
-                ...errorDiagnostics,
+            logAIRouteFailure('seo_generation_model_call_failed', generationError, {
                 action,
                 categoryCount: payload.menu?.categories?.length || 0,
                 gatewayDiagnostics,
@@ -110,7 +128,6 @@ export const POST = withAuth(async (request, session) => {
                 sourceLang: sourceLangCode,
                 storeId: session.sId,
                 tenantId: session.tId,
-                userId,
             });
             await writeLogEntry({
                 logFileName: LOG_FILE,
@@ -141,16 +158,15 @@ export const POST = withAuth(async (request, session) => {
         try {
             generatedData = JSON.parse(rawText);
         } catch (parseError) {
-            logger.error('SEO generation returned invalid JSON', parseError, {
+            logAIRouteFailure('seo_generation_invalid_json', parseError, {
                 model: AI_MODEL,
-                rawTextLength: rawText.length,
-                rawTextPreview: getPreviewText(rawText, 300),
+                responseTextLength: rawText.length,
+                responseTextSummary: getPreviewText(rawText, 300),
                 requestId,
                 responseUsage: response.usageMetadata || null,
                 sourceLang: sourceLangCode,
                 storeId: session.sId,
                 tenantId: session.tId,
-                userId,
             });
             await writeLogEntry({
                 logFileName: LOG_FILE,
@@ -158,8 +174,8 @@ export const POST = withAuth(async (request, session) => {
                 logType: 'INVALID_JSON_RESPONSE',
                 data: {
                     model: AI_MODEL,
-                    rawTextLength: rawText.length,
-                    rawTextPreview: getPreviewText(rawText, 300),
+                    responseTextLength: rawText.length,
+                    responseTextSummary: getPreviewText(rawText, 300),
                     requestId,
                     responseUsage: response.usageMetadata || null,
                     sourceLang: sourceLangCode,
@@ -172,7 +188,7 @@ export const POST = withAuth(async (request, session) => {
         }
 
         if (!generatedData || typeof generatedData !== 'object' || Array.isArray(generatedData)) {
-            logger.error('SEO generation returned non-object response', null, {
+            logAIRouteFailure('seo_generation_non_object_response', undefined, {
                 isArray: Array.isArray(generatedData),
                 model: AI_MODEL,
                 requestId,
@@ -180,7 +196,6 @@ export const POST = withAuth(async (request, session) => {
                 sourceLang: sourceLangCode,
                 storeId: session.sId,
                 tenantId: session.tId,
-                userId,
             });
             await writeLogEntry({
                 logFileName: LOG_FILE,
@@ -243,12 +258,20 @@ export const POST = withAuth(async (request, session) => {
             transactionObject.transactionId = accounting.transactionId;
             remainingBalance = accounting.remainingBalance;
         } catch (transactionError) {
-            logger.error('Failed to record SEO generation transaction', transactionError, { userId });
+            logAIRouteFailure('seo_generation_accounting_failed', transactionError, {
+                action,
+                model: AI_MODEL,
+                requestId,
+                storeId: session.sId,
+                tenantId: session.tId,
+                userId,
+            });
             await writeLogEntry({ logFileName: LOG_FILE, userId, logType: 'TRANSACTION_DB_ERROR', data: transactionObject, error: transactionError });
             throw transactionError;
         }
 
-        logger.info('SEO generation completed', {
+        logger.info('SEO generation completed', getAIRouteLogContext({
+            action,
             keywordCount: cleaned.keywords.length,
             metaDescriptionLength: cleaned.metaDescription.length,
             metaTitleLength: cleaned.metaTitle.length,
@@ -259,7 +282,7 @@ export const POST = withAuth(async (request, session) => {
             tenantId: session.tId,
             transactionId: transactionObject.transactionId,
             userId,
-        });
+        }));
 
         return NextResponse.json({
             data: cleaned,
@@ -274,12 +297,11 @@ export const POST = withAuth(async (request, session) => {
         }, { status: 200 });
     } catch (error) {
         if (!(error && typeof error === 'object' && '__seoLogged' in error)) {
-            logger.error('SEO generation API error', error, {
+            logAIRouteFailure('seo_generation_api_failed', error, {
                 action,
                 gatewayDiagnostics: getAIGatewayDiagnostics(genAIClient),
                 model: AI_MODEL,
                 requestId,
-                ...getAIErrorDiagnostics(error),
                 storeId: session.sId,
                 tenantId: session.tId,
                 userId,

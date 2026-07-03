@@ -145,13 +145,13 @@
 
 ## 🚀 Next Steps
 
-1. Run testing from [2-TESTING-GUIDE-AI-EXTRACTION.md](./2-TESTING-GUIDE-AI-EXTRACTION.md)
+1. Run testing from [2-testing-guide-ai-extraction.md](./2-testing-guide-ai-extraction.md)
 2. Monitor quality scores in production
 3. Implement budget tracking before launch
 
 ---
 
 **Related**:
-- [2-IMPLEMENTATION-AI-EXTRACTION-COMPLETE.md](./2-IMPLEMENTATION-AI-EXTRACTION-COMPLETE.md)
-- [2-TESTING-GUIDE-AI-EXTRACTION.md](./2-TESTING-GUIDE-AI-EXTRACTION.md)
-- [ASSESSMENT-02-AI-EXTRACTION.md](../ASSESSMENT-02-AI-EXTRACTION.md)
+- [2-implementation-ai-extraction-complete.md](./2-implementation-ai-extraction-complete.md)
+- [2-testing-guide-ai-extraction.md](./2-testing-guide-ai-extraction.md)
+- [assessment-02-ai-extraction.md](../Assessments/assessment-02-ai-extraction.md)

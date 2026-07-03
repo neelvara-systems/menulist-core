@@ -75,6 +75,7 @@ export const RESERVED_PROJECT_SLUGS: readonly string[] = [
 export const RESERVED_OUTLET_SLUGS: readonly string[] = [
     ...RESERVED_PROJECT_SLUGS,
     // Additional outlet-level reserves
+    'menu',            // /menu is the universal menu alias and cannot be an outlet root
     'locations',
     'stores',
     'outlets',

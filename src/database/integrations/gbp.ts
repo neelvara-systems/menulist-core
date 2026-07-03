@@ -82,24 +82,29 @@ export const GBP_COLLECTION_PATH = {
 
 /**
  * ═══════════════════════════════════════════════════════════════════════
- * SERVER-ONLY FUNCTIONS (To be implemented in Phase 1)
+ * SERVER-ONLY TOKEN FUNCTIONS
  * ═══════════════════════════════════════════════════════════════════════
  *
- * These functions will be implemented after GBP API access is approved.
- * They should only be called from API routes, never from client code.
- *
- * Phase 1 will implement:
- * - saveGBPTokens(tId, sId, tokens) - Save OAuth tokens
- * - getGBPTokens(tId, sId) - Retrieve tokens for API calls
- * - refreshGBPTokens(tId, sId) - Refresh expired tokens
- * - deleteGBPTokens(tId, sId) - Remove tokens on disconnect
+ * GBP OAuth access is not enabled in this deployment. These functions fail
+ * closed so integration status surfaces cannot accidentally report a connected
+ * provider without a real token store.
  */
 
-// Placeholder exports for Phase 1 implementation
-// These will be implemented in api/integrations/gbp/* routes
+export const GBP_TOKEN_STORE_DISABLED = "GBP_TOKEN_STORE_DISABLED";
+
+export class GBPTokenStoreDisabledError extends Error {
+    code = GBP_TOKEN_STORE_DISABLED;
+
+    constructor() {
+        super("Google Business Profile token storage is disabled for this deployment.");
+        this.name = "GBPTokenStoreDisabledError";
+    }
+}
+
+const createGBPTokenStoreDisabledError = () => new GBPTokenStoreDisabledError();
 
 /**
- * Phase 1: Save GBP OAuth tokens (server-only)
+ * Save GBP OAuth tokens (server-only).
  * @param tId - Tenant ID
  * @param sId - Store ID
  * @param tokens - OAuth tokens from Google
@@ -114,12 +119,11 @@ export async function saveGBPTokens(
     >,
     _userId: string,
 ): Promise<void> {
-    // TODO: Implement in Phase 1 after GBP API access approved
-    throw new Error("GBP Sync not yet implemented. Awaiting API access.");
+    throw createGBPTokenStoreDisabledError();
 }
 
 /**
- * Phase 1: Get GBP OAuth tokens (server-only)
+ * Get GBP OAuth tokens (server-only).
  * @param tId - Tenant ID
  * @param sId - Store ID
  * @returns Tokens or null if not connected
@@ -128,12 +132,11 @@ export async function getGBPTokens(
     _tId: string | number,
     _sId: string | number,
 ): Promise<GBPTokenDoc | null> {
-    // TODO: Implement in Phase 1 after GBP API access approved
-    throw new Error("GBP Sync not yet implemented. Awaiting API access.");
+    throw createGBPTokenStoreDisabledError();
 }
 
 /**
- * Phase 1: Refresh expired GBP tokens (server-only)
+ * Refresh expired GBP tokens (server-only).
  * @param tId - Tenant ID
  * @param sId - Store ID
  * @returns New tokens or null if refresh failed
@@ -142,12 +145,11 @@ export async function refreshGBPTokens(
     _tId: string | number,
     _sId: string | number,
 ): Promise<GBPTokenDoc | null> {
-    // TODO: Implement in Phase 1 after GBP API access approved
-    throw new Error("GBP Sync not yet implemented. Awaiting API access.");
+    throw createGBPTokenStoreDisabledError();
 }
 
 /**
- * Phase 1: Delete GBP tokens on disconnect (server-only)
+ * Delete GBP tokens on disconnect (server-only).
  * @param tId - Tenant ID
  * @param sId - Store ID
  */
@@ -155,6 +157,5 @@ export async function deleteGBPTokens(
     _tId: string | number,
     _sId: string | number,
 ): Promise<void> {
-    // TODO: Implement in Phase 1 after GBP API access approved
-    throw new Error("GBP Sync not yet implemented. Awaiting API access.");
+    throw createGBPTokenStoreDisabledError();
 }

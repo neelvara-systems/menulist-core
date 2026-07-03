@@ -3,7 +3,7 @@
 **Version:** 3.1
 **Status:** ✅ IMPLEMENTED — Active with verified $0.00/month additional Firebase cost
 **Audience:** Engineering, DevOps, Cost Audit
-**Last Updated:** June 11, 2026
+**Last Updated:** June 27, 2026
 
 ---
 
@@ -69,6 +69,7 @@ None in v1. Drift Guardian deferred to Phase 2 (see spec §17 Decision 3).
 | `evaluateCorrectness()` | `src/lib/mce/correctnessResolver.ts` | 0 reads, 0 writes (pure function) |
 | `mceValidate()`         | `src/lib/mce/index.ts`               | 0 reads, 0 writes (pure function) |
 | `sanitizeForClient()`   | `src/lib/mce/utils.ts`               | 0 reads, 0 writes (pure function) |
+| `logMCEValidationResult()` / `logMCEValidationFailure()` | `src/lib/mce/diagnostics.ts` | 0 reads, 0 writes (bounded diagnostics only) |
 
 ### Modified Functions
 
@@ -91,6 +92,7 @@ None in v1. Drift Guardian deferred to Phase 2 (see spec §17 Decision 3).
 1. CSR validation is a pure client-side function — no Firebase calls
 2. The `_mce` field is merged into the existing `setDoc` call — no additional write
 3. No new collections, no new indexes, no Cloud Functions in v1
+4. Bounded MCE and surrounding menu-editor diagnostics record only local validation counts, bounded project/file/item/category/image metadata, and normalized failure metadata — no Firebase calls
 
 ---
 

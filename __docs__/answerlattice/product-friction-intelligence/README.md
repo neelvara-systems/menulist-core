@@ -3,7 +3,7 @@
 > **Status:** IMPLEMENTED AND ENABLED WITH CAPS
 > **Feature Flag:** `ENABLE_ANSWERLATTICE_FRICTION_INTELLIGENCE`
 > **Created:** 2026-03-09
-> **Last Updated:** 2026-05-22
+> **Last Updated:** 2026-06-28
 > **Expansion Tracker:** `__docs__/answerlattice/answerlattice-expansion-tracker.md` (Item #5)
 > **Doctrine Compliance:** Freeze-compliant (additive fields, 1 new collection, extends existing scheduler)
 
@@ -14,6 +14,8 @@
 Product Friction Intelligence converts Answerlattice's existing support signals into actionable product friction insights for SaaS founders. It answers: **"Where is my product confusing users?"**
 
 Instead of building dashboards or analytics tools, this system generates a **prioritized insight feed** — structured, severity-ranked friction signals derived from support interactions. Think "automated product advisor" not "analytics software."
+
+Friction aggregation and insight-generation diagnostics use fixed failure codes with source error name/code/status and tenant/store scope booleans. Failed weekly insight results return fixed skipped-reason codes instead of raw exception text.
 
 ---
 

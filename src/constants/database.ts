@@ -16,6 +16,8 @@ export const DB_COLLECTIONS = {
     SUBSCRIPTIONS: "subscriptions",
     SUBSCRIPTION_PAYMENTS: "subscription_payments",
     PAYMENT_TRANSACTIONS: "payment_transactions",
+    FOUNDER_REVENUE_MOVEMENTS: "founderRevenueMovements",
+    FOUNDER_ONBOARDING_TRANSITIONS: "founderOnboardingTransitions",
     RAZORPAY_WEBHOOK_EVENTS: "razorpayWebhookEvents",
     TOPUPS: "topups",
     ANALYTICS: "analytics",
@@ -60,6 +62,7 @@ export const DB_COLLECTIONS = {
     FILES: "files",
     MENU_INTELLIGENCE: "menuIntelligence", // Continuous Menu Intelligence state (per-project, nightly)
     ASSETS: "assets",
+    AI_IMAGE_PROMPT_CACHE: "aiImagePromptCache",
     IMAGE_BATCH_PROCESSING_JOBS: "imageBatchProcessingJobs",
     MENU_IMAGE_PROCESSING_JOBS: "menuImageProcessingJobs", // AI menu extraction job queue
     MENU_LINK_IMPORT_ARTIFACTS: "menuLinkImportArtifacts", // Owner-provided URL import source artifacts
@@ -97,7 +100,7 @@ export const DB_COLLECTIONS = {
     AI_MENU_MANAGER_RULES: "aiMenuManagerRules",
 
     // Menu Observation Layer (MOL v0) - Silent infrastructure
-    // @see __docs__/MOL-V0-IMPLEMENTATION-PLAN.md
+    // @see __docs__/mol-v0-implementation-plan.md
     MENU_CHANGE_LOG: "menuChangeLog", // Immutable change history
     MENU_ITEM_STATE: "menuItemState", // Denormalized item state
     TELEMETRY: "telemetry", // Cost & performance tracking
@@ -147,7 +150,7 @@ export const DB_COLLECTIONS = {
     COMPLIANCE_PAGES: "compliancePages",
 
     // Public routing admin audit
-    // @see __docs__/client-menu/PUBLIC-ROUTING-DOCTRINE.md
+    // @see __docs__/client-menu/public-routing-doctrine.md
     SUBDOMAIN_RENAME_LOG: "subdomainRenameLog",
 
     // Operational Infrastructure (System Strengthening)

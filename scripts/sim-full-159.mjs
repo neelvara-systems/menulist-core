@@ -340,7 +340,7 @@ async function catJ(){
   await db.collection(COL.sessions).doc(j3).update({state:"EXPIRED"});pass("J-03","24h → EXPIRED (silent)");
 
   const j4=`j04_${Date.now()}`;const p4=`messagingOnboarding/${j4}/t.jpg`;
-  await bucket.file(p4).save(Buffer.from("CL"));
+  await bucket.file(p4).save(Buffer.from("NV"));
   await db.collection(COL.sessions).doc(j4).set(base(j4,"9J0000000004","EXPIRED",{uploads:[{id:"x",storagePath:p4}],expiresAt:ago(31*86400000)}));
   try{await bucket.file(p4).delete();}catch{}
   await db.collection(COL.sessions).doc(j4).delete();

@@ -1,8 +1,10 @@
 'use client'
 
 import { getMenuUrl, normalizeBaseUrl, PLATFORM_DOMAIN } from '@constant/urls';
-import { checkCustomDomainAvailability } from '@database/stores';
-import { updateStore } from '@database/stores';
+import { assertStoreUpdateSucceeded, checkCustomDomainAvailability, updateStore } from '@database/stores';
+import { getBoundedStoreStringContext, logStoreDataFailure } from '@database/stores/storeDiagnostics';
+import { AUTH_BROWSER_REQUEST_POLICY } from '@lib/auth/browserRequestPolicy';
+import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { Alert, Input as AntInput, List as AntList, Steps, Typography, theme } from 'antd';
 import { useTranslations } from 'next-intl';
@@ -24,6 +26,173 @@ interface MobileDomainSettingsScreenProps {
     onBack: () => void;
 }
 
+type SubdomainAvailabilityResponse = {
+    available?: boolean;
+    reason?: string;
+    normalized?: string;
+    preview?: string;
+};
+type DomainStatusResponse = {
+    verified?: boolean;
+};
+type DomainAddResponse = {
+    domain?: unknown;
+    verification?: unknown;
+};
+type DomainRemoveResponse = {
+    removed?: unknown;
+    success?: unknown;
+};
+type MobileDomainSettingsResponsePhase = 'status' | 'add' | 'remove';
+
+const MOBILE_DOMAIN_SETTINGS_RESPONSE_JSON_MAX_BYTES = 8 * 1024;
+const MOBILE_DOMAIN_SETTINGS_DOMAIN_RESPONSE_JSON_MAX_BYTES = 32 * 1024;
+const MOBILE_DOMAIN_SETTINGS_COPY_UNAVAILABLE = 'mobile_domain_settings_copy_unavailable';
+const MOBILE_DOMAIN_SETTINGS_COPY_FALLBACK_FAILED = 'mobile_domain_settings_copy_fallback_failed';
+
+const hasMobileDomainSettingsClipboardWrite = (): boolean => (
+    typeof navigator !== 'undefined'
+    && Boolean(navigator.clipboard)
+    && typeof navigator.clipboard.writeText === 'function'
+);
+
+const hasMobileDomainSettingsCopyFallback = (): boolean => (
+    typeof document !== 'undefined'
+    && typeof document.createElement === 'function'
+    && typeof document.execCommand === 'function'
+    && Boolean(document.body)
+);
+
+const copyMobileDomainSettingsText = async (value: string): Promise<void> => {
+    let clipboardWriteError: unknown;
+
+    if (hasMobileDomainSettingsClipboardWrite()) {
+        try {
+            await navigator.clipboard.writeText(value);
+            return;
+        } catch (error) {
+            clipboardWriteError = error;
+            // Continue to the acknowledged textarea fallback before showing failure copy.
+        }
+    }
+
+    if (!hasMobileDomainSettingsCopyFallback()) {
+        throw clipboardWriteError || new Error(MOBILE_DOMAIN_SETTINGS_COPY_UNAVAILABLE);
+    }
+
+    const textarea = document.createElement('textarea');
+    textarea.value = value;
+    textarea.setAttribute('readonly', '');
+    textarea.style.position = 'fixed';
+    textarea.style.left = '-9999px';
+    textarea.style.top = '0';
+    document.body.appendChild(textarea);
+    textarea.focus();
+    textarea.select();
+
+    try {
+        const copied = document.execCommand('copy');
+        if (!copied) {
+            throw new Error(MOBILE_DOMAIN_SETTINGS_COPY_FALLBACK_FAILED);
+        }
+    } finally {
+        document.body.removeChild(textarea);
+    }
+};
+
+const createMobileDomainSettingsStatusError = (code: string, status: number) => {
+    const error = new Error(code) as Error & { code?: string; status?: number };
+    error.code = code;
+    error.status = status;
+    return error;
+};
+
+const isNonEmptyString = (value: unknown): value is string => (
+    typeof value === 'string' && value.trim().length > 0
+);
+
+async function readMobileDomainSettingsDomainResponseJson<T>(
+    response: Response,
+    phase: MobileDomainSettingsResponsePhase,
+    context: Record<string, boolean | number | string | null | undefined>,
+): Promise<T | null> {
+    const logContext = {
+        ...context,
+        maxBytes: MOBILE_DOMAIN_SETTINGS_DOMAIN_RESPONSE_JSON_MAX_BYTES,
+        phase,
+        responseOk: response.ok,
+        responseStatus: response.status,
+    };
+    const parseFailureCode = phase === 'add'
+        ? 'mobile_domain_settings_add_response_parse_failed'
+        : phase === 'remove'
+            ? 'mobile_domain_settings_remove_response_parse_failed'
+            : 'mobile_domain_settings_status_response_parse_failed';
+    const invalidFailureCode = phase === 'add'
+        ? 'mobile_domain_settings_add_response_invalid'
+        : phase === 'remove'
+            ? 'mobile_domain_settings_remove_response_invalid'
+            : 'mobile_domain_settings_status_response_invalid';
+
+    let payload: unknown;
+    try {
+        payload = await readJsonResponseWithLimit<unknown>(
+            response,
+            MOBILE_DOMAIN_SETTINGS_DOMAIN_RESPONSE_JSON_MAX_BYTES,
+        );
+    } catch (error) {
+        logStoreDataFailure(parseFailureCode, error, logContext);
+        return null;
+    }
+
+    if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+        logStoreDataFailure(
+            invalidFailureCode,
+            createMobileDomainSettingsStatusError(invalidFailureCode, response.status),
+            logContext,
+        );
+        return null;
+    }
+
+    return payload as T;
+}
+
+function normalizeDnsRecords(config: any, domain: string) {
+    const records: { type: string; name: string; value: string }[] = [];
+
+    if (!config) return records;
+
+    if (Array.isArray(config?.verificationRecords)) {
+        config.verificationRecords.forEach((record: any) => {
+            records.push({
+                type: record.type || 'TXT',
+                name: record.domain || record.name || '_vercel',
+                value: record.value || record.reason || '',
+            });
+        });
+    }
+
+    if (Array.isArray(config?.configuredBy)) {
+        config.configuredBy.forEach((record: any) => {
+            records.push({
+                type: record.type || 'CNAME',
+                name: record.name || (domain.startsWith('www.') ? 'www' : '@'),
+                value: record.value || '',
+            });
+        });
+    }
+
+    if (records.length === 0 && domain) {
+        records.push({
+            type: 'CNAME',
+            name: domain.startsWith('www.') ? 'www' : '@',
+            value: 'cname.vercel-dns.com',
+        });
+    }
+
+    return records;
+}
+
 export default function MobileDomainSettingsScreen({ onBack }: MobileDomainSettingsScreenProps) {
     const t = useTranslations('BusinessSettings');
     const common = useTranslations('Common');
@@ -41,6 +210,8 @@ export default function MobileDomainSettingsScreen({ onBack }: MobileDomainSetti
     const [availability, setAvailability] = useState<{ available?: boolean; reason?: string; normalized?: string; preview?: string } | null>(null);
     const [domainAvailability, setDomainAvailability] = useState<{ available?: boolean; reason?: string; normalized?: string } | null>(null);
     const [domainStatus, setDomainStatus] = useState<any>(null);
+    const [domainLinkCopied, setDomainLinkCopied] = useState(false);
+    const [copiedDnsValue, setCopiedDnsValue] = useState<string | null>(null);
 
     const subdomainUrl = useMemo(
         () => (storeDetails?.subdomain ? getMenuUrl(storeDetails.subdomain) : null),
@@ -66,41 +237,54 @@ export default function MobileDomainSettingsScreen({ onBack }: MobileDomainSetti
         && domainAvailability?.normalized === normalizedDomainInput
     );
     const customDomainVerified = Boolean(domainStatus?.verified || storeDetails?.domainVerified);
-    const dnsRecords = useMemo(() => {
-        const records: { type: string; name: string; value: string }[] = [];
-        const config = domainStatus?.config;
-        if (Array.isArray(config?.verificationRecords)) {
-            config.verificationRecords.forEach((record: any) => {
-                records.push({
-                    type: record.type || 'TXT',
-                    name: record.domain || record.name || '_vercel',
-                    value: record.value || record.reason || '',
-                });
-            });
-        }
-        if (records.length === 0 && activeDomain) {
-            records.push({
-                type: 'CNAME',
-                name: activeDomain.startsWith('www.') ? 'www' : '@',
-                value: 'cname.vercel-dns.com',
-            });
-        }
-        return records;
-    }, [activeDomain, domainStatus?.config]);
+    const domainDnsConfig = domainStatus?.config || domainStatus?.verification;
+    const dnsRecords = useMemo(
+        () => normalizeDnsRecords(domainDnsConfig, activeDomain || domainInput),
+        [activeDomain, domainDnsConfig, domainInput],
+    );
     const subdomainState = storeDetails?.subdomain ? 'active' : 'not_set';
     const customDomainState = !activeDomain ? 'not_set' : customDomainVerified ? 'live' : 'pending';
+    const buildMobileDomainSettingsLogContext = (flow: string, metadata: Record<string, boolean | number | string | undefined> = {}) => ({
+        surface: 'mobile_domain_settings',
+        flow,
+        hasActiveDomain: Boolean(activeDomain),
+        hasDomainStatus: Boolean(domainStatus),
+        hasSubdomainAvailability: Boolean(availability),
+        hasDomainAvailability: Boolean(domainAvailability),
+        subdomainLocked,
+        ...getBoundedStoreStringContext('tenantId', storeDetails?.tenantId),
+        ...getBoundedStoreStringContext('storeId', storeDetails?.storeId),
+        ...getBoundedStoreStringContext('subdomainInput', subdomainValue),
+        ...getBoundedStoreStringContext('domainInput', domainInput),
+        ...metadata,
+    });
 
     const refreshStatus = useCallback(async () => {
         if (!storeDetails?.customDomain) return;
         setStatusLoading(true);
         try {
-            const response = await fetch('/api/domain');
-            const data = await response.json();
+            const response = await fetch('/api/domain', AUTH_BROWSER_REQUEST_POLICY);
+            if (!response.ok) {
+                const statusError = new Error('mobile_domain_settings_status_rejected') as Error & { status?: number };
+                statusError.status = response.status;
+                throw statusError;
+            }
+            const data = await readMobileDomainSettingsDomainResponseJson<DomainStatusResponse>(
+                response,
+                'status',
+                buildMobileDomainSettingsLogContext('refresh_domain_status_response'),
+            );
+            if (!data) {
+                const statusError = new Error('mobile_domain_settings_status_response_invalid') as Error & { status?: number };
+                statusError.status = response.status;
+                throw statusError;
+            }
             setDomainStatus(data);
             if (data?.verified) {
                 setStoreDetails({ ...storeDetails, domainVerified: true });
             }
-        } catch {
+        } catch (error) {
+            logStoreDataFailure('mobile_domain_settings_status_load_failed', error, buildMobileDomainSettingsLogContext('refresh_domain_status'));
             Toast.show({ content: common('error'), duration: 1500 });
         } finally {
             setStatusLoading(false);
@@ -122,11 +306,51 @@ export default function MobileDomainSettingsScreen({ onBack }: MobileDomainSetti
         }
         setCheckingSubdomain(true);
         try {
-            const response = await fetch(`/api/subdomain/check?subdomain=${encodeURIComponent(input.trim())}`);
-            const data = await response.json();
+            const response = await fetch(
+                `/api/subdomain/check?subdomain=${encodeURIComponent(input.trim())}`,
+                AUTH_BROWSER_REQUEST_POLICY,
+            );
+            let data: SubdomainAvailabilityResponse | null = null;
+            try {
+                data = await readJsonResponseWithLimit<SubdomainAvailabilityResponse>(
+                    response,
+                    MOBILE_DOMAIN_SETTINGS_RESPONSE_JSON_MAX_BYTES,
+                );
+            } catch (error) {
+                logStoreDataFailure('mobile_domain_settings_subdomain_check_response_parse_failed', error, {
+                    ...buildMobileDomainSettingsLogContext('check_subdomain_response_parse'),
+                    responseOk: response.ok,
+                    responseStatus: response.status,
+                    maxBytes: MOBILE_DOMAIN_SETTINGS_RESPONSE_JSON_MAX_BYTES,
+                });
+            }
+            if (!response.ok) {
+                if (response.status === 429 && data?.available === false) {
+                    setAvailability({
+                        available: false,
+                        reason: typeof data.reason === 'string' && data.reason.length <= 120
+                            ? data.reason
+                            : t('checkAvailabilityFailed'),
+                    });
+                    return;
+                }
+                const checkError = new Error('mobile_domain_settings_subdomain_check_rejected') as Error & { status?: number };
+                checkError.status = response.status;
+                throw checkError;
+            }
+            if (typeof data?.available !== 'boolean') {
+                logStoreDataFailure(
+                    'mobile_domain_settings_subdomain_check_response_invalid',
+                    createMobileDomainSettingsStatusError('mobile_domain_settings_subdomain_check_response_invalid', response.status),
+                    buildMobileDomainSettingsLogContext('check_subdomain_response_shape'),
+                );
+                setAvailability({ available: false, reason: t('checkAvailabilityFailed') });
+                return;
+            }
             setAvailability(data);
             if (data?.normalized) setSubdomainValue(data.normalized);
-        } catch {
+        } catch (error) {
+            logStoreDataFailure('mobile_domain_settings_subdomain_check_failed', error, buildMobileDomainSettingsLogContext('check_subdomain'));
             setAvailability({ available: false, reason: t('checkAvailabilityFailed') });
         } finally {
             setCheckingSubdomain(false);
@@ -142,10 +366,16 @@ export default function MobileDomainSettingsScreen({ onBack }: MobileDomainSetti
         }
         setSavingSubdomain(true);
         try {
-            await updateStore({ storeId: storeDetails.storeId, subdomain: nextSubdomain } as any);
+            const writeResult = await updateStore({ storeId: storeDetails.storeId, subdomain: nextSubdomain } as any);
+            assertStoreUpdateSucceeded(
+                writeResult,
+                storeDetails.storeId,
+                'mobile_domain_settings_subdomain_store_update_rejected',
+            );
             setStoreDetails({ ...storeDetails, subdomain: nextSubdomain });
             Toast.show({ content: tMobile('saved'), duration: 1200 });
-        } catch {
+        } catch (error) {
+            logStoreDataFailure('mobile_domain_settings_subdomain_save_failed', error, buildMobileDomainSettingsLogContext('save_subdomain'));
             Toast.show({ content: common('error'), duration: 1500 });
         } finally {
             setSavingSubdomain(false);
@@ -157,19 +387,40 @@ export default function MobileDomainSettingsScreen({ onBack }: MobileDomainSetti
         setDomainLoading(true);
         try {
             const response = await fetch('/api/domain', {
-                method: 'POST',
+                ...AUTH_BROWSER_REQUEST_POLICY,
                 headers: { 'Content-Type': 'application/json' },
+                method: 'POST',
                 body: JSON.stringify({ domain: domainAvailability?.normalized || domainInput.trim() }),
             });
-            const data = await response.json();
-            if (!response.ok) throw new Error(data?.error || common('error'));
+            if (!response.ok) {
+                const addDomainError = new Error('mobile_domain_settings_add_rejected') as Error & { status?: number };
+                addDomainError.status = response.status;
+                throw addDomainError;
+            }
+            const data = await readMobileDomainSettingsDomainResponseJson<DomainAddResponse>(
+                response,
+                'add',
+                buildMobileDomainSettingsLogContext('add_domain_response'),
+            );
+            if (!isNonEmptyString(data?.domain)) {
+                logStoreDataFailure(
+                    'mobile_domain_settings_add_response_invalid',
+                    createMobileDomainSettingsStatusError('mobile_domain_settings_add_response_invalid', response.status),
+                    {
+                        ...buildMobileDomainSettingsLogContext('add_domain_response_shape'),
+                        hasDomain: isNonEmptyString(data?.domain),
+                    },
+                );
+                throw createMobileDomainSettingsStatusError('mobile_domain_settings_add_response_invalid', response.status);
+            }
             setStoreDetails({ ...storeDetails, customDomain: data.domain, domainVerified: false });
             setDomainInput(data.domain);
             setDomainAvailability({ available: true, normalized: data.domain });
             setDomainStatus({ hasDomain: true, domain: data.domain, verified: false, config: data.verification });
             Toast.show({ content: t('domainAdded'), duration: 1200 });
-        } catch (error: any) {
-            Toast.show({ content: error?.message || common('error'), duration: 1800 });
+        } catch (error) {
+            logStoreDataFailure('mobile_domain_settings_add_failed', error, buildMobileDomainSettingsLogContext('add_domain'));
+            Toast.show({ content: common('error'), duration: 1800 });
         } finally {
             setDomainLoading(false);
         }
@@ -184,7 +435,8 @@ export default function MobileDomainSettingsScreen({ onBack }: MobileDomainSetti
             if (data?.normalized) {
                 setDomainInput(data.normalized);
             }
-        } catch {
+        } catch (error) {
+            logStoreDataFailure('mobile_domain_settings_custom_domain_check_failed', error, buildMobileDomainSettingsLogContext('check_custom_domain'));
             setDomainAvailability({ available: false, reason: common('error') });
         } finally {
             setCheckingDomain(false);
@@ -194,15 +446,99 @@ export default function MobileDomainSettingsScreen({ onBack }: MobileDomainSetti
     const removeDomain = async () => {
         setDomainLoading(true);
         try {
-            await fetch('/api/domain', { method: 'DELETE' });
+            const response = await fetch('/api/domain', {
+                ...AUTH_BROWSER_REQUEST_POLICY,
+                method: 'DELETE',
+            });
+            if (!response.ok) {
+                const removeDomainError = new Error('mobile_domain_settings_remove_rejected') as Error & { status?: number };
+                removeDomainError.status = response.status;
+                throw removeDomainError;
+            }
+            const data = await readMobileDomainSettingsDomainResponseJson<DomainRemoveResponse>(
+                response,
+                'remove',
+                buildMobileDomainSettingsLogContext('remove_domain_response'),
+            );
+            if (data?.success !== true || data.removed !== true) {
+                logStoreDataFailure(
+                    'mobile_domain_settings_remove_response_invalid',
+                    createMobileDomainSettingsStatusError('mobile_domain_settings_remove_response_invalid', response.status),
+                    {
+                        ...buildMobileDomainSettingsLogContext('remove_domain_response_shape'),
+                        removed: data?.removed === true,
+                        success: data?.success === true,
+                    },
+                );
+                throw createMobileDomainSettingsStatusError('mobile_domain_settings_remove_response_invalid', response.status);
+            }
             setStoreDetails({ ...storeDetails, customDomain: undefined, domainVerified: undefined });
             setDomainInput('');
             setDomainStatus(null);
             Toast.show({ content: tMobile('saved'), duration: 1200 });
-        } catch {
+        } catch (error) {
+            logStoreDataFailure('mobile_domain_settings_remove_failed', error, buildMobileDomainSettingsLogContext('remove_domain'));
             Toast.show({ content: common('error'), duration: 1500 });
         } finally {
             setDomainLoading(false);
+        }
+    };
+
+    const handleCopyActiveDomain = async () => {
+        if (!activeDomain) return;
+        const domainUrl = normalizeBaseUrl(activeDomain);
+        try {
+            await copyMobileDomainSettingsText(domainUrl);
+            setDomainLinkCopied(true);
+            setTimeout(() => setDomainLinkCopied(false), 2000);
+        } catch (error) {
+            logStoreDataFailure('mobile_domain_settings_domain_copy_failed', error, {
+                ...buildMobileDomainSettingsLogContext('copy_active_domain'),
+                ...getBoundedStoreStringContext('copyValue', domainUrl),
+                hasClipboardWrite: hasMobileDomainSettingsClipboardWrite(),
+                hasCopyFallback: hasMobileDomainSettingsCopyFallback(),
+            });
+            Toast.show({ content: common('error'), duration: 1500 });
+        }
+    };
+
+    const handleOpenActiveDomain = () => {
+        if (!activeDomain) return;
+        const domainUrl = normalizeBaseUrl(activeDomain);
+        try {
+            const opened = window.open(domainUrl, '_blank', 'noopener,noreferrer');
+            if (!opened) {
+                throw new Error('mobile_domain_settings_domain_open_blocked');
+            }
+        } catch (error) {
+            logStoreDataFailure('mobile_domain_settings_domain_open_failed', error, {
+                ...buildMobileDomainSettingsLogContext('open_active_domain'),
+                ...getBoundedStoreStringContext('openUrl', domainUrl),
+            });
+            Toast.show({ content: common('error'), duration: 1500 });
+        }
+    };
+
+    const handleCopyDnsRecord = async (
+        record: { type: string; name: string; value: string },
+        index: number,
+    ) => {
+        try {
+            await copyMobileDomainSettingsText(record.value);
+            setCopiedDnsValue(`${index}`);
+            setTimeout(() => setCopiedDnsValue(null), 2000);
+        } catch (error) {
+            logStoreDataFailure('mobile_domain_settings_dns_copy_failed', error, {
+                ...buildMobileDomainSettingsLogContext('copy_dns_record'),
+                ...getBoundedStoreStringContext('dnsRecordName', record.name),
+                ...getBoundedStoreStringContext('dnsRecordType', record.type),
+                ...getBoundedStoreStringContext('dnsRecordValue', record.value),
+                dnsRecordCount: dnsRecords.length,
+                dnsRecordIndex: index,
+                hasClipboardWrite: hasMobileDomainSettingsClipboardWrite(),
+                hasCopyFallback: hasMobileDomainSettingsCopyFallback(),
+            });
+            Toast.show({ content: common('error'), duration: 1500 });
         }
     };
 
@@ -340,10 +676,10 @@ export default function MobileDomainSettingsScreen({ onBack }: MobileDomainSetti
                                     <Button fill="outline" loading={statusLoading} onClick={() => void refreshStatus()} size="small">
                                         <Flex align="center" gap={6}><LuSearch size={16} /><Text>{t('checkVerification')}</Text></Flex>
                                     </Button>
-                                    <Button fill="outline" onClick={() => navigator.clipboard.writeText(normalizeBaseUrl(activeDomain))} size="small">
-                                        <Flex align="center" gap={6}><LuCopy size={16} /><Text>{t('copy')}</Text></Flex>
+                                    <Button fill="outline" onClick={() => void handleCopyActiveDomain()} size="small">
+                                        <Flex align="center" gap={6}>{domainLinkCopied ? <LuCheck size={16} /> : <LuCopy size={16} />}<Text>{domainLinkCopied ? t('copied') : t('copy')}</Text></Flex>
                                     </Button>
-                                    <Button fill="outline" onClick={() => window.open(normalizeBaseUrl(activeDomain), '_blank')} size="small">
+                                    <Button fill="outline" onClick={handleOpenActiveDomain} size="small">
                                         <Flex align="center" gap={6}><LuExternalLink size={16} /><Text>{t('open')}</Text></Flex>
                                     </Button>
                                     <Button
@@ -412,7 +748,7 @@ export default function MobileDomainSettingsScreen({ onBack }: MobileDomainSetti
                     </Flex>
                 </Card>
 
-                {domainStatus?.config ? (
+                {domainDnsConfig ? (
                     <Card>
                         <Flex gap={8} vertical>
                             <Text strong>{t('configureDnsRecords')}</Text>
@@ -420,12 +756,23 @@ export default function MobileDomainSettingsScreen({ onBack }: MobileDomainSetti
                             <AntList
                                 bordered
                                 dataSource={dnsRecords}
-                                renderItem={(record) => (
+                                renderItem={(record, index) => (
                                     <AntList.Item>
-                                        <Flex gap={6} vertical style={{ width: '100%' }}>
-                                            <Tag>{record.type}</Tag>
-                                            <Typography.Text code>{record.name}</Typography.Text>
-                                            <Typography.Text code>{record.value}</Typography.Text>
+                                        <Flex align="center" gap={10} justify="space-between" style={{ width: '100%' }}>
+                                            <Flex gap={6} style={{ minWidth: 0 }} vertical>
+                                                <Tag style={{ alignSelf: 'flex-start' }}>{record.type}</Tag>
+                                                <Typography.Text code style={{ wordBreak: 'break-word' }}>{record.name}</Typography.Text>
+                                                <Typography.Text code style={{ wordBreak: 'break-word' }}>{record.value}</Typography.Text>
+                                            </Flex>
+                                            <Button
+                                                aria-label={t('copy')}
+                                                fill="outline"
+                                                onClick={() => void handleCopyDnsRecord(record, index)}
+                                                size="small"
+                                                style={{ minHeight: 44, minWidth: 44 }}
+                                            >
+                                                {copiedDnsValue === `${index}` ? <LuCheck size={16} /> : <LuCopy size={16} />}
+                                            </Button>
                                         </Flex>
                                     </AntList.Item>
                                 )}

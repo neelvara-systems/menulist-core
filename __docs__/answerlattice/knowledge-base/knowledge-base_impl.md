@@ -1,7 +1,7 @@
 # Knowledge Base — Technical Implementation Blueprint
 
 > **Version:** 1.0.0
-> **Last Updated:** 2026-03-02
+> **Last Updated:** 2026-06-30
 > **Audience:** Developers
 > **Source:** Codebase forensic audit (code is truth)
 
@@ -53,16 +53,23 @@ The Knowledge Base is a **client-side DAL feature** with no dedicated API routes
 | `CategoryCardPreview.tsx` | — | Category preview card for pane list |
 | `SectionCardPreview.tsx` | — | Section preview card for pane list |
 
+`ArticleModal.tsx` keeps FAQ suggestion refresh and article embedding failures on fixed owner-safe copy. It does not show raw `/api/answerlattice/faqs/generate-from-article` or `/api/helpCenter/article-embedding` response text, provider text, or browser exception messages when those support actions fail. It sends both support-action POSTs with no-store cache, same-origin credentials, and manual redirect handling, then parses both route responses through a 64 KB bounded response reader and requires the expected FAQ suggestion or embedding acknowledgement shape before updating local FAQ options, linked FAQ IDs, or embedding success copy. Article update/delete FAQ maintenance remains fire-and-forget, but failures now log `answerlattice_article_faq_review_marker_failed` or `answerlattice_article_faq_archive_failed` with bounded tenant/store/article metadata only. The FAQ DAL also logs `answerlattice_faq_article_review_scope_resolve_failed` or `answerlattice_faq_article_archive_scope_resolve_failed` if a legacy maintenance caller omits article scope and session fallback cannot resolve tenant/store.
+
+Article create/update/delete and bulk publish/archive UI paths must require `assertKnowledgeBaseArticleWriteSucceeded()`, `assertKnowledgeBaseArticleDeleteSucceeded()`, or `assertKnowledgeBaseArticleBulkStatusUpdateSucceeded()` before local article, category, selection, or ingestion-job state advances. Category, section, article-parent, and category-delete navigation writes must require `assertKnowledgeBaseCategoryWriteSucceeded()` or `assertKnowledgeBaseCategoriesMutationSucceeded()` before local category/section/navigation state advances. Rejected acknowledgements use `platform_kb_article_create_rejected`, `platform_kb_article_update_rejected`, `platform_kb_article_delete_rejected`, `platform_kb_section_article_delete_rejected`, `platform_kb_category_article_delete_rejected`, `platform_kb_bulk_article_status_update_rejected`, `platform_kb_category_create_rejected`, `platform_kb_category_update_rejected`, `platform_kb_section_create_rejected`, `platform_kb_section_update_rejected`, `platform_kb_article_parent_update_rejected`, `platform_kb_article_parent_delete_rejected`, `platform_kb_section_delete_category_update_rejected`, `platform_kb_category_delete_rejected`, `kb_generation_review_article_update_rejected`, or `kb_generation_reconciliation_article_delete_rejected`.
+
+When Answerlattice product surfaces are enabled, KB article create/update and approved KB-generation publish paths must await `rebuildProductSurfaceContentSummaryWithDiagnostics()` after the confirmed write. Refresh failures log `answerlattice_article_summary_refresh_after_create_failed`, `answerlattice_article_summary_refresh_after_update_failed`, or `answerlattice_kb_generation_summary_refresh_after_publish_failed` with bounded article/job metadata and show fixed contextual-help refresh warning copy. The primary article/job write remains successful; embedding failures are also caught inside `ArticleModal.tsx` so a post-write embedding failure cannot be reported as a failed article save.
+
 ### 2.3 Database Layer
 
-**Articles DAL:** `src/database/knowledgeBase/articles.ts` (183 lines)
+**Articles DAL:** `src/database/knowledgeBase/articles.ts`
 
 | Function | Reads | Writes | Notes |
 |----------|:-----:|:------:|-------|
 | `getArticles()` | All | 0 | Fetches entire collection — **NO tenant filter** |
 | `addArticle(data)` | 0 | 1 | Uses `requestBodyComposer` |
-| `updateArticle(data)` | 0 | 1 | Merge update |
-| `deleteArticle(id)` | 0 | 1 | Hard delete |
+| `updateArticle(data)` | 0 | 1 | Merge update, returns acknowledged article |
+| `deleteArticle(id)` | 0 | 1 | Hard delete, returns `{ success: true, id }` |
+| `bulkUpdateArticleStatus(ids, status)` | 0 | N | Batch publish/archive, returns `{ success: true, ids, updatedCount, status }` |
 | `deleteMultipleArticles(ids)` | 0 | N | Batch delete via `writeBatch` |
 | `getArticlesByCategoryId(categoryId)` | N | 0 | Query by categoryId |
 | `getArticlesBySectionId(sectionId)` | N | 0 | Query by sectionId |
@@ -70,20 +77,20 @@ The Knowledge Base is a **client-side DAL feature** with no dedicated API routes
 | `getArticleById(id)` | 1 | 0 | Single doc get |
 | `updateArticleFeedback(articleId, type, increment)` | 1 | 1 | Read-then-write (NOT atomic) |
 
-**Categories DAL:** `src/database/knowledgeBase/categories.ts` (178 lines)
+**Categories DAL:** `src/database/knowledgeBase/categories.ts`
 
 | Function | Reads | Writes | Notes |
 |----------|:-----:|:------:|-------|
-| `getCategories()` | All (1 doc) | 0 | Returns first doc from collection (single-doc pattern) |
-| `deleteCategory(data)` | 0 | 1 | Overwrites entire categories document |
-| `addCategory(category)` | 0 | 1 | Field path update: `categories.{id}` |
-| `updateCategory(category)` | 0 | 1 | Field path update: `categories.{id}` |
-| `updateArticleInParent(categoriesData, categoryId, article, sectionId)` | 0 | 1 | Updates article metadata in parent section/category |
-| `deleteArticleFromParent(categoriesData, categoryId, articleId, sectionId)` | 0 | 1 | Removes article metadata from parent |
+| `getCategories()` | 1 | 0 | Reads scoped doc `categories_{tId}_{sId}` with platform legacy fallback |
+| `deleteCategory(data)` | 0 | 1 | Overwrites categories map, returns acknowledged categories mutation |
+| `addCategory(category)` | 0 | 1 | `setDoc` merge at `categories.{id}`, returns acknowledged category |
+| `updateCategory(category)` | 0 | 1 | `setDoc` merge at `categories.{id}`, returns acknowledged category |
+| `updateArticleInParent(categoriesData, categoryId, article, sectionId)` | 0 | 1 | Updates article metadata in parent section/category, returns acknowledged categories mutation |
+| `deleteArticleFromParent(categoriesData, categoryId, articleId, sectionId)` | 0 | 1 | Removes article metadata from parent, returns acknowledged categories mutation |
 
 **Key implementation details:**
-- `getDocRef()` returns `doc(firebaseClient, COLLECTION, "categories")` — **hardcoded doc ID "categories"**
-- All category mutations use `updateDoc(docRef, { [fieldPath]: value })` — field-path updates on single doc
+- `getDocRef()` resolves the scoped categories document ID from the active Answerlattice tenant/store session.
+- Category mutations use `setDoc(..., { merge: true })` for field-path-like map updates on the scoped categories doc.
 - `_updateSectionArticles()` is a private helper that updates a section's articles array
 - `updateList()` utility handles add-or-update logic for article metadata arrays
 
@@ -131,19 +138,23 @@ PlatformKnowledgeBase mount
   → Render 3-pane splitter
 
 Add Category:
-  → CategoryModal form → addCategory(category) → updateDoc field path
+  → CategoryModal form → addCategory(category) → setDoc merge
+  → assertKnowledgeBaseCategoryWriteSucceeded()
   → setCategoriesData with updated categories
 
 Edit Article:
   → ArticlePane → handleArticleSelect → getArticleById(id) → 1 read
   → ArticleModal with TipTap editor → form submit
   → updateArticle(data) → 1 write to kb_articles
+  → assertKnowledgeBaseArticleWriteSucceeded()
   → updateArticleInParent() → 1 write to kb_categories (metadata sync)
+  → assertKnowledgeBaseCategoriesMutationSucceeded()
 
 Delete Category:
   → Modal.confirm → getArticlesByCategoryId(id) → N reads
   → Promise.all(deleteArticle per article) → N writes
   → deleteCategory(newCategoriesData) → 1 write
+  → assertKnowledgeBaseCategoriesMutationSucceeded()
   → Update local state
 ```
 

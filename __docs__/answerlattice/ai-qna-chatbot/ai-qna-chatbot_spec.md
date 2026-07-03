@@ -229,7 +229,7 @@ Every AI answer includes:
 | 3   | No explicit 401 response for unauthenticated users on search routes | Session returns null, search proceeds without tenant filter   |
 | 4   | Streaming mode currently OFF — untested in production               | Feature-flagged, ready to enable                              |
 | 5   | `console.error` used instead of `secureError` in search routes      | ✅ RESOLVED — all console.log/error removed in audit          |
-| 6   | Query embedding cache has no TTL/expiry                             | ✅ RESOLVED — 30-day TTL check on read, stale entries skipped |
+| 6   | Query embedding cache has no TTL/expiry                             | ✅ RESOLVED — 30-day retention fields, stale-read cleanup, and bounded cleanup-failure diagnostics |
 | 7   | No conversation length limit                                        | ✅ RESOLVED — capped at 50 messages via `trimMessages()`      |
 
 ---

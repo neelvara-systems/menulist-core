@@ -172,7 +172,7 @@ These checks were executed in the current workspace on **May 2, 2026**.
 | --- | --- | --- | --- |
 | Type safety | `npx tsc --noEmit` | ✅ PASS | No type errors |
 | ESLint | `npm run lint` | ✅ PASS | No warnings or errors |
-| Customer App PWA static preflight | `npm run verify:customer-app-pwa` | ✅ PASS | Manifest identity, manifest link, SW no-cache policy, next-pwa scoping, analytics coverage, and freshness hook guard |
+| Customer App PWA static preflight | `npm run verify:customer-app-pwa` | ✅ PASS | Manifest identity, manifest link, SW no-cache policy, next-pwa scoping, analytics source-chain contract, dashboard KPI rendering contract, and freshness hook guard |
 | Manifest identity guard | `npx ts-node --compiler-options '{"module":"CommonJS"}' -r tsconfig-paths/register src/__tests__/manifestStoreIdentity.ts` | ✅ PASS | Same store identity across OBP, `/menu`, project, and outlet/project paths |
 | Production build | `npm run build` | ⬜ Not run in this pass | Run before deployment signoff |
 
@@ -195,9 +195,12 @@ This script verifies:
 - store-level manifest identity is stable across OBP, `/menu`, project, and outlet/project paths
 - client metadata links to `/manifest.webmanifest` without `?start=`
 - manifest generation no longer uses deleted project paths as installed-app identity
+- manifest failure diagnostics use bounded secure logging and do not direct-console raw generation exceptions
+- shortcut/open/install tracking diagnostics use bounded secure logging and do not direct-console raw analytics exceptions
 - `sw-customer.js` only caches the offline fallback and does not cache menu content
 - `next-pwa` is manually registered and not configured with customer-facing runtime cache patterns
 - Customer App analytics events are present and routed under `projectId='customerApp'`
+- Customer App analytics source-chain contract is guarded from event fields through public analytics preference checks, daily writes, summary aggregation, dashboard-summary generation, scheduler inclusion, dashboard DAL reads, and desktop/mobile KPI cards
 - menu freshness uses `router.refresh()` and not polling/listeners
 
 ### Real-Device Execution Order
@@ -209,7 +212,7 @@ After the static preflight passes, test in this order. Do not start with all che
 3. **Samsung Internet:** verify install prompt/fallback behavior and installed launch. Treat browser-specific prompt differences as acceptable if the final installed app identity is correct.
 4. **Offline check:** while installed, enable airplane mode and launch. Confirm the offline page appears and no stale menu is shown.
 5. **Freshness check:** open the installed app, background it for 60+ seconds, change an item availability from owner side, return to the app, and confirm the item availability refreshes without a full reload.
-6. **Analytics check:** verify daily doc, dashboard summary, and dashboard card match for install, app open, and at least one shortcut event.
+6. **Analytics check:** verify daily doc, dashboard summary, and dashboard card match for install, app open, and at least one shortcut event. The static source-chain gate proves field wiring only; it does not replace live event-write, rollup, or dashboard-value smoke.
 
 ### Real-Device Evidence Log Format
 

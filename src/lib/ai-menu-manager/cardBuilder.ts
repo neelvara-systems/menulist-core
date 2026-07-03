@@ -191,6 +191,7 @@ export function buildUnsupportedCard(params: {
     createdAt: string;
     beforeAfterSummary?: AiMenuManagerBeforeAfterSummary;
     entityRefs?: AiMenuManagerEntityRef[];
+    suggestedReplies?: AiMenuManagerCardPayload['suggestedReplies'];
     title?: string;
 }): AiMenuManagerCardPayload {
     return {
@@ -212,6 +213,7 @@ export function buildUnsupportedCard(params: {
             title: 'External work',
             rows: [{ label: 'Action', after: params.message }],
         },
+        suggestedReplies: params.suggestedReplies,
         actions: ['cancel'],
         createdAt: params.createdAt,
     };

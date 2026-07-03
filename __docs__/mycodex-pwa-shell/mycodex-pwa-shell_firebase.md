@@ -17,6 +17,8 @@ MyCodex reserves `MC` as its internal product code in `src/constants/product.ts`
 
 ## Cost Boundary
 
-Safe-area handling, private reader auth, and browser-local reader state are CSS, JSX, filesystem-read, cookie, and `localStorage` behavior only.
+Safe-area handling, private reader auth, and browser-local reader state are CSS, JSX, filesystem-read, cookie, bounded form parsing, and `localStorage` behavior only.
+
+The MyCodex login route rate-limits by request IP before parsing the form body and caps login form submissions at 8 KB. This adds no Firebase, Storage, Cloud Function, product-account, billing, or durable event behavior.
 
 Do not add `MYCODEX_FIREBASE_PROJECT_ID`, `NEXT_PUBLIC_MYCODEX_FIREBASE_PROJECT_ID`, `MC_FIREBASE_PROJECT_ID`, or `NEXT_PUBLIC_MC_*` env keys. MyCodex setup only needs `MYCODEX_BASIC_AUTH_USER`, `MYCODEX_BASIC_AUTH_PASSWORD`, and `MYCODEX_SESSION_SECRET` on Vercel.

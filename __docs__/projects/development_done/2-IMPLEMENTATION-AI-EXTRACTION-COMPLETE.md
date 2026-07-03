@@ -2,7 +2,9 @@
 
 **Date**: November 14, 2025  
 **Assessment**: AI Data Extraction & OCR  
-**Status**: ✅ **4/4 High Priority Issues IMPLEMENTED**
+**Status**: Historical AI extraction implementation evidence; not current launch certification
+
+**Launch Boundary:** This November 2025 note records a completed implementation subset for AI extraction. It is not current production-launch approval. Current release readiness belongs to the active [production-readiness audit](../../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../../production-readiness/external-certification-runbook.md) evidence, `npm run verify:menu-extraction-pipeline`, provider smoke, browser/mobile upload and extraction QA, Firebase deploy evidence where functions/rules change, and production-host smoke.
 
 ---
 
@@ -196,7 +198,7 @@ const rateLimitKey = `${keyPrefix}:${session.user.id}:${session.user.tenantId}`;
 
 ## 🧪 Testing
 
-See [2-TESTING-GUIDE-AI-EXTRACTION.md](./2-TESTING-GUIDE-AI-EXTRACTION.md)
+See [2-testing-guide-ai-extraction.md](./2-testing-guide-ai-extraction.md)
 
 **Quick Tests**:
 1. Clear menu → High quality score
@@ -227,7 +229,7 @@ See [2-TESTING-GUIDE-AI-EXTRACTION.md](./2-TESTING-GUIDE-AI-EXTRACTION.md)
 
 ## 🎉 Status
 
-**Production Ready**: ✅ YES (after testing)
+**Launch Status**: Historical implementation evidence only; current approval requires active production-readiness gates
 
 **Next Steps**:
 1. Test all scenarios
@@ -236,4 +238,4 @@ See [2-TESTING-GUIDE-AI-EXTRACTION.md](./2-TESTING-GUIDE-AI-EXTRACTION.md)
 
 ---
 
-**Related**: [ASSESSMENT-02-AI-EXTRACTION.md](../ASSESSMENT-02-AI-EXTRACTION.md)
+**Related**: [assessment-02-ai-extraction.md](../Assessments/assessment-02-ai-extraction.md)

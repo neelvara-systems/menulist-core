@@ -4,6 +4,7 @@ import { SIGNALDESK_DEFAULT_AI_MODEL, SIGNALDESK_INTEGRATION_ENV } from "@consta
 import { SIGNALDESK_PRODUCT_CODE } from "@constant/signaldesk/product";
 import { admin, signaldeskFirestoreAdmin } from "@lib/firebase/signaldeskFirebaseAdmin";
 import { isSignalDeskFirebaseConfigured } from "@lib/firebase/signaldeskConfig";
+import { logRuntimeFailure } from "@lib/runtime/runtimeDiagnostics";
 import { runSignalDeskAiAssist } from "@lib/signaldesk/aiProvider";
 import { getSignalDeskChannelReadiness, sendSignalDeskProviderMessage } from "@lib/signaldesk/providerAdapters";
 import { loadSignalDeskOverviewServer } from "@lib/signaldesk/server";
@@ -488,6 +489,8 @@ type ContentPerformanceInput = {
 };
 
 const LIST_LIMIT = 30;
+const SIGNALDESK_PROVIDER_BUDGET_BLOCKED_REASON = "provider_budget_blocked";
+const SIGNALDESK_RESEARCH_AGENT_BLOCKED_REASON = "research_agent_blocked";
 
 const getSignalDeskDb = () => {
     if (!isSignalDeskFirebaseConfigured && !process.env.FIRESTORE_EMULATOR_HOST) return null;
@@ -734,6 +737,7 @@ const SOURCE_POLICY_EXPIRED = "SOURCE_POLICY_EXPIRED";
 const SOURCE_POLICY_REVIEW_REQUIRED = "SOURCE_POLICY_REVIEW_REQUIRED";
 const SOURCE_POLICY_RETENTION_MISSING = "SOURCE_POLICY_RETENTION_MISSING";
 const SOURCE_POLICY_USE_NOT_ALLOWED = "SOURCE_POLICY_USE_NOT_ALLOWED";
+const SIGNALDESK_RESEARCH_SOURCE_POLICY_SCAN_FAILED = "signaldesk_research_source_policy_scan_failed";
 
 const sourcePolicyUseAllowed = (policy: SignalDeskSourcePolicy, use: SourcePolicyUse) => {
     const allowed = resolveAllowedUse(policy);
@@ -1515,6 +1519,7 @@ const readUsableResearchSourcePolicy = async (
         .where("provider", "==", provider)
         .limit(20)
         .get();
+    let rejectedPolicyCount = 0;
     for (const doc of snap.docs) {
         const policy = toPlain(doc.data()) as SignalDeskSourcePolicy;
         try {
@@ -1525,9 +1530,16 @@ const readUsableResearchSourcePolicy = async (
                 use: "provider-run",
             });
         } catch {
+            rejectedPolicyCount += 1;
             // Keep searching for a usable provider policy.
         }
     }
+    logRuntimeFailure(SIGNALDESK_RESEARCH_SOURCE_POLICY_SCAN_FAILED, new Error(SIGNALDESK_RESEARCH_SOURCE_POLICY_SCAN_FAILED), {
+        candidatePolicyCount: snap.docs.length,
+        product: "signaldesk",
+        provider,
+        rejectedPolicyCount,
+    });
     throw new Error("Provider source policy is required");
 };
 
@@ -4196,8 +4208,8 @@ export async function runSignalDeskEnrichmentWaterfallServer(access: SignalDeskA
             readyProvider = provider;
             readyUse = use;
             break;
-        } catch (error) {
-            blockedReasons.push(`${provider}: ${error instanceof Error ? error.message : "Provider blocked"}`);
+        } catch {
+            blockedReasons.push(`${provider}: ${SIGNALDESK_PROVIDER_BUDGET_BLOCKED_REASON}`);
         }
     }
 
@@ -5058,7 +5070,7 @@ export async function createSignalDeskResearchAgentRunServer(access: SignalDeskA
                 { label: "Provider run blocked", status: "blocked", at: toIso(blockedAt) },
             ],
         });
-        appendAudit(db, blockBatch, access, "research_agent_blocked", "researchRun", researchRunId, error instanceof Error ? error.message : "blocked");
+        appendAudit(db, blockBatch, access, "research_agent_blocked", "researchRun", researchRunId, SIGNALDESK_RESEARCH_AGENT_BLOCKED_REASON);
         await blockBatch.commit();
         throw error;
     }

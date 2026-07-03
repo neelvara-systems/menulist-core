@@ -1,4 +1,4 @@
-import { logger } from "@lib/monitoring/logger";
+import { AI_SERVICE_ROUTE_REQUEST_OPTIONS, createAiServiceHttpError, getBoundedAiServiceStringContext, logAiServiceFailure, readAiServiceResponseJson } from "@services/ai/aiServiceDiagnostics";
 import { syncBalanceFromResponse } from "@services/ai/balanceSync";
 import { AICapacityError, checkCapacityResponse } from "@services/ai/capacityError";
 
@@ -55,9 +55,18 @@ export interface BusinessCopyGenerationResult {
     tagline: string;
 }
 
+const BUSINESS_COPY_GENERATION_RESPONSE_JSON_MAX_BYTES = 1024 * 1024;
+
+type BusinessCopyGenerationApiResponse = {
+    data?: BusinessCopyGenerationResult | null;
+    remainingBalance?: unknown;
+    transaction?: unknown;
+};
+
 export default async function generateBusinessCopyViaAPI(payload: BusinessCopyGenerationPayload): Promise<BusinessCopyGenerationResult | null> {
     try {
         const response = await fetch('/api/business-copy', {
+            ...AI_SERVICE_ROUTE_REQUEST_OPTIONS,
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload),
@@ -65,22 +74,24 @@ export default async function generateBusinessCopyViaAPI(payload: BusinessCopyGe
 
         await checkCapacityResponse(response);
         if (!response.ok) {
-            let serverMessage = response.statusText;
-            try {
-                const errorJson = await response.json();
-                serverMessage = errorJson?.details || errorJson?.error || serverMessage;
-            } catch {
-                // Ignore JSON parse failure for error bodies.
-            }
-            throw new Error(`Business copy generation request failed: ${serverMessage}`);
+            throw createAiServiceHttpError('ai_business_copy_generation_request_failed', response);
         }
 
-        const responseJson = await response.json();
+        const responseJson = await readAiServiceResponseJson<BusinessCopyGenerationApiResponse>(response, {
+            context: {
+                ...getBoundedAiServiceStringContext('businessName', payload.store?.name),
+            },
+            invalidFailureCode: 'ai_business_copy_generation_response_invalid',
+            maxBytes: BUSINESS_COPY_GENERATION_RESPONSE_JSON_MAX_BYTES,
+            parseFailureCode: 'ai_business_copy_generation_response_parse_failed',
+        });
         syncBalanceFromResponse(responseJson);
         return responseJson.data || null;
     } catch (error) {
         if (error instanceof AICapacityError) throw error;
-        logger.error('Business copy generation API failed', error, { businessName: payload.store?.name });
+        logAiServiceFailure('ai_business_copy_generation_api_failed', error, {
+            ...getBoundedAiServiceStringContext('businessName', payload.store?.name),
+        });
         return null;
     }
 }

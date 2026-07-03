@@ -3,7 +3,8 @@
 > **Audience:** CEO, PM, Product Team
 > **Last Updated:** May 30, 2026
 > **Version:** 2.1
-> **Status:** 🔒 LOCKED — Phase 1 + Phase 2 + Product-Domain Guardrails Complete
+> **Status:** 🔒 LOCKED — Slug, canonical, product-domain, and path-segment guardrails implemented
+> **Local Source Gate:** `npm run verify:url-routing-boundary`
 
 ---
 
@@ -47,7 +48,7 @@
 
 ## Scope
 
-### In-Scope (Phase 1 — Implemented)
+### In-Scope (Slug Infrastructure — Implemented)
 
 - Permanent project slugs stored in `projectsSummary`
 - Old slug → 301 redirect via `previousSlugs[]`
@@ -56,7 +57,7 @@
 - CDN cache headers on public pages (`s-maxage=60, stale-while-revalidate=300`)
 - `ENABLE_STORED_SLUGS` feature flag (default: ON)
 
-### In-Scope (Phase 2 — Implemented Feb 19, 2026)
+### In-Scope (Canonical Routing — Implemented Feb 19, 2026)
 
 - Subdomain auto-assignment during onboarding (both manual + messaging flows)
 - Subdomain settings UI in Business Settings (`SubdomainTab.tsx`)
@@ -102,7 +103,7 @@
 
 **Flow:** Owner tries to create project "Reviews" → slug "reviews" is reserved → system auto-appends "-menu" → slug becomes "reviews-menu".
 
-### Story 3: Multi-Store Brand URL (Phase 2)
+### Story 3: Multi-Store Brand URL
 
 > As a chain owner with 5 outlets, I want one link (`storypizza.menulist.ai`) that shows all my locations.
 

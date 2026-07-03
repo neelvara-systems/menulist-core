@@ -12,7 +12,10 @@ export const dynamic = 'force-dynamic';
 import { logger } from '@lib/monitoring/logger';
 import { checkRateLimit } from '@lib/rateLimit';
 import { getRateLimitForFeature } from '@lib/rateLimit/configs';
+import { readBoundedTextBody } from '@lib/security/boundedRequestBody';
+import { getBoundedSecurityStringContext, logSecurityFailure } from '@lib/security/securityDiagnostics';
 import { NextRequest } from 'next/server';
+import { hashPublicRateLimitValue } from 'src/middleware/publicApi';
 
 const isDev = process.env.NODE_ENV === 'development';
 const CSP_REPORT_MAX_BYTES = 32 * 1024;
@@ -29,6 +32,16 @@ interface CSPReport {
     };
 }
 
+type CSPViolationDetails = {
+    blockedUri?: string;
+    violatedDirective?: string;
+    sourceFile?: string;
+    lineNumber?: number;
+    columnNumber?: number;
+    userAgent?: string;
+    reportUrl?: string;
+};
+
 const getClientIp = (request: NextRequest): string => {
     const forwardedFor = request.headers.get('x-forwarded-for');
     if (forwardedFor) return forwardedFor.split(',')[0].trim();
@@ -41,28 +54,77 @@ const safeReportField = (value: unknown): string | undefined => {
     return normalized ? normalized.slice(0, CSP_REPORT_FIELD_MAX_LENGTH) : undefined;
 };
 
+const safeReportNumber = (value: unknown): number | undefined => {
+    const numberValue = Number(value);
+    return Number.isSafeInteger(numberValue) && numberValue >= 0 && numberValue <= 1_000_000
+        ? numberValue
+        : undefined;
+};
+
+const getDirectiveCategory = (directive: unknown): string => {
+    const normalized = String(directive || '').toLowerCase();
+    if (!normalized) return 'unknown';
+    if (normalized.includes('script-src')) return 'script-src';
+    if (normalized.includes('style-src')) return 'style-src';
+    if (normalized.includes('font-src')) return 'font-src';
+    if (normalized.includes('img-src')) return 'img-src';
+    if (normalized.includes('connect-src')) return 'connect-src';
+    if (normalized.includes('frame-src') || normalized.includes('child-src')) return 'frame-src';
+    if (normalized.includes('default-src')) return 'default-src';
+    return 'other';
+};
+
+const getBlockedUriKind = (blockedUri: unknown): string => {
+    const normalized = String(blockedUri || '').trim().toLowerCase();
+    if (!normalized) return 'empty';
+    if (normalized === 'eval' || normalized === 'inline' || normalized === 'self') return normalized;
+    if (normalized.startsWith('https://')) return 'https';
+    if (normalized.startsWith('http://')) return 'http';
+    if (normalized.startsWith('data:')) return 'data';
+    if (normalized.startsWith('blob:')) return 'blob';
+    if (normalized.startsWith('/')) return 'path';
+    return 'other';
+};
+
+const getCspViolationLogContext = (violation: CSPViolationDetails) => ({
+    blockedUriKind: getBlockedUriKind(violation.blockedUri),
+    columnNumber: violation.columnNumber,
+    directiveCategory: getDirectiveCategory(violation.violatedDirective),
+    lineNumber: violation.lineNumber,
+    ...getBoundedSecurityStringContext('blockedUri', violation.blockedUri),
+    ...getBoundedSecurityStringContext('violatedDirective', violation.violatedDirective),
+    ...getBoundedSecurityStringContext('sourceFile', violation.sourceFile),
+    ...getBoundedSecurityStringContext('userAgent', violation.userAgent),
+    ...getBoundedSecurityStringContext('reportUrl', violation.reportUrl),
+});
+
 export async function POST(request: NextRequest) {
     try {
         const config = getRateLimitForFeature('CSP_REPORT');
+        const ipHash = hashPublicRateLimitValue(getClientIp(request));
         const limit = await checkRateLimit({
-            key: `csp-report:${getClientIp(request)}`,
+            key: `csp-report:${ipHash}`,
             ...config,
         });
         if (!limit.allowed) {
             return new Response(null, { status: 204 });
         }
 
-        const contentLength = Number(request.headers.get('content-length') || 0);
-        if (contentLength > CSP_REPORT_MAX_BYTES) {
+        const bodyResult = await readBoundedTextBody(request, CSP_REPORT_MAX_BYTES, {
+            invalidRequestMessage: 'Invalid report format',
+            tooLargeMessage: 'Report body too large',
+        });
+        if (bodyResult.ok === false) {
             return new Response(null, { status: 204 });
         }
+        const body = bodyResult.body;
 
-        const body = await request.text();
-        if (body.length > CSP_REPORT_MAX_BYTES) {
+        let report: CSPReport;
+        try {
+            report = JSON.parse(body);
+        } catch {
             return new Response(null, { status: 204 });
         }
-
-        const report: CSPReport = JSON.parse(body);
         const cspReport = report['csp-report'];
 
         if (!cspReport) {
@@ -74,9 +136,8 @@ export async function POST(request: NextRequest) {
             blockedUri: safeReportField(cspReport['blocked-uri']),
             violatedDirective: safeReportField(cspReport['violated-directive']),
             sourceFile: safeReportField(cspReport['source-file']),
-            lineNumber: cspReport['line-number'],
-            columnNumber: cspReport['column-number'],
-            timestamp: new Date().toISOString(),
+            lineNumber: safeReportNumber(cspReport['line-number']),
+            columnNumber: safeReportNumber(cspReport['column-number']),
             userAgent: safeReportField(request.headers.get('user-agent')),
             // Add URL context
             reportUrl: safeReportField(request.headers.get('referer')) || 'unknown',
@@ -89,15 +150,17 @@ export async function POST(request: NextRequest) {
         } else {
             // In production: Log to Sentry
             const severity = determineCSPSeverity(violation);
-            logger.security('CSP Violation Detected', violation, severity);
+            logger.security('CSP Violation Detected', getCspViolationLogContext(violation), severity);
         }
 
         // Return 204 No Content (standard for CSP reports)
         return new Response(null, { status: 204 });
     } catch (error) {
-        logger.error('Failed to process CSP report', error, {
-            url: request.url,
+        logSecurityFailure('csp_report_processing_failed', error, {
+            endpoint: '/api/csp-report',
             method: request.method,
+            ...getBoundedSecurityStringContext('requestUrl', request.url),
+            ...getBoundedSecurityStringContext('requestIpHash', hashPublicRateLimitValue(getClientIp(request))),
         });
         return new Response('Internal Server Error', { status: 500 });
     }

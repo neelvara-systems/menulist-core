@@ -21,7 +21,7 @@ The internet is shifting from human browsing to machine querying. By 2030, Morga
 
 - **Primary:** AI assistants (ChatGPT, Gemini, Perplexity, voice assistants) querying business truth
 - **Secondary:** Search engines evaluating structured data quality
-- **Tertiary:** Future agent ecosystems (Google AI Mode, Operator, etc.)
+- **Tertiary:** Conditional agent ecosystems (Google AI Mode, Operator, etc.)
 
 ### Scope
 
@@ -30,7 +30,7 @@ The internet is shifting from human browsing to machine querying. By 2030, Morga
 - Enhanced llms.txt (machine-readable site description)
 - llms-full.txt (extended context for deeper LLM understanding)
 - Strategic documentation and positioning guide
-- Feature flag placeholder for future agent endpoints
+- Reserved disabled feature flag for conditional agent endpoints
 
 **Out of Scope:**
 
@@ -77,7 +77,7 @@ The **indirect beneficiaries** are SMB owners whose businesses get cited by AI w
 Priority hierarchy (non-negotiable):
 
 1. **Primary link adoption** — Push SMBs to use their MenuList OBP URL as their official public link (Google listing, Instagram bio, WhatsApp status, QR codes, packaging). Without this, all agent-readiness work is irrelevant. This is the #1 metric.
-2. **Dataset accuracy** — Menus accurate, hours accurate, availability current, updates frequent. Clean dataset = future power. Messy dataset = permanent weakness.
+2. **Dataset accuracy** — Menus accurate, hours accurate, availability current, updates frequent. Clean dataset = long-term power. Messy dataset = permanent weakness.
 3. **Agent discovery preparation** — Schema.org depth, llms.txt, fast SSR, stable URLs. This is what the current feature delivers. It is necessary foundation — but it is foundation, not the building.
 
 No more heavy "agent readiness" implementation needed for now. Shift focus back to adoption + accuracy.
@@ -127,7 +127,7 @@ MenuList is **not** selling to agents. MenuList is the **canonical structured da
 
 ---
 
-## What We're Building (Phase 1 — Now)
+## What We're Building (Current Static Discovery Layer)
 
 ### 1. Enhanced llms.txt
 
@@ -140,9 +140,9 @@ Rebuild `/llms.txt` from generic marketing copy to structured capability descrip
 
 Extended version with detailed documentation about MenuList's data structure, schema.org implementation, and how to interpret the structured data on public pages.
 
-### 3. Feature Flag Placeholder
+### 3. Reserved Disabled Flag
 
-`ENABLE_AGENT_DISCOVERY` in features.ts — not active, but ready for when MenuList needs agent-facing endpoints.
+`ENABLE_AGENT_DISCOVERY` in `src/config/features.ts` is disabled and not connected to any current route, API, Cloud Function, or client workflow. It is reserved for a separate source-backed implementation decision if agent-facing endpoints become necessary.
 
 ### 4. Strategic Documentation
 
@@ -165,7 +165,7 @@ Full doc suite documenting the long-term positioning, competitive analysis, and 
 
 ## Long-Term Vision (3-5 Year Horizon)
 
-### Year 1-2: Foundation (Current Phase)
+### Current Foundation
 
 - **OBP adoption is THE priority** — every SMB must use their MenuList link as official public link
 - Data accuracy obsession (MCE, validation, owner nudges for completeness)

@@ -15,6 +15,7 @@ import { Button, Flex, Image, Input, message, Tag, theme, Tooltip, Typography, U
 import { RcFile } from 'antd/es/upload';
 import { useEffect, useRef, useState } from 'react';
 import { LuImage, LuMessageSquarePlus, LuSend, LuX } from 'react-icons/lu';
+import { getBoundedHelpChatStringContext, logHelpChatFailure } from './helpChatDiagnostics';
 import { ChatMode } from './types';
 
 const { TextArea } = Input;
@@ -96,7 +97,10 @@ const ChatInput = ({ onSendMessage, onInputChange, onImageUpload, placeholder, m
                 localStorage.removeItem(draftKey);
                 localStorage.removeItem(imageDraftKey);
             } catch (error) {
-                console.warn('Failed to clear draft from localStorage:', error);
+                logHelpChatFailure('help_chat_draft_clear_failed', error, {
+                    ...getBoundedHelpChatStringContext('sessionId', sessionId),
+                    hasSelectedImage: Boolean(selectedImage),
+                });
             }
         }
     };
@@ -239,7 +243,9 @@ const ChatInput = ({ onSendMessage, onInputChange, onImageUpload, placeholder, m
                 localStorage.removeItem(imageDraftKey);
             }
         } catch (error) {
-            console.warn('Failed to load draft from localStorage:', error);
+            logHelpChatFailure('help_chat_draft_load_failed', error, {
+                ...getBoundedHelpChatStringContext('sessionId', sessionId),
+            });
         }
         // Only load on mount or session change, NOT on value changes
         // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -254,9 +260,12 @@ const ChatInput = ({ onSendMessage, onInputChange, onImageUpload, placeholder, m
                 localStorage.removeItem(draftKey);
             }
         } catch (error) {
-            console.warn('Failed to save draft to localStorage:', error);
+            logHelpChatFailure('help_chat_draft_save_failed', error, {
+                ...getBoundedHelpChatStringContext('sessionId', sessionId),
+                inputLength: inputValue.length,
+            });
         }
-    }, [inputValue, draftKey]);
+    }, [inputValue, draftKey, sessionId]);
 
     // Image screenshots can contain private customer data, so they are never
     // persisted as base64 drafts. Keep a cleanup path for legacy drafts.

@@ -4,7 +4,7 @@
 **Status:** ✅ IMPLEMENTED — Feature flag OFF (`ENABLE_EXTRACTION_MONITORING_DASHBOARD`)  
 **Source:** ChatGPT extraction hardening session (Mar 2026) → Cascade codebase validation  
 **Feature Flag:** `ENABLE_EXTRACTION_MONITORING_DASHBOARD`  
-**Last Updated:** June 3, 2026
+**Last Updated:** June 30, 2026
 
 ---
 
@@ -48,14 +48,15 @@ An internal-only dashboard that gives the solo founder fast visibility into extr
 | Job documents       | `menuImageProcessingJobs`                    | Job status, timing, errors, quality scores |
 | AI operations       | `MENULIST_AI_OPERATIONS`                     | Token usage, cost per extraction, job/tenant/store context |
 | Extraction learning | `platformSummary/extractionLearning`         | Correction patterns (10.2)                 |
-| AI usage log        | `aiUsageLog` (Phase 2 — not yet implemented) | Cross-feature AI cost (future)             |
+
+No separate `aiUsageLog` collection is read by this dashboard. Current extraction cost data comes from `MENULIST_AI_OPERATIONS`; billable app-route operations live in `menulistAiOperations/{tId}/{sId}` outside this extraction monitor.
 
 ### Dashboard Sections
 
 1. **Health Overview** — Active/pending/failed job counts, avg processing time, failure rate
 2. **Quality Metrics** — Avg quality score, confidence distribution, HCR trend
 3. **Job Feed** — Recent jobs with status, scores, timing
-4. **Job Inspector** — Drill into any job: normalized extraction output, stored raw provider responses, file results, token usage, owner units, and retry status
+4. **Job Inspector** — Drill into any job: normalized extraction output, stored raw provider responses, file results, token usage, owner units, retry status, and acknowledged raw-data copy actions with bounded failure diagnostics
 5. **Cost Monitor** — Gemini calls/day, actual INR cost/extraction, daily spend, and highest job cost. Values are stored as paise and rendered as INR. Platform rows include `jobId`, tenant/store/user context, destination, source, token counts, failure status/error code, retry-after seconds when present, and Firestore `createdAt` timestamps.
 6. **Ops Alerts** — Scheduler-driven alerts for stuck jobs, failure spikes, and quality drops
 

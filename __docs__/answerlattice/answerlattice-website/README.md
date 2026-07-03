@@ -1,8 +1,8 @@
 # AnswerLattice Website (answerlattice.com)
 
 > **Feature:** Public marketing website for AnswerLattice product
-> **Status:** ✅ IMPLEMENTED — refreshed for approved-answers-first homepage positioning, product-led support-suite conversion, self-service AnswerLattice, concept illustrations, agent-readable public discovery, and consent-gated Plausible marketing-site analytics
-> **Date:** 2026-06-26
+> **Status:** ✅ IMPLEMENTED — refreshed for approved-answers-first homepage positioning, product-led support-suite conversion, compact category-switch proof, self-service AnswerLattice, concept illustrations, agent-readable public discovery, and consent-gated Plausible marketing-site analytics
+> **Date:** 2026-06-29
 > **Domain:** answerlattice.com (production) | answerlattice.menulist.online (Vercel Preview / QA) | localhost:3000/__answerlattice (dev)
 > **Feature Flag:** None required (static marketing site)
 > **Route Group:** `src/app/sites/answerlattice/`
@@ -30,7 +30,7 @@
 
 | Route | Page | Purpose |
 |-------|------|---------|
-| `/` | Homepage | Product-user support hero with approved-answers-first proof, inline sample workspace preview, support-suite cards, scroll-led support-surface story, feature-wise product overview cards, support improvement loop, install-surface quickstarts, AI-built SaaS fit, positioning boundary, pricing checkpoint, objections, and CTA |
+| `/` | Homepage | Product-user support hero with approved-answers-first proof, inline sample workspace preview, support-suite flow with compact category-switch proof, support-suite cards, scroll-led support-surface story, priority-bento product overview cards, support improvement loop, install-surface quickstarts, merged founder-fit/category-boundary section, pricing checkpoint, objections, and CTA |
 | `/product` | Product | Self-serve product overview for SaaS and digital products with hero CTAs, conversion proof strip, connected support-suite framing, visual workflow proof for setup, team access, in-product widget, hosted help, custom owner Q&A, safe ticket context, approved answers, releases, support gaps, and category comparison |
 | `/product/launch-setup` | Product Area | Landing-style page for setting up support: workspace setup, team access, starter knowledge, product pages, widget key, first-client launch proof, and setup/demo/source-prep CTAs |
 | `/product/page-aware-widget` | Product Area | Landing-style page for in-app widget runtime, safe context, allowed origins, blocked routes, canonical answers, owner FAQ answers, and widget proof strip |
@@ -111,7 +111,7 @@
 | `src/content/answerlatticePublic/visualAssets.ts` | Maintained inventory for current generated assets, future animation slots, must-show notes, and must-avoid guardrails |
 | `src/app/sites/answerlattice/styles.css` | Root-loaded Tailwind directives, scoped AnswerLattice CSS variables, dark/light compatibility rules, diagram theming, and page/section rhythm |
 | `src/app/sites/answerlattice/scroll-reveal.css` | Root-loaded AnswerLattice viewport reveal motion for public website sections, cards, CTAs, and footer groups |
-| `src/app/sites/answerlattice/page.tsx` | Compressed homepage server component with hero proof, support-suite cards, sticky support-surface story, feature-wise product overview cards, support improvement loop, install-surface quickstarts, AI-built SaaS fit, positioning boundary, pricing, objections, and final CTA |
+| `src/app/sites/answerlattice/page.tsx` | Compressed homepage server component with hero proof, support-suite flow, compact category-switch proof, support-suite cards, sticky support-surface story, feature-wise product overview cards, support improvement loop, install-surface quickstarts, AI-built SaaS fit, positioning boundary, pricing, objections, and final CTA |
 | `src/app/sites/answerlattice/productAreas.ts` | Shared product-area navigation and descriptions |
 | `src/app/sites/answerlattice/product/launch-setup/page.tsx` | Product-area landing page for Launch Setup |
 | `src/app/sites/answerlattice/product/page-aware-widget/page.tsx` | Product-area landing page for Page-Aware Widget |
@@ -271,7 +271,7 @@ See `src/constants/productDomains.ts` for the full multi-product domain registry
 4. **basePath pattern** — `getBasePath()` reads `x-product-id` header + `host` to determine if dev mode. Passed as prop to components that contain links.
 5. **AnswerlatticeLink** — Wraps `next/link` with basePath prefix for dev mode compatibility.
 6. **No external dependencies** — Zero new npm packages. Uses existing Tailwind, React, and icon stack.
-7. **Contact boundary** — `/contact` posts to an AnswerLattice-owned API route and AnswerLattice Firestore collection. It does not reuse another product's public enquiry storage.
+7. **Contact boundary** — `/contact` posts to an AnswerLattice-owned API route and AnswerLattice Firestore collection. It does not reuse another product's public enquiry storage, and public contact/onboarding/widget browser errors use fixed failure copy instead of API response text or exception messages.
 8. **Viewport reveal motion** — A single AnswerLattice-specific client island adds restrained section/card/CTA reveal effects across public pages with reduced-motion support. Motion stays product-site polish, not decorative animation.
 9. **Diagram motion** — AnswerLattice diagrams use one soft logo-centered ripple without an inner static strip. Cross-diagram pulses start from the logo together, run to the visible guide-line endpoints, and fade at the endpoint instead of disappearing abruptly.
 10. **Screen assets** — Website product-screen sample scenes render from 1440 x 1200 PNG slots instead of HTML/CSS mockup screens. Production screenshots or GIFs can replace the same named slots later so layout, crop, and page rhythm stay stable.
@@ -283,6 +283,10 @@ See `src/constants/productDomains.ts` for the full multi-product domain registry
 
 | Date | Change |
 |------|--------|
+| 2026-06-29 | Added a compact category-switch strip inside the homepage Support Suite so buyers can compare AnswerLattice by official answer source before opening the full `/comparisons` pages |
+| 2026-06-27 | Replaced static Prism-glass card hover glows with a pointer-tracked AnswerLattice spotlight controller so eligible card highlights follow the mouse while preserving existing theme tokens, layouts, and public product claims |
+| 2026-06-26 | Converted the homepage Product Overview feature cards into a priority bento and merged AI-built founder fit with category-boundary messaging so the lower page keeps all content with less repeated card-grid weight |
+| 2026-06-26 | Added a scoped Prism-glass visual polish pass for AnswerLattice cards and surface frames using existing Verdigris tokens, preserving current layouts, diagrams, routes, and public product claims |
 | 2026-06-26 | Added consent-gated Plausible Cloud support for the public marketing website, forwarded existing `data-answerlattice-event` names to Plausible, and removed API-key material from onboarding success analytics labels |
 | 2026-06-25 | Removed the custom repo-generated `session_id` parameter from AnswerLattice resource GA4 events while preserving consent-gated page, entry-page, referrer, UTM, slug, and target URL context |
 | 2026-06-21 | Refined and simplified the homepage support-suite presentation with a lighter `Collect → Shape → Serve` flow rail, four suite cards, and a stable non-sticky build-path panel so the section stays readable without adding unsupported claims |
@@ -312,6 +316,8 @@ See `src/constants/productDomains.ts` for the full multi-product domain registry
 | 2026-06-01 | Completed rendered wording QA across all public AnswerLattice routes and root-loaded scoped AnswerLattice CSS through `src/app/layout.tsx` so clean-cache pages keep theme styling, Tailwind utilities, and route styling without relying on a nested CSS chunk |
 | 2026-06-02 | Broadened the top-level homepage, metadata, Product, About, Contact, and footer positioning from SaaS-only wording to SaaS and digital products while keeping AI-built SaaS as a focused use-case and SEO path |
 | 2026-06-02 | Completed the full rendered page-content cross-check: removed repeated long body copy from shared templates and broadened Resources, Pricing, ROI, FAQ, Proof, homepage CTA, and homepage pricing copy to SaaS plus digital-product framing |
+| 2026-06-30 | Hardened the public contact client submission boundary with same-origin credentials, no-store cache, manual redirect handling, bounded response parsing, accepted-shape validation, and bounded diagnostics |
+| 2026-06-30 | Hardened `/get-started` onboarding success state so it requires a bounded, valid onboarding result after same-origin/no-store/manual-redirect submission |
 | 2026-06-02 | Upgraded the homepage product-proof section into a restrained desktop sticky walkthrough for setup, surfaces, widget, feedback, and governance while preserving the mobile tabbed preview and dark/teal theme |
 | 2026-06-02 | Tightened the homepage pricing block into a compact pricing checkpoint so it reduces buyer uncertainty without duplicating the dedicated `/pricing` page |
 | 2026-06-02 | Reframed the homepage best-fit section so launch-ready founders are included before existing support volume becomes a requirement |

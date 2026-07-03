@@ -16,6 +16,12 @@
 
 **Decision:** Desktop-first. The flow works in mobile browser (responsive pages), but no MobileShell-specific onboarding UI. Acceptable because it's a one-time flow.
 
+## Current Launch Boundary
+
+Desktop-first does not mean mobile launch evidence is optional. Current release approval still requires browser/device QA for mobile pricing, onboarding modal, Google OAuth return, Razorpay checkout, payment verification, session refresh, and dashboard handoff, with evidence recorded in the active [production-readiness audit](../audits/menulist-production-readiness-audit.md) and [External Certification Runbook](../production-readiness/external-certification-runbook.md).
+
+This doc records the mobile-support decision only. It does not certify mobile browser OAuth, payment provider behavior, Firebase Auth sync, live Firestore writes, Vercel deploys, Firebase deploys, production build output, or production-host behavior.
+
 ---
 
 ## How It Works on Mobile

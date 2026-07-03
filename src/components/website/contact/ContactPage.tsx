@@ -2,10 +2,17 @@
 
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useTranslations } from 'next-intl';
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { LuCheck, LuCheckCircle, LuLoader, LuSend } from 'react-icons/lu';
 import * as z from 'zod';
+import TurnstileWidget, { isTurnstileClientEnabled, type TurnstileStatus } from '@/components/security/TurnstileWidget';
+import {
+  isAcceptedMenulistPublicContactResponse,
+  logInvalidMenulistPublicContactResponse,
+  readMenulistPublicContactResponseJson,
+  type MenulistPublicContactTopic,
+} from '@lib/publicContact/contactClientResponse';
 import AnimateOnScroll from '../shared/AnimateOnScroll';
 import SectionWrapper from '../shared/SectionWrapper';
 import WebsiteLink from '../shared/WebsiteLink';
@@ -19,6 +26,7 @@ const schema = z.object({
   helpTopic: z.enum(['general', 'demo', 'multi-location', 'pricing', 'other']).optional(),
   message: z.string().min(10, 'Message must be at least 10 characters'),
   agreeToTerms: z.boolean().refine(v => v === true, { message: 'Please agree to continue' }),
+  website: z.string().optional(),
 });
 
 type FormValues = z.infer<typeof schema>;
@@ -56,23 +64,82 @@ export default function ContactPage() {
   const t = useTranslations('Website');
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const [captchaStatus, setCaptchaStatus] = useState<TurnstileStatus>(isTurnstileClientEnabled() ? 'loading' : 'disabled');
+  const [captchaResetSignal, setCaptchaResetSignal] = useState(0);
+  const captchaRequired = isTurnstileClientEnabled();
   const whyPoints = Array.from({ length: WHY_COUNT }, (_, i) => t(`Contact.why${i}`));
   const proofItems = Array.from({ length: 3 }, (_, i) => t(`Contact.proof${i}`));
+  const submitFailedMessage = t('Contact.submitFailed');
+  const securityCheckMessage = t('Contact.securityCheckRequired');
 
   const { register, handleSubmit, reset, formState: { errors } } = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { agreeToTerms: false },
+    defaultValues: { agreeToTerms: false, website: '' },
   });
 
+  const resetCaptcha = useCallback(() => {
+    if (!captchaRequired) return;
+    setCaptchaToken(null);
+    setCaptchaResetSignal((current) => current + 1);
+  }, [captchaRequired]);
+
   const onSubmit = async (values: FormValues) => {
+    setSubmitError(null);
+    const sourcePath = typeof window === 'undefined' ? '/contact' : window.location.pathname;
+    const expectedHelpTopic = (values.helpTopic || 'general') as MenulistPublicContactTopic;
+    const responseLogContext = {
+      captchaRequired,
+      captchaStatus,
+      hasCaptchaToken: Boolean(captchaToken),
+      hasPhoneNumber: Boolean(values.phoneNumber),
+      messageLength: values.message.length,
+      helpTopic: expectedHelpTopic,
+      sourcePathLength: sourcePath.length,
+    };
+
+    if (captchaRequired && !captchaToken) {
+      setSubmitError(securityCheckMessage);
+      return;
+    }
+
     setSubmitting(true);
     try {
-      const { addEnquiry } = await import('@/database/landingPage/enquiries');
-      await addEnquiry(values);
+      const response = await fetch('/api/public/contact', {
+        method: 'POST',
+        cache: 'no-store',
+        credentials: 'same-origin',
+        redirect: 'manual',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...values,
+          sourcePath,
+          captchaToken: captchaToken || undefined,
+        }),
+      });
+      const result = await readMenulistPublicContactResponseJson(
+        response,
+        'website_contact_response_parse_failed',
+        responseLogContext,
+      );
+      resetCaptcha();
+
+      if (!response.ok || !isAcceptedMenulistPublicContactResponse(result, expectedHelpTopic)) {
+        if (response.ok) {
+          logInvalidMenulistPublicContactResponse('website_contact_response_invalid', result, expectedHelpTopic, {
+            ...responseLogContext,
+            responseStatus: response.status,
+          });
+        }
+        throw new Error(submitFailedMessage);
+      }
+
       reset();
       setSubmitted(true);
-    } catch (e) {
-      console.error('Enquiry submit failed:', e);
+    } catch {
+      setSubmitError(submitFailedMessage);
+      resetCaptcha();
     } finally {
       setSubmitting(false);
     }
@@ -202,6 +269,16 @@ export default function ContactPage() {
                     {errors.message && <p style={errorStyle}>{errors.message.message}</p>}
                   </div>
 
+                  <div style={{ display: 'none' }} aria-hidden>
+                    <label htmlFor="contact-website">Website</label>
+                    <input
+                      id="contact-website"
+                      tabIndex={-1}
+                      autoComplete="off"
+                      {...register('website')}
+                    />
+                  </div>
+
                   {/* Terms checkbox */}
                   <div style={{ display: 'flex', gap: 'var(--ws-space-3)', alignItems: 'center' }}>
                     <input
@@ -219,11 +296,31 @@ export default function ContactPage() {
                   </div>
                   {errors.agreeToTerms && <p style={{ ...errorStyle, marginTop: '-12px' }}>{errors.agreeToTerms.message}</p>}
 
+                  <TurnstileWidget
+                    action="menulist_contact"
+                    onStatusChange={setCaptchaStatus}
+                    onTokenChange={setCaptchaToken}
+                    resetSignal={captchaResetSignal}
+                    theme="light"
+                  />
+
+                  {captchaRequired && captchaStatus === 'error' ? (
+                    <p style={errorStyle} role="alert">
+                      Security check did not load. Refresh the page and try again.
+                    </p>
+                  ) : null}
+
+                  {submitError ? (
+                    <p style={errorStyle} role="alert">
+                      {submitError}
+                    </p>
+                  ) : null}
+
                   {/* Submit */}
                   <button
                     type="submit"
-                    disabled={submitting}
-                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '13px 24px', backgroundColor: 'var(--ws-brand-primary)', color: '#fff', border: 'none', borderRadius: 'var(--ws-radius-md)', fontSize: '0.9375rem', fontWeight: 600, cursor: submitting ? 'not-allowed' : 'pointer', opacity: submitting ? 0.7 : 1, transition: 'opacity 0.2s' }}
+                    disabled={submitting || (captchaRequired && !captchaToken)}
+                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '13px 24px', backgroundColor: 'var(--ws-brand-primary)', color: '#fff', border: 'none', borderRadius: 'var(--ws-radius-md)', fontSize: '0.9375rem', fontWeight: 600, cursor: submitting || (captchaRequired && !captchaToken) ? 'not-allowed' : 'pointer', opacity: submitting || (captchaRequired && !captchaToken) ? 0.7 : 1, transition: 'opacity 0.2s' }}
                   >
                     {submitting ? <LuLoader size={16} style={{ animation: 'spin 1s linear infinite' }} /> : <LuSend size={16} />}
                     {submitting ? t('Contact.formSubmitting') : t('Contact.formSubmit')}

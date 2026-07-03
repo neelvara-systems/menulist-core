@@ -39,6 +39,16 @@ Activation Command Center
 
 The owner panel never triggers `triggerAnswerlatticeNightly`. Manual scheduler execution remains an ops recovery path protected by the existing secret. Owners can adjust timezone/EOD in Settings and can rebuild compiled context through the existing bundle rebuild action.
 
+Manual trigger diagnostics use bounded request/scope metadata. Unauthorized requests log a stable `answerlattice_manual_scheduler_unauthorized` code with request IP presence/length metadata only. Invalid scoped retry payloads return the fixed `ANSWERLATTICE_MANUAL_SCOPE_INVALID` response code instead of raw local exception text. Valid scoped retry logs keep tenant/store scope booleans rather than raw `tId/sId` values.
+
+Master scheduler task diagnostics use fixed failure codes and bounded source metadata. `runAnswerlatticeMasterScheduler()` still writes task outcomes to `platformSummary/answerlatticeSchedulerState`, but failed task summaries and `lastError` now use `ANSWERLATTICE_MASTER_SCHEDULER_TASK_FAILED`; source error name/code/status are persisted separately, and task/lease failure logs use fixed codes instead of raw exception text.
+
+Governance batch diagnostics use fixed scheduler failure codes and bounded metadata. `runAnswerlatticeNightly()` still writes the structured run log and per-tenant task diagnostics, but diagnostic `error` values are fixed local codes, human `errorMessages` use `scoped`/`global` instead of raw tenant/store IDs, logger payloads use source error name/code/status plus scope booleans, and workflow summary event payloads carry bounded diagnostic strings instead of raw diagnostic objects.
+
+Workflow integration adapter checks are part of those governance diagnostics. If Step 13 cannot read a tenant's integration config, the tenant workflow integration task is recorded as failed with `ANSWERLATTICE_INTEGRATION_ADAPTER_CHECK_FAILED`; the scheduler run continues, and a legitimate disabled/no-config adapter remains a skipped task.
+
+AI provider health diagnostics use fixed codes. `functions-answerlattice/src/answerlattice/aiProviderHealth.ts` still runs the daily Gemini smoke check and writes `platformSummary/answerlatticeAiProviderHealth`, but failed checks store `ANSWERLATTICE_AI_PROVIDER_HEALTH_CHECK_FAILED` or `ANSWERLATTICE_AI_PROVIDER_HEALTH_UNEXPECTED_RESPONSE` plus source error name/code/status metadata. The thrown scheduler error is the same fixed code, not provider/runtime exception text.
+
 ## Compatibility
 
 The deployed export names are unchanged. This avoids creating a second scheduled function and avoids a destructive function rename during rollout.

@@ -6,13 +6,13 @@ import '@/styles/website.css';
 import { Metadata } from 'next';
 
 export const metadata: Metadata = {
-    title: 'Trust & Security — MenuList | How We Keep Your Data Safe',
+    title: 'Trust & Security - MenuList | How We Keep Your Data Safe',
     description: 'Learn about MenuList\'s security practices, data protection measures, and our commitment to keeping your business information safe.',
     alternates: {
         canonical: '/trust-security',
     },
     openGraph: {
-        title: 'Trust & Security — MenuList | How We Keep Your Data Safe',
+        title: 'Trust & Security - MenuList | How We Keep Your Data Safe',
         description: 'Learn about MenuList\'s security practices, data protection measures, and our commitment to keeping your business information safe.',
         url: '/trust-security',
     },

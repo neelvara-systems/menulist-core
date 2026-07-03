@@ -1,16 +1,18 @@
 # Upload & File Processing — Firebase Cost Tracking
 
 **Feature:** File Upload & PDF Processing  
-**Status:** ✅ Production Ready  
-**Last Updated:** February 7, 2026  
+**Status:** Firebase cost evidence; not current launch certification
+**Last Updated:** July 1, 2026
 **Priority:** HIGH — Entry point for every new menu. Every user triggers this.
+
+> **Launch Boundary:** This file records Firebase cost evidence for upload flows, not current production-launch approval. Current release approval requires the active [production-readiness audit](../../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../../production-readiness/external-certification-runbook.md) evidence, `npm run verify:menu-extraction-pipeline`, browser/mobile upload QA, Storage quota/rules evidence, provider/extraction smoke, target deploy evidence, and production-host smoke.
 
 ---
 
 ## Summary
 
 - **Collections Used:** `projects/{tId}/{sId}` (projectsData), `platformSummary` (projectsSummary)
-- **Storage Buckets:** `MenuListAi/project/files/{timestamp}-{uid}`
+- **Storage Buckets:** Active uploads use `projects/files/{tId}/{sId}/{fileId}`. Legacy files may still exist under `MenuListAi/project/files/{timestamp}-{uid}`.
 - **Cloud Functions:** None (client-side processing)
 - **Estimated Monthly Cost:** **Low** — Storage-dominated
 
@@ -43,7 +45,7 @@
 
 | Operation | Path Pattern | Trigger | Size | Notes |
 |-----------|-------------|---------|------|-------|
-| Upload menu images | `MenuListAi/project/files/{timestamp}-{uid}` | User upload | 1-5MB per file | JPEG 80% quality. PDF pages converted client-side at 1.5x scale before upload. |
+| Upload menu images | `projects/files/{tId}/{sId}/{fileId}` | User upload | 1-5MB per file | JPEG 80% quality. PDF pages converted client-side at 1.5x scale before upload. |
 | Upload PDF-converted pages | Same pattern | After client-side conversion | 0.5-2MB per page | Each PDF page → JPEG image, then uploaded individually. |
 
 ---
@@ -58,10 +60,11 @@
 
 ## Security Rules Impact
 
-- Storage upload: requires auth + path must match `MenuListAi/project/files/*`
+- Storage upload: active writes require auth, tenant/store path shape, and `belongsToStore(tId, sId)` on `projects/files/{tId}/{sId}/{fileId}`
 - File type validation: client-side (JPG, PNG, WebP, PDF only)
 - Size limit: enforced client-side (max 10MB per file)
 - Tenant isolation: files stored under project path which includes `{tId}/{sId}`
+- Legacy compatibility: older `MenuListAi/project/files/*` objects remain readable/writable by existing authenticated-rule paths until a coordinated app deploy and Storage rules cutover can disable legacy writes.
 
 ---
 

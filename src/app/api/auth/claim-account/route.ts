@@ -27,12 +27,16 @@ export const dynamic = 'force-dynamic';
 import { DB_COLLECTIONS } from "@constant/database";
 import { getGeneratedEmail } from "@constant/urls";
 import { authOptions } from "@lib/auth";
+import { getBoundedAuthStringContext, logAuthFailure } from "@lib/auth/authDiagnostics";
 import { isInternalAuthEmail } from "@lib/auth/loginIdentifiers";
 import { admin, authAdmin } from "@lib/firebase/firebaseAdmin";
 import { normalizePhoneNumberForStorage } from "@lib/phone/phoneNumber";
+import { revalidateMenuCache } from "@lib/actions/revalidateMenuCache";
 import { validateEmail } from "@lib/validation/emailDomainValidator";
-import { buildSecurityContext } from "@lib/security/securityContext";
+import { getBoundedSecurityRouteContext } from "@lib/security/securityDiagnostics";
+import { readBoundedJsonBody } from "@lib/security/boundedRequestBody";
 import { logger } from "@lib/monitoring/logger";
+import { getClientIp, hashPublicRateLimitValue } from "src/middleware/publicApi";
 import { getServerSession } from "next-auth";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
@@ -40,18 +44,19 @@ import { z } from "zod";
 const db = admin.firestore();
 
 const ClaimWithPasswordSchema = z.object({
-  claimToken: z.string().min(20),
-  email: z.string().email(),
-  password: z.string().min(6),
+  claimToken: z.string().min(20).max(256),
+  email: z.string().email().max(180),
+  password: z.string().min(6).max(128),
   name: z.string().max(100).optional(),
 });
 
 const ClaimWithWhatsappPhoneSchema = z.object({
-  claimToken: z.string().min(20),
-  password: z.string().min(6),
+  claimToken: z.string().min(20).max(256),
+  password: z.string().min(6).max(128),
   name: z.string().max(100).optional(),
   useWhatsappPhone: z.literal(true),
 });
+const CLAIM_ACCOUNT_MAX_BODY_BYTES = 16 * 1024;
 
 async function linkClaimedSubscriptions(params: {
   email: string;
@@ -87,10 +92,27 @@ const getMessagingPhone = (messagingUser: FirebaseFirestore.DocumentData) => (
 
 const claimFailure = (message: string, status = 400) => NextResponse.json({ error: message }, { status });
 
+class ClaimTokenUnavailableError extends Error {
+  status: number;
+
+  constructor(message = "Unable to complete account claim.", status = 409) {
+    super(message);
+    this.name = "ClaimTokenUnavailableError";
+    this.status = status;
+  }
+}
+
 const buildAnonymousSecurityContext = (request: NextRequest) => ({
-  ...buildSecurityContext(null, request),
+  ...getBoundedSecurityRouteContext(null, request),
   endpoint: request.nextUrl.pathname,
 });
+
+const buildClaimFailureLogContext = (request: NextRequest) => {
+  return {
+    endpoint: request.nextUrl.pathname,
+    ...getBoundedSecurityRouteContext(null, request),
+  };
+};
 
 const createOrUpdateFirebasePasswordUser = async (params: {
   displayName?: string;
@@ -134,21 +156,74 @@ const timestampLikeToMillis = (value: unknown): number | null => {
   return null;
 };
 
+const assertMessagingUserClaimIsAvailable = (
+  data: FirebaseFirestore.DocumentData | undefined,
+  claimToken: string,
+): FirebaseFirestore.DocumentData => {
+  if (!data) {
+    throw new ClaimTokenUnavailableError("Unable to complete account claim.", 404);
+  }
+
+  if (data.claimToken !== claimToken) {
+    throw new ClaimTokenUnavailableError();
+  }
+
+  const claimTokenExpiresAtMs = timestampLikeToMillis(data.claimTokenExpiresAt);
+  if (claimTokenExpiresAtMs && claimTokenExpiresAtMs <= Date.now()) {
+    throw new ClaimTokenUnavailableError("This claim link has expired.", 410);
+  }
+
+  if (!data.tenantId || !data.storeId) {
+    throw new ClaimTokenUnavailableError("Unable to complete account claim.", 400);
+  }
+
+  return data;
+};
+
+const runClaimAccountTransaction = async (params: {
+  apply: (
+    transaction: FirebaseFirestore.Transaction,
+    currentMessagingUser: FirebaseFirestore.DocumentData,
+  ) => Promise<void> | void;
+  claimToken: string;
+  messagingUserRef: FirebaseFirestore.DocumentReference;
+}): Promise<FirebaseFirestore.DocumentData> => {
+  return db.runTransaction(async (transaction) => {
+    const latestMessagingUserDoc = await transaction.get(params.messagingUserRef);
+    const currentMessagingUser = assertMessagingUserClaimIsAvailable(
+      latestMessagingUserDoc.data(),
+      params.claimToken,
+    );
+
+    await params.apply(transaction, currentMessagingUser);
+    return currentMessagingUser;
+  });
+};
+
 export async function POST(request: NextRequest) {
   try {
     // 🔒 RATE LIMITING: Prevent brute force account claim attempts
     const { checkRateLimit } = await import('@lib/rateLimit');
     const { getRateLimitForFeature } = await import('@lib/rateLimit/configs');
-    const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
-    const rl = await checkRateLimit({ key: `auth-claim:${ip}`, ...getRateLimitForFeature('AUTH_SENSITIVE') });
+    const ip = getClientIp(request);
+    const ipHash = hashPublicRateLimitValue(ip);
+    const rl = await checkRateLimit({ key: `auth-claim:${ipHash}`, ...getRateLimitForFeature('AUTH_SENSITIVE') });
     if (!rl.allowed) {
       return NextResponse.json({ error: "Too many attempts. Please wait before trying again." }, { status: 429 });
     }
 
-    const body = await request.json();
+    const bodyResult = await readBoundedJsonBody(request, CLAIM_ACCOUNT_MAX_BODY_BYTES, {
+      invalidJsonMessage: "Unable to complete account claim.",
+    });
+    if (bodyResult.ok === false) return bodyResult.response;
+    const body = (
+      bodyResult.data && typeof bodyResult.data === "object" && !Array.isArray(bodyResult.data)
+    )
+      ? bodyResult.data as Record<string, any>
+      : {};
     const { claimToken, email, password, useWhatsappPhone } = body;
 
-    if (!claimToken || typeof claimToken !== "string" || claimToken.length < 20) {
+    if (!claimToken || typeof claimToken !== "string" || claimToken.length < 20 || claimToken.length > 256) {
       logger.security("Input Validation Failed - Claim Account", {
         ...buildAnonymousSecurityContext(request),
         reason: "invalid_claim_token",
@@ -167,7 +242,7 @@ export async function POST(request: NextRequest) {
     if (messagingUserQuery.empty) {
       logger.security("Claim Token Not Found", {
         ...buildAnonymousSecurityContext(request),
-        claimToken: claimToken.slice(0, 8),
+        ...getBoundedAuthStringContext("claimToken", claimToken),
       }, "medium");
 
       return claimFailure("Unable to complete account claim.", 404);
@@ -233,53 +308,55 @@ export async function POST(request: NextRequest) {
         updateIfExists: true,
       });
 
-      const batch = db.batch();
-
-      batch.update(messagingUserDoc.ref, {
-        email: loginEmail,
-        name: displayName,
-        countryCode: normalizedPhone.countryCode,
-        dialCode: normalizedPhone.dialCode,
-        phone: normalizedPhone.phone,
-        phoneNumber: normalizedPhone.phoneNumber,
-        phoneUsername,
-        phoneLoginEnabled: true,
-        isVerified: true,
-        active: true,
-        claimToken: null,
-        claimTokenExpiresAt: null,
-        claimedAt: now,
-        claimedVia: "whatsapp-phone-passcode",
-        firebaseUid,
-        modifiedOn: now,
+      const claimedMessagingUser = await runClaimAccountTransaction({
+        claimToken,
+        messagingUserRef: messagingUserDoc.ref,
+        apply: (transaction) => {
+          transaction.update(messagingUserDoc.ref, {
+            email: loginEmail,
+            name: displayName,
+            countryCode: normalizedPhone.countryCode,
+            dialCode: normalizedPhone.dialCode,
+            phone: normalizedPhone.phone,
+            phoneNumber: normalizedPhone.phoneNumber,
+            phoneUsername,
+            phoneLoginEnabled: true,
+            isVerified: true,
+            active: true,
+            claimToken: null,
+            claimTokenExpiresAt: null,
+            claimedAt: now,
+            claimedVia: "whatsapp-phone-passcode",
+            firebaseUid,
+            modifiedOn: now,
+          });
+        },
       });
-
-      await batch.commit();
 
       await linkClaimedSubscriptions({
         email: loginEmail,
         name: displayName,
         now,
-        storeId: Number(messagingUser.storeId),
-        tenantId: Number(messagingUser.tenantId),
+        storeId: Number(claimedMessagingUser.storeId),
+        tenantId: Number(claimedMessagingUser.tenantId),
         userDocId: messagingUserDoc.id,
       });
 
       await authAdmin.setCustomUserClaims(firebaseUid, {
         role: "owner",
         platformRole: "OWNER",
-        tenantId: String(messagingUser.tenantId),
-        storeId: String(messagingUser.storeId),
+        tenantId: String(claimedMessagingUser.tenantId),
+        storeId: String(claimedMessagingUser.storeId),
         uId: messagingUserDoc.id,
         admin: true,
-        storeIds: [String(messagingUser.storeId)],
+        storeIds: [String(claimedMessagingUser.storeId)],
       });
 
       return NextResponse.json({
         success: true,
         mode: "whatsapp-phone",
-        tenantId: messagingUser.tenantId,
-        storeId: messagingUser.storeId,
+        tenantId: claimedMessagingUser.tenantId,
+        storeId: claimedMessagingUser.storeId,
         message: "Account created. You can now log in with your WhatsApp number and passcode.",
       });
     }
@@ -330,43 +407,44 @@ export async function POST(request: NextRequest) {
         throw fbError;
       }
 
-      // Update the messaging user doc directly (convert placeholder to real account)
-      const batch = db.batch();
+      const claimedMessagingUser = await runClaimAccountTransaction({
+        claimToken,
+        messagingUserRef: messagingUserDoc.ref,
+        apply: (transaction, currentMessagingUser) => {
+          transaction.update(messagingUserDoc.ref, {
+            email: lowerEmail,
+            name: name || currentMessagingUser.name,
+            countryCode: normalizedPhone.countryCode,
+            dialCode: normalizedPhone.dialCode,
+            phone: normalizedPhone.phone || currentMessagingUser.phone,
+            phoneNumber: normalizedPhone.phoneNumber || currentMessagingUser.phoneNumber,
+            phoneUsername: phoneUsername || undefined,
+            phoneLoginEnabled: Boolean(phoneUsername),
+            isVerified: true,
+            active: true,
+            claimToken: null, // One-time use — clear token
+            claimTokenExpiresAt: null,
+            claimedAt: now,
+            claimedVia: "email-password",
+            firebaseUid,
+            modifiedOn: now,
+          });
 
-      batch.update(messagingUserDoc.ref, {
-        email: lowerEmail,
-        name: name || messagingUser.name,
-        countryCode: normalizedPhone.countryCode,
-        dialCode: normalizedPhone.dialCode,
-        phone: normalizedPhone.phone || messagingUser.phone,
-        phoneNumber: normalizedPhone.phoneNumber || messagingUser.phoneNumber,
-        phoneUsername: phoneUsername || undefined,
-        phoneLoginEnabled: Boolean(phoneUsername),
-        isVerified: true,
-        active: true,
-        claimToken: null, // One-time use — clear token
-        claimTokenExpiresAt: null,
-        claimedAt: now,
-        claimedVia: "email-password",
-        firebaseUid,
-        modifiedOn: now,
+          const tenantRef = db.collection(DB_COLLECTIONS.TENANTS).doc(String(currentMessagingUser.tenantId));
+          transaction.update(tenantRef, { email: lowerEmail, modifiedOn: now });
+
+          const storeRef = db.collection(DB_COLLECTIONS.STORES).doc(String(currentMessagingUser.storeId));
+          transaction.update(storeRef, { email: lowerEmail, modifiedOn: now });
+        },
       });
-
-      // Update tenant & store email
-      const tenantRef = db.collection(DB_COLLECTIONS.TENANTS).doc(String(messagingUser.tenantId));
-      batch.update(tenantRef, { email: lowerEmail, modifiedOn: now });
-
-      const storeRef = db.collection(DB_COLLECTIONS.STORES).doc(String(messagingUser.storeId));
-      batch.update(storeRef, { email: lowerEmail, modifiedOn: now });
-
-      await batch.commit();
+      await revalidateMenuCache(claimedMessagingUser.storeId, { tId: claimedMessagingUser.tenantId });
 
       await linkClaimedSubscriptions({
         email: lowerEmail,
-        name: name || messagingUser.name,
+        name: name || claimedMessagingUser.name,
         now,
-        storeId: Number(messagingUser.storeId),
-        tenantId: Number(messagingUser.tenantId),
+        storeId: Number(claimedMessagingUser.storeId),
+        tenantId: Number(claimedMessagingUser.tenantId),
         userDocId: messagingUserDoc.id,
       });
 
@@ -374,18 +452,18 @@ export async function POST(request: NextRequest) {
       await authAdmin.setCustomUserClaims(firebaseUid, {
         role: "owner",
         platformRole: "OWNER",
-        tenantId: String(messagingUser.tenantId),
-        storeId: String(messagingUser.storeId),
+        tenantId: String(claimedMessagingUser.tenantId),
+        storeId: String(claimedMessagingUser.storeId),
         uId: messagingUserDoc.id,
         admin: true,
-        storeIds: [String(messagingUser.storeId)],
+        storeIds: [String(claimedMessagingUser.storeId)],
       });
 
       return NextResponse.json({
         success: true,
         mode: "email-password",
-        tenantId: messagingUser.tenantId,
-        storeId: messagingUser.storeId,
+        tenantId: claimedMessagingUser.tenantId,
+        storeId: claimedMessagingUser.storeId,
         message: "Account created! You can now log in with your email and password.",
       });
     }
@@ -399,99 +477,94 @@ export async function POST(request: NextRequest) {
     const googleEmail = session.user.email;
     const googleUserId = session.user.id;
 
-    // Check if the Google user already has a tenant (prevent double-claiming)
     const googleUserRef = db.collection(DB_COLLECTIONS.USERS).doc(googleUserId);
-    const googleUserDoc = await googleUserRef.get();
 
-    if (googleUserDoc.exists) {
-      const googleUserData = googleUserDoc.data();
-      if (googleUserData?.tenantId) {
-        return claimFailure("Unable to complete account claim.", 409);
-      }
-    }
+    const claimedMessagingUser = await runClaimAccountTransaction({
+      claimToken,
+      messagingUserRef: messagingUserDoc.ref,
+      apply: async (transaction, currentMessagingUser) => {
+        const googleUserDoc = await transaction.get(googleUserRef);
+        if (googleUserDoc.exists && googleUserDoc.data()?.tenantId) {
+          throw new ClaimTokenUnavailableError("Unable to complete account claim.", 409);
+        }
 
-    // Execute transfer in a batch
-    const batch = db.batch();
+        if (googleUserDoc.exists) {
+          transaction.update(googleUserRef, {
+            tenantId: currentMessagingUser.tenantId,
+            storeId: currentMessagingUser.storeId,
+            stores: currentMessagingUser.stores,
+            platformRole: currentMessagingUser.platformRole || "OWNER",
+            phone: currentMessagingUser.phone,
+            isVerified: true,
+            active: true,
+            onboardingSource: "MESSAGING_ONBOARDING",
+            claimedFrom: messagingUserDoc.id,
+            claimedAt: now,
+            modifiedOn: now,
+          });
+        } else {
+          transaction.set(googleUserRef, {
+            email: googleEmail,
+            name: session.user.name || googleEmail.split("@")[0],
+            image: (session.user as any).image || "",
+            tenantId: currentMessagingUser.tenantId,
+            storeId: currentMessagingUser.storeId,
+            stores: currentMessagingUser.stores,
+            platformRole: "OWNER",
+            phone: currentMessagingUser.phone,
+            isVerified: true,
+            active: true,
+            onboardingSource: "MESSAGING_ONBOARDING",
+            createdVia: "claim-account",
+            claimedFrom: messagingUserDoc.id,
+            claimedAt: now,
+            createdOn: now,
+            modifiedOn: now,
+          });
+        }
 
-    // 1. Update Google user doc with tenant/store ownership
-    if (googleUserDoc.exists) {
-      batch.update(googleUserRef, {
-        tenantId: messagingUser.tenantId,
-        storeId: messagingUser.storeId,
-        stores: messagingUser.stores,
-        platformRole: messagingUser.platformRole || "OWNER",
-        phone: messagingUser.phone,
-        isVerified: true,
-        active: true,
-        onboardingSource: "MESSAGING_ONBOARDING",
-        claimedFrom: messagingUserDoc.id,
-        claimedAt: now,
-        modifiedOn: now,
-      });
-    } else {
-      batch.set(googleUserRef, {
-        email: googleEmail,
-        name: session.user.name || googleEmail.split("@")[0],
-        image: (session.user as any).image || "",
-        tenantId: messagingUser.tenantId,
-        storeId: messagingUser.storeId,
-        stores: messagingUser.stores,
-        platformRole: "OWNER",
-        phone: messagingUser.phone,
-        isVerified: true,
-        active: true,
-        onboardingSource: "MESSAGING_ONBOARDING",
-        createdVia: "claim-account",
-        claimedFrom: messagingUserDoc.id,
-        claimedAt: now,
-        createdOn: now,
-        modifiedOn: now,
-      });
-    }
+        transaction.update(messagingUserDoc.ref, {
+          active: false,
+          claimToken: null,
+          claimTokenExpiresAt: null,
+          claimedByEmail: googleEmail,
+          claimedByUserId: googleUserId,
+          claimedAt: now,
+          deactivatedReason: "Account claimed via Google OAuth",
+          modifiedOn: now,
+        });
 
-    // 2. Deactivate the old messaging user doc (keep for audit)
-    batch.update(messagingUserDoc.ref, {
-      active: false,
-      claimToken: null,
-      claimTokenExpiresAt: null,
-      claimedByEmail: googleEmail,
-      claimedByUserId: googleUserId,
-      claimedAt: now,
-      deactivatedReason: "Account claimed via Google OAuth",
-      modifiedOn: now,
+        const tenantRef = db.collection(DB_COLLECTIONS.TENANTS).doc(String(currentMessagingUser.tenantId));
+        transaction.update(tenantRef, { email: googleEmail, modifiedOn: now });
+
+        const storeRef = db.collection(DB_COLLECTIONS.STORES).doc(String(currentMessagingUser.storeId));
+        transaction.update(storeRef, { email: googleEmail, modifiedOn: now });
+      },
     });
-
-    // 3. Update tenant email
-    const tenantRef = db.collection(DB_COLLECTIONS.TENANTS).doc(String(messagingUser.tenantId));
-    batch.update(tenantRef, { email: googleEmail, modifiedOn: now });
-
-    // 4. Update store email
-    const storeRef = db.collection(DB_COLLECTIONS.STORES).doc(String(messagingUser.storeId));
-    batch.update(storeRef, { email: googleEmail, modifiedOn: now });
-
-    await batch.commit();
+    await revalidateMenuCache(claimedMessagingUser.storeId, { tId: claimedMessagingUser.tenantId });
 
     await linkClaimedSubscriptions({
       email: googleEmail,
       name: session.user.name || googleEmail.split("@")[0],
       now,
-      storeId: Number(messagingUser.storeId),
-      tenantId: Number(messagingUser.tenantId),
+      storeId: Number(claimedMessagingUser.storeId),
+      tenantId: Number(claimedMessagingUser.tenantId),
       userDocId: googleUserId,
     });
 
     return NextResponse.json({
       success: true,
       mode: "google",
-      tenantId: messagingUser.tenantId,
-      storeId: messagingUser.storeId,
+      tenantId: claimedMessagingUser.tenantId,
+      storeId: claimedMessagingUser.storeId,
       message: "Account linked successfully! You can now manage your business.",
     });
   } catch (error) {
-    logger.error("[claim-account] Error", error instanceof Error ? error : new Error(String(error)), {
-      ...buildAnonymousSecurityContext(request),
-      errorContext: "claim_account_unexpected_error",
-    });
+    if (error instanceof ClaimTokenUnavailableError) {
+      return claimFailure(error.message, error.status);
+    }
+
+    logAuthFailure("claim_account_unexpected_error", error, buildClaimFailureLogContext(request));
 
     return NextResponse.json({ error: "Internal error" }, { status: 500 });
   }

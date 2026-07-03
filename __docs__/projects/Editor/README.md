@@ -1,8 +1,12 @@
 # 📝 Editor Documentation
 
 **Location**: `src/components/templates/main-app/projects/editorView/`  
-**Last Updated**: Nov 27, 2025  
-**Status**: ✅ Production Ready
+**Last Updated**: July 2, 2026
+**Status**: Implemented source documentation; not current launch certification
+
+**Launch Boundary:** This README indexes the current Projects editor documentation and source entrypoints. It is not current production-launch approval. Current release readiness belongs to the active [production-readiness audit](../../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../../production-readiness/external-certification-runbook.md) evidence, `npm run verify:menu-project-editor-boundary`, browser/mobile editor QA, publish/cache evidence for edited public truth, upload/image/editor regression smoke, and target-environment deploy evidence.
+
+**Project editor boundary source gate:** `npm run verify:menu-project-editor-boundary` confirms this index still points at the current editor container, desktop save/publish path, project DAL cache invalidation path, mobile persistence path, project selector acknowledgements, and shared bulk-action wiring. It does not run browser QA, mobile device QA, provider smoke, live Firestore/Storage writes, Firebase deploys, Vercel deploys, a production build, or production-host behavior.
 
 ---
 
@@ -10,14 +14,14 @@
 
 | #   | Document                                           | Description                                |
 | --- | -------------------------------------------------- | ------------------------------------------ |
-| 01  | [Views](./01-VIEWS.md)                             | Advanced, Traditional, Focus view modes    |
-| 02  | [Image Preview & Zoom](./02-IMAGE-PREVIEW-ZOOM.md) | ZoomableImage, FileImagePreview, controls  |
-| 03  | [Keyboard Shortcuts](./03-KEYBOARD-SHORTCUTS.md)   | All shortcuts, config, help modal          |
-| 04  | [Search & Filters](./04-SEARCH-FILTERS.md)         | Filter popover, search, item filtering     |
-| 05  | [Batch Actions](./05-BATCH-ACTIONS.md)             | More Actions popover, bulk operations      |
-| 06  | [Modals](./06-MODALS.md)                           | All modal components documented            |
+| 01  | [Views](./01-views.md)                             | Advanced, Traditional, Focus view modes    |
+| 02  | [Image Preview & Zoom](./02-image-preview-zoom.md) | ZoomableImage, FileImagePreview, controls  |
+| 03  | [Keyboard Shortcuts](./03-keyboard-shortcuts.md)   | All shortcuts, config, help modal          |
+| 04  | [Search & Filters](./04-search-filters.md)         | Filter popover, search, item filtering     |
+| 05  | [Batch Actions](./05-batch-actions.md)             | More Actions popover, bulk operations      |
+| 06  | [Modals](./06-modals.md)                           | All modal components documented            |
 | 07  | [Auto-Save](./07-AUTO-SAVE.md)                     | Debounce, throttle, change detection       |
-| 08  | [Hooks & Utils](./08-HOOKS-UTILS.md)               | useEditorLogic, useEditorKeyboardShortcuts |
+| 08  | [Hooks & Utils](./08-hooks-utils.md)               | useEditorLogic, useEditorKeyboardShortcuts |
 
 ---
 
@@ -148,5 +152,4 @@ editorView/
 ## 🔗 Related Documentation
 
 - [Projects Overview](../00-overview.md)
-- [Data Editor](../04-DATA-EDITOR.md)
-- [Complete Editor System](../features/FEATURE-COMPLETE-EDITOR-SYSTEM.md)
+- [Data Editor](../data-editor/README.md)

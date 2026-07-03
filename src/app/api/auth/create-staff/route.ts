@@ -9,7 +9,7 @@ export const dynamic = 'force-dynamic';
  *
  * Requires: Active NextAuth session with owner/manager role.
  *
- * @see __docs__/auth/ADR-email-uniqueness-strategy.md
+ * @see __docs__/auth/adr-email-uniqueness-strategy.md
  * @see __docs__/auth/README.md — Staff User Creation
  */
 

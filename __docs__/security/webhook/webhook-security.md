@@ -1,8 +1,14 @@
 # 🔐 Webhook Security Implementation
 
 **Last Updated**: November 15, 2025  
-**Status**: ✅ Fully Implemented  
+**Status**: Implementation guide; not current launch certification
 **Priority**: P0 (Critical)
+
+---
+
+## Current Launch Boundary
+
+Current release approval requires the active [production-readiness audit](../../audits/menulist-production-readiness-audit.md) and [External Certification Runbook](../../production-readiness/external-certification-runbook.md) evidence, current webhook-source review, QA/provider webhook smoke, secret setup evidence, replay/idempotency evidence for payment-affecting handlers, and deploy evidence for the target environment. This guide records implementation evidence; it is not production-launch approval.
 
 ---
 
@@ -17,6 +23,8 @@ Webhooks allow third-party services to notify your application of events. Howeve
 | **HMAC Signature Verification**  | ✅ Complete | `webhookValidation.ts`         |
 | **Timing-Safe Comparison**       | ✅ Complete | Uses `timingSafeEqual`         |
 | **Provider-Specific Validators** | ✅ Complete | Razorpay, Stripe, Generic      |
+| **Raw Body Size Guard**          | ✅ Complete | Razorpay route rejects >256KB  |
+| **Webhook Rate Limit**           | ✅ Complete | Shared `WEBHOOK` limiter       |
 | **Security Logging**             | ✅ Complete | Integrated with `secureLogger` |
 | **IP Validation**                | ✅ Ready    | `validateWebhookIP()`          |
 
@@ -145,10 +153,19 @@ export async function POST(request: Request) {
     );
   }
 
-  // 2. Get raw body (IMPORTANT: must be raw string)
-  const requestBody = await request.text();
+  // 2. Reject oversized payloads and apply webhook rate limiting before body work.
+  const declaredBodyResponse = rejectInvalidOrOversizedDeclaredBody(request, RAZORPAY_WEBHOOK_MAX_BODY_BYTES);
+  if (declaredBodyResponse) return declaredBodyResponse;
 
-  // 3. Validate signature
+  const rateLimitResponse = await checkPublicRateLimit(request, 'WEBHOOK');
+  if (rateLimitResponse) return rateLimitResponse;
+
+  // 3. Get raw body with a stream size cap (IMPORTANT: must be raw string)
+  const boundedBody = await readBoundedTextBody(request, RAZORPAY_WEBHOOK_MAX_BODY_BYTES);
+  if (boundedBody.ok === false) return boundedBody.response;
+  const requestBody = boundedBody.body;
+
+  // 4. Validate signature
   const isValid = await validateRazorpayWebhookSignature(
     requestBody,
     signature,
@@ -694,6 +711,8 @@ Before deploying webhook handlers:
 - [ ] Security logging enabled for validation failures
 - [ ] HTTPS only (no HTTP webhooks)
 - [ ] Raw request body used for signature verification
+- [ ] Raw request body is size-bounded before JSON parsing or persistence
+- [ ] Public webhook entrypoint has an endpoint-appropriate rate limit
 - [ ] Generic error messages (no signature leaks)
 - [ ] Idempotency implemented (prevent duplicate processing)
 - [ ] IP validation configured (optional but recommended)
@@ -703,6 +722,6 @@ Before deploying webhook handlers:
 
 ---
 
-**Status**: ✅ Production Ready  
+**Status**: Implementation evidence documented; not current launch certification
 **Coverage**: Razorpay, Stripe, GitHub, Shopify, Generic  
 **Maintenance**: Review quarterly for provider updates

@@ -24,7 +24,6 @@ import { getMoodWithBrandColor, resolveMenuDesignConfig } from "@config/designSy
 import { FEATURE_FLAGS } from "@config/features";
 import { APP_THEME_COLOR } from "@constant/common";
 import { DB_COLLECTIONS } from "@constant/database";
-import { isReservedProjectSlug } from "@constant/reservedSlugs";
 import { PLATFORM_DOMAIN } from "@constant/urls";
 import { firestoreAdmin } from "@lib/firebase/firebaseAdmin";
 import { getBrandName, getStoreContextName, getStoreName } from "@lib/businessIdentity/names";
@@ -62,6 +61,7 @@ import {
     getStaticCustomerAppleStartupImages,
 } from "@lib/pwa/customerAppAssets";
 import { buildMobileAppSchema } from "@lib/pwa/schemaJsonLd";
+import { normalizePublicOutletSlug, normalizePublicProjectSlug } from "@lib/publicRouting/pathSegments";
 import { DEFAULT_PUBLIC_PREVIEW_IMAGE } from "@lib/seo/publicMetadata";
 import { buildPublicTruthRobots, evaluatePublicTruthIndexability } from "@lib/seo/publicTruthIndexing";
 import {
@@ -69,13 +69,18 @@ import {
     buildBreadcrumbList,
     buildGeoCoordinates,
     buildOpeningHours,
+    buildSchemaPriceRange,
+    buildSchemaTelephone,
     buildSameAs,
+    buildTempStatusSchema,
     getMenuSchemaType,
     getOfferingItemSchemaType,
     isFoodBusinessCategory,
 } from "@lib/schema";
+import { secureError } from "@lib/security/secureLogger";
 import { slugify } from "@lib/utils/slugify";
 import ClientMenuRenderer from "@template/website/clientWebsite";
+import JsonLdScript from "@/components/seo/JsonLdScript";
 import StarterActivationHoldingPage from "@/components/customer/StarterActivationHoldingPage";
 import { Metadata, Viewport } from "next";
 import { unstable_cache } from "next/cache";
@@ -143,6 +148,68 @@ const serializeClientValue = (value: any): any => {
 
     return Object.fromEntries(
         Object.entries(value).map(([key, entry]) => [key, serializeClientValue(entry)]),
+    );
+};
+
+type PublicMenuResolutionFailureType =
+    | 'linked_master_missing'
+    | 'linked_master_unresolved'
+    | 'linked_resolution_failed'
+    | 'metadata_outlet_lookup_failed'
+    | 'metadata_project_lookup_failed'
+    | 'outlet_lookup_failed'
+    | 'special_project_missing'
+    | 'special_resolution_failed';
+
+const buildPublicMenuResolutionLogContext = (
+    failureType: PublicMenuResolutionFailureType,
+    metadata: {
+        projectId?: string | number | null;
+        projectSlug?: string | number | null;
+        masterProjectId?: string | number | null;
+        specialMenuId?: string | number | null;
+        tenantId?: string | number | null;
+        storeId?: string | number | null;
+        slug?: string | number | null;
+        error?: unknown;
+    } = {},
+) => {
+    const projectId = String(metadata.projectId ?? '').trim();
+    const projectSlug = String(metadata.projectSlug ?? '').trim();
+    const masterProjectId = String(metadata.masterProjectId ?? '').trim();
+    const specialMenuId = String(metadata.specialMenuId ?? '').trim();
+    const tenantId = String(metadata.tenantId ?? '').trim();
+    const storeId = String(metadata.storeId ?? '').trim();
+    const slug = String(metadata.slug ?? '').trim();
+
+    return {
+        failureType,
+        projectIdPresent: Boolean(projectId),
+        projectIdLength: projectId.length,
+        projectSlugPresent: Boolean(projectSlug),
+        projectSlugLength: projectSlug.length,
+        masterProjectIdPresent: Boolean(masterProjectId),
+        masterProjectIdLength: masterProjectId.length,
+        specialMenuIdPresent: Boolean(specialMenuId),
+        specialMenuIdLength: specialMenuId.length,
+        tenantIdPresent: Boolean(tenantId),
+        tenantIdLength: tenantId.length,
+        storeIdPresent: Boolean(storeId),
+        storeIdLength: storeId.length,
+        slugPresent: Boolean(slug),
+        slugLength: slug.length,
+        errorName: metadata.error instanceof Error ? metadata.error.name : typeof metadata.error,
+    };
+};
+
+const logPublicMenuResolutionFailure = (
+    failureType: PublicMenuResolutionFailureType,
+    metadata?: Parameters<typeof buildPublicMenuResolutionLogContext>[1],
+) => {
+    secureError(
+        '[Client Menu] Public menu resolution degraded',
+        new Error(`public_menu_resolution_${failureType}`),
+        buildPublicMenuResolutionLogContext(failureType, metadata),
     );
 };
 
@@ -258,17 +325,20 @@ async function getProjectBySlugOrDefault(
     let redirectSlug: string | null = null; // For 301 redirect from old slug
 
     if (slug) {
-        const normalizedSlug = slug.toLowerCase();
+        const normalizedSlug = normalizePublicProjectSlug(slug);
+        if (!normalizedSlug) {
+            return null;
+        }
 
         // 1. Match by stored slug field (URL Routing Architecture — ADR-3)
         targetProject =
-            projects.find((p) => p.slug && p.slug === normalizedSlug) || null;
+            projects.find((p) => normalizePublicProjectSlug(p.slug) === normalizedSlug) || null;
 
         // 2. Fallback: match by slugified name (backward compat for projects without stored slug)
-        // Skip reserved slugs — prevents name-based match from bypassing reserved namespace
-        if (!targetProject && !isReservedProjectSlug(normalizedSlug)) {
+        // normalizePublicProjectSlug already blocks reserved namespace bypasses.
+        if (!targetProject) {
             targetProject =
-                projects.find((p) => p.name && slugify(p.name) === normalizedSlug) ||
+                projects.find((p) => p.name && normalizePublicProjectSlug(slugify(p.name)) === normalizedSlug) ||
                 null;
         }
 
@@ -276,11 +346,13 @@ async function getProjectBySlugOrDefault(
         if (!targetProject) {
             const oldSlugMatch = projects.find(
                 (p) => p.previousSlugs && Array.isArray(p.previousSlugs) &&
-                    p.previousSlugs.includes(normalizedSlug)
+                    p.previousSlugs.some((previousSlug: unknown) => normalizePublicProjectSlug(previousSlug) === normalizedSlug)
             );
             if (oldSlugMatch) {
                 targetProject = oldSlugMatch;
-                redirectSlug = oldSlugMatch.slug || (oldSlugMatch.name ? slugify(oldSlugMatch.name) : null);
+                redirectSlug =
+                    normalizePublicProjectSlug(oldSlugMatch.slug)
+                    || (oldSlugMatch.name ? normalizePublicProjectSlug(slugify(oldSlugMatch.name)) : null);
             }
         }
     }
@@ -290,7 +362,7 @@ async function getProjectBySlugOrDefault(
     // we are about to serve the default project as a universal alias.
     // Track this so MenuContent can emit `<link rel="canonical">` pointing
     // at the default project's real slug URL — Layer 2 must not SEO-index /menu.
-    const isMenuAliasFallback = !targetProject && slug?.toLowerCase() === 'menu';
+    const isMenuAliasFallback = !targetProject && normalizePublicProjectSlug(slug) === 'menu';
 
     if (!targetProject) {
         // No slug or no match - find default project
@@ -317,10 +389,10 @@ async function getProjectBySlugOrDefault(
         try {
             const masterProjectData = await getProjectData(projectData.masterProjectId);
             if (!masterProjectData?.files?.length) {
-                console.error(
-                    "[Multi-outlet] Linked project missing master project for customer view:",
-                    projectData.masterProjectId,
-                );
+                logPublicMenuResolutionFailure('linked_master_missing', {
+                    projectId: targetProject.projectId || targetProject.id,
+                    masterProjectId: projectData.masterProjectId,
+                });
                 return null;
             }
             populateMasterCache(projectData.masterProjectId, masterProjectData);
@@ -328,18 +400,19 @@ async function getProjectBySlugOrDefault(
                 storeProject: projectData,
             });
             if (resolved?._resolved?.isMasterLinked !== true) {
-                console.error(
-                    "[Multi-outlet] Linked project missing master data for customer view:",
-                    projectData.masterProjectId,
-                );
+                logPublicMenuResolutionFailure('linked_master_unresolved', {
+                    projectId: targetProject.projectId || targetProject.id,
+                    masterProjectId: projectData.masterProjectId,
+                });
                 return null;
             }
             projectData = resolved;
         } catch (error) {
-            console.error(
-                "[Multi-outlet] Failed to resolve project for customer view:",
+            logPublicMenuResolutionFailure('linked_resolution_failed', {
+                projectId: targetProject.projectId || targetProject.id,
+                masterProjectId: projectData.masterProjectId,
                 error,
-            );
+            });
             return null;
         }
     }
@@ -375,7 +448,9 @@ async function resolveSpecialMenuOverride(
     try {
         const specialProjectData = await getProjectData(storeData.activeSpecialMenuId);
         if (!specialProjectData) {
-            console.warn("[SpecialMenu] Active special menu project not found:", storeData.activeSpecialMenuId);
+            logPublicMenuResolutionFailure('special_project_missing', {
+                specialMenuId: storeData.activeSpecialMenuId,
+            });
             return baseResult;
         }
 
@@ -426,7 +501,10 @@ async function resolveSpecialMenuOverride(
 
         return baseResult;
     } catch (error) {
-        console.error("[SpecialMenu] Resolver error (graceful degradation):", error);
+        logPublicMenuResolutionFailure('special_resolution_failed', {
+            specialMenuId: storeData.activeSpecialMenuId,
+            error,
+        });
         return baseResult;
     }
 }
@@ -499,10 +577,13 @@ function buildProjectCanonicalUrl({
         getPrimaryLocalizedLanguage(projectNameSource, language || projectData?.languages?.[0] || 'en'),
         '',
     );
-    const projectSlug = projectMetadata?.slug || (projectName ? slugify(projectName) : '');
+    const projectSlug =
+        normalizePublicProjectSlug(projectMetadata?.slug)
+        || (projectName ? normalizePublicProjectSlug(slugify(projectName)) : null);
     if (!projectSlug) return baseUrl;
 
-    const outletPrefix = outletSlug ? `/${outletSlug}` : '';
+    const safeOutletSlug = normalizePublicOutletSlug(outletSlug);
+    const outletPrefix = safeOutletSlug ? `/${safeOutletSlug}` : '';
     return `${baseUrl}${outletPrefix}/${projectSlug}`;
 }
 
@@ -737,7 +818,8 @@ export async function generateMetadata({ params, searchParams }: PageProps): Pro
     let metadataProject: any = null;
     let metadataProjectRecord: any = null;
     let metadataProjectResult: Awaited<ReturnType<typeof getProjectBySlugOrDefault>> = null;
-    let projectSlugForLookup: string | undefined = slugSegments[0];
+    let projectSlugForLookup: string | undefined = normalizePublicProjectSlug(slugSegments[0]) || undefined;
+    let hasUnsafeProjectPath = Boolean(slugSegments[0] && !projectSlugForLookup);
     let metadataOutletSlug: string | undefined;
     let contextSegments: string[] = [];
 
@@ -747,14 +829,26 @@ export async function generateMetadata({ params, searchParams }: PageProps): Pro
         && FEATURE_FLAGS.ENABLE_MULTI_OUTLET
         && firstSlug
     ) {
+        const requestedOutletSlug = normalizePublicOutletSlug(firstSlug);
         const outletStore = await withRetry(() =>
-            getStoreByOutletSlug(storeData.tenantId, firstSlug),
-        ).catch(() => null);
+            requestedOutletSlug
+                ? getStoreByOutletSlug(storeData.tenantId, requestedOutletSlug)
+                : Promise.resolve(null),
+        ).catch((error) => {
+            logPublicMenuResolutionFailure('metadata_outlet_lookup_failed', {
+                tenantId: storeData.tenantId,
+                storeId: storeData.storeId,
+                slug: firstSlug,
+                error,
+            });
+            return null;
+        });
 
         if (outletStore) {
             metadataStore = outletStore;
-            metadataOutletSlug = (outletStore.outletSlug || firstSlug || '').toLowerCase() || undefined;
-            projectSlugForLookup = slugSegments[1];
+            metadataOutletSlug = normalizePublicOutletSlug(outletStore.outletSlug) || requestedOutletSlug || undefined;
+            projectSlugForLookup = normalizePublicProjectSlug(slugSegments[1]) || undefined;
+            hasUnsafeProjectPath = Boolean(slugSegments[1] && !projectSlugForLookup);
             contextSegments = requestedItemId ? ['item', requestedItemId] : slugSegments.slice(2);
         } else {
             contextSegments = requestedItemId ? ['item', requestedItemId] : slugSegments.slice(1);
@@ -777,7 +871,15 @@ export async function generateMetadata({ params, searchParams }: PageProps): Pro
                 metadataStore.storeId,
                 projectSlugForLookup,
             ),
-        ).catch(() => null);
+        ).catch((error) => {
+            logPublicMenuResolutionFailure('metadata_project_lookup_failed', {
+                tenantId: metadataStore.tenantId,
+                storeId: metadataStore.storeId,
+                projectSlug: projectSlugForLookup,
+                error,
+            });
+            return null;
+        });
 
         if (projectResult) {
             metadataProjectResult = projectResult;
@@ -797,9 +899,11 @@ export async function generateMetadata({ params, searchParams }: PageProps): Pro
             : getPublicLanguageOptions(metadataStore))
         : getPublicLanguageOptions(metadataStore);
     const languageAlternates = buildPublicLanguageAlternates(currentUrl, metadataLanguageOptions);
-    const missingProjectPath = shouldLoadProjectMetadata
+    const missingProjectPath = hasUnsafeProjectPath || (
+        shouldLoadProjectMetadata
         && Boolean(projectSlugForLookup)
-        && !metadataProjectResult;
+        && !metadataProjectResult
+    );
     const isOBPMetadata = FEATURE_FLAGS.ENABLE_OBP && !metadataProject && !missingProjectPath;
     const publicTruthIndexDecision = missingProjectPath
         ? {
@@ -1047,6 +1151,14 @@ function generateSchemaOrgJsonLd(
     const geo = buildGeoCoordinates(storeData);
     const openingHours = buildOpeningHours(storeData);
     const sameAs = buildSameAs(storeData);
+    const telephone = buildSchemaTelephone({
+        countryCode: storeData?.countryCode,
+        dialCode: storeData?.dialCode,
+        phoneNumber: storeData?.phoneNumber,
+        phone: storeData?.phone,
+    });
+    const priceRange = buildSchemaPriceRange(storeData?.priceRange);
+    const tempStatusHours = buildTempStatusSchema(storeData?.tempStatus);
     const effectiveBusinessType = resolvePublicBusinessType(
         storeData?.businessType,
         storeData?.businessIndustry,
@@ -1073,19 +1185,26 @@ function generateSchemaOrgJsonLd(
     return {
         "@context": "https://schema.org",
         "@type": schemaType,
+        "@id": canonicalUrl,
         name: storeName,
+        mainEntityOfPage: {
+            "@type": "WebPage",
+            "@id": canonicalUrl,
+        },
+        inLanguage: contentLanguage,
         ...(publicDescription && { description: publicDescription }),
         ...(storeData?.logo && { image: storeData.logo }),
         url: canonicalUrl,
-        ...(storeData?.phoneNumber && { telephone: storeData.phoneNumber }),
+        ...(telephone && { telephone }),
         ...(storeData?.email && { email: storeData.email }),
         ...(storeData?.currencyCode && {
             currenciesAccepted: storeData.currencyCode,
         }),
-        ...(storeData?.priceRange && { priceRange: storeData.priceRange }),
+        ...(priceRange && { priceRange }),
         ...(address && { address }),
         ...(geo && { geo }),
         ...(openingHours && { openingHoursSpecification: openingHours }),
+        ...(tempStatusHours && { specialOpeningHoursSpecification: tempStatusHours }),
         ...(sameAs && { sameAs }),
         ...(freshness.dateModified && { dateModified: freshness.dateModified }),
         ...(storeData?.cuisineTypes?.length && { servesCuisine: storeData.cuisineTypes }),
@@ -1184,7 +1303,11 @@ function buildPublicCatalogStructuredData({
             menu: canonicalUrl,
             hasMenu: {
                 "@type": "Menu",
+                "@id": `${canonicalUrl}#menu`,
                 identifier: projectData?.projectId || canonicalUrl,
+                name: getLocalizedValue(projectData?.metadata?.name, contentLanguage) || "Menu",
+                url: canonicalUrl,
+                inLanguage: contentLanguage,
                 ...(freshness.dateModified && { dateModified: freshness.dateModified }),
                 ...(catalogAdditionalProperty && { additionalProperty: catalogAdditionalProperty }),
                 hasMenuSection: sections,
@@ -1195,9 +1318,11 @@ function buildPublicCatalogStructuredData({
     return {
         hasOfferCatalog: {
             "@type": "OfferCatalog",
+            "@id": `${canonicalUrl}#offer-catalog`,
             identifier: projectData?.projectId || canonicalUrl,
             name: getLocalizedValue(projectData?.metadata?.name, contentLanguage) || "Offerings",
             url: canonicalUrl,
+            inLanguage: contentLanguage,
             ...(freshness.dateModified && { dateModified: freshness.dateModified }),
             ...(catalogAdditionalProperty && { additionalProperty: catalogAdditionalProperty }),
             itemListElement: sections,
@@ -1712,10 +1837,19 @@ async function MenuContent({
     let resolvedSlug = slug;
     let resolvedOutletSlug: string | null = null;
     let outletRenderedAsObp = false;
-    if (slug && storeData.isMaster && FEATURE_FLAGS.ENABLE_MULTI_OUTLET) {
+    const requestedOutletSlug = normalizePublicOutletSlug(slug);
+    if (requestedOutletSlug && storeData.isMaster && FEATURE_FLAGS.ENABLE_MULTI_OUTLET) {
         const outletStore = await withRetry(() =>
-            withTimeout(getStoreByOutletSlug(storeData.tenantId, slug))
-        ).catch(() => null);
+            withTimeout(getStoreByOutletSlug(storeData.tenantId, requestedOutletSlug))
+        ).catch((error) => {
+            logPublicMenuResolutionFailure('outlet_lookup_failed', {
+                tenantId: storeData.tenantId,
+                storeId: storeData.storeId,
+                slug,
+                error,
+            });
+            return null;
+        });
 
         if (outletStore) {
             // G-07 (§11 + §7 PUBLIC-ROUTING-DOCTRINE): outlet slug rename
@@ -1724,8 +1858,8 @@ async function MenuContent({
             // typed), 301 to the canonical outlet URL so physical QRs and
             // printed signage keep working across renames while SEO
             // consolidates on the canonical URL.
-            const canonicalOutletSlug = (outletStore.outletSlug || '').toLowerCase();
-            if (canonicalOutletSlug && canonicalOutletSlug !== slug.toLowerCase()) {
+            const canonicalOutletSlug = normalizePublicOutletSlug(outletStore.outletSlug);
+            if (canonicalOutletSlug && canonicalOutletSlug !== requestedOutletSlug) {
                 const tail = slugSegments.slice(1).join('/');
                 const canonicalPath = tail
                     ? `/${canonicalOutletSlug}/${tail}`
@@ -1734,7 +1868,7 @@ async function MenuContent({
             }
 
             storeData = outletStore;
-            resolvedOutletSlug = canonicalOutletSlug || slug.toLowerCase();
+            resolvedOutletSlug = canonicalOutletSlug || requestedOutletSlug;
             if (slugSegments.length === 1) {
                 // G-01: `/{outletSlug}` alone → outlet OBP surface.
                 outletRenderedAsObp = true;
@@ -1795,6 +1929,7 @@ async function MenuContent({
     )));
 
     if (!baseResult) {
+        const safeStoreOutletSlug = normalizePublicOutletSlug(storeData.outletSlug);
         // T1-N-03 / A-12 PUBLIC-ROUTING-DOCTRINE: instead of a terminal 404,
         // degrade up the fallback ladder. The client component detects
         // standalone PWA mode and auto-redirects after a visible 2s hint,
@@ -1804,7 +1939,7 @@ async function MenuContent({
         return (
             <MenuNotFoundFallback
                 requestedSlug={resolvedSlug || slug || ''}
-                outletSlug={storeData.isMaster === false ? storeData.outletSlug || null : null}
+                outletSlug={storeData.isMaster === false ? safeStoreOutletSlug : null}
                 storeName={getStoreContextName(storeData, '') || null}
                 brandName={masterBrandName || getBrandName(storeData, '') || null}
             />
@@ -1820,12 +1955,14 @@ async function MenuContent({
 
     // URL Routing Architecture — ADR-3: 301 redirect from old slug to current slug
     // Preserves QR codes and shared links when project is renamed
-    if (redirectSlug && resolvedSlug && redirectSlug !== resolvedSlug.toLowerCase()) {
+    const safeRedirectSlug = normalizePublicProjectSlug(redirectSlug);
+    const requestedProjectSlug = normalizePublicProjectSlug(resolvedSlug);
+    if (safeRedirectSlug && requestedProjectSlug && safeRedirectSlug !== requestedProjectSlug) {
         const baseUrl = tenantType === "custom" && customDomain
             ? `https://${customDomain}`
             : origin || `https://${subdomain}.${PLATFORM_DOMAIN}`;
         const outletPrefix = resolvedOutletSlug ? `/${resolvedOutletSlug}` : '';
-        redirect(appendPublicLanguageParam(`${baseUrl}${outletPrefix}/${redirectSlug}`, requestedLanguage));
+        redirect(appendPublicLanguageParam(`${baseUrl}${outletPrefix}/${safeRedirectSlug}`, requestedLanguage));
     }
 
     // Strip internal metadata before any customer-facing usage (TASK 7)
@@ -1880,10 +2017,13 @@ async function MenuContent({
         getPrimaryLocalizedLanguage(projectMetadata?.name, projectData?.languages?.[0] || contentLanguage),
         '',
     );
-    const realDefaultSlug = projectMetadata?.slug
-        || (canonicalProjectName ? slugify(canonicalProjectName) : '');
+    const realDefaultSlug =
+        normalizePublicProjectSlug(projectMetadata?.slug)
+        || (canonicalProjectName ? normalizePublicProjectSlug(slugify(canonicalProjectName)) : null);
     const outletPrefix = resolvedOutletSlug ? `/${resolvedOutletSlug}` : '';
-    const canonicalProjectSlug = projectMetadata?.slug || (canonicalProjectName ? slugify(canonicalProjectName) : '');
+    const canonicalProjectSlug =
+        normalizePublicProjectSlug(projectMetadata?.slug)
+        || (canonicalProjectName ? normalizePublicProjectSlug(slugify(canonicalProjectName)) : null);
     const canonicalUrl = isMenuAliasFallback && realDefaultSlug
         ? `${baseUrl}${outletPrefix}/${realDefaultSlug}`
         : (projectMetadata?.isDefault && !resolvedSlug && !outletPrefix
@@ -1949,25 +2089,17 @@ async function MenuContent({
             themeColor: storeDetails?.publicPresence?.accentColor,
         })
         : null;
+    const safeStoreOutletSlug = normalizePublicOutletSlug(storeData.outletSlug);
 
     return (
         <>
             {/* Schema.org JSON-LD for SEO */}
-            <script
-                type="application/ld+json"
-                dangerouslySetInnerHTML={{ __html: JSON.stringify(schemaOrgJsonLd) }}
-            />
+            <JsonLdScript id="client-menu-schema-jsonld" data={schemaOrgJsonLd} />
             {/* BreadcrumbList JSON-LD for search navigation */}
-            <script
-                type="application/ld+json"
-                dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
-            />
+            <JsonLdScript id="client-menu-breadcrumb-jsonld" data={breadcrumbJsonLd} />
             {/* Customer App (PWA) — signals installability to search engines */}
             {pwaSchemaJsonLd ? (
-                <script
-                    type="application/ld+json"
-                    dangerouslySetInnerHTML={{ __html: JSON.stringify(pwaSchemaJsonLd) }}
-                />
+                <JsonLdScript id="client-menu-pwa-jsonld" data={pwaSchemaJsonLd} />
             ) : null}
             {/*
               * G-09 (§11 + D-12 PUBLIC-ROUTING-DOCTRINE): visible breadcrumb.
@@ -1978,20 +2110,20 @@ async function MenuContent({
             <MenuBreadcrumb
                 businessName={masterBrandName || storeName}
                 outletName={
-                    !storeData.isMaster && storeData.outletSlug
+                    !storeData.isMaster && safeStoreOutletSlug
                         ? (getStoreName(storeData, '') || undefined)
                         : undefined
                 }
                 outletSlug={
-                    !storeData.isMaster && storeData.outletSlug
-                        ? storeData.outletSlug
+                    !storeData.isMaster && safeStoreOutletSlug
+                        ? safeStoreOutletSlug
                         : undefined
                 }
                 projectName={menuName}
                 homeHref={appendPublicLanguageParam('/', requestedLanguage)}
                 outletHref={
-                    !storeData.isMaster && storeData.outletSlug
-                        ? appendPublicLanguageParam(`/${storeData.outletSlug}`, requestedLanguage)
+                    !storeData.isMaster && safeStoreOutletSlug
+                        ? appendPublicLanguageParam(`/${safeStoreOutletSlug}`, requestedLanguage)
                         : undefined
                 }
                 logoUrl={storeDetails?.logo || null}

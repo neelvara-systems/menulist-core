@@ -118,7 +118,7 @@ interface IngestionJob {
     draftsFailed: number;
     startedAt?: Timestamp;
     completedAt?: Timestamp;
-    errorMessage?: string;
+    errorMessage?: string; // fixed failure code only
   };
 }
 ```
@@ -360,7 +360,7 @@ Filter in `MutationProposalReview.tsx`: show proposals where `draftSource === 'o
 | **Duplicate drafts**   | Check existing proposals for same entity before generating                                                 |
 | **Re-run safety**      | Skip articles with `entityIds` already set. Skip entities already promoted. Skip drafts already generated. |
 | **Cost explosion**     | Per-run caps: 50 entities, 50 drafts, 300 articles max                                                     |
-| **Bootstrap failure**  | Status set to `failed` with error message. KB articles remain published and functional via RAG.            |
+| **Bootstrap failure**  | Status set to `failed` with a fixed failure code. KB articles remain published and functional via RAG.    |
 | **Partial completion** | Each step is independent. Can resume from where it stopped on next nightly run.                            |
 
 ---
@@ -368,13 +368,15 @@ Filter in `MutationProposalReview.tsx`: show proposals where `draftSource === 'o
 ## 10. Error Handling
 
 ```
-Bootstrap failure → set status: 'failed', errorMessage
-Entity extraction failure → log, continue with next batch
-Auto-promote failure → log, skip entity, continue
-Draft generation failure → log, mark draftStatus: 'failed', continue
+Bootstrap failure → set status: 'failed', fixed errorMessage code
+Entity extraction failure → log fixed code + bounded source metadata, continue with next batch
+Auto-promote failure → log fixed code + bounded source metadata, skip entity, continue
+Draft generation failure → log fixed code + bounded source metadata, mark draftStatus: 'failed', continue
 Gemini timeout → skip, try next entity
 Gemini quota exceeded → stop drafting, mark remaining as pending
 ```
+
+Bootstrap logs use scope booleans and presence/length metadata for job/entity/candidate identifiers. `runOnboardingBootstrap()` returns fixed scheduler-facing errors such as `ANSWERLATTICE_BOOTSTRAP_TENANT_FAILED` and `ANSWERLATTICE_BOOTSTRAP_FATAL_FAILED`, so nightly run-log diagnostics do not persist raw exception text.
 
 **Critical rule:** Bootstrap failure NEVER blocks KB publish. Articles work via RAG regardless.
 

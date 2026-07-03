@@ -38,7 +38,7 @@ export default function ExtractionJobReviewModal({
 }: ExtractionJobReviewModalProps) {
     return (
         <Modal
-            destroyOnClose
+            destroyOnHidden
             closable={false}
             open={open}
             maskClosable={false}

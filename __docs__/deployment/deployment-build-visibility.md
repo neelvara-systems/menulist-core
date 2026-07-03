@@ -1,7 +1,7 @@
 # Deployment Build Visibility (Preview + Production)
 
 > **Category:** Infrastructure  
-> **Last Updated:** April 17, 2026
+> **Last Updated:** June 30, 2026
 
 ---
 
@@ -20,8 +20,8 @@ It answers one operational question:
 1. On-demand build badge in UI (hidden by default)
 - Shows `shortBuildId · env` (example: `a1b2c3d · preview`)
 - Includes:
-  - `Server: <date-time>` (from `/api/version`)
-  - `Now: <date-time>` (local device time)
+  - `Build: <date-time>` when `/api/version` returns a valid `buildCreatedAt`
+  - Tenant/store identity when the owner shell has stored deployment identity context
 - Visible when any of these triggers are used:
   - URL contains `?v=1` (or `?v=true`)
   - Long-press **More** tab in mobile nav
@@ -29,13 +29,22 @@ It answers one operational question:
 
 2. Runtime verification endpoint
 - `GET /api/version`
-- Returns deployment/server truth: build ID, env, deployment URL, and current server timestamp
+- Returns deployment/server truth: build ID, short build ID, env, deployment URL, and build-created value
 
 3. Public env wiring for client visibility
 - `NEXT_PUBLIC_BUILD_ID`
 - `NEXT_PUBLIC_ENV`
 - `NEXT_PUBLIC_DEPLOYMENT_URL`
 - `NEXT_PUBLIC_ENABLE_DEPLOYMENT_BUILD_BADGE`
+
+4. Shared browser request and response guard
+- `src/lib/deployment/versionResponse.ts`
+- Calls `/api/version` with no-store cache, same-origin credentials, and manual redirect handling
+- Caps `/api/version` response JSON at 8KB before browser consumers parse it
+- Accepts only string-shaped version fields when present
+- Logs malformed/oversized responses as `deployment_version_response_parse_failed`
+- Logs invalid successful envelopes as `deployment_version_response_invalid`
+- Returns `null` so owner workflows, badges, and diagnostic-copy flows can fail quiet instead of interrupting work
 
 ---
 
@@ -55,6 +64,9 @@ This setup gives two levels of confidence:
 - Env exposure: `next.config.js`
 - Global mount: `src/app/layout.tsx`
 - Badge component: `src/components/common/DeploymentBuildBadge.tsx`
+- Owner update prompt: `src/components/common/OwnerAppUpdatePrompt.tsx`
+- Failure diagnostics: `src/components/shared/debug/ErrorReportButton.tsx`
+- Shared version request policy and response parser: `src/lib/deployment/versionResponse.ts`
 - Version endpoint: `src/app/api/version/route.ts`
 - Feature-flag record: `src/config/features.ts` (`ENABLE_DEPLOYMENT_BUILD_BADGE`)
 
@@ -71,10 +83,10 @@ Use any one trigger:
 - Long-press Log Out row (mobile More screen)
 
 Expected:
-- Bottom-right internal badge appears
+- Top-center internal badge appears
 - First line: `<shortBuildId> · <env>`
-- Second line: `Server: <date-time>`
-- Third line: `Now: <date-time>`
+- Optional second line: `Build: <date-time>`
+- Optional tenant/store lines appear only when deployment identity context exists in session storage
 
 ### 2) Ground-truth server verification
 
@@ -87,7 +99,7 @@ Expected JSON fields:
 - `shortBuildId`
 - `env`
 - `deploymentUrl`
-- `timestamp`
+- `buildCreatedAt`
 
 ### 3) Compare both signals
 
@@ -101,7 +113,10 @@ If they do not match, you are seeing a stale client state (usually cache/service
 
 1. Badge is internal-only by trigger (`?v=1`), not shown to normal users.
 2. `/api/version` is configured `no-store` to avoid cached verification responses.
-3. Badge can be disabled without code change by setting:
+3. Browser consumers call `/api/version` through the shared no-store, same-origin, manual-redirect request policy.
+4. Browser consumers parse `/api/version` through the shared 8KB bounded response guard before trusting the payload.
+5. Malformed, oversized, or shape-invalid version responses fail quiet and keep owner work uninterrupted.
+6. Badge can be disabled without code change by setting:
 - `NEXT_PUBLIC_ENABLE_DEPLOYMENT_BUILD_BADGE=false`
 
 ---

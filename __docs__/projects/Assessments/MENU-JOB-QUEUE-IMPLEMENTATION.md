@@ -1,9 +1,11 @@
 # Menu Image Processing - Job Queue Implementation Guide
 
-> **Document Type:** Implementation Reference  
-> **Created:** December 10, 2025  
-> **Status:** Production Ready  
+> **Document Type:** Implementation Reference
+> **Created:** December 10, 2025
+> **Status:** Historical implementation reference; not current launch certification
 > **Purpose:** Help developers understand the complete data flow
+
+> **Launch Boundary:** Historical assessment result only; not current launch certification. Current release approval requires the active [production-readiness audit](../../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../../production-readiness/external-certification-runbook.md) evidence, upload/job processing QA, Cloud Function/deploy evidence where the queue worker changes, provider smoke, and target-environment smoke.
 
 ---
 
@@ -132,7 +134,7 @@ When a user uploads menu images, this system:
 
 ### 3.2 handleUploadAndContinue()
 
-**File:** `src/components/templates/main-app/projects/index.tsx`  
+**File:** `src/components/templates/main-app/projects/index.tsx`
 **Lines:** ~563-623
 
 **Purpose:** Orchestrates the entire client-side flow when user clicks "Continue"
@@ -210,7 +212,7 @@ setActiveProcessingJobId(jobId) → Triggers useMenuProcessingJob hook
 
 ### 3.3 uploadAndCreateJob()
 
-**File:** `src/components/templates/main-app/projects/index.tsx`  
+**File:** `src/components/templates/main-app/projects/index.tsx`
 **Lines:** ~497-561
 
 **Purpose:** Upload files to Storage and create job document
@@ -287,7 +289,7 @@ createProcessingJob({ files, targetLanguages, projectId })
 
 ### 3.4 createProcessingJob()
 
-**File:** `src/components/templates/main-app/projects/getProcessedFile.ts`  
+**File:** `src/components/templates/main-app/projects/getProcessedFile.ts`
 **Lines:** 1-86
 
 **Purpose:** Create job document in Firestore and trigger processing
@@ -330,7 +332,7 @@ async function createProcessingJob({
 
 ### 3.5 createMenuProcessingJob() (Firebase integration)
 
-**File:** `src/lib/firebase/menuProcessing.ts`  
+**File:** `src/lib/firebase/menuProcessing.ts`
 **Lines:** ~75-144
 
 **Purpose:** Create job document in Firestore and trigger dev function if needed
@@ -404,7 +406,7 @@ return jobId
 
 ### 3.6 useMenuProcessingJob() Hook
 
-**File:** `src/hooks/useMenuProcessingJob.ts`  
+**File:** `src/hooks/useMenuProcessingJob.ts`
 **Lines:** 1-133
 
 **Purpose:** Real-time subscription to job status via Firestore onSnapshot
@@ -498,7 +500,7 @@ UI shows LoadingMessage with progress
 
 ### 3.7 Job Completion Handler (useEffect)
 
-**File:** `src/components/templates/main-app/projects/index.tsx`  
+**File:** `src/components/templates/main-app/projects/index.tsx`
 **Lines:** ~147-174
 
 **Purpose:** React to job completion and update UI
@@ -589,7 +591,7 @@ exports.dev_triggerProcessMenuImages = onCall(async (request) => {
 
 ### 4.2 processMenuImagesJobLogic()
 
-**File:** `functions/src/logic/processMenuImagesJob.ts`  
+**File:** `functions/src/logic/processMenuImagesJob.ts`
 **Lines:** 1-300
 
 **Purpose:** Core server-side processing logic (OPTIMIZED for minimal Firebase operations)
@@ -816,7 +818,8 @@ Mark completed (WRITE 3)
 1. **Deploy functions:**
 
    ```bash
-   cd functions && npm run deploy
+   npm run verify:functions-deploy-preflight
+   # Then use the scoped menulist-qa Gate 1 command from __docs__/production-readiness/external-certification-runbook.md
    ```
 
 2. **Test flow:**

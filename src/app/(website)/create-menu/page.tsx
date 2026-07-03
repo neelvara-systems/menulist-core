@@ -19,13 +19,13 @@ import { useTranslations } from 'next-intl';
 import CreateMenuClient from './CreateMenuClient';
 
 export const metadata: Metadata = {
-    title: 'Create Your Official Customer Link — MenuList',
+    title: 'Create Your Official Customer Link - MenuList',
     description: 'Sign in, add a menu, catalogue, price-list, or service-list photo or owned public list link, and review the prepared official customer link before anything goes public.',
     alternates: {
         canonical: '/create-menu',
     },
     openGraph: {
-        title: 'Create Your Official Customer Link — MenuList',
+        title: 'Create Your Official Customer Link - MenuList',
         description: 'Sign in, add a menu, catalogue, price-list, or service-list photo or owned public list link, and review the prepared official customer link before anything goes public.',
         url: '/create-menu',
     },

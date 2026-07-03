@@ -21,9 +21,54 @@ import { useTranslations } from 'next-intl';
 import { useCallback, useContext, useState } from 'react';
 import { Card, DotLoading, Flex, NavBar, Toast } from '../antd';
 import MobileSettingsScreenHeader from '../components/MobileSettingsScreenHeader';
+import {
+    getBoundedMobileOwnerStringContext,
+    getMobileOwnerStoreLogContext,
+    logMobileOwnerFailure,
+} from '../utils/mobileOwnerDiagnostics';
+import { AUTH_BROWSER_REQUEST_POLICY } from '@lib/auth/browserRequestPolicy';
+import { type TempStatusAction, readTempStatusResponse } from '@lib/tempStatus/clientResponse';
 
 interface MobileTempStatusScreenProps {
     onBack: () => void;
+}
+
+function buildMobileTempStatusLogContext(storeDetails: any, action: string, statusType?: unknown) {
+    return {
+        action,
+        ...getMobileOwnerStoreLogContext(storeDetails?.storeId, storeDetails?.tenantId),
+        ...getBoundedMobileOwnerStringContext('statusType', statusType),
+    };
+}
+
+function hasTempStatusResponseStatus(error: unknown): boolean {
+    if (!error || typeof error !== 'object' || !('status' in error)) return false;
+    return Number.isFinite(Number((error as { status?: unknown }).status));
+}
+
+function getTempStatusResponseCode(error: unknown): string | undefined {
+    if (!error || typeof error !== 'object' || !('code' in error)) return undefined;
+    const code = (error as { code?: unknown }).code;
+    if (code === undefined || code === null) return undefined;
+    return String(code).slice(0, 64);
+}
+
+function getMobileTempStatusFailureCode(
+    error: unknown,
+    action: TempStatusAction,
+): 'mobile_temp_status_set_failed' | 'mobile_temp_status_set_rejected' | 'mobile_temp_status_clear_failed' | 'mobile_temp_status_clear_rejected' {
+    const isRejectedResponse = hasTempStatusResponseStatus(error)
+        && getTempStatusResponseCode(error) !== 'TEMP_STATUS_RESPONSE_INVALID';
+
+    if (action === 'set') {
+        return isRejectedResponse
+            ? 'mobile_temp_status_set_rejected'
+            : 'mobile_temp_status_set_failed';
+    }
+
+    return isRejectedResponse
+        ? 'mobile_temp_status_clear_rejected'
+        : 'mobile_temp_status_clear_failed';
 }
 
 export default function MobileTempStatusScreen({ onBack }: MobileTempStatusScreenProps) {
@@ -71,6 +116,7 @@ export default function MobileTempStatusScreen({ onBack }: MobileTempStatusScree
 
         try {
             const res = await fetch('/api/store/temp-status', {
+                ...AUTH_BROWSER_REQUEST_POLICY,
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -81,16 +127,27 @@ export default function MobileTempStatusScreen({ onBack }: MobileTempStatusScree
                 }),
             });
 
-            if (!res.ok) {
-                throw new Error('Failed to set status');
-            }
-        } catch {
+            await readTempStatusResponse(res, 'set', {
+                ...buildMobileTempStatusLogContext(storeDetails, 'set_temp_status', statusType),
+                ...getBoundedMobileOwnerStringContext('expiresAt', expiresAt),
+                hasPreviousStatus: Boolean(prevStatus),
+            });
+        } catch (error) {
+            logMobileOwnerFailure(
+                getMobileTempStatusFailureCode(error, 'set'),
+                error,
+                {
+                    ...buildMobileTempStatusLogContext(storeDetails, 'set_temp_status', statusType),
+                    ...getBoundedMobileOwnerStringContext('expiresAt', expiresAt),
+                    hasPreviousStatus: Boolean(prevStatus),
+                },
+            );
             setStoreDetails((prev: any) => ({ ...prev, tempStatus: prevStatus }));
             Toast.show({ content: t('failedToSet'), duration: 2000 });
         } finally {
             setIsLoading(false);
         }
-    }, [exactExpiryAt, customMessage, setStoreDetails, statusType, storeDetails?.tempStatus, t]);
+    }, [exactExpiryAt, customMessage, setStoreDetails, statusType, storeDetails, t]);
 
     const handleClear = useCallback(async () => {
         setIsLoading(true);
@@ -104,21 +161,31 @@ export default function MobileTempStatusScreen({ onBack }: MobileTempStatusScree
 
         try {
             const res = await fetch('/api/store/temp-status', {
+                ...AUTH_BROWSER_REQUEST_POLICY,
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ action: 'clear' }),
             });
 
-            if (!res.ok) {
-                throw new Error('Failed to clear status');
-            }
-        } catch {
+            await readTempStatusResponse(res, 'clear', {
+                ...buildMobileTempStatusLogContext(storeDetails, 'clear_temp_status', prevStatus?.type),
+                hasPreviousStatus: Boolean(prevStatus),
+            });
+        } catch (error) {
+            logMobileOwnerFailure(
+                getMobileTempStatusFailureCode(error, 'clear'),
+                error,
+                {
+                    ...buildMobileTempStatusLogContext(storeDetails, 'clear_temp_status', prevStatus?.type),
+                    hasPreviousStatus: Boolean(prevStatus),
+                },
+            );
             setStoreDetails((prev: any) => ({ ...prev, tempStatus: prevStatus }));
             Toast.show({ content: t('failedToClear'), duration: 2000 });
         } finally {
             setIsLoading(false);
         }
-    }, [setStoreDetails, storeDetails?.tempStatus, t]);
+    }, [setStoreDetails, storeDetails, t]);
 
     if (!storeDetails) {
         return (

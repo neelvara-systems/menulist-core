@@ -34,6 +34,8 @@ export interface OBPMenuCTAProjectEntry {
     isDefault: boolean;
 }
 
+type OBPOpenHoursState = 'open' | 'closed' | 'unknown';
+
 interface OBPMenuCTAProps {
     /** Fallback URL for the "View Menu" safety rail when projects is empty. */
     menuUrl: string;
@@ -54,6 +56,7 @@ interface OBPMenuCTAProps {
     includeLocation?: boolean;
     storeTimeZone?: string;
     businessDayEndTime?: string;
+    openHoursState?: OBPOpenHoursState;
 }
 
 function withOBPEntrySource(url: string): string {
@@ -78,6 +81,7 @@ export default function OBPMenuCTA({
     includeLocation = false,
     storeTimeZone,
     businessDayEndTime,
+    openHoursState = 'unknown',
 }: OBPMenuCTAProps) {
     const trackPrimary = () => {
         if (!trackingEnabled) return Promise.resolve();
@@ -86,6 +90,7 @@ export default function OBPMenuCTA({
             sessionId: getSessionId(),
             storeTimeZone,
             businessDayEndTime,
+            openHoursState,
             includeLocation,
         });
     };
@@ -98,6 +103,7 @@ export default function OBPMenuCTA({
             sessionId: getSessionId(),
             storeTimeZone,
             businessDayEndTime,
+            openHoursState,
             includeLocation,
         });
         // G-10: also tag this as a customer-side project switch so the
@@ -111,7 +117,7 @@ export default function OBPMenuCTA({
             { tenantId, sessionId: getSessionId(), storeTimeZone, businessDayEndTime, includeLocation },
         );
 
-        return Promise.allSettled([menuClick, projectSwitch]).then(() => undefined);
+        return Promise.all([menuClick, projectSwitch]).then(() => undefined);
     };
 
     // Safety rail: no projects list → render classic "View Menu" button.

@@ -2,8 +2,8 @@
 
 > **Feature:** POS Webhook Sync (Menu Snapshot Broadcast)
 > **Status:** Implemented — Feature flag: `ENABLE_POS_SYNC: true`
-> **Last Updated:** May 23, 2026
-> **Version:** 2.4
+> **Last Updated:** July 2, 2026
+> **Version:** 2.16
 
 ---
 
@@ -55,7 +55,7 @@ Log delivery result to stores/{storeId}/posDeliveryLogs
 - **Silent operation** — no toasts, no UI feedback when healthy
 - **Only 2 server routes** — test + deliver; 3 ops moved client-side (ADR-1)
 - **HMAC-SHA256 signatures** — enterprise-grade security
-- **3 consecutive failures** before marking connection_issue (not 1)
+- **3 failed live deliveries in a row** before marking `connection_issue`; explicit connection-test/configuration failures mark the issue immediately
 - See `_impl.md` §14 for full Architecture Decision Record (12 ADRs)
 
 ---
@@ -65,12 +65,13 @@ Log delivery result to stores/{storeId}/posDeliveryLogs
 | Purpose                  | File Path                                                                |
 | ------------------------ | ------------------------------------------------------------------------ |
 | Feature flag             | `src/config/features.ts` → `ENABLE_POS_SYNC`                             |
-| DB collection constant   | `src/constants/database.ts` → `POS_DELIVERY_QUEUE`                       |
+| DB collection constants  | `src/constants/database.ts` → `POS_DELIVERY_LOGS`; `POS_DELIVERY_QUEUE` is reserved and inactive |
 | Store type (posSync)     | `src/types/platform/store.ts` → `StoreDataType.posSync`                  |
 | Shared types             | `src/lib/posSync/types.ts`                                               |
 | Signature utility        | `src/lib/posSync/signature.ts`                                           |
 | Payload formatter        | `src/lib/posSync/payloadFormatter.ts`                                    |
 | Event builder (debounce) | `src/lib/posSync/eventBuilder.ts`                                        |
+| Test response/request helper | `src/lib/posSync/testResponse.ts`                                    |
 | External Menu Sync settings tab | `src/components/templates/main-app/businessSettings/tabs/PosSyncTab.tsx` |
 | Editor integration       | `src/components/.../editorView/Editor.tsx` (syncChanges)                 |
 | API: test webhook        | `src/app/api/pos-sync/test/route.ts`                                     |
@@ -91,12 +92,15 @@ ENABLE_POS_SYNC: true, // POS webhook sync is enabled in the current runtime
 
 | Version | Date              | Changes                                                                                                                                                                                           |
 | ------- | ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2.16    | July 2, 2026      | Live delivery failure handling now tracks `posSync.consecutiveFailures`; first and second delivery failures stay quiet, the third consecutive delivery failure marks `connection_issue`, and successful delivery/test or owner connection edits reset the counter. |
+| 2.15    | July 1, 2026      | Desktop and mobile connection tests now require an OK HTTP response plus the shared successful-response acknowledgement guard before showing reachable feedback. |
+| 2.14    | June 30, 2026     | Desktop and mobile connection tests now import the same `POS_SYNC_TEST_REQUEST_POLICY` from the shared test response helper. |
 | 2.4     | May 23, 2026      | Added owner-native explanation layer, value bullets, "Who should use this?" guidance, clearer connected-system labels, and protected source-of-truth copy on desktop and mobile. |
 | 2.3     | May 23, 2026      | Renamed owner-facing copy to External Menu Sync, masked signing secrets by default, added reveal/copy/regenerate safety, and logged secret rotations without storing secret values. |
 | 2.2     | May 18, 2026      | Status corrected to match current runtime flag. Public website positioning constrained to connected store POS webhook, signed full-menu snapshot language; no universal POS or real-time-sync claims. |
 | 1.0     | February 13, 2026 | Initial documentation (no code yet)                                                                                                                                                               |
 | 2.0     | February 14, 2026 | Full implementation complete. 5→2 server routes. ADR section added.                                                                                                                               |
-| 2.1     | March 14, 2026    | ChatGPT infrastructure audit review. +4 ADRs (9-12). payloadHash added to delivery logs. Failure threshold 1→3. Phase 2 architecture documented. MOL synergy documented. Open questions resolved. |
+| 2.1     | March 14, 2026    | ChatGPT infrastructure audit review. +4 ADRs (9-12). payloadHash added to delivery logs. Delivery failure threshold 1→3 documented. Conditional worker architecture documented as inactive. MOL synergy documented. Open questions resolved. |
 
 ---
 

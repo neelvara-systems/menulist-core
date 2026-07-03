@@ -7,17 +7,21 @@ import { getOwnerRoleId } from "@data/defaultRoles";
 import { FALLBACK_BUSINESS_TYPE } from "@data/shared/businessTypes";
 import { createResellerTransaction, getResellerProfile, updateResellerStatsOnOnboarding } from "@database/reseller/server";
 import { createInitialSubscription } from "@database/subscriptions/server";
+import { getBoundedResellerApiStringContext, getResellerApiFailureLogData, logResellerApiFailure } from "@lib/billing/resellerApiDiagnostics";
 import { safeSyncStorePlanEntitlementFromSubscription } from "@lib/billing/subscriptionEntitlementSync";
+import { revalidateMenuCache } from "@lib/actions/revalidateMenuCache";
 import { admin, authAdmin } from "@lib/firebase/firebaseAdmin";
 import { logger } from "@lib/monitoring/logger";
+import { compensateFailedTenantStoreOnboarding } from "@lib/onboarding/compensateFailedOnboarding";
 import { createTenantStoreInTransaction, preCheckSubdomain } from "@lib/onboarding/createTenantStore";
 import { normalizePhoneNumberForStorage } from "@lib/phone/phoneNumber";
 import { checkRateLimit } from "@lib/rateLimit";
 import { getRateLimitForFeature } from "@lib/rateLimit/configs";
 import { getOrCreateRazorpayPlan } from "@lib/razorpay/plan-handler";
 import { razorpayClient } from "@lib/razorpay/razorpay";
+import { readBoundedJsonBody } from "@lib/security/boundedRequestBody";
+import { getBoundedSecurityRouteContext } from "@lib/security/securityDiagnostics";
 import { validateAPIInput } from "@lib/security/inputValidation";
-import { buildSecurityContext } from "@lib/security/securityContext";
 import { getEmailValidationError, validateEmail } from "@lib/validation/emailDomainValidator";
 import { ResellerOnboardSchema } from "@lib/validation/resellerSchemas";
 import { FirestoreSubscriptionDoc } from "@type/razorpay";
@@ -25,8 +29,14 @@ import { Timestamp } from "firebase/firestore";
 import { writeLogEntry } from "logs/utils";
 import { NextResponse } from "next/server";
 import { withAuth } from "../../../../middleware/auth";
+import { hashPublicRateLimitValue } from "../../../../middleware/publicApi";
 
 const LOG_FILE = "reseller-onboarding.log";
+const RESELLER_ACTION_MAX_BODY_BYTES = 16 * 1024;
+const RESELLER_ONBOARD_AUTH_CLEANUP_FAILED = "reseller_onboard_auth_cleanup_failed";
+const RESELLER_ONBOARD_AUTH_CLAIMS_COMPENSATION_FAILED = "reseller_onboard_auth_claims_compensation_failed";
+const RESELLER_ONBOARD_PROVIDER_COMPENSATION_FAILED = "reseller_onboard_provider_compensation_failed";
+const RESELLER_ONBOARD_PROVIDER_COMPENSATION_CACHE_REVALIDATION_FAILED = "reseller_onboard_provider_compensation_cache_revalidation_failed";
 
 const removeUndefinedFields = (data: Record<string, unknown>) => Object.fromEntries(
     Object.entries(data).filter(([, value]) => value !== undefined),
@@ -113,6 +123,52 @@ async function prepareOwnerAuthUser(params: {
     return { cleanupOnFailure: true, uid: createdUser.uid };
 }
 
+async function compensateResellerPaymentProviderFailure(params: {
+    authUid: string;
+    db: admin.firestore.Firestore;
+    resellerId: string;
+    storeId: number;
+    tenantId: number;
+    userId: string;
+}) {
+    const context = {
+        ...getBoundedResellerApiStringContext('resellerId', params.resellerId),
+        ...getBoundedResellerApiStringContext('tenantId', params.tenantId),
+        ...getBoundedResellerApiStringContext('storeId', params.storeId),
+        ...getBoundedResellerApiStringContext('authUid', params.authUid),
+    };
+
+    try {
+        await compensateFailedTenantStoreOnboarding({
+            db: params.db,
+            reason: 'reseller_online_provider_setup_failed',
+            source: "RESELLER_ONBOARDING",
+            storeId: params.storeId,
+            tenantId: params.tenantId,
+            userId: params.userId,
+        });
+    } catch (compensationError) {
+        logResellerApiFailure(RESELLER_ONBOARD_PROVIDER_COMPENSATION_FAILED, compensationError, context);
+        return;
+    }
+
+    try {
+        await authAdmin.setCustomUserClaims(params.authUid, {
+            platformRole: 'OWNER',
+            role: getOwnerRoleId(),
+            uId: params.userId,
+        });
+    } catch (claimsError) {
+        logResellerApiFailure(RESELLER_ONBOARD_AUTH_CLAIMS_COMPENSATION_FAILED, claimsError, context);
+    }
+
+    try {
+        await revalidateMenuCache(params.storeId, { tId: params.tenantId });
+    } catch (cacheError) {
+        logResellerApiFailure(RESELLER_ONBOARD_PROVIDER_COMPENSATION_CACHE_REVALIDATION_FAILED, cacheError, context);
+    }
+}
+
 /**
  * POST /api/reseller/onboard — Reseller creates store + subscription for a client
  * 
@@ -134,8 +190,9 @@ export const POST = withAuth(async (request, session) => {
 
         // 1. Rate limiting
         const rateLimitConfig = getRateLimitForFeature('DATA_WRITE');
+        const resellerRateLimitHash = hashPublicRateLimitValue(resellerId);
         const rateLimitResult = await checkRateLimit({
-            key: `reseller-onboard:${resellerId}`,
+            key: `reseller-onboard:${resellerRateLimitHash}`,
             ...rateLimitConfig,
         });
         if (!rateLimitResult.allowed) {
@@ -146,12 +203,16 @@ export const POST = withAuth(async (request, session) => {
         }
 
         // 2. Validate input
-        const body = await request.json();
+        const bodyResult = await readBoundedJsonBody(request, RESELLER_ACTION_MAX_BODY_BYTES, {
+            invalidJsonMessage: 'Invalid input',
+        });
+        if (bodyResult.ok === false) return bodyResult.response;
+        const body = bodyResult.data as any;
         const validation = validateAPIInput(ResellerOnboardSchema, body);
         if (!validation.success) {
             const errorMsg = 'error' in validation ? validation.error : 'Invalid input';
             logger.security('Reseller Onboard Input Validation Failed', {
-                ...buildSecurityContext(session, request),
+                ...getBoundedSecurityRouteContext(session, request),
                 endpoint: '/api/reseller/onboard',
                 error: errorMsg,
             }, 'medium');
@@ -164,8 +225,8 @@ export const POST = withAuth(async (request, session) => {
         const resellerProfile = await getResellerProfile(resellerId, session.user.email);
         if (!isPlatformUser && (!resellerProfile || !resellerProfile.active)) {
             logger.security('Reseller Onboard - Profile Not Found or Inactive', {
-                ...buildSecurityContext(session, request),
-                resellerId,
+                ...getBoundedSecurityRouteContext(session, request),
+                ...getBoundedResellerApiStringContext('resellerId', resellerId),
             }, 'high');
             return NextResponse.json({ error: "Reseller profile not found or inactive." }, { status: 403 });
         }
@@ -189,7 +250,17 @@ export const POST = withAuth(async (request, session) => {
             }
         }
 
-        await writeLogEntry({ logFileName: LOG_FILE, logType: 'RESELLER_ONBOARD_STARTED', data: { resellerId, businessName, pricingTier, paymentMode, locationCount } });
+        await writeLogEntry({
+            logFileName: LOG_FILE,
+            logType: 'RESELLER_ONBOARD_STARTED',
+            data: {
+                ...getBoundedResellerApiStringContext('resellerId', resellerId),
+                ...getBoundedResellerApiStringContext('businessName', businessName),
+                ...getBoundedResellerApiStringContext('pricingTier', pricingTier),
+                paymentMode,
+                locationCount,
+            },
+        });
 
         // 6. ATOMIC TRANSACTION: Create Tenant, Store, User (centralized utility)
         const db = admin.firestore();
@@ -361,7 +432,16 @@ export const POST = withAuth(async (request, session) => {
             });
         } catch (error) {
             if (authAccount.cleanupOnFailure) {
-                await authAdmin.deleteUser(authAccount.uid).catch(() => undefined);
+                try {
+                    await authAdmin.deleteUser(authAccount.uid);
+                } catch (cleanupError) {
+                    logResellerApiFailure(RESELLER_ONBOARD_AUTH_CLEANUP_FAILED, cleanupError, {
+                        ...getBoundedResellerApiStringContext('resellerId', resellerId),
+                        ...getBoundedResellerApiStringContext('authUid', authAccount.uid),
+                        ...getBoundedResellerApiStringContext('ownerLoginEmail', ownerLoginEmail),
+                        hadExistingOwnerDoc: Boolean(existingOwnerDoc),
+                    });
+                }
             }
             throw error;
         }
@@ -377,8 +457,22 @@ export const POST = withAuth(async (request, session) => {
         await writeLogEntry({
             logFileName: LOG_FILE,
             logType: 'RESELLER_ONBOARD_TRANSACTION_COMPLETE',
-            data: { resellerId, tenantId: result.tenantId, storeId: result.storeId },
+            data: {
+                ...getBoundedResellerApiStringContext('resellerId', resellerId),
+                ...getBoundedResellerApiStringContext('tenantId', result.tenantId),
+                ...getBoundedResellerApiStringContext('storeId', result.storeId),
+            },
         });
+
+        try {
+            await revalidateMenuCache(result.storeId, { tId: result.tenantId });
+        } catch (cacheError) {
+            logResellerApiFailure('reseller_onboard_cache_revalidation_failed', cacheError, {
+                ...getBoundedResellerApiStringContext('resellerId', resellerId),
+                ...getBoundedResellerApiStringContext('tenantId', result.tenantId),
+                ...getBoundedResellerApiStringContext('storeId', result.storeId),
+            });
+        }
 
         // 7. Create Subscription
         let subscriptionId = '';
@@ -388,37 +482,51 @@ export const POST = withAuth(async (request, session) => {
 
         if (paymentMode === 'online') {
             // Create Razorpay Subscription (same as self-serve)
-            const razorpayPlanId = await getOrCreateRazorpayPlan({
-                price: billingAmount,
-                currency: 'INR',
-                interval: billingInterval || 'MONTH',
-                userType: 'B2C',
-                planId: tier.planId,
-            });
-
             const totalCount = (billingInterval || 'MONTH') === 'MONTH' ? 36 : 3;
+            let razorpayPlanId = '';
+            let razorpaySubscription: any;
 
-            const razorpaySubscription = await razorpayClient.subscriptions.create({
-                plan_id: razorpayPlanId,
-                total_count: totalCount,
-                quantity: locationCount,
-                notes: {
-                    tenantId: result.tenantId,
-                    storeId: result.storeId,
-                    userId: result.userId,
+            try {
+                razorpayPlanId = await getOrCreateRazorpayPlan({
+                    price: billingAmount,
+                    currency: 'INR',
+                    interval: billingInterval || 'MONTH',
                     userType: 'B2C',
                     planId: tier.planId,
-                    priceKey: 'priceINR',
-                    interval: billingInterval || 'MONTH',
-                    name: businessName,
-                    email: result.loginEmail,
-                    ownerUsername: result.ownerUsername,
-                    price: billingAmount,
-                    locationCount,
+                });
+
+                razorpaySubscription = await razorpayClient.subscriptions.create({
+                    plan_id: razorpayPlanId,
+                    total_count: totalCount,
+                    quantity: locationCount,
+                    notes: {
+                        tenantId: result.tenantId,
+                        storeId: result.storeId,
+                        userId: result.userId,
+                        userType: 'B2C',
+                        planId: tier.planId,
+                        priceKey: 'priceINR',
+                        interval: billingInterval || 'MONTH',
+                        name: businessName,
+                        email: result.loginEmail,
+                        ownerUsername: result.ownerUsername,
+                        price: billingAmount,
+                        locationCount,
+                        resellerId,
+                        remainingCredits: 0,
+                    },
+                });
+            } catch (providerError) {
+                await compensateResellerPaymentProviderFailure({
+                    authUid: result.authUid,
+                    db,
                     resellerId,
-                    remainingCredits: 0,
-                },
-            });
+                    storeId: result.storeId,
+                    tenantId: result.tenantId,
+                    userId: result.userId,
+                });
+                throw providerError;
+            }
 
             subscriptionId = razorpaySubscription.id;
             shortUrl = razorpaySubscription.short_url;
@@ -584,7 +692,14 @@ export const POST = withAuth(async (request, session) => {
         await writeLogEntry({
             logFileName: LOG_FILE,
             logType: 'RESELLER_ONBOARD_COMPLETE',
-            data: { resellerId, tenantId: result.tenantId, storeId: result.storeId, subscriptionId, transactionId, paymentMode },
+            data: {
+                ...getBoundedResellerApiStringContext('resellerId', resellerId),
+                ...getBoundedResellerApiStringContext('tenantId', result.tenantId),
+                ...getBoundedResellerApiStringContext('storeId', result.storeId),
+                ...getBoundedResellerApiStringContext('subscriptionId', subscriptionId),
+                ...getBoundedResellerApiStringContext('transactionId', transactionId),
+                paymentMode,
+            },
         });
 
         return NextResponse.json({
@@ -605,11 +720,15 @@ export const POST = withAuth(async (request, session) => {
         });
 
     } catch (error) {
-        console.error('[Reseller Onboard] Failed:', error);
+        logResellerApiFailure('reseller_onboard_route_failed', error, {
+            ...getBoundedResellerApiStringContext('resellerId', resellerId),
+        });
         await writeLogEntry({
             logFileName: LOG_FILE,
             logType: 'RESELLER_ONBOARD_ERROR',
-            data: { resellerId, error: (error as Error).message },
+            data: getResellerApiFailureLogData('reseller_onboard_route_failed', error, {
+                ...getBoundedResellerApiStringContext('resellerId', resellerId),
+            }),
         });
         return NextResponse.json(
             { error: 'Failed to onboard client. Please try again.' },

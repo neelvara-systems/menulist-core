@@ -636,5 +636,5 @@ After testing, fill this out:
 **Testing Priority**:
 
 1. 🔴 **Critical (P0)** - Must pass before production
-2. 🟡 **High (P1)** - Should pass, but can be fixed post-launch
+2. 🟡 **High (P1)** - Should pass before release unless the active production-readiness audit accepts the risk
 3. 🟢 **Medium (P2)** - Nice to have

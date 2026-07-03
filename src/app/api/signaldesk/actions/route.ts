@@ -2,7 +2,10 @@ export const dynamic = "force-dynamic";
 
 import {
     applySignalDeskRateLimit,
+    getBoundedSignalDeskStringContext,
+    getSignalDeskAccessLogContext,
     isSignalDeskMobileRequest,
+    logSignalDeskFailure,
     logSignalDeskValidationFailure,
     parseSignalDeskJsonBody,
     requireSignalDeskAccess,
@@ -66,7 +69,6 @@ import {
     upsertSignalDeskTrustPartnerProfileServer,
 } from "@lib/signaldesk/workflowServer";
 import { validateAPIInput } from "@lib/security/inputValidation";
-import { secureError } from "@lib/security/secureLogger";
 import type { SignalDeskPermission } from "@type/signaldesk";
 import { withAuth } from "@/middleware/auth";
 import type { NextRequest } from "next/server";
@@ -851,12 +853,11 @@ const validatePayload = <T>(schema: z.ZodType<T>, payload: unknown, context: {
     if (validation.success !== true) {
         logSignalDeskValidationFailure({
             action: context.action,
-            details: validation.error,
             request: context.request,
             session: context.session,
         });
         return {
-            response: NextResponse.json({ error: "Invalid input", details: validation.error }, { status: 400 }),
+            response: NextResponse.json({ error: "Invalid input" }, { status: 400 }),
             success: false as const,
         };
     }
@@ -1382,10 +1383,16 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         if (!payload.success) return payload.response;
         return NextResponse.json({ data: await captureSignalDeskDemandSignalServer(accessResult.access, payload.data as any) });
     } catch (error) {
-        secureError("[SignalDesk API] Action failed", error as Error, {
-            action: envelope.data.action,
-            userId: accessResult.access.userId,
-        });
+        logSignalDeskFailure(
+            "signaldesk_action_route_failed",
+            error,
+            {
+                route: "/api/signaldesk/actions",
+                ...getSignalDeskAccessLogContext(accessResult.access),
+                ...getBoundedSignalDeskStringContext("action", envelope.data.action),
+                mobileRequest: isSignalDeskMobileRequest(request),
+            },
+        );
         const message = getSafeActionErrorMessage(error);
         return NextResponse.json({ error: message }, { status: message === "SignalDesk action failed" ? 500 : 400 });
     }

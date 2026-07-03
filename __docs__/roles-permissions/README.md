@@ -168,7 +168,7 @@ STAFF (User)
 - MenuList platform user blocking uses the same access model: direct user blocks disable Firebase Auth and revoke sessions; tenant/store blocks are enforced by fresh session access checks and protected API guards.
 - A user can belong to one tenant and multiple stores inside that tenant.
 - If a staff member leaves business A and joins business B, business A removes/deactivates the old tenant account. Business B creates a new staff account, preferably Staff ID + passcode for non-technical staff. Reusing the same personal email across tenants remains blocked until a platform-managed transfer flow exists, preserving tenant isolation and audit history.
-- Store role IDs are validated against the target store before staff creation or update.
+- Store role IDs are validated against the target store before staff creation or update, and staff/role target stores must be same-tenant, active, not soft-deleted, and not platform-blocked.
 - Old stores missing the default `owner`, `manager`, or `staff` roles are repaired automatically when staff management loads or creates staff. Existing default roles are also normalized with any missing permission keys. Custom roles keep missing permission keys denied until an owner turns them on.
 - The `owner` role is locked from role-editor changes so owners cannot remove the last full-access role definition.
 - A staff member with the last active owner mapping for a store cannot be deactivated, removed, or demoted until another active owner exists.

@@ -1,10 +1,18 @@
 # AI Enhancement Packs — Website Content
 
 **Feature:** AI Enhancement Packs
-**Status:** 📝 Ready for Use
+**Status:** Website/source evidence; not current launch certification
 **Last Updated:** February 9, 2026
 **Audience:** Website visitors, prospective customers
 **Tone:** Calm, flat, boring. Infrastructure language. No excitement.
+
+---
+
+## Current Launch Boundary
+
+This website copy is source evidence only. It is not current launch certification and must not be published until the active [production-readiness audit](../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../production-readiness/external-certification-runbook.md), `npm run verify:billing-entitlement-boundary`, Razorpay sandbox top-up smoke, desktop/mobile Billing browser QA, website/pricing copy review, target deploy evidence, and production-host smoke are recorded.
+
+Do not publish with TBD price placeholders, unverified activation timing, or provider behavior that lacks current Razorpay evidence.
 
 ---
 
@@ -76,11 +84,11 @@
 
 ### "When do I need an Enhancement Pack?"
 
-> If your menu needs more AI enhancements than your plan covers, MenuList will let you know. You can purchase an Enhancement Pack and continue immediately.
+> If your menu needs more AI enhancements than your plan covers, MenuList will let you know. You can purchase an Enhancement Pack and continue after payment is confirmed.
 
 ### "How much does an Enhancement Pack cost?"
 
-> AI Enhancement Packs are a one-time purchase at ₹[TBD] / $[TBD]. One pack covers all AI features — images, descriptions, and translations.
+> AI Enhancement Pack pricing must come from the approved pricing source before publication. Do not publish this draft with TBD price placeholders.
 
 ### "Does an Enhancement Pack expire?"
 
@@ -112,7 +120,7 @@
 
 |            | AI Enhancement Pack                         |
 | ---------- | ------------------------------------------- |
-| **Price**  | ₹[TBD] / $[TBD]                             |
+| **Price**  | Approved launch price only                  |
 | **Type**   | One-time purchase                           |
 | **Covers** | Images, descriptions, translations          |
 | **Stores** | Per store (each store manages own capacity) |

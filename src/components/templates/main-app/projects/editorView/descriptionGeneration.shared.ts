@@ -1,6 +1,6 @@
 import { AI_ACTIONS_TYPES } from '@constant/common';
 import GlobalLanguagesList from '@data/languages';
-import { updateProject } from '@database/projects';
+import { assertProjectUpdateSucceeded, updateProject } from '@database/projects';
 import { getCanonicalProjectSourceLanguage } from '@lib/localization/languagePolicy';
 import { hasMeaningfulDescription, hasMeaningfulDescriptionsForLanguages } from '@lib/menu/descriptionQuality';
 import { logger } from '@lib/monitoring/logger';
@@ -157,7 +157,12 @@ export async function runDescriptionGeneration({
         if (persistProject) {
             await persistProject(removeObjRef(nextProject));
         } else {
-            await updateProject({ ...nextProject, projectId: nextProject.projectId });
+            const savedProject = await updateProject({ ...nextProject, projectId: nextProject.projectId });
+            assertProjectUpdateSucceeded(
+                savedProject,
+                nextProject.projectId,
+                'menu_editor_description_generation_project_update_rejected',
+            );
         }
     }
     return removeObjRef(nextProject);

@@ -12,7 +12,7 @@
  */
 
 import { FEATURE_FLAGS } from '@config/features';
-import { type MenuPresenceSurface, updateMenuPresence } from '@database/stores';
+import { assertMenuPresenceUpdateSucceeded, type MenuPresenceSurface, updateMenuPresence } from '@database/stores';
 import { withAnalyticsSource } from '@lib/analytics/sourceAttribution';
 import {
     STARTER_ACTIVATION_PRESENCE_SIGNAL_BY_SURFACE,
@@ -35,8 +35,66 @@ import {
     LuX,
 } from 'react-icons/lu';
 import { Button, Card, Flex, List, NavBar, Popup, Tag, Text, Title, Toast } from '../antd';
+import {
+    getBoundedMobileOwnerStringContext,
+    getMobileOwnerStoreLogContext,
+    logMobileOwnerFailure,
+} from '../utils/mobileOwnerDiagnostics';
 
 type ManualSurfaceId = 'googleBusiness' | 'instagramBio' | 'whatsappProfile';
+
+const MOBILE_PRESENCE_COPY_UNAVAILABLE = 'mobile_presence_copy_unavailable';
+const MOBILE_PRESENCE_COPY_FALLBACK_FAILED = 'mobile_presence_copy_fallback_failed';
+
+const hasMobilePresenceClipboardWrite = (): boolean => (
+    typeof navigator !== 'undefined'
+    && Boolean(navigator.clipboard)
+    && typeof navigator.clipboard.writeText === 'function'
+);
+
+const hasMobilePresenceCopyFallback = (): boolean => (
+    typeof document !== 'undefined'
+    && typeof document.createElement === 'function'
+    && typeof document.execCommand === 'function'
+    && Boolean(document.body)
+);
+
+const copyMobilePresenceLink = async (value: string): Promise<void> => {
+    let clipboardWriteError: unknown;
+
+    if (hasMobilePresenceClipboardWrite()) {
+        try {
+            await navigator.clipboard.writeText(value);
+            return;
+        } catch (error) {
+            clipboardWriteError = error;
+            // Continue to the acknowledged textarea fallback before showing failure copy.
+        }
+    }
+
+    if (!hasMobilePresenceCopyFallback()) {
+        throw clipboardWriteError || new Error(MOBILE_PRESENCE_COPY_UNAVAILABLE);
+    }
+
+    const textarea = document.createElement('textarea');
+    textarea.value = value;
+    textarea.setAttribute('readonly', '');
+    textarea.style.position = 'fixed';
+    textarea.style.left = '-9999px';
+    textarea.style.top = '0';
+    document.body.appendChild(textarea);
+    textarea.focus();
+    textarea.select();
+
+    try {
+        const copied = document.execCommand('copy');
+        if (!copied) {
+            throw new Error(MOBILE_PRESENCE_COPY_FALLBACK_FAILED);
+        }
+    } finally {
+        document.body.removeChild(textarea);
+    }
+};
 
 interface MobilePresenceMonitorProps {
     hasPublishedMenu: boolean;
@@ -147,6 +205,37 @@ export default function MobilePresenceMonitor({
         ? MANUAL_SURFACES.find((surface) => surface.id === selectedSurfaceId) || null
         : null;
 
+    const buildMobilePresenceLogContext = (action: 'confirm' | 'copy' | 'open' | 'remove', surface?: ManualSurfaceConfig) => ({
+        ...getMobileOwnerStoreLogContext(storeDetails.storeId, (storeDetails as any).tenantId),
+        ...getBoundedMobileOwnerStringContext('obpLink', obpLink),
+        ...getBoundedMobileOwnerStringContext('openUrl', surface?.openUrl),
+        ...getBoundedMobileOwnerStringContext('surfaceId', surface?.id),
+        ...getBoundedMobileOwnerStringContext('surfaceKey', surface?.dalKey),
+        ...getBoundedMobileOwnerStringContext('surfaceLabelKey', surface?.labelKey),
+        action,
+        autoActiveCount,
+        hasFeedbackEnabled,
+        hasPublishedMenu,
+        hasStarterActivationSignal: Boolean(surface && STARTER_ACTIVATION_PRESENCE_SIGNAL_BY_SURFACE[surface.dalKey]),
+        manualActiveCount,
+        recordsStarterActivationSignal: Boolean(surface && shouldRecordStarterActivationSignal(storeDetails)),
+        totalActive,
+        totalSurfaces,
+    });
+
+    const handleOpenExternalSurface = (surface: ManualSurfaceConfig) => {
+        if (!surface.openUrl) return;
+        try {
+            const opened = window.open(surface.openUrl, '_blank', 'noopener,noreferrer');
+            if (!opened) {
+                throw new Error('mobile_presence_external_open_blocked');
+            }
+        } catch (error) {
+            logMobileOwnerFailure('mobile_presence_external_open_failed', error, buildMobilePresenceLogContext('open', surface));
+            Toast.show({ content: t('updateFailed'), duration: 1500 });
+        }
+    };
+
     const handleOpenSurface = (surface: ManualSurfaceConfig) => {
         setSelectedSurfaceId(surface.id);
     };
@@ -156,10 +245,16 @@ export default function MobilePresenceMonitor({
     };
 
     const handleCopyOfficialLink = async () => {
+        const sourcedObpLink = withAnalyticsSource(obpLink, 'copy_link');
         try {
-            await navigator.clipboard.writeText(withAnalyticsSource(obpLink, 'copy_link'));
+            await copyMobilePresenceLink(sourcedObpLink);
             Toast.show({ content: t('menuLinkCopied'), duration: 1000 });
-        } catch {
+        } catch (error) {
+            logMobileOwnerFailure('mobile_presence_official_link_copy_failed', error, {
+                ...buildMobilePresenceLogContext('copy'),
+                hasClipboardWrite: hasMobilePresenceClipboardWrite(),
+                hasCopyFallback: hasMobilePresenceCopyFallback(),
+            });
             Toast.show({ content: t('menuLinkCopyFailed'), duration: 1000 });
         }
     };
@@ -167,15 +262,23 @@ export default function MobilePresenceMonitor({
     const handleConfirm = async (surface: ManualSurfaceConfig) => {
         setUpdating(surface.id);
         try {
-            await updateMenuPresence(storeDetails.storeId, surface.dalKey, true, {
+            const result = await updateMenuPresence(storeDetails.storeId, surface.dalKey, true, {
                 starterSignal: shouldRecordStarterActivationSignal(storeDetails)
                     ? STARTER_ACTIVATION_PRESENCE_SIGNAL_BY_SURFACE[surface.dalKey]
                     : undefined,
             });
+            assertMenuPresenceUpdateSucceeded(
+                result,
+                storeDetails.storeId,
+                surface.dalKey,
+                true,
+                'mobile_presence_confirm_update_rejected',
+            );
             setLocalPresence((previous) => ({ ...previous, [surface.id]: new Date().toISOString() }));
             Toast.show({ content: t('surfaceUpdated', { surface: t(surface.labelKey) }), duration: 1500 });
             setSelectedSurfaceId(null);
-        } catch {
+        } catch (error) {
+            logMobileOwnerFailure('mobile_presence_confirm_failed', error, buildMobilePresenceLogContext('confirm', surface));
             Toast.show({ content: t('updateFailed'), duration: 1500 });
         } finally {
             setUpdating(null);
@@ -185,7 +288,14 @@ export default function MobilePresenceMonitor({
     const handleRemove = async (surface: ManualSurfaceConfig) => {
         setUpdating(surface.id);
         try {
-            await updateMenuPresence(storeDetails.storeId, surface.dalKey, false);
+            const result = await updateMenuPresence(storeDetails.storeId, surface.dalKey, false);
+            assertMenuPresenceUpdateSucceeded(
+                result,
+                storeDetails.storeId,
+                surface.dalKey,
+                false,
+                'mobile_presence_remove_update_rejected',
+            );
             setLocalPresence((previous) => {
                 const next = { ...previous };
                 delete next[surface.id];
@@ -193,7 +303,8 @@ export default function MobilePresenceMonitor({
             });
             Toast.show({ content: t('surfaceRemoved', { surface: t(surface.labelKey) }), duration: 1500 });
             setSelectedSurfaceId(null);
-        } catch {
+        } catch (error) {
+            logMobileOwnerFailure('mobile_presence_remove_failed', error, buildMobilePresenceLogContext('remove', surface));
             Toast.show({ content: t('updateFailed'), duration: 1500 });
         } finally {
             setUpdating(null);
@@ -448,7 +559,7 @@ export default function MobilePresenceMonitor({
                                         <Button
                                             block
                                             fill="outline"
-                                            onClick={() => window.open(selectedSurface.openUrl, '_blank')}
+                                            onClick={() => handleOpenExternalSurface(selectedSurface)}
                                             size="small"
                                         >
                                             <Flex align="center" gap={6}>

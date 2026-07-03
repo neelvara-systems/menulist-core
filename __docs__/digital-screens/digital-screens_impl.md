@@ -1,8 +1,8 @@
 # Digital Screens — Technical Implementation
 
-**Created:** January 4, 2026  
+**Created:** January 4, 2026
 **Status:** 🔒 **v2.3 LOCKED — Controlled owner testing ready; full production certification pending the overall MenuList audit.**
-**Last Audit:** June 11, 2026 (public listener isolation and Firestore rule hardening)
+**Last Audit:** July 2, 2026 (dedicated `npm run verify:digital-screens-boundary` source gate added for screen-token route, public-safe listener mirror, seen-signal cheap-fail ordering, screen cache invalidation touches, owner copy/open acknowledgement guards, and docs parity)
 **Applies:** 3-Year Architecture Freeze Rule
 
 ---
@@ -24,7 +24,7 @@ generateScreenSlides()     → Owner Pinned + Campaign + Evergreen + Brand Fallb
   mode=default → MenuBoardDisplay.tsx  (full menu, categories, prices, auto-paginate)
   mode=highlights → ScreenDisplay.tsx  (rotating slides, 8s interval, hero images)
 
-Both share: Cache (localStorage) · Firebase listener on public-safe `screen_{storeId}` mirror (onSnapshot) · Seen signal (1/day)
+Both share: Cache (localStorage) · Firebase listener on public-safe `screen_{storeId}` mirror (onSnapshot) · Seen signal (1/day, same-origin/no-store/manual-redirect request, daily marker only after OK)
 ```
 
 **Key decisions:**
@@ -43,9 +43,13 @@ Both share: Cache (localStorage) · Firebase listener on public-safe `screen_{st
 - **Content is normalized before display** — screen extraction normalizes localized text, strips HTML-like/control text, parses currency-bearing prices, blocks technical category IDs, dedupes items, normalizes tags, and caps custom slide captions.
 - **Currency symbol follows store settings** — `ScreenStoreInfo.currencySymbol` is hydrated from the store document and passed to Menu Board / Highlights price renderers.
 - **Owner uploads are artwork** — `owner_upload` slides render the uploaded image as the content and do not overlay the management caption as TV copy.
-- **Public cache invalidation touches screens** — client-side project/menu public cache invalidation also increments screen content version when a screen token already exists.
-- **Screen SSR cache tag included** — `/api/revalidate/menu` store invalidation now includes `screen-data` so screen SSR reads can refresh with public menu changes.
+- **Public cache invalidation touches screens** — client-side project/menu public cache invalidation also increments screen content version when a screen token already exists; store-profile saves, master-to-outlet propagation, and selected Functions public-output changes touch screens after public cache revalidation when rendered output changes.
+- **Screen SSR cache tag included** — `/api/revalidate/menu`, the shared `revalidateMenuCache()` action, and direct public-truth mutation routes include `screen-data` so screen SSR reads can refresh with public menu, store, outlet, entitlement, and routing changes.
+- **Server-side live screen wakeup** — Next.js server actions/routes that mutate public truth use `touchDigitalScreenContentVersionForStoreServer()` to bump initialized screen content versions and the `screen_{storeId}` listener mirror without creating partial screen state when a screen token is absent.
 - **Shared public attribution** — both screen modes render the same quiet `Powered by MenuList. All rights reserved` attribution used by public OBP/menu surfaces.
+- **Seen-signal request boundary** — Highlights and Menu Board post `/api/screen/seen` with same-origin credentials, no-store cache policy, and manual redirect handling before caching the daily local marker only after an OK response. The route writes only after cheap-fail validation, token binding, enabled-screen validation, a `campaigns_{storeId}` summary id guard for legacy lookup, and shared public-safe store eligibility.
+- **Diagnostics are bounded** — public token misses and normal owner mutations stay quiet; unexpected resolver, fallback, settings, owner-control tracking, owner screen-link open, and invalidation failures use normalized secure diagnostics with bounded token/project/store/settings/link metadata instead of raw identifiers or error objects.
+- **Dedicated source gate** — `npm run verify:digital-screens-boundary` locks the route, rules, listener mirror, seen-signal route, invalidation, owner desktop/mobile acknowledgement, and docs contracts for this feature.
 
 ---
 
@@ -64,7 +68,8 @@ Both share: Cache (localStorage) · Firebase listener on public-safe `screen_{st
 - `slideGenerator.ts` — 4-layer stack generator; respects owner-only custom slide mode; normalizes min/max slide counts with unique repeat IDs
 - `screenRenderer.ts` (~140 lines) — `SCREEN_CONFIG` constants, `ScreenRendererState` (uses `ScreenStoreInfo`), `getSlideLabel()`
 - `publicScreenState.ts` — Converts canonical screen state into the public-safe listener mirror and writes `platformSummary/screen_{sId}`.
-- `screenInvalidation.ts` — Browser-side screen content-version touch used by public cache invalidation. It reads the existing summary first, never creates partial screen state, and materializes a compact default-menu projection when a screen already exists.
+- `screenInvalidation.ts` — Browser-side screen content-version touch used by public cache invalidation. It reads the existing summary first, never creates partial screen state, materializes a compact default-menu projection when a project context is available, and supports store-output-only touches without projection reads.
+- `serverScreenInvalidation.ts` — Next.js server-side screen content-version touch used by direct public-truth routes and `revalidateMenuCache()`. It reads the existing screen state, returns when no screen token exists, increments `screen.contentVersion`, and mirrors `screen_{storeId}` for live display listeners.
 
 ### Screen Page (`src/app/screen/[token]/` — 3 files)
 
@@ -75,7 +80,11 @@ Both share: Cache (localStorage) · Firebase listener on public-safe `screen_{st
 
 ### API Route (1 file)
 
-- `src/app/api/screen/seen/route.ts` (79 lines) — Daily seen signal (1 write/day/screen)
+- `src/app/api/screen/seen/route.ts` — Daily seen signal (1 write/day/screen) with bounded diagnostics, enabled-screen gate, legacy summary-id guard, and public store eligibility gate
+
+### Functions Support
+
+- `functions/src/logic/publicCacheRevalidation.ts` — Server-side cache revalidation helper. For first-extraction project saves, scheduled special-menu switching, and subscription entitlement attribution changes, it can also bump the existing screen content version and safe listener mirror after cache revalidation.
 
 ### DAL (`src/database/campaigns/`)
 
@@ -89,14 +98,16 @@ Both share: Cache (localStorage) · Firebase listener on public-safe `screen_{st
 - `addPinnedSlide()` / `removePinnedSlide()` — Owner upload management (max 3)
 - `bumpScreenContentVersion()` — Invalidation trigger
 - `uploadScreenSlide()` — Firebase Storage upload + addPinnedSlide
+- Settings, caption update, and slide delete mutations return a typed digital-screen acknowledgement. Desktop and mobile callers must require `assertDigitalScreenMutationSucceeded()` before local screen state, pinned-slide state, or success copy changes. Slide uploads also require `assertDigitalScreenSlideUploadSucceeded()` after the outer `apiCallComposer()` result so storage/add-slide failures cannot resolve to success through fallback values.
 
 ### Settings UI (`src/components/.../DigitalScreenSettings/` — 4 files)
 
 - `index.tsx` — Main card: fetch state, owner-only toggle, settings composition
 - `CurrentSlides.tsx` — Custom slide list and owner-only mode messaging
 - `OwnerUploads.tsx` — Upload manager: max 3, 14-day expiry, delete, caption edit
-- `ScreenLink.tsx` — TV setup cards for Menu Board + Highlights, compact URLs, QR blocks, last-seen status
-- `src/components/mobile/screens/MobileDigitalScreensScreen.tsx` — Mobile parity surface for TV status, both links, custom slides, and owner-only toggle
+- `ScreenLink.tsx` — TV setup cards for Menu Board + Highlights, compact URLs, QR blocks, last-seen status, and bounded copy/open diagnostics. Copied feedback waits for Clipboard API success or acknowledged textarea fallback success.
+- `src/components/mobile/screens/MobileDigitalScreensScreen.tsx` — Mobile parity surface for TV status, both links, custom slides, owner-only toggle, and bounded copy/open diagnostics. Copied feedback follows the same acknowledged browser-local copy contract as desktop.
+- `scripts/verification/verify-digital-screens-boundary.js` — Dedicated local source gate for Digital Screens public display, owner settings, cache invalidation, Firestore public mirror, and docs parity.
 
 ---
 
@@ -142,7 +153,7 @@ Browser → /screen/[token] or /screen/[token]?mode=highlights
 4. Lazy QR: Delay rendering by 2s [line 119-125]
 5. Start slide rotation timer (8s interval) [line 158-168]
 6. Set up Firebase onSnapshot listener on `platformSummary/screen_{storeId}` [line 174-206]
-7. Send daily seen signal (1/day via localStorage check) [line 130-147]
+7. Send daily seen signal (1/day via localStorage check; same-origin/no-store/manual-redirect POST; API writes only for enabled screens backed by public-eligible stores; local marker only after OK) [line 130-147]
 8. Start 30-min offline fallback timer [line 209-218]
 9. Start 6-hour proactive refresh timer [line 220-233]
 ```
@@ -152,9 +163,11 @@ Browser → /screen/[token] or /screen/[token]?mode=highlights
 ```
 Owner saves menu → bumpScreenContentVersion() [DAL]
   → OR public client cache invalidation → touchDigitalScreenContentVersion()
+  → OR store-profile/public-output save → public cache revalidation → touchDigitalScreenContentVersion()
+  → OR Functions public-output save → server cache revalidation → Functions screen version touch
   → contentVersion++ in platformSummary/campaigns_{sId}
   → platformSummary/screen_{sId} mirror updated with safe contentVersion state
-  → screen.menuProjection refreshed from the automatic default menu when available
+  → screen.menuProjection refreshed from the automatic default menu when project context is available
   → /api/revalidate/menu store invalidation also clears screen-data cache tag
   → onSnapshot fires on all connected screens for that store through the safe mirror
   → newVersion > currentVersion → window.location.reload()
@@ -195,6 +208,25 @@ Owner edits item in Editor (price, name, availability)
   → page.tsx uses matching screen.menuProjection, or falls back to getMenuItemsForScreen()
   → MenuBoardDisplay re-renders with updated categories/items/prices in menu order
 
+STORE OUTPUT: Owner edits rendered store profile fields
+─────────────────────────────────────────────────────────────
+Owner saves store name/logo/currency/route/status/special-menu/plan fields
+  → updateStore() writes the store document
+  → summary-relevant fields sync into storesSummary
+  → public cache revalidation clears menu, store, client-store, and screen-data tags
+  → touchDigitalScreenContentVersion() increments existing screen state without projection reads
+  → platformSummary/screen_{sId} mirror updates
+  → connected screens reload and hydrate fresh storeInfo from SSR
+
+SERVER OUTPUT: Scheduler/extraction/entitlement changes public output
+─────────────────────────────────────────────────────────────
+Cloud Function writes project/store public truth
+  → revalidatePublicClientCacheForStore(..., { touchDigitalScreen: true })
+  → /api/revalidate/menu clears menu, store, client-store, and screen-data tags
+  → Functions helper reads existing screen state
+  → initialized screens get contentVersion + safe mirror update
+  → connected screens reload and SSR rejects stale projections when needed
+
 Owner marks item sold out
   → same flow above
   → MenuBoardDisplay filters out unavailable items (client-side)
@@ -221,6 +253,14 @@ Owner (optional):
   Remove image → removePinnedSlide() → array update + contentVersion bump + safe mirror update
   → onSnapshot fires → reload → image removed from rotation
 ```
+
+Rejected acknowledgement codes use the existing bounded settings diagnostics:
+
+- Desktop override: `desktop_digital_screen_override_update_rejected`
+- Desktop caption/delete: `desktop_digital_screen_caption_update_rejected`, `desktop_digital_screen_slide_delete_rejected`
+- Mobile override/caption/delete: `mobile_digital_screen_override_update_rejected`, `mobile_digital_screen_caption_update_rejected`, `mobile_digital_screen_slide_delete_rejected`
+- Upload internal add-slide write: `digital_screen_slide_upload_update_rejected`
+- Upload outer result: `digital_screen_slide_upload_rejected`
 
 ```
 BOTH MODES: Same trigger mechanism
@@ -249,7 +289,7 @@ Any screen content change in platformSummary/campaigns_{sId}
 | `currentMinConfidence` | number        | Monotonicity tracking (highest shown today)                 |
 | `ownerOverrideEnabled` | boolean       | "Only custom slides" toggle for Highlights                  |
 | `pinnedSlides`         | ScreenSlide[] | Max 3, 14-day expiry each                                   |
-| `screenLastSeenAt`     | Timestamp?    | Updated 1x/day by seen signal                               |
+| `screenLastSeenAt`     | Timestamp?    | Updated 1x/day by seen signal after enabled-screen and public store eligibility checks |
 | `menuProjection`       | object?       | Generated default-menu read model; capped available-item payload, `baseProjectId`, `baseProjectSlug`, active special-menu marker, `contentVersion`, `updatedAt` |
 
 `screen` does not store an owner-selected project assignment. Menu resolution remains store-level and automatic; `menuProjection.baseProjectId` and `baseProjectSlug` are generated only to prove the cached payload and QR/menu URL context match the current automatic source.
@@ -281,11 +321,13 @@ Firestore rules allow unauthenticated reads only for this exact safe field set. 
 | Firebase doc listener    | `ScreenDisplay.tsx:174-206` | GPT FIX 3: direct doc, not query    |
 | Zero-blank guarantee     | `ScreenDisplay.tsx:239-303` | Emergency brand fallback            |
 | Lazy QR loading          | `ScreenDisplay.tsx:118-125` | 2s delay for cold boot speed        |
-| Daily seen signal        | `ScreenDisplay.tsx:130-147` | 1 write/day ops awareness           |
-| Build version logging    | `ScreenDisplay.tsx:26`      | `SCREEN_BUILD_VERSION`              |
+| Daily seen signal        | `ScreenDisplay.tsx:130-147` | 1 write/day ops awareness; same-origin/no-store/manual-redirect client POST; API fails cheap before JSON parse and verifies enabled screen/store eligibility before writing |
+| Build version context    | `ScreenDisplay.tsx`         | Bounded diagnostics only            |
 | Offline fallback         | `ScreenDisplay.tsx:108-116` | localStorage on data change         |
 | 30-min offline retry     | `ScreenDisplay.tsx:209-218` | Reload if listener error            |
 | 6-hour proactive refresh | `ScreenDisplay.tsx:220-233` | Memory leaks, code deploys          |
+
+Public display clients use `src/lib/screen/screenDiagnostics.ts` for bounded display failure diagnostics. Cache read/write failures, daily seen signal failures, non-OK daily seen signal responses, listener failures, fullscreen recovery request failures, and guarded reload storage failures record normalized `digital_screen_*` or `screen_guarded_reload_storage_failed` failure codes with bounded token/store/version/count/component metadata, response status when available, and source error name/code/status only. The daily seen POST is explicitly same-origin, uncached, and manual-redirect, and the local daily marker is cached only after an OK response. The API route also requires an enabled screen, a valid numeric `campaigns_{storeId}` summary id on the legacy path, and the shared public store-id lookup before updating `screenLastSeenAt`. Owner desktop/mobile screen-link blocked-open failures use the same helper and record only mode plus URL presence/length metadata. Normal cache hits, server-data fallback, QR readiness, content-version changes, listener setup/cleanup, offline retries, successful owner link opens, successful fullscreen recovery, reload suppression, successful seen-signal marker caching, and six-hour refreshes stay silent.
 
 ---
 
@@ -298,7 +340,7 @@ Firestore rules allow unauthenticated reads only for this exact safe field set. 
 | No sensitive data      | Public SSR returns menu/display data only; live listener reads safe mirror only | `page.tsx`, `publicScreenState.ts`, `firestore.rules` |
 | Protected settings     | DAL functions require `getActiveSession()`      | `campaigns/index.ts:598` |
 | Upload rate limit      | Max 3 slides enforced in DAL                    | `campaigns/index.ts:687` |
-| Seen signal validation | Token/store format validation + 1hr server rate limit | `seen/route.ts`          |
+| Seen signal validation | 1 KB body cap, IP rate limit before JSON parse, token/store format validation, token throttling | `seen/route.ts`          |
 
 ---
 
@@ -385,7 +427,7 @@ MenuBoardDisplay (root)
 - **QR code:** Same lazy-load pattern as highlights mode
 - **Offline cache:** Same localStorage pattern as ScreenDisplay.tsx
 - **Firebase listener:** Same onSnapshot + contentVersion reload pattern
-- **Seen signal:** Same daily POST to /api/screen/seen
+- **Seen signal:** Same daily same-origin/no-store/manual-redirect POST to /api/screen/seen; the daily local marker is cached only after OK.
 
 **Data input (from page.tsx):**
 
@@ -537,16 +579,12 @@ useEffect(() => {
 | E.3 | Bad deploy      | Deploy breaking change         | Cached slides show while recovering |
 | E.4 | License expired | Deactivate store               | Screen returns 404                  |
 
-### Console Logs to Verify
+### Diagnostic Verification
 
-```
-[Screen] v{version} - Using cached data (N slides)
-[Screen] Setting up doc listener: platformSummary/screen_{sId}
-[Screen] QR ready
-[Screen] Daily seen signal sent
-[Screen] Content version changed (X → Y), refreshing...
-[Screen] Proactive 6-hour refresh for health maintenance
-```
+- Runtime helpers must not direct-console raw screen tokens, project IDs, slide IDs, settings payloads, or provider/error objects.
+- Normal public misses, inactive screens, inactive stores, owner setup success, slide mutations, and guarded reload suppression stay quiet.
+- Unexpected token resolver, menu fallback, and invalidation failures use `secureError()` with normalized failure codes and bounded metadata only.
+- `npm run verify:customer-app-pwa` guards the helper files against direct `console.error`, `console.warn`, or `console.log` regressions.
 
 ### Database Verification
 
@@ -554,7 +592,7 @@ useEffect(() => {
 2. `screen.screenToken` is 22 characters (legacy stores may have 8-char tokens — both valid)
 3. `screen.pinnedSlides` array exists (may be empty)
 4. `screen.menuProjection` is optional; when present, `baseProjectId`, `activeSpecialMenuId`, and `contentVersion` must match the current screen data before public render uses it
-5. `screen.screenLastSeenAt` updates daily
+5. `screen.screenLastSeenAt` updates daily only when the token-bound screen is enabled and the backing store passes the public store-id eligibility gate
 6. `platformSummary/screen_{sId}` exists after screen initialization or content mutation and contains only the public-safe listener fields
 
 ---
@@ -590,3 +628,8 @@ The following historical docs are in `_archive/` — their content has been abso
 | 11.0    | 2026-06-02 | Codex   | **Content trust hardening:** Shared content normalization, safer price/category/tag parsing, factual highlight labels, evergreen category variety, custom-slide artwork rendering, and sanitized owner captions.                                                                                                                              |
 | 12.0    | 2026-06-06 | Codex   | **Public read hardening:** Added generated `screen.menuProjection` inside existing screen summary state, shared extraction helper, validity guard, and project-read fallback for stale/missing projection data.                                                                                                                            |
 | 13.0    | 2026-06-11 | Codex   | **Public listener isolation:** Added safe `platformSummary/screen_{sId}` mirror, moved display listeners off internal campaign summary docs, hardened `/api/screen/seen` validation/logging, and deployed Firestore rules. |
+| 14.0    | 2026-06-27 | Codex   | **Bounded diagnostics:** Removed direct console diagnostics from public token/menu fallback, owner mutation success, invalidation, and reload helper paths; verifier now requires normalized secure failure logging. |
+| 14.1    | 2026-06-27 | Codex   | **Settings diagnostics follow-up:** Desktop settings load/override failures and owner-control tracking failures now use bounded secure diagnostics; normal owner-control success stays quiet. |
+| 14.2    | 2026-06-28 | Codex   | **Store-output refresh:** Store profile saves now sync summary before public cache revalidation, then wake initialized screens for rendered store fields; master-to-outlet logo/currency propagation does the same for outlet screens. |
+| 14.3    | 2026-06-28 | Codex   | **Functions public-output refresh:** Server-side cache revalidation can now bump initialized screen versions for first extraction, scheduled special-menu switching, and entitlement attribution changes. |
+| 14.4    | 2026-07-01 | Codex   | **Seen-signal store eligibility:** `/api/screen/seen` now verifies enabled screen state, legacy `campaigns_{storeId}` document shape, and shared public store-id eligibility before updating `screenLastSeenAt`. |

@@ -152,7 +152,7 @@ Cost controls:
 | Page load | 0 entity/index reads. |
 | Minimum query | Search does not run until the owner types a useful query. |
 | Client debounce | Queries are debounced and cached per normalized query during the session. |
-| API rate limit | Search route is rate-limited per Answerlattice workspace. |
+| API rate limit | Search route uses the shared authenticated `DATA_READ` gate per user, Answerlattice workspace, and route key before entity reads. |
 | Search-index reads | Prefix-token query is capped to matched index rows only. |
 | Entity detail reads | Only top matched entity docs are read for active/beta filtering and labels. |
 | Legacy fallback | Older search-index rows without `prefixTokens` use a capped tenant/store index read only when prefix search has no result. |

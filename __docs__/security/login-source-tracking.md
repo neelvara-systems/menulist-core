@@ -1,8 +1,14 @@
 # 🔍 Login Source Tracking
 
-**Date:** November 6, 2025  
-**Status:** ✅ Production Ready  
+**Date:** November 6, 2025
+**Status:** Security implementation guide; not current launch certification
 **Feature:** Track which authentication method users use to login
+
+---
+
+## Current Launch Boundary
+
+Current release approval requires the active [production-readiness audit](../audits/menulist-production-readiness-audit.md) and [External Certification Runbook](../production-readiness/external-certification-runbook.md) evidence, current auth route/source review, privacy-safe logging review, any required Firestore index deploy evidence, and auth browser/API smoke. This document records source-tracking behavior; it is not production-launch approval.
 
 ---
 
@@ -387,4 +393,4 @@ db.collection('authSecurityEvents')
 
 **Last Updated:** November 6, 2025  
 **Maintainer:** Security Team  
-**Status:** ✅ Production Active
+**Status:** Source tracking documented - verify current deployment before launch

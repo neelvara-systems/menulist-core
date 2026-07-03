@@ -1,45 +1,31 @@
-# Pricing Integrity System — Help Documentation
+# Pricing Integrity System - Help Documentation
+
+**Status:** Source-backed help copy boundary, not current launch certification
 
 ## Quick Summary
-When you change a price in your menu editor, it automatically updates everywhere — your QR menu, digital screens, and staff view. No manual syncing needed.
 
----
+Edit prices in the MenuList editor and save. The saved menu is the source for customer menus, staff-facing views, configured Digital Screens refresh signals, and PDF downloads generated from the current menu data.
 
-## How It Works
-1. You edit a price in the **Editor**
-2. Click **Save**
-3. Within seconds, the QR/Web menu shows the new price
-4. Digital screens update at their next refresh
-5. Staff prompt always shows the latest price
+## What Updates Automatically
 
-There's nothing to configure. Pricing integrity is built into how MenuList works.
+1. QR/menu links use the saved menu data after public cache refresh.
+2. Staff-facing views use the saved menu data.
+3. Digital Screens receive a content-version update when screens are configured for the store.
 
----
+## PDF Downloads
 
-## How-To Guides
+PDFs are generated when you use the PDF/download action. The download uses the current menu data available in the editor. MenuList does not currently run a background PDF regeneration job after every price edit.
 
-### How to verify price consistency
-1. Change a price in the Editor and save
-2. Open your QR menu on your phone
-3. Find the item and verify the new price shows
-4. If you have digital screens, check the next refresh
+## If Prices Do Not Match
 
-### What if prices don't match?
-1. Check that you saved your changes in the Editor
-2. Wait 60 seconds (the QR menu caches briefly)
-3. If still mismatched, contact support
+1. Confirm the editor save completed.
+2. Reopen the customer menu link after the brief public cache refresh window.
+3. If using Digital Screens, confirm the screen setup is active and allow the screen to refresh.
+4. Generate a new PDF download from the current menu.
+5. Contact support if a saved price still does not appear.
 
----
+## Current Boundary
 
-## Tips
-- 💡 Always edit prices in the Editor — it's the single source of truth
-- 💡 The QR menu updates within seconds; screens update at their next refresh cycle
-- 💡 Multi-outlet stores: edit the master for brand-wide price changes, edit the outlet for local adjustments
+There is nothing separate to configure for price consistency. Background PDF regeneration and a dedicated Pricing Integrity engine are reserved implementation paths and are not active owner controls today.
 
-## Related Features
-- **[Data Editor]** — Where you change prices
-- **[Client Menu]** — Where customers see prices
-- **[Multi-Outlet Consistency]** — How prices work across multiple locations
-
-## Need More Help?
-- **Email:** support@menulist.ai
+Current release approval still requires the active production-readiness audit, External Certification Runbook evidence, `npm run verify:pricing-integrity-boundary`, `npm run verify:agent-readiness`, `npm run verify:menulist-api-tenant-safety`, authenticated desktop/mobile price-change QA, public menu and PDF artifact QA, configured-screen QA where applicable, target deploy evidence, and production-host smoke.

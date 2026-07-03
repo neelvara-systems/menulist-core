@@ -5,6 +5,7 @@ import { PERMISSIONS } from '@constant/permissions';
 import { requireAnyStorePermissionForStore } from '@lib/permissions/server';
 import { buildOwnerBusinessAssistantContextPacket } from '@lib/ownerBusinessAssistant/server/buildOwnerBusinessAssistantContextPacket';
 import { OwnerBusinessAssistantScopeSchema } from '@lib/ownerBusinessAssistant/schemas';
+import { getSafeZodValidationDetails } from '@lib/security/inputValidation';
 import {
   applyOwnerBusinessAssistantRateLimit,
   resolveOwnerAssistantSelectedStoreScope,
@@ -29,7 +30,7 @@ export const GET = withAuth(async (request: NextRequest, session) => {
     .pick({ projectId: true, storeId: true })
     .safeParse(Object.fromEntries(request.nextUrl.searchParams.entries()));
   if (!parsedScope.success) {
-    return NextResponse.json({ error: 'Invalid query', details: parsedScope.error.flatten() }, { status: 400 });
+    return NextResponse.json({ error: 'Invalid query', details: getSafeZodValidationDetails(parsedScope.error) }, { status: 400 });
   }
 
   const scope = resolveOwnerAssistantSelectedStoreScope(request, session, parsedScope.data.storeId);

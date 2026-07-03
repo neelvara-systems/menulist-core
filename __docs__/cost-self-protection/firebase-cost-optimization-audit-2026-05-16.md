@@ -17,7 +17,7 @@ node scripts/verification/firebase-cost-usage-map.mjs
 Public routing fallback removal readiness is verified by:
 
 ```bash
-FIREBASE_PROJECT_ID=ecomsai node scripts/verification/verify-public-routing-summary-backfill.mjs
+FIREBASE_PROJECT_ID=menulist-qa node scripts/verification/verify-public-routing-summary-backfill.mjs
 ```
 
 Current scan result:
@@ -184,7 +184,7 @@ Scope: validated ChatGPT Firebase/GCP cost suggestions against the live MenuList
 - `cd functions && npm run build`
 - `cd functions-answerlattice && npm run build`
 - `node scripts/verification/firebase-cost-usage-map.mjs --json` now reports `medium-query-scope: 7` after the custom-domain availability query moved to `low`.
-- MenuList Functions deployed to `ecomsai` with affected function filters.
+- Historical MenuList Functions deploy evidence targeted the retired shared project `ecomsai` with affected function filters. Current retry evidence must use `menulist-qa` first, then production only after QA evidence and explicit production approval.
 - Answerlattice deploy to project `answerlattice` failed with Cloud Resource Manager `403`; accessible configured target is `answerlattice-qa`.
 - Answerlattice Functions codebase deployed to `answerlattice-qa` with `firebase deploy --only functions:answerlattice --project answerlattice-qa --config firebase-answerlattice.json`.
 - Additional repo-wide Storage cache pass verified with `git diff --check` and `npx tsc --noEmit --incremental false`.

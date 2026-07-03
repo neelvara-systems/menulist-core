@@ -112,8 +112,10 @@ git add src/lib/validation/disposable-domains-full.json
 git commit -m "chore: update disposable email domains list"
 git push
 
-# Deploy
-vercel --prod
+# Deployment
+# Do not run Vercel deploys from this maintenance checklist unless the user
+# explicitly approves a Vercel deploy in the active session. Record deployment
+# as pending or use the approved release workflow.
 ```
 
 ---

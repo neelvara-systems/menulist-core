@@ -6,6 +6,10 @@ import {
     normalizeBusinessCategory,
     resolveBusinessCategory,
 } from '@data/shared/businessTypes';
+import {
+    getBoundedMenuProcessingStringContext,
+    logMenuProcessingFailure,
+} from '@lib/firebase/menuProcessingDiagnostics';
 import { spawn } from 'child_process';
 import { lookup } from 'dns/promises';
 import { constants as fsConstants } from 'fs';
@@ -28,6 +32,7 @@ const MENU_LINK_CANDIDATE_LIMIT = 6;
 const MAX_COMBINED_HTML_SOURCES = 4;
 const RENDER_FALLBACK_TIMEOUT_MS = 18_000;
 const MAX_RENDERED_HTML_BYTES = 8 * 1024 * 1024;
+const MENU_LINK_IMPORT_RENDER_TMP_CLEANUP_FAILED = 'menu_link_import_render_tmp_cleanup_failed';
 
 const UNSAFE_HOSTNAMES = new Set([
     'localhost',
@@ -61,7 +66,8 @@ export type MenuLinkAcquisitionResult = {
     redirectCount: number;
     sourceContentType: string;
     sourceKind: SourceKind;
-    sourceTextPreview?: string;
+    sourceTextLength?: number;
+    sourceTextPresent?: boolean;
     size: number;
 };
 
@@ -80,6 +86,16 @@ type SafeUrl = {
     hostname: string;
     protocol: string;
 };
+
+function getSourceTextMetadata(sourceText: string): {
+    sourceTextLength: number;
+    sourceTextPresent: boolean;
+} {
+    return {
+        sourceTextLength: sourceText.length,
+        sourceTextPresent: sourceText.length > 0,
+    };
+}
 
 type LookupAddress = {
     address: string;
@@ -262,6 +278,30 @@ export class MenuLinkImportError extends Error {
     }
 }
 
+const OWNER_MENU_LINK_IMPORT_FALLBACK_MESSAGE = 'We could not read this menu link. Upload a photo/PDF or add the menu manually.';
+const PUBLIC_MENU_LINK_IMPORT_FALLBACK_MESSAGE = 'We could not read this menu link. Upload a photo or try another public menu link.';
+
+const MENU_LINK_IMPORT_CLIENT_MESSAGES: Record<string, string> = {
+    CONTENT_TOO_LARGE: 'This menu link is too large to import.',
+    INVALID_URL: 'Enter a valid public menu link.',
+    UNSAFE_HOSTNAME: 'Use a public menu link.',
+    UNSAFE_IP: 'Use a public menu link.',
+    UNSAFE_RESOLVED_IP: 'Use a public menu link.',
+    UNSUPPORTED_PROTOCOL: 'Use a public http or https menu link.',
+    URL_CREDENTIALS_BLOCKED: 'Use a public menu link without login details.',
+};
+
+export function getMenuLinkImportClientMessage(
+    error: MenuLinkImportError,
+    options: { publicEntry?: boolean } = {},
+): string {
+    const fallback = options.publicEntry
+        ? PUBLIC_MENU_LINK_IMPORT_FALLBACK_MESSAGE
+        : OWNER_MENU_LINK_IMPORT_FALLBACK_MESSAGE;
+
+    return MENU_LINK_IMPORT_CLIENT_MESSAGES[error.code] || fallback;
+}
+
 function normalizeUrl(input: string): URL {
     const trimmed = input.trim().replace(/\\/g, '/');
     let url: URL;
@@ -299,6 +339,28 @@ function buildRenderableUrl(input: string, safeHref: string): string {
     } catch {
         return safeHref;
     }
+}
+
+function formatChromeHostPattern(hostname: string): string {
+    return net.isIP(hostname) === 6 ? `[${hostname}]` : hostname;
+}
+
+function formatChromeResolverAddress(address: string): string {
+    return net.isIP(address) === 6 ? `[${address}]` : address;
+}
+
+function buildChromeNetworkIsolationArgs(renderTarget: SafeUrl): string[] {
+    const hostPattern = formatChromeHostPattern(renderTarget.hostname);
+    const hostResolverRules = [
+        `MAP ${hostPattern} ${formatChromeResolverAddress(renderTarget.address)}`,
+        'MAP * ~NOTFOUND',
+    ].join(', ');
+
+    return [
+        `--host-resolver-rules=${hostResolverRules}`,
+        '--proxy-server=http://127.0.0.1:9',
+        `--proxy-bypass-list=${hostPattern},<-loopback>`,
+    ];
 }
 
 function parseIpv4(address: string): number[] | null {
@@ -1109,6 +1171,7 @@ async function resolveChromeExecutable(): Promise<string | null> {
 
 function runChromeDumpDom(params: {
     chromePath: string;
+    renderTarget: SafeUrl;
     renderUrl: string;
     timeoutMs: number;
     userDataDir: string;
@@ -1132,6 +1195,7 @@ function runChromeDumpDom(params: {
             '--no-first-run',
             '--run-all-compositor-stages-before-draw',
             '--blink-settings=imagesEnabled=false',
+            ...buildChromeNetworkIsolationArgs(params.renderTarget),
             `--user-data-dir=${params.userDataDir}`,
             `--virtual-time-budget=${virtualTimeBudget}`,
             '--dump-dom',
@@ -1192,12 +1256,16 @@ async function tryRenderHtmlSource(
 
     const timeoutMs = Math.max(5_000, Math.min(RENDER_FALLBACK_TIMEOUT_MS, remainingMs));
     const renderUrl = buildRenderableUrl(originalSourceUrl, safeFinalUrl);
+    const renderTarget = await assertSafeUrl(renderUrl, deadlineMs);
+    if (net.isIP(renderTarget.hostname)) return null;
+
     let userDataDir: string | null = null;
 
     try {
         userDataDir = await mkdtemp(path.join(os.tmpdir(), 'menulist-link-render-'));
         const renderedHtml = await runChromeDumpDom({
             chromePath,
+            renderTarget,
             renderUrl,
             timeoutMs,
             userDataDir,
@@ -1228,14 +1296,23 @@ async function tryRenderHtmlSource(
             redirectCount: 0,
             sourceContentType: 'text/html',
             sourceKind: 'rendered_html_text',
-            sourceTextPreview: sourceText.slice(0, 500),
+            ...getSourceTextMetadata(sourceText),
             size: artifactBuffer.byteLength,
         };
     } catch {
         return null;
     } finally {
         if (userDataDir) {
-            await rm(userDataDir, { recursive: true, force: true }).catch(() => undefined);
+            try {
+                await rm(userDataDir, { recursive: true, force: true });
+            } catch (error) {
+                logMenuProcessingFailure(MENU_LINK_IMPORT_RENDER_TMP_CLEANUP_FAILED, error, {
+                    cleanupTarget: 'chrome_user_data_dir',
+                    ...getBoundedMenuProcessingStringContext('renderHostname', renderTarget.hostname),
+                    ...getBoundedMenuProcessingStringContext('businessCategory', context?.businessCategory),
+                    ...getBoundedMenuProcessingStringContext('businessType', context?.businessType),
+                });
+            }
         }
     }
 }
@@ -1369,7 +1446,7 @@ export async function acquireMenuLinkSource(
             redirectCount: best.redirectCount,
             sourceContentType: contentType,
             sourceKind: 'html_text',
-            sourceTextPreview: best.sourceText.slice(0, 500),
+            ...getSourceTextMetadata(best.sourceText),
             size: artifactBuffer.byteLength,
         };
     }
@@ -1394,7 +1471,7 @@ export async function acquireMenuLinkSource(
         redirectCount: fetched.redirectCount,
         sourceContentType: contentType,
         sourceKind: contentType.includes('json') ? 'json_text' : 'plain_text',
-        sourceTextPreview: sourceText.slice(0, 500),
+        ...getSourceTextMetadata(sourceText),
         size: artifactBuffer.byteLength,
     };
 }

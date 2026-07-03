@@ -43,9 +43,9 @@ All files under these folders are Answerlattice-related and were included in the
 
 Top-level Answerlattice docs included:
 
-- `__docs__/answerlattice/ANSWERLATTICE-ACTIVATION-CLEARANCE.md`
-- `__docs__/answerlattice/ANSWERLATTICE-ACTIVATION-EXPERIMENT.md`
-- `__docs__/answerlattice/ANSWERLATTICE-BUILD-PRIORITY-ROADMAP.md`
+- `__docs__/answerlattice/answerlattice-activation-clearance.md`
+- `__docs__/answerlattice/answerlattice-activation-experiment.md`
+- `__docs__/answerlattice/answerlattice-build-priority-roadmap.md`
 - `__docs__/answerlattice/README.md`
 - `__docs__/answerlattice/answerlattice-expansion-tracker.md`
 - `__docs__/answerlattice/answerlattice-forensic-audit-2026-03-07.md`
@@ -160,7 +160,6 @@ Top-level Answerlattice docs included:
 - `src/components/answerlattice/AnswerlatticeDashboardLayout.tsx`
 - `src/components/answerlattice/AnswerlatticeHeader.tsx`
 - `src/components/answerlattice/AnswerlatticeSidebar.tsx`
-- `src/components/mobile/screens/MobileAnswerlatticeClientScreen.tsx`
 - `src/components/templates/answerlattice/AnswerlatticeCoverageKPI.tsx`
 - `src/components/templates/answerlattice/AnswerlatticeSettings.tsx`
 - `src/components/templates/answerlattice/EntityCandidateReview.tsx`

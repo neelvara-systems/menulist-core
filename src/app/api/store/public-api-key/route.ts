@@ -14,18 +14,23 @@ export const dynamic = 'force-dynamic';
 
 import { FEATURE_FLAGS } from "@config/features";
 import { DB_COLLECTIONS } from "@constant/database";
+import { PERMISSIONS } from "@constant/permissions";
 import { admin } from "@lib/firebase/firebaseAdmin";
+import { requireAnyStorePermission } from "@lib/permissions/server";
 import { hashApiKey } from "@lib/publicApi/auth";
 import { checkRateLimit } from "@lib/rateLimit";
-import { secureLog } from "@lib/security/secureLogger";
+import { readBoundedJsonBody } from "@lib/security/boundedRequestBody";
+import { getBoundedSecurityStringContext, logSecurityDiagnostic, logSecurityFailure } from "@lib/security/securityDiagnostics";
 import { randomUUID } from "crypto";
 import { NextRequest, NextResponse } from "next/server";
+import { hashPublicRateLimitValue } from "src/middleware/publicApi";
 import { z } from "zod";
 import { withAuth } from "../../../../middleware/auth";
 
 const RequestSchema = z.object({
     action: z.enum(['generate', 'revoke']),
 });
+const PUBLIC_API_KEY_ACTION_MAX_BODY_BYTES = 1024;
 
 export const POST = withAuth(async (request: NextRequest, session) => {
     if (!FEATURE_FLAGS.ENABLE_PUBLIC_API) {
@@ -37,12 +42,25 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         return NextResponse.json({ error: "Not onboarded" }, { status: 400 });
     }
 
-    const rlResult = await checkRateLimit({ key: `api-key-mgmt:${storeId}`, limit: 5, window: 60 });
+    const permissionError = await requireAnyStorePermission(
+        request,
+        session,
+        [PERMISSIONS.MANAGE_INTEGRATIONS],
+        "Public API key",
+    );
+    if (permissionError) return permissionError;
+
+    const storeRateLimitHash = hashPublicRateLimitValue(storeId);
+    const rlResult = await checkRateLimit({ key: `api-key-mgmt:${storeRateLimitHash}`, limit: 5, window: 60 });
     if (!rlResult.allowed) {
         return NextResponse.json({ error: "Too many requests" }, { status: 429 });
     }
 
-    const body = await request.json();
+    const bodyResult = await readBoundedJsonBody(request, PUBLIC_API_KEY_ACTION_MAX_BODY_BYTES, {
+        invalidJsonMessage: "Invalid input",
+    });
+    if (bodyResult.ok === false) return bodyResult.response;
+    const body = bodyResult.data;
     const validation = RequestSchema.safeParse(body);
     if (!validation.success) {
         return NextResponse.json({ error: "Invalid input" }, { status: 400 });
@@ -50,9 +68,16 @@ export const POST = withAuth(async (request: NextRequest, session) => {
 
     const db = admin.firestore();
     const storeRef = db.collection(DB_COLLECTIONS.STORES).doc(String(storeId));
+    const action = validation.data.action;
+    const diagnosticContext = {
+        action,
+        ...getBoundedSecurityStringContext('tenantId', tenantId),
+        ...getBoundedSecurityStringContext('storeId', storeId),
+        ...getBoundedSecurityStringContext('userId', session.user?.id || session.uId),
+    };
 
     try {
-        if (validation.data.action === 'generate') {
+        if (action === 'generate') {
             const apiKey = `ml_${randomUUID().replace(/-/g, '')}`;
             const apiKeyHash = hashApiKey(apiKey);
             await storeRef.update({
@@ -63,7 +88,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 },
             });
 
-            secureLog('[Public API] Key generated', { storeId });
+            logSecurityDiagnostic('public_api_key_generated', diagnosticContext);
             return NextResponse.json({ apiKey });
         } else {
             // Revoke
@@ -71,10 +96,11 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 publicApi: admin.firestore.FieldValue.delete(),
             });
 
-            secureLog('[Public API] Key revoked', { storeId });
+            logSecurityDiagnostic('public_api_key_revoked', diagnosticContext);
             return NextResponse.json({ success: true });
         }
     } catch (error) {
+        logSecurityFailure('public_api_key_management_failed', error, diagnosticContext);
         return NextResponse.json({ error: "Failed to manage API key" }, { status: 500 });
     }
 });

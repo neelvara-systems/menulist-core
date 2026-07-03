@@ -2,16 +2,18 @@ export const dynamic = 'force-dynamic';
 import { getOurChargePaise, getRealCostPaise, getUnitCost } from "@constant/AI/unitCosts";
 import { getModelName } from "@constant/AI/models";
 import { CHARGE_PER_CREDIT, TOKENS_PER_CREDIT } from "@constant/common";
+import { PERMISSIONS } from "@constant/permissions";
 import { HarmBlockThreshold, HarmCategory } from "@google/genai";
 import { finalizeAiOperationAccounting } from "@lib/ai/accounting";
 import { checkAICapacity } from "@lib/ai/capacityCheck";
-import { getAIGatewayDiagnostics, getAIErrorDiagnostics, getPreviewText } from "@lib/google/genAi/diagnostics";
+import { getAIGatewayDiagnostics, getAIErrorDiagnostics, getPreviewText, getAIRouteLogContext, getAIRouteSecurityContext, logAIRouteFailure } from "@lib/google/genAi/diagnostics";
 import { genAIClient } from "@lib/google/genAi";
 import { logger } from "@lib/monitoring/logger";
 import { getLinkedOutletPolicyBlockReason } from "@lib/multiOutlet/serverOutletPolicy";
+import { requireAnyStorePermission } from "@lib/permissions/server";
 import { checkAIOperationLimit } from "@lib/rateLimit/helpers";
+import { readBoundedJsonBody } from "@lib/security/boundedRequestBody";
 import { validateAPIInput } from "@lib/security/inputValidation";
-import { buildSecurityContext } from "@lib/security/securityContext";
 import { DescriptionRequestSchema } from "@lib/validation/apiSchemas";
 import { DescriptionAPIParams } from "@template/main-app/projects/types";
 import { writeErrorLogEntry, writeLogEntry, writeMissingParamsLogEntry } from 'logs/utils';
@@ -21,6 +23,7 @@ import descriptionPrompt, { descriptionPromptSystemInstruction } from "./prompt"
 
 const AI_MODEL = getModelName('DESCRIPTION_GENERATION');
 const LOG_FILE = "descriptions.log";
+const DESCRIPTION_AI_MAX_BODY_BYTES = 256 * 1024;
 
 export const POST = withAuth(async (request, session) => {
     // ✅ Session guaranteed by withAuth middleware
@@ -39,26 +42,30 @@ export const POST = withAuth(async (request, session) => {
         if (rateLimitResponse) return rateLimitResponse;
 
         // 🔒 INPUT VALIDATION: Prevent injection attacks (OWASP A03)
-        const rawData = await request.json();
+        const bodyResult = await readBoundedJsonBody(request, DESCRIPTION_AI_MAX_BODY_BYTES);
+        if (bodyResult.ok === false) return bodyResult.response;
+
+        const rawData = bodyResult.data as any;
         const validation = validateAPIInput(DescriptionRequestSchema, rawData);
 
         if (!validation.success) {
             const errorMsg = 'error' in validation ? validation.error : 'Invalid input';
+            const attemptedData = getAIRouteLogContext({
+                action: rawData?.action,
+                itemCount: Array.isArray(rawData?.itemsList) ? rawData.itemsList.length : 0,
+                sourceLang: rawData?.sourceLang?.code || rawData?.sourceLang,
+                targetLang: rawData?.targetLang?.code || rawData?.targetLang,
+            });
 
             // Log to Sentry (potential attack attempt)
             logger.security('Input Validation Failed', {
-                ...buildSecurityContext(session, request),
+                ...getAIRouteSecurityContext(session, request),
                 endpoint: '/api/descriptions',
                 error: errorMsg,
-                attemptedData: {
-                    itemsListCount: rawData?.itemsList?.length || 0,
-                    targetLang: rawData?.targetLang,
-                    sourceLang: rawData?.sourceLang,
-                    action: rawData?.action,
-                },
+                attemptedData,
             }, 'medium');
 
-            await writeMissingParamsLogEntry(LOG_FILE, userId, undefined, undefined, rawData);
+            await writeMissingParamsLogEntry(LOG_FILE, userId, undefined, undefined, attemptedData);
             return NextResponse.json({
                 error: 'Invalid input',
                 details: errorMsg
@@ -70,7 +77,15 @@ export const POST = withAuth(async (request, session) => {
         const targetLangList = (Array.isArray(targetLang) ? targetLang : [targetLang]) as Array<{ code?: string }>;
         const targetLangCodes = targetLangList.map((language) => language?.code || 'unspecified');
 
-        logger.info('Description generation requested', {
+        const permissionError = await requireAnyStorePermission(
+            request,
+            session,
+            [PERMISSIONS.GENERATE_DESCRIPTIONS],
+            "Description generation",
+        );
+        if (permissionError) return permissionError;
+
+        logger.info('Description generation requested', getAIRouteLogContext({
             action: validated.action,
             contentLength,
             itemCount: itemsList.length,
@@ -83,20 +98,20 @@ export const POST = withAuth(async (request, session) => {
             tenantId: session.tId,
             tone: tone || 'default',
             userId,
-        });
+        }));
 
         // 🔒 TENANT ISOLATION: Verify user owns this project
         if (projectId) {
-            // Extract tenantId from projectId if embedded (format: tId_sId_projectId) 
+            // Extract tenantId from projectId if embedded (format: tId_sId_projectId)
             // or verify through session context
             const tenantId = session.tId;
             const storeId = session.sId;
 
             if (!verifyTenantAccess(session, tenantId, storeId, request)) {
                 logger.security('Tenant Access Violation - Description API', {
-                    ...buildSecurityContext(session, request),
+                    ...getAIRouteSecurityContext(session, request),
                     endpoint: '/api/descriptions',
-                    attemptedProjectId: projectId,
+                    attemptedProject: getAIRouteLogContext({ projectId }),
                 }, 'critical');
                 return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
             }
@@ -110,9 +125,9 @@ export const POST = withAuth(async (request, session) => {
         });
         if (outletPolicyBlockReason) {
             logger.security('Outlet Policy Violation - Description API', {
-                ...buildSecurityContext(session, request),
+                ...getAIRouteSecurityContext(session, request),
                 endpoint: '/api/descriptions',
-                projectId,
+                project: getAIRouteLogContext({ projectId }),
                 reason: outletPolicyBlockReason,
             }, 'medium');
             return NextResponse.json({ error: outletPolicyBlockReason }, { status: 403 });
@@ -190,8 +205,7 @@ export const POST = withAuth(async (request, session) => {
             const errorDiagnostics = getAIErrorDiagnostics(generationError);
             const gatewayDiagnostics = getAIGatewayDiagnostics(genAIClient);
 
-            logger.error('Description generation model call failed', generationError, {
-                ...errorDiagnostics,
+            logAIRouteFailure('description_generation_model_call_failed', generationError, {
                 action,
                 contentLength,
                 gatewayDiagnostics,
@@ -204,7 +218,6 @@ export const POST = withAuth(async (request, session) => {
                 targetLangs: targetLangCodes,
                 tenantId: session.tId,
                 tone: tone || 'default',
-                userId,
             });
             await writeLogEntry({
                 logFileName: LOG_FILE,
@@ -244,19 +257,18 @@ export const POST = withAuth(async (request, session) => {
         try {
             generatedData = JSON.parse(rawText);
         } catch (parseError) {
-            logger.error('Description generation returned invalid JSON', parseError, {
+            logAIRouteFailure('description_generation_invalid_json', parseError, {
                 fileId,
                 model: AI_MODEL,
                 projectId,
-                rawTextLength: rawText.length,
-                rawTextPreview: getPreviewText(rawText, 300),
+                responseTextLength: rawText.length,
+                responseTextSummary: getPreviewText(rawText, 300),
                 requestId,
                 responseUsage: response.usageMetadata || null,
                 sourceLang: sourceLang?.code || 'unspecified',
                 storeId: session.sId,
                 targetLangs: targetLangCodes,
                 tenantId: session.tId,
-                userId,
             });
             await writeLogEntry({
                 logFileName: LOG_FILE,
@@ -266,8 +278,8 @@ export const POST = withAuth(async (request, session) => {
                 logType: 'INVALID_JSON_RESPONSE',
                 data: {
                     model: AI_MODEL,
-                    rawTextLength: rawText.length,
-                    rawTextPreview: getPreviewText(rawText, 300),
+                    responseTextLength: rawText.length,
+                    responseTextSummary: getPreviewText(rawText, 300),
                     requestId,
                     responseUsage: response.usageMetadata || null,
                     sourceLang: sourceLang?.code || 'unspecified',
@@ -282,7 +294,7 @@ export const POST = withAuth(async (request, session) => {
 
         // Type guard — ensure response is an object (not array, string, null, etc.)
         if (!generatedData || typeof generatedData !== 'object' || Array.isArray(generatedData)) {
-            logger.error('Description generation returned non-object response', null, {
+            logAIRouteFailure('description_generation_non_object_response', undefined, {
                 isArray: Array.isArray(generatedData),
                 model: AI_MODEL,
                 projectId,
@@ -292,7 +304,6 @@ export const POST = withAuth(async (request, session) => {
                 storeId: session.sId,
                 targetLangs: targetLangCodes,
                 tenantId: session.tId,
-                userId,
             });
             await writeLogEntry({
                 logFileName: LOG_FILE,
@@ -319,12 +330,15 @@ export const POST = withAuth(async (request, session) => {
         const returnedIds = new Set(Object.keys(generatedData));
         const missingIds = Array.from(requestedIds).filter(id => !returnedIds.has(id));
         if (missingIds.length > 0) {
-            logger.warn('Description generation returned incomplete response', {
-                userId, projectId, fileId,
+            logger.warn('Description generation returned incomplete response', getAIRouteLogContext({
+                userId,
+                projectId,
+                fileId,
+                requestId,
                 requestedCount: requestedIds.size,
                 returnedCount: returnedIds.size,
-                missingIds: missingIds.slice(0, 10), // Log first 10 missing
-            });
+                missingIdCount: missingIds.length,
+            }));
         }
 
         let transactionObject = {
@@ -369,7 +383,16 @@ export const POST = withAuth(async (request, session) => {
             transactionObject.transactionId = accounting.transactionId;
             remainingBalance = accounting.remainingBalance;
         } catch (transactionError) {
-            logger.error('Failed to record description transaction', transactionError, { userId, projectId, fileId });
+            logAIRouteFailure('description_generation_accounting_failed', transactionError, {
+                action,
+                fileId,
+                model: AI_MODEL,
+                projectId,
+                requestId,
+                storeId: session.sId,
+                tenantId: session.tId,
+                userId,
+            });
             await writeLogEntry({ logFileName: LOG_FILE, userId, projectId, fileId, logType: 'TRANSACTION_DB_ERROR', data: transactionObject, error: transactionError });
             throw transactionError;
         }
@@ -384,14 +407,18 @@ export const POST = withAuth(async (request, session) => {
             }
         });
 
-        logger.info('Description generation completed', {
+        logger.info('Description generation completed', getAIRouteLogContext({
+            action: validated.action,
+            fileId,
             itemCount: itemsList.length,
             processingTime,
             projectId,
             requestId,
+            storeId: session.sId,
+            tenantId: session.tId,
             transactionId: transactionObject.transactionId,
             userId,
-        });
+        }));
 
         return NextResponse.json({
             data: generatedData,
@@ -406,8 +433,7 @@ export const POST = withAuth(async (request, session) => {
         }, { status: 200 });
     } catch (error) {
         if (!(error && typeof error === 'object' && '__descriptionLogged' in error)) {
-            logger.error('Description API error', error, {
-                ...getAIErrorDiagnostics(error),
+            logAIRouteFailure('description_generation_api_failed', error, {
                 gatewayDiagnostics: getAIGatewayDiagnostics(genAIClient),
                 model: AI_MODEL,
                 requestId,

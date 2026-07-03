@@ -13,6 +13,13 @@
  */
 
 import { useAppDispatch } from '@hook/useAppDispatch';
+import {
+    copyAnswerlatticeSupportTextToClipboard,
+    hasAnswerlatticeSupportClipboardWrite,
+    hasAnswerlatticeSupportCopyFallback,
+} from '@lib/answerlattice/supportClipboard';
+import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
+import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';
 import { startLoader, stopLoader } from '@reduxSlices/loader';
 import { Button, Card, Col, Divider, Flex, Input, message, Modal, Row, Select, Spin, Statistic, theme, Typography } from 'antd';
 import { motion } from 'framer-motion';
@@ -32,6 +39,15 @@ import {
 } from 'react-icons/lu';
 
 const { Title, Text, Paragraph } = Typography;
+const ROI_METRICS_RESPONSE_JSON_MAX_BYTES = 64 * 1024;
+const ROI_METRICS_REQUEST_POLICY: Pick<RequestInit, 'cache' | 'credentials' | 'redirect'> = {
+    cache: 'no-store',
+    credentials: 'same-origin',
+    redirect: 'manual',
+};
+const ROI_METRICS_FAILED_MESSAGE = 'Failed to calculate ROI metrics. Please try again';
+const PLATFORM_ROI_SHARE_COPY_CLIPBOARD_UNAVAILABLE = 'platform_roi_share_copy_clipboard_unavailable';
+const PLATFORM_ROI_SHARE_COPY_FALLBACK_FAILED = 'platform_roi_share_copy_fallback_failed';
 
 interface ROIMetrics {
     totalHoursSaved: number;
@@ -45,12 +61,12 @@ interface ROIMetrics {
     platformCost: number;
     netSavings: number;
     roi: number;
-    paybackPeriod: number;
+    paybackPeriod: number | null;
 }
 
 interface ROIData {
     metrics: ROIMetrics;
-    analyticsData: any;
+    analyticsData: unknown;
     params: {
         avgSupportAgentHourlyCost: number;
         avgCustomerLifetimeValue: number;
@@ -62,6 +78,105 @@ interface ROIData {
         days: number;
     };
 }
+
+type RoiMetricsApiResponse = {
+    success: true;
+    data: ROIData;
+};
+
+const isRecord = (value: unknown): value is Record<string, unknown> => (
+    Boolean(value) && typeof value === 'object' && !Array.isArray(value)
+);
+
+const isFiniteNumber = (value: unknown): value is number => (
+    typeof value === 'number' && Number.isFinite(value)
+);
+
+const isRoiMetrics = (value: unknown): value is ROIMetrics => {
+    if (!isRecord(value)) return false;
+
+    return (
+        isFiniteNumber(value.totalHoursSaved)
+        && isFiniteNumber(value.monthlyHoursSaved)
+        && isFiniteNumber(value.totalCostSaved)
+        && isFiniteNumber(value.monthlyCostSaved)
+        && isFiniteNumber(value.conversationsHandled)
+        && isFiniteNumber(value.automationRate)
+        && isFiniteNumber(value.satisfiedCustomers)
+        && isFiniteNumber(value.estimatedRevenueProtected)
+        && isFiniteNumber(value.platformCost)
+        && isFiniteNumber(value.netSavings)
+        && isFiniteNumber(value.roi)
+        && (value.paybackPeriod === null || isFiniteNumber(value.paybackPeriod))
+    );
+};
+
+const isRoiData = (value: unknown): value is ROIData => (
+    isRecord(value)
+    && isRoiMetrics(value.metrics)
+    && isRecord(value.analyticsData)
+    && isRecord(value.params)
+    && isFiniteNumber(value.params.avgSupportAgentHourlyCost)
+    && isFiniteNumber(value.params.avgCustomerLifetimeValue)
+    && isFiniteNumber(value.params.platformMonthlyCost)
+    && isRecord(value.dateRange)
+    && typeof value.dateRange.start === 'string'
+    && typeof value.dateRange.end === 'string'
+    && isFiniteNumber(value.dateRange.days)
+);
+
+const isRoiMetricsApiResponse = (value: unknown): value is RoiMetricsApiResponse => (
+    isRecord(value)
+    && value.success === true
+    && isRoiData(value.data)
+);
+
+const getRoiMetricsResponseLogContext = (response: Response) => ({
+    ...getBoundedRuntimeStringContext('endpoint', '/api/analytics/roi-metrics'),
+    responseOk: response.ok,
+    responseStatus: response.status,
+});
+
+const readRoiMetricsResponse = async (response: Response): Promise<RoiMetricsApiResponse> => {
+    let payload: unknown = null;
+    try {
+        payload = await readJsonResponseWithLimit<unknown>(response, ROI_METRICS_RESPONSE_JSON_MAX_BYTES);
+    } catch (error) {
+        logRuntimeFailure(
+            'platform_roi_metrics_response_parse_failed',
+            error,
+            getRoiMetricsResponseLogContext(response),
+        );
+        throw new Error(ROI_METRICS_FAILED_MESSAGE);
+    }
+
+    if (!response.ok) {
+        logRuntimeFailure(
+            'platform_roi_metrics_response_rejected',
+            undefined,
+            getRoiMetricsResponseLogContext(response),
+        );
+        throw new Error(ROI_METRICS_FAILED_MESSAGE);
+    }
+
+    if (!isRoiMetricsApiResponse(payload)) {
+        logRuntimeFailure(
+            'platform_roi_metrics_response_invalid',
+            undefined,
+            getRoiMetricsResponseLogContext(response),
+        );
+        throw new Error(ROI_METRICS_FAILED_MESSAGE);
+    }
+
+    return payload;
+};
+
+const copyRoiShareTextToClipboard = async (shareText: string) => {
+    await copyAnswerlatticeSupportTextToClipboard(shareText, {
+        unavailable: PLATFORM_ROI_SHARE_COPY_CLIPBOARD_UNAVAILABLE,
+        fallbackFailed: PLATFORM_ROI_SHARE_COPY_FALLBACK_FAILED,
+    });
+};
 
 export default function ROICalculator() {
     const { data: session } = useSession();
@@ -93,17 +208,14 @@ export default function ROICalculator() {
                 platformCost: platformCost.toString(),
             });
 
-            const response = await fetch(`/api/analytics/roi-metrics?${params}`);
+            const response = await fetch(`/api/analytics/roi-metrics?${params}`, ROI_METRICS_REQUEST_POLICY);
 
-            if (!response.ok) {
-                throw new Error('Failed to fetch ROI metrics');
-            }
-
-            const result = await response.json();
+            const result = await readRoiMetricsResponse(response);
             setRoiData(result.data);
 
         } catch (error) {
-            message.error('Failed to calculate ROI metrics. Please try again');
+            logRuntimeFailure('platform_roi_metrics_load_failed', error);
+            message.error(ROI_METRICS_FAILED_MESSAGE);
         } finally {
             setLoading(false);
             dispatch(stopLoader('roi-calculator'));
@@ -150,7 +262,7 @@ export default function ROICalculator() {
         setShareModalVisible(true);
     };
 
-    const handleCopyShareLink = () => {
+    const handleCopyShareLink = async () => {
         if (!roiData) return;
 
         const shareText = `📊 ROI Report (${roiData.dateRange.days} days)
@@ -162,9 +274,20 @@ export default function ROICalculator() {
 
 Generated by MenuListAI Chat Analytics`;
 
-        navigator.clipboard.writeText(shareText);
-        message.success('Share text copied successfully');
-        setShareModalVisible(false);
+        try {
+            await copyRoiShareTextToClipboard(shareText);
+            message.success('Share text copied successfully');
+            setShareModalVisible(false);
+        } catch (error) {
+            logRuntimeFailure('platform_roi_share_copy_failed', error, {
+                days: roiData.dateRange.days,
+                hasClipboardWrite: hasAnswerlatticeSupportClipboardWrite(),
+                hasCopyFallback: hasAnswerlatticeSupportCopyFallback(),
+                netSavings: roiData.metrics.netSavings,
+                shareTextLength: shareText.length,
+            });
+            message.error('Failed to copy share text');
+        }
     };
 
     // Format currency
@@ -174,8 +297,8 @@ Generated by MenuListAI Chat Analytics`;
     const formatPercentage = (value: number) => `${value}%`;
 
     // Format payback period
-    const formatPayback = (months: number) => {
-        if (months === Infinity) return 'N/A';
+    const formatPayback = (months: number | null) => {
+        if (months === null || !Number.isFinite(months)) return 'N/A';
         if (months < 1) return '<1 month';
         return `${Math.round(months)} ${months === 1 ? 'month' : 'months'}`;
     };

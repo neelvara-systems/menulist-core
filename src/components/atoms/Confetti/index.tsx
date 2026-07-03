@@ -29,6 +29,7 @@ const Confetti = ({ totalHeight = 600, totalWidth = 350 }: { totalHeight: number
     const animationFrameId = useRef<number | null>(null);
     // Ref to store the timestamp of the last animation frame
     const lastFrameTime = useRef<number>(0);
+    const nextParticleId = useRef(0);
 
     // Function to generate a random color for confetti (lighter palette)
     const getRandomColor = (): string => {
@@ -56,7 +57,7 @@ const Confetti = ({ totalHeight = 600, totalWidth = 350 }: { totalHeight: number
 
         const baseSize = Math.random() * 8 + 5; // Base size for squares and stars
         let particle: ConfettiParticle = {
-            id: Math.random(), // Unique ID for React key
+            id: nextParticleId.current++,
             x: x, // Initial X position
             y: y, // Initial Y position
             z: Math.random() * 2 + 1, // Z-index for layering

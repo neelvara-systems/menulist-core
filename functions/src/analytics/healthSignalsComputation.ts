@@ -19,6 +19,7 @@
 import * as functions from 'firebase-functions';
 import { DB_COLLECTIONS } from '../constants/database';
 import { firestoreAdmin } from '../firebaseAdmin';
+import { getAnalyticsErrorContext, getAnalyticsIdContext } from './analyticsDiagnostics';
 
 const logger = functions.logger;
 
@@ -43,6 +44,14 @@ interface WeeklyMetrics {
     daysWithData: number;
 }
 
+interface DailyAnalyticsSummary {
+    id: string;
+    totalViews: number;
+    uniqueVisitors?: number;
+    directVisits?: number;
+    totalActions: number;
+}
+
 // ================================================================
 // HELPERS
 // ================================================================
@@ -55,7 +64,7 @@ async function getDailyAnalytics(
     tId: number,
     sId: number,
     days: number,
-): Promise<any[]> {
+): Promise<DailyAnalyticsSummary[]> {
     const now = new Date();
     const cutoff = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
     const cutoffStr = cutoff.toISOString().split('T')[0]; // YYYY-MM-DD
@@ -70,13 +79,24 @@ async function getDailyAnalytics(
         .where('__name__', '<=', prefix + '\uf8ff')
         .get();
 
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    return snapshot.docs.map((doc) => {
+        const data = doc.data() || {};
+        const totalViews = Number(data.totalMenuViews || data.totalViews || 0);
+
+        return {
+            id: doc.id,
+            totalViews: Number.isFinite(totalViews) ? totalViews : 0,
+            uniqueVisitors: Number.isFinite(Number(data.uniqueVisitors)) ? Number(data.uniqueVisitors) : undefined,
+            directVisits: Number.isFinite(Number(data.directVisits)) ? Number(data.directVisits) : undefined,
+            totalActions: Number(data.totalActions || data.totalClicks || 0),
+        };
+    });
 }
 
 /**
  * Group daily analytics into weekly buckets.
  */
-function groupByWeek(dailyDocs: any[]): WeeklyMetrics[] {
+function groupByWeek(dailyDocs: DailyAnalyticsSummary[]): WeeklyMetrics[] {
     const weekMap = new Map<string, WeeklyMetrics>();
 
     for (const doc of dailyDocs) {
@@ -102,10 +122,10 @@ function groupByWeek(dailyDocs: any[]): WeeklyMetrics[] {
         }
 
         const week = weekMap.get(weekKey)!;
-        week.totalViews += (doc.totalMenuViews || doc.totalViews || 0);
-        week.uniqueVisitors += (doc.uniqueVisitors || Math.ceil((doc.totalMenuViews || doc.totalViews || 0) * 0.7));
-        week.directVisits += (doc.directVisits || Math.ceil((doc.totalMenuViews || doc.totalViews || 0) * 0.4));
-        week.totalActions += (doc.totalActions || doc.totalClicks || 0);
+        week.totalViews += doc.totalViews;
+        week.uniqueVisitors += (doc.uniqueVisitors || Math.ceil(doc.totalViews * 0.7));
+        week.directVisits += (doc.directVisits || Math.ceil(doc.totalViews * 0.4));
+        week.totalActions += doc.totalActions;
         week.daysWithData += 1;
     }
 
@@ -325,14 +345,20 @@ export async function processHealthSignalsForAllStores(): Promise<{
                     result.updated++;
                 }
             } catch (storeError) {
-                logger.warn(`[HealthSignals] Error processing store ${tId}/${sId}:`, storeError);
+                logger.warn('[HealthSignals] Store processing failed', {
+                    tenantId: getAnalyticsIdContext(tId),
+                    storeId: getAnalyticsIdContext(sId),
+                    error: getAnalyticsErrorContext(storeError),
+                });
                 result.errors++;
             }
         }
 
         logger.info(`[HealthSignals] Complete: ${result.processed} processed, ${result.updated} updated, ${result.errors} errors`);
     } catch (error) {
-        logger.error('[HealthSignals] Fatal error:', error);
+        logger.error('[HealthSignals] Fatal error', {
+            error: getAnalyticsErrorContext(error),
+        });
         throw error;
     }
 

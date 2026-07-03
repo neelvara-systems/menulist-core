@@ -1,7 +1,7 @@
 # Chat Monitoring — Feature Documentation
 
 > **Status:** DOCUMENTED (Forensic Audit)
-> **Last Updated:** 2026-03-02
+> **Last Updated:** 2026-06-30
 > **Parent Feature:** Help Center
 > **Audit Type:** Codebase-first, every file read
 
@@ -10,6 +10,8 @@
 ## What Is This
 
 Chat Monitoring is MenuList's **platform admin dashboard for managing AI chatbot conversations** — a comprehensive system where administrators view all conversations, filter by quality/status/priority/feedback, manage conversation metadata (status, priority, tags), add internal team notes, calculate ROI metrics, and view AI-generated weekly performance digests.
+
+**Product-boundary note:** this doc lives under the historical Answerlattice/support documentation family, but the current runtime is MenuList-hosted. The Cloud Functions listed below run from `functions/src/`, scan MenuList `tenants`, `stores`, `chatAnalytics`, `aiSearchHistory`, and nested `knowledgeBase` data, and write MenuList `insights/{tId}/stores/{sId}/ai/*` documents. They are not active `functions-answerlattice/` scheduler exports.
 
 ---
 
@@ -44,6 +46,7 @@ Chat Monitoring is MenuList's **platform admin dashboard for managing AI chatbot
 - `src/components/templates/platform/chatManagement/WeeklyDigest.tsx` — AI-generated weekly summary
 - `src/components/templates/platform/chatManagement/ChatInsights.tsx` — Analytics insights
 - `src/components/templates/platform/chatManagement/ComprehensiveDashboard.tsx` — Empty (deprecated)
+- `src/lib/answerlattice/supportClipboard.ts` — Shared acknowledged copy helper for platform message copy and ROI share text
 
 ### Database Layer
 - `src/database/chatSessions/index.ts` — Admin methods: `getAllChatSessionsForAdmin`, `getChatStatistics`, `getTopQuestions`, `getKnowledgeGaps`, `getChatVolumeOverTime`, `updateSessionInternalNote`

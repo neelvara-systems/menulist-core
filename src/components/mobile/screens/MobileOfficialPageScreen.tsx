@@ -4,7 +4,7 @@ import { BRAND_COLOR_PRESETS } from '@config/designSystem';
 import { FEATURE_FLAGS } from '@config/features';
 import type { ObpMenuInfo } from '@/app/client/obp/OBPResolvedSurface';
 import useViewportInfo from '@hook/useViewportInfo';
-import { updateStore } from '@database/stores';
+import { assertStoreUpdateSucceeded, updateStore } from '@database/stores';
 import { deleteOBPPhotos, uploadOBPCover, uploadOBPPhoto } from '@database/stores/uploadOBPPhoto';
 import { useClientAuthSession } from '@hook/useClientAuthSession';
 import { withAnalyticsSource } from '@lib/analytics/sourceAttribution';
@@ -59,6 +59,12 @@ import MobileSettingsScreenHeader from '../components/MobileSettingsScreenHeader
 import { useMobileProjects } from '../providers/MobileProjectsProvider';
 import { getLocalizedStoreValue, getStoreLanguageLabel, getStoreManagedLanguages, getStorePreferredLanguage } from '../utils/localizedStoreContent';
 import { openMobilePublicLink } from '../utils/openMobilePublicLink';
+import {
+    getBoundedMobileOwnerStringContext,
+    getMobileOwnerStoreLogContext,
+    logMobileOwnerFailure,
+    type MobileOwnerLogContext,
+} from '../utils/mobileOwnerDiagnostics';
 
 const MobileOfficialPagePreviewSheet = dynamic(() => import('../sheets/MobileOfficialPagePreviewSheet'), { ssr: false });
 const ColorPickerSheet = dynamic(() => import('../sheets/ColorPickerSheet'), { ssr: false });
@@ -84,6 +90,59 @@ type ObpMediaDraft = {
     previewDataUrl?: string;
     sourceDataUrl?: string;
     uploadFailed?: boolean;
+};
+
+const MOBILE_OFFICIAL_PAGE_LINK_COPY_UNAVAILABLE = 'mobile_official_page_link_copy_unavailable';
+const MOBILE_OFFICIAL_PAGE_LINK_COPY_FALLBACK_FAILED = 'mobile_official_page_link_copy_fallback_failed';
+
+const hasMobileOfficialPageClipboardWrite = (): boolean => (
+    typeof navigator !== 'undefined'
+    && Boolean(navigator.clipboard)
+    && typeof navigator.clipboard.writeText === 'function'
+);
+
+const hasMobileOfficialPageCopyFallback = (): boolean => (
+    typeof document !== 'undefined'
+    && typeof document.createElement === 'function'
+    && typeof document.execCommand === 'function'
+    && Boolean(document.body)
+);
+
+const copyMobileOfficialPageLink = async (value: string): Promise<void> => {
+    let clipboardWriteError: unknown;
+
+    if (hasMobileOfficialPageClipboardWrite()) {
+        try {
+            await navigator.clipboard.writeText(value);
+            return;
+        } catch (error) {
+            clipboardWriteError = error;
+            // Continue to the acknowledged textarea fallback before showing failure copy.
+        }
+    }
+
+    if (!hasMobileOfficialPageCopyFallback()) {
+        throw clipboardWriteError || new Error(MOBILE_OFFICIAL_PAGE_LINK_COPY_UNAVAILABLE);
+    }
+
+    const textarea = document.createElement('textarea');
+    textarea.value = value;
+    textarea.setAttribute('readonly', '');
+    textarea.style.position = 'fixed';
+    textarea.style.left = '-9999px';
+    textarea.style.top = '0';
+    document.body.appendChild(textarea);
+    textarea.focus();
+    textarea.select();
+
+    try {
+        const copied = document.execCommand('copy');
+        if (!copied) {
+            throw new Error(MOBILE_OFFICIAL_PAGE_LINK_COPY_FALLBACK_FAILED);
+        }
+    } finally {
+        document.body.removeChild(textarea);
+    }
 };
 
 function getFirstImageFile(fileList?: FileList | null): File | null {
@@ -503,6 +562,32 @@ export default function MobileOfficialPageScreen({
         () => generateOBPUrl(storeDetails?.subdomain || '', storeDetails?.customDomain),
         [storeDetails?.customDomain, storeDetails?.subdomain]
     );
+    const buildMobileOfficialPageLinkLogContext = useCallback((
+        flow: string,
+        metadata: MobileOwnerLogContext = {},
+    ): MobileOwnerLogContext => ({
+        surface: 'mobile_official_page',
+        flow,
+        ...getMobileOwnerStoreLogContext(storeDetails?.storeId, storeDetails?.tenantId),
+        ...getBoundedMobileOwnerStringContext('officialPageUrl', officialPageUrl),
+        ...getBoundedMobileOwnerStringContext('selectedProjectId', selectedProjectId),
+        embedded,
+        managedLanguageCount: managedLanguages.length,
+        projectCount: projectsList.length,
+        selectedLanguagePresent: Boolean(selectedLanguage),
+        supportsNativeShare,
+        ...metadata,
+    }), [
+        embedded,
+        managedLanguages.length,
+        officialPageUrl,
+        projectsList.length,
+        selectedLanguage,
+        selectedProjectId,
+        storeDetails?.storeId,
+        storeDetails?.tenantId,
+        supportsNativeShare,
+    ]);
 
     const [formData, setFormData] = useState(getInitialPresenceForm(storeDetails));
     const [originalFormData, setOriginalFormData] = useState(() => getInitialPresenceForm(storeDetails));
@@ -632,13 +717,26 @@ export default function MobileOfficialPageScreen({
         }));
 
         try {
-            await updateStore(payload as any);
+            const writeResult = await updateStore(payload as any);
+            assertStoreUpdateSucceeded(
+                writeResult,
+                storeDetails.storeId,
+                'mobile_official_page_store_update_rejected',
+            );
             await deleteOBPPhotos(photoDeleteQueue);
             setPhotoDeleteQueue([]);
             setOriginalFormData(nextPresence);
             setOriginalLocalizedDrafts(localizedDrafts);
             Toast.show({ content: tMobile('saved'), duration: 1000 });
-        } catch {
+        } catch (error) {
+            logMobileOwnerFailure('mobile_official_page_save_failed', error, {
+                ...getMobileOwnerStoreLogContext(storeDetails?.storeId, storeDetails?.tenantId),
+                localizedLanguageCount: Object.keys(localizedDrafts).length,
+                photoCount: nextPublicPresence.photos.length,
+                photoDeleteCount: photoDeleteQueue.length,
+                hasBusinessCover: Boolean(nextPublicPresence.businessCover),
+                hasSpecialNote: Boolean(nextPublicPresence.specialNote),
+            });
             setStoreDetails((previous: any) => ({
                 ...previous,
                 publicPresence: storeDetails.publicPresence,
@@ -690,7 +788,13 @@ export default function MobileOfficialPageScreen({
             });
             setFormData((previous) => ({ ...previous, businessCover: url }));
             Toast.show({ content: successMessage, icon: 'success', duration: 1200 });
-        } catch {
+        } catch (error) {
+            logMobileOwnerFailure('mobile_official_page_cover_upload_failed', error, {
+                ...getMobileOwnerStoreLogContext(storeDetails?.storeId, storeDetails?.tenantId),
+                ...getBoundedMobileOwnerStringContext('fileName', prepared.sourceName || fallbackDraft?.fileName),
+                hasExistingCover: Boolean(formData.businessCover),
+                hasSourceDataUrl: Boolean(prepared.sourceDataUrl || fallbackDraft?.sourceDataUrl),
+            });
             setCoverDraft((previous) => previous ? {
                 ...previous,
                 prepared,
@@ -712,7 +816,11 @@ export default function MobileOfficialPageScreen({
                 fileName: file.name,
                 sourceDataUrl: prepared.sourceDataUrl,
             });
-        } catch {
+        } catch (error) {
+            logMobileOwnerFailure('mobile_official_page_cover_prepare_failed', error, {
+                ...getMobileOwnerStoreLogContext(storeDetails?.storeId, storeDetails?.tenantId),
+                ...getBoundedMobileOwnerStringContext('fileName', file.name),
+            });
             Toast.show({ content: t('businessCoverUploadFailed'), duration: 1500 });
         }
 
@@ -744,7 +852,13 @@ export default function MobileOfficialPageScreen({
                 fileName: candidate.name,
                 sourceDataUrl: prepared.sourceDataUrl,
             }, t('businessCoverGenerated'));
-        } catch {
+        } catch (error) {
+            logMobileOwnerFailure('mobile_official_page_cover_generate_failed', error, {
+                ...getMobileOwnerStoreLogContext(storeDetails?.storeId, storeDetails?.tenantId),
+                projectCount: Array.isArray(projectsList) ? projectsList.length : 0,
+                hasBusinessCategory: Boolean(storeDetails?.businessCategory),
+                hasBusinessType: Boolean(storeDetails?.businessType),
+            });
             Toast.show({ content: t('businessCoverGenerateFailed'), duration: 1800 });
         } finally {
             setIsCoverGenerating(false);
@@ -814,7 +928,14 @@ export default function MobileOfficialPageScreen({
                 },
             }));
             setFormData((previous) => ({ ...previous, photos: nextPhotos.filter(Boolean) }));
-        } catch {
+        } catch (error) {
+            logMobileOwnerFailure('mobile_official_page_photo_upload_failed', error, {
+                ...getMobileOwnerStoreLogContext(storeDetails?.storeId, storeDetails?.tenantId),
+                ...getBoundedMobileOwnerStringContext('fileName', prepared.sourceName || fallbackDraft?.fileName),
+                photoIndex: index,
+                existingPhotoCount: formData.photos.filter(Boolean).length,
+                hasSourceDataUrl: Boolean(prepared.sourceDataUrl || fallbackDraft?.sourceDataUrl),
+            });
             setPhotoDrafts((previous) => ({
                 ...previous,
                 [index]: {
@@ -839,7 +960,12 @@ export default function MobileOfficialPageScreen({
                 fileName: file.name,
                 sourceDataUrl: prepared.sourceDataUrl,
             });
-        } catch {
+        } catch (error) {
+            logMobileOwnerFailure('mobile_official_page_photo_prepare_failed', error, {
+                ...getMobileOwnerStoreLogContext(storeDetails?.storeId, storeDetails?.tenantId),
+                ...getBoundedMobileOwnerStringContext('fileName', file.name),
+                photoIndex: index,
+            });
             Toast.show({ content: t('photoUploadFailed'), duration: 1500 });
         }
 
@@ -926,12 +1052,18 @@ export default function MobileOfficialPageScreen({
 
     const handleCopyLink = useCallback(async (value: string, label: string) => {
         try {
-            await navigator.clipboard.writeText(value);
+            await copyMobileOfficialPageLink(value);
             Toast.show({ content: tShare('copiedLabel', { label }), duration: 1200 });
-        } catch {
+        } catch (error) {
+            logMobileOwnerFailure('mobile_official_page_link_copy_failed', error, buildMobileOfficialPageLinkLogContext('copy_link', {
+                ...getBoundedMobileOwnerStringContext('copyLabel', label),
+                ...getBoundedMobileOwnerStringContext('copyValue', value),
+                hasClipboardWrite: hasMobileOfficialPageClipboardWrite(),
+                hasCopyFallback: hasMobileOfficialPageCopyFallback(),
+            }));
             Toast.show({ content: tShare('copyFailedLabel', { label: label.toLowerCase() }), duration: 1500 });
         }
-    }, [tShare]);
+    }, [buildMobileOfficialPageLinkLogContext, tShare]);
 
     const handleNativeShare = useCallback(async ({ label, text, url }: { label: string; text?: string; url: string }) => {
         if (typeof navigator === 'undefined' || typeof navigator.share !== 'function') return;
@@ -940,9 +1072,14 @@ export default function MobileOfficialPageScreen({
             await navigator.share({ text, title: label, url });
         } catch (error) {
             if (error instanceof DOMException && error.name === 'AbortError') return;
+            logMobileOwnerFailure('mobile_official_page_native_share_failed', error, buildMobileOfficialPageLinkLogContext('native_share', {
+                ...getBoundedMobileOwnerStringContext('shareLabel', label),
+                ...getBoundedMobileOwnerStringContext('shareText', text),
+                ...getBoundedMobileOwnerStringContext('shareUrl', url),
+            }));
             Toast.show({ content: tShare('couldNotCopy'), duration: 1500 });
         }
-    }, [tShare]);
+    }, [buildMobileOfficialPageLinkLogContext, tShare]);
 
     useEffect(() => {
         setSupportsNativeShare(typeof navigator !== 'undefined' && typeof navigator.share === 'function');
@@ -1045,7 +1182,11 @@ export default function MobileOfficialPageScreen({
                         isPrimary
                         label={tShare('officialBusinessLink')}
                         onCopy={() => void handleCopyLink(withSource(officialPageUrl, 'copy'), tShare('officialBusinessLink'))}
-                        onOpen={() => openMobilePublicLink(withSource(officialPageUrl, 'direct'))}
+                        onOpen={() => openMobilePublicLink(withSource(officialPageUrl, 'direct'), {
+                            flow: 'official_page_link_open',
+                            metadata: buildMobileOfficialPageLinkLogContext('open_official_page_link'),
+                            source: 'mobile_official_page',
+                        })}
                         onShare={supportsNativeShare ? () => void handleNativeShare({
                             label: tShare('officialBusinessLink'),
                             text: tShare('obpShareHint'),
@@ -1846,6 +1987,7 @@ export default function MobileOfficialPageScreen({
                 activePlanType={(storeDetails as any)?.activePlanType}
                 copyErrorMessage={tShare('couldNotCopy')}
                 copySuccessMessage={tShare('linkCopied')}
+                diagnosticSource="mobile_official_page_qr"
                 downloadSuccessMessage={tShare('qrDownloaded')}
                 filename={buildQrCodeFilename(`${getBrandName(storeDetails as any, 'business')}-official-page`, 'qr')}
                 generatingLabel={tShare('generatingQr')}

@@ -2,12 +2,14 @@
 
 **Feature:** #4 — Multi-Store Menu Consistency  
 **Document Type:** Non-Technical PRD  
-**Status:** ✅ Production Ready  
+**Status:** Implemented source evidence; not current launch certification
 **Priority:** P0 (Feature #4 — LOCKED)  
 **Original Date:** January 20, 2026  
-**Last Reviewed:** May 19, 2026
+**Last Reviewed:** July 2, 2026
 **Author:** Lead Architect  
 **Target ICP:** Premium SMB Groups (2–10 stores)
+
+> **Launch Boundary:** This PRD records implemented Multi-Outlet requirements and source evidence, not current production-launch approval. Current release approval requires the active [production-readiness audit](../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../production-readiness/external-certification-runbook.md) evidence, `npm run verify:multi-location-boundary`, desktop/mobile Locations browser QA, linked outlet save QA, Razorpay sandbox evidence where billing is involved, Firebase deploy evidence where rules/functions change, and target-environment smoke.
 
 > **Post-Implementation Notes (Feb 13, 2026):** This spec was written pre-implementation. The core business requirements below remain accurate. The following capabilities were added during implementation and are documented in their respective docs:
 >
@@ -671,6 +673,6 @@ molEvent.affectedStores?: number[]  // Which stores should see this
 
 ---
 
-**DOCUMENT STATUS:** ✅ SPEC LOCK — Ready for Implementation  
-**SIGNATURE:** Lead Architect  
+**DOCUMENT STATUS:** Source evidence only - not current launch certification
+**SIGNATURE:** Lead Architect
 **TIMESTAMP:** January 21, 2026

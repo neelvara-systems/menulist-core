@@ -1,3 +1,4 @@
+import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import type { PreparedMediaImage } from './prepareMediaImage';
 
 export type ItemPhotoCaptureMode = 'topDown' | 'closer';
@@ -135,8 +136,26 @@ async function getPreparedImageStats(prepared: PreparedMediaImage): Promise<Samp
     return sampleImageStats(imageData.data, width, height);
 }
 
+function getItemPhotoReadinessLogContext(prepared: PreparedMediaImage) {
+    return {
+        ...getBoundedRuntimeStringContext('imageType', prepared.imageType),
+        ...getBoundedRuntimeStringContext('mimeType', prepared.mimeType),
+        hasDataUrl: Boolean(prepared.dataUrl),
+        hasSourceDataUrl: Boolean(prepared.sourceDataUrl),
+        preparedHeight: prepared.height,
+        preparedWidth: prepared.width,
+        preparedSizeBytes: prepared.sizeBytes,
+    };
+}
+
 export async function assessItemPhotoReadiness(prepared: PreparedMediaImage): Promise<ItemPhotoReadinessResult> {
-    const stats = await getPreparedImageStats(prepared).catch(() => null);
+    let stats: SampledImageStats | null = null;
+
+    try {
+        stats = await getPreparedImageStats(prepared);
+    } catch (error) {
+        logRuntimeFailure('item_photo_readiness_stats_failed', error, getItemPhotoReadinessLogContext(prepared));
+    }
 
     if (!stats) {
         return {
@@ -208,4 +227,3 @@ export function buildCapturedItemPhotoName(itemName: string | undefined, mode: I
 
     return `${base}-${mode}-${Date.now()}.jpg`;
 }
-

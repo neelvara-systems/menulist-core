@@ -14,8 +14,8 @@
 
 import { admin } from '@lib/firebase/firebaseAdmin';
 import { logger } from '@lib/monitoring/logger';
+import { getBoundedAuthStringContext, logAuthFailure } from '@lib/auth/authDiagnostics';
 import { getRequestMetadata } from '@lib/security/ipExtractor';
-import { secureError } from '@lib/security/secureLogger';
 import { Timestamp } from 'firebase-admin/firestore';
 import { NextRequest } from 'next/server';
 
@@ -130,8 +130,8 @@ export async function checkAccountLock(email: string): Promise<AccountLockStatus
             lastAttempt: recentAttempts.docs[0]?.data().timestamp.toDate()
         };
     } catch (error) {
-        secureError('[Auth Security] Error checking account lock', error as Error, {
-            email: email.toLowerCase()
+        logAuthFailure('auth_security_account_lock_check_failed', error, {
+            ...getBoundedAuthStringContext('email', email.toLowerCase()),
         });
         // Fail open - don't block login on security check errors
         return { isLocked: false, failedAttempts: 0 };
@@ -230,28 +230,29 @@ export async function logFailedLogin(
 
                 // Send to Sentry - This is a high-severity event!
                 logger.security('Account Locked', {
-                    email: normalizedEmail,
+                    ...getBoundedAuthStringContext('email', normalizedEmail),
+                    ...getBoundedAuthStringContext('ip', finalMetadata?.ip),
+                    ...getBoundedAuthStringContext('userAgent', finalMetadata?.userAgent),
                     reason: 'Multiple failed login attempts',
                     failedAttempts: MAX_FAILED_ATTEMPTS,
-                    ip: finalMetadata?.ip,
-                    userAgent: finalMetadata?.userAgent,
                 }, 'high');
             } else if (currentFailedCount + 1 >= 3) {
                 // Send warning to Sentry after 3 failed attempts (before lockout)
                 logger.security('Multiple Failed Login Attempts', {
-                    email: normalizedEmail,
-                    reason,
+                    ...getBoundedAuthStringContext('email', normalizedEmail),
+                    ...getBoundedAuthStringContext('ip', finalMetadata?.ip),
+                    ...getBoundedAuthStringContext('reason', reason),
+                    ...getBoundedAuthStringContext('userAgent', finalMetadata?.userAgent),
                     attemptNumber: currentFailedCount + 1,
                     maxAttempts: MAX_FAILED_ATTEMPTS,
-                    ip: finalMetadata?.ip,
-                    userAgent: finalMetadata?.userAgent,
                 }, 'medium');
             }
         });
     } catch (error) {
-        secureError('[Auth Security] Error logging failed login', error as Error, {
-            email: email.toLowerCase(),
-            reason
+        logAuthFailure('auth_security_failed_login_log_failed', error, {
+            ...getBoundedAuthStringContext('email', email.toLowerCase()),
+            ...getBoundedAuthStringContext('reason', reason),
+            ...getBoundedAuthStringContext('source', source || 'unknown'),
         });
     }
 }
@@ -298,8 +299,9 @@ export async function logSuccessfulLogin(
         // Optionally: Delete old failed attempts to clean up
         // (They'll naturally age out after 15 minutes anyway)
     } catch (error) {
-        secureError('[Auth Security] Error logging successful login', error as Error, {
-            email: email.toLowerCase()
+        logAuthFailure('auth_security_successful_login_log_failed', error, {
+            ...getBoundedAuthStringContext('email', email.toLowerCase()),
+            ...getBoundedAuthStringContext('source', source || 'unknown'),
         });
     }
 }
@@ -359,8 +361,8 @@ export async function getSecuritySummary(since: Date): Promise<{
             suspiciousIPs
         };
     } catch (error) {
-        secureError('[Auth Security] Error getting security summary', error as Error, {
-            since: since.toISOString()
+        logAuthFailure('auth_security_summary_load_failed', error, {
+            ...getBoundedAuthStringContext('since', since.toISOString()),
         });
         return {
             totalAttempts: 0,

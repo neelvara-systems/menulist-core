@@ -2,24 +2,24 @@ import useSWR from 'swr';
 import { FEATURE_FLAGS } from '@config/features';
 import { getCachedData, removeCachedData, setCachedData, shouldRevalidate } from '@lib/cache/swrLocalStorageProvider';
 import { OWNER_BUSINESS_ASSISTANT_CACHE, OWNER_BUSINESS_ASSISTANT_ENDPOINTS } from '@lib/ownerBusinessAssistant/constants';
-import type { OwnerBusinessAnalyticsIndexDoc } from '@lib/ownerBusinessAssistant/types';
+import {
+  OWNER_BUSINESS_ASSISTANT_REQUEST_POLICY,
+  readOwnerBusinessAssistantAnalyticsResponse,
+  type OwnerBusinessAssistantAnalyticsResponse,
+} from '@lib/ownerBusinessAssistant/clientResponses';
+import { getBoundedRuntimeStringContext } from '@lib/runtime/runtimeDiagnostics';
 
-type AnalyticsResponse = {
-  data: Pick<OwnerBusinessAnalyticsIndexDoc, 'periods' | 'unsupportedPeriods' | 'sourceRefs' | 'projectScope'> | null;
-  cache?: {
-    source: string;
-    cacheKey: string;
-    generatedAt: string;
-  };
+const fetcher = async ([url, storeScopeKey]: readonly [string, string]): Promise<OwnerBusinessAssistantAnalyticsResponse> => {
+  const response = await fetch(url, OWNER_BUSINESS_ASSISTANT_REQUEST_POLICY);
+  const payload = await readOwnerBusinessAssistantAnalyticsResponse(response, {
+    ...getBoundedRuntimeStringContext('url', url),
+    ...getBoundedRuntimeStringContext('storeScopeKey', storeScopeKey),
+  });
+  if (!payload) throw new Error('Failed to load Business Health analytics');
+  return payload;
 };
 
-const fetcher = async ([url]: readonly [string, string]): Promise<AnalyticsResponse> => {
-  const response = await fetch(url);
-  if (!response.ok) throw new Error('Failed to load Business Health analytics');
-  return response.json();
-};
-
-const hasAnalyticsData = (response: AnalyticsResponse | undefined) => Boolean(response?.data);
+const hasAnalyticsData = (response: OwnerBusinessAssistantAnalyticsResponse | undefined) => Boolean(response?.data);
 
 export function useOwnerBusinessAnalyticsIndex(projectId?: string, storeScopeKey?: string | number, options?: { enabled?: boolean }) {
   const enabled = FEATURE_FLAGS.ENABLE_OWNER_BUSINESS_HEALTH
@@ -31,12 +31,12 @@ export function useOwnerBusinessAnalyticsIndex(projectId?: string, storeScopeKey
   const url = `${OWNER_BUSINESS_ASSISTANT_ENDPOINTS.analytics}${params.toString() ? `?${params.toString()}` : ''}`;
   const cacheKey = `${OWNER_BUSINESS_ASSISTANT_CACHE.browserAnalyticsPrefix}:${storeScopeKey || 'store'}:${projectId || 'all'}`;
   const cached = typeof window !== 'undefined'
-    ? getCachedData<AnalyticsResponse>(cacheKey, OWNER_BUSINESS_ASSISTANT_CACHE.browserReadModelTtlMs)
+    ? getCachedData<OwnerBusinessAssistantAnalyticsResponse>(cacheKey, OWNER_BUSINESS_ASSISTANT_CACHE.browserReadModelTtlMs)
     : undefined;
 
   const cachedMissingAnalytics = !hasAnalyticsData(cached);
 
-  const swr = useSWR<AnalyticsResponse>(
+  const swr = useSWR<OwnerBusinessAssistantAnalyticsResponse>(
     enabled ? [url, String(storeScopeKey || 'store')] as const : null,
     fetcher,
     {

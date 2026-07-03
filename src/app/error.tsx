@@ -1,12 +1,16 @@
 'use client' // Error components must be Client Components
 import ErrorPageThemeWrapper from "@atoms/ErrorPageThemeWrapper";
 import ErrorReportButton from "@/components/shared/debug/ErrorReportButton";
-import { logger } from "@lib/monitoring/logger";
+import { getBoundedRuntimeStringContext, logRuntimeFailure } from "@lib/runtime/runtimeDiagnostics";
 import { Button, Flex, Result, Typography } from "antd";
 import { useEffect, useState } from 'react';
 import { LuHelpCircle, LuRefreshCw } from "react-icons/lu";
 const { Paragraph } = Typography
 
+const APP_ERROR_BOUNDARY_RENDERED = 'app_error_boundary_rendered';
+const APP_ERROR_HELP_OPEN_FAILED = 'app_error_help_open_failed';
+const APP_ERROR_HELP_REDIRECT_FAILED = 'app_error_help_redirect_failed';
+const HELP_ROUTE = '/help';
 
 export default function Error({ error, reset }: {
     error: Error & { digest?: string }, reset: () => void
@@ -14,11 +18,11 @@ export default function Error({ error, reset }: {
     const [isRefreshing, setIsRefreshing] = useState(false);
 
     useEffect(() => {
-        // Log the error to Sentry
-        logger.error('App Error Boundary', error, {
-            userAgent: window?.navigator?.userAgent,
-            location: window?.location?.href,
-            digest: error.digest,
+        logRuntimeFailure(APP_ERROR_BOUNDARY_RENDERED, error, {
+            hasDigest: Boolean(error?.digest),
+            ...getBoundedRuntimeStringContext('digest', error?.digest),
+            ...getBoundedRuntimeStringContext('location', window.location.href),
+            ...getBoundedRuntimeStringContext('userAgent', window.navigator.userAgent),
         });
     }, [error])
 
@@ -32,8 +36,25 @@ export default function Error({ error, reset }: {
     };
 
     const handleGetHelp = () => {
-        // Open support in new tab or navigate to help center
-        window.open('/help', '_blank');
+        const diagnosticContext = {
+            flow: 'help_handoff',
+            ...getBoundedRuntimeStringContext('helpRoute', HELP_ROUTE),
+            ...getBoundedRuntimeStringContext('location', window.location.href),
+        };
+
+        try {
+            const opened = window.open(HELP_ROUTE, '_blank', 'noopener,noreferrer');
+            if (!opened) {
+                throw new globalThis.Error('app_error_help_open_blocked');
+            }
+        } catch (openError) {
+            logRuntimeFailure(APP_ERROR_HELP_OPEN_FAILED, openError, diagnosticContext);
+            try {
+                window.location.assign(HELP_ROUTE);
+            } catch (redirectError) {
+                logRuntimeFailure(APP_ERROR_HELP_REDIRECT_FAILED, redirectError, diagnosticContext);
+            }
+        }
     };
 
     return (

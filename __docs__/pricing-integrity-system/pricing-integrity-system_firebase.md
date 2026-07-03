@@ -1,57 +1,35 @@
-# Pricing Integrity System — Firebase Cost Tracking
+# Pricing Integrity System - Firebase Cost Tracking
 
-**Feature:** Cross-Surface Price Consistency  
-**Status:** ✅ Ready for Implementation  
-**Last Updated:** June 11, 2026
-**Priority:** LOW — QR/Web menu and Staff Prompt already read live. This is about Screens refresh + PDF regeneration.
-
----
-
-## Summary
-
-- **Collections Used:** `projects/{tId}/{sId}` (existing — live price source)
-- **Storage Buckets:** `MenuListAi/generated-pdfs/{storeId}` (planned — auto-generated PDFs)
-- **Cloud Functions (Planned):** `regeneratePDF` (on project change), `refreshScreenContent` (on price change)
-- **Estimated Monthly Cost:** **Low** — Most integrity is "free" (live reads from existing project data)
+**Feature:** Cross-surface price consistency
+**Status:** Current cost boundary, not current launch certification
+**Last Updated:** July 2, 2026
 
 ---
 
-## Firestore Operations
+## Current Firebase Operations
 
-### Existing (Already Implemented — Zero Incremental Cost)
+| Operation | Current path | Cost boundary |
+| --- | --- | --- |
+| Project save | Existing project document write through `updateProject()` | Existing owner edit cost |
+| Public menu/OBP cache revalidation | `/api/revalidate/menu` call from `revalidatePublicClientCacheForProject()` | No extra Firestore collection |
+| Digital Screens refresh signal | `platformSummary/campaigns_{storeId}.screen.contentVersion` increment when screens are configured | One bounded summary write when applicable |
+| On-demand PDF generation | Browser-local generation from loaded project data | No background job write |
 
-| Surface | How It Gets Prices | Incremental Firebase Cost |
-|---------|-------------------|--------------------------|
-| QR/Web Menu | Live read from `projects/{tId}/{sId}/{projectId}` (cached 60s) | $0 — already happening |
-| Staff Prompt | Live read from same project doc | $0 — already happening |
+## Dormant/Reserved Operations
 
-### Planned (Screens + PDF)
+| Operation | Current boundary |
+| --- | --- |
+| Background PDF regeneration jobs | Not active; `ENABLE_BACKGROUND_PDF_REGEN = false` in `src/lib/pricing/pdfQueue.ts` |
+| `pricingIntegrity.pdf.status` writes | Not reached by editor saves because `runPricingIntegrity()` has no current caller |
+| MOL price-change events from pricing engine | Reserved for the dormant `runPricingIntegrity()` path |
+| Cloud Function PDF worker | Not active in the current Pricing Integrity path |
 
-| Operation | Collection | Trigger | Frequency | Notes |
-|-----------|-----------|---------|-----------|-------|
-| Screen content refresh | `screenContent/{tId}/{sId}` | Price change detected | Per price change | Planned: regenerate screen slides when prices change. |
-| PDF regeneration trigger | `projects/{tId}/{sId}/{projectId}` | Price change detected | Per price change | Planned: Cloud Function detects price diff and regenerates PDF. |
+## Current Cost Claim
 
-### Writes (Planned)
+Current incremental Pricing Integrity cost is limited to existing project-save writes, public cache revalidation, and Digital Screens content-version touches where screens are configured. There is no active background PDF queue cost.
 
-| Operation | Collection | Trigger | Frequency | Notes |
-|-----------|-----------|---------|-----------|-------|
-| Store regenerated PDF URL | `projects/{tId}/{sId}/{projectId}` | After PDF generation | Per price change | Merge update with new PDF URL. |
+## Verification
 
----
+This cost boundary is guarded by `npm run verify:pricing-integrity-boundary`, `npm run verify:agent-readiness`, and `npm run verify:menulist-api-tenant-safety`. Release approval still requires the active production-readiness audit, External Certification Runbook evidence, authenticated desktop/mobile price-change QA, public menu and PDF artifact QA, Digital Screens refresh QA where applicable, target deploy evidence, and production-host smoke.
 
-## Cost Estimate
-
-Current: **$0.00/month** — Live reads are already happening.
-Planned (with PDF + Screens): **~$0.10/month** per 1000 price changes.
-
-Runtime formatter correction (June 11, 2026): `formatMenuPrice()` now preserves text prices and numeric ranges. This is a local render fix and has no Firebase cost impact.
-
----
-
-## DAL Functions Used
-
-| Function | File | Operation Type |
-|----------|------|---------------|
-| `updateProject` | `src/database/projects/index.ts:382` | Write (triggers integrity check) |
-| `revalidateMenuCache` | `src/lib/actions/revalidateMenuCache.ts` | Cache invalidation (instant customer update) |
+If a future release wires `runPricingIntegrity()` or enables background PDF regeneration, this file must be updated with exact reads, writes, storage paths, queue behavior, scheduler/function behavior, and scoped Firebase deploy evidence.

@@ -3,7 +3,7 @@
 /**
  * Menu Image Processing Job Queue - Client Integration
  * 
- * Spec Reference: MENU-IMAGE-PROCESSING-JOB-QUEUE-SPEC.md Section 6
+ * Spec Reference: menu-image-processing-job-queue-spec.md Section 6
  * 
  * This module provides:
  * 1. createMenuProcessingJob() - Creates a job document
@@ -18,11 +18,24 @@ import type {
 } from '@data/shared/menuExtractionJob';
 import type { ExtractedBusinessProfile } from '@data/shared/extractedBusinessProfile';
 import getActiveSession from '@lib/auth/getActiveSession';
+import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';
 import { Timestamp, collection, doc, getDoc, getDocs, query, updateDoc, where } from 'firebase/firestore';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { firebaseClient } from './firebaseClient';
+import {
+    getBoundedMenuProcessingStringContext,
+    getMenuProcessingJobLogContext,
+    getMenuProcessingProjectLogContext,
+    logMenuProcessingFailure,
+} from './menuProcessingDiagnostics';
 
 const COLLECTION = DB_COLLECTIONS.MENU_IMAGE_PROCESSING_JOBS;
+const MENU_PROCESSING_JOB_START_RESPONSE_JSON_MAX_BYTES = 32 * 1024;
+const MENU_PROCESSING_JOB_START_REQUEST_POLICY: Pick<RequestInit, 'cache' | 'credentials' | 'redirect'> = {
+    cache: 'no-store',
+    credentials: 'same-origin',
+    redirect: 'manual',
+};
 
 // Track active triggers to prevent duplicates
 const activeTriggers = new Set<string>();
@@ -65,6 +78,13 @@ export interface CreateJobParams {
     /** Owner confirmed the menu-intake identity warning before extraction. */
     identityOverrideConfirmed?: boolean;
 }
+
+type MenuProcessingJobStartResponse = {
+    success?: boolean;
+    jobId?: unknown;
+    reusedExistingJob?: unknown;
+    reusedCompletedJob?: unknown;
+};
 
 export interface MenuProcessingJobStatus {
     id: string;
@@ -137,6 +157,62 @@ export interface MenuProcessingJobStatus {
 // MAIN FUNCTIONS
 // ═══════════════════════════════════════════════════════════════════════════
 
+const isNonEmptyString = (value: unknown): value is string => (
+    typeof value === 'string' && value.trim().length > 0
+);
+
+const createMenuProcessingJobStartError = (code: string, status: number) => {
+    const error = new Error('Could not start menu extraction.') as Error & { code?: string; status?: number };
+    error.code = code;
+    error.status = status;
+    return error;
+};
+
+const getMenuProcessingJobStartLogContext = (params: {
+    action: string;
+    filesCount: number;
+    forceReview?: boolean;
+    identityOverrideConfirmed?: boolean;
+    jobMode: ExtractionJobMode;
+    projectId: string;
+    retriedFromJobId?: string;
+    retryCount?: number;
+    targetLanguagesCount: number;
+}) => ({
+    ...getMenuProcessingProjectLogContext(params.projectId),
+    ...getBoundedMenuProcessingStringContext('action', params.action),
+    filesCount: params.filesCount,
+    forceReview: params.forceReview === true,
+    hasRetrySource: Boolean(params.retriedFromJobId),
+    identityOverrideConfirmed: params.identityOverrideConfirmed === true,
+    jobMode: params.jobMode,
+    retryCount: typeof params.retryCount === 'number' ? params.retryCount : 0,
+    targetLanguagesCount: params.targetLanguagesCount,
+});
+
+async function readMenuProcessingJobStartResponseJson(
+    response: Response,
+    context: ReturnType<typeof getMenuProcessingJobStartLogContext>,
+): Promise<{ payload: MenuProcessingJobStartResponse | null; parseFailed: boolean }> {
+    try {
+        return {
+            payload: await readJsonResponseWithLimit<MenuProcessingJobStartResponse>(
+                response,
+                MENU_PROCESSING_JOB_START_RESPONSE_JSON_MAX_BYTES,
+            ),
+            parseFailed: false,
+        };
+    } catch (error) {
+        logMenuProcessingFailure('menu_processing_job_start_response_parse_failed', error, {
+            ...context,
+            responseOk: response.ok,
+            responseStatus: response.status,
+            maxBytes: MENU_PROCESSING_JOB_START_RESPONSE_JSON_MAX_BYTES,
+        });
+        return { payload: null, parseFailed: true };
+    }
+}
+
 /**
  * Create a menu image processing job
  * 
@@ -167,7 +243,20 @@ export async function createMenuProcessingJob(params: CreateJobParams): Promise<
         throw new Error('User not authenticated');
     }
 
+    const jobStartLogContext = getMenuProcessingJobStartLogContext({
+        action,
+        filesCount: files.length,
+        forceReview,
+        identityOverrideConfirmed,
+        jobMode,
+        projectId,
+        retriedFromJobId,
+        retryCount,
+        targetLanguagesCount: targetLanguages.length,
+    });
+
     const response = await fetch('/api/menu-extraction/jobs', {
+        ...MENU_PROCESSING_JOB_START_REQUEST_POLICY,
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -194,24 +283,32 @@ export async function createMenuProcessingJob(params: CreateJobParams): Promise<
         }),
     });
 
-    const payload = await response.json().catch(() => null);
+    const { payload, parseFailed } = await readMenuProcessingJobStartResponseJson(
+        response,
+        jobStartLogContext,
+    );
     if (!response.ok) {
-        throw new Error(payload?.error || 'Could not start menu extraction.');
+        throw createMenuProcessingJobStartError('menu_processing_job_start_rejected', response.status);
     }
 
-    const jobId = payload?.jobId;
-    if (!jobId) {
-        throw new Error('Could not start menu extraction.');
+    if (parseFailed) {
+        throw createMenuProcessingJobStartError('menu_processing_job_start_response_parse_failed', response.status);
     }
 
-    console.log(`[createMenuProcessingJob] Created job ${jobId}`, {
-        projectId,
-        filesCount: files.length,
-        jobMode,
-        reusedCompletedJob: payload?.reusedCompletedJob === true,
-        reusedExistingJob: payload?.reusedExistingJob === true,
-    });
+    if (payload?.success !== true || !isNonEmptyString(payload.jobId)) {
+        const invalid = createMenuProcessingJobStartError('menu_processing_job_start_response_invalid', response.status);
+        logMenuProcessingFailure('menu_processing_job_start_response_invalid', invalid, {
+            ...jobStartLogContext,
+            responseOk: response.ok,
+            responseStatus: response.status,
+            maxBytes: MENU_PROCESSING_JOB_START_RESPONSE_JSON_MAX_BYTES,
+            success: payload?.success === true,
+            hasJobId: isNonEmptyString(payload?.jobId),
+        });
+        throw invalid;
+    }
 
+    const jobId = payload.jobId;
     if (payload?.reusedExistingJob === true || payload?.reusedCompletedJob === true) {
         return jobId;
     }
@@ -222,7 +319,6 @@ export async function createMenuProcessingJob(params: CreateJobParams): Promise<
         try {
             // Check if we're already triggering this job
             if (activeTriggers.has(jobId)) {
-                console.log(`[createMenuProcessingJob] Job ${jobId} already being triggered, skipping`);
                 return jobId;
             }
 
@@ -234,15 +330,10 @@ export async function createMenuProcessingJob(params: CreateJobParams): Promise<
             const jobDoc = await getDoc(jobDocRef);
             const jobStatus = jobDoc.data()?.status;
 
-            console.log(`[createMenuProcessingJob] Job ${jobId} status check:`, { status: jobStatus, exists: jobDoc.exists() });
-
             if (jobStatus === 'processing') {
-                console.log(`[createMenuProcessingJob] Job ${jobId} already processing, skipping trigger`);
                 activeTriggers.delete(jobId); // Clean up tracking
                 return jobId;
             }
-
-            console.log(`[createMenuProcessingJob] Proceeding with trigger for job ${jobId} (status: ${jobStatus})`);
 
             // Add a small delay to avoid Firebase Functions double execution issue
             await new Promise(resolve => setTimeout(resolve, 100));
@@ -255,12 +346,19 @@ export async function createMenuProcessingJob(params: CreateJobParams): Promise<
                     ? { ...jobDoc.data(), id: jobId }
                     : { id: jobId },
             });
-            console.log(`[createMenuProcessingJob] Dev trigger called for job ${jobId}`);
 
             // Clean up tracking after successful trigger
             activeTriggers.delete(jobId);
         } catch (error) {
-            console.error(`[createMenuProcessingJob] Dev trigger failed for job ${jobId}`, error);
+            logMenuProcessingFailure('menu_processing_dev_trigger_failed', error, {
+                ...getMenuProcessingJobLogContext(jobId),
+                ...getMenuProcessingProjectLogContext(projectId),
+                filesCount: files.length,
+                targetLanguagesCount: targetLanguages.length,
+                jobMode,
+                hasRetrySource: Boolean(retriedFromJobId),
+                retryCount: typeof retryCount === 'number' ? retryCount : 0,
+            });
             // Clean up tracking on error
             activeTriggers.delete(jobId);
             // Don't throw - the job was created, just trigger failed
@@ -284,7 +382,8 @@ export async function cancelMenuProcessingJob(jobId: string): Promise<void> {
     // Check current status
     const jobDoc = await getDoc(jobRef);
     if (!jobDoc.exists()) {
-        throw new Error(`Job ${jobId} not found`);
+        logMenuProcessingFailure('menu_processing_cancel_job_missing', undefined, getMenuProcessingJobLogContext(jobId));
+        throw new Error('Menu extraction job not found.');
     }
 
     const currentStatus = jobDoc.data()?.status;
@@ -296,7 +395,6 @@ export async function cancelMenuProcessingJob(jobId: string): Promise<void> {
             completedAt: Timestamp.now(),
             updatedAt: Timestamp.now(),
         });
-        console.log(`[cancelMenuProcessingJob] Cancelled pending job ${jobId}`);
         return;
     }
 
@@ -306,11 +404,14 @@ export async function cancelMenuProcessingJob(jobId: string): Promise<void> {
             status: 'cancelling',
             updatedAt: Timestamp.now(),
         });
-        console.log(`[cancelMenuProcessingJob] Requested cancellation for processing job ${jobId}`);
         return;
     }
 
-    throw new Error(`Job ${jobId} cannot be cancelled (status: ${currentStatus})`);
+    logMenuProcessingFailure('menu_processing_cancel_invalid_status', undefined, {
+        ...getMenuProcessingJobLogContext(jobId),
+        ...getBoundedMenuProcessingStringContext('status', currentStatus),
+    });
+    throw new Error('Menu extraction job cannot be cancelled.');
 }
 
 /**
@@ -355,9 +456,10 @@ export async function checkExistingActiveJob(projectId: string, ignoreJobIds: st
         });
 
     if (activeDocs.length > 1) {
-        console.warn('[checkExistingActiveJob] Multiple active jobs detected for project. Reusing the latest one.', {
-            projectId,
-            jobIds: activeDocs.map((job) => `${job.id}:${job.status}`),
+        logMenuProcessingFailure('menu_processing_multiple_active_jobs', undefined, {
+            ...getMenuProcessingProjectLogContext(projectId),
+            activeJobsCount: activeDocs.length,
+            ignoredJobIdsCount: ignoreSet.size,
         });
     }
 

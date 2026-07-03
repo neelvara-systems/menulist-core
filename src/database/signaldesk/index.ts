@@ -1,4 +1,6 @@
 import { SIGNALDESK_API_ROUTES } from "@constant/signaldesk/routes";
+import { getBoundedRuntimeStringContext, logRuntimeFailure } from "@lib/runtime/runtimeDiagnostics";
+import { readJsonResponseWithLimit } from "@lib/security/boundedResponseBody";
 import type {
     SignalDeskKillSwitchScope,
     SignalDeskKillSwitchStatus,
@@ -17,6 +19,93 @@ const getSignalDeskClientModeHeaders = () => {
 };
 
 const isSignalDeskMobileClient = () => Object.keys(getSignalDeskClientModeHeaders()).length > 0;
+const SIGNALDESK_OVERVIEW_LOAD_FAILED = "Failed to load SignalDesk";
+const SIGNALDESK_WORKSPACE_LOAD_FAILED = "Failed to load SignalDesk workspace";
+const SIGNALDESK_ACTION_FAILED = "SignalDesk action failed";
+const SIGNALDESK_PAUSE_UPDATE_FAILED = "Failed to update SignalDesk pause";
+const SIGNALDESK_CLIENT_RESPONSE_JSON_MAX_BYTES = 1024 * 1024;
+const SIGNALDESK_CLIENT_RESPONSE_PARSE_FAILED = "signaldesk_client_response_parse_failed";
+const SIGNALDESK_CLIENT_RESPONSE_REJECTED = "signaldesk_client_response_rejected";
+const SIGNALDESK_CLIENT_RESPONSE_INVALID = "signaldesk_client_response_invalid";
+
+type SignalDeskClientJsonContext = {
+    action?: string;
+    operation: "overview" | "workspace" | "action" | "kill-switch";
+    scope?: string;
+    section?: string;
+};
+
+const isRecord = (value: unknown): value is Record<string, unknown> => (
+    Boolean(value) && typeof value === "object" && !Array.isArray(value)
+);
+
+const isDataEnvelope = (value: unknown): value is { data: unknown } => (
+    isRecord(value) && "data" in value
+);
+
+const isSignalDeskOverviewData = (value: unknown): value is SignalDeskOverview => (
+    isRecord(value)
+    && isRecord(value.access)
+    && isRecord(value.controlRoom)
+    && isRecord(value.cost)
+    && isRecord(value.queues)
+    && isRecord(value.setup)
+    && Array.isArray(value.activeKillSwitches)
+    && Array.isArray(value.incidents)
+    && Array.isArray(value.metrics)
+);
+
+const isSignalDeskWorkspaceData = (value: unknown): value is SignalDeskWorkspaceResponse => {
+    if (!isRecord(value)) return false;
+    return isSignalDeskOverviewData(value) && isRecord(value.workspace);
+};
+
+const isAcknowledgedSignalDeskData = <T,>(value: unknown): value is T => Boolean(value);
+
+const getSignalDeskClientResponseLogContext = (
+    response: Response,
+    context: SignalDeskClientJsonContext,
+) => ({
+    ...getBoundedRuntimeStringContext("action", context.action),
+    ...getBoundedRuntimeStringContext("scope", context.scope),
+    ...getBoundedRuntimeStringContext("section", context.section),
+    mobileClient: isSignalDeskMobileClient(),
+    operation: context.operation,
+    product: "signaldesk",
+    responseOk: response.ok,
+    responseStatus: response.status,
+});
+
+const readSignalDeskClientDataResponse = async <T>(
+    response: Response,
+    context: SignalDeskClientJsonContext,
+    isValidData: (value: unknown) => value is T,
+): Promise<T | null> => {
+    const logContext = getSignalDeskClientResponseLogContext(response, context);
+    let payload: unknown;
+
+    try {
+        payload = await readJsonResponseWithLimit<unknown>(
+            response,
+            SIGNALDESK_CLIENT_RESPONSE_JSON_MAX_BYTES,
+        );
+    } catch (error) {
+        logRuntimeFailure(SIGNALDESK_CLIENT_RESPONSE_PARSE_FAILED, error, logContext);
+        return null;
+    }
+
+    if (!response.ok) {
+        logRuntimeFailure(SIGNALDESK_CLIENT_RESPONSE_REJECTED, undefined, logContext);
+        return null;
+    }
+
+    if (!isDataEnvelope(payload) || !isValidData(payload.data)) {
+        logRuntimeFailure(SIGNALDESK_CLIENT_RESPONSE_INVALID, undefined, logContext);
+        return null;
+    }
+
+    return payload.data;
+};
 
 export type SignalDeskAction =
     | "seed-defaults"
@@ -78,26 +167,29 @@ export async function getSignalDeskOverview(): Promise<SignalDeskOverview> {
     const response = await fetch(SIGNALDESK_API_ROUTES.OVERVIEW, {
         cache: "no-store",
     });
-    const payload = await response.json().catch(() => null);
+    const payload = await readSignalDeskClientDataResponse(response, { operation: "overview" }, isSignalDeskOverviewData);
 
-    if (!response.ok || !payload?.data) {
-        throw new Error(payload?.error || "Failed to load SignalDesk");
+    if (!payload) {
+        throw new Error(SIGNALDESK_OVERVIEW_LOAD_FAILED);
     }
 
-    return payload.data;
+    return payload;
 }
 
 export async function getSignalDeskWorkspace(section: SignalDeskSection): Promise<SignalDeskWorkspaceResponse> {
     const response = await fetch(`${SIGNALDESK_API_ROUTES.WORKSPACE}?section=${encodeURIComponent(section)}`, {
         cache: "no-store",
     });
-    const payload = await response.json().catch(() => null);
+    const payload = await readSignalDeskClientDataResponse(response, {
+        operation: "workspace",
+        section,
+    }, isSignalDeskWorkspaceData);
 
-    if (!response.ok || !payload?.data) {
-        throw new Error(payload?.error || "Failed to load SignalDesk workspace");
+    if (!payload) {
+        throw new Error(SIGNALDESK_WORKSPACE_LOAD_FAILED);
     }
 
-    return payload.data;
+    return payload;
 }
 
 export async function runSignalDeskAction<T = unknown>(action: SignalDeskAction, payload: unknown = {}): Promise<T> {
@@ -109,13 +201,16 @@ export async function runSignalDeskAction<T = unknown>(action: SignalDeskAction,
         },
         method: "POST",
     });
-    const responsePayload = await response.json().catch(() => null);
+    const responsePayload = await readSignalDeskClientDataResponse<T>(response, {
+        action,
+        operation: "action",
+    }, isAcknowledgedSignalDeskData);
 
-    if (!response.ok || !responsePayload?.data) {
-        throw new Error(responsePayload?.error || "SignalDesk action failed");
+    if (!responsePayload) {
+        throw new Error(SIGNALDESK_ACTION_FAILED);
     }
 
-    return responsePayload.data as T;
+    return responsePayload;
 }
 
 export async function setSignalDeskKillSwitch(input: {
@@ -134,11 +229,14 @@ export async function setSignalDeskKillSwitch(input: {
         },
         method: "POST",
     });
-    const payload = await response.json().catch(() => null);
+    const payload = await readSignalDeskClientDataResponse(response, {
+        operation: "kill-switch",
+        scope: input.scope,
+    }, isAcknowledgedSignalDeskData);
 
-    if (!response.ok || !payload?.data) {
-        throw new Error(payload?.error || "Failed to update SignalDesk pause");
+    if (!payload) {
+        throw new Error(SIGNALDESK_PAUSE_UPDATE_FAILED);
     }
 
-    return payload.data;
+    return payload;
 }

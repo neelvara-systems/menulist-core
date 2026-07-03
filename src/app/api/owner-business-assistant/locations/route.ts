@@ -20,6 +20,7 @@ import type {
   OwnerBusinessMultiLocationStoreSummary,
 } from '@lib/ownerBusinessAssistant/types';
 import { requireAnyStorePermissionForStore } from '@lib/permissions/server';
+import { getSafeZodValidationDetails } from '@lib/security/inputValidation';
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/middleware/auth';
 
@@ -104,7 +105,7 @@ export const GET = withAuth(async (request: NextRequest, session) => {
     .pick({ storeId: true })
     .safeParse(Object.fromEntries(request.nextUrl.searchParams.entries()));
   if (!parsedScope.success) {
-    return NextResponse.json({ error: 'Invalid query', details: parsedScope.error.flatten() }, { status: 400 });
+    return NextResponse.json({ error: 'Invalid query', details: getSafeZodValidationDetails(parsedScope.error) }, { status: 400 });
   }
 
   const scope = resolveOwnerAssistantSelectedStoreScope(request, session, parsedScope.data.storeId);

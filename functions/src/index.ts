@@ -19,7 +19,10 @@
 // ⚠️ MUST BE FIRST: Load .env.local before any other imports
 if (process.env.FUNCTIONS_EMULATOR === 'true') {
   require('dotenv').config({ path: '.env.local' });
-  console.log('[Dev] Loaded .env.local for emulator');
+  const functionsLogger = require('firebase-functions').logger;
+  functionsLogger.info('[Dev] Loaded .env.local for emulator', {
+    emulator: true,
+  });
 }
 
 import { isDeployed } from './config/secrets';
@@ -47,12 +50,13 @@ if (isDeployed) {
 
 import {
   embedArticleWorker,
+  mapsPlaceCheck,
   processMenuImages,
   publishApprovedJobFn,
   regenerateEmbedding,
 } from './triggers/shared';
 
-export { embedArticleWorker, processMenuImages, publishApprovedJobFn, regenerateEmbedding };
+export { embedArticleWorker, mapsPlaceCheck, processMenuImages, publishApprovedJobFn, regenerateEmbedding };
 
 // ═══════════════════════════════════════════════════════════════
 // 3. SCHEDULED FUNCTIONS (cron jobs)

@@ -4,6 +4,7 @@ import {
     OBPLinkBreakdown,
     OBPLanguageUsage,
     OBPHistoricalWeek,
+    OBPOpenHoursActionBreakdown,
     OBPPeriodMetrics,
     OBPShareBreakdown,
     OBPSourceBreakdown,
@@ -15,6 +16,7 @@ import React from 'react';
 import {
     LuArrowDownRight,
     LuArrowUpRight,
+    LuClock,
     LuExternalLink,
     LuGlobe,
     LuMapPin,
@@ -35,6 +37,19 @@ interface OBPMetricsCardProps {
     loading?: boolean;
     loadingToday?: boolean;
     mode: OBPCardMode;
+}
+
+function dashboardLabel(
+    t: DashboardTranslator,
+    key: string,
+    fallback: string,
+    values?: Record<string, string | number>,
+) {
+    try {
+        return t(key, values);
+    } catch {
+        return fallback;
+    }
 }
 
 function ChangeIndicator({ change, t }: { change: number | null; t: DashboardTranslator }) {
@@ -111,6 +126,30 @@ function SourceBreakdown({ sources, t }: { sources?: OBPSourceBreakdown[]; t: Da
                         </Flex>
                     </Card>
                 ))}
+            </Flex>
+        </div>
+    );
+}
+
+function OpenHoursBreakdown({ breakdown, t }: { breakdown?: OBPOpenHoursActionBreakdown; t: DashboardTranslator }) {
+    const hasAny = Number(breakdown?.open || 0) > 0 || Number(breakdown?.closed || 0) > 0 || Number(breakdown?.unknown || 0) > 0;
+    if (!hasAny) return null;
+
+    return (
+        <div>
+            <Text type="secondary" style={{ display: 'block', fontSize: 12, marginBottom: 8 }}>
+                {dashboardLabel(t, 'details.sections.openHoursActions', 'Open/Closed Action Timing')}
+            </Text>
+            <Flex gap={16} wrap="wrap">
+                {Number(breakdown?.open || 0) > 0 ? (
+                    <Statistic title={dashboardLabel(t, 'details.openHours.open', 'Actions while open')} value={breakdown?.open || 0} prefix={<LuClock size={12} />} valueStyle={{ fontSize: 16 }} />
+                ) : null}
+                {Number(breakdown?.closed || 0) > 0 ? (
+                    <Statistic title={dashboardLabel(t, 'details.openHours.closed', 'Actions while closed')} value={breakdown?.closed || 0} suffix={`${breakdown?.closedShare || 0}%`} prefix={<LuClock size={12} />} valueStyle={{ fontSize: 16 }} />
+                ) : null}
+                {Number(breakdown?.unknown || 0) > 0 ? (
+                    <Statistic title={dashboardLabel(t, 'details.openHours.unknown', 'Actions with hours hidden')} value={breakdown?.unknown || 0} prefix={<LuClock size={12} />} valueStyle={{ fontSize: 16 }} />
+                ) : null}
             </Flex>
         </div>
     );
@@ -216,6 +255,9 @@ function renderPeriodGrid(metrics: OBPPeriodMetrics, t: DashboardTranslator) {
             </div>
             <div style={{ marginTop: 12 }}>
                 <SourceBreakdown sources={metrics.sources} t={t} />
+            </div>
+            <div style={{ marginTop: 12 }}>
+                <OpenHoursBreakdown breakdown={metrics.openHoursActionBreakdown} t={t} />
             </div>
             <div style={{ marginTop: 12 }}>
                 <LanguageBreakdown languages={metrics.topLanguages} t={t} />
@@ -356,6 +398,9 @@ const OBPMetricsCard: React.FC<OBPMetricsCardProps> = ({ data, loading, loadingT
                                 <SourceBreakdown sources={overview.wtd.sources} t={t} />
                             </div>
                             <div style={{ marginTop: 12 }}>
+                                <OpenHoursBreakdown breakdown={overview.wtd.openHoursActionBreakdown} t={t} />
+                            </div>
+                            <div style={{ marginTop: 12 }}>
                                 <LanguageBreakdown languages={overview.wtd.topLanguages} t={t} />
                             </div>
                         </>
@@ -414,6 +459,9 @@ const OBPMetricsCard: React.FC<OBPMetricsCardProps> = ({ data, loading, loadingT
                         </div>
                         <div style={{ marginTop: 12 }}>
                             <SourceBreakdown sources={overall.lifetimeSources} t={t} />
+                        </div>
+                        <div style={{ marginTop: 12 }}>
+                            <OpenHoursBreakdown breakdown={overall.lifetimeOpenHoursActionBreakdown} t={t} />
                         </div>
                         <div style={{ marginTop: 12 }}>
                             <LanguageBreakdown languages={overall.lifetimeLanguages} t={t} />

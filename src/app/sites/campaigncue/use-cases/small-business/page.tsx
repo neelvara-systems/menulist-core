@@ -46,6 +46,10 @@ export const metadata: Metadata = {
     },
 };
 
+function serializeJsonLd(data: Record<string, unknown>): string {
+    return JSON.stringify(data).replace(/</g, "\\u003c");
+}
+
 const JSON_LD = {
     "@context": "https://schema.org",
     "@graph": [
@@ -219,7 +223,7 @@ export default function CampaignCueSmallBusinessUseCasePage() {
         <main className="campaigncue-site campaigncue-use-case-page">
             <script
                 type="application/ld+json"
-                dangerouslySetInnerHTML={{ __html: JSON.stringify(JSON_LD) }}
+                dangerouslySetInnerHTML={{ __html: serializeJsonLd(JSON_LD) }}
             />
             <header className="campaigncue-nav">
                 <a className="campaigncue-brand" href={withBasePath(basePath, "/")}>

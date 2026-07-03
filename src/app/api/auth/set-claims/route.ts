@@ -9,13 +9,14 @@ import {
 } from '@constant/answerlattice/permissions';
 import { DB_COLLECTIONS } from '@constant/database';
 import { ECOMSAI_PLATFORM_SUPPORT_USER_ROLE, ECOMSAI_PLATFORM_USER_ROLE } from '@constant/user';
+import { getBoundedAuthStringContext, logAuthDiagnostic, logAuthFailure } from '@lib/auth/authDiagnostics';
 import { resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
 import { getAuthUserByEmail } from '@lib/auth/serverUserContext';
 import { shouldUseSharedAnswerlatticeFirebase } from '@lib/firebase/answerlatticeConfig';
 import { answerlatticeAdminApp, answerlatticeAuthAdmin, answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
 import { authAdmin } from '@lib/firebase/firebaseAdmin';
+import { readOptionalBoundedJsonBody } from '@lib/security/boundedRequestBody';
 import { validateAPIInput } from '@lib/security/inputValidation';
-import { secureError, secureLog } from '@lib/security/secureLogger';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { withAuth } from '../../../../middleware/auth';
@@ -29,6 +30,38 @@ import { withAuth } from '../../../../middleware/auth';
  * SECURITY: OWASP A01 (Access Control) - Session required
  */
 
+const SET_CLAIMS_MAX_BODY_BYTES = 2 * 1024;
+
+const getSetClaimsEmailLogContext = (email: unknown) => getBoundedAuthStringContext('email', email);
+const getSetClaimsUidLogContext = (uid: unknown) => getBoundedAuthStringContext('uid', uid);
+const getSetClaimsUserLogContext = (userId: unknown) => getBoundedAuthStringContext('userId', userId);
+const getSetClaimsTenantLogContext = (tenantId: unknown) => getBoundedAuthStringContext('tenantId', tenantId);
+const getSetClaimsStoreLogContext = (storeId: unknown) => getBoundedAuthStringContext('storeId', storeId);
+
+const getSetClaimsLogContext = (
+    email: unknown,
+    metadata: {
+        productId?: unknown;
+        role?: unknown;
+        platformRole?: unknown;
+        storeId?: unknown;
+        storeIds?: unknown[];
+        tenantId?: unknown;
+        uid?: unknown;
+        userId?: unknown;
+    } = {},
+) => ({
+    ...getSetClaimsEmailLogContext(email),
+    ...getSetClaimsUidLogContext(metadata.uid),
+    ...getSetClaimsUserLogContext(metadata.userId),
+    ...getSetClaimsTenantLogContext(metadata.tenantId),
+    ...getSetClaimsStoreLogContext(metadata.storeId),
+    ...getBoundedAuthStringContext('productId', metadata.productId),
+    ...getBoundedAuthStringContext('role', metadata.role),
+    ...getBoundedAuthStringContext('platformRole', metadata.platformRole),
+    storeIdsCount: Array.isArray(metadata.storeIds) ? metadata.storeIds.length : undefined,
+});
+
 // Input validation schema
 const setClaimsSchema = z.object({
     uid: z.string().optional().refine(
@@ -39,17 +72,6 @@ const setClaimsSchema = z.object({
     productId: z.string().trim().max(12).optional(),
 });
 
-async function readSetClaimsBody(request: NextRequest): Promise<unknown | null> {
-    const rawBody = await request.text();
-    if (!rawBody.trim()) return {};
-
-    try {
-        return JSON.parse(rawBody);
-    } catch {
-        return null;
-    }
-}
-
 async function createAnswerlatticeCustomTokenIfNeeded(
     email: string,
     displayName: string | null | undefined,
@@ -58,7 +80,7 @@ async function createAnswerlatticeCustomTokenIfNeeded(
     if (shouldUseSharedAnswerlatticeFirebase) return null;
 
     if (!answerlatticeAdminApp) {
-        secureLog('[Auth] Answerlattice Firebase Admin not configured for separate auth sync');
+        logAuthDiagnostic('answerlattice_firebase_admin_missing_for_auth_sync');
         return null;
     }
 
@@ -69,7 +91,7 @@ async function createAnswerlatticeCustomTokenIfNeeded(
         answerlatticeUid = answerlatticeUser.uid;
     } catch (error: any) {
         if (error?.code !== 'auth/user-not-found') {
-            secureError('[Auth] Answerlattice user lookup failed during auth sync', error, { email });
+            logAuthFailure('answerlattice_user_lookup_failed_for_auth_sync', error, getSetClaimsEmailLogContext(email));
             throw error;
         }
 
@@ -252,20 +274,25 @@ export const POST = withAuth(async (request: NextRequest, session) => {
 
         // Get Firebase UID from request body (optional - we'll create if needed).
         // Empty body is equivalent to `{}` for OAuth custom-token creation.
-        const body = await readSetClaimsBody(request);
-        if (body === null) {
-            secureLog('[Auth] Invalid JSON for set-claims');
-            return NextResponse.json(
-                { error: 'Invalid input' },
-                { status: 400 }
-            );
+        const bodyResult = await readOptionalBoundedJsonBody(request, SET_CLAIMS_MAX_BODY_BYTES, {
+            invalidJsonMessage: 'Invalid input',
+            tooLargeMessage: 'Invalid input',
+        });
+        if (bodyResult.ok === false) {
+            logAuthDiagnostic('set_claims_invalid_or_oversized_body', getSetClaimsEmailLogContext(session.user.email));
+            return bodyResult.response;
         }
+        const body = bodyResult.data;
 
         // Validate input (OWASP A03: Injection Prevention)
         const validation = validateAPIInput(setClaimsSchema, body);
         if (!validation.success) {
             const errorMsg = 'error' in validation ? validation.error : 'Invalid input';
-            secureLog('[Auth] Invalid input for set-claims', { validationError: errorMsg });
+            logAuthDiagnostic('set_claims_invalid_input', {
+                ...getSetClaimsEmailLogContext(session.user.email),
+                validationErrorPresent: errorMsg.length > 0,
+                validationErrorLength: errorMsg.length,
+            });
             return NextResponse.json(
                 { error: 'Invalid input' },
                 { status: 400 }
@@ -297,9 +324,9 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             || answerlatticeDbUser.deleted === true
             || answerlatticeDbUser.authDisabled === true
         )) {
-            secureLog('[Auth] Rejected inactive Answerlattice auth profile', {
-                email: session.user.email,
-                userId: answerlatticeDbUser.id,
+            logAuthDiagnostic('set_claims_inactive_answerlattice_auth_profile_rejected', {
+                ...getSetClaimsEmailLogContext(session.user.email),
+                ...getSetClaimsUserLogContext(answerlatticeDbUser.id),
             });
             return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
         }
@@ -344,9 +371,10 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         }
 
         if (effectiveTargetStoreId && !hasDefaultPlatformAccess && !canAccessStore(dbUser, effectiveTargetStoreId)) {
-            secureLog('[Auth] Rejected set-claims store switch outside user stores', {
-                requestedStoreId: effectiveTargetStoreId,
-                userId: dbUser.id,
+            logAuthDiagnostic('set_claims_store_switch_outside_user_stores_rejected', {
+                ...getSetClaimsEmailLogContext(session.user.email),
+                ...getSetClaimsStoreLogContext(effectiveTargetStoreId),
+                ...getSetClaimsUserLogContext(dbUser.id),
             });
             return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
         }
@@ -388,10 +416,15 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                     customClaims,
                 );
             } catch (error) {
-                secureError('[Auth] Answerlattice Firebase custom-token sync failed', error as Error, {
-                    email: session.user.email,
-                    storeId: claimStoreId,
-                    tenantId: customClaims.tenantId,
+                logAuthFailure('answerlattice_firebase_custom_token_sync_failed', error, {
+                    ...getSetClaimsLogContext(session.user.email, {
+                        productId,
+                        role: customClaims.role,
+                        platformRole: customClaims.platformRole,
+                        storeId: claimStoreId,
+                        tenantId: customClaims.tenantId,
+                        userId: customClaims.uId,
+                    }),
                 });
                 return NextResponse.json(
                     { error: 'Answerlattice Firebase Auth is not available' },
@@ -404,9 +437,9 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         if (uid) {
             const firebaseUser = await authAdmin.getUser(uid);
             if (normalizeEmail(firebaseUser.email) !== normalizeEmail(session.user.email)) {
-                secureLog('[Auth] Rejected set-claims UID/email mismatch', {
-                    uid,
-                    sessionEmail: session.user.email,
+                logAuthDiagnostic('set_claims_uid_email_mismatch_rejected', {
+                    ...getSetClaimsEmailLogContext(session.user.email),
+                    ...getSetClaimsUidLogContext(uid),
                 });
                 return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
             }
@@ -414,13 +447,17 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             await authAdmin.setCustomUserClaims(uid, customClaims);
             const customToken = await authAdmin.createCustomToken(uid, customClaims);
 
-            secureLog('[Auth] Custom claims set for existing Firebase user', {
-                uid,
-                email: session.user.email,
-                role: customClaims.role,
-                platformRole: customClaims.platformRole,
-                tenantId: customClaims.tenantId,
-                storeId: customClaims.storeId,
+            logAuthDiagnostic('set_claims_existing_firebase_user_synced', {
+                ...getSetClaimsLogContext(session.user.email, {
+                    productId,
+                    role: customClaims.role,
+                    platformRole: customClaims.platformRole,
+                    storeId: customClaims.storeId,
+                    storeIds: customClaims.storeIds,
+                    tenantId: customClaims.tenantId,
+                    uid,
+                    userId: customClaims.uId,
+                }),
             });
 
             return NextResponse.json({
@@ -438,7 +475,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             uid = firebaseUser.uid;
         } catch (error: any) {
             if (error?.code !== 'auth/user-not-found') {
-                secureError('[Auth] Firebase user lookup failed during auth sync', error, { email: session.user.email });
+                logAuthFailure('firebase_user_lookup_failed_during_auth_sync', error, getSetClaimsEmailLogContext(session.user.email));
                 throw error;
             }
 
@@ -448,7 +485,10 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 displayName: session.user.name || undefined,
             });
             uid = newUser.uid;
-            secureLog('[Auth] Created Firebase Auth user for OAuth login', { email: session.user.email, uid });
+            logAuthDiagnostic('firebase_auth_user_created_for_oauth_login', {
+                ...getSetClaimsEmailLogContext(session.user.email),
+                ...getSetClaimsUidLogContext(uid),
+            });
         }
 
         // Set custom claims
@@ -457,13 +497,17 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         // Create custom token for client to sign in with
         const customToken = await authAdmin.createCustomToken(uid, customClaims);
 
-        secureLog('[Auth] Custom token created for OAuth user', {
-            uid,
-            email: session.user.email,
-            role: customClaims.role,
-            platformRole: customClaims.platformRole,
-            tenantId: customClaims.tenantId,
-            storeId: customClaims.storeId,
+        logAuthDiagnostic('set_claims_oauth_custom_token_created', {
+            ...getSetClaimsLogContext(session.user.email, {
+                productId,
+                role: customClaims.role,
+                platformRole: customClaims.platformRole,
+                storeId: customClaims.storeId,
+                storeIds: customClaims.storeIds,
+                tenantId: customClaims.tenantId,
+                uid,
+                userId: customClaims.uId,
+            }),
         });
 
         return NextResponse.json({
@@ -474,7 +518,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         });
 
     } catch (error) {
-        secureError('Failed to set custom claims', error as Error, { email: session?.user?.email });
+        logAuthFailure('set_claims_failed', error, getSetClaimsEmailLogContext(session?.user?.email));
         return NextResponse.json(
             { error: 'Failed to set custom claims' },
             { status: 500 }

@@ -6,10 +6,11 @@
  * Follows existing pattern: Client-side upload via DAL, not API route
  */
 
-import { removePinnedSlide, updatePinnedSlideCaption, uploadScreenSlide } from "@database/campaigns";
+import { assertDigitalScreenMutationSucceeded, removePinnedSlide, updatePinnedSlideCaption, uploadScreenSlide } from "@database/campaigns";
 import { getMediaProfileAcceptAttribute } from "@lib/media/imageProfiles";
 import { prepareMediaImage, toPreparedUploadName, type PreparedMediaImage } from "@lib/media/prepareMediaImage";
 import { normalizeOwnerSlideCaption } from "@lib/screen/screenContent";
+import { getBoundedScreenStringContext, logScreenSettingsFailure } from "@lib/screen/screenDiagnostics";
 import MediaImageCard from "@/components/shared/media/MediaImageCard";
 import MediaImageAdjustModal from "@/components/shared/media/MediaImageAdjustModal";
 import { ScreenSlide } from "@type/campaigns";
@@ -18,6 +19,8 @@ import { useState } from "react";
 import { LuCheck, LuClock, LuImage, LuPencil, LuTrash2 } from "react-icons/lu";
 
 const { Text } = Typography;
+const SCREEN_SLIDE_PREPARE_FAILED_MESSAGE = 'Could not prepare slide image. Use a JPG, PNG, or WebP image under the slide size limit.';
+const SCREEN_SLIDE_UPLOAD_FAILED_MESSAGE = 'Failed to upload slide';
 
 interface OwnerUploadsProps {
     pinnedSlides: ScreenSlide[];
@@ -65,8 +68,12 @@ export default function OwnerUploads({
             setPendingSlideCaption(normalizeOwnerSlideCaption(file.name.replace(/\.[^/.]+$/, "")));
             message.success('Slide ready. Frame and save it.');
 
-        } catch (error: any) {
-            message.error(error.message || 'Failed to upload slide');
+        } catch (error) {
+            logScreenSettingsFailure('desktop_digital_screen_slide_prepare_failed', error, {
+                ...getBoundedScreenStringContext('fileName', file.name),
+                fileSizeBytes: file.size,
+            });
+            message.error(SCREEN_SLIDE_PREPARE_FAILED_MESSAGE);
         } finally {
             setUploading(false);
         }
@@ -106,8 +113,13 @@ export default function OwnerUploads({
             setPendingSlide(null);
             setPendingSlideCaption('');
             onSlideUploaded();
-        } catch (error: any) {
-            message.error(error.message || 'Failed to upload slide');
+        } catch (error) {
+            logScreenSettingsFailure('desktop_digital_screen_slide_upload_failed', error, {
+                ...getBoundedScreenStringContext('fileName', pendingSlide.fileName),
+                ...getBoundedScreenStringContext('caption', pendingSlideCaption),
+                fileSizeBytes: pendingSlide.prepared.sizeBytes,
+            });
+            message.error(SCREEN_SLIDE_UPLOAD_FAILED_MESSAGE);
         } finally {
             setUploading(false);
         }
@@ -116,12 +128,20 @@ export default function OwnerUploads({
     const handleSaveSlideCaption = async (slideId: string) => {
         setSavingCaptionId(slideId);
         try {
-            await updatePinnedSlideCaption(slideId, normalizeOwnerSlideCaption(editingSlideCaption));
+            const updateResult = await updatePinnedSlideCaption(slideId, normalizeOwnerSlideCaption(editingSlideCaption));
+            assertDigitalScreenMutationSucceeded(
+                updateResult,
+                'desktop_digital_screen_caption_update_rejected',
+            );
             message.success('Slide name updated');
             setEditingSlideId(null);
             setEditingSlideCaption('');
             onSlideUploaded();
-        } catch {
+        } catch (error) {
+            logScreenSettingsFailure('desktop_digital_screen_caption_update_failed', error, {
+                ...getBoundedScreenStringContext('slideId', slideId),
+                ...getBoundedScreenStringContext('caption', editingSlideCaption),
+            });
             message.error('Failed to update slide name');
         } finally {
             setSavingCaptionId(null);
@@ -131,12 +151,19 @@ export default function OwnerUploads({
     const handleDelete = async (slideId: string) => {
         try {
             // Delete via DAL (follows existing pattern)
-            await removePinnedSlide(slideId);
+            const deleteResult = await removePinnedSlide(slideId);
+            assertDigitalScreenMutationSucceeded(
+                deleteResult,
+                'desktop_digital_screen_slide_delete_rejected',
+            );
 
             message.success('Slide removed');
             onSlideDeleted(slideId);
 
         } catch (error) {
+            logScreenSettingsFailure('desktop_digital_screen_slide_delete_failed', error, {
+                ...getBoundedScreenStringContext('slideId', slideId),
+            });
             message.error('Failed to remove slide');
         }
     };

@@ -1,6 +1,6 @@
 'use client';
 
-import { updateTicket } from '@database/tickets';
+import { assertSupportTicketUpdateSucceeded, updateTicket } from '@database/tickets';
 import { useAppDispatch } from '@hook/useAppDispatch';
 import AddSupportTicket from '@organisms/addSupportTicket';
 import { startLoader, stopLoader } from '@reduxSlices/loader';
@@ -121,7 +121,17 @@ const PlatformTicketsView = forwardRef<PlatformTicketsViewRef, PlatformTicketsVi
     const handleDelete = async (ticket: SupportTicketType) => {
         dispatch(startLoader('Deleting ticket...'));
         try {
-            await updateTicket({ id: ticket.id, deleted: true });
+            const result = await updateTicket({
+                id: ticket.id,
+                deleted: true,
+                tId: ticket.tId,
+                sId: ticket.sId,
+            });
+            assertSupportTicketUpdateSucceeded(
+                result,
+                ticket.id,
+                'platform_ticket_soft_delete_rejected',
+            );
 
             // Update local state by removing the ticket
             const updatedTickets = tickets.filter(t => t.id !== ticket.id);
@@ -139,7 +149,17 @@ const PlatformTicketsView = forwardRef<PlatformTicketsViewRef, PlatformTicketsVi
     const handleRestore = async (ticket: SupportTicketType) => {
         dispatch(startLoader('Restoring ticket...'));
         try {
-            await updateTicket({ id: ticket.id, deleted: false });
+            const result = await updateTicket({
+                id: ticket.id,
+                deleted: false,
+                tId: ticket.tId,
+                sId: ticket.sId,
+            });
+            assertSupportTicketUpdateSucceeded(
+                result,
+                ticket.id,
+                'platform_ticket_restore_rejected',
+            );
 
             // Update local state by removing from deleted list
             const updatedTickets = tickets.filter(t => t.id !== ticket.id);

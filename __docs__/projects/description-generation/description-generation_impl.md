@@ -1,10 +1,12 @@
 # Description Generation — Technical Implementation
 
 **Feature:** AI-Powered Menu Item Description Generation  
-**Status:** ✅ Production Ready  
+**Status:** Implemented source evidence; not current launch certification
 **Last Updated:** January 31, 2026  
 **Version:** 2.0  
 **Source of Truth:** Codebase (`src/app/api/descriptions/`, `src/services/ai/description/`)
+
+**Launch boundary:** This implementation note documents the description-generation feature. Current release approval requires the active [production-readiness audit](../../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../../production-readiness/external-certification-runbook.md) evidence, target feature-flag/provider review, AI accounting/source gates, provider smoke, browser/mobile editor QA, and deploy evidence for the target environment.
 
 ---
 
@@ -127,6 +129,10 @@
 
 ---
 
+## June 29 Response Diagnostics
+
+`src/services/ai/description/generateDescriptionViaAPI.ts` now parses successful `/api/descriptions` responses through `readAiServiceResponseJson()` with a 1MB cap. Malformed, oversized, empty, or non-object responses log `ai_description_response_parse_failed` / `ai_description_response_invalid` with bounded project/file/count metadata, then preserve the existing null fallback and owner-visible description failure behavior.
+
 ## File Structure
 
 ```
@@ -137,7 +143,7 @@ src/
 │
 ├── services/ai/description/
 │   ├── descriptionUtils.ts         # Service layer utilities (113 lines)
-│   └── generateDescriptionViaAPI.ts # API client (38 lines)
+│   └── generateDescriptionViaAPI.ts # API client with bounded response parsing
 │
 ├── components/templates/main-app/projects/
 │   ├── editorView/
@@ -949,10 +955,10 @@ The following copy is production-locked per ChatGPT doctrine review. Do not modi
 | -------------------------------------------------------- | ---------------------------- |
 | `description-generation_spec.md`                         | Product specification        |
 | `README.md`                                              | Navigation hub               |
-| `../Assessments/ASSESSMENT-09-DESCRIPTION-GENERATION.md` | Original security assessment |
+| `../Assessments/assessment-09-description-generation.md` | Original security assessment |
 
 ---
 
-_Document Status: ✅ PRODUCTION READY_  
+_Document Status: Historical description-generation implementation evidence - not current launch certification_
 _Source of Truth: Codebase (verified Jan 31, 2026)_  
 _Follows `IDE_PROMPTS/6. DOCUMENTATION STRUCTURE PROMPT.md` standards._

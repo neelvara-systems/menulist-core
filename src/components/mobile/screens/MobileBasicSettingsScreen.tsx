@@ -1,8 +1,8 @@
 'use client'
 
 import { BUSINESS_TYPES, resolveStoreBusinessCategory } from '@data/shared/businessTypes';
-import { updateStore } from '@database/stores';
-import { updateTenant } from '@database/tenants';
+import { assertStoreUpdateSucceeded, updateStore } from '@database/stores';
+import { assertTenantUpdateSucceeded, updateTenant } from '@database/tenants';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import type { UserUploadedFileType } from '@type/common';
 import MediaImageAdjustModal from '@/components/shared/media/MediaImageAdjustModal';
@@ -16,6 +16,11 @@ import { useCallback, useContext, useEffect, useState } from 'react';
 import { LuBriefcase, LuBuilding2, LuMail, LuMapPin, LuPhoneCall, LuUser } from 'react-icons/lu';
 import { Button, Card, DotLoading, Flex, Input, NavBar, Select, Text, TextArea, Toast } from '../antd';
 import MobileSettingsScreenHeader from '../components/MobileSettingsScreenHeader';
+import {
+    getBoundedMobileOwnerStringContext,
+    getMobileOwnerStoreLogContext,
+    logMobileOwnerFailure,
+} from '../utils/mobileOwnerDiagnostics';
 
 interface MobileBasicSettingsScreenProps {
     onBack: () => void;
@@ -151,11 +156,21 @@ export default function MobileBasicSettingsScreen({ onBack }: MobileBasicSetting
                 tenantId: storeDetails.tenantId,
                 ...updates,
             } as any);
+            assertStoreUpdateSucceeded(
+                savedStore,
+                storeDetails.storeId,
+                'mobile_basic_settings_store_update_rejected',
+            );
             if (formData.tenantName.trim() && formData.tenantName.trim() !== tenantDetails?.name && storeDetails?.tenantId) {
-                await updateTenant({
+                const tenantResult = await updateTenant({
                     name: formData.tenantName.trim(),
                     tenantId: storeDetails.tenantId,
                 });
+                assertTenantUpdateSucceeded(
+                    tenantResult,
+                    storeDetails.tenantId,
+                    'mobile_basic_settings_tenant_update_rejected',
+                );
                 setTenantDetails((previous: any) => ({ ...(previous || {}), name: formData.tenantName.trim() }));
             }
             setStoreDetails((previous: any) => ({
@@ -175,7 +190,17 @@ export default function MobileBasicSettingsScreen({ onBack }: MobileBasicSetting
             setOriginalFormData(formData);
             setOriginalLogoUrl(savedStore?.logo || selectedLogo?.url || storeDetails.logo || '');
             Toast.show({ content: t('saved'), duration: 1000 });
-        } catch {
+        } catch (error) {
+            logMobileOwnerFailure('mobile_basic_settings_save_failed', error, {
+                ...getMobileOwnerStoreLogContext(storeDetails.storeId, storeDetails.tenantId),
+                ...getBoundedMobileOwnerStringContext('businessName', formData.name),
+                ...getBoundedMobileOwnerStringContext('tenantName', formData.tenantName),
+                ...getBoundedMobileOwnerStringContext('businessType', formData.businessType),
+                hasGeoUpdate: Boolean(updates.geo),
+                hasLogoUpdate: Boolean(updates.imageToUpdate),
+                hasPhoneUpdate: Boolean(normalizedPhone.phone),
+                tenantNameChanged: formData.tenantName.trim() !== tenantDetails?.name,
+            });
             setStoreDetails((previous: any) => ({
                 ...previous,
                 addressLine: storeDetails.addressLine,
@@ -223,9 +248,13 @@ export default function MobileBasicSettingsScreen({ onBack }: MobileBasicSetting
                 url: prepared.dataUrl,
             });
         } catch (error) {
-            Toast.show({ content: error instanceof Error ? error.message : 'Could not prepare logo.', duration: 1800 });
+            logMobileOwnerFailure('mobile_basic_settings_logo_prepare_failed', error, {
+                ...getMobileOwnerStoreLogContext(storeDetails?.storeId, storeDetails?.tenantId),
+                ...getBoundedMobileOwnerStringContext('fileName', file.name),
+            });
+            Toast.show({ content: 'Could not prepare logo.', duration: 1800 });
         }
-    }, []);
+    }, [storeDetails?.storeId, storeDetails?.tenantId]);
 
     const handleReset = useCallback(() => {
         setFormData(originalFormData);

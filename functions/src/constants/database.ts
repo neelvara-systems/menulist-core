@@ -41,6 +41,8 @@ export const DB_COLLECTIONS = {
     OWNER_BUSINESS_ASSISTANT_THREADS: 'ownerBusinessAssistantThreads',
     OWNER_BUSINESS_ASSISTANT_ANSWER_EVENTS: 'ownerBusinessAssistantAnswerEvents',
     OWNER_BUSINESS_ASSISTANT_FEEDBACK: 'ownerBusinessAssistantFeedback',
+    IMAGE_BATCH_PROCESSING_JOBS: 'imageBatchProcessingJobs',
+    AI_IMAGE_PROMPT_CACHE: 'aiImagePromptCache',
     MENU_IMAGE_PROCESSING_JOBS: 'menuImageProcessingJobs',
     MENU_LINK_IMPORT_ARTIFACTS: 'menuLinkImportArtifacts',
 
@@ -74,6 +76,8 @@ export const DB_COLLECTIONS = {
     SUBSCRIPTIONS: 'subscriptions',
     SUBSCRIPTION_PAYMENTS: 'subscription_payments',
     PAYMENT_TRANSACTIONS: 'payment_transactions',
+    FOUNDER_REVENUE_MOVEMENTS: 'founderRevenueMovements',
+    FOUNDER_ONBOARDING_TRANSITIONS: 'founderOnboardingTransitions',
 
     // Support
     SUPPORT_TICKETS: 'supportTickets',

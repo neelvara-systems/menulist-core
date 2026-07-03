@@ -25,6 +25,11 @@ export type AiOperationPresentationTranslator = (
 
 const countArray = (value: unknown): number => (Array.isArray(value) ? value.length : 0);
 
+const countFromSummary = (value: unknown): number => {
+    const count = Number(value || 0);
+    return Number.isFinite(count) && count > 0 ? count : 0;
+};
+
 const baseFormatCount = (count: number, singular: string, plural = `${singular}s`) => (
     `${count.toLocaleString()} ${count === 1 ? singular : plural}`
 );
@@ -155,6 +160,9 @@ export const getAiOperationTone = (action?: string | null): AiOperationTone => {
 };
 
 const countDescriptionRows = (operation: AiOperationPresentationInput): number => {
+    const compactCount = countFromSummary(operation.clientResponse?.descriptionSummary?.descriptionCount);
+    if (compactCount > 0) return compactCount;
+
     if (!operation.clientResponse || typeof operation.clientResponse !== "object" || Array.isArray(operation.clientResponse)) {
         return 0;
     }
@@ -170,6 +178,9 @@ const countDescriptionRows = (operation: AiOperationPresentationInput): number =
 };
 
 const countTranslationRows = (operation: AiOperationPresentationInput): number => {
+    const compactCount = countFromSummary(operation.clientResponse?.translationsCount);
+    if (compactCount > 0) return compactCount;
+
     if (operation.clientResponse?.translations && typeof operation.clientResponse.translations === "object") {
         return Object.keys(operation.clientResponse.translations).length;
     }
@@ -200,8 +211,8 @@ export const getAiOperationOwnerSummary = (
     const action = operation.action;
 
     if (action === AI_ACTIONS_TYPES.IMAGE_PROCESSING || action === AI_ACTIONS_TYPES.PUBLIC_MENU_EXTRACTION) {
-        const items = countArray(operation.clientResponse?.data?.items);
-        const categories = countArray(operation.clientResponse?.data?.categories);
+        const items = countArray(operation.clientResponse?.data?.items) || Number(operation.clientResponse?.dataSummary?.itemsCount || 0);
+        const categories = countArray(operation.clientResponse?.data?.categories) || Number(operation.clientResponse?.dataSummary?.categoriesCount || 0);
         if (items > 0 || categories > 0) {
             return translate(
                 translator,
@@ -254,7 +265,9 @@ export const getAiOperationOwnerSummary = (
     }
 
     if (action === AI_ACTIONS_TYPES.IMAGE_GENERATION || action === AI_ACTIONS_TYPES.BATCH_IMAGE_GENERATION) {
-        const images = countArray(operation.clientResponse);
+        const images = countArray(operation.clientResponse)
+            || countFromSummary(operation.clientResponse?.generatedImageCount)
+            || countFromSummary(operation.clientResponse?.arrayCount);
         const itemName = operation.itemDetails?.name;
         if (images > 0 && itemName) {
             return translate(

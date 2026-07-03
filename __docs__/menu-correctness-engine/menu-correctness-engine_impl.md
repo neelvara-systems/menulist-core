@@ -3,7 +3,7 @@
 **Version:** 3.1
 **Status:** ✅ IMPLEMENTED — Active (`ENABLE_MCE: true`)
 **Audience:** Developers
-**Last Updated:** June 11, 2026
+**Last Updated:** June 27, 2026
 
 ---
 
@@ -175,6 +175,7 @@ The Publish-Gate is a UX enforcement layer that reads `_mce` metadata to block c
 
 - **MCE core (CSR)** is silent — stamps metadata, no toasts, no popups, no notifications
 - **Publish-Gate** is the only place where the owner sees validation feedback
+- **Publish-Gate copy is bounded** — MCE validation messages pass through `getSafeUiErrorMessage()` with fixed fallback copy before owner display
 - This separation ensures MCE authority rule #4 ("Silent authority, zero notifications") is preserved while still giving the owner actionable feedback at the right moment
 
 ```typescript
@@ -229,18 +230,19 @@ The `_mce` field is a nested object on the existing project document. No composi
 | `src/lib/mce/correctnessResolver.ts` | CSR — all 17 validation rules             | 727   |
 | `src/lib/mce/utils.ts`               | Extracted `sanitizeForClient()` + helpers | 89    |
 | `src/lib/mce/index.ts`               | MCE entry point — `mceValidate()`         | 55    |
+| `src/lib/mce/diagnostics.ts`         | Bounded validation result/failure logging | 47    |
 
 ### Modified Files
 
 | File                                                                | Change                                       | Impact                             |
 | ------------------------------------------------------------------- | -------------------------------------------- | ---------------------------------- |
-| `src/database/projects/index.ts`                                    | Add MCE validation hook in `updateProject()` | Low — conditional call behind flag |
+| `src/database/projects/index.ts`                                    | Add MCE validation hook in `updateProject()` plus bounded diagnostics | Low — conditional call behind flag |
 | `src/config/features.ts`                                            | Add `ENABLE_MCE` flag                        | Minimal                            |
 | `src/components/templates/main-app/projects/types/project.types.ts` | Add `_mce` field to `Project` interface      | Minimal — optional field           |
 | `src/components/templates/main-app/projects/editorView/Editor.tsx`  | Publish-Gate in `onContinueClick()`          | Low — conditional behind flag      |
 | `src/app/_client/[[...slug]]/page.tsx`                              | Strip `_mce` in `sanitizeForClient()`        | 1 line — delete internal field     |
 
-**Total: 4 new files (1,015 lines), 5 modified files.**
+**Total: 5 new files (1,062 lines), 5 modified files.**
 
 No new Firestore collections. No new Cloud Functions. No new API routes.
 
@@ -296,16 +298,17 @@ if (FEATURE_FLAGS.ENABLE_MCE && data.projectId) {
       projectData: data as Record<string, any>,
       isOutlet: !!oldProject?.masterProjectId,
       masterProjectId: oldProject?.masterProjectId,
+      oldProjectData: oldProject as Record<string, any> | undefined,
     });
     // Merge verification metadata into save data
     (data as any)._mce = toMCEMetadata(result);
-    // Lightweight internal logging (dev console only, no UI)
-    console.log(
-      `[MCE] verified=${result.verified} rules=${result.rulesPassed}/${result.rulesEvaluated} warnings=${result.warnings.length} errors=${result.errors.length}`,
-    );
+    logMCEValidationResult(result);
   } catch (e) {
     // Silent fail — MCE failure never blocks owner
-    console.warn("[MCE] Validation failed (non-blocking):", e);
+    logMCEValidationFailure(e, {
+      isOutlet: Boolean(oldProject?.masterProjectId),
+      oldProjectPresent: Boolean(oldProject),
+    });
   }
 }
 
@@ -315,6 +318,12 @@ await setDoc(await getDataDocRef(data.projectId), updateData, { merge: true });
 ```
 
 **Key difference from old architecture:** MCE runs BEFORE the write, not after. The `_mce` field is part of the same `setDoc` call — zero extra Firebase operations.
+
+**Diagnostics contract:** `src/lib/mce/diagnostics.ts` records only bounded validation counts and normalized source error name/code/status. It does not log menu text, project payloads, project IDs, owner input, Firestore document data, or raw browser/provider exceptions. The validation result summary is development-only; validation failures remain non-blocking and use secure diagnostics.
+
+`src/components/templates/main-app/projects/utils/editorDiagnostics.ts` is the bounded client-side diagnostics helper for the surrounding menu editor workflow. It covers linked-outlet resolution, Publish-Gate validation, Menu Quality publish-intercept failures, editor save/sync, item content generation, category time-slot preset creation, and uploaded image deletion failures. Editor modal diagnostics record only project/file/item/category/store/image presence and length metadata, counts, booleans, and normalized source error name/code/status. They must not direct-console raw menu text, image URLs, owner-entered item/category names, project/store IDs, Firestore documents, Storage provider responses, or browser/provider exceptions.
+
+Publish-Gate owner-visible validation messages are also routed through the shared safe UI message helper. If a future validation rule ever produces technical-looking text, URLs, structured data, or provider/runtime wording, the owner modal falls back to fixed local copy instead of rendering the raw message.
 
 ### 5.2 Surface Data Paths (Unchanged)
 

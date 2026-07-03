@@ -281,9 +281,10 @@ service firebase.storage {
     }
     
     // ═══════════════════════════════════════════════════════════
-    // LEGACY PROJECT STORAGE PATTERN
+    // LEGACY PROJECT STORAGE PATTERN (READ-ONLY CUTOVER)
     // Path: MenuListAi/project/{type}/{fileId}
-    // TODO: Migrate to tenant-scoped pattern
+    // Active uploads now use tenant-scoped projects/{fileType}/{tId}/{sId}/{fileId}.
+    // Keep authenticated reads for existing objects, but block new writes/deletes.
     // ═══════════════════════════════════════════════════════════
     
     /**
@@ -292,8 +293,7 @@ service firebase.storage {
      */
     match /MenuListAi/project/files/{fileId} {
       allow read: if isAuthenticated();
-      allow write: if isAuthenticated() && isValidImageOrDocumentUpload();
-      allow delete: if isAuthenticated();
+      allow write, delete: if false;
     }
     
     /**
@@ -302,8 +302,7 @@ service firebase.storage {
      */
     match /MenuListAi/project/generated/{projectId}/{fileId} {
       allow read: if isAuthenticated();
-      allow write: if isAuthenticated() && isValidImageUpload();
-      allow delete: if isAuthenticated();
+      allow write, delete: if false;
     }
     
     /**
@@ -312,8 +311,7 @@ service firebase.storage {
      */
     match /MenuListAi/project/edited/{projectId}/{fileId} {
       allow read: if isAuthenticated();
-      allow write: if isAuthenticated() && isValidImageUpload();
-      allow delete: if isAuthenticated();
+      allow write, delete: if false;
     }
     
     /**
@@ -322,8 +320,7 @@ service firebase.storage {
      */
     match /MenuListAi/project/custom/{projectId}/{fileId} {
       allow read: if isAuthenticated();
-      allow write: if isAuthenticated() && isValidImageUpload();
-      allow delete: if isAuthenticated();
+      allow write, delete: if false;
     }
     
     /**

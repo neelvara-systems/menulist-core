@@ -9,6 +9,12 @@
 
 import { OWNER_ANALYTICS_AI_MODEL } from '../../constants/ai';
 import { genAIClient } from '../../genAiClient';
+import { geminiLogger, getGeminiErrorContext } from './geminiDiagnostics';
+
+const GEMINI_OWNER_ACTION_PLAN_EMPTY_RESPONSE = 'GEMINI_OWNER_ACTION_PLAN_EMPTY_RESPONSE';
+const GEMINI_OWNER_ACTION_PLAN_FAILED = 'GEMINI_OWNER_ACTION_PLAN_FAILED';
+const GEMINI_OWNER_ACTION_PLAN_INVALID_RESPONSE = 'GEMINI_OWNER_ACTION_PLAN_INVALID_RESPONSE';
+const GEMINI_OWNER_ACTION_PLAN_PARSE_FAILED = 'GEMINI_OWNER_ACTION_PLAN_PARSE_FAILED';
 
 export type OwnerActionPriority = 'high' | 'medium' | 'low';
 
@@ -67,18 +73,27 @@ Output:
 }
 
 function parseJson(text: string): { actions: OwnerActionCandidate[] } {
-    let cleanText = text.trim();
-    if (cleanText.startsWith('```json')) {
-        cleanText = cleanText.replace(/```json\n?/, '').replace(/```\n?$/, '');
-    } else if (cleanText.startsWith('```')) {
-        cleanText = cleanText.replace(/```\n?/, '').replace(/```\n?$/, '');
-    }
+    try {
+        let cleanText = text.trim();
+        if (cleanText.startsWith('```json')) {
+            cleanText = cleanText.replace(/```json\n?/, '').replace(/```\n?$/, '');
+        } else if (cleanText.startsWith('```')) {
+            cleanText = cleanText.replace(/```\n?/, '').replace(/```\n?$/, '');
+        }
 
-    const parsed = JSON.parse(cleanText);
-    if (!Array.isArray(parsed.actions)) {
-        throw new Error('Invalid owner action response: actions array missing');
+        const parsed = JSON.parse(cleanText);
+        if (!Array.isArray(parsed.actions)) {
+            throw new Error(GEMINI_OWNER_ACTION_PLAN_INVALID_RESPONSE);
+        }
+        return parsed;
+    } catch (error) {
+        geminiLogger.error('[Gemini] Failed to parse owner action plan response', {
+            failureCode: GEMINI_OWNER_ACTION_PLAN_PARSE_FAILED,
+            responseLength: text.length,
+            error: getGeminiErrorContext(error),
+        });
+        throw new Error(GEMINI_OWNER_ACTION_PLAN_PARSE_FAILED);
     }
-    return parsed;
 }
 
 function sanitizeAiActions(
@@ -110,6 +125,10 @@ export async function generateOwnerActionPlan(
     }
 
     try {
+        geminiLogger.info('[Gemini] Generating owner action plan wording', {
+            candidateCount: trimmedCandidates.length,
+        });
+
         const result = await genAIClient.models.generateContent({
             model: OWNER_ANALYTICS_AI_MODEL,
             contents: [{ role: 'user', parts: [{ text: `${SYSTEM_PROMPT}\n\n${buildPrompt(trimmedCandidates)}` }] }],
@@ -119,16 +138,26 @@ export async function generateOwnerActionPlan(
             },
         });
         const text = result.text;
-        if (!text) throw new Error('Empty response from Gemini');
+        if (!text) throw new Error(GEMINI_OWNER_ACTION_PLAN_EMPTY_RESPONSE);
 
         const parsed = parseJson(text);
         const actions = sanitizeAiActions(trimmedCandidates, parsed.actions);
+        geminiLogger.info('[Gemini] Owner action plan wording generated successfully', {
+            candidateCount: trimmedCandidates.length,
+            actionCount: actions.length,
+            generatedBy: actions.length > 0 ? 'ai' : 'rules',
+        });
+
         return {
             generatedBy: actions.length > 0 ? 'ai' : 'rules',
             actions: actions.length > 0 ? actions : trimmedCandidates,
         };
     } catch (error) {
-        console.error('[Gemini] Owner action plan generation failed:', error);
+        geminiLogger.error('[Gemini] Owner action plan generation failed', {
+            failureCode: GEMINI_OWNER_ACTION_PLAN_FAILED,
+            candidateCount: trimmedCandidates.length,
+            error: getGeminiErrorContext(error),
+        });
         return { generatedBy: 'rules', actions: trimmedCandidates };
     }
 }

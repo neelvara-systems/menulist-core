@@ -15,12 +15,17 @@ import { getAnswerlatticeWidgetKeyRecordByHash } from "@lib/answerlattice/widget
 import { answerlatticeFirestoreAdmin } from "@lib/firebase/answerlatticeFirebaseAdmin";
 import { shouldUseSharedAnswerlatticeFirebase } from "@lib/firebase/answerlatticeConfig";
 import { admin } from "@lib/firebase/firebaseAdmin";
+import { isPlatformEntityBlocked } from "@lib/platform/entityBlock";
+import { getBoundedSecurityStringContext } from "@lib/security/securityDiagnostics";
 import { secureLog } from "@lib/security/secureLogger";
 import { createHash } from "crypto";
 import { NextRequest, NextResponse } from "next/server";
+import { getClientIp, hashPublicRateLimitValue } from "src/middleware/publicApi";
 
 /** Current schema version for pull API responses */
 export const PULL_API_SCHEMA_VERSION = "1.0";
+export const PULL_API_RESPONSE_CACHE_CONTROL = "private, max-age=60, stale-while-revalidate=300";
+export const PULL_API_RESPONSE_VARY = "X-API-Key";
 const PUBLIC_API_KEY_PATTERN = /^(ml|cn|al)_[A-Za-z0-9_-]{20,128}$/;
 
 function normalizePublicApiKey(apiKey: string | null): string | null {
@@ -77,6 +82,29 @@ export function generateETag(payload: Record<string, any>): string {
     return createHash('sha256').update(json).digest('hex').slice(0, 32);
 }
 
+export function buildPullApiResponseHeaders(etag: string): Record<string, string> {
+    return {
+        'Cache-Control': PULL_API_RESPONSE_CACHE_CONTROL,
+        'ETag': etag,
+        'Vary': PULL_API_RESPONSE_VARY,
+    };
+}
+
+export async function isMenuListPublicApiTargetAllowed(storeData: any): Promise<boolean> {
+    if (!storeData) return false;
+    if (storeData.active === false || storeData.deleted === true || isPlatformEntityBlocked(storeData)) return false;
+
+    const tenantId = storeData.tenantId ?? storeData.tId;
+    if (tenantId == null || tenantId === '') return false;
+
+    const tenantSnap = await admin.firestore()
+        .collection(DB_COLLECTIONS.TENANTS)
+        .doc(String(tenantId))
+        .get();
+
+    return tenantSnap.exists && !isPlatformEntityBlocked(tenantSnap.data());
+}
+
 /**
  * Build a structured error response following the standard format.
  */
@@ -101,15 +129,13 @@ export function logApiRequest(
     storeId: string,
     endpoint: string,
 ): void {
-    const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
-        || request.headers.get('x-real-ip')
-        || 'unknown';
-    const userAgent = request.headers.get('user-agent') || 'unknown';
+    const userAgent = request.headers.get('user-agent') || '';
 
-    secureLog(`[Public API] ${endpoint}`, {
-        storeId,
-        ip,
-        userAgent: userAgent.slice(0, 120),
+    secureLog('[Public API] Request', {
+        endpoint,
+        requestIpHash: hashPublicRateLimitValue(getClientIp(request)),
+        ...getBoundedSecurityStringContext('storeId', storeId),
+        ...getBoundedSecurityStringContext('userAgent', userAgent),
     });
 }
 

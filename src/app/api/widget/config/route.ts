@@ -34,7 +34,7 @@ import {
 } from '@lib/publicApi/auth';
 import { checkRateLimit } from '@lib/rateLimit';
 import { getRateLimitForFeature } from '@lib/rateLimit/configs';
-import { secureError } from '@lib/security/secureLogger';
+import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { NextRequest, NextResponse } from 'next/server';
 
 const WIDGET_AUTH_CACHE_TTL_MS = 15_000;
@@ -143,6 +143,37 @@ const getReadyPublicBundleConfig = async (tId: number, sId: number) => {
     };
 };
 
+const getPredictiveSupportCapability = async (
+    db: any,
+    tId: number,
+    sId: number,
+): Promise<boolean> => {
+    try {
+        return await hasActivePredictiveTriggers(db, tId, sId);
+    } catch (error) {
+        logRuntimeFailure('answerlattice_widget_config_predictive_summary_load_failed', error, {
+            ...getBoundedRuntimeStringContext('tenantId', tId),
+            ...getBoundedRuntimeStringContext('storeId', sId),
+        });
+        return false;
+    }
+};
+
+const getWidgetPublicBundleConfig = async (
+    tId: number,
+    sId: number,
+) => {
+    try {
+        return await getReadyPublicBundleConfig(tId, sId);
+    } catch (error) {
+        logRuntimeFailure('answerlattice_widget_config_bundle_manifest_load_failed', error, {
+            ...getBoundedRuntimeStringContext('tenantId', tId),
+            ...getBoundedRuntimeStringContext('storeId', sId),
+        });
+        return null;
+    }
+};
+
 export function OPTIONS(request: NextRequest) {
     return handlePublicApiCorsPreflight(request);
 }
@@ -229,11 +260,9 @@ export async function GET(request: NextRequest) {
         const tId = Number(storeData.tenantId || storeData.tId);
         const sId = Number(storeData.id || storeId);
         if (!Number.isFinite(tId) || !Number.isFinite(sId) || tId <= 0 || sId <= 0) {
-            secureError(
-                '[Widget Config] Invalid API key workspace context',
-                new Error('Authenticated API key does not resolve to a valid tenant/store'),
-                { storeId }
-            );
+            logRuntimeFailure('answerlattice_widget_config_invalid_workspace_context', undefined, {
+                ...getBoundedRuntimeStringContext('storeId', storeId),
+            });
             return withPublicApiCors(NextResponse.json({ error: 'Invalid API key' }, { status: 401 }), request);
         }
 
@@ -255,16 +284,16 @@ export async function GET(request: NextRequest) {
                     .doc(String(sId))
                     .set(buildWidgetRuntimeStatusWrite(nextRuntimeStatus), { merge: true });
             } catch (telemetryError) {
-                secureError('[Widget Config] Runtime telemetry write failed', telemetryError as Error, {
-                    storeId: sId,
-                    tenantId: tId,
+                logRuntimeFailure('answerlattice_widget_config_runtime_status_write_failed', telemetryError, {
+                    ...getBoundedRuntimeStringContext('tenantId', tId),
+                    ...getBoundedRuntimeStringContext('storeId', sId),
                 });
             }
         }
 
         const [predictiveSupport, bundleConfig] = await Promise.all([
-            hasActivePredictiveTriggers(db, tId, sId).catch(() => false),
-            getReadyPublicBundleConfig(tId, sId).catch(() => null),
+            getPredictiveSupportCapability(db, tId, sId),
+            getWidgetPublicBundleConfig(tId, sId),
         ]);
         const body = {
             schemaVersion: ANSWERLATTICE_WIDGET_CONFIG_SCHEMA_VERSION,
@@ -283,7 +312,7 @@ export async function GET(request: NextRequest) {
 
         return buildResponse(request, body, etag);
     } catch (error) {
-        secureError('[Widget Config] Error', error as Error);
+        logRuntimeFailure('answerlattice_widget_config_failed', error);
         return withPublicApiCors(NextResponse.json({ error: 'Something went wrong' }, { status: 500 }), request);
     }
 }

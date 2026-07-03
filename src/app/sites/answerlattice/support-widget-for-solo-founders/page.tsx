@@ -39,7 +39,7 @@ export default function SupportWidgetForSoloFoundersPage() {
                 answerlatticeAnswer="Start with your setup guide, top recurring questions, release notes, and billing or onboarding pages. AnswerLattice prepares drafts and gaps for owner review."
                 ownerReview="AnswerLattice keeps the founder in control of official support: generated drafts, fallback gaps, user-attached screenshots, and proposed fixes stay bounded review inputs before they become approved answers."
                 setupSteps={[
-                    'Sign in and create the beta workspace.',
+                    'Sign in and create the paid Starter workspace.',
                     'Add product name, support email, and important pages.',
                     'Import the starter knowledge you already have.',
                     'Install the widget and verify page context.',

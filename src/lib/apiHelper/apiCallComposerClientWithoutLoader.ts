@@ -1,4 +1,6 @@
 import getActiveSession from "@lib/auth/getActiveSession";
+import { getSafeUiErrorMessage } from "@lib/errors/uiErrorMessages";
+import { secureError } from "@lib/security/secureLogger";
 import { showErrorToast } from "@reduxSlices/toast";
 import { reduxStore } from "@reduxStore/index";
 
@@ -11,13 +13,9 @@ const summarizeDalArgs = (args: any[]) => args.slice(0, -1).map((arg) => {
             keys: Object.keys(arg).slice(0, 8),
         };
     }
-    return arg;
+    if (typeof arg === 'string') return { type: 'string', length: arg.length };
+    return { type: typeof arg };
 });
-
-const DAL_LOG_BADGE = 'background: #ff8f1f; color: #111827; padding: 2px 6px; border-radius: 999px; font-weight: 700;';
-const DAL_LOG_TEXT = 'color: #ff8f1f; font-weight: 700;';
-const DAL_SUCCESS_TEXT = 'color: #16a34a; font-weight: 700;';
-const DAL_ERROR_TEXT = 'color: #dc2626; font-weight: 700;';
 
 /**
  * API Call Composer for client-side WITHOUT global loader
@@ -25,15 +23,10 @@ const DAL_ERROR_TEXT = 'color: #dc2626; font-weight: 700;';
  * (e.g., chat sessions with skeleton UI)
  */
 export const apiCallComposerClientWithoutLoader = async (fn, ...args) => {
-    const functionName = args[args.length - 1];
-    const isPublicApi = functionName;
-    console.log(`%c🔥 Firebase%c ${functionName} called`, DAL_LOG_BADGE, DAL_LOG_TEXT, {
-        params: summarizeDalArgs(args),
-        withLoader: false,
-    });
+    const functionName = typeof args[args.length - 1] === 'string' ? args[args.length - 1] : 'unknownDalCall';
     const session = await getActiveSession();
     
-    if (!Boolean(session?.user) && !isPublicApi) {
+    if (!Boolean(session?.user)) {
         reduxStore.dispatch(showErrorToast("User not logged in"));
         return null;
     }
@@ -41,14 +34,16 @@ export const apiCallComposerClientWithoutLoader = async (fn, ...args) => {
     try {
         // NO startLoader/stopLoader - component manages its own loading state
         const response = await fn(...args);
-        console.log(`%c🔥 Firebase%c ${functionName} success`, DAL_LOG_BADGE, DAL_SUCCESS_TEXT);
         return response;
     } catch (error) {
-        console.error(`%c🔥 Firebase%c ${functionName} failed`, DAL_LOG_BADGE, DAL_ERROR_TEXT, {
-            error: error.message,
+        const fallbackMessage = 'Could not load data. Please try again.';
+        secureError('[DAL Client] API call failed', new Error('dal_client_call_failed'), {
+            functionName,
+            errorName: error instanceof Error ? error.name : typeof error,
             params: summarizeDalArgs(args),
+            withLoader: false,
         });
-        reduxStore.dispatch(showErrorToast(`Error: ${error.message}`));
+        reduxStore.dispatch(showErrorToast(getSafeUiErrorMessage(error, fallbackMessage)));
         
         // Return an empty array for data fetching operations to avoid 'not a function' errors
         return [];

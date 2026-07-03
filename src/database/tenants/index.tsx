@@ -38,7 +38,6 @@ export const getTenantByEmail = (email: string) => {
         const q = query(getCollectionRef(), where("email", "==", email));
         const querySnapshot = await getDocs(q);
         if (querySnapshot.empty) {
-            console.log('User not found.');
             res(null);
         } else {
             querySnapshot.forEach(doc => res({ ...doc.data(), id: doc.id }));
@@ -181,6 +180,32 @@ export const updateTenant = async (data: any) => {
     );
 }
 
+export function assertTenantUpdateSucceeded(
+    result: unknown,
+    expectedTenantId?: string | number,
+    rejectionCode = 'tenant_update_rejected',
+): asserts result is Record<string, unknown> {
+    if (!result || typeof result !== 'object' || Array.isArray(result)) {
+        throw new Error(rejectionCode);
+    }
+
+    if (expectedTenantId === undefined || expectedTenantId === null) return;
+
+    const savedTenantId = (result as { tenantId?: unknown; id?: unknown }).tenantId
+        ?? (result as { tenantId?: unknown; id?: unknown }).id;
+    if (String(savedTenantId) !== String(expectedTenantId)) {
+        throw new Error(rejectionCode);
+    }
+}
+
+export function assertTenantsStoresListUpdateSucceeded(
+    result: unknown,
+    rejectionCode = 'tenant_stores_list_update_rejected',
+): asserts result is true {
+    if (result === true) return;
+    throw new Error(rejectionCode);
+}
+
 export const updateTenantsStoreslist = async (data) => {
     return await apiCallComposer(
         async () => {
@@ -191,19 +216,3 @@ export const updateTenantsStoreslist = async (data) => {
         "updateTenantsStoreslist"
     );
 }
-
-// export const deleteTenantById = async (templateDetails: TenantDataType) => {
-//     return await apiCallComposer(
-//         async () => {
-//             if (templateDetails.logo) {
-//                 await deleteFileByUrl(templateDetails.logo);
-//                 console.log("Tenant Logo Deleted")
-//             }
-//             const collectionDocRef = await getDocRef(templateDetails.id);
-//             const templateDoc = await deleteDoc(collectionDocRef);
-//             console.log("Tenant Deleted")
-//             return ({ status: 200, data: true })
-//         },
-//         templateDetails, "deleteTemplateById"
-//     );
-// }

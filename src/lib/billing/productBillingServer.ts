@@ -7,10 +7,10 @@ import {
     getSubscriptionById as getMenuListSubscriptionById,
     updateSubscription as updateMenuListSubscription,
 } from '@database/subscriptions/server';
+import { getBoundedAnswerlatticeStringContext, logAnswerlatticeFailure } from '@lib/answerlattice/diagnostics';
 import { getAnswerlatticeScopedSession, resolveAnswerlatticeSessionScope, canUseAnswerlatticeManagement } from '@lib/answerlattice/sessionScope';
 import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
 import { admin, firestoreAdmin } from '@lib/firebase/firebaseAdmin';
-import { logger } from '@lib/monitoring/logger';
 import { getGracePeriodInfo } from '@util/razorpay';
 import type { MinimalStoreDataType } from '@type/platform/store';
 import type { FirestoreSubscriptionDoc } from '@type/razorpay';
@@ -58,6 +58,18 @@ const getDisabledBillingMessage = (productId: ProductId): string => (
         ? 'MyCodex billing is not configured.'
         : 'CampaignCue billing is not configured.'
 );
+
+const getAnswerlatticeBillingEntitlementLogContext = (
+    subscription: FirestoreSubscriptionDoc,
+    source: string,
+) => ({
+    ...getBoundedAnswerlatticeStringContext('subscriptionId', subscription.id),
+    ...getBoundedAnswerlatticeStringContext('tenantId', subscription.tenantId),
+    ...getBoundedAnswerlatticeStringContext('storeId', subscription.storeId),
+    ...getBoundedAnswerlatticeStringContext('planId', subscription.planId),
+    ...getBoundedAnswerlatticeStringContext('status', subscription.status),
+    ...getBoundedAnswerlatticeStringContext('source', source),
+});
 
 export const getBillingFirestoreAdminForProduct = (productId: ProductId): FirebaseFirestore.Firestore => {
     if (productId === PRODUCT_IDS.ANSWERLATTICE) {
@@ -395,7 +407,7 @@ export const syncAnswerlatticeSubscriptionEntitlementFromSubscription = async (
         status: subscription.status || null,
         currency: subscription.currency || null,
         amount: subscription.amount ?? null,
-        isBeta: subscription.planId === 'answerlattice_beta',
+        isBeta: false,
         subscriptionEndDate: subscription.subscriptionEndDate || null,
         monthlyCreditsAllowance: subscription.monthlyCreditsAllowance ?? 0,
         monthlyCredits: subscription.monthlyCredits ?? 0,
@@ -440,13 +452,10 @@ export async function safeSyncProductSubscriptionEntitlementFromSubscription(
     try {
         await syncAnswerlatticeSubscriptionEntitlementFromSubscription(subscription, source);
     } catch (error) {
-        logger.error('Failed to sync Answerlattice subscription entitlement', error, {
-            source,
-            subscriptionId: subscription.id,
-            tenantId: subscription.tenantId,
-            storeId: subscription.storeId,
-            planId: subscription.planId,
-            status: subscription.status,
-        });
+        logAnswerlatticeFailure(
+            'answerlattice_subscription_entitlement_sync_failed',
+            error,
+            getAnswerlatticeBillingEntitlementLogContext(subscription, source),
+        );
     }
 }

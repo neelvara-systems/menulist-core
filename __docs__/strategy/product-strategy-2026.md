@@ -1,9 +1,11 @@
 # MenuListAi — Product Strategy 2026
 
 **Created:** January 11, 2026  
-**Status:** 🔒 **LOCKED — FOUNDER REFERENCE**  
+**Status:** Historical founder strategy reference; not current launch certification
 **Source:** ChatGPT Brainstorm + Codebase Analysis + Docs Audit  
 **Applies:** 3-Year Architecture Freeze Rule
+
+> **Launch Boundary:** This file is a founder strategy reference, not release approval. Current MenuList launch readiness is decided by the active [production-readiness audit](../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../production-readiness/external-certification-runbook.md) evidence, current source verifiers, browser/mobile QA, provider/deploy evidence where relevant, and production-host smoke.
 
 **Related Governance:**
 
@@ -14,7 +16,7 @@
 
 ## Executive Summary
 
-MenuListAi has reached a critical inflection point. The core decision intelligence system is **complete and validated**. The next phase is about **hardening trust surfaces** and **creating operational dependency** — not adding features.
+MenuListAi had reached a critical January 2026 strategy inflection point in this snapshot. Treat the roadmap below as founder strategy evidence, not current launch approval.
 
 ### Strategic Posture for 2026
 
@@ -58,23 +60,23 @@ MenuListAi is the public-facing intelligence layer that influences:
 
 ## Current State Assessment (January 2026)
 
-### What's Built (97% Confidence)
+### January 2026 Source-State Snapshot (97% Confidence)
 
-| Feature                       | Status        | Confidence |
-| ----------------------------- | ------------- | ---------- |
-| Menu Digitization             | ✅ Production | 98%        |
-| Multi-Language Support        | ✅ Production | 98%        |
-| AI Image Generation           | ✅ Production | 95%        |
-| Customer-Facing Menu          | ✅ Production | 97%        |
-| Decision Blocks               | ✅ Production | 98%        |
-| Continuous Menu Intelligence  | ✅ Production | 100%       |
-| Social Content Engine (Today) | ✅ Production | 95%        |
-| Digital Screens               | ✅ Production | 95%        |
-| Owner Dashboard               | ✅ Production | 97%        |
-| Multi-Tenant Architecture     | ✅ Production | 99%        |
-| Authentication & Security     | ✅ Production | 99%        |
+| Feature                       | January 2026 source-state note | Confidence |
+| ----------------------------- | ------------------------------ | ---------- |
+| Menu Digitization             | Implemented snapshot           | 98%        |
+| Multi-Language Support        | Implemented snapshot           | 98%        |
+| AI Image Generation           | Implemented snapshot           | 95%        |
+| Customer-Facing Menu          | Implemented snapshot           | 97%        |
+| Decision Blocks               | Implemented snapshot           | 98%        |
+| Continuous Menu Intelligence  | Implemented snapshot           | 100%       |
+| Social Content Engine (Today) | Implemented snapshot           | 95%        |
+| Digital Screens               | Implemented snapshot           | 95%        |
+| Owner Dashboard               | Implemented snapshot           | 97%        |
+| Multi-Tenant Architecture     | Implemented snapshot           | 99%        |
+| Authentication & Security     | Implemented snapshot           | 99%        |
 
-**Core product is DONE.** No major new features needed.
+This table is historical source-state evidence only. Current launch approval still requires the audit/runbook gates above.
 
 ### What's Missing (Hardening Only)
 

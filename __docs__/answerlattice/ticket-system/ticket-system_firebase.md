@@ -1,7 +1,7 @@
 # Ticket System — Firebase Cost & Operations Tracking
 
 > **Version:** 1.0.0
-> **Last Updated:** 2026-05-13
+> **Last Updated:** 2026-07-02
 > **Audience:** Developers, Ops
 > **Source:** Codebase forensic audit
 
@@ -99,6 +99,10 @@
 | Upload attachment | Ticket creation / message reply | 0-10 MB per file, max 4 files |
 | Delete attachment | Hard delete ticket (DAL `deleteTicket`) | Deletes all associated files |
 
+June 29 browser-handoff hardening changes only new-tab attachment opens in platform ticket UI to use `noopener,noreferrer`. It adds no Firestore reads/writes/deletes, Storage uploads/downloads/deletes, Cloud Functions, provider calls, rules, indexes, schema fields, or ticket-state changes.
+
+July 2 mutation-scope hardening is cost-neutral. `updateTicket()`, `addTicketMessage()`, and `updateTicketStatus()` now require selected ticket `tId/sId` for non-platform sessions before partial merge writes; platform partial updates without explicit ticket scope strip composer-injected `tId/sId` so existing ticket ownership is preserved. This adds no Firestore reads, no extra writes, no Storage operations, no rules/index changes, no Cloud Functions, and no deploy requirement.
+
 ---
 
 ## 3. Operations Per Action
@@ -133,6 +137,12 @@
 |------|:-----:|:------:|
 | `updateTicket({ deleted: true })` | 0 | 1 |
 | **Total** | **0** | **1** |
+
+Ticket create acknowledgement hardening is cost-neutral. `AddSupportTicket` and HelpChat AI escalation still use the existing `addTicket()` create path, attachment upload behavior, ticket signal, and notification handoff, but now require `assertSupportTicketCreateSucceeded()` before local ticket state, callbacks, modal close, or success copy advances. This adds no reads, writes, deletes, Storage operations, routes, rules, indexes, schema fields, Cloud Functions, owner settings, Firebase deployment, or Vercel deployment.
+
+Ticket update acknowledgement hardening is cost-neutral. `TicketDetailView` status/details saves, `PlatformTicketsView` soft deletes, and restores still use the existing `updateTicket()` write, but now require `assertSupportTicketUpdateSucceeded()` before local ticket state, drawer state, or success copy advances. This adds no reads, writes, deletes, Storage operations, routes, rules, indexes, schema fields, Cloud Functions, owner settings, Firebase deployment, or Vercel deployment.
+
+Ticket reply acknowledgement hardening is cost-neutral. `ConversationTimeline` still uses the existing `addTicketMessage()` `setDoc` merge and optional attachment upload behavior, but now requires `assertSupportTicketMessageAddSucceeded()` before local conversation state, form reset, or success copy advances. `updateTicketStatus()` also returns an explicit acknowledgement envelope for future direct callers. This adds no reads, writes, deletes, Storage operations, routes, rules, indexes, schema fields, Cloud Functions, owner settings, Firebase deployment, or Vercel deployment.
 
 ### 3.5 Hard Delete (DAL only)
 

@@ -2,7 +2,7 @@
  * Menu Image Processing Job Types
  * 
  * Job queue types for menu image processing.
- * Spec: MENU-IMAGE-PROCESSING-JOB-QUEUE-SPEC.md Section 4
+ * Spec: menu-image-processing-job-queue-spec.md Section 4
  */
 
 import { Timestamp } from "firebase-admin/firestore";
@@ -39,7 +39,7 @@ export type { MenuExtractionJobDestination };
 /**
  * Menu Image Processing Job Document
  * 
- * Spec Reference: MENU-IMAGE-PROCESSING-JOB-QUEUE-SPEC.md Section 4
+ * Spec Reference: menu-image-processing-job-queue-spec.md Section 4
  * Collection: menuImageProcessingJobs/{jobId}
  */
 export interface MenuImageProcessingJob {

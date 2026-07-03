@@ -1,6 +1,6 @@
 'use client'
 
-import { updateStore } from '@database/stores';
+import { assertStoreUpdateSucceeded, updateStore } from '@database/stores';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
@@ -8,6 +8,11 @@ import { useContext, useEffect, useMemo, useState } from 'react';
 import { LuExternalLink, LuMessageCircle, LuMessageSquare, LuPencil, LuPlus, LuShare2, LuTrash, LuX } from 'react-icons/lu';
 import { Button, Card, Flex, Input, List, NavBar, Popup, Switch, Tag, Text, TextArea, Toast } from '../antd';
 import MobileSettingsScreenHeader from '../components/MobileSettingsScreenHeader';
+import {
+    getBoundedMobileOwnerStringContext,
+    getMobileOwnerStoreLogContext,
+    logMobileOwnerFailure,
+} from '../utils/mobileOwnerDiagnostics';
 
 interface MobileAdvancedSettingsScreenProps {
     onBack: () => void;
@@ -183,13 +188,27 @@ export default function MobileAdvancedSettingsScreen({ onBack, mode = 'all' }: M
     );
 
     const saveField = async (updates: Record<string, any>) => {
+        if (!storeDetails?.storeId) return false;
         setIsSaving(true);
         try {
-            await updateStore({ storeId: storeDetails?.storeId, ...updates });
+            const writeResult = await updateStore({ storeId: storeDetails.storeId, ...updates });
+            assertStoreUpdateSucceeded(
+                writeResult,
+                storeDetails.storeId,
+                'mobile_advanced_settings_store_update_rejected',
+            );
             setStoreDetails({ ...storeDetails, ...updates });
             Toast.show({ content: t('saved'), duration: 1000 });
             return true;
-        } catch {
+        } catch (error) {
+            logMobileOwnerFailure('mobile_advanced_settings_save_failed', error, {
+                ...getMobileOwnerStoreLogContext(storeDetails?.storeId, storeDetails?.tenantId),
+                ...getBoundedMobileOwnerStringContext('mode', mode),
+                updateKeyCount: Object.keys(updates).length,
+                hasSocialMediaUpdate: Boolean(updates.socialMedia),
+                hasFeedbackEnabledUpdate: Object.prototype.hasOwnProperty.call(updates, 'feedbackEnabled'),
+                hasFeedbackDefaultsUpdate: Boolean(updates.feedbackDefaults),
+            });
             Toast.show({ content: t('failedToSave'), duration: 2000 });
             return false;
         } finally {
@@ -257,11 +276,24 @@ export default function MobileAdvancedSettingsScreen({ onBack, mode = 'all' }: M
         setEditingPlatformValue('');
     };
 
-    const openSocialLink = (url: string) => {
+    const openSocialLink = (url: string, platformKey: string) => {
         const trimmed = url.trim();
         if (!trimmed) return;
         const normalized = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
-        window.open(normalized, '_blank', 'noopener,noreferrer');
+        try {
+            const opened = window.open(normalized, '_blank', 'noopener,noreferrer');
+            if (!opened) {
+                throw new Error('mobile_advanced_settings_external_link_open_blocked');
+            }
+        } catch (error) {
+            logMobileOwnerFailure('mobile_advanced_settings_external_link_open_failed', error, {
+                ...getMobileOwnerStoreLogContext(storeDetails?.storeId, storeDetails?.tenantId),
+                ...getBoundedMobileOwnerStringContext('mode', mode),
+                ...getBoundedMobileOwnerStringContext('platformKey', platformKey),
+                ...getBoundedMobileOwnerStringContext('socialUrl', normalized),
+            });
+            Toast.show({ content: 'Unable to open link', duration: 1500 });
+        }
     };
 
     const handleToggleFeedback = (enabled: boolean) => {
@@ -459,7 +491,7 @@ export default function MobileAdvancedSettingsScreen({ onBack, mode = 'all' }: M
                                                 <Flex gap={8}>
                                                     <Button
                                                         fill="outline"
-                                                        onClick={() => openSocialLink(platform.value)}
+                                                        onClick={() => openSocialLink(platform.value, platform.key)}
                                                         size="small"
                                                         style={{ borderRadius: 10, minWidth: 44, paddingInline: 0 }}
                                                         icon={<LuExternalLink size={12} />}

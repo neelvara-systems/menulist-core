@@ -2,6 +2,13 @@ import { FEATURE_FLAGS } from '@config/features';
 import { LOGO_SMALL } from '@constant/common';
 import { useOfferingLabels } from '@hook/useOfferingLabels';
 import { withAnalyticsSource } from '@lib/analytics/sourceAttribution';
+import {
+    copyExportTextToClipboard,
+    getBoundedExportStringContext,
+    hasExportClipboardWrite,
+    hasExportCopyFallback,
+    logExportFailure,
+} from '@lib/export/exportDiagnostics';
 import { resolveMenuKitBrandTokens } from '@lib/menu-kit/brandTokens';
 import { buildQrCodeFilename, downloadQrCode, generateBrandedQrCodeDataUrl } from '@lib/utils/qrCode';
 import type { ExtractedDataCategory, ExtractedDataItem } from '@template/main-app/projects/types/extractedData.types';
@@ -140,6 +147,28 @@ function ShareModal({
         }
     }, [qrColor, qrBgColor]);
 
+    const getShareModalLogContext = (
+        action: string,
+        metadata: Record<string, boolean | number | string | null | undefined> = {},
+    ) => ({
+        ...getBoundedExportStringContext('projectId', projectId),
+        ...getBoundedExportStringContext('projectName', projectName),
+        ...getBoundedExportStringContext('storeName', storeName),
+        ...getBoundedExportStringContext('shareUrl', shareUrl),
+        ...getBoundedExportStringContext('qrShareUrl', qrShareUrl),
+        ...getBoundedExportStringContext('businessType', businessType),
+        ...getBoundedExportStringContext('businessCategory', businessCategory),
+        action,
+        categoryCount: categories.length,
+        hasBrandColor: Boolean(brandColor),
+        hasPublicShareUrl,
+        hasStoreLogo: Boolean(storeLogo),
+        itemCount: items.length,
+        languageCount: languages.length,
+        showLogo,
+        ...metadata,
+    });
+
     const handleDownloadQR = async () => {
         if (!hasPublicShareUrl) {
             message.warning('Public link is not ready yet');
@@ -159,12 +188,15 @@ function ShareModal({
             });
             downloadQrCode(dataUrl, buildQrCodeFilename(`${storeName}-menu`, 'qr'));
             message.success('QR code downloaded');
-        } catch {
+        } catch (error) {
+            logExportFailure('project_share_qr_download_failed', error, getShareModalLogContext('qr_download', {
+                qrDataUrlGenerated: false,
+            }));
             message.error('Failed to download QR code');
         }
     };
 
-    const handleShare = (platform: 'whatsapp' | 'facebook' | 'instagram') => {
+    const handleShare = async (platform: 'whatsapp' | 'facebook' | 'instagram') => {
         if (!hasPublicShareUrl) {
             message.warning('Public link is not ready yet');
             return;
@@ -180,11 +212,58 @@ function ShareModal({
             instagram: urlWithUTM, // Instagram copies to clipboard
         };
 
-        if (platform === 'instagram') {
-            navigator.clipboard.writeText(urlWithUTM);
-            message.success('Link copied! Paste it in your Instagram bio or story');
-        } else {
-            window.open(urls[platform], '_blank');
+        try {
+            if (platform === 'instagram') {
+                await copyExportTextToClipboard(urlWithUTM);
+                message.success('Link copied! Paste it in your Instagram bio or story');
+                return;
+            }
+
+            const socialShareUrl = urls[platform];
+            const opened = window.open(socialShareUrl, '_blank', 'noopener,noreferrer');
+            if (!opened) {
+                throw new Error('project_share_social_handoff_blocked');
+            }
+        } catch (error) {
+            logExportFailure('project_share_social_handoff_failed', error, getShareModalLogContext('social_handoff', {
+                ...getBoundedExportStringContext('platform', platform),
+                shareMessageLength: urls[platform].length,
+                shareUrlLength: urls[platform].length,
+                ...(platform === 'instagram' ? {
+                    hasClipboardWrite: hasExportClipboardWrite(),
+                    hasCopyFallback: hasExportCopyFallback(),
+                } : {}),
+            }));
+            message.error(platform === 'instagram' ? 'Failed to copy link' : 'Failed to open share link');
+        }
+    };
+
+    const handleOpenDirectLink = () => {
+        if (!hasPublicShareUrl) return;
+        const directUrl = withEntrySource(shareUrl, 'direct');
+        try {
+            window.location.assign(directUrl);
+        } catch (error) {
+            logExportFailure('project_share_direct_open_failed', error, getShareModalLogContext('direct_open', {
+                directUrlLength: directUrl.length,
+            }));
+            message.error('Failed to open link');
+        }
+    };
+
+    const handleCopyDirectLink = async () => {
+        if (!hasPublicShareUrl) return;
+        const copyUrl = withEntrySource(shareUrl, 'copy_link');
+        try {
+            await copyExportTextToClipboard(copyUrl);
+            message.success('URL copied');
+        } catch (error) {
+            logExportFailure('project_share_direct_copy_failed', error, getShareModalLogContext('direct_copy', {
+                copyUrlLength: copyUrl.length,
+                hasClipboardWrite: hasExportClipboardWrite(),
+                hasCopyFallback: hasExportCopyFallback(),
+            }));
+            message.error('Failed to copy link');
         }
     };
 
@@ -215,7 +294,16 @@ function ShareModal({
             );
             message.success(type === 'xlsx' ? 'Excel export downloaded' : 'JSON export downloaded');
         } catch (error) {
-            console.error('[ShareModal] Structured export failed:', error);
+            logExportFailure('project_share_structured_export_failed', error, {
+                ...getBoundedExportStringContext('projectId', projectId),
+                ...getBoundedExportStringContext('projectName', projectName),
+                ...getBoundedExportStringContext('storeName', storeName),
+                exportFormat: type,
+                categoryCount: categories.length,
+                itemCount: items.length,
+                languageCount: languages.length,
+                hasDefaultLanguage: Boolean(language),
+            });
             message.error(`Failed to export ${type.toUpperCase()}`);
         } finally {
             setExportingFormat(null);
@@ -257,7 +345,19 @@ function ShareModal({
             }
             message.success(`${labels.offeringTitle} PDF downloaded`);
         } catch (error) {
-            console.error('[ShareModal] PDF generation failed:', error);
+            logExportFailure('project_share_pdf_generation_failed', error, {
+                ...getBoundedExportStringContext('projectId', projectId),
+                ...getBoundedExportStringContext('projectName', projectName),
+                ...getBoundedExportStringContext('storeName', storeName),
+                ...getBoundedExportStringContext('shareUrl', shareUrl),
+                ...getBoundedExportStringContext('currencyCode', currencyCode),
+                categoryCount: categories.length,
+                itemCount: items.length,
+                languageCount: languages.length,
+                hasLogo: Boolean(storeLogo),
+                hasBrandColor: Boolean(brandColor),
+                hasBusinessType: Boolean(businessType),
+            });
             message.error('Failed to generate PDF');
         } finally {
             setGeneratingPdf(false);
@@ -394,7 +494,7 @@ function ShareModal({
                         size="large"
                         type="primary"
                         icon={<FaWhatsapp />}
-                        onClick={() => handleShare('whatsapp')}
+                        onClick={() => void handleShare('whatsapp')}
                         disabled={!hasPublicShareUrl}
                         style={{ background: '#25D366', borderColor: '#25D366' }}
                     >
@@ -404,7 +504,7 @@ function ShareModal({
                         block
                         size="large"
                         icon={<FaInstagram />}
-                        onClick={() => handleShare('instagram')}
+                        onClick={() => void handleShare('instagram')}
                         disabled={!hasPublicShareUrl}
                     >
                         Instagram
@@ -413,7 +513,7 @@ function ShareModal({
                         block
                         size="large"
                         icon={<FaFacebook />}
-                        onClick={() => handleShare('facebook')}
+                        onClick={() => void handleShare('facebook')}
                         disabled={!hasPublicShareUrl}
                     >
                         Facebook
@@ -476,10 +576,10 @@ function ShareModal({
                         We track scans and opens so you can see what works
                     </Text>
                     <Flex gap={8}>
-                        <Button size="small" type="text" icon={<LuExternalLink />} disabled={!hasPublicShareUrl} onClick={() => window.location.assign(withEntrySource(shareUrl, 'direct'))}>
+                        <Button size="small" type="text" icon={<LuExternalLink />} disabled={!hasPublicShareUrl} onClick={handleOpenDirectLink}>
                             Open
                         </Button>
-                        <Button size="small" type="text" icon={<LuCopy />} disabled={!hasPublicShareUrl} onClick={() => { navigator.clipboard.writeText(withEntrySource(shareUrl, 'copy_link')); message.success('URL copied'); }}>
+                        <Button size="small" type="text" icon={<LuCopy />} disabled={!hasPublicShareUrl} onClick={() => void handleCopyDirectLink()}>
                             Copy URL
                         </Button>
                     </Flex>

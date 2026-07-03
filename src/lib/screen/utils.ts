@@ -6,6 +6,7 @@
 import { Timestamp } from "@firebase/firestore";
 import { normalizeBaseUrl, getPublicBaseUrl } from "@constant/urls";
 import { DigitalScreenState, ScreenSlide } from "@type/campaigns";
+import { getBoundedScreenStringContext, logScreenDisplayFailure } from "./screenDiagnostics";
 
 /**
  * Generate high-entropy screen token for URL security
@@ -96,11 +97,15 @@ export function guardedReload(componentName: string): void {
     try {
         const lastReload = parseInt(localStorage.getItem(guardKey) || '0', 10);
         if (Date.now() - lastReload < RELOAD_GUARD_MS) {
-            console.log(`[${componentName}] Reload suppressed (guard: too soon after last reload)`);
             return;
         }
         localStorage.setItem(guardKey, String(Date.now()));
-    } catch { /* proceed anyway if localStorage fails */ }
+    } catch (error) {
+        logScreenDisplayFailure("screen_guarded_reload_storage_failed", error, {
+            ...getBoundedScreenStringContext("componentName", componentName),
+            reloadGuardMs: RELOAD_GUARD_MS,
+        });
+    }
     window.location.reload();
 }
 
@@ -112,6 +117,5 @@ export function guardedReload(componentName: string): void {
  */
 export function guardedReloadWithJitter(componentName: string): void {
     const jitterMs = Math.floor(Math.random() * 60000); // 0-60 seconds
-    console.log(`[${componentName}] Content changed — reloading in ${Math.round(jitterMs / 1000)}s (jitter)`);
     setTimeout(() => guardedReload(componentName), jitterMs);
 }

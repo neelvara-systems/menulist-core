@@ -1,8 +1,8 @@
 # Menu Kit — Firebase Cost Analysis
 
-**Version:** 1.3
+**Version:** 1.4
 **Status:** ✅ VERIFIED — Zero Firebase cost confirmed
-**Last Updated:** June 3, 2026 — Premium logo/color output treatment verified as client-side
+**Last Updated:** June 29, 2026 — Share modal helper diagnostics verified as client-side
 **Companion:** `menu-kit_impl.md`
 
 ---
@@ -18,6 +18,8 @@ MenuList attribution is also client-side. `src/lib/menu-kit/platformAttribution.
 The bundled table tent and single table/counter card now come from `src/lib/print-menu-surfaces/templates/tableTentTemplate.ts` and `src/lib/print-menu-surfaces/templates/singleTableCardTemplate.ts`. That ownership split is code organization only; both still use client-side Canvas/jsPDF/qrcode generation and add no Firebase reads, writes, Storage uploads, rules, indexes, Cloud Functions, or artifact APIs.
 
 Individual Menu Kit asset downloads use `generateMenuKitAsset()` by semantic asset key. This renders only the requested file instead of generating the whole ZIP first. The full `generateMenuKit()` path remains the ZIP bundle path and preserves the same asset filenames/order.
+
+Menu Kit generation and helper failure diagnostics are client-side secure logs only. `project_share_menu_kit_generation_failed`, `project_share_menu_kit_asset_generation_failed`, `project_share_menu_kit_message_copy_failed`, `project_share_menu_kit_staff_script_copy_failed`, and `project_share_menu_kit_whatsapp_open_failed` record bounded presence/length metadata and the requested asset key or generated-message length, but they add no Firestore reads/writes, Storage uploads, Cloud Functions, cache invalidations, rules, indexes, durable artifacts, or owner-facing settings.
 
 ---
 

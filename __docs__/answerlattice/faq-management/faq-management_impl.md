@@ -22,6 +22,8 @@ During review, `ArticleModal` exposes a small FAQ editor only in the import revi
 - removes transient `generatedFaqs` from published article docs,
 - bumps the KB cache version.
 
+When an existing KB article changes, `src/database/knowledgeBase/articles.ts` marks linked FAQs for review in the background. When an article is deleted, it archives linked FAQs in the background. Those maintenance calls stay non-blocking for article save/delete, but failures now log `answerlattice_article_faq_review_marker_failed` or `answerlattice_article_faq_archive_failed` with bounded tenant/store/article metadata only. The FAQ DAL prefers explicit article `tId/sId`; if an older caller omits them and session-scope fallback cannot resolve, it logs `answerlattice_faq_article_review_scope_resolve_failed` or `answerlattice_faq_article_archive_scope_resolve_failed` before returning the existing zero-update result.
+
 The shared `functions/src/logic/publishApprovedJob.ts` mirrors the FAQ publishing behavior for shared/local function use.
 
 ## Owner UI
@@ -36,9 +38,15 @@ Tabs:
 
 Saving a FAQ updates the FAQ doc, keeps the linked article `faqIds` mirror in sync, and updates the owner screen locally instead of refetching every screen dependency.
 
+FAQ save/archive now return explicit acknowledgement envelopes from `src/database/answerlattice/faqs.ts`. `AnswerlatticeFaqManagement` must call `assertAnswerlatticeFaqWriteSucceeded()` or `assertAnswerlatticeFaqArchiveSucceeded()` before updating local FAQ state, rebuilding product-surface summaries, or showing success copy. This prevents `apiCallComposer` fallback results from being treated as completed owner-reviewed answer changes.
+
 Publishing or republishing a FAQ updates `lastReviewedOn` and clears `reviewRequestedOn`. If a linked article changes, the FAQ moves to `needs_review` and records `reviewRequestedOn` without rewriting `lastReviewedOn`; the review timestamp remains the last actual owner validation.
 
 Article edit modal now has an explicit `Refresh FAQ suggestions` action. It reads the saved article, generates up to 5 source-backed FAQ suggestions, skips duplicate questions already linked to that article, writes new FAQs as `needs_review`, and mirrors their IDs onto the article. It does not publish or replace owner-reviewed FAQs automatically.
+
+The article modal validates the FAQ refresh response through a 64 KB bounded response reader before adding generated FAQ options, linking generated FAQ IDs, or showing FAQ refresh success/info copy. Malformed, oversized, rejected, or wrong-shape responses log fixed `answerlattice_article_modal_response_*` diagnostics and keep `Failed to refresh FAQ suggestions.` as the owner-facing failure copy.
+
+The FAQ refresh API resolves Answerlattice scope, checks safe mode, and applies the route-specific generation limit before permission, body parsing, article/FAQ reads, or provider calls. Completion breadcrumbs, unexpected route failures, and operation-log failures use fixed-code bounded diagnostics.
 
 Article save continues to do only low-cost automatic maintenance: content edits mark linked FAQs as `needs_review` and refresh the search embedding. FAQ generation stays owner-triggered so routine edits do not create surprise AI calls or overwrite reviewed answers.
 

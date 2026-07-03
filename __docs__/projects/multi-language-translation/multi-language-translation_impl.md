@@ -1,9 +1,11 @@
 # Multi-Language Translation — Implementation
 
 > **Feature:** AI-Powered Menu Translation  
-> **Status:** ✅ Production Ready  
-> **Last Updated:** June 11, 2026
+> **Status:** Implemented source evidence; not current launch certification
+> **Last Updated:** July 1, 2026
 > **Version:** 3.8
+
+> **Launch boundary:** This implementation note documents multi-language translation. Current release approval requires the active [production-readiness audit](../../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../../production-readiness/external-certification-runbook.md) evidence, target feature-flag/provider review, deploy evidence, browser/mobile QA for translated menu flows, and public renderer fallback/RTL evidence.
 
 ---
 
@@ -107,6 +109,7 @@ POST /api/translations
 | Authentication   | `withAuth()` middleware                   |
 | Rate Limiting    | `checkAIOperationLimit()` - 20 req/min    |
 | Input Validation | Zod schema (`TranslationRequestSchema`)   |
+| Role Permission  | `canGenerateDescriptions` before translation logging, outlet policy, capacity, Gemini, or accounting |
 | Project Scope    | Project-scoped requests verify tenant/store access and project existence |
 | Outlet Policy    | Linked outlets cannot translate inherited master item/category content locally |
 | Security Logging | `logger.security()` on validation failure |
@@ -420,6 +423,8 @@ export const translateFile = async (
   return { updatedProject: prevData, message: "", messageType: "" };
 };
 ```
+
+June 29 response diagnostics: `src/components/templates/main-app/projects/generateTranslations.ts` now parses successful `/api/translations` responses through `readAiServiceResponseJson()` with a 1MB cap. Malformed, oversized, empty, or non-object responses log `menu_translation_response_parse_failed` / `menu_translation_response_invalid` with bounded project/file/language/action/count metadata and then preserve the existing null fallback.
 
 ### 3. extractTranslatableStringsJSON
 
@@ -756,7 +761,7 @@ Based on AI menu translation research (2025):
 
 ## Deferred Improvements (Phase 2)
 
-The following improvements were evaluated and **explicitly deferred**. See `__docs__/projects/misclenious-task.md` for full backlog.
+The following improvements were evaluated and **explicitly deferred**. See `__docs__/projects/miscellaneous-task.md` for full backlog.
 
 ### 1. Allergen Translation Double-Check
 
@@ -1282,8 +1287,38 @@ It prepares content, it does not influence customers.
 | Empty source text      | Shows "No new translatable data found..." | ✅       | `translationsUtils.ts:108`                       |
 | All already translated | Shows warning, skips API call             | ✅       | `extractTranslatableStringsJSON` checks existing |
 | Rate limit hit         | Returns 429 response                      | ✅       | `route.ts:24-25` via `checkAIOperationLimit`     |
-| API failure            | Shows "Translation failed", partial save  | ✅       | `Editor.tsx:546`, `editItemModal.tsx:237`        |
+| API failure            | Shows generic owner-safe failure text and logs bounded diagnostics | ✅       | `generateTranslations.ts`, `translationsUtils.ts`, `translationDiagnostics.ts` |
 | RTL language           | Direction in `LanguageType.direction`     | ✅       | `common.types.ts:13`, `languages.ts`             |
+
+### Failure Diagnostics
+
+Translation failure diagnostics are bounded through `src/components/templates/main-app/projects/utils/translationDiagnostics.ts`.
+
+Prompt-input boundary:
+
+- `TranslationRequestSchema` caps translation keys at 240 characters, translation values at 2000 characters, and request maps at 1000 entries before `/api/translations` proceeds past validation.
+- `src/app/api/translations/prompt.ts` keeps original keys unchanged for the model response contract, but serializes `promptInputJson`, a prompt-only copy whose values strip control/template characters, normalize whitespace, and stay capped at 2000 characters.
+- The original validated `inputJson` remains the source for linked-outlet target extraction, fallback response normalization, transaction context, and client merge behavior.
+- `scripts/verification/verify-ai-accounting-hardening.js` guards the schema caps, prompt sanitizer, sanitized JSON serialization, and absence of direct raw `inputJson` prompt serialization.
+
+Required callers:
+
+- `src/app/api/translations/route.ts` logs route-side Gemini parse failures with response text presence/length summary metadata, usage counts, request IDs, language counts/codes as bounded metadata, and no raw provider text.
+- `src/components/templates/main-app/projects/generateTranslations.ts` logs API/client request failures with normalized failure code, response status, translation-key count, action presence/length, project/file presence/length, and source/target language-code presence/length only.
+- `src/components/templates/main-app/projects/utils/translationsUtils.ts` logs empty translation responses and file/category/item translation failures with normalized failure codes, bounded translation-key counts, and bounded item/category IDs.
+- `src/components/templates/main-app/projects/editorView/Editor.tsx` logs desktop language-add and file-retry catch paths with bounded project/file/language counts only.
+- `src/components/templates/main-app/projects/editorView/editItemModal.tsx` logs item-retry catch paths with bounded project/file/item/language context only.
+
+Do not log raw menu text, translated strings, prompt/input JSON, language names, project names, file names, category names, item names, provider response bodies, status text, browser/provider error objects, or full project/store/file payloads. Route diagnostics must use `responseTextLength` and the bounded `responseTextSummary` placeholder, not `rawTextLength` or raw provider previews. Owner-facing failure text remains generic and AICapacityError still bubbles to the Billing/enhancement-pack UI.
+
+Verification:
+
+```bash
+npm run verify:ai-accounting
+npx tsc --noEmit --incremental false
+```
+
+`npm run verify:ai-accounting` guards the translation route admission/accounting contract and now also guards the client-side translation diagnostics boundary.
 
 ---
 
@@ -1292,10 +1327,10 @@ It prepares content, it does not influence customers.
 | Document                                                     | Purpose                                  |
 | ------------------------------------------------------------ | ---------------------------------------- |
 | `multi-language-translation_spec.md`                         | Product specification                    |
-| `../Assessments/ASSESSMENT-13-MULTI-LANGUAGE-TRANSLATION.md` | Original assessment (archived)           |
+| `../Assessments/assessment-13-multi-language-translation.md` | Original assessment (archived)           |
 | `../description-generation/`                                 | Description generation (related feature) |
 
 ---
 
-_Document Status: ✅ PRODUCTION READY_  
+_Document Status: Historical multi-language translation implementation evidence - not current launch certification_
 _Generated from codebase: January 31, 2026_

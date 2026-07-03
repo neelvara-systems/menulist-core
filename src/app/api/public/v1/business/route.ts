@@ -12,10 +12,23 @@ import { FEATURE_FLAGS } from "@config/features";
 import { getBrandStoreLabel } from "@lib/businessIdentity/names";
 import { getLocalizedText, getPrimaryLocalizedLanguage } from "@lib/localization/text";
 import { getPublicBusinessDescription } from "@lib/obp/getPublicBusinessDescription";
-import { apiError, generateETag, hashApiKey, logApiRequest, PULL_API_SCHEMA_VERSION, validatePublicApiKey } from "@lib/publicApi/auth";
+import { apiError, buildPullApiResponseHeaders, generateETag, hashApiKey, isMenuListPublicApiTargetAllowed, logApiRequest, PULL_API_SCHEMA_VERSION, validatePublicApiKey } from "@lib/publicApi/auth";
 import { checkRateLimit } from "@lib/rateLimit";
-import { secureError } from "@lib/security/secureLogger";
+import { getBoundedSecurityStringContext, logSecurityFailure } from "@lib/security/securityDiagnostics";
 import { NextRequest, NextResponse } from "next/server";
+
+function getActiveTempStatus(tempStatus: any): { type: any; message: any; expiresAt: any } | null {
+    if (!tempStatus?.expiresAt) return null;
+
+    const expiresAtMs = new Date(tempStatus.expiresAt).getTime();
+    if (!Number.isFinite(expiresAtMs) || expiresAtMs <= Date.now()) return null;
+
+    return {
+        type: tempStatus.type,
+        message: tempStatus.message,
+        expiresAt: tempStatus.expiresAt,
+    };
+}
 
 export async function GET(request: NextRequest) {
     if (!FEATURE_FLAGS.ENABLE_PUBLIC_API) {
@@ -32,6 +45,12 @@ export async function GET(request: NextRequest) {
 
     // Rate limit per API key
     const apiKeyRateLimitId = hashApiKey(apiKey).slice(0, 16);
+    let failureContext: Record<string, boolean | number | string | null | undefined> = {
+        endpoint: '/api/public/v1/business',
+        ...getBoundedSecurityStringContext('apiKey', apiKey),
+        ...getBoundedSecurityStringContext('apiKeyRateLimitId', apiKeyRateLimitId),
+    };
+
     const rlResult = await checkRateLimit({ key: `public-api:${apiKeyRateLimitId}`, limit: 60, window: 60 });
     if (!rlResult.allowed) {
         const retryAfter = Math.ceil((rlResult.resetAt - Date.now()) / 1000);
@@ -41,12 +60,20 @@ export async function GET(request: NextRequest) {
     }
 
     try {
-        const result = await validatePublicApiKey(apiKey, { cacheTtlMs: 30_000 });
+        const result = await validatePublicApiKey(apiKey);
         if (!result) {
             return apiError('INVALID_API_KEY', 'Invalid API key', 401);
         }
 
         const { storeData, storeId } = result;
+        if (!(await isMenuListPublicApiTargetAllowed(storeData))) {
+            return apiError('INVALID_API_KEY', 'Invalid API key', 401);
+        }
+        failureContext = {
+            ...failureContext,
+            ...getBoundedSecurityStringContext('storeId', storeId),
+        };
+
         const contentLanguage = storeData.defaultLanguage || storeData.activeLanguages?.[0] || storeData.language || 'en';
         const publicName = getBrandStoreLabel(storeData, storeData.name || 'Business');
         const publicDescriptor = getLocalizedText(
@@ -62,6 +89,9 @@ export async function GET(request: NextRequest) {
             '',
         );
         const publicDescription = getPublicBusinessDescription(storeData);
+        const activeTempStatus = FEATURE_FLAGS.ENABLE_TEMP_STATUS
+            ? getActiveTempStatus(storeData.tempStatus)
+            : null;
 
         // Abuse logging
         logApiRequest(request, storeId, 'GET /business');
@@ -97,11 +127,7 @@ export async function GET(request: NextRequest) {
             logo: storeData.logo || null,
             businessCover: storeData.publicPresence?.businessCover || null,
             socialMedia: storeData.socialMedia || null,
-            tempStatus: storeData.tempStatus ? {
-                type: storeData.tempStatus.type,
-                message: storeData.tempStatus.message,
-                expiresAt: storeData.tempStatus.expiresAt,
-            } : null,
+            tempStatus: activeTempStatus,
             reservationUrl: storeData.publicPresence?.reservationUrl || null,
             orderUrl: storeData.publicPresence?.orderUrl || null,
             subdomain: storeData.subdomain || null,
@@ -120,22 +146,20 @@ export async function GET(request: NextRequest) {
 
         // ETag: conditional request support
         const etag = `"${generateETag(response)}"`;
+        const responseHeaders = buildPullApiResponseHeaders(etag);
         const ifNoneMatch = request.headers.get('if-none-match');
         if (ifNoneMatch === etag) {
             return new NextResponse(null, {
                 status: 304,
-                headers: { 'ETag': etag, 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300' },
+                headers: responseHeaders,
             });
         }
 
         return NextResponse.json(response, {
-            headers: {
-                'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300',
-                'ETag': etag,
-            },
+            headers: responseHeaders,
         });
     } catch (error) {
-        secureError('[Public API] Business endpoint error', error as Error);
+        logSecurityFailure('public_api_business_route_failed', error, failureContext);
         return apiError('INTERNAL_ERROR', 'Internal error', 500);
     }
 }

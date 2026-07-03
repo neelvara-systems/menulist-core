@@ -28,3 +28,7 @@ The UI avoids technical wording. Errors say:
 - Too many attempts
 
 No provider, token, or Firebase details are shown to owners.
+
+## Response Diagnostics
+
+`PhoneOtpAuthPanel` parses start and verify responses through an 8KB bounded JSON reader on mobile and desktop. Malformed, oversized, or invalid acknowledgements log `phone_otp_response_parse_failed` / `phone_otp_response_invalid` with bounded action/status metadata only, then keep the same fixed owner-facing failure copy.

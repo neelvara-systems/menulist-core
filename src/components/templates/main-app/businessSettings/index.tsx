@@ -4,9 +4,9 @@ import { FEATURE_FLAGS } from "@config/features";
 import { ECOMSAI_PLATFORM_STORE_ID } from "@constant/user";
 import { getScreenState } from "@database/campaigns";
 import { getPlatformSummary } from "@database/platformSummary";
-import { addStore, updateStore } from "@database/stores";
+import { addStore, assertStoreUpdateSucceeded, updateStore } from "@database/stores";
 import { deleteOBPPhotos } from "@database/stores/uploadOBPPhoto";
-import { updateTenant, updateTenantsStoreslist } from "@database/tenants";
+import { assertTenantUpdateSucceeded, assertTenantsStoresListUpdateSucceeded, updateTenant, updateTenantsStoreslist } from "@database/tenants";
 import { useAppDispatch } from "@hook/useAppDispatch";
 import { _debounce } from "@hook/useDebounce";
 import { getResolvedAnalyticsPreferences } from "@lib/analytics/preferences";
@@ -44,6 +44,7 @@ import dayjs from "dayjs";
 import customParseFormat from "dayjs/plugin/customParseFormat";
 import { motion } from "framer-motion";
 import { useFormatter, useTimeZone, useTranslations } from "next-intl";
+import { useSearchParams } from "next/navigation";
 import { createRef, useEffect, useMemo, useRef, useState } from "react";
 import {
     LuBarChart,
@@ -85,6 +86,7 @@ import {
     TimeSlotPresetsTab,
     WorkingHoursTab,
 } from "./tabs";
+import { getBoundedBusinessSettingsStringContext, logBusinessSettingsFailure } from "./utils/businessSettingsDiagnostics";
 import type { UseMenuListData } from "../useMenuList/types";
 
 dayjs.extend(customParseFormat);
@@ -95,6 +97,18 @@ interface WorkingHourSlot {
     end: dayjs.Dayjs | null;
 }
 
+const BUSINESS_SETTINGS_FOCUS_SECTION: Record<string, string> = {
+    'customer-link': 'search-discovery',
+    'contact': 'business-profile',
+    'identity': 'business-profile',
+    'location': 'business-profile',
+    'logo': 'business-profile',
+    'official-page-actions': 'business-profile',
+    'official-page-photos': 'business-profile',
+    'presence-monitor': 'search-discovery',
+    'working-hours': 'hours',
+};
+
 type AdjustableUploadedFile = UserUploadedFileType & {
     crop?: MediaImageCropIntent;
     sourceDataUrl?: string;
@@ -104,6 +118,25 @@ type AdjustableUploadedFile = UserUploadedFileType & {
 async function deleteQueuedOBPPhotos(photoUrls: unknown) {
     if (!Array.isArray(photoUrls) || photoUrls.length === 0) return;
     await deleteOBPPhotos(photoUrls);
+}
+
+function applyPosSyncStoreUpdates(storeDetails: any, updates: Record<string, any>) {
+    const nextStoreDetails = { ...(storeDetails || {}) };
+    const nextPosSync = { ...(storeDetails?.posSync || {}) };
+
+    Object.entries(updates).forEach(([key, value]) => {
+        if (key.startsWith('posSync.')) {
+            nextPosSync[key.slice('posSync.'.length)] = value;
+            return;
+        }
+
+        nextStoreDetails[key] = value;
+    });
+
+    return {
+        ...nextStoreDetails,
+        posSync: nextPosSync,
+    };
 }
 
 function sanitizeSocialMediaMap(source?: Record<string, string> | null) {
@@ -224,7 +257,16 @@ function BusinessSettingsPresenceMonitorCard({ storeDetails }: { storeDetails: a
             try {
                 const screenState = await getScreenState();
                 screenToken = screenState?.screenToken || null;
-            } catch {
+            } catch (error) {
+                logBusinessSettingsFailure('business_settings_presence_screen_links_load_failed', error, {
+                    ...getBoundedBusinessSettingsStringContext('storeId', storeDetails.storeId),
+                    ...getBoundedBusinessSettingsStringContext('tenantId', storeDetails.tenantId),
+                    ...getBoundedBusinessSettingsStringContext('subdomain', storeDetails.subdomain),
+                    ...getBoundedBusinessSettingsStringContext('customDomain', storeDetails.customDomain),
+                    ...getBoundedBusinessSettingsStringContext('obpLink', obpLink),
+                    hasFeedbackEnabled: storeDetails.feedbackEnabled !== false,
+                    hasMenuPresence: Boolean(storeDetails.menuPresence),
+                });
                 screenToken = null;
             }
 
@@ -273,20 +315,13 @@ function BusinessSettingsPresenceMonitorCard({ storeDetails }: { storeDetails: a
         <PresenceMonitor
             data={data}
             storeDetails={storeDetails}
-            onCopyLink={async (url, label) => {
-                try {
-                    await navigator.clipboard.writeText(url);
-                    message.success(`${label} copied`);
-                } catch {
-                    message.error(`Could not copy ${label.toLowerCase()}`);
-                }
-            }}
         />
     );
 }
 
 function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
     const t = useTranslations('BusinessSettings');
+    const searchParams = useSearchParams();
     const format = useFormatter();
     const now = getUTCDate().newDate;
     const [form] = Form.useForm();
@@ -338,7 +373,12 @@ function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
                 url: prepared.dataUrl,
             });
         } catch (error) {
-            message.error(error instanceof Error ? error.message : 'Could not prepare logo.');
+            logBusinessSettingsFailure('business_settings_logo_prepare_failed', error, {
+                ...getBoundedBusinessSettingsStringContext('tenantId', storeDetails?.tenantId),
+                ...getBoundedBusinessSettingsStringContext('storeId', storeDetails?.storeId),
+                ...getBoundedBusinessSettingsStringContext('fileName', file.name),
+            });
+            message.error('Could not prepare logo.');
         }
     };
 
@@ -375,6 +415,17 @@ function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
             .fill(0)
             .map(() => createRef<HTMLDivElement>()),
     );
+    const publicTruthFocusRefs = useRef({
+        basicInfo: createRef<HTMLDivElement>(),
+        contactInfo: createRef<HTMLDivElement>(),
+        domainSettings: createRef<HTMLDivElement>(),
+        locationInfo: createRef<HTMLDivElement>(),
+        logo: createRef<HTMLDivElement>(),
+        officialPage: createRef<HTMLDivElement>(),
+        officialPageActions: createRef<HTMLDivElement>(),
+        officialPagePhotos: createRef<HTMLDivElement>(),
+        presenceMonitor: createRef<HTMLDivElement>(),
+    });
 
     const TAB_ITEMS_LIST = [
         {
@@ -391,43 +442,65 @@ function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
                             Keep your brand, public business identity, customer-facing links, and app branding in one place.
                         </Typography.Text>
                     </Card>
-                    <BasicInfoTab />
-                    <LocationInfoTab />
-                    <ContactPersonTab />
+                    <BasicInfoTab scrollRef={publicTruthFocusRefs.current.basicInfo} />
+                    <LocationInfoTab scrollRef={publicTruthFocusRefs.current.locationInfo} />
+                    <ContactPersonTab scrollRef={publicTruthFocusRefs.current.contactInfo} />
                     <SocialMediaTab
                         socialMedia={socialMedia}
                         setSocialMedia={setSocialMedia}
                     />
                     <OfficialPageTab
+                        actionsScrollRef={publicTruthFocusRefs.current.officialPageActions}
                         businessCategory={storeDetails?.businessCategory}
                         businessType={storeDetails?.businessType}
+                        photosScrollRef={publicTruthFocusRefs.current.officialPagePhotos}
                         publicPresence={storeDetails?.publicPresence}
                         subdomain={storeDetails?.subdomain}
                         customDomain={storeDetails?.customDomain}
-                        onGoogleLinkDone={() => {
+                        onGoogleLinkDone={async () => {
+                            const googleLinkUpdatedAt = new Date().toISOString();
+                            const nextPublicPresence = {
+                                ...(storeDetails?.publicPresence || {}),
+                                googleLinkUpdated: true,
+                                googleLinkUpdatedAt,
+                            };
                             const updates = {
                                 storeId: storeDetails?.storeId,
-                                publicPresence: {
-                                    ...(storeDetails?.publicPresence || {}),
-                                    googleLinkUpdated: true,
-                                    googleLinkUpdatedAt: new Date().toISOString(),
-                                },
+                                publicPresence: nextPublicPresence,
                             };
-                            updateStore(updates).then(() => {
-                                setStoreDetails({
-                                    ...storeDetails,
+                            try {
+                                const writeResult = await updateStore(updates);
+                                assertStoreUpdateSucceeded(
+                                    writeResult,
+                                    storeDetails?.storeId,
+                                    'desktop_official_page_google_link_store_update_rejected',
+                                );
+                                setStoreDetails((previous: any) => ({
+                                    ...(previous || storeDetails),
                                     publicPresence: {
-                                        ...(storeDetails?.publicPresence || {}),
+                                        ...((previous || storeDetails)?.publicPresence || {}),
                                         googleLinkUpdated: true,
-                                        googleLinkUpdatedAt: new Date().toISOString(),
+                                        googleLinkUpdatedAt,
                                     },
+                                }));
+                            } catch (error) {
+                                logBusinessSettingsFailure('desktop_official_page_google_link_update_failed', error, {
+                                    surface: 'business_settings_official_page',
+                                    action: 'mark_google_link_done',
+                                    googleLinkUpdated: storeDetails?.publicPresence?.googleLinkUpdated === true,
+                                    ...getBoundedBusinessSettingsStringContext('storeId', storeDetails?.storeId),
+                                    ...getBoundedBusinessSettingsStringContext('tenantId', storeDetails?.tenantId),
+                                    ...getBoundedBusinessSettingsStringContext('subdomain', storeDetails?.subdomain),
+                                    ...getBoundedBusinessSettingsStringContext('customDomain', storeDetails?.customDomain),
                                 });
-                            });
+                                message.error('Could not save');
+                            }
                         }}
                         onGoogleLinkDismiss={() => {
                             // Silently dismiss — no persistence needed
                         }}
                         onPhotoDeleteQueued={handleOBPPhotoDeleteQueued}
+                        scrollRef={publicTruthFocusRefs.current.officialPage}
                     />
                     {FEATURE_FLAGS.ENABLE_BUSINESS_ATTRIBUTES ? (
                         <BusinessAttributesTab />
@@ -462,15 +535,20 @@ function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
                         </Typography.Text>
                     </Card>
                     <DomainSettingsTab
+                        scrollRef={publicTruthFocusRefs.current.domainSettings}
                         storeDetails={storeDetails}
                         onStoreStateUpdate={(updates) => {
                             setStoreDetails({ ...storeDetails, ...updates });
                         }}
-                        onStoreUpdate={(updates) => {
+                        onStoreUpdate={async (updates) => {
                             const storeUpdate = { storeId: storeDetails.storeId, ...updates };
-                            updateStore(storeUpdate).then(() => {
-                                setStoreDetails({ ...storeDetails, ...updates });
-                            });
+                            const writeResult = await updateStore(storeUpdate);
+                            assertStoreUpdateSucceeded(
+                                writeResult,
+                                storeDetails.storeId,
+                                'desktop_domain_settings_subdomain_store_update_rejected',
+                            );
+                            setStoreDetails({ ...storeDetails, ...updates });
                         }}
                     />
                     {FEATURE_FLAGS.ENABLE_BUSINESS_COPY_GENERATION ? (
@@ -525,7 +603,12 @@ function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
                                     storeId: storeDetails.storeId,
                                     tagline: mergeLocalizedField(storeDetails?.tagline, localized.tagline),
                                 };
-                                await updateStore(nextStoreUpdate);
+                                const writeResult = await updateStore(nextStoreUpdate);
+                                assertStoreUpdateSucceeded(
+                                    writeResult,
+                                    storeDetails.storeId,
+                                    'desktop_business_copy_store_update_rejected',
+                                );
 
                                 setStoreDetails({
                                     ...storeDetails,
@@ -600,7 +683,12 @@ function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
                                     storeId: storeDetails.storeId,
                                     tagline: mergeLocalizedField(storeDetails?.tagline, localized.tagline),
                                 };
-                                await updateStore(nextStoreUpdate);
+                                const writeResult = await updateStore(nextStoreUpdate);
+                                assertStoreUpdateSucceeded(
+                                    writeResult,
+                                    storeDetails.storeId,
+                                    'desktop_business_copy_translation_store_update_rejected',
+                                );
 
                                 setStoreDetails({
                                     ...storeDetails,
@@ -625,9 +713,12 @@ function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
                     ) : null}
                     <SeoTab storeDetails={storeDetails} />
                     {FEATURE_FLAGS.ENABLE_MENU_PRESENCE_MONITOR ? (
-                        <BusinessSettingsPresenceMonitorCard storeDetails={storeDetails} />
+                        <div ref={publicTruthFocusRefs.current.presenceMonitor}>
+                            <BusinessSettingsPresenceMonitorCard storeDetails={storeDetails} />
+                        </div>
                     ) : null}
                     <IntegrationsTab
+                        setStoreDetails={setStoreDetails}
                         storeDetails={storeDetails}
                     />
                 </Flex>
@@ -712,11 +803,15 @@ function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
                 <PosSyncTab
                     scrollRef={scrollRefs.current[FEATURE_FLAGS.DIGITAL_SCREENS_ENABLED ? 8 : 7]}
                     storeDetails={storeDetails}
-                    onStoreUpdate={(updates) => {
+                    onStoreUpdate={async (updates) => {
                         const storeUpdate = { storeId: storeDetails.storeId, ...updates };
-                        return updateStore(storeUpdate).then(() => {
-                            setStoreDetails({ ...storeDetails, ...updates });
-                        });
+                        const writeResult = await updateStore(storeUpdate);
+                        assertStoreUpdateSucceeded(
+                            writeResult,
+                            storeDetails.storeId,
+                            'desktop_pos_sync_store_update_rejected',
+                        );
+                        setStoreDetails((previous: any) => applyPosSyncStoreUpdates(previous || storeDetails, updates));
                     }}
                 />
             ),
@@ -748,6 +843,40 @@ function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
         scrollRefs.current[index]?.current?.scrollIntoView({ behavior: "smooth" });
         setActiveSection(index);
     };
+
+    useEffect(() => {
+        const sectionParam = searchParams.get('section') || '';
+        const focusParam = searchParams.get('focus') || '';
+        const targetSectionKey = sectionParam || BUSINESS_SETTINGS_FOCUS_SECTION[focusParam];
+        if (!targetSectionKey) return;
+
+        const targetSectionIndex = TAB_ITEMS_LIST.findIndex((item) => item.key === targetSectionKey);
+        if (targetSectionIndex < 0) return;
+
+        const focusRef = focusParam === 'customer-link'
+            ? publicTruthFocusRefs.current.domainSettings
+            : focusParam === 'identity'
+                ? publicTruthFocusRefs.current.basicInfo
+                : focusParam === 'contact'
+                    ? publicTruthFocusRefs.current.contactInfo
+                    : focusParam === 'location'
+                        ? publicTruthFocusRefs.current.locationInfo
+                        : focusParam === 'logo'
+                            ? publicTruthFocusRefs.current.logo
+                            : focusParam === 'official-page-actions'
+                                ? publicTruthFocusRefs.current.officialPageActions
+                                : focusParam === 'official-page-photos'
+                                    ? publicTruthFocusRefs.current.officialPagePhotos
+                                    : focusParam === 'presence-monitor'
+                                        ? publicTruthFocusRefs.current.presenceMonitor
+                                        : null;
+
+        window.setTimeout(() => {
+            setActiveSection(targetSectionIndex);
+            const target = focusRef?.current || scrollRefs.current[targetSectionIndex]?.current;
+            target?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 100);
+    }, [searchParams]);
 
     // Initialize imageUrl from storeDetails if it exists
     useEffect(() => {
@@ -1039,56 +1168,63 @@ function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
                         .toLowerCase()
                         .replaceAll(" ", "_");
                 }
-                updateStore(updatedChanges).then(async (savedDetails) => {
-                    await deleteQueuedOBPPhotos(obpPhotoDeleteQueue);
-                    obpPhotoDeleteQueueRef.current = obpPhotoDeleteQueueRef.current.filter(
-                        (photoUrl) => !obpPhotoDeleteQueue.includes(photoUrl),
-                    );
-                    if (savedDetails?.logo) {
-                        setSelectedFile({
-                            name: savedDetails.logo,
-                            size: 0,
-                            type: "",
-                            url: savedDetails.logo,
-                        });
-                    }
+                const savedDetails = await updateStore(updatedChanges);
+                assertStoreUpdateSucceeded(
+                    savedDetails,
+                    storeDetails.storeId,
+                    'desktop_business_settings_store_update_rejected',
+                );
+                await deleteQueuedOBPPhotos(obpPhotoDeleteQueue);
+                obpPhotoDeleteQueueRef.current = obpPhotoDeleteQueueRef.current.filter(
+                    (photoUrl) => !obpPhotoDeleteQueue.includes(photoUrl),
+                );
+                if (savedDetails?.logo) {
+                    setSelectedFile({
+                        name: savedDetails.logo,
+                        size: 0,
+                        type: "",
+                        url: savedDetails.logo,
+                    });
+                }
 
-                    //created new store
-                    if ("name" in updatedChanges || "tenantName" in updatedChanges) {
-                        const savedstoresList = [...tenantDetails.storesList];
-                        const index = savedstoresList.findIndex(
-                            (s) => s.storeId == storeDetails.storeId,
-                        );
-                        if (index != -1) {
-                            savedstoresList[index] = {
-                                ...savedstoresList[index],
-                                name: updatedChanges.name || storeDetails.name,
-                                tenantName: updatedChanges.tenantName || storeDetails.tenantName || tenantDetails.name,
-                            };
-                            if (updatedChanges.tenantName) {
-                                await updateTenant({
-                                    tenantId: tenantDetails.tenantId,
-                                    name: updatedChanges.tenantName,
-                                    storesList: savedstoresList,
-                                });
-                            } else {
-                                await updateTenantsStoreslist({
-                                    tenantId: tenantDetails.tenantId,
-                                    storesList: savedstoresList,
-                                });
-                            }
-                            setStoreDetails({
-                                ...storeDetails,
-                                ...updatedChanges,
-                                ...savedDetails,
+                //created new store
+                if ("name" in updatedChanges || "tenantName" in updatedChanges) {
+                    const savedstoresList = [...tenantDetails.storesList];
+                    const index = savedstoresList.findIndex(
+                        (s) => s.storeId == storeDetails.storeId,
+                    );
+                    if (index != -1) {
+                        savedstoresList[index] = {
+                            ...savedstoresList[index],
+                            name: updatedChanges.name || storeDetails.name,
+                            tenantName: updatedChanges.tenantName || storeDetails.tenantName || tenantDetails.name,
+                        };
+                        if (updatedChanges.tenantName) {
+                            const tenantResult = await updateTenant({
+                                tenantId: tenantDetails.tenantId,
+                                name: updatedChanges.tenantName,
+                                storesList: savedstoresList,
                             });
+                            assertTenantUpdateSucceeded(
+                                tenantResult,
+                                tenantDetails.tenantId,
+                                'desktop_business_settings_tenant_update_rejected',
+                            );
                         } else {
-                            setStoreDetails({
-                                ...storeDetails,
-                                ...updatedChanges,
-                                ...savedDetails,
+                            const storesListResult = await updateTenantsStoreslist({
+                                tenantId: tenantDetails.tenantId,
+                                storesList: savedstoresList,
                             });
+                            assertTenantsStoresListUpdateSucceeded(
+                                storesListResult,
+                                'desktop_business_settings_tenant_stores_list_update_rejected',
+                            );
                         }
+                        setStoreDetails({
+                            ...storeDetails,
+                            ...updatedChanges,
+                            ...savedDetails,
+                        });
                     } else {
                         setStoreDetails({
                             ...storeDetails,
@@ -1096,7 +1232,13 @@ function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
                             ...savedDetails,
                         });
                     }
-                });
+                } else {
+                    setStoreDetails({
+                        ...storeDetails,
+                        ...updatedChanges,
+                        ...savedDetails,
+                    });
+                }
             } else {
                 void deleteQueuedOBPPhotos(obpPhotoDeleteQueue);
                 obpPhotoDeleteQueueRef.current = obpPhotoDeleteQueueRef.current.filter(
@@ -1126,22 +1268,29 @@ function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
                 tenantName: tenantDetails.name,
             };
 
-            addStore(changesToUpload).then(async (savedDetails) => {
-                await deleteQueuedOBPPhotos(obpPhotoDeleteQueue);
-                obpPhotoDeleteQueueRef.current = obpPhotoDeleteQueueRef.current.filter(
-                    (photoUrl) => !obpPhotoDeleteQueue.includes(photoUrl),
-                );
-                const tenantData = {
-                    tenantId: tenantDetails.tenantId,
-                    storesList: [
-                        ...tenantDetails.storesList,
-                        { storeId: changesToUpload.storeId, name: changesToUpload.name, tenantName: tenantDetails.name },
-                    ],
-                };
-                updateTenantsStoreslist(tenantData).then(() => {
-                    setStoreDetails({ ...changesToUpload, ...savedDetails });
-                });
-            });
+            const savedDetails = await addStore(changesToUpload);
+            assertStoreUpdateSucceeded(
+                savedDetails,
+                changesToUpload.storeId,
+                'desktop_business_settings_store_create_rejected',
+            );
+            await deleteQueuedOBPPhotos(obpPhotoDeleteQueue);
+            obpPhotoDeleteQueueRef.current = obpPhotoDeleteQueueRef.current.filter(
+                (photoUrl) => !obpPhotoDeleteQueue.includes(photoUrl),
+            );
+            const tenantData = {
+                tenantId: tenantDetails.tenantId,
+                storesList: [
+                    ...tenantDetails.storesList,
+                    { storeId: changesToUpload.storeId, name: changesToUpload.name, tenantName: tenantDetails.name },
+                ],
+            };
+            const storesListResult = await updateTenantsStoreslist(tenantData);
+            assertTenantsStoresListUpdateSucceeded(
+                storesListResult,
+                'desktop_business_settings_tenant_stores_list_update_rejected',
+            );
+            setStoreDetails({ ...changesToUpload, ...savedDetails });
         }
     };
 
@@ -1172,7 +1321,7 @@ function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
                             zIndex: 1,
                         }}
                     >
-                        <Card>
+                        <Card ref={publicTruthFocusRefs.current.logo}>
                             <MediaImageCard
                                 accept={getMediaProfileAcceptAttribute('businessLogo')}
                                 alt={storeDetails?.name || 'Business logo'}

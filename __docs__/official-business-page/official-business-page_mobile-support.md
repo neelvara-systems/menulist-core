@@ -1,6 +1,6 @@
 # Official Business Page (OBP) — Mobile Support Assessment
 
-**Date:** May 10, 2026
+**Date:** May 10, 2026 | June 30, 2026
 
 ---
 
@@ -74,6 +74,14 @@ OBP has TWO surfaces — each assessed separately:
 - Business attributes and owner-defined custom attributes with the shared category icon/emoji picker
 - Business photo gallery with shared media upload and per-photo action sheet
 
+### Failure Boundary
+
+`MobileOfficialPageScreen` uses the same `updateStore()`, `uploadOBPCover()`, `uploadOBPPhoto()`, and `deleteOBPPhotos()` paths as desktop-backed OBP settings. Saves must require `assertStoreUpdateSucceeded()` before photo cleanup, saved baselines, or success copy. Failed saves log `mobile_official_page_save_failed` with bounded store, tenant, localized-language count, photo count, delete-queue count, cover presence, and special-note presence metadata before showing fixed owner-facing copy.
+
+`MobileMenuScreen` can apply menu-derived OBP `businessAttributes` defaults after owner-approved extraction review. That path must require `assertStoreUpdateSucceeded()` before local public attribute state changes; rejected writes use `mobile_menu_business_attributes_default_store_update_rejected` through `mobile_menu_business_attributes_default_apply_failed`.
+
+Cover/photo prepare, upload, generated-cover, public-link copy, and native-share failures log bounded `mobile_official_page_cover_prepare_failed`, `mobile_official_page_cover_upload_failed`, `mobile_official_page_cover_generate_failed`, `mobile_official_page_photo_prepare_failed`, `mobile_official_page_photo_upload_failed`, `mobile_official_page_link_copy_failed`, or `mobile_official_page_native_share_failed`. These diagnostics record only bounded file-name, store/tenant, photo index/count, media-presence, official-page URL, selected-project, language, project-count, copy/share metadata, and clipboard/fallback support booleans; raw file payloads, Storage URLs, public OBP URLs, provider/browser messages, and exception text must not be shown or logged directly. Public-link copied feedback must wait for Clipboard API success or acknowledged textarea fallback success.
+
 ### Public OBP Page (customer-facing):
 
 Already mobile-first by design:
@@ -83,6 +91,7 @@ Already mobile-first by design:
 - Responsive layout (mobile-first CSS)
 - Touch targets ≥ 44px for action buttons
 - Single-column layout, no horizontal scroll
+- Public OBP external-link source gate: `npm run verify:official-business-page-boundary` keeps customer-facing action links, social links, Google review links, manifest shortcuts, PWA directions/reservation/order handoffs, and JSON-LD targets normalized before mobile browsers can open them.
 
 ---
 
@@ -118,4 +127,4 @@ Already mobile-first by design:
 ---
 
 **Document Signature:** Cascade (Lead Architect)  
-**Last Updated:** March 11, 2026
+**Last Updated:** June 29, 2026

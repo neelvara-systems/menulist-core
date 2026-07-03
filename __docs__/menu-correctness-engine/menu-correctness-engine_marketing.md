@@ -1,7 +1,7 @@
 # Menu Correctness Engine — Marketing & Sales Collateral
 
 **Version:** 3.1  
-**Status:** ✅ IMPLEMENTED — READY FOR INTERNAL USE  
+**Status:** Source-gated marketing evidence; not current launch certification
 **Audience:** Sales, Marketing, Internal Teams  
 **Last Updated:** February 14, 2026
 
@@ -13,19 +13,29 @@
 
 ---
 
+## Current Launch Boundary
+
+This marketing collateral describes the current Menu Correctness Engine source contract and active runtime flag. It is not current launch certification and must not be used as a sales guarantee that every surface has been externally certified.
+
+Current release approval requires the active [production-readiness audit](../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../production-readiness/external-certification-runbook.md) evidence, `npm run verify:public-business-truth`, browser/mobile save and publish-gate QA, customer-facing surface smoke for validated project data, QR/menu device QA where sales copy references live menus or screens, PDF artifact review where PDF copy is used, POS/provider smoke where POS copy is used, target deploy evidence, and production-host smoke.
+
+Sales language may say supported surfaces read from the same verified project truth. It must not promise instant sync, universal surface certification, or POS/PDF/device behavior without matching target evidence.
+
+---
+
 ## 1. Elevator Pitch
 
 ### One-Liner (Internal)
 
-MenuList now guarantees that every menu surface — QR code, website, digital screen, printed PDF, POS system — always shows the exact same, verified menu. No exceptions.
+MenuList validates menu state on save and keeps supported menu surfaces reading from the same verified project truth after their normal refresh, download, or provider flow completes.
 
 ### 30-Second Pitch
 
-When a restaurant owner changes a price or marks an item unavailable, that change must appear everywhere — immediately and correctly. Today, there is no system that validates "the menu I just saved is complete, valid, and ready for all surfaces." The Menu Correctness Engine eliminates this gap. Every edit passes through validation. Only verified, correct menu data reaches customers. The owner never has to check.
+When a restaurant owner changes a price or marks an item unavailable, that change should flow through the same verified project truth before customer-facing publishing continues. The Menu Correctness Engine eliminates the validation gap. Every edit passes through save-time validation, and release teams still verify surface-specific refresh, download, provider, and device behavior before launch.
 
 ### For CEO/Board
 
-MenuList's core value proposition is trust. Trust requires consistency. The Menu Correctness Engine is the infrastructure that makes consistency absolute — across every surface, every outlet, every time. This is not a feature we sell. This is the foundation that makes everything we sell trustworthy.
+MenuList's core value proposition is trust. Trust requires consistency. The Menu Correctness Engine is the infrastructure that validates menu truth at save time, while release evidence still proves the exact surfaces and outlets included in a launch. This is not a feature we sell. This is the foundation that makes everything we sell trustworthy.
 
 ---
 
@@ -41,14 +51,14 @@ This creates a specific kind of anxiety: **"Is my menu correct right now?"**
 
 ### How MCE Eliminates This
 
-The Menu Correctness Engine sits between the editor and every customer-facing surface. When an owner saves, MCE:
+The Menu Correctness Engine runs in the project save path before customer-facing publishing flows continue. When an owner saves, MCE:
 
 1. **Validates** — checks that the menu is complete and correct (all items have names, prices are valid, categories are intact)
-2. **Stamps** — marks the project data as verified, so all surfaces serve validated data
+2. **Stamps** — marks the project data as verified, so supported surfaces can read the same validated project truth through their existing paths
 
 No duplicate data. No separate collections. No background monitoring needed. Validation at save-time is the entire mechanism.
 
-The result: **Every surface, every time, the same verified menu.**
+The result: **One verified project truth that supported surfaces use through their existing refresh and regeneration paths.**
 
 ### Why This Matters for MenuList's Position
 
@@ -62,17 +72,17 @@ MenuList's identity is "the calm system businesses depend on daily." Calmness re
 
 | Situation                                                 | Message                                                                                                                                                          |
 | --------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Owner asks "How do I know my menu is correct everywhere?" | "MenuList verifies your menu automatically before it reaches any surface. Every QR code, screen, and link shows the same verified menu."                         |
-| Owner worries about price errors                          | "When you change a price, MenuList validates it before publishing. No surface shows the new price until it's been verified as correct."                          |
-| Multi-outlet owner asks about consistency                 | "Every location reads from the same verified menu. If your master menu changes, each outlet gets a verified copy — not a copy that might be incomplete."         |
+| Owner asks "How do I know my menu is correct everywhere?" | "MenuList verifies your menu automatically and keeps supported surfaces reading from the same project truth."                                                    |
+| Owner worries about price errors                          | "When you change a price, MenuList validates the menu state before customer-facing publishing flows continue."                                                   |
+| Multi-outlet owner asks about consistency                 | "Every location reads from verified project truth. Master changes and outlet overrides still need target QA for the exact release scope."                         |
 | Competitor comparison                                     | "Most menu systems write changes directly. MenuList verifies first, then publishes. That's the difference between hoping it's correct and knowing it's correct." |
 
 ### For Support Conversations
 
 | Situation                                        | Message                                                                                                                               |
 | ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------- |
-| Owner reports "my screen shows old price"        | "MenuList verified and saved your latest menu. Screens refresh automatically via version polling — it should update within a minute." |
-| Owner asks "how long until my changes are live?" | "Your changes are verified and live across all surfaces within 30 seconds of saving."                                                 |
+| Owner reports "my screen shows old price"        | "MenuList verified and saved your latest menu. Screens refresh through their device polling and cache path, so check the target screen state before closing the issue." |
+| Owner asks "how long until my changes are live?" | "Your changes are verified on save. Each surface then follows its own refresh, download, provider, or device timing."                       |
 | Owner asks "can I check if my menu is correct?"  | "MenuList verifies your menu automatically every time you save. No manual checking needed."                                           |
 
 ---
@@ -97,10 +107,10 @@ MenuList's identity is "the calm system businesses depend on daily." Calmness re
 
 | Aspect                | Typical Menu System                             | MenuList with MCE                                   |
 | --------------------- | ----------------------------------------------- | --------------------------------------------------- |
-| Price change          | Written directly, hope it syncs                 | Validated, verified, then published to all surfaces |
-| Multi-surface         | Each surface reads independently                | All surfaces read from same validated project data  |
+| Price change          | Written directly, hope it syncs                 | Validated, verified, then surfaced through audited paths |
+| Multi-surface         | Each surface reads independently                | Supported surfaces read from the same validated project data |
 | Error detection       | Owner discovers errors from customer complaints | System validates and catches errors at save-time    |
-| Consistency guarantee | "Should be in sync"                             | "Verified in sync"                                  |
+| Consistency claim | "Should be in sync"                             | "Verified project truth, with surface-specific QA"  |
 
 ---
 
@@ -148,18 +158,18 @@ MenuList's identity is "the calm system businesses depend on daily." Calmness re
 
 ### Slide 3: The Solution
 
-"MenuList verifies every menu change before it reaches any surface."
+"MenuList validates menu truth on save before customer-facing publishing flows continue."
 
 ### Slide 4: How It Works
 
 1. Owner saves (no change to workflow)
 2. System validates completeness and correctness
 3. Verification metadata stamped on project data
-4. Every surface reads same validated data
+4. Supported surfaces read the same validated project data through their audited paths
 
 ### Slide 5: The Guarantees
 
-- Single source of truth across all surfaces
+- Single source of truth for supported surfaces
 - Validation before exposure
 - Owner's work never lost (save always succeeds)
 - Zero owner configuration
@@ -171,7 +181,7 @@ MenuList's identity is "the calm system businesses depend on daily." Calmness re
 
 ### Slide 7: What Owners Experience
 
-"Nothing. They save their menu and it's correct everywhere. That's the point."
+"Nothing extra. They save their menu, and MenuList validates the project truth before publishing flows continue."
 
 ---
 
@@ -183,9 +193,9 @@ MCE is what transforms MenuList from a SaaS tool into infrastructure. This disti
 
 | Dimension          | Menu SaaS (Before MCE)     | Menu Infrastructure (With MCE)                 |
 | ------------------ | -------------------------- | ---------------------------------------------- |
-| What it does       | Creates and displays menus | Guarantees menus are always correct everywhere |
+| What it does       | Creates and displays menus | Validates menu truth before publishing flows continue |
 | Owner relationship | "Tool I use"               | "System I depend on"                           |
-| Failure mode       | "Wrong price on screen"    | "Not possible — system prevents it"            |
+| Failure mode       | "Wrong price on screen"    | "Detected at save time or caught by surface QA" |
 | Switching risk     | Low — just export data     | High — lose correctness guarantee              |
 | Category           | Menu management software   | Customer-facing truth infrastructure           |
 
@@ -201,9 +211,9 @@ MCE is Layer 1 of a 3-layer strategy. Do not share this externally.
 
 | Layer | Name                           | Timeline | What It Enables                                                            |
 | ----- | ------------------------------ | -------- | -------------------------------------------------------------------------- |
-| 1     | **Truth Infrastructure** (MCE) | NOW      | Correct menu across all MenuList surfaces                                  |
-| 2     | **Presence Authority**         | NEXT     | MenuList becomes single source of truth for all public business info       |
-| 3     | **Distribution Control**       | LATER    | Push verified data to Google, WhatsApp, delivery apps, discovery platforms |
+| 1     | **Truth Infrastructure** (MCE) | Source-gated runtime | Save-time validation for supported MenuList surfaces                       |
+| 2     | **Presence Authority**         | Separate audited scope | MenuList as source of truth for public business info                       |
+| 3     | **Distribution Control**       | Separate audited scope | Verified data distribution to approved external channels                   |
 
 **Key insight:** You cannot distribute incorrect data globally. MCE is the prerequisite for Layer 2 and 3. Without it, every future distribution channel carries risk.
 
@@ -214,7 +224,7 @@ With MCE live, MenuList is no longer just a "menu builder." It becomes a **valid
 | Before MCE                        | After MCE                                       |
 | --------------------------------- | ----------------------------------------------- |
 | Menu management software          | Customer-facing truth infrastructure            |
-| "Saves and publishes menus"       | "Guarantees menus are correct everywhere"       |
+| "Saves and publishes menus"       | "Validates menu truth before surface publishing" |
 | Competitor can replicate features | Competitor cannot replicate embedded validation |
 | Owner evaluates alternatives      | Owner depends on correctness guarantee          |
 
@@ -252,7 +262,7 @@ If MCE is boring and invisible for 3 years — it's working perfectly.
 ### Do
 
 - Say "verified" — it's accurate and reassuring
-- Say "every surface, every time" — it's the core promise
+- Say "supported surfaces read from the same verified project truth" — it matches the current source contract
 - Say "automatic" — MCE requires zero owner action
 - Focus on the outcome (correct menus) not the mechanism (validation rules, metadata)
 - Use calm, confident language
@@ -264,7 +274,7 @@ If MCE is boring and invisible for 3 years — it's working perfectly.
 - Don't say "helps you verify" — the system verifies, the owner does nothing
 - Don't say "monitor your menu" — monitoring implies owner attention
 - Don't explain the technical mechanism to customers
-- Don't create urgency ("your menu might be wrong!") — create confidence ("your menu is always correct")
+- Don't create urgency ("your menu might be wrong!") or overstate release evidence ("every surface has been certified")
 - Don't compare to competitors by name
 
 ---
@@ -273,11 +283,11 @@ If MCE is boring and invisible for 3 years — it's working perfectly.
 
 | Feature                 | How to Position MCE with It                                                                                   |
 | ----------------------- | ------------------------------------------------------------------------------------------------------------- |
-| **Digital Screens**     | "Your screen always shows the same verified menu as your QR code. Guaranteed."                                |
-| **Multi-Outlet**        | "Every location reads from the same verified master menu. No more location inconsistencies."                  |
-| **POS Sync**            | "Your POS receives the same verified menu that customers see. One truth, every system."                       |
-| **PDF Export**          | "PDFs generated from the same verified source as your digital menu. What's printed matches what's online."    |
-| **Menu Command Center** | "Bulk changes go through the same verification. Change 50 prices at once — all verified before they go live." |
+| **Digital Screens**     | "Your screen reads from the same verified project truth as your QR code after its device refresh path completes." |
+| **Multi-Outlet**        | "Every location reads from verified project truth while preserving outlet overrides through the existing location flow." |
+| **POS Sync**            | "Your POS connection reads from the same verified project truth when the connected provider flow runs."       |
+| **PDF Export**          | "PDFs are generated from the same verified source as your digital menu when the owner regenerates the artifact." |
+| **Menu Command Center** | "Bulk changes go through the same verification path before publishing flows continue." |
 
 ---
 

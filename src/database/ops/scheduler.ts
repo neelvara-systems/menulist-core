@@ -12,6 +12,7 @@
 
 import { DB_COLLECTIONS } from '@constant/database';
 import { firebaseClient } from '@lib/firebase/firebaseClient';
+import { getBoundedOpsStringContext, logOpsFailure } from '@lib/ops/opsDiagnostics';
 import type {
   SchedulerDashboardSnapshot,
   SchedulerHealthSummary,
@@ -117,7 +118,11 @@ export async function getSchedulerRunHistory(
       ...d.data(),
     })) as SchedulerRunLog[];
   } catch (error) {
-    console.error('[SchedulerDAL] Failed to get run history:', error);
+    logOpsFailure('ops_scheduler_run_history_load_failed', error, {
+      statusFilter: filter?.status,
+      triggerFilter: filter?.trigger,
+      limit: filter?.limit || 20,
+    });
     return [];
   }
 }
@@ -141,7 +146,7 @@ export async function getSchedulerHealthSummary(): Promise<SchedulerHealthSummar
     const runs = snap.docs.map(d => ({ id: d.id, ...d.data() })) as SchedulerRunLog[];
     return buildSchedulerHealthSummaryFromRuns(runs);
   } catch (error) {
-    console.error('[SchedulerDAL] Failed to get health summary:', error);
+    logOpsFailure('ops_scheduler_health_summary_load_failed', error);
   }
 
   return getEmptySchedulerHealthSummary();
@@ -165,7 +170,9 @@ export async function getSchedulerRunDetails(runId: string): Promise<SchedulerRu
 
     return { id: snap.id, ...snap.data() } as SchedulerRunLog;
   } catch (error) {
-    console.error('[SchedulerDAL] Failed to get run details:', error);
+    logOpsFailure('ops_scheduler_run_details_load_failed', error, {
+      ...getBoundedOpsStringContext('runId', runId),
+    });
     return null;
   }
 }
@@ -221,7 +228,9 @@ export async function getSchedulerSettlementSummary(maxResults: number = 50): Pr
       .sort()
       .pop() || null;
   } catch (error) {
-    console.error('[SchedulerDAL] Failed to get settlement summary:', error);
+    logOpsFailure('ops_scheduler_settlement_summary_load_failed', error, {
+      maxResults,
+    });
   }
 
   return summary;

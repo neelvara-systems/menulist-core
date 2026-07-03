@@ -3,8 +3,8 @@
 /**
  * ReviewReplyTool — Standalone AI reply suggestion tool
  *
- * Owner pastes a customer review + selects rating → gets professional reply.
- * Works WITHOUT GBP API access (standalone tool).
+ * Dormant reply-assist component. Owner-pasted review suggestions stay disabled
+ * until the reviews reputation parent flag and GBP-backed ingestion are enabled.
  *
  * @see __docs__/reputation-protection/reputation-protection_impl.md
  * @see src/app/api/reviews/suggest/route.ts
@@ -12,12 +12,109 @@
 
 import { FEATURE_FLAGS } from '@config/features';
 import { syncBalanceFromResponse } from '@services/ai/balanceSync';
+import { getBoundedAiServiceStringContext, logAiServiceFailure } from '@services/ai/aiServiceDiagnostics';
+import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';
 import { Alert, Button, Card, Input, Rate, Space, Tag, Typography, theme, notification } from 'antd';
-import axios from 'axios';
 import { useState } from 'react';
 import { LuCheck, LuCopy, LuMessageSquare, LuRefreshCw, LuSparkles } from 'react-icons/lu';
 
 const { Text, Title, Paragraph } = Typography;
+const REVIEW_REPLY_CAPACITY_MESSAGE = 'Additional enhancements needed. Add more from Billing.';
+const REVIEW_REPLY_RESPONSE_JSON_MAX_BYTES = 16 * 1024;
+const REVIEW_REPLY_REQUEST_POLICY = {
+    cache: 'no-store' as RequestCache,
+    credentials: 'same-origin' as RequestCredentials,
+    redirect: 'manual' as RequestRedirect,
+};
+const DESKTOP_REVIEW_REPLY_COPY_UNAVAILABLE = 'desktop_review_reply_copy_unavailable';
+const DESKTOP_REVIEW_REPLY_COPY_FALLBACK_FAILED = 'desktop_review_reply_copy_fallback_failed';
+
+type ReviewReplySource = 'ai' | 'fallback';
+type ReviewReplySuggestionResponse = {
+    success?: unknown;
+    reply?: unknown;
+    source?: unknown;
+    remainingBalance?: unknown;
+    transaction?: unknown;
+};
+type AcknowledgedReviewReplySuggestionResponse = ReviewReplySuggestionResponse & {
+    success: true;
+    reply: string;
+    source: ReviewReplySource;
+};
+
+function createReviewReplyError(failureCode: string, status?: number): Error & { code: string; statusCode?: number } {
+    return Object.assign(new Error(failureCode), {
+        code: failureCode,
+        statusCode: status,
+    });
+}
+
+function getReviewReplyStatus(error: any): number | undefined {
+    const status = Number(error?.status ?? error?.statusCode ?? error?.response?.status);
+    return Number.isFinite(status) ? status : undefined;
+}
+
+function isAcknowledgedReviewReplySuggestionResponse(
+    value: ReviewReplySuggestionResponse | null,
+): value is AcknowledgedReviewReplySuggestionResponse {
+    return Boolean(
+        value
+        && value.success === true
+        && typeof value.reply === 'string'
+        && value.reply.trim().length > 0
+        && (value.source === 'ai' || value.source === 'fallback'),
+    );
+}
+
+const hasDesktopReviewReplyClipboardWrite = (): boolean => (
+    typeof navigator !== 'undefined'
+    && Boolean(navigator.clipboard)
+    && typeof navigator.clipboard.writeText === 'function'
+);
+
+const hasDesktopReviewReplyCopyFallback = (): boolean => (
+    typeof document !== 'undefined'
+    && typeof document.createElement === 'function'
+    && typeof document.execCommand === 'function'
+    && Boolean(document.body)
+);
+
+const copyDesktopReviewReplyText = async (value: string): Promise<void> => {
+    let clipboardWriteError: unknown;
+
+    if (hasDesktopReviewReplyClipboardWrite()) {
+        try {
+            await navigator.clipboard.writeText(value);
+            return;
+        } catch (error) {
+            clipboardWriteError = error;
+        }
+    }
+
+    if (!hasDesktopReviewReplyCopyFallback()) {
+        throw clipboardWriteError || new Error(DESKTOP_REVIEW_REPLY_COPY_UNAVAILABLE);
+    }
+
+    const textarea = document.createElement('textarea');
+    textarea.value = value;
+    textarea.setAttribute('readonly', '');
+    textarea.style.position = 'fixed';
+    textarea.style.left = '-9999px';
+    textarea.style.top = '0';
+    document.body.appendChild(textarea);
+    textarea.focus();
+    textarea.select();
+
+    try {
+        const copied = document.execCommand('copy');
+        if (!copied) {
+            throw new Error(DESKTOP_REVIEW_REPLY_COPY_FALLBACK_FAILED);
+        }
+    } finally {
+        document.body.removeChild(textarea);
+    }
+};
 
 interface ReviewReplyToolProps {
     businessType?: string;
@@ -33,7 +130,7 @@ export default function ReviewReplyTool({ businessType }: ReviewReplyToolProps) 
     const [copied, setCopied] = useState(false);
     const [attempts, setAttempts] = useState(0);
 
-    if (!FEATURE_FLAGS.ENABLE_AI_REPLY_ASSIST) {
+    if (!FEATURE_FLAGS.ENABLE_REVIEWS_REPUTATION || !FEATURE_FLAGS.ENABLE_AI_REPLY_ASSIST) {
         return null;
     }
 
@@ -53,28 +150,79 @@ export default function ReviewReplyTool({ businessType }: ReviewReplyToolProps) 
         setReplySource(null);
 
         try {
-            const res = await axios.post('/api/reviews/suggest', {
-                reviewText: reviewText.trim(),
-                rating,
-                businessType,
+            const response = await fetch('/api/reviews/suggest', {
+                ...REVIEW_REPLY_REQUEST_POLICY,
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    reviewText: reviewText.trim(),
+                    rating,
+                    businessType,
+                }),
             });
-
-            syncBalanceFromResponse(res.data);
-
-            if (res.data?.success && res.data?.reply) {
-                setReply(res.data.reply);
-                setReplySource(res.data.source || 'ai');
-                setAttempts(prev => prev + 1);
-            } else {
-                notification.error({ message: 'Could not generate a reply. Please try again.' });
+            let data: ReviewReplySuggestionResponse | null = null;
+            try {
+                data = await readJsonResponseWithLimit<ReviewReplySuggestionResponse>(
+                    response,
+                    REVIEW_REPLY_RESPONSE_JSON_MAX_BYTES,
+                );
+            } catch (error) {
+                logAiServiceFailure(
+                    'desktop_review_reply_response_parse_failed',
+                    error,
+                    {
+                        rating,
+                        responseOk: response.ok,
+                        responseStatus: response.status,
+                        maxBytes: REVIEW_REPLY_RESPONSE_JSON_MAX_BYTES,
+                        ...getBoundedAiServiceStringContext('businessType', businessType),
+                        ...getBoundedAiServiceStringContext('reviewText', reviewText),
+                    },
+                );
             }
+
+            if (!response.ok) {
+                throw createReviewReplyError('desktop_review_reply_generation_rejected', response.status);
+            }
+
+            if (!isAcknowledgedReviewReplySuggestionResponse(data)) {
+                logAiServiceFailure(
+                    'desktop_review_reply_response_invalid',
+                    createReviewReplyError('desktop_review_reply_response_invalid', response.status),
+                    {
+                        rating,
+                        responseStatus: response.status,
+                        success: data?.success === true,
+                        hasReply: typeof data?.reply === 'string' && data.reply.trim().length > 0,
+                        hasExpectedSource: data?.source === 'ai' || data?.source === 'fallback',
+                        ...getBoundedAiServiceStringContext('businessType', businessType),
+                        ...getBoundedAiServiceStringContext('reviewText', reviewText),
+                    },
+                );
+                throw createReviewReplyError('desktop_review_reply_response_invalid', response.status);
+            }
+
+            syncBalanceFromResponse(data);
+            setReply(data.reply);
+            setReplySource(data.source);
+            setAttempts(prev => prev + 1);
         } catch (err: any) {
-            if (err.response?.status === 429) {
+            const status = getReviewReplyStatus(err);
+            logAiServiceFailure(
+                'desktop_review_reply_generation_failed',
+                createReviewReplyError('desktop_review_reply_generation_rejected', status),
+                {
+                    rating,
+                    ...getBoundedAiServiceStringContext('businessType', businessType),
+                    ...getBoundedAiServiceStringContext('reviewText', reviewText),
+                },
+            );
+            if (status === 429) {
                 notification.warning({ message: 'Too many requests. Please wait a moment.' });
-            } else if (err.response?.status === 402) {
-                notification.warning({ message: err.response?.data?.error || 'Additional enhancements needed. Add more from Billing.' });
+            } else if (status === 402) {
+                notification.warning({ message: REVIEW_REPLY_CAPACITY_MESSAGE });
             } else {
-                notification.error({ message: err.response?.data?.error || 'Failed to generate reply.' });
+                notification.error({ message: 'Failed to generate reply.' });
             }
         } finally {
             setLoading(false);
@@ -85,12 +233,26 @@ export default function ReviewReplyTool({ businessType }: ReviewReplyToolProps) 
         await handleGenerate();
     };
 
-    const handleCopy = () => {
+    const handleCopy = async () => {
         if (!reply) return;
-        navigator.clipboard.writeText(reply);
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
-        notification.success({ message: 'Reply copied to clipboard.' });
+        try {
+            await copyDesktopReviewReplyText(reply);
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
+            notification.success({ message: 'Reply copied to clipboard.' });
+        } catch (err) {
+            logAiServiceFailure('desktop_review_reply_copy_failed', err, {
+                rating,
+                replySource,
+                attempts,
+                ...getBoundedAiServiceStringContext('businessType', businessType),
+                ...getBoundedAiServiceStringContext('reviewText', reviewText),
+                ...getBoundedAiServiceStringContext('reply', reply),
+                hasClipboardWrite: hasDesktopReviewReplyClipboardWrite(),
+                hasCopyFallback: hasDesktopReviewReplyCopyFallback(),
+            });
+            notification.error({ message: 'Could not copy reply.' });
+        }
     };
 
     const handleClear = () => {

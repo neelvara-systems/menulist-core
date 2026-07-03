@@ -13,10 +13,13 @@
  */
 
 import { Timestamp } from 'firebase-admin/firestore';
+import * as functions from 'firebase-functions';
 import { DB_COLLECTIONS } from '../constants/database';
 import { firestoreAdmin as db } from '../firebaseAdmin';
+import { getMonitoringErrorContext } from './diagnostics';
 
 const OPS_SYSTEM_DOC = `${DB_COLLECTIONS.OPS_CONFIG}/system`;
+const logger = functions.logger;
 
 // In-memory cache for Cloud Functions warm instances
 let cachedSafeMode: boolean | null = null;
@@ -53,7 +56,11 @@ export async function isSafeModeActive(): Promise<boolean> {
     cacheTimestamp = now;
     return cachedSafeMode;
   } catch (error) {
-    console.error('[SAFE_MODE] Error checking status:', error);
+    logger.error('[SAFE_MODE] Error checking status', {
+      failureCode: 'FUNCTIONS_SAFE_MODE_CHECK_FAILED',
+      failOpen: true,
+      error: getMonitoringErrorContext(error),
+    });
     // Fail-open: don't break operations if config doc is unreachable
     return false;
   }
@@ -75,7 +82,10 @@ export async function activateSafeMode(reason: string, activatedBy: string = 'ma
   cachedSafeMode = true;
   cacheTimestamp = Date.now();
 
-  console.warn(`[SAFE_MODE] ACTIVATED — Reason: ${reason}, By: ${activatedBy}`);
+  logger.warn('[SAFE_MODE] Activated', {
+    activatedBy,
+    reasonLength: reason.length,
+  });
 }
 
 /**
@@ -93,5 +103,5 @@ export async function deactivateSafeMode(): Promise<void> {
   cachedSafeMode = false;
   cacheTimestamp = Date.now();
 
-  console.info('[SAFE_MODE] DEACTIVATED');
+  logger.info('[SAFE_MODE] Deactivated');
 }

@@ -369,7 +369,21 @@ assertCheck(
     && messagingPublish.includes('index: typeof file.index === "number" ? file.index : index')
     && messagingPublish.includes('files: projectFiles')
     && messagingPublish.includes('revalidateTag(`menu-store-${result.storeId}`)')
-    && messagingPublish.includes('revalidateTag("client-stores")'),
+    && messagingPublish.includes('revalidateTag("client-stores")')
+    && messagingPublish.includes('revalidateTag("screen-data")')
+    && messagingPublish.includes('touchDigitalScreenContentVersionForStoreServer(result.storeId, "messagingOnboardingPublish")'),
+);
+assertCheck(
+  'messaging approve transaction failures use typed stable sentinels',
+  messagingApproveRoute.includes('class PreviewApproveTransactionError extends Error')
+    && messagingApproveRoute.includes('throw new PreviewApproveTransactionError("SESSION_NOT_FOUND")')
+    && messagingApproveRoute.includes('throw new PreviewApproveTransactionError("INVALID_TOKEN")')
+    && messagingApproveRoute.includes('throw new PreviewApproveTransactionError("PUBLISH_IN_PROGRESS")')
+    && messagingApproveRoute.includes('throw new PreviewApproveTransactionError("SESSION_NOT_READY")')
+    && messagingApproveRoute.includes('throw new PreviewApproveTransactionError("SESSION_EXPIRED")')
+    && messagingApproveRoute.includes('isPreviewApproveTransactionError(txError)')
+    && !messagingApproveRoute.includes('(txError as Error).message')
+    && !messagingApproveRoute.includes('msg.includes('),
 );
 
 const publicClientRenderer = read('src/app/client/[[...slug]]/page.tsx');

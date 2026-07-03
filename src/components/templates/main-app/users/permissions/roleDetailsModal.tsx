@@ -1,6 +1,7 @@
 import DrawerElement from "@antdComponent/drawerElement";
 import { useAppDispatch } from "@hook/useAppDispatch";
 import { saveRoleDefinition } from "@lib/staffManagement/client";
+import { getBoundedStaffStringContext, logStaffClientFailure } from "@lib/staffManagement/diagnostics";
 import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from "@providers/platformProviders/platformGlobalDataProvider";
 import { showErrorToast, showSuccessToast, showWarningToast } from "@reduxSlices/toast";
 import RolesPermissionForm from "@template/platform/stores/rolesPermissionForm";
@@ -9,6 +10,13 @@ import { objectNullCheck, removeObjRef } from "@util/utils";
 import { Button, Flex, Input, Switch, Typography, theme } from "antd";
 import { useContext, useEffect, useState } from "react";
 const { Text, Title } = Typography;
+
+const getDesktopRoleDetailsLogContext = (storeDetails: any, roleData?: StoreRoleDataType) => ({
+    ...getBoundedStaffStringContext('storeId', storeDetails?.storeId),
+    ...getBoundedStaffStringContext('tenantId', storeDetails?.tenantId),
+    ...getBoundedStaffStringContext('roleId', roleData?.id),
+    ...getBoundedStaffStringContext('roleName', roleData?.name),
+});
 
 function RoleDetailsModal({ storeDetails, modalData, onClose }) {
 
@@ -57,8 +65,9 @@ function RoleDetailsModal({ storeDetails, modalData, onClose }) {
             onCancel({ ...storeDetails, roles: response.roles })
             setStoreDetails({ ...storeDetails, roles: response.roles })
             dispatch(showSuccessToast(objectNullCheck(modalData, 'data') ? "Role updated" : "Role added"))
-        } catch (err: any) {
-            dispatch(showErrorToast(err?.message || "Could not save role"))
+        } catch (err) {
+            logStaffClientFailure('desktop_staff_role_save_failed', err, getDesktopRoleDetailsLogContext(storeDetails, roleData));
+            dispatch(showErrorToast("Could not save role"))
         }
     }
 

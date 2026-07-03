@@ -60,6 +60,8 @@ import {
 const { Paragraph, Text, Title } = Typography;
 const { TextArea } = Input;
 const MAX_BROWSER_TEXT_FILE_BYTES = 8 * 1024 * 1024;
+const ANSWERLATTICE_INTAKE_ENTITY_SEARCH_FAILED = 'Could not search product entities.';
+const ANSWERLATTICE_INTAKE_URL_INSPECT_FAILED = 'Could not inspect URL.';
 
 const TARGET_LABELS: Record<string, { label: string; color: string; icon: any }> = {
     [ANSWERLATTICE_INTAKE_REVIEW_TARGET.KB_ARTICLE]: { label: 'KB Article', color: 'blue', icon: LuBookOpen },
@@ -314,10 +316,10 @@ export default function AnswerlatticeKnowledgeIntake() {
                 if (entitySearchSeqRef.current === searchSeq) {
                     setEntityOptions(options);
                 }
-            } catch (err) {
+            } catch {
                 if (entitySearchSeqRef.current === searchSeq) {
                     setEntityOptions([]);
-                    message.error(err instanceof Error ? err.message : 'Could not search product entities.');
+                    message.error(ANSWERLATTICE_INTAKE_ENTITY_SEARCH_FAILED);
                 }
             } finally {
                 if (entitySearchSeqRef.current === searchSeq) {
@@ -357,8 +359,8 @@ export default function AnswerlatticeKnowledgeIntake() {
             const links = await discoverLinks(values.url);
             setDiscoveredLinks(links);
             setSelectedLinks(links.slice(0, 5).map(link => link.url));
-        } catch (err) {
-            message.error(err instanceof Error ? err.message : 'Could not inspect URL.');
+        } catch {
+            message.error(ANSWERLATTICE_INTAKE_URL_INSPECT_FAILED);
         } finally {
             setDiscovering(false);
         }
@@ -453,8 +455,8 @@ export default function AnswerlatticeKnowledgeIntake() {
                     mimeType: file.type,
                     contentText,
                 });
-            } catch (err) {
-                message.error(`${file.name}: ${err instanceof Error ? err.message : 'Could not read file.'}`);
+            } catch {
+                message.error(`${file.name}: Could not read file.`);
             }
         }
     };

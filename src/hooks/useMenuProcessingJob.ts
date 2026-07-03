@@ -3,7 +3,7 @@
 /**
  * Menu Image Processing Job Hook
  * 
- * Spec Reference: MENU-IMAGE-PROCESSING-JOB-QUEUE-SPEC.md Section 6
+ * Spec Reference: menu-image-processing-job-queue-spec.md Section 6
  * 
  * Real-time subscription to a menu processing job's status.
  * Automatically updates when the job progresses.
@@ -11,6 +11,7 @@
 
 import { DB_COLLECTIONS } from '@constant/database';
 import { firebaseClient } from '@lib/firebase/firebaseClient';
+import { getMenuProcessingJobLogContext, logMenuProcessingFailure } from '@lib/firebase/menuProcessingDiagnostics';
 import { MenuProcessingJobStatus, cancelMenuProcessingJob } from '@lib/firebase/menuProcessing';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { useCallback, useEffect, useState } from 'react';
@@ -87,7 +88,7 @@ export function useMenuProcessingJob(jobId: string | null): UseMenuProcessingJob
                 setIsLoading(false);
             },
             (error) => {
-                console.error('[useMenuProcessingJob] Listener error:', error);
+                logMenuProcessingFailure('menu_processing_listener_failed', error, getMenuProcessingJobLogContext(jobId));
                 setIsLoading(false);
             }
         );
@@ -100,7 +101,7 @@ export function useMenuProcessingJob(jobId: string | null): UseMenuProcessingJob
         try {
             await cancelMenuProcessingJob(jobId);
         } catch (error) {
-            console.error('[useMenuProcessingJob] Cancel failed:', error);
+            logMenuProcessingFailure('menu_processing_cancel_failed', error, getMenuProcessingJobLogContext(jobId));
             throw error;
         }
     }, [jobId]);
@@ -116,20 +117,6 @@ export function useMenuProcessingJob(jobId: string | null): UseMenuProcessingJob
     const isPreviewReady = status === 'preview_ready';
     const isTerminal = isCompleted || isFailed || isCancelled;
     const isFirstExtraction = job?.isFirstExtraction ?? null;
-
-    // Debug logging for status changes
-    useEffect(() => {
-        if (jobId && status) {
-            console.log('[useMenuProcessingJob] Status update:', {
-                jobId,
-                status,
-                isCompleted,
-                isFailed,
-                isPreviewReady,
-                progress: job?.progress,
-            });
-        }
-    }, [jobId, status, isCompleted, isFailed, isPreviewReady, job?.progress]);
 
     return {
         job,

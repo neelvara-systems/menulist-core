@@ -19,6 +19,11 @@ import type { ReactNode } from 'react';
 import { useEffect, useMemo, useState } from 'react';
 import { LuHelpCircle, LuPin, LuStar, LuTrendingUp, LuZap } from 'react-icons/lu';
 import { Button, Card, Collapse, Flex, NavBar, Popup, Select, Switch, Text, Title, Toast } from '../antd';
+import {
+    getBoundedMobileProjectStringContext,
+    getMobileProjectLogContext,
+    logMobileProjectFailure,
+} from '../utils/mobileProjectDiagnostics';
 import { MENU_SHEET_CONTAINER_STYLE, MENU_SHEET_BODY_STYLE } from './menuSheetLayout';
 
 type BlockType = 'popular' | 'quickPick' | 'bestValue';
@@ -155,7 +160,23 @@ export default function SmartRecommendationsSheet({
             const updatedProject = applyDecisionBlockSettings(projectData, nextSettings);
             onSaved(updatedProject);
             Toast.show({ content: t('smartRecommendationsSaved'), duration: 1200 });
-        } catch {
+        } catch (error) {
+            const files = projectData.files || [];
+            logMobileProjectFailure('mobile_smart_recommendations_save_failed', error, {
+                ...getMobileProjectLogContext((projectData as any)?.projectId, (projectData as any)?.masterProjectId),
+                ...getBoundedMobileProjectStringContext('businessType', businessType),
+                ...getBoundedMobileProjectStringContext('businessCategory', businessCategory),
+                ...getBoundedMobileProjectStringContext('activeLanguage', activeLang),
+                enabledBlockTypeCount: enabledBlockTypes.length,
+                itemCount: itemOptions.length,
+                categoryCount: files.length,
+                enablePopular,
+                enableQuickPick,
+                enableBestValue,
+                hasPinnedPopular: Boolean(pinnedPopular),
+                hasPinnedQuickPick: Boolean(pinnedQuickPick),
+                hasPinnedBestValue: Boolean(pinnedBestValue),
+            });
             Toast.show({ content: t('smartRecommendationsSaveFailed'), duration: 1800 });
         } finally {
             setIsSaving(false);

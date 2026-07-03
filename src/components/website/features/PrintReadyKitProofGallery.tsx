@@ -64,6 +64,7 @@ export default function PrintReadyKitProofGallery() {
                   height={900}
                   sizes="(max-width: 1100px) 100vw, 50vw"
                   priority={false}
+                  unoptimized
                 />
               </figure>
             </article>
@@ -84,6 +85,7 @@ export default function PrintReadyKitProofGallery() {
                   height={993}
                   sizes="(max-width: 1100px) 100vw, 50vw"
                   priority={false}
+                  unoptimized
                 />
               </figure>
             </article>

@@ -22,7 +22,7 @@ import { deleteField, doc, getDoc, increment, serverTimestamp, setDoc, updateDoc
  *   }
  * }
  * 
- * See: __docs__/patterns/SUMMARY-DOCUMENT-PATTERN.md
+ * See: __docs__/patterns/summary-document-pattern.md
  */
 
 export interface StoreSummaryData {
@@ -45,8 +45,26 @@ export interface StoreSummaryData {
     businessDayEndTime?: string; // Store-local HH:mm analytics business-day cutoff
     schedulerHour?: number;    // UTC hour (0-23) — FALLBACK ONLY when timeZone is missing
     activePlanType?: string;    // Denormalized billing plan id for scheduler entitlements, e.g. 'starter' | 'pro' | 'premium'
+    menuPresence?: StoreDistributionPresenceSummary;
+    presence?: StoreDistributionPresenceSummary;
     modifiedOn?: any;
 }
+
+type StorePresenceValue = boolean | string | null | { linked?: boolean | null };
+
+export type StoreDistributionPresenceSummary = {
+    googleBusiness?: StorePresenceValue;
+    instagramBio?: StorePresenceValue;
+    qrCodeInstalled?: StorePresenceValue;
+    qrInstalled?: StorePresenceValue;
+    websiteLinked?: StorePresenceValue;
+    websiteMenuLink?: StorePresenceValue;
+    whatsappProfile?: StorePresenceValue;
+    instagramLinked?: StorePresenceValue;
+    instagramBioLinked?: StorePresenceValue;
+    whatsappLinked?: StorePresenceValue;
+    whatsappMenuLinked?: StorePresenceValue;
+};
 
 export interface StoresSummary {
     lastUpdated: any;
@@ -145,6 +163,59 @@ const getStoresSummaryDocRef = () => {
     return doc(firebaseClient, `${COLLECTION}`, 'storesSummary')
 }
 
+const STORE_DISTRIBUTION_PRESENCE_KEYS: Array<keyof StoreDistributionPresenceSummary> = [
+    'googleBusiness',
+    'instagramBio',
+    'qrCodeInstalled',
+    'qrInstalled',
+    'websiteLinked',
+    'websiteMenuLink',
+    'whatsappProfile',
+    'instagramLinked',
+    'instagramBioLinked',
+    'whatsappLinked',
+    'whatsappMenuLinked',
+];
+
+const normalizePresenceValue = (value: unknown): StorePresenceValue | undefined => {
+    if (value === null) return null;
+    if (typeof value === 'boolean') return value;
+    if (typeof value === 'string') {
+        const normalized = value.trim().slice(0, 120);
+        return normalized || null;
+    }
+    if (value && typeof value === 'object' && !Array.isArray(value)) {
+        const linked = (value as { linked?: unknown }).linked;
+        if (linked === null) {
+            return { linked: null };
+        }
+        if (typeof linked === 'boolean') {
+            return { linked };
+        }
+    }
+    return undefined;
+};
+
+export const buildStoreDistributionPresenceSummary = (
+    value: unknown,
+): StoreDistributionPresenceSummary | undefined => {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) {
+        return undefined;
+    }
+
+    const source = value as Record<string, unknown>;
+    const summary = STORE_DISTRIBUTION_PRESENCE_KEYS.reduce<StoreDistributionPresenceSummary>((acc, key) => {
+        if (!Object.prototype.hasOwnProperty.call(source, key)) return acc;
+        const normalized = normalizePresenceValue(source[key]);
+        if (normalized !== undefined) {
+            acc[key] = normalized;
+        }
+        return acc;
+    }, {});
+
+    return Object.keys(summary).length > 0 ? summary : undefined;
+};
+
 /**
  * Get all stores summary data (1 read instead of N)
  * Used by Cloud Functions for batch processing
@@ -214,6 +285,12 @@ export const syncStoreToSummary = async (storeId: string | number, data: StoreSu
             }
             if (data.activePlanType !== undefined) {
                 summaryEntry.activePlanType = data.activePlanType;
+            }
+            if (data.menuPresence !== undefined) {
+                summaryEntry.menuPresence = buildStoreDistributionPresenceSummary(data.menuPresence) || {};
+            }
+            if (data.presence !== undefined) {
+                summaryEntry.presence = buildStoreDistributionPresenceSummary(data.presence) || {};
             }
             if (data.modifiedOn !== undefined) {
                 summaryEntry.modifiedOn = data.modifiedOn;
@@ -297,6 +374,12 @@ export const mergeStoreSummaryFields = async (storeId: string | number, data: Pa
             }
             if (data.activePlanType !== undefined) {
                 summaryEntry.activePlanType = data.activePlanType;
+            }
+            if (data.menuPresence !== undefined) {
+                summaryEntry.menuPresence = buildStoreDistributionPresenceSummary(data.menuPresence) || {};
+            }
+            if (data.presence !== undefined) {
+                summaryEntry.presence = buildStoreDistributionPresenceSummary(data.presence) || {};
             }
             if (data.modifiedOn !== undefined) {
                 summaryEntry.modifiedOn = data.modifiedOn;

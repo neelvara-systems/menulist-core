@@ -26,8 +26,8 @@ All historical audit documents that led to the current implementation plan. Thes
 | **[\_archive/original-README-jan4.md](./_archive/original-README-jan4.md)**                                     | Jan 4, 2026 | Original strategic strengthening plan (ChatGPT-based, 17 items)           |
 | **[\_archive/baseline.md](./_archive/baseline.md)**                                                             | Jan 4, 2026 | Current system state inventory at time of first audit                     |
 | **[\_archive/alignment.md](./_archive/alignment.md)**                                                           | Jan 4, 2026 | Gap analysis vs ChatGPT recommendations                                   |
-| **[\_archive/improvements_spec.md](./_archive/improvements_spec.md)**                                           | Jan 4, 2026 | Detailed technical specifications for 17 improvement items                |
-| **[\_archive/improvements_checklist.md](./_archive/improvements_checklist.md)**                                 | Jan 4, 2026 | Actionable implementation tasks from Jan 4 plan                           |
+| **[\_archive/improvements-spec.md](./_archive/improvements-spec.md)**                                           | Jan 4, 2026 | Detailed technical specifications for 17 improvement items                |
+| **[\_archive/improvements-checklist.md](./_archive/improvements-checklist.md)**                                 | Jan 4, 2026 | Actionable implementation tasks from Jan 4 plan                           |
 | **[\_archive/metrics.md](./_archive/metrics.md)**                                                               | Jan 4, 2026 | Success measurement plan                                                  |
 | **[\_archive/SYSTEM-INFRASTRUCTURE-AUDIT.md](./_archive/SYSTEM-INFRASTRUCTURE-AUDIT.md)**                       | Feb 5, 2026 | Full system infrastructure audit (all surfaces, costs, failure scenarios) |
 | **[\_archive/CUSTOMER-FACING-INFRA-AUDIT.md](./_archive/CUSTOMER-FACING-INFRA-AUDIT.md)**                       | Feb 7, 2026 | Deep codebase trace of every customer-facing surface                      |
@@ -48,24 +48,27 @@ All historical audit documents that led to the current implementation plan. Thes
 
 ---
 
-## Summary of Current Findings (Feb 7 Codebase Audit)
+## Current Status (July 2, 2026)
 
-| Severity    | Count | Category                        |
-| ----------- | ----- | ------------------------------- |
-| 🔴 CRITICAL | 4     | Security / Data Integrity       |
-| 🟠 HIGH     | 5     | Cost / Performance / Compliance |
-| 🟡 MEDIUM   | 2     | Optimization                    |
+The Feb 7 audit findings are now closed or explicitly accepted with source gates. The maintained local proof is:
 
-**Key Issues:**
+```bash
+npm run verify:system-strengthening
+```
 
-- **SS-1:** 5 GA Analytics API routes with zero authentication
-- **SS-2:** Module-level stale session caching in 10 DAL files (cross-tenant risk)
-- **SS-3:** Batch image generation route with auth commented out
-- **SS-4:** In-memory rate limiting on serverless (doesn't work)
-- **SS-5:** 10+ AI routes without rate limiting (cost bombs)
-- **SS-9:** 187 console.log instances violating secure logging rules
+| Finding | Current Status | Source-Gated Boundary |
+| ------- | -------------- | --------------------- |
+| SS-1 | Closed | Active analytics HTTP routes use `withAuth`; GA read routes also require analytics permission, property scoping, rate limiting, and bounded failure logging. |
+| SS-2 | Closed | The 10 DAL files from the original finding no longer keep module-level session caches and fetch through `getActiveSession()`. |
+| SS-3 | Closed | The batch image worker is admitted by Firebase project header plus `BATCH_IMAGE_GENERATION_WORKER_SECRET`, bounded JSON, schema validation, job scope checks, and AI accounting. |
+| SS-4 | Closed | `/api/screen/seen` uses declared body rejection, hashed IP and token rate limits, bounded JSON, direct store eligibility checks, and one daily write. |
+| SS-5 | Closed | The original AI route group is guarded by auth or worker-secret admission, SAFE_MODE, rate limits, bounded bodies where applicable, validation, permissions, capacity checks, and accounting. |
+| SS-6 | Accepted | Chat message feedback stays on the bounded session message array to preserve reopen behavior and original message shape in one document. |
+| SS-7 | Closed | Browser subscription reads do not mutate billing docs; server-owned expiry paths perform authoritative expiry writes and entitlement sync. |
+| SS-8 | Closed | Preset deletion cascade stages modified project writes in Firestore batches and revalidates public cache after commit. |
+| SS-9 | Closed | `src/app/api` and `src/database` contain no `console.log`, `console.warn`, or `console.error` calls. |
 
-**Total Estimated Effort:** ~7.5 hours across 4 phases
+The historical Feb 7 implementation plan remains below as the original audit record.
 
 ---
 

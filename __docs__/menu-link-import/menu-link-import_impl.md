@@ -5,7 +5,7 @@
 Menu Link Import reuses the existing extraction infrastructure instead of adding a separate crawler or AI path.
 
 1. UI calls `POST /api/menu-link-imports`.
-2. The API validates auth, tenant/store access, feature flag, rate limit, permission confirmation, and URL safety.
+2. The API validates auth, tenant/store access, feature flag, HMAC-hashed owner/tenant/store rate-limit key material, an 8KB bounded JSON body, permission confirmation, and URL safety.
 3. The API fetches the source directly with DNS/IP validation, pinned request lookup, redirect re-checks, size caps, and a bounded acquisition budget.
 4. HTML/text/JSON sources are converted into a text artifact; PDF/image sources are stored as-is. HTML acquisition can follow bounded same-origin menu/catalog links, Schema.org `hasMenu` URLs, linked PDF/image catalog assets, and rendered client-routed menu pages such as `/#/menu`; otherwise it is rejected before job creation.
 5. The API stores one private source artifact and writes a `menuLinkImportArtifacts` document.
@@ -14,6 +14,18 @@ Menu Link Import reuses the existing extraction infrastructure instead of adding
 8. `forceReview` makes the job land in `preview_ready`.
 9. Existing review UI creates the apply plan.
 10. Existing `applyExtractionChanges` writes approved source file and menu data, then revalidates public cache through the current path.
+
+Editor source-link previews in `src/components/templates/main-app/projects/editorView/components/FileImagePreview.tsx` open with `noopener,noreferrer`, check the returned browser window, and log `project_file_source_link_open_failed` when the browser blocks or rejects the handoff. Diagnostics use bounded source URL/label/source/file-name/file-type presence-length metadata only, and the UI shows fixed `Unable to open source link` copy. This does not change link import acquisition, extraction, review, apply, cache revalidation, or project writes.
+
+Local/emulator development keeps the existing best-effort `dev_triggerProcessMenuImages` call after a new job is created. If that trigger fails, `src/lib/menu-link-import/client.ts` logs only bounded job ID presence/length, environment presence/length, emulator flag state, and normalized source error metadata through `src/lib/firebase/menuProcessingDiagnostics.ts`. It does not direct-console raw Firebase callable errors, and it does not fail the already-created link import job.
+
+June 29 follow-up: the same browser helper now parses `POST /api/menu-link-imports` responses through `readJsonResponseWithLimit()` with an 8KB cap. Malformed or oversized responses log `menu_link_import_response_parse_failed` with bounded project/URL/status metadata only. Successful HTTP responses must include `success: true` and a non-empty `jobId`; invalid shapes log `menu_link_import_response_invalid` and show the existing fixed owner fallback. The helper still never displays route response text, owner-provided URLs, raw IDs, or browser exception messages.
+
+June 30 follow-up: the browser helper now sends `POST /api/menu-link-imports` with same-origin credentials, `no-store` cache policy, and manual redirect handling before the bounded acknowledgement parser runs. Desktop and mobile already share this helper, so both surfaces use the same request boundary without changing URL acquisition, extraction, review, apply, or project-write behavior.
+
+The authenticated server route uses the same menu-processing diagnostics boundary. Job-created, source-rejected, and unexpected route-failure logs record only stable diagnostic codes, project/job/artifact/source-kind presence and length metadata, status/count booleans, and normalized source error metadata. The route does not log raw project IDs, job IDs, artifact IDs, owner-provided URLs, or caught exception payloads.
+
+June 29 follow-up: the authenticated server route hashes owner, tenant, and store limiter key material before calling the `MENU_LINK_IMPORT` limiter. The feature flag, SAFE_MODE gate, route limit, bounded body cap, tenant access check, URL safety validation, source acquisition, artifact write, job creation, and bounded diagnostics remain unchanged; raw user IDs, tenant IDs, and store IDs must not be stored in the limiter key name.
 
 The pinned request lookup handles both Node lookup callback shapes. When Node asks for `all: true`, the importer returns the validated address array shape; when it asks for a single address, the importer returns the single validated address. Multi-address hosts are sorted with IPv4 first but all resolved addresses must still pass the unsafe-IP guard.
 
@@ -60,7 +72,8 @@ Some owner-provided links point to a browser-routed app where the initial server
 - It is gated by `FEATURE_FLAGS.ENABLE_MENU_LINK_IMPORT_RENDER_FALLBACK`.
 - It runs only after URL safety validation and only after static HTML acquisition does not find usable catalog content.
 - It preserves the original URL hash only when the normalized safe URL has the same origin, path, and query.
-- It uses a bounded headless Chrome `--dump-dom` run with disabled extensions, disabled image loading, a temporary user data directory, output byte limits, and a fixed timeout.
+- It revalidates the final render URL immediately before Chrome starts and skips rendered fallback for IP-literal targets.
+- It uses a bounded headless Chrome `--dump-dom` run with disabled extensions, disabled image loading, a temporary user data directory, output byte limits, a fixed timeout, DNS pinning for the validated hostname, a dead proxy for every other hostname, and a comma-separated `--proxy-bypass-list` with `<-loopback>` so Chrome's implicit loopback bypass cannot reach localhost/private services.
 - It stores only the text artifact used for extraction. Raw HTML is not stored separately.
 - It still requires visible offering/catalog evidence such as structured data or prices before job creation.
 
@@ -80,6 +93,8 @@ The parser is business-agnostic. It looks for category/count boundaries, candida
 - provenance with `promptVersion: "menu-link-text-parser-v1"` and `model: "deterministic-text-parser"`
 
 The deterministic path is accepted only when it finds structured sections and at least 75% priced items. Otherwise the existing AI extractor remains the fallback. This keeps dynamic text menus cheap and repeatable without changing PDF/image behavior.
+
+The deterministic extractor logs only bounded diagnostics. Success and skip logs use job ID length, counts, source kind, stable `MENU_LINK_TEXT_EXTRACTION_SKIPPED` failure code, and capped source error name/code/status metadata; they do not log raw job IDs or exception messages.
 
 ## Files
 

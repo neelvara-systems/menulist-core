@@ -101,6 +101,13 @@ Production readiness depends on external environment setup:
 - `npm run verify:campaigncue` now enforces the shared parser and rejects direct `await request.json()` usage in those route files.
 - Firebase cost impact: no new reads, writes, listeners, collections, indexes, Storage objects, Cloud Functions, provider calls, schedulers, or deploys. The guard runs before Firestore work.
 
+## June 30, 2026 API Security-Log Boundary
+
+- `src/lib/campaigncue/apiGuards.ts` now uses `getCampaignCueSecurityLogContext()` for tenant-violation, rate-limit, and malformed-JSON security events. The helper is backed by bounded route/session metadata and endpoint/method presence-length fields.
+- `src/app/api/campaigncue/design-cue/turns/route.ts` now uses the same bounded CampaignCue security context for model-route validation failures, with validation details logged only as presence/length metadata.
+- `npm run verify:campaigncue` now enforces the bounded route/security context and rejects raw `buildSecurityContext()` output, raw endpoint fields, raw rate-limit feature fields, and raw Design Cue validation-error metadata.
+- Firebase cost impact: no new reads, writes, listeners, collections, indexes, Storage objects, Cloud Functions, provider calls, schedulers, rules, or deploys. Existing auth, scope, rate-limit, JSON parsing, validation, response status, and model-assist fail-closed behavior are unchanged.
+
 ## Commands Run
 
 - Current CampaignCue Firebase cost hardening pass on June 14, 2026: `node scripts/verification/verify-campaigncue-runtime.js` with 749 checks, `npx tsc --noEmit --incremental false --pretty false`, `npm run lint`, and `git diff --check` passed. `npm run build` was not run because production builds are opt-in for this repo.

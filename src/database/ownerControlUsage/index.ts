@@ -21,6 +21,7 @@ import { DB_COLLECTIONS } from '@constant/database';
 import { apiCallComposer } from '@lib/apiHelper/apiCallComposer';
 import getActiveSession from '@lib/auth/getActiveSession';
 import { firebaseClient } from '@lib/firebase/firebaseClient';
+import { secureError } from '@lib/security/secureLogger';
 import { doc, getDoc, increment, setDoc, Timestamp, updateDoc } from 'firebase/firestore';
 
 // ================================================================
@@ -29,6 +30,53 @@ import { doc, getDoc, increment, setDoc, Timestamp, updateDoc } from 'firebase/f
 const DEBOUNCE_MS = 5000; // 5 second debounce per control type
 const pendingWrites: Map<string, NodeJS.Timeout> = new Map();
 const pendingData: Map<string, { controlType: OwnerControlType; metadata?: any }> = new Map();
+
+const getOwnerControlErrorName = (error: unknown): string | undefined => {
+    if (error === undefined) return undefined;
+    if (error instanceof Error) return error.name || 'Error';
+    return typeof error;
+};
+
+const getOwnerControlErrorCode = (error: unknown): string | undefined => {
+    if (!error || typeof error !== 'object' || !('code' in error)) return undefined;
+    const code = (error as { code?: unknown }).code;
+    if (code === undefined || code === null) return undefined;
+    return String(code).slice(0, 64);
+};
+
+const getOwnerControlMetadataContext = (metadata?: {
+    previousValue?: any;
+    newValue?: any;
+    projectId?: string;
+    itemId?: string;
+}) => {
+    const projectId = String(metadata?.projectId ?? '');
+    const itemId = String(metadata?.itemId ?? '');
+
+    return {
+        metadataPresent: Boolean(metadata),
+        hasPreviousValue: metadata?.previousValue !== undefined,
+        hasNewValue: metadata?.newValue !== undefined,
+        projectIdPresent: projectId.length > 0,
+        projectIdLength: projectId.length,
+        itemIdPresent: itemId.length > 0,
+        itemIdLength: itemId.length,
+    };
+};
+
+const logOwnerControlUsageFailure = (
+    failureCode: string,
+    error: unknown,
+    controlType?: OwnerControlType,
+    context: Record<string, boolean | number | string | null | undefined> = {},
+): void => {
+    secureError('[OwnerControlUsage] Tracking failed', new Error(failureCode), {
+        controlType,
+        ...context,
+        sourceErrorName: getOwnerControlErrorName(error),
+        sourceErrorCode: getOwnerControlErrorCode(error),
+    });
+};
 
 /**
  * Sanitize object for Firestore (replace undefined with null)
@@ -165,7 +213,9 @@ export async function trackOwnerControlUsage(
         pendingWrites.set(debounceKey, timer);
     } catch (error) {
         // Fire-and-forget - silent fail
-        console.warn('[OwnerControlUsage] Tracking error (non-blocking):', error);
+        logOwnerControlUsageFailure('owner_control_tracking_schedule_failed', error, controlType, {
+            ...getOwnerControlMetadataContext(metadata),
+        });
     }
 }
 
@@ -212,11 +262,15 @@ async function executeTrackingWrite(
             await setDoc(docRef, sanitizeForFirestore(initialData));
         }
 
-        // Log for debugging (will be visible in console)
-        console.debug('[OwnerControlUsage] Tracked:', controlType, metadata?.projectId || '');
     } catch (error) {
         // Fire-and-forget - log but don't throw
-        console.error('[OwnerControlUsage] Failed to track:', error);
+        logOwnerControlUsageFailure('owner_control_tracking_write_failed', error, controlType, {
+            tIdPresent: String(tId ?? '').length > 0,
+            tIdLength: String(tId ?? '').length,
+            sIdPresent: String(sId ?? '').length > 0,
+            sIdLength: String(sId ?? '').length,
+            ...getOwnerControlMetadataContext(metadata),
+        });
     }
 }
 

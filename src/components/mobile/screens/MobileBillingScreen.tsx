@@ -5,10 +5,11 @@ import { isFeatureEnabled } from '@config/features';
 import { aiEnhancementPacksList, getB2BPlansList, getB2CPlansList } from '@data/PlatformPlansList';
 import { getActiveSubscriptionForStore } from '@database/subscriptions';
 import { getBillingHistoryForStore } from '@database/subscriptions/paymentTransactions';
+import { getBoundedPaymentStringContext, logPaymentFailure } from '@hook/paymentDiagnostics';
 import usePaymentHandler from '@hook/usePaymentHandler';
+import { AUTH_ACCOUNT_REQUEST_POLICY } from '@lib/auth/accountClientResponses';
 import { refreshFirebaseAuthClaims } from '@lib/auth/firebaseAuthSync';
 import { formatBillingHistoryEvents } from '@lib/billing/billingHistoryFormatter';
-import { logger } from '@lib/monitoring/logger';
 import { getAccessibleStoreSummaries } from '@lib/multiOutlet/storeSwitchAccess';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { formatDateTime, toDate } from '@util/dateTime';
@@ -26,6 +27,8 @@ import MobileSettingsScreenHeader from '../components/MobileSettingsScreenHeader
 interface MobileBillingScreenProps {
     onBack: () => void;
 }
+
+type MobileBillingExternalLinkKind = 'retry_payment' | 'pending_payment' | 'invoice';
 
 export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps) {
     const t = useTranslations('Billing');
@@ -87,6 +90,16 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
     const totalCredits = monthlyCredits + topUpCredits;
     const isLowOnEnhancements = Boolean(sub && totalCredits <= Math.max(10, monthlyCreditsAllowance * 0.2));
     const canPauseSubscriptions = isFeatureEnabled('ENABLE_SUBSCRIPTION_PAUSE');
+    const buildMobileBillingPaymentLogContext = (flow: string, metadata: Record<string, unknown> = {}) => ({
+        surface: 'mobile_billing',
+        flow,
+        hasActiveSubscription: Boolean(sub),
+        status: sub?.status || 'unknown',
+        billingStoreIdPresent: Boolean(billingStoreId),
+        ...getBoundedPaymentStringContext('planId', sub?.planId),
+        ...getBoundedPaymentStringContext('subscriptionId', sub?.providerSubscriptionId),
+        ...metadata,
+    });
     const currentSubscriptionPlan = useMemo(() => {
         if (!sub) return null;
         const sourcePlans = sub.userType === 'B2B' ? getB2BPlansList() : getB2CPlansList();
@@ -106,7 +119,7 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
             );
             setActiveSubscription(subscription);
         } catch (err) {
-            logger.error('Failed to refetch subscription', err);
+            logPaymentFailure('payment_mobile_billing_subscription_refetch_failed', err, buildMobileBillingPaymentLogContext('subscription_refetch'));
         }
     };
 
@@ -171,8 +184,10 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
             Toast.show({ content: t('planUpdated'), duration: 2000 });
             await refetchSubscription();
         } catch (err: any) {
-            logger.error('Mobile billing plan update failed', err);
-            Toast.show({ content: err?.message || t('paymentFailedRetry'), duration: 3000 });
+            logPaymentFailure('payment_mobile_billing_plan_update_failed', err, buildMobileBillingPaymentLogContext('plan_update', {
+                ...getBoundedPaymentStringContext('targetPlanId', plan.planId),
+            }));
+            Toast.show({ content: t('paymentFailedRetry'), duration: 3000 });
         } finally {
             setIsLoading(false);
         }
@@ -194,8 +209,11 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
             Toast.show({ content: `Paid locations updated to ${nextPaidLocationCount}.`, duration: 2000 });
             await refetchSubscription();
         } catch (err: any) {
-            logger.error('Mobile paid location update failed', err);
-            Toast.show({ content: err?.message || t('paymentFailedRetry'), duration: 3000 });
+            logPaymentFailure('payment_mobile_billing_paid_location_failed', err, buildMobileBillingPaymentLogContext('add_paid_location', {
+                ...getBoundedPaymentStringContext('targetPlanId', currentSubscriptionPlan.planId),
+                quantity: nextPaidLocationCount,
+            }));
+            Toast.show({ content: t('paymentFailedRetry'), duration: 3000 });
         } finally {
             setIsLoading(false);
         }
@@ -218,8 +236,10 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
                 }
                 : previous);
         } catch (err: any) {
-            logger.error('Mobile enhancement pack purchase failed', err);
-            Toast.show({ content: err?.message || t('purchaseFailed'), duration: 3000 });
+            logPaymentFailure('payment_mobile_billing_credit_pack_failed', err, buildMobileBillingPaymentLogContext('credit_pack_purchase', {
+                ...getBoundedPaymentStringContext('packId', packId),
+            }));
+            Toast.show({ content: t('purchaseFailed'), duration: 3000 });
         } finally {
             setIsLoading(false);
         }
@@ -237,8 +257,8 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
                     Toast.show({ content: t('subscriptionPaused'), duration: 2000 });
                     await refetchSubscription();
                 } catch (err: any) {
-                    logger.error('Mobile subscription pause failed', err);
-                    Toast.show({ content: err?.message || t('failedToPause'), duration: 3000 });
+                    logPaymentFailure('payment_mobile_subscription_pause_failed', err, buildMobileBillingPaymentLogContext('pause_subscription'));
+                    Toast.show({ content: t('failedToPause'), duration: 3000 });
                 }
             },
         });
@@ -250,8 +270,8 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
             Toast.show({ content: t('subscriptionResumed'), duration: 2000 });
             await refetchSubscription();
         } catch (err: any) {
-            logger.error('Mobile subscription resume failed', err);
-            Toast.show({ content: err?.message || t('failedToResume'), duration: 3000 });
+            logPaymentFailure('payment_mobile_subscription_resume_failed', err, buildMobileBillingPaymentLogContext('resume_subscription'));
+            Toast.show({ content: t('failedToResume'), duration: 3000 });
         }
     };
 
@@ -267,8 +287,8 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
                     Toast.show({ content: t('subscriptionCancelled'), duration: 2000 });
                     await refetchSubscription();
                 } catch (err: any) {
-                    logger.error('Mobile subscription cancellation failed', err);
-                    Toast.show({ content: err?.message || t('failedToCancel'), duration: 3000 });
+                    logPaymentFailure('payment_mobile_subscription_cancel_failed', err, buildMobileBillingPaymentLogContext('cancel_subscription'));
+                    Toast.show({ content: t('failedToCancel'), duration: 3000 });
                 }
             },
         });
@@ -282,37 +302,64 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
             setBillingHistory(formatted);
             setShowHistory(true);
         } catch (err) {
-            logger.error('Mobile billing history fetch failed', err);
+            logPaymentFailure('payment_mobile_billing_history_load_failed', err, buildMobileBillingPaymentLogContext('history_load'));
             Toast.show({ content: t('failedToLoadHistory'), duration: 2000 });
         }
     };
 
     const handleBillingStoreChange = async (targetStoreId: number) => {
-        if (targetStoreId === loginStoreId) {
-            if (loginStoreId) await refreshFirebaseAuthClaims(loginStoreId);
-            setActiveStoreContext(null);
-            setShowStorePicker(false);
-            Toast.show({ content: 'Switched store', duration: 1500 });
-            return;
-        }
-
         try {
+            if (targetStoreId === loginStoreId) {
+                if (loginStoreId) await refreshFirebaseAuthClaims(loginStoreId);
+                setActiveStoreContext(null);
+                setShowStorePicker(false);
+                Toast.show({ content: 'Switched store', duration: 1500 });
+                return;
+            }
+
             const res = await fetch('/api/auth/switch-store', {
+                ...AUTH_ACCOUNT_REQUEST_POLICY,
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ targetStoreId }),
             });
             if (!res.ok) {
-                const data = await res.json().catch(() => ({}));
-                throw new Error(data.error || 'Failed to switch store');
+                const switchError = new Error('mobile_billing_store_switch_rejected') as Error & { status?: number };
+                switchError.status = res.status;
+                throw switchError;
             }
             await refreshFirebaseAuthClaims(targetStoreId);
             setActiveStoreContext(targetStoreId);
             setShowStorePicker(false);
             Toast.show({ content: 'Switched store', duration: 1500 });
-        } catch (err: any) {
-            logger.error('Mobile billing store switch failed', err);
-            Toast.show({ content: err?.message || 'Failed to switch store', duration: 2000 });
+        } catch (err) {
+            logPaymentFailure('payment_mobile_billing_store_switch_failed', err, buildMobileBillingPaymentLogContext('store_switch', {
+                returningToLoginStore: targetStoreId === loginStoreId,
+                ...getBoundedPaymentStringContext('targetStoreId', targetStoreId),
+                ...getBoundedPaymentStringContext('loginStoreId', loginStoreId),
+            }));
+            Toast.show({ content: 'Failed to switch store', duration: 2000 });
+        }
+    };
+
+    const handleOpenExternalBillingLink = (
+        url: string | undefined,
+        linkKind: MobileBillingExternalLinkKind,
+        metadata: Record<string, unknown> = {},
+    ) => {
+        if (!url) return;
+        try {
+            const opened = window.open(url, '_blank', 'noopener,noreferrer');
+            if (!opened) {
+                throw new Error('mobile_billing_external_link_open_blocked');
+            }
+        } catch (error) {
+            logPaymentFailure('payment_mobile_billing_external_link_open_failed', error, buildMobileBillingPaymentLogContext('external_link_open', {
+                linkKind,
+                ...getBoundedPaymentStringContext('externalUrl', url),
+                ...metadata,
+            }));
+            Toast.show({ content: linkKind === 'invoice' ? 'Could not open invoice' : 'Could not open payment link', duration: 2200 });
         }
     };
 
@@ -465,7 +512,7 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
                                             })()}
                                         </Text>
                                         {sub.shortUrl ? (
-                                            <Button color="warning" onClick={() => window.open(sub.shortUrl, '_blank')} size="small">
+                                            <Button color="warning" onClick={() => handleOpenExternalBillingLink(sub.shortUrl, 'retry_payment')} size="small">
                                                 {t('retryPayment')}
                                             </Button>
                                         ) : null}
@@ -478,7 +525,7 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
                                     <Flex gap={8} vertical>
                                         <Text>Payment is pending. Complete the Razorpay checkout to activate this store.</Text>
                                         {sub.shortUrl ? (
-                                            <Button color="primary" onClick={() => window.open(sub.shortUrl, '_blank')} size="small">
+                                            <Button color="primary" onClick={() => handleOpenExternalBillingLink(sub.shortUrl, 'pending_payment')} size="small">
                                                 Pay Now
                                             </Button>
                                         ) : null}
@@ -544,7 +591,7 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
                                     </>
                                 ) : null}
                                 {isPaymentPending && sub.shortUrl ? (
-                                    <Button color="primary" onClick={() => window.open(sub.shortUrl, '_blank')} size="small">
+                                    <Button color="primary" onClick={() => handleOpenExternalBillingLink(sub.shortUrl, 'pending_payment')} size="small">
                                         Pay Now
                                     </Button>
                                 ) : null}
@@ -777,7 +824,14 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
                                             <Flex align="center" gap={8}>
                                                 <Text>{formatCurrency(item.amount, item.currency)}</Text>
                                                 {item.invoiceUrl ? (
-                                                    <Button onClick={() => window.open(item.invoiceUrl, '_blank')} size="small">
+                                                    <Button
+                                                        onClick={() => handleOpenExternalBillingLink(item.invoiceUrl, 'invoice', {
+                                                            ...getBoundedPaymentStringContext('billingHistoryItemId', item.id),
+                                                            ...getBoundedPaymentStringContext('billingHistoryItemType', item.type),
+                                                            ...getBoundedPaymentStringContext('invoiceStatus', item.status),
+                                                        })}
+                                                        size="small"
+                                                    >
                                                         <LuExternalLink size={16} color={token.colorPrimary} />
                                                     </Button>
                                                 ) : null}

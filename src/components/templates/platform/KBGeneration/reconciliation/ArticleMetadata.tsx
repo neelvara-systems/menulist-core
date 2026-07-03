@@ -2,8 +2,9 @@
 
 import DateTimeDisplay from '@atoms/DateTimeDisplay';
 import KbSourceFile from '@atoms/KbSourceFile';
+import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { KnowledgeBaseArticleSource, KnowledgeBaseArticleType } from '@type/knowledgeBase';
-import { Collapse, Flex, Space, Typography } from 'antd';
+import { Collapse, Flex, message, Space, Typography } from 'antd';
 
 const { Text } = Typography;
 
@@ -12,6 +13,25 @@ interface ArticleMetadataProps {
 }
 
 const ArticleMetadata = ({ article }: ArticleMetadataProps) => {
+    const handleSourceOpen = (source: KnowledgeBaseArticleSource) => {
+        try {
+            const opened = window.open(source.url, '_blank', 'noopener,noreferrer');
+            if (!opened) {
+                throw new Error('answerlattice_kb_source_open_blocked');
+            }
+        } catch (error) {
+            logRuntimeFailure('answerlattice_kb_source_open_failed', error, {
+                surface: 'kb_generation_reconciliation_metadata',
+                ...getBoundedRuntimeStringContext('articleId', article.id),
+                ...getBoundedRuntimeStringContext('jobId', article.jobId),
+                ...getBoundedRuntimeStringContext('sourceUrl', source.url),
+                ...getBoundedRuntimeStringContext('sourceName', source.name),
+                ...getBoundedRuntimeStringContext('sourceType', source.type),
+            });
+            message.error('Unable to open source');
+        }
+    };
+
     return (
         <Collapse
             accordion
@@ -33,7 +53,7 @@ const ArticleMetadata = ({ article }: ArticleMetadataProps) => {
                                     <Text type="secondary">Sources:</Text>
                                     <Space wrap>
                                         {article.sources.map((source: KnowledgeBaseArticleSource, index) => (
-                                            <KbSourceFile key={index} file={source} onClickSource={() => window.open(source.url, '_blank')} />
+                                            <KbSourceFile key={index} file={source} onClickSource={() => handleSourceOpen(source)} />
                                         ))}
                                     </Space>
                                 </Space>

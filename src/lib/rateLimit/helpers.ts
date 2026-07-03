@@ -7,8 +7,19 @@
 import { NextResponse } from 'next/server';
 import { checkRateLimit } from '@lib/rateLimit';
 import { logger } from '@lib/monitoring/logger';
+import { secureError } from '@lib/security/secureLogger';
+import { getBoundedSecurityStringContext } from '@lib/security/securityDiagnostics';
 import { getRateLimitForFeature, RateLimitFeature } from './configs';
 import getActiveSession from '@lib/auth/getActiveSession';
+import { hashPublicRateLimitValue } from 'src/middleware/publicApi';
+
+const normalizeRateLimitHelperError = (error: unknown): Error => {
+    const normalized = new Error('Rate limit helper failure');
+    if (error instanceof Error && error.name) {
+        normalized.name = error.name;
+    }
+    return normalized;
+};
 
 /**
  * Check rate limit and return 429 response if exceeded
@@ -42,7 +53,9 @@ export async function checkAIRateLimit(
             );
         }
         
-        const rateLimitKey = `${keyPrefix}:${session.user.id}:${session.user.tenantId}`;
+        const userRateLimitHash = hashPublicRateLimitValue(session.user.id);
+        const tenantRateLimitHash = hashPublicRateLimitValue(session.user.tenantId || 'unknown');
+        const rateLimitKey = `${keyPrefix}:${userRateLimitHash}:${tenantRateLimitHash}`;
         const rateLimitConfig = getRateLimitForFeature(feature);
         const rateLimit = await checkRateLimit({
             key: rateLimitKey,
@@ -55,9 +68,9 @@ export async function checkAIRateLimit(
             // Log rate limit violation to Sentry
             logger.security('Rate Limit Exceeded', {
                 feature,
-                userId: session.user.id,
-                tenantId: session.user.tenantId,
-                email: session.user.email,
+                ...getBoundedSecurityStringContext('userId', session.user.id),
+                ...getBoundedSecurityStringContext('tenantId', session.user.tenantId),
+                ...getBoundedSecurityStringContext('email', session.user.email),
                 limit: rateLimitConfig.limit,
                 window: rateLimitConfig.window,
                 waitSeconds,
@@ -86,7 +99,11 @@ export async function checkAIRateLimit(
         return null;
         
     } catch (error) {
-        console.error('[Rate Limit Helper] Error:', error);
+        secureError(
+            '[Rate Limit Helper] Failed, allowing request',
+            normalizeRateLimitHelperError(error),
+            { feature, keyPrefix },
+        );
         // On error, allow request (fail open to prevent breaking app)
         return null;
     }

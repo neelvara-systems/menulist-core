@@ -6,6 +6,10835 @@
 
 ---
 
+## July 3, 2026 - Main Website Stage 7 Launch Boundary
+
+### Improved
+
+- **Stage 7 website output is source-bounded** - The May 2026 final launch polish output no longer treats the homepage as ready for controlled launch, founder review, launch-good-enough, or V2 deferral approval.
+- **Current website gates are explicit** - Launch or founder-review approval now routes through the production-readiness audit, External Certification Runbook, `npm run verify:website-public-copy-boundary`, `npm run verify:website-resource-locales`, browser desktop/mobile route smoke, supporting page claim-hardening, founder-approved demo tenant screenshots, target Vercel deploy evidence, and production-host smoke.
+- **Verifier guard added** - `npm run verify:website-public-copy-boundary` now rejects the stale Stage 7 controlled-launch sentence, stale launch-good-enough wording, and stale V2 waiting label.
+
+### Verified
+
+- Pending in current session.
+
+### Boundaries
+
+- This is documentation/source-gate hardening only. It does not change website runtime behavior, public route behavior, locale copy, LLM context, public image assets, analytics behavior, Firebase rules, Storage rules, Cloud Functions, deploy Firebase, deploy Vercel, run a production build, run browser/mobile route smoke, approve founder screenshots, write Firestore, write Storage, approve launch, approve founder review, or certify release readiness.
+
+---
+
+## July 3, 2026 - Upload Cross-Check Testing Phase Boundary
+
+### Improved
+
+- **Upload cross-check is source-bounded** - The November 2025 Projects upload cross-check no longer treats its confidence note as ready for testing.
+- **Current upload gates are explicit** - Upload testing, deploy, or release approval now routes through the production-readiness audit, External Certification Runbook, `npm run verify:agent-readiness`, `npm run verify:menu-extraction-pipeline`, upload/browser/mobile/Storage results, browser/mobile upload QA, Storage quota/rules evidence, target deploy evidence where upload or Storage behavior changes, and production-host smoke.
+- **Verifier guard added** - `npm run verify:agent-readiness` now rejects the stale ready-for-testing-phase confidence line.
+
+### Verified
+
+- `node --check scripts/verification/verify-agent-readiness.js` passed.
+- `npm run verify:agent-readiness` passed.
+- `npm run verify:menu-extraction-pipeline` passed with 171/171 checks.
+- Targeted stale upload cross-check scan returned no stale doc matches.
+- `npm run docs:check-links` passed with 0 broken links and 0 naming violations.
+- `git diff --check` passed.
+- `npm run verify:production-readiness-local` passed with 88/88 checks, including 84 child root `verify:*` scripts.
+
+### Boundaries
+
+- This is documentation/source-gate hardening only. It does not change upload runtime behavior, file validation behavior, PDF processing behavior, project editor behavior, Storage rules, Firestore rules, Cloud Functions, deploy Firebase, deploy Vercel, run a production build, run browser/mobile QA, write Storage, write Firestore, approve testing, approve deploy, or certify release readiness.
+
+---
+
+## July 3, 2026 - MOL V0 Footer Testing Deploy Boundary
+
+### Improved
+
+- **MOL v0 footer is source-bounded** - The internal tracking implementation plan no longer treats the historical Sprint 1/2 implementation note as ready for testing and deployment.
+- **Current deploy gates are explicit** - MOL testing, scheduler deploy, or release approval now routes through the production-readiness audit, External Certification Runbook, `npm run verify:agent-readiness`, `npm run verify:functions-deploy-preflight`, Firestore/cost evidence, scoped `menulist-qa` scheduler deploy evidence where Function logic changes, target-environment smoke, and explicit production deploy approval.
+- **Verifier guard added** - `npm run verify:agent-readiness` now rejects the stale ready-for-testing-and-deployment footer.
+
+### Verified
+
+- `node --check scripts/verification/verify-agent-readiness.js` passed.
+- `npm run verify:agent-readiness` passed.
+- `npm run verify:functions-deploy-preflight` passed.
+- Targeted stale MOL footer scan returned no matches.
+- `npm run docs:check-links` passed with 0 broken links and 0 naming violations.
+- `git diff --check` passed.
+- `npm run verify:production-readiness-local` passed with 88/88 checks, including 84 child root `verify:*` scripts.
+
+### Boundaries
+
+- This is documentation/source-gate hardening only. It does not change MOL runtime behavior, menu change log behavior, scheduler behavior, Firestore rules, Storage rules, Cloud Functions, deploy Firebase, deploy Vercel, run a production build, run browser/API smoke, write Firestore, write Storage, approve testing, approve deploy, or certify release readiness.
+
+---
+
+## July 3, 2026 - Payment Security Analysis Boundary
+
+### Improved
+
+- **Payment security analysis is source-bounded** - The historical November 2025 payment/onboarding security analysis no longer presents itself as ready for implementation, ready for testing, or current payment launch approval.
+- **Current payment approval gates are explicit** - Payment/onboarding approval now routes through the production-readiness audit, External Certification Runbook, `npm run verify:agent-readiness`, `npm run verify:billing-entitlement-boundary`, `npm run verify:auth-security-failure-matrix`, authenticated onboarding browser/API smoke, Razorpay sandbox subscription/top-up/webhook smoke, Firebase Auth token smoke where relevant, provider-failure compensation evidence, target deploy evidence, and production-host smoke.
+- **Verifier guard added** - `npm run verify:agent-readiness` now rejects the stale ready-for-implementation status, stale Phase 2 proceed instruction, and stale Phase 1 ready-for-testing footer in the payment-security analysis.
+
+### Verified
+
+- `node --check scripts/verification/verify-agent-readiness.js` passed.
+- `npm run verify:agent-readiness` passed.
+- `npm run verify:billing-entitlement-boundary` passed.
+- `npm run verify:auth-security-failure-matrix` passed.
+- Targeted stale payment-security status scan returned no matches.
+- `npm run docs:check-links` passed with 0 broken links and 0 naming violations.
+- `git diff --check` passed.
+- `npm run verify:production-readiness-local` passed with 88/88 checks, including 84 child root `verify:*` scripts.
+
+### Boundaries
+
+- This is documentation/source-gate hardening only. It does not change auth runtime behavior, onboarding runtime behavior, Razorpay runtime behavior, billing entitlement behavior, Firestore rules, Storage rules, Cloud Functions, deploy Firebase, deploy Vercel, run a production build, run browser/API smoke, call providers, run Firebase Auth token smoke, write Firestore, write Storage, or certify release readiness.
+
+---
+
+## July 3, 2026 - Report Leads Ops Monitor
+
+### Added
+
+- **Internal report lead monitor added** - `/ops/report-leads` shows platform admins recent consented follow-up requests from public MenuList Tool reports.
+- **Read-only ops API added** - `/api/ops/report-leads` reads recent existing `landingPageEnquiries`, filters `shareable_tool_report` leads in memory, and returns a bounded manual-refresh snapshot.
+- **Reply triage added** - The monitor includes status/tool filters, contact details, report gap counts, submitted summary, and a copyable first-reply template aligned with the follow-up playbook.
+
+### Boundaries
+
+- This is internal platform-admin triage only. It does not add public access, owner UI, lead mutation, report storage, saved history, realtime listeners, new Firestore collections, Cloud Functions, provider calls, external scans, Firebase deploy, Vercel deploy, or production release certification.
+
+---
+
+## July 3, 2026 - Shareable Report Follow-Up Metadata
+
+### Changed
+
+- **Report leads are easier to route** - Consented `/tools/reports` follow-up submissions now pass bounded `shareable_tool_report` source metadata to the existing `/api/public/contact` path.
+- **Existing enquiry writes are tagged** - Accepted `landingPageEnquiries` rows now include `sourceKind`, `sourceToolId`, `sourceReportStatus`, `sourcePrimaryNumber`, and nested `sourceContext` for report follow-up triage.
+- **Operations playbook added** - The Shareable Tool Reports docs now include a follow-up playbook for triage, first replies, boundaries, and upgrade paths.
+
+### Boundaries
+
+- This keeps the report viewer public and ungated. It does not add report storage, saved history, recurring monitors, a report API route, a new Firestore collection, external crawling, provider calls, Firebase rules, Cloud Functions, Vercel deployment, or production release certification.
+
+---
+
+## July 3, 2026 - Mobile Try-First Homepage
+
+### Changed
+
+- **Homepage flow compressed** - The homepage now leads with `CreateMenuPreviewSection` immediately after the hero, then short before/after proof, customer output proof, compact AI Menu Manager + Business Health proof, six FAQ questions, and final CTA.
+- **Deep homepage sections moved out of the first scroll** - Problem, switch comparison, operating-loop, setup, surfaces, resources, AI Menu Manager, and Business Health deep explanations remain in supporting components/pages instead of the mobile homepage path.
+- **FAQ depth moved to `/faq`** - The homepage FAQ now keeps six conversion-critical questions, while `/faq` carries the full 16-question owner FAQ with metadata, sitemap, footer, discovery, and LLM-context coverage.
+
+### Boundaries
+
+- This is public website component/CSS/locale/docs/discovery work only. It does not change `/create-menu` upload/link processing, preview jobs, auth, publishing, pricing/payment, owner dashboard runtime, customer menu/OBP runtime, Firebase rules, Cloud Functions, Vercel deployment, or DNS.
+
+---
+
+## July 3, 2026 - MenuList Tools Hub
+
+### Added
+
+- **Public tools index added** - `/tools` now groups the current MenuList public tools by owner job: Public Truth, Menu / Service Clarity, Customer Action Readiness, and Trust / Setup.
+- **Navigation and discovery added** - Header Resources, mobile Resources, footer Start, sitemap, discovery policy, `llms.txt`, and `llms-full.txt` now include the MenuList Tools hub.
+- **Documentation and verification added** - The hub doc set lives under `__docs__/menulist-tools/tools-hub/`, and `npm run verify:tools-hub` is included in `npm run verify:public-truth-tools`.
+
+### Verified
+
+- `node --check scripts/verification/verify-tools-hub.js` passed.
+- `npm run verify:tools-hub` passed.
+- `npm run verify:public-truth-tools` passed.
+- `npx tsc --noEmit --pretty false` passed.
+- `npm run verify:website-public-copy-boundary` passed.
+- `npm run verify:website-resource-locales` passed.
+- `npm run docs:check-links` passed with 0 broken links and 0 naming violations.
+- `npm run verify:doc-npm-scripts` passed.
+- `node scripts/verification/verify-mobile-shell-route-map.js` passed.
+- `git diff --check` passed.
+- Local route smoke returned `200 OK` for `http://localhost:3000/tools`.
+- Local body smoke found rendered MenuList Tools, Public Truth Check, One Customer Link Preview, Photo / Visual Identity Gap Check, and Customer Action Readiness page content.
+
+### Boundaries
+
+- The hub is static website UI only. It does not run reports, fetch URLs, submit contact handoffs, store leads, call providers, inspect Google/social/search surfaces, promise rankings/citations, deploy Firebase, deploy Vercel, or create a paid add-on.
+
+---
+
+## July 3, 2026 - One Customer Link Preview
+
+### Added
+
+- **Public tool route added** - `/tools/customer-link-preview` previews whether one customer-facing business link has the basics customers need before they call, visit, order, book, or ask a question.
+- **Browser-local V0 report added** - The report uses explicit `evidenceText`, owner-selected facts, local customer-link format checks, copy/download actions, and the existing consented `/api/public/contact` handoff only.
+- **Owner V1 mapping documented** - The tool maps to existing MenuList public page and Business Health readiness surfaces instead of creating a duplicate owner module.
+- **Documentation and verification added** - The tool doc set lives under `__docs__/menulist-tools/customer-link-preview/`, and `npm run verify:customer-link-preview` is included in `npm run verify:public-truth-tools`.
+
+### Verified
+
+- `node --check scripts/verification/verify-customer-link-preview.js` passed.
+- `npm run verify:customer-link-preview` passed.
+- `npm run verify:public-truth-tools` passed.
+- `npx tsc --noEmit --pretty false` passed.
+- `npm run verify:website-public-copy-boundary` passed.
+- `npm run verify:website-resource-locales` passed.
+- `npm run docs:check-links` passed with 0 broken links and 0 naming violations.
+- `npm run verify:doc-npm-scripts` passed.
+- `npm run verify:owner-business-health-boundary` passed.
+- `node scripts/verification/verify-mobile-shell-route-map.js` passed.
+- `git diff --check` passed.
+- Local route smoke returned `200 OK` for `http://localhost:3000/tools/customer-link-preview`.
+- Local body smoke found rendered One Customer Link Preview page content.
+
+### Boundaries
+
+- V0 does not open links, fetch customer pages, inspect websites, inspect Google profiles, inspect social profiles, verify link content, check uptime, store reports, call AI/search providers, scan search results, promise rankings, promise citations, update external platforms, deploy Firebase, deploy Vercel, or certify production readiness.
+
+---
+
+## July 2, 2026 - Google Profile Basics Checklist
+
+### Added
+
+- **Public tool route added** - `/tools/google-profile-basics-checklist` checks whether owner-maintained Google Business Profile basics are ready for customers and connected to one current customer link.
+- **Browser-local V0 report added** - The report uses explicit `evidenceText`, owner-selected facts, local customer-link format checks, copy/download actions, and the existing consented `/api/public/contact` handoff only.
+- **Owner V1 mapping added** - Business Health/Public Discovery uses the existing `google_profile_handoff` module for current MenuList customer-link readiness and owner-confirmed Google handoff state.
+- **Documentation and verification added** - The tool doc set lives under `__docs__/menulist-tools/google-profile-basics-checklist/`, and `npm run verify:google-profile-basics-checklist` is included in `npm run verify:public-truth-tools`.
+
+### Verified
+
+- `node --check scripts/verification/verify-google-profile-basics-checklist.js` passed.
+- `npm run verify:google-profile-basics-checklist` passed.
+- `npm run verify:public-truth-tools` passed.
+- `npx tsc --noEmit --pretty false` passed.
+- `npm run verify:website-public-copy-boundary` passed.
+- `npm run verify:website-resource-locales` passed.
+- `npm run docs:check-links` passed with 0 broken links and 0 naming violations.
+- `npm run verify:doc-npm-scripts` passed.
+- `npm run verify:owner-business-health-boundary` passed.
+- `node scripts/verification/verify-mobile-shell-route-map.js` passed.
+- `git diff --check` passed.
+- Local route smoke returned `200 OK` for `http://localhost:3000/tools/google-profile-basics-checklist`.
+- Local body smoke found rendered Google Profile Basics Checklist page content.
+
+### Boundaries
+
+- V0 does not open Google, fetch Google Search, fetch Google Maps, inspect a Business Profile, verify profile ownership, inspect reviews, check rankings, update Google, open external links, fetch external URLs, store reports, call AI/search providers, update external platforms, deploy Firebase, deploy Vercel, or certify production readiness.
+
+---
+
+## July 2, 2026 - Menu PDF Cleanup Check
+
+### Added
+
+- **Public tool route added** - `/tools/menu-pdf-cleanup-check` checks whether owner-entered old PDF references and visible PDF facts are ready to be replaced with one current customer link.
+- **Browser-local V0 report added** - The report uses explicit `evidenceText`, copy/download actions, local customer-link format checks, and the existing consented `/api/public/contact` handoff only.
+- **Owner V1 module added** - Business Health/Public Discovery readiness now includes `menu_pdf_cleanup`, using selected/default MenuList source and customer-link readiness with desktop and mobile fix targets.
+- **Documentation and verification added** - The tool doc set lives under `__docs__/menulist-tools/menu-pdf-cleanup-check/`, and `npm run verify:menu-pdf-cleanup-check` is included in `npm run verify:public-truth-tools`.
+
+### Verified
+
+- `npm run verify:menu-pdf-cleanup-check` passed.
+- `npm run verify:public-truth-tools` passed.
+- `npx tsc --noEmit --pretty false` passed.
+- `npm run verify:website-public-copy-boundary` passed.
+- `npm run verify:website-resource-locales` passed.
+- `npm run docs:check-links` passed with 0 broken links and 0 naming violations.
+- `npm run verify:doc-npm-scripts` passed.
+- `npm run verify:owner-business-health-boundary` passed.
+- `node scripts/verification/verify-mobile-shell-route-map.js` passed.
+- `git diff --check` passed.
+- Local route smoke returned `200 OK` for `http://localhost:3000/tools/menu-pdf-cleanup-check`.
+- Local body smoke found rendered Menu PDF Cleanup Check page content.
+
+### Boundaries
+
+- V0 does not upload PDFs, parse PDFs, run OCR, open links, fetch external URLs, decode QR images, inspect print material, store reports, call AI/search providers, update external platforms, deploy Firebase, deploy Vercel, or certify production readiness.
+
+---
+
+## July 2, 2026 - Price Availability Gap Check
+
+### Added
+
+- **Public tool route added** - `/tools/price-availability-gap-check` checks whether owner-entered menu, service, catalog, package, or price-list text makes prices, rates, availability, unavailable items, variants, and quote paths clear.
+- **Browser-local V0 report added** - The report uses explicit `evidenceText`, copy/download actions, local URL-format checks, and the existing consented `/api/public/contact` handoff only.
+- **Owner V1 module added** - Business Health/Public Discovery readiness now includes `price_availability_gap`, using selected/default MenuList item prices, variant prices, and availability flags with desktop and mobile fix targets.
+- **Documentation and verification added** - The tool doc set lives under `__docs__/menulist-tools/price-availability-gap-check/`, and `npm run verify:price-availability-gap-check` is included in `npm run verify:public-truth-tools`.
+
+### Verified
+
+- `npm run verify:price-availability-gap-check` passed.
+- `npm run verify:public-truth-tools` passed.
+- `npx tsc --noEmit --pretty false` passed.
+- `npm run verify:website-public-copy-boundary` passed.
+- `npm run verify:website-resource-locales` passed.
+- `npm run docs:check-links` passed with 0 broken links and 0 naming violations.
+- `npm run verify:doc-npm-scripts` passed.
+- `npm run verify:owner-business-health-boundary` passed.
+- `node scripts/verification/verify-mobile-shell-route-map.js` passed.
+- `git diff --check` passed.
+- Local route smoke returned `200 OK` for `http://localhost:3000/tools/price-availability-gap-check`.
+- Local body smoke found rendered Price Availability Gap Check page content.
+
+### Boundaries
+
+- V0 does not open external links, verify external prices, check live inventory, inspect POS systems, inspect ordering providers, upload files, store reports, call AI/search providers, update external platforms, deploy Firebase, deploy Vercel, or certify production readiness.
+
+---
+
+## July 2, 2026 - Booking Inquiry Readiness Check
+
+### Added
+
+- **Public tool route added** - `/tools/booking-inquiry-readiness-check` checks whether customers can clearly order, book, reserve, call, message, request a quote, or visit from owner-entered public source details.
+- **Browser-local V0 report added** - The report uses explicit `evidenceText`, copy/download actions, local URL/destination format checks, and the existing consented `/api/public/contact` handoff only.
+- **Owner V1 module added** - Business Health/Public Discovery readiness now includes `booking_inquiry_readiness`, using current MenuList action, contact, hours, location, and customer-link truth with desktop and mobile fix targets.
+- **Documentation and verification added** - The tool doc set lives under `__docs__/menulist-tools/booking-inquiry-readiness-check/`, and `npm run verify:booking-inquiry-readiness-check` is included in `npm run verify:public-truth-tools`.
+
+### Verified
+
+- `npm run verify:booking-inquiry-readiness-check` passed.
+- `npm run verify:public-truth-tools` passed.
+- `npx tsc --noEmit --pretty false` passed.
+- `npm run verify:website-public-copy-boundary` passed.
+- `npm run verify:website-resource-locales` passed.
+- `npm run docs:check-links` passed with 0 broken links and 0 naming violations.
+- `npm run verify:doc-npm-scripts` passed.
+- `npm run verify:owner-business-health-boundary` passed.
+- `node scripts/verification/verify-mobile-shell-route-map.js` passed.
+- `git diff --check` passed.
+- Local route smoke returned `200 OK` for `http://localhost:3000/tools/booking-inquiry-readiness-check`.
+
+### Boundaries
+
+- V0 does not open external links, check booking providers, inspect calendars, inspect payments, send messages, store reports, call AI/search providers, update external platforms, deploy Firebase, deploy Vercel, or certify production readiness.
+
+---
+
+## July 3, 2026 - Main Website README Launch Boundary
+
+### Improved
+
+- **Homepage launch wording is source-bounded** - The main website README no longer treats Stage 7 local homepage evidence as controlled-launch or founder-review approval.
+- **Current website approval gates are explicit** - Launch or founder-review approval now routes through the production-readiness audit, External Certification Runbook, `npm run verify:website-public-copy-boundary`, `npm run verify:website-resource-locales`, browser desktop/mobile route smoke, supporting page claim-hardening, founder-approved demo tenant screenshots, target Vercel deploy evidence, and production-host smoke.
+- **Verifier guard added** - `npm run verify:website-public-copy-boundary` now rejects the stale controlled-launch sentence.
+
+### Verified
+
+- `node --check scripts/verification/verify-website-public-copy-boundary.js` passed.
+- `npm run verify:website-public-copy-boundary` passed.
+- `npm run verify:website-resource-locales` passed.
+- `npm run verify:agent-readiness` passed.
+- Targeted stale website controlled-launch scan returned no matches.
+- `npm run docs:check-links` passed with 0 broken links and 0 naming violations.
+- `git diff --check` passed.
+- `npm run verify:production-readiness-local` passed with 88/88 checks, including 84 child root `verify:*` scripts.
+
+### Boundaries
+
+- This is documentation/source-gate hardening only. It does not change website runtime behavior, public route behavior, locale copy, LLM context, public image assets, analytics behavior, Firebase rules, Storage rules, Cloud Functions, deploy Firebase, deploy Vercel, run a production build, run browser/mobile route smoke, approve founder screenshots, write Firestore, write Storage, or certify release readiness.
+
+---
+
+## July 2, 2026 - Multi-Outlet Companion Footer Boundary
+
+### Improved
+
+- **Multi-Outlet companion docs are source-bounded end to end** - The spec, implementation blueprint, marketing collateral, store-onboarding spec, store-onboarding implementation plan, and billing implementation plan no longer leave old bottom labels as current approval.
+- **Old bottom labels are source-bounded** - The docs now preserve source evidence while routing current release, billing, sales, and publication approval to the production-readiness audit, External Certification Runbook, `npm run verify:multi-location-boundary`, desktop/mobile Locations QA, linked outlet save QA, Razorpay sandbox evidence where relevant, approved pricing/package copy where collateral is used, target deploy evidence, and production-host smoke.
+- **Verifier guard added** - `npm run verify:multi-location-boundary` now rejects the stale companion footer labels.
+
+### Verified
+
+- `node --check scripts/verification/verify-multi-location-boundary.js` passed.
+- `npm run verify:multi-location-boundary` passed.
+- Targeted stale Multi-Outlet footer scan returned no matches.
+- `npm run docs:check-links` passed with 0 broken links and 0 naming violations.
+- `git diff --check` passed.
+- `npm run verify:production-readiness-local` passed with 79/79 checks, including 75 child root `verify:*` scripts.
+
+### Boundaries
+
+- This is documentation/source-gate hardening only. It does not change Multi-Outlet runtime behavior, outlet lifecycle behavior, linked outlet save behavior, Razorpay behavior, collateral publication behavior, pricing/package behavior, Firestore rules, Storage rules, Cloud Functions, deploy Firebase, deploy Vercel, run a production build, run browser/mobile QA, call providers, write Firestore, write Storage, or certify release readiness.
+
+---
+
+## July 2, 2026 - Customer Question Coverage Check Doc Set
+
+### Improved
+
+- **Required tool docs added** - `verify:customer-question-coverage-check` no longer points at a missing `__docs__/menulist-tools/customer-question-coverage-check/` doc set.
+- **V0 boundaries are documented** - The new docs preserve the browser-local self-report boundary: explicit evidence text, no external URL fetch, no customer-chat read, no AI/provider call, no chatbot answer generation, no report storage, and optional consented contact handoff only through the existing bounded public contact route.
+- **Family docs remain aligned** - The tool stays under the MenuList Tools namespace and Public Truth Tools family boundary.
+
+### Verified
+
+- `npm run verify:customer-question-coverage-check` passed.
+- `npm run verify:agent-readiness` passed.
+- `npm run docs:check-links` passed with 0 broken links and 0 naming violations.
+- `git diff --check` passed.
+- `npm run verify:production-readiness-local` passed with 79/79 checks, including 75 child root `verify:*` scripts.
+
+### Boundaries
+
+- This is documentation/source-gate hardening only. It does not change Customer Question Coverage Check runtime behavior, website route behavior, public contact route behavior, Business Health owner module behavior, Firebase rules, Storage rules, Cloud Functions, deploy Firebase, deploy Vercel, run a production build, run browser/device QA, call providers, write Firestore, write Storage, or certify release readiness.
+
+---
+
+## July 2, 2026 - Onboarding Centralization Status Boundary
+
+### Improved
+
+- **Onboarding centralization doc is source-bounded** - The active README no longer presents the transaction helper as implementation-ready planning status.
+- **Current onboarding approval gates are explicit** - Release approval now routes through the production-readiness audit, External Certification Runbook, `npm run verify:agent-readiness`, `npm run verify:auth-security-failure-matrix`, authenticated browser/API smoke, Razorpay sandbox evidence where relevant, Firebase Auth custom-claims/token smoke where relevant, provider-failure compensation evidence, target deploy evidence where relevant, and production-host smoke.
+- **Verifier guard added** - `npm run verify:agent-readiness` now rejects the old implementation-ready status in the onboarding centralization doc.
+
+### Verified
+
+- `node --check scripts/verification/verify-agent-readiness.js` passed.
+- `npm run verify:agent-readiness` passed.
+- Narrowed active stale-readiness scan returned no matches.
+- `npm run docs:check-links` passed with 0 broken links and 0 naming violations.
+- `git diff --check` passed.
+- `npm run verify:production-readiness-local` passed with 79/79 checks, including 75 child root `verify:*` scripts.
+
+### Boundaries
+
+- This is documentation/source-gate hardening only. It does not change onboarding runtime behavior, tenant/store transaction behavior, auth behavior, Razorpay behavior, public claim behavior, compensation behavior, Answerlattice onboarding behavior, Firestore rules, Storage rules, Cloud Functions, deploy Firebase, deploy Vercel, run a production build, run browser/API smoke, call providers, write Firestore, write Storage, or certify release readiness.
+
+---
+
+## July 2, 2026 - Compliance Pages Spec Launch Boundary
+
+### Improved
+
+- **Compliance spec is source-bounded** - The active Compliance Pages spec no longer presents runtime behavior as implementation-ready planning status.
+- **Current approval gates are explicit** - Release approval now routes through the production-readiness audit, External Certification Runbook, `npm run verify:compliance-pages-boundary`, browser custom-domain smoke for `/privacy`, `/terms`, and `/refund`, authenticated desktop/mobile owner save/reset QA, owner/legal review of final generated or custom policy text, target deploy evidence where relevant, and production-host smoke.
+- **Verifier guard added** - `npm run verify:compliance-pages-boundary` now rejects the old implementation-ready spec status.
+
+### Verified
+
+- `node --check scripts/verification/verify-compliance-pages-boundary.js` passed.
+- `npm run verify:compliance-pages-boundary` passed.
+- Targeted stale Compliance Pages spec-status scan returned no matches.
+- `npm run docs:check-links` passed with 0 broken links and 0 naming violations.
+- `git diff --check` passed.
+- `npm run verify:production-readiness-local` passed with 78/78 checks, including 74 child root `verify:*` scripts.
+
+### Boundaries
+
+- This is documentation/source-gate hardening only. It does not change Compliance Pages runtime behavior, public route behavior, owner editor behavior, compliance text generation behavior, middleware behavior, Firestore rules, Storage rules, Cloud Functions, deploy Firebase, deploy Vercel, run a production build, run browser custom-domain smoke, approve legal copy, write Firestore, write Storage, or certify release readiness.
+
+---
+
+## July 2, 2026 - Item Photo Capture Assist Mobile Boundary
+
+### Improved
+
+- **Mobile support doc is source-bounded** - The Item Photo Capture Assist mobile-support doc no longer presents mobile support as implementation approval.
+- **Current mobile approval gates are explicit** - Release approval now routes through the production-readiness audit, External Certification Runbook, `npm run verify:agent-readiness`, `npm run verify:auth-security-failure-matrix`, authenticated desktop image-upload QA, authenticated mobile owner-shell QA inside `MobileShell`, real-device camera QA on iOS Safari and mid-range Android Chrome, media preparation/upload QA through `prepareMediaImage(file, 'menuItem')`, target deploy evidence where relevant, and production-host smoke.
+- **Verifier guard added** - `npm run verify:agent-readiness` now rejects the old approved-for-mobile-implementation status.
+
+### Verified
+
+- `node --check scripts/verification/verify-agent-readiness.js` passed.
+- `npm run verify:agent-readiness` passed.
+- Targeted stale Item Photo Capture Assist mobile-status scan returned no matches.
+- `npm run docs:check-links` passed with 0 broken links and 0 naming violations.
+- `git diff --check` passed.
+- `npm run verify:production-readiness-local` passed with 78/78 checks, including 74 child root `verify:*` scripts.
+
+### Boundaries
+
+- This is documentation/source-gate hardening only. It does not change Item Photo Capture Assist runtime behavior, camera behavior, upload behavior, media preparation behavior, MobileShell behavior, routes, Storage rules, Firestore rules, deploy Firebase, deploy Vercel, run a production build, run browser/device QA, write Firestore, write Storage, approve mobile release, or certify release readiness.
+
+---
+
+## July 2, 2026 - Auth Guide Production-Active Boundary
+
+### Improved
+
+- **Auth docs are source-bounded** - The complete auth guide, auth documentation hub, and Firebase Auth sync note no longer present their source evidence as current production-active launch approval.
+- **Current auth approval gates are explicit** - Release approval now routes through the production-readiness audit, External Certification Runbook, `npm run verify:agent-readiness`, `npm run verify:auth-security-failure-matrix`, auth browser/API smoke, Firebase Auth custom-claims/token smoke, App Check/session-cookie review, login/logout/OAuth/password/staff-passcode QA, target deploy evidence where auth-adjacent routes or rules change, and production-host smoke.
+- **Verifier guard added** - `npm run verify:agent-readiness` now rejects the old production-active auth guide and footer labels.
+
+### Verified
+
+- `node --check scripts/verification/verify-agent-readiness.js` passed.
+- `npm run verify:agent-readiness` passed.
+- Targeted stale auth production-active scan returned no matches.
+- `npm run docs:check-links` passed with 0 broken links and 0 naming violations.
+- `git diff --check` passed.
+- `npm run verify:production-readiness-local` passed with 78/78 checks, including 74 child root `verify:*` scripts.
+
+### Boundaries
+
+- This is documentation/source-gate hardening only. It does not change auth runtime behavior, session behavior, Firebase Auth sync behavior, middleware, API routes, Firestore rules, security logging behavior, deploy Firebase, deploy Vercel, run a production build, run browser/API smoke, call providers, write Firestore, write Storage, or certify release readiness.
+
+---
+
+## July 2, 2026 - Customer Question Coverage Check
+
+### New
+
+- **Customer Question Coverage Check** - Added a public MenuList tool that uses pasted source text and owner-entered customer questions to show whether common customer answers are present, missing, unclear, or not checked.
+- **Business Health readiness module** - Added Customer question coverage to the existing Public readiness card so logged-in owners see answer coverage from current MenuList store and menu truth.
+
+### Verified
+
+- `npm run verify:customer-question-coverage-check` is the source gate for the tool.
+- `npm run verify:public-truth-tools` now includes the Customer Question Coverage Check verifier.
+
+### Boundaries
+
+- The public tool does not open links, read chats, generate chatbot answers, call AI/search providers, store reports, mutate external platforms, or promise rankings/citations. Optional follow-up still uses the existing consented public contact route.
+
+---
+
+## July 2, 2026 - Digital Screens Spec Launch Boundary
+
+### Improved
+
+- **Digital Screens spec is source-bounded** - The active spec no longer presents the locked screen runtime as production complete or current launch certification.
+- **Release approval gates are explicit** - Current approval now routes through the production-readiness audit, External Certification Runbook, `npm run verify:digital-screens-boundary`, browser TV smoke, authenticated desktop/mobile owner settings QA, physical-device QA, target deploy evidence where relevant, and production-host smoke.
+- **Verifier guard added** - `npm run verify:digital-screens-boundary` now rejects the old production-complete status line in the active Digital Screens spec.
+
+### Verified
+
+- `node --check scripts/verification/verify-digital-screens-boundary.js` passed.
+- `npm run verify:digital-screens-boundary` passed.
+- Targeted stale Digital Screens spec-status scan returned no matches.
+- `npm run docs:check-links` passed with 0 broken links and 0 naming violations.
+- `git diff --check` passed.
+- `npm run verify:production-readiness-local` passed with 78/78 checks, including 74 child root `verify:*` scripts.
+
+### Boundaries
+
+- This is documentation/source-gate hardening only. It does not change Digital Screens runtime behavior, public screen route behavior, owner settings behavior, cache invalidation behavior, Firestore rules, Storage rules, Cloud Functions, deploy Firebase, deploy Vercel, run a production build, run browser TV smoke, run physical-device QA, write Firestore, write Storage, or certify release readiness.
+
+---
+
+## July 2, 2026 - Mobile Strategy And Multi-Outlet Reference Boundary
+
+### Improved
+
+- **Mobile operational specs are source-bounded** - Mobile screen and navigation specs now act as reference docs, not implementation approval or launch certification.
+- **Strategy bucket-list wording is bounded** - Future idea candidates no longer carry ready-for-implementation language without a current feature doc and source gate.
+- **Multi-Outlet AI extraction analysis is source-bounded** - The technical analysis footer no longer presents January 2026 planning as current implementation approval.
+- **Verifier guards added** - Mobile route-map, multi-location, and agent-readiness gates now reject the old reference-readiness labels.
+
+### Verified
+
+- `node --check scripts/verification/verify-mobile-shell-route-map.js` passed.
+- `node --check scripts/verification/verify-multi-location-boundary.js` passed.
+- `node --check scripts/verification/verify-agent-readiness.js` passed.
+- `npm run verify:mobile-shell-route-map` passed.
+- `npm run verify:multi-location-boundary` passed.
+- `npm run verify:agent-readiness` passed.
+- Targeted stale reference-readiness scan returned no active matches in this slice.
+- `npm run docs:check-links` passed with 0 broken links and 0 naming violations.
+- `git diff --check` passed.
+- `npm run verify:production-readiness-local` passed with 78/78 checks, including 74 child root `verify:*` scripts.
+
+### Boundaries
+
+- This is documentation/source-gate hardening only. It does not change mobile runtime behavior, MobileShell behavior, multi-outlet runtime behavior, extraction runtime behavior, strategy/runtime scope, Firebase rules, Cloud Functions, deploy Firebase, deploy Vercel, run a production build, run browser/device QA, call providers, write Firestore, write Storage, approve implementation, approve launch, or certify release readiness.
+
+---
+
+## July 2, 2026 - Owner Notifications Doc Boundary
+
+### Improved
+
+- **Spec, mobile, and help docs are source-bounded** - Owner Notifications active docs now preserve implemented source evidence instead of presenting the architecture as implementation-planning status or the help article as future-publication approval.
+- **Current approval gates are explicit** - Release or support-publication approval now routes through the active audit, External Certification Runbook, `npm run verify:owner-notifications-boundary`, SMTP/WhatsApp provider smoke where enabled, authenticated owner settings/status QA, platform recovery monitor browser QA, target Firebase/Vercel deploy evidence where relevant, and production-host smoke.
+- **Stale planning/help labels are guarded** - `npm run verify:owner-notifications-boundary` now rejects the old planning and future-help status lines in the active spec, mobile, and help docs.
+
+### Verified
+
+- `node --check scripts/verification/verify-owner-notifications-boundary.js` passed.
+- `npm run verify:owner-notifications-boundary` passed.
+- Targeted stale Owner Notifications doc-status scan returned no matches.
+- `npm run docs:check-links` passed with 0 broken links and 0 naming violations.
+- `git diff --check` passed.
+- `npm run verify:production-readiness-local` passed with 78/78 checks, including 74 child root `verify:*` scripts.
+
+### Boundaries
+
+- This is documentation/source-gate hardening only. It does not change owner-notification runtime behavior, recipient resolution behavior, SMTP behavior, WhatsApp behavior, platform recovery monitor runtime behavior, owner settings UI, Firebase rules, Cloud Functions, deploy Firebase, deploy Vercel, run a production build, call providers, run browser/mobile QA, write Firestore, write Storage, approve support publication, or certify release readiness.
+
+---
+
+## July 2, 2026 - Owner Business Health Boundary
+
+### Improved
+
+- **Business Health source gate added** - `npm run verify:owner-business-health-boundary` now checks `/business-health`, desktop BusinessHealthPage, the MobileShell read-only screen, bounded owner-business-assistant current/analytics/locations/answer/feedback route admission, bounded browser response parsers, removed action surfaces, docs parity, and ledger coverage.
+- **Read-only ownership is explicit** - Active Business Health docs now state that Business Health explains store and menu health but does not update menu/store/outlet/staff/public truth or create action drafts.
+- **Mobile parity wording is source-backed** - Mobile support docs now name the MobileShell read-only boundary and reject Business Health action sheets or `window.location` route bypasses.
+
+### Verified
+
+- `npm run verify:owner-business-health-boundary` passed.
+- `npm run verify:production-readiness-local` passed with 78/78 checks, including 74 child root `verify:*` scripts.
+
+### Boundaries
+
+- This is documentation/source-gate hardening only. It does not change Business Health runtime behavior, answer behavior, scheduler behavior, public truth behavior, project/menu/store write behavior, Firebase rules, Cloud Functions, deploy Firebase, deploy Vercel, run a production build, run browser/mobile QA, call providers, write Firestore, write Storage, or certify release readiness.
+
+---
+
+## July 2, 2026 - Menu Card Export Collateral Boundary
+
+### Improved
+
+- **Help, marketing, and website notes are source-bounded** - Menu Card Export support, demo, sales, and website-copy planning docs now preserve source evidence instead of acting as current collateral approval.
+- **Current collateral gates are explicit** - Approval now routes through the active audit, External Certification Runbook, Digital Menu Output Constitution checks, focused verifier, authenticated desktop/mobile browser QA, visual PDF and print-shop artifact review, AI advisor provider smoke where enabled, target deploy evidence, and production-host smoke.
+- **Stale collateral status is guarded** - `npm run verify:menu-card-export` now source-gates active collateral docs and rejects the old ready-for-support, ready-for-founder-demo, and active-publication status lines.
+
+### Verified
+
+- `node --check scripts/verification/verify-menu-card-export.js` passed.
+- `npm run verify:menu-card-export` passed.
+- Targeted stale Menu Card Export collateral status scan returned no matches.
+- `npm run docs:check-links` passed with 0 broken links and 0 naming violations.
+- `git diff --check` passed.
+- `npm run verify:production-readiness-local` passed with 77/77 checks, including 73 child root `verify:*` scripts.
+
+### Boundaries
+
+- This is documentation/source-gate hardening only. It does not change Menu Card Export runtime behavior, public website runtime behavior, support workflow, sales/demo approval, PDF renderer behavior, print-shop packet behavior, AI advisor behavior, mobile shell behavior, Firebase rules, Cloud Functions, deploy Firebase, deploy Vercel, run a production build, call providers, run browser/device QA, write Firestore, write Storage, approve collateral publication, or certify release readiness.
+
+---
+
+## July 2, 2026 - Historical Readiness Label Boundary
+
+### Improved
+
+- **PONR onboarding spec is source-bounded** - The PONR onboarding spec now preserves January 2026 strategy evidence only and no longer acts as implementation approval.
+- **Physical Surfaces spec is source-bounded** - The legacy spec now points current physical/print approval to Menu Kit/Menu Card Export, Digital Menu Output Constitution checks, visual print review, target deploy evidence, and production smoke.
+- **Image Editing assessment verdict is source-bounded** - The November 2025 assessment grade now remains historical evidence only instead of current production-ready approval.
+- **Verifier guard added** - `npm run verify:agent-readiness` now rejects stale implementation-ready and production-ready labels in those docs.
+
+### Verified
+
+- `node --check scripts/verification/verify-agent-readiness.js` passed.
+- Targeted stale-readiness scan over the three docs found no active stale implementation-ready or production-ready label.
+- `npm run verify:agent-readiness` passed.
+- `npm run docs:check-links` passed with 0 broken links and 0 naming violations.
+- `git diff --check` passed.
+- `npm run verify:production-readiness-local` passed with 77/77 checks, including 73 child root `verify:*` scripts.
+
+### Boundaries
+
+- This is documentation/source-gate hardening only. It does not change onboarding runtime behavior, auth/payment behavior, public-surface cache behavior, Physical Surfaces runtime behavior, Menu Kit runtime behavior, print renderer behavior, image upload/editing runtime behavior, Storage rules, Firestore rules, Cloud Functions, deploy Firebase, deploy Vercel, run a production build, run browser/device QA, write Firestore, write Storage, approve implementation, approve deployment, or certify release readiness.
+
+---
+
+## July 2, 2026 - Menu Card Export Core Doc Boundary
+
+### Improved
+
+- **Core docs are source-bounded** - The Menu Card Export README, spec, implementation plan, and mobile-support docs now preserve source/runtime evidence instead of presenting the route as current production-ready status.
+- **Current approval gates are explicit** - Current Menu Card Export approval now routes through the active audit, External Certification Runbook, Digital Menu Output Constitution checks, focused verifier, authenticated desktop/mobile browser QA, visual PDF and print-shop artifact review, AI advisor provider smoke where enabled, target deploy evidence, and production-host smoke.
+- **Stale route-status claims are guarded** - `npm run verify:menu-card-export` now source-gates the four core docs and rejects the old production-ready status lines.
+
+### Verified
+
+- `node --check scripts/verification/verify-menu-card-export.js` passed.
+- `npm run verify:menu-card-export` passed.
+- Targeted stale Menu Card Export core status scan returned no matches.
+- `npm run docs:check-links` passed with 0 broken links and 0 naming violations.
+- `git diff --check` passed.
+- `npm run verify:production-readiness-local` passed with 77/77 checks, including 73 child root `verify:*` scripts.
+
+### Boundaries
+
+- This is documentation/source-gate hardening only. It does not change Menu Card Export runtime behavior, PDF renderer behavior, print-shop packet behavior, AI advisor behavior, mobile shell behavior, Firebase rules, Cloud Functions, deploy Firebase, deploy Vercel, run a production build, call providers, run browser/device QA, write Firestore, write Storage, or certify release readiness.
+
+---
+
+## July 2, 2026 - Projects Marketing Collateral Boundary
+
+### Improved
+
+- **Projects marketing drafts are source-bounded** - AI Data Extraction, Upload/File Processing, Description Generation, and Multi-Language Translation marketing docs now preserve historical positioning context instead of serving as current ready-for-use collateral.
+- **Current collateral approval gates are explicit** - Current sales, publication, and launch use now routes through the active audit, External Certification Runbook, focused source gates, provider smoke where relevant, desktop/mobile upload and editor QA, translated-output renderer/device QA, Storage/deploy evidence, production-host smoke, and release-specific evidence for numeric claims.
+- **Ready-for-use footers are guarded** - `npm run verify:agent-readiness` now rejects the old ready-for-use footer posture and source-gates the Projects marketing collateral boundaries.
+
+### Verified
+
+- `node --check scripts/verification/verify-agent-readiness.js` passed.
+- Targeted ready-for-use scan over the four marketing docs found no active stale footer.
+- `npm run verify:agent-readiness` passed.
+- `npm run docs:check-links` passed with 0 broken links and 0 naming violations.
+- `git diff --check` passed.
+- `npm run verify:production-readiness-local` passed with 77/77 checks, including 73 child root `verify:*` scripts.
+
+### Boundaries
+
+- This is documentation/source-gate hardening only. It does not change upload runtime behavior, extraction runtime behavior, description-generation runtime behavior, translation runtime behavior, provider behavior, public renderer behavior, customer-menu behavior, Storage rules, Firestore rules, Cloud Functions, deploy Firebase, deploy Vercel, run a production build, run browser/device QA, write Firestore, write Storage, approve publication, approve sales use, or certify release readiness.
+
+---
+
+## July 2, 2026 - Menu Project Editor Boundary
+
+### Improved
+
+- **Project editor source gate added** - `npm run verify:menu-project-editor-boundary` now checks `/projects`, desktop project mutations, desktop editor save/publish flow, Command Center handoff, project DAL cache and Digital Screens invalidation, mobile menu persistence, mobile project selector acknowledgements, mobile bulk-action handoff, docs parity, and ledger coverage.
+- **Projects docs now point at the current release boundary** - Active Projects editor and Menu Command Center docs now route release approval through the active audit, External Certification Runbook, the focused verifier, browser/mobile editor QA, publish/cache evidence, target deploy evidence, and production-host smoke.
+- **Mobile parity wording is source-backed** - Mobile support docs now describe `updateProjectWithoutLoader` plus `assertProjectUpdateSucceeded` as the persistence acknowledgement path for mobile menu and bulk actions.
+
+### Verified
+
+- `npm run verify:menu-project-editor-boundary` passed.
+- `npm run verify:production-readiness-local` passed with 77/77 checks, including 73 child root `verify:*` scripts.
+
+### Boundaries
+
+- This is documentation/source-gate hardening only. It does not change project-editor runtime behavior, menu edit behavior, publish behavior, public menu rendering behavior, project DAL behavior, Firebase rules, Cloud Functions, deploy Firebase, deploy Vercel, run a production build, run desktop/mobile browser editor QA, write Firestore, write Storage, or certify release readiness.
+
+---
+
+## July 2, 2026 - Decision And Staff Logic Verification Boundaries
+
+### Improved
+
+- **Decision Intelligence logic verification is source-bounded** - The historical report now preserves January/May 2026 flow evidence only and routes current approval through the active audit, External Certification Runbook, source gates, scoped scheduler deploy evidence, decision-block scoring checks, browser/mobile customer-menu QA, cache/deploy evidence, and production smoke.
+- **Staff Prompt logic verification is source-bounded** - The historical report now preserves January 2026 flow evidence only and routes current approval through the active audit, External Certification Runbook, `npm run verify:staff-prompt-runtime`, eligible-store Today QA, deploy evidence, production smoke, and upstream summary-writer evidence when end-to-end generation is claimed.
+- **Residual deployable labels are guarded** - `npm run verify:agent-readiness` and `npm run verify:staff-prompt-runtime` now reject the old deployable, production-readiness-safe, final-verdict, and zero-critical-issue launch claims in those reports.
+
+### Verified
+
+- `node --check scripts/verification/verify-agent-readiness.js` passed.
+- `node --check scripts/verification/verify-staff-prompt-runtime.js` passed.
+- `npm run verify:agent-readiness` passed.
+- `npm run verify:staff-prompt-runtime` passed.
+
+### Boundaries
+
+- This is documentation/source-gate hardening only. It does not change Decision Intelligence runtime behavior, Staff Prompt runtime behavior, decision-block scoring behavior, Today/mobile rendering behavior, upstream summary writer, scheduler behavior, Firebase rules, Cloud Functions, deploy Firebase, deploy Vercel, run a production build, call providers, run browser/device QA, write Firestore, write Storage, or certify release readiness.
+
+---
+
+## July 2, 2026 - Owner Dashboard Today Boundary
+
+### Improved
+
+- **Owner dashboard docs now match Today-first source behavior** - The active owner-dashboard reference now records Today live data as the default, with settled historical reads guarded by `loadHistorical: showHistorical`.
+- **Past Activity remains flag-bound** - Desktop `/today/history` redirects to `/today` and MobileShell falls back to Today unless `ENABLE_PAST_ACTIVITY_HISTORY` is enabled.
+- **Focused source gate added** - `npm run verify:owner-dashboard-today-boundary` now checks desktop/mobile route parity, Today/dashboard hooks, Past Activity filtering, campaign acknowledgements, mobile dashboard wiring, docs parity, and ledger coverage.
+
+### Verified
+
+- `npm run verify:owner-dashboard-today-boundary` passed.
+- `npm run verify:production-readiness-local` passed with 76/76 checks, including 72 child root `verify:*` scripts.
+
+### Boundaries
+
+- This is documentation/source-gate hardening only. It does not change owner-dashboard runtime behavior, Today campaign behavior, analytics read model behavior, Firebase rules, Cloud Functions, deploy Firebase, deploy Vercel, run a production build, run desktop/mobile browser QA, write Firestore, write Storage, or certify release readiness.
+
+---
+
+## July 2, 2026 - Logic Verification Residual Launch Boundaries
+
+### Improved
+
+- **CMI logic verification is source-bounded** - The historical report now preserves January 2026 flow evidence only and routes current approval through the active audit, External Certification Runbook, source gates, scoped deploy evidence where Cloud Functions logic changes, scheduler checks, browser/device QA, and production smoke.
+- **Physical Surfaces logic verification is source-bounded** - The legacy campaign-surface report now identifies Menu Kit as the canonical identity-surface system and routes active physical/print output approval through the active audit, print/output gates, artifact review, deploy evidence, and production smoke.
+- **Residual deployable labels are guarded** - `npm run verify:agent-readiness` and `npm run verify:menu-card-export` now reject the old deployable, production-readiness-safe, and zero-issue launch verdicts in those logic-verification docs.
+
+### Verified
+
+- `node --check scripts/verification/verify-agent-readiness.js` passed.
+- `node --check scripts/verification/verify-menu-card-export.js` passed.
+- `npm run verify:agent-readiness` passed.
+- `npm run verify:menu-card-export` passed.
+- Targeted CMI/Physical Surfaces stale logic-verification scan returned no matches.
+
+### Boundaries
+
+- This is documentation/source-gate hardening only. It does not change CMI runtime behavior, Physical Surfaces runtime behavior, Menu Kit runtime behavior, Today/mobile output behavior, print renderer behavior, scheduler behavior, Firebase rules, Cloud Functions, deploy Firebase, deploy Vercel, run a production build, call providers, run browser/device QA, write Firestore, write Storage, or certify release readiness.
+
+---
+
+## July 2, 2026 - Item Photo Capture Assist Validation Boundary
+
+### Improved
+
+- **Item Photo Capture Assist validation is source-bounded** - The June 25, 2026 validation report now identifies itself as historical source evidence, not current owner-side browser-smoke or launch certification.
+- **Browser and device gates are explicit** - Current approval now requires authenticated desktop owner browser QA, authenticated mobile owner-shell QA inside `MobileShell`, real-device camera QA on iOS Safari and mid-range Android Chrome, media preparation/upload QA, target deploy evidence, and production-host smoke.
+- **Agent-readiness verifier guards the boundary** - `npm run verify:agent-readiness` now rejects the stale owner-side browser-smoke verdict in the validation report.
+
+### Verified
+
+- `node --check scripts/verification/verify-agent-readiness.js` passed.
+- `npm run verify:agent-readiness` passed.
+
+### Boundaries
+
+- This is documentation/source-gate hardening only. It does not change Item Photo Capture Assist runtime behavior, camera behavior, media preparation behavior, upload behavior, project save behavior, Storage paths, Firestore rules, Cloud Functions, deploy Firebase, deploy Vercel, run a production build, run browser/device QA, write Firestore, write Storage, or certify release readiness.
+
+---
+
+## July 2, 2026 - AI Enhancement Pack Public Copy Boundary
+
+### Improved
+
+- **AI Enhancement Pack help, website, and marketing docs are source-bounded** - The docs now identify themselves as source evidence, not current launch certification.
+- **Pricing and activation claims are bounded** - Public-facing drafts now require approved launch pricing and Razorpay sandbox top-up evidence before publication, and avoid immediate-activation language until payment confirmation is verified.
+- **Billing entitlement verifier guards the copy boundary** - `npm run verify:billing-entitlement-boundary` now checks the AI Enhancement Pack help, website, and marketing docs alongside the existing spec/implementation billing boundary.
+
+### Verified
+
+- `node --check scripts/verification/verify-billing-entitlement-boundary.js` passed.
+- `npm run verify:billing-entitlement-boundary` passed.
+
+### Boundaries
+
+- This is documentation/source-gate hardening only. It does not change AI Enhancement Pack runtime behavior, billing runtime behavior, Razorpay route behavior, provider behavior, Firebase rules, Cloud Functions, deploy Firebase, deploy Vercel, run a production build, run browser/device QA, write Firestore, write Storage, or certify release readiness.
+
+---
+
+## July 2, 2026 - Menu Design Presentation Boundary
+
+### Improved
+
+- **B2C menu design docs are source-gated** - README, spec, implementation, Firebase, mobile-support, help, website, marketing, and the historical constitution implementation note now require External Certification Runbook evidence, Digital Menu Output Constitution checks, `npm run verify:menu-design-presentation-boundary`, and browser/mobile customer-menu QA before launch approval.
+- **Free-form design claims are bounded** - Active B2C docs now describe controlled moods, compatible layouts, logo, and brand accents instead of free-form font/layout promises or forbidden public design wording.
+- **Feature sweep ledgers include the boundary** - The master inventory and report now record the menu-design-presentation source gate and its remaining browser/device/deploy boundaries.
+
+### Verified
+
+- `npm run verify:menu-design-presentation-boundary` passed.
+- `npm run verify:production-readiness-local` passed with 75/75 checks, including 71 child root `verify:*` scripts.
+
+### Boundaries
+
+- This is documentation/source-gate hardening only. It does not change B2C runtime behavior, customer-menu rendering behavior, project publish behavior, Firebase rules, Cloud Functions, deploy Firebase, deploy Vercel, run a production build, run browser/device QA, write Firestore, write Storage, or certify release readiness.
+
+---
+
+## July 2, 2026 - Social Content Strategy And Logic Boundary
+
+### Improved
+
+- **Strategy and logic-verification docs no longer act as release approval** - The January 2026 strategy and logic report now preserve historical source evidence instead of locked implementation, deployable, or zero-issue certification claims.
+- **Current runtime boundary is explicit** - The docs now state that the owner generation path is deleted and current approval routes through active source gates, Today QA, provider smoke where enabled, deploy evidence, and production-host smoke.
+- **Agent-readiness verifier guards the docs** - `npm run verify:agent-readiness` now reads the Social Content logic-verification report and rejects the old deployable/ready-for-implementation wording.
+
+### Verified
+
+- `node --check scripts/verification/verify-agent-readiness.js` passed.
+- `npm run verify:agent-readiness` passed.
+- `npm run verify:public-business-truth` passed.
+- Targeted Social Content stale strategy/logic launch scan returned no matches.
+- `npm run docs:check-links` passed.
+- `git diff --check` passed.
+- `npm run verify:production-readiness-local` passed with 75/75 checks, including 71 child root `verify:*` scripts.
+
+### Boundaries
+
+- This is documentation/source-gate hardening only. It does not change Social Content runtime behavior, Today behavior, GrowthOS summary reads, campaign provider behavior, Firebase rules, Cloud Functions, deploy Firebase, deploy Vercel, run a production build, call providers, run browser/device QA, write Firestore, write Storage, or certify release readiness.
+
+---
+
+## July 2, 2026 - Staff Prompt Active Docs Runtime Boundary
+
+### Improved
+
+- **Staff Prompt spec, implementation, and marketing docs no longer act as implementation or sales approval** - The active docs now describe historical planning/positioning evidence and point to the current read-only Today summary runtime.
+- **Standalone product claims are bounded** - Marketing collateral now says Staff Prompt is not a standalone product, staff app, prompt generator, provider flow, owner setting, mobile-only write, or public landing page.
+- **Staff Prompt verifier covers the active docs** - `npm run verify:staff-prompt-runtime` now checks the spec, implementation plan, and marketing docs for the read-only Today boundary and rejects stale implementation-ready, dev-ready, sales-ready, and behavior-guarantee claims.
+
+### Verified
+
+- `node --check scripts/verification/verify-staff-prompt-runtime.js` passed.
+- `npm run verify:staff-prompt-runtime` passed.
+- Targeted Staff Prompt active-doc stale implementation/sales scan returned no matches.
+- `npm run docs:check-links` passed.
+- `git diff --check` passed.
+- `npm run verify:production-readiness-local` passed with 74/74 checks, including 70 child root `verify:*` scripts.
+
+### Boundaries
+
+- This is documentation/source-gate hardening only. It does not change Staff Prompt runtime behavior, Today/mobile rendering behavior, upstream summary writing, Firebase rules, Cloud Functions, deploy Firebase, deploy Vercel, run a production build, call providers, run browser/device QA, write Firestore, write Storage, or certify release readiness.
+
+---
+
+## July 2, 2026 - Menu Correctness Engine Public Copy Boundary
+
+### Improved
+
+- **MCE public/help/marketing docs are source-bounded** - Website, help, and marketing docs now identify themselves as source-gated evidence, not current launch certification.
+- **Absolute sync claims are removed** - The docs no longer claim instant all-surface updates, universal surface certification, automatic POS/PDF/device behavior, or blanket "correct everywhere" sales guarantees.
+- **Public business truth verifier guards the content boundary** - `npm run verify:public-business-truth` now checks the MCE website, help, and marketing docs alongside the runtime flag, save hook, same-write `_mce` metadata path, README, implementation, and spec boundary.
+
+### Verified
+
+- `node --check scripts/verification/verify-public-business-truth.js` passed.
+- `npm run verify:public-business-truth` passed.
+- Targeted MCE stale public-copy scan returned no matches in active MCE docs.
+- `npm run docs:check-links` passed.
+- `git diff --check` passed.
+- `npm run verify:production-readiness-local` passed with 74/74 checks, including 70 child root `verify:*` scripts.
+
+### Boundaries
+
+- This is documentation/source-gate hardening only. It does not change MCE runtime behavior, project save behavior, publish-gate behavior, customer-facing rendering, public cache behavior, POS/provider behavior, PDF generation, Firebase rules, Cloud Functions, deploy Firebase, deploy Vercel, run a production build, run browser/device QA, write Firestore, write Storage, or certify release readiness.
+
+---
+
+## July 2, 2026 - Pricing Integrity Current Runtime Boundary
+
+### Improved
+
+- **Pricing Integrity docs match current runtime** - Active docs now separate the current `updateProject()` save path, public cache revalidation, configured Digital Screens content-version touches, and on-demand PDF generation from the dormant `runPricingIntegrity()` scaffold.
+- **Automatic PDF claims are bounded** - Website, help, marketing, mobile, spec, implementation, Firebase, and validation docs no longer claim background PDF regeneration is active, all surfaces are launch-certified, or the standalone Pricing Integrity engine is wired.
+- **Pricing boundary verifier guards the boundary** - `npm run verify:pricing-integrity-boundary` and `npm run verify:agent-readiness` now check the current source path and reject stale Pricing Integrity ready-for-implementation, automatic-PDF, or all-surface certainty claims.
+
+### Verified
+
+- `node --check scripts/verification/verify-pricing-integrity-boundary.js` passed.
+- `npm run verify:pricing-integrity-boundary` passed.
+- `node --check scripts/verification/verify-agent-readiness.js` passed.
+- `npm run verify:env-targets` passed.
+- `npm run verify:agent-readiness` passed.
+- `npm run verify:menulist-api-tenant-safety` passed.
+- Targeted Pricing Integrity stale readiness/automatic-PDF scan returned no matches.
+- `npm run docs:check-links` passed.
+- `git diff --check` passed.
+- `npm run verify:production-readiness-local` passed with 74/74 checks, including 70 child root `verify:*` scripts.
+
+### Boundaries
+
+- This is documentation/source-gate hardening only. It does not change Pricing Integrity runtime behavior, editor saves, PDF queue behavior, public menu output, cache behavior, Firestore rules, Cloud Functions, deploy Firebase, deploy Vercel, run a production build, run browser/device QA, write Firestore, write Storage, or certify release readiness.
+
+---
+
+## July 2, 2026 - GBP Sync Disabled Runtime Boundary
+
+### Improved
+
+- **GBP Sync docs now match disabled runtime** - Active docs now say `ENABLE_GBP_SYNC` is false, token operations fail closed, and current owner behavior is manual Google handoff with the Official Business Page/menu link.
+- **Public claims are bounded** - Website, help, marketing, and validation docs no longer claim automatic Google Business Profile sync, connect-once setup, or readiness for implementation/sales/testing.
+- **Public business truth verifier guards the boundary** - `npm run verify:public-business-truth` now rejects stale active GBP public claims while the API/OAuth/provider/deploy/browser gates remain incomplete.
+
+### Verified
+
+- `npm run verify:public-business-truth` passed.
+- `npm run docs:check-links` passed.
+- `git diff --check` passed.
+- `npm run verify:production-readiness-local` passed with 73/73 checks, including 69 child root `verify:*` scripts.
+
+### Boundaries
+
+- This is documentation/source-gate hardening only. It does not change GBP runtime behavior, Google provider calls, Firestore rules, Cloud Functions, deploy Firebase, deploy Vercel, run a production build, run browser/device QA, write Firestore, write Storage, or certify release readiness.
+
+---
+
+## July 2, 2026 - Platform Pull API Boundary
+
+### Improved
+
+- **Platform Pull API source gate added to root readiness** - `npm run verify:platform-pull-api-boundary` now runs from the root `verify:*` registry.
+- **Key lifecycle docs match current source** - The README, spec, implementation, Firebase, and mobile docs now record the Business Settings Integrations tab as the key-management UI, with raw key display limited to the one-time generation response.
+- **Pull response boundary is documented** - Docs now cover live key/target revalidation, private response headers, menu summary project selection, active temporary-status output, bounded diagnostics, and the remaining live key/manual testing gap.
+
+### Verified
+
+- `npm run verify:platform-pull-api-boundary` passed.
+- `npm run docs:check-links` passed.
+- `git diff --check` passed.
+- `npm run verify:production-readiness-local` passed with 73/73 checks, including 69 child root `verify:*` scripts.
+
+### Boundaries
+
+- This is source/docs verification only. It does not change Platform Pull API runtime behavior, API key storage, public route behavior, Firestore rules, Cloud Functions, deploy Firebase, deploy Vercel, run a production build, run live key fixture/manual tests, call providers, run browser/device QA, write live Firestore, write Storage, or certify release readiness.
+
+---
+
+## July 2, 2026 - Client Menu Marketing Launch Boundary
+
+### Improved
+
+- **Client menu marketing no longer says ready for use** - The sales collateral now identifies itself as marketing evidence only, not current launch certification.
+- **Public menu release gates are named in the collateral** - Current approval now points to the production-readiness audit, External Certification Runbook evidence, Digital Menu Output Constitution checks, public cache/deploy evidence, browser/mobile customer-menu QA, physical QR/menu device QA, low-bandwidth/offline/back-button tests, analytics delivery checks where relevant, target deployment evidence, and production-host smoke.
+- **Owner-safe sales wording tightened** - Stale "Smart recommendations" and "Our AI extracts..." phrasing now uses featured-choice and review wording.
+- **Agent-readiness verifier guards the doc** - `npm run verify:agent-readiness` now rejects the stale ready-for-use labels and stale public-copy phrasing in `__docs__/client-menu/_marketing.md`.
+
+### Verified
+
+- `node --check scripts/verification/verify-agent-readiness.js` passed.
+- `npm run verify:agent-readiness` passed.
+- Targeted client-menu marketing stale-label/copy scan returned no stale ready-for-use or "Smart recommendations" matches.
+- `npm run docs:check-links` passed.
+- `git diff --check` passed.
+- `npm run verify:production-readiness-local` passed with 73/73 checks, including 69 child root `verify:*` scripts.
+
+### Boundaries
+
+- This is documentation/source-gate hardening only. It does not change customer-menu runtime behavior, public routes, public website copy, public cache behavior, Firestore rules, Cloud Functions, deploy Firebase, deploy Vercel, run a production build, call providers, run browser/device QA, write Firestore, write Storage, or certify release readiness.
+
+---
+
+## July 2, 2026 - Customer App Companion Doc Status Boundary
+
+### Improved
+
+- **Customer App companion docs no longer say ready for implementation** - Spec, Firebase, mobile-support, helpdoc, marketing, and website docs now use source-gated runtime or source-backed draft status wording.
+- **Customer App verifier guards the labels** - `npm run verify:customer-app-pwa` now rejects stale ready-for-implementation headers and footers across those docs.
+
+### Verified
+
+- `node --check scripts/verification/verify-customer-app-pwa.js` passed.
+- `npm run verify:customer-app-pwa` passed.
+- Targeted Customer App stale-label scan returned no ready-for-implementation labels.
+- `npm run docs:check-links` passed.
+- `git diff --check` passed.
+- `npm run verify:production-readiness-local` passed with 72/72 checks, including 68 child root `verify:*` scripts.
+
+### Boundaries
+
+- This is documentation/source-gate hardening only. It does not change Customer App runtime behavior, manifest behavior, service-worker behavior, analytics behavior, public routes, Firestore rules, Cloud Functions, deploy Firebase, deploy Vercel, run a production build, run browser/device QA, write live Firestore, write Storage, or certify release readiness.
+
+---
+
+## July 2, 2026 - GBP Sync Disabled Runtime Boundary
+
+### Improved
+
+- **GBP disabled-runtime ledger restored** - The production audit and changelog now explicitly record that Google Business Profile sync remains disabled, token operations fail closed, and owner-facing copy stays on manual Google handoff.
+- **Integrations tab boundary is clearer** - The tab can show Platform Pull API controls when public API is enabled, while the Google Business Profile card remains gated by `ENABLE_GBP_SYNC`.
+
+### Verified
+
+- `node --check scripts/verification/verify-platform-pull-api-boundary.js` passed.
+- `npm run verify:platform-pull-api-boundary` passed.
+- `npm run verify:menulist-api-tenant-safety` passed.
+- `npm run verify:public-business-truth` passed.
+- `npm run verify:doc-npm-scripts` passed.
+- `npm run docs:check-links` passed.
+- `npx tsc --noEmit --incremental false --pretty false` passed.
+- `npm run lint` passed.
+- `git diff --check` passed.
+- `npm run verify:production-readiness-local` passed with 73/73 checks, including 69 child root `verify:*` scripts.
+
+### Boundaries
+
+- This is documentation/source-gate ledger alignment only. It does not enable GBP provider routes, Google OAuth, token storage, Firestore rules, Cloud Functions, deploy Firebase, deploy Vercel, run a production build, call Google providers, run browser/device QA, write live Firestore, write Storage, or certify release readiness.
+
+---
+
+## July 2, 2026 - Platform Pull API Boundary
+
+### Added
+
+- **Desktop key-management UI** - Business Settings Integrations tab now exposes Platform Pull API generate, regenerate, copy, and revoke controls. The raw key is shown only once after generation; after that, MenuList displays only the stored prefix.
+- **Platform Pull API source gate** - `npm run verify:platform-pull-api-boundary` now checks the key-management route, desktop key UI, pull routes, private response headers, live key/target revalidation, bounded diagnostics, menu summary selection, active temporary-status business output, and docs parity.
+
+### Improved
+
+- **Platform Pull API docs match source** - Active docs now record `ENABLE_PUBLIC_API: true`, the Business Settings Integrations tab owner surface, no dedicated mobile key-management UI, and the current live-key validation boundary.
+
+### Verified
+
+- `node --check scripts/verification/verify-platform-pull-api-boundary.js` passed.
+- `npm run verify:platform-pull-api-boundary` passed.
+- `npm run verify:menulist-api-tenant-safety` passed.
+- `npm run verify:public-business-truth` passed.
+- `npm run verify:doc-npm-scripts` passed.
+- `npx tsc --noEmit --incremental false --pretty false` passed.
+- `npm run lint` passed.
+- `npm run docs:check-links` passed.
+- `git diff --check` passed.
+- `npm run verify:production-readiness-local` passed with 73/73 checks, including 69 child root `verify:*` scripts.
+
+### Boundaries
+
+- This adds the desktop owner key-management UI and source-gate coverage. It does not run live API-key fixture smoke, external consumer integration tests, browser/device QA, deploy Firebase, deploy Vercel, run a production build, call providers, write Storage, or certify release readiness.
+
+---
+
+## July 2, 2026 - AI Menu Manager Technical Handoff Launch Boundary
+
+### Improved
+
+- **AMM technical handoff no longer says ready for controlled launch** - The handoff now says Menu Manager has source-gated support for verified daily menu operations and local export cards, but is not current launch certification.
+- **Release gates are named in the handoff** - Current approval now points to the production-readiness audit, External Certification Runbook evidence, `npm run verify:ai-menu-manager`, authenticated desktop/mobile Menu Manager QA, supported-adapter smoke, public website/help copy review, target deploy evidence, and production-host smoke.
+- **AMM verifier guards the handoff** - `npm run verify:ai-menu-manager` now rejects stale launch-readiness wording in `ai-menu-manager_technical-team-flow.md`.
+
+### Verified
+
+- `node --check scripts/verification/verify-ai-menu-manager.js` passed.
+- `npm run verify:ai-menu-manager` passed.
+- Targeted active AMM stale launch-label scan returned no matches.
+- `npm run docs:check-links` passed.
+- `git diff --check` passed.
+- `npm run verify:production-readiness-local` passed with 72/72 checks, including 68 child root `verify:*` scripts.
+
+### Boundaries
+
+- This is documentation/source-gate hardening only. It does not change AMM runtime behavior, action registry behavior, resolver behavior, route behavior, desktop/mobile UI behavior, public website copy, help copy, Firestore rules, Cloud Functions, deploy Firebase, deploy Vercel, run a production build, call providers, run browser/device QA, write live Firestore, write Storage, or certify release readiness.
+
+---
+
+## July 2, 2026 - Temporary Status Boundary
+
+### Fixed
+
+- **Official Business Page now shows active temporary status** - The OBP surface renders the server-safe `TempStatusBanner` behind `ENABLE_TEMP_STATUS`, matching the existing menu and feedback surfaces.
+- **Public pull API hides expired temporary status values** - `/api/public/v1/business` now returns `tempStatus: null` when the stored status is expired or invalid.
+
+### Improved
+
+- **Temporary Status source gate added** - `npm run verify:temporary-status-boundary` now checks the API route admission, hashed limiter, 4KB body cap, cache invalidation, Digital Screens invalidation, Owner Business Assistant cache invalidation, bounded browser response parsing, desktop/mobile optimistic rollback, Mobile Today shortcuts, public output expiry guards, and docs parity.
+- **Temporary Status docs match current source** - Active docs now record `ENABLE_TEMP_STATUS: true`, current OBP/menu/feedback/public API files, the `screen-data` cache tag, and the no-cleanup-worker expiry boundary.
+
+### Verified
+
+- `node --check scripts/verification/verify-temporary-status-boundary.js` passed.
+- `npm run verify:temporary-status-boundary` passed.
+- `npm run verify:public-business-truth` passed.
+- `npm run verify:menulist-api-tenant-safety` passed.
+- `npm run verify:mobile-shell-route-map` passed.
+- `npm run verify:doc-npm-scripts` passed.
+- `npm run docs:check-links` passed.
+- `npx tsc --noEmit --incremental false --pretty false` passed.
+- `git diff --check` passed.
+- `npm run verify:production-readiness-local` passed with 72/72 checks, including 68 child root `verify:*` scripts.
+
+### Boundaries
+
+- This changes OBP temporary-status rendering, public pull API expired-status hiding, docs, and verifier coverage only. It does not change Firestore rules, Cloud Functions, deploy Firebase, deploy Vercel, run a production build, call providers, run browser/device QA, write live temporary-status data, write Storage, or certify release readiness.
+
+---
+
+## July 2, 2026 - Reviews/Reputation Validation Boundary
+
+### Improved
+
+- **Reviews/Reputation validation no longer says ready for implementation** - The feedback-loop validation now records historical docs-alignment evidence only.
+- **Dormant reviews verifier guards the blocker** - `npm run verify:menulist-api-tenant-safety` now requires the GBP API blocker and rejects the stale ready-for-implementation footer.
+
+### Verified
+
+- `node --check scripts/verification/verify-menulist-api-tenant-safety.js` passed.
+- `npm run verify:menulist-api-tenant-safety` passed.
+- Targeted Reviews/Reputation validation stale-label scan returned no ready-for labels.
+- `npm run docs:check-links` passed.
+- `git diff --check` passed.
+- Broader readiness-label scan returned only the audit rubric and negative customer-app heading.
+- `npm run verify:production-readiness-local` passed with 71/71 checks, including 67 child root `verify:*` scripts.
+
+### Boundaries
+
+- This is documentation/source-gate hardening only. It does not change Reviews/Reputation runtime behavior, feature flags, API routes, owner mount points, GBP ingestion, Firestore rules, Cloud Functions, deploy Firebase, deploy Vercel, run a production build, call providers, run browser/device QA, write live Firestore, write Storage, or certify release readiness.
+
+---
+
+## July 2, 2026 - Description Generation Assessment Testing Boundary
+
+### Improved
+
+- **Description Generation assessment no longer says ready for production testing** - The November 2025 user-testing row now records historical evidence and routes current production testing to active audit, certification, deploy, provider, and browser/mobile QA evidence.
+- **Agent-readiness verifier guards the row** - `npm run verify:agent-readiness` now rejects the stale production-testing label in the assessment.
+
+### Verified
+
+- `node --check scripts/verification/verify-agent-readiness.js` passed.
+- `npm run verify:agent-readiness` passed.
+- Targeted Description Generation assessment stale-label scan returned no production-testing label.
+- `npm run docs:check-links` passed.
+- `git diff --check` passed.
+- `npm run verify:production-readiness-local` passed with 71/71 checks, including 67 child root `verify:*` scripts.
+
+### Boundaries
+
+- This is documentation/source-gate hardening only. It does not change Description Generation runtime behavior, AI provider behavior, AI accounting, editor saves, public menu output, Firestore rules, Cloud Functions, deploy Firebase, deploy Vercel, run a production build, call providers, run browser/device QA, write live Firestore, write Storage, or certify release readiness.
+
+---
+
+## July 2, 2026 - Messaging Onboarding Active Provider Boundary
+
+### Improved
+
+- **Messaging Onboarding docs now match active provider source** - Active docs now state that WhatsApp is the only registered provider in `providerRegistry`, while Telegram, LINE, and Viber are reserved extension candidates that require separate implementation and smoke evidence.
+- **Implementation status no longer reads like an unfinished phase plan** - The active implementation doc now records completed runtime areas instead of unchecked phase tasks.
+- **Verifier guards the provider boundary** - `npm run verify:messaging-onboarding-monitor-boundary` now checks the provider registry, Functions flag defaults, staging/production env defaults, active messaging docs, validation wording, and production-audit evidence.
+
+### Verified
+
+- `node --check scripts/verification/verify-messaging-onboarding-monitor-boundary.js` passed.
+- `npm run verify:messaging-onboarding-monitor-boundary` passed.
+- Targeted active Messaging Onboarding stale-label scan returned no matches.
+- `npm run docs:check-links` passed.
+- `git diff --check` passed.
+- `npm run verify:production-readiness-local` passed with 71/71 checks, including 67 child root `verify:*` scripts.
+
+### Boundaries
+
+- This is docs/source-gate hardening only. It does not change Messaging Onboarding Cloud Function logic, webhook behavior, provider registry runtime behavior, env values, Firestore rules, Cloud Functions deploy, Vercel deploy, run a production build, call a real WhatsApp provider, run browser/device QA, write Firestore, write Storage, or certify release readiness.
+
+---
+
+## July 2, 2026 - Working Hours and Time-Slot Boundary
+
+### Improved
+
+- **Working Hours source gate added** - `npm run verify:working-hours-boundary` now checks desktop/mobile working-hours acknowledgement, Today quick-hours acknowledgement, time-slot preset acknowledgement, project cascade acknowledgement, public cache revalidation, public badge behavior, Mobile More route wiring, and docs parity.
+- **Hours docs match current source** - Active docs now distinguish shipped weekly working-hours/time-slot behavior from unshipped holiday-calendar and exception-manager ideas.
+
+### Verified
+
+- `node --check scripts/verification/verify-working-hours-boundary.js` passed.
+- `npm run verify:working-hours-boundary` passed.
+- `npm run verify:public-business-truth` passed.
+- `npm run verify:menulist-api-tenant-safety` passed.
+- `npm run verify:mobile-shell-route-map` passed.
+- `npm run verify:doc-npm-scripts` passed.
+- `npm run docs:check-links` passed.
+- `npx tsc --noEmit --incremental false --pretty false` passed.
+- `git diff --check` passed.
+- `npm run verify:production-readiness-local` passed with 71/71 checks, including 67 child root `verify:*` scripts.
+
+### Boundaries
+
+- This is source/docs verification only. It does not change Working Hours runtime behavior, Time Slot runtime behavior, public menu rendering, public cache behavior, Firestore rules, Cloud Functions, deploy Firebase, deploy Vercel, run a production build, call providers, run browser/device QA, write live working-hours data, write live time-slot data, write Storage, or certify release readiness.
+
+---
+
+## July 2, 2026 - AI Menu Manager README Launch Boundary
+
+### Improved
+
+- **AMM hub no longer says controlled launch ready** - The README now treats the initial implementation as source-gated evidence, not current launch certification.
+- **AMM verifier guards the status label** - `npm run verify:ai-menu-manager` now rejects the stale controlled-launch-ready wording.
+
+### Verified
+
+- `node --check scripts/verification/verify-ai-menu-manager.js` passed.
+- `npm run verify:ai-menu-manager` passed.
+- Targeted AMM README stale-label scan returned no launch-ready labels.
+- `npm run docs:check-links` passed.
+- `git diff --check` passed.
+- `npm run verify:production-readiness-local` passed with 71/71 checks, including 67 child root `verify:*` scripts.
+
+### Boundaries
+
+- This is documentation/source-gate hardening only. It does not change AMM runtime behavior, action registry behavior, public website copy, help copy, Firestore rules, Cloud Functions, deploy Firebase, deploy Vercel, run a production build, call providers, run browser/device QA, write live Firestore, write Storage, or certify release readiness.
+
+---
+
+## July 2, 2026 - Menu Editor Phase 4 Historical Boundary
+
+### Improved
+
+- **Phase 4 menu-editor notes no longer act as launch approval** - The December 2025 advanced-feature note now records source evidence instead of a current ship-ready verdict.
+- **Agent-readiness verifier guards the label** - `npm run verify:agent-readiness` now rejects the stale Phase 4 ship-ready wording.
+
+### Verified
+
+- `node --check scripts/verification/verify-agent-readiness.js` passed.
+- `npm run verify:agent-readiness` passed.
+- Targeted menu-editor stale-label scan returned no stale ship-ready labels.
+- `npm run docs:check-links` passed.
+- `git diff --check` passed.
+- `npm run verify:production-readiness-local` passed with 70/70 checks, including 66 child root `verify:*` scripts.
+
+### Boundaries
+
+- This is documentation/source-gate hardening only. It does not change menu/editor runtime behavior, public route/cache behavior, analytics runtime behavior, Firestore rules, Cloud Functions, deploy Firebase, deploy Vercel, run a production build, call providers, run browser/device QA, write live Firestore, write Storage, or certify release readiness.
+
+---
+
+## July 2, 2026 - POS Sync Delivery Failure Threshold
+
+### Fixed
+
+- **Live delivery warnings now wait for three failed deliveries** - `/api/pos-sync/deliver` tracks `posSync.consecutiveFailures`; the first two failed live deliveries stay quiet for the owner, and the third failed live delivery in a row marks `connection_issue`.
+- **Recovery actions reset the counter** - successful delivery, successful connection test, provider URL save, secret rotation, and enable/disable changes reset `posSync.consecutiveFailures`.
+
+### Improved
+
+- **POS docs match current runtime** - active POS Webhook Sync docs no longer describe Cloud Function delivery workers, retry schedulers, `pos_delivery_queue`, or phase/deferred worker language as current behavior.
+- **POS verifier guards the contract** - `npm run verify:pos-sync-boundary` now checks the delivery threshold, shared/store types, desktop/mobile reset paths, and active-doc stale wording.
+
+### Verified
+
+- `node --check scripts/verification/verify-pos-sync-boundary.js` passed.
+- `npm run verify:pos-sync-boundary` passed.
+- Targeted active POS stale-label scan returned no matches.
+- `npm run verify:menulist-api-tenant-safety` passed.
+- `npm run docs:check-links` passed.
+- `npx tsc --noEmit --incremental false --pretty false` passed.
+- `git diff --check` passed.
+- `npm run verify:production-readiness-local` passed with 70/70 checks, including 66 child root `verify:*` scripts.
+
+### Boundaries
+
+- This changes POS status transitions and docs/verifier coverage only. It does not change POS payload shape, signing, provider target validation, route auth/tenant/rate-limit order, Firestore rules, Cloud Functions, deploy Firebase, deploy Vercel, run a production build, call a real external webhook provider, run browser/device QA, write Storage, or certify release readiness.
+
+---
+
+## July 2, 2026 - POS Sync Diagnostics Verifier Precision
+
+### Improved
+
+- **POS Sync verifiers match current saves** - `npm run verify:menulist-api-tenant-safety` and `npm run verify:pos-sync-boundary` now check the current mobile owner-safe error preservation and desktop normalized-URL save/reset pattern.
+- **Stale POS Sync UI errors stay bounded** - Mobile POS Sync source gating now preserves the fixed connection issue message only when the connection has not changed.
+- **POS Sync order checks handle repeated fields** - The boundary verifier now searches ordered tokens forward from the previous match so repeated field names do not cause false failures.
+
+### Verified
+
+- `node --check scripts/verification/verify-menulist-api-tenant-safety.js` passed.
+- `node --check scripts/verification/verify-pos-sync-boundary.js` passed.
+- `npm run verify:menulist-api-tenant-safety` passed.
+- `npm run verify:pos-sync-boundary` passed.
+- `npm run docs:check-links` passed.
+- `git diff --check` passed.
+- `npm run verify:production-readiness-local` passed with 70/70 checks, including 66 child root `verify:*` scripts.
+
+### Boundaries
+
+- This is verifier-only hardening. It does not change POS Sync runtime behavior, mobile POS Sync behavior, desktop POS Sync behavior, API route behavior, Firestore rules, Cloud Functions, deploy Firebase, deploy Vercel, run a production build, call providers, run browser/device QA, write live Firestore, write Storage, or certify release readiness.
+
+---
+
+## July 2, 2026 - Development-Done Security Summary Deploy Boundary
+
+### Improved
+
+- **Historical security summary no longer says ready to deploy** - `__docs__/projects/development_done/5-implementation-summary.md` now treats its deployment section as historical notes, not current deploy approval.
+- **Agent-readiness verifier guards the residual label** - `npm run verify:agent-readiness` now rejects the stale `Ready to Deploy` status in the historical security summary.
+
+### Verified
+
+- `node --check scripts/verification/verify-agent-readiness.js` passed.
+- `npm run verify:agent-readiness` passed.
+- Targeted development-done stale-label scan returned no ready-to-deploy labels in the patched file.
+- `npm run docs:check-links` passed.
+- `git diff --check` passed.
+- `npm run verify:production-readiness-local` passed with 69/69 checks, including 65 child root `verify:*` scripts.
+
+### Boundaries
+
+- This is documentation/source-gate hardening only. It does not change Projects runtime behavior, security runtime behavior, API route behavior, Firestore rules, Cloud Functions, deploy Firebase, deploy Vercel, run a production build, call providers, run browser/API QA, write live Firestore, write Storage, or certify release readiness.
+
+---
+
+## July 2, 2026 - Menu Command Center Validation Boundary
+
+### Improved
+
+- **Menu Command Center validation no longer acts as launch approval** - The February 2026 validation report now records source evidence instead of a ready-for-testing verdict or final ready status.
+- **Agent-readiness verifier guards the labels** - `npm run verify:agent-readiness` now requires the current release boundary and rejects stale Menu Command Center readiness labels.
+
+### Verified
+
+- `node --check scripts/verification/verify-agent-readiness.js` passed.
+- `npm run verify:agent-readiness` passed.
+- Targeted Menu Command Center stale-label scan returned no stale ready-for-testing labels.
+- `npm run docs:check-links` passed.
+- `git diff --check` passed.
+- `npm run verify:production-readiness-local` passed with 69/69 checks, including 65 child root `verify:*` scripts.
+
+### Boundaries
+
+- This is documentation/source-gate hardening only. It does not change Menu Command Center runtime behavior, editor save behavior, mobile bulk-action behavior, public menu rendering, cache invalidation behavior, Firebase rules, Cloud Functions, deploy Firebase, deploy Vercel, run a production build, call providers, run browser/device QA, write live Firestore, write Storage, or certify release readiness.
+
+---
+
+## July 2, 2026 - Menu Presence Monitor Boundary
+
+### Improved
+
+- **Menu Presence Monitor source gate added** - `npm run verify:menu-presence-monitor-boundary` now checks active-session store guards, typed write acknowledgement, bounded diagnostics, Use MenuList and Business Settings embedding, Mobile More Search & Discovery routing, starter activation proof counts, and docs parity.
+- **Mobile docs match the current flow** - The mobile support and implementation docs now describe the current antd-mobile List plus bottom-sheet Popup flow with explicit copy/open/mark/remove actions.
+
+### Verified
+
+- `node --check scripts/verification/verify-menu-presence-monitor-boundary.js` passed.
+- `npm run verify:menu-presence-monitor-boundary` passed.
+- `npm run verify:public-business-truth` passed.
+- `npm run verify:menulist-api-tenant-safety` passed.
+- `npm run verify:pos-sync-boundary` passed.
+- `npm run verify:mobile-shell-route-map` passed.
+- `npm run verify:doc-npm-scripts` passed.
+- `npm run docs:check-links` passed.
+- `npx tsc --noEmit --incremental false --pretty false` passed.
+- `git diff --check` passed.
+- `npm run verify:production-readiness-local` passed with 70/70 checks, including 66 child root `verify:*` scripts.
+
+### Boundaries
+
+- This is source/docs verification only. It does not change Menu Presence Monitor runtime behavior, menuPresence writes, starterActivationSignals writes, Firestore rules, Cloud Functions, deploy Firebase, deploy Vercel, run a production build, call providers, run browser/device QA, write live Firestore, write Storage, or certify release readiness.
+
+---
+
+## July 2, 2026 - Razorpay Webhook Diagnostic Verifier Precision
+
+### Improved
+
+- **Webhook duplicate logging guard is scoped to the log block** - `npm run verify:menulist-api-tenant-safety` now rejects raw `eventKey` logging in the duplicate-webhook breadcrumb while allowing the raw event key to remain an idempotency input for Founder Monitor revenue movement recording.
+- **Bounded event-key diagnostics remain required** - The duplicate-skip log must still use `getBoundedRazorpayStringContext('eventKey', webhookClaim.eventKey)`.
+
+### Verified
+
+- `node --check scripts/verification/verify-menulist-api-tenant-safety.js` passed.
+- `npm run verify:menulist-api-tenant-safety` passed.
+- `npm run docs:check-links` passed.
+- `git diff --check` passed.
+- `npm run verify:production-readiness-local` passed with 69/69 checks, including 65 child root `verify:*` scripts.
+
+### Boundaries
+
+- This is verifier-only hardening. It does not change Razorpay webhook runtime behavior, payment mutation behavior, Founder Monitor revenue movement behavior, Firestore write shape, Firestore rules, Cloud Functions, deploy Firebase, deploy Vercel, run a production build, call providers, run browser/device QA, write live Firestore, write Storage, or certify release readiness.
+
+---
+
+## July 2, 2026 - Communication Kit and Physical Surface Output Boundary
+
+### Improved
+
+- **Communication Kit source gate added** - `npm run verify:communication-kit-boundary` now checks desktop and mobile Customer Communication Kit wiring, acknowledged clipboard fallbacks, bounded copy/share/WhatsApp diagnostics, mobile active-project filtering, browser-local Menu Kit and printable output paths, and the legacy Physical Surfaces launch boundary.
+- **Physical surface ownership is source-gated** - The same verifier now checks the active Menu Kit/Physical Surfaces ownership boundary and keeps legacy Physical Surfaces validation from acting as current launch certification.
+- **Sweep docs record the boundary** - The master inventory, sweep report, and production-readiness audit now record the communication kit boundary source gate while keeping browser/output QA pending.
+
+### Verified
+
+- `node --check scripts/verification/verify-communication-kit-boundary.js` passed.
+- `npm run verify:communication-kit-boundary` passed.
+- `npm run verify:menu-export` passed.
+- `npm run verify:menu-card-export` passed.
+- `npm run verify:printable-asset-templates` passed.
+- `npm run verify:doc-npm-scripts` passed.
+- `npm run docs:check-links` passed.
+- `npx tsc --noEmit --incremental false --pretty false` passed.
+- `git diff --check` passed.
+- `npm run verify:production-readiness-local` passed with 69/69 checks, including 65 child root `verify:*` scripts.
+
+### Boundaries
+
+- This is source/docs verification only. It does not change Customer Communication Kit template behavior, Menu Kit generation behavior, printable renderer behavior, Physical Surfaces generation behavior, Firestore rules, Cloud Functions, deploy Firebase, deploy Vercel, run a production build, call providers, run browser/device QA, review visual print artifacts, write Firestore, write Storage, or certify release readiness.
+
+---
+
+## July 2, 2026 - Agent Readiness Reserved Flag Source Contract
+
+### Fixed
+
+- **Agent discovery flag is fail-closed** - `ENABLE_AGENT_DISCOVERY` now matches its source comment and active docs: disabled, reserved, and not read by any current MenuList route, API, Cloud Function, or client workflow.
+
+### Improved
+
+- **Agent Readiness docs now match current runtime** - The active docs describe the shipped layer as static `llms.txt` / `llms-full.txt` files plus schema.org JSON-LD, not a phased dynamic agent endpoint plan.
+- **Agent-readiness verifier guards the boundary** - `npm run verify:agent-readiness` now checks the disabled flag value, reserved source comment, absence of unapproved agent API route files, and stale roadmap wording in active Agent Readiness docs.
+
+### Verified
+
+- `node --check scripts/verification/verify-agent-readiness.js` passed.
+- `npm run verify:agent-readiness` passed.
+- Targeted Agent Readiness stale-label scans returned no matches.
+- `npm run docs:check-links` passed.
+- Focused `git diff --check` passed.
+- `npm run verify:production-readiness-local` passed with 69/69 checks, including 65 child root `verify:*` scripts.
+
+### Boundaries
+
+- This is source-contract/documentation hardening only. It does not change public discovery files, sitemap behavior, robots behavior, schema.org runtime behavior, API routes, Cloud Functions, Firestore rules, deploy Firebase, deploy Vercel, run a production build, call providers, run browser/device QA, write Firestore, write Storage, or certify release readiness.
+
+---
+
+## July 2, 2026 - Menu Readability Check Validation Boundary
+
+### Improved
+
+- **Menu Readability Check validation no longer acts as launch approval** - The V0 validation report now records source-gate evidence only instead of a ready-for-testing status.
+- **Verifier reads the validation report** - `npm run verify:menu-readability-check` now requires the validation launch boundary and rejects the stale ready-for-testing status/verdict.
+
+### Verified
+
+- `node --check scripts/verification/verify-menu-readability-check.js` passed.
+- `npm run verify:menu-readability-check` passed.
+- Targeted stale Menu Readability Check validation scan returned no stale ready-for-testing labels.
+- Focused `git diff --check` passed.
+- `npm run docs:check-links` passed.
+- `npm run verify:production-readiness-local` passed with 68/68 checks, including 64 child root `verify:*` scripts.
+
+### Boundaries
+
+- This is documentation/source-gate hardening only. It does not change Menu Readability Check runtime behavior, public route behavior, contact route behavior, Firebase rules, Cloud Functions, deploy Firebase, deploy Vercel, run a production build, call providers, run browser/device QA, write Firestore, write Storage, or certify release readiness.
+
+---
+
+## July 2, 2026 - AI System Operation Ledger Source Contract
+
+### Improved
+
+- **AI System docs now match the live ledgers** - Active AI System Layer and AI Extraction Monitoring docs now point current accounting truth to `MENULIST_AI_OPERATIONS` for extraction rows and `menulistAiOperations/{tId}/{sId}` for billable app-route operations.
+- **Roadmap-style AI cost wording is guarded** - The AI accounting verifier now rejects stale Phase 2/Phase 3/future/deferred labels in the selected active AI docs and checks that extraction monitoring does not claim a separate `aiUsageLog` data source.
+
+### Verified
+
+- `node --check scripts/verification/verify-ai-accounting-hardening.js` passed.
+- `npm run verify:ai-accounting` passed.
+- Targeted AI System Layer / AI Extraction Monitoring stale-label scan returned no matches.
+- `npm run docs:check-links` passed.
+- Focused `git diff --check` passed.
+- `npm run verify:production-readiness-local` passed with 69/69 checks, including 65 child root `verify:*` scripts.
+
+### Boundaries
+
+- This is documentation/source-gate hardening only. It does not change AI runtime behavior, AI accounting writes, operation ledger schema, provider behavior, route rate limits, feature flags, Firestore rules, Cloud Functions, deploy Firebase, deploy Vercel, run a production build, call providers, run browser/device QA, write Firestore, write Storage, or certify release readiness.
+
+---
+
+## July 2, 2026 - Help Center Answerlattice Support Boundary
+
+### Improved
+
+- **Help Center source gate added** - `npm run verify:help-center-boundary` now checks Help Center search admission, Answerlattice scoped sessions, bounded browser response parsing, MobileShell route mapping, scoped ticket reads/mutations, Answerlattice support-ticket rules, and docs parity.
+- **Feature sweep docs record the boundary** - The master inventory and sweep report now record the scoped ticket mutation gate and Help Center Answerlattice support boundary.
+
+### Verified
+
+- `npm run verify:help-center-boundary` passed.
+
+### Boundaries
+
+- This is source/docs verification only. It does not change Help Center runtime behavior, Answerlattice ticket runtime behavior, Firestore rules, Cloud Functions, deploy Firebase, deploy Vercel, run a production build, call providers, run browser/device QA, write Firestore, write Storage, or certify release readiness.
+
+---
+
+## July 2, 2026 - Help Center Answerlattice Support Boundary
+
+### Fixed
+
+- **Support ticket partial mutations preserve ticket scope** - Non-platform ticket updates, replies, and status helpers now require the selected ticket `tId/sId` before merge writes.
+- **Platform ticket updates no longer risk resetting ownership scope** - Platform support partial updates without explicit selected-ticket scope strip composer-injected `tId/sId` before Firestore merge writes.
+
+### Improved
+
+- **Help Center boundary verifier added** - `npm run verify:help-center-boundary` now guards Help Center search auth/body caps, bounded browser parsing, MobileShell Help Center routing, client ticket mode, Firestore stable-scope rules, and scoped ticket mutation callers.
+- **Ticket docs updated** - Answerlattice Help Center and Ticket System implementation/Firebase docs now describe the cost-neutral scoped mutation rule.
+
+### Verified
+
+- `node --check scripts/verification/verify-help-center-boundary.js` passed.
+- `npm run verify:help-center-boundary` passed.
+- `node --check scripts/verification/verify-answerlattice-runtime-truth.js` passed.
+- `npm run verify:answerlattice-runtime-truth` passed.
+- `npm run verify:mobile-shell-route-map` passed.
+- `npm run verify:menulist-api-tenant-safety` passed.
+- `npm run verify:auth-security-failure-matrix` passed.
+- `npm run verify:doc-npm-scripts` passed.
+- `npm run docs:check-links` passed.
+- `npx tsc --noEmit --incremental false --pretty false` passed.
+- `git diff --check` passed.
+- `npm run verify:production-readiness-local` passed with 68/68 checks, including 64 child root `verify:*` scripts.
+
+### Boundaries
+
+- This is client DAL/source-gate/documentation hardening only. It does not change Help Center search behavior, AI provider behavior, ticket schema, Firestore rules, Firestore indexes, Cloud Functions, deploy Firebase, deploy Vercel, run a production build, run browser/device QA, write Firestore, write Storage, or certify release readiness.
+
+---
+
+## July 2, 2026 - Physical Surfaces Validation Residual Boundary
+
+### Improved
+
+- **Physical Surfaces residual verdicts no longer act as launch approval** - The lower validation sections now treat the final verdict, quality gate, and status as historical implementation evidence only.
+- **Menu Card Export verifier guards the residual labels** - `npm run verify:menu-card-export` now rejects the Physical Surfaces validation ship-ready and production-quality-gate labels in addition to the prior legacy-doc boundary checks.
+- **Build/deploy wording is bounded** - The validation note now uses `npm run verify:menu-card-export` as its source gate and states that production builds and deploys are release-certification steps only.
+
+### Verified
+
+- `node --check scripts/verification/verify-menu-card-export.js` passed.
+- `npm run verify:menu-card-export` passed.
+- Targeted stale Physical Surfaces validation readiness scan returned no stale residual launch-verdict matches.
+- Focused `git diff --check` passed.
+- `npm run docs:check-links` passed.
+- `npm run verify:production-readiness-local` passed with 67/67 checks, including 63 child root `verify:*` scripts.
+
+### Boundaries
+
+- This is documentation/source-gate hardening only. It does not change Physical Surfaces runtime behavior, Menu Kit runtime behavior, print renderer behavior, Today/mobile output behavior, Firebase rules, Cloud Functions, deploy Firebase, deploy Vercel, run a production build, call providers, run browser/device QA, write Firestore, write Storage, or certify release readiness.
+
+---
+
+## July 2, 2026 - Multi-Outlet Test-Case Residual Boundary
+
+### Improved
+
+- **Multi-Outlet test-case final assessment no longer acts as launch approval** - The feature-completeness row now says the result is historical QA evidence, not current launch certification.
+- **Multi-location verifier guards the residual row** - `npm run verify:multi-location-boundary` now rejects the stale final-assessment production-ready row in addition to the existing Multi-Outlet documentation boundary checks.
+
+### Verified
+
+- `node --check scripts/verification/verify-multi-location-boundary.js` passed.
+- `npm run verify:multi-location-boundary` passed.
+- Targeted stale Multi-Outlet test-case readiness scan returned no stale final-assessment launch-verdict matches.
+- Focused `git diff --check` passed.
+- `npm run docs:check-links` passed.
+- `npm run verify:production-readiness-local` passed with 67/67 checks, including 63 child root `verify:*` scripts.
+
+### Boundaries
+
+- This is documentation/source-gate hardening only. It does not change multi-outlet runtime behavior, outlet billing behavior, linked outlet save behavior, permissions behavior, roles behavior, Firebase rules, Cloud Functions, deploy Firebase, deploy Vercel, run a production build, call providers, run browser/device QA, write Firestore, write Storage, or certify release readiness.
+
+---
+
+## July 2, 2026 - Discovery Infrastructure Source Contract
+
+### Improved
+
+- **Discovery/SEO docs now match the current source contract** - Active public discovery docs now separate shipped behavior from conditional work instead of presenting a dated phase roadmap.
+- **Disabled discovery utilities are clearer** - Feature-flag comments and builder comments now state that taxonomy, provenance, semantic attributes, and the business entity index are disabled utilities unless separately audited and wired.
+- **Public-business-truth verifier guards the boundary** - `npm run verify:public-business-truth` now checks the active docs, runtime files, disabled flags, and stale discovery launch labels.
+
+### Verified
+
+- `node --check scripts/verification/verify-public-business-truth.js` passed.
+- `npm run verify:public-business-truth` passed.
+- Targeted active discovery stale-label scan returned no matches.
+- `npm run docs:check-links` passed.
+- Focused `git diff --check` passed.
+- `npm run verify:production-readiness-local` passed with 67/67 checks, including 63 child root `verify:*` scripts.
+
+### Boundaries
+
+- This is documentation, source-gate, and comment hardening only. It does not change public menu or OBP runtime behavior, schema output, sitemap output, robots output, Public API behavior, POS behavior, feature-flag values, Firebase rules, Cloud Functions logic, deploy Firebase, deploy Vercel, run a production build, call providers, run browser/device QA, write Firestore, write Storage, or certify release readiness.
+
+---
+
+## July 2, 2026 - Hours Validation Launch Boundary
+
+### Improved
+
+- **Hours validation no longer acts as launch approval** - The January 2026 Hours Status Display validation report now preserves source evidence without ready-for-testing or manual-QA readiness labels as current release approval.
+- **Agent-readiness verifier guards the validation report** - `npm run verify:agent-readiness` now rejects the stale Hours validation status, final verdict, and manual-QA readiness line.
+- **Current approval evidence is explicit** - Release approval still requires the active production-readiness audit, External Certification Runbook evidence, current source gates, authenticated desktop/mobile working-hours save QA, customer-facing public menu/OBP hours output QA, cache/deploy evidence for store-output writes, target deploy evidence, and production-host smoke.
+
+### Verified
+
+- `node --check scripts/verification/verify-agent-readiness.js` passed.
+- `npm run verify:agent-readiness` passed.
+- Targeted stale Hours validation readiness scan returned no stale launch-verdict matches.
+- Focused `git diff --check` passed.
+- `npm run docs:check-links` passed.
+- `npm run verify:production-readiness-local` passed with 67/67 checks, including 63 child root `verify:*` scripts.
+
+### Boundaries
+
+- This is documentation/source-gate hardening only. It does not change hours runtime behavior, temporary-status behavior, public menu/OBP rendering, cache invalidation behavior, Firebase rules, Cloud Functions, deploy Firebase, deploy Vercel, run a production build, call providers, run browser/device QA, write Firestore, write Storage, or certify release readiness.
+
+---
+
+## July 2, 2026 - Social Content Validation Launch Boundary
+
+### Improved
+
+- **Social Content validation no longer acts as launch approval** - The January 2026 validation report now preserves source evidence without final-production, ship-ready, production-quality-gate, or Vercel/SMB-testing labels as current release approval.
+- **Agent-readiness verifier guards the validation report** - `npm run verify:agent-readiness` now rejects the stale Social Content validation title, ship-ready statuses, production-quality-gate label, and old Vercel deploy plus SMB-testing readiness line.
+- **Current approval evidence is explicit** - Release approval still requires the active production-readiness audit, External Certification Runbook evidence, current source gates, Today desktop/mobile/browser QA, campaign AI/provider smoke where enabled, target deploy evidence, and production-host smoke.
+
+### Verified
+
+- `node --check scripts/verification/verify-agent-readiness.js` passed.
+- `npm run verify:agent-readiness` passed.
+- Targeted stale Social Content validation readiness scan returned no stale launch-verdict matches.
+- Focused `git diff --check` passed.
+- `npm run docs:check-links` passed.
+- `npm run verify:production-readiness-local` passed with 67/67 checks, including 63 child root `verify:*` scripts.
+
+### Boundaries
+
+- This is documentation/source-gate hardening only. It does not change Social Content runtime behavior, Today behavior, GrowthOS summary reads, campaign provider behavior, Firebase rules, Cloud Functions, deploy Firebase, deploy Vercel, run a production build, call providers, run browser/device QA, write Firestore, write Storage, or certify release readiness.
+
+---
+
+## July 2, 2026 - Pricing Integrity Validation Launch Boundary
+
+### Improved
+
+- **Pricing Integrity validation no longer acts as launch approval** - The January 2026 validation report now preserves source evidence without ready-for-testing or external-review lock labels as current release approval.
+- **Agent-readiness verifier guards the boundary** - `npm run verify:agent-readiness` now rejects the stale ready-for-testing status/verdict and old external-review launch verdict in the Pricing Integrity validation report.
+- **Current approval evidence is explicit** - Release approval still requires the active production-readiness audit, External Certification Runbook evidence, current source gates, authenticated desktop/mobile editor price-change QA, public menu and PDF artifact QA, cache/deploy evidence for published price changes, target deploy evidence, and production-host smoke.
+
+### Verified
+
+- `node --check scripts/verification/verify-agent-readiness.js` passed.
+- `npm run verify:agent-readiness` passed.
+- Targeted stale Pricing Integrity validation readiness scan returned no stale launch-verdict matches.
+- Focused `git diff --check` passed.
+- `npm run docs:check-links` passed.
+- `npm run verify:production-readiness-local` passed with 67/67 checks, including 63 child root `verify:*` scripts.
+
+### Boundaries
+
+- This is documentation/source-gate hardening only. It does not change Pricing Integrity runtime behavior, price formatting, PDF queue behavior, public menu rendering, Firebase rules, Cloud Functions, deploy Firebase, deploy Vercel, run a production build, call providers, run browser/device QA, write Firestore, write Storage, or certify release readiness.
+
+---
+
+## July 2, 2026 - Multi-Outlet Replacement Capacity Boundary
+
+### Fixed
+
+- **Inactive outlets no longer consume the creation cap** - Adding a new location now checks `MAX_OUTLETS_PER_TENANT` against active non-master outlets only, so a deactivated location can be replaced without counting stale history as active capacity.
+
+### Verified
+
+- `node --check scripts/verification/verify-multi-location-boundary.js` passed.
+- `npm run verify:multi-location-boundary` passed.
+- `npm run verify:menulist-api-tenant-safety` passed.
+- `npm run verify:public-business-truth` passed.
+- `npm run docs:check-links` passed.
+- `npx tsc --noEmit --incremental false --pretty false` passed.
+- `git diff --check` passed.
+- `npm run verify:production-readiness-local` passed with 67/67 checks, including 63 child root `verify:*` scripts.
+
+### Boundaries
+
+- This is outlet creation capacity hardening only. It does not change billing provider sequencing, Firestore read/write shape, cache invalidation, Firebase rules, Cloud Functions, deploy Firebase, deploy Vercel, run a production build, call Razorpay, run browser/device QA, write Firestore, write Storage, or certify release readiness.
+
+---
+
+## July 2, 2026 - Business Type Data Model Source Contract
+
+### Improved
+
+- **Business identity docs now match current onboarding source** - The Business Type Data Model and Auth & Onboarding docs now state that `businessType` stores the actual selected type, `businessIndustry` stores the B2C/B2B plan-type marker, and `businessCategory` is derived from shared business-type data.
+- **Migration script live writes are guarded** - `scripts/migrate-business-type-swap.ts` now defaults to dry-run, uses the shared business-type category resolver, requires an explicit project id, and refuses live writes without matching `--confirm-project` plus `--all-stores-and-tenants`.
+- **Agent-readiness verifier guards the contract** - `npm run verify:agent-readiness` now checks the docs, onboarding route values, centralized tenant/store creator, `StoreDataType`, frontend/Functions shared-data parity, and migration live-write guards.
+
+### Verified
+
+- `node --check scripts/verification/verify-agent-readiness.js` passed.
+- Focused TypeScript check for `scripts/migrate-business-type-swap.ts` passed.
+- `npm run verify:agent-readiness` passed.
+- Targeted stale business-type/auth-onboarding scan returned no stale source-contract matches.
+- Missing-project and missing-confirm migration fail-fast guard checks passed without initializing Firestore.
+- `npm run docs:check-links` passed.
+- Focused `git diff --check` passed.
+- `npm run verify:production-readiness-local` passed with 67/67 checks, including 63 child root `verify:*` scripts.
+
+### Boundaries
+
+- This is source-contract, documentation, verifier, and migration-safety hardening only. It does not change onboarding runtime behavior, Razorpay behavior, auth behavior, public menu/OBP/schema runtime behavior, Firebase rules, Cloud Functions, deploy Firebase, deploy Vercel, run a production build, call providers, run browser/device QA, write Firestore, write Storage, run the migration, or certify release readiness.
+
+---
+
+## July 2, 2026 - Continuous Menu Intelligence Residual Validation Boundary
+
+### Improved
+
+- **CMI residual validation verdicts no longer act as launch approval** - The January 2026 validation report now removes the remaining ready-for-testing, ship-ready, production-quality-gate, and deploy/SMB-testing labels from active release evidence.
+- **Readiness verifier covers the residual labels** - `npm run verify:agent-readiness` now rejects the stale ready-for-testing status/verdict, ship-ready statuses, production-quality-gate label, and broad Cloud Functions deploy plus SMB-testing readiness line.
+- **Current CMI approval evidence is explicit** - Release approval still requires the active production-readiness audit, External Certification Runbook evidence, target feature-flag review, scoped `menulist-qa` deploy evidence, current scheduler behavior checks, and browser/device QA where the release uses CMI surfaces.
+
+### Verified
+
+- `node --check scripts/verification/verify-agent-readiness.js` passed.
+- `npm run verify:agent-readiness` passed.
+- Targeted stale CMI validation readiness scan returned no stale launch-verdict matches.
+- Focused `git diff --check` passed.
+- `npm run docs:check-links` passed.
+- `npm run verify:production-readiness-local` passed with 67/67 checks, including 63 child root `verify:*` scripts.
+
+### Boundaries
+
+- This is documentation/source-gate hardening only. It does not change CMI scheduler code, Decision Blocks behavior, Firestore writes, Firebase rules, Cloud Functions, deploy Firebase, deploy Vercel, run a production build, call providers, run browser/device QA, write Storage, or certify release readiness.
+
+---
+
+## July 2, 2026 - Staff Prompt Validation Launch Boundary
+
+### Improved
+
+- **Staff Prompt validation/code-review docs no longer act as launch approval** - The January 2026 validation and code-review notes now preserve source evidence without testing-ready, deploy-ready, SMB-testing, ship-ready, or production-approval labels.
+- **Staff Prompt verifier guards the boundary** - `npm run verify:staff-prompt-runtime` now checks the validation/code-review docs, production-readiness audit, checklist history, and changelog entry for the current release boundary.
+- **Current approval evidence is explicit** - Staff Prompt release approval still requires the active production-readiness audit, External Certification Runbook evidence, authenticated desktop/mobile Today QA with an eligible target-store `staffPrompt`, target deploy evidence, and production-host smoke.
+
+### Verified
+
+- `node --check scripts/verification/verify-staff-prompt-runtime.js` passed.
+- `npm run verify:staff-prompt-runtime` passed.
+- Targeted stale Staff Prompt validation/code-review readiness scan returned no stale launch-verdict matches.
+- Focused `git diff --check` passed.
+- `npm run docs:check-links` passed.
+- `npm run verify:production-readiness-local` passed with 67/67 checks, including 63 child root `verify:*` scripts.
+
+### Boundaries
+
+- This is documentation/source-gate hardening only. It does not change Staff Prompt runtime behavior, Today/mobile rendering behavior, upstream summary writing, Firebase rules, Cloud Functions, deploy Firebase, deploy Vercel, run a production build, call providers, run browser/device QA, write Firestore, write Storage, or certify release readiness.
+
+---
+
+## July 2, 2026 - Description Generation Audit Table Boundary
+
+### Improved
+
+- **Description-generation score table no longer acts as launch approval** - The production-audit overall score row now identifies the result as a historical code-audit score, not current launch certification.
+- **Readiness verifier guards the residual table verdict** - `npm run verify:agent-readiness` now rejects the old production-ready table row in addition to the previous description-generation headers, footer verdicts, and assessment signoffs.
+
+### Verified
+
+- `node --check scripts/verification/verify-agent-readiness.js` passed.
+- `npm run verify:agent-readiness` passed.
+- Targeted stale description-generation production-audit scan returned no stale table verdict matches.
+- Focused `git diff --check` passed.
+- `npm run docs:check-links` passed.
+- `npm run verify:production-readiness-local` passed with 67/67 checks, including 63 child root `verify:*` scripts.
+
+### Boundaries
+
+- This is documentation/source-gate hardening only. It does not change description-generation runtime behavior, deploy Firebase, deploy Vercel, run a production build, call providers, run browser QA, write Firestore, write Storage, or certify description-generation release readiness.
+
+---
+
+## July 2, 2026 - Physical Surfaces Legacy Launch Boundary
+
+### Improved
+
+- **Legacy Physical Surfaces docs no longer act as launch approval** - The code review, validation report, and marketing note now preserve January 2026 campaign-surface evidence without production-ready, deploy-ready, or launch-ready labels.
+- **Menu Kit remains the canonical physical surface system** - The docs now repeat the README boundary that new physical surface work belongs in Menu Kit and active physical/print output approval needs audit/runbook evidence.
+- **Menu Card Export verifier guards the boundary** - `npm run verify:menu-card-export` now checks the Physical Surfaces README/doc boundaries and rejects the stale production-ready, Vercel-ready, and launch-ready status lines.
+
+### Verified
+
+- `node --check scripts/verification/verify-menu-card-export.js` passed.
+- `npm run verify:menu-card-export` passed.
+- Targeted stale Physical Surfaces readiness scan returned no stale launch-verdict matches.
+- Focused `git diff --check` passed.
+- `npm run docs:check-links` passed.
+- `npm run verify:production-readiness-local` passed with 67/67 checks, including 63 child root `verify:*` scripts.
+
+### Boundaries
+
+- This is documentation/source-gate hardening only. It does not change Physical Surfaces runtime behavior, Menu Kit runtime behavior, print renderer behavior, Today/mobile output behavior, Firebase rules, Cloud Functions, deploy Firebase, deploy Vercel, run a production build, run browser/device QA, write Firestore, write Storage, or certify release readiness.
+
+---
+
+## July 2, 2026 - URL Routing Architecture Launch Boundary
+
+### Improved
+
+- **URL routing docs no longer use phase labels for active launch scope** - The README, spec, implementation guide, Firebase doc, and ADR now describe implemented slug, canonical, product-domain, and path-segment guardrails as current milestones/capabilities.
+- **Source gate covers active URL routing docs** - `npm run verify:url-routing-boundary` now reads the spec and ADR, requires the corrected milestone/status wording, and rejects stale phase/post-launch/readiness labels across active URL routing docs.
+- **Public-route evidence stays tied to runtime source** - The docs continue to point at `/client`, `src/app/client/[[...slug]]/page.tsx`, safe outlet/project path segments, middleware routing, and product-domain resolver behavior instead of treating documentation status as launch certification.
+
+### Verified
+
+- `node --check scripts/verification/verify-url-routing-boundary.js` passed.
+- `npm run verify:url-routing-boundary` passed.
+- Targeted active URL routing stale phase/readiness scan returned no matches.
+- `npm run docs:check-links` passed.
+- `git diff --check` passed.
+- `npm run verify:production-readiness-local` passed with 67/67 checks, including 63 child root `verify:*` scripts.
+
+### Boundaries
+
+- This is documentation/source-gate hardening only. It does not change URL routing runtime behavior, middleware behavior, public path-segment behavior, product-domain behavior, Firebase rules, Cloud Functions, deploy Firebase, deploy Vercel, run a production build, call providers, run browser/device QA, write Firestore, write Storage, or certify release readiness.
+
+---
+
+## July 2, 2026 - Customer App Analytics Source Contract
+
+### Improved
+
+- **Customer App analytics verifier covers the full source chain** - `npm run verify:customer-app-pwa` now checks Customer App event field increments, reserved `customerApp` routing, public analytics preference gates, daily write shape, summary rollups, dashboard-summary generation, scheduler inclusion, dashboard DAL/hook reads, and desktop/mobile KPI cards.
+- **Firebase docs name the current dashboard path** - Customer App Firebase docs now point to `useCustomerAppDashboard` instead of the older shared analytics hook wording.
+- **Manual signoff boundary is explicit** - Customer App docs now state that the source-chain gate does not replace live event-write, nightly rollup, dashboard-value, real-device install, deploy, browser/device, or production-host evidence.
+
+### Verified
+
+- `node --check scripts/verification/verify-customer-app-pwa.js` passed.
+- `npm run verify:customer-app-pwa` passed.
+- `npm run docs:check-links` passed.
+- Focused `git diff --check` passed.
+- `npm run verify:production-readiness-local` passed with 67/67 checks, including 63 child root `verify:*` scripts.
+
+### Boundaries
+
+- This is source-gate and documentation hardening only. It does not change Customer App runtime behavior, analytics runtime behavior, Firebase rules, Cloud Functions, deploy Firebase, deploy Vercel, run a production build, call providers, run browser/device QA, write Firestore, write Storage, or certify release readiness.
+
+---
+
+## July 2, 2026 - Menu Correctness Engine Spec Boundary
+
+### Improved
+
+- **MCE spec now matches runtime truth** - The spec status now says `ENABLE_MCE` is active instead of the stale flag-off state.
+- **External review rating is historical only** - The spec keeps the February 2026 score context but removes the stale launch-verdict wording from active release evidence.
+- **Public business truth verifier guards the boundary** - `npm run verify:public-business-truth` now checks the runtime flag, `updateProject()` MCE hook, same-write `_mce` metadata path, README/implementation status, and spec launch-boundary wording.
+
+### Verified
+
+- `node --check scripts/verification/verify-public-business-truth.js` passed.
+- `npm run verify:public-business-truth` passed.
+- Targeted stale MCE readiness/flag scan returned no stale launch-verdict or flag-off matches.
+- Focused `git diff --check` passed.
+- `npm run docs:check-links` passed.
+- `npm run verify:production-readiness-local` passed with 67/67 checks, including 63 child root `verify:*` scripts.
+
+### Boundaries
+
+- This is documentation/source-gate hardening only. It does not change MCE runtime behavior, project save behavior, publish-gate behavior, public/customer rendering behavior, Firebase rules, Cloud Functions, deploy Firebase, deploy Vercel, run a production build, run browser/device QA, write Firestore, write Storage, or certify release readiness.
+
+---
+
+## July 2, 2026 - Menu Card Export Validation Launch Boundary
+
+### Improved
+
+- **Menu Card Export validation no longer acts as launch approval** - The June 2026 validation report and test-case note now identify themselves as implementation/test evidence, not current launch certification.
+- **Current release approval uses active menu-output evidence** - The validation and test-case docs now route approval to the production-readiness audit, External Certification Runbook, Digital Menu Output Constitution checks, authenticated desktop/mobile browser QA, visual PDF and print-shop artifact review, AI advisor provider smoke where enabled, target deploy evidence, and production-host smoke.
+- **Menu Card Export verifier guards the boundary** - `npm run verify:menu-card-export` now rejects the stale production-ready status, final ready-for-production verdict, production-ready test baseline, and release-ready test-gate sentence.
+
+### Verified
+
+- `node --check scripts/verification/verify-menu-card-export.js` passed.
+- `npm run verify:menu-card-export` passed.
+- Targeted stale Menu Card Export validation/test-case scan returned no stale launch-verdict matches.
+- Focused `git diff --check` passed.
+- `npm run docs:check-links` passed.
+- `npm run verify:production-readiness-local` passed with 67/67 checks, including 63 child root `verify:*` scripts.
+
+### Boundaries
+
+- This is documentation/source-gate hardening only. It does not change Menu Card Export runtime behavior, PDF renderer behavior, print-shop packet behavior, AI advisor behavior, mobile shell behavior, Firebase rules, Cloud Functions, deploy Firebase, deploy Vercel, run a production build, call providers, run browser/device QA, write Firestore, write Storage, or certify release readiness.
+
+---
+
+## July 2, 2026 - Reseller Dashboard Launch Boundary
+
+### Improved
+
+- **Reseller scale policy no longer reads as later-phase work** - The spec now describes tier and offline-payment availability as source-controlled scale thresholds instead of Phase 2/3 deferrals.
+- **Commission and referral payouts are explicit non-runtime scope** - The spec and marketing note now say no current commission runtime exists and no commission/referral payout is promised in the current program.
+- **Reseller boundary verifier guards active docs** - `npm run verify:reseller-dashboard-boundary` now reads the spec and marketing doc and rejects stale phase/deferred commission wording.
+
+### Verified
+
+- `node --check scripts/verification/verify-reseller-dashboard-boundary.js` passed.
+- `npm run verify:reseller-dashboard-boundary` passed.
+- Targeted stale Reseller Dashboard phase/deferred-commission scan returned no matches.
+- `npm run docs:check-links` passed.
+- `git diff --check` passed.
+- `npm run verify:production-readiness-local` passed with 67/67 checks, including 63 child root `verify:*` scripts.
+
+### Boundaries
+
+- This is documentation/source-gate hardening only. It does not change reseller runtime behavior, billing behavior, pricing constants, feature flags, API behavior, mobile behavior, Firebase rules, Cloud Functions, deploy Firebase, deploy Vercel, run a production build, call providers, run browser/device QA, write Firestore, write Storage, or certify release readiness.
+
+---
+
+## July 2, 2026 - Projects Miscellaneous Backlog Boundary
+
+### Improved
+
+- **Projects miscellaneous backlog no longer acts as a launch deferral bucket** - The historical backlog now says it is not current launch certification and cannot be used to defer current blockers.
+- **Conditional items require scoped audit evidence** - Extraction edge cases, virtualization, translation cache, allergen double-check, and auto-merge notes now read as conditional audit items rather than Phase 2/post-launch commitments.
+- **Readiness verifier guards the boundary** - `npm run verify:agent-readiness` now rejects stale Phase 2, Phase 3, post-launch, Deferred To, and Still Deferred wording in the active Projects miscellaneous backlog.
+
+### Verified
+
+- `node --check scripts/verification/verify-agent-readiness.js` passed.
+- `npm run verify:agent-readiness` passed.
+- Targeted stale Projects miscellaneous phase/post-launch scan returned no matches.
+- Focused `git diff --check` passed.
+- `npm run docs:check-links` passed.
+- `npm run verify:production-readiness-local` passed with 67/67 checks, including 63 child root `verify:*` scripts.
+
+### Boundaries
+
+- This is documentation/source-gate hardening only. It does not change Projects runtime behavior, extraction behavior, AI capacity behavior, translation behavior, security logging behavior, deploy Firebase, deploy Vercel, run a production build, call providers, run browser/device QA, write Firestore, write Storage, or certify release readiness.
+
+---
+
+## July 2, 2026 - Strategy And Legacy Implementation Launch Boundaries
+
+### Improved
+
+- **Strategy and legacy implementation docs no longer act as launch approval** - Five-year vision, complete feature map, MOL v0, upload implementation, upload testing, and security implementation summary docs now keep historical/source evidence without current production-certification labels.
+- **Current release approval uses active evidence** - These docs now route readiness to the production-readiness audit, External Certification Runbook, source verifiers, upload/browser/Storage evidence, security/API smoke, Firestore/cost evidence, scoped deploy evidence, target deploy evidence, and production-host smoke.
+- **Readiness verifier guards the boundary** - `npm run verify:agent-readiness` now rejects stale strategy and legacy implementation production-ready statuses, table values, achievement rows, and upload checklist ready-for-production checkbox wording.
+
+### Verified
+
+- `node --check scripts/verification/verify-agent-readiness.js` passed.
+- `npm run verify:agent-readiness` passed.
+- Targeted stale-status scans for the selected docs returned no matches.
+- Focused `git diff --check` passed.
+- `npm run docs:check-links` passed.
+- `npm run verify:production-readiness-local` passed with 67/67 checks, including 63 child root `verify:*` scripts.
+
+### Boundaries
+
+- This is documentation/source-gate hardening only. It does not change strategy runtime, MOL runtime, upload runtime, security runtime, Firebase rules, Cloud Functions, deploy Firebase, deploy Vercel, run a production build, call providers, run browser QA, write Firestore, write Storage, or certify release readiness.
+
+---
+
+## July 2, 2026 - Strategy Doc Launch Boundaries
+
+### Improved
+
+- **Strategy docs no longer act as launch approval** - The five-year vision, complete feature spec, 2026 product strategy, and market-research scope note now identify themselves as historical strategy/source evidence instead of current launch certification.
+- **Current release approval uses active evidence** - Release readiness now points to the production-readiness audit, External Certification Runbook, current source verifiers, browser/mobile QA, provider/deploy evidence where relevant, and production-host smoke.
+- **Readiness verifier guards the boundary** - `npm run verify:agent-readiness` now rejects stale strategy production-ready statuses, production status table rows, stale launch wording, and the old public-beta strict-rule wording.
+
+### Verified
+
+- `node --check scripts/verification/verify-agent-readiness.js` passed.
+- `npm run verify:agent-readiness` passed.
+- Targeted stale-status scan for the selected strategy docs returned no current launch-certification matches.
+- Focused `git diff --check` passed.
+- `npm run docs:check-links` passed.
+- `npm run verify:production-readiness-local` passed with 67/67 checks, including 63 child root `verify:*` scripts.
+
+### Boundaries
+
+- This is documentation/source-gate hardening only. It does not change strategy runtime behavior, owner/customer runtime behavior, deploy Firebase, deploy Vercel, run a production build, call providers, run browser QA, write Firestore, write Storage, or certify release readiness.
+
+---
+
+## July 2, 2026 - Mobile PWA Analysis Launch Boundary
+
+### Improved
+
+- **PWA-only mobile analysis no longer uses phased launch wording** - The February mobile analysis now describes the current operational baseline, implemented core mobile gap closure, conditional additions, and permanent mobile rejections without Phase 3/post-launch timing.
+- **Conditional mobile additions require their own audit** - Mobile setup, camera, and analytics additions are now scoped to adoption evidence plus a separate audited feature loop instead of being framed as automatic later work.
+- **Readiness verifier guards the boundary** - `npm run verify:agent-readiness` now rejects stale Phase 3, post-launch timing, Phase 2 action-item, phased-approach, and old implemented-launch badge wording in the mobile PWA analysis.
+
+### Verified
+
+- `node --check scripts/verification/verify-agent-readiness.js` passed.
+- `npm run verify:agent-readiness` passed.
+- Targeted stale mobile phase/post-launch scan returned no matches.
+- Focused `git diff --check` passed.
+- `npm run verify:mobile-shell-route-map` passed.
+- `npm run docs:check-links` passed.
+- `npm run verify:production-readiness-local` passed with 67/67 checks, including 63 child root `verify:*` scripts.
+
+### Boundaries
+
+- This is documentation/source-gate hardening only. It does not change mobile runtime behavior, MobileShell behavior, owner PWA route behavior, deploy Firebase, deploy Vercel, run a production build, call providers, run browser/device QA, write Firestore, write Storage, or certify release readiness.
+
+---
+
+## July 2, 2026 - Active Cost And Source Doc Launch Boundaries
+
+### Improved
+
+- **Remaining active cost/source docs no longer act as launch approval** - Upload, B2B Firebase, Multi-Language README, Decision Intelligence spec, auth Firebase notes, Stores Management Firebase, and System Strengthening Firebase docs now identify themselves as source, Firebase-cost, or historical fix evidence instead of current production certification.
+- **Current release approval uses active gates** - Release readiness now points to the production-readiness audit, External Certification Runbook, `verify:agent-readiness`, `verify:menu-extraction-pipeline`, browser/mobile upload QA, Storage quota/rules evidence, API/export security review, translated-menu renderer/RTL evidence, auth browser/API smoke, Firebase Auth custom-claims evidence, store CRUD/browser QA, public cache evidence, scoped scheduler deploy evidence, `verify:system-strengthening`, target deploy evidence, and production-host smoke.
+- **Readiness verifier guards the boundary** - `npm run verify:agent-readiness` now rejects stale production-ready statuses in those selected active docs and requires launch-boundary wording.
+
+### Verified
+
+- `node --check scripts/verification/verify-agent-readiness.js` passed.
+- `npm run verify:agent-readiness` passed.
+- Targeted stale-status scan for the selected docs returned no matches.
+- Focused `git diff --check` passed.
+- `npm run docs:check-links` passed.
+- `npm run verify:production-readiness-local` passed with 67/67 checks, including 63 child root `verify:*` scripts.
+
+### Boundaries
+
+- This is documentation/source-gate hardening only. It does not change upload, B2B, translation, auth, store, system-strengthening, Decision Intelligence, Firebase rules, Cloud Functions, deploy Firebase, deploy Vercel, run a production build, call providers, run browser QA, write Firestore, write Storage, or certify release readiness.
+
+---
+
+## July 2, 2026 - Active Doc Launch Wording Boundaries
+
+### Improved
+
+- **Active docs no longer use post-launch as a release bypass** - Projects assessment, Projects testing checklist, Guest Feedback, Social Content, POS webhook, website, and editor auto-save docs now avoid stale post-launch exception wording or direct production-ready claims.
+- **Current release approval stays tied to active gates** - These docs now route approval to the production-readiness audit, External Certification Runbook, active source gates, browser/mobile QA where relevant, load/provider/deploy evidence where relevant, and target-environment smoke.
+- **Readiness verifier guards the boundary** - `npm run verify:agent-readiness` now rejects the stale phrases for auto-save, Projects assessment/testing, Guest Feedback hardening, Social Content QR/TV scope, POS webhook WhatsApp scope, and website Menu Link Import readiness.
+
+### Verified
+
+- `node --check scripts/verification/verify-agent-readiness.js` passed.
+- `npm run verify:agent-readiness` passed.
+- Targeted stale-claim scan for the selected docs returned no matches.
+- Focused `git diff --check` passed.
+- `npm run docs:check-links` passed.
+- `npm run verify:production-readiness-local` passed with 67/67 checks, including 63 child root `verify:*` scripts.
+
+### Boundaries
+
+- This is documentation/source-gate hardening only. It does not change editor, Projects, Guest Feedback, Social Content, POS webhook, Menu Link Import, website runtime behavior, deploy Firebase, deploy Vercel, run a production build, call providers, run browser QA, write Firestore, write Storage, or certify release readiness.
+
+---
+
+## July 2, 2026 - Billing And Pricing Doc Launch Boundaries
+
+### Improved
+
+- **Billing and pricing docs no longer act as launch approval** - Razorpay, pricing strategy, and AI Enhancement Pack billing docs now identify themselves as source-gated, historical, or implementation-reuse evidence instead of current production certification.
+- **Current release approval uses active billing gates** - Release readiness now points to the production-readiness audit, External Certification Runbook, `npm run verify:billing-entitlement-boundary`, Razorpay sandbox subscription/top-up/reseller/webhook smoke, desktop/mobile Billing browser QA, website/pricing copy review, target deploy evidence, and production-host smoke.
+- **Billing verifier guards the boundary** - `npm run verify:billing-entitlement-boundary` now rejects stale Razorpay hub production-ready status, pricing production-ready status, AI Enhancement Pack "fully built / production-ready" billing wording, and the old top-up production-ready adaptation claim.
+
+### Verified
+
+- `node --check scripts/verification/verify-billing-entitlement-boundary.js` passed.
+- `npm run verify:billing-entitlement-boundary` passed.
+- Targeted stale-status scan for the selected active billing/pricing docs returned no matches.
+- Focused `git diff --check` passed.
+- `npm run docs:check-links` passed.
+- `npm run verify:production-readiness-local` passed with 67/67 checks, including 63 child root `verify:*` scripts.
+
+### Boundaries
+
+- This is documentation/source-gate hardening only. It does not change Razorpay route behavior, billing runtime behavior, pricing runtime behavior, AI Enhancement Pack runtime behavior, Firebase rules, Cloud Functions, deploy Firebase, deploy Vercel, run a production build, call providers, run browser QA, write Firestore, write Storage, or certify release readiness.
+
+---
+
+## July 2, 2026 - Projects Editor And Historical Ledger Boundaries
+
+### Improved
+
+- **Root and legacy Projects docs no longer act as launch approval** - The root docs index, legacy editor README, editor auto-save note, and historical development-done implementation notes now identify themselves as active documentation maps, source references, or historical implementation evidence instead of current launch certification.
+- **Current release approval uses active runtime gates** - Release readiness now points to the production-readiness audit, External Certification Runbook, browser/mobile editor QA, publish/cache evidence for edited public truth, Firestore write observation for the target editor environment, upload/extraction/provider smoke, current API/security source review, Firebase deploy evidence where rules/functions change, and target-environment smoke.
+- **Readiness verifier guards the boundary** - `npm run verify:agent-readiness` now rejects stale production-ready labels in the selected root docs, editor docs, and development-done ledgers while source-gating current editor view, shortcut, auto-save, logic, and image-preview wiring.
+
+### Verified
+
+- `node --check scripts/verification/verify-agent-readiness.js` passed.
+- `npm run verify:agent-readiness` passed.
+- Targeted stale-status scan for the selected docs returned no matches.
+- Focused `git diff --check` passed.
+- `npm run verify:doc-npm-scripts` passed.
+- `npm run docs:check-links` passed.
+- Full `git diff --check` passed.
+- `npm run verify:production-readiness-local` passed with 67/67 checks, including 63 child root `verify:*` scripts.
+
+### Boundaries
+
+- This is documentation/source-gate hardening only. It does not change editor runtime behavior, auto-save behavior, image preview behavior, AI extraction runtime behavior, security runtime behavior, deploy Firebase, deploy Vercel, run a production build, call providers, run browser QA, write Firestore, write Storage, or certify release readiness.
+
+---
+
+## July 2, 2026 - Multi-Location Doc Launch Boundaries
+
+### Improved
+
+- **Multi-location docs no longer act as launch approval** - Multi-Outlet, store-onboarding, Multi-Chain Permissions, and Roles/Permissions docs now identify themselves as source, cost, QA, marketing, billing, or permission evidence instead of current production certification.
+- **Current release approval uses active gates** - Release readiness now points to the production-readiness audit, External Certification Runbook, `npm run verify:multi-location-boundary`, desktop/mobile Locations browser QA, linked outlet save QA, permission-policy browser QA, staff role CRUD QA, Razorpay sandbox evidence, Firebase deploy evidence where rules/functions change, and target-environment smoke.
+- **Multi-location verifier guards the boundary** - `npm run verify:multi-location-boundary` now rejects stale production-ready statuses in the selected Multi-Outlet, store-onboarding, Multi-Chain Permissions, and Roles/Permissions docs, plus the old test-matrix production-ready claim.
+
+### Verified
+
+- `node --check scripts/verification/verify-multi-location-boundary.js` passed.
+- `npm run verify:multi-location-boundary` passed.
+- Targeted stale-status scan for the selected active docs returned no matches.
+- Focused `git diff --check` passed.
+- `npm run docs:check-links` passed.
+- `npm run verify:production-readiness-local` passed with 67/67 checks, including 63 child root `verify:*` scripts.
+
+### Boundaries
+
+- This is documentation/source-gate hardening only. It does not change multi-outlet, outlet billing, linked outlet save, permissions, roles, Firebase rules, Cloud Functions, deploy Firebase, deploy Vercel, run a production build, call providers, run browser QA, write Firestore, write Storage, or certify release readiness.
+
+---
+
+## July 2, 2026 - Final Active Stale Readiness Wording Cleanup
+
+### Improved
+
+- **Remaining active stale readiness wording was bounded** - Profile modal, Trust & Security page, editor completion, and AI extraction testing-guide docs no longer surface direct production-ready or ready-for-production wording in the active stale-claim scan.
+- **Current release approval uses active gates** - Release readiness now points to the production-readiness audit, External Certification Runbook, auth/profile source review, desktop/mobile profile QA, permission-boundary checks, browser/mobile editor QA, publish/cache evidence for edited public truth, extraction test evidence, and target-environment smoke.
+- **Readiness verifier guards the boundary** - `npm run verify:agent-readiness` now rejects the stale profile modal footer, trust/security full-production wording, editor production-ready statuses, editor post-launch wording, and AI extraction testing-guide production-ready checklist intro.
+
+### Verified
+
+- `node --check scripts/verification/verify-agent-readiness.js` passed.
+- `npm run verify:agent-readiness` passed.
+- Targeted active stale-claim scan for feature/development/strategy/assessment docs returned no unbounded launch-ready claims.
+- Focused `git diff --check` passed.
+
+### Boundaries
+
+- This is documentation/source-gate hardening only. It does not change profile, auth, editor, extraction, public website, deploy Firebase, deploy Vercel, run a production build, call providers, run browser QA, write Firestore, write Storage, or certify release readiness.
+
+---
+
+## July 2, 2026 - Auth Onboarding Launch Boundary
+
+### Improved
+
+- **Auth onboarding docs no longer act as launch approval** - The auth, onboarding, first-payment, Firebase cost, and mobile-support docs now identify themselves as source and cost evidence instead of current production certification.
+- **Current release approval uses auth/payment gates** - Release readiness now points to the production-readiness audit, External Certification Runbook, auth browser/API smoke, claim-account and store-switch checks, Razorpay sandbox onboarding and verification, Firebase Auth custom-claims evidence, mobile browser onboarding/payment QA, App Check/session-cookie review, provider-failure compensation evidence, cost monitoring, and target deploy smoke.
+- **Readiness verifier guards the boundary** - `npm run verify:agent-readiness` now rejects stale auth-onboarding production-ready labels and source-gates the current NextAuth, onboarding API, set-claims, payment handler, and Razorpay subscription verification wiring.
+
+### Verified
+
+- `node --check scripts/verification/verify-agent-readiness.js` passed.
+- `npm run verify:agent-readiness` passed.
+- Targeted stale-status scan for the selected auth-onboarding docs returned no matches.
+- Focused `git diff --check` passed.
+- `npm run verify:doc-npm-scripts` passed.
+- `npm run docs:check-links` passed with 0 broken links and 0 naming violations.
+- Full `git diff --check` passed.
+- `npm run verify:production-readiness-local` passed with 67/67 checks, including 63 child root `verify:*` scripts.
+
+### Boundaries
+
+- This is documentation/source-gate hardening only. It does not change auth runtime behavior, middleware, Firestore rules, create Firebase Auth users, mint live tokens, call Razorpay, deploy Firebase, deploy Vercel, run a production build, run browser QA, write Firestore, write Storage, or certify release readiness.
+
+---
+
+## July 2, 2026 - Projects Assessment Launch Boundaries
+
+### Improved
+
+- **Projects assessment docs no longer act as launch approval** - Active assessment docs for upload, AI extraction, Data Editor, performance, security, UX, AI image generation, image editing, description generation, B2B view, B2C view, project management, Multi-Language Translation, menu job queue, and the server-side data processing ADR now identify themselves as historical assessment, architecture, or implementation-reference evidence instead of current production certification.
+- **Current release approval uses active gates** - Release readiness now points to the production-readiness audit, External Certification Runbook, upload/job/browser/mobile QA, AI accounting/source gates, provider smoke, Storage rules/deploy evidence, API/export security review, CRUD/tenant-isolation QA, public cache evidence, Cloud Function/deploy evidence where relevant, and target-environment smoke.
+- **Readiness verifier guards the boundary** - `npm run verify:agent-readiness` now rejects stale Projects assessment production-ready metadata, launch-immediate footer wording, post-deploy production-ready claims, queue implementation status, and architecture ADR production-ready implementation claims.
+
+### Verified
+
+- `node --check scripts/verification/verify-agent-readiness.js` passed.
+- `npm run verify:agent-readiness` passed.
+- Targeted stale-status scan for the selected active assessment docs returned no matches.
+- Focused `git diff --check` passed.
+- `npm run docs:check-links` passed.
+- `npm run verify:production-readiness-local` passed with 67/67 checks, including 63 child root `verify:*` scripts.
+
+### Boundaries
+
+- This is documentation/source-gate hardening only. It does not change upload, extraction, editor, performance, security, UX, image-generation, image-editing, description-generation, B2B, B2C, project-management, translation, queue, or server-side data-processing runtime behavior, deploy Firebase, deploy Vercel, run a production build, call providers, run browser QA, write Firestore, write Storage, or certify release readiness.
+
+---
+
+## July 2, 2026 - Security Perimeter Guide Launch Boundaries
+
+### Improved
+
+- **Security perimeter docs no longer act as launch approval** - App Check, file upload, webhooks, CORS, monitoring, API security, OWASP, and the comprehensive security audit now identify themselves as implementation/source/checklist/audit evidence instead of current production certification.
+- **Current release approval uses security perimeter gates** - Release readiness now points to the production-readiness audit, External Certification Runbook, current source review, App Check setup verification, provider token smoke, upload/browser/mobile QA, Storage/deploy evidence where changed, provider webhook smoke, replay/idempotency evidence, allowed-origin review, CORS failure-mode evidence, target Sentry/alert verification, security-event smoke, API route inventory, and OWASP gap review.
+- **Readiness verifier guards the boundary** - `npm run verify:agent-readiness` now rejects stale fully-implemented headers, production-ready footers, App Check launch progression, monitoring 100% coverage wording, CORS production-ready signoff, API "enterprise-grade" signoff, OWASP production-ready footer, and the comprehensive audit's current-ready status.
+
+### Verified
+
+- `node --check scripts/verification/verify-agent-readiness.js` passed.
+- `npm run verify:agent-readiness` passed.
+- Targeted stale-status scan for the selected active security docs returned no matches.
+- Focused `git diff --check` passed.
+
+### Boundaries
+
+- This is documentation/source-gate hardening only. It does not change auth/security runtime behavior, middleware, Firestore rules, Storage rules, deploy Firebase, deploy Vercel, run a production build, call providers, run browser QA, write Firestore, write Storage, or certify release readiness.
+
+---
+
+## July 2, 2026 - Security Guide Launch Boundaries
+
+### Improved
+
+- **Security guides no longer act as launch approval** - Authentication, email validation, object sanitization, security Firebase cost tracking, and login-source tracking docs now identify themselves as implementation/source/cost evidence instead of current production certification.
+- **Current release approval uses security gates** - Release readiness now points to the production-readiness audit, External Certification Runbook, current auth/security source review, QA/staging deploy evidence where relevant, auth browser/API smoke, privacy-safe logging review, sanitization source usage review, and cost monitoring for any security path that writes Firebase data.
+- **Readiness verifier guards the boundary** - `npm run verify:agent-readiness` now rejects stale production-ready headers, deployment-ready summary bullets, zero-gap claims, production-standard footers, and production-active footers across those active security docs.
+
+### Verified
+
+- `node --check scripts/verification/verify-agent-readiness.js` passed.
+- `npm run verify:agent-readiness` passed.
+- Targeted stale-status scan for the selected active security docs returned no matches.
+- Focused `git diff --check` passed.
+
+### Boundaries
+
+- This is documentation/source-gate hardening only. It does not change auth/security runtime behavior, middleware, Firestore rules, deploy Firebase, deploy Vercel, run a production build, call providers, run browser QA, write Firestore, write Storage, or certify release readiness.
+
+---
+
+## July 2, 2026 - Network Status Monitoring Launch Boundary
+
+### Improved
+
+- **Network-status docs no longer act as launch approval** - The November 2025 implementation note now identifies itself as source evidence, not current production certification.
+- **Current release approval uses runtime gates** - Release readiness now points to the production-readiness audit, External Certification Runbook, browser/device QA for offline and slow-network behavior, target-shell smoke for every product that mounts the provider, and deploy evidence for the target environment.
+- **Readiness verifier guards the boundary** - `npm run verify:agent-readiness` now rejects the old Network Status production-ready label and source-gates the current hook/provider/layout wiring.
+
+### Verified
+
+- `node --check scripts/verification/verify-agent-readiness.js` passed.
+- `npm run verify:agent-readiness` passed.
+- `npm run verify:doc-npm-scripts` passed.
+- `npm run docs:check-links` passed.
+- Focused `git diff --check` passed.
+- `npm run verify:production-readiness-local` passed with 67/67 checks, including 63 child root `verify:*` scripts.
+
+### Boundaries
+
+- This is documentation/source-gate hardening only. It does not change network-status runtime behavior, owner-app shell behavior, CampaignCue shell behavior, deploy Firebase, deploy Vercel, run a production build, call providers, run browser QA, write Firestore, write Storage, or certify release readiness.
+
+---
+
+## July 2, 2026 - Menu Editing And Output Doc Boundaries
+
+### Improved
+
+- **Menu editing and output docs no longer act as launch approval** - B2C view, Data Editor, Multi-Language Translation, Social Content, and Decision Intelligence docs now identify themselves as source, cost, marketing, or historical assessment evidence instead of current production certification.
+- **Current release approval uses external gates** - The docs now point to the production-readiness audit, External Certification Runbook, Digital Menu Output Constitution checks where relevant, browser/mobile customer-menu and editor QA, translated-menu fallback/RTL evidence, publish/cache evidence for edited public truth, public cache/deploy evidence, campaign/provider smoke where enabled, scheduler evidence, and target production smoke.
+- **Readiness verifier guards the boundary** - `npm run verify:agent-readiness` now rejects stale production-ready statuses and ready-for-use footers across these active docs.
+
+### Verified
+
+- `node --check scripts/verification/verify-agent-readiness.js` passed.
+- `npm run verify:agent-readiness` passed.
+- Targeted stale-status scan for the active docs returned no matches.
+- Focused `git diff --check` passed.
+
+### Boundaries
+
+- This is documentation/source-gate hardening only. It does not change menu editor, public menu, translation, social-content, or Decision Intelligence runtime behavior, deploy Firebase, deploy Vercel, run a production build, call providers, run browser QA, write Firestore, write Storage, or certify release readiness.
+
+---
+
+## July 2, 2026 - Description Generation Launch Boundary
+
+### Improved
+
+- **Description-generation docs no longer act as launch approval** - The README, spec, implementation note, Firebase cost doc, production audit, and historical assessment now identify themselves as source/cost/audit evidence, not current production deployment approval.
+- **Current release approval uses AI and runtime gates** - Release readiness now points to the production-readiness audit, External Certification Runbook, target feature-flag/provider review, AI accounting/source gates, provider smoke, browser/mobile editor QA, and target-environment deploy evidence.
+- **Readiness verifier guards the boundary** - `npm run verify:agent-readiness` now rejects stale description-generation "Production Ready" headers, footer verdicts, production-audit GO verdicts, and assessment signoffs.
+
+### Verified
+
+- `node --check scripts/verification/verify-agent-readiness.js` passed.
+- `npm run verify:agent-readiness` passed.
+- Focused `git diff --check` for the touched description-generation docs, readiness verifier, audit, and changelog passed.
+
+### Boundaries
+
+- This is documentation/source-gate hardening only. It does not change description-generation runtime behavior, deploy Firebase, deploy Vercel, run a production build, call providers, run browser QA, write Firestore, write Storage, or certify description-generation release readiness.
+
+---
+
+## July 2, 2026 - Upload And Extraction Source Docs Boundary
+
+### Improved
+
+- **Upload-processing docs no longer act as launch approval** - The upload-file processing spec and implementation now identify themselves as source evidence, not current production certification.
+- **AI extraction source docs keep historical audit evidence bounded** - The AI extraction spec, implementation note, and chaos/failure audit now point current release approval to the production-readiness audit, External Certification Runbook, resolved QA Firebase Functions/Storage deploy blockers, provider smoke, authenticated browser/mobile QA, and production-host smoke.
+- **Extraction verifier guards the boundary** - `npm run verify:menu-extraction-pipeline` now rejects the stale upload/extraction production-ready statuses and old chaos-audit production-ready verdict.
+
+### Verified
+
+- `node --check scripts/verification/verify-menu-extraction-pipeline.js` passed.
+- `npm run verify:menu-extraction-pipeline` passed with 169/169 checks.
+- `npm run verify:agent-readiness` passed.
+- Focused `git diff --check` passed.
+
+### Boundaries
+
+- This is documentation/source-gate hardening only. It does not change upload or extraction runtime behavior, deploy Firebase, deploy Vercel, run a production build, call providers, run browser QA, write Firestore, write Storage, or certify upload/extraction release readiness.
+
+---
+
+## July 2, 2026 - Client Menu Launch Boundary
+
+### Improved
+
+- **Client menu docs no longer act as launch approval** - The customer-facing menu README, spec, implementation note, Firebase cost notes, and B2C layout implementation note now identify themselves as menu-output/cost evidence, not current production certification.
+- **Current release approval uses menu-output gates** - Client-menu launch readiness now points to the production-readiness audit, External Certification Runbook, Digital Menu Output Constitution checks, physical/mobile browser QA, low-bandwidth/offline/back-button tests, public cache/deploy evidence, analytics delivery checks where relevant, and target production smoke.
+- **Readiness verifier guards the boundary** - `npm run verify:agent-readiness` now rejects the old client-menu production-ready headers, document-status labels, and old "ONLY verification criteria" production-ready sentence.
+
+### Verified
+
+- `node --check scripts/verification/verify-agent-readiness.js` passed.
+- `npm run verify:agent-readiness` passed.
+- `npm run verify:doc-npm-scripts` passed.
+- `npm run docs:check-links` passed.
+- `git diff --check` passed.
+- `npm run verify:production-readiness-local` passed with 67/67 checks, including 63 child root `verify:*` scripts.
+
+### Boundaries
+
+- This is documentation/source-gate hardening only. It does not change customer-menu runtime behavior, public route behavior, public cache behavior, deploy Firebase, deploy Vercel, run a production build, call providers, run browser QA, write Firestore, write Storage, or certify client-menu release readiness.
+
+---
+
+## July 2, 2026 - Continuous Menu Intelligence Validation Boundary
+
+### Improved
+
+- **CMI validation no longer acts as launch approval** - The January 2026 validation report now identifies itself as historical implementation-validation evidence, not current production approval.
+- **Current release approval uses active gates** - CMI launch readiness now points to the production-readiness audit, External Certification Runbook, target feature-flag review, scoped `menulist-qa` deploy evidence, scheduler behavior checks, and browser/device QA where CMI surfaces are used.
+- **Readiness verifier guards the boundary** - `npm run verify:agent-readiness` now rejects the old ChatGPT production-ready sentence and final ready-for-production heading.
+
+### Verified
+
+- `npm run verify:agent-readiness` passed.
+- `npm run docs:check-links` passed.
+- Focused `git diff --check` passed.
+
+### Boundaries
+
+- This is documentation/source-gate hardening only. It does not change scheduler code, Decision Blocks behavior, deploy Firebase, deploy Vercel, run a production build, call providers, run browser QA, or certify CMI release readiness.
+
+---
+
+## July 2, 2026 - Projects Documentation Hub Launch Boundary
+
+### Improved
+
+- **Projects hub no longer acts as launch approval** - The Projects README now marks feature folders as implemented documentation, treats assessment docs as historical readiness evidence, and routes release decisions through the active production-readiness audit, checklist, and External Certification Runbook.
+- **Root Projects references carry the same boundary** - `00-overview.md`, `14-utilities.md`, and `owner-dashboard.md` now identify themselves as implementation/reference docs, not current launch certification.
+- **Readiness verifier guards the boundary** - `npm run verify:agent-readiness` now rejects stale Projects hub/root "Production Ready" labels and assessment-table launch verdicts.
+
+### Verified
+
+- `node --check scripts/verification/verify-agent-readiness.js` passed.
+- `npm run verify:agent-readiness` passed.
+- Focused `git diff --check` for the Projects hub/root docs, readiness verifier, audit, and changelog passed.
+
+### Boundaries
+
+- This is documentation/source-gate hardening only. It does not change runtime behavior, deploy Firebase, deploy Vercel, run a production build, call providers, run browser QA, write Firestore, write Storage, or certify Projects flows for live deployment.
+
+---
+
+## July 2, 2026 - Multi-Language Translation Launch Boundary
+
+### Improved
+
+- **Multi-Language verification no longer acts as deployment approval** - The feature verification report and original assessment now keep their completed-fix evidence but route current release approval through the active audit, External Certification Runbook, target environment evidence, and browser/mobile QA for translated menu flows.
+- **Readiness verifier guards the boundary** - `npm run verify:agent-readiness` now rejects the stale Multi-Language "production-ready" conclusions.
+
+### Verified
+
+- `node --check scripts/verification/verify-agent-readiness.js` passed.
+- `npm run verify:agent-readiness` passed.
+- Focused `git diff --check` for the Multi-Language docs, readiness verifier, audit, and changelog passed.
+
+### Boundaries
+
+- This is documentation/source-gate hardening only. It does not change runtime behavior, deploy Firebase, deploy Vercel, run a production build, call providers, run browser QA, write Firestore, write Storage, or certify translated menu flows for live deployment.
+
+---
+
+## July 2, 2026 - Internal Feedback Verification Launch Boundary
+
+### Improved
+
+- **Internal Feedback verification no longer acts as deployment approval** - `__docs__/projects/internal-feedback-system/internal-feedback-system_verification.md` now states that its February 2026 verification plus later runtime addenda are source-verified Guest Feedback evidence, not standalone production deployment approval.
+- **Readiness verifier guards the boundary** - `npm run verify:agent-readiness` now rejects the stale "feature production-ready", "Ready for Production", and live deployment approval wording in that report.
+
+### Verified
+
+- `node --check scripts/verification/verify-agent-readiness.js` passed.
+- `npm run verify:agent-readiness` passed.
+- Focused `git diff --check` for the Internal Feedback verification report, readiness verifier, audit, and changelog passed.
+
+### Boundaries
+
+- This is documentation/source-gate hardening only. It does not change runtime behavior, deploy Firebase, deploy Vercel, run a production build, call providers, run browser QA, write Firestore, write Storage, or certify Guest Feedback for live deployment.
+
+---
+
+## July 2, 2026 - Projects Assessment Launch Boundary
+
+### Improved
+
+- **Historical Projects assessment no longer acts as deployment approval** - `__docs__/projects/production-readiness-assessment.md` now identifies its November 2025 review as a historical assessment snapshot, not current MenuList launch certification.
+- **Readiness verifier guards the boundary** - `npm run verify:agent-readiness` now rejects the stale Projects assessment "production ready", "ready for production deployment", and live-user deployment approval wording.
+
+### Verified
+
+- `node --check scripts/verification/verify-agent-readiness.js` passed.
+- `npm run verify:agent-readiness` passed.
+- Focused `git diff --check` for the Projects assessment, readiness verifier, audit, and changelog passed.
+
+### Boundaries
+
+- This is documentation/source-gate hardening only. It does not change runtime behavior, deploy Firebase, deploy Vercel, run a production build, call providers, run browser QA, write Firestore, write Storage, or certify the Projects feature for live deployment.
+
+---
+
+## July 2, 2026 - AI Extraction Monitoring Launch Boundary
+
+### Improved
+
+- **Flag-off no longer means production-ready** - The AI extraction monitoring spec and implementation docs now say the dashboard is implemented and source-verified for controlled internal testing, while release enablement stays gated by feature-flag, access, data, external-certification, and audit evidence.
+- **Menu extraction verifier guards the boundary** - `npm run verify:menu-extraction-pipeline` now rejects the stale "Feature flag OFF, ready for production" wording.
+- **Aggregate readiness guards the boundary** - `npm run verify:agent-readiness` now checks the same monitoring-doc launch boundary.
+
+### Verified
+
+- `node --check scripts/verification/verify-menu-extraction-pipeline.js` passed.
+- `node --check scripts/verification/verify-agent-readiness.js` passed.
+- `npm run verify:menu-extraction-pipeline` passed.
+- `npm run verify:agent-readiness` passed.
+- Focused `git diff --check` for the touched extraction-monitoring docs, verifier, audit, and changelog passed.
+
+### Boundaries
+
+- This is documentation/source-gate hardening only. It does not change runtime behavior, deploy Firebase, deploy Vercel, run a production build, call providers, run browser QA, write Firestore, write Storage, or certify live extraction-monitoring behavior.
+
+---
+
+## July 2, 2026 - Security Trust Launch Boundary
+
+### Improved
+
+- **Old trust/security docs no longer certify launch** - The November 2025 Trust & Security page build note and comprehensive security audit now identify themselves as historical evidence, not current MenuList production-launch approval.
+- **Current approval routes to active gates** - Both docs now point launch approval back to the production-readiness audit, External Certification Runbook, current App Check/provider/deploy evidence, and browser/device QA.
+- **Readiness verifier guards stale verdicts** - `npm run verify:agent-readiness` now rejects the old "Ready for Production: YES", "production ready", and "approved for production" wording in those active docs.
+
+### Verified
+
+- `npm run verify:agent-readiness` passed.
+- `npm run docs:check-links` passed.
+- Focused `git diff --check` passed.
+
+### Boundaries
+
+- This is documentation/source-gate hardening only. It does not change security code, auth behavior, App Check config, deploy Firebase, deploy Vercel, run a production build, call providers, run browser QA, or certify launch readiness.
+
+---
+
+## July 2, 2026 - Ops and Messaging Secret Scope
+
+### Improved
+
+- **Active secret setup docs are QA-first** - Telegram alert setup and WhatsApp messaging onboarding implementation docs now use Firebase Functions secret commands scoped to `menulist-qa`.
+- **Production repeats require evidence** - The docs now require QA alert/provider-smoke evidence and explicit production secret approval before repeating commands with `--project menulist`.
+- **Readiness verifier guards the commands** - `npm run verify:agent-readiness` now fails if those active docs regain unscoped Telegram or WhatsApp secret setup commands.
+
+### Verified
+
+- `npm run verify:agent-readiness` passed.
+- A stale-command scan found no active unscoped Telegram or WhatsApp setup commands in the patched docs.
+
+### Boundaries
+
+- This is documentation/source-gate hardening only. It does not set secrets, change Secret Manager, deploy Firebase, deploy Vercel, run a production build, call Telegram or Meta/WhatsApp, run browser QA, or certify provider delivery.
+
+---
+
+## July 2, 2026 - AI Image Verification Launch Boundary
+
+### Improved
+
+- **AI image verification no longer acts as launch approval** - The verification report now states code-side hardening is complete for the reviewed scope and controlled-owner-testing ready, while full certification remains gated by provider, deploy, browser/device, Storage cleanup, and production-host evidence.
+- **AI accounting verifier guards the wording** - `npm run verify:ai-accounting` now rejects the stale AI image-generation "production-ready" verdict text and requires the External Certification Runbook boundary.
+
+### Verified
+
+- `node --check scripts/verification/verify-ai-accounting-hardening.js` passed.
+- `npm run verify:ai-accounting` passed.
+- Focused `git diff --check` for the touched AI image verification report, verifier, audit, and changelog passed.
+
+### Boundaries
+
+- This is documentation/source-gate hardening only. It does not change runtime behavior, deploy Firebase, deploy Vercel, run a production build, call providers, run browser QA, write Firestore, write Storage, or certify live image generation behavior.
+
+---
+
+## July 2, 2026 - AI Extraction Historical Audit Boundary
+
+### Improved
+
+- **Old extraction audits no longer act as launch approval** - The March 13 AI Data Extraction audit files now identify themselves as historical code-readiness evidence, not current MenuList launch certification.
+- **Menu extraction verifier guards the boundary** - `npm run verify:menu-extraction-pipeline` now fails if those audits regain unconditional "ready for production" verdicts or lose the current External Certification Runbook handoff.
+
+### Verified
+
+- `node --check scripts/verification/verify-menu-extraction-pipeline.js` passed.
+- `npm run verify:menu-extraction-pipeline` passed with 156/156 checks.
+- Focused `git diff --check` for the touched menu-extraction verifier and AI extraction audit docs passed.
+
+### Boundaries
+
+- This is documentation/source-gate hardening only. It does not change runtime behavior, deploy Firebase, deploy Vercel, run a production build, call providers, run browser QA, write Firestore, write Storage, or certify live extraction behavior.
+
+---
+
+## July 2, 2026 - Gate 1 Functions Handoff Alignment
+
+### Improved
+
+- **Gate 1 now names the SAFE_MODE worker retry target** - The External Certification Runbook now includes a narrow `functions:processMenuImagesJob` retry command for the menu extraction SAFE_MODE worker guard when the full Functions blocker set is not being retried.
+- **Deploy blocker summaries match current evidence** - The production readiness checklist, launch prerequisites, and owner action tracker now summarize the latest documented `menulist-qa` source-file path hardening subset, `processMenuImagesJob`, and scheduler deploy attempts instead of only the older scheduler attempt.
+- **Source-file path hardening retry target is visible in central deploy guidance** - The production deployment checklist now names the exact `processMenuImages`, `processMenuImagesJob`, `startGeneration`, `embedArticleWorker`, and `regenerateEmbedding` subset for that slice.
+- **Storage rules cutover handoff is now guarded** - `npm run verify:agent-readiness` now requires Gate 2A Storage rules preflight, scoped `menulist-qa` deploy command, Service Usage 403 blocker wording, and production approval boundaries across the runbook, readiness checklist, launch prerequisites, owner action tracker, audit, and deployment checklist.
+- **Active scheduler deploy setup uses the scoped retry command** - The deployment setup owner-action command now matches the current `menulist-qa` scheduler retry form with `--project`, `--config`, and `--non-interactive`, and `npm run verify:agent-readiness` guards that handoff.
+- **Firebase infrastructure setup repeats the production approval gate** - The three-product setup Phase 8 now uses non-interactive MenuList rules/indexes/Storage deploy commands and requires staging evidence plus explicit production approval before production, including Gate 2A evidence for the current Storage rules cutover.
+- **Audit summary matches the handoff** - The production readiness audit verdict and remaining-risk summary now name both latest blocked Function deploy attempts and avoid pinning docs-link health to a stale active-doc file count.
+- **Historical extraction audit keeps current deploy boundaries visible** - The AI data extraction historical code-readiness audit now points any future index redeploy evidence to the scoped `menulist-qa` command and explicit production-approval gate.
+- **Agent readiness guards the handoff** - `npm run verify:agent-readiness` now requires the source-file path hardening subset note, SAFE_MODE worker subset note, scoped retry commands, current deploy blocker wording, and audit remaining-risk summary.
+
+### Verified
+
+- `node --check scripts/verification/verify-agent-readiness.js` passed.
+- `npm run verify:agent-readiness` passed.
+- `npm run docs:check-links` passed.
+- Focused `git diff --check` for the touched Gate 1 runbook, readiness checklist, launch prerequisites, owner action tracker, audit, changelog, and agent-readiness verifier passed.
+- `npm run verify:production-readiness-local` passed with 67/67 checks, including 63 child root `verify:*` scripts.
+
+### Boundaries
+
+- This is documentation and source-gate alignment only. It does not change runtime behavior, write secrets, deploy Firebase, deploy Vercel, run a production build, call providers, write Firestore or Storage, or certify live Functions behavior.
+
+---
+
+## July 2, 2026 - Store Update Acknowledgement Gate
+
+### Improved
+
+- **Store write success is source-gated globally** - `npm run verify:public-business-truth` now scans every active `src` `updateStore()` call and fails unless `assertStoreUpdateSucceeded()` appears in the nearby follow-up block.
+- **Regression guard covers desktop and mobile store writes** - The verifier no longer depends only on hand-picked call-site assertions for public-truth-adjacent owner flows.
+
+### Verified
+
+- `node --check scripts/verification/verify-public-business-truth.js` passed.
+- `npm run verify:public-business-truth` passed.
+- Focused `git diff --check` for the touched verifier passed.
+
+### Boundaries
+
+- This is verifier/source-gate hardening only. It does not change app runtime behavior, write Firestore or Storage, deploy Firebase, deploy Vercel, run browser QA, or certify production-host behavior.
+
+---
+
+## July 2, 2026 - Aggregate Local Readiness Boundary
+
+### Improved
+
+- **Aggregate verifier output now states its proof boundary** - `npm run verify:production-readiness-local` prints that it is a local source gate only and does not run a Next.js production build, Firebase deploy, Vercel deploy, provider smoke, browser/device QA, live Firestore/Storage writes, or production-host behavior.
+- **Agent readiness guards the aggregate wording** - `npm run verify:agent-readiness` now requires the aggregate runner, verification README, audit, and feature-sweep report to preserve the same local-only boundary.
+
+### Verified
+
+- `npm run verify:agent-readiness` passed.
+- `npm run verify:doc-npm-scripts` passed.
+- `npm run docs:check-links` passed.
+- Focused `git diff --check` for the touched aggregate runner, verifier, README, audit, sweep report, and changelog passed.
+- `npm run verify:production-readiness-local` passed with 67/67 checks, including 63 child root `verify:*` scripts.
+
+### Boundaries
+
+- This is verifier-output and documentation hardening only. It does not change app runtime behavior, run browser/device QA, call providers, write Firestore or Storage, deploy Firebase, deploy Vercel, run a production build, or certify production-host behavior.
+
+---
+
+## July 2, 2026 - Environment Handoff Launch Boundary
+
+### Improved
+
+- **Vercel env handoff uses canonical templates** - The dev/prod environment guide no longer tells operators to copy `.env.local` or legacy `.env.prod` wholesale into Vercel. It now points Preview/local setup to `.env.staging.example` and Production setup to `.env.production.example`.
+- **Functions secrets are QA-first** - The same guide no longer lists unscoped `firebase functions:secrets:set ...` commands as production-ready handoff steps. MenuList secret setup now routes to `--project menulist-qa` first, with production secrets gated by QA evidence and explicit approval.
+- **Agent readiness guards the boundary** - `npm run verify:agent-readiness` now rejects the stale `.env.prod` Vercel copy instructions and unscoped secret commands from the active environment guide.
+
+### Verified
+
+- `npm run verify:agent-readiness` passed.
+- `npm run verify:doc-npm-scripts` passed.
+- `npm run docs:check-links` passed.
+- Focused `git diff --check` for the touched environment/verifier/readiness docs passed.
+- `npm run verify:production-readiness-local` passed with 67/67 checks, including 63 child root `verify:*` scripts.
+
+### Boundaries
+
+- This is docs/source-gate cleanup only. It does not change env values, secrets, Firebase project state, Vercel settings, deploy Firebase, deploy Vercel, run a production build, call providers, run browser QA, or certify launch.
+
+---
+
+## July 2, 2026 - Owner Gemini Rotation Handoff
+
+### Improved
+
+- **Gemini rotation keys are QA-first** - The owner action tracker now scopes optional `GEMINI_AI_KEY_2/3/4` Firebase secret setup to `--project menulist-qa` first.
+- **Production repeat is approval-bound** - The same handoff now requires QA evidence, Vercel Preview values, `npm run verify:functions-deploy-preflight`, External Certification Gate 1, and explicit production secret/deploy approval before production values.
+- **Agent readiness guards the handoff** - `npm run verify:agent-readiness` now rejects the old unscoped Gemini secret commands and broad "Redeploy CF + Vercel" instruction from the owner action tracker.
+
+### Verified
+
+- `npm run verify:agent-readiness` passed.
+- `npm run verify:doc-npm-scripts` passed.
+- `npm run docs:check-links` passed.
+- Focused `git diff --check` for the touched owner/verifier/readiness docs passed.
+- `npm run verify:production-readiness-local` passed with 67/67 checks, including 63 child root `verify:*` scripts.
+
+### Boundaries
+
+- This is docs/source-gate cleanup only. It does not create Gemini keys, set secrets, change Vercel env values, change Firebase project state, run provider smoke, deploy Firebase, deploy Vercel, run a production build, run browser QA, or certify launch.
+
+---
+
+## July 2, 2026 - Feature Flag Checklist Evidence
+
+### Improved
+
+- **Launch prerequisite flag row is evidence-bound** - The launch checklist now says to confirm feature flag evidence instead of treating three `features.ts` lines as launch approval.
+- **Owner action tracker uses the same boundary** - Monitoring and production flag tasks now require source-state review, target secrets/provider setup, scoped deploy evidence, provider smoke where applicable, External Certification Runbook records, and explicit production approval.
+- **Agent readiness guards the checklists** - `npm run verify:agent-readiness` now rejects the stale "enable feature flags" and blanket activation-order wording from the active launch checklists.
+
+### Verified
+
+- `npm run verify:agent-readiness` passed.
+- `npm run verify:doc-npm-scripts` passed.
+- `npm run docs:check-links` passed.
+- Focused `git diff --check` for the touched launch/owner/verifier/readiness docs passed.
+- `npm run verify:production-readiness-local` passed with 67/67 checks, including 63 child root `verify:*` scripts.
+
+### Boundaries
+
+- This is docs/source-gate cleanup only. It does not change runtime flag values, set secrets, change Firebase project state, run provider smoke, deploy Firebase, deploy Vercel, run a production build, run browser QA, or certify launch.
+
+---
+
+## July 2, 2026 - Launch Prerequisites Secret Scope
+
+### Improved
+
+- **Top-level Telegram setup is QA-first** - `launch-prerequisites.md` now stores Telegram bot token and chat ID with `--project menulist-qa` first, with production values gated by QA alert-delivery evidence and explicit production secret approval.
+- **Top-level SMTP setup is QA-first** - SMTP host, port, user, and password setup now follows the same `menulist-qa` first rule before production email-delivery approval.
+- **Agent readiness guards the scope** - `npm run verify:agent-readiness` now rejects unscoped Telegram and SMTP secret commands in the active launch prerequisites guide.
+
+### Verified
+
+- `npm run verify:agent-readiness` passed.
+- `npm run verify:doc-npm-scripts` passed.
+- `npm run docs:check-links` passed.
+- Focused `git diff --check` for the touched launch-prerequisites/verifier/readiness docs passed.
+- `npm run verify:production-readiness-local` passed with 67/67 checks, including 63 child root `verify:*` scripts.
+
+### Boundaries
+
+- This is docs/source-gate cleanup only. It does not set secrets, change Firebase project state, test provider delivery, deploy Firebase, deploy Vercel, run a production build, run browser QA, or certify launch.
+
+---
+
+## July 2, 2026 - Feature Flag Launch Boundary
+
+### Improved
+
+- **Operational flag guidance is evidence-bound** - The production environment guide and ops infrastructure guide now treat `src/config/features.ts` as the code-level source of truth and require target-specific provider, deploy, and certification evidence before production use.
+- **Launch approval stays external-certified** - The environment guide no longer presents blanket flag activation or its own go-live checklist as launch approval. Launch remains tied to External Certification Runbook evidence and the production-readiness audit.
+- **Agent readiness guards the boundary** - `npm run verify:agent-readiness` now rejects the stale blanket flag instruction, old go-live heading, direct launch wording, and stale ops-guide all-flags-off source-state claim.
+
+### Verified
+
+- `npm run verify:agent-readiness` passed.
+- `npm run verify:doc-npm-scripts` passed.
+- `npm run docs:check-links` passed.
+- Focused `git diff --check` for the touched environment/ops/verifier/readiness docs passed.
+- `npm run verify:production-readiness-local` passed with 67/67 checks, including 63 child root `verify:*` scripts.
+
+### Boundaries
+
+- This is docs/source-gate cleanup only. It does not change runtime flags, run provider smoke, run browser QA, deploy Firebase, deploy Vercel, run a production build, perform production-host smoke, or certify launch.
+
+---
+
+## July 2, 2026 - Menu Extraction SAFE_MODE Worker Guard
+
+### Improved
+
+- **Extraction worker stops before provider work in SAFE_MODE** - `processMenuImagesJob` now checks the Functions-side SAFE_MODE helper after claiming a pending job and before public draft processing, deterministic link parsing, or Gemini extraction. Active SAFE_MODE marks the job failed with retryable `SAFE_MODE_ACTIVE` metadata and fixed owner-safe copy instead of spending provider budget or leaving the job stuck.
+- **Source gate locks the worker order** - `npm run verify:menu-extraction-pipeline` now requires the worker SAFE_MODE import, retryable failed-job shape, and ordering before provider work.
+
+### Verified
+
+- `node --check scripts/verification/verify-menu-extraction-pipeline.js` passed.
+- `npm run verify:menu-extraction-pipeline` passed with 150/150 checks.
+- `npm --prefix functions run build` passed.
+- `npm run verify:functions-deploy-preflight` passed.
+- `npx tsc --noEmit --incremental false --pretty false` passed.
+- `npm run verify:agent-readiness` passed.
+- `npm run docs:check-links` passed.
+- Focused `git diff --check` for the touched Function, verifier, and docs passed.
+- `npm run verify:production-readiness-local` passed with 67/67 checks, including 63 child root `verify:*` scripts.
+- Scoped MenuList QA Functions deploy was attempted with `firebase deploy --project menulist-qa --config firebase.json --only functions:processMenuImagesJob --non-interactive`; predeploy lint/build completed, then Cloud Resource Manager returned HTTP 403 caller permission for `menulist-qa` before upload.
+
+### Boundaries
+
+- This changes MenuList Cloud Function source and still requires a successful scoped `menulist-qa` deploy for live effect. It does not run live SAFE_MODE toggles, budget webhook tests, provider smoke, Firestore writes, Storage writes, Vercel deploy, Next.js production build, or production-host certification.
+
+---
+
+## July 2, 2026 - Recycle-Bin Verifier Boundary
+
+### Improved
+
+- **Recycle-bin verifier output is source-gate scoped** - `npm run verify:recycle-bin` no longer prints manual-testing readiness or dev-server next steps in the aggregate local-readiness path. It now states the exact source-gate scope and the browser, cloud, deploy, and production-host gates it does not prove.
+- **Agent readiness guards the wording** - `npm run verify:agent-readiness` now rejects the old recycle-bin manual-testing output and requires the External Certification Runbook to record the same local-only proof boundary.
+
+### Verified
+
+- `npm run verify:recycle-bin` passed.
+- `npm run verify:agent-readiness` passed.
+- `npm run verify:doc-npm-scripts` passed.
+- `npm run docs:check-links` passed.
+- Focused `git diff --check` for the touched recycle-bin verifier, verification README, agent-readiness guard, audit, runbook, and changelog passed.
+- `npm run verify:production-readiness-local` passed with 67/67 checks, including 63 child root `verify:*` scripts.
+
+### Boundaries
+
+- This is source-gate and documentation hardening only. It does not run authenticated browser smoke, visual QA, live Firestore reads/writes, Firebase deploy, Vercel deploy, production build, or production-host certification.
+
+---
+
+## July 2, 2026 - Production Testing Guide Boundary
+
+### Improved
+
+- **Manual testing guide no longer acts as a launch checklist** - `__docs__/production-testing-guide.md` now identifies itself as a companion manual spot-check guide and points launch authority to the External Certification Runbook and production-readiness audit.
+- **Feature flag guidance corrected** - The guide no longer tells testers to force all feature flags on. It now requires target-environment flag review and audit evidence for the specific feature under test.
+- **Agent readiness guards the boundary** - `npm run verify:agent-readiness` now rejects the stale all-flags instruction, final production checklist heading, and production-ready sign-off language.
+
+### Verified
+
+- `npm run verify:agent-readiness` passed.
+- `npm run verify:doc-npm-scripts` passed.
+- `npm run docs:check-links` passed.
+- Focused `git diff --check` for the touched guide/verifier/docs passed.
+- `npm run verify:production-readiness-local` passed with 67/67 checks, including 63 child root `verify:*` scripts.
+
+### Boundaries
+
+- This is docs/source-gate cleanup only. It does not run manual browser QA, provider smoke, Firebase deploy, Vercel deploy, production build, physical-device QA, or production launch certification.
+
+---
+
+## July 2, 2026 - Public Menu Rate-Limit Fail-Closed Gate
+
+### Improved
+
+- **Public menu setup blocks on rate-limit provider outages** - The shared rate-limit helper now has an opt-in `failClosedOnProviderError` mode. `/api/public/create-menu` and `/api/public/create-menu/claim` use it so public menu setup and draft publish cannot continue into AI/Firebase work when Upstash is unavailable.
+- **Verifier coverage locks the strict path** - `npm run verify:auth-security-failure-matrix` now checks the strict provider-unavailable result shape, and `npm run verify:menu-extraction-pipeline` checks that public create-menu and claim routes opt into it.
+
+### Verified
+
+- `npm run verify:auth-security-failure-matrix` passed.
+- `npm run verify:menu-extraction-pipeline` passed with 149/149 checks.
+- `npx tsc --noEmit --incremental false --pretty false` passed.
+- Focused `git diff --check` for the touched rate-limit/public-menu/verifier files passed.
+- `npm run verify:production-readiness-local` passed with 67/67 checks, including 63 child root `verify:*` scripts.
+
+### Boundaries
+
+- This is code-side cost/security hardening only. It does not fix the configured Upstash endpoint, call Upstash live, run public upload browser QA, write Firestore, write Storage, deploy Firebase, deploy Vercel, or run a production build.
+
+---
+
+## July 2, 2026 - System Strengthening Source Gate
+
+### Fixed
+
+- **Preset deletion cascade now batches project writes** - `removePresetFromAllCategories()` stages changed project documents in Firestore batches and revalidates public cache after the commits instead of awaiting one write per modified project.
+- **Subscription client read contract clarified** - Browser subscription reads now document the current non-mutating grace-expiry behavior, while server-owned readers remain responsible for authoritative expiry writes and entitlement sync.
+
+### Improved
+
+- **System Strengthening findings are source-gated** - `npm run verify:system-strengthening` now guards SS-1 through SS-9, including analytics route auth, stale DAL session-cache removal, batch worker admission, screen seen rate limiting, AI route controls, accepted chat feedback shape, billing read/write boundaries, preset cascade batching, and API/DAL console logging.
+- **Production readiness checklist reflects current SS status** - The old open System Strengthening checkbox now points to the maintained verifier instead of stale Feb 7 pending-work wording.
+
+### Verified
+
+- `npm run verify:system-strengthening` passed.
+- `npm run verify:doc-npm-scripts` passed.
+- `npm run docs:check-links` passed.
+- `npx tsc --noEmit --incremental false --pretty false` passed.
+- `git diff --check` passed.
+- `npm run verify:production-readiness-local` passed with 67/67 checks, including 63 child root `verify:*` scripts.
+
+### Boundaries
+
+- This is a local code/docs/source-gate hardening pass. It does not deploy Firebase, deploy Vercel, run a Next.js production build, run browser/device QA, call providers, enqueue Cloud Tasks, write live Firestore, or certify external gates as passed.
+
+---
+
+## July 2, 2026 - External Gate Preflight Alignment
+
+### Improved
+
+- **WhatsApp provider smoke preflight now covers messaging onboarding source gates** - External Certification Gate 5 now requires `npm run verify:messaging-onboarding-monitor-boundary` and `npm run verify:menu-extraction-pipeline`, so the local preflight covers platform-only ops visibility, preview/fix/publish routes, messaging extraction destination routing, public cache-tag writes, and bounded diagnostics before live Meta testing.
+- **POS provider smoke preflight uses the maintained boundary gate** - External Certification Gate 6 now requires `npm run verify:pos-sync-boundary` instead of an ad hoc inline URL probe, so public-HTTPS validation, DNS/private-target blocking, signed payload coverage, desktop/mobile owner-safe copy, MobileShell routing, and acknowledgement guards stay tied to the maintained verifier.
+- **Functions deploy checklist wording aligned** - The production readiness checklist and launch prerequisites now keep the Gate 1 rule explicit: run `npm run verify:functions-deploy-preflight` before the scoped Firebase deploy retry, restore `menulist-qa` access, then retry the documented scoped target set.
+- **Agent-readiness guards the runbooks** - `npm run verify:agent-readiness` now requires the Gate 5 messaging source gates, rejects the old inline POS probe, and requires the Gate 6 runbook to name the maintained POS boundary verifier.
+
+### Verified
+
+- `npm run verify:messaging-onboarding-monitor-boundary` passed.
+- `npm run verify:menu-extraction-pipeline` passed with 149/149 checks.
+- `npm run verify:pos-sync-boundary` passed.
+- `npm run verify:agent-readiness` passed.
+- `npm run docs:check-links` passed.
+- `npm run verify:production-readiness-local` passed with 65/65 checks, including 61 child root `verify:*` scripts.
+
+### Boundaries
+
+- This is local certification guidance and verifier coverage only. It does not call Meta/WhatsApp, call an external POS provider, send a provider webhook, write Firestore, deploy Firebase, deploy Vercel, run a production build, or certify Gate 1, Gate 5, or Gate 6 as passed.
+
+---
+
+## July 2, 2026 - Subscription Status Type Parity
+
+### Fixed
+
+- **Razorpay subscription verification typecheck restored** - `/api/razorpay/verify-subscription` now relies on its existing already-active early return and records founder new MRR on the non-active-to-active activation path without a redundant status comparison that TypeScript correctly narrowed as unreachable.
+
+### Verified
+
+- `npx tsc --noEmit --incremental false --pretty false` passed.
+- `npm run verify:billing-entitlement-boundary` passed.
+- `npm run verify:menulist-api-tenant-safety` passed.
+- `npm run verify:auth-security-failure-matrix` passed.
+- `npm run verify:production-readiness-local` passed with 65/65 checks, including 61 child root `verify:*` scripts.
+
+### Boundaries
+
+- This is a payment-route control-flow/type contract fix only. It does not call Razorpay, create or verify a real payment, write Firestore, deploy Firebase, deploy Vercel, run a production build, or change provider configuration.
+
+---
+
+## July 2, 2026 - Storage Path Source Gate Parity
+
+### Improved
+
+- **Storage path verifier checks legacy blocks directly** - `npm run verify:storage-paths` now verifies each legacy `MenuListAi/project/...` Storage rule block has authenticated read compatibility and explicit write/delete denial instead of relying on a brittle count of deny statements.
+
+### Verified
+
+- `node --check scripts/verification/verify-storage-path-hardening.js` passed.
+- `npm run verify:storage-paths` passed.
+- Focused `git diff --check` for the touched verifier/docs passed.
+- Scoped MenuList QA Storage rules deploy was attempted with `firebase deploy --project menulist-qa --config firebase.json --only storage --non-interactive`; Firebase CLI failed before rules upload while enabling/checking `firebasestorage.googleapis.com` with Service Usage HTTP 403: project `menulist-qa` not found or permission denied.
+
+### Boundaries
+
+- This changes verifier coverage and docs only. The Storage rules cutover remains code-side ready but not live until an account with `menulist-qa` access can deploy Storage rules. No Vercel deploy, production build, provider smoke, browser smoke, Firestore write, Storage write, or successful Firebase deploy was performed.
+
+---
+
+## July 2, 2026 - External Certification Harness Syntax Gate
+
+### Improved
+
+- **External-only harnesses are syntax-gated locally** - `npm run verify:agent-readiness` now runs `node --check` for `verify-mobile-owner-menu.mjs`, `verify-mobile-upload-extraction.mjs`, and `verify-public-routing-summary-backfill.mjs` while keeping their live authenticated browser, upload, and Firestore-review runs outside the default local aggregate.
+- **External certification runbook aligned** - The runbook now lists the syntax preflight for all external-only harnesses before live gate execution and keeps the distinction between parse checks and external certification evidence explicit.
+
+### Verified
+
+- `node --check scripts/verification/verify-mobile-owner-menu.mjs` passed.
+- `node --check scripts/verification/verify-mobile-upload-extraction.mjs` passed.
+- `node --check scripts/verification/verify-public-routing-summary-backfill.mjs` passed.
+
+### Boundaries
+
+- This changes verifier coverage and docs only. It does not launch Chrome, authenticate an owner, read Firestore, upload media, review target data, run a provider smoke, deploy Firebase, deploy Vercel, run a production build, or certify any external gate.
+
+---
+
+## July 2, 2026 - Functions Source File Path Hardening
+
+### Improved
+
+- **Functions temp-file paths are sanitized** - Added a shared Functions helper that strips path traversal tokens, path separators, unsafe basename characters, and leading dots before creating unique `/tmp` file paths.
+- **Gemini upload helpers use safe temp paths** - The direct menu extraction helper and shared KB source upload helper now build temp paths through the shared sanitizer instead of using owner/source filenames directly. The shared KB upload helper also runs cleanup in `finally`, so failed uploads still attempt local temp-file deletion.
+- **KB source downloads are tenant/store scoped** - Shared KB generation now passes the job `tId` / `sId` into the source upload helper, and the helper rejects persisted source paths outside `ingestion_source_files/{tId}/{sId}/` before any Storage download.
+- **Typed source metadata fixed** - The KB source prompt metadata now uses the typed `downloadURL` field instead of an untyped `url` field.
+- **Menu-link text artifacts are revalidated before download** - The deterministic menu-link text extractor now parses Firebase Storage URLs from both supported host shapes, rejects mismatched URL/metadata paths, and requires the resolved object path to stay under `menuLinkImports/{tId}/{sId}/{projectId}/` before Storage download.
+- **Source gates tightened** - `npm run verify:menu-extraction-pipeline` now guards the direct extraction temp-path boundary and deterministic text-artifact path validation, and `npm run verify:answerlattice-runtime-truth` now guards the shared KB helper and shared temp-file sanitizer.
+- **Agent-readiness verifier aligned with current public menu guard** - The stale public menu noindex source gate now checks the current `hasUnsafeProjectPath` / unresolved-project guard shape instead of the older one-line predicate.
+
+### Verified
+
+- `node --check scripts/verification/verify-answerlattice-runtime-truth.js` passed.
+- `node --check scripts/verification/verify-menu-extraction-pipeline.js` passed.
+- `npm run verify:answerlattice-runtime-truth` passed.
+- `npm run verify:menu-extraction-pipeline` passed with 149/149 checks.
+- `npm run verify:agent-readiness` passed.
+- `npm run verify:functions-deploy-preflight` passed.
+- `npx tsc --noEmit --incremental false` passed.
+- `npm run verify:production-readiness-local` passed with 65/65 checks, including 61 child root `verify:*` scripts.
+- Focused `git diff --check` for the touched Functions/verifier files passed.
+- Scoped MenuList QA Functions deploy was attempted for `functions:processMenuImages,functions:processMenuImagesJob,functions:startGeneration,functions:embedArticleWorker,functions:regenerateEmbedding`; the final retry completed predeploy lint/build, then Cloud Resource Manager returned HTTP 403 caller permission for `menulist-qa` before upload.
+
+### Boundaries
+
+- This changes Firebase Functions source behavior and verifier coverage only. It adds no Firebase reads/writes, no Storage operation beyond the existing scoped source-file/text-artifact download and local temp-file write/delete during function execution, no provider call during verification, no secret name, no API route, no owner/customer UI, no public route, no Vercel deploy, no production build, and no successful Firebase deploy. Live effect remains blocked until `menulist-qa` Cloud Resource Manager access is available.
+
+---
+
+## July 2, 2026 - Platform Founder Monitor
+
+### Added
+
+- **Founder Monitor added under Platform** - Added `/platform/founder-monitor` as a platform-only, read-only command center for Trusted Live Stores, MRR, Net New MRR, cash collected today, onboarding stuck stores, Store Truth risk, distribution coverage, failed payments, and support risk.
+- **Tenant/store operations view added** - Added a bounded tenant/store table that shows stage, payment status, menu status, distribution status, Store Truth Score, support risk, and risk reasons.
+- **Source coverage included** - The screen shows which summary and operational sources were available for the current refresh, plus known estimate boundaries for Net New MRR, views, and time-to-live.
+- **Precomputed revenue read model added** - Added `founderRevenueMovements`, `platformSummary/founderMonitorRevenue`, and `platformSummary/founderMonitorRevenueDaily_YYYY-MM-DD` so dashboard refreshes do not scan raw billing collections.
+- **Razorpay runtime hooks added** - Razorpay webhook, subscription verification, top-up verification, and cancellation paths now write idempotent Founder Monitor revenue movements at transaction time.
+- **30-minute snapshot scheduler added** - The existing `menulistMaintenanceScheduler` now runs `founder_monitor_snapshot` every 30 minutes to refresh store, onboarding, truth, support, and reconciliation snapshots.
+
+### Verified
+
+- `npm run verify:platform-founder-monitor-boundary` passed.
+- `npm --prefix functions run build` passed.
+- `npx tsc --noEmit --incremental false` passed.
+- Scoped MenuList QA Functions deploy was attempted for `functions:menulistMaintenanceScheduler`; predeploy lint/build completed, then Cloud Resource Manager returned HTTP 403 caller permission for `menulist-qa` before upload.
+
+### Boundaries
+
+- This is platform-only for the dashboard and adds no owner/customer-facing surface, no public website copy, no listener, no Firebase rule/index change, no Vercel deploy, and no production build. It does add Firebase writes from billing runtime paths and one existing-scheduler task. Live scheduler behavior is blocked until the scoped Functions deploy can run with `menulist-qa` Cloud Resource Manager access.
+
+---
+
+## July 2, 2026 - Force Republish URL Fail Closed
+
+### Improved
+
+- **Force republish no longer derives tenant URLs from stale defaults** - The MenuList Functions force-republish callable now builds subdomain public URLs only from configured `NEXT_PUBLIC_APP_URL`. Missing, non-HTTPS, localhost, or malformed values return a `failed-precondition` before the project document is touched.
+- **Skipped verification removed** - Force republish no longer returns `success: true` with `verification: 'skipped'` when it cannot build a public URL.
+
+### Verified
+
+- `npm run verify:menulist-api-tenant-safety` passed.
+- `npm run verify:functions-deploy-preflight` passed.
+- `npm run verify:production-readiness-local` passed with 64/64 checks, including 60 child root `verify:*` scripts.
+- Scoped MenuList QA Functions deploys were attempted after validation for the current Gate 1 target list and the changed `functions:forceRepublish` target; both completed predeploy lint/build and then Cloud Resource Manager returned HTTP 403 caller permission for `menulist-qa` before upload.
+
+### Boundaries
+
+- This changes MenuList Cloud Function recovery behavior and source-gate coverage only. It adds no Firebase reads beyond the existing store/project reads, no new writes beyond the existing successful force-republish write, no Storage operation, provider call, secret name, API route, owner/customer UI, public route, Vercel deploy, production build, or successful Firebase deploy. Live effect remains blocked until `menulist-qa` Cloud Resource Manager access is available.
+
+---
+
+## July 2, 2026 - Functions Test Config Secret Hygiene
+
+### Improved
+
+- **Local Functions test page is placeholder-only** - Removed the committed Firebase web-config-shaped values from `functions/functions-test.html` and left only blank local placeholders with an explicit no-commit warning.
+- **Security verifier covers the test page** - `npm run verify:auth-security-failure-matrix` now rejects Firebase API-key-shaped literals in the local Functions test page.
+
+### Verified
+
+- Focused key-pattern scan across `functions/functions-test.html`, `functions/src`, `src`, and `scripts/verification` returned no matches.
+- `npm run verify:auth-security-failure-matrix` passed.
+
+### Boundaries
+
+- This is source hygiene and verifier coverage only. It changes no runtime Function logic, Firebase reads/writes, Storage operation, secret name, API route, owner/customer UI, public route, Firebase deploy, Vercel deploy, production build, or production-host behavior.
+
+---
+
+## July 2, 2026 - Official Business Page Link Boundary Source Gate
+
+### Improved
+
+- **OBP public-link source gate rooted** - `npm run verify:official-business-page-boundary` now runs inside the aggregate readiness bundle and locks customer-facing action links, social links, Google review links, schema `sameAs`/action targets, customer app manifest shortcuts, and PWA directions handoff behind shared HTTPS public-link normalization.
+- **Reservation schema flag tightened** - OBP JSON-LD now emits `acceptsReservations` as a boolean capability flag while sanitized reservation/order URLs stay in ReserveAction/OrderAction `EntryPoint.urlTemplate` targets.
+
+### Verified
+
+- `npm run verify:official-business-page-boundary` passed.
+- `npm run verify:production-readiness-local` passed with 64/64 checks, including 60 child root `verify:*` scripts.
+
+### Boundaries
+
+- This changes OBP JSON-LD reservation flag output, verifier coverage, and docs only. It adds no Firebase read/write, Storage operation, Cloud Function logic, provider call, Firebase deploy, Vercel deploy, production build, owner setting, public route, or production-host behavior.
+
+---
+
+## July 2, 2026 - Functions Sentry DSN Fail Closed
+
+### Improved
+
+- **Functions Sentry no longer embeds DSNs** - Firebase Functions Sentry initialization now reads `SENTRY_DSN` from deployed secrets/env, optionally reads `SENTRY_DEV_DSN` for local emulator routing, and skips Sentry initialization with a bounded Firebase warning when no DSN is configured.
+- **Security verifier locks the boundary** - `npm run verify:auth-security-failure-matrix` now rejects hard-coded Functions Sentry DSN fallbacks and requires the missing-DSN fail-closed path.
+
+### Verified
+
+- `npm run verify:auth-security-failure-matrix` passed.
+- `npm run verify:env-targets` passed.
+- `npm run verify:functions-deploy-preflight` passed.
+- `npm run verify:production-readiness-local` passed with 64/64 checks, including 60 child root `verify:*` scripts.
+- Scoped MenuList QA Functions deploy was attempted after validation; predeploy lint/build completed, then Cloud Resource Manager returned HTTP 403 caller permission for `menulist-qa` before upload.
+
+### Boundaries
+
+- This changes Firebase Functions monitoring configuration, env examples, setup docs, and source-gate coverage only. It adds no provider call, Firebase read/write, Storage operation, new deployed secret name, API route, owner/customer UI, public route, Vercel deploy, production build, or successful Firebase deploy. Functions live effect is still blocked until the scoped `menulist-qa` deploy gate can pass with an account that has Cloud Resource Manager access.
+
+---
+
+## July 2, 2026 - AI Provider Missing-Key Fail Closed
+
+### Improved
+
+- **Gemini key manager fails closed** - App-route and MenuList Cloud Functions AI gateways now throw stable `AI_PROVIDER_CONFIG_MISSING` before provider I/O when no Gemini key is configured, instead of constructing an empty-key client.
+- **Diagnostics stay bounded** - The existing AI accounting verifier now locks the missing-key gateway diagnostic, no-empty-client contract, key rotation behavior, and retry diagnostics.
+
+### Verified
+
+- `npm run verify:ai-accounting` passed.
+- `npm run verify:functions-deploy-preflight` passed.
+- `npm run verify:production-readiness-local` passed with 63/63 checks, including 59 child root `verify:*` scripts.
+- Scoped MenuList QA Functions deploy was attempted after validation; predeploy lint/build completed, then Cloud Resource Manager returned HTTP 403 caller permission for `menulist-qa` before upload.
+
+### Boundaries
+
+- This changes app-route and Cloud Functions shared AI gateway/key-manager behavior only. It adds no provider call, Firebase read/write, Storage operation, new secret, env key, API route, owner/customer UI, public route, Vercel deploy, production build, or successful Firebase deploy. MenuList Functions live effect is still blocked until the scoped `menulist-qa` deploy gate can pass with an account that has Cloud Resource Manager access.
+
+---
+
+## July 2, 2026 - Guest Feedback Boundary Docs Parity
+
+### Improved
+
+- **Guest Feedback docs parity filled** - Added the Firebase, mobile-support, and helpdoc surfaces for Guest Feedback so the active feature doc set now names the public submit, owner inbox, mobile shell, retention, cache, and safe review URL boundaries.
+- **Guest Feedback source gate rooted** - `npm run verify:guest-feedback-boundary` now runs inside the aggregate local readiness bundle and guards public submit, owner desktop/mobile acknowledgement, Firestore, retention, mobile shell, and docs parity.
+
+### Verified
+
+- `npm run verify:guest-feedback-boundary` passed.
+- `npm run verify:production-readiness-local` passed with 63/63 checks, including 59 child root `verify:*` scripts.
+
+### Boundaries
+
+- This is documentation and verifier coverage hardening only. It changes no runtime code, Firebase reads/writes, Cloud Function logic, Firestore rules, indexes, provider calls, Firebase deploys, Vercel deploys, production builds, owner/customer UI, public routes, cache invalidation, or production-host behavior.
+
+---
+
+## July 2, 2026 - Website Public Copy Boundary Source Gate
+
+### Improved
+
+- **Website public-copy source gate added** - `npm run verify:website-public-copy-boundary` now locks the mounted homepage copy, Website locale namespace blocked-claim scan, LLM context files, AI Menu Manager shorthand ban, and the documented unmounted `SmartFeaturesSection` exception.
+- **Manual claim scan promoted** - The SEO launch verification command list now includes the root verifier instead of leaving the blocked-copy scan as a standalone snippet only.
+
+### Verified
+
+- `npm run verify:website-public-copy-boundary` passed.
+- `npm run verify:production-readiness-local` passed with 63/63 checks, including 59 child root `verify:*` scripts.
+
+### Boundaries
+
+- This is documentation and verifier coverage hardening only. It changes no runtime code, Firebase reads/writes, Cloud Function logic, provider calls, Firebase deploys, Vercel deploys, production builds, owner/customer UI, website routes, public copy text, SEO submissions, custom-domain behavior, or production-host behavior.
+
+---
+
+## July 2, 2026 - Digital Screens Boundary Source Gate
+
+### Improved
+
+- **Digital Screens source gate added** - `npm run verify:digital-screens-boundary` now locks the public screen route, public-safe listener mirror, seen-signal cheap-fail ordering, screen invalidation touches, owner desktop/mobile acknowledgement guards, and docs parity.
+- **Mobile copy contract documented** - The mobile support doc now names the acknowledged browser-local copy contract that desktop and mobile share before showing copied success.
+
+### Verified
+
+- `npm run verify:digital-screens-boundary` passed.
+- `npm run verify:production-readiness-local` passed with 61/61 checks, including 57 child root `verify:*` scripts.
+
+### Boundaries
+
+- This is documentation and verifier coverage hardening only. It changes no runtime code, Firebase reads/writes, Cloud Function logic, provider calls, Firebase deploys, Vercel deploys, production builds, owner/customer UI, public routes, screen tokens, owner settings, or production-host behavior.
+
+---
+
+## July 2, 2026 - Messaging Notification Deploy Target Boundary Cleanup
+
+### Improved
+
+- **Messaging and notification deploy wording aligned** - The Public Create-Menu/Messaging/Notifications audit slice now treats its older `ecomsai` Function deploy attempt as historical evidence.
+- **Current retry path clarified** - Active retry evidence must use the scoped `menulist-qa` deploy path from the External Certification Runbook and launch prerequisites; widened messaging/notification/platform-alert target lists must be recorded before deploy evidence is accepted.
+
+### Verified
+
+- `npm run verify:agent-readiness` passed.
+- `npm run verify:production-readiness-local` passed with 61/61 checks, including 57 child root `verify:*` scripts.
+
+### Boundaries
+
+- This is documentation cleanup only. It changes no runtime code, Firebase reads/writes, Cloud Function logic, provider calls, Firebase deploys, Vercel deploys, production builds, owner/customer UI, public routes, or production-host behavior.
+
+---
+
+## July 2, 2026 - Decision Intelligence Deploy Target Boundary Cleanup
+
+### Improved
+
+- **Decision Intelligence deploy blocker wording aligned** - The production readiness audit now labels older `ecomsai` Function deploy output as historical evidence and routes active Decision Intelligence/CMI/MCE deploy retry work through External Certification Gate 1 against `menulist-qa`.
+- **Current blocker preserved** - The audit now records the current Functions live-effect blocker as the scoped `menulist-qa` deploy failing at Cloud Resource Manager HTTP 403 caller permission after predeploy lint/build, not as an active `ecomsai` billing blocker.
+
+### Verified
+
+- `npm run verify:agent-readiness` passed.
+
+### Boundaries
+
+- This is documentation cleanup only. It changes no runtime code, Firebase reads/writes, Cloud Function logic, provider calls, Firebase deploys, Vercel deploys, production builds, owner/customer UI, public routes, or production-host behavior.
+
+---
+
+## July 2, 2026 - Menu Extraction Deploy Target Boundary Cleanup
+
+### Improved
+
+- **Direct-callable deploy blocker wording aligned** - Active audit and feature docs now describe the disabled `processMenuImages` callable as code-resolved but pending live effect until the current External Certification Gate 1 Functions deploy succeeds.
+- **Retired Firebase target clarified** - The old June 11, 2026 `ecomsai` deploy blocker is preserved as historical evidence only; current retry evidence must target `menulist-qa`, with production gated on QA evidence and explicit production deploy approval.
+
+### Verified
+
+- `npm run verify:menu-extraction-pipeline` passed.
+
+### Boundaries
+
+- This is documentation cleanup only. It changes no runtime code, Firebase reads/writes, Cloud Function logic, provider calls, Firebase deploys, Vercel deploys, production builds, owner/customer UI, public routes, or production-host behavior.
+
+---
+
+## July 2, 2026 - Staff Prompt Audit Boundary Cleanup
+
+### Improved
+
+- **Staff Prompt audit wording tightened** - The production readiness audit now classifies upstream `staffPrompt` summary writing as outside the audited display slice instead of an unresolved runtime implementation gap.
+- **Read-only boundary preserved** - The audit now points back to the verified Staff Prompt behavior: Today reads `platformSummary/campaigns_{sId}`, renders eligible prompt text only, and has no standalone generator, provider call, owner setting, mobile-only write, staff-facing route, or public Staff Prompt landing page.
+
+### Verified
+
+- `npm run verify:staff-prompt-runtime` passed.
+
+### Boundaries
+
+- This is audit and changelog cleanup only. It changes no runtime code, Firebase reads/writes, Cloud Function logic, provider calls, Firebase deploys, Vercel deploys, production builds, owner/customer UI, public routes, or production-host behavior.
+
+---
+
+## July 2, 2026 - Runtime Production Marker Sweep
+
+### Improved
+
+- **Stale runtime marker removed** - The Ops Alert feature flag comment no longer references leftover TODO comments; disabled alert delivery now states the runtime behavior directly.
+- **Verifier coverage extended** - `npm run verify:auth-security-failure-matrix` now includes `src/config` in its stale TODO/FIXME/STUB production-marker scan.
+
+### Verified
+
+- `npm run verify:auth-security-failure-matrix` passed.
+
+### Boundaries
+
+- This is comment and verifier hardening only. It changes no feature flags, alert delivery behavior, Firebase reads/writes, Cloud Functions, provider calls, deploys, owner/customer UI, or production-host behavior.
+
+---
+
+## July 2, 2026 - Aggregate Verifier Coverage Guard
+
+### Improved
+
+- **Local-safe verifier coverage tightened** - The aggregate local readiness runner now includes `verify:mycodex-pwa-assets`, `verify:signaldesk-security-rules`, `verify:compliance-pages-boundary`, and `verify:url-routing-boundary`, so MyCodex static PWA assets, SignalDesk security-rule static checks, compliance page boundaries, and URL routing boundary checks are covered by `npm run verify:production-readiness-local`.
+- **Verifier exposure locked** - `npm run verify:agent-readiness` now guards those root package scripts and the verification registry allowlist, so local-safe verifier files cannot silently sit outside aggregate coverage.
+- **External gates kept separate** - `verify-mobile-owner-menu.mjs`, `verify-mobile-upload-extraction.mjs`, and `verify-public-routing-summary-backfill.mjs` remain outside the default local aggregate because they require authenticated browser fixtures, live Firebase/Admin access, target data review, or backfill-specific Firestore reads.
+
+### Verified
+
+- `npm run verify:production-readiness-local` passed with 60/60 checks, including 56 child root `verify:*` scripts.
+
+### Boundaries
+
+- This is package-script, documentation, and verifier hardening only. It adds no Firebase deploy, Vercel deploy, Next.js production build, provider call, Cloud Task enqueue, Storage write, Firestore write, secret write, browser smoke, or production-host smoke.
+
+---
+
+## July 2, 2026 - Stale Target Guidance Cleanup
+
+### Improved
+
+- **Preview URL guidance aligned** - URL routing docs now use `https://menulist.online` for MenuList preview instead of the retired `menulist-ai.vercel.app` value.
+- **Legacy local env boundary clarified** - SignalDesk validation now treats `ecomsai` in local `.env` files as legacy local state, not active setup truth, and points current local/preview guidance back to `menulist-qa`.
+- **Historical deploy evidence labeled** - Creative Editor, AI Menu Manager, GrowthOS add-on, and cost posture docs now keep old `ecomsai` deploy references as historical evidence only and route current evidence through `menulist-qa` first.
+- **Verifier tightened** - `npm run verify:agent-readiness` now guards the current preview URL, SignalDesk env wording, App Check project examples, and stale-target boundaries.
+
+### Boundaries
+
+- This is documentation and verifier hardening only. It adds no Firebase deploy, Vercel deploy, production build, provider call, Cloud Task enqueue, Storage write, Firestore write, secret write, or production-host smoke.
+
+### Verified
+
+- `npm run verify:production-readiness-local` passed with 56/56 checks, including 52 child root `verify:*` scripts.
+
+---
+
+## July 2, 2026 - Active Deploy Runbook Scope Cleanup
+
+### Improved
+
+- **Feature deploy instructions scoped** - Scheduler, Continuous Menu Intelligence, MOL, Customer App, Messaging Onboarding, AI data extraction, internal feedback, and menu job queue docs now use `verify:functions-deploy-preflight`, scoped `menulist-qa` Firebase commands, or the External Certification Runbook instead of broad/default deploy commands.
+- **Vercel guard extended** - Maintenance and email-validation guides no longer instruct `vercel --prod`; they now require explicit active-session Vercel deploy approval or an approved release workflow.
+- **Security deployment examples aligned** - Authentication and internal-feedback validation docs now deploy Firestore indexes/rules to `menulist-qa` with `firebase.json` before any production approval path.
+- **Verifier tightened** - `npm run verify:agent-readiness` now rejects the old broad/default deploy instructions across these active docs.
+
+### Verified
+
+- `npm run verify:production-readiness-local` passed with 55/55 checks, including 51 child root `verify:*` scripts.
+
+### Boundaries
+
+- This is documentation and verifier hardening only. It adds no Firebase deploy, Vercel deploy, production build, provider call, Cloud Task enqueue, Storage write, Firestore write, secret write, or production-host smoke.
+
+---
+
+## July 1, 2026 - Firestore Deploy Scope Guard Alignment
+
+### Improved
+
+- **Firestore deploy guidance scoped** - Production readiness, launch prerequisites, and owner action tracker now use `menulist-qa` plus `firebase.json` for Firestore rules/index deploys instead of broad default-project commands.
+- **Ops deploy guidance routed through certification gates** - The ops infrastructure guide now routes Function deploy work through `verify:functions-deploy-preflight` and the External Certification Runbook instead of `firebase deploy --only functions`.
+- **Verifier tightened** - `npm run verify:agent-readiness` now rejects broad Firestore rules/index deploy commands and broad Functions deploy commands from the active production-readiness, owner-action, launch, and ops guidance surfaces.
+
+### Verified
+
+- `npm run verify:production-readiness-local` passed with 54/54 checks, including 50 child root `verify:*` scripts.
+
+### Boundaries
+
+- This is documentation and verifier hardening only. It adds no Firebase deploy, Vercel deploy, production build, provider call, Cloud Task enqueue, Storage write, Firestore write, secret write, or production-host smoke.
+
+---
+
+## July 1, 2026 - Deployment Checklist Guard Alignment
+
+### Improved
+
+- **Production deployment checklist rewritten** - The active deployment checklist now routes external proof through the External Certification Runbook instead of direct Vercel, push-to-main, stale dashboard-path, or broad Firebase Functions deploy instructions.
+- **Vercel approval guard repeated at deployment entry point** - The checklist now states that Vercel deploys, preview deploys, production deploys, remote builds, and production-host smoke require an explicit active-session Vercel deploy request.
+- **Verifier tightened** - `npm run verify:agent-readiness` now rejects the old `vercel --prod`, `git push origin main`, broad `firebase deploy --only functions`, stale dashboard path, and stale auth index config from the active deployment checklist.
+
+### Boundaries
+
+- This is documentation and verifier hardening only. It adds no Firebase deploy, Vercel deploy, production build, provider call, Cloud Task enqueue, Storage write, Firestore write, secret write, or production-host smoke.
+
+---
+
+## July 1, 2026 - Active Broad Functions Deploy Doc Cleanup
+
+### Improved
+
+- **Strategy deploy command scoped** - The five-year vision deployment section now points MenuList Functions work through `verify:functions-deploy-preflight` and the scoped Gate 1 target set instead of `firebase deploy --only functions --project menulist`.
+- **Answerlattice doctrine deploy boundary aligned** - Answerlattice implementation, multi-product tenancy, and product-separation docs no longer instruct broad MenuList Functions deploys from Answerlattice setup guidance.
+- **Answerlattice rule source aligned** - `.codex` and `.cascade` Answerlattice rules now describe MenuList separation against current `menulist-qa` / `menulist` targets instead of the retired `ecomsai` project.
+- **Legacy target boundary clarified** - Menu extraction, AI data extraction, and menu-link import docs now keep `ecomsai` deploy references as historical evidence only and route current retry evidence through External Certification Gate 1 against `menulist-qa`.
+- **Verifier tightened** - `npm run verify:agent-readiness` now rejects broad MenuList Functions deploy commands in those active strategy/doctrine docs, stale Answerlattice rule-source project wording, and the stale `ecomsai` retry instruction in extraction docs.
+
+### Boundaries
+
+- This is documentation and verifier hardening only. It adds no Firebase deploy, Vercel deploy, production build, provider call, Cloud Task enqueue, Storage write, Firestore write, secret write, or production-host smoke.
+
+---
+
+## July 1, 2026 - Platform Alert Deploy Gate Tightening
+
+### Improved
+
+- **Platform alert deploy path gated** - The launch prerequisites now require Functions preflight plus QA deploy evidence before any production platform-alert Function deploy.
+- **Platform alert secrets gated** - Step 7B now creates Telegram/SMTP Secret Manager values in `menulist-qa` first and requires QA alert-delivery evidence plus explicit production secret approval before writing production channel secrets.
+- **Production approval made explicit** - The Step 7B production deploy command now uses `--project menulist --config firebase.json --non-interactive` and is allowed only after QA evidence and explicit production deploy approval.
+- **Widened target audit required** - If the Step 7B platform-alert Function list differs from External Certification Gate 1, the exact widened target list and reason must be recorded in the production readiness audit.
+- **Verifier tightened** - `npm run verify:agent-readiness` now guards the QA-first wording and rejects the old direct production platform-alert secret and deploy commands.
+
+### Boundaries
+
+- This is documentation and verifier hardening only. It adds no Firebase deploy, Vercel deploy, production build, provider call, Cloud Task enqueue, Storage write, Firestore write, secret write, or production-host smoke.
+
+---
+
+## July 1, 2026 - Functions Deploy Checklist Scope Guard
+
+### Improved
+
+- **Broad Functions deploy checklist removed** - The production readiness checklist and launch prerequisites summary now point to External Certification Gate 1 instead of presenting `firebase deploy --only functions` as the manual step.
+- **Launch verdict gated by external evidence** - The production readiness checklist now requires every External Certification Runbook gate to have audit evidence before MenuList can be marked ready to launch.
+- **MenuList setup deploy command scoped** - The three-product environment setup guide now requires `npm run verify:functions-deploy-preflight` before the explicit MenuList Functions target list and warns against replacing it with a broad Functions deploy.
+- **Verifier tightened** - `npm run verify:agent-readiness` now locks the scoped checklist/setup wording and rejects the old broad MenuList Functions deploy rows.
+
+### Boundaries
+
+- This is documentation and verifier hardening only. It adds no Firebase deploy, Vercel deploy, production build, provider call, Cloud Task enqueue, Storage write, Firestore write, or production-host smoke.
+
+---
+
+## July 1, 2026 - Firebase Functions Gate Preflight Guard
+
+### Improved
+
+- **Functions deploy preflight tightened** - The external certification runbook now requires `npm run verify:functions-deploy-preflight` before the scoped `menulist-qa` Firebase Functions deploy retry.
+- **Functions package validation added** - The new verifier runs the Functions package lint and build without deploying.
+- **Deploy boundary made explicit** - The runbook now states that local preflight does not prove Firebase CLI auth, project IAM, enabled Google Cloud APIs, Secret Manager access, function upload, deployed revisions, scheduler execution, callable behavior, trigger delivery, or live production effect.
+
+### Boundaries
+
+- This is local preflight and documentation hardening only. It adds no Firebase deploy, Vercel deploy, production build, provider call, Storage write, Firestore write, or production-host smoke.
+
+---
+
+## July 1, 2026 - Multi-Location Boundary Gate Hardening
+
+### Fixed
+
+- **Desktop outlet rename failure handling bounded** - `OutletRenameModal` now parses the bounded `/api/outlets/rename` response before the non-OK branch and records the safe `currentSlug` field when the server reports a same-slug rejection.
+- **Owner copy remains fixed** - The desktop rename modal shows fixed failure copy instead of echoing server response text.
+- **Verifier tightened** - `npm run verify:multi-location-boundary` now checks required cache invalidation behavior without depending on quote style for `client-stores` and `screen-data` tags.
+
+### Boundaries
+
+- This is client acknowledgement and verifier hardening only. It adds no Firestore read, Firestore write, Firebase deploy, Vercel deploy, production build, provider call, Storage write, or production-host smoke.
+
+---
+
+## July 1, 2026 - Tenant-Block Backfill Gate Preflight Guard
+
+### Improved
+
+- **Tenant-block backfill preflight tightened** - The external certification runbook now requires `npm run verify:tenant-block-backfill-safety`, `npm run verify:public-business-truth`, and `npm run verify:menulist-api-tenant-safety` before any target Firestore dry-run or write-mode tenant-block mirror backfill.
+- **Write refusal guard added** - The new verifier checks missing-project, mismatched-`--confirm-project`, and unscoped write attempts fail before Firebase initialization.
+- **Verifier tightened** - `npm run verify:agent-readiness` now guards the Gate 2 preflight command and the boundary that local checks do not prove Firestore read access, dataset review, write success, or production data parity.
+
+### Boundaries
+
+- This is runbook and verifier hardening only. It adds no Firestore read, Firestore write, Firebase deploy, Vercel deploy, production build, provider call, Storage write, or production-host smoke.
+
+---
+
+## July 1, 2026 - Production Host Gate Preflight Guard
+
+### Improved
+
+- **Production-host gate preflight tightened** - The external certification runbook now requires `npm run verify:production-readiness-local` immediately before any approved Vercel deploy or production-host smoke.
+- **Deploy boundary made explicit** - The runbook now states that local readiness does not prove a Vercel build, deployed artifact, production env vars, custom-domain routing, CDN behavior, Firebase production access, or production-host runtime behavior.
+- **Verifier tightened** - `npm run verify:agent-readiness` now guards the Gate 8 aggregate preflight command and the active-session Vercel approval guard.
+
+### Boundaries
+
+- This is runbook and verifier hardening only. It adds no Vercel deploy, preview deploy, production deploy, production build, production-host smoke, Firebase deploy, provider call, Storage write, or Firestore write.
+
+---
+
+## July 1, 2026 - Mobile Browser Gate Preflight Source Guards
+
+### Improved
+
+- **Mobile/browser gate preflight tightened** - The external certification runbook now requires source checks for mobile shell routing, Staff/Roles mobile route parity, customer app PWA, public business truth, menu extraction intake, and public truth tools before physical-device or authenticated owner-shell QA.
+- **Verifier tightened** - `npm run verify:agent-readiness` now guards the Gate 3 local preflight command list and the boundary that source checks do not prove real device rendering, authenticated owner-shell visuals, touch ergonomics, browser console cleanliness, or runtime public route rendering.
+
+### Boundaries
+
+- This is runbook and verifier hardening only. It adds no mobile runtime code, browser smoke, physical-device QA, Firebase deploy, Vercel deploy, production build, provider call, Storage write, or Firestore write.
+
+---
+
+## July 1, 2026 - External Gate Preflight Source Guards
+
+### Improved
+
+- **Razorpay gate preflight tightened** - The external certification runbook now requires `npm run verify:billing-entitlement-boundary` before Razorpay sandbox smoke so subscription/top-up sequencing, webhook idempotency, browser acknowledgement, and entitlement/cache sync guards are checked before provider testing.
+- **Batch worker gate preflight tightened** - The batch image worker gate now requires `npm run verify:agent-readiness` before Cloud Tasks smoke so env-template and setup-doc readiness contracts are checked before queue or worker testing.
+- **Verifier tightened** - `npm run verify:agent-readiness` now guards those external-gate preflight requirements and their local-only proof boundaries.
+
+### Boundaries
+
+- This is runbook and verifier hardening only. It adds no Firebase deploy, Vercel deploy, production build, Razorpay call, Cloud Task enqueue, worker invocation, Storage write, Firestore write, or provider smoke.
+
+---
+
+## July 1, 2026 - Environment Target Manual Task Alignment
+
+### Fixed
+
+- **Owner action tracker aligned** - The active environment target tasks now use `menulist-qa` for local/preview QA and `menulist` for production instead of the stale `menulist-dev` setup path.
+- **Environment guide lower sections aligned** - The seed-data step, pre-launch checklist, and account summary now describe QA target access and fixtures rather than creating a separate Firebase dev project.
+- **Verifier tightened** - `npm run verify:agent-readiness` now guards the active tracker and environment guide against stale `menulist-dev` deploy commands and old dev-project setup wording.
+
+### Boundaries
+
+- This is documentation and verifier hardening only. It adds no Firebase project, deploy, secret, Vercel deploy, production build, or runtime behavior change.
+
+---
+
+## July 1, 2026 - Firebase Deploy Blocker Source Gate
+
+### Improved
+
+- **Deploy blocker wording guarded** - `npm run verify:agent-readiness` now checks that the setup guide, launch prerequisites, external certification runbook, and production audit keep the current `menulist-qa` Cloud Resource Manager 403 blocker and scoped retry command visible.
+
+### Boundaries
+
+- This is verifier and documentation hardening only. It adds no Cloud Function logic, Firestore rule, Firebase deploy, Vercel deploy, secret, provider call, or production-host smoke.
+
+---
+
+## July 1, 2026 - WhatsApp Provider Gate Fail-Closed Setup
+
+### Fixed
+
+- **Messaging onboarding processing defaults off** - Root env examples and MenuList Functions dotenv files/templates now set `ENABLE_MESSAGING_ONBOARDING=false` until real Meta WhatsApp secrets and webhook registration exist for the target.
+- **Setup docs aligned** - Messaging-onboarding docs, deployment setup, owner action items, and the external certification runbook now state that only the target being provider-smoked should be flipped to `ENABLE_MESSAGING_ONBOARDING=true`.
+- **Verifier tightened** - `npm run verify:agent-readiness` now guards the WhatsApp fail-closed env defaults and setup-doc wording.
+
+### Boundaries
+
+- This is setup hardening only. It adds no WhatsApp secret, provider call, webhook registration, Cloud Function logic, Firestore rule, Firebase deploy, Vercel deploy, or live provider smoke.
+
+---
+
+## July 1, 2026 - Public Truth Readiness Fix Loop
+
+### Improved
+
+- **Exact owner fix targets** - Business Health Public readiness modules now carry focused desktop links into Business Settings, Projects, or QR tools and mobile targets for the Menu tab, Share tab, and More sub-screens.
+- **Mobile shell-safe actions** - Mobile Business Health module actions route through `MobileShell` callbacks instead of opening desktop owner routes.
+- **Verification tightened** - `npm run verify:public-truth-check` and `npm run verify:owner-business-assistant` now guard the module action contract and mobile fix-target callbacks.
+
+### Boundaries
+
+- This is navigation-only owner guidance. It adds no report storage, no new API route, no Firestore collection, no Firestore write, no external scan, no provider call, and no Google/Search/AI ranking or citation claim.
+
+## July 1, 2026 - Public Presence Owner Value Layer
+
+### Improved
+
+- **Google profile handoff kit** - Official Business Page settings now give owners a copyable Google Business Profile handoff kit with business name, short description/known-for text when present, Website field URL, and menu link.
+- **Public page quick answers** - Official Business Pages now show short customer answers for visible facts such as today's hours, address, current menu button, WhatsApp, and directions.
+- **Freshness and Google handoff checks** - Business Health Public readiness now includes owner-side Google profile handoff and menu freshness modules.
+
+### Boundaries
+
+- These changes reuse existing MenuList store/project data. They add no new API route, no Firestore collection, no report storage, no external scan, no Google profile write, no AI/search provider call, and no ranking/citation promise.
+
+## July 1, 2026 - Public Truth Readiness V1
+
+### Improved
+
+- **Business Health Public readiness** - logged-in MenuList owners now see eight read-only readiness modules inside Business Health: public truth basics, QR link health, menu or service clarity, WhatsApp action link, hours readiness, photo/visual identity, Google profile handoff, and menu freshness.
+- **Owner fix paths stay inside MenuList** - desktop module rows link to existing owner surfaces such as Business Settings, Projects, and QR tools instead of creating a new dashboard.
+- **Mobile stays shell-safe** - the mobile Business Health card shows the same module status inside `MobileShell` without desktop-route bypasses.
+
+### Boundaries
+
+- This is a V1 owner-side read-only expansion. It reuses existing store/project context, the existing project summary/cache path, and at most one selected/default project read when needed. It adds no API route, no report storage, no Firestore writes, no external fetch, no Google/Instagram/WhatsApp inspection, no AI/search provider call, and no ranking/citation promise.
+
+## July 1, 2026 - Photo Gap Check V0
+
+### New
+
+- **Photo Gap Check** - `/tools/photo-gap-check` now lets SMB owners run a browser-local check for logo, cover image, location/team photo, product or service photos, current photo context, public page images, and a current customer link before publishing one customer source.
+
+### Boundaries
+
+- This is a public MenuList Tools V0 route only. It checks owner-selected facts, stores no report, adds no Firebase state, does not upload or analyze images, does not inspect Google, Instagram, websites, or external photo sources, and uses the existing consented public contact route only when a user submits the follow-up form.
+
+## July 1, 2026 - Hours Check V0
+
+### New
+
+- **Hours Check** - `/tools/hours-check` now lets SMB owners run a browser-local check for regular hours, closed days, late-night handling, holiday/special hours, timing context, contact fallback, and a current customer link before publishing one customer source.
+
+### Boundaries
+
+- This is a public MenuList Tools V0 route only. It checks owner-entered fields, stores no report, adds no Firebase state, does not inspect Google, maps, websites, holiday calendars, or AI/search answers, and uses the existing consented public contact route only when a user submits the follow-up form.
+
+## July 1, 2026 - Protected Owner AI Route Permission Gates
+
+### Fixed
+
+- **Protected AI routes require role permission before expensive work** - business copy, campaign captions, descriptions, new-item metadata, translations, image generation/editing, batch image trigger, Menu Card design advisor, SEO generation, AI pack status, and weekly narrative now enforce the matching store-role permission before cost-bearing or data-bearing work.
+- **Unauthorized AI requests stop before cost paths** - rejected users do not reach capacity reads, analytics Firestore reads, media fetches, Cloud Tasks fanout, Gemini provider calls, insight writes, AI operation writes, credit consumption, or route-specific writes.
+- **Verifiers tightened** - `npm run verify:menulist-api-tenant-safety` and `npm run verify:auth-security-failure-matrix` now guard the permission tokens and ordering for protected owner AI/capacity/status routes.
+- **AI, roles, and touched feature docs aligned** - AI Enhancement Packs, AI System Layer, Roles & Permissions, Multi-Language Translation, Social Content, and Menu Card Export docs now record the permission boundary and Firebase cost impact.
+
+### Boundaries
+
+- This is protected owner AI authorization hardening only. Valid SAFE_MODE, rate limits, bounded body caps, Zod schemas, prompt construction, linked-outlet policy, capacity math, subscription plan checks, provider responses, accounting writes for authorized users, analytics aggregation for authorized users, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## July 1, 2026 - Review Reply Suggestion Permission Gate
+
+### Fixed
+
+- **Review reply suggestions require feedback permission** - `/api/reviews/suggest` now enforces the shared store-role guard with `canManageFeedback` after bounded input validation and before AI capacity, Gemini, or accounting work.
+- **Disabled scaffold stays aligned with route permissions** - the dormant Reputation Protection reply-assist endpoint now matches the existing `/feedback` permission boundary instead of relying only on authenticated tenant/store scope.
+- **Verifiers tightened** - `npm run verify:menulist-api-tenant-safety` and `npm run verify:auth-security-failure-matrix` now guard the feedback permission check and ordering before AI work.
+- **Reputation Protection docs aligned** - README, implementation, and Firebase cost docs now record the `canManageFeedback` requirement and the rejected-user cost boundary.
+
+### Boundaries
+
+- This is dormant review-reply authorization hardening only. Valid feature flags, SAFE_MODE, request body caps, prompt sanitization, AI capacity logic, Gemini fallback behavior, accounting writes, owner UI mount state, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## July 1, 2026 - POS Sync Target Store Permission Gate
+
+### Fixed
+
+- **POS webhook routes re-check the target store** - `/api/pos-sync/test` and `/api/pos-sync/deliver` now run the shared store-data permission guard against the canonical `stores/{storeId}` document after body validation.
+- **Unavailable POS targets fail before provider work** - inactive, soft-deleted, platform-blocked, cross-tenant, or unauthorized target stores are rejected before webhook URL validation, project reads, menu-version writes, delivery logs, POS status writes, or outbound fetches.
+- **Verifier tightened** - `npm run verify:menulist-api-tenant-safety` now requires the POS target-store guard before webhook validation and DNS target checks.
+- **POS docs aligned** - implementation and Firebase cost docs now record that the guard reuses the existing store-config read and adds no extra Firestore operation.
+
+### Boundaries
+
+- This is POS sync authorization hardening only. Valid POS settings, test payloads, delivery payloads, signing, delivery-log retention, client acknowledgements, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## July 1, 2026 - Staff Role Target Store Eligibility
+
+### Fixed
+
+- **Staff and role mutations reject unavailable stores** - staff store mapping validation and role create/update/deactivate now reject target stores that are inactive, soft-deleted, platform-blocked, or outside the tenant.
+- **Staff list fails closed on unavailable target stores** - `/api/staff` now verifies the requested target store before enumerating staff users, including master-store requests.
+- **Verifiers tightened** - `npm run verify:menulist-api-tenant-safety` and `npm run verify:auth-security-failure-matrix` now guard the shared staff target-store eligibility boundary.
+- **Roles and auth docs aligned** - implementation, Firebase cost, auth, and roles docs now include the target-store eligibility rule and the master staff-list read caveat.
+
+### Boundaries
+
+- This is staff/role authorization hardening only. Valid staff creation, update, removal, passcode reset, force sign-out, role acknowledgement parsing, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## July 1, 2026 - Store Switch Target Eligibility Gate
+
+### Fixed
+
+- **Store switching verifies the canonical target store** - `/api/auth/switch-store` now reads `stores/{targetStoreId}` and rejects missing, cross-tenant, inactive, soft-deleted, or platform-blocked target stores before returning switch success.
+- **Blocked tenants cannot switch stores** - the route now rejects platform-blocked tenant documents before target selection.
+- **Verifiers tightened** - `npm run verify:menulist-api-tenant-safety` and `npm run verify:auth-security-failure-matrix` now guard the target-store eligibility check.
+- **Multi-outlet docs aligned** - implementation and Firebase cost docs now include the extra target-store read and switch boundary.
+
+### Boundaries
+
+- This is store-switch authorization hardening only. Valid store-switch acknowledgements, client claim refresh, owner/mobile switch callers, Firestore writes, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## July 1, 2026 - Claim Account Transaction Guard
+
+### Fixed
+
+- **Claim-account ownership writes re-check the token** - `/api/auth/claim-account` now performs final ownership writes inside a Firestore transaction that re-reads the messaging user doc and verifies the claim token is still present, unexpired, and attached to tenant/store identity.
+- **Duplicate claim attempts fail closed** - parallel Google, email/password, or WhatsApp phone/passcode claim attempts cannot both complete the final user/tenant/store ownership writes.
+- **Verifier tightened** - `npm run verify:auth-security-failure-matrix` now guards the claim-account transaction re-read and rejects non-transactional final ownership batches.
+- **Auth docs aligned** - Auth README and Firebase cost docs now include the extra transaction read and duplicate-submit boundary.
+
+### Boundaries
+
+- This is claim-account race hardening only. Valid claim-token lookup, Firebase Auth user creation/update, custom claims, public cache revalidation, login-page acknowledgement handling, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## July 1, 2026 - Razorpay Verification User Diagnostic Boundary
+
+### Fixed
+
+- **Subscription verification logs bound user identity** - `/api/razorpay/verify-subscription` no longer writes raw top-level `userId` fields to local payment verification logs; user identity is kept as bounded presence/length metadata inside each log payload.
+- **Verifier tightened** - `npm run verify:menulist-api-tenant-safety` now rejects raw top-level user IDs in subscription verification local logs.
+- **Razorpay docs aligned** - implementation and Firebase cost docs now record that this is diagnostic-only and adds no Firebase cost.
+
+### Boundaries
+
+- This is Razorpay verification diagnostics hardening only. Valid checkout signature verification, provider fetches, subscription activation, entitlement sync, notification behavior, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## July 1, 2026 - Razorpay Cancellation Diagnostic Boundary
+
+### Fixed
+
+- **Cancellation flow logs are bounded** - `/api/razorpay/cancel-subscription` now writes cancellation flow and failure diagnostics with bounded subscription, provider-subscription, tenant, store, plan, and user metadata instead of raw identifiers.
+- **Verifier tightened** - `npm run verify:menulist-api-tenant-safety` now rejects the old raw cancellation summarizer and requires the bounded subscription mutation log context.
+- **Razorpay docs aligned** - implementation and Firebase cost docs now record that this is diagnostic-only and adds no Firebase cost.
+
+### Boundaries
+
+- This is Razorpay cancellation diagnostics hardening only. Valid cancellation behavior, provider calls, subscription state transitions, notification behavior, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## July 1, 2026 - Billing Mutation Store Target Gate
+
+### Fixed
+
+- **Billing mutations reject inactive or blocked stores** - `canManageBillingMutation()` now fails closed when the session is missing tenant/store context or the target store is cross-tenant, inactive, soft-deleted, or platform-blocked before subscription, top-up, cancellation, pause, resume, or upgrade mutation work proceeds.
+- **Verifier tightened** - `npm run verify:menulist-api-tenant-safety` now guards the shared billing mutation target gate.
+- **Razorpay docs aligned** - Razorpay implementation and Firebase cost docs now record that the guard reuses the existing store read and adds no Firebase cost.
+
+### Boundaries
+
+- This is shared billing authorization hardening only. Valid billing routes, Razorpay provider calls, subscription state transitions, top-up logic, notification behavior, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## July 1, 2026 - Store Permission Target Block Gate
+
+### Fixed
+
+- **Store permission guards reject inactive or blocked stores** - `requireAnyStorePermission()`, `requireAnyStorePermissionForStore()`, and `requireAnyStorePermissionForStoreData()` now fail closed for inactive, soft-deleted, or platform-blocked store documents before owner public-truth writes or provider calls proceed.
+- **Verifier tightened** - `npm run verify:menulist-api-tenant-safety` now guards the shared store-permission target-block helper.
+- **Roles docs aligned** - Roles & Permissions implementation and Firebase cost docs now record that the guard uses the existing store permission read and adds no Firebase cost.
+
+### Boundaries
+
+- This is shared store-permission authorization hardening only. Platform-session bypass behavior, role definitions, staff CRUD, route-specific rate limits, request bodies, public cache invalidation, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## July 1, 2026 - Public Menu Claim Existing Account Gate
+
+### Fixed
+
+- **Existing-account claims verify store and tenant eligibility** - `/api/public/create-menu/claim` now fails closed before project/store/summary writes if the session store is missing, mismatched to the tenant, inactive, deleted, platform-blocked, or attached to a blocked/missing tenant.
+- **Existing-account claim transactions read before writing** - the route now reads the existing project summary before any store-default update, preserving Firestore transaction read/write ordering while demoting old default menus.
+- **Verifier tightened** - `npm run verify:menu-extraction-pipeline` and `npm run verify:menulist-api-tenant-safety` now guard the existing-account claim eligibility checks.
+- **Public Menu Entry docs aligned** - implementation, spec, README, and Firebase cost docs now include the extra existing-account target reads and updated cache-tag count.
+
+### Boundaries
+
+- This is public menu claim target-validation hardening only. Valid draft creation, extraction jobs, new-account tenant/store creation, project creation, starter activation, cache invalidation behavior, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## July 1, 2026 - Public Pull API Target Eligibility Gate
+
+### Fixed
+
+- **Public pull APIs require eligible stores and tenants** - `/api/public/v1/business` and `/api/public/v1/menu` now reject inactive, deleted, platform-blocked, or tenant-blocked MenuList targets before returning business or menu data.
+- **Blocked targets keep the invalid-key response shape** - blocked or missing tenant eligibility returns the existing `INVALID_API_KEY` contract so external callers cannot distinguish account state.
+- **Verifier tightened** - `npm run verify:menulist-api-tenant-safety` now guards the MenuList pull API eligibility helper and requires both v1 routes to check it before response building.
+- **Platform Pull API docs aligned** - implementation, spec, and Firebase cost docs now include the tenant eligibility read and updated worst-case read estimate.
+
+### Boundaries
+
+- This is public pull API target-validation hardening only. Valid key generation/revocation, API-key hashing, ETag/304 behavior, response schema, menu project selection, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## July 2, 2026 - Public Pull API Live Key Revalidation
+
+### Fixed
+
+- **Public pull APIs no longer cache key validation** - `/api/public/v1/business` and `/api/public/v1/menu` now call `validatePublicApiKey(apiKey)` without the 30-second process-local cache opt-in.
+- **Revocation and blocking take effect on next request** - valid pull requests now re-run the API-key lookup plus store/tenant eligibility checks every time, so revoked keys, inactive/deleted stores, platform-blocked stores, and tenant-blocked stores are not hidden by route-level validation cache TTL.
+- **Verifier tightened** - `npm run verify:menulist-api-tenant-safety` and `npm run verify:public-business-truth` now reject `cacheTtlMs` usage in MenuList pull routes while preserving private response-cache assertions.
+- **Platform Pull API docs aligned** - README, spec, implementation, and Firebase cost docs now state that MenuList pull endpoints do not use the shared validation cache.
+
+### Boundaries
+
+- This is public pull API validation-cache hardening only. Valid key generation/revocation, API-key hashing, ETag/304 behavior, private response cache headers, response schema, menu project selection, Firestore reads/writes/deletes, rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## July 2, 2026 - POS Sync Debounced Delivery Admission
+
+### Fixed
+
+- **Debounced POS delivery requires signing secret** - `triggerPosSyncDebounced()` now requires POS Sync to be enabled with both a provider connection URL and signing secret before calling `/api/pos-sync/deliver`.
+- **Misconfigured stores avoid invalid delivery calls** - stores missing a signing secret no longer create repeated invalid delivery-route requests after menu saves.
+- **Verifier tightened** - `npm run verify:pos-sync-boundary` now owns the debounced delivery URL+secret admission contract, and `npm run verify:menulist-api-tenant-safety` keeps the broader bounded-diagnostics check.
+- **POS Sync docs aligned** - implementation, Firebase cost, mobile support, feature inventory, and production audit docs now record the source-only guard and remaining external provider-smoke boundary.
+
+### Boundaries
+
+- This is POS Sync client admission hardening only. Valid settings saves, secret generation/rotation, server-side route auth, URL/DNS target validation, debounce timing, payload shape, signing, delivery logs, Firestore rules/indexes, Cloud Functions, Firebase deployment, Vercel deployment, and provider smoke were not changed.
+
+## July 1, 2026 - Digital Screen Seen Signal Store Gate
+
+### Fixed
+
+- **Screen seen writes require an eligible public store** - `/api/screen/seen` now verifies the screen is enabled and the backing store passes the shared public store-id lookup before updating `screenLastSeenAt`.
+- **Legacy token lookup is constrained** - the fallback token-query path now only updates `platformSummary/campaigns_{storeId}` documents with numeric store ids, preventing unexpected `screenToken` matches from writing other summary documents.
+- **Verifier tightened** - `npm run verify:menulist-api-tenant-safety` now guards the enabled-screen check, shared `getPublicStoreById()` eligibility gate, and legacy summary-doc id guard.
+- **Digital Screens cost docs aligned** - implementation and Firebase cost docs now include the possible cached store eligibility read on the daily seen path.
+
+### Boundaries
+
+- This is public liveness-signal route hardening only. Valid screen rendering, owner Digital Screen settings, screen listener mirrors, menu projection, Storage, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## July 1, 2026 - Public Analytics Tenant Block Gate
+
+### Fixed
+
+- **Public analytics target validation checks tenant block state** - `/api/public/analytics/track` now rejects tenant-blocked stores before preference filtering or Admin SDK daily-counter writes.
+- **Verifier tightened** - `npm run verify:menulist-api-tenant-safety` now guards the tenant read and tenant-block check before public analytics writes.
+- **Analytics docs aligned** - public analytics Firebase docs now describe the cached tenant read and tenant-block target gate.
+
+### Boundaries
+
+- This is anonymous analytics target-validation hardening only. Valid coalesced analytics writes, owner analytics read models, customer event queueing, analytics preferences, Firestore rules/indexes, Cloud Functions, Firebase deployment, public cache invalidation, and Vercel deployment were not changed.
+
+## July 1, 2026 - Public Feedback Tenant Block Gate
+
+### Fixed
+
+- **Public feedback submit checks tenant block state** - `/api/public/feedback/submit` now reads the tenant document and rejects submissions when the tenant is platform-blocked before writing guest feedback.
+- **Verifier tightened** - `npm run verify:menulist-api-tenant-safety` now guards the tenant read and tenant-block check before `submitGuestFeedbackAdmin()`.
+- **Feedback docs aligned** - internal feedback docs now include the project/store/tenant scope reads and updated monthly read-cost estimate.
+
+### Boundaries
+
+- This is public feedback submission scope hardening only. Valid feedback writes, Turnstile behavior, rate limits, owner inbox behavior, MOL event logging, Firestore rules/indexes, Cloud Functions, Firebase deployment, public cache invalidation, and Vercel deployment were not changed.
+
+## July 1, 2026 - Menu Cache Revalidation Tag Shape Gate
+
+### Fixed
+
+- **Menu cache revalidation tags are shape-checked** - `/api/revalidate/menu` now accepts only numeric `storeId` values and exact cache-tag shapes for `menu-store-{storeId}`, `store-{storeId}`, `client-stores`, and `screen-data`.
+- **Owner-assistant cache clearing uses normalized store id** - the route now passes the same validated store id into owner-business-assistant packet invalidation instead of re-reading the raw request value.
+- **Verifier tightened** - `npm run verify:menulist-api-tenant-safety` now rejects arbitrary prefixed cache tags and raw `body.storeId` assistant-cache invalidation.
+- **Client menu docs aligned** - Firebase cost docs now describe numeric store-id and tag-shape validation.
+
+### Boundaries
+
+- This is cache revalidation input hardening only. Valid app-session revalidation, server-secret revalidation, cache tags, public cache invalidation callers, Firestore reads/writes, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## July 1, 2026 - Customer App Dynamic Asset Public Store Gate
+
+### Fixed
+
+- **Dynamic PWA assets use public-safe store lookup** - app icon, splash, and screenshot routes now resolve store branding through `getPublicStoreById()` instead of direct store document reads.
+- **Blocked and inactive stores fall back safely** - invalid, rate-limited, inactive, deleted, platform-blocked, or tenant-blocked stores receive generic generated assets rather than branded app assets.
+- **Verifier tightened** - `npm run verify:customer-app-pwa` now guards the shared public store-id lookup and rejects direct store reads in the dynamic asset routes.
+- **Customer App docs aligned** - implementation and Firebase cost docs now include the public-safe fallback and rare tenant-block lookup cost.
+
+### Boundaries
+
+- This is public dynamic asset route hardening only. Manifest generation, customer menu rendering, owner Customer App settings, generated image design, Storage, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## July 1, 2026 - Deprecated Billing Reconciliation API Removed
+
+### Removed
+
+- **Deprecated Vercel reconciliation route removed** - deleted `/api/internal/reconcile-subscriptions`, which had already been migrated to the Firebase nightly scheduler at `functions/src/billing/reconcileSubscriptions.ts`.
+- **Verifier tightened** - `npm run verify:menulist-api-tenant-safety` now fails if the deprecated Vercel reconciliation route is reintroduced.
+- **Billing docs aligned** - Razorpay docs and the subscription type immutability comment now identify the Firebase Functions reconciler as the only supported reconciliation path.
+
+### Boundaries
+
+- This is stale API surface removal only. Active subscription reconciliation logic, nightly scheduler behavior, Razorpay provider calls, entitlement sync, Firestore rules/indexes, Cloud Functions source, Firebase deployment, and Vercel deployment were not changed.
+
+## July 1, 2026 - WhatsApp Action Link Check V0
+
+### Added
+
+- **Public WhatsApp action checker** - `/tools/whatsapp-action-link-check` now checks owner-entered WhatsApp number/link, suggested message, current customer link, hours expectation, and fallback action in the browser.
+- **Explicit evidence rows** - each report row states what was checked and confirms WhatsApp was not contacted, links were not opened, and messages were not sent.
+- **MenuList Tools docs** - added the dedicated doc set under `__docs__/menulist-tools/whatsapp-action-link-check/` and updated Public Truth Tools family docs.
+- **Verifier added** - `npm run verify:whatsapp-action-link-check` guards docs, flags, route, locales, discovery files, false boundaries, and no external send/fetch behavior.
+
+### Boundaries
+
+- This is a public browser-local V0 tool only. No WhatsApp API integration, message sending, phone verification, report storage, new Firestore collection, Cloud Function, external fetch, AI/search provider call, Firebase deployment, or Vercel deployment was added.
+
+## July 1, 2026 - Internal Route Guards
+
+### Fixed
+
+- **Platform routes are server guarded** - `/platform/*` and legacy `/ops/*` aliases now verify the server session `platformRole` before rendering internal platform pages.
+- **Desktop Platform navigation is role gated** - the Platform sidebar group is now hidden from non-platform sessions instead of relying on missing route permission requirements.
+- **Reseller routes are server guarded** - `/reseller` and `/reseller/onboard` now require the reseller dashboard flag plus `PLATFORM` or `RESELLER`, while `/reseller/manage` adds a platform-admin server guard before the management page renders.
+- **Owner output routes are permission mapped** - `/assets`, `/use-menulist/print-assets`, `/use-menulist/menu-card-export`, `/use-menulist/ai-menu-manager`, and `/business-health` now have explicit desktop owner permission requirements matching their mobile entry gates.
+- **Sentry diagnostics route is platform guarded** - `/platform/test-sentry` now verifies the server session `platformRole` against the canonical platform role before rendering the diagnostics page.
+- **Verifier tightened** - `npm run verify:auth-security-failure-matrix` now guards the shared platform route helper, `/platform` layout, `/ops` layout, `/reseller` layouts, desktop navigation gates, owner output route permission matchers, Sentry diagnostics page check, and mobile More role-gated entry points.
+- **Internal docs aligned** - internal platform role docs now describe the runtime `/platform/*` shell guard and reserved support role boundary; reseller, Printable Assets, and Business Health docs now reflect the current route guard and permission boundaries.
+
+### Boundaries
+
+- This is route-access and navigation hardening only. Sentry test buttons, intentional monitoring errors, diagnostics metadata, platform, ops, and reseller API authorization behavior, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## July 1, 2026 - Projects Summary Backfill Surface Removal
+
+### Fixed
+
+- **Temporary projects-summary backfill removed** - the old browser-console `backfillProjectsSummary` surface was removed from the project DAL so production bundles no longer expose a one-time migration writer.
+- **Verifier tightened** - `npm run verify:public-business-truth` now rejects the temporary backfill export, `window.__backfillProjectsSummary`, and its backfill diagnostics.
+- **Summary docs aligned** - the summary-document pattern now shows nested `stores: { [storeId]: ... }` writes and calls out public cache invalidation for public store summary truth.
+
+### Boundaries
+
+- This is browser DAL production-surface cleanup only. Normal project/store save paths, projectsSummary writes, storesSummary writes, public cache revalidation helpers, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## July 1, 2026 - Ops Force Republish Acknowledgement Boundary
+
+### Fixed
+
+- **Force-republish feedback is shaped** - desktop and mobile Ops Control Room now require callable results to include `success`, `projectId`, and `verification` before showing republish feedback.
+- **Verifier tightened** - `npm run verify:menulist-api-tenant-safety` now guards the force-republish response shape helper and both callers.
+
+### Boundaries
+
+- This is browser-side Ops Control Room acknowledgement hardening only. Valid callable behavior, project touch writes, publish verification, store health updates, Cloud Functions logic, Firebase deployment, Firestore rules/indexes, and Vercel deployment were not changed.
+
+## July 1, 2026 - Today Surface Execution Acknowledgement Boundary
+
+### Fixed
+
+- **Today download success is tied to the requested surface** - Today poster, tent-card, and screen actions now require the execution result to return the same surface and `method: "download"` before showing action feedback.
+- **Verifier tightened** - `npm run verify:public-business-truth` now rejects generic Today surface `success` handling.
+
+### Boundaries
+
+- This is Today surface acknowledgement hardening only. Valid image URL allowlists, bounded image fetches, clipboard fallback behavior, download behavior, campaign/export writes, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## July 1, 2026 - Public Contact Handoff Acknowledgement Boundary
+
+### Fixed
+
+- **Contact submission success is shaped** - `/api/public/contact` now returns `source: "menulist_public_contact"`, `status: "accepted"`, and the accepted help topic after the enquiry write.
+- **Public tool handoffs require the route acknowledgement** - the Contact page, Public Truth Check, QR Link Health Check, and Menu Readability Check now require source/status/topic acknowledgement before showing submitted state or tracking accepted handoff events.
+- **Verifier tightened** - `npm run verify:public-business-truth` plus the three public-tool verifiers now guard the shared contact response helper and reject generic `accepted` handling.
+
+### Boundaries
+
+- This is public contact response acknowledgement hardening only. Valid rate limits, bounded request body admission, Turnstile checks, honeypot behavior, the existing enquiry write, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## July 1, 2026 - Phone OTP Acknowledgement Boundary
+
+### Fixed
+
+- **OTP start success is shaped** - `/api/auth/phone-otp/start` now echoes `action: "start"` and the accepted purpose, and the shared Phone OTP panel requires those fields plus the challenge id before moving to code entry.
+- **OTP verify success is tied to the challenge** - `/api/auth/phone-otp/verify` now echoes `action: "verify"` and the verified challenge id, and the panel requires that match before using the login token.
+- **Verifier tightened** - `npm run verify:auth-security-failure-matrix` now guards the Phone OTP route/browser acknowledgement contract.
+
+### Boundaries
+
+- This is Phone OTP acknowledgement hardening only. Valid OTP challenge storage, verification, login-token consumption, WhatsApp delivery, Firebase Auth sync, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## July 1, 2026 - Platform Staff Verification Acknowledgement Boundary
+
+### Fixed
+
+- **Staff verification success is shaped** - Platform Users now requires `/api/auth/create-staff` compatibility success to match create-staff modes and return user identity before marking a user verified.
+- **Compatibility rejection is allowlisted** - the legacy `EMAIL_EXISTS` path remains supported, but only through the shared bounded compatibility guard.
+- **Verifier tightened** - `npm run verify:auth-security-failure-matrix` now guards create-staff success modes, returned user identity, and the Platform Users caller.
+
+### Boundaries
+
+- This is Platform Users browser acknowledgement hardening only. Valid staff creation/lookup behavior, platform user document updates, Firebase Auth operations, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## July 1, 2026 - Claim Preview Acknowledgement Boundary
+
+### Fixed
+
+- **Claim preview success is shaped** - the unauthenticated validate-claim route now returns explicit `status: "valid"` and `preview: "claim-token"` markers, and the login page requires those markers plus a non-empty business name before showing claim setup options.
+- **Masked phone display is guarded** - the login page only displays claim preview phone values that match the masked phone format returned by the route.
+- **Verifier tightened** - `npm run verify:auth-security-failure-matrix` now guards the validate-claim route/browser acknowledgement contract.
+
+### Boundaries
+
+- This is claim preview acknowledgement hardening only. Valid claim-token lookup, claim-account writes, Firebase Auth operations, store email sync, public cache revalidation, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## July 1, 2026 - Today Campaign Completion Acknowledgement Boundary
+
+### Fixed
+
+- **Today completion success is shaped** - desktop and mobile Today actions now require campaign/project/type/surface/method/export identity plus updated Today state before showing shared success or updating local Today state.
+- **Today skip success is shaped** - desktop and mobile Today skips now require campaign/type/status/skip-count plus updated Today state before showing skipped success.
+- **Verifier tightened** - `npm run verify:public-business-truth` now guards the Today campaign complete/skip DAL acknowledgement helpers and desktop/mobile callers.
+
+### Boundaries
+
+- This is Today campaign acknowledgement hardening only. Valid campaign surface execution, clipboard/download behavior, campaign/export writes, summary updates, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## July 1, 2026 - Extraction Review Apply Acknowledgement Boundary
+
+### Fixed
+
+- **Review apply success requires applied changes** - desktop and mobile extraction review saves now pass the selected-change count into `applyExtractionChanges()`, which refuses no-op or partial apply counts before project/job writes.
+- **Success is tied to the same review job** - both review surfaces now require the returned project id, job id, comparison mode, completion flag, and applied count before showing applied success or running completion callbacks.
+- **Verifier tightened** - `npm run verify:menu-extraction-pipeline` and `npm run verify:menulist-api-tenant-safety` now guard the apply acknowledgement contract.
+
+### Boundaries
+
+- This is extraction review apply acknowledgement hardening only. Valid extraction comparison behavior, approved menu writes, linked-outlet save route policy, public cache invalidation for valid applies, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## July 1, 2026 - Review Reply Source Acknowledgement Boundary
+
+### Fixed
+
+- **Reply suggestions require a source acknowledgement** - desktop Review Reply now requires `/api/reviews/suggest` to return `success: true`, a non-empty reply, and `source: "ai" | "fallback"` before showing a suggestion, setting the source badge, syncing balance, or incrementing attempts.
+- **Verifier tightened** - `npm run verify:auth-security-failure-matrix` now guards the Review Reply source acknowledgement and rejects reply-only success handling.
+
+### Boundaries
+
+- This is browser-side Review Reply acknowledgement hardening only. Valid feature gates, route authentication, tenant checks, SAFE_MODE, rate limiting, AI capacity checks, Gemini/fallback behavior, AI accounting writes, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## July 1, 2026 - Reseller Management Profile Acknowledgement Boundary
+
+### Fixed
+
+- **Reseller update success is tied to the edited profile** - desktop and mobile reseller management now require update acknowledgements to return the edited profile id before showing saved success.
+- **Verifier tightened** - `npm run verify:public-business-truth` now guards reseller management save acknowledgement identity checks.
+
+### Boundaries
+
+- This is reseller management browser acknowledgement hardening only. Valid platform authorization, reseller profile writes, Firebase Auth user sync, monthly-summary reads, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## July 1, 2026 - Custom Domain Removal Acknowledgement Boundary
+
+### Fixed
+
+- **Domain removal success is explicit** - `/api/domain` delete now returns `removed: true`, and desktop Domain Settings, embedded Custom Domain, and Mobile Domain Settings require it before clearing local custom-domain state.
+- **Verifier tightened** - `npm run verify:public-business-truth` now guards the domain removal acknowledgement route and desktop/mobile callers.
+
+### Boundaries
+
+- This is domain removal acknowledgement hardening only. Valid domain permissions, Vercel removal, store field deletion, public cache invalidation, DNS display behavior, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## July 1, 2026 - Reseller Add-Location Acknowledgement Boundary
+
+### Fixed
+
+- **Add-location success is tied to the requested client** - `/api/reseller/add-location-capacity` now returns store id and tenant id with the capacity acknowledgement, and desktop/mobile reseller dashboards require store, tenant, location count, and amount before showing the collect amount.
+- **Verifier tightened** - `npm run verify:public-business-truth` now guards reseller add-location identity and count acknowledgement checks.
+
+### Boundaries
+
+- This is reseller dashboard acknowledgement hardening only. Valid route authentication, reseller authorization, subscription updates, reseller transaction writes, stats updates, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## July 1, 2026 - Compliance Page Mutation Acknowledgement Boundary
+
+### Fixed
+
+- **Compliance save/reset success is shaped** - `/api/compliance` now returns the requested page type and API action with `success: true`, and desktop, custom-domain, and mobile compliance editors require those fields before showing saved/reset success.
+- **Verifier tightened** - `npm run verify:public-business-truth` now guards the compliance mutation acknowledgement helper and rejects generic `result?.success` handling.
+
+### Boundaries
+
+- This is compliance-page acknowledgement hardening only. Valid route authentication, permission checks, rate limits, bounded body admission, override/reset writes, public compliance rendering, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## July 1, 2026 - Special Menu Lifecycle Acknowledgement Boundary
+
+### Fixed
+
+- **Lifecycle success is shaped** - special-menu activate, end, and cancel calls now return project id and resulting status, and `useSpecialMenus()` requires that acknowledgement before mutating desktop or mobile local menu state.
+- **Verifier tightened** - `npm run verify:public-business-truth` now guards special-menu lifecycle project/status acknowledgements in the DAL and hook.
+
+### Boundaries
+
+- This is client-side special-menu acknowledgement hardening only. Valid special-menu create/update behavior, Firestore writes, public cache invalidation, scheduler behavior, mobile/desktop UI layout, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## July 1, 2026 - Claim Account Acknowledgement Boundary
+
+### Fixed
+
+- **Claim setup success is shaped** - login-page claim setup and Google claim linking now update local claim state only after `/api/auth/claim-account` returns an OK HTTP response plus `success: true`, the expected claim mode, and tenant/store identity.
+- **Verifier tightened** - `npm run verify:auth-security-failure-matrix` now guards the claim-account acknowledgement helper and rejects loose `success === true` claim handling.
+
+### Boundaries
+
+- This is browser-side auth acknowledgement hardening only. Valid claim-token lookup, account creation/linking, tenant/store updates, public cache revalidation, Firebase Auth claim writes, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## July 1, 2026 - Menu Readability Check V0
+
+### Added
+
+- **Public readability tool added** - `/tools/menu-readability-check` now gives owners a browser-local report for pasted menu, service, catalog, rate-card, package, or price-list text.
+- **Pasted-text boundary is explicit** - every row includes evidence text, and the report states that files are not uploaded, links are not opened, and AI rewrite is not generated.
+- **MenuList Tools docs expanded** - `__docs__/menulist-tools/menu-readability-check/` now contains the full required doc set for the tool.
+- **Verifier added** - `npm run verify:menu-readability-check` checks route, flags, docs, locale copy, discovery files, report evidence, and no-fetch/no-upload/no-provider boundaries.
+
+### Boundaries
+
+- This is a public V0 lead-magnet tool only. It adds no report API route, Firestore report state, Storage upload, Cloud Function, external URL fetch, PDF parsing, OCR, AI rewrite, AI/search provider call, Firebase deployment, or Vercel deployment.
+
+## July 1, 2026 - Guest Feedback Submit Acknowledgement Boundary
+
+### Fixed
+
+- **Guest feedback success is shaped** - the public feedback form now shows received feedback only after `/api/public/feedback/submit` returns an OK HTTP response plus `success: true` with a non-empty feedback id.
+- **Verifier tightened** - `npm run verify:public-business-truth` now guards the successful feedback acknowledgement helper and rejects loose `response.ok && data?.success` handling.
+
+### Boundaries
+
+- This is browser-side public feedback acknowledgement hardening only. Valid public feedback route validation, Turnstile checks, Firestore writes, MOL event logging, owner feedback inbox behavior, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## July 1, 2026 - POS Sync Test Acknowledgement Boundary
+
+### Fixed
+
+- **Connection test success is shaped** - desktop and mobile POS Sync tests now show reachable feedback only after `/api/pos-sync/test` returns an OK HTTP response plus the shared successful-response acknowledgement.
+- **Verifier tightened** - `npm run verify:public-business-truth` now guards the POS Sync successful-response predicate and rejects the previous loose `data?.success` branch.
+
+### Boundaries
+
+- This is browser-side POS Sync connection-test acknowledgement hardening only. Valid POS test route authentication, tenant checks, rate limiting, outbound webhook checks, POS status writes, Firestore reads/writes, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## July 1, 2026 - Create Menu Preview Status Handling
+
+### Fixed
+
+- **Full preview fetch uses the same status ladder** - `/create-menu/preview` now applies the same sign-in, expired-draft, missing-draft, and fixed load-failure handling to the full-result fetch that follows a completed status poll.
+- **Verifier tightened** - `npm run verify:menu-extraction-pipeline` now guards shared handling for the lightweight preview status poll and the follow-up full fetch.
+
+### Boundaries
+
+- This is browser-side public create-menu preview hardening only. Valid draft polling, extraction jobs, claim/publish behavior, Firestore reads/writes, Storage operations, cache invalidation, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## July 1, 2026 - Business Health Feedback Acknowledgement Boundary
+
+### Fixed
+
+- **Feedback save success is shaped** - Business Health feedback now returns success only after `/api/owner-business-assistant/feedback` responds with the bounded `{ data: { success: true } }` acknowledgement.
+- **Feedback browser request policy is shared** - feedback submits now use the Owner Business Assistant no-store, same-origin, manual-redirect browser request policy before response parsing.
+- **Verifier tightened** - `npm run verify:owner-business-assistant` now guards the feedback response parser, rejection/parse/invalid codes, and hook usage.
+
+### Boundaries
+
+- This is browser-side Business Health feedback acknowledgement hardening only. Valid route authentication, rate limiting, bounded body admission, selected-store scope checks, permission checks, the feedback Firestore write, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## July 1, 2026 - QR Link Health Check V0
+
+### Added
+
+- **Public QR tool added** - `/tools/qr-link-health-check` now gives owners a browser-local report for the URL their QR code opens.
+- **Report boundaries are explicit** - every row includes evidence text, and the report states that QR images are not decoded and target pages are not opened.
+- **MenuList Tools docs expanded** - `__docs__/menulist-tools/qr-link-health-check/` now contains the full required doc set for the tool.
+- **Verifier added** - `npm run verify:qr-link-health-check` checks route, flags, docs, locale copy, discovery files, report evidence, and no-fetch/no-upload/no-provider boundaries.
+
+### Boundaries
+
+- This is a public V0 lead-magnet tool only. It adds no report API route, Firestore report state, Storage upload, Cloud Function, external target fetch, QR image decoding, AI/search provider call, scan ledger, Firebase deployment, or Vercel deployment.
+
+## July 1, 2026 - Payment Verification Acknowledgement Boundary
+
+### Fixed
+
+- **Subscription verification success is shaped** - browser checkout success now waits for `/api/razorpay/verify-subscription` to return `{ success: true, status: "active" }` before resolving the payment flow.
+- **Top-up verification success is shaped** - credit-pack checkout success now waits for `/api/razorpay/verify-topup` to return `{ success: true, newCreditBalance: number }` before resolving the top-up flow.
+- **Verifier tightened** - `npm run verify:menulist-api-tenant-safety` now guards the strict verification response helpers and invalid-response rejection codes.
+
+### Boundaries
+
+- This is browser-side billing acknowledgement hardening only. Valid Razorpay checkout opening, billing API routes, provider verification, Firestore reads/writes, lifecycle notifications, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## July 1, 2026 - Project Delete Acknowledgement Boundary
+
+### Fixed
+
+- **Project delete success now waits for delete acknowledgement** - desktop project modal deletes, desktop selector deletes, and mobile project selector deletes now require a `deleted: true` result for the requested project before local caches change or success copy appears.
+- **Project DAL delete contract is explicit** - `deleteProject()` now uses the shared delete acknowledgement guard with a stable rejection code instead of a generic inline failure.
+- **Verifier tightened** - `npm run verify:public-business-truth` now guards the project delete acknowledgement helper and the desktop/mobile caller rejection codes.
+
+### Boundaries
+
+- This is MenuList owner project deletion hardening only. Valid delete behavior, linked-outlet guards, special-menu guards, public cache invalidation, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## July 1, 2026 - Owner AI Validation Log Boundary
+
+### Fixed
+
+- **Business Copy validation diagnostics are bounded** - invalid `/api/business-copy` requests now log attempted store/menu context as counts and presence/length metadata instead of handing the raw invalid request object to validation logs.
+- **SEO validation diagnostics are bounded** - invalid `/api/seo` requests now use the same bounded attempted-data context before local validation logging.
+- **Description, translation, and item-metadata validation logs reuse bounded context** - invalid `/api/descriptions`, `/api/translations`, and `/api/new-item-metadata` requests now pass their existing bounded attempted-data summary to local validation logs instead of the raw invalid payload.
+- **Verifier tightened** - `npm run verify:ai-accounting` and `npm run verify:menulist-api-tenant-safety` now guard the bounded attempted-data context and reject raw invalid payload logging for these owner AI routes.
+
+### Boundaries
+
+- This is MenuList owner AI route diagnostic hardening only. Valid authentication, SAFE_MODE, rate limits, bounded body admission, schema validation, tenant/outlet checks, capacity checks, Gemini calls, AI accounting, generated response shape, store/project saves, public cache invalidation, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## July 1, 2026 - Answerlattice App Success Diagnostic Boundary
+
+### Fixed
+
+- **App-route success breadcrumbs are bounded** - context-bundle rebuilds, workspace profile saves, tenant-summary syncs, widget key actions, widget config saves, hosted-help saves, integration saves/tests, and product-surface summary rebuilds now use fixed runtime diagnostic codes with presence/length metadata for workspace identifiers.
+- **Knowledge Intake scope breadcrumbs are bounded** - the shared intake diagnostic helper now logs tenant/store scope as presence/length metadata instead of numeric workspace identifiers.
+- **Verifier tightened** - `npm run verify:answerlattice-runtime-truth` now guards the fixed success diagnostic codes and bans the previous raw success logger imports/calls for the patched routes.
+
+### Boundaries
+
+- This is Answerlattice app-runtime diagnostic hardening only. Valid route authentication, permissions, rate limits, request-body caps, Firestore reads/writes, Storage behavior, provider calls, owner/customer surfaces, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## July 1, 2026 - Public Truth Tools Roadmap Ordering
+
+### Changed
+
+- **Tool portfolio reordered** - Public Truth Tools now prioritizes QR Link Health Check, Menu / Service Readability Check, WhatsApp Action Link Check, Hours & Holiday Hours Check, and Photo / Visual Identity Gap Check after Public Truth Check.
+- **Research basis captured** - the Public Truth Tools spec now records external validation for SMB digital-maintenance constraints, customer review-to-website behavior, Google Business Profile basics, WhatsApp business messaging, India mobile-first SMB adoption, QR menu constraints, and structured-data boundaries.
+- **Paid add-on boundary clarified** - paid Public Truth Tools value is reserved for recurrence, history, multi-location reporting, agency export, partner/reseller reporting, and owner-approved repair rather than a better one-time check.
+
+### Boundaries
+
+- This is MenuList Tools documentation and roadmap alignment only. Public routes, owner cards, feature flags, Firebase reads/writes/deletes, Storage operations, Cloud Functions, Firestore rules/indexes, Vercel deployment, and Firebase deployment were not changed.
+
+## July 1, 2026 - Answerlattice FAQ Generation Diagnostic Boundary
+
+### Fixed
+
+- **FAQ generation success logs are bounded** - the article FAQ refresh route now records completion through `answerlattice_faq_generation_completed` with tenant/store/article presence and length metadata.
+- **Raw success scope removed** - FAQ generation no longer logs raw tenant id, store id, or article id in the success breadcrumb.
+- **Verifier tightened** - `npm run verify:answerlattice-runtime-truth` now guards the fixed completion diagnostic and bans the old raw success logger.
+
+### Boundaries
+
+- This is Answerlattice FAQ generation diagnostic hardening only. Valid article reads, linked FAQ queries, Gemini calls, FAQ batch writes, AI operation logging, public cache behavior, Firestore rules/indexes, Cloud Functions, Firebase deployment, owner/customer surfaces, and Vercel deployment were not changed.
+
+## July 1, 2026 - Menu Presence Store Scope Boundary
+
+### Fixed
+
+- **Presence writes verify the active store** - `updateMenuPresence()` now rejects when the passed store does not match the active session store before writing owner-confirmed public placement state.
+- **Starter activation signals verify the active store** - `recordStarterActivationSignal()` now applies the same store-scope check before writing starter activation action evidence.
+- **Verifier tightened** - `npm run verify:public-business-truth` and `npm run verify:menulist-api-tenant-safety` now guard the active-session store boundary for presence confirmations and starter activation signals.
+
+### Boundaries
+
+- This is owner-local Menu Presence DAL scope hardening only. Valid presence writes, starter activation evidence, read models, desktop/mobile UI behavior, public output, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## July 1, 2026 - Staff Mutation Identity Acknowledgement
+
+### Fixed
+
+- **Staff mutation acknowledgements verify identity** - the shared staff client now rejects successful staff mutation envelopes when returned `user.id` does not match returned `userId`.
+- **Desktop and mobile inherit the same guard** - create, update, remove, reset-passcode, and force-sign-out flows now fail closed before local staff rows, selected-user state, passcode sheets, or success copy can advance on a mismatched acknowledgement.
+- **Verifier tightened** - `npm run verify:menulist-api-tenant-safety` and `npm run verify:auth-security-failure-matrix` now guard the staff mutation identity check.
+
+### Boundaries
+
+- This is staff/role client acknowledgement hardening only. Valid staff CRUD, role CRUD, server permission checks, Firebase Auth work, Firestore reads/writes, mobile/desktop UI behavior, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## July 1, 2026 - Answerlattice Private Bundle Object Boundary
+
+### Fixed
+
+- **Private bundle object reads are bounded** - the shared Answerlattice server bundle loader now checks Storage metadata before downloading private compiled-context objects and repeats the byte check after download.
+- **Oversized private objects fail closed** - oversized private MCP/entity bundle objects are treated as unavailable, so public entity reads can fall back and MCP reads do not parse oversized JSON.
+- **Verifier tightened** - `npm run verify:answerlattice-runtime-truth` now guards the private bundle object ceiling, metadata check, post-download byte check, and bounded oversized-object diagnostic.
+
+### Boundaries
+
+- This is Answerlattice private compiled-context read hardening only. Valid context bundle builds, Storage object paths, public bundle proxy behavior, public API authentication/scopes, MCP session semantics, Firestore rules/indexes, Storage rules, Cloud Functions, Firebase deployment, owner/customer surfaces, and Vercel deployment were not changed.
+
+## June 30, 2026 - CSP Report Production Log Boundary
+
+### Fixed
+
+- **CSP violation logs are bounded** - production CSP report events now store directive category, blocked-URI kind, numeric location metadata, and presence/length fields instead of raw report strings.
+- **Malformed reports stay quiet** - malformed JSON CSP reports now return the standard no-content response instead of entering unexpected-failure logging.
+- **Verifier tightened** - `npm run verify:menulist-api-tenant-safety` now guards the bounded CSP violation log context and bans raw violation payload logging.
+
+### Boundaries
+
+- This is CSP report security-log metadata hardening only. Valid CSP report rate limiting, bounded body reads, severity detection, development behavior, Firebase rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Pricing PDF Queue Diagnostic Boundary
+
+### Fixed
+
+- **PDF queue breadcrumbs are bounded** - disabled-flag, debounce-reset, scheduled, and job-created pricing PDF queue events now use `pricing_pdf_regen_*` diagnostic codes.
+- **Raw queue identifiers removed** - PDF queue logs now store project/job identifiers as presence-length metadata instead of raw project or job IDs.
+- **Verifier tightened** - `npm run verify:menulist-api-tenant-safety` now guards the PDF queue diagnostic codes and bans the old raw `secureLog("[PDF Queue] ...")` pattern.
+
+### Boundaries
+
+- This is Pricing Integrity diagnostic hardening only. Valid background PDF regen flag behavior, debounce timing, job writes when enabled, on-demand PDF behavior, Firebase rules/indexes, Cloud Functions, Firebase deployment, owner/customer surfaces, and Vercel deployment were not changed.
+
+## June 30, 2026 - Answerlattice AI Provider Output Boundary
+
+### Fixed
+
+- **Provider text is capped before parsing** - FAQ generation and article translation now cap Gemini response text before JSON extraction or translation fallback handling.
+- **Oversized translation output fails closed** - translation provider output over the route ceiling returns the existing fixed translation failure path before cache/version or article writes.
+- **Image-query breadcrumbs are metadata-only** - the shared vector helper now logs image-query success with prompt/query length and provider-response length/truncation metadata instead of raw prompt/query fields.
+- **Verifier tightened** - `npm run verify:answerlattice-runtime-truth` now guards the provider-output caps, oversized/truncated branches, bounded image-query breadcrumb metadata, and raw success-log bans.
+
+### Boundaries
+
+- This is Answerlattice provider-output hardening only. Valid FAQ generation, article translation, vector/RAG search, image-query fallback, AI operation accounting, Firestore rules/indexes, Cloud Functions, Firebase deployment, owner/customer surfaces, and Vercel deployment were not changed.
+
+## June 30, 2026 - Answerlattice App Security Log Boundary
+
+### Fixed
+
+- **Answerlattice security logs are bounded** - access-control denials, protected read limits, Knowledge Intake limits, staff-management security events, and platform intake-monitor limits now use bounded route/session metadata plus presence-length fields.
+- **Raw route context removed** - the affected Answerlattice app security events no longer import or spread raw `buildSecurityContext()` output.
+- **Verifier tightened** - `npm run verify:answerlattice-runtime-truth` now guards the shared bounded security-log helper, affected runtime consumers, and raw-context bans.
+
+### Boundaries
+
+- This is Answerlattice security-log metadata hardening only. Valid auth, permission checks, rate-limit windows, Retry-After headers, response statuses, staff policy behavior, Firestore reads/writes, Firebase rules/indexes, Cloud Functions, Firebase deployment, owner/platform surfaces, and Vercel deployment were not changed.
+
+## June 30, 2026 - Guest Feedback DAL Acknowledgement Boundary
+
+### Fixed
+
+- **Feedback list loads are shaped** - desktop and mobile owner feedback screens now require a valid list result before rendering feedback items.
+- **Feedback counts are shaped** - the desktop needs-attention badge now requires a finite non-negative count before updating.
+- **Status writes verify the fetched record** - `updateFeedbackStatus()` now requires the internal feedback lookup to return a shaped record with the requested id before writing, and mobile resolve waits for the acknowledged write before showing resolved success.
+- **Verifier tightened** - `npm run verify:public-business-truth` now guards the list/count acknowledgements, fetched-record shape check, rejected acknowledgement codes, and mobile resolve acknowledgement order.
+
+### Boundaries
+
+- This is Guest Feedback owner-read/write acknowledgement hardening only. Valid public feedback submission, private feedback writes, owner list/status/reply semantics, MOL event writes, Firestore rules/indexes, Cloud Functions, Firebase deployment, public cache invalidation, and Vercel deployment were not changed.
+
+## June 30, 2026 - CampaignCue API Security Log Boundary
+
+### Fixed
+
+- **CampaignCue guard security logs are bounded** - tenant-violation, rate-limit, malformed-JSON, and Design Cue validation events now use bounded route/session metadata plus endpoint/method/scope/error presence-length fields.
+- **Raw route context removed** - CampaignCue API guard and Design Cue validation security events no longer import or spread raw `buildSecurityContext()` output.
+- **Verifier tightened** - `npm run verify:campaigncue` now guards the bounded CampaignCue security context tokens and raw-context bans.
+
+### Boundaries
+
+- This is CampaignCue security-log metadata hardening only. Valid CampaignCue auth/scope checks, rate limits, JSON body admission, Design Cue fail-closed behavior, response statuses, Firestore reads/writes, Firebase rules/indexes, Cloud Functions, Firebase deployment, owner workspace behavior, and Vercel deployment were not changed.
+
+## June 30, 2026 - Answerlattice Public Bundle Proxy Download Boundary
+
+### Fixed
+
+- **Public bundle downloads are bounded** - `/api/answerlattice/bundles/public/[...path]` now checks Storage metadata size before downloading cache-miss bundle objects and repeats the byte check after download.
+- **Oversized bundles fail closed** - oversized public bundle objects now return the existing no-store `503 Bundle unavailable` response and log `answerlattice_public_bundle_proxy_oversized` with bounded bundle-path metadata.
+- **Verifier tightened** - `npm run verify:answerlattice-runtime-truth` now guards the public bundle proxy download cap, metadata check, post-download byte check, oversized diagnostic, hashed rate-limit key, and bounded proxy diagnostics.
+
+### Boundaries
+
+- This is Answerlattice public bundle proxy hardening only. Valid context bundle builds, Storage object paths, public bundle cache hits, cache-miss rate limiting, public widget config bundle pointers, Firestore rules/indexes, Storage rules, Cloud Functions, Firebase deployment, owner/customer surfaces, and Vercel deployment were not changed.
+
+## June 30, 2026 - GrowthOS API Security Log Boundary
+
+### Fixed
+
+- **Growth Kits route security logs are bounded** - refresh, generate, export, and review-guard invalid-JSON, validation, and tenant-violation events now use bounded route/session metadata.
+- **Raw route context removed** - GrowthOS API routes no longer import or spread raw `buildSecurityContext()` output into security events.
+- **Verifier tightened** - `npm run verify:growthos` now guards the bounded GrowthOS route-security helper and raw-context bans.
+
+### Boundaries
+
+- This is GrowthOS security-log metadata hardening only. Valid Growth Kits refresh, generation, export recording, review guard behavior, entitlement checks, rate limits, response statuses, Firestore reads/writes, Firestore rules/indexes, Cloud Functions, Firebase deployment, owner/mobile UI behavior, and Vercel deployment were not changed.
+
+## June 30, 2026 - Digital Screen Slide Upload Acknowledgement
+
+### Fixed
+
+- **Slide upload success is shaped** - `uploadScreenSlide()` now requires a valid owner-upload slide result after the outer DAL composer returns.
+- **False upload success is blocked** - storage, session, and add-slide failures that collapse to `apiCallComposer()` fallback values now reject through the existing desktop/mobile failed-upload paths instead of showing uploaded feedback.
+- **Verifier tightened** - `npm run verify:public-business-truth` now guards the upload result assertion alongside the existing Digital Screen seen-signal request boundary.
+
+### Boundaries
+
+- This is Digital Screens owner-upload acknowledgement hardening only. Valid slide uploads, Storage paths, screen tokens, screen state writes, public screen rendering, seen-signal route behavior, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Vercel Domain Provider Timeout Boundary
+
+### Fixed
+
+- **Domain provider calls are bounded** - the shared Vercel domain helper now aborts stuck add, status, and remove requests with a provider timeout and clears the abort timer after each request.
+- **Shared domain flows inherit the guard** - MenuList custom-domain management and Answerlattice hosted-help domain provisioning keep the same fixed Vercel host, encoded path segments, manual redirect handling, and 64KB bounded response parser.
+- **Verifiers tightened** - `npm run verify:public-business-truth` and `npm run verify:answerlattice-runtime-truth` now guard the Vercel helper timeout, abort signal, cleanup, manual redirect, path encoding, and bounded response parsing.
+
+### Boundaries
+
+- This is shared Vercel provider-client hardening only. Valid custom-domain add/status/remove behavior, hosted-help domain save/status behavior, Firestore reads/writes, hosted-help registry writes, public cache invalidation, Firestore rules/indexes, Cloud Functions, Firebase deployment, owner/mobile UI behavior, and Vercel deployment were not changed.
+
+## June 30, 2026 - SignalDesk API Guard Security Log Boundary
+
+### Fixed
+
+- **SignalDesk guard security logs are bounded** - shared SignalDesk validation, authorization, rate-limit, and malformed-JSON events now use bounded route/session metadata plus endpoint/method/action/permission/feature presence-length fields.
+- **Raw route context removed** - `src/lib/signaldesk/apiGuards.ts` no longer imports or spreads raw `buildSecurityContext()` output into SignalDesk security events.
+- **Verifier tightened** - `npm run verify:signaldesk` now guards the bounded SignalDesk security context tokens and raw-context bans.
+
+### Boundaries
+
+- This is SignalDesk security-log metadata hardening only. Valid SignalDesk access checks, request body admission, rate limits, response statuses, provider/source work, AI work, Firestore reads/writes, Firebase rules/indexes, Cloud Functions, Firebase deployment, owner/customer MenuList surfaces, and Vercel deployment were not changed.
+
+## June 30, 2026 - Answerlattice Staff Setup Email Provider Boundary
+
+### Fixed
+
+- **Staff setup email provider calls are bounded** - Answerlattice staff creation now sends Firebase Auth setup-email requests with manual redirect handling, a provider timeout, and cleanup of the abort timer.
+- **Setup email failures stay partial and fixed** - rejected, timed-out, or failed provider calls now log bounded diagnostics and return the existing `password_reset_email_failed` marker instead of letting provider network failures interrupt the staff-create response.
+- **Verifier tightened** - `npm run verify:answerlattice-runtime-truth` now guards the fixed Firebase Auth endpoint, API-key encoding, timeout, abort signal, bounded diagnostics, fixed failure marker, and provider-text bans.
+
+### Boundaries
+
+- This is Answerlattice staff setup-email provider hardening only. Valid staff creation, role assignment, Firebase Auth user setup, Answerlattice claims, Firestore writes, Team Access browser behavior, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Auth Middleware Security Log Boundary
+
+### Fixed
+
+- **Auth wrapper security logs are bounded** - `withAuth()` now logs CORS, authentication, account-state, platform-role, and store-role security events with bounded route/session metadata.
+- **Tenant/store escalation logs are bounded** - `verifyTenantAccess()` now keeps critical tenant/store escalation event names and severities while logging attempted/session tenant and store values as presence/length metadata only.
+- **Raw route context removed** - auth middleware security events no longer import or spread raw `buildSecurityContext()` output, raw IPs, raw user agents, raw emails, or raw account identifiers.
+- **Verifier tightened** - `npm run verify:menulist-api-tenant-safety` and `npm run verify:auth-security-failure-matrix` now guard the middleware bounded-context tokens and raw-context bans.
+
+### Boundaries
+
+- This is auth middleware security-log metadata hardening only. Valid CORS handling, authenticated route admission, account-state blocking, platform/store role checks, tenant/store access checks, handler execution, response codes, Firestore rules/indexes, Cloud Functions, Firebase deployment, owner/mobile UI behavior, and Vercel deployment were not changed.
+
+## June 30, 2026 - Answerlattice Knowledge Intake Request Boundary
+
+### Fixed
+
+- **Knowledge Intake browser calls use one request policy** - job list/load/create, source add, media extraction, URL discovery, entity search, analysis, review-item update, and publish calls now use no-store cache, same-origin credentials, and manual redirect handling before bounded response validation.
+- **Media extraction upload follows the same boundary** - the multipart media upload path now uses the shared request policy before the existing 64 KB acknowledgement parser and media response shape guard.
+- **Verifier tightened** - `npm run verify:answerlattice-runtime-truth` now guards the Knowledge Intake request policy, both policy applications, response cap, shape guards, bounded diagnostics, and direct JSON fallback ban.
+
+### Boundaries
+
+- This is Answerlattice Knowledge Intake browser request hardening only. Valid intake reads/writes, media extraction, support-credit accounting, AI operation logging, cache invalidation, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Answerlattice Article Entity Extraction Request Boundary
+
+### Fixed
+
+- **Article entity extraction stays non-blocking but acknowledged** - the KB article DAL now sends `/api/answerlattice/articles/extract-entities` through a shared no-store, same-origin, manual-redirect browser policy and reads the route response through a 16 KB bounded acknowledgement parser.
+- **Malformed extraction responses are observable** - rejected, malformed, oversized, or invalid entity-extraction responses now log bounded diagnostics without interrupting article saves.
+- **Verifier tightened** - `npm run verify:answerlattice-runtime-truth` now guards the article entity-extraction request policy, response cap, shape guard, bounded diagnostics, and direct JSON fallback ban.
+
+### Boundaries
+
+- This is Answerlattice browser request/acknowledgement hardening only. Valid article saves, entity extraction route behavior, AI operation accounting, Firestore reads/writes, candidate creation, cache invalidation, rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Messaging Onboarding Ops Route Diagnostics
+
+### Fixed
+
+- **Ops snapshot failures use bounded diagnostics** - `/api/ops/messaging-onboarding` now logs `ops_messaging_onboarding_route_failed` through bounded Ops diagnostics with operator/request-path presence metadata only.
+- **Raw route context removed** - the snapshot catch path no longer imports or spreads raw `buildSecurityContext()` output and no longer calls raw `logger.error()`.
+- **Verifier tightened** - `npm run verify:menulist-api-tenant-safety` now guards the bounded Ops diagnostics tokens and raw-context bans for the route.
+
+### Boundaries
+
+- This is Messaging Onboarding Ops route diagnostics hardening only. Valid platform-only access, feature flags, rate limits, Firestore snapshot reads, response shaping, dashboard rendering, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Shared Helper Security Log Boundary
+
+### Fixed
+
+- **Permission and staff security logs are bounded** - shared permission and staff helpers now use bounded route/session metadata plus length/count-only permission, label, tenant, store, and endpoint context instead of raw `buildSecurityContext()` output.
+- **Profile validation security logs are bounded** - profile update validation failures now log route/session metadata and validation-error presence/length only.
+- **Google Analytics property mismatch logs are bounded** - configured-property authorization failures now log requested-property presence/length and allowed-property count only.
+- **Verifier tightened** - `npm run verify:menulist-api-tenant-safety` now guards the shared helper bounded-context tokens and raw-context bans.
+
+### Boundaries
+
+- This is shared helper security-log metadata hardening only. Valid permission checks, staff CRUD, role CRUD, profile updates, Google Analytics property authorization, Firestore reads/writes, Firebase Auth operations, Google Analytics provider calls, Firestore rules/indexes, Cloud Functions, Firebase deployment, owner/mobile UI behavior, and Vercel deployment were not changed.
+
+## June 30, 2026 - Answerlattice Governance Request Boundary
+
+### Fixed
+
+- **Draft regeneration requests stay same-origin and uncached** - the Answerlattice mutation proposal DAL now calls `/api/answerlattice/mutation-proposals/regenerate-draft` through a shared no-store, same-origin, manual-redirect browser policy before the existing bounded acknowledgement parser.
+- **Product-surface summary rebuilds do not follow redirects** - the Product Surfaces DAL now applies the same browser request boundary before parsing rebuild responses and requiring a valid `summary` object.
+- **Verifier tightened** - `npm run verify:answerlattice-runtime-truth` now guards both request policies alongside the existing response caps, shape guards, bounded diagnostics, and direct JSON fallback bans.
+
+### Boundaries
+
+- This is Answerlattice browser request hardening only. Valid draft regeneration, product-surface summary rebuild behavior, route auth, rate limits, Firestore reads/writes, AI operation accounting, rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Answerlattice AI Operations Browser Request Boundary
+
+### Fixed
+
+- **Support-credit history reads do not follow redirects** - the Answerlattice AI operations DAL now calls `/api/answerlattice/ai-operations` with manual redirect handling before the existing bounded response parser.
+- **Usage-history reads stay same-origin and uncached** - the shared request policy pins same-origin credentials and no-store cache for support-credit usage history reads.
+- **Verifier tightened** - `npm run verify:answerlattice-runtime-truth` now guards the AI operations client request policy alongside the existing response cap, paginated shape guard, bounded diagnostics, and direct JSON fallback ban.
+
+### Boundaries
+
+- This is Answerlattice AI operations browser request hardening only. Valid support-credit history reads, owner-safe field filtering, pagination, Firestore reads/writes, AI accounting, rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Domain Settings Shared Browser Request Policy
+
+### Fixed
+
+- **Domain setup requests use one authenticated browser policy** - desktop Domain Settings, embedded Custom Domain, and mobile Domain Settings `/api/domain` and `/api/subdomain/check` calls now use the shared `AUTH_BROWSER_REQUEST_POLICY`.
+- **Domain request drift is guarded** - `npm run verify:public-business-truth` and `npm run verify:menulist-api-tenant-safety` now require domain settings browser callers to use the shared no-store, same-origin, manual-redirect policy.
+
+### Boundaries
+
+- This is client-side domain-settings request-policy consolidation only. Valid subdomain availability reads, custom-domain provider calls, store writes, public cache invalidation, DNS display behavior, Firestore rules/indexes, Cloud Functions, Firebase deployment, owner/mobile routes, and Vercel deployment were not changed.
+
+## June 30, 2026 - Reseller Mutation Security Log Boundary
+
+### Fixed
+
+- **Reseller mutation security context is bounded** - `/api/reseller/onboard`, `/api/reseller/renew`, `/api/reseller/add-location-capacity`, and `/api/reseller/confirm-payment` now use bounded route metadata for validation, profile, and authorization security events instead of raw `buildSecurityContext()` output.
+- **Reseller management raw-context import removed** - `/api/reseller/manage` keeps bounded reseller success breadcrumbs without importing raw route security context.
+- **Verifier tightened** - `npm run verify:menulist-api-tenant-safety` now guards bounded reseller mutation security context, reseller management raw-import bans, and raw-context bans.
+
+### Boundaries
+
+- This is reseller route security-log metadata hardening only. Valid onboarding, renewal, add-location capacity, offline payment confirmation, platform reseller management, Firebase Auth owner/reseller account creation, Razorpay setup, subscription/transaction writes, entitlement sync, public cache invalidation, Firestore rules/indexes, Cloud Functions, Firebase deployment, reseller desktop/mobile UI behavior, and Vercel deployment were not changed.
+
+## June 30, 2026 - Answerlattice Access Provider Request Boundary
+
+### Fixed
+
+- **Dashboard access reads are acknowledged before state updates** - the Answerlattice access provider now reads `/api/answerlattice/access` through a 64 KB bounded response parser and requires a shaped access context before exposing dashboard permissions.
+- **Access reads stay same-origin and uncached** - the provider request policy pins no-store cache, same-origin credentials, and manual redirect handling before response parsing.
+- **Verifier tightened** - `npm run verify:answerlattice-runtime-truth` now guards the access provider request policy, response cap, shape guard, diagnostics, fixed failure copy, and direct JSON fallback ban.
+
+### Boundaries
+
+- This is Answerlattice dashboard access browser request/response hardening only. Valid access resolution, role normalization, permission checks, Firestore reads/writes already performed by `/api/answerlattice/access`, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Ops Notification Security Log Boundary
+
+### Fixed
+
+- **Notification Ops security context is bounded** - `/api/ops/platform-notifications` and `/api/ops/owner-notifications` now use bounded route metadata for query-validation, rate-limit, and action-validation security events instead of raw `buildSecurityContext()` output.
+- **Invalid action text is summarized** - rejected notification action requests record attempted action presence/length metadata instead of raw action text.
+- **Verifier tightened** - `npm run verify:menulist-api-tenant-safety` now guards bounded Ops notification security context, raw-context bans, and raw attempted-action bans.
+
+### Boundaries
+
+- This is Ops notification security-log metadata hardening only. Valid platform notification reads/actions, owner notification reads/recovery actions, Firestore behavior, provider behavior, Firestore rules/indexes, Cloud Functions, Firebase deployment, Ops Control Room behavior, and Vercel deployment were not changed.
+
+## June 30, 2026 - Temporary Status Shared Browser Request Policy
+
+### Fixed
+
+- **Temporary Status mutations use one authenticated browser policy** - desktop Business Settings, mobile Temporary Status, and mobile Today/Hours status set/clear calls now use the shared `AUTH_BROWSER_REQUEST_POLICY`.
+- **Temporary Status request drift is guarded** - `npm run verify:public-business-truth` and `npm run verify:menulist-api-tenant-safety` now require temp-status browser callers to use the shared no-store, same-origin, manual-redirect policy.
+
+### Boundaries
+
+- This is client-side Temporary Status request-policy consolidation only. Valid status set/clear writes, optimistic rollback behavior, public cache invalidation inside `/api/store/temp-status`, public banner rendering, Firestore rules/indexes, Cloud Functions, Firebase deployment, owner/mobile routes, and Vercel deployment were not changed.
+
+## June 30, 2026 - Answerlattice Pre-Onboarding Prompt Request Boundary
+
+### Fixed
+
+- **Prompt preview redirects are not followed** - the public pre-onboarding prompt modal now loads `/pre-onboarding.md` with manual redirect handling before MIME and size validation.
+- **Prompt preview stays same-origin and uncached** - the modal request policy pins same-origin credentials and no-store cache for the Markdown preview handoff.
+- **Verifier tightened** - `npm run verify:answerlattice-runtime-truth` now guards the pre-onboarding prompt request policy, policy spread, response cap, MIME allowlist, and copy fallback acknowledgement.
+
+### Boundaries
+
+- This is Answerlattice pre-onboarding prompt browser request hardening only. Valid `/pre-onboarding`, `/pre-onboarding.md`, prompt copy/download behavior, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Ops SAFE_MODE Security Log Boundary
+
+### Fixed
+
+- **Ops route security context is bounded** - `/api/ops/safe-mode` and `/api/ops/mute-alerts` now use bounded route metadata for rate-limit, validation, and SAFE_MODE toggle security events instead of raw `buildSecurityContext()` output.
+- **SAFE_MODE reason is not copied into security logs** - activation reason text is summarized as presence/length in the security event while existing ops config and alert behavior stay unchanged.
+- **Verifier tightened** - `npm run verify:menulist-api-tenant-safety` now guards bounded Ops route security context, raw-context bans, and the raw SAFE_MODE reason security-log ban.
+
+### Boundaries
+
+- This is platform Ops security-log metadata hardening only. Valid SAFE_MODE activation/deactivation, alert mute writes, platform alert creation, Firestore behavior, Firestore rules/indexes, Cloud Functions, Firebase deployment, Ops Control Room behavior, and Vercel deployment were not changed.
+
+## June 30, 2026 - Answerlattice Public Content Client Request Boundary
+
+### Fixed
+
+- **Public-content redirects are not followed** - the shared public-content browser client now uses manual redirect handling before the existing bounded response parser.
+- **Public-content reads stay same-origin and uncached** - the client request policy pins same-origin credentials and no-store cache for Help Center, FAQ, article, AI Search category, and changelog reads.
+- **Verifier tightened** - `npm run verify:answerlattice-runtime-truth` now guards the public-content request policy, policy spread, response cap, envelope guard, diagnostics, and direct JSON parsing ban.
+
+### Boundaries
+
+- This is Answerlattice public-content browser request hardening only. Valid cached content reads, cache keys, cache freshness, owner-write invalidation, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Compliance Pages Shared Browser Request Policy
+
+### Fixed
+
+- **Compliance editor requests use one authenticated browser policy** - standalone desktop Compliance Pages, embedded Custom Domain compliance, and mobile compliance editor load/save/reset calls now use the shared `AUTH_BROWSER_REQUEST_POLICY`.
+- **Compliance request drift is guarded** - `npm run verify:public-business-truth` and `npm run verify:menulist-api-tenant-safety` now require each Compliance Pages browser caller to use the shared no-store, same-origin, manual-redirect policy.
+
+### Boundaries
+
+- This is client-side Compliance Pages request-policy consolidation only. Valid compliance loads, override/reset writes, public compliance rendering, route auth/permission/rate-limit behavior, Firestore rules/indexes, Cloud Functions, Firebase deployment, owner/mobile routes, and Vercel deployment were not changed.
+
+## June 30, 2026 - Onboarding Subscription Security Log Boundary
+
+### Fixed
+
+- **Onboarding subscription security context is bounded** - `/api/onboarding/create-subscription` now uses bounded route metadata for existing-user, rate-limit, and validation security events instead of raw `buildSecurityContext()` output.
+- **Verifier tightened** - `npm run verify:menulist-api-tenant-safety` now guards bounded onboarding subscription security context and bans raw route security context in the onboarding subscription route.
+
+### Boundaries
+
+- This is onboarding subscription security-log metadata hardening only. Valid onboarding admission, tenant/store/user transaction, public cache refresh, Razorpay plan/subscription creation, pending subscription write, Firestore/Firebase Auth behavior, Firestore rules/indexes, Cloud Functions, Firebase deployment, owner/mobile billing surfaces, and Vercel deployment were not changed.
+
+## June 30, 2026 - Answerlattice Tenant Summary Client Request Boundary
+
+### Fixed
+
+- **Tenant-summary marker redirects are not followed** - the client-side entity-created marker now uses manual redirect handling before bounded response parsing.
+- **Tenant-summary marker requests stay same-origin and uncached** - the shared tenant-summary client request policy pins same-origin credentials and no-store cache.
+- **Tenant-summary acknowledgement is shaped** - the client now requires the `{ success: true }` response shape before treating scheduler-discovery sync as acknowledged.
+- **Verifier tightened** - `npm run verify:answerlattice-runtime-truth` now guards the tenant-summary client request policy, response cap, shape guard, diagnostics, and status-only acknowledgement ban.
+
+### Boundaries
+
+- This is Answerlattice tenant-summary client request/response hardening only. Valid entity creation, compiled-context source-version marking, tenant-summary sync writes, scheduler discovery, Firestore reads/writes/deletes, rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Auth Route Security Log Boundary
+
+### Fixed
+
+- **Auth route security context is bounded** - `/api/auth/access-status`, `/api/auth/change-password`, `/api/auth/switch-store`, and `/api/auth/claim-account` now use bounded route metadata for security events instead of raw `buildSecurityContext()` output.
+- **Auth verifiers tightened** - `npm run verify:auth-security-failure-matrix` and `npm run verify:menulist-api-tenant-safety` now guard bounded auth route security context and raw-context bans.
+
+### Boundaries
+
+- This is auth route security-log metadata hardening only. Valid session polling, password change, store switching, claim-account linking, Firestore/Firebase Auth behavior, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Answerlattice Install Center Browser Request Boundary
+
+### Fixed
+
+- **Install setup redirects are not followed** - the Install Center widget-config setup load now uses manual redirect handling before bounded response parsing.
+- **Install setup requests stay same-origin and uncached** - the shared Install Center request policy pins same-origin credentials and no-store cache for the setup read.
+- **Verifier tightened** - `npm run verify:answerlattice-runtime-truth` now guards the Install Center request policy alongside existing response caps, shape guards, diagnostics, and fixed failure copy.
+
+### Boundaries
+
+- This is Answerlattice Install Center browser request hardening only. Valid widget-config reads, optional activation-summary reads, install setup cards, agent packet/ZIP routes, Firestore reads/writes/deletes, rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Platform Pull API Private Response Cache
+
+### Fixed
+
+- **Pull API responses stay out of shared caches** - `/api/public/v1/business` and `/api/public/v1/menu` now return API-key-gated 200/304 responses with private cache headers instead of shared public cache headers.
+- **API-key variance is explicit** - the shared pull API response header helper emits `Vary: X-API-Key` while preserving ETag and conditional request behavior.
+- **Verifiers tightened** - `npm run verify:public-business-truth` and `npm run verify:menulist-api-tenant-safety` now guard the private cache helper and ban the previous shared-cache literals on both pull routes.
+
+### Boundaries
+
+- This is Platform Pull API response-header hardening only. Valid API key validation, rate limits, response schemas, ETag generation, Firestore reads/writes/deletes, rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Public Truth Check Evidence Contract
+
+### Fixed
+
+- **Report rows now carry explicit evidence text** - V0 public reports and V1 owner reports include a per-check evidence sentence stating what MenuList checked and what it did not check.
+- **V0 upload boundary clarified** - Public Truth Check V0 is pasted text, URL reference, and owner-marked visible facts only. Uploaded files are not stored by V0 and belong only to approved setup or manual-review flows.
+- **Verifier tightened** - `npm run verify:public-truth-check` now guards the complete doc set, explicit evidence text contract, and V0 no-upload-storage boundary.
+
+### Boundaries
+
+- This is Public Truth Check report-contract, UI copy, docs, and verifier hardening only. External URL fetching, Google inspection, AI/search checks, report storage, uploaded-file storage, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Answerlattice Governance Translation Browser Request Boundary
+
+### Fixed
+
+- **Governance translation redirects are not followed** - `/api/answerlattice/translate` browser calls now use manual redirect handling before bounded response parsing.
+- **Governance translation requests stay same-origin and uncached** - the shared Governance translation request policy pins same-origin credentials and no-store cache for article translation.
+- **Verifier tightened** - `npm run verify:answerlattice-runtime-truth` now guards the Governance translation request policy alongside existing response caps, shape guards, diagnostics, and fixed failure copy.
+
+### Boundaries
+
+- This is Answerlattice Governance translation browser request hardening only. Valid article translation, KB cache/context version bumps, article translation writes, AI operation logging, Firestore reads/writes/deletes, rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Answerlattice KB Article Browser Request Boundary
+
+### Fixed
+
+- **Article support-action redirects are not followed** - FAQ suggestion refresh and article embedding generation now use manual redirect handling before bounded response parsing.
+- **Article support-action requests stay same-origin and uncached** - the shared Article Modal request policy pins same-origin credentials and no-store cache for both cost-bearing POST calls.
+- **Verifier tightened** - `npm run verify:answerlattice-runtime-truth` now guards the Article Modal request policy alongside existing response caps, shape guards, diagnostics, and fixed failure copy.
+
+### Boundaries
+
+- This is Answerlattice KB Article Modal browser request hardening only. Valid FAQ generation, FAQ writes, article `faqIds` mirror writes, article embedding generation, embedding writes, AI operation logging, Firestore reads/writes/deletes, rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Publish Verification URL Parity
+
+### Fixed
+
+- **Publish verification targets the public menu route** - desktop B2C publish and mobile Design publish now build the post-publish health-check URL through the routed project/menu URL helper instead of tenant-root assumptions.
+- **Mobile verification setup diagnostics are precise** - mobile Design publish logs setup failures only; callable/provider failures remain inside the shared `verifyMenuPublish` wrapper so successful owner publish feedback stays non-blocking.
+- **Verifier tightened** - `npm run verify:public-business-truth` now guards desktop/mobile publish verification URL construction, custom-domain support, default-project semantics, bounded URL metadata, and the mobile fire-and-forget wrapper boundary.
+
+### Boundaries
+
+- This is publish verification handoff hardening only. Valid project publish writes, public cache invalidation, menu rendering, Cloud Function implementation, Firestore rules/indexes, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Business Health and Menu Manager Guard Security Logs
+
+### Fixed
+
+- **Shared guard security context is bounded** - Business Health and Menu Manager API guards now use bounded user/request metadata instead of raw `buildSecurityContext()` output.
+- **Guard diagnostics stay scoped** - selected-store, tenant-access, rate-limit, and Menu Manager invalid-request security events keep hashed limiter keys and bounded tenant/store/user metadata.
+- **Verifiers tightened** - `npm run verify:menulist-api-tenant-safety`, `npm run verify:ai-menu-manager`, and `npm run verify:owner-business-assistant` now guard the shared bounded route-security helper and raw security-context bans.
+
+### Boundaries
+
+- This is security-log metadata hardening only. Valid Business Health reads/answers/feedback, Menu Manager command and proposal fallback routes, auth, tenant/store selection, rate limits, bounded request/response handling, Firestore reads/writes/deletes, rules/indexes, Cloud Functions, Firebase deployment, owner/mobile UI behavior, and Vercel deployment were not changed.
+
+## June 30, 2026 - Answerlattice Settings Browser Request Boundary
+
+### Fixed
+
+- **Settings redirects are not followed** - workspace-profile load/save, workflow-notification load/save, and workflow-notification test calls now use manual redirect handling before bounded response parsing.
+- **Settings requests stay same-origin and uncached** - the shared Settings request policy pins same-origin credentials and no-store cache across all Settings route handoffs.
+- **Verifier tightened** - `npm run verify:answerlattice-runtime-truth` now guards the Settings request policy alongside existing response caps, shape guards, diagnostics, and fixed failure copy.
+
+### Boundaries
+
+- This is Answerlattice Settings browser request hardening only. Valid workspace-profile reads/writes, integration config reads/writes, test-event queueing, Firestore reads/writes/deletes, rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Answerlattice Activation Dashboard Browser Request Boundary
+
+### Fixed
+
+- **Activation dashboard redirects are not followed** - readiness metrics, activation summary, notification test, compiled-context rebuild, Daily Governance, Weekly Digest, and Install Center activation-summary calls now use manual redirect handling before bounded response parsing.
+- **Activation dashboard requests stay same-origin and uncached** - the shared activation dashboard request policy pins same-origin credentials and no-store cache across shared-reader callers.
+- **Verifier tightened** - `npm run verify:answerlattice-runtime-truth` now guards the activation dashboard request policy alongside existing response caps, shape guards, diagnostics, and fixed failure copy.
+
+### Boundaries
+
+- This is Answerlattice activation dashboard browser request hardening only. Valid activation summary reads, operations-status reads, notification-test sends, compiled-context rebuilds, optional Install Center setup snapshot reads, Firestore reads/writes/deletes, rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Growth Kits Browser Request Boundary
+
+### Fixed
+
+- **Growth Kits redirects are not followed** - refresh, kit generation, export recording, and review-reply requests now use manual redirect handling before bounded response parsing.
+- **Growth Kits requests stay same-origin and uncached** - the shared GrowthOS client request policy pins same-origin credentials and no-store cache across the Growth Kits client DAL.
+- **Verifier tightened** - `npm run verify:growthos` now guards the GrowthOS client request policy and all four protected POST call sites.
+
+### Boundaries
+
+- This is browser-local Growth Kits request hardening only. Valid feature gates, rate limits, tenant checks, entitlement checks, request body validation, summary/kit/export writes, response parsing, Firestore reads/writes/deletes, rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Answerlattice Staff Access Browser Request Boundary
+
+### Fixed
+
+- **Staff access redirects are not followed** - Answerlattice staff list, staff mutations, password reset, force sign-out, and role mutations now use manual redirect handling before bounded response parsing.
+- **Staff access requests stay same-origin and uncached** - the shared staff client request policy pins same-origin credentials and no-store cache across Team Access calls.
+- **Verifier tightened** - `npm run verify:answerlattice-runtime-truth` now guards the staff request policy alongside existing response caps, shape guards, and fixed failure copy.
+
+### Boundaries
+
+- This is Answerlattice Team Access browser request hardening only. Valid staff list reads, staff create/update/remove, password reset, force sign-out, role create/update/delete, Firebase Auth revocation, Firestore reads/writes/deletes, rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Answerlattice Widget Management Browser Request Boundary
+
+### Fixed
+
+- **Widget-management redirects are not followed** - widget config, widget activity, widget-key, hosted-help settings, and hosted-help DNS refresh calls now use manual redirect handling before bounded response parsing.
+- **Widget-management requests stay same-origin and uncached** - the shared dashboard request policy pins same-origin credentials and no-store cache across authenticated widget-management calls.
+- **Verifier tightened** - `npm run verify:answerlattice-runtime-truth` now guards the request policy alongside existing response caps, shape guards, and fixed failure copy.
+
+### Boundaries
+
+- This is Answerlattice widget-management browser request hardening only. Valid widget config reads/writes, widget activity reads, widget-key create/rename/delete, hosted-help settings, hosted-help DNS refresh, Firestore reads/writes/deletes, rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Platform Entity Block Browser Request Boundary
+
+### Fixed
+
+- **Entity-block redirects are not followed** - desktop and mobile platform Entity Blocks now submit `/api/platform/entity-blocks` with manual redirect handling before bounded acknowledgement parsing.
+- **Entity-block requests stay same-origin and uncached** - the shared platform entity-block request policy pins same-origin credentials and no-store cache for the shared DAL.
+- **Verifiers tightened** - `npm run verify:public-business-truth` and `npm run verify:menulist-api-tenant-safety` now guard the platform entity-block browser request policy.
+
+### Boundaries
+
+- This is browser-local platform entity-block request hardening only. Valid platform auth, feature flags, 64KB request admission, tenant/store/user writes, tenant store-summary sync, Firebase Auth disable/token-revoke behavior, public cache invalidation, digital-screen invalidation, Owner Business Assistant packet invalidation, Firestore reads/writes/deletes, rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Public Truth Check V1 Owner Card
+
+### Improved
+
+- **Owner Public Truth Check added** - Business Health now shows a Public Truth Check card from actual MenuList store/project truth.
+- **Mobile owner card added** - the Business Health mobile screen now shows the same check inside `MobileShell` without routing to desktop.
+- **Shared owner report builder added** - `ownerPublicTruthReadiness.ts` checks business identity, menu/source, prices, hours, location, contact, customer actions, customer link, photos, and search-readable source from MenuList truth.
+- **Verifier tightened** - `npm run verify:public-truth-check` now guards V1 owner card wiring, approved owner DAL reads, no report API route, no report writes, and no external scan.
+
+### Boundaries
+
+- This is V1 included owner behavior only. It does not add recurring checks, saved history, multi-location/agency reports, a paid add-on entitlement, external URL crawling, Google inspection, AI/search provider checks, Firestore report writes, Firebase rules/indexes, Cloud Functions, Firebase deployment, or Vercel deployment.
+
+---
+
+## June 30, 2026 - Answerlattice Chat Analytics Browser Request Boundary
+
+### Fixed
+
+- **Chat analytics redirects are not followed** - the platform ROI calculator and weekly digest regeneration now use manual redirect handling before bounded response parsing.
+- **Chat analytics requests stay same-origin and uncached** - `/api/analytics/roi-metrics` and `/api/analytics/weekly-narrative/generate-local` browser calls now pin same-origin credentials and no-store cache behavior.
+- **Verifier tightened** - `npm run verify:answerlattice-runtime-truth` now guards both request policies alongside the existing response caps and shape guards.
+
+### Boundaries
+
+- This is Answerlattice chat-monitoring browser request hardening only. Valid ROI metric reads, optimized chat analytics aggregation, weekly narrative generation, `insights` writes, AI operation logging, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Owner AI Route Security Log Boundary
+
+### Fixed
+
+- **Owner AI security context is bounded** - business copy, campaign caption, descriptions, image generation/editing, batch image trigger, Menu Card design advisor, new-item metadata, review suggestion, SEO, and translation security events now use bounded user/request metadata instead of raw `buildSecurityContext()` output.
+- **AI validation metadata is bounded** - description, translation, new-item metadata, and batch image trigger validation logs now reuse bounded route metadata instead of raw item/project/job/language snippets.
+- **Verifiers tightened** - `npm run verify:ai-accounting` and `npm run verify:menulist-api-tenant-safety` now guard the AI route security helper, route usage, and raw security-context bans.
+
+### Boundaries
+
+- This is security-log metadata hardening only. Valid owner AI route admission, SAFE_MODE/rate-limit/capacity behavior, linked-outlet policy enforcement, Cloud Tasks enqueue behavior, provider calls, AI accounting writes, Firestore reads/writes/deletes, rules/indexes, Cloud Functions, Firebase deployment, owner/mobile UI behavior, and Vercel deployment were not changed.
+
+## June 30, 2026 - Linked Outlet Save Browser Request Boundary
+
+### Fixed
+
+- **Linked outlet save redirects are not followed** - editor save, linked outlet publish, and extraction review apply now submit `/api/projects/outlet-save` with manual redirect handling before bounded acknowledgement parsing.
+- **Linked outlet save requests stay same-origin and uncached** - the shared linked-outlet save request policy pins same-origin credentials and no-store cache for browser callers.
+- **Verifiers tightened** - `npm run verify:public-business-truth`, `npm run verify:menu-extraction-pipeline`, and `npm run verify:menulist-api-tenant-safety` now guard the shared linked-outlet save request policy.
+
+### Boundaries
+
+- This is browser-local linked-outlet save request hardening only. Valid `/api/projects/outlet-save` auth, tenant/store access, body caps, rate limits, OutletPolicy enforcement, local-only ID validation, Admin SDK persistence, public cache invalidation, digital-screen invalidation, Firestore reads/writes/deletes, rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Deployment Version Browser Request Boundary
+
+### Fixed
+
+- **Version checks do not follow redirects** - owner update prompts, the deployment build badge, and failure-screen diagnostics now call `/api/version` with manual redirect handling before bounded response parsing.
+- **Version checks stay same-origin and uncached** - the shared deployment version helper pins same-origin credentials and no-store cache for browser callers.
+- **Tenant-safety verifier tightened** - `npm run verify:menulist-api-tenant-safety` now guards the shared deployment version request policy and all three caller integrations.
+
+### Boundaries
+
+- This is browser-local deployment visibility request hardening only. Valid `/api/version` route behavior, no-store route headers, Vercel env wiring, bounded response parsing, service-worker/cache behavior, owner update prompt visibility, build badge toggle behavior, diagnostic-copy fallback behavior, Firestore reads/writes/deletes, rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - AI Menu Manager Browser Request Boundary
+
+### Fixed
+
+- **Menu Manager API redirects are not followed** - command fallback, inbox fallback, proposal action, and proposal completion browser calls now use manual redirect handling before bounded acknowledgement parsing.
+- **Menu Manager API requests stay same-origin and uncached** - the shared AMM client request policy pins same-origin credentials and no-store cache across server-backed calls.
+- **Verifier tightened** - `npm run verify:ai-menu-manager` now guards the shared AMM request policy.
+
+### Boundaries
+
+- This is browser-local AI Menu Manager request hardening only. Valid compact session reads/writes, server fallback route behavior, proposal action/completion behavior, project-update acknowledgement, response-size caps, rate limits, provider behavior, Firestore reads/writes/deletes, rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Razorpay Security Log Boundary
+
+### Fixed
+
+- **Razorpay security context is bounded** - authenticated billing route security events and billing-permission failures now use bounded user/request metadata instead of raw `buildSecurityContext()` output.
+- **Billing validation metadata is bounded** - subscription, top-up, verification, cancel, pause, resume, and upgrade validation logs now record product/plan/pack/subscription identifiers as presence/length metadata instead of raw request fields.
+- **Tenant-safety verifier tightened** - `npm run verify:menulist-api-tenant-safety` now guards the Razorpay security-context helper, route usage, and raw payment security-log token bans.
+
+### Boundaries
+
+- This is security-log metadata hardening only. Valid billing validation, permission checks, signature verification, subscription/top-up writes, Razorpay provider calls, webhook behavior, payment logs, Firestore rules/indexes, Cloud Functions, Firebase deployment, owner/mobile UI behavior, and Vercel deployment were not changed.
+
+## June 30, 2026 - Menu Extraction Job Start Browser Request Boundary
+
+### Fixed
+
+- **Extraction job start redirects are not followed** - owner extraction job creation now submits `/api/menu-extraction/jobs` with manual redirect handling before bounded acknowledgement parsing.
+- **Extraction job start requests stay same-origin and uncached** - the shared job helper now pins same-origin credentials and no-store cache policy for protected job creation.
+- **Verifiers tightened** - `npm run verify:menu-extraction-pipeline` and `npm run verify:menulist-api-tenant-safety` now guard the owner extraction job request policy.
+
+### Boundaries
+
+- This is browser-local extraction job request hardening only. Valid auth, tenant/store access, upload URL checks, route body caps, rate limits, SAFE_MODE gates, job creation/reuse, Firestore reads/writes/deletes, Storage behavior, rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Menu Intake Identity Browser Request Boundary
+
+### Fixed
+
+- **Menu-intake preflight redirects are not followed** - desktop and mobile upload preflight now submits `/api/menu-intake-identity` with manual redirect handling before bounded response parsing.
+- **Menu-intake preflight requests stay same-origin and uncached** - the shared helper now pins same-origin credentials and no-store cache policy for the protected preflight call.
+- **Verifiers tightened** - `npm run verify:menu-extraction-pipeline` and `npm run verify:menulist-api-tenant-safety` now guard the shared menu-intake identity request policy.
+
+### Boundaries
+
+- This is browser-local menu-intake identity request hardening only. Valid auth, tenant/store access, route body caps, rate limits, Storage file fetch checks, Gemini preflight behavior, extraction job creation, owner confirmation flow, Firestore reads/writes/deletes, Storage cleanup behavior, rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Notification Trigger Browser Request Boundary
+
+### Fixed
+
+- **Notification trigger redirects are not followed** - the fire-and-forget `/api/notifications/send` client now uses manual redirect handling before the browser completes the internal POST.
+- **Notification trigger requests stay same-origin and uncached** - the trigger client pins no-store cache and same-origin credentials for internal notification sends.
+- **Rejected trigger responses are diagnosed in development** - non-OK responses log bounded payload metadata in non-production without blocking the source business operation.
+- **Tenant-safety verifier tightened** - `npm run verify:menulist-api-tenant-safety` now guards the notification trigger request policy and bounded rejected-response diagnostic.
+
+### Boundaries
+
+- This is browser-local notification trigger hardening only. Valid ticket/message source operations, notification route auth, rate limits, bounded request parsing, email delivery, owner-notification event processing, Firestore reads/writes/deletes, rules/indexes, Cloud Functions, Firebase deployment, owner-facing settings, and Vercel deployment were not changed.
+
+## June 30, 2026 - Menu Link Import Browser Request Boundary
+
+### Fixed
+
+- **Menu link import redirects are not followed** - desktop and mobile link-import job creation now submits `/api/menu-link-imports` with manual redirect handling before bounded acknowledgement parsing.
+- **Menu link import requests stay same-origin and uncached** - the shared helper now pins same-origin credentials and no-store cache policy for authenticated link-import job creation.
+- **Verifiers tightened** - `npm run verify:menu-extraction-pipeline` and `npm run verify:menulist-api-tenant-safety` now guard the shared menu-link import request policy.
+
+### Boundaries
+
+- This is browser-local Menu Link Import request hardening only. Valid auth, tenant/store access, route body caps, rate limits, URL safety checks, source acquisition, artifact writes, extraction job creation, review flow, public cache invalidation after approval, Firestore reads/writes/deletes, Storage behavior, rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Public Truth Check V0 Completion
+
+### Improved
+
+- **Report actions added** - Public Truth Check reports can now be copied or downloaded from the browser.
+- **Consented follow-up added** - the report page can submit a checklist follow-up through the existing bounded `/api/public/contact` route after explicit consent.
+- **Website events added** - the tool now emits consent-aware website marketing events for completed checks, report copy/download, customer-link CTA, and accepted follow-up.
+- **Tool intake template added** - future MenuList tools now have an admission template under `__docs__/menulist-tools/tool-intake-template.md`.
+- **Verifier tightened** - `npm run verify:public-truth-check` now guards the contact handoff, report export actions, analytics events, tool namespace, and no-arbitrary-external-fetch boundary.
+
+### Boundaries
+
+- This is V0 public website completion only. The report still does not fetch external URLs, inspect Google, call AI/search providers, store report history, create a new lead collection, add a new API route, change Firebase rules/indexes, change Cloud Functions, deploy Firebase, or deploy Vercel.
+
+## June 30, 2026 - Help Center Search Browser Request Boundary
+
+### Fixed
+
+- **Help Center search redirects are not followed** - Help Chat and the AI Search modal now submit `/api/helpCenter/search-kb` with manual redirect handling before bounded response parsing.
+- **Help Center search requests stay same-origin and uncached** - shared search callers use no-store cache and same-origin credentials for authenticated support search.
+- **Tenant-safety verifier tightened** - `npm run verify:menulist-api-tenant-safety` now guards the shared Help Center search request policy and both browser callers.
+
+### Boundaries
+
+- This is browser-local Help Center search request hardening only. Valid route auth, rate limits, bounded request parsing, Answerlattice retrieval, AI provider calls, AI accounting, Firestore reads/writes/deletes, rules/indexes, Cloud Functions, Firebase deployment, owner/mobile screens, and Vercel deployment were not changed.
+
+## June 30, 2026 - Digital Screen Seen Browser Request Boundary
+
+### Fixed
+
+- **Screen seen redirects are not followed** - Highlights and Menu Board display clients now submit `/api/screen/seen` with manual redirect handling before caching the daily seen marker.
+- **Screen seen requests stay same-origin and uncached** - public display clients now pin same-origin credentials and no-store cache policy for the daily seen signal.
+- **Verifiers tightened** - `npm run verify:public-business-truth` and `npm run verify:customer-app-pwa` now guard the shared seen-signal request policy for both screen modes.
+
+### Boundaries
+
+- This is browser-local seen-signal request hardening only. Valid one-write-per-day route behavior, declared-size/body/rate-limit guards, token/store validation, public screen rendering, Firestore reads/writes/deletes, rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Share Endpoint Request Privacy Boundary
+
+### Fixed
+
+- **External menu export requests omit browser credentials** - B2B ShareModal posts to owner-entered HTTPS endpoints with `credentials: 'omit'` so ambient MenuList cookies are not sent to integration targets.
+- **External menu export requests stay uncached and hide referrers** - the shared ShareModal endpoint policy uses no-store cache, manual redirect handling, and no-referrer browser behavior before posting exported menu JSON.
+- **Verifier tightened** - `npm run verify:menu-export` now guards the ShareModal endpoint request policy, credential omission, no-referrer setting, no-store cache, and manual redirect handling.
+
+### Boundaries
+
+- This is browser-local external endpoint request hardening only. Valid external HTTPS endpoint POSTs, JSON/XLSX downloads, public menu sharing, export payload shape, Firestore reads/writes/deletes, rules/indexes, Cloud Functions, Firebase deployment, owner-facing settings, public routes, and Vercel deployment were not changed.
+
+## June 30, 2026 - Ops Control Room Browser Request Boundary
+
+### Fixed
+
+- **Ops action redirects are not followed** - desktop and mobile SAFE_MODE and alert-mute actions now use a shared manual-redirect request policy before bounded acknowledgement parsing.
+- **Ops action requests stay same-origin and uncached** - `OPS_CONTROL_ROOM_REQUEST_POLICY` pins same-origin credentials and no-store cache for the platform control calls.
+- **Mobile acknowledgements are bounded** - mobile Ops Control Room now uses the shared SAFE_MODE and alert-mute response readers instead of only checking `response.ok`.
+- **Tenant-safety verifier tightened** - `npm run verify:menulist-api-tenant-safety` now guards the shared request policy, desktop/mobile caller coverage, mobile bounded diagnostics, and absence of direct mobile response parsing.
+
+### Boundaries
+
+- This is browser-local Ops Control Room request/response hardening only. Valid platform auth, SAFE_MODE route behavior, alert-mute route behavior, mutation body caps, operator rate limits, SAFE_MODE writes, alert-mute writes, platform alert creation, force-republish callable behavior, Firestore rules/indexes, Cloud Functions, Firebase deployment, owner-facing surfaces, public routes, and Vercel deployment were not changed.
+
+## June 30, 2026 - POS Sync Browser Request Boundary
+
+### Fixed
+
+- **POS Sync test redirects are not followed** - desktop and mobile connection tests now submit `/api/pos-sync/test` with manual redirect handling before bounded acknowledgement parsing.
+- **POS Sync test requests stay same-origin and uncached** - connection-test POSTs now use same-origin credentials and no-store cache policy.
+- **POS Sync test policy is shared** - desktop and mobile callers now import `POS_SYNC_TEST_REQUEST_POLICY` from the shared POS Sync test response helper instead of carrying duplicate local policy constants.
+- **Verifiers tightened** - `npm run verify:public-business-truth` and `npm run verify:menulist-api-tenant-safety` now guard the desktop/mobile POS Sync test request policy.
+
+### Boundaries
+
+- This is browser-local POS Sync request hardening only. Valid settings saves, test route auth/rate limits, outbound webhook checks, POS status writes, delivery logs, Firestore reads/writes/deletes, Firebase rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Time Slot Preset Public Cache Revalidation
+
+### Fixed
+
+- **Preset store writes refresh public cache** - `updateTimeSlotPresets()` now revalidates the public menu/OBP cache after the store-level `timeSlotPresets` merge.
+- **Existing cascades preserved** - preset edit/delete still runs the existing project-category cascade, and changed projects keep their per-project cache revalidation.
+- **Verifiers tightened** - `npm run verify:public-business-truth` and `npm run verify:menulist-api-tenant-safety` now guard the preset store-write cache refresh.
+
+### Boundaries
+
+- This is client-side store DAL cache hardening only. Valid preset save/delete behavior, category cascade writes, project cache revalidation, working-hours saves, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Special Menu Hook Acknowledgement Guards
+
+### Fixed
+
+- **Special menu success requires acknowledged DAL results** - `useSpecialMenus()` now validates create, update, activate, deactivate, and cancel results before mutating SWR state or returning success.
+- **False special-menu success blocked** - `apiCallComposer()` fallback values such as `[]` now route through bounded `special_menu_*_failed` diagnostics instead of showing create/update/end/cancel success.
+- **Verifier tightened** - `npm run verify:public-business-truth` now guards the hook acknowledgement checks.
+
+### Boundaries
+
+- This is client-side Special Menu hook hardening only. Valid project writes, store `activeSpecialMenuId` writes, temp-status writes, project summary updates, public cache revalidation, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - MenuList Tools Documentation Namespace
+
+### Improved
+
+- **MenuList tools docs now have one namespace** - public, owner, and paid add-on tool docs belong under `__docs__/menulist-tools/`.
+- **Public truth docs moved under the tools namespace** - `public-truth-tools` and `public-truth-check` now live under `__docs__/menulist-tools/`.
+- **Verifier tightened** - `npm run verify:public-truth-check` now checks that Public Truth Tools docs stay under `__docs__/menulist-tools/` and that the V0/V1/V2 ladder remains documented.
+
+### Boundaries
+
+- This is documentation structure and verifier coverage only. Public Truth Check runtime behavior, website routing, Firebase reads/writes, Cloud Functions, external adapters, AI/search checks, lead storage, Vercel deployment, and Firebase deployment were not changed.
+
+## June 30, 2026 - Outlet Action Browser Request Boundary
+
+### Fixed
+
+- **Outlet action redirects are not followed** - desktop and mobile outlet create, rename, deactivate, and policy-save calls now use a shared manual-redirect request policy before bounded response parsing.
+- **Outlet action requests stay same-origin and uncached** - `MULTI_OUTLET_ACTION_REQUEST_POLICY` now pins same-origin credentials and no-store cache across the outlet action browser callers.
+- **Verifiers tightened** - `npm run verify:public-business-truth` and `npm run verify:menulist-api-tenant-safety` now guard the shared outlet action request policy and desktop/mobile caller coverage.
+
+### Boundaries
+
+- This is browser-local multi-outlet request hardening only. Valid outlet route behavior, Firestore reads/writes, Razorpay quantity logic, public cache invalidation, digital-screen invalidation, Firebase rules/indexes, Cloud Functions, Firebase deployment, owner/mobile UI state guards, and Vercel deployment were not changed.
+
+## June 30, 2026 - Review Reply Browser Request Boundary
+
+### Fixed
+
+- **Review reply redirects are not followed** - the disabled desktop Review Reply tool now submits `/api/reviews/suggest` with manual redirect handling before bounded suggestion parsing.
+- **Review reply requests stay same-origin and uncached** - suggestion requests now use same-origin credentials and no-store cache policy.
+- **Auth/security verifier tightened** - `npm run verify:auth-security-failure-matrix` now guards the review reply request policy alongside the existing response cap, shape guard, and bounded diagnostics.
+
+### Boundaries
+
+- This is browser-local Review Reply request hardening only. Valid disabled/unmounted status, feature gates, SAFE_MODE, rate limits, AI capacity checks, Gemini fallback behavior, AI accounting, Firestore reads/writes/deletes, Firebase rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Public Feedback Browser Request Boundary
+
+### Fixed
+
+- **Public feedback redirects are not followed** - the guest-facing feedback form now submits `/api/public/feedback/submit` with manual redirect handling before bounded acknowledgement parsing.
+- **Public feedback requests stay same-origin and uncached** - feedback submits now use same-origin credentials and no-store cache policy.
+- **Public-business verifier tightened** - `npm run verify:public-business-truth` now guards the guest-feedback submit request policy alongside the existing response cap and shape guard.
+
+### Boundaries
+
+- This is browser-local public feedback request hardening only. Valid feedback submissions, Turnstile checks, public rate limits, private feedback writes, MOL event writes, Firestore reads/writes/deletes, Firebase rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Shared Auth Browser Request Policy
+
+### Fixed
+
+- **Auth browser calls share one request boundary** - session fetch, Firebase claim sync, login claim/setup, Phone OTP start/verify, access-status polling, profile/password account calls, and store switching now inherit the same no-store, same-origin, manual-redirect policy before bounded response parsing.
+- **Auth verifiers tightened** - `npm run verify:auth-security-failure-matrix` and `npm run verify:menulist-api-tenant-safety` now guard the shared policy across session, claims, login, OTP, access-status, account, and store-switch callers.
+
+### Boundaries
+
+- This is browser-local auth request hardening only. Valid auth route behavior, Firestore reads/writes, Firebase Auth operations, Firestore rules/indexes, Cloud Functions, Firebase deployment, owner/mobile UI surfaces, and Vercel deployment were not changed.
+
+## June 30, 2026 - Access Status Browser Request Boundary
+
+### Fixed
+
+- **Access-status redirects end the browser session** - `SessionExpiryMonitor` now treats manual redirects from `/api/auth/access-status` as ended access instead of parsing a non-JSON redirected page.
+- **Access-status requests stay same-origin and uncached** - the shared desktop/mobile session monitor now applies same-origin credentials, no-store cache policy, and manual redirect handling before bounded response parsing.
+- **Auth verifier tightened** - `npm run verify:auth-security-failure-matrix` now guards the access-status request policy and redirected-response diagnostic.
+
+### Boundaries
+
+- This is browser-local session access polling hardening only. Valid access-status route auth/rate-limit behavior, Firestore reads, session revocation semantics, Firebase Auth operations, Firebase rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Reseller Operations Browser Request Boundary
+
+### Fixed
+
+- **Reseller operation redirects are not followed** - desktop/mobile reseller management, onboarding, and prepaid location-capacity calls now use the shared reseller request policy before bounded response parsing.
+- **Reseller operation requests stay same-origin and uncached** - the shared reseller policy pins same-origin credentials, no-store cache, and manual redirect handling across platform management, client onboarding, and add-location capacity handoffs.
+- **Verifiers tightened** - `npm run verify:public-business-truth` and `npm run verify:menulist-api-tenant-safety` now guard the shared reseller request policy alongside existing response caps, shape guards, bounded diagnostics, and copy acknowledgement checks.
+
+### Boundaries
+
+- This is browser-local reseller request hardening only. Valid reseller management, onboarding, add-location-capacity route behavior, Firestore reads/writes, Firebase Auth account creation, billing/subscription behavior, public cache invalidation, Firestore rules/indexes, Cloud Functions, Firebase deployment, owner/mobile UI surfaces, and Vercel deployment were not changed.
+
+## June 30, 2026 - Master Job Status Browser Request Boundary
+
+### Fixed
+
+- **Master job status redirects are not followed** - outlet editor polling now uses manual redirect handling before accepting `/api/projects/master-job-status` responses.
+- **Master job status requests stay same-origin and uncached** - the browser hook now applies same-origin credentials and no-store cache policy before the existing bounded response guard.
+- **Tenant-safety verifier tightened** - `npm run verify:menulist-api-tenant-safety` now guards the master-job status request policy.
+
+### Boundaries
+
+- This is browser-local master-job status request hardening only. Valid route auth/rate-limit behavior, tenant/store access checks, Firestore reads, job status semantics, Firebase rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Store Switch Browser Request Boundary
+
+### Fixed
+
+- **Store-switch redirects are not followed** - desktop header, desktop Billing, desktop Locations, mobile More, mobile Billing, and mobile Locations now use manual redirect handling before accepting `/api/auth/switch-store` responses.
+- **Store-switch requests stay same-origin and uncached** - all shared switch-store browser handoffs now apply the auth account request policy before existing rejected-response handling and Firebase claim refresh.
+- **Verifiers tightened** - `npm run verify:auth-security-failure-matrix` and `npm run verify:menulist-api-tenant-safety` now guard switch-store request policies alongside existing bounded diagnostics and fixed failure copy.
+
+### Boundaries
+
+- This is browser-local switch-store request hardening only. Valid switch-store route behavior, tenant/store access checks, Firebase claim refresh, active store context updates, Firestore reads, Firestore rules/indexes, Cloud Functions, Firebase deployment, owner/mobile UI surfaces, and Vercel deployment were not changed.
+
+## June 30, 2026 - Reseller Dashboard Browser Request Boundary
+
+### Fixed
+
+- **Reseller dashboard redirects are not followed** - the shared desktop/mobile reseller dashboard hook now reads profile, clients, and monthly-summary routes with manual redirect handling before bounded response parsing.
+- **Reseller dashboard requests stay same-origin and uncached** - those browser reads now use same-origin credentials and no-store cache policy.
+- **Tenant-safety verifier tightened** - `npm run verify:menulist-api-tenant-safety` now guards the shared reseller dashboard request policy.
+
+### Boundaries
+
+- This is browser-local reseller dashboard request hardening only. Valid reseller profile/client/monthly-summary reads, route auth/rate-limit behavior, Firestore reads, billing behavior, mobile screens, Firebase rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Business Health Browser Request Boundary
+
+### Fixed
+
+- **Business Health redirects are not followed** - current health, analytics, locations, thread, answer, and platform monitor browser handoffs now use the shared Business Health request policy before bounded response parsing.
+- **Business Health requests stay same-origin and uncached** - the shared policy pins same-origin credentials, no-store cache, and manual redirect handling across owner desktop, mobile, and platform monitor callers.
+- **Verifiers tightened** - `npm run verify:owner-business-assistant`, `npm run verify:menulist-api-tenant-safety`, and `npm run verify:auth-security-failure-matrix` now guard the request policy alongside existing response caps, envelope guards, bounded diagnostics, and owner-safe failure copy.
+
+### Boundaries
+
+- This is browser-local Business Health request hardening only. Valid current, analytics, locations, thread, answer, and platform monitor route behavior, Firestore reads/writes, provider calls, cache keys, scheduler read models, Firestore rules/indexes, Cloud Functions, Firebase deployment, owner/mobile UI surfaces, and Vercel deployment were not changed.
+
+## June 30, 2026 - Answerlattice Hosted Help HTML Boundary
+
+### Fixed
+
+- **Hosted-help article HTML boundary is verified** - `npm run verify:answerlattice-runtime-truth` now pins hosted-help `dangerouslySetInnerHTML` to server-produced `safeHtml` from `renderPublicTiptapHtml()`.
+- **Renderer sanitizer contract documented** - hosted-help docs now match runtime truth: the server Tiptap JSON renderer escapes text/attributes, allowlists link/image schemes, emits a fixed tag set, and drops unknown nodes to escaped children.
+
+### Boundaries
+
+- This is verifier/docs hardening only. Hosted-help rendering behavior, hosted-help registry reads, public content cache, Firestore rules/indexes, Cloud Functions, Firebase deployment, public website routes, and Vercel deployment were not changed.
+
+## June 30, 2026 - Public Truth Check Tool Route
+
+### Added
+
+- **Public Truth Check route** - `/tools/public-truth-check` now provides a browser-local self-report tool for checking whether a business source has clear customer-facing facts.
+- **Deterministic report builder** - `src/lib/public-truth-tools/publicTruthCheckReport.ts` returns present, missing, unclear, not-needed, and not-checked rows without external fetching.
+- **Discovery coverage** - the route is registered in `PLATFORM_DISCOVERY_PAGES`, static sitemap, `llms.txt`, and `llms-full.txt`.
+- **Verifier added** - `npm run verify:public-truth-check` guards feature flags, route registration, locale keys, no external fetches, no Firebase writes, and no ranking/citation claims.
+
+### Boundaries
+
+- Public website route/component/CSS/locale/discovery/docs only. Owner dashboard runtime, customer menu/OBP runtime, external adapters, AI/search readability checks, lead storage, Firebase rules/indexes, Cloud Functions, Vercel deployment, and DNS were not changed.
+
+## June 30, 2026 - Auth And Staff Browser Request Boundary
+
+### Fixed
+
+- **Account redirects are not followed** - desktop account modal and mobile More profile/password handoffs now use the shared account request policy before accepting `/api/auth/update-profile` or `/api/auth/change-password` responses.
+- **Staff requests stay same-origin and uncached** - staff list, staff mutation, role mutation, and Platform Users create-staff verification calls now use the shared staff request policy before bounded response parsing.
+- **Verifiers tightened** - `npm run verify:menulist-api-tenant-safety` and `npm run verify:auth-security-failure-matrix` now guard account/staff request policies alongside existing response caps, acknowledgement checks, bounded diagnostics, and fixed failure copy.
+
+### Boundaries
+
+- This is browser-local auth and staff request hardening only. Valid profile/password changes, staff list and mutation behavior, role saves, platform staff verification, Firebase Auth operations, Firestore writes, Firestore rules/indexes, Cloud Functions, Firebase deployment, owner/mobile UI surfaces, and Vercel deployment were not changed.
+
+## June 30, 2026 - AI Service Browser Request Boundary
+
+### Fixed
+
+- **Owner AI redirects are not followed** - item metadata, SEO, descriptions, translations, business copy, image generation/editing, batch image trigger, and Menu Card design-advisor calls now use manual redirect handling before capacity checks or bounded response parsing.
+- **Owner AI requests stay same-origin and uncached** - shared AI service clients now apply same-origin credentials and no-store cache policy to existing AI route handoffs.
+- **AI accounting verifier tightened** - `npm run verify:ai-accounting` now guards the shared AI request policy and every owner AI client spread alongside existing response caps, diagnostics, fixed-copy checks, and no-direct-console protections.
+
+### Boundaries
+
+- This is browser-local AI request hardening only. Valid AI route calls, SAFE_MODE/rate-limit/capacity behavior, provider calls, AI accounting writes, balance sync, generated image formatting, translation merge behavior, Menu Card plan gating, Firestore rules/indexes, Cloud Functions, Firebase deployment, owner/mobile UI surfaces, and Vercel deployment were not changed.
+
+## June 30, 2026 - MyCodex Document Response Boundary
+
+### Fixed
+
+- **Favorite document playback is bounded** - MyCodex favorite/read-later audio playback now caps same-origin document JSON responses, validates the Markdown response shape, and fails closed before speaking malformed or oversized payloads.
+- **Private content diagnostics stay bounded** - document response failures log only response status plus favorite path/title length metadata, not Markdown content or raw private source paths.
+- **Auth security verifier tightened** - `npm run verify:auth-security-failure-matrix` now guards MyCodex document response parsing alongside the existing login body cap.
+
+### Boundaries
+
+- This is browser-local MyCodex response hardening only. The static document route, document resolution, browser speech synthesis, localStorage favorites/queue state, Firebase rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Public Truth Tool Flag Registry
+
+### Fixed
+
+- **Public Truth Check route gates compile** - the documented public-truth tool flags now exist in `src/config/features.ts`, defaulted off so `/tools/public-truth-check` remains hidden unless intentionally enabled.
+- **Tool capability gates reserved** - external-adapter and AI-readability public-truth check flags are also registered as off-by-default gates for future implementation.
+
+### Boundaries
+
+- This is feature-flag registry parity only. Public Truth Check runtime behavior, public website navigation, owner cards, provider/model adapters, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Razorpay Browser Request Boundary
+
+### Fixed
+
+- **Billing redirects are not followed** - shared Razorpay checkout, verification, top-up, onboarding, and subscription action requests now use manual redirect handling before accepting billing route responses.
+- **Billing requests stay same-origin and uncached** - the shared payment hook now applies same-origin credentials and no-store cache policy to all existing payment route handoffs before bounded response parsing.
+- **Tenant-safety verifier tightened** - `npm run verify:menulist-api-tenant-safety` now guards the shared payment request policy alongside existing billing response caps, acknowledgement checks, fixed failure codes, and no-direct-console protections.
+
+### Boundaries
+
+- This is browser-local billing request hardening only. Valid subscription creation, checkout verification, top-up creation/verification, onboarding subscription creation, cancel/pause/resume/upgrade behavior, Razorpay provider calls, billing writes, webhooks, Firestore rules/indexes, Cloud Functions, Firebase deployment, owner/mobile billing surfaces, and Vercel deployment were not changed.
+
+## June 30, 2026 - Temporary Status Browser Request Boundary
+
+### Fixed
+
+- **Admin subdomain rename success logs are bounded** - the platform-only rename route now keeps full rename evidence in the Firestore audit record while sending only bounded operator/store/subdomain/reason/acknowledgement metadata to the central security log.
+- **Outlet deactivation success logs are bounded** - the owner outlet-deactivation route now logs only bounded tenant/master/outlet metadata plus counts/booleans to the central security event.
+- **Temporary-status redirects are not followed** - desktop Business Settings, mobile Temporary Status, and mobile Today/Hours temporary-status calls now use manual redirect handling before accepting `/api/store/temp-status` responses.
+- **Temporary-status requests stay same-origin and uncached** - set and clear handoffs now include same-origin credentials and no-store cache policy before the shared bounded response parser.
+- **Verifiers tightened** - `npm run verify:menulist-api-tenant-safety` and `npm run verify:public-business-truth` now guard desktop/mobile temporary-status request policies alongside the existing response-envelope, optimistic rollback, and fixed-copy checks.
+
+### Boundaries
+
+- Admin subdomain rename auth, validation, collision checks, transaction writes, audit-document contents, public cache invalidation, digital-screen invalidation, Business Health packet invalidation, Firestore rules/indexes, Cloud Functions, Firebase deployment, owner/mobile routes, and Vercel deployment were not changed.
+- Outlet deactivation auth, validation, tenant/master checks, transaction writes, billing reduction behavior, response shape, public cache invalidation, digital-screen invalidation, Business Health packet invalidation, Firestore rules/indexes, Cloud Functions, Firebase deployment, owner/mobile routes, and Vercel deployment were not changed.
+- This is browser-local temporary-status request hardening only. Valid status set/clear writes, public menu/OBP cache invalidation, digital-screen invalidation, owner-assistant packet invalidation, Firestore rules/indexes, Cloud Functions, Firebase deployment, owner/mobile routes, and Vercel deployment were not changed.
+
+## June 30, 2026 - Compliance Pages Browser Request Boundary
+
+### Fixed
+
+- **Compliance editor redirects are not followed** - desktop Official Page, embedded Custom Domain compliance, and mobile compliance editor requests now use manual redirect handling before accepting `/api/compliance` responses.
+- **Compliance requests stay same-origin and uncached** - load, save, and reset handoffs now include same-origin credentials and no-store cache policy before existing bounded response parsing.
+- **Public-business verifier tightened** - `npm run verify:public-business-truth` now guards desktop and mobile compliance request policies alongside existing response caps, shape guards, fixed failure copy, and safe preview opens.
+
+### Boundaries
+
+- This is browser-local compliance editor request hardening only. Valid compliance page loads, override/reset writes, public compliance rendering, route auth/permission/rate-limit behavior, Firestore rules/indexes, Cloud Functions, Firebase deployment, owner/mobile routes, and Vercel deployment were not changed.
+
+## June 30, 2026 - Domain Settings Browser Request Boundary
+
+### Fixed
+
+- **Domain settings redirects are not followed** - desktop and mobile Domain Settings now use manual redirect handling before accepting `/api/domain` and `/api/subdomain/check` route responses.
+- **Domain settings requests stay same-origin and uncached** - custom-domain add/status/remove and subdomain availability checks now include same-origin credentials and no-store cache policy before bounded response parsing.
+- **Verifiers tightened** - `npm run verify:public-business-truth` now guards desktop/mobile domain request-policy counts, and `npm run verify:menulist-api-tenant-safety` keeps mobile domain response-order checks aligned with that policy.
+
+### Boundaries
+
+- This is browser-local domain request hardening only. Valid subdomain checks/saves, custom-domain add/status/remove behavior, Vercel provider coordination through `/api/domain`, route-owned store writes/cache invalidation, Firestore rules/indexes, Cloud Functions, Firebase deployment, owner/mobile routes, and Vercel deployment were not changed.
+
+## June 30, 2026 - Ops Monitor Browser Request Boundary
+
+### Fixed
+
+- **Ops monitor redirects are not followed** - Messaging Onboarding, Platform Notifications, and Owner Notifications dashboard requests now use manual redirect handling before accepting platform API responses.
+- **Ops monitor requests stay same-origin and uncached** - those browser handoffs now include same-origin credentials and no-store cache policy before bounded response parsing.
+- **Tenant-safety verifier tightened** - `npm run verify:menulist-api-tenant-safety` now guards these monitor request policies alongside existing response caps, shape guards, fixed failure copy, and route access checks.
+
+### Boundaries
+
+- This is browser-local platform monitor request hardening only. Valid platform-role gates, monitor reads/actions, notification writes, messaging-onboarding read fanout, response parsing, Firestore rules/indexes, Cloud Functions, Firebase deployment, owner/customer routes, and Vercel deployment were not changed.
+
+## June 30, 2026 - MenuList Analytics Browser Request Boundary
+
+### Fixed
+
+- **Analytics browser redirects are not followed** - legacy owner analytics reads, public analytics queue flushes, and Owner Dashboard action mark-done requests now use manual redirect handling before accepting analytics route responses.
+- **Analytics requests stay same-origin and uncached** - those browser handoffs now include same-origin credentials and no-store cache policy; public analytics flushes keep their existing keepalive behavior.
+- **Tenant-safety verifier tightened** - `npm run verify:menulist-api-tenant-safety` now guards these analytics request policies alongside existing parser caps, bounded diagnostics, public route body caps, and owner action receipt checks.
+
+### Boundaries
+
+- This is browser-local analytics request hardening only. Valid Google Analytics dashboard reads, public menu/OBP/Customer App analytics events, public analytics writes, owner action receipt writes, dashboard state, Firestore rules/indexes, Cloud Functions, Firebase deployment, public routes, and Vercel deployment were not changed.
+
+## June 30, 2026 - Public Create-Menu Browser Request Boundary
+
+### Fixed
+
+- **Create-menu browser redirects are not followed** - `/create-menu` upload, link import, preview polling, and claim submission now use manual redirect handling before accepting public create-menu route responses.
+- **Create-menu requests stay same-origin and uncached** - the public create-menu browser handoffs now include same-origin credentials and no-store cache policy before bounded response parsing.
+- **Extraction verifier tightened** - `npm run verify:menu-extraction-pipeline` now guards the upload/link and preview/claim request policies alongside existing parser caps, response shape checks, and fixed localized failure copy.
+
+### Boundaries
+
+- This is browser-local public create-menu request hardening only. Valid upload/link draft creation, preview polling, claim conversion, session refresh, starter success redirect, website copy, Firestore rules/indexes, Cloud Functions, Firebase deployment, public website routes, and Vercel deployment were not changed.
+
+## June 30, 2026 - AI Menu Manager Local Copy Rejection Fallback
+
+### Fixed
+
+- **Menu Manager local copies retry through fallback** - desktop and mobile AMM local-action cards now fall through from rejected Clipboard API writes to the acknowledged textarea fallback before showing copied feedback.
+- **Diagnostics stay bounded** - failed local actions now include copy-support metadata while preserving bounded action/card presence-length context.
+- **Verifier tightened** - `npm run verify:ai-menu-manager` now guards the Clipboard rejection fallback, shared support checks, unavailable-copy codes, and fallback acknowledgement on desktop and mobile AMM cards.
+
+### Boundaries
+
+- Browser-local Menu Manager copy hardening only. AMM command resolution, compact-session writes, proposal routes, project mutations, public cache behavior, Firestore rules/indexes, Cloud Functions, Firebase deployment, owner settings, and Vercel deployment were not changed.
+
+## June 30, 2026 - Mobile Output Copy Rejection Fallback
+
+### Fixed
+
+- **Mobile output copies retry through fallback** - Feedback link copy, shared QR-sheet URL copy, and Communication Kit message copy now fall through from rejected Clipboard API writes to acknowledged textarea fallback before showing copied feedback.
+- **Verifier tightened** - `npm run verify:public-business-truth` now guards the Clipboard rejection fallback, unavailable-copy codes, fallback failure codes, support metadata, and textarea acknowledgement for these mobile owner surfaces.
+
+### Boundaries
+
+- Browser-local mobile copy hardening only. Feedback reads/status writes, QR generation/download behavior, Communication Kit template generation, native share, WhatsApp handoffs, Firestore rules/indexes, Cloud Functions, Firebase deployment, owner settings, and Vercel deployment were not changed.
+
+## June 30, 2026 - Desktop Output Copy Rejection Fallback
+
+### Fixed
+
+- **Desktop output copies retry through fallback** - Feedback QR link/message copy and Use MenuList Communication Kit message copy now fall through from rejected Clipboard API writes to acknowledged textarea fallback before showing copied feedback.
+- **Verifier tightened** - `npm run verify:public-business-truth` now guards Clipboard rejection fallback, unavailable-copy codes, fallback failure codes, support metadata, and textarea acknowledgement for these desktop output surfaces.
+
+### Boundaries
+
+- Browser-local desktop output copy hardening only. Feedback QR generation/download, feedback inbox reads/status writes, Use MenuList message generation, WhatsApp handoffs, Firestore rules/indexes, Cloud Functions, Firebase deployment, owner settings, and Vercel deployment were not changed.
+
+## June 30, 2026 - Public Contact Submission Redirect Boundary
+
+### Fixed
+
+- **Contact submission redirects are not followed** - the public contact form now submits to `/api/public/contact` with manual redirect handling, same-origin credentials, and no-store cache policy before accepting the route response.
+- **Verifier tightened** - `npm run verify:public-business-truth` now guards the contact form request policy alongside existing route, Turnstile, honeypot, bounded response, and fixed-copy checks.
+
+### Boundaries
+
+- This is browser-local public contact form hardening only. Valid contact submissions, `landingPageEnquiries` writes, Turnstile behavior, Firestore rules/indexes, Cloud Functions, Firebase deployment, public website routes, and Vercel deployment were not changed.
+
+## June 30, 2026 - Create Menu Success Copy Rejection Fallback
+
+### Fixed
+
+- **Post-publish Copy Link retries through fallback** - `/create-menu/success` now falls through from rejected Clipboard API writes to acknowledged textarea fallback before showing copied feedback.
+- **Starter activation stays tied to acknowledgement** - `MENU_LINK_COPIED` continues to record only after an acknowledged browser copy handoff.
+- **Verifier tightened** - `npm run verify:menu-extraction-pipeline` now guards the rejected Clipboard API fallback path, fallback failure code, support metadata, fixed localized failure copy, and safe WhatsApp handoff boundary.
+
+### Boundaries
+
+- Browser-local create-menu success handoff hardening only. Upload/link import, preview, claim/publish, success-page copy, locales, discovery files, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Website Resource Checklist Copy Rejection Fallback
+
+### Fixed
+
+- **Resource checklist copy retries through fallback** - public website resource checklist copy now falls through from rejected Clipboard API writes to acknowledged textarea fallback before copied state or checklist-copy analytics.
+- **Verifier tightened** - `npm run verify:website-resource-locales` now guards the Clipboard rejection fallback in addition to unavailable-copy codes, fallback acknowledgement, support metadata, and the old silent-catch/direct-success regressions.
+
+### Boundaries
+
+- Browser-local public website resource checklist-copy hardening only. Resource article copy, route registration, locale packs, sitemap/LLM discovery, owner dashboard runtime, customer menu runtime, Firebase rules/indexes, Cloud Functions, Vercel deployment, and analytics event shape were not changed.
+
+## June 30, 2026 - Public Cache Revalidation Redirect Boundary
+
+### Fixed
+
+- **Public cache revalidation redirects are not followed** - browser-side public cache revalidation handoffs now call `/api/revalidate/menu` with manual redirect handling after same-origin credentials, no-store cache policy, and timeout setup.
+- **Verifier tightened** - `npm run verify:public-business-truth` now guards the public cache revalidation redirect policy alongside existing bounded cache diagnostics.
+
+### Boundaries
+
+- This is browser-local public cache revalidation handoff hardening only. Valid store/project write paths, `/api/revalidate/menu` behavior, owner-assistant browser cache invalidation, digital screen content-version touches, Firestore reads/writes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - POS Sync Debounce Delivery Redirect Boundary
+
+### Fixed
+
+- **Debounced POS delivery redirects are not followed** - the client-side POS Sync debounce trigger now calls `/api/pos-sync/deliver` with manual redirect handling, same-origin credentials, and no-store cache policy before treating the request as accepted.
+- **Verifier tightened** - `npm run verify:menulist-api-tenant-safety` now guards the browser delivery handoff policy alongside existing POS Sync route and provider-webhook redirect protections.
+
+### Boundaries
+
+- This is browser-local POS Sync delivery-trigger hardening only. Valid debounce timing, editor save behavior, server delivery route behavior, outbound webhook signing, Firestore reads/writes, delivery logs, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - GrowthOS Copy Support Diagnostics
+
+### Fixed
+
+- **GrowthOS copies are acknowledged** - desktop Growth Kits and mobile Today's Sales Pack copy/share fallback paths now check Clipboard API and textarea fallback support, then show copied feedback only after Clipboard API success or acknowledged textarea fallback success.
+- **Review reply copy no longer fails silently** - desktop review-reply copy now awaits the same acknowledged copy helper and logs a bounded failure if the browser handoff fails.
+- **Verifier tightened** - `npm run verify:growthos` now guards copy support helpers, unavailable/fallback failure codes, fallback acknowledgement, support metadata, and absence of the old fire-and-forget review-reply copy.
+
+### Boundaries
+
+- Browser-local GrowthOS handoff hardening only. Successful export writes, kit generation, review guard generation, entitlement checks, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Today Campaign Copy Rejection Fallback
+
+### Fixed
+
+- **Campaign copies retry through fallback** - Today campaign WhatsApp message and campaign-surface copy helpers now fall through from rejected Clipboard API writes to acknowledged textarea fallback before failure.
+- **Copy diagnostics include support metadata** - failed Today campaign copy diagnostics include clipboard/fallback support booleans with bounded surface, item, image URL, caption, menu-link, and message metadata only.
+- **Verifier tightened** - `npm run verify:public-business-truth` now guards the shared campaign copy helper, fallback acknowledgement, support metadata, rejection fallback, and absence of direct Today executor clipboard writes.
+
+### Boundaries
+
+- Browser-local Today campaign copy hardening only. Valid WhatsApp opens, image share/download paths, campaign complete/skip state, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Answerlattice Search Image Redirect Boundary
+
+### Fixed
+
+- **Stored search-image redirects are not followed** - Answerlattice `coreSearch()` now fetches trusted Firebase Storage chat images with manual redirect handling after bucket and tenant/store path checks.
+- **Verifier tightened** - `npm run verify:answerlattice-runtime-truth` now guards the stored-image manual redirect policy alongside bounded response reads and raw-error protections.
+
+### Boundaries
+
+- This is Next.js app-server Answerlattice retrieval hardening only. Valid Help Center image search, widget inline image search, canonical-first retrieval, AI accounting, Firestore reads/writes, Storage writes/deletes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Staff Login Detail Copy Fallback Acknowledgement
+
+### Fixed
+
+- **Staff login copies fail closed** - desktop and mobile staff login detail copy/share fallbacks now require Clipboard API success or acknowledged textarea fallback success before copied feedback.
+- **Passcode diagnostics stay bounded** - failed copy diagnostics include clipboard/fallback support booleans and bounded Staff ID, passcode, and copied-text length metadata only.
+- **Verifier tightened** - `npm run verify:menulist-api-tenant-safety` now guards the shared staff login copy helper, fallback availability checks, fallback acknowledgement, support metadata, and bounded desktop/mobile copy diagnostics.
+
+### Boundaries
+
+- Browser-local staff login detail copy hardening only. Staff creation, password reset, Firebase Auth, staff/role APIs, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - CampaignCue Handoff Copy Fallback Acknowledgement
+
+### Fixed
+
+- **CampaignCue handoff copies are acknowledged** - manual handoff field copies now fall through from rejected Clipboard API writes to acknowledged textarea fallback before copied feedback.
+- **Copy diagnostics include support metadata** - failed handoff copy diagnostics include clipboard/fallback support booleans with copied value length only.
+- **Verifier tightened** - `npm run verify:campaigncue` now guards the CampaignCue handoff copy helper, unavailable/fallback failure codes, fallback acknowledgement, support metadata, and absence of the old Clipboard-only helper.
+
+### Boundaries
+
+- Browser-local CampaignCue manual handoff copy hardening only. Campaign packs, ZIP export, delivery actions, provider posting-disabled posture, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Firebase Auth Provider Redirect Boundary
+
+### Fixed
+
+- **Password verification redirects are not followed** - `/api/auth/change-password` now builds the Firebase Auth password-verification URL from a fixed host/path with encoded API-key parameters and manual redirect handling.
+- **Staff setup email redirects are not followed** - MenuList and Answerlattice staff setup email calls now keep the fixed Firebase Auth reset endpoint and use manual redirect handling for the provider request.
+- **Verifier tightened** - Auth, MenuList API tenant-safety, and Answerlattice runtime verifiers now guard the fixed endpoint builders, encoded API keys, and manual redirect policies.
+
+### Boundaries
+
+- This is Next.js app-server Firebase Auth provider-boundary hardening only. Valid password changes, staff setup emails, Firebase Auth operation counts, Firestore writes, owner/customer surfaces, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Custom Domain Copy Fallback Acknowledgement
+
+### Fixed
+
+- **Custom Domain copies are acknowledged** - Business Settings active-domain and DNS-record copies now fall through from rejected Clipboard API writes to acknowledged textarea fallback before copied feedback.
+- **Copy diagnostics include support metadata** - failed custom-domain copy diagnostics include clipboard/fallback support booleans with bounded domain, copy URL, and DNS record metadata only.
+- **Verifier tightened** - `npm run verify:public-business-truth` now guards the Custom Domain copy helper, unavailable/fallback failure codes, fallback acknowledgement, support metadata, and absence of the old direct Clipboard API success path.
+
+### Boundaries
+
+- Browser-local Custom Domain copy hardening only. Domain add/status/remove APIs, Vercel domain coordination, Firestore writes, public routing, DNS instructions, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Today Campaign Image Redirect Boundary
+
+### Fixed
+
+- **Campaign image redirects are not followed** - Today campaign WhatsApp image share, poster, QR tent, and screen downloads now fetch resolved campaign images with manual redirect handling after URL shape, host, MIME, and size guards.
+- **Verifier tightened** - `npm run verify:public-business-truth` now guards the campaign image manual redirect policy alongside the existing URL resolver and bounded image response checks.
+
+### Boundaries
+
+- This is browser-local Today campaign image-fetch hardening only. Valid campaign shares/downloads, generated campaign state, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Extraction Monitor Copy Fallback Acknowledgement
+
+### Fixed
+
+- **Job Inspector copies use acknowledged fallback** - Extraction Monitor Job Inspector copy actions now fall back from unavailable or rejected Clipboard API writes to an acknowledged textarea copy before showing copied feedback.
+- **Copy diagnostics include support metadata** - failed copy diagnostics now include clipboard/fallback support booleans with bounded job, copy-label, copied-text length, job-status, combined-data, and raw-response-count metadata only.
+- **Verifier tightened** - `npm run verify:menu-extraction-pipeline` now guards the Job Inspector copy helper, unavailable/fallback failure codes, fallback acknowledgement, support metadata, and absence of old direct Clipboard API success paths.
+
+### Boundaries
+
+- Browser-local Extraction Monitor copy hardening only. Job reads, retry creation, raw-data display, AI response retention, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Menu Intake Preflight Redirect Boundary
+
+### Fixed
+
+- **Menu-intake preflight redirects are not followed** - app-server menu-intake identity now fetches validated Firebase Storage preflight files with manual redirect handling after bucket, owner/public draft path, DNS, MIME, and size guards.
+- **Verifier tightened** - `npm run verify:menu-extraction-pipeline` now guards the manual redirect policy alongside the existing source-prefix and bounded response checks.
+
+### Boundaries
+
+- This is app-server menu-intake preflight fetch hardening only. Valid owner upload preflight, public create-menu identity preflight, job creation, extraction behavior, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - PDP Item Share Copy Fallback
+
+### Fixed
+
+- **PDP item share copy is acknowledged** - public item detail sharing now falls through from rejected Clipboard API writes to the acknowledged textarea fallback before showing copied state or recording copy-share analytics.
+- **Copy failures stay bounded** - failed copy diagnostics include clipboard/fallback support booleans with existing bounded item, share URL, title, language, and image-count metadata.
+- **Verifier tightened** - `npm run verify:public-business-truth` now guards the PDP share-copy support helpers, Clipboard rejection fallback, textarea acknowledgement, bounded metadata, and absence of the old Clipboard-only success path.
+
+### Boundaries
+
+- This is browser-local public menu item-share hardening only. Public menu rendering, PDP layout, item URLs/head metadata, native share, analytics event shape, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - AI Reference Image Redirect Boundary
+
+### Fixed
+
+- **Reference-image redirects are not followed** - AI image generation, batch image generation, and image editing now fetch validated Firebase Storage reference images with manual redirect handling after bucket, tenant/store path, DNS, MIME, and size guards.
+- **Verifier tightened** - `npm run verify:ai-accounting` now guards the manual redirect policy alongside the existing scoped Storage and bounded response checks.
+
+### Boundaries
+
+- This is app-server AI reference-image fetch hardening only. Valid data URL previews, valid scoped Firebase Storage references, Gemini payload shape, AI accounting writes, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Shared Creative Editor Text Copy Acknowledgement
+
+### Fixed
+
+- **Editor text copies are acknowledged** - AI suggestion copy and Base64 PNG text export now show copied feedback only after Clipboard API success or acknowledged textarea fallback success.
+- **Copy failures stay bounded** - failed copy diagnostics include clipboard/fallback support booleans and copied text length only, without logging generated suggestion text or Base64 payloads.
+- **Verifiers tightened** - `npm run verify:creative-editor-smoke` and `npm run verify:campaigncue` now guard the shared editor text-copy helper, support metadata, bounded length metadata, and absence of old direct Clipboard API success paths.
+
+### Boundaries
+
+- Browser-local shared-editor text-copy hardening only. PNG image clipboard export, editor document state, Fabric runtime, product adapters, export/download callbacks, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Answerlattice Install Copy Acknowledgement
+
+### Fixed
+
+- **Install and widget copies are acknowledged** - Widget Management copy actions, Install Center packet/snippet copies, and KB job ID copy now use the shared Answerlattice support clipboard helper and show success only after Clipboard API success or acknowledged textarea fallback success.
+- **Sensitive diagnostics stay bounded** - failed copy diagnostics include clipboard/fallback support booleans with bounded copy-value, success-message, job ID, and job-status length metadata only.
+- **Verifier tightened** - `npm run verify:agent-readiness` and `npm run verify:answerlattice-runtime-truth` now guard these copy helpers, unavailable/fallback failure codes, fallback acknowledgement, support metadata, and absence of old direct Clipboard API success paths.
+
+### Boundaries
+
+- This is browser-local Answerlattice install/widget/KB copy hardening only. Widget config reads/writes, widget-key flows, install packet/kit endpoints, KB generation jobs, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Notification Provider Redirect Boundary
+
+### Fixed
+
+- **Notification provider redirects are not followed** - app-side owner-notification WhatsApp sends and app-side Telegram ops alerts now use manual redirect handling so provider 3xx responses fail closed instead of forwarding notification payloads to redirected targets.
+- **Telegram provider failures are visible** - fire-and-forget Telegram delivery now logs bounded non-2xx provider status diagnostics without blocking alert creation.
+- **Verifier tightened** - `npm run verify:menulist-api-tenant-safety` now guards the WhatsApp and Telegram manual redirect policies plus the Telegram non-OK response diagnostic.
+
+### Boundaries
+
+- This is app-side notification provider-call hardening only. Valid owner-notification sends, Telegram alert writes, platform Email/WhatsApp delivery, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Error Report Details Copy Acknowledgement
+
+### Fixed
+
+- **Diagnostic detail copies are acknowledged** - failure-screen `ErrorReportButton` copy feedback now waits for Clipboard API success or acknowledged textarea fallback success through the shared runtime clipboard helper.
+- **Copy failures stay bounded** - failed diagnostic-copy logs include clipboard/fallback support booleans and diagnostic length only, without logging copied diagnostic payload contents.
+- **Verifiers tightened** - `npm run verify:menulist-api-tenant-safety` and `npm run verify:auth-security-failure-matrix` now guard the acknowledged diagnostic-copy helper, support metadata, bounded length metadata, and absence of the old direct Clipboard API success path.
+
+### Boundaries
+
+- Browser-local failure-screen diagnostic copy hardening only. Crash rendering, report submission, deployment-version parsing, monitoring payload shape, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Notification Monitor Message Copy Acknowledgement
+
+### Fixed
+
+- **Manual notification copies are acknowledged** - Platform Notification Monitor and Owner Notification Monitor message copy actions now show copied feedback only after Clipboard API success or acknowledged textarea fallback success.
+- **Copy failures stay bounded** - failed copy diagnostics include clipboard/fallback support booleans with existing bounded destination, subject, body, channel, status, severity, trigger, product, and selected-event metadata.
+- **Verifier tightened** - `npm run verify:menulist-api-tenant-safety` now guards the shared runtime copy helper, unavailable/fallback failure codes, fallback acknowledgement, support metadata, and absence of old direct Clipboard API success paths.
+
+### Boundaries
+
+- Browser-local notification monitor copy hardening only. Notification reads/actions, manual handoff opens, provider behavior, delivery writes, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Answerlattice Platform Chat Copy Acknowledgement
+
+### Fixed
+
+- **Platform chat copies are acknowledged** - Chat Management message copy and ROI share-text copy now use the shared Answerlattice support clipboard helper and show copied feedback only after Clipboard API success or acknowledged textarea fallback success.
+- **Copy failures stay bounded** - failed copy diagnostics include clipboard/fallback support booleans with existing bounded role, message, ROI day/count, savings, and share-text length metadata.
+- **Verifier tightened** - `npm run verify:answerlattice-runtime-truth` now guards the platform chat and ROI copy helpers, unavailable/fallback failure codes, fallback acknowledgement, support metadata, and absence of old direct Clipboard API success paths.
+
+### Boundaries
+
+- This is browser-local platform chat-management copy hardening only. Conversation reads, metadata/note writes, ROI metric reads, weekly digest generation, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - SignalDesk Provider Redirect Boundary
+
+### Fixed
+
+- **SignalDesk provider redirects are not followed** - Google Places, Apify, FHRS/FHIS, and dormant Meta provider-send fetches now use manual redirect handling so source-provider request bodies and provider tokens fail closed on 3xx responses.
+- **Verifier tightened** - `npm run verify:signaldesk` now guards manual redirect handling for source-provider fetches and Meta provider-send fetches.
+
+### Boundaries
+
+- This is app-server SignalDesk provider-call hardening only. Source policy, provider budget gates, normalized imports, provider-send disabled state, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Public Truth Tools Planning Docs
+
+### New
+
+- **Public Truth Tools docs** - Added the planning doc set for MenuList-owned public truth tools, including product boundary, internal module/add-on rules, website/help copy guidance, cost posture, mobile admission, and QA checks.
+- **Public Truth Check docs** - Added the first concrete tool doc set for checking whether a business has clear public facts for menu or service source, hours, location, contact, links, and customer actions.
+
+### Boundaries
+
+- This is documentation-only planning. No routes, feature flags, Firebase rules, Cloud Functions, owner UI, public website pages, Vercel deployment, or Firebase deployment were changed.
+
+## June 30, 2026 - Reseller Link Copy Acknowledgement
+
+### Fixed
+
+- **Reseller copies are acknowledged** - desktop and mobile reseller onboarding/dashboard copy actions now show copied feedback only after Clipboard API success or acknowledged textarea fallback success.
+- **Sensitive handoff diagnostics stay bounded** - failed copy diagnostics include clipboard/fallback support booleans with existing bounded payment-link, dashboard-link, public-link, username, login-email, password, and transaction metadata.
+- **Verifier tightened** - `npm run verify:menulist-api-tenant-safety` now guards reseller copy helpers, unavailable/fallback failure codes, fallback acknowledgement, support metadata, and absence of old direct Clipboard API success paths.
+
+### Boundaries
+
+- This is browser-local reseller copy hardening only. Reseller onboarding, add-location capacity, payment-link opens/shares, Razorpay behavior, Firebase Auth, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Answerlattice Support Copy Acknowledgement
+
+### Fixed
+
+- **Support copy actions are acknowledged** - HelpChat message copy, AI Search answer copy, and ArticleView link copy now use a shared Answerlattice support clipboard helper and show copied feedback only after Clipboard API success or acknowledged textarea fallback success.
+- **Copy failures stay bounded** - failed copy diagnostics include clipboard/fallback support booleans with existing bounded message, answer, article, route, and session metadata.
+- **Verifier tightened** - `npm run verify:public-business-truth`, `npm run verify:answerlattice-runtime-truth`, and `npm run verify:auth-security-failure-matrix` now guard the shared support copy helper, unavailable/fallback failure codes, fallback acknowledgement, support metadata, and absence of old unguarded Clipboard API success paths.
+
+### Boundaries
+
+- This is browser-local support copy hardening only. RAG retrieval, canonical-first doctrine, chat/session writes, article feedback writes, AI Search feedback, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Vercel Domain Provider Redirect Boundary
+
+### Fixed
+
+- **Domain provider redirects are not followed** - the shared Vercel domain helper now uses manual redirect handling for add, status, and remove calls, so `VERCEL_TOKEN` requests fail closed on provider redirects instead of following a new target.
+- **Verifier tightened** - `npm run verify:public-business-truth` now guards the Vercel helper path-segment encoding, bounded response parsing, and manual redirect policy.
+
+### Boundaries
+
+- This is app-server domain-provider hardening only. Custom-domain validation, Vercel request paths/bodies, store writes, public cache invalidation, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Menu Export Endpoint Redirect Boundary
+
+### Fixed
+
+- **Menu export endpoint redirects are not followed** - desktop Share Modal external endpoint sharing now uses manual redirect handling after public HTTPS endpoint admission, so exported menu JSON is not reposted to a redirected target.
+- **Verifier tightened** - `npm run verify:menu-export` now guards the ShareModal normalized endpoint fetch and manual redirect policy.
+
+### Boundaries
+
+- This is browser-local menu export endpoint hardening only. JSON/XLSX downloads, public menu sharing, external endpoint payload shape, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Answerlattice Intake Trigger Redirect Boundary
+
+### Fixed
+
+- **Manual retry trigger redirects are not followed** - `/api/platform/answerlattice-intake` now uses manual redirect handling after the fixed host/path allowlist and app-server DNS target validation, so a 3xx trigger response fails closed instead of forwarding the scheduler secret to a new target.
+- **Verifier tightened** - `npm run verify:answerlattice-runtime-truth` now guards the normalized trigger fetch and manual redirect policy for the platform intake manual retry route.
+
+### Boundaries
+
+- This is app-server Answerlattice intake monitor hardening only. Scheduler logic, selected-workspace scope, response payload shape, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Digital Screen Link Copy Acknowledgement
+
+### Fixed
+
+- **Digital Screen link copy is acknowledged** - desktop and mobile Menu Board / Highlights link copy now uses the shared screen copy helper and shows copied feedback only after Clipboard API success or acknowledged textarea fallback success.
+- **Copy failures stay bounded** - failed copy diagnostics include clipboard/fallback support booleans with existing bounded screen URL, mode, and seen-signal metadata.
+- **Verifier tightened** - `npm run verify:customer-app-pwa` now guards the shared Digital Screen copy helper, unavailable/fallback failure codes, fallback acknowledgement, support metadata, and absence of old unguarded Clipboard API success paths.
+
+### Boundaries
+
+- This is browser-local Digital Screen setup link-copy hardening only. Screen state, tokens, public TV rendering, owner override, slide upload/caption/delete, seen-signal writes, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Project Share and Menu Kit Copy Acknowledgement
+
+### Fixed
+
+- **Project share copy is acknowledged** - desktop Share Modal direct-link and Instagram copy actions now check Clipboard API support, use the textarea fallback only when available, and show copied feedback only after an acknowledged browser handoff.
+- **Menu Kit copy is acknowledged** - share-message and staff-line copy actions use the same acknowledged copy contract.
+- **Verifier tightened** - `npm run verify:public-business-truth` and `npm run verify:menu-export` now guard the shared export copy helper, unavailable/fallback failure codes, fallback acknowledgement, support metadata, and absence of old direct Clipboard API copy paths.
+
+### Boundaries
+
+- This is browser-local project share/export copy hardening only. QR generation/download, Menu Kit asset generation, ZIP download, structured export, PDF export, WhatsApp/social opens, project writes, Firestore rules/indexes, Storage rules, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - POS Sync Webhook Redirect Boundary
+
+### Fixed
+
+- **POS Sync webhook redirects are not followed** - `/api/pos-sync/test` and `/api/pos-sync/deliver` now use manual redirect handling after URL and DNS target validation, so a provider 3xx response is treated as a connection issue instead of sending the signed payload to a new target.
+- **Verifier tightened** - `npm run verify:menulist-api-tenant-safety` now guards the DNS target check and manual redirect policy before outbound POS Sync webhook calls.
+
+### Boundaries
+
+- This is outbound webhook route hardening only. POS Sync settings, secret generation, payload shape, delivery logs, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Review Reply Copy Acknowledgement
+
+### Fixed
+
+- **Review reply copy is acknowledged** - `ReviewReplyTool` now checks Clipboard API support, uses textarea fallback only when available, and shows copied feedback only after an acknowledged browser handoff.
+- **Copy failures stay bounded** - failed copy diagnostics include clipboard/fallback support booleans with existing bounded rating, attempt, reply-source, business-type, pasted-review, and generated-reply metadata.
+- **Verifier tightened** - `npm run verify:auth-security-failure-matrix` now guards the Review Reply copy helper, unavailable/fallback failure codes, fallback acknowledgement, support metadata, and absence of old unguarded Clipboard API success paths.
+
+### Boundaries
+
+- This is browser-local Review Reply copy hardening only. Disabled/unmounted feature status, `/api/reviews/suggest`, prompt construction, AI provider calls, output phrase guard, accounting writes, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Mobile Design Link Copy Acknowledgement
+
+### Fixed
+
+- **Mobile Design public-link copy is acknowledged** - Mobile Design Editor link copy now checks Clipboard API support, uses the textarea fallback only when available, and shows copied feedback only after an acknowledged browser handoff.
+- **Copy failures stay bounded** - failed design-link copy diagnostics include clipboard/fallback support booleans with existing bounded project, store, menu URL, label, value, layout, and mood metadata.
+- **Verifier tightened** - `npm run verify:public-business-truth` now guards the Mobile Design copy helper, unavailable/fallback failure codes, fallback acknowledgement, support metadata, and absence of old unguarded Clipboard API success paths.
+
+### Boundaries
+
+- This is browser-local Mobile Design link-copy hardening only. Design publish, background image upload, post-publish verification, native share, QR, preview, Firestore rules/indexes, Storage rules, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Campaign Caption Prompt Input Normalization
+
+### Fixed
+
+- **Campaign caption prompt inputs are normalized** - item name, description, price, category, business name, and language now strip control/template characters, normalize whitespace, and cap prompt lengths immediately before Gemini prompt interpolation.
+- **Prompt lookups are clamped** - campaign type and execution surface now resolve only through approved context and surface-guideline maps before being inserted into the prompt.
+- **Verifier tightened** - `npm run verify:ai-accounting` now guards the Campaign Caption prompt sanitizer, campaign/surface clamps, and absence of old raw `${itemName}`-style interpolation.
+
+### Boundaries
+
+- This is Campaign Caption prompt-boundary hardening only. Auth, Safe Mode, rate limiting, bounded body admission, Zod validation, tenant checks, capacity checks, Gemini call behavior, output phrase guard, accounting writes, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Mobile Official Page Link Copy Acknowledgement
+
+### Fixed
+
+- **Official Page link copy is acknowledged** - Mobile Official Page public-link copy now checks Clipboard API support, uses the textarea fallback only when available, and shows copied feedback only after an acknowledged browser handoff.
+- **Copy failures stay bounded** - failed copy diagnostics include clipboard/fallback support booleans with existing bounded store, tenant, official-page URL, selected-project, label, and value metadata.
+- **Verifier tightened** - `npm run verify:public-business-truth` now guards the Mobile Official Page copy helper, unavailable/fallback failure codes, fallback acknowledgement, support metadata, and absence of old unguarded Clipboard API success paths.
+
+### Boundaries
+
+- This is browser-local Mobile Official Page link-copy hardening only. Saves, cover/photo upload, native share, QR, preview, Firestore rules/indexes, Storage rules, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Customer App Install Link Copy Acknowledgement
+
+### Fixed
+
+- **Customer App install-link copy is acknowledged** - desktop and mobile Customer App install-link copy now checks Clipboard API support, uses the textarea fallback only when available, and shows copied feedback only after an acknowledged browser handoff.
+- **Copy failures stay bounded** - failed install-link copy diagnostics include clipboard/fallback support booleans with existing bounded store, tenant, domain, and install-link metadata.
+- **Verifier tightened** - `npm run verify:customer-app-pwa` now guards the install-link copy helpers, unavailable/fallback failure codes, fallback acknowledgement, support metadata, and absence of old unguarded Clipboard API success paths.
+
+### Boundaries
+
+- This is browser-local Customer App install-link copy hardening only. Customer App settings saves, icon upload/clear, manifest/icon/screenshot routes, install prompt behavior, analytics, Firestore rules/indexes, Storage rules, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - POS Sync Copy Acknowledgement
+
+### Fixed
+
+- **POS Sync secret copy is acknowledged** - desktop and mobile POS Sync signing-secret copy now checks Clipboard API support, uses the textarea fallback only when available, and shows copied feedback only after an acknowledged browser handoff.
+- **Technical summary copy is acknowledged** - desktop POS Sync technical-summary copy now uses the same acknowledged copy contract.
+- **Secret diagnostics stay bounded** - failed POS Sync copy diagnostics include clipboard/fallback support booleans while continuing to log only secret presence/length, not raw webhook secrets or setup text.
+- **Verifier tightened** - `npm run verify:public-business-truth` now guards desktop/mobile POS Sync copy helpers, unavailable/fallback failure codes, fallback acknowledgement, support metadata, and absence of old unguarded Clipboard API success paths.
+
+### Boundaries
+
+- This is browser-local POS Sync copy hardening only. POS Sync setting saves, secret generation/rotation, provider email draft handoff, connection tests, delivery logs, outbound webhook behavior, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Domain Settings Copy Acknowledgement
+
+### Fixed
+
+- **Domain Settings copy is acknowledged** - desktop subdomain/custom-domain/DNS copy actions and mobile custom-domain/DNS copy actions now check Clipboard API support, use the textarea fallback only when available, and show copied feedback only after an acknowledged browser handoff.
+- **Copy failures stay bounded** - failed Domain Settings copy diagnostics now include clipboard/fallback support booleans with existing bounded URL/DNS metadata.
+- **Verifier tightened** - `npm run verify:public-business-truth` now guards the desktop/mobile Domain Settings copy helpers, unavailable/fallback failure codes, fallback acknowledgement, support metadata, and absence of old unguarded Clipboard API success paths.
+
+### Boundaries
+
+- This is browser-local Domain Settings copy hardening only. Subdomain availability, subdomain saves, custom-domain status/add/remove behavior, DNS display, Vercel calls, store writes, public cache invalidation, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Official Link Copy Cards Acknowledgement
+
+### Fixed
+
+- **Google-listing copy is acknowledged** - Business Settings GoogleListingGuide and Owner Dashboard GoogleListingCard now check Clipboard API support, use the textarea fallback only when available, and show copied feedback only after an acknowledged browser handoff.
+- **Behavior nudge copy is acknowledged** - Owner Dashboard BehaviorNudgeCard now uses the same acknowledged copy contract before showing copied feedback.
+- **Verifier tightened** - `npm run verify:public-business-truth` now guards these official-link card copy helpers, unavailable/fallback failure codes, fallback acknowledgement, support metadata, and absence of old unguarded Clipboard API success paths.
+
+### Boundaries
+
+- This is browser-local official-link copy hardening only. OBP URL generation, Google Business Profile opens, Google-link mark-done saves, behavior-nudge dismissal, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - OBP Link Card Copy Acknowledgement
+
+### Fixed
+
+- **Official Business Page card copy is acknowledged** - OBPLinkCard Copy Link and Copy Message now check Clipboard API support, use the textarea fallback only when available, and show copied feedback only after an acknowledged browser handoff.
+- **Share tracking waits for copy success** - OBP share analytics for copy and copy-message remain after the acknowledged copy path, so failed browser handoffs do not record false owner share actions.
+- **Verifier tightened** - `npm run verify:public-business-truth` now guards the OBPLinkCard copy helper, unavailable/fallback failure codes, fallback acknowledgement, support metadata, and absence of old unguarded Clipboard API success paths.
+
+### Boundaries
+
+- This is browser-local OBPLinkCard copy hardening only. OBP URL generation, WhatsApp/direct opens, QR download, default-project lookup, valid OBP share tracking after successful handoffs, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Mobile Share Output Copy Acknowledgement
+
+### Fixed
+
+- **Mobile Share copy is acknowledged** - Mobile Share page-level copy actions now check Clipboard API support, use the textarea fallback only when available, and show copied feedback only after an acknowledged browser handoff.
+- **Starter signals wait for copy success** - copy-driven mobile starter activation signals now remain after acknowledged copy, so failed browser handoffs do not create false activation evidence.
+- **Verifier tightened** - `npm run verify:public-business-truth` now guards the Mobile Share copy helper, unavailable/fallback failure codes, fallback acknowledgement, support metadata, and starter-signal ordering after acknowledged copy.
+
+### Boundaries
+
+- This is browser-local Mobile Share copy hardening only. Link generation, screen-link loading, native share, QR/Menu Kit/PDF/export/printable generation, valid starter activation writes after successful handoffs, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Mobile Project Selector Copy Acknowledgement
+
+### Fixed
+
+- **Project-link copy is acknowledged** - Mobile Project Selector share actions now check Clipboard API support, use the textarea fallback only when available, and show copied feedback only after an acknowledged browser handoff.
+- **Copy failures stay bounded** - failed project-link copy diagnostics now include clipboard/fallback support booleans and bounded sourced-link metadata without logging raw public links.
+- **Verifier tightened** - `npm run verify:public-business-truth` now guards the mobile selector copy helper, unavailable/fallback failure codes, fallback acknowledgement, support metadata, and absence of the old unguarded Clipboard API success path.
+
+### Boundaries
+
+- This is browser-local Mobile Project Selector copy hardening only. Project create/edit/duplicate/delete/reset/active writes, translation repair, public project URL generation, QR sheet behavior, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Use MenuList Output Copy Acknowledgement
+
+### Fixed
+
+- **Desktop output copy is acknowledged** - Use MenuList page-level copy actions now check Clipboard API support, use the textarea fallback only when available, and show copied feedback only after an acknowledged browser handoff.
+- **Starter signals wait for copy success** - copy-driven starter activation signals now remain after the acknowledged copy path, so failed browser handoffs do not create false activation evidence.
+- **Verifier tightened** - `npm run verify:public-business-truth` now guards the page-level copy helper, unavailable/fallback failure codes, fallback acknowledgement, support metadata, and starter-signal ordering after acknowledged copy.
+
+### Boundaries
+
+- This is browser-local desktop Use MenuList copy hardening only. Link generation, screen-link loading, QR/Menu Kit/PDF generation, valid starter activation writes after successful copy, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Presence Monitor Copy Acknowledgement
+
+### Fixed
+
+- **Official-link copy is acknowledged** - desktop and mobile Presence Monitor copy actions now check Clipboard API support, use the textarea fallback only when available, and show copied feedback only after an acknowledged browser handoff.
+- **Embedded fallback removed** - Business Settings no longer passes a separate direct-copy fallback into the shared Presence Monitor; the shared component owns the browser-local copy contract.
+- **Verifier tightened** - `npm run verify:public-business-truth` now guards the Presence Monitor copy helpers, unavailable/fallback failure codes, fallback acknowledgement, support metadata, removed embedded copy fallback, and absence of old unguarded Clipboard API success paths.
+
+### Boundaries
+
+- This is browser-local Presence Monitor copy hardening only. Confirm/remove writes, starter activation signal writes, external guide opens, screen-link loading, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Share Link Card Copy Acknowledgement
+
+### Fixed
+
+- **Owner share-card copy is acknowledged** - Business Profile, Project Menu, and Customer App install share cards now check Clipboard API support, use the textarea fallback only when available, and show copied feedback only after an acknowledged browser handoff.
+- **Copy failures stay bounded** - failed share-card link and message copy diagnostics now include clipboard and fallback support booleans without logging raw public links or message bodies.
+- **Verifier tightened** - `npm run verify:public-business-truth` now guards the share-card copy helper, unavailable/fallback failure codes, fallback acknowledgement, support metadata, and absence of old unguarded Clipboard API success paths.
+
+### Boundaries
+
+- This is browser-local ShareLinkCard copy hardening only. Share-card link generation, WhatsApp handoff, direct open behavior, starter-signal tracking, public links, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - AI Menu Manager Local URL Admission
+
+### Fixed
+
+- **AMM local URLs are normalized before browser handoff** - desktop and mobile Menu Manager local copy/open/QR actions now route URL values through a shared normalizer before copying, opening, or generating QR codes.
+- **Unsafe local-action URLs fail closed** - normal use allows HTTPS URLs only, while HTTP is limited to known local-development tenant hosts for local testing.
+- **Verifier tightened** - `npm run verify:ai-menu-manager` now guards the shared normalizer, desktop/mobile normalized copy/open/QR use, and removal of direct `window.open(action.value)` handoffs.
+
+### Boundaries
+
+- This is browser-local AI Menu Manager card-action admission hardening only. AMM command resolution, proposal persistence, project mutations, local download text, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Share Endpoint Admission
+
+### Fixed
+
+- **Menu data endpoint sharing is HTTPS-only** - B2B ShareModal now normalizes the entered endpoint and posts only to public HTTPS URLs without embedded credentials, localhost, private-network, link-local, metadata, or `.local` targets.
+- **Verifier tightened** - `npm run verify:menu-export` now guards the ShareModal endpoint normalizer, public-host checks, normalized fetch target, and removal of generic URL-only validation.
+
+### Boundaries
+
+- This is browser-local menu export endpoint admission hardening only. JSON/XLSX downloads, public menu sharing, external endpoint POST payload shape, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Answerlattice Discovery Fetch Cap
+
+### Fixed
+
+- **Knowledge Intake URL fetches fail closed without a stream** - selected-page discovery now accepts non-streaming fetch responses only when they declare a safe content length within `MAX_DISCOVERY_FETCH_BYTES`; streaming responses still cancel after the cap.
+- **Verifier tightened** - `npm run verify:answerlattice-runtime-truth` now guards the no-stream content-length gate and the streaming cancellation branch.
+
+### Boundaries
+
+- This is Answerlattice Knowledge Intake URL discovery hardening only. Valid selected-page discovery, source creation, media intake, analysis, publish behavior, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Communication Kit Copy Acknowledgement
+
+### Fixed
+
+- **Customer message copy is acknowledged** - desktop and mobile Communication Kit copy actions now check Clipboard API support, use the textarea fallback only when available, and show copied feedback only after an acknowledged browser handoff.
+- **Copy failures are bounded** - failed copy handoffs now add clipboard and fallback support booleans to the existing bounded template/message diagnostics.
+- **Verifier tightened** - `npm run verify:public-business-truth` now guards the desktop and mobile copy helpers, unavailable-copy codes, fallback acknowledgement, support metadata, and absence of old unguarded Clipboard API success paths.
+
+### Boundaries
+
+- This is browser-local Communication Kit copy hardening only. Message generation, WhatsApp handoff, mobile native share, public links, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Owner Action Plan Failure Copy
+
+### Fixed
+
+- **Action-plan mark-done failures stay owner-safe** - desktop and mobile Owner Dashboard action-plan cards now show the localized `actionPlan.markDoneFailed` copy instead of rendering thrown exception text.
+- **Verifier tightened** - `npm run verify:auth-security-failure-matrix` now guards the desktop and mobile action-plan cards against owner-visible raw exception text.
+
+### Boundaries
+
+- This is Owner Dashboard UI failure-copy hardening only. Valid mark-done receipt writes, response parsing, dashboard reads, analytics documents, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Shared Mobile QR Copy Acknowledgement
+
+### Fixed
+
+- **Shared mobile QR copy is acknowledged** - `MobileQrCodeSheet` Copy now checks Clipboard API support, uses the textarea fallback only when available, and shows copied feedback only after an acknowledged browser handoff.
+- **Copy failures are bounded** - failed QR sheet copy handoffs now add clipboard and fallback support booleans to the existing bounded diagnostic-source, URL, filename, title, helper text, store, plan, and QR-image metadata.
+- **Verifier tightened** - `npm run verify:public-business-truth` now guards the shared QR copy helper, unavailable-copy code, fallback acknowledgement, support metadata, and absence of the old unguarded Clipboard API success path.
+
+### Boundaries
+
+- This is shared owner-mobile QR copy hardening only. QR generation/download, Mobile Share, Mobile Feedback, Mobile Official Page, Mobile Design, Mobile Project Selector, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Mobile Feedback Link Copy Acknowledgement
+
+### Fixed
+
+- **Mobile feedback copy is acknowledged** - Mobile Feedback Copy Link now checks Clipboard API support, uses the textarea fallback only when available, and shows copied feedback only after an acknowledged browser handoff.
+- **Copy failures are bounded** - failed mobile feedback link copies now log clipboard and fallback support booleans with existing bounded store/project/feedback-link metadata.
+- **Verifier tightened** - `npm run verify:public-business-truth` now guards the mobile feedback copy helper, unavailable-copy code, fallback acknowledgement, support metadata, and absence of the old unguarded Clipboard API success path.
+
+### Boundaries
+
+- This is browser-local mobile owner feedback handoff hardening only. Feedback inbox reads, status/reply writes, QR sheet behavior, native share, public feedback submission, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Desktop Feedback QR Copy Acknowledgement
+
+### Fixed
+
+- **Feedback QR copy is acknowledged** - desktop Feedback QR Copy Link and Copy Message now check Clipboard API support, use the textarea fallback only when available, and show copied success only after an acknowledged browser handoff.
+- **Copy failures are bounded** - failed feedback copy handoffs now add clipboard and fallback support booleans to the existing project/store/feedback URL and message-length diagnostics.
+- **Verifier tightened** - `npm run verify:public-business-truth` now guards the Feedback QR copy helper, unavailable-copy codes, fallback acknowledgement, support metadata, and absence of the old unguarded Clipboard API success paths.
+
+### Boundaries
+
+- This is browser-local owner feedback handoff hardening only. Feedback QR generation/download, public feedback submission, inbox reads/writes, public menu truth, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Messaging Preview Copy Acknowledgement
+
+### Fixed
+
+- **Post-publish preview copy is acknowledged** - `/msg-preview/[sessionId]` Copy Link now checks Clipboard API support, falls through from rejected Clipboard API writes to textarea fallback, uses the textarea fallback only when available, and marks copied state only after an acknowledged browser handoff.
+- **Copy failures are bounded** - failed preview Copy Link handoffs now include clipboard and fallback support booleans with existing session/link presence-length metadata before showing fixed owner copy.
+- **Verifier tightened** - `npm run verify:menu-extraction-pipeline` and `npm run verify:menulist-api-tenant-safety` now guard the preview copy helper, unavailable/fallback failure codes, rejection fallback, fallback acknowledgement, support metadata, and absence of the old unguarded success flow.
+
+### Boundaries
+
+- This is browser-local messaging preview success-page handoff hardening only. Preview load, approve/fix APIs, publish transaction, public menu URLs, cache revalidation, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Website Resource Checklist Copy Acknowledgement
+
+### Fixed
+
+- **Resource checklist copy is acknowledged** - public resource article checklist copy now checks browser Clipboard API support, uses the textarea fallback only when available, and marks the checklist as copied only after an acknowledged browser handoff.
+- **Copy failures are bounded** - failed checklist-copy handoffs now log `website_resource_checklist_copy_failed` with article/section/checklist presence-length metadata and clipboard/fallback support booleans only.
+- **Verifier tightened** - `npm run verify:website-resource-locales` now guards the checklist copy helper, unavailable-copy code, fallback acknowledgement, bounded diagnostic metadata, and absence of the old silent failure path.
+
+### Boundaries
+
+- This is browser-local public website resource hardening only. Resource copy, route registration, sitemap/LLM discovery files, owner dashboard flows, customer menu runtime, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Public Create Menu Copy Acknowledgement
+
+### Fixed
+
+- **Success-page copy support is explicit** - `/create-menu/success` Copy Link now checks Clipboard API support, falls back only when the document copy fallback is available, and advances copied state only after an acknowledged browser handoff.
+- **Copy failures are bounded** - failed Copy Link handoffs now include clipboard and fallback support booleans with existing URL presence-length metadata before showing localized fixed copy.
+- **Verifier tightened** - `npm run verify:menu-extraction-pipeline` now guards the success-page copy helper, unavailable-copy code, support metadata, and absence of the old nested clipboard fallback flow.
+
+### Boundaries
+
+- This is browser-local public create-menu success-page handoff hardening only. Valid claim/publish behavior, starter activation signal writes after successful copy/open, public menu URLs, QR rendering, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - CampaignCue Handoff Copy Acknowledgement
+
+### Fixed
+
+- **Manual handoff copy is acknowledged** - CampaignCue handoff-field copy now checks Clipboard API support, waits for browser write acknowledgement, and shows copied feedback only after confirmation.
+- **Copy failures are bounded** - unavailable or rejected handoff copy attempts now log `campaigncue_handoff_copy_failed` with clipboard-support and value-length metadata only.
+- **Verifier tightened** - `npm run verify:campaigncue` now guards the handoff copy helper, unavailable-clipboard code, bounded diagnostic metadata, and absence of the old direct clipboard promise chain.
+
+### Boundaries
+
+- This is browser-local CampaignCue handoff copy hardening only. Valid manual delivery cards, output packs, ZIP generation, exports, action recording, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - AI Operation History Response Acknowledgement
+
+### Fixed
+
+- **Transaction history responses are validated** - MenuList and Answerlattice AI-operation history DALs now parse `/api/ai-operations` and `/api/answerlattice/ai-operations` through a 512 KB bounded reader and require the paginated `{ data, hasMore, lastVisibleDoc }` shape.
+- **Malformed history responses are bounded** - rejected, malformed, oversized, or wrong-shape AI-operation history responses now log bounded diagnostics and use the existing fixed transaction-history failure path instead of silently normalizing bad data into an empty result.
+- **Verifier tightened** - `npm run verify:ai-accounting` now guards the client response caps, bounded parsers, paginated shape guards, diagnostics, and absence of direct `result.json()` parsing.
+
+### Boundaries
+
+- This is AI-operation history client/DAL response hardening only. Valid transaction-history reads, owner/platform response shaping, AI accounting writes, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Platform Chat Copy Acknowledgements
+
+### Fixed
+
+- **Platform chat message copy is acknowledged** - Chat Management message copy now checks Clipboard API support, waits for the write acknowledgement, and shows copied feedback only after the browser confirms the handoff.
+- **ROI share copy is acknowledged** - the Chat Management ROI share modal now waits for Clipboard API acknowledgement before closing or showing copied success.
+- **Copy failures are bounded** - unavailable or rejected platform chat copy attempts now log `platform_chat_message_copy_failed` or `platform_roi_share_copy_failed` with role, text-length, message-id length, ROI day/count/length, and clipboard-support metadata only.
+- **Verifier tightened** - `npm run verify:answerlattice-runtime-truth` now guards the platform chat and ROI copy helpers, unavailable-clipboard codes, bounded diagnostic metadata, and absence of the old direct clipboard paths.
+
+### Boundaries
+
+- This is browser-local Answerlattice Chat Management copy hardening only. Valid chat session rendering, feedback display, article references, chat analytics, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - SignalDesk Client Response Acknowledgement
+
+### Fixed
+
+- **Client responses are validated** - SignalDesk overview, workspace, action, and kill-switch callers now parse route responses through a 1 MB bounded reader and require the expected `{ data }` acknowledgement before updating local state.
+- **Wrong-shape SignalDesk responses are bounded** - rejected, malformed, oversized, or invalid SignalDesk route responses now keep fixed internal-tool copy and log bounded diagnostics instead of relying on direct browser JSON parsing.
+- **Verifier tightened** - `npm run verify:signaldesk` now guards the client response cap, bounded reader, envelope/shape guards, diagnostics, and absence of direct `await response.json()` parsing.
+
+### Boundaries
+
+- This is SignalDesk client/DAL response hardening only. Valid overview/workspace reads, action mutations, kill-switch updates, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - CampaignCue Workspace Response Acknowledgement
+
+### Fixed
+
+- **Workspace responses are validated** - CampaignCue workspace, CueLayers, campaign, business, source, location, action, asset, download, and editor-export callers now parse route responses through a 4 MB bounded reader and require the expected `{ data }` envelope before updating local workspace state.
+- **Malformed route responses are bounded** - rejected, malformed, oversized, or wrong-shape CampaignCue workspace responses now keep fixed product copy and log bounded diagnostics instead of relying on silent direct JSON fallbacks.
+- **Verifier tightened** - `npm run verify:campaigncue` now guards the workspace response cap, response helper, shape guards, diagnostics, and absence of direct browser JSON parsing.
+
+### Boundaries
+
+- This is CampaignCue browser-response hardening only. Valid workspace reads, CueLayers saves/uploads/exports, campaign actions, business/source/location/asset mutations, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Answerlattice Search Copy Acknowledgement
+
+### Fixed
+
+- **Search answer copy failures are caught** - AI Search answer copy now checks Clipboard API support before writing, awaits the copy acknowledgement, and logs fixed bounded diagnostics when browser copy is unavailable or rejected.
+- **HelpChat message copy failures are caught** - HelpChat message copy now uses the same acknowledgement pattern before showing copied state, including bounded clipboard-support metadata.
+- **Verifier tightened** - Answerlattice, public-business, and auth/security verifiers now guard the copy helpers, unavailable-clipboard codes, support metadata, and absence of the old direct clipboard promise chain.
+
+### Boundaries
+
+- This is browser-local Answerlattice search/help copy hardening only. Valid search, RAG/canonical retrieval, feedback writes, chat sessions, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Answerlattice Draft Regeneration Response Acknowledgement
+
+### Fixed
+
+- **Draft regeneration success is confirmed** - manual mutation-proposal draft regeneration now parses the route response through a 16 KB bounded reader and requires `{ success: true }` before the governance UI shows draft-generated success.
+- **Malformed route responses are bounded** - rejected, malformed, oversized, or wrong-shape draft-regeneration responses now throw fixed local failure copy and log bounded diagnostics.
+- **Verifier tightened** - `npm run verify:answerlattice-runtime-truth` now guards the draft-regeneration response cap, response guard, diagnostics, and absence of direct JSON fallback.
+
+### Boundaries
+
+- This is Answerlattice governance browser/DAL response hardening only. Valid draft regeneration, Gemini calls, proposal writes, audit logs, AI operation logging, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Answerlattice Intake Monitor Response Acknowledgement
+
+### Fixed
+
+- **Platform intake monitor responses are validated** - the platform Answerlattice Intake Monitor now parses snapshot and manual retry responses through a 512 KB bounded reader and requires the expected route envelopes before replacing table state or showing retry success.
+- **Manual trigger response parsing is bounded** - `/api/platform/answerlattice-intake` now caps the downstream `triggerAnswerlatticeNightly` response, forwards only a sanitized scheduler summary, and returns fixed invalid-response copy when a successful trigger response is malformed or oversized.
+- **Verifier tightened** - `npm run verify:answerlattice-runtime-truth` now guards the monitor response cap, parser, shape guards, retry result guard, diagnostics, server trigger response cap, sanitized trigger summaries, and absence of direct JSON fallbacks.
+
+### Boundaries
+
+- This is Answerlattice platform-monitor response hardening only. Valid monitor reads, selected-workspace retry behavior, scheduler execution, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Answerlattice Widget Management Response Acknowledgement
+
+### Fixed
+
+- **Widget Management responses are validated** - widget-config, widget-activity, widget-key, and hosted-help settings callers now parse responses through a 256 KB bounded reader and require the documented route shapes before changing local widget or hosted-help state.
+- **Raw route text blocked** - rejected, malformed, oversized, or wrong-shape responses now use fixed local failure copy with bounded diagnostics instead of route-provided error text.
+- **Verifier tightened** - `npm run verify:answerlattice-runtime-truth` now guards the Widget Management response cap, parser, shape guards, diagnostics, and absence of direct JSON fallbacks.
+
+### Boundaries
+
+- This is Answerlattice Widget Management browser-response hardening only. Valid widget settings reads/saves, activity reads, widget-key mutations, hosted-help settings and DNS refreshes, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Article Link Copy Acknowledgement
+
+### Fixed
+
+- **Article links require copy confirmation** - the shared Article View now waits for Clipboard API or textarea-copy acknowledgement before showing copied state, and failed copy handoffs log bounded article-route diagnostics.
+- **Verifier tightened** - `npm run verify:public-business-truth` now guards Article View copy diagnostics, bounded link context, and absence of the old unchecked textarea-copy branch.
+
+### Boundaries
+
+- This is browser-local Help Center/article rendering hardening only. Valid article rendering, article feedback, view tracking, HelpChat references, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Today Campaign Copy Fallback Acknowledgement
+
+### Fixed
+
+- **Today copy fallbacks require confirmation** - Today WhatsApp and campaign-surface copy helpers now reject unavailable document fallbacks or failed textarea copy acknowledgements instead of treating them as successful handoffs.
+- **Verifier tightened** - `npm run verify:public-business-truth` now guards the Today fallback failure codes, `execCommand('copy')` acknowledgement checks, and absence of the old unchecked textarea-copy path.
+
+### Boundaries
+
+- This is browser-local Today campaign handoff hardening only. Valid WhatsApp opens, Clipboard API copies, poster/tent/screen downloads, campaign action state, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Answerlattice Governance Translation Response Acknowledgement
+
+### Fixed
+
+- **Translation responses are validated** - the Governance Hub now parses `/api/answerlattice/translate` responses through a 16 KB bounded reader and requires the documented article/locale/title response shape before returning to the translation tab.
+- **Raw translation route text blocked** - rejected, malformed, oversized, or wrong-shape translation responses now throw fixed local failure copy with bounded diagnostics instead of using route-provided error text.
+- **Verifier tightened** - `npm run verify:answerlattice-runtime-truth` now guards the governance translation response cap, parser, shape guard, diagnostics, and absence of direct JSON fallback.
+
+### Boundaries
+
+- This is Answerlattice governance browser-response hardening only. Valid article translation, KB cache/context version bumps, article translation writes, AI operation logging, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Business Settings Presence Diagnostics
+
+### Fixed
+
+- **Embedded Presence failures are bounded** - Business Settings now logs failed screen-link loading and clipboard copy failures from the embedded Presence Monitor with bounded store/domain/link metadata before keeping fixed owner-facing copy.
+- **Verifier tightened** - `npm run verify:public-business-truth` now guards the Business Settings Presence failure codes, bounded link/copy context, and absence of the old silent catch blocks.
+
+### Boundaries
+
+- This is browser-local Business Settings diagnostics hardening only. Valid Presence Monitor rendering, screen URLs, copy success, `menuPresence` writes, store reads, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Answerlattice Install Center Response Acknowledgement
+
+### Fixed
+
+- **Install setup responses are validated** - the Answerlattice Install Center now parses widget-config setup responses through a 64 KB bounded reader and requires the expected setup shape before replacing local setup state.
+- **Optional activation summary is guarded** - activation summary hints now reuse the shared activation dashboard response guard and fail as optional diagnostics instead of relying on direct JSON fallbacks.
+- **Verifier tightened** - `npm run verify:answerlattice-runtime-truth` now guards the Install Center response cap, widget/activation shape guards, diagnostics, and absence of direct JSON fallbacks.
+
+### Boundaries
+
+- This is Answerlattice Install Center browser-response hardening only. Valid widget-config reads, optional activation-summary reads, install packet/ZIP routes, widget setup state, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Public Menu PDP Share Copy Acknowledgement
+
+### Fixed
+
+- **PDP share fallback requires confirmation** - public item detail sharing now treats unavailable clipboard support or a failed textarea fallback as a share-copy failure instead of showing copied state.
+- **Verifier tightened** - `npm run verify:public-business-truth` now guards the PDP share-copy failure code, fallback acknowledgement, bounded share metadata, and absence of the old unchecked `document.execCommand('copy')` path.
+
+### Boundaries
+
+- This is browser-local public menu share hardening only. Menu layout, pricing visibility, item rendering, analytics queueing, project/store data, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Answerlattice Public Content Client Response Acknowledgement
+
+### Fixed
+
+- **Public content responses are validated** - Help Center, FAQ, article, AI Search category, and changelog callers now read `/api/answerlattice/public-content` through a 1 MB bounded response parser and require the `{ data }` envelope before returning typed content.
+- **Raw status failure removed** - rejected, malformed, oversized, or wrong-shape public-content responses now use fixed local failure text with bounded client diagnostics instead of throwing a status-suffixed error.
+- **Verifier tightened** - `npm run verify:answerlattice-runtime-truth` now guards the public-content client response cap, parser, envelope guard, diagnostics, and absence of direct JSON parsing.
+
+### Boundaries
+
+- This is Answerlattice public-content browser-response hardening only. Valid cached content reads, cache keys, cache freshness, owner-write invalidation, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Legacy Project Share Copy Diagnostics
+
+### Fixed
+
+- **Dormant project share copies are bounded** - legacy `linkView` and `socialShareView` copy failures now use export diagnostics with bounded share URL/platform metadata before showing fixed failure copy.
+- **Verifier tightened** - `npm run verify:public-business-truth` now guards the legacy copy failure codes, bounded copy URL lengths, and absence of the old UI-only clipboard catches.
+
+### Boundaries
+
+- This is dormant browser-local project share hardening only. The currently mounted Share Modal, Menu Kit exports, public routing, project writes, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Chat ROI Metrics Response Acknowledgement
+
+### Fixed
+
+- **ROI metrics responses are validated** - the platform chat ROI calculator now parses `/api/analytics/roi-metrics` through a 64 KB bounded reader and requires the documented success envelope before replacing local ROI state.
+- **Payback period display corrected** - the calculator now treats JSON `paybackPeriod: null` as no finite payback period and displays `N/A` instead of `<1 month`.
+- **Verifier tightened** - `npm run verify:answerlattice-runtime-truth` now guards the ROI response cap, shape guard, diagnostics, nullable payback handling, and absence of direct JSON parsing.
+
+### Boundaries
+
+- This is Answerlattice chat-monitoring browser-response hardening only. Valid ROI metric reads, optimized chat analytics aggregation, ROI calculations, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Extraction Job Inspector Copy Diagnostics
+
+### Fixed
+
+- **Extraction monitor copies require confirmation** - Job Inspector raw-data copy actions now wait for clipboard acknowledgement before showing success and log bounded ops diagnostics when browser copy is unavailable or rejected.
+- **Verifier tightened** - `npm run verify:menu-extraction-pipeline` now guards the copy failure code, bounded copy metadata, fixed failure copy, and absence of the old fire-and-forget clipboard branch.
+
+### Boundaries
+
+- This is browser-local platform tooling hardening only. Successful job inspection, retry creation, extraction job reads, AI operation reads, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Chat Weekly Digest Response Acknowledgement
+
+### Fixed
+
+- **Weekly digest regeneration responses are validated** - the platform chat weekly digest now parses manual regeneration responses through a 64 KB bounded reader and requires the documented success or no-data envelope before warning or success copy advances.
+- **No-data branch corrected** - the UI now reads the route's top-level `status: "no_data"` response instead of checking the stale `data.status` path.
+- **Verifier tightened** - `npm run verify:answerlattice-runtime-truth` now guards the response cap, shape guard, diagnostics, fixed no-data branch, and absence of direct JSON parsing.
+
+### Boundaries
+
+- This is Answerlattice chat-monitoring browser-response hardening only. Valid weekly digest reads, weekly narrative generation, `insights` writes, AI operation logging, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - AI Menu Manager Copy Fallback Acknowledgement
+
+### Fixed
+
+- **AMM copy fallbacks require confirmation** - desktop and mobile AI Menu Manager local copy actions now treat unavailable clipboard support or a failed textarea copy fallback as a bounded local-action failure instead of showing copied state.
+- **Verifier tightened** - `npm run verify:ai-menu-manager` now guards desktop/mobile fallback-copy rejection codes and rejects the old unchecked `document.execCommand('copy')` path.
+
+### Boundaries
+
+- This is browser-local AI Menu Manager handoff hardening only. Successful copy/open/download/QR actions, AMM session/proposal writes, project mutations, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Answerlattice Article Modal Response Acknowledgement
+
+### Fixed
+
+- **Article modal responses are validated** - FAQ suggestion refresh and article embedding generation now parse route responses through a 64 KB bounded reader and require expected response shapes before local FAQ state or embedding success copy advances.
+- **False article support success blocked** - Malformed, oversized, rejected, or wrong-shape FAQ/embedding responses now stay on fixed owner-facing failure copy with bounded diagnostics.
+- **Verifier tightened** - `npm run verify:answerlattice-runtime-truth` now guards the article modal response cap, shape guards, diagnostics, and absence of direct JSON fallback.
+
+### Boundaries
+
+- This is Answerlattice KB article-modal browser-response hardening only. Valid FAQ generation, FAQ writes, article `faqIds` mirror writes, embedding writes, AI operation logging, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Notification Monitor Message Copy Diagnostics
+
+### Fixed
+
+- **Manual notification copy failures are bounded** - Platform Notification Monitor and Owner Notification Monitor now log failed manual email/WhatsApp message clipboard handoffs before showing fixed operator-facing failure copy.
+- **Verifier tightened** - `npm run verify:menulist-api-tenant-safety` now guards the monitor message-copy failure codes, bounded destination/subject/body metadata, and absence of the old inline clipboard copy branches.
+
+### Boundaries
+
+- This is platform UI diagnostics hardening only. Successful platform/owner notification reads, manual handoff opens, action recording, delivery writes, provider behavior, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Answerlattice Staff Response Acknowledgement
+
+### Fixed
+
+- **Staff responses are validated** - Team Access staff list, staff mutation, and role mutation helpers now parse responses through a 64 KB bounded reader and require expected response shapes.
+- **False staff action success blocked** - Malformed, oversized, rejected, or wrong-shape staff responses now throw fixed local staff failure copy instead of being returned as successful typed data.
+- **Verifier tightened** - `npm run verify:answerlattice-runtime-truth` now guards the staff response cap, shape guards, diagnostics, and absence of direct JSON fallback.
+
+### Boundaries
+
+- This is Answerlattice Team Access browser-response hardening only. Valid staff/role reads and writes, policy handling, Firebase Auth revocation, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Digital Screen Link Copy Diagnostics
+
+### Fixed
+
+- **Screen link copy failures are bounded** - desktop and mobile Digital Screens now log failed Menu Board and Highlights clipboard handoffs before showing fixed owner-facing failure copy.
+- **Verifier tightened** - `npm run verify:customer-app-pwa` now guards desktop/mobile screen-link copy failure codes, bounded copy URL metadata, and absence of toast-only copy failure handlers.
+
+### Boundaries
+
+- This is browser-local diagnostics hardening only. Successful screen link copy/open behavior, screen tokens, screen state reads/writes, TV display rendering, QR display, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Answerlattice Knowledge Intake Response Acknowledgement
+
+### Fixed
+
+- **Knowledge Intake responses are validated** - Job lists, job bundles, source adds, media extraction, URL discovery, entity search, analysis, review-item updates, and publish responses now use a 64 KB bounded parser and response-shape guards.
+- **False intake success blocked** - Malformed, oversized, rejected, or wrong-shape intake responses no longer update local jobs/bundles, cache entity options, refresh dependent state, or show success copy.
+- **Verifier tightened** - `npm run verify:answerlattice-runtime-truth` now guards the Knowledge Intake response cap, shape guards, diagnostics, and absence of direct JSON fallback in the hook.
+
+### Boundaries
+
+- This is Answerlattice Knowledge Intake browser-response hardening only. Valid intake reads/writes, media extraction, support-credit accounting, AI operation logging, cache invalidation, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Custom Domain Copy Diagnostics
+
+### Fixed
+
+- **Custom-domain copy failures are bounded** - the legacy Custom Domain tab now waits for clipboard acknowledgement before showing copied state for verified-domain links or DNS records.
+- **DNS copy diagnostics added** - failed custom-domain link and DNS-record copy handoffs now log bounded metadata only and show fixed owner-facing failure copy.
+- **Verifier tightened** - `npm run verify:public-business-truth` now guards the Custom Domain copy failure codes, bounded copy metadata, and absence of the old optimistic clipboard path.
+
+### Boundaries
+
+- This is browser-handoff diagnostics hardening only. Successful custom-domain add/status/remove behavior, DNS display, Vercel calls, store writes, public cache invalidation, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Answerlattice Activation Dashboard Response Acknowledgement
+
+### Fixed
+
+- **Activation dashboard responses are validated** - Activation, Readiness Metrics, Daily Governance, and Weekly Digest now parse dashboard route responses through a 64 KB bounded reader before updating local state or success copy.
+- **Wrong-shape activation success blocked** - Activation summary, operations status, notification-test, and compiled-context rebuild responses must match the expected response shape before the UI treats them as loaded, sent, or rebuilt.
+- **Verifier tightened** - `npm run verify:answerlattice-runtime-truth` now guards the shared activation dashboard response reader, shape guards, diagnostics, and absence of direct JSON fallback on those dashboard surfaces.
+
+### Boundaries
+
+- This is Answerlattice dashboard browser-response hardening only. Valid activation summary reads, operations status reads, notification-test sends, compiled-context rebuilds, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Review Reply Response Acknowledgement
+
+### Fixed
+
+- **Review Reply suggestions require confirmation** - the desktop Review Reply Assistant now parses `/api/reviews/suggest` responses through a bounded reader and requires `{ success: true, reply }` before showing a generated reply or incrementing attempts.
+- **Malformed suggestion responses are bounded** - oversized, malformed, rejected, or invalid suggestion responses now log stable bounded diagnostics and keep fixed owner-facing failure copy.
+- **Verifier tightened** - `npm run verify:auth-security-failure-matrix` now guards the Review Reply response parser, byte cap, response-shape codes, and absence of direct axios suggestion parsing.
+
+### Boundaries
+
+- This is disabled-feature browser-response hardening only. Successful reply generation, fallback reply behavior, capacity handling, `/api/reviews/suggest`, AI accounting, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Answerlattice Settings Response Acknowledgement
+
+### Fixed
+
+- **Settings responses are validated** - Product details, workflow notification settings, and workflow notification test responses now use a 64 KB bounded parser and require the expected response shape before local Settings state or success copy advances.
+- **False Settings success blocked** - Malformed, oversized, rejected, or wrong-shape Settings responses now stay on fixed owner-facing failure copy and bounded diagnostics.
+- **Verifier tightened** - `npm run verify:answerlattice-runtime-truth` now guards the Settings response cap, shape guards, diagnostics, and absence of direct JSON fallback.
+
+### Boundaries
+
+- This is Answerlattice Settings browser-response hardening only. Valid workspace-profile writes, integration config writes, test-event queueing, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Desktop Subdomain Availability Response Parsing
+
+### Fixed
+
+- **Desktop public-link checks are bounded** - Desktop Domain Settings now parses `/api/subdomain/check` responses through an 8 KB bounded reader before applying availability state.
+- **Malformed availability responses stay out of local state** - Rejected, oversized, or invalid subdomain-check responses now use fixed failure copy and bounded diagnostics instead of becoming availability state.
+- **Verifier tightened** - `npm run verify:public-business-truth` now guards desktop subdomain response parsing, byte caps, response-shape codes, and the absence of direct axios subdomain parsing.
+
+### Boundaries
+
+- This is browser-side public-link availability hardening only. Valid subdomain checks, availability lookup reads, subdomain saves, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Answerlattice Product Surface Acknowledgement
+
+### Fixed
+
+- **Product surface mutations require confirmation** - Product Surface save, archive, and starter-template creation now require acknowledged DAL results before local selection, reloads, summary rebuilds, or success copy advances.
+- **Context summary rebuild responses are validated** - Manual and post-write summary rebuilds now parse route responses through a 64 KB bounded reader and require a valid `summary` object before treating the refresh as complete.
+- **Verifier tightened** - `npm run verify:answerlattice-runtime-truth` now guards the product-surface acknowledgement helpers, explicit DAL results, rejection codes, and bounded rebuild-response parser.
+
+### Boundaries
+
+- This is Answerlattice Product Surface acknowledgement and browser-response hardening only. Valid surface writes, compiled-context source marking, summary rebuild writes, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Answerlattice FAQ Write Acknowledgement
+
+### Fixed
+
+- **FAQ save/archive require confirmation** - Answerlattice FAQ management now requires acknowledged FAQ write/archive results before local FAQ state, contextual-summary rebuilds, or success copy advances.
+- **False FAQ success blocked** - Malformed or fallback FAQ mutation results now route through fixed save/archive failure paths instead of showing unsaved owner-reviewed answers as complete.
+- **Verifier tightened** - `npm run verify:answerlattice-runtime-truth` now guards the FAQ acknowledgement helpers, explicit DAL results, and FAQ management rejection codes.
+
+### Boundaries
+
+- This is Answerlattice FAQ management acknowledgement hardening only. Valid FAQ batch writes, linked article mirrors, cache-version bumps, public cache revalidation, product-surface summary rebuilds, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Custom Domain Response Acknowledgement
+
+### Fixed
+
+- **Desktop custom-domain actions require confirmation** - Desktop Domain Settings and Custom Domain add, verify-status, and remove actions now parse `/api/domain` responses through a bounded reader and require the expected acknowledged response shape before local domain state changes.
+- **Mobile custom-domain removal requires confirmation** - Mobile domain removal now requires the existing `{ success: true }` delete response before clearing the active custom domain from local state.
+- **Verifier tightened** - `npm run verify:public-business-truth` now guards both desktop custom-domain entry points, response parsers, byte caps, response-shape codes, absence of direct axios domain parsing, and mobile remove acknowledgement.
+
+### Boundaries
+
+- This is browser-side custom-domain acknowledgement hardening only. Valid Vercel provider calls, store writes, public cache invalidation, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Answerlattice KB Generation Job Acknowledgement
+
+### Fixed
+
+- **Generation job actions require confirmation** - KB Generation upload, delete, retry, cancel, review-edit, and reconciliation job mutations now require acknowledged job write/delete results before success copy or local review state advances.
+- **False job success blocked** - Malformed or fallback job mutation results now route through fixed KB Generation failure paths instead of showing unsaved job changes as complete.
+- **Verifier tightened** - `npm run verify:answerlattice-runtime-truth` now guards the job acknowledgement helpers, explicit DAL results, and KB Generation rejection codes.
+
+### Boundaries
+
+- This is Answerlattice KB Generation job acknowledgement hardening only. Valid job writes, transaction deletes, storage cleanup, dev triggers, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Desktop Compliance Page Acknowledgement
+
+### Fixed
+
+- **Desktop compliance saves require confirmation** - Official Page and custom-domain desktop compliance editors now require a bounded `{ success: true }` save/reset response before showing success copy.
+- **Desktop compliance refreshes are bounded** - The same editors now reload compliance pages through a 32 KB bounded parser before local policy-page state is refreshed.
+- **Verifier tightened** - `npm run verify:public-business-truth` now guards desktop compliance response parsers, byte caps, invalid-response codes, and the absence of direct axios compliance parsing.
+
+### Boundaries
+
+- This is browser-side desktop compliance acknowledgement hardening only. Valid override/reset writes, public compliance rendering, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Answerlattice KB Navigation Acknowledgement
+
+### Fixed
+
+- **Category and section saves require confirmation** - Knowledge Base category and section create/update paths now require acknowledged category writes before local navigation state or success copy advances.
+- **Parent navigation updates require confirmation** - Article parent-link updates, parent-link deletes, section deletes, and category deletes now require acknowledged categories-map mutations before local Knowledge Base navigation changes.
+- **Verifier tightened** - `npm run verify:answerlattice-runtime-truth` now guards the category/categories acknowledgement helpers, explicit DAL results, and platform rejection codes.
+
+### Boundaries
+
+- This is Answerlattice Knowledge Base navigation acknowledgement hardening only. Valid category-map writes, cache revalidation, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Billing Action Acknowledgement
+
+### Fixed
+
+- **Subscription actions require confirmation** - Cancel, pause, resume, and upgrade now require a parsed `{ success: true }` billing-route response before owner success copy or follow-up state refresh can continue.
+- **False billing success blocked** - Malformed, oversized, or negative successful HTTP responses now fail through fixed payment failure codes instead of being treated as completed billing actions.
+- **Verifier tightened** - `npm run verify:menulist-api-tenant-safety` now guards the subscription action response helper, shape guard, and invalid-response failure codes.
+
+### Boundaries
+
+- This is browser-side billing acknowledgement hardening only. Valid Razorpay mutations, subscription Firestore writes, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Answerlattice KB Bulk Status Acknowledgement
+
+### Fixed
+
+- **Bulk article status updates require confirmation** - Knowledge Base bulk publish/archive now requires an acknowledged batch status result before success copy, selected-id clearing, or bulk-mode exit.
+- **False bulk status success blocked** - Malformed or fallback `bulkUpdateArticleStatus()` results now route through the existing fixed article-update failure path instead of showing unsaved articles as published or archived.
+- **Verifier tightened** - `npm run verify:answerlattice-runtime-truth` now guards the bulk article status acknowledgement helper, explicit DAL result, and caller rejection code.
+
+### Boundaries
+
+- This is Answerlattice Knowledge Base bulk-status acknowledgement hardening only. Valid batch writes, cache revalidation, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Answerlattice Ticket Reply Acknowledgement
+
+### Fixed
+
+- **Ticket replies require confirmation** - Platform support-ticket replies now require an acknowledged `addTicketMessage()` result before local conversation state, form reset, or success copy advances.
+- **False reply success blocked** - Malformed or fallback reply-write results now route through the existing fixed ticket-reply failure path instead of showing an unsaved reply as sent.
+- **Verifier tightened** - `npm run verify:answerlattice-runtime-truth` now guards the support-ticket reply acknowledgement helper, explicit DAL result, and caller rejection code.
+
+### Boundaries
+
+- This is Answerlattice support-ticket reply acknowledgement hardening only. Valid reply writes, optional attachment uploads, ticket notifications, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - GrowthOS Client Response Diagnostics
+
+### Fixed
+
+- **Growth Kits client responses are bounded** - The GrowthOS add-on client DAL now parses route responses through a 64 KB bounded reader instead of silent `response.json()` fallback.
+- **Malformed Growth Kits responses are visible** - Parse failures, rejected responses, and invalid successful envelopes now log bounded GrowthOS diagnostics while keeping fixed owner-facing failure copy.
+- **Verifier tightened** - `npm run verify:growthos` now guards the bounded client parser and failure codes.
+
+### Boundaries
+
+- This is GrowthOS add-on client-response hardening only. Successful Growth Kits refresh, kit generation, export recording, review-reply guard behavior, Firestore reads/writes, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Owner Dashboard Action Receipt Diagnostics
+
+### Fixed
+
+- **Action receipts require a valid response** - Owner Dashboard action-completion now parses the mark-done API response through a bounded reader and requires a valid `{ success, receipt }` payload before returning success.
+- **Raw API text stays out of owner errors** - Malformed, oversized, rejected, or invalid action-completion responses now log bounded diagnostics and keep the existing fixed owner-facing failure copy.
+- **Verifier tightened** - `npm run verify:menulist-api-tenant-safety` now guards the bounded parser, diagnostic codes, generic error boundary, and receipt-shape guard.
+
+### Boundaries
+
+- This is Owner Dashboard browser-response hardening only. Valid action receipt writes, analytics summary updates, Firestore reads/writes, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Answerlattice Support Ticket Create Acknowledgement
+
+### Fixed
+
+- **Support ticket creates require confirmation** - Manual support ticket submission and HelpChat AI escalation now require acknowledged ticket creation before success copy, callbacks, or modal close.
+- **False ticket success blocked** - Malformed or fallback `addTicket()` results now route through existing bounded ticket failure handlers.
+- **Verifier tightened** - `npm run verify:answerlattice-runtime-truth` now guards the support-ticket create acknowledgement helper and caller rejection codes.
+
+### Boundaries
+
+- This is Answerlattice support-ticket create acknowledgement hardening only. Valid ticket writes, attachment uploads, ticket signals, notifications, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Item Photo Readiness Diagnostics
+
+### Fixed
+
+- **Readiness analysis failures are visible** - Item Photo Capture Assist now logs bounded `item_photo_readiness_stats_failed` diagnostics if local brightness/framing/sharpness sampling fails.
+- **Verifier tightened** - `npm run verify:auth-security-failure-matrix` now guards the readiness diagnostic helper and rejects the old silent stats fallback.
+
+### Boundaries
+
+- This is browser-local item-photo readiness diagnostics hardening only. Valid capture, image preparation, item-photo upload, project save, Storage writes, Firestore rules/indexes, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - AI Menu Manager Failed-Completion Diagnostics
+
+### Fixed
+
+- **Failed AMM receipt updates are observable** - If a desktop or mobile project update fails and the follow-up attempt to mark the card/proposal as failed also fails, AMM now logs bounded runtime diagnostics instead of silently dropping that secondary failure.
+- **Verifier tightened** - `npm run verify:ai-menu-manager` now guards the desktop/mobile failed-completion diagnostic codes and rejects silent `catch(() => null)` completion fallbacks in those screens.
+
+### Boundaries
+
+- This is AI Menu Manager failure-path diagnostics hardening only. Valid card approval, project update writes, receipt completion, proposal completion, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Answerlattice HelpChat Delete Acknowledgement
+
+### Fixed
+
+- **HelpChat deletes require confirmation** - Chat session deletion now requires an acknowledged delete result before success copy.
+- **Failed delete rollback restored** - If the delete acknowledgement is missing or malformed, HelpChat reloads sessions and restores the previous active session/search state.
+- **Verifier tightened** - `npm run verify:answerlattice-runtime-truth` now guards the chat-session delete acknowledgement helper and rejection code.
+
+### Boundaries
+
+- This is Answerlattice HelpChat chat-session delete acknowledgement hardening only. Valid delete writes, existing chat-image cleanup, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Public Menu Lookup Diagnostics
+
+### Fixed
+
+- **Public menu lookup degradation is visible** - Metadata outlet lookup, metadata project lookup, and runtime outlet lookup failures now use bounded public-menu resolution diagnostics instead of silent `null` fallbacks.
+- **Verifier tightened** - `npm run verify:public-business-truth` now guards the new lookup diagnostic codes, bounded tenant/store/slug context fields, and absence of silent public-menu lookup catches.
+
+### Boundaries
+
+- This is public menu and outlet-routing diagnostics hardening only. Valid menu rendering, outlet fallback behavior, project lookup behavior, Firestore reads, cache tags, rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Answerlattice Platform Chat Mutation Acknowledgement
+
+### Fixed
+
+- **Platform chat notes require confirmation** - Conversation drawer and team-note saves now require acknowledged internal-note writes before success copy or local note state advances.
+- **Batch status updates require confirmation** - Platform Chat batch status updates now require matching batch acknowledgement before local conversation rows, selection state, or success copy changes.
+- **Verifier tightened** - `npm run verify:answerlattice-runtime-truth` now guards platform chat internal-note and batch metadata acknowledgement helpers and rejection codes.
+
+### Boundaries
+
+- This is Answerlattice platform chat-session mutation acknowledgement hardening only. Valid note writes, single metadata writes, batch metadata writes, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Menu Change Log Flush Diagnostics
+
+### Fixed
+
+- **Queued MOL flush failures are visible** - `flushPendingChanges()` now marks its session lookup and queued write handoff as intentionally non-blocking and logs `menu_change_log_flush_session_failed` if session lookup fails before the queued write can run.
+- **Verifier tightened** - `npm run verify:public-business-truth` now guards the flush-session diagnostic and the intentional non-blocking markers for debounced and flush-time Menu Change Log writes.
+
+### Boundaries
+
+- This is Menu Observation Layer diagnostics hardening only. Valid change-log writes, debounce behavior, feature flags, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Answerlattice HelpChat Feedback Acknowledgement
+
+### Fixed
+
+- **HelpChat feedback requires confirmation** - Answer feedback now requires both `aiSearchHistory` and chat-session message feedback acknowledgements before local feedback state or thank-you copy advances.
+- **False feedback success blocked** - Malformed or fallback feedback write results now route through the existing bounded HelpChat feedback failure diagnostics.
+- **Verifier tightened** - `npm run verify:answerlattice-runtime-truth` now guards HelpChat feedback acknowledgement helpers and rejection codes.
+
+### Boundaries
+
+- This is Answerlattice HelpChat feedback acknowledgement hardening only. Valid feedback writes, negative-feedback signal emission, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Answerlattice Instant Cache Diagnostics
+
+### Fixed
+
+- **Instant-cache failures are observable** - Redis lookup, stale-cache cleanup, and cache write failures now log bounded diagnostics while continuing to fall back to the live retrieval pipeline.
+- **Search-core cache fallbacks are bounded** - Instant-cache stage, canonical cache-version lookup, instant-cache write import/invocation, and guarded performance-log write failures now use stable diagnostic codes instead of silent catches.
+- **Verifier tightened** - `npm run verify:answerlattice-runtime-truth` now guards the instant-cache diagnostic codes and removed silent Redis/search-core catch patterns.
+
+### Boundaries
+
+- This is Answerlattice retrieval observability hardening only. Valid canonical retrieval, FAQ fallback, RAG fallback, search-history writes, Upstash cache behavior, Firestore reads/writes, Cloud Functions, Firebase deployment, Vercel deployment, public routes, schema fields, rules, indexes, and owner-facing settings were not changed.
+
+## June 30, 2026 - Answerlattice Chat Session Acknowledgement
+
+### Fixed
+
+- **HelpChat session saves require confirmation** - New HelpChat conversations now require a persisted chat session acknowledgement before the UI selects the saved session.
+- **Chat session updates require confirmation** - Existing HelpChat append/retry/rename writes and Platform Chat metadata saves now require explicit session update acknowledgement or route through the existing bounded failure path.
+- **Verifier tightened** - `npm run verify:answerlattice-runtime-truth` now guards chat session save/update acknowledgement helpers and rejection codes.
+
+### Boundaries
+
+- This is Answerlattice chat-session acknowledgement hardening only. Valid chat session writes, HelpChat search/retry behavior, platform chat metadata writes, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Answerlattice Content Summary Refresh Diagnostics
+
+### Fixed
+
+- **Contextual help refresh failures are visible** - KB article saves, approved KB-generation publishes, changelog saves, and ticket updates now await the product-surface summary refresh when that feature is enabled and show fixed warning copy if the refresh fails.
+- **Silent side-effect catches removed** - Article surface/FAQ option loads, changelog surface option loads, changelog preview KB-category prefetch, and ticket resolution signal import/emit failures now log bounded diagnostics instead of disappearing.
+- **Verifier tightened** - `npm run verify:answerlattice-runtime-truth` now guards the shared summary-refresh diagnostic helper, caller failure codes, and old dropped-promise patterns.
+
+### Boundaries
+
+- This is Answerlattice client-side observability and post-write refresh hardening only. Valid article, KB-generation, changelog, and ticket writes remain unchanged; the same product-surface rebuild route and summary write are used when enabled. No Firestore rules/indexes, Cloud Functions, Firebase deployment, Vercel deployment, schema fields, tenant-shape changes, public routes, or owner-facing settings were changed.
+
+## June 30, 2026 - Batch Image Job Acknowledgement
+
+### Fixed
+
+- **Batch image jobs require confirmation** - Batch generation start now requires a persisted job ID before trigger work begins, and owner cancel/upload/discard/retry actions require matching job/status acknowledgement before success copy or completion callbacks run.
+- **False batch status updates blocked** - A malformed or fallback job update response now follows the existing bounded failure path instead of showing the batch action as complete.
+- **Verifier tightened** - `npm run verify:ai-accounting` now guards batch job create/update acknowledgement helpers and rejection codes.
+
+### Boundaries
+
+- This is MenuList batch image job acknowledgement hardening only. Valid batch job writes, Cloud Tasks trigger/worker behavior, project image writes, Storage cleanup, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Staff Mutation Acknowledgement
+
+### Fixed
+
+- **Staff changes require exact confirmation** - Desktop and mobile staff create, update, remove, reset-passcode, and force-sign-out flows now require the expected staff mutation mode plus returned user/userId acknowledgement before local staff state or success copy advances.
+- **Generic staff success responses rejected** - A malformed `{ success: true }` staff response now routes through the existing bounded failure path instead of updating visible staff rows.
+- **Verifier tightened** - `npm run verify:auth-security-failure-matrix` now guards operation-specific staff mutation acknowledgement requirements.
+
+### Boundaries
+
+- This is MenuList staff-management response hardening only. Valid staff/role API routes, Firestore writes, Firebase Auth operations, rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Answerlattice Ticket Update Acknowledgement
+
+### Fixed
+
+- **Ticket updates require confirmation** - Answerlattice ticket detail saves now require `updateTicket()` acknowledgement before parent ticket state, drawer state, or downstream summary work advances.
+- **Ticket soft delete and restore require confirmation** - Platform ticket delete/restore flows now require acknowledgement before removing the row from local state or showing success copy.
+- **Verifier tightened** - `npm run verify:answerlattice-runtime-truth` now guards the ticket acknowledgement helper and rejection codes.
+
+### Boundaries
+
+- This is Answerlattice ticket acknowledgement hardening only. Valid ticket writes, attachment uploads, ticket-resolution signals, product-surface summary rebuilds, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Digital Screen Mutation Acknowledgement
+
+### Fixed
+
+- **Digital screen saves require confirmation** - Desktop and mobile screen override, slide caption, and slide delete flows now require digital-screen mutation acknowledgement before local state or success copy changes.
+- **False screen saves blocked** - If a screen mutation helper returns a DAL fallback after a failed write, the existing bounded failure path runs instead of showing the screen setting or slide change as saved.
+- **Verifier tightened** - `npm run verify:customer-app-pwa` now guards the digital-screen acknowledgement helper and desktop/mobile rejection codes.
+
+### Boundaries
+
+- This is MenuList digital-screen acknowledgement hardening only. Valid screen setting writes, slide uploads, pinned-slide writes, public-safe screen mirror sync, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Answerlattice KB Article Acknowledgement
+
+### Fixed
+
+- **KB article saves require confirmation** - Answerlattice platform KB article create/update and ingestion-review update paths now require article write acknowledgement before local article/job state advances.
+- **KB article deletes require confirmation** - Article, section-cascade, category-cascade, and reconciliation discard paths now require `deleteArticle()` acknowledgement before local category/job state changes.
+- **Verifier tightened** - `npm run verify:answerlattice-runtime-truth` now guards the article acknowledgement helpers and rejection codes.
+
+### Boundaries
+
+- This is Answerlattice KB article acknowledgement hardening only. Valid article writes/deletes, FAQ maintenance, entity extraction triggers, cache revalidation, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Project Reset and Generated Image Acknowledgement
+
+### Fixed
+
+- **Project reset requires confirmation** - Desktop project reset now requires `updateProject()` acknowledgement before cache revalidation, success copy, or modal close.
+- **Generated project images require confirmation** - Auto-generated project image persistence now requires summary or metadata acknowledgement before returning an image URL to desktop/mobile callers.
+- **Verifier tightened** - `npm run verify:public-business-truth` now guards the project reset and generated-image acknowledgement codes.
+
+### Boundaries
+
+- This is MenuList project acknowledgement hardening only. Valid project reset writes, generated image uploads, existing project summary/metadata writes, public cache invalidation through project DAL helpers, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Feedback Status Update Acknowledgement
+
+### Fixed
+
+- **Feedback status saves require confirmation** - Desktop Feedback Inbox and Mobile Feedback Detail now require `updateFeedbackStatus()` acknowledgement before local status/reply success state advances.
+- **False feedback saves blocked** - If the guest-feedback DAL returns a fallback value after a failed write, the existing bounded failure paths run instead of showing the feedback as resolved or reply-saved.
+- **Verifier tightened** - `npm run verify:public-business-truth` now guards the feedback status acknowledgement helper and desktop/mobile rejection codes.
+
+### Boundaries
+
+- This is private guest-feedback workflow acknowledgement hardening only. Valid status/reply writes, tenant/store isolation, public feedback submit, retention, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Time-Slot Category Cascade Acknowledgement
+
+### Fixed
+
+- **Time-slot category cascades require confirmation** - Desktop and mobile time-slot preset edit/delete flows now require project-category cascade acknowledgement before updating local preset state or showing success.
+- **False cascade saves blocked** - If `updatePresetInAllCategories()` or `removePresetFromAllCategories()` returns a DAL fallback after a failed project write, the existing bounded save/delete failure path runs instead of showing the preset change as fully applied.
+- **Verifier tightened** - `npm run verify:public-business-truth` now guards the shared project cascade acknowledgement helper and desktop/mobile rejection codes.
+
+### Boundaries
+
+- This is MenuList time-slot category-cascade acknowledgement hardening only. Valid preset writes, existing changed-project cascade writes, public cache revalidation through the project DAL, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Editor Shared Persistence Acknowledgement
+
+### Fixed
+
+- **Shared editor saves require confirmation** - The desktop editor `persistEditorProject()` helper now requires `updateProject()` acknowledgement before returning to image, item, translation, and modal callbacks.
+- **False editor saves blocked** - If the project DAL wrapper returns a fallback value after a failed write, the existing editor failure paths run instead of applying local project state as saved.
+- **Verifier tightened** - `npm run verify:public-business-truth` now guards the shared editor persistence rejection code.
+
+### Boundaries
+
+- This is MenuList desktop editor acknowledgement hardening only. Valid editor project writes, existing public cache invalidation through the project DAL, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Platform User Update Acknowledgement
+
+### Fixed
+
+- **Platform user saves require confirmation** - The internal Platform Users dashboard now requires user DAL acknowledgement before updating the table, closing the drawer, or showing user-update success.
+- **False user saves blocked** - If `updatePlatformUser()` returns a fallback value after a failed write, the dashboard now keeps the drawer open, logs `platform_user_update_failed`, and shows fixed failure copy.
+- **Verifier tightened** - `npm run verify:auth-security-failure-matrix` now guards the user DAL acknowledgement helper and Platform Users rejection code.
+
+### Boundaries
+
+- This is internal platform user-update acknowledgement hardening only. Valid user document updates, existing staff verification, Firebase Auth user creation/lookup, Storage uploads, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Platform Tenant Modal Acknowledgement
+
+### Fixed
+
+- **Platform tenant saves require confirmation** - The internal tenant details modal now requires tenant DAL acknowledgement before closing after tenant create or update.
+- **False tenant saves blocked** - If `addTenant()` or `updateTenant()` returns a DAL fallback after a failed write, the modal now keeps the drawer open, logs `platform_tenant_save_failed`, and shows fixed failure copy.
+- **Verifier tightened** - `npm run verify:auth-security-failure-matrix` now guards the tenant modal acknowledgement checks and bans the old unchecked `.then(closeDrawer)` pattern.
+
+### Boundaries
+
+- This is internal platform tenant-modal acknowledgement hardening only. Valid tenant create/update writes, tenant-name propagation, public cache invalidation from the tenant DAL, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Mobile Upload Business Details Acknowledgement
+
+### Fixed
+
+- **Mobile detected business details require confirmation** - Mobile upload intake now requires `updateStore()` acknowledgement before applying accepted detected business details to local store state or success copy.
+- **False business-detail saves blocked** - If the store DAL wrapper returns a fallback value after a failed write, the existing mobile upload failure path runs instead of showing the business details as saved.
+- **Verifier tightened** - `npm run verify:menu-extraction-pipeline` now guards the mobile upload business-detail store acknowledgement code.
+
+### Boundaries
+
+- This is MenuList mobile upload business-detail acknowledgement hardening only. Valid intake suggestions, existing store update writes, public cache invalidation through the store DAL, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Presence Monitor Write Acknowledgement
+
+### Fixed
+
+- **Presence confirmations require confirmation** - Desktop and mobile Presence Monitor confirm/remove actions now require `updateMenuPresence()` acknowledgement before local presence state, success copy, or selected-surface state changes.
+- **False presence saves blocked** - If the store DAL wrapper returns a fallback value after a failed write, the existing bounded failure handlers run instead of showing the external placement as saved or removed.
+- **Verifier tightened** - `npm run verify:public-business-truth` now guards the menu-presence DAL acknowledgement result and desktop/mobile rejection codes.
+
+### Boundaries
+
+- This is MenuList Presence Monitor acknowledgement hardening only. Valid confirm/remove writes, starter activation piggyback writes, existing diagnostics, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Default Project Auto-Create Acknowledgement
+
+### Fixed
+
+- **Default menu creation requires confirmation** - The project-list DAL now requires `addProject()` acknowledgement before returning an auto-created default menu for empty editor/mobile project lists.
+- **False default menus blocked** - If project creation fails and the DAL wrapper returns a fallback value, the list request now fails instead of showing an unpersisted default menu.
+- **Verifier tightened** - `npm run verify:public-business-truth` now guards the default-project auto-create acknowledgement code.
+
+### Boundaries
+
+- This is MenuList project-list acknowledgement hardening only. Valid project listing, intentional default creation from editor/mobile entry points, public cache invalidation through the project DAL, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Upload-Created Project Acknowledgement
+
+### Fixed
+
+- **Upload-created menus require confirmation** - Desktop and mobile upload flows now require `addProject()` acknowledgement before selecting a new upload-created menu or starting extraction/link import against it.
+- **False upload project creation blocked** - If the project DAL wrapper returns a fallback value after a failed create, the existing upload failure path runs instead of continuing with an unpersisted menu.
+- **Verifier tightened** - `npm run verify:menu-extraction-pipeline` now guards desktop and mobile upload-created project acknowledgement.
+
+### Boundaries
+
+- This is MenuList upload-created project acknowledgement hardening only. Valid upload/link intake, project creation, extraction job creation, public cache invalidation through the project DAL, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Design Publish Acknowledgement
+
+### Fixed
+
+- **Design publishes require confirmation** - Desktop B2C and Mobile Design now require `publishProject()` acknowledgement before local published/cached state, success copy, or post-publish verification setup changes.
+- **False publishes blocked** - If the project DAL wrapper returns a fallback value after a failed publish write, the existing bounded publish failure handlers run instead of showing the design as published.
+- **Verifier tightened** - `npm run verify:public-business-truth` now guards desktop and mobile design publish acknowledgement codes.
+
+### Boundaries
+
+- This is MenuList design publish acknowledgement hardening only. Valid design publishing, existing project writes, post-publish verification handoff, public cache invalidation through `publishProject()`, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Editor Translation Metadata Acknowledgement
+
+### Fixed
+
+- **Editor translation metadata requires confirmation** - Desktop Editor, Command Center, mobile Bulk Actions, and mobile Manage Languages now require project metadata acknowledgement before treating translated project summary fields as saved.
+- **False translation summary saves blocked** - If the project DAL wrapper returns a fallback value after a failed metadata write, the existing bounded editor/mobile failure handlers run instead of advancing saved state or success copy.
+- **Verifier tightened** - `npm run verify:public-business-truth` now guards the editor and mobile language metadata acknowledgement contract.
+
+### Boundaries
+
+- This is MenuList editor translation metadata acknowledgement hardening only. Valid translation repair, project metadata writes, public cache invalidation through the project DAL, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Desktop Editor Helper Save Acknowledgement
+
+### Fixed
+
+- **Editor helper saves require confirmation** - Item image deletion, description generation, and batch image result upload direct-save fallbacks now require project-write acknowledgement before local project state or success copy changes.
+- **False helper saves blocked** - If the project DAL wrapper returns a fallback value after a failed helper-level project write, the existing bounded failure paths run instead of showing helper changes as saved.
+- **Verifier tightened** - `npm run verify:public-business-truth` now guards the editor helper acknowledgement codes.
+
+### Boundaries
+
+- This is MenuList desktop editor helper acknowledgement hardening only. Valid item image deletion, description generation, batch image result upload, existing project writes, public cache invalidation through the project DAL, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Desktop Menu Editor Save Acknowledgement
+
+### Fixed
+
+- **Editor saves require confirmation** - Desktop Menu Editor sync now requires project-write acknowledgement before clearing dirty state, updating editor project state, recording last-saved time, or triggering POS sync handoff.
+- **Project detail repair requires confirmation** - Editor project-detail translation repair now requires acknowledged project and metadata writes before updating local editor state or success copy.
+- **Verifier tightened** - `npm run verify:public-business-truth` now guards the menu editor acknowledgement contract.
+
+### Boundaries
+
+- This is MenuList desktop Menu Editor acknowledgement hardening only. Valid menu saves, project-detail translation repair, public cache invalidation through the project DAL, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Mobile Item Image Save Acknowledgement
+
+### Fixed
+
+- **Mobile item image saves require confirmation** - Mobile Menu item-image modal saves now require project-write acknowledgement before local menu image/cache state or success copy changes.
+- **False image saves blocked** - If the project DAL wrapper returns a fallback value after a failed project write, bounded mobile menu diagnostics run and the upstream success flow stops instead of showing the item image as saved.
+- **Verifier tightened** - `npm run verify:public-business-truth` now guards the mobile item-image project acknowledgement contract.
+
+### Boundaries
+
+- This is MenuList Mobile Menu item-image acknowledgement hardening only. Valid item image upload, existing project writes, public cache invalidation through `updateProjectWithoutLoader()`, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Projects Create Edit And Translation Acknowledgement
+
+### Fixed
+
+- **Desktop project create/edit flows require confirmation** - Desktop Projects now requires project-write acknowledgement before selected project state or SWR project lists update after create, duplicate, metadata, language, active, or default handoff saves.
+- **Project translation repairs require confirmation** - Desktop Projects and Mobile Special Menu now require acknowledged project and metadata writes before localized draft baselines or success copy update.
+- **Verifier tightened** - `npm run verify:public-business-truth` now guards the desktop Projects and Mobile Special Menu acknowledgement codes.
+
+### Boundaries
+
+- This is MenuList project create/edit/translation acknowledgement hardening only. Valid project writes, translation repair, public cache invalidation through the project DAL, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Mobile Project Selector Save Acknowledgement
+
+### Fixed
+
+- **Mobile project selector saves require confirmation** - Mobile create, duplicate, edit, translation repair, active toggle, and reset flows now require project-write acknowledgement before local cache, form, selection, or success-copy updates.
+- **False selector saves blocked** - If the project DAL wrapper returns a fallback value after a failed project write, the existing bounded mobile project failure handlers run instead of showing the project mutation as saved.
+- **Verifier tightened** - `npm run verify:public-business-truth` now guards the mobile project selector acknowledgement contract.
+
+### Boundaries
+
+- This is MenuList Mobile Project Selector acknowledgement hardening only. Valid project create/duplicate/edit/reset/toggle flows, existing writes, public cache invalidation through the project DAL, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - AI Menu Manager Project Update Acknowledgement
+
+### Fixed
+
+- **AMM project updates require confirmation** - Desktop and mobile Menu Manager now require `updateProjectWithoutLoader()` acknowledgement before local project state changes or executed receipts after an approved card.
+- **False completed cards blocked** - If the shared project DAL wrapper returns a fallback value after a failed write, the existing project-update failure flow runs and records generic failed completion text instead of completing the card.
+- **Verifier tightened** - `npm run verify:ai-menu-manager` now guards the desktop and mobile project-update acknowledgement contract.
+
+### Boundaries
+
+- This is MenuList AI Menu Manager acknowledgement hardening only. Valid card approval, project writes, compact-session receipts, public cache invalidation through the project DAL, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Mobile Menu Project Persistence Acknowledgement
+
+### Fixed
+
+- **Mobile menu saves require confirmation** - Debounced, immediate, and image-modal Mobile Menu project persistence now require `updateProjectWithoutLoader()` acknowledgement before clearing pending snapshots or marking cached project/image data as persisted.
+- **False mobile saves retry** - If the project DAL wrapper returns a fallback value after a failed project write, the existing bounded persistence failure handler runs and keeps the retry path active instead of treating the snapshot as saved.
+- **Verifier tightened** - `npm run verify:public-business-truth` now guards the mobile project persistence acknowledgement contract.
+
+### Boundaries
+
+- This is MenuList Mobile Menu project-persistence acknowledgement hardening only. Valid mobile menu edits, item image saves, existing project writes, retry timing, public cache invalidation through `updateProjectWithoutLoader()`, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Extracted Profile Project Defaults Acknowledgement
+
+### Fixed
+
+- **Extracted project defaults require confirmation** - Desktop Projects and Mobile Menu now require `updateProjectWithoutLoader()` acknowledgement before local project state changes after extracted profile visual defaults fill missing accent/image-background settings.
+- **False project-default saves blocked** - If the project DAL wrapper returns a fallback value after a failed project write, bounded extracted-profile failure diagnostics run instead of showing local project defaults as saved.
+- **Verifiers tightened** - `npm run verify:public-business-truth` and `npm run verify:menu-extraction-pipeline` now guard the desktop and mobile project-default acknowledgement contract.
+
+### Boundaries
+
+- This is MenuList extracted-profile project-default acknowledgement hardening only. Valid extraction, comparison review, existing project writes, public cache invalidation through `updateProjectWithoutLoader()`, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Projects Business Details Save Acknowledgement
+
+### Fixed
+
+- **Extracted business details require confirmation** - Desktop Projects now requires `updateStore()` acknowledgement before local business identity state changes after an owner accepts menu-intake suggestions.
+- **False business-detail saves blocked** - If the shared DAL wrapper returns a fallback value after a failed store write, bounded project-page diagnostics run and the owner sees fixed failure copy instead of a saved local state.
+- **Verifiers tightened** - `npm run verify:public-business-truth` and `npm run verify:menu-extraction-pipeline` now guard the business-details acknowledgement contract.
+
+### Boundaries
+
+- This is MenuList Projects menu-intake business-details acknowledgement hardening only. Valid extraction, suggestion review, store writes, public cache invalidation through `updateStore()`, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Analytics Date Range Preference Acknowledgement
+
+### Fixed
+
+- **Analytics date-range preference saves require confirmation** - The legacy Google Analytics date-range selector now requires `updateStore()` acknowledgement before treating the dashboard preference write as persisted.
+- **Preference save failures bounded** - Failed preference writes now log bounded analytics diagnostics and stay fail-open for the visible dashboard range instead of creating unhandled background failures.
+- **Verifier tightened** - `npm run verify:menulist-api-tenant-safety` now guards the date-range preference acknowledgement contract.
+
+### Boundaries
+
+- This is MenuList owner analytics preference-save hardening only. Valid date-range filtering, analytics dashboard reads, Google Analytics provider requests, public analytics events, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Desktop Subdomain Save Acknowledgement
+
+### Fixed
+
+- **Desktop subdomain saves require confirmation** - Business Settings Domain Settings now waits for `updateStore()` acknowledgement before updating local public-link state.
+- **False public-link saves blocked** - If the shared DAL wrapper returns a fallback value after a failed subdomain store write, bounded failure diagnostics run and the owner sees fixed failure copy instead of a saved public link.
+- **Verifiers tightened** - `npm run verify:public-business-truth` and `npm run verify:menulist-api-tenant-safety` now guard the desktop subdomain acknowledgement contract.
+
+### Boundaries
+
+- This is MenuList desktop Domain Settings acknowledgement hardening only. Valid subdomain availability checks, subdomain writes, public cache invalidation through `updateStore()`, custom-domain API behavior, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - B2C Official Page Publish Acknowledgement
+
+### Fixed
+
+- **B2C Official Page publish saves require confirmation** - The desktop B2C editor now requires `updateStore()` acknowledgement before local Official Page state, queued OBP photo cleanup, or publish success copy changes.
+- **False public-page publishes blocked** - If the shared DAL wrapper returns a fallback value after a failed `publicPresence` store write, bounded publish failure diagnostics run and the owner sees fixed failure copy instead of a success toast.
+- **Verifier tightened** - `npm run verify:public-business-truth` now guards the B2C Official Page publish acknowledgement contract.
+
+### Boundaries
+
+- This is MenuList desktop B2C Official Page publish acknowledgement hardening only. Valid project design publishing, post-publish verification handoff, OBP media cleanup after confirmed save, public cache invalidation through `updateStore()`/`publishProject()`, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Menu-Derived Business Attribute Save Acknowledgement
+
+### Fixed
+
+- **Menu-derived business attribute defaults require confirmation** - Desktop Projects and Mobile Menu now require `updateStore()` acknowledgement before local `businessAttributes` state changes after extraction/re-extraction review.
+- **False attribute defaults blocked** - If the shared DAL wrapper returns a fallback value after a failed store write, bounded failure handlers run instead of showing inferred OBP attributes as applied.
+- **Verifiers tightened** - `npm run verify:public-business-truth` and `npm run verify:menu-extraction-pipeline` now guard the menu-derived business-attribute acknowledgement contract.
+
+### Boundaries
+
+- This is MenuList menu-derived OBP business-attribute acknowledgement hardening only. Valid extraction, comparison review, first-extraction Function defaults, owner-approved re-extraction, public cache invalidation through `updateStore()`, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Google Listing Save Acknowledgement
+
+### Fixed
+
+- **Google listing marks require confirmation** - Business Settings and the Owner Dashboard Google listing card now require `updateStore()` acknowledgement before showing Google-link state as saved.
+- **False Google-link saves blocked** - If the shared DAL wrapper returns a fallback value after a failed Google-link store write, bounded failure handlers run instead of showing the listing as updated.
+- **Verifiers tightened** - `npm run verify:public-business-truth` and `npm run verify:menulist-api-tenant-safety` now guard the Google listing acknowledgement contract.
+
+### Boundaries
+
+- This is MenuList Official Business Page Google-link acknowledgement hardening only. Valid OBP link generation, Google Business Profile handoff, public cache invalidation through `updateStore()`, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - POS Sync Settings Save Acknowledgement
+
+### Fixed
+
+- **POS Sync settings saves require confirmation** - Desktop and mobile POS Sync settings now require `updateStore()` acknowledgement before local sync state, URL-save success copy, instruction-count success copy, or mobile saved copy changes.
+- **False external-sync saves blocked** - If the shared DAL wrapper returns a fallback value after a failed POS Sync store write, the existing bounded failure handlers run instead of showing saved external-sync settings.
+- **Desktop POS state stays nested** - Desktop POS Sync local state now applies dotted `posSync.*` updates back into the nested `posSync` object after an acknowledged store write.
+- **Verifiers tightened** - `npm run verify:public-business-truth` and `npm run verify:menulist-api-tenant-safety` now guard the POS Sync acknowledgement contract.
+
+### Boundaries
+
+- This is MenuList POS Sync settings acknowledgement hardening only. Valid POS Sync setting writes, secret generation, secret-rotation audit logging, provider email draft handoff, connection tests, delivery logs, outbound webhook behavior, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Business Copy Save Acknowledgement
+
+### Fixed
+
+- **Business Copy saves require confirmation** - Desktop and mobile Business Copy generation and missing-translation repair now require `updateStore()` acknowledgement before local public copy state or success copy changes.
+- **False generated copy saves blocked** - If the shared DAL wrapper returns a fallback value after a failed business-copy store write, the existing bounded failure handlers run instead of showing generated or repaired copy as saved.
+- **Verifiers tightened** - `npm run verify:public-business-truth`, `npm run verify:menulist-api-tenant-safety`, and `npm run verify:auth-security-failure-matrix` now guard the Business Copy acknowledgement contract.
+
+### Boundaries
+
+- This is MenuList Business Copy acknowledgement hardening only. Valid `/api/business-copy` generation, translation repair, localization merge behavior, AI accounting, balance sync, public cache invalidation through `updateStore()`, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Mobile Domain Subdomain Save Acknowledgement
+
+### Fixed
+
+- **Mobile subdomain saves require confirmation** - Mobile Domain Settings now requires `updateStore()` acknowledgement before updating the local public URL state or showing saved copy.
+- **False public URL saves blocked** - If the shared DAL wrapper returns a fallback value after a failed subdomain store write, the existing bounded failure handler runs instead of showing a saved subdomain.
+- **Routing verifiers tightened** - `npm run verify:public-business-truth` and `npm run verify:menulist-api-tenant-safety` now guard the mobile subdomain acknowledgement contract.
+
+### Boundaries
+
+- This is MenuList mobile Domain Settings acknowledgement hardening only. Valid subdomain writes, `/api/subdomain/check`, public routing, public cache invalidation through `updateStore()`, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Mobile Official Page Save Acknowledgement
+
+### Fixed
+
+- **Official Page saves require confirmation** - Mobile Official Page now requires `updateStore()` acknowledgement before photo cleanup, saved baselines, or success copy.
+- **False saved OBP updates blocked** - If the shared DAL wrapper returns a fallback value after a failed OBP store write, the existing bounded failure handler runs instead of deleting queued photos or showing saved copy.
+- **Docs and verifier tightened** - Official Business Page implementation, Firebase, mobile-support docs, and `npm run verify:public-business-truth` now guard the acknowledgement contract.
+
+### Boundaries
+
+- This is MenuList Mobile Official Page acknowledgement hardening only. Valid `publicPresence` writes, business-copy metadata writes, photo upload helpers, best-effort photo cleanup, public cache invalidation, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Mobile Working Hours Save Acknowledgement
+
+### Fixed
+
+- **Working-hours saves require confirmation** - The full Mobile Working Hours editor and Today quick-hours sheet now require `updateStore()` acknowledgement before treating public hours as saved.
+- **False open/closed updates blocked** - If the shared DAL wrapper returns a fallback value after a failed hours write, the existing rollback and bounded failure handlers run instead of showing saved copy.
+- **Docs and verifiers tightened** - Hours Firebase/mobile-support docs plus `npm run verify:public-business-truth` and `npm run verify:menulist-api-tenant-safety` now guard the acknowledgement contract.
+
+### Boundaries
+
+- This is MenuList mobile working-hours acknowledgement hardening only. Valid `workingHours` and `hoursLastUpdatedAt` writes, public cache invalidation, digital-screen invalidation, open/closed calculation, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Mobile Settings Store-Write Acknowledgement
+
+### Fixed
+
+- **Mobile settings saves require confirmation** - Mobile Business Attributes, Locale, Advanced, SEO, and Analytics settings now require `updateStore()` acknowledgement before local saved state or success copy changes.
+- **False saved states blocked** - If the shared DAL wrapper returns a fallback value after a failed store write, these mobile settings now route to their existing bounded failure handlers instead of showing saved copy.
+- **Verifiers tightened** - `npm run verify:public-business-truth` and `npm run verify:menulist-api-tenant-safety` now guard the mobile settings store-write acknowledgement checks.
+
+### Boundaries
+
+- This is MenuList mobile owner-settings acknowledgement hardening only. Valid store writes, analytics preferences, SEO fields, locale/currency fields, business attributes, social/feedback settings, public cache invalidation, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Basic Settings Save Acknowledgement
+
+### Fixed
+
+- **Basic Settings saves require confirmation** - Desktop Business Settings and Mobile Basic Settings now require store-write acknowledgements before updating local store state, selected logo state, queued photo cleanup, or saved copy.
+- **Tenant-name writes require confirmation** - Tenant rename and tenant store-list updates now require explicit tenant DAL acknowledgements before local tenant/store context is updated.
+- **Verifiers tightened** - `npm run verify:public-business-truth` and `npm run verify:menulist-api-tenant-safety` now guard the Basic Settings store and tenant acknowledgement checks.
+
+### Boundaries
+
+- This is MenuList owner Business Settings acknowledgement hardening only. Valid store writes, tenant writes, store-summary sync, tenant-name propagation, logo upload handling, public cache invalidation, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Customer App Save Acknowledgement
+
+### Fixed
+
+- **Customer App saves require confirmation** - Desktop and mobile Customer App settings now require the PWA settings and icon override DAL calls to return explicit acknowledgements before updating local state or showing saved copy.
+- **Icon cache-busting protected** - Icon override and reset flows now require `success: true` and a returned `pwaIconUpdatedAt` marker before changing the local icon state.
+- **Verifier tightened** - `npm run verify:customer-app-pwa` now guards the Customer App settings, icon, and metadata acknowledgement checks across desktop and mobile.
+
+### Boundaries
+
+- This is MenuList Customer App owner-settings acknowledgement hardening only. Valid PWA settings writes, icon upload preparation, Storage upload/delete behavior, public cache invalidation, manifest/icon/splash generation, analytics, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Mobile Temporary Status Rejection Diagnostics
+
+### Fixed
+
+- **Mobile temporary-status diagnostics split rejected responses** - Mobile Business Settings now logs bounded `mobile_temp_status_set_rejected` and `mobile_temp_status_clear_rejected` codes for API rejections after the shared temp-status response parser handles the body.
+- **Fixed owner copy preserved** - Mobile set/clear failures still show the existing local fallback copy and do not surface raw API response text or exception messages.
+- **Public-output verifier restored** - `npm run verify:public-business-truth` now guards the mobile temporary-status rejected-response diagnostics expected by the Business Settings hardening sweep.
+
+### Boundaries
+
+- This is MenuList mobile Business Settings diagnostics hardening only. Valid `/api/store/temp-status` auth, rate limits, request validation, store writes, public cache invalidation, digital-screen invalidation, owner-assistant packet invalidation, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Time Slot Preset Save Acknowledgement
+
+### Fixed
+
+- **Time-slot preset saves require confirmation** - Desktop Business Settings, the menu editor preset creator, and Mobile Time Slots now require the shared store writer to return `success: true` before updating local state or showing success copy.
+- **False success blocked** - If the shared DAL wrapper swallows a failed Firestore write and returns a fallback value, the UI now converts that into a bounded local failure instead of treating the preset save/delete as complete.
+- **Public-output verifier tightened** - `npm run verify:public-business-truth` and `npm run verify:menulist-api-tenant-safety` now guard the acknowledgement check across desktop, editor, and mobile time-slot preset flows.
+
+### Boundaries
+
+- This is MenuList owner settings/editor/mobile acknowledgement hardening only. Valid time-slot validation, store preset writes, category cascade updates, project public-cache invalidation through existing cascade helpers, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Account Rejection Diagnostics Parity
+
+### Fixed
+
+- **Account rejection codes restored** - Desktop profile updates, desktop password changes, mobile profile updates, and mobile password changes now convert non-OK account responses into local status-only rejected codes after the shared bounded parser handles the response body.
+- **Auth-security verifier restored** - `npm run verify:auth-security-failure-matrix` now passes with the documented `desktop_account_*_rejected` and `mobile_account_*_rejected` contracts.
+
+### Boundaries
+
+- This is MenuList account UI diagnostic parity only. Valid `/api/auth/update-profile` and `/api/auth/change-password` route behavior, bounded response parsing, Firebase Auth behavior, Firestore writes, rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Platform User Verification Response Diagnostics
+
+### Fixed
+
+- **Platform user verification responses bounded** - Platform Users now parses `/api/auth/create-staff` verification responses through the shared staff client response helper instead of direct `res.json()`.
+- **Malformed verification acknowledgements blocked** - A platform user is marked verified only after a successful staff mutation response or the existing bounded `EMAIL_EXISTS` compatibility response.
+- **Security verifiers tightened** - `npm run verify:auth-security-failure-matrix` and `npm run verify:menulist-api-tenant-safety` now guard the create-staff compatibility parser, invalid-shape diagnostics, Platform Users integration, and removal of direct response parsing.
+
+### Boundaries
+
+- This is MenuList platform user-verification browser response-parsing hardening only. Valid `/api/auth/create-staff` auth, rate limits, bounded request bodies, Firebase Auth behavior, Firestore user writes, platform user updates, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Ops Control Room Response Diagnostics
+
+### Fixed
+
+- **Ops action acknowledgements bounded** - Ops Control Room now parses SAFE_MODE and alert-mute responses through a 16KB bounded JSON reader before showing success copy.
+- **Malformed ops acknowledgements blocked** - SAFE_MODE toggles must return `success: true` plus `SAFE_MODE`, and alert mute must return `success: true`, `mutedUntil`, and `durationMinutes` before the UI refreshes state.
+- **Tenant-safety verifier tightened** - `npm run verify:menulist-api-tenant-safety` now guards the Ops Control Room response cap, parser diagnostics, acknowledgement shape checks, component integration, and removal of direct response parsing.
+
+### Boundaries
+
+- This is MenuList platform Ops Control Room browser response-parsing hardening only. Valid platform auth, mutation route body caps, rate limits, SAFE_MODE writes, alert-mute writes, platform alerts, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 30, 2026 - Business Health Monitor Response Diagnostics
+
+### Fixed
+
+- **Business Health monitor responses bounded** - The platform Business Health monitor now parses `/api/platform/owner-business-assistant/monitor` responses through the shared Owner Business Assistant 256KB bounded JSON reader.
+- **Malformed monitor snapshots blocked** - The monitor only updates answer-event, source-coverage, feedback, and cost/read metric state after the response proves the expected summary, event, feedback, and generated-at shapes.
+- **Tenant-safety verifier tightened** - `npm run verify:menulist-api-tenant-safety` now guards the Business Health monitor response cap, parser diagnostics, shape checks, monitor integration, and removal of direct response parsing.
+
+### Boundaries
+
+- This is MenuList platform Business Health monitor browser response-parsing hardening only. Valid platform auth, DATA_READ rate limiting, answer-event reads, feedback reads, sanitized monitor output, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 29, 2026 - Owner Notification Monitor Response Diagnostics
+
+### Fixed
+
+- **Owner notification monitor responses bounded** - The platform owner notification dashboard now parses `/api/ops/owner-notifications` load and recovery-action responses through a shared 256KB bounded JSON reader.
+- **Malformed owner notification snapshots blocked** - The monitor only updates table/detail state after the response proves the expected feature, filters, counts, event rows, selected event, delivery rows, resolved recipient, manual template, and cost shapes.
+- **Malformed recovery acknowledgements blocked** - Retry, manual send, and manual handoff actions must return `ok: true`, a supported action, an event ID, and fixed message text before the UI shows success and refreshes.
+- **Tenant-safety verifier tightened** - `npm run verify:menulist-api-tenant-safety` now guards the owner notification response cap, parser diagnostics, shape checks, monitor integration, and removal of direct response parsing.
+
+### Boundaries
+
+- This is MenuList platform owner-notification monitor browser response-parsing hardening only. Valid platform auth, product/feature gates, action rate limiting, bounded action bodies, owner notification reads/writes, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 29, 2026 - Platform Notification Monitor Response Diagnostics
+
+### Fixed
+
+- **Notification monitor responses bounded** - The platform notification dashboard now parses `/api/ops/platform-notifications` load and action responses through a shared 256KB bounded JSON reader.
+- **Malformed notification snapshots blocked** - The monitor only updates table/detail state after the response proves the expected feature, filter, count, event, selected-event, registry, and cost shapes.
+- **Malformed action acknowledgements blocked** - Acknowledge, manual handoff, and manual alert actions must return `ok: true`, a supported action, and fixed message text before the UI shows success and refreshes.
+- **Tenant-safety verifier tightened** - `npm run verify:menulist-api-tenant-safety` now guards the platform notification response cap, parser diagnostics, shape checks, monitor integration, and removal of direct response parsing.
+
+### Boundaries
+
+- This is MenuList platform notification monitor browser response-parsing hardening only. Valid platform auth, DATA_READ/action rate limiting, bounded action bodies, Admin SDK alert reads/writes, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 29, 2026 - Messaging Onboarding Monitor Response Diagnostics
+
+### Fixed
+
+- **Ops monitor responses bounded** - The platform Messaging Onboarding monitor now parses `/api/ops/messaging-onboarding` responses through a 256KB bounded JSON reader.
+- **Malformed monitor snapshots blocked** - The monitor only updates UI state after the snapshot proves the expected feature, health, webhook-window, queue, session-state, recent-session, event, and alert shapes.
+- **Dashboard docs corrected** - The monitoring dashboard Firebase notes now match the current health lookup: `systemHealth/messaging_onboarding_control.lastSnapshotId` plus one direct latest-snapshot read.
+- **Tenant-safety verifier tightened** - `npm run verify:menulist-api-tenant-safety` now guards the monitor response cap, parser diagnostics, snapshot shape checks, fixed failure copy, and removal of direct response parsing.
+
+### Boundaries
+
+- This is MenuList platform Messaging Onboarding monitor browser response-parsing and docs-parity hardening only. Valid platform auth, DATA_READ rate limiting, Admin SDK snapshot reads, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 29, 2026 - Platform Cost Posture Response Diagnostics
+
+### Fixed
+
+- **Cost posture responses bounded** - The Platform Cost Posture browser DAL now parses `/api/platform/cost-posture` responses through a 256KB bounded JSON reader.
+- **Malformed posture read models blocked** - The platform UI only accepts a response whose `data` object includes the expected generated period, status, billing-export, SAFE_MODE, totals, signals, alerts, guardrails, and source-coverage shapes.
+- **Tenant-safety verifier tightened** - `npm run verify:menulist-api-tenant-safety` now guards the Cost Posture response cap, parser diagnostics, read-model shape checks, fixed failure copy, and removal of direct response parsing.
+
+### Boundaries
+
+- This is MenuList platform Cost Posture browser response-parsing hardening only. Valid platform auth, DATA_READ rate limiting, Admin SDK reads, source coverage, billing-export boundary, Firestore rules/indexes, Firebase deployment, and Vercel deployment were not changed.
+
+## June 29, 2026 - Platform Entity-Block Response Diagnostics
+
+### Fixed
+
+- **Entity-block acknowledgements bounded** - Platform entity block/unblock browser mutations now parse `/api/platform/entity-blocks` responses through a 64KB bounded JSON reader.
+- **Malformed block acknowledgements blocked** - The platform UI only treats a block/unblock mutation as complete when the response proves `success: true`, returns an entity object, matches the requested entity ID, and reflects the requested `blocked` state.
+- **Tenant-safety verifier tightened** - `npm run verify:menulist-api-tenant-safety` now guards the entity-block response cap, parser diagnostics, shape checks, fixed failure copy, and removal of direct response parsing.
+
+### Boundaries
+
+- This is MenuList platform entity-block browser response-parsing hardening only. Valid tenant/store/user block writes, Firebase Auth disable/token revocation, public cache invalidation, Owner Business Assistant packet invalidation, Firestore rules/indexes, Firebase deployment, and Vercel deployment were not changed.
+
+## June 29, 2026 - Deployment Version Response Diagnostics
+
+### Fixed
+
+- **Version responses bounded** - Owner update prompts, the deployment build badge, and failure-screen diagnostics now parse `/api/version` responses through a shared 8KB bounded JSON reader.
+- **Malformed version responses ignored safely** - Shared deployment visibility UI only trusts version responses whose `buildId`, `shortBuildId`, `env`, `deploymentUrl`, and `buildCreatedAt` fields are string-shaped when present.
+- **Deployment visibility docs corrected** - The deployment runbook now matches the actual `/api/version` contract and badge output, including `buildCreatedAt` instead of the stale `timestamp` wording.
+- **Tenant-safety verifier tightened** - `npm run verify:menulist-api-tenant-safety` now guards the deployment version response helper, parser diagnostics, shape checks, caller integrations, and removal of direct version response parsing.
+
+### Boundaries
+
+- This is MenuList shared browser deployment-visibility response-parsing hardening only. `/api/version` route behavior, Vercel env wiring, service-worker/cache behavior, Firebase reads/writes, Firebase deployment, and Vercel deployment were not changed.
+
+## June 29, 2026 - Owner Analytics Response Diagnostics
+
+### Fixed
+
+- **Legacy analytics responses bounded** - Owner Google Analytics dashboard reads now parse `/api/analytics/realtime`, `/reports`, `/menu`, and `/locations` responses through a shared 1MB bounded JSON reader.
+- **Reports envelope normalized** - `/api/analytics/reports` responses now return the `report` object expected by Quick Stats and Trend Analysis instead of the wrapper envelope.
+- **Dashboard metric indexes aligned** - Quick Stats and Trend Analysis now read revenue from the route's `totalRevenue` metric index and no longer read a missing order metric from the reports route.
+- **Tenant-safety verifier tightened** - `npm run verify:menulist-api-tenant-safety` now guards the analytics response parser, reports normalization, metric-index alignment, and removal of direct analytics response parsing.
+
+### Boundaries
+
+- This is MenuList owner analytics browser response-parsing and dashboard normalization hardening only. Valid analytics route auth, rate limiting, Google Analytics provider calls, Firestore reads/writes, Firebase deployment, and Vercel deployment were not changed.
+
+## June 29, 2026 - Messaging Preview Response Diagnostics
+
+### Fixed
+
+- **Preview-page responses bounded** - `/msg-preview/[sessionId]` now parses preview load, approve, and fix responses through a shared 2MB bounded JSON reader.
+- **Malformed successful preview actions blocked** - Preview load, publish approval, and fix submission only update page state after the response matches the expected envelope.
+- **Tenant-safety verifier tightened** - `npm run verify:menulist-api-tenant-safety` now guards the preview response helper, parser diagnostics, shape checks, fixed fallback copy, and removal of direct preview response parsing.
+
+### Boundaries
+
+- This is MenuList messaging preview browser response-parsing hardening only. Valid preview token checks, approve/fix route behavior, publish transaction, Firestore reads/writes, cache invalidation, provider confirmation, Firebase deployment, and Vercel deployment were not changed.
+
+## June 29, 2026 - Help Center Search Response Diagnostics
+
+### Fixed
+
+- **Help search responses bounded** - Help Chat and the AI Search modal now parse `/api/helpCenter/search-kb` responses through a shared 1MB bounded JSON reader.
+- **Malformed successful search responses blocked** - Search UI state now requires a response `id`, `craftedAnswer`, and valid reference objects before rendering or saving assistant output.
+- **Tenant-safety verifier tightened** - `npm run verify:menulist-api-tenant-safety` now guards the shared response helper, parser diagnostics, shape checks, fixed fallback copy, and removal of direct search response parsing.
+
+### Boundaries
+
+- This is MenuList Help Center browser response-parsing hardening only. Valid search route auth, rate limiting, Gemini/coreSearch behavior, AI accounting, Firestore reads/writes, Firebase deployment, and Vercel deployment were not changed.
+
+## June 29, 2026 - Linked Outlet Extraction Apply Response Diagnostics
+
+### Fixed
+
+- **Linked outlet save acknowledgements shared** - Editor save, linked outlet publish, and extraction review apply now use the same shared 2MB bounded `/api/projects/outlet-save` response reader.
+- **Malformed extraction apply saves blocked** - Linked outlet review applies require `success: true` plus matching `projectId` and `masterProjectId` before treating the outlet-local save as complete.
+- **Tenant-safety verifier tightened** - `npm run verify:menulist-api-tenant-safety` now guards the shared response helper, parser diagnostics, shape checks, extraction apply integration, and removal of direct linked-outlet save response parsing.
+
+### Boundaries
+
+- This is MenuList linked-outlet browser response-parsing hardening only. `/api/projects/outlet-save` route behavior, OutletPolicy enforcement, Firestore writes, public cache invalidation, Firebase deployment, and Vercel deployment were not changed.
+
+## June 29, 2026 - Temporary Status Response Diagnostics
+
+### Fixed
+
+- **Temporary status responses bounded** - Desktop Business Settings, mobile Temporary Status, and mobile Today/Hours shortcuts now parse `/api/store/temp-status` responses through a shared 8KB bounded JSON reader.
+- **Malformed successful status writes blocked** - Optimistic status changes only remain after the API response proves `{ success: true }`.
+- **Tenant-safety verifier tightened** - `npm run verify:menulist-api-tenant-safety` now guards the shared parser, response cap, diagnostics, fixed fallback copy, and removal of direct temp-status response parsing.
+
+### Boundaries
+
+- This is MenuList temporary-status browser response-parsing hardening only. Valid status set/clear behavior, public cache invalidation, digital-screen invalidation, Firestore writes, Firebase deployment, and Vercel deployment were not changed.
+
+## June 29, 2026 - Account Response Diagnostics
+
+### Fixed
+
+- **Profile and password responses bounded** - Desktop account modal and mobile More account screens now parse `/api/auth/update-profile` and `/api/auth/change-password` responses through a shared 16KB bounded JSON reader.
+- **Malformed successful auth responses blocked** - Profile updates must return `success: true`, `updated`, and `updates`; password changes must return `success: true` before the UI treats them as complete.
+- **Tenant-safety verifier tightened** - `npm run verify:menulist-api-tenant-safety` now guards the shared parser, response cap, shape checks, diagnostics, fixed fallback copy, and removal of silent account response parsing.
+
+### Boundaries
+
+- This is MenuList desktop/mobile account response-parsing hardening only. Valid profile updates, password changes, Firebase Auth verification/update behavior, Firestore reads/writes/deletes, Firebase deployment, and Vercel deployment were not changed.
+
+## June 29, 2026 - CampaignCue Website Compression Pass
+
+### Improved
+
+- **Homepage comparison clarified** - Added an early CampaignCue switch strip comparing generic design tools, social schedulers, AI copy tools, and agency handoff with CampaignCue's source-backed campaign pack loop.
+- **Hero path simplified** - The CampaignCue hero now keeps one primary `Open workspace` action and moves pack examples into the body sections.
+- **Homepage repetition reduced** - Removed the separate rendered pack index, owner path, and duplicate workflow rail from the homepage; the flow map, Campaign Pack Room, feature pages, use-case page, and footer links carry that depth.
+
+### Boundaries
+
+- This is static CampaignCue public website positioning only. Owner workspace runtime, Firestore reads/writes/deletes, provider calls, direct posting, social-account connection, pricing/payment behavior, Firebase deployment, and Vercel deployment were not changed.
+
+## June 29, 2026 - Staff Client Response Diagnostics
+
+### Fixed
+
+- **Staff and role responses bounded** - Shared staff/role client helpers now parse `/api/staff*` responses through a 256KB bounded JSON reader.
+- **Malformed successful staff responses blocked** - Staff list, staff mutation, and role mutation responses must match the expected envelope before desktop or mobile staff/role screens use them.
+- **Tenant-safety verifier tightened** - `npm run verify:menulist-api-tenant-safety` now guards the response cap, shape checks, parse/invalid diagnostics, and removal of silent staff response parsing.
+
+### Boundaries
+
+- This is MenuList staff/roles browser response-parsing hardening only. Valid staff CRUD, role CRUD, permission checks, Firebase Auth updates, Firestore reads/writes/deletes, Firebase deployment, and Vercel deployment were not changed.
+
+## June 29, 2026 - Master Job Status Response Diagnostics
+
+### Fixed
+
+- **Master job status responses bounded** - `useMasterJobStatus()` now parses `/api/projects/master-job-status` responses through an 8KB bounded JSON reader.
+- **Malformed outlet lock state blocked** - Outlet editor blocking state only updates from a response that matches the master-job status contract: inactive with no job fields, or active with a supported status and job ID.
+- **Tenant-safety verifier tightened** - `npm run verify:menulist-api-tenant-safety` now guards the response cap, shape guard, parser diagnostics, and removal of direct response parsing from the master-job polling hook.
+
+### Boundaries
+
+- This is MenuList multi-outlet browser response-parsing hardening only. Valid route auth/rate limits, tenant/store permission checks, active master-job reads, outlet blocking copy, Firestore reads/writes/deletes, Firebase deployment, and Vercel deployment were not changed.
+
+## June 29, 2026 - Business Health Read-Model Response Diagnostics
+
+### Fixed
+
+- **Business Health read-model responses bounded** - Current Health, analytics, locations, and thread hooks now parse `/api/owner-business-assistant/*` read responses through a shared 256KB bounded JSON reader.
+- **Malformed read-model success blocked** - Successful current, analytics, locations, and thread responses must match the shared read-model envelope guards before SWR caches or UI state use them.
+- **Owner Business Assistant verifier tightened** - `npm run verify:owner-business-assistant` and `npm run verify:menulist-api-tenant-safety` now guard the response cap, parser/shape diagnostics, and removal of direct response parsing from the read-model hooks.
+
+### Boundaries
+
+- This is MenuList Business Health browser response-parsing hardening only. Valid route auth/rate limits, read-model Firestore reads, context packet caching, answer behavior, feedback writes, Firestore reads/writes/deletes, Firebase deployment, and Vercel deployment were not changed.
+
+## June 29, 2026 - AnswerLattice Website Category Switch Cue
+
+### Added
+
+- **Homepage support-suite switch cue** - Added a compact comparison strip inside the AnswerLattice homepage Support Suite so buyers can compare generic chatbots, helpdesks, static knowledge bases, and scattered support sources by where the official answer comes from.
+- **Category comparison path reinforced** - The homepage cue links to `/comparisons` while keeping detailed category tables and doctrine-safe comparison copy on the existing comparison routes.
+- **Website docs updated** - AnswerLattice website README, spec, and implementation notes now record the compact switch cue, homepage compression boundary, and full-comparison route split.
+
+### Boundaries
+
+- This is static AnswerLattice public website positioning only. Dashboard runtime, widget runtime, pricing/payment behavior, auth, Knowledge Intake, tickets, Firestore reads/writes/deletes, Firebase deployment, and Vercel deployment were not changed.
+
+## June 29, 2026 - Reputation State Response Diagnostics
+
+### Fixed
+
+- **Reputation state responses bounded** - `ReputationGuard` now parses `/api/reviews/states` responses through a 16KB bounded JSON parser.
+- **Malformed warning state blocked** - Passive warning state only updates when the response includes `success: true` plus boolean `hasBlockActive` and `hasEscalationActive` values.
+- **Tenant-safety verifier tightened** - `npm run verify:menulist-api-tenant-safety` now guards the review-state response cap, parser/shape diagnostics, and removal of direct response parsing from `ReputationGuard`.
+
+### Boundaries
+
+- This is MenuList Reviews/Reputation browser response-parsing hardening only. Valid review-state route auth/rate limits, review-state reads, feature flags, warning rendering, Firestore reads/writes/deletes, Firebase deployment, and Vercel deployment were not changed.
+
+## June 29, 2026 - Guest Feedback Submit Response Diagnostics
+
+### Fixed
+
+- **Feedback submit responses bounded** - The guest-facing feedback form now parses `/api/public/feedback/submit` responses through a 16KB bounded JSON parser.
+- **Malformed submit success blocked** - Successful feedback acknowledgements must include `success: true`, a `feedbackId`, and a valid optional `reviewUrl` before the form shows the success state.
+- **Public-business verifier tightened** - `npm run verify:public-business-truth` now guards the guest feedback response cap, parser/shape diagnostics, and removal of direct response parsing from the public feedback form.
+
+### Boundaries
+
+- This is MenuList public feedback browser response-parsing hardening only. Valid feedback submissions, Turnstile checks, rate limits, private feedback writes, MOL event writes, Firestore reads/writes/deletes, Firebase deployment, and Vercel deployment were not changed.
+
+## June 29, 2026 - POS Sync Test Response Diagnostics
+
+### Fixed
+
+- **Connection test responses bounded** - Desktop and mobile POS Sync connection tests now parse `/api/pos-sync/test` responses through a 16KB bounded JSON parser.
+- **Malformed test success blocked** - Successful test responses must match the shared POS Sync test response contract before either surface shows a reachable connection result.
+- **Public-business verifier tightened** - `npm run verify:public-business-truth` now guards the shared response cap, parser/shape diagnostics, and removal of direct JSON parsing from the desktop and mobile POS Sync test handlers.
+
+### Boundaries
+
+- This is MenuList POS Sync browser response-parsing hardening only. Valid connection tests, route auth/rate limits, outbound webhook checks, POS status writes, delivery logs, Firestore reads/writes/deletes, Firebase deployment, and Vercel deployment were not changed.
+
+## June 29, 2026 - Outlet Policy Response Diagnostics
+
+### Fixed
+
+- **Outlet policy responses bounded** - `updateOutletPolicy()` now parses `/api/outlets/policy` acknowledgements through a 16KB bounded JSON parser.
+- **Malformed policy success blocked** - Successful policy acknowledgements must include `success: true`, `masterPromoted`, and a complete boolean `outletPolicy` before desktop/mobile policy state updates.
+- **Public-business verifier tightened** - `npm run verify:public-business-truth` now guards the outlet policy response cap, parse/shape diagnostics, and removal of direct response parsing from the multi-outlet DAL.
+
+### Boundaries
+
+- This is MenuList OutletPolicy browser response-parsing hardening only. Valid policy writes, legacy master repair, route auth/rate limits, Firestore reads/writes/deletes, cache invalidation, Firebase deployment, and Vercel deployment were not changed.
+
+## June 29, 2026 - Linked Outlet Save Response Diagnostics
+
+### Fixed
+
+- **Linked outlet save responses bounded** - `updateProject()` and linked outlet `publishProject()` now parse `/api/projects/outlet-save` acknowledgements through a 2MB bounded JSON parser.
+- **Malformed linked outlet success blocked** - Successful save/publish acknowledgements must include `success: true` plus the expected `projectId` and `masterProjectId` before the returned project is used.
+- **Public-business verifier tightened** - `npm run verify:public-business-truth` now guards the linked outlet response cap, parse/shape diagnostics, and removal of silent response fallbacks.
+
+### Boundaries
+
+- This is MenuList linked-outlet browser response-parsing hardening only. Valid linked outlet saves, publish writes, OutletPolicy enforcement, public cache invalidation, screen-data invalidation, Firestore reads/writes/deletes, Firebase deployment, and Vercel deployment were not changed.
+
+## June 29, 2026 - Mobile Compliance and Domain Response Diagnostics
+
+### Fixed
+
+- **Compliance load responses bounded** - Mobile compliance page loading now parses `/api/compliance` responses through a 32KB bounded JSON parser.
+- **Domain status/add responses bounded** - Mobile Domain Settings now parses `/api/domain` status and add-domain responses through a 32KB bounded parser and requires returned domains before local state updates.
+- **Public-business verifier tightened** - `npm run verify:public-business-truth` now guards mobile compliance/domain response caps, parse/shape diagnostics, and removal of direct response JSON parsing.
+
+### Boundaries
+
+- This is MenuList owner-mobile response-parsing hardening only. Valid compliance page loads, compliance save/reset, domain status refresh, custom-domain add behavior, store writes, Firestore reads/writes/deletes, Firebase deployment, and Vercel deployment were not changed.
+
+## June 29, 2026 - Outlet Action Response Diagnostics
+
+### Fixed
+
+- **Outlet action responses bounded** - Desktop and mobile outlet create, rename, and deactivate callers now parse route responses through a 16KB bounded JSON parser.
+- **Malformed outlet success blocked** - Successful `/api/outlets/create`, `/api/outlets/rename`, and `/api/outlets/deactivate` acknowledgements must match the route contract before local tenant/store UI state updates.
+- **Public-business verifier tightened** - `npm run verify:public-business-truth` now guards the shared outlet action response contract, parse/shape diagnostics, and removal of direct or silent JSON parsing from the patched outlet UI files.
+
+### Boundaries
+
+- This is MenuList multi-outlet browser response-parsing hardening only. Valid outlet creation, rename, deactivation, billing quantity changes, route auth/rate limits, Firestore reads/writes/deletes, cache invalidation, Firebase deployment, and Vercel deployment were not changed.
+
+## June 29, 2026 - Public Create-Menu Preview Response Diagnostics
+
+### Fixed
+
+- **Preview polling responses bounded** - `/create-menu/preview` now parses status and full draft responses through a 4MB bounded JSON parser and validates draft status before updating preview state.
+- **Claim acknowledgement bounded** - The preview claim submit now parses `/api/public/create-menu/claim` responses through a 32KB bounded parser and requires the success URL fields before redirecting.
+- **Extraction verifier tightened** - `npm run verify:menu-extraction-pipeline` now guards the preview/claim parser caps, parse/shape diagnostics, status validation, and removal of direct/silent JSON parsing.
+
+### Boundaries
+
+- This is MenuList public website response-parsing hardening only. Valid preview polling, claim conversion, session refresh, starter success redirect, Firestore reads/writes/deletes, Storage operations, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 29, 2026 - Auth Login Response Diagnostics
+
+### Fixed
+
+- **Login auth responses bounded** - The login page now parses validate-claim, claim-account, and set-claims responses through a 32KB bounded JSON parser.
+- **Firebase sync responses bounded** - The shared Firebase Auth sync helper now parses `/api/auth/set-claims` responses through a 32KB bounded parser before using custom tokens.
+- **Auth verifier tightened** - `node scripts/verification/verify-auth-security-failure-matrix.js` now guards the login and Firebase sync parser caps, parse/shape diagnostics, and removal of direct response JSON parsing.
+
+### Boundaries
+
+- This is MenuList browser auth response-parsing hardening only. Valid Google login, credential login, claim account setup, Firebase custom-token sync, Answerlattice custom-token sync, route auth/rate limits, Firestore reads/writes/deletes, Firebase Auth operations, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 29, 2026 - Reseller Management Response Diagnostics
+
+### Fixed
+
+- **Management acknowledgements bounded** - Desktop and mobile reseller management now parse `/api/reseller/manage` and `/api/reseller/monthly-summary` responses through a 64KB bounded JSON parser.
+- **Malformed management success blocked** - Profile-list, monthly-summary, and save-success responses must match the route contract before platform management UI state updates.
+- **Public-business verifier tightened** - `npm run verify:public-business-truth` now guards desktop/mobile reseller management response caps, parse/shape diagnostics, and removal of direct or silent JSON parsing.
+
+### Boundaries
+
+- This is MenuList reseller management browser response-parsing hardening only. Valid reseller profile reads, monthly-summary reads, Firebase Auth reseller account creation/updates, profile writes, route auth/rate limits, Firestore reads/writes/deletes, Firebase deployment, and Vercel deployment were not changed.
+
+## June 29, 2026 - Website Switch Comparison Section
+
+### Added
+
+- **Homepage switch comparison** - Added `SwitchComparisonSection` after the homepage problem section so owners can compare MenuList against PDFs/screenshots, QR-only pages, website builders, and link pages before the workflow explanation.
+- **English and Hindi website copy added** - `Website.SwitchComparison` now has localized copy in the primary English and Hindi MenuList website locale packs.
+- **Website docs updated** - Main website README, content map, and design system now record the comparison section placement, boundaries, and responsive row treatment.
+
+### Boundaries
+
+- This is public MenuList website positioning only. Pricing/payment runtime, auth behavior, upload/link-import APIs, owner dashboard runtime, customer menu/OBP runtime, Firestore reads/writes/deletes, Firebase deployment, Vercel deployment, and DNS were not changed.
+
+## June 29, 2026 - AI Service Response Diagnostics
+
+### Fixed
+
+- **AI service responses bounded** - Shared owner AI clients for item metadata, SEO, descriptions, translations, business copy, image generation/editing, and batch image trigger now parse successful responses through `readAiServiceResponseJson()`.
+- **Malformed AI responses visible** - Malformed, oversized, empty, or non-object successful responses now log route-specific `*_response_parse_failed` / `*_response_invalid` diagnostics before the existing owner fallback behavior runs.
+- **AI accounting verifier tightened** - `npm run verify:ai-accounting` now guards the shared parser, per-client byte caps, response diagnostics, and removal of direct unbounded `response.json()` parsing from the patched clients.
+
+### Boundaries
+
+- This is MenuList browser/service response-parsing hardening only. Valid AI route calls, provider calls, capacity handling, credit consumption, balance sync, generated image data normalization, translation merge behavior, Firestore reads/writes/deletes, Storage operations, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 29, 2026 - Reseller Onboarding Response Diagnostics
+
+### Fixed
+
+- **Onboarding acknowledgements bounded** - Desktop and mobile reseller onboarding now parse `/api/reseller/onboard` responses through a 16KB bounded JSON parser.
+- **Malformed onboarding success blocked** - Successful HTTP responses must include store, tenant, subscription, and status fields before the success screen renders returned links/login details.
+- **Public-business verifier tightened** - `npm run verify:public-business-truth` now guards desktop/mobile onboarding response caps, parse/shape diagnostics, and removal of the old unbounded/silent JSON parsing.
+
+### Boundaries
+
+- This is MenuList reseller browser response-parsing hardening only. Valid reseller onboarding writes, Firebase Auth owner creation, subscription creation, transaction logging, route auth/rate limits, Firestore reads/writes/deletes, Firebase deployment, and Vercel deployment were not changed.
+
+## June 29, 2026 - Auth UI Response Diagnostics
+
+### Fixed
+
+- **Phone OTP responses bounded** - `PhoneOtpAuthPanel` now parses start and verify responses through an 8KB bounded JSON parser.
+- **Access-status polling responses bounded** - `SessionExpiryMonitor` now parses `/api/auth/access-status` responses through an 8KB bounded JSON parser and retries transient malformed responses without ending access incorrectly.
+- **Auth verifier tightened** - `node scripts/verification/verify-auth-security-failure-matrix.js` now guards the Phone OTP and access-status parser caps, parse/shape diagnostics, and removal of the old silent JSON fallbacks.
+
+### Boundaries
+
+- This is MenuList shared auth UI observability hardening only. Valid Phone OTP challenge creation, verification, login-token handling, access-status route auth/rate limits, session sign-out behavior for real 401/ended-access responses, Firestore reads/writes/deletes, Firebase Auth operations, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 29, 2026 - Reseller Add-Location Response Diagnostics
+
+### Fixed
+
+- **Add-location acknowledgements bounded** - Desktop and mobile reseller dashboards now parse `/api/reseller/add-location-capacity` responses through an 8KB bounded JSON parser.
+- **Malformed add-location success blocked** - Successful HTTP responses must include `success: true` and numeric `amountExpected` before the dashboard shows the amount to collect.
+- **Public-business verifier tightened** - `npm run verify:public-business-truth` now guards desktop/mobile add-location response caps, parse/shape diagnostics, and removal of the old silent JSON fallbacks.
+
+### Boundaries
+
+- This is MenuList reseller browser response-parsing hardening only. Valid add-location capacity writes, reseller transaction writes, billing/subscription behavior, route auth/rate limits, Firestore reads/writes/deletes, Firebase deployment, and Vercel deployment were not changed.
+
+## June 29, 2026 - Reseller Dashboard Response Diagnostics
+
+### Fixed
+
+- **Reseller dashboard responses bounded** - The shared reseller dashboard hook now parses profile, client-list, and monthly-summary responses through a 64KB bounded JSON parser.
+- **Malformed reseller responses visible** - Malformed, oversized, or invalid successful dashboard responses now log `reseller_dashboard_response_parse_failed` or `reseller_dashboard_response_invalid` with bounded phase/status metadata only.
+- **Public-business verifier tightened** - `npm run verify:public-business-truth` now guards the reseller dashboard response cap, parse/shape diagnostics, and removal of the old silent JSON fallbacks.
+
+### Boundaries
+
+- This is MenuList owner/reseller browser response-parsing hardening only. Valid reseller dashboard reads, reseller API auth/rate limits, Firestore reads/writes/deletes, billing behavior, public cache invalidation, Firebase deployment, and Vercel deployment were not changed.
+
+## June 29, 2026 - Auth Session Response Diagnostics
+
+### Fixed
+
+- **Client session parsing bounded** - `getActiveSession()` now reads `/api/auth/session` through a 64KB bounded JSON parser.
+- **Malformed session responses visible** - Malformed or invalid session responses now log `auth_session_response_parse_failed` or `auth_session_response_invalid` instead of silently becoming a no-session result.
+- **Auth verifier tightened** - `node scripts/verification/verify-auth-security-failure-matrix.js` now guards the bounded session parser, byte cap, diagnostics, and removal of the old silent JSON fallback.
+
+### Boundaries
+
+- This is MenuList shared auth-client observability hardening only. Valid NextAuth sessions, normal no-user session responses, tenant/store scoping, mobile inheritance, Firestore reads/writes/deletes, Firebase Auth operations, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 29, 2026 - Public Create-Menu Response Diagnostics
+
+### Fixed
+
+- **Create-menu acknowledgement parsing bounded** - The public `/create-menu` browser client now reads upload and link creation responses through an 8KB bounded parser.
+- **Preview redirect guarded** - Successful HTTP responses must include a non-empty `draftId` before the browser redirects to `/create-menu/preview/...`.
+- **Extraction verifier tightened** - `npm run verify:menu-extraction-pipeline` now guards the parser, response cap, parse/shape diagnostics, fixed localized fallback copy, and removal of the old silent JSON fallbacks.
+
+### Boundaries
+
+- This is MenuList public website client observability hardening only. Valid draft creation, extraction queueing, link acquisition, preview polling, claim/publish behavior, website copy, Firestore reads/writes/deletes, Storage operations, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 29, 2026 - AI Menu Manager Response Diagnostics
+
+### Fixed
+
+- **Menu Manager fallback response parsing bounded** - The shared AMM client API reader now parses command, inbox, proposal-action, and completion responses through a 64KB bounded JSON parser.
+- **Malformed fallback responses visible** - Malformed, oversized, or empty successful AMM API responses now log `ai_menu_manager_response_parse_failed` with bounded phase/status metadata only before the existing fixed owner failure path runs.
+- **AMM verifier tightened** - `npm run verify:ai-menu-manager` now guards the bounded response parser, byte cap, stable diagnostics, fixed local failure copy, and removal of the old silent JSON fallback.
+
+### Boundaries
+
+- This is MenuList owner-runtime response-parsing hardening only. Valid AMM command, inbox, approval, and completion behavior, Firestore reads/writes/deletes, project updates, public cache invalidation, API route auth/rate limits, Firebase deployment, and Vercel deployment were not changed.
+
+## June 29, 2026 - Menu Extraction Client Response Diagnostics
+
+### Fixed
+
+- **Owner extraction job response parsing bounded** - The browser job helper now reads `/api/menu-extraction/jobs` responses through a 32KB bounded parser and rejects successful HTTP responses without `success: true` and a non-empty `jobId`.
+- **Menu-intake preflight response parsing bounded** - The browser preflight helper now reads `/api/menu-intake-identity` responses through a 32KB bounded parser and logs parse/shape diagnostics before falling back to the existing upload path.
+- **Menu-link import response parsing bounded** - The link-import browser helper now reads `/api/menu-link-imports` responses through an 8KB bounded parser and rejects malformed acknowledgement payloads through the existing fixed owner fallback.
+- **Extraction verifier tightened** - `npm run verify:menu-extraction-pipeline` now guards the byte caps, parse/shape diagnostics, and removal of the old silent JSON fallbacks on these three client helpers.
+
+### Boundaries
+
+- This is MenuList browser/client observability hardening only. Valid extraction jobs, intake decisions, link-import source acquisition, route auth/rate limits, Firestore reads/writes/deletes, Storage operations, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 29, 2026 - AI Advisor Response Parsing Diagnostics
+
+### Fixed
+
+- **AI capacity response parsing bounded** - Shared AI capacity handling now reads `402` response JSON through an 8KB bounded parser and logs `ai_capacity_response_parse_failed` when the response is malformed or oversized.
+- **Menu Card advisor response parsing bounded** - The Menu Card Export design-advisor client now reads plan-gate and recommendation responses through a 16KB bounded parser and logs `ai_menu_card_design_advisor_response_parse_failed` with bounded project/source/status metadata only.
+- **Verifiers tightened** - `npm run verify:ai-accounting` now guards shared AI capacity response parsing, and `npm run verify:menu-card-export` now guards the Menu Card advisor client parser and rejects the old silent JSON fallback.
+
+### Boundaries
+
+- This is MenuList browser/service observability hardening only. Valid AI capacity handling, Pro/Premium plan gating, Menu Card layout suggestions, AI provider calls, AI accounting writes, credit consumption, Firestore reads/writes/deletes, Storage operations, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 29, 2026 - MenuList Website Conversion Guard
+
+### Improved
+
+- **OG thumbnail aligned to current positioning** - The MenuList Open Graph image now says `One official customer link for menus and services` and uses a service-list example so shared previews match the broad SMB website copy.
+- **Homepage sticky CTA scroll handling reduced** - The desktop sticky CTA now observes the hero and final CTA sections instead of using scroll-percentage React state.
+
+### Boundaries
+
+- This is MenuList public website component, asset, and docs polish only. Pricing/payment runtime, auth behavior, upload/link-import APIs, owner dashboard runtime, customer menu/OBP runtime, Firestore rules/indexes, Storage rules, Cloud Functions, Firebase deployment, Vercel deployment, and DNS were not changed.
+
+## June 29, 2026 - Turnstile Provider Response Diagnostics
+
+### Fixed
+
+- **Captcha provider parse failures visible** - Shared public form Turnstile verification now reads provider JSON through an 8KB bounded parser and logs `public_turnstile_response_parse_failed` when the response is malformed or oversized.
+- **Captcha provider infrastructure failures visible** - Turnstile HTTP rejections and request exceptions now log bounded `public_turnstile_http_rejected` / `public_turnstile_verification_failed` diagnostics with path presence/length and status metadata only.
+- **Security verifier tightened** - `npm run verify:auth-security-failure-matrix` now guards the bounded parser, byte cap, stable Turnstile diagnostics, and rejection of the old silent provider JSON parse fallback.
+
+### Boundaries
+
+- This is MenuList public security observability hardening only. Valid captcha verification, invalid-token rejection, public contact/feedback form behavior, Firestore reads/writes/deletes, rate-limit keys, provider request count, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 29, 2026 - Public Menu State Persistence Diagnostics
+
+### Fixed
+
+- **Public menu state failures visible** - `MenuPageNew` now logs bounded `public_menu_state_restore_failed` and `public_menu_state_save_failed` diagnostics when tab-scoped `sessionStorage` restore/save fails.
+- **State persistence remains fail-open** - Customers still see the menu, default section, current filter behavior, and scroll behavior when browser storage is blocked or full.
+- **Public-business verifier tightened** - `npm run verify:public-business-truth` now guards public menu state restore/save diagnostics and rejects the old silent state-persistence catches.
+
+### Boundaries
+
+- This is MenuList public menu browser-state observability hardening only. Menu rendering, search, filters, category scroll, item detail, customer analytics writes, Firestore reads/writes/deletes, Storage operations, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 29, 2026 - Menu Quality Diagnostics
+
+### Fixed
+
+- **Dashboard Menu Quality failures visible** - The owner dashboard Menu Check panel now logs bounded `dashboard_menu_quality_signals_load_failed` diagnostics when project loading or signal computation fails.
+- **Dashboard quality-action handoff failures visible** - Failed `sessionStorage` handoffs from the dashboard Menu Check panel now log bounded `dashboard_menu_quality_action_handoff_failed` diagnostics and still navigate to Projects.
+- **Quality-signal publish intercept failures visible** - The editor publish flow now logs bounded `menu_editor_quality_signals_publish_intercept_failed` diagnostics if Menu Quality Signals cannot compute or load before the publish confirmation.
+- **Public-business verifier tightened** - `npm run verify:public-business-truth` now guards the Menu Quality dashboard and publish diagnostics and rejects the old silent catches.
+
+### Boundaries
+
+- This is MenuList Menu Quality observability hardening only. Successful dashboard rendering, action navigation, publish flow, owner confirmation behavior, Menu Quality computation, project writes, public cache invalidation, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 29, 2026 - Digital Screen Seen Signal Status Guard
+
+### Fixed
+
+- **Screen seen HTTP failures stay visible** - Highlights and Menu Board public display clients now cache the daily seen marker only after `/api/screen/seen` returns an OK response.
+- **Screen display diagnostics tightened** - Non-OK seen-signal responses now log bounded `digital_screen_display_seen_signal_rejected` or `digital_screen_menuboard_seen_signal_rejected` diagnostics with response status metadata only.
+- **Public-business verifier tightened** - `npm run verify:public-business-truth` now guards the status check before the daily marker is cached.
+
+### Boundaries
+
+- This is MenuList public screen observability hardening only. Successful seen-signal writes, route validation, rate limits, public display layout, screen listeners, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 29, 2026 - Multi-Outlet Policy Response Diagnostics
+
+### Fixed
+
+- **Outlet policy response parse failures visible** - `updateOutletPolicy()` now logs bounded `multi_outlet_outlet_policy_response_parse_failed` diagnostics when `/api/outlets/policy` returns malformed JSON.
+- **Multi-outlet verifier tightened** - `npm run verify:public-business-truth` now guards the policy response parse diagnostic and rejects stale silent-failure wording in the multi-outlet DAL.
+
+### Boundaries
+
+- This is MenuList multi-outlet DAL observability hardening only. Outlet policy saves, route authorization, policy validation, master-store repair, cache invalidation, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 29, 2026 - Project Save Optional Diagnostics
+
+### Fixed
+
+- **Project previous-state load failures visible** - `updateProject()` now logs bounded `project_current_state_load_failed` diagnostics when the optional previous-project read fails before save-time MOL/MCE/master-awareness checks.
+- **Master cache invalidation failures visible** - Master project saves now log bounded `project_master_cache_invalidation_failed` diagnostics when the client-side multi-outlet master cache cannot be invalidated.
+- **Public-business verifier tightened** - `npm run verify:public-business-truth` now guards both diagnostics and rejects the old silent update-failure comment.
+
+### Boundaries
+
+- This is MenuList project-save observability hardening only. Owner saves, project writes, public cache revalidation, MCE behavior, master-update awareness writes, multi-outlet routing, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 29, 2026 - Decision Blocks Scheduler Diagnostics
+
+### Fixed
+
+- **Scheduler completion alert failures visible** - `computeDecisionBlocksScores` now logs bounded `SCHEDULER_COMPLETION_ALERT_FAILED` diagnostics if the final nightly scheduler completion alert cannot be created.
+- **Store freshness enrichment failures visible** - Decision Blocks store-enrichment collection failures now log bounded `SCHEDULER_STORE_SUMMARY_ENRICHMENT_FAILED` diagnostics instead of disappearing behind silent non-blocking catches.
+- **Scheduler verifiers tightened** - `npm run verify:auth-security-failure-matrix` and `npm run verify:menulist-api-tenant-safety` now guard the completion-alert diagnostic and reject the old silent non-blocking catch.
+
+### Boundaries
+
+- This is MenuList Cloud Functions scheduler observability hardening only. Decision Blocks scoring, nightly task order, scheduler results, store-enrichment behavior, alert creation attempts, Firestore reads/writes, cache invalidation, rules/indexes, and Vercel deployment were not changed. Cloud Functions source changed; a scoped `menulist-qa` deploy is required when cloud access permits.
+
+## June 29, 2026 - SignalDesk Meta Response Diagnostics
+
+### Fixed
+
+- **Meta provider response parse failures visible** - SignalDesk Meta provider sends now read successful Graph API JSON responses through a bounded parser and log `signaldesk_meta_response_parse_failed` when the response is malformed or oversized.
+- **SignalDesk verifier tightened** - `npm run verify:signaldesk` now guards the bounded Meta response parser and rejects the old silent `response.json().catch(() => ({}))` fallback.
+
+### Boundaries
+
+- This is SignalDesk app-server provider-send observability hardening only. Provider sends remain globally disabled until compliance setup is complete. Firestore reads/writes, Storage operations, Firebase Auth operations, extra provider calls, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 29, 2026 - Messaging Storage Cleanup Diagnostics
+
+### Fixed
+
+- **Expired-session file cleanup failures visible** - Messaging Onboarding cleanup now ignores true missing Storage objects but logs bounded `MESSAGING_SESSION_FILE_CLEAN_FAILED` diagnostics when an expired-session upload delete fails for other reasons.
+- **Tenant-safety verifier tightened** - `npm run verify:menulist-api-tenant-safety` now guards the bounded file-cleanup diagnostic and rejects the old silent file-delete catch.
+
+### Boundaries
+
+- This is MenuList Cloud Functions Messaging Onboarding cleanup observability hardening only. Session expiry, cleanup queries, delete attempts, session document deletion, Firestore reads/writes/deletes, Storage operation count, rules/indexes, and Vercel deployment were not changed. Cloud Functions source changed; the scoped `menulist-qa` `menulistMaintenanceScheduler` deploy ran lint/build and then stopped at Cloud Resource Manager HTTP 403.
+
+## June 29, 2026 - Messaging Intake Processor Diagnostics
+
+### Fixed
+
+- **Intake provider-send failures visible** - `menulistMaintenanceScheduler` intake processing now logs bounded `INTAKE_PROVIDER_MESSAGE_SEND_FAILED` diagnostics when non-blocking provider messages fail during processing-cap, validation-recovery, invalid-upload, partial-menu, or extraction-progress paths.
+- **Processing-run counter failures visible** - Weekly processing-run counter update failures now log bounded `INTAKE_RATE_LIMIT_COUNTER_UPDATE_FAILED` diagnostics instead of being swallowed.
+- **Tenant-safety verifier tightened** - `npm run verify:menulist-api-tenant-safety` now guards the intake diagnostics and rejects the old silent non-critical catches.
+
+### Boundaries
+
+- This is MenuList Cloud Functions Messaging Onboarding intake observability hardening only. Intake scheduling, queued-message drain, state transitions, provider send attempts, validation, extraction-job creation, Firestore reads/writes, Storage behavior, rules/indexes, and Vercel deployment were not changed. Cloud Functions source changed; the scoped `menulist-qa` `menulistMaintenanceScheduler` deploy ran lint/build and then stopped at Cloud Resource Manager HTTP 403.
+
+## June 29, 2026 - Messaging Recovery Message Diagnostics
+
+### Fixed
+
+- **Clearer-photo recovery send failures visible** - `msgExtractionWatcher` now logs bounded `EXTRACTION_CLEARER_PHOTOS_SEND_FAILED` diagnostics when the provider send for “send clearer photos” recovery guidance fails.
+- **Tenant-safety verifier tightened** - `npm run verify:menulist-api-tenant-safety` now guards the recovery-message diagnostic and rejects the old silent non-critical catch.
+
+### Boundaries
+
+- This is MenuList Cloud Functions Messaging Onboarding recovery-message observability hardening only. Extraction failure handling, blank-menu handling, session state transitions, provider send attempts, Firestore reads/writes, Storage behavior, rules/indexes, and Vercel deployment were not changed. Cloud Functions source changed; the scoped `menulist-qa` `msgExtractionWatcher` deploy ran lint/build and then stopped at Cloud Resource Manager HTTP 403.
+
+## June 29, 2026 - Messaging Temp Project Cleanup Diagnostics
+
+### Fixed
+
+- **Extraction temp-project cleanup failures visible** - `msgExtractionWatcher` now logs bounded `Temp project cleanup failed` diagnostics when legacy Messaging Onboarding temp project deletion fails.
+- **Tenant-safety verifier tightened** - `npm run verify:menulist-api-tenant-safety` now guards the bounded temp-project cleanup diagnostic and rejects the old silent cleanup catch.
+
+### Boundaries
+
+- This is MenuList Cloud Functions Messaging Onboarding cleanup observability hardening only. Extraction watcher routing, session updates, preview generation, provider preview sends, temp project delete attempts, Firestore reads/writes/deletes, Storage behavior, rules/indexes, and Vercel deployment were not changed. Cloud Functions source changed; the scoped `menulist-qa` `msgExtractionWatcher` deploy ran lint/build and then stopped at Cloud Resource Manager HTTP 403.
+
+## June 29, 2026 - Messaging Duplicate Upload Cleanup Diagnostics
+
+### Fixed
+
+- **Duplicate-upload cleanup failures visible** - Messaging Onboarding session handling now logs bounded `Duplicate upload cleanup failed` diagnostics when a duplicate media upload's orphaned Storage file cannot be deleted.
+- **Tenant-safety verifier tightened** - `npm run verify:menulist-api-tenant-safety` now guards the bounded cleanup diagnostic and rejects the old silent file-cleanup catch.
+
+### Boundaries
+
+- This is MenuList Cloud Functions Messaging Onboarding cleanup observability hardening only. Duplicate detection, duplicate acknowledgement behavior, session uploads, lifecycle events, Firestore reads/writes, Storage delete attempts, rules/indexes, and Vercel deployment were not changed. Cloud Functions source changed; the scoped `menulist-qa` `messagingOnboarding` deploy ran lint/build and then stopped at Cloud Resource Manager HTTP 403.
+
+## June 29, 2026 - POS Sync Debounced Delivery Diagnostics
+
+### Fixed
+
+- **Debounced delivery failures visible** - `triggerPosSyncDebounced()` now logs bounded `pos_sync_delivery_trigger_failed` diagnostics when the client-side delivery request fails or `/api/pos-sync/deliver` returns a non-OK response.
+- **Tenant-safety verifier tightened** - `npm run verify:menulist-api-tenant-safety` now rejects the old silent debounced-delivery catches and requires bounded store/tenant/project context.
+
+### Boundaries
+
+- This is MenuList POS Sync client-trigger observability hardening only. The debounce interval, delivery route, outbound webhook behavior, owner-facing UI, Firestore reads/writes, Storage operations, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 29, 2026 - Menu Upload Cleanup Diagnostics
+
+### Fixed
+
+- **Owner upload cleanup failures visible** - desktop and mobile menu upload now log bounded `menu_upload_uploaded_file_cleanup_failed` or `mobile_menu_upload_uploaded_file_cleanup_failed` diagnostics when uploaded-file cleanup fails after intake cancel, ignored-file cleanup, no-files decisions, or active-job reuse.
+- **Extraction verifier tightened** - `npm run verify:menu-extraction-pipeline` now rejects the old discarded cleanup-result patterns in desktop and mobile upload callers.
+
+### Boundaries
+
+- This is MenuList owner upload cleanup observability hardening only. Upload attempts, cleanup attempts, intake decisions, active-job reuse, extraction job creation, owner-facing copy, Firestore reads/writes, Storage operation counts, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 29, 2026 - POS Sync Secret Rotation Persistence Diagnostics
+
+### Fixed
+
+- **Desktop secret rotation save failures visible** - Business Settings > POS Sync now waits for the `updateStore()` save before closing the regeneration modal or showing success, rolls the local secret back on save failure, and logs bounded `desktop_pos_sync_secret_rotation_save_failed` diagnostics.
+- **Public-business verifier tightened** - `npm run verify:public-business-truth` now rejects the old silent async catch and requires bounded secret-rotation persistence context.
+
+### Boundaries
+
+- This is MenuList owner settings persistence and diagnostics hardening only. Successful POS Sync saves, webhook secret format, audit logging, connection tests, delivery logs, POS delivery routes, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 29, 2026 - Alert Rule Creation Failure Diagnostics
+
+### Fixed
+
+- **Alert rule creation failures visible** - Cloud Functions alert-rule evaluation now logs bounded `Rule alert creation failed` diagnostics when one or more triggered rules fail during `createAlert()`.
+- **Auth/security verifier tightened** - `npm run verify:auth-security-failure-matrix` now rejects the old discarded `Promise.allSettled(triggeredAlerts)` pattern and requires bounded alert-rule creation failure context.
+
+### Boundaries
+
+- This is MenuList Cloud Functions observability hardening only. Alert rule conditions, alert creation attempts, cooldown behavior, Telegram/platform delivery, Firestore writes, active-alert reads, owner/customer surfaces, Firestore rules/indexes, and Vercel deployment were not changed. MenuList Cloud Functions source changed; the scoped `menulist-qa` deploy ran lint/build and then stopped at Cloud Resource Manager HTTP 403.
+
+## June 29, 2026 - OBP Secondary Menu Tracking Diagnostics
+
+### Fixed
+
+- **Secondary menu-card tracking failures visible** - OBP secondary project cards now propagate failed OBP menu-click or project-switch tracking to the existing bounded public-link navigation diagnostic instead of hiding failures behind `Promise.allSettled()`.
+- **Public-business verifier tightened** - `npm run verify:public-business-truth` now rejects the old all-settled OBP secondary-card tracking path.
+
+### Boundaries
+
+- This is customer-facing analytics observability hardening only. OBP rendering, menu navigation, link URLs, analytics payloads, Firestore read/write attempts, public cache behavior, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 29, 2026 - Menu Link Render Cleanup Diagnostics
+
+### Fixed
+
+- **Render temp cleanup failures visible** - menu-link source acquisition now logs bounded `menu_link_import_render_tmp_cleanup_failed` diagnostics when Chrome render-fallback user-data directory cleanup fails.
+- **Extraction verifier tightened** - `npm run verify:menu-extraction-pipeline` now rejects the old silent render cleanup catch.
+
+### Boundaries
+
+- This is app-server cleanup observability hardening only. Link fetching, render fallback acceptance, Chrome network isolation, artifact/job creation, owner-facing import responses, Firestore reads/writes, Storage operations, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 29, 2026 - Platform Alert Delivery Failure Diagnostics
+
+### Fixed
+
+- **Platform alert channel failures visible** - app-side and Cloud Functions platform Email/WhatsApp delivery now log bounded `ops_platform_alert_email_delivery_failed` and `ops_platform_alert_whatsapp_delivery_failed` diagnostics when provider sends return a failed/skipped result or throw.
+- **Functions WhatsApp status checked** - Cloud Functions platform WhatsApp delivery now treats non-2xx Meta Graph responses as `whatsapp_send_failed` instead of silently completing the delivery helper.
+- **Tenant-safety verifier tightened** - `npm run verify:menulist-api-tenant-safety` now rejects silent platform Email/WhatsApp delivery catches and requires bounded channel-failure diagnostics.
+
+### Boundaries
+
+- This is platform alert observability hardening only. Alert creation, mute checks, trigger classification, recipient resolution, provider payloads, retry behavior, Firestore reads/writes, Firestore rules/indexes, owner/customer surfaces, and Vercel deployment were not changed. MenuList Cloud Functions source changed; the scoped `menulist-qa` deploy ran lint/build and then stopped at Cloud Resource Manager HTTP 403.
+
+## June 29, 2026 - Reseller Onboarding Auth Rollback Diagnostics
+
+### Fixed
+
+- **Auth rollback failures visible** - `/api/reseller/onboard` now logs bounded `reseller_onboard_auth_cleanup_failed` diagnostics if a newly created Firebase Auth owner account cannot be deleted after the onboarding transaction fails.
+- **Tenant-safety verifier tightened** - `npm run verify:menulist-api-tenant-safety` now rejects the old silent Auth cleanup catch.
+
+### Boundaries
+
+- This is reseller onboarding observability hardening only. Successful onboarding, failed transaction response behavior, Firebase Auth create/update behavior, Firestore writes, subscription creation, cache invalidation, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 29, 2026 - Owner Menu Link Import Cleanup Diagnostics
+
+### Fixed
+
+- **Owner link-import cleanup failures visible** - `/api/menu-link-imports` now logs bounded `menu_link_import_storage_cleanup_failed` and `menu_link_import_artifact_cleanup_failed` diagnostics when best-effort cleanup fails before the extraction job document is created.
+- **Extraction and tenant-safety verifiers tightened** - the verifiers now reject the old silent Storage/artifact cleanup catches on the authenticated menu-link import route.
+
+### Boundaries
+
+- This is route diagnostics hardening only. Successful link acquisition, artifact writes, extraction job creation, cleanup attempts, owner-facing retry copy, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 29, 2026 - Public Create Menu Cleanup Diagnostics
+
+### Fixed
+
+- **Draft cleanup failures visible** - `/api/public/create-menu` now logs bounded `public_menu_entry_storage_cleanup_failed` and `public_menu_entry_draft_cleanup_failed` diagnostics when best-effort cleanup fails after upload or link draft creation errors.
+- **Public-business and tenant-safety verifiers tightened** - the verifiers now reject the old silent Storage/document cleanup catches on the public create-menu route.
+
+### Boundaries
+
+- This is route diagnostics hardening only. Successful upload/link draft creation, active draft reuse, extraction job creation, cleanup attempts, owner-facing error copy, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 29, 2026 - Local Dev Service Worker Cleanup Diagnostics
+
+### Fixed
+
+- **Local stale-worker cleanup failures visible** - the development-only root layout cleanup now logs bounded `get_registrations_failed` and `unregister_failed` diagnostics when stale local service-worker cleanup cannot complete.
+- **PWA and auth/security verifiers tightened** - `npm run verify:customer-app-pwa` and `npm run verify:auth-security-failure-matrix` now reject the old silent root-layout cleanup catch.
+
+### Boundaries
+
+- This is local-development observability hardening only. Production service-worker registration, customer service-worker scope, owner PWA behavior, public menu rendering, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 29, 2026 - Store Subdomain Block Analytics Diagnostics
+
+### Fixed
+
+- **Subdomain lock analytics failures visible** - when the post-publish public-link guard blocks a subdomain change, failed `SUBDOMAIN_MUTATION_BLOCKED` tracking now logs `store_subdomain_block_analytics_signal_failed` with bounded store metadata.
+- **Public-business verifier tightened** - `npm run verify:public-business-truth` now rejects the old silent catch on the subdomain-block analytics signal.
+
+### Boundaries
+
+- This is diagnostics hardening only. Public-link lock behavior, owner-facing error copy, store writes, summary sync, cache invalidation, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 29, 2026 - KB Job Status Rendering Hardening
+
+### Fixed
+
+- **Cancelled KB jobs render safely** - KB generation job cards, history previews, detail drawers, and status tags now use the shared ingestion-job status map that includes `cancelled`.
+- **Unknown status fallback added** - malformed or historical job status strings now render as `Unknown` instead of crashing the active platform/Answerlattice KB generation UI.
+- **Test-only status/progress overrides removed** - the active KB job card and processing progress component no longer carry commented progress/status override code.
+- **Processing progress bounded** - missing or malformed article counts no longer produce `NaN` progress text.
+- **Answerlattice runtime verifier tightened** - `npm run verify:answerlattice-runtime-truth` now rejects local KB job-history status maps and requires shared status-map fallback coverage.
+
+### Boundaries
+
+- This is KB generation UI hardening only. Job writes, job queries, status transitions, source-file storage, Firestore rules/indexes, Cloud Functions, and Vercel deployment were not changed.
+
+## June 29, 2026 - KB Job Details Source-Truth Cleanup
+
+### Fixed
+
+- **Job details sources stay real** - the KB generation job details drawer no longer carries the old dummy icon-review source-file array or commented temporary preview block.
+- **Answerlattice runtime verifier tightened** - `npm run verify:answerlattice-runtime-truth` now rejects dummy source-file data in the active KB job details drawer and requires the source list to render from `job.sourceFiles`.
+
+### Boundaries
+
+- This is dead-code cleanup in an active platform/Answerlattice KB generation surface. Job reads, source-file storage, guarded source opens, Firestore rules/indexes, Cloud Functions, and Vercel deployment were not changed.
+
+## June 29, 2026 - Chat Insights Summary Source-Truth Hardening
+
+### Fixed
+
+- **Knowledge Gaps trend removed** - the Chat Insights overview no longer shows a hard-coded `-10% vs last period` trend when no source-backed prior-period Knowledge Gaps comparison exists.
+- **Feedback response rate source-backed** - the Feedback & Satisfaction panel now derives Response Rate from aggregate feedback count over total chats instead of showing a fixed `88%`.
+- **Analytics job failure copy bounded** - the data-freshness banner no longer renders the stored analytics job error string directly.
+- **Tenant-safety verifier tightened** - `npm run verify:menulist-api-tenant-safety` now rejects those hard-coded Chat Insights summary values and raw analytics-job error rendering.
+
+### Boundaries
+
+- This is platform analytics source-truth and failure-copy hardening only. Chat analytics reads, SWR keys, aggregation logic, Firestore rules/indexes, Cloud Functions, and Vercel deployment were not changed.
+
+## June 29, 2026 - Analytics Comparison Source-Truth Hardening
+
+### Fixed
+
+- **Comparison metrics are source-backed** - the analytics comparison wrapper now carries real `totalMessages` from chat aggregates instead of returning `activeUsers: 0` and `totalMessages: 0`.
+- **Comparison UI corrected** - the period comparison panel now shows Total Messages instead of a fabricated Active Users card.
+- **Tenant-safety verifier tightened** - `npm run verify:menulist-api-tenant-safety` now rejects fake active-user comparison data and zeroed total-message comparison data.
+
+### Boundaries
+
+- This is analytics source-truth hardening only. Chat analytics reads, comparison date ranges, SWR behavior, Firestore rules/indexes, Cloud Functions, and Vercel deployment were not changed.
+
+## June 29, 2026 - Chat Insights Health Metric Source-Truth Hardening
+
+### Fixed
+
+- **Chat Insights health metrics are source-backed** - the analytics DAL no longer emits a hard-coded `245ms` API response-time metric in the System Health panel.
+- **Tenant-safety verifier tightened** - `npm run verify:menulist-api-tenant-safety` now rejects fake API response-time health metrics and mock production-health comments in the analytics DAL.
+
+### Boundaries
+
+- This is owner/platform analytics truth hardening only. Chat analytics reads, daily aggregation, today's live fallback, AI intelligence reads, Firestore rules/indexes, Cloud Functions, and Vercel deployment were not changed.
+
+## June 29, 2026 - Screen Reload And Publish Verification Diagnostics
+
+### Fixed
+
+- **Screen reload storage failures visible** - the shared digital-screen reload guard now logs `screen_guarded_reload_storage_failed` with bounded component and guard-window metadata when browser storage blocks the reload throttle.
+- **Desktop publish verification setup failures visible** - the B2C publish view now logs `projects_b2c_publish_verification_setup_failed` when the post-publish verification handoff cannot be prepared.
+
+### Boundaries
+
+- This is diagnostics hardening only. Screen reload behavior, publish success, the existing `verifyMenuPublish` callable wrapper, public cache invalidation, Firestore rules/indexes, Cloud Functions, and Vercel deployment were not changed.
+
+## June 29, 2026 - SAFE_MODE And Outlet Cleanup Diagnostics
+
+### Fixed
+
+- **Batch image SAFE_MODE fail-open visible** - the batch image worker now logs a fixed `image_batch_worker_safe_mode_check_failed` diagnostic before continuing when the SAFE_MODE check itself fails.
+- **Outlet create lock cleanup visible** - failed best-effort outlet creation lock release now logs `multi_outlet_create_lock_release_failed` with bounded tenant/store metadata.
+
+### Boundaries
+
+- This is diagnostics hardening only. SAFE_MODE fail-open behavior, image batch generation, outlet creation, billing/revert behavior, public cache invalidation, Firestore rules/indexes, Cloud Functions, and Vercel deployment were not changed.
+
+## June 29, 2026 - Answerlattice Release Drift Audit Hardening
+
+### Fixed
+
+- **Release drift audit state bounded** - Answerlattice release activation now stores a fixed drift-evaluation failure code plus bounded source-error metadata in audit logs instead of raw exception text.
+- **Release audit-log fallback visible** - if the advisory drift audit entry itself cannot be written, the failure now goes through bounded runtime diagnostics instead of a silent catch.
+
+### Boundaries
+
+- This is Answerlattice release-activation observability hardening only. Release activation, drift evaluation behavior, compiled-context invalidation, Firestore rules/indexes, Cloud Functions, and Vercel deployment were not changed.
+
+## June 29, 2026 - Changelog Last-Viewed And MyCodex Theme Fallback Hardening
+
+### Fixed
+
+- **Changelog last-viewed failures bounded** - the platform changelog display now logs bounded runtime diagnostics when browser storage blocks last-viewed read/write state instead of swallowing the failure.
+- **MyCodex theme fallback deterministic** - the pre-paint MyCodex theme script now falls back to light mode when browser storage or media-query access is blocked.
+
+### Boundaries
+
+- This is browser-local observability and fallback hardening only. Changelog data reads/writes, MyCodex auth/session behavior, MyCodex docs loading, Firestore rules/indexes, Cloud Functions, and Vercel deployment were not changed.
+
+## June 29, 2026 - Project Source And Legacy Share Open Hardening
+
+### Fixed
+
+- **Project source/share opens bounded** - editor source-link previews and the legacy project social-share view now detect blocked browser opens and log bounded source/share presence-length metadata only.
+
+### Boundaries
+
+- This is MenuList owner browser-handoff hardening only. Link import acquisition, extraction, project writes, active Share Modal behavior, public menu rendering, Firestore rules/indexes, Cloud Functions, and Vercel deployment were not changed.
+
+## June 29, 2026 - Answerlattice Widget And Install Link Open Hardening
+
+### Fixed
+
+- **Widget and install links bounded** - public widget reference/related-article links and dashboard Install Center download/docs links now detect blocked browser opens and log bounded link presence-length metadata only.
+
+### Boundaries
+
+- This is Answerlattice browser-handoff hardening only. Widget search, feedback, context handling, install packet generation, widget config reads, Firestore rules/indexes, Cloud Functions, and Vercel deployment were not changed.
+
+## June 29, 2026 - Answerlattice Platform Source And Attachment Open Hardening
+
+### Fixed
+
+- **Answerlattice source and attachment opens bounded** - platform KB source links and support-ticket attachment links now detect blocked browser opens and log bounded job/article/ticket/source/attachment presence-length metadata only.
+
+### Boundaries
+
+- This is Answerlattice platform browser-handoff hardening only. KB generation, article reconciliation, support-ticket storage, ticket status updates, Firestore rules/indexes, Cloud Functions, and Vercel deployment were not changed.
+
+## June 29, 2026 - Platform Notification WhatsApp Open Hardening
+
+### Fixed
+
+- **Ops notification WhatsApp opens bounded** - Platform Notifications and Owner Notification Monitor manual WhatsApp Web handoffs now detect blocked browser opens and log bounded destination/message/link presence-length metadata only.
+
+### Boundaries
+
+- This is platform-operator browser-handoff hardening only. Notification reads, retry, manual send, manual handoff recording, alert acknowledgement, Firestore rules/indexes, Cloud Functions, and Vercel deployment were not changed.
+
+## June 29, 2026 - HelpChat Related Article Open Hardening
+
+### Fixed
+
+- **HelpChat article opens bounded** - related article links in assistant answers now detect blocked browser opens and log bounded message/article/link presence-length metadata only.
+
+### Boundaries
+
+- This is owner support-chat browser-handoff hardening only. HelpChat search/retry, canonical-first retrieval, answer rendering, feedback, ticket escalation, Firestore rules/indexes, Cloud Functions, and Vercel deployment were not changed.
+
+## June 29, 2026 - Mobile Settings External Link Hardening
+
+### Fixed
+
+- **Mobile settings guide opens bounded** - mobile Social Media and SEO/Analytics external guide/profile links now detect blocked browser opens and log bounded source/link presence-length metadata only.
+
+### Boundaries
+
+- This is owner-mobile browser-handoff hardening only. Social link saves, feedback settings, SEO metadata, analytics IDs, public rendering, Firestore rules/indexes, Cloud Functions, and Vercel deployment were not changed.
+
+## June 29, 2026 - Mobile Public Link Open Hardening
+
+### Fixed
+
+- **Mobile public preview opens bounded** - shared owner-mobile public link opens now detect blocked browser handoffs, show fixed owner feedback, and log bounded source/link presence-length metadata only.
+
+### Boundaries
+
+- This is MobileShell browser-handoff hardening only. Menu, Official Business Page, feedback, design preview, Today preview, Share links, public rendering, Firestore rules/indexes, Cloud Functions, and Vercel deployment were not changed.
+
+## June 29, 2026 - AI Menu Manager Local Action Handoff Hardening
+
+### Fixed
+
+- **AI Menu Manager local actions bounded** - desktop and mobile AMM cards now detect blocked URL opens and log bounded local-action failure metadata for copy/open/download action failures.
+
+### Boundaries
+
+- This is owner browser-local card-action hardening only. AMM command routing, approvals, project writes, compact session docs, proposal docs, provider calls, Firestore rules/indexes, Cloud Functions, and Vercel deployment were not changed.
+
+## June 29, 2026 - Digital Screen Link Open Hardening
+
+### Fixed
+
+- **Digital Screen preview opens bounded** - desktop and mobile Menu Board / Highlights screen links now detect blocked browser opens and log bounded URL presence/length metadata only.
+
+### Boundaries
+
+- This is owner browser-handoff hardening only. Screen URLs, screen tokens, TV display rendering, copy/QR actions, screen state reads/writes, Firestore rules/indexes, Cloud Functions, and Vercel deployment were not changed.
+
+## June 29, 2026 - Platform Attachment Open Hardening
+
+### Fixed
+
+- **Platform file opens use safe browser flags** - KB generation source-file links, reconciliation article source links, support-ticket attachment links, and the legacy project social-share component now open `_blank` browser handoffs with `noopener,noreferrer`.
+
+### Boundaries
+
+- This is browser-handoff hardening only. KB generation, ticket storage, ticket status updates, project sharing runtime, Firestore rules/indexes, Cloud Functions, and Vercel deployment were not changed.
+
+## June 29, 2026 - App Error Help Handoff Hardening
+
+### Fixed
+
+- **App error help opens bounded** - the root app error page now opens Help with `noopener,noreferrer`, logs bounded blocked-open failures, and falls back to same-tab help navigation if the browser blocks the new tab.
+
+### Boundaries
+
+- This is route-level error-boundary browser-handoff hardening only. Crash rendering, refresh/reset behavior, explicit error reports, auth, Firestore rules/indexes, Cloud Functions, and Vercel deployment were not changed.
+
+## June 29, 2026 - Pricing Success Dashboard Handoff Hardening
+
+### Fixed
+
+- **Pricing success dashboard opens bounded** - the public website subscription success modal now opens the dashboard with `noopener,noreferrer`, logs bounded blocked-open failures, and falls back to same-tab navigation without logging raw purchase or payment payloads.
+
+### Boundaries
+
+- This is public website browser-handoff hardening only. Successful pricing, Razorpay checkout, subscription verification, onboarding, owner dashboard routing, Firestore rules/indexes, Cloud Functions, and Vercel deployment were not changed.
+
+## June 29, 2026 - Use MenuList Direct Open Hardening
+
+### Fixed
+
+- **Use MenuList output opens bounded** - direct public-output opens for the selected menu, Menu Board, and Highlights now use `noopener,noreferrer` and log bounded blocked-open failures with URL and label presence/length metadata only.
+
+### Boundaries
+
+- This is owner browser-handoff hardening only. Successful output loading, copy actions, QR/Menu Kit/PDF generation, screen link generation, public menu rendering, Firestore rules/indexes, Cloud Functions, and Vercel deployment were not changed.
+
+## June 29, 2026 - Create Menu Success Handoff Hardening
+
+### Fixed
+
+- **Create Menu success handoffs bounded** - post-publish Copy Link and WhatsApp actions on `/create-menu/success` now catch browser failures, show localized fixed copy, open WhatsApp with `noopener,noreferrer`, and record starter activation signals only after the browser handoff succeeds.
+
+### Boundaries
+
+- This is public website browser-handoff hardening only. Successful upload/link import, preview polling, claim/publish, public cache revalidation, starter workspace rendering, Firestore rules/indexes, Cloud Functions, and Vercel deployment were not changed.
+
+## June 29, 2026 - Messaging Preview Handoff Hardening
+
+### Fixed
+
+- **Messaging preview share handoffs bounded** - the post-publish preview Copy Link and WhatsApp buttons now catch browser handoff failures, show fixed owner copy, open WhatsApp with `noopener,noreferrer`, and log only session/link presence-length plus message/URL length metadata.
+
+### Boundaries
+
+- This is public preview browser-handoff hardening only. Successful preview load, approve/fix API behavior, publish transaction, public cache revalidation, provider confirmation, Firestore rules/indexes, Cloud Functions, and Vercel deployment were not changed.
+
+## June 29, 2026 - Compliance Preview Link Hardening
+
+### Fixed
+
+- **Compliance preview opens hardened** - desktop and mobile compliance page previews and active custom-domain opens now use `noopener,noreferrer` and log bounded open failures with URL presence/length metadata only.
+
+### Boundaries
+
+- This is owner browser-handoff hardening only. Successful compliance page load/save/reset, public compliance rendering, active custom-domain status/copy/remove behavior, Firestore rules/indexes, Cloud Functions, and Vercel deployment were not changed.
+
+## June 29, 2026 - Presence Monitor External Link Hardening
+
+### Fixed
+
+- **Presence Monitor external opens hardened** - desktop and mobile Presence Monitor now open Google Business and Instagram guide links with `noopener,noreferrer` and log bounded external-open failures with URL presence/length metadata only.
+
+### Boundaries
+
+- This is owner browser-handoff hardening only. Successful official-link copy, presence confirm/remove writes, starter activation signals, Use MenuList output behavior, Firestore rules/indexes, Cloud Functions, and Vercel deployment were not changed.
+
+## June 29, 2026 - Today WhatsApp Handoff Hardening
+
+### Fixed
+
+- **Today WhatsApp opens hardened** - Today campaign WhatsApp actions now open the generated handoff with `noopener,noreferrer`, log bounded open failures with URL/message lengths only, and still fall back to copying the message when the browser blocks the handoff.
+
+### Boundaries
+
+- This is owner browser-handoff hardening only. Successful Today loading, campaign complete/skip, WhatsApp message generation, clipboard fallback, poster/tent/screen downloads, Firestore rules/indexes, Cloud Functions, and Vercel deployment were not changed.
+
+## June 29, 2026 - Project Share Social Handoff Hardening
+
+### Fixed
+
+- **Project Share social opens hardened** - Share Modal social handoffs and Menu Kit WhatsApp quick-share now open browser handoffs with `noopener,noreferrer` and keep bounded URL/message-length diagnostics on blocked opens.
+
+### Boundaries
+
+- This is owner browser-handoff hardening only. Successful QR download, social share, direct link open/copy, Menu Kit generation, Menu Kit copy, WhatsApp handoff, Firestore rules/indexes, Cloud Functions, and Vercel deployment were not changed.
+
+## June 29, 2026 - Communication Kit WhatsApp Handoff Hardening
+
+### Fixed
+
+- **Communication Kit WhatsApp opens hardened** - desktop and mobile Customer Messages now open WhatsApp handoffs with `noopener,noreferrer` and keep bounded generated-message URL/message-length diagnostics on blocked opens.
+
+### Boundaries
+
+- This is owner browser-handoff hardening only. Successful message generation, copy, native share, WhatsApp handoff, Mobile Share output behavior, Firestore rules/indexes, Cloud Functions, and Vercel deployment were not changed.
+
+## June 29, 2026 - Share Card WhatsApp Handoff Hardening
+
+### Fixed
+
+- **Share Card WhatsApp opens hardened** - desktop share cards now open WhatsApp handoffs with `noopener,noreferrer` and keep bounded WhatsApp URL/message-length diagnostics on blocked opens.
+
+### Boundaries
+
+- This is owner browser-handoff hardening only. Successful copy, message copy, WhatsApp handoff, direct open, starter-signal recording, Firestore rules/indexes, Cloud Functions, and Vercel deployment were not changed.
+
+## June 29, 2026 - Owner Dashboard OBP Handoff Diagnostics
+
+### Fixed
+
+- **Owner dashboard official-link handoffs bounded** - Google listing and behavior-nudge cards now log failed OBP link copy, Google Business open, mark-done save, and dismiss-state browser-storage actions with bounded store/link metadata only.
+
+### Boundaries
+
+- This is owner dashboard diagnostics hardening only. Successful OBP link copy, Google Business open, Google listing mark-done save, behavior-nudge dismissal, OBP analytics, public menu/OBP output, Firestore rules/indexes, Cloud Functions, and Vercel deployment were not changed.
+
+## June 29, 2026 - HelpChat Message Copy Diagnostics
+
+### Fixed
+
+- **HelpChat message copy failures bounded** - failed answer/message copy actions now log bounded HelpChat diagnostics with message/session/content length metadata only before showing the existing fixed failure copy.
+
+### Boundaries
+
+- This is owner support-chat browser-handoff hardening only. Successful message copy, HelpChat search/retry, feedback, ticket escalation, chat persistence, Answerlattice retrieval, Firestore rules/indexes, Cloud Functions, and Vercel deployment were not changed.
+
+## June 29, 2026 - Review Reply Copy Diagnostics
+
+### Fixed
+
+- **Review Reply copy failures bounded** - the desktop Review Reply Assistant now catches clipboard-copy failures, logs bounded diagnostics with review/reply length metadata only, and shows fixed owner-facing failure copy.
+
+### Boundaries
+
+- This is disabled-feature owner browser-handoff hardening only. Successful reply generation, fallback reply behavior, copy success, `/api/reviews/suggest`, AI accounting, Firestore rules/indexes, Cloud Functions, and Vercel deployment were not changed.
+
+## June 29, 2026 - POS Sync Handoff Diagnostics
+
+### Fixed
+
+- **POS Sync secret and setup handoffs bounded** - desktop and mobile secret-copy failures, desktop delivery-history load failures, provider-instruction prep, technical-summary copy, and sample-payload download failures now log bounded diagnostics without raw webhook URLs, HMAC secrets, provider emails, or setup text.
+
+### Boundaries
+
+- This is owner browser-handoff and diagnostics hardening only. Successful POS Sync setting saves, secret generation/rotation, test/delivery routes, delivery logs, sample payload content, Firestore rules/indexes, Cloud Functions, and Vercel deployment were not changed.
+
+## June 29, 2026 - Desktop Feedback QR Handoff Diagnostics
+
+### Fixed
+
+- **Desktop Feedback QR handoffs bounded** - Feedback QR generation/download, feedback-link copy/open, WhatsApp open, and message-copy failures now log bounded diagnostics before showing fixed owner-facing failure copy.
+
+### Boundaries
+
+- This is owner browser-handoff hardening only. Successful feedback QR generation/download, feedback link generation, WhatsApp/message handoffs, public feedback submission, feedback reads/writes, Firestore rules/indexes, Cloud Functions, and Vercel deployment were not changed.
+
+## June 29, 2026 - Reseller Link Handoff Diagnostics
+
+### Fixed
+
+- **Reseller onboarding and payment-link handoffs bounded** - desktop and mobile reseller onboarding/dashboard copy, share, and payment-link open actions now log bounded diagnostics when browser clipboard, native share, or popup handoffs fail.
+
+### Boundaries
+
+- This is reseller browser-handoff hardening only. Successful client onboarding, returned login/dashboard/public/payment links, payment-link copy/share/open success paths, reseller APIs, Firestore rules/indexes, Cloud Functions, and Vercel deployment were not changed.
+
+## June 29, 2026 - Billing External Link Handoff Diagnostics
+
+### Fixed
+
+- **Billing payment and invoice opens bounded** - desktop and mobile Billing now open Razorpay retry-payment and invoice links through guarded `noopener,noreferrer` handoffs and log blocked/open failures with bounded payment diagnostics.
+
+### Boundaries
+
+- This is owner billing browser-handoff hardening only. Successful checkout links, invoice links, subscription/top-up/payment APIs, billing history reads, Firestore rules/indexes, Cloud Functions, and Vercel deployment were not changed.
+
+## June 29, 2026 - Official Business Link Handoff Diagnostics
+
+### Fixed
+
+- **Official Business link failures bounded** - desktop OBP link card and the Google listing guide now log failed link copy, message copy, WhatsApp/direct open, QR download, default-project lookup, and share-tracking handoffs with bounded diagnostics before showing fixed owner-facing failure copy.
+
+### Boundaries
+
+- This is owner diagnostics and browser-handoff hardening only. Successful OBP link generation, QR downloads, Google guide display, OBP share analytics writes, store writes, public cache invalidation, Firestore rules/indexes, Cloud Functions, and Vercel deployment were not changed.
+
+## June 29, 2026 - Domain Settings Handoff Diagnostics
+
+### Fixed
+
+- **Domain copy/open failures bounded** - desktop and mobile Domain Settings now log failed subdomain/custom-domain copy, external-open, and DNS-record copy handoffs with bounded diagnostics before showing fixed owner-facing failure copy.
+
+### Boundaries
+
+- This is owner diagnostics and browser-handoff hardening only. Successful subdomain checks/saves, custom-domain status/add/remove behavior, DNS display, Vercel calls, store writes, cache invalidation, Firestore rules/indexes, Cloud Functions, and Vercel deployment were not changed.
+
+## June 29, 2026 - Today Weekly Pack Copy Diagnostics
+
+### Fixed
+
+- **Weekly pack copy failures bounded** - desktop and mobile Today weekly-pack copy failures now log bounded diagnostics with clipboard/fallback support booleans, and textarea-copy exceptions are contained before showing the existing manual-copy fallback.
+
+### Boundaries
+
+- This is owner diagnostics and docs parity only. The Weekly Growth Pack remains paused behind `ENABLE_TODAY_WEEKLY_GROWTH_PACK`; successful clipboard copy, fallback copy, Today campaign behavior, Firestore rules/indexes, Cloud Functions, and Vercel deployment were not changed.
+
+## June 29, 2026 - Growth Kits Handoff Diagnostics
+
+### Fixed
+
+- **Sales Pack handoff failures bounded** - desktop and mobile Growth Kits refresh, prepare, copy, share, download, review-reply, and mark-used failures now log bounded diagnostics, and failed browser handoffs no longer create false export signals.
+
+### Boundaries
+
+- This is owner Growth Kits diagnostics and export-signal correctness only. Successful Sales Pack generation, deterministic copy text, entitlement checks, GrowthOS APIs, Firestore rules/indexes, Cloud Functions, billing, and Vercel deployment were not changed.
+
+## June 29, 2026 - Desktop Staff Login Share Diagnostics
+
+### Fixed
+
+- **Desktop staff login handoff failures bounded** - one-time Staff ID/passcode copy, WhatsApp handoff, and native share failures now log bounded staff diagnostics without raw credentials or generated login messages.
+
+### Boundaries
+
+- This is owner diagnostics and docs parity only. Successful staff creation, passcode reset, credential display, copy/share/WhatsApp success paths, staff APIs, Firebase Auth behavior, Firestore rules/indexes, Cloud Functions, and Vercel deployment were not changed.
+
+## June 29, 2026 - Mobile Staff Login Share Diagnostics
+
+### Fixed
+
+- **Mobile staff login handoff failures bounded** - one-time Staff ID/passcode copy, WhatsApp handoff, and native share failures now log bounded staff diagnostics without raw credentials or generated login messages.
+
+### Boundaries
+
+- This is owner-mobile diagnostics and docs parity only. Successful staff creation, passcode reset, credential display, copy/share/WhatsApp success paths, staff APIs, Firebase Auth behavior, Firestore rules/indexes, Cloud Functions, and Vercel deployment were not changed.
+
+## June 29, 2026 - Project Share Modal Diagnostics
+
+### Fixed
+
+- **Project share failures bounded** - desktop project Share Modal now logs failed QR downloads, social handoffs, direct link copy/open, and Menu Kit helper copy/WhatsApp actions before showing fixed owner-facing failure copy.
+
+### Boundaries
+
+- This is owner diagnostics and docs parity only. Successful QR generation, social handoff, direct link actions, structured export, PDF generation, Menu Kit generation, Firestore rules/indexes, Cloud Functions, and Vercel deployment were not changed.
+
+## June 29, 2026 - Mobile Official Page Link Diagnostics
+
+### Fixed
+
+- **Mobile Official Page link failures bounded** - OBP public-link copy and native share failures now log bounded mobile owner diagnostics before showing existing fixed owner-facing copy.
+
+### Boundaries
+
+- This is owner-mobile diagnostics and docs parity only. Successful Official Page saves, media uploads, generated cover, public link generation, preview, QR sheet behavior, copy/share success paths, Firestore rules/indexes, Cloud Functions, and Vercel deployment were not changed.
+
+## June 29, 2026 - Share Card Diagnostics
+
+### Fixed
+
+- **Owner link share failures bounded** - desktop share cards now log failed link copy, message copy, WhatsApp handoff, and direct-open actions before showing fixed owner-facing failure copy.
+
+### Boundaries
+
+- This is owner diagnostics and docs parity only. Successful share-card copying, direct opening, WhatsApp handoff, starter-signal recording after successful share actions, Firestore rules/indexes, Cloud Functions, and Vercel deployment were not changed.
+
+## June 29, 2026 - Desktop Communication Kit Diagnostics
+
+### Fixed
+
+- **Customer message handoff failures bounded** - desktop Customer Messages now logs failed message copy and blocked WhatsApp handoff before showing fixed owner-facing failure copy.
+
+### Boundaries
+
+- This is owner diagnostics and docs parity only. Successful message generation, clipboard copy, WhatsApp handoff, mobile Communication Kit behavior, Firestore rules/indexes, Cloud Functions, and Vercel deployment were not changed.
+
+## June 29, 2026 - Mobile Feedback and Customer App Link Diagnostics
+
+### Fixed
+
+- **Mobile Feedback link failures bounded** - feedback-link copy and native share failures now log bounded mobile owner diagnostics before showing existing fixed owner-facing copy.
+- **Customer App install-link copy failures bounded** - desktop and mobile Customer App install-link copy actions now log bounded PWA diagnostics before showing the existing manual-copy fallback.
+
+### Boundaries
+
+- This is owner diagnostics and docs parity only. Successful feedback loading, feedback QR behavior, native share/copy success paths, Customer App settings saves, install-link generation, Customer App analytics, Firestore rules/indexes, Cloud Functions, and Vercel deployment were not changed.
+
+## June 29, 2026 - Use MenuList Screen Link Diagnostics
+
+### Fixed
+
+- **Digital Screen link failures bounded** - desktop Use MenuList now logs failed screen-state reads before keeping Menu Board and Highlights links hidden and leaving other output actions available.
+
+### Boundaries
+
+- This is owner diagnostics and docs parity only. Successful Use MenuList page loading, project summary reads, screen-state reads, public output links, Firestore rules/indexes, Cloud Functions, and Vercel deployment were not changed.
+
+## June 29, 2026 - Mobile Design Output Diagnostics
+
+### Fixed
+
+- **Mobile Design output failures bounded** - post-publish verification, public-link copy, and native share failures now log bounded mobile project diagnostics before preserving existing owner-facing behavior.
+
+### Boundaries
+
+- This is owner-mobile diagnostics and docs parity only. Successful design publishing, menu cache invalidation, post-publish verification attempts, QR sheet behavior, public preview/copy/share success paths, Firestore rules/indexes, Cloud Functions, and Vercel deployment were not changed.
+
+## June 29, 2026 - Presence Monitor Diagnostics
+
+### Fixed
+
+- **Presence Monitor failures bounded** - desktop and mobile official-link copy, external-surface confirm, and remove-confirmation failures now log bounded diagnostics before showing existing fixed owner-facing copy or desktop copy fallback.
+
+### Boundaries
+
+- This is owner diagnostics and docs parity only. Successful menu presence reads, `updateMenuPresence()` writes, starter activation piggyback writes, Use MenuList output behavior, Firestore rules/indexes, Cloud Functions, and Vercel deployment were not changed.
+
+## June 29, 2026 - Mobile Project Selector Mutation Diagnostics
+
+### Fixed
+
+- **Mobile project selector mutations bounded** - create, edit, duplicate, active toggle, reset, and public-link copy failures now log bounded mobile project diagnostics before showing fixed owner-facing copy.
+
+### Boundaries
+
+- This is owner-mobile diagnostics and docs parity only. Successful project create/edit/duplicate, active toggle, reset, public-link copy, image generation, translation repair, cache invalidation, Firestore rules/indexes, Cloud Functions, and Vercel deployment were not changed.
+
+## June 29, 2026 - Mobile Communication Kit Diagnostics
+
+### Fixed
+
+- **Mobile Communication Kit failures bounded** - generated-message copy, native share, and WhatsApp handoff failures now log bounded mobile owner diagnostics before showing fixed owner-facing copy.
+
+### Boundaries
+
+- This is owner-mobile diagnostics and docs parity only. Successful customer message generation, copy, native share, WhatsApp handoff, Mobile Share output behavior, Firestore rules/indexes, Cloud Functions, and Vercel deployment were not changed.
+
+## June 29, 2026 - Mobile Share Output Diagnostics
+
+### Fixed
+
+- **Mobile Share output failures bounded** - screen-link loading, clipboard copy, native share, Menu Kit, printable asset, menu PDF, structured export, feedback QR, and starter-signal failures now log bounded mobile owner diagnostics before showing existing fixed owner-facing copy or preserving the current silent screen-link fallback.
+
+### Boundaries
+
+- This is owner-mobile diagnostics and docs parity only. Successful link generation, QR sheet behavior, PDF/export/Menu Kit/printable rendering, feedback QR generation, native share, starter activation, public menu rendering, Firestore rules/indexes, Cloud Functions, and Vercel deployment were not changed.
+
+## June 29, 2026 - Mobile QR Sheet Diagnostics
+
+### Fixed
+
+- **Mobile QR sheet failures bounded** - shared mobile QR generation, copy, and download setup failures now log bounded mobile owner diagnostics before showing fixed owner-facing copy.
+
+### Boundaries
+
+- This is owner-mobile diagnostics and docs parity only. Successful QR generation, QR downloads, link copying, Mobile Share, Feedback, Official Page, Design, Project Selector flows, Firestore rules/indexes, Cloud Functions, and Vercel deployment were not changed.
+
+## June 29, 2026 - Mobile Manage Languages Diagnostics
+
+### Fixed
+
+- **Mobile language management failures bounded** - the Manage Languages sheet now logs failed remove, add, repair, repair-all, and make-primary actions through bounded mobile project diagnostics before showing existing fixed owner-facing copy or capacity copy.
+
+### Boundaries
+
+- This is owner-mobile diagnostics and docs parity only. Successful language addition/removal, translation repair, primary-language changes, project metadata updates, mobile Menu save behavior, public menu rendering, Firestore rules/indexes, Cloud Functions, and Vercel deployment were not changed.
+
+## June 29, 2026 - Mobile Feedback Detail Diagnostics
+
+### Fixed
+
+- **Mobile feedback detail write failures bounded** - resolving feedback and saving a reply from the mobile detail screen now logs bounded mobile owner diagnostics before showing fixed owner-facing copy.
+
+### Boundaries
+
+- This is owner-mobile diagnostics and docs parity only. Successful feedback list loading, resolve saves, reply saves, client DAL behavior, feedback security rules, public feedback submission, Firestore rules/indexes, Cloud Functions, and Vercel deployment were not changed.
+
+## June 29, 2026 - Mobile Smart Recommendations Save Diagnostics
+
+### Fixed
+
+- **Mobile Featured choice save failures bounded** - the Smart Recommendations bottom sheet now logs failed Featured, Quick, and Value choice saves through bounded mobile project diagnostics before showing fixed owner-facing copy.
+
+### Boundaries
+
+- This is owner-mobile diagnostics and docs parity only. Successful Featured choice toggles, pinned choices, Decision Blocks settings application, analytics tracking, parent menu save behavior, public menu rendering, Firestore rules/indexes, Cloud Functions, and Vercel deployment were not changed.
+
+## June 29, 2026 - Mobile Project Selector Translation Diagnostics
+
+### Fixed
+
+- **Mobile project selector translation failures bounded** - the project switcher sheet now logs failed public-content translation repair through bounded mobile project diagnostics before showing fixed owner-facing copy.
+
+### Boundaries
+
+- This is owner-mobile diagnostics and docs parity only. Successful project switching, create/edit/duplicate/reset/delete/share actions, image generation, translation success paths, project metadata saves, public cache invalidation, Firestore rules/indexes, Cloud Functions, and Vercel deployment were not changed.
+
+## June 29, 2026 - Special Menu Mobile Docs Parity
+
+### Fixed
+
+- **Special Menu mobile docs aligned** - active docs now match the current mobile runtime: More > Special Menus supports create, edit metadata/schedule, translate public copy, view, end, and cancel actions through the existing special-menu hook/DAL paths.
+- **Special Menu flag docs corrected** - active Special Menu docs now reflect `ENABLE_SPECIAL_MENU_SWITCHING: true` in frontend and Functions, while keeping future feature expansion under lifecycle governance.
+
+### Boundaries
+
+- This is docs and verifier parity only. Special Menu runtime behavior, public resolver behavior, scheduler activation/deactivation, cache invalidation, Firestore rules/indexes, Cloud Functions logic, and Vercel deployment were not changed.
+
+## June 29, 2026 - Mobile Special Menu Translation Diagnostics
+
+### Fixed
+
+- **Mobile Special Menu translation failures bounded** - More > Special Menus now logs failed special-menu name translation and project public-content translation through bounded mobile owner diagnostics before showing fixed owner-facing copy.
+
+### Boundaries
+
+- This is owner-mobile diagnostics and docs parity only. Successful special-menu create, update, end, cancel, schedule conflict handling, AI translation success paths, `useSpecialMenus()`, project metadata saves, public cache invalidation, Firestore rules/indexes, Cloud Functions, and Vercel deployment were not changed.
+
+## June 29, 2026 - Mobile POS Sync Settings Diagnostics
+
+### Fixed
+
+- **Mobile POS Sync settings failures bounded** - More > POS Sync now logs failed external sync setting and secret-rotation saves through bounded mobile owner diagnostics before showing the existing fixed failure copy.
+
+### Boundaries
+
+- This is owner-mobile diagnostics and docs parity only. Successful POS Sync setting saves, secret generation, secret copy, connection tests, webhook delivery, `updateStore()`, delivery logs, Firestore rules/indexes, Cloud Functions, and Vercel deployment were not changed.
+
+## June 29, 2026 - Mobile Time Slots Diagnostics
+
+### Fixed
+
+- **Mobile Time Slots failures bounded** - More > Time Slots now logs failed preset save/delete operations through bounded mobile owner diagnostics before showing the existing fixed failure copy.
+
+### Boundaries
+
+- This is owner-mobile diagnostics and docs parity only. Successful preset creation, edit, delete, category cascade updates, `updateTimeSlotPresets()`, `updatePresetInAllCategories()`, `removePresetFromAllCategories()`, public cache invalidation, Firestore rules/indexes, Cloud Functions, and Vercel deployment were not changed.
+
+## June 29, 2026 - Mobile SEO and Analytics Save Diagnostics
+
+### Fixed
+
+- **Mobile SEO and analytics failures bounded** - More > SEO and More > Analytics now log failed public-search metadata, canonical URL, localized SEO copy, external analytics ID, and tracking-preference saves through bounded mobile owner diagnostics before showing the existing fixed failure copy.
+
+### Boundaries
+
+- This is owner-mobile diagnostics and docs parity only. Successful SEO/analytics saves, `updateStore()`, public cache invalidation, analytics tracking behavior, public schema rendering, Firestore rules/indexes, Cloud Functions, and Vercel deployment were not changed.
+
+## June 29, 2026 - Mobile Locale Settings Save Diagnostics
+
+### Fixed
+
+- **Mobile Locale Settings failures bounded** - More > Locale now logs failed language, timezone, currency, date/time format, and business-day-end saves through bounded mobile owner diagnostics before restoring previous settings and showing the existing fixed failure copy.
+
+### Boundaries
+
+- This is owner-mobile diagnostics and docs parity only. Successful locale saves, `updateStore()`, public cache invalidation, store summary sync, outlet propagation, Firestore rules/indexes, Cloud Functions, and Vercel deployment were not changed.
+
+## June 29, 2026 - Mobile Working Hours Save Diagnostics
+
+### Fixed
+
+- **Mobile working-hours failures bounded** - More > Hours Edit now logs failed working-hours saves through bounded mobile owner diagnostics before restoring previous hours and showing the existing fixed failure copy.
+
+### Boundaries
+
+- This is owner-mobile diagnostics hardening only. Successful working-hours saves, `updateStore()`, public open/closed status rendering, public cache invalidation, Firestore rules/indexes, Cloud Functions, and Vercel deployment were not changed.
+
+## June 29, 2026 - Mobile Official Page Diagnostics
+
+### Fixed
+
+- **Mobile Official Page failures bounded** - More > Official now logs failed OBP saves, cover prepare/upload/generate failures, and gallery photo prepare/upload failures through bounded mobile owner diagnostics while keeping the existing fixed owner-facing failure copy.
+
+### Boundaries
+
+- This is owner-mobile diagnostics hardening only. Successful OBP field saves, cover/gallery uploads, generated cover, delete queue cleanup, `updateStore()`, `uploadOBPCover()`, `uploadOBPPhoto()`, public cache invalidation, Firestore rules/indexes, Cloud Functions, and Vercel deployment were not changed.
+
+## June 29, 2026 - Mobile Business Attributes Save Diagnostics
+
+### Fixed
+
+- **Mobile Business Attributes failures bounded** - More > Attributes now logs failed public attribute saves through bounded mobile owner diagnostics before restoring previous OBP attributes and showing the existing fixed failure copy.
+
+### Boundaries
+
+- This is owner-mobile diagnostics hardening only. Successful business-attribute saves, custom attributes, OBP rendering, `updateStore()`, public cache invalidation, Firestore rules/indexes, Cloud Functions, and Vercel deployment were not changed.
+
+## June 29, 2026 - Mobile Advanced Settings Save Diagnostics
+
+### Fixed
+
+- **Mobile social and feedback settings failures bounded** - failed owner-mobile Advanced Settings saves now log bounded store, tenant, mode, and update-shape metadata before showing the existing fixed failure copy.
+
+### Boundaries
+
+- This is owner-mobile diagnostics hardening only. Successful social-link saves, feedback collection setting saves, `updateStore()`, public cache invalidation, Firestore rules/indexes, Cloud Functions, and Vercel deployment were not changed.
+
+## June 29, 2026 - Mobile Brand Settings Save Diagnostics
+
+### Fixed
+
+- **Mobile Brand Settings failures bounded** - failed owner-mobile business profile saves now log bounded store, tenant, profile, logo, geo, phone, and tenant-name-change metadata before restoring local state and showing the existing fixed failure copy.
+
+### Boundaries
+
+- This is owner-mobile diagnostics hardening only. Successful brand, store profile, logo, contact, address, coordinate, and tenant-name saves, `updateStore()`, `updateTenant()`, public cache invalidation, Firestore rules/indexes, Cloud Functions, and Vercel deployment were not changed.
+
+## June 29, 2026 - Mobile Temporary Status Diagnostics
+
+### Fixed
+
+- **Mobile temporary status failures bounded** - More > Temporary Status now logs failed set/clear writes through bounded mobile owner diagnostics while preserving the existing optimistic rollback and fixed owner-facing failure copy.
+
+### Boundaries
+
+- This is owner-mobile diagnostics hardening only. Successful temporary-status set/clear behavior, `/api/store/temp-status`, public cache invalidation, public banners, Firestore rules/indexes, Cloud Functions, and Vercel deployment were not changed.
+
+## June 29, 2026 - Mobile Compliance Load Diagnostics
+
+### Fixed
+
+- **Mobile compliance status loads bounded** - mobile Privacy, Terms, and Refund cards now log rejected or malformed `/api/compliance` loads through bounded Business Settings diagnostics instead of failing silently.
+
+### Boundaries
+
+- This is owner-mobile diagnostics and docs parity only. Successful compliance status loads, save/reset behavior, `/api/compliance`, Firestore writes, public pages, rules/indexes, Cloud Functions, and Vercel deployment were not changed.
+
+## June 29, 2026 - Mobile Answerlattice Help Route Cleanup
+
+### Changed
+
+- **Mobile Answerlattice help route clarified** - removed the stale standalone `MobileAnswerlatticeClientScreen`. Mobile Answerlattice help, docs, support, and release-note links continue to route through `MobileHelpScreen` tabs from `MobileMoreScreen`.
+
+### Boundaries
+
+- This is shared mobile-shell cleanup only. Answerlattice dashboard routes, canonical knowledge flows, tickets, KB, widget, Firebase projects, Cloud Functions, API routes, and product data were not changed.
+
+## June 29, 2026 - Mobile Public Info Screen Cleanup
+
+### Changed
+
+- **Mobile business profile route clarified** - removed the stale standalone `MobilePublicInfoScreen`. Mobile More > Business Profile now uses `MobileBasicSettingsScreen` for brand, contact, public address, map coordinates, logo, business type, and GSTIN edits, and verifiers now guard that contract.
+
+### Boundaries
+
+- This is MenuList owner-mobile code cleanup only. Successful business profile, address, coordinate, contact, logo, tenant-name, and store-name writes remain on the active Basic Settings path. Firestore rules/indexes, Cloud Functions, API routes, public cache invalidation, and Vercel deployment were not changed.
+
+## June 29, 2026 - Mobile Domain Screen Consolidation
+
+### Changed
+
+- **Mobile domain surface consolidated** - removed the stale standalone mobile custom-domain and subdomain screens. Mobile More > Domain now uses the combined `MobileDomainSettingsScreen` as the single owner-mobile domain/subdomain surface, and verifiers now guard that route contract.
+
+### Boundaries
+
+- This is MenuList owner-mobile code cleanup only. Successful subdomain checks/saves, custom-domain status/add/remove behavior, Vercel calls, store writes, public cache invalidation, Firestore rules/indexes, Cloud Functions, and Vercel deployment were not changed.
+
+## June 29, 2026 - Mobile Domain Read Rejection Guard
+
+### Fixed
+
+- **Mobile domain status reads guarded** - mobile custom-domain status refreshes now check rejected `/api/domain` responses before applying `domainStatus`, preserving the current screen state and logging bounded rejected-status diagnostics.
+- **Mobile subdomain check failures guarded** - the combined Domain Settings screen now treats rejected `/api/subdomain/check` responses as fixed-copy failures with bounded diagnostics instead of applying invalid availability state.
+
+### Boundaries
+
+- This is MenuList owner-mobile read-state hardening only. Successful domain status checks, subdomain availability checks, Vercel status calls, store writes, public cache invalidation, Firestore rules/indexes, Cloud Functions, and Vercel deployment were not changed.
+
+## June 29, 2026 - Mobile Locations Failure Guard
+
+### Fixed
+
+- **Mobile location switching failures guarded** - Mobile Locations now treats rejected `/api/auth/switch-store` responses as failed branch switches instead of silently ignoring them, logs bounded multi-outlet diagnostics, and keeps owner-facing failure copy fixed.
+- **Mobile outlet create network failures logged** - outlet creation already handled rejected API responses; client/network failures now use the same bounded `mobile_location_create_failed` diagnostic path before showing the fixed network failure toast.
+
+### Boundaries
+
+- This is MenuList owner-mobile multi-outlet failure handling only. Successful store switching, Firebase claim refresh, outlet creation, billing checks, tenant/store writes, public cache invalidation, Firestore rules/indexes, Cloud Functions, and Vercel deployment were not changed.
+
+## June 29, 2026 - Mobile Domain Remove Failure Guard
+
+### Fixed
+
+- **Mobile custom-domain removal guarded** - the active mobile Domain Settings screen now checks the `/api/domain` delete response before clearing local custom-domain state, so a rejected remove keeps the current domain visible and logs bounded failure diagnostics.
+
+### Boundaries
+
+- This is MenuList owner-mobile state-consistency hardening only. Successful custom-domain removal behavior, Vercel remove calls, store writes, public cache invalidation, Firestore rules/indexes, Cloud Functions, and Vercel deployment were not changed.
+
+## June 29, 2026 - Mobile Domain Settings DNS Parity
+
+### Changed
+
+- **Mobile domain settings DNS display aligned** - the mobile Domain Settings screen now normalizes Vercel DNS `verificationRecords`, `configuredBy` records, and fallback CNAME rows instead of relying on partial provider config shapes.
+
+### Boundaries
+
+- This is MenuList mobile UI display hardening only. Custom-domain add/check/remove behavior, subdomain save/check behavior, Vercel calls, store writes, public cache invalidation, Firestore rules/indexes, Cloud Functions, and Vercel deployment were not changed.
+
+## June 29, 2026 - Scheduler Monitor Run Errors Bounded
+
+### Changed
+
+- **Scheduler run errors bounded** - the desktop scheduler monitor now formats failed settlement errors, last-run errors, and run-history `errors[]` entries through the same type/length/shape display guard already used for task errors and details.
+
+### Boundaries
+
+- This is MenuList platform monitor display hardening only. Scheduler run logs, settlement state reads, manual recovery behavior, Firestore reads/writes, Cloud Functions, rules/indexes, owner/mobile flows, and Vercel deployment were not changed.
+
+## June 29, 2026 - Translation Provider Response Accounting Bounded
+
+### Changed
+
+- **Translation provider response accounting bounded** - `/api/translations` now passes the Gemini response object into the shared AI-operation serializer instead of pre-stringifying the provider response in the route transaction object, so detailed operation mode and local development logs keep response presence/length/usage metadata rather than a route-built raw provider-response string.
+
+### Boundaries
+
+- This is MenuList app-route accounting/logging hardening only. Translation prompts, Gemini calls, retry/parsing behavior, normalized owner response, translation coverage accounting, credit consumption, Firestore reads/writes, rules/indexes, Cloud Functions, and Vercel deployment were not changed.
+
+## June 29, 2026 - Owner Notification Monitor Display Guard
+
+### Changed
+
+- **Owner notification monitor display guarded** - the platform owner-notification dashboard now formats event and delivery error fields through a local display guard before rendering them, preserving compact local codes and stored-text presence/length summaries while preventing long stored provider/error text from printing if the API response regresses.
+
+### Boundaries
+
+- This is MenuList platform UI defense-in-depth only. Owner notification event reads, delivery reads, recipient resolution, retry/manual-send/manual-handoff actions, stored event/delivery documents, provider calls, Firestore rules/indexes, Cloud Functions, and Vercel deployment were not changed.
+
+## June 29, 2026 - Transaction and Mobile Ops Payloads Bounded
+
+### Changed
+
+- **AI transaction payloads bounded** - `/api/ai-operations` now uses a platform allowlist instead of returning full operation documents to platform browsers, and desktop/mobile transaction debug panels no longer render full transaction JSON.
+- **Image-processing transaction details formatted** - desktop transaction details now render extracted image-processing rows instead of dumping raw `clientResponse` JSON for B2B tenants.
+- **Scheduler task errors bounded** - desktop and mobile scheduler monitors now summarize stored task error text by type/length instead of printing historical raw error strings.
+- **Mobile custom-domain DNS display formatted** - the mobile custom-domain screen now renders Vercel DNS records as copyable rows instead of raw verification JSON.
+
+### Boundaries
+
+- This is MenuList app/API and owner/platform UI hardening only. AI accounting writes, transaction pagination, owner-visible transaction fields, domain add/check/remove behavior, scheduler reads/manual recovery behavior, Firestore rules/indexes, Cloud Functions, and Vercel deployment were not changed.
+
+## June 29, 2026 - Scheduler Monitor Details Bounded
+
+### Changed
+
+- **Scheduler monitor details bounded** - the platform scheduler monitor now summarizes run-log detail values by type, length, and shape instead of rendering raw JSON detail payloads.
+
+### Boundaries
+
+- This is MenuList platform monitor display hardening only. Scheduler run logs, manual recovery behavior, Firestore reads/writes, Cloud Functions, rules/indexes, owner/mobile flows, and Vercel deployment were not changed.
+
+## June 29, 2026 - AI Route Response Diagnostics Renamed
+
+### Changed
+
+- **AI route response diagnostics renamed** - MenuList Gemini parse-failure diagnostics now use `responseTextLength` instead of stale `rawTextLength` wording across business copy, descriptions, new-item metadata, SEO, and translations routes.
+
+### Boundaries
+
+- This is MenuList app-route diagnostic hardening only. Gemini prompts, parsing, retry behavior, owner-facing failure copy, AI accounting, Firestore reads/writes, Storage behavior, Cloud Functions, rules/indexes, and Vercel deployment were not changed.
+
+## June 29, 2026 - Publish Verification Body Read Bounded
+
+### Changed
+
+- **Publish verification body read bounded** - the post-publish menu health checker now reads only enough of the public menu response to confirm content exists instead of materializing the full HTML body.
+
+### Boundaries
+
+- This is MenuList Cloud Functions publish-verification reliability hardening only. Public menu URL validation, HTTP status handling, failure codes, store health writes, alert behavior, Firestore reads/writes, Storage behavior, rules/indexes, and Vercel deployment were not changed. Cloud Functions source changed; local validation and scoped Firebase deploy status are tracked in the system-strengthening audit ledger.
+
+## June 29, 2026 - Functions WhatsApp Failed Body Reads Removed
+
+### Changed
+
+- **Functions WhatsApp failed body reads removed** - owner-notification and Messaging Onboarding Functions no longer read failed Meta Graph response bodies before returning stable WhatsApp failure codes, and owner-notification success IDs are capped before storage.
+
+### Boundaries
+
+- This is MenuList Cloud Functions WhatsApp diagnostic hardening only. WhatsApp request bodies, provider endpoints, send/fallback behavior, event and delivery writes, retry behavior, Firestore reads/writes, Storage behavior, rules/indexes, and Vercel deployment were not changed. Cloud Functions source changed; local validation and scoped Firebase deploy status are tracked in the system-strengthening audit ledger.
+
+## June 29, 2026 - Template Registry Local Errors Typed
+
+### Changed
+
+- **Template registry local errors typed** - Creative Editor template registry failures now use local error codes for expected not-found, document-size, onboarding, and save failures instead of matching allowlisted `Error.message` text.
+
+### Boundaries
+
+- This is MenuList Creative Editor template-registry failure-copy hardening only. Template list/open/save/update/delete behavior, Firestore reads/writes, Storage uploads/deletes, platform catalog mutation, UI failure copy, rules/indexes, Cloud Functions, and Vercel deployment were not changed.
+
+## June 29, 2026 - Owner Notification WhatsApp Response Parsing Bounded
+
+### Changed
+
+- **Owner notification WhatsApp response parsing bounded** - the app-side WhatsApp owner-notification channel no longer materializes raw Graph API response bodies as text and only stores bounded string provider message IDs on successful sends.
+
+### Boundaries
+
+- This is MenuList app-side owner-notification delivery hardening only. WhatsApp request bodies, endpoint encoding, success/failure codes, delivery writes, provider call count, Firestore reads/writes, Storage behavior, rules/indexes, Cloud Functions, and Vercel deployment were not changed.
+
+## June 29, 2026 - Owner Business Assistant Safe Error Sentinel Typed
+
+### Changed
+
+- **Owner Business Assistant safe error sentinel typed** - the Business Health answer hook now recognizes its normalized owner-safe failure through a typed local error code instead of matching raw error-message text.
+
+### Boundaries
+
+- This is MenuList Owner Business Assistant client-hook diagnostic hardening only. Answer API calls, response handling, owner-facing failure copy, thread persistence, event logging, Firestore reads/writes, Storage behavior, rules/indexes, Cloud Functions, and Vercel deployment were not changed.
+
+## June 29, 2026 - Rate Limit Provider Timeout Sentinel Typed
+
+### Changed
+
+- **Rate-limit provider timeout sentinel typed** - `checkRateLimit()` now identifies Upstash timeout failures through a typed local error code instead of matching raw timeout exception text.
+
+### Boundaries
+
+- This is MenuList rate-limit diagnostic/control-flow hardening only. Timeout duration, fail-open behavior, local bypass duration, Upstash calls, route limits, 429 behavior, Firestore reads/writes, Storage behavior, rules/indexes, Cloud Functions, and Vercel deployment were not changed.
+
+## June 29, 2026 - Messaging Preview Approval Transaction Sentinels Typed
+
+### Changed
+
+- **Messaging preview approval transaction sentinels typed** - expected approval transaction failures now use fixed local error codes for invalid token, missing session, in-progress publish, not-ready session, and expired session instead of branching on transaction exception text.
+
+### Boundaries
+
+- This is MenuList messaging-onboarding approval control-flow hardening only. Preview approval responses, publish retry behavior, session recovery, public cache invalidation, Firestore reads/writes, Storage behavior, rules/indexes, Cloud Functions, and Vercel deployment were not changed.
+
+## June 29, 2026 - Outlet API Local Error Sentinels Typed
+
+### Changed
+
+- **Outlet API local error sentinels typed** - outlet creation lock contention and outlet deactivation invalid-target transaction failures now use typed local errors with stable codes instead of branching on raw `Error.message`.
+
+### Boundaries
+
+- This is MenuList outlet API control-flow hardening only. Outlet creation, deactivation, billing quantity updates, provider rollback behavior, public cache invalidation, Firestore reads/writes, Storage behavior, rules/indexes, Cloud Functions, and Vercel deployment were not changed.
+
+## June 29, 2026 - System Error Tracking Source Context Capped
+
+### Changed
+
+- **System-error tracking source context capped** - Cloud Functions monitoring error-tracking failure logs now cap source error names, codes, and status values before logging fallback diagnostics.
+
+### Boundaries
+
+- This is MenuList Cloud Functions monitoring diagnostic hardening only. System-error storage, deduplication, TTL writes, critical-alert writes, resolve behavior, summary reads, Firestore reads/writes, Storage behavior, rules/indexes, and Vercel deployment were not changed. Cloud Functions source changed; local Functions validation passed and the scoped `menulist-qa` monitoring deploy remains blocked by Cloud Resource Manager HTTP 403.
+
+## June 29, 2026 - Monitoring Error Names Capped
+
+### Changed
+
+- **Monitoring error-name metadata capped** - Functions Sentry error context and the customer menu error boundary now cap source error names before sending diagnostic metadata.
+
+### Boundaries
+
+- This is MenuList monitoring diagnostic hardening only. Sentry initialization, event capture, expected-error suppression, client menu fallback UI, retry behavior, report button behavior, Firestore reads/writes, Storage behavior, rules/indexes, and Vercel deployment were not changed. Cloud Functions source changed; local Functions validation passed and the scoped `menulist-qa` extraction/scheduler deploy remains blocked by Cloud Resource Manager HTTP 403.
+
+## June 29, 2026 - Billing Reconciliation Error Context Capped
+
+### Changed
+
+- **Billing reconciliation source error context capped** - active Functions subscription reconciliation now caps per-subscription source error names, codes, and status values before logging Razorpay/provider failure metadata.
+
+### Boundaries
+
+- This is MenuList Cloud Functions billing diagnostic hardening only. Reconciliation queries, Razorpay subscription fetches, subscription updates, entitlement cache invalidation, lifecycle messaging, Firestore reads/writes, Storage behavior, rules/indexes, and Vercel deployment were not changed. Cloud Functions source changed; local Functions validation passed and the scoped `menulist-qa` nightly scheduler deploy remains blocked by Cloud Resource Manager HTTP 403.
+
+## June 29, 2026 - Lifecycle Messaging Error Context Capped
+
+### Changed
+
+- **Lifecycle messaging source error context capped** - legacy Functions lifecycle messaging diagnostics now cap source error names, codes, and status values across idempotency, store lookup, logging, owner-notification fallback, reminder, retry, and digest failure paths.
+
+### Boundaries
+
+- This is MenuList Cloud Functions lifecycle messaging diagnostic hardening only. Message idempotency, rate limits, recipient resolution, SMTP sends, message-log writes, scheduler reminder scans, retry behavior, Firestore reads/writes, Storage behavior, rules/indexes, and Vercel deployment were not changed. Cloud Functions source changed; local Functions validation passed and the scoped `menulist-qa` nightly scheduler deploy remains blocked by Cloud Resource Manager HTTP 403.
+
+## June 29, 2026 - Menu Link Text Extraction Error Context Capped
+
+### Changed
+
+- **Menu-link deterministic extraction error context capped** - deterministic menu-link text extraction skip diagnostics now cap source error names, codes, and status values before falling back to Gemini extraction.
+
+### Boundaries
+
+- This is MenuList Cloud Functions extraction diagnostic hardening only. Deterministic parsing, accept/fallback thresholds, extracted menu shape, Gemini fallback behavior, Firestore reads/writes, Storage behavior, rules/indexes, and Vercel deployment were not changed. Cloud Functions source changed; local Functions validation passed and the scoped `menulist-qa` `processMenuImages/processMenuImagesJob` deploy remains blocked by Cloud Resource Manager HTTP 403.
+
+## June 29, 2026 - Functions Circuit Breaker Error Context Capped
+
+### Changed
+
+- **Functions circuit-breaker source error context capped** - shared AI circuit-breaker failure logs now cap source error names, codes, and status values before logging provider failure metadata.
+
+### Boundaries
+
+- This is MenuList Cloud Functions diagnostic hardening only. Circuit state transitions, failure counting, client-error exclusion, open-circuit fail-fast behavior, Gemini callers, Firestore reads/writes, Storage behavior, rules/indexes, and Vercel deployment were not changed. Cloud Functions source changed; local Functions validation passed and the scoped `menulist-qa` `processMenuImages/processMenuImagesJob` deploy remains blocked by Cloud Resource Manager HTTP 403.
+
+## June 29, 2026 - Messaging Intake Processor Error Context Bounded
+
+### Changed
+
+- **Messaging intake-processor error context bounded** - queue drain, session processing, retry-send, query, and asset-validation failure diagnostics now cap source error names/codes before logging.
+
+### Boundaries
+
+- This is MenuList Cloud Functions Messaging Onboarding diagnostic hardening only. Queue drain, intake-window processing, preview/publish/fix retries, asset validation, extraction job creation, Firestore reads/writes, Storage behavior, rules/indexes, and Vercel deployment were not changed. Cloud Functions source changed; local Functions validation passed and the scoped `menulist-qa` `messagingOnboarding` deploy remains blocked by Cloud Resource Manager HTTP 403.
+
+## June 29, 2026 - Messaging Event Logger Error Context Bounded
+
+### Changed
+
+- **Messaging event-logger error context bounded** - lifecycle event write/preparation failure diagnostics now cap source error names/codes before logging.
+
+### Boundaries
+
+- This is MenuList Cloud Functions Messaging Onboarding diagnostic hardening only. Lifecycle event document shape, metadata sanitizer, TTL, fire-and-forget write behavior, Firestore reads/writes, Storage behavior, rules/indexes, and Vercel deployment were not changed. Cloud Functions source changed; local Functions validation passed and the scoped `menulist-qa` `messagingOnboarding` deploy remains blocked by Cloud Resource Manager HTTP 403.
+
+## June 29, 2026 - Messaging Inbound Queue Error Context Bounded
+
+### Changed
+
+- **Messaging inbound-queue error context bounded** - queue processing failure diagnostics now cap source error names/codes before logging retry or exhaustion failures.
+
+### Boundaries
+
+- This is MenuList Cloud Functions Messaging Onboarding diagnostic hardening only. Inbound queue creation, duplicate acknowledgement, retry scheduling, exhaustion behavior, lifecycle events, Firestore reads/writes, Storage behavior, rules/indexes, and Vercel deployment were not changed. Cloud Functions source changed; local Functions validation passed and the scoped `menulist-qa` `messagingOnboarding` deploy remains blocked by Cloud Resource Manager HTTP 403.
+
+## June 29, 2026 - Messaging Health Monitor Error Context Bounded
+
+### Changed
+
+- **Messaging health-monitor error context bounded** - hourly health snapshot failure diagnostics now cap source error names/codes before logging.
+
+### Boundaries
+
+- This is MenuList Cloud Functions Messaging Onboarding diagnostic hardening only. Health snapshot cadence, cost/failure sampling, alert creation, Firestore reads/writes, Storage behavior, rules/indexes, and Vercel deployment were not changed. Cloud Functions source changed; local Functions validation passed and the scoped `menulist-qa` `messagingOnboarding` deploy remains blocked by Cloud Resource Manager HTTP 403.
+
+## June 29, 2026 - WhatsApp Adapter Error Context Bounded
+
+### Changed
+
+- **WhatsApp adapter error context bounded** - incoming-message parse diagnostics now cap source error names/codes, and failed text sends throw the stable provider failure code used by downstream diagnostics.
+
+### Boundaries
+
+- This is MenuList Cloud Functions Messaging Onboarding diagnostic hardening only. Webhook verification, message parsing success behavior, media lookup/download, text/interactive send payloads, fallback-to-text behavior, Firestore reads/writes, Storage behavior, rules/indexes, and Vercel deployment were not changed. Cloud Functions source changed; local Functions validation passed and the scoped `menulist-qa` `messagingOnboarding` deploy remains blocked by Cloud Resource Manager HTTP 403.
+
+## June 29, 2026 - Messaging Publish Pipeline Error Context Bounded
+
+### Changed
+
+- **Messaging publish-pipeline error context bounded** - the retained Cloud Functions publish-pipeline reference now caps provider confirmation source error names/codes before logging.
+
+### Boundaries
+
+- This is MenuList Cloud Functions Messaging Onboarding diagnostic hardening only. Retained publish transaction behavior, provider confirmation fallback behavior, lifecycle event writes, Firestore reads/writes, Storage behavior, rules/indexes, and Vercel deployment were not changed. Cloud Functions source changed; local Functions validation passed and the scoped `menulist-qa` `messagingOnboarding` deploy remains blocked by Cloud Resource Manager HTTP 403.
+
+## June 29, 2026 - Messaging Session Engine Upload Error Context Bounded
+
+### Changed
+
+- **Messaging session-engine upload error context bounded** - provider media download/upload failure diagnostics now cap source error names/codes before logging.
+
+### Boundaries
+
+- This is MenuList Cloud Functions Messaging Onboarding diagnostic hardening only. Media download, MIME/size/password PDF checks, Storage writes, session uploads, duplicate handling, state transitions, Firestore reads/writes, Storage behavior, rules/indexes, and Vercel deployment were not changed. Cloud Functions source changed; local Functions validation passed and the scoped `menulist-qa` `messagingOnboarding` deploy remains blocked by Cloud Resource Manager HTTP 403.
+
+## June 29, 2026 - Messaging Asset Intelligence Error Context Bounded
+
+### Changed
+
+- **Messaging asset-intelligence error context bounded** - upload-fetch and Gemini parse diagnostics now cap source error names/codes and normalize source status values before logging.
+
+### Boundaries
+
+- This is MenuList Cloud Functions Messaging Onboarding diagnostic hardening only. Upload URL validation, Storage URL fetches, Gemini validation calls, parse fallback behavior, returned validation result shape, Firestore writes, Storage behavior, rules/indexes, and Vercel deployment were not changed. Cloud Functions source changed; local Functions validation passed and the scoped `menulist-qa` `messagingOnboarding` deploy remains blocked by Cloud Resource Manager HTTP 403.
+
+## June 29, 2026 - Messaging Webhook Error Context Bounded
+
+### Changed
+
+- **Messaging webhook error context bounded** - the Messaging Onboarding webhook queue-failure diagnostics now cap source error names/codes and normalize source status values before logging.
+
+### Boundaries
+
+- This is MenuList Cloud Functions Messaging Onboarding diagnostic hardening only. Webhook provider resolution, signature verification, inbound queue persistence, duplicate acknowledgement, response statuses, Firestore writes, rules/indexes, and Vercel deployment were not changed. Cloud Functions source changed; local Functions validation passed and the scoped `menulist-qa` `messagingOnboarding` deploy remains blocked by Cloud Resource Manager HTTP 403.
+
+## June 29, 2026 - Messaging Extraction Watcher Error Context Bounded
+
+### Changed
+
+- **Messaging extraction watcher error context bounded** - the deeper extraction watcher now caps source error names/codes before logging preview-send failures, matching the exported trigger wrapper boundary.
+
+### Boundaries
+
+- This is MenuList Cloud Functions Messaging Onboarding diagnostic hardening only. Extraction watcher routing, session updates, preview generation, provider preview sends, temp project cleanup, Firestore reads/writes/deletes, Storage behavior, rules/indexes, and Vercel deployment were not changed. Cloud Functions source changed; local Functions validation passed and the scoped `menulist-qa` `msgExtractionWatcher` deploy remains blocked by Cloud Resource Manager HTTP 403.
+
+## June 29, 2026 - Messaging Session Cleanup Error Context Bounded
+
+### Changed
+
+- **Messaging session cleanup error context bounded** - the cleanup task now caps source error names/codes and normalizes source status values before logging session expiry, reminder, storage cleanup, query, or inbound queue failures.
+
+### Boundaries
+
+- This is MenuList Cloud Functions scheduler diagnostic hardening only. Session expiry, reminders, storage cleanup, inbound queue cleanup, state transitions, onboarding events, Firestore reads/writes/deletes, Storage delete attempts, rules/indexes, and Vercel deployment were not changed. Cloud Functions source changed; local Functions validation passed and the scoped `menulist-qa` `menulistMaintenanceScheduler` deploy remains blocked by Cloud Resource Manager HTTP 403.
+
+## June 29, 2026 - Scheduler Error Context Bounded
+
+### Changed
+
+- **Scheduler error context bounded** - the maintenance scheduler now caps source error names/codes and normalizes source status values before writing scheduler logs, alerts, or task diagnostics.
+
+### Boundaries
+
+- This is MenuList Cloud Functions scheduler diagnostic hardening only. Scheduler task execution, leases, alert creation, public draft cleanup, stuck-job cleanup, Firestore reads/writes, Storage behavior, rules/indexes, and Vercel deployment were not changed. Cloud Functions source changed; local Functions validation passed and the scoped `menulist-qa` `menulistMaintenanceScheduler` deploy remains blocked by Cloud Resource Manager HTTP 403.
+
+## June 29, 2026 - Public Draft Cleanup Diagnostics Bounded
+
+### Changed
+
+- **Public draft cleanup diagnostics bounded** - the maintenance scheduler now records public draft cleanup samples as counts and ID-length totals, logs draft image deletion failures with draft ID presence/length metadata, and sends scheduler failure alerts with run ID presence/length metadata instead of raw identifiers.
+
+### Boundaries
+
+- This is MenuList Cloud Functions scheduler diagnostic hardening only. Public draft expiry selection, image deletion, draft document deletion, scheduler cadence, task leases, internal scheduler state linkage, Firestore reads/writes, Storage behavior, rules/indexes, and Vercel deployment were not changed. Cloud Functions source changed; local Functions validation passed and the scoped `menulist-qa` `menulistMaintenanceScheduler` deploy remains blocked by Cloud Resource Manager HTTP 403.
+
+## June 29, 2026 - Stuck Extraction Alert Metadata Bounded
+
+### Changed
+
+- **Stuck extraction alert metadata bounded** - the maintenance scheduler no longer stores raw stuck extraction job IDs in `JOB_STUCK` alert metadata. Cleanup now returns sample counts and ID-length totals only.
+
+### Boundaries
+
+- This is MenuList Cloud Functions scheduler diagnostic hardening only. Stuck-job detection, job status updates, alert creation, scheduler cadence, leases, extraction health checks, Firestore reads/writes, Storage behavior, rules/indexes, and Vercel deployment were not changed. Cloud Functions source changed; local Functions validation passed and the scoped `menulist-qa` `menulistMaintenanceScheduler` deploy remains blocked by Cloud Resource Manager HTTP 403.
+
+## June 29, 2026 - Messaging Extraction Watcher Trigger Diagnostics Bounded
+
+### Changed
+
+- **Messaging extraction watcher trigger diagnostics bounded** - the exported `msgExtractionWatcher` catch path now logs job ID presence/length metadata and normalized source error metadata instead of the raw event job ID or unbounded source error code/status values.
+
+### Boundaries
+
+- This is MenuList Cloud Functions trigger-wrapper diagnostic hardening only. Extraction watcher routing, `msg-onboarding-*` filtering, session updates, preview generation, provider preview sends, extraction job handling, Firestore reads/writes, Storage behavior, rules/indexes, and Vercel deployment were not changed. Cloud Functions source changed; local Functions validation passed and the scoped `menulist-qa` `msgExtractionWatcher` deploy remains blocked by Cloud Resource Manager HTTP 403.
+
+## June 29, 2026 - Gemini Key Manager Diagnostics Bounded
+
+### Changed
+
+- **Gemini key-manager diagnostics bounded** - the app and Cloud Functions Gemini key managers now use fixed discovery, initialization, cooldown, and rate-limit log messages with structured counts, slot numbers, booleans, and cooldown seconds instead of interpolated provider-key operational text or env-var lists.
+
+### Boundaries
+
+- This is MenuList AI provider diagnostic hardening only. Gemini key discovery, legacy app env fallback behavior, AI clients, key rotation, cooldown math, retry behavior, provider calls, API responses, Firestore reads/writes, Storage operations, rules/indexes, and Vercel deployment were not changed. Cloud Functions source changed; local Functions validation passed and the scoped `menulist-qa` Functions deploy remains blocked by Cloud Resource Manager HTTP 403.
+
+## June 29, 2026 - Sentry Test Page Metadata Bounded
+
+### Changed
+
+- **Sentry test page metadata bounded** - the platform Sentry diagnostics page now sends fake test user/product identifiers as presence/length metadata instead of raw hard-coded IDs when triggering monitoring breadcrumbs and test errors.
+
+### Boundaries
+
+- This is MenuList platform diagnostics hardening only. `/platform/test-sentry` access, intentional test error behavior, Sentry enablement, monitoring buttons, route metadata, Cloud Functions, rules/indexes, Firebase deployment, and Vercel deployment were not changed.
+
+## June 29, 2026 - Change Password Success Diagnostics Bounded
+
+### Changed
+
+- **Change-password success breadcrumb bounded** - the successful password-change route log now uses bounded auth session/request metadata instead of copying full security context into a normal info log.
+
+### Boundaries
+
+- This is MenuList auth-route diagnostic hardening only. Password verification, Firebase Auth password update, Firestore password timestamp write, rate limits, security-event logs, API responses, Cloud Functions, rules/indexes, Firebase deployment, and Vercel deployment were not changed.
+
+## June 29, 2026 - Reseller Manage Success Diagnostics Bounded
+
+### Changed
+
+- **Reseller manage success breadcrumbs bounded** - platform reseller profile create/update diagnostics now log bounded profile/name/user metadata and update field counts instead of raw profile IDs, reseller names, or updated field-name arrays.
+
+### Boundaries
+
+- This is MenuList platform-route diagnostic hardening only. Reseller profile create/update behavior, Firebase Auth sync, Firestore writes, API responses, desktop/mobile reseller UI behavior, Cloud Functions, rules/indexes, Firebase deployment, and Vercel deployment were not changed.
+
+## June 29, 2026 - AI Route Request Diagnostics Bounded
+
+### Changed
+
+- **AI route request breadcrumbs bounded** - Translation and New Item Metadata request-start diagnostics now use the shared AI route log context, matching the existing Business Copy, Description, and SEO request logging boundary.
+
+### Boundaries
+
+- This is MenuList app-route diagnostic hardening only. Input validation, AI prompts, provider calls, retry behavior, capacity checks, accounting writes, API responses, Firestore reads/writes, Cloud Functions, rules/indexes, Firebase deployment, and Vercel deployment were not changed.
+
+## June 29, 2026 - AI Route Completion Diagnostics Bounded
+
+### Changed
+
+- **AI route completion breadcrumbs bounded** - Business Copy, Description, SEO, New Item Metadata, and Translation completion diagnostics now use the shared AI route log context so operation identifiers are represented as bounded metadata instead of raw values.
+
+### Boundaries
+
+- This is MenuList app-route diagnostic hardening only. AI prompts, provider calls, retry behavior, capacity checks, accounting writes, API responses, Firestore reads/writes, Cloud Functions, rules/indexes, Firebase deployment, and Vercel deployment were not changed.
+
+## June 29, 2026 - Local Log Data Payloads Bounded
+
+### Changed
+
+- **Local log data payloads bounded** - app and Functions development-only local log helpers now write data payloads through a bounded serializer, sanitize retained object keys, and represent user/project/file IDs as presence-length context instead of raw values.
+
+### Boundaries
+
+- This is MenuList shared diagnostic hardening only. Production local-log behavior remains disabled, route behavior, validation responses, provider calls, AI/payment/search behavior, Firestore reads/writes, Storage operations, rules/indexes, and Vercel deployment were not changed. Cloud Functions source changed; local Functions validation passed and the scoped `menulist-qa` Functions deploy remains blocked by Cloud Resource Manager HTTP 403.
+
+## June 29, 2026 - Shared Image Upload Failure Copy Bounded
+
+### Changed
+
+- **Shared image upload failure copy bounded** - the shared upload input no longer prefixes failure toasts with raw local filenames or displays raw magic-byte validation details. Media image preparation now throws fixed invalid-file copy for failed magic-byte validation.
+
+### Boundaries
+
+- This is MenuList client-side upload failure-copy hardening only. File admission checks, image compression, media preparation, upload progress metadata, uploaded file payloads, magic-byte validation behavior, existing diagnostics, Cloud Functions, Firestore rules/indexes, Firebase deployment, and Vercel deployment were not changed.
+
+## June 29, 2026 - Template Registry Local Error Allowlist Tightened
+
+### Changed
+
+- **Template registry failure copy allowlisted** - the shared Creative Editor template registry now surfaces only exact local template failure messages and fixed Storage quota/permission copy; arbitrary caught `Template ...` exception text falls back to the caller's fixed failure message.
+
+### Boundaries
+
+- This is MenuList client-DAL failure-copy hardening only. Template list/open/save/update/delete behavior, existing Firestore reads/writes, Storage uploads/deletes, platform template manager actions, owner saved-design actions, Cloud Functions, Firestore rules/indexes, Firebase deployment, and Vercel deployment were not changed.
+
+## June 29, 2026 - Functions Active Alert Reader Bounded
+
+### Changed
+
+- **Functions active alert reader bounded** - `getActiveAlerts()` now returns a typed active-alert summary with stored title/message presence-length copy and bounded metadata preview fields instead of spreading full `systemAlerts` documents.
+
+### Boundaries
+
+- This is MenuList Cloud Functions monitoring hardening only. Alert creation, cooldown checks, acknowledgement IDs, Telegram/platform delivery, stored alert documents, Firestore rules/indexes, and Vercel deployment were not changed. Local Functions validation passed; the scoped `menulist-qa` Functions deploy remains blocked by Cloud Resource Manager HTTP 403.
+
+## June 29, 2026 - Nightly Analytics Payload Hydration Bounded
+
+### Changed
+
+- **Nightly analytics payload hydration bounded** - Health Signals and Menu Drift Functions now map Firestore rows into the exact numeric/routing fields needed for aggregation instead of hydrating full analytics or menu-change documents into scheduler memory.
+
+### Boundaries
+
+- This is MenuList Cloud Functions hardening only. Health-signal math, menu-drift counters, existing reads/writes, telemetry shape, scheduler entrypoints, Firestore rules/indexes, and Vercel deployment were not changed. Local Functions validation passed; the scoped `menulist-qa` Functions deploy remains blocked by Cloud Resource Manager HTTP 403.
+
+## June 29, 2026 - Ops Control Room Stored Text Bounded
+
+### Changed
+
+- **Ops Control Room stored text bounded** - the shared ops DAL now returns SAFE_MODE reason and latest alert title as presence/length summaries instead of raw `ops_config/system.reason` or `systemAlerts.title` text for desktop and mobile platform views.
+
+### Boundaries
+
+- This is MenuList client-DAL/platform monitor hardening only. Ops Control Room reads, system-state cards, alert mute state, SAFE_MODE status, Cloud Functions, Firestore rules/indexes, Firebase deployment, and Vercel deployment were not changed.
+
+## June 29, 2026 - Business Health Monitor Text Bounded
+
+### Changed
+
+- **Business Health monitor text bounded** - the platform Business Health monitor API now returns answer question/response, unsupported reason, source coverage reason, feedback reason, and identifier fields as presence/length summaries or hashed row keys instead of raw stored owner/AI/feedback text and Firestore IDs.
+
+### Boundaries
+
+- This is MenuList app-route/platform monitor hardening only. Answer-event reads, feedback reads, summary counts, cost/read metrics, rate limits, Cloud Functions, Firestore rules/indexes, Firebase deployment, and Vercel deployment were not changed.
+
+## June 29, 2026 - Owner Notification Monitor Text Bounded
+
+### Changed
+
+- **Owner notification monitor text bounded** - the owner notification ops API now returns stored event/delivery error summaries, subject/provider-message presence and length context, and bounded metadata preview fields instead of raw stored provider or owner-notification text.
+
+### Boundaries
+
+- This is MenuList app-route/platform monitor hardening only. Event reads, delivery reads, recipient resolution, retry/manual-send/manual-handoff actions, raw event IDs required by actions, rate limits, Cloud Functions, Firestore rules/indexes, Firebase deployment, and Vercel deployment were not changed.
+
+## June 29, 2026 - Platform Notification Display Text Bounded
+
+### Changed
+
+- **Platform notification display text bounded** - the platform notification API now returns registry-fixed alert title/message copy plus stored-text presence and length context instead of raw `systemAlerts` title/message prose; ID-like metadata preview fields are also bounded.
+
+### Boundaries
+
+- This is MenuList app-route/platform monitor hardening only. Alert reads, filters, counts, acknowledge/manual-handoff/manual-alert actions, raw event IDs required by actions, rate limits, Cloud Functions, Firestore rules/indexes, Firebase deployment, and Vercel deployment were not changed.
+
+## June 29, 2026 - Messaging Onboarding Ops Alert Text Bounded
+
+### Changed
+
+- **Messaging Onboarding ops alert text bounded** - the platform Messaging Onboarding monitor API now returns bounded health/recent-alert summaries and hashed row IDs instead of raw alert prose, event/session IDs, or `systemAlerts` document IDs.
+
+### Boundaries
+
+- This is MenuList app-route/platform monitor hardening only. Messaging Onboarding reads, counts, status cards, event/session/alert tables, rate limits, Cloud Functions, Firestore rules/indexes, Firebase deployment, and Vercel deployment were not changed.
+
+## June 29, 2026 - Platform Cost Alert IDs Bounded
+
+### Changed
+
+- **Platform cost alert IDs bounded** - the platform cost posture API now returns hashed local alert row IDs instead of raw `systemAlerts` document IDs.
+
+### Boundaries
+
+- This is MenuList app-route/platform monitor hardening only. Alert reads, cost-signal filtering, dashboard table behavior, rate limits, Cloud Functions, Firestore rules/indexes, Firebase deployment, and Vercel deployment were not changed.
+
+## June 29, 2026 - Platform SAFE_MODE Reason Text Bounded
+
+### Changed
+
+- **Platform SAFE_MODE reason text bounded** - the platform cost posture API now returns SAFE_MODE reason presence and length context instead of raw stored `ops_config/system.reason` text.
+
+### Boundaries
+
+- This is MenuList app-route/platform monitor hardening only. SAFE_MODE reads, active/off status, alert mute state, dashboard rendering, rate limits, Cloud Functions, Firestore rules/indexes, Firebase deployment, and Vercel deployment were not changed.
+
+## June 29, 2026 - Platform Cost Alert Text Bounded
+
+### Changed
+
+- **Platform cost alert text bounded** - the platform cost posture API now returns cost-alert title/message presence and length context instead of raw stored alert title, message, or reason text.
+
+### Boundaries
+
+- This is MenuList app-route/platform monitor hardening only. Cost posture source reads, alert filtering, dashboard rendering, rate limits, Cloud Functions, Firestore rules/indexes, Firebase deployment, and Vercel deployment were not changed.
+
+## June 29, 2026 - Platform Cost Posture DAL Error Copy Bounded
+
+### Changed
+
+- **Platform cost posture DAL error copy bounded** - the platform cost posture client helper now throws fixed local failure copy with status metadata instead of copying raw API `error` text into upstream exceptions.
+
+### Boundaries
+
+- This is MenuList client-DAL platform monitor hardening only. Cost posture API reads, dashboard rendering, rate limits, diagnostics, Cloud Functions, Firestore rules/indexes, Firebase deployment, and Vercel deployment were not changed.
+
+## June 29, 2026 - Drag And Drop Upload Errors Bounded
+
+### Changed
+
+- **Drag-and-drop upload errors bounded** - the shared upload drop hook now sanitizes custom validation text and uses generic type/size copy instead of showing raw local file names in owner-visible toasts.
+
+### Boundaries
+
+- This is MenuList client-side upload error-copy hardening only. File admission, accepted MIME/size checks, upload callbacks, Cloud Functions, Firestore rules/indexes, Firebase deployment, and Vercel deployment were not changed.
+
+## June 29, 2026 - App Platform Alert Scope Copy Bounded
+
+### Changed
+
+- **App platform alert scope copy bounded** - app-side platform alert email/WhatsApp text now renders tenant, store, and alert identifiers as presence/length context instead of raw ID values.
+
+### Boundaries
+
+- This is MenuList app-server alert-delivery copy hardening only. Alert writes, registry lookup, recipient resolution, provider sends, Cloud Functions, Firestore rules/indexes, Firebase deployment, and Vercel deployment were not changed.
+
+## June 29, 2026 - App Telegram Alert Markdown Escaped
+
+### Changed
+
+- **App Telegram alert Markdown escaped** - app-side ops alert delivery now escapes dynamic alert title and message values before sending with Telegram Markdown formatting.
+
+### Boundaries
+
+- This is MenuList app-server alert-delivery formatting hardening only. Alert writes, alert mute checks, Telegram token validation, chat routing, platform email/WhatsApp delivery, Cloud Functions, Firestore rules/indexes, and Firebase deployment were not changed. Vercel deployment was not run under the deployment guard.
+
+## June 29, 2026 - Telegram Alert HTML Text Escaped
+
+### Changed
+
+- **Telegram alert HTML text escaped** - shared Functions Telegram alert delivery now escapes dynamic alert title, message, and metadata values before sending with Telegram HTML parse mode.
+
+### Boundaries
+
+- This is MenuList Cloud Functions alert-delivery formatting hardening only. Alert creation, Telegram token validation, chat routing, provider send behavior, platform email/WhatsApp delivery, Firestore rules/indexes, and Vercel deployment were not changed. Cloud Functions source changed; `firebase deploy --only functions:menulistMaintenanceScheduler,functions:verifyMenuPublish,functions:gcpBudgetAlertWebhook,functions:forceRepublish,functions:backfillStoresSummary,functions:messagingOnboarding,functions:msgExtractionWatcher,functions:computeDecisionBlocksScores,functions:triggerDecisionBlocksScoring,functions:triggerStoreNightlyScheduler --project menulist-qa --non-interactive` ran lint/build and was blocked by Cloud Resource Manager HTTP 403.
+
+## June 29, 2026 - Publish Verification Alert Copy Bounded
+
+### Changed
+
+- **Publish verification alert copy bounded** - failed menu-health verification alerts now send fixed operator copy while keeping failure code, response time, checks, and consecutive failure count in alert metadata.
+
+### Boundaries
+
+- This is MenuList Cloud Functions menu-health alert copy hardening only. Public menu verification, network target validation, store-health writes, alert creation, Telegram/platform delivery routing, Firestore rules/indexes, and Vercel deployment were not changed. Cloud Functions source changed; `firebase deploy --only functions:verifyMenuPublish --project menulist-qa --non-interactive` ran lint/build and was blocked by Cloud Resource Manager HTTP 403.
+
+## June 29, 2026 - Telegram Alert Scope Copy Bounded
+
+### Changed
+
+- **Telegram alert scope copy bounded** - shared Functions Telegram alert delivery now renders tenant and store identifiers as presence/length context instead of raw ID values.
+
+### Boundaries
+
+- This is MenuList Cloud Functions alert-delivery copy hardening only. Alert creation, Telegram token validation, chat routing, provider send behavior, platform email/WhatsApp delivery, top-level alert fields, Firestore rules/indexes, and Vercel deployment were not changed. Cloud Functions source changed; `firebase deploy --only functions:menulistMaintenanceScheduler,functions:verifyMenuPublish,functions:gcpBudgetAlertWebhook,functions:forceRepublish,functions:backfillStoresSummary,functions:messagingOnboarding,functions:msgExtractionWatcher,functions:computeDecisionBlocksScores,functions:triggerDecisionBlocksScoring,functions:triggerStoreNightlyScheduler --project menulist-qa --non-interactive` ran lint/build and was blocked by Cloud Resource Manager HTTP 403.
+
+## June 29, 2026 - Platform Alert Delivery Scope Copy Bounded
+
+### Changed
+
+- **Platform alert delivery scope copy bounded** - shared platform alert email/WhatsApp text now renders tenant, store, and alert identifiers as presence/length context instead of raw ID values.
+
+### Boundaries
+
+- This is MenuList Cloud Functions alert-delivery copy hardening only. Alert creation, registry lookup, trigger type routing, recipient resolution, channel flags, provider sends, top-level routing fields, Firestore rules/indexes, and Vercel deployment were not changed. Cloud Functions source changed; `firebase deploy --only functions:menulistMaintenanceScheduler,functions:verifyMenuPublish,functions:gcpBudgetAlertWebhook,functions:forceRepublish,functions:backfillStoresSummary,functions:messagingOnboarding,functions:msgExtractionWatcher,functions:computeDecisionBlocksScores,functions:triggerDecisionBlocksScoring,functions:triggerStoreNightlyScheduler --project menulist-qa --non-interactive` ran lint/build and was blocked by Cloud Resource Manager HTTP 403.
+
+## June 29, 2026 - Critical Alert Escalation Copy Bounded
+
+### Changed
+
+- **Critical alert escalation copy bounded** - unresolved critical alert escalation now sends fixed Telegram/platform delivery titles and messages, with stored alert title/message/timestamp represented only as presence/length metadata.
+
+### Boundaries
+
+- This is MenuList Cloud Functions scheduler delivery hardening only. Unresolved-alert query shape, mute behavior, delivery attempts, platform routing fields, trigger type, task cadence, Firestore rules/indexes, and Vercel deployment were not changed. Cloud Functions source changed; `firebase deploy --only functions:menulistMaintenanceScheduler --project menulist-qa --non-interactive` ran lint/build and was blocked by Cloud Resource Manager HTTP 403.
+
+## June 29, 2026 - Onboarding Subscription Local Logs Bounded
+
+### Changed
+
+- **Onboarding subscription diagnostics bounded** - validation security breadcrumbs, existing-user onboarding attempts, success breadcrumbs, and local onboarding payment logs now use stable codes plus presence/length metadata instead of raw business, user, tenant, store, plan, or subscription identifiers.
+
+### Boundaries
+
+- This is MenuList onboarding/billing diagnostic hardening only. Onboarding auth, rate limiting, body cap, validation, tenant/store transaction, public cache refresh, Razorpay plan/subscription creation, subscription document creation, owner-facing responses, Firestore rules/indexes, Cloud Functions, Firebase deployment, and Vercel deployment were not changed.
+
+## June 29, 2026 - Billing State-Machine Diagnostics Bounded
+
+### Changed
+
+- **Billing state-machine diagnostics bounded** - invalid and unknown subscription status-transition warnings in the app billing state machine and the active Functions reconciliation mirror now use fixed warning text with bounded status/context metadata only.
+
+### Boundaries
+
+- This is MenuList billing diagnostic hardening only. Subscription transition validation, status writes, Razorpay provider calls, reconciliation reads/writes, entitlement sync, cache invalidation behavior, API shape, Firestore rules/indexes, and Vercel deployment were not changed. Cloud Functions source changed; `firebase deploy --only functions:computeDecisionBlocksScores --project menulist-qa --non-interactive` ran lint/build and was blocked by Cloud Resource Manager HTTP 403.
+
+## June 29, 2026 - Staff Management Diagnostics Bounded
+
+### Changed
+
+- **Staff management diagnostics bounded** - missing Firebase Auth users, staff password setup email failures, role-repair breadcrumbs, staff creation/addition, passcode reset, force-signout breadcrumbs, and staff security-event details now use stable staff diagnostic codes or bounded metadata only.
+
+### Boundaries
+
+- This is MenuList staff-management diagnostic/security-event hardening only. Staff create/update/remove/reset/signout behavior, role assignment, Firebase Auth disable/revoke/password-reset attempts, Firestore writes, API shape, Cloud Functions, Firebase rules/indexes, Vercel deployment, and Firebase deployment were not changed.
+
+## June 29, 2026 - Platform Entity-Block Auth-Miss Diagnostics Bounded
+
+### Changed
+
+- **Platform entity-block auth-miss diagnostics bounded** - missing Firebase Auth users during platform user block sync now use a stable Firebase Admin diagnostic code with bounded reason/user metadata only.
+
+### Boundaries
+
+- This is MenuList platform-route diagnostic hardening only. Entity block/unblock behavior, tenant/store summary sync, Firebase Auth disable/token-revoke attempts, public cache invalidation, Owner Business Assistant packet cache invalidation, API shape, Cloud Functions, Firebase rules/indexes, Vercel deployment, and Firebase deployment were not changed.
+
+## June 29, 2026 - Session Provider Bootstrap Diagnostics Bounded
+
+### Changed
+
+- **Session provider bootstrap diagnostics bounded** - store bootstrap and master-outlet policy load failures now use stable Firebase bootstrap failure codes with bounded session/store metadata only.
+
+### Boundaries
+
+- This is MenuList client bootstrap diagnostic hardening only. NextAuth session handling, store/tenant/subscription reads, active-store state, outlet policy behavior, owner-facing loading behavior, API routes, Cloud Functions, Firebase rules/indexes, Vercel deployment, and Firebase deployment were not changed.
+
+## June 29, 2026 - Chat Analytics Callable Breadcrumbs Removed
+
+### Changed
+
+- **Chat analytics callable breadcrumbs removed** - manual aggregation and historical backfill client helpers no longer log callable-start inputs or document raw logger examples.
+
+### Boundaries
+
+- This is MenuList client-service diagnostic hardening only. Callable names, request payloads, return shapes, platform backfill UI behavior, Firestore reads/writes inside Cloud Functions, API routes, Cloud Functions, Firebase rules/indexes, Vercel deployment, and Firebase deployment were not changed.
+
+## June 29, 2026 - Ingestion Listener Diagnostics Bounded
+
+### Changed
+
+- **Ingestion listener diagnostics bounded** - the owner ingestion-job listener active-job breadcrumb now uses a stable hook diagnostic code with bounded job id/status metadata only.
+
+### Boundaries
+
+- This is MenuList client-hook diagnostic hardening only. Listener scope checks, snapshot reads, active-job selection, development finalize-publish trigger behavior, owner toasts, Firestore writes, API routes, Cloud Functions, Firebase rules/indexes, Vercel deployment, and Firebase deployment were not changed.
+
+## June 29, 2026 - Business Copy Translation Repair Diagnostics Bounded
+
+### Changed
+
+- **Business Copy translation repair diagnostics bounded** - missing-translation repair no-op, start, empty-result, and success breadcrumbs now use stable AI service diagnostic codes with project/store/reference-language presence-length metadata and field/language counts only.
+
+### Boundaries
+
+- This is MenuList client-service diagnostic hardening only. Business Copy coverage checks, translation request payloads, localization merge behavior, owner-facing failure copy, Firestore writes, API routes, Cloud Functions, Firebase rules/indexes, Vercel deployment, and Firebase deployment were not changed.
+
+## June 28, 2026 - Neelvara Parent Website Rename
+
+### Changed
+
+- **Neelvara parent website rename** - renamed the earlier parent operating website working name to Neelvara Systems across the product-site route group, shared constants, deployment/domain routing, local prefix, private portfolio alias, public assets, optional public env keys, and documentation packet.
+- **Neelvara blue brand system applied** - recalibrated the parent website from the earlier dark/warm glass direction to the Neelvara blue system: ice-white canvas, deep navy text, Neel blue CTAs, blue/indigo/violet mark gradient, controlled violet accents, refreshed icon/OG assets, and updated website/validation docs.
+- **Uploaded Neelvara logo applied** - replaced the generated square mark with the uploaded transparent Neelvara SVG mark in site chrome, footer identity, 404, and Organization JSON-LD; retained transparent PNG derivatives for favicon/manifest and Open Graph imagery without a visible square or rectangle frame.
+- **Neelvara metadata and icon coverage tightened** - added explicit favicon, Apple touch icon, and manifest icon derivatives from the SVG mark, kept duplicate `/home` canonicalized to `/`, and made secondary-page Twitter metadata page-specific.
+
+### Boundaries
+
+- This is a parent company website naming/routing/docs/visual-system update only. Neelvara remains a static product-domain site, not a database-backed product. No `PRODUCT_IDS` entry, Firebase project, API route, auth surface, forms, analytics, cookie banner, Vercel deployment, or Firebase deployment was added.
+
+## June 28, 2026 - Answerlattice Provider Health Diagnostics Bounded
+
+### Changed
+
+- **Answerlattice provider health diagnostics bounded** - the daily Gemini smoke check now stores fixed Answerlattice provider-health failure codes with source error name/code/status metadata. Failed checks rethrow fixed scheduler-facing codes instead of raw provider/runtime exception text.
+
+### Boundaries
+
+- This is Answerlattice Cloud Functions diagnostic hardening only. Daily smoke-check timing, model/provider fields, latency/status/success fields, scheduler task wiring, Firestore rules, Firestore indexes, Storage rules, Next.js routes, Vercel deployment, and MenuList runtime behavior were not changed.
+
+## June 28, 2026 - Answerlattice Context Bundle Repair Diagnostics Bounded
+
+### Changed
+
+- **Answerlattice context bundle repair diagnostics bounded** - nightly compiled-context repair now uses fixed changelog-load and repair failure codes. Failed build locks and scheduler-facing repair results no longer store raw Storage/Admin exception text.
+
+### Boundaries
+
+- This is Answerlattice Cloud Functions diagnostic hardening only. Source-version checks, bundle reads, immutable Storage writes, manifest status semantics, stale/ready behavior, public/private bundle paths, Firestore rules, Storage rules, Next.js routes, Vercel deployment, and MenuList runtime behavior were not changed.
+
+## June 28, 2026 - Answerlattice Support Board Sync Diagnostics Bounded
+
+### Changed
+
+- **Answerlattice Support Board sync diagnostics bounded** - nightly Support Board sync now returns a fixed failure code and logs success/failure with tenant/store scope booleans plus source error name/code/status only. Raw tenant/store IDs and raw exception text are no longer emitted from this scheduled sync path.
+
+### Boundaries
+
+- This is Answerlattice Cloud Functions diagnostic hardening only. Support Board source scans, deterministic card IDs, card upserts, resolved/unchanged skips, summary writes, feature flags, Firestore rules, Firestore indexes, Storage rules, Next.js routes, Vercel deployment, and MenuList runtime behavior were not changed.
+
+## June 28, 2026 - Answerlattice Scheduled Draft Diagnostics Bounded
+
+### Changed
+
+- **Answerlattice scheduled draft diagnostics bounded** - nightly draft generation now logs fixed failure codes for Gemini call, parse, per-proposal, and batch failures with source error name/code/status, scope booleans, identifier presence/length metadata, and prompt/response lengths only. Raw tenant/store IDs, proposal IDs, entity IDs, provider exceptions, generated content, and prompt text are no longer emitted from these failure diagnostics.
+
+### Boundaries
+
+- This is Answerlattice Cloud Functions diagnostic hardening only. Draft prompt construction, proposal reads/writes, draft content storage, audit logs, AI operation accounting, scheduler wiring, Firestore rules, Firestore indexes, Storage rules, Next.js routes, Vercel deployment, and MenuList runtime behavior were not changed.
+
+## June 28, 2026 - Answerlattice Predictive Trigger Diagnostics Bounded
+
+### Changed
+
+- **Answerlattice predictive trigger sync diagnostics bounded** - nightly predictive trigger auto-generation, summary rebuild, and effectiveness update failures now log fixed failure codes with source error name/code/status and scope metadata only. Raw tenant/store identifiers and raw exception objects are no longer emitted from these sync failures.
+
+### Boundaries
+
+- This is Answerlattice Cloud Functions diagnostic hardening only. Trigger suggestion creation, summary rebuild source hashes, compiled-context invalidation, effectiveness scoring, auto-disable thresholds, scheduler wiring, Firestore rules, Firestore indexes, Storage rules, Next.js routes, Vercel deployment, and MenuList runtime behavior were not changed.
+
+## June 28, 2026 - Answerlattice Friction Diagnostics Bounded
+
+### Changed
+
+- **Answerlattice friction diagnostics bounded** - friction aggregation, friction stats cleanup, and weekly friction insight generation now log fixed failure codes with source error name/code/status and scope metadata only. Failed weekly insight results now return a fixed skipped-reason code instead of raw exception text.
+
+### Boundaries
+
+- This is Answerlattice Cloud Functions diagnostic hardening only. Friction signal aggregation, daily stats writes, snapshot writes, cleanup limits, weekly insight prompts/results, AI accounting, scheduler wiring, Firestore rules, Firestore indexes, Storage rules, Next.js routes, Vercel deployment, and MenuList runtime behavior were not changed.
+
+## June 28, 2026 - Answerlattice Ticket Knowledge Diagnostics Bounded
+
+### Changed
+
+- **Answerlattice ticket knowledge diagnostics bounded** - ticket-resolution extraction now returns fixed scheduler-facing error codes for missing entities, parse failures, per-entity extraction failures, and fatal failures. Provider and extractor logs use fixed failure codes with source error name/code/status and scope/identifier presence metadata instead of raw entity IDs, entity names, or exception text.
+
+### Boundaries
+
+- This is Answerlattice Cloud Functions diagnostic hardening only. Ticket-resolution signal reads, proposal merge/create behavior, audit lineage, AI accounting, confidence gates, scheduler wiring, Firestore rules, Firestore indexes, Storage rules, Next.js routes, Vercel deployment, and MenuList runtime behavior were not changed.
+
+## June 28, 2026 - Answerlattice Onboarding Bootstrap Diagnostics Bounded
+
+### Changed
+
+- **Answerlattice onboarding bootstrap diagnostics bounded** - bootstrap provider, discovery, extraction, candidate, promotion, draft, tenant, and fatal failure logs now use fixed failure codes with source error name/code/status and presence/length metadata only. Scheduler-facing bootstrap errors and `kb_generation_jobs.onboardingBootstrap.errorMessage` now store fixed codes instead of raw exception text.
+
+### Boundaries
+
+- This is Answerlattice Cloud Functions diagnostic hardening only. Bootstrap discovery, entity extraction, auto-promotion, draft generation, audit writes, AI accounting, scheduler wiring, Firestore rules, Firestore indexes, Storage rules, Next.js routes, Vercel deployment, and MenuList runtime behavior were not changed.
+
+## June 28, 2026 - Answerlattice Master Scheduler Diagnostics Bounded
+
+### Changed
+
+- **Answerlattice master scheduler diagnostics bounded** - master scheduler task failures now use fixed failure codes in task summaries and `platformSummary/answerlatticeSchedulerState`, with source error name/code/status metadata stored separately. Task and lease-release logs no longer include raw exception text.
+
+### Boundaries
+
+- This is Answerlattice Cloud Functions diagnostic hardening only. Scheduler task order, task leases, tenant settlement locks, nightly governance behavior, owner/customer surfaces, Firestore rules, Firestore indexes, Storage rules, Next.js routes, Vercel deployment, and MenuList runtime behavior were not changed.
+
+## June 28, 2026 - Website Desktop Taste Audit Polish
+
+### Changed
+
+- **Homepage sticky CTA reduced** - the desktop sticky CTA now appears as a compact floating tray with a one-line action button instead of a full-width bottom bar that could cover dense proof sections.
+- **Dedicated feature journeys tightened** - feature-page journey cards use more viewport-aware desktop heights and denser short-screen spacing so the sticky proof layout reads as one coherent panel instead of oversized compartments.
+- **Dark-mode proof visuals calmed** - website proof screenshot frames and images now use darker surface treatment, softer contrast, and theme-aware shadows in dark mode.
+- **Feature proof images load directly** - feature proof galleries now use direct public image assets for the static marketing screenshots, avoiding optimizer-dependent failures during route review.
+- **Feature overview heading spacing fixed** - the `/features` hero keeps the visual line break while exposing readable text spacing instead of `needs.No` in rendered text.
+
+### Validation
+
+- Chrome route sweeps covered the homepage, feature overview, dedicated feature pages, AI Menu Manager, how-it-works, multi-location, pricing, resources, create-menu, contact, legal, and about routes for horizontal overflow, missing locale keys, header consistency, and visible proof-image loading.
+
+### Boundaries
+
+- This is public website component, CSS, and docs polish only. Pricing/payment runtime, auth behavior, upload/link-import APIs, owner dashboard runtime, customer menu and Official Business Page runtime, Firebase rules, Cloud Functions, Vercel deployment, and DNS were not changed.
+
+## June 28, 2026 - Website Taste Audit Mobile Polish
+
+### Changed
+
+- **MenuList website mobile hero tightened** - the homepage mobile CTA area now stacks the primary and secondary actions full-width with tighter narrow-screen spacing so first-time owners can read both actions cleanly.
+- **Public consent banner compacted** - the shared public cookie/analytics banner uses a narrower desktop card and denser mobile controls while preserving explicit Okay, Decline, and Privacy choices.
+- **Public English website wording cleaned** - public English MenuList website copy and route metadata now avoid dash-heavy phrasing where a simpler sentence or colon reads cleaner.
+
+### Boundaries
+
+- This is public website CSS, locale, metadata, and docs polish only. Pricing/payment runtime, auth behavior, upload/link-import APIs, owner dashboard runtime, customer menu and Official Business Page runtime, Firebase rules, Cloud Functions, Vercel deployment, and DNS were not changed.
+
+## June 28, 2026 - Menu Extraction Worker Diagnostic Hardening
+
+### Changed
+
+- **Menu extraction worker diagnostics bounded** - `processMenuImagesJob` and `saveFilesToProject` now log bounded ID presence/length metadata, counts, fixed failure codes, and source error name/code/status only. Raw job/project/store/tenant IDs, target-language arrays, full extracted payloads, full project update payloads, project paths, and raw exception messages are no longer logged.
+- **Extraction project defaults mirror public summaries** - When first extraction replaces a generic project name/description from the extracted profile, the Functions save helper now mirrors those fields into the existing `projectsSummary` row so public menu and OBP summaries match the saved project after cache refresh.
+- **Menu intake and job-route diagnostics bounded** - App-side menu-intake preflight and protected menu-extraction job routes now log stable menu-processing diagnostic codes with bounded job/project/tenant/store/user metadata, counts, severity, and source error metadata only.
+- **Menu extraction verifier tightened** - `npm run verify:menu-extraction-pipeline` now guards the worker and project-save helper against raw diagnostic, extracted-payload, and project-payload logging regressions.
+- **Extraction Monitor DAL diagnostics bounded** - Extraction Monitor recent-job, job-detail, health, quality, cost, and dashboard snapshot read failures now use bounded ops failure codes instead of raw `ExtractionDAL` secure-error calls.
+- **Notification helper diagnostics bounded** - Generic notification duplicate/rate-limit/log-write/log-target failures and owner-notification processing breadcrumbs now use stable notification failure codes with bounded product, trigger, event, recipient, and reference metadata.
+- **Profile update helper diagnostics bounded** - Server-side profile update success and failure logs now use bounded auth diagnostic codes instead of raw security-context logger payloads.
+- **Platform ops route diagnostics bounded** - Mute-alerts, SAFE_MODE, platform-notification, and owner-notification ops route failures now use stable ops failure codes with bounded operator, request-path, action, filter, product, and event metadata.
+- **Pricing integrity diagnostics bounded** - Pricing MOL event logging, price-update breadcrumbs, and PDF state breadcrumbs now use stable pricing diagnostic codes with bounded project, item, attribute, user, tenant, store, and failure-reason metadata.
+- **AI pack status diagnostics bounded** - `/api/ai-packs/status` now logs unexpected capacity-check failures through runtime diagnostics with bounded user, tenant, store, and request-path metadata.
+- **Store creation refreshes public cache** - Manual `addStore()` now requests the same public menu/OBP/store lookup cache refresh as store updates after `storesSummary` is synced, and the public-business verifier guards the path.
+- **Store updates wake connected screens after fresh cache** - Store profile saves now sync `storesSummary` before public cache revalidation, then touch initialized Digital Screens when rendered store fields change. Master-to-outlet logo/currency propagation now does the same for outlet screens.
+- **Server public-output changes wake connected screens** - Functions-side public cache revalidation can now touch initialized Digital Screens after first-extraction project saves, scheduled special-menu activation/deactivation, and subscription entitlement attribution changes.
+- **POS webhook targets resolved before delivery** - POS webhook test and delivery routes now resolve validated hostnames and reject local/private DNS targets before project reads, menu-version increments, payload construction, or outbound fetch.
+- **Functions public-output fetch targets guarded** - Shared Functions public cache revalidation and post-publish menu health verification now validate outbound targets with public HTTPS plus DNS resolution before fetch; localhost/private/link-local/metadata-style targets are rejected, with localhost allowed only in the Functions emulator.
+- **Extraction worker source fetches rechecked** - The lower-level Gemini upload helper now revalidates extraction file URLs against the expected Firebase Storage bucket/prefix and public DNS target guard before fetching the file for provider upload.
+- **Menu-intake identity source fetches rechecked** - The app-server preflight helper now revalidates owner/public upload URLs against expected Storage prefixes and public DNS target rules before reading files for identity analysis.
+- **Menu Link Import rendered fallback constrained** - Owner-provided browser-rendered menu links now revalidate the render target before Chrome starts, skip IP-literal render targets, pin Chrome DNS for the validated host, and force non-target hosts through a dead proxy with loopback bypass removed.
+- **Meta Graph message endpoints encoded** - WhatsApp owner notifications, platform alert WhatsApp delivery, Messaging Onboarding WhatsApp sends, and SignalDesk Meta sends now URL-encode configured provider endpoint IDs before building Graph API `/messages` paths.
+- **Functions Slack webhook targets guarded** - Daily chat aggregation Slack failure alerts and the dormant negative-feedback Slack alert now validate configured webhook URLs with the shared Functions public HTTPS/DNS target guard before outbound fetch.
+- **Onboarding store creation refreshes public cache** - Self-serve onboarding and reseller onboarding now refresh public menu/OBP/store lookup cache immediately after the tenant/store transaction commits, and the tenant-safety verifier guards both server routes.
+- **Security validator diagnostics bounded** - Generic webhook validation, webhook IP checks, Razorpay webhook validation, and file validation now use stable security diagnostic codes with bounded provider, IP, algorithm, encoding, file type, and size metadata.
+- **Shared API validation failure text generic** - `validateAPIInput()` now returns generic invalid-input text instead of exposing Zod issue paths or schema messages through route `details`.
+- **Publish-Gate validation copy bounded** - Menu editor Publish-Gate MCE validation messages now pass through the shared safe UI message helper before owner display.
+- **Secure logger error output bounded** - The shared app secure logger now emits error name/code/status plus message and stack presence-length metadata only. Raw exception messages and stacks are no longer emitted by `secureError()` or returned by `sanitizeErrorForClient()`.
+- **Browser diagnostic captures bounded** - Failure-screen diagnostics, client console snapshots, support-ticket browser log capture, and Sentry context metadata now reuse the bounded error serializer instead of retaining raw `Error.message` text or stack snippets.
+- **DAL owner toast errors tightened** - Shared client DAL error toasts now reject long, multiline, structured, URL/API, provider, stack, and code-like exception text before falling back to generic owner-safe copy.
+- **Auth security helper diagnostics bounded** - Account-lock checks, failed-login logging, successful-login logging, and security-summary failures now use stable auth failure codes with bounded email/source/reason/date metadata.
+- **Functions health/rate-limit diagnostics bounded** - Health Signals per-store/fatal errors and Functions Upstash rate-limit fail-open paths now log bounded tenant/store/key metadata and source error name/code/status instead of raw runtime exceptions.
+- **Functions monitoring fail-open diagnostics tightened** - Cloud Functions SAFE_MODE and deploy-mute checks now use stable fail-open failure codes and shared monitoring source-error metadata.
+- **Functions system-error storage bounded** - Cloud Functions system-error tracking now stores stable message codes, stack presence/length, sanitized context metadata, and bounded error-summary rows instead of raw exception messages, stacks, or arbitrary context values.
+- **Functions alert identifier diagnostics bounded** - Alert creation, delivery, acknowledgement, active-alert reads, rule evaluation, and publish-verification health updates now log alert, user, tenant, and store identifiers as presence/length metadata.
+- **Decision Blocks scheduler progress diagnostics bounded** - Nightly scheduler store/project progress, manual recovery, special-menu switching, reseller expiry, fatal scheduler failures, and manual scoring triggers now use bounded identifier metadata and stable manual recovery failure text.
+- **Lifecycle messaging identifier diagnostics bounded** - Legacy lifecycle messaging idempotency, recipient lookup, message-log failures, skip paths, send results, and renewal/suspension scheduler failures now log store, tenant, reference, and subscription identifiers as presence/length metadata.
+- **Direct extraction and messaging watcher diagnostics bounded** - Direct menu extraction request, batch, rate-limit, transaction, and upload-success logs plus Messaging Onboarding extraction watcher session/temp-project logs now use bounded presence/length metadata and stable failure codes.
+- **Messaging webhook diagnostics bounded** - Messaging Onboarding webhook provider-path, IP, queue-failure, duplicate-message, inbound-message, and provider-user diagnostics now use bounded presence/length metadata and source error name/code/status only.
+- **Messaging session-engine diagnostics bounded** - Messaging Onboarding forbidden-transition and upload-failure logs now use session ID presence/length metadata while preserving session IDs in required state, event, and storage paths.
+- **WhatsApp provider diagnostics bounded** - Messaging Onboarding WhatsApp text-send and interactive-fallback logs now record provider response status and presence/length metadata only, not raw provider response text or provider-user suffixes.
+- **Messaging publish-pipeline diagnostics bounded** - The retained Cloud Functions publish-pipeline reference now logs session, tenant, store, and project identifiers as presence/length metadata for no-price, confirmation-failure, and publish-success breadcrumbs.
+- **Messaging intake diagnostics bounded** - Messaging Onboarding intake retry, confirmation, fix-message, session-processing, asset-validation, and extraction-job transition diagnostics now use bounded session metadata and fixed transition reasons.
+- **Messaging inbound queue diagnostics bounded** - Messaging Onboarding inbound queue lifecycle events and processing-failure logs now use message ID presence/length metadata while keeping queue document IDs intact for idempotency.
+- **Messaging event metadata retention bounded** - Messaging Onboarding lifecycle events now sanitize metadata at the shared Functions writer and platform ops reader, keeping only allowlisted scalar telemetry and presence/length metadata for sensitive identifiers, URLs, names, and hashes.
+- **Messaging preview event metadata bounded** - App-side preview approve/fix and publish event writes now use the same bounded metadata policy, so business names, issue arrays, and tenant/store/project IDs are not retained raw in lifecycle event metadata.
+- **Functions circuit breaker diagnostics bounded** - Shared Functions circuit-breaker failure logs now record source error name/code/status instead of raw provider exception messages while preserving the existing open, half-open, reset, and fail-fast behavior.
+- **Scheduler alert escalation metadata bounded** - Maintenance scheduler unresolved-critical alert escalations now keep alert, tenant, and store identifiers as presence/length metadata in delivery payloads while preserving routing fields.
+- **Owner notification Functions processor diagnostics bounded** - MenuList Functions owner-notification WhatsApp failures now store `whatsapp_send_failed`, log response status/body length only, and log processor/alert failures with bounded event-id and source error metadata instead of raw provider response bodies or exception text.
+- **AI Gateway retry diagnostics bounded** - Frontend and Cloud Functions Gemini gateway retry/exhaustion logs now record method, attempt counts, delay, key-count, and source error name/code/status metadata only. Raw Gemini provider messages and raw provider detail JSON are no longer emitted from gateway diagnostics.
+- **AI route provider diagnostics bounded** - Shared Gemini route diagnostics now record source error name/code/status, message/stack presence, nested detail counts, and response text length only. Raw provider messages, nested provider detail payloads, stack previews, and response text previews are no longer returned by the helper or campaign-caption parse diagnostics.
+- **Text-generation route diagnostics bounded** - Business copy, description, SEO, new-item metadata, and translation routes now use shared `logAIRouteFailure` diagnostics for provider, parse, non-object/retry, accounting, and top-level failures, with bounded warning context for retry/incomplete-response/partial-coverage paths. Business copy, description, and SEO normal request breadcrumbs also use bounded AI route context. Route identifiers are logged as presence/length metadata, gateway stats are summarized as counts, and raw thrown objects are no longer passed to `logger.error`.
+- **AI media and design route diagnostics bounded** - Campaign caption, Menu Card design-advisor, single image generation, image generation provider helpers, and image editing now use stable `logAIRouteFailure` codes for provider, parse, accounting, helper, and top-level failures. Media/prompt diagnostics keep counts, lengths, booleans, gateway stats, and source error name/code/status only instead of raw thrown objects or raw route identifiers.
+- **AI reference-image fetches scoped** - Single image generation, batch image generation, and image editing now fetch persisted Firebase Storage reference images only after bucket, tenant/store image-prefix, and app-server DNS target validation. Local data URL previews remain unchanged.
+- **Vercel domain API paths encoded** - The shared Vercel domain helper now URL-encodes project and domain path segments for custom-domain add, DNS status, and removal calls while keeping the fixed Vercel API target and existing request bodies.
+- **Telegram alert bot-token path guarded** - App-side and Cloud Functions Telegram alert delivery now validates the configured bot-token shape and URL-encodes the bot-token path segment before calling the fixed Telegram Bot API endpoint.
+- **Answerlattice intake manual trigger target guarded** - The platform intake monitor now accepts only the fixed Answerlattice nightly trigger host/path shape and validates the target through the app-server DNS guard before manual retry fetches.
+- **Answerlattice workflow delivery targets guarded** - Answerlattice Functions workflow integrations now validate Slack webhook targets through a public DNS guard, encode GitHub owner/repo path segments, and keep GitHub/Linear success diagnostics bounded.
+- **Answerlattice integration event-bus diagnostics bounded** - Answerlattice Functions event-cap, event-emitted, and event-emit failure breadcrumbs now use bounded scope/payload metadata and source error name/code/status instead of raw tenant/store scope or raw Firestore exception text.
+- **Answerlattice integration delivery logger diagnostics bounded** - Answerlattice Functions delivery-log, event-status, and health-summary write failures now log stable failure codes with bounded event/scope/result metadata and source error name/code/status instead of raw Firestore exception text or raw event/tenant/store identifiers.
+- **Answerlattice Functions Firebase bootstrap diagnostics bounded** - Answerlattice Functions Admin credential and service-account file load failures now log stable bootstrap failure codes with source error name/code/status and credential-path presence/length metadata instead of raw exception text or raw local credential paths.
+- **Answerlattice Functions entrypoint diagnostics bounded** - Manual scheduler unauthorized/invalid-scope paths and integration event processing breadcrumbs now use stable failure codes, bounded request/scope metadata, and event ID presence/length metadata instead of raw request IPs, raw `tId/sId`, raw event IDs, or local exception text.
+- **Answerlattice workflow event processor diagnostics bounded** - Invalid-event, delivery-attempt, and no-enabled-adapter breadcrumbs now use stable failure/event metadata, event ID presence/length metadata, and tenant/store scope booleans instead of raw event IDs or raw `tId/sId` values.
+- **Answerlattice workflow circuit-breaker diagnostics bounded** - Circuit-breaker-opened breadcrumbs now use a stable failure code and tenant/store scope booleans instead of raw `tId/sId` values while preserving existing config summary writes.
+- **Answerlattice workflow adapter failure text bounded** - Slack, email, GitHub, and Linear provider/runtime failures now return fixed local delivery-error text instead of provider response bodies, GraphQL error messages, SMTP exception text, or fetch exception text.
+- **Answerlattice retention cleanup diagnostics bounded** - Operational retention cleanup task failures now record fixed scheduler failure codes and bounded source-error metadata instead of raw exception text.
+- **Answerlattice nightly scheduler diagnostics bounded** - Governance batch diagnostics now use fixed scheduler failure codes, scoped/global labels, source error name/code/status metadata, and bounded detail counts instead of raw exception text or raw diagnostic objects in workflow event payloads.
+- **Staff password setup provider URL encoded** - MenuList and Answerlattice staff password setup emails now build the fixed Firebase Auth `sendOobCode` endpoint with `URLSearchParams`, reject malformed local API keys before provider calls, and return fixed provider failure codes instead of Firebase Auth response text.
+- **Today campaign image exports constrained** - Today campaign WhatsApp image share, poster, QR tent, and screen downloads now use one browser-side image fetch helper that allows only expected image URL shapes, checks response status/type/size, and rejects oversized or non-image blobs before sharing or downloading.
+- **PWA asset and utility route diagnostics bounded** - Customer App icon/splash/screenshot generation, review-state reads, and temporary-status writes now use stable runtime failure codes with bounded store/tenant/user metadata and source error name/code/status only instead of raw route identifiers in secure logs.
+- **Screen seen diagnostics bounded** - `/api/screen/seen` now logs daily signal success and unexpected route failures with bounded screen-token/store metadata instead of raw store IDs or raw route exceptions.
+- **Auth callback and set-claims diagnostics bounded** - NextAuth OAuth validation, OAuth user-create/login audit catches, dangerous session-key diagnostics, signout, inherited entity-block lookup failures, and custom-claims/Firebase Auth sync breadcrumbs now use stable auth diagnostic codes with email/session/entity/claim presence-length metadata and source error name/code/status only.
+- **Razorpay webhook failure text bounded** - Payment-failure webhook alerts and subscription status remarks now use fixed local text with bounded provider-error presence/length metadata instead of raw Razorpay `error_description` or `error_reason` text.
+- **Razorpay verification diagnostics bounded** - Top-up order creation, top-up verification, subscription verification, and webhook processing now log stable failure codes with bounded payment/order/subscription/provider metadata instead of raw route/provider exceptions or raw provider IDs in diagnostic logs.
+- **Payment fallback response details fixed** - Shared Firestore/Razorpay payment error fallbacks now return fixed detail text in every environment instead of development-only raw provider or Firestore exception messages.
+- **Claim-account unexpected diagnostics bounded** - `POST /api/auth/claim-account` now routes unexpected catch-path failures through bounded auth diagnostics with source error name/code/status and request metadata presence/length only, instead of logging raw thrown values.
+- **Claim validation and password route diagnostics bounded** - `GET /api/auth/validate-claim` and `POST /api/auth/change-password` now log unexpected claim validation, missing Firebase API key, current-password verification, and password-route failures through bounded auth diagnostics instead of raw thrown objects or full session/security context.
+- **Auth form error rendering allowlisted** - Login and forgot-password pages now render only fixed local auth failure copy from component state instead of trusting arbitrary `error.message` values.
+- **Store-switch route diagnostics bounded** - `POST /api/auth/switch-store` now logs unexpected failures and unauthorized switch breadcrumbs with bounded auth metadata instead of raw tenant/store IDs or route exceptions.
+- **Reseller API diagnostics bounded** - Reseller profile, clients, monthly summary, manage, onboard, renew, add-location, and confirm-payment routes now log stable `reseller_*_route_failed` codes with bounded reseller/user/store/subscription metadata; onboarding local logs no longer persist raw business identifiers or exception messages.
+- **AI Menu Manager proposal-action diagnostics bounded** - Proposal status updates and approvals now log stable runtime failure codes with bounded proposal/project/scope metadata instead of raw route exceptions or silent approval failures.
+- **Phone OTP diagnostics bounded** - Phone OTP start/verify unexpected route failures and consumed-token user mismatches now log stable `phone_otp_*` auth diagnostic codes with bounded request/user metadata instead of raw exceptions or raw user IDs, and the Phone OTP panel no longer displays browser exception text from failed fetch/sign-in paths.
+- **Answerlattice notification route diagnostics bounded** - `/api/notifications/send` now logs unexpected route failures as `notification_send_route_failed` with bounded user/payload metadata instead of raw caught exceptions.
+- **Google Analytics server diagnostics bounded** - `GET /api/analytics/reports` and the shared Google Analytics server helper now log stable analytics failure codes with bounded source error metadata and property/date presence metadata instead of raw provider exception messages. Provider permission failures keep the generic owner response and coded 403 boundary.
+- **Owner analytics API diagnostics bounded** - Legacy owner analytics reads at `/api/analytics`, `/api/analytics/menu`, `/api/analytics/locations`, `/api/analytics/realtime`, and `/api/analytics/roi-metrics` now use shared analytics diagnostics with stable route failure codes, bounded property/date/user/tenant metadata, and source error name/code/status only instead of passing raw route exceptions to `secureError()`.
+- **Messaging asset-intelligence diagnostics bounded** - Messaging Onboarding asset validation no longer logs raw Gemini parse responses or raw upload IDs. Upload-fetch, upload-URL rejection, and parse failures now log stable validation codes, upload count/index, length metadata, response length, and source error name/code/status only; upload fetches are rejected unless the Storage URL decodes to the session-scoped `messagingOnboarding/{sessionId}/{uploadId.ext}` object.
+- **Messaging asset-intelligence upload targets guarded** - Messaging Onboarding asset validation now validates session upload URLs through the shared Functions public HTTPS/DNS target guard before reading files for Gemini validation.
+- **WhatsApp media download target guarded** - Messaging Onboarding now URL-encodes provider media IDs, uses stable local media lookup/download failure codes, and rejects Meta-returned media URLs before binary download unless the URL is public HTTPS and DNS does not resolve to local/private network targets.
+- **Messaging active-publish cache diagnostics bounded** - Messaging Onboarding active publish cache revalidation failures now log `messaging_onboarding_publish_cache_revalidation_failed` with bounded tenant/store/project/user metadata, tag count, owner-assistant packet cache state, and source error metadata instead of raw route exceptions.
+- **Messaging preview action diagnostics bounded** - Messaging Onboarding approve/fix preview routes now log stable `messaging_preview_*` diagnostics with bounded session/provider/state/count metadata, and publish retry recovery no longer stores raw exception messages in state history or `PUBLISH_FAILED` events.
+- **Admin subdomain rename diagnostics bounded** - The platform-only subdomain rename route now logs unexpected failures as `admin_subdomain_rename_failed` with bounded operator, tenant, store, proposed-subdomain, reason, and acknowledgement metadata instead of raw route exceptions.
+- **Outlet billing route diagnostics bounded** - Outlet create/deactivate billing-provider, revert, and top-level route failures now use stable multi-outlet diagnostic codes with tenant/store/outlet/provider ID length metadata and source error name/code/status only instead of raw provider or route exception messages.
+- **AI operation detailed response storage bounded** - Shared MenuList/Answerlattice AI operation logging no longer stores raw provider response text in detailed mode. Detailed records keep usage metadata plus response presence/length only.
+- **AI accounting finalizer diagnostics bounded** - Shared MenuList and Answerlattice AI accounting finalizers now log operation-log, credit-consumption, and balance-detail update failures through bounded diagnostics instead of raw `logger.error` exception/context payloads.
+- **AI operations read diagnostics bounded** - `GET /api/ai-operations` now logs transaction-history read failures and rate-limit events with bounded tenant/store/user/action/cursor metadata plus source error name/code/status only instead of raw request identifiers or raw thrown errors.
+- **Review reply and weekly narrative route diagnostics bounded** - Review Reply accounting failures and local weekly narrative operation/top-level failures now use stable runtime codes with bounded tenant/store/user/date/business metadata instead of raw logger exception payloads or raw tenant/store success logs.
+- **Batch image-generation task diagnostics bounded** - Batch trigger, Cloud Tasks enqueue, and worker failure paths now log stable failure codes with bounded project/job/item/task metadata and source error name/code/status only. Cloud Tasks client initialization is lazy, worker success/failure task copy is generic, and batch item summaries no longer log raw item IDs/names.
+- **Billing entitlement and Razorpay plan diagnostics bounded** - MenuList entitlement sync, Answerlattice entitlement sync, and Razorpay plan lookup/create failures now use stable failure codes with bounded subscription/tenant/store/plan/status/source/lookup/provider-plan metadata. Razorpay plan failures rethrow fixed local text instead of provider messages.
+- **Deprecated subscription reconciliation diagnostics bounded** - The retained Vercel reconciliation route now logs per-subscription and top-level failures with stable billing reconciliation codes, bounded subscription/provider metadata, update counts, and local dev `syncDetailCount` instead of raw subscription IDs or sync detail rows.
+- **Active subscription reconciliation diagnostics bounded** - The nightly Functions reconciliation path now logs synced subscriptions and per-subscription Razorpay failures with bounded subscription/provider/tenant/store/status metadata, update counts/booleans, and source error name/code/status only.
+- **Onboarding payment error diagnostics bounded** - New-user onboarding subscription failures and shared Firestore/Razorpay payment error handling now log fixed failure codes, source error name/code/status, and identifier presence/length metadata only. Onboarding local dev error logs no longer persist raw exception messages, and Razorpay API error detail text is fixed.
+- **SAFE_MODE fail-open diagnostics bounded** - `checkSafeMode()` now logs failed config reads through stable ops diagnostics with source error name/code/status and `failOpen` context instead of stringifying raw thrown values into `secureError()`.
+- **Public analytics route diagnostics bounded** - `POST /api/public/analytics/track` now logs failed server-side target/write work through bounded analytics diagnostics with tenant/store/project presence and length metadata, update-field count, and source error name/code/status only.
+- **Public feedback route diagnostics bounded** - `POST /api/public/feedback/submit` now logs project/store verification and feedback-write failures through guest-feedback diagnostics with bounded tenant/store/project metadata, source/rating values, contact-presence booleans, and source error metadata only.
+- **Public create-menu claim diagnostics bounded** - `POST /api/public/create-menu/claim` now logs claim success, cache-revalidation failure, and unexpected claim failure through bounded security diagnostics instead of raw draft/user/store/project identifiers or route exceptions.
+- **App cache revalidation route diagnostics bounded** - MenuList `/api/revalidate/menu` and Answerlattice `/api/revalidate/answerlattice` now log route failures and success breadcrumbs with stable runtime/Answerlattice diagnostic codes, tag/segment counts, and tenant/store/endpoint presence-length metadata instead of raw caught errors, raw tenant/store IDs, raw segment arrays, or raw endpoint context.
+- **Image-editing prompt diagnostics bounded** - Image editing prompt helpers now log missing business type, missing feature, and unexpected business-specific prompt failures through bounded diagnostics instead of raw business/feature strings or raw thrown values.
+- **Desktop Billing refetch diagnostics bounded** - Billing subscription refetch failures now use payment diagnostics with bounded store/subscription metadata instead of raw `logger.error` exception payloads.
+- **Ops Control Room load diagnostics bounded** - The platform Ops Control Room page now logs initial data-load failures through ops diagnostics with platform/session metadata only instead of raw `secureError` exception normalization.
+- **Menu Kit share diagnostics bounded** - Share Modal Menu Kit ZIP and single-asset generation failures now use export diagnostics with bounded input metadata and semantic asset keys instead of passing raw browser/provider exceptions to `secureError()`.
+- **Client Firestore listener diagnostics bounded** - Ingestion job and batch image job listener setup/snapshot failures and normal debug breadcrumbs now use shared hook diagnostics with tenant/store/project/job presence-length metadata instead of raw identifiers or raw thrown objects.
+
+### Boundaries
+
+- Existing extraction routing, AI calls, AI Gateway retry/key-rotation behavior, route response parsing, single image generation/editing media handling, image-editing prompt fallback behavior, AI operation accounting writes, AI operations transaction-history reads, Review Reply suggestion behavior, weekly narrative local generation/regeneration behavior, AI credit-consumption control flow, batch image trigger/worker task flow, client Firestore listener queries, Cloud Tasks queue payload shape, Razorpay plan lookup/create calls, onboarding subscription creation, payment error status handling, billing entitlement sync writes/cache invalidation, Razorpay webhook processing, deprecated reconciliation fallback control flow, outlet billing/revert control flow, desktop billing behavior, Ops Control Room behavior, Menu Kit ZIP/single-asset generation, account-claim behavior, Google Analytics report/realtime calls, public analytics validation/writes, public feedback validation/writes, public create-menu claim conversion, Messaging Onboarding asset validation fallback behavior for valid session uploads, Messaging Onboarding active publish transaction/cache tags, admin subdomain rename validation/audit/cache behavior, POS sync owner/mobile settings, POS delivery writes, public draft updates, project saves, MenuList and Answerlattice cache revalidation, review behavior, owner/mobile flows, owner-notification event processing, Firestore schema, indexes, rules, and owner-facing copy are unchanged except for safer diagnostics/storage metadata, Messaging Onboarding upload URL rejection before asset-validation fetch, one DNS lookup before valid WhatsApp media download, and POS webhook target rejection before outbound delivery.
+
+## June 27, 2026 - Owner-Facing Error and Placeholder Hardening
+
+### Changed
+
+- **Owner error text bounded** - Business Health, mobile project image, mobile design background, mobile basic settings logo, mobile item image, desktop project image, menu background, and menu editor image flows now show fixed owner-safe failure text while preserving bounded diagnostics.
+- **Menu Manager failure text bounded** - Desktop and mobile Menu Manager load, prompt, apply, project-update, and cancel failures now show fixed owner-safe copy and log coded runtime diagnostics.
+- **Business Copy failure text bounded** - Desktop and mobile Business Copy generation and missing-translation repair failures now use fixed owner-safe copy with bounded diagnostics.
+- **Billing store-switch failure text bounded** - Desktop Billing store-switch failures now show fixed owner-safe copy and log bounded payment diagnostics instead of using raw `/api/auth/switch-store` response text.
+- **Mobile Digital Screens and Reseller Management failures bounded** - Digital screen upload/caption/delete failures and reseller profile/summary/save failures now show fixed mobile copy and log bounded diagnostics instead of raw exception or API response text.
+- **Mobile Billing and reseller action failures bounded** - Mobile Billing subscription refetch, history load, and store-switch failures now use bounded payment diagnostics; reseller dashboard add-location and reseller onboarding failures now use fixed mobile copy and bounded diagnostics.
+- **Mobile staff and role failures bounded** - Mobile Staff load/create/update/remove/reset/signout failures and mobile Role save/delete failures now use bounded staff diagnostics and generic owner-facing errors.
+- **Mobile domain failures bounded** - Mobile custom-domain and domain-settings status, availability, add, remove, and subdomain save/check failures now use bounded store diagnostics and fixed owner-facing errors.
+- **Mobile account failures bounded** - Mobile More branch switching, account profile update, and password change failures now use bounded auth diagnostics and fixed owner-facing errors instead of raw API response text.
+- **Remaining mobile raw failures bounded** - Menu upload business-detail acceptance, Locations deactivate/rename/create/policy, Scheduler recovery, Ops republish, and POS sync test failures now use bounded diagnostics and fixed owner-facing errors.
+- **Desktop/shared owner failures bounded** - Desktop Domain/Custom Domain, Compliance Pages, Temporary Status, Review Reply, Digital Screen uploads, POS sync test, Reseller, Staff/Roles, and outlet/location controls now log bounded diagnostics and use fixed owner-facing failure copy instead of raw exception or API response text.
+- **POS sync API failure text bounded** - POS webhook test and delivery routes now persist and return fixed owner-safe connection copy while logging bounded diagnostic codes instead of provider/runtime failure text; mobile POS sync also normalizes legacy `lastError` display and save behavior.
+- **Desktop help, account, support, and analytics failures bounded** - HelpChat search/retry, desktop account profile/password, support ticket submit, reseller dashboard hook, and analytics panel failures now use bounded diagnostics or fixed owner-facing text instead of raw exception or API response text.
+- **Project, special-menu, menu-link, and Menu Card failures bounded** - Project public-content translation, detected business-detail acceptance, upload-created menus, menu-link import, special-menu create/update/end/cancel, Menu Card advice, and outlet-policy rejection failures now use bounded diagnostics and fixed owner-facing copy. Outlet-policy API rejection also no longer passes through the generic DAL wrapper as a false success.
+- **Menu helper response bodies bounded** - AI Menu Manager, menu-processing job startup, menu-intake identity preflight, and linked-outlet save/publish helpers no longer throw raw API response-body text into owner flows.
+- **Mobile compliance failures bounded** - Mobile Privacy, Terms, and Refund page save/reset failures now use bounded Business Settings diagnostics and fixed mobile toasts instead of raw compliance API response text.
+- **Staff client response bodies bounded** - Staff and role client helpers now preserve bounded response codes/status only and no longer throw raw staff API response text into desktop or mobile staff flows.
+- **Payment response bodies bounded** - Subscription create/cancel/pause/resume/upgrade, onboarding subscription, top-up order, and payment verification failures now reject with fixed local billing text and bounded code/status instead of raw Razorpay/API response text.
+- **Platform ops monitor failures bounded** - Platform notification, owner notification, Business Health monitor, cost posture, and desktop Ops force-republish failures now use bounded diagnostics and fixed platform-facing copy instead of raw API/provider exception text.
+- **Functions ops callable failures bounded** - `verifyMenuPublish`, `forceRepublish`, `gcpBudgetAlertWebhook`, and `backfillStoresSummary` now use fixed callable/webhook failure copy and stable `OPERATIONS_*` diagnostics instead of raw runtime exception text.
+- **Extraction monitor error text bounded** - Extraction Monitor load/retry failures now use bounded ops diagnostics and fixed platform-facing copy, and stored job errors sent to the client are reduced to bounded code/retry metadata instead of raw provider exception text.
+- **Notification provider failures bounded** - Lifecycle messaging, generic notification logs, owner-notification email/WhatsApp delivery records, owner notification event failures, and Messaging Onboarding monitor event details now use stable local failure codes instead of raw SMTP, WhatsApp, or provider exception text.
+- **Messaging Onboarding event errors code-only** - Messaging Onboarding event documents, queue failures, extraction failures, asset-validation failures, preview/publish/fix send failures, health snapshot failures, and WhatsApp parse failures now store or log stable codes plus source error name/code metadata instead of raw provider/runtime messages.
+- **Messaging Onboarding trigger and scheduler diagnostics bounded** - The exported `msgExtractionWatcher` wrapper, `menulistMaintenanceScheduler` task failure records, scheduler failure alerts, lease-release logs, and public draft cleanup warnings now use stable failure codes plus bounded source metadata instead of raw runtime exception messages.
+- **Messaging session cleanup diagnostics bounded** - Session expiry, reminder, storage cleanup, cleanup-query, and inbound queue cleanup failures now log stable `MESSAGING_*` failure codes with bounded source metadata instead of raw session IDs or exception messages.
+- **AI provider health diagnostics bounded** - The daily Gemini provider smoke check now stores stable `AI_PROVIDER_HEALTH_*` failure codes and source error name/code/status metadata in `_health/aiProvider_gemini` instead of raw SDK/provider exception text.
+- **Today campaign failure text bounded** - Today campaign surface actions now throw fixed local failure text when a download/share surface reports failure instead of propagating raw surface result text.
+- **AI capacity response text bounded** - AI capacity errors still propagate as `AICapacityError`, but the owner-facing message is fixed and only a bounded response code is retained.
+- **Batch image enqueue summaries bounded** - Batch image task enqueue failures now write stable local failure codes into batch-trigger summaries, log partial enqueue summaries with `image_batch_task_enqueue_rejected`, and log missing worker jobs with `image_batch_worker_job_not_found` instead of raw Cloud Tasks/provider exception text or ad hoc warning payloads.
+- **Platform entity-block failure text bounded** - Platform entity-block client helpers and settings UI now use fixed failure text instead of propagating raw route response text.
+- **Platform asset remote image fetch bounded** - The platform asset details modal now validates remote image URLs, allowlists image MIME types, reads fetched images through `readResponseUint8ArrayWithLimit()`, and uses fixed failure copy instead of the old unbounded axios arraybuffer branch.
+- **Master job polling diagnostics bounded** - Outlet master-job status polling now logs bounded hook and route diagnostics instead of raw project/session IDs and exception text.
+- **MOL event diagnostics bounded** - Multi-outlet MOL event logging now uses bounded multi-outlet diagnostics instead of raw exception text or error objects.
+- **Today campaign image fetch streaming cap** - Shared campaign export surfaces now read browser-fetched image responses through `readResponseUint8ArrayWithLimit()` before Blob creation, preserving the existing 10 MB limit even when `content-length` is absent.
+- **Public auth and create-menu failure text bounded** - Login claim setup, credential login, phone OTP start/verify, public guest feedback submit, create-menu upload/link, and create-menu claim now use fixed public/owner-safe failure copy instead of raw API/auth response text.
+- **MyCodex login form bounded** - The private MyCodex session route now applies `AUTH_LOGIN` rate limiting before form parsing and reads login submissions through an 8 KB bounded form-data cap instead of direct `request.formData()`.
+- **Answerlattice pre-onboarding prompt preview bounded** - The public pre-onboarding prompt modal now loads `/pre-onboarding.md` through a 128 KB bounded reader with Markdown/plain-text MIME validation and fixed fallback copy instead of direct unbounded `response.text()`, and Copy Prompt waits for Clipboard API success or acknowledged textarea fallback success before showing copied state.
+- **Answerlattice public contact response bounded** - The public contact client now submits with same-origin credentials, no-store cache, manual redirect handling, an 8 KB bounded JSON response parser, and accepted-shape validation before showing success.
+- **Answerlattice get-started response bounded** - The public onboarding client now submits with same-origin credentials, no-store cache, manual redirect handling, a 16 KB bounded JSON response parser, and onboarding-result shape validation before showing workspace-created state or the widget key.
+- **Answerlattice widget search response bounded** - The public iframe widget client now submits search/feedback requests with same-origin credentials, no-store cache, manual redirect handling, and validates search responses through a 256 KB bounded widget-answer parser before rendering assistant messages.
+- **Creative editor template document opens capped** - The shared template registry DAL now checks stored document blob size against `MAX_DOCUMENT_BYTES` before decoding JSON, so oversized template payloads fail with fixed `TEMPLATE_DOCUMENT_TOO_LARGE` copy.
+- **Custom-domain provider diagnostics bounded** - `/api/domain` now logs failed Vercel add-domain, status-check, and remove-domain provider responses with fixed local failure text plus bounded domain/store/tenant metadata instead of raw provider messages or full domain identifiers.
+- **Functions public cache diagnostics bounded** - Server-side public menu/OBP cache revalidation failures now log stable `PUBLIC_CACHE_REVALIDATION_*` codes with store/context lengths and source error metadata instead of raw store IDs, caller context, or exception text.
+- **Functions trigger-wrapper diagnostics bounded** - Production Firestore triggers and dev-only callable trigger wrappers for KB generation/finalization and menu image processing now log bounded job/request metadata instead of raw job IDs, dev request payloads, or caught error objects.
+- **Menu link-import route errors bounded** - Authenticated menu-link import and public create-menu link-source rejections now serialize explicit code-mapped client copy instead of `MenuLinkImportError.message` while preserving rejection status and code.
+- **Public create-menu draft failures bounded** - Public create-menu draft polling and the shared extraction worker now use fixed owner-safe failure text instead of serializing raw worker, provider, parser, Storage, or runtime exception messages.
+- **Menu image extraction helper diagnostics bounded** - The lower-level Gemini extraction helper now logs and stores stable `MENU_IMAGE_*` failure codes and fixed failed-operation text instead of raw upload, retry, batch, provider, parser, or AI operation exception messages.
+- **Menu-link deterministic extraction diagnostics bounded** - Deterministic link-text extraction now logs bounded job/source metadata and stable `MENU_LINK_TEXT_EXTRACTION_SKIPPED` codes instead of raw job IDs or exception messages.
+- **Platform admin template and digest failures bounded** - Platform asset-template load/open/update/delete/save failures and weekly digest load/generate failures now use bounded runtime diagnostics and fixed platform-facing copy instead of raw exception or API detail text.
+- **Shared media failure text bounded** - Item photo capture, media-image crop/apply, and prepared image-upload failures now use bounded runtime diagnostics and fixed UI copy instead of raw preparation or capture exception text.
+- **Shared Creative Editor failures bounded** - Canvas/Fabric load, AI tool, Design Cue, import, image, clipboard, export, and template-save failures now use bounded runtime diagnostics and fixed product-neutral editor notices instead of raw exception text.
+- **CampaignCue workspace notices bounded** - Template load, CueLayers autosave, campaign action, reusable pack save, and pack template open catch paths now show fixed CampaignCue copy instead of raw browser/local exception messages.
+- **SignalDesk diagnostic text bounded** - Webhook rejection logs, enrichment waterfall blocked summaries, and research-agent blocked audit reasons now use stable local codes instead of raw provider or exception messages.
+- **Public contact and widget failure text bounded** - MenuList contact, AnswerLattice contact, AnswerLattice get-started, hosted widget answer, and hosted widget feedback failures now show fixed public-safe copy instead of raw route or browser exception messages.
+- **AnswerLattice widget-management failure text bounded** - Widget settings, activity, widget-key, hosted-help save, and hosted-help DNS failures now show fixed dashboard copy instead of raw route or browser exception messages.
+- **AnswerLattice settings and activation failure text bounded** - Workspace Settings, Activation, Daily Governance, and Weekly Digest failures now show fixed dashboard copy instead of raw route, stored-error, or browser exception messages.
+- **AnswerLattice dashboard panel failures bounded** - Dashboard readiness, FAQ/custom answers, Product Surfaces, Team Access, Install Center, multi-language article translation, Knowledge Intake, and friction insight failures now show fixed dashboard copy instead of raw route, API, or browser exception messages.
+- **AnswerLattice governance and support hook failures bounded** - Entity, candidate, trigger, canonical answer, mutation proposal, Support Board, and friction hook failures now show fixed dashboard copy instead of raw result, route, or browser exception messages.
+- **AnswerLattice internal raw-message branches removed** - Staff access self/last-owner policy checks now branch on coded local errors, password-reset provider failures use fixed response codes, and signal duplicate handling no longer parses raw exception text.
+- **AnswerLattice platform support failures bounded** - Platform intake monitor load/retry failures, Knowledge Base FAQ suggestion refresh failures, and article embedding route failure logs now use fixed copy or stable failure codes instead of raw route, browser, or exception text.
+- **AnswerLattice search and draft diagnostics bounded** - Help Center search clients, search-core fallback logs, canonical retrieval fallback reasons, article embedding warnings, and manual draft regeneration failures now use fixed copy or stable metadata instead of raw route, provider, AI-response, or exception text.
+- **AnswerLattice KB callable server diagnostics bounded** - `regenerateEmbedding` and `publishApprovedJobFn` in shared/local Functions and `functions-answerlattice/` now log stable `ANSWERLATTICE_*` codes and persist fixed publish failure text instead of raw article/job IDs or provider/runtime exception messages.
+- **AnswerLattice KB worker/finalizer diagnostics bounded** - `embedArticleWorker` in shared/local Functions and `functions-answerlattice/`, plus the shared publish finalizer, now log stable `ANSWERLATTICE_*` codes with bounded article/job metadata and fixed failure text instead of raw article IDs, job IDs, job payloads, or provider/runtime exception messages.
+- **AnswerLattice KB generation/helper diagnostics bounded** - KB source generation, generated-data processing, source-file upload cleanup, embedding helpers, similar-article lookup, and shared/separate KB entrypoint wrappers now use stable `ANSWERLATTICE_*` codes and fixed failure text instead of raw generated KB payloads, AI response text, provider errors, article/job IDs, temp file paths, or callable caller IDs.
+- **Growth Kits, messaging preview, SignalDesk, CampaignCue, and AnswerLattice response copy bounded** - Growth Kits action notifications/client helper failures, public messaging preview publish/fix failures, SignalDesk client DAL failures, CampaignCue workspace response branches, AnswerLattice staff client failures, and AnswerLattice intake monitor retry failures now use fixed copy instead of raw browser exception, provider, callable, or route response text.
+- **Owner Business Assistant answer diagnostics bounded** - Best-effort thread persistence and answer-event logging failures now use bounded runtime diagnostics instead of raw logger warnings with tenant/store/user/thread/answer IDs and exception text.
+- **Razorpay failure diagnostics bounded** - Subscription create/cancel/pause/resume/upgrade, subscription verification, top-up order creation, and webhook failure paths now persist bounded failure codes plus source error name/code/status instead of raw exception messages. Create/pause/resume/upgrade route logger breadcrumbs and subscription mutation flow logs also use bounded subscription metadata; webhook critical alerts use fixed alert text with bounded metadata.
+- **Weekly narrative parser diagnostics bounded** - Local weekly narrative AI response parse failures now log `weekly_narrative_response_parse_failed` with bounded tenant/store/user/week metadata and normalized source error metadata instead of raw parser exception text or ad hoc warning payloads.
+- **Local log error payloads bounded** - Development-only local log files now append error name/code/status metadata instead of raw exception messages or stacks.
+- **Answerlattice retrieval diagnostics bounded** - Help Center search operation-log failures, search route failures, and visual query generation failures now use bounded Answerlattice failure codes and source error metadata instead of raw exception text.
+- **Answerlattice image fetch status text bounded** - Search-core image URL fetch failures now use the stable `answerlattice_image_fetch_failed` code and numeric status metadata instead of throwing raw HTTP status text.
+- **Answerlattice Knowledge Intake diagnostics bounded** - Intake UI failures, media refund records, partial-publish job status, and context-bundle lock failures now use fixed operation copy or stable local failure codes instead of raw exception text.
+- **Fake operational records removed** - Exported system health and notification components no longer manufacture healthy status or alert records when no backing source is connected.
+- **Future-promise copy removed** - Today disabled state, monthly dashboard summary, PDF export, and prompt-enhancer scaffolding no longer use "coming soon" or simulated generation wording.
+- **Platform admin React keys stabilized** - Platform Users, Platform Stores, Platform Tenants, and the shared tooltip wrapper no longer use `Math.random()` for React keys or stale key scaffolding, preserving table row state and avoiding unnecessary remounts.
+- **Runtime ID generation hardened** - Menu file IDs, extraction local IDs, digital-screen upload slides, batch/generated image references, Menu Manager idempotency keys, AnswerLattice trace/support/widget IDs, CampaignCue runtime IDs, Creative Editor template IDs, and mobile upload temporary IDs now use a shared crypto-backed runtime ID helper instead of operational `Math.random()` calls.
+- **Stale implementation markers removed** - Legacy notification-service stubs now fail closed instead of returning fake IDs or no-op sends, GBP token storage exposes a coded disabled boundary, workflow feedback and campaign surface comments describe current behavior, dormant negative-feedback alert logging no longer exposes raw alert payloads or placeholder links, and unsupported Telegram messaging onboarding webhooks are rejected before adapter creation.
+- **App direct-console residue removed** - The dev-only chat data cleanup utility now uses development-only runtime diagnostics instead of direct `console.*`, leaving direct console output confined to the approved logger wrappers.
+- **Lifecycle and SMTP messaging diagnostics bounded** - The Firebase Functions lifecycle messaging engine now routes send, retry, digest, duplicate, rate-limit, and scheduler diagnostics through `functions.logger` with bounded error metadata and no raw recipient email output. The shared SMTP provider now returns stable local failure codes instead of raw provider exception text.
+- **Monitoring alert diagnostics bounded** - Functions alert creation, Telegram alert delivery, SAFE_MODE, and deploy-mute helpers now use `functions.logger` with bounded metadata instead of direct console output or raw provider response bodies. Alert-system error tracking now stores `ALERT_CREATE_FAILED` instead of raw exception text for alert creation failures.
+- **Monitoring error tracking diagnostics bounded** - Functions system-error tracking now uses `functions.logger`, no longer prints raw stored error messages on occurrence updates or critical alerts, and writes fixed critical-alert text with bounded metadata.
+- **Monitoring health diagnostics bounded** - Functions health checks and publish verification now use `functions.logger`; health report component failures store fixed failure codes with bounded source metadata instead of raw exception text.
+- **Decision Blocks analytics diagnostics bounded** - Nightly authority maturation, extraction learning, store truth confidence, staleness check, and menu drift metrics now use `functions.logger` through a shared analytics diagnostic helper. Menu drift telemetry now uses stable failure codes instead of raw project/store exception messages.
+- **AI insight scheduler diagnostics bounded** - Feedback Intelligence and Weekly Narrative Functions analytics now use bounded tenant/store metadata, stable scheduler failure codes, and shared analytics diagnostics instead of direct console output or raw exception text.
+- **Gemini insight service diagnostics bounded** - Feedback-analysis and weekly-narrative Gemini helpers now route provider/parser diagnostics through `functions.logger` with stable local failure codes instead of rethrowing raw parser/provider details.
+- **Functions telemetry diagnostics bounded** - The shared Functions telemetry logger now uses `functions.logger` and stable telemetry failure codes instead of direct console output or raw wrapped-function exception messages.
+- **KB Quality diagnostics bounded** - KB Quality analytics and Gemini helpers now use bounded tenant/store/article metadata, stable telemetry/parser/provider failure codes, and `functions.logger` instead of direct console output or raw article/store exception text.
+- **Decision Blocks AI-insight failures bounded** - Feedback Intelligence, KB Quality, and Weekly Narrative task-result failures now store stable local failure codes instead of raw exception messages.
+- **Decision Blocks scheduler failures bounded** - Nightly analytics settlement, project/store scoring, owner Business Health, lifecycle messaging, special-menu switching, extraction learning, store truth confidence, staleness, reseller license expiry, health signals, KB watchdog, and scheduler run-log failures now store stable scheduler failure text/codes instead of raw runtime exception messages.
+- **KB Quality parser zero-score handling fixed** - Gemini KB Quality parsing now accepts valid `qualityScore: 0` responses instead of treating them as missing and forcing a fallback.
+- **KB Quality output contract fixed** - KB Quality now writes one `insights/{tId}/stores/{sId}/ai/kbQuality` store insight document and uses one bounded store-level Gemini call instead of attempting invalid per-article writes under `ai/kbQuality/{articleId}`.
+- **Chat Monitoring product boundary documented** - Chat Monitoring docs and the auth/security verifier now state that Feedback Intelligence, KB Quality, and Weekly Narrative are current MenuList-hosted chat-monitoring Functions, not completed `functions-answerlattice/` runtime migrations.
+- **Scheduler retention diagnostics bounded** - Guest Feedback Retention now routes deletion progress and failures through bounded Functions diagnostics, and batch failure summaries use stable local codes instead of raw provider exception text.
+- **Manual scheduler trigger failures bounded** - Platform-only manual scheduler callables now log bounded requester/store metadata and return stable task failure codes instead of raw task exception messages.
+- **Functions local-log fallback bounded** - The unused Functions-side local log helper now disables local file writes in production and uses `functions.logger` with bounded metadata if development file writes fail.
+- **Realtime tracking diagnostics bounded** - The unused Functions realtime tracking helper now logs bounded tenant/store/session metadata and stable local failure codes instead of direct console output or raw session/provider exception text.
+- **Owner dashboard Gemini diagnostics bounded** - Owner dashboard weekly/daily/monthly summary and owner action-plan Gemini helpers now use stable local failure codes and bounded provider/parser diagnostics instead of direct console output or raw parser/provider exception text.
+- **Customer analytics and AI response diagnostics bounded** - Manual customer analytics triggers, per-project customer analytics failures, process-menu AI response parsing, validation warnings, and the emulator dotenv notice now use bounded Functions diagnostics and stable local failure codes instead of direct console output or raw exception text.
+- **Chat aggregation diagnostics bounded** - Daily chat stats aggregation, manual aggregation, historical backfill, Slack failure alerts, and durable `chatAnalytics.lastError` writes now use bounded Functions diagnostics and stable local failure codes instead of direct console output or raw exception text.
+- **SignalDesk verifier tightened** - `npm run verify:signaldesk` now guards stable webhook rejection codes, provider-budget block summaries, research-agent blocked audit reasons, and the old raw-message patterns.
+- **Public UI verifiers tightened** - `npm run verify:public-business-truth`, `npm run verify:auth-security-failure-matrix`, and `npm run verify:answerlattice-runtime-truth` now guard public contact, onboarding, widget, and AnswerLattice dashboard/hook fixed failure-copy contracts.
+- **Verifiers tightened** - `npm run verify:auth-security-failure-matrix` now guards the general owner-facing paths, Review Reply, Mobile More auth/account failures, desktop account/profile failures, support ticket submission, login claim/setup, phone OTP, guest feedback fixed-copy handling, platform asset-template failures, platform weekly-digest failures, shared media failure copy, ArticleModal FAQ/embedding fixed-copy handling, platform admin stable React keys, runtime ID helper crypto usage, unexpected operational `Math.random()` calls, stale implementation markers, unexpected app direct-console calls, lifecycle messaging and SMTP provider logger routing/stable codes, monitoring alert logger routing, Decision Blocks analytics logger routing/stable codes, Feedback Intelligence/Weekly Narrative/KB Quality/Gemini/telemetry logger routing/stable codes, Owner Dashboard Gemini logger routing/stable codes, customer analytics/AI response/logger cleanup, chat aggregation logger routing/stable codes, Realtime Tracking logger routing/stable codes, Guest Feedback Retention/manual scheduler logger routing/stable codes, app and Functions local log bounded error payloads, and local log production-disable guards; `npm run verify:answerlattice-runtime-truth` now guards Answerlattice Help Center search clients, search-core fallback logs, canonical retrieval fallback reasons, visual query, Knowledge Intake UI, partial-publish, media-refund, mutation draft regeneration, staff client response handling, intake monitor retry responses, and context-bundle bounded diagnostics; `npm run verify:campaigncue` now guards shared Creative Editor bounded failure notices, CampaignCue workspace fixed failure notices, response-branch fixed copy, and raw-notice bans; `npm run verify:creative-editor-smoke` continues to guard the editor smoke contract; `npm run verify:growthos` now guards Growth Kits fixed notification and client-helper failure copy; `npm run verify:ai-menu-manager` now guards desktop/mobile Menu Manager against raw `error.message` UI patterns and raw API response-body text; `npm run verify:owner-business-assistant` and `npm run verify:ai-accounting` now guard Owner Business Assistant answer-route bounded diagnostics, and `npm run verify:ai-accounting` also guards AI capacity response-body handling and batch-trigger enqueue summaries; `npm run verify:menulist-api-tenant-safety` now guards desktop/mobile Billing store-switch, Razorpay persisted failure diagnostics and webhook alert text, weekly narrative parser fallback diagnostics, payment hook response handling, desktop/mobile reseller, desktop/mobile staff/role, staff client response handling, reseller dashboard hook, scheduler/ops, platform ops monitors, notification provider failure storage/display, platform entity-block client failure text, master-job polling diagnostics, custom-domain provider diagnostics, POS failure paths, and analytics error panels; `npm run verify:customer-app-pwa` now guards desktop/mobile Digital Screens diagnostics; `npm run verify:menu-extraction-pipeline` now guards mobile upload business-detail failure handling, desktop job creation, menu-link import route/client error handling, menu-processing job startup, menu-intake identity failures, Extraction Monitor error handling, public create-menu upload/link/claim fixed-copy handling, and messaging preview fixed-copy handling; `npm run verify:menu-card-export` now guards Menu Card advice copy; and `npm run verify:public-business-truth` now guards desktop/mobile domain/location/compliance/temp-status diagnostics, mobile compliance save/reset failures, HelpChat search/retry failures, Today campaign surface failure text, project-page failures, special-menu hook failures, multi-outlet MOL event diagnostics, linked-outlet persistence rejection text, and outlet-policy rejection text.
+
+### Boundaries
+
+- **Valid behavior preserved** - Existing image preparation, generation calls, batch image task fanout, upload/save callbacks, Business Health answer calls, Owner Business Assistant answer resolution/thread/event best-effort writes, Menu Manager command/session calls, Business Copy generation/translation calls, AI capacity CTA handling, Billing store-switch/history/refetch behavior, subscription/top-up/onboarding payment requests, Razorpay payment mutations, Razorpay webhook transaction/entitlement processing, weekly narrative AI fallback behavior, development-only local log writes, Answerlattice Help Center canonical-first retrieval, Answerlattice image fetch/validation, Answerlattice visual query generation behavior, Answerlattice Knowledge Intake job/source/media/analyze/review/publish/context-bundle behavior, CampaignCue template load/autosave/action/save/open behavior, desktop/mobile Digital Screens DAL calls, desktop/mobile reseller API calls and dashboard loads, desktop/mobile staff/role API calls, staff/role client requests, desktop/mobile domain/subdomain calls, custom-domain Vercel add/config/remove calls, Compliance Pages save/reset calls, Mobile Compliance Pages save/reset calls, Temporary Status calls, Review Reply generation, HelpChat search/retry, support ticket submission, desktop account profile/password calls, Mobile More account/store-switch calls, login claim setup, credential login, phone OTP start/verify, guest feedback submit, public create-menu upload/link/claim, shared media preparation/capture/adjustment callbacks, shared Creative Editor canvas/Fabric load, AI tool, Design Cue, import, image, clipboard, export, and template-save flows, desktop/mobile Locations calls, outlet-policy update calls, master-job status polling, multi-outlet MOL event logging, scheduler/ops calls, platform notification/owner notification/monitor refresh actions, platform asset-template load/open/update/delete/save actions, platform weekly digest load/generate actions, platform entity-block mutations, owner-notification delivery status writes, lifecycle/generic notification SMTP sends, Messaging Onboarding monitor event display, Extraction Monitor dashboard load/details/retry actions, Today campaign share/download actions, desktop force-republish calls, POS sync test calls, Project public-content translation, detected business-detail acceptance, upload-created menus, menu-link import, public create-menu link-source rejection status/code behavior, menu-processing job startup, menu-intake identity preflight, queued Gemini menu extraction, linked-outlet save/publish, special-menu actions, Menu Card capacity/advice handling, analytics dashboard reads, and analytics CSV/JSON export behavior remain unchanged except for safer failure text, safer domain diagnostics, corrected outlet-policy failure handling, KB Quality store-level output repair, and removal of fake exported-component data. No extra Firestore reads/writes, Storage operations, Firebase Auth operation changes, unrelated Cloud Function logic, Firebase deploy, Vercel deploy, production build, API route, cache invalidation behavior, rules, indexes, schema, tenant shape, permission model, public route, or owner-facing setting was added.
+- **SignalDesk behavior preserved** - Existing webhook rate limiting/signature processing, provider-budget gating, enrichment waterfall blocking, and research-agent blocked-run behavior remain unchanged; only persisted/logged failure text is now coded.
+- **Public UI behavior preserved** - Existing MenuList contact submission, AnswerLattice contact submission, AnswerLattice onboarding, hosted widget answer lookup, and widget feedback behavior remain unchanged; only public browser-visible failure copy is fixed.
+- **AnswerLattice dashboard behavior preserved** - Existing widget settings, activity, widget-key, hosted-help settings, hosted-help DNS refresh, readiness metrics, FAQ/custom answer, product-surface, team-access, install-center, multi-language, Knowledge Intake, workspace profile, workflow notification, activation, Daily Governance, Weekly Digest, entity, candidate, trigger, canonical answer, mutation proposal, Support Board, and friction insight behavior remain unchanged; only authenticated dashboard failure copy is fixed.
+- **AnswerLattice platform support behavior preserved** - Existing platform intake monitor load/details/manual retry, Knowledge Base FAQ suggestion refresh, article embedding generation, cache writes, and AI operation accounting remain unchanged; only failure copy and log metadata are bounded.
+- **AnswerLattice search/governance behavior preserved** - Existing Help Center search, HelpChat, AI Search modal, canonical-first retrieval, FAQ retrieval, vector/RAG fallback, article embedding warning path, and manual draft regeneration behavior remain unchanged; only failure copy, fallback reason text, and diagnostic metadata are bounded.
+- **AnswerLattice KB callable behavior preserved** - Existing manual article re-embedding, approved-job publish transaction, KB category/article/FAQ/cache-version writes, compiled-context source marking, task enqueue behavior, and callable auth gates remain unchanged except for fixed failure text and bounded diagnostics.
+- **Growth Kits, messaging preview, SignalDesk, CampaignCue, and AnswerLattice behavior preserved** - Existing Growth Kits refresh/generate/export/review-reply actions, messaging preview publish/fix flow including max-correction handling, SignalDesk overview/workspace/action/pause requests, CampaignCue workspace mutations, AnswerLattice staff requests, and AnswerLattice intake monitor retry behavior remain unchanged; only failure copy is fixed.
+- **Platform admin behavior preserved** - Platform Users and Platform Stores still load, filter, edit, and open drawer/modal details through the same data paths; only React key stability changed.
+- **Runtime ID behavior preserved** - Existing upload, trace, idempotency, temporary file, and template flows keep the same data paths and prefixes where product contracts rely on them; only the entropy source changed from operational `Math.random()` to crypto-backed runtime IDs.
+- **Unsupported boundaries preserved** - GBP token storage and legacy notification-service calls still do not perform external provider work; they now fail closed with explicit local errors instead of placeholder/stub behavior. Messaging onboarding remains WhatsApp-only unless the supported provider registry is deliberately expanded. The legacy negative-feedback alert trigger remains excluded from Function exports.
+- **Dev utility behavior preserved** - Chat data cleanup remains development-only and still blocks production use; only its local progress/failure diagnostics moved behind the runtime diagnostic wrapper.
+- **Lifecycle messaging behavior preserved** - Existing lifecycle messaging feature flag checks, duplicate/rate-limit checks, recipient lookup, SMTP delivery success behavior, message logging, renewal/suspension scans, retry behavior, digest counts, owner-notification migration fallback, platform alert email call sites, and scheduler call sites remain unchanged; only Function diagnostic routing and provider failure text changed.
+- **Messaging Onboarding behavior preserved** - Existing inbound queue retry/exhaustion behavior, asset validation fallback, extraction failure transition, preview/publish/fix message retry behavior, health snapshot recording, WhatsApp parse failure handling, extraction watcher trigger routing, maintenance scheduler task cadence, task leases, and public draft cleanup behavior remain unchanged; only stored/logged error detail is now code-only and bounded.
+- **AI provider health behavior preserved** - Existing daily Gemini smoke check, `_health/aiProvider_gemini` document location, model/provider/status/success/latency/key-stats fields, maintenance scheduler task wiring, and scheduler alert propagation remain unchanged; only failed health text is now code-only and bounded.
+- **Monitoring behavior preserved** - Existing alert creation, cooldown, acknowledgement, active-alert query, alert-rule evaluation, Telegram delivery attempt, platform alert delivery attempt, SAFE_MODE reads/writes, deploy mute/unmute behavior, error dedupe, occurrence counting, resolve flow, summary query behavior, health checks, health report writes, store-health updates, and publish-verification alerts remain unchanged; only diagnostic routing and stored failure text changed.
+- **Functions public cache behavior preserved** - Existing server-to-server `/api/revalidate/menu` POSTs, fail-open behavior, response-status handling, and caller paths from entitlement sync, special-menu switching, menu extraction, and business-attribute defaults remain unchanged; only failed cache-revalidation diagnostics are bounded.
+- **Decision Blocks analytics behavior preserved** - Existing authority maturation, extraction learning, store truth confidence, staleness detection, lifecycle stale-message calls, menu drift metric writes, telemetry writes, and scheduler return shapes remain unchanged; only diagnostics and raw failure text changed.
+- **AI insight scheduler behavior preserved** - Existing Feedback Intelligence reads/writes, Weekly Narrative reads/writes, Gemini fallback output, telemetry writes, Decision Blocks scheduler wiring, and manual scheduler callables remain unchanged; only diagnostics and failure text changed.
+- **Decision Blocks scheduler behavior preserved** - Existing nightly store selection, settlement locks/state, project scoring, menu intelligence, task ordering, cache invalidation calls, task result shape, run-log writes, and manual recovery behavior remain unchanged; only logged and persisted failure text is now bounded.
+- **Scheduler retention behavior preserved** - Existing Guest Feedback Retention query/delete batches, manual scheduler lock behavior, platform-owner callable guards, manual task execution order, weekly narrative manual regeneration, and callable success/no-data responses remain unchanged; only diagnostics and failure text changed.
+- **Functions local-log runtime unaffected** - `functions/src/utils/log-utils.ts` has no current imports from exported Functions; the change hardens the source helper and verifier guard without changing an active deployed Function path.
+- **Realtime tracking runtime unaffected** - `functions/src/analytics/realtimeTracking.ts` has no current imports from exported Functions or app code; the change hardens the source helper and verifier guard without changing an active deployed Function path.
+- **Owner dashboard Gemini behavior preserved** - Existing owner dashboard summary and action-plan Gemini calls, prompt content, deterministic fallback summaries/actions, dashboard summary writes, and Decision Blocks/manual customer-analytics wiring remain unchanged; only diagnostics and internal stable failure text changed.
+- **Customer analytics and AI response behavior preserved** - Existing customer analytics aggregation, manual trigger permission gates, process-menu AI parsing/normalization fallback behavior, and emulator dotenv loading remain unchanged; only diagnostics and returned internal failure text are bounded.
+- **Chat aggregation behavior preserved** - Existing daily chat stats summary reads/writes, store status updates, manual aggregation duplicate prevention, historical backfill writes, Slack alert attempt, and platform backfill UI result shape remain unchanged except that failure details now use fixed copy or stable local codes.
+- **KB Quality output behavior changed intentionally** - KB Quality now follows the documented one-write and one-Gemini-call-per-store contract, with article detail bounded inside the store insight document.
+- **Chat Monitoring product boundary clarified** - No Function runtime moved between Firebase projects. The change only documents and verifies the current MenuList-hosted chat-monitoring boundary so future Answerlattice migration work requires an explicit scheduler, tenant-shape, cost, and deploy plan.
+
+## June 27, 2026 - Client AI Service Diagnostic Hardening
+
+### Changed
+
+- **AI service diagnostics bounded** - Client wrappers for item metadata, SEO, descriptions, image generation/editing, batch image trigger, Menu Card design advice, and business copy now use `src/services/ai/aiServiceDiagnostics.ts`.
+- **Raw response text removed** - These wrappers no longer throw errors built from `response.statusText` or raw API `details` / `error` bodies.
+- **Owner-safe batch trigger failure** - Batch image trigger failures now rethrow a generic startup error after bounded diagnostics, preserving `AICapacityError` behavior.
+- **AI accounting verifier tightened** - `npm run verify:ai-accounting` now checks the client AI service diagnostic helper, failure codes, generic HTTP errors, and absence of raw client logger/status text patterns.
+
+### Boundaries
+
+- **Valid behavior preserved** - Existing AI route calls, capacity handling, balance sync, null/empty fallbacks, image data URL normalization, Menu Card plan-required handling, and business copy/SEO/description fallback behavior remain unchanged except for generic non-capacity batch trigger failure text. No Firestore reads/writes, Storage operations, Firebase Auth operations, Cloud Function logic, Firebase deploy, Vercel deploy, production build, API route, cache invalidation behavior, rules, indexes, provider call, schema, tenant shape, permission model, public route, or owner-facing setting was changed.
+
+## June 27, 2026 - Root CSP and Answerlattice FAQ Diagnostic Hardening
+
+### Changed
+
+- **Development CSP output bounded** - The root layout development-only CSP helper no longer prints raw blocked URLs, source files, or full policy details through direct console logs.
+- **Answerlattice FAQ diagnostics bounded** - FAQ save/archive product-surface summary refresh failures now use Answerlattice diagnostics instead of raw console errors.
+- **Example probes removed** - Remaining comment/example-only `console.*` snippets were removed or converted to no-op examples so the production-source console sweep is clean outside intentional logger/dev-test files.
+- **Verifiers tightened** - `npm run verify:auth-security-failure-matrix` now checks the root CSP helper, and `npm run verify:answerlattice-runtime-truth` now checks the FAQ management diagnostics.
+
+### Boundaries
+
+- **Valid behavior preserved** - Local service-worker cleanup, development warning suppression, CSP violation detection, FAQ save/archive behavior, product-surface summary refresh attempts, and owner-facing FAQ warning messages remain unchanged. No Firestore reads/writes beyond existing FAQ/product-surface behavior, Storage operations, Firebase Auth operations, Cloud Function logic, Firebase deploy, Vercel deploy, production build, API route, cache invalidation behavior, rules, indexes, provider call, schema, tenant shape, permission model, public route, or owner-facing setting was changed.
+
+## June 27, 2026 - Platform Admin Diagnostic Hardening
+
+### Changed
+
+- **Platform admin diagnostics bounded** - Asset fetch, KB job delete, user verification, tenant/store loading, analytics backfill, pricing plan, and font preset failures now use runtime diagnostics instead of raw console output.
+- **Debug output removed** - Normal-path platform article, tenant, summary, font preset, and old SVG upload debug logs were removed.
+- **Backfill failure text safer** - Analytics backfill failures now show a generic retry/support message instead of raw exception text.
+- **Auth/security verifier tightened** - `npm run verify:auth-security-failure-matrix` now checks these platform/admin diagnostic contracts.
+
+### Boundaries
+
+- **Valid behavior preserved** - Asset fetch handling, KB job deletion, user verification requests, article save/embedding behavior, tenant/store dashboard loading, analytics backfill calls, pricing plan CRUD, and font preset preview generation remain unchanged except for generic analytics backfill failure text and a bounded catch for font preset loading. No Firestore reads/writes beyond existing platform/admin behavior, Storage operations beyond existing behavior, Firebase Auth operations, Cloud Function logic, Firebase deploy, Vercel deploy, production build, API route, cache invalidation behavior, rules, indexes, provider call, schema, tenant shape, permission model, public route, or owner-facing setting was changed.
+
+## June 27, 2026 - Shared UI and Utility Diagnostic Hardening
+
+### Changed
+
+- **Shared utility diagnostics bounded** - Date/time formatting fallbacks, CSV/Excel exports, and image compression no longer direct-console raw runtime errors.
+- **Common UI diagnostics bounded** - AI search copy, notification refresh, font preset/font loading, and image upload failures now use runtime diagnostics instead of raw console output.
+- **Image upload validation diagnostics bounded** - Magic-byte validation rejections now record bounded security diagnostics without raw filenames, MIME details, or validation text in console logs.
+- **Auth/security verifier tightened** - `npm run verify:auth-security-failure-matrix` now checks these shared UI, utility, and image upload diagnostic contracts.
+
+### Boundaries
+
+- **Valid behavior preserved** - Date/time fallback values, CSV/Excel export downloads and audit logs, image compression fallback, AI answer copy feedback, notification empty-state behavior, font loading behavior, image preparation, image validation, upload callbacks, and owner-visible validation messages remain unchanged. No Firestore reads/writes, Storage operations, Firebase Auth operations, Cloud Function logic, Firebase deploy, Vercel deploy, production build, API route, cache invalidation behavior, rules, indexes, provider call, schema, tenant shape, permission model, public route, or owner-facing setting was changed.
+
+## June 27, 2026 - Public Menu Analytics Diagnostic Hardening
+
+### Changed
+
+- **Public menu analytics diagnostics bounded** - `src/components/templates/website/clientWebsite/AnalyticsContext.tsx` no longer direct-console logs public menu view, project-switch, language-adoption, item-view, or item-tap tracking failures.
+- **Language adoption rejection handled** - Public menu language-adoption tracking now attaches a bounded rejection handler instead of relying only on the surrounding timer setup catch.
+- **Public-business verifier tightened** - `npm run verify:public-business-truth` now checks public menu analytics diagnostics, bounded context helpers, failure codes, and absence of direct `console.*` calls.
+
+### Boundaries
+
+- **Tracking behavior preserved** - Menu view tracking, Layer 2 alias project-switch tracking, language adoption dwell timing, item view/tap tracking, session refresh, UTM capture, location preference handling, and Facebook Pixel handoff remain unchanged. No Firestore reads/writes beyond existing analytics behavior, Storage operations, Firebase Auth operations, Cloud Function logic, Firebase deploy, Vercel deploy, production build, API route, cache invalidation behavior, rules, indexes, provider call, schema, tenant shape, permission model, menu rendering, or owner/customer-facing setting was changed.
+
+## June 27, 2026 - i18n and App Shell Diagnostic Hardening
+
+### Changed
+
+- **i18n diagnostics bounded** - Active and legacy i18n request configs plus `IntlClientWrapper` no longer direct-console missing translation/runtime errors or raw request config failures.
+- **i18n helper added** - `src/i18n/diagnostics.ts` records normalized locale/runtime failure codes with bounded locale metadata and source error name/code/status only.
+- **App shell runtime diagnostics bounded** - `LayoutProvider` now records layout error-boundary failures through runtime diagnostics, and the main authenticated layout no longer logs expected no-session redirects.
+- **Analytics action fallback safer** - `src/contexts/AnalyticsContext.tsx` now logs async action failures with bounded analytics diagnostics and no longer surfaces raw `error.message` in notifications.
+- **Business copy translation diagnostics bounded** - `localizeBusinessCopyResult.ts` logs batch translation failures through the shared translation diagnostics helper and no longer throws raw translation status text.
+- **Auth/security verifier tightened** - `npm run verify:auth-security-failure-matrix` now checks these i18n, app-shell, analytics action, and business-copy translation diagnostic contracts.
+
+### Boundaries
+
+- **Valid behavior preserved** - Locale matching, fallback message loading, missing-message fallbacks, authenticated layout redirects, layout fallback rendering, analytics async action loading state, business-copy translation batching, capacity error propagation, balance sync, and localization merge behavior remain unchanged except for generic analytics action notification detail. No Firestore reads/writes, Realtime Database operations, Storage operations, Firebase Auth operations, Cloud Function logic, Firebase deploy, Vercel deploy, production build, API route, cache invalidation behavior, rules, indexes, provider call, schema, tenant shape, permission model, or owner-facing setting was changed.
+
+## June 27, 2026 - Static Assets and Analytics UI Diagnostic Hardening
+
+### Changed
+
+- **Static asset DAL diagnostics bounded** - `src/database/static/static.ts` no longer direct-console logs raw Firestore document IDs, Storage cleanup failures, or missing subcategory messages.
+- **Static asset helper added** - `src/database/static/staticDiagnostics.ts` records normalized static asset failure codes with asset/category/subcategory/item presence and length metadata only.
+- **Tenant lookup miss stays quiet** - `src/database/tenants/index.tsx` no longer logs expected email lookup misses, and stale commented tenant-delete console examples were removed.
+- **Analytics UI diagnostics bounded** - `SystemHealthDashboard` and `ExportButton` now use runtime diagnostics instead of direct `console.error`.
+- **Auth/security verifier tightened** - `npm run verify:auth-security-failure-matrix` now checks static asset diagnostics, tenant DAL quiet misses, analytics UI runtime diagnostics, and absence of direct `console.*` calls in those files.
+
+### Boundaries
+
+- **Valid behavior preserved** - Static asset create/update/delete reads and writes, preview upload behavior, best-effort Storage cleanup, tenant lookup return values, tenant name propagation/cache invalidation, analytics mock health rendering, and export behavior remain unchanged except that missing static asset subcategory/item paths now return the existing `ERROR_RESPONSE` instead of throwing from an invalid array index. No Firestore reads/writes beyond existing behavior, Storage operations beyond existing behavior, Realtime Database operations, Firebase Auth operations, Cloud Function logic, Firebase deploy, Vercel deploy, production build, API route, cache invalidation behavior, rules, indexes, provider call, schema, tenant shape, permission model, or owner-facing setting was changed.
+
+## June 27, 2026 - Environment Validation Diagnostic Hardening
+
+### Changed
+
+- **Env diagnostics bounded** - `src/lib/env/validateEnv.ts` no longer direct-console logs missing required variables or payment warnings during startup validation.
+- **Env helper added** - `src/lib/env/envDiagnostics.ts` records normalized env validation codes with missing/warning counts and runtime flags only.
+- **Auth/security verifier tightened** - `npm run verify:auth-security-failure-matrix` now checks env diagnostics and absence of direct `console.*` calls in environment validation.
+
+### Boundaries
+
+- **Valid validation behavior preserved** - Required variable detection, payment warning detection, product Firebase project checks, platform-domain checks, MyCodex Vercel auth checks, Vercel non-crash behavior, and development non-fatal behavior remain unchanged. No Firestore reads/writes, Realtime Database operations, Storage operations, Firebase Auth operations, Cloud Function logic, Firebase deploy, Vercel deploy, production build, API route, cache invalidation behavior, rules, indexes, provider call, schema, tenant shape, permission model, or owner-facing setting was changed.
+
+---
+
+## June 27, 2026 - Internal User API Diagnostic Hardening
+
+### Changed
+
+- **Internal user API diagnostics bounded** - `src/lib/internalApi/user/index.ts` no longer direct-console logs login or token lookup failures.
+- **Stale URL diagnostic examples removed** - Dead commented helpers that included raw environment URL logging examples were removed from the internal user API helper.
+- **Auth/security verifier tightened** - `npm run verify:auth-security-failure-matrix` now checks internal user API login/token failures for bounded auth diagnostics and absence of direct `console.*` calls.
+
+### Boundaries
+
+- **Valid helper behavior preserved** - Existing `/api/user/login` and `/api/user/userByToken` requests, resolved response data, and rejection behavior remain unchanged except for safer fallback when an Axios error lacks `response.data`. No Firestore reads/writes, Realtime Database operations, Storage operations, Firebase Auth operations, Cloud Function logic, Firebase deploy, Vercel deploy, production build, API route, cache invalidation behavior, rules, indexes, provider call, schema, tenant shape, permission model, or owner-facing setting was changed.
+
+---
+
+## June 27, 2026 - Database Logger Diagnostic Hardening
+
+### Changed
+
+- **Database logger diagnostics bounded** - `src/database/loggers/databaseOperation.ts`, `applicationLogger.ts`, and `errorLogger.ts` no longer direct-console operation payload keys, result keys, or raw Firebase errors.
+- **Logger helper added** - `src/database/loggers/loggerDiagnostics.ts` records normalized database logger codes with bounded collection/operation/log metadata and source error name/code/status only.
+- **Logger failures no longer hang** - Application/error log write and read-by-id failure paths now resolve `null` after bounded diagnostics instead of leaving callers waiting.
+- **Auth/security verifier tightened** - `npm run verify:auth-security-failure-matrix` now checks database logger diagnostics, bounded key counts, and absence of direct `console.*` calls.
+
+### Boundaries
+
+- **Valid logger behavior preserved** - Development-only operation observation, operation stats collection, realtime log listeners, log reads, log updates, and log deletes remain unchanged. No Firestore reads/writes beyond existing behavior, Realtime Database operations beyond existing behavior, Storage operations, Firebase Auth operations, Cloud Function logic, Firebase deploy, Vercel deploy, production build, API route, cache invalidation behavior, rules, indexes, provider call, schema, tenant shape, permission model, or owner-facing setting was changed.
+
+---
+
+## June 27, 2026 - Answerlattice Runtime Diagnostic Hardening
+
+### Changed
+
+- **Answerlattice diagnostics bounded** - Signal emission, mutation proposal creation, manual draft regeneration, entity extraction, and active subscription lookup no longer direct-console raw runtime errors or entity context.
+- **Answerlattice helper added** - `src/lib/answerlattice/diagnostics.ts` records normalized product runtime codes with bounded tenant/store/entity/article/proposal metadata and source error name/code/status only.
+- **Answerlattice verifier tightened** - `npm run verify:answerlattice-runtime-truth` now checks these runtime helpers and callers for bounded diagnostics, generic draft regeneration failure text, and absence of direct `console.*` calls.
+
+### Boundaries
+
+- **Valid Answerlattice behavior preserved** - Fire-and-forget signal semantics, invalid-scope signal skipping, mutation-proposal graceful degradation, entity extraction batch continuation, entity-candidate persistence attempts, manual draft regeneration audit flow, and active subscription `null` fallback remain unchanged. No Firestore reads/writes beyond existing behavior, Storage operations, Firebase Auth operations, Cloud Function logic, Firebase deploy, Vercel deploy, production build, API route, cache invalidation behavior, rules, indexes, provider call, schema, retrieval policy, mutation taxonomy, tenant shape, permission model, or owner-facing setting was changed.
+
+---
+
+## June 27, 2026 - Answerlattice Dashboard Auth Diagnostic Hardening
+
+### Changed
+
+- **Dashboard auth diagnostics bounded** - `src/components/answerlattice/AnswerlatticeDashboardLayout.tsx` no longer direct-console logs failed Answerlattice Firebase Auth sync errors.
+- **Answerlattice verifier tightened** - `npm run verify:answerlattice-runtime-truth` now checks the dashboard layout for bounded Firebase bootstrap diagnostics and absence of direct `console.*` calls.
+
+### Boundaries
+
+- **Valid dashboard behavior preserved** - Route permission checks, owner/customer route redirects, Firebase Auth readiness state, error fallback UI, responsive shell layout, and shared Answerlattice Firebase Auth sync behavior remain unchanged. No Firestore reads/writes, Storage operations, Firebase Auth operations beyond existing sync calls, Cloud Function logic, Firebase deploy, Vercel deploy, production build, API route, cache invalidation behavior, rules, indexes, provider call, schema, tenant shape, permission model, or owner-facing setting was changed.
+
+---
+
+## June 27, 2026 - Firebase Admin Diagnostic Hardening
+
+### Changed
+
+- **Firebase Admin diagnostics bounded** - MenuList, Answerlattice, CampaignCue, and SignalDesk Admin bootstrap files no longer direct-console initialization, invalid credential, file credential, or local ADC failures.
+- **Admin helper added** - `src/lib/firebase/firebaseAdminDiagnostics.ts` records normalized Admin bootstrap codes with bounded credential-path metadata and source error name/code/status only.
+- **Admin verifier tightened** - `npm run verify:auth-security-failure-matrix` now checks Firebase Admin diagnostics and all four Admin bootstrap files for bounded logging and absence of direct `console.*` calls.
+
+### Boundaries
+
+- **Valid Admin behavior preserved** - Existing app names, shared/separate Firebase modes, explicit env credentials, file credentials, local ADC fallback behavior, storage bucket selection, Firestore database selection, and null setup-blocker behavior remain unchanged. No Firestore reads/writes, Storage operations, Firebase Auth operations, Cloud Function logic, Firebase deploy, Vercel deploy, production build, API route, cache invalidation behavior, rules, indexes, provider call, schema, tenant shape, permission model, or owner-facing setting was changed.
+
+---
+
+## June 27, 2026 - Browser Runtime Diagnostic Hardening
+
+### Changed
+
+- **Runtime diagnostics bounded** - `src/app/global-error.tsx`, `src/components/ServiceWorkerRegister.tsx`, `src/components/shared/debug/ErrorReportButton.tsx`, and `src/lib/utils/performance.ts` no longer direct-console crash, service-worker, diagnostic-report, slow-render, or import-retry failures.
+- **Runtime helper added** - `src/lib/runtime/runtimeDiagnostics.ts` records normalized runtime codes with bounded source/component/digest context and source error name/code/status only.
+- **Runtime verifier tightened** - `npm run verify:auth-security-failure-matrix` now checks shared browser runtime diagnostics and the related callers for bounded logging and absence of direct `console.*` calls.
+
+### Boundaries
+
+- **Valid browser behavior preserved** - Global error fallback UI, theme fallback, diagnostic report button behavior, service-worker registration/unregistration rules, platform/customer/MyCodex worker targeting, slow-render measurement, lazy import retry timing, and final lazy import rejection behavior remain unchanged. No Firestore reads/writes, Storage operations, Firebase Auth operations, Cloud Function logic, Firebase deploy, Vercel deploy, production build, API route, cache invalidation behavior, rules, indexes, provider call, schema, tenant shape, permission model, or owner-facing setting was changed.
+
+---
+
+## June 27, 2026 - Security Validation Diagnostic Hardening
+
+### Changed
+
+- **Security diagnostics bounded** - `src/lib/security/inputValidation.ts` and `src/lib/security/magicBytesValidator.ts` no longer direct-console invalid query keys or magic-byte validation exceptions.
+- **Security helper added** - `src/lib/security/securityDiagnostics.ts` records normalized security validation codes with bounded key/MIME/input metadata and source error name/code/status only.
+- **Validation verifier tightened** - `npm run verify:auth-security-failure-matrix` now checks shared security diagnostics, Firestore query sanitization, and magic-byte validation for bounded logging and generic exception text.
+
+### Boundaries
+
+- **Valid validation behavior preserved** - String sanitization, Firestore query key filtering, API input validation, file size checks, MIME allow-list behavior, magic-byte type detection, image dimension validation, and successful upload validation remain unchanged. No Firestore reads/writes, Storage operations, Firebase Auth operations, Cloud Function logic, Firebase deploy, Vercel deploy, production build, API route, cache invalidation behavior, rules, indexes, provider call, schema, tenant shape, permission model, or owner-facing setting was changed.
+
+---
+
+## June 27, 2026 - Auth Session Diagnostic Hardening
+
+### Changed
+
+- **Auth diagnostics bounded** - `src/lib/auth/client.ts`, `src/lib/auth/getActiveSession.ts`, `src/lib/auth/index.ts`, and the profile sign-out caller no longer direct-console sign-out, session fetch, or OAuth configuration diagnostics.
+- **Auth helper added** - `src/lib/auth/authDiagnostics.ts` records normalized auth/session codes with bounded URL, route, host, tenant, store, and user metadata plus source error name/code/status only.
+- **Auth verifier tightened** - `npm run verify:auth-security-failure-matrix` now checks auth diagnostics, client sign-out, active session fetches, and profile sign-out callers for bounded logging and absence of direct `console.*` calls.
+
+### Boundaries
+
+- **Valid auth behavior preserved** - NextAuth session retrieval, Answerlattice client scoping, active-store context application, Firebase sign-out, NextAuth sign-out, profile failure toast behavior, OAuth provider setup, and generic auth/session errors remain unchanged. No Firestore reads/writes, Firebase Auth operations beyond existing sign-out/sync behavior, Cloud Function logic, Firebase deploy, Vercel deploy, production build, API route, cache invalidation behavior, rules, indexes, provider call count, schema, tenant shape, permission model, or owner-facing setting was changed.
+
+---
+
+## June 27, 2026 - Answerlattice Notification Diagnostic Hardening
+
+### Changed
+
+- **Notification diagnostics bounded** - `src/lib/notifications/index.ts` and `src/lib/notifications/client.ts` no longer direct-console raw missing-template, send, or trigger-request failures.
+- **Notification helper added** - `src/lib/notifications/notificationDiagnostics.ts` records normalized notification failure codes with event/product metadata, bounded reference/recipient lengths, metadata key counts, and source error name/code/status only.
+- **Answerlattice verifier tightened** - `npm run verify:answerlattice-runtime-truth` now checks notification sender/client diagnostics, bounded success/rate-limit logging, and absence of direct `console.*` calls.
+
+### Boundaries
+
+- **Valid notification behavior preserved** - Feature-flag gating, owner-notification migration handoff, deterministic idempotency IDs, per-recipient rate-limit reads, template resolution, SMTP send, notification log writes, client fire-and-forget dispatch, and production client silence remain unchanged. No Firestore reads/writes beyond existing notification behavior, Storage operations, Cloud Function logic, Firebase deploy, Vercel deploy, production build, API route, rules, indexes, provider call count, schema, retrieval policy, tenant shape, or owner-facing setting was changed.
+
+---
+
+## June 27, 2026 - Answerlattice Browser Storage Diagnostic Hardening
+
+### Changed
+
+- **Browser storage diagnostics bounded** - `src/lib/recentlyViewed/index.ts` and `src/lib/contentFeedbackStorage/index.ts` no longer direct-console raw localStorage parse/read/write/clear failures.
+- **Hook diagnostics reused** - Recently viewed and content feedback storage failures now use normalized `recently_viewed_*` and `content_feedback_storage_*` codes with bounded user/value/count metadata and source error name/code only.
+- **Verifiers tightened** - `npm run verify:answerlattice-runtime-truth` and `npm run verify:auth-security-failure-matrix` now check these storage helpers for bounded diagnostics and absence of direct `console.*` calls.
+
+### Boundaries
+
+- **Valid storage behavior preserved** - Recently viewed entry serialization, timestamp normalization, max-entry cap, update events, content feedback read/write/remove/clear semantics, and empty fallback behavior remain unchanged. No Firestore reads/writes, Storage operations, Cloud Function logic, Firebase deploy, Vercel deploy, production build, API route, cache invalidation behavior, rules, indexes, public route, provider call, schema, retrieval policy, tenant shape, or owner-facing setting was changed.
+
+---
+
+## June 27, 2026 - Firebase Upload Helper Diagnostic Hardening
+
+### Changed
+
+- **Firebase upload diagnostics bounded** - `src/lib/firebase/storage.ts` no longer direct-console logs raw Firebase upload errors or rejects raw provider errors.
+- **Storage verifier expanded** - `npm run verify:auth-security-failure-matrix` now includes the Firebase upload helper alongside the shared Storage helper family.
+- **Generic failure text aligned** - Upload and download-URL failures now reject with `Failed to upload file` after bounded internal diagnostics.
+
+### Boundaries
+
+- **Valid upload behavior preserved** - Storage path resolution, resumable upload progress, metadata use, optional storage override, download URL resolution, `gs://` URI construction, and successful result shape remain unchanged. No Firestore reads/writes, extra Storage operations, Cloud Function logic, Firebase deploy, Vercel deploy, production build, API route, cache invalidation behavior, rules, indexes, public route, provider call count, schema, tenant shape, or owner-facing setting was changed.
+
+---
+
+## June 27, 2026 - Guest Feedback MOL Diagnostic Hardening
+
+### Changed
+
+- **Feedback MOL diagnostics bounded** - `src/database/guestFeedback/index.ts` no longer direct-console logs raw compact feedback-event failures.
+- **Guest feedback helper added** - `src/database/guestFeedback/guestFeedbackDiagnostics.ts` records normalized `guest_feedback_mol_event_log_failed` failures with bounded tenant/store/project metadata, event type, rating, and source error name/code/status only.
+- **Public-business verifier tightened** - `npm run verify:public-business-truth` now checks the guest feedback DAL and helper for bounded diagnostics and absence of direct `console.*` calls.
+
+### Boundaries
+
+- **Valid feedback behavior preserved** - Guest feedback reads, status updates, counts, public submit behavior, compact feedback event writes, retention dates, and non-blocking failure behavior remain unchanged. No Firestore reads/writes beyond existing feedback behavior, Storage operations, Cloud Function logic, Firebase deploy, Vercel deploy, production build, API route, cache invalidation behavior, rules, indexes, public route, provider call, schema, tenant shape, or owner-facing setting was changed.
+
+---
+
+## June 27, 2026 - Menu Change Log Diagnostic Hardening
+
+### Changed
+
+- **MOL diagnostics bounded** - `src/database/menuChangeLog/index.ts` no longer direct-console logs raw menu observation tracking errors, scoped write errors, success details, project IDs, item IDs, or category IDs.
+- **MOL helper added** - `src/database/menuChangeLog/menuChangeLogDiagnostics.ts` records normalized `menu_change_log_*` failure codes with bounded tenant/store/project/item/category/user metadata, value-presence booleans, and source error name/code/status only.
+- **Public-business verifier tightened** - `npm run verify:public-business-truth` now checks the Menu Change Log DAL and helper for bounded diagnostics and absence of direct `console.*` calls.
+
+### Boundaries
+
+- **Valid MOL behavior preserved** - Feature-flag gating, active-session scope, scoped logging, debounce keys, pending write coalescing, Firestore write payload, sanitize-for-Firestore behavior, flush behavior, and query helpers remain unchanged. No Firestore reads/writes beyond existing MOL behavior, Storage operations, Cloud Function logic, Firebase deploy, Vercel deploy, production build, API route, cache invalidation behavior, rules, indexes, public route, provider call, schema, tenant shape, or owner-facing setting was changed.
+
+---
+
+## June 27, 2026 - Public Feedback Page Diagnostic Hardening
+
+### Changed
+
+- **Public feedback page diagnostics bounded** - The `/feedback/[projectId]` QR surface no longer direct-console raw project IDs, project fetch errors, or store fetch errors.
+- **Page helper added** - `src/lib/feedback/publicFeedbackDiagnostics.ts` records normalized public feedback page failure codes with bounded project/store/tenant metadata and source error name/code/status only.
+- **Public-business verifier tightened** - `npm run verify:public-business-truth` now checks the public feedback page and helper for bounded diagnostics and absence of direct `console.*` calls.
+
+### Boundaries
+
+- **Valid feedback behavior preserved** - Project lookup, store lookup, active/deleted/blocked checks, project/store feedback toggles, public header rendering, form props, source parsing, metadata, and `notFound()` behavior remain unchanged. No Firestore reads/writes beyond existing reads, Storage operations, Cloud Function logic, Firebase deploy, Vercel deploy, production build, API route, cache invalidation behavior, rules, indexes, public route, provider call, schema, permission model, tenant shape, or owner-facing setting was changed.
+
+---
+
+## June 27, 2026 - Digital Screen Display Diagnostic Hardening
+
+### Changed
+
+- **Public screen diagnostics bounded** - Highlights and Menu Board display clients no longer direct-console raw cache, listener, seen-signal, refresh, version, or normal-path screen diagnostics.
+- **Display helper added** - `src/lib/screen/screenDiagnostics.ts` now records normalized display failure codes with bounded token/store/version/count metadata and source error name/code/status only.
+- **Customer App PWA verifier tightened** - `npm run verify:customer-app-pwa` now checks public screen display diagnostics and absence of direct `console.*` calls in `ScreenDisplay.tsx` and `MenuBoardDisplay.tsx`.
+
+### Boundaries
+
+- **Valid screen behavior preserved** - Cache-first rendering, server-data fallback, localStorage writes, QR delay, daily seen signal, public-safe listener mirror, jittered reload, offline retry, six-hour refresh, Highlights rendering, and Menu Board pagination remain unchanged. No Firestore reads/writes, Storage operations, Cloud Function logic, Firebase deploy, Vercel deploy, production build, API route, cache invalidation behavior, listener target, rules, indexes, public route, provider call, schema, display layout, tenant shape, or owner-facing setting was changed.
+
+---
+
+## June 27, 2026 - Answerlattice Public Cache Diagnostic Hardening
+
+### Changed
+
+- **Answerlattice public cache diagnostics bounded** - Browser-side public cache revalidation failures no longer direct-console raw context, status, or error objects.
+- **Dev-only secure logging added** - `src/lib/cache/answerlatticePublicClientCache.ts` now records normalized revalidation failure codes with bounded tenant/store/segment metadata and source status/error-name only.
+- **Answerlattice verifier tightened** - `npm run verify:answerlattice-runtime-truth` now checks the public client cache helper for bounded diagnostics and absence of direct `console.*` calls.
+
+### Boundaries
+
+- **Valid cache behavior preserved** - Public-content invalidation requests, pending-revalidation de-dupe, timeout handling, segment normalization, owner write call sites, and production silence remain unchanged. No Firestore reads/writes, Storage operations, Cloud Function logic, Firebase deploy, Vercel deploy, production build, API route, cache invalidation behavior, rules, indexes, public route, provider call, schema, retrieval policy, tenant shape, or owner-facing setting was changed.
+
+---
+
+## June 27, 2026 - Store And User DAL Diagnostic Hardening
+
+### Changed
+
+- **Store DAL diagnostics bounded** - G-08 subdomain publish-status checks, blocked subdomain changes, and missing-tenant summary-sync skips no longer direct-console raw store/subdomain/provider details.
+- **Normal empty reads quieter** - User and store tenant/store empty-result reads no longer emit browser diagnostics for normal no-data paths.
+- **Public-business verifier tightened** - `npm run verify:public-business-truth` now checks bounded store diagnostics and absence of direct `console.*` calls in the store and user DAL files.
+
+### Boundaries
+
+- **Valid data behavior preserved** - User/store queries, G-08 subdomain immutability blocking, public cache revalidation, store-summary sync, subdomain-block analytics signals, store writes, and user reads remain unchanged. No Firestore reads/writes, Storage operations, Cloud Function logic, Firebase deploy, Vercel deploy, production build, API route, cache invalidation behavior, rules, indexes, public route, provider call, schema, permission model, tenant shape, or owner-facing setting was changed.
+
+---
+
+## June 27, 2026 - Image Provider Diagnostic Hardening
+
+### Changed
+
+- **Image provider diagnostics bounded** - Unsplash, Pexels, Pixabay, and Unsplash topic helper failures no longer direct-console raw provider/API errors.
+- **Provider helper added** - `src/lib/imageProviderDiagnostics.ts` records normalized provider failure codes with bounded query/orientation/page metadata and source error name/code/status only.
+- **Auth/security verifier tightened** - `npm run verify:auth-security-failure-matrix` now checks external image provider diagnostics, generic rejection text, and absence of direct `console.*` calls.
+
+### Boundaries
+
+- **Valid provider behavior preserved** - Existing provider search URLs, result mapping, image size selection, topic retrieval, and optional background-image provider configuration remain unchanged. No Firestore reads/writes, Storage operations, Cloud Function logic, Firebase deploy, Vercel deploy, production build, API route, cache invalidation, rules, indexes, public route, durable artifact, provider call count, vendor, schema, permission model, tenant shape, or owner-facing setting was changed.
+
+---
+
+## June 27, 2026 - Staff Access Diagnostic Hardening
+
+### Changed
+
+- **Staff form diagnostics bounded** - Desktop staff create/update failures no longer direct-console raw staff mutation errors or expose unknown raw server messages to owners.
+- **Staff diagnostic helper added** - `src/lib/staffManagement/diagnostics.ts` records normalized staff mutation failure codes with bounded tenant/store/user metadata and source error name/code/status only.
+- **Tenant-safety verifier tightened** - `npm run verify:menulist-api-tenant-safety` now checks staff client diagnostics, generic unknown owner-facing errors, and absence of direct `console.*` calls in the desktop staff form.
+
+### Boundaries
+
+- **Valid staff behavior preserved** - Staff create, existing-user add, email/passcode setup messaging, role-assignment errors, staff update, server-side tenant/store authority checks, Firebase Auth work, and Firestore writes remain unchanged. No Firestore reads/writes, Storage operations, Cloud Function logic, Firebase deploy, Vercel deploy, production build, API route, cache invalidation, rules, indexes, public route, provider call, schema, permission model, tenant shape, or owner-facing setting was changed.
+
+---
+
+## June 27, 2026 - Answerlattice Chat Analytics Diagnostic Hardening
+
+### Changed
+
+- **Chat analytics diagnostics bounded** - The optimized Answerlattice chat analytics DAL no longer direct-console logs raw today-live-stats failures when falling back to historical aggregates.
+- **Analytics diagnostic helper added** - `src/database/chatAnalytics/diagnostics.ts` records normalized `answerlattice_chat_analytics_today_live_stats_failed` failures with bounded tenant/store/day metadata and source error name/code/status only.
+- **Answerlattice verifier tightened** - `npm run verify:answerlattice-runtime-truth` now checks chat analytics DAL diagnostics and absence of direct `console.*` calls.
+
+### Boundaries
+
+- **Valid analytics behavior preserved** - Daily aggregate reads, today live session reads, historical-only fallback, dashboard aggregate composition, range clamping, tenant/store query scope, and owner-facing analytics output remain unchanged. No Firestore reads/writes, Storage operations, Cloud Function logic, Firebase deploy, Vercel deploy, production build, API route, cache invalidation, rules, indexes, public route, provider call, schema, retrieval policy, tenant shape, or owner-facing setting was changed.
+
+---
+
+## June 27, 2026 - Answerlattice Callable Diagnostic Hardening
+
+### Changed
+
+- **Answerlattice callable diagnostics bounded** - Client wrappers for `regenerateEmbedding` and `publishApprovedJobFn` no longer direct-console raw Firebase callable/provider failures.
+- **Callable helper generalized** - `src/lib/firebase/functions.ts` now records normalized callable failure codes with bounded article/job metadata and source error name/code/status only.
+- **Answerlattice verifier tightened** - `npm run verify:answerlattice-runtime-truth` now checks callable wrapper diagnostics and absence of direct `console.*` calls in the shared Firebase callable client wrapper.
+
+### Boundaries
+
+- **Valid callable behavior preserved** - Manual article re-embedding, approved KB generation publishing, existing Answerlattice Firebase client selection, generic caller-facing errors, and MenuList publish verification behavior remain unchanged. No Firestore reads/writes, Storage operations, Cloud Function logic, Firebase deploy, Vercel deploy, production build, API route, cache invalidation, rules, indexes, public route, provider call, schema, retrieval policy, tenant shape, or owner-facing setting was changed.
+
+---
+
+## June 27, 2026 - Answerlattice Client Cache Diagnostic Hardening
+
+### Changed
+
+- **Answerlattice cache diagnostics bounded** - Changelog, article, ticket, and feedback hooks no longer direct-console raw cache hits, IDs, ticket counts, local browser errors, or feedback configuration failures.
+- **Normal cache paths quieter** - Cache hit, cache miss, clear, realtime update, and LRU eviction paths no longer emit browser debug output.
+- **Answerlattice verifier tightened** - `npm run verify:answerlattice-runtime-truth` now checks the client cache and feedback hooks for bounded diagnostics and absence of direct `console.*` calls.
+
+### Boundaries
+
+- **Valid Answerlattice behavior preserved** - Changelog page caching, public article caching, ticket list caching/stale fallback, realtime ticket cache updates, feedback undo/submit rollback, owner messages, Firestore read/write contracts, and tenant/store data shapes remain unchanged. No Firestore reads/writes, Storage operations, Cloud Functions, Firebase deploy, Vercel deploy, production build, API route, cache invalidation, rules, indexes, public route, provider call, schema, retrieval policy, or owner-facing setting was changed.
+
+---
+
+## June 27, 2026 - Shared Hook Diagnostic Hardening
+
+### Changed
+
+- **Shared hook diagnostics bounded** - Content-view tracking, fullscreen toggles, recent/favorite color storage, safe Redux selector access, and safe Redux dispatch fallback no longer direct-console raw browser, localStorage, Redux action, or selector errors.
+- **Hook diagnostics helper added** - `src/hooks/hookDiagnostics.ts` records normalized hook failure codes with bounded user/content/color/action metadata and source error name/code only.
+- **Auth/security verifier tightened** - `npm run verify:auth-security-failure-matrix` now checks shared hook diagnostics, failure codes, absence of direct `console.*` calls, and removal of old raw hook diagnostic strings.
+
+### Boundaries
+
+- **Valid hook behavior preserved** - Recently viewed persistence remains best-effort, fullscreen still shows the existing unsupported-browser toast, color history still uses localStorage, safe Redux selector returns the caller default, and safe Redux dispatch still returns a no-op fallback outside Redux context. No Firestore reads/writes, Storage operations, Cloud Functions, Firebase deploy, Vercel deploy, production build, API route, cache invalidation, rules, indexes, public route, provider call, or owner-facing setting was changed.
+
+---
+
+## June 27, 2026 - OBP Photo Cleanup Diagnostic Hardening
+
+### Changed
+
+- **OBP photo cleanup diagnostics bounded** - Failed best-effort deletion of replaced/removed Official Business Page photos no longer direct-console logs raw Storage URLs or provider errors.
+- **Storage verifier tightened** - `npm run verify:auth-security-failure-matrix` now checks `uploadOBPPhoto.ts` for bounded Storage diagnostics and absence of the old raw batch-delete warning.
+
+### Boundaries
+
+- **Valid OBP media behavior preserved** - Cover/gallery uploads, prepared media paths, immediate owner previews, queued old-photo deletes after store save, and non-blocking cleanup failure behavior remain unchanged. No Firestore reads/writes, Storage uploads/deletes beyond existing paths, Cloud Functions, Firebase deploy, Vercel deploy, production build, API route, cache invalidation, rules, indexes, public route, provider call, or owner-facing setting was changed.
+
+---
+
+## June 27, 2026 - Ops Diagnostics Hardening
+
+### Changed
+
+- **Ops diagnostics bounded** - Ops Control Room DAL reads, scheduler monitor reads, scheduler DAL reads, alert creation, Telegram alert delivery, platform alert delivery, and manual recovery failures no longer direct-console raw provider or ops payloads.
+- **Ops helper added** - `src/lib/ops/opsDiagnostics.ts` records normalized `ops_*` failure codes with bounded alert/store/tenant/run/filter metadata and source error name/code/status only.
+- **Tenant-safety verifier tightened** - `npm run verify:menulist-api-tenant-safety` now checks the ops diagnostics helper, Ops DAL, Scheduler DAL, Scheduler Monitor, and alert helper for bounded failure codes, absence of direct `console.*` calls, and removal of old raw diagnostic strings.
+
+### Boundaries
+
+- **Valid ops behavior preserved** - Ops dashboard fallback values, scheduler run queries, settlement summary, manual store recovery callable, alert document writes, Telegram/platform alert delivery attempts, and operator messages remain unchanged except that manual recovery failure text no longer includes raw provider messages. No Firestore reads/writes beyond existing paths, Storage operations, Cloud Functions, Firebase deploy, Vercel deploy, production build, API route, cache invalidation, rules, indexes, public route, provider call, scheduler task, or owner-facing setting was changed.
+
+---
+
+## June 27, 2026 - Use MenuList Diagnostic Hardening
+
+### Changed
+
+- **Use MenuList diagnostics bounded** - Desktop output-hub load, copy, Menu Kit, QR, PDF, feedback QR, and starter-activation signal failures no longer direct-console raw owner/output/provider context or fail silently.
+- **Use MenuList helper added** - `useMenuListDiagnostics.ts` records normalized `use_menulist_*` failure codes with bounded store/project/link/action metadata and source error name/code/status only.
+- **Menu Card Export verifier tightened** - `npm run verify:menu-card-export` now checks desktop Use MenuList and its diagnostics helper for bounded failure codes, absence of direct `console.*` calls, and removal of the old raw load diagnostic string.
+
+### Boundaries
+
+- **Valid output behavior preserved** - Project summary load, screen-state read, link generation, QR downloads, Menu Kit downloads, PDF fallback generation, feedback QR generation, starter activation signal debounce, owner messages, route navigation, and mobile Share behavior remain unchanged. No Firestore reads/writes beyond existing paths, Storage operations, Cloud Functions, Firebase deploy, Vercel deploy, production build, API route, cache invalidation, rules, indexes, public route, provider call, durable artifact, or owner-facing setting was changed.
+
+---
+
+## June 27, 2026 - Digital Screen Settings Diagnostic Hardening
+
+### Changed
+
+- **Desktop Digital Screen settings diagnostics bounded** - Settings load and owner-only override failures no longer direct-console raw screen/settings/provider errors.
+- **Owner-control tracking diagnostics bounded** - The shared owner-control usage DAL no longer logs raw scheduling/write failures or success debug output for controls such as `screenOverride`.
+- **Customer App verifier tightened** - `npm run verify:customer-app-pwa` now checks the screen settings diagnostics helper, desktop Digital Screen settings, and owner-control tracking DAL for bounded failure codes and absence of direct `console.*` diagnostics.
+
+### Boundaries
+
+- **Valid screen settings behavior preserved** - Screen state load/initialization, screen URL generation, owner-only override writes, upload refresh, debounced owner-control tracking, owner messages, public screen rendering, and mobile Digital Screen behavior remain unchanged. No Firestore reads/writes beyond existing paths, Storage operations, Cloud Functions, Firebase deploy, Vercel deploy, production build, API route, cache invalidation, rules, indexes, public route, provider call, or owner-facing setting was changed.
+
+---
+
+## June 27, 2026 - Business Settings Time-Slot Diagnostic Hardening
+
+### Changed
+
+- **Time-slot preset diagnostics bounded** - Business Settings time-slot preset save/delete failures no longer direct-console raw preset/store/provider errors.
+- **Business settings helper added** - `businessSettingsDiagnostics.ts` records normalized `business_settings_time_slot_preset_*` failure codes with bounded tenant/store/preset/label/time metadata and source error name/code/status only.
+- **Public-business verifier tightened** - `npm run verify:public-business-truth` now checks the Business Settings diagnostic helper, time-slot preset failure codes, and absence of direct `console.*` calls in `TimeSlotPresetsTab`.
+
+### Boundaries
+
+- **Valid time-slot behavior preserved** - Preset validation, store preset writes, edit cascades through assigned categories, delete cascades, public cache revalidation inside existing project DAL helpers, owner messages, and local state updates remain unchanged. No Firestore reads/writes, Storage operations, Cloud Functions, Firebase deploy, Vercel deploy, production build, API route, cache invalidation, rules, indexes, public route, provider call, or owner-facing setting was changed.
+
+---
+
+## June 27, 2026 - HelpChat Client Diagnostic Hardening
+
+### Changed
+
+- **HelpChat diagnostics bounded** - Chat draft load/save/clear failures, duplicate feedback attempts, and failed thumbs-up/down feedback submissions no longer direct-console raw localStorage errors or message IDs.
+- **HelpChat helper added** - `helpChatDiagnostics.ts` records normalized `help_chat_*` failure codes with bounded session/message/search-history/tenant/store metadata and source error name/code/status only.
+- **Public-business verifier tightened** - `npm run verify:public-business-truth` now checks HelpChat diagnostics, failure codes, absence of direct `console.*` calls, and absence of the old raw draft/feedback diagnostic strings.
+
+### Boundaries
+
+- **Valid HelpChat behavior preserved** - Draft persistence, legacy image-draft cleanup, chat sending, feedback dedupe, feedback submission, owner toasts, RAG/search API calls, canonical-first retrieval, and Answerlattice data contracts remain unchanged. No Firestore reads/writes, Storage operations, Cloud Functions, Firebase deploy, Vercel deploy, production build, API route, cache invalidation, rules, indexes, provider call, public route, retrieval policy, schema, or owner-facing setting was changed.
+
+---
+
+## June 27, 2026 - Dashboard Google Analytics Diagnostic Hardening
+
+### Changed
+
+- **Google Analytics dashboard diagnostics bounded** - Menu Performance, Quick Stats, Location Insights, and Trend Analysis no longer direct-console raw analytics/provider errors.
+- **Location percentage guard added** - Location Insights now renders `0%` instead of `NaN%` when a location report has zero total visitors.
+- **Tenant-safety verifier tightened** - `npm run verify:menulist-api-tenant-safety` now checks the dashboard GA cards for bounded analytics diagnostics, absence of direct `console.*` calls, old raw diagnostic strings, and the zero-total percentage guard.
+
+### Boundaries
+
+- **Valid analytics behavior preserved** - GA report requests, realtime/date-range/menu/location/trend rendering, card loading states, chart tabs, and existing analytics DAL behavior remain unchanged. No Firestore reads/writes, Storage operations, Cloud Functions, Firebase deploy, Vercel deploy, production build, API route, cache invalidation, rules, indexes, public route, provider call, or owner-facing setting was changed.
+
+---
+
+## June 27, 2026 - Desktop Customer App Settings Diagnostic Hardening
+
+### Changed
+
+- **Desktop Customer App diagnostics bounded** - Desktop Customer App settings save failures no longer direct-console raw store, icon, localization, or provider/browser errors.
+- **PWA helper reused** - `CustomerAppTab` now uses `customer_app_desktop_settings_save_failed` through `src/lib/pwa/pwaDiagnostics.ts`, matching the mobile Customer App settings diagnostic pattern.
+- **Customer App verifier tightened** - `npm run verify:customer-app-pwa` now checks the desktop settings tab for bounded diagnostics and absence of direct `console.*` calls or the old raw save string.
+
+### Boundaries
+
+- **Valid Customer App behavior preserved** - Desktop settings save, icon upload/clear, localized short name drafts, store details update, owner messages, mobile settings, install prompt, manifest, and analytics behavior remain unchanged. No Firestore reads/writes, Storage operations, Cloud Functions, Firebase deploy, Vercel deploy, production build, API route, cache invalidation, rules, indexes, public route, provider call, or owner-facing setting was changed.
+
+---
+
+## June 27, 2026 - Desktop Feedback Inbox Diagnostic Hardening
+
+### Changed
+
+- **Desktop feedback diagnostics bounded** - Feedback Inbox load and status-update failures no longer direct-console raw feedback/provider errors.
+- **Feedback inbox helper added** - The desktop owner inbox now uses normalized `feedback_inbox_*` failure codes with bounded project/filter/cursor/status/count metadata and source error name/code/status only.
+- **Public-business verifier tightened** - `npm run verify:public-business-truth` now checks the desktop feedback diagnostic helper, failure codes, and absence of direct `console.*` calls or old raw diagnostic strings in `FeedbackInbox`.
+
+### Boundaries
+
+- **Valid feedback behavior preserved** - Feedback list loading, pagination, needs-attention count, status update, local state update, owner notifications, mobile feedback diagnostics, and public feedback submission behavior remain unchanged. No Firestore reads/writes, Storage operations, Cloud Functions, Firebase deploy, Vercel deploy, production build, API route, cache invalidation, rules, indexes, public route, provider call, or owner-facing setting was changed.
+
+---
+
+## June 27, 2026 - Mobile Today Diagnostic Hardening
+
+### Changed
+
+- **Mobile Today diagnostics bounded** - Mobile close-today, campaign complete/skip, today-hours update, temporary-status set/clear, tent-card download, and counter-sticker download failures now log bounded internal diagnostics instead of leaving only owner toasts.
+- **Shared helpers reused** - `MobileHoursScreen` now uses `mobileOwnerDiagnostics` for owner mutation/download failures and `campaignDiagnostics` for mobile campaign action failures.
+- **Public-business verifier tightened** - `npm run verify:public-business-truth` now checks Mobile Today failure codes, bounded context helpers, and absence of direct `console.*` calls in `MobileHoursScreen`.
+
+### Boundaries
+
+- **Valid Mobile Today behavior preserved** - Mobile Today navigation, current-hours UI, optimistic status changes, campaign complete/skip, WhatsApp handoff, physical-surface downloads, owner toasts, and rollback behavior remain unchanged. No Firestore reads/writes, Storage operations, Cloud Functions, Firebase deploy, Vercel deploy, production build, API route, cache invalidation, rules, indexes, public route, provider call, or owner-facing setting was changed.
+
+---
+
+## June 27, 2026 - Today Campaign Diagnostic Hardening
+
+### Changed
+
+- **Today campaign diagnostics bounded** - Desktop Today complete/skip actions, project-link building, WhatsApp copy fallback, and campaign export/download surfaces no longer direct-console raw campaign, project, item, image URL, caption, menu-link, or provider/browser error payloads.
+- **Campaign helper added** - Today and shared campaign surface failure paths now use normalized `campaign_*` and `today_campaign_*` failure codes with bounded presence/length metadata and source error name/code/status only.
+- **Public-business verifier tightened** - `npm run verify:public-business-truth` now checks Today/campaign diagnostics, failure codes, absence of direct `console.*` calls, and absence of the old raw diagnostic strings.
+
+### Boundaries
+
+- **Valid Today behavior preserved** - Today screen loading, primary/operational campaign cards, complete/skip DAL calls, WhatsApp handoff, clipboard fallback, poster/tent/screen downloads, owner notifications, and post-action UI remain unchanged. No Firestore reads/writes, Storage operations, Cloud Functions, Firebase deploy, Vercel deploy, production build, API route, cache invalidation, rules, indexes, public route, provider call, or owner-facing setting was changed.
+
+---
+
+## June 27, 2026 - Mobile Owner and Customer App Diagnostic Hardening
+
+### Changed
+
+- **Mobile owner diagnostics bounded** - Mobile design publish and feedback load failures no longer direct-console raw project, store, feedback, URL, or provider error payloads.
+- **Customer App PWA diagnostics extended** - Native install prompt and mobile Customer App settings save failures now use bounded PWA diagnostics instead of raw browser warnings/errors.
+- **Verifiers tightened** - `npm run verify:public-business-truth` now checks mobile design/feedback diagnostics, and `npm run verify:customer-app-pwa` now checks install prompt and mobile Customer App settings diagnostics.
+
+### Boundaries
+
+- **Valid mobile behavior preserved** - Mobile design publish, public verification handoff, feedback inbox loading, native install prompt handling, Customer App settings save, owner toasts, and PWA analytics behavior remain unchanged. No Firestore reads/writes, Storage operations, Cloud Functions, Firebase deploy, Vercel deploy, production build, API route, cache invalidation, rules, indexes, public route, or owner-facing setting was changed.
+
+---
+
+## June 27, 2026 - Mobile Project Selector Diagnostic Hardening
+
+### Changed
+
+- **Mobile project diagnostics bounded** - Mobile project image preparation and project delete failures no longer direct-console raw project/store/file payloads or provider errors.
+- **Mobile project helper added** - `MobileProjectSelectorSheet` now uses normalized failure codes plus bounded project/store/file/language counts, flags, and source error metadata only.
+- **Public-business verifier tightened** - `npm run verify:public-business-truth` now checks the mobile project diagnostics helper, selector-sheet failure codes, and absence of direct `console.*` calls or old raw diagnostic strings in the selector sheet.
+
+### Boundaries
+
+- **Valid mobile project behavior preserved** - Project image selection, delete confirmation, linked-outlet delete guard, project cache updates, selected-project fallback, owner toasts, and MobileShell project management behavior remain unchanged. No Firestore reads/writes, Storage operations, Cloud Functions, Firebase deploy, Vercel deploy, production build, API route, cache invalidation, rules, indexes, public route, or owner-facing setting was changed.
+
+---
+
+## June 27, 2026 - Project View Diagnostic Cleanup
+
+### Changed
+
+- **Project view diagnostics bounded** - B2B JSON edit failures now use normalized project-scoped diagnostics instead of direct-console raw edit payloads or provider errors.
+- **Menu-page design debug logs removed** - Background gallery, gradient parsing, background config changes, and color preset selection no longer emit raw debug output in the browser console.
+- **Public-business verifier tightened** - `npm run verify:public-business-truth` now checks B2B/B2C project view files for the bounded JSON edit failure code and absence of direct `console.*` calls or old raw diagnostic strings.
+
+### Boundaries
+
+- **Valid project view behavior preserved** - JSON editing, reset confirmation, background gallery loading, gradient parsing fallback, background image/color updates, and color preset selection remain unchanged. No Firestore reads/writes, Storage operations, Cloud Functions, Firebase deploy, Vercel deploy, production build, API route, cache invalidation, rules, indexes, public route, or owner-facing setting was changed.
+
+---
+
+## June 27, 2026 - Menu Editor Modal Diagnostic Hardening
+
+### Changed
+
+- **Editor modal diagnostics bounded** - Item content generation, category time-slot preset creation, and uploaded image deletion failures no longer direct-console raw owner menu, item, image, store, or provider error payloads.
+- **Editor helper reused** - `editItemModal`, `editCategoryModal`, and `uploadedImagesList` now use normalized `menu_editor_*` failure codes plus bounded project/file/item/category/store/image presence, length, counts, and source error metadata only.
+- **Public-business verifier tightened** - `npm run verify:public-business-truth` now checks the editor modal failure codes and absence of direct `console.*` calls or old raw diagnostic strings in the guarded editor modal files.
+
+### Boundaries
+
+- **Valid editor behavior preserved** - Item content generation, AICapacityError handling, category preset creation, image delete confirmation, Storage deletion, project update, owner messages, and loader behavior remain unchanged. No Firestore reads/writes, Storage operations, Cloud Functions, Firebase deploy, Vercel deploy, production build, API route, cache invalidation, rules, indexes, public route, or owner-facing setting was changed.
+
+---
+
+## June 27, 2026 - Desktop Projects Page Diagnostic Hardening
+
+### Changed
+
+- **Projects page diagnostics bounded** - Desktop project create/update, modal delete, reset, duplicate, selector delete, project-list load, project-detail load, project image preparation/generation, and duplicate-modal submit failures no longer direct-console raw project/store payloads or provider errors.
+- **Projects page helper added** - The desktop menu builder shell and ProjectDetails modals now use normalized failure codes plus bounded project/store presence, length, flags, counts, and source error metadata only.
+- **Public-business verifier tightened** - `npm run verify:public-business-truth` now checks the Projects page diagnostics helper, all desktop project action failure codes, ProjectDetails modal failure codes, and absence of direct `console.*` calls in the guarded desktop project-management files.
+
+### Boundaries
+
+- **Valid project management behavior preserved** - Create, update, delete, reset, duplicate, SWR cache updates, selected-project changes, owner messages, loader behavior, linked-outlet guards, and public cache invalidation through the DAL remain unchanged. No Firestore reads/writes, Storage operations, Cloud Functions, Firebase deploy, Vercel deploy, production build, API route, cache invalidation, rules, indexes, public route, or owner-facing setting was changed.
+
+---
+
+## June 27, 2026 - Mobile Menu Diagnostic Hardening
+
+### Changed
+
+- **Mobile Menu diagnostics bounded** - Project image auto-generation, menu-derived business defaults, extracted profile defaults, background project persistence, item image upload, active-job restore, and comparison-engine failures no longer direct-console raw project, store, job, item, image, or browser error objects.
+- **Mobile Menu helper added** - `MobileMenuScreen` now uses a screen-specific bounded diagnostics helper with normalized failure codes and project/store/job/item presence, length, counts, mode, language, and source error metadata only.
+- **Public-business verifier tightened** - `npm run verify:public-business-truth` now checks the mobile menu diagnostics helper, all mobile menu failure codes, and absence of direct `console.*` calls in `MobileMenuScreen`.
+
+### Boundaries
+
+- **Valid mobile menu behavior preserved** - Optimistic edits, background save retry, owner toasts, image upload, project image cache updates, extracted-profile defaults, business-attribute defaults, active extraction job restore, comparison review, linked-outlet behavior, and MobileShell navigation remain unchanged. No Firestore reads/writes, Storage operations, Cloud Functions, Firebase deploy, Vercel deploy, production build, API route, cache invalidation, rules, indexes, public route, or owner-facing setting was changed.
+
+---
+
+## June 27, 2026 - Multi-Outlet Awareness Diagnostic Hardening
+
+### Changed
+
+- **Multi-outlet diagnostics bounded** - Master update awareness checks, acknowledgments, listeners, initial/switch snapshots, missing-master resolution, outlet propagation, brand propagation, and mobile linked-outlet resolution no longer direct-console raw project/store IDs or provider errors.
+- **Shared diagnostics helper added** - Multi-outlet failure paths now use normalized failure codes plus bounded project/master/store presence, length, counts, versions, and source error metadata only.
+- **Public-business verifier tightened** - `npm run verify:public-business-truth` now checks the shared multi-outlet diagnostics helper, awareness hook, DAL, resolver, propagation helpers, and mobile linked-outlet resolution catch.
+
+### Boundaries
+
+- **Valid multi-outlet behavior preserved** - Master update awareness remains fail-open, acknowledgment still writes the same snapshot, linked-outlet rendering still falls back to standalone when a master is missing, propagation counts are unchanged, mobile linked-outlet resolution remains non-blocking, and public cache invalidation behavior is unchanged. No Firestore reads/writes, Storage operations, Cloud Functions, Firebase deploy, Vercel deploy, production build, API route, rules, indexes, public route, or owner-facing setting was changed.
+
+---
+
+## June 27, 2026 - Project Persistence Diagnostic Hardening
+
+### Changed
+
+- **Project DAL diagnostics bounded** - Project change detection, menu snapshots, deleted-project slug reservation, outlet propagation, master update awareness, menu observation publish/edit logging, and projects summary backfill no longer direct-console raw project IDs, names, payload context, or provider errors.
+- **Backfill progress minimized** - The temporary projects summary backfill now logs only bounded development diagnostics while preserving its returned status, counts, and project list for manual callers.
+- **Public-business verifier tightened** - `npm run verify:public-business-truth` now checks `src/database/projects/index.ts` for bounded project persistence diagnostics and bans direct `console.*` calls in that DAL file.
+
+### Boundaries
+
+- **Valid project persistence behavior preserved** - Project creates, updates, duplicates, publishes, snapshots, summary sync, MOL hooks, master update awareness signals, slug reservation fail-open behavior, and backfill return values remain unchanged. No Firestore reads/writes, Storage operations, Cloud Functions, Firebase deploy, Vercel deploy, production build, API route, cache invalidation, rules, indexes, public route, or owner-facing setting was changed.
+
+---
+
+## June 27, 2026 - Menu Editor and MCE Diagnostic Hardening
+
+### Changed
+
+- **Menu editor diagnostics bounded** - Linked-outlet resolution, MCE Publish-Gate validation, and editor save/sync failures no longer direct-console raw project or browser error objects.
+- **MCE save diagnostics bounded** - Save-time MCE validation now uses dev-only bounded result logging and normalized secure failure diagnostics instead of raw validation console output.
+- **Public-business verifier tightened** - `npm run verify:public-business-truth` now checks the menu editor diagnostics helper, MCE diagnostics helper, editor catch paths, and MCE save hook.
+
+### Boundaries
+
+- **Valid editor and MCE behavior preserved** - Linked-outlet resolution remains non-blocking, MCE failures never block owner saves, `_mce` stamping still happens inside the existing `updateProject()` write, and Publish-Gate owner feedback behavior is unchanged. No Firestore reads/writes, Storage operations, Cloud Functions, Firebase deploy, Vercel deploy, production build, API route, cache invalidation, rules, indexes, public route, or owner-facing setting was changed.
+
+---
+
+## June 27, 2026 - Menu Translation Diagnostic Hardening
+
+### Changed
+
+- **Translation diagnostics bounded** - Translation API client failures, file/category/item translation failures, and desktop retry catches no longer direct-console raw provider/browser errors.
+- **Translation context minimized** - Internal diagnostics now record normalized failure codes plus bounded project/file/language/action presence, length, response status, and translation-key counts only.
+- **AI accounting verifier tightened** - `npm run verify:ai-accounting` now checks the translation diagnostics helper, client, utilities, and desktop retry callers.
+
+### Boundaries
+
+- **Valid translation behavior preserved** - Language addition, file retry, item retry, category/item/file merge behavior, AICapacityError handling, owner-facing messages, project persistence, and mobile shared-utility behavior remain unchanged. No Firestore rules, Cloud Functions, Firebase deploy, Vercel deploy, production build, API route contract, Storage path, cache behavior, or owner-facing setting was changed.
+
+---
+
+## June 27, 2026 - Menu Share Export Diagnostic Hardening
+
+### Changed
+
+- **Share/export diagnostics bounded** - Clipboard copy, Web Share API, external endpoint share, structured JSON/XLSX export, PDF generation, and Menu Kit generation failures no longer direct-console or pass through raw browser/provider errors.
+- **Export context minimized** - Internal diagnostics now record normalized failure codes plus bounded URL/project/store/currency/Menu Kit input presence, length, status, asset key, and item/category/language counts only.
+- **Export verifiers tightened** - `npm run verify:menu-export` and `npm run verify:menu-card-export` now check the share/export/Menu Kit diagnostic boundary and the absence of the old raw console paths.
+
+### Boundaries
+
+- **Valid export behavior preserved** - Clipboard copy, native share, endpoint POST, JSON/XLSX download, PDF generation, Menu Kit ZIP/single-asset generation, freshness markers, owner-facing messages, Menu Card Export routing, local history, and print-shop output behavior remain unchanged. No Firestore rules, Cloud Functions, Firebase deploy, Vercel deploy, production build, Storage path, export artifact, API route, cache behavior, or owner-facing setting was changed.
+
+---
+
+## June 27, 2026 - Menu Link Import Client Diagnostic Hardening
+
+### Changed
+
+- **Link-import dev trigger diagnostics bounded** - The Menu Link Import client no longer direct-console logs raw emulator/dev-trigger failures after a job is created.
+- **Best-effort behavior preserved** - Local/emulator `dev_triggerProcessMenuImages` remains non-blocking; failed dev triggering logs bounded job/environment metadata and the created import job can still be processed manually.
+- **Extraction verifier tightened** - `npm run verify:menu-extraction-pipeline` now checks the Menu Link Import client helper in addition to route, upload, review, and processing diagnostics.
+
+### Boundaries
+
+- **Valid link import behavior preserved** - Authenticated API job creation, feature flag gating, rate limits, body caps, source acquisition, artifact writes, forced review, dev trigger support, desktop/mobile callers, and owner-facing errors remain unchanged. No Firestore rules, Cloud Functions, Firebase deploy, Vercel deploy, production build, Storage path, extraction job field, public route, cache behavior, or owner-facing setting was changed.
+
+---
+
+## June 27, 2026 - Customer App PWA Tracking Diagnostic Hardening
+
+### Changed
+
+- **PWA tracking diagnostics bounded** - Customer App shortcut, standalone-open, and install tracking helpers no longer direct-console raw browser analytics exceptions.
+- **Install fallback made non-fatal** - When `localStorage` is unavailable, `fireInstalledEventOnce()` now treats failed install tracking the same as other Customer App analytics failures: bounded diagnostic only, no customer-flow exception.
+- **PWA verifier tightened** - `npm run verify:customer-app-pwa` now checks the shared PWA diagnostics helper plus shortcut/open/install detector failure paths.
+
+### Boundaries
+
+- **Valid Customer App behavior preserved** - Store-level installed identity, install/open/shortcut event names, localStorage/sessionStorage dedupe, iOS install inference, install surface attribution, analytics debouncing/rate limiting, owner controls, and customer UI behavior remain unchanged. No Firestore rules, Cloud Functions, Firebase deploy, Vercel deploy, production build, public route, read model, owner-facing setting, or manifest contract was changed.
+
+---
+
+## June 27, 2026 - Analytics Normalizer Diagnostic Hardening
+
+### Changed
+
+- **Analytics normalizer diagnostics bounded** - `validateNormalizedMetrics()` no longer direct-console logs raw validation exceptions from malformed analytics read-model data.
+- **Validation context minimized** - Normalizer failures now use the shared analytics diagnostics helper with bounded metrics/date/tenant/store presence and length metadata plus map/metadata presence flags.
+- **Tenant-safety verifier tightened** - `npm run verify:menulist-api-tenant-safety` now checks the analytics normalizer in addition to the analytics DAL, routes, server helpers, public tracking, client tracking, and write queue diagnostics.
+
+### Boundaries
+
+- **Valid normalization behavior preserved** - Metric normalization, chart normalization, knowledge gap/top question normalization, validation return values, and owner dashboard fallback behavior remain unchanged. Validation failures still return `false`. No Firestore reads/writes, Cloud Functions, Firebase deploy, Vercel deploy, production build, analytics route, read model, owner-facing setting, or dashboard UI was changed.
+
+---
+
+## June 27, 2026 - Owner Analytics DAL Diagnostic Hardening
+
+### Changed
+
+- **Owner analytics read diagnostics bounded** - The shared analytics DAL no longer direct-console logs raw dashboard, AI intelligence, summary, or comparison read failures with Firestore/provider error objects.
+- **Read failure context minimized** - Analytics DAL failures now use the existing analytics diagnostics helper with bounded tenant/store presence and length metadata plus date-range validity/day-count context.
+- **Tenant-safety verifier tightened** - `npm run verify:menulist-api-tenant-safety` now checks the analytics DAL read layer in addition to analytics routes, server helpers, public tracking, client tracking, and write queue diagnostics.
+
+### Boundaries
+
+- **Valid analytics behavior preserved** - Dashboard aggregate reads, AI intelligence reads, summary reads, comparison reads, fallback values, and caller error handling remain unchanged. Failed reads still rethrow to existing UI boundaries. No Firestore rules, Cloud Functions, Firebase deploy, Vercel deploy, production build, analytics route, public tracking write, read model, owner-facing setting, or dashboard UI was changed.
+
+---
+
+## June 27, 2026 - Menu Health Publish Verification Diagnostic Hardening
+
+### Changed
+
+- **Publish verification diagnostics bounded** - The MenuList client wrapper for `verifyMenuPublish` no longer emits raw browser warnings with callable/provider error objects or public menu URLs when post-publish verification fails.
+- **Failure context minimized** - Menu health publish diagnostics now record only store/tenant/public URL presence and length metadata plus normalized source error name/code/status.
+- **Public-business verifier tightened** - `npm run verify:public-business-truth` now checks the menu health publish wrapper for secure logging, bounded URL context, normalized failure codes, and no old raw warning path.
+
+### Boundaries
+
+- **Valid publish behavior preserved** - Post-publish menu verification remains feature-flag gated and fire-and-forget. A failed verification still does not block publishing, owner UI behavior, public menu cache behavior, store health writes, alerts, or Telegram notifications. No Firestore rules, Cloud Functions, Firebase deploy, Vercel deploy, production build, callable contract, owner-facing setting, or public route was changed.
+
+---
+
+## June 27, 2026 - Extraction Review Diagnostic Hardening
+
+### Changed
+
+- **Review apply diagnostics bounded** - `applyExtractionChanges`, the comparison engine, and the client redistribution helper no longer emit raw project IDs, job IDs, file UIDs, category/item counts, stats, or exception objects through browser console logs.
+- **Review caller errors made generic** - Desktop and mobile extraction review save/discard failures now use bounded menu-processing diagnostics internally and generic owner-facing retry text.
+- **Duplicate redistribution utility removed** - The unused Projects-level redistribution helper was deleted so there is only one maintained client redistribution path.
+- **Extraction verifier tightened** - `npm run verify:menu-extraction-pipeline` now checks review apply diagnostics, comparison/redistribution logging, desktop/mobile review callers, and the removed duplicate utility.
+
+### Boundaries
+
+- **Valid extraction review behavior preserved** - Comparison output, apply-plan generation, single atomic project update, linked-outlet `outlet-save` route usage, business-attribute inference, job completion/discard writes, MOL audit event, public cache revalidation, and owner review UI behavior remain unchanged. No Firestore rules, Cloud Functions, Firebase deploy, Vercel deploy, production build, AI provider call, Storage operation, job field, index, owner-facing setting, or public route was changed.
+
+---
+
+## June 27, 2026 - Firebase User Token Extraction Removal
+
+### Changed
+
+- **Dead token helper removed** - The unused `src/utils/usersUtils.ts` helper was deleted because it copied Firebase `accessToken` and `refreshToken` values from `stsTokenManager` into a plain user object.
+- **Auth verifier tightened** - `npm run verify:auth-security-failure-matrix` now fails if a user utility reintroduces Firebase `stsTokenManager`, `accessToken`, `refreshToken`, or the old token extraction helper name.
+
+### Boundaries
+
+- **No live auth flow changed** - The helper had no repo imports. Login, Firebase Auth sync, session bootstrap, staff creation, profile updates, token refresh, App Check, and Firestore access behavior remain unchanged. No Firestore rules, Cloud Functions, Firebase deploy, Vercel deploy, production build, Auth provider call, Firestore read/write, owner-facing setting, or public cache behavior was changed.
+
+---
+
+## June 27, 2026 - Firebase Auth Bootstrap Diagnostic Hardening
+
+### Changed
+
+- **Firebase bootstrap diagnostics bounded** - App Check initialization, Firebase client emulator setup, Firebase Auth sync hook failures, and session-provider auth bootstrap failures now use a shared bounded diagnostic helper instead of raw browser console or logger error payloads.
+- **Auth sync failure text made generic** - Firebase Auth sync HTTP/status failures now throw coded generic bootstrap errors, preserving numeric status only as internal diagnostic context.
+- **Auth verifier tightened** - `npm run verify:auth-security-failure-matrix` now checks the Firebase bootstrap diagnostic helper, App Check, Firebase client initialization, the auth sync hook/helper, and session-provider auth bootstrap path.
+
+### Boundaries
+
+- **Valid auth behavior preserved** - NextAuth session handling, Firebase Auth custom-token sync, claim refresh, App Check initialization, local Functions emulator connection, Answerlattice auth sync handoff, and store bootstrap gating keep their existing contracts. No Firestore rules, Cloud Functions, Firebase deploy, Vercel deploy, production build, Auth provider call, Firestore read/write, owner-facing setting, or public cache behavior was changed.
+
+---
+
+## June 27, 2026 - Menu Upload Caller Diagnostic Hardening
+
+### Changed
+
+- **Owner upload diagnostics bounded** - Desktop Projects upload, mobile menu upload, and PDF conversion utilities no longer emit raw upload/job/PDF debug logs with filenames, job IDs, project IDs, page counts, or exception objects.
+- **Processing failure text tightened** - Owner-facing upload/job failure paths now use generic retry text while bounded internal diagnostics keep normalized failure codes and file/job/project presence metadata.
+- **Extraction verifier tightened** - `npm run verify:menu-extraction-pipeline` now checks desktop upload callers, the mobile upload sheet, and the PDF conversion utility in addition to the shared job helper and status hook.
+
+### Boundaries
+
+- **Valid extraction behavior preserved** - Desktop upload, mobile upload, PDF-to-image conversion, image optimization fallback, menu-intake preflight, active-job reuse, link import, job creation, review save/discard, and customer render behavior remain unchanged. No Firestore rules, Cloud Functions, Firebase deploy, Vercel deploy, production build, AI provider call, Storage operation, cache invalidation, job field, index, or owner-facing setting was changed.
+
+---
+
+## June 27, 2026 - Payment UI Failure Boundary Hardening
+
+### Changed
+
+- **Payment UI callers bounded** - Website pricing, website credit packs, desktop billing, subscription self-service, and mobile billing now route payment failures through bounded payment diagnostics instead of direct console or raw logger error payloads.
+- **Owner-visible payment errors made generic** - Mobile and desktop billing no longer show raw payment exception messages for plan updates, paid locations, credit packs, pause, resume, or cancellation failures.
+- **Website checkout pause fixed** - The pricing page no longer treats the auth/onboarding handoff as a failed payment when `onClickPaymentCard()` opens onboarding instead of returning a checkout promise.
+- **Tenant-safety verifier tightened** - `npm run verify:menulist-api-tenant-safety` now checks the payment UI caller layer in addition to the shared hook and script loader.
+
+### Boundaries
+
+- **Valid billing behavior preserved** - Razorpay checkout payloads, server verification routes, plan upgrade flow, paid-location flow, credit-pack flow, pause/resume/cancel flow, mobile billing flow, and website onboarding flow keep their existing contracts. No Firestore rules, Cloud Functions, Firebase deploy, Vercel deploy, production build, provider call, billing route contract, payment state machine, or owner-facing setting was changed.
+
+---
+
+## June 27, 2026 - Payment Hook Diagnostic Hardening
+
+### Changed
+
+- **Payment hook diagnostics bounded** - `usePaymentHandler` and `useRazorpayScript` no longer direct-console raw Razorpay checkout failures, verification responses, provider errors, or script-load failures.
+- **Verification response logging removed** - Subscription and top-up verification failures now log normalized failure codes plus bounded product/plan/pack/status metadata, not raw verification payloads or payment identifiers.
+- **Tenant-safety verifier tightened** - `npm run verify:menulist-api-tenant-safety` now checks the payment diagnostics helper, shared payment hook, and Razorpay script hook.
+
+### Boundaries
+
+- **Valid billing behavior preserved** - Subscription checkout, onboarding checkout, upgrade checkout, top-up checkout, pause/resume/cancel calls, server verification routes, and Razorpay modal behavior remain unchanged. No Firestore rules, Cloud Functions, Firebase deploy, Vercel deploy, production build, provider call, billing route contract, payment state machine, or owner-facing setting was changed.
+
+---
+
+## June 27, 2026 - Menu Extraction Job Diagnostics
+
+### Changed
+
+- **Menu processing diagnostics bounded** - The shared extraction job helper and status hook no longer direct-console raw job IDs, project IDs, job statuses, active job lists, or browser/Firebase exceptions.
+- **Job helper failure text tightened** - Cancel-missing and invalid-status paths now log normalized diagnostics internally and throw generic menu-extraction errors to callers.
+- **Extraction verifier tightened** - `npm run verify:menu-extraction-pipeline` now checks the shared diagnostics helper, job helper, and status hook for bounded diagnostics and no direct job-status console logging.
+
+### Boundaries
+
+- **Valid extraction behavior preserved** - Job creation through `POST /api/menu-extraction/jobs`, active/completed job reuse, development trigger behavior, cancellation writes, active-job lookup, realtime job listener behavior, and review flow behavior remain unchanged. No Firestore rules, Cloud Functions, Firebase deploy, Vercel deploy, production build, AI provider call, Storage operation, cache invalidation, or owner-facing setting was changed.
+
+---
+
+## June 27, 2026 - Analytics Client Diagnostic Hardening
+
+### Changed
+
+- **Analytics client diagnostics bounded** - Shared customer/owner analytics helpers no longer direct-console browser storage, geolocation, device parsing, missing-field, Firebase tracking, GA4 tracking, or queue/write failures.
+- **Analytics queue logging minimized** - Analytics queue failures now log normalized failure codes plus tenant/store/project/session/queue presence and length metadata, not raw identifiers or provider exception payloads.
+- **Tenant-safety verifier tightened** - `npm run verify:menulist-api-tenant-safety` now checks the analytics diagnostics helper, client dispatcher, device/location/session helpers, and analytics write queue.
+
+### Boundaries
+
+- **Valid analytics behavior preserved** - Existing event selection, rate limiting, debounce/cooldown behavior, local queue coalescing, public analytics route flushes, Firestore write shape, GA4 calls, and owner dashboard aggregation inputs remain unchanged. No Firestore rules, Cloud Functions, Firebase deploy, Vercel deploy, production build, provider call, analytics counter, or owner-facing setting was changed.
+
+---
+
+## June 27, 2026 - Storage Helper Diagnostic Hardening
+
+### Changed
+
+- **Storage helper diagnostics bounded** - Shared upload/delete helpers no longer direct-console raw Firebase Storage URLs, full paths, download URLs, provider error objects, or provider error messages.
+- **Storage failure text made generic** - Base64 upload and delete failures now log normalized secure diagnostics internally and return or throw generic failure text to callers.
+- **Storage verifier tightened** - `npm run verify:auth-security-failure-matrix` now checks shared Storage helper diagnostics, generic error text, and the awaited JSON/font download-URL flow.
+
+### Boundaries
+
+- **Valid Storage behavior preserved** - Existing upload, download-URL return, idempotent delete, object-not-found success, and caller cleanup behavior remain unchanged. No Firestore rules, Storage rules, Cloud Functions, Firebase deploy, Vercel deploy, production build, or owner-facing setting was changed.
+
+---
+
+## June 27, 2026 - Digital Screen Diagnostic Hardening
+
+### Changed
+
+- **Digital screen diagnostics bounded** - Public token resolvers, menu-item fallback helpers, screen invalidation, and reload utilities no longer emit direct `console.*` diagnostics with raw screen tokens, project IDs, slide IDs, settings payloads, or error objects.
+- **Owner settings follow-up bounded** - Desktop settings load/override failures and shared owner-control tracking failures now use normalized secure diagnostics while normal owner-control success stays quiet.
+- **Screen verifier tightened** - `npm run verify:customer-app-pwa` now checks the digital-screen helper layer for direct console logging regressions and normalized secure failure codes.
+
+### Boundaries
+
+- **Valid screen behavior preserved** - Screen token lookup, inactive-store fallback, menu projection/fallback resolution, owner uploads, settings load, owner-only override, owner-control tracking debounce, content-version bumps, listener mirrors, and reload timing keep their existing behavior. This changes diagnostics only; no Firestore rules, indexes, Cloud Functions, Firebase deploy, Vercel deploy, production build, or owner-facing setting was changed.
+
+---
+
+## June 27, 2026 - SignalDesk Helper Body Admission
+
+### Changed
+
+- **SignalDesk shared parser capped** - SignalDesk action and kill-switch requests now use a 256KB bounded JSON body in `parseSignalDeskJsonBody()` before action-envelope validation, access checks, mobile mutation blocking, action-specific rate limits, provider/source work, AI work, or SignalDesk Firestore writes.
+- **SignalDesk verifier tightened** - `node scripts/verification/verify-signaldesk-runtime.js` now fails if the shared SignalDesk API guard reintroduces raw `request.json()` parsing.
+
+### Boundaries
+
+- **Valid SignalDesk behavior preserved** - Accepted actions and kill-switch updates keep their existing contracts and downstream behavior. Rejected oversized or malformed bodies do not reach SignalDesk Firestore, provider calls, or AI calls. No Firestore rules, Cloud Functions, Firebase deploy, Vercel deploy, production build, or public SignalDesk surface was changed.
+
+---
+
+## June 27, 2026 - Staff and Profile Body Admission
+
+### Changed
+
+- **Staff helper body caps added** - Staff create, update, password reset, force sign-out, and role-save helpers now use a 16KB bounded JSON body before schema validation, tenant/store authority checks, Firebase Auth work, or Firestore writes.
+- **Profile update admission tightened** - `/api/auth/update-profile` now applies the existing `DATA_WRITE` limiter by session user ID and reads a 4KB bounded JSON body before profile validation or the user-document read.
+- **Helper-level verifier added** - `npm run verify:menulist-api-tenant-safety` now checks the imported staff/profile helper layer directly, not only `src/app/api/**/route.ts(x)` files.
+
+### Boundaries
+
+- **Valid staff/profile behavior preserved** - Accepted staff and profile mutations keep their existing response contracts, Firebase Auth behavior, and Firestore writes. Rejected oversized or malformed bodies do not reach Firebase Auth or Firestore. No Firestore rules, Cloud Functions, Firebase deploy, Vercel deploy, production build, or owner-facing setting was changed.
+
+---
+
+## June 27, 2026 - Public Contact and DAL Admission Hardening
+
+### Changed
+
+- **Public contact submissions moved server-side** - `/contact` now submits to `POST /api/public/contact`, which rate-limits, caps JSON at 8KB, checks honeypot/Turnstile signals, sanitizes fields, and writes `landingPageEnquiries` through Firebase Admin.
+- **Direct anonymous enquiry writes blocked** - `firestore.rules` now limits direct browser creates on `landingPageEnquiries` to authenticated platform admins; public website submissions must pass through the bounded contact route.
+- **Shared DAL wrappers fail closed without session** - Client DAL composers now require an active session instead of treating every named call as public, and client/server DAL wrapper failures use normalized secure logging with bounded argument summaries.
+
+### Boundaries
+
+- **Valid behavior preserved** - Accepted contact submissions still create one enquiry record. Rejected oversized, malformed, rate-limited, honeypot, or failed-captcha requests create no Firestore writes. No Cloud Function, Vercel deploy, production build, payment flow, or owner-facing setting was changed.
+- **Firestore rules deploy pending** - The local `firestore.rules` change compiles in the Firestore emulator and is covered by `npm run verify:public-business-truth`, but deployment to `menulist-qa` is blocked by Firebase Rules API IAM `403`.
+
+---
+
+## June 27, 2026 - Public Signal and Ops Request Admission
+
+### Changed
+
+- **Public analytics bodies capped** - `/api/public/analytics/track` now keeps the public IP limiter before bounded JSON parsing and rejects bodies above 64KB before store/project target reads or analytics writes.
+- **Public feedback bodies capped** - `/api/public/feedback/submit` now keeps the feedback IP limiter before bounded JSON parsing and rejects bodies above 16KB before Turnstile verification, project/store reads, feedback writes, or feedback event writes.
+- **CSP report diagnostics bounded** - `/api/csp-report` now logs unexpected report-processing failures as `csp_report_processing_failed` with bounded URL/IP metadata instead of raw route exceptions.
+- **Public pull API diagnostics bounded** - `/api/public/v1/business` and `/api/public/v1/menu` now log unexpected route failures as stable diagnostic codes with bounded API-key/store/tenant/project metadata instead of raw route exceptions.
+- **Multi-outlet route diagnostics bounded** - Linked outlet save validation/catch failures, outlet policy updates, and outlet rename failures now use multi-outlet diagnostic codes with bounded tenant/store/project/outlet metadata instead of raw route exceptions.
+- **Messaging preview GET diagnostics bounded** - Token preview reads now log unexpected failures as `messaging_preview_get_route_failed` with bounded session/provider/request-IP metadata instead of raw route exceptions.
+- **Business Health monitor route diagnostics bounded** - `/api/platform/owner-business-assistant/monitor` now logs unexpected load failures as `owner_business_assistant_monitor_route_failed` with bounded request-path metadata instead of raw route exceptions.
+- **Platform cost posture diagnostics bounded** - `/api/platform/cost-posture` source reads, system-config reads, rate-limit security logs, and top-level failures now use stable runtime diagnostics with bounded source/path/user metadata.
+- **SignalDesk route diagnostics bounded** - SignalDesk overview, workspace, action, kill-switch, and overview-loader failures now use stable `signaldesk_*_failed` diagnostics with bounded user/action/section/scope metadata instead of raw route exceptions.
+- **Menu Link Import route diagnostics bounded** - Authenticated menu-link import job-created, source-rejected, and unexpected failure logs now use stable menu-processing diagnostic codes with bounded project/job/artifact/source metadata instead of raw route identifiers or exceptions.
+- **Screen seen stream cap added** - `/api/screen/seen` now keeps the 1KB declared-body guard and reads no-length/chunked JSON bodies through the same 1KB bounded helper before token/store validation or Firestore lookup.
+- **Business Health feedback body capped** - `/api/owner-business-assistant/feedback` now keeps the `DATA_WRITE` limiter before bounded JSON parsing and rejects bodies above 8KB before selected-store scope checks, permission checks, or feedback writes.
+- **Platform admin mutation bodies capped** - Admin subdomain rename and Platform Entity Blocks now use bounded JSON parsing before store/entity reads, summary writes, Auth user changes, token revocation, public cache invalidation, or Business Health packet invalidation.
+- **Ops mutation bodies capped** - SAFE_MODE, alert mute, Platform Notifications actions, and Owner Notifications recovery actions now apply the operator limiter before bounded JSON parsing and reject oversized bodies before Firestore writes, alert creation, event retry, manual send, or manual handoff work.
+- **Create-menu link JSON capped** - The authenticated `/api/public/create-menu` link-import branch now rejects JSON bodies above 8KB before link schema validation, draft dedupe, source acquisition, Storage writes, or extraction job creation.
+- **Answerlattice notification send body capped** - `/api/notifications/send` now keeps the authenticated user throttle before a 16KB bounded JSON body and rejects malformed or oversized ticket notification requests before Answerlattice log reads/writes, template resolution, or SMTP work.
+
+### Boundaries
+
+- **No public signal, Business Health, platform-admin, ops, create-menu, menu-link import, or Answerlattice notification behavior change** - Valid coalesced analytics flushes, guest feedback submissions, honeypot/Turnstile behavior, one-write-per-day screen seen behavior, Business Health feedback logging, admin subdomain rename, entity block behavior, ops dashboard actions, create-menu photo/link flows, authenticated menu-link import job creation, and ticket notification dispatch behavior are unchanged. No Firestore rules, Cloud Functions, Firebase deploy, Vercel deploy, production build, or provider call was changed.
+
+---
+
+## June 26, 2026 - MenuList API Tenant-Safety Verifier
+
+### Added
+
+- **MenuList API tenant-safety verifier added** - Added `npm run verify:menulist-api-tenant-safety` to lock source-level auth, tenant/store scope, selected-store permission, public-cache invalidation, and staff/outlet boundary patterns for high-risk MenuList owner APIs.
+
+### Changed
+
+- **Public pull API key management permission-gated** - Generating or revoking a store pull API key now requires `MANAGE_INTEGRATIONS` instead of any authenticated store session.
+- **Claim-account public cache invalidation added** - Google and email/password claim modes now revalidate public menu, Official Business Page, store, and client-store cache after syncing the claimed store email.
+- **Screen seen signal fails cheap** - `/api/screen/seen` now rejects oversized requests and applies the IP rate limit before parsing anonymous JSON bodies.
+- **Create-menu upload body cap added** - Authenticated `/api/public/create-menu` now rejects oversized request bodies before JSON or multipart parsing while preserving the existing 10MB image limit.
+- **Razorpay webhook raw-body guard added** - `/api/razorpay/webhook` now rejects malformed or oversized payloads, applies the existing webhook IP rate limit, and reads raw webhook bodies through a 256KB cap before signature validation and Firestore idempotency work.
+- **Messaging preview actions body-capped** - Token-based approve/fix preview actions now reject bodies above 4KB before JSON parsing, and fix requests cap issue choices to the known issue set.
+- **Menu extraction JSON controls body-capped** - Owner extraction job, menu intake identity, menu-link import, and public draft claim routes now use bounded JSON parsing before project/draft reads, source acquisition, or extraction job writes.
+- **AI request bodies capped before provider work** - Provider-backed MenuList AI routes now use explicit bounded JSON parsing before schema validation, capacity checks, provider calls, and AI accounting.
+- **Billing payment action bodies capped** - Authenticated Razorpay subscription, top-up, verification, upgrade, pause/resume, cancel, and onboarding subscription routes now use bounded JSON parsing before validation, provider calls, tenant/store reads, or billing writes.
+- **Reseller write throttles completed** - Reseller confirm-payment, renewal, and platform management POSTs now use the existing `DATA_WRITE` limiter before bounded body parsing or mutation work.
+- **Public-truth mutation bodies capped** - Public API key, temp-status, custom-domain, menu revalidation, POS sync, outlet lifecycle/policy, and linked outlet save mutations now reject oversized JSON bodies before validation, provider calls, public cache work, outbound POS fetches, or store/project writes.
+- **Compliance override writes permission-gated** - Compliance override/reset now requires `MANAGE_PUBLIC_PRESENCE` or `MANAGE_STORE`, uses the existing `DATA_WRITE` limiter, and rejects bodies above 32KB before sanitization or Firestore writes.
+- **Auth/session mutation bodies capped** - Claim-account, password change, store switching, and phone OTP start/verify now use bounded JSON parsing before credential checks, claim-token lookup, OTP work, or store-switch reads.
+- **Phone OTP fails cheaper** - Phone OTP send/verify now apply the IP throttle before reading request JSON, then apply the phone/challenge-specific throttle after validation.
+- **AI Menu Manager fallback bodies capped** - AMM command/proposal action/completion server fallbacks now use bounded JSON parsing before schema validation, selected project/proposal reads, proposal writes, or completion writes.
+
+### Boundaries
+
+- **No public API response change** - Public business/menu read endpoint contracts, Firestore rules, Cloud Functions, Firebase deploy, Vercel deploy, production build, real provider call, payment action, and live second-tenant fixture mutation were not changed.
+
 ## June 26, 2026 - Website Plausible Analytics
 
 ### Added
@@ -825,12 +11654,12 @@
 
 ---
 
-## June 21, 2026 - ConstantLayer Scroll Reveal
+## June 21, 2026 - Neelvara Scroll Reveal
 
 ### Added
 
-- **ConstantLayer viewport-entry reveal added** - Homepage and secondary-page sections now appear with a restrained one-time reveal as they enter the viewport, using a local IntersectionObserver controller instead of a global scroll behavior or animation dependency.
-- **ConstantLayer reference presentation pass added** - The homepage hero now uses a meaningful company-record artifact, and a new reference-modules section gives entity, product-surface, and contact-routing details without turning the parent site into a product funnel.
+- **Neelvara viewport-entry reveal added** - Homepage and secondary-page sections now appear with a restrained one-time reveal as they enter the viewport, using a local IntersectionObserver controller instead of a global scroll behavior or animation dependency.
+- **Neelvara reference presentation pass added** - The homepage hero now uses a meaningful company-record artifact, and a new reference-modules section gives entity, product-surface, and contact-routing details without turning the parent site into a product funnel.
 
 ### Boundaries
 
@@ -839,30 +11668,30 @@
 
 ---
 
-## June 20, 2026 - ConstantLayer Parent Website Implementation
+## June 20, 2026 - Neelvara Parent Website Implementation
 
 ### Added
 
-- **ConstantLayer main website is implemented in the shared Next/Vercel app** - Added `src/app/sites/constantlayer/` with static pages for Home, Products, About, Contact, Legal, Privacy, and Terms.
-- **ConstantLayer product-site routing added** - Added route/domain constants, deployment targets, local `/__constantlayer/` routing, sitemap, robots, and a no-Firebase env validation entry.
+- **Neelvara main website is implemented in the shared Next/Vercel app** - Added `src/app/sites/neelvara/` with static pages for Home, Products, About, Contact, Legal, Privacy, and Terms.
+- **Neelvara product-site routing added** - Added route/domain constants, deployment targets, local `/__neelvara/` routing, sitemap, robots, and a no-Firebase env validation entry.
 - **Premium entity-trust UI system added** - Added centralized site data, shared layout, header/footer, editorial hero, system-scene visual layer, row-based sections, responsive design-token CSS, structured data, and site icon.
-- **ConstantLayer portfolio lineup added** - The parent website now presents MenuList, Answerlattice, and CampaignCue as product surfaces in the ConstantLayer Systems lineup, with future products gated by public-surface or approved-reference review.
-- **ConstantLayer not-found response added** - Unmatched ConstantLayer URLs now return a plain branded `404` response with noindex metadata.
-- **Implementation validation report corrected** - Updated `constantlayer-main-website_validation.md` with Next/Vercel architecture, UI, security, Firebase cost, and route QA status.
+- **Neelvara portfolio lineup added** - The parent website now presents MenuList, Answerlattice, and CampaignCue as product surfaces in the Neelvara Systems lineup, with future products gated by public-surface or approved-reference review.
+- **Neelvara not-found response added** - Unmatched Neelvara URLs now return a plain branded `404` response with noindex metadata.
+- **Implementation validation report corrected** - Updated `neelvara-main-website_validation.md` with Next/Vercel architecture, UI, security, Firebase cost, and route QA status.
 
 ### Fixed
 
-- **ConstantLayer product-section visual issue fixed** - Replaced the oversized `Portfolio` wordmark with a dark portfolio summary band so the word no longer splits and the homepage has a stronger visual rhythm.
-- **ConstantLayer legal/privacy/terms content tightened** - Expanded parent-site legal, privacy, and terms copy to clarify technical logs, visitor-initiated email handling, product-policy separation, and paid-service deferral without adding forms or product terms.
-- **ConstantLayer structured data legal overclaim removed** - Replaced product-lineup JSON-LD `owns` with safer association wording so metadata matches the approved relationship language.
-- **ConstantLayer UI/UX audit findings resolved** - Replaced internal design-critique copy with public entity language, moved the entity ledger out of the hero, compacted short/mobile first screens, reduced scene collision, added active nav state, and brought visible links/buttons to 44px target sizing.
-- **MenuList-only parent-site framing removed** - Updated runtime copy and docs so ConstantLayer is the company layer for the product lineup, not a MenuList-only parent page.
-- **ConstantLayer static-page boundary restored** - Removed server header usage from shared page chrome; local `/__constantlayer` links are now handled by the client link layer.
+- **Neelvara product-section visual issue fixed** - Replaced the oversized `Portfolio` wordmark with a dark portfolio summary band so the word no longer splits and the homepage has a stronger visual rhythm.
+- **Neelvara legal/privacy/terms content tightened** - Expanded parent-site legal, privacy, and terms copy to clarify technical logs, visitor-initiated email handling, product-policy separation, and paid-service deferral without adding forms or product terms.
+- **Neelvara structured data legal overclaim removed** - Replaced product-lineup JSON-LD `owns` with safer association wording so metadata matches the approved relationship language.
+- **Neelvara UI/UX audit findings resolved** - Replaced internal design-critique copy with public entity language, moved the entity ledger out of the hero, compacted short/mobile first screens, reduced scene collision, added active nav state, and brought visible links/buttons to 44px target sizing.
+- **MenuList-only parent-site framing removed** - Updated runtime copy and docs so Neelvara is the company layer for the product lineup, not a MenuList-only parent page.
+- **Neelvara static-page boundary restored** - Removed server header usage from shared page chrome; local `/__neelvara` links are now handled by the client link layer.
 - **Products page dead-end removed** - Product rows now link to MenuList, Answerlattice, and CampaignCue canonical product websites, and the Products page final CTA no longer links to itself.
 
 ### Boundaries
 
-- **No database product id added** - ConstantLayer was not added to `PRODUCT_IDS`, billing, Firestore, owner notifications, product plans, or Firebase projects.
+- **No database product id added** - Neelvara was not added to `PRODUCT_IDS`, billing, Firestore, owner notifications, product plans, or Firebase projects.
 - **No Firebase surface added** - The site has no Firestore, Auth, Storage, Cloud Functions, rules, indexes, provider calls, API routes, forms, accounts, or analytics.
 - **No deploy performed** - Vercel deployment remains pending until explicitly requested.
 
@@ -878,13 +11707,13 @@
 
 ---
 
-## June 20, 2026 - ConstantLayer Parent Website Documentation
+## June 20, 2026 - Neelvara Parent Website Documentation
 
 ### Added
 
-- **ConstantLayer main website docs now define the parent/entity trust site** - Added the docs-first packet for a standalone ConstantLayer Systems website covering scope, implementation, website copy, marketing language, help/support routing, Firebase cost, mobile support, test cases, and the captured ChatGPT transcript.
-- **ConstantLayer stays outside current product runtime registries** - The docs record that ConstantLayer is not a product id, product domain target, deployment target, Firebase project, or MenuList owner/mobile feature in v1.
-- **Portfolio relationship wording is fixed for the parent site** - The docs preserve the approved public relationship line for MenuList, Answerlattice, and CampaignCue in the ConstantLayer Systems lineup.
+- **Neelvara main website docs now define the parent/entity trust site** - Added the docs-first packet for a standalone Neelvara Systems website covering scope, implementation, website copy, marketing language, help/support routing, Firebase cost, mobile support, test cases, and the captured ChatGPT transcript.
+- **Neelvara stays outside current product runtime registries** - The docs record that Neelvara is not a product id, product domain target, deployment target, Firebase project, or MenuList owner/mobile feature in v1.
+- **Portfolio relationship wording is fixed for the parent site** - The docs preserve the approved public relationship line for MenuList, Answerlattice, and CampaignCue in the Neelvara Systems lineup.
 
 ### Boundaries
 
@@ -5653,7 +16482,7 @@ All 17 AI call sites covered: 11 frontend API routes + 6 Cloud Function files. N
 ### Documentation
 
 - **ChatGPT conversation reviewed:** Domain purchase (answerlattice.com) + support stack evaluation + launch readiness + failure modes. Overall accuracy: ~60%. Core claim (3 missing infrastructure pieces) was 0% accurate — all three already built on March 3.
-- **Activation experiment updated:** Added 10 operational failure modes (§10), MenuList entity category suggestions for ontology bootstrap (§11), and canonical answer authoring guidelines (§12) to `ANSWERLATTICE-ACTIVATION-EXPERIMENT.md`.
+- **Activation experiment updated:** Added 10 operational failure modes (§10), MenuList entity category suggestions for ontology bootstrap (§11), and canonical answer authoring guidelines (§12) to `answerlattice-activation-experiment.md`.
 - **Roadmap updated:** Session 12 added to `menulist-future-roadmap-ssot.md` with domain action items (DNS, email, trademark, social handles).
 - **Archive created:** Full conversation review at `__docs__/answerlattice/_archive/chatgpt-review-domain-launch-readiness.md`.
 
@@ -5746,7 +16575,7 @@ Full ChatGPT strategic conversation processed, validated against codebase, and d
 
 ### Updated
 
-- `__docs__/help-center/README.md` — Added Answerlattice strategic governance section with doctrine folder link. Version bumped to 3.0.0.
+- `__docs__/answerlattice/help-center/README.md` — Added Answerlattice strategic governance section with doctrine folder link. Version bumped to 3.0.0.
 
 ### Key Decisions
 
@@ -5828,7 +16657,7 @@ Feature-by-feature deep documentation for 7 Help Center subsystems — 56 sub-fe
 
 ### Updated
 
-- `__docs__/help-center/README.md` — Added sub-feature documentation index with links to all 7 feature folders
+- `__docs__/answerlattice/help-center/README.md` — Added sub-feature documentation index with links to all 7 feature folders
 
 ### Summary Metrics
 
@@ -6912,8 +17741,8 @@ ChatGPT conversation covered AI agents article, vertical expansion, 5-layer cont
 
 ### Documentation
 
-- **AI Billing Explainer** — Created `__docs__/ai-enhancement-packs/AI_BILLING_EXPLAINER.md` with complete founder-friendly explanation: money flow, real margins, per-pack economics, capacity enforcement, code locations, 5 real-world sample scenarios (restaurant, salon chain, capacity exhaustion, free operation, monthly margin snapshot), and free tier strategy analysis.
-- **Razorpay Payment Flow** — Created `__docs__/razorpay/RAZORPAY_PAYMENT_FLOW.md` documenting all existing Razorpay capabilities, mapping of deleted Stripe files to Razorpay equivalents, and future enhancement backlog.
+- **AI Billing Explainer** — Created `__docs__/ai-enhancement-packs/ai-billing-explainer.md` with complete founder-friendly explanation: money flow, real margins, per-pack economics, capacity enforcement, code locations, 5 real-world sample scenarios (restaurant, salon chain, capacity exhaustion, free operation, monthly margin snapshot), and free tier strategy analysis.
+- **Razorpay Payment Flow** — Created `__docs__/razorpay/razorpay-payment-flow.md` documenting all existing Razorpay capabilities, mapping of deleted Stripe files to Razorpay equivalents, and future enhancement backlog.
 - **AI Enhancement Packs impl doc updated** — Removed dead Stripe code sections (now deleted), added Real-Time Balance Sync architecture section with full flow diagram.
 - **AI Enhancement Packs firebase doc updated** — Added `realCostPaise`, `ourChargePaise`, `marginPaise` to document schema. Added Balance Sync Optimization section.
 
@@ -7029,3 +17858,16 @@ TEMPLATE FOR NEW ENTRIES:
 ### Improved
 
 - **CampaignCue Campaign Pack Output** — Added a typed `CampaignCueOutputPack`, owner-visible output summary, and structured ZIP download containing the decision card, channel copy, handoff fields, trust summary, reuse notes, mini-page/QR brief, and result prompt. Direct posting, WhatsApp sending, provider account connection, hosted mini-page publishing, and ad-spend mutation remain off.
+
+## June 30, 2026
+
+### Fixed
+
+- **Weekly Narrative Stored Analytics Normalization** — `/api/analytics/weekly-narrative/generate-local` now bounds stored analytics counters, caps top-question scanning, sanitizes category text before prompt construction, and uses a null-prototype category accumulator. Malformed historical analytics docs can no longer create `NaN` math, prototype-key surprises, or oversized category text in the weekly narrative prompt. Existing authenticated route admission, SAFE_MODE, rate limiting, Gemini call, fallback narrative, insight write, and AI operation accounting remain unchanged.
+- **SEO And Business Copy Prompt Input Normalization** — `/api/seo` and `/api/business-copy` now strip control/template characters, normalize whitespace, and cap scalar/list prompt inputs immediately before prompt interpolation. Existing request schemas, SAFE_MODE, rate limiting, Gemini calls, output contracts, and AI operation accounting remain unchanged.
+- **New Item Metadata Validated Payload Boundary** — `/api/new-item-metadata` now uses the validated Zod payload for the provider prompt instead of raw request objects after validation, caps attribute price strings before prompt construction, and uses neutral prompt context instead of defaulting missing business type to restaurants. Existing metadata generation, owner output contract, and AI accounting remain unchanged.
+- **Menu Card Advisor Prompt Input Normalization** — `/api/menu-card-export/design-advisor` now serializes sanitized prompt payloads for source summary, preflight warnings, category names, and source hash instead of raw validated strings. Existing Pro/Premium gating, capacity checks, Gemini call, recommendation schema, and AI accounting remain unchanged.
+- **Review Reply Prompt Input Normalization** — `/api/reviews/suggest` now strips control/template characters from pasted review and business-type prompt inputs, caps business type, escapes sanitized review text before Gemini prompt construction, and records sanitized prompt metadata for accounting. Existing disabled-feature gates, fallback replies, suggestion response shape, and AI accounting remain unchanged.
+- **Translation Prompt Input Normalization** — `/api/translations` now caps translation keys and values at request validation, preserves stable identifiers for response mapping, and serializes sanitized bounded prompt values instead of raw owner/menu strings. Existing translation routing, linked-outlet policy checks, fallback normalization, client merge behavior, and AI accounting remain unchanged.
+- **Image Editing Prompt Input Normalization** — `/api/image-editing` now rejects missing generated edit prompts before Gemini work, and the active prompt router sanitizes owner prompt text plus item name/category/description placeholders before edit-template interpolation. Existing media fetch guards, valid edit-feature behavior, response handling, and AI accounting remain unchanged.
+- **Campaign Caption Prompt Input Normalization** — Campaign Caption prompt construction now sanitizes item, price, category, business, and language fields before Gemini prompt interpolation, with safe campaign/surface context lookups. Existing `/api/campaigns/caption` admission, phrase guard, response shape, and AI accounting remain unchanged.

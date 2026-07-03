@@ -33,11 +33,16 @@ import { isOwnerNotificationTrigger } from '@data/shared/ownerNotificationRegist
 import { getAnswerlatticeRetentionFields } from '@lib/answerlattice/dataRetention';
 import { admin } from '@lib/firebase/firebaseAdmin';
 import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
-import { secureError, secureLog } from '@lib/security/secureLogger';
+import { secureLog } from '@lib/security/secureLogger';
 import { createHash } from 'crypto';
 import type { Firestore } from 'firebase-admin/firestore';
 import { Timestamp } from 'firebase-admin/firestore';
 import * as nodemailer from 'nodemailer';
+import {
+    getBoundedNotificationStringContext,
+    getNotificationPayloadLogContext,
+    logNotificationFailure,
+} from './notificationDiagnostics';
 import { resolveNotificationTemplate } from './templates';
 
 const NOTIFICATION_LOGS = 'notificationLogs';
@@ -146,7 +151,7 @@ async function sendViaSMTP(
 ): Promise<{ ok: boolean; messageId?: string; error?: string }> {
     const transporter = getTransporter();
     if (!transporter) {
-        return { ok: false, error: 'SMTP not configured' };
+        return { ok: false, error: 'smtp_not_configured' };
     }
     try {
         const info = await transporter.sendMail({
@@ -156,9 +161,18 @@ async function sendViaSMTP(
             html,
         });
         return { ok: true, messageId: info.messageId };
-    } catch (e) {
-        return { ok: false, error: e instanceof Error ? e.message : 'Unknown SMTP error' };
+    } catch {
+        return { ok: false, error: 'smtp_send_failed' };
     }
+}
+
+function getNotificationDeliveryError(result: { ok: boolean; error?: string }): string | null {
+    if (result.ok) return null;
+    const { error } = result;
+    const errorCode = typeof error === 'string' && error.length > 0
+        ? error
+        : 'notification_delivery_failed';
+    return errorCode;
 }
 
 // ================================================================
@@ -177,7 +191,10 @@ async function isDuplicate(
             .get();
         return docSnap.exists && docSnap.data()?.status === 'sent';
     } catch (error) {
-        secureError('[Notification] Duplicate check failed', error as Error, { eventType });
+        logNotificationFailure('notification_duplicate_check_failed', error, {
+            eventType,
+            ...getBoundedNotificationStringContext('referenceId', referenceId),
+        });
         return false; // On error, allow the send (fail-open)
     }
 }
@@ -198,7 +215,9 @@ async function isRateLimited(target: NotificationLogTarget, recipientEmail: stri
             .get();
         return snap.size >= MAX_PER_DAY_PER_RECIPIENT;
     } catch (error) {
-        secureError('[Notification] Rate-limit check failed', error as Error, { recipientEmail });
+        logNotificationFailure('notification_rate_limit_check_failed', error, {
+            ...getBoundedNotificationStringContext('recipientEmail', recipientEmail),
+        });
         return false; // Fail-open
     }
 }
@@ -235,10 +254,7 @@ async function writeNotificationLog(
                     : {}),
             }, { merge: true });
     } catch (error) {
-        secureError('[Notification] Log write failed', error as Error, {
-            eventType: payload.eventType,
-            productId: payload.productId,
-        });
+        logNotificationFailure('notification_log_write_failed', error, getNotificationPayloadLogContext(payload));
     }
 }
 
@@ -306,11 +322,10 @@ export async function sendNotification(payload: NotificationPayload): Promise<bo
 
         const logTarget = getNotificationLogTarget(productId);
         if (!logTarget) {
-            secureError(
-                '[Notification] No log target available',
-                new Error('Notification log target is not configured'),
-                { productId, eventType }
-            );
+            logNotificationFailure('notification_log_target_unavailable', undefined, {
+                productId,
+                eventType,
+            });
             return false;
         }
 
@@ -329,7 +344,9 @@ export async function sendNotification(payload: NotificationPayload): Promise<bo
             recipientName: recipientName || 'there',
         });
         if (!template) {
-            console.warn(`[Notification] No template for event: ${eventType}`);
+            logNotificationFailure('notification_template_not_found', undefined, {
+                ...getNotificationPayloadLogContext({ ...payload, productId }),
+            });
             await writeNotificationLog(logTarget, { ...payload, productId }, 'failed', { error: 'template_not_found' });
             return false;
         }
@@ -341,21 +358,21 @@ export async function sendNotification(payload: NotificationPayload): Promise<bo
         await writeNotificationLog(logTarget, { ...payload, productId }, result.ok ? 'sent' : 'failed', {
             subject: template.subject,
             messageId: result.messageId || null,
-            error: result.error || null,
+            error: getNotificationDeliveryError(result),
         });
 
         if (result.ok) {
             secureLog('[Notification] Email sent', {
                 eventType,
                 productId,
-                referenceId,
+                ...getBoundedNotificationStringContext('referenceId', referenceId),
             });
         }
 
         return result.ok;
     } catch (err) {
         // Never throw — fire-and-forget
-        console.warn('[Notification] Send failed:', err instanceof Error ? err.message : 'Unknown');
+        logNotificationFailure('notification_send_failed', err, getNotificationPayloadLogContext(payload));
         return false;
     }
 }

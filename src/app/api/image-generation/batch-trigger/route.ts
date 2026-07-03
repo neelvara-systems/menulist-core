@@ -1,15 +1,19 @@
 export const dynamic = 'force-dynamic';
 import { BATCH_IMAGE_GENERATION_JOB_STATUS } from '@constant/AI';
 import { AI_ACTIONS_TYPES } from '@constant/common';
+import { PERMISSIONS } from '@constant/permissions';
 import { markImageBatchProcessingJobFailedAdmin, updateImageBatchProcessingJobAdmin } from '@database/imageBatchProcessing/server';
 import { checkAICapacity } from '@lib/ai/capacityCheck';
 import { sanitizeImageGenerationConfigForLogging } from '@lib/ai/imageOperationLogging';
-import { enqueueImageGenerationTask } from '@lib/google/cloudTask';
+import { enqueueImageGenerationTask, getImageGenerationTaskConfigStatus } from '@lib/google/cloudTask';
+import { getAIRouteSecurityContext } from '@lib/google/genAi/diagnostics';
 import { logger } from '@lib/monitoring/logger';
 import { getLinkedOutletPolicyBlockReason } from '@lib/multiOutlet/serverOutletPolicy';
+import { requireAnyStorePermission } from '@lib/permissions/server';
 import { checkBatchOperationLimit } from '@lib/rateLimit/helpers';
+import { getBoundedRuntimeStringContext, logRuntimeDiagnostic, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
+import { readBoundedJsonBody } from '@lib/security/boundedRequestBody';
 import { validateAPIInput } from '@lib/security/inputValidation';
-import { buildSecurityContext } from '@lib/security/securityContext';
 import { BatchImageGenerationRequestSchema } from '@lib/validation/apiSchemas';
 import { GenerateImageViaApiPayloadBatchType } from '@template/main-app/projects/types';
 import { getISOStringDate } from '@util/dateTime';
@@ -21,6 +25,12 @@ import { withAuth } from "../../../../middleware/auth";
 
 const LOG_FILE = "batch-image-generation.log"
 const AI_MODEL: AI_MODEL_TYPE = "GEMINI";
+const BATCH_IMAGE_TRIGGER_MAX_BODY_BYTES = 16 * 1024 * 1024;
+const IMAGE_BATCH_TASK_CONFIG_MISSING = 'image_batch_task_config_missing';
+const IMAGE_BATCH_TASK_ENQUEUE_FAILED = 'image_batch_task_enqueue_failed';
+const IMAGE_BATCH_TASK_ENQUEUE_REJECTED = 'image_batch_task_enqueue_rejected';
+
+type BatchImageRouteLogContext = Record<string, boolean | number | string | null | undefined>;
 
 function isFailedTaskResult(result: PromiseSettledResult<unknown>) {
     return result.status === 'rejected'
@@ -40,16 +50,37 @@ function summarizeTaskResults(results: PromiseSettledResult<unknown>[]) {
 
 function summarizeFailedTask(result: PromiseSettledResult<unknown>) {
     if (result.status === 'rejected') {
-        return { message: result.reason instanceof Error ? result.reason.message : 'Task enqueue rejected' };
+        return { failureCode: IMAGE_BATCH_TASK_ENQUEUE_REJECTED };
     }
     if (result.value && typeof result.value === 'object') {
         const value = result.value as { error?: unknown; menuItemId?: unknown };
         return {
-            error: typeof value.error === 'string' ? value.error : 'Task enqueue failed',
+            failureCode: value.error === IMAGE_BATCH_TASK_ENQUEUE_FAILED
+                ? IMAGE_BATCH_TASK_ENQUEUE_FAILED
+                : IMAGE_BATCH_TASK_ENQUEUE_REJECTED,
             menuItemId: value.menuItemId,
         };
     }
-    return { message: 'Task enqueue failed' };
+    return { failureCode: IMAGE_BATCH_TASK_ENQUEUE_REJECTED };
+}
+
+function getBatchImageRouteLogContext({
+    itemCount,
+    itemId,
+    jobId,
+    projectId,
+}: {
+    itemCount?: number;
+    itemId?: unknown;
+    jobId?: unknown;
+    projectId?: unknown;
+}): BatchImageRouteLogContext {
+    return {
+        ...getBoundedRuntimeStringContext('projectId', projectId),
+        ...getBoundedRuntimeStringContext('jobId', jobId),
+        ...getBoundedRuntimeStringContext('itemId', itemId),
+        itemCount,
+    };
 }
 
 function getBatchPromptEstimate({
@@ -87,6 +118,7 @@ export const POST = withAuth(async (request, session) => {
     // ✅ Session guaranteed by withAuth middleware
     // ✅ Auth failures automatically logged to Sentry
     const userId = session.user.id;
+    let requestLogContext: BatchImageRouteLogContext = getBatchImageRouteLogContext({});
 
     try {
 
@@ -100,7 +132,15 @@ export const POST = withAuth(async (request, session) => {
         if (rateLimitResponse) return rateLimitResponse;
 
         // 🔒 INPUT VALIDATION: Prevent injection attacks (OWASP A03)
-        const rawData = await request.json();
+        const bodyResult = await readBoundedJsonBody(request, BATCH_IMAGE_TRIGGER_MAX_BODY_BYTES);
+        if (bodyResult.ok === false) return bodyResult.response;
+
+        const rawData = bodyResult.data as any;
+        requestLogContext = getBatchImageRouteLogContext({
+            itemCount: Array.isArray(rawData?.itemsList) ? rawData.itemsList.length : 0,
+            jobId: rawData?.jobId,
+            projectId: rawData?.projectId,
+        });
         const validation = validateAPIInput(BatchImageGenerationRequestSchema, rawData);
 
         if (!validation.success) {
@@ -108,14 +148,10 @@ export const POST = withAuth(async (request, session) => {
 
             // Log to Sentry (potential attack attempt - HIGH severity: batch expensive operations)
             logger.security('Input Validation Failed', {
-                ...buildSecurityContext(session, request),
+                ...getAIRouteSecurityContext(session, request),
                 endpoint: '/api/image-generation/batch-trigger',
                 error: errorMsg,
-                attemptedData: {
-                    itemsListCount: rawData?.itemsList?.length || 0,
-                    projectId: rawData?.projectId,
-                    jobId: rawData?.jobId,
-                },
+                attemptedData: requestLogContext,
             }, 'high'); // HIGH severity - batch expensive operations
 
             await writeMissingParamsLogEntry(LOG_FILE, userId, rawData?.projectId, '', {
@@ -133,6 +169,19 @@ export const POST = withAuth(async (request, session) => {
         }
 
         const { generationConfig, projectId, itemsList, businessType, jobId } = validation.data as unknown as Required<Pick<GenerateImageViaApiPayloadBatchType, 'generationConfig' | 'itemsList' | 'jobId'>> & GenerateImageViaApiPayloadBatchType;
+        requestLogContext = getBatchImageRouteLogContext({
+            itemCount: itemsList.length,
+            jobId,
+            projectId,
+        });
+
+        const permissionError = await requireAnyStorePermission(
+            request,
+            session,
+            [PERMISSIONS.GENERATE_IMAGES],
+            "Batch image generation",
+        );
+        if (permissionError) return permissionError;
 
         const outletPolicyBlockReason = await getLinkedOutletPolicyBlockReason({
             action: "image",
@@ -142,12 +191,12 @@ export const POST = withAuth(async (request, session) => {
         });
         if (outletPolicyBlockReason) {
             await markImageBatchProcessingJobFailedAdmin(jobId, projectId, outletPolicyBlockReason).catch((error) => {
-                logger.error('Failed to mark image batch job failed after policy block', error, { jobId, projectId });
+                logRuntimeFailure('image_batch_policy_block_status_update_failed', error, requestLogContext);
             });
             logger.security('Outlet Policy Violation - Batch Image Generation API', {
-                ...buildSecurityContext(session, request),
+                ...getAIRouteSecurityContext(session, request),
                 endpoint: '/api/image-generation/batch-trigger',
-                projectId,
+                project: getBatchImageRouteLogContext({ projectId }),
                 reason: outletPolicyBlockReason,
             }, 'medium');
             return NextResponse.json({ error: outletPolicyBlockReason }, { status: 403 });
@@ -162,12 +211,31 @@ export const POST = withAuth(async (request, session) => {
         if (promptEstimate.itemsWithoutPrompts.length > 0) {
             const reason = `Batch image generation could not build prompts for ${promptEstimate.itemsWithoutPrompts.length} item(s).`;
             await markImageBatchProcessingJobFailedAdmin(jobId, projectId, reason).catch((error) => {
-                logger.error('Failed to mark image batch job failed after prompt estimation block', error, { jobId, projectId });
+                logRuntimeFailure('image_batch_prompt_block_status_update_failed', error, {
+                    ...requestLogContext,
+                    itemsWithoutPromptsCount: promptEstimate.itemsWithoutPrompts.length,
+                });
             });
             return NextResponse.json({
                 error: reason,
                 items: promptEstimate.itemsWithoutPrompts.slice(0, 10),
             }, { status: 400 });
+        }
+
+        const taskConfigStatus = getImageGenerationTaskConfigStatus();
+        if (!taskConfigStatus.ready) {
+            const reason = 'Image generation is temporarily unavailable.';
+            logRuntimeDiagnostic(IMAGE_BATCH_TASK_CONFIG_MISSING, {
+                ...requestLogContext,
+                ...taskConfigStatus,
+            });
+            await markImageBatchProcessingJobFailedAdmin(jobId, projectId, reason).catch((error) => {
+                logRuntimeFailure('image_batch_config_block_status_update_failed', error, requestLogContext);
+            });
+            return NextResponse.json({
+                error: reason,
+                code: IMAGE_BATCH_TASK_CONFIG_MISSING,
+            }, { status: 503 });
         }
 
         const capacityCheck = await checkAICapacity(
@@ -181,7 +249,11 @@ export const POST = withAuth(async (request, session) => {
                 ? 'AI enhancements are temporarily unavailable.'
                 : 'Additional AI enhancements needed for this batch.';
             await markImageBatchProcessingJobFailedAdmin(jobId, projectId, reason).catch((error) => {
-                logger.error('Failed to mark image batch job failed after capacity block', error, { jobId, projectId });
+                logRuntimeFailure('image_batch_capacity_block_status_update_failed', error, {
+                    ...requestLogContext,
+                    capacityReason: capacityCheck.reason,
+                    promptQuantity: promptEstimate.estimatedQuantity,
+                });
             });
             return NextResponse.json({
                 error: reason,
@@ -211,8 +283,13 @@ export const POST = withAuth(async (request, session) => {
 
         const taskPromises = itemsList.map(itemDetails => enqueueImageGenerationTask({ jobId, generationConfig, projectId, businessType, itemDetails })
             .catch(e => {
-                logger.error(`Failed to enqueue task for menu item ${itemDetails.id}`, e);
-                return ({ menuItemId: itemDetails.id, error: e.message || 'Failed to enqueue task' })
+                logRuntimeFailure(IMAGE_BATCH_TASK_ENQUEUE_FAILED, e, getBatchImageRouteLogContext({
+                    itemCount: itemsList.length,
+                    itemId: itemDetails.id,
+                    jobId,
+                    projectId,
+                }));
+                return ({ menuItemId: itemDetails.id, error: IMAGE_BATCH_TASK_ENQUEUE_FAILED })
             })
         );
 
@@ -232,13 +309,16 @@ export const POST = withAuth(async (request, session) => {
 
         const failedTasks = results.filter(isFailedTaskResult);
         if (failedTasks.length > 0) {
-            logger.warn(`Some tasks failed to enqueue`, { jobId, failedCount: failedTasks.length });
+            logRuntimeDiagnostic(IMAGE_BATCH_TASK_ENQUEUE_REJECTED, {
+                ...requestLogContext,
+                failedCount: failedTasks.length,
+            });
 
             // Determine failure reason
             const allTasksFailed = failedTasks.length === itemsList.length;
             const statusReason = allTasksFailed
-                ? 'GCT FAILURE: All tasks failed to enqueue.'
-                : `GCT FAILURE: Failed to enqueue ${failedTasks.length}/${itemsList.length} tasks.`;
+                ? 'Image generation could not start.'
+                : 'Some image generation tasks could not start.';
 
             // Single job status update
             await updateImageBatchProcessingJobAdmin({
@@ -272,9 +352,11 @@ export const POST = withAuth(async (request, session) => {
         return NextResponse.json({ data: { jobId }, message: 'Batch job started successfully' }, { status: 200 });
 
     } catch (error) {
-        logger.error('Batch trigger API error', error);
-        const errorMessage = error instanceof Error ? error.message : 'Internal Server Error';
+        logRuntimeFailure('image_batch_trigger_api_failed', error, requestLogContext);
         await writeErrorLogEntry(LOG_FILE, error);
-        return NextResponse.json({ error: 'Batch trigger failed', message: errorMessage }, { status: 500 });
+        return NextResponse.json(
+            { error: 'Batch trigger failed', message: 'Could not start the image batch. Please try again.' },
+            { status: 500 },
+        );
     }
 });

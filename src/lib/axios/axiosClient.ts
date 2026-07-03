@@ -6,23 +6,23 @@ import axios, { AxiosRequestConfig, AxiosResponse } from 'axios';
 // axios.defaults.headers.common.Accept = 'application/json';
 // axios.defaults.timeout = 12000;
 
-const getHttpHeaders = (headers: any = {}): AxiosRequestConfig => {
-    return headers;
+const getAxiosConfig = (config: AxiosRequestConfig = {}): AxiosRequestConfig => {
+    return config;
 };
 
-const GET = (path: string, headers: any = {}): Promise<AxiosResponse> =>
-    axios.get(path, getHttpHeaders(headers));
+const GET = (path: string, config: AxiosRequestConfig = {}): Promise<AxiosResponse> =>
+    axios.get(path, getAxiosConfig(config));
 
-const DELETE = (path: string, headers: any = {}): Promise<AxiosResponse> =>
-    axios.delete(path, getHttpHeaders(headers));
+const DELETE = (path: string, config: AxiosRequestConfig = {}): Promise<AxiosResponse> =>
+    axios.delete(path, getAxiosConfig(config));
 
-const POST = (path: string, data: any, headers: any = {}): Promise<AxiosResponse> =>
-    axios.post(path, data, getHttpHeaders(headers));
+const POST = (path: string, data: any, config: AxiosRequestConfig = {}): Promise<AxiosResponse> =>
+    axios.post(path, data, getAxiosConfig(config));
 
-const PUT = (path: string, data: any, headers: any = {}): Promise<AxiosResponse> =>
-    axios.put(path, data, getHttpHeaders(headers));
+const PUT = (path: string, data: any, config: AxiosRequestConfig = {}): Promise<AxiosResponse> =>
+    axios.put(path, data, getAxiosConfig(config));
 
-const PATCH = (path: string, data: any, headers: any = {}): Promise<AxiosResponse> =>
-    axios.post(path, data, getHttpHeaders(headers));
+const PATCH = (path: string, data: any, config: AxiosRequestConfig = {}): Promise<AxiosResponse> =>
+    axios.post(path, data, getAxiosConfig(config));
 
 export const axiosClient = { GET, DELETE, POST, PUT, PATCH };

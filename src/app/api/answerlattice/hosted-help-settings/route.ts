@@ -13,6 +13,7 @@ import {
     revalidateAnswerlatticeHostedHelpScope,
 } from '@lib/answerlattice/hostedHelpServer';
 import { normalizeHostedHelpConfig, parseHostedHelpConfigSaveInput } from '@lib/answerlattice/hostedHelpConfig';
+import { buildAnswerlatticeRateLimitKey } from '@lib/answerlattice/rateLimitKeys';
 import {
     addDomainToVercelProject,
     getVercelDomainConfig,
@@ -23,14 +24,17 @@ import {
 import { resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
 import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
 import { checkRateLimit } from '@lib/rateLimit';
-import { secureError, secureLog } from '@lib/security/secureLogger';
+import { getBoundedRuntimeStringContext, logRuntimeDiagnostic, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
+import { readBoundedJsonBody } from '@lib/security/boundedRequestBody';
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '../../../../middleware/auth';
+import { applyAnswerlatticeDashboardReadRateLimit } from '../readRateLimit';
 
 const getAnswerlatticeDb = () => {
     const db = answerlatticeFirestoreAdmin as any;
     return db && typeof db.collection === 'function' ? answerlatticeFirestoreAdmin : null;
 };
+const HOSTED_HELP_SETTINGS_SAVE_MAX_BODY_BYTES = 32 * 1024;
 
 const resolveSessionScope = (session: any): { tenantId: number; storeId: number } | null => {
     const answerlatticeScope = resolveAnswerlatticeSessionScope(session);
@@ -49,13 +53,30 @@ const registryScopeMatches = (registry: Record<string, any> | null | undefined, 
 
 const RESERVED_HOSTED_HELP_DOMAINS = new Set(ALL_PRODUCT_DOMAINS.map(domain => domain.toLowerCase()));
 
-const getClientErrorMessage = (data: any, fallback: string) => (
-    typeof data?.error?.message === 'string'
-        ? data.error.message
+const getHostedHelpProviderErrorContext = (data: any): Record<string, boolean | number | string | null> => {
+    const nestedError = data?.error && typeof data.error === 'object' ? data.error : null;
+    const message = typeof nestedError?.message === 'string'
+        ? nestedError.message
         : typeof data?.error === 'string'
             ? data.error
-            : fallback
-);
+            : '';
+    const code = typeof nestedError?.code === 'string' || typeof nestedError?.code === 'number'
+        ? String(nestedError.code).slice(0, 80)
+        : null;
+    const status = Number(data?.status ?? nestedError?.status ?? nestedError?.statusCode);
+
+    return {
+        providerCode: code,
+        providerStatus: Number.isFinite(status) ? status : null,
+        providerMessagePresent: message.length > 0,
+        providerMessageLength: message.length,
+    };
+};
+
+const HOSTED_HELP_DOMAIN_ADD_FAILED_MESSAGE = 'Failed to add hosted help domain.';
+const HOSTED_HELP_DOMAIN_STATUS_FAILED_MESSAGE = 'Could not check DNS status.';
+
+const getHostedHelpClientErrorMessage = (fallback: string) => fallback;
 
 const getRegistryStatus = (domain: string, data?: Record<string, any> | null) => ({
     domain,
@@ -121,7 +142,7 @@ const refreshHostedHelpDomainStatuses = async (params: {
                 statusPatch = buildStatusPatch({
                     verified: false,
                     verification: configResult.data,
-                    error: getClientErrorMessage(configResult.data, 'Could not check DNS status.'),
+                    error: getHostedHelpClientErrorMessage(HOSTED_HELP_DOMAIN_STATUS_FAILED_MESSAGE),
                     now,
                 });
             } else {
@@ -131,10 +152,10 @@ const refreshHostedHelpDomainStatuses = async (params: {
                     now,
                 });
             }
-        } catch (error: any) {
+        } catch {
             statusPatch = buildStatusPatch({
                 verified: false,
-                error: error?.message || 'Could not check DNS status.',
+                error: getHostedHelpClientErrorMessage(HOSTED_HELP_DOMAIN_STATUS_FAILED_MESSAGE),
                 now,
             });
         }
@@ -167,6 +188,9 @@ export const GET = withAuth(async (request: NextRequest, session) => {
         return NextResponse.json({ error: 'Hosted Help Center is not enabled.' }, { status: 403 });
     }
 
+    const rateLimitResponse = await applyAnswerlatticeDashboardReadRateLimit(request, session, 'hosted-help-settings');
+    if (rateLimitResponse) return rateLimitResponse;
+
     const permission = await requireAnswerlatticePermission(request, session, ANSWERLATTICE_PERMISSION_KEYS.MANAGE_WIDGET);
     if (permission.response) return permission.response;
 
@@ -193,7 +217,7 @@ export const GET = withAuth(async (request: NextRequest, session) => {
         if (refreshDomains) {
             const rateLimitConfig = { limit: 10, window: 60 };
             const rateLimitResult = await checkRateLimit({
-                key: `answerlattice-hosted-help-domain-refresh:${scope.storeId}`,
+                key: buildAnswerlatticeRateLimitKey('answerlattice-hosted-help-domain-refresh', scope.storeId),
                 limit: rateLimitConfig.limit,
                 window: rateLimitConfig.window,
             });
@@ -216,9 +240,9 @@ export const GET = withAuth(async (request: NextRequest, session) => {
 
         return NextResponse.json({ config, domainStatuses });
     } catch (error) {
-        secureError('[Answerlattice Hosted Help] Failed to load settings', error as Error, {
-            storeId: scope.storeId,
-            tenantId: scope.tenantId,
+        logRuntimeFailure('answerlattice_hosted_help_settings_load_failed', error, {
+            ...getBoundedRuntimeStringContext('tenantId', scope.tenantId),
+            ...getBoundedRuntimeStringContext('storeId', scope.storeId),
         });
         return NextResponse.json({ error: 'Failed to load hosted help settings' }, { status: 500 });
     }
@@ -244,7 +268,7 @@ export const PUT = withAuth(async (request: NextRequest, session) => {
 
     const rateLimitConfig = { limit: 20, window: 60 };
     const rateLimitResult = await checkRateLimit({
-        key: `answerlattice-hosted-help-settings:${scope.storeId}`,
+        key: buildAnswerlatticeRateLimitKey('answerlattice-hosted-help-settings', scope.storeId),
         limit: rateLimitConfig.limit,
         window: rateLimitConfig.window,
     });
@@ -261,9 +285,20 @@ export const PUT = withAuth(async (request: NextRequest, session) => {
         );
     }
 
-    const body = await request.json().catch(() => null);
+    const bodyResult = await readBoundedJsonBody(request, HOSTED_HELP_SETTINGS_SAVE_MAX_BODY_BYTES, {
+        invalidJsonMessage: 'Invalid hosted help settings',
+        tooLargeMessage: 'Request body too large',
+    });
+    if (bodyResult.ok === false) {
+        return NextResponse.json(
+            { error: bodyResult.response.status === 413 ? 'Request body too large' : 'Invalid hosted help settings' },
+            { status: bodyResult.response.status },
+        );
+    }
+
     let config;
     try {
+        const body = bodyResult.data as { config?: unknown } | null;
         config = parseHostedHelpConfigSaveInput(body?.config || body);
     } catch {
         return NextResponse.json({ error: 'Invalid hosted help settings' }, { status: 400 });
@@ -327,15 +362,17 @@ export const PUT = withAuth(async (request: NextRequest, session) => {
         for (const domain of domainsToProvision) {
             const addResult = await addDomainToVercelProject(domain);
             if (!addResult.ok && addResult.status !== 409) {
-                secureError('[Answerlattice Hosted Help] Vercel domain add failed', new Error(getClientErrorMessage(addResult.data, 'Failed to add domain to Vercel')), {
-                    storeId: scope.storeId,
-                    tenantId: scope.tenantId,
-                    domain,
+                logRuntimeFailure('answerlattice_hosted_help_domain_add_failed', new Error('Hosted help domain provider add failed'), {
+                    ...getBoundedRuntimeStringContext('tenantId', scope.tenantId),
+                    ...getBoundedRuntimeStringContext('storeId', scope.storeId),
+                    domainPresent: domain.length > 0,
+                    domainLength: domain.length,
                     status: addResult.status,
+                    ...getHostedHelpProviderErrorContext(addResult.data),
                 });
                 return NextResponse.json(
-                    { error: getClientErrorMessage(addResult.data, 'Failed to add domain to Vercel') },
-                    { status: addResult.status || 502 },
+                    { error: getHostedHelpClientErrorMessage(HOSTED_HELP_DOMAIN_ADD_FAILED_MESSAGE) },
+                    { status: 502 },
                 );
             }
 
@@ -346,7 +383,7 @@ export const PUT = withAuth(async (request: NextRequest, session) => {
                 ...buildStatusPatch({
                     verified,
                     verification: configResult.data || null,
-                    error: configResult.ok ? null : getClientErrorMessage(configResult.data, 'Domain was added, but DNS status could not be checked.'),
+                    error: configResult.ok ? null : getHostedHelpClientErrorMessage(HOSTED_HELP_DOMAIN_STATUS_FAILED_MESSAGE),
                     now,
                 }),
                 domainVercelAddedAt: now,
@@ -393,10 +430,10 @@ export const PUT = withAuth(async (request: NextRequest, session) => {
             if (registry && registryScopeMatches(registry, scope)) {
                 batch.delete(db.collection(DB_COLLECTIONS.ANSWERLATTICE_PUBLIC_HELP_SITES).doc(normalized));
             } else if (registry) {
-                secureError('[Answerlattice Hosted Help] Skipped registry delete for mismatched domain scope', new Error('Hosted help registry delete scope mismatch'), {
-                    storeId: scope.storeId,
-                    tenantId: scope.tenantId,
-                    domain: normalized,
+                logRuntimeFailure('answerlattice_hosted_help_registry_delete_scope_mismatch', new Error('Hosted help registry delete scope mismatch'), {
+                    ...getBoundedRuntimeStringContext('tenantId', scope.tenantId),
+                    ...getBoundedRuntimeStringContext('storeId', scope.storeId),
+                    ...getBoundedRuntimeStringContext('domain', normalized),
                 });
             }
         });
@@ -408,10 +445,10 @@ export const PUT = withAuth(async (request: NextRequest, session) => {
                 try {
                     await removeDomainFromVercelProject(domain);
                 } catch (error) {
-                    secureError('[Answerlattice Hosted Help] Vercel domain removal failed', error as Error, {
-                        storeId: scope.storeId,
-                        tenantId: scope.tenantId,
-                        domain,
+                    logRuntimeFailure('answerlattice_hosted_help_domain_removal_failed', error, {
+                        ...getBoundedRuntimeStringContext('tenantId', scope.tenantId),
+                        ...getBoundedRuntimeStringContext('storeId', scope.storeId),
+                        ...getBoundedRuntimeStringContext('domain', domain),
                     });
                 }
             }));
@@ -422,9 +459,9 @@ export const PUT = withAuth(async (request: NextRequest, session) => {
         });
         revalidateAnswerlatticeHostedHelpScope(scope.tenantId, scope.storeId);
 
-        secureLog('[Answerlattice Hosted Help] Settings saved', {
-            storeId: scope.storeId,
-            tenantId: scope.tenantId,
+        logRuntimeDiagnostic('answerlattice_hosted_help_settings_saved', {
+            ...getBoundedRuntimeStringContext('tenantId', scope.tenantId),
+            ...getBoundedRuntimeStringContext('storeId', scope.storeId),
             domainCount: nextDomains.length,
             enabled: config.enabled,
         });
@@ -432,9 +469,9 @@ export const PUT = withAuth(async (request: NextRequest, session) => {
         const domainStatuses = await getHostedHelpDomainStatuses(db, nextDomains);
         return NextResponse.json({ config, domainStatuses });
     } catch (error) {
-        secureError('[Answerlattice Hosted Help] Failed to save settings', error as Error, {
-            storeId: scope.storeId,
-            tenantId: scope.tenantId,
+        logRuntimeFailure('answerlattice_hosted_help_settings_save_failed', error, {
+            ...getBoundedRuntimeStringContext('tenantId', scope.tenantId),
+            ...getBoundedRuntimeStringContext('storeId', scope.storeId),
         });
         return NextResponse.json({ error: 'Failed to save hosted help settings' }, { status: 500 });
     }

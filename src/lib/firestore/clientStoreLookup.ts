@@ -36,6 +36,7 @@ const buildTenantDocRef = (tenantId: string | number) => firestoreAdmin.collecti
 
 async function isStoreOrTenantBlocked(store: Record<string, any>): Promise<boolean> {
     if (isPlatformEntityBlocked(store)) return true;
+    if (store?.tenantBlocked === false) return false;
 
     const tenantId = store?.tenantId ?? store?.tId;
     if (tenantId == null || tenantId === '') return false;
@@ -112,6 +113,25 @@ export const getStoreByCustomDomain = cache(
             return await isStoreOrTenantBlocked(data) ? null : data;
         },
         ['client-store-custom-domain'],
+        { revalidate: 60, tags: ['client-stores'] },
+    ),
+);
+
+export const getPublicStoreById = cache(
+    unstable_cache(
+        async (storeId: string | number): Promise<ClientStoreLookupResult> => {
+            const normalizedStoreId = String(storeId || '').trim();
+            if (!/^\d{1,20}$/.test(normalizedStoreId)) return null;
+
+            const snap = await buildStoreCollection().doc(normalizedStoreId).get();
+            if (!snap.exists) return null;
+
+            const data: Record<string, any> & { id: string } = { id: snap.id, ...(snap.data() || {}) };
+            if (data.active === false || data.deleted === true) return null;
+
+            return await isStoreOrTenantBlocked(data) ? null : data;
+        },
+        ['client-store-id'],
         { revalidate: 60, tags: ['client-stores'] },
     ),
 );

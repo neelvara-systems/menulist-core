@@ -10,16 +10,211 @@ import type {
     StaffMutationResponse,
     UpdateStaffInput,
 } from "./types";
+import { logStaffClientFailure } from "./diagnostics";
+import { readJsonResponseWithLimit } from "@lib/security/boundedResponseBody";
 
-const parseStaffResponse = async <T>(response: Response): Promise<T> => {
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok) {
-        const error = new Error(data?.error || "Staff request failed") as Error & { code?: string; status?: number };
-        error.code = data?.code;
-        error.status = response.status;
-        throw error;
+export const STAFF_CLIENT_RESPONSE_JSON_MAX_BYTES = 256 * 1024;
+export const STAFF_CLIENT_REQUEST_POLICY = {
+    cache: "no-store" as RequestCache,
+    credentials: "same-origin" as RequestCredentials,
+    redirect: "manual" as RequestRedirect,
+};
+
+type StaffResponseKind = "staff_list" | "staff_mutation" | "role_mutation" | "create_staff_compatibility";
+
+type StaffResponseLogContext = Record<string, boolean | number | string | undefined>;
+type StaffMutationParseOptions = {
+    expectedModes?: StaffMutationResponse["mode"][];
+    requireUser?: boolean;
+    requireUserId?: boolean;
+};
+type CreateStaffCompatibilityRejectedResponse = {
+    code?: string;
+    error?: string;
+    retryAfter?: number;
+};
+
+export type CreateStaffCompatibilityResponse = StaffMutationResponse | CreateStaffCompatibilityRejectedResponse;
+type CreateStaffCompatibilitySuccessResponse = StaffMutationResponse & {
+    mode: "new_user_created" | "existing_user_added_to_store";
+    success: true;
+    user: StaffMutationResponse["user"];
+    userId: string;
+};
+
+const CREATE_STAFF_COMPATIBILITY_SUCCESS_MODES: Array<CreateStaffCompatibilitySuccessResponse["mode"]> = [
+    "new_user_created",
+    "existing_user_added_to_store",
+];
+
+const isRecord = (value: unknown): value is Record<string, unknown> => (
+    Boolean(value) && typeof value === "object" && !Array.isArray(value)
+);
+
+const isStaffListResponse = (value: unknown): value is StaffListResponse => (
+    isRecord(value)
+    && Array.isArray(value.users)
+    && (value.stores === undefined || Array.isArray(value.stores))
+);
+
+const isStaffUserSummaryResponse = (value: unknown): value is StaffMutationResponse["user"] => (
+    isRecord(value)
+    && typeof value.id === "string"
+    && Number.isFinite(Number(value.tenantId))
+    && Array.isArray(value.storeIds)
+    && Array.isArray(value.stores)
+);
+
+const hasConsistentStaffMutationIdentity = (value: Record<string, unknown>): boolean => {
+    if (value.user === undefined || value.userId === undefined) return true;
+    if (typeof value.userId !== "string" || !isStaffUserSummaryResponse(value.user)) return false;
+    return value.user.id === value.userId;
+};
+
+const isStaffMutationResponse = (
+    value: unknown,
+    options: StaffMutationParseOptions = {},
+): value is StaffMutationResponse => (
+    isRecord(value)
+    && value.success === true
+    && (options.expectedModes === undefined || options.expectedModes.includes(value.mode as StaffMutationResponse["mode"]))
+    && (!options.requireUserId || typeof value.userId === "string")
+    && (!options.requireUser || isStaffUserSummaryResponse(value.user))
+    && hasConsistentStaffMutationIdentity(value)
+);
+
+const isCreateStaffCompatibilityRejectedResponse = (
+    value: unknown,
+): value is CreateStaffCompatibilityRejectedResponse => (
+    isRecord(value)
+    && (
+        typeof value.code === "string"
+        || typeof value.error === "string"
+        || typeof value.retryAfter === "number"
+    )
+    && (value.code === undefined || typeof value.code === "string")
+    && (value.error === undefined || typeof value.error === "string")
+    && (value.retryAfter === undefined || typeof value.retryAfter === "number")
+);
+
+export const isCreateStaffCompatibilitySuccessResponse = (
+    value: unknown,
+): value is CreateStaffCompatibilitySuccessResponse => (
+    isStaffMutationResponse(value, {
+        expectedModes: CREATE_STAFF_COMPATIBILITY_SUCCESS_MODES,
+        requireUser: true,
+        requireUserId: true,
+    })
+);
+
+export const isCreateStaffCompatibilityEmailExistsResponse = (
+    value: unknown,
+): value is CreateStaffCompatibilityRejectedResponse & { code: "EMAIL_EXISTS" } => (
+    isCreateStaffCompatibilityRejectedResponse(value) && value.code === "EMAIL_EXISTS"
+);
+
+const isRoleMutationResponse = (value: unknown): value is RoleMutationResponse => (
+    isRecord(value) && value.success === true && Array.isArray(value.roles)
+);
+
+const isExpectedStaffResponse = (
+    kind: StaffResponseKind,
+    value: unknown,
+    mutationOptions?: StaffMutationParseOptions,
+): boolean => {
+    if (kind === "staff_list") return isStaffListResponse(value);
+    if (kind === "role_mutation") return isRoleMutationResponse(value);
+    return isStaffMutationResponse(value, mutationOptions);
+};
+
+const getStaffResponseLogContext = (
+    kind: StaffResponseKind,
+    response: Response,
+): StaffResponseLogContext => ({
+    responseKind: kind,
+    responseOk: response.ok,
+    responseStatus: response.status,
+    maxBytes: STAFF_CLIENT_RESPONSE_JSON_MAX_BYTES,
+});
+
+const createStaffClientError = (
+    response: Response,
+    code?: unknown,
+): Error & { code?: string; status?: number } => {
+    const error = new Error("Staff request failed") as Error & { code?: string; status?: number };
+    if (typeof code === "string") {
+        error.code = code.slice(0, 64);
     }
+    error.status = response.status;
+    return error;
+};
+
+const readStaffResponseJson = async (
+    response: Response,
+    kind: StaffResponseKind,
+): Promise<unknown> => {
+    try {
+        return await readJsonResponseWithLimit<unknown>(
+            response,
+            STAFF_CLIENT_RESPONSE_JSON_MAX_BYTES,
+        );
+    } catch (error) {
+        logStaffClientFailure(
+            "staff_client_response_parse_failed",
+            error,
+            getStaffResponseLogContext(kind, response),
+        );
+        return null;
+    }
+};
+
+const parseStaffResponse = async <T>(
+    response: Response,
+    kind: StaffResponseKind,
+    mutationOptions?: StaffMutationParseOptions,
+): Promise<T> => {
+    const data = await readStaffResponseJson(response, kind);
+    if (!response.ok) {
+        throw createStaffClientError(response, isRecord(data) ? data.code : undefined);
+    }
+
+    if (!isExpectedStaffResponse(kind, data, mutationOptions)) {
+        logStaffClientFailure(
+            "staff_client_response_invalid",
+            createStaffClientError(response, "STAFF_RESPONSE_INVALID"),
+            getStaffResponseLogContext(kind, response),
+        );
+        throw createStaffClientError(response, "STAFF_RESPONSE_INVALID");
+    }
+
     return data as T;
+};
+
+export const readCreateStaffCompatibilityResponse = async (
+    response: Response,
+): Promise<CreateStaffCompatibilityResponse | null> => {
+    const kind: StaffResponseKind = "create_staff_compatibility";
+    const data = await readStaffResponseJson(response, kind);
+
+    if (response.ok) {
+        if (isCreateStaffCompatibilitySuccessResponse(data)) return data;
+
+        logStaffClientFailure(
+            "staff_create_compatibility_response_invalid",
+            createStaffClientError(response, "CREATE_STAFF_RESPONSE_INVALID"),
+            getStaffResponseLogContext(kind, response),
+        );
+        return null;
+    }
+
+    if (isCreateStaffCompatibilityRejectedResponse(data)) return data;
+
+    logStaffClientFailure(
+        "staff_create_compatibility_response_invalid",
+        createStaffClientError(response, "CREATE_STAFF_REJECTION_RESPONSE_INVALID"),
+        getStaffResponseLogContext(kind, response),
+    );
+    return null;
 };
 
 export const fetchStaffUsers = async (tenantId: number, storeId: number) => {
@@ -28,23 +223,33 @@ export const fetchStaffUsers = async (tenantId: number, storeId: number) => {
         storeId: String(storeId),
     });
 
-    return parseStaffResponse<StaffListResponse>(await fetch(`/api/staff?${params.toString()}`));
+    return parseStaffResponse<StaffListResponse>(await fetch(`/api/staff?${params.toString()}`, STAFF_CLIENT_REQUEST_POLICY), "staff_list");
 };
 
 export const createStaffUser = async (payload: CreateStaffInput) => {
     return parseStaffResponse<StaffMutationResponse>(await fetch("/api/staff", {
+        ...STAFF_CLIENT_REQUEST_POLICY,
         body: JSON.stringify(payload),
         headers: { "Content-Type": "application/json" },
         method: "POST",
-    }));
+    }), "staff_mutation", {
+        expectedModes: ["new_user_created", "existing_user_added_to_store"],
+        requireUser: true,
+        requireUserId: true,
+    });
 };
 
 export const updateStaffUser = async (payload: UpdateStaffInput) => {
     return parseStaffResponse<StaffMutationResponse>(await fetch("/api/staff", {
+        ...STAFF_CLIENT_REQUEST_POLICY,
         body: JSON.stringify(payload),
         headers: { "Content-Type": "application/json" },
         method: "PATCH",
-    }));
+    }), "staff_mutation", {
+        expectedModes: ["user_updated"],
+        requireUser: true,
+        requireUserId: true,
+    });
 };
 
 export const removeStaffFromStore = async (payload: RemoveStaffInput) => {
@@ -55,32 +260,48 @@ export const removeStaffFromStore = async (payload: RemoveStaffInput) => {
     });
 
     return parseStaffResponse<StaffMutationResponse>(await fetch(`/api/staff?${params.toString()}`, {
+        ...STAFF_CLIENT_REQUEST_POLICY,
         method: "DELETE",
-    }));
+    }), "staff_mutation", {
+        expectedModes: ["store_mapping_removed", "user_deactivated"],
+        requireUser: true,
+        requireUserId: true,
+    });
 };
 
 export const requestStaffPasswordReset = async (payload: ResetStaffPasswordInput) => {
     return parseStaffResponse<StaffMutationResponse>(await fetch("/api/staff/password-reset", {
+        ...STAFF_CLIENT_REQUEST_POLICY,
         body: JSON.stringify(payload),
         headers: { "Content-Type": "application/json" },
         method: "POST",
-    }));
+    }), "staff_mutation", {
+        expectedModes: ["user_updated"],
+        requireUser: true,
+        requireUserId: true,
+    });
 };
 
 export const forceSignOutStaffUser = async (payload: ForceSignOutStaffInput) => {
     return parseStaffResponse<StaffMutationResponse>(await fetch("/api/staff/force-signout", {
+        ...STAFF_CLIENT_REQUEST_POLICY,
         body: JSON.stringify(payload),
         headers: { "Content-Type": "application/json" },
         method: "POST",
-    }));
+    }), "staff_mutation", {
+        expectedModes: ["session_revoked"],
+        requireUser: true,
+        requireUserId: true,
+    });
 };
 
 export const saveRoleDefinition = async (payload: SaveRoleInput) => {
     return parseStaffResponse<RoleMutationResponse>(await fetch("/api/staff/roles", {
+        ...STAFF_CLIENT_REQUEST_POLICY,
         body: JSON.stringify(payload),
         headers: { "Content-Type": "application/json" },
         method: payload.role.id ? "PATCH" : "POST",
-    }));
+    }), "role_mutation");
 };
 
 export const deleteRoleDefinition = async (payload: DeleteRoleInput) => {
@@ -91,6 +312,7 @@ export const deleteRoleDefinition = async (payload: DeleteRoleInput) => {
     });
 
     return parseStaffResponse<RoleMutationResponse>(await fetch(`/api/staff/roles?${params.toString()}`, {
+        ...STAFF_CLIENT_REQUEST_POLICY,
         method: "DELETE",
-    }));
+    }), "role_mutation");
 };

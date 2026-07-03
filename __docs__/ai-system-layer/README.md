@@ -1,9 +1,9 @@
 # AI System Layer
 
-**Feature:** Centralized AI Infrastructure for MenuList  
+**Feature:** Centralized AI Infrastructure for MenuList
 **Status:** ✅ PRODUCTION HARDENING ACTIVE — Gateway, rotation, model constants, daily health checks
-**Source:** ChatGPT extraction hardening session (Mar 2026) → Cascade codebase validation  
-**Last Updated:** June 25, 2026
+**Source:** ChatGPT extraction hardening session (Mar 2026) → Cascade codebase validation
+**Last Updated:** June 28, 2026
 
 ---
 
@@ -36,6 +36,8 @@ Production rule: API keys are failover and rotation credentials, not a quota sca
 ### Current State (✅ Updated June 25, 2026)
 
 AI call sites use the gateway and shared model constants. Active source code no longer calls Gemini 2.0 Flash models.
+
+June 28 hardening: frontend and Cloud Functions AI gateways classify rate limits, hard quota, and retryable provider errors from structured source code/name/status/quota/limit indicators only. Shared app-route provider helpers use the same structured retry/rate-limit posture. They do not parse raw provider `message` fields for retry decisions or diagnostics.
 
 | AI Feature              | SDK             | Model                                | Key Rotation | Retry           | Rate Limiting |
 | ----------------------- | --------------- | ------------------------------------ | ------------ | --------------- | ------------- |
@@ -84,7 +86,7 @@ Gemini API (via @google/genai SDK)
 
 | Decision              | Choice                           | Rationale                                                   |
 | --------------------- | -------------------------------- | ----------------------------------------------------------- |
-| Gateway scope         | **BOTH frontend + CF** (Phase 1) | All AI calls need key rotation protection                   |
+| Gateway scope         | **BOTH frontend + CF**           | All AI calls need key rotation protection                   |
 | SDK standardization   | `@google/genai` (new SDK)        | Already used by extraction, newer API                       |
 | Default model         | `gemini-2.5-flash`               | Cost-effective, already proven in extraction                |
 | Key pool              | **✅ IMPLEMENTED** (1-4 keys)    | Auto-discovers available keys from env vars                 |
@@ -93,9 +95,10 @@ Gemini API (via @google/genai SDK)
 | Quota policy          | Per Google project/model tier    | Extra keys are for failover/rotation, not unlimited quota   |
 | Model names           | Stable names only for production | No `latest`, preview, or experimental aliases in active prod paths |
 | Answerlattice embeddings | Keep `gemini-embedding-001` until reindex | Embedding 2 migration requires a planned vector-space rebuild |
+| Answerlattice Functions provider | `@google/genai` API-key gateway | Same SDK/gateway pattern as MenuList while preserving Answerlattice credential and billing isolation |
 | Provider health       | Daily scheduler checks           | Detect key, model, or quota failures before owners report them |
-| Task queue            | Phase 2 (not MVP)                | Extraction already has job queue; others don't need one yet |
-| Knowledge reuse layer | Phase 3                          | Needs real data volume before caching is valuable           |
+| Universal task queue  | Not current runtime              | Extraction already has a job queue; other paths use route guards or schedulers |
+| Knowledge reuse layer | Conditional candidate only       | Not implemented in the current runtime; requires a separate source-backed design |
 
 ---
 
@@ -118,8 +121,10 @@ Gemini API (via @google/genai SDK)
 | File                                 | Purpose                                       |
 | ------------------------------------ | --------------------------------------------- |
 | `src/lib/google/genAi/index.ts`      | Entry point — exports `genAIClient` (gateway) |
-| `src/lib/google/genAi/aiGateway.ts`  | AI Gateway — retry + key rotation proxy       |
+| `src/lib/google/genAi/aiGateway.ts`  | AI Gateway — retry + key rotation proxy with bounded diagnostics |
+| `src/lib/google/genAi/diagnostics.ts` | Shared route diagnostics with bounded provider and security metadata |
 | `src/lib/google/genAi/keyManager.ts` | Key Manager — pool + health tracking          |
+| `src/lib/ai/providerErrors.ts`       | Shared app-route provider rate-limit/retry helper with structured indicators |
 | `src/constants/AI/models.ts`         | Shared MenuList model constants               |
 | `src/constants/answerlattice/ai.ts`  | Shared Answerlattice model constants          |
 
@@ -128,7 +133,7 @@ Gemini API (via @google/genai SDK)
 | File                              | Purpose                                       |
 | --------------------------------- | --------------------------------------------- |
 | `functions/src/genAiClient.ts`    | Entry point — exports `genAIClient` (gateway) |
-| `functions/src/ai/aiGateway.ts`   | AI Gateway — retry + key rotation proxy       |
+| `functions/src/ai/aiGateway.ts`   | AI Gateway — retry + key rotation proxy with bounded diagnostics |
 | `functions/src/ai/keyManager.ts`  | Key Manager — pool + health tracking          |
 | `functions/src/config/secrets.ts` | Secret names + groups (4 AI key slots)        |
 | `functions/src/constants/ai.ts`   | Cloud Functions AI model constants            |
@@ -138,6 +143,10 @@ Gemini API (via @google/genai SDK)
 
 | File | Purpose |
 | --- | --- |
+| `functions-answerlattice/src/genAiClient.ts` | Entry point — exports `answerlatticeGenAIClient` (gateway) |
+| `functions-answerlattice/src/ai/aiGateway.ts` | Answerlattice AI Gateway — retry + key rotation proxy with bounded diagnostics |
+| `functions-answerlattice/src/ai/keyManager.ts` | Answerlattice Key Manager — product-scoped key pool + health tracking |
+| `functions-answerlattice/src/config/secrets.ts` | Answerlattice secret names + groups (cron + 4 AI key slots) |
 | `functions-answerlattice/src/constants/ai.ts` | Answerlattice Functions AI model constants |
 | `functions-answerlattice/src/answerlattice/aiProviderHealth.ts` | Daily Answerlattice Gemini health check |
 
@@ -156,8 +165,16 @@ Gemini API (via @google/genai SDK)
 | `GEMINI_AI_KEY_2` | Optional | Vercel + Firebase Secrets |
 | `GEMINI_AI_KEY_3` | Optional | Vercel + Firebase Secrets |
 | `GEMINI_AI_KEY_4` | Optional | Vercel + Firebase Secrets |
+| `ANSWERLATTICE_GEMINI_AI_KEY` | ✅ Yes for Answerlattice Functions AI | Answerlattice Firebase Secrets |
+| `ANSWERLATTICE_GEMINI_AI_KEY_2` | Optional | Answerlattice Firebase Secrets |
+| `ANSWERLATTICE_GEMINI_AI_KEY_3` | Optional | Answerlattice Firebase Secrets |
+| `ANSWERLATTICE_GEMINI_AI_KEY_4` | Optional | Answerlattice Firebase Secrets |
 
 Each environment must use its own key values. Do not share the production key with local or staging. Restrict keys to the Gemini API and keep browser code behind server routes or Firebase Functions.
+
+Missing-key behavior is fail-closed. If no Gemini key is configured, the app-route and Cloud Functions AI gateways throw the stable `AI_PROVIDER_CONFIG_MISSING` error before any provider call instead of constructing an empty-key client. This keeps startup safe while making secret misconfiguration explicit and local to the gateway.
+
+Answerlattice Cloud Functions do not use MenuList's `GEMINI_AI_KEY` pool. They use the same `@google/genai` API-key gateway shape with Answerlattice-owned `ANSWERLATTICE_GEMINI_AI_KEY*` secrets declared on AI scheduler, task, and callable functions. API-key mode has no provider-region override.
 
 ### Accounting Guardrails
 
@@ -173,4 +190,4 @@ npm run verify:ai-accounting
 
 ---
 
-_Last Updated: June 25, 2026_
+_Last Updated: June 28, 2026_

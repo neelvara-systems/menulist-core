@@ -3,6 +3,8 @@
  * Supports: article, changelog, faq, workflow, etc.
  */
 
+import { getBoundedHookStringContext, logHookFailure } from '@hook/hookDiagnostics';
+
 type ContentType = 'article' | 'changelog' | 'faq' | 'workflow';
 type FeedbackType = 'like' | 'dislike';
 
@@ -18,13 +20,17 @@ const getStorageKey = (contentType: ContentType, userId: string) => {
     return `${contentType}_feedback_${userId}`;
 };
 
-const safeParse = (value: string | null): Record<string, FeedbackEntry> => {
+const safeParse = (value: string | null, contentType: ContentType, userId: string): Record<string, FeedbackEntry> => {
     if (!value) return {};
     try {
         const parsed = JSON.parse(value);
         return typeof parsed === 'object' && parsed !== null ? parsed : {};
     } catch (error) {
-        console.warn('Failed to parse feedback', error);
+        logHookFailure('content_feedback_storage_parse_failed', error, {
+            contentType,
+            ...getBoundedHookStringContext('userId', userId),
+            storedValueLength: value.length,
+        });
         return {};
     }
 };
@@ -33,9 +39,12 @@ const readFeedback = (contentType: ContentType, userId: string): Record<string, 
     if (!isBrowser) return {};
     try {
         const stored = localStorage.getItem(getStorageKey(contentType, userId));
-        return safeParse(stored);
+        return safeParse(stored, contentType, userId);
     } catch (error) {
-        console.warn('localStorage unavailable:', error);
+        logHookFailure('content_feedback_storage_read_failed', error, {
+            contentType,
+            ...getBoundedHookStringContext('userId', userId),
+        });
         return {};
     }
 };
@@ -45,7 +54,11 @@ const writeFeedback = (contentType: ContentType, userId: string, feedback: Recor
     try {
         localStorage.setItem(getStorageKey(contentType, userId), JSON.stringify(feedback));
     } catch (error) {
-        console.warn(`Failed to write ${contentType} feedback (localStorage may be unavailable):`, error);
+        logHookFailure('content_feedback_storage_write_failed', error, {
+            contentType,
+            ...getBoundedHookStringContext('userId', userId),
+            feedbackCount: Object.keys(feedback).length,
+        });
     }
 };
 
@@ -75,6 +88,9 @@ export const clearAllStoredContentFeedback = (contentType: ContentType, userId: 
     try {
         localStorage.removeItem(getStorageKey(contentType, userId));
     } catch (error) {
-        console.warn(`Failed to clear ${contentType} feedback:`, error);
+        logHookFailure('content_feedback_storage_clear_failed', error, {
+            contentType,
+            ...getBoundedHookStringContext('userId', userId),
+        });
     }
 };

@@ -2,7 +2,7 @@
 
 **Status:** Production checklist - initial registry implemented
 **Audience:** Engineering / Product / QA
-**Last Updated:** June 20, 2026
+**Last Updated:** June 27, 2026
 **Owner:** MenuList AMM action registry
 
 ---
@@ -740,4 +740,4 @@ When an AMM adapter is added, update:
 - `ai-menu-manager_mobile-support.md`.
 - `ai-menu-manager_test-cases.md`.
 - `README.md`.
-- `__docs__/CHANGELOG.md` when owner-visible behavior changes.
+- `__docs__/changelog.md` when owner-visible behavior changes.

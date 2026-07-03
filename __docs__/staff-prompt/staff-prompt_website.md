@@ -1,33 +1,42 @@
 # Staff Prompt — Website Content
 
-## Hero Section
-- **Headline:** Your Staff Knows the Menu Without Memorizing It
-- **Subheadline:** A quick-reference view that helps staff answer customer questions instantly — what's available, what's popular, dietary info, current prices.
-- **CTA Text:** See It In Action
-- **CTA Link:** /features/staff-prompt
+**Status:** Internal supporting copy only
+**Last Updated:** July 1, 2026
 
-## Problem Statement
-New staff don't know the menu. Experienced staff forget details. Customers ask "What's gluten-free?" or "What do you recommend?" and your staff hesitates. Hesitation looks unprofessional.
+## Publishing Boundary
 
-## Solution Statement
-MenuList gives your staff a simple reference view — always current, always on their phone. They can answer any menu question in seconds without memorizing everything.
+Do not publish a standalone Staff Prompt page from this doc. The active runtime is a read-only line inside Today when the existing Today summary marks `staffPrompt.eligible` as true.
 
-## Feature Benefits
+Unsupported claims to avoid:
 
-### 1. Instant Answers
-Staff sees current availability, popular items, dietary tags, and prices. "Let me check" takes 2 seconds instead of a trip to the kitchen.
+- No standalone public route.
+- No staff-facing phone reference view.
+- No staff training portal.
+- No separate prompt-generation product.
+- No always-on staff menu app.
 
-### 2. Always Up to Date
-When you change a price or mark something sold out, staff sees it immediately. No more "Sorry, the menu on my sheet is outdated."
+Use this only as a supporting proof point inside Today/MenuList owner workflow copy.
 
-### 3. New Staff Onboarding
-Day-one staff can answer menu questions like a veteran. No training manual needed — the prompt IS the manual.
+## Approved Supporting Copy
 
-## SEO Meta
-- **Page Title:** Staff Menu Reference for Restaurants | MenuList
-- **Meta Description:** Give your staff instant menu knowledge. Current prices, availability, popular items, dietary info. Always up to date, always on their phone.
-- **Target Keywords:** restaurant staff training, menu reference, staff menu app, restaurant staff tool
+MenuList can show a simple staff line inside Today when the daily summary has a safe line available. The owner can repeat it before service. If the card is absent, there is no action needed.
 
 ## Approved Language
-### USE: "Quick reference", "instant answers", "always current", "new staff onboarding"
-### NEVER USE: "AI-powered staff assistant", "Smart training", "Intelligent staff tool"
+
+- "A short staff line in Today"
+- "Shown only when MenuList has a safe line available"
+- "No action needed when it is absent"
+- "Owner repeats it before service"
+
+## Forbidden Language
+
+- "AI-powered staff assistant"
+- "Smart training"
+- "Intelligent staff tool"
+- "Staff menu app"
+- "Always on your staff's phone"
+- "Training portal"
+
+## Website Placement
+
+If referenced on the website, keep it as a secondary Today workflow detail. Do not use Staff Prompt as a headline offer, navigation item, SEO landing page, or standalone feature route.

@@ -3,9 +3,15 @@
 **Created:** January 11, 2026  
 **Updated:** January 11, 2026 (Implementation Complete)  
 **Mode:** Implementation Validation  
-**Status:** ✅ IMPLEMENTATION COMPLETE
+**Status:** Historical implementation validation for legacy campaign surfaces; not current launch certification
 
 ---
+
+## Launch Boundary
+
+This validation report preserves January 2026 implementation evidence for legacy campaign-based recommendation cards. Menu Kit is now the canonical physical surface system for identity surfaces.
+
+Current release approval for active physical/print output requires the active [production-readiness audit](../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../production-readiness/external-certification-runbook.md) evidence, `npm run verify:menu-card-export`, Digital Menu Output Constitution checks, browser/mobile output QA, visual print artifact review, target deploy evidence, and production-host smoke.
 
 ## 📋 Engineering Checklist Verification
 
@@ -177,7 +183,7 @@
 
 ---
 
-## 🚦 STATUS
+## Historical Status
 
 ### ✅ IMPLEMENTATION COMPLETE
 
@@ -185,7 +191,7 @@ All code implemented per spec. TypeScript compilation passes.
 
 ---
 
-## ✅ FINAL VERDICT: SHIP READY
+## Historical Validation Result: Source Evidence Only
 
 | Metric                    | Value              |
 | ------------------------- | ------------------ |
@@ -197,15 +203,19 @@ All code implemented per spec. TypeScript compilation passes.
 | Bugs Fixed (Quality Gate) | 5                  |
 | Improvements Applied      | 3                  |
 
+**Current Release Approval:** Not granted by this report. Active physical/print output approval still requires the launch-boundary gates above.
+
 ---
 
 ## 🚀 To Enable & Test
 
-### Step 1: Verify Build
+### Step 1: Source Gate
 
 ```bash
-npm run build
+npm run verify:menu-card-export
 ```
+
+Production builds and deploys are release-certification steps only; do not treat this historical validation note as permission to run them.
 
 ### Step 2: Run Development Server
 
@@ -283,7 +293,7 @@ Physical Surfaces require:
 
 ---
 
-## 🚀 PRODUCTION QUALITY GATE: PASS
+## Historical Quality Gate: Source Evidence Only
 
 | Check             | Status |
 | ----------------- | ------ |
@@ -292,11 +302,11 @@ Physical Surfaces require:
 | TypeScript Errors | 0      |
 | Security Issues   | 0      |
 
-**Ready For:** Vercel deploy + SMB testing
+**Evidence Scope:** Historical implementation validation only. Current deploy or SMB testing approval requires the active launch-boundary gates above.
 
 ---
 
 **Implementation Complete:** January 11, 2026  
 **Quality Gate Passed:** January 11, 2026  
 **Validated By:** Cascade AI  
-**Status:** SHIP READY
+**Status:** Historical implementation evidence only; not current launch certification

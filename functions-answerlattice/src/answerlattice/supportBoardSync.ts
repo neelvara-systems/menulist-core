@@ -15,6 +15,7 @@ import { FUNCTION_FLAGS } from '../constants/features';
 import { firestoreAdmin as db } from '../firebaseAdmin';
 
 const PRODUCT_ID = 'AL';
+const ANSWERLATTICE_SUPPORT_BOARD_SYNC_FAILED = 'ANSWERLATTICE_SUPPORT_BOARD_SYNC_FAILED';
 
 const SUPPORT_BOARD_STATUS = {
     NEW_SIGNALS: 'new_signals',
@@ -77,6 +78,16 @@ interface SupportBoardSourceDocs {
     driftAnswerDocs: FirebaseFirestore.QueryDocumentSnapshot[];
 }
 
+interface SupportBoardSyncDiagnostic {
+    phase: string;
+    operation: string;
+    error: string;
+    code?: string;
+    name?: string;
+    sourceStatusCode?: number | null;
+    details?: Record<string, any>;
+}
+
 export interface SupportBoardSyncResult {
     enabled: boolean;
     candidatesAnalyzed: number;
@@ -89,7 +100,34 @@ export interface SupportBoardSyncResult {
     needsAnswerCards: number;
     highPriorityCards: number;
     totalRecentCards: number;
-    errors: any[];
+    errors: SupportBoardSyncDiagnostic[];
+}
+
+function getSupportBoardSourceErrorContext(error: unknown): {
+    sourceErrorName: string | null;
+    sourceErrorCode: string | number | null;
+    sourceStatusCode: number | null;
+} {
+    const source = error && typeof error === 'object' ? error as Record<string, unknown> : {};
+    const sourceStatusCode = typeof source.status === 'number'
+        ? source.status
+        : (typeof source.statusCode === 'number' ? source.statusCode : null);
+
+    return {
+        sourceErrorName: typeof source.name === 'string' ? source.name : null,
+        sourceErrorCode: typeof source.code === 'string' || typeof source.code === 'number' ? source.code : null,
+        sourceStatusCode,
+    };
+}
+
+function getSupportBoardScopeContext(tId?: number, sId?: number): {
+    hasTenantScope: boolean;
+    hasStoreScope: boolean;
+} {
+    return {
+        hasTenantScope: Number.isFinite(tId),
+        hasStoreScope: Number.isFinite(sId),
+    };
 }
 
 function stableStringify(value: any): string {
@@ -678,8 +716,7 @@ export async function syncSupportBoardNightly(tId: number, sId: number): Promise
 
         if (result.cardsCreated > 0 || result.cardsUpdated > 0 || result.summaryWritten) {
             logger.info('[Answerlattice SupportBoard] Nightly sync complete', {
-                tId,
-                sId,
+                ...getSupportBoardScopeContext(tId, sId),
                 cardsCreated: result.cardsCreated,
                 cardsUpdated: result.cardsUpdated,
                 candidatesAnalyzed: result.candidatesAnalyzed,
@@ -687,18 +724,20 @@ export async function syncSupportBoardNightly(tId: number, sId: number): Promise
             });
         }
     } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
+        const sourceError = getSupportBoardSourceErrorContext(error);
         result.errors.push({
             phase: 'support_board_sync',
             operation: 'syncSupportBoardNightly',
-            tId,
-            sId,
-            error: message,
+            error: ANSWERLATTICE_SUPPORT_BOARD_SYNC_FAILED,
+            code: sourceError.sourceErrorCode == null ? undefined : String(sourceError.sourceErrorCode),
+            name: sourceError.sourceErrorName ?? undefined,
+            sourceStatusCode: sourceError.sourceStatusCode,
+            details: getSupportBoardScopeContext(tId, sId),
         });
         logger.error('[Answerlattice SupportBoard] Nightly sync failed', {
-            tId,
-            sId,
-            error: message,
+            failureCode: ANSWERLATTICE_SUPPORT_BOARD_SYNC_FAILED,
+            ...getSupportBoardScopeContext(tId, sId),
+            ...sourceError,
         });
     }
 

@@ -221,8 +221,8 @@ Simulated 1,085 edge case menu scenarios across the full extraction pipeline. Th
 | I2  | 50 restaurants uploading simultaneously | 5     | ✅ SAFE     | Same protections. Gemini API may throttle → circuit breaker handles.                        |
 | I3  | Rapid re-extraction (5× in 1 minute)    | 10    | ✅ SAFE     | Rate limit: 5/min per project. 6th request rejected with 429.                               |
 | I4  | Cancelled extraction mid-processing     | 10    | ✅ SAFE     | Post-AI cancellation check. Partial results saved. Status: `cancelled`.                     |
-| I5  | Large PDF (50 pages)                    | 5     | ✅ SAFE     | Client converts to 50 JPEGs. 5 batches × 10 images. ~150s total. Within CF timeout (540s).  |
-| I6  | Extremely large PDF (100+ pages)        | 5     | ⚠️ VARIABLE | 10+ batches. ~300s+. Risk of CF timeout at 540s. Exponential backoff adds delay.            |
+| I5  | Large PDF (15 pages)                    | 5     | ✅ SAFE     | Client caps the extraction job at 15 pages/files before Storage upload; worker stays inside the shared job limit. |
+| I6  | Extremely large PDF (50+ pages)         | 5     | ✅ BLOCKED  | Client blocks oversized PDF/page batches before Storage upload/API job creation.            |
 | I7  | Network failure during AI call          | 5     | ✅ SAFE     | `retryWithBackoff` (3 attempts). Circuit breaker. Job marked failed with `retryable: true`. |
 | I8  | Gemini API downtime                     | 5     | ✅ SAFE     | Circuit breaker opens after 5 failures. Jobs fail fast.                                     |
 | I9  | Repeated job creation for same project  | 5     | ✅ SAFE     | `checkExistingActiveJob` returns existing jobId. No duplicate jobs.                         |

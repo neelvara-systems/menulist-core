@@ -1,8 +1,14 @@
 # ✅ CORS Implementation - Complete
 
 **Date**: November 15, 2025  
-**Status**: ✅ **IMPLEMENTED**  
+**Status**: Historical implementation note; not current launch certification
 **Coverage**: **15/15 Protected API Routes** (100%)
+
+---
+
+## Current Launch Boundary
+
+Current release approval requires the active [production-readiness audit](../../audits/menulist-production-readiness-audit.md) and [External Certification Runbook](../../production-readiness/external-certification-runbook.md) evidence, current allowed-origin review, target-domain browser/API smoke, CORS failure-mode evidence, and deploy evidence for the target environment. This historical completion note is not production-launch approval.
 
 ---
 
@@ -407,8 +413,8 @@ export const POST = withAuth(async (request, session) => {
 ## 🔗 Related Documentation
 
 - [CORS Implementation Guide](./cors-implementation.md) - Complete usage guide
-- [Authentication Middleware](../../src/middleware/auth.ts) - Enhanced implementation
-- [CORS Validation Library](../../src/lib/security/corsValidation.ts) - Core functions
+- [Authentication Middleware](../../../src/middleware/auth.ts) - Enhanced implementation
+- [CORS Validation Library](../../../src/lib/security/corsValidation.ts) - Core functions
 - [Comprehensive Security Audit](../comprehensive-security-audit.md) - Full audit report
 
 ---
@@ -418,7 +424,7 @@ export const POST = withAuth(async (request, session) => {
 **Implementation**: ✅ **COMPLETE**  
 **Coverage**: **15/15 routes** (100%)  
 **Testing**: ⏳ **PENDING** (needs production domain configuration)  
-**Production Ready**: ✅ **YES** (after updating `ALLOWED_ORIGINS`)
+**Launch Certification**: Requires External Certification Runbook evidence after updating `ALLOWED_ORIGINS`
 
 ---
 

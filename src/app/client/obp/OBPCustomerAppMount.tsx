@@ -16,7 +16,7 @@
  * this wrapper is a client boundary that defers to the shared
  * CustomerAppController code path.
  *
- * @see __docs__/client-menu/PUBLIC-ROUTING-DOCTRINE.md §A-10, T2-N-07
+ * @see __docs__/client-menu/public-routing-doctrine.md §A-10, T2-N-07
  * @see src/components/customerApp/CustomerAppController.tsx
  */
 

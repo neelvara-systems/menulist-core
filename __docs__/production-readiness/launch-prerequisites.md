@@ -4,6 +4,8 @@
 **Purpose:** Everything you need to do manually before enabling the monitoring systems.  
 **Estimated Time:** 30-45 minutes total
 
+For the current full-system certification gates that require external access, provider credentials, browser/device QA, or explicit deploy approval, use [External Certification Runbook](./external-certification-runbook.md) and record results in `__docs__/audits/menulist-production-readiness-audit.md`.
+
 ---
 
 ## Step 1: Create Telegram Bot (5 minutes)
@@ -23,12 +25,14 @@
 
 **Where to store:**
 
+Store Telegram secrets in QA first. Production values require QA alert-delivery evidence and explicit production secret approval.
+
 ```bash
 # Firebase Functions secrets
-firebase functions:secrets:set TELEGRAM_BOT_TOKEN
+firebase functions:secrets:set TELEGRAM_BOT_TOKEN --project menulist-qa
 # Paste: 7123456789:AAF...
 
-firebase functions:secrets:set TELEGRAM_CHAT_ID
+firebase functions:secrets:set TELEGRAM_CHAT_ID --project menulist-qa
 # Paste: -100XXXXXXXXXX
 ```
 
@@ -104,7 +108,7 @@ Current code status:
 | API route guard | Built | `src/lib/ops/safeMode.ts` |
 | Ops toggle | Built | `src/app/api/ops/safe-mode/route.ts` |
 | Budget webhook activation | Built | `functions/src/triggers/operations.ts` → `gcpBudgetAlertWebhook` |
-| Direct Cloud Function coverage | Audit required | `functions/src/monitoring/safeMode.ts` exists, but direct expensive callables/triggers must be checked before production |
+| Direct Cloud Function coverage | Source-gated | `functions/src/logic/processMenuImagesJob.ts` checks `isSafeModeActive()` before provider work; `npm run verify:menu-extraction-pipeline` guards the ordering. Live effect requires the scoped Functions deploy. |
 
 Before production, verify:
 
@@ -122,20 +126,71 @@ Before production, verify:
 4. Confirm public menu and OBP pages still load normally.
 5. Disable SAFE_MODE and confirm AI/API route behavior resumes.
 6. Trigger a test GCP Budget Alert Pub/Sub payload against `gcpBudgetAlertWebhook` and confirm it sets `ops_config/system.SAFE_MODE = true`.
-7. Audit any direct expensive Firebase callable/trigger paths and add `isSafeModeActive()` before launch if they can be user-triggered or budget-heavy.
+7. Confirm direct expensive Firebase callable/trigger coverage after deploy. The menu extraction worker is source-gated; any newly added user-triggered or budget-heavy Function path must add `isSafeModeActive()` before provider work.
 
 Do not treat SAFE_MODE as production-ready until all seven checks pass.
 
 ---
 
-## Step 3: Deploy Cloud Functions (5 minutes)
+## Step 2D: Apply Cloud Storage Lifecycle Config (5 minutes)
+
+> This controls legacy extraction upload storage cost. It is a [Cloud Storage bucket lifecycle](https://docs.cloud.google.com/storage/docs/lifecycle) setting, not a Firebase Storage rules deploy.
+
+Current code status:
+
+| Item | Status | Evidence |
+| --- | --- | --- |
+| Lifecycle config | Built | `infra/storage/menulist-storage-lifecycle.json` |
+| Scope | Built | `MenuListAi/project/files/` only |
+| Action | Built | `SetStorageClass` to `COLDLINE` after 365 days |
+| Delete behavior | Intentionally disabled | No delete action until owner/source-upload retention is separately approved |
+| Verifier | Built | `npm run verify:storage-lifecycle` |
+
+Apply to QA first:
 
 ```bash
-cd functions
-firebase deploy --only functions
+gcloud storage buckets update gs://menulist-qa.appspot.com --lifecycle-file=infra/storage/menulist-storage-lifecycle.json
+gcloud storage buckets describe gs://menulist-qa.appspot.com --format=json
 ```
 
-This deploys all new functions:
+Expected result: bucket lifecycle JSON includes one `SetStorageClass` rule to `COLDLINE`, `condition.age` is `365`, and `condition.matchesPrefix` includes `MenuListAi/project/files/`.
+
+After QA verification and explicit production approval, apply to production:
+
+```bash
+gcloud storage buckets update gs://menulist.appspot.com --lifecycle-file=infra/storage/menulist-storage-lifecycle.json
+gcloud storage buckets describe gs://menulist.appspot.com --format=json
+```
+
+Stop rules:
+
+- Do not apply directly to production before QA verification.
+- Do not add a lifecycle `Delete` action for `MenuListAi/project/files/` until owner/source-upload retention is separately approved.
+- Do not treat this as immediate cleanup; Cloud Storage lifecycle changes can take time to propagate and affect matching objects.
+
+---
+
+## Step 3: Deploy Cloud Functions (5 minutes)
+
+For the current scheduler hardening slice, deploy the updated consolidated scheduler to QA first:
+
+```bash
+firebase deploy --project menulist-qa --config firebase.json --only functions:menulistMaintenanceScheduler --non-interactive
+```
+
+Expected result: Firebase CLI deploys `menulistMaintenanceScheduler` after predeploy lint/build.
+
+Current blocker logged July 2, 2026: the latest documented scoped QA deploy attempts for the source-file path hardening subset (`functions:processMenuImages`, `functions:processMenuImagesJob`, `functions:startGeneration`, `functions:embedArticleWorker`, and `functions:regenerateEmbedding`), the SAFE_MODE worker retry (`functions:processMenuImagesJob`), and the scheduler retry (`functions:menulistMaintenanceScheduler`) passed predeploy lint/build, then failed before deployment with:
+
+```text
+Error: Request to https://cloudresourcemanager.googleapis.com/v1/projects/menulist-qa had HTTP Error: 403, The caller does not have permission
+```
+
+Stop rule: do not mark SG-4 or CG-2 live until an account with `menulist-qa` project access retries the command and Firebase reports the function deployed.
+
+For the wider launch function set and evidence format, use [External Certification Runbook](./external-certification-runbook.md).
+
+The older launch set included:
 
 - `verifyMenuPublish` — post-publish health check
 - `gcpBudgetAlertWebhook` — auto SAFE_MODE on budget alert
@@ -147,10 +202,10 @@ This deploys all new functions:
 ## Step 4: Deploy Firestore Indexes (2 minutes)
 
 ```bash
-firebase deploy --only firestore:indexes
+firebase deploy --only firestore:indexes --project menulist-qa --config firebase.json
 ```
 
-Required for `alertEscalation` query (severity + acknowledged + timestamp).
+Required for `alertEscalation` query (severity + acknowledged + timestamp). Run this against `menulist-qa` first after `npm run verify:env-targets` passes. Production index deploy requires QA evidence and explicit production approval.
 
 ---
 
@@ -177,7 +232,7 @@ ENABLE_MENU_HEALTH_MONITOR: true, // Post-publish verification
 | SAFE_MODE doesn't block menu | With SAFE_MODE active, load a public menu URL       | Menu loads normally           |
 | Disable SAFE_MODE            | `/ops` → Disable SAFE_MODE → Try AI again           | AI works again                |
 | Publish verification         | Publish any project → Check store doc in Firebase   | `health.status` field appears |
-| Force republish              | `/ops` → Enter store/tenant ID → Force Republish    | Success message               |
+| Force republish              | `/ops` → Enter store/tenant ID → Force Republish    | Success message with public URL verification; if `NEXT_PUBLIC_APP_URL` is missing/invalid for a subdomain store, the callable fails before touching the project |
 | Alert mute                   | `/ops` → Mute 20min → Generate an error             | No Telegram message           |
 
 ---
@@ -195,17 +250,19 @@ ENABLE_MENU_HEALTH_MONITOR: true, // Post-publish verification
 
 **Store credentials in Firebase Functions secrets:**
 
+Store SMTP secrets in QA first. Production values require QA email-delivery evidence and explicit production secret approval.
+
 ```bash
-firebase functions:secrets:set SMTP_HOST
+firebase functions:secrets:set SMTP_HOST --project menulist-qa
 # Enter: smtp.gmail.com
 
-firebase functions:secrets:set SMTP_PORT
+firebase functions:secrets:set SMTP_PORT --project menulist-qa
 # Enter: 587
 
-firebase functions:secrets:set SMTP_USER
+firebase functions:secrets:set SMTP_USER --project menulist-qa
 # Enter: your-email@gmail.com (or your-email@yourdomain.com for Workspace)
 
-firebase functions:secrets:set SMTP_PASS
+firebase functions:secrets:set SMTP_PASS --project menulist-qa
 # Enter: abcdefghijklmnop (the 16-char app password, no spaces)
 ```
 
@@ -249,9 +306,9 @@ In Firestore Console, create/update document `ops_config/system`:
 
 ## Step 7B: Platform Alert Email/WhatsApp Go-Live Checklist (10 minutes)
 
-> Platform alerts are implemented and deployed, but production send-out still needs final channel configuration before launch.
+> Platform alerts are implemented in code, but production send-out still needs final channel configuration and deploy evidence before launch.
 
-Current deployment state as of June 2, 2026:
+Historical deployment state recorded June 2, 2026. Reconfirm in Firebase Secret Manager and the deployed Functions list before launch:
 
 - Production Functions have WhatsApp outbound secrets available.
 - `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`, `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, and `SMTP_PASS` are not yet present in Secret Manager for `menulist`.
@@ -259,16 +316,20 @@ Current deployment state as of June 2, 2026:
 
 Before going live, complete this checklist:
 
-1. Create the missing Secret Manager values:
+1. Create the missing Secret Manager values in QA first:
 
 ```bash
-firebase functions:secrets:set TELEGRAM_BOT_TOKEN --project menulist
-firebase functions:secrets:set TELEGRAM_CHAT_ID --project menulist
-firebase functions:secrets:set SMTP_HOST --project menulist
-firebase functions:secrets:set SMTP_PORT --project menulist
-firebase functions:secrets:set SMTP_USER --project menulist
-firebase functions:secrets:set SMTP_PASS --project menulist
+firebase functions:secrets:set TELEGRAM_BOT_TOKEN --project menulist-qa
+firebase functions:secrets:set TELEGRAM_CHAT_ID --project menulist-qa
+firebase functions:secrets:set SMTP_HOST --project menulist-qa
+firebase functions:secrets:set SMTP_PORT --project menulist-qa
+firebase functions:secrets:set SMTP_USER --project menulist-qa
+firebase functions:secrets:set SMTP_PASS --project menulist-qa
 ```
+
+After QA alert delivery evidence and explicit production secret approval, repeat
+with `--project menulist` using production channel values. Do not copy staging
+or personal test secrets into production.
 
 2. Add platform alert recipients:
 
@@ -295,11 +356,20 @@ PLATFORM_ALERT_WHATSAPP_SESSION_ACTIVE=true
 
 4. After SMTP/Telegram secrets exist, expose them to the affected Functions by updating `SECRET_GROUPS.PLATFORM_ALERT_DELIVERY` and any Telegram `SECRET_GROUPS.MONITORING` usage needed by the deployed targets.
 
-5. Redeploy the affected Firebase Functions:
+5. Redeploy the affected Firebase Functions to QA first, then production only after QA evidence and explicit production deploy approval:
 
 ```bash
-firebase deploy --only functions:menulistMaintenanceScheduler,functions:computeDecisionBlocksScores,functions:triggerStoreNightlyScheduler,functions:triggerDecisionBlocksScoring,functions:verifyMenuPublish,functions:forceRepublish,functions:gcpBudgetAlertWebhook,functions:messagingOnboarding,functions:msgExtractionWatcher --project menulist
+npm run verify:functions-deploy-preflight
+firebase deploy --project menulist-qa --config firebase.json --only functions:menulistMaintenanceScheduler,functions:computeDecisionBlocksScores,functions:triggerStoreNightlyScheduler,functions:triggerDecisionBlocksScoring,functions:verifyMenuPublish,functions:forceRepublish,functions:gcpBudgetAlertWebhook,functions:messagingOnboarding,functions:msgExtractionWatcher --non-interactive
 ```
+
+After QA evidence and explicit production deploy approval:
+
+```bash
+firebase deploy --project menulist --config firebase.json --only functions:menulistMaintenanceScheduler,functions:computeDecisionBlocksScores,functions:triggerStoreNightlyScheduler,functions:triggerDecisionBlocksScoring,functions:verifyMenuPublish,functions:forceRepublish,functions:gcpBudgetAlertWebhook,functions:messagingOnboarding,functions:msgExtractionWatcher --non-interactive
+```
+
+Record the exact widened target list and reason in `__docs__/audits/menulist-production-readiness-audit.md` if this Step 7B list differs from Gate 1 in the [External Certification Runbook](./external-certification-runbook.md). Stop if QA deploy hits Cloud Resource Manager, IAM, billing, Secret Manager, lint, or build errors.
 
 6. Test one controlled platform alert:
 
@@ -439,8 +509,9 @@ Plausible Cloud is the approved public marketing-website analytics layer for `me
 | Set GCP budget alerts         | ❌ Manual  | One-time setup (10 min)                        |
 | Verify SAFE_MODE end-to-end   | ❌ Manual  | Step 2C must pass before production            |
 | UptimeRobot setup             | ❌ Manual  | One-time setup (5 min)                         |
-| Deploy functions              | ❌ Manual  | `firebase deploy --only functions`             |
-| Enable feature flags          | ❌ Manual  | 3 lines in features.ts                         |
+| Deploy Functions blocker set | ❌ Manual  | Gate 1 in [External Certification Runbook](./external-certification-runbook.md): local gates pass, but latest documented `menulist-qa` source-file path hardening subset, `processMenuImagesJob`, and scheduler deploy attempts completed predeploy lint/build and then failed with Cloud Resource Manager HTTP 403 caller permission; restore project access, then retry the documented scoped Firebase Functions target set or the exact changed subset being certified. |
+| Deploy Storage rules cutover  | ❌ Manual  | Gate 2A in [External Certification Runbook](./external-certification-runbook.md): local gates pass, but latest `menulist-qa` deploy failed before rules upload with Service Usage HTTP 403 project access/availability blocker. |
+| Confirm feature flag evidence | ☐ Pre-prod verify | Check current `src/config/features.ts` source state, target secrets/provider setup, scoped deploy evidence, and External Certification Runbook evidence. Do not treat three code lines as launch approval. |
 | SAFE_MODE disable after spike | ❌ Manual  | Must verify stability before re-enabling       |
 | Lifecycle messaging (emails)  | ✅ Auto    | Fires on billing events, renewal reminders     |
 | AI key rotation               | ✅ Auto    | Rotates on 429 errors, retries with next key   |
@@ -474,10 +545,13 @@ MenuList: _health/aiProvider_gemini
 Answerlattice: platformSummary/answerlatticeAiProviderHealth
 ```
 
-Current blocker logged June 26, 2026: this shell account cannot deploy to
-`menulist-qa` or `answerlattice-qa`; both deploy attempts passed predeploy build
-and then failed with Cloud Resource Manager `403 The caller does not have
-permission`.
+Current blocker logged July 2, 2026: this shell account still cannot deploy to
+`menulist-qa`. The scoped MenuList scheduler deploy
+`firebase deploy --project menulist-qa --config firebase.json --only functions:menulistMaintenanceScheduler --non-interactive`
+passed predeploy lint/build and then failed with Cloud Resource Manager
+`403 The caller does not have permission`. The earlier June 26, 2026
+`menulist-qa` and `answerlattice-qa` deploy attempts failed at the same Cloud
+Resource Manager permission gate after predeploy build.
 
 ### Optional Rotation Keys
 

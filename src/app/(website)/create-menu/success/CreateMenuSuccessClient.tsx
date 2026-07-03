@@ -19,11 +19,97 @@ import {
     STARTER_ACTIVATION_SIGNALS,
     type StarterActivationSignal,
 } from '@lib/onboarding/starterActivation';
+import { secureError } from '@lib/security/secureLogger';
 import { useTranslations } from 'next-intl';
 import { useSearchParams } from 'next/navigation';
 import { useCallback, useRef, useState } from 'react';
 import { LuCheck, LuCopy, LuExternalLink, LuMapPin, LuMessageCircle, LuQrCode } from 'react-icons/lu';
 import AnimateOnScroll from '@/components/website/shared/AnimateOnScroll';
+
+const CREATE_MENU_SUCCESS_ERROR_FIELD_LIMIT = 80;
+
+function getBoundedCreateMenuSuccessStringContext(label: string, value: unknown) {
+    if (typeof value !== 'string') {
+        return {
+            [`${label}Present`]: false,
+            [`${label}Length`]: 0,
+        };
+    }
+
+    return {
+        [`${label}Present`]: value.length > 0,
+        [`${label}Length`]: value.length,
+    };
+}
+
+function getCreateMenuSuccessErrorContext(error: unknown) {
+    if (!error || typeof error !== 'object') return {};
+
+    const record = error as Record<string, unknown>;
+
+    return {
+        sourceErrorName: typeof record.name === 'string'
+            ? record.name.slice(0, CREATE_MENU_SUCCESS_ERROR_FIELD_LIMIT)
+            : undefined,
+        sourceErrorCode: typeof record.code === 'string'
+            ? record.code.slice(0, CREATE_MENU_SUCCESS_ERROR_FIELD_LIMIT)
+            : undefined,
+    };
+}
+
+function logCreateMenuSuccessFailure(
+    failureCode: string,
+    error: unknown,
+    context: Record<string, unknown> = {},
+) {
+    secureError('[create-menu/success] Browser handoff failed', new Error(failureCode), {
+        failureCode,
+        ...context,
+        ...getCreateMenuSuccessErrorContext(error),
+    });
+}
+
+function hasCreateMenuSuccessClipboardWrite() {
+    return typeof navigator !== 'undefined'
+        && typeof navigator.clipboard?.writeText === 'function';
+}
+
+function hasCreateMenuSuccessCopyFallback() {
+    return typeof document !== 'undefined'
+        && Boolean(document.body)
+        && typeof document.createElement === 'function'
+        && typeof document.execCommand === 'function';
+}
+
+async function copyCreateMenuSuccessLinkToClipboard(menuUrl: string) {
+    if (hasCreateMenuSuccessClipboardWrite()) {
+        try {
+            await navigator.clipboard.writeText(menuUrl);
+            return;
+        } catch {
+            // Fall through to the acknowledged textarea fallback for restricted browsers.
+        }
+    }
+
+    if (!hasCreateMenuSuccessCopyFallback()) {
+        throw new Error('public_create_menu_success_copy_unavailable');
+    }
+
+    const input = document.createElement('input');
+    input.value = menuUrl;
+    input.readOnly = true;
+    document.body.appendChild(input);
+    input.select();
+
+    try {
+        const copiedViaFallback = document.execCommand('copy');
+        if (!copiedViaFallback) {
+            throw new Error('public_create_menu_success_copy_fallback_failed');
+        }
+    } finally {
+        input.remove();
+    }
+}
 
 export default function CreateMenuSuccessClient() {
     const t = useTranslations('Website');
@@ -35,6 +121,7 @@ export default function CreateMenuSuccessClient() {
     const hasOfficialPageUrl = Boolean(officialPageUrl);
 
     const [copied, setCopied] = useState(false);
+    const [handoffError, setHandoffError] = useState<string | null>(null);
     const recordedSignalsRef = useRef(new Set<StarterActivationSignal>());
 
     const recordStarterSignal = useCallback((signal: StarterActivationSignal) => {
@@ -55,29 +142,52 @@ export default function CreateMenuSuccessClient() {
     }, []);
 
     const handleCopyLink = useCallback(async () => {
+        if (!menuUrl) return;
+
         try {
-            await navigator.clipboard.writeText(menuUrl);
+            await copyCreateMenuSuccessLinkToClipboard(menuUrl);
+
+            setHandoffError(null);
             setCopied(true);
             setTimeout(() => setCopied(false), 2000);
-        } catch {
-            // Fallback for older browsers
-            const input = document.createElement('input');
-            input.value = menuUrl;
-            document.body.appendChild(input);
-            input.select();
-            document.execCommand('copy');
-            document.body.removeChild(input);
-            setCopied(true);
-            setTimeout(() => setCopied(false), 2000);
+            recordStarterSignal(STARTER_ACTIVATION_SIGNALS.MENU_LINK_COPIED);
+        } catch (error) {
+            logCreateMenuSuccessFailure('public_create_menu_success_copy_failed', error, {
+                ...getBoundedCreateMenuSuccessStringContext('menuUrl', menuUrl),
+                ...getBoundedCreateMenuSuccessStringContext('officialPageUrl', officialPageUrl),
+                hasClipboardWrite: hasCreateMenuSuccessClipboardWrite(),
+                hasCopyFallback: hasCreateMenuSuccessCopyFallback(),
+                hasOfficialPageUrl,
+            });
+            setHandoffError(t('CreateMenuSuccess.copyFailed'));
         }
-        recordStarterSignal(STARTER_ACTIVATION_SIGNALS.MENU_LINK_COPIED);
-    }, [menuUrl, recordStarterSignal]);
+    }, [hasOfficialPageUrl, menuUrl, officialPageUrl, recordStarterSignal, t]);
 
     const handleWhatsAppShare = useCallback(() => {
-        const msg = t('CreateMenuSuccess.whatsAppMessage', { menuUrl });
-        window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
-        recordStarterSignal(STARTER_ACTIVATION_SIGNALS.WHATSAPP_SHARE_STARTED);
-    }, [menuUrl, recordStarterSignal, t]);
+        if (!menuUrl) return;
+
+        const message = t('CreateMenuSuccess.whatsAppMessage', { menuUrl });
+        const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
+
+        try {
+            const opened = window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
+            if (!opened) {
+                throw new Error('public_create_menu_success_whatsapp_open_blocked');
+            }
+
+            setHandoffError(null);
+            recordStarterSignal(STARTER_ACTIVATION_SIGNALS.WHATSAPP_SHARE_STARTED);
+        } catch (error) {
+            logCreateMenuSuccessFailure('public_create_menu_success_whatsapp_open_failed', error, {
+                ...getBoundedCreateMenuSuccessStringContext('menuUrl', menuUrl),
+                ...getBoundedCreateMenuSuccessStringContext('officialPageUrl', officialPageUrl),
+                hasOfficialPageUrl,
+                messageLength: message.length,
+                whatsappUrlLength: whatsappUrl.length,
+            });
+            setHandoffError(t('CreateMenuSuccess.whatsAppFailed'));
+        }
+    }, [hasOfficialPageUrl, menuUrl, officialPageUrl, recordStarterSignal, t]);
 
     return (
         <div className="ws-page">
@@ -229,6 +339,16 @@ export default function CreateMenuSuccessClient() {
                                 >
                                     <LuMessageCircle size={18} /> {t('CreateMenuSuccess.whatsAppCta')}
                                 </button>
+                                {handoffError && (
+                                    <p style={{
+                                        margin: 0,
+                                        color: 'var(--ws-danger, #b91c1c)',
+                                        fontSize: '13px',
+                                        lineHeight: 1.4,
+                                    }}>
+                                        {handoffError}
+                                    </p>
+                                )}
                             </div>
                         </AnimateOnScroll>
                     )}

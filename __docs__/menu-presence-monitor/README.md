@@ -28,6 +28,8 @@ Menu Presence Monitor gently surfaces these gaps without overwhelming the owner.
 
 **Mostly manual confirmation + partial automatic detection.** Zero new collections for v1. Store-level field (`menuPresence`) on existing store document tracks confirmed surfaces. Starter activation actions use `starterActivationSignals` on the same store document.
 
+Presence confirmations and starter activation signals are owner-local writes. `updateMenuPresence()` and `recordStarterActivationSignal()` must verify the passed store matches the active session store before writing either field.
+
 The monitor now shows an activation-proof summary through the shared `buildStarterActivationSummary()` helper. It separates:
 
 - MenuList-recorded owner actions such as copy, WhatsApp share, QR download, Menu Kit download, or native share;
@@ -52,7 +54,11 @@ The monitor now shows an activation-proof summary through the shared `buildStart
 | External placement | Owner marks the placement in the Presence Monitor; MenuList stores `menuPresence.*`. | Owner confirmed |
 | Customer usage | Future scan/source/referrer data may support stronger proof. | Not part of P0 |
 
-## Key Files (Planned)
+## Source Gate
+
+Run `npm run verify:menu-presence-monitor-boundary` after changes to Presence Monitor, Use MenuList output wiring, Business Settings Search & Discovery, Mobile More Search & Discovery, `updateMenuPresence()`, `recordStarterActivationSignal()`, or starter activation proof. This gate checks source/docs parity for active-session store guards, typed write acknowledgement, bounded diagnostics, desktop/mobile route wiring, and mobile bottom-sheet behavior. Browser/device QA and live confirm/remove mutation testing remain separate release gates.
+
+## Key Files
 
 | File | Purpose |
 |------|---------|
@@ -85,4 +91,4 @@ The monitor now shows an activation-proof summary through the shared `buildStart
 ---
 
 **Created:** March 15, 2026
-**Last Updated:** June 24, 2026
+**Last Updated:** July 2, 2026

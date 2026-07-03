@@ -6,13 +6,19 @@
  */
 
 import { TopItem } from '@template/main-app/projects/types';
-import { Card, Empty, List, Typography } from 'antd';
+import { Card, Empty, List, Tag, Typography } from 'antd';
 import { useTranslations } from 'next-intl';
 import React from 'react';
 import { LuFlame } from 'react-icons/lu';
 import styles from './OwnerDashboard.module.scss';
 
 const { Text, Title } = Typography;
+
+const STATUS_TAG_COLORS: Record<string, string> = {
+    success: 'green',
+    warning: 'orange',
+    default: 'blue',
+};
 
 interface TopItemsListProps {
     items: TopItem[];
@@ -60,6 +66,11 @@ const TopItemsList: React.FC<TopItemsListProps> = ({
                             <Text className={styles.topItemName}>
                                 {item.name || item.itemId}
                             </Text>
+                            {item.statusLabel ? (
+                                <Tag color={STATUS_TAG_COLORS[item.statusTone || 'default']} style={{ marginTop: 4 }}>
+                                    {item.statusLabel}
+                                </Tag>
+                            ) : null}
                         </div>
                         <div className={styles.topItemClicks}>
                             <Text type="secondary">{t('units.clicks', { count: item.clicks })}</Text>

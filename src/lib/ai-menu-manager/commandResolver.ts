@@ -21,7 +21,9 @@ import type {
 } from '@type/aiMenuManager';
 import { buildAnswerCard, buildClarificationCard, buildLocalExportCard, buildManualTaskCard, buildProposalCard, buildUnsupportedCard } from './cardBuilder';
 import {
+    findAiMenuManagerCategoryCandidates,
     findAiMenuManagerCategoryByName,
+    findAiMenuManagerItemCandidates,
     findAiMenuManagerItemByName,
     type AiMenuManagerContextCategory,
     type AiMenuManagerContextItem,
@@ -137,6 +139,46 @@ function buildGuidedClarification(params: {
         cardKind: 'clarification',
         suggestedReplies: params.suggestedReplies,
     };
+}
+
+function buildItemCandidateClarification(params: {
+    buildPrompt: (item: AiMenuManagerContextItem) => string;
+    context: AiMenuManagerContextPacket;
+    helper: string;
+    itemName: string;
+    items: AiMenuManagerContextItem[];
+    title: string;
+}) {
+    return buildGuidedClarification({
+        context: params.context,
+        title: params.title,
+        message: `I found more than one item matching "${params.itemName}". Choose the exact item so Menu Manager can prepare the card.`,
+        suggestedReplies: params.items.slice(0, 5).map((item) => ({
+            label: item.name,
+            prompt: params.buildPrompt(item),
+            helper: params.helper,
+        })),
+    });
+}
+
+function buildCategoryCandidateClarification(params: {
+    buildPrompt: (category: AiMenuManagerContextCategory) => string;
+    categories: AiMenuManagerContextCategory[];
+    categoryName: string;
+    context: AiMenuManagerContextPacket;
+    helper: string;
+    title: string;
+}) {
+    return buildGuidedClarification({
+        context: params.context,
+        title: params.title,
+        message: `I found more than one category matching "${params.categoryName}". Choose the exact category so Menu Manager can prepare the card.`,
+        suggestedReplies: params.categories.slice(0, 5).map((category) => ({
+            label: category.name,
+            prompt: params.buildPrompt(category),
+            helper: params.helper,
+        })),
+    });
 }
 
 function withPatchHash(patch: AiMenuManagerProjectPatch | undefined) {
@@ -529,7 +571,20 @@ function resolvePriceCommand(text: string, context: AiMenuManagerContextPacket):
     if (!rawName || !nextPrice) return null;
 
     const item = findAiMenuManagerItemByName(context, rawName);
-    if (!item) return null;
+    if (!item) {
+        const candidates = findAiMenuManagerItemCandidates(context, rawName);
+        if (candidates.length > 1) {
+            return buildItemCandidateClarification({
+                buildPrompt: (candidate) => `${candidate.name} ${nextPrice}`,
+                context,
+                helper: 'Prepare price card',
+                itemName: rawName,
+                items: candidates,
+                title: 'Which item price should change?',
+            });
+        }
+        return null;
+    }
 
     return buildItemUpdate({
         actionType: 'item_price_update',
@@ -564,7 +619,20 @@ function resolveAvailabilityCommand(text: string, context: AiMenuManagerContextP
 
     const itemName = extractAvailabilityItemName(normalized);
     const item = findAiMenuManagerItemByName(context, itemName);
-    if (!item) return null;
+    if (!item) {
+        const candidates = findAiMenuManagerItemCandidates(context, itemName);
+        if (candidates.length > 1) {
+            return buildItemCandidateClarification({
+                buildPrompt: (candidate) => `${candidate.name} ${makesAvailable && !makesUnavailable ? 'available' : 'sold out'}`,
+                context,
+                helper: 'Prepare availability card',
+                itemName,
+                items: candidates,
+                title: 'Which item availability should change?',
+            });
+        }
+        return null;
+    }
 
     const nextValue = makesAvailable && !makesUnavailable;
     return buildItemUpdate({
@@ -595,7 +663,21 @@ function resolveVisibilityCommand(text: string, context: AiMenuManagerContextPac
         .replace(/\s+/g, ' ')
         .trim();
     const item = findAiMenuManagerItemByName(context, itemName);
-    if (!item) return null;
+    if (!item) {
+        const candidates = findAiMenuManagerItemCandidates(context, itemName);
+        if (candidates.length > 1) {
+            const nextValue = show && !hide;
+            return buildItemCandidateClarification({
+                buildPrompt: (candidate) => `${nextValue ? 'Show' : 'Hide'} ${candidate.name}`,
+                context,
+                helper: 'Prepare visibility card',
+                itemName,
+                items: candidates,
+                title: 'Which item visibility should change?',
+            });
+        }
+        return null;
+    }
 
     const nextValue = show && !hide;
     return buildItemUpdate({
@@ -628,7 +710,21 @@ function resolveCategoryVisibilityCommand(text: string, context: AiMenuManagerCo
         .replace(/\s+/g, ' ')
         .trim();
     const category = findAiMenuManagerCategoryByName(context, categoryName);
-    if (!category) return null;
+    if (!category) {
+        const candidates = findAiMenuManagerCategoryCandidates(context, categoryName);
+        if (candidates.length > 1) {
+            const nextValue = show && !hide;
+            return buildCategoryCandidateClarification({
+                buildPrompt: (candidate) => `${nextValue ? 'Show' : 'Hide'} ${candidate.name} category`,
+                categories: candidates,
+                categoryName,
+                context,
+                helper: 'Prepare category card',
+                title: 'Which category visibility should change?',
+            });
+        }
+        return null;
+    }
 
     const nextValue = show && !hide;
     const itemCount = context.items.filter((item) => item.categoryId === category.id).length;
@@ -841,6 +937,7 @@ function resolveFeaturedSectionCommand(text: string, context: AiMenuManagerConte
     const normalized = normalizeText(text);
     const mentionsFeatured = /\b(featured|feature|promote|highlight|spotlight)\b/.test(normalized);
     if (!mentionsFeatured) return null;
+    if (/\b(what|which|suggest|recommend|should i|can i)\b/.test(normalized)) return null;
 
     const itemName = normalized
         .replace(/\b(?:show|add|set|make|put|pin|promote|highlight|spotlight|feature|featured|choice|section|menu|item|this|in|on|as|to|the)\b/g, ' ')
@@ -1304,16 +1401,18 @@ function resolveDesignCommand(text: string, context: AiMenuManagerContextPacket)
     const mentionsLayout = /\b(layout|arrangement|list layout|grid layout|card layout)\b/.test(normalized);
     const mentionsTone = /\b(theme|tone|mood|presentation|appearance)\b/.test(normalized);
     const mentionsDesignSurface = /\b(menu|theme|style|design|look|mood|appearance|layout|display|presentation)\b/.test(normalized);
+    const mentionsDesignAction = /\b(make|set|change|apply|use|switch|turn|give|choose|select|update)\b/.test(normalized);
     const asksForPresetStyle = Boolean(preset)
         && /\b(make|set|change|apply|use|switch|turn|give)\b/.test(normalized);
+    const hasSpecificDesignIntent = asksForPresetStyle
+        || mentionsBackground
+        || mentionsLayout
+        || mentionsColor
+        || mentionsDisplay
+        || mentionsTone
+        || (mentionsDesignSurface && mentionsDesignAction);
 
-    if (!mentionsDesignSurface
-        && !asksForPresetStyle
-        && !mentionsBackground
-        && !mentionsLayout
-        && !mentionsColor
-        && !mentionsDisplay
-        && !mentionsTone) return null;
+    if (!hasSpecificDesignIntent) return null;
 
     if (mentionsBackground) {
         return buildManualFlowTask({
@@ -1520,7 +1619,7 @@ function resolveImageCommand(text: string, context: AiMenuManagerContextPacket):
         actionType: 'image_item_generate',
         definition,
         title: `Generate image for ${item.name}`,
-        message: `Menu Manager can prepare an image generation task for ${item.name}.`,
+        message: `Menu Manager can prepare a draft image task for ${item.name}. Generated images stay as drafts until you choose one to use on the menu.`,
         entityRefs: itemRefs(context, item),
         beforeAfterSummary: {
             title: 'Image task',
@@ -1667,13 +1766,13 @@ function resolveMenuPublishCommand(text: string, context: AiMenuManagerContextPa
     return buildManualFlowTask({
         actionType: 'menu_publish',
         title: 'Publish selected menu',
-        message: 'Use the existing publish flow to make this selected menu live.',
+        message: 'Use the existing publish flow to make this selected menu live on MenuList-controlled surfaces.',
         context,
         beforeAfterSummary: {
             title: 'Publish menu',
             rows: [
                 { label: 'Menu', before: context.projectName, after: context.projectName },
-                { label: 'Public impact', after: 'Customers see the published version after publish completes' },
+                { label: 'Public impact', after: 'Customers see the published version on MenuList-controlled surfaces after publish completes' },
             ],
             warnings: ['Publishing is not executed by this card until the publish adapter is connected.'],
         },
@@ -2600,7 +2699,7 @@ function resolveOfficialPageExportCommand(text: string, context: AiMenuManagerCo
 
 function resolveExternalUnsupportedCommand(text: string, scope: AiMenuManagerScope): AiMenuManagerResolvedCommand | null {
     const normalized = normalizeText(text);
-    if (!/\b(zomato|swiggy|ubereats|instagram|facebook|google business|google listing|google review|review reply)\b/.test(normalized)) {
+    if (!/\b(zomato|swiggy|ubereats|uber\s+eats|instagram|facebook|google business|google listing|google review|review reply)\b/.test(normalized)) {
         return null;
     }
 
@@ -2608,7 +2707,7 @@ function resolveExternalUnsupportedCommand(text: string, scope: AiMenuManagerSco
         ? 'Zomato'
         : /\bswiggy\b/.test(normalized)
             ? 'Swiggy'
-            : /\bubereats\b/.test(normalized)
+            : /\b(ubereats|uber\s+eats)\b/.test(normalized)
                 ? 'Uber Eats'
                 : /\binstagram\b/.test(normalized)
                     ? 'Instagram'
@@ -2634,6 +2733,11 @@ function resolveExternalUnsupportedCommand(text: string, scope: AiMenuManagerSco
             ],
             warnings: ['MenuList does not have a Zomato, Swiggy, Instagram, Facebook, or Google posting integration in this flow.'],
         },
+        suggestedReplies: [
+            { label: 'Copy menu link', prompt: 'Copy menu link', helper: 'Share MenuList link' },
+            { label: 'Download menu QR', prompt: 'Download menu QR', helper: 'Use MenuList QR' },
+            { label: 'Download menu PDF', prompt: 'Download menu PDF', helper: 'Use fresh menu export' },
+        ],
         executionMode: definition.executionMode,
         cardKind: 'unsupported' as const,
     };
@@ -2692,11 +2796,9 @@ export function resolveAiMenuManagerCommand(params: {
         || customerAppExport
         || digitalScreenExport
         || posSyncExport
-        || moreFlow
         || external
         || resolveSelectedItemsCommand(params.text, params.context, params.composerContext)
         || resolveSelectedCategoryCommand(params.text, params.context, params.composerContext)
-        || domainConversation
         || resolveMenuPublishCommand(params.text, params.context)
         || resolveMenuImportCommand(params.text, params.context)
         || resolveSpecialMenuCommand(params.text, params.context)
@@ -2705,6 +2807,10 @@ export function resolveAiMenuManagerCommand(params: {
         || resolveFeaturedSectionCommand(params.text, params.context)
         || resolveSpecialNoteCommand(params.text, params.context)
         || resolveDesignCommand(params.text, params.context)
+        // Diagnostic owner questions like "why is my print menu wrong?" must
+        // answer from loaded context before generic More/manual screen matches.
+        || domainConversation
+        || moreFlow
         || resolveBulkPriceCommand(params.text, params.context)
         || resolveBulkAvailabilityCommand(params.text, params.context)
         || resolveItemRenameCommand(params.text, params.context)
@@ -2753,6 +2859,7 @@ export function resolveAiMenuManagerCommand(params: {
             message: resolved.message,
             entityRefs: resolved.entityRefs,
             beforeAfterSummary: resolved.beforeAfterSummary,
+            suggestedReplies: resolved.suggestedReplies,
             createdAt: params.createdAt,
         })
         : resolved.cardKind === 'manual_task'

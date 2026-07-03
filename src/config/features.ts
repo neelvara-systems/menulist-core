@@ -447,7 +447,7 @@ export const FEATURE_FLAGS = {
      *    - Festival content → WhatsApp Status
      *    - High-price item → Printed poster
      *
-     * "learned": Data-driven (future upgrade)
+     * "learned": Data-driven candidate mode
      *    - Learn from export patterns
      *    - Time-of-day patterns
      *    - Per-store preferences
@@ -467,7 +467,7 @@ export const FEATURE_FLAGS = {
      *    - Non-comparative language only
      *    - "Customers noticed this item." NOT "more than usual"
      *
-     * "standard": Richer observations (future upgrade)
+     * "standard": Richer observations candidate mode
      *    - Still non-comparative
      *    - More contextual closure messages
      *    - Pattern recognition across campaigns
@@ -653,7 +653,7 @@ export const FEATURE_FLAGS = {
      * - Negligible - but flag allows instant disable
      *
      * Per spec: Implements Category D (Owner Intervention Tracking)
-     * @see __docs__/MOL-V0-IMPLEMENTATION-PLAN.md
+     * @see __docs__/mol-v0-implementation-plan.md
      *
      * Production: Enable after testing
      * Development: Enable for testing, disable if costs spike
@@ -699,8 +699,9 @@ export const FEATURE_FLAGS = {
      * AI operation storage mode.
      *
      * accounting_only keeps scope, action, model, token, charge, and status
-     * fields but drops raw provider text. detailed may be used during bounded
-     * provider debugging and gets a detailExpiresAt marker.
+     * fields but drops provider response metadata. detailed may be used during
+     * bounded provider debugging, stores response presence/length instead of
+     * raw provider text, and gets a detailExpiresAt marker.
      */
     AI_OPERATION_LOG_MODE: "accounting_only" as "accounting_only" | "detailed",
     AI_OPERATION_DETAIL_RETENTION_DAYS: 14,
@@ -1098,6 +1099,9 @@ export const FEATURE_FLAGS = {
     ENABLE_AI_MENU_MANAGER_VOICE_INPUT: true,
     ENABLE_AI_MENU_MANAGER_IMAGE_ACTIONS: true,
     ENABLE_AI_MENU_MANAGER_RULES: true,
+    ENABLE_AI_MENU_MANAGER_MODEL_ROUTER: false,
+    ENABLE_AI_MENU_MANAGER_CLOUD_PLANNER: false,
+    ENABLE_AI_MENU_MANAGER_LOCAL_ASSIST: false,
     ENABLE_AI_MENU_MANAGER_CONFIRMED_WRITES: true,
     ENABLE_AI_MENU_MANAGER_DEBUG_ARTIFACTS: false,
     AI_MENU_MANAGER_SESSION_STORAGE_MODE: "daily_compact" as "daily_compact" | "detailed",
@@ -1662,11 +1666,11 @@ export const FEATURE_FLAGS = {
     // ─────────────────────────────────────────────────────────────
 
     /**
-     * Agent Discovery — Future agent-facing structured data endpoints
+     * Agent Discovery — reserved agent-facing structured data endpoints
      *
-     * PLACEHOLDER ONLY — No code connected to this flag yet.
+     * RESERVED ONLY — No code is connected to this flag.
      *
-     * When activated (future):
+     * If a separate source-backed implementation introduces this surface:
      * - Read-only structured data API for verified agent partners
      * - Trust/reliability metadata in responses
      * - Agent-specific response format optimization
@@ -1678,10 +1682,10 @@ export const FEATURE_FLAGS = {
      *
      * @see __docs__/agent-readiness-strategy/agent-readiness-strategy_impl.md
      *
-     * Production: Keep false until agent API demand is proven
-     * Development: Keep false — no code to test
+     * Production: Keep false until an approved endpoint reads it
+     * Development: Keep false — no code reads it
      */
-    ENABLE_AGENT_DISCOVERY: true,
+    ENABLE_AGENT_DISCOVERY: false,
 
     // ═══════════════════════════════════════════════════════════════
     // AUTH & USER FLOW (Auth Audit — Feb 19, 2026)
@@ -1790,6 +1794,24 @@ export const FEATURE_FLAGS = {
     ENABLE_PLATFORM_COST_POSTURE: true,
 
     /**
+     * Platform Founder Monitor — internal daily business scoreboard.
+     *
+     * When enabled:
+     * - Platform users can open /platform/founder-monitor
+     * - The API reads bounded existing summary, billing, support, and store documents
+     * - No owner/customer surface, listener, scheduler, or write path is added
+     *
+     * When disabled:
+     * - The API returns 404
+     * - Platform navigation hides the Founder Monitor item
+     *
+     * Firebase cost: platform-only manual refresh, bounded reads, no writes.
+     *
+     * @see __docs__/platform-founder-monitor/
+     */
+    ENABLE_PLATFORM_FOUNDER_MONITOR: true,
+
+    /**
      * Ops Alert Delivery — Telegram notifications for system alerts.
      *
      * When enabled:
@@ -1798,7 +1820,7 @@ export const FEATURE_FLAGS = {
      *
      * When disabled:
      * - Alerts still written to systemAlerts collection
-     * - No Telegram delivery (TODO comments remain as-is)
+     * - No Telegram delivery
      *
      * Prerequisites:
      * - TELEGRAM_BOT_TOKEN secret in Firebase Functions
@@ -1943,7 +1965,7 @@ export const FEATURE_FLAGS = {
     /**
      * QR WhatsApp Experiments — consent-aware physical campaign testing
      *
-     * When enabled in a future implementation:
+     * When enabled after scoped approval:
      * - Owners can create explicit campaign QR variants for WhatsApp opt-in,
      *   booking, order, coupon, feedback, or support experiments.
      * - Normal MenuList menu/service/catalog QR output stays direct and is not
@@ -1951,7 +1973,7 @@ export const FEATURE_FLAGS = {
      * - Runtime must use aggregate-first storage, explicit consent copy, and
      *   tracked campaign tokens instead of per-scan Firestore documents.
      *
-     * Firebase cost: disabled by default. Future implementation must use the
+     * Firebase cost: disabled by default. Any implementation must use the
      * cost model in the docs before adding rules, indexes, routes, or writes.
      *
      * @see __docs__/qr-whatsapp-experiments/
@@ -2518,7 +2540,7 @@ export const FEATURE_FLAGS = {
     /**
      * Answerlattice Intake Native Connectors
      *
-     * true: Future controlled rollout for Notion/GitHub/Drive native connectors.
+     * true: Conditional controlled rollout for Notion/GitHub/Drive native connectors.
      * false: Day-one intake stays file/text/URL based to avoid broad scopes and
      *        high-volume remote sync costs.
      */
@@ -2939,7 +2961,7 @@ export const FEATURE_FLAGS = {
     // ═══════════════════════════════════════════════════════════════
 
     /**
-     * Offering Taxonomy System — Phase 1A
+     * Offering Taxonomy System — builder utility, currently disabled
      *
      * Standard category and classification vocabulary for cross-business discovery.
      * Maps free-text category names to canonical taxonomy IDs using alias matching.
@@ -2953,7 +2975,7 @@ export const FEATURE_FLAGS = {
     ENABLE_INFRASTRUCTURE_TAXONOMY: false,
 
     /**
-     * Field-Level Provenance Metadata — Phase 1B
+     * Field-Level Provenance Metadata — utility types, currently disabled
      *
      * Tracks source (AI/owner/system) and confidence per field on menu items.
      * Stamps _provenance metadata on project saves (same write, zero extra cost).
@@ -2967,7 +2989,7 @@ export const FEATURE_FLAGS = {
     ENABLE_INFRASTRUCTURE_PROVENANCE: false,
 
     /**
-     * Semantic Attribute Registry — Phase 1C
+     * Semantic Attribute Registry — builder utility, currently disabled
      *
      * Controlled vocabulary for dietary tags and business attributes.
      * Maps free-text tags to formal enum IDs with schema.org mappings.
@@ -2981,15 +3003,16 @@ export const FEATURE_FLAGS = {
     ENABLE_INFRASTRUCTURE_SEMANTIC_ATTRIBUTES: false,
 
     /**
-     * Business Entity Discovery Index — Phase 2
+     * Business Entity Discovery Index — builder utility, currently disabled
      *
      * Cross-business queryable index containing PUBLIC business data only.
-     * Populated by nightly scheduler. Enables geo + category + attribute search.
+     * The pure builder exists, but no nightly scheduler task or query API is
+     * active while this flag remains false.
      *
      * COMPLIANCE: Contains ONLY public business information (name, type, geo, hours,
      * categories, attributes). NO user data, NO billing, NO internal operational data.
      *
-     * true: Discovery index populated nightly, query API active
+     * true: Discovery index wiring may populate and query the index once separately audited
      * false: No cross-business index (existing tenant-scoped behavior unchanged)
      *
      * @see __docs__/discovery-infrastructure/business-entity-index.md
@@ -3017,6 +3040,51 @@ export const FEATURE_FLAGS = {
      * @see __docs__/public-menu-entry/public-menu-entry_impl.md
      */
     ENABLE_PUBLIC_MENU_ENTRY: true,
+
+    /**
+     * Public Truth Tools — static/public and owner-side readiness checkers.
+     *
+     * The first public-truth-check route runs as browser-local self-report
+     * only. Keep provider/model extensions behind their own gates.
+     *
+     * @see __docs__/menulist-tools/public-truth-tools/public-truth-tools_impl.md
+     * @see __docs__/menulist-tools/public-truth-check/public-truth-check_impl.md
+     * @see __docs__/menulist-tools/qr-link-health-check/qr-link-health-check_impl.md
+     * @see __docs__/menulist-tools/menu-readability-check/menu-readability-check_impl.md
+     * @see __docs__/menulist-tools/customer-question-coverage-check/customer-question-coverage-check_impl.md
+     * @see __docs__/menulist-tools/booking-inquiry-readiness-check/booking-inquiry-readiness-check_impl.md
+     * @see __docs__/menulist-tools/price-availability-gap-check/price-availability-gap-check_impl.md
+     * @see __docs__/menulist-tools/menu-pdf-cleanup-check/menu-pdf-cleanup-check_impl.md
+     * @see __docs__/menulist-tools/google-profile-basics-checklist/google-profile-basics-checklist_impl.md
+     * @see __docs__/menulist-tools/customer-link-preview/customer-link-preview_impl.md
+     * @see __docs__/menulist-tools/social-bio-link-check/social-bio-link-check_impl.md
+     * @see __docs__/menulist-tools/whatsapp-action-link-check/whatsapp-action-link-check_impl.md
+     * @see __docs__/menulist-tools/hours-check/hours-check_impl.md
+     * @see __docs__/menulist-tools/photo-gap-check/photo-gap-check_impl.md
+     * @see __docs__/menulist-tools/tools-hub/tools-hub_impl.md
+     * @see __docs__/menulist-tools/shareable-tool-reports/shareable-tool-reports_impl.md
+     */
+    ENABLE_PUBLIC_TRUTH_TOOLS: true,
+    ENABLE_PUBLIC_TRUTH_TOOLS_HUB: true,
+    ENABLE_PUBLIC_TRUTH_SHAREABLE_REPORTS: true,
+    ENABLE_PUBLIC_TRUTH_REPORT_LEAD_OPS_DASHBOARD: true,
+    ENABLE_PUBLIC_TRUTH_CHECK: true,
+    ENABLE_PUBLIC_TRUTH_QR_LINK_HEALTH_CHECK: true,
+    ENABLE_PUBLIC_TRUTH_MENU_READABILITY_CHECK: true,
+    ENABLE_PUBLIC_TRUTH_CUSTOMER_QUESTION_COVERAGE_CHECK: true,
+    ENABLE_PUBLIC_TRUTH_BOOKING_INQUIRY_READINESS_CHECK: true,
+    ENABLE_PUBLIC_TRUTH_PRICE_AVAILABILITY_GAP_CHECK: true,
+    ENABLE_PUBLIC_TRUTH_MENU_PDF_CLEANUP_CHECK: true,
+    ENABLE_PUBLIC_TRUTH_GOOGLE_PROFILE_BASICS_CHECKLIST: true,
+    ENABLE_PUBLIC_TRUTH_CUSTOMER_LINK_PREVIEW: true,
+    ENABLE_PUBLIC_TRUTH_SOCIAL_BIO_LINK_CHECK: true,
+    ENABLE_PUBLIC_TRUTH_WHATSAPP_ACTION_LINK_CHECK: true,
+    ENABLE_PUBLIC_TRUTH_HOURS_CHECK: true,
+    ENABLE_PUBLIC_TRUTH_PHOTO_GAP_CHECK: true,
+    ENABLE_PUBLIC_TRUTH_OWNER_CHECK: true,
+    ENABLE_PUBLIC_TRUTH_CHECK_EXTERNAL_ADAPTERS: false,
+    ENABLE_PUBLIC_TRUTH_CHECK_AI_READABILITY: false,
+    ENABLE_PUBLIC_TRUTH_MAPS_PLACE_CHECK: false,
 
     /**
      * Main Website Resources — public education and discovery layer

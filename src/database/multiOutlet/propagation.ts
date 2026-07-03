@@ -13,7 +13,7 @@ import { revalidatePublicClientCacheForProject } from "@lib/cache/publicClientCa
 import { firebaseClient } from "@lib/firebase/firebaseClient";
 import { parseSummaryProjects } from "@lib/firestore/parseSummaryProjects";
 import { buildSummaryProjectPayload } from "@lib/firestore/summaryProjectsWriter";
-import { secureError } from "@lib/security/secureLogger";
+import { getBoundedMultiOutletStringContext, getMultiOutletProjectLogContext, logMultiOutletFailure } from "@lib/multiOutlet/diagnostics";
 import { slugify } from "@lib/utils/slugify";
 import { doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore";
 
@@ -92,9 +92,9 @@ export async function propagateNewProjectToOutlets(
 
     for (let i = 0; i < outletStores.length; i++) {
         const outlet = outletStores[i];
+        const timestamp = Date.now().toString(36);
+        const outletProjectId = `${tenantId}-${timestamp}${i > 0 ? i : ''}-${outlet.storeId}`;
         try {
-            const timestamp = Date.now().toString(36);
-            const outletProjectId = `${tenantId}-${timestamp}${i > 0 ? i : ''}-${outlet.storeId}`;
             const outletSummaryData = buildOutletProjectSummary(masterProjectId, outletProjectId, masterSummary, projectName);
 
             const outletProjectRef = doc(
@@ -128,7 +128,10 @@ export async function propagateNewProjectToOutlets(
 
             propagated++;
         } catch (e) {
-            secureError(`[Propagation] Failed for outlet ${outlet.storeId}`, e as Error);
+            logMultiOutletFailure('multi_outlet_project_propagation_failed', e, {
+                ...getMultiOutletProjectLogContext(outletProjectId, masterProjectId),
+                ...getBoundedMultiOutletStringContext('outletStoreId', outlet.storeId),
+            });
             failed++;
         }
     }

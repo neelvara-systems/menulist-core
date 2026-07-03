@@ -2,7 +2,7 @@
  * KB Quality Intelligence Cloud Function
  * Analyzes knowledge base article effectiveness using Gemini AI
  * 
- * Firestore Path: insights/{tId}/stores/{sId}/ai/kbQuality/{articleId}
+ * Firestore Path: insights/{tId}/stores/{sId}/ai/kbQuality
  * 
  * Runs: Weekly (Mondays)
  * Purpose: Identify low-quality KB articles that need improvement
@@ -11,8 +11,39 @@
 import { Timestamp } from 'firebase-admin/firestore';
 import { DB_COLLECTIONS } from '../constants/database';
 import { firestoreAdmin as db } from '../firebaseAdmin';
-import { analyzeKBArticleQuality } from '../services/gemini/kbQuality';
+import {
+  analyzeKBStoreQuality,
+  type KBQualityStoreArticleInput,
+  type KBQualityStoreResult,
+} from '../services/gemini/kbQuality';
 import { logTelemetry } from '../telemetry/logger';
+import {
+  analyticsLogger,
+  getAnalyticsErrorContext,
+  getAnalyticsIdContext,
+} from './analyticsDiagnostics';
+
+const KB_QUALITY_FAILURE = 'KB_QUALITY_FAILED';
+const KB_QUALITY_BATCH_FAILURE = 'KB_QUALITY_BATCH_FAILED';
+const KB_QUALITY_STORE_FAILURE = 'KB_QUALITY_STORE_FAILED';
+const KB_QUALITY_ARTICLE_FAILURE = 'KB_QUALITY_ARTICLE_FAILED';
+const KB_QUALITY_ARTICLE_FETCH_FAILURE = 'KB_QUALITY_ARTICLE_FETCH_FAILED';
+const KB_QUALITY_QUERY_FETCH_FAILURE = 'KB_QUALITY_QUERY_FETCH_FAILED';
+const KB_QUALITY_STORE_WRITE_FAILURE = 'KB_QUALITY_STORE_WRITE_FAILED';
+const MAX_KB_QUALITY_ARTICLES_PER_STORE = 10;
+const MAX_KB_QUALITY_QUERY_EXAMPLES_PER_ARTICLE = 5;
+
+function getKBQualityScope(tId: string, sId: string, articleId?: string): {
+  tenantId: ReturnType<typeof getAnalyticsIdContext>;
+  storeId: ReturnType<typeof getAnalyticsIdContext>;
+  articleId?: ReturnType<typeof getAnalyticsIdContext>;
+} {
+  return {
+    tenantId: getAnalyticsIdContext(tId),
+    storeId: getAnalyticsIdContext(sId),
+    ...(articleId ? { articleId: getAnalyticsIdContext(articleId) } : {}),
+  };
+}
 
 // ================================================================
 // TYPES
@@ -35,7 +66,7 @@ interface QueryData {
   timestamp: Date;
 }
 
-interface KBQualityAnalysis {
+interface KBQualityArticleInsight {
   articleId: string;
   articleTitle: string;
   qualityScore: number;
@@ -46,14 +77,37 @@ interface KBQualityAnalysis {
   }>;
   improvementSuggestions: string[];
   priority: 'low' | 'medium' | 'high';
-  analyzedAt: Date;
-  dataRange: {
-    start: Date;
-    end: Date;
-  };
+  queryCount: number;
+}
+
+interface KBQualityStoreInsight {
   tId: string;
   sId: string;
+  type: 'kbQuality';
+  date: string;
+  qualityScore: number;
+  priority: 'low' | 'medium' | 'high';
+  summary: string;
+  topIssues: string[];
+  improvementSuggestions: string[];
+  articles: KBQualityArticleInsight[];
+  articleCount: number;
+  articlesWithSignals: number;
+  articlesAnalyzed: number;
+  articlesSkippedByCap: number;
+  queryExamplesPerArticle: number;
+  generatedAt: Timestamp;
+  dataRange: {
+    start: Timestamp;
+    end: Timestamp;
+  };
   promptVersion: string;
+}
+
+interface KBQualityArticleCandidate extends Omit<KBQualityStoreArticleInput, 'articleRef'> {
+  articleId: string;
+  queryCount: number;
+  issueSignalCount: number;
 }
 
 // ================================================================
@@ -71,7 +125,10 @@ export async function analyzeKBQualityForStore(
   const startTime = Date.now();
 
   try {
-    console.log(`[KB Quality] Starting analysis for store: ${tId}/${sId}`);
+    analyticsLogger.info('[KB Quality] Starting store analysis', {
+      ...getKBQualityScope(tId, sId),
+      daysBack,
+    });
 
     // Calculate date range
     const endDate = new Date();
@@ -82,24 +139,31 @@ export async function analyzeKBQualityForStore(
     const articles = await fetchKBArticles(tId, sId);
 
     if (articles.length === 0) {
-      console.log(`[KB Quality] No KB articles found for ${tId}/${sId}`);
+      analyticsLogger.info('[KB Quality] No KB articles found', getKBQualityScope(tId, sId));
       return;
     }
 
-    console.log(`[KB Quality] Found ${articles.length} KB articles to analyze`);
+    analyticsLogger.info('[KB Quality] Article batch ready for analysis', {
+      ...getKBQualityScope(tId, sId),
+      articleCount: articles.length,
+    });
 
-    let analyzed = 0;
-    let failed = 0;
+    const candidates: KBQualityArticleCandidate[] = [];
+    let articleQueryReads = 0;
 
-    // Analyze each article
+    // Gather article signals first, then call Gemini once for the store.
     for (const article of articles) {
       try {
         // Gather performance data for this article
         const queries = await fetchArticleQueries(tId, sId, article.id, startDate, endDate);
+        articleQueryReads += queries.length;
 
         // Skip if no data
         if (queries.length === 0) {
-          console.log(`[KB Quality] No query data for article: ${article.title}`);
+          analyticsLogger.info('[KB Quality] No query data for article', {
+            ...getKBQualityScope(tId, sId, article.id),
+            titleLength: article.title.length,
+          });
           continue;
         }
 
@@ -116,66 +180,114 @@ export async function analyzeKBQualityForStore(
           .filter(q => q.confidence === 0 || q.confidence === undefined)
           .map(q => q.query);
 
-        // Analyze with Gemini
-        const analysis = await analyzeKBArticleQuality({
-          article: {
-            title: article.title,
-            category: article.category,
-            section: article.section,
-            content: article.content,
-            lastUpdated: article.lastUpdated,
-          },
-          lowConfidenceQueries: lowConfidenceQueries.slice(0, 10), // Limit to top 10
-          negativeFeedback: negativeFeedback.slice(0, 10),
-          noAnswerQueries: noAnswerQueries.slice(0, 10),
-        });
-
-        // Store result
-        await storeKBQualityAnalysis({
+        candidates.push({
           articleId: article.id,
-          articleTitle: article.title,
-          qualityScore: analysis.qualityScore,
-          issues: analysis.issues,
-          improvementSuggestions: analysis.improvementSuggestions,
-          priority: analysis.priority,
-          analyzedAt: new Date(),
-          dataRange: { start: startDate, end: endDate },
-          tId,
-          sId,
-          promptVersion: 'v1',
+          title: article.title,
+          category: article.category,
+          section: article.section,
+          contentLength: article.content?.length || 0,
+          lastUpdated: article.lastUpdated,
+          lowConfidenceQueries: lowConfidenceQueries.slice(0, MAX_KB_QUALITY_QUERY_EXAMPLES_PER_ARTICLE),
+          negativeFeedback: negativeFeedback.slice(0, MAX_KB_QUALITY_QUERY_EXAMPLES_PER_ARTICLE),
+          noAnswerQueries: noAnswerQueries.slice(0, MAX_KB_QUALITY_QUERY_EXAMPLES_PER_ARTICLE),
+          queryCount: queries.length,
+          issueSignalCount: lowConfidenceQueries.length + negativeFeedback.length + noAnswerQueries.length,
         });
-
-        analyzed++;
-        console.log(`[KB Quality] Analyzed: ${article.title} (Score: ${analysis.qualityScore})`);
-
-        // Small delay to avoid rate limits
-        await new Promise(resolve => setTimeout(resolve, 500));
       } catch (error) {
-        failed++;
-        console.error(`[KB Quality] Failed to analyze article ${article.title}:`, error);
+        analyticsLogger.error('[KB Quality] Article analysis failed', {
+          ...getKBQualityScope(tId, sId, article.id),
+          titleLength: article.title.length,
+          failureCode: KB_QUALITY_ARTICLE_FAILURE,
+          error: getAnalyticsErrorContext(error),
+        });
       }
     }
 
+    const boundedCandidates = candidates
+      .sort((a, b) => b.issueSignalCount - a.issueSignalCount || b.queryCount - a.queryCount || a.title.localeCompare(b.title))
+      .slice(0, MAX_KB_QUALITY_ARTICLES_PER_STORE);
+
+    if (boundedCandidates.length === 0) {
+      analyticsLogger.info('[KB Quality] No query signals found for store', {
+        ...getKBQualityScope(tId, sId),
+        articleCount: articles.length,
+        articleQueryReads,
+      });
+      await logTelemetry('kbQuality', {
+        status: 'skipped',
+        runTime: Date.now() - startTime,
+        recordsProcessed: 0,
+        completedAt: Timestamp.now(),
+      });
+      return;
+    }
+
+    const articleInputs: KBQualityStoreArticleInput[] = boundedCandidates.map((candidate, index) => ({
+      articleRef: `A${index + 1}`,
+      title: candidate.title,
+      category: candidate.category,
+      section: candidate.section,
+      contentLength: candidate.contentLength,
+      lastUpdated: candidate.lastUpdated,
+      lowConfidenceQueries: candidate.lowConfidenceQueries,
+      negativeFeedback: candidate.negativeFeedback,
+      noAnswerQueries: candidate.noAnswerQueries,
+    }));
+    const candidateByRef = new Map(articleInputs.map((article, index) => [
+      article.articleRef,
+      boundedCandidates[index],
+    ]));
+    const analysis = await analyzeKBStoreQuality({
+      articles: articleInputs,
+      dataRange: {
+        start: startDate.toISOString().split('T')[0],
+        end: endDate.toISOString().split('T')[0],
+      },
+    });
+    const insight = buildKBQualityStoreInsight({
+      tId,
+      sId,
+      articles,
+      candidates,
+      boundedCandidates,
+      candidateByRef,
+      analysis,
+      startDate,
+      endDate,
+    });
+
+    await saveKBQualityInsight(insight);
+
     const elapsed = Date.now() - startTime;
 
-    console.log(`[KB Quality] Complete for ${tId}/${sId}: ${analyzed} analyzed, ${failed} failed, ${elapsed}ms`);
+    analyticsLogger.info('[KB Quality] Store analysis complete', {
+      ...getKBQualityScope(tId, sId),
+      analyzed: insight.articlesAnalyzed,
+      skippedByCap: insight.articlesSkippedByCap,
+      runTime: elapsed,
+    });
 
     // Log success telemetry
     await logTelemetry('kbQuality', {
       status: 'success',
       runTime: elapsed,
-      recordsProcessed: analyzed,
+      recordsProcessed: insight.articlesAnalyzed,
       completedAt: Timestamp.now(),
     });
   } catch (error) {
     const elapsed = Date.now() - startTime;
-    console.error(`[KB Quality] Error for ${tId}/${sId}:`, error);
+    analyticsLogger.error('[KB Quality] Store analysis failed', {
+      ...getKBQualityScope(tId, sId),
+      failureCode: KB_QUALITY_FAILURE,
+      runTime: elapsed,
+      error: getAnalyticsErrorContext(error),
+    });
 
     // Log failure telemetry
     await logTelemetry('kbQuality', {
       status: 'failed',
       runTime: elapsed,
-      error: error instanceof Error ? error.message : 'Unknown error',
+      error: KB_QUALITY_FAILURE,
       completedAt: Timestamp.now(),
     });
 
@@ -190,7 +302,7 @@ export async function processKBQualityForAllStores(): Promise<void> {
   const startTime = Date.now();
 
   try {
-    console.log('[KB Quality] Starting batch processing for all stores...');
+    analyticsLogger.info('[KB Quality] Starting batch processing');
 
     // Get all tenants
     const tenantsSnapshot = await db.collection(DB_COLLECTIONS.TENANTS).get();
@@ -218,7 +330,11 @@ export async function processKBQualityForAllStores(): Promise<void> {
           processedStores++;
         } catch (error) {
           failedStores++;
-          console.error(`[KB Quality] Failed for ${tId}/${sId}:`, error);
+          analyticsLogger.error('[KB Quality] Store processing failed', {
+            ...getKBQualityScope(tId, sId),
+            failureCode: KB_QUALITY_STORE_FAILURE,
+            error: getAnalyticsErrorContext(error),
+          });
           // Continue with other stores
         }
       }
@@ -226,7 +342,13 @@ export async function processKBQualityForAllStores(): Promise<void> {
 
     const elapsed = Date.now() - startTime;
 
-    console.log(`[KB Quality] Batch complete: ${processedStores}/${totalStores} stores, ${failedStores} failed, ${elapsed}ms`);
+    analyticsLogger.info('[KB Quality] Batch processing complete', {
+      tenantCount: tenantsSnapshot.size,
+      totalStores,
+      processedStores,
+      failedStores,
+      runTime: elapsed,
+    });
 
     // Log batch telemetry
     await logTelemetry('kbQualityBatch', {
@@ -237,12 +359,16 @@ export async function processKBQualityForAllStores(): Promise<void> {
     });
   } catch (error) {
     const elapsed = Date.now() - startTime;
-    console.error('[KB Quality] Batch processing error:', error);
+    analyticsLogger.error('[KB Quality] Batch processing failed', {
+      failureCode: KB_QUALITY_BATCH_FAILURE,
+      runTime: elapsed,
+      error: getAnalyticsErrorContext(error),
+    });
 
     await logTelemetry('kbQualityBatch', {
       status: 'failed',
       runTime: elapsed,
-      error: error instanceof Error ? error.message : 'Unknown error',
+      error: KB_QUALITY_BATCH_FAILURE,
       completedAt: Timestamp.now(),
     });
 
@@ -277,7 +403,11 @@ async function fetchKBArticles(tId: string, sId: string): Promise<KBArticle[]> {
       lastUpdated: doc.data().updatedAt?.toDate?.()?.toISOString?.() || doc.data().lastUpdated,
     }));
   } catch (error) {
-    console.error('[KB Quality] Error fetching KB articles:', error);
+    analyticsLogger.error('[KB Quality] Article fetch failed', {
+      ...getKBQualityScope(tId, sId),
+      failureCode: KB_QUALITY_ARTICLE_FETCH_FAILURE,
+      error: getAnalyticsErrorContext(error),
+    });
     return [];
   }
 }
@@ -315,33 +445,95 @@ async function fetchArticleQueries(
       };
     });
   } catch (error) {
-    console.error('[KB Quality] Error fetching article queries:', error);
+    analyticsLogger.error('[KB Quality] Article query fetch failed', {
+      ...getKBQualityScope(tId, sId, articleId),
+      failureCode: KB_QUALITY_QUERY_FETCH_FAILURE,
+      error: getAnalyticsErrorContext(error),
+    });
     return [];
   }
 }
 
+function buildKBQualityStoreInsight(input: {
+  tId: string;
+  sId: string;
+  articles: KBArticle[];
+  candidates: KBQualityArticleCandidate[];
+  boundedCandidates: KBQualityArticleCandidate[];
+  candidateByRef: Map<string, KBQualityArticleCandidate>;
+  analysis: KBQualityStoreResult;
+  startDate: Date;
+  endDate: Date;
+}): KBQualityStoreInsight {
+  const articleInsights = input.analysis.articles.flatMap((article): KBQualityArticleInsight[] => {
+    const candidate = input.candidateByRef.get(article.articleRef);
+    if (!candidate) return [];
+
+    return [{
+      articleId: candidate.articleId,
+      articleTitle: candidate.title,
+      qualityScore: article.qualityScore,
+      issues: article.issues,
+      improvementSuggestions: article.improvementSuggestions,
+      priority: article.priority,
+      queryCount: candidate.queryCount,
+    }];
+  });
+  const topIssues = input.analysis.topIssues.length > 0
+    ? input.analysis.topIssues
+    : Array.from(new Set(articleInsights.flatMap((article) => article.issues.map((issue) => issue.type)))).slice(0, 5);
+
+  return {
+    tId: input.tId,
+    sId: input.sId,
+    type: 'kbQuality',
+    date: new Date().toISOString().split('T')[0],
+    qualityScore: input.analysis.qualityScore,
+    priority: input.analysis.priority,
+    summary: input.analysis.summary,
+    topIssues,
+    improvementSuggestions: input.analysis.improvementSuggestions,
+    articles: articleInsights,
+    articleCount: input.articles.length,
+    articlesWithSignals: input.candidates.length,
+    articlesAnalyzed: input.boundedCandidates.length,
+    articlesSkippedByCap: Math.max(0, input.candidates.length - input.boundedCandidates.length),
+    queryExamplesPerArticle: MAX_KB_QUALITY_QUERY_EXAMPLES_PER_ARTICLE,
+    generatedAt: Timestamp.now(),
+    dataRange: {
+      start: Timestamp.fromDate(input.startDate),
+      end: Timestamp.fromDate(input.endDate),
+    },
+    promptVersion: 'v1-store',
+  };
+}
+
 /**
- * Store KB quality analysis in Firestore
+ * Store one KB quality insight document per store.
  */
-async function storeKBQualityAnalysis(analysis: KBQualityAnalysis): Promise<void> {
+async function saveKBQualityInsight(insight: KBQualityStoreInsight): Promise<void> {
   try {
-    const docPath = `insights/${analysis.tId}/stores/${analysis.sId}/ai/kbQuality`;
+    const docRef = db
+      .collection(DB_COLLECTIONS.INSIGHTS)
+      .doc(insight.tId)
+      .collection(DB_COLLECTIONS.STORES)
+      .doc(insight.sId)
+      .collection(DB_COLLECTIONS.AI)
+      .doc('kbQuality');
 
-    await db
-      .collection(docPath)
-      .doc(analysis.articleId)
-      .set({
-        ...analysis,
-        analyzedAt: analysis.analyzedAt,
-        dataRange: {
-          start: analysis.dataRange.start,
-          end: analysis.dataRange.end,
-        },
-      });
+    await docRef.set(insight, { merge: true });
 
-    console.log(`[KB Quality] Stored analysis for article: ${analysis.articleTitle}`);
+    analyticsLogger.info('[KB Quality] Stored store analysis', {
+      ...getKBQualityScope(insight.tId, insight.sId),
+      articleCount: insight.articlesAnalyzed,
+      skippedByCap: insight.articlesSkippedByCap,
+    });
   } catch (error) {
-    console.error('[KB Quality] Error storing analysis:', error);
+    analyticsLogger.error('[KB Quality] Store analysis write failed', {
+      ...getKBQualityScope(insight.tId, insight.sId),
+      failureCode: KB_QUALITY_STORE_WRITE_FAILURE,
+      error: getAnalyticsErrorContext(error),
+    });
     throw error;
   }
 }

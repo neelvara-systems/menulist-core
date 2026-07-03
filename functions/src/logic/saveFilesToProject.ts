@@ -1,7 +1,7 @@
 /**
  * Save Files to Project
  * 
- * Spec Reference: MENU-IMAGE-PROCESSING-JOB-QUEUE-SPEC.md Section 5
+ * Spec Reference: menu-image-processing-job-queue-spec.md Section 5
  * 
  * This function appends new file entries to an existing project and updates
  * the project's languages array. It handles the server-side persistence
@@ -16,6 +16,7 @@ import { DB_COLLECTIONS } from '../constants/database';
 import { firestoreAdmin } from "../firebaseAdmin";
 import type { ExtractedBusinessProfile } from '../sharedData/extractedBusinessProfile';
 import { getSuggestionValue } from '../sharedData/extractedBusinessProfile';
+import { MENU_EXTRACTION_PROJECT_DOCUMENT_SIZE_LIMITS } from '../sharedData/menuExtractionProjectSize';
 import { ExtractedData, ExtractedDataItem, autoMergeItems } from "./redistributeUtils";
 
 const PROJECTS_COLLECTION = DB_COLLECTIONS.PROJECTS;
@@ -53,6 +54,26 @@ export interface LanguageInput {
 }
 
 const CANONICAL_SOURCE_LANGUAGE = 'en';
+const SAVE_FILES_TO_PROJECT_FAILED = 'SAVE_FILES_TO_PROJECT_FAILED';
+
+function getBoundedSaveFilesStringContext(label: string, value: unknown): Record<string, boolean | number> {
+    const normalized = value === undefined || value === null ? '' : String(value);
+    return {
+        [`${label}Present`]: normalized.length > 0,
+        [`${label}Length`]: normalized.length,
+    };
+}
+
+function getSaveFilesErrorContext(error: unknown): Record<string, string | number | undefined> {
+    const sourceError = error as { code?: unknown; status?: unknown; statusCode?: unknown };
+    const statusValue = sourceError?.status ?? sourceError?.statusCode;
+    const status = Number(statusValue);
+    return {
+        sourceErrorName: error instanceof Error ? error.name || 'Error' : typeof error,
+        sourceErrorCode: sourceError?.code === undefined || sourceError?.code === null ? undefined : String(sourceError.code).slice(0, 64),
+        sourceStatusCode: Number.isFinite(status) ? status : undefined,
+    };
+}
 
 // ═══════════════════════════════════════════════════════════════════════════
 // HELPER FUNCTIONS
@@ -187,6 +208,36 @@ function buildExtractedProfileProjectDefaults(
     return updateData;
 }
 
+function getExistingProjectSummary(
+    summaryDocData: Record<string, any> | undefined,
+    projectId: string,
+): Record<string, any> | null {
+    if (!summaryDocData || typeof summaryDocData !== 'object') return null;
+
+    const flatSummary = summaryDocData[`projects.${projectId}`];
+    if (flatSummary && typeof flatSummary === 'object' && !Array.isArray(flatSummary)) {
+        return flatSummary;
+    }
+
+    const nestedSummary = summaryDocData.projects?.[projectId];
+    if (nestedSummary && typeof nestedSummary === 'object' && !Array.isArray(nestedSummary)) {
+        return nestedSummary;
+    }
+
+    return null;
+}
+
+function buildProjectSummaryDefaultsUpdate(updateData: Record<string, any>): Record<string, any> {
+    const summaryUpdate: Record<string, any> = {};
+    const name = typeof updateData.name === 'string' ? updateData.name.trim() : '';
+    const description = typeof updateData.description === 'string' ? updateData.description.trim() : '';
+
+    if (name) summaryUpdate.name = name;
+    if (description) summaryUpdate.description = description;
+
+    return summaryUpdate;
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // MAIN FUNCTION
 // ═══════════════════════════════════════════════════════════════════════════
@@ -231,7 +282,7 @@ export async function saveFilesToProject(
     const logger = functions.logger;
 
     logger.info('[saveFilesToProject] Starting save', {
-        projectId,
+        ...getBoundedSaveFilesStringContext('projectId', projectId),
         filesCount: jobFiles.length,
         languagesCount: languages.length,
     });
@@ -247,7 +298,7 @@ export async function saveFilesToProject(
             const projectDoc = await transaction.get(projectRef);
             const existingProject = projectDoc.exists ? projectDoc.data() : null;
             if (!existingProject) {
-                throw new Error(`Project not found: ${projectId}`);
+                throw new Error('Project not found.');
             }
             const existingFiles: ProjectFileEntry[] = existingProject?.files || [];
             const existingLanguages: string[] = existingProject?.languages || [];
@@ -352,27 +403,48 @@ export async function saveFilesToProject(
                 defaultLanguage: resolvedDefaultLanguage,
                 ...buildExtractedProfileProjectDefaults(existingProject, extractedBusinessProfile),
             };
+            const summaryDefaultsUpdate = buildProjectSummaryDefaultsUpdate(updateData);
+            const hasSummaryDefaultsUpdate = Object.keys(summaryDefaultsUpdate).length > 0;
+            let existingProjectSummary: Record<string, any> | null = null;
+
+            if (hasSummaryDefaultsUpdate) {
+                const { sId } = parseProjectId(projectId);
+                const summaryRef = firestoreAdmin.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc(`projects_${sId}`);
+                const summaryDoc = await transaction.get(summaryRef);
+                existingProjectSummary = summaryDoc.exists
+                    ? getExistingProjectSummary(summaryDoc.data() as Record<string, any>, projectId)
+                    : null;
+
+                if (existingProjectSummary) {
+                    transaction.set(summaryRef, {
+                        lastUpdated: Timestamp.now(),
+                        [`projects.${projectId}`]: {
+                            ...existingProjectSummary,
+                            ...summaryDefaultsUpdate,
+                        },
+                    }, { merge: true });
+                }
+            }
 
             // 6b. Document size safety guard (Firestore 1MB limit)
             // Estimate size using JSON.stringify — actual Firestore encoding is slightly larger
             // but this gives a reliable lower bound for the safety check
             const estimatedBytes = Buffer.byteLength(JSON.stringify(updateData), 'utf8');
-            const FIRESTORE_SAFE_LIMIT = 900_000; // 900KB — 90% of 1MB limit (safety margin)
+            const FIRESTORE_SAFE_LIMIT = MENU_EXTRACTION_PROJECT_DOCUMENT_SIZE_LIMITS.SAVE_SAFE_BYTES;
 
             logger.info('[saveFilesToProject] Preparing update data', {
-                projectId,
+                ...getBoundedSaveFilesStringContext('projectId', projectId),
                 totalFiles: updateData.files.length,
                 newFilesAdded: newFiles.length,
                 existingFilesCount: existingFiles.length,
                 totalLanguages: mergedLanguages.length,
                 newLanguagesAdded: newLanguageCodes.length,
                 estimatedBytes,
-                fullUpdateData: JSON.stringify(updateData),
             });
 
             if (estimatedBytes > FIRESTORE_SAFE_LIMIT) {
                 logger.error('[saveFilesToProject] DOCUMENT SIZE EXCEEDED SAFE LIMIT', {
-                    projectId,
+                    ...getBoundedSaveFilesStringContext('projectId', projectId),
                     estimatedBytes,
                     limit: FIRESTORE_SAFE_LIMIT,
                     totalFiles: updateData.files.length,
@@ -385,9 +457,9 @@ export async function saveFilesToProject(
                 );
             }
 
-            if (estimatedBytes > 700_000) {
+            if (estimatedBytes > MENU_EXTRACTION_PROJECT_DOCUMENT_SIZE_LIMITS.WARNING_BYTES) {
                 logger.warn('[saveFilesToProject] Document approaching size limit', {
-                    projectId,
+                    ...getBoundedSaveFilesStringContext('projectId', projectId),
                     estimatedBytes,
                     percentOfLimit: Math.round((estimatedBytes / FIRESTORE_SAFE_LIMIT) * 100),
                 });
@@ -397,7 +469,7 @@ export async function saveFilesToProject(
             transaction.set(projectRef, updateData, { merge: true });
 
             logger.info('[saveFilesToProject] Save complete', {
-                projectId,
+                ...getBoundedSaveFilesStringContext('projectId', projectId),
                 totalFiles: updateData.files.length,
                 newFilesAdded: newFiles.length,
                 totalLanguages: mergedLanguages.length,
@@ -417,8 +489,9 @@ export async function saveFilesToProject(
 
     } catch (error: any) {
         logger.error('[saveFilesToProject] Failed to save', {
-            projectId,
-            error: error.message,
+            failureCode: SAVE_FILES_TO_PROJECT_FAILED,
+            ...getBoundedSaveFilesStringContext('projectId', projectId),
+            ...getSaveFilesErrorContext(error),
         });
         throw error;
     }

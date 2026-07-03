@@ -10,20 +10,25 @@ export const dynamic = 'force-dynamic';
 
 import { DB_COLLECTIONS } from "@constant/database";
 import { admin } from "@lib/firebase/firebaseAdmin";
+import { sanitizeMessagingOnboardingEventMetadata } from "@lib/messaging-onboarding/eventMetadata";
 import { checkRateLimit } from "@lib/rateLimit";
-import { secureError } from "@lib/security/secureLogger";
+import { getBoundedRuntimeStringContext, logRuntimeFailure } from "@lib/runtime/runtimeDiagnostics";
+import { readBoundedJsonBody, rejectInvalidOrOversizedDeclaredBody } from "@lib/security/boundedRequestBody";
+import { getSafeZodValidationDetails } from "@lib/security/inputValidation";
 import crypto from "crypto";
 import { FieldValue, Timestamp } from "firebase-admin/firestore";
 import { NextRequest, NextResponse } from "next/server";
+import { hashPublicRateLimitValue } from "src/middleware/publicApi";
 import { z } from "zod";
 
 const db = admin.firestore();
 
 // Must match RATE_LIMITS.MAX_CORRECTIONS_PER_SESSION in functions/src/messagingOnboarding/constants.ts
 const MAX_CORRECTIONS_PER_SESSION = 3;
+const MSG_PREVIEW_ACTION_MAX_BODY_BYTES = 4 * 1024;
 
 const FixRequestSchema = z.object({
-  token: z.string().min(20),
+  token: z.string().min(20).max(256),
   issues: z
     .array(
       z.enum([
@@ -34,7 +39,8 @@ const FixRequestSchema = z.object({
         "other",
       ]),
     )
-    .min(1),
+    .min(1)
+    .max(5),
   note: z.string().max(200).optional(),
 });
 
@@ -44,11 +50,30 @@ function getClientIp(request: NextRequest): string {
     "unknown";
 }
 
+const getPreviewFixLogContext = (
+  sessionId: unknown,
+  session?: Record<string, any> | null,
+) => ({
+  route: "/api/msg-preview/[sessionId]/fix",
+  ...getBoundedRuntimeStringContext("sessionId", sessionId),
+  ...getBoundedRuntimeStringContext("provider", session?.provider),
+  sessionState: typeof session?.state === "string" ? session.state.slice(0, 64) : undefined,
+  correctionCount: Number.isFinite(Number(session?.correctionCount))
+    ? Number(session?.correctionCount)
+    : 0,
+});
+
 export async function POST(
   request: NextRequest,
   { params }: { params: { sessionId: string } },
 ) {
   try {
+    const declaredBodyResponse = rejectInvalidOrOversizedDeclaredBody(
+      request,
+      MSG_PREVIEW_ACTION_MAX_BODY_BYTES,
+    );
+    if (declaredBodyResponse) return declaredBodyResponse;
+
     const { sessionId } = params;
 
     if (!sessionId || sessionId.length < 10) {
@@ -56,8 +81,10 @@ export async function POST(
     }
 
     const ip = getClientIp(request);
+    const ipHash = hashPublicRateLimitValue(ip);
+    const sessionHash = hashPublicRateLimitValue(sessionId);
     const rateLimit = await checkRateLimit({
-      key: `msg-preview-fix:${sessionId}:${ip}`,
+      key: `msg-preview-fix:${sessionHash}:${ipHash}`,
       limit: 10,
       window: 3600,
     });
@@ -69,12 +96,14 @@ export async function POST(
       );
     }
 
-    const body = await request.json();
-    const validation = FixRequestSchema.safeParse(body);
+    const bodyResult = await readBoundedJsonBody(request, MSG_PREVIEW_ACTION_MAX_BODY_BYTES);
+    if (bodyResult.ok === false) return bodyResult.response;
+
+    const validation = FixRequestSchema.safeParse(bodyResult.data);
 
     if (!validation.success) {
       return NextResponse.json(
-        { error: "Invalid input", details: validation.error.flatten() },
+        { error: "Invalid input", details: getSafeZodValidationDetails(validation.error) },
         { status: 400 },
       );
     }
@@ -161,20 +190,27 @@ export async function POST(
         eventType: "PREVIEW_FIX_REQUESTED",
         sessionState: "COLLECTING_INPUT",
         userIdMasked: (session.providerUserId || "").slice(-4),
-        metadata: {
-          issues,
+        metadata: sanitizeMessagingOnboardingEventMetadata({
+          issueCount: issues.length,
           correctionNumber: currentCorrections + 1,
           hasNote: !!note,
-        },
+        }),
         timestamp: Timestamp.now(),
         expiresAt: Timestamp.fromMillis(Date.now() + 30 * 24 * 60 * 60 * 1000),
-        sessionAgeMs: session.createdAt
-          ? Date.now() - session.createdAt.toMillis()
-          : 0,
-      })
-      .catch(() => { });
+	        sessionAgeMs: session.createdAt
+	          ? Date.now() - session.createdAt.toMillis()
+	          : 0,
+	      })
+	      .catch((error) => {
+	        logRuntimeFailure("messaging_preview_event_write_failed", error, {
+	          ...getPreviewFixLogContext(sessionId, session),
+	          eventType: "PREVIEW_FIX_REQUESTED",
+	          metadataKeyCount: 3,
+	          sessionState: "COLLECTING_INPUT",
+	        });
+	      });
 
-    return NextResponse.json({
+	    return NextResponse.json({
       success: true,
       correctionNumber: currentCorrections + 1,
       maxCorrections: MAX_CORRECTIONS_PER_SESSION,
@@ -182,7 +218,11 @@ export async function POST(
         "Correction request sent. Send clearer photos of the affected pages.",
     });
   } catch (error) {
-    secureError("[msg-preview/fix] Error", error as Error);
+    logRuntimeFailure(
+      "messaging_preview_fix_route_failed",
+      error,
+      getPreviewFixLogContext(params?.sessionId),
+    );
     return NextResponse.json(
       { error: "Internal error" },
       { status: 500 },

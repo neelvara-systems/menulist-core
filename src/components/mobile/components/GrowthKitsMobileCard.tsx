@@ -6,6 +6,7 @@ import {
     refreshGrowthOSForProject,
     useGrowthOS,
 } from '@hook/useGrowthOS';
+import { getGrowthOSBoundedStringContext, logGrowthOSApiFailure } from '@lib/growthos/diagnostics';
 import { isGrowthOSSummaryKitStale } from '@lib/growthos/todayTrigger';
 import type { GrowthOSOutput, GrowthOSStaffBriefOutput } from '@type/growthos';
 import { theme } from 'antd';
@@ -17,8 +18,29 @@ interface GrowthKitsMobileCardProps {
     projectId?: string | null;
 }
 
+const MOBILE_GROWTHOS_COPY_CLIPBOARD_UNAVAILABLE = 'mobile_growthos_copy_clipboard_unavailable';
+const MOBILE_GROWTHOS_COPY_FALLBACK_FAILED = 'mobile_growthos_copy_fallback_failed';
+
+const buildMobileGrowthOSCopyError = (code: string) => Object.assign(new Error(code), { code });
+
+const hasMobileGrowthOSClipboardWrite = () => (
+    typeof navigator !== 'undefined' && Boolean(navigator.clipboard?.writeText)
+);
+
+const hasMobileGrowthOSCopyFallback = () => (
+    typeof document !== 'undefined'
+    && Boolean(document.body)
+    && typeof document.createElement === 'function'
+    && typeof document.execCommand === 'function'
+);
+
+const getMobileGrowthOSCopySupportContext = () => ({
+    hasClipboardWrite: hasMobileGrowthOSClipboardWrite(),
+    hasCopyFallback: hasMobileGrowthOSCopyFallback(),
+});
+
 const copyText = async (text: string) => {
-    if (navigator.clipboard?.writeText) {
+    if (hasMobileGrowthOSClipboardWrite()) {
         try {
             await Promise.race([
                 navigator.clipboard.writeText(text),
@@ -29,21 +51,35 @@ const copyText = async (text: string) => {
             // Fall through to textarea copy for browsers that expose Clipboard API but block it.
         }
     }
+    if (!hasMobileGrowthOSCopyFallback()) {
+        throw buildMobileGrowthOSCopyError(MOBILE_GROWTHOS_COPY_CLIPBOARD_UNAVAILABLE);
+    }
+
     const textArea = document.createElement('textarea');
     textArea.value = text;
     textArea.style.position = 'fixed';
     textArea.style.left = '-999999px';
+    textArea.setAttribute('readonly', '');
     document.body.appendChild(textArea);
+    textArea.focus();
     textArea.select();
-    const copied = document.execCommand('copy');
-    document.body.removeChild(textArea);
-    return copied;
+
+    try {
+        const copied = document.execCommand('copy');
+        if (!copied) {
+            throw buildMobileGrowthOSCopyError(MOBILE_GROWTHOS_COPY_FALLBACK_FAILED);
+        }
+        return true;
+    } finally {
+        document.body.removeChild(textArea);
+    }
 };
 
 const canUseOutput = (output: GrowthOSOutput) => output.preflight?.status !== 'blocked';
 const isStaffBriefOutput = (output: GrowthOSOutput): output is GrowthOSStaffBriefOutput => (
     output.destination === 'staff_brief'
 );
+type MobileGrowthOSLogContext = Record<string, boolean | number | string | null | undefined>;
 
 export default function GrowthKitsMobileCard({ projectId }: GrowthKitsMobileCardProps) {
     const { token } = theme.useToken();
@@ -63,6 +99,35 @@ export default function GrowthKitsMobileCard({ projectId }: GrowthKitsMobileCard
     const primaryOutputBlocked = Boolean(primaryOutput && !canUseOutput(primaryOutput));
     const canUsePrimaryOutput = Boolean(primaryOutput && !primaryOutputBlocked && !isStale);
     const needsNewPack = !primaryOutput || isStale || primaryOutputBlocked;
+    const buildMobileGrowthOSLogContext = (
+        flow: string,
+        output?: GrowthOSOutput | null,
+        metadata: MobileGrowthOSLogContext = {},
+    ): MobileGrowthOSLogContext => ({
+        surface: 'mobile_growth_kits',
+        flow,
+        hasLatestKit: Boolean(latestKit),
+        hasPrimaryAction: Boolean(primaryAction),
+        isStale,
+        primaryOutputBlocked,
+        outputTextLength: output?.text?.length || 0,
+        ...getGrowthOSBoundedStringContext('projectId', projectId),
+        ...getGrowthOSBoundedStringContext('kitId', latestKit?.id),
+        ...getGrowthOSBoundedStringContext('actionId', primaryAction?.id),
+        ...getGrowthOSBoundedStringContext('outputId', output?.id),
+        ...getGrowthOSBoundedStringContext('destination', output?.destination),
+        ...metadata,
+    });
+
+    const logMobileGrowthOSFailure = (
+        failureCode: string,
+        error: unknown,
+        flow: string,
+        output?: GrowthOSOutput | null,
+        metadata: MobileGrowthOSLogContext = {},
+    ) => {
+        logGrowthOSApiFailure('[GrowthOS Mobile] Operation failed', failureCode, error, buildMobileGrowthOSLogContext(flow, output, metadata));
+    };
 
     const refresh = async () => {
         if (!projectId) {
@@ -74,7 +139,8 @@ export default function GrowthKitsMobileCard({ projectId }: GrowthKitsMobileCard
             const payload = await refreshGrowthOSForProject(projectId, true);
             await mutate(payload.data, { revalidate: false });
             Toast.show({ content: 'Menu checked', duration: 1300 });
-        } catch {
+        } catch (error) {
+            logMobileGrowthOSFailure('mobile_growthos_refresh_failed', error, 'refresh');
             Toast.show({
                 content: latestKit ? 'Could not check menu. Latest pack is still here.' : 'Could not check menu.',
                 duration: 2200,
@@ -97,7 +163,8 @@ export default function GrowthKitsMobileCard({ projectId }: GrowthKitsMobileCard
             });
             await mutate(payload.data.summary, { revalidate: false });
             Toast.show({ content: 'Sales Pack ready', duration: 1300 });
-        } catch {
+        } catch (error) {
+            logMobileGrowthOSFailure('mobile_growthos_generate_failed', error, 'generate');
             Toast.show({ content: 'Could not prepare Sales Pack', duration: 2000 });
         } finally {
             setIsWorking(false);
@@ -133,10 +200,12 @@ export default function GrowthKitsMobileCard({ projectId }: GrowthKitsMobileCard
             return;
         }
         try {
+            const copied = await copyText(output.text);
+            if (!copied) throw new Error('mobile_growthos_copy_failed');
             await record(output, 'copy');
-            await copyText(output.text);
             Toast.show({ content: 'Copied', duration: 1200 });
-        } catch {
+        } catch (error) {
+            logMobileGrowthOSFailure('mobile_growthos_copy_failed', error, 'copy', output, getMobileGrowthOSCopySupportContext());
             Toast.show({ content: 'Could not copy this kit.', duration: 1800 });
         }
     };
@@ -152,14 +221,20 @@ export default function GrowthKitsMobileCard({ projectId }: GrowthKitsMobileCard
             return;
         }
         try {
-            await record(output, 'share');
             if (navigator.share) {
                 await navigator.share({ text: output.text });
             } else {
-                await copyText(output.text);
+                const copied = await copyText(output.text);
+                if (!copied) throw new Error('mobile_growthos_share_fallback_copy_failed');
             }
+            await record(output, 'share');
             Toast.show({ content: navigator.share ? 'Shared' : 'Copied', duration: 1200 });
-        } catch {
+        } catch (error) {
+            if (error instanceof DOMException && error.name === 'AbortError') return;
+            logMobileGrowthOSFailure('mobile_growthos_share_failed', error, 'share', output, {
+                ...getMobileGrowthOSCopySupportContext(),
+                usedNativeShare: Boolean(navigator.share),
+            });
             Toast.show({ content: 'Could not share this kit.', duration: 1800 });
         }
     };
@@ -172,7 +247,8 @@ export default function GrowthKitsMobileCard({ projectId }: GrowthKitsMobileCard
         try {
             await record(output, 'mark_used');
             Toast.show({ content: 'Marked used', duration: 1200 });
-        } catch {
+        } catch (error) {
+            logMobileGrowthOSFailure('mobile_growthos_mark_used_failed', error, 'mark_used', output);
             Toast.show({ content: 'Could not mark used.', duration: 1800 });
         }
     };

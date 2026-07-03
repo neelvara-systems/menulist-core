@@ -7,7 +7,7 @@ import '@/styles/website.css';
 import { Metadata } from 'next';
 
 const title = 'Menu Quality Validation - MenuList | Catch Menu Issues Before Customers See Them';
-const description = 'Check menu prices, missing details, photos, and public readiness before publishing. MenuList keeps correction guidance tied to owner review and the approved source.';
+const description = 'Check menu prices, missing details, photos, and public readiness before publishing. MenuList keeps correction guidance tied to owner review and the approved menu.';
 
 export const metadata: Metadata = {
   title,

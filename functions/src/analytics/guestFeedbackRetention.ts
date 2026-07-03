@@ -23,6 +23,14 @@
 import * as admin from 'firebase-admin';
 import { Timestamp } from 'firebase-admin/firestore';
 import { DB_COLLECTIONS } from '../constants/database';
+import {
+    analyticsLogger,
+    getAnalyticsErrorContext,
+} from './analyticsDiagnostics';
+
+const GUEST_FEEDBACK_RETENTION_BATCH_DELETE_FAILED = 'GUEST_FEEDBACK_RETENTION_BATCH_DELETE_FAILED';
+const GUEST_FEEDBACK_RETENTION_FINAL_BATCH_DELETE_FAILED = 'GUEST_FEEDBACK_RETENTION_FINAL_BATCH_DELETE_FAILED';
+const GUEST_FEEDBACK_RETENTION_FAILED = 'GUEST_FEEDBACK_RETENTION_FAILED';
 
 // ================================================================
 // TYPES
@@ -77,11 +85,14 @@ export async function processGuestFeedbackRetention(): Promise<RetentionResult> 
         const snapshot = await expiredQuery.get();
 
         if (snapshot.empty) {
-            console.log('[GuestFeedbackRetention] No expired documents found.');
+            analyticsLogger.info('[GuestFeedbackRetention] No expired documents found');
             return result;
         }
 
-        console.log(`[GuestFeedbackRetention] Found ${snapshot.size} expired documents to delete.`);
+        analyticsLogger.info('[GuestFeedbackRetention] Expired documents found', {
+            expiredCount: snapshot.size,
+            maxDocsPerRun: MAX_DOCS_PER_RUN,
+        });
         result.processed = snapshot.size;
 
         // Delete in batches
@@ -97,14 +108,22 @@ export async function processGuestFeedbackRetention(): Promise<RetentionResult> 
                 try {
                     await batch.commit();
                     result.deleted += batchCount;
-                    console.log(`[GuestFeedbackRetention] Deleted batch of ${batchCount} documents.`);
+                    analyticsLogger.info('[GuestFeedbackRetention] Deleted batch', {
+                        batchCount,
+                        deleted: result.deleted,
+                    });
                 } catch (error: any) {
                     result.errors += batchCount;
                     result.errorDetails.push({
                         docId: `batch_${result.deleted}`,
-                        error: error.message,
+                        error: GUEST_FEEDBACK_RETENTION_BATCH_DELETE_FAILED,
                     });
-                    console.error(`[GuestFeedbackRetention] Batch delete failed:`, error.message);
+                    analyticsLogger.error('[GuestFeedbackRetention] Batch delete failed', {
+                        failureCode: GUEST_FEEDBACK_RETENTION_BATCH_DELETE_FAILED,
+                        batchCount,
+                        deleted: result.deleted,
+                        error: getAnalyticsErrorContext(error),
+                    });
                 }
 
                 // Start new batch
@@ -118,26 +137,38 @@ export async function processGuestFeedbackRetention(): Promise<RetentionResult> 
             try {
                 await batch.commit();
                 result.deleted += batchCount;
-                console.log(`[GuestFeedbackRetention] Deleted final batch of ${batchCount} documents.`);
+                analyticsLogger.info('[GuestFeedbackRetention] Deleted final batch', {
+                    batchCount,
+                    deleted: result.deleted,
+                });
             } catch (error: any) {
                 result.errors += batchCount;
                 result.errorDetails.push({
                     docId: `batch_final`,
-                    error: error.message,
+                    error: GUEST_FEEDBACK_RETENTION_FINAL_BATCH_DELETE_FAILED,
                 });
-                console.error(`[GuestFeedbackRetention] Final batch delete failed:`, error.message);
+                analyticsLogger.error('[GuestFeedbackRetention] Final batch delete failed', {
+                    failureCode: GUEST_FEEDBACK_RETENTION_FINAL_BATCH_DELETE_FAILED,
+                    batchCount,
+                    deleted: result.deleted,
+                    error: getAnalyticsErrorContext(error),
+                });
             }
         }
 
         // Log summary
-        console.log(`[GuestFeedbackRetention] Retention complete:`);
-        console.log(`  - Processed: ${result.processed}`);
-        console.log(`  - Deleted: ${result.deleted}`);
-        console.log(`  - Errors: ${result.errors}`);
+        analyticsLogger.info('[GuestFeedbackRetention] Retention complete', {
+            processed: result.processed,
+            deleted: result.deleted,
+            errors: result.errors,
+        });
 
         return result;
     } catch (error: any) {
-        console.error('[GuestFeedbackRetention] Retention failed:', error);
+        analyticsLogger.error('[GuestFeedbackRetention] Retention failed', {
+            failureCode: GUEST_FEEDBACK_RETENTION_FAILED,
+            error: getAnalyticsErrorContext(error),
+        });
         throw error;
     }
 }

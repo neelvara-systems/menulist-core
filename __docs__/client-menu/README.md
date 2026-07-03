@@ -1,8 +1,14 @@
 # Customer-Facing Digital Menu — Documentation Index
 
-**Feature:** Client Menu  
-**Status:** ✅ Production Ready  
+**Feature:** Client Menu
+**Status:** Implemented customer-facing menu documentation; not current launch certification
 **Last Updated:** May 10, 2026
+
+---
+
+## Current Launch Boundary
+
+This documentation index is customer-facing menu-output evidence; it is not current production certification. Current client-menu launch approval requires the active [production-readiness audit](../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../production-readiness/external-certification-runbook.md) evidence, Digital Menu Output Constitution checks, physical/mobile browser QA, low-bandwidth/offline/back-button tests, public cache/deploy evidence, and target production smoke.
 
 ---
 
@@ -109,8 +115,8 @@ The **Customer-Facing Digital Menu** (Client Menu) is the public-facing interfac
 
 | Location                                              | Content                                           |
 | ----------------------------------------------------- | ------------------------------------------------- |
-| `__docs__/projects/DECISION-INTELLIGENCE-ANALYSIS.md` | Decision Blocks feature (owner controls, scoring) |
-| `__docs__/projects/DECISION-BLOCKS-SCHEDULER.md`      | Nightly Cloud Function scheduler                  |
+| `__docs__/decision-intelligence/README.md`            | Decision Blocks feature (owner controls, scoring) |
+| `__docs__/decision-intelligence/decision-intelligence_firebase.md` | Nightly Cloud Function scheduler                  |
 | `__docs__/continuous-menu-intelligence/`              | CMI system documentation                          |
 | `__docs__/client-menu-retrieval-foundation/`          | Public menu search, structured truth, low-network contract |
 
@@ -178,6 +184,8 @@ The public menu is not a website-builder surface. Store/project owners can selec
 
 | Date       | Change                                                                                                                                                                     |
 | ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-06-30 | PDP item share copy now falls through from rejected Clipboard API writes to acknowledged textarea fallback and logs clipboard/fallback support metadata |
+| 2026-06-30 | PDP item share copy fallback now requires browser acknowledgement before copied state and logs bounded runtime diagnostics when the final copy fallback fails |
 | 2026-05-13 | Public menu tap hardening: `Sections` now closes before category jump, and the expanding search row focuses the input on the first tap |
 | 2026-05-12 | Public menu UX fixes: mobile grid odd rows span cleanly, search suggestions are data-based, multi-term search supports any-term recovery, language routing updates server-rendered menu names, item URLs/head metadata preserve language, PDP item sharing works in installed PWAs, PDP nutrition facts display, active temporary status moved to the bottom trust zone, and Sections appears only for 3+ sections |
 | 2026-05-10 | Search false-positive hardening: one-character input no longer shows a no-result state, and chai typo recovery no longer matches unrelated choice/cheese/tea-description text |

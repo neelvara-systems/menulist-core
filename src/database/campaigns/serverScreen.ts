@@ -4,12 +4,32 @@ import { firestoreAdmin } from "@lib/firebase/firebaseAdmin";
 import { parseSummaryProjects } from "@lib/firestore/parseSummaryProjects";
 import { getDefaultProjectUrl } from "@lib/obp/generateOBPUrl";
 import { extractScreenMenuItemsFromProject } from "@lib/screen/screenContent";
+import { secureError } from "@lib/security/secureLogger";
 import {
     CampaignsSummaryDocument,
     DigitalScreenState,
     ScreenMenuProjection,
     ScreenStoreInfo,
 } from "@type/campaigns";
+
+const getLogErrorName = (error: unknown): string => (
+    error instanceof Error ? error.name : typeof error
+);
+
+const logServerScreenFailure = (
+    failureCode: string,
+    error: unknown,
+    context: Record<string, unknown> = {},
+): void => {
+    secureError(
+        "[Digital Screen] Server resolver failed",
+        new Error(failureCode),
+        {
+            ...context,
+            errorName: getLogErrorName(error),
+        },
+    );
+};
 
 const getUsableScreenProjectionContext = (
     projection: ScreenMenuProjection | null | undefined,
@@ -65,17 +85,11 @@ export const getScreenDataByTokenServer = async (token: string): Promise<{
             .limit(1)
             .get();
 
-        if (snapshot.empty) {
-            console.log(`[getScreenDataByTokenServer] Token not found: ${token}`);
-            return null;
-        }
+        if (snapshot.empty) return null;
 
         const docSnap = snapshot.docs[0];
         const data = docSnap.data() as CampaignsSummaryDocument;
-        if (!data.screen?.enabled) {
-            console.log(`[getScreenDataByTokenServer] Screen disabled for token: ${token}`);
-            return null;
-        }
+        if (!data.screen?.enabled) return null;
 
         const storeId = docSnap.id.replace("campaigns_", "");
         const storeDoc = await firestoreAdmin
@@ -84,10 +98,7 @@ export const getScreenDataByTokenServer = async (token: string): Promise<{
             .get();
         const storeData = storeDoc.exists ? storeDoc.data() : null;
 
-        if (storeData && (storeData.active === false || storeData.blocked === true)) {
-            console.log(`[getScreenDataByTokenServer] Store inactive/blocked for token: ${token}`);
-            return null;
-        }
+        if (storeData && (storeData.active === false || storeData.blocked === true)) return null;
 
         const activeSpecialMenuId = storeData?.activeSpecialMenuId || null;
         const projectionContext = getUsableScreenProjectionContext(data.screen?.menuProjection, {
@@ -143,7 +154,13 @@ export const getScreenDataByTokenServer = async (token: string): Promise<{
             storeInfo,
         };
     } catch (error) {
-        console.error("[getScreenDataByTokenServer] Error:", error);
+        logServerScreenFailure(
+            "digital_screen_server_token_resolver_failed",
+            error,
+            {
+                tokenLength: token.length,
+            },
+        );
         return null;
     }
 };
@@ -329,7 +346,18 @@ export const getMenuItemsForScreenServer = async (
 
         return [];
     } catch (error) {
-        console.error("[getMenuItemsForScreenServer] Error:", error);
+        logServerScreenFailure(
+            "digital_screen_server_menu_items_failed",
+            error,
+            {
+                storeIdLength: storeId.length,
+                tenantIdLength: tenantId.length,
+                hasActiveSpecialMenuId: Boolean(activeSpecialMenuId),
+                activeSpecialMenuIdLength: String(activeSpecialMenuId || "").length,
+                hasBaseProjectId: Boolean(baseProjectId),
+                baseProjectIdLength: String(baseProjectId || "").length,
+            },
+        );
         return [];
     }
 };

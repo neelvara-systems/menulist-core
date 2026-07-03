@@ -1,6 +1,7 @@
 'use client';
 
 import { Line } from '@ant-design/plots';
+import { getBoundedAnalyticsStringContext, logAnalyticsFailure } from '@lib/analytics/analyticsDiagnostics';
 import { fetchDateRangeStats } from '@services/analytics';
 import { formatDateKey } from '@util/dateTime';
 import { Spin, Tabs, Typography } from 'antd';
@@ -36,34 +37,38 @@ const TrendAnalysis: React.FC<TrendAnalysisProps> = ({ propertyId, dateRange }) 
 
                 const chartData: ChartData[] = [];
                 response?.rows?.forEach(row => {
-                    const date = row.dimensionValues[0].value;
+                    const date = row.dimensionValues?.[0]?.value || '';
                     const formattedDate = formatDateKey(date, formatter);
 
                     // Add visitors data
                     chartData.push({
                         date: formattedDate,
-                        value: parseInt(row.metricValues[0].value),
+                        value: parseInt(row.metricValues?.[0]?.value || '0', 10),
                         metric: 'Visitors'
                     });
 
                     // Add page views data
                     chartData.push({
                         date: formattedDate,
-                        value: parseInt(row.metricValues[1].value),
+                        value: parseInt(row.metricValues?.[1]?.value || '0', 10),
                         metric: 'Page Views'
                     });
 
                     // Add revenue data
                     chartData.push({
                         date: formattedDate,
-                        value: parseFloat(row.metricValues[3].value),
+                        value: parseFloat(row.metricValues?.[2]?.value || '0'),
                         metric: 'Revenue'
                     });
                 });
 
                 setData(chartData);
             } catch (error) {
-                console.error('Error fetching trend data:', error);
+                logAnalyticsFailure('dashboard_google_trend_analysis_load_failed', error, {
+                    ...getBoundedAnalyticsStringContext('propertyId', propertyId),
+                    ...getBoundedAnalyticsStringContext('startDate', dateRange.startDate),
+                    ...getBoundedAnalyticsStringContext('endDate', dateRange.endDate),
+                });
             }
             setLoading(false);
         };

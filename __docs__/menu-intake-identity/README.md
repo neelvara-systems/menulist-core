@@ -24,3 +24,5 @@ Menu upload currently validates file type/size, then sends the files into full A
 The layer must stay conservative: AI may suggest identity and warn about obvious mismatch, but owner-entered business truth is never overwritten automatically. When detected business name, phone, address, or type differ from the current store, desktop and mobile can ask the owner whether to save those details. Only selected fields are written.
 
 For a strong mismatch or high truth-risk upload in an existing project, the owner can either add the upload there anyway or create a new menu from the same valid uploaded files. Non-menu files are ignored and removed from temporary storage before extraction.
+
+Desktop and mobile preflight calls use the shared browser request boundary: same-origin credentials, no-store cache policy, manual redirect handling, bounded response parsing, and fixed owner-safe failure copy.

@@ -2,7 +2,7 @@
 
 **Feature:** OCR & Menu Extraction with Gemini AI
 **Status:** Controlled owner testing ready; production deploy pending for the legacy callable hardening
-**Last Updated:** June 11, 2026
+**Last Updated:** July 1, 2026
 **Priority:** HIGH — Every new project triggers this. Direct cost per user action.
 
 ---
@@ -10,7 +10,7 @@
 ## Summary
 
 - **Collections Used:** `menuImageProcessingJobs`, `projects/{tId}/{sId}` (projectsData)
-- **Storage Buckets:** `MenuListAi/project/files/{timestamp}-{uid}` (uploaded menu images)
+- **Storage Buckets:** Active uploads use `projects/files/{tId}/{sId}/{fileId}`. Legacy uploaded menu images may still exist under `MenuListAi/project/files/{timestamp}-{uid}`.
 - **Cloud Functions:** `processMenuImagesJob` (onCreate trigger), `dev_triggerProcessMenuImages` (dev callable), `processMenuImages` (legacy callable, fails closed in code)
 - **Estimated Monthly Cost:** **Medium** — Scales with number of new projects + re-extractions
 - **Category Icon Defaults:** No extra Firebase operations. Icon defaults are applied in-memory during extraction finalization and saved with the existing project/job writes.
@@ -35,7 +35,7 @@
 | Update job status → processing | `menuImageProcessingJobs/{jobId}`  | Cloud Function start            | Per extraction         | 1            | status, startedAt, timeoutAt             | Cloud Function updates status via transaction. File: `functions/src/logic/processMenuImagesJob.ts`                                                                   |
 | Update progress (50%)          | `menuImageProcessingJobs/{jobId}`  | After AI processing             | Per extraction         | 1            | progress, currentStep                    | Single progress update after AI completes (optimized from 3 separate writes).                                                                                        |
 | Update job status → completed  | `menuImageProcessingJobs/{jobId}`  | Cloud Function end              | Per extraction         | 1            | status, completedAt, results, provenance | Final status + extracted data + `rawBatchResponses[]` + `promptVersion` + `model` + `confidenceSummary`. Provenance piggybacked on existing write (zero extra cost). |
-| Record AI operation            | `MENULIST_AI_OPERATIONS`           | After extraction                | Per extraction         | 1            | Full transaction object                  | Cost tracking, token usage. Written by CF `addAiOperation()`. File: `functions/src/logic/processMenuImages.ts`                                                       |
+| Record AI operation            | `MENULIST_AI_OPERATIONS`           | After extraction                | Per extraction         | 1            | Compact accounting/audit row by default | Cost tracking, token usage, response counts, message presence/length, and summarized file metadata. `AI_OPERATION_LOG_MODE="accounting_only"` avoids raw provider response storage; detailed-mode rows are pruned by `ai_operation_detail_cleanup` when the scheduler is deployed. File: `functions/src/logic/processMenuImages.ts` |
 | Save extracted data to project | `projects/{tId}/{sId}/{projectId}` | After extraction                | Per extraction         | 1            | files[].extractedData                    | Merge update with extracted categories, item data, category icon defaults, prices, languages. Heavy write (~50KB).                                                   |
 | Apply reviewed extraction      | `projects/{tId}/{sId}/{projectId}` | Owner approves preview          | Per review apply       | 1            | files/overrides                          | Single-store/master applies update the project directly after job ownership/status validation. Linked outlets route through `/api/projects/outlet-save` for server-side local-only ID and outlet-policy validation. |
 
@@ -51,7 +51,7 @@
 
 | Operation                    | Path Pattern                                 | Trigger              | Size           | Notes                                                                             |
 | ---------------------------- | -------------------------------------------- | -------------------- | -------------- | --------------------------------------------------------------------------------- |
-| Upload menu images           | `MenuListAi/project/files/{timestamp}-{uid}` | User upload          | 1-5MB per file | JPEG 80% quality, scale 1.5x for PDF pages. Client-side conversion before upload. |
+| Upload menu images           | `projects/files/{tId}/{sId}/{fileId}`        | User upload          | 1-5MB per file | JPEG 80% quality, scale 1.5x for PDF pages. Client-side conversion before upload. Legacy files may still exist under `MenuListAi/project/files/`. |
 | Read images (Cloud Function) | Same path                                    | During AI processing | —              | Cloud Function reads uploaded images to send to Gemini.                           |
 
 ---
@@ -60,9 +60,9 @@
 
 | Function                       | Trigger                                         | Frequency              | Duration                        | Memory | Notes                                                                                                                                                       |
 | ------------------------------ | ----------------------------------------------- | ---------------------- | ------------------------------- | ------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `processMenuImagesJob`         | Firestore onCreate on `menuImageProcessingJobs` | Per extraction request | 30-120s (depends on file count) | 2GiB   | Calls Gemini 2.5 Flash. Parallel upload, sequential batch processing. Hardening pipeline. Provenance tracking. File: `functions/src/triggers/production.ts` |
-| `dev_triggerProcessMenuImages` | Callable (dev only)                             | Dev testing            | Same as above                   | 2GiB   | Same logic, manually triggered. Not deployed to production. File: `functions/src/dev-triggers.ts`                                                           |
-| `processMenuImages`            | Callable                                        | Compatibility only     | N/A                             | 2GiB   | Direct AI processing is disabled in code and returns `failed-precondition`; extraction must use the job queue. Deployment was blocked on June 11, 2026 by `ecomsai` billing-disabled Secret Manager 403. |
+| `processMenuImagesJob`         | Firestore onCreate on `menuImageProcessingJobs` | Per extraction request | 30-120s (depends on file count) | 2GiB   | Calls Gemini 2.5 Flash. Parallel upload, sequential batch processing. Hardening pipeline. Trigger wrapper logs bounded job context only. File: `functions/src/triggers/production.ts` |
+| `dev_triggerProcessMenuImages` | Callable (dev only)                             | Dev testing            | Same as above                   | 2GiB   | Same logic, manually triggered. Not deployed to production. Dev wrapper logs bounded request context only. File: `functions/src/dev-triggers.ts`                                                           |
+| `processMenuImages`            | Callable                                        | Compatibility only     | N/A                             | 2GiB   | Direct AI processing is disabled in code and returns `failed-precondition`; extraction must use the job queue. The June 11, 2026 `ecomsai` deploy blocker is historical evidence only; current retry evidence must use External Certification Gate 1 against `menulist-qa`, with production gated on QA evidence and explicit production deploy approval. |
 
 ---
 
@@ -70,7 +70,7 @@
 
 - `menuImageProcessingJobs`: Write requires auth + tenant match. Read requires auth + own tenant.
 - `projects`: Write requires auth + tenant isolation (`{tId}/{sId}`). Cloud Function uses admin SDK (bypasses rules).
-- Storage: Upload requires auth. Path must match `MenuListAi/project/files/*`.
+- Storage: Active upload paths require auth, tenant/store path shape, and `belongsToStore(tId, sId)` on `projects/files/{tId}/{sId}/{fileId}`. Legacy `MenuListAi/project/files/*` compatibility rules remain until the app deploy and Storage rules cutover are coordinated.
 - Rate limiting: `checkExpensiveAILimit()` — 5 requests per minute per user.
 - Preview review apply/discard rejects missing jobs, non-`preview_ready` jobs, project mismatches, tenant/store mismatches, and user mismatches before updating project or job state.
 
@@ -97,7 +97,7 @@
 - **Re-extraction**: Each re-extraction costs full Gemini API + Cloud Function runtime
 - **Large PDFs**: 10-page PDF = 10 Gemini calls = 10x cost per extraction
 - **onSnapshot listener**: Real-time listener on job doc. If client stays open, reads accumulate (but minimal since job completes quickly)
-- **`MENULIST_AI_OPERATIONS` unbounded growth**: 1 doc per extraction, no TTL/cleanup. See `firebase-cost-scalability-audit.md` for details.
+- **`MENULIST_AI_OPERATIONS` compact ledger retention**: 1 compact accounting/audit row per extraction is retained for platform cost review and traceability. Heavy response details are compacted by default and detailed-mode fields are pruned by `ai_operation_detail_cleanup` when the scheduler is deployed. See `firebase-cost-scalability-audit.md` for details.
 - **Project document `files[]` array growth**: Appends never removed. Risk of 1MB limit at heavy re-upload frequency.
 
 ### Full Cost & Scalability Audit

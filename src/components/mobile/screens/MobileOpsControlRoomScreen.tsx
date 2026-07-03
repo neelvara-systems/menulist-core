@@ -2,6 +2,14 @@
 
 import { getAdoptionPulse, getIntegritySignals, getRecentAlerts, getSystemState } from '@database/ops';
 import { usePlatformStoreSummaryOptions } from '@hook/usePlatformStoreSummaryOptions';
+import {
+    OPS_CONTROL_ROOM_REQUEST_POLICY,
+    isOpsControlRoomForceRepublishResponse,
+    logInvalidOpsControlRoomForceRepublishResponse,
+    readOpsControlRoomMuteAlertsResponse,
+    readOpsControlRoomSafeModeResponse,
+} from '@lib/ops/opsControlRoomClientResponse';
+import { getBoundedOpsStringContext, logOpsFailure } from '@lib/ops/opsDiagnostics';
 import type { AdoptionPulse, IntegritySignals, OpsAlert, SystemState } from '@lib/ops/types';
 import { formatDateTime, type IntlFormatter } from '@util/dateTime';
 import { useSession } from 'next-auth/react';
@@ -89,14 +97,23 @@ export default function MobileOpsControlRoomScreen({ onBack }: MobileOpsControlR
                 setSafeModeLoading(true);
                 try {
                     const response = await fetch('/api/ops/safe-mode', {
+                        ...OPS_CONTROL_ROOM_REQUEST_POLICY,
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ action, reason: 'Manual toggle from mobile ops dashboard' }),
                     });
-                    if (!response.ok) throw new Error('Request failed');
-                    Toast.show({ content: action === 'activate' ? 'SAFE_MODE enabled' : 'SAFE_MODE disabled', duration: 1600 });
+                    const data = await readOpsControlRoomSafeModeResponse(response, {
+                        ...getBoundedOpsStringContext('action', action),
+                        ...getBoundedOpsStringContext('endpoint', '/api/ops/safe-mode'),
+                        surface: 'mobile_ops_control_room',
+                    });
+                    if (!data) throw new Error('mobile_ops_safe_mode_response_unavailable');
+                    Toast.show({ content: data.SAFE_MODE ? 'SAFE_MODE enabled' : 'SAFE_MODE disabled', duration: 1600 });
                     await loadData();
-                } catch {
+                } catch (error) {
+                    logOpsFailure('mobile_ops_safe_mode_toggle_failed', error, {
+                        ...getBoundedOpsStringContext('action', action),
+                    });
                     Toast.show({ content: 'Could not update SAFE_MODE', duration: 1800 });
                 } finally {
                     setSafeModeLoading(false);
@@ -110,14 +127,23 @@ export default function MobileOpsControlRoomScreen({ onBack }: MobileOpsControlR
         setMuteLoading(true);
         try {
             const response = await fetch('/api/ops/mute-alerts', {
+                ...OPS_CONTROL_ROOM_REQUEST_POLICY,
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ durationMinutes: 20 }),
             });
-            if (!response.ok) throw new Error('Request failed');
-            Toast.show({ content: 'Alerts muted for 20 minutes', duration: 1600 });
+            const data = await readOpsControlRoomMuteAlertsResponse(response, {
+                ...getBoundedOpsStringContext('endpoint', '/api/ops/mute-alerts'),
+                durationMinutes: 20,
+                surface: 'mobile_ops_control_room',
+            });
+            if (!data) throw new Error('mobile_ops_mute_alerts_response_unavailable');
+            Toast.show({ content: `Alerts muted until ${formatDateTime(data.mutedUntil, 'time', formatter)}`, duration: 1600 });
             await loadData();
-        } catch {
+        } catch (error) {
+            logOpsFailure('mobile_ops_mute_alerts_failed', error, {
+                durationMinutes: 20,
+            });
             Toast.show({ content: 'Could not mute alerts', duration: 1800 });
         } finally {
             setMuteLoading(false);
@@ -129,6 +155,13 @@ export default function MobileOpsControlRoomScreen({ onBack }: MobileOpsControlR
             Toast.show({ content: 'Select a store first', duration: 1600 });
             return;
         }
+        const buildRepublishLogContext = (metadata: Record<string, boolean | number | string | null | undefined> = {}) => ({
+            surface: 'mobile_ops_control_room',
+            flow: 'force_republish',
+            ...getBoundedOpsStringContext('selectedStoreId', selectedStore.sId),
+            ...getBoundedOpsStringContext('selectedTenantId', selectedStore.tId),
+            ...metadata,
+        });
 
         void Dialog.confirm({
             confirmText: 'Republish',
@@ -139,14 +172,19 @@ export default function MobileOpsControlRoomScreen({ onBack }: MobileOpsControlR
                     const { getFunctions, httpsCallable } = await import('firebase/functions');
                     const forceRepublishFn = httpsCallable(getFunctions(), 'forceRepublish');
                     const result: any = await forceRepublishFn({ storeId: selectedStore.sId, tenantId: selectedStore.tId });
-                    const verification = result.data?.verification || 'done';
+                    if (!isOpsControlRoomForceRepublishResponse(result.data)) {
+                        logInvalidOpsControlRoomForceRepublishResponse(result.data, buildRepublishLogContext());
+                        throw new Error('mobile_ops_force_republish_response_invalid');
+                    }
+                    const verification = result.data.verification;
                     Toast.show({
                         content: `Republish triggered, verification: ${verification}`,
                         duration: 1800
                     });
                     await loadData();
-                } catch (error: any) {
-                    Toast.show({ content: error?.message || 'Republish failed', duration: 2200 });
+                } catch (error) {
+                    logOpsFailure('mobile_ops_force_republish_failed', error, buildRepublishLogContext());
+                    Toast.show({ content: 'Republish failed', duration: 2200 });
                 } finally {
                     setRepublishLoading(false);
                 }

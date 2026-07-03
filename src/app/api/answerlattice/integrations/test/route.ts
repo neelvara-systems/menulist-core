@@ -11,10 +11,11 @@ import { FEATURE_FLAGS } from '@config/features';
 import { ANSWERLATTICE_PERMISSION_KEYS } from '@constant/answerlattice/permissions';
 import { DB_COLLECTIONS } from '@constant/database';
 import { requireAnswerlatticePermission } from '@lib/answerlattice/accessControl';
+import { buildAnswerlatticeRateLimitKey } from '@lib/answerlattice/rateLimitKeys';
 import { resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
 import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
 import { checkRateLimit } from '@lib/rateLimit';
-import { secureError, secureLog } from '@lib/security/secureLogger';
+import { getBoundedRuntimeStringContext, logRuntimeDiagnostic, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { Timestamp } from 'firebase-admin/firestore';
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '../../../../../middleware/auth';
@@ -67,23 +68,24 @@ export const POST = withAuth(async (_request: NextRequest, session) => {
     if (!FEATURE_FLAGS.ENABLE_ANSWERLATTICE_WORKFLOW_INTEGRATIONS) {
         return NextResponse.json({ error: 'Answerlattice integrations are not enabled.' }, { status: 403 });
     }
-    const permission = await requireAnswerlatticePermission(_request, session, ANSWERLATTICE_PERMISSION_KEYS.MANAGE_INTEGRATIONS);
-    if (permission.response) return permission.response;
-
     const scope = resolveSessionScope(session);
     if (!scope) return NextResponse.json({ error: 'Not onboarded' }, { status: 400 });
-    const db = getAnswerlatticeDb();
-    if (!db) return NextResponse.json({ error: 'Answerlattice Firebase is not configured' }, { status: 503 });
 
     try {
         const rateLimitResult = await checkRateLimit({
-            key: `answerlattice-integrations-test:${scope.storeId}`,
+            key: buildAnswerlatticeRateLimitKey('answerlattice-integrations-test', scope.storeId),
             limit: 3,
             window: 300,
         });
         if (!rateLimitResult.allowed) {
             return NextResponse.json({ error: 'Too many test notifications. Please wait before trying again.' }, { status: 429 });
         }
+
+        const permission = await requireAnswerlatticePermission(_request, session, ANSWERLATTICE_PERMISSION_KEYS.MANAGE_INTEGRATIONS);
+        if (permission.response) return permission.response;
+
+        const db = getAnswerlatticeDb();
+        if (!db) return NextResponse.json({ error: 'Answerlattice Firebase is not configured' }, { status: 503 });
 
         const configSnap = await db
             .collection(DB_COLLECTIONS.PLATFORM_SUMMARY)
@@ -127,10 +129,10 @@ export const POST = withAuth(async (_request: NextRequest, session) => {
             expiresAt,
         });
 
-        secureLog('[Answerlattice Integrations] Test event queued', {
-            tenantId: scope.tenantId,
-            storeId: scope.storeId,
-            eventId: eventRef.id,
+        logRuntimeDiagnostic('answerlattice_integration_test_event_queued', {
+            ...getBoundedRuntimeStringContext('tenantId', scope.tenantId),
+            ...getBoundedRuntimeStringContext('storeId', scope.storeId),
+            ...getBoundedRuntimeStringContext('eventId', eventRef.id),
             eventType,
             slackEnabled: hasSlack,
             emailEnabled: hasEmail,
@@ -141,9 +143,9 @@ export const POST = withAuth(async (_request: NextRequest, session) => {
             message: 'Test notification queued. Delivery status will update shortly.',
         });
     } catch (error) {
-        secureError('[Answerlattice Integrations] Failed to queue test notification', error as Error, {
-            tenantId: scope.tenantId,
-            storeId: scope.storeId,
+        logRuntimeFailure('answerlattice_integration_test_queue_failed', error, {
+            ...getBoundedRuntimeStringContext('tenantId', scope.tenantId),
+            ...getBoundedRuntimeStringContext('storeId', scope.storeId),
         });
         return NextResponse.json({ error: 'Failed to queue test notification' }, { status: 500 });
     }

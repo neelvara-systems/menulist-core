@@ -11,15 +11,16 @@ import { FALLBACK_BUSINESS_TYPE, resolveStoreBusinessCategory } from "@data/shar
 import { getSuggestionValue } from "@data/shared/extractedBusinessProfile";
 import { admin } from "@lib/firebase/firebaseAdmin";
 import { checkRateLimit } from "@lib/rateLimit";
-import { secureError } from "@lib/security/secureLogger";
+import { getBoundedRuntimeStringContext, logRuntimeFailure } from "@lib/runtime/runtimeDiagnostics";
 import crypto from "crypto";
 import { NextRequest, NextResponse } from "next/server";
+import { hashPublicRateLimitValue } from "src/middleware/publicApi";
 import { z } from "zod";
 
 const db = admin.firestore();
 
 const PreviewQuerySchema = z.object({
-  token: z.string().min(20),
+  token: z.string().min(20).max(256),
 });
 
 function getClientIp(request: NextRequest): string {
@@ -28,20 +29,39 @@ function getClientIp(request: NextRequest): string {
     "unknown";
 }
 
+const getPreviewGetLogContext = (
+  sessionId: unknown,
+  session?: Record<string, any> | null,
+) => ({
+  route: "/api/msg-preview/[sessionId]",
+  ...getBoundedRuntimeStringContext("sessionId", sessionId),
+  ...getBoundedRuntimeStringContext("provider", session?.provider),
+  sessionState: typeof session?.state === "string" ? session.state.slice(0, 64) : undefined,
+  hasPreviewToken: Boolean(session?.previewToken),
+  hasExtractedMenuData: Boolean(session?.extractedMenuData),
+});
+
 export async function GET(
   request: NextRequest,
   { params }: { params: { sessionId: string } },
 ) {
-  try {
-    const { sessionId } = params;
+  const { sessionId } = params;
+  let failureContext = getPreviewGetLogContext(sessionId);
 
+  try {
     if (!sessionId || sessionId.length < 10) {
       return NextResponse.json({ error: "Invalid session" }, { status: 400 });
     }
 
     const ip = getClientIp(request);
+    const ipHash = hashPublicRateLimitValue(ip);
+    const sessionHash = hashPublicRateLimitValue(sessionId);
+    failureContext = {
+      ...failureContext,
+      ...getBoundedRuntimeStringContext("requestIp", ip),
+    };
     const rateLimit = await checkRateLimit({
-      key: `msg-preview-read:${sessionId}:${ip}`,
+      key: `msg-preview-read:${sessionHash}:${ipHash}`,
       limit: 60,
       window: 600,
     });
@@ -72,6 +92,10 @@ export async function GET(
     }
 
     const session = sessionDoc.data()!;
+    failureContext = {
+      ...failureContext,
+      ...getPreviewGetLogContext(sessionId, session),
+    };
 
     // Validate token matches
     if (session.previewToken !== validation.data.token) {
@@ -105,9 +129,9 @@ export async function GET(
       sessionRef
         .set({ previewViewedAt: viewedAt, updatedAt: viewedAt }, { merge: true })
         .then(() => db.collection(DB_COLLECTIONS.MESSAGING_ONBOARDING_EVENTS)
-          .add({
-            eventId: crypto.randomUUID(),
-            sessionId,
+	          .add({
+	            eventId: crypto.randomUUID(),
+	            sessionId,
             provider: session.provider,
             eventType: "PREVIEW_VIEWED",
             sessionState: session.state,
@@ -116,11 +140,17 @@ export async function GET(
             timestamp: viewedAt,
             expiresAt: admin.firestore.Timestamp.fromMillis(Date.now() + 30 * 24 * 60 * 60 * 1000),
             sessionAgeMs: session.createdAt
-              ? Date.now() - session.createdAt.toMillis()
-              : 0,
-          }))
-        .catch(() => { });
-    }
+	              ? Date.now() - session.createdAt.toMillis()
+	              : 0,
+	          }))
+	        .catch((error) => {
+	          logRuntimeFailure("messaging_preview_event_write_failed", error, {
+	            ...getPreviewGetLogContext(sessionId, session),
+	            eventType: "PREVIEW_VIEWED",
+	            metadataKeyCount: 0,
+	          });
+	        });
+	    }
 
     const extractedProfile = session.extractedBusinessProfile || session.extractedMenuData?.extractedBusinessProfile || null;
     const resolvedBusinessType = session.detectedBusinessType ||
@@ -150,7 +180,7 @@ export async function GET(
       maxCorrections: 3,
     });
   } catch (error) {
-    secureError("[msg-preview] GET error", error as Error);
+    logRuntimeFailure("messaging_preview_get_route_failed", error, failureContext);
     return NextResponse.json(
       { error: "Internal error" },
       { status: 500 },

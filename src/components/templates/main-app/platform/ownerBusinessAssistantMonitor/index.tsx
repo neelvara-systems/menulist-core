@@ -1,68 +1,19 @@
 'use client';
 
 import { formatInrPaise } from '@util/formatters';
+import {
+  OWNER_BUSINESS_ASSISTANT_REQUEST_POLICY,
+  readOwnerBusinessAssistantMonitorResponse,
+  type OwnerBusinessAssistantMonitorData,
+  type OwnerBusinessAssistantMonitorEvent,
+} from '@lib/ownerBusinessAssistant/clientResponses';
+import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { Alert, Button, Card, Empty, Space, Spin, Statistic, Table, Tag, Typography, message } from 'antd';
 import { useSession } from 'next-auth/react';
 import { redirect } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 const { Paragraph, Text, Title } = Typography;
-
-type MonitorEvent = {
-  id: string;
-  answerId: string;
-  tId: string;
-  sId: string;
-  intent: string;
-  question: string;
-  answerText: string;
-  status: string;
-  confidence: string;
-  cacheSource?: string | null;
-  packetProfile?: string | null;
-  packetAgeMinutes?: number | null;
-  firestoreReadCount?: number | null;
-  firestoreWriteCount?: number | null;
-  threadWritten?: boolean;
-  unsupportedReason?: string | null;
-  providerUsed: boolean;
-  unitsConsumed: number;
-  realCostPaise: number;
-  ownerChargePaise: number;
-  createdAt?: string | null;
-};
-
-type MonitorData = {
-  summary: {
-    total: number;
-    answered: number;
-    needsMoreData: number;
-    unsupported: number;
-    providerCalls: number;
-    serverCacheHits: number;
-    freshFirestorePackets: number;
-    avgFirestoreReads: number;
-    maxFirestoreReads: number;
-    threadWrites: number;
-    unitsConsumed: number;
-    realCostPaise: number;
-    ownerChargePaise: number;
-    byIntent: Record<string, number>;
-    byStatus: Record<string, number>;
-    sourceCoverage: Array<{
-      domain: string;
-      status: string;
-      reason?: string | null;
-      eventCount: number;
-      supportedCount: number;
-      summaryOnlyCount: number;
-      unsupportedCount: number;
-    }>;
-  };
-  events: MonitorEvent[];
-  recentFeedback: Array<Record<string, any>>;
-  generatedAt: string;
-};
 
 const statusColor = (status: string) => {
   if (status === 'answered') return 'green';
@@ -82,7 +33,7 @@ export default function OwnerBusinessAssistantMonitor() {
   const platformRole = (session as any)?.platformRole || (session?.user as any)?.platformRole;
   const isPlatform = platformRole === 'PLATFORM';
   const [loading, setLoading] = useState(true);
-  const [data, setData] = useState<MonitorData | null>(null);
+  const [data, setData] = useState<OwnerBusinessAssistantMonitorData | null>(null);
 
   if (status !== 'loading' && session && !isPlatform) {
     redirect('/dashboard');
@@ -96,12 +47,19 @@ export default function OwnerBusinessAssistantMonitor() {
     }
     setLoading(true);
     try {
-      const response = await fetch('/api/platform/owner-business-assistant/monitor?limit=50');
-      const payload = await response.json();
-      if (!response.ok) throw new Error(payload?.error || 'Failed to load Business Health monitor');
+      const endpoint = '/api/platform/owner-business-assistant/monitor?limit=50';
+      const response = await fetch(endpoint, OWNER_BUSINESS_ASSISTANT_REQUEST_POLICY);
+      const payload = await readOwnerBusinessAssistantMonitorResponse(response, {
+        ...getBoundedRuntimeStringContext('endpoint', endpoint),
+        limit: 50,
+      });
+      if (!payload) throw new Error('owner_business_assistant_monitor_load_unavailable');
       setData(payload.data);
     } catch (error) {
-      message.error(error instanceof Error ? error.message : 'Failed to load Business Health monitor');
+      logRuntimeFailure('owner_business_assistant_monitor_load_failed', error, {
+        ...getBoundedRuntimeStringContext('limit', 50),
+      });
+      message.error('Failed to load Business Health monitor');
     } finally {
       setLoading(false);
     }
@@ -145,12 +103,12 @@ export default function OwnerBusinessAssistantMonitor() {
       title: 'Store',
       key: 'store',
       width: 120,
-      render: (_: unknown, record: MonitorEvent) => `${record.tId}/${record.sId}`,
+      render: (_: unknown, record: OwnerBusinessAssistantMonitorEvent) => `${record.tId}/${record.sId}`,
     },
     {
       title: 'Question / Answer',
       key: 'question',
-      render: (_: unknown, record: MonitorEvent) => (
+      render: (_: unknown, record: OwnerBusinessAssistantMonitorEvent) => (
         <Space direction="vertical" size={4}>
           <Text strong>{record.question}</Text>
           <Paragraph ellipsis={{ rows: 2 }} style={{ margin: 0 }}>{record.answerText}</Paragraph>
@@ -161,7 +119,7 @@ export default function OwnerBusinessAssistantMonitor() {
       title: 'Result',
       key: 'status',
       width: 160,
-      render: (_: unknown, record: MonitorEvent) => (
+      render: (_: unknown, record: OwnerBusinessAssistantMonitorEvent) => (
         <Space direction="vertical" size={4}>
           <Tag color={statusColor(record.status)}>{record.status}</Tag>
           <Text type="secondary">{record.intent}</Text>
@@ -172,7 +130,7 @@ export default function OwnerBusinessAssistantMonitor() {
       title: 'Cost',
       key: 'cost',
       width: 170,
-      render: (_: unknown, record: MonitorEvent) => (
+      render: (_: unknown, record: OwnerBusinessAssistantMonitorEvent) => (
         <Space direction="vertical" size={4}>
           <Text>{record.unitsConsumed} units</Text>
           <Text type="secondary">{formatInrPaise(record.realCostPaise)} internal</Text>
@@ -183,7 +141,7 @@ export default function OwnerBusinessAssistantMonitor() {
       title: 'Route Cost',
       key: 'routeCost',
       width: 150,
-      render: (_: unknown, record: MonitorEvent) => (
+      render: (_: unknown, record: OwnerBusinessAssistantMonitorEvent) => (
         <Space direction="vertical" size={4}>
           <Text>{record.firestoreReadCount ?? '-'} reads</Text>
           <Text type="secondary">{record.cacheSource || 'unknown'}{record.packetAgeMinutes != null ? ` · ${record.packetAgeMinutes}m` : ''}</Text>
@@ -247,7 +205,7 @@ export default function OwnerBusinessAssistantMonitor() {
                 {
                   title: 'Coverage',
                   key: 'status',
-                  render: (_: unknown, record: MonitorData['summary']['sourceCoverage'][number]) => (
+                  render: (_: unknown, record: OwnerBusinessAssistantMonitorData['summary']['sourceCoverage'][number]) => (
                     <Space wrap size={4}>
                       <Tag color={record.status === 'supported' ? 'green' : record.status === 'summary_only' ? 'blue' : 'orange'}>{record.status}</Tag>
                       {record.reason ? <Text type="secondary">{record.reason}</Text> : null}

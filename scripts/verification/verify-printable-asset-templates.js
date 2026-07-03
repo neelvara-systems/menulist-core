@@ -377,8 +377,24 @@ const templateRegistryDal = read('src/lib/creative-editor/templateRegistryDal.ts
   'recordMatchesRequest',
   'filterRecordsForRequest',
   'getTemplateRegistryErrorMessage',
+  'getTemplateRegistryErrorIndicators',
+  'getTemplateRegistryLocalErrorMessage',
+  'isTemplateRegistryLocalErrorCode',
+  'payloadBlob.size > MAX_DOCUMENT_BYTES',
   'storage/quota-exceeded',
 ].forEach((token) => requireToken(templateRegistryDal, token, 'creative editor template registry DAL'));
+if (templateRegistryDal.includes('return JSON.parse(await payloadBlob.text())')) {
+  failures.push('creative editor template registry DAL must size-check stored documents before reading blob text');
+}
+[
+  'String(error)',
+  'Quota for bucket',
+  'Missing or insufficient permissions',
+].forEach((token) => {
+  if (templateRegistryDal.includes(token)) {
+    failures.push(`creative editor template registry DAL must not classify Storage provider errors from raw message text: ${token}`);
+  }
+});
 
 const platformListFunction = templateRegistryDal.match(/async function listCreativeEditorPlatformTemplates[\s\S]*?async function listCreativeEditorUserTemplates/);
 if (!platformListFunction || !platformListFunction[0].includes('filterRecordsForRequest(')) {

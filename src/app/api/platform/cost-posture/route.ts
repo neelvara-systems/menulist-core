@@ -4,8 +4,11 @@ import { FEATURE_FLAGS } from '@config/features';
 import { DB_COLLECTIONS } from '@constant/database';
 import { firestoreAdmin } from '@lib/firebase/firebaseAdmin';
 import { logger } from '@lib/monitoring/logger';
+import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { checkRateLimit } from '@lib/rateLimit';
 import { getRateLimitForFeature } from '@lib/rateLimit/configs';
+import { getSafeZodValidationDetails } from '@lib/security/inputValidation';
+import { hashPublicRateLimitValue } from 'src/middleware/publicApi';
 import type {
   PlatformCostAlert,
   PlatformCostGuardrail,
@@ -15,8 +18,8 @@ import type {
   PlatformCostSourceCoverage,
   PlatformSafeModeStatus,
 } from '@lib/ops/costPostureTypes';
-import { secureError } from '@lib/security/secureLogger';
 import { NextRequest, NextResponse } from 'next/server';
+import { createHash } from 'crypto';
 import { z } from 'zod';
 import { withPlatformAuth } from '../../../../middleware/auth';
 
@@ -44,6 +47,51 @@ function cleanText(value: unknown, max = 260): string {
     .replace(/\s+/g, ' ')
     .trim()
     .slice(0, max);
+}
+
+function getCostAlertStringContext(label: string, value: unknown): Record<string, boolean | number> {
+  const normalized = cleanText(value, 1000);
+  return {
+    [`${label}Present`]: normalized.length > 0,
+    [`${label}Length`]: normalized.length,
+  };
+}
+
+function getCostAlertDisplayType(data: Record<string, any>): string {
+  return cleanText(data.type || data.category || 'cost', 80) || 'cost';
+}
+
+function buildCostAlertTitle(data: Record<string, any>): string {
+  const displayType = getCostAlertDisplayType(data).replace(/[_-]+/g, ' ');
+  return `Cost signal: ${displayType}`;
+}
+
+function buildCostAlertMessage(data: Record<string, any>): string {
+  const context = {
+    ...getCostAlertStringContext('title', data.title),
+    ...getCostAlertStringContext('message', data.message),
+    ...getCostAlertStringContext('reason', data.reason),
+  };
+  const parts = [
+    context.titlePresent ? `title=${context.titleLength}` : null,
+    context.messagePresent ? `message=${context.messageLength}` : null,
+    context.reasonPresent ? `reason=${context.reasonLength}` : null,
+  ].filter(Boolean);
+
+  return parts.length > 0
+    ? `Stored alert text present (${parts.join(', ')} chars).`
+    : 'No stored alert text.';
+}
+
+function buildSafeModeReasonSummary(reason: unknown): string | null {
+  const normalized = cleanText(reason, 1000);
+  return normalized.length > 0
+    ? `Reason present (${normalized.length} chars).`
+    : null;
+}
+
+function buildCostAlertResponseId(docId: string): string {
+  return `cost-alert-${createHash('sha256').update(docId).digest('hex').slice(0, 12)}`;
 }
 
 function toDate(value: any): Date | null {
@@ -113,9 +161,10 @@ async function readDocuments(
       },
     };
   } catch (error) {
-    secureError(`[PlatformCostPosture] Failed to read ${collectionName}`, error as Error, {
-      collectionName,
-      orderField,
+    logRuntimeFailure('platform_cost_posture_source_read_failed', error, {
+      sourceId: id,
+      ...getBoundedRuntimeStringContext('collectionName', collectionName),
+      ...getBoundedRuntimeStringContext('orderField', orderField),
       readLimit,
     });
     return {
@@ -145,7 +194,7 @@ async function readSystemConfig(): Promise<{
     return {
       safeMode: {
         active: data.SAFE_MODE === true,
-        reason: data.reason ? cleanText(data.reason, 240) : null,
+        reason: buildSafeModeReasonSummary(data.reason),
         alertsMuted: mutedUntilMs > Date.now(),
         alertsMutedUntil,
       },
@@ -161,7 +210,10 @@ async function readSystemConfig(): Promise<{
       },
     };
   } catch (error) {
-    secureError('[PlatformCostPosture] Failed to read ops_config/system', error as Error);
+    logRuntimeFailure('platform_cost_posture_system_config_read_failed', error, {
+      sourceId: 'system-config',
+      readLimit: 1,
+    });
     return {
       safeMode: {
         active: false,
@@ -281,11 +333,11 @@ function serializeCostAlert(doc: FirebaseFirestore.QueryDocumentSnapshot): Platf
   }
 
   return {
-    id: doc.id,
-    title: cleanText(data.title || data.type || 'Cost signal', 140),
+    id: buildCostAlertResponseId(doc.id),
+    title: buildCostAlertTitle(data),
     severity: cleanText(data.severity || data.level || 'info', 40) || 'info',
-    type: cleanText(data.type || data.category || 'cost', 80) || 'cost',
-    message: cleanText(data.message || data.reason || '', 260),
+    type: getCostAlertDisplayType(data),
+    message: buildCostAlertMessage(data),
     timestamp: toIso(data.timestamp || data.createdAt || data.createdOn),
   };
 }
@@ -323,7 +375,7 @@ function buildGuardrails(
       label: 'SAFE_MODE',
       status: safeMode.active ? 'action_required' : 'ok',
       detail: safeMode.active
-        ? `SAFE_MODE is active${safeMode.reason ? `: ${safeMode.reason}` : '.'}`
+        ? `SAFE_MODE is active.${safeMode.reason ? ` ${safeMode.reason}` : ''}`
         : 'SAFE_MODE is off.',
       actionHref: '/ops',
     },
@@ -345,6 +397,12 @@ function buildGuardrails(
 }
 
 export const GET = withPlatformAuth(async (request: NextRequest, session: any) => {
+  let failureContext: Record<string, boolean | number | string | null | undefined> = {
+    route: '/api/platform/cost-posture',
+    ...getBoundedRuntimeStringContext('requestPath', request.nextUrl.pathname),
+    ...getBoundedRuntimeStringContext('userId', session?.uId || session?.user?.id),
+  };
+
   try {
     if (!FEATURE_FLAGS.ENABLE_PLATFORM_COST_POSTURE) {
       return NextResponse.json({ error: 'Platform cost posture is disabled' }, { status: 404 });
@@ -352,13 +410,18 @@ export const GET = withPlatformAuth(async (request: NextRequest, session: any) =
 
     const parsed = QuerySchema.safeParse(Object.fromEntries(request.nextUrl.searchParams.entries()));
     if (!parsed.success) {
-      return NextResponse.json({ error: 'Invalid query', details: parsed.error.flatten() }, { status: 400 });
+      return NextResponse.json({ error: 'Invalid query', details: getSafeZodValidationDetails(parsed.error) }, { status: 400 });
     }
+    failureContext = {
+      ...failureContext,
+      days: parsed.data.days,
+    };
 
     const rateLimitConfig = getRateLimitForFeature('DATA_READ');
     const userId = session?.uId || session?.user?.id || 'platform';
+    const userRateLimitHash = hashPublicRateLimitValue(userId);
     const rateLimit = await checkRateLimit({
-      key: `platform-cost-posture:${userId}`,
+      key: `platform-cost-posture:${userRateLimitHash}`,
       ...rateLimitConfig,
     });
 
@@ -367,7 +430,7 @@ export const GET = withPlatformAuth(async (request: NextRequest, session: any) =
       logger.security('Rate Limit Exceeded - Platform Cost Posture', {
         endpoint: '/api/platform/cost-posture',
         limit: rateLimitConfig.limit,
-        userId,
+        ...getBoundedRuntimeStringContext('userId', userId),
         waitSeconds,
         window: rateLimitConfig.window,
       }, 'medium');
@@ -478,7 +541,7 @@ export const GET = withPlatformAuth(async (request: NextRequest, session: any) =
 
     return NextResponse.json({ data });
   } catch (error) {
-    secureError('[PlatformCostPosture] Route failed', error as Error);
+    logRuntimeFailure('platform_cost_posture_route_failed', error, failureContext);
     return NextResponse.json({ error: 'Failed to load platform cost posture' }, { status: 500 });
   }
 });

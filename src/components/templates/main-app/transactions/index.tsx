@@ -5,7 +5,7 @@ import { getPaginatedAiOperations } from '@database/aiOperations';
 import { getExistingProjectsListWithoutLoader } from '@database/projects';
 import { formatAiOperationActionLabel, formatAiOperationCredits, getAiOperationOwnerSummary, getAiOperationTone } from '@lib/ai/operationPresentation';
 import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
-import { logger } from '@lib/monitoring/logger';
+import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { getFormatedDateAndTime, toDate, type DateLike } from '@util/dateTime';
 import { formatProcessingTime } from '@util/formatters';
 import { Button, Card, DatePicker, Empty, Flex, Row, Select, Spin, Table, Tag, Tooltip, Typography, message } from 'antd';
@@ -18,6 +18,25 @@ import TransactionDetailsModal, { TransactionDetails } from './TransactionDetail
 
 const { Text } = Typography;
 const { RangePicker } = DatePicker;
+
+const AI_TRANSACTIONS_PAGE_LOAD_FAILED = 'ai_transactions_page_load_failed';
+const AI_TRANSACTIONS_PROJECTS_LOAD_FAILED = 'ai_transactions_projects_load_failed';
+
+const getTransactionsPageLogContext = (input: {
+    actionFilter?: unknown;
+    cursorId?: unknown;
+    hasDateRange?: boolean;
+    pageNumber?: number;
+    pageSize?: number;
+    projectLookupAttempted?: boolean;
+}) => ({
+    hasDateRange: Boolean(input.hasDateRange),
+    pageNumber: input.pageNumber,
+    pageSize: input.pageSize,
+    projectLookupAttempted: input.projectLookupAttempted,
+    ...getBoundedRuntimeStringContext('actionFilter', input.actionFilter),
+    ...getBoundedRuntimeStringContext('cursorId', input.cursorId),
+});
 
 interface TransactionData {
     id: string;
@@ -119,7 +138,13 @@ function TransactionPage() {
             }));
         } catch (error) {
             if (requestId !== requestIdRef.current) return;
-            logger.error('Error fetching transactions', error);
+            logRuntimeFailure(AI_TRANSACTIONS_PAGE_LOAD_FAILED, error, getTransactionsPageLogContext({
+                actionFilter,
+                cursorId: page <= 1 ? null : pageCursorsRef.current[page]?.id,
+                hasDateRange: Boolean(dateRange?.[0] || dateRange?.[1]),
+                pageNumber: page,
+                pageSize: pagination.pageSize,
+            }));
             message.error(t('failedToLoad'));
         } finally {
             if (requestId === requestIdRef.current) {
@@ -133,11 +158,17 @@ function TransactionPage() {
             const fetchedProjects = await getExistingProjectsListWithoutLoader();
             setProjectsList(fetchedProjects?.projects || fetchedProjects || [])
         } catch (error) {
-            logger.error('Error fetching projects for transactions', error);
+            logRuntimeFailure(AI_TRANSACTIONS_PROJECTS_LOAD_FAILED, error, getTransactionsPageLogContext({
+                actionFilter,
+                hasDateRange: Boolean(dateRange?.[0] || dateRange?.[1]),
+                pageNumber: pagination.current,
+                pageSize: pagination.pageSize,
+                projectLookupAttempted: true,
+            }));
         } finally {
             setProjectsLoaded(true);
         }
-    }, []);
+    }, [actionFilter, dateRange, pagination.current, pagination.pageSize]);
 
     useEffect(() => {
         void fetchTransactions(1, { resetCursors: true });

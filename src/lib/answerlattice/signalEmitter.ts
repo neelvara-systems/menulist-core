@@ -19,6 +19,12 @@
 import { FEATURE_FLAGS } from '@config/features';
 import { DB_COLLECTIONS } from '@constant/database';
 import { PRODUCT_IDS } from '@constant/product';
+import {
+    getAnswerlatticeScopeLogContext,
+    logAnswerlatticeDiagnostic,
+    logAnswerlatticeFailure,
+} from '@lib/answerlattice/diagnostics';
+import { createRuntimeId } from '@lib/runtime/randomId';
 import { AnswerlatticeSignalType } from '@type/answerlattice';
 import { TicketMessage } from '@type/supportTicket';
 import { Timestamp } from 'firebase/firestore';
@@ -36,12 +42,7 @@ interface EmitSignalParams {
 // Cleared on page reload (in-memory only — no persistence needed).
 const emittedSignals = new Set<string>();
 
-const createTraceId = () => {
-    if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
-        return `al_${crypto.randomUUID()}`;
-    }
-    return `al_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
-};
+const createTraceId = () => createRuntimeId('al');
 
 const cleanSignalText = (value: unknown, maxLength = 500): string => (
     String(value || '')
@@ -194,7 +195,7 @@ function hashSignalDocumentId(value: string): string {
 const isAlreadyExistsError = (error: any): boolean => (
     error?.code === 6
     || error?.code === 'already-exists'
-    || String(error?.message || '').toUpperCase().includes('ALREADY_EXISTS')
+    || String(error?.code || '').toUpperCase().includes('ALREADY_EXISTS')
 );
 
 /**
@@ -283,7 +284,14 @@ export const emitAnswerlatticeSignal = async (params: EmitSignalParams): Promise
     const tId = Number(params.tId);
     const sId = Number(params.sId);
     if (!Number.isFinite(tId) || !Number.isFinite(sId) || tId <= 0 || sId <= 0) {
-        console.warn('[Answerlattice Signal] Skipped signal with invalid tenant context:', params.type);
+        logAnswerlatticeDiagnostic('answerlattice_signal_invalid_scope_skipped', {
+            ...getAnswerlatticeScopeLogContext({
+                entityId: params.entityId,
+                sId: params.sId,
+                signalType: params.type,
+                tId: params.tId,
+            }),
+        });
         return;
     }
 
@@ -314,6 +322,17 @@ export const emitAnswerlatticeSignal = async (params: EmitSignalParams): Promise
         });
     } catch (error) {
         // Fire-and-forget: log but never throw
-        console.warn('[Answerlattice Signal] Failed to emit signal:', params.type, error);
+        logAnswerlatticeFailure('answerlattice_signal_emit_failed', error, {
+            ...getAnswerlatticeScopeLogContext({
+                entityId: params.entityId,
+                sId,
+                signalType: params.type,
+                tId,
+            }),
+            hasMetadata: Boolean(params.metadata),
+            metadataKeyCount: params.metadata && typeof params.metadata === 'object'
+                ? Object.keys(params.metadata).length
+                : 0,
+        });
     }
 };

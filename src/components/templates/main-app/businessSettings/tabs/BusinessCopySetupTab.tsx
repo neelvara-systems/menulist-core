@@ -4,6 +4,7 @@ import { FEATURE_FLAGS } from '@config/features';
 import GlobalLanguagesList from '@data/languages';
 import { getStoreLanguageLabel, getStoreSourceLanguage } from '@lib/localization/storeContent';
 import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
+import { AICapacityError } from '@services/ai/capacityError';
 import generateBusinessCopyViaAPI, { BusinessCopyGenerationResult } from '@services/ai/businessCopy/generateBusinessCopyViaAPI';
 import { computeBusinessCopyCoverage } from '@services/ai/businessCopy/translationCoverage';
 import { firstText, getActiveBusinessAttributeLabels } from '@services/ai/businessCopy/utils';
@@ -13,6 +14,7 @@ import { Alert, Button, Card, Divider, Flex, Form, List, Tag, Typography, messag
 import { useFormatter, useTranslations } from 'next-intl';
 import { useMemo, useState } from 'react';
 import { LuAlertCircle, LuCheckCircle, LuLanguages, LuSparkles } from 'react-icons/lu';
+import { getBoundedBusinessSettingsStringContext, logBusinessSettingsFailure } from '../utils/businessSettingsDiagnostics';
 
 const { Text, Title } = Typography;
 
@@ -22,6 +24,8 @@ interface BusinessCopySetupTabProps {
     scrollRef?: React.RefObject<HTMLDivElement>;
     storeDetails?: any;
 }
+
+const BUSINESS_COPY_CAPACITY_MESSAGE = 'Get more enhancements to continue. Visit Billing to add an enhancement pack.';
 
 export default function BusinessCopySetupTab({ onApplyGeneratedCopy, onGenerateMissingTranslations, scrollRef, storeDetails }: BusinessCopySetupTabProps) {
     const t = useTranslations('BusinessSettings');
@@ -160,8 +164,18 @@ export default function BusinessCopySetupTab({ onApplyGeneratedCopy, onGenerateM
                 tagline: generated.tagline,
             });
             message.success(t('businessCopySuccess'));
-        } catch (error: any) {
-            message.error(error?.message || t('businessCopyFailed'));
+        } catch (error) {
+            logBusinessSettingsFailure('business_settings_business_copy_generation_failed', error, {
+                ...getBoundedBusinessSettingsStringContext('tenantId', storeDetails?.tenantId),
+                ...getBoundedBusinessSettingsStringContext('storeId', storeDetails?.storeId),
+                ...getBoundedBusinessSettingsStringContext('businessName', businessName),
+                coverageMissingFieldCount: coverage.missingFieldCount,
+                hasBusinessCategory: Boolean(businessCategory),
+                hasBusinessType: Boolean(businessType),
+            });
+            message.error(error instanceof AICapacityError
+                ? BUSINESS_COPY_CAPACITY_MESSAGE
+                : t('businessCopyFailed'));
         } finally {
             setIsGenerating(false);
         }
@@ -177,8 +191,17 @@ export default function BusinessCopySetupTab({ onApplyGeneratedCopy, onGenerateM
                 return;
             }
             message.success(t('businessCopyCoverageGenerateSuccess'));
-        } catch (error: any) {
-            message.error(error?.message || t('businessCopyCoverageGenerateFailed'));
+        } catch (error) {
+            logBusinessSettingsFailure('business_settings_business_copy_translation_repair_failed', error, {
+                ...getBoundedBusinessSettingsStringContext('tenantId', storeDetails?.tenantId),
+                ...getBoundedBusinessSettingsStringContext('storeId', storeDetails?.storeId),
+                ...getBoundedBusinessSettingsStringContext('referenceLanguage', coverage.referenceLanguage),
+                coverageMissingFieldCount: coverage.missingFieldCount,
+                repairableGapCount: coverage.repairableGapCount,
+            });
+            message.error(error instanceof AICapacityError
+                ? BUSINESS_COPY_CAPACITY_MESSAGE
+                : t('businessCopyCoverageGenerateFailed'));
         } finally {
             setIsGeneratingTranslations(false);
         }

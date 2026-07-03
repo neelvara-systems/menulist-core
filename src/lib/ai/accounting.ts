@@ -1,5 +1,5 @@
 import { getUnitCost } from "@constant/AI/unitCosts";
-import { logger } from "@lib/monitoring/logger";
+import { getBoundedRuntimeStringContext, logRuntimeFailure } from "@lib/runtime/runtimeDiagnostics";
 import { consumeAICapacity, RemainingBalance } from "./capacityCheck";
 import { AiOperationLogInput, recordAiOperation, recordAiOperationForSession } from "./operationLog";
 
@@ -16,6 +16,31 @@ type FinalizeAiOperationAccountingResult = {
     transactionId: string | null;
     unitsConsumed: number;
 };
+
+const getContextShape = (context?: Record<string, unknown>) => ({
+    contextPresent: Boolean(context),
+    contextKeyCount: context ? Object.keys(context).length : 0,
+});
+
+const getAiAccountingLogContext = (
+    input: AiOperationLogInput,
+    logLabel: string,
+    unitsConsumed: number,
+    capacitySubscription: unknown,
+    session: unknown,
+    context?: Record<string, unknown>,
+) => ({
+    ...getBoundedRuntimeStringContext('action', input.action),
+    ...getBoundedRuntimeStringContext('logLabel', logLabel),
+    ...getBoundedRuntimeStringContext('productId', input.pId),
+    ...getBoundedRuntimeStringContext('storeId', input.sId),
+    ...getBoundedRuntimeStringContext('tenantId', input.tId),
+    ...getBoundedRuntimeStringContext('userId', input.uId),
+    ...getContextShape(context),
+    hasCapacitySubscription: Boolean(capacitySubscription),
+    hasSession: Boolean(session),
+    unitsConsumed,
+});
 
 /**
  * Record the AI operation and consume paid capacity after a successful provider result.
@@ -44,7 +69,11 @@ export async function finalizeAiOperationAccounting({
             ? await recordAiOperationForSession(session, operationInput)
             : await recordAiOperation(operationInput);
     } catch (operationLogError) {
-        logger.error(`${logLabel} operation log failed`, operationLogError, context);
+        logRuntimeFailure(
+            'ai_accounting_operation_log_failed',
+            operationLogError,
+            getAiAccountingLogContext(operationInput, logLabel, unitsConsumed, capacitySubscription, session, context),
+        );
     }
 
     if (capacitySubscription && unitsConsumed > 0) {
@@ -54,7 +83,11 @@ export async function finalizeAiOperationAccounting({
                 throw new Error(`${logLabel} credit consumption returned no balance`);
             }
         } catch (creditConsumptionError) {
-            logger.error(`${logLabel} credit consumption failed`, creditConsumptionError, context);
+            logRuntimeFailure(
+                'ai_accounting_credit_consumption_failed',
+                creditConsumptionError,
+                getAiAccountingLogContext(operationInput, logLabel, unitsConsumed, capacitySubscription, session, context),
+            );
             throw creditConsumptionError;
         }
     }

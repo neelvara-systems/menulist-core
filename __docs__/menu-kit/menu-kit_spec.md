@@ -368,6 +368,10 @@ A lightweight GA4-only event (`MENU_KIT_DOWNLOAD`) is fired when the owner:
 
 This is an owner-side event — **zero Firestore writes**. GA4 only.
 
+### Browser Copy Boundary
+
+Share-message and staff-script copy actions are browser-local only. Copied feedback must wait for Clipboard API success or acknowledged textarea fallback success. Failed copy diagnostics may record message/staff-script length and clipboard/fallback support booleans only; they must not log generated customer messages, staff scripts, raw menu URLs, browser exception text, or provider payloads. This adds no Firebase reads, writes, Storage operations, Cloud Functions, routes, rules, indexes, or deploy requirements.
+
 ### Print Claim Pilot Boundary
 
 Menu Kit QR assets point customers to the current public menu for stores that already exist in MenuList. Menu Kit does not generate owner-claim postcards, staff PINs, audit-bound claim links, or signed short-link redirects.

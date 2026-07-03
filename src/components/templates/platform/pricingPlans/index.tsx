@@ -3,6 +3,7 @@
 import { DeleteOutlined, EditOutlined, PlusOutlined } from '@ant-design/icons';
 import { PricingPlan } from '@data/common';
 import { addPricingPlan, deactivatePricingPlan, getAllPricingPlans, updatePricingPlan } from '@database/pricingPlans';
+import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { Button, Card, Col, Divider, Drawer, Form, Input, InputNumber, Modal, Radio, Row, Space, Switch, Table, Tag, Typography, message } from 'antd';
 import { useEffect, useState } from 'react';
 
@@ -27,7 +28,7 @@ function PricingPlans() {
             const data = await getAllPricingPlans();
             setPlans(data || []);
         } catch (error) {
-            console.error('Error fetching plans:', error);
+            logRuntimeFailure('platform_pricing_plans_load_failed', error);
             message.error('Failed to load pricing plans');
         } finally {
             setLoading(false);
@@ -83,7 +84,11 @@ function PricingPlans() {
             setDrawerVisible(false);
             fetchPlans();
         } catch (error) {
-            console.error('Error saving plan:', error);
+            logRuntimeFailure('platform_pricing_plan_save_failed', error, {
+                ...getBoundedRuntimeStringContext('planId', editingPlan?.id),
+                ...getBoundedRuntimeStringContext('planName', values?.name),
+                isEdit: Boolean(editingPlan?.id),
+            });
             message.error('Failed to save plan');
         }
     };
@@ -101,7 +106,10 @@ function PricingPlans() {
                     message.success('Plan deactivated successfully');
                     fetchPlans();
                 } catch (error) {
-                    console.error('Error deactivating plan:', error);
+                    logRuntimeFailure('platform_pricing_plan_deactivate_failed', error, {
+                        ...getBoundedRuntimeStringContext('planId', plan.id),
+                        ...getBoundedRuntimeStringContext('planName', plan.name),
+                    });
                     message.error('Failed to deactivate plan');
                 }
             },

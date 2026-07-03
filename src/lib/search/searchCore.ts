@@ -43,6 +43,8 @@ import {
     normalizeAnswerlatticeChatImageMimeType,
     stripDataUrlPrefix,
 } from '@lib/answerlattice/chatImagePolicy';
+import { readResponseUint8ArrayWithLimit } from '@lib/security/boundedResponseBody';
+import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { hashString } from '@util/hash';
 import { writeLogEntry } from 'logs/utils';
 
@@ -62,6 +64,67 @@ const MAX_ANSWERLATTICE_LOOKUP_CACHE_ENTRIES = 300;
 
 const LOG_FILE = LOG_FILES.KB_SEARCH;
 const PERF_LOG = LOG_FILES.KB_SEARCH_PERFORMANCE;
+
+const getSearchCoreErrorName = (error: unknown): string | undefined => {
+    if (error instanceof Error && error.name) return error.name.slice(0, 80);
+    if (error && typeof error === 'object' && 'name' in error) {
+        const name = (error as { name?: unknown }).name;
+        return typeof name === 'string' ? name.slice(0, 80) : undefined;
+    }
+    return typeof error === 'string' ? 'StringError' : undefined;
+};
+
+const getSearchCoreErrorCode = (error: unknown): string | number | undefined => {
+    if (!error || typeof error !== 'object' || !('code' in error)) return undefined;
+    const code = (error as { code?: unknown }).code;
+    return typeof code === 'string' ? code.slice(0, 80) : typeof code === 'number' ? code : undefined;
+};
+
+const getSearchCoreErrorStatus = (error: unknown): number | undefined => {
+    if (!error || typeof error !== 'object') return undefined;
+    const source = 'status' in error ? (error as { status?: unknown }).status : (error as { statusCode?: unknown }).statusCode;
+    const status = Number(source);
+    return Number.isFinite(status) ? status : undefined;
+};
+
+const getSearchCoreFailureLogData = (code: string, error: unknown) => ({
+    code,
+    sourceErrorCode: getSearchCoreErrorCode(error),
+    sourceErrorName: getSearchCoreErrorName(error),
+    sourceErrorStatus: getSearchCoreErrorStatus(error),
+});
+
+const writeSearchPerfLogEntry = async (entry: Parameters<typeof writeLogEntry>[0]) => {
+    try {
+        await writeLogEntry(entry);
+    } catch (error) {
+        logRuntimeFailure('answerlattice_search_perf_log_write_failed', error, {
+            ...getBoundedRuntimeStringContext('logFileName', entry.logFileName),
+            ...getBoundedRuntimeStringContext('logType', entry.logType),
+            hasData: Boolean(entry.data),
+            hasError: Boolean(entry.error),
+        });
+    }
+};
+
+type SearchCoreFailureError = Error & {
+    code?: string;
+    status?: number;
+};
+
+const createSearchCoreFailureError = (
+    message: string,
+    code: string,
+    status?: number,
+): SearchCoreFailureError => {
+    const error = new Error(message) as SearchCoreFailureError;
+    error.name = 'SearchCoreFailureError';
+    error.code = code;
+    if (typeof status === 'number' && Number.isFinite(status)) {
+        error.status = status;
+    }
+    return error;
+};
 
 type KnowledgeBaseCacheState = {
     version: string;
@@ -510,27 +573,21 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
 
                 let response: Response;
                 try {
-                    response = await fetch(imageUrl, { signal: controller.signal });
+                    response = await fetch(imageUrl, { redirect: 'manual', signal: controller.signal });
                 } finally {
                     clearTimeout(timeoutId);
                 }
 
                 if (!response.ok) {
-                    throw new Error(`Failed to fetch image: ${response.statusText}`);
+                    throw createSearchCoreFailureError('Failed to fetch image', 'answerlattice_image_fetch_failed', response.status);
                 }
 
-                const contentLength = Number(response.headers.get('content-length') || 0);
-                if (contentLength > ANSWERLATTICE_CHAT_IMAGE_MAX_BYTES) {
-                    throw new Error(`Image size (${contentLength} bytes) exceeds ${ANSWERLATTICE_CHAT_IMAGE_MAX_BYTES / 1024 / 1024}MB limit`);
+                const imageBytes = await readResponseUint8ArrayWithLimit(response, ANSWERLATTICE_CHAT_IMAGE_MAX_BYTES);
+                if (!imageBytes.byteLength) {
+                    throw new Error('Fetched image payload is empty');
                 }
 
-                const buffer = await response.arrayBuffer();
-
-                if (!buffer.byteLength || buffer.byteLength > ANSWERLATTICE_CHAT_IMAGE_MAX_BYTES) {
-                    throw new Error(`Image size (${buffer.byteLength} bytes) exceeds ${ANSWERLATTICE_CHAT_IMAGE_MAX_BYTES / 1024 / 1024}MB limit`);
-                }
-
-                const nodeBuffer = Buffer.from(buffer);
+                const nodeBuffer = Buffer.from(imageBytes);
                 const headerMimeType = normalizeAnswerlatticeChatImageMimeType(response.headers.get('content-type'));
                 const mimeType = headerMimeType || detectImageMimeTypeFromBuffer(nodeBuffer) || '';
                 if (!isAllowedAnswerlatticeChatImageMimeType(mimeType)) {
@@ -565,7 +622,11 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
             await writeLogEntry({
                 logFileName: LOG_FILE,
                 logType: 'WARNING_IMAGE_PROCESSING_FALLBACK',
-                data: { error: imageError.message, query: searchQuery, mountContext }
+                data: {
+                    ...getSearchCoreFailureLogData('image_processing_fallback', imageError),
+                    query: searchQuery,
+                    mountContext,
+                }
             });
             imageProcessed = false;
             imageBufferForAi = undefined;
@@ -594,15 +655,15 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
             effectiveProductContext = resolved.retrievalContext as typeof effectiveProductContext;
             relatedContent = resolved.relatedContent;
         } catch (error: any) {
-            await writeLogEntry({
+            await writeSearchPerfLogEntry({
                 logFileName: PERF_LOG,
                 userId: uId,
                 logType: 'PRODUCT_SURFACE_CONTEXT_ERROR',
                 data: {
-                    error: error?.message || String(error),
+                    ...getSearchCoreFailureLogData('product_surface_context_error', error),
                     mountContext,
                 },
-            }).catch(() => undefined);
+            });
         }
     }
 
@@ -721,7 +782,13 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
                     });
                 }
             }
-        } catch {
+        } catch (error) {
+            logRuntimeFailure('answerlattice_instant_cache_stage_failed', error, {
+                ...getBoundedRuntimeStringContext('mountContext', mountContext),
+                ...getBoundedRuntimeStringContext('searchQuery', searchQuery),
+                ...getBoundedRuntimeStringContext('storeId', sId),
+                ...getBoundedRuntimeStringContext('tenantId', tId),
+            });
             // Graceful degradation — cache failure never blocks pipeline
         }
     }
@@ -877,7 +944,13 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
             ANSWERLATTICE_CACHE_SOURCES.CANONICAL,
             tId,
             sId,
-        ).catch(() => undefined);
+        ).catch((error) => {
+            logRuntimeFailure('answerlattice_canonical_cache_version_load_failed', error, {
+                ...getBoundedRuntimeStringContext('storeId', sId),
+                ...getBoundedRuntimeStringContext('tenantId', tId),
+            });
+            return undefined;
+        });
         const canonicalSourceVersions = canonicalCacheVersion
             ? { [ANSWERLATTICE_CACHE_SOURCES.CANONICAL]: canonicalCacheVersion }
             : undefined;
@@ -962,7 +1035,7 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
         if (FEATURE_FLAGS.ENABLE_ANSWERLATTICE_INSTANT_CACHE && canonicalResult.matchedEntityIds.length > 0) {
             try {
                 const { instantCacheWrite } = await import('@lib/answerlattice/instantCache');
-                instantCacheWrite(
+                void instantCacheWrite(
                     tId, sId,
                     canonicalResult.matchedEntityIds[0],
                     answer,
@@ -970,9 +1043,23 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
                     effectiveProductContext?.plan,
                     effectiveProductContext?.userRole,
                     canonicalSourceVersions,
-                );
-            } catch {
-                // Silent failure — cache write is best-effort
+                ).catch((error) => {
+                    logRuntimeFailure('answerlattice_instant_cache_write_invocation_failed', error, {
+                        ...getBoundedRuntimeStringContext('answerId', answer.id),
+                        ...getBoundedRuntimeStringContext('mountContext', mountContext),
+                        ...getBoundedRuntimeStringContext('storeId', sId),
+                        ...getBoundedRuntimeStringContext('tenantId', tId),
+                        matchedEntityCount: canonicalResult.matchedEntityIds.length,
+                    });
+                });
+            } catch (error) {
+                logRuntimeFailure('answerlattice_instant_cache_write_import_failed', error, {
+                    ...getBoundedRuntimeStringContext('answerId', answer.id),
+                    ...getBoundedRuntimeStringContext('mountContext', mountContext),
+                    ...getBoundedRuntimeStringContext('storeId', sId),
+                    ...getBoundedRuntimeStringContext('tenantId', tId),
+                    matchedEntityCount: canonicalResult.matchedEntityIds.length,
+                });
             }
         }
 
@@ -1054,17 +1141,17 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
             });
         }
     } catch (error: any) {
-        await writeLogEntry({
+        await writeSearchPerfLogEntry({
             logFileName: PERF_LOG,
             userId: uId,
             logType: 'FAQ_RETRIEVAL_ERROR',
             data: {
                 query: searchQuery,
                 effectiveQuery: queryForEmbedding,
-                error: error?.message || String(error),
+                ...getSearchCoreFailureLogData('faq_retrieval_error', error),
                 mountContext,
             },
-        }).catch(() => undefined);
+        });
     }
 
     // Helper: evaluate escalation for empty/no-result paths (avoids code duplication)
@@ -1142,8 +1229,7 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
             logType: 'VECTOR_SEARCH_ERROR',
             data: {
                 query: searchQuery,
-                error: vectorError?.message || String(vectorError),
-                code: vectorError?.code || null,
+                ...getSearchCoreFailureLogData('vector_search_error', vectorError),
                 vectorSearchMs: perfMetrics.vectorSearch,
                 totalMs: perfMetrics.total,
                 mountContext,
@@ -1258,8 +1344,9 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
                 logType: 'ANSWER_JSON_PARSE_FAILED',
                 data: {
                     query: searchQuery,
-                    error: parseError?.message || String(parseError),
-                    responsePreview: String(geminiAnswer).slice(0, 500),
+                    ...getSearchCoreFailureLogData('answer_json_parse_failed', parseError),
+                    responsePresent: Boolean(geminiAnswer),
+                    responseLength: String(geminiAnswer || '').length,
                     mountContext,
                 }
             });

@@ -96,7 +96,7 @@ export type StoreDataType = {
 
     businessType: string;
     businessCategory: string;
-    businessIndustry?: string; // Plan type: 'B2C' | 'B2B'. Future scope for B2B features.
+    businessIndustry?: string; // Plan type marker: 'B2C' | 'B2B'.
     activePlanType?: string; // Denormalized plan id for scheduler entitlements. Billing subscription remains the source of truth.
 
     contactPersonName: string;
@@ -151,7 +151,7 @@ export type StoreDataType = {
      *  current subdomain during the window. After expiry the old subdomain
      *  stops resolving and may be claimed by another tenant.
      *
-     *  @see __docs__/client-menu/PUBLIC-ROUTING-DOCTRINE.md §A-03, T1-N-05
+     *  @see __docs__/client-menu/public-routing-doctrine.md §A-03, T1-N-05
      */
     previousSubdomains?: Array<{
         /** The prior subdomain value, lowercased. */
@@ -389,10 +389,10 @@ export type StoreDataType = {
         /** Google review page URL. Links to the business's Google reviews. */
         googleReviewUrl?: string;
 
-        /** Google star rating (owner-entered, e.g. 4.5). Displayed as trust badge on OBP. */
+        /** Google star rating (owner-entered, e.g. 4.5). Displayed as trust badge on OBP; not emitted as AggregateRating markup. */
         googleRating?: number;
 
-        /** Google review count (owner-entered, e.g. 320). Displayed alongside rating. */
+        /** Google review count (owner-entered, e.g. 320). Displayed alongside rating; not emitted as AggregateRating markup. */
         googleReviewCount?: number;
 
         // ── BUSINESS PHOTOS (ADR-13: first 3 are OBP preview; full set opens in viewer) ──
@@ -442,6 +442,7 @@ export type StoreDataType = {
         lastStatus: 'success' | 'failed' | 'never_sent';
         lastError: string;
         menuVersion: number;
+        consecutiveFailures?: number;
         instructionsSentCount: number;
         instructionsSentDate: string;
         secretRotatedAt?: string;
@@ -649,14 +650,14 @@ export type StoreDataType = {
     /**
      * Notification routing settings for lifecycle messaging.
      * Default: primaryEmail = contactPersonEmail, channel = email.
-     * Owners can override in Business Settings → Notifications (Phase 2 UI).
+     * Owners can override in Business Settings > Notifications when that surface is enabled.
      */
     notificationSettings?: {
         /** Primary email for operational messages. Default: contactPersonEmail */
         primaryEmail: string;
         /** Separate billing email (invoices, payment alerts). Default: same as primaryEmail */
         billingEmail?: string;
-        /** Preferred notification channel. Phase 1: email only */
+        /** Preferred notification channel. Current implementation: email only */
         preferredChannel: 'email';
         /** When owner consented to receive messages (ISO 8601) */
         consentedAt?: string;

@@ -1,10 +1,12 @@
 # Multi-Chain Permissions — Sales & Marketing Copy
 
 **Feature:** #4B — Multi-Chain Permissions  
-**Status:** ✅ Production Ready  
+**Status:** Marketing evidence; not current launch certification
 **Last Updated:** May 19, 2026
 
 > **May 19, 2026 review:** The sales positioning remains accurate after server-owned policy writes, active-store claim refresh, and server-side linked outlet save enforcement were verified. The correct claim is still "guardrails you set", not approval workflows or surveillance.
+>
+> **Launch Boundary:** This file records approved marketing/support positioning, not current production-launch approval. Current release approval requires the active [production-readiness audit](../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../production-readiness/external-certification-runbook.md) evidence, `npm run verify:multi-location-boundary`, permission-policy browser QA, linked outlet save QA, Firebase deploy evidence where rules/functions change, and target-environment smoke.
 
 ---
 
@@ -152,5 +154,5 @@ Multi-chain permissions is included in MenuList Pro at no extra cost.
 
 ---
 
-**DOCUMENT STATUS:** ✅ Production Ready  
+**DOCUMENT STATUS:** Marketing evidence - not current launch certification
 **USAGE:** Sales calls, demo scripts, website copy, support training

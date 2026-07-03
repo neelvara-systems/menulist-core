@@ -1,7 +1,9 @@
 # B2C View (Customer Menu)
 
 **Sub-feature of:** Projects (Menu Digitization)  
-**Status:** ✅ Production Ready
+**Status:** Implemented source evidence; not current launch certification
+
+**Launch boundary:** This hub links B2C/customer-menu source docs; it is not current launch certification. Current release approval requires the active [production-readiness audit](../../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../../production-readiness/external-certification-runbook.md) evidence, Digital Menu Output Constitution checks, `npm run verify:menu-design-presentation-boundary`, public cache/deploy evidence, browser/mobile customer-menu QA, and target production smoke.
 
 ---
 
@@ -15,9 +17,10 @@ The customer-facing digital menu that restaurant patrons see. Includes a control
 
 | Document        | Audience          | Purpose                                |
 | --------------- | ----------------- | -------------------------------------- |
-| `_spec.md`      | Product, Business | Requirements, customization, SEO       |
-| `_impl.md`      | Developers        | Architecture, performance, memoization |
-| `_marketing.md` | Sales, Marketing  | Pitch, copy, objection handling        |
+| `b2c-view_spec.md` | Product, Business | Requirements, constrained design controls, SEO |
+| `b2c-view_impl.md` | Developers | Architecture, performance, memoization |
+| `b2c-view_mobile-support.md` | Product, Mobile | Mobile customer-menu and owner design parity |
+| `b2c-view_marketing.md` | Sales, Marketing | Pitch, copy, objection handling |
 
 ---
 
@@ -36,23 +39,25 @@ The customer-facing digital menu that restaurant patrons see. Includes a control
 | Largest Contentful Paint | < 2.5s |
 | Time to Interactive      | < 3.9s |
 
-### Layout Options
+### Owner-Selectable Layout Options
 
-- Grid (card-based)
-- List (vertical)
+- List (text-first customer scan)
+- Grid (image-supported scan with capped image density)
 - Card (image-top item cards)
-- Tabs (sticky category navigation)
+
+Category tabs are a separate navigation toggle for mobile/tablet customer browsing. Legacy saved `tabs` layout values are normalized into a compatible layout while preserving the category-tabs display intent.
 
 ### Key Files
 
-```
-src/app/(website)/menu/[projectId]/page.tsx
-src/components/templates/main-app/projects/b2cView/
-├── index.tsx
-├── homePage/
-├── menuPage/menuPageNew.tsx  # Core public menu renderer
-├── layouts/
-└── shareModal/
+```text
+src/app/client/[[...slug]]/page.tsx
+src/components/templates/main-app/projects/b2cView/index.tsx
+src/components/templates/main-app/projects/b2cView/designSystem/index.ts
+src/components/templates/main-app/projects/b2cView/menuPage/menuPageNew.tsx
+src/components/templates/main-app/projects/b2cView/menuPage/menuPageSettingsNew.tsx
+src/components/mobile/screens/MobileDesignEditorScreen.tsx
+src/lib/menu/menuDesignPresets.ts
+src/database/projects/index.ts
 ```
 
 ---
@@ -66,11 +71,17 @@ src/components/templates/main-app/projects/b2cView/
 
 ---
 
+## Source Gate
+
+`npm run verify:menu-design-presentation-boundary` checks mood/layout normalization, desktop and mobile design controls, public menu image/price/category-tabs behavior, the project publish/cache path, and this doc boundary. Passing this source gate is not current launch certification; release approval still needs the External Certification Runbook, Digital Menu Output Constitution checks, browser/mobile customer-menu QA, public cache/deploy evidence, and target production smoke.
+
+---
+
 ## Legacy Documentation
 
 | Legacy File                             | Status         |
 | --------------------------------------- | -------------- |
-| `Assessments/ASSESSMENT-11-B2C-VIEW.md` | → Consolidated |
+| `Assessments/assessment-11-b2c-view.md` | → Consolidated |
 | `__docs__/client-menu/`                 | → Referenced   |
 
 ---

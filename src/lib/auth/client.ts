@@ -10,6 +10,7 @@
 import { NAVIGARIONS_ROUTINGS } from "@constant/navigations";
 import { signOutFirebaseAuth } from "@lib/firebase/firebaseClient";
 import { signOut } from "next-auth/react";
+import { getBoundedAuthStringContext, logAuthFailure } from "./authDiagnostics";
 
 /**
  * Sign out the current user (client-side only)
@@ -27,12 +28,16 @@ export const signOutSession = (callbackUrl: string = NAVIGARIONS_ROUTINGS.SIGNIN
                         res(true);
                     })
                     .catch((error) => {
-                        console.error('NextAuth signOut error:', error);
+                        logAuthFailure('nextauth_signout_failed', error, {
+                            ...getBoundedAuthStringContext('callbackUrl', callbackUrl),
+                        });
                         rej(error);
                     });
             })
             .catch((error) => {
-                console.error('Firebase signOut error:', error);
+                logAuthFailure('firebase_signout_failed', error, {
+                    ...getBoundedAuthStringContext('callbackUrl', callbackUrl),
+                });
                 rej(error);
             });
     });

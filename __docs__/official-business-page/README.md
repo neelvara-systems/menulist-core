@@ -65,7 +65,7 @@ Data Source:
 
 ## Key Files in Codebase
 
-### Public OBP (8 files)
+### Public OBP (9 files)
 
 | File                                      | Purpose                                      |
 | ----------------------------------------- | -------------------------------------------- |
@@ -75,6 +75,7 @@ Data Source:
 | `src/app/client/obp/OBPMenuCTA.tsx`      | Menu CTA with OBP→menu conversion tracking   |
 | `src/app/client/obp/OBPAnalytics.tsx`    | Client island for page view tracking         |
 | `src/app/client/obp/OBPActions.tsx`      | Client component for action click tracking   |
+| `src/lib/obp/publicLinks.ts`             | Public link safety boundary for OBP actions, socials, reviews, schema, manifest, and PWA handoffs |
 | `src/app/client/obp/obp.module.scss`     | Styles (SCSS, mobile-first)                  |
 | `src/app/client/obp/schema.ts`           | Schema.org LocalBusiness JSON-LD             |
 
@@ -108,6 +109,7 @@ Data Source:
 | `src/app/api/outlets/create/route.ts`                 | Brand identity copy from master store        |
 | `functions/src/analytics/obpAnalyticsAggregation.ts`  | Nightly OBP analytics CF                     |
 | `functions/src/constants/features.ts`                 | `ENABLE_OBP_ANALYTICS` flag (CF-side)        |
+| `npm run verify:official-business-page-boundary`      | Public link safety boundary source gate      |
 
 ---
 
@@ -126,6 +128,8 @@ When `false`: subdomain root shows digital menu (current behavior).
 
 | Date         | Change                                                                                                                                                                                                                                                                                                                                             |
 | ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Jul 2, 2026  | Public link safety boundary: OBP customer-facing actions, social links, review links, schema `sameAs`/actions, customer app manifest shortcuts, and PWA directions/reservation/order handoffs now render only normalized HTTPS public URLs. Google Maps/review URLs are Google-host constrained; invalid/stale stored strings are hidden instead of emitted. Source gate: `npm run verify:official-business-page-boundary`. |
+| Jun 30, 2026 | Custom Domain active-domain and DNS record copies now fall through from rejected Clipboard API writes to acknowledged textarea fallback before copied feedback; failed diagnostics include clipboard/fallback support metadata without adding Firestore reads/writes.                                                                                |
 | Feb 15, 2026 | Initial spec created from ChatGPT conversation review                                                                                                                                                                                                                                                                                              |
 | Feb 15, 2026 | Full implementation: OBP server component, routing, SCSS, dashboard integration, Schema.org, hours status                                                                                                                                                                                                                                          |
 | Feb 15, 2026 | TenantDataType cleanup — account container only, store is rendering source                                                                                                                                                                                                                                                                         |

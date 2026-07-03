@@ -5,6 +5,7 @@ import type {
     OBPActionBreakdown,
     OBPLanguageUsage,
     OBPLinkBreakdown,
+    OBPOpenHoursActionBreakdown,
     OBPPeriodMetrics,
     OBPShareBreakdown,
     OBPSourceBreakdown,
@@ -12,7 +13,7 @@ import type {
 import type { OBPDashboardViewData } from '@hook/useOBPDashboard';
 import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
-import { LuExternalLink, LuGlobe, LuInfo, LuMapPin, LuMessageSquare, LuPhone, LuTrendingUp } from 'react-icons/lu';
+import { LuClock, LuExternalLink, LuGlobe, LuInfo, LuMapPin, LuMessageSquare, LuPhone, LuTrendingUp } from 'react-icons/lu';
 import { Button, Card, DotLoading, Flex, Popover, Tag, Text, Title } from '../../antd';
 
 type OBPCardMode = 'today' | 'overview' | 'daily' | 'weekly' | 'monthly' | 'overall';
@@ -30,6 +31,19 @@ const getSectionDividerStyle = (token: AntThemeToken) => ({
     marginTop: 12,
     paddingTop: 12,
 });
+
+function dashboardLabel(
+    t: DashboardTranslator,
+    key: string,
+    fallback: string,
+    values?: Record<string, string | number>,
+) {
+    try {
+        return t(key, values);
+    } catch {
+        return fallback;
+    }
+}
 
 interface MobileOBPMetricsCardProps {
     data: OBPDashboardViewData | null;
@@ -156,6 +170,54 @@ function renderSourceRows(sources: OBPSourceBreakdown[] | undefined, token: AntT
     );
 }
 
+function renderOpenHoursRows(breakdown: OBPOpenHoursActionBreakdown | undefined, token: AntThemeToken, t: DashboardTranslator) {
+    const rows = [
+        {
+            key: 'open',
+            label: dashboardLabel(t, 'details.openHours.open', 'Actions while open'),
+            value: Number(breakdown?.open || 0),
+            icon: <LuClock color={token.colorSuccess} size={14} />,
+        },
+        {
+            key: 'closed',
+            label: dashboardLabel(t, 'details.openHours.closed', 'Actions while closed'),
+            value: Number(breakdown?.closed || 0),
+            detail: `${Number(breakdown?.closedShare || 0)}%`,
+            icon: <LuClock color={token.colorWarning} size={14} />,
+        },
+        {
+            key: 'unknown',
+            label: dashboardLabel(t, 'details.openHours.unknown', 'Actions with hours hidden'),
+            value: Number(breakdown?.unknown || 0),
+            icon: <LuClock color={token.colorTextSecondary} size={14} />,
+        },
+    ].filter((row) => row.value > 0);
+
+    if (rows.length === 0) return null;
+
+    return (
+        <div style={getSectionDividerStyle(token)}>
+            <Text type="secondary" style={{ display: 'block', fontSize: 12, marginBottom: 8 }}>
+                {dashboardLabel(t, 'details.sections.openHoursActions', 'Open/Closed Action Timing')}
+            </Text>
+            <Flex gap={6} vertical>
+                {rows.map((row) => (
+                    <Flex key={row.key} align="center" justify="space-between">
+                        <Flex align="center" gap={8}>
+                            {row.icon}
+                            <Text type="secondary" style={{ fontSize: 12 }}>{row.label}</Text>
+                        </Flex>
+                        <Text style={{ fontSize: 12 }}>
+                            {row.value}
+                            {row.detail ? ` · ${row.detail}` : ''}
+                        </Text>
+                    </Flex>
+                ))}
+            </Flex>
+        </div>
+    );
+}
+
 function renderLanguageRows(languages: OBPLanguageUsage[] | undefined, token: AntThemeToken, t: DashboardTranslator) {
     const rows = (languages || []).filter((language) => (
         language.views > 0 || language.sessions > 0 || language.adoptions > 0
@@ -224,6 +286,7 @@ function renderMetricCards(metrics: OBPPeriodMetrics, token: AntThemeToken, t: D
             {renderLinkRows(metrics.links, token, t)}
             {renderShareRows(metrics.shareMethods, token, t)}
             {renderSourceRows(metrics.sources, token, t)}
+            {renderOpenHoursRows(metrics.openHoursActionBreakdown, token, t)}
             {renderLanguageRows(metrics.topLanguages, token, t)}
         </>
     );
@@ -422,6 +485,7 @@ export default function MobileOBPMetricsCard({ data, loading, loadingToday, mode
                     {renderLinkRows(overall.lifetimeLinks, token, t)}
                     {renderShareRows(overall.lifetimeShareMethods, token, t)}
                     {renderSourceRows(overall.lifetimeSources, token, t)}
+                    {renderOpenHoursRows(overall.lifetimeOpenHoursActionBreakdown, token, t)}
                     {renderLanguageRows(overall.lifetimeLanguages, token, t)}
                 </div>
             ) : null}

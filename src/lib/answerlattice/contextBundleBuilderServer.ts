@@ -2,6 +2,7 @@ import { DB_COLLECTIONS } from '@constant/database';
 import { PRODUCT_IDS } from '@constant/product';
 import { normalizeWidgetConfig } from '@lib/answerlattice/widgetConfig';
 import { answerlatticeFirestoreAdmin, answerlatticeStorageAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
+import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import type {
     AnswerlatticeCanonicalAnswer,
     AnswerlatticeContextBundleManifest,
@@ -44,6 +45,9 @@ const BUNDLE_CACHE_TTL_MS = 10 * 60 * 1000;
 const MANIFEST_CACHE_TTL_MS = 60 * 1000;
 const PUBLIC_BUNDLE_CACHE_CONTROL = 'public, max-age=31536000, immutable';
 const PRIVATE_BUNDLE_CACHE_CONTROL = 'private, max-age=300';
+const ANSWERLATTICE_CONTEXT_BUNDLE_MANIFEST_UPLOAD_FAILED = 'answerlattice_context_bundle_manifest_upload_failed';
+const ANSWERLATTICE_CONTEXT_BUNDLE_OBJECT_OVERSIZED = 'answerlattice_context_bundle_object_oversized';
+const CONTEXT_BUNDLE_OBJECT_DOWNLOAD_MAX_BYTES = ANSWERLATTICE_CONTEXT_BUNDLE_LIMITS.maxPrivateObjectBytes;
 
 type BuildReason = 'manual' | 'onboarding' | 'nightly_repair' | 'source_change' | string;
 
@@ -85,6 +89,19 @@ const stableStringify = (value: any): string => {
 };
 
 const sha256 = (value: string) => `sha256:${createHash('sha256').update(value).digest('hex')}`;
+
+const getBundleObjectSize = (metadata: any): number => {
+    const size = Number(metadata?.size);
+    return Number.isFinite(size) ? size : NaN;
+};
+
+const logOversizedBundleObject = (filePath: string, sizeBytes: number) => {
+    logRuntimeFailure(ANSWERLATTICE_CONTEXT_BUNDLE_OBJECT_OVERSIZED, undefined, {
+        ...getBoundedRuntimeStringContext('bundlePath', filePath),
+        sizeBytes,
+        maxBytes: CONTEXT_BUNDLE_OBJECT_DOWNLOAD_MAX_BYTES,
+    });
+};
 
 const toIso = (value: any): string | null => {
     if (!value) return null;
@@ -588,6 +605,29 @@ const uploadBundleObject = async (path: string, value: any, cacheControl: string
     };
 };
 
+const uploadBundleManifestObjectBestEffort = async (
+    path: string,
+    value: any,
+    cacheControl: string,
+    context: {
+        tId: number;
+        sId: number;
+        bundleVersion: number;
+        visibility: 'public' | 'private';
+    },
+) => {
+    try {
+        await uploadBundleObject(path, value, cacheControl);
+    } catch (error) {
+        logRuntimeFailure(ANSWERLATTICE_CONTEXT_BUNDLE_MANIFEST_UPLOAD_FAILED, error, {
+            ...getBoundedRuntimeStringContext('tenantId', context.tId),
+            ...getBoundedRuntimeStringContext('storeId', context.sId),
+            bundleVersion: context.bundleVersion,
+            visibility: context.visibility,
+        });
+    }
+};
+
 export const getAnswerlatticeContextBundleManifestServer = async (
     tId: number,
     sId: number,
@@ -620,9 +660,22 @@ export const loadAnswerlatticeBundleObjectServer = async <T = any>(
     if (cached && cached.expiresAt > Date.now()) return cached.value as T;
     if (cached) bundleObjectCache.delete(filePath);
 
-    const [exists] = await getBucket().file(filePath).exists();
+    const file = getBucket().file(filePath);
+    const [exists] = await file.exists();
     if (!exists) return null;
-    const [buffer] = await getBucket().file(filePath).download();
+    const [metadata] = await file.getMetadata().catch(() => [null as any]);
+    const metadataSize = getBundleObjectSize(metadata);
+    if (Number.isFinite(metadataSize) && metadataSize > CONTEXT_BUNDLE_OBJECT_DOWNLOAD_MAX_BYTES) {
+        logOversizedBundleObject(filePath, metadataSize);
+        return null;
+    }
+
+    const [buffer] = await file.download();
+    if (buffer.byteLength > CONTEXT_BUNDLE_OBJECT_DOWNLOAD_MAX_BYTES) {
+        logOversizedBundleObject(filePath, buffer.byteLength);
+        return null;
+    }
+
     const value = JSON.parse(buffer.toString('utf8')) as T;
     if (bundleObjectCache.size >= MAX_BUNDLE_CACHE_ENTRIES) {
         const oldestKey = bundleObjectCache.keys().next().value;
@@ -762,16 +815,18 @@ export const buildAnswerlatticeContextBundleServer = async (params: {
             limits: ANSWERLATTICE_CONTEXT_BUNDLE_LIMITS,
         };
 
-        await uploadBundleObject(
+        await uploadBundleManifestObjectBestEffort(
             getPublicBundlePath(publicBundleId, bundleVersion, 'manifest.json'),
             manifest,
             PUBLIC_BUNDLE_CACHE_CONTROL,
-        ).catch(() => undefined);
-        await uploadBundleObject(
+            { tId: tenantId, sId: storeId, bundleVersion, visibility: 'public' },
+        );
+        await uploadBundleManifestObjectBestEffort(
             getPrivateBundlePath(tenantId, storeId, bundleVersion, 'manifest.json'),
             manifest,
             PRIVATE_BUNDLE_CACHE_CONTROL,
-        ).catch(() => undefined);
+            { tId: tenantId, sId: storeId, bundleVersion, visibility: 'private' },
+        );
 
         await manifestRef.set({
             ...manifest,
@@ -790,7 +845,6 @@ export const buildAnswerlatticeContextBundleServer = async (params: {
 
         return { ...manifest, id: manifestRef.id };
     } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
         await manifestRef.set({
             schemaVersion: ANSWERLATTICE_CONTEXT_BUNDLE_SCHEMA_VERSION,
             pId: PRODUCT_IDS.ANSWERLATTICE,
@@ -806,7 +860,7 @@ export const buildAnswerlatticeContextBundleServer = async (params: {
         await lockRef.set({
             status: 'failed',
             completedAt: FieldValue.serverTimestamp(),
-            error: message.slice(0, 500),
+            error: 'build_failed',
         }, { merge: true });
         throw error;
     }

@@ -3,9 +3,13 @@
 ## Pricing Integrity System - Spec-Perfect Implementation Check
 
 **Feature:** Pricing Integrity System (Feature #1)  
-**Status:** ✅ READY FOR TESTING  
+**Status:** Historical validation evidence
 **Date:** January 18, 2026  
 **Implementation Time:** ~1 week (as estimated)
+
+> **Launch boundary (July 2, 2026):** This report is historical source-verification evidence only and not current launch certification. It is not current release approval. Current release approval still requires the active production-readiness audit, External Certification Runbook evidence, current source gates including `npm run verify:pricing-integrity-boundary`, `npm run verify:agent-readiness`, and `npm run verify:menulist-api-tenant-safety`, authenticated desktop/mobile editor price-change QA, public menu and PDF artifact QA, cache/deploy evidence for published price changes, target deploy evidence, and production-host smoke. If a release scope enables background PDF regeneration, it also needs queue/job/worker evidence and scoped Firebase deploy evidence when Cloud Function logic changes.
+
+> **Current source boundary (July 2, 2026):** `runPricingIntegrity()` is dormant source scaffold with no current caller. `ENABLE_BACKGROUND_PDF_REGEN` remains false. Active price consistency comes from project saves, public cache revalidation, Digital Screens content-version touches where configured, and on-demand PDF generation from current menu data.
 
 ---
 
@@ -136,12 +140,14 @@
 
 ---
 
-## ✅ FINAL VERDICT: READY FOR TESTING
+## Historical Validation Result: Source Evidence Only
 
 - **Total Files:** 10
 - **Lines of Code:** ~820
 - **Spec Compliance:** 100% (24/24 items)
 - **Security Compliance:** 100% (8/8 rules)
+- **Current Release Approval:** Not granted by this report
+- **Required Current Evidence:** Active production-readiness audit, External Certification Runbook evidence, current source gates including `npm run verify:pricing-integrity-boundary`, `npm run verify:agent-readiness`, and `npm run verify:menulist-api-tenant-safety`, authenticated desktop/mobile editor price-change QA, public menu and PDF artifact QA, cache/deploy evidence for published price changes, target deploy evidence, and production-host smoke
 
 ---
 
@@ -150,6 +156,8 @@
 ### 1. No Feature Flag Needed (On-Demand PDF is Default)
 
 The implementation launches with on-demand PDF generation. Background regeneration is built but disabled via `ENABLE_BACKGROUND_PDF_REGEN = false` in `pdfQueue.ts`.
+
+June 30 follow-up: disabled-flag, debounce-reset, scheduled, and job-created PDF queue breadcrumbs now use bounded pricing diagnostics (`pricing_pdf_regen_*`) with project/job presence-length metadata only. The tenant-safety verifier blocks the old raw `secureLog("[PDF Queue] ...")` pattern.
 
 ### 2. Test Flow
 
@@ -191,7 +199,7 @@ The implementation launches with on-demand PDF generation. Background regenerati
 
 ## 📝 External Validation (ChatGPT Review)
 
-**Verdict:** ✅ "Completed enough to lock for 3 years"
+**Historical External Review Note:** The January review treated the implementation as complete enough for the 3-year freeze, but this remains external-review evidence only and not current release approval.
 
 ### What ChatGPT Validated:
 

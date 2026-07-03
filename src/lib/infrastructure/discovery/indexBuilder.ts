@@ -3,7 +3,8 @@
  *
  * Builds discovery index documents from existing store + project data.
  * Pure functions — no Firebase calls, no side effects.
- * The actual Firestore writes happen in the Cloud Function task.
+ * The actual Firestore writes require separate scheduler wiring; no writer is
+ * active while ENABLE_INFRASTRUCTURE_DISCOVERY_INDEX remains false.
  *
  * COMPLIANCE: Only extracts PUBLIC business data. No PII, no billing, no internal data.
  *
@@ -30,14 +31,14 @@ export function buildBusinessEntityIndexDoc(
 ): BusinessEntityIndexDoc {
     const { storeData, projectData, projectFiles, businessCategory } = input;
 
-    // Extract taxonomy data from project (Phase 1A)
+    // Extract taxonomy data from project through the read-only utility.
     const taxonomyResult = extractTaxonomyFromProject(
         projectFiles,
         businessCategory,
         'en',
     );
 
-    // Extract semantic attributes from store (Phase 1C)
+    // Extract semantic attributes from store through the read-only utility.
     const semanticProfile = extractStoreSemanticProfile(
         storeData.businessAttributes,
     );
@@ -70,7 +71,7 @@ export function buildBusinessEntityIndexDoc(
         // Taxonomy (SMB-universal)
         standardCategories: taxonomyResult.standardCategoryIds,
         offeringTags: taxonomyResult.allDietaryTags,
-        subCategories: [], // Future: cuisine detection (food), product types (retail)
+        subCategories: [], // Reserved for separately audited subtype detection.
 
         // Semantic Attributes
         semanticAttributes: semanticProfile.attributeIds,

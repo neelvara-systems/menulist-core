@@ -2,18 +2,25 @@
 
 import { ANSWERLATTICE_ROUTES, toAnswerlatticeDashboardRoute } from '@constant/answerlattice/routes';
 import { resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
+import { logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
+import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';
 import { trackPlausibleEvent } from '@lib/website/plausible';
 import type { CSSProperties } from 'react';
 import { SessionProvider, signIn, signOut, useSession } from 'next-auth/react';
 import { useEffect, useMemo, useState } from 'react';
 
 type OnboardingStep = 'auth' | 'details' | 'creating' | 'done';
-type BillingModel = 'free' | 'subscription' | 'usage' | 'one_time' | 'not_sure';
+type BillingModel = 'subscription' | 'usage' | 'one_time' | 'not_sure';
 
 interface OnboardResult {
     tenantId: number;
     storeId: number;
     apiKey: string;
+    subscription?: {
+        id: string;
+        shortUrl?: string | null;
+        status?: string | null;
+    } | null;
     plan: { id: string; name: string; isBeta: boolean };
 }
 
@@ -29,6 +36,52 @@ const SURFACE_OPTIONS = [
     { key: 'integrations', label: 'Connected apps' },
     { key: 'release_notes', label: 'Release notes' },
 ];
+const ANSWERLATTICE_ONBOARDING_FAILED_MESSAGE = 'Could not create the workspace right now. Please try again.';
+const ANSWERLATTICE_ONBOARD_RESPONSE_JSON_MAX_BYTES = 16 * 1024;
+
+type AnswerlatticeOnboardResponseLogContext = Record<string, boolean | number | string | null | undefined>;
+
+const isPlainRecord = (value: unknown): value is Record<string, unknown> => (
+    Boolean(value) && typeof value === 'object' && !Array.isArray(value)
+);
+
+const isNonEmptyString = (value: unknown): value is string => (
+    typeof value === 'string' && value.trim().length > 0
+);
+
+const isOnboardResult = (value: unknown): value is OnboardResult => {
+    if (!isPlainRecord(value)) return false;
+    if (!Number.isFinite(value.tenantId) || !Number.isFinite(value.storeId)) return false;
+    if (!isNonEmptyString(value.apiKey)) return false;
+    if (!isPlainRecord(value.plan)) return false;
+    if (!isNonEmptyString(value.plan.id) || !isNonEmptyString(value.plan.name) || typeof value.plan.isBeta !== 'boolean') return false;
+
+    if (value.subscription !== undefined && value.subscription !== null) {
+        if (!isPlainRecord(value.subscription)) return false;
+        if (!isNonEmptyString(value.subscription.id)) return false;
+        if (value.subscription.shortUrl !== undefined && value.subscription.shortUrl !== null && typeof value.subscription.shortUrl !== 'string') return false;
+        if (value.subscription.status !== undefined && value.subscription.status !== null && typeof value.subscription.status !== 'string') return false;
+    }
+
+    return true;
+};
+
+const readAnswerlatticeOnboardResponseJson = async (
+    response: Response,
+    context: AnswerlatticeOnboardResponseLogContext,
+): Promise<unknown> => {
+    try {
+        return await readJsonResponseWithLimit<unknown>(response, ANSWERLATTICE_ONBOARD_RESPONSE_JSON_MAX_BYTES);
+    } catch (error) {
+        logRuntimeFailure('answerlattice_onboard_response_parse_failed', error, {
+            ...context,
+            responseOk: response.ok,
+            responseStatus: response.status,
+            maxBytes: ANSWERLATTICE_ONBOARD_RESPONSE_JSON_MAX_BYTES,
+        });
+        return null;
+    }
+};
 
 const colors = {
     primary: 'var(--al-primary)',
@@ -113,13 +166,18 @@ function OnboardingFormInner() {
     };
 
     const handleCreateAccount = async () => {
-        if (!companyName.trim() || companyName.trim().length < 2) {
+        const trimmedCompanyName = companyName.trim();
+        const trimmedProductName = productName.trim();
+        const trimmedProductUrl = productUrl.trim();
+        const trimmedSupportEmail = supportEmail.trim();
+
+        if (!trimmedCompanyName || trimmedCompanyName.length < 2) {
             setError('Company name must be at least 2 characters.');
             return;
         }
-        if (productUrl.trim()) {
+        if (trimmedProductUrl) {
             try {
-                const parsed = new URL(productUrl.trim());
+                const parsed = new URL(trimmedProductUrl);
                 if (!['http:', 'https:'].includes(parsed.protocol)) throw new Error('Invalid URL');
             } catch {
                 setError('Enter a valid product URL, for example https://app.example.com.');
@@ -129,34 +187,54 @@ function OnboardingFormInner() {
 
         setStep('creating');
         setError(null);
+        const responseLogContext = {
+            companyNameLength: trimmedCompanyName.length,
+            hasProductName: Boolean(trimmedProductName),
+            productNameLength: trimmedProductName.length,
+            hasProductUrl: Boolean(trimmedProductUrl),
+            productUrlLength: trimmedProductUrl.length,
+            hasSupportEmail: Boolean(trimmedSupportEmail),
+            supportEmailLength: trimmedSupportEmail.length,
+            billingModel,
+            primarySurfaceCount: primarySurfaces.length,
+        };
 
         try {
             const res = await fetch('/api/answerlattice/onboard', {
                 method: 'POST',
+                cache: 'no-store',
+                credentials: 'same-origin',
+                redirect: 'manual',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    companyName: companyName.trim(),
-                    productName: productName.trim() || undefined,
-                    productUrl: productUrl.trim() || undefined,
-                    supportEmail: supportEmail.trim() || undefined,
+                    companyName: trimmedCompanyName,
+                    productName: trimmedProductName || undefined,
+                    productUrl: trimmedProductUrl || undefined,
+                    supportEmail: trimmedSupportEmail || undefined,
                     billingModel,
                     primarySurfaces,
-                    planId: 'answerlattice_beta',
+                    planId: 'answerlattice_starter',
                     interval: 'MONTH',
                 }),
             });
 
-            const data = await res.json();
+            const data = await readAnswerlatticeOnboardResponseJson(res, responseLogContext);
 
-            if (!res.ok) {
-                throw new Error(data.error || 'Something went wrong');
+            if (!res.ok || !isOnboardResult(data)) {
+                if (res.ok) {
+                    logRuntimeFailure('answerlattice_onboard_response_invalid', new Error('answerlattice_onboard_response_invalid'), {
+                        ...responseLogContext,
+                        responseStatus: res.status,
+                    });
+                }
+                throw new Error(ANSWERLATTICE_ONBOARDING_FAILED_MESSAGE);
             }
 
             await update();
             setResult(data);
             setStep('done');
-        } catch (err: any) {
-            setError(err.message || 'Failed to create account');
+        } catch {
+            setError(ANSWERLATTICE_ONBOARDING_FAILED_MESSAGE);
             setStep('details');
         }
     };
@@ -277,7 +355,7 @@ function OnboardingFormInner() {
                             type="text"
                             value={companyName}
                             onChange={(e) => setCompanyName(e.target.value)}
-                            placeholder="e.g., Acme Inc."
+                            placeholder="Company or studio name"
                             style={styles.input}
                             autoFocus
                         />
@@ -289,7 +367,7 @@ function OnboardingFormInner() {
                             type="text"
                             value={productName}
                             onChange={(e) => setProductName(e.target.value)}
-                            placeholder="e.g., Acme CRM"
+                            placeholder="Product, app, or workspace name"
                             style={styles.input}
                         />
                     </div>
@@ -326,7 +404,6 @@ function OnboardingFormInner() {
                             <option value="subscription">Subscription</option>
                             <option value="usage">Usage based</option>
                             <option value="one_time">One-time payment</option>
-                            <option value="free">No paid plan yet</option>
                             <option value="not_sure">Not sure yet</option>
                         </select>
                     </div>
@@ -349,9 +426,9 @@ function OnboardingFormInner() {
                     </div>
 
                     <div style={styles.planBadge}>
-                        <span style={styles.planLabel}>Beta access</span>
-                        <span style={styles.planPrice}>Controlled setup access</span>
-                        <span style={styles.planDesc}>Creates the workspace, product account bridge, beta subscription, product surfaces, and one-time widget key.</span>
+                        <span style={styles.planLabel}>Starter plan</span>
+                        <span style={styles.planPrice}>Paid monthly setup</span>
+                        <span style={styles.planDesc}>Creates the workspace, product account bridge, pending paid subscription, product surfaces, and one-time widget key.</span>
                     </div>
 
                     {error && <p style={styles.error}>{error}</p>}
@@ -360,7 +437,7 @@ function OnboardingFormInner() {
                         onClick={handleCreateAccount}
                         style={styles.primaryBtn}
                         data-answerlattice-event="onboarding_create_clicked"
-                        data-answerlattice-label="beta_workspace"
+                        data-answerlattice-label="starter_workspace"
                     >
                         Create workspace
                     </button>
@@ -380,13 +457,13 @@ function OnboardingFormInner() {
             {step === 'done' && result && (
                 <div style={styles.card}>
                     <div style={styles.successIcon}>✓</div>
-                    <h2 style={styles.cardTitle}>Your AnswerLattice account is ready!</h2>
-                    <p style={styles.cardSubtext}>Save your widget key now. AnswerLattice stores only the secure hash and will show the prefix later.</p>
+                    <h2 style={styles.cardTitle}>Your AnswerLattice workspace is created.</h2>
+                    <p style={styles.cardSubtext}>Complete payment to activate the paid plan. Save your widget key now; AnswerLattice stores only the secure hash and will show the prefix later.</p>
 
                     <div style={styles.detailsGrid}>
                         <div style={styles.detailItem}>
                             <span style={styles.detailLabel}>Plan</span>
-                            <span style={styles.detailValue}>{result.plan.name}{result.plan.isBeta ? ' (Beta access)' : ''}</span>
+                            <span style={styles.detailValue}>{result.plan.name}</span>
                         </div>
                         <div style={{ ...styles.detailItem, gridColumn: '1 / -1' }}>
                             <span style={styles.detailLabel}>Widget key</span>
@@ -397,6 +474,7 @@ function OnboardingFormInner() {
                     <div style={styles.nextSteps}>
                         <h3 style={styles.nextStepsTitle}>Next steps</h3>
                         <ol style={styles.stepsList}>
+                            <li>Complete payment from the checkout link or billing screen</li>
                             <li>Check your activation dashboard</li>
                             <li>Teach AnswerLattice from selected links, docs, screenshots, recordings, or starter answers</li>
                             <li>Review generated product topics and answer drafts</li>
@@ -404,13 +482,23 @@ function OnboardingFormInner() {
                         </ol>
                     </div>
 
+                    {result.subscription?.shortUrl && (
+                        <a
+                            href={result.subscription.shortUrl}
+                            style={styles.primaryBtn}
+                            data-answerlattice-event="onboarding_payment_clicked"
+                            data-answerlattice-label="starter_checkout"
+                        >
+                            Complete payment
+                        </a>
+                    )}
                     <a
-                        href={mainDashboardHref}
-                        style={styles.primaryBtn}
+                        href={result.subscription?.shortUrl ? billingHref : mainDashboardHref}
+                        style={result.subscription?.shortUrl ? styles.secondaryBtn : styles.primaryBtn}
                         data-answerlattice-event="onboarding_dashboard_clicked"
-                        data-answerlattice-label="open_dashboard"
+                        data-answerlattice-label={result.subscription?.shortUrl ? 'open_billing' : 'open_dashboard'}
                     >
-                        Open dashboard
+                        {result.subscription?.shortUrl ? 'Open billing' : 'Open dashboard'}
                     </a>
                 </div>
             )}

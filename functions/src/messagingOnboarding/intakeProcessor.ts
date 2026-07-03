@@ -36,6 +36,65 @@ import { transitionState } from "./sessionEngine";
 const logger = functions.logger;
 const db = firestoreAdmin;
 const sessionsCol = DB_COLLECTIONS.MESSAGING_ONBOARDING_SESSIONS;
+const INTAKE_PROVIDER_MESSAGE_SEND_FAILED_CODE = "INTAKE_PROVIDER_MESSAGE_SEND_FAILED";
+const INTAKE_RATE_LIMIT_COUNTER_UPDATE_FAILED_CODE = "INTAKE_RATE_LIMIT_COUNTER_UPDATE_FAILED";
+
+function getIntakeProcessorErrorContext(error: unknown): {
+  errorName: string;
+  errorCode?: string;
+} {
+  if (error instanceof Error) {
+    const code = (error as { code?: unknown }).code;
+    return {
+      errorName: (error.name || "Error").slice(0, 80),
+      ...(code === undefined || code === null ? {} : { errorCode: String(code).slice(0, 64) }),
+    };
+  }
+
+  return {
+    errorName: typeof error,
+  };
+}
+
+function getIntakeProcessorIdLogContext(
+  label: string,
+  value: unknown,
+): Record<string, boolean | number> {
+  const normalized = value === undefined || value === null ? "" : String(value);
+  return {
+    [`${label}Present`]: normalized.length > 0,
+    [`${label}Length`]: normalized.length,
+  };
+}
+
+function logProviderMessageSendFailed(
+  session: MessagingOnboardingSession,
+  messageTrigger: string,
+  sessionState: MessagingOnboardingState,
+  error: unknown,
+): void {
+  logger.warn("[IntakeProcessor] Non-blocking provider message send failed", {
+    failureCode: INTAKE_PROVIDER_MESSAGE_SEND_FAILED_CODE,
+    messageTrigger,
+    provider: session.provider,
+    sessionState,
+    ...getIntakeProcessorIdLogContext("sessionId", session.sessionId),
+    ...getIntakeProcessorErrorContext(error),
+  });
+}
+
+function logProcessingRunCounterUpdateFailed(
+  session: MessagingOnboardingSession,
+  error: unknown,
+): void {
+  logger.warn("[IntakeProcessor] Processing run counter update failed", {
+    failureCode: INTAKE_RATE_LIMIT_COUNTER_UPDATE_FAILED_CODE,
+    provider: session.provider,
+    sessionState: "VALIDATING_ASSETS",
+    ...getIntakeProcessorIdLogContext("sessionId", session.sessionId),
+    ...getIntakeProcessorErrorContext(error),
+  });
+}
 
 /**
  * Main intake processor logic.
@@ -64,7 +123,7 @@ export async function intakeProcessorLogic(): Promise<{
     }
   } catch (err) {
     logger.error("[IntakeProcessor] Failed to drain inbound queue", {
-      error: (err as Error).message,
+      ...getIntakeProcessorErrorContext(err),
     });
     errors++;
   }
@@ -88,8 +147,8 @@ export async function intakeProcessorLogic(): Promise<{
       processed++;
     } catch (err) {
       logger.error("[IntakeProcessor] Error processing session", {
-        sessionId: doc.id,
-        error: (err as Error).message,
+        ...getIntakeProcessorIdLogContext("sessionId", doc.id),
+        ...getIntakeProcessorErrorContext(err),
       });
       errors++;
     }
@@ -150,18 +209,18 @@ async function sendPendingPreviewMessages(): Promise<void> {
         });
 
         logger.info("[IntakeProcessor] Sent pending preview link", {
-          sessionId: session.sessionId,
+          ...getIntakeProcessorIdLogContext("sessionId", session.sessionId),
         });
       } catch (err) {
         logger.error("[IntakeProcessor] Failed to send pending preview link", {
-          sessionId: doc.id,
-          error: (err as Error).message,
+          ...getIntakeProcessorIdLogContext("sessionId", doc.id),
+          ...getIntakeProcessorErrorContext(err),
         });
       }
     }
   } catch (err) {
     logger.error("[IntakeProcessor] Failed to query pending preview links", {
-      error: (err as Error).message,
+      ...getIntakeProcessorErrorContext(err),
     });
   }
 }
@@ -213,19 +272,19 @@ async function sendPendingPublishConfirmations(): Promise<void> {
         });
 
         logger.info("[IntakeProcessor] Sent publish confirmation", {
-          sessionId: session.sessionId,
+          ...getIntakeProcessorIdLogContext("sessionId", session.sessionId),
         });
       } catch (err) {
         logger.error("[IntakeProcessor] Failed to send publish confirmation", {
-          sessionId: doc.id,
-          error: (err as Error).message,
+          ...getIntakeProcessorIdLogContext("sessionId", doc.id),
+          ...getIntakeProcessorErrorContext(err),
         });
         // Don't clear the flag — will retry on next run
       }
     }
   } catch (err) {
     logger.error("[IntakeProcessor] Failed to query pending confirmations", {
-      error: (err as Error).message,
+      ...getIntakeProcessorErrorContext(err),
     });
   }
 }
@@ -271,14 +330,14 @@ async function sendPendingFixMessages(): Promise<void> {
         });
       } catch (err) {
         logger.error("[IntakeProcessor] Failed to send fix message", {
-          sessionId: doc.id,
-          error: (err as Error).message,
+          ...getIntakeProcessorIdLogContext("sessionId", doc.id),
+          ...getIntakeProcessorErrorContext(err),
         });
       }
     }
   } catch (err) {
     logger.error("[IntakeProcessor] Failed to query pending fix messages", {
-      error: (err as Error).message,
+      ...getIntakeProcessorErrorContext(err),
     });
   }
 }
@@ -323,8 +382,13 @@ async function processSession(
         session.providerUserId,
         MESSAGES.EXTRACTION_CAP_REACHED,
       );
-    } catch {
-      // Non-critical — message send failure
+    } catch (err) {
+      logProviderMessageSendFailed(
+        session,
+        "session_processing_cap_reached",
+        session.state,
+        err,
+      );
     }
 
     logOnboardingEvent({
@@ -358,8 +422,13 @@ async function processSession(
           session.providerUserId,
           MESSAGES.EXTRACTION_CAP_REACHED,
         );
-      } catch {
-        // Non-critical
+      } catch (err) {
+        logProviderMessageSendFailed(
+          session,
+          "weekly_processing_cap_reached",
+          session.state,
+          err,
+        );
       }
       logOnboardingEvent({
         sessionId: session.sessionId,
@@ -399,8 +468,8 @@ async function processSession(
     validationResult = await validateAssets(session.uploads);
   } catch (err) {
     logger.error("[IntakeProcessor] Asset validation failed", {
-      sessionId: session.sessionId,
-      error: (err as Error).message,
+      ...getIntakeProcessorIdLogContext("sessionId", session.sessionId),
+      ...getIntakeProcessorErrorContext(err),
     });
 
     logOnboardingEvent({
@@ -411,7 +480,6 @@ async function processSession(
       userIdMasked: userMasked,
       error: {
         code: "GEMINI_API_ERROR",
-        message: (err as Error).message,
         retryable: true,
       },
       sessionCreatedAt: session.createdAt,
@@ -426,7 +494,7 @@ async function processSession(
         session.sessionId,
         "VALIDATING_ASSETS",
         "FAILED",
-        `Asset validation failed after retry: ${(retryErr as Error).message}`,
+        "Asset validation failed after retry",
         { _provider: session.provider, _userIdMasked: userMasked },
       );
 
@@ -436,8 +504,13 @@ async function processSession(
           session.providerUserId,
           MESSAGES.ASK_CLEARER_PHOTOS,
         );
-      } catch {
-        // Non-critical
+      } catch (sendErr) {
+        logProviderMessageSendFailed(
+          session,
+          "asset_validation_retry_failed",
+          "FAILED",
+          sendErr,
+        );
       }
       return;
     }
@@ -526,8 +599,13 @@ async function processSession(
           session.providerUserId,
           MESSAGES.ASK_CLEARER_PHOTOS,
         );
-      } catch {
-        // Non-critical
+      } catch (err) {
+        logProviderMessageSendFailed(
+          session,
+          "no_valid_menu_files",
+          "FAILED",
+          err,
+        );
       }
       return;
     }
@@ -547,8 +625,13 @@ async function processSession(
         session.providerUserId,
         MESSAGES.NON_MENU_FILE,
       );
-    } catch {
-      // Non-critical
+    } catch (err) {
+      logProviderMessageSendFailed(
+        session,
+        "all_files_non_menu",
+        "AWAITING_MORE_UPLOADS",
+        err,
+      );
     }
     return;
   }
@@ -562,8 +645,13 @@ async function processSession(
         session.providerUserId,
         MESSAGES.ASK_MORE_UPLOADS,
       );
-    } catch {
-      // Non-critical — continue to extraction anyway
+    } catch (err) {
+      logProviderMessageSendFailed(
+        session,
+        "partial_menu_more_uploads",
+        "VALIDATING_ASSETS",
+        err,
+      );
     }
   }
 
@@ -598,8 +686,13 @@ async function triggerExtraction(
       session.providerUserId,
       MESSAGES.EXTRACTION_PROGRESS,
     );
-  } catch {
-    // Non-critical
+  } catch (err) {
+    logProviderMessageSendFailed(
+      session,
+      "extraction_progress",
+      "VALIDATING_ASSETS",
+      err,
+    );
   }
 
   logOnboardingEvent({
@@ -662,14 +755,16 @@ async function triggerExtraction(
     .collection(DB_COLLECTIONS.MESSAGING_ONBOARDING_RATE_LIMITS)
     .doc(extractionUserHash)
     .update({ processingRunsThisWeek: FieldValue.increment(1) })
-    .catch(() => { /* Rate limit doc may not exist yet — counter starts on next session */ });
+    .catch((err) => {
+      logProcessingRunCounterUpdateFailed(session, err);
+    });
 
   // Transition to PROCESSING_MENU
   await transitionState(
     session.sessionId,
     "VALIDATING_ASSETS",
     "PROCESSING_MENU",
-    `Extraction job created: ${jobRef.id}`,
+    "Extraction job created",
     { _provider: session.provider, _userIdMasked: userMasked },
   );
 }

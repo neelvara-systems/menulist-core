@@ -1,10 +1,14 @@
 # ✏️ Data Editor Assessment (ASSESSMENT-03)
 
-**Feature**: Data Editor UX & Safety  
-**Risk Level**: 🔴 HIGH → ✅ RESOLVED  
-**Production Ready**: ✅ YES  
-**Implementation Status**: ✅ **COMPLETED** on Nov 14, 2025  
-**Implementation Doc**: [3-IMPLEMENTATION-EDITOR-COMPLETE.md](./development_done/3-IMPLEMENTATION-EDITOR-COMPLETE.md)
+**Feature**: Data Editor UX & Safety
+**Risk Level**: 🔴 HIGH → ✅ RESOLVED
+**Historical Result**: Historical assessment result only; not current launch certification
+**Implementation Status**: ✅ **COMPLETED** on Nov 14, 2025
+**Implementation Doc**: [3-implementation-editor-complete.md](../development_done/3-implementation-editor-complete.md)
+
+---
+
+**Launch boundary:** This November 2025 assessment records completed Data Editor UX and safety fixes. It is not current production deployment approval. Current release approval requires the active [production-readiness audit](../../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../../production-readiness/external-certification-runbook.md) evidence, browser/mobile editor QA, publish/cache evidence for edited public truth, and deploy evidence for the target environment.
 
 ---
 
@@ -14,9 +18,9 @@
 | ------------------------ | ------------ | ----------- | -------- | ---------------------------------------------- |
 | **Critical (P0)**        | 1            | 1           | 0        | ✅ 100% Complete                               |
 | **High Priority (P1)**   | 3            | 3           | 0        | ✅ 100% Complete                               |
-| **Medium Priority (P2)** | 2            | 1           | 1        | 🟡 50% (reordering done, bulk ops post-launch) |
+| **Medium Priority (P2)** | 2            | 1           | 1        | 🟡 50% (reordering done, bulk ops outside this historical assessment) |
 
-**Overall Implementation**: ✅ **COMPLETED** on Nov 14, 2025. All critical and high-priority editor features are implemented including auto-save, validation, undo/redo, keyboard shortcuts, and drag-and-drop reordering. Only bulk operations and delete shortcut are deferred to post-launch.
+**Overall Implementation**: ✅ **COMPLETED** on Nov 14, 2025. All critical and high-priority editor features are implemented including auto-save, validation, undo/redo, keyboard shortcuts, and drag-and-drop reordering. Bulk operations and delete shortcut are outside this historical assessment result and must pass the current feature gate before release.
 
 ---
 
@@ -35,7 +39,7 @@
 - ✅ Bottom bar shows clear status: `Saving…`, `Unsaved changes`, `All changes saved` with a tooltip `Saved at HH:MM` when saved.
 
 **Status**: ✅ **COMPLETED** on Nov 14, 2025  
-**Details**: See `Editor.tsx` (auto-save effect + save status UI) and [04-DATA-EDITOR.md](./04-DATA-EDITOR.md#auto-save).
+**Details**: See `Editor.tsx` (auto-save effect + save status UI) and [04-DATA-EDITOR.md](../data-editor/README.md#auto-save).
 
 ---
 
@@ -175,9 +179,9 @@ These are important for a polished, safe editor experience but are not hard bloc
   - Category, item, attribute management
 - `src/components/templates/main-app/projects/constants.ts`
   - `AUTOSAVE_DEBOUNCE_MS = 15000`, `AUTOSAVE_MIN_INTERVAL_MS = 30000`
-- `__docs__/projects/04-DATA-EDITOR.md`
+- `__docs__/projects/data-editor/README.md`
   - Detailed editor architecture, auto-save, validation, performance best practices
-- `__docs__/projects/development_done/3-IMPLEMENTATION-EDITOR-COMPLETE.md` (NEW)
+- `__docs__/projects/development_done/3-implementation-editor-complete.md` (NEW)
   - Complete implementation details for all editor features
 
 ---
@@ -201,7 +205,7 @@ These are important for a polished, safe editor experience but are not hard bloc
    - User-friendly with file/mode/category selectors
    - Visual feedback and explanatory text
 
-### ⏭️ Deferred to Post-Launch
+### Outside This Historical Assessment
 
 1. ⏭️ **Delete item keyboard shortcut** (P2)
    - `Delete` / `Backspace` to delete active item (with confirmation)
@@ -210,11 +214,11 @@ These are important for a polished, safe editor experience but are not hard bloc
    - Multi-select items → bulk activate/deactivate/move
    - Based on real user feedback after beta
 
-### 🟢 Production Readiness
+### Current Launch Boundary
 
-**Status**: ✅ **PRODUCTION READY**
+**Historical assessment result:** all reviewed critical (P0) and high-priority (P1) editor UX items were completed. Do not treat this assessment as current production deployment approval without active production-readiness audit evidence, External Certification Runbook evidence, browser/mobile editor QA, publish/cache evidence for edited public truth, and deploy evidence for the target environment.
 
-All critical (P0) and high-priority (P1) editor UX items are **completed**. The editor now has:
+The editor now has:
 
 - Zero data loss (auto-save)
 - Safe publishing (validation)

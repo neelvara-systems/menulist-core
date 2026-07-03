@@ -2,7 +2,10 @@ import { DB_COLLECTIONS } from '@constant/database';
 import { ECOMSAI_PLATFORM_USER_ROLE } from '@constant/user';
 import { admin } from '@lib/firebase/firebaseAdmin';
 import { logger } from '@lib/monitoring/logger';
-import { buildSecurityContext } from '@lib/security/securityContext';
+import {
+    getBoundedSecurityRouteContext,
+    getBoundedSecurityStringContext,
+} from '@lib/security/securityDiagnostics';
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 
@@ -56,11 +59,12 @@ export async function requireConfiguredGoogleAnalyticsProperty(
 
     if (!storeDoc.exists || Number(storeData?.tenantId) !== tenantId || !allowedPropertyIds.includes(requestedPropertyId)) {
         logger.security('Authorization Failed - Analytics Property Mismatch', {
-            ...buildSecurityContext(session, request),
-            endpoint: request.nextUrl.pathname,
-            requestedPropertyId,
-            storeId,
-            tenantId,
+            ...getBoundedSecurityRouteContext(session, request),
+            ...getBoundedSecurityStringContext('endpoint', request.nextUrl.pathname),
+            ...getBoundedSecurityStringContext('requestedPropertyId', requestedPropertyId),
+            ...getBoundedSecurityStringContext('storeId', storeId),
+            ...getBoundedSecurityStringContext('tenantId', tenantId),
+            allowedPropertyCount: allowedPropertyIds.length,
         }, 'high');
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }

@@ -1,8 +1,6 @@
 
 import { match as matchLocale } from '@formatjs/intl-localematcher';
 import { APP_LOCALE_COOKIES_KEY, APP_TIMEZONE_COOKIES_KEY, AppSupportedLocales, defaultLocale, defaultTimezone, Locale } from '@lib/localization/config';
-import { logger } from '@lib/monitoring/logger';
-import { windowRef } from '@util/window';
 import Negotiator from 'negotiator';
 import { IntlErrorCode } from 'next-intl';
 import { getRequestConfig } from 'next-intl/server';
@@ -59,6 +57,7 @@ import urIN from '../../public/locales/menulist.ai/ur-IN.json';
 import viVN from '../../public/locales/menulist.ai/vi-VN.json';
 import zhCN from '../../public/locales/menulist.ai/zh-CN.json';
 import zhTW from '../../public/locales/menulist.ai/zh-TW.json';
+import { getBoundedI18nStringContext, logI18nDiagnostic, logI18nFailure } from './diagnostics';
 
 const localeMessages: Record<string, Record<string, any>> = {
     'ar-SA': arSA,
@@ -179,11 +178,9 @@ export default getRequestConfig(async () => {
 
         //1.assign default locale to avoide app crash
         let locale: Locale = defaultLocale;
-        // console.log("1. locale", locale)
 
         //2. get current user app locale (Get this from database affter saving user preferances into database)
         const localLocale = normalizeLocalePreference(cookies().get(APP_LOCALE_COOKIES_KEY)?.value);
-        // console.log("2. localLocale", localLocale)
 
         //3. get user browser locale if user accessing app first time or not selected any locale
         if (!localLocale) {
@@ -197,25 +194,18 @@ export default getRequestConfig(async () => {
             locale = languages.length
                 ? matchLocale(languages, availableLocales, defaultLocale) as Locale
                 : defaultLocale;
-            // console.log("3. locale", locale)
         } else {
             locale = localLocale;
-            // console.log("3.1. locale", locale)
         }
         if (!locale) locale = defaultLocale;
 
         //4. get current calling route so that we can identify which apps locals needs to be imported
         const referer = headers().get('referer');
-        // console.log("4. referer", referer + "/" + locale)
 
         //5. Normalize/sanitize selected locale before handing it to next-intl.
         locale = normalizeLocalePreference(locale) || defaultLocale;
-        // console.log("5. locale", locale)
         let timeZone: string | undefined = cookies().get(APP_TIMEZONE_COOKIES_KEY)?.value;
         if (!timeZone) timeZone = defaultTimezone;
-
-        // console.log("timeZone", timeZone)
-        // console.log("locale", locale)
 
         // Always load en-US as the fallback base.
         // Static imports avoid missing generated JSON chunks in Next dev after route-table rebuilds.
@@ -229,7 +219,11 @@ export default getRequestConfig(async () => {
                 // Merge: locale-specific translations override en-US, missing keys fall back to en-US
                 messages = deepMerge(defaultMessages, selectedLocaleMessages);
             } catch (error) {
-                console.error(`Error loading messages for locale '${locale}', falling back to ${defaultLocale}:`, error);
+                logI18nFailure('i18n_locale_messages_load_failed', error, {
+                    ...getBoundedI18nStringContext('locale', locale),
+                    ...getBoundedI18nStringContext('defaultLocale', defaultLocale),
+                    hasReferer: Boolean(referer),
+                });
                 // Keep defaultMessages as fallback
             }
         }
@@ -244,10 +238,17 @@ export default getRequestConfig(async () => {
                     // Missing translations are expected for partially-translated locales
                     // Silenced in production — en-US fallback via deepMerge covers most cases
                     if (process.env.NODE_ENV === 'development') {
-                        console.warn(`[i18n] Missing: ${error.message}`);
+                        logI18nDiagnostic('i18n_missing_message', {
+                            ...getBoundedI18nStringContext('locale', locale),
+                            ...getBoundedI18nStringContext('defaultLocale', defaultLocale),
+                            sourceErrorCode: error.code,
+                        }, { developmentOnly: true });
                     }
                 } else {
-                    console.error('[i18n] Error:', error);
+                    logI18nFailure('i18n_runtime_error', error, {
+                        ...getBoundedI18nStringContext('locale', locale),
+                        ...getBoundedI18nStringContext('defaultLocale', defaultLocale),
+                    });
                 }
             },
             getMessageFallback({ namespace, key, error }) {
@@ -265,9 +266,8 @@ export default getRequestConfig(async () => {
         }
 
         // Log error for debugging
-        logger.error('i18n Configuration Error', error, {
-            userAgent: windowRef()?.navigator?.userAgent,
-            location: windowRef()?.location?.href,
+        logI18nFailure('i18n_request_config_failed', error, {
+            ...getBoundedI18nStringContext('defaultLocale', defaultLocale),
         });
 
         // Return fallback config to prevent app crash

@@ -94,7 +94,7 @@ Most AI help systems treat every question the same — a text query sent to a se
 5. Show the context payload in developer tools (small, clean, familiar)
 
 ### Plan-Aware Demo
-1. Switch to free-tier user context
+1. Switch to starter-tier user context
 2. Ask: "How do I use advanced analytics?"
 3. Show result: "Advanced analytics is available on Pro plan" (not the setup guide)
 

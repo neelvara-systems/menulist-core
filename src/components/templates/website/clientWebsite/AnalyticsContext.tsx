@@ -1,4 +1,5 @@
 'use client'
+import { getBoundedAnalyticsStringContext, getAnalyticsTrackingContext, logAnalyticsFailure } from '@lib/analytics/analyticsDiagnostics';
 import { getResolvedAnalyticsPreferences } from '@lib/analytics/preferences';
 import { getStoreContextName } from '@lib/businessIdentity/names';
 import { getSessionId, refreshSession } from '@lib/analytics/session';
@@ -59,6 +60,38 @@ const getUtmParams = () => {
   };
 };
 
+const getPublicMenuAnalyticsContext = (
+  storeDetails?: StoreDataType,
+  projectId?: string,
+  sessionId?: string,
+  extra: Record<string, boolean | number | string | null | undefined> = {},
+) => ({
+  ...getAnalyticsTrackingContext({
+    tenantId: storeDetails?.tenantId || (storeDetails as any)?.tId,
+    storeId: storeDetails?.storeId || (storeDetails as any)?._id,
+    projectId,
+    sessionId,
+    storeTimeZone: storeDetails?.timeZone,
+    businessDayEndTime: storeDetails?.businessDayEndTime,
+  }),
+  ...extra,
+});
+
+const getPublicMenuItemAnalyticsContext = (
+  data: MenuItemViewData,
+  storeDetails?: StoreDataType,
+  projectId?: string,
+  sessionId?: string,
+) => ({
+  ...getPublicMenuAnalyticsContext(storeDetails, projectId, sessionId),
+  ...getBoundedAnalyticsStringContext('itemId', data.itemId),
+  ...getBoundedAnalyticsStringContext('itemName', data.name),
+  ...getBoundedAnalyticsStringContext('categoryId', data.categoryId),
+  ...getBoundedAnalyticsStringContext('categoryName', data.categoryName || data.category),
+  hasPrice: typeof data.price === 'number',
+  hasCurrency: Boolean(data.currency),
+});
+
 export const AnalyticsProvider: React.FC<AnalyticsProviderProps> = ({ children, storeDetails, projectId, activeLanguage, activeLanguageName, menuResolutionLayer }) => {
   const analyticsPreferences = getResolvedAnalyticsPreferences(storeDetails?.analytics);
   const isEnabled = analyticsPreferences.trackMenuViews;
@@ -117,7 +150,12 @@ export const AnalyticsProvider: React.FC<AnalyticsProviderProps> = ({ children, 
         menuLanguageName: activeLanguageName,
         ...utmParams
       }).catch(error => {
-        console.error('Error tracking menu page view:', error);
+        logAnalyticsFailure('public_menu_view_tracking_failed', error, getPublicMenuAnalyticsContext(
+          storeDetails,
+          projectId,
+          sessionId,
+          { includeLocation, menuResolutionLayer: menuResolutionLayer || 'layer1' },
+        ));
       });
       // T5-N-04: If resolved via Layer 2 /menu alias, fire a latent PROJECT_SWITCH
       // so we can measure how often customers "switch" via typing /menu vs explicit UI.
@@ -130,11 +168,21 @@ export const AnalyticsProvider: React.FC<AnalyticsProviderProps> = ({ children, 
           includeLocation,
           ...utmParams,
         }).catch(error => {
-          console.error('Error tracking project switch for Layer 2 alias:', error);
+          logAnalyticsFailure('public_menu_alias_project_switch_tracking_failed', error, getPublicMenuAnalyticsContext(
+            storeDetails,
+            projectId,
+            sessionId,
+            { includeLocation, menuResolutionLayer: 'layer2' },
+          ));
         });
       }
     } catch (error) {
-      console.error('Error in analytics tracking setup:', error);
+      logAnalyticsFailure('public_menu_analytics_setup_failed', error, getPublicMenuAnalyticsContext(
+        storeDetails,
+        projectId,
+        undefined,
+        { includeLocation, menuResolutionLayer: menuResolutionLayer || 'layer1' },
+      ));
     }
   }, [storeDetails, isEnabled, projectId, menuResolutionLayer, includeLocation, activeLanguage, activeLanguageName]);
 
@@ -172,9 +220,19 @@ export const AnalyticsProvider: React.FC<AnalyticsProviderProps> = ({ children, 
           menuLanguageName: activeLanguageName,
           languageAdoptionReason: 'dwell',
           ...utmParams,
+        }).catch(error => {
+          logAnalyticsFailure('public_menu_language_adoption_tracking_failed', error, {
+            ...getPublicMenuAnalyticsContext(storeDetails, projectId, sessionId, { includeLocation }),
+            ...getBoundedAnalyticsStringContext('activeLanguage', activeLanguage),
+            ...getBoundedAnalyticsStringContext('previousLanguage', previousLanguage),
+          });
         });
       } catch (error) {
-        console.error('Error tracking menu language adoption:', error);
+        logAnalyticsFailure('public_menu_language_adoption_setup_failed', error, {
+          ...getPublicMenuAnalyticsContext(storeDetails, projectId, undefined, { includeLocation }),
+          ...getBoundedAnalyticsStringContext('activeLanguage', activeLanguage),
+          ...getBoundedAnalyticsStringContext('previousLanguage', previousLanguage),
+        });
       }
     }, 10000);
 
@@ -195,7 +253,11 @@ export const AnalyticsProvider: React.FC<AnalyticsProviderProps> = ({ children, 
 
       // Skip tracking if we don't have valid IDs
       if (!tenantId || !storeId) {
-        console.warn('Item view tracking skipped: Missing tenant or store ID');
+        logAnalyticsFailure('public_menu_item_view_missing_scope', undefined, getPublicMenuItemAnalyticsContext(
+          data,
+          storeDetails,
+          projectId,
+        ));
         return;
       }
 
@@ -216,7 +278,12 @@ export const AnalyticsProvider: React.FC<AnalyticsProviderProps> = ({ children, 
         ...utmParams,
       })
         .catch(error => {
-          console.error('Error tracking specific menu item view:', error);
+          logAnalyticsFailure('public_menu_item_view_tracking_failed', error, getPublicMenuItemAnalyticsContext(
+            data,
+            storeDetails,
+            projectId,
+            sessionId,
+          ));
         });
 
       // Track in Facebook Pixel if available
@@ -232,7 +299,11 @@ export const AnalyticsProvider: React.FC<AnalyticsProviderProps> = ({ children, 
         window.fbq('track', 'ViewContent', params);
       }
     } catch (error) {
-      console.error('Error in item view tracking:', error);
+      logAnalyticsFailure('public_menu_item_view_setup_failed', error, getPublicMenuItemAnalyticsContext(
+        data,
+        storeDetails,
+        projectId,
+      ));
     }
   }, [isEnabled, storeDetails, projectId, includeLocation]);
 
@@ -259,10 +330,19 @@ export const AnalyticsProvider: React.FC<AnalyticsProviderProps> = ({ children, 
         categoryName: data.categoryName || data.category,
         ...utmParams,
       }).catch(error => {
-        console.error('Error tracking menu item tap:', error);
+        logAnalyticsFailure('public_menu_item_tap_tracking_failed', error, getPublicMenuItemAnalyticsContext(
+          data,
+          storeDetails,
+          projectId,
+          sessionId,
+        ));
       });
     } catch (error) {
-      console.error('Error in item tap tracking:', error);
+      logAnalyticsFailure('public_menu_item_tap_setup_failed', error, getPublicMenuItemAnalyticsContext(
+        data,
+        storeDetails,
+        projectId,
+      ));
     }
   }, [isEnabled, storeDetails, projectId, includeLocation]);
 

@@ -1,7 +1,23 @@
 # Item Photo Capture Assist Mobile Support
 
-**Status:** Approved for mobile implementation  
-**Decision:** Yes
+**Status:** Implemented mobile support evidence; not current launch certification
+**Decision:** Yes - source-backed mobile support exists, but release approval still requires current mobile QA evidence.
+
+## Current Release Boundary (July 2, 2026)
+
+This document records the intended and implemented mobile support boundary for Item Photo Capture Assist. It is not mobile launch approval.
+
+Current approval routes through:
+
+- the active production-readiness audit and External Certification Runbook;
+- `npm run verify:agent-readiness`;
+- `npm run verify:auth-security-failure-matrix`;
+- authenticated desktop owner browser QA for the image upload modal;
+- authenticated mobile owner-shell QA inside `MobileShell`;
+- real-device camera QA on iOS Safari and mid-range Android Chrome;
+- media preparation/upload QA through `prepareMediaImage(file, 'menuItem')`;
+- target deploy evidence where routes, storage rules, or upload/runtime behavior change;
+- production-host smoke for the target owner/store.
 
 ## Mobile Admission Test
 
@@ -45,4 +61,3 @@ Initial implementation uses inline English owner copy matching existing image mo
 4. Confirm the upload modal stays inside the mobile flow.
 5. Start camera, capture, retake, and accept.
 6. Confirm blocked camera permissions leave the file upload path usable.
-

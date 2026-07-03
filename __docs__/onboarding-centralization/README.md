@@ -1,10 +1,27 @@
 # Onboarding Centralization
 
-> **Status:** Implementation Ready
-> **Last Updated:** 2026-03-11
+> **Status:** Implemented source evidence; not current launch certification
+> **Last Updated:** 2026-07-02
 > **Scope:** Centralize atomic tenant+store creation across all onboarding flows
 
 ---
+
+## Current Release Boundary (July 2, 2026)
+
+This document records the source-backed onboarding centralization helper and caller adoption. It is not production-launch approval for onboarding.
+
+Current onboarding release approval routes through:
+
+- the active production-readiness audit and External Certification Runbook;
+- `npm run verify:agent-readiness`;
+- `npm run verify:auth-security-failure-matrix`;
+- authenticated browser/API smoke for the target onboarding flow;
+- Razorpay sandbox evidence where subscription creation is in release scope;
+- Firebase Auth custom-claims/token smoke where account/session handoff is in scope;
+- provider-failure compensation evidence for create-subscription and public claim flows;
+- target Firebase deploy evidence where rules, indexes, Storage rules, or Cloud Function logic change;
+- target Vercel deploy evidence where app routes or middleware change;
+- production-host smoke for the target tenant/store creation path.
 
 ## Problem
 

@@ -1,14 +1,21 @@
 export const dynamic = 'force-dynamic';
 import { FEATURE_FLAGS } from "@config/features";
 import { getSubscriptionById, updateSubscription } from "@database/subscriptions/server";
+import { getBoundedResellerApiStringContext, logResellerApiFailure } from "@lib/billing/resellerApiDiagnostics";
 import { safeSyncStorePlanEntitlementFromSubscription } from "@lib/billing/subscriptionEntitlementSync";
 import { logger } from "@lib/monitoring/logger";
+import { checkRateLimit } from "@lib/rateLimit";
+import { getRateLimitForFeature } from "@lib/rateLimit/configs";
+import { readBoundedJsonBody } from "@lib/security/boundedRequestBody";
+import { getBoundedSecurityRouteContext } from "@lib/security/securityDiagnostics";
 import { validateAPIInput } from "@lib/security/inputValidation";
-import { buildSecurityContext } from "@lib/security/securityContext";
 import { ResellerConfirmPaymentSchema } from "@lib/validation/resellerSchemas";
 import { Timestamp } from "firebase/firestore";
 import { NextResponse } from "next/server";
 import { withAuth } from "../../../../middleware/auth";
+import { hashPublicRateLimitValue } from "../../../../middleware/publicApi";
+
+const RESELLER_ACTION_MAX_BODY_BYTES = 16 * 1024;
 
 /**
  * POST /api/reseller/confirm-payment — Offline payment confirmation
@@ -27,7 +34,24 @@ export const POST = withAuth(async (request, session) => {
             return NextResponse.json({ error: "Feature not available." }, { status: 404 });
         }
 
-        const body = await request.json();
+        const rateLimitConfig = getRateLimitForFeature('DATA_WRITE');
+        const resellerRateLimitHash = hashPublicRateLimitValue(resellerId);
+        const rateLimitResult = await checkRateLimit({
+            key: `reseller-confirm-payment:${resellerRateLimitHash}`,
+            ...rateLimitConfig,
+        });
+        if (!rateLimitResult.allowed) {
+            return NextResponse.json({
+                error: "Too many requests. Please try again later.",
+                resetAt: rateLimitResult.resetAt,
+            }, { status: 429 });
+        }
+
+        const bodyResult = await readBoundedJsonBody(request, RESELLER_ACTION_MAX_BODY_BYTES, {
+            invalidJsonMessage: 'Invalid input',
+        });
+        if (bodyResult.ok === false) return bodyResult.response;
+        const body = bodyResult.data as any;
         const validation = validateAPIInput(ResellerConfirmPaymentSchema, body);
         if (!validation.success) {
             const errorMsg = 'error' in validation ? validation.error : 'Invalid input';
@@ -44,10 +68,10 @@ export const POST = withAuth(async (request, session) => {
 
         if (subscription.resellerId !== resellerId && !isPlatformUser) {
             logger.security('Reseller Confirm Payment - Unauthorized Access', {
-                ...buildSecurityContext(session, request),
-                resellerId,
-                subscriptionId,
-                actualResellerId: subscription.resellerId,
+                ...getBoundedSecurityRouteContext(session, request),
+                ...getBoundedResellerApiStringContext('resellerId', resellerId),
+                ...getBoundedResellerApiStringContext('subscriptionId', subscriptionId),
+                ...getBoundedResellerApiStringContext('actualResellerId', subscription.resellerId),
             }, 'high');
             return NextResponse.json({ error: "Access denied." }, { status: 403 });
         }
@@ -88,7 +112,9 @@ export const POST = withAuth(async (request, session) => {
         });
 
     } catch (error) {
-        console.error('[Reseller Confirm Payment] Failed:', error);
+        logResellerApiFailure('reseller_confirm_payment_route_failed', error, {
+            ...getBoundedResellerApiStringContext('resellerId', resellerId),
+        });
         return NextResponse.json(
             { error: 'Failed to confirm payment. Please try again.' },
             { status: 500 }

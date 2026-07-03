@@ -6,10 +6,12 @@ import {
     serializeIntakeValue,
 } from '@lib/answerlattice/knowledgeIntake';
 import {
+    getAnswerlatticeKnowledgeIntakeClientErrorMessage,
     getAnswerlatticeKnowledgeIntakeErrorStatus,
     requireAnswerlatticeKnowledgeIntakeContext,
 } from '@lib/answerlattice/knowledgeIntakeApi';
-import { secureError } from '@lib/security/secureLogger';
+import { logAnswerlatticeKnowledgeIntakeFailure } from '@lib/answerlattice/knowledgeIntakeDiagnostics';
+import { readOptionalBoundedJsonBody } from '@lib/security/boundedRequestBody';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { withAuth } from '@/middleware/auth';
@@ -18,6 +20,7 @@ const DiscoverSchema = z.object({
     url: z.string().trim().min(8).max(500),
     fetchText: z.boolean().optional().default(false),
 });
+const KNOWLEDGE_INTAKE_DISCOVER_MAX_BODY_BYTES = 4 * 1024;
 
 export const POST = withAuth(async (request: NextRequest, session) => {
     const access = await requireAnswerlatticeKnowledgeIntakeContext(request, session, {
@@ -29,8 +32,18 @@ export const POST = withAuth(async (request: NextRequest, session) => {
     if (access.response) return access.response;
 
     try {
-        const body = await request.json().catch(() => ({}));
-        const parsed = DiscoverSchema.parse(body);
+        const bodyResult = await readOptionalBoundedJsonBody(request, KNOWLEDGE_INTAKE_DISCOVER_MAX_BODY_BYTES, {
+            invalidJsonMessage: 'Enter a valid public URL.',
+            tooLargeMessage: 'Request body too large.',
+        });
+        if (bodyResult.ok === false) {
+            return NextResponse.json(
+                { error: bodyResult.response.status === 413 ? 'Request body too large.' : 'Enter a valid public URL.' },
+                { status: bodyResult.response.status },
+            );
+        }
+
+        const parsed = DiscoverSchema.parse(bodyResult.data);
         if (parsed.fetchText) {
             const page = await fetchPublicPageText(parsed.url);
             return NextResponse.json({ page: serializeIntakeValue(page) });
@@ -43,8 +56,10 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         }
         const status = getAnswerlatticeKnowledgeIntakeErrorStatus(error);
         if (status >= 500) {
-            secureError('[Answerlattice Intake] URL discovery failed', error as Error, access.context.scope);
+            logAnswerlatticeKnowledgeIntakeFailure('[Answerlattice Intake] URL discovery failed', 'answerlattice_intake_url_discovery_failed', error, {
+                scope: access.context.scope,
+            });
         }
-        return NextResponse.json({ error: error instanceof Error ? error.message : 'Failed to inspect URL.' }, { status });
+        return NextResponse.json({ error: getAnswerlatticeKnowledgeIntakeClientErrorMessage(error, 'Failed to inspect URL.') }, { status });
     }
 });

@@ -1,6 +1,27 @@
 import { BetaAnalyticsDataClient } from '@google-analytics/data';
+import { getBoundedAnalyticsStringContext, logAnalyticsFailure } from '@lib/analytics/analyticsDiagnostics';
 
 let analyticsClient: BetaAnalyticsDataClient | null = null;
+
+const getAnalyticsProviderCode = (error: unknown): number | string | undefined => {
+    if (!error || typeof error !== 'object' || !('code' in error)) return undefined;
+    const code = (error as { code?: unknown }).code;
+    return typeof code === 'number' || typeof code === 'string' ? code : undefined;
+};
+
+const isAnalyticsAccessDenied = (error: unknown): boolean => getAnalyticsProviderCode(error) === 7 || getAnalyticsProviderCode(error) === '7';
+
+const createAnalyticsAccessError = (): Error & { code: number } => {
+    const accessError = new Error('analytics_access_not_available') as Error & { code: number };
+    accessError.code = 7;
+    return accessError;
+};
+
+const getAnalyticsReportContext = (propertyId: string, startDate?: string, endDate?: string) => ({
+    ...getBoundedAnalyticsStringContext('propertyId', propertyId),
+    ...getBoundedAnalyticsStringContext('startDate', startDate),
+    ...getBoundedAnalyticsStringContext('endDate', endDate),
+});
 
 export const getAnalyticsClient = async () => {
     if (!analyticsClient) {
@@ -13,7 +34,11 @@ export const getAnalyticsClient = async () => {
                 projectId: process.env.GA_PROJECT_ID
             });
         } catch (error) {
-            console.error('Failed to initialize Analytics client:', error);
+            logAnalyticsFailure('analytics_server_client_initialization_failed', error, {
+                projectConfigured: Boolean(process.env.GA_PROJECT_ID),
+                clientEmailConfigured: Boolean(process.env.GA_CLIENT_EMAIL),
+                privateKeyConfigured: Boolean(process.env.GA_PRIVATE_KEY),
+            });
             throw new Error('Analytics initialization failed');
         }
     }
@@ -35,11 +60,15 @@ export const getAnalyticsReport = async (propertyId: string, startDate: string, 
         });
         return response;
     } catch (error: any) {
-        console.error('Analytics Report Error:', error);
-        if (error.code === 7) {
-            throw new Error('Please verify your Google Analytics setup and permissions');
+        logAnalyticsFailure(
+            'analytics_server_report_failed',
+            error,
+            getAnalyticsReportContext(propertyId, startDate, endDate),
+        );
+        if (isAnalyticsAccessDenied(error)) {
+            throw createAnalyticsAccessError();
         }
-        throw error;
+        throw new Error('Analytics report failed');
     }
 };
 
@@ -53,10 +82,14 @@ export const getRealTimeUsers = async (propertyId: string) => {
         });
         return response;
     } catch (error: any) {
-        console.error('Realtime Analytics Error:', error);
-        if (error.code === 7) {
-            throw new Error('Please verify your Google Analytics setup and permissions');
+        logAnalyticsFailure(
+            'analytics_server_realtime_report_failed',
+            error,
+            getAnalyticsReportContext(propertyId),
+        );
+        if (isAnalyticsAccessDenied(error)) {
+            throw createAnalyticsAccessError();
         }
-        throw error;
+        throw new Error('Analytics realtime report failed');
     }
 };

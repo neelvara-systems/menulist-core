@@ -1,11 +1,13 @@
 # Multi-Outlet Brand Consistency — Documentation Hub
 
 > **Feature:** #4 — Multi-Store Menu Consistency  
-> **Status:** ✅ Production Ready  
+> **Status:** Implemented source evidence; not current launch certification
 > **Last Updated:** May 19, 2026
 > **Version:** 4.2
 
 > **Scope:** Master/outlet store linking, project replication, override fields, AI extraction integration, and store onboarding. For permissions, see [Roles & Permissions](../roles-permissions/) (Layer 1) and [Multi-Chain Permissions](../multi-chain-permissions/) (Layer 2). For platform admin store CRUD, see [Stores Management](../stores-management/).
+>
+> **Launch Boundary:** This documentation hub records implemented Multi-Outlet source evidence, not current production-launch approval. Current release approval requires the active [production-readiness audit](../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../production-readiness/external-certification-runbook.md) evidence, `npm run verify:multi-location-boundary`, desktop/mobile Locations browser QA, linked outlet save QA, Razorpay sandbox evidence where billing is involved, Firebase deploy evidence where rules/functions change, and target-environment smoke.
 
 ---
 
@@ -37,10 +39,10 @@
 
 | Topic                 | Folder                                                     | What's There                                      |
 | --------------------- | ---------------------------------------------------------- | ------------------------------------------------- |
-| **Permissions**       | [roles-permissions/](../../roles-permissions/)             | `canManageOutlets`, `canSwitchStores`, RBAC model |
-| **Chain Permissions** | [multi-chain-permissions/](../../multi-chain-permissions/) | `OutletPolicy`, chain-level permission gates      |
-| **Stores Management** | [stores-management/](../../stores-management/)             | Store CRUD, multi-store data model                |
-| **Razorpay Billing**  | [razorpay/](../../razorpay/)                               | Subscription flow, quantity-based pricing         |
+| **Permissions**       | [roles-permissions/](../roles-permissions/)             | `canManageOutlets`, `canSwitchStores`, RBAC model |
+| **Chain Permissions** | [multi-chain-permissions/](../multi-chain-permissions/) | `OutletPolicy`, chain-level permission gates      |
+| **Stores Management** | [stores-management/](../stores-management/)             | Store CRUD, multi-store data model                |
+| **Razorpay Billing**  | [razorpay/](../razorpay/)                               | Subscription flow, quantity-based pricing         |
 
 ---
 

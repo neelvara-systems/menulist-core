@@ -51,6 +51,32 @@ const TEXT_CONTROL_LINES = new Set([
 
 const MAX_DESCRIPTION_CHARS = 500;
 const MAX_DETERMINISTIC_ITEMS = 800;
+const MENU_LINK_TEXT_EXTRACTION_SKIPPED_CODE = 'MENU_LINK_TEXT_EXTRACTION_SKIPPED';
+
+function getMenuLinkTextExtractionErrorContext(error: unknown): {
+    sourceErrorName: string;
+    sourceErrorCode?: string;
+    sourceErrorStatus?: string;
+} {
+    if (error instanceof Error) {
+        const record = error as Error & { code?: unknown; status?: unknown; statusCode?: unknown };
+        const status = record.status ?? record.statusCode;
+
+        return {
+            sourceErrorName: (error.name || 'Error').slice(0, 80),
+            ...(record.code === undefined || record.code === null ? {} : {
+                sourceErrorCode: String(record.code).slice(0, 64),
+            }),
+            ...(status === undefined || status === null ? {} : {
+                sourceErrorStatus: String(status).slice(0, 32),
+            }),
+        };
+    }
+
+    return {
+        sourceErrorName: typeof error,
+    };
+}
 
 type ParsedCategory = {
     id: string;
@@ -271,18 +297,38 @@ function parseVisibleMenuText(rawText: string): TextParseResult | null {
 function parseFirebaseStorageUrl(fileUrl: string): { bucket: string; objectPath: string } | null {
     try {
         const url = new URL(fileUrl);
-        if (url.hostname !== 'firebasestorage.googleapis.com') return null;
+        if (url.hostname === 'firebasestorage.googleapis.com') {
+            const match = url.pathname.match(/^\/v0\/b\/([^/]+)\/o\/(.+)$/);
+            if (!match) return null;
 
-        const match = url.pathname.match(/^\/v0\/b\/([^/]+)\/o\/(.+)$/);
-        if (!match) return null;
+            return {
+                bucket: decodeURIComponent(match[1]),
+                objectPath: decodeURIComponent(match[2]),
+            };
+        }
 
-        return {
-            bucket: decodeURIComponent(match[1]),
-            objectPath: decodeURIComponent(match[2]),
-        };
+        if (url.hostname === 'storage.googleapis.com') {
+            const parts = url.pathname.split('/').filter(Boolean);
+            if (parts.length < 2) return null;
+            return {
+                bucket: decodeURIComponent(parts[0]),
+                objectPath: decodeURIComponent(parts.slice(1).join('/')),
+            };
+        }
+
+        return null;
     } catch {
         return null;
     }
+}
+
+function isAllowedMenuLinkTextArtifactPath(job: MenuImageProcessingJob, objectPath: string): boolean {
+    const tId = String(job.tId || '').trim();
+    const sId = String(job.sId || '').trim();
+    const projectId = String(job.projectId || '').trim();
+    if (!tId || !sId || !projectId || !objectPath) return false;
+    if (objectPath.includes('..') || objectPath.includes('\\') || objectPath.startsWith('/')) return false;
+    return objectPath.startsWith(`menuLinkImports/${tId}/${sId}/${projectId}/`);
 }
 
 async function downloadTextArtifact(job: MenuImageProcessingJob): Promise<string | null> {
@@ -293,7 +339,9 @@ async function downloadTextArtifact(job: MenuImageProcessingJob): Promise<string
     const metadataPath = typeof job.sourceMetadata?.storagePath === 'string' ? job.sourceMetadata.storagePath : '';
     const bucketName = storageFromUrl?.bucket || process.env.FIREBASE_STORAGE_BUCKET || process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || `${process.env.GCLOUD_PROJECT}.appspot.com`;
     const objectPath = storageFromUrl?.objectPath || metadataPath;
+    if (metadataPath && storageFromUrl?.objectPath && metadataPath !== storageFromUrl.objectPath) return null;
     if (!bucketName || !objectPath) return null;
+    if (!isAllowedMenuLinkTextArtifactPath(job, objectPath)) return null;
 
     const [buffer] = await storageAdmin.bucket(bucketName).file(objectPath).download();
     return buffer.toString('utf8');
@@ -324,7 +372,7 @@ export async function tryExtractMenuLinkTextFromJob(
         const quality = buildQualityDetails(parsed.data);
         const processingTime = 0;
         functions.logger.info('[menuLinkTextExtraction] Deterministic link text extraction succeeded', {
-            jobId,
+            jobIdLength: jobId.length,
             categoriesCount: parsed.data.categories.length,
             itemsCount: parsed.data.items.length,
             qualityScore: quality.score,
@@ -359,8 +407,9 @@ export async function tryExtractMenuLinkTextFromJob(
         };
     } catch (error: any) {
         functions.logger.warn('[menuLinkTextExtraction] Deterministic link text extraction skipped', {
-            jobId,
-            error: error?.message || String(error),
+            jobIdLength: jobId.length,
+            failureCode: MENU_LINK_TEXT_EXTRACTION_SKIPPED_CODE,
+            ...getMenuLinkTextExtractionErrorContext(error),
         });
         return null;
     }

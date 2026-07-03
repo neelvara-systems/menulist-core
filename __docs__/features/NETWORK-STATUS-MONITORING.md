@@ -1,7 +1,13 @@
 # 🌐 Network Status Monitoring
 
-**Last Updated**: Nov 21, 2025  
-**Status**: ✅ Production Ready
+**Last Updated**: July 2, 2026
+**Status**: Implemented source evidence; not current launch certification
+
+---
+
+## Current Launch Boundary
+
+This document records the Network Status Monitoring implementation and source evidence. It is not current production certification. Current release approval requires the active [production-readiness audit](../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../production-readiness/external-certification-runbook.md) evidence, browser/device QA for offline and slow-network behavior, target-shell smoke for every product that mounts the provider, and deploy evidence for the target environment.
 
 ---
 
@@ -294,9 +300,9 @@ const timer = setTimeout(() => {
 
 ---
 
-## 🔮 **Future Enhancements**
+## Out of Current Scope
 
-### **Potential Additions**
+The following ideas are not active release approval and must not be treated as committed launch scope without a separate feature doc, owner-value review, and current production-readiness evidence:
 
 1. **Retry button** - Allow manual retry after X seconds
 2. **Offline mode** - Cache data for offline work
@@ -364,7 +370,8 @@ const timer = setTimeout(() => {
 - **Hook**: `/src/hooks/useNetworkStatus.ts`
 - **Provider**: `/src/providers/NetworkStatusProvider.tsx`
 - **Mounted in**: `/src/components/antdComponent/layoutWrapper/index.tsx`
+- **Shared product shell mount**: `/src/app/(campaigncue)/layout.tsx`
 
 ---
 
-**Network monitoring is now active! The app will automatically handle poor connectivity.** 🌐✨
+**Current source state**: network monitoring is implemented in the shared owner-app provider path. Current release approval still requires the launch-boundary evidence above.

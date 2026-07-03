@@ -1,5 +1,6 @@
 import { GenerateImageViaApiPayloadItemDetailsType } from "@template/main-app/projects/types";
 import { UserUploadedFileType } from "@type/common";
+import { logImageEditingPromptFailure } from "./diagnostics";
 import getBackgroundReplacementPrompt from "./getBackgroundReplacementPrompt";
 import getBusinessSpecificPrompt from "./getBusinessSpecificPrompt";
 import getClothingTryonPrompt from "./getClothingTryonPrompt";
@@ -11,6 +12,11 @@ import getObjectPlacementPrompt from "./getObjectPlacementPrompt";
 import getRemoveBackgroundPrompt from "./getRemoveBackgroundPrompt";
 import getSkinTreatmentPrompt from "./getSkinTreatmentPrompt";
 import getTattooTryonPrompt from "./getTattooTryonPrompt";
+import {
+    IMAGE_EDITING_PROMPT_TEXT_MAX_LENGTH,
+    sanitizeImageEditingItemDetails,
+    sanitizeImageEditingPromptText,
+} from "./promptInput";
 
 export function generateImageEditingPrompt(
     businessType: string,
@@ -23,7 +29,9 @@ export function generateImageEditingPrompt(
     itemDetails: GenerateImageViaApiPayloadItemDetailsType, // Parameter retained for API compatibility.
 ): string | null {
 
-    const { feature, prompt } = generationConfig;
+    const { feature } = generationConfig;
+    const prompt = sanitizeImageEditingPromptText(generationConfig.prompt, IMAGE_EDITING_PROMPT_TEXT_MAX_LENGTH);
+    const safeItemDetails = sanitizeImageEditingItemDetails(itemDetails);
 
     switch (feature) {
         case "Remove Background":
@@ -58,9 +66,15 @@ export function generateImageEditingPrompt(
 
         default:
             try {
-                return getBusinessSpecificPrompt(businessType, feature, itemDetails);
+                return getBusinessSpecificPrompt(businessType, feature, safeItemDetails);
             } catch (error) {
-                console.error("Failed to generate business-specific prompt:", error);
+                logImageEditingPromptFailure("image_editing_business_specific_prompt_failed", error, {
+                    businessType,
+                    feature,
+                    hasItemCategory: Boolean(safeItemDetails.category),
+                    hasItemDescription: Boolean(safeItemDetails.description),
+                    hasItemName: Boolean(safeItemDetails.name),
+                });
                 return null;
             }
     }

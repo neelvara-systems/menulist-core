@@ -9,8 +9,17 @@
 import AddOutletModal from '@organisms/AddOutletModal';
 import OutletPolicyEditor from '@organisms/OutletPolicyEditor';
 import OutletRenameModal from '@organisms/OutletRenameModal';
+import { AUTH_ACCOUNT_REQUEST_POLICY } from '@lib/auth/accountClientResponses';
 import { refreshFirebaseAuthClaims } from '@lib/auth/firebaseAuthSync';
 import { canCreateOutletLocation, canManageLocationSettings } from '@lib/multiOutlet/locationAccess';
+import { getBoundedMultiOutletStringContext, logMultiOutletFailure } from '@lib/multiOutlet/diagnostics';
+import {
+    createMultiOutletStatusError,
+    isOutletDeactivateResponse,
+    MULTI_OUTLET_ACTION_REQUEST_POLICY,
+    MULTI_OUTLET_ACTION_RESPONSE_JSON_MAX_BYTES,
+} from '@lib/multiOutlet/outletActionResponseGuards';
+import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { DEFAULT_OUTLET_POLICY } from '@type/multiOutlet.types';
 import { Badge, Button, Card, Empty, message, Modal, Space, Table, Tag, Typography } from 'antd';
@@ -18,6 +27,26 @@ import { useContext, useState } from 'react';
 import { LuMapPin, LuPlusCircle, LuStar } from 'react-icons/lu';
 
 const { Title, Text } = Typography;
+
+async function readDesktopLocationActionResponse(
+    response: Response,
+    context: Record<string, boolean | number | string | null | undefined>,
+): Promise<unknown> {
+    try {
+        return await readJsonResponseWithLimit<unknown>(
+            response,
+            MULTI_OUTLET_ACTION_RESPONSE_JSON_MAX_BYTES,
+        );
+    } catch (error) {
+        logMultiOutletFailure('desktop_location_outlet_action_response_parse_failed', error, {
+            ...context,
+            maxBytes: MULTI_OUTLET_ACTION_RESPONSE_JSON_MAX_BYTES,
+            responseOk: response.ok,
+            responseStatus: response.status,
+        });
+        throw error;
+    }
+}
 
 export default function LocationsPage() {
     const {
@@ -75,17 +104,26 @@ export default function LocationsPage() {
 
         try {
             const res = await fetch('/api/auth/switch-store', {
+                ...AUTH_ACCOUNT_REQUEST_POLICY,
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ targetStoreId }),
             });
             if (!res.ok) {
+                logMultiOutletFailure('desktop_location_store_switch_failed', createMultiOutletStatusError('desktop_location_store_switch_rejected', res.status), {
+                    ...getBoundedMultiOutletStringContext('targetStoreId', targetStoreId),
+                    ...getBoundedMultiOutletStringContext('currentStoreId', storeDetails?.storeId),
+                });
                 message.error('Store switch failed');
                 return;
             }
             await refreshFirebaseAuthClaims(targetStoreId);
             setActiveStoreContext(targetStoreId);
-        } catch {
+        } catch (error) {
+            logMultiOutletFailure('desktop_location_store_switch_failed', error, {
+                ...getBoundedMultiOutletStringContext('targetStoreId', targetStoreId),
+                ...getBoundedMultiOutletStringContext('currentStoreId', storeDetails?.storeId),
+            });
             message.error('Store switch failed');
         }
     };
@@ -101,13 +139,32 @@ export default function LocationsPage() {
                 setDeactivatingStoreId(outletStoreId);
                 try {
                     const res = await fetch('/api/outlets/deactivate', {
+                        ...MULTI_OUTLET_ACTION_REQUEST_POLICY,
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ outletStoreId }),
                     });
-                    const data = await res.json().catch(() => ({}));
                     if (!res.ok) {
-                        message.error(data.error || 'Outlet deactivation failed');
+                        logMultiOutletFailure('desktop_location_deactivate_failed', createMultiOutletStatusError('desktop_location_deactivate_rejected', res.status), {
+                            ...getBoundedMultiOutletStringContext('outletStoreId', outletStoreId),
+                            ...getBoundedMultiOutletStringContext('masterStoreId', masterStoreId),
+                        });
+                        message.error('Outlet deactivation failed');
+                        return;
+                    }
+                    const data = await readDesktopLocationActionResponse(res, {
+                        ...getBoundedMultiOutletStringContext('outletStoreId', outletStoreId),
+                        ...getBoundedMultiOutletStringContext('masterStoreId', masterStoreId),
+                    });
+                    if (!isOutletDeactivateResponse(data)) {
+                        const invalidResponseError = createMultiOutletStatusError('desktop_location_deactivate_response_invalid', res.status);
+                        logMultiOutletFailure('desktop_location_deactivate_response_invalid', invalidResponseError, {
+                            responseOk: res.ok,
+                            responseStatus: res.status,
+                            ...getBoundedMultiOutletStringContext('outletStoreId', outletStoreId),
+                            ...getBoundedMultiOutletStringContext('masterStoreId', masterStoreId),
+                        });
+                        message.error('Outlet deactivation failed');
                         return;
                     }
                     setTenantDetails((previous: any) => previous?.storesList
@@ -125,7 +182,11 @@ export default function LocationsPage() {
                         setActiveStoreContext(null);
                     }
                     message.success('Outlet deactivated');
-                } catch {
+                } catch (error) {
+                    logMultiOutletFailure('desktop_location_deactivate_failed', error, {
+                        ...getBoundedMultiOutletStringContext('outletStoreId', outletStoreId),
+                        ...getBoundedMultiOutletStringContext('masterStoreId', masterStoreId),
+                    });
                     message.error('Outlet deactivation failed');
                 } finally {
                     setDeactivatingStoreId(null);

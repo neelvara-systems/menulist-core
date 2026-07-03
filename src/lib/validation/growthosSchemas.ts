@@ -1,17 +1,21 @@
 import { GROWTHOS_ALLOWED_ACTION_TYPES } from "@constant/growthos";
+import { readBoundedJsonBody } from "@lib/security/boundedRequestBody";
+import type { NextResponse } from "next/server";
 import { z } from "zod";
 
+const GROWTHOS_API_MAX_BODY_BYTES = 16 * 1024;
 const growthOSActionTypeSchema = z.enum(GROWTHOS_ALLOWED_ACTION_TYPES as [string, ...string[]]);
 
 export async function parseGrowthOSJsonBody(request: Request): Promise<
     | { data: unknown; success: true }
-    | { success: false }
+    | { response?: NextResponse; success: false }
 > {
-    try {
-        return { data: await request.json(), success: true };
-    } catch {
-        return { success: false };
-    }
+    const bodyResult = await readBoundedJsonBody(request, GROWTHOS_API_MAX_BODY_BYTES, {
+        invalidJsonMessage: "Invalid JSON",
+    });
+    if (bodyResult.ok === false) return { response: bodyResult.response, success: false };
+
+    return { data: bodyResult.data, success: true };
 }
 
 export const GrowthOSRefreshRequestSchema = z.object({

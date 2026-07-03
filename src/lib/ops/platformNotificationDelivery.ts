@@ -10,7 +10,9 @@ import {
 import {
   sendOwnerNotificationWhatsApp,
 } from '@lib/owner-notifications/channels/whatsapp';
+import type { OwnerNotificationChannelResult } from '@lib/owner-notifications/types';
 import { buildWhatsAppPhoneParam } from '@lib/phone/phoneNumber';
+import { getBoundedOpsStringContext, logOpsFailure } from './opsDiagnostics';
 import { classifyPlatformAlert } from './platformNotificationClassifier';
 
 type PlatformAlertPayload = {
@@ -22,6 +24,11 @@ type PlatformAlertPayload = {
   sId?: string;
   metadata?: Record<string, any>;
 };
+
+type PlatformDeliveryLogContext = Record<string, boolean | number | string | null | undefined>;
+
+const OPS_PLATFORM_ALERT_EMAIL_DELIVERY_FAILED = 'ops_platform_alert_email_delivery_failed';
+const OPS_PLATFORM_ALERT_WHATSAPP_DELIVERY_FAILED = 'ops_platform_alert_whatsapp_delivery_failed';
 
 function resolvePlatformRecipientEmail(): string | null {
   return (
@@ -59,6 +66,24 @@ function resolveEntry(alert: PlatformAlertPayload): PlatformNotificationRegistry
   );
 }
 
+function getPlatformDeliveryStringContext(label: string, value: unknown): string {
+  const normalized = typeof value === 'string' ? value : '';
+  return `${label}Present=${normalized.length > 0} ${label}Length=${normalized.length}`;
+}
+
+function buildPlatformDeliveryScopeLine(alert: PlatformAlertPayload): string {
+  return [
+    'Scope:',
+    getPlatformDeliveryStringContext('tenantId', alert.tId),
+    getPlatformDeliveryStringContext('storeId', alert.sId),
+  ].join(' ');
+}
+
+function buildPlatformDeliveryAlertLine(alert: PlatformAlertPayload): string {
+  if (!alert.id) return '';
+  return `Alert: ${getPlatformDeliveryStringContext('alertId', alert.id)}`;
+}
+
 function buildText(alert: PlatformAlertPayload, entry: PlatformNotificationRegistryEntry): string {
   return [
     `[${alert.severity.toUpperCase()}] ${alert.title}`,
@@ -67,9 +92,9 @@ function buildText(alert: PlatformAlertPayload, entry: PlatformNotificationRegis
     '',
     `Trigger: ${entry.triggerType}`,
     `Product: ${entry.productId}`,
-    `Scope: tenant=${alert.tId || 'system'} store=${alert.sId || 'system'}`,
+    buildPlatformDeliveryScopeLine(alert),
     `Runbook: ${entry.runbook}`,
-    alert.id ? `Alert ID: ${alert.id}` : '',
+    buildPlatformDeliveryAlertLine(alert),
     `Time: ${new Date().toISOString()}`,
   ].filter(Boolean).join('\n');
 }
@@ -92,6 +117,44 @@ function shouldSendWhatsApp(entry: PlatformNotificationRegistryEntry): boolean {
   return entry.defaultChannels.includes('whatsapp_web');
 }
 
+function getPlatformDeliveryLogContext(
+  alert: PlatformAlertPayload,
+  entry: PlatformNotificationRegistryEntry,
+): PlatformDeliveryLogContext {
+  return {
+    ...getBoundedOpsStringContext('alertId', alert.id),
+    ...getBoundedOpsStringContext('tenantId', alert.tId),
+    ...getBoundedOpsStringContext('storeId', alert.sId),
+    ...getBoundedOpsStringContext('triggerType', entry.triggerType),
+    ...getBoundedOpsStringContext('productId', entry.productId),
+  };
+}
+
+function logPlatformDeliveryChannelFailure(
+  failureCode: string,
+  alert: PlatformAlertPayload,
+  entry: PlatformNotificationRegistryEntry,
+  error?: unknown,
+  context: PlatformDeliveryLogContext = {},
+): void {
+  logOpsFailure(failureCode, error, {
+    ...getPlatformDeliveryLogContext(alert, entry),
+    ...context,
+  });
+}
+
+function logPlatformDeliveryResultFailure(
+  failureCode: string,
+  alert: PlatformAlertPayload,
+  entry: PlatformNotificationRegistryEntry,
+  result: OwnerNotificationChannelResult,
+): void {
+  logPlatformDeliveryChannelFailure(failureCode, alert, entry, undefined, {
+    ...getBoundedOpsStringContext('channelError', result.error),
+    ...getBoundedOpsStringContext('skippedReason', result.skippedReason),
+  });
+}
+
 export async function sendPlatformAlertDelivery(alert: PlatformAlertPayload): Promise<void> {
   if (alert.metadata?.platformDeliverySuppressed === true) return;
 
@@ -104,11 +167,19 @@ export async function sendPlatformAlertDelivery(alert: PlatformAlertPayload): Pr
   if (FEATURE_FLAGS.ENABLE_PLATFORM_ALERT_EMAIL && entry.defaultChannels.includes('email')) {
     const to = resolvePlatformRecipientEmail();
     if (to) {
-      await sendOwnerNotificationEmail({
-        to,
-        subject,
-        html: buildHtml(alert, entry),
-      }).catch(() => undefined);
+      try {
+        const result = await sendOwnerNotificationEmail({
+          to,
+          subject,
+          html: buildHtml(alert, entry),
+        });
+
+        if (!result.ok) {
+          logPlatformDeliveryResultFailure(OPS_PLATFORM_ALERT_EMAIL_DELIVERY_FAILED, alert, entry, result);
+        }
+      } catch (error) {
+        logPlatformDeliveryChannelFailure(OPS_PLATFORM_ALERT_EMAIL_DELIVERY_FAILED, alert, entry, error);
+      }
     }
   }
 
@@ -117,16 +188,24 @@ export async function sendPlatformAlertDelivery(alert: PlatformAlertPayload): Pr
     if (to) {
       const templateName = process.env.PLATFORM_ALERT_WHATSAPP_TEMPLATE_NAME;
       const sessionActive = process.env.PLATFORM_ALERT_WHATSAPP_SESSION_ACTIVE === 'true';
-      await sendOwnerNotificationWhatsApp({
-        to,
-        text,
-        sessionActive,
-        templateName,
-        templateLanguage: process.env.PLATFORM_ALERT_WHATSAPP_TEMPLATE_LANGUAGE || 'en',
-        templateParameters: templateName
-          ? [alert.severity.toUpperCase(), entry.title, alert.message.slice(0, 900), new Date().toISOString()]
-          : undefined,
-      }).catch(() => undefined);
+      try {
+        const result = await sendOwnerNotificationWhatsApp({
+          to,
+          text,
+          sessionActive,
+          templateName,
+          templateLanguage: process.env.PLATFORM_ALERT_WHATSAPP_TEMPLATE_LANGUAGE || 'en',
+          templateParameters: templateName
+            ? [alert.severity.toUpperCase(), entry.title, alert.message.slice(0, 900), new Date().toISOString()]
+            : undefined,
+        });
+
+        if (!result.ok) {
+          logPlatformDeliveryResultFailure(OPS_PLATFORM_ALERT_WHATSAPP_DELIVERY_FAILED, alert, entry, result);
+        }
+      } catch (error) {
+        logPlatformDeliveryChannelFailure(OPS_PLATFORM_ALERT_WHATSAPP_DELIVERY_FAILED, alert, entry, error);
+      }
     }
   }
 }

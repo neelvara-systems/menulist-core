@@ -1,7 +1,7 @@
 # GBP Sync — Mobile Support
 
-**Last Updated:** April 5, 2026
-**Decision:** ⚠️ LIMITED MOBILE SUPPORT — Status visibility supported, full setup remains desktop-first
+**Last Updated:** July 2, 2026
+**Decision:** No active GBP mobile surface while `ENABLE_GBP_SYNC` is false
 
 ---
 
@@ -14,7 +14,9 @@
 | **Touch** | ⚠️ MIXED | OAuth/linking remains poor on mobile |
 | **Value** | ✅ PASS | Verifying connection and drift status away from desk is useful |
 
-**Decision:** Mobile shows operational status only:
+**Current source boundary:** Mobile shows no Google sync surface while `ENABLE_GBP_SYNC` is false. OAuth, mapping, sync status, and apply-hours actions are not current runtime.
+
+Reserved mobile support after provider gates may show operational status only:
 - connection status
 - linked location
 - menu link state

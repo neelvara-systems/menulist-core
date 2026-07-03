@@ -2,14 +2,17 @@ export const dynamic = 'force-dynamic';
 import { GEMINI_MODELS } from "@constant/AI/models";
 import { getOurChargePaise, getRealCostPaise, getUnitCost } from "@constant/AI/unitCosts";
 import { AI_ACTIONS_TYPES, CHARGE_PER_CREDIT, TOKENS_PER_CREDIT } from "@constant/common";
+import { PERMISSIONS } from "@constant/permissions";
 import { HarmBlockThreshold, HarmCategory } from "@google/genai";
 import { finalizeAiOperationAccounting } from "@lib/ai/accounting";
 import { checkAICapacity } from "@lib/ai/capacityCheck";
+import { getAIGatewayDiagnostics, getAIRouteLogContext, getAIRouteSecurityContext, getPreviewText, logAIRouteFailure } from "@lib/google/genAi/diagnostics";
 import { genAIClient } from "@lib/google/genAi";
 import { logger } from "@lib/monitoring/logger";
+import { requireAnyStorePermission } from "@lib/permissions/server";
 import { checkAIOperationLimit } from "@lib/rateLimit/helpers";
+import { readBoundedJsonBody } from "@lib/security/boundedRequestBody";
 import { validateAPIInput } from "@lib/security/inputValidation";
-import { buildSecurityContext } from "@lib/security/securityContext";
 import { getSafeFallbackCaption, sanitizeAIOutput } from "@lib/trust/phraseGuard";
 import { CampaignCaptionRequestSchema } from "@lib/validation/apiSchemas";
 import { CAMPAIGN_CAPTION_PROMPT_V1, CampaignCaptionInput } from "@services/gemini/prompts/v1/campaignCaption.prompt";
@@ -18,19 +21,21 @@ import { verifyTenantAccess, withAuth } from "../../../../middleware/auth";
 
 const AI_MODEL = GEMINI_MODELS.TEXT_GEN;
 const ACTION = AI_ACTIONS_TYPES.CAMPAIGN_CAPTION;
+const CAMPAIGN_CAPTION_AI_MAX_BODY_BYTES = 64 * 1024;
 
 /**
  * Campaign Caption Generation API
- * 
+     *
  * Per Strategy Doc:
  * - Generate simple, friendly captions for campaign items
  * - No marketing jargon, no "AI" language
  * - Appropriate for WhatsApp, Poster, etc.
- * 
+     *
  * Follows existing patterns from descriptions API
  */
 export const POST = withAuth(async (request, session) => {
     const userId = session.user.id;
+    const requestId = crypto.randomUUID();
 
     try {
         // �️ SAFE_MODE: Block expensive operations during system maintenance
@@ -43,16 +48,20 @@ export const POST = withAuth(async (request, session) => {
         if (rateLimitResponse) return rateLimitResponse;
 
         // 🔒 INPUT VALIDATION: Prevent injection attacks (OWASP A03)
-        const rawData = await request.json();
+        const bodyResult = await readBoundedJsonBody(request, CAMPAIGN_CAPTION_AI_MAX_BODY_BYTES);
+        if (bodyResult.ok === false) return bodyResult.response;
+
+        const rawData = bodyResult.data as any;
         const validation = validateAPIInput(CampaignCaptionRequestSchema, rawData);
 
         if (!validation.success) {
             const errorMsg = 'error' in validation ? validation.error : 'Invalid input';
 
             logger.security('Campaign Caption Input Validation Failed', {
-                ...buildSecurityContext(session, request),
+                ...getAIRouteSecurityContext(session, request),
                 endpoint: '/api/campaigns/caption',
                 error: errorMsg,
+                requestId,
             }, 'medium');
 
             return NextResponse.json({
@@ -64,6 +73,14 @@ export const POST = withAuth(async (request, session) => {
         const validated = validation.data;
         const { itemName, itemDescription, itemPrice, categoryName, businessName, campaignType, surface, language, projectId } = validated;
 
+        const permissionError = await requireAnyStorePermission(
+            request,
+            session,
+            [PERMISSIONS.MANAGE_MENU_SHARING, PERMISSIONS.PUBLISH_MENU, PERMISSIONS.MANAGE_MENU],
+            "Campaign caption",
+        );
+        if (permissionError) return permissionError;
+
         // 🔒 TENANT ISOLATION: Verify user owns this project
         if (projectId) {
             const tenantId = session.tId;
@@ -71,9 +88,10 @@ export const POST = withAuth(async (request, session) => {
 
             if (!verifyTenantAccess(session, tenantId, storeId, request)) {
                 logger.security('Tenant Access Violation - Campaign Caption API', {
-                    ...buildSecurityContext(session, request),
+                    ...getAIRouteSecurityContext(session, request),
                     endpoint: '/api/campaigns/caption',
-                    attemptedProjectId: projectId,
+                    attemptedProject: getAIRouteLogContext({ projectId }),
+                    requestId,
                 }, 'critical');
                 return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
             }
@@ -133,11 +151,32 @@ export const POST = withAuth(async (request, session) => {
             ]
         };
 
-        const response = await genAIClient.models.generateContent({
-            model: AI_MODEL,
-            contents: userPrompt,
-            config: generationConfig,
-        });
+        let response;
+        try {
+            response = await genAIClient.models.generateContent({
+                model: AI_MODEL,
+                contents: userPrompt,
+                config: generationConfig,
+            });
+        } catch (generationError) {
+            logAIRouteFailure('campaign_caption_model_call_failed', generationError, {
+                action: ACTION,
+                campaignType,
+                gatewayDiagnostics: getAIGatewayDiagnostics(genAIClient),
+                language,
+                model: AI_MODEL,
+                projectId,
+                requestId,
+                storeId: session.sId,
+                surface,
+                tenantId: session.tId,
+                userId,
+            });
+            if (generationError && typeof generationError === 'object') {
+                (generationError as Record<string, unknown>).__campaignCaptionLogged = true;
+            }
+            throw generationError;
+        }
 
         const endTime = Date.now();
         const processingTime = endTime - startTime;
@@ -146,10 +185,21 @@ export const POST = withAuth(async (request, session) => {
         try {
             generatedData = JSON.parse(response.text);
         } catch (parseError) {
-            logger.error('Campaign caption JSON parse error', parseError, {
+            logAIRouteFailure('campaign_caption_invalid_json', parseError, {
+                action: ACTION,
+                campaignType,
+                language,
+                model: AI_MODEL,
                 userId,
                 projectId,
-                rawResponse: response.text?.substring(0, 500)
+                responseTextLength: typeof response.text === 'string' ? response.text.length : 0,
+                responseTextSummary: getPreviewText(response.text, 400),
+                responseTextPresent: Boolean(response.text),
+                responseUsage: response.usageMetadata || null,
+                requestId,
+                storeId: session.sId,
+                surface,
+                tenantId: session.tId,
             });
             return NextResponse.json({
                 error: 'Failed to parse AI response',
@@ -220,7 +270,21 @@ export const POST = withAuth(async (request, session) => {
             transactionObject.transactionId = accounting.transactionId;
             remainingBalance = accounting.remainingBalance;
         } catch (transactionError) {
-            logger.error('Failed to record campaign caption transaction', transactionError, { userId, projectId });
+            logAIRouteFailure('campaign_caption_accounting_failed', transactionError, {
+                action: ACTION,
+                campaignType,
+                language,
+                model: AI_MODEL,
+                projectId,
+                requestId,
+                storeId: session.sId,
+                surface,
+                tenantId: session.tId,
+                userId,
+            });
+            if (transactionError && typeof transactionError === 'object') {
+                (transactionError as Record<string, unknown>).__campaignCaptionLogged = true;
+            }
             throw transactionError;
         }
 
@@ -242,7 +306,17 @@ export const POST = withAuth(async (request, session) => {
         }, { status: 200 });
 
     } catch (error) {
-        logger.error('Campaign Caption API error', error, { userId });
+        if (!(error && typeof error === 'object' && '__campaignCaptionLogged' in error)) {
+            logAIRouteFailure('campaign_caption_api_failed', error, {
+                action: ACTION,
+                gatewayDiagnostics: getAIGatewayDiagnostics(genAIClient),
+                model: AI_MODEL,
+                requestId,
+                storeId: session.sId,
+                tenantId: session.tId,
+                userId,
+            });
+        }
         return NextResponse.json({
             error: 'Caption generation failed'
         }, { status: 500 });

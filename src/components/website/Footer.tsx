@@ -23,6 +23,7 @@ const productLinks = [
 const sourceLinks = [
   { href: '/#public-proof', key: 'publicProof' },
   { href: '/#public-proof', key: 'officialPage' },
+  { href: '/tools', key: 'toolsHub' },
   { href: '/create-menu', key: 'getStarted' },
 ];
 
@@ -35,11 +36,13 @@ const resourceLinks = FEATURE_FLAGS.ENABLE_WEBSITE_RESOURCES
     { href: '/resources/restaurant-menu-seo', key: 'restaurantMenuSeo' },
     { href: '/resources/ai-search-menu-discovery', key: 'aiSearchDiscovery' },
     { href: '/resources/official-menu-source', key: 'officialMenuSource' },
+    { href: '/faq', key: 'faq' },
     { href: '/trust-security', key: 'trustSecurity' },
   ]
   : [
     { href: '/about', key: 'about' },
     { href: '/contact', key: 'contact' },
+    { href: '/faq', key: 'faq' },
     { href: '/trust-security', key: 'trustSecurity' },
   ];
 

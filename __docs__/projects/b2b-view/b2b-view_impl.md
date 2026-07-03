@@ -1,8 +1,8 @@
 # B2B View — Implementation
 
 **Feature:** JSON Editor & Developer Integration  
-**Status:** ⚠️ Needs Review  
-**Last Updated:** January 2026
+**Status:** Production implementation exists; diagnostics audited June 27, 2026
+**Last Updated:** June 27, 2026
 
 ---
 
@@ -35,6 +35,12 @@ src/components/templates/main-app/projects/
 ---
 
 ## Key Implementation
+
+### Diagnostics Contract
+
+`src/components/templates/main-app/projects/b2bView.tsx` routes JSON edit failures through `src/components/templates/main-app/projects/utils/projectPageDiagnostics.ts` with the normalized `projects_page_b2b_json_edit_failed` code. Diagnostics record only bounded project/file/edit presence, length, depth, and parent-type metadata.
+
+The B2B view must not direct-console raw edited JSON, owner menu payloads, project IDs, file IDs, or browser/provider exceptions. Normal JSON edits and reset-cancel actions stay quiet.
 
 ### JSON Viewer Component
 
@@ -198,7 +204,7 @@ const hasProtectedFieldChanges = (original: any, edited: any): boolean => {
 | Document                                   | Purpose               |
 | ------------------------------------------ | --------------------- |
 | `_spec.md`                                 | Product specification |
-| `../Assessments/ASSESSMENT-10-B2B-VIEW.md` | Original assessment   |
+| `../Assessments/assessment-10-b2b-view.md` | Original assessment   |
 
 ---
 

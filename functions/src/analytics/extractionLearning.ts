@@ -20,6 +20,7 @@
 import * as admin from 'firebase-admin';
 import { FieldValue, Timestamp } from 'firebase-admin/firestore';
 import { DB_COLLECTIONS } from '../constants/database';
+import { analyticsLogger, getAnalyticsErrorContext, getAnalyticsIdContext } from './analyticsDiagnostics';
 
 // ================================================================
 // TYPES
@@ -73,7 +74,7 @@ export async function processExtractionLearningForAllStores(): Promise<Extractio
     windowStart.setDate(windowStart.getDate() - ROLLING_WINDOW_DAYS);
     const windowStartTimestamp = Timestamp.fromDate(windowStart);
 
-    console.log('[ExtractionLearning] Starting nightly aggregation...');
+    analyticsLogger.info('[ExtractionLearning] Starting nightly aggregation');
 
     // Aggregation accumulators
     const byField: Record<string, { corrections: number }> = {
@@ -141,7 +142,10 @@ export async function processExtractionLearningForAllStores(): Promise<Extractio
                     }
                 }
             } catch (storeError: any) {
-                console.warn(`[ExtractionLearning] Error processing store ${sId}:`, storeError.message);
+                analyticsLogger.warn('[ExtractionLearning] Error processing store', {
+                    storeId: getAnalyticsIdContext(sId),
+                    error: getAnalyticsErrorContext(storeError),
+                });
             }
         }
 
@@ -182,15 +186,18 @@ export async function processExtractionLearningForAllStores(): Promise<Extractio
         }, { merge: true });
         result.writesCount++;
 
-        console.log(`[ExtractionLearning] Aggregation complete:`);
-        console.log(`  - Stores processed: ${result.storesProcessed}`);
-        console.log(`  - Stores with corrections: ${result.storesWithCorrections}`);
-        console.log(`  - Total corrections: ${result.totalCorrections}`);
-        console.log(`  - Correction rate: ${(correctionRate * 100).toFixed(1)}%`);
+        analyticsLogger.info('[ExtractionLearning] Aggregation complete', {
+            storesProcessed: result.storesProcessed,
+            storesWithCorrections: result.storesWithCorrections,
+            totalCorrections: result.totalCorrections,
+            correctionRatePercent: Number((correctionRate * 100).toFixed(1)),
+        });
 
         return result;
     } catch (error: any) {
-        console.error('[ExtractionLearning] Fatal error:', error.message);
+        analyticsLogger.error('[ExtractionLearning] Fatal error', {
+            error: getAnalyticsErrorContext(error),
+        });
         throw error;
     }
 }

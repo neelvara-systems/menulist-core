@@ -10,6 +10,7 @@
 | `src/app/sites/mycodex/favorites/page.tsx` | Adds the private `/favorites` reader page backed by browser-local starred documents. |
 | `src/app/sites/mycodex/queue/page.tsx` | Adds the private `/queue` read-later page backed by browser-local queued documents. |
 | `src/app/sites/mycodex/api/document/route.ts` | Adds a protected no-store Markdown reader for favorites playback. |
+| `src/app/sites/mycodex/api/session/route.ts` | Handles private reader login with IP rate limiting before form parsing and an 8 KB bounded form-data body cap. |
 | `src/lib/mycodex/docs.ts` | Centralizes MyCodex docs tree, document resolution, and heading extraction for document routes, favorites, and the document API. |
 | `src/lib/mycodex/auth.ts` | Keeps `MYCODEX_PRODUCT_CODE = MC` for internal metadata and `MYCODEX_PRODUCT_SLUG = mycodex` for route/session checks. |
 | `src/constants/product.ts` | Reserves `PRODUCT_IDS.MYCODEX = MC` without creating any MyCodex Firebase data path. |
@@ -71,3 +72,5 @@ The approved `public/mycodex-logo.svg` mark remains the source logo. Square PWA 
 All safe-area styles are MyCodex-scoped with `mycodex-*` classes. They do not modify global MenuList or Answerlattice shells.
 
 MyCodex is static/private documentation. It has no Firebase project, no Firestore collections, no Storage bucket, no product `pId` writes, and no billing plans or credit packs. The only Vercel-specific env vars are `MYCODEX_BASIC_AUTH_USER`, `MYCODEX_BASIC_AUTH_PASSWORD`, and `MYCODEX_SESSION_SECRET`.
+
+The login form posts only `username`, `password`, and `returnTo`. `src/app/sites/mycodex/api/session/route.ts` applies the `AUTH_LOGIN` rate limit before reading form data, then parses the form through `readBoundedFormDataBody()` with `MYCODEX_LOGIN_FORM_MAX_BODY_BYTES = 8 * 1024`. Oversized or malformed submissions redirect back to login with the fixed `input` error state.

@@ -1,7 +1,9 @@
+import { createUppercaseRandomIdSegment } from '@lib/runtime/randomId';
+
 export const generateOwnCustomUid = (
     tenantId: string | number,
     storeId: string | number,
 ): string => {
-    const randomStr = Math.random().toString(36).substring(2, 5).toUpperCase();
+    const randomStr = createUppercaseRandomIdSegment(6);
     return `${tenantId}-${randomStr}-${storeId}`;
 };

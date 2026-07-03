@@ -122,6 +122,8 @@ const cspDirectivesStrict = [
 
 **Purpose**: Monitor what would break with strict policy
 
+The report endpoint rate-limits by IP, reads reports through a 32KB bounded text body, uses presence/length metadata plus stable directive/URI categories for production security events, and logs unexpected processing failures through bounded security diagnostics (`csp_report_processing_failed`) instead of raw route exceptions or full request URLs.
+
 ### Why Two Policies?
 
 ```
@@ -175,7 +177,7 @@ const isDev = process.env.NODE_ENV === 'development';
 // Only log in production
 if (!isDev) {
   const severity = determineCSPSeverity(violation);
-  logger.security("CSP Violation Detected", violation, severity);
+  logger.security("CSP Violation Detected", getCspViolationLogContext(violation), severity);
 }
 
 // Always return 204 (endpoint works in both modes)
@@ -205,17 +207,8 @@ if (!isDev) {
   // Determine severity based on violation type
   const severity = determineCSPSeverity(violation);
   
-  // Send to Sentry with full context
-  logger.security("CSP Violation Detected", {
-    blockedUri: violation['blocked-uri'],
-    violatedDirective: violation['violated-directive'],
-    sourceFile: violation['source-file'],
-    lineNumber: violation['line-number'],
-    columnNumber: violation['column-number'],
-    timestamp: new Date().toISOString(),
-    userAgent: request.headers.get('user-agent'),
-    reportUrl: violation['document-uri']
-  }, severity);
+  // Send bounded report metadata to Sentry
+  logger.security("CSP Violation Detected", getCspViolationLogContext(violation), severity);
 }
 ```
 
@@ -252,14 +245,9 @@ if (!isDev) {
 ```bash
 npm run dev
 
-# Violations appear as:
-🚨 SECURITY EVENT CSP Violation Detected {
-  blockedUri: 'inline',
-  violatedDirective: 'script-src-elem',
-  sourceFile: 'http://localhost:3000/dashboard',
-  lineNumber: 42,
-  columnNumber: 15
-}
+# Violations are accepted without production logging:
+POST /api/csp-report 204 in 12ms
+POST /api/csp-report 204 in 11ms
 ```
 
 #### Production (Sentry)
@@ -272,12 +260,17 @@ npm run dev
   "event": "CSP Violation Detected",
   "severity": "high",
   "context": {
-    "blockedUri": "inline",
-    "violatedDirective": "script-src-elem",
-    "sourceFile": "https://menulist.ai/dashboard",
+    "blockedUriKind": "inline",
+    "directiveCategory": "script-src",
+    "blockedUriPresent": true,
+    "blockedUriLength": 6,
+    "violatedDirectivePresent": true,
+    "violatedDirectiveLength": 15,
+    "sourceFilePresent": true,
+    "sourceFileLength": 29,
     "lineNumber": 42,
-    "userAgent": "Mozilla/5.0...",
-    "timestamp": "2025-11-05T10:30:00.000Z"
+    "userAgentPresent": true,
+    "userAgentLength": 111
   }
 }
 ```
@@ -504,7 +497,7 @@ eval('console.log("test")');
 
 1. **Browser Extensions** (AdBlock, etc.)
    - ✅ Normal, ignore these
-   - Filter by checking `blockedUri` contains `chrome-extension://`
+   - Inspect local browser reports during development if a domain allowlist change is needed; production security events keep only URI kind and length metadata
 
 2. **Third-Party Scripts** (Analytics, etc.)
    - ✅ Need whitelisting
@@ -518,20 +511,12 @@ eval('console.log("test")');
 ```typescript
 // src/app/api/csp-report/route.ts
 
-const violation = await request.json();
+const bodyResult = await readBoundedTextBody(request, CSP_REPORT_MAX_BYTES, options);
+const violation = parseCspReport(bodyResult.body);
+const severity = determineCSPSeverity(violation);
 
-// Ignore browser extensions
-if (violation['blocked-uri']?.includes('chrome-extension://')) {
-  return new Response(null, { status: 204 });
-}
-
-// Ignore known safe violations
-if (violation['violated-directive'] === 'style-src-elem') {
-  return new Response(null, { status: 204 });
-}
-
-// Log the rest
-logger.security('CSP Violation Detected', violation);
+// Log bounded metadata only
+logger.security('CSP Violation Detected', getCspViolationLogContext(violation), severity);
 ```
 
 ---

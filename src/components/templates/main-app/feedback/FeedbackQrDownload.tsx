@@ -20,8 +20,14 @@ import { PlatformGlobalDataContext } from '@providers/platformProviders/platform
 import { Button, Card, Flex, Modal, Spin, Typography, message, theme } from 'antd';
 import React, { useContext, useMemo, useState } from 'react';
 import { LuCopy, LuClipboard, LuDownload, LuExternalLink, LuMessageCircle, LuQrCode } from 'react-icons/lu';
+import { getBoundedFeedbackInboxStringContext, logFeedbackInboxFailure } from './feedbackInboxDiagnostics';
 
 const { Text } = Typography;
+
+const DESKTOP_FEEDBACK_LINK_COPY_UNAVAILABLE = 'desktop_feedback_link_copy_unavailable';
+const DESKTOP_FEEDBACK_LINK_COPY_FALLBACK_FAILED = 'desktop_feedback_link_copy_fallback_failed';
+const DESKTOP_FEEDBACK_MESSAGE_COPY_UNAVAILABLE = 'desktop_feedback_message_copy_unavailable';
+const DESKTOP_FEEDBACK_MESSAGE_COPY_FALLBACK_FAILED = 'desktop_feedback_message_copy_fallback_failed';
 
 interface FeedbackQrDownloadProps {
     /** Project ID for QR code URL */
@@ -43,6 +49,80 @@ export const FeedbackQrDownload: React.FC<FeedbackQrDownloadProps> = ({
     const feedbackQrSubtitle = storeName && storeName !== 'store'
         ? `Scan to leave private feedback for ${storeName}`
         : 'Scan to leave private feedback';
+    const feedbackUrl = getFeedbackUrl(projectId, 'direct_link');
+    const shortFeedbackUrl = feedbackUrl.replace(/^https?:\/\//, '');
+    const withSrc = (src: 'copy' | 'direct' | 'whatsapp') =>
+        feedbackUrl ? `${feedbackUrl}${feedbackUrl.includes('?') ? '&' : '?'}src=${src}` : feedbackUrl;
+
+    const hasFeedbackClipboardWrite = () =>
+        typeof navigator !== 'undefined' && typeof navigator.clipboard?.writeText === 'function';
+
+    const hasFeedbackCopyFallback = () =>
+        typeof document !== 'undefined'
+        && Boolean(document.body)
+        && typeof document.createElement === 'function'
+        && typeof document.execCommand === 'function';
+
+    const copyFeedbackTextToClipboard = async (
+        value: string,
+        unavailableCode: string,
+        fallbackFailureCode: string,
+    ) => {
+        let clipboardWriteError: unknown;
+
+        if (hasFeedbackClipboardWrite()) {
+            try {
+                await navigator.clipboard.writeText(value);
+                return;
+            } catch (error) {
+                clipboardWriteError = error;
+            }
+        }
+
+        if (!hasFeedbackCopyFallback()) {
+            throw Object.assign(new Error(unavailableCode), {
+                code: unavailableCode,
+                clipboardWriteRejected: Boolean(clipboardWriteError),
+            });
+        }
+
+        const textarea = document.createElement('textarea');
+        textarea.value = value;
+        textarea.readOnly = true;
+        textarea.setAttribute('aria-hidden', 'true');
+        textarea.style.position = 'fixed';
+        textarea.style.left = '-9999px';
+        textarea.style.top = '0';
+
+        document.body.appendChild(textarea);
+        textarea.select();
+        textarea.setSelectionRange(0, textarea.value.length);
+
+        try {
+            const copied = document.execCommand('copy');
+            if (!copied) {
+                throw Object.assign(new Error(fallbackFailureCode), {
+                    code: fallbackFailureCode,
+                });
+            }
+        } finally {
+            document.body.removeChild(textarea);
+        }
+    };
+
+    const buildFeedbackQrLogContext = (
+        action: string,
+        metadata: Record<string, boolean | number | string | null | undefined> = {},
+    ) => ({
+        action,
+        hasQrDataUrl: Boolean(qrDataUrl),
+        isModalOpen,
+        qrDataUrlLength: qrDataUrl?.length || 0,
+        ...getBoundedFeedbackInboxStringContext('projectId', projectId),
+        ...getBoundedFeedbackInboxStringContext('storeName', storeName),
+        ...getBoundedFeedbackInboxStringContext('feedbackUrl', feedbackUrl),
+        ...metadata,
+    });
 
     const handleOpenModal = async () => {
         setIsModalOpen(true);
@@ -60,6 +140,10 @@ export const FeedbackQrDownload: React.FC<FeedbackQrDownloadProps> = ({
                 });
                 setQrDataUrl(dataUrl);
             } catch (error) {
+                logFeedbackInboxFailure('desktop_feedback_qr_generate_failed', error, buildFeedbackQrLogContext('generate_qr', {
+                    hasLogoUrl: Boolean((storeDetails as any)?.logo),
+                    ...getBoundedFeedbackInboxStringContext('activePlanType', (storeDetails as any)?.activePlanType),
+                }));
                 message.error('Failed to generate QR code');
                 setIsModalOpen(false);
             } finally {
@@ -71,40 +155,84 @@ export const FeedbackQrDownload: React.FC<FeedbackQrDownloadProps> = ({
     const handleDownload = () => {
         if (qrDataUrl) {
             const filename = getQrCodeFilename(storeName);
-            downloadQrCode(qrDataUrl, filename);
-            message.success('QR code downloaded');
+            try {
+                downloadQrCode(qrDataUrl, filename);
+                message.success('QR code downloaded');
+            } catch (error) {
+                logFeedbackInboxFailure('desktop_feedback_qr_download_failed', error, buildFeedbackQrLogContext('download_qr', {
+                    ...getBoundedFeedbackInboxStringContext('filename', filename),
+                }));
+                message.error('Could not download QR code');
+            }
         }
     };
 
-    const feedbackUrl = getFeedbackUrl(projectId, 'direct_link');
-    const shortFeedbackUrl = feedbackUrl.replace(/^https?:\/\//, '');
-    const withSrc = (src: 'copy' | 'direct' | 'whatsapp') =>
-        feedbackUrl ? `${feedbackUrl}${feedbackUrl.includes('?') ? '&' : '?'}src=${src}` : feedbackUrl;
-
     const handleCopyLink = async () => {
+        const copyUrl = withSrc('copy');
         try {
-            await navigator.clipboard.writeText(withSrc('copy'));
+            await copyFeedbackTextToClipboard(
+                copyUrl,
+                DESKTOP_FEEDBACK_LINK_COPY_UNAVAILABLE,
+                DESKTOP_FEEDBACK_LINK_COPY_FALLBACK_FAILED,
+            );
             message.success('Feedback link copied');
-        } catch {
+        } catch (error) {
+            logFeedbackInboxFailure('desktop_feedback_link_copy_failed', error, buildFeedbackQrLogContext('copy_link', {
+                ...getBoundedFeedbackInboxStringContext('copyUrl', copyUrl),
+                hasClipboardWrite: hasFeedbackClipboardWrite(),
+                hasCopyFallback: hasFeedbackCopyFallback(),
+            }));
             message.error('Failed to copy feedback link');
         }
     };
 
     const handleOpenLink = () => {
-        window.open(withSrc('direct'), '_blank');
+        const directUrl = withSrc('direct');
+        try {
+            const opened = window.open(directUrl, '_blank', 'noopener,noreferrer');
+            if (!opened) {
+                throw new Error('desktop_feedback_link_open_blocked');
+            }
+        } catch (error) {
+            logFeedbackInboxFailure('desktop_feedback_link_open_failed', error, buildFeedbackQrLogContext('open_link', {
+                ...getBoundedFeedbackInboxStringContext('directUrl', directUrl),
+            }));
+            message.error('Could not open feedback link');
+        }
     };
 
     const handleWhatsApp = () => {
         const shareMessage = `Share your feedback for ${storeName}\n${withSrc('whatsapp')}`;
-        window.open(`https://wa.me/?text=${encodeURIComponent(shareMessage)}`, '_blank');
+        const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(shareMessage)}`;
+        try {
+            const opened = window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
+            if (!opened) {
+                throw new Error('desktop_feedback_whatsapp_open_blocked');
+            }
+        } catch (error) {
+            logFeedbackInboxFailure('desktop_feedback_whatsapp_open_failed', error, buildFeedbackQrLogContext('open_whatsapp', {
+                shareMessageLength: shareMessage.length,
+                whatsappUrlLength: whatsappUrl.length,
+            }));
+            message.error('Could not open WhatsApp');
+        }
     };
 
     const handleCopyMessage = async () => {
         const shareMessage = `Share your feedback for ${storeName}\n${withSrc('copy')}`;
         try {
-            await navigator.clipboard.writeText(shareMessage);
+            await copyFeedbackTextToClipboard(
+                shareMessage,
+                DESKTOP_FEEDBACK_MESSAGE_COPY_UNAVAILABLE,
+                DESKTOP_FEEDBACK_MESSAGE_COPY_FALLBACK_FAILED,
+            );
             message.success('Message copied — paste it in WhatsApp or anywhere');
-        } catch {
+        } catch (error) {
+            logFeedbackInboxFailure('desktop_feedback_message_copy_failed', error, buildFeedbackQrLogContext('copy_message', {
+                shareMessageLength: shareMessage.length,
+                hasClipboardWrite: hasFeedbackClipboardWrite(),
+                hasCopyFallback: hasFeedbackCopyFallback(),
+            }));
             message.error('Could not copy message');
         }
     };

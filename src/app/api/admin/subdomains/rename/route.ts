@@ -33,7 +33,7 @@ export const dynamic = 'force-dynamic';
  *   - Writes an audit record to `subdomainRenameLog/{autoId}` with who
  *     performed the rename, when, why, and both values.
  *
- * @see __docs__/client-menu/PUBLIC-ROUTING-DOCTRINE.md §A-03, T1-N-05
+ * @see __docs__/client-menu/public-routing-doctrine.md §A-03, T1-N-05
  * @see src/lib/firestore/clientStoreLookup.ts — chain fallback consumer
  */
 
@@ -43,7 +43,9 @@ import { admin } from '@lib/firebase/firebaseAdmin';
 import { logger } from '@lib/monitoring/logger';
 import { invalidateOwnerBusinessAssistantPacketCache } from '@lib/ownerBusinessAssistant/server/contextPacketCache';
 import { validateAPIInput } from '@lib/security/inputValidation';
-import { secureError } from '@lib/security/secureLogger';
+import { readBoundedJsonBody } from '@lib/security/boundedRequestBody';
+import { getBoundedSecurityStringContext, logSecurityFailure } from '@lib/security/securityDiagnostics';
+import { touchDigitalScreenContentVersionForStoreServer } from '@lib/screen/serverScreenInvalidation';
 import { slugify } from '@lib/utils/slugify';
 import { revalidateTag } from 'next/cache';
 import { NextResponse } from 'next/server';
@@ -53,6 +55,7 @@ import { withAuth } from '../../../../../middleware/auth';
 const TWELVE_MONTHS_MS = 365 * 24 * 60 * 60 * 1000;
 const MAX_PREVIOUS_SUBDOMAINS = 10;
 const SUBDOMAIN_PATTERN = /^[a-z0-9][a-z0-9-]{1,62}[a-z0-9]$/;
+const ADMIN_SUBDOMAIN_RENAME_MAX_BODY_BYTES = 8 * 1024;
 
 const schema = z.object({
     tenantId: z.number().int().positive(),
@@ -62,18 +65,45 @@ const schema = z.object({
     ackRef: z.string().trim().min(3).max(100),
 });
 
+type SubdomainRenameLogContext = Record<string, boolean | number | string | null | undefined>;
+
+const getOperatorLogContext = (session: any): SubdomainRenameLogContext => ({
+    route: '/api/admin/subdomains/rename',
+    ...getBoundedSecurityStringContext('operatorUserId', session?.user?.id),
+    ...getBoundedSecurityStringContext('operatorEmail', session?.user?.email),
+});
+
 export const POST = withAuth(
     async (request, session) => {
+        let failureContext: SubdomainRenameLogContext = getOperatorLogContext(session);
         try {
-            const body = await request.json().catch(() => ({}));
-            const v = validateAPIInput(schema, body);
+            const bodyResult = await readBoundedJsonBody(request, ADMIN_SUBDOMAIN_RENAME_MAX_BODY_BYTES, {
+                invalidJsonMessage: 'Invalid input',
+            });
+            if (bodyResult.ok === false) return bodyResult.response;
+
+            const v = validateAPIInput(schema, bodyResult.data);
             if (!v.success) {
                 return NextResponse.json({ error: 'Invalid input' }, { status: 400 });
             }
             const { tenantId, storeId, newSubdomain, reason, ackRef } = v.data;
+            failureContext = {
+                ...failureContext,
+                ...getBoundedSecurityStringContext('tenantId', tenantId),
+                ...getBoundedSecurityStringContext('storeId', storeId),
+                ...getBoundedSecurityStringContext('newSubdomainInput', newSubdomain),
+                reasonPresent: reason.length > 0,
+                reasonLength: reason.length,
+                ackRefPresent: ackRef.length > 0,
+                ackRefLength: ackRef.length,
+            };
 
             // Normalize and validate the proposed subdomain shape.
             const proposed = slugify(newSubdomain).toLowerCase();
+            failureContext = {
+                ...failureContext,
+                ...getBoundedSecurityStringContext('proposedSubdomain', proposed),
+            };
             if (!proposed || !SUBDOMAIN_PATTERN.test(proposed)) {
                 return NextResponse.json(
                     { error: 'Invalid subdomain shape' },
@@ -104,6 +134,11 @@ export const POST = withAuth(
             const currentSubdomain = typeof store?.subdomain === 'string'
                 ? store.subdomain.toLowerCase()
                 : '';
+            failureContext = {
+                ...failureContext,
+                hasCurrentSubdomain: currentSubdomain.length > 0,
+                currentSubdomainLength: currentSubdomain.length,
+            };
             if (proposed === currentSubdomain) {
                 return NextResponse.json(
                     { error: 'New subdomain matches current subdomain', currentSubdomain },
@@ -217,6 +252,8 @@ export const POST = withAuth(
             revalidateTag(`menu-store-${storeIdStr}`);
             revalidateTag(`store-${storeIdStr}`);
             revalidateTag('client-stores');
+            revalidateTag('screen-data');
+            await touchDigitalScreenContentVersionForStoreServer(storeIdStr, 'adminSubdomainRename');
             await invalidateOwnerBusinessAssistantPacketCache({
                 tId: tenantId,
                 sId: storeIdStr,
@@ -225,13 +262,15 @@ export const POST = withAuth(
             logger.security(
                 'Admin subdomain rename',
                 {
-                    storeId: storeIdStr,
-                    tenantId,
-                    previousSubdomain: currentSubdomain,
-                    newSubdomain: proposed,
-                    operator: session?.user?.email,
-                    reason,
-                    ackRef,
+                    ...failureContext,
+                    auditIdPresent: auditRef.id.length > 0,
+                    auditIdLength: auditRef.id.length,
+                    previousSubdomainPresent: currentSubdomain.length > 0,
+                    previousSubdomainLength: currentSubdomain.length,
+                    historyEntryCount: nextHistory.length,
+                    cacheInvalidated: true,
+                    screenInvalidated: true,
+                    ownerAssistantPacketInvalidated: true,
                 },
                 'high',
             );
@@ -245,7 +284,7 @@ export const POST = withAuth(
                 auditId: auditRef.id,
             });
         } catch (error) {
-            secureError('[Admin] Subdomain rename failed', error as Error);
+            logSecurityFailure('admin_subdomain_rename_failed', error, failureContext);
             return NextResponse.json(
                 { error: 'Subdomain rename failed' },
                 { status: 500 },

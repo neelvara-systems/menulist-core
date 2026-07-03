@@ -17,11 +17,17 @@ import {
     getPredictiveTriggers,
     updatePredictiveTrigger,
 } from '@database/answerlattice/predictiveTriggers';
-import { getAnswerlatticeUiErrorMessage } from '@lib/answerlattice/uiErrors';
 import { AnswerlatticePredictiveTrigger } from '@type/answerlattice';
 import { message } from 'antd';
 import { Timestamp } from 'firebase/firestore';
 import { useCallback, useEffect, useState } from 'react';
+
+const ANSWERLATTICE_PREDICTIVE_TRIGGERS_LOAD_FAILED = 'Could not load triggers';
+const ANSWERLATTICE_PREDICTIVE_TRIGGER_CREATE_FAILED = 'Could not create trigger';
+const ANSWERLATTICE_PREDICTIVE_TRIGGER_UPDATE_FAILED = 'Could not update trigger';
+const ANSWERLATTICE_PREDICTIVE_TRIGGER_ACTIVATE_FAILED = 'Could not activate trigger';
+const ANSWERLATTICE_PREDICTIVE_TRIGGER_DISABLE_FAILED = 'Could not disable trigger';
+const ANSWERLATTICE_PREDICTIVE_TRIGGER_DELETE_FAILED = 'Could not delete trigger';
 
 interface UsePredictiveTriggersReturn {
     triggers: AnswerlatticePredictiveTrigger[];
@@ -48,8 +54,8 @@ export function usePredictiveTriggers(tId: number, sId: number): UsePredictiveTr
         try {
             const result = await getPredictiveTriggers(tId, sId);
             setTriggers(result || []);
-        } catch (err) {
-            setError(getAnswerlatticeUiErrorMessage(err, 'Could not load triggers'));
+        } catch {
+            setError(ANSWERLATTICE_PREDICTIVE_TRIGGERS_LOAD_FAILED);
         } finally {
             setLoading(false);
         }
@@ -77,8 +83,8 @@ export function usePredictiveTriggers(tId: number, sId: number): UsePredictiveTr
                 await refresh();
             }
             return result;
-        } catch (err) {
-            message.error(getAnswerlatticeUiErrorMessage(err, 'Could not create trigger'));
+        } catch {
+            message.error(ANSWERLATTICE_PREDICTIVE_TRIGGER_CREATE_FAILED);
             return null;
         }
     }, [tId, sId, refresh]);
@@ -98,8 +104,8 @@ export function usePredictiveTriggers(tId: number, sId: number): UsePredictiveTr
             });
             message.success('Trigger updated');
             await refresh();
-        } catch (err) {
-            message.error(getAnswerlatticeUiErrorMessage(err, 'Could not update trigger'));
+        } catch {
+            message.error(ANSWERLATTICE_PREDICTIVE_TRIGGER_UPDATE_FAILED);
         }
     }, [tId, sId, refresh]);
 
@@ -118,8 +124,8 @@ export function usePredictiveTriggers(tId: number, sId: number): UsePredictiveTr
             });
             message.success('Trigger activated');
             await refresh();
-        } catch (err) {
-            message.error(getAnswerlatticeUiErrorMessage(err, 'Could not activate trigger'));
+        } catch {
+            message.error(ANSWERLATTICE_PREDICTIVE_TRIGGER_ACTIVATE_FAILED);
         }
     }, [tId, sId, refresh]);
 
@@ -138,8 +144,8 @@ export function usePredictiveTriggers(tId: number, sId: number): UsePredictiveTr
             });
             message.success('Trigger disabled');
             await refresh();
-        } catch (err) {
-            message.error(getAnswerlatticeUiErrorMessage(err, 'Could not disable trigger'));
+        } catch {
+            message.error(ANSWERLATTICE_PREDICTIVE_TRIGGER_DISABLE_FAILED);
         }
     }, [tId, sId, refresh]);
 
@@ -158,8 +164,8 @@ export function usePredictiveTriggers(tId: number, sId: number): UsePredictiveTr
             });
             message.success('Trigger deleted');
             await refresh();
-        } catch (err) {
-            message.error(getAnswerlatticeUiErrorMessage(err, 'Could not delete trigger'));
+        } catch {
+            message.error(ANSWERLATTICE_PREDICTIVE_TRIGGER_DELETE_FAILED);
         }
     }, [tId, sId, refresh]);
 

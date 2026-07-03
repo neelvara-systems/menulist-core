@@ -38,7 +38,7 @@ interface EditorFiltersPopoverProps {
  * - Clear all filters button
  * - Badge showing active filter count
  * 
- * @see ASSESSMENT-06-UX-USABILITY.md Task 17: Search/Filter in Editor Lists
+ * @see assessment-06-ux-usability.md Task 17: Search/Filter in Editor Lists
  */
 export default function EditorFiltersPopover({
     categories,

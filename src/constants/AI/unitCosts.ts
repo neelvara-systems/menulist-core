@@ -69,14 +69,14 @@ export const GEMINI_COST_USD: Record<string, number> = {
 export const AI_UNIT_COSTS: Record<string, number> = {
     // Free operations (0 units — always pass capacity check)
     // RATIONALE: These are INPUT/SETUP operations that get data into the system.
-    // Keeping them free ensures the user's first AI experience is frictionless.
+    // Keeping them platform-absorbed ensures the user's first AI experience is frictionless.
     // Real cost per operation is negligible (₹0.13–₹0.67). Do NOT add quotas.
-    [AI_ACTIONS_TYPES.IMAGE_PROCESSING]: 0, // Core extraction — always free
-    [AI_ACTIONS_TYPES.ADD_DESCRIPTION]: 0, // First-pass description — free
-    [AI_ACTIONS_TYPES.NEW_ITEM_METADATA]: 0, // Structural — free
-    [AI_ACTIONS_TYPES.SEO_AEO_GENERATION]: 0, // First-pass SEO setup — free
-    [AI_ACTIONS_TYPES.BUSINESS_COPY_GENERATION]: 0, // First-pass business copy setup — free
-    [AI_ACTIONS_TYPES.MENU_INTAKE_IDENTITY]: 0, // Upload guardrail — free setup operation
+    [AI_ACTIONS_TYPES.IMAGE_PROCESSING]: 0, // Core extraction — platform absorbed
+    [AI_ACTIONS_TYPES.ADD_DESCRIPTION]: 0, // First-pass description — platform absorbed
+    [AI_ACTIONS_TYPES.NEW_ITEM_METADATA]: 0, // Structural — platform absorbed
+    [AI_ACTIONS_TYPES.SEO_AEO_GENERATION]: 0, // First-pass SEO setup — platform absorbed
+    [AI_ACTIONS_TYPES.BUSINESS_COPY_GENERATION]: 0, // First-pass business copy setup — platform absorbed
+    [AI_ACTIONS_TYPES.MENU_INTAKE_IDENTITY]: 0, // Upload guardrail — platform absorbed
     [AI_ACTIONS_TYPES.PUBLIC_MENU_EXTRACTION]: 0, // Public lead/intake operation — absorbed by platform
     [AI_ACTIONS_TYPES.WEEKLY_NARRATIVE]: 0, // Internal analytics summary — absorbed by platform
     [AI_ACTIONS_TYPES.OWNER_BUSINESS_ASSISTANT_ANSWER]: 0, // Deterministic/grounded owner assistant answers are absorbed unless later monetized

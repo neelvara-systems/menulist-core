@@ -6,10 +6,13 @@
 **Stack:** Next.js 14 + Firebase (Firestore) + Ant Design + Redux  
 **Parent Feature:** #4 — Multi-Outlet Brand Consistency  
 **Constraints:** 3-year architecture freeze • backwards-compatible • feature-flagged  
-**Date:** January 2026  
+**Date:** January 2026
+**Last Updated:** June 27, 2026
 **Author:** Cascade (Codebase Authority)
 
 > **May 20, 2026 mobile parity update:** The same awareness contract is now available in mobile menu editing through `MobileMasterUpdateNotice`, using `useMasterUpdateAwareness`, `buildSummaryText()`, the persisted `masterSnapshot`, "Got it" acknowledgment, and reopenable "Last changes" history.
+>
+> **June 27, 2026 diagnostic hardening:** Master update awareness and linked-outlet resolution diagnostics now use `src/lib/multiOutlet/diagnostics.ts`. Failure logs record normalized failure codes plus bounded project/master/store presence, length, counts, versions, and source error metadata only. Raw project IDs, store IDs, owner menu payloads, and provider/browser errors are not direct-console logged.
 
 ---
 
@@ -899,7 +902,11 @@ export function useMasterUpdateAwareness(
         setShowBanner(false);
       }
     } catch (err) {
-      console.error("[MasterUpdateAwareness] Check failed:", err);
+      logMultiOutletFailure("master_update_awareness_check_failed", err, {
+        ...getMultiOutletProjectLogContext(outletProject.projectId, outletProject.masterProjectId),
+        acknowledgedVersion: acknowledgedVersionRef.current,
+        latestVersion: latestVersionRef.current,
+      });
       setError("Failed to check for master updates");
       // Fail open — don't show banner on error
       setShowBanner(false);
@@ -950,7 +957,12 @@ export function useMasterUpdateAwareness(
       setShowBanner(false);
       setDiff(null);
     } catch (err) {
-      console.error("[MasterUpdateAwareness] Acknowledge failed:", err);
+      logMultiOutletFailure("master_update_awareness_acknowledge_failed", err, {
+        ...getMultiOutletProjectLogContext(outletProject.projectId, outletProject.masterProjectId),
+        latestVersion: latestVersionRef.current,
+        hasDiff: Boolean(diff),
+        diffChangeCount: diff?.changes?.length ?? 0,
+      });
       setError("Failed to acknowledge changes");
     } finally {
       setIsAcknowledging(false);
@@ -1023,7 +1035,11 @@ export function useMasterUpdateAwareness(
         }, LISTENER_DEBOUNCE_MS);
       },
       (err) => {
-        console.error("[MasterUpdateAwareness] Listener error:", err);
+        logMultiOutletFailure("master_update_awareness_listener_failed", err, {
+          ...getMultiOutletProjectLogContext(outletProject.projectId, outletProject.masterProjectId),
+          acknowledgedVersion: acknowledgedVersionRef.current,
+          latestVersion: latestVersionRef.current,
+        });
         // Fail open — don't show banner on error
         setShowBanner(false);
       },
@@ -1183,10 +1199,9 @@ if (FEATURE_FLAGS.ENABLE_MASTER_UPDATE_AWARENESS) {
     });
   } catch (e) {
     // Silent fail — don't block linking
-    console.warn(
-      "[MasterUpdateAwareness] Failed to create initial snapshot:",
-      e,
-    );
+    logMultiOutletFailure("master_update_awareness_initial_snapshot_failed", e, {
+      ...getMultiOutletProjectLogContext(storeProjectId, masterProjectId),
+    });
   }
 }
 ```
@@ -1313,10 +1328,9 @@ if (
     }
   } catch (e) {
     // Silent fail — don't block master save
-    console.warn(
-      "[MasterUpdateAwareness] Signal doc update failed (non-blocking):",
-      e,
-    );
+    logProjectPersistenceFailure("master_update_awareness_signal_update_failed", e, {
+      ...getProjectPersistenceProjectLogContext(data.projectId, data.masterProjectId),
+    });
   }
 }
 ```

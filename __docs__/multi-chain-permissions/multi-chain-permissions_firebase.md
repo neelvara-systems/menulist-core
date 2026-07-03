@@ -1,12 +1,14 @@
 # Multi-Chain Permissions — Firebase Cost Tracking
 
 **Feature:** Two-Layer Access Control (23 RolePermissions + 15 OutletPolicy)  
-**Status:** ✅ Production Ready  
+**Status:** Firebase cost evidence; not current launch certification
 **Last Updated:** May 27, 2026
 
 **Priority:** LOW — Permission resolution is zero-cost (uses cached session data). Only OutletPolicy edits cost writes.
 
 > **Scope:** This doc covers Firebase ops for the two-layer permission model. For role CRUD and user assignment ops, see [Roles & Permissions Firebase](../roles-permissions/roles-permissions_firebase.md). For store onboarding ops (which create default roles), see [Multi-Outlet Consistency Firebase](../multi-outlet-consistency/multi-outlet-consistency_firebase.md).
+>
+> **Launch Boundary:** This file records permission-cost evidence, not current production-launch approval. Current release approval requires the active [production-readiness audit](../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../production-readiness/external-certification-runbook.md) evidence, `npm run verify:multi-location-boundary`, permission-policy browser QA, linked outlet save QA, Firebase deploy evidence where rules/functions change, and target-environment smoke.
 
 ---
 
@@ -43,6 +45,8 @@
 | Create default roles | `stores/{newStoreId}`    | New store created (onboarding or outlet creation) | Per new store     | 0            | —                                                    | Roles are part of the store doc created by `addStore()` or outlet creation route. No separate write — included in the store creation write. See stores-management and multi-outlet-consistency firebase docs. |
 
 `/api/auth/set-claims` writes no Firestore documents. It updates Firebase Auth custom claims only after the Firestore user mapping proves store access.
+
+June 29 OutletPolicy response hardening is Firebase-cost neutral. `updateOutletPolicy()` caps `/api/outlets/policy` response JSON at 16KB and requires `success: true`, `masterPromoted`, and a complete boolean `outletPolicy` before desktop/mobile policy state updates. This adds no Firestore reads/writes/deletes, Storage operations, provider calls, cache invalidations, rules, indexes, schema changes, Cloud Function logic, owner-facing settings, Firebase deploy requirement, or Vercel deploy action.
 
 ### Deletes
 

@@ -59,12 +59,13 @@ MCP session:
 
 - Validates API key once.
 - Issues short-lived signed session token.
-- Loads private bundles from memory/Storage.
+- Reads the bundle manifest/version for the session response and token context.
+- Logs a fixed runtime diagnostic when manifest loading fails before returning the existing missing-bundle status.
 
 MCP tool call:
 
 - Hot path: memory lookup only.
-- Cold path: Storage bundle download and cache.
+- Cold path: Storage metadata check, capped Storage bundle download, and cache.
 - Freshness path: one manifest read per TTL window.
 
 Public API read:
@@ -72,6 +73,8 @@ Public API read:
 - Authenticates API key.
 - Reads bundled approved context first.
 - Falls back to bounded Firestore query only if bundle is missing or disabled.
+- Logs fixed runtime diagnostics before fallback when bundle manifest/object reads fail.
+- Treats oversized private bundle objects as unavailable instead of parsing them.
 
 ## Rebuild Triggers
 

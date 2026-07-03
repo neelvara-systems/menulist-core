@@ -2,9 +2,10 @@
 
 **Feature:** Assisted onboarding portal for authorized resellers to manually onboard SMB clients with flexible pricing and payment modes.
 
-**Status:** ✅ IMPLEMENTED — Feature Flag OFF  
+**Status:** ✅ IMPLEMENTED — Feature Flag ON in current repo
 **Created:** February 27, 2026  
-**Feature Flag:** `ENABLE_RESELLER_DASHBOARD` (OFF by default)
+**Feature Flag:** `ENABLE_RESELLER_DASHBOARD` (`true` in `src/config/features.ts`)
+**Local source gate:** `npm run verify:reseller-dashboard-boundary`
 
 ---
 
@@ -63,6 +64,14 @@ A separate dashboard accessible to authorized resellers (friends, sales partners
 
 ---
 
+## Production-Readiness Source Gate
+
+`npm run verify:reseller-dashboard-boundary` is the first-class local verifier for this feature. It source-checks reseller route admission order, platform/reseller role separation, hashed read/write rate-limit keys, bounded request/response parsing, offline/manual entitlement sync, online-provider failure compensation, desktop/mobile shell parity, and docs parity.
+
+This is a local source gate only. It does not perform Razorpay sandbox payment smoke, authenticated browser QA, physical-device mobile QA, Firebase deploys, Vercel deploys, production builds, live Firestore writes, or provider calls.
+
+---
+
 ## Relationship to Existing Systems
 
 - **Auth:** Uses NextAuth session + existing `platformRole` check
@@ -93,5 +102,5 @@ A separate dashboard accessible to authorized resellers (friends, sales partners
 
 ---
 
-**Last Updated:** February 27, 2026  
-**Version:** 1.1 (updated per ChatGPT doc feedback review)
+**Last Updated:** July 2, 2026
+**Version:** 1.2 (added production-readiness source gate)

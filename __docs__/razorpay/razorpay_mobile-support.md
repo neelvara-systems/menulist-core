@@ -1,6 +1,6 @@
 # Razorpay Payment System — Mobile Support
 
-**Last Updated:** June 11, 2026
+**Last Updated:** June 29, 2026
 **Decision:** ✅ FULL MOBILE SUPPORT — Zero desktop dependency for billing
 
 ---
@@ -37,6 +37,9 @@
 - Uses same `usePaymentHandler` hook as desktop (Razorpay script works on mobile browsers)
 - Subscription verification posts Razorpay's checkout signature to `/api/razorpay/verify-subscription`; mobile does not activate billing from a payment ID alone.
 - Upgrade carry-forward credits are computed by `/api/razorpay/upgrade-subscription` from the old subscription. Mobile does not send or calculate credit authority for the new subscription.
+- Mobile billing actions use the same bounded server routes as desktop; Razorpay action bodies are capped before validation, provider calls, or subscription/top-up writes.
+- Mobile uses the same bounded payment diagnostics as desktop. The shared hook does not log raw checkout verification responses, payment IDs, subscription IDs, order IDs, signatures, or provider exception payloads.
+- Mobile billing catches plan update, paid-location, credit-pack, pause, resume, cancel, retry-payment link, pending-payment link, and invoice link failures with bounded payment diagnostics and generic owner-facing toast text; it does not display raw payment exception messages or raw Razorpay URLs.
 - Same `getActiveSubscriptionForStore`, `getBillingHistoryForStore` DAL functions
 - Billing history uses the shared 50-row successful-payment limit.
 - Same `getB2CPlansList`, `aiEnhancementPacksList` data

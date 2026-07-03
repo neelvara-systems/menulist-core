@@ -12,6 +12,7 @@
  */
 
 import { FILE_SIGNATURES } from './fileSignatures';
+import { getBoundedSecurityStringContext, logSecurityFailure } from './securityDiagnostics';
 
 /**
  * Convert base64 data URL to ArrayBuffer
@@ -70,7 +71,7 @@ function isValidWebP(bytes: Uint8Array): boolean {
  * ```typescript
  * const result = await validateMagicBytes(base64Data, 'image/jpeg');
  * if (!result.valid) {
- *     console.error(result.error);
+ *     const errorText = result.error;
  * }
  * ```
  */
@@ -145,10 +146,16 @@ export function validateMagicBytes(
         };
 
     } catch (error) {
-        console.error('Magic bytes validation error:', error);
+        logSecurityFailure('magic_bytes_validation_failed', error, {
+            inputKind: typeof base64OrArrayBuffer === 'string' ? 'base64' : 'array_buffer',
+            inputLength: typeof base64OrArrayBuffer === 'string'
+                ? base64OrArrayBuffer.length
+                : base64OrArrayBuffer.byteLength,
+            ...getBoundedSecurityStringContext('expectedMimeType', expectedMimeType),
+        });
         return {
             valid: false,
-            error: `File validation failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+            error: 'File validation failed'
         };
     }
 }

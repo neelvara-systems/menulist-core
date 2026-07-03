@@ -334,7 +334,7 @@ const DescriptionGenerationModal = ({ item, onComplete }) => {
 | -------------------------------------------------------- | --------------------- |
 | `_spec.md`                                               | Product specification |
 | `_marketing.md`                                          | Sales collateral      |
-| `../Assessments/ASSESSMENT-09-DESCRIPTION-GENERATION.md` | Original assessment   |
+| `../Assessments/assessment-09-description-generation.md` | Original assessment   |
 | `../07-DESCRIPTION-GENERATION.md`                        | Detailed API docs     |
 
 ---

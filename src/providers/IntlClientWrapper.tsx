@@ -1,5 +1,6 @@
 'use client';
 
+import { getBoundedI18nStringContext, logI18nDiagnostic, logI18nFailure } from '@/i18n/diagnostics';
 import type { Formats } from 'next-intl';
 import { IntlErrorCode, NextIntlClientProvider } from 'next-intl';
 
@@ -21,10 +22,15 @@ export default function IntlClientWrapper({ children, locale, timeZone, formats,
             onError={(error) => {
                 if (error.code === IntlErrorCode.MISSING_MESSAGE) {
                     if (process.env.NODE_ENV === 'development') {
-                        console.warn(`[i18n] Missing: ${error.message}`);
+                        logI18nDiagnostic('i18n_client_missing_message', {
+                            ...getBoundedI18nStringContext('locale', locale),
+                            sourceErrorCode: error.code,
+                        }, { developmentOnly: true });
                     }
                 } else {
-                    console.error('[i18n] Error:', error);
+                    logI18nFailure('i18n_client_runtime_error', error, {
+                        ...getBoundedI18nStringContext('locale', locale),
+                    });
                 }
             }}
             getMessageFallback={({ namespace, key, error }) => {

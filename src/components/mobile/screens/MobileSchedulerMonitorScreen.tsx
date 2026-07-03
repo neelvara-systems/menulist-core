@@ -2,6 +2,7 @@
 
 import { getSchedulerDashboardSnapshot } from '@database/ops/scheduler';
 import { usePlatformStoreSummaryOptions } from '@hook/usePlatformStoreSummaryOptions';
+import { getBoundedOpsStringContext, logOpsFailure } from '@lib/ops/opsDiagnostics';
 import type { SchedulerHealthSummary, SchedulerRunLog, SchedulerSettlementSummary, SchedulerTaskResult } from '@lib/ops/schedulerTypes';
 import { formatDateTime, type IntlFormatter } from '@util/dateTime';
 import { useSession } from 'next-auth/react';
@@ -48,6 +49,34 @@ function formatDuration(ms?: number): string {
     return `${Math.floor(seconds / 60)}m ${seconds % 60}s`;
 }
 
+function formatDetailKey(key: string, index: number): string {
+    const normalized = String(key || '').trim();
+    return /^[a-zA-Z0-9_.:-]{1,48}$/.test(normalized) ? normalized : `detail_${index + 1}`;
+}
+
+function formatDetailValue(value: unknown): string {
+    if (value === undefined || value === null) return '[empty]';
+    if (typeof value === 'number' && Number.isFinite(value)) return String(value);
+    if (typeof value === 'boolean') return value ? 'true' : 'false';
+    if (typeof value === 'string') return `[text:length=${value.length}]`;
+    if (Array.isArray(value)) return `[array:length=${value.length}]`;
+    if (typeof value === 'object') return `[object:keys=${Object.keys(value as Record<string, unknown>).length}]`;
+    return `[${typeof value}]`;
+}
+
+function formatTaskError(value: unknown): string {
+    if (value === undefined || value === null || value === '') return '';
+    return `Error recorded: ${formatDetailValue(value)}`;
+}
+
+function flattenDetails(details: Record<string, unknown> | undefined, limit = 2): string {
+    if (!details) return '';
+    return Object.entries(details)
+        .slice(0, limit)
+        .map(([key, value], index) => `${formatDetailKey(key, index)}: ${formatDetailValue(value)}`)
+        .join(' · ');
+}
+
 function statusColor(status?: string): 'success' | 'warning' | 'danger' | 'default' {
     if (status === 'success' || status === 'completed' || status === 'healthy') return 'success';
     if (status === 'partial' || status === 'running' || status === 'warning') return 'warning';
@@ -56,10 +85,7 @@ function statusColor(status?: string): 'success' | 'warning' | 'danger' | 'defau
 }
 
 function renderTask(task: SchedulerTaskResult) {
-    const detail = task.error || Object.entries(task.details || {})
-        .slice(0, 2)
-        .map(([key, value]) => `${key}: ${typeof value === 'object' ? JSON.stringify(value) : value}`)
-        .join(' · ');
+    const detail = formatTaskError(task.error) || flattenDetails(task.details);
 
     return (
         <List.Item
@@ -121,6 +147,13 @@ export default function MobileSchedulerMonitorScreen({ onBack }: MobileScheduler
             Toast.show({ content: 'Select a store first', duration: 1600 });
             return;
         }
+        const buildRecoveryLogContext = (metadata: Record<string, boolean | number | string | null | undefined> = {}) => ({
+            surface: 'mobile_scheduler_monitor',
+            flow: 'trigger_store_nightly_scheduler',
+            ...getBoundedOpsStringContext('selectedStoreId', selectedStore.sId),
+            ...getBoundedOpsStringContext('selectedTenantId', selectedStore.tId),
+            ...metadata,
+        });
 
         void Dialog.confirm({
             confirmText: 'Run recovery',
@@ -137,9 +170,14 @@ export default function MobileSchedulerMonitorScreen({ onBack }: MobileScheduler
                         duration: 2200,
                     });
                     await loadData();
-                } catch (error: any) {
-                    const runLogId = error?.details?.runLogId;
-                    Toast.show({ content: `${error?.message || 'Nightly recovery failed'}${runLogId ? ` · ${runLogId}` : ''}`, duration: 2600 });
+                } catch (error) {
+                    const runLogId = error && typeof error === 'object' && 'details' in error
+                        ? (error as { details?: { runLogId?: unknown } }).details?.runLogId
+                        : undefined;
+                    logOpsFailure('mobile_scheduler_recovery_trigger_failed', error, buildRecoveryLogContext({
+                        ...getBoundedOpsStringContext('runLogId', runLogId),
+                    }));
+                    Toast.show({ content: 'Nightly recovery failed', duration: 2600 });
                 } finally {
                     setTriggering(false);
                 }

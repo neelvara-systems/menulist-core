@@ -10,7 +10,7 @@ import {
     resolveMenuDesignConfig,
 } from '@config/designSystem';
 import useViewportInfo from '@hook/useViewportInfo';
-import { publishProject, uploadFile } from '@database/projects';
+import { assertProjectUpdateSucceeded, publishProject, uploadFile } from '@database/projects';
 import { withAnalyticsSource } from '@lib/analytics/sourceAttribution';
 import { getStoreContextName } from '@lib/businessIdentity/names';
 import { getLocalizedDraftText, getLocalizedText, getPrimaryLocalizedLanguage, updateLocalizedText } from '@lib/localization/text';
@@ -45,6 +45,13 @@ import MobileProjectSelectorSheet from '../components/MobileProjectSelectorSheet
 import MobileQrCodeSheet from '../components/MobileQrCodeSheet';
 import MobileSettingsScreenHeader from '../components/MobileSettingsScreenHeader';
 import { useMobileProjects } from '../providers/MobileProjectsProvider';
+import {
+    getBoundedMobileProjectStringContext,
+    getMobileProjectLogContext,
+    getMobileProjectStoreLogContext,
+    logMobileProjectFailure,
+    type MobileProjectLogContext,
+} from '../utils/mobileProjectDiagnostics';
 import { openMobilePublicLink } from '../utils/openMobilePublicLink';
 import { MENU_SHEET_BODY_STYLE, MENU_SHEET_CONTAINER_STYLE } from '../sheets/menuSheetLayout';
 
@@ -52,6 +59,58 @@ const ColorPickerSheet = dynamic(() => import('../sheets/ColorPickerSheet'), { s
 const MobileMenuDesignPreviewSheet = dynamic(() => import('../sheets/MobileMenuDesignPreviewSheet'), { ssr: false });
 
 const SERVICE_CHARGE_MAX_LENGTH = 140;
+const MOBILE_DESIGN_LINK_COPY_UNAVAILABLE = 'mobile_design_link_copy_unavailable';
+const MOBILE_DESIGN_LINK_COPY_FALLBACK_FAILED = 'mobile_design_link_copy_fallback_failed';
+
+const hasMobileDesignClipboardWrite = (): boolean => (
+    typeof navigator !== 'undefined'
+    && Boolean(navigator.clipboard)
+    && typeof navigator.clipboard.writeText === 'function'
+);
+
+const hasMobileDesignCopyFallback = (): boolean => (
+    typeof document !== 'undefined'
+    && typeof document.createElement === 'function'
+    && typeof document.execCommand === 'function'
+    && Boolean(document.body)
+);
+
+const copyMobileDesignLink = async (value: string): Promise<void> => {
+    let clipboardWriteError: unknown;
+
+    if (hasMobileDesignClipboardWrite()) {
+        try {
+            await navigator.clipboard.writeText(value);
+            return;
+        } catch (error) {
+            clipboardWriteError = error;
+            // Continue to the acknowledged textarea fallback before showing failure copy.
+        }
+    }
+
+    if (!hasMobileDesignCopyFallback()) {
+        throw clipboardWriteError || new Error(MOBILE_DESIGN_LINK_COPY_UNAVAILABLE);
+    }
+
+    const textarea = document.createElement('textarea');
+    textarea.value = value;
+    textarea.setAttribute('readonly', '');
+    textarea.style.position = 'fixed';
+    textarea.style.left = '-9999px';
+    textarea.style.top = '0';
+    document.body.appendChild(textarea);
+    textarea.focus();
+    textarea.select();
+
+    try {
+        const copied = document.execCommand('copy');
+        if (!copied) {
+            throw new Error(MOBILE_DESIGN_LINK_COPY_FALLBACK_FAILED);
+        }
+    } finally {
+        document.body.removeChild(textarea);
+    }
+};
 
 interface MobileDesignEditorScreenProps {
     embedded?: boolean;
@@ -182,6 +241,39 @@ export default function MobileDesignEditorScreen({
     ), [resolvedProjectName, storeDetails?.customDomain, storeDetails?.subdomain]);
     const isProjectSelectorClickable = projectsList.length > 1 && !isPublishing;
 
+    const buildMobileDesignLogContext = useCallback((
+        flow: string,
+        metadata: MobileProjectLogContext = {},
+    ): MobileProjectLogContext => ({
+        surface: 'mobile_design_editor',
+        flow,
+        ...getMobileProjectLogContext(draftProjectData?.projectId || selectedProjectId, draftProjectData?.masterProjectId),
+        ...getMobileProjectStoreLogContext(storeDetails?.storeId, storeDetails?.tenantId),
+        ...getBoundedMobileProjectStringContext('menuUrl', menuUrl),
+        ...getBoundedMobileProjectStringContext('layout', menuDesign.layout),
+        ...getBoundedMobileProjectStringContext('mood', menuDesign.mood),
+        embedded,
+        hasBrandAccentColor: Boolean(brandAccentColor),
+        hasMenuBackgroundImage: Boolean(menuDesign.backgroundImage),
+        projectCount: projectsList.length,
+        supportsNativeShare,
+        ...metadata,
+    }), [
+        brandAccentColor,
+        draftProjectData?.masterProjectId,
+        draftProjectData?.projectId,
+        embedded,
+        menuDesign.backgroundImage,
+        menuDesign.layout,
+        menuDesign.mood,
+        menuUrl,
+        projectsList.length,
+        selectedProjectId,
+        storeDetails?.storeId,
+        storeDetails?.tenantId,
+        supportsNativeShare,
+    ]);
+
     useEffect(() => {
         if (!selectedProject) {
             setDraftProjectData(null);
@@ -262,7 +354,13 @@ export default function MobileDesignEditorScreen({
                 sourceDataUrl: prepared.sourceDataUrl,
             });
         } catch (error) {
-            Toast.show({ content: error instanceof Error ? error.message : t('failedToPublish'), duration: 1800 });
+            logMobileProjectFailure('mobile_design_background_image_prepare_failed', error, {
+                ...getMobileProjectLogContext(draftProjectData?.projectId || selectedProjectId, draftProjectData?.masterProjectId),
+                ...getMobileProjectStoreLogContext(storeDetails?.storeId, storeDetails?.tenantId),
+                ...getBoundedMobileProjectStringContext('fileName', file.name),
+                embedded,
+            });
+            Toast.show({ content: 'Could not prepare background image.', duration: 1800 });
         }
         return false;
     };
@@ -329,32 +427,44 @@ export default function MobileDesignEditorScreen({
             }
 
             const updated = await publishProject(normalizedDraft);
+            assertProjectUpdateSucceeded(
+                updated,
+                normalizedDraft.projectId,
+                'mobile_design_publish_project_update_rejected',
+            );
             const updatedCopy = cloneProjectData(updated);
             setDraftProjectData(updatedCopy);
             setSavedProjectData(cloneProjectData(updatedCopy));
             upsertCachedProject(updatedCopy);
             Toast.show({ content: t('designPublished'), icon: 'success', duration: 2000 });
 
+            let verificationPublicMenuUrl: string | undefined;
             try {
                 const { verifyMenuPublish } = await import('@lib/firebase/functions');
-                const slug = storeDetails?.subdomain;
-                if (slug && storeDetails?.storeId && storeDetails?.tenantId) {
-                    verifyMenuPublish({
+                const hasTenantUrl = Boolean(storeDetails?.subdomain || storeDetails?.customDomain);
+                if (hasTenantUrl && storeDetails?.storeId && storeDetails?.tenantId) {
+                    verificationPublicMenuUrl = generateProjectUrl(
+                        storeDetails?.subdomain,
+                        storeDetails?.customDomain,
+                        updatedCopy?.name || selectedProjectSummary?.name || undefined,
+                        Boolean(updatedCopy?.isDefault ?? normalizedDraft.isDefault),
+                    );
+                    void verifyMenuPublish({
                         storeId: String(storeDetails.storeId),
                         tenantId: String(storeDetails.tenantId),
-                        publicMenuUrl: generateProjectUrl(
-                            slug,
-                            storeDetails?.customDomain,
-                            updatedCopy?.name || selectedProjectSummary?.name || undefined,
-                            false,
-                        ),
+                        publicMenuUrl: verificationPublicMenuUrl,
                     });
                 }
-            } catch {
+            } catch (error) {
+                logMobileProjectFailure('mobile_design_publish_verification_setup_failed', error, buildMobileDesignLogContext('publish_verification', {
+                    ...getBoundedMobileProjectStringContext('publicMenuUrl', verificationPublicMenuUrl),
+                    hasStoreSlug: Boolean(storeDetails?.subdomain),
+                    hasCustomDomain: Boolean(storeDetails?.customDomain),
+                }));
                 return;
             }
         } catch (err) {
-            console.error('Publish failed:', err);
+            logMobileProjectFailure('mobile_design_publish_failed', err, buildMobileDesignLogContext('publish'));
             Toast.show({ content: t('failedToPublish'), duration: 2000 });
         } finally {
             setIsPublishing(false);
@@ -377,12 +487,18 @@ export default function MobileDesignEditorScreen({
 
     const handleCopyLink = useCallback(async (value: string, label: string) => {
         try {
-            await navigator.clipboard.writeText(value);
+            await copyMobileDesignLink(value);
             Toast.show({ content: tShare('copiedLabel', { label }), duration: 1200 });
-        } catch {
+        } catch (error) {
+            logMobileProjectFailure('mobile_design_link_copy_failed', error, buildMobileDesignLogContext('copy_link', {
+                ...getBoundedMobileProjectStringContext('copyLabel', label),
+                ...getBoundedMobileProjectStringContext('copyValue', value),
+                hasClipboardWrite: hasMobileDesignClipboardWrite(),
+                hasCopyFallback: hasMobileDesignCopyFallback(),
+            }));
             Toast.show({ content: tShare('copyFailedLabel', { label: label.toLowerCase() }), duration: 1500 });
         }
-    }, [tShare]);
+    }, [buildMobileDesignLogContext, tShare]);
 
     const handleNativeShare = useCallback(async ({ label, text, url }: { label: string; text?: string; url: string }) => {
         if (typeof navigator === 'undefined' || typeof navigator.share !== 'function') return;
@@ -391,9 +507,14 @@ export default function MobileDesignEditorScreen({
             await navigator.share({ text, title: label, url });
         } catch (error) {
             if (error instanceof DOMException && error.name === 'AbortError') return;
+            logMobileProjectFailure('mobile_design_native_share_failed', error, buildMobileDesignLogContext('native_share', {
+                ...getBoundedMobileProjectStringContext('shareLabel', label),
+                ...getBoundedMobileProjectStringContext('shareText', text),
+                ...getBoundedMobileProjectStringContext('shareUrl', url),
+            }));
             Toast.show({ content: tShare('couldNotCopy'), duration: 1500 });
         }
-    }, [tShare]);
+    }, [buildMobileDesignLogContext, tShare]);
 
     if (loadingProjects) {
         return (
@@ -465,7 +586,11 @@ export default function MobileDesignEditorScreen({
                         icon={<LuLink2 color={token.colorText} size={18} />}
                         label={tShare('directOfferingLink', { offering: labels.offeringTitle })}
                         onCopy={() => void handleCopyLink(withSource(menuUrl, 'copy'), tShare('directOfferingLinkCopyLabel', { offering: labels.offeringLower }))}
-                        onOpen={() => openMobilePublicLink(withSource(menuUrl, 'direct'))}
+                        onOpen={() => openMobilePublicLink(withSource(menuUrl, 'direct'), {
+                            flow: 'design_menu_link_open',
+                            metadata: buildMobileDesignLogContext('open_menu_link'),
+                            source: 'mobile_design_editor',
+                        })}
                         onShare={supportsNativeShare ? () => void handleNativeShare({
                             label: tShare('directOfferingLink', { offering: labels.offeringTitle }),
                             text: tShare('directOfferingLinkDesc', { offering: labels.offeringLower }),
@@ -945,6 +1070,7 @@ export default function MobileDesignEditorScreen({
                 activePlanType={(storeDetails as any)?.activePlanType}
                 copyErrorMessage={tShare('couldNotCopy')}
                 copySuccessMessage={tShare('linkCopied')}
+                diagnosticSource="mobile_design_editor_qr"
                 downloadSuccessMessage={tShare('qrDownloaded')}
                 filename={buildQrCodeFilename(`${getStoreContextName(storeDetails as any, 'menu')}-${labels.offeringLower}-direct-link`, 'qr')}
                 generatingLabel={tShare('generatingQr')}

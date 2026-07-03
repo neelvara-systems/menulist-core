@@ -15,6 +15,7 @@ import MobileSettingsScreenHeader from '../components/MobileSettingsScreenHeader
 
 export type MobilePlatformInternalScreenKey =
     | 'entityBlocks'
+    | 'founderMonitor'
     | 'ownerBusinessAssistantMonitor'
     | 'platformTenants'
     | 'platformStores'
@@ -69,6 +70,7 @@ const TenantsDashboard = dynamic<TenantAdminDashboardProps>(() => import('@templ
 const StoresDashboard = dynamic<TenantAdminDashboardProps>(() => import('@template/platform/stores'), { loading: RouteLoading, ssr: false });
 const EntityBlockSettings = dynamic(() => import('@template/platform/settings/EntityBlockSettings'), { loading: RouteLoading, ssr: false });
 const PlatformUsers = dynamic(() => import('@template/platform/users'), { loading: RouteLoading, ssr: false });
+const PlatformFounderMonitor = dynamic(() => import('@template/main-app/platform/founderMonitor'), { loading: RouteLoading, ssr: false });
 const OwnerBusinessAssistantMonitor = dynamic(() => import('@template/main-app/platform/ownerBusinessAssistantMonitor'), { loading: RouteLoading, ssr: false });
 const PlatformCostPosture = dynamic(() => import('@template/main-app/platform/costPosture'), { loading: RouteLoading, ssr: false });
 const PlatformAssetTemplates = dynamic(() => import('@template/platform/assetTemplates'), { loading: RouteLoading, ssr: false });
@@ -110,6 +112,14 @@ const PLATFORM_SCREEN_CONFIG: Record<MobilePlatformInternalScreenKey, PlatformSc
         minWidth: 0,
         surface: 'Entity Blocks',
         title: 'Entity Blocks',
+    },
+    founderMonitor: {
+        Component: PlatformFounderMonitor,
+        desktopPath: '/platform/founder-monitor',
+        description: 'Review trusted live stores, revenue movement, onboarding, truth, distribution, and support risk.',
+        minWidth: 760,
+        surface: 'Founder Monitor',
+        title: 'Founder Monitor',
     },
     ownerBusinessAssistantMonitor: {
         Component: OwnerBusinessAssistantMonitor,

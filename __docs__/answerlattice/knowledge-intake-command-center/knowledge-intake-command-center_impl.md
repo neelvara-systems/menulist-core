@@ -1,7 +1,7 @@
 # Knowledge Intake Command Center — Technical Implementation Contract
 
 > **Status:** IMPLEMENTED — day-one owner-triggered implementation
-> **Version:** 2.0.0
+> **Version:** 2.0.3
 > **Created:** 2026-05-31
 > **Audience:** Engineering / QA / Product
 
@@ -108,6 +108,10 @@ ENABLE_ANSWERLATTICE_INTAKE_NATIVE_CONNECTORS: false,
 Native connectors stay false because Answerlattice does not need private helpdesk/OAuth credentials for this stage. The scheduler flag is true for summary-only analytics: it reads the latest bounded intake job docs and writes `platformSummary/knowledgeIntakeSummary_{tId}_{sId}` only when changed. It does not retry failed jobs, crawl URLs, call AI providers, or publish review items.
 
 `ENABLE_ANSWERLATTICE_INTAKE_PLATFORM_MONITOR` controls the internal `/platform/answerlattice-intake` screen and `/api/platform/answerlattice-intake` API. The monitor is platformRole-only. Initial load reads only `platformSummary/answerlatticeTenantsSummary` and recent scheduler logs. Job and ledger details are loaded only after a platform admin selects one `tId/sId` workspace. The retry action is explicit and posts that selected workspace to `triggerAnswerlatticeNightly`; it does not run all tenants by default, add realtime listeners, or create tenant-facing controls.
+
+Platform monitor load and manual retry failures use fixed platform-admin copy in `src/components/templates/main-app/platform/answerlatticeIntakeMonitor/index.tsx` and `src/app/api/platform/answerlattice-intake/route.ts`; route response text, callable failure text, and browser exception messages are not copied into the UI. The browser caller parses monitor snapshot and retry responses through a 512 KB bounded response reader and requires the documented snapshot/retry envelope, including the sanitized retry result/task summary shape, before replacing table state or showing retry success.
+
+The manual retry API now resolves the configured `triggerAnswerlatticeNightly` target before fetch. Production accepts only the fixed Answerlattice Cloud Functions hosts for `answerlattice-qa` or `answerlattice` with the `/triggerAnswerlatticeNightly` path. Development may use a localhost emulator URL with the same trigger path. The route then validates the target through the app-server DNS guard, fetches only the normalized URL, and uses manual redirect handling so 3xx responses are failed trigger responses rather than followed to a new target. Invalid trigger configuration returns the existing generic configuration failure, and target rejection/manual retry failures log fixed runtime codes with bounded target or tenant/store metadata. The route also caps the Cloud Function trigger response at 512 KB, forwards only a sanitized scheduler summary, and logs `answerlattice_intake_monitor_manual_trigger_response_parse_failed` or `answerlattice_intake_monitor_manual_trigger_response_invalid` before returning fixed invalid-response copy for malformed successful trigger responses.
 
 ---
 
@@ -449,10 +453,27 @@ All routes require authenticated Answerlattice access. Mutating and expensive ro
 | `/api/answerlattice/knowledge-intake/jobs/[id]/review-items/[itemId]` | PATCH | Update review item status/content before publish. |
 | `/api/answerlattice/knowledge-intake/jobs/[id]/publish` | POST | Publish approved selected outputs. |
 | `/api/answerlattice/knowledge-intake/discover` | POST | Bounded public URL discovery or selected page text fetch. |
+| `/api/answerlattice/knowledge-intake/jobs/[id]/media` | POST | Bounded form-data media upload for screenshot/OCR or short audio/video extraction. |
 
 Do not allow direct client Firestore writes for expensive state transitions.
 
-Implemented now: media extraction preflight caps, support-credit reservation, ledger settlement, AI operation logging, and refund-on-failure for paid OCR/transcription. Still reserved for later: signed native uploads, raw artifact retention, source deletion, cancellation APIs, native connectors, and background import workers.
+Knowledge Intake route catch paths use a shared owner-safe error helper. Known user-correctable 4xx intake guidance, such as invalid public URLs, private/local URL blocks, source caps, missing accepted items, media type/signature failures, and credit/subscription blocks, can be returned to the owner. Infrastructure failures, provider/fetch failures, and unrecognized exception messages return the route fallback text while details stay in secure server logs.
+
+June 28 follow-up, updated July 1: Knowledge Intake secure diagnostics now route through `src/lib/answerlattice/knowledgeIntakeDiagnostics.ts`. The helper logs tenant/store scope, string identifiers, and owner-provided titles such as job IDs, source IDs, review item IDs, ledger IDs, article IDs, and article titles only as presence/length metadata. `npm run verify:answerlattice-runtime-truth` guards every `[Answerlattice Intake]` secure log/error call in the intake routes and core service.
+
+June 29 follow-up: Knowledge Intake route and core-service failure diagnostics now call `logAnswerlatticeKnowledgeIntakeFailure()` with fixed `answerlattice_intake_*` failure codes, bounded source error name/code/status metadata, and the existing job/source/item/article presence-length context instead of passing caught exception objects directly to `secureError()`. Existing rate limits, bounded body parsing, source/media/analyze/review/publish behavior, cache revalidation, AI operation/accounting, and client-safe response mapping are unchanged.
+
+Client-side Knowledge Intake failures display fixed operation-specific copy for job load/create, source add, media extraction, analysis, review update, publish, entity search, and URL inspection failures. The client no longer copies route-returned error text into hook/component toasts or state. Paid media refund records, partial-publish job status, and context-bundle lock failures store stable local failure codes/messages instead of raw exception text.
+
+June 30 follow-up: `src/hooks/answerlattice/useKnowledgeIntake.ts` now parses job, bundle, source, media, discovery, entity, analysis, review-item, and publish route responses through a 64 KB bounded response reader. The hook validates each response shape before updating local jobs/bundle state, caching entity options, refreshing bundles, or showing success copy, and logs fixed `answerlattice_knowledge_intake_response_*` diagnostics for malformed, oversized, rejected, or wrong-shape responses.
+
+June 30 follow-up: the same hook now sends all JSON and media-upload browser requests through `ANSWERLATTICE_KNOWLEDGE_INTAKE_REQUEST_POLICY` with no-store cache, same-origin credentials, and manual redirect handling before the bounded response reader runs. This keeps cached or followed-redirect responses from advancing intake state while preserving the existing fixed-copy failure behavior.
+
+June 30 follow-up: selected-page URL discovery now fails closed when a fetch response has no readable stream and no trustworthy `content-length` within `MAX_DISCOVERY_FETCH_BYTES`. Normal streaming responses still cancel after the cap, and empty `204`/zero-length responses remain accepted as empty text. `npm run verify:answerlattice-runtime-truth` guards the no-stream and streaming cap branches.
+
+June 30 follow-up: Knowledge Intake shared admission now logs rate-limit denials through `getAnswerlatticeSecurityLogContext()` with bounded route/session metadata and rate-limit key, tenant, and store presence-length fields. The platform intake monitor uses the same bounded security-log helper for manual-monitor rate limits. Valid intake permission checks, subscription checks, rate-limit windows, Retry-After headers, and owner-facing fixed copy are unchanged.
+
+Implemented now: media extraction request-body and file-size preflight caps, support-credit reservation, ledger settlement, AI operation logging, and refund-on-failure for paid OCR/transcription. Still reserved for later: signed native uploads, raw artifact retention, source deletion, cancellation APIs, native connectors, and background import workers.
 
 ---
 
@@ -843,6 +864,7 @@ Expected outputs are defined in `knowledge-intake-command-center_test-cases.md`.
 - Intake source and usage metadata is key-count, depth, array, and string length bounded before Firestore writes.
 - Intake usage reservations are allowlisted to Answerlattice intake OCR, transcription, and embedding actions so unsupported future actions fail closed instead of silently recording zero-unit processing.
 - Intake API licensing checks use the store subscription mirror first, then a direct subscription document or capped tenant/store subscription query when the mirror is stale. Credit-shortage errors return a credits/payment status instead of a generic server failure.
+- Intake API catch responses return only allowlisted owner-correctable 4xx messages or generic route fallbacks. Raw provider, fetch, Firebase, and unexpected exception text stays in secure server logs.
 - No intake-only source/readiness counters are written day one.
 - Published article embeddings are attempted during publish; failures leave `embeddingStatus: failed` without blocking help-center publication.
 - Workspace summary doc updates from owner-triggered server transitions and from summary-only Answerlattice nightly analytics.
@@ -862,3 +884,10 @@ Expected outputs are defined in `knowledge-intake-command-center_test-cases.md`.
 | 2026-05-31 | 1.3.0 | Added summary-first read model, bucketed intake directory, source-version fields, and summary repair helpers. |
 | 2026-05-31 | 1.4.0 | Added runtime destination matrix and search/cache/bundle alignment rules for existing Answerlattice KB, FAQ, canonical, surface, release, widget, and hosted-help flows. |
 | 2026-05-31 | 1.5.0 | Added publish idempotency and runtime fallback signal alignment after the end-to-end intake-to-mutation review. |
+| 2026-06-27 | 1.6.0 | Added the shared Knowledge Intake safe-error response boundary and verifier guard. |
+| 2026-06-28 | 2.0.1 | Bounded Knowledge Intake UI, media refund, partial-publish status, and context-bundle lock failure diagnostics. |
+| 2026-06-28 | 2.0.2 | Tightened client-side Knowledge Intake failure copy to fixed operation messages only. |
+| 2026-06-29 | 2.0.3 | Routed Knowledge Intake route and core-service failure diagnostics through fixed intake failure codes and bounded source-error metadata. |
+| 2026-06-30 | 2.0.4 | Added bounded Knowledge Intake client response validation before local state or success copy advances. |
+| 2026-06-30 | 2.0.5 | Added shared Knowledge Intake browser request policy before bounded response validation. |
+| 2026-06-30 | 2.0.6 | Bounded Knowledge Intake and platform intake-monitor security-log metadata for shared rate-limit denials. |

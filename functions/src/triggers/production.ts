@@ -25,6 +25,15 @@ import {
     MenuImageProcessingJob,
 } from '../types';
 
+const PRODUCTION_TRIGGER_DATA_MISSING_CODE = 'FUNCTIONS_PRODUCTION_TRIGGER_DATA_MISSING';
+
+function getTriggerJobContext(jobId: string, triggerName: string): Record<string, string | number> {
+    return {
+        triggerName,
+        jobIdLength: jobId.length,
+    };
+}
+
 // STEP 2 - KB Ingestion: Triggered when a new ingestion job doc is created
 export const startGeneration = onDocumentCreated(
     { ...FUNCTION_OPTIONS.aiEventTrigger, document: `${INGESTION_JOB_COLLECTION}/{jobId}` },
@@ -33,9 +42,12 @@ export const startGeneration = onDocumentCreated(
         const snap = event.data;
         const { jobId } = event.params;
 
-        logger.info(`[${jobId}] Starting generation. Updating status to 'processing'.`);
+        logger.info('[startGeneration] Starting generation. Updating status to processing.', getTriggerJobContext(jobId, 'startGeneration'));
         if (!snap) {
-            logger.error('No data associated with the event trigger.');
+            logger.error('[startGeneration] No data associated with the event trigger.', {
+                failureCode: PRODUCTION_TRIGGER_DATA_MISSING_CODE,
+                ...getTriggerJobContext(jobId, 'startGeneration'),
+            });
             return;
         }
 
@@ -54,7 +66,7 @@ export const finalizePublish = onDocumentUpdated(
         const jobId = event.params.jobId;
 
         if (!before || !after) {
-            logger.info(`[${jobId}] No data change detected.`);
+            logger.info('[finalizePublish] No data change detected.', getTriggerJobContext(jobId, 'finalizePublish'));
             return null;
         }
 
@@ -77,9 +89,12 @@ export const processMenuImagesJob = onDocumentCreated(
         const snap = event.data;
         const { jobId } = event.params;
 
-        logger.info(`[processMenuImagesJob] Job created: ${jobId}`);
+        logger.info('[processMenuImagesJob] Job created.', getTriggerJobContext(jobId, 'processMenuImagesJob'));
         if (!snap) {
-            logger.error(`[processMenuImagesJob] No data associated with the event trigger for job ${jobId}`);
+            logger.error('[processMenuImagesJob] No data associated with the event trigger.', {
+                failureCode: PRODUCTION_TRIGGER_DATA_MISSING_CODE,
+                ...getTriggerJobContext(jobId, 'processMenuImagesJob'),
+            });
             return;
         }
 

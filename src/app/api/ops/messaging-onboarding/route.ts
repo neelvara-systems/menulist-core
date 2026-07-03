@@ -10,7 +10,7 @@ export const dynamic = 'force-dynamic';
 import { DB_COLLECTIONS } from '@constant/database';
 import { FEATURE_FLAGS } from '@config/features';
 import { firestoreAdmin } from '@lib/firebase/firebaseAdmin';
-import { logger } from '@lib/monitoring/logger';
+import { getBoundedOpsStringContext, logOpsFailure } from '@lib/ops/opsDiagnostics';
 import type {
   MessagingOnboardingOpsAlert,
   MessagingOnboardingOpsEvent,
@@ -18,9 +18,12 @@ import type {
   MessagingOnboardingOpsSession,
   MessagingOnboardingOpsSnapshot,
 } from '@lib/ops/messagingOnboardingTypes';
-import { buildSecurityContext } from '@lib/security/securityContext';
+import { checkRateLimit } from '@lib/rateLimit';
+import { getRateLimitForFeature } from '@lib/rateLimit/configs';
 import { Timestamp } from 'firebase-admin/firestore';
+import { createHash } from 'crypto';
 import { NextResponse } from 'next/server';
+import { hashPublicRateLimitValue } from 'src/middleware/publicApi';
 import { withAuth } from '../../../../middleware/auth';
 
 const db = firestoreAdmin;
@@ -30,6 +33,11 @@ const EVENT_WINDOW_HOURS = 24;
 const RECENT_EVENT_LIMIT = 12;
 const RECENT_SESSION_LIMIT = 8;
 const RECENT_ALERT_LIMIT = 8;
+const MAX_METADATA_KEYS = 40;
+const MAX_METADATA_STRING_LENGTH = 96;
+const MESSAGING_ONBOARDING_OPS_RATE_LIMIT_KEY = 'messaging-onboarding-ops';
+
+const getOperatorId = (session: any) => session?.uId || session?.user?.id || 'platform';
 
 const WATCHED_STATES = [
   'COLLECTING_INPUT',
@@ -56,9 +64,10 @@ const WEBHOOK_EVENT_COUNTS = [
 
 const SAFE_METADATA_KEYS = new Set([
   'attempts',
-  'businessName',
   'businessType',
   'categoryCount',
+  'completeness',
+  'confidence',
   'currentCount',
   'exhausted',
   'fileCount',
@@ -69,22 +78,126 @@ const SAFE_METADATA_KEYS = new Set([
   'itemCount',
   'maxSize',
   'menuCompleteness',
-  'messageId',
   'messageLength',
   'messageType',
+  'metadataDroppedCount',
   'mimeType',
   'processingRuns',
+  'processingTime',
   'qualityScore',
   'reason',
   'reportedSize',
   'runs',
-  'sessionId',
-  'storeId',
+  'targetPublishRate',
   'toState',
   'trigger',
   'uploadCount',
   'uploadIndex',
+  'validCount',
 ]);
+
+const BOUNDED_METADATA_KEYS = new Set([
+  'businessName',
+  'dashboardUrl',
+  'extractionJobId',
+  'imageUrl',
+  'ip',
+  'messageId',
+  'path',
+  'phone',
+  'phoneNumber',
+  'previewUrl',
+  'projectId',
+  'providerMessageId',
+  'providerUserId',
+  'publicUrl',
+  'sessionId',
+  'sha256',
+  'storagePath',
+  'storageUrl',
+  'storeId',
+  'tempProjectId',
+  'tenantId',
+]);
+
+function getBoundedMetadataContext(label: string, value: unknown): Record<string, boolean | number> {
+  const normalized = value === undefined || value === null ? '' : String(value);
+  return {
+    [`${label}Present`]: normalized.length > 0,
+    [`${label}Length`]: normalized.length,
+  };
+}
+
+function cleanOpsText(value: unknown, max = 260): string {
+  return String(value || '')
+    .replace(/[\u0000-\u001f\u007f]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, max);
+}
+
+function buildMessagingOpsResponseId(prefix: string, value: unknown): string {
+  const normalized = cleanOpsText(value, 1000) || 'missing';
+  return `${prefix}-${createHash('sha256').update(normalized).digest('hex').slice(0, 12)}`;
+}
+
+function getMessagingAlertStringContext(label: string, value: unknown): Record<string, boolean | number> {
+  const normalized = cleanOpsText(value, 1000);
+  return {
+    [`${label}Present`]: normalized.length > 0,
+    [`${label}Length`]: normalized.length,
+  };
+}
+
+function normalizeMessagingAlertSeverity(value: unknown): 'info' | 'warning' | 'critical' {
+  const normalized = cleanOpsText(value, 40).toLowerCase();
+  if (normalized === 'critical') return 'critical';
+  if (normalized === 'warning') return 'warning';
+  return 'info';
+}
+
+function normalizeMessagingHealthAlertSeverity(value: unknown): 'warning' | 'critical' {
+  return normalizeMessagingAlertSeverity(value) === 'critical' ? 'critical' : 'warning';
+}
+
+function buildMessagingAlertTitle(severity: 'info' | 'warning' | 'critical'): string {
+  return `Messaging onboarding ${severity} alert`;
+}
+
+function buildMessagingAlertMessage(data: Record<string, unknown>): string {
+  const context = {
+    ...getMessagingAlertStringContext('key', data.key),
+    ...getMessagingAlertStringContext('title', data.title),
+    ...getMessagingAlertStringContext('message', data.message),
+  };
+  const parts = [
+    context.keyPresent ? `key=${context.keyLength}` : null,
+    context.titlePresent ? `title=${context.titleLength}` : null,
+    context.messagePresent ? `message=${context.messageLength}` : null,
+  ].filter(Boolean);
+
+  return parts.length > 0
+    ? `Stored alert text present (${parts.join(', ')} chars).`
+    : 'No stored alert text.';
+}
+
+function serializeHealthAlerts(alerts: unknown): MessagingOnboardingOpsHealth['alerts'] {
+  if (!Array.isArray(alerts)) return [];
+  return alerts.map((alert, index) => {
+    const data = alert && typeof alert === 'object' ? alert as Record<string, unknown> : {};
+    const severity = normalizeMessagingHealthAlertSeverity(data.severity);
+    return {
+      key: `health-alert-${index}`,
+      severity,
+      title: buildMessagingAlertTitle(severity),
+      message: buildMessagingAlertMessage(data),
+    };
+  });
+}
+
+function isSafeMetadataKey(key: string): boolean {
+  return SAFE_METADATA_KEYS.has(key) || /^[A-Za-z][A-Za-z0-9]*(Present|Length)$/.test(key);
+}
 
 function toIso(value: any): string | null {
   if (!value) return null;
@@ -132,7 +245,7 @@ async function getLatestHealthSnapshot(): Promise<MessagingOnboardingOpsHealth> 
 
   const data = latest.data() || {};
   return {
-    id: latest.id,
+    id: buildMessagingOpsResponseId('health', latest.id),
     status: data.status || 'unknown',
     windowStart: toIso(data.windowStart),
     windowEnd: toIso(data.windowEnd),
@@ -140,7 +253,7 @@ async function getLatestHealthSnapshot(): Promise<MessagingOnboardingOpsHealth> 
     metrics: data.metrics || {},
     costs: data.costs || {},
     retention: data.retention || {},
-    alerts: Array.isArray(data.alerts) ? data.alerts : [],
+    alerts: serializeHealthAlerts(data.alerts),
   };
 }
 
@@ -183,29 +296,91 @@ async function getSessionStateCounts(): Promise<Record<string, number>> {
 }
 
 function sanitizeMetadata(metadata: any): Record<string, unknown> {
-  if (!metadata || typeof metadata !== 'object') return {};
+  if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata)) return {};
 
-  return Object.entries(metadata).reduce<Record<string, unknown>>((acc, [key, value]) => {
-    if (!SAFE_METADATA_KEYS.has(key)) return acc;
-    if (
-      value === null ||
-      typeof value === 'string' ||
-      typeof value === 'number' ||
-      typeof value === 'boolean'
-    ) {
-      acc[key] = value;
+  const sanitized: Record<string, unknown> = {};
+  let droppedCount = 0;
+
+  for (const [key, value] of Object.entries(metadata)) {
+    if (Object.keys(sanitized).length >= MAX_METADATA_KEYS) {
+      droppedCount += 1;
+      continue;
     }
-    return acc;
-  }, {});
+
+    if (BOUNDED_METADATA_KEYS.has(key)) {
+      Object.assign(sanitized, getBoundedMetadataContext(key, value));
+      continue;
+    }
+
+    if (!isSafeMetadataKey(key)) {
+      droppedCount += 1;
+      continue;
+    }
+
+    if (value === null || typeof value === 'boolean') {
+      sanitized[key] = value;
+      continue;
+    }
+
+    if (typeof value === 'number' && Number.isFinite(value)) {
+      sanitized[key] = value;
+      continue;
+    }
+
+    if (typeof value === 'string') {
+      sanitized[key] = value.slice(0, MAX_METADATA_STRING_LENGTH);
+      continue;
+    }
+
+    droppedCount += 1;
+  }
+
+  if (droppedCount > 0 && Object.keys(sanitized).length < MAX_METADATA_KEYS) {
+    sanitized.metadataDroppedCount = droppedCount;
+  }
+
+  return sanitized;
+}
+
+async function checkMessagingOnboardingOpsRateLimit(session: any) {
+  const rateLimitConfig = getRateLimitForFeature('DATA_READ');
+  const userId = getOperatorId(session);
+  const userRateLimitHash = hashPublicRateLimitValue(userId);
+
+  const rateLimit = await checkRateLimit({
+    key: `${MESSAGING_ONBOARDING_OPS_RATE_LIMIT_KEY}:${userRateLimitHash}`,
+    ...rateLimitConfig,
+  });
+
+  if (rateLimit.allowed) return null;
+
+  const waitSeconds = Math.max(1, Math.ceil((rateLimit.resetAt - Date.now()) / 1000));
+  return NextResponse.json(
+    {
+      error: 'Too many requests. Please try again later.',
+      retryAfter: waitSeconds,
+      resetAt: rateLimit.resetAt,
+    },
+    {
+      headers: {
+        'Cache-Control': 'no-store',
+        'Retry-After': String(waitSeconds),
+        'X-RateLimit-Limit': String(rateLimitConfig.limit),
+        'X-RateLimit-Remaining': String(rateLimit.remaining),
+        'X-RateLimit-Reset': String(rateLimit.resetAt),
+      },
+      status: 429,
+    },
+  );
 }
 
 function serializeEvent(doc: FirebaseFirestore.QueryDocumentSnapshot): MessagingOnboardingOpsEvent {
   const data = doc.data();
   return {
-    id: doc.id,
+    id: buildMessagingOpsResponseId('event', doc.id),
     eventType: String(data.eventType || 'UNKNOWN'),
     provider: String(data.provider || '-'),
-    sessionId: String(data.sessionId || '-'),
+    sessionId: buildMessagingOpsResponseId('session', data.sessionId || doc.id),
     sessionState: String(data.sessionState || '-'),
     userIdMasked: String(data.userIdMasked || '****'),
     timestamp: toIso(data.timestamp),
@@ -213,7 +388,6 @@ function serializeEvent(doc: FirebaseFirestore.QueryDocumentSnapshot): Messaging
     ...(data.error ? {
       error: {
         code: data.error.code,
-        message: data.error.message,
         retryable: data.error.retryable,
       },
     } : {}),
@@ -269,7 +443,7 @@ async function getRecentSessions(): Promise<MessagingOnboardingOpsSession[]> {
   return snapshot.docs.map((doc) => {
     const data = doc.data();
     return {
-      id: doc.id,
+      id: buildMessagingOpsResponseId('session', doc.id),
       provider: String(data.provider || '-'),
       state: String(data.state || '-'),
       providerDisplayIdMasked: maskDisplayId(data.providerDisplayId),
@@ -293,11 +467,12 @@ async function getRecentAlerts(): Promise<MessagingOnboardingOpsAlert[]> {
     .slice(0, RECENT_ALERT_LIMIT)
     .map((doc) => {
       const data = doc.data();
+      const severity = normalizeMessagingAlertSeverity(data.severity);
       return {
-        id: doc.id,
-        severity: data.severity || 'info',
-        title: data.title || 'Messaging onboarding alert',
-        message: data.message || '',
+        id: buildMessagingOpsResponseId('alert', doc.id),
+        severity,
+        title: buildMessagingAlertTitle(severity),
+        message: buildMessagingAlertMessage(data),
         timestamp: toIso(data.timestamp),
         acknowledged: data.acknowledged === true,
       };
@@ -310,6 +485,9 @@ export const GET = withAuth(async (request, session) => {
   }
 
   try {
+    const rateLimitResponse = await checkMessagingOnboardingOpsRateLimit(session);
+    if (rateLimitResponse) return rateLimitResponse;
+
     const [health, inboundQueue, sessionsByState, webhook, recentSessions, recentAlerts] =
       await Promise.all([
         getLatestHealthSnapshot(),
@@ -343,11 +521,10 @@ export const GET = withAuth(async (request, session) => {
       },
     );
   } catch (error) {
-    logger.error(
-      '[API /ops/messaging-onboarding] Error',
-      error,
-      buildSecurityContext(session, request),
-    );
+    logOpsFailure('ops_messaging_onboarding_route_failed', error, {
+      ...getBoundedOpsStringContext('userId', getOperatorId(session)),
+      ...getBoundedOpsStringContext('requestPath', request.nextUrl.pathname),
+    });
     return NextResponse.json(
       { error: 'Failed to load messaging onboarding ops snapshot' },
       { status: 500 },

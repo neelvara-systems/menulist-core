@@ -47,7 +47,7 @@ creative-editor/templates/platform/{businessCategory}/{templateId}/document.json
 creative-editor/templates/user/{tenantId}/{storeId}/{templateId}/document.json
 ```
 
-The payload stores the size-limited neutral `CreativeEditorDocument`. List calls do not read this payload.
+The payload stores the size-limited neutral `CreativeEditorDocument`. List calls do not read this payload. Open calls check the Storage blob size against `MAX_DOCUMENT_BYTES` before decoding JSON, so an oversized stored document fails before the browser materializes the full text payload.
 
 ## Cost Guardrails
 

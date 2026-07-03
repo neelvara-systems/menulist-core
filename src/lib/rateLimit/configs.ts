@@ -174,6 +174,21 @@ export const RATE_LIMIT_CONFIGS = {
     },
 
     /**
+     * MenuList Contact Form - anonymous public website enquiry endpoint
+     * Used by: POST /api/public/contact
+     *
+     * Why 5/10min:
+     * - Normal contact flow is one submission, rarely a retry.
+     * - Each accepted request creates one MenuList Firestore enquiry write.
+     * - Keeps public website spam bounded before it reaches Firestore.
+     */
+    MENULIST_CONTACT_FORM: {
+        limit: 5,
+        window: 600,
+        description: 'MenuList contact form - 5 submissions per 10 minutes per IP'
+    },
+
+    /**
      * Answerlattice Hosted Help Center - anonymous read-only pages.
      * Used by: help.example.com hosted KB/FAQ/changelog pages.
      *
@@ -441,8 +456,9 @@ export const RATE_LIMIT_CONFIGS = {
  * @example
  * ```typescript
  * const config = getRateLimitForFeature('AI_CHAT');
+ * const userRateLimitHash = hashPublicRateLimitValue(userId);
  * await checkRateLimit({
- *     key: `chat:${userId}`,
+ *     key: `chat:${userRateLimitHash}`,
  *     ...config
  * });
  * ```

@@ -7,7 +7,7 @@
 > **Source:** ChatGPT ICP gap analysis → Cascade codebase cross-check
 > **Purpose:** Track implementation progress of 12 ICP-driven expansion items. Reference this doc BEFORE starting work on any item.
 > **Rule:** Update this doc after completing each item (status, date, key files, notes).
-> **2026-06-06 Update:** This tracker records the 12 ICP expansion items only. For the full activation/connector/distribution sequence, use `ANSWERLATTICE-BUILD-PRIORITY-ROADMAP.md`. Tool integrations, knowledge graph traversal/exploitation, and predictive support remain active with caps, fail-closed guards, summary-backed reads, and sanitized workflow delivery. AI escalation code exists but remains default-off until a workspace-level rollout decision.
+> **2026-06-06 Update:** This tracker records the 12 ICP expansion items only. For the full activation/connector/distribution sequence, use `answerlattice-build-priority-roadmap.md`. Tool integrations, knowledge graph traversal/exploitation, and predictive support remain active with caps, fail-closed guards, summary-backed reads, and sanitized workflow delivery. AI escalation code exists but remains default-off until a workspace-level rollout decision.
 
 ---
 

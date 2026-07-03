@@ -159,7 +159,7 @@ The MenuList AI data extraction pipeline is architecturally sound for current sc
 | **Tenant isolation** | Job documents contain `tId`, `sId`, `uId`. Firestore rules: `resource.data.uId == request.auth.uid` for reads. | ✅ SAFE |
 | **Write access** | Only authenticated users can create (must set own `uId`, must be `pending`). Only cancellation allowed as update. No client deletes. | ✅ SAFE |
 | **Cross-tenant data leakage** | `saveFilesToProject()` uses `parseProjectId()` to derive `tId/sId` from projectId format. CF uses admin SDK — bypasses rules but operates on data from job document. | ✅ SAFE |
-| **Storage path safety** | Files uploaded to `MenuListAi/project/files/{timestamp}-{uid}`. Storage rules require auth. | ✅ SAFE |
+| **Storage path safety** | Active files upload to `projects/files/{tId}/{sId}/{fileId}` with tenant/store-scoped Storage rules. Legacy files may still exist under `MenuListAi/project/files/` until the app deploy and Storage rules cutover are coordinated. | 🔧 PARTIAL |
 | **Rate limiting** | Upstash Redis: 5 req/min per project for expensive AI ops. Feature flag controlled. | ✅ SAFE |
 
 **Note:** H1 from production-review.md (no server-side tenant verification) is acceptable because: (1) Firestore rules prevent unauthorized writes to job collection, (2) projectId format `{tId}-{timestamp}-{sId}` is parsed server-side, (3) an attacker would need both write access AND knowledge of another tenant's projectId.

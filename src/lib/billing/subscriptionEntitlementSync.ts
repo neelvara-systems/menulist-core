@@ -1,9 +1,11 @@
 import { DB_COLLECTIONS } from '@constant/database';
 import { admin, firestoreAdmin } from '@lib/firebase/firebaseAdmin';
-import { logger } from '@lib/monitoring/logger';
 import { invalidateOwnerBusinessAssistantPacketCache } from '@lib/ownerBusinessAssistant/server/contextPacketCache';
+import { touchDigitalScreenContentVersionForStoreServer } from '@lib/screen/serverScreenInvalidation';
+import { secureError } from '@lib/security/secureLogger';
 import type { FirestoreSubscriptionDoc, PaymentStatus } from '@type/razorpay';
 import { revalidateTag } from 'next/cache';
+import { getBoundedRazorpayStringContext, getRazorpayFailureLogData } from './razorpayDiagnostics';
 
 export interface SubscriptionEntitlementSyncInput {
     id?: string;
@@ -19,6 +21,18 @@ export interface SubscriptionEntitlementState {
     syncedAt?: any;
     source?: string;
 }
+
+const getSubscriptionEntitlementLogContext = (
+    subscription: SubscriptionEntitlementSyncInput,
+    source: string,
+) => ({
+    ...getBoundedRazorpayStringContext('subscriptionId', subscription.id),
+    ...getBoundedRazorpayStringContext('tenantId', subscription.tenantId),
+    ...getBoundedRazorpayStringContext('storeId', subscription.storeId),
+    ...getBoundedRazorpayStringContext('planId', subscription.planId),
+    ...getBoundedRazorpayStringContext('status', subscription.status),
+    ...getBoundedRazorpayStringContext('source', source),
+});
 
 function normalizePlanId(planId: unknown): string | null {
     const normalized = String(planId || '').trim().toLowerCase();
@@ -78,6 +92,8 @@ export async function syncStorePlanEntitlementFromSubscription(
     revalidateTag(`menu-store-${storeId}`);
     revalidateTag(`store-${storeId}`);
     revalidateTag('client-stores');
+    revalidateTag('screen-data');
+    await touchDigitalScreenContentVersionForStoreServer(storeId, 'subscriptionEntitlementSync');
     await invalidateOwnerBusinessAssistantPacketCache({
         tId: subscription.tenantId,
         sId: storeId,
@@ -91,13 +107,14 @@ export async function safeSyncStorePlanEntitlementFromSubscription(
     try {
         await syncStorePlanEntitlementFromSubscription(subscription, source);
     } catch (error) {
-        logger.error('Failed to sync store plan entitlement', error, {
-            source,
-            subscriptionId: subscription.id,
-            tenantId: subscription.tenantId,
-            storeId: subscription.storeId,
-            planId: subscription.planId,
-            status: subscription.status,
-        });
+        secureError(
+            '[Billing] Store plan entitlement sync failed',
+            new Error('billing_store_plan_entitlement_sync_failed'),
+            getRazorpayFailureLogData(
+                'billing_store_plan_entitlement_sync_failed',
+                error,
+                getSubscriptionEntitlementLogContext(subscription, source),
+            ),
+        );
     }
 }

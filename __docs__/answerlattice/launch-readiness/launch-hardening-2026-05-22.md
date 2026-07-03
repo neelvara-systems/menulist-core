@@ -64,6 +64,7 @@ Raw logs, cache strategy, scheduler internals, and cost controls remain platform
 - Notification idempotency uses deterministic document IDs instead of a broad composite query.
 - Ticket reply notifications do not call the notification API unless a recipient email exists.
 - Status/test notification paths skip the dedupe read because their reference IDs are intentionally unique.
+- The generic notification send route now rejects bodies above 16KB before schema validation, idempotency reads, recipient rate-limit reads, SMTP work, or notification-log writes.
 - Widget branding uses existing runtime config and does not introduce a white-label read model for v1.
 - Friction intelligence and ticket knowledge remain inside the consolidated Answerlattice nightly scheduler.
 

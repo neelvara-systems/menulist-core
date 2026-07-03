@@ -15,6 +15,25 @@ import { DB_COLLECTIONS } from '../constants/database';
 import { firestoreAdmin as db } from '../firebaseAdmin';
 import { generateFeedbackAnalysis } from '../services/gemini/feedbackAnalysis';
 import { logTelemetry } from '../telemetry/logger';
+import {
+  analyticsLogger,
+  getAnalyticsErrorContext,
+  getAnalyticsIdContext,
+} from './analyticsDiagnostics';
+
+const FEEDBACK_INTELLIGENCE_FAILURE = 'FEEDBACK_INTELLIGENCE_FAILED';
+const FEEDBACK_INTELLIGENCE_STORE_FAILURE = 'FEEDBACK_INTELLIGENCE_STORE_FAILED';
+const FEEDBACK_INTELLIGENCE_BATCH_FAILURE = 'FEEDBACK_INTELLIGENCE_BATCH_FAILED';
+
+function getFeedbackIntelligenceScope(tId: string, sId: string): {
+  tenantId: ReturnType<typeof getAnalyticsIdContext>;
+  storeId: ReturnType<typeof getAnalyticsIdContext>;
+} {
+  return {
+    tenantId: getAnalyticsIdContext(tId),
+    storeId: getAnalyticsIdContext(sId),
+  };
+}
 
 // ================================================================
 // TYPES
@@ -56,17 +75,26 @@ export async function analyzeFeedbackIntelligence(
   const startTime = Date.now();
 
   try {
-    console.log(`[Feedback Intelligence] Starting analysis for store ${sId} (last ${daysBack} days)`);
+    analyticsLogger.info('[Feedback Intelligence] Starting analysis', {
+      ...getFeedbackIntelligenceScope(tId, sId),
+      daysBack,
+    });
 
     // Get recent negative feedback from chat sessions
     const feedback = await getRecentNegativeFeedback(tId, sId, daysBack);
 
     if (feedback.length === 0) {
-      console.log(`[Feedback Intelligence] No negative feedback found for store ${sId}`);
+      analyticsLogger.info('[Feedback Intelligence] No negative feedback found', {
+        ...getFeedbackIntelligenceScope(tId, sId),
+        daysBack,
+      });
       return null;
     }
 
-    console.log(`[Feedback Intelligence] Found ${feedback.length} negative feedback items`);
+    analyticsLogger.info('[Feedback Intelligence] Feedback batch ready for analysis', {
+      ...getFeedbackIntelligenceScope(tId, sId),
+      feedbackCount: feedback.length,
+    });
 
     // Use Gemini to analyze feedback
     const analysis = await generateFeedbackAnalysis(feedback);
@@ -95,16 +123,22 @@ export async function analyzeFeedbackIntelligence(
       completedAt: Timestamp.now(),
     });
 
-    console.log(`[Feedback Intelligence] Analysis complete for store ${sId}`);
+    analyticsLogger.info('[Feedback Intelligence] Analysis complete', {
+      ...getFeedbackIntelligenceScope(tId, sId),
+      feedbackCount: feedback.length,
+    });
     return intelligence;
 
   } catch (error) {
-    console.error(`[Feedback Intelligence] Error analyzing store ${sId}:`, error);
+    analyticsLogger.error('[Feedback Intelligence] Store analysis failed', {
+      ...getFeedbackIntelligenceScope(tId, sId),
+      error: getAnalyticsErrorContext(error),
+    });
 
     await logTelemetry('feedbackIntelligence', {
       status: 'failed',
       runTime: Date.now() - startTime,
-      error: error instanceof Error ? error.message : 'Unknown error',
+      error: FEEDBACK_INTELLIGENCE_FAILURE,
       completedAt: Timestamp.now(),
     });
 
@@ -173,7 +207,9 @@ async function saveFeedbackIntelligence(intelligence: FeedbackIntelligence): Pro
 
   await docRef.set(intelligence, { merge: true });
 
-  console.log(`[Feedback Intelligence] Saved to insights/${intelligence.tId}/stores/${intelligence.sId}/ai/feedback`);
+  analyticsLogger.info('[Feedback Intelligence] Saved intelligence result', {
+    ...getFeedbackIntelligenceScope(intelligence.tId, intelligence.sId),
+  });
 }
 
 // ================================================================
@@ -185,11 +221,13 @@ async function saveFeedbackIntelligence(intelligence: FeedbackIntelligence): Pro
  * Called by masterScheduler
  */
 export async function processFeedbackIntelligenceForAllStores(): Promise<void> {
-  console.log('[Feedback Intelligence] Starting batch processing');
+  analyticsLogger.info('[Feedback Intelligence] Starting batch processing');
 
   try {
     // Get all tenants
     const tenantsSnapshot = await db.collection(DB_COLLECTIONS.TENANTS).get();
+    let storeCount = 0;
+    let failedStoreCount = 0;
 
     for (const tenantDoc of tenantsSnapshot.docs) {
       const tId = tenantDoc.id;
@@ -202,19 +240,32 @@ export async function processFeedbackIntelligenceForAllStores(): Promise<void> {
 
       for (const storeDoc of storesSnapshot.docs) {
         const sId = storeDoc.id;
+        storeCount += 1;
 
         try {
           await analyzeFeedbackIntelligence(tId, sId, 7);
         } catch (error) {
-          console.error(`[Feedback Intelligence] Error processing store ${sId}:`, error);
+          failedStoreCount += 1;
+          analyticsLogger.error('[Feedback Intelligence] Store processing failed', {
+            ...getFeedbackIntelligenceScope(tId, sId),
+            failureCode: FEEDBACK_INTELLIGENCE_STORE_FAILURE,
+            error: getAnalyticsErrorContext(error),
+          });
           // Continue with next store
         }
       }
     }
 
-    console.log('[Feedback Intelligence] Batch processing complete');
+    analyticsLogger.info('[Feedback Intelligence] Batch processing complete', {
+      tenantCount: tenantsSnapshot.size,
+      storeCount,
+      failedStoreCount,
+    });
   } catch (error) {
-    console.error('[Feedback Intelligence] Batch processing failed:', error);
+    analyticsLogger.error('[Feedback Intelligence] Batch processing failed', {
+      failureCode: FEEDBACK_INTELLIGENCE_BATCH_FAILURE,
+      error: getAnalyticsErrorContext(error),
+    });
     throw error;
   }
 }

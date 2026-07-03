@@ -1,14 +1,18 @@
 export const dynamic = 'force-dynamic';
 import { getOurChargePaise, getRealCostPaise, getUnitCost } from "@constant/AI/unitCosts";
 import { AI_ACTIONS_TYPES, CHARGE_PER_CREDIT, CHARGE_PER_IMAGEN_IMAGE, TOKENS_PER_CREDIT, TOKENS_PER_IMAGEN_IMAGE } from "@constant/common";
+import { PERMISSIONS } from "@constant/permissions";
 import { finalizeAiOperationAccounting } from "@lib/ai/accounting";
 import { checkAICapacity } from "@lib/ai/capacityCheck";
 import { sanitizeImageGenerationConfigForLogging, summarizeImageProviderResponse } from "@lib/ai/imageOperationLogging";
+import { genAIClient } from "@lib/google/genAi";
+import { getAIGatewayDiagnostics, getAIRouteLogContext, getAIRouteSecurityContext, logAIRouteFailure } from "@lib/google/genAi/diagnostics";
 import { logger } from "@lib/monitoring/logger";
 import { getLinkedOutletPolicyBlockReason } from "@lib/multiOutlet/serverOutletPolicy";
+import { requireAnyStorePermission } from "@lib/permissions/server";
 import { checkExpensiveAILimit } from "@lib/rateLimit/helpers";
+import { readBoundedJsonBody } from "@lib/security/boundedRequestBody";
 import { validateAPIInput } from "@lib/security/inputValidation";
-import { buildSecurityContext } from "@lib/security/securityContext";
 import { ImageGenerationRequestSchema } from "@lib/validation/apiSchemas";
 import { GenerateImageViaApiPayloadType } from "@template/main-app/projects/types";
 import { writeErrorLogEntry, writeLogEntry, writeMissingParamsLogEntry } from 'logs/utils';
@@ -18,13 +22,18 @@ import { AI_MODEL_TYPE, runImageGenerationPrompts } from "./generators";
 import { getImagePrompts } from "./prompt";
 
 const AI_MODEL: AI_MODEL_TYPE = "GEMINI";
+const ACTION = AI_ACTIONS_TYPES.IMAGE_GENERATION;
 const LOG_FILE = "image-generation.log"
+const IMAGE_GENERATION_AI_MAX_BODY_BYTES = 16 * 1024 * 1024;
 
 
 export const POST = withAuth(async (request, session) => {
     // ✅ Session guaranteed by withAuth middleware
     // ✅ Auth failures automatically logged to Sentry
     const userId = session.user.id;
+    const requestId = crypto.randomUUID();
+    let projectIdForLog: string | undefined;
+    let fileIdForLog: string | undefined;
 
     try {
 
@@ -38,7 +47,10 @@ export const POST = withAuth(async (request, session) => {
         if (rateLimitResponse) return rateLimitResponse;
 
         // 🔒 INPUT VALIDATION: Prevent injection attacks (OWASP A03)
-        const rawData = await request.json();
+        const bodyResult = await readBoundedJsonBody(request, IMAGE_GENERATION_AI_MAX_BODY_BYTES);
+        if (bodyResult.ok === false) return bodyResult.response;
+
+        const rawData = bodyResult.data as any;
         const validation = validateAPIInput(ImageGenerationRequestSchema, rawData);
 
         if (!validation.success) {
@@ -46,16 +58,17 @@ export const POST = withAuth(async (request, session) => {
 
             // Log to Sentry (potential attack attempt - HIGH severity: very expensive operation)
             logger.security('Input Validation Failed', {
-                ...buildSecurityContext(session, request),
+                ...getAIRouteSecurityContext(session, request),
                 endpoint: '/api/image-generation',
                 error: errorMsg,
-                attemptedData: {
+                attemptedData: getAIRouteLogContext({
                     hasGenerationConfig: !!rawData?.generationConfig,
                     hasPrompt: !!rawData?.generationConfig?.prompt,
                     projectId: rawData?.projectId,
                     fileId: rawData?.fileId,
                     businessType: rawData?.businessType,
-                },
+                }),
+                requestId,
             }, 'high'); // HIGH severity - very expensive operation
 
             await writeMissingParamsLogEntry(LOG_FILE, userId, undefined, undefined, {
@@ -75,6 +88,16 @@ export const POST = withAuth(async (request, session) => {
 
         const jsonData = validation.data as unknown as GenerateImageViaApiPayloadType;
         const { generationConfig, projectId, fileId, itemDetails, businessType } = jsonData;
+        projectIdForLog = projectId;
+        fileIdForLog = fileId;
+
+        const permissionError = await requireAnyStorePermission(
+            request,
+            session,
+            [PERMISSIONS.GENERATE_IMAGES],
+            "Image generation",
+        );
+        if (permissionError) return permissionError;
 
         const outletPolicyBlockReason = await getLinkedOutletPolicyBlockReason({
             action: "image",
@@ -84,10 +107,11 @@ export const POST = withAuth(async (request, session) => {
         });
         if (outletPolicyBlockReason) {
             logger.security('Outlet Policy Violation - Image Generation API', {
-                ...buildSecurityContext(session, request),
+                ...getAIRouteSecurityContext(session, request),
                 endpoint: '/api/image-generation',
-                projectId,
+                project: getAIRouteLogContext({ projectId }),
                 reason: outletPolicyBlockReason,
+                requestId,
             }, 'medium');
             return NextResponse.json({ error: outletPolicyBlockReason }, { status: 403 });
         }
@@ -107,7 +131,7 @@ export const POST = withAuth(async (request, session) => {
         const capacityCheck = await checkAICapacity(
             session.tId,
             session.sId,
-            AI_ACTIONS_TYPES.IMAGE_GENERATION,
+            ACTION,
             estimatedImageQuantity,
         );
         if (!capacityCheck.allowed) {
@@ -128,6 +152,10 @@ export const POST = withAuth(async (request, session) => {
             generationConfig,
             logFile: LOG_FILE,
             prompts: promptsToExecute,
+            referenceImageStorageScope: {
+                sId: session.sId,
+                tId: session.tId,
+            },
         });
         const genratedImages = promptRun.images;
         const generatedImagesResponse = promptRun.responses;
@@ -195,7 +223,7 @@ export const POST = withAuth(async (request, session) => {
                 generationConfig: sanitizeImageGenerationConfigForLogging(generationConfig as unknown as Record<string, unknown>),
                 projectId,
                 fileId,
-                action: AI_ACTIONS_TYPES.IMAGE_GENERATION,
+                action: ACTION,
                 failedPromptCount: promptRun.failedPromptCount,
                 imageCount: genratedImages.length,
                 promptCount: promptRun.promptCount,
@@ -224,12 +252,25 @@ export const POST = withAuth(async (request, session) => {
                     logLabel: 'Image generation',
                     session,
                 });
-                logger.debug('Image generation transaction recorded', { transactionId: accounting.transactionId });
+                logger.debug('Image generation transaction recorded', getAIRouteLogContext({ transactionId: accounting.transactionId }));
                 transactionObject.unitsConsumed = accounting.unitsConsumed;
                 transactionObject.transactionId = accounting.transactionId;
                 remainingBalance = accounting.remainingBalance;
             } catch (transactionError) {
-                logger.error('Failed to record image generation transaction', transactionError);
+                logAIRouteFailure('image_generation_accounting_failed', transactionError, {
+                    action: ACTION,
+                    failedPromptCount: promptRun.failedPromptCount,
+                    fileId,
+                    imageCount: genratedImages.length,
+                    model: AI_MODEL,
+                    projectId,
+                    promptCount: promptRun.promptCount,
+                    requestId,
+                    userId,
+                });
+                if (transactionError && typeof transactionError === 'object') {
+                    (transactionError as Record<string, unknown>).__imageGenerationLogged = true;
+                }
                 throw transactionError;
             }
         }
@@ -260,7 +301,17 @@ export const POST = withAuth(async (request, session) => {
         }, { status: 200 });
 
     } catch (error) {
-        logger.error('Image generation API error', error);
+        if (!(error && typeof error === 'object' && '__imageGenerationLogged' in error)) {
+            logAIRouteFailure('image_generation_api_failed', error, {
+                action: ACTION,
+                fileId: fileIdForLog,
+                gatewayDiagnostics: getAIGatewayDiagnostics(genAIClient),
+                model: AI_MODEL,
+                projectId: projectIdForLog,
+                requestId,
+                userId,
+            });
+        }
         await writeErrorLogEntry(LOG_FILE, error);
         return NextResponse.json({ error: 'Image generation failed' }, { status: 500 });
     }

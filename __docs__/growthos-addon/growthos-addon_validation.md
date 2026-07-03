@@ -84,17 +84,13 @@ rg -n "genAI|recordAiOperation|checkAICapacity|consumeAICapacity|GROWTHOS_DIRECT
 
 Result: no matches.
 
-```txt
-npx firebase deploy --only firestore:rules --project ecomsai
-```
+Historical deploy attempt: `npx firebase deploy --only firestore:rules --project ecomsai`.
 
 Result: failed because this repo does not expose a Firebase executable through `node_modules/.bin`.
 
-```txt
-firebase deploy --only firestore:rules --project ecomsai
-```
+Historical deploy evidence: `firebase deploy --only firestore:rules --project ecomsai`.
 
-Result: passed. Rules compiled and released to `cloud.firestore` for project `ecomsai`.
+Result: passed. Rules compiled and released to `cloud.firestore` for project `ecomsai`. This is historical evidence only; do not reuse it as current deployment guidance. Current MenuList rules deploy evidence must target `menulist-qa` first with `firebase.json`, then production only after QA evidence and explicit production approval.
 
 The same command was run again after Firestore rule hardening. Result: passed and released to `cloud.firestore`.
 
@@ -243,6 +239,69 @@ npx tsc --noEmit --incremental false
 Result: passed.
 
 Cost impact: no Firebase, Storage, Cloud Functions, provider, scheduler, rules, indexes, route, or deploy change. This is request-validation hardening only.
+
+## June 29, 2026 API Diagnostic Hardening
+
+GrowthOS API route catch blocks now log fixed failure-code exceptions through `src/lib/growthos/diagnostics.ts` instead of passing raw thrown objects into `logger.error()`. The helper keeps endpoint labels, source error name/code/status metadata, and user-id presence/length only.
+
+Affected routes:
+
+- `/api/growthos/actions/refresh`
+- `/api/growthos/kits/generate`
+- `/api/growthos/kits/export`
+- `/api/growthos/reviews/suggest`
+
+Verifier coverage was expanded so `npm run verify:growthos` fails if those routes reintroduce raw GrowthOS `logger.error(..., error, { userId })` diagnostics or remove the bounded helper.
+
+Cost impact: no Firebase reads/writes/deletes, Storage operations, Cloud Functions logic, provider calls, scheduler work, rules, indexes, routes, owner-facing settings, Firebase deploy requirement, or Vercel deploy. Existing auth, rate limits, JSON parsing, validation, entitlement checks, summary/kit/export writes, response status codes, and fixed owner-facing failure copy are unchanged.
+
+## June 29, 2026 Sales Pack Handoff Diagnostics
+
+`src/components/mobile/components/GrowthKitsMobileCard.tsx` and `src/components/templates/main-app/growthos/index.tsx` now log failed Sales Pack refresh, prepare, copy, share, download, review-reply, and mark-used actions through `src/lib/growthos/diagnostics.ts`. The diagnostic context keeps bounded project, store, tenant, kit, action, output, destination, source error name/code/status, state booleans, output text length, and review text length only. It does not log generated Sales Pack text, review text, project names, raw browser/provider exceptions, or raw identifiers.
+
+Desktop and mobile copy/share now record the GrowthOS export only after the browser copy, native share, or fallback copy succeeds. Desktop download records only after the download is started. Failed browser handoffs keep fixed owner copy and no longer create false copied/shared/downloaded execution signals.
+
+Verifier coverage was expanded so `npm run verify:growthos` fails if either owner surface removes the bounded failure codes, drops bounded project/kit/output context, logs output/review text instead of length, or records copy/share/download before the handoff succeeds.
+
+Cost impact: failed copy/share/download handoffs now avoid unnecessary GrowthOS export writes. This adds no Firebase reads/writes/deletes beyond existing successful export behavior, Storage operations, Cloud Functions logic, provider calls, scheduler work, rules, indexes, routes, owner-facing settings, Firebase deploy requirement, or Vercel deploy. Existing successful refresh, generation, copy/share/download, mark-used, entitlement checks, API routes, and fixed owner-facing failure copy are unchanged.
+
+## June 30, 2026 Copy Support Diagnostics and Review-Reply Copy
+
+Desktop and mobile GrowthOS copy helpers now check Clipboard API support and textarea fallback support before attempting browser handoff. If Clipboard API is unavailable, blocked, or slow, the helpers fall through to acknowledged textarea copy; copied feedback and GrowthOS export writes still happen only after browser acknowledgement. Failed copy/share diagnostics include clipboard/fallback support booleans and bounded output metadata only.
+
+Desktop review-reply copy now waits for the same acknowledged copy helper and logs `desktop_growthos_review_reply_copy_failed` with review reply length only if the browser handoff fails. It no longer calls the copy helper fire-and-forget.
+
+Verifier coverage was expanded so `npm run verify:growthos` fails if desktop or mobile copy helpers lose support checks, fallback failure codes, fallback acknowledgement checks, support metadata, or if desktop review-reply copy returns to fire-and-forget behavior.
+
+Cost impact: browser-local copy diagnostics only. No new GrowthOS reads/writes/deletes are added beyond existing successful export writes, and failed handoffs still avoid export writes. No Storage operations, Cloud Functions logic, provider calls, scheduler work, rules, indexes, routes, owner-facing settings, Firebase deploy requirement, or Vercel deploy action changed.
+
+## June 30, 2026 Client Response Diagnostics
+
+`src/database/growthos/index.ts` now parses GrowthOS API responses through `readJsonResponseWithLimit()` with a 64 KB cap. Malformed, oversized, rejected, or invalid response envelopes log fixed GrowthOS client failure codes with bounded operation and response-status metadata only.
+
+Verifier coverage was expanded so `npm run verify:growthos` fails if the client DAL removes the bounded response parser, drops `growthos_client_response_parse_failed`, `growthos_client_response_rejected`, or `growthos_client_response_invalid`, or reintroduces silent `response.json().catch(() => null)` parsing.
+
+## June 30, 2026 Client Request Boundary
+
+`src/database/growthos/index.ts` now sends GrowthOS refresh, generate, export, and review-reply POSTs with a shared no-store, same-origin, manual-redirect request policy before the existing 64 KB response parser accepts route acknowledgements.
+
+Verifier coverage was expanded so `npm run verify:growthos` fails if the client DAL drops `GROWTHOS_CLIENT_REQUEST_POLICY`, removes no-store cache, same-origin credentials, manual redirect handling, or stops spreading the policy across the four GrowthOS POST calls.
+
+Validation:
+
+- Passed `npm run verify:growthos`.
+- Passed `npx tsc --noEmit --incremental false --pretty false`.
+- Passed `git diff --check`.
+
+Cost impact: no Firebase reads/writes/deletes, Storage operations, Cloud Functions logic, provider calls, scheduler work, rules, indexes, routes, owner-facing settings, Firebase deploy requirement, or Vercel deploy. Existing successful refresh, generation, copy/share/download, mark-used, entitlement checks, API route responses, request body validation, and fixed owner-facing failure copy are unchanged.
+
+## June 30, 2026 API Security-Log Boundary
+
+GrowthOS refresh, generate, export, and review-guard security logs now use `getGrowthOSSecurityLogContext()` with bounded route/session metadata plus endpoint, method, validation-error, attempted-project, and attempted-kit presence-length fields. The routes no longer import or spread raw `buildSecurityContext()` output into invalid-JSON, validation-failure, or tenant-violation security events.
+
+Verifier coverage was expanded so `npm run verify:growthos` fails if GrowthOS routes reintroduce `buildSecurityContext`, raw validation-error fields, raw attempted project/kit identifiers, or remove the bounded route-security helper.
+
+Cost impact: security-log metadata hardening only. No Firebase reads/writes/deletes, Storage operations, Cloud Functions logic, provider calls, scheduler work, rules, indexes, routes, owner-facing settings, Firebase deploy requirement, or Vercel deploy. Existing successful refresh, generation, export recording, review-guard behavior, entitlement checks, rate limits, API response statuses, and fixed owner-facing copy are unchanged.
 
 ## Remaining Rollout Checks
 

@@ -59,7 +59,6 @@ export interface MessagingOnboardingOpsEvent {
   metadata: Record<string, unknown>;
   error?: {
     code?: string;
-    message?: string;
     retryable?: boolean;
   };
 }

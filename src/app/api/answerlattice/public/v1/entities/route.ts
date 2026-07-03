@@ -15,7 +15,7 @@ import {
 } from '@lib/answerlattice/contextBundleBuilderServer';
 import { ANSWERLATTICE_PUBLIC_API_SCHEMA_VERSION, authenticateAnswerlatticePublicApi, toIsoTimestamp } from '@lib/answerlattice/publicApi';
 import { apiError, generateETag } from '@lib/publicApi/auth';
-import { secureError } from '@lib/security/secureLogger';
+import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { ANSWERLATTICE_ENTITY_STATUS, ANSWERLATTICE_ENTITY_TYPES } from '@type/answerlattice';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
@@ -26,6 +26,14 @@ const EntityQuerySchema = z.object({
     limit: z.coerce.number().int().min(1).max(200).optional().default(100),
 });
 
+type BundledEntitiesParams = {
+    tId: number;
+    sId: number;
+    type?: string;
+    status?: string;
+    limit: number;
+};
+
 function getAnswerlatticeAdminDb() {
     if (!answerlatticeFirestoreAdmin || typeof answerlatticeFirestoreAdmin.collection !== 'function') {
         throw new Error('Answerlattice Firestore Admin is not configured');
@@ -33,21 +41,38 @@ function getAnswerlatticeAdminDb() {
     return answerlatticeFirestoreAdmin;
 }
 
-async function loadBundledEntities(params: {
-    tId: number;
-    sId: number;
-    type?: string;
-    status?: string;
-    limit: number;
-}) {
+const getEntityRegistryLogContext = (params: Pick<BundledEntitiesParams, 'tId' | 'sId'>) => ({
+    ...getBoundedRuntimeStringContext('tenantId', params.tId),
+    ...getBoundedRuntimeStringContext('storeId', params.sId),
+});
+
+async function getEntityBundleManifest(params: BundledEntitiesParams) {
+    try {
+        return await getAnswerlatticeContextBundleManifestServer(params.tId, params.sId);
+    } catch (error) {
+        logRuntimeFailure('answerlattice_public_entities_bundle_manifest_load_failed', error, getEntityRegistryLogContext(params));
+        return null;
+    }
+}
+
+async function loadEntityBundleObject(path: string, params: BundledEntitiesParams) {
+    try {
+        return await loadAnswerlatticeBundleObjectServer<{ entities?: any[] }>(path);
+    } catch (error) {
+        logRuntimeFailure('answerlattice_public_entities_bundle_object_load_failed', error, getEntityRegistryLogContext(params));
+        return null;
+    }
+}
+
+async function loadBundledEntities(params: BundledEntitiesParams) {
     if (!FEATURE_FLAGS.ENABLE_ANSWERLATTICE_CONTEXT_BUNDLES || !FEATURE_FLAGS.ENABLE_ANSWERLATTICE_PUBLIC_API_BUNDLE_READS) {
         return null;
     }
-    const manifest = await getAnswerlatticeContextBundleManifestServer(params.tId, params.sId).catch(() => null);
+    const manifest = await getEntityBundleManifest(params);
     if (!manifest || manifest.status !== 'ready') return null;
     const ref = manifest.bundles?.['private:mcp/entity-index.json'];
     if (!ref?.path) return null;
-    const bundle = await loadAnswerlatticeBundleObjectServer<{ entities?: any[] }>(ref.path).catch(() => null);
+    const bundle = await loadEntityBundleObject(ref.path, params);
     if (!bundle || !Array.isArray(bundle.entities)) return null;
 
     const visibleStatuses = params.status ? new Set([params.status]) : new Set(['active', 'beta']);
@@ -138,9 +163,9 @@ export async function GET(request: NextRequest) {
             },
         });
     } catch (error) {
-        secureError('[Answerlattice Public API] Entity registry failed', error as Error, {
-            tId: auth.context.tId,
-            sId: auth.context.sId,
+        logRuntimeFailure('answerlattice_public_entities_registry_failed', error, {
+            ...getBoundedRuntimeStringContext('tenantId', auth.context.tId),
+            ...getBoundedRuntimeStringContext('storeId', auth.context.sId),
         });
         return apiError('INTERNAL_ERROR', 'Internal error', 500);
     }

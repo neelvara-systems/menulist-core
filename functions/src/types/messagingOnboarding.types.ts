@@ -353,7 +353,6 @@ export interface MsgOnboardingEvent {
   sessionAgeMs: number;
   error?: {
     code: string;
-    message: string;
     retryable: boolean;
     retryCount?: number;
   };

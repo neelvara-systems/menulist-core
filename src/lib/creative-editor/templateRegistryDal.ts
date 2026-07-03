@@ -14,6 +14,7 @@ import { DB_COLLECTIONS } from "@constant/database";
 import { BUSINESS_CATEGORIES } from "@data/shared/businessTypes";
 import { requestBodyComposer } from "@lib/apiHelper";
 import { firebaseClient, firebaseStorage } from "@lib/firebase/firebaseClient";
+import { createRandomIdSegment } from "@lib/runtime/randomId";
 import type { CreativeEditorDocument, CreativeEditorTemplateOrigin, CreativeEditorTemplateSummary } from "@/modules/creative-editor/types";
 import {
     creativeEditorTemplateGetQuerySchema,
@@ -35,6 +36,41 @@ const PLATFORM_TEMPLATE_CATALOG_KEYS = [
     ...BUSINESS_CATEGORIES.map((category) => category.value),
 ];
 const STORE_TEMPLATE_DOC_ID = "default";
+
+const TEMPLATE_REGISTRY_LOCAL_ERROR_MESSAGES = {
+    TEMPLATE_ACCOUNT_REQUIRED: "Template registry requires an onboarded account",
+    TEMPLATE_DOCUMENT_TOO_LARGE: "Template document is too large",
+    TEMPLATE_NOT_FOUND: "Template not found",
+    TEMPLATE_SAVE_FAILED: "Template could not be saved",
+    PLATFORM_TEMPLATE_SAVE_FAILED: "Platform template could not be saved",
+} as const;
+
+type TemplateRegistryLocalErrorCode = keyof typeof TEMPLATE_REGISTRY_LOCAL_ERROR_MESSAGES;
+
+class TemplateRegistryLocalError extends Error {
+    readonly code: TemplateRegistryLocalErrorCode;
+
+    constructor(code: TemplateRegistryLocalErrorCode) {
+        super(TEMPLATE_REGISTRY_LOCAL_ERROR_MESSAGES[code]);
+        this.name = "TemplateRegistryLocalError";
+        this.code = code;
+    }
+}
+
+const isTemplateRegistryLocalErrorCode = (code: unknown): code is TemplateRegistryLocalErrorCode => (
+    typeof code === "string"
+    && Object.prototype.hasOwnProperty.call(TEMPLATE_REGISTRY_LOCAL_ERROR_MESSAGES, code)
+);
+
+const getTemplateRegistryLocalErrorMessage = (error: unknown): string | null => {
+    if (!error || typeof error !== "object") return null;
+    const code = (error as { code?: unknown }).code;
+    return isTemplateRegistryLocalErrorCode(code) ? TEMPLATE_REGISTRY_LOCAL_ERROR_MESSAGES[code] : null;
+};
+
+const throwTemplateRegistryLocalError = (code: TemplateRegistryLocalErrorCode): never => {
+    throw new TemplateRegistryLocalError(code);
+};
 
 export type CreativeEditorTemplateScope = {
     sId: string;
@@ -217,7 +253,7 @@ const findPlatformTemplateMutationTarget = async (params: {
         record.id === params.templateId
         && recordMatchesRequest(record, params.query)
     ));
-    if (!sourceRecord) throw new Error("Template not found");
+    if (!sourceRecord) throwTemplateRegistryLocalError("TEMPLATE_NOT_FOUND");
 
     const templateBusinessCategory = buildPlatformCategoryKey(
         sourceRecord.businessCategory || sourceCatalogKey,
@@ -232,9 +268,7 @@ const findPlatformTemplateMutationTarget = async (params: {
 };
 
 const buildTemplateId = () => {
-    const cryptoId = typeof crypto !== "undefined" && "randomUUID" in crypto
-        ? crypto.randomUUID().replace(/-/g, "").slice(0, 10)
-        : Math.random().toString(36).slice(2, 12);
+    const cryptoId = createRandomIdSegment(10);
     return `tpl_${Date.now().toString(36)}_${cryptoId}`;
 };
 
@@ -317,25 +351,42 @@ const parseDataUrlContentType = (value?: string) => {
 
 const isRecord = (value: unknown): value is Record<string, unknown> => Boolean(value && typeof value === "object");
 
+const getTemplateRegistryErrorIndicators = (error: unknown): Set<string> => {
+    const indicators = new Set<string>();
+    if (!isRecord(error)) return indicators;
+
+    ["code", "name", "status", "statusCode"].forEach((key) => {
+        const value = error[key];
+        if (typeof value === "string" || typeof value === "number") {
+            const normalized = String(value).trim().toLowerCase();
+            if (normalized) indicators.add(normalized);
+        }
+    });
+
+    return indicators;
+};
+
 const getTemplateRegistryErrorMessage = (error: unknown, fallback: string) => {
-    const message = error instanceof Error ? error.message : String(error);
-    if (message.includes("storage/quota-exceeded") || message.includes("Quota for bucket")) {
+    const indicators = getTemplateRegistryErrorIndicators(error);
+    if (
+        indicators.has("storage/quota-exceeded")
+        || indicators.has("quota-exceeded")
+        || indicators.has("resource-exhausted")
+        || indicators.has("resource_exhausted")
+    ) {
         return "Template storage is full. Clear storage or upgrade Firebase Storage, then try again.";
     }
     if (
-        message.includes("storage/unauthorized")
-        || message.includes("Missing or insufficient permissions")
-        || message.includes("permission-denied")
+        indicators.has("storage/unauthorized")
+        || indicators.has("storage/unauthenticated")
+        || indicators.has("permission-denied")
+        || indicators.has("permission_denied")
+        || indicators.has("unauthorized")
     ) {
         return "Template storage is not available for this account.";
     }
-    if (
-        message.startsWith("Template ")
-        || message.includes("Template document is too large")
-        || message.includes("Template registry requires")
-    ) {
-        return message;
-    }
+    const localMessage = getTemplateRegistryLocalErrorMessage(error);
+    if (localMessage) return localMessage;
     return fallback;
 };
 
@@ -448,7 +499,11 @@ function toSummary(record: CreativeEditorTemplateRecord): CreativeEditorTemplate
 
 async function readStorageJson<T>(path: string): Promise<T> {
     const payloadBlob = await getBlob(ref(firebaseStorage, path));
-    return JSON.parse(await payloadBlob.text()) as T;
+    if (payloadBlob.size > MAX_DOCUMENT_BYTES) {
+        throwTemplateRegistryLocalError("TEMPLATE_DOCUMENT_TOO_LARGE");
+    }
+    const raw = await payloadBlob.text();
+    return JSON.parse(raw) as T;
 }
 
 async function deleteStoragePath(path?: string | null) {
@@ -460,7 +515,7 @@ async function deleteStoragePath(path?: string | null) {
 
 function requireStoreScope(scope?: CreativeEditorTemplateScope | null): CreativeEditorTemplateScope {
     if (!scope?.tId || !scope?.sId) {
-        throw new Error("Template registry requires an onboarded account");
+        throwTemplateRegistryLocalError("TEMPLATE_ACCOUNT_REQUIRED");
     }
     return scope;
 }
@@ -602,7 +657,7 @@ async function getCreativeEditorTemplateRaw(params: CreativeEditorTemplateContex
     const result = query.templateType === "platform"
         ? await getCreativeEditorPlatformTemplate({ ...query, templateId: params.templateId })
         : await getCreativeEditorUserTemplate(requireStoreScope(params.scope), { ...query, templateId: params.templateId });
-    if (!result) throw new Error("Template not found");
+    if (!result) throwTemplateRegistryLocalError("TEMPLATE_NOT_FOUND");
     return result;
 }
 
@@ -613,7 +668,7 @@ export async function getCreativeEditorTemplate(params: CreativeEditorTemplateCo
     try {
         const result = await getCreativeEditorTemplateRaw(params);
         if (!isRecord(result) || !isRecord(result.document) || !isRecord(result.template)) {
-            throw new Error("Template not found");
+            throwTemplateRegistryLocalError("TEMPLATE_NOT_FOUND");
         }
         return result as {
             document: CreativeEditorDocument;
@@ -642,7 +697,7 @@ async function saveCreativeEditorTemplateRaw(
     const documentJson = JSON.stringify(documentValue);
     const documentBytes = new TextEncoder().encode(documentJson).length;
     if (documentBytes > MAX_DOCUMENT_BYTES) {
-        throw new Error("Template document is too large");
+        throwTemplateRegistryLocalError("TEMPLATE_DOCUMENT_TOO_LARGE");
     }
 
     const indexRef = getStoreTemplateIndexRef(scope);
@@ -739,7 +794,7 @@ export async function saveCreativeEditorTemplate(
     try {
         const result = await saveCreativeEditorTemplateRaw(params);
         if (!isRecord(result) || typeof result.id !== "string") {
-            throw new Error("Template could not be saved");
+            throwTemplateRegistryLocalError("TEMPLATE_SAVE_FAILED");
         }
         return result as unknown as CreativeEditorTemplateSummary;
     } catch (error) {
@@ -773,7 +828,7 @@ async function saveCreativeEditorPlatformTemplateRaw(
     const documentJson = JSON.stringify(documentValue);
     const documentBytes = getDocumentBytes(documentJson);
     if (documentBytes > MAX_DOCUMENT_BYTES) {
-        throw new Error("Template document is too large");
+        throwTemplateRegistryLocalError("TEMPLATE_DOCUMENT_TOO_LARGE");
     }
 
     const now = new Date();
@@ -873,7 +928,7 @@ async function saveCreativeEditorPlatformTemplateRaw(
         }
     }));
 
-    if (!primaryRecord) throw new Error("Platform template could not be saved");
+    if (!primaryRecord) throwTemplateRegistryLocalError("PLATFORM_TEMPLATE_SAVE_FAILED");
     return toSummary(primaryRecord);
 }
 
@@ -883,7 +938,7 @@ export async function saveCreativeEditorPlatformTemplate(
     try {
         const result = await saveCreativeEditorPlatformTemplateRaw(params);
         if (!isRecord(result) || typeof result.id !== "string") {
-            throw new Error("Platform template could not be saved");
+            throwTemplateRegistryLocalError("PLATFORM_TEMPLATE_SAVE_FAILED");
         }
         return result as CreativeEditorTemplateSummary;
     } catch (error) {
@@ -955,7 +1010,7 @@ async function updateCreativeEditorPlatformTemplateMetadataRaw(
         }
     }));
 
-    if (!anyUpdated || !primaryRecord) throw new Error("Template not found");
+    if (!anyUpdated || !primaryRecord) throwTemplateRegistryLocalError("TEMPLATE_NOT_FOUND");
     return toSummary(primaryRecord);
 }
 
@@ -977,10 +1032,10 @@ async function deleteCreativeEditorTemplateRaw(params: CreativeEditorTemplateCon
     const scope = requireStoreScope(params.scope);
     const indexRef = getStoreTemplateIndexRef(scope);
     const indexDoc = await getDoc(indexRef);
-    if (!indexDoc.exists()) throw new Error("Template not found");
+    if (!indexDoc.exists()) throwTemplateRegistryLocalError("TEMPLATE_NOT_FOUND");
     const records = readIndexRecords(indexDoc.data());
     const record = records.find((item) => item.id === params.templateId && recordMatchesRequest(item, query));
-    if (!record) throw new Error("Template not found");
+    if (!record) throwTemplateRegistryLocalError("TEMPLATE_NOT_FOUND");
 
     const remainingTemplates = records.filter((item) => item !== record);
     const now = new Date();
@@ -1051,7 +1106,7 @@ async function deleteCreativeEditorPlatformTemplateRaw(params: CreativeEditorTem
         } satisfies CreativeEditorPlatformCatalogRecord);
     }));
 
-    if (!anyDeleted || !primaryRecord) throw new Error("Template not found");
+    if (!anyDeleted || !primaryRecord) throwTemplateRegistryLocalError("TEMPLATE_NOT_FOUND");
 
     await Promise.all([
         deleteStoragePath(primaryRecord.documentPath),

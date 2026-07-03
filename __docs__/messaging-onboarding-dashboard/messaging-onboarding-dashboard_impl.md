@@ -2,7 +2,7 @@
 
 **Feature:** Internal Monitoring Dashboard for Messaging Onboarding Pipeline
 **Status:** IMPLEMENTED — Lean v1
-**Last Updated:** May 17, 2026
+**Last Updated:** June 29, 2026
 
 ---
 
@@ -26,7 +26,7 @@ Admin SDK reads server-only collections
 
 | Source | Usage |
 |---|---|
-| `systemHealth/messaging_onboarding_{YYYYMMDDHH}` | Latest hourly health/cost/source-retention snapshot, queried by document ID prefix |
+| `systemHealth/messaging_onboarding_control` + latest snapshot doc | Latest hourly health/cost/source-retention snapshot, resolved by `lastSnapshotId` then one direct snapshot read |
 | `systemAlerts` | Recent alerts where `metadata.subsystem === "messaging_onboarding"` |
 | `messagingOnboardingEvents` | Recent webhook/event timeline and count-based 24h delivery counters |
 | `messagingOnboardingInboundMessages` | Queue backlog counts by status |
@@ -42,6 +42,8 @@ No `messagingOnboardingMetrics` collection is created in lean v1. The route uses
 **Method:** `GET`
 **Access:** `withAuth(..., { requiredPlatformRole: "PLATFORM" })`
 **Cache:** `no-store`
+
+Route failures use bounded Ops diagnostics (`ops_messaging_onboarding_route_failed`) with operator/request-path presence metadata only. Raw `buildSecurityContext()` output and raw `logger.error()` route context are not used for the snapshot catch path.
 
 ### Response Shape
 
@@ -76,6 +78,10 @@ interface MessagingOnboardingOpsSnapshot {
   recentAlerts: MessagingOnboardingOpsAlert[];
 }
 ```
+
+The browser monitor parses this response through a 256KB bounded JSON reader and validates the top-level feature, health, webhook-window, queue, session-state, recent-session, event, and alert shapes before updating UI state. Rejected, oversized, malformed, or invalid responses show fixed platform failure copy and log bounded `messaging_onboarding_monitor_response_*` diagnostics.
+
+The browser monitor sends the dashboard request with no-store cache policy, same-origin credentials, and manual redirect handling before response parsing. Auth or API redirects are treated as failed monitor responses instead of being followed by the browser.
 
 ### PII Rules
 
@@ -144,4 +150,4 @@ The UI follows the existing Scheduler/Ops Control Room pattern: platform-only, m
 
 ---
 
-_Document Status: IMPLEMENTED. May 17, 2026._
+_Document Status: IMPLEMENTED. June 29, 2026._

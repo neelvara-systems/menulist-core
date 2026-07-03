@@ -4,9 +4,16 @@ import Saperator from '@atoms/Saperator';
 import { CRAFT_BUILDER_MAINTAINER_USER_ROLE, ECOMSAI_PLATFORM_SUPPORT_USER_ROLE, ECOMSAI_PLATFORM_TENANT_ID, ECOMSAI_PLATFORM_USER_ROLE } from '@constant/user';
 import { getAllStoresByTenantId } from '@database/stores';
 import { getAllTenants } from '@database/tenants';
-import { getUserByTenantId, updatePlatformUser } from '@database/users';
+import { assertUserUpdateSucceeded, getUserByTenantId, updatePlatformUser } from '@database/users';
 import { useAppDispatch } from '@hook/useAppDispatch';
-import { showSuccessToast, showWarningToast } from '@reduxSlices/toast';
+import { getBoundedRuntimeStringContext, logRuntimeDiagnostic, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
+import {
+    STAFF_CLIENT_REQUEST_POLICY,
+    isCreateStaffCompatibilityEmailExistsResponse,
+    isCreateStaffCompatibilitySuccessResponse,
+    readCreateStaffCompatibilityResponse,
+} from '@lib/staffManagement/client';
+import { showErrorToast, showSuccessToast, showWarningToast } from '@reduxSlices/toast';
 import { StoreDataType } from '@type/platform/store';
 import { TenantDataType } from '@type/platform/tenant';
 import { UserDataType } from '@type/platform/user';
@@ -68,7 +75,7 @@ function PlatformUsers() {
         {
             title: 'Name',
             dataIndex: 'name',
-            key: Math.random(),
+            key: 'name',
             render: (_, record) => (
                 <Flex align='center' justify='flex-start' gap={10}>
                     {record?.image ? <img src={record?.image} style={{ width: 50, height: 50, borderRadius: 25 }} /> : <LuUser />}
@@ -79,12 +86,12 @@ function PlatformUsers() {
         {
             title: 'Email',
             dataIndex: 'email',
-            key: Math.random(),
+            key: 'email',
         },
         {
             title: 'Status',
             dataIndex: 'isVerified',
-            key: Math.random(),
+            key: 'status',
             render: (_, record) => (
                 <>
                     {record.blocked ? <Tag color='error'>Blocked</Tag> : !record.active ? <Tag color='error'>Deactivated</Tag> : <>
@@ -95,15 +102,23 @@ function PlatformUsers() {
         },
         {
             title: 'Action',
-            key: Math.random(),
+            key: 'action',
             render: (_, record) => (
                 <Button type="primary">Edit</Button> // Edit button
             ),
         },
     ];
 
-    const updateUser = (updated) => {
+    const updateUser = async (updated) => {
         const originalUser = usersList.find((u) => u.email == updated.email)
+        if (!originalUser) {
+            logRuntimeFailure('platform_user_update_failed', new Error('platform_user_not_found'), {
+                ...getBoundedRuntimeStringContext('tenantId', updated?.tenantId),
+                ...getBoundedRuntimeStringContext('storeId', updated?.storeId),
+            });
+            dispatch(showErrorToast("Could not update user. Please try again."));
+            return;
+        }
         const updatedChanges: any = getObjectDifferance(updated, originalUser);
 
         // we need to check if the user has multiple store permission or not
@@ -120,14 +135,29 @@ function PlatformUsers() {
 
         if (Object.keys(updatedChanges).length > 0) {
             updatedChanges.id = originalUser.id;
-            updatePlatformUser(updatedChanges).then(() => {
+            try {
+                const writeResult = await updatePlatformUser(updatedChanges);
+                assertUserUpdateSucceeded(
+                    writeResult,
+                    updatedChanges.id,
+                    'platform_user_update_rejected',
+                );
                 const usersCopy = removeObjRef(usersList)
                 let index = usersCopy.findIndex((u) => u.id == updatedChanges.id)
                 usersCopy[index] = { ...originalUser, ...updatedChanges }
                 setUsersList(usersCopy)
                 setUserModal(null)
                 dispatch(showSuccessToast("User updated successfully"))
-            })
+            } catch (error) {
+                logRuntimeFailure('platform_user_update_failed', error, {
+                    ...getBoundedRuntimeStringContext('userId', updatedChanges.id),
+                    ...getBoundedRuntimeStringContext('tenantId', updatedChanges.tenantId || originalUser?.tenantId),
+                    ...getBoundedRuntimeStringContext('storeId', updatedChanges.storeId || originalUser?.storeId),
+                    changedFieldCount: Object.keys(updatedChanges).length,
+                    hasVerifiedChange: Object.prototype.hasOwnProperty.call(updatedChanges, 'isVerified'),
+                });
+                dispatch(showErrorToast("Could not update user. Please try again."));
+            }
         } else {
             dispatch(showWarningToast("No changes found"))
         }
@@ -136,6 +166,7 @@ function PlatformUsers() {
     const onVerify = async () => {
         try {
             const res = await fetch('/api/auth/create-staff', {
+                ...STAFF_CLIENT_REQUEST_POLICY,
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -145,16 +176,30 @@ function PlatformUsers() {
                     storeId: userModal.storeId,
                 }),
             });
-            const data = await res.json();
+            const data = await readCreateStaffCompatibilityResponse(res);
+            const responseCode = data && 'code' in data ? data.code : undefined;
+            const responseError = data && 'error' in data ? data.error : undefined;
+            const accepted = res.ok
+                ? isCreateStaffCompatibilitySuccessResponse(data)
+                : isCreateStaffCompatibilityEmailExistsResponse(data);
 
-            if (res.ok || data.code === 'EMAIL_EXISTS') {
+            if (accepted) {
                 const updatedUser = { ...userModal, isVerified: true };
-                updateUser(updatedUser);
+                await updateUser(updatedUser);
             } else {
-                console.error('Verify failed:', data.error);
+                logRuntimeDiagnostic('platform_user_verify_request_rejected', {
+                    ...getBoundedRuntimeStringContext('tenantId', userModal.tenantId),
+                    ...getBoundedRuntimeStringContext('storeId', userModal.storeId),
+                    statusCode: res.status,
+                    hasResponseCode: Boolean(responseCode),
+                    hasResponseError: Boolean(responseError),
+                });
             }
         } catch (err) {
-            console.error('Verify error:', err);
+            logRuntimeFailure('platform_user_verify_request_failed', err, {
+                ...getBoundedRuntimeStringContext('tenantId', userModal.tenantId),
+                ...getBoundedRuntimeStringContext('storeId', userModal.storeId),
+            });
         }
     }
 
@@ -249,7 +294,8 @@ function PlatformUsers() {
                 </Flex>
             </Card>
             <Flex style={{ overflowX: 'auto' }}>
-                <Table key={Math.random()}
+                <Table
+                    rowKey={(record: UserDataType) => record.id || record.email}
                     pagination={false}
                     dataSource={usersList}
                     columns={columns}

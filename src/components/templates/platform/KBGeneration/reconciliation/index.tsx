@@ -1,7 +1,7 @@
 'use client';
 
-import { updateJob } from '@database/kb-generation/jobs';
-import { deleteArticle, getArticleById } from '@database/knowledgeBase/articles';
+import { assertIngestionJobWriteSucceeded, updateJob } from '@database/kb-generation/jobs';
+import { assertKnowledgeBaseArticleDeleteSucceeded, deleteArticle, getArticleById } from '@database/knowledgeBase/articles';
 import { useAppDispatch } from '@hook/useAppDispatch';
 import { startLoader, stopLoader } from '@reduxSlices/loader';
 import { ARTICLE_RECONCILIATION_STATUS, IngestionJob, KnowledgeBaseArticleType } from '@type/knowledgeBase';
@@ -53,7 +53,12 @@ const ReconciliationModal = ({ open, job, onClose, articlesToReview }: Reconcili
 
     const onDiscardArticle = async () => {
 
-        await deleteArticle(selectedArticle.id);
+        const deleteResult = await deleteArticle(selectedArticle.id);
+        assertKnowledgeBaseArticleDeleteSucceeded(
+            deleteResult,
+            selectedArticle.id,
+            'kb_generation_reconciliation_article_delete_rejected',
+        );
         const updatedCategoriesMap = JSON.parse(JSON.stringify(job.categories || {}));
 
         if (selectedArticle.categoryId && updatedCategoriesMap[selectedArticle.categoryId]) {
@@ -77,7 +82,12 @@ const ReconciliationModal = ({ open, job, onClose, articlesToReview }: Reconcili
             categories: updatedCategoriesMap
         }
 
-        await updateJob(job.id, updatedJobdata);
+        const updateResult = await updateJob(job.id, updatedJobdata);
+        assertIngestionJobWriteSucceeded(
+            updateResult,
+            job.id,
+            'kb_generation_reconciliation_discard_job_update_rejected',
+        );
     }
 
     const onReplaceArticle = async () => {
@@ -90,7 +100,12 @@ const ReconciliationModal = ({ open, job, onClose, articlesToReview }: Reconcili
         });
 
         //for deleting other articles we need to do this logic on publishApprove frunction becuase it will contains articles from production
-        await updateJob(job.id, { articlesToReview: articlesToReviewCopy });
+        const updateResult = await updateJob(job.id, { articlesToReview: articlesToReviewCopy });
+        assertIngestionJobWriteSucceeded(
+            updateResult,
+            job.id,
+            'kb_generation_reconciliation_replace_job_update_rejected',
+        );
     };
 
     const handleResolution = async (resolution: 'discard' | 'replace' | 'keep_both') => {
@@ -102,7 +117,12 @@ const ReconciliationModal = ({ open, job, onClose, articlesToReview }: Reconcili
             } else if (resolution === 'replace') {
                 await onReplaceArticle();
             } else if (resolution === 'keep_both') {
-                await updateJob(job.id, { articlesToReview: articlesToReview?.filter(a => a.id !== selectedArticle.id) || [] });
+                const updateResult = await updateJob(job.id, { articlesToReview: articlesToReview?.filter(a => a.id !== selectedArticle.id) || [] });
+                assertIngestionJobWriteSucceeded(
+                    updateResult,
+                    job.id,
+                    'kb_generation_reconciliation_keep_both_job_update_rejected',
+                );
             }
             message.success(`Article has been resolved as ${resolution}.`);
             handleDrawerClose();

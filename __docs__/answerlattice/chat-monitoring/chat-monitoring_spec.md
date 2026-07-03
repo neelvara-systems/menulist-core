@@ -141,9 +141,13 @@ Customizable inputs: hourly rate, average ticket value, automation rate, platfor
 - Key metrics: volume change %, satisfaction change %, top category
 - Manual regeneration button available
 
+Chat Insights summary metrics are aggregate-backed only. Response Rate means feedback received divided by total chats for the selected range, and Knowledge Gaps does not show a period trend unless a real prior-period gap comparison source is connected.
+
 ---
 
 ## 7. AI Intelligence Layer (Cloud Functions)
+
+Current runtime boundary: the AI intelligence jobs below are MenuList-hosted chat-monitoring jobs. They run from `functions/src/`, are wired through the MenuList Decision Blocks scheduler/manual scheduler path, and write MenuList `insights/{tId}/stores/{sId}/ai/*` documents. They are not active `functions-answerlattice/` scheduler exports.
 
 ### 7.1 Daily Chat Aggregation
 

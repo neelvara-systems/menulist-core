@@ -9,6 +9,11 @@ import { useTranslations } from 'next-intl';
 import { useEffect, useState } from 'react';
 import { LuSparkles } from 'react-icons/lu';
 import { ProjectMetadata } from '../types';
+import {
+    getBoundedProjectPageStringContext,
+    getProjectPageProjectLogContext,
+    logProjectPageFailure,
+} from '../utils/projectPageDiagnostics';
 
 export interface ProjectFormData {
     name: string;
@@ -112,8 +117,11 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
                 sourceDataUrl: prepared.sourceDataUrl,
             });
         } catch (error) {
-            console.error('Failed to prepare project image:', error);
-            message.error(error instanceof Error ? error.message : 'Could not prepare image. Please try again.');
+            logProjectPageFailure('projects_page_project_image_prepare_failed', error, {
+                ...getProjectPageProjectLogContext(editingProject?.projectId),
+                ...getBoundedProjectPageStringContext('fileName', file.name),
+            });
+            message.error('Could not prepare image. Please try again.');
         }
 
         return false;
@@ -145,7 +153,11 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
             });
             message.success('Menu image generated');
         } catch (error: any) {
-            message.error(error?.message || 'Failed to generate menu image');
+            logProjectPageFailure('projects_page_project_image_generation_failed', error, {
+                ...getProjectPageProjectLogContext(editingProject?.projectId),
+                ...getBoundedProjectPageStringContext('projectName', nameValue.trim()),
+            });
+            message.error('Failed to generate menu image. Please try again.');
         } finally {
             setIsGeneratingProjectImage(false);
         }

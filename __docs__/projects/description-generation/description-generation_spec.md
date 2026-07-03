@@ -2,9 +2,11 @@
 
 **Feature:** AI-Powered Menu Item Description Generation  
 **Parent Feature:** Projects (Menu Digitization)  
-**Status:** ✅ Production Ready  
+**Status:** Implemented source evidence; not current launch certification
 **Last Updated:** January 31, 2026  
 **Version:** 2.0
+
+**Launch boundary:** This spec documents the description-generation feature. Current release approval requires the active [production-readiness audit](../../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../../production-readiness/external-certification-runbook.md) evidence, target feature-flag/provider review, AI accounting/source gates, provider smoke, browser/mobile editor QA, and deploy evidence for the target environment.
 
 ---
 
@@ -290,9 +292,9 @@ MenuList positions itself as **infrastructure**, not a tool. These constraints p
 | -------------------------------------------------------- | -------------------------------- |
 | `description-generation_impl.md`                         | Technical implementation details |
 | `description-generation_marketing.md`                    | Sales and marketing copy         |
-| `../Assessments/ASSESSMENT-09-DESCRIPTION-GENERATION.md` | Original security assessment     |
+| `../Assessments/assessment-09-description-generation.md` | Original security assessment     |
 
 ---
 
-_Document Status: ✅ PRODUCTION READY_  
+_Document Status: Historical description-generation source evidence - not current launch certification_
 _Follows `IDE_PROMPTS/6. DOCUMENTATION STRUCTURE PROMPT.md` standards._

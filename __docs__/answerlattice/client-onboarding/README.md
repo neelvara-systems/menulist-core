@@ -4,7 +4,7 @@
 > **Status:** ✅ IMPLEMENTED
 > **Date:** 2026-05-21
 > **Auth:** Google OAuth through shared NextAuth login plus Answerlattice product-account bridge
-> **Billing:** Controlled beta plus INR Starter/Growth/Studio packaging. Payment capture can still run through the existing Razorpay subscription model when enabled.
+> **Billing:** Paid INR Starter/Growth/Studio packaging. Payment capture runs through the existing product-scoped Razorpay subscription model.
 
 ---
 
@@ -30,7 +30,7 @@ A self-service signup flow where external SaaS founders create an Answerlattice 
 1. Visit `answerlattice.com/get-started`
 2. Sign in with Google OAuth
 3. Enter company, product, product URL, support email, billing model, and main product pages
-4. Account created instantly (Answerlattice tenant + store + subscription + widget key + starter product surfaces)
+4. Paid Starter subscription is initiated with Razorpay, then the Answerlattice tenant, store, subscription summary, widget key, and starter product surfaces are created
 5. Redirected to Activation Command Center to import knowledge, review governance, and install the widget
 
 ## Onboarding Flow
@@ -48,7 +48,7 @@ answerlattice.com/get-started
   │     ├── Create tenant in Answerlattice Firestore
   │     ├── Create store in Answerlattice Firestore
   │     ├── Create/update Answerlattice user
-  │     ├── Create Answerlattice beta subscription
+  │     ├── Create pending Answerlattice paid subscription
   │     ├── Generate widget key (al_* prefix)
   │     ├── Seed selected product surfaces
   │     ├── Seed compact context summary
@@ -66,7 +66,7 @@ answerlattice.com/get-started
 | `src/app/api/answerlattice/onboard/route.ts` | Onboarding API (Answerlattice tenant+store+subscription+widget key) |
 | `src/app/sites/answerlattice/get-started/OnboardingForm.tsx` | Self-service signup form UI |
 | `src/app/sites/answerlattice/get-started/page.tsx` | Get-started page (criteria + form) |
-| `src/data/answerlattice/plans.ts` | Answerlattice plans config (beta, starter, growth, studio) |
+| `src/data/answerlattice/plans.ts` | Answerlattice plans config (starter, growth, studio) |
 | `src/app/api/answerlattice/workspace-profile/route.ts` | Edit product profile after onboarding |
 
 ## Reused MenuList Infrastructure
@@ -88,6 +88,8 @@ answerlattice.com/get-started
 
 | Date | Change |
 |------|--------|
+| 2026-06-30 | Hardened the get-started client response boundary so success state requires a bounded, valid onboarding result instead of direct JSON parsing |
+| 2026-06-30 | Removed active beta/unpaid onboarding path; public onboarding now selects paid Starter and creates a pending Razorpay subscription |
 | 2026-05-21 | Client-product-specific widget/changelog adapters removed from runtime; external clients must embed the generic widget script with Answerlattice-issued keys from their own codebase |
 | 2026-05-21 | Separate-mode onboarding writes Answerlattice product data to `answerlattice-qa` and stores only `productAccounts.AL` on the default auth user bridge |
-| 2026-03-07 | Initial implementation: beta plan, Google OAuth, atomic provisioning |
+| 2026-03-07 | Initial implementation: beta-era plan, Google OAuth, atomic provisioning |

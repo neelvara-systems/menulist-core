@@ -191,7 +191,7 @@ export default function AnswerlatticeBilling() {
                         creditBalanceLabel="Credits left"
                         creditPackButtonLabel="Get support credits"
                         canUpgradePlan={canUpgradePlan}
-                        allowSubscriptionSelfService={activeSubscription.planId !== 'answerlattice_beta'}
+                        allowSubscriptionSelfService
                     />
                     <BillingHistory billingHistory={billingHistory} fetchBillingHistory={fetchBillingHistory} />
                 </>

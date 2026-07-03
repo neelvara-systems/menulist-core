@@ -1,9 +1,15 @@
 # 🔒 Email Validation & Spam Prevention - Complete Guide
 
-**Last Updated:** November 6, 2025  
-**Status:** ✅ Production Ready  
-**Implementation Time:** 2 hours  
+**Last Updated:** November 6, 2025
+**Status:** Security implementation guide; not current launch certification
+**Implementation Time:** 2 hours
 **Maintenance:** Every 6 months
+
+---
+
+## Current Launch Boundary
+
+Current release approval requires the active [production-readiness audit](../../audits/menulist-production-readiness-audit.md) and [External Certification Runbook](../../production-readiness/external-certification-runbook.md) evidence, current disposable-domain update evidence, auth browser/API smoke, and confirmation that no Vercel deploy is run from this guide unless the user explicitly approves it. This document records source and maintenance guidance; it is not production-launch approval.
 
 ---
 
@@ -363,8 +369,8 @@ signIn: async ({ user, profile, account }: any) => {
     if (email) {
         const emailValidation = validateEmail(email);
         if (!emailValidation.valid) {
-            secureLog('[Auth] Email validation failed', { 
-                email,
+            logAuthDiagnostic('oauth_email_validation_failed', {
+                ...getBoundedAuthStringContext('email', email),
                 reason: emailValidation.reason,
                 provider: account?.provider
             });
@@ -575,9 +581,10 @@ git add .
 git commit -m "feat: add email validation with 10,000+ disposable domains"
 git push
 
-# 4. Deploy to Vercel (auto-deploy)
-# Or manually:
-vercel --prod
+# 4. Deployment
+# Do not run a Vercel deploy from this guide unless the user explicitly approves
+# a Vercel deploy in the active session. Record production deploy as pending
+# or use the approved release workflow.
 
 # 5. Test production
 # Visit: https://yourdomain.com/signin
@@ -862,7 +869,7 @@ Track these metrics:
 ✅ **Secure enforcement** (server-side validation)  
 ✅ **Easy maintenance** (one curl command)  
 ✅ **Zero cost** ($0 vs $240-960/year)  
-✅ **Production ready** (tested and deployed)
+✅ **Source and maintenance evidence recorded** (deployment state must be reconfirmed through the active launch gates)
 
 ---
 
@@ -887,7 +894,7 @@ Track these metrics:
 
 ## 📚 Related Documentation
 
-- [Pre-Launch Security Checklist](../PRE_LAUNCH_SECURITY_CHECKLIST.md) (now complete!)
+- [Pre-Launch Security Checklist](../../deployment/production-deployment-checklist.md) (now complete!)
 - [Authentication Guide](../authentication/complete-guide.md)
 - [Security Monitoring](../monitoring/complete-guide.md)
 - [Input Validation](../input-validation/input-validation-guide.md)
@@ -905,11 +912,11 @@ Track these metrics:
 
 **For Updates:**
 - GitHub list: https://github.com/disposable/disposable-email-domains
-- Maintenance schedule: [maintenance-tasks.md](../../../maintenance-tasks.md)
+- Maintenance schedule: [maintenance-tasks.md](../../maintenance-tasks.md)
 
 ---
 
-**Last Updated:** November 6, 2025  
-**Next Review:** May 6, 2026 (6 months)  
-**Status:** ✅ Production Ready  
+**Last Updated:** November 6, 2025
+**Next Review:** May 6, 2026 (6 months)
+**Status:** Security implementation guide; not current launch certification
 **Maintainer:** Security Team

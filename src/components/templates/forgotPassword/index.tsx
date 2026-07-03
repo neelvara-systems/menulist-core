@@ -18,7 +18,18 @@ import styles from '../loginPage/loginPage.module.scss';
 const RESET_ERRORS = {
     INVALID_EMAIL: "auth/invalid-email",
 }
+const FORGOT_PASSWORD_INVALID_EMAIL_MESSAGE = "Enter a valid email address.";
+const FORGOT_PASSWORD_FAILED_MESSAGE = "We could not send the reset email. Check the email and try again.";
+const FORGOT_PASSWORD_ERROR_MESSAGES = new Set([
+    FORGOT_PASSWORD_INVALID_EMAIL_MESSAGE,
+    FORGOT_PASSWORD_FAILED_MESSAGE,
+]);
 const JOURNEY_MOTION_MEDIA = '(hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference)';
+
+const getForgotPasswordErrorMessage = (message?: string) => {
+    const normalized = String(message || '').trim();
+    return FORGOT_PASSWORD_ERROR_MESSAGES.has(normalized) ? normalized : '';
+};
 
 function ForgotPasswordPage() {
     const session = useSession();
@@ -107,9 +118,9 @@ function ForgotPasswordPage() {
             setSuccessMessage("If this email is connected to MenuList, a reset link has been sent.");
         } catch (error: any) {
             if (error.code?.includes(RESET_ERRORS.INVALID_EMAIL)) {
-                setError({ id: RESET_ERRORS.INVALID_EMAIL, message: "Enter a valid email address." });
+                setError({ id: RESET_ERRORS.INVALID_EMAIL, message: FORGOT_PASSWORD_INVALID_EMAIL_MESSAGE });
             } else {
-                setError({ id: 'RESET_FAILED', message: "We could not send the reset email. Check the email and try again." });
+                setError({ id: 'RESET_FAILED', message: FORGOT_PASSWORD_FAILED_MESSAGE });
             }
         } finally {
             setIsSending(false);
@@ -124,6 +135,7 @@ function ForgotPasswordPage() {
     const validateMessages = {
         required: "'${name}' is required!",
     };
+    const displayErrorMessage = getForgotPasswordErrorMessage(error.message);
 
     return <div
         ref={loginPageRef}
@@ -220,7 +232,7 @@ function ForgotPasswordPage() {
                                     placeholder="name@example.com"
                                 />
                             </Form.Item>
-                            {error.message ? <div className={styles.authError}>{error.message}</div> : null}
+                            {displayErrorMessage ? <div className={styles.authError}>{displayErrorMessage}</div> : null}
                             {successMessage ? <div className={styles.authSuccess}>{successMessage}</div> : null}
                             <Button loading={isSending} type="primary" size="large" htmlType="submit" style={{ width: '100%' }} className="login-form-button">Send reset link</Button>
                             <Button

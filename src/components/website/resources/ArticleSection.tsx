@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { LuCopy } from 'react-icons/lu';
 import type { WebsiteResourceSection } from '@/content/websiteResources/types';
+import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { trackPlausibleEvent } from '@lib/website/plausible';
 
 interface ArticleSectionProps {
@@ -37,6 +38,55 @@ function trackChecklistCopy(articleSlug: string, articleCluster: string, section
     });
 }
 
+function hasResourceChecklistClipboardWrite(): boolean {
+    return typeof navigator !== 'undefined' && typeof navigator.clipboard?.writeText === 'function';
+}
+
+function hasResourceChecklistCopyFallback(): boolean {
+    return typeof document !== 'undefined'
+        && Boolean(document.body)
+        && typeof document.createElement === 'function'
+        && typeof document.execCommand === 'function';
+}
+
+async function copyResourceChecklistToClipboard(checklistText: string): Promise<void> {
+    let clipboardWriteError: unknown;
+
+    if (hasResourceChecklistClipboardWrite()) {
+        try {
+            await navigator.clipboard.writeText(checklistText);
+            return;
+        } catch (error) {
+            clipboardWriteError = error;
+        }
+    }
+
+    if (!hasResourceChecklistCopyFallback()) {
+        throw clipboardWriteError || new Error('website_resource_checklist_copy_unavailable');
+    }
+
+    const textarea = document.createElement('textarea');
+    textarea.value = checklistText;
+    textarea.readOnly = true;
+    textarea.setAttribute('aria-hidden', 'true');
+    textarea.style.position = 'fixed';
+    textarea.style.left = '-9999px';
+    textarea.style.top = '0';
+
+    document.body.appendChild(textarea);
+    textarea.select();
+    textarea.setSelectionRange(0, textarea.value.length);
+
+    try {
+        const copied = document.execCommand('copy');
+        if (!copied) {
+            throw new Error('website_resource_checklist_copy_fallback_failed');
+        }
+    } finally {
+        document.body.removeChild(textarea);
+    }
+}
+
 export default function ArticleSection({
     articleCluster,
     articleSlug,
@@ -50,11 +100,19 @@ export default function ArticleSection({
         if (!checklistText) return;
 
         try {
-            await navigator.clipboard.writeText(checklistText);
+            await copyResourceChecklistToClipboard(checklistText);
             setCopied(true);
             trackChecklistCopy(articleSlug, articleCluster, section.id);
             window.setTimeout(() => setCopied(false), 1800);
-        } catch {
+        } catch (error) {
+            logRuntimeFailure('website_resource_checklist_copy_failed', error, {
+                ...getBoundedRuntimeStringContext('articleSlug', articleSlug),
+                ...getBoundedRuntimeStringContext('articleCluster', articleCluster),
+                ...getBoundedRuntimeStringContext('sectionId', section.id),
+                ...getBoundedRuntimeStringContext('checklistText', checklistText),
+                hasClipboardWrite: hasResourceChecklistClipboardWrite(),
+                hasCopyFallback: hasResourceChecklistCopyFallback(),
+            });
             setCopied(false);
         }
     }

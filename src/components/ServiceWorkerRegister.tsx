@@ -34,6 +34,7 @@
  */
 
 import { resolveDomain } from '@lib/multiTenant/domainResolver';
+import { logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { useEffect } from 'react';
 
 const OWNER_SW_URL = '/sw.js';
@@ -126,6 +127,49 @@ function getTargetSwUrl(): string | null {
     return null;
 }
 
+function getTargetSwLabel(targetUrl: string | null): string {
+    if (targetUrl === OWNER_SW_URL) return 'owner';
+    if (targetUrl === CUSTOMER_SW_URL) return 'customer';
+    if (targetUrl === MYCODEX_SW_URL) return 'mycodex';
+    if (targetUrl === null) return 'none';
+    return 'unknown';
+}
+
+function getRegisteredSwLabel(scriptUrl: string | undefined): string {
+    if (!scriptUrl) return 'none';
+
+    try {
+        const pathname = new URL(scriptUrl).pathname;
+        if (pathname === OWNER_SW_URL) return 'owner';
+        if (pathname === CUSTOMER_SW_URL) return 'customer';
+        if (pathname === MYCODEX_SW_URL) return 'mycodex';
+    } catch {
+        return 'unknown';
+    }
+
+    return 'unknown';
+}
+
+async function unregisterServiceWorker(
+    reg: ServiceWorkerRegistration,
+    reason: 'clear_without_target' | 'wrong_target',
+    targetUrl: string | null,
+): Promise<boolean> {
+    const activeUrl = getRegistrationScriptUrl(reg);
+
+    try {
+        return await reg.unregister();
+    } catch (error) {
+        logRuntimeFailure('service_worker_unregister_failed', error, {
+            activeWorker: getRegisteredSwLabel(activeUrl),
+            hasController: Boolean(navigator.serviceWorker.controller),
+            reason,
+            targetWorker: getTargetSwLabel(targetUrl),
+        });
+        return false;
+    }
+}
+
 export default function ServiceWorkerRegister() {
     useEffect(() => {
         if (typeof window === 'undefined') return;
@@ -156,7 +200,7 @@ export default function ServiceWorkerRegister() {
                             continue;
                         }
 
-                        const removed = await reg.unregister().catch(() => false);
+                        const removed = await unregisterServiceWorker(reg, 'clear_without_target', targetUrl);
                         removedRegistration = removedRegistration || removed;
                     }
 
@@ -184,7 +228,7 @@ export default function ServiceWorkerRegister() {
                 for (const reg of registrations) {
                     const activeUrl = getRegistrationScriptUrl(reg);
                     if (activeUrl && activeUrl !== absoluteTargetUrl) {
-                        await reg.unregister().catch(() => { });
+                        await unregisterServiceWorker(reg, 'wrong_target', targetUrl);
                     }
                 }
 
@@ -201,10 +245,10 @@ export default function ServiceWorkerRegister() {
                 // Non-fatal: registration failures don't break the page,
                 // they just mean the PWA install / offline fallback won't
                 // work on this session.
-                if (process.env.NODE_ENV !== 'production') {
-                    // eslint-disable-next-line no-console
-                    console.warn('[SW] Registration failed:', error);
-                }
+                logRuntimeFailure('service_worker_registration_failed', error, {
+                    hasController: Boolean(navigator.serviceWorker.controller),
+                    targetWorker: getTargetSwLabel(targetUrl),
+                }, { developmentOnly: true });
             }
         })();
     }, []);

@@ -3,12 +3,15 @@
 import { calculateOfflineAmount, getActiveResellerTiers, RESELLER_COMMITMENT_OPTIONS } from '@config/resellerPricing';
 import { BUSINESS_TYPES } from '@data/shared/businessTypes';
 import { DEFAULT_PHONE_COUNTRY_CODE, getDialCodeForCountry, getUniquePhoneCountries, normalizePhoneNumberForStorage } from '@lib/phone/phoneNumber';
+import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';
+import { RESELLER_REQUEST_POLICY } from '@template/main-app/reseller/resellerDiagnostics';
 import { formatInrPaise } from '@util/formatters';
 import { theme } from 'antd';
 import { useMemo, useState } from 'react';
 import { LuCheck, LuChevronRight, LuCopy, LuShare2 } from 'react-icons/lu';
 import { Button, Card, Flex, Input, Result, Select, Tag, Text, Title, Toast } from '../antd';
 import MobileSettingsScreenHeader from '../components/MobileSettingsScreenHeader';
+import { getBoundedMobileOwnerStringContext, logMobileOwnerFailure } from '../utils/mobileOwnerDiagnostics';
 
 type PaymentMode = 'online' | 'offline';
 type BillingInterval = 'MONTH' | 'YEAR';
@@ -43,6 +46,91 @@ type OnboardResult = {
     tenantId: number;
 };
 
+type MobileResellerOnboardingHandoffKind =
+    | 'dashboard_link'
+    | 'login_email'
+    | 'owner_password'
+    | 'owner_username'
+    | 'payment_link'
+    | 'public_link';
+
+const MOBILE_RESELLER_ONBOARD_RESPONSE_JSON_MAX_BYTES = 16 * 1024;
+const MOBILE_RESELLER_ONBOARDING_COPY_UNAVAILABLE = 'mobile_reseller_onboarding_copy_unavailable';
+const MOBILE_RESELLER_ONBOARDING_COPY_FALLBACK_FAILED = 'mobile_reseller_onboarding_copy_fallback_failed';
+
+const hasMobileResellerOnboardingClipboardWrite = (): boolean => (
+    typeof navigator !== 'undefined'
+    && Boolean(navigator.clipboard)
+    && typeof navigator.clipboard.writeText === 'function'
+);
+
+const hasMobileResellerOnboardingCopyFallback = (): boolean => (
+    typeof document !== 'undefined'
+    && typeof document.createElement === 'function'
+    && typeof document.execCommand === 'function'
+    && Boolean(document.body)
+);
+
+const copyMobileResellerOnboardingText = async (value: string): Promise<void> => {
+    let clipboardWriteError: unknown;
+
+    if (hasMobileResellerOnboardingClipboardWrite()) {
+        try {
+            await navigator.clipboard.writeText(value);
+            return;
+        } catch (error) {
+            clipboardWriteError = error;
+            // Continue to the acknowledged textarea fallback before showing failure copy.
+        }
+    }
+
+    if (!hasMobileResellerOnboardingCopyFallback()) {
+        throw clipboardWriteError || new Error(MOBILE_RESELLER_ONBOARDING_COPY_UNAVAILABLE);
+    }
+
+    const textarea = document.createElement('textarea');
+    textarea.value = value;
+    textarea.setAttribute('readonly', '');
+    textarea.style.position = 'fixed';
+    textarea.style.left = '-9999px';
+    textarea.style.top = '0';
+    document.body.appendChild(textarea);
+    textarea.focus();
+    textarea.select();
+
+    try {
+        const copied = document.execCommand('copy');
+        if (!copied) {
+            throw new Error(MOBILE_RESELLER_ONBOARDING_COPY_FALLBACK_FAILED);
+        }
+    } finally {
+        document.body.removeChild(textarea);
+    }
+};
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+    return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
+
+function createMobileResellerOnboardStatusError(code: string, status?: number) {
+    const error = new Error(code) as Error & { code?: string; status?: number };
+    error.code = code;
+    error.status = status;
+    return error;
+}
+
+function isValidMobileOnboardResult(data: unknown): data is OnboardResult {
+    if (!isRecord(data)) return false;
+    const storeId = Number(data.storeId);
+    const tenantId = Number(data.tenantId);
+    return Number.isFinite(storeId)
+        && Number.isFinite(tenantId)
+        && typeof data.subscriptionId === 'string'
+        && data.subscriptionId.length > 0
+        && typeof data.status === 'string'
+        && data.status.length > 0;
+}
+
 const initialDraft: OnboardDraft = {
     billingInterval: 'MONTH',
     businessName: '',
@@ -75,6 +163,39 @@ export default function MobileResellerOnboardingScreen({ onBack }: { onBack: () 
         dialCode: draft.ownerDialCode,
         phoneNumber: draft.ownerPhone,
     });
+    const buildResellerOnboardingLogContext = (flow: string, metadata: Record<string, boolean | number | string | null | undefined> = {}) => ({
+        surface: 'mobile_reseller_onboarding',
+        flow,
+        step,
+        hasResult: Boolean(result),
+        requestedLocationCount: Math.max(1, Number(draft.locationCount || 1)),
+        hasOwnerEmail: Boolean(draft.ownerEmail.trim()),
+        hasOwnerPhone: Boolean(normalizedOwnerPhone.phoneNumber),
+        ...getBoundedMobileOwnerStringContext('businessType', draft.businessType),
+        ...getBoundedMobileOwnerStringContext('pricingTier', draft.pricingTier),
+        ...getBoundedMobileOwnerStringContext('paymentMode', draft.paymentMode),
+        ...metadata,
+    });
+
+    const readMobileOnboardResponse = async (
+        response: Response,
+        context: Record<string, boolean | number | string | null | undefined>,
+    ): Promise<unknown> => {
+        try {
+            return await readJsonResponseWithLimit<unknown>(
+                response,
+                MOBILE_RESELLER_ONBOARD_RESPONSE_JSON_MAX_BYTES,
+            );
+        } catch (error) {
+            logMobileOwnerFailure('mobile_reseller_onboard_response_parse_failed', error, {
+                ...context,
+                maxBytes: MOBILE_RESELLER_ONBOARD_RESPONSE_JSON_MAX_BYTES,
+                responseOk: response.ok,
+                responseStatus: response.status,
+            });
+            return null;
+        }
+    };
 
     const updateDraft = (field: keyof OnboardDraft, value: string) => {
         setDraft((current) => ({ ...current, [field]: value }));
@@ -130,8 +251,12 @@ export default function MobileResellerOnboardingScreen({ onBack }: { onBack: () 
     const submit = async () => {
         if (!validateStep()) return;
         setLoading(true);
+        const onboardLogContext = buildResellerOnboardingLogContext('onboard_client', {
+            billingInterval: draft.billingInterval,
+        });
         try {
             const response = await fetch('/api/reseller/onboard', {
+                ...RESELLER_REQUEST_POLICY,
                 body: JSON.stringify({
                     billingInterval: draft.billingInterval,
                     businessName: draft.businessName.trim(),
@@ -149,28 +274,80 @@ export default function MobileResellerOnboardingScreen({ onBack }: { onBack: () 
                 headers: { 'Content-Type': 'application/json' },
                 method: 'POST',
             });
-            const data = await response.json().catch(() => ({}));
-            if (!response.ok) throw new Error(data.error || 'Could not onboard client');
+            const data = await readMobileOnboardResponse(response, onboardLogContext);
+            if (!response.ok) {
+                throw createMobileResellerOnboardStatusError('mobile_reseller_onboard_rejected', response.status);
+            }
+            if (!isValidMobileOnboardResult(data)) {
+                const invalidResponseError = createMobileResellerOnboardStatusError(
+                    'mobile_reseller_onboard_response_invalid',
+                    response.status,
+                );
+                logMobileOwnerFailure('mobile_reseller_onboard_response_invalid', invalidResponseError, {
+                    ...onboardLogContext,
+                    responseOk: response.ok,
+                    responseStatus: response.status,
+                });
+                throw invalidResponseError;
+            }
             setResult(data);
             Toast.show({ content: 'Client onboarded successfully', duration: 1800, icon: 'success' });
-        } catch (error: any) {
-            Toast.show({ content: error?.message || 'Could not onboard client', duration: 2600 });
+        } catch (error) {
+            logMobileOwnerFailure('mobile_reseller_onboard_failed', error, onboardLogContext);
+            Toast.show({ content: 'Could not onboard client', duration: 2600 });
         } finally {
             setLoading(false);
         }
     };
 
-    const copyLink = async (link: string, label: string) => {
-        await navigator.clipboard.writeText(link);
-        Toast.show({ content: `${label} copied`, duration: 1600, icon: 'success' });
+    const copyLink = async (
+        link: string,
+        label: string,
+        linkKind: MobileResellerOnboardingHandoffKind,
+    ) => {
+        if (!link) return;
+        try {
+            await copyMobileResellerOnboardingText(link);
+            Toast.show({ content: `${label} copied`, duration: 1600, icon: 'success' });
+        } catch (error) {
+            logMobileOwnerFailure('mobile_reseller_onboarding_copy_failed', error, buildResellerOnboardingLogContext('copy_result_value', {
+                linkKind,
+                ...getBoundedMobileOwnerStringContext('copyValue', link),
+                ...getBoundedMobileOwnerStringContext('storeId', result?.storeId),
+                ...getBoundedMobileOwnerStringContext('tenantId', result?.tenantId),
+                ...getBoundedMobileOwnerStringContext('subscriptionId', result?.subscriptionId),
+                hasClipboardWrite: hasMobileResellerOnboardingClipboardWrite(),
+                hasCopyFallback: hasMobileResellerOnboardingCopyFallback(),
+            }));
+            Toast.show({ content: `Could not copy ${label.toLowerCase()}`, duration: 2200 });
+        }
     };
 
-    const shareLink = async (link: string, title: string) => {
+    const shareLink = async (
+        link: string,
+        title: string,
+        linkKind: MobileResellerOnboardingHandoffKind,
+    ) => {
+        if (!link) return;
         if (navigator.share) {
-            await navigator.share({ text: link, title, url: link });
+            try {
+                await navigator.share({ text: link, title, url: link });
+            } catch (error) {
+                if (error instanceof DOMException && error.name === 'AbortError') return;
+                logMobileOwnerFailure('mobile_reseller_onboarding_share_failed', error, buildResellerOnboardingLogContext('share_result_value', {
+                    linkKind,
+                    usedNativeShare: true,
+                    ...getBoundedMobileOwnerStringContext('shareLink', link),
+                    ...getBoundedMobileOwnerStringContext('shareTitle', title),
+                    ...getBoundedMobileOwnerStringContext('storeId', result?.storeId),
+                    ...getBoundedMobileOwnerStringContext('tenantId', result?.tenantId),
+                    ...getBoundedMobileOwnerStringContext('subscriptionId', result?.subscriptionId),
+                }));
+                Toast.show({ content: 'Could not share link', duration: 2200 });
+            }
             return;
         }
-        await copyLink(link, title);
+        await copyLink(link, title, linkKind);
     };
 
     if (result) {
@@ -188,10 +365,10 @@ export default function MobileResellerOnboardingScreen({ onBack }: { onBack: () 
                     {result.shortUrl ? (
                         <Card title="Payment link">
                             <Flex gap={10} vertical>
-                                <Text copyable>{result.shortUrl}</Text>
+                                <Text style={{ wordBreak: 'break-word' }}>{result.shortUrl}</Text>
                                 <Flex gap={10}>
-                                    <Button block fill="outline" onClick={() => copyLink(result.shortUrl || '', 'Payment link')} style={{ minHeight: 44 }}><Flex align="center" gap={6} justify="center"><LuCopy size={16} /> Copy</Flex></Button>
-                                    <Button block onClick={() => shareLink(result.shortUrl || '', 'MenuList payment link')} style={{ minHeight: 44 }}><Flex align="center" gap={6} justify="center"><LuShare2 size={16} /> Share</Flex></Button>
+                                    <Button block fill="outline" onClick={() => void copyLink(result.shortUrl || '', 'Payment link', 'payment_link')} style={{ minHeight: 44 }}><Flex align="center" gap={6} justify="center"><LuCopy size={16} /> Copy</Flex></Button>
+                                    <Button block onClick={() => void shareLink(result.shortUrl || '', 'MenuList payment link', 'payment_link')} style={{ minHeight: 44 }}><Flex align="center" gap={6} justify="center"><LuShare2 size={16} /> Share</Flex></Button>
                                 </Flex>
                             </Flex>
                         </Card>
@@ -200,20 +377,29 @@ export default function MobileResellerOnboardingScreen({ onBack }: { onBack: () 
                         <Card title="Client login">
                             <Flex gap={10} vertical>
                                 {result.ownerUsername ? (
-                                    <Flex gap={6} vertical>
-                                        <Text type="secondary">Username</Text>
-                                        <Text copyable>{result.ownerUsername}</Text>
+                                    <Flex align="center" justify="space-between" gap={10}>
+                                        <Flex gap={6} style={{ minWidth: 0 }} vertical>
+                                            <Text type="secondary">Username</Text>
+                                            <Text style={{ wordBreak: 'break-word' }}>{result.ownerUsername}</Text>
+                                        </Flex>
+                                        <Button aria-label="Copy username" fill="outline" onClick={() => void copyLink(result.ownerUsername || '', 'Username', 'owner_username')} style={{ minHeight: 44, minWidth: 44, paddingInline: 12 }}><LuCopy size={16} /></Button>
                                     </Flex>
                                 ) : null}
                                 {result.loginEmail ? (
-                                    <Flex gap={6} vertical>
-                                        <Text type="secondary">Login email</Text>
-                                        <Text copyable>{result.loginEmail}</Text>
+                                    <Flex align="center" justify="space-between" gap={10}>
+                                        <Flex gap={6} style={{ minWidth: 0 }} vertical>
+                                            <Text type="secondary">Login email</Text>
+                                            <Text style={{ wordBreak: 'break-word' }}>{result.loginEmail}</Text>
+                                        </Flex>
+                                        <Button aria-label="Copy login email" fill="outline" onClick={() => void copyLink(result.loginEmail || '', 'Login email', 'login_email')} style={{ minHeight: 44, minWidth: 44, paddingInline: 12 }}><LuCopy size={16} /></Button>
                                     </Flex>
                                 ) : null}
-                                <Flex gap={6} vertical>
-                                    <Text type="secondary">Password</Text>
-                                    <Text copyable>{draft.ownerPassword}</Text>
+                                <Flex align="center" justify="space-between" gap={10}>
+                                    <Flex gap={6} style={{ minWidth: 0 }} vertical>
+                                        <Text type="secondary">Password</Text>
+                                        <Text style={{ wordBreak: 'break-word' }}>{draft.ownerPassword}</Text>
+                                    </Flex>
+                                    <Button aria-label="Copy password" fill="outline" onClick={() => void copyLink(draft.ownerPassword, 'Password', 'owner_password')} style={{ minHeight: 44, minWidth: 44, paddingInline: 12 }}><LuCopy size={16} /></Button>
                                 </Flex>
                             </Flex>
                         </Card>
@@ -221,10 +407,10 @@ export default function MobileResellerOnboardingScreen({ onBack }: { onBack: () 
                     {result.dashboardUrl ? (
                         <Card title="Client dashboard link">
                             <Flex gap={10} vertical>
-                                <Text copyable>{result.dashboardUrl}</Text>
+                                <Text style={{ wordBreak: 'break-word' }}>{result.dashboardUrl}</Text>
                                 <Flex gap={10}>
-                                    <Button block fill="outline" onClick={() => copyLink(result.dashboardUrl || '', 'Dashboard link')} style={{ minHeight: 44 }}><Flex align="center" gap={6} justify="center"><LuCopy size={16} /> Copy</Flex></Button>
-                                    <Button block onClick={() => shareLink(result.dashboardUrl || '', 'MenuList dashboard link')} style={{ minHeight: 44 }}><Flex align="center" gap={6} justify="center"><LuShare2 size={16} /> Share</Flex></Button>
+                                    <Button block fill="outline" onClick={() => void copyLink(result.dashboardUrl || '', 'Dashboard link', 'dashboard_link')} style={{ minHeight: 44 }}><Flex align="center" gap={6} justify="center"><LuCopy size={16} /> Copy</Flex></Button>
+                                    <Button block onClick={() => void shareLink(result.dashboardUrl || '', 'MenuList dashboard link', 'dashboard_link')} style={{ minHeight: 44 }}><Flex align="center" gap={6} justify="center"><LuShare2 size={16} /> Share</Flex></Button>
                                 </Flex>
                             </Flex>
                         </Card>
@@ -232,10 +418,10 @@ export default function MobileResellerOnboardingScreen({ onBack }: { onBack: () 
                     {result.publicUrl ? (
                         <Card title="Public menu link">
                             <Flex gap={10} vertical>
-                                <Text copyable>{result.publicUrl}</Text>
+                                <Text style={{ wordBreak: 'break-word' }}>{result.publicUrl}</Text>
                                 <Flex gap={10}>
-                                    <Button block fill="outline" onClick={() => copyLink(result.publicUrl || '', 'Public link')} style={{ minHeight: 44 }}><Flex align="center" gap={6} justify="center"><LuCopy size={16} /> Copy</Flex></Button>
-                                    <Button block onClick={() => shareLink(result.publicUrl || '', 'MenuList public menu link')} style={{ minHeight: 44 }}><Flex align="center" gap={6} justify="center"><LuShare2 size={16} /> Share</Flex></Button>
+                                    <Button block fill="outline" onClick={() => void copyLink(result.publicUrl || '', 'Public link', 'public_link')} style={{ minHeight: 44 }}><Flex align="center" gap={6} justify="center"><LuCopy size={16} /> Copy</Flex></Button>
+                                    <Button block onClick={() => void shareLink(result.publicUrl || '', 'MenuList public menu link', 'public_link')} style={{ minHeight: 44 }}><Flex align="center" gap={6} justify="center"><LuShare2 size={16} /> Share</Flex></Button>
                                 </Flex>
                             </Flex>
                         </Card>

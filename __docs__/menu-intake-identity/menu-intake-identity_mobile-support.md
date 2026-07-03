@@ -1,7 +1,7 @@
 # Menu Intake Identity — Mobile Support
 
 **Status:** Mobile supported  
-**Last Updated:** May 3, 2026
+**Last Updated:** June 30, 2026
 
 ## Admission Gates
 
@@ -15,6 +15,7 @@
 ## Mobile Behavior
 
 - Run the same protected API as desktop.
+- Submit the preflight with same-origin credentials, `no-store` cache policy, and manual redirect handling through the shared client helper.
 - Use the existing mobile upload sheet.
 - Show a short confirmation for strong mismatch, high truth risk, likely replacement, special-menu, outlet, or wrong-business cases.
 - For a strong existing-project mismatch, offer `Add here anyway` and `Create new menu`.

@@ -334,7 +334,7 @@ const successfulUploads: MenuFileToProcess[] = [];
 
 ## Deferred Items (Added to Backlog)
 
-Added to `__docs__/projects/misclenious-task.md`:
+Added to `__docs__/projects/miscellaneous-task.md`:
 
 1. **L1**: Client-side logging standardization (for end-to-end testing phase)
 2. **M5**: Auto-merge implementation (for multi-chain feature)

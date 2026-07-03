@@ -41,9 +41,13 @@ This is separate from:
 - Tenant/store IDs are resolved server-side from the registry document only.
 - Only published/active KB, FAQ, and changelog entries are rendered.
 - Ticket creation, feedback, chat history, and authenticated user data are not exposed.
-- Public article body rendering uses a server-safe Tiptap JSON renderer followed by DOMPurify sanitization.
+- Public article body rendering uses `renderPublicTiptapHtml()` in `src/lib/answerlattice/publicRichText.ts`. That server renderer is the sanitizer: it accepts Tiptap JSON, emits a fixed tag/mark set, escapes text and attributes, allows only safe link/image schemes, and drops unknown nodes to escaped children before `HostedHelpClient` renders `safeHtml`.
+- `npm run verify:answerlattice-runtime-truth` guards this boundary by tying the hosted-help `dangerouslySetInnerHTML` call to the server-produced `safeHtml` field and the renderer escape/allowlist helpers.
 - Public page reads are rate-limited per domain/IP.
 - Settings saves and manual DNS refreshes fail closed with a temporary error when rate limiting is enabled but unavailable; public pages show the empty shell instead of reading hosted content during that condition.
+- Vercel provider failures stay in bounded runtime diagnostics with provider code/status and provider-message presence/length only. Browser responses and saved DNS status fields use generic hosted-help messages so provider exception text is not exposed to owners or anonymous users.
+- Widget Management save and DNS-refresh failures show fixed owner-facing copy; route response text, provider exceptions, and browser exception messages are not copied into dashboard notices.
+- Hosted Help settings reads use the shared Answerlattice dashboard `DATA_READ` limiter before permission and store/registry reads.
 - `noIndex` can block SEO indexing during setup.
 - In production, `/answerlattice-hosted-help` is an internal rewrite target only. Direct hits are redirected, and the `?domain=` test override is accepted only in local/dev rewrite mode.
 

@@ -9,11 +9,11 @@
  */
 
 import { APP_THEME_COLOR } from '@constant/common';
-import { DB_COLLECTIONS } from '@constant/database';
 import { getStoreContextName } from '@lib/businessIdentity/names';
-import { firestoreAdmin } from '@lib/firebase/firebaseAdmin';
+import { getPublicStoreById } from '@lib/firestore/clientStoreLookup';
 import { checkRateLimit } from '@lib/rateLimit';
 import { getRateLimitForFeature } from '@lib/rateLimit/configs';
+import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import {
     CUSTOMER_APP_ICON_CACHE_CONTROL,
     parseCustomerAppSplashSize,
@@ -22,7 +22,7 @@ import {
 } from '@lib/pwa/customerAppAssets';
 import { ImageResponse } from 'next/og';
 import { NextRequest } from 'next/server';
-import { getClientIp } from 'src/middleware/publicApi';
+import { getClientIp, hashPublicRateLimitValue } from 'src/middleware/publicApi';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -32,8 +32,9 @@ async function shouldUseFallbackAsset(request: NextRequest, storeId: string): Pr
     if (!STORE_ID_PATTERN.test(storeId)) return true;
 
     const config = getRateLimitForFeature('PUBLIC_DYNAMIC_ASSET');
+    const ipHash = hashPublicRateLimitValue(getClientIp(request));
     const limit = await checkRateLimit({
-        key: `public-dynamic-asset:splash:${getClientIp(request)}`,
+        key: `public-dynamic-asset:splash:${ipHash}`,
         ...config,
     });
     return !limit.allowed;
@@ -66,8 +67,21 @@ export async function GET(
             });
         }
 
-        const snap = await firestoreAdmin.collection(DB_COLLECTIONS.STORES).doc(storeId).get();
-        const store = snap.exists ? snap.data() : null;
+        const store = await getPublicStoreById(storeId);
+        if (!store) {
+            return new ImageResponse(renderCustomerAppSplash({
+                displayName: 'Menu',
+                height,
+                seed: storeId,
+                themeColor: APP_THEME_COLOR,
+                width,
+            }), {
+                width,
+                height,
+                headers: { 'Cache-Control': CUSTOMER_APP_ICON_CACHE_CONTROL },
+            });
+        }
+
         const displayName: string = getStoreContextName(store, 'Menu');
         const iconSource = resolveCustomerAppIconSource(store);
         const themeColor = store?.publicPresence?.accentColor || APP_THEME_COLOR;
@@ -86,7 +100,11 @@ export async function GET(
             headers: { 'Cache-Control': CUSTOMER_APP_ICON_CACHE_CONTROL },
         });
     } catch (err) {
-        console.error('[app-splash] generation failed:', err);
+        logRuntimeFailure('customer_app_splash_generation_failed', err, {
+            height,
+            width,
+            ...getBoundedRuntimeStringContext('storeId', storeId),
+        });
         return new ImageResponse(renderCustomerAppSplash({
             displayName: 'Menu',
             height,

@@ -70,7 +70,8 @@ export const viewport: Viewport = {
 
 /**
  * Inline script that runs synchronously before any paint to set the correct
- * dark/light class on <html> — prevents flash of wrong theme on load.
+ * dark/light class on <html> — prevents flash of wrong theme on load. If
+ * storage or media-query access is blocked, it falls back to light mode.
  */
 const themeScript = `
 (function() {
@@ -81,7 +82,9 @@ const themeScript = `
     } else {
       document.documentElement.classList.remove('dark');
     }
-  } catch(e) {}
+  } catch {
+    document.documentElement.classList.remove('dark');
+  }
 })();
 `;
 

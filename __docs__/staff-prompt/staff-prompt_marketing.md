@@ -1,10 +1,20 @@
 # Staff Prompt Mode — Marketing & Sales Collateral
 
 **Created:** January 11, 2026  
-**Status:** 🔒 **LOCKED — USE AS-IS**  
+**Status:** Source-gated marketing evidence; active runtime is read-only Today summary display; not current launch certification
 **Audience:** Sales, Marketing, Support  
 **Parent Spec:** `@__docs__/staff-prompt/staff-prompt_spec.md`  
 **Required Reading:** `@__docs__/governance/AUTHORITY_ENFORCEMENT.md`
+
+---
+
+## Current Runtime Boundary
+
+This marketing document is source-gated positioning evidence, not standalone sales approval. Active Staff Prompt behavior is a read-only Today line sourced from `platformSummary/campaigns_{sId}.staffPrompt` when the Today summary marks it eligible. There is no standalone Staff Prompt product, staff-facing route, staff app, provider call, owner setting, prompt generator, mobile-only write, or public Staff Prompt landing page in active code.
+
+Current approval requires the active [production-readiness audit](../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../production-readiness/external-certification-runbook.md) evidence, `npm run verify:staff-prompt-runtime`, authenticated desktop/mobile Today QA with an eligible target-store `staffPrompt`, target deploy evidence, and production-host smoke. If sales copy claims generated prompts end-to-end, upstream summary-writer evidence for `platformSummary/campaigns_{sId}.staffPrompt` is also required.
+
+Use this only as supporting proof for Today/MenuList owner workflow copy. Do not pitch a standalone Staff Prompt product or promise staff behavior changes without target runtime evidence.
 
 ---
 
@@ -18,11 +28,11 @@ _(Wait for answer: "What's good?" / "What should I order?")_
 
 ### The Value
 
-> "MenuList gives your staff exactly what to say — one sentence that works every time."
+> "When the Today summary has a safe staff line, MenuList shows the owner one sentence to repeat."
 
 ### The Differentiation
 
-> "No training. No scripts. Just the right words, at the right moment."
+> "No staff app. No scripts. Just a quiet Today line when the source data supports it."
 
 ---
 
@@ -40,17 +50,17 @@ Every day in SMBs:
 
 ### The Solution
 
-MenuList watches what customers actually choose. When patterns become clear, it tells the owner **one sentence** to repeat:
+When the Today summary includes an eligible staff prompt, MenuList shows the owner **one sentence** to repeat:
 
 > "Most people take the paneer tikka."
 
-Owner says it → Staff mirrors it → Customers decide faster.
+Owner can repeat it during service. Any staff or customer behavior outcome still needs target evidence before sales use.
 
 ### Why This Matters
 
-- **No training required** — Staff learns by hearing the owner
+- **No staff workflow required** — The active runtime shows the owner a read-only Today line
 - **No scripts to memorize** — Just one sentence
-- **No guessing** — Based on real customer behavior
+- **No guessing** — Only use this claim when upstream summary evidence exists for the release scope
 - **No pressure** — It's social proof, not selling
 
 ---
@@ -59,10 +69,10 @@ Owner says it → Staff mirrors it → Customers decide faster.
 
 | Alternative             | Problem                                 | MenuList Difference               |
 | ----------------------- | --------------------------------------- | --------------------------------- |
-| Staff training programs | Expensive, inconsistent, staff turnover | No training needed, owner-driven  |
-| Sales scripts           | Staff resists, sounds robotic           | Natural social proof, not selling |
-| Manager oversight       | Owner can't watch staff all day         | System does the watching          |
-| "Trust your gut"        | Inconsistent results, staff anxiety     | Data-backed confidence            |
+| Staff training programs | Expensive, inconsistent, staff turnover | No separate staff workflow in active code |
+| Sales scripts           | Staff resists, sounds robotic           | One owner-visible line when source data supports it |
+| Manager oversight       | Owner can't watch staff all day         | Today surfaces one line when eligible |
+| "Trust your gut"        | Inconsistent results, staff anxiety     | Source-backed confidence when upstream evidence exists |
 
 ---
 
@@ -76,9 +86,9 @@ Owner says it → Staff mirrors it → Customers decide faster.
 
 **Copy:**
 
-- 73% of customers ask staff what to order
-- Most staff say "everything is good" or freeze
-- Result: slower orders, lower tickets, stressed staff
+- Customers often ask staff what to order
+- Staff may default to generic answers
+- Use release-specific evidence before making numeric conversion or ticket-size claims
 
 ---
 
@@ -90,9 +100,9 @@ Owner says it → Staff mirrors it → Customers decide faster.
 
 **Copy:**
 
-- MenuList watches what customers actually choose
-- When patterns are clear, it gives you one sentence
-- You say it → Staff repeats it → Customers decide
+- Today can show one staff line when the summary marks it eligible
+- When source evidence is clear, the owner sees one sentence
+- Owner can use it during service; behavior outcomes need target evidence
 
 ---
 
@@ -350,7 +360,7 @@ Staff Prompt is part of the core value proposition — helping customers decide 
 
 When discussing pricing, never mention Staff Prompt as a line item. Say:
 
-> "MenuList is ₹999/month. That includes everything — the menu, the screens, and the daily intelligence that tells your staff what to say."
+> "MenuList is ₹999/month. That includes the menu, the screens, and the Today line when there is a safe staff prompt to show."
 
 ---
 
@@ -403,6 +413,6 @@ That means you've positioned it correctly.
 
 ---
 
-**Document Status:** 🔒 LOCKED — Ready for sales team  
+**Document Status:** Source-gated marketing evidence; not current sales or launch approval
 **Version:** 1.0  
 **Last Updated:** January 11, 2026

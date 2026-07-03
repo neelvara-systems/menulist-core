@@ -31,6 +31,36 @@ const MAX_TRIGGERS_PER_TENANT = 500;
 const MAX_TRIGGER_SIGNALS_PER_RUN = 2000;
 const MAX_CANONICAL_ANSWERS_FOR_TRIGGER_CACHE = 1000;
 const MAX_ENTITY_IDS_PER_ANSWER_LOOKUP = 30;
+const ANSWERLATTICE_PREDICTIVE_TRIGGER_AUTOGENERATE_FAILED = 'ANSWERLATTICE_PREDICTIVE_TRIGGER_AUTOGENERATE_FAILED';
+const ANSWERLATTICE_PREDICTIVE_TRIGGER_CACHE_REBUILD_FAILED = 'ANSWERLATTICE_PREDICTIVE_TRIGGER_CACHE_REBUILD_FAILED';
+const ANSWERLATTICE_PREDICTIVE_TRIGGER_EFFECTIVENESS_FAILED = 'ANSWERLATTICE_PREDICTIVE_TRIGGER_EFFECTIVENESS_FAILED';
+
+function getPredictiveTriggerSourceErrorContext(error: unknown): {
+    sourceErrorName: string | null;
+    sourceErrorCode: string | number | null;
+    sourceStatusCode: number | null;
+} {
+    const source = error && typeof error === 'object' ? error as Record<string, unknown> : {};
+    const sourceStatusCode = typeof source.status === 'number'
+        ? source.status
+        : (typeof source.statusCode === 'number' ? source.statusCode : null);
+
+    return {
+        sourceErrorName: typeof source.name === 'string' ? source.name : null,
+        sourceErrorCode: typeof source.code === 'string' || typeof source.code === 'number' ? source.code : null,
+        sourceStatusCode,
+    };
+}
+
+function getPredictiveTriggerScopeContext(tId?: number, sId?: number): {
+    hasTenantScope: boolean;
+    hasStoreScope: boolean;
+} {
+    return {
+        hasTenantScope: Number.isFinite(tId),
+        hasStoreScope: Number.isFinite(sId),
+    };
+}
 
 function stableStringify(value: any): string {
     if (Array.isArray(value)) return `[${value.map(stableStringify).join(',')}]`;
@@ -189,7 +219,11 @@ async function autoGenerateSuggestions(tId: number, sId: number): Promise<number
             generated++;
         }
     } catch (error) {
-        logger.error('[Predictive Trigger Sync] Auto-generation failed', { tId, sId, error });
+        logger.error('[Predictive Trigger Sync] Auto-generation failed', {
+            failureCode: ANSWERLATTICE_PREDICTIVE_TRIGGER_AUTOGENERATE_FAILED,
+            ...getPredictiveTriggerScopeContext(tId, sId),
+            ...getPredictiveTriggerSourceErrorContext(error),
+        });
     }
 
     return generated;
@@ -263,7 +297,11 @@ async function rebuildTriggerCache(tId: number, sId: number): Promise<number> {
 
         return triggerCount;
     } catch (error) {
-        logger.error('[Predictive Trigger Sync] Cache rebuild failed', { tId, sId, error });
+        logger.error('[Predictive Trigger Sync] Cache rebuild failed', {
+            failureCode: ANSWERLATTICE_PREDICTIVE_TRIGGER_CACHE_REBUILD_FAILED,
+            ...getPredictiveTriggerScopeContext(tId, sId),
+            ...getPredictiveTriggerSourceErrorContext(error),
+        });
         return 0;
     }
 }
@@ -364,7 +402,11 @@ async function updateEffectiveness(tId: number, sId: number): Promise<{ updated:
             await batch.commit();
         }
     } catch (error) {
-        logger.error('[Predictive Trigger Sync] Effectiveness update failed', { tId, sId, error });
+        logger.error('[Predictive Trigger Sync] Effectiveness update failed', {
+            failureCode: ANSWERLATTICE_PREDICTIVE_TRIGGER_EFFECTIVENESS_FAILED,
+            ...getPredictiveTriggerScopeContext(tId, sId),
+            ...getPredictiveTriggerSourceErrorContext(error),
+        });
     }
 
     return { updated, disabled };

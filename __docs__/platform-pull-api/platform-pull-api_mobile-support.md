@@ -2,8 +2,15 @@
 
 **Status:** ✅ ASSESSED  
 **Date:** February 22, 2026
+**Last Source Gate Update:** July 2, 2026
 
 ---
+
+## Source Gate
+
+Mobile admission is source-gated by `npm run verify:platform-pull-api-boundary`.
+
+No dedicated mobile key-management UI is required. API-key generation/regeneration/revoke is a low-frequency integration setup task in the desktop Business Settings Integrations tab, while mobile keeps integration navigation focused on operational surfaces such as POS Sync and Google Business Profile status.
 
 ## 4-Gate Admission Test
 
@@ -20,4 +27,4 @@ API key generation is a one-time setup task done from desktop. The generated key
 
 ---
 
-**Last Updated:** February 22, 2026
+**Last Updated:** July 2, 2026

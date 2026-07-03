@@ -21,6 +21,7 @@ import {
 import { CAMPAIGNCUE_ERROR_CODES } from "@constant/campaigncue/errors";
 import { CAMPAIGNCUE_PRODUCT_CODE } from "@constant/campaigncue/product";
 import { buildCampaignCueAuthLaunchUrl as buildCampaignCueAuthLaunchUrlFromSignIn } from "@constant/campaigncue/routes";
+import { createTimestampedRuntimeId } from "@lib/runtime/randomId";
 import {
     CAMPAIGNCUE_DEFAULT_LOCALE,
     CAMPAIGNCUE_DEFAULT_PRIMARY_COLOR,
@@ -97,6 +98,87 @@ const compactString = (value: unknown, fallback = ""): string => {
     return String(value).trim() || fallback;
 };
 
+type CampaignCueLogMetadata = Record<string, boolean | number | string | null | undefined>;
+
+type CampaignCueSourceErrorLike = Error & {
+    code?: unknown;
+    status?: unknown;
+    statusCode?: unknown;
+};
+
+const getCampaignCueSourceErrorName = (error: unknown): string | undefined => {
+    if (error === undefined) return undefined;
+    if (error instanceof Error) return error.name || "Error";
+    return typeof error;
+};
+
+const getCampaignCueSourceErrorCode = (error: unknown): string | undefined => {
+    if (!error || typeof error !== "object" || !("code" in error)) return undefined;
+    const code = (error as CampaignCueSourceErrorLike).code;
+    if (code === undefined || code === null) return undefined;
+    return String(code).slice(0, 64);
+};
+
+const getCampaignCueSourceErrorStatus = (error: unknown): number | undefined => {
+    if (!error || typeof error !== "object") return undefined;
+    const statusValue = "status" in error
+        ? (error as CampaignCueSourceErrorLike).status
+        : (error as CampaignCueSourceErrorLike).statusCode;
+    const status = Number(statusValue);
+    return Number.isFinite(status) ? status : undefined;
+};
+
+const toCampaignCueFailureCode = (message: string): string => {
+    const normalized = message
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "_")
+        .replace(/^_+|_+$/g, "")
+        .slice(0, 96);
+    return normalized.startsWith("campaigncue_") ? normalized : `campaigncue_${normalized || "api_failed"}`;
+};
+
+const isCampaignCueIdentifierLogKey = (key: string): boolean => (
+    /(?:^|_)(user|tenant|store|workspace|campaign|asset|source|location|design|job|export|request|session)id$/i.test(key)
+    || /(user|tenant|store|workspace|campaign|asset|source|location|design|job|export|request|session).*id/i.test(key)
+);
+
+const getCampaignCueBoundedStringContext = (key: string, value: unknown): CampaignCueLogMetadata => {
+    const text = typeof value === "string" || typeof value === "number"
+        ? String(value)
+        : "";
+    const trimmed = text.trim();
+    return {
+        [`${key}Present`]: trimmed.length > 0,
+        [`${key}Length`]: trimmed.length,
+    };
+};
+
+const getCampaignCueSafeLogMetadata = (metadata: Record<string, unknown>): CampaignCueLogMetadata => (
+    Object.entries(metadata).reduce<CampaignCueLogMetadata>((acc, [key, value]) => {
+        if (value === undefined || value === null || typeof value === "boolean" || typeof value === "number") {
+            acc[key] = value as boolean | number | null | undefined;
+            return acc;
+        }
+        if (typeof value === "string") {
+            if (isCampaignCueIdentifierLogKey(key)) {
+                Object.assign(acc, getCampaignCueBoundedStringContext(key, value));
+            } else {
+                acc[key] = value.slice(0, 128);
+            }
+            return acc;
+        }
+        acc[`${key}Present`] = true;
+        return acc;
+    }, {})
+);
+
+const getCampaignCueSourceErrorContext = (error: unknown): CampaignCueLogMetadata => ({
+    sourceErrorName: getCampaignCueSourceErrorName(error),
+    sourceErrorCode: getCampaignCueSourceErrorCode(error),
+    sourceStatusCode: getCampaignCueSourceErrorStatus(error),
+});
+
 const sanitizeForAdminFirestore = (value: any): any => {
     if (value === undefined) return null;
     if (value === null) return null;
@@ -115,7 +197,7 @@ const stableHash = (value: unknown) => (
     createHash("sha256").update(JSON.stringify(value)).digest("hex").slice(0, 24)
 );
 
-const buildId = (prefix: string) => `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+const buildId = (prefix: string) => createTimestampedRuntimeId(prefix, 8);
 
 const hasOwn = <T extends object, K extends PropertyKey>(value: T, key: K) => (
     Object.prototype.hasOwnProperty.call(value, key)
@@ -193,21 +275,25 @@ const patchOptionalUrl = (
 };
 
 class CampaignCueIdempotencyConflictError extends Error {
+    clientMessage: string;
     code = CAMPAIGNCUE_ERROR_CODES.IDEMPOTENCY_CONFLICT;
     status = 409 as const;
 
     constructor(message = "This CampaignCue request is already running or the idempotency key was reused.") {
         super(message);
+        this.clientMessage = message;
         this.name = "CampaignCueIdempotencyConflictError";
     }
 }
 
 class CampaignCueDecisionGateError extends Error {
+    clientMessage: string;
     code = CAMPAIGNCUE_ERROR_CODES.DECISION_GATE;
     status = 409 as const;
 
     constructor(message = "Confirm required campaign details before creating this pack.") {
         super(message);
+        this.clientMessage = message;
         this.name = "CampaignCueDecisionGateError";
     }
 }
@@ -2031,9 +2117,8 @@ async function checkIdempotency(params: {
         }));
         return null;
     } catch (error) {
-        const message = stringifyErrorField((error as Record<string, unknown>)?.message).toLowerCase();
-        const code = (error as Record<string, unknown>)?.code;
-        const alreadyExists = code === 6 || code === "already-exists" || message.includes("already exists");
+        const code = getStructuredErrorField(error, "code").toLowerCase();
+        const alreadyExists = code === "6" || code === "already-exists" || code === "already_exists";
         if (!alreadyExists) throw error;
 
         const snap = await ref.get();
@@ -2815,32 +2900,57 @@ export function buildCampaignCueAuthLaunchUrl() {
     return buildCampaignCueAuthLaunchUrlFromSignIn(SIGNIN_URL);
 }
 
-const stringifyErrorField = (value: unknown) => {
-    if (typeof value === "string") return value;
-    if (value == null) return "";
-    try {
-        return JSON.stringify(value);
-    } catch {
-        return String(value);
+const isStructuredErrorRecord = (value: unknown): value is Record<string, unknown> => Boolean(value && typeof value === "object");
+
+const getStructuredErrorField = (value: unknown, key: string) => {
+    if (!isStructuredErrorRecord(value)) return "";
+    const field = value[key];
+    if (typeof field === "string" || typeof field === "number") return String(field);
+    return "";
+};
+
+const collectCampaignCueFirebaseErrorIndicators = (value: unknown): Set<string> => {
+    const indicators = new Set<string>();
+    const add = (item: unknown) => {
+        if (typeof item === "string" || typeof item === "number") {
+            const normalized = String(item).trim().toLowerCase();
+            if (normalized) indicators.add(normalized);
+        }
+    };
+    const collectRecord = (record: Record<string, unknown>) => {
+        ["code", "status", "statusCode", "name", "reason", "domain", "service"].forEach(key => add(record[key]));
+        const metadata = record.metadata;
+        if (isStructuredErrorRecord(metadata)) {
+            ["reason", "domain", "service"].forEach(key => add(metadata[key]));
+        }
+    };
+
+    if (!isStructuredErrorRecord(value)) return indicators;
+    collectRecord(value);
+
+    const details = value.details;
+    if (Array.isArray(details)) {
+        details.forEach((detail) => {
+            if (isStructuredErrorRecord(detail)) collectRecord(detail);
+        });
+    } else if (isStructuredErrorRecord(details)) {
+        collectRecord(details);
     }
+
+    const errorInfoMetadata = value.errorInfoMetadata;
+    if (isStructuredErrorRecord(errorInfoMetadata)) collectRecord(errorInfoMetadata);
+
+    return indicators;
 };
 
 export function isCampaignCueFirebaseUnavailableError(error: unknown) {
-    const record = error as Record<string, unknown>;
-    const haystack = [
-        stringifyErrorField(record?.message),
-        stringifyErrorField(record?.details),
-        stringifyErrorField(record?.reason),
-        stringifyErrorField(record?.domain),
-        stringifyErrorField(record?.errorInfoMetadata),
-    ].join(" ").toLowerCase();
+    const indicators = collectCampaignCueFirebaseErrorIndicators(error);
+    const serviceUnavailable = indicators.has("consumer_invalid")
+        || indicators.has("firestore.googleapis.com");
+    const deniedFirestore = indicators.has("permission_denied")
+        && indicators.has("firestore.googleapis.com");
 
-    return (
-        record?.code === 7 ||
-        haystack.includes("consumer_invalid") ||
-        haystack.includes("firestore.googleapis.com") ||
-        haystack.includes("permission denied on resource project campaigncue")
-    );
+    return indicators.has("7") || serviceUnavailable || deniedFirestore;
 }
 
 export function buildCampaignCueApiError(error: unknown, fallbackMessage: string) {
@@ -2848,7 +2958,7 @@ export function buildCampaignCueApiError(error: unknown, fallbackMessage: string
         return {
             body: {
                 code: error.code,
-                error: error.message,
+                error: error.clientMessage,
             },
             status: error.status,
         };
@@ -2858,7 +2968,7 @@ export function buildCampaignCueApiError(error: unknown, fallbackMessage: string
         return {
             body: {
                 code: error.code,
-                error: error.message,
+                error: error.clientMessage,
             },
             status: error.status,
         };
@@ -2884,8 +2994,11 @@ export function buildCampaignCueApiError(error: unknown, fallbackMessage: string
 }
 
 export function logCampaignCueServerError(message: string, error: unknown, metadata: Record<string, unknown>) {
-    logger.error(message, error, {
+    const failureCode = toCampaignCueFailureCode(message);
+    logger.error(message, new Error(failureCode), {
         productId: CAMPAIGNCUE_PRODUCT_CODE,
-        ...metadata,
+        failureCode,
+        ...getCampaignCueSafeLogMetadata(metadata),
+        ...getCampaignCueSourceErrorContext(error),
     });
 }

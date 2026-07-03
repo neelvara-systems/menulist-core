@@ -8,6 +8,7 @@ import {
     recordGrowthOSExportServer,
     writeGrowthOSSummaryServer,
 } from "@database/growthos/server";
+import { getGrowthOSBoundedStringContext, getGrowthOSSecurityLogContext, logGrowthOSApiFailure } from "@lib/growthos/diagnostics";
 import { isGrowthOSMasterEnabled } from "@lib/growthos/entitlements";
 import { isGrowthOSKitExpired } from "@lib/growthos/readiness";
 import { evaluateGrowthOSServerEntitlement } from "@lib/growthos/serverEntitlements";
@@ -15,7 +16,6 @@ import { loadGrowthOSSourceSnapshot } from "@lib/growthos/serverContext";
 import { logger } from "@lib/monitoring/logger";
 import { checkDataWriteLimit } from "@lib/rateLimit/helpers";
 import { validateAPIInput } from "@lib/security/inputValidation";
-import { buildSecurityContext } from "@lib/security/securityContext";
 import { GrowthOSExportRequestSchema, parseGrowthOSJsonBody } from "@lib/validation/growthosSchemas";
 import { NextResponse } from "next/server";
 import { verifyTenantAccess, withAuth } from "../../../../../middleware/auth";
@@ -32,19 +32,19 @@ export const POST = withAuth(async (request, session) => {
         const jsonBody = await parseGrowthOSJsonBody(request);
         if (!jsonBody.success) {
             logger.security("Invalid JSON - GrowthOS Export API", {
-                ...buildSecurityContext(session, request),
-                endpoint: "/api/growthos/kits/export",
+                ...getGrowthOSSecurityLogContext(session, request, "/api/growthos/kits/export"),
             }, "medium");
-            return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+            return ("response" in jsonBody && jsonBody.response)
+                || NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
         }
 
         const validation = validateAPIInput(GrowthOSExportRequestSchema, jsonBody.data);
         if (!validation.success) {
             const errorMsg = "error" in validation ? validation.error : "Invalid input";
             logger.security("GrowthOS Export Input Validation Failed", {
-                ...buildSecurityContext(session, request),
-                endpoint: "/api/growthos/kits/export",
-                error: errorMsg,
+                ...getGrowthOSSecurityLogContext(session, request, "/api/growthos/kits/export", {
+                    ...getGrowthOSBoundedStringContext("validationError", errorMsg),
+                }),
             }, "medium");
             return NextResponse.json({ error: "Invalid input", details: errorMsg }, { status: 400 });
         }
@@ -52,9 +52,9 @@ export const POST = withAuth(async (request, session) => {
 
         if (!verifyTenantAccess(session, session.tId, session.sId, request)) {
             logger.security("Tenant Access Violation - GrowthOS Export API", {
-                ...buildSecurityContext(session, request),
-                endpoint: "/api/growthos/kits/export",
-                attemptedKitId: kitId,
+                ...getGrowthOSSecurityLogContext(session, request, "/api/growthos/kits/export", {
+                    ...getGrowthOSBoundedStringContext("attemptedKitId", kitId),
+                }),
             }, "critical");
             return NextResponse.json({ error: "Forbidden" }, { status: 403 });
         }
@@ -144,9 +144,9 @@ export const POST = withAuth(async (request, session) => {
             },
         }, { status: 200 });
     } catch (error) {
-        logger.error("GrowthOS Export API error", error, {
+        logGrowthOSApiFailure("GrowthOS Export API error", "growthos_export_api_failed", error, {
             endpoint: "/api/growthos/kits/export",
-            userId: session?.uId || session?.user?.id,
+            ...getGrowthOSBoundedStringContext("userId", session?.uId || session?.user?.id),
         });
         return NextResponse.json({ error: "Growth Kit export failed" }, { status: 500 });
     }

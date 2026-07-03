@@ -7,7 +7,8 @@ import WebsiteButton from './WebsiteButton';
 export default function StickyCta() {
   const t = useTranslations('Website');
   const [enabled, setEnabled] = useState(false);
-  const [visible, setVisible] = useState(false);
+  const [pastStart, setPastStart] = useState(false);
+  const [nearStop, setNearStop] = useState(false);
 
   useEffect(() => {
     const media = window.matchMedia('(min-width: 768px)');
@@ -21,33 +22,68 @@ export default function StickyCta() {
 
   useEffect(() => {
     if (!enabled) {
-      setVisible(false);
+      setPastStart(false);
+      setNearStop(false);
       return;
     }
 
-    const handleScroll = () => {
-      const scrollPercent = window.scrollY / (document.documentElement.scrollHeight - window.innerHeight);
-      // Show after 25% scroll, hide in last 15% (FinalCta is visible)
-      setVisible(scrollPercent > 0.25 && scrollPercent < 0.85);
+    const startTarget = document.getElementById('website-sticky-cta-start');
+    const stopTarget = document.getElementById('website-sticky-cta-stop');
+
+    if (!startTarget || !stopTarget || !('IntersectionObserver' in window)) {
+      setPastStart(false);
+      setNearStop(false);
+      return;
+    }
+
+    const syncFromRects = () => {
+      const startRect = startTarget.getBoundingClientRect();
+      const stopRect = stopTarget.getBoundingClientRect();
+      setPastStart(startRect.bottom <= 80);
+      setNearStop(stopRect.top < window.innerHeight + 1000);
     };
 
-    handleScroll();
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => window.removeEventListener('scroll', handleScroll);
+    const startObserver = new IntersectionObserver(
+      ([entry]) => {
+        setPastStart(entry.boundingClientRect.bottom <= 80 && !entry.isIntersecting);
+      },
+      { rootMargin: '-80px 0px 0px 0px', threshold: 0 },
+    );
+
+    const stopObserver = new IntersectionObserver(
+      ([entry]) => {
+        setNearStop(entry.isIntersecting || entry.boundingClientRect.top < window.innerHeight + 1000);
+      },
+      { rootMargin: '0px 0px 1000px 0px', threshold: 0 },
+    );
+
+    syncFromRects();
+    const delayedSync = window.setTimeout(syncFromRects, 120);
+    startObserver.observe(startTarget);
+    stopObserver.observe(stopTarget);
+
+    return () => {
+      window.clearTimeout(delayedSync);
+      startObserver.disconnect();
+      stopObserver.disconnect();
+    };
   }, [enabled]);
 
   if (!enabled) return null;
+
+  const visible = pastStart && !nearStop;
 
   return (
     <div
       className="ws-sticky-cta"
       style={{
         position: 'fixed',
-        bottom: 0,
-        left: 0,
-        right: 0,
+        bottom: '20px',
+        left: '50%',
+        right: 'auto',
         zIndex: 90,
-        transform: visible ? 'translateY(0)' : 'translateY(100%)',
+        width: 'min(calc(100vw - 32px), 760px)',
+        transform: visible ? 'translate3d(-50%, 0, 0)' : 'translate3d(-50%, calc(100% + 32px), 0)',
         transition: 'transform 0.3s ease',
         pointerEvents: visible ? 'auto' : 'none',
       }}
@@ -58,12 +94,15 @@ export default function StickyCta() {
           backgroundColor: 'var(--ws-bg-sticky)',
           backdropFilter: 'blur(12px)',
           WebkitBackdropFilter: 'blur(12px)',
-          borderTop: '1px solid var(--ws-border-default)',
-          padding: '12px 16px',
+          border: '1px solid var(--ws-border-default)',
+          borderRadius: '999px',
+          minHeight: '62px',
+          padding: '8px 10px 8px 18px',
           display: 'flex',
           alignItems: 'center',
-          justifyContent: 'center',
-          gap: '12px',
+          justifyContent: 'space-between',
+          gap: '14px',
+          boxShadow: 'var(--ws-shadow-lg)',
         }}
       >
         <span
@@ -72,6 +111,8 @@ export default function StickyCta() {
             fontWeight: 500,
             color: 'var(--ws-text-secondary)',
             display: 'none',
+            maxWidth: '760px',
+            lineHeight: 1.35,
           }}
           className="ws-sticky-cta-text"
         >

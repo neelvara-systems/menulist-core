@@ -4,11 +4,12 @@ import { FEATURE_FLAGS } from '@config/features';
 import { emitDeploymentBadgeToggle } from '@constant/deploymentDebug';
 import { PERMISSIONS } from '@constant/permissions';
 import { ECOMSAI_PLATFORM_USER_ROLE, RESELLER_USER_ROLE } from '@constant/user';
+import { AUTH_ACCOUNT_REQUEST_POLICY, readAuthAccountResponse } from '@lib/auth/accountClientResponses';
 import { signOutSession } from '@lib/auth/client';
+import { getBoundedAuthStringContext, logAuthFailure } from '@lib/auth/authDiagnostics';
 import { refreshFirebaseAuthClaims } from '@lib/auth/firebaseAuthSync';
 import { getStoreContextName } from '@lib/businessIdentity/names';
 import { setForceDesktopRoute } from '@lib/mobile/forceDesktopMode';
-import { logger } from '@lib/monitoring/logger';
 import { canManageLocationSettings } from '@lib/multiOutlet/locationAccess';
 import { getAccessibleStoreSummaries } from '@lib/multiOutlet/storeSwitchAccess';
 import { hasAnyPermission } from '@lib/permissions/permissionRequirements';
@@ -124,6 +125,7 @@ const MobileResellerOnboardingScreen = dynamic(() => import('./MobileResellerOnb
 
 const platformInternalScreens: MobilePlatformInternalScreenKey[] = [
     'entityBlocks',
+    'founderMonitor',
     'ownerBusinessAssistantMonitor',
     'platformTenants',
     'platformStores',
@@ -155,6 +157,22 @@ const allPlatformWrappedScreens: MobilePlatformInternalScreenKey[] = [
     ...platformInternalScreens,
     ...answerlatticeInternalScreens,
 ];
+
+const throwMobileAccountRejectedResponse = async (
+    response: Response,
+    kind: 'profile_update' | 'password_change',
+    code: 'mobile_account_profile_update_rejected' | 'mobile_account_password_change_rejected',
+) => {
+    try {
+        await readAuthAccountResponse(response, kind);
+    } catch {
+        // The shared parser logs malformed rejection bodies; mobile keeps a local status-only code.
+    }
+
+    const error = new Error(code) as Error & { status?: number };
+    error.status = response.status;
+    throw error;
+};
 
 const isPlatformInternalScreen = (screen: MoreSubScreen): screen is MobilePlatformInternalScreenKey => (
     allPlatformWrappedScreens.includes(screen as MobilePlatformInternalScreenKey)
@@ -209,6 +227,7 @@ export type MoreSubScreen =
     | 'answerlatticeHub'
     | 'resellerHub'
     | 'entityBlocks'
+    | 'founderMonitor'
     | 'ownerBusinessAssistantMonitor'
     | 'platformTenants'
     | 'platformStores'
@@ -241,11 +260,12 @@ export type MoreSubScreen =
 interface MobileMoreScreenProps {
     initialScreen?: MoreSubScreen;
     onOpenMenuTab?: () => void;
+    onOpenShareTab?: () => void;
     onRootStateChange?: (isRoot: boolean) => void;
     onScreenChange?: (screen: MoreSubScreen) => void;
 }
 
-export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab, onRootStateChange, onScreenChange }: MobileMoreScreenProps) {
+export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab, onOpenShareTab, onRootStateChange, onScreenChange }: MobileMoreScreenProps) {
     const t = useTranslations('MobileMore');
     const tBusiness = useTranslations('BusinessSettings');
     const tFeedback = useTranslations('FeedbackInbox');
@@ -367,21 +387,29 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
                 setActiveStoreContext(null);
             } else {
                 const res = await fetch('/api/auth/switch-store', {
+                    ...AUTH_ACCOUNT_REQUEST_POLICY,
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ targetStoreId }),
                 });
                 if (!res.ok) {
-                    const data = await res.json().catch(() => ({}));
-                    throw new Error(data.error || 'Failed to switch branch');
+                    const switchError = new Error('mobile_more_store_switch_rejected') as Error & { status?: number };
+                    switchError.status = res.status;
+                    throw switchError;
                 }
                 await refreshFirebaseAuthClaims(targetStoreId);
                 setActiveStoreContext(targetStoreId);
             }
             Toast.show({ content: 'Switched branch', duration: 1500, icon: 'success' });
-        } catch (error: any) {
-            logger.error('[MobileMore] Store switch failed', error);
-            Toast.show({ content: error?.message || 'Failed to switch branch', duration: 2200 });
+        } catch (error) {
+            logAuthFailure('mobile_more_store_switch_failed', error, {
+                surface: 'mobile_more',
+                flow: 'store_switch',
+                returningToLoginStore: targetStoreId === loginStoreId,
+                ...getBoundedAuthStringContext('targetStoreId', targetStoreId),
+                ...getBoundedAuthStringContext('loginStoreId', loginStoreId),
+            });
+            Toast.show({ content: 'Failed to switch branch', duration: 2200 });
         } finally {
             setIsSwitchingStore(false);
         }
@@ -459,7 +487,7 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
         if (['resellerDashboard', 'resellerManagement', 'resellerOnboarding'].includes(currentScreen)) {
             return 'resellerHub';
         }
-        if (['ownerBusinessAssistantMonitor', 'costPosture', 'messagingOnboardingMonitor', 'ownerNotificationMonitor', 'platformNotificationMonitor'].includes(currentScreen)) {
+        if (['founderMonitor', 'ownerBusinessAssistantMonitor', 'costPosture', 'messagingOnboardingMonitor', 'ownerNotificationMonitor', 'platformNotificationMonitor'].includes(currentScreen)) {
             return 'main';
         }
         if (isPlatformInternalScreen(currentScreen)) {
@@ -534,6 +562,7 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
     ];
 
     const platformMonitoringItems: MoreListItem[] = isPlatformAdmin ? [
+        ...(FEATURE_FLAGS.ENABLE_PLATFORM_FOUNDER_MONITOR ? [{ key: 'founderMonitor', icon: <LuBarChart3 color={token.colorSuccess} size={20} />, keywords: ['founder monitor', 'mrr', 'revenue', 'stores', 'onboarding', 'store truth'], label: 'Founder Monitor', description: 'Trusted live stores, revenue movement, onboarding, truth, distribution, and support risk.', onClick: () => openSubScreen('founderMonitor') }] : []),
         { key: 'opsControlRoom', icon: <LuActivity color={token.colorError} size={20} />, keywords: ['ops', 'safe mode', 'alerts', 'republish'], label: 'Ops Control Room', description: 'SAFE_MODE, alerts, adoption pulse, integrity, and recovery controls.', onClick: () => openSubScreen('opsControlRoom') },
         { key: 'ownerBusinessAssistantMonitor', icon: <LuMessageCircle color={token.colorPrimary} size={20} />, keywords: ['business health', 'assistant', 'owner questions', 'answers', 'ai cost', 'action usage'], label: 'Business Health Monitor', description: 'Owner questions, answers, support gaps, action usage, and cost.', onClick: () => openSubScreen('ownerBusinessAssistantMonitor') },
         ...(FEATURE_FLAGS.ENABLE_PLATFORM_COST_POSTURE ? [{ key: 'costPosture', icon: <LuDollarSign color={token.colorSuccess} size={20} />, keywords: ['cost', 'firebase cost', 'ai cost', 'posture', 'guardrails'], label: 'Cost Posture', description: 'Cost guardrails, expensive-operation signals, and platform cost posture.', onClick: () => openSubScreen('costPosture') }] : []),
@@ -626,6 +655,7 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
         if (screen === 'specialMenus') return canManageMenu;
         if (screen === 'todayHistory') return canManageDailyActions && FEATURE_FLAGS.ENABLE_PAST_ACTIVITY_HISTORY;
         if (canUseResellerScreens && ['resellerHub', 'resellerDashboard', 'resellerManagement', 'resellerOnboarding'].includes(screen)) return true;
+        if (screen === 'founderMonitor') return isPlatformAdmin && FEATURE_FLAGS.ENABLE_PLATFORM_FOUNDER_MONITOR;
         if (screen === 'costPosture') return isPlatformAdmin && FEATURE_FLAGS.ENABLE_PLATFORM_COST_POSTURE;
         if (screen === 'assetTemplates') return isPlatformAdmin && FEATURE_FLAGS.ENABLE_PLATFORM_ASSET_TEMPLATE_MANAGER;
         if (screen === 'answerlatticeIntake') return isPlatformAdmin && FEATURE_FLAGS.ENABLE_ANSWERLATTICE_INTAKE_PLATFORM_MONITOR;
@@ -748,7 +778,7 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
     else if (subScreen === 'locations') subScreenContent = <MobileLocationsScreen onBack={() => setSubScreen('main')} onOpenBilling={() => setSubScreen('billing')} />;
     else if (subScreen === 'users') subScreenContent = <MobileUsersScreen onBack={() => setSubScreen('main')} />;
     else if (subScreen === 'dashboard') subScreenContent = <MobileDashboardScreen onBack={() => setSubScreen('main')} onOpenBusinessHealth={() => setSubScreen('businessHealth')} onOpenDesignEditor={() => setSubScreen('designEditor')} />;
-    else if (subScreen === 'businessHealth') subScreenContent = <MobileBusinessHealthScreen onBack={() => setSubScreen('main')} />;
+    else if (subScreen === 'businessHealth') subScreenContent = <MobileBusinessHealthScreen onBack={() => setSubScreen('main')} onOpenMenuTab={onOpenMenuTab} onOpenMoreScreen={openSubScreen} onOpenShareTab={onOpenShareTab} />;
     else if (subScreen === 'aiMenuManager') subScreenContent = <MobileAiMenuManagerScreen onBack={() => setSubScreen('main')} />;
     else if (subScreen === 'printAssets') subScreenContent = <MobilePrintAssetsScreen onBack={() => setSubScreen('main')} onOpenDesignEditor={() => setSubScreen('designEditor')} onOpenPrintMenu={() => setSubScreen('printMenu')} />;
     else if (subScreen === 'printMenu') subScreenContent = <MobileMenuCardExportScreen initialProjectId={selectedProjectId} onBack={() => setSubScreen('main')} />;
@@ -1063,6 +1093,16 @@ function MobileAccountProfileScreen({
     const [saving, setSaving] = useState(false);
 
     const phoneLabel = [dialCode, phoneNumber].filter(Boolean).join(' ').trim();
+    const buildProfileLogContext = (flow: string) => ({
+        surface: 'mobile_account_profile',
+        flow,
+        hasEmail: Boolean(email),
+        hasPhoneNumber: Boolean(phoneNumber),
+        hasDraftEmail: Boolean(draftEmail.trim()),
+        hasDraftPhone: Boolean(draftPhone.trim()),
+        ...getBoundedAuthStringContext('staffAuthMode', staffAuthMode),
+        ...getBoundedAuthStringContext('draftName', draftName),
+    });
     const openEditProfile = () => {
         setDraftCountryCode(countryCode || DEFAULT_PHONE_COUNTRY_CODE);
         setDraftDialCode(dialCode || '');
@@ -1091,6 +1131,7 @@ function MobileAccountProfileScreen({
         setSaving(true);
         try {
             const res = await fetch('/api/auth/update-profile', {
+                ...AUTH_ACCOUNT_REQUEST_POLICY,
                 body: JSON.stringify({
                     countryCode: nextCountryCode,
                     dialCode: nextDialCode,
@@ -1101,10 +1142,10 @@ function MobileAccountProfileScreen({
                 headers: { 'Content-Type': 'application/json' },
                 method: 'POST',
             });
-            const data = await res.json();
-            if (!res.ok || !data.success) {
-                throw new Error(data.error || 'Could not update profile.');
+            if (!res.ok) {
+                await throwMobileAccountRejectedResponse(res, 'profile_update', 'mobile_account_profile_update_rejected');
             }
+            await readAuthAccountResponse(res, 'profile_update');
 
             onProfileSaved({
                 countryCode: nextCountryCode,
@@ -1115,8 +1156,9 @@ function MobileAccountProfileScreen({
             });
             setEditOpen(false);
             Toast.show({ content: 'Profile updated.', duration: 1500 });
-        } catch (error: any) {
-            Toast.show({ content: error?.message || 'Could not update profile.', duration: 2200 });
+        } catch (error) {
+            logAuthFailure('mobile_account_profile_update_failed', error, buildProfileLogContext('update_profile'));
+            Toast.show({ content: 'Could not update profile.', duration: 2200 });
         } finally {
             setSaving(false);
         }
@@ -1235,6 +1277,14 @@ function MobileAccountAccessScreen({
     const [newPassword, setNewPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [saving, setSaving] = useState(false);
+    const buildAccountAccessLogContext = (flow: string) => ({
+        surface: 'mobile_account_access',
+        flow,
+        hasCurrentPassword: Boolean(currentPassword),
+        hasNewPassword: Boolean(newPassword),
+        hasConfirmPassword: Boolean(confirmPassword),
+        ...getBoundedAuthStringContext('userLoginLabel', userLoginLabel),
+    });
 
     const resetForm = () => {
         setCurrentPassword('');
@@ -1259,19 +1309,21 @@ function MobileAccountAccessScreen({
         setSaving(true);
         try {
             const res = await fetch('/api/auth/change-password', {
+                ...AUTH_ACCOUNT_REQUEST_POLICY,
                 body: JSON.stringify({ currentPassword, newPassword }),
                 headers: { 'Content-Type': 'application/json' },
                 method: 'POST',
             });
-            const data = await res.json();
-            if (!res.ok || !data.success) {
-                throw new Error(data.error || 'Could not change password.');
+            if (!res.ok) {
+                await throwMobileAccountRejectedResponse(res, 'password_change', 'mobile_account_password_change_rejected');
             }
+            await readAuthAccountResponse(res, 'password_change');
             resetForm();
             Toast.show({ content: 'Password changed.', duration: 1500 });
             onBack();
-        } catch (error: any) {
-            Toast.show({ content: error?.message || 'Could not change password.', duration: 2200 });
+        } catch (error) {
+            logAuthFailure('mobile_account_password_change_failed', error, buildAccountAccessLogContext('change_password'));
+            Toast.show({ content: 'Could not change password.', duration: 2200 });
         } finally {
             setSaving(false);
         }

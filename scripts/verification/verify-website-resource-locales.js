@@ -51,6 +51,10 @@ function assertIncludes(content, needle, label) {
   assert(content.includes(needle), `${label} must include ${needle}`);
 }
 
+function assertNotIncludes(content, needle, label) {
+  assert(!content.includes(needle), `${label} must not include ${needle}`);
+}
+
 function assertText(value, label) {
   assert(typeof value === 'string' && value.trim().length > 0, `${label} is required`);
 }
@@ -241,6 +245,7 @@ function verifyDefaultResourceRoutes() {
   const hubRoute = read('src/app/(website)/resources/page.tsx');
   const articleRoute = read('src/app/(website)/resources/[slug]/page.tsx');
   const shell = read('src/components/website/resources/ResourcePageShell.tsx');
+  const articleSection = read('src/components/website/resources/ArticleSection.tsx');
   const defaultRoutes = [
     ['default resource hub route', hubRoute],
     ['default resource article route', articleRoute],
@@ -257,6 +262,29 @@ function verifyDefaultResourceRoutes() {
   assertIncludes(shell, `lang={WEBSITE_RESOURCE_DEFAULT_LOCALE}`, 'default resource locale boundary language wrapper');
   assertIncludes(shell, `dir="ltr"`, 'default resource locale boundary direction');
   assertIncludes(shell, 'public/locales/menulist.ai/en-US.json', 'default resource locale boundary messages');
+  assertIncludes(articleSection, 'copyResourceChecklistToClipboard', 'resource article checklist copy helper');
+  assertIncludes(articleSection, 'website_resource_checklist_copy_unavailable', 'resource article checklist clipboard unavailable code');
+  assertIncludes(articleSection, 'website_resource_checklist_copy_failed', 'resource article checklist copy diagnostics');
+  assertIncludes(articleSection, 'hasClipboardWrite', 'resource article checklist copy support metadata');
+  assertIncludes(articleSection, 'hasCopyFallback', 'resource article checklist copy fallback metadata');
+  assertIncludes(articleSection, 'clipboardWriteError', 'resource article checklist copy falls through after Clipboard API rejection');
+  assertIncludes(articleSection, 'hasResourceChecklistCopyFallback()', 'resource article checklist copy checks fallback before textarea setup');
+  assertIncludes(articleSection, "const copied = document.execCommand('copy');", 'resource article checklist fallback acknowledgement');
+  assertNotIncludes(
+    articleSection,
+    "await navigator.clipboard.writeText(checklistText);\n        return;",
+    'resource article checklist copy must not stop at rejected Clipboard API writes',
+  );
+  assertNotIncludes(
+    articleSection,
+    'await navigator.clipboard.writeText(checklistText);\n            setCopied(true);',
+    'resource article checklist copy direct success flow',
+  );
+  assertNotIncludes(
+    articleSection,
+    '} catch {\n            setCopied(false);\n        }',
+    'resource article checklist copy silent catch',
+  );
   assert(
     WEBSITE_RESOURCE_DEFAULT_LOCALE === DEFAULT_WEBSITE_LANGUAGE,
     'Default website resource locale must match the public default website language',

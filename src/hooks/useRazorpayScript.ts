@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { logPaymentFailure } from './paymentDiagnostics';
 
 const useRazorpayScript = () => {
   const [loaded, setLoaded] = useState(false);
@@ -21,7 +22,7 @@ const useRazorpayScript = () => {
     };
 
     script.onerror = () => {
-      console.error('Razorpay Checkout script failed to load.');
+      logPaymentFailure('payment_razorpay_script_load_failed');
       setLoaded(false);
     };
 

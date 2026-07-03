@@ -38,7 +38,7 @@ Only after these are true, and after the founder decides to start non-code setup
 | Structured data represents visible page facts and does not include fake reviews, hidden FAQs, invented ratings, or unsupported claims. | `src/components/website/SchemaMarkup.tsx`, `src/components/website/WebsitePageStructuredData.tsx` | Verify before external setup |
 | Public website copy stays inside approved claim boundaries. | `public/locales/menulist.ai/*.json`, `public/llms.txt`, `public/llms-full.txt`, `__docs__/main-website/` | Verify before external setup |
 | Resource pages have reviewed locale coverage before being discoverable. | `scripts/verification/verify-website-resource-locales.js`, `src/lib/seo/discoveryPolicy.ts` | Verify before external setup |
-| Documentation and changelog are updated for any SEO/public discovery change. | `__docs__/menulist-seo-launch/`, `__docs__/main-website/`, `__docs__/discovery-infrastructure/`, `__docs__/CHANGELOG.md` | Ongoing |
+| Documentation and changelog are updated for any SEO/public discovery change. | `__docs__/menulist-seo-launch/`, `__docs__/main-website/`, `__docs__/discovery-infrastructure/`, `__docs__/changelog.md` | Ongoing |
 
 ## Default Verification Commands
 
@@ -60,13 +60,13 @@ Do not run production builds, Vercel deploys, or external setup unless explicitl
 
 ## Current Baseline
 
-As of June 23, 2026, after validating the external ChatGPT SEO audit:
+As of June 30, 2026, after validating current Google/OpenAI/Bing/AI crawler guidance and live hosts:
 
 - `menulist.online` robots/sitemap endpoints returned 200 in live curl checks, but they advertise `menulist.ai` canonical discovery URLs.
-- `menulist.ai` currently returns a `/lander` shell, not the MenuList app, so production host alignment is a blocker before Search Console.
+- `menulist.ai` currently returns a `/lander` shell and `/lander` sitemap, not the MenuList app, so production host alignment is still a blocker before Search Console.
 - `/signin` and `/forgot-password` now have explicit noindex metadata.
 - Middleware now emits `X-Robots-Tag: noindex, nofollow` for auth/app/API/internal/create-menu preview and success paths.
-- Platform robots/discovery policy now includes the missing internal/auth path prefixes.
+- Platform robots/discovery policy includes internal/auth path prefixes, OpenAI ad-validation crawler coverage, and matching named-crawler disallows for tenant robots.
 - Missing public tenant project/menu slug paths now emit `noindex, follow`, canonicalize to the tenant or outlet root, and remain out of tenant sitemap while keeping the customer fallback ladder.
 - Stale item/category detail paths under a real menu now emit `noindex, follow` and canonicalize to the current menu page.
 

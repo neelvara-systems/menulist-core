@@ -24,6 +24,10 @@ import {
     campaigncueFirestoreDatabaseId,
     shouldUseSharedCampaignCueFirebase,
 } from "./campaigncueConfig";
+import {
+    getBoundedFirebaseAdminStringContext,
+    logFirebaseAdminFailure,
+} from "./firebaseAdminDiagnostics";
 
 const getCampaignCueProjectId = () =>
     CAMPAIGNCUE_FIREBASE_PROJECT_ID_ENV_KEYS.map((key) => process.env[key]).find(Boolean) ||
@@ -54,11 +58,11 @@ function getAdminCredential(prefix: CampaignCueAdminCredentialPrefix): admin.cre
             clientEmail,
         });
     } catch (error) {
-        if (process.env.NODE_ENV !== "production") {
-            console.warn(`[CampaignCue Firebase Admin] Ignoring invalid ${prefix} credentials.`, {
-                error: error instanceof Error ? error.message : String(error),
-            });
-        }
+        logFirebaseAdminFailure("campaigncue_admin_env_credential_invalid", error, {
+            credentialSource: "env",
+            product: "campaigncue",
+            usesProductCredential: prefix === CAMPAIGNCUE_FIREBASE_CREDENTIAL_PREFIX,
+        }, { developmentOnly: true });
         return null;
     }
 }
@@ -86,11 +90,11 @@ function getCampaignCueFileCredential(): admin.credential.Credential | null {
             clientEmail,
         });
     } catch (error) {
-        if (process.env.NODE_ENV !== "production") {
-            console.warn(`[CampaignCue Firebase Admin] Could not load ${CAMPAIGNCUE_FIREBASE_ENV.GOOGLE_APPLICATION_CREDENTIALS}.`, {
-                error: error instanceof Error ? error.message : String(error),
-            });
-        }
+        logFirebaseAdminFailure("campaigncue_admin_file_credential_load_failed", error, {
+            credentialSource: "file",
+            product: "campaigncue",
+            ...getBoundedFirebaseAdminStringContext("credentialPath", credentialPath),
+        }, { developmentOnly: true });
         return null;
     }
 }
@@ -110,9 +114,12 @@ function initializeLocalCampaignCueAdcApp(appName?: string): admin.app.App | nul
             ? admin.initializeApp(options, appName)
             : admin.initializeApp(options);
     } catch (error) {
-        console.warn("[CampaignCue Firebase Admin] Local ADC initialization failed.", {
-            error: error instanceof Error ? error.message : String(error),
-        });
+        logFirebaseAdminFailure("campaigncue_admin_local_adc_initialize_failed", error, {
+            credentialSource: "adc",
+            hasProjectId: Boolean(projectId),
+            hasStorageBucket: Boolean(getCampaignCueStorageBucket()),
+            product: "campaigncue",
+        }, { developmentOnly: true });
         return null;
     }
 }

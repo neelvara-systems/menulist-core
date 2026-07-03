@@ -19,6 +19,30 @@ Scanned the entire `src/` directory for:
 
 ---
 
+## Current Status — July 2, 2026
+
+This document preserves the original Feb 7 audit below. The current production-readiness state is source-gated by:
+
+```bash
+npm run verify:system-strengthening
+```
+
+| Finding | Current Status | Current Source Evidence |
+| ------- | -------------- | ----------------------- |
+| SS-1 GA analytics API auth | Closed | `scripts/verification/verify-system-strengthening-boundary.js` verifies active analytics handlers are wrapped by `withAuth`; GA reads also keep read rate limiting, analytics permission checks, property scoping, and bounded analytics failure logging. |
+| SS-2 stale DAL session caching | Closed | The verifier checks the original 10 DAL files no longer contain module-level `let session` caches or `session = Boolean(session)` reuse and still fetch through `getActiveSession()`. |
+| SS-3 batch image worker auth | Closed | The worker route requires `project-id`, `BATCH_IMAGE_GENERATION_WORKER_SECRET`, `timingSafeEqual`, bounded JSON, schema validation, job scope checks, AI capacity, and accounting before provider work. |
+| SS-4 screen signal rate limiting | Closed | `/api/screen/seen` now rejects oversized declared bodies, rate-limits hashed IP before body parse, rate-limits hashed token before the write, and performs only the daily signal update. |
+| SS-5 AI route rate limiting | Closed | The original AI route group is guarded by SAFE_MODE, rate limiting helpers, bounded bodies where applicable, validation, permission checks, capacity checks, and accounting/source logging. |
+| SS-6 chat feedback full-array rewrite | Accepted | `updateMessageFeedback()` keeps feedback on the bounded session message array by design so reopened chat sessions preserve feedback with the original message shape. |
+| SS-7 subscription read/write side effect | Closed | Browser reads return no active subscription after grace expires without mutating billing docs; server-owned expiry writes remain the authoritative state transition and entitlement sync path. |
+| SS-8 preset cascade sequential writes | Closed | `removePresetFromAllCategories()` stages changed project documents in Firestore batches, commits pending writes, then revalidates public cache for changed projects. |
+| SS-9 API/DAL console logging | Closed | The verifier scans `src/app/api` and `src/database` and fails on `console.log`, `console.warn`, or `console.error`. |
+
+The historical findings below are retained for audit traceability and should not be read as current open work unless the source gate fails.
+
+---
+
 ## 🔴 CRITICAL FINDINGS (Security / Data Integrity)
 
 ### SS-1: GA Analytics API Routes — ZERO Authentication
@@ -305,11 +329,13 @@ Per Security Implementation Rules (Rule 18): MUST use `secureLog()`/`secureError
 
 | Hook | File | Current | Better |
 |------|------|---------|--------|
-| `useMasterJobStatus` | `src/hooks/useMasterJobStatus.ts:58` | `query(collection, where(...), limit(1))` | Direct doc listener if job ID known |
+| `useMasterJobStatus` | `src/hooks/useMasterJobStatus.ts` | Authenticated `/api/projects/master-job-status` polling with bounded response parsing | Keep route polling unless a cheaper server-pushed signal exists |
 | `useImageBatchJobListener` | `src/hooks/useImageBatchJobListener.ts:45` | `onSnapshot(collection)` | Filter by active status |
 | `useIngestionJobsListener` | `src/hooks/useIngestionJobsListener.ts:31` | `onSnapshot(collection)` | Filter by active status |
 
 **Fix:** Not urgent. These are admin-facing hooks that only run when a user is in the editor. The listener count is naturally bounded by the number of active admin sessions. **Defer unless scaling beyond 1000 concurrent admin users.**
+
+**Diagnostics:** Listener setup/snapshot failures, polling failures, and dev-only debug breadcrumbs use bounded hook diagnostics/context with tenant/store/project/job presence-length metadata only. Master job status polling now validates the 8KB response envelope before updating outlet lock state. This changes no listener query shape or Firestore read volume.
 
 ---
 

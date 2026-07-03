@@ -7,13 +7,24 @@ import {
     updateProductSubscription,
     resolveBillingScopeFromSession,
 } from "@lib/billing/productBillingServer";
+import {
+    getBoundedRazorpaySecurityContext,
+    getBoundedRazorpayStringContext,
+    getRazorpayFailureLogData,
+    logRazorpayNonBlockingFailure,
+} from "@lib/billing/razorpayDiagnostics";
 import { isAnswerlatticeBillingProduct, normalizeBillingProductId } from "@lib/billing/productBillingPlans";
 import { validateTransition } from "@lib/billing/subscriptionStateMachine";
 import { logger } from "@lib/monitoring/logger";
+import {
+    recordFounderRevenueMovement,
+    recordFounderSubscriptionMrrChange,
+    recordFounderSubscriptionNewMrr,
+} from "@lib/ops/founderRevenueReadModel";
 import { razorpayClient } from "@lib/razorpay/razorpay";
 import { markResellerTransactionsActiveForSubscription } from "@lib/reseller/resellerLedger";
+import { readBoundedJsonBody } from "@lib/security/boundedRequestBody";
 import { validateAPIInput } from "@lib/security/inputValidation";
-import { buildSecurityContext } from "@lib/security/securityContext";
 import { VerifyPaymentRequestSchema } from "@lib/validation/apiSchemas";
 import { FirestoreSubscriptionDoc } from "@type/razorpay";
 import { Timestamp } from "firebase/firestore";
@@ -23,28 +34,29 @@ import { createHmac, timingSafeEqual } from "crypto";
 import { verifyTenantAccess, withAuth } from "../../../../middleware/auth";
 
 const LOG_FILE = "razorpay-subscription.log";
+const RAZORPAY_PAYMENT_ACTION_MAX_BODY_BYTES = 8 * 1024;
 
 const summarizePaymentForLog = (payment: any) => ({
-    paymentId: payment?.id,
+    ...getBoundedRazorpayStringContext('paymentId', payment?.id),
     status: payment?.status,
     amount: payment?.amount,
     currency: payment?.currency,
     method: payment?.method,
-    invoiceId: payment?.invoice_id,
+    ...getBoundedRazorpayStringContext('invoiceId', payment?.invoice_id),
     hasCard: Boolean(payment?.card),
     hasUpi: Boolean(payment?.vpa || payment?.acquirer_data?.upi_transaction_id),
 });
 
 const summarizeSubscriptionForLog = (subscription: any) => ({
-    subscriptionId: subscription?.id,
+    ...getBoundedRazorpayStringContext('subscriptionId', subscription?.id),
     status: subscription?.status,
     currentStart: subscription?.current_start,
     currentEnd: subscription?.current_end,
     paidCount: subscription?.paid_count,
     totalCount: subscription?.total_count,
     quantity: subscription?.quantity,
-    planId: subscription?.notes?.planId,
-    interval: subscription?.notes?.interval,
+    ...getBoundedRazorpayStringContext('planId', subscription?.notes?.planId),
+    ...getBoundedRazorpayStringContext('interval', subscription?.notes?.interval),
 });
 
 const verifyRazorpaySubscriptionSignature = (
@@ -71,7 +83,11 @@ export const POST = withAuth(async (request, session) => {
 
     try {
         // 2. 🔒 INPUT VALIDATION: Prevent injection attacks (OWASP A03)
-        const rawData = await request.json();
+        const bodyResult = await readBoundedJsonBody(request, RAZORPAY_PAYMENT_ACTION_MAX_BODY_BYTES, {
+            invalidJsonMessage: 'Invalid input',
+        });
+        if (bodyResult.ok === false) return bodyResult.response;
+        const rawData = bodyResult.data as any;
         const validation = validateAPIInput(VerifyPaymentRequestSchema, rawData);
 
         if (!validation.success) {
@@ -79,11 +95,11 @@ export const POST = withAuth(async (request, session) => {
 
             // Log to Sentry (CRITICAL - payment verification)
             logger.security('Input Validation Failed', {
-                ...buildSecurityContext(session, request),
+                ...getBoundedRazorpaySecurityContext(session, request),
                 endpoint: '/api/razorpay/verify-subscription',
                 error: errorMsg,
                 attemptedData: {
-                    productId: rawData?.productId,
+                    ...getBoundedRazorpayStringContext('productId', rawData?.productId),
                     hasPaymentId: !!rawData?.razorpay_payment_id,
                     hasSubscriptionId: !!rawData?.razorpay_subscription_id,
                 },
@@ -98,10 +114,10 @@ export const POST = withAuth(async (request, session) => {
         const { razorpay_payment_id, razorpay_subscription_id, razorpay_signature } = validation.data;
         if (!verifyRazorpaySubscriptionSignature(razorpay_payment_id, razorpay_subscription_id, razorpay_signature)) {
             logger.security('Invalid Subscription Payment Signature', {
-                ...buildSecurityContext(session, request),
+                ...getBoundedRazorpaySecurityContext(session, request),
                 endpoint: '/api/razorpay/verify-subscription',
                 error: 'Razorpay checkout signature mismatch',
-                subscriptionId: razorpay_subscription_id,
+                ...getBoundedRazorpayStringContext('subscriptionId', razorpay_subscription_id),
             }, 'critical');
 
             return NextResponse.json(
@@ -118,18 +134,22 @@ export const POST = withAuth(async (request, session) => {
         const payment = await razorpayClient.payments.fetch(razorpay_payment_id);
         await writeLogEntry({
             logFileName: LOG_FILE,
-            userId: userId,
             logType: 'RAZORPAY_PAYMENT_RESPONSE_VERIFY_SUBSCRIPTION',
-            data: summarizePaymentForLog(payment),
+            data: {
+                ...summarizePaymentForLog(payment),
+                ...getBoundedRazorpayStringContext('userId', userId),
+            },
         });
 
         // Step B: Fetch the full subscription details from Razorpay for accurate date info
         const providerSubscription = await razorpayClient.subscriptions.fetch(razorpay_subscription_id);
         await writeLogEntry({
             logFileName: LOG_FILE,
-            userId: userId,
             logType: 'RAZORPAY_SUBSCRIPTION_RESPONSE_VERIFY_SUBSCRIPTION',
-            data: summarizeSubscriptionForLog(providerSubscription),
+            data: {
+                ...summarizeSubscriptionForLog(providerSubscription),
+                ...getBoundedRazorpayStringContext('userId', userId),
+            },
         });
 
         const productId = normalizeBillingProductId(validation.data.productId || providerSubscription?.notes?.productId);
@@ -157,27 +177,27 @@ export const POST = withAuth(async (request, session) => {
         const internalSub = await getProductSubscriptionById(productId, razorpay_subscription_id);
         await writeLogEntry({
             logFileName: LOG_FILE,
-            userId: userId,
             logType: 'INTERNAL_SUBSCRIPTION_RESPONSE_VERIFY_SUBSCRIPTION',
             data: {
-                subscriptionId: razorpay_subscription_id,
-                productId,
+                ...getBoundedRazorpayStringContext('userId', userId),
+                ...getBoundedRazorpayStringContext('subscriptionId', razorpay_subscription_id),
+                ...getBoundedRazorpayStringContext('productId', productId),
                 found: Boolean(internalSub),
                 status: internalSub?.status,
-                tenantId: internalSub?.tenantId,
-                storeId: internalSub?.storeId,
-                planId: internalSub?.planId,
+                ...getBoundedRazorpayStringContext('tenantId', internalSub?.tenantId),
+                ...getBoundedRazorpayStringContext('storeId', internalSub?.storeId),
+                ...getBoundedRazorpayStringContext('planId', internalSub?.planId),
                 quantity: internalSub?.quantity,
             },
         });
 
         if (providerSubscription?.id !== razorpay_subscription_id) {
             logger.security('Subscription Verification Provider Mismatch', {
-                ...buildSecurityContext(session, request),
+                ...getBoundedRazorpaySecurityContext(session, request),
                 endpoint: '/api/razorpay/verify-subscription',
                 error: 'Fetched provider subscription id mismatch',
-                requestedSubscriptionId: razorpay_subscription_id,
-                fetchedSubscriptionId: providerSubscription?.id,
+                ...getBoundedRazorpayStringContext('requestedSubscriptionId', razorpay_subscription_id),
+                ...getBoundedRazorpayStringContext('fetchedSubscriptionId', providerSubscription?.id),
             }, 'critical');
 
             return NextResponse.json(
@@ -189,12 +209,12 @@ export const POST = withAuth(async (request, session) => {
         const paymentSubscriptionId = String(payment?.subscription_id || '');
         if (payment.status !== 'captured' || paymentSubscriptionId !== razorpay_subscription_id) {
             logger.security('Subscription Payment Verification Failed', {
-                ...buildSecurityContext(session, request),
+                ...getBoundedRazorpaySecurityContext(session, request),
                 endpoint: '/api/razorpay/verify-subscription',
                 error: 'Payment is not captured or does not belong to subscription',
                 paymentStatus: payment.status,
-                paymentSubscriptionId,
-                requestedSubscriptionId: razorpay_subscription_id,
+                ...getBoundedRazorpayStringContext('paymentSubscriptionId', paymentSubscriptionId),
+                ...getBoundedRazorpayStringContext('requestedSubscriptionId', razorpay_subscription_id),
             }, 'critical');
 
             return NextResponse.json(
@@ -205,8 +225,8 @@ export const POST = withAuth(async (request, session) => {
 
         if (!internalSub) {
             logger.error('Internal subscription not found', undefined, {
-                razorpaySubscriptionId: razorpay_subscription_id,
-                userId: userId
+                ...getBoundedRazorpayStringContext('subscriptionId', razorpay_subscription_id),
+                ...getBoundedRazorpayStringContext('userId', userId),
             });
             // The webhook will eventually handle this, but we can't activate it now.
             return NextResponse.json({ success: false, error: "Internal subscription record not found." }, { status: 404 });
@@ -217,12 +237,12 @@ export const POST = withAuth(async (request, session) => {
             && Number(internalSub.storeId) === Number(storeId);
         if (!subscriptionMatchesScope || (!isAnswerlatticeBillingProduct(productId) && !verifyTenantAccess(session, internalSub.tenantId, internalSub.storeId, request))) {
             logger.security('Unauthorized Subscription Verification Attempt', {
-                ...buildSecurityContext(session, request),
+                ...getBoundedRazorpaySecurityContext(session, request),
                 endpoint: '/api/razorpay/verify-subscription',
                 error: 'User attempted to verify subscription for different tenant/store',
-                productId,
-                subscriptionTenantId: internalSub.tenantId,
-                subscriptionStoreId: internalSub.storeId,
+                ...getBoundedRazorpayStringContext('productId', productId),
+                ...getBoundedRazorpayStringContext('subscriptionTenantId', internalSub.tenantId),
+                ...getBoundedRazorpayStringContext('subscriptionStoreId', internalSub.storeId),
             }, 'critical');
 
             return NextResponse.json(
@@ -235,9 +255,9 @@ export const POST = withAuth(async (request, session) => {
         if (internalSub.status === 'active') {
             await safeSyncProductSubscriptionEntitlementFromSubscription(productId, internalSub as FirestoreSubscriptionDoc, 'api:verify-subscription:already-active');
             logger.info('Subscription already active', {
-                subscriptionId: razorpay_subscription_id,
-                productId,
-                userId: userId
+                ...getBoundedRazorpayStringContext('subscriptionId', razorpay_subscription_id),
+                ...getBoundedRazorpayStringContext('productId', productId),
+                ...getBoundedRazorpayStringContext('userId', userId),
             });
             return NextResponse.json({ success: true, status: 'active' });
         }
@@ -245,19 +265,19 @@ export const POST = withAuth(async (request, session) => {
         // 4. --- OPTIMISTIC UPDATE ---
         // The payment is verified. We can now confidently update our own database immediately.
         logger.info('Payment verified successfully', {
-            subscriptionId: razorpay_subscription_id,
-            userId: userId,
+            ...getBoundedRazorpayStringContext('subscriptionId', razorpay_subscription_id),
+            ...getBoundedRazorpayStringContext('userId', userId),
             action: 'activating'
         });
 
         const planDetails = getPlanDetailsFromConstants(providerSubscription.notes);
         if (!planDetails) {
             logger.error('Plan details not found in subscription notes', undefined, {
-                subscriptionId: razorpay_subscription_id,
-                planId: providerSubscription.notes?.planId,
-                interval: providerSubscription.notes?.interval,
-                userType: providerSubscription.notes?.userType,
-                userId: userId
+                ...getBoundedRazorpayStringContext('subscriptionId', razorpay_subscription_id),
+                ...getBoundedRazorpayStringContext('planId', providerSubscription.notes?.planId),
+                ...getBoundedRazorpayStringContext('interval', providerSubscription.notes?.interval),
+                ...getBoundedRazorpayStringContext('userType', providerSubscription.notes?.userType),
+                ...getBoundedRazorpayStringContext('userId', userId),
             });
             return NextResponse.json({ success: false, error: "Could not derive plan details." }, { status: 500 });
         }
@@ -331,10 +351,10 @@ export const POST = withAuth(async (request, session) => {
 
         await writeLogEntry({
             logFileName: LOG_FILE,
-            userId: userId,
             logType: 'UPDATE_SUBSCRIPTION_VERIFY_SUBSCRIPTION',
             data: {
-                subscriptionId: razorpay_subscription_id,
+                ...getBoundedRazorpayStringContext('userId', userId),
+                ...getBoundedRazorpayStringContext('subscriptionId', razorpay_subscription_id),
                 status: updatePayload.status,
                 quantity: updatePayload.quantity,
                 totalPaymentsMadeCount: updatePayload.totalPaymentsMadeCount,
@@ -354,6 +374,46 @@ export const POST = withAuth(async (request, session) => {
             } as FirestoreSubscriptionDoc,
             'api:verify-subscription',
         );
+        await recordFounderRevenueMovement({
+            amountPaise: Number.isFinite(paymentAmount) ? paymentAmount : 0,
+            currency: payment.currency || 'INR',
+            description: 'Razorpay subscription payment verified.',
+            eventName: 'subscription.verified',
+            id: `cash:${razorpay_payment_id}`,
+            kind: 'cash_collected',
+            occurredAt: payment.created_at ? payment.created_at * 1000 : Date.now(),
+            paymentId: razorpay_payment_id,
+            productId,
+            source: 'api:verify-subscription',
+            storeId: internalSub.storeId,
+            subscriptionId: razorpay_subscription_id,
+            tenantId: internalSub.tenantId,
+        });
+        const activatedSubscription = {
+            ...internalSub,
+            ...updatePayload,
+            id: razorpay_subscription_id,
+            status: 'active',
+        } as FirestoreSubscriptionDoc;
+        const replacementSubscriptionId = (internalSub as any).founderMonitorReplacementForSubscriptionId;
+        const replacementMrrPaise = Number((internalSub as any).founderMonitorReplacementMrrPaise || 0);
+        if (replacementSubscriptionId && replacementMrrPaise > 0) {
+            await recordFounderSubscriptionMrrChange({
+                eventKey: `${replacementSubscriptionId}:${razorpay_subscription_id}`,
+                previousMrrPaise: replacementMrrPaise,
+                productId,
+                source: 'api:verify-subscription:replacement',
+                subscription: activatedSubscription,
+                occurredAt: providerSubscription.current_start ? providerSubscription.current_start * 1000 : Date.now(),
+            });
+        } else {
+            await recordFounderSubscriptionNewMrr({
+                productId,
+                source: 'api:verify-subscription',
+                subscription: activatedSubscription,
+                occurredAt: providerSubscription.current_start ? providerSubscription.current_start * 1000 : Date.now(),
+            });
+        }
 
         if (!isAnswerlatticeBillingProduct(productId)) {
             // 📧 LIFECYCLE MESSAGE: First payment / subscription activation (fire-and-forget)
@@ -374,8 +434,26 @@ export const POST = withAuth(async (request, session) => {
                             ? new Date(providerSubscription.charge_at * 1000).toISOString()
                             : null,
                     },
-                }).catch(() => { /* non-blocking */ });
-            } catch { /* non-blocking */ }
+                }).catch((notificationError) => {
+                    logRazorpayNonBlockingFailure('razorpay_verify_subscription_lifecycle_message_failed', notificationError, {
+                        eventType: 'PAYMENT_SUCCESS',
+                        ...getBoundedRazorpayStringContext('paymentId', razorpay_payment_id),
+                        ...getBoundedRazorpayStringContext('subscriptionId', razorpay_subscription_id),
+                        ...getBoundedRazorpayStringContext('tenantId', internalSub.tenantId),
+                        ...getBoundedRazorpayStringContext('storeId', internalSub.storeId),
+                        ...getBoundedRazorpayStringContext('userId', userId),
+                    });
+                });
+            } catch (notificationImportError) {
+                logRazorpayNonBlockingFailure('razorpay_verify_subscription_lifecycle_message_import_failed', notificationImportError, {
+                    eventType: 'PAYMENT_SUCCESS',
+                    ...getBoundedRazorpayStringContext('paymentId', razorpay_payment_id),
+                    ...getBoundedRazorpayStringContext('subscriptionId', razorpay_subscription_id),
+                    ...getBoundedRazorpayStringContext('tenantId', internalSub.tenantId),
+                    ...getBoundedRazorpayStringContext('storeId', internalSub.storeId),
+                    ...getBoundedRazorpayStringContext('userId', userId),
+                });
+            }
 
             // 📧 INTERNAL: Notify founder about new subscription revenue
             try {
@@ -393,25 +471,41 @@ export const POST = withAuth(async (request, session) => {
                         storeId: String(internalSub.storeId),
                         tenantId: String(internalSub.tenantId),
                     },
-                }).catch(() => { /* non-blocking */ });
-            } catch { /* non-blocking */ }
+                }).catch((notificationError) => {
+                    logRazorpayNonBlockingFailure('razorpay_verify_subscription_internal_notification_failed', notificationError, {
+                        eventType: 'INTERNAL_SUBSCRIPTION_PURCHASED',
+                        ...getBoundedRazorpayStringContext('paymentId', razorpay_payment_id),
+                        ...getBoundedRazorpayStringContext('subscriptionId', razorpay_subscription_id),
+                        ...getBoundedRazorpayStringContext('tenantId', internalSub.tenantId),
+                        ...getBoundedRazorpayStringContext('storeId', internalSub.storeId),
+                        ...getBoundedRazorpayStringContext('userId', userId),
+                    });
+                });
+            } catch (notificationImportError) {
+                logRazorpayNonBlockingFailure('razorpay_verify_subscription_internal_notification_import_failed', notificationImportError, {
+                    eventType: 'INTERNAL_SUBSCRIPTION_PURCHASED',
+                    ...getBoundedRazorpayStringContext('paymentId', razorpay_payment_id),
+                    ...getBoundedRazorpayStringContext('subscriptionId', razorpay_subscription_id),
+                    ...getBoundedRazorpayStringContext('tenantId', internalSub.tenantId),
+                    ...getBoundedRazorpayStringContext('storeId', internalSub.storeId),
+                    ...getBoundedRazorpayStringContext('userId', userId),
+                });
+            }
         }
 
         // 5. Respond to the client
         return NextResponse.json({ success: true, status: 'active' });
 
     } catch (error) {
-        logger.error('Subscription verification failed', error, {
+        const failureData = getRazorpayFailureLogData('razorpay_verify_subscription_failed', error, {
             api: 'verify-subscription',
-            userId: userId
+            ...getBoundedRazorpayStringContext('userId', userId),
         });
+        logger.error('Subscription verification failed', new Error('razorpay_verify_subscription_failed'), failureData);
         await writeLogEntry({
             logFileName: LOG_FILE,
-            userId,
             logType: 'VERIFY_SUBSCRIPTION_ERROR',
-            data: {
-                message: error instanceof Error ? error.message : 'Unknown error',
-            },
+            data: failureData,
         });
         return NextResponse.json(
             { error: 'Failed to verify subscription' },

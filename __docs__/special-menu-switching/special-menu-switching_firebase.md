@@ -1,8 +1,8 @@
 # Special Menu Switching — Firebase Cost Tracking
 
-**Status:** 🧊 FROZEN — Structurally Complete, Flag OFF. See `__docs__/constitution/14-feature-lifecycle-doctrine.md`  
-**Author:** Cascade (Lead Architect)  
-**Date:** February 20, 2026  
+**Status:** ✅ IMPLEMENTED — Active behind `ENABLE_SPECIAL_MENU_SWITCHING`; expansion remains governed by `__docs__/constitution/14-feature-lifecycle-doctrine.md`
+**Author:** Cascade (Lead Architect)
+**Date:** February 20, 2026
 **Audience:** Founder, Cost Control
 
 ---
@@ -51,6 +51,7 @@
 | Deactivate (store)          | `stores/{sId}`                   | Scheduler/DAL         | ~2/store/month | Clear `activeSpecialMenuId`                         | `setDoc` merge + `deleteField()` |
 | Deactivate (temp status)    | `stores/{sId}`                   | Scheduler/DAL         | ~2/store/month | Delete `tempStatus`                                 | `setDoc` merge + `deleteField()` |
 | Edit special menu           | `projects/{tId}/{sId}`           | Owner edits in editor | ~4/store/month | Same as regular project edit                        | `setDoc` merge                   |
+| Connected screen touch      | `platformSummary/campaigns_{sId}`, `platformSummary/screen_{sId}` | Scheduler activation/deactivation after public cache revalidation | Only when a screen token exists | `screen.contentVersion`, `screen.lastContentChangeAt`, public-safe mirror fields | Existing Functions public-cache helper |
 
 ---
 
@@ -80,9 +81,9 @@ Uses existing storage paths. No new storage buckets or patterns.
 
 | Function                   | Trigger                                | Duration                             | Memory       |
 | -------------------------- | -------------------------------------- | ------------------------------------ | ------------ |
-| Nightly special menu check | `pubsub.schedule` (existing scheduler) | +2-5s per store with scheduled menus | Same (256MB) |
+| Nightly special menu check | `pubsub.schedule` (existing scheduler) | +2-5s per store with scheduled menus; optional initialized-screen version touch after cache revalidation | Same (256MB) |
 
-No new Cloud Functions. Extends existing nightly scheduler in `decisionBlocksScoring.ts`.
+No new Cloud Functions. Extends existing nightly scheduler in `decisionBlocksScoring.ts` and reuses the shared Functions public-cache helper for screen freshness.
 
 ---
 
@@ -99,6 +100,8 @@ Same pattern as `duplicateProject`, `updateStore`, etc.
 | `cancelSpecialMenu()`        | `src/database/projects/index.ts` | 1R + 2W                   |
 | `getSpecialMenus()`          | `src/database/projects/index.ts` | 1R (summary) + 1R (store) |
 
+`useSpecialMenus()` must require explicit create/update/lifecycle acknowledgements before returning success to desktop or mobile callers. Lifecycle acknowledgements include the requested project id and resulting status (`active`, `expired`, or `cancelled`) so local UI state cannot advance on a generic `{ success: true }` fallback. This adds no Firestore reads/writes/deletes; it only prevents client-side `apiCallComposer()` fallback values from being treated as confirmed special-menu writes.
+
 ---
 
 ## Cost Estimate Per 1,000 Active Stores/Month
@@ -106,7 +109,7 @@ Same pattern as `duplicateProject`, `updateStore`, etc.
 | Category        | Operations                                        | Cost                              |
 | --------------- | ------------------------------------------------- | --------------------------------- |
 | Reads           | ~6,000 (create + activate + deactivate + nightly) | ~₹0.50                            |
-| Writes          | ~12,000 (create + activate + deactivate + edits)  | ~₹2.00                            |
+| Writes          | ~12,000 (create + activate + deactivate + edits) plus at most 2 existing screen-state writes per initialized-screen activation/deactivation | ~₹2.00+                           |
 | Storage         | Same as regular projects (~0 incremental)         | ~₹0.00                            |
 | Cloud Functions | +5s on existing scheduler                         | ~₹0.00                            |
 | **Total**       |                                                   | **~₹2.50/month per 1,000 stores** |
@@ -134,4 +137,4 @@ Same pattern as `duplicateProject`, `updateStore`, etc.
 
 ---
 
-**Last Updated:** February 21, 2026
+**Last Updated:** June 28, 2026

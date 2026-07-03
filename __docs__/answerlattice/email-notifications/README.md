@@ -3,7 +3,7 @@
 > **Feature:** Generic, reusable email notification system for ticket events
 > **Status:** ✅ IMPLEMENTED AND ENABLED
 > **Date:** 2026-03-07
-> **Last Updated:** 2026-05-22
+> **Last Updated:** 2026-06-28
 > **Feature Flag:** `ENABLE_ANSWERLATTICE_NOTIFICATIONS` (default: ON)
 > **SMTP:** Reuses existing nodemailer infrastructure (same as lifecycle messaging)
 
@@ -35,7 +35,7 @@ Client-side DAL (addTicket, addTicketMessage, updateTicketStatus)
   └── triggerNotification() — fire-and-forget POST to /api/notifications/send
         │
         ├── Feature flag check (ENABLE_ANSWERLATTICE_NOTIFICATIONS)
-        ├── Request validation + per-user route throttle
+        ├── Per-user route throttle + 16KB bounded request body + validation
         ├── Idempotency (deterministic log doc by eventType + referenceId)
         ├── Rate limiting (20/day per recipient)
         ├── Template resolution (event type → subject + HTML)
@@ -51,8 +51,8 @@ Client-side DAL (addTicket, addTicketMessage, updateTicketStatus)
 4. **Reuses existing SMTP** — Same nodemailer transporter, same SMTP env vars as lifecycle messaging. Zero new infrastructure.
 5. **Separate from lifecycle messaging** — Lifecycle messages are for billing/subscription events. Notifications are for operational events (tickets, etc.)
 6. **Answerlattice-scoped logs** — Answerlattice events write to `answerlattice_notificationLogs` in the Answerlattice Firebase project; non-Answerlattice callers still use the legacy generic `notificationLogs` target.
-7. **Activation verification** — `/answerlattice/activation` exposes a test-email action through `/api/answerlattice/notifications/test` with a 3/hour workspace rate limit.
-8. **Route guardrails** — `/api/notifications/send` accepts only the three client ticket events, validates email/reference/metadata shape, limits metadata to 8KB, and throttles each authenticated user to 120 notification attempts/hour.
+7. **Activation verification** — `/answerlattice/activation` exposes a test-email action through `/api/answerlattice/notifications/test` with a 3/hour workspace rate limit before permission/readiness/store/send work and fixed-code bounded failure diagnostics.
+8. **Route guardrails** — `/api/notifications/send` accepts only the three client ticket events, throttles each authenticated user to 120 notification attempts/hour with a hashed sender key segment, rejects bodies above 16KB before schema validation, limits metadata to 8KB before dispatch, and logs unexpected route failures through bounded notification diagnostics.
 
 ## Files Created
 
@@ -60,6 +60,7 @@ Client-side DAL (addTicket, addTicketMessage, updateTicketStatus)
 |------|---------|
 | `src/lib/notifications/index.ts` | Core notification sender (server-side, firebase-admin) |
 | `src/lib/notifications/client.ts` | Client-side fire-and-forget trigger helper |
+| `src/lib/notifications/notificationDiagnostics.ts` | Bounded notification failure diagnostics |
 | `src/lib/notifications/templates.ts` | Template registry (3 ticket templates) |
 | `src/app/api/notifications/send/route.ts` | API route (withAuth, bridges client → server) |
 | `src/app/api/answerlattice/notifications/test/route.ts` | Workspace test-send route used by Activation |
@@ -85,5 +86,7 @@ Client-side DAL (addTicket, addTicketMessage, updateTicketStatus)
 
 | Date | Change |
 |------|--------|
+| 2026-06-28 | Hardened the Answerlattice notification test route so rate limiting runs before permission/readiness/store/send work and unexpected failures use bounded runtime diagnostics. |
+| 2026-06-27 | Added 16KB bounded request-body admission to the generic notification send route before schema validation or dispatch. |
 | 2026-05-22 | Enabled Answerlattice notification verification from Activation, moved Answerlattice logs to `answerlattice_notificationLogs`, added test-send template and rate limit, and removed unnecessary reply/status notification reads. |
 | 2026-03-07 | Initial implementation: 3 ticket notification types, generic service, API route |

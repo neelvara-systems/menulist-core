@@ -32,7 +32,6 @@ import {
     saveAnswerlatticeRoleDefinition,
     updateAnswerlatticeStaffUser,
 } from '@lib/answerlattice/staffAccessClient';
-import { getAnswerlatticeUiErrorMessage } from '@lib/answerlattice/uiErrors';
 import PhoneNumberInput from '@atoms/phoneNumberInput';
 import StaffLoginDetailsContent from '@template/main-app/users/StaffLoginDetailsContent';
 import {
@@ -105,6 +104,15 @@ const getRoleOptions = (roles: AnswerlatticeRoleDefinition[], canAssignRoles: bo
         }))
 );
 
+const ANSWERLATTICE_TEAM_ACCESS_LOAD_FAILED = 'Could not load team access';
+const ANSWERLATTICE_TEAM_MEMBER_SAVE_FAILED = 'Could not save team member';
+const ANSWERLATTICE_TEAM_MEMBER_ACCESS_UPDATE_FAILED = 'Could not update access';
+const ANSWERLATTICE_TEAM_MEMBER_LOGIN_RESET_FAILED = 'Could not reset login details';
+const ANSWERLATTICE_TEAM_MEMBER_SIGN_OUT_FAILED = 'Could not sign out team member';
+const ANSWERLATTICE_TEAM_MEMBER_REMOVE_FAILED = 'Could not remove team member';
+const ANSWERLATTICE_TEAM_ROLE_SAVE_FAILED = 'Could not save role';
+const ANSWERLATTICE_TEAM_ROLE_DISABLE_FAILED = 'Could not turn off role';
+
 export default function AnswerlatticeTeamAccess({ initialTab }: AnswerlatticeTeamAccessProps) {
     const screens = Grid.useBreakpoint();
     const { token } = theme.useToken();
@@ -157,8 +165,8 @@ export default function AnswerlatticeTeamAccess({ initialTab }: AnswerlatticeTea
             setUsers(data.users || []);
             setRoles(data.roles || []);
             setStoreName(data.store?.name || '');
-        } catch (error) {
-            message.error(getAnswerlatticeUiErrorMessage(error, 'Could not load team access'));
+        } catch {
+            message.error(ANSWERLATTICE_TEAM_ACCESS_LOAD_FAILED);
         } finally {
             setLoading(false);
         }
@@ -260,8 +268,8 @@ export default function AnswerlatticeTeamAccess({ initialTab }: AnswerlatticeTea
             setEditingStaff(null);
             staffForm.resetFields();
             await refreshAccess();
-        } catch (error) {
-            message.error(getAnswerlatticeUiErrorMessage(error, 'Could not save team member'));
+        } catch {
+            message.error(ANSWERLATTICE_TEAM_MEMBER_SAVE_FAILED);
         } finally {
             setSavingStaff(false);
         }
@@ -274,8 +282,8 @@ export default function AnswerlatticeTeamAccess({ initialTab }: AnswerlatticeTea
                 setUsers((current) => current.map((item) => item.id === user.id ? result.user! : item));
             }
             message.success(active ? 'Team member activated' : 'Team member deactivated');
-        } catch (error) {
-            message.error(getAnswerlatticeUiErrorMessage(error, 'Could not update access'));
+        } catch {
+            message.error(ANSWERLATTICE_TEAM_MEMBER_ACCESS_UPDATE_FAILED);
         }
     };
 
@@ -294,8 +302,8 @@ export default function AnswerlatticeTeamAccess({ initialTab }: AnswerlatticeTea
                 return;
             }
             message.success(result.message || 'Password setup email sent');
-        } catch (error) {
-            message.error(getAnswerlatticeUiErrorMessage(error, 'Could not reset login details'));
+        } catch {
+            message.error(ANSWERLATTICE_TEAM_MEMBER_LOGIN_RESET_FAILED);
         }
     };
 
@@ -306,8 +314,8 @@ export default function AnswerlatticeTeamAccess({ initialTab }: AnswerlatticeTea
                 setUsers((current) => current.map((item) => item.id === user.id ? result.user! : item));
             }
             message.success('Team member signed out');
-        } catch (error) {
-            message.error(getAnswerlatticeUiErrorMessage(error, 'Could not sign out team member'));
+        } catch {
+            message.error(ANSWERLATTICE_TEAM_MEMBER_SIGN_OUT_FAILED);
         }
     };
 
@@ -326,8 +334,8 @@ export default function AnswerlatticeTeamAccess({ initialTab }: AnswerlatticeTea
                         setUsers((current) => current.map((item) => item.id === user.id ? result.user! : item));
                     }
                     message.success('Team member removed');
-                } catch (error) {
-                    message.error(getAnswerlatticeUiErrorMessage(error, 'Could not remove team member'));
+                } catch {
+                    message.error(ANSWERLATTICE_TEAM_MEMBER_REMOVE_FAILED);
                 }
             },
         });
@@ -401,8 +409,8 @@ export default function AnswerlatticeTeamAccess({ initialTab }: AnswerlatticeTea
             roleForm.resetFields();
             message.success('Role saved');
             await refreshAccess();
-        } catch (error) {
-            message.error(getAnswerlatticeUiErrorMessage(error, 'Could not save role'));
+        } catch {
+            message.error(ANSWERLATTICE_TEAM_ROLE_SAVE_FAILED);
         } finally {
             setSavingRole(false);
         }
@@ -420,8 +428,8 @@ export default function AnswerlatticeTeamAccess({ initialTab }: AnswerlatticeTea
                     setRoles(result.roles || roles);
                     message.success('Role turned off');
                     await refreshAccess();
-                } catch (error) {
-                    message.error(getAnswerlatticeUiErrorMessage(error, 'Could not turn off role'));
+                } catch {
+                    message.error(ANSWERLATTICE_TEAM_ROLE_DISABLE_FAILED);
                 }
             },
         });

@@ -4,13 +4,20 @@ import { DB_COLLECTIONS } from "@constant/database";
 import { admin, firestoreAdmin } from "@lib/firebase/firebaseAdmin";
 import { logger } from "@lib/monitoring/logger";
 import { isPlatformEntityBlocked } from "@lib/platform/entityBlock";
-import { buildSecurityContext } from "@lib/security/securityContext";
+import { checkRateLimit } from "@lib/rateLimit";
+import { getRateLimitForFeature } from "@lib/rateLimit/configs";
+import { getBoundedRuntimeStringContext } from "@lib/runtime/runtimeDiagnostics";
+import { getBoundedSecurityRouteContext } from "@lib/security/securityDiagnostics";
 import { NextRequest, NextResponse } from "next/server";
+import { hashPublicRateLimitValue } from "src/middleware/publicApi";
 import { withAuth } from "../../../../middleware/auth";
 
-const noStoreJson = (body: Record<string, unknown>, status = 200) => NextResponse.json(body, {
+const ACCESS_STATUS_RATE_LIMIT_KEY = "auth-access-status";
+
+const noStoreJson = (body: Record<string, unknown>, status = 200, headers: Record<string, string> = {}) => NextResponse.json(body, {
     headers: {
         "Cache-Control": "no-store, max-age=0",
+        ...headers,
     },
     status,
 });
@@ -53,6 +60,51 @@ const getEntityData = async (collectionName: string, id?: string | number | null
     return snapshot.exists ? snapshot.data() : null;
 };
 
+const checkAccessStatusRateLimit = async (request: NextRequest, session: any) => {
+    const rateLimitConfig = getRateLimitForFeature("DATA_READ");
+    const userId = session?.uId || session?.user?.id || "unknown";
+    const tenantId = session?.tId || session?.user?.tenantId || "unknown";
+    const storeId = session?.sId || session?.user?.storeId || "unknown";
+    const userRateLimitHash = hashPublicRateLimitValue(userId);
+    const tenantRateLimitHash = hashPublicRateLimitValue(tenantId);
+    const storeRateLimitHash = hashPublicRateLimitValue(storeId);
+
+    const rateLimit = await checkRateLimit({
+        key: `${ACCESS_STATUS_RATE_LIMIT_KEY}:${userRateLimitHash}:${tenantRateLimitHash}:${storeRateLimitHash}`,
+        ...rateLimitConfig,
+    });
+
+    if (rateLimit.allowed) return null;
+
+    const waitSeconds = Math.max(1, Math.ceil((rateLimit.resetAt - Date.now()) / 1000));
+    logger.security("Rate Limit Exceeded - Session Access Check", {
+        ...getBoundedSecurityRouteContext(session, request),
+        endpoint: request.nextUrl.pathname,
+        limit: rateLimitConfig.limit,
+        method: request.method,
+        ...getBoundedRuntimeStringContext("tenantId", tenantId),
+        ...getBoundedRuntimeStringContext("storeId", storeId),
+        ...getBoundedRuntimeStringContext("userId", userId),
+        waitSeconds,
+        window: rateLimitConfig.window,
+    }, "medium");
+
+    return noStoreJson(
+        {
+            error: "Too many requests. Please try again later.",
+            retryAfter: waitSeconds,
+            resetAt: rateLimit.resetAt,
+        },
+        429,
+        {
+            "Retry-After": String(waitSeconds),
+            "X-RateLimit-Limit": String(rateLimitConfig.limit),
+            "X-RateLimit-Remaining": String(rateLimit.remaining),
+            "X-RateLimit-Reset": String(rateLimit.resetAt),
+        },
+    );
+};
+
 const invalidAccess = (
     request: NextRequest,
     session: any,
@@ -60,7 +112,7 @@ const invalidAccess = (
     details: Record<string, unknown> = {},
 ) => {
     logger.security("Authorization Failed - Session Access Check", {
-        ...buildSecurityContext(session, request),
+        ...getBoundedSecurityRouteContext(session, request),
         endpoint: request.nextUrl.pathname,
         error: reason,
         method: request.method,
@@ -74,6 +126,9 @@ const invalidAccess = (
 };
 
 export const GET = withAuth(async (request: NextRequest, session) => {
+    const rateLimitResponse = await checkAccessStatusRateLimit(request, session);
+    if (rateLimitResponse) return rateLimitResponse;
+
     const userSnapshot = await getCurrentUserSnapshot(session);
     if (!userSnapshot?.exists) {
         return invalidAccess(request, session, "USER_NOT_FOUND");
@@ -88,14 +143,14 @@ export const GET = withAuth(async (request: NextRequest, session) => {
     const tenant = await getEntityData(DB_COLLECTIONS.TENANTS, userData.tenantId ?? session?.tId ?? session?.user?.tenantId);
     if (isPlatformEntityBlocked(tenant)) {
         return invalidAccess(request, session, "TENANT_BLOCKED", {
-            tenantId: userData.tenantId ?? session?.tId ?? session?.user?.tenantId,
+            ...getBoundedRuntimeStringContext("tenantId", userData.tenantId ?? session?.tId ?? session?.user?.tenantId),
         });
     }
 
     const store = await getEntityData(DB_COLLECTIONS.STORES, userData.storeId ?? session?.sId ?? session?.user?.storeId);
     if (isPlatformEntityBlocked(store)) {
         return invalidAccess(request, session, "STORE_BLOCKED", {
-            storeId: userData.storeId ?? session?.sId ?? session?.user?.storeId,
+            ...getBoundedRuntimeStringContext("storeId", userData.storeId ?? session?.sId ?? session?.user?.storeId),
         });
     }
 

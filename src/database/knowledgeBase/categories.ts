@@ -13,6 +13,19 @@ import { updateList } from "@util/utils";
 const COLLECTION = DB_COLLECTIONS.KB_CATEGORIES;
 const LEGACY_CATEGORIES_DOC_ID = 'categories';
 
+export type KnowledgeBaseCategoryWriteResult = KnowledgeBaseCategoriesType['categories'][string] & {
+    success: true;
+};
+
+export type KnowledgeBaseCategoriesMutationResult = KnowledgeBaseCategoriesType & {
+    success: true;
+    categoryCount: number;
+    mutation: 'deleteCategory' | 'updateArticleInParent' | 'deleteArticleFromParent';
+    categoryId?: string;
+    articleId?: string;
+    sectionId?: string | null;
+};
+
 export const getKnowledgeBaseCategoriesDocId = (tId?: unknown, sId?: unknown) => {
     const tenantId = Number(tId);
     const storeId = Number(sId);
@@ -47,6 +60,48 @@ const bumpKnowledgeBaseVersionForSession = async (reason: string, sourceId?: str
 
     return { tId, sId };
 };
+
+const isRecord = (value: unknown): value is Record<string, unknown> => (
+    Boolean(value) && typeof value === 'object' && !Array.isArray(value)
+);
+
+const withCategoriesMutationResult = (
+    data: KnowledgeBaseCategoriesType,
+    mutation: KnowledgeBaseCategoriesMutationResult['mutation'],
+    metadata: Pick<KnowledgeBaseCategoriesMutationResult, 'categoryId' | 'articleId' | 'sectionId'> = {},
+): KnowledgeBaseCategoriesMutationResult => ({
+    ...data,
+    success: true,
+    categoryCount: Object.keys(data.categories || {}).length,
+    mutation,
+    ...metadata,
+});
+
+export function assertKnowledgeBaseCategoryWriteSucceeded(
+    result: unknown,
+    expectedCategoryId: string,
+    rejectionCode = 'knowledge_base_category_write_rejected',
+): asserts result is KnowledgeBaseCategoryWriteResult {
+    if (!isRecord(result) || result.success !== true || result.id !== expectedCategoryId) {
+        throw new Error(rejectionCode);
+    }
+}
+
+export function assertKnowledgeBaseCategoriesMutationSucceeded(
+    result: unknown,
+    expectedMutation: KnowledgeBaseCategoriesMutationResult['mutation'],
+    rejectionCode = 'knowledge_base_categories_mutation_rejected',
+): asserts result is KnowledgeBaseCategoriesMutationResult {
+    if (
+        !isRecord(result)
+        || result.success !== true
+        || result.mutation !== expectedMutation
+        || !isRecord(result.categories)
+        || typeof result.categoryCount !== 'number'
+    ) {
+        throw new Error(rejectionCode);
+    }
+}
 
 export const getCategories = async () => {
     return await apiCallComposer(
@@ -87,7 +142,7 @@ export const deleteCategory = async (data: any) => {
             const scope = await bumpKnowledgeBaseVersionForSession('category_delete');
             await setDoc(await getDocRef(), data);
             await revalidateAnswerlatticePublicClientCache(scope, ['kb', 'context'], 'deleteCategory');
-            return data;
+            return withCategoriesMutationResult(data, 'deleteCategory');
         },
         data,
         "deleteCategory"
@@ -102,7 +157,10 @@ export const addCategory = async (category: any) => {
             const scope = await bumpKnowledgeBaseVersionForSession('category_create', composedCategory.id);
             await setDoc(docRef, { categories: { [composedCategory.id]: composedCategory } }, { merge: true });
             await revalidateAnswerlatticePublicClientCache(scope, ['kb', 'context'], 'addCategory');
-            return composedCategory;
+            return {
+                ...composedCategory,
+                success: true,
+            } satisfies KnowledgeBaseCategoryWriteResult;
         },
         category,
         "addCategory"
@@ -117,7 +175,10 @@ export const updateCategory = async (category: any) => {
             const scope = await bumpKnowledgeBaseVersionForSession('category_update', composedCategory.id);
             await setDoc(docRef, { categories: { [composedCategory.id]: composedCategory } }, { merge: true });
             await revalidateAnswerlatticePublicClientCache(scope, ['kb', 'context'], 'updateCategory');
-            return composedCategory;
+            return {
+                ...composedCategory,
+                success: true,
+            } satisfies KnowledgeBaseCategoryWriteResult;
         },
         category,
         "updateCategory"
@@ -149,7 +210,7 @@ const _updateSectionArticles = async (
 
     const updatedData = { ...categoriesData };
     updatedData.categories[categoryId] = updatedCategory;
-    return updatedData;
+    return withCategoriesMutationResult(updatedData, 'updateArticleInParent', { categoryId });
 };
 
 export const updateArticleInParent = async (categoriesData: KnowledgeBaseCategoriesType, categoryId: string, article: KnowledgeBaseArticleType, sectionId?: string | null) => {
@@ -197,7 +258,11 @@ export const updateArticleInParent = async (categoriesData: KnowledgeBaseCategor
 
                     const updatedData = { ...categoriesData };
                     updatedData.categories[categoryId] = updatedCategory;
-                    return updatedData;
+                    return withCategoriesMutationResult(updatedData, 'updateArticleInParent', {
+                        articleId: article.id,
+                        categoryId,
+                        sectionId,
+                    });
                 }
             }
             return null;
@@ -224,7 +289,13 @@ export const deleteArticleFromParent = async (
                     if (sectionIndex !== -1) {
                         const section = category.sections[sectionIndex];
                         const articles = section.articles ? section.articles.filter((a: KnowledgeBaseArticleMeta) => a.id !== articleId) : [];
-                        return await _updateSectionArticles(categoriesData, categoryId, sectionIndex, articles, docRef);
+                        const updatedData = await _updateSectionArticles(categoriesData, categoryId, sectionIndex, articles, docRef);
+                        return {
+                            ...updatedData,
+                            mutation: 'deleteArticleFromParent',
+                            articleId,
+                            sectionId,
+                        } satisfies KnowledgeBaseCategoriesMutationResult;
                     }
                 } else {
                     const articles = category.articles ? category.articles.filter((a: KnowledgeBaseArticleMeta) => a.id !== articleId) : [];
@@ -238,7 +309,11 @@ export const deleteArticleFromParent = async (
 
                     const updatedData = { ...categoriesData };
                     updatedData.categories[categoryId] = updatedCategory;
-                    return updatedData;
+                    return withCategoriesMutationResult(updatedData, 'deleteArticleFromParent', {
+                        articleId,
+                        categoryId,
+                        sectionId,
+                    });
                 }
             }
             return null;

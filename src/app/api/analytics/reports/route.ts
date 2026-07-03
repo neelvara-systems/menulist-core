@@ -1,12 +1,17 @@
 export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
 import { getAnalyticsReport, getRealTimeUsers } from '@lib/analytics/server/index';
+import { logAnalyticsFailure } from '@lib/analytics/analyticsDiagnostics';
 import { PERMISSIONS } from '@constant/permissions';
 import { requireConfiguredGoogleAnalyticsProperty, toGoogleAnalyticsPropertyResource } from '@lib/analytics/googlePropertyAccess';
 import { requireAnyStorePermission } from '@lib/permissions/server';
 import { withAuth } from '../../../../middleware/auth';
+import { applyAnalyticsReadRateLimit } from '../readRateLimit';
 
 export const GET = withAuth(async (request, session) => {
+    const rateLimitResponse = await applyAnalyticsReadRateLimit(session, 'reports');
+    if (rateLimitResponse) return rateLimitResponse;
+
     const permissionError = await requireAnyStorePermission(request, session, [PERMISSIONS.VIEW_ANALYTICS], 'Analytics reports');
     if (permissionError) return permissionError;
 
@@ -29,10 +34,14 @@ export const GET = withAuth(async (request, session) => {
             realtime: realtimeData
         });
     } catch (error: any) {
-        console.error('Analytics API Error:', error);
+        const status = error?.code === 7 ? 403 : 500;
+        logAnalyticsFailure('analytics_reports_api_failed', error, {
+            endpoint: '/api/analytics/reports',
+            status,
+        });
         return NextResponse.json(
-            { error: error.message || 'Failed to fetch analytics data' },
-            { status: error.code === 7 ? 403 : 500 }
+            { error: status === 403 ? 'Analytics access is not available.' : 'Failed to fetch analytics data' },
+            { status }
         );
     }
 });

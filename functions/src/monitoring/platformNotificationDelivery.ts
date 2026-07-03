@@ -4,8 +4,10 @@ import {
   type PlatformNotificationRegistryEntry,
 } from '../sharedData/platformNotificationRegistry';
 import { isFunctionFeatureEnabled } from '../constants/features';
+import { logger } from '../lib/logger';
 import { sendEmailViaSMTP } from '../messaging/providers/resend';
 import { buildWhatsAppPhoneParam } from '../utils/phoneNumber';
+import { getMonitoringErrorContext } from './diagnostics';
 
 type PlatformAlertPayload = {
   id?: string;
@@ -17,7 +19,18 @@ type PlatformAlertPayload = {
   metadata?: Record<string, any>;
 };
 
+type PlatformDeliveryResult = {
+  success: boolean;
+  error?: string;
+  skippedReason?: string;
+  statusCode?: number;
+};
+
+type PlatformDeliveryLogContext = Record<string, boolean | number | string | null | undefined>;
+
 const GRAPH_API_VERSION = 'v21.0';
+const PLATFORM_ALERT_EMAIL_DELIVERY_FAILED = 'ops_platform_alert_email_delivery_failed';
+const PLATFORM_ALERT_WHATSAPP_DELIVERY_FAILED = 'ops_platform_alert_whatsapp_delivery_failed';
 
 function resolvePlatformRecipientEmail(): string | null {
   return (
@@ -52,6 +65,24 @@ function resolveEntry(alert: PlatformAlertPayload): PlatformNotificationRegistry
   );
 }
 
+function getPlatformDeliveryStringContext(label: string, value: unknown): string {
+  const normalized = typeof value === 'string' ? value : '';
+  return `${label}Present=${normalized.length > 0} ${label}Length=${normalized.length}`;
+}
+
+function buildPlatformDeliveryScopeLine(alert: PlatformAlertPayload): string {
+  return [
+    'Scope:',
+    getPlatformDeliveryStringContext('tenantId', alert.tId),
+    getPlatformDeliveryStringContext('storeId', alert.sId),
+  ].join(' ');
+}
+
+function buildPlatformDeliveryAlertLine(alert: PlatformAlertPayload): string {
+  if (!alert.id) return '';
+  return `Alert: ${getPlatformDeliveryStringContext('alertId', alert.id)}`;
+}
+
 function buildText(alert: PlatformAlertPayload, entry: PlatformNotificationRegistryEntry): string {
   return [
     `[${alert.severity.toUpperCase()}] ${alert.title}`,
@@ -60,9 +91,9 @@ function buildText(alert: PlatformAlertPayload, entry: PlatformNotificationRegis
     '',
     `Trigger: ${entry.triggerType}`,
     `Product: ${entry.productId}`,
-    `Scope: tenant=${alert.tId || 'system'} store=${alert.sId || 'system'}`,
+    buildPlatformDeliveryScopeLine(alert),
     `Runbook: ${entry.runbook}`,
-    alert.id ? `Alert ID: ${alert.id}` : '',
+    buildPlatformDeliveryAlertLine(alert),
     `Time: ${new Date().toISOString()}`,
   ].filter(Boolean).join('\n');
 }
@@ -85,19 +116,72 @@ function normalizeWhatsAppNumber(value: string): string {
   return buildWhatsAppPhoneParam({ phoneNumber: value });
 }
 
+function getBoundedPlatformDeliveryLogStringContext(
+  label: string,
+  value: unknown,
+): PlatformDeliveryLogContext {
+  const normalized = value === undefined || value === null ? '' : String(value);
+  return {
+    [`${label}Present`]: normalized.length > 0,
+    [`${label}Length`]: normalized.length,
+  };
+}
+
+function getPlatformDeliveryLogContext(
+  alert: PlatformAlertPayload,
+  entry: PlatformNotificationRegistryEntry,
+): PlatformDeliveryLogContext {
+  return {
+    ...getBoundedPlatformDeliveryLogStringContext('alertId', alert.id),
+    ...getBoundedPlatformDeliveryLogStringContext('tenantId', alert.tId),
+    ...getBoundedPlatformDeliveryLogStringContext('storeId', alert.sId),
+    ...getBoundedPlatformDeliveryLogStringContext('triggerType', entry.triggerType),
+    ...getBoundedPlatformDeliveryLogStringContext('productId', entry.productId),
+  };
+}
+
+function logPlatformDeliveryChannelFailure(
+  failureCode: string,
+  alert: PlatformAlertPayload,
+  entry: PlatformNotificationRegistryEntry,
+  error?: unknown,
+  context: PlatformDeliveryLogContext = {},
+): void {
+  logger.error('[PlatformDelivery] Channel failed', error || new Error(failureCode), {
+    failureCode,
+    ...getPlatformDeliveryLogContext(alert, entry),
+    ...context,
+    ...getMonitoringErrorContext(error),
+  });
+}
+
+function logPlatformDeliveryResultFailure(
+  failureCode: string,
+  alert: PlatformAlertPayload,
+  entry: PlatformNotificationRegistryEntry,
+  result: PlatformDeliveryResult,
+): void {
+  logPlatformDeliveryChannelFailure(failureCode, alert, entry, undefined, {
+    statusCode: result.statusCode,
+    ...getBoundedPlatformDeliveryLogStringContext('channelError', result.error),
+    ...getBoundedPlatformDeliveryLogStringContext('skippedReason', result.skippedReason),
+  });
+}
+
 async function sendWhatsAppAlert(params: {
   to: string;
   text: string;
   severity: string;
   title: string;
   message: string;
-}): Promise<void> {
+}): Promise<PlatformDeliveryResult> {
   const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
   const accessToken = process.env.WHATSAPP_ACCESS_TOKEN;
-  if (!phoneNumberId || !accessToken) return;
+  if (!phoneNumberId || !accessToken) return { success: false, skippedReason: 'whatsapp_not_configured' };
+  const encodedPhoneNumberId = encodeURIComponent(phoneNumberId);
 
   const to = normalizeWhatsAppNumber(params.to);
-  if (!to) return;
+  if (!to) return { success: false, skippedReason: 'whatsapp_recipient_missing' };
 
   const templateName = process.env.PLATFORM_ALERT_WHATSAPP_TEMPLATE_NAME;
   const sessionActive = process.env.PLATFORM_ALERT_WHATSAPP_SESSION_ACTIVE === 'true';
@@ -129,9 +213,9 @@ async function sendWhatsAppAlert(params: {
       }
       : null;
 
-  if (!body) return;
+  if (!body) return { success: false, skippedReason: 'whatsapp_template_or_session_required' };
 
-  await fetch(`https://graph.facebook.com/${GRAPH_API_VERSION}/${phoneNumberId}/messages`, {
+  const response = await fetch(`https://graph.facebook.com/${GRAPH_API_VERSION}/${encodedPhoneNumberId}/messages`, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${accessToken}`,
@@ -139,7 +223,17 @@ async function sendWhatsAppAlert(params: {
     },
     body: JSON.stringify(body),
     signal: AbortSignal.timeout(10000),
-  }).catch(() => undefined);
+  });
+
+  if (!response.ok) {
+    return {
+      success: false,
+      error: 'whatsapp_send_failed',
+      statusCode: response.status,
+    };
+  }
+
+  return { success: true };
 }
 
 export async function sendPlatformAlertDelivery(alert: PlatformAlertPayload): Promise<void> {
@@ -154,24 +248,40 @@ export async function sendPlatformAlertDelivery(alert: PlatformAlertPayload): Pr
   if (isFunctionFeatureEnabled('ENABLE_PLATFORM_ALERT_EMAIL') && entry.defaultChannels.includes('email')) {
     const to = resolvePlatformRecipientEmail();
     if (to) {
-      await sendEmailViaSMTP({
-        to,
-        subject,
-        html: buildHtml(alert, entry),
-      }).catch(() => undefined);
+      try {
+        const result = await sendEmailViaSMTP({
+          to,
+          subject,
+          html: buildHtml(alert, entry),
+        });
+
+        if (!result.success) {
+          logPlatformDeliveryResultFailure(PLATFORM_ALERT_EMAIL_DELIVERY_FAILED, alert, entry, result);
+        }
+      } catch (error) {
+        logPlatformDeliveryChannelFailure(PLATFORM_ALERT_EMAIL_DELIVERY_FAILED, alert, entry, error);
+      }
     }
   }
 
   if (isFunctionFeatureEnabled('ENABLE_PLATFORM_ALERT_WHATSAPP') && entry.defaultChannels.includes('whatsapp_web')) {
     const to = resolvePlatformRecipientWhatsApp();
     if (to) {
-      await sendWhatsAppAlert({
-        to,
-        text,
-        severity: alert.severity.toUpperCase(),
-        title: entry.title,
-        message: alert.message,
-      });
+      try {
+        const result = await sendWhatsAppAlert({
+          to,
+          text,
+          severity: alert.severity.toUpperCase(),
+          title: entry.title,
+          message: alert.message,
+        });
+
+        if (!result.success) {
+          logPlatformDeliveryResultFailure(PLATFORM_ALERT_WHATSAPP_DELIVERY_FAILED, alert, entry, result);
+        }
+      } catch (error) {
+        logPlatformDeliveryChannelFailure(PLATFORM_ALERT_WHATSAPP_DELIVERY_FAILED, alert, entry, error);
+      }
     }
   }
 }

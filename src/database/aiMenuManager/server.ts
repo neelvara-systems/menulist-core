@@ -13,6 +13,7 @@ import type {
     AiMenuManagerSessionDoc,
 } from '@type/aiMenuManager';
 import { buildExecutionId } from '@lib/ai-menu-manager/idempotency';
+import { assertAiMenuManagerPatchAllowedForAction } from '@lib/ai-menu-manager/patchPolicy';
 import { projectContainsAiMenuManagerPatch } from '@lib/ai-menu-manager/actions/projectPatches';
 
 const MAX_COMPACT_MESSAGES = 20;
@@ -157,6 +158,7 @@ export async function persistAiMenuManagerCommand(params: {
     messageId: string;
     card: AiMenuManagerCardPayload;
     proposal: AiMenuManagerProposalDoc;
+    replaceOperationId?: string;
 }) {
     const sessionRef = getSessionRef(params.sessionId);
     const proposalRef = getProposalRef(params.proposal.proposalId);
@@ -168,7 +170,10 @@ export async function persistAiMenuManagerCommand(params: {
 
         const existingSession = sessionSnap.exists ? sessionSnap.data() as AiMenuManagerSessionDoc : null;
         const existingPending = (existingSession?.pendingCardSummaries || [])
-            .filter((entry) => entry.proposalId !== params.proposal.proposalId);
+            .filter((entry) => (
+                entry.proposalId !== params.proposal.proposalId
+                && (!params.replaceOperationId || entry.proposalId !== params.replaceOperationId)
+            ));
         const pendingCardSummaries = [
             buildPendingSummary(params.card),
             ...existingPending,
@@ -281,6 +286,15 @@ export async function updateAiMenuManagerProposalStatus(params: {
         if (isTerminalProposalStatus(proposal.status) && !isManualTaskClose) {
             throw new Error('Proposal is no longer pending');
         }
+        if (
+            nextStatus === 'manual_task'
+            && (
+                proposal.cardPayload?.kind !== 'manual_task'
+                || !proposal.cardPayload.actions?.includes('mark_done')
+            )
+        ) {
+            throw new Error('Manual completion is not allowed for this card');
+        }
 
         const idempotencyKeys = [
             params.idempotencyKey,
@@ -368,6 +382,11 @@ export async function approveAiMenuManagerProposal(params: {
         if (isProposalApprovalExpired(proposal)) {
             throw new Error('Proposal expired');
         }
+        assertAiMenuManagerPatchAllowedForAction({
+            actionType: proposal.actionType,
+            patch: proposal.patch,
+            patchHash: proposal.patchHash,
+        });
 
         const directive: AiMenuManagerExecutionDirective = {
             proposalId: proposal.proposalId,

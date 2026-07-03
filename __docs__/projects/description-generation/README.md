@@ -1,9 +1,15 @@
 # Description Generation — Documentation Hub
 
-> **Feature:** AI-Powered Menu Item Description Generation  
-> **Status:** ✅ Production Ready  
-> **Last Updated:** March 13, 2026  
+> **Feature:** AI-Powered Menu Item Description Generation
+> **Status:** Implemented source evidence; not current launch certification
+> **Last Updated:** March 13, 2026
 > **Version:** 2.3
+
+---
+
+## Current Launch Boundary
+
+This documentation hub links source evidence for description generation. It is not current production deployment approval. Current release approval requires the active [production-readiness audit](../../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../../production-readiness/external-certification-runbook.md) evidence, target feature-flag/provider review, AI accounting/source gates, provider smoke, browser/mobile editor QA, and deploy evidence for the target environment.
 
 ---
 

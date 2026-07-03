@@ -5,6 +5,8 @@
 **Files Audited:** 14 files, ~3,500 lines of code  
 **Result:** 4 bugs found & fixed, 0 TypeScript errors
 
+**Launch boundary:** This March 2026 chaos audit is historical failure-mode evidence, not current production certification. Current launch approval requires the active [production-readiness audit](../../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../../production-readiness/external-certification-runbook.md) evidence, resolved QA Firebase Functions/Storage deploy blockers, provider smoke, authenticated browser/mobile QA, and production-host smoke for the target release.
+
 ---
 
 ## SECTION 1 — Failure Handling Results
@@ -253,9 +255,9 @@
 | 10. Cleanup Scheduler | Catches stuck/expired/cancelling jobs every 15 min | `menuJobCleanup.ts` |
 | 11. Error Safety Net | Nested try/catch with cleanup scheduler fallback | `processMenuImagesJobLogic` |
 
-### Verdict: **PRODUCTION READY ✅**
+### Verdict: Historical Failure-Mode Evidence
 
-The AI extraction pipeline has comprehensive failure handling across 11 protection layers. The 4 bugs found in this audit have been fixed:
+The AI extraction pipeline had comprehensive failure handling across 11 protection layers in this March 2026 audit. This verdict is historical code-readiness evidence, not current launch approval. The 4 bugs found in this audit have been fixed:
 - 2 CRITICAL bugs that could cause data corruption or empty data writes
 - 2 MEDIUM bugs that caused stale UI state and prevented retry
 

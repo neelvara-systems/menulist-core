@@ -1,9 +1,9 @@
 # Messaging Onboarding — Implementation Plan
 
 **Feature:** Messaging Onboarding — Zero-Friction SMB Acquisition Engine
-**Status:** Implementation-Complete — WhatsApp runtime env enabled; live provider path requires real credentials and webhook registration
+**Status:** Implementation-Complete — WhatsApp runtime exists; checked-in provider processing defaults off until real credentials and webhook registration are configured
 **Architecture:** Firebase Cloud Functions + Firestore State Machine + Provider-Agnostic Adapter Layer
-**Last Updated:** May 17, 2026
+**Last Updated:** July 2, 2026
 
 ---
 
@@ -13,7 +13,7 @@
 ┌──────────────────────────────────────────────────────────────────────┐
 │ MESSAGING PROVIDERS                                                    │
 │                                                                        │
-│  WhatsApp (Meta Cloud API)  │  Telegram (Bot API)  │  Future...       │
+│  WhatsApp (Meta Cloud API)  │  Reserved provider extension candidates    │
 │  Owner sends images/PDF ────┼──────────────────────┼──► webhook POST  │
 │  System sends replies   ◄───┼──────────────────────┼─── outbound API  │
 └──────────────────────┬─────────────────────────────────────────────────┘
@@ -22,7 +22,7 @@
 ┌──────────────────────────────────────────────────────────────────────┐
 │ PROVIDER ADAPTER LAYER (implements IMessagingProvider)                 │
 │                                                                        │
-│  WhatsAppAdapter                │  TelegramAdapter (future)           │
+│  WhatsAppAdapter                │  Additional adapters require review │
 │    ├─ verifyWebhook()           │    ├─ verifyWebhook()               │
 │    ├─ parseIncomingMessage()    │    ├─ parseIncomingMessage()         │
 │    ├─ downloadMedia()           │    ├─ downloadMedia()               │
@@ -105,10 +105,15 @@
 │    ├─ Renders menu (reuses existing menu components)                  │
 │    ├─ Shows editable business info (pre-filled from AI)               │
 │    ├─ "Approve & Publish" → calls approve API route                   │
-│    └─ "Request Fix" → structured form → updates session               │
+│    ├─ "Request Fix" → structured form → updates session               │
+│    └─ Post-publish Copy/WhatsApp handoffs are browser-local and bounded│
 │                                                                        │
 └──────────────────────────────────────────────────────────────────────┘
 ```
+
+**June 29, 2026 handoff hardening; June 30 copy acknowledgement:** the post-publish success state in `src/app/(global-pages)/msg-preview/[sessionId]/page.tsx` now catches Copy Link and WhatsApp browser failures, shows fixed owner copy, opens WhatsApp with `noopener,noreferrer`, and logs only session/link presence-length plus message/URL length metadata. Copy Link checks Clipboard API support, falls through from rejected Clipboard API writes to textarea fallback, uses the textarea fallback only when the document fallback exists, and sets copied state only after acknowledged browser handoff; failed copy diagnostics include clipboard/fallback support booleans. The same preview page now parses preview load, approve, and fix responses through `src/lib/messaging-onboarding/previewClientResponse.ts`, which caps response JSON at 2MB and requires the expected preview/publish/fix response envelopes before updating page state. The approve/fix API routes, publish transaction, cache revalidation, provider confirmation, Firestore rules/indexes, Cloud Functions, and Vercel deployment are unchanged.
+
+**June 29, 2026 WhatsApp media lookup diagnostics:** `functions/src/messagingOnboarding/providers/whatsapp/WhatsAppAdapter.ts` still rejects media downloads when Meta's media lookup response does not yield a valid public HTTPS URL, but malformed or oversized lookup JSON now emits `WHATSAPP_MEDIA_URL_RESPONSE_PARSE_FAILED` with response status and bounded source error metadata before falling into the existing URL-rejected path. Raw provider response bodies and media URLs are not logged.
 
 ---
 
@@ -322,8 +327,7 @@ interface NormalizedMessage {
 }
 
 /** Supported messaging providers */
-type MessagingProvider = "whatsapp" | "telegram";
-// Future: | 'line' | 'viber'
+type MessagingProvider = "whatsapp";
 ```
 
 ### Provider Registry
@@ -331,9 +335,8 @@ type MessagingProvider = "whatsapp" | "telegram";
 ```typescript
 // functions/src/messagingOnboarding/providers/providerRegistry.ts
 
-const providerRegistry: Record<MessagingProvider, () => IMessagingProvider> = {
+const providerRegistry: Partial<Record<MessagingProvider, () => IMessagingProvider>> = {
   whatsapp: () => new WhatsAppAdapter(),
-  telegram: () => new TelegramAdapter(), // Future
 };
 
 /** Resolve adapter for a given provider */
@@ -346,11 +349,12 @@ function getProviderAdapter(provider: MessagingProvider): IMessagingProvider {
 /** Resolve adapter from webhook request path */
 function getProviderFromWebhookPath(path: string): MessagingProvider | null {
   // /messagingOnboarding/whatsapp → 'whatsapp'
-  // /messagingOnboarding/telegram → 'telegram'
   const match = path.match(/\/messagingOnboarding\/(\w+)/);
   return match ? (match[1] as MessagingProvider) : null;
 }
 ```
+
+Current source registers WhatsApp only. Non-WhatsApp provider adapters are reserved extension candidates and are not runtime behavior.
 
 ### WhatsApp Adapter (v1 — Launch Provider)
 
@@ -362,16 +366,12 @@ function getProviderFromWebhookPath(path: string): MessagingProvider | null {
 // See §8.3 for WhatsApp-specific API patterns
 ```
 
-### Telegram Adapter (Future Provider Example)
+### Reserved Provider Adapter Candidate
 
 ```typescript
-// functions/src/messagingOnboarding/providers/telegram/TelegramAdapter.ts
-// Implements IMessagingProvider for Telegram Bot API
-// verifyWebhook: IP whitelist or secret token in URL
-// parseIncomingMessage: Telegram Update object → NormalizedMessage
-// downloadMedia: getFile API → download from file_path
-// sendTextMessage: sendMessage API
-// sendLinkMessage: sendMessage with inline_keyboard
+// No non-WhatsApp adapter is registered in current source.
+// Adding one requires adapter code, secrets, webhook registration,
+// docs/cost/security review, deploy evidence, and provider smoke.
 ```
 
 ---
@@ -386,7 +386,7 @@ function getProviderFromWebhookPath(path: string): MessagingProvider | null {
 | Preview page as new system    | We have existing digital menu rendering components                                     | **REUSE existing menu renderer** for preview display.                                            |
 | Create account for owner      | We have existing user creation in onboarding route                                     | **REUSE pattern** but adapted for phone-based identity.                                          |
 | No knowledge of OBP           | OBP is built from store/public URL truth and existing public surfaces                   | **DO NOT BLOCK PUBLISH ON OBP/QR GENERATION.** Publish store/project URL truth; existing share/public surfaces handle OBP and QR access. |
-| No knowledge of storesSummary | Cost optimization pattern exists                                                       | **SYNC to storesSummary** on publish per `__docs__/patterns/SUMMARY-DOCUMENT-PATTERN.md`.        |
+| No knowledge of storesSummary | Cost optimization pattern exists                                                       | **SYNC to storesSummary** on publish per `__docs__/patterns/summary-document-pattern.md`.        |
 | 10-min intake window          | No existing equivalent                                                                 | **IMPLEMENT as described** — good UX pattern.                                                    |
 | Asset Intelligence Layer      | No existing equivalent (extraction processes ALL files)                                | **IMPLEMENT as NEW layer** before extraction. Single Gemini call for validation + business info. |
 
@@ -600,16 +600,14 @@ interface MessagingOnboardingInboundMessage {
 
 **URL Pattern:** `https://us-central1-{project}.cloudfunctions.net/messagingOnboarding/{provider}`
 
-Each provider gets its own webhook endpoint. The webhook handler resolves the provider from the URL path, loads the correct `IMessagingProvider` adapter, and delegates all provider-specific work.
+Each registered provider gets its own webhook endpoint. The current source registers WhatsApp only. The webhook handler resolves the provider from the URL path, loads the correct `IMessagingProvider` adapter, and delegates all provider-specific work.
 
 **WhatsApp endpoint:** `.../messagingOnboarding/whatsapp`
-**Telegram endpoint:** `.../messagingOnboarding/telegram` (future)
 
 **GET** — Webhook Verification (provider-specific challenge)
 
 ```typescript
 // WhatsApp: GET ?hub.mode=subscribe&hub.verify_token={token}&hub.challenge={challenge}
-// Telegram: No GET verification (uses setWebhook API with secret_token)
 // Handler delegates to: providerAdapter.handleWebhookChallenge(req)
 ```
 
@@ -669,7 +667,9 @@ const PreviewParamsSchema = z.object({
 
 // Response: Session data + extracted menu + business info
 // No auth required (token-based access)
+// Rate limited by hashed session/IP key before session read
 // Returns 404 if session expired or not found
+// Unexpected failures log messaging_preview_get_route_failed with bounded context
 ```
 
 **POST** `/api/msg-preview/[sessionId]/approve`
@@ -685,7 +685,9 @@ const ApproveSchema = z.object({
 
 // Triggers publish pipeline
 // Validates token matches session
-// Rate limited: 1 request per session (idempotent)
+// Rejects request bodies above 4KB before JSON parsing
+// Rate limited: PUBLISH_OPERATION per hashed IP before publish work
+// Publish transaction is state/idempotency guarded
 ```
 
 **POST** `/api/msg-preview/[sessionId]/fix`
@@ -704,11 +706,17 @@ const FixRequestSchema = z.object({
         "other",
       ]),
     )
-    .min(1),
+    .min(1)
+    .max(5),
   note: z.string().max(200).optional(),
 });
 
+// Rejects request bodies above 4KB before JSON parsing
+// Rate limited by hashed session/IP key before session read or mutation
+
 // Updates session state, sends WhatsApp message asking for new photos
+// Rejects request bodies above 4KB before JSON parsing
+// Rate limited per session/IP before Firestore work
 ```
 
 ---
@@ -736,8 +744,6 @@ functions/src/
 │       ├── providerRegistry.ts      # Provider factory + lookup
 │       ├── whatsapp/
 │       │   └── WhatsAppAdapter.ts   # Meta Cloud API: verify, parse, download, send
-│       └── telegram/                # Future
-│           └── TelegramAdapter.ts   # Telegram Bot API adapter
 ├── schedulers/
 │   └── messagingSessionCleanup.ts  # Scheduled: expiry, reminders, storage cleanup
 └── types/
@@ -798,60 +804,60 @@ functions/package.json              # May need axios for provider API calls
 
 ---
 
-## 7. Implementation Phases
+## 7. Implementation Status
 
-### Phase 1: Foundation (Core Session Engine)
+### Runtime Area: Foundation (Core Session Engine)
 
 | #    | Task                                                                                | File                                                                      | Status |
 | ---- | ----------------------------------------------------------------------------------- | ------------------------------------------------------------------------- | ------ |
-| 1.1  | Add feature flags (`ENABLE_MESSAGING_ONBOARDING`, `MESSAGING_ONBOARDING_PROVIDERS`) | `src/config/features.ts`                                                  | ☐      |
-| 1.2  | Create types file with all interfaces (provider-agnostic)                           | `functions/src/types/messagingOnboarding.types.ts`                        | ☐      |
-| 1.3  | Create `IMessagingProvider` interface + `NormalizedMessage`                         | `functions/src/messagingOnboarding/providers/IMessagingProvider.ts`       | ☐      |
-| 1.4  | Create provider registry + factory                                                  | `functions/src/messagingOnboarding/providers/providerRegistry.ts`         | ☐      |
-| 1.5  | Create WhatsApp adapter (implements `IMessagingProvider`)                           | `functions/src/messagingOnboarding/providers/whatsapp/WhatsAppAdapter.ts` | ☐      |
-| 1.6  | Create constants file (limits, templates, states)                                   | `functions/src/messagingOnboarding/constants.ts`                          | ☐      |
-| 1.7  | Create session engine (CRUD + state transitions, provider-agnostic)                 | `functions/src/messagingOnboarding/sessionEngine.ts`                      | ☐      |
-| 1.8  | Create webhook handler (routes to provider adapter)                                 | `functions/src/messagingOnboarding/webhookHandler.ts`                     | ☐      |
-| 1.9  | Export functions in index.ts                                                        | `functions/src/index.ts`                                                  | ☐      |
-| 1.10 | Add Firestore indexes                                                               | `firestore.indexes.json`                                                  | ☐      |
+| 1.1  | Add feature flags (`ENABLE_MESSAGING_ONBOARDING`, `MESSAGING_ONBOARDING_PROVIDERS`) | `src/config/features.ts`                                                  | ✅      |
+| 1.2  | Create types file with all interfaces (provider-agnostic)                           | `functions/src/types/messagingOnboarding.types.ts`                        | ✅      |
+| 1.3  | Create `IMessagingProvider` interface + `NormalizedMessage`                         | `functions/src/messagingOnboarding/providers/IMessagingProvider.ts`       | ✅      |
+| 1.4  | Create provider registry + factory                                                  | `functions/src/messagingOnboarding/providers/providerRegistry.ts`         | ✅      |
+| 1.5  | Create WhatsApp adapter (implements `IMessagingProvider`)                           | `functions/src/messagingOnboarding/providers/whatsapp/WhatsAppAdapter.ts` | ✅      |
+| 1.6  | Create constants file (limits, templates, states)                                   | `functions/src/messagingOnboarding/constants.ts`                          | ✅      |
+| 1.7  | Create session engine (CRUD + state transitions, provider-agnostic)                 | `functions/src/messagingOnboarding/sessionEngine.ts`                      | ✅      |
+| 1.8  | Create webhook handler (routes to provider adapter)                                 | `functions/src/messagingOnboarding/webhookHandler.ts`                     | ✅      |
+| 1.9  | Export functions in index.ts                                                        | `functions/src/index.ts`                                                  | ✅      |
+| 1.10 | Add Firestore indexes                                                               | `firestore.indexes.json`                                                  | ✅      |
 
-### Phase 2: Intelligence Layer
+### Runtime Area: Intelligence Layer
 
 | #   | Task                                                  | File                                                     | Status |
 | --- | ----------------------------------------------------- | -------------------------------------------------------- | ------ |
-| 2.1 | Create Asset Intelligence Layer (Gemini validation)   | `functions/src/messagingOnboarding/assetIntelligence.ts` | ☐      |
-| 2.2 | Create intake processor (scheduled, every 2 min)      | `functions/src/messagingOnboarding/intakeProcessor.ts`   | ☐      |
-| 2.3 | Connect to existing extraction pipeline               | Reuse `processMenuImagesJobLogic`                        | ☐      |
-| 2.4 | Create extraction watcher (onDocumentUpdated trigger) | `functions/src/messagingOnboarding/extractionWatcher.ts` | ☐      |
+| 2.1 | Create Asset Intelligence Layer (Gemini validation)   | `functions/src/messagingOnboarding/assetIntelligence.ts` | ✅      |
+| 2.2 | Create intake processor (scheduled, every 2 min)      | `functions/src/messagingOnboarding/intakeProcessor.ts`   | ✅      |
+| 2.3 | Connect to existing extraction pipeline               | Reuse `processMenuImagesJobLogic`                        | ✅      |
+| 2.4 | Create extraction watcher (onDocumentUpdated trigger) | `functions/src/messagingOnboarding/extractionWatcher.ts` | ✅      |
 
-### Phase 3: Preview & Publish
+### Runtime Area: Preview & Publish
 
 | #   | Task                                             | File                                                           | Status |
 | --- | ------------------------------------------------ | -------------------------------------------------------------- | ------ |
-| 3.1 | Create preview page (Next.js, provider-agnostic) | `src/app/(global-pages)/msg-preview/[sessionId]/page.tsx`      | ☐      |
-| 3.2 | Create preview API route (GET session data)      | `src/app/api/msg-preview/[sessionId]/route.ts`                 | ☐      |
-| 3.3 | Create approve API route                         | `src/app/api/msg-preview/[sessionId]/approve/route.ts`         | ☐      |
-| 3.4 | Create fix request API route                     | `src/app/api/msg-preview/[sessionId]/fix/route.ts`             | ☐      |
+| 3.1 | Create preview page (Next.js, provider-agnostic) | `src/app/(global-pages)/msg-preview/[sessionId]/page.tsx`      | ✅      |
+| 3.2 | Create preview API route (GET session data)      | `src/app/api/msg-preview/[sessionId]/route.ts`                 | ✅      |
+| 3.3 | Create approve API route                         | `src/app/api/msg-preview/[sessionId]/approve/route.ts`         | ✅      |
+| 3.4 | Create fix request API route                     | `src/app/api/msg-preview/[sessionId]/fix/route.ts`             | ✅      |
 | 3.5 | Create active publish executor (atomic store creation) | `src/lib/messaging-onboarding/publish.ts`                 | ✅      |
-| 3.6 | Send publish confirmation via provider adapter   | Resolved at runtime via `getProviderAdapter(session.provider)` | ☐      |
+| 3.6 | Send publish confirmation via provider adapter   | Resolved at runtime via `getProviderAdapter(session.provider)` | ✅      |
 
-### Phase 4: Cleanup & Hardening
+### Runtime Area: Cleanup & Hardening
 
 | #    | Task                                                                               | File                                                   | Status |
 | ---- | ---------------------------------------------------------------------------------- | ------------------------------------------------------ | ------ |
-| 4.1  | Create session cleanup scheduler                                                   | `functions/src/schedulers/messagingSessionCleanup.ts`  | ☐      |
-| 4.2  | Create reminder logic (12h after preview, uses provider adapter for sending)       | `functions/src/schedulers/messagingSessionCleanup.ts`  | ☐      |
-| 4.3  | Implement rate limiting logic                                                      | `functions/src/messagingOnboarding/sessionEngine.ts`   | ☐      |
-| 4.4  | Handle post-publish messages (redirect to dashboard)                               | `functions/src/messagingOnboarding/webhookHandler.ts`  | ☐      |
-| 4.5a | Handle unsupported message types (video, audio, sticker, location, contact)        | `functions/src/messagingOnboarding/webhookHandler.ts`  | ☐      |
-| 4.5b | Handle uploads-during-processing (queue + restart after completion)                | `functions/src/messagingOnboarding/sessionEngine.ts`   | ☐      |
+| 4.1  | Create session cleanup scheduler                                                   | `functions/src/schedulers/messagingSessionCleanup.ts`  | ✅      |
+| 4.2  | Create reminder logic (12h after preview, uses provider adapter for sending)       | `functions/src/schedulers/messagingSessionCleanup.ts`  | ✅      |
+| 4.3  | Implement rate limiting logic                                                      | `functions/src/messagingOnboarding/sessionEngine.ts`   | ✅      |
+| 4.4  | Handle post-publish messages (redirect to dashboard)                               | `functions/src/messagingOnboarding/webhookHandler.ts`  | ✅      |
+| 4.5a | Handle unsupported message types (video, audio, sticker, location, contact)        | `functions/src/messagingOnboarding/webhookHandler.ts`  | ✅      |
+| 4.5b | Handle uploads-during-processing (queue + restart after completion)                | `functions/src/messagingOnboarding/sessionEngine.ts`   | ✅      |
 | 4.5c | Message deduplication by providerMessageId                                         | `functions/src/messagingOnboarding/inboundQueue.ts`    | ✅      |
-| 4.5d | Blank prevention gate (0 items → FAILED, not preview)                              | `functions/src/messagingOnboarding/intakeProcessor.ts` | ☐      |
+| 4.5d | Blank prevention gate (0 items → FAILED, not preview)                              | `functions/src/messagingOnboarding/intakeProcessor.ts` | ✅      |
 | 4.5e | Publish validation gate (min 1 category + 1 priced item)                           | `src/app/api/msg-preview/[sessionId]/approve/route.ts` | ✅      |
-| 4.5f | Extraction cost cap: `processingRuns >= MAX (2)` → reject, ask new session (INV-3) | `functions/src/messagingOnboarding/intakeProcessor.ts` | ☐      |
-| 4.5g | Progress message: send "Your menu is being prepared..." when extraction starts     | `functions/src/messagingOnboarding/intakeProcessor.ts` | ☐      |
-| 4.5  | Storage cleanup for expired sessions                                               | `functions/src/schedulers/messagingSessionCleanup.ts`  | ☐      |
-| 4.6  | Add Firestore security rules for new collections                                   | `firestore.rules`                                      | ☐      |
+| 4.5f | Extraction cost cap: `processingRuns >= MAX (2)` → reject, ask new session (INV-3) | `functions/src/messagingOnboarding/intakeProcessor.ts` | ✅      |
+| 4.5g | Progress message: send "Your menu is being prepared..." when extraction starts     | `functions/src/messagingOnboarding/intakeProcessor.ts` | ✅      |
+| 4.5  | Storage cleanup for expired sessions                                               | `functions/src/schedulers/messagingSessionCleanup.ts`  | ✅      |
+| 4.6  | Add Firestore security rules for new collections                                   | `firestore.rules`                                      | ✅      |
 
 ---
 
@@ -919,6 +925,8 @@ await sessionRef.update({
 ```
 
 **Cost impact:** This removes the temporary project read/write/verify/delete cycle for messaging sessions while preserving the shared extraction engine. Cleanup of old temp projects remains guarded for legacy jobs that were created before `skipProjectSave` existed.
+
+Legacy temp-project cleanup is non-blocking but observable. If `msgExtractionWatcher` still sees an older job without `skipProjectSave` and the temp project delete fails, it logs `Temp project cleanup failed` with bounded session ID, temp project ID, cleanup target, and source error name/code metadata only. It must not log raw session IDs, temp project IDs, Firestore paths, project payloads, or exception text.
 
 #### 8.1.2 AI Rate Limiting Note
 
@@ -1164,7 +1172,7 @@ The preview page `/msg-preview/[sessionId]` calls the Next.js API route `/api/ms
 4. **Double-publish protection (CRITICAL):** Uses a Firestore transaction to atomically read session state AND update it to `PUBLISHING`. If state is not `AWAITING_APPROVAL`, the transaction rejects.
 5. Calls `executeMessagingOnboardingPublish()` from `src/lib/messaging-onboarding/publish.ts`
 6. The publish executor runs one Firestore transaction for tenant + store + user + project + summary + session `LIVE` finalization
-7. After transaction, the API revalidates public cache tags; the intake scheduler sends the provider confirmation from `confirmationPending=true`
+7. After the transaction commits, `executeMessagingOnboardingPublish()` revalidates public cache tags; the intake scheduler sends the provider confirmation from `confirmationPending=true`
 
 ```typescript
 // Double-publish protection pattern (inside approve API route)
@@ -1198,7 +1206,7 @@ try {
       stateHistory: FieldValue.arrayUnion({
         state: "AWAITING_APPROVAL",
         timestamp: Timestamp.now(),
-        reason: `Publish failed after retry: ${retryError.message}`,
+        reason: "Publish failed after retry",
       }),
     });
     // Send error message via provider
@@ -1235,8 +1243,9 @@ WHATSAPP_VERIFY_TOKEN=xxxx    # For webhook GET verification
 ```typescript
 // messageSender.ts
 async function sendTextMessage(phone: string, text: string): Promise<void> {
+  const encodedPhoneNumberId = encodeURIComponent(PHONE_NUMBER_ID);
   const response = await fetch(
-    `https://graph.facebook.com/v21.0/${PHONE_NUMBER_ID}/messages`,
+    `https://graph.facebook.com/v21.0/${encodedPhoneNumberId}/messages`,
     {
       method: "POST",
       headers: {
@@ -1260,19 +1269,34 @@ async function sendTextMessage(phone: string, text: string): Promise<void> {
 // mediaDownloader.ts
 async function downloadMedia(mediaId: string): Promise<Buffer> {
   // Step 1: Get media URL
+  const encodedMediaId = encodeURIComponent(mediaId);
   const metaResponse = await fetch(
-    `https://graph.facebook.com/v21.0/${mediaId}`,
+    `https://graph.facebook.com/v21.0/${encodedMediaId}`,
     { headers: { Authorization: `Bearer ${ACCESS_TOKEN}` } },
   );
-  const { url } = await metaResponse.json();
+  const metaPayload = await readJsonResponseWithLimit<{ url?: unknown }>(metaResponse, WHATSAPP_PROVIDER_JSON_MAX_BYTES);
+  const url = typeof metaPayload?.url === "string" ? metaPayload.url : "";
 
-  // Step 2: Download media
-  const mediaResponse = await fetch(url, {
+  // Step 2: Validate public HTTPS + DNS target, then download media
+  const urlValidation = await validateNetworkTargetUrl(url);
+  if (!urlValidation.valid || !urlValidation.normalizedUrl) {
+    throw new Error("media target rejected");
+  }
+
+  const mediaResponse = await fetch(urlValidation.normalizedUrl, {
     headers: { Authorization: `Bearer ${ACCESS_TOKEN}` },
   });
-  return Buffer.from(await mediaResponse.arrayBuffer());
+  try {
+    const mediaBytes = await readResponseUint8ArrayWithLimit(mediaResponse, UPLOAD_LIMITS.MAX_FILE_SIZE_BYTES);
+    return Buffer.from(mediaBytes);
+  } catch (error) {
+    if (!isResponseBodyTooLargeError(error)) throw error;
+    throw createWhatsAppProviderError(WHATSAPP_MEDIA_TOO_LARGE_CODE);
+  }
 }
 ```
+
+Provider media download URLs are treated as untrusted even though they come from Meta. `WhatsAppAdapter.ts` reads the Meta media-URL lookup response through a 64KB bounded JSON reader, validates the returned URL through the shared Functions `validateNetworkTargetUrl()` helper, and only then downloads the binary. The target validator requires HTTPS and rejects localhost, private, link-local, multicast, or metadata-style network targets. The adapter then reads the media response through `readResponseUint8ArrayWithLimit()`, which checks `content-length`, cancels the response stream when the byte limit is crossed, and maps oversize media to `WHATSAPP_MEDIA_TOO_LARGE` before returning the media buffer. Rejections use `WHATSAPP_MEDIA_URL_REJECTED`, `WHATSAPP_MEDIA_TOO_LARGE`, or the existing provider download failure code with bounded URL length and validation metadata only.
 
 ### 8.4 Asset Intelligence Gemini Prompt
 
@@ -1359,7 +1383,7 @@ match /messagingOnboardingEvents/{eventId} {
 | File | Current Value | Purpose |
 | ---- | ------------- | ------- |
 | `src/config/features.ts` → `ENABLE_MESSAGING_ONBOARDING` | `true` | Keeps app/preview surfaces available. |
-| Runtime env `ENABLE_MESSAGING_ONBOARDING` read by `functions/src/messagingOnboarding/constants.ts` | `true` in MenuList Functions env files/templates | Allows Cloud Function webhook/scheduler processing when real provider credentials and Meta webhook registration exist. |
+| Runtime env `ENABLE_MESSAGING_ONBOARDING` read by `functions/src/messagingOnboarding/constants.ts` | `false` in checked-in MenuList Functions env files/templates | Keeps Cloud Function webhook/scheduler processing off until real provider credentials and Meta webhook registration exist; set `true` only for the target being smoked. |
 | Runtime env `MESSAGING_ONBOARDING_PROVIDERS` read by `functions/src/messagingOnboarding/constants.ts` | `whatsapp` | Enables only configured providers. |
 
 Do not use dummy WhatsApp secrets. Missing real provider credentials are an operational blocker, not an application fallback case.
@@ -1379,14 +1403,14 @@ Do not use dummy WhatsApp secrets. Missing real provider credentials are an oper
 | `WHATSAPP_APP_SECRET`      | For webhook signature verification (HMAC-SHA256) | Firebase Functions secrets |
 | `WHATSAPP_VERIFY_TOKEN`    | For webhook GET challenge                        | Firebase Functions secrets |
 
-### Telegram Provider Secrets (Future)
+### Reserved Provider Secret Pattern
 
 | Variable                  | Purpose                                   | Where                      |
 | ------------------------- | ----------------------------------------- | -------------------------- |
-| `TELEGRAM_BOT_TOKEN`      | Telegram Bot API token                    | Firebase Functions secrets |
-| `TELEGRAM_WEBHOOK_SECRET` | Secret token for webhook URL verification | Firebase Functions secrets |
+| Provider-specific token   | Adapter API token                         | Firebase Functions secrets |
+| Provider-specific webhook secret | Adapter webhook verification secret | Firebase Functions secrets |
 
-> **Pattern:** Each provider's secrets are namespaced by provider name. Adding a new provider = adding its env vars to Functions secrets. No shared env vars between providers.
+> **Pattern:** Each provider's secrets are namespaced by provider name. Adding a non-WhatsApp provider requires separate adapter code, namespaced secrets, webhook registration, docs, deploy evidence, and provider smoke. No shared env vars between providers.
 
 ### Dashboard Environment
 
@@ -1426,8 +1450,9 @@ Do not use dummy WhatsApp secrets. Missing real provider credentials are an oper
 ### Manual Testing Workflow
 
 ```bash
-# 1. Deploy Cloud Functions
-cd functions && npm run deploy
+# 1. Verify and deploy Cloud Functions to QA through the scoped certification gate
+npm run verify:functions-deploy-preflight
+# Then use the scoped menulist-qa Gate 1 command from __docs__/production-readiness/external-certification-runbook.md
 
 # 2. Register webhook URL with Meta
 # URL: https://us-central1-{project}.cloudfunctions.net/messagingOnboarding/whatsapp
@@ -1757,7 +1782,6 @@ interface MsgOnboardingEvent {
   /** Error details (only for failure events) */
   error?: {
     code: string; // e.g., 'GEMINI_API_ERROR', 'FIRESTORE_TRANSACTION_FAILED'
-    message: string; // Human-readable (no PII)
     retryable: boolean; // Was this retried? Could it be?
     retryCount?: number; // How many retries attempted
   };
@@ -1824,15 +1848,19 @@ export async function logOnboardingEvent(params: {
       .catch((err) => {
         functions.logger.warn("[Msg-Tracking] Failed to log event", {
           eventType: params.eventType,
-          sessionId: params.sessionId,
-          error: err.message,
+          failureCode: "MSG_ONBOARDING_EVENT_WRITE_FAILED",
+          sessionIdLength: params.sessionId.length,
+          sourceErrorName: err instanceof Error ? err.name : typeof err,
+          sourceErrorCode: err instanceof Error ? (err as any).code : undefined,
         });
       });
   } catch (err) {
     // Silent failure — tracking is non-critical (same as MOL)
     functions.logger.warn("[Msg-Tracking] Error preparing event", {
       eventType: params.eventType,
-      error: (err as Error).message,
+      failureCode: "MSG_ONBOARDING_EVENT_PREPARE_FAILED",
+      sourceErrorName: err instanceof Error ? err.name : typeof err,
+      sourceErrorCode: err instanceof Error ? (err as any).code : undefined,
     });
   }
 }
@@ -1858,6 +1886,22 @@ export function maskUserId(providerUserId: string): string {
 | `messagingSessionCleanup.ts` | `REMINDER_SENT`, `SESSION_EXPIRED`                                                                                                                                                    | Scheduler runs                                  |
 | Preview API routes           | `PREVIEW_VIEWED`, `PREVIEW_APPROVED`, `PREVIEW_FIX_REQUESTED`                                                                                                                         | On preview page interactions                    |
 | Provider adapters            | `MESSAGE_SENT`, `MESSAGE_SEND_FAILED`, `PROVIDER_MEDIA_DOWNLOAD_FAILED`                                                                                                               | On provider API calls                           |
+
+`assetIntelligence.ts` diagnostics are bounded. Upload-fetch failures log `ASSET_VALIDATION_UPLOAD_FETCH_FAILED` with upload count/index and ID/URL/MIME length metadata only. Unsafe upload URLs are rejected with `ASSET_VALIDATION_UPLOAD_URL_REJECTED` before fetch unless the Firebase Storage download URL decodes to the same configured bucket, the same `upload.storagePath`, and the `messagingOnboarding/{sessionId}/{uploadId.ext}` shape created by `sessionEngine.ts`. The same prefetch path validates the upload URL through the shared Functions public HTTPS/DNS target guard, fetches only the normalized validated URL, and reads the response through `readResponseUint8ArrayWithLimit()` so oversize headers or streams are rejected with `ASSET_VALIDATION_UPLOAD_TOO_LARGE` before base64 conversion. Gemini parse failures log `ASSET_VALIDATION_RESPONSE_PARSE_FAILED` with response length and source error name/code/status only. Raw upload IDs, raw storage URLs, raw Gemini response snippets, and raw exception messages must not be logged.
+
+`sessionEngine.ts` duplicate-upload cleanup is non-blocking but observable. If a duplicate media upload is detected after Storage upload, the engine still attempts to delete the orphaned object and returns no owner reply for the duplicate. Failed cleanup logs `Duplicate upload cleanup failed` with session ID, upload ID, and Storage path presence/length metadata plus bounded source error name/code only. It must not log raw session IDs, upload IDs, Storage paths, provider media IDs, hashes, file names, or exception text.
+
+`intakeProcessor.ts` non-blocking provider-send diagnostics are bounded. Intake processing still treats processing-cap notices, validation-recovery guidance, invalid-upload guidance, partial-menu prompts, and extraction-progress messages as non-blocking so session state and extraction can continue. If a provider send rejects, it logs `INTAKE_PROVIDER_MESSAGE_SEND_FAILED` with fixed message trigger, provider enum, session state, bounded session ID metadata, and source error name/code only. The weekly processing-run counter fallback logs `INTAKE_RATE_LIMIT_COUNTER_UPDATE_FAILED` with the same bounded session context. These diagnostics must not log raw provider user IDs, phone numbers, message text, provider responses, raw session IDs, hashed rate-limit keys, or exception text.
+
+`extractionWatcher.ts` temp-project cleanup diagnostics are bounded. Legacy jobs that predate `skipProjectSave` still attempt temp project deletion after ignored stale states, extraction failure, blank extraction, and preview-ready handling. Failed cleanup logs `Temp project cleanup failed` with session ID, temp project ID, fixed cleanup target, and source error name/code metadata only; it does not block session state, preview handling, provider messages, or extraction failure recovery.
+
+`extractionWatcher.ts` recovery-message diagnostics are bounded. When extraction fails or returns an unusable blank result, the watcher still transitions the session through the existing recovery path and attempts to send `MESSAGES.ASK_CLEARER_PHOTOS`. If the provider send rejects, it logs `EXTRACTION_CLEARER_PHOTOS_SEND_FAILED` with bounded session ID metadata, provider enum, session state, and source error name/code only. It must not log raw provider user IDs, phone numbers, message text, provider responses, session IDs, or exception text, and it must not block failure recovery.
+
+`messagingSessionCleanup.ts` uses bounded scheduler diagnostics. Expire, reminder, storage cleanup, cleanup-query, and inbound queue cleanup failures log stable `MESSAGING_*` failure codes with session ID length and source error name/code/status metadata only; they do not log raw session IDs or exception messages. Expired-session upload cleanup ignores true missing Storage objects, but failed deletes for other reasons log `MESSAGING_SESSION_FILE_CLEAN_FAILED` with session ID, upload ID, and Storage path presence/length metadata only before continuing the rest of the cleanup.
+
+`src/lib/messaging-onboarding/publish.ts` uses bounded runtime diagnostics for best-effort active publish cache revalidation and lifecycle-event writes. Cache failures log `messaging_onboarding_publish_cache_revalidation_failed` with tenant/store/project/user presence-length metadata, tag count, owner-assistant packet cache invalidation state, and source error name/code/status only. Lifecycle event write failures log `messaging_onboarding_publish_event_write_failed` with session/provider presence-length metadata, fixed event type/state, metadata key count, and source error name/code/status only; raw IDs and raw exception messages must not be logged.
+
+Preview route failures use bounded runtime diagnostics. `route.ts` logs `messaging_preview_get_route_failed`; `approve/route.ts` logs `messaging_preview_publish_retry_failed` and `messaging_preview_approve_route_failed`; `fix/route.ts` logs `messaging_preview_fix_route_failed`. Best-effort preview event write failures log `messaging_preview_event_write_failed` with fixed event type/state, metadata key count, route/session/provider context, and source error name/code/status only. Context is limited to route, session/provider/request-IP presence-length metadata, state/count booleans or counts, and source error name/code/status. The approve transaction maps expected invalid-token, missing-session, in-progress, not-ready, and expired-session states through typed local error codes instead of raw exception-message matching. `PUBLISH_FAILED` event documents and state-history recovery reasons stay code-only and must not persist raw retry exception messages.
 
 ### 16.6 Feature Flag
 
@@ -2298,7 +2342,8 @@ const CallableFunctionOptions = {
 const MessagingWebhookOptions = {
   ...functionOptions,
   secrets: [
-    "WHATSAPP_API_TOKEN",
+    "WHATSAPP_PHONE_NUMBER_ID",
+    "WHATSAPP_ACCESS_TOKEN",
     "WHATSAPP_VERIFY_TOKEN",
     "WHATSAPP_APP_SECRET",
   ],
@@ -2311,13 +2356,16 @@ const IntakeProcessorOptions = {
 };
 ```
 
-Secrets are stored in Google Cloud Secret Manager (not `.env` files). Set via:
+Secrets are stored in Google Cloud Secret Manager (not `.env` files). Set them in QA first:
 
 ```bash
-firebase functions:secrets:set WHATSAPP_API_TOKEN
-firebase functions:secrets:set WHATSAPP_VERIFY_TOKEN
-firebase functions:secrets:set WHATSAPP_APP_SECRET
+firebase functions:secrets:set WHATSAPP_PHONE_NUMBER_ID --project menulist-qa
+firebase functions:secrets:set WHATSAPP_ACCESS_TOKEN --project menulist-qa
+firebase functions:secrets:set WHATSAPP_VERIFY_TOKEN --project menulist-qa
+firebase functions:secrets:set WHATSAPP_APP_SECRET --project menulist-qa
 ```
+
+Production values require QA provider smoke evidence and explicit production secret approval before repeating the same commands with `--project menulist`.
 
 ### 19.6 NextAuth Phone Login Integration
 
@@ -2391,7 +2439,7 @@ The preview page lives at `src/app/(global-pages)/msg-preview/[sessionId]/page.t
 | Extraction-only save skip                   | Messaging jobs set `skipProjectSave: true`                                | Reuses the shared extraction engine without temporary project read/write/delete side effects.                       |
 | Published source-file retention             | Uploaded menu files remain in Storage after publish                        | Required because project `files[].url` points to these files for dashboard source preview and extraction retry workflows. |
 
-### 20.2 Future Optimizations (Post-v1, If Scale Demands)
+### 20.2 Conditional Optimizations (If Scale Demands)
 
 | Optimization                            | Trigger Condition                    | Expected Savings                     | Complexity                                             |
 | --------------------------------------- | ------------------------------------ | ------------------------------------ | ------------------------------------------------------ |

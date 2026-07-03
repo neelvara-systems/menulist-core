@@ -1,7 +1,7 @@
 # Answerlattice Help Widget — Firebase Operations & Cost
 
-> **Version:** 2.4.4
-> **Last Updated:** 2026-05-22
+> **Version:** 2.5.4
+> **Last Updated:** 2026-06-30
 > **Audience:** Developers / Ops
 
 ---
@@ -30,7 +30,9 @@
 | `stores`                 | 0-1 WRITE | Explicit dashboard save in `/answerlattice/widget`; unchanged saves skip the write | Existing write pricing |
 | `stores`                 | 1 READ + 1 WRITE | Widget key create/rename/delete updates `answerlatticeWidgetApi` only; create returns the raw key once | Existing read/write pricing |
 | `stores`                 | 0 READ / 0 WRITE | Widget key copy after creation is intentionally unavailable; operators create a replacement key if the raw value is lost | $0.00 |
-| `aiSearchHistory`        | up to 12 READS | `/api/answerlattice/widget-activity` recent widget questions panel in `/answerlattice/widget`; protected tenant/store read | Existing read pricing |
+| `aiSearchHistory`        | 0-12 READS | `/api/answerlattice/widget-activity` recent widget questions panel in `/answerlattice/widget`; protected tenant/store read after the shared `DATA_READ` gate | Rate-limited refreshes perform no search-history reads |
+| Browser request/response validation | 0 READ / 0 WRITE | Widget Management uses no-store, same-origin, manual-redirect request policy and validates widget-config, widget-activity, widget-key, and hosted-help settings response bodies before local UI state changes | $0.00 |
+| Public iframe response validation | 0 READ / 0 WRITE | WidgetClient validates widget search responses in the browser before rendering assistant messages; feedback request policy changes stay browser-local | $0.00 |
 
 ## No New Collections
 
@@ -61,7 +63,7 @@ The dashboard recent-questions panel uses this composite index in Answerlattice 
 | Runtime config load       | 0-1   | 0      | $0.00      | <$0.0001   |
 | Dashboard config save     | 0-1   | 0-1    | $0.00      | <$0.0001   |
 
-Note on image queries: Image queries add one bounded visual-context model call before normal retrieval/answering. Expected volume: <10% of widget queries will include images (error screenshots). Widget images are validated and passed inline to `coreSearch()`; they are not written to Firebase Storage.
+Note on image queries: Image queries add one bounded visual-context model call before normal retrieval/answering. Expected volume: <10% of widget queries will include images (error screenshots). Widget images are validated and passed inline to `coreSearch()`; they are not written to Firebase Storage. Authenticated Help Center image URLs are tenant/store path-checked, fetched with manual redirect handling, and read through the bounded image response reader before visual-context generation.
 
 ## Monthly Cost Projections
 
@@ -102,6 +104,10 @@ Note: Canonical hit rate directly reduces Gemini API costs (canonical hits = $0 
 20. **Branding rides runtime config** — header title, accent color, greeting, and powered-by visibility use the existing `/api/widget/config` response; no separate white-label collection or listener is needed for the launch-grade widget controls.
 21. **Interval-only runtime status writes** — widget config writes runtime status at most once per warm 15-minute interval instead of writing on page-path/context changes.
 22. **One-time key display** — widget keys are never decrypted or recovered later, so copy attempts after creation do not add Firestore reads.
+23. **Bounded public widget diagnostics** — widget search/config/feedback/predictive-help failure logs use fixed runtime codes and tenant/store presence-length metadata, not raw tenant/store IDs or route-specific exception payloads.
+24. **Observable config capability degradation** — predictive-summary read failures log `answerlattice_widget_config_predictive_summary_load_failed` and public bundle-manifest read failures log `answerlattice_widget_config_bundle_manifest_load_failed`; the response keeps the existing degraded capability shape without adding Firestore reads, writes, or Storage operations.
+25. **Bounded widget-management requests and responses** — dashboard widget-config, widget-activity, widget-key, and hosted-help calls use no-store, same-origin, manual-redirect request policy, then parse responses with a browser-side 256 KB cap and shape guards before state mutation. This adds no Firestore reads, writes, collections, listeners, or provider calls.
+26. **Bounded public widget responses** — iframe search responses are parsed with a browser-side 256 KB cap and shape guard before rendering. This adds no Firestore reads, writes, collections, listeners, Storage operations, provider calls, rules, indexes, or deployment work.
 
 ## Cache Strategy Decision
 
@@ -132,6 +138,11 @@ The mutation engine (signal events from widget feedback → mutation proposals �
 
 | Date       | Version | Change                                                                                                                                  |
 | ---------- | ------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-06-30 | 2.5.6   | Added Widget Management browser request policy for widget-config, activity, key, and hosted-help calls with no Firebase cost-shape change. |
+| 2026-06-30 | 2.5.5   | Documented public iframe WidgetClient response validation as browser-local with no Firebase cost-shape change. |
+| 2026-06-30 | 2.5.4   | Added Widget Management browser response acknowledgement for widget-config, activity, key, and hosted-help settings responses with no Firebase cost-shape change. |
+| 2026-06-29 | 2.5.3   | Made widget config predictive-summary and public bundle-manifest capability degradation observable with bounded runtime diagnostics and no cost-shape change. |
+| 2026-06-28 | 2.5.2   | Bounded public widget search/config diagnostics without changing auth, rate limits, origin checks, cache behavior, reads, or writes. |
 | 2026-06-11 | 2.5.1   | Hardened widget key and cache cost model: raw widget keys are one-time only, runtime status writes are interval-throttled, and owner search cache lookup uses newest-first indexed ordering. |
 | 2026-05-25 | 2.4.9   | Added store-doc multi-key cost model: no new collections, runtime validation stays one indexed store lookup, and key create/rename/delete are bounded writes. The old copy/decrypt path is superseded by 2.5.1. |
 | 2026-05-24 | 2.4.6   | Restored predictive support cost docs with summary-backed capability gating: one extra trigger-summary read only on widget config cache misses, and no predictive API calls when active triggers are absent. |

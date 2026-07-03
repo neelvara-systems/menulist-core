@@ -6,61 +6,67 @@ import {
     safeSyncProductSubscriptionEntitlementFromSubscription,
     updateProductSubscription,
 } from '@lib/billing/productBillingServer';
+import {
+    getBoundedRazorpaySecurityContext,
+    getBoundedRazorpayStringContext,
+    getRazorpayFailureLogData,
+    getRazorpaySubscriptionMutationLogContext,
+    logRazorpayNonBlockingFailure,
+} from '@lib/billing/razorpayDiagnostics';
 import { isAnswerlatticeBillingProduct, normalizeBillingProductId } from '@lib/billing/productBillingPlans';
 import { validateTransition } from '@lib/billing/subscriptionStateMachine';
 import { logger } from "@lib/monitoring/logger";
+import { getFounderSubscriptionMrrPaise } from "@lib/ops/founderRevenueReadModel";
 import { razorpayClient } from "@lib/razorpay/razorpay";
+import { readBoundedJsonBody } from "@lib/security/boundedRequestBody";
 import { validateAPIInput } from "@lib/security/inputValidation";
-import { buildSecurityContext } from "@lib/security/securityContext";
 import { UpgradeSubscriptionRequestSchema } from "@lib/validation/apiSchemas";
 import { FirestoreSubscriptionDoc } from "@type/razorpay";
 import { calculateRemainingCredits } from "@util/razorpay";
 import { Timestamp } from "firebase/firestore";
 import { writeLogEntry } from 'logs/utils';
 import { NextResponse } from 'next/server';
+import { hashPublicRateLimitValue } from "src/middleware/publicApi";
 import { verifyTenantAccess, withAuth } from "../../../../middleware/auth";
 
 const LOG_FILE = "razorpay-subscription.log";
-
-const summarizeSubscriptionForMutationLog = (subscription: any) => ({
-    subscriptionId: subscription?.id || subscription?.providerSubscriptionId,
-    providerSubscriptionId: subscription?.providerSubscriptionId,
-    status: subscription?.status,
-    tenantId: subscription?.tenantId,
-    storeId: subscription?.storeId,
-    planId: subscription?.planId,
-    quantity: subscription?.quantity,
-});
+const RAZORPAY_PAYMENT_ACTION_MAX_BODY_BYTES = 8 * 1024;
 
 export const POST = withAuth(async (request, session) => {
     // Session guaranteed by withAuth middleware
     // Auth failures automatically logged to Sentry
     const userId = session.user.id;
+    let subscriptionForLog: any = null;
 
     try {
         // 🔒 RATE LIMITING: Prevent rapid-fire subscription mutations
+        const userRateLimitHash = hashPublicRateLimitValue(userId);
         const { checkRateLimit } = await import('@lib/rateLimit');
         const { getRateLimitForFeature } = await import('@lib/rateLimit/configs');
-        const rl = await checkRateLimit({ key: `sub-mutate:${userId}`, ...getRateLimitForFeature('SUBSCRIPTION_MUTATION') });
+        const rl = await checkRateLimit({ key: `sub-mutate:${userRateLimitHash}`, ...getRateLimitForFeature('SUBSCRIPTION_MUTATION') });
         if (!rl.allowed) {
             return NextResponse.json({ error: "Too many attempts. Please wait before trying again." }, { status: 429 });
         }
 
-        const body = await request.json();
+        const bodyResult = await readBoundedJsonBody(request, RAZORPAY_PAYMENT_ACTION_MAX_BODY_BYTES, {
+            invalidJsonMessage: 'Subscription ID is required.',
+        });
+        if (bodyResult.ok === false) return bodyResult.response;
+        const body = bodyResult.data as any;
         const validation = validateAPIInput(UpgradeSubscriptionRequestSchema, body);
 
         if (!validation.success) {
             const errorMsg = 'error' in validation ? validation.error : 'Invalid input';
             // Log to Sentry (CRITICAL - subscription upgrade)
             logger.security('Input Validation Failed', {
-                ...buildSecurityContext(session, request),
+                ...getBoundedRazorpaySecurityContext(session, request),
                 endpoint: '/api/razorpay/upgrade-subscription',
                 error: errorMsg,
                 attemptedData: {
-                    productId: body?.productId,
+                    ...getBoundedRazorpayStringContext('productId', body?.productId),
                     hasNewSubscriptionId: !!body?.nSi,
                     hasOldSubscriptionId: !!body?.oSi,
-                    remainingCredits: body?.rc,
+                    remainingCredits: Number.isFinite(Number(body?.rc)) ? Number(body.rc) : undefined,
                 },
             }, 'critical'); // CRITICAL - subscription upgrade
 
@@ -100,6 +106,7 @@ export const POST = withAuth(async (request, session) => {
         if (!internalSub || !internalSub.providerSubscriptionId) {
             return NextResponse.json({ error: "No active subscription found to upgrade." }, { status: 404 });
         }
+        subscriptionForLog = internalSub;
 
         const newInternalSub = await getProductSubscriptionById(productId, newSubscriptionId);
         if (!newInternalSub || !newInternalSub.providerSubscriptionId) {
@@ -109,12 +116,11 @@ export const POST = withAuth(async (request, session) => {
         // 🔒 CRITICAL: Verify old subscription belongs to user's tenant/store
         if (Number(tenantId) != Number(internalSub.tenantId) || Number(storeId) != Number(internalSub.storeId)) {
             logger.security('Unauthorized Subscription Upgrade Attempt', {
-                ...buildSecurityContext(session, request),
+                ...getBoundedRazorpaySecurityContext(session, request),
                 endpoint: '/api/razorpay/upgrade-subscription',
                 error: 'User attempted to upgrade subscription for different tenant/store',
-                productId,
-                subscriptionTenantId: internalSub.tenantId,
-                subscriptionStoreId: internalSub.storeId,
+                ...getBoundedRazorpayStringContext('productId', productId),
+                ...getRazorpaySubscriptionMutationLogContext(internalSub),
             }, 'critical');
 
             return NextResponse.json(
@@ -125,12 +131,11 @@ export const POST = withAuth(async (request, session) => {
 
         if (Number(tenantId) != Number(newInternalSub.tenantId) || Number(storeId) != Number(newInternalSub.storeId)) {
             logger.security('Unauthorized New Subscription Upgrade Attempt', {
-                ...buildSecurityContext(session, request),
+                ...getBoundedRazorpaySecurityContext(session, request),
                 endpoint: '/api/razorpay/upgrade-subscription',
                 error: 'User attempted to carry credits to a subscription for different tenant/store',
-                productId,
-                newSubscriptionTenantId: newInternalSub.tenantId,
-                newSubscriptionStoreId: newInternalSub.storeId,
+                ...getBoundedRazorpayStringContext('productId', productId),
+                ...getRazorpaySubscriptionMutationLogContext(newInternalSub),
             }, 'critical');
 
             return NextResponse.json(
@@ -161,7 +166,7 @@ export const POST = withAuth(async (request, session) => {
         await writeLogEntry({
             logFileName: LOG_FILE,
             logType: 'RAZORPAY_UPGRADE_SUBSCRIPTION_FLOW_INTERNAL_SUB',
-            data: summarizeSubscriptionForMutationLog(internalSub),
+            data: getRazorpaySubscriptionMutationLogContext(internalSub),
         });
 
         if (!validateTransition(internalSub.status, 'expired', 'api:upgrade-subscription')) {
@@ -172,14 +177,14 @@ export const POST = withAuth(async (request, session) => {
         await writeLogEntry({
             logFileName: LOG_FILE,
             logType: 'RAZORPAY_UPGRADE_SUBSCRIPTION_FLOW_PROVIDER_SUBSCRIPTION_BEFORE_CANCEL',
-            data: summarizeSubscriptionForMutationLog(providerSubscriptionBeforeCancel),
+            data: getRazorpaySubscriptionMutationLogContext(providerSubscriptionBeforeCancel),
         });
 
         if (providerSubscriptionBeforeCancel.status === "completed") {
             await writeLogEntry({
                 logFileName: LOG_FILE,
                 logType: 'RAZORPAY_UPGRADE_SUBSCRIPTION_FLOW_PROVIDER_SUBSCRIPTION_BEFORE_CANCEL_COMPLETED',
-                data: summarizeSubscriptionForMutationLog(providerSubscriptionBeforeCancel),
+                data: getRazorpaySubscriptionMutationLogContext(providerSubscriptionBeforeCancel),
             });
         } else {
             await razorpayClient.subscriptions.cancel(internalSub.providerSubscriptionId); // Immediate cancel
@@ -187,7 +192,7 @@ export const POST = withAuth(async (request, session) => {
             await writeLogEntry({
                 logFileName: LOG_FILE,
                 logType: 'RAZORPAY_UPGRADE_SUBSCRIPTION_FLOW_PROVIDER_SUBSCRIPTION_AFTER_CANCEL',
-                data: summarizeSubscriptionForMutationLog(providerSubscriptionAfterCancel),
+                data: getRazorpaySubscriptionMutationLogContext(providerSubscriptionAfterCancel),
             });
         }
 
@@ -212,6 +217,10 @@ export const POST = withAuth(async (request, session) => {
                 carryForwardCredits: remainingCredits,
                 carryForwardFromSubscriptionId: oldSubscriptionId,
                 carryForwardAppliedAt: Timestamp.now(),
+                founderMonitorReplacementForSubscriptionId: oldSubscriptionId,
+                founderMonitorReplacementMrrPaise: getFounderSubscriptionMrrPaise(internalSub),
+                founderMonitorReplacementPlanId: internalSub.planId || null,
+                founderMonitorReplacementPlanName: internalSub.planName || null,
                 statuses: [
                     ...(newInternalSub.statuses || []),
                     {
@@ -232,13 +241,12 @@ export const POST = withAuth(async (request, session) => {
         await writeLogEntry({
             logFileName: LOG_FILE,
             logType: 'RAZORPAY_UPGRADE_SUBSCRIPTION_FLOW_SUCCESS',
-            data: summarizeSubscriptionForMutationLog(internalSub),
+            data: getRazorpaySubscriptionMutationLogContext(internalSub),
         });
         logger.info('Subscription upgraded successfully', {
-            oldSubscriptionId: internalSub.id,
-            newSubscriptionId,
-            userId: session.user.id,
-            remainingCredits
+            ...getRazorpaySubscriptionMutationLogContext(internalSub),
+            ...getBoundedRazorpayStringContext('newSubscriptionId', newSubscriptionId),
+            remainingCredits,
         });
 
         if (!isAnswerlatticeBillingProduct(productId)) {
@@ -259,22 +267,41 @@ export const POST = withAuth(async (request, session) => {
                         remainingCredits,
                         sentAt: new Date().toISOString(),
                     },
-                }).catch(() => { /* non-blocking */ });
-            } catch { /* non-blocking */ }
+                }).catch((notificationError) => {
+                    logRazorpayNonBlockingFailure('razorpay_upgrade_subscription_lifecycle_message_failed', notificationError, {
+                        eventType: 'SUBSCRIPTION_UPGRADED',
+                        ...getBoundedRazorpayStringContext('subscriptionId', oldSubscriptionId),
+                        ...getBoundedRazorpayStringContext('newSubscriptionId', newSubscriptionId),
+                        ...getBoundedRazorpayStringContext('providerSubscriptionId', internalSub.providerSubscriptionId),
+                        ...getBoundedRazorpayStringContext('tenantId', internalSub.tenantId),
+                        ...getBoundedRazorpayStringContext('storeId', internalSub.storeId),
+                        ...getBoundedRazorpayStringContext('userId', userId),
+                    });
+                });
+            } catch (notificationImportError) {
+                logRazorpayNonBlockingFailure('razorpay_upgrade_subscription_lifecycle_message_import_failed', notificationImportError, {
+                    eventType: 'SUBSCRIPTION_UPGRADED',
+                    ...getBoundedRazorpayStringContext('subscriptionId', oldSubscriptionId),
+                    ...getBoundedRazorpayStringContext('newSubscriptionId', newSubscriptionId),
+                    ...getBoundedRazorpayStringContext('providerSubscriptionId', internalSub.providerSubscriptionId),
+                    ...getBoundedRazorpayStringContext('tenantId', internalSub.tenantId),
+                    ...getBoundedRazorpayStringContext('storeId', internalSub.storeId),
+                    ...getBoundedRazorpayStringContext('userId', userId),
+                });
+            }
         }
 
         return NextResponse.json({ success: true, message: "Subscription upgraded successfully." });
     } catch (error) {
-        logger.error('Subscription upgrade failed', error, {
-            api: 'upgrade-subscription',
-            userId: session?.user?.id
+        const failureData = getRazorpayFailureLogData('razorpay_upgrade_subscription_failed', error, {
+            ...getRazorpaySubscriptionMutationLogContext(subscriptionForLog),
+            ...getBoundedRazorpayStringContext('userId', session?.user?.id),
         });
+        logger.error('Subscription upgrade failed', new Error('razorpay_upgrade_subscription_failed'), failureData);
         await writeLogEntry({
             logFileName: LOG_FILE,
             logType: 'RAZORPAY_UPGRADE_SUBSCRIPTION_ERROR',
-            data: {
-                message: error instanceof Error ? error.message : 'Unknown error',
-            },
+            data: failureData,
         });
         return NextResponse.json({ error: 'Failed to upgrade subscription' }, { status: 500 });
     }

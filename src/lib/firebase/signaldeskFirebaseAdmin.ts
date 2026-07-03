@@ -16,6 +16,10 @@ import {
     signaldeskFirebaseProjectId,
     signaldeskFirestoreDatabaseId,
 } from "./signaldeskConfig";
+import {
+    getBoundedFirebaseAdminStringContext,
+    logFirebaseAdminFailure,
+} from "./firebaseAdminDiagnostics";
 
 const getSignalDeskProjectId = () =>
     SIGNALDESK_FIREBASE_PROJECT_ID_ENV_KEYS.map((key) => process.env[key]).find(Boolean) ||
@@ -46,11 +50,11 @@ function getAdminCredential(prefix: SignalDeskAdminCredentialPrefix): admin.cred
             clientEmail,
         });
     } catch (error) {
-        if (process.env.NODE_ENV !== "production") {
-            console.warn(`[SignalDesk Firebase Admin] Ignoring invalid ${prefix} credentials.`, {
-                error: error instanceof Error ? error.message : String(error),
-            });
-        }
+        logFirebaseAdminFailure("signaldesk_admin_env_credential_invalid", error, {
+            credentialSource: "env",
+            product: "signaldesk",
+            usesProductCredential: prefix === SIGNALDESK_FIREBASE_CREDENTIAL_PREFIX,
+        }, { developmentOnly: true });
         return null;
     }
 }
@@ -78,11 +82,11 @@ function getSignalDeskFileCredential(): admin.credential.Credential | null {
             clientEmail,
         });
     } catch (error) {
-        if (process.env.NODE_ENV !== "production") {
-            console.warn(`[SignalDesk Firebase Admin] Could not load ${SIGNALDESK_FIREBASE_ENV.GOOGLE_APPLICATION_CREDENTIALS}.`, {
-                error: error instanceof Error ? error.message : String(error),
-            });
-        }
+        logFirebaseAdminFailure("signaldesk_admin_file_credential_load_failed", error, {
+            credentialSource: "file",
+            product: "signaldesk",
+            ...getBoundedFirebaseAdminStringContext("credentialPath", credentialPath),
+        }, { developmentOnly: true });
         return null;
     }
 }
@@ -102,9 +106,12 @@ function initializeLocalSignalDeskAdcApp(appName?: string): admin.app.App | null
             ? admin.initializeApp(options, appName)
             : admin.initializeApp(options);
     } catch (error) {
-        console.warn("[SignalDesk Firebase Admin] Local ADC initialization failed.", {
-            error: error instanceof Error ? error.message : String(error),
-        });
+        logFirebaseAdminFailure("signaldesk_admin_local_adc_initialize_failed", error, {
+            credentialSource: "adc",
+            hasProjectId: Boolean(projectId),
+            hasStorageBucket: Boolean(getSignalDeskStorageBucket()),
+            product: "signaldesk",
+        }, { developmentOnly: true });
         return null;
     }
 }

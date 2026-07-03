@@ -5,8 +5,8 @@
  * Reads from existing project/store data WITHOUT modifying it.
  *
  * Used by:
- * - Business Entity Index builder (Phase 2) to compute standardCategories
- * - Future: AI extraction pipeline to suggest standard categories
+ * - Business Entity Index builder to compute standardCategories
+ * - Reserved: AI extraction pipeline suggestions after separate audit
  *
  * @see __docs__/discovery-infrastructure/taxonomy-system.md
  */

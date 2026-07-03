@@ -4,11 +4,13 @@
  * Spec Reference: ai-extraction-workflow-explained.md Section 9.4
  * 
  * This is a client-side port of the server's redistributeUtils.ts for use
- * during re-extraction comparison. The logic is identical, only the logging
- * and environment differ.
+ * during re-extraction comparison.
  * 
  * Original: functions/src/logic/redistributeUtils.ts
  */
+
+import { logMenuProcessingFailure } from '@lib/firebase/menuProcessingDiagnostics';
+import { createRandomIdSegment } from '@lib/runtime/randomId';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TYPES
@@ -207,7 +209,7 @@ function normalizeStringArray(value: unknown): string[] | undefined {
 /**
  * Redistribute combined AI response data to individual files
  * 
- * CLIENT-SIDE PORT: Same logic as server, uses console.log instead of functions.logger
+ * CLIENT-SIDE PORT: Same logic as server.
  */
 export function redistributeExtractedData(
     combinedResponse: CombinedAIResponse,
@@ -216,7 +218,9 @@ export function redistributeExtractedData(
     const result = new Map<string, ExtractedData>();
 
     if (!combinedResponse?.data) {
-        console.warn('[redistribute] No data in combined response');
+        logMenuProcessingFailure('menu_redistribute_missing_combined_data', undefined, {
+            filesCount: fileMappings.length,
+        });
         return result;
     }
 
@@ -327,12 +331,6 @@ export function redistributeExtractedData(
         };
 
         result.set(uid, extractedData);
-    });
-
-    console.log('[redistribute] Redistributed data', {
-        totalCategories: categories.length,
-        totalItems: items.length,
-        filesProcessed: fileMappings.length,
     });
 
     return result;
@@ -471,7 +469,7 @@ export function buildExistingCategoriesMap(
  * Generate a unique ID for local-only items/categories
  */
 export function generateLocalId(): string {
-    return Math.random().toString(36).substring(2, 11);
+    return createRandomIdSegment(9);
 }
 
 /**

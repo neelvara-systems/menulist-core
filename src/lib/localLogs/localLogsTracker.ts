@@ -1,4 +1,5 @@
 import { LogEntry, LogLevel } from "@type/common";
+import { sanitizeErrorForLog } from "@lib/security/secureLogger";
 
 const MAX_LOGS = 5;
 const MAX_MESSAGE_LENGTH = 1000;
@@ -27,7 +28,7 @@ function sanitizeLogText(value: string): string {
 
 function serializeLogArg(value: unknown): string {
     if (value instanceof Error) {
-        return sanitizeLogText(`${value.name}: ${value.message}\n${value.stack || ''}`);
+        return sanitizeLogText(JSON.stringify(sanitizeErrorForLog(value)));
     }
 
     if (typeof value === 'string') return sanitizeLogText(value);
@@ -36,11 +37,7 @@ function serializeLogArg(value: unknown): string {
         return sanitizeLogText(JSON.stringify(value, (_key, entryValue) => {
             if (typeof entryValue === 'function') return '[Function]';
             if (entryValue instanceof Error) {
-                return {
-                    message: entryValue.message,
-                    name: entryValue.name,
-                    stack: entryValue.stack?.split('\n').slice(0, 8).join('\n'),
-                };
+                return sanitizeErrorForLog(entryValue);
             }
             return entryValue;
         }));

@@ -8,8 +8,8 @@
  * - Category D (Owner Intervention Tracking) from Internal Tracking System
  * - Category E (Output Stability) via drift counters
  * 
- * @see __docs__/internal-tracking/MOL-V0-IMPLEMENTATION-PLAN.md
- * @see __docs__/internal-tracking/MENULIST-INTERNAL-TRACKING-SYSTEM.md
+ * @see __docs__/internal-tracking/mol-v0-implementation-plan.md
+ * @see __docs__/internal-tracking/menulist-internal-tracking-system.md
  */
 
 import { Timestamp } from "firebase/firestore";

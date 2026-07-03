@@ -24,19 +24,22 @@ export const dynamic = 'force-dynamic';
  */
 
 import { invalidateOwnerBusinessAssistantPacketCache } from "@lib/ownerBusinessAssistant/server/contextPacketCache";
-import { secureError } from "@lib/security/secureLogger";
+import { getBoundedRuntimeStringContext, logRuntimeFailure } from "@lib/runtime/runtimeDiagnostics";
+import { readBoundedJsonBody } from "@lib/security/boundedRequestBody";
 import { revalidateTag } from "next/cache";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { withAuth } from "../../../../middleware/auth";
 
 // Valid tags for customer-facing invalidation.
-const VALID_TAG_PREFIXES = ['menu-store-', 'store-'];
+const STORE_ID_PATTERN = /^\d{1,20}$/;
+const VALID_TAG_PATTERNS = [/^menu-store-\d{1,20}$/, /^store-\d{1,20}$/];
+const VALID_TAG_DESCRIPTIONS = ['menu-store-{numericStoreId}', 'store-{numericStoreId}'];
 const VALID_EXACT_TAGS = ['client-stores', 'screen-data'];
 
 const StoreIdSchema = z.union([
-    z.string().trim().min(1).max(128),
-    z.number().finite(),
+    z.string().trim().min(1).max(20),
+    z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER),
 ]);
 
 const RevalidateMenuRequestSchema = z.object({
@@ -46,9 +49,37 @@ const RevalidateMenuRequestSchema = z.object({
     (value) => value.storeId !== undefined || (Array.isArray(value.tags) && value.tags.length > 0),
     { message: "Provide storeId or tags" },
 );
+const MENU_REVALIDATE_MAX_BODY_BYTES = 4 * 1024;
+
+function getMenuRevalidationLogContext({
+    endpoint,
+    hasSession,
+    platformSession,
+    storeId,
+    tagCount,
+}: {
+    endpoint: string;
+    hasSession: boolean;
+    platformSession: boolean;
+    storeId?: string;
+    tagCount: number;
+}) {
+    return {
+        ...getBoundedRuntimeStringContext('endpoint', endpoint),
+        ...getBoundedRuntimeStringContext('storeId', storeId),
+        hasSession,
+        platformSession,
+        tagCount,
+    };
+}
 
 function isValidTag(tag: string): boolean {
-    return VALID_EXACT_TAGS.includes(tag) || VALID_TAG_PREFIXES.some(prefix => tag.startsWith(prefix));
+    return VALID_EXACT_TAGS.includes(tag) || VALID_TAG_PATTERNS.some(pattern => pattern.test(tag));
+}
+
+function normalizeStoreId(value: string | number): string | null {
+    const normalized = String(value).trim();
+    return STORE_ID_PATTERN.test(normalized) ? normalized : null;
 }
 
 function isPlatformSession(session: any | null): boolean {
@@ -82,8 +113,15 @@ function canRevalidateStore(session: any | null, storeId: string): boolean {
 }
 
 async function handleRevalidateMenuCache(request: NextRequest, session: any | null) {
+    let requestedStoreId: string | undefined;
+    let tagCount = 0;
+
     try {
-        const json = await request.json().catch(() => ({}));
+        const bodyResult = await readBoundedJsonBody(request, MENU_REVALIDATE_MAX_BODY_BYTES, {
+            invalidJsonMessage: "Invalid revalidation request",
+        });
+        if (bodyResult.ok === false) return bodyResult.response;
+        const json = bodyResult.data;
         const parsed = RevalidateMenuRequestSchema.safeParse(json);
         if (!parsed.success) {
             return NextResponse.json(
@@ -96,7 +134,14 @@ async function handleRevalidateMenuCache(request: NextRequest, session: any | nu
         let tags: string[] = [];
         const body = parsed.data;
         if (body.storeId !== undefined) {
-            const storeId = String(body.storeId).trim();
+            const storeId = normalizeStoreId(body.storeId);
+            if (!storeId) {
+                return NextResponse.json(
+                    { error: "Invalid revalidation request" },
+                    { status: 400 },
+                );
+            }
+            requestedStoreId = storeId;
             if (!canRevalidateStore(session, storeId)) {
                 return NextResponse.json({ error: "Forbidden" }, { status: 403 });
             }
@@ -110,20 +155,21 @@ async function handleRevalidateMenuCache(request: NextRequest, session: any | nu
 
         if (tags.length === 0) {
             return NextResponse.json(
-                { error: "Provide storeId or valid tags array", validPrefixes: VALID_TAG_PREFIXES, validExactTags: VALID_EXACT_TAGS },
+                { error: "Provide storeId or valid tags array", validTagPatterns: VALID_TAG_DESCRIPTIONS, validExactTags: VALID_EXACT_TAGS },
                 { status: 400 }
             );
         }
+        tagCount = tags.length;
 
         // Revalidate each tag
         for (const tag of tags) {
             revalidateTag(tag);
         }
 
-        const ownerBusinessAssistant = body.storeId
+        const ownerBusinessAssistant = requestedStoreId
             ? await invalidateOwnerBusinessAssistantPacketCache({
                 tId: (session as any)?.tId || (session as any)?.user?.tenantId,
-                sId: String(body.storeId).trim(),
+                sId: requestedStoreId,
             })
             : { attempted: false, keysDeleted: 0, patterns: [] };
 
@@ -134,8 +180,14 @@ async function handleRevalidateMenuCache(request: NextRequest, session: any | nu
             timestamp: Date.now(),
         });
     } catch (error) {
-        secureError('[Menu Cache] Revalidation failed', error as Error, {
-            endpoint: request.nextUrl.pathname,
+        logRuntimeFailure('menu_cache_revalidation_failed', error, {
+            ...getMenuRevalidationLogContext({
+                endpoint: request.nextUrl.pathname,
+                hasSession: Boolean(session),
+                platformSession: isPlatformSession(session),
+                storeId: requestedStoreId,
+                tagCount,
+            }),
         });
         return NextResponse.json(
             { error: "Revalidation failed" },

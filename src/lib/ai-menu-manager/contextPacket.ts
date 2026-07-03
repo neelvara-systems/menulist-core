@@ -97,6 +97,13 @@ function normalizeAlias(value: string) {
         .trim();
 }
 
+function tokenAliases(value: string) {
+    return normalizeAlias(value)
+        .split(' ')
+        .map((token) => token.trim())
+        .filter((token) => token.length >= 3);
+}
+
 function normalizePinnedItemId(value: unknown): string | undefined {
     if (typeof value === 'string') {
         const trimmed = value.trim();
@@ -145,6 +152,7 @@ export function buildAiMenuManagerContextPacket(params: {
                 aliases: Array.from(new Set([
                     normalizeAlias(categoryName),
                     normalizeAlias(categoryName.replace(/&/g, 'and')),
+                    ...tokenAliases(categoryName),
                     ...(category.extractionIdAliases || []).map(normalizeAlias),
                 ].filter(Boolean))),
                 active: category.active !== false,
@@ -167,6 +175,7 @@ export function buildAiMenuManagerContextPacket(params: {
                     normalizeAlias(itemName),
                     normalizeAlias(itemName.replace(/&/g, 'and')),
                     normalizeAlias(itemName.replace(/\bmasala\b/g, 'masala')),
+                    ...tokenAliases(itemName),
                     ...(item.extractionIdAliases || []).map(normalizeAlias),
                 ].filter(Boolean))),
                 categoryId: item.category,
@@ -254,26 +263,53 @@ export function findAiMenuManagerItemByName(context: AiMenuManagerContextPacket,
     if (exactMatches.length === 1) return exactMatches[0];
     if (exactMatches.length > 1) return null;
 
-    const candidates = context.items
-        .map((item) => {
-            const itemName = normalizeAlias(item.name);
-            const score = itemName.includes(normalized)
-                ? normalized.length / Math.max(itemName.length, 1)
-                : normalized.includes(itemName)
-                    ? itemName.length / Math.max(normalized.length, 1)
-                    : item.aliases.some((alias) => alias.includes(normalized) || normalized.includes(alias))
-                        ? 0.6
-                        : 0;
-            return { item, score };
-        })
-        .filter((entry) => entry.score >= 0.45)
-        .sort((a, b) => b.score - a.score);
+    const candidates = rankAiMenuManagerItemCandidates(context, normalized);
+
+    if (candidates.length > 1 && candidates.filter((entry) => entry.genericTokenMatch).length > 1) {
+        return null;
+    }
 
     if (candidates.length > 1 && candidates[0].score - candidates[1].score < 0.08) {
         return null;
     }
 
     return candidates[0]?.item || null;
+}
+
+function rankAiMenuManagerItemCandidates(context: AiMenuManagerContextPacket, normalized: string) {
+    return context.items
+        .map((item) => {
+            const itemName = normalizeAlias(item.name);
+            const aliases = item.aliases.map(normalizeAlias).filter(Boolean);
+            const aliasMatch = aliases.find((alias) => alias.includes(normalized) || normalized.includes(alias));
+            const genericTokenMatch = aliases.some((alias) => alias === normalized || alias.split(' ').includes(normalized))
+                || itemName.split(' ').includes(normalized);
+            const score = itemName.includes(normalized)
+                ? normalized.length / Math.max(itemName.length, 1)
+                : normalized.includes(itemName)
+                    ? itemName.length / Math.max(normalized.length, 1)
+                    : aliasMatch
+                        ? aliasMatch === normalized ? 0.8 : 0.6
+                        : 0;
+            return { item, genericTokenMatch, score };
+        })
+        .filter((entry) => entry.score >= 0.45)
+        .sort((a, b) => b.score - a.score);
+}
+
+export function findAiMenuManagerItemCandidates(context: AiMenuManagerContextPacket, rawName: string, limit = 5) {
+    const normalized = normalizeAlias(rawName);
+    if (!normalized) return [];
+
+    const exactMatches = context.items.filter((item) => (
+        item.aliases.includes(normalized)
+        || normalizeAlias(item.name) === normalized
+    ));
+    if (exactMatches.length > 1) return exactMatches.slice(0, limit);
+
+    return rankAiMenuManagerItemCandidates(context, normalized)
+        .slice(0, limit)
+        .map((entry) => entry.item);
 }
 
 export function findAiMenuManagerCategoryByName(context: AiMenuManagerContextPacket, rawName: string) {
@@ -287,26 +323,53 @@ export function findAiMenuManagerCategoryByName(context: AiMenuManagerContextPac
     if (exactMatches.length === 1) return exactMatches[0];
     if (exactMatches.length > 1) return null;
 
-    const candidates = context.categories
-        .map((category) => {
-            const categoryName = normalizeAlias(category.name);
-            const score = categoryName.includes(normalized)
-                ? normalized.length / Math.max(categoryName.length, 1)
-                : normalized.includes(categoryName)
-                    ? categoryName.length / Math.max(normalized.length, 1)
-                    : category.aliases.some((alias) => alias.includes(normalized) || normalized.includes(alias))
-                        ? 0.6
-                        : 0;
-            return { category, score };
-        })
-        .filter((entry) => entry.score >= 0.45)
-        .sort((a, b) => b.score - a.score);
+    const candidates = rankAiMenuManagerCategoryCandidates(context, normalized);
+
+    if (candidates.length > 1 && candidates.filter((entry) => entry.genericTokenMatch).length > 1) {
+        return null;
+    }
 
     if (candidates.length > 1 && candidates[0].score - candidates[1].score < 0.08) {
         return null;
     }
 
     return candidates[0]?.category || null;
+}
+
+function rankAiMenuManagerCategoryCandidates(context: AiMenuManagerContextPacket, normalized: string) {
+    return context.categories
+        .map((category) => {
+            const categoryName = normalizeAlias(category.name);
+            const aliases = category.aliases.map(normalizeAlias).filter(Boolean);
+            const aliasMatch = aliases.find((alias) => alias.includes(normalized) || normalized.includes(alias));
+            const genericTokenMatch = aliases.some((alias) => alias === normalized || alias.split(' ').includes(normalized))
+                || categoryName.split(' ').includes(normalized);
+            const score = categoryName.includes(normalized)
+                ? normalized.length / Math.max(categoryName.length, 1)
+                : normalized.includes(categoryName)
+                    ? categoryName.length / Math.max(normalized.length, 1)
+                    : aliasMatch
+                        ? aliasMatch === normalized ? 0.8 : 0.6
+                        : 0;
+            return { category, genericTokenMatch, score };
+        })
+        .filter((entry) => entry.score >= 0.45)
+        .sort((a, b) => b.score - a.score);
+}
+
+export function findAiMenuManagerCategoryCandidates(context: AiMenuManagerContextPacket, rawName: string, limit = 5) {
+    const normalized = normalizeAlias(rawName);
+    if (!normalized) return [];
+
+    const exactMatches = context.categories.filter((category) => (
+        category.aliases.includes(normalized)
+        || normalizeAlias(category.name) === normalized
+    ));
+    if (exactMatches.length > 1) return exactMatches.slice(0, limit);
+
+    return rankAiMenuManagerCategoryCandidates(context, normalized)
+        .slice(0, limit)
+        .map((entry) => entry.category);
 }
 
 export function buildAiMenuManagerContextBaseHash(context: AiMenuManagerContextPacket) {

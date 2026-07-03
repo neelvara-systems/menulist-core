@@ -3,6 +3,7 @@
 import { PermissionKey } from '@constant/permissions';
 import { DEFAULT_ROLE_IDS } from '@data/defaultRoles';
 import RolesPermissionInitialData, { PERMISSION_CATEGORIES_CONFIG, PERMISSION_LABELS } from '@data/rolesPermissionsInitialData';
+import { getBoundedStaffStringContext, logStaffClientFailure } from '@lib/staffManagement/diagnostics';
 import { deleteRoleDefinition, saveRoleDefinition } from '@lib/staffManagement/client';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { StoreRoleDataType } from '@type/platform/roles';
@@ -28,6 +29,16 @@ export default function MobileRolesScreen({ onBack }: MobileRolesScreenProps) {
 
     const roles = storeDetails?.roles || [];
     const canAssignRoles = userPermissions?.canAssignRoles === true;
+    const buildMobileRoleLogContext = (flow: string, role?: StoreRoleDataType | null) => ({
+        surface: 'mobile_roles',
+        flow,
+        canAssignRoles,
+        roleCount: roles.length,
+        ...getBoundedStaffStringContext('tenantId', storeDetails?.tenantId),
+        ...getBoundedStaffStringContext('storeId', storeDetails?.storeId),
+        ...getBoundedStaffStringContext('roleId', role?.id),
+        ...getBoundedStaffStringContext('roleName', role?.name),
+    });
 
     const handleEditRole = (role: StoreRoleDataType) => {
         setEditingRole(JSON.parse(JSON.stringify(role)));
@@ -70,8 +81,9 @@ export default function MobileRolesScreen({ onBack }: MobileRolesScreenProps) {
             setEditingRole(null);
             if (selectedRole?.id === editingRole.id) setSelectedRole(response.role || editingRole);
             Toast.show({ content: t('roleSaved'), duration: 1000 });
-        } catch (err: any) {
-            Toast.show({ content: err?.message || t('failedToSave'), duration: 2000 });
+        } catch (err) {
+            logStaffClientFailure('mobile_staff_role_save_failed', err, buildMobileRoleLogContext('save_role', editingRole));
+            Toast.show({ content: t('failedToSave'), duration: 2000 });
         } finally {
             setIsSaving(false);
         }
@@ -93,8 +105,9 @@ export default function MobileRolesScreen({ onBack }: MobileRolesScreenProps) {
                     setStoreDetails({ ...storeDetails, roles: response.roles });
                     if (selectedRole?.id === role.id) setSelectedRole(null);
                     Toast.show({ content: t('roleDeleted'), duration: 1000 });
-                } catch (err: any) {
-                    Toast.show({ content: err?.message || t('failedToDelete'), duration: 2000 });
+                } catch (err) {
+                    logStaffClientFailure('mobile_staff_role_delete_failed', err, buildMobileRoleLogContext('delete_role', role));
+                    Toast.show({ content: t('failedToDelete'), duration: 2000 });
                 }
             },
         });

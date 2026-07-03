@@ -8,7 +8,7 @@ type TooltipPropsType = {
 
 function TolltipElement({ title = "", children }: TooltipPropsType) {
     return (
-        <Tooltip title={title} key={Math.random()}>{children}</Tooltip>
+        <Tooltip title={title}>{children}</Tooltip>
     )
 }
 

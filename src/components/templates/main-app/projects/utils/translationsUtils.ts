@@ -3,6 +3,13 @@ import { InheritanceState } from "@type/multiOutlet.types";
 import { removeObjRef } from "@util/utils";
 import getTranslations from "../generateTranslations";
 import { ExtractedDataCategory, ExtractedDataItem, languageActionType, LanguageType, Project, ProjectFileType } from '../types';
+import {
+    getBoundedTranslationStringContext,
+    getTranslationLanguageLogContext,
+    getTranslationScopeLogContext,
+    logTranslationFailure,
+    TranslationLogContext,
+} from './translationDiagnostics';
 
 /**
  * Multi-outlet translation governance options
@@ -20,6 +27,20 @@ export interface TranslationGovernanceOptions {
     /** Category inheritance states from resolved project */
     categoryStates?: Record<string, InheritanceState>;
 }
+
+const getTranslationLogContext = (
+    projectData: Project,
+    file: ProjectFileType,
+    targetLanguage: LanguageType,
+    sourceLanguage: LanguageType,
+    action: keyof typeof languageActionType,
+    extra: TranslationLogContext = {},
+): TranslationLogContext => ({
+    ...getTranslationScopeLogContext(projectData.projectId, file.uid),
+    ...getTranslationLanguageLogContext(targetLanguage.code, sourceLanguage.code),
+    ...getBoundedTranslationStringContext('action', action),
+    ...extra,
+});
 
 /**
  * Check if an item should be translated based on its inheritance state
@@ -341,13 +362,17 @@ export const translateFile = async (
                 }
                 return { updatedProject: updated, message: `${targetLanguage.name} (${targetLanguage.code}) Translations added successfully`, messageType: "success" };
             } else {
-                console.error(`Error getting translations for ${targetLanguage.code} → ${sourceLanguage.code}:`);
+                logTranslationFailure('menu_translation_file_empty_response', undefined, getTranslationLogContext(projectData, file, targetLanguage, sourceLanguage, action, {
+                    translationKeyCount: Object.keys(translatableStringsJSON).length,
+                }));
                 return { updatedProject: prevData, message: "Error getting translations", messageType: "error" };
             }
 
         } catch (error) {
             if (error instanceof AICapacityError) throw error;
-            console.error(`Error getting translations for ${targetLanguage.code} → ${sourceLanguage.code}:`, error);
+            logTranslationFailure('menu_translation_file_failed', error, getTranslationLogContext(projectData, file, targetLanguage, sourceLanguage, action, {
+                translationKeyCount: Object.keys(translatableStringsJSON).length,
+            }));
             return { updatedProject: prevData, message: "Error getting translations", messageType: "error" };
         }
     }
@@ -457,6 +482,10 @@ export const translateCategory = async (
             };
         }
 
+        logTranslationFailure('menu_translation_category_empty_response', undefined, getTranslationLogContext(projectData, file, targetLanguage, sourceLanguage, action, {
+            ...getBoundedTranslationStringContext('categoryId', category.id),
+            translationKeyCount: 1,
+        }));
         return {
             updatedCategory: category,
             message: 'Error getting translations',
@@ -464,7 +493,10 @@ export const translateCategory = async (
         };
     } catch (error) {
         if (error instanceof AICapacityError) throw error;
-        console.error(`Error getting translations for ${targetLanguage.code} → ${sourceLanguage.code}:`, error);
+        logTranslationFailure('menu_translation_category_failed', error, getTranslationLogContext(projectData, file, targetLanguage, sourceLanguage, action, {
+            ...getBoundedTranslationStringContext('categoryId', category.id),
+            translationKeyCount: 1,
+        }));
         return {
             updatedCategory: category,
             message: 'Error getting translations',
@@ -511,13 +543,19 @@ export const translateItem = async (projectData: Project, file: ProjectFileType,
                 const updatedItem = mergeItemTranslations(item, translations, targetLanguage.code, sourceLanguage.code);
                 return { updatedItem, message: `${targetLanguage.name} (${targetLanguage.code}) Translations updated successfully`, messageType: "success" };
             } else {
-                console.error(`Error getting translations for ${targetLanguage.code} → ${sourceLanguage.code}:`);
+                logTranslationFailure('menu_translation_item_empty_response', undefined, getTranslationLogContext(projectData, file, targetLanguage, sourceLanguage, action, {
+                    ...getBoundedTranslationStringContext('itemId', item.id),
+                    translationKeyCount: Object.keys(translatableStringsJSON).length,
+                }));
                 return { updatedItem: item, message: "Error getting translations", messageType: "error" };
             }
 
         } catch (error) {
             if (error instanceof AICapacityError) throw error;
-            console.error(`Error getting translations for ${targetLanguage.code} → ${sourceLanguage.code}:`, error);
+            logTranslationFailure('menu_translation_item_failed', error, getTranslationLogContext(projectData, file, targetLanguage, sourceLanguage, action, {
+                ...getBoundedTranslationStringContext('itemId', item.id),
+                translationKeyCount: Object.keys(translatableStringsJSON).length,
+            }));
             return { updatedItem: item, message: "Error getting translations", messageType: "error" };
         }
     }

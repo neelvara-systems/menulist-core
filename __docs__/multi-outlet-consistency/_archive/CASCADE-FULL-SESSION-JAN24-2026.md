@@ -114,25 +114,25 @@ Key decisions documented:
 
 ## User Message 2
 
-> read all documentation that i have shared with you ai data extraction folder MENU-IMAGE-PROCESSING-JOB-QUEUE-SPEC.md, MENU-JOB-QUEUE-FIREBASE-OPERATIONS.md, MENU-JOB-QUEUE-IMPLEMENTATION.md and cross check with new docs
+> read all documentation that i have shared with you ai data extraction folder menu-image-processing-job-queue-spec.md, menu-job-queue-firebase-operations.md, menu-job-queue-implementation.md and cross check with new docs
 
 ## Assistant Response 2
 
 Read all existing documentation:
 
-### `MENU-IMAGE-PROCESSING-JOB-QUEUE-SPEC.md`
+### `menu-image-processing-job-queue-spec.md`
 
 - Main specification for job queue
 - Contains data models, processing flows, edge cases
 - Defines job statuses: pending, processing, completed, failed, cancelled
 
-### `MENU-JOB-QUEUE-FIREBASE-OPERATIONS.md`
+### `menu-job-queue-firebase-operations.md`
 
 - Firebase operations analysis
 - Cost optimization: reduced from 17 to 6 operations per job
 - Progress updates reduced from 6 to 3
 
-### `MENU-JOB-QUEUE-IMPLEMENTATION.md`
+### `menu-job-queue-implementation.md`
 
 - Implementation guide
 - Client and server code references
@@ -193,7 +193,7 @@ Confirmed first-time extraction flow:
 
 ## User Message 4
 
-> @MENU-IMAGE-PROCESSING-JOB-QUEUE-SPEC.md you found this combinedWithFileId related content here in this doc check it carefully and update doc accordingly if any changes needed for first time extraction flow @lines 2613-2614 this lines tells us everything so this field actually needed in case of our re extraction flow and not in first time flow
+> @menu-image-processing-job-queue-spec.md you found this combinedWithFileId related content here in this doc check it carefully and update doc accordingly if any changes needed for first time extraction flow @lines 2613-2614 this lines tells us everything so this field actually needed in case of our re extraction flow and not in first time flow
 
 ## Assistant Response 4
 
@@ -354,7 +354,7 @@ Mode-specific writes documented with code examples.
 
 | Document                                  | Changes                                                        |
 | ----------------------------------------- | -------------------------------------------------------------- |
-| `MENU-IMAGE-PROCESSING-JOB-QUEUE-SPEC.md` | Removed `combinedWithFileId`, added sourceFileIndex validation |
+| `menu-image-processing-job-queue-spec.md` | Removed `combinedWithFileId`, added sourceFileIndex validation |
 
 ## Key Decisions Made
 

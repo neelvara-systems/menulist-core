@@ -7,13 +7,13 @@ import '@/styles/website.css';
 import { Metadata } from 'next';
 
 export const metadata: Metadata = {
-    title: 'Terms of Service — MenuList',
+    title: 'Terms of Service - MenuList',
     description: 'Read MenuList\'s terms of service. Understand the terms and conditions for using our platform.',
     alternates: {
         canonical: '/terms-of-service',
     },
     openGraph: {
-        title: 'Terms of Service — MenuList',
+        title: 'Terms of Service - MenuList',
         description: 'Read MenuList\'s terms of service. Understand the terms and conditions for using our platform.',
         url: '/terms-of-service',
     },

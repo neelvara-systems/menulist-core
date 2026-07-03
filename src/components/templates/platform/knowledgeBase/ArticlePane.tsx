@@ -1,4 +1,4 @@
-import { bulkUpdateArticleStatus } from "@database/knowledgeBase/articles";
+import { assertKnowledgeBaseArticleBulkStatusUpdateSucceeded, bulkUpdateArticleStatus } from "@database/knowledgeBase/articles";
 import { ARTICLE_STATUS, KnowledgeBaseArticleMeta, KnowledgeBaseArticleType, KnowledgeBaseCategory, KnowledgeBaseSection } from "@type/knowledgeBase";
 import { Button, Flex, message, Popconfirm, Space, Spin, theme, Typography } from "antd";
 import { useMemo, useState } from "react";
@@ -34,7 +34,13 @@ function ArticlePane({ selectedContainer, articles, selectedArticle, onArticleSe
     const handleBulkAction = async (status: string) => {
         if (selectedIds.length === 0) return;
         try {
-            await bulkUpdateArticleStatus(selectedIds, status);
+            const result = await bulkUpdateArticleStatus(selectedIds, status);
+            assertKnowledgeBaseArticleBulkStatusUpdateSucceeded(
+                result,
+                selectedIds,
+                status,
+                'platform_kb_bulk_article_status_update_rejected',
+            );
             message.success(`${selectedIds.length} article(s) ${status === ARTICLE_STATUS.PUBLISHED ? 'published' : 'archived'}`);
             setSelectedIds([]);
             setBulkMode(false);

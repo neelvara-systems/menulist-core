@@ -3,11 +3,56 @@ import { SIGNALDESK_RATE_LIMIT_NAMESPACE } from "@constant/signaldesk/product";
 import { checkRateLimit } from "@lib/rateLimit";
 import { getRateLimitForFeature, type RateLimitFeature } from "@lib/rateLimit/configs";
 import { logger } from "@lib/monitoring/logger";
-import { buildSecurityContext } from "@lib/security/securityContext";
+import { getBoundedRuntimeStringContext, logRuntimeFailure } from "@lib/runtime/runtimeDiagnostics";
+import { readBoundedJsonBody } from "@lib/security/boundedRequestBody";
+import { getBoundedSecurityRouteContext } from "@lib/security/securityDiagnostics";
 import { getSignalDeskAccessContext, getSignalDeskSessionIdentity, hasSignalDeskPermission } from "@lib/signaldesk/access";
+import { hashPublicRateLimitValue } from "src/middleware/publicApi";
 import type { SignalDeskAccessContext, SignalDeskPermission } from "@type/signaldesk";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
+
+const SIGNALDESK_JSON_BODY_MAX_BYTES = 256 * 1024;
+
+export type SignalDeskLogContext = Record<string, boolean | number | string | null | undefined>;
+
+export const getBoundedSignalDeskStringContext = (
+    label: string,
+    value: unknown,
+): SignalDeskLogContext => getBoundedRuntimeStringContext(label, value);
+
+export const getSignalDeskAccessLogContext = (
+    access?: Partial<SignalDeskAccessContext> | null,
+): SignalDeskLogContext => ({
+    ...getBoundedSignalDeskStringContext("signalDeskUserId", access?.userId),
+    role: typeof access?.role === "string" ? access.role : undefined,
+    active: access?.active === true,
+    firebaseConfigured: access?.firebaseConfigured === true,
+    isPlatformAdmin: access?.isPlatformAdmin === true,
+    permissionCount: Array.isArray(access?.permissions) ? access.permissions.length : 0,
+});
+
+const getSignalDeskSecurityLogContext = (
+    session: any,
+    request: NextRequest,
+    context: SignalDeskLogContext = {},
+): SignalDeskLogContext => ({
+    ...getBoundedSecurityRouteContext(session, request),
+    ...getBoundedSignalDeskStringContext("endpoint", request.nextUrl.pathname),
+    ...getBoundedSignalDeskStringContext("method", request.method),
+    ...context,
+});
+
+export const logSignalDeskFailure = (
+    failureCode: string,
+    error?: unknown,
+    context: SignalDeskLogContext = {},
+): void => {
+    logRuntimeFailure(failureCode, error, {
+        product: "signaldesk",
+        ...context,
+    });
+};
 
 export const requireSignalDeskRuntime = () => {
     if (!FEATURE_FLAGS.ENABLE_MENULIST_SIGNALDESK_APP_SHELL) {
@@ -32,15 +77,15 @@ export const blockSignalDeskMobileMutation = (request: NextRequest, message = "S
 
 export function logSignalDeskValidationFailure(params: {
     action?: string;
-    details: unknown;
+    details?: unknown;
     request: NextRequest;
     session: any;
 }) {
     logger.security("Input Validation Failed - SignalDesk API", {
-        ...buildSecurityContext(params.session, params.request),
-        action: params.action,
-        endpoint: params.request.nextUrl.pathname,
-        error: params.details,
+        ...getSignalDeskSecurityLogContext(params.session, params.request, {
+            ...getBoundedSignalDeskStringContext("action", params.action),
+        }),
+        ...getBoundedSignalDeskStringContext("validationDetails", params.details),
     }, "medium");
 }
 
@@ -52,9 +97,9 @@ export async function requireSignalDeskAccess(
     const access = await getSignalDeskAccessContext(session);
     if (!hasSignalDeskPermission(access, permission)) {
         logger.security("Authorization Failed - SignalDesk", {
-            ...buildSecurityContext(session, request),
-            endpoint: request.nextUrl.pathname,
-            requiredPermission: permission,
+            ...getSignalDeskSecurityLogContext(session, request, {
+                ...getBoundedSignalDeskStringContext("requiredPermission", permission),
+            }),
         }, "high");
         return { response: NextResponse.json({ error: "Forbidden" }, { status: 403 }) };
     }
@@ -70,8 +115,9 @@ export async function applySignalDeskRateLimit(params: {
 }) {
     const identity = getSignalDeskSessionIdentity(params.session);
     const rateLimitConfig = getRateLimitForFeature(params.feature);
+    const identityKey = hashPublicRateLimitValue(identity.userId || identity.email || "unknown");
     const rateLimit = await checkRateLimit({
-        key: `${SIGNALDESK_RATE_LIMIT_NAMESPACE}:${params.keyPrefix}:${identity.userId || identity.email || "unknown"}`,
+        key: `${SIGNALDESK_RATE_LIMIT_NAMESPACE}:${params.keyPrefix}:${identityKey}`,
         ...rateLimitConfig,
     });
 
@@ -79,9 +125,9 @@ export async function applySignalDeskRateLimit(params: {
 
     const waitSeconds = Math.max(1, Math.ceil((rateLimit.resetAt - Date.now()) / 1000));
     logger.security("Rate Limit Exceeded - SignalDesk", {
-        ...buildSecurityContext(params.session, params.request),
-        endpoint: params.request.nextUrl.pathname,
-        feature: params.feature,
+        ...getSignalDeskSecurityLogContext(params.session, params.request, {
+            ...getBoundedSignalDeskStringContext("feature", params.feature),
+        }),
         limit: rateLimitConfig.limit,
         waitSeconds,
         window: rateLimitConfig.window,
@@ -109,19 +155,23 @@ export async function parseSignalDeskJsonBody(params: {
     request: NextRequest;
     session: any;
 }) {
-    try {
-        return {
-            data: await params.request.json(),
-            success: true as const,
-        };
-    } catch {
+    const bodyResult = await readBoundedJsonBody(params.request, SIGNALDESK_JSON_BODY_MAX_BYTES, {
+        invalidJsonMessage: "Invalid JSON",
+        tooLargeMessage: "Request body too large",
+    });
+    if (bodyResult.ok === false) {
         logger.security("Invalid JSON - SignalDesk API", {
-            ...buildSecurityContext(params.session, params.request),
-            endpoint: params.request.nextUrl.pathname,
+            ...getSignalDeskSecurityLogContext(params.session, params.request),
+            status: bodyResult.response.status,
         }, "medium");
         return {
-            response: NextResponse.json({ error: "Invalid JSON" }, { status: 400 }),
+            response: bodyResult.response,
             success: false as const,
         };
     }
+
+    return {
+        data: bodyResult.data,
+        success: true as const,
+    };
 }

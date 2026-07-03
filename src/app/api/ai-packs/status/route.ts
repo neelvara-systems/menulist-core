@@ -1,6 +1,9 @@
 export const dynamic = 'force-dynamic';
 import { checkAICapacity } from "@lib/ai/capacityCheck";
 import { AI_ACTIONS_TYPES } from "@constant/common";
+import { PERMISSIONS } from "@constant/permissions";
+import { requireAnyStorePermission } from "@lib/permissions/server";
+import { getBoundedRuntimeStringContext, logRuntimeFailure } from "@lib/runtime/runtimeDiagnostics";
 import { NextResponse } from "next/server";
 import { withAuth } from "../../../../middleware/auth";
 
@@ -17,8 +20,8 @@ import { withAuth } from "../../../../middleware/auth";
  */
 export const GET = withAuth(async (request, session) => {
     try {
-        const tenantId = session.user.tenantId || session.tId;
-        const storeId = session.user.storeId || session.sId;
+        const tenantId = session?.user?.tenantId || session?.tId;
+        const storeId = session?.user?.storeId || session?.sId;
 
         if (!tenantId || !storeId) {
             return NextResponse.json(
@@ -26,6 +29,14 @@ export const GET = withAuth(async (request, session) => {
                 { status: 400 }
             );
         }
+
+        const permissionError = await requireAnyStorePermission(
+            request,
+            session,
+            [PERMISSIONS.ACCESS_BILLING],
+            "AI pack status",
+        );
+        if (permissionError) return permissionError;
 
         // Check capacity using a representative paid action (IMAGE_GENERATION is the most common)
         const capacityCheck = await checkAICapacity(
@@ -41,7 +52,12 @@ export const GET = withAuth(async (request, session) => {
             reason: capacityCheck.reason === "maintenance" ? "maintenance" : undefined,
         });
     } catch (error) {
-        console.error("AI pack status check failed:", error);
+        logRuntimeFailure("ai_packs_status_check_failed", error, {
+            ...getBoundedRuntimeStringContext("userId", session?.uId || session?.user?.id),
+            ...getBoundedRuntimeStringContext("tenantId", session?.user?.tenantId || session?.tId),
+            ...getBoundedRuntimeStringContext("storeId", session?.user?.storeId || session?.sId),
+            ...getBoundedRuntimeStringContext("requestPath", request.nextUrl.pathname),
+        });
         return NextResponse.json(
             { error: "Failed to check AI status" },
             { status: 500 }

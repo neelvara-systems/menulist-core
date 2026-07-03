@@ -2,7 +2,7 @@
 
 **Feature:** Internal Monitoring Dashboard
 **Status:** IMPLEMENTED — Lean v1
-**Last Updated:** May 17, 2026
+**Last Updated:** June 29, 2026
 
 ---
 
@@ -10,7 +10,7 @@
 
 | Collection | Operation | Frequency | Cost Impact |
 |---|---|---|---|
-| `systemHealth` | Query latest hourly messaging snapshot by document ID prefix | Per dashboard load | 1 read max; platform-only |
+| `systemHealth` | Read `messaging_onboarding_control.lastSnapshotId`, then read the latest hourly messaging snapshot directly | Per dashboard load | 2 reads max; platform-only |
 | `systemAlerts` | Read recent alerts, filter subsystem in memory | Per dashboard load | 30 reads max |
 | `messagingOnboardingEvents` | Count 24h webhook event types and read recent event sample | Per dashboard load | 7 count queries + 12 reads max |
 | `messagingOnboardingInboundMessages` | Count by status | Per dashboard load | 3 count queries |
@@ -27,7 +27,7 @@ Assumption: founder opens dashboard 3 times/day.
 
 | Component | Reads / count queries per load | Monthly usage | Estimated cost |
 |---|---:|---:|---:|
-| Health snapshots | 1 read max | 90 reads | Low |
+| Health snapshots | 2 reads max | 180 reads | Low |
 | Alerts | 30 reads max | 2,700 reads | Low |
 | Webhook event counts + sample | 12 reads + 7 count queries | 1,080 reads + 630 count queries | Low; platform-only |
 | Sessions | 8 reads + 8 count queries | 720 reads + 720 count queries | Low |
@@ -63,7 +63,7 @@ match /systemHealth/{docId} {
 }
 ```
 
-The dashboard reads these collections only through `/api/ops/messaging-onboarding`, which uses the Admin SDK and requires platform access.
+The dashboard reads these collections only through `/api/ops/messaging-onboarding`, which uses the Admin SDK, requires platform access, applies the shared `DATA_READ` gate before health, queue, session-state, webhook, recent-session, or alert reads, and stores only HMAC-hashed platform user key material in the limiter key. Route failures log `ops_messaging_onboarding_route_failed` through bounded Ops diagnostics with operator/request-path presence metadata only. The browser monitor uses no-store cache policy, same-origin credentials, and manual redirect handling, then caps the route response JSON at 256KB and validates the returned snapshot before rendering; this adds no Firestore reads/writes/deletes, rules, indexes, Cloud Functions, Firebase deploy requirement, or Vercel deploy action.
 
 ---
 
@@ -79,4 +79,4 @@ Lean v1 does not need that yet. Existing hourly health snapshots, count aggregat
 
 ---
 
-_Document Status: IMPLEMENTED. May 17, 2026._
+_Document Status: IMPLEMENTED. June 29, 2026._

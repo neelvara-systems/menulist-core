@@ -6,6 +6,7 @@ import type {
     MenuActionBreakdown,
     MonthlyViewData,
     MTDViewData,
+    OpenHoursActionBreakdown,
     OverallData,
     OwnerDashboardMetrics,
     SearchTerm,
@@ -166,13 +167,16 @@ function buildTrafficRows(label: string, values?: TrafficBreakdown[], t?: OwnerD
 
 function buildTopItemRows(items?: TopItem[], t?: OwnerDashboardTranslator): MenuAnalyticsDetailRow[] {
     return (items || [])
-        .filter((item) => Number(item.clicks || 0) > 0)
+        .filter((item) => hasPositiveValue([item.clicks, item.views, item.recommendationClicks, item.unavailableTaps]))
         .map((item, index) => ({
             key: `item-${item.itemId}`,
             label: `${index + 1}. ${item.name || item.itemId}`,
             value: dashboardLabel(t, 'details.units.taps', `${formatCount(item.clicks)} taps`, {
                 count: formatCount(item.clicks),
             }),
+            detail: item.statusLabel
+                ? [item.statusLabel, item.statusReason].filter(Boolean).join(' · ')
+                : undefined,
         }));
 }
 
@@ -201,6 +205,36 @@ function buildActionRows(actions?: MenuActionBreakdown, t?: OwnerDashboardTransl
             value: formatCount(actions[key]),
         }))
         .filter((row) => Number(row.value.replace(/,/g, '')) > 0);
+}
+
+function buildOpenHoursRows(
+    breakdown?: OpenHoursActionBreakdown,
+    t?: OwnerDashboardTranslator,
+): MenuAnalyticsDetailRow[] {
+    if (!breakdown || !hasPositiveValue([breakdown.open, breakdown.closed, breakdown.unknown])) return [];
+
+    return [
+        {
+            key: 'open-hours-open',
+            label: dashboardLabel(t, 'details.openHours.open', 'Actions while open'),
+            value: formatCount(breakdown.open),
+        },
+        {
+            key: 'open-hours-closed',
+            label: dashboardLabel(t, 'details.openHours.closed', 'Actions while closed'),
+            value: formatCount(breakdown.closed),
+            detail: Number(breakdown.closed || 0) > 0
+                ? dashboardLabel(t, 'details.openHours.closedShare', `${breakdown.closedShare || 0}% of timed actions`, {
+                    rate: breakdown.closedShare || 0,
+                })
+                : undefined,
+        },
+        {
+            key: 'open-hours-unknown',
+            label: dashboardLabel(t, 'details.openHours.unknown', 'Actions with hours hidden'),
+            value: formatCount(breakdown.unknown),
+        },
+    ].filter((row) => Number(row.value.replace(/,/g, '')) > 0);
 }
 
 function buildSearchRows(
@@ -353,6 +387,13 @@ export function buildMenuAnalyticsDetailSections(
         key: 'actions',
         title: dashboardLabel(t, 'details.sections.customerActions', 'Customer Actions'),
         rows: buildActionRows(data.menuActions, t),
+    });
+
+    pushSection(sections, {
+        key: 'open-hours-actions',
+        title: dashboardLabel(t, 'details.sections.openHoursActions', 'Open/Closed Action Timing'),
+        description: dashboardLabel(t, 'details.descriptions.openHoursActions', 'Final customer actions grouped by the business hours state customers saw.'),
+        rows: buildOpenHoursRows(data.openHoursActionBreakdown, t),
     });
 
     pushSection(sections, {

@@ -1,9 +1,10 @@
 import { CAMPAIGNCUE_CUE_LAYER_ID_PREFIXES } from "@constant/campaigncue/cueLayers";
+import { createTimestampedRuntimeId } from "@lib/runtime/randomId";
 import type { CampaignCueCueLayerAssetRef, CampaignCueCueLayerAssetScope, CampaignCueCueLayerAssetRetentionClass } from "@type/campaigncueCueLayers";
 import { createHash } from "crypto";
 
 export const buildCampaignCueCueLayerId = (prefix: string) => (
-    `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`
+    createTimestampedRuntimeId(prefix, 8)
 );
 
 export const buildCampaignCueCueAssetUri = (assetId: string) => `cue-asset://${assetId}`;

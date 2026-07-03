@@ -4,16 +4,18 @@ import { FEATURE_FLAGS } from '@config/features';
 import { getModelName } from '@constant/AI/models';
 import { getOurChargePaise, getRealCostPaise, getUnitCost } from '@constant/AI/unitCosts';
 import { AI_ACTIONS_TYPES, CHARGE_PER_CREDIT, TOKENS_PER_CREDIT } from '@constant/common';
+import { PERMISSIONS } from '@constant/permissions';
 import { getActiveSubscriptionForStore } from '@database/subscriptions/server';
 import { HarmBlockThreshold, HarmCategory } from '@google/genai';
 import { finalizeAiOperationAccounting } from '@lib/ai/accounting';
 import { checkAICapacity } from '@lib/ai/capacityCheck';
-import { getAIGatewayDiagnostics, getAIErrorDiagnostics, getPreviewText } from '@lib/google/genAi/diagnostics';
+import { getAIGatewayDiagnostics, getAIRouteLogContext, getAIRouteSecurityContext, getPreviewText, logAIRouteFailure } from '@lib/google/genAi/diagnostics';
 import { genAIClient } from '@lib/google/genAi';
 import { logger } from '@lib/monitoring/logger';
+import { requireAnyStorePermission } from '@lib/permissions/server';
 import { checkAIOperationLimit } from '@lib/rateLimit/helpers';
+import { readBoundedJsonBody } from '@lib/security/boundedRequestBody';
 import { validateAPIInput } from '@lib/security/inputValidation';
-import { buildSecurityContext } from '@lib/security/securityContext';
 import { normalizeMenuCardDesignAdvice } from '@lib/menu-card-export/ai/designAdvisor';
 import { MenuCardDesignAdvisorRequestSchema } from '@lib/validation/apiSchemas';
 import { FirestoreSubscriptionDoc } from '@type/razorpay';
@@ -24,6 +26,7 @@ import menuCardDesignAdvisorPrompt, { menuCardDesignAdvisorSystemInstruction } f
 const ACTION = AI_ACTIONS_TYPES.MENU_CARD_EXPORT_DESIGN_ADVISOR;
 const AI_MODEL = getModelName('DESCRIPTION_GENERATION');
 const ENDPOINT = '/api/menu-card-export/design-advisor';
+const MENU_CARD_DESIGN_ADVISOR_MAX_BODY_BYTES = 128 * 1024;
 const GENERATION_CONFIG = {
     responseMimeType: 'application/json' as const,
     temperature: 0.35,
@@ -97,7 +100,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
 
     if (!Number.isFinite(tenantId) || !Number.isFinite(storeId)) {
         logger.security('Invalid session scope - Menu Card Design Advisor', {
-            ...buildSecurityContext(session, request),
+            ...getAIRouteSecurityContext(session, request),
             endpoint: ENDPOINT,
             requestId,
         }, 'high');
@@ -114,25 +117,27 @@ export const POST = withAuth(async (request: NextRequest, session) => {
 
         if (!verifyTenantAccess(session, tenantId, storeId, request)) {
             logger.security('Tenant Access Violation - Menu Card Design Advisor', {
-                ...buildSecurityContext(session, request),
+                ...getAIRouteSecurityContext(session, request),
                 endpoint: ENDPOINT,
                 requestId,
             }, 'critical');
             return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
         }
 
-        let rawData: unknown;
-        try {
-            rawData = await request.json();
-        } catch {
-            return NextResponse.json({ error: 'Invalid input' }, { status: 400 });
-        }
+        const bodyResult = await readBoundedJsonBody(
+            request,
+            MENU_CARD_DESIGN_ADVISOR_MAX_BODY_BYTES,
+            { invalidJsonMessage: 'Invalid input' },
+        );
+        if (bodyResult.ok === false) return bodyResult.response;
+
+        const rawData = bodyResult.data;
 
         const validation = validateAPIInput(MenuCardDesignAdvisorRequestSchema, rawData);
         if (!validation.success) {
             const errorMsg = 'error' in validation ? validation.error : 'Invalid input';
             logger.security('Input Validation Failed - Menu Card Design Advisor', {
-                ...buildSecurityContext(session, request),
+                ...getAIRouteSecurityContext(session, request),
                 endpoint: ENDPOINT,
                 error: errorMsg,
                 requestId,
@@ -141,6 +146,14 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         }
 
         const payload = validation.data;
+        const permissionError = await requireAnyStorePermission(
+            request,
+            session,
+            [PERMISSIONS.MANAGE_MENU_SHARING, PERMISSIONS.PUBLISH_MENU, PERMISSIONS.MANAGE_MENU],
+            "Menu Card design advisor",
+        );
+        if (permissionError) return permissionError;
+
         const subscription = await getActiveSubscriptionForStore(tenantId, storeId);
         if (!hasAllowedAdvisorPlan(subscription)) {
             return NextResponse.json({
@@ -160,7 +173,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             }, { status: 402 });
         }
 
-        logger.info('Menu card design advisor requested', {
+        logger.info('Menu card design advisor requested', getAIRouteLogContext({
             action: ACTION,
             categoryCount: payload.sourceSummary.categoryCount,
             itemCount: payload.sourceSummary.itemCount,
@@ -170,19 +183,42 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             requestId,
             storeId,
             tenantId,
-        });
+        }));
 
         const startTime = Date.now();
-        const response = await genAIClient.models.generateContent({
-            model: AI_MODEL,
-            contents: menuCardDesignAdvisorPrompt(payload),
-            config: GENERATION_CONFIG,
-        });
+        let response;
+        try {
+            response = await genAIClient.models.generateContent({
+                model: AI_MODEL,
+                contents: menuCardDesignAdvisorPrompt(payload),
+                config: GENERATION_CONFIG,
+            });
+        } catch (generationError) {
+            logAIRouteFailure('menu_card_design_advisor_model_call_failed', generationError, {
+                action: ACTION,
+                categoryCount: payload.sourceSummary.categoryCount,
+                gatewayDiagnostics: getAIGatewayDiagnostics(genAIClient),
+                itemCount: payload.sourceSummary.itemCount,
+                model: AI_MODEL,
+                pageCount: payload.sourceSummary.pageCount,
+                projectId: payload.projectId,
+                requestId,
+                storeId,
+                tenantId,
+                userId,
+            });
+            if (generationError && typeof generationError === 'object') {
+                (generationError as Record<string, unknown>).__menuCardDesignAdvisorLogged = true;
+            }
+            throw generationError;
+        }
         const processingTime = Date.now() - startTime;
 
         let recommendation;
+        let responseText = '';
         try {
-            const parsed = parseJsonLikeResponse(getResponseText(response));
+            responseText = getResponseText(response);
+            const parsed = parseJsonLikeResponse(responseText);
             recommendation = normalizeMenuCardDesignAdvice(parsed, {
                 preset: payload.currentSettings.preset || 'home_print',
                 styleId: payload.currentSettings.styleId || 'classic',
@@ -199,10 +235,11 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 };
             }
         } catch (parseError) {
-            logger.error('Menu card design advisor returned invalid JSON', parseError, {
+            logAIRouteFailure('menu_card_design_advisor_invalid_json', parseError, {
                 action: ACTION,
                 model: AI_MODEL,
-                rawTextPreview: getPreviewText(getResponseText(response), 400),
+                responseTextLength: responseText.length,
+                responseTextSummary: getPreviewText(responseText, 400),
                 requestId,
                 responseUsage: response.usageMetadata || null,
                 storeId,
@@ -255,7 +292,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             transactionId = accounting.transactionId;
             remainingBalance = accounting.remainingBalance;
         } catch (transactionError) {
-            logger.error('Failed to record menu card design advisor transaction', transactionError, {
+            logAIRouteFailure('menu_card_design_advisor_accounting_failed', transactionError, {
                 endpoint: ENDPOINT,
                 projectId: payload.projectId,
                 requestId,
@@ -263,6 +300,9 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 tenantId,
                 userId,
             });
+            if (transactionError && typeof transactionError === 'object') {
+                (transactionError as Record<string, unknown>).__menuCardDesignAdvisorLogged = true;
+            }
             throw transactionError;
         }
 
@@ -277,17 +317,18 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             },
         }, { status: 200 });
     } catch (error) {
-        logger.error('Menu card design advisor API error', error, {
-            action: ACTION,
-            endpoint: ENDPOINT,
-            gatewayDiagnostics: getAIGatewayDiagnostics(genAIClient),
-            model: AI_MODEL,
-            requestId,
-            ...getAIErrorDiagnostics(error),
-            storeId,
-            tenantId,
-            userId,
-        });
+        if (!(error && typeof error === 'object' && '__menuCardDesignAdvisorLogged' in error)) {
+            logAIRouteFailure('menu_card_design_advisor_api_failed', error, {
+                action: ACTION,
+                endpoint: ENDPOINT,
+                gatewayDiagnostics: getAIGatewayDiagnostics(genAIClient),
+                model: AI_MODEL,
+                requestId,
+                storeId,
+                tenantId,
+                userId,
+            });
+        }
         return NextResponse.json({ error: 'Layout suggestion failed' }, { status: 500 });
     }
 });

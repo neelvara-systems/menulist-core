@@ -9,6 +9,7 @@
 
 import type { Response } from "express";
 import * as functions from "firebase-functions";
+import type { MessagingProvider } from "../types/messagingOnboarding.types";
 import { FEATURE_FLAGS } from "./constants";
 import { logOnboardingEvent } from "./eventLogger";
 import {
@@ -17,9 +18,79 @@ import {
 } from "./providers/providerRegistry";
 import {
   enqueueInboundMessage,
+  getInboundMessageId,
 } from "./inboundQueue";
 
 const logger = functions.logger;
+const WEBHOOK_QUEUE_FAILED_CODE = "WEBHOOK_QUEUE_FAILED";
+
+function getWebhookBoundedStringContext(
+  label: string,
+  value: unknown,
+): Record<string, boolean | number> {
+  const normalized = value === undefined || value === null ? "" : String(value);
+  return {
+    [`${label}Present`]: normalized.length > 0,
+    [`${label}Length`]: normalized.length,
+  };
+}
+
+function getWebhookErrorName(error: unknown): string {
+  if (error instanceof Error) return (error.name || "Error").slice(0, 80);
+  return typeof error;
+}
+
+function getWebhookErrorCode(error: Error): string | undefined {
+  const code = (error as { code?: unknown }).code;
+  if (code === undefined || code === null) return undefined;
+  return String(code).slice(0, 64);
+}
+
+function getWebhookErrorStatus(error: Error): number | undefined {
+  const status = Number((error as { status?: unknown; statusCode?: unknown }).status
+    || (error as { statusCode?: unknown }).statusCode);
+  return Number.isFinite(status) ? status : undefined;
+}
+
+function getWebhookErrorContext(error: unknown): {
+  sourceErrorName: string;
+  sourceErrorCode?: string;
+  sourceErrorStatus?: number;
+} {
+  if (error instanceof Error) {
+    return {
+      sourceErrorName: getWebhookErrorName(error),
+      sourceErrorCode: getWebhookErrorCode(error),
+      sourceErrorStatus: getWebhookErrorStatus(error),
+    };
+  }
+
+  return {
+    sourceErrorName: getWebhookErrorName(error),
+  };
+}
+
+function getWebhookRequestLogContext(
+  req: functions.https.Request,
+): Record<string, boolean | number | string> {
+  return {
+    method: req.method,
+    ...getWebhookBoundedStringContext("path", req.path),
+    ...getWebhookBoundedStringContext("ip", req.ip),
+  };
+}
+
+function getWebhookInboundLogContext(
+  provider: MessagingProvider,
+  messageId: string,
+  userId: string,
+): Record<string, boolean | number | string> {
+  return {
+    provider,
+    ...getWebhookBoundedStringContext("messageId", messageId),
+    ...getWebhookBoundedStringContext("providerUserId", userId),
+  };
+}
 
 /**
  * Main webhook handler for all messaging providers.
@@ -46,7 +117,10 @@ export async function messagingOnboardingWebhook(
     !provider ||
     !FEATURE_FLAGS.MESSAGING_ONBOARDING_PROVIDERS.includes(provider)
   ) {
-    logger.info("[Webhook] Unknown or disabled provider", { path: req.path });
+    logger.info(
+      "[Webhook] Unknown or disabled provider",
+      getWebhookRequestLogContext(req),
+    );
     res.status(200).send("OK");
     return;
   }
@@ -72,7 +146,7 @@ export async function messagingOnboardingWebhook(
     if (!adapter.verifyWebhook(req)) {
       logger.warn("[Webhook] Invalid signature", {
         provider,
-        ip: req.ip,
+        ...getWebhookRequestLogContext(req),
       });
 
       logOnboardingEvent({
@@ -81,7 +155,9 @@ export async function messagingOnboardingWebhook(
         eventType: "WEBHOOK_SIGNATURE_INVALID",
         sessionState: "COLLECTING_INPUT",
         userIdMasked: "****",
-        metadata: { ip: req.ip },
+        metadata: {
+          ...getWebhookBoundedStringContext("ip", req.ip),
+        },
       });
 
       // Return 200 to prevent Meta from retrying invalid requests
@@ -103,9 +179,13 @@ export async function messagingOnboardingWebhook(
       queued = await enqueueInboundMessage(normalizedMsg);
     } catch (queueError) {
       logger.error("[Webhook] Failed to persist inbound message", {
-        provider,
-        userId: normalizedMsg.userId.slice(-4),
-        error: (queueError as Error).message,
+        failureCode: WEBHOOK_QUEUE_FAILED_CODE,
+        ...getWebhookInboundLogContext(
+          provider,
+          getInboundMessageId(normalizedMsg),
+          normalizedMsg.userId,
+        ),
+        ...getWebhookErrorContext(queueError),
       });
       res.status(500).send("Queue unavailable");
       return;
@@ -119,9 +199,11 @@ export async function messagingOnboardingWebhook(
 
     if (!queued.created) {
       logger.info("[Webhook] Duplicate inbound message acknowledged", {
-        provider,
-        messageId: queued.messageId,
-        userId: normalizedMsg.userId.slice(-4),
+        ...getWebhookInboundLogContext(
+          provider,
+          queued.messageId,
+          normalizedMsg.userId,
+        ),
       });
       return;
     }

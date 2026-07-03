@@ -15,8 +15,8 @@
  * - System learns patterns, never exposes them
  * - Foundation for future autonomous capabilities
  * 
- * @see __docs__/internal-tracking/MOL-V0-IMPLEMENTATION-PLAN.md
- * @see __docs__/internal-tracking/MENULIST-INTERNAL-TRACKING-SYSTEM.md
+ * @see __docs__/internal-tracking/mol-v0-implementation-plan.md
+ * @see __docs__/internal-tracking/menulist-internal-tracking-system.md
  */
 
 import { FEATURE_FLAGS } from '@config/features';
@@ -44,6 +44,11 @@ import {
     Timestamp,
     where,
 } from 'firebase/firestore';
+import {
+    getBoundedMenuChangeLogStringContext,
+    getMenuChangeLogEntryContext,
+    logMenuChangeLogFailure,
+} from './menuChangeLogDiagnostics';
 
 // ================================================================
 // COST OPTIMIZATION: Debounce tracking to reduce writes
@@ -133,8 +138,8 @@ export async function logMenuChange(entry: MenuChangeLogInput): Promise<void> {
 
         await queueScopedMenuChange(entry, session);
     } catch (error) {
-        // Fire-and-forget - silent fail
-        console.warn('[MenuChangeLog] Tracking error (non-blocking):', error);
+        // Fire-and-forget - log bounded diagnostics without blocking owner work.
+        logMenuChangeLogFailure('menu_change_log_tracking_failed', error, getMenuChangeLogEntryContext(entry));
     }
 }
 
@@ -153,7 +158,11 @@ export async function logMenuChangeForScope(
     try {
         await queueScopedMenuChange(entry, scope);
     } catch (error) {
-        console.warn('[MenuChangeLog] Scoped tracking error (non-blocking):', error);
+        logMenuChangeLogFailure('menu_change_log_scoped_tracking_failed', error, {
+            ...getMenuChangeLogEntryContext(entry),
+            ...getBoundedMenuChangeLogStringContext('tenantId', scope.tId),
+            ...getBoundedMenuChangeLogStringContext('storeId', scope.sId),
+        });
     }
 }
 
@@ -186,7 +195,7 @@ async function queueScopedMenuChange(
         const timer = setTimeout(() => {
             const pending = pendingData.get(debounceKey);
             if (pending) {
-                executeLogWrite(scope.tId, scope.sId, pending.entry);
+                void executeLogWrite(scope.tId, scope.sId, pending.entry);
                 pendingData.delete(debounceKey);
             }
             pendingWrites.delete(debounceKey);
@@ -215,17 +224,13 @@ async function executeLogWrite(
         };
 
         await addDoc(collectionRef, sanitizeForFirestore(logEntry));
-
-        // Debug log (visible in console)
-        console.debug(
-            '[MenuChangeLog] Logged:',
-            entry.changeType,
-            entry.itemId || entry.categoryId || 'structure',
-            entry.projectId
-        );
     } catch (error) {
         // Fire-and-forget - log but don't throw
-        console.error('[MenuChangeLog] Failed to log:', error);
+        logMenuChangeLogFailure('menu_change_log_write_failed', error, {
+            ...getMenuChangeLogEntryContext(entry),
+            ...getBoundedMenuChangeLogStringContext('tenantId', tId),
+            ...getBoundedMenuChangeLogStringContext('storeId', sId),
+        });
     }
 }
 
@@ -249,10 +254,14 @@ export function flushPendingChanges(): void {
         const pending = pendingData.get(key);
         if (pending) {
             // Fire without waiting
-            getActiveSession().then(session => {
+            void getActiveSession().then(session => {
                 if (session?.tId && session?.sId) {
-                    executeLogWrite(session.tId, session.sId, pending.entry);
+                    void executeLogWrite(session.tId, session.sId, pending.entry);
                 }
+            }).catch((error) => {
+                logMenuChangeLogFailure('menu_change_log_flush_session_failed', error, {
+                    ...getMenuChangeLogEntryContext(pending.entry),
+                });
             });
         }
     });

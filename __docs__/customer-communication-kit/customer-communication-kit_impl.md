@@ -1,7 +1,7 @@
 # Customer Communication Kit — Implementation Plan
 
-> **Version:** 1.0
-> **Last Updated:** March 15, 2026
+> **Version:** 1.1
+> **Last Updated:** July 2, 2026
 > **Audience:** Developers
 
 ---
@@ -19,6 +19,15 @@ CommunicationKit.tsx (render message cards)
   ↓
 Copy to clipboard / WhatsApp deep link
 ```
+
+Desktop copy and WhatsApp handoff failures are logged through bounded Use MenuList diagnostics before fixed owner-facing failure copy is shown. The component receives parent output context from `UseMenuList` and adds only template ID/title presence-length metadata plus generated message lengths and generated WhatsApp URL length. WhatsApp handoffs open with `noopener,noreferrer`.
+
+Diagnostic codes:
+
+- `use_menulist_communication_kit_copy_failed`
+- `use_menulist_communication_kit_whatsapp_open_failed`
+
+Do not log raw generated messages, WhatsApp URLs, phone numbers, addresses, store names, project names, public URLs, menu text, or browser exception text.
 
 ---
 
@@ -138,29 +147,27 @@ src/components/templates/main-app/useMenuList/
 src/components/mobile/components/
 ├── CommunicationKit.tsx         # ~120 lines — Mobile version
 
-src/config/features.ts           # Modified — add ENABLE_CUSTOMER_COMMUNICATION_KIT
+src/config/features.ts           # ENABLE_CUSTOMER_COMMUNICATION_KIT is currently true
 ```
 
 ---
 
-## 4. Implementation Phases
+## 4. Implemented Runtime
 
-### Phase 1: Template Engine (~30 min)
+### Template Engine
 
-1. Create `src/lib/communication/messageTemplates.ts`
-2. Implement `generateMessageTemplates()` function
-3. Handle missing data gracefully (omit lines when address/phone/hours absent)
-4. Add feature flag `ENABLE_CUSTOMER_COMMUNICATION_KIT: false` to `src/config/features.ts`
+1. `src/lib/communication/messageTemplates.ts` owns `generateMessageTemplates()`.
+2. Missing data is handled by omitting unavailable address, phone, or hours lines.
+3. `ENABLE_CUSTOMER_COMMUNICATION_KIT` is currently enabled in `src/config/features.ts`.
 
-### Phase 2: Today's Hours Utility (~20 min)
+### Today's Hours Utility
 
-1. Check existing working hours utilities in codebase
-2. Create helper to get today's open/close times from store working hours data
-3. Handle edge cases: closed today, 24h, multiple slots
+1. `getTodayHours()` derives the current-day copy from store working hours and timezone.
+2. Closed-day and missing-hours states omit unavailable time copy.
 
-### Phase 3: Desktop UI (~1 hour)
+### Desktop UI
 
-1. Create `CommunicationKit.tsx`:
+1. `CommunicationKit.tsx`:
    - Receives store data from Use MenuList context
    - Calls `generateMessageTemplates(input)`
    - Renders each template as a card with:
@@ -168,20 +175,21 @@ src/config/features.ts           # Modified — add ENABLE_CUSTOMER_COMMUNICATIO
      - Message preview (styled as chat bubble, read-only)
      - "Copy Message" button → `navigator.clipboard.writeText(message)`
      - "Send via WhatsApp" button → `window.open(\`https://wa.me/?text=\${encodeURIComponent(message)}\`)`
-2. Embed in `useMenuList/index.tsx` as "Customer Messages" section after Share links
-3. Gate behind `FEATURE_FLAGS.ENABLE_CUSTOMER_COMMUNICATION_KIT`
+2. `useMenuList/index.tsx` embeds the section after Share links and passes bounded diagnostic context.
+3. Failed copy and WhatsApp handoff paths log bounded Use MenuList diagnostics before showing fixed failure copy.
+4. The section is gated by `FEATURE_FLAGS.ENABLE_CUSTOMER_COMMUNICATION_KIT`.
 
-### Phase 4: Mobile UI (~45 min)
+### Mobile UI
 
-1. Create mobile `CommunicationKit.tsx` using antd-mobile
-2. WhatsApp as primary action (India market = WhatsApp-first)
-3. Copy as secondary action
-4. Embed in MobileShareScreen or as standalone tab
+1. Mobile `CommunicationKit.tsx` is embedded in `MobileShareScreen`.
+2. Mobile supports copy, native share when available, and WhatsApp handoff.
+3. Failed mobile copy/share/handoff paths log bounded mobile owner diagnostics.
 
-### Phase 5: Type Check + Polish (~15 min)
+### Verification
 
-1. Run `npx tsc --noEmit` — zero errors
+1. Run `npx tsc --noEmit --incremental false --pretty false` — zero errors
 2. Test with various store data states (complete, missing address, missing hours)
+3. Run `npm run verify:communication-kit-boundary` after changing Customer Communication Kit, Use MenuList sharing, Menu Kit handoffs, printable asset downloads, mobile Share, or legacy Physical Surfaces docs. This verifies source/docs wiring only; browser/device share behavior, visual print artifacts, provider handoffs, deploy evidence, and production-host smoke remain separate gates.
 
 ---
 
@@ -209,7 +217,7 @@ src/config/features.ts           # Modified — add ENABLE_CUSTOMER_COMMUNICATIO
 
 ## 7. Testing Guide
 
-1. Set `ENABLE_CUSTOMER_COMMUNICATION_KIT: true`
+1. Confirm `ENABLE_CUSTOMER_COMMUNICATION_KIT` is true
 2. Open `/use-menulist` — see "Customer Messages" section
 3. Verify templates render with live store data
 4. Click "Copy Message" → paste in text editor → verify content

@@ -1,6 +1,9 @@
 'use client';
 
-import { applyAiMenuManagerProjectPatch } from '@lib/ai-menu-manager/actions/projectPatches';
+import {
+    applyAiMenuManagerProjectPatch,
+    projectContainsAiMenuManagerPatch,
+} from '@lib/ai-menu-manager/actions/projectPatches';
 import { getAiMenuManagerCardEditPrompt } from '@lib/ai-menu-manager/cardEditPrompt';
 import {
     buildAiMenuManagerComposerPrompt,
@@ -12,6 +15,7 @@ import {
     type AiMenuManagerComposerTarget,
 } from '@lib/ai-menu-manager/composerContext';
 import {
+    getAiMenuManagerAttentionSuggestions,
     getAiMenuManagerProjectPromptGroups,
     getAiMenuManagerPromptText,
     getAiMenuManagerStarterSuggestions,
@@ -21,17 +25,20 @@ import {
 import {
     buildAiMenuManagerClientExecutionDirective,
     cancelAiMenuManagerClientOperation,
+    completeAiMenuManagerClientProposal,
     completeAiMenuManagerClientOperation,
     getAiMenuManagerClientInbox,
     sendAiMenuManagerCommand,
+    submitAiMenuManagerProposalAction,
 } from '@database/aiMenuManager';
-import { updateProjectWithoutLoader } from '@database/projects';
+import { assertProjectUpdateSucceeded, updateProjectWithoutLoader } from '@database/projects';
 import type {
     AiMenuManagerCardPayload,
     AiMenuManagerPendingOperation,
     AiMenuManagerReceipt,
     AiMenuManagerSessionDoc,
 } from '@type/aiMenuManager';
+import type { Project } from '@template/main-app/projects/types';
 import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import {
     LuCheck,
@@ -53,6 +60,7 @@ import {
     LuX,
 } from 'react-icons/lu';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
+import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { ProjectSelectorTrigger, type ProjectSelectorItem } from '../../shared/ProjectSelector';
 import { theme } from 'antd';
 import { Button, Card, Flex, NavBar, Popup, SearchBar, Space, Text, TextArea, Toast } from '../antd';
@@ -140,7 +148,9 @@ export default function MobileAiMenuManagerScreen({
     }), [storeDetails]);
 
     const promptGroups = useMemo(() => getAiMenuManagerProjectPromptGroups(selectedProject), [selectedProject]);
+    const attentionSuggestions = useMemo(() => getAiMenuManagerAttentionSuggestions(selectedProject), [selectedProject]);
     const starterSuggestions = useMemo(() => getAiMenuManagerStarterSuggestions(promptGroups), [promptGroups]);
+    const emptyStateSuggestions = attentionSuggestions.length ? attentionSuggestions : starterSuggestions;
     const composerContextData = useMemo(() => getAiMenuManagerComposerContextData({
         businessType,
         project: selectedProject,
@@ -164,6 +174,16 @@ export default function MobileAiMenuManagerScreen({
     const shouldShowContextSearch = Boolean(
         activeComposerTarget?.requiresEntity && (activeContextEntityCount > 8 || contextSearch.trim()),
     );
+
+    const removeOperation = useCallback((operationId: string, receipt?: AiMenuManagerReceipt) => {
+        setOperations((prev) => prev.filter((entry) => entry.operationId !== operationId));
+        if (receipt) {
+            setReceipts((prev) => [
+                receipt,
+                ...prev.filter((entry) => entry.proposalId !== receipt.proposalId),
+            ].slice(0, 20));
+        }
+    }, []);
 
     const currentProjectSelectorItem = useMemo<ProjectSelectorItem | null>(() => {
         if (!selectedProjectId) return null;
@@ -197,7 +217,12 @@ export default function MobileAiMenuManagerScreen({
             setOperations(inbox.operations || []);
             setReceipts(inbox.receipts || []);
         } catch (error: any) {
-            Toast.show({ content: error?.message || 'Unable to load Menu Manager' });
+            logRuntimeFailure('mobile_ai_menu_manager_inbox_load_failed', error, {
+                ...getBoundedRuntimeStringContext('storeId', storeId),
+                ...getBoundedRuntimeStringContext('projectId', selectedProjectId),
+                ...getBoundedRuntimeStringContext('sessionId', getSessionIdForProject(selectedProjectId)),
+            });
+            Toast.show({ content: 'Unable to load Menu Manager.' });
         }
     }, [getSessionIdForProject, rememberSessionId, selectedProjectId, storeId]);
 
@@ -299,19 +324,31 @@ export default function MobileAiMenuManagerScreen({
         clearComposerContext();
     }, [clearComposerContext]);
 
-    const submitPrompt = useCallback(async (prompt?: string) => {
+    const submitPrompt = useCallback(async (
+        prompt?: string,
+        options?: {
+            ignoreComposerContext?: boolean;
+            replaceOperationId?: string;
+        },
+    ) => {
         const rawText = (prompt ?? input).trim();
         if (!rawText) return;
-        if (!canUseAiMenuManagerComposerContext({ data: composerContextData, selection: composerContext })) {
+        const shouldUseComposerContext = !options?.ignoreComposerContext;
+        if (
+            shouldUseComposerContext
+            && !canUseAiMenuManagerComposerContext({ data: composerContextData, selection: composerContext })
+        ) {
             Toast.show({ content: 'Choose the item or category first' });
             return;
         }
-        const text = buildAiMenuManagerComposerPrompt({
-            data: composerContextData,
-            input: rawText,
-            selection: composerContext,
-        }).trim();
-        const commandContext = composerContext.target
+        const text = shouldUseComposerContext
+            ? buildAiMenuManagerComposerPrompt({
+                data: composerContextData,
+                input: rawText,
+                selection: composerContext,
+            }).trim()
+            : rawText;
+        const commandContext = shouldUseComposerContext && composerContext.target
             ? {
                 target: composerContext.target,
                 selectedEntityIds: composerContext.selectedEntityIds,
@@ -335,6 +372,7 @@ export default function MobileAiMenuManagerScreen({
                 storePublicContext,
                 composerContext: commandContext,
                 inputType: 'text',
+                replaceOperationId: options?.replaceOperationId,
                 sessionSnapshot: currentSession,
                 text,
             });
@@ -348,11 +386,25 @@ export default function MobileAiMenuManagerScreen({
                 setOperations(response.operations || []);
             }
         } catch (error: any) {
-            Toast.show({ content: error?.message || 'Could not prepare card' });
+            logRuntimeFailure('mobile_ai_menu_manager_prompt_submit_failed', error, {
+                ...getBoundedRuntimeStringContext('storeId', storeId),
+                ...getBoundedRuntimeStringContext('projectId', selectedProjectId),
+                ...getBoundedRuntimeStringContext('sessionId', getSessionIdForProject(selectedProjectId)),
+                hasComposerContext: (commandContext?.selectedEntityIds.length || 0) > 0 || Boolean(commandContext?.target),
+                inputLength: text.length,
+            });
+            Toast.show({ content: 'Could not prepare card.' });
         } finally {
             setSubmitting(false);
         }
     }, [businessType, clearComposerContext, composerContext, composerContextData, currentSession, getSessionIdForProject, input, rememberSessionId, selectedProject, selectedProjectId, storeId, storeName, storePublicContext]);
+
+    const resolveClarification = useCallback((card: AiMenuManagerCardPayload, prompt: string) => {
+        void submitPrompt(prompt, {
+            ignoreComposerContext: true,
+            replaceOperationId: card.cardId,
+        });
+    }, [submitPrompt]);
 
     const approveCard = useCallback(async (card: AiMenuManagerCardPayload) => {
         if (!storeId || !selectedProject) return;
@@ -363,7 +415,20 @@ export default function MobileAiMenuManagerScreen({
         }
         setWorkingCardId(card.cardId);
         try {
+            const isServerBackedCard = operation.executionMode === 'existing_server_api' && !operation.patch;
             if (card.kind === 'unsupported') {
+                if (isServerBackedCard) {
+                    await submitAiMenuManagerProposalAction({
+                        proposalId: operation.operationId,
+                        storeId,
+                        projectId: operation.projectId,
+                        actionType: card.actionType,
+                        action: 'cancel',
+                    });
+                    removeOperation(operation.operationId);
+                    Toast.show({ content: 'No MenuList action was taken' });
+                    return;
+                }
                 const result = await cancelAiMenuManagerClientOperation({ operation, sessionSnapshot: currentSession });
                 setCurrentSession(result.session);
                 setOperations(result.session.pendingOperations || []);
@@ -372,7 +437,19 @@ export default function MobileAiMenuManagerScreen({
                 return;
             }
 
-            if (card.kind === 'manual_task' || card.actions.includes('mark_done')) {
+            if (card.kind === 'manual_task' && card.actions.includes('mark_done')) {
+                if (isServerBackedCard) {
+                    const result = await submitAiMenuManagerProposalAction({
+                        proposalId: operation.operationId,
+                        storeId,
+                        projectId: operation.projectId,
+                        actionType: card.actionType,
+                        action: 'mark_done',
+                    });
+                    removeOperation(operation.operationId, result.data.receipt);
+                    Toast.show({ content: card.localActions?.length ? 'Done' : 'Marked done', icon: 'success' });
+                    return;
+                }
                 const result = await completeAiMenuManagerClientOperation({
                     operation,
                     result: 'manual_task',
@@ -388,47 +465,185 @@ export default function MobileAiMenuManagerScreen({
                 return;
             }
 
-            const directive = buildAiMenuManagerClientExecutionDirective({
-                operation,
-                project: selectedProject,
-                storeName,
-                businessType,
-            });
+            if (operation.patch && projectContainsAiMenuManagerPatch(selectedProject, operation.patch)) {
+                try {
+                    const result = await completeAiMenuManagerClientOperation({
+                        operation,
+                        result: 'executed',
+                        message: `${card.title} already matches this menu.`,
+                        sessionSnapshot: currentSession,
+                    });
+                    setCurrentSession(result.session);
+                    setOperations(result.session.pendingOperations || []);
+                    setReceipts(result.session.recentReceiptSummaries || []);
+                    Toast.show({ content: 'Menu already updated', icon: 'success' });
+                } catch (error: any) {
+                    logRuntimeFailure('mobile_ai_menu_manager_already_applied_receipt_failed', error, {
+                        ...getBoundedRuntimeStringContext('storeId', storeId),
+                        ...getBoundedRuntimeStringContext('projectId', selectedProject?.projectId),
+                        ...getBoundedRuntimeStringContext('operationId', operation.operationId),
+                        ...getBoundedRuntimeStringContext('cardId', card.cardId),
+                        actionCount: card.actions.length,
+                    });
+                    Toast.show({ content: 'Menu already updated. Receipt could not be saved.' });
+                }
+                return;
+            }
 
-            try {
-                const patchedProject = applyAiMenuManagerProjectPatch(selectedProject, directive);
-                const savedProject = await updateProjectWithoutLoader(patchedProject);
-                upsertCachedProject(savedProject || patchedProject);
-                const result = await completeAiMenuManagerClientOperation({
+            const directive = isServerBackedCard
+                ? (await submitAiMenuManagerProposalAction({
+                    proposalId: operation.operationId,
+                    storeId,
+                    projectId: operation.projectId,
+                    actionType: card.actionType,
+                    action: 'approve',
+                })).data.directive
+                : buildAiMenuManagerClientExecutionDirective({
                     operation,
-                    result: 'executed',
-                    message: `${card.title} applied.`,
-                    sessionSnapshot: currentSession,
+                    project: selectedProject,
+                    storeName,
+                    businessType,
                 });
-                setCurrentSession(result.session);
-                setOperations(result.session.pendingOperations || []);
-                setReceipts(result.session.recentReceiptSummaries || []);
-                Toast.show({ content: 'Menu updated', icon: 'success' });
+            if (!directive) {
+                throw new Error('Approved card did not return an execution directive');
+            }
+            if (isServerBackedCard && projectContainsAiMenuManagerPatch(selectedProject, directive.patch)) {
+                try {
+                    const result = await completeAiMenuManagerClientProposal({
+                        proposalId: operation.operationId,
+                        storeId,
+                        projectId: operation.projectId,
+                        actionType: card.actionType,
+                        executionId: directive.executionId,
+                        patchHash: directive.patchHash,
+                        result: 'executed',
+                        message: `${card.title} already matches this menu.`,
+                    });
+                    removeOperation(operation.operationId, result.data.receipt);
+                    Toast.show({ content: 'Menu already updated', icon: 'success' });
+                } catch (error: any) {
+                    logRuntimeFailure('mobile_ai_menu_manager_server_already_applied_receipt_failed', error, {
+                        ...getBoundedRuntimeStringContext('storeId', storeId),
+                        ...getBoundedRuntimeStringContext('projectId', selectedProject?.projectId),
+                        ...getBoundedRuntimeStringContext('operationId', operation.operationId),
+                        ...getBoundedRuntimeStringContext('cardId', card.cardId),
+                        actionCount: card.actions.length,
+                    });
+                    removeOperation(operation.operationId);
+                    Toast.show({ content: 'Menu already updated. Receipt could not be saved.' });
+                }
+                return;
+            }
+            let savedProject: Project | null = null;
+            let patchedProject: Project | null = null;
+            try {
+                patchedProject = applyAiMenuManagerProjectPatch(selectedProject, directive);
+                savedProject = await updateProjectWithoutLoader(patchedProject);
+                assertProjectUpdateSucceeded(
+                    savedProject,
+                    patchedProject.projectId,
+                    'mobile_ai_menu_manager_project_update_rejected',
+                );
             } catch (error: any) {
-                const failedResult = await completeAiMenuManagerClientOperation({
-                    operation,
-                    result: 'failed',
-                    message: error?.message || 'Project update failed',
-                    sessionSnapshot: currentSession,
-                }).catch(() => null);
-                if (failedResult?.session) {
-                    setCurrentSession(failedResult.session);
-                    setOperations(failedResult.session.pendingOperations || []);
-                    setReceipts(failedResult.session.recentReceiptSummaries || []);
+                logRuntimeFailure('mobile_ai_menu_manager_project_update_failed', error, {
+                    ...getBoundedRuntimeStringContext('storeId', storeId),
+                    ...getBoundedRuntimeStringContext('projectId', selectedProject?.projectId),
+                    ...getBoundedRuntimeStringContext('operationId', operation.operationId),
+                    ...getBoundedRuntimeStringContext('cardId', card.cardId),
+                    actionCount: card.actions.length,
+                });
+                if (isServerBackedCard) {
+                    await completeAiMenuManagerClientProposal({
+                        proposalId: operation.operationId,
+                        storeId,
+                        projectId: operation.projectId,
+                        actionType: card.actionType,
+                        executionId: directive.executionId,
+                        patchHash: directive.patchHash,
+                        result: 'failed',
+                        message: 'Project update failed',
+                    }).catch((completionError) => {
+                        logRuntimeFailure('mobile_ai_menu_manager_project_update_failed_proposal_completion_failed', completionError, {
+                            ...getBoundedRuntimeStringContext('storeId', storeId),
+                            ...getBoundedRuntimeStringContext('projectId', operation.projectId),
+                            ...getBoundedRuntimeStringContext('operationId', operation.operationId),
+                            ...getBoundedRuntimeStringContext('cardId', card.cardId),
+                            ...getBoundedRuntimeStringContext('executionId', directive.executionId),
+                        });
+                        return null;
+                    });
+                } else {
+                    const failedResult = await completeAiMenuManagerClientOperation({
+                        operation,
+                        result: 'failed',
+                        message: 'Project update failed',
+                        sessionSnapshot: currentSession,
+                    }).catch((completionError) => {
+                        logRuntimeFailure('mobile_ai_menu_manager_project_update_failed_operation_completion_failed', completionError, {
+                            ...getBoundedRuntimeStringContext('storeId', storeId),
+                            ...getBoundedRuntimeStringContext('projectId', operation.projectId),
+                            ...getBoundedRuntimeStringContext('operationId', operation.operationId),
+                            ...getBoundedRuntimeStringContext('cardId', card.cardId),
+                        });
+                        return null;
+                    });
+                    if (failedResult?.session) {
+                        setCurrentSession(failedResult.session);
+                        setOperations(failedResult.session.pendingOperations || []);
+                        setReceipts(failedResult.session.recentReceiptSummaries || []);
+                    }
                 }
                 throw error;
             }
+
+            upsertCachedProject(savedProject || patchedProject);
+            try {
+                if (isServerBackedCard) {
+                    const result = await completeAiMenuManagerClientProposal({
+                        proposalId: operation.operationId,
+                        storeId,
+                        projectId: operation.projectId,
+                        actionType: card.actionType,
+                        executionId: directive.executionId,
+                        patchHash: directive.patchHash,
+                        result: 'executed',
+                        message: `${card.title} applied.`,
+                    });
+                    removeOperation(operation.operationId, result.data.receipt);
+                } else {
+                    const result = await completeAiMenuManagerClientOperation({
+                        operation,
+                        result: 'executed',
+                        message: `${card.title} applied.`,
+                        sessionSnapshot: currentSession,
+                    });
+                    setCurrentSession(result.session);
+                    setOperations(result.session.pendingOperations || []);
+                    setReceipts(result.session.recentReceiptSummaries || []);
+                }
+                Toast.show({ content: 'Menu updated', icon: 'success' });
+            } catch (error: any) {
+                logRuntimeFailure('mobile_ai_menu_manager_receipt_completion_failed', error, {
+                    ...getBoundedRuntimeStringContext('storeId', storeId),
+                    ...getBoundedRuntimeStringContext('projectId', selectedProject?.projectId),
+                    ...getBoundedRuntimeStringContext('operationId', operation.operationId),
+                    ...getBoundedRuntimeStringContext('cardId', card.cardId),
+                    actionCount: card.actions.length,
+                });
+                Toast.show({ content: 'Menu updated. Approve this card again to finish the receipt.' });
+            }
         } catch (error: any) {
-            Toast.show({ content: error?.message || 'Unable to apply card' });
+            logRuntimeFailure('mobile_ai_menu_manager_card_apply_failed', error, {
+                ...getBoundedRuntimeStringContext('storeId', storeId),
+                ...getBoundedRuntimeStringContext('projectId', selectedProject?.projectId),
+                ...getBoundedRuntimeStringContext('cardId', card.cardId),
+                actionCount: card.actions.length,
+            });
+            Toast.show({ content: 'Unable to apply card.' });
         } finally {
             setWorkingCardId(null);
         }
-    }, [businessType, currentSession, operations, selectedProject, storeId, storeName, upsertCachedProject]);
+    }, [businessType, currentSession, operations, removeOperation, selectedProject, storeId, storeName, upsertCachedProject]);
 
     const cancelCard = useCallback(async (card: AiMenuManagerCardPayload) => {
         if (!storeId) return;
@@ -439,15 +654,32 @@ export default function MobileAiMenuManagerScreen({
         }
         setWorkingCardId(card.cardId);
         try {
+            if (operation.executionMode === 'existing_server_api' && !operation.patch) {
+                await submitAiMenuManagerProposalAction({
+                    proposalId: operation.operationId,
+                    storeId,
+                    projectId: operation.projectId,
+                    actionType: card.actionType,
+                    action: 'cancel',
+                });
+                removeOperation(operation.operationId);
+                return;
+            }
             const result = await cancelAiMenuManagerClientOperation({ operation, sessionSnapshot: currentSession });
             setCurrentSession(result.session);
             setOperations(result.session.pendingOperations || []);
         } catch (error: any) {
-            Toast.show({ content: error?.message || 'Unable to cancel card' });
+            logRuntimeFailure('mobile_ai_menu_manager_card_cancel_failed', error, {
+                ...getBoundedRuntimeStringContext('storeId', storeId),
+                ...getBoundedRuntimeStringContext('projectId', operation.projectId),
+                ...getBoundedRuntimeStringContext('operationId', operation.operationId),
+                ...getBoundedRuntimeStringContext('cardId', card.cardId),
+            });
+            Toast.show({ content: 'Unable to cancel card.' });
         } finally {
             setWorkingCardId(null);
         }
-    }, [currentSession, operations, storeId]);
+    }, [currentSession, operations, removeOperation, storeId]);
 
     return (
         <div style={{ minHeight: '100%', background: token.colorBgLayout, color: token.colorText, paddingBottom: 24 }}>
@@ -478,16 +710,20 @@ export default function MobileAiMenuManagerScreen({
 
                 <Card>
                     <Space direction="vertical" size={12} style={{ width: '100%' }}>
-                        {!cards.length && !receipts.length && starterSuggestions.length ? (
+                        {!cards.length && !receipts.length && emptyStateSuggestions.length ? (
                             <Space direction="vertical" size={8} style={{ width: '100%' }}>
                                 <div>
-                                    <Text strong style={{ display: 'block', fontSize: 16 }}>What should change?</Text>
+                                    <Text strong style={{ display: 'block', fontSize: 16 }}>
+                                        {attentionSuggestions.length ? 'Needs attention' : 'What should change?'}
+                                    </Text>
                                     <Text type="secondary" style={{ display: 'block', fontSize: 12 }}>
-                                        Start from a draft, or type your own message.
+                                        {attentionSuggestions.length
+                                            ? 'Start with a loaded-menu issue, or type your own message.'
+                                            : 'Start from a draft, or type your own message.'}
                                     </Text>
                                 </div>
                                 <Space direction="vertical" size={8} style={{ width: '100%' }}>
-                                    {starterSuggestions.map((suggestion) => {
+                                    {emptyStateSuggestions.map((suggestion) => {
                                         const Icon = promptIconByKind[suggestion.kind];
                                         return (
                                             <button
@@ -633,6 +869,7 @@ export default function MobileAiMenuManagerScreen({
                     onCancel={(card) => void cancelCard(card)}
                     onDraftPrompt={draftPrompt}
                     onEdit={editCard}
+                    onResolveClarification={resolveClarification}
                 />
 
                 <Card title="Recent receipts">

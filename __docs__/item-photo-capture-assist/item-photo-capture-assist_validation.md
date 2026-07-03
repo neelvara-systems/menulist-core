@@ -1,6 +1,6 @@
 # Item Photo Capture Assist Validation
 
-**Status:** Implemented June 25, 2026
+**Status:** Historical validation/source evidence; not current launch certification
 
 ## Engineering Checklist Verification
 
@@ -9,6 +9,7 @@
 | Feature flag added | PASS | `src/config/features.ts:3069` |
 | Capture helper added | PASS | `src/lib/media/itemPhotoCaptureAssist.ts:31` |
 | Local readiness feedback added | PASS | `src/lib/media/itemPhotoCaptureAssist.ts:138` |
+| Readiness stats failures are bounded | PASS | `src/lib/media/itemPhotoCaptureAssist.ts` logs `item_photo_readiness_stats_failed`; `scripts/verification/verify-auth-security-failure-matrix.js` guards against silent stats catches. |
 | Shared capture component added | PASS | `src/components/shared/media/ItemPhotoCaptureAssist.tsx:23` |
 | Camera stream stops on cleanup | PASS | `src/components/shared/media/ItemPhotoCaptureAssist.tsx:48` |
 | Captured image becomes a `File` | PASS | `src/components/shared/media/ItemPhotoCaptureAssist.tsx:153` |
@@ -68,12 +69,28 @@
 | `src/components/templates/main-app/projects/editorView/ImageUploadModal.tsx` | Modified | Camera guide wired into existing upload tab. |
 | `src/components/mobile/sheets/ItemEditSheet.tsx` | Modified | Native camera hint for inline add-item image input. |
 | `src/config/features.ts` | Modified | `ENABLE_ITEM_PHOTO_CAPTURE_ASSIST`. |
-| `__docs__/CHANGELOG.md` | Modified | Changelog entry. |
+| `__docs__/changelog.md` | Modified | Changelog entry. |
 
 ## Manual Verification Gap
 
 Camera permission and real-device capture were not manually exercised in a browser during this pass. The component is guarded with upload fallback behavior when camera access is unavailable or blocked.
 
+## Current Release Boundary
+
+This validation report preserves the June 25, 2026 implementation evidence only. Do not treat it as current owner-side browser smoke, mobile-device clearance, or production launch approval.
+
+Current Item Photo Capture Assist approval still requires:
+
+- Active production-readiness audit evidence.
+- External Certification Runbook evidence where this media flow is in scope.
+- `npm run verify:agent-readiness`.
+- `npm run verify:auth-security-failure-matrix`.
+- Authenticated desktop owner browser QA for camera permission allow, deny, retake, accept, fallback upload, and image save.
+- Authenticated mobile owner-shell QA inside `MobileShell` for add/edit item image actions.
+- Real-device camera QA on at least one iOS Safari device and one mid-range Android Chrome device.
+- Media preparation/upload QA proving accepted captures still enter `prepareMediaImage(file, 'menuItem')`, existing Storage paths, and existing project save behavior.
+- Target deploy evidence and production-host smoke before live-owner use.
+
 ## Final Verdict
 
-READY FOR OWNER-SIDE BROWSER SMOKE.
+Historical source-validation evidence only. Current owner-side browser smoke and release approval remain pending until the external, browser, mobile-device, media upload, deploy, and production-host evidence above is recorded.

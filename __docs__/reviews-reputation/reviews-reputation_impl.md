@@ -536,6 +536,8 @@ export function classifyReview(
 **File:** `src/app/api/reviews/states/route.ts`  
 **Auth:** Required (withAuth middleware)
 
+Diagnostics: unexpected read failures log `reviews_states_fetch_failed` through the shared runtime diagnostics helper with tenant/store/user presence-length metadata and source error name/code/status only. The owner response remains generic.
+
 ```typescript
 // Request (query params)
 interface GetReviewStatesParams {
@@ -553,33 +555,50 @@ interface GetReviewStatesResponse {
 }
 ```
 
-**Zod Schema:**
+**Response Shape:**
 
 ```typescript
 // src/app/api/reviews/states/route.ts
-
-import { z } from "zod";
-
-const reviewStatesResponseSchema = z.object({
-  success: z.boolean(),
-  data: z
-    .object({
-      hasBlockActive: z.boolean(),
-      hasEscalationActive: z.boolean(),
-      // NOTE: No counts - counts create dashboard mentality (Law 7)
-    })
-    .optional(),
-  error: z.string().optional(),
-});
+{
+  success: true,
+  data: {
+    hasBlockActive: boolean;
+    hasEscalationActive: boolean;
+  }
+}
 ```
+
+`ReputationGuard` must not update local warning state from a cached, followed-redirect, unbounded, or malformed browser response. It calls `/api/reviews/states` with no-store cache policy, same-origin credentials, and manual redirect handling, then parses the response through `readJsonResponseWithLimit()` with a 16KB cap and the shared `isReputationStateResponse()` guard. Rejected responses log `reputation_guard_state_response_rejected`; malformed or oversized responses log `reputation_guard_state_response_parse_failed`; invalid acknowledgements log `reputation_guard_state_response_invalid`; request failures log `reputation_guard_state_request_failed`. Diagnostics use bounded endpoint/status/cap metadata only and preserve the passive no-error UI.
+
+### 4.2 Review Reply Suggestion (Authenticated, Disabled)
+
+**Endpoint:** `POST /api/reviews/suggest`
+**File:** `src/app/api/reviews/suggest/route.ts`
+**UI:** `src/components/templates/main-app/reviews/ReviewReplyTool.tsx`
+
+The route is guarded by `withAuth`, `ENABLE_REVIEWS_REPUTATION`, `ENABLE_AI_REPLY_ASSIST`, SAFE_MODE, bounded JSON-body reads, Zod validation, tenant verification, rate limiting, AI capacity checks, and shared AI operation accounting. MenuList returns a suggestion only; it does not post replies to Google.
+
+Diagnostics:
+
+- Pasted review text is normalized before provider prompt construction: control/template characters are stripped, whitespace is collapsed, the prompt input stays capped at 2000 characters, and sanitized text is serialized with `JSON.stringify()` instead of raw interpolation.
+- `businessType` is capped at 80 characters, normalized before industry-constraint matching, and sanitized before AI accounting metadata is recorded.
+- Browser suggestion requests use same-origin credentials, no-store cache policy, and manual redirect handling before response parsing.
+- Generation failures log `desktop_review_reply_generation_failed` with bounded rating, business-type, and review-text length metadata only.
+- Browser response parse failures log `desktop_review_reply_response_parse_failed` with bounded status/cap and review metadata only.
+- Invalid successful suggestion envelopes log `desktop_review_reply_response_invalid`, and the UI only shows a reply after `{ success: true, reply, source: "ai" | "fallback" }` is present.
+- Accounting failures log `review_reply_accounting_failed` with bounded tenant/store/user/business-type metadata and source error name/code/status only.
+- Clipboard copied feedback waits for Clipboard API success or acknowledged textarea fallback success. Clipboard copy failures log `desktop_review_reply_copy_failed` with rating, reply source, attempt count, clipboard/fallback support booleans, and presence/length metadata for business type, pasted review text, and generated reply only.
+- Raw pasted review text, generated reply text, provider exception text, and raw API response text must not be shown to the owner or written to logs.
 
 ### 4.3 Rate Limiting
 
 | Endpoint                | Rate Limit | Window |
 | ----------------------- | ---------- | ------ |
 | GET /api/reviews/states | 30 req     | 1 min  |
+| POST /api/reviews/suggest | 10 req   | 1 min  |
 
 Rate limiting uses existing `checkRateLimit` from `@lib/rateLimit`.
+Provider keys hash owner, tenant, and store key material before calling the shared limiter. Raw user IDs, tenant IDs, and store IDs must not be stored in review-state or review-suggest limiter key names.
 
 > **NOTE:** No dismiss endpoint. Warnings auto-expire after 24h. This prevents owner from having to make a decision (Law 6: No Cognitive Load).
 
@@ -672,7 +691,7 @@ functions/
 | 3   | Store isolation in all queries   | `where('sId', '==', session.sId)` | 🔶 BLOCKED |
 | 4   | Rate limiting on all endpoints   | `checkRateLimit`                  | 🔶 BLOCKED |
 | 5   | Input validation (Zod)           | Zod schemas for all requests      | 🔶 BLOCKED |
-| 6   | No PII logging                   | Exclude review content from logs  | 🔶 BLOCKED |
+| 6   | No PII logging                   | Exclude review/reply content from logs; log length/presence only for diagnostics | 🔶 BLOCKED |
 | 7   | Feature flag protection          | Check `ENABLE_REVIEWS_REPUTATION` | 🔶 BLOCKED |
 
 ### Security Rules (Firestore)

@@ -6,14 +6,19 @@ import {
     getAllResellerProfiles,
     getResellerProfileById,
 } from "@database/reseller/server";
+import { getBoundedResellerApiStringContext, logResellerApiFailure } from "@lib/billing/resellerApiDiagnostics";
 import { admin, authAdmin } from "@lib/firebase/firebaseAdmin";
 import { logger } from "@lib/monitoring/logger";
-import { buildSecurityContext } from "@lib/security/securityContext";
 import { getEmailValidationError, validateEmail } from "@lib/validation/emailDomainValidator";
 import { NextResponse } from "next/server";
 import { withAuth } from "../../../../middleware/auth";
 import { z } from "zod";
 import { validateAPIInput } from "@lib/security/inputValidation";
+import { readBoundedJsonBody } from "@lib/security/boundedRequestBody";
+import { checkRateLimit } from "@lib/rateLimit";
+import { getRateLimitForFeature } from "@lib/rateLimit/configs";
+import { applyResellerReadRateLimit } from "../readRateLimit";
+import { hashPublicRateLimitValue } from "../../../../middleware/publicApi";
 
 /**
  * GET /api/reseller/manage — List all reseller profiles (PLATFORM only)
@@ -30,10 +35,15 @@ export const GET = withAuth(async (request, session) => {
             return NextResponse.json({ error: "Feature not available." }, { status: 404 });
         }
 
+        const rateLimitResponse = await applyResellerReadRateLimit(session, "manage");
+        if (rateLimitResponse) return rateLimitResponse;
+
         const profiles = await getAllResellerProfiles();
         return NextResponse.json({ profiles });
     } catch (error) {
-        console.error('[Reseller Manage GET] Failed:', error);
+        logResellerApiFailure('reseller_manage_get_route_failed', error, {
+            ...getBoundedResellerApiStringContext('userId', session.uId || session.user?.id),
+        });
         return NextResponse.json({ error: 'Failed to fetch reseller profiles.' }, { status: 500 });
     }
 }, { requiredPlatformRole: 'PLATFORM' });
@@ -56,7 +66,7 @@ const CreateResellerSchema = z.object({
 });
 
 const UpdateResellerSchema = z.object({
-    profileId: z.string().min(1),
+    profileId: z.string().trim().min(1).max(128).refine((value) => !value.includes('/')),
     name: z.string().min(2).max(100).optional(),
     phone: z.string().min(10).max(15).optional(),
     email: z.string().email().optional(),
@@ -71,6 +81,8 @@ const UpdateResellerSchema = z.object({
     maxOfflineActivations: z.number().int().min(1).max(100).optional(),
     active: z.boolean().optional(),
 });
+
+const RESELLER_ACTION_MAX_BODY_BYTES = 16 * 1024;
 
 const normalizeEmail = (email: string) => email.toLowerCase().trim();
 
@@ -205,7 +217,24 @@ export const POST = withAuth(async (request, session) => {
             return NextResponse.json({ error: "Feature not available." }, { status: 404 });
         }
 
-        const body = await request.json();
+        const rateLimitConfig = getRateLimitForFeature('DATA_WRITE');
+        const userRateLimitHash = hashPublicRateLimitValue(session.user.id);
+        const rateLimitResult = await checkRateLimit({
+            key: `reseller-manage:${userRateLimitHash}`,
+            ...rateLimitConfig,
+        });
+        if (!rateLimitResult.allowed) {
+            return NextResponse.json({
+                error: "Too many requests. Please try again later.",
+                resetAt: rateLimitResult.resetAt,
+            }, { status: 429 });
+        }
+
+        const bodyResult = await readBoundedJsonBody(request, RESELLER_ACTION_MAX_BODY_BYTES, {
+            invalidJsonMessage: 'Invalid input',
+        });
+        if (bodyResult.ok === false) return bodyResult.response;
+        const body = bodyResult.data as any;
         const isUpdate = Boolean(body.profileId);
         const db = getDb();
 
@@ -272,9 +301,10 @@ export const POST = withAuth(async (request, session) => {
             }), { merge: true });
 
             logger.info('Reseller profile updated', {
-                ...buildSecurityContext(session, request),
-                profileId,
-                updatedFields: Object.keys(profileUpdates),
+                endpoint: request.nextUrl.pathname,
+                ...getBoundedResellerApiStringContext('profileId', profileId),
+                updatedFieldCount: Object.keys(profileUpdates).length,
+                ...getBoundedResellerApiStringContext('userId', session.uId || session.user?.id),
             });
 
             return NextResponse.json({ success: true, profileId, action: 'updated' });
@@ -345,15 +375,18 @@ export const POST = withAuth(async (request, session) => {
             }));
 
             logger.info('Reseller profile created', {
-                ...buildSecurityContext(session, request),
-                profileId: authUserId,
-                resellerName: data.name,
+                endpoint: request.nextUrl.pathname,
+                ...getBoundedResellerApiStringContext('profileId', authUserId),
+                ...getBoundedResellerApiStringContext('resellerName', data.name),
+                ...getBoundedResellerApiStringContext('userId', session.uId || session.user?.id),
             });
 
             return NextResponse.json({ success: true, profileId: authUserId, action: 'created' });
         }
     } catch (error) {
-        console.error('[Reseller Manage POST] Failed:', error);
+        logResellerApiFailure('reseller_manage_post_route_failed', error, {
+            ...getBoundedResellerApiStringContext('userId', session.uId || session.user?.id),
+        });
         return NextResponse.json({ error: 'Failed to manage reseller profile.' }, { status: 500 });
     }
 }, { requiredPlatformRole: 'PLATFORM' });

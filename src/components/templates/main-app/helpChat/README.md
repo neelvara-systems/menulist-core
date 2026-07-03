@@ -1,7 +1,7 @@
-# Help Chat System - Dual-Mode AI Assistant
+# Help Chat System - Dual-Mode Help Assistant
 
 ## 🎯 Overview
-A production-ready, emotionally engaging chat interface designed for non-technical users. Features both QnA (quick answers) and Assistant (conversational) modes.
+A production help interface designed for non-technical owners. It supports QnA (quick answers) and Assistant (conversational) modes, uses the Answerlattice-backed search API, persists chat sessions through the local HelpChat data hooks, and keeps failure diagnostics bounded through `helpChatDiagnostics.ts`.
 
 ## ✨ Key Features
 
@@ -31,13 +31,20 @@ A production-ready, emotionally engaging chat interface designed for non-technic
 - `ChatHistory.tsx` - Left sidebar with conversation list
 - `ChatInput.tsx` - Message input with AI button
 - `MessageBubble.tsx` - Individual message display
-- `LiveSearchResults.tsx` - Real-time search as user types
+- `LocalSearchResults.tsx` - Local documentation result display
 - `ModeToggle.tsx` - QnA/Assistant switcher
 - `TypingIndicator.tsx` - Animated typing indicator
+- `ChatErrorBoundary.tsx` - Friendly fallback for render failures
 
 #### Supporting Files
 - `types.ts` - TypeScript definitions
-- `dummyData.ts` - Sample conversations
+- `api.ts` / `apiTypes.ts` - HelpChat search API client and response types
+- `chatState.ts` - Reducer state for search/typing/error UI
+- `chatUtils.ts` - Draft cleanup helpers
+- `helpChatDiagnostics.ts` - Bounded secure diagnostics for client failures
+- `hooks/useChatData.ts` - Session/category loading
+- `hooks/useChatHandlers.ts` - Send, retry, feedback, and ticket escalation handlers
+- `hooks/useRequestQueue.ts` - Request queueing support
 
 ## 🎨 Design System
 
@@ -105,13 +112,13 @@ A production-ready, emotionally engaging chat interface designed for non-technic
 }
 ```
 
-## 🚀 Future Integration Points
+## 🚀 Runtime Integration Points
 
 ### Backend Integration
-- Replace `DUMMY_CHAT_SESSIONS` with Firestore queries
-- Connect `handleSendMessage` to RAG pipeline
-- Implement real-time typing detection
-- Add chat persistence
+- Chat search goes through the HelpChat API client in `api.ts`
+- Session/category persistence flows through `useChatData`
+- Send/retry/feedback/ticket escalation/message-copy flows through `useChatHandlers`
+- Render-failure, draft, search, retry, session-persist, message-copy, and feedback diagnostics use `helpChatDiagnostics.ts`
 
 ### Features to Add
 - Message editing
@@ -155,12 +162,12 @@ A production-ready, emotionally engaging chat interface designed for non-technic
 - [ ] Empty states are friendly
 - [ ] Mobile responsive (future)
 
-## 📱 Responsive Design (Future)
+## 📱 Responsive Design
 - Sidebar collapses on mobile
 - Touch-optimized buttons
 - Full-screen on small devices
-- Swipe gestures for navigation
+- Mobile history opens in a drawer
 
 ---
 
-**Built with ❤️ for non-technical users**
+**Built for non-technical owners**

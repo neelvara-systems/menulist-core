@@ -5,6 +5,25 @@ import { FUNCTION_MAX_INSTANCES } from './config/secrets';
 import { DB_COLLECTIONS, getChatAnalyticsDocId } from './constants/database';
 import { ECOMSAI_PLATFORM_USER_ROLE } from './constants/user';
 import { firestoreAdmin } from './firebaseAdmin';
+import { getAnalyticsErrorContext, getAnalyticsIdContext } from './analytics/analyticsDiagnostics';
+import { validateNetworkTargetUrl } from './utils/networkTarget';
+
+const logger = functions.logger;
+const CHAT_DAILY_AGGREGATION_FAILED = 'CHAT_DAILY_AGGREGATION_FAILED';
+const CHAT_DAILY_STORE_AGGREGATION_FAILED = 'CHAT_DAILY_STORE_AGGREGATION_FAILED';
+const CHAT_DAILY_STATUS_UPDATE_FAILED = 'CHAT_DAILY_STATUS_UPDATE_FAILED';
+const CHAT_DAILY_SLACK_ALERT_FAILED = 'CHAT_DAILY_SLACK_ALERT_FAILED';
+const CHAT_DAILY_SLACK_TARGET_REJECTED = 'CHAT_DAILY_SLACK_TARGET_REJECTED';
+const CHAT_BACKFILL_DAY_FAILED = 'CHAT_BACKFILL_DAY_FAILED';
+const CHAT_BACKFILL_DAY_FAILED_MESSAGE = 'Report generation failed for this day.';
+
+function getSlackTargetContext(result: { addressCount?: number; error?: string; errorName?: string }) {
+    return {
+        addressCount: result.addressCount || 0,
+        targetError: typeof result.error === 'string' ? result.error.slice(0, 80) : undefined,
+        targetErrorName: typeof result.errorName === 'string' ? result.errorName.slice(0, 80) : undefined,
+    };
+}
 
 /**
  * DAILY CHAT STATS AGGREGATION (COST-OPTIMIZED)
@@ -49,8 +68,9 @@ export async function aggregateDailyChatStatsLogic(): Promise<{
     skippedCount: number;
     errors: Array<{ tId: string; storeId: string; error: string }>;
 }> {
-    console.log('=== Daily Chat Stats Aggregation Started ===');
-    console.log('Triggered at:', new Date().toISOString());
+    logger.info('[ChatAggregation] Daily chat stats aggregation started', {
+        triggeredAt: new Date().toISOString(),
+    });
 
     const db = firestoreAdmin;
     const results = {
@@ -65,7 +85,7 @@ export async function aggregateDailyChatStatsLogic(): Promise<{
     try {
         // COST OPTIMIZATION: Use storesSummary instead of fetching all tenants + stores
         // This reduces N tenant reads + N store queries to 1 read
-        // See: __docs__/patterns/SUMMARY-DOCUMENT-PATTERN.md
+        // See: __docs__/patterns/summary-document-pattern.md
         const storesSummaryDoc = await db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc('storesSummary').get();
         const storesSummary = storesSummaryDoc.exists ? storesSummaryDoc.data()?.stores || {} : {};
         const storeEntries = Object.entries(storesSummary) as [string, { tId: number | string; active?: boolean }][];
@@ -75,7 +95,10 @@ export async function aggregateDailyChatStatsLogic(): Promise<{
         results.totalTenants = uniqueTenants.size;
         results.totalStores = storeEntries.length;
 
-        console.log(`Found ${results.totalStores} stores across ${results.totalTenants} tenants (from storesSummary)`);
+        logger.info('[ChatAggregation] Stores loaded from summary', {
+            totalStores: results.totalStores,
+            totalTenants: results.totalTenants,
+        });
 
         // Process yesterday's data (today's data will be aggregated tomorrow)
         const yesterday = new Date();
@@ -87,13 +110,20 @@ export async function aggregateDailyChatStatsLogic(): Promise<{
 
             // Skip inactive stores
             if (storeInfo.active === false || !tId) {
-                console.log(`  Skipping inactive store ${storeId}`);
+                logger.info('[ChatAggregation] Skipping inactive or unscoped store', {
+                    storeId: getAnalyticsIdContext(storeId),
+                    hasTenantId: Boolean(tId),
+                    inactive: storeInfo.active === false,
+                });
                 results.skippedCount++;
                 continue;
             }
 
             try {
-                console.log(`  Processing store ${storeId}...`);
+                logger.info('[ChatAggregation] Processing store', {
+                    tId: getAnalyticsIdContext(tId),
+                    storeId: getAnalyticsIdContext(storeId),
+                });
 
                 // Mark job as IN_PROGRESS
                 await db.collection(DB_COLLECTIONS.STORES).doc(storeId).update({
@@ -107,7 +137,11 @@ export async function aggregateDailyChatStatsLogic(): Promise<{
                 const existingDoc = await db.collection(DB_COLLECTIONS.CHAT_ANALYTICS).doc(docId).get();
 
                 if (existingDoc.exists) {
-                    console.log(`    Aggregation for store ${storeId} on ${dateStr} already exists. Skipping.`);
+                    logger.info('[ChatAggregation] Aggregation already exists; skipping', {
+                        tId: getAnalyticsIdContext(tId),
+                        storeId: getAnalyticsIdContext(storeId),
+                        date: dateStr,
+                    });
                     results.skippedCount++;
 
                     // Still mark as success since data exists
@@ -138,10 +172,19 @@ export async function aggregateDailyChatStatsLogic(): Promise<{
                         'chatAnalytics.lastError': FieldValue.delete()
                     });
 
-                    console.log(`    ✓ Store ${storeId}: ${stats.totalChats} chats aggregated`);
+                    logger.info('[ChatAggregation] Store aggregation written', {
+                        tId: getAnalyticsIdContext(tId),
+                        storeId: getAnalyticsIdContext(storeId),
+                        date: dateStr,
+                        totalChats: stats.totalChats,
+                    });
                     results.successCount++;
                 } else {
-                    console.log(`    - Store ${storeId}: No chats for this day`);
+                    logger.info('[ChatAggregation] Store had no chats for date', {
+                        tId: getAnalyticsIdContext(tId),
+                        storeId: getAnalyticsIdContext(storeId),
+                        date: dateStr,
+                    });
 
                     // Mark as SUCCESS (no data is not a failure)
                     await db.collection(DB_COLLECTIONS.STORES).doc(storeId).update({
@@ -155,32 +198,47 @@ export async function aggregateDailyChatStatsLogic(): Promise<{
 
             } catch (storeError) {
                 // Log error but continue with other stores
-                const errorMessage = storeError instanceof Error ? storeError.message : String(storeError);
-                console.error(`    ✗ Failed to process store ${storeId}:`, errorMessage);
+                logger.error('[ChatAggregation] Store aggregation failed', {
+                    failureCode: CHAT_DAILY_STORE_AGGREGATION_FAILED,
+                    tId: getAnalyticsIdContext(tId),
+                    storeId: getAnalyticsIdContext(storeId),
+                    error: getAnalyticsErrorContext(storeError),
+                });
 
                 // Mark as FAILED
                 await db.collection(DB_COLLECTIONS.STORES).doc(storeId).update({
                     'chatAnalytics.lastStatus': 'FAILED',
-                    'chatAnalytics.lastError': errorMessage
+                    'chatAnalytics.lastError': CHAT_DAILY_STORE_AGGREGATION_FAILED
                 }).catch(err => {
-                    console.error(`Failed to update error status for store ${storeId}:`, err);
+                    logger.warn('[ChatAggregation] Failed to persist store failure status', {
+                        failureCode: CHAT_DAILY_STATUS_UPDATE_FAILED,
+                        tId: getAnalyticsIdContext(tId),
+                        storeId: getAnalyticsIdContext(storeId),
+                        error: getAnalyticsErrorContext(err),
+                    });
                 });
 
                 results.failedCount++;
-                results.errors.push({ tId, storeId, error: errorMessage });
+                results.errors.push({ tId, storeId, error: CHAT_DAILY_STORE_AGGREGATION_FAILED });
             }
         }
 
         // Log final summary
-        console.log('=== Daily Chat Stats Aggregation Complete ===');
-        console.log(`Total Tenants: ${results.totalTenants}`);
-        console.log(`Total Stores: ${results.totalStores}`);
-        console.log(`Success: ${results.successCount}`);
-        console.log(`Skipped: ${results.skippedCount}`);
-        console.log(`Failed: ${results.failedCount}`);
+        logger.info('[ChatAggregation] Daily chat stats aggregation complete', {
+            totalTenants: results.totalTenants,
+            totalStores: results.totalStores,
+            successCount: results.successCount,
+            skippedCount: results.skippedCount,
+            failedCount: results.failedCount,
+            errorCount: results.errors.length,
+        });
 
         if (results.errors.length > 0) {
-            console.error('Errors encountered:', JSON.stringify(results.errors, null, 2));
+            logger.warn('[ChatAggregation] Daily chat stats completed with store failures', {
+                failureCode: CHAT_DAILY_STORE_AGGREGATION_FAILED,
+                failedCount: results.failedCount,
+                errorCount: results.errors.length,
+            });
         }
 
         // Send alert if too many failures
@@ -189,11 +247,13 @@ export async function aggregateDailyChatStatsLogic(): Promise<{
         }
 
     } catch (error) {
-        console.error('Critical error in aggregation function:', error);
-        throw error; // Let Cloud Functions retry
+        logger.error('[ChatAggregation] Daily chat stats aggregation failed', {
+            failureCode: CHAT_DAILY_AGGREGATION_FAILED,
+            error: getAnalyticsErrorContext(error),
+        });
+        throw new Error(CHAT_DAILY_AGGREGATION_FAILED); // Let Cloud Functions retry with stable text
     }
 
-    console.log('Final Results:', JSON.stringify(results, null, 2));
     return results;
 }
 
@@ -219,9 +279,9 @@ async function aggregateForStore(
     const tIdNumber = typeof tId === 'string' ? parseInt(tId) : tId;
     const storeIdNumber = typeof storeId === 'string' ? parseInt(storeId) : storeId;
 
-    console.log(`[aggregateForStore] Querying daily chat stats`, {
-        tId: tIdNumber,
-        storeId: storeIdNumber,
+    logger.info('[ChatAggregation] Querying daily chat stats', {
+        tId: getAnalyticsIdContext(tIdNumber),
+        storeId: getAnalyticsIdContext(storeIdNumber),
         date: dateStr,
     });
 
@@ -233,18 +293,25 @@ async function aggregateForStore(
         .where('createdOn', '<=', Timestamp.fromDate(endOfDay))    // ✅ Direct import
         .get();
 
-    // 🔍 DEBUG: Log query results
-    console.log(`[aggregateForStore] Found ${chatsSnapshot.size} chat sessions for ${dateStr}`);
+    logger.info('[ChatAggregation] Daily chat session query completed', {
+        tId: getAnalyticsIdContext(tIdNumber),
+        storeId: getAnalyticsIdContext(storeIdNumber),
+        date: dateStr,
+        chatCount: chatsSnapshot.size,
+    });
 
     if (chatsSnapshot.size === 0) {
-        console.log(`[aggregateForStore] ⚠️ No documents found. Checking if ANY chat sessions exist...`);
         // Query without date filter to see if there are any sessions at all
         const anyChats = await db.collection(DB_COLLECTIONS.CHAT_SESSIONS)
             .where('tId', '==', tIdNumber)
             .where('sId', '==', storeIdNumber)
             .limit(1)
             .get();
-        console.log(`[aggregateForStore] Found ${anyChats.size} chat sessions (any date) for tId=${tIdNumber}, sId=${storeIdNumber}`);
+        logger.info('[ChatAggregation] Store chat existence check completed', {
+            tId: getAnalyticsIdContext(tIdNumber),
+            storeId: getAnalyticsIdContext(storeIdNumber),
+            hasAnyChats: anyChats.size > 0,
+        });
     }
 
     // Initialize stats
@@ -350,11 +417,23 @@ async function sendAggregationFailureAlert(results: any) {
     const webhookUrl = functions.config().slack?.webhook_url;
 
     if (!webhookUrl) {
-        console.warn('Slack webhook not configured. Skipping failure alert.');
+        logger.info('[ChatAggregation] Slack webhook not configured; skipping failure alert', {
+            failedCount: results.failedCount || 0,
+        });
         return;
     }
 
     try {
+        const targetValidation = await validateNetworkTargetUrl(String(webhookUrl));
+        if (!targetValidation.valid || !targetValidation.normalizedUrl) {
+            logger.warn('[ChatAggregation] Slack webhook target rejected', {
+                failureCode: CHAT_DAILY_SLACK_TARGET_REJECTED,
+                failedCount: results.failedCount || 0,
+                ...getSlackTargetContext(targetValidation),
+            });
+            return;
+        }
+
         const fetch = (await import('node-fetch')).default;
 
         const message = {
@@ -378,21 +457,27 @@ async function sendAggregationFailureAlert(results: any) {
                     type: 'section',
                     text: {
                         type: 'mrkdwn',
-                        text: `*Errors:*\n${results.errors.map((e: any) => `• Tenant ${e.tId}: ${e.error}`).join('\n').substring(0, 500)}`
+                        text: `*Failure Code:* ${CHAT_DAILY_STORE_AGGREGATION_FAILED}\nCheck Functions logs for bounded store context.`
                     }
                 }
             ]
         };
 
-        await fetch(webhookUrl, {
+        await fetch(targetValidation.normalizedUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(message)
         });
 
-        console.log('Failure alert sent to Slack');
+        logger.info('[ChatAggregation] Failure alert sent to Slack', {
+            failedCount: results.failedCount || 0,
+        });
     } catch (error) {
-        console.error('Failed to send failure alert:', error);
+        logger.warn('[ChatAggregation] Failed to send failure alert', {
+            failureCode: CHAT_DAILY_SLACK_ALERT_FAILED,
+            failedCount: results.failedCount || 0,
+            error: getAnalyticsErrorContext(error),
+        });
     }
 }
 
@@ -439,7 +524,11 @@ export const backfillAggregates = onCall(backfillOptions, async (request) => {
         const dateStr = date.toISOString().split('T')[0];
 
         try {
-            console.log(`[backfillAggregates] Processing date ${dateStr} for tenant=${tenantId}, store=${storeId}`);
+            logger.info('[ChatAggregation] Processing backfill date', {
+                tenantId: getAnalyticsIdContext(tenantId),
+                storeId: getAnalyticsIdContext(storeId),
+                date: dateStr,
+            });
             const stats = await aggregateForStore(db, tenantId, storeId, date);
 
             if (stats.totalChats > 0) {
@@ -455,10 +544,17 @@ export const backfillAggregates = onCall(backfillOptions, async (request) => {
                 results.push({ date: dateStr, chats: 0, status: 'skipped' });
             }
         } catch (error) {
+            logger.warn('[ChatAggregation] Backfill date failed', {
+                failureCode: CHAT_BACKFILL_DAY_FAILED,
+                tenantId: getAnalyticsIdContext(tenantId),
+                storeId: getAnalyticsIdContext(storeId),
+                date: dateStr,
+                error: getAnalyticsErrorContext(error),
+            });
             results.push({
                 date: dateStr,
                 status: 'error',
-                error: error instanceof Error ? error.message : String(error)
+                error: CHAT_BACKFILL_DAY_FAILED_MESSAGE
             });
         }
     }

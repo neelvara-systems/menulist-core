@@ -1,8 +1,46 @@
 import { Alert, Button, Card, Divider, Flex, Form, Input, Modal, Typography, message, theme } from 'antd';
+import { getBoundedExportStringContext, logExportFailure } from '@lib/export/exportDiagnostics';
 import { useState } from 'react';
 import { LuFileJson, LuSheet } from 'react-icons/lu';
 import { Project } from './types';
 import { getOutputJson } from './utils/excelUtils';
+
+const SHARE_ENDPOINT_INVALID_MESSAGE = 'Use a public HTTPS API URL.';
+const SHARE_ENDPOINT_REQUEST_POLICY = {
+    cache: 'no-store' as RequestCache,
+    credentials: 'omit' as RequestCredentials,
+    redirect: 'manual' as RequestRedirect,
+    referrerPolicy: 'no-referrer' as ReferrerPolicy,
+};
+
+function isBlockedShareEndpointHost(hostname: string) {
+    const host = hostname.toLowerCase().replace(/^\[|\]$/g, '');
+    return host === 'localhost'
+        || host.endsWith('.localhost')
+        || host.endsWith('.local')
+        || host === 'metadata.google.internal'
+        || host === '0.0.0.0'
+        || host.startsWith('127.')
+        || host.startsWith('10.')
+        || host.startsWith('192.168.')
+        || /^172\.(1[6-9]|2\d|3[01])\./.test(host)
+        || host.startsWith('169.254.')
+        || host === '::1'
+        || (host.includes(':') && (host.startsWith('fc') || host.startsWith('fd') || host.startsWith('fe80:')));
+}
+
+function normalizeShareEndpointUrl(value: string) {
+    try {
+        const url = new URL(value.trim());
+        if (url.protocol !== 'https:') return null;
+        if (url.username || url.password) return null;
+        if (isBlockedShareEndpointHost(url.hostname)) return null;
+        url.hash = '';
+        return url.toString();
+    } catch {
+        return null;
+    }
+}
 
 interface ShareModalProps {
     isOpen: boolean;
@@ -23,16 +61,28 @@ export const ShareModal = ({ isOpen, onClose, projectData, handleDownload }: Sha
     };
 
     const handleSubmit = async (values: { apiUrl: string }) => {
+        let responseStatus: number | undefined;
+        let categoryCount = 0;
+        let itemCount = 0;
+        const apiUrl = normalizeShareEndpointUrl(values.apiUrl);
+        if (!apiUrl) {
+            message.error(SHARE_ENDPOINT_INVALID_MESSAGE);
+            return;
+        }
         try {
             setIsSharing(true);
             const data = getOutputJson(projectData);
-            const response = await fetch(values.apiUrl, {
+            categoryCount = data.categories.length;
+            itemCount = data.items.length;
+            const response = await fetch(apiUrl, {
+                ...SHARE_ENDPOINT_REQUEST_POLICY,
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify(data),
             });
+            responseStatus = response.status;
 
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
@@ -41,7 +91,13 @@ export const ShareModal = ({ isOpen, onClose, projectData, handleDownload }: Sha
             message.success('Data shared successfully!');
             handleClose();
         } catch (error) {
-            console.error('Error sharing data:', error);
+            logExportFailure('project_share_endpoint_post_failed', error, {
+                ...getBoundedExportStringContext('apiUrl', apiUrl),
+                ...getBoundedExportStringContext('projectId', projectData.projectId),
+                categoryCount,
+                itemCount,
+                responseStatus,
+            });
             message.error('Failed to share data. Please check the API URL and try again.');
         } finally {
             setIsSharing(false);
@@ -66,16 +122,12 @@ export const ShareModal = ({ isOpen, onClose, projectData, handleDownload }: Sha
                     label="API URL"
                     rules={[{
                         required: true,
-                        message: 'Please enter the API URL',
-                        type: 'url',
+                        message: SHARE_ENDPOINT_INVALID_MESSAGE,
                         validator: (_, value) => {
-                            if (!value) return Promise.reject();
-                            try {
-                                new URL(value);
-                                return Promise.resolve();
-                            } catch {
-                                return Promise.reject('Please enter a valid URL');
+                            if (typeof value !== 'string' || !normalizeShareEndpointUrl(value)) {
+                                return Promise.reject(new Error(SHARE_ENDPOINT_INVALID_MESSAGE));
                             }
+                            return Promise.resolve();
                         }
                     }]}
                 >
@@ -90,6 +142,7 @@ export const ShareModal = ({ isOpen, onClose, projectData, handleDownload }: Sha
                             <div style={{ paddingLeft: 8 }}>
                                 <Flex vertical>
                                     <Typography.Text type="secondary">• Accepts <Typography.Text strong>POST</Typography.Text> requests.</Typography.Text>
+                                    <Typography.Text type="secondary">• Uses <Typography.Text strong>HTTPS</Typography.Text> on a public domain.</Typography.Text>
                                     <Typography.Text type="secondary">• Is publicly accessible <Typography.Text strong>without authentication</Typography.Text>.</Typography.Text>
                                     <Typography.Text type="secondary">• Expects a JSON payload in the <Typography.Text strong>request body</Typography.Text>.</Typography.Text>
                                 </Flex>

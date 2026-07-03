@@ -45,7 +45,7 @@ Modify:
 - `src/components/mobile/screens/MobileDigitalScreensScreen.tsx`
 - `src/database/storage/uploadBlobToStorage.ts`
 - `src/database/storage/uploadPreparedMediaImage.ts`
-- `__docs__/CHANGELOG.md`
+- `__docs__/changelog.md`
 
 ## Implementation Steps
 

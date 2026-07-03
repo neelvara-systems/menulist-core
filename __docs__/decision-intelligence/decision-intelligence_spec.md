@@ -1,10 +1,12 @@
 # Decision Intelligence - Product Specification
 
 **Created:** January 11, 2026  
-**Status:** 🔒 **LOCKED — Production Ready**  
+**Status:** Locked source specification; not current launch certification
 **Source:** Codebase (Single Source of Truth)  
 **Applies:** 3-Year Architecture Freeze Rule
 **Last Verified:** May 7, 2026
+
+> **Launch Boundary:** This spec records the locked Decision Intelligence source contract, not current production-launch approval. Current release approval requires the active [production-readiness audit](../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../production-readiness/external-certification-runbook.md) evidence, scoped scheduler deploy evidence, current decision-block scoring checks, browser/mobile customer-menu QA, public cache/deploy evidence, and production-host smoke.
 
 ---
 

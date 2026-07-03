@@ -1,5 +1,11 @@
 'use client';
 import { updateAiSearchHistoryWithFeedback } from '@database/aiSearchHistory';
+import {
+    copyAnswerlatticeSupportTextToClipboard,
+    hasAnswerlatticeSupportClipboardWrite,
+    hasAnswerlatticeSupportCopyFallback,
+} from '@lib/answerlattice/supportClipboard';
+import { logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { Button, message, Space, Tooltip } from 'antd';
 import { useState } from 'react';
 import { LuCopy, LuRefreshCw, LuThumbsDown, LuThumbsUp } from 'react-icons/lu';
@@ -11,6 +17,16 @@ interface ActionButtonsProps {
     isTyping: boolean;
     searchHistoryId: string | null;
 }
+
+const AI_SEARCH_ANSWER_COPY_CLIPBOARD_UNAVAILABLE = 'ai_search_answer_copy_clipboard_unavailable';
+const AI_SEARCH_ANSWER_COPY_FALLBACK_FAILED = 'ai_search_answer_copy_fallback_failed';
+
+const copyAiSearchAnswerToClipboard = async (answer: string): Promise<void> => {
+    await copyAnswerlatticeSupportTextToClipboard(answer, {
+        unavailable: AI_SEARCH_ANSWER_COPY_CLIPBOARD_UNAVAILABLE,
+        fallbackFailed: AI_SEARCH_ANSWER_COPY_FALLBACK_FAILED,
+    });
+};
 
 export default function ActionButtons({ answer, onRegenerate, isTyping, searchHistoryId }: ActionButtonsProps) {
     const [feedbackModalVisible, setFeedbackModalVisible] = useState(false);
@@ -46,15 +62,19 @@ export default function ActionButtons({ answer, onRegenerate, isTyping, searchHi
         message.success('Thank you for your feedback!');
     };
 
-    const handleCopy = () => {
-        navigator.clipboard.writeText(answer)
-            .then(() => {
-                message.success('Answer copied to clipboard');
-            })
-            .catch(err => {
-                console.error('Failed to copy text: ', err);
-                message.error('Failed to copy answer');
+    const handleCopy = async () => {
+        try {
+            await copyAiSearchAnswerToClipboard(answer);
+            message.success('Answer copied to clipboard');
+        } catch (err) {
+            logRuntimeFailure('ai_search_answer_copy_failed', err, {
+                answerLength: answer?.length || 0,
+                hasClipboardWrite: hasAnswerlatticeSupportClipboardWrite(),
+                hasCopyFallback: hasAnswerlatticeSupportCopyFallback(),
+                hasSearchHistoryId: Boolean(searchHistoryId),
             });
+            message.error('Failed to copy answer');
+        }
     };
 
     if (isTyping) {

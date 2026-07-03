@@ -2,7 +2,7 @@
 
 import DrawerElement from '@antdComponent/drawerElement';
 import DateTimeDisplay from '@atoms/DateTimeDisplay';
-import { updateSessionInternalNote } from '@database/chatSessions';
+import { assertChatSessionInternalNoteUpdateSucceeded, updateSessionInternalNote } from '@database/chatSessions';
 import { getAnswerlatticeCustomerIdentity } from '@lib/answerlattice/customerIdentity';
 import { ChatMessage, ChatSession } from '@type/chatSession';
 import { Avatar, Button, Card, Descriptions, Divider, Flex, Input, message, Statistic, Tag, theme, Typography } from 'antd';
@@ -37,7 +37,12 @@ function ConversationDrawer({ open, session, onClose }: ConversationDrawerProps)
 
         setSavingNote(true);
         try {
-            await updateSessionInternalNote(session.id, internalNote);
+            const noteUpdateResult = await updateSessionInternalNote(session.id, internalNote);
+            assertChatSessionInternalNoteUpdateSucceeded(
+                noteUpdateResult,
+                session.id,
+                'platform_chat_drawer_internal_note_update_rejected',
+            );
             message.success('Internal note has been saved successfully');
         } catch (error) {
             message.error('Failed to save internal note. Please try again');

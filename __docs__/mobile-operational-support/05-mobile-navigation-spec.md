@@ -1,10 +1,14 @@
 # Mobile Navigation Specification
 
-**Created:** February 14, 2026  
-**Status:** 📋 SPEC COMPLETE — Ready for implementation  
-**Author:** Lead Architect (Cascade)  
-**Source:** Mobile UI Doctrine + Industry Best Practices  
+**Created:** February 14, 2026
+**Status:** Source-bounded navigation reference; not current implementation approval or launch certification
+**Author:** Lead Architect (Cascade)
+**Source:** Mobile UI Doctrine + Industry Best Practices
 **Depends On:** `02-mobile-ui-doctrine.md`, `03-mobile-screens-spec.md`
+
+## Current Release Boundary
+
+This document records the intended MobileShell navigation model and current route-map reference. It does not approve new mobile navigation work, launch readiness, or production certification by itself. Current navigation approval requires the active [production-readiness audit](../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../production-readiness/external-certification-runbook.md) evidence, `npm run verify:mobile-shell-route-map`, authenticated owner-shell mobile QA for affected routes, real-device QA where PWA/share behavior is in scope, target deploy evidence, and production-host smoke.
 
 ---
 
@@ -173,7 +177,7 @@ More Tab
 │   ├── → Digital Screens (Level 2)
 │   ├── → Locations (Level 2)
 │   ├── → Staff (Level 2)
-│   ├── → Public Info Screen (Level 2)
+│   ├── → Business Profile / Brand Settings (Level 2)
 │   ├── → Billing Screen (Level 2)
 │   ├── → Business settings screens (Level 2)
 │   └── → Logout (Dialog, Level 2)
@@ -191,22 +195,22 @@ More Tab
 
 | Desktop Route | Desktop Page | Mobile Screen | Mobile Tab |
 | --- | --- | --- | --- |
-| `/dashboard` | DashboardPage | MobileDashboardScreen | More |
+| `/dashboard` | DashboardPage | MobileHoursScreen / Today tab | Today |
 | `/projects` | ProjectsPage (Editor) | MobileMenuScreen | Menu |
 | `/today` | TodayPage | MobileHoursScreen | Today |
-| `/feedback` | FeedbackPage | MobileFeedbackScreen | Feedback |
+| `/feedback` | FeedbackPage | MobileFeedbackScreen | More |
 | `/qr-code` | QrCodePage | MobileShareScreen | Share |
-| `/business-settings` | BusinessSettings | MobilePublicInfoScreen | More → Info |
+| `/business-settings` | BusinessSettings | MobileMoreScreen → MobileBasicSettingsScreen | More → Business Profile / Brand Settings |
 | `/billing` | BillingPage | MobileBillingScreen | More → Billing |
 | `/users` | UsersPage | MobileUsersScreen | More |
 | `/transactions` | TransactionsPage | MobileTransactionsScreen | More |
 | `/locations` | LocationsPage | MobileLocationsScreen | More |
 | `/help-center` | HelpCenter | MobileHelpScreen | More |
-| `/platform/*` | PlatformPages | NOT on mobile | Desktop only |
+| `/platform/*`, `/ops/*`, `/reseller/*` | Internal/partner pages | Role-gated More sub-screens | More |
 
 ### Desktop-Only Routes on Mobile
 
-When a mobile user accesses a desktop-only route (e.g., deep link to `/users`):
+Most canonical owner, platform, ops, and reseller routes map into `MobileShell` through the route-map source gate (`npm run verify:mobile-shell-route-map`). When a mobile user accesses a route that is still desktop-only:
 
 ```
 Show: "This feature is available on desktop."
@@ -261,7 +265,7 @@ When `prefers-reduced-motion` is set:
 | `menulist.app/today` | Open Today tab |
 | `menulist.app/share` | Open Share tab |
 | `menulist.app/billing` | Open More → Billing |
-| `menulist.app/business-settings` | Open More → Public Info |
+| `menulist.app/business-settings` | Open More → Business Profile / Brand Settings |
 
 ### PWA Shortcuts
 

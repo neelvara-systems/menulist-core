@@ -1,10 +1,12 @@
 # Stage 7 Output - Final Launch Polish + Production Readiness
 
-**Date:** May 17, 2026  
-**Status:** Completed  
-**Base implementation:** v3.2.3 Clean Demo Captures  
-**Resulting version:** v3.2.4 Final Launch Polish  
+**Date:** May 17, 2026
+**Status:** Historical Stage 7 planning output; not current launch or founder-review approval
+**Base implementation:** v3.2.3 Clean Demo Captures
+**Resulting version:** v3.2.4 Final Launch Polish
 **Scope:** Launch-readiness audit, mobile hero polish, website language cleanup, asset/metadata verification, and final launch recommendation
+
+> **Current Release Boundary (July 3, 2026):** This file records the May 2026 Stage 7 homepage planning review only. Current website launch or founder-review approval requires the active [production-readiness audit](../../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../../production-readiness/external-certification-runbook.md) evidence, `npm run verify:website-public-copy-boundary`, `npm run verify:website-resource-locales`, browser desktop/mobile route smoke, supporting page claim-hardening, founder-approved demo tenant screenshots, target Vercel deploy evidence, and production-host smoke.
 
 ## Scope Guardrail
 
@@ -30,7 +32,7 @@
 - **Chain/governance communication:** Present but secondary. Multi-location is referenced without making enterprise-heavy claims.
 - **Synchronization communication:** Mostly careful on homepage. Older supporting page copy still contains broader v2 sync language and should be hardened next.
 - **Public-presence positioning:** Strongest current narrative.
-- **Onboarding clarity:** Good enough for launch; `get-started` remains simple and does not change billing/payment behavior.
+- **Onboarding clarity:** Good enough for the historical Stage 7 homepage review; current launch approval still follows the release boundary above.
 - **Responsiveness/mobile quality:** Improved during this pass. Mobile hero headline, subtitle, header, and source-card overflow were fixed.
 - **Emotional consistency:** Calm, credible, founder-owned public truth system.
 
@@ -220,7 +222,7 @@
 
 ### Recommendation
 
-The homepage is ready for a controlled launch or founder review after this Stage 7 pass. The full marketing site should not be treated as fully launch-clean until supporting pages receive a dedicated claim-hardening pass and final real-demo screenshots are prepared.
+The homepage has historical Stage 7 source-gated planning evidence only. Current controlled launch, founder-review, or full-site launch approval follows the release boundary above and still requires supporting page claim-hardening, founder-approved demo tenant screenshots, target Vercel deploy evidence, and production-host smoke.
 
 ### Absolutely Fix Before Broad Public Launch
 
@@ -228,7 +230,7 @@ The homepage is ready for a controlled launch or founder review after this Stage
 2. Prepare or approve a clean demo tenant for real screenshots.
 3. Confirm final public assets do not use real third-party extracted menu data.
 
-### Can Wait Until V2
+### Not Required For This Historical Stage 7 Evidence
 
 - Customer testimonials.
 - Comparison pages.

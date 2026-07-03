@@ -1,11 +1,13 @@
 # Menu Observation Layer (MOL v0)
 
-> **Document Version**: 1.3  
+> **Document Version**: 1.4
 > **Created**: January 14, 2026  
-> **Status**: ✅ COMPLETE - Sprint 1 & 2 Production Ready  
+> **Status**: Historical Sprint 1 and 2 implementation evidence; not current launch certification
 > **Sprint Duration**: 3 weeks total (Sprint 1: 2 weeks, Sprint 2: 1 week)  
 > **Document Type**: Combined SPEC + IMPL (No Marketing — Internal Infrastructure)
 > **Location**: `__docs__/internal-tracking/` (grouped with Internal Tracking System)
+
+> Launch boundary: MOL v0 readiness now depends on the active [production-readiness audit](../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../production-readiness/external-certification-runbook.md), current source verifiers, Firestore/cost evidence, scoped scheduler/deploy evidence where relevant, and target-environment smoke.
 
 ---
 
@@ -730,7 +732,7 @@ Only after:
 | **Internal Tracking System** | **CRITICAL** - Tracking philosophy | `__docs__/internal-tracking/menulist-internal-tracking-system.md` |
 | Constitution                 | Governance laws                    | `__docs__/constitution/`                                          |
 | Language Governance          | Forbidden words                    | `__docs__/constitution/02-language-governance.md`                 |
-| Research Synthesis           | Market analysis                    | `__docs__/menulist-research-synthesis-analysis.md`                |
+| Research Synthesis           | Market analysis                    | `__docs__/strategy/menulist-research-synthesis-analysis.md`       |
 | Security Rules               | Implementation rules               | `.cascade/rules/SECURITY_IMPLEMENTATION_RULES.md`                 |
 | Projects Docs                | Feature reference                  | `__docs__/projects/`                                              |
 
@@ -816,10 +818,12 @@ if (!FEATURE_FLAGS.ENABLE_MENU_OBSERVATION) {
 try {
     await logChange(...);
 } catch (error) {
-    console.warn('[MenuChangeLog] Non-blocking error:', error);
+    logMenuChangeLogFailure('menu_change_log_tracking_failed', error, getMenuChangeLogEntryContext(entry));
     // Don't throw - don't block user action
 }
 ```
+
+Flush helpers keep the same non-blocking contract: debounced writes and `flushPendingChanges()` use explicit `void` handoffs, and flush-time session lookup failures log `menu_change_log_flush_session_failed` with bounded entry context.
 
 ### D.4.2 Collection Reference Pattern
 
@@ -893,8 +897,8 @@ await setDoc(docRef, sanitizeForFirestore(data));
 ENABLE_MENU_OBSERVATION: true,  // Change from false to true
 ```
 
-Then deploy: `firebase deploy --only functions:computeDecisionBlocksScores`
+Then run `npm run verify:functions-deploy-preflight` and deploy the affected Function to QA with `firebase deploy --project menulist-qa --config firebase.json --only functions:computeDecisionBlocksScores --non-interactive`. Production deploy requires QA evidence and explicit production deploy approval.
 
 ---
 
-**Status**: ✅ COMPLETE — Ready for testing and deployment
+**Status**: Historical Sprint 1 and 2 implementation evidence only; current testing or deploy approval requires the active production-readiness audit, External Certification Runbook evidence, `npm run verify:agent-readiness`, `npm run verify:functions-deploy-preflight`, Firestore/cost evidence, scoped `menulist-qa` scheduler deploy evidence where Function logic changes, target-environment smoke, and explicit production deploy approval.

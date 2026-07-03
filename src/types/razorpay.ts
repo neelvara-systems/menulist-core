@@ -39,7 +39,7 @@ export interface PaymentMetadata {
  * This document must ONLY be modified through:
  *   1. Webhook handler       — /api/razorpay/webhook (Razorpay-initiated events)
  *   2. Verified API routes   — /api/razorpay/* (user-initiated with withAuth + tenant check)
- *   3. Reconciliation job    — /api/internal/reconcile-subscriptions (daily cron sync)
+ *   3. Reconciliation job    — functions/src/billing/reconcileSubscriptions.ts (nightly scheduler)
  *   4. DAL auto-expire       — expireIfGracePeriodEnded() (grace period enforcement)
  *
  * NEVER edit subscription documents manually in the Firestore console.

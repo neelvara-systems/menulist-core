@@ -189,7 +189,7 @@ export const DisabledDropZone = () => {
     const [isEnabled, setIsEnabled] = useState(false);
 
     const { isDragging, dragHandlers } = useDragAndDrop({
-        onFilesDrop: (files) => console.log(files),
+        onFilesDrop: () => undefined,
         accept: ['image/*'],
         maxFiles: 1,
         disabled: !isEnabled

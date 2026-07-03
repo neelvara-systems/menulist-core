@@ -1,7 +1,7 @@
-import { publishProject, uploadFile } from "@database/projects";
+import { assertProjectUpdateSucceeded, publishProject, uploadFile } from "@database/projects";
 import { deleteOBPPhotos } from "@database/stores/uploadOBPPhoto";
 import { getDataUrlMimeType } from "@lib/media/imageProfiles";
-import { updateStore } from "@database/stores";
+import { assertStoreUpdateSucceeded, updateStore } from "@database/stores";
 import { useAppDispatch } from "@hook/useAppDispatch";
 import { resolveRenderLanguage } from "@lib/localization/languageResolver";
 import { getProjectDefaultLanguage } from "@lib/localization/projectContent";
@@ -13,9 +13,11 @@ import { buildBusinessCopyManualOverrideMeta } from "@services/ai/businessCopy/m
 import MainContentRenderer from "@template/website/mainContentRenderer";
 import { StoreDataType } from "@type/platform/store";
 import { removeObjRef } from "@util/utils";
-import { Flex } from "antd";
+import { generateProjectUrl } from "@lib/utils/slugify";
+import { Flex, message } from "antd";
 import { forwardRef, useCallback, useContext, useEffect, useImperativeHandle, useState } from "react";
 import { resolveMenuDesignConfig } from "./designSystem";
+import { getBoundedProjectPageStringContext, getProjectPageProjectLogContext, getProjectPageStoreLogContext, logProjectPageFailure } from "../utils/projectPageDiagnostics";
 import { Project } from '../types';
 import PreviewModal from "./previewModal";
 import B2CSidebar from "./sidebar";
@@ -103,6 +105,11 @@ const B2CView = forwardRef<B2CViewRef, B2CViewProps>(({ activeDeviceType, setHas
                     }
 
                     const updatedProject: Project = await publishProject(projectCopy);
+                    assertProjectUpdateSucceeded(
+                        updatedProject,
+                        projectCopy.projectId,
+                        'projects_b2c_publish_project_update_rejected',
+                    );
                     updatedProjectCopy = removeObjRef(updatedProject);
                     setProjectData(updatedProjectCopy);
                     setActiveProject(updatedProjectCopy);
@@ -110,19 +117,32 @@ const B2CView = forwardRef<B2CViewRef, B2CViewProps>(({ activeDeviceType, setHas
 
                     // 🩺 Post-publish health verification (fire-and-forget)
                     // Runs in background — does NOT block UI or affect success toast
+                    let verificationPublicMenuUrl: string | undefined;
                     try {
                         const { verifyMenuPublish } = await import('@lib/firebase/functions');
-                        const slug = storeDetails?.subdomain;
-                        if (slug && storeDetails?.storeId && storeDetails?.tenantId) {
-                            const { getMenuUrl } = await import('@constant/urls');
-                            const publicMenuUrl = getMenuUrl(slug);
+                        const hasTenantUrl = Boolean(storeDetails?.subdomain || storeDetails?.customDomain);
+                        if (hasTenantUrl && storeDetails?.storeId && storeDetails?.tenantId) {
+                            verificationPublicMenuUrl = generateProjectUrl(
+                                storeDetails?.subdomain,
+                                storeDetails?.customDomain,
+                                updatedProjectCopy?.name || projectCopy.name,
+                                Boolean(updatedProjectCopy?.isDefault ?? projectCopy.isDefault),
+                            );
                             verifyMenuPublish({
                                 storeId: String(storeDetails.storeId),
                                 tenantId: String(storeDetails.tenantId),
-                                publicMenuUrl,
+                                publicMenuUrl: verificationPublicMenuUrl,
                             });
                         }
-                    } catch { /* non-blocking */ }
+                    } catch (verificationSetupError) {
+                        logProjectPageFailure('projects_b2c_publish_verification_setup_failed', verificationSetupError, {
+                            ...getProjectPageProjectLogContext(projectData?.projectId, projectData?.masterProjectId),
+                            ...getProjectPageStoreLogContext(storeDetails?.storeId, storeDetails?.tenantId),
+                            ...getBoundedProjectPageStringContext('storeSlug', storeDetails?.subdomain),
+                            ...getBoundedProjectPageStringContext('customDomain', storeDetails?.customDomain),
+                            ...getBoundedProjectPageStringContext('publicMenuUrl', verificationPublicMenuUrl),
+                        });
+                    }
                 }
 
                 if (hasOfficialChanges && storeDraft?.storeId) {
@@ -138,7 +158,12 @@ const B2CView = forwardRef<B2CViewRef, B2CViewProps>(({ activeDeviceType, setHas
                         });
                     }
 
-                    await updateStore(storeUpdate);
+                    const writeResult = await updateStore(storeUpdate);
+                    assertStoreUpdateSucceeded(
+                        writeResult,
+                        storeDraft.storeId,
+                        'projects_b2c_official_page_store_update_rejected',
+                    );
                     const nextStoreDetails = removeObjRef({
                         ...(storeDetails || {}),
                         ...storeUpdate,
@@ -158,6 +183,15 @@ const B2CView = forwardRef<B2CViewRef, B2CViewProps>(({ activeDeviceType, setHas
                     dispatch(showSuccessToast("Public page changes published"));
                 }
                 setHasChanges?.(false);
+            } catch (error) {
+                logProjectPageFailure('projects_b2c_publish_failed', error, {
+                    ...getProjectPageProjectLogContext(projectData?.projectId, projectData?.masterProjectId),
+                    ...getProjectPageStoreLogContext(storeDetails?.storeId, storeDetails?.tenantId),
+                    hasProjectChanges: hasProjectChanges(),
+                    hasOfficialPageChanges: hasOfficialPageChanges(),
+                    queuedObpPhotoDeleteCount: obpPhotoDeleteQueue.length,
+                });
+                message.error('Could not publish public page changes.');
             } finally {
                 dispatch(stopLoader(loaderId));
             }

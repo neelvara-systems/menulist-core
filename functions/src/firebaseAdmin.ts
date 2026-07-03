@@ -1,4 +1,3 @@
-import { VertexAI } from '@google-cloud/vertexai';
 import * as admin from 'firebase-admin';
 import * as functions from 'firebase-functions';
 
@@ -26,11 +25,4 @@ const storageAdmin = admin.storage();
 const authAdmin = admin.auth();
 const Vector = (admin.firestore as any).VectorValue;
 
-const projectId = process.env.GCLOUD_PROJECT || admin.app().options.projectId;
-if (!projectId) {
-    throw new Error("Google Cloud project ID could not be determined.");
-}
-
-logger.log("🔥 Initializing Vertex AI for project:", projectId);
-const vertexAIClient = new VertexAI({ project: projectId!, location: 'us-central1' });
-export { admin, authAdmin, firestoreAdmin, storageAdmin, Vector, vertexAIClient };
+export { admin, authAdmin, firestoreAdmin, storageAdmin, Vector };

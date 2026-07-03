@@ -8,6 +8,7 @@ import { ANSWERLATTICE_CACHE_SOURCES } from '@lib/answerlattice/cacheVersionMani
 import { resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
 import { answerlatticeFirestoreAdmin as firestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
 import { checkAIOperationLimit } from '@lib/rateLimit/helpers';
+import { readBoundedJsonBody } from '@lib/security/boundedRequestBody';
 import { EMBED_MODEL, callGeminiEmbeddingWithMetadata } from '@lib/vectorEmbeddings';
 import { extractPlainTextFromEditorContent } from '@lib/vectorEmbeddings/articleEmbeddings';
 import { writeLogEntry } from 'logs/utils';
@@ -16,6 +17,10 @@ import { z, ZodError } from 'zod';
 import { withAuth } from '../../../../middleware/auth';
 
 const LOG_FILE = "kb.log";
+const ARTICLE_EMBEDDING_MAX_BODY_BYTES = 256 * 1024;
+const ARTICLE_EMBEDDING_OPERATION_LOG_FAILED = 'embedding_operation_log_failed';
+const ARTICLE_EMBEDDING_GENERATION_FAILED = 'embedding_generation_failed';
+
 const ArticleEmbeddingRequestSchema = z.object({
     embeddingPayload: z.object({
         articleId: z.string().trim().min(1).max(160),
@@ -26,6 +31,34 @@ const ArticleEmbeddingRequestSchema = z.object({
         categoryTitle: z.string().trim().max(300).optional().default(''),
         sectionTitle: z.string().trim().max(300).optional().default(''),
     }),
+});
+
+const getArticleEmbeddingErrorName = (error: unknown): string | undefined => {
+    if (error instanceof Error && error.name) return error.name.slice(0, 80);
+    if (error && typeof error === 'object' && 'name' in error) {
+        const name = (error as { name?: unknown }).name;
+        return typeof name === 'string' ? name.slice(0, 80) : undefined;
+    }
+    return typeof error === 'string' ? 'StringError' : undefined;
+};
+
+const getArticleEmbeddingErrorCode = (error: unknown): string | number | undefined => {
+    if (!error || typeof error !== 'object' || !('code' in error)) return undefined;
+    const code = (error as { code?: unknown }).code;
+    return typeof code === 'string' ? code.slice(0, 80) : typeof code === 'number' ? code : undefined;
+};
+
+const getArticleEmbeddingErrorStatus = (error: unknown): number | undefined => {
+    if (!error || typeof error !== 'object' || !('status' in error)) return undefined;
+    const status = Number((error as { status?: unknown }).status);
+    return Number.isFinite(status) ? status : undefined;
+};
+
+const getArticleEmbeddingFailureLogData = (code: string, error: unknown) => ({
+    code,
+    sourceErrorCode: getArticleEmbeddingErrorCode(error),
+    sourceErrorName: getArticleEmbeddingErrorName(error),
+    sourceErrorStatus: getArticleEmbeddingErrorStatus(error),
 });
 
 export const POST = withAuth(async (request: NextRequest, session) => {
@@ -41,7 +74,10 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         const rateLimitResponse = await checkAIOperationLimit();
         if (rateLimitResponse) return rateLimitResponse;
 
-        const { embeddingPayload } = ArticleEmbeddingRequestSchema.parse(await request.json());
+        const bodyResult = await readBoundedJsonBody(request, ARTICLE_EMBEDDING_MAX_BODY_BYTES);
+        if (bodyResult.ok === false) return bodyResult.response;
+
+        const { embeddingPayload } = ArticleEmbeddingRequestSchema.parse(bodyResult.data);
         const sessionScope = resolveAnswerlatticeSessionScope(session) || (() => {
             const tenantId = Number(session.tId ?? session.user?.tenantId);
             const storeId = Number(session.sId ?? session.user?.storeId);
@@ -149,7 +185,11 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             name: session.user?.name,
             email: session.user?.email,
         }).catch((error) => {
-            void writeLogEntry({ logFileName: LOG_FILE, logType: 'EMBEDDING_OPERATION_LOG_ERROR', data: error });
+            void writeLogEntry({
+                logFileName: LOG_FILE,
+                logType: 'EMBEDDING_OPERATION_LOG_ERROR',
+                data: getArticleEmbeddingFailureLogData(ARTICLE_EMBEDDING_OPERATION_LOG_FAILED, error),
+            });
         });
         return NextResponse.json({ ok: true, status: 200 });
 
@@ -160,7 +200,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         await writeLogEntry({
             logFileName: LOG_FILE,
             logType: 'EMBEDDING_GENERATION_ERROR',
-            data: { error: err?.message || String(err) }
+            data: getArticleEmbeddingFailureLogData(ARTICLE_EMBEDDING_GENERATION_FAILED, err),
         });
         if (isAIProviderRateLimitError(err)) {
             const retryAfter = getAIProviderRetryAfter(err) || 60;

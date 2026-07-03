@@ -12,14 +12,11 @@
  */
 
 import { FEATURE_FLAGS } from '@config/features';
+import type { FirebaseApp } from 'firebase/app';
 import { CustomProvider, initializeAppCheck, ReCaptchaV3Provider } from 'firebase/app-check';
-import { firebaseApp } from './firebaseClient';
+import { logFirebaseBootstrapFailure } from './firebaseDiagnostics';
 
 const appCheckDebugToken = process.env.NEXT_PUBLIC_FIREBASE_APPCHECK_DEBUG_TOKEN;
-const APP_CHECK_BADGE = 'background: #14532d; color: #bbf7d0; padding: 2px 6px; border-radius: 999px; font-weight: 700;';
-const APP_CHECK_INFO = 'color: #15803d; font-weight: 700;';
-const APP_CHECK_WARN = 'color: #d97706; font-weight: 700;';
-const APP_CHECK_ERROR = 'color: #dc2626; font-weight: 700;';
 let appCheckInstance: ReturnType<typeof initializeAppCheck> | null = null;
 
 function isLocalOrPreviewHost(hostname: string): boolean {
@@ -45,7 +42,6 @@ function isLocalOrPreviewHost(hostname: string): boolean {
 if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development' && appCheckDebugToken) {
     (window as any).FIREBASE_APPCHECK_DEBUG_TOKEN =
         appCheckDebugToken === 'true' ? true : appCheckDebugToken;
-    console.log(`%c🛡️ App Check%c debug mode enabled`, APP_CHECK_BADGE, APP_CHECK_INFO);
 }
 
 /**
@@ -56,9 +52,13 @@ if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development' && a
  * 2. Add NEXT_PUBLIC_RECAPTCHA_SITE_KEY to .env.local
  * 3. Enable App Check in Firebase Console
  */
-export function initAppCheck() {
+export function initAppCheck(firebaseApp: FirebaseApp | null) {
     if (typeof window === 'undefined') {
         // Server-side - skip App Check
+        return null;
+    }
+
+    if (!firebaseApp) {
         return null;
     }
 
@@ -68,21 +68,22 @@ export function initAppCheck() {
 
     // Check feature flag first
     if (!FEATURE_FLAGS.ENABLE_APP_CHECK) {
-        console.log(`%c🛡️ App Check%c disabled via feature flag`, APP_CHECK_BADGE, APP_CHECK_WARN);
         return null;
     }
 
     const recaptchaSiteKey = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY;
 
     if (!recaptchaSiteKey) {
-        console.warn(`%c🛡️ App Check%c site key missing`, APP_CHECK_BADGE, APP_CHECK_WARN);
+        logFirebaseBootstrapFailure('app_check_site_key_missing', undefined, {
+            hasDebugToken: Boolean(appCheckDebugToken),
+            isLocalHost: isLocalOrPreviewHost(window.location.hostname),
+        });
         return null;
     }
 
     const hostname = window.location.hostname;
     const hasDebugToken = Boolean(appCheckDebugToken);
     if (isLocalOrPreviewHost(hostname) && !hasDebugToken) {
-        console.info(`%c🛡️ App Check%c skipped on ${hostname}. This is expected for local development; add a debug token only when testing App Check locally.`, APP_CHECK_BADGE, APP_CHECK_INFO);
         return null;
     }
 
@@ -94,10 +95,12 @@ export function initAppCheck() {
             isTokenAutoRefreshEnabled: true
         });
 
-        console.log(`%c🛡️ App Check%c initialized with reCAPTCHA v3`, APP_CHECK_BADGE, APP_CHECK_INFO);
         return appCheckInstance;
     } catch (error) {
-        console.error(`%c🛡️ App Check%c initialization failed`, APP_CHECK_BADGE, APP_CHECK_ERROR, error);
+        logFirebaseBootstrapFailure('app_check_initialize_failed', error, {
+            hasDebugToken,
+            isLocalHost: isLocalOrPreviewHost(hostname),
+        });
         return null;
     }
 }
@@ -106,8 +109,12 @@ export function initAppCheck() {
  * Custom provider for testing (optional)
  * Use in development/staging to bypass reCAPTCHA
  */
-export function initAppCheckWithCustomProvider(getToken: () => Promise<{ token: string; expireTimeMillis: number }>) {
+export function initAppCheckWithCustomProvider(
+    firebaseApp: FirebaseApp | null,
+    getToken: () => Promise<{ token: string; expireTimeMillis: number }>
+) {
     if (typeof window === 'undefined') return null;
+    if (!firebaseApp) return null;
     if (appCheckInstance) return appCheckInstance;
 
     try {
@@ -116,10 +123,11 @@ export function initAppCheckWithCustomProvider(getToken: () => Promise<{ token: 
             isTokenAutoRefreshEnabled: true
         });
 
-        console.log(`%c🛡️ App Check%c initialized with custom provider`, APP_CHECK_BADGE, APP_CHECK_INFO);
         return appCheckInstance;
     } catch (error) {
-        console.error(`%c🛡️ App Check%c custom provider failed`, APP_CHECK_BADGE, APP_CHECK_ERROR, error);
+        logFirebaseBootstrapFailure('app_check_custom_provider_failed', error, {
+            hasCustomProvider: true,
+        });
         return null;
     }
 }

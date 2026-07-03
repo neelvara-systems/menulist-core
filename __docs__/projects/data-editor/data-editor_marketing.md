@@ -6,6 +6,12 @@
 
 ---
 
+## Current Launch Boundary
+
+This marketing document is sales/source evidence for the Data Editor feature. It is not current production deployment approval. Current release approval requires the active [production-readiness audit](../../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../../production-readiness/external-certification-runbook.md) evidence, browser/mobile editor QA, publish/cache evidence for edited public truth, and deploy evidence for the target environment.
+
+---
+
 ## Elevator Pitch
 
 ### One-Liner
@@ -246,4 +252,4 @@ A **safe, efficient editing experience** where restaurant owners can focus on pe
 
 ---
 
-_Document Status: ✅ READY FOR USE_
+_Document Status: Marketing evidence - not current launch certification_

@@ -3,6 +3,7 @@
  */
 import { DEVICE_TYPES_LIST } from '@constant/builder';
 import { UAParser } from 'ua-parser-js';
+import { getBoundedAnalyticsStringContext, logAnalyticsFailure } from './analyticsDiagnostics';
 import { DeviceInfo } from './types';
 
 /**
@@ -33,7 +34,9 @@ export function parseUserAgent(userAgent: string): DeviceInfo {
       os: result.os.name
     };
   } catch (error) {
-    console.error('Error parsing user agent:', error);
+    logAnalyticsFailure('analytics_device_user_agent_parse_failed', error, {
+      ...getBoundedAnalyticsStringContext('userAgent', userAgent),
+    });
     return { type: 'unknown' };
   }
 }
@@ -50,7 +53,7 @@ export function getDeviceInfo(): DeviceInfo {
   try {
     return parseUserAgent(window.navigator.userAgent);
   } catch (error) {
-    console.error('Error getting device info:', error);
+    logAnalyticsFailure('analytics_device_lookup_failed', error);
     return { type: 'unknown' };
   }
 }

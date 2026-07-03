@@ -125,7 +125,7 @@ export default function SpecialMenuCard({
         if (!result.success) {
             Modal.error({
                 title: "Could not end special menu",
-                content: result.error,
+                content: "The special menu was not ended. Please try again.",
             });
         }
     };
@@ -135,7 +135,7 @@ export default function SpecialMenuCard({
         if (!result.success) {
             Modal.error({
                 title: "Could not cancel special menu",
-                content: result.error,
+                content: "The special menu was not cancelled. Please try again.",
             });
         }
     };

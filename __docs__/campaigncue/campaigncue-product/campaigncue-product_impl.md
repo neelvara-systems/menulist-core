@@ -8,6 +8,10 @@ CampaignCue should live in the same repo with a separate product boundary. Imple
 
 CampaignCue now has a repo-level public shell and a protected export/download-first runtime. The runtime adds CampaignCue workspace APIs, a dedicated Firebase Admin client, CampaignCue Firebase rules/config files, Business Brain bootstrap with Brand Playbook fields, source snapshots, source facts, evidence-backed opportunity cues, deterministic Campaign Decision Engine scoring, structured campaign packs, first-class pack reviews, canonical Campaign Pack Output ZIPs with Campaign Proof Deck briefs, manual delivery cards, local visibility cues, trust reports, asset rights metadata, manual schedule records, approval request logging, compact owner-reported result memory, launch-readiness checks, bounded analytics summaries, and a CampaignCue dashboard shell that reuses the same MenuList authenticated app foundation, theme settings, language settings, shared dashboard sidebar, shared top header, profile menu, and settings drawer.
 
+CampaignCue workspace catch-path notices and failed API response branches use fixed product-specific fallback copy. Browser/local exceptions and route response text should not surface raw exception or provider text in owner notices. Workspace, CueLayers, campaign, business, source, location, action, asset, download, and editor-export browser callers parse route responses through a 4 MB bounded response reader and require the documented `{ data }` envelopes before updating local state. Manual handoff-field copy checks Clipboard API support, falls through from rejected Clipboard API writes to acknowledged textarea fallback, waits for browser copy acknowledgement, and logs `campaigncue_handoff_copy_failed` with bounded support and value-length metadata before fixed local copy.
+
+CampaignCue shared API guards hash user, tenant, and store rate-limit key segments before writing provider keys, and tenant/rate-limit security logs use bounded scope metadata instead of raw workspace identifiers. This keeps the protected API limits and ordering unchanged while avoiding raw identity values in Upstash key names or security-log extras.
+
 It still does not create direct provider calls, billing checkout, ad spend mutations, WhatsApp direct sends, rendered video provider calls, or MenuList write-back.
 
 ## Proposed Product Shape
@@ -89,6 +93,7 @@ It still does not create direct provider calls, billing checkout, ad spend mutat
 | `src/components/templates/campaigncue/*` | Workspace UI and responsive styles. |
 | `src/app/api/campaigncue/*` | Protected CampaignCue API routes. |
 | `src/lib/campaigncue/*` | Runtime guards and server services. |
+| `src/lib/campaigncue/apiGuards.ts` | Shared CampaignCue runtime, tenant-scope, rate-limit, and JSON body admission guard. The parser caps JSON bodies through `readBoundedJsonBody()` using the CueLayers upload/export/editor-document limits before route schemas run. |
 | `src/lib/campaigncue/dailyDesk.ts` | Daily Desk builder, pack review, manual delivery cards, missing input inbox, and local visibility cues. |
 | `src/lib/campaigncue/decisionEngine.ts` | Deterministic Campaign Decision Engine used by overview rendering and campaign creation. |
 | `src/constants/campaigncue/dailyDesk.ts` | CampaignCue recipe constants and owner result signals. |
@@ -118,3 +123,17 @@ It still does not create direct provider calls, billing checkout, ad spend mutat
 ## Running Audit
 
 See [campaigncue-production-implementation-audit.md](../campaigncue-production-implementation-audit.md) for the feature-by-feature implementation audit and current production-readiness status.
+
+## June 29 Runtime Hardening
+
+- `parseCampaignCueJsonBody()` now rejects oversized CampaignCue JSON bodies before parsing while preserving existing malformed-JSON security logging and route-level Zod validation.
+- The cap is derived from current CueLayers source upload, rendered export, and editor-document limits so valid creative-editor autosave/upload/export flows remain admitted.
+- `scripts/verification/verify-campaigncue-runtime.js` now guards the shared parser cap, bounded reader usage, generic malformed-body response, and absence of raw shared `params.request.json()` parsing.
+
+## June 30 Browser Response Hardening
+
+- `CampaignCueWorkspaceApp` now reads workspace, CueLayers, campaign, business, source, location, action, asset, download, and editor-export route responses through `readCampaignCueWorkspaceData()`, backed by `readJsonResponseWithLimit()`.
+- Successful responses must include a valid `{ data }` envelope matching the expected local shape before the browser updates overview, CueLayers, campaign, source, location, asset, or editor-export state.
+- Rejected, malformed, oversized, or wrong-shape responses keep fixed product copy and log `campaigncue_workspace_response_parse_failed`, `campaigncue_workspace_response_rejected`, or `campaigncue_workspace_response_invalid`.
+- `scripts/verification/verify-campaigncue-runtime.js` now guards the response cap, parser, response guards, diagnostics, and absence of direct browser JSON parsing.
+- This changes only browser response acknowledgement and diagnostics; no API route behavior, Firestore rules/indexes, Cloud Functions, Firebase deploy target, or Vercel deploy action changed.

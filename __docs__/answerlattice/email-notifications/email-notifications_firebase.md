@@ -1,7 +1,7 @@
 # Answerlattice Email Notifications — Firebase Cost
 
 > **Version:** 1.1.0
-> **Last Updated:** 2026-05-22
+> **Last Updated:** 2026-06-28
 > **Audience:** Developers / Ops
 
 ---
@@ -14,6 +14,12 @@
 | `notificationLogs` | Legacy/non-Answerlattice notification attempts | Default Firebase project |
 
 ## Reads/Writes Per Notification
+
+Malformed or oversized generic send-route requests are rejected by the 16KB bounded JSON body before schema validation, idempotency reads, recipient rate-limit reads, SMTP work, or notification-log writes.
+
+June 29 sender limiter-key hardening is Firebase-cost neutral. `/api/notifications/send` keeps the 120/hour authenticated-user throttle and existing request ordering, but hashes the sender key segment before storage in Upstash. This resets existing sender buckets once and changes no Firestore reads/writes/deletes, SMTP calls, notification log schema, Answerlattice collection targets, rules, indexes, Cloud Function logic, or owner/customer UI.
+
+Unexpected send-route diagnostics add no Firestore reads/writes. They log stable `notification_send_route_failed` metadata only, with bounded user/payload context and source error name/code/status.
 
 | Operation | Collection | Count | Purpose |
 |-----------|-----------|-------|---------|
@@ -62,5 +68,8 @@ Idempotency uses a deterministic document ID from `eventType + referenceId`, so 
 
 | Date | Version | Change |
 |------|---------|--------|
+| 2026-06-29 | 1.1.3 | Hashed `/api/notifications/send` authenticated sender rate-limit key segment; no cost or behavior change. |
+| 2026-06-28 | 1.1.2 | Bounded `/api/notifications/send` catch-path diagnostics with `notification_send_route_failed`; no cost or behavior change. |
+| 2026-06-27 | 1.1.1 | Added request-body cost note for 16KB notification send admission before reads/writes. |
 | 2026-05-22 | 1.1.0 | Answerlattice notification logs moved to `answerlattice_notificationLogs`, idempotency changed to deterministic doc reads, test/status paths skip dedupe reads, and INR cost estimates added. |
 | 2026-03-07 | 1.0.0 | Initial cost analysis |

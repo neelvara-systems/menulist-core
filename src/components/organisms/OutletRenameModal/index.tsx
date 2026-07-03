@@ -13,10 +13,19 @@
  * frequent renames silently drop the oldest — owners must be told.
  *
  * @see src/app/api/outlets/rename/route.ts — server contract
- * @see __docs__/client-menu/PUBLIC-ROUTING-DOCTRINE.md §A-02, §7, G-07
+ * @see __docs__/client-menu/public-routing-doctrine.md §A-02, §7, G-07
  */
 
 import { slugify } from '@lib/utils/slugify';
+import { getBoundedMultiOutletStringContext, logMultiOutletFailure } from '@lib/multiOutlet/diagnostics';
+import {
+    createMultiOutletStatusError,
+    isRecord,
+    isOutletRenameResponse,
+    MULTI_OUTLET_ACTION_REQUEST_POLICY,
+    MULTI_OUTLET_ACTION_RESPONSE_JSON_MAX_BYTES,
+} from '@lib/multiOutlet/outletActionResponseGuards';
+import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';
 import { Alert, Form, Input, Modal, Typography, message } from 'antd';
 import { useEffect, useMemo, useState } from 'react';
 
@@ -29,6 +38,26 @@ interface OutletRenameModalProps {
     currentOutletName?: string;
     onClose: () => void;
     onRenamed?: (result: { outletStoreId: string; newSlug: string }) => void;
+}
+
+async function readDesktopOutletRenameResponse(
+    response: Response,
+    context: Record<string, boolean | number | string | null | undefined>,
+): Promise<unknown> {
+    try {
+        return await readJsonResponseWithLimit<unknown>(
+            response,
+            MULTI_OUTLET_ACTION_RESPONSE_JSON_MAX_BYTES,
+        );
+    } catch (error) {
+        logMultiOutletFailure('desktop_location_outlet_action_response_parse_failed', error, {
+            ...context,
+            maxBytes: MULTI_OUTLET_ACTION_RESPONSE_JSON_MAX_BYTES,
+            responseOk: response.ok,
+            responseStatus: response.status,
+        });
+        throw error;
+    }
 }
 
 export default function OutletRenameModal({
@@ -62,7 +91,12 @@ export default function OutletRenameModal({
         if (!outletStoreId || !proposedSlug) return;
         setSubmitting(true);
         try {
+            const renameContext = {
+                ...getBoundedMultiOutletStringContext('outletStoreId', outletStoreId),
+                ...getBoundedMultiOutletStringContext('proposedSlug', proposedSlug),
+            };
             const res = await fetch('/api/outlets/rename', {
+                ...MULTI_OUTLET_ACTION_REQUEST_POLICY,
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -71,15 +105,36 @@ export default function OutletRenameModal({
                     newOutletSlug: proposedSlug,
                 }),
             });
-            const body = await res.json().catch(() => ({}));
+            const body = await readDesktopOutletRenameResponse(res, renameContext);
+            const currentSlug = isRecord(body) && typeof body.currentSlug === 'string'
+                ? body.currentSlug
+                : null;
             if (!res.ok) {
-                message.error(body?.error || 'Rename failed');
+                logMultiOutletFailure('desktop_location_rename_failed', createMultiOutletStatusError('desktop_location_rename_rejected', res.status), {
+                    ...renameContext,
+                    ...getBoundedMultiOutletStringContext('currentSlug', currentSlug),
+                });
+                message.error(currentSlug ? 'Outlet already uses this URL' : 'Rename failed');
+                return;
+            }
+            if (!isOutletRenameResponse(body)) {
+                const invalidResponseError = createMultiOutletStatusError('desktop_location_rename_response_invalid', res.status);
+                logMultiOutletFailure('desktop_location_rename_response_invalid', invalidResponseError, {
+                    responseOk: res.ok,
+                    responseStatus: res.status,
+                    ...renameContext,
+                });
+                message.error('Rename failed');
                 return;
             }
             message.success(`Outlet renamed to /${body.outletSlug}`);
-            onRenamed?.({ outletStoreId: String(outletStoreId), newSlug: body.outletSlug });
+            onRenamed?.({ outletStoreId: body.outletStoreId, newSlug: body.outletSlug });
             onClose();
         } catch (err) {
+            logMultiOutletFailure('desktop_location_rename_failed', err, {
+                ...getBoundedMultiOutletStringContext('outletStoreId', outletStoreId),
+                ...getBoundedMultiOutletStringContext('proposedSlug', proposedSlug),
+            });
             message.error('Rename failed — please try again');
         } finally {
             setSubmitting(false);
@@ -98,7 +153,7 @@ export default function OutletRenameModal({
                 loading: submitting,
             }}
             cancelButtonProps={{ disabled: submitting }}
-            destroyOnClose
+            destroyOnHidden
         >
             <Alert
                 type="info"

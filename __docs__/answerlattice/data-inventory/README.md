@@ -53,7 +53,7 @@ Answerlattice stores data in six broad layers:
 
 - Answerlattice already has a stronger product boundary than MenuList's older shared support surfaces: dedicated Firebase client/admin runtime, dedicated rules/index files, and separate Cloud Functions under `functions-answerlattice/`.
 - The largest growth surface is `aiSearchHistory`. It is written on instant-cache hits, canonical hits, FAQ hits, no-result paths, and RAG answer generation. It now gets a 90-day `expiresAt`, bounded references/payload fields, and scheduler cleanup for legacy rows.
-- `queryEmbeddings` now gets a 30-day `expiresAt`, Firestore TTL coverage, and best-effort stale document deletion on cache read.
+- `queryEmbeddings` now gets a 30-day `expiresAt`, Firestore TTL coverage, best-effort stale document deletion on cache read, and a fixed bounded diagnostic if stale cleanup fails.
 - Knowledge Intake redacts common secrets before storing source text and does not retain raw media after extraction, but it does keep source text, excerpts, hashes, review items, usage ledger rows, and published outputs until an explicit compaction/retention policy is implemented.
 - Signal events have an existing 12-month cleanup in the Answerlattice nightly scheduler. Friction daily stats have a 90-day cleanup. Integration events, delivery logs, and rate counters have `expiresAt` fields and Firestore TTL field overrides.
 - Scheduler run logs, generic notification logs, owner notification events/deliveries/rate counters, and public contact enquiries now get explicit Answerlattice `expiresAt` fields.
@@ -69,7 +69,9 @@ Answerlattice stores data in six broad layers:
 | Search history | Added 90-day `expiresAt`, payload/reference caps, omitted vector-like fields, and legacy scheduler cleanup by `createdOn`. |
 | Query embeddings | Added 30-day `expiresAt`, stale-read deletion, TTL override, and scheduler cleanup by `createdAt`. |
 | Knowledge Intake counters | Review-item edits now update parent job status counters transactionally instead of rereading all sources and review items after each item edit. |
-| Scheduler run logs | Added 90-day `expiresAt` and retention cleanup counts to nightly run totals. |
+| Master scheduler state | Task outcomes now store fixed failure codes plus bounded source-error metadata instead of raw exception text. |
+| Scheduler run logs | Added 90-day `expiresAt`, retention cleanup counts, fixed scheduler failure codes, and bounded diagnostic metadata to nightly run totals. |
+| Retention diagnostics | Retention cleanup task failures now use fixed failure codes and bounded source-error metadata instead of raw exception text. |
 | Notifications | Added 90-day expiry to generic notification logs, owner-notification events, and deliveries; added 2-day expiry to owner notification rate counters. |
 | Contact enquiries | Added 365-day expiry to public Answerlattice contact submissions. |
 | Attachments | Hard delete now cleans chat image URLs and support ticket message attachments, not only ticket top-level documents. |

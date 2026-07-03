@@ -4,6 +4,10 @@ import { apiCallComposer } from '@lib/apiHelper/apiCallComposer';
 import { apiCallComposerClientWithoutLoader } from '@lib/apiHelper/apiCallComposerClientWithoutLoader';
 import { answerlatticeFirebaseClient } from '@lib/firebase/answerlatticeFirebaseClient';
 import { collection, doc, getDoc, getDocs, limit, orderBy, query, setDoc, Timestamp, where } from 'firebase/firestore';
+import {
+    getBoundedChatAnalyticsStringContext,
+    logChatAnalyticsFailure,
+} from './diagnostics';
 
 /**
  * ═══════════════════════════════════════════════════════════════════════
@@ -28,6 +32,17 @@ const normalizeAnalyticsDays = (days: number, fallback = 30) => {
     if (!Number.isFinite(days)) return fallback;
     return Math.min(Math.max(Math.floor(days), 1), MAX_ANALYTICS_RANGE_DAYS);
 };
+
+const getChatAnalyticsScopeContext = (
+    session: any,
+    operation: string,
+    days: number,
+) => ({
+    operation,
+    days,
+    ...getBoundedChatAnalyticsStringContext('tenantId', session?.tId),
+    ...getBoundedChatAnalyticsStringContext('storeId', session?.sId),
+});
 
 const getDocRef = async (docId: string) => {
     return doc(answerlatticeFirebaseClient, ANALYTICS_COLLECTION, docId);
@@ -237,7 +252,11 @@ export const getChatStatisticsOptimized = async (session: any, days: number = 30
             try {
                 todayStats = await getTodayLiveStats(session);
             } catch (error) {
-                console.warn('Failed to fetch today\'s stats, using historical only:', error);
+                logChatAnalyticsFailure(
+                    'answerlattice_chat_analytics_today_live_stats_failed',
+                    error,
+                    getChatAnalyticsScopeContext(session, 'getChatStatisticsOptimized', safeDays),
+                );
                 // Continue with historical stats only
             }
 
@@ -383,9 +402,10 @@ export const getKnowledgeGapsOptimized = async (session: any, days: number = 30)
 export const getChatDashboardAggregatesOptimized = async (session: any, days: number = 30) => {
     return await apiCallComposer(
         async () => {
+            const safeDays = normalizeAnalyticsDays(days, 30);
             const endDate = new Date();
             const startDate = new Date();
-            startDate.setDate(startDate.getDate() - normalizeAnalyticsDays(days, 30));
+            startDate.setDate(startDate.getDate() - safeDays);
 
             const yesterday = new Date();
             yesterday.setDate(yesterday.getDate() - 1);
@@ -444,7 +464,11 @@ export const getChatDashboardAggregatesOptimized = async (session: any, days: nu
             try {
                 todayStats = await getTodayLiveStats(session);
             } catch (error) {
-                console.warn('Failed to fetch today\'s stats, using historical only:', error);
+                logChatAnalyticsFailure(
+                    'answerlattice_chat_analytics_today_live_stats_failed',
+                    error,
+                    getChatAnalyticsScopeContext(session, 'getChatDashboardAggregatesOptimized', safeDays),
+                );
             }
 
             const combinedStats = {

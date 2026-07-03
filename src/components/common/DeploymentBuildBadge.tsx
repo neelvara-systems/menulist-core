@@ -6,6 +6,10 @@ import {
     DEPLOYMENT_IDENTITY_EVENT,
     DEPLOYMENT_IDENTITY_STORAGE_KEY,
 } from '@constant/deploymentDebug';
+import {
+    DEPLOYMENT_VERSION_REQUEST_POLICY,
+    readDeploymentVersionResponse,
+} from '@lib/deployment/versionResponse';
 import { useEffect, useMemo, useState } from 'react';
 
 function shouldShowBadge(): boolean {
@@ -91,9 +95,10 @@ export default function DeploymentBuildBadge() {
         let isMounted = true;
         const loadServerVersion = async () => {
             try {
-                const res = await fetch('/api/version', { cache: 'no-store' });
+                const res = await fetch('/api/version', DEPLOYMENT_VERSION_REQUEST_POLICY);
                 if (!res.ok) return;
-                const data = await res.json() as { buildCreatedAt?: string };
+                const data = await readDeploymentVersionResponse(res, 'deployment_build_badge');
+                if (!data) return;
                 if (isMounted) {
                     setBuildCreatedAt(data?.buildCreatedAt || '');
                 }

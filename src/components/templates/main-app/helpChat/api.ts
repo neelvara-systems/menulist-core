@@ -1,4 +1,8 @@
 import { emitAnswerlatticeSignal } from '@lib/answerlattice/signalEmitter';
+import {
+    HELP_CENTER_SEARCH_REQUEST_POLICY,
+    readHelpCenterSearchResponse,
+} from '@lib/search/helpCenterSearchResponse';
 import { ANSWERLATTICE_SIGNAL_TYPE } from '@type/answerlattice';
 import { UserUploadedFileType } from '@type/common';
 import { Timestamp } from 'firebase/firestore';
@@ -35,6 +39,7 @@ export async function searchKnowledgeBase({ query, mode, conversationHistory, im
         : undefined;
 
     const response = await fetch('/api/helpCenter/search-kb', {
+        ...HELP_CENTER_SEARCH_REQUEST_POLICY,
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -47,21 +52,9 @@ export async function searchKnowledgeBase({ query, mode, conversationHistory, im
         })
     });
 
-    const data: SearchAPIResponseType = await response.json();
-
-    // 🔒 Handle rate limit error with user-friendly message
-    if (response.status === 429) {
-        const retryAfter = (data as any).retryAfter || 60;
-        throw new Error(`You've reached the request limit. Please wait ${retryAfter} seconds before trying again.`);
-    }
-
-    if (!response.ok) {
-        throw new Error((data as any).error || 'Search failed');
-    }
-
     // Return backend response as-is
     // Backend already includes full KnowledgeBaseArticleType objects with all necessary fields
-    return data;
+    return await readHelpCenterSearchResponse(response, 'help_chat') as SearchAPIResponseType;
 }
 
 /**
@@ -87,8 +80,12 @@ export async function submitSearchFeedback({
     tId?: number;
     sId?: number;
 }) {
-    const { updateAiSearchHistoryWithFeedback } = await import('@database/aiSearchHistory');
-    const { updateMessageFeedback } = await import('@database/chatSessions');
+    const aiSearchHistoryDal: typeof import('@database/aiSearchHistory') = await import('@database/aiSearchHistory');
+    const chatSessionsDal: typeof import('@database/chatSessions') = await import('@database/chatSessions');
+    const assertAiSearchHistoryFeedbackUpdateSucceeded: typeof aiSearchHistoryDal.assertAiSearchHistoryFeedbackUpdateSucceeded =
+        aiSearchHistoryDal.assertAiSearchHistoryFeedbackUpdateSucceeded;
+    const assertChatMessageFeedbackUpdateSucceeded: typeof chatSessionsDal.assertChatMessageFeedbackUpdateSucceeded =
+        chatSessionsDal.assertChatMessageFeedbackUpdateSucceeded;
 
     const feedbackData = {
         isGood,
@@ -98,10 +95,21 @@ export async function submitSearchFeedback({
     };
 
     // Save to aiSearchHistory (for analytics)
-    await updateAiSearchHistoryWithFeedback({ id: searchHistoryId, ...feedbackData });
+    const searchHistoryUpdateResult = await aiSearchHistoryDal.updateAiSearchHistoryWithFeedback({ id: searchHistoryId, ...feedbackData });
+    assertAiSearchHistoryFeedbackUpdateSucceeded(
+        searchHistoryUpdateResult,
+        searchHistoryId,
+        'help_chat_search_history_feedback_update_rejected',
+    );
 
     // Save to chatSession message (for UI display)
-    await updateMessageFeedback(sessionId, messageId, feedbackData);
+    const messageFeedbackUpdateResult = await chatSessionsDal.updateMessageFeedback(sessionId, messageId, feedbackData);
+    assertChatMessageFeedbackUpdateSucceeded(
+        messageFeedbackUpdateResult,
+        sessionId,
+        messageId,
+        'help_chat_message_feedback_update_rejected',
+    );
 
     // Answerlattice: emit chat negative feedback signal (fire-and-forget)
     if (!isGood) {

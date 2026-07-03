@@ -8,16 +8,85 @@
 import * as crypto from "crypto";
 import * as functions from "firebase-functions";
 import { NormalizedMessage } from "../../../types/messagingOnboarding.types";
+import {
+  isResponseBodyTooLargeError,
+  readJsonResponseWithLimit,
+  readResponseUint8ArrayWithLimit,
+} from "../../../utils/boundedResponseBody";
+import { validateNetworkTargetUrl } from "../../../utils/networkTarget";
+import { UPLOAD_LIMITS } from "../../constants";
 import { IMessagingProvider } from "../IMessagingProvider";
 
 const logger = functions.logger;
 const GRAPH_API_VERSION = "v21.0";
+const WHATSAPP_SEND_TEXT_FAILED_CODE = "WHATSAPP_SEND_TEXT_FAILED";
+const WHATSAPP_INTERACTIVE_SEND_FAILED_CODE = "WHATSAPP_INTERACTIVE_SEND_FAILED";
+const WHATSAPP_MEDIA_URL_REJECTED_CODE = "WHATSAPP_MEDIA_URL_REJECTED";
+const WHATSAPP_MEDIA_URL_LOOKUP_FAILED_CODE = "WHATSAPP_MEDIA_URL_LOOKUP_FAILED";
+const WHATSAPP_MEDIA_URL_RESPONSE_PARSE_FAILED_CODE = "WHATSAPP_MEDIA_URL_RESPONSE_PARSE_FAILED";
+const WHATSAPP_MEDIA_DOWNLOAD_FAILED_CODE = "WHATSAPP_MEDIA_DOWNLOAD_FAILED";
+const WHATSAPP_MEDIA_TOO_LARGE_CODE = "WHATSAPP_MEDIA_TOO_LARGE";
+const WHATSAPP_PROVIDER_JSON_MAX_BYTES = 64 * 1024;
+
+function getWhatsAppStringLogContext(
+  label: string,
+  value: unknown,
+): Record<string, boolean | number> {
+  const normalized = value === undefined || value === null ? "" : String(value);
+  return {
+    [`${label}Present`]: normalized.length > 0,
+    [`${label}Length`]: normalized.length,
+  };
+}
+
+function getWhatsAppErrorName(error: unknown): string {
+  if (error instanceof Error) return (error.name || "Error").slice(0, 80);
+  return typeof error;
+}
+
+function getWhatsAppErrorCode(error: unknown): string | undefined {
+  if (!(error instanceof Error)) return undefined;
+  const code = (error as { code?: unknown }).code;
+  if (code === undefined || code === null) return undefined;
+  return String(code).slice(0, 64);
+}
+
+function getWhatsAppErrorContext(error: unknown): Record<string, string | undefined> {
+  return {
+    errorName: getWhatsAppErrorName(error),
+    errorCode: getWhatsAppErrorCode(error),
+  };
+}
+
+function createWhatsAppProviderError(code: string, status?: number): Error {
+  const error = new Error(code);
+  (error as any).code = code;
+  if (typeof status === "number") (error as any).status = status;
+  return error;
+}
+
+async function readWhatsAppMediaUrlLookupPayload(metaResponse: Response): Promise<{ url?: unknown } | null> {
+  try {
+    return await readJsonResponseWithLimit<{ url?: unknown }>(metaResponse, WHATSAPP_PROVIDER_JSON_MAX_BYTES);
+  } catch (error) {
+    logger.warn("[WhatsApp] Failed to parse media URL response", {
+      failureCode: WHATSAPP_MEDIA_URL_RESPONSE_PARSE_FAILED_CODE,
+      responseStatus: metaResponse.status,
+      ...getWhatsAppErrorContext(error),
+    });
+    return null;
+  }
+}
 
 export class WhatsAppAdapter implements IMessagingProvider {
   readonly providerId = "whatsapp" as const;
 
   private get phoneNumberId(): string {
     return process.env.WHATSAPP_PHONE_NUMBER_ID || "";
+  }
+
+  private get encodedPhoneNumberId(): string {
+    return encodeURIComponent(this.phoneNumberId);
   }
 
   private get accessToken(): string {
@@ -155,7 +224,7 @@ export class WhatsAppAdapter implements IMessagingProvider {
       };
     } catch (err) {
       logger.error("[WhatsApp] Failed to parse incoming message", {
-        error: (err as Error).message,
+        ...getWhatsAppErrorContext(err),
       });
       return null;
     }
@@ -168,33 +237,49 @@ export class WhatsAppAdapter implements IMessagingProvider {
    */
   async downloadMedia(providerMediaId: string): Promise<Buffer> {
     // Step 1: Get media URL
+    const encodedMediaId = encodeURIComponent(providerMediaId);
     const metaResponse = await fetch(
-      `https://graph.facebook.com/${GRAPH_API_VERSION}/${providerMediaId}`,
+      `https://graph.facebook.com/${GRAPH_API_VERSION}/${encodedMediaId}`,
       {
         headers: { Authorization: `Bearer ${this.accessToken}` },
       },
     );
 
     if (!metaResponse.ok) {
-      throw new Error(
-        `Failed to get media URL: ${metaResponse.status} ${metaResponse.statusText}`,
-      );
+      throw createWhatsAppProviderError(WHATSAPP_MEDIA_URL_LOOKUP_FAILED_CODE, metaResponse.status);
     }
 
-    const { url } = (await metaResponse.json()) as { url: string };
+    const metaPayload = await readWhatsAppMediaUrlLookupPayload(metaResponse);
+    const url = typeof metaPayload?.url === "string" ? metaPayload.url : "";
+    const urlValidation = await validateNetworkTargetUrl(url);
+    if (!urlValidation.valid || !urlValidation.normalizedUrl) {
+      logger.warn("[WhatsApp] Rejected media download URL", {
+        failureCode: WHATSAPP_MEDIA_URL_REJECTED_CODE,
+        addressCount: urlValidation.addressCount,
+        ...getWhatsAppStringLogContext("mediaUrl", url),
+        ...getWhatsAppStringLogContext("validationError", urlValidation.error),
+      });
+      throw createWhatsAppProviderError(WHATSAPP_MEDIA_URL_REJECTED_CODE);
+    }
 
     // Step 2: Download media binary
-    const mediaResponse = await fetch(url, {
+    const mediaResponse = await fetch(urlValidation.normalizedUrl, {
       headers: { Authorization: `Bearer ${this.accessToken}` },
     });
 
     if (!mediaResponse.ok) {
-      throw new Error(
-        `Failed to download media: ${mediaResponse.status} ${mediaResponse.statusText}`,
-      );
+      throw createWhatsAppProviderError(WHATSAPP_MEDIA_DOWNLOAD_FAILED_CODE, mediaResponse.status);
     }
 
-    return Buffer.from(await mediaResponse.arrayBuffer());
+    try {
+      const mediaBytes = await readResponseUint8ArrayWithLimit(mediaResponse, UPLOAD_LIMITS.MAX_FILE_SIZE_BYTES);
+      return Buffer.from(mediaBytes);
+    } catch (error) {
+      if (isResponseBodyTooLargeError(error)) {
+        throw createWhatsAppProviderError(WHATSAPP_MEDIA_TOO_LARGE_CODE);
+      }
+      throw error;
+    }
   }
 
   /**
@@ -202,7 +287,7 @@ export class WhatsAppAdapter implements IMessagingProvider {
    */
   async sendTextMessage(userId: string, text: string): Promise<void> {
     const response = await fetch(
-      `https://graph.facebook.com/${GRAPH_API_VERSION}/${this.phoneNumberId}/messages`,
+      `https://graph.facebook.com/${GRAPH_API_VERSION}/${this.encodedPhoneNumberId}/messages`,
       {
         method: "POST",
         headers: {
@@ -219,13 +304,13 @@ export class WhatsAppAdapter implements IMessagingProvider {
     );
 
     if (!response.ok) {
-      const errorBody = await response.text();
       logger.error("[WhatsApp] Failed to send text message", {
+        failureCode: WHATSAPP_SEND_TEXT_FAILED_CODE,
         status: response.status,
-        userId: userId.slice(-4),
-        error: errorBody.slice(0, 200),
+        ...getWhatsAppStringLogContext("providerUserId", userId),
+        providerResponseBodySkipped: true,
       });
-      throw new Error(`WhatsApp send failed: ${response.status}`);
+      throw createWhatsAppProviderError(WHATSAPP_SEND_TEXT_FAILED_CODE, response.status);
     }
   }
 
@@ -239,7 +324,7 @@ export class WhatsAppAdapter implements IMessagingProvider {
     buttonLabel: string,
   ): Promise<void> {
     const response = await fetch(
-      `https://graph.facebook.com/${GRAPH_API_VERSION}/${this.phoneNumberId}/messages`,
+      `https://graph.facebook.com/${GRAPH_API_VERSION}/${this.encodedPhoneNumberId}/messages`,
       {
         method: "POST",
         headers: {
@@ -268,8 +353,9 @@ export class WhatsAppAdapter implements IMessagingProvider {
     if (!response.ok) {
       // Fallback to plain text with URL if interactive fails
       logger.warn("[WhatsApp] Interactive message failed, falling back to text", {
+        failureCode: WHATSAPP_INTERACTIVE_SEND_FAILED_CODE,
         status: response.status,
-        userId: userId.slice(-4),
+        ...getWhatsAppStringLogContext("providerUserId", userId),
       });
       await this.sendTextMessage(userId, `${text}\n\n${url}`);
     }

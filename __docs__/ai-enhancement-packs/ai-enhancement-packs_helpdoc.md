@@ -1,10 +1,18 @@
 # AI Enhancement Packs — Help Documentation
 
 **Feature:** AI Enhancement Packs
-**Status:** 📝 Ready for Use
+**Status:** Help/source evidence; not current launch certification
 **Last Updated:** February 9, 2026
 **Audience:** Customers (restaurant owners, non-technical)
 **Tone:** Calm, simple, no jargon. Maximum 2-second comprehension per sentence.
+
+---
+
+## Current Launch Boundary
+
+This help article is customer-copy source evidence only. It is not current launch certification and must not be published until the active [production-readiness audit](../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../production-readiness/external-certification-runbook.md), `npm run verify:billing-entitlement-boundary`, Razorpay sandbox top-up smoke, desktop/mobile Billing browser QA, website/pricing copy review, target deploy evidence, and production-host smoke are recorded.
+
+Do not publish with TBD price placeholders, unverified activation timing, or provider behavior that lacks current Razorpay evidence.
 
 ---
 
@@ -34,7 +42,7 @@ Common situations where an Enhancement Pack is useful:
 1. When your menu needs more AI enhancements, you'll see an option: "Get more AI enhancements for your menu"
 2. Click the option
 3. Complete the payment
-4. Your AI features are ready immediately
+4. Your AI features are available after payment is confirmed
 
 No setup. No activation steps. It just works.
 
@@ -42,7 +50,7 @@ No setup. No activation steps. It just works.
 
 ## How much does it cost?
 
-AI Enhancement Packs are a one-time purchase at ₹[TBD] / $[TBD].
+AI Enhancement Pack pricing must be inserted from the approved pricing source before publication. This draft must not be published with TBD price placeholders.
 
 - **No subscription** — Buy only when you need it
 - **No expiry** — Use whenever your menu needs more
@@ -81,7 +89,7 @@ Each store manages its own AI enhancements. Buy an Enhancement Pack for any stor
 
 ### "What happens after I buy a pack?"
 
-Your AI features are ready immediately. Continue using MenuList as usual.
+Your AI features are available after payment is confirmed. Continue using MenuList as usual.
 
 ### "Can I get a refund?"
 

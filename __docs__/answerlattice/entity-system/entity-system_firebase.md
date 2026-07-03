@@ -1,7 +1,7 @@
 # Entity System — Firebase Cost & Operations
 
-> **Version:** 2.0.0
-> **Last Updated:** 2026-03-08
+> **Version:** 2.0.1
+> **Last Updated:** 2026-06-29
 > **Audience:** Developers
 > **Status:** ENHANCEMENT — cost impact of 6 targeted changes
 
@@ -170,6 +170,8 @@ All existing Answerlattice indexes remain unchanged:
 | getEntitySearchIndex | READ | 1 | 0 |
 | upsertEntitySearchIndex | WRITE | 0 | 1 |
 | **mergeEntities** | **READ+WRITE** | **4+** | **5+** | **NEW (E5)** |
+
+`addEntity()` also performs the existing ontology-limit count query, compiled-context source-version marker, and non-blocking tenant-summary marker used by scheduler discovery. The tenant-summary marker browser request uses no-store cache, same-origin credentials, manual redirect handling, and a 16 KB bounded response reader before accepting the `{ success: true }` acknowledgement. Tenant-summary marker failures now log `answerlattice_entity_tenant_summary_marker_failed` with bounded metadata only. This diagnostic adds no Firestore reads/writes beyond the already-attempted marker request and does not block entity creation.
 | **syncAliasesToSearchIndex** | **READ+WRITE** | **1** | **1** | **NEW (E1)** |
 
 ### entityCandidates.ts (7 functions — unchanged)

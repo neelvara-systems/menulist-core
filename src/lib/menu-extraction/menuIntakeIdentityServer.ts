@@ -17,8 +17,15 @@ import {
 import { recordAiOperation, recordAiOperationForSession } from "@lib/ai/operationLog";
 import { getStoreContextName } from "@lib/businessIdentity/names";
 import { firestoreAdmin } from "@lib/firebase/firebaseAdmin";
+import {
+  getBoundedMenuProcessingStringContext,
+  getMenuProcessingProjectLogContext,
+  logMenuProcessingDiagnostic,
+  logMenuProcessingFailure,
+} from "@lib/firebase/menuProcessingDiagnostics";
 import { genAIClient } from "@lib/google/genAi";
-import { secureError, secureLog } from "@lib/security/secureLogger";
+import { readResponseUint8ArrayWithLimit } from "@lib/security/boundedResponseBody";
+import { validateServerNetworkTargetUrl } from "@lib/security/serverNetworkTarget";
 
 export const MAX_MENU_INTAKE_PREFLIGHT_FILES = 8;
 export const MAX_MENU_INTAKE_PREFLIGHT_FILE_SIZE = MENU_EXTRACTION_JOB_LIMITS.MAX_FILE_SIZE_BYTES;
@@ -28,6 +35,25 @@ const SUPPORTED_MIME_TYPES = new Set<string>(OWNER_MENU_UPLOAD_MIME_TYPES);
 const SUPPORTED_TEXT_MIME_TYPES = new Set<string>(MENU_LINK_IMPORT_TEXT_MIME_TYPES);
 const MAX_MENU_INTAKE_TEXT_CHARS = 60_000;
 const MENU_INTAKE_IDENTITY_MODEL = GEMINI_MODELS.TEXT_GEN;
+
+type MenuIntakeOperationContext = {
+  billingMode?: "free" | "internal" | "public";
+  projectId?: string | null;
+  sId?: string | number;
+  session?: any;
+  source?: string;
+  tId?: string | number;
+  uId?: string;
+};
+
+const getMenuIntakeOperationLogContext = (operation?: MenuIntakeOperationContext) => ({
+  ...getMenuProcessingProjectLogContext(operation?.projectId),
+  ...getBoundedMenuProcessingStringContext("tenantId", operation?.tId),
+  ...getBoundedMenuProcessingStringContext("storeId", operation?.sId),
+  ...getBoundedMenuProcessingStringContext("userId", operation?.uId),
+  ...getBoundedMenuProcessingStringContext("source", operation?.source),
+  ...getBoundedMenuProcessingStringContext("billingMode", operation?.billingMode),
+});
 
 export type MenuIntakeIdentityServerResult = MenuIntakeAnalysisResult & {
   analyzedFileCount: number;
@@ -77,6 +103,70 @@ export function isAllowedUploadUrl(value: string): boolean {
   } catch {
     return false;
   }
+}
+
+function getStoragePathFromUploadUrl(value: string): string | null {
+  try {
+    const url = new URL(value);
+    if (process.env.NODE_ENV !== "production" && ["localhost", "127.0.0.1"].includes(url.hostname)) {
+      return "local-dev";
+    }
+    if (url.protocol !== "https:") return null;
+
+    const allowedBucket = getAllowedStorageBucket();
+    if (url.hostname === "firebasestorage.googleapis.com") {
+      const match = url.pathname.match(/^\/v0\/b\/([^/]+)\/o\/([^?]+)$/);
+      if (decodeURIComponent(match?.[1] || "") !== allowedBucket) return null;
+      return match?.[2] ? decodeURIComponent(match[2]) : null;
+    }
+
+    if (url.hostname === "storage.googleapis.com") {
+      const parts = url.pathname.split("/").filter(Boolean);
+      const bucket = decodeURIComponent(parts[0] || "");
+      if (bucket !== allowedBucket) return null;
+      return parts.length >= 2 ? decodeURIComponent(parts.slice(1).join("/")) : null;
+    }
+
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+function isAllowedMenuIntakeStoragePath(
+  storagePath: string,
+  operation?: MenuIntakeOperationContext,
+): boolean {
+  if (storagePath === "local-dev") return process.env.NODE_ENV !== "production";
+
+  if (operation?.billingMode === "public" && operation.projectId) {
+    const projectId = String(operation.projectId);
+    const match = projectId.match(/^([^-]+)-public-(.+)-([^-]+)$/);
+    const draftToken = match?.[2] || "";
+    return Boolean(draftToken) && storagePath.startsWith(`publicMenuDrafts/${draftToken}/`);
+  }
+
+  const tId = operation?.tId === undefined || operation?.tId === null ? "" : String(operation.tId);
+  const sId = operation?.sId === undefined || operation?.sId === null ? "" : String(operation.sId);
+  return Boolean(tId && sId) && storagePath.startsWith(`projects/files/${tId}/${sId}/`);
+}
+
+async function resolveValidatedMenuIntakeFetchUrl(
+  file: MenuIntakeFileInput,
+  operation?: MenuIntakeOperationContext,
+): Promise<string | null> {
+  if (!isAllowedUploadUrl(file.url)) return null;
+
+  const storagePath = getStoragePathFromUploadUrl(file.url);
+  if (!storagePath || !isAllowedMenuIntakeStoragePath(storagePath, operation)) return null;
+
+  const targetValidation = await validateServerNetworkTargetUrl(file.url, {
+    allowLocalhostInDevelopment: true,
+    allowedProtocols: process.env.NODE_ENV !== "production" ? ["https:", "http:"] : ["https:"],
+  });
+  if (!targetValidation.valid || !targetValidation.normalizedUrl) return null;
+
+  return targetValidation.normalizedUrl;
 }
 
 function resolveContextText(value: any): string | null {
@@ -151,7 +241,11 @@ function safeJsonParse(text: string): RawMenuIntakeIdentityResult | null {
   }
 }
 
-async function buildGeminiParts(files: MenuIntakeFileInput[], context: MenuIntakeContext) {
+async function buildGeminiParts(
+  files: MenuIntakeFileInput[],
+  context: MenuIntakeContext,
+  operation?: MenuIntakeOperationContext,
+) {
   const selectedFiles = files.slice(0, MAX_MENU_INTAKE_PREFLIGHT_FILES);
   const parts: Array<{ text: string } | { inlineData: { mimeType: string; data: string } }> = [
     { text: buildMenuIntakeIdentityPrompt(selectedFiles.length, context) },
@@ -161,13 +255,12 @@ async function buildGeminiParts(files: MenuIntakeFileInput[], context: MenuIntak
   for (let index = 0; index < selectedFiles.length; index += 1) {
     const file = selectedFiles[index];
     try {
-      if (!isAllowedUploadUrl(file.url)) continue;
-      const response = await fetch(file.url);
+      const fileFetchUrl = await resolveValidatedMenuIntakeFetchUrl(file, operation);
+      if (!fileFetchUrl) continue;
+      const response = await fetch(fileFetchUrl, { redirect: "manual" });
       if (!response.ok) continue;
-      const contentLength = Number(response.headers.get("content-length") || 0);
-      if (contentLength > MAX_MENU_INTAKE_PREFLIGHT_FILE_SIZE) continue;
-      const buffer = Buffer.from(await response.arrayBuffer());
-      if (buffer.byteLength > MAX_MENU_INTAKE_PREFLIGHT_FILE_SIZE) continue;
+      const responseBytes = await readResponseUint8ArrayWithLimit(response, MAX_MENU_INTAKE_PREFLIGHT_FILE_SIZE);
+      const buffer = Buffer.from(responseBytes);
       readableFileCount += 1;
       parts.push({ text: `File ${index + 1}: ${file.name}` });
       if (SUPPORTED_TEXT_MIME_TYPES.has(file.type)) {
@@ -266,19 +359,11 @@ export async function loadMenuIntakeContext(params: {
 export async function analyzeMenuIntakeIdentity(params: {
   context?: MenuIntakeContext;
   files: MenuIntakeFileInput[];
-  operation?: {
-    billingMode?: "free" | "internal" | "public";
-    projectId?: string | null;
-    sId?: string | number;
-    session?: any;
-    source?: string;
-    tId?: string | number;
-    uId?: string;
-  };
+  operation?: MenuIntakeOperationContext;
 }): Promise<MenuIntakeIdentityServerResult> {
   const context = params.context || { hasExistingMenu: false };
   try {
-    const { parts, analyzedFileCount, readableFileCount } = await buildGeminiParts(params.files, context);
+    const { parts, analyzedFileCount, readableFileCount } = await buildGeminiParts(params.files, context, params.operation);
     const operationStart = Date.now();
     const geminiResult = readableFileCount > 0
       ? await genAIClient.models.generateContent({
@@ -317,16 +402,22 @@ export async function analyzeMenuIntakeIdentity(params: {
         ? recordAiOperationForSession(params.operation.session, operationInput)
         : recordAiOperation(operationInput);
       operationLogger.catch((error) => {
-        secureError("[MenuIntakeIdentity] Operation log failed", error as Error, { projectId: params.operation?.projectId });
+        logMenuProcessingFailure("menu_intake_identity_operation_log_failed", error, {
+          ...getMenuIntakeOperationLogContext(params.operation),
+          fileCount: params.files.length,
+          analyzedFileCount,
+          readableFileCount,
+        });
       });
     }
 
-    secureLog("[MenuIntakeIdentity] Preflight completed", {
-      projectId: params.operation?.projectId,
+    logMenuProcessingDiagnostic("menu_intake_identity_preflight_completed", {
+      ...getMenuIntakeOperationLogContext(params.operation),
       fileCount: params.files.length,
       analyzedFileCount,
+      readableFileCount,
       severity: analysis.decision.severity,
-      reasons: analysis.decision.reasons,
+      reasonCount: analysis.decision.reasons.length,
     });
 
     return {
@@ -334,8 +425,8 @@ export async function analyzeMenuIntakeIdentity(params: {
       analyzedFileCount,
     };
   } catch (error) {
-    secureError("[MenuIntakeIdentity] Preflight failed", error as Error, {
-      projectId: params.operation?.projectId,
+    logMenuProcessingFailure("menu_intake_identity_preflight_failed", error, {
+      ...getMenuIntakeOperationLogContext(params.operation),
       fileCount: params.files.length,
     });
 
@@ -371,7 +462,10 @@ export async function runMenuIntakeIdentityCheck(params: {
     operation: {
       projectId: params.projectId,
       session: params.session,
+      sId: params.sId,
       source: "menu_intake_identity",
+      tId: params.tId,
+      uId: String(params.session?.uId || params.session?.user?.id || ""),
     },
   });
 }

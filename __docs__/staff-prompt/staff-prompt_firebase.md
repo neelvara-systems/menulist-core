@@ -2,7 +2,7 @@
 
 **Feature:** Staff-Facing Menu Quick Reference  
 **Status:** ✅ IMPLEMENTED AS READ-ONLY TODAY SUMMARY DISPLAY
-**Last Updated:** June 11, 2026
+**Last Updated:** July 1, 2026
 **Priority:** LOW — Included in existing Today summary read. Zero incremental Firebase cost.
 
 ---
@@ -13,6 +13,7 @@
 - **Storage Buckets:** None
 - **Cloud Functions:** None
 - **Estimated Monthly Cost:** **$0.00** — Uses existing data reads
+- **Runtime Boundary:** No new reads, writes, deletes, listeners, Storage objects, Functions, or provider calls.
 
 ---
 

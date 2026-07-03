@@ -1,8 +1,14 @@
 # 🌐 CORS Validation Implementation
 
 **Last Updated**: November 14, 2025  
-**Status**: ✅ Fully Implemented  
+**Status**: Implementation guide; not current launch certification
 **Priority**: P0 (Critical)
+
+---
+
+## Current Launch Boundary
+
+Current release approval requires the active [production-readiness audit](../../audits/menulist-production-readiness-audit.md) and [External Certification Runbook](../../production-readiness/external-certification-runbook.md) evidence, current allowed-origin review, target-domain browser/API smoke, CORS failure-mode evidence, and deploy evidence for the target environment. This guide records implementation evidence; it is not production-launch approval.
 
 ---
 
@@ -477,7 +483,7 @@ Before deploying:
 
 - [OWASP CORS Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Cross-Origin_Resource_Sharing_Cheat_Sheet.html)
 - [MDN: CORS](https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS)
-- [ASSESSMENT-05-SECURITY.md](../../projects/ASSESSMENT-05-SECURITY.md#2-missing-cors-validation-) - Issue #2
+- [assessment-05-security.md](../../projects/Assessments/assessment-05-security.md#2-missing-cors-validation-) - Issue #2
 
 ---
 
@@ -539,6 +545,6 @@ export const POST = withCORS(async (request: Request) => {
 
 ---
 
-**Status**: ✅ Production Ready  
+**Status**: Implementation evidence documented; not current launch certification
 **Coverage**: All API routes can use this implementation  
 **Maintenance**: Review whitelist quarterly

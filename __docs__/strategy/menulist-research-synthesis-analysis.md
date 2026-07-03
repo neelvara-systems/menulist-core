@@ -256,5 +256,5 @@ Proceed with the locked SSOT. The research supports the direction. Now it's abou
 
 ## Related Documents
 
-- `__docs__/5year-vision-2026-complete.md` — Strategic vision and language governance
-- `__docs__/MENULIST-STRATEGIC-FRAMEWORKS.md` — Three non-negotiable frameworks
+- `__docs__/strategy/five-year-vision-2026-complete.md` — Strategic vision and language governance
+- `__docs__/constitution/03-strategic-frameworks.md` — Three non-negotiable frameworks

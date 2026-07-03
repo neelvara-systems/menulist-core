@@ -23,15 +23,15 @@
  * 302-redirect to it instead. For now, the generated preview is the floor.
  */
 
-import { DB_COLLECTIONS } from '@constant/database';
 import { getStoreContextName } from '@lib/businessIdentity/names';
-import { firestoreAdmin } from '@lib/firebase/firebaseAdmin';
+import { getPublicStoreById } from '@lib/firestore/clientStoreLookup';
 import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
 import { checkRateLimit } from '@lib/rateLimit';
 import { getRateLimitForFeature } from '@lib/rateLimit/configs';
+import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { ImageResponse } from 'next/og';
 import { NextRequest } from 'next/server';
-import { getClientIp } from 'src/middleware/publicApi';
+import { getClientIp, hashPublicRateLimitValue } from 'src/middleware/publicApi';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -152,8 +152,9 @@ async function shouldUseFallbackAsset(request: NextRequest, storeId: string): Pr
     if (!STORE_ID_PATTERN.test(storeId)) return true;
 
     const config = getRateLimitForFeature('PUBLIC_DYNAMIC_ASSET');
+    const ipHash = hashPublicRateLimitValue(getClientIp(request));
     const limit = await checkRateLimit({
-        key: `public-dynamic-asset:screenshot:${getClientIp(request)}`,
+        key: `public-dynamic-asset:screenshot:${ipHash}`,
         ...config,
     });
     return !limit.allowed;
@@ -177,8 +178,14 @@ export async function GET(
             });
         }
 
-        const snap = await firestoreAdmin.collection(DB_COLLECTIONS.STORES).doc(storeId).get();
-        const store = snap.exists ? snap.data() : null;
+        const store = await getPublicStoreById(storeId);
+        if (!store) {
+            return new ImageResponse(renderScreenshot(form, 'Menu', 'Tap to explore', 'M', '#0f172a'), {
+                width,
+                height,
+                headers: { 'Cache-Control': SCREENSHOT_CACHE_CONTROL },
+            });
+        }
 
         const contentLanguage = store?.defaultLanguage || store?.activeLanguages?.[0] || store?.language || 'en';
         const displayName: string = getStoreContextName(store, 'Menu');
@@ -205,7 +212,12 @@ export async function GET(
             headers: { 'Cache-Control': SCREENSHOT_CACHE_CONTROL },
         });
     } catch (err) {
-        console.error('[app-screenshots] generation failed:', err);
+        logRuntimeFailure('customer_app_screenshot_generation_failed', err, {
+            formFactor: form,
+            height,
+            width,
+            ...getBoundedRuntimeStringContext('storeId', storeId),
+        });
         // Always return a render — never 500 for install flows.
         return new ImageResponse(renderScreenshot(form, 'Menu', 'Tap to explore', 'M', '#0f172a'), {
             width,

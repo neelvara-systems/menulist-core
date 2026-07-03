@@ -1,9 +1,15 @@
 # Menu Card Export — Validation Report
 
-**Status:** Production ready after deterministic auto-design and Pro/Premium layout suggestion hardening
+**Status:** Validated implementation evidence; not current launch certification
 **Validated:** June 3, 2026
 
 ---
+
+## Launch Boundary
+
+This June 2026 validation report preserves source, cost, route, authenticated demo-runtime, and artifact evidence for Menu Card Export. It is not current release approval.
+
+Current release approval requires the active [production-readiness audit](../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../production-readiness/external-certification-runbook.md) evidence, Digital Menu Output Constitution checks for print/menu outputs, authenticated desktop/mobile browser QA, visual PDF and print-shop artifact review, provider smoke for the AI advisor where enabled, target deploy evidence, and production-host smoke.
 
 ## Engineering Checklist Verification
 
@@ -94,6 +100,7 @@
 | Auto print design uses loaded browser source only | PASS | `src/lib/menu-card-export/templates/autoPrintDesign.ts:12`, `src/lib/menu-card-export/templates/autoPrintDesign.ts:31`, `src/hooks/useMenuCardExportController.ts:262`, `src/hooks/useMenuCardExportController.ts:293` |
 | Non-Pro/Premium suggestions avoid provider cost | PASS | `src/app/api/menu-card-export/design-advisor/route.ts:144`, `src/app/api/menu-card-export/design-advisor/route.ts:153`, `src/app/api/menu-card-export/design-advisor/route.ts:176` |
 | AI credits are not consumed before validated recommendation | PASS | `src/app/api/menu-card-export/design-advisor/route.ts:183`, `src/app/api/menu-card-export/design-advisor/route.ts:205`, `src/app/api/menu-card-export/design-advisor/route.ts:235` |
+| AI advisor browser response parsing is bounded | PASS | `src/services/ai/menuCardExport/getDesignAdviceViaAPI.ts:2`, `src/services/ai/menuCardExport/getDesignAdviceViaAPI.ts:8`, `src/services/ai/menuCardExport/getDesignAdviceViaAPI.ts:48`, `src/services/ai/menuCardExport/getDesignAdviceViaAPI.ts:60`, `scripts/verification/verify-menu-card-export.js:212` |
 
 ---
 
@@ -102,6 +109,7 @@
 | Command | Result |
 | --- | --- |
 | `npm run verify:menu-card-export` | PASS |
+| `npm run verify:ai-accounting` | PASS |
 | Static dashboard/mobile output parity guard | PASS |
 | Direct legacy `generateMenuPdf()` wrapper smoke with `ts-node` | PASS |
 | Direct OBP brand/currency source/hash smoke with `ts-node` | PASS |
@@ -165,8 +173,8 @@ Freeze hardening completed on June 2, 2026:
 
 ---
 
-## Final Verdict
+## Historical Validation Result
 
-Ready for production release from code, cost, route, real-data runtime, and artifact validation. Local unauthenticated HTTP smoke returns `200 OK`; only visual browser automation was blocked by the local Browser webview attach issue.
+The reviewed code, cost, route, real-data runtime, and artifact scope passed the June 2026 validation evidence above. Local unauthenticated HTTP smoke returned `200 OK`; visual browser automation was blocked by the local Browser webview attach issue and remains an external certification input, not a launch pass.
 
-The implementation delivers the route, preview, preflight, auto-picked print design, PDF export, print-shop packet, mobile/desktop entry points, local history, Pro/Premium layout suggestion, and verification without adding export artifact Firebase write cost.
+The implementation evidence covers the route, preview, preflight, auto-picked print design, PDF export, print-shop packet, mobile/desktop entry points, local history, Pro/Premium layout suggestion, and verification without adding export artifact Firebase write cost. Current launch certification still requires the active audit/runbook gates above.

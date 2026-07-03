@@ -3,6 +3,25 @@
 **Feature:** OCR & Menu Extraction with Gemini AI  
 **Audience:** Sales Team, Marketing, Partners  
 **Last Updated:** January 2026
+**Status:** Historical marketing draft; not current sales, publication, or launch certification
+
+---
+
+## Current Sales/Launch Boundary
+
+This document preserves January 2026 positioning notes only. Do not use it as current sales collateral, website copy, partner copy, or launch approval until release-specific evidence is recorded.
+
+Current AI Data Extraction collateral approval requires:
+
+- Active production-readiness audit evidence.
+- External Certification Runbook evidence.
+- `npm run verify:menu-extraction-pipeline`.
+- `npm run verify:ai-accounting`.
+- Provider smoke for the target extraction model and environment.
+- Authenticated desktop/mobile upload and extraction-review QA.
+- QA Firebase Functions and Storage deploy evidence where the release depends on worker or Storage behavior.
+- Target deploy evidence and production-host smoke.
+- Release-specific evidence for any numeric speed, accuracy, or volume claims before those claims are used.
 
 ---
 
@@ -263,4 +282,4 @@ A complete digital menu in **minutes instead of hours**. Restaurant owners revie
 
 ---
 
-_Document Status: ✅ READY FOR USE_
+_Document Status: Historical marketing draft; not current sales or launch certification._

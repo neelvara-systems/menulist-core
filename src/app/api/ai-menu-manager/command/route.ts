@@ -16,17 +16,12 @@ import {
 import { AiMenuManagerCommandRequestSchema } from '@lib/ai-menu-manager/schemas';
 import { firestoreAdmin } from '@lib/firebase/firebaseAdmin';
 import { requireAnyStorePermissionForStore } from '@lib/permissions/server';
+import { readBoundedJsonBody } from '@lib/security/boundedRequestBody';
 import type { AiMenuManagerProposalDoc } from '@type/aiMenuManager';
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/middleware/auth';
 
-const readJsonBody = async (request: NextRequest) => {
-    try {
-        return await request.json();
-    } catch {
-        return null;
-    }
-};
+const AI_MENU_MANAGER_COMMAND_MAX_BODY_BYTES = 64 * 1024;
 
 function getStoreName(store: Record<string, any> | null | undefined, fallback: string | number) {
     return store?.businessName || store?.name || store?.storeName || `Store ${fallback}`;
@@ -58,8 +53,17 @@ export const POST = withAuth(async (request: NextRequest, session) => {
     });
     if (rateLimit) return rateLimit;
 
-    const json = await readJsonBody(request);
-    const parsed = AiMenuManagerCommandRequestSchema.safeParse(json);
+    const bodyResult = await readBoundedJsonBody(request, AI_MENU_MANAGER_COMMAND_MAX_BODY_BYTES, {
+        invalidJsonMessage: 'Invalid request',
+    });
+    if (bodyResult.ok === false) {
+        if (bodyResult.response.status === 400) {
+            return buildAiMenuManagerInvalidRequestResponse(request, session, 'command');
+        }
+        return bodyResult.response;
+    }
+
+    const parsed = AiMenuManagerCommandRequestSchema.safeParse(bodyResult.data);
     if (!parsed.success) {
         return buildAiMenuManagerInvalidRequestResponse(request, session, 'command');
     }
@@ -197,6 +201,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         messageId,
         card,
         proposal,
+        replaceOperationId: parsed.data.replaceOperationId,
     });
 
     return NextResponse.json({

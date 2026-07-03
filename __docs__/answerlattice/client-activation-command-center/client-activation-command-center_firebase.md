@@ -27,7 +27,7 @@
 
 ## Cost Decision
 
-The screen intentionally uses summary docs instead of source collections. It avoids:
+The screen intentionally uses summary docs instead of source collections. The activation summary API applies the shared `DATA_READ` gate before the Answerlattice permission check and before store/summary/fallback reads, so rate-limited refreshes perform no activation Firestore reads. It avoids:
 
 - KB article collection scans
 - Changelog collection scans
@@ -45,7 +45,9 @@ The First-client launch proof, Surface Readiness matrix, and Test-as-Customer ch
 
 Activation does not scan `answerlattice_mutationProposals` to prove proposal quality. It proves that the signal source is present from compact context data, then routes the owner to Signal Queue for proposal review.
 
-The Daily Governance panel is also summary-backed. It caps scheduler log reads to five, filters log entries to the current workspace before display, sanitizes workspace details to counts/statuses, and never calls the manual full-scheduler trigger from the owner UI.
+The Daily Governance panel is also summary-backed. It resolves Answerlattice session scope and rate-limits before permission/read work, caps scheduler log reads to five, filters log entries to the current workspace before display, sanitizes workspace details to counts/statuses, logs operations-status failures with bounded tenant/store metadata, and never calls the manual full-scheduler trigger from the owner UI.
+
+Activation dashboard browser request and response validation adds no Firestore reads, writes, deletes, listeners, API routes, or scheduler work. The request policy only pins no-store cache, same-origin credentials, and manual redirect handling before existing route responses are parsed. The response reader only rejects malformed, oversized, rejected, or wrong-shape activation-summary, operations-status, notification-test, and compiled-context rebuild responses before local dashboard state or success copy advances.
 
 The ticket detail Knowledge Loop card also adds 0 reads and 0 writes. It uses the already-loaded ticket document to explain whether the current support reply is useful evidence for future knowledge proposals. Actual signal writes still happen only through the existing resolved-ticket signal path.
 

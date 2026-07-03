@@ -1,6 +1,6 @@
 'use client'
 
-import { updateStore } from '@database/stores';
+import { assertStoreUpdateSucceeded, updateStore } from '@database/stores';
 import { getResolvedAnalyticsPreferences } from '@lib/analytics/preferences';
 import { ANALYTICS_SETTINGS_GROUPING_NOTE, ANALYTICS_TRACKING_CATEGORY_DISCLOSURES, EXTERNAL_ANALYTICS_INTEGRATION_NOTE } from '@lib/analytics/settingsDisclosure';
 import { getStoreContextName } from '@lib/businessIdentity/names';
@@ -17,6 +17,11 @@ import MobileLocalizedLanguageSelector from '../components/MobileLocalizedLangua
 import MobileSettingsScreenHeader from '../components/MobileSettingsScreenHeader';
 import { applyLocalizedDraftMap, applyLocalizedKeywordDraftMap, getLocalizedStoreValue, getStoreLanguageLabel, getStoreManagedLanguages, getStorePreferredLanguage } from '../utils/localizedStoreContent';
 import SeoPreviewCard from '../../templates/main-app/businessSettings/tabs/SeoPreviewCard';
+import {
+    getBoundedMobileOwnerStringContext,
+    getMobileOwnerStoreLogContext,
+    logMobileOwnerFailure,
+} from '../utils/mobileOwnerDiagnostics';
 
 interface MobileSeoAnalyticsScreenProps {
     onBack: () => void;
@@ -44,6 +49,34 @@ type SeoDraft = {
 };
 
 type LocalizedSeoFields = Pick<SeoDraft, 'keywords' | 'metaDescription' | 'metaTitle' | 'tagline'>;
+
+const ANALYTICS_TRACKING_DRAFT_KEYS: Array<keyof Pick<AnalyticsDraft,
+    'enhancedEcommerce'
+    | 'trackCustomerApp'
+    | 'trackDecisionBlocks'
+    | 'trackLocation'
+    | 'trackMenuViews'
+    | 'trackOfficialBusinessPage'
+>> = [
+    'enhancedEcommerce',
+    'trackCustomerApp',
+    'trackDecisionBlocks',
+    'trackLocation',
+    'trackMenuViews',
+    'trackOfficialBusinessPage',
+];
+
+function countEnabledAnalyticsTracking(draft: AnalyticsDraft): number {
+    return ANALYTICS_TRACKING_DRAFT_KEYS.filter((key) => Boolean(draft[key])).length;
+}
+
+function countFilledSeoDraftLanguages(drafts: Record<string, LocalizedSeoFields>): number {
+    return Object.values(drafts).filter((draft) => Object.values(draft).some((value) => String(value || '').trim().length > 0)).length;
+}
+
+function countKeywordSeoDraftLanguages(drafts: Record<string, LocalizedSeoFields>): number {
+    return Object.values(drafts).filter((draft) => String(draft.keywords || '').trim().length > 0).length;
+}
 
 function buildLocalizedSeoDrafts(storeDetails: any, languages: string[]): Record<string, LocalizedSeoFields> {
     return Object.fromEntries(
@@ -128,10 +161,23 @@ export default function MobileSeoAnalyticsScreen({ onBack, mode = 'seo' }: Mobil
             } else {
                 update[field] = value;
             }
-            await updateStore(update);
+            const writeResult = await updateStore(update);
+            assertStoreUpdateSucceeded(
+                writeResult,
+                storeDetails.storeId,
+                'mobile_seo_analytics_field_store_update_rejected',
+            );
             setStoreDetails({ ...storeDetails, ...update });
             Toast.show({ content: t('saved'), duration: 800 });
-        } catch {
+        } catch (error) {
+            logMobileOwnerFailure('mobile_seo_analytics_field_save_failed', error, {
+                ...getMobileOwnerStoreLogContext(storeDetails?.storeId, storeDetails?.tenantId),
+                ...getBoundedMobileOwnerStringContext('fieldName', field),
+                mode,
+                isAnalyticsField: field.startsWith('analytics.'),
+                hasSubmittedValue: value !== undefined && value !== null && String(value).length > 0,
+                submittedValueLength: value === undefined || value === null ? 0 : String(value).length,
+            });
             Toast.show({ content: t('failedToSave'), duration: 1500 });
         }
     };
@@ -178,6 +224,24 @@ export default function MobileSeoAnalyticsScreen({ onBack, mode = 'seo' }: Mobil
             || JSON.stringify(localizedSeoDrafts) !== JSON.stringify(originalLocalizedSeoDrafts)
         );
 
+    const handleOpenExternalLink = (url: string, source: string) => {
+        if (typeof window === 'undefined') return;
+        try {
+            const opened = window.open(url, '_blank', 'noopener,noreferrer');
+            if (!opened) {
+                throw new Error('mobile_seo_analytics_external_link_open_blocked');
+            }
+        } catch (error) {
+            logMobileOwnerFailure('mobile_seo_analytics_external_link_open_failed', error, {
+                ...getMobileOwnerStoreLogContext(storeDetails?.storeId, storeDetails?.tenantId),
+                ...getBoundedMobileOwnerStringContext('mode', mode),
+                ...getBoundedMobileOwnerStringContext('source', source),
+                ...getBoundedMobileOwnerStringContext('externalLinkUrl', url),
+            });
+            Toast.show({ content: 'Unable to open link', duration: 1500 });
+        }
+    };
+
     const wizardSteps = [
         {
             content: (
@@ -216,7 +280,7 @@ export default function MobileSeoAnalyticsScreen({ onBack, mode = 'seo' }: Mobil
                         <Button
                             fill="outline"
                             icon={<LuExternalLink size={16} />}
-                            onClick={() => openExternalLink('https://analytics.google.com')}
+                            onClick={() => handleOpenExternalLink('https://analytics.google.com', 'google_analytics_setup')}
                         >
                             Open Google Analytics
                         </Button>
@@ -251,7 +315,7 @@ export default function MobileSeoAnalyticsScreen({ onBack, mode = 'seo' }: Mobil
                         <Button
                             fill="outline"
                             icon={<LuExternalLink size={16} />}
-                            onClick={() => openExternalLink('https://search.google.com/search-console')}
+                            onClick={() => handleOpenExternalLink('https://search.google.com/search-console', 'search_console_setup')}
                         >
                             Open Search Console
                         </Button>
@@ -290,7 +354,7 @@ export default function MobileSeoAnalyticsScreen({ onBack, mode = 'seo' }: Mobil
                         <Button
                             fill="outline"
                             icon={<LuExternalLink size={16} />}
-                            onClick={() => openExternalLink('https://business.facebook.com/events_manager')}
+                            onClick={() => handleOpenExternalLink('https://business.facebook.com/events_manager', 'facebook_events_manager_setup')}
                         >
                             Open Events Manager
                         </Button>
@@ -422,11 +486,29 @@ export default function MobileSeoAnalyticsScreen({ onBack, mode = 'seo' }: Mobil
                 },
                 storeId: storeDetails.storeId,
             };
-            await updateStore(update);
+            const writeResult = await updateStore(update);
+            assertStoreUpdateSucceeded(
+                writeResult,
+                storeDetails.storeId,
+                'mobile_analytics_settings_store_update_rejected',
+            );
             setStoreDetails({ ...storeDetails, ...update });
             setOriginalAnalyticsState(analyticsDraft);
             Toast.show({ content: t('saved'), duration: 800 });
-        } catch {
+        } catch (error) {
+            logMobileOwnerFailure('mobile_analytics_settings_save_failed', error, {
+                ...getMobileOwnerStoreLogContext(storeDetails?.storeId, storeDetails?.tenantId),
+                ...getBoundedMobileOwnerStringContext('googleAnalyticsId', analyticsDraft.googleAnalyticsId),
+                ...getBoundedMobileOwnerStringContext('facebookPixelId', analyticsDraft.facebookPixelId),
+                ...getBoundedMobileOwnerStringContext('googleSearchConsole', analyticsDraft.googleSearchConsole),
+                enabledTrackingCount: countEnabledAnalyticsTracking(analyticsDraft),
+                previousEnabledTrackingCount: originalAnalyticsState ? countEnabledAnalyticsTracking(originalAnalyticsState) : 0,
+                hasPreviousAnalytics: Boolean(storeDetails.analytics),
+                googleAnalyticsIdChanged: analyticsDraft.googleAnalyticsId !== originalAnalyticsState?.googleAnalyticsId,
+                facebookPixelIdChanged: analyticsDraft.facebookPixelId !== originalAnalyticsState?.facebookPixelId,
+                googleSearchConsoleChanged: analyticsDraft.googleSearchConsole !== originalAnalyticsState?.googleSearchConsole,
+                trackingPreferencesChanged: ANALYTICS_TRACKING_DRAFT_KEYS.some((key) => analyticsDraft[key] !== originalAnalyticsState?.[key]),
+            });
             Toast.show({ content: t('failedToSave'), duration: 1500 });
         } finally {
             setIsAnalyticsSaving(false);
@@ -473,12 +555,32 @@ export default function MobileSeoAnalyticsScreen({ onBack, mode = 'seo' }: Mobil
                     Object.fromEntries(Object.entries(localizedSeoDrafts).map(([languageCode, draft]) => [languageCode, draft.tagline])),
                 ),
             };
-            await updateStore(update);
+            const writeResult = await updateStore(update);
+            assertStoreUpdateSucceeded(
+                writeResult,
+                storeDetails.storeId,
+                'mobile_seo_settings_store_update_rejected',
+            );
             setStoreDetails({ ...storeDetails, ...update });
             setOriginalSeoState(seoDraft);
             setOriginalLocalizedSeoDrafts(localizedSeoDrafts);
             Toast.show({ content: t('saved'), duration: 800 });
-        } catch {
+        } catch (error) {
+            logMobileOwnerFailure('mobile_seo_settings_save_failed', error, {
+                ...getMobileOwnerStoreLogContext(storeDetails?.storeId, storeDetails?.tenantId),
+                ...getBoundedMobileOwnerStringContext('canonicalUrl', canonicalUrl),
+                ...getBoundedMobileOwnerStringContext('selectedLanguage', contentLanguage),
+                managedLanguageCount: managedLanguages.length,
+                localizedDraftLanguageCount: Object.keys(localizedSeoDrafts).length,
+                filledSeoDraftLanguageCount: countFilledSeoDraftLanguages(localizedSeoDrafts),
+                keywordSeoDraftLanguageCount: countKeywordSeoDraftLanguages(localizedSeoDrafts),
+                hasPreviousSeoState: Boolean(originalSeoState),
+                canonicalUrlChanged: canonicalUrl !== originalSeoState?.canonicalUrl,
+                selectedLanguageMetaTitleChanged: currentSeoDraft.metaTitle !== originalSeoState?.metaTitle,
+                selectedLanguageMetaDescriptionChanged: currentSeoDraft.metaDescription !== originalSeoState?.metaDescription,
+                selectedLanguageTaglineChanged: currentSeoDraft.tagline !== originalSeoState?.tagline,
+                selectedLanguageKeywordsChanged: currentSeoDraft.keywords !== originalSeoState?.keywords,
+            });
             Toast.show({ content: t('failedToSave'), duration: 1500 });
         } finally {
             setIsSeoSaving(false);
@@ -868,7 +970,7 @@ export default function MobileSeoAnalyticsScreen({ onBack, mode = 'seo' }: Mobil
                                                 description="Location analytics helps you understand where visitors come from and when they are most active."
                                                 title="Location Analytics"
                                             />
-                                            <ResourceLinksSection />
+                                            <ResourceLinksSection onOpenExternalLink={handleOpenExternalLink} />
                                         </Flex>
                                     </Tabs.Tab>
                                 </Tabs>
@@ -1052,27 +1154,37 @@ function InfoCallout({ description, title }: { description: string; title: strin
     );
 }
 
-function ResourceLinksSection() {
+function ResourceLinksSection({ onOpenExternalLink }: { onOpenExternalLink: (url: string, source: string) => void }) {
     return (
         <Card size="small">
             <Flex gap={12} vertical>
                 <Text strong>Help Resources</Text>
-                <LinkButton label="Google Analytics Help Center" url="https://support.google.com/analytics" />
-                <LinkButton label="Analytics Academy" url="https://analytics.google.com/analytics/academy" />
-                <LinkButton label="Search Console Help Center" url="https://support.google.com/webmasters" />
-                <LinkButton label="SEO Best Practices Guide" url="https://developers.google.com/search/docs" />
-                <LinkButton label="Facebook Pixel Setup Guide" url="https://www.facebook.com/business/help/952192354843755" />
-                <LinkButton label="Events Manager Guide" url="https://www.facebook.com/business/help/402791146561655" />
-                <LinkButton label="GA4 E-commerce Guide" url="https://developers.google.com/analytics/devguides/collection/ga4/ecommerce" />
-                <LinkButton label="MenuListAI Analytics Docs" url="https://docs.menulistai.com/analytics" />
+                <LinkButton label="Google Analytics Help Center" onOpenExternalLink={onOpenExternalLink} source="google_analytics_help" url="https://support.google.com/analytics" />
+                <LinkButton label="Analytics Academy" onOpenExternalLink={onOpenExternalLink} source="analytics_academy" url="https://analytics.google.com/analytics/academy" />
+                <LinkButton label="Search Console Help Center" onOpenExternalLink={onOpenExternalLink} source="search_console_help" url="https://support.google.com/webmasters" />
+                <LinkButton label="SEO Best Practices Guide" onOpenExternalLink={onOpenExternalLink} source="seo_best_practices" url="https://developers.google.com/search/docs" />
+                <LinkButton label="Facebook Pixel Setup Guide" onOpenExternalLink={onOpenExternalLink} source="facebook_pixel_setup" url="https://www.facebook.com/business/help/952192354843755" />
+                <LinkButton label="Events Manager Guide" onOpenExternalLink={onOpenExternalLink} source="events_manager_guide" url="https://www.facebook.com/business/help/402791146561655" />
+                <LinkButton label="GA4 E-commerce Guide" onOpenExternalLink={onOpenExternalLink} source="ga4_ecommerce_guide" url="https://developers.google.com/analytics/devguides/collection/ga4/ecommerce" />
+                <LinkButton label="MenuListAI Analytics Docs" onOpenExternalLink={onOpenExternalLink} source="menulist_analytics_docs" url="https://docs.menulistai.com/analytics" />
             </Flex>
         </Card>
     );
 }
 
-function LinkButton({ label, url }: { label: string; url: string }) {
+function LinkButton({
+    label,
+    onOpenExternalLink,
+    source,
+    url,
+}: {
+    label: string;
+    onOpenExternalLink: (url: string, source: string) => void;
+    source: string;
+    url: string;
+}) {
     return (
-        <Button fill="outline" icon={<LuExternalLink size={16} />} onClick={() => openExternalLink(url)}>
+        <Button fill="outline" icon={<LuExternalLink size={16} />} onClick={() => onOpenExternalLink(url, source)}>
             {label}
         </Button>
     );
@@ -1089,11 +1201,6 @@ function StepList({ items }: { items: string[] }) {
             ))}
         </Flex>
     );
-}
-
-function openExternalLink(url: string) {
-    if (typeof window === 'undefined') return;
-    window.open(url, '_blank', 'noopener,noreferrer');
 }
 
 function getAnalyticsDraft(storeDetails: any): AnalyticsDraft {

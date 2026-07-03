@@ -117,6 +117,12 @@ export interface TopItem {
     itemId: string;
     name?: string;
     clicks: number;
+    views?: number;
+    recommendationClicks?: number;
+    unavailableTaps?: number;
+    statusLabel?: string;
+    statusTone?: 'success' | 'warning' | 'default';
+    statusReason?: string;
 }
 
 export interface TopCategory {
@@ -143,6 +149,16 @@ export interface SourceQuality {
     actionRate: number;
 }
 
+export interface OpenHoursActionBreakdown {
+    open: number;
+    closed: number;
+    unknown: number;
+    actionSessionsOpen?: number;
+    actionSessionsClosed?: number;
+    actionSessionsUnknown?: number;
+    closedShare?: number;
+}
+
 export interface TrafficBreakdown {
     key: string;
     label: string;
@@ -166,6 +182,33 @@ export interface OwnerConfidence {
     message: string;
 }
 
+export type OwnerActionReceiptStatus = 'marked_done' | 'improved' | 'no_clear_change' | 'not_enough_data';
+
+export interface OwnerActionResult {
+    status: OwnerActionReceiptStatus | 'pending';
+    label: string;
+    message: string;
+    checkedAt?: Date;
+    checkAfterLocalDate?: string;
+    baselineValue?: number;
+    resultValue?: number;
+}
+
+export interface OwnerActionReceipt {
+    receiptId: string;
+    actionId: string;
+    actionType: string;
+    actionTitle: string;
+    actionLabel: string;
+    metricLabel?: string;
+    status: OwnerActionReceiptStatus;
+    markedDoneAt: Date;
+    baselineLocalDate?: string;
+    checkAfterLocalDate: string;
+    baselineSnapshot?: Partial<OwnerDashboardMetrics>;
+    result?: OwnerActionResult;
+}
+
 export interface OwnerActionSuggestion {
     id: string;
     type: string;
@@ -175,12 +218,15 @@ export interface OwnerActionSuggestion {
     actionLabel: string;
     metricLabel?: string;
     priority: 'high' | 'medium' | 'low';
+    receipt?: OwnerActionReceipt;
+    result?: OwnerActionResult;
 }
 
 export interface OwnerActionPlan {
     generatedBy?: 'rules' | 'ai';
     actions: OwnerActionSuggestion[];
     fingerprint?: string;
+    receipts?: Record<string, OwnerActionReceipt>;
 }
 
 export interface AnalyticsAiEntitlement {
@@ -203,6 +249,7 @@ export interface DailyViewData {
     topLanguages?: LanguageUsage[];
     topAttributeFilters?: AttributeFilterInterest[];
     menuActions?: MenuActionBreakdown;
+    openHoursActionBreakdown?: OpenHoursActionBreakdown;
     topSearchTerms?: SearchTerm[];
     topZeroResultSearchTerms?: SearchTerm[];
     unavailableItems?: TopItem[];
@@ -235,6 +282,7 @@ export interface WeeklyViewData {
     topLanguages?: LanguageUsage[];
     topAttributeFilters?: AttributeFilterInterest[];
     menuActions?: MenuActionBreakdown;
+    openHoursActionBreakdown?: OpenHoursActionBreakdown;
     topSearchTerms?: SearchTerm[];
     topZeroResultSearchTerms?: SearchTerm[];
     unavailableItems?: TopItem[];
@@ -262,6 +310,7 @@ export interface MonthlyViewData {
     topLanguages?: LanguageUsage[];
     topAttributeFilters?: AttributeFilterInterest[];
     menuActions?: MenuActionBreakdown;
+    openHoursActionBreakdown?: OpenHoursActionBreakdown;
     topSearchTerms?: SearchTerm[];
     topZeroResultSearchTerms?: SearchTerm[];
     unavailableItems?: TopItem[];
@@ -289,6 +338,7 @@ export interface WTDViewData {
     topLanguages?: LanguageUsage[];
     topAttributeFilters?: AttributeFilterInterest[];
     menuActions?: MenuActionBreakdown;
+    openHoursActionBreakdown?: OpenHoursActionBreakdown;
     topSearchTerms?: SearchTerm[];
     topZeroResultSearchTerms?: SearchTerm[];
     unavailableItems?: TopItem[];
@@ -317,6 +367,7 @@ export interface MTDViewData {
     topLanguages?: LanguageUsage[];
     topAttributeFilters?: AttributeFilterInterest[];
     menuActions?: MenuActionBreakdown;
+    openHoursActionBreakdown?: OpenHoursActionBreakdown;
     topSearchTerms?: SearchTerm[];
     topZeroResultSearchTerms?: SearchTerm[];
     unavailableItems?: TopItem[];
@@ -388,6 +439,7 @@ export interface OverallData {
     topLanguages?: LanguageUsage[];
     topAttributeFilters?: AttributeFilterInterest[];
     menuActions?: MenuActionBreakdown;
+    openHoursActionBreakdown?: OpenHoursActionBreakdown;
     sourceQuality?: SourceQuality[];
     utmSources?: TrafficBreakdown[];
     utmMediums?: TrafficBreakdown[];
@@ -513,7 +565,7 @@ export const EMPTY_STATE_MESSAGES = {
         description: 'Check back on Monday for your first weekly summary.',
     },
     noMonthlyData: {
-        title: 'Monthly summary coming soon',
+        title: 'Monthly summary not ready',
         description: 'Check back on the 1st of next month.',
     },
 } as const;

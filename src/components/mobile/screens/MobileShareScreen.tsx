@@ -85,6 +85,12 @@ import MobileLinkCard from '../components/MobileLinkCard';
 import MobileProjectSelectorSheet from '../components/MobileProjectSelectorSheet';
 import MobileQrCodeSheet from '../components/MobileQrCodeSheet';
 import { useMobileProjects } from '../providers/MobileProjectsProvider';
+import {
+    getBoundedMobileOwnerStringContext,
+    getMobileOwnerStoreLogContext,
+    logMobileOwnerFailure,
+    type MobileOwnerLogContext,
+} from '../utils/mobileOwnerDiagnostics';
 import { openMobilePublicLink } from '../utils/openMobilePublicLink';
 import useViewportInfo from '../../../hooks/useViewportInfo';
 
@@ -166,6 +172,59 @@ type DownloadAssetKey =
     | 'instagram_story'
     | 'whatsapp_status'
     | 'google_maps';
+
+const MOBILE_SHARE_COPY_UNAVAILABLE = 'mobile_share_copy_unavailable';
+const MOBILE_SHARE_COPY_FALLBACK_FAILED = 'mobile_share_copy_fallback_failed';
+
+const hasMobileShareClipboardWrite = (): boolean => (
+    typeof navigator !== 'undefined'
+    && Boolean(navigator.clipboard)
+    && typeof navigator.clipboard.writeText === 'function'
+);
+
+const hasMobileShareCopyFallback = (): boolean => (
+    typeof document !== 'undefined'
+    && typeof document.createElement === 'function'
+    && typeof document.execCommand === 'function'
+    && Boolean(document.body)
+);
+
+const copyMobileShareText = async (value: string): Promise<void> => {
+    let clipboardWriteError: unknown;
+
+    if (hasMobileShareClipboardWrite()) {
+        try {
+            await navigator.clipboard.writeText(value);
+            return;
+        } catch (error) {
+            clipboardWriteError = error;
+            // Continue to the acknowledged textarea fallback before showing failure copy.
+        }
+    }
+
+    if (!hasMobileShareCopyFallback()) {
+        throw clipboardWriteError || new Error(MOBILE_SHARE_COPY_UNAVAILABLE);
+    }
+
+    const textarea = document.createElement('textarea');
+    textarea.value = value;
+    textarea.setAttribute('readonly', '');
+    textarea.style.position = 'fixed';
+    textarea.style.left = '-9999px';
+    textarea.style.top = '0';
+    document.body.appendChild(textarea);
+    textarea.focus();
+    textarea.select();
+
+    try {
+        const copied = document.execCommand('copy');
+        if (!copied) {
+            throw new Error(MOBILE_SHARE_COPY_FALLBACK_FAILED);
+        }
+    } finally {
+        document.body.removeChild(textarea);
+    }
+};
 
 interface MobileShareScreenProps {
     mode?: 'full' | 'printAssets';
@@ -299,6 +358,53 @@ export default function MobileShareScreen({
         };
     }, [labels.offeringTitle, projectsList, resolveProjectName, selectedProjectId, storeDetails, storeDisplayName, t]);
 
+    const buildMobileShareLogContext = useCallback((
+        flow: string,
+        metadata: MobileOwnerLogContext = {},
+    ): MobileOwnerLogContext => ({
+        surface: 'mobile_share',
+        flow,
+        ...getMobileOwnerStoreLogContext(storeDetails?.storeId, storeDetails?.tenantId),
+        ...getBoundedMobileOwnerStringContext('projectId', data?.projectId),
+        ...getBoundedMobileOwnerStringContext('selectedProjectId', selectedProjectId),
+        ...getBoundedMobileOwnerStringContext('businessType', data?.businessType),
+        ...getBoundedMobileOwnerStringContext('menuLink', data?.menuLink),
+        ...getBoundedMobileOwnerStringContext('obpLink', data?.obpLink),
+        ...getBoundedMobileOwnerStringContext('feedbackLink', data?.feedbackLink),
+        ...getBoundedMobileOwnerStringContext('feedbackQrLink', data?.feedbackQrLink),
+        ...getBoundedMobileOwnerStringContext('storeMenuLink', data?.storeMenuLink),
+        allProjectCount: data?.allProjects.length || 0,
+        hasFeedbackEnabled: Boolean(data?.hasFeedbackEnabled),
+        hasInstallAppLink: Boolean(data?.installAppLink),
+        hasMenuLink: Boolean(data?.menuLink),
+        hasObpLink: Boolean(data?.obpLink),
+        hasPosSync: Boolean(data?.hasPosSync),
+        hasPublishedMenu: Boolean(data?.hasPublishedMenu),
+        hasStoreLogo: Boolean(data?.storeLogo),
+        selectedPrintableAssetId,
+        supportsNativeShare,
+        ...metadata,
+    }), [
+        data?.allProjects.length,
+        data?.businessType,
+        data?.feedbackLink,
+        data?.feedbackQrLink,
+        data?.hasFeedbackEnabled,
+        data?.hasPosSync,
+        data?.hasPublishedMenu,
+        data?.installAppLink,
+        data?.menuLink,
+        data?.obpLink,
+        data?.projectId,
+        data?.storeLogo,
+        data?.storeMenuLink,
+        selectedPrintableAssetId,
+        selectedProjectId,
+        storeDetails?.storeId,
+        storeDetails?.tenantId,
+        supportsNativeShare,
+    ]);
+
     useEffect(() => {
         if (!storeDetails?.storeId || !data?.obpLink) {
             setScreenLinks({ highlightsLink: null, isLoading: false, menuBoardLink: null });
@@ -318,7 +424,8 @@ export default function MobileShareScreen({
                     isLoading: false,
                     menuBoardLink,
                 });
-            } catch {
+            } catch (error) {
+                logMobileOwnerFailure('mobile_share_screen_links_load_failed', error, buildMobileShareLogContext('screen_links_load'));
                 if (!cancelled) {
                     setScreenLinks({ highlightsLink: null, isLoading: false, menuBoardLink: null });
                 }
@@ -330,7 +437,7 @@ export default function MobileShareScreen({
         return () => {
             cancelled = true;
         };
-    }, [data?.obpLink, storeDetails?.storeId]);
+    }, [buildMobileShareLogContext, data?.obpLink, storeDetails?.storeId]);
 
     useEffect(() => {
         setSupportsNativeShare(typeof navigator !== 'undefined' && typeof navigator.share === 'function');
@@ -426,7 +533,13 @@ export default function MobileShareScreen({
 
     const openInternalLink = (url: string) => {
         if (!url) return;
-        openMobilePublicLink(url);
+        openMobilePublicLink(url, {
+            flow: 'share_public_link_open',
+            metadata: buildMobileShareLogContext('open_public_link', {
+                ...getBoundedMobileOwnerStringContext('publicLink', url),
+            }),
+            source: 'mobile_share',
+        });
     };
 
     const openMobileMoreSubScreen = useCallback((screen: 'digitalScreens' | 'posSync') => {
@@ -438,17 +551,27 @@ export default function MobileShareScreen({
         if (recordedStarterSignalsRef.current.has(signal)) return;
 
         recordedStarterSignalsRef.current.add(signal);
-        recordStarterActivationSignal(storeDetails.storeId, signal).catch(() => {
+        recordStarterActivationSignal(storeDetails.storeId, signal).catch((error) => {
+            logMobileOwnerFailure('mobile_share_starter_signal_record_failed', error, buildMobileShareLogContext('starter_signal_record', {
+                ...getBoundedMobileOwnerStringContext('starterSignal', signal),
+            }));
             recordedStarterSignalsRef.current.delete(signal);
         });
-    }, [storeDetails]);
+    }, [buildMobileShareLogContext, storeDetails]);
 
     const handleCopy = async (value: string, label: string, starterSignal?: StarterActivationSignal) => {
         try {
-            await navigator.clipboard.writeText(value);
+            await copyMobileShareText(value);
             Toast.show({ content: t('copiedLabel', { label }), duration: 1200 });
             recordStarterSignal(starterSignal);
-        } catch {
+        } catch (error) {
+            logMobileOwnerFailure('mobile_share_copy_failed', error, buildMobileShareLogContext('copy', {
+                ...getBoundedMobileOwnerStringContext('copyLabel', label),
+                ...getBoundedMobileOwnerStringContext('copyValue', value),
+                ...getBoundedMobileOwnerStringContext('starterSignal', starterSignal),
+                hasClipboardWrite: hasMobileShareClipboardWrite(),
+                hasCopyFallback: hasMobileShareCopyFallback(),
+            }));
             Toast.show({ content: t('copyFailedLabel', { label: label.toLowerCase() }), duration: 1500 });
         }
     };
@@ -654,7 +777,13 @@ export default function MobileShareScreen({
                 url: previewUrl,
             });
             setPrintablePreviewState('ready');
-        } catch {
+        } catch (error) {
+            logMobileOwnerFailure('mobile_share_printable_preview_failed', error, buildMobileShareLogContext('printable_preview', {
+                ...getBoundedMobileOwnerStringContext('assetTypeId', selectedPrintableAssetId),
+                ...getBoundedMobileOwnerStringContext('templateFamilyId', templateFamilyId),
+                ...getBoundedMobileOwnerStringContext('previewFormat', previewFormat),
+                requiresFeedback: Boolean(assetType.requiresFeedback),
+            }));
             if (previewRequestRef.current === requestId) setPrintablePreviewState('error');
         } finally {
             if (previewRequestRef.current === requestId) setPrintableBusyKey(null);
@@ -692,7 +821,14 @@ export default function MobileShareScreen({
                 duration: 1400,
                 icon: 'success',
             });
-        } catch {
+        } catch (error) {
+            logMobileOwnerFailure('mobile_share_printable_render_failed', error, buildMobileShareLogContext('printable_render', {
+                ...getBoundedMobileOwnerStringContext('assetTypeId', selectedPrintableAssetId),
+                ...getBoundedMobileOwnerStringContext('templateFamilyId', templateFamilyId),
+                ...getBoundedMobileOwnerStringContext('outputFormat', outputFormat),
+                fileCountExpected: outputFormat === 'zip' ? 2 : 1,
+                requiresFeedback: Boolean(assetType.requiresFeedback),
+            }));
             Toast.show({ content: `Could not create ${assetType.title}`, duration: 1600 });
         } finally {
             setPrintableBusyKey(null);
@@ -749,7 +885,8 @@ export default function MobileShareScreen({
                 localStorage.setItem(`menulist_last_pdf_version_${data.projectId}`, pdfResult.snapshotHash);
             }
             Toast.show({ content: t('pdfDownloaded'), duration: 1400, icon: 'success' });
-        } catch {
+        } catch (error) {
+            logMobileOwnerFailure('mobile_share_pdf_download_failed', error, buildMobileShareLogContext('pdf_download'));
             Toast.show({ content: t('pdfFailed'), duration: 1600 });
         } finally {
             setGeneratingDownload(null);
@@ -778,7 +915,11 @@ export default function MobileShareScreen({
                 duration: 1400,
                 icon: 'success',
             });
-        } catch {
+        } catch (error) {
+            logMobileOwnerFailure('mobile_share_structured_export_failed', error, buildMobileShareLogContext('structured_export', {
+                ...getBoundedMobileOwnerStringContext('exportType', type),
+                ...getBoundedMobileOwnerStringContext('filenameBase', exportFilenameBase),
+            }));
             Toast.show({ content: t('exportFailed', { type: type.toUpperCase() }), duration: 1600 });
         } finally {
             setGeneratingDownload(null);
@@ -797,7 +938,8 @@ export default function MobileShareScreen({
             void trackMenuKitDownload('zip_download');
             recordStarterSignal(STARTER_ACTIVATION_SIGNALS.MENU_KIT_DOWNLOADED);
             Toast.show({ content: t('menuKitDownloaded'), duration: 1400, icon: 'success' });
-        } catch {
+        } catch (error) {
+            logMobileOwnerFailure('mobile_share_menu_kit_download_failed', error, buildMobileShareLogContext('menu_kit_download'));
             Toast.show({ content: t('menuKitFailed'), duration: 1600 });
         } finally {
             setGeneratingDownload(null);
@@ -824,7 +966,14 @@ export default function MobileShareScreen({
                 downloadBlob(asset.blob, asset.filename);
                 Toast.show({ content: t('assetDownloaded', { label }), duration: 1400, icon: 'success' });
             }
-        } catch {
+        } catch (error) {
+            logMobileOwnerFailure('mobile_share_menu_kit_asset_failed', error, buildMobileShareLogContext('menu_kit_asset', {
+                ...getBoundedMobileOwnerStringContext('assetKey', assetKey),
+                ...getBoundedMobileOwnerStringContext('assetLabel', label),
+                ...getBoundedMobileOwnerStringContext('trackingAction', trackingAction),
+                ...getBoundedMobileOwnerStringContext('downloadKey', key),
+                supportsNativeShare,
+            }));
             Toast.show({ content: t('assetFailed', { label }), duration: 1600 });
         } finally {
             setGeneratingDownload(null);
@@ -848,7 +997,8 @@ export default function MobileShareScreen({
             }, data.obpLink);
             downloadQrCode(qrDataUrl, `${data.storeName.replace(/\s+/g, '-')}-feedback-qr`);
             Toast.show({ content: t('assetDownloaded', { label: t('feedbackQr') }), duration: 1400, icon: 'success' });
-        } catch {
+        } catch (error) {
+            logMobileOwnerFailure('mobile_share_feedback_qr_download_failed', error, buildMobileShareLogContext('feedback_qr_download'));
             Toast.show({ content: t('assetFailed', { label: t('feedbackQr') }), duration: 1600 });
         } finally {
             setGeneratingDownload(null);
@@ -867,6 +1017,11 @@ export default function MobileShareScreen({
             recordStarterSignal(STARTER_ACTIVATION_SIGNALS.NATIVE_SHARE_COMPLETED);
         } catch (error) {
             if (error instanceof DOMException && error.name === 'AbortError') return;
+            logMobileOwnerFailure('mobile_share_native_share_failed', error, buildMobileShareLogContext('native_share', {
+                ...getBoundedMobileOwnerStringContext('shareLabel', label),
+                ...getBoundedMobileOwnerStringContext('shareText', text),
+                ...getBoundedMobileOwnerStringContext('shareUrl', url),
+            }));
             Toast.show({ content: t('couldNotCopy'), duration: 1500 });
         }
     };
@@ -1578,6 +1733,7 @@ export default function MobileShareScreen({
                         address={buildStoreAddress(storeDetails)}
                         businessType={data.businessType}
                         businessCategory={storeDetails?.businessCategory}
+                        diagnosticContext={buildMobileShareLogContext('communication_kit')}
                         menuLink={data.menuLink}
                         obpLink={data.obpLink}
                         phone={storeDetails?.phoneNumber || undefined}
@@ -1723,6 +1879,7 @@ export default function MobileShareScreen({
                 brandColor={storeBrandColor}
                 copyErrorMessage={t('couldNotCopy')}
                 copySuccessMessage={t('linkCopied')}
+                diagnosticSource="mobile_share_qr"
                 downloadSuccessMessage={t('qrDownloaded')}
                 filename={qrSheet?.filename || buildQrCodeFilename(data.storeName || 'menu', 'qr')}
                 generatingLabel={t('generatingQr')}
@@ -2088,7 +2245,7 @@ function DownloadTile({
                     fill="outline"
                     loading={secondaryLoading}
                     onClick={onSecondaryClick}
-                    style={{ minHeight: 44 }}
+                    style={{ minHeight: 48 }}
                 >
                     <Flex align="center" gap={6} justify="center">
                         <LuEye size={14} />

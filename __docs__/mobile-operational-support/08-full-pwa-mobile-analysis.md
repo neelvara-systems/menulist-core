@@ -1,7 +1,7 @@
 # Full PWA-Only Mobile Experience — Deep Analysis
 
 **Created:** February 14, 2026  
-**Status:** ✅ IMPLEMENTED — Phase 1 + Phase 2 P1 screens built  
+**Status:** Implemented source analysis; not current launch certification
 **Author:** Lead Architect (Cascade)  
 **Source:** Codebase deep analysis + existing mobile doctrine + feature audit
 
@@ -17,7 +17,7 @@
 
 **No — and here's why.**
 
-The current mobile scope covers **90%+ of daily operational needs**, including the original Phase 2 identity, locale, and working-hours gaps. The solution is NOT to rebuild everything for mobile — it is to keep high-frequency owner actions truth-safe and provide a clear desktop escape hatch for rare admin work.
+The current mobile scope covers **90%+ of daily operational needs**, including the original identity, locale, and working-hours gaps. The solution is NOT to rebuild everything for mobile — it is to keep high-frequency owner actions truth-safe and provide a clear desktop escape hatch for rare admin work.
 
 ---
 
@@ -29,11 +29,11 @@ The current mobile scope covers **90%+ of daily operational needs**, including t
 | Hours & Status (open/close, weekly hours)                        | Daily        | ✅ Full      |
 | Feedback Inbox + Detail (read, reply, resolve)                   | Daily        | ✅ Full      |
 | Share & QR (copy link, WhatsApp share)                           | Daily        | ✅ Full      |
-| Public Info (phone, address, description)                        | Monthly      | ✅ Full      |
+| Business Profile / Brand Settings (phone, address, coordinates)  | Monthly      | ✅ Full      |
 | Billing (plan view, AI capacity, support)                        | Monthly      | ✅ Read-only |
 | More (navigation hub, contact support, switch to desktop)        | As needed    | ✅ Full      |
 
-**These 10 screens cover: price editing, availability, hours, feedback, sharing, public info, billing view.**
+**These 10 screens cover: price editing, availability, hours, feedback, sharing, business profile edits, billing view.**
 
 ---
 
@@ -93,15 +93,15 @@ A small business owner who:
 
 ---
 
-## Part 4: Recommendation — Phased Approach
+## Part 4: Recommendation — Current Scope And Conditional Additions
 
-### Phase 1 (Current — COMPLETE)
+### Current Operational Baseline
 
 10 operational screens. This is what we built. Covers daily operations.
 
-### Phase 2 (Implemented — Core Gap Closed)
+### Implemented Core Gap Closure
 
-The original Phase 2 recommendation was to add identity, locale, and full working-hours screens for PWA-only owners. Current runtime has those routes in `MobileMoreScreen`: `MobileBasicSettingsScreen`, `MobileLocaleSettingsScreen`, and `MobileWorkingHoursEditScreen`. Remaining work is polish, not rebuilding these screens.
+The original gap-closure recommendation was to add identity, locale, and full working-hours screens for PWA-only owners. Current runtime has those routes in `MobileMoreScreen`: `MobileBasicSettingsScreen`, `MobileLocaleSettingsScreen`, and `MobileWorkingHoursEditScreen`. Remaining work is truth-safety polish and action routing, not rebuilding these screens.
 
 | Screen                                                  | Priority | Why                                                        | Complexity            |
 | ------------------------------------------------------- | -------- | ---------------------------------------------------------- | --------------------- |
@@ -111,7 +111,7 @@ The original Phase 2 recommendation was to add identity, locale, and full workin
 | **Notification Preferences**                            | P2       | If we add push notifications                               | Low                   |
 | **Simple Item Edit** (description, image from camera)   | P2       | Mobile camera → item image is natural mobile flow          | Medium — camera API   |
 
-### Phase 3 (Future — Only if PWA adoption is high)
+### Conditional Additions (Only If PWA Adoption Proves Need)
 
 | Screen                                           | When                       | Why                                         |
 | ------------------------------------------------ | -------------------------- | ------------------------------------------- |
@@ -119,7 +119,7 @@ The original Phase 2 recommendation was to add identity, locale, and full workin
 | Camera-to-menu (take photo of menu, AI extracts) | AI feature maturity        | This would be a killer mobile-first feature |
 | Simple analytics summary                         | If owners request it       | "How's my menu doing?" quick answer         |
 
-### Phase 4 (NEVER on mobile)
+### Permanent Mobile Rejections
 
 | Feature                                      | Permanent Rejection         |
 | -------------------------------------------- | --------------------------- |
@@ -139,20 +139,20 @@ Analyzing `src/components/templates/main-app/businessSettings/index.tsx` (615 li
 
 | Tab                     | Mobile Relevance                                         | Feature Admission Test                                                         | Decision                                |
 | ----------------------- | -------------------------------------------------------- | ------------------------------------------------------------------------------ | --------------------------------------- |
-| **BasicInfoTab**        | ✅ YES (Phase 2)                                         | Freq: rare but needed, Speed: yes, Touch: yes, Value: yes                      | Mobile — simple form                    |
-| **WorkingHoursTab**     | ✅ PARTIAL (Phase 1 has quick status, Phase 2 full edit) | Freq: weekly, Speed: yes, Touch: doable, Value: yes                            | Mobile — time pickers                   |
+| **BasicInfoTab**        | ✅ YES (core gap closure)                                | Freq: rare but needed, Speed: yes, Touch: yes, Value: yes                      | Mobile — simple form                    |
+| **WorkingHoursTab**     | ✅ PARTIAL (quick status exists; full edit is built)     | Freq: weekly, Speed: yes, Touch: doable, Value: yes                            | Mobile — time pickers                   |
 | **ContactPersonTab**    | ❌ NO                                                    | Freq: never after setup, Speed: yes, Touch: yes, Value: no                     | Desktop only — one-time                 |
-| **LocationInfoTab**     | ⚠️ PARTIAL                                               | Freq: rare, Speed: yes, Touch: yes, Value: moderate                            | Phase 2 — address already in PublicInfo |
+| **LocationInfoTab**     | ⚠️ PARTIAL                                               | Freq: rare, Speed: yes, Touch: yes, Value: moderate                            | Mobile basics only — address already in PublicInfo |
 | **SeoTab**              | ❌ NO                                                    | Freq: rare, Speed: no (needs thought), Touch: form-heavy, Value: no urgency    | Desktop only — technical                |
 | **SocialMediaTab**      | ❌ NO                                                    | Freq: one-time setup, Speed: yes, Touch: yes, Value: no urgency                | Desktop only                            |
 | **AnalyticsTab**        | ❌ NO                                                    | Freq: monthly, Speed: no (data-heavy), Touch: poor (charts), Value: no urgency | Desktop only                            |
-| **LocaleSettingsTab**   | ✅ YES (Phase 2)                                         | Freq: rare but important, Speed: yes, Touch: picker, Value: yes                | Mobile — selector                       |
+| **LocaleSettingsTab**   | ✅ YES (core gap closure)                                | Freq: rare but important, Speed: yes, Touch: picker, Value: yes                | Mobile — selector                       |
 | **IntegrationsTab**     | ❌ NO                                                    | Freq: one-time, Speed: no, Touch: technical, Value: no urgency                 | Desktop only                            |
 | **TimeSlotPresetsTab**  | ❌ NO                                                    | Freq: rare config, Speed: no (complex), Touch: poor, Value: no urgency         | Desktop only                            |
 | **FeedbackSettingsTab** | ❌ NO                                                    | Freq: one-time, Speed: yes, Touch: toggles, Value: moderate                    | Desktop only — config                   |
 | **PosSyncTab**          | ❌ NO                                                    | Freq: one-time, Speed: no, Touch: technical, Value: no urgency                 | Desktop only                            |
 
-**Summary:** 2 tabs pass for Phase 2 (BasicInfo, LocaleSettings), 1 partial (WorkingHours full edit). The rest are correctly desktop-only per our doctrine.
+**Summary:** 2 tabs pass for core mobile coverage (BasicInfo, LocaleSettings), 1 partial is already implemented for full working-hours edit. The rest are correctly desktop-only per our doctrine.
 
 ---
 
@@ -174,14 +174,14 @@ This pattern means we NEVER need to rebuild complex features for mobile. We just
 
 ## Part 7: Architecture Decision
 
-**Decision: Keep the current phased approach.**
+**Decision: Keep the current mobile scope model.**
 
 Rationale:
 
 1. **90% coverage now** — daily operations are fully covered
 2. **Escape hatch exists** — "Switch to Desktop" handles edge cases
 3. **Avoid scope creep** — rebuilding 12 Business Settings tabs for mobile = weeks of work for <5% usage
-4. **Phase 2 core gap is closed** — identity, locale, and working-hours mobile screens exist; polish should focus on truth safety and action routing
+4. **Core mobile gap is closed** — identity, locale, and working-hours mobile screens exist; polish should focus on truth safety and action routing
 5. **Solo founder maintainability** — fewer mobile screens = less maintenance burden
 
 ---
@@ -190,10 +190,10 @@ Rationale:
 
 | Item                                                                 | Priority | When                    |
 | -------------------------------------------------------------------- | -------- | ----------------------- |
-| Ship Phase 1 (current 10 screens)                                    | P0       | NOW — ready for testing |
-| Keep Phase 2 screens polished and truth-safe                         | P1       | Ongoing                 |
-| Track PWA adoption metrics                                           | P1       | After launch            |
-| Decide Phase 3 based on PWA adoption data                            | P2       | 3 months post-launch    |
+| Keep the current 10 operational screens release-ready                 | P0       | Current release gate    |
+| Keep core-gap screens polished and truth-safe                         | P1       | Current release gate    |
+| Track PWA adoption metrics                                           | P1       | Controlled rollout evidence |
+| Decide conditional additions from PWA adoption data                   | P2       | Separate scoped audit   |
 
 ---
 

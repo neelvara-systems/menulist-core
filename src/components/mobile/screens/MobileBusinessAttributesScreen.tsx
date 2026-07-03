@@ -2,7 +2,7 @@
 
 import IconPicker from '@atoms/IconPicker';
 import { FEATURE_FLAGS } from '@config/features';
-import { updateStore } from '@database/stores';
+import { assertStoreUpdateSucceeded, updateStore } from '@database/stores';
 import { normalizeCategoryIconValue } from '@lib/categoryIcons';
 import { getBusinessAttributeGroupsForType, normalizeCustomBusinessAttributes } from '@lib/obp/businessAttributes';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
@@ -11,6 +11,11 @@ import { useCallback, useContext, useMemo, useState } from 'react';
 import { LuPlus, LuTrash2 } from 'react-icons/lu';
 import { Button, Card, DotLoading, Flex, Input, Switch, Text, Toast } from '../antd';
 import MobileSettingsScreenHeader from '../components/MobileSettingsScreenHeader';
+import {
+    getBoundedMobileOwnerStringContext,
+    getMobileOwnerStoreLogContext,
+    logMobileOwnerFailure,
+} from '../utils/mobileOwnerDiagnostics';
 
 interface MobileBusinessAttributesScreenProps {
     onBack: () => void;
@@ -52,12 +57,25 @@ export default function MobileBusinessAttributesScreen({ onBack }: MobileBusines
         }));
 
         try {
-            await updateStore(payload as any);
+            const writeResult = await updateStore(payload as any);
+            assertStoreUpdateSucceeded(
+                writeResult,
+                storeDetails.storeId,
+                'mobile_business_attributes_store_update_rejected',
+            );
             setOriginalAttributes(attributes);
             setCustomAttributes(payload.publicPresence.customAttributes);
             setOriginalCustomAttributes(payload.publicPresence.customAttributes);
             Toast.show({ content: tMobile('saved'), duration: 1000 });
-        } catch {
+        } catch (error) {
+            logMobileOwnerFailure('mobile_business_attributes_save_failed', error, {
+                ...getMobileOwnerStoreLogContext(storeDetails.storeId, storeDetails.tenantId),
+                ...getBoundedMobileOwnerStringContext('businessType', storeDetails.businessType),
+                attributeCount: Object.keys(attributes).length,
+                enabledAttributeCount: Object.values(attributes).filter(Boolean).length,
+                customAttributeCount: payload.publicPresence.customAttributes.length,
+                hadPreviousCustomAttributes: originalCustomAttributes.length > 0,
+            });
             setStoreDetails((previous: any) => ({
                 ...previous,
                 businessAttributes: storeDetails.businessAttributes,

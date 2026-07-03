@@ -2,18 +2,83 @@
 
 **Status:** ✅ IMPLEMENTED — Platform-only access at /ops
 **Created:** February 20, 2026  
-**Last Updated:** June 11, 2026
+**Last Updated:** June 30, 2026
 **Audience:** Developers
 
 ---
+
+## June 30, 2026 Ops Control Room Action Request/Response Guard Notes
+
+- `/ops` keeps the same platform-only route, manual refresh model, SAFE_MODE toggle, alert-mute button, and force-republish callable behavior.
+- Desktop and mobile SAFE_MODE and alert-mute browser calls use `OPS_CONTROL_ROOM_REQUEST_POLICY`, which pins no-store cache, same-origin credentials, and manual redirect handling before acknowledgement parsing.
+- SAFE_MODE and alert-mute responses pass through `src/lib/ops/opsControlRoomClientResponse.ts`, which caps browser JSON parsing at 16KB and validates acknowledgement shape before showing success copy or refreshing dashboard state.
+- July 1 follow-up: desktop and mobile force-republish callable results now require `success` boolean, non-empty `projectId`, and non-empty `verification` before showing success or warning copy. Invalid callable envelopes log `ops_control_room_force_republish_response_invalid` with bounded shape metadata.
+- July 1 follow-up: Source gate: `npm run verify:ops-control-room-boundary` locks the platform-only SAFE_MODE and alert-mute mutation routes, hashed operator rate limits, bounded browser action-response parsing, read-only ops DAL, desktop/mobile force-republish envelope guards, mobile shell routing, and docs parity. The verifier does not run Firestore reads/writes, callable invocations, provider calls, browser smoke, Firebase deploy, or Vercel deploy.
+- Rejected, redirected, oversized, malformed, or invalid action responses use fixed platform failure copy and bounded `ops_control_room_response_*` diagnostics only. Desktop request/network failures log bounded `ops_control_room_safe_mode_toggle_failed` or `ops_control_room_mute_alerts_failed`; mobile request/network failures log bounded `mobile_ops_safe_mode_toggle_failed` or `mobile_ops_mute_alerts_failed`.
+- This does not change mutation route body caps, operator rate limits, SAFE_MODE writes, alert-mute writes, platform alert creation, Cloud Functions, rules, indexes, routes, or platform permissions.
+
+## June 30, 2026 Business Health Monitor Response Guard Notes
+
+- `/platform/owner-business-assistant` keeps the same platform-only route, manual refresh model, sanitized monitor route output, and bounded answer-event/feedback reads.
+- The browser monitor now caps `/api/platform/owner-business-assistant/monitor` response JSON at 256KB through the shared Owner Business Assistant response reader and validates summary, event, feedback, source-coverage, and generated-at shapes before updating cards or tables.
+- Rejected, oversized, malformed, or invalid responses use fixed platform failure copy and bounded `owner_business_assistant_monitor_response_*` runtime diagnostics only.
+- This does not change the API route read pattern, DATA_READ limiter, Admin SDK collection reads, Cloud Functions, rules, indexes, routes, or platform permissions.
+
+## June 29, 2026 Scheduler Display Guard Notes
+
+- Scheduler Monitor detail rendering stays bounded for run-level and task-level error surfaces.
+- `tasks[].details`, `errors[].details`, historical `tasks[].error`, run-log `errors[].error`, and failed settlement `state.error` render as safe summaries only: strings become text length metadata, arrays become array length metadata, objects become key-count metadata, and numbers/booleans remain visible.
+- July 1 follow-up: Source gate: `npm run verify:scheduler-monitor-boundary` locks the read-only scheduler DAL, bounded desktop/mobile scheduler detail rendering, store-scoped `triggerStoreNightlyScheduler` manual recovery, MobileShell route mapping, and docs parity. The verifier does not run Firestore reads/writes, callable invocations, browser smoke, Firebase deploy, or Vercel deploy.
+- This does not change scheduler run-log writes, settlement state reads, manual recovery behavior, Cloud Functions, rules, indexes, routes, or platform permissions.
+
+## June 29, 2026 Messaging Onboarding Monitor Response Guard Notes
+
+- `/ops/messaging-onboarding` keeps the same platform-only route and manual refresh model.
+- The browser monitor now caps `/api/ops/messaging-onboarding` response JSON at 256KB and validates the dashboard snapshot shape before updating cards or tables.
+- Rejected, oversized, malformed, or invalid responses use fixed platform failure copy and bounded `messaging_onboarding_monitor_response_*` runtime diagnostics only.
+- July 1 follow-up: Source gate: `npm run verify:messaging-onboarding-monitor-boundary` locks the platform-only route, dashboard feature flag, DATA_READ limiter, control-doc health lookup, bounded Admin SDK read windows, masked event/session IDs, sanitized metadata, 256KB browser response parsing, desktop/mobile route mapping, and docs parity. The verifier does not run Firestore reads/writes, WhatsApp provider calls, browser smoke, Firebase deploy, or Vercel deploy.
+- This does not change the API route read pattern, DATA_READ limiter, Admin SDK collection reads, count queries, Cloud Functions, rules, indexes, routes, or platform permissions.
+
+## June 29, 2026 Platform Notification Monitor Response Guard Notes
+
+- `/ops/platform-notifications` keeps the same platform-only route, manual refresh model, bounded action body, and hashed per-operator action limiter.
+- The browser monitor now caps `/api/ops/platform-notifications` load and action response JSON at 256KB and validates the snapshot/action envelope before updating table/detail state or showing action success copy.
+- Rejected, oversized, malformed, or invalid responses use fixed platform failure copy and bounded `platform_notification_monitor_response_*` runtime diagnostics only.
+- June 30 follow-up: route-side query validation, rate-limit, and action-validation security logs use bounded route metadata instead of raw session/request context, and invalid attempted action text is summarized as presence/length metadata.
+- July 1 follow-up: Source gate: `npm run verify:platform-notifications-boundary` locks the platform-notification registry mirror, platform-only route/body/rate-limit boundaries, bounded monitor response parsing, safe stored-alert display summaries, table-level scroll/readability anchors, and docs parity. The verifier does not run Firestore reads/writes, provider calls, browser smoke, Firebase deploy, or Vercel deploy.
+- This does not change alert reads, selected-detail reads, acknowledge/manual-handoff/manual-alert writes, provider handoff behavior, Cloud Functions, rules, indexes, routes, or platform permissions.
+
+## June 29, 2026 Owner Notification Monitor Response Guard Notes
+
+- `/ops/owner-notifications` keeps the same platform-only route, product/feature gates, manual refresh model, bounded action body, and hashed per-operator action limiter.
+- The browser monitor now caps `/api/ops/owner-notifications` load and recovery-action response JSON at 256KB and validates the snapshot/action envelope before updating table/detail state or showing action success copy.
+- Rejected, oversized, malformed, or invalid responses use fixed platform failure copy and bounded `owner_notification_monitor_response_*` runtime diagnostics only.
+- June 30 follow-up: route-side query validation, rate-limit, and action-validation security logs use bounded route metadata instead of raw session/request context, and invalid attempted action text is summarized as presence/length metadata.
+- This does not change owner-notification event reads, detail delivery reads, recipient resolution reads, retry/manual-send/manual-handoff writes, provider behavior, Cloud Functions, rules, indexes, routes, or platform permissions.
+
+## June 29, 2026 Entity Block Response Guard Notes
+
+- Entity Blocks keeps the same platform-only mutation route, route body cap, tenant/store/user writes, Firebase Auth disable/token-revoke handling, public cache invalidation, and Business Health packet invalidation.
+- The shared desktop/mobile browser DAL calls `/api/platform/entity-blocks` with no-store cache, same-origin credentials, and manual redirect handling, then caps response JSON at 64KB and requires `success: true`, a returned entity object, the requested entity ID, and the requested blocked state before local table state or success copy is updated.
+- Malformed, oversized, rejected, or invalid acknowledgements use fixed platform failure copy and bounded `platform_entity_block_response_*` runtime diagnostics only.
+- July 1 follow-up: Source gate: `npm run verify:platform-entity-blocks-boundary` locks the platform-only tenant/store/user block route, 64KB request/response caps, Firebase Auth disable/token-revoke handling, tenant-to-store block mirroring, public menu/OBP/screen/Business Health cache invalidation, desktop/mobile shared client, MobileShell route mapping, and docs parity. The verifier does not run Firestore reads/writes, Firebase Auth writes, browser smoke, Firebase deploy, or Vercel deploy.
+
+## June 27, 2026 Diagnostics Notes
+
+- Ops DAL, Scheduler DAL, Scheduler Monitor, and alert creation/delivery failure paths now use `src/lib/ops/opsDiagnostics.ts`.
+- Diagnostics record normalized `ops_*` failure codes with bounded alert/store/tenant/run/filter metadata and source error name/code/status only.
+- Manual recovery failures still show the run-log ID when Firebase Functions returns one, but no longer show raw callable/provider error messages in the platform toast.
+- Functions-side ops triggers now apply the same boundary for `verifyMenuPublish`, `forceRepublish`, `gcpBudgetAlertWebhook`, and `backfillStoresSummary`: callable errors use fixed operator copy, and Functions logs use stable `OPERATIONS_*` codes plus bounded store/tenant/requester/public URL metadata and source error name/code/status only.
+- This does not change dashboard reads, scheduler queries, alert writes, Telegram/platform delivery attempts, callable invocation count, Cloud Function trigger shape, rules, indexes, routes, or platform permissions.
 
 ## June 11, 2026 Audit Notes
 
 - Desktop and mobile Ops Control Room read Firestore only after the session has resolved to `platformRole === 'PLATFORM'`.
 - `/api/ops/platform-notifications` returns `404` when `ENABLE_PLATFORM_NOTIFICATION_DASHBOARD` is disabled, before any alert reads or writes.
 - `/api/ops/owner-notifications` returns `404` when `ENABLE_OWNER_NOTIFICATIONS` or `ENABLE_OWNER_NOTIFICATION_OPS_DASHBOARD` is disabled.
+- Ops mutation routes use platform-role gates, bounded bodies, and HMAC-hashed operator key material for their rate-limit keys before write/recovery work.
 - `/api/ops/messaging-onboarding` returns `404` when `ENABLE_MESSAGING_ONBOARDING_DASHBOARD` is disabled.
-- `/api/ops/messaging-onboarding` reads latest health through `systemHealth/messaging_onboarding_control.lastSnapshotId` and one direct snapshot read, avoiding document-id prefix scans or a `__name__` index dependency.
+- `/api/ops/messaging-onboarding` applies the shared `DATA_READ` gate with HMAC-hashed platform user key material after the dashboard feature flag, then reads latest health through `systemHealth/messaging_onboarding_control.lastSnapshotId` and one direct snapshot read, avoiding document-id prefix scans or a `__name__` index dependency.
 - `/api/platform/entity-blocks` returns `404` when `ENABLE_PLATFORM_ENTITY_BLOCKS` is disabled.
 - Invalid JSON on ops mutations is handled as invalid input instead of a generic server failure.
 - Chrome visual QA found the desktop header action group could overflow horizontally; the action group now wraps inside the content column.
@@ -121,6 +186,7 @@ export async function getRecentAlerts(limit: number = 10): Promise<Alert[]> {
 
 // Access: withAuth({ requiredPlatformRole: 'PLATFORM' })
 // Invalid JSON or invalid action returns 400.
+// Security logs use bounded route metadata; reason text is summarized.
 ```
 
 ### POST `/api/ops/mute-alerts`
@@ -134,6 +200,7 @@ export async function getRecentAlerts(limit: number = 10): Promise<Alert[]> {
 
 // Access: withAuth({ requiredPlatformRole: 'PLATFORM' })
 // Invalid JSON or out-of-range duration returns 400.
+// Security logs use bounded route metadata.
 ```
 
 ## UI Design (Lean v1)
@@ -248,6 +315,22 @@ getSchedulerRunHistory(filter); // ~1 read (last 20 runs, filterable)
 getSchedulerRunDetails(runId); // ~1 read (single run)
 getSchedulerSettlementSummary(); // ~1 read (nightlyState_* docs, limit 50)
 ```
+
+### Diagnostics
+
+Ops runtime diagnostics are centralized in `src/lib/ops/opsDiagnostics.ts`.
+
+Covered failure paths:
+
+- Ops Control Room DAL read fallbacks
+- Scheduler run-history, health, run-details, and settlement read fallbacks
+- Scheduler Monitor load and manual recovery failures
+- Alert document creation failures
+- Non-blocking Telegram and platform alert delivery failures
+
+Diagnostics must not log raw alert messages, Telegram tokens/chat IDs, store records, run-log documents, tenant/store IDs, provider payloads, or callable exception text.
+
+Scheduler Monitor detail rendering must also stay bounded. `tasks[].details`, `errors[].details`, historical `tasks[].error`, run-log `errors[].error`, and failed settlement `state.error` text are rendered as safe summaries only: strings become text length metadata, arrays become array length metadata, objects become key-count metadata, and numbers/booleans remain visible. Do not render raw detail JSON or stored scheduler error text in the desktop or mobile scheduler monitors.
 
 ### Manual Trigger Boundary
 

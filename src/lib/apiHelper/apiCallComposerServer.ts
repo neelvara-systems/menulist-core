@@ -1,4 +1,18 @@
 import getActiveSession from "@lib/auth/getActiveSession";
+import { secureError } from "@lib/security/secureLogger";
+
+const summarizeDalArgs = (args: any[]) => args.slice(0, -1).map((arg) => {
+    if (arg === null || arg === undefined) return arg;
+    if (Array.isArray(arg)) return { type: 'array', length: arg.length };
+    if (typeof arg === 'object') {
+        return {
+            type: 'object',
+            keys: Object.keys(arg).slice(0, 8),
+        };
+    }
+    if (typeof arg === 'string') return { type: 'string', length: arg.length };
+    return { type: typeof arg };
+});
 
 export const apiCallComposerServer = async (fn, ...args) => {
     // Get the function name (last argument)
@@ -33,19 +47,20 @@ export const apiCallComposerServer = async (fn, ...args) => {
     if (!isIgnoredFunctionCall) {
         const session = await getActiveSession().catch(() => null);
         if (!Boolean(session?.user)) {
-            console.log(`API call ${functionName} requires a session but none found`);
             return null;
         }
     }
 
     try {
-        console.log(`Executing API call: ${functionName}`);
         const response = await fn(...args); // actual api call
-        console.log(`API call ${functionName} completed successfully`);
         return response;
     } catch (error) {
-        console.error(`Error in API call: ${functionName}, ${error.message}`);
-        console.error(error); // Log the full error for debugging
+        secureError('[DAL Server] API call failed', new Error('dal_server_call_failed'), {
+            functionName,
+            errorName: error instanceof Error ? error.name : typeof error,
+            params: summarizeDalArgs(args),
+            ignoredSessionFunction: isIgnoredFunctionCall,
+        });
 
         // Return an empty array for data fetching operations to avoid 'not a function' errors
         // This makes sure components expecting arrays don't crash

@@ -4,6 +4,8 @@
 
 The shared base editor performs no Firebase reads, writes, deletes, listeners, Cloud Functions, or Storage uploads. Fabric editing, contextual toolbar actions, drawer search, recent insertions, My Stuff upload/recent display, project style presets, ready-made text templates, Brand Kit quick picks, text placeholders, page controls, floating selected-layer toolbar actions, Active Layers drag reorder, and optional template-save button rendering are browser-local until a product adapter calls a product-owned save/export callback.
 
+AI suggestion text copy and Base64 PNG text copy are browser-local clipboard handoffs. They use Clipboard API success or acknowledged textarea fallback success before showing copied feedback, and failed diagnostics record support booleans plus text length only. They add no Firestore reads/writes/deletes, Storage operations, provider calls, Cloud Function logic, rules, indexes, Firebase deploy requirement, or Vercel deploy action.
+
 ## Product Adapter Rule
 
 Each product must own its own persistence.

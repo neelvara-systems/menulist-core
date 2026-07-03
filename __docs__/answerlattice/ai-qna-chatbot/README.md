@@ -1,7 +1,7 @@
 # AI QnA Chatbot — Feature Documentation
 
 > **Status:** DOCUMENTED (Forensic Audit)
-> **Last Updated:** 2026-03-02
+> **Last Updated:** 2026-06-30
 > **Parent Feature:** Help Center
 > **Audit Type:** Codebase-first, every file read
 
@@ -38,11 +38,13 @@ The AI QnA Chatbot is MenuList's **RAG-powered conversational support system** �
 ### Chat UI Components (33 files)
 - `src/components/templates/main-app/helpChat/` — Full chat interface
 - `src/components/organisms/AISearchModal/` — Global quick search modal (13 files)
+- `src/components/templates/main-app/helpChat/helpChatDiagnostics.ts` — Bounded client diagnostics for draft storage and feedback submission state
 
 ### Core Libraries
 - `src/lib/vectorEmbeddings/index.ts` — Gemini embedding + chat functions (290 lines)
 - `src/lib/vectorEmbeddings/articleEmbeddings.ts` — TipTap JSON → plain text extraction
 - `src/lib/validation/chatSchemas.ts` — Zod validation schemas (147 lines)
+- `src/lib/answerlattice/supportClipboard.ts` — Browser-local copy acknowledgement helper for HelpChat, AI Search, and article links
 
 ### Database Layer
 - `src/database/chatSessions/index.ts` — 12 DAL functions (663 lines)
@@ -95,4 +97,6 @@ User Query → Zod Validation → Rate Limit → SAFE_MODE Check
 
 | Date | Version | Change |
 |------|---------|--------|
+| 2026-06-30 | 1.0.2 | HelpChat message copy, AI Search answer copy, and article-link copy now share acknowledged Clipboard API plus textarea fallback handling with bounded support metadata; no retrieval, schema, Firestore, Storage, Cloud Function, or product-scope change |
+| 2026-06-27 | 1.0.1 | Bounded HelpChat client diagnostics added for draft storage and feedback submission paths; no retrieval, schema, Firestore, Storage, Cloud Function, or product-scope change |
 | 2026-03-02 | 1.0.0 | Initial forensic documentation — 33 UI files, 3 API routes, 25 DAL functions, full RAG pipeline |

@@ -1,7 +1,7 @@
 # Menu Correctness Engine — Help Documentation
 
 **Version:** 3.1  
-**Status:** ✅ IMPLEMENTED — READY FOR HELP CENTER  
+**Status:** Source-gated help evidence; not current launch certification
 **Audience:** Restaurant Owners, Store Operators (Non-Technical)  
 **Last Updated:** February 14, 2026
 
@@ -13,9 +13,17 @@
 
 ---
 
+## Publishing Boundary
+
+This help article is source-gated draft evidence for the current Menu Correctness Engine runtime. It is not current launch certification and should not be published until the active [production-readiness audit](../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../production-readiness/external-certification-runbook.md), `npm run verify:public-business-truth`, browser/mobile save and publish-gate QA, public menu/device QA, PDF artifact review where PDF copy is included, POS/provider smoke where POS copy is included, target deploy evidence, and production-host smoke are recorded.
+
+If published for owners, keep the customer-facing wording short and remove this internal boundary section from the public CMS copy.
+
+---
+
 ## Quick Summary
 
-MenuList automatically checks your menu every time you save it. It makes sure all your menu surfaces — QR code, website, digital screen, PDF, and POS — show the exact same, correct menu.
+MenuList automatically checks your menu every time you save it. Supported surfaces read from the same verified project data after their normal refresh, download, or provider flow completes.
 
 You don't need to do anything to activate this. It works automatically.
 
@@ -26,7 +34,7 @@ You don't need to do anything to activate this. It works automatically.
 When you save your menu in the editor:
 
 1. MenuList checks that every item has a name, a valid price, and belongs to a category.
-2. If everything is correct, your menu is published to all surfaces at once.
+2. If everything is correct, your menu is marked as verified and customer-facing publishing flows continue.
 3. If something needs fixing, you'll see a message telling you exactly what to fix.
 
 That's it. No extra steps. No settings to configure.
@@ -62,7 +70,7 @@ If MenuList finds an issue, you'll see a message like:
 3. Fix the issue (add the missing price, assign a category, etc.).
 4. Save again.
 
-Your menu will be published to all surfaces once everything is correct.
+Your menu can continue through customer-facing publishing flows once everything is correct.
 
 ---
 
@@ -70,11 +78,11 @@ Your menu will be published to all surfaces once everything is correct.
 
 ### QR Code / Website Menu
 
-Your QR code and website always show the latest verified menu. When you save a correct menu, it updates within 30 seconds.
+Your QR code and website read from the latest verified project data after the public menu cache refreshes.
 
 ### Digital Screens
 
-Your digital screens refresh automatically with the verified menu. No manual action needed.
+Your digital screens refresh through their normal device polling and cache path.
 
 ### PDF Menu
 
@@ -82,7 +90,7 @@ When you download a PDF, it's generated from the latest verified menu. If your m
 
 ### POS System (If Connected)
 
-Your POS webhook receives the same verified menu data that customers see. One menu, every system.
+Your POS connection receives menu data from the same project truth when the connected provider flow runs.
 
 ---
 
@@ -91,10 +99,10 @@ Your POS webhook receives the same verified menu data that customers see. One me
 If you manage multiple outlets:
 
 1. **Master menu changes** are verified before reaching any outlet.
-2. **Each outlet** receives a verified copy of the master menu with any local overrides applied.
-3. **No outlet** will show a partially updated or stale master menu.
+2. **Each outlet** reads from verified project data with any local overrides applied.
+3. **Each outlet** should be checked in target QA when a release changes outlet inheritance, overrides, or location publishing.
 
-You don't need to manually check each outlet after changing the master menu.
+For normal edits, you do not need to manually check each outlet after changing the master menu. Release teams should still run target QA when outlet inheritance or publishing behavior changes.
 
 ---
 
@@ -118,7 +126,7 @@ You don't need to manually check each outlet after changing the master menu.
 
 ### Q: My screen is showing an old price. What do I do?
 
-**A:** Digital screens refresh automatically via version polling. QR/web menus update within 30 seconds of saving. If an issue persists after a few minutes, contact support.
+**A:** Digital screens refresh through their normal polling path. QR and web menus refresh through their public cache path. If an issue persists after a few minutes, contact support.
 
 ---
 
@@ -126,7 +134,7 @@ You don't need to manually check each outlet after changing the master menu.
 
 - **Save regularly.** Each save triggers a verification check. More saves = more verification.
 - **Fix warnings promptly.** Even though warnings don't block your menu, fixing them ensures every surface shows the best version.
-- **Don't worry about checking surfaces manually.** MenuList validates your menu every time you save.
+- **For normal edits, you don't need to check every surface manually.** MenuList validates your menu every time you save.
 
 ---
 

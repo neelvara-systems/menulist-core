@@ -121,7 +121,7 @@ const CustomerAppMetrics: React.FC<Props> = ({ dateRange }) => {
                     type="warning"
                     showIcon
                     message={t('customerApp.couldNotLoad')}
-                    description={error.message}
+                    description="Try again later."
                 />
             </Card>
         );

@@ -1,7 +1,9 @@
 # Projects — Mobile Support
 
-**Last Updated:** February 16, 2026
+**Last Updated:** June 29, 2026
 **Decision:** ✅ MOBILE SUPPORTED — Core operational features on mobile, advanced editor desktop-only
+
+**Source gate:** `npm run verify:menu-project-editor-boundary` checks mobile menu persistence, `MobileProjectSelectorSheet` project mutations, `BulkActionsSheet` handoff, `updateProjectWithoutLoader` acknowledgement guards, and the same public-cache path used by desktop editor writes. This is source/docs verification only; manual phone QA and browser/mobile editor QA remain required before release certification.
 
 ---
 
@@ -28,10 +30,11 @@
 | Edit item (name/price/desc) | `ItemEditSheet`                             | Bottom sheet                                                 |
 | Add new item                | `AddItemSheet`                              | Persists to Firestore                                        |
 | Delete item                 | `ItemEditSheet` (onDelete)                  | Confirmation dialog + optimistic delete                      |
+| Project metadata/delete     | `MobileProjectSelectorSheet`                | Same project DAL/cache path as desktop, bounded mutation diagnostics |
 | Share/QR                    | `MobileShareScreen`                         | Copy link, QR display                                        |
-| B2C theme customization     | `MobileDesignEditorScreen`                  | Home style, mood, layout, brand color, toggles, service note |
+| B2C theme customization     | `MobileDesignEditorScreen`                  | Home style, mood, layout, brand color, toggles, service note, acknowledged public-link copy, bounded output diagnostics |
 | Brand color picker          | `ColorPickerSheet`                          | 8 presets + custom hex                                       |
-| Publish design changes      | `MobileDesignEditorScreen` (Publish button) | Same `publishProject()` DAL                                  |
+| Publish design changes      | `MobileDesignEditorScreen` (Publish button) | Same `publishProject()` DAL plus bounded post-publish verification diagnostics |
 | Quick Start presets         | `MobileDesignEditorScreen` (mobile-only!)   | 3 one-tap preset bundles                                     |
 | Bulk availability/show-hide | `BulkActionsSheet`                          | Simplified Command Center                                    |
 
@@ -56,7 +59,7 @@
 
 ### Key Insight
 
-Data changes (availability, price, add/delete) are **immediately live** to customers — no "publish" needed. The desktop "Publish" button only applies to DESIGN changes (theme/layout). Mobile now supports both.
+Data changes (availability, price, add/delete) are **immediately live** to customers through `updateProjectWithoutLoader` / `updateProject()` and the shared project DAL/cache path. The desktop "Publish" button only applies to DESIGN changes (theme/layout). Mobile now supports both.
 
 ---
 
@@ -69,6 +72,9 @@ Data changes (availability, price, add/delete) are **immediately live** to custo
 | Add item      | `src/components/mobile/sheets/AddItemSheet.tsx`              |
 | Menu upload   | `src/components/mobile/sheets/MenuUploadSheet.tsx`           |
 | Share         | `src/components/mobile/screens/MobileShareScreen.tsx`        |
+| Project sheet | `src/components/mobile/components/MobileProjectSelectorSheet.tsx` |
+| Project diagnostics | `src/components/mobile/utils/mobileProjectDiagnostics.ts` |
+| Owner diagnostics | `src/components/mobile/utils/mobileOwnerDiagnostics.ts` |
 | Design editor | `src/components/mobile/screens/MobileDesignEditorScreen.tsx` |
 | Color picker  | `src/components/mobile/sheets/ColorPickerSheet.tsx`          |
 | Bulk actions  | `src/components/mobile/sheets/BulkActionsSheet.tsx`          |

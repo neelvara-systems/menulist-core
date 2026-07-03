@@ -9,7 +9,7 @@
  * User can toggle items to approve/reject before saving.
  */
 
-import { applyExtractionChanges, discardExtractionChanges } from '@lib/extraction/applyChanges';
+import { applyExtractionChanges, discardExtractionChanges, isAcknowledgedApplyChangesResult } from '@lib/extraction/applyChanges';
 import { updateApplyPlan } from '@lib/extraction/comparisonEngine';
 import type {
     ComparisonEngineOutput,
@@ -17,6 +17,11 @@ import type {
     PreviewItemRow
 } from '@lib/extraction/comparisonEngine.types';
 import { clearMenuProcessingJobDismissal, markMenuProcessingJobAsDismissed } from '@lib/extraction/menuProcessingDismissal';
+import {
+    getMenuProcessingJobLogContext,
+    getMenuProcessingProjectLogContext,
+    logMenuProcessingFailure,
+} from '@lib/firebase/menuProcessingDiagnostics';
 import {
     countApprovedChanges,
     hasAnyPreviewChanges,
@@ -307,20 +312,29 @@ export function ExtractionJobReviewScreen({
                 projectId,
                 applyPlan,
                 jobId,
+                expectedChangeCount: totalChanges,
                 primaryLang,
             });
 
-            if (result.success) {
+            if (isAcknowledgedApplyChangesResult(result, {
+                appliedChangeCount: totalChanges,
+                jobId,
+                mode: applyPlan.mode,
+                projectId,
+            })) {
                 message.success(`Applied ${totalChanges} changes`);
                 onSaveComplete();
             } else {
-                const errorMessage = result.error || 'Failed to apply changes';
+                const errorMessage = 'Failed to apply changes';
                 setActionError(errorMessage);
                 message.error(errorMessage);
             }
         } catch (error: any) {
-            console.error('[ExtractionJobReviewScreen] Save error:', error);
-            const errorMessage = error.message || 'Failed to save changes';
+            logMenuProcessingFailure('desktop_extraction_review_apply_failed', error, {
+                ...getMenuProcessingProjectLogContext(projectId),
+                ...getMenuProcessingJobLogContext(jobId),
+            });
+            const errorMessage = 'Failed to save changes';
             setActionError(errorMessage);
             message.error(errorMessage);
         } finally {
@@ -339,8 +353,10 @@ export function ExtractionJobReviewScreen({
             onDiscard();
         } catch (error: any) {
             clearMenuProcessingJobDismissal(jobId);
-            console.error('[ExtractionJobReviewScreen] Discard error:', error);
-            const errorMessage = error.message || 'Failed to discard changes';
+            logMenuProcessingFailure('desktop_extraction_review_discard_failed', error, {
+                ...getMenuProcessingJobLogContext(jobId),
+            });
+            const errorMessage = 'Failed to discard changes';
             setActionError(errorMessage);
             message.error(errorMessage);
         } finally {

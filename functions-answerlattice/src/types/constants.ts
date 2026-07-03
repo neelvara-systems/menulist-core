@@ -18,12 +18,6 @@ export const ANSWERLATTICE_CACHE_VERSIONS_COLLECTION = DB_COLLECTIONS.ANSWERLATT
 export const MENU_IMAGE_PROCESSING_JOBS_COLLECTION = DB_COLLECTIONS.MENU_IMAGE_PROCESSING_JOBS;
 
 // ═══════════════════════════════════════════════════════════════════════════
-// AI CONFIGURATION
-// ═══════════════════════════════════════════════════════════════════════════
-
-export const AI_TYPE = "gemini"; // "vertex" or "gemini"
-
-// ═══════════════════════════════════════════════════════════════════════════
 // FILE TYPES
 // ═══════════════════════════════════════════════════════════════════════════
 

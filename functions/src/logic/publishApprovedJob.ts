@@ -14,6 +14,36 @@ const getKnowledgeBaseCategoriesDocId = (tId?: unknown, sId?: unknown) => {
     return 'categories';
 };
 
+const PUBLISH_APPROVED_JOB_FAILED_CODE = 'ANSWERLATTICE_PUBLISH_APPROVED_JOB_FAILED';
+const PUBLISH_APPROVED_JOB_STATUS_UPDATE_FAILED_CODE = 'ANSWERLATTICE_PUBLISH_APPROVED_JOB_STATUS_UPDATE_FAILED';
+const PUBLISH_APPROVED_JOB_NOT_FOUND_CODE = 'ANSWERLATTICE_PUBLISH_APPROVED_JOB_NOT_FOUND';
+const PUBLISH_APPROVED_JOB_FAILED_MESSAGE = 'Publishing failed';
+
+function boundedDiagnosticValue(value: unknown): string | number | null {
+    if (typeof value === 'number' && Number.isFinite(value)) return value;
+    if (typeof value === 'string') {
+        const trimmed = value.trim();
+        return trimmed ? trimmed.slice(0, 80) : null;
+    }
+    return null;
+}
+
+function getPublishApprovedJobErrorContext(error: unknown): Record<string, string | number | null> {
+    const sourceError = error as { code?: unknown; status?: unknown; statusCode?: unknown };
+    return {
+        sourceErrorName: error instanceof Error ? (error.name || 'Error').slice(0, 80) : typeof error,
+        sourceErrorCode: boundedDiagnosticValue(sourceError?.code),
+        sourceErrorStatus: boundedDiagnosticValue(sourceError?.status || sourceError?.statusCode),
+    };
+}
+
+function getPublishApprovedJobFailureCode(error: unknown): string | number {
+    if (error instanceof HttpsError) {
+        return boundedDiagnosticValue(error.details) || PUBLISH_APPROVED_JOB_FAILED_CODE;
+    }
+    return PUBLISH_APPROVED_JOB_FAILED_CODE;
+}
+
 const normalizeFaqText = (value: unknown, maxLength: number): string => {
     if (typeof value !== "string") return "";
     return value
@@ -121,7 +151,10 @@ const buildPublishedFaqDraftsForArticle = (
 export const publishApprovedJobLogic = async (jobId: string, finalCategories: IngestionJobCategoriesMap) => {
 
     const logger = functions.logger;
-    logger.info(`[publishApprovedJobLogic] Orchestrator starting publish process. with job id ${jobId} and job data ${finalCategories}`);
+    logger.info('[publishApprovedJobLogic] Orchestrator starting publish process', {
+        jobIdLength: jobId.length,
+        categoryCount: Object.keys(finalCategories || {}).length,
+    });
 
     const articlesToReEmbed: EmbedArticleType[] = Object.values(finalCategories).reduce<EmbedArticleType[]>((acc, category) => {
         // Handle category-level articles
@@ -193,10 +226,15 @@ export const publishApprovedJobLogic = async (jobId: string, finalCategories: In
         await firestoreAdmin.runTransaction(async (transaction) => {
             // 2. Pre-flight Check (Idempotency)
             const jobDoc = await transaction.get(jobRef);
-            if (!jobDoc.exists) throw new HttpsError('not-found', `Job ${jobId} not found.`);
+            if (!jobDoc.exists) throw new HttpsError('not-found', 'Job not found.', PUBLISH_APPROVED_JOB_NOT_FOUND_CODE);
             const job = jobDoc.data() as IngestionJob;
 
-            logger.info(`[publishApprovedJobLogic] Pre-flight check. with job id ${jobId} and job data ${job}`);
+            logger.info('[publishApprovedJobLogic] Pre-flight check', {
+                jobIdLength: jobId.length,
+                jobStatus: String(job.status || ''),
+                articleCount: Array.isArray(job.articleIds) ? job.articleIds.length : 0,
+                categoryCount: Object.keys(finalCategories || {}).length,
+            });
             if (job.status !== INGESTION_JOB_STATUS.NEEDS_REVIEW) {
                 logger.warn(`[publishApprovedJobLogic] Publish aborted. Job status is '${job.status}'.`);
                 return;
@@ -212,7 +250,11 @@ export const publishApprovedJobLogic = async (jobId: string, finalCategories: In
             // 3. Update Master Navigation Document
             const categoriesMetaDoc = await transaction.get(categoriesDocRef);
             const currentCategoriesData: KnowledgeBaseCategoriesType = categoriesMetaDoc.exists ? categoriesMetaDoc.data() as KnowledgeBaseCategoriesType : { categories: {} };
-            logger.info(`[publishApprovedJobLogic] Pre-flight check. with job id ${jobId} and job data ${job}`);
+            logger.info('[publishApprovedJobLogic] Loaded existing categories state', {
+                jobIdLength: jobId.length,
+                categoriesDocIdLength: categoriesDocId.length,
+                existingCategoryCount: Object.keys(currentCategoriesData.categories || {}).length,
+            });
 
             for (const articleId of allArticleIds) {
                 const articleRef = firestoreAdmin.collection(KB_ARTICLES_COLLECTION).doc(articleId);
@@ -356,7 +398,11 @@ export const publishApprovedJobLogic = async (jobId: string, finalCategories: In
         return { success: true, message: 'Publishing process initiated.' };
 
     } catch (error: any) {
-        logger.error(`[publishApprovedJobLogic] Critical error during publish orchestration:`, error);
+        logger.error('[publishApprovedJobLogic] Critical error during publish orchestration', {
+            jobIdLength: jobId.length,
+            failureCode: getPublishApprovedJobFailureCode(error),
+            ...getPublishApprovedJobErrorContext(error),
+        });
         if (error instanceof HttpsError) {
             throw error;
         }
@@ -365,12 +411,16 @@ export const publishApprovedJobLogic = async (jobId: string, finalCategories: In
             if (jobSnapshot.exists) {
                 await jobRef.update({
                     status: INGESTION_JOB_STATUS.FAILED,
-                    errorMessage: `Publishing failed: ${error.message}`
+                    errorMessage: PUBLISH_APPROVED_JOB_FAILED_MESSAGE
                 });
             }
         } catch (statusError) {
-            logger.error(`[publishApprovedJobLogic] Failed to persist failure status for job ${jobId}:`, statusError);
+            logger.error('[publishApprovedJobLogic] Failed to persist failure status', {
+                jobIdLength: jobId.length,
+                failureCode: PUBLISH_APPROVED_JOB_STATUS_UPDATE_FAILED_CODE,
+                ...getPublishApprovedJobErrorContext(statusError),
+            });
         }
-        throw new HttpsError('internal', `Failed to publish job ${jobId}.`, error.message);
+        throw new HttpsError('internal', 'Could not publish approved job.', PUBLISH_APPROVED_JOB_FAILED_CODE);
     }
 };

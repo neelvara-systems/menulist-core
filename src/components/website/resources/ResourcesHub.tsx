@@ -1,4 +1,4 @@
-import type { WebsiteResourcesCopy } from '@/content/websiteResources/types';
+import type { WebsiteResourceCluster, WebsiteResourcesCopy } from '@/content/websiteResources/types';
 import { WEBSITE_RESOURCE_HUB_PATH, buildWebsiteResourcePath } from '@/content/websiteResources';
 import WebsiteHeadline from '../shared/WebsiteHeadline';
 import AnimateOnScroll, { AnimateStaggerChild } from '../shared/AnimateOnScroll';
@@ -15,6 +15,25 @@ const toolSlugs = [
     'menu-engineering-worksheet',
 ];
 
+const recommendedPathSlugs = [
+    'menu-source-audit',
+    'official-menu-source',
+    'qr-menu-for-restaurants',
+    'official-menu-url-checklist',
+];
+
+const clusterOrder: WebsiteResourceCluster[] = [
+    'source-audit',
+    'official-source',
+    'qr-menu',
+    'google-menu',
+    'menu-engineering',
+    'menu-seo',
+    'ai-discovery',
+    'multi-location',
+    'checklists',
+];
+
 interface ResourcesHubProps {
     copy: WebsiteResourcesCopy;
     locale?: string | null;
@@ -24,6 +43,16 @@ export default function ResourcesHub({ copy, locale }: ResourcesHubProps) {
     const toolArticles = toolSlugs
         .map((slug) => copy.articles.find((article) => article.slug === slug))
         .filter(Boolean) as typeof copy.articles;
+    const recommendedPathArticles = recommendedPathSlugs
+        .map((slug) => copy.articles.find((article) => article.slug === slug))
+        .filter(Boolean) as typeof copy.articles;
+    const groupedArticles = clusterOrder
+        .map((cluster) => ({
+            cluster,
+            label: copy.clusterLabels[cluster],
+            articles: copy.articles.filter((article) => article.cluster === cluster),
+        }))
+        .filter((group) => group.articles.length > 0);
     const secondaryCtaHref = copy.hub.secondaryCta.href.startsWith(`${WEBSITE_RESOURCE_HUB_PATH}/`)
         ? buildWebsiteResourcePath(
             copy.hub.secondaryCta.href.replace(`${WEBSITE_RESOURCE_HUB_PATH}/`, ''),
@@ -82,20 +111,57 @@ export default function ResourcesHub({ copy, locale }: ResourcesHubProps) {
                     <AnimateOnScroll preset="card" className="ws-resources-section-heading">
                         <WebsiteHeadline
                             as="h2"
-                            text={copy.hub.clusterTitle}
+                            text={copy.hub.secondaryCta.label}
                         />
                         <p>{copy.hub.clusterSubtitle}</p>
                     </AnimateOnScroll>
-                    <div className="ws-resource-card-grid">
-                        {copy.articles.map((article, index) => (
+
+                    <div className="ws-resource-path">
+                        {recommendedPathArticles.map((article, index) => (
                             <AnimateStaggerChild key={article.slug} index={index} preset="card">
-                                <ResourceCard
-                                    article={article}
-                                    clusterLabels={copy.clusterLabels}
-                                    linkLabel={copy.labels.readResource}
-                                    locale={locale}
-                                    sourcePage="resources_hub"
-                                />
+                                <ResourceTrackedLink
+                                    href={buildWebsiteResourcePath(article.slug, locale)}
+                                    eventName="resources_recommended_path_click"
+                                    eventProps={{
+                                        resource_slug: article.slug,
+                                        source_page: 'resources_hub',
+                                        step: index + 1,
+                                    }}
+                                    className="ws-resource-path__item"
+                                >
+                                    <span className="ws-resource-path__step">{String(index + 1).padStart(2, '0')}</span>
+                                    <span className="ws-resource-path__copy">
+                                        <span className="ws-resource-path__cluster">{copy.clusterLabels[article.cluster]}</span>
+                                        <strong>{article.title}</strong>
+                                        <span>{article.description}</span>
+                                    </span>
+                                </ResourceTrackedLink>
+                            </AnimateStaggerChild>
+                        ))}
+                    </div>
+
+                    <div className="ws-resource-cluster-list">
+                        {groupedArticles.map((group, groupIndex) => (
+                            <AnimateStaggerChild key={group.cluster} index={groupIndex} preset="card">
+                                <section className="ws-resource-cluster-group">
+                                    <div className="ws-resource-cluster-group__heading">
+                                        <h3>{group.label}</h3>
+                                        <span>{group.articles.length}</span>
+                                    </div>
+                                    <div className="ws-resource-card-grid ws-resource-card-grid--clustered">
+                                        {group.articles.map((article, index) => (
+                                            <AnimateStaggerChild key={article.slug} index={index} preset="card">
+                                                <ResourceCard
+                                                    article={article}
+                                                    clusterLabels={copy.clusterLabels}
+                                                    linkLabel={copy.labels.readResource}
+                                                    locale={locale}
+                                                    sourcePage="resources_hub"
+                                                />
+                                            </AnimateStaggerChild>
+                                        ))}
+                                    </div>
+                                </section>
                             </AnimateStaggerChild>
                         ))}
                     </div>

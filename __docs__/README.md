@@ -1,8 +1,10 @@
 # MenuListAI Platform Documentation
 
-**Last Updated**: June 22, 2026
-**Status**: Production Ready  
+**Last Updated**: July 2, 2026
+**Status**: Active documentation index; not current launch certification
 **Naming Convention**: `__docs__/[feature-name]/` (kebab-case) → `[feature-name]_spec.md`, `[feature-name]_impl.md`
+
+**Launch Boundary:** This file is a documentation map only. It is not MenuList production-launch approval. Current release readiness belongs to the active [production-readiness audit](./audits/menulist-production-readiness-audit.md), [External Certification Runbook](./production-readiness/external-certification-runbook.md) evidence, source verifiers, browser/device QA, provider smoke, deploy evidence, and production-host smoke.
 
 ---
 
@@ -62,6 +64,7 @@
 
 | Folder                                     | What's Inside                                                                  |
 | ------------------------------------------ | ------------------------------------------------------------------------------ |
+| **[menulist-tools/](./menulist-tools/)**   | MenuList-owned public, owner, and paid add-on tool documentation namespace     |
 | **[workflows-guide/](./workflows-guide/)** | How to use Cascade `/slash-command` workflows — maps IDE_PROMPTS to automation |
 | **[website-asset-operating-system/](./website-asset-operating-system/)** | Internal cross-product asset contract for MenuList and Answerlattice website media |
 
@@ -69,7 +72,7 @@
 
 | Folder                                                   | What's Inside                                           | Key Docs                                                                    |
 | -------------------------------------------------------- | ------------------------------------------------------- | --------------------------------------------------------------------------- |
-| **[constantlayer-main-website/](./constantlayer-main-website/)** | ConstantLayer Systems parent/entity trust website       | Full docs-first set + captured ChatGPT transcript                           |
+| **[neelvara-main-website/](./neelvara-main-website/)** | Neelvara Systems parent/entity trust website       | Full docs-first set + captured ChatGPT transcript                           |
 | **[main-website/](./main-website/)**                     | menulist.ai marketing website — v2 Hype/Domination      | `_spec.md`, `_impl.md`, `_marketing.md`, `_seo-aeo.md`                      |
 | **[official-business-page/](./official-business-page/)** | OBP — canonical public identity page for every business | `_spec.md`, `_impl.md`, `_firebase.md`, `obp-infrastructure-freeze-plan.md` |
 
@@ -101,6 +104,7 @@
 **Per `IDE_PROMPTS/2. DOCUMENT CREATION PROMPT.md` + `IDE_PROMPTS/10. CONTENT LAYERS PROMPT.md`:**
 
 - **Folder**: `__docs__/[feature-name]/` (kebab-case)
+- **MenuList tools folder**: `__docs__/menulist-tools/[tool-or-tool-family]/`
 - **Internal docs**: `_spec.md`, `_impl.md`, `_marketing.md`
 - **Public docs**: `_website.md` (landing page content), `_helpdoc.md` (customer help article)
 - **Cost tracking**: `_firebase.md` (Firebase reads/writes/deletes — CRITICAL for revenue)
@@ -130,5 +134,5 @@
 
 ---
 
-**Last Updated**: June 22, 2026
-**Documentation Version**: 4.0
+**Last Updated**: June 30, 2026
+**Documentation Version**: 4.1

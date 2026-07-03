@@ -1,7 +1,13 @@
 # 📊 Security Monitoring - Complete Guide
 
 **Last Updated**: November 5, 2025  
-**Status**: ✅ Fully Implemented
+**Status**: Implementation guide; not current launch certification
+
+---
+
+## Current Launch Boundary
+
+Current release approval requires the active [production-readiness audit](../../audits/menulist-production-readiness-audit.md) and [External Certification Runbook](../../production-readiness/external-certification-runbook.md) evidence, current monitoring-source review, target Sentry/alert destination verification, security-event smoke, and confirmation that sensitive data is not logged. This guide records implementation evidence; it is not production-launch approval.
 
 ---
 
@@ -72,9 +78,12 @@ Violation Detected?
 {
   "event": "CSP Violation Detected",
   "severity": "high",
-  "blockedUri": "inline",
-  "violatedDirective": "script-src-elem",
-  "sourceFile": "https://menulist.ai/dashboard",
+  "blockedUriKind": "inline",
+  "directiveCategory": "script-src",
+  "blockedUriPresent": true,
+  "blockedUriLength": 6,
+  "sourceFilePresent": true,
+  "sourceFileLength": 29,
   "lineNumber": 42
 }
 ```
@@ -209,7 +218,7 @@ Violation Detected?
 
 ### 7. Rate Limit Violations 🔶
 
-**File**: `src/lib/rateLimit/helpers.ts`
+**Files**: `src/lib/rateLimit.ts`, `src/lib/rateLimit/helpers.ts`
 
 **Triggers**:
 - Too many API requests
@@ -217,6 +226,8 @@ Violation Detected?
 - Abuse attempts
 
 **Severity**: 🔶 **Medium**
+
+Provider setup failures, Upstash timeouts, provider errors, reset/stat failures, health-check failures, and helper fail-open errors use secure logging with normalized error text. Request checks intentionally fail open during provider trouble and temporarily use the existing local bypass window.
 
 **Example**:
 ```json
@@ -519,11 +530,11 @@ if (!verifyTenantAccess(session, tenantId, undefined, request)) {
 - Full audit trail
 - Pattern detection
 
-**Coverage**: 100% of security-critical paths  
+**Coverage**: Security-critical paths documented here; reconfirm current route coverage before launch
 **Integration**: Development (console) + Production (Sentry)  
-**Alerting**: Email + Slack + Mobile
+**Alerting**: Email + Slack + Mobile, subject to target configuration evidence
 
 ---
 
 **Last Reviewed**: November 5, 2025  
-**Status**: ✅ Production Ready
+**Status**: Implementation evidence documented; not current launch certification

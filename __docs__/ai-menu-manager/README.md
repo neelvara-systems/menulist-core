@@ -3,9 +3,10 @@
 > **Feature:** AI Menu Manager
 > **Internal slug:** `ai-menu-manager`
 > **Product:** MenuList
-> **Status:** Initial implementation validated - controlled launch ready for supported adapters behind AMM feature flags
-> **Last Updated:** June 20, 2026
-> **Version:** 1.1
+> **Status:** Initial implementation source-gated; not current launch certification
+> **Release boundary:** Current approval requires the active production-readiness audit, External Certification Runbook evidence, `npm run verify:ai-menu-manager`, authenticated desktop/mobile Menu Manager QA, supported-adapter smoke behind AMM feature flags, public website/help copy review, target deploy evidence, and production-host smoke.
+> **Last Updated:** June 30, 2026
+> **Version:** 1.2
 
 ---
 
@@ -15,6 +16,7 @@
 | --- | --- | --- |
 | Founder / Product | [ai-menu-manager_spec.md](./ai-menu-manager_spec.md) | Product boundary, owner flows, scope, accepted/rejected behavior |
 | Engineering | [ai-menu-manager_impl.md](./ai-menu-manager_impl.md) | Technical architecture, action registry, APIs, file plan, integration points |
+| Engineering | [ai-menu-manager_technical-team-flow.md](./ai-menu-manager_technical-team-flow.md) | Team handoff for current runtime flow, file map, data model, action lifecycle, mobile path, and extension rules |
 | Engineering / QA | [ai-menu-manager_action-type-checklist.md](./ai-menu-manager_action-type-checklist.md) | Production checklist for AMM action types, manual equivalents, approvals, cost class, and readiness |
 | Engineering / QA | [ai-menu-manager_feature-action-audit.md](./ai-menu-manager_feature-action-audit.md) | Feature-by-feature audit ledger for discovering AMM action types from existing docs and source |
 | Engineering / Finance | [ai-menu-manager_firebase.md](./ai-menu-manager_firebase.md) | Firestore, Storage, cache, AI, and cost model |
@@ -32,7 +34,7 @@
 
 AI Menu Manager is the owner-facing menu operations layer where owners can tell MenuList what changed and approve prepared work.
 
-It is a conversational shortcut over real MenuList actions, not a separate menu system. AMM understands owner input, creates proposal cards, gets approval when needed, and applies supported approved work through registered MenuList action adapters.
+It is a bounded conversational operations agent over real MenuList actions, not a separate menu system. Conversation is flexible; execution is registered. AMM understands owner input, creates proposal cards, gets approval when needed, and applies supported approved work through registered MenuList action adapters.
 
 AMM can also answer MenuList-domain questions from the loaded selected menu context. These read-only answers use `system_context_answer` cards, do not call an AI provider, do not read extra Firestore documents, and do not mutate menu truth. Examples include "What should I fix today?", "Which items have no photos?", "Is my menu ready to share?", and "What items are unavailable?"
 
@@ -51,7 +53,8 @@ AI Menu Manager is:
 - an action registry over existing menu operations.
 - a selected-context answer surface for menu readiness, content gaps, visibility, and share-readiness checks.
 - an approval-safe route for supported price, availability, design, selected-menu answer, and browser-local/share actions, with image, import, publish, rule, rollback, staff, and special-menu families kept behind adapter readiness and review/handoff cards until their safe execution paths are connected.
-- a voice-ready input surface because voice enters the same command pipeline as text.
+- a voice-ready command contract. A production voice UI must enter the same command pipeline as text and cannot bypass cards, approvals, or receipts.
+- hardened local copy handoffs on desktop and mobile: rejected Clipboard API writes retry the acknowledged textarea fallback before copied feedback can appear.
 
 AI Menu Manager is not:
 
@@ -91,7 +94,7 @@ Suggestion prompts are draft helpers only. The empty chat state should lead with
 
 The composer exposes **Work on** and **Suggestions** as separate tools. Opening one closes the other, so the owner never has two guidance panels competing for the composer. **Work on** scopes the next message to an item, multiple items, one category, menu design, digital menu, official page, digital screens, feedback, or store settings. Item/category choices use compact selectable rows; search appears only for longer lists or active search text. Picking context does not create a card or write Firestore. AMM keeps the owner-visible text explicit, such as `Selected items: Masala Tea, Cold coffee. increase price by 10`, and passes the selected entity IDs into the resolver so duplicate item/category names still resolve to exactly what the owner picked. The normal resolver, action registry, approval card, existing mutation path, and receipt flow still apply.
 
-Clarification cards can also show option rows. Choosing an option only drafts the next owner message; it does not approve or execute a card.
+Clarification cards can also show option rows. Choosing an option submits that selected answer, removes the old clarification, and creates the next answer/proposal/unsupported card in the same compact session write. It does not approve, execute, publish, or persist menu truth by itself.
 
 Read-only answer cards are different from clarification and manual-task cards. They summarize what MenuList can see in the selected menu context, such as missing photos, missing descriptions, unavailable items, hidden categories, or share readiness. They can offer suggested replies, but those replies only draft the next command. Any resulting change still becomes a registered proposal card and follows approval.
 
@@ -200,6 +203,9 @@ ENABLE_AI_MENU_MANAGER_MOBILE: true
 ENABLE_AI_MENU_MANAGER_VOICE_INPUT: true
 ENABLE_AI_MENU_MANAGER_IMAGE_ACTIONS: true
 ENABLE_AI_MENU_MANAGER_RULES: true
+ENABLE_AI_MENU_MANAGER_MODEL_ROUTER: false
+ENABLE_AI_MENU_MANAGER_CLOUD_PLANNER: false
+ENABLE_AI_MENU_MANAGER_LOCAL_ASSIST: false
 ENABLE_AI_MENU_MANAGER_CONFIRMED_WRITES: true
 ENABLE_AI_MENU_MANAGER_DEBUG_ARTIFACTS: false
 AI_MENU_MANAGER_SESSION_STORAGE_MODE: "daily_compact"

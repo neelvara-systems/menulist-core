@@ -2,6 +2,7 @@
 
 **Date:** February 16, 2026  
 **Status:** Informational SEO settings card is live on desktop and mobile
+**Last Updated:** June 29, 2026
 
 ---
 
@@ -38,6 +39,18 @@ SEO/AEO Discovery Infrastructure is **invisible infrastructure** — it enriches
 
 The schema enrichment runs on server-rendered public pages that customers view on any device. The SEO Settings card is informational only, and exists so the end user knows this infrastructure is already in place.
 
+## Mobile SEO Settings Failure Boundary
+
+`MobileSeoAnalyticsScreen` also owns the phone surface for public search metadata, canonical URL, localized SEO copy, owner analytics IDs, and analytics tracking preferences. These settings continue to save through the shared `updateStore()` path.
+
+Failed mobile SEO or analytics saves must log bounded diagnostics before showing fixed owner-facing copy:
+
+- `mobile_seo_analytics_field_save_failed` for field-level saves, with field/value-shape metadata only.
+- `mobile_analytics_settings_save_failed` for full analytics saves, with external-ID presence/length, enabled-tracking counts, previous-analytics presence, and changed-field booleans.
+- `mobile_seo_settings_save_failed` for full SEO saves, with canonical URL presence/length, selected-language presence/length, managed/localized language counts, previous-state presence, and changed-field booleans.
+
+Do not log raw SEO copy, canonical URLs, analytics IDs, Search Console values, Pixel IDs, provider responses, or exception text.
+
 ---
 
-**Last Updated:** February 16, 2026
+**Last Updated:** June 29, 2026

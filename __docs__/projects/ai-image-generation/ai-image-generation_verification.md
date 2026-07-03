@@ -1,7 +1,7 @@
 # AI Image Generation — Verification Report
 
 **Feature:** Menu Image Generation & Editing
-**Verification Date:** June 11, 2026 (worker/auth/logging hardening update)
+**Verification Date:** June 29, 2026 (worker/auth/logging and owner result-action diagnostics update)
 **Auditor:** Cascade (AI Assistant)  
 **Status:** Controlled owner testing ready; full MenuList certification still incomplete
 
@@ -17,7 +17,7 @@ Comprehensive verification of the AI Image Generation feature against:
 - Cascade chat session history
 - Industry best practices (Google Gemini API docs)
 
-**Overall Assessment:** Feature is **production-ready** with minor fixes applied during verification.
+**Overall Assessment:** Code-side hardening is complete for the reviewed scope, and the feature is controlled-owner-testing ready. This is not current MenuList launch certification: provider smoke, browser/device QA, app/Vercel deployment for Next API changes, Firebase scheduler deployment for retention cleanup, live Storage cleanup, and production-host evidence still follow the External Certification Runbook and the current production-readiness audit.
 
 ---
 
@@ -27,14 +27,15 @@ Comprehensive verification of the AI Image Generation feature against:
 
 | File                           | LOC  | Status               | Issues Found              |
 | ------------------------------ | ---- | -------------------- | ------------------------- |
-| `EditImageModal.tsx`           | 546  | ✅ Fixed             | 2 console.log removed     |
-| `index.tsx` (AiImageGenerator) | 558  | ✅ Fixed             | 1 console.error removed   |
-| `route.ts` (image-editing)     | 162  | ✅ Fixed             | 1 console.error → logger  |
-| `route.ts` (image-generation)  | 300  | ⚠️ Has console.log   | P2 - needs cleanup        |
-| `batch-generation/route.ts`    | 358  | ✅ Fixed             | debugger removed          |
-| `batch-trigger/route.ts`       | 105  | ⚠️ Has console.warn  | P2 - needs cleanup        |
-| `promptsList/index.ts`         | 67   | ⚠️ Has console.error | P2 - needs cleanup        |
-| `imageViewType.ts`             | 6723 | ✅ Verified          | userPrompt fields present |
+| `EditImageModal.tsx`           | 940  | ✅ Fixed             | console output removed    |
+| `index.tsx` (AiImageGenerator) | 1172 | ✅ Fixed             | console output removed    |
+| `route.ts` (image-editing)     | 266  | ✅ Fixed             | bounded route diagnostics |
+| `route.ts` (image-generation)  | 272  | ✅ Fixed             | no direct console output  |
+| `batch-generation/route.ts`    | 469  | ✅ Fixed             | bounded worker diagnostics |
+| `batch-trigger/route.ts`       | 339  | ✅ Fixed             | bounded trigger diagnostics |
+| `BatchImageGenerationResultView.tsx` | 520 | ✅ Fixed | bounded owner result-action diagnostics |
+| `promptsList/*.ts`            | n/a  | ✅ Fixed             | Prompt failures use bounded diagnostics and active prompt inputs are sanitized |
+| `imageViewType.ts`             | 56   | ✅ Verified          | userPrompt fields present |
 | `features.ts`                  | 669  | ✅ Fixed             | Feature flag added        |
 
 ### Critical Fixes Applied (P0)
@@ -47,6 +48,8 @@ Comprehensive verification of the AI Image Generation feature against:
 | **console.log in UI**    | `EditImageModal.tsx:171,179`    | ✅ Removed                            |
 | **console.error in UI**  | `EditImageModal.tsx:201`        | ✅ Removed                            |
 | **console.error in UI**  | `index.tsx:151`                 | ✅ Removed                            |
+| **raw batch diagnostics** | `batch-trigger`, `batch-generation`, `cloudTask`, `BatchImageGenerationResultView` | ✅ Replaced with stable codes and bounded metadata |
+| **nullable edit prompt** | `/api/image-editing` + `promptsList/index.ts` | ✅ Missing generated prompts rejected before Gemini; dynamic prompt text normalized |
 
 ### Console.log Cleanup (Feb 4, 2026) ✅
 
@@ -55,15 +58,37 @@ Comprehensive verification of the AI Image Generation feature against:
 | `image-generation/route.ts` | ✅ **FIXED** | Replaced 4 console statements with logger   |
 | `batch-generation/route.ts` | ✅ **FIXED** | Replaced 8 console statements with logger   |
 | `prompt.ts`                 | ✅ **FIXED** | Replaced 6 console statements with comments |
+| `image-editing/promptsList/*.ts` | ✅ **FIXED** | Replaced prompt-helper console errors with bounded diagnostics |
+| `batch-trigger/route.ts` | ✅ **FIXED** | Raw enqueue/job-status diagnostics now use bounded runtime diagnostics |
+| `batch-generation/route.ts` | ✅ **FIXED** | Worker failure logs and item summaries now use bounded diagnostics |
+| `src/lib/google/cloudTask/index.ts` | ✅ **FIXED** | Cloud Tasks init/create failures use stable codes and lazy client init |
+| `BatchImageGenerationResultView.tsx` | ✅ **FIXED** | Cancel/upload/discard/retry failures use stable codes, bounded runtime diagnostics, and job/status acknowledgement guards |
 
 ### Remaining Issues (P2 - Non-Critical)
 
-| Issue                        | Location                               | Recommendation                    |
-| ---------------------------- | -------------------------------------- | --------------------------------- |
-| console.warn/error           | `batch-trigger/route.ts` (3 instances) | Replace with logger               |
-| console.error                | `promptsList/*.ts` (4 instances)       | Replace with logger               |
-| Transaction logging disabled | `route.ts:264`                         | Uncomment `addAiOperation()`      |
-| Typo: `referanceImage`       | Multiple files                         | Consider rename (breaking change) |
+| Issue                  | Location       | Recommendation                    |
+| ---------------------- | -------------- | --------------------------------- |
+| Typo: `referanceImage` | Multiple files | Consider rename only with a migration plan |
+
+### June 28, 2026 Diagnostic Follow-up
+
+- `npm run verify:ai-accounting` now guards batch trigger, worker, and Cloud Tasks helper diagnostics.
+- Batch trigger failure diagnostics use `image_batch_*` stable codes with bounded project/job/item metadata.
+- Worker failure diagnostics use `image_batch_worker_*` stable codes, fixed success/failure task copy, and bounded item summaries.
+- Cloud Tasks helper initializes lazily and logs `cloud_tasks_client_initialization_failed` / `cloud_tasks_batch_image_task_create_failed` with configuration booleans and bounded task metadata.
+
+### June 29, 2026 Diagnostic Follow-up
+
+- `npm run verify:ai-accounting` now also guards `BatchImageGenerationResultView.tsx` against raw `logger.error(..., error)` calls.
+- Owner result-action failures use `image_batch_result_cancel_failed`, `image_batch_result_upload_failed`, `image_batch_result_discard_failed`, and `image_batch_result_retry_failed` with bounded project/job/count/status metadata.
+- Existing owner-visible failure copy, project image writes, batch job status updates, Storage cleanup, and retry behavior are unchanged.
+
+### June 30, 2026 Acknowledgement Follow-up
+
+- `npm run verify:ai-accounting` now guards `assertImageBatchJobCreateSucceeded()`, `assertImageBatchJobUpdateSucceeded()`, batch-start rejection codes, and owner result-action update rejection codes.
+- Batch start requires a returned job ID before triggering `/api/image-generation/batch-trigger`.
+- Cancel, upload/finish, discard, retry, and failed-start marking require matching job/status acknowledgements before owner success copy or completion callbacks advance.
+- Existing valid batch job writes, Cloud Tasks trigger behavior, project image writes, Storage cleanup, and owner-visible failure copy are unchanged.
 
 ### Multi-Outlet Governance (Feb 4, 2026)
 
@@ -448,7 +473,7 @@ Initial implementation didn't anticipate very large batches. Adding limit is rec
 
 ---
 
-**Verification Complete.** Feature is production-ready with fixes applied.
+**Verification Complete.** Code-side verification for this report is complete; full production certification remains gated by External Certification Runbook evidence and the current production-readiness audit.
 
 ---
 

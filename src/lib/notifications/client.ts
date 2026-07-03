@@ -12,6 +12,14 @@
  * @see src/lib/notifications/index.ts — Core notification sender
  */
 
+import { getNotificationPayloadLogContext, logNotificationFailure } from './notificationDiagnostics';
+
+const NOTIFICATION_TRIGGER_REQUEST_POLICY = {
+    cache: 'no-store' as RequestCache,
+    credentials: 'same-origin' as RequestCredentials,
+    redirect: 'manual' as RequestRedirect,
+};
+
 interface TriggerNotificationParams {
     eventType: string;
     recipientEmail: string;
@@ -22,6 +30,12 @@ interface TriggerNotificationParams {
     skipDedup?: boolean;
 }
 
+const createNotificationTriggerResponseError = (
+    status: number,
+): Error & { status: number } => Object.assign(new Error('notification_trigger_response_rejected'), {
+    status,
+});
+
 /**
  * Trigger a notification email via the internal API.
  * Fire-and-forget: returns immediately, never throws.
@@ -29,12 +43,24 @@ interface TriggerNotificationParams {
 export function triggerNotification(params: TriggerNotificationParams): void {
     // Fire-and-forget: intentionally not awaited
     fetch('/api/notifications/send', {
+        ...NOTIFICATION_TRIGGER_REQUEST_POLICY,
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(params),
+    }).then((response) => {
+        if (!response.ok && process.env.NODE_ENV !== 'production') {
+            logNotificationFailure(
+                'notification_trigger_response_rejected',
+                createNotificationTriggerResponseError(response.status),
+                {
+                    ...getNotificationPayloadLogContext(params),
+                    responseStatus: response.status,
+                },
+            );
+        }
     }).catch((error) => {
         if (process.env.NODE_ENV !== 'production') {
-            console.warn('[Notification] Trigger request failed', error);
+            logNotificationFailure('notification_trigger_request_failed', error, getNotificationPayloadLogContext(params));
         }
     });
 }

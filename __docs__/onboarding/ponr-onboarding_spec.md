@@ -1,9 +1,13 @@
 # Point of No Return (PONR) Onboarding — Specification
 
-**Created:** January 11, 2026  
-**Status:** 🔒 **LOCKED — READY FOR IMPLEMENTATION**  
-**Source:** ChatGPT Brainstorm (Jan 11, 2026) + Architecture Validation  
+**Created:** January 11, 2026
+**Status:** Historical PONR strategy draft; not current implementation approval or launch certification
+**Source:** ChatGPT Brainstorm (Jan 11, 2026) + Architecture Validation
 **Type:** UX/Behavioral Design (Not Backend)
+
+## Current Release Boundary
+
+This document is historical strategy evidence only. Do not create onboarding fields, API routes, notifications, screen flows, or owner prompts from this file without a current implementation document and source gate. Current approval requires the active [production-readiness audit](../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../production-readiness/external-certification-runbook.md) evidence, current onboarding/auth/payment source gates, authenticated desktop/mobile onboarding QA, public-surface cache/deploy evidence where PONR output depends on public menu, OBP, or screen state, target deploy evidence, and production-host smoke.
 
 ---
 
@@ -351,6 +355,8 @@ Turning it off creates:
 
 ## Implementation Checklist
 
+Historical January 2026 planning checklist only; not current implementation approval.
+
 - [ ] Add onboarding state to store document
 - [ ] Create useOnboarding hook
 - [ ] Build Screen 1 (Menu Live)
@@ -362,6 +368,6 @@ Turning it off creates:
 
 ---
 
-**Document Status:** Ready for implementation  
-**Estimated Effort:** 1 week  
+**Document Status:** Historical strategy draft; not current implementation approval
+**Estimated Effort:** 1 week
 **Priority:** P1 (after Screen Hardening)

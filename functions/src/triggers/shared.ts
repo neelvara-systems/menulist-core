@@ -7,13 +7,18 @@
  */
 
 import * as functions from 'firebase-functions';
+import { createHmac } from 'crypto';
 import { HttpsError, onCall } from 'firebase-functions/v2/https';
 import { onTaskDispatched } from 'firebase-functions/v2/tasks';
-import { FUNCTION_OPTIONS } from '../config/secrets';
+import { FUNCTION_MAX_INSTANCES, FUNCTION_OPTIONS, SECRET_GROUPS } from '../config/secrets';
+import { isFunctionFeatureEnabled } from '../constants/features';
 import { ECOMSAI_PLATFORM_USER_ROLE } from '../constants/user';
+import { checkRateLimit, RATE_LIMIT_CONFIGS } from '../lib/rateLimit';
 import { embedArticleWorkerLogic } from '../logic/embedArticleWorker';
+import { normalizeMapsPlaceCheckInput, runMapsPlaceCheck } from '../logic/mapsPlaceCheck';
 import { publishApprovedJobLogic } from '../logic/publishApprovedJob';
 import { regenerateEmbeddingLogic } from '../logic/regenerateEmbedding';
+import { isSafeModeActive } from '../monitoring/safeMode';
 import {
     EmbedArticleType,
     IngestionJobCategoriesMap,
@@ -56,12 +61,62 @@ function assertStoreScopedAccount(request: { auth?: { token?: Record<string, any
     }
 }
 
+function hasTenantStoreAccess(
+    request: { auth?: { token?: Record<string, any> } },
+    tenantId: string | number,
+    storeId: string | number,
+): boolean {
+    if (!request.auth) return false;
+    if (getRequesterRole(request) === ECOMSAI_PLATFORM_USER_ROLE) return true;
+
+    const token = request.auth.token || {};
+    const tokenTenantId = String(token.tenantId || token.tId || '');
+    const tokenStoreId = String(token.storeId || token.sId || '');
+    const tokenStoreIds = Array.isArray(token.storeIds) ? token.storeIds.map(String) : [];
+
+    return tokenTenantId === String(tenantId)
+        && (tokenStoreId === String(storeId) || tokenStoreIds.includes(String(storeId)));
+}
+
+function assertTenantStoreAccess(
+    request: { auth?: { token?: Record<string, any> } },
+    tenantId: string | number,
+    storeId: string | number,
+    action: string,
+) {
+    assertAuthenticatedAccount(request, action);
+
+    if (!hasTenantStoreAccess(request, tenantId, storeId)) {
+        throw new HttpsError('permission-denied', 'You do not have access to this store.');
+    }
+}
+
+function hashRateLimitValue(value: unknown): string {
+    const hashSecret = process.env.NEXTAUTH_SECRET
+        || process.env.UPSTASH_REDIS_REST_TOKEN
+        || 'menulist-functions-rate-limit-local';
+
+    return createHmac('sha256', hashSecret)
+        .update(String(value ?? 'unknown'))
+        .digest('hex')
+        .slice(0, 40);
+}
+
 function assertFirestoreDocumentId(value: unknown, fieldName: string): string {
     const id = typeof value === 'string' ? value.trim() : '';
     if (!id || id === '.' || id === '..' || id.includes('/') || /^__.*__$/.test(id)) {
         throw new HttpsError('invalid-argument', `${fieldName} must be a valid Firestore document ID.`);
     }
     return id;
+}
+
+function getSharedKbTaskContext(articleData: EmbedArticleType, jobId: string): Record<string, string | number | boolean> {
+    return {
+        jobIdLength: jobId.length,
+        articleIdLength: articleData.id?.length || 0,
+        categoryTitleLength: articleData.categoryTitle?.length || 0,
+        hasSectionTitle: Boolean(articleData.sectionTitle),
+    };
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -74,7 +129,7 @@ export const embedArticleWorker = onTaskDispatched(FUNCTION_OPTIONS.aiCallable, 
     const logger = functions.logger;
     const { articleData, jobId } = data as { articleData: EmbedArticleType; jobId: string };
 
-    logger.info(`[${jobId}] Worker starting to re-embed article ${articleData.id}.`);
+    logger.info('[embedArticleWorker] Worker starting to re-embed article.', getSharedKbTaskContext(articleData, jobId));
     await embedArticleWorkerLogic(articleData, jobId);
 });
 
@@ -118,5 +173,43 @@ export const processMenuImages = onCall(
             'failed-precondition',
             'Direct menu extraction is disabled. Use the MenuList extraction job queue.',
         );
+    },
+);
+
+// ═══════════════════════════════════════════════════════════════
+// MAPS PLACE CHECK — Owner/admin Google Maps grounding check
+// ═══════════════════════════════════════════════════════════════
+
+export const mapsPlaceCheck = onCall(
+    {
+        region: 'us-central1',
+        timeoutSeconds: 60,
+        memory: '512MiB' as const,
+        maxInstances: FUNCTION_MAX_INSTANCES.aiCallable,
+        secrets: SECRET_GROUPS.AI_WITH_RATE_LIMIT,
+    },
+    async (request) => {
+        const input = normalizeMapsPlaceCheckInput(request.data);
+        assertTenantStoreAccess(request, input.tenantId, input.storeId, 'check public place evidence');
+
+        if (!isFunctionFeatureEnabled('ENABLE_PUBLIC_TRUTH_MAPS_PLACE_CHECK')) {
+            throw new HttpsError('failed-precondition', 'Maps place check is not enabled.');
+        }
+
+        if (await isSafeModeActive()) {
+            throw new HttpsError('unavailable', 'Maps place check is temporarily unavailable.');
+        }
+
+        const rateLimit = await checkRateLimit({
+            key: `maps-place-check:${hashRateLimitValue(request.auth?.uid)}:${hashRateLimitValue(input.storeId)}`,
+            ...RATE_LIMIT_CONFIGS.AI_EXPENSIVE,
+        });
+
+        if (!rateLimit.allowed) {
+            const waitSeconds = Math.max(1, Math.ceil((rateLimit.resetAt - Date.now()) / 1000));
+            throw new HttpsError('resource-exhausted', `Too many requests. Please wait ${waitSeconds} seconds.`);
+        }
+
+        return runMapsPlaceCheck(input);
     },
 );

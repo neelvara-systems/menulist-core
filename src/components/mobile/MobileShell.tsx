@@ -28,12 +28,16 @@ const MobileTodayHistoryScreen = dynamic(() => import('./screens/MobileTodayHist
 const MobileShareScreen = dynamic(() => import('./screens/MobileShareScreen'), { ssr: false });
 const MobileAiMenuManagerScreen = dynamic(() => import('./ai-menu-manager/MobileAiMenuManagerScreen'), { ssr: false });
 const MobileMoreScreen = dynamic(() => import('./screens/MobileMoreScreen'), { ssr: false });
+const MobileBusinessHealthScreen = dynamic(() => import('./screens/MobileBusinessHealthScreen'), { ssr: false });
 const StarterActivationBanner = dynamic(() => import('../onboarding/StarterActivationBanner'), { ssr: false });
 
 const MOBILE_ROUTE_HASH_PREFIX = '#mobile/';
 const MOBILE_BOTTOM_NAV_CLEARANCE = 'calc(env(safe-area-inset-bottom) + 88px)';
 type MobileRouteState = { tab: MobileTab; todayScreen: 'main' | 'dashboard' | 'history'; moreScreen: MoreSubScreen };
 const MOBILE_ROUTE_DEFAULT: MobileRouteState = { tab: 'today', todayScreen: 'main', moreScreen: 'main' };
+const OWNER_FEATURE_TO_MOBILE_ROUTE = {
+    'businessHealth': { tab: 'more', moreScreen: 'businessHealth', todayScreen: 'main' },
+} satisfies Record<string, MobileRouteState>;
 const OWNER_PATH_TO_MOBILE_ROUTE: Record<string, MobileRouteState> = {
     '/dashboard': MOBILE_ROUTE_DEFAULT,
     '/business-health': { tab: 'more', todayScreen: 'main', moreScreen: 'businessHealth' },
@@ -62,6 +66,7 @@ const PLATFORM_PATH_TO_MORE_SCREEN: Record<string, MoreSubScreen> = {
     '/platform/tenants': 'platformTenants',
     '/platform/stores': 'platformStores',
     '/platform/users': 'platformUsers',
+    '/platform/founder-monitor': 'founderMonitor',
     '/platform/owner-business-assistant': 'ownerBusinessAssistantMonitor',
     '/platform/cost-posture': 'costPosture',
     '/platform/asset-templates': 'assetTemplates',
@@ -105,6 +110,7 @@ const PLATFORM_MORE_SCREENS: MoreSubScreen[] = [
     'platformTenants',
     'platformStores',
     'platformUsers',
+    'founderMonitor',
     'ownerBusinessAssistantMonitor',
     'costPosture',
     'assetTemplates',
@@ -192,6 +198,10 @@ function parseMobileRouteHash(hash: string): MobileRouteState {
 
 function parseMobileRoutePathname(pathname: string, search = ''): MobileRouteState | null {
     const normalizedPathname = normalizePathname(pathname);
+    const path = normalizedPathname;
+    if (path.startsWith('/business-health')) {
+        return OWNER_FEATURE_TO_MOBILE_ROUTE.businessHealth;
+    }
     const ownerRoute = OWNER_PATH_TO_MOBILE_ROUTE[normalizedPathname];
     const platformScreen = PLATFORM_PATH_TO_MORE_SCREEN[normalizedPathname];
     const opsScreen = OPS_PATH_TO_MORE_SCREEN[normalizedPathname];
@@ -442,6 +452,19 @@ export default function MobileShell() {
         setIsMoreRootScreen(true);
     }, [canUseMenuTab]);
 
+    const handleOpenShareTab = useCallback(() => {
+        if (!canUseShareTab) {
+            setActiveTab('more');
+            setMoreScreen('main');
+            setIsMoreRootScreen(true);
+            return;
+        }
+        setActiveTab('share');
+        setMoreScreen('main');
+        setIsMoreRootScreen(true);
+        setTodayScreen('main');
+    }, [canUseShareTab]);
+
     const handleOpenDesignEditor = useCallback(() => {
         setActiveTab('more');
         setMoreScreen('designEditor');
@@ -487,6 +510,13 @@ export default function MobileShell() {
         setTodayScreen('main');
     }, []);
 
+    const handleOpenMoreScreen = useCallback((target: MoreSubScreen) => {
+        setActiveTab('more');
+        setMoreScreen(target);
+        setIsMoreRootScreen(target === 'main');
+        setTodayScreen('main');
+    }, []);
+
     const handleOpenHistory = useCallback(() => {
         if (!FEATURE_FLAGS.ENABLE_PAST_ACTIVITY_HISTORY) {
             return;
@@ -524,8 +554,10 @@ export default function MobileShell() {
             ? <MobileShareScreen onOpenDigitalScreens={handleOpenDigitalScreens} onOpenDesignEditor={handleOpenDesignEditor} onOpenPosSync={handleOpenPosSync} onOpenPrintAssets={handleOpenPrintAssets} onOpenPrintMenu={handleOpenPrintMenu} />
         : activeTab === 'aiMenuManager'
             ? <MobileAiMenuManagerScreen />
+        : activeTab === 'more' && moreScreen === 'businessHealth'
+            ? <MobileBusinessHealthScreen onBack={() => handleOpenMoreScreen('main')} onOpenMenuTab={handleOpenMenuTab} onOpenMoreScreen={handleOpenMoreScreen} onOpenShareTab={handleOpenShareTab} />
         : activeTab === 'more'
-            ? <MobileMoreScreen initialScreen={moreScreen} onOpenMenuTab={handleOpenMenuTab} onRootStateChange={setIsMoreRootScreen} onScreenChange={setMoreScreen} />
+            ? <MobileMoreScreen initialScreen={moreScreen} onOpenMenuTab={handleOpenMenuTab} onOpenShareTab={handleOpenShareTab} onRootStateChange={setIsMoreRootScreen} onScreenChange={setMoreScreen} />
                 : <MobileMenuScreen onOpenDesignEditor={handleOpenDesignEditor} onOpenPrintMenu={handleOpenPrintMenu} />;
 
     if (activeSubscriptionLoading && !hasSubscription && !hasStarterAccess && !shouldBypassSubscriptionGate) {

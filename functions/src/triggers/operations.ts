@@ -63,13 +63,20 @@ function hasTenantStoreAccess(
         && (tokenStoreId === String(storeId) || tokenStoreIds.includes(String(storeId)));
 }
 
-function getPublicTenantBaseDomain(): string {
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://app.menulist.online';
+function getPublicTenantBaseDomain(): string | null {
+    const appUrl = String(process.env.NEXT_PUBLIC_APP_URL || '').trim();
+    if (!appUrl) return null;
+
     try {
-        const hostname = new URL(appUrl).hostname;
+        const parsed = new URL(appUrl);
+        if (parsed.protocol !== 'https:') return null;
+
+        const hostname = parsed.hostname.toLowerCase();
+        if (!hostname || hostname === 'localhost' || hostname === '127.0.0.1') return null;
+
         return hostname.startsWith('app.') ? hostname.slice(4) : hostname;
     } catch {
-        return 'menulist.online';
+        return null;
     }
 }
 
@@ -82,7 +89,64 @@ function buildPublicMenuUrl(storeData: Record<string, any> | undefined): string 
     const subdomain = String(storeData?.subdomain || storeData?.slug || '').trim();
     if (!subdomain) return null;
 
-    return `https://${subdomain}.${getPublicTenantBaseDomain()}`;
+    const baseDomain = getPublicTenantBaseDomain();
+    if (!baseDomain) return null;
+
+    return `https://${subdomain}.${baseDomain}`;
+}
+
+const OPERATIONS_VERIFY_MENU_PUBLISH_ACCESS_DENIED = 'OPERATIONS_VERIFY_MENU_PUBLISH_ACCESS_DENIED';
+const OPERATIONS_VERIFY_MENU_PUBLISH_FAILED = 'OPERATIONS_VERIFY_MENU_PUBLISH_FAILED';
+const OPERATIONS_BUDGET_ALERT_WEBHOOK_FAILED = 'OPERATIONS_BUDGET_ALERT_WEBHOOK_FAILED';
+const OPERATIONS_FORCE_REPUBLISH_NO_ACTIVE_PROJECT = 'OPERATIONS_FORCE_REPUBLISH_NO_ACTIVE_PROJECT';
+const OPERATIONS_FORCE_REPUBLISH_PUBLIC_URL_UNAVAILABLE = 'OPERATIONS_FORCE_REPUBLISH_PUBLIC_URL_UNAVAILABLE';
+const OPERATIONS_FORCE_REPUBLISH_FAILED = 'OPERATIONS_FORCE_REPUBLISH_FAILED';
+const OPERATIONS_BACKFILL_STORES_SUMMARY_FAILED = 'OPERATIONS_BACKFILL_STORES_SUMMARY_FAILED';
+const OPERATIONS_VERIFY_MENU_PUBLISH_SUCCESS_MESSAGE_FAILED = 'OPERATIONS_VERIFY_MENU_PUBLISH_SUCCESS_MESSAGE_FAILED';
+const OPERATIONS_VERIFY_MENU_PUBLISH_SUCCESS_MESSAGE_SETUP_FAILED = 'OPERATIONS_VERIFY_MENU_PUBLISH_SUCCESS_MESSAGE_SETUP_FAILED';
+const OPERATIONS_VERIFY_MENU_PUBLISH_FAILURE_MESSAGE_FAILED = 'OPERATIONS_VERIFY_MENU_PUBLISH_FAILURE_MESSAGE_FAILED';
+const OPERATIONS_VERIFY_MENU_PUBLISH_FAILURE_MESSAGE_SETUP_FAILED = 'OPERATIONS_VERIFY_MENU_PUBLISH_FAILURE_MESSAGE_SETUP_FAILED';
+const VERIFY_MENU_PUBLISH_FAILED_MESSAGE = 'Menu publish verification could not be completed.';
+const FORCE_REPUBLISH_PUBLIC_URL_UNAVAILABLE_MESSAGE = 'Public menu URL is not configured for force republish verification.';
+const FORCE_REPUBLISH_FAILED_MESSAGE = 'Force republish could not be completed.';
+const BACKFILL_STORES_SUMMARY_FAILED_MESSAGE = 'Stores summary backfill could not be completed.';
+
+function getBoundedOperationsStringContext(label: string, value: unknown): Record<string, boolean | number> {
+    const normalized = value === undefined || value === null ? '' : String(value);
+    return {
+        [`${label}Present`]: normalized.length > 0,
+        [`${label}Length`]: normalized.length,
+    };
+}
+
+function getOperationsErrorContext(error: unknown): { sourceErrorName?: string; sourceErrorCode?: string; sourceStatusCode?: number } {
+    if (!error || typeof error !== 'object') {
+        return { sourceErrorName: error === undefined ? undefined : typeof error };
+    }
+
+    const record = error as Record<string, unknown>;
+    const statusValue = record.status ?? record.statusCode;
+    const status = Number(statusValue);
+
+    return {
+        sourceErrorName: error instanceof Error ? error.name : 'object',
+        sourceErrorCode: record.code === undefined || record.code === null ? undefined : String(record.code).slice(0, 64),
+        sourceStatusCode: Number.isFinite(status) ? status : undefined,
+    };
+}
+
+function getOperationsCallLogContext(context: {
+    publicMenuUrl?: unknown;
+    requesterUid?: unknown;
+    storeId?: unknown;
+    tenantId?: unknown;
+}): Record<string, boolean | number> {
+    return {
+        ...getBoundedOperationsStringContext('storeId', context.storeId),
+        ...getBoundedOperationsStringContext('tenantId', context.tenantId),
+        ...getBoundedOperationsStringContext('requesterUid', context.requesterUid),
+        ...getBoundedOperationsStringContext('publicMenuUrl', context.publicMenuUrl),
+    };
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -113,14 +177,22 @@ export const verifyMenuPublish = onCall(
 
         if (!hasTenantStoreAccess(request, tenantId, storeId)) {
             logger.error('[verifyMenuPublish] Tenant access denied', {
-                uid: request.auth.uid,
-                tenantId,
-                storeId,
+                failureCode: OPERATIONS_VERIFY_MENU_PUBLISH_ACCESS_DENIED,
+                ...getOperationsCallLogContext({
+                    requesterUid: request.auth.uid,
+                    storeId,
+                    tenantId,
+                }),
             });
             throw new HttpsError('permission-denied', 'You do not have access to this store.');
         }
 
-        logger.info('[verifyMenuPublish] Verifying', { storeId, publicMenuUrl });
+        logger.info('[verifyMenuPublish] Verifying', getOperationsCallLogContext({
+            publicMenuUrl,
+            requesterUid: request.auth.uid,
+            storeId,
+            tenantId,
+        }));
 
         try {
             const result = await verifyPublish(publicMenuUrl);
@@ -135,8 +207,32 @@ export const verifyMenuPublish = onCall(
                         eventType: 'STORE_PUBLISHED',
                         referenceId: `store-published-${storeId}`,
                         metadata: { publicUrl: publicMenuUrl, dashboardUrl: 'https://menulist.ai' },
-                    }).catch(() => { /* non-blocking */ });
-                } catch { /* non-blocking */ }
+                    }).catch((messageError) => {
+                        logger.error('[verifyMenuPublish] Lifecycle success message failed', {
+                            failureCode: OPERATIONS_VERIFY_MENU_PUBLISH_SUCCESS_MESSAGE_FAILED,
+                            eventType: 'STORE_PUBLISHED',
+                            ...getOperationsCallLogContext({
+                                publicMenuUrl,
+                                requesterUid: request.auth?.uid,
+                                storeId,
+                                tenantId,
+                            }),
+                            ...getOperationsErrorContext(messageError),
+                        });
+                    });
+                } catch (messageSetupError) {
+                    logger.error('[verifyMenuPublish] Lifecycle success message setup failed', {
+                        failureCode: OPERATIONS_VERIFY_MENU_PUBLISH_SUCCESS_MESSAGE_SETUP_FAILED,
+                        eventType: 'STORE_PUBLISHED',
+                        ...getOperationsCallLogContext({
+                            publicMenuUrl,
+                            requesterUid: request.auth?.uid,
+                            storeId,
+                            tenantId,
+                        }),
+                        ...getOperationsErrorContext(messageSetupError),
+                    });
+                }
             } else {
                 try {
                     const { sendLifecycleMessage } = await import('../messaging/messagingEngine');
@@ -148,8 +244,34 @@ export const verifyMenuPublish = onCall(
                             publicUrl: publicMenuUrl,
                             failureReason: result.failureReason || result.status || 'The public menu check failed.',
                         },
-                    }).catch(() => { /* non-blocking */ });
-                } catch { /* non-blocking */ }
+                    }).catch((messageError) => {
+                        logger.error('[verifyMenuPublish] Lifecycle failure message failed', {
+                            failureCode: OPERATIONS_VERIFY_MENU_PUBLISH_FAILURE_MESSAGE_FAILED,
+                            eventType: 'MENU_PUBLISH_FAILED',
+                            ...getBoundedOperationsStringContext('resultStatus', result.status),
+                            ...getOperationsCallLogContext({
+                                publicMenuUrl,
+                                requesterUid: request.auth?.uid,
+                                storeId,
+                                tenantId,
+                            }),
+                            ...getOperationsErrorContext(messageError),
+                        });
+                    });
+                } catch (messageSetupError) {
+                    logger.error('[verifyMenuPublish] Lifecycle failure message setup failed', {
+                        failureCode: OPERATIONS_VERIFY_MENU_PUBLISH_FAILURE_MESSAGE_SETUP_FAILED,
+                        eventType: 'MENU_PUBLISH_FAILED',
+                        ...getBoundedOperationsStringContext('resultStatus', result.status),
+                        ...getOperationsCallLogContext({
+                            publicMenuUrl,
+                            requesterUid: request.auth?.uid,
+                            storeId,
+                            tenantId,
+                        }),
+                        ...getOperationsErrorContext(messageSetupError),
+                    });
+                }
             }
 
             return {
@@ -159,8 +281,17 @@ export const verifyMenuPublish = onCall(
                 failureReason: result.failureReason,
             };
         } catch (error: any) {
-            logger.error('[verifyMenuPublish] Failed', { storeId, error: error.message });
-            throw new HttpsError('internal', 'Verification failed: ' + error.message);
+            logger.error('[verifyMenuPublish] Failed', {
+                failureCode: OPERATIONS_VERIFY_MENU_PUBLISH_FAILED,
+                ...getOperationsCallLogContext({
+                    publicMenuUrl,
+                    requesterUid: request.auth.uid,
+                    storeId,
+                    tenantId,
+                }),
+                ...getOperationsErrorContext(error),
+            });
+            throw new HttpsError('internal', VERIFY_MENU_PUBLISH_FAILED_MESSAGE);
         }
     },
 );
@@ -263,7 +394,10 @@ export const gcpBudgetAlertWebhook = onRequest(
 
             res.status(200).json({ received: true, safeModeActivated: true });
         } catch (error: any) {
-            logger.error('[BudgetAlert] Error processing webhook:', error);
+            logger.error('[BudgetAlert] Error processing webhook', {
+                failureCode: OPERATIONS_BUDGET_ALERT_WEBHOOK_FAILED,
+                ...getOperationsErrorContext(error),
+            });
             res.status(400).json({ received: false, error: 'Invalid budget alert request' });
         }
     },
@@ -296,7 +430,11 @@ export const forceRepublish = onCall(
             throw new HttpsError('invalid-argument', 'Missing required fields: storeId, tenantId');
         }
 
-        logger.warn('[forceRepublish] Admin force republish', { storeId, tenantId });
+        logger.warn('[forceRepublish] Admin force republish', getOperationsCallLogContext({
+            requesterUid: request.auth?.uid,
+            storeId,
+            tenantId,
+        }));
 
         try {
             // Find active project for the store
@@ -315,6 +453,22 @@ export const forceRepublish = onCall(
             const projectDoc = projectsSnapshot.docs[0];
             const projectId = projectDoc.id;
 
+            const storeDoc = await db.collection(DB_COLLECTIONS.STORES).doc(storeId).get();
+            const storeData = storeDoc.data();
+            const publicMenuUrl = buildPublicMenuUrl(storeData);
+
+            if (!publicMenuUrl) {
+                logger.error('[forceRepublish] Public menu URL unavailable', {
+                    failureCode: OPERATIONS_FORCE_REPUBLISH_PUBLIC_URL_UNAVAILABLE,
+                    ...getOperationsCallLogContext({
+                        requesterUid: request.auth?.uid,
+                        storeId,
+                        tenantId,
+                    }),
+                });
+                throw new HttpsError('failed-precondition', FORCE_REPUBLISH_PUBLIC_URL_UNAVAILABLE_MESSAGE);
+            }
+
             // Touch the project doc to trigger republish (update timestamp)
             await projectDoc.ref.update({
                 forceRepublishAt: Timestamp.now(),
@@ -322,21 +476,37 @@ export const forceRepublish = onCall(
             });
 
             // Verify after republish
-            const storeDoc = await db.collection(DB_COLLECTIONS.STORES).doc(storeId).get();
-            const storeData = storeDoc.data();
-            const publicMenuUrl = buildPublicMenuUrl(storeData);
+            const result = await verifyPublish(publicMenuUrl);
+            await updateStoreHealth(storeId, tenantId, result);
 
-            if (publicMenuUrl) {
-                const result = await verifyPublish(publicMenuUrl);
-                await updateStoreHealth(storeId, tenantId, result);
-
-                return { success: result.status === 'OK', projectId, verification: result.status, publicMenuUrl };
+            return { success: result.status === 'OK', projectId, verification: result.status, publicMenuUrl };
+        } catch (error: any) {
+            if (error instanceof HttpsError && error.code === 'not-found') {
+                logger.warn('[forceRepublish] No active project found', {
+                    failureCode: OPERATIONS_FORCE_REPUBLISH_NO_ACTIVE_PROJECT,
+                    ...getOperationsCallLogContext({
+                        requesterUid: request.auth?.uid,
+                        storeId,
+                        tenantId,
+                    }),
+                });
+                throw error;
             }
 
-            return { success: true, projectId, verification: 'skipped' };
-        } catch (error: any) {
-            logger.error('[forceRepublish] Failed', { storeId, error: error.message });
-            throw new HttpsError('internal', 'Force republish failed: ' + error.message);
+            if (error instanceof HttpsError && error.code === 'failed-precondition') {
+                throw error;
+            }
+
+            logger.error('[forceRepublish] Failed', {
+                failureCode: OPERATIONS_FORCE_REPUBLISH_FAILED,
+                ...getOperationsCallLogContext({
+                    requesterUid: request.auth?.uid,
+                    storeId,
+                    tenantId,
+                }),
+                ...getOperationsErrorContext(error),
+            });
+            throw new HttpsError('internal', FORCE_REPUBLISH_FAILED_MESSAGE);
         }
     },
 );
@@ -355,7 +525,9 @@ export const backfillStoresSummary = onCall({
 
     assertPlatformOwner(request, 'run stores summary backfill');
 
-    logger.info('[backfillStoresSummary] Started by user:', request.auth?.uid);
+    logger.info('[backfillStoresSummary] Started', getOperationsCallLogContext({
+        requesterUid: request.auth?.uid,
+    }));
 
     try {
         const storesSnapshot = await db.collection(DB_COLLECTIONS.STORES).get();
@@ -395,7 +567,13 @@ export const backfillStoresSummary = onCall({
             message: `Successfully backfilled ${storesSnapshot.size} stores to storesSummary`,
         };
     } catch (error: any) {
-        logger.error('[backfillStoresSummary] Failed:', error.message);
-        throw new HttpsError('internal', 'Backfill failed: ' + error.message);
+        logger.error('[backfillStoresSummary] Failed', {
+            failureCode: OPERATIONS_BACKFILL_STORES_SUMMARY_FAILED,
+            ...getOperationsCallLogContext({
+                requesterUid: request.auth?.uid,
+            }),
+            ...getOperationsErrorContext(error),
+        });
+        throw new HttpsError('internal', BACKFILL_STORES_SUMMARY_FAILED_MESSAGE);
     }
 });

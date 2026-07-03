@@ -2,7 +2,9 @@
 
 **Date:** January 11, 2026  
 **Target Feature:** continuous-menu-intelligence  
-**Status:** ✅ **DEPLOYABLE**
+**Status:** Historical logic verification evidence; not current launch certification
+
+> **Current release boundary (July 2, 2026):** This logic-verification report preserves January 2026 source evidence only. It is not current release approval. Current launch approval remains gated by the active production-readiness audit, External Certification Runbook evidence, `npm run verify:agent-readiness`, `npm run verify:functions-deploy-preflight`, scoped `menulist-qa` deploy evidence where Cloud Functions logic changes, current scheduler behavior checks, and browser/device QA where the release uses CMI surfaces.
 
 ---
 
@@ -12,7 +14,7 @@
 CMI LOGIC AUDIT
 TOTAL FLOWS VERIFIED: 6
 CRITICAL ISSUES: 0
-PRODUCTION READINESS: SAFE
+EVIDENCE SCOPE: HISTORICAL SOURCE VERIFICATION ONLY
 COVERAGE: 100% (6/6 flows)
 ```
 
@@ -433,9 +435,9 @@ export async function shouldShowItem(...) {
 
 ---
 
-## FINAL VERDICT: ✅ DEPLOYABLE
+## Historical Logic Verification Result: Source Evidence Only
 
-**CMI logic verification complete. All 6 flows verified. Zero critical issues.**
+**This report is historical CMI flow evidence only, not current release approval. Current certification still requires the active production-readiness audit, External Certification Runbook evidence, current source gates, scoped deploy evidence where Cloud Functions logic changes, scheduler behavior checks, browser/device QA where CMI surfaces are in scope, target deploy evidence, and production-host smoke.**
 
 ---
 

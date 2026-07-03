@@ -3,12 +3,14 @@ export const dynamic = 'force-dynamic';
 import { ANSWERLATTICE_PERMISSION_KEYS } from '@constant/answerlattice/permissions';
 import { DB_COLLECTIONS } from '@constant/database';
 import { requireAnswerlatticePermission } from '@lib/answerlattice/accessControl';
+import { buildAnswerlatticeRateLimitKey } from '@lib/answerlattice/rateLimitKeys';
 import { resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
 import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
 import { logger } from '@lib/monitoring/logger';
 import { checkRateLimit } from '@lib/rateLimit';
 import { getRateLimitForFeature } from '@lib/rateLimit/configs';
-import { secureError } from '@lib/security/secureLogger';
+import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
+import { getSafeZodValidationDetails } from '@lib/security/inputValidation';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { withAuth } from '../../../../middleware/auth';
@@ -174,14 +176,20 @@ async function getActionFilteredDocs({
 }
 
 export const GET = withAuth(async (request: NextRequest, session) => {
-    try {
-        const permission = await requireAnswerlatticePermission(request, session, ANSWERLATTICE_PERMISSION_KEYS.MANAGE_BILLING);
-        if (permission.response) return permission.response;
+    let tenantIdForLog: string | number | undefined;
+    let storeIdForLog: string | number | undefined;
+    let userIdForLog: string | undefined;
+    let actionForLog: string | undefined;
+    let cursorIdForLog: string | undefined;
+    let pageSizeForLog: number | undefined;
+    let hasStartDateForLog = false;
+    let hasEndDateForLog = false;
 
+    try {
         const validation = QuerySchema.safeParse(Object.fromEntries(request.nextUrl.searchParams.entries()));
         if (!validation.success) {
             return NextResponse.json(
-                { error: 'Invalid query parameters', details: validation.error.flatten() },
+                { error: 'Invalid query parameters', details: getSafeZodValidationDetails(validation.error) },
                 { status: 400 },
             );
         }
@@ -193,10 +201,13 @@ export const GET = withAuth(async (request: NextRequest, session) => {
 
         const tenantId = scope.tenantId;
         const storeId = scope.storeId;
+        tenantIdForLog = tenantId;
+        storeIdForLog = storeId;
         const rateLimitConfig = getRateLimitForFeature('DATA_READ');
         const userId = session.uId || session.user?.id || 'unknown';
+        userIdForLog = userId;
         const rateLimit = await checkRateLimit({
-            key: `answerlattice-ai-operations:${userId}:${tenantId}:${storeId}`,
+            key: buildAnswerlatticeRateLimitKey('answerlattice-ai-operations', userId, tenantId, storeId),
             ...rateLimitConfig,
         });
 
@@ -205,9 +216,9 @@ export const GET = withAuth(async (request: NextRequest, session) => {
             logger.security('Rate Limit Exceeded', {
                 endpoint: '/api/answerlattice/ai-operations',
                 limit: rateLimitConfig.limit,
-                storeId,
-                tenantId,
-                userId,
+                ...getBoundedRuntimeStringContext('storeId', storeId),
+                ...getBoundedRuntimeStringContext('tenantId', tenantId),
+                ...getBoundedRuntimeStringContext('userId', userId),
                 waitSeconds,
                 window: rateLimitConfig.window,
             }, 'medium');
@@ -230,9 +241,17 @@ export const GET = withAuth(async (request: NextRequest, session) => {
             );
         }
 
+        const permission = await requireAnswerlatticePermission(request, session, ANSWERLATTICE_PERMISSION_KEYS.MANAGE_BILLING);
+        if (permission.response) return permission.response;
+
         const platformRole = session.platformRole || session.user?.platformRole;
         const isPlatform = platformRole === 'PLATFORM';
         const { action, cursorId, pageSize, startDate, endDate } = validation.data;
+        actionForLog = action;
+        cursorIdForLog = cursorId;
+        pageSizeForLog = pageSize;
+        hasStartDateForLog = Boolean(startDate);
+        hasEndDateForLog = Boolean(endDate);
         const start = getDateParam(startDate);
         const end = getDateParam(endDate);
 
@@ -278,8 +297,16 @@ export const GET = withAuth(async (request: NextRequest, session) => {
             lastVisibleDoc: result.lastVisibleDoc,
         });
     } catch (error) {
-        secureError('[answerlattice-ai-operations] Failed to load operations', error as Error, {
-            path: request.nextUrl.pathname,
+        logRuntimeFailure('answerlattice_ai_operations_load_failed', error, {
+            ...getBoundedRuntimeStringContext('path', request.nextUrl.pathname),
+            ...getBoundedRuntimeStringContext('tenantId', tenantIdForLog),
+            ...getBoundedRuntimeStringContext('storeId', storeIdForLog),
+            ...getBoundedRuntimeStringContext('userId', userIdForLog),
+            ...getBoundedRuntimeStringContext('action', actionForLog),
+            ...getBoundedRuntimeStringContext('cursorId', cursorIdForLog),
+            pageSize: pageSizeForLog,
+            hasStartDate: hasStartDateForLog,
+            hasEndDate: hasEndDateForLog,
         });
         return NextResponse.json({ error: 'Failed to load support credit usage' }, { status: 500 });
     }

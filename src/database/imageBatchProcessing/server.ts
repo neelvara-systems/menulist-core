@@ -2,15 +2,35 @@ import { BATCH_IMAGE_GENERATION_JOB_STATUS } from "@constant/AI";
 import { DB_COLLECTIONS } from "@constant/database";
 import { admin, firestoreAdmin } from "@lib/firebase/firebaseAdmin";
 import { BatchImageGenerationJobType } from "@template/main-app/projects/types";
+import { Timestamp } from "firebase-admin/firestore";
 
 const COLLECTION = DB_COLLECTIONS.IMAGE_BATCH_PROCESSING_JOBS;
 const MAX_STATUS_HISTORY_ENTRIES = 20;
+const DAY_MS = 24 * 60 * 60 * 1000;
+const IMAGE_BATCH_ITEMS_RETENTION_DAYS = 7;
+const IMAGE_BATCH_JOB_RETENTION_DAYS = 30;
+const IMAGE_BATCH_TERMINAL_JOB_STATUS_VALUES = new Set<string>([
+    BATCH_IMAGE_GENERATION_JOB_STATUS.COMPLETED,
+    BATCH_IMAGE_GENERATION_JOB_STATUS.FAILED,
+    BATCH_IMAGE_GENERATION_JOB_STATUS.CANCELLED,
+    BATCH_IMAGE_GENERATION_JOB_STATUS.FINISHED,
+    BATCH_IMAGE_GENERATION_JOB_STATUS.DISCARDED,
+]);
 
 function getScopedJobRef(id: string, tenantId: string | number, storeId: string | number) {
     return firestoreAdmin.doc(`${COLLECTION}/${tenantId}/${storeId}/${id}`);
 }
 
 function removeUndefined(value: unknown): unknown {
+    if (value instanceof Timestamp) return value;
+    if (
+        value
+        && typeof value === 'object'
+        && typeof (value as { toMillis?: unknown }).toMillis === 'function'
+        && typeof (value as { toDate?: unknown }).toDate === 'function'
+    ) {
+        return value;
+    }
     if (Array.isArray(value)) return value.map(removeUndefined);
     if (value && typeof value === 'object') {
         return Object.fromEntries(
@@ -20,6 +40,18 @@ function removeUndefined(value: unknown): unknown {
         );
     }
     return value;
+}
+
+function getImageBatchRetentionFields(status?: string) {
+    if (!status || !IMAGE_BATCH_TERMINAL_JOB_STATUS_VALUES.has(status)) {
+        return {};
+    }
+
+    const now = Date.now();
+    return {
+        expiresAt: Timestamp.fromMillis(now + IMAGE_BATCH_JOB_RETENTION_DAYS * DAY_MS),
+        itemsExpiresAt: Timestamp.fromMillis(now + IMAGE_BATCH_ITEMS_RETENTION_DAYS * DAY_MS),
+    };
 }
 
 export async function getImageBatchProcessingJobByIdAdmin(
@@ -40,7 +72,10 @@ export async function updateImageBatchProcessingJobAdmin(
         throw new Error("Invalid project scope for image batch job update.");
     }
 
-    const processedData: Record<string, unknown> = { ...data };
+    const processedData: Record<string, unknown> = {
+        ...data,
+        ...getImageBatchRetentionFields(data.status),
+    };
     const specialFields: Record<string, unknown> = {};
     let latestStatusEntry: unknown;
 

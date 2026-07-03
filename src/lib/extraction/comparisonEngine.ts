@@ -825,15 +825,6 @@ export function runComparisonEngine(input: ComparisonEngineInput): ComparisonEng
     const extractedCategories = normalizeExtractedCategories(extracted.categories || []);
     const normalizedExtractedItems = normalizeExtractedItems(extracted.items || []);
 
-    console.log('[ComparisonEngine] Starting comparison', {
-        mode,
-        extractedCategories: extractedCategories.length,
-        extractedItems: normalizedExtractedItems.length,
-        existingCategories: storeProject.categories.length,
-        existingItems: storeProject.items.length,
-        hasMasterProject: !!masterProject,
-    });
-
     if (mode === 'OUTLET_LINKED' && !masterProject) {
         throw new Error('OUTLET_LINKED comparison requires master project data');
     }
@@ -995,16 +986,6 @@ export function runComparisonEngine(input: ComparisonEngineInput): ComparisonEng
         primaryLang,
         stableIdAliases,
     );
-
-    console.log('[ComparisonEngine] Comparison complete', {
-        newCategories: newCategories.length,
-        updatedCategories: updatedCategories.length,
-        newItems: newItems.length,
-        updatedItems: updatedItems.length,
-        overrideSuggestions: overrideSuggestions.length,
-        unchangedCount,
-        warnings: warnings.length,
-    });
 
     return {
         mode,

@@ -2,10 +2,12 @@
 
 **Feature:** #4 — Multi-Outlet Brand Consistency  
 **Original Verification Date:** February 5, 2026  
-**Last Reviewed:** May 27, 2026
+**Last Reviewed:** July 1, 2026
 
 **Verified By:** Cascade AI Assistant  
-**Status:** ✅ Production Ready
+**Status:** Source-verified evidence; not current launch certification
+
+> **Launch Boundary:** This verification file records source and historical QA evidence, not current production-launch approval. Current release approval requires the active [production-readiness audit](../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../production-readiness/external-certification-runbook.md) evidence, `npm run verify:multi-location-boundary`, desktop/mobile Locations browser QA, linked outlet save QA, Razorpay sandbox evidence where billing is involved, Firebase deploy evidence where rules/functions change, and target-environment smoke.
 
 > **Note (Feb 13, 2026):** This verification was done on Feb 5. Since then, the following were implemented: OutletPolicy (15 flags), OutletPolicyEditor UI, `applyOutletPolicy()`, default roles (3 + custom), `updateOutletPolicy()` DAL, and complete permission resolution via sessionProvider. See [multi-chain-permissions/](../multi-chain-permissions/) and [roles-permissions/](../roles-permissions/) for full details.
 >
@@ -32,6 +34,14 @@
 > **Note (May 27, 2026 — access-based store switching):** Desktop header switching, the mobile More Branch dropdown, and desktop/mobile billing store pickers now use active stores already mapped to the signed-in user. `canSwitchStores` still gates the control, but HQ/master context is no longer required just to move between mapped stores. `/api/auth/switch-store` now validates existing mapped access instead of writing user access during switch.
 >
 > **Note (May 27, 2026 — outlet policy hardening):** Mobile and desktop policy controls now share owner-facing rule categories. The mobile outlet rules sheet shows allowed/blocked state, protects unsaved edits, and saves only changed flags. `processMenuImagesJob` now checks linked outlet `canUseMenuExtraction` before provider processing, matching the existing linked outlet save and description/image API guards.
+>
+> **Note (June 27, 2026 — diagnostic hardening):** Master update awareness, linked-outlet resolution, initial/switch snapshots, project/brand propagation, and mobile linked-outlet resolution now use bounded multi-outlet diagnostics. `npm run verify:public-business-truth` guards the helper, awareness hook, resolver, DAL, propagation helpers, and mobile linked-outlet catch against raw diagnostics.
+>
+> **Note (June 28, 2026 — outlet route diagnostics):** Outlet create/deactivate billing-provider, revert, deactivation billing-reduction, and top-level route failures now use bounded multi-outlet diagnostics. `npm run verify:menulist-api-tenant-safety` guards the routes against direct raw `secureError()` failure logging.
+>
+> **Note (July 1, 2026 — multi-location source gate):** Multi-location boundary source gate: `npm run verify:multi-location-boundary` locks server-owned outlet lifecycle routes, linked outlet save acknowledgement, desktop/mobile bounded outlet action parsing, MobileShell Locations routing, and this docs/audit parity. This is source-only and does not replace browser, Razorpay sandbox, Firebase deploy, or live Firestore certification.
+>
+> **Note (July 1, 2026 — desktop rename failure path):** The source gate found that desktop outlet rename parsed only successful acknowledgements. `OutletRenameModal` now reads the bounded response body before the non-OK branch, records the safe `currentSlug` field for same-slug rejection diagnostics, and keeps fixed owner copy instead of echoing server text. The same gate now checks `client-stores` and `screen-data` invalidation independent of quote style.
 
 ## May 19, 2026 Final Review + Production Audit
 
@@ -64,6 +74,7 @@
 | Razorpay-backed create | ✅ Real `sub_...` subscriptions still update provider quantity first when active store count exceeds paid quantity; provider failure returns "Billing needs attention before adding another location" instead of generic outlet failure. |
 | UPI quantity recovery | ✅ Production QA on the demo account confirmed Razorpay rejects quantity update for active UPI subscriptions. `/api/outlets/create` now returns `OUTLET_LOCATION_PAYMENT_REQUIRED`; desktop/mobile Locations route owners to Billing, and Billing creates a replacement same-plan subscription with the next paid-location quantity before outlet creation is retried. |
 | Deactivation/reconciliation | ✅ Outlet deactivation and subscription reconciliation skip manual/offline provider IDs. Razorpay-backed deactivation reduces provider/internal quantity; manual prepaid capacity is retained until expiry. |
+| Replacement cap | ✅ `POST /api/outlets/create` enforces the tenant max-outlet cap using active non-master outlets only, so inactive historical outlets do not consume replacement capacity. |
 | Mobile/desktop payment display | ✅ Add-outlet proration cards are hidden for manual/offline subscriptions, manual amount displays as prepaid total, and add buttons are disabled when prepaid capacity is exhausted. |
 
 ## May 20, 2026 Reseller Payment QA
@@ -431,9 +442,14 @@ Full multi-outlet store onboarding pipeline implemented with billing-first orche
 
 | Route                          | Purpose                    | Auth                          | Rate Limited     | Feature Flag               |
 | ------------------------------ | -------------------------- | ----------------------------- | ---------------- | -------------------------- |
-| `POST /api/outlets/create`     | Create outlet with billing | withAuth + verifyTenantAccess | 5/hr per tenant  | `ENABLE_OUTLET_CREATION`   |
-| `POST /api/outlets/deactivate` | Deactivate outlet          | withAuth + verifyTenantAccess | 10/hr per tenant | `ENABLE_OUTLET_DEACTIVATE` |
-| `POST /api/auth/switch-store`  | Switch store context       | withAuth                      | No               | `ENABLE_MULTI_OUTLET`      |
+| `POST /api/outlets/create`     | Create outlet with billing | withAuth + verifyTenantAccess | 5/hr per tenant; HMAC-hashed limiter key; 8KB body cap | `ENABLE_OUTLET_CREATION`   |
+| `POST /api/outlets/deactivate` | Deactivate outlet          | withAuth + verifyTenantAccess | 10/hr per tenant; HMAC-hashed limiter key; 8KB body cap | `ENABLE_OUTLET_DEACTIVATE` |
+| `POST /api/outlets/rename`     | Rename outlet              | withAuth + verifyTenantAccess | 10/hr per tenant; HMAC-hashed limiter key; 8KB body cap | `ENABLE_MULTI_OUTLET`      |
+| `POST /api/outlets/policy`     | Save outlet policy         | withAuth + verifyTenantAccess | 30/hr per tenant; HMAC-hashed limiter key; 8KB body cap | `ENABLE_MULTI_OUTLET`      |
+| `POST /api/projects/outlet-save` | Save linked outlet project overrides | withAuth + verifyTenantAccess | 120/min per user/project; HMAC-hashed limiter key; 2MB body cap | `ENABLE_MULTI_OUTLET` |
+| `POST /api/auth/switch-store`  | Switch store context       | withAuth + verifyTenantAccess | 60/min per user; 1KB body cap | `ENABLE_MULTI_OUTLET`      |
+
+`POST /api/projects/outlet-save`, `POST /api/outlets/policy`, and `POST /api/outlets/rename` use bounded multi-outlet diagnostics on validation and unexpected route failures. `npm run verify:public-business-truth` guards the route failure codes and blocks the old raw `secureError()` catch paths.
 
 ### 12.3 UI Components Implemented
 
@@ -500,7 +516,7 @@ Full multi-outlet store onboarding pipeline implemented with billing-first orche
 
 1. ~~**Billing removal timing**~~ — **RESOLVED:** Implemented immediate removal (`ENABLE_BILLING_REMOVAL_IMMEDIATE: true`). Razorpay prorates refunds automatically.
 2. ~~**Store switching session persistence**~~ — **RESOLVED:** `activeStoreContext` now persisted to `localStorage` in `sessionProvider.tsx`.
-3. ~~**Outlet limit per tenant**~~ — **RESOLVED:** `MAX_OUTLETS_PER_TENANT: 30` added as feature flag. Enforced in `outlets/create` route.
+3. ~~**Outlet limit per tenant**~~ — **RESOLVED:** `MAX_OUTLETS_PER_TENANT: 30` added as feature flag. Enforced in `outlets/create` route against active non-master outlets only.
 4. **Outlet permissions UI** — `OutletPolicy` is stored on master store but has no visual editor in Chain Control Panel yet. Future work.
 
 ---

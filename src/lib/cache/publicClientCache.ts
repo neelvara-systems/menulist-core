@@ -1,9 +1,43 @@
 import { touchDigitalScreenContentVersion } from "@lib/screen/screenInvalidation";
 import { invalidateOwnerBusinessAssistantBrowserCache } from "@lib/ownerBusinessAssistant/cacheInvalidation";
+import { secureError } from "@lib/security/secureLogger";
 
 const PUBLIC_CACHE_REVALIDATION_TIMEOUT_MS = 4000;
+const PUBLIC_CACHE_CONTEXT_MAX_LENGTH = 64;
 
 const pendingRevalidations = new Map<string, Promise<void>>();
+
+const sanitizePublicCacheContext = (context: string): string => {
+    const value = String(context || 'publicClientCache').trim();
+    if (!value) {
+        return 'publicClientCache';
+    }
+
+    const bounded = value.slice(0, PUBLIC_CACHE_CONTEXT_MAX_LENGTH);
+    return /^[a-zA-Z0-9:_-]+$/.test(bounded) ? bounded : 'publicClientCache';
+};
+
+const logPublicClientCacheFailure = (
+    context: string,
+    storeId: string,
+    failureType: 'bad_status' | 'request_failed',
+    metadata: Record<string, unknown> = {},
+): void => {
+    if (process.env.NODE_ENV === 'production') {
+        return;
+    }
+
+    secureError(
+        '[public-cache] Failed to revalidate public client cache',
+        new Error(`public_cache_revalidation_${failureType}`),
+        {
+            context: sanitizePublicCacheContext(context),
+            storeIdPresent: Boolean(storeId),
+            storeIdLength: storeId.length,
+            ...metadata,
+        },
+    );
+};
 
 export const getStoreIdFromProjectId = (
     projectId?: string | number | null,
@@ -47,22 +81,21 @@ export const revalidatePublicClientCache = async (
                 },
                 credentials: 'same-origin',
                 cache: 'no-store',
+                redirect: 'manual',
                 signal: controller.signal,
                 body: JSON.stringify({ storeId: normalizedStoreId }),
             });
 
             if (!response.ok && process.env.NODE_ENV !== 'production') {
-                console.warn(
-                    `[public-cache] ${context} failed to revalidate public client cache`,
-                    response.status,
-                );
+                logPublicClientCacheFailure(context, normalizedStoreId, 'bad_status', {
+                    responseStatus: response.status,
+                });
             }
         } catch (error) {
             if (process.env.NODE_ENV !== 'production') {
-                console.warn(
-                    `[public-cache] ${context} failed to revalidate public client cache`,
-                    error,
-                );
+                logPublicClientCacheFailure(context, normalizedStoreId, 'request_failed', {
+                    errorName: error instanceof Error ? error.name : typeof error,
+                });
             }
         } finally {
             window.clearTimeout(timeout);

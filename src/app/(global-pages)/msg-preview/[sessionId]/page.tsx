@@ -11,26 +11,28 @@
 
 import { useParams, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
-
-interface PreviewData {
-  sessionId: string;
-  state: string;
-  businessName: string;
-  businessType: string;
-  businessCategory: string;
-  phone: string;
-  address: string;
-  menuData: any;
-  qualityScore: number | null;
-  publishedResult: any | null;
-  correctionCount: number;
-  maxCorrections: number;
-}
+import { secureError } from "@lib/security/secureLogger";
+import {
+  getMessagingPreviewClientStatus,
+  isMessagingPreviewMaxReachedError,
+  readMessagingPreviewApproveResponse,
+  readMessagingPreviewDataResponse,
+  readMessagingPreviewFixResponse,
+  type MessagingPreviewData,
+  type MessagingPreviewPublishedResult,
+} from "@lib/messaging-onboarding/previewClientResponse";
 
 interface FixIssue {
   value: string;
   label: string;
 }
+
+const MSG_PREVIEW_PUBLISH_FAILED = "Publishing failed. Try again.";
+const MSG_PREVIEW_FIX_FAILED = "Failed to submit fix request.";
+const MSG_PREVIEW_MAX_CORRECTIONS_REACHED = "Maximum corrections reached. Send new menu photos on WhatsApp.";
+const MSG_PREVIEW_COPY_FAILED = "Failed to copy link.";
+const MSG_PREVIEW_WHATSAPP_OPEN_FAILED = "Failed to open WhatsApp.";
+const MSG_PREVIEW_ERROR_FIELD_LIMIT = 80;
 
 const FIX_ISSUES: FixIssue[] = [
   { value: "price_incorrect", label: "Prices are wrong" },
@@ -40,21 +42,119 @@ const FIX_ISSUES: FixIssue[] = [
   { value: "other", label: "Other issue" },
 ];
 
+function getBoundedMsgPreviewStringContext(label: string, value: unknown) {
+  if (typeof value !== "string") {
+    return {
+      [`${label}Present`]: false,
+      [`${label}Length`]: 0,
+    };
+  }
+
+  return {
+    [`${label}Present`]: value.length > 0,
+    [`${label}Length`]: value.length,
+  };
+}
+
+function getMsgPreviewErrorContext(error: unknown) {
+  if (!error || typeof error !== "object") return {};
+
+  const record = error as Record<string, unknown>;
+
+  return {
+    sourceErrorName: typeof record.name === "string"
+      ? record.name.slice(0, MSG_PREVIEW_ERROR_FIELD_LIMIT)
+      : undefined,
+    sourceErrorCode: typeof record.code === "string"
+      ? record.code.slice(0, MSG_PREVIEW_ERROR_FIELD_LIMIT)
+      : undefined,
+  };
+}
+
+function logMsgPreviewClientFailure(
+  failureCode: string,
+  error: unknown,
+  context: Record<string, unknown> = {},
+) {
+  secureError("[msg-preview] Client handoff failed", new Error(failureCode), {
+    failureCode,
+    ...context,
+    ...getMsgPreviewErrorContext(error),
+  });
+}
+
+function hasMsgPreviewClipboardWrite(): boolean {
+  return typeof navigator !== "undefined" && typeof navigator.clipboard?.writeText === "function";
+}
+
+function hasMsgPreviewCopyFallback(): boolean {
+  return typeof document !== "undefined"
+    && Boolean(document.body)
+    && typeof document.createElement === "function"
+    && typeof document.execCommand === "function";
+}
+
+async function copyMsgPreviewPublishedLinkToClipboard(publicUrl: string): Promise<void> {
+  if (hasMsgPreviewClipboardWrite()) {
+    try {
+      await navigator.clipboard.writeText(publicUrl);
+      return;
+    } catch {
+      // Fall through to the acknowledged textarea fallback for restricted browsers.
+    }
+  }
+
+  if (!hasMsgPreviewCopyFallback()) {
+    throw new Error("msg_preview_success_link_copy_unavailable");
+  }
+
+  const textarea = document.createElement("textarea");
+  textarea.value = publicUrl;
+  textarea.readOnly = true;
+  textarea.setAttribute("aria-hidden", "true");
+  textarea.style.position = "fixed";
+  textarea.style.left = "-9999px";
+  textarea.style.top = "0";
+
+  document.body.appendChild(textarea);
+  textarea.select();
+  textarea.setSelectionRange(0, textarea.value.length);
+
+  try {
+    const copied = document.execCommand("copy");
+    if (!copied) {
+      throw new Error("msg_preview_success_link_copy_fallback_failed");
+    }
+  } finally {
+    textarea.remove();
+  }
+}
+
+function getPreviewLoadErrorMessage(error: unknown): string {
+  const status = getMessagingPreviewClientStatus(error);
+  if (status === 410) return "This preview has expired.";
+  if (status === 403) return "Invalid preview link.";
+  if (status === 404) return "Preview not found.";
+  if (status && status >= 400) return "Preview unavailable.";
+  return "Failed to load preview.";
+}
+
 export default function MsgPreviewPage() {
   const params = useParams();
   const searchParams = useSearchParams();
   const sessionId = params?.sessionId as string;
   const token = searchParams?.get("token") || "";
 
-  const [preview, setPreview] = useState<PreviewData | null>(null);
+  const [preview, setPreview] = useState<MessagingPreviewData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   // Approve state
   const [approving, setApproving] = useState(false);
   const [approved, setApproved] = useState(false);
-  const [publishResult, setPublishResult] = useState<any>(null);
+  const [publishResult, setPublishResult] = useState<MessagingPreviewPublishedResult | null>(null);
   const [copySuccess, setCopySuccess] = useState(false);
+  const [shareError, setShareError] = useState<string | null>(null);
 
   // Fix request state
   const [showFixForm, setShowFixForm] = useState(false);
@@ -87,16 +187,7 @@ export default function MsgPreviewPage() {
         `/api/msg-preview/${sessionId}?token=${encodeURIComponent(token)}`,
       );
 
-      if (!res.ok) {
-        if (res.status === 410) setError("This preview has expired.");
-        else if (res.status === 403) setError("Invalid preview link.");
-        else if (res.status === 404) setError("Preview not found.");
-        else setError("Preview unavailable.");
-        setLoading(false);
-        return;
-      }
-
-      const data: PreviewData = await res.json();
+      const data = await readMessagingPreviewDataResponse(res);
       setPreview(data);
       setBusinessName(data.businessName);
       setBusinessType(data.businessType || "Other");
@@ -106,8 +197,8 @@ export default function MsgPreviewPage() {
         setApproved(true);
         setPublishResult(data.publishedResult);
       }
-    } catch {
-      setError("Failed to load preview.");
+    } catch (err) {
+      setError(getPreviewLoadErrorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -130,14 +221,7 @@ export default function MsgPreviewPage() {
         }),
       });
 
-      if (!res.ok) {
-        const err = await res.json();
-        setError(err.error || "Publishing failed. Try again.");
-        setApproving(false);
-        return;
-      }
-
-      const result = await res.json();
+      const result = await readMessagingPreviewApproveResponse(res);
       setApproved(true);
       setPublishResult(result.publishedResult);
     } catch {
@@ -162,21 +246,13 @@ export default function MsgPreviewPage() {
         }),
       });
 
-      if (!res.ok) {
-        const err = await res.json();
-        if (err.maxReached) {
-          setError("Maximum corrections reached. Send new menu photos on WhatsApp.");
-        } else {
-          setError(err.error || "Failed to submit fix request.");
-        }
-        setSubmittingFix(false);
-        return;
-      }
-
+      await readMessagingPreviewFixResponse(res);
       setFixSubmitted(true);
       setShowFixForm(false);
-    } catch {
-      setError("Failed to submit fix request.");
+    } catch (err) {
+      setError(isMessagingPreviewMaxReachedError(err)
+        ? MSG_PREVIEW_MAX_CORRECTIONS_REACHED
+        : MSG_PREVIEW_FIX_FAILED);
     } finally {
       setSubmittingFix(false);
     }
@@ -188,6 +264,48 @@ export default function MsgPreviewPage() {
         ? prev.filter((v) => v !== value)
         : [...prev, value],
     );
+  }
+
+  async function handleCopyPublishedLink() {
+    if (!publishResult?.publicUrl) return;
+
+    try {
+      await copyMsgPreviewPublishedLinkToClipboard(publishResult.publicUrl);
+      setShareError(null);
+      setCopySuccess(true);
+      setTimeout(() => setCopySuccess(false), 2000);
+    } catch (err) {
+      logMsgPreviewClientFailure("msg_preview_success_link_copy_failed", err, {
+        ...getBoundedMsgPreviewStringContext("sessionId", sessionId),
+        ...getBoundedMsgPreviewStringContext("publicUrl", publishResult.publicUrl),
+        hasClipboardWrite: hasMsgPreviewClipboardWrite(),
+        hasCopyFallback: hasMsgPreviewCopyFallback(),
+      });
+      setShareError(MSG_PREVIEW_COPY_FAILED);
+    }
+  }
+
+  function handleSharePublishedLinkOnWhatsApp() {
+    if (!publishResult?.publicUrl) return;
+
+    const message = `Here is our latest menu:\n${publishResult.publicUrl}\n(Always updated)`;
+    const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
+
+    try {
+      const openedWindow = window.open(whatsappUrl, "_blank", "noopener,noreferrer");
+      if (!openedWindow) {
+        throw new Error("msg_preview_success_whatsapp_open_blocked");
+      }
+      setShareError(null);
+    } catch (err) {
+      logMsgPreviewClientFailure("msg_preview_success_whatsapp_open_failed", err, {
+        ...getBoundedMsgPreviewStringContext("sessionId", sessionId),
+        ...getBoundedMsgPreviewStringContext("publicUrl", publishResult.publicUrl),
+        messageLength: message.length,
+        whatsappUrlLength: whatsappUrl.length,
+      });
+      setShareError(MSG_PREVIEW_WHATSAPP_OPEN_FAILED);
+    }
   }
 
   // ─── RENDER ───────────────────────────────────────────────
@@ -236,11 +354,7 @@ export default function MsgPreviewPage() {
           </a>
           <div style={{ display: 'flex', gap: 8, marginTop: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
             <button
-              onClick={() => {
-                navigator.clipboard.writeText(publishResult.publicUrl);
-                setCopySuccess(true);
-                setTimeout(() => setCopySuccess(false), 2000);
-              }}
+              onClick={() => void handleCopyPublishedLink()}
               style={{
                 ...styles.approveBtn,
                 padding: '10px 20px',
@@ -250,12 +364,7 @@ export default function MsgPreviewPage() {
               {copySuccess ? '✓ Copied' : 'Copy Link'}
             </button>
             <button
-              onClick={() => {
-                const msg = encodeURIComponent(
-                  `Here is our latest menu:\n${publishResult.publicUrl}\n(Always updated)`
-                );
-                window.open(`https://wa.me/?text=${msg}`, '_blank');
-              }}
+              onClick={handleSharePublishedLinkOnWhatsApp}
               style={{
                 ...styles.approveBtn,
                 padding: '10px 20px',
@@ -267,6 +376,9 @@ export default function MsgPreviewPage() {
               Share on WhatsApp
             </button>
           </div>
+          {shareError && (
+            <p style={styles.shareErrorText}>{shareError}</p>
+          )}
           <div style={{ marginTop: 20, textAlign: 'left', padding: '16px', background: '#f9fafb', borderRadius: 8 }}>
             <p style={{ fontSize: 13, fontWeight: 600, color: '#333', margin: '0 0 6px 0' }}>This link is ready for WhatsApp, Instagram, and staff.</p>
             <p style={{ margin: 0, fontSize: 13, color: '#555', lineHeight: 1.6 }}>Customers will see the current menu from the same link.</p>
@@ -847,6 +959,12 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: 14,
     textDecoration: "none",
     wordBreak: "break-all",
+  },
+  shareErrorText: {
+    fontSize: 13,
+    color: "#b91c1c",
+    textAlign: "center",
+    margin: "8px 0 0",
   },
   divider: {
     height: 1,

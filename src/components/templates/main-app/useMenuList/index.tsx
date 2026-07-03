@@ -77,10 +77,64 @@ import CommunicationKit from './CommunicationKit';
 import PresenceMonitor from './PresenceMonitor';
 import ShareLinkCard from '../ShareLinkCard';
 import { PageState, ProjectLink, UseMenuListData } from './types';
+import { getBoundedUseMenuListStringContext, logUseMenuListFailure } from './useMenuListDiagnostics';
 
 const { Title, Text, Paragraph } = Typography;
 
 type UseMenuListView = 'overview' | 'print-assets';
+
+const USE_MENULIST_COPY_UNAVAILABLE = 'use_menulist_copy_unavailable';
+const USE_MENULIST_COPY_FALLBACK_FAILED = 'use_menulist_copy_fallback_failed';
+
+const hasUseMenuListClipboardWrite = (): boolean => (
+    typeof navigator !== 'undefined'
+    && Boolean(navigator.clipboard)
+    && typeof navigator.clipboard.writeText === 'function'
+);
+
+const hasUseMenuListCopyFallback = (): boolean => (
+    typeof document !== 'undefined'
+    && typeof document.createElement === 'function'
+    && typeof document.execCommand === 'function'
+    && Boolean(document.body)
+);
+
+const copyUseMenuListText = async (value: string): Promise<void> => {
+    let clipboardWriteError: unknown;
+
+    if (hasUseMenuListClipboardWrite()) {
+        try {
+            await navigator.clipboard.writeText(value);
+            return;
+        } catch (error) {
+            clipboardWriteError = error;
+            // Continue to the acknowledged textarea fallback before showing failure copy.
+        }
+    }
+
+    if (!hasUseMenuListCopyFallback()) {
+        throw clipboardWriteError || new Error(USE_MENULIST_COPY_UNAVAILABLE);
+    }
+
+    const textarea = document.createElement('textarea');
+    textarea.value = value;
+    textarea.setAttribute('readonly', '');
+    textarea.style.position = 'fixed';
+    textarea.style.left = '-9999px';
+    textarea.style.top = '0';
+    document.body.appendChild(textarea);
+    textarea.focus();
+    textarea.select();
+
+    try {
+        const copied = document.execCommand('copy');
+        if (!copied) {
+            throw new Error(USE_MENULIST_COPY_FALLBACK_FAILED);
+        }
+    } finally {
+        document.body.removeChild(textarea);
+    }
+};
 
 interface UseMenuListProps {
     view?: UseMenuListView;
@@ -94,12 +148,14 @@ export default function UseMenuList({ view = 'overview' }: UseMenuListProps) {
     // T4-N-03: QR card labels + descriptions routed through i18n.
     const t = useTranslations('UseMenuList');
     const projectIdQuery = searchParams.get('projectId') || '';
+    const focusQuery = searchParams.get('focus') || '';
     const [pageState, setPageState] = useState<PageState>('loading');
     const [data, setData] = useState<UseMenuListData | null>(null);
     const [generatingKit, setGeneratingKit] = useState(false);
     const [generatingAsset, setGeneratingAsset] = useState<string | null>(null);
     const [previewingAsset, setPreviewingAsset] = useState<string | null>(null);
     const [isProjectSelectorOpen, setIsProjectSelectorOpen] = useState(false);
+    const qrSectionRef = useRef<HTMLDivElement | null>(null);
     const recordedStarterSignalsRef = useRef(new Set<StarterActivationSignal>());
 
     const labels = useMemo(
@@ -133,15 +189,36 @@ export default function UseMenuList({ view = 'overview' }: UseMenuListProps) {
         recordedStarterSignalsRef.current = new Set(existingSignals);
     }, [storeDetails?.storeId, storeDetails?.starterActivationSignals?.lastSignalAt]);
 
+    useEffect(() => {
+        if (focusQuery !== 'qr' || pageState !== 'ready') return;
+        window.setTimeout(() => {
+            qrSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 100);
+    }, [focusQuery, pageState]);
+
     const recordStarterSignal = useCallback((signal?: StarterActivationSignal) => {
         if (!signal || !storeDetails?.storeId || !shouldRecordStarterActivationSignal(storeDetails)) return;
         if (recordedStarterSignalsRef.current.has(signal)) return;
 
         recordedStarterSignalsRef.current.add(signal);
-        recordStarterActivationSignal(storeDetails.storeId, signal).catch(() => {
+        recordStarterActivationSignal(storeDetails.storeId, signal).catch((error) => {
+            logUseMenuListFailure('use_menulist_starter_signal_failed', error, {
+                signal,
+                ...getBoundedUseMenuListStringContext('storeId', storeDetails.storeId),
+            });
             recordedStarterSignalsRef.current.delete(signal);
         });
     }, [storeDetails]);
+
+    const getOutputDiagnosticContext = () => ({
+        hasData: Boolean(data),
+        allProjectCount: data?.allProjects.length ?? 0,
+        hasPublishedMenu: data?.hasPublishedMenu,
+        hasScreen: data?.hasScreen,
+        hasFeedbackEnabled: data?.hasFeedbackEnabled,
+        ...getBoundedUseMenuListStringContext('storeId', storeDetails?.storeId),
+        ...getBoundedUseMenuListStringContext('projectId', data?.projectId),
+    });
 
     async function loadData() {
         if (!storeDetails) {
@@ -191,8 +268,17 @@ export default function UseMenuList({ view = 'overview' }: UseMenuListProps) {
                     screenToken = screenState.screenToken;
                     screenLastSeenAt = screenState.screenLastSeenAt || null;
                 }
-            } catch {
-                // Screen not initialized — OK
+            } catch (error) {
+                logUseMenuListFailure('use_menulist_screen_links_load_failed', error, {
+                    hasCustomDomain: Boolean(customDomain),
+                    ...getBoundedUseMenuListStringContext('storeId', storeDetails.storeId),
+                    ...getBoundedUseMenuListStringContext('tenantId', (storeDetails as any).tenantId),
+                    ...getBoundedUseMenuListStringContext('projectId', defaultProject.projectId),
+                    ...getBoundedUseMenuListStringContext('subdomain', subdomain),
+                    ...getBoundedUseMenuListStringContext('obpLink', obpLink),
+                    ...getBoundedUseMenuListStringContext('menuLink', menuLink),
+                });
+                // Screen not initialized or temporarily unavailable — keep non-screen outputs usable.
             }
 
             // Build feedback link
@@ -254,7 +340,15 @@ export default function UseMenuList({ view = 'overview' }: UseMenuListProps) {
             setData(outputData);
             setPageState('ready');
         } catch (error) {
-            console.error('[UseMenuList] Error loading data:', error);
+            logUseMenuListFailure('use_menulist_load_failed', error, {
+                hasStoreDetails: Boolean(storeDetails),
+                hasTenantDetails: Boolean(tenantDetails),
+                isMasterUser: Boolean(isMasterUser),
+                hasCustomDomain: Boolean(storeDetails?.customDomain),
+                ...getBoundedUseMenuListStringContext('storeId', storeDetails?.storeId),
+                ...getBoundedUseMenuListStringContext('projectIdQuery', projectIdQuery),
+                ...getBoundedUseMenuListStringContext('subdomain', storeDetails?.subdomain),
+            });
             setPageState('no_menu');
         }
     }
@@ -267,16 +361,36 @@ export default function UseMenuList({ view = 'overview' }: UseMenuListProps) {
 
     const handleCopy = async (text: string, label: string, starterSignal?: StarterActivationSignal) => {
         try {
-            await navigator.clipboard.writeText(text);
+            await copyUseMenuListText(text);
             message.success(`${label} copied`);
             recordStarterSignal(starterSignal);
-        } catch {
+        } catch (error) {
+            logUseMenuListFailure('use_menulist_copy_failed', error, {
+                ...getOutputDiagnosticContext(),
+                signal: starterSignal,
+                ...getBoundedUseMenuListStringContext('copiedText', text),
+                ...getBoundedUseMenuListStringContext('label', label),
+                hasClipboardWrite: hasUseMenuListClipboardWrite(),
+                hasCopyFallback: hasUseMenuListCopyFallback(),
+            });
             message.error('Failed to copy');
         }
     };
 
-    const handleOpen = (url: string) => {
-        window.open(url, '_blank');
+    const handleOpen = (url: string, label: string) => {
+        try {
+            const opened = window.open(url, '_blank', 'noopener,noreferrer');
+            if (!opened) {
+                throw new Error('use_menulist_open_blocked');
+            }
+        } catch (error) {
+            logUseMenuListFailure('use_menulist_open_failed', error, {
+                ...getOutputDiagnosticContext(),
+                ...getBoundedUseMenuListStringContext('url', url),
+                ...getBoundedUseMenuListStringContext('label', label),
+            });
+            message.error('Failed to open link');
+        }
     };
 
     const handleOpenMenuCardExport = () => {
@@ -313,7 +427,16 @@ export default function UseMenuList({ view = 'overview' }: UseMenuListProps) {
             downloadBlob(result.zipBlob, `${safeName}_MenuKit.zip`);
             message.success('Menu Kit downloaded');
             recordStarterSignal(STARTER_ACTIVATION_SIGNALS.MENU_KIT_DOWNLOADED);
-        } catch {
+        } catch (error) {
+            logUseMenuListFailure('use_menulist_menu_kit_download_failed', error, {
+                ...getOutputDiagnosticContext(),
+                hasInput: Boolean(input),
+                hasLogo: Boolean(input.logoUrl),
+                ...getBoundedUseMenuListStringContext('menuUrl', input.menuUrl),
+                ...getBoundedUseMenuListStringContext('storeName', input.storeName),
+                ...getBoundedUseMenuListStringContext('businessType', input.businessType),
+                ...getBoundedUseMenuListStringContext('businessCategory', input.businessCategory),
+            });
             message.error('Failed to generate Menu Kit');
         } finally {
             setGeneratingKit(false);
@@ -328,7 +451,12 @@ export default function UseMenuList({ view = 'overview' }: UseMenuListProps) {
             const asset = await generateMenuKitAsset(input, assetKey);
             downloadBlob(asset.blob, asset.filename);
             message.success(`${assetLabel} downloaded`);
-        } catch {
+        } catch (error) {
+            logUseMenuListFailure('use_menulist_menu_kit_asset_download_failed', error, {
+                ...getOutputDiagnosticContext(),
+                assetKey,
+                ...getBoundedUseMenuListStringContext('assetLabel', assetLabel),
+            });
             message.error(`Failed to generate ${assetLabel}`);
         } finally {
             setGeneratingAsset(null);
@@ -353,7 +481,12 @@ export default function UseMenuList({ view = 'overview' }: UseMenuListProps) {
             }
 
             window.setTimeout(() => URL.revokeObjectURL(previewUrl), 60000);
-        } catch {
+        } catch (error) {
+            logUseMenuListFailure('use_menulist_menu_kit_asset_preview_failed', error, {
+                ...getOutputDiagnosticContext(),
+                assetKey,
+                ...getBoundedUseMenuListStringContext('assetLabel', assetLabel),
+            });
             message.error(`Failed to preview ${assetLabel}`);
         } finally {
             setPreviewingAsset(null);
@@ -386,7 +519,17 @@ export default function UseMenuList({ view = 'overview' }: UseMenuListProps) {
             downloadQrCode(dataUrl, buildQrCodeFilename(filenameLabel));
             message.success(`${label} downloaded`);
             recordStarterSignal(starterSignal);
-        } catch {
+        } catch (error) {
+            logUseMenuListFailure('use_menulist_qr_download_failed', error, {
+                ...getOutputDiagnosticContext(),
+                signal: starterSignal,
+                hasCardCopy: Boolean(cardCopy),
+                ...getBoundedUseMenuListStringContext('url', url),
+                ...getBoundedUseMenuListStringContext('label', label),
+                ...getBoundedUseMenuListStringContext('filenameLabel', filenameLabel),
+                ...getBoundedUseMenuListStringContext('cardTitle', cardCopy?.title),
+                ...getBoundedUseMenuListStringContext('cardSubtitle', cardCopy?.subtitle),
+            });
             message.error(`Failed to generate ${label}`);
         } finally {
             setGeneratingAsset(null);
@@ -441,7 +584,14 @@ export default function UseMenuList({ view = 'overview' }: UseMenuListProps) {
             });
             downloadPdf(pdfResult);
             message.success('Menu PDF downloaded');
-        } catch {
+        } catch (error) {
+            logUseMenuListFailure('use_menulist_pdf_download_failed', error, {
+                ...getOutputDiagnosticContext(),
+                hasStoreLogo: Boolean(data.storeLogo || (storeDetails as any)?.logo),
+                ...getBoundedUseMenuListStringContext('currencyCode', (storeDetails as any)?.currencyCode || (storeDetails as any)?.currency),
+                ...getBoundedUseMenuListStringContext('businessType', (storeDetails as any)?.businessType || data.businessType),
+                ...getBoundedUseMenuListStringContext('businessCategory', (storeDetails as any)?.businessCategory),
+            });
             message.error('Failed to generate PDF');
         } finally {
             setGeneratingAsset(null);
@@ -706,7 +856,13 @@ export default function UseMenuList({ view = 'overview' }: UseMenuListProps) {
                                         }, data.obpLink);
                                         downloadQrCode(qrDataUrl, `${data.storeName.replace(/\s+/g, '-')}-feedback-qr`);
                                         message.success('Feedback QR downloaded');
-                                    } catch {
+                                    } catch (error) {
+                                        logUseMenuListFailure('use_menulist_feedback_qr_download_failed', error, {
+                                            ...getOutputDiagnosticContext(),
+                                            hasStoreLogo: Boolean(data.storeLogo),
+                                            ...getBoundedUseMenuListStringContext('feedbackQrLink', data.feedbackQrLink),
+                                            ...getBoundedUseMenuListStringContext('obpLink', data.obpLink),
+                                        });
                                         message.error('Failed to generate Feedback QR');
                                     } finally {
                                         setGeneratingAsset(null);
@@ -850,7 +1006,7 @@ export default function UseMenuList({ view = 'overview' }: UseMenuListProps) {
                         <Button
                             block
                             icon={<LuExternalLink size={16} />}
-                            onClick={() => handleOpen(withEntrySource(data.menuLink, 'direct'))}
+                            onClick={() => handleOpen(withEntrySource(data.menuLink, 'direct'), `${labels.offeringTitle} link`)}
                             size="large"
                             style={quickActionButtonStyle}
                         >
@@ -890,9 +1046,8 @@ export default function UseMenuList({ view = 'overview' }: UseMenuListProps) {
             {/* ─── Menu Visibility (Presence Monitor) ─────────────── */}
             {FEATURE_FLAGS.ENABLE_MENU_PRESENCE_MONITOR && storeDetails && (
                 <PresenceMonitor
-                        data={data}
-                        storeDetails={storeDetails}
-                        onCopyLink={handleCopy}
+                    data={data}
+                    storeDetails={storeDetails}
                 />
             )}
 
@@ -908,6 +1063,7 @@ export default function UseMenuList({ view = 'overview' }: UseMenuListProps) {
                         shortUrl={data.obpLink.replace(/^https?:\/\//, '')}
                         sharePrefix={labels.shareMessagePrefix}
                         copySuccessLabel={`${labels.offeringTitle} page link`}
+                        diagnosticContext={{ ...getOutputDiagnosticContext(), cardKind: 'business_profile' }}
                         onShareAction={(action) => recordStarterSignal(
                             action === 'whatsapp'
                                 ? STARTER_ACTIVATION_SIGNALS.WHATSAPP_SHARE_STARTED
@@ -935,6 +1091,7 @@ export default function UseMenuList({ view = 'overview' }: UseMenuListProps) {
                         shortUrl={shortMenuLink}
                         sharePrefix={labels.shareMessagePrefix}
                         copySuccessLabel={`Direct ${labels.offeringLower} link`}
+                        diagnosticContext={{ ...getOutputDiagnosticContext(), cardKind: 'project_menu' }}
                         onShareAction={(action) => recordStarterSignal(
                             action === 'whatsapp'
                                 ? STARTER_ACTIVATION_SIGNALS.WHATSAPP_SHARE_STARTED
@@ -951,6 +1108,7 @@ export default function UseMenuList({ view = 'overview' }: UseMenuListProps) {
                             shortUrl={data.installAppLink.replace(/^https?:\/\//, '')}
                             sharePrefix={`Install ${data.storeName} on your phone:`}
                             copySuccessLabel="Customer App install link"
+                            diagnosticContext={{ ...getOutputDiagnosticContext(), cardKind: 'customer_app_install' }}
                             onShareAction={(action) => recordStarterSignal(
                                 action === 'whatsapp'
                                     ? STARTER_ACTIVATION_SIGNALS.WHATSAPP_SHARE_STARTED
@@ -980,61 +1138,63 @@ export default function UseMenuList({ view = 'overview' }: UseMenuListProps) {
              * so a reprint is NEVER required when the owner renames or
              * deletes a project (R5 universal-alias guarantee).
              */}
-            <Title level={5} style={{ marginBottom: 12 }}>{t('qrSectionTitle')}</Title>
-            <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
-                <Col xs={24} sm={12} lg={8}>
-                    <AssetCard
-                        icon={<LuQrCode size={20} />}
-                        title={t('storeMenuQrTitle')}
-                        description={t('storeMenuQrDescription')}
-                        loading={generatingAsset === 'Store Menu QR'}
-                        onDownload={() => handleDownloadQr(
-                            // G-04: inline Layer-2 alias URL (avoids an
-                            // extra import the auto-organizer keeps
-                            // stripping). Equivalent to generateMenuUrl().
-                            withEntrySource(`${data.obpLink.replace(/\/$/, '')}/menu`, 'qr'),
-                            'Store Menu QR',
-                            `${data.storeName}-store-menu-qr`,
-                            STARTER_ACTIVATION_SIGNALS.QR_DOWNLOADED,
-                            { subtitle: labels.scanToView, title: labels.printCardTitle },
-                        )}
-                        highlight
-                        themeToken={themeToken}
-                    />
-                </Col>
-                <Col xs={24} sm={12} lg={8}>
-                    <AssetCard
-                        icon={<LuQrCode size={20} />}
-                        title={t('businessProfileQrTitle')}
-                        description={t('businessProfileQrDescription')}
-                        loading={generatingAsset === 'Business Profile QR'}
-                        onDownload={() => handleDownloadQr(
-                            withEntrySource(data.obpLink, 'qr'),
-                            'Business Profile QR',
-                            `${data.storeName}-business-profile-qr`,
-                            STARTER_ACTIVATION_SIGNALS.QR_DOWNLOADED,
-                            { subtitle: 'Scan to open our business page', title: 'BUSINESS PROFILE' },
-                        )}
-                        themeToken={themeToken}
-                    />
-                </Col>
-                <Col xs={24} sm={12} lg={8}>
-                    <AssetCard
-                        icon={<LuQrCode size={20} />}
-                        title={t('projectMenuQrTitle')}
-                        description={t('projectMenuQrDescription', { projectName: data.projectName || t('projectFallback') })}
-                        loading={generatingAsset === 'Project Menu QR'}
-                        onDownload={() => handleDownloadQr(
-                            withEntrySource(data.menuLink, 'qr'),
-                            'Project Menu QR',
-                            `${data.storeName}-${data.projectName || 'project'}-menu-qr`,
-                            STARTER_ACTIVATION_SIGNALS.QR_DOWNLOADED,
-                            { subtitle: labels.scanToView, title: labels.printCardTitle },
-                        )}
-                        themeToken={themeToken}
-                    />
-                </Col>
-            </Row>
+            <div ref={qrSectionRef}>
+                <Title level={5} style={{ marginBottom: 12 }}>{t('qrSectionTitle')}</Title>
+                <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
+                    <Col xs={24} sm={12} lg={8}>
+                        <AssetCard
+                            icon={<LuQrCode size={20} />}
+                            title={t('storeMenuQrTitle')}
+                            description={t('storeMenuQrDescription')}
+                            loading={generatingAsset === 'Store Menu QR'}
+                            onDownload={() => handleDownloadQr(
+                                // G-04: inline Layer-2 alias URL (avoids an
+                                // extra import the auto-organizer keeps
+                                // stripping). Equivalent to generateMenuUrl().
+                                withEntrySource(`${data.obpLink.replace(/\/$/, '')}/menu`, 'qr'),
+                                'Store Menu QR',
+                                `${data.storeName}-store-menu-qr`,
+                                STARTER_ACTIVATION_SIGNALS.QR_DOWNLOADED,
+                                { subtitle: labels.scanToView, title: labels.printCardTitle },
+                            )}
+                            highlight
+                            themeToken={themeToken}
+                        />
+                    </Col>
+                    <Col xs={24} sm={12} lg={8}>
+                        <AssetCard
+                            icon={<LuQrCode size={20} />}
+                            title={t('businessProfileQrTitle')}
+                            description={t('businessProfileQrDescription')}
+                            loading={generatingAsset === 'Business Profile QR'}
+                            onDownload={() => handleDownloadQr(
+                                withEntrySource(data.obpLink, 'qr'),
+                                'Business Profile QR',
+                                `${data.storeName}-business-profile-qr`,
+                                STARTER_ACTIVATION_SIGNALS.QR_DOWNLOADED,
+                                { subtitle: 'Scan to open our business page', title: 'BUSINESS PROFILE' },
+                            )}
+                            themeToken={themeToken}
+                        />
+                    </Col>
+                    <Col xs={24} sm={12} lg={8}>
+                        <AssetCard
+                            icon={<LuQrCode size={20} />}
+                            title={t('projectMenuQrTitle')}
+                            description={t('projectMenuQrDescription', { projectName: data.projectName || t('projectFallback') })}
+                            loading={generatingAsset === 'Project Menu QR'}
+                            onDownload={() => handleDownloadQr(
+                                withEntrySource(data.menuLink, 'qr'),
+                                'Project Menu QR',
+                                `${data.storeName}-${data.projectName || 'project'}-menu-qr`,
+                                STARTER_ACTIVATION_SIGNALS.QR_DOWNLOADED,
+                                { subtitle: labels.scanToView, title: labels.printCardTitle },
+                            )}
+                            themeToken={themeToken}
+                        />
+                    </Col>
+                </Row>
+            </div>
 
             {/*
              * T2-N-04 / D-07 + D-08 PUBLIC-ROUTING-DOCTRINE: outlet-scoped QRs.
@@ -1135,6 +1295,7 @@ export default function UseMenuList({ view = 'overview' }: UseMenuListProps) {
                         storeName={data.storeName}
                         businessType={data.businessType}
                         businessCategory={storeDetails?.businessCategory}
+                        diagnosticContext={getOutputDiagnosticContext()}
                         menuLink={data.menuLink}
                         address={buildStoreAddress(storeDetails)}
                         phone={storeDetails.phoneNumber || undefined}
@@ -1179,7 +1340,7 @@ export default function UseMenuList({ view = 'overview' }: UseMenuListProps) {
                                     <Button size="small" icon={<LuClipboard size={14} />} onClick={() => handleCopy(data.menuBoardLink!, 'Menu Board link')} style={{ flex: '1 1 96px' }}>
                                         Copy
                                     </Button>
-                                    <Button size="small" icon={<LuExternalLink size={14} />} onClick={() => handleOpen(data.menuBoardLink!)} style={{ flex: '1 1 96px' }}>
+                                    <Button size="small" icon={<LuExternalLink size={14} />} onClick={() => handleOpen(data.menuBoardLink!, 'Menu Board link')} style={{ flex: '1 1 96px' }}>
                                         Open
                                     </Button>
                                 </Flex>
@@ -1214,7 +1375,7 @@ export default function UseMenuList({ view = 'overview' }: UseMenuListProps) {
                                     <Button size="small" icon={<LuClipboard size={14} />} onClick={() => handleCopy(data.highlightsLink!, 'Highlights link')} style={{ flex: '1 1 96px' }}>
                                         Copy
                                     </Button>
-                                    <Button size="small" icon={<LuExternalLink size={14} />} onClick={() => handleOpen(data.highlightsLink!)} style={{ flex: '1 1 96px' }}>
+                                    <Button size="small" icon={<LuExternalLink size={14} />} onClick={() => handleOpen(data.highlightsLink!, 'Highlights link')} style={{ flex: '1 1 96px' }}>
                                         Open
                                     </Button>
                                 </Flex>
@@ -1344,7 +1505,13 @@ export default function UseMenuList({ view = 'overview' }: UseMenuListProps) {
                                     }, data.obpLink);
                                     downloadQrCode(qrDataUrl, `${data.storeName.replace(/\s+/g, '-')}-feedback-qr`);
                                     message.success('Feedback QR downloaded');
-                                } catch {
+                                } catch (error) {
+                                    logUseMenuListFailure('use_menulist_feedback_qr_download_failed', error, {
+                                        ...getOutputDiagnosticContext(),
+                                        hasStoreLogo: Boolean(data.storeLogo),
+                                        ...getBoundedUseMenuListStringContext('feedbackQrLink', data.feedbackQrLink),
+                                        ...getBoundedUseMenuListStringContext('obpLink', data.obpLink),
+                                    });
                                     message.error('Failed to generate Feedback QR');
                                 } finally {
                                     setGeneratingAsset(null);

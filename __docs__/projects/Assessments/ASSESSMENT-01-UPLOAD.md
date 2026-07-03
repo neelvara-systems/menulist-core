@@ -1,10 +1,11 @@
 # 📤 Upload & File Processing Assessment
 
-**Feature**: File Upload & PDF Processing  
-**Risk Level**: 🔴 HIGH → ✅ RESOLVED  
-**Production Ready**: ❌ NO → ✅ YES (after testing)  
-**Implementation Status**: ✅ **COMPLETED** on Nov 13, 2025  
-**Implementation Doc**: [1-IMPLEMENTATION-UPLOAD-COMPLETE.md](./development_done/1-IMPLEMENTATION-UPLOAD-COMPLETE.md)
+**Feature**: File Upload & PDF Processing
+**Risk Level**: 🔴 HIGH → ✅ RESOLVED
+**Historical Result**: Critical/high upload fixes recorded as completed after testing
+**Launch Boundary**: Historical assessment result only; not current launch certification. Current release approval requires the active [production-readiness audit](../../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../../production-readiness/external-certification-runbook.md) evidence, upload/browser/mobile QA, Storage rules/deploy evidence, and target-environment smoke.
+**Implementation Status**: ✅ **COMPLETED** on Nov 13, 2025
+**Implementation Doc**: [1-implementation-upload-complete.md](../development_done/1-implementation-upload-complete.md)
 
 ---
 
@@ -38,8 +39,8 @@
 - ✅ `index.tsx` - Integrated comprehensive validation
 
 ### 🎯 Next Steps
-1. Run testing checklist from [1-TESTING-GUIDE-UPLOAD.md](./development_done/1-TESTING-GUIDE-UPLOAD.md)
-2. Move to [ASSESSMENT-02-AI-EXTRACTION.md](./ASSESSMENT-02-AI-EXTRACTION.md)
+1. Run testing checklist from [1-testing-guide-upload.md](../development_done/1-testing-guide-upload.md)
+2. Move to [assessment-02-ai-extraction.md](./assessment-02-ai-extraction.md)
 
 ---
 
@@ -52,7 +53,7 @@
 <Upload beforeUpload={() => false}>
 ```
 
-**Risk**: 
+**Risk**:
 - Server memory exhaustion
 - Browser crashes
 - Storage costs explosion
@@ -70,14 +71,14 @@ const validateFileSize = (file: File, fileList: File[]) => {
     message.error(`${file.name} is too large. Max size: 10MB`);
     return Upload.LIST_IGNORE;
   }
-  
+
   // Total size check
   const totalSize = fileList.reduce((sum, f) => sum + f.size, 0);
   if (totalSize > MAX_TOTAL_SIZE) {
     message.error('Total upload size exceeds 50MB limit');
     return Upload.LIST_IGNORE;
   }
-  
+
   return false; // Don't auto-upload
 };
 
@@ -112,18 +113,18 @@ const ALLOWED_TYPES = {
 
 const validateFileType = (file: File) => {
   const isAllowed = Object.keys(ALLOWED_TYPES).includes(file.type);
-  
+
   if (!isAllowed) {
     // Also check extension (file.type can be spoofed)
     const ext = file.name.toLowerCase().split('.').pop();
     const validExts = Object.values(ALLOWED_TYPES).flat();
-    
+
     if (!validExts.includes(`.${ext}`)) {
       message.error(`${file.name}: Invalid file type. Allowed: JPG, PNG, WebP, PDF`);
       return Upload.LIST_IGNORE;
     }
   }
-  
+
   return false;
 };
 ```
@@ -137,10 +138,10 @@ const validateFileMagicBytes = (buffer: Buffer, type: string) => {
     'image/png': [0x89, 0x50, 0x4E, 0x47],
     'application/pdf': [0x25, 0x50, 0x44, 0x46]
   };
-  
+
   const signature = signatures[type];
   if (!signature) return false;
-  
+
   return signature.every((byte, i) => buffer[i] === byte);
 };
 ```
@@ -179,27 +180,27 @@ const convertPdfToImages = async (pdfFile: any[], tenantId: any, storeId: any) =
 
         const canvas = document.createElement('canvas');
         canvases.push(canvas); // Track for cleanup
-        
+
         const context = canvas.getContext('2d', { willReadFrequently: false });
         canvas.height = viewport.height;
         canvas.width = viewport.width;
 
         await page.render({ canvasContext: context!, viewport }).promise;
-        
+
         const pageUrl = canvas.toDataURL('image/jpeg', 0.8);
         convertedImages.push({ /* ... */ });
-        
+
         // ✅ Clean up immediately after conversion
         canvas.width = 0;
         canvas.height = 0;
         context?.clearRect(0, 0, canvas.width, canvas.height);
-        
+
         page.cleanup();
       }
-      
+
       pdf.cleanup(); // ✅ Clean up PDF document
     }
-    
+
     return convertedImages;
   } finally {
     // ✅ Ensure cleanup even on error
@@ -224,14 +225,14 @@ const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({})
 
 const uploadToStorage = async (file: File) => {
   const uploadTask = uploadBytesResumable(storageRef, file);
-  
-  uploadTask.on('state_changed', 
+
+  uploadTask.on('state_changed',
     (snapshot) => {
       const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
       setUploadProgress(prev => ({ ...prev, [file.uid]: progress }));
     }
   );
-  
+
   await uploadTask;
 };
 
@@ -247,11 +248,11 @@ const uploadToStorage = async (file: File) => {
 **Fix**:
 ```typescript
 const detectDuplicates = (file: File, existingFiles: ProjectFileType[]) => {
-  const isDuplicate = existingFiles.some(existing => 
-    existing.name === file.name && 
+  const isDuplicate = existingFiles.some(existing =>
+    existing.name === file.name &&
     existing.size === file.size
   );
-  
+
   if (isDuplicate) {
     Modal.confirm({
       title: 'Duplicate file detected',
@@ -262,7 +263,7 @@ const detectDuplicates = (file: File, existingFiles: ProjectFileType[]) => {
     });
     return true;
   }
-  
+
   return false;
 };
 ```
@@ -283,7 +284,7 @@ const handleFileProcess = async (file: File) => {
     message.warning('Please wait for current file to finish processing');
     return;
   }
-  
+
   enqueue({
     id: file.uid,
     execute: async () => {
@@ -306,7 +307,7 @@ const processWithTimeout = async (file: File) => {
   const timeoutPromise = new Promise((_, reject) => {
     setTimeout(() => reject(new Error('Processing timeout')), PROCESSING_TIMEOUT);
   });
-  
+
   try {
     await Promise.race([
       processFile(file),
@@ -410,7 +411,7 @@ const abortController = new AbortController();
 <Button onClick={() => abortController.abort()}>Cancel</Button>
 
 // In upload handler
-uploadTask.on('state_changed', 
+uploadTask.on('state_changed',
   (snapshot) => { /* ... */ },
   (error) => {
     if (error.code === 'storage/canceled') {
@@ -428,7 +429,7 @@ useEffect(() => {
   const handleOffline = () => {
     message.warning('Connection lost. Upload will resume when back online.');
   };
-  
+
   window.addEventListener('offline', handleOffline);
   return () => window.removeEventListener('offline', handleOffline);
 }, []);
@@ -510,12 +511,12 @@ describe('File Upload Validation', () => {
     const largeFile = createMockFile(15 * 1024 * 1024);
     expect(validateFileSize(largeFile, [])).toBe(Upload.LIST_IGNORE);
   });
-  
+
   it('should reject invalid file types', () => {
     const exeFile = createMockFile(1024, 'virus.exe', 'application/x-msdownload');
     expect(validateFileType(exeFile)).toBe(Upload.LIST_IGNORE);
   });
-  
+
   it('should detect duplicate files', () => {
     const file = createMockFile(1024, 'menu.pdf');
     const existing = [{ name: 'menu.pdf', size: 1024 }];
@@ -532,7 +533,7 @@ describe('PDF Processing', () => {
     const images = await convertPdfToImages([pdf], 'tenant1', 'store1');
     expect(images).toHaveLength(10);
   });
-  
+
   it('should handle corrupted PDF gracefully', async () => {
     const corruptedPdf = await loadTestPDF('corrupted.pdf');
     await expect(convertPdfToImages([corruptedPdf])).rejects.toThrow();
@@ -555,4 +556,4 @@ describe('PDF Processing', () => {
 
 ---
 
-**Next**: [AI Data Extraction Assessment →](./ASSESSMENT-02-AI-EXTRACTION.md)
+**Next**: [AI Data Extraction Assessment →](./assessment-02-ai-extraction.md)

@@ -6,6 +6,7 @@ import { ANSWERLATTICE_PERMISSION_KEYS } from '@constant/answerlattice/permissio
 import { PRODUCT_IDS } from '@constant/product';
 import { requireAnswerlatticePermission } from '@lib/answerlattice/accessControl';
 import { markAnswerlatticeCompiledContextSourceChangedAdmin } from '@lib/answerlattice/compiledSourceVersionsAdmin';
+import { buildAnswerlatticeRateLimitKey } from '@lib/answerlattice/rateLimitKeys';
 import {
     normalizeAnswerlatticeBusinessDayEndTime,
     normalizeAnswerlatticeTimeZone,
@@ -14,11 +15,13 @@ import { resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScop
 import { upsertAnswerlatticeTenantSummaryAdmin } from '@lib/answerlattice/tenantSummaryAdmin';
 import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
 import { checkRateLimit } from '@lib/rateLimit';
-import { secureError, secureLog } from '@lib/security/secureLogger';
+import { getBoundedRuntimeStringContext, logRuntimeDiagnostic, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
+import { readBoundedJsonBody } from '@lib/security/boundedRequestBody';
 import * as admin from 'firebase-admin';
 import { NextRequest, NextResponse } from 'next/server';
 import { z, ZodError } from 'zod';
 import { withAuth } from '../../../../middleware/auth';
+import { applyAnswerlatticeDashboardReadRateLimit } from '../readRateLimit';
 
 const OptionalUrlSchema = z.preprocess(
     (value) => typeof value === 'string' && value.trim() === '' ? undefined : value,
@@ -28,11 +31,14 @@ const OptionalEmailSchema = z.preprocess(
     (value) => typeof value === 'string' && value.trim() === '' ? undefined : value,
     z.string().trim().email().max(160).optional(),
 );
+const WORKSPACE_BILLING_MODEL_VALUES = ['subscription', 'usage', 'one_time', 'not_sure'] as const;
+type WorkspaceBillingModel = typeof WORKSPACE_BILLING_MODEL_VALUES[number];
+
 const WorkspaceProfileSchema = z.object({
     productName: z.string().trim().min(1).max(120),
     productUrl: OptionalUrlSchema,
     supportEmail: OptionalEmailSchema,
-    billingModel: z.enum(['free', 'subscription', 'usage', 'one_time', 'not_sure']).default('subscription'),
+    billingModel: z.enum(WORKSPACE_BILLING_MODEL_VALUES).default('subscription'),
     primarySurfaces: z.array(z.string().trim().min(1).max(80)).max(8).default([]),
     timeZone: z.string().trim().max(80).optional(),
     businessDayEndTime: z.string().trim().regex(/^([01]\d|2[0-3]):([0-5]\d)$/).optional(),
@@ -51,6 +57,7 @@ const getAnswerlatticeDb = () => {
     const db = answerlatticeFirestoreAdmin as any;
     return db && typeof db.collection === 'function' ? answerlatticeFirestoreAdmin : null;
 };
+const WORKSPACE_PROFILE_SAVE_MAX_BODY_BYTES = 32 * 1024;
 
 const normalizePrimarySurfaces = (values: unknown): string[] => {
     if (!Array.isArray(values)) return [];
@@ -62,11 +69,18 @@ const normalizePrimarySurfaces = (values: unknown): string[] => {
     )).slice(0, 8);
 };
 
+const normalizeWorkspaceBillingModel = (value: unknown): WorkspaceBillingModel => {
+    const normalized = String(value || '').trim();
+    return (WORKSPACE_BILLING_MODEL_VALUES as readonly string[]).includes(normalized)
+        ? normalized as WorkspaceBillingModel
+        : 'subscription';
+};
+
 const buildProfileResponse = (storeData: Record<string, any>) => ({
     productName: storeData.productName || storeData.name || '',
     productUrl: storeData.productUrl || '',
     supportEmail: storeData.supportEmail || '',
-    billingModel: storeData.billingModel || 'subscription',
+    billingModel: normalizeWorkspaceBillingModel(storeData.billingModel),
     primarySurfaces: normalizePrimarySurfaces(storeData.primarySurfaces),
     timeZone: normalizeAnswerlatticeTimeZone(storeData.timeZone),
     businessDayEndTime: normalizeAnswerlatticeBusinessDayEndTime(storeData.businessDayEndTime),
@@ -76,6 +90,9 @@ export const GET = withAuth(async (_request: NextRequest, session) => {
     if (!FEATURE_FLAGS.ENABLE_ANSWERLATTICE_WIDGET) {
         return NextResponse.json({ error: 'Answerlattice is not enabled.' }, { status: 403 });
     }
+    const rateLimitResponse = await applyAnswerlatticeDashboardReadRateLimit(_request, session, 'workspace-profile');
+    if (rateLimitResponse) return rateLimitResponse;
+
     const permission = await requireAnswerlatticePermission(_request, session, ANSWERLATTICE_PERMISSION_KEYS.MANAGE_WORKSPACE);
     if (permission.response) return permission.response;
 
@@ -98,9 +115,9 @@ export const GET = withAuth(async (_request: NextRequest, session) => {
             },
         });
     } catch (error) {
-        secureError('[Answerlattice Workspace Profile] Failed to load profile', error as Error, {
-            storeId: scope.storeId,
-            tenantId: scope.tenantId,
+        logRuntimeFailure('answerlattice_workspace_profile_load_failed', error, {
+            ...getBoundedRuntimeStringContext('tenantId', scope.tenantId),
+            ...getBoundedRuntimeStringContext('storeId', scope.storeId),
         });
         return NextResponse.json({ error: 'Failed to load workspace profile' }, { status: 500 });
     }
@@ -120,7 +137,7 @@ export const PUT = withAuth(async (request: NextRequest, session) => {
 
     try {
         const rateLimitResult = await checkRateLimit({
-            key: `answerlattice-workspace-profile:${scope.storeId}`,
+            key: buildAnswerlatticeRateLimitKey('answerlattice-workspace-profile', scope.storeId),
             limit: 20,
             window: 60,
         });
@@ -128,7 +145,18 @@ export const PUT = withAuth(async (request: NextRequest, session) => {
             return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
         }
 
-        const parsed = WorkspaceProfileSchema.parse(await request.json().catch(() => null));
+        const bodyResult = await readBoundedJsonBody(request, WORKSPACE_PROFILE_SAVE_MAX_BODY_BYTES, {
+            invalidJsonMessage: 'Invalid workspace profile',
+            tooLargeMessage: 'Request body too large',
+        });
+        if (bodyResult.ok === false) {
+            return NextResponse.json(
+                { error: bodyResult.response.status === 413 ? 'Request body too large' : 'Invalid workspace profile' },
+                { status: bodyResult.response.status },
+            );
+        }
+
+        const parsed = WorkspaceProfileSchema.parse(bodyResult.data);
         const primarySurfaces = normalizePrimarySurfaces(parsed.primarySurfaces);
         const storeRef = db.collection(DB_COLLECTIONS.STORES).doc(String(scope.storeId));
         const storeSnap = await storeRef.get();
@@ -176,9 +204,9 @@ export const PUT = withAuth(async (request: NextRequest, session) => {
             timeZone: nextProfile.timeZone,
             businessDayEndTime: nextProfile.businessDayEndTime,
         }).catch((summaryError) => {
-            secureError('[Answerlattice Workspace Profile] Failed to sync scheduler summary', summaryError as Error, {
-                storeId: scope.storeId,
-                tenantId: scope.tenantId,
+            logRuntimeFailure('answerlattice_workspace_profile_tenant_summary_sync_failed', summaryError, {
+                ...getBoundedRuntimeStringContext('tenantId', scope.tenantId),
+                ...getBoundedRuntimeStringContext('storeId', scope.storeId),
             });
         });
         await markAnswerlatticeCompiledContextSourceChangedAdmin('workspaceProfile', scope.tenantId, scope.storeId, {
@@ -186,15 +214,15 @@ export const PUT = withAuth(async (request: NextRequest, session) => {
             sourceType: 'stores',
             sourceId: String(scope.storeId),
         }).catch((sourceVersionError) => {
-            secureError('[Answerlattice Workspace Profile] Failed to mark compiled context stale', sourceVersionError as Error, {
-                storeId: scope.storeId,
-                tenantId: scope.tenantId,
+            logRuntimeFailure('answerlattice_workspace_profile_compiled_context_stale_mark_failed', sourceVersionError, {
+                ...getBoundedRuntimeStringContext('tenantId', scope.tenantId),
+                ...getBoundedRuntimeStringContext('storeId', scope.storeId),
             });
         });
 
-        secureLog('[Answerlattice Workspace Profile] Saved', {
-            storeId: scope.storeId,
-            tenantId: scope.tenantId,
+        logRuntimeDiagnostic('answerlattice_workspace_profile_saved', {
+            ...getBoundedRuntimeStringContext('tenantId', scope.tenantId),
+            ...getBoundedRuntimeStringContext('storeId', scope.storeId),
             primarySurfaceCount: primarySurfaces.length,
         });
 
@@ -208,9 +236,9 @@ export const PUT = withAuth(async (request: NextRequest, session) => {
             return NextResponse.json({ error: 'Invalid workspace profile' }, { status: 400 });
         }
 
-        secureError('[Answerlattice Workspace Profile] Failed to save profile', error as Error, {
-            storeId: scope.storeId,
-            tenantId: scope.tenantId,
+        logRuntimeFailure('answerlattice_workspace_profile_save_failed', error, {
+            ...getBoundedRuntimeStringContext('tenantId', scope.tenantId),
+            ...getBoundedRuntimeStringContext('storeId', scope.storeId),
         });
         return NextResponse.json({ error: 'Failed to save workspace profile' }, { status: 500 });
     }

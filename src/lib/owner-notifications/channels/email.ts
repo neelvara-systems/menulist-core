@@ -47,10 +47,10 @@ export async function sendOwnerNotificationEmail(params: {
         });
 
         return { ok: true, providerMessageId: info.messageId };
-    } catch (error) {
+    } catch {
         return {
             ok: false,
-            error: error instanceof Error ? error.message : 'Unknown SMTP error',
+            error: 'smtp_send_failed',
         };
     }
 }

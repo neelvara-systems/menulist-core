@@ -1,5 +1,6 @@
 import Confetti from '@atoms/Confetti';
 import { PurchaseIntent } from '@data/common';
+import { getBoundedPaymentStringContext, logPaymentFailure } from '@hook/paymentDiagnostics';
 import { Button } from '@shadcncomponents/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@shadcncomponents/dialog';
 import SectionHeading from '@shadcncomponents/SectionHeading';
@@ -7,6 +8,8 @@ import { motion } from 'framer-motion';
 import React, { useEffect, useState } from 'react';
 import { LuCheckCircle } from 'react-icons/lu';
 import SVGBg from './shared/data/SVGBg';
+
+const DASHBOARD_URL = 'https://dashboard.menulist.ai';
 
 interface SubscriptionPayementSuccessModalProps {
     isOpen: boolean;
@@ -28,8 +31,29 @@ const SubscriptionPayementSuccessModal: React.FC<SubscriptionPayementSuccessModa
     }, [isOpen]);
 
     const handleDashboardRedirect = () => {
-        window.open('https://dashboard.menulist.ai', '_blank');
-        onClose();
+        const diagnosticContext = {
+            surface: 'website_pricing_success_modal',
+            flow: 'dashboard_handoff',
+            hasPurchaseIntent: Boolean(purchaseIntent),
+            hasPaymentDetails: Boolean(paymentDetails),
+            ...getBoundedPaymentStringContext('dashboardUrl', DASHBOARD_URL),
+        };
+
+        try {
+            const opened = window.open(DASHBOARD_URL, '_blank', 'noopener,noreferrer');
+            if (!opened) {
+                throw new Error('website_pricing_dashboard_open_blocked');
+            }
+            onClose();
+        } catch (error) {
+            logPaymentFailure('website_pricing_dashboard_open_failed', error, diagnosticContext);
+            try {
+                window.location.assign(DASHBOARD_URL);
+                onClose();
+            } catch (redirectError) {
+                logPaymentFailure('website_pricing_dashboard_redirect_failed', redirectError, diagnosticContext);
+            }
+        }
     };
 
     const itemVariants = {

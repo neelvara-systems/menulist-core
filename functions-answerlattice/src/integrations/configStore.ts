@@ -35,6 +35,13 @@ function getDefaultConfig(): IntegrationConfig {
     return normalizeIntegrationConfig({ modifiedOn: Timestamp.now() });
 }
 
+function getIntegrationConfigScopeContext(tId: number, sId: number): Record<string, boolean> {
+    return {
+        hasTenantScope: Number.isFinite(Number(tId)) && Number(tId) > 0,
+        hasStoreScope: Number.isFinite(Number(sId)) && Number(sId) > 0,
+    };
+}
+
 /**
  * Read integration config for a tenant.
  * Returns default config if none exists.
@@ -117,8 +124,8 @@ export async function recordDeliveryFailure(
     if (newCount >= INTEGRATION_LIMITS.CIRCUIT_BREAKER_THRESHOLD) {
         update[`circuitBreaker.${adapterType}.disabledAt`] = Timestamp.now();
         logger.warn('[Answerlattice Integration] Circuit breaker opened', {
-            tId,
-            sId,
+            failureCode: 'answerlattice_integration_circuit_breaker_opened',
+            ...getIntegrationConfigScopeContext(tId, sId),
             adapter: adapterType,
             consecutiveFailures: newCount,
         });

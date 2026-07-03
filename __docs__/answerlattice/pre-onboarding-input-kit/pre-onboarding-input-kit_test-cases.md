@@ -15,6 +15,8 @@
 | POI-WEB-009 | Inspect safety and guide copy. | It states that coverage depends on what the AI IDE can inspect and does not guarantee perfect output for every agent, private source, or product shape. |
 | POI-WEB-010 | Use the prompt CTA on `/pre-onboarding`. | Prompt opens in an in-page modal with copy, Markdown download, and preview. |
 | POI-WEB-011 | Use the prompt CTA on `/pre-onboarding/guide`. | Prompt opens in the same modal flow without navigating away from the guide. |
+| POI-WEB-011A | Simulate an oversized or non-Markdown `/pre-onboarding.md` response. | The modal rejects the preview, shows fixed fallback copy, and keeps the direct Markdown route visible. |
+| POI-WEB-011B | Simulate a rejected Clipboard API write with textarea fallback available. | Copy Prompt falls through to the fallback and shows copied state only after `document.execCommand('copy')` returns true; unavailable or failed fallback support keeps the fixed error state. |
 | POI-WEB-012 | Visit Answerlattice homepage. | Hero includes a pre-onboarding source-preparation link and the first-scroll page flow includes the Pre-Onboarding Kit section. |
 | POI-WEB-013 | Inspect desktop and mobile navigation. | Desktop header and mobile drawer include a direct Pre-Onboarding link. |
 | POI-WEB-014 | Visit `/get-started`. | Page offers pre-onboarding before workspace creation for owners with source material. |

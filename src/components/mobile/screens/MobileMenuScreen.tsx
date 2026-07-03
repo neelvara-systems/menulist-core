@@ -7,8 +7,8 @@ import { AI_ACTIONS_TYPES } from '@constant/common';
 import { PERMISSIONS } from '@constant/permissions';
 import GlobalLanguagesList from '@data/languages';
 import { getSuggestionValue } from '@data/shared/extractedBusinessProfile';
-import { updateStore } from '@database/stores';
-import { updateProjectWithoutLoader, uploadFile } from '@database/projects';
+import { assertStoreUpdateSucceeded, updateStore } from '@database/stores';
+import { assertProjectUpdateSucceeded, updateProjectWithoutLoader, uploadFile } from '@database/projects';
 import { useImageBatchJobListener } from '@hook/useImageBatchJobListener';
 import useMenuProcessingJob from '@hook/useMenuProcessingJob';
 import { useOfferingLabels } from '@hook/useOfferingLabels';
@@ -26,6 +26,7 @@ import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization
 import { getDataUrlMimeType } from '@lib/media/imageProfiles';
 import { toPreparedUploadName } from '@lib/media/prepareMediaImage';
 import { hasMeaningfulDescriptionsForLanguages } from '@lib/menu/descriptionQuality';
+import { getMultiOutletProjectLogContext, logMultiOutletFailure } from '@lib/multiOutlet/diagnostics';
 import { resolveProjectForRender } from '@lib/multiOutlet';
 import { stripResolvedOutletProjectForSave } from '@lib/multiOutlet/outletProjectPersistence';
 import { isPriceOutlierReviewed, normalizePriceForReview } from '@lib/mce/qualitySignals';
@@ -60,6 +61,12 @@ import MobileMasterUpdateNotice from '../components/MobileMasterUpdateNotice';
 import MobileProjectSelectorSheet from '../components/MobileProjectSelectorSheet';
 import { useMobileProjects } from '../providers/MobileProjectsProvider';
 import { openMobilePublicLink } from '../utils/openMobilePublicLink';
+import {
+    getBoundedMobileMenuStringContext,
+    getMobileMenuProjectLogContext,
+    getMobileMenuStoreLogContext,
+    logMobileMenuFailure,
+} from '../utils/mobileMenuDiagnostics';
 import type { MobileCategoryReorderItem } from '../sheets/CategoryManagerSheet';
 import type { MobileMenuItemType as MenuItemType } from '../types';
 import useViewportInfo from '../../../hooks/useViewportInfo';
@@ -680,7 +687,12 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenPrintMenu }
             ...projectToSave,
             projectId: project.projectId,
         });
-        const rawSavedProject = removeObjRef(savedProject || projectToSave);
+        assertProjectUpdateSucceeded(
+            savedProject,
+            project.projectId,
+            'mobile_menu_project_persist_project_update_rejected',
+        );
+        const rawSavedProject = removeObjRef(savedProject);
         const rawSavedSnapshot = JSON.stringify(rawSavedProject);
 
         if (persistTimerRef.current) {
@@ -800,7 +812,13 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenPrintMenu }
                 updateProjectImageInMobileCache(projectId, result.imageUrl);
             }
         } catch (error) {
-            console.warn('[MobileProjectImage] Auto-generation skipped:', error);
+            logMobileMenuFailure('mobile_menu_project_image_auto_generation_failed', error, {
+                ...getMobileMenuProjectLogContext(projectId, projectData?.masterProjectId),
+                ...getMobileMenuStoreLogContext(storeDetails?.storeId, storeDetails?.tenantId),
+                categoryCount: categories?.length ?? 0,
+                itemCount: items?.length ?? 0,
+                summaryPresent: Boolean(summaryFromCache),
+            });
         }
     }, [
         projectsList,
@@ -816,17 +834,26 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenPrintMenu }
         if (!nextBusinessAttributes) return;
 
         try {
-            await updateStore({
+            const writeResult = await updateStore({
                 id: storeDetails.storeId,
                 storeId: storeDetails.storeId,
                 tenantId: storeDetails.tenantId,
                 businessAttributes: nextBusinessAttributes,
             });
+            assertStoreUpdateSucceeded(
+                writeResult,
+                storeDetails.storeId,
+                'mobile_menu_business_attributes_default_store_update_rejected',
+            );
             setStoreDetails((previous: any) => previous
                 ? { ...previous, businessAttributes: nextBusinessAttributes }
                 : previous);
         } catch (error) {
-            console.warn('[MobileMenu] Could not apply menu-derived business attributes', error);
+            logMobileMenuFailure('mobile_menu_business_attributes_default_apply_failed', error, {
+                ...getMobileMenuStoreLogContext(storeDetails.storeId, storeDetails.tenantId),
+                itemCount: menuDataLike.items?.length ?? 0,
+                suggestionPresent: Boolean(menuDataLike.businessAttributeSuggestions),
+            });
         }
     }, [setStoreDetails, storeDetails]);
 
@@ -880,13 +907,21 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenPrintMenu }
 
         try {
             const savedProject = await updateProjectWithoutLoader(patch);
+            assertProjectUpdateSucceeded(
+                savedProject,
+                baseProject?.projectId,
+                'mobile_menu_project_profile_defaults_project_update_rejected',
+            );
             syncSavedMenuProject({
                 ...(baseProject || {}),
                 ...patch,
                 ...(savedProject || {}),
             });
         } catch (error) {
-            console.warn('[MobileMenu] Could not apply extracted profile defaults', error);
+            logMobileMenuFailure('mobile_menu_project_profile_defaults_apply_failed', error, {
+                ...getMobileMenuProjectLogContext(baseProject?.projectId, baseProject?.masterProjectId),
+                profilePresent: Boolean(profile),
+            });
         }
     }, [menuData, syncSavedMenuProject]);
 
@@ -912,7 +947,12 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenPrintMenu }
 
         try {
             const savedProject = await updateProjectWithoutLoader(snapshot);
-            const nextProject = savedProject || snapshot;
+            assertProjectUpdateSucceeded(
+                savedProject,
+                snapshot.projectId,
+                'mobile_menu_project_persist_project_update_rejected',
+            );
+            const nextProject = savedProject;
             persistedMenuRef.current = removeObjRef(nextProject);
             persistedLocalSnapshotRef.current = snapshotString;
 
@@ -931,7 +971,11 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenPrintMenu }
                 }
             }
         } catch (error) {
-            console.error('[MobileMenu] Failed to persist project update:', error);
+            logMobileMenuFailure('mobile_menu_project_persist_failed', error, {
+                ...getMobileMenuProjectLogContext(snapshot.projectId, snapshot.masterProjectId),
+                pendingProjectPresent: Boolean(pendingMenuRef.current),
+                isLinkedOutlet: Boolean(snapshot.masterProjectId),
+            });
             Toast.show({ content: t('failedToSaveRefresh'), duration: 2000 });
 
             if (!retryTimerRef.current) {
@@ -1222,7 +1266,13 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenPrintMenu }
                 }
             })
             .catch((error) => {
-                console.error('[MobileMenu] Failed to upload item image:', error);
+                logMobileMenuFailure('mobile_menu_item_image_upload_failed', error, {
+                    ...getMobileMenuProjectLogContext(menuDataRef.current?.projectId, menuDataRef.current?.masterProjectId),
+                    ...getBoundedMobileMenuStringContext('itemId', itemId),
+                    ...getBoundedMobileMenuStringContext('uploadUid', uid),
+                    imageDataLength: imageData.length,
+                    mimeTypeLength: mimeType.length,
+                });
                 Toast.show({ content: t('failedToSaveRefresh'), duration: 2000 });
             });
     }, [t, updateItemImageFromUpload]);
@@ -1272,22 +1322,38 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenPrintMenu }
             return;
         }
 
-        const projectToSave = getPersistableMenuProjectWithLinkedOverrides(updatedProject);
-        const savedProject = await updateProjectWithoutLoader({
-            ...projectToSave,
-            projectId: sourceProject.projectId,
-        });
+        try {
+            const projectToSave = getPersistableMenuProjectWithLinkedOverrides(updatedProject);
+            const savedProject = await updateProjectWithoutLoader({
+                ...projectToSave,
+                projectId: sourceProject.projectId,
+            });
+            assertProjectUpdateSucceeded(
+                savedProject,
+                sourceProject.projectId,
+                'mobile_menu_item_image_project_update_rejected',
+            );
 
-        if (sourceProject.masterProjectId) {
-            const rawSavedProject = savedProject || projectToSave;
-            rawMenuProjectRef.current = removeObjRef(rawSavedProject);
-            persistedMenuRef.current = removeObjRef(rawSavedProject);
-            persistedLocalSnapshotRef.current = JSON.stringify(removeObjRef(rawSavedProject));
-            menuDataRef.current = updatedProject;
-            setMenuData(updatedProject);
-            replaceProjectInList(rawSavedProject);
-        } else {
-            syncSavedMenuProject(savedProject || updatedProject);
+            if (sourceProject.masterProjectId) {
+                const rawSavedProject = savedProject;
+                rawMenuProjectRef.current = removeObjRef(rawSavedProject);
+                persistedMenuRef.current = removeObjRef(rawSavedProject);
+                persistedLocalSnapshotRef.current = JSON.stringify(removeObjRef(rawSavedProject));
+                menuDataRef.current = updatedProject;
+                setMenuData(updatedProject);
+                replaceProjectInList(rawSavedProject);
+            } else {
+                syncSavedMenuProject(savedProject);
+            }
+        } catch (error) {
+            logMobileMenuFailure('mobile_menu_item_image_project_update_failed', error, {
+                ...getMobileMenuProjectLogContext(sourceProject.projectId, sourceProject.masterProjectId),
+                ...getBoundedMobileMenuStringContext('itemId', selectedItem.id),
+                imageUploadCount: imagesToUpload.length,
+                isLinkedOutlet: Boolean(sourceProject.masterProjectId),
+            });
+            Toast.show({ content: t('failedToSaveRefresh'), duration: 2000 });
+            throw error;
         }
         Toast.show({ content: t('imageAddedSuccess'), duration: 1200 });
     }, [
@@ -1385,7 +1451,10 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenPrintMenu }
                         : current
                 ));
             } catch (error) {
-                console.error('[MobileMenu] Failed to resolve linked outlet project:', error);
+                logMultiOutletFailure('mobile_menu_linked_outlet_resolve_failed', error, {
+                    ...getMultiOutletProjectLogContext(rawProject.projectId, rawProject.masterProjectId),
+                    fileCount: rawProject.files?.length ?? 0,
+                });
             }
         };
 
@@ -1410,7 +1479,9 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenPrintMenu }
                     });
                 }
             } catch (error) {
-                console.error('[MobileMenu] Failed to restore active job:', error);
+                logMobileMenuFailure('mobile_menu_active_job_restore_failed', error, {
+                    ...getMobileMenuProjectLogContext(menuData.projectId, menuData.masterProjectId),
+                });
             }
         };
 
@@ -1542,7 +1613,13 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenPrintMenu }
                     setComparisonResult(comparison);
                     setShowReviewSheet(true);
                 } catch (error) {
-                    console.error('[MobileMenu] Comparison engine failed:', error);
+                    logMobileMenuFailure('mobile_menu_comparison_engine_failed', error, {
+                        ...getMobileMenuProjectLogContext(menuData.projectId, menuData.masterProjectId),
+                        extractedCategoryCount: activeJob.result.combinedData?.categories?.length || 0,
+                        extractedItemCount: activeJob.result.combinedData?.items?.length || 0,
+                        mode: menuData?.masterProjectId ? 'OUTLET_LINKED' : 'SINGLE_STORE',
+                        ...getBoundedMobileMenuStringContext('primaryLanguage', menuData?.languages?.[0] || 'en'),
+                    });
                     setFailureMessage(t('comparisonFailed'));
                     setShowFailureState(true);
                     setShowReviewSheet(false);
@@ -2818,7 +2895,10 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenPrintMenu }
             return;
         }
 
-        openMobilePublicLink(withAnalyticsSource(menuPreviewUrl, 'direct'));
+        openMobilePublicLink(withAnalyticsSource(menuPreviewUrl, 'direct'), {
+            flow: 'menu_preview_open',
+            source: 'mobile_menu',
+        });
     }, [menuPreviewUrl, tShare]);
 
     const handleOpenMenuCardExport = useCallback(async () => {
@@ -4611,17 +4691,30 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenPrintMenu }
                         onProjectDataUpdate={async (updatedProject) => {
                             if (!updatedProject.projectId) return;
                             const projectToSave = getPersistableMenuProjectWithLinkedOverrides(updatedProject);
-                            const savedProject = await updateProjectWithoutLoader(projectToSave);
-                            if (updatedProject.masterProjectId) {
-                                const rawSavedProject = savedProject || projectToSave;
-                                rawMenuProjectRef.current = removeObjRef(rawSavedProject);
-                                persistedMenuRef.current = removeObjRef(rawSavedProject);
-                                persistedLocalSnapshotRef.current = JSON.stringify(removeObjRef(rawSavedProject));
-                                menuDataRef.current = updatedProject;
-                                setMenuData(updatedProject);
-                                replaceProjectInList(rawSavedProject);
-                            } else {
-                                syncSavedMenuProject(savedProject || updatedProject);
+                            try {
+                                const savedProject = await updateProjectWithoutLoader(projectToSave);
+                                assertProjectUpdateSucceeded(
+                                    savedProject,
+                                    updatedProject.projectId,
+                                    'mobile_menu_item_image_project_update_rejected',
+                                );
+                                if (updatedProject.masterProjectId) {
+                                    const rawSavedProject = savedProject;
+                                    rawMenuProjectRef.current = removeObjRef(rawSavedProject);
+                                    persistedMenuRef.current = removeObjRef(rawSavedProject);
+                                    persistedLocalSnapshotRef.current = JSON.stringify(removeObjRef(rawSavedProject));
+                                    menuDataRef.current = updatedProject;
+                                    setMenuData(updatedProject);
+                                    replaceProjectInList(rawSavedProject);
+                                } else {
+                                    syncSavedMenuProject(savedProject);
+                                }
+                            } catch (error) {
+                                logMobileMenuFailure('mobile_menu_item_image_project_update_failed', error, {
+                                    ...getMobileMenuProjectLogContext(updatedProject.projectId, updatedProject.masterProjectId),
+                                    isLinkedOutlet: Boolean(updatedProject.masterProjectId),
+                                });
+                                Toast.show({ content: t('failedToSaveRefresh'), duration: 2000 });
                             }
                         }}
                         open={isImageUploadOpen}

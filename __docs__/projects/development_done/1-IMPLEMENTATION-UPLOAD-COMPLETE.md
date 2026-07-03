@@ -8,7 +8,7 @@
 
 ## 📋 Summary
 
-Successfully implemented **ALL critical and high-priority** fixes from ASSESSMENT-01-UPLOAD.md, addressing file upload security, validation, memory management, and user experience.
+Successfully implemented **ALL critical and high-priority** fixes from assessment-01-upload.md, addressing file upload security, validation, memory management, and user experience.
 
 ---
 
@@ -414,13 +414,15 @@ If someone renames `virus.exe` to `menu.pdf`, we check:
 - ✅ Duplicate detection
 - ✅ Better error handling
 
-**Production Ready:** ✅ YES (after testing)
+**Historical completion status:** Upload hardening evidence recorded; not current launch certification.
 
-**Next Steps:** Run testing checklist, then move to ASSESSMENT-02 (AI Cost Control)
+Current upload release readiness depends on `npm run verify:menu-extraction-pipeline`, browser/mobile upload QA, Storage quota/rules evidence, the active [production-readiness audit](../../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../../production-readiness/external-certification-runbook.md), target deploy evidence, and production-host smoke.
+
+**Next Steps:** Use the active audit/runbook gates for release evidence before treating this historical implementation note as launch support.
 
 ---
 
 **Related Documents:**
-- [ASSESSMENT-01-UPLOAD.md](./ASSESSMENT-01-UPLOAD.md) - Original assessment
-- [ASSESSMENT-02-AI-EXTRACTION.md](./ASSESSMENT-02-AI-EXTRACTION.md) - Next to implement
-- [QUICK-START-FIXES.md](./QUICK-START-FIXES.md) - Quick reference guide
+- [assessment-01-upload.md](../Assessments/assessment-01-upload.md) - Original assessment
+- [assessment-02-ai-extraction.md](../Assessments/assessment-02-ai-extraction.md) - Next to implement
+- QUICK-START-FIXES.md was a local quick reference artifact and is no longer present in the active docs tree.

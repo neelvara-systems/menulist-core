@@ -2,7 +2,7 @@
 
 **Status:** Living production audit
 **Audience:** Engineering / Product / QA
-**Last Updated:** June 17, 2026
+**Last Updated:** June 27, 2026
 **Purpose:** Feature-by-feature discovery ledger for AMM action types
 
 ---

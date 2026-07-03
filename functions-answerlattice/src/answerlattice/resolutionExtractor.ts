@@ -53,6 +53,12 @@ const CONFIG = {
 };
 
 const ANSWERLATTICE_PRODUCT_ID = 'AL';
+const ANSWERLATTICE_TICKET_KNOWLEDGE_GEMINI_CALL_FAILED = 'ANSWERLATTICE_TICKET_KNOWLEDGE_GEMINI_CALL_FAILED';
+const ANSWERLATTICE_TICKET_KNOWLEDGE_ENTITY_NOT_FOUND = 'ANSWERLATTICE_TICKET_KNOWLEDGE_ENTITY_NOT_FOUND';
+const ANSWERLATTICE_TICKET_KNOWLEDGE_PARSE_FAILED = 'ANSWERLATTICE_TICKET_KNOWLEDGE_PARSE_FAILED';
+const ANSWERLATTICE_TICKET_KNOWLEDGE_ENTITY_EXTRACTION_FAILED = 'ANSWERLATTICE_TICKET_KNOWLEDGE_ENTITY_EXTRACTION_FAILED';
+const ANSWERLATTICE_TICKET_KNOWLEDGE_EXISTING_ANSWERS_LOAD_FAILED = 'ANSWERLATTICE_TICKET_KNOWLEDGE_EXISTING_ANSWERS_LOAD_FAILED';
+const ANSWERLATTICE_TICKET_KNOWLEDGE_FATAL_FAILED = 'ANSWERLATTICE_TICKET_KNOWLEDGE_FATAL_FAILED';
 
 // ═══════════════════════════════════════════════════════════════
 // TYPES
@@ -73,6 +79,41 @@ interface TicketSignalCluster {
     subjects: Array<string>;
     resolutionMessages: Array<Array<string>>;
     totalCount: number;
+}
+
+function getTicketKnowledgeSourceErrorContext(error: unknown): {
+    sourceErrorName: string | null;
+    sourceErrorCode: string | number | null;
+    sourceStatusCode: number | null;
+} {
+    const source = error && typeof error === 'object' ? error as Record<string, unknown> : {};
+    const sourceStatusCode = typeof source.status === 'number'
+        ? source.status
+        : (typeof source.statusCode === 'number' ? source.statusCode : null);
+
+    return {
+        sourceErrorName: typeof source.name === 'string' ? source.name : null,
+        sourceErrorCode: typeof source.code === 'string' || typeof source.code === 'number' ? source.code : null,
+        sourceStatusCode,
+    };
+}
+
+function getTicketKnowledgeScopeContext(tId?: number, sId?: number): {
+    hasTenantScope: boolean;
+    hasStoreScope: boolean;
+} {
+    return {
+        hasTenantScope: Number.isFinite(tId),
+        hasStoreScope: Number.isFinite(sId),
+    };
+}
+
+function getTicketKnowledgeStringContext(label: string, value: unknown): Record<string, boolean | number> {
+    const stringValue = typeof value === 'string' ? value : '';
+    return {
+        [`${label}Present`]: stringValue.length > 0,
+        [`${label}Length`]: stringValue.length,
+    };
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -198,7 +239,10 @@ async function callGeminiForExtraction(userPrompt: string): Promise<Answerlattic
             userPrompt,
         });
     } catch (error) {
-        logger.error('[Answerlattice TicketKnowledge] Gemini call failed', { error });
+        logger.error('[Answerlattice TicketKnowledge] Gemini call failed', {
+            failureCode: ANSWERLATTICE_TICKET_KNOWLEDGE_GEMINI_CALL_FAILED,
+            ...getTicketKnowledgeSourceErrorContext(error),
+        });
         return null;
     }
 }
@@ -236,7 +280,14 @@ async function getExistingAnswerTitles(tId: number, sId: number, entityId: strin
             const data = doc.data();
             if (data.title) titles.push(data.title);
         }
-    } catch { /* non-blocking */ }
+    } catch (error) {
+        logger.warn('[Answerlattice TicketKnowledge] Existing answer lookup failed', {
+            failureCode: ANSWERLATTICE_TICKET_KNOWLEDGE_EXISTING_ANSWERS_LOAD_FAILED,
+            ...getTicketKnowledgeScopeContext(tId, sId),
+            ...getTicketKnowledgeStringContext('entityId', entityId),
+            ...getTicketKnowledgeSourceErrorContext(error),
+        });
+    }
     return titles;
 }
 
@@ -320,7 +371,7 @@ export async function extractTicketKnowledge(
                 // 2c. Extract resolution via Gemini
                 const entity = await getEntityInfo(cluster.entityId);
                 if (!entity) {
-                    result.errors.push(`Entity ${cluster.entityId} not found`);
+                    result.errors.push(ANSWERLATTICE_TICKET_KNOWLEDGE_ENTITY_NOT_FOUND);
                     continue;
                 }
 
@@ -354,7 +405,7 @@ export async function extractTicketKnowledge(
                 const parsed = parseTicketResolutionResponse(rawResponse);
 
                 if (!parsed) {
-                    result.errors.push(`Failed to parse extraction for entity ${entity.name}`);
+                    result.errors.push(ANSWERLATTICE_TICKET_KNOWLEDGE_PARSE_FAILED);
                     continue;
                 }
 
@@ -434,21 +485,19 @@ export async function extractTicketKnowledge(
                 draftsGenerated++;
 
             } catch (error) {
-                const msg = `Entity ${cluster.entityId}: ${error instanceof Error ? error.message : 'Unknown'}`;
-                result.errors.push(msg);
+                result.errors.push(ANSWERLATTICE_TICKET_KNOWLEDGE_ENTITY_EXTRACTION_FAILED);
                 logger.error('[Answerlattice TicketKnowledge] Entity extraction failed', {
-                    tId,
-                    sId,
-                    entityId: cluster.entityId,
-                    error,
+                    failureCode: ANSWERLATTICE_TICKET_KNOWLEDGE_ENTITY_EXTRACTION_FAILED,
+                    ...getTicketKnowledgeScopeContext(tId, sId),
+                    ...getTicketKnowledgeStringContext('entityId', cluster.entityId),
+                    ...getTicketKnowledgeSourceErrorContext(error),
                 });
             }
         }
 
         if (result.proposalsCreated > 0 || result.proposalsMerged > 0) {
             logger.info('[Answerlattice TicketKnowledge] Extraction completed', {
-                tId,
-                sId,
+                ...getTicketKnowledgeScopeContext(tId, sId),
                 candidatesFound: result.candidatesFound,
                 proposalsCreated: result.proposalsCreated,
                 proposalsMerged: result.proposalsMerged,
@@ -457,9 +506,12 @@ export async function extractTicketKnowledge(
             });
         }
     } catch (error) {
-        const msg = `Fatal: ${error instanceof Error ? error.message : 'Unknown'}`;
-        result.errors.push(msg);
-        logger.error('[Answerlattice TicketKnowledge] Fatal extraction failure', { tId, sId, error });
+        result.errors.push(ANSWERLATTICE_TICKET_KNOWLEDGE_FATAL_FAILED);
+        logger.error('[Answerlattice TicketKnowledge] Fatal extraction failure', {
+            failureCode: ANSWERLATTICE_TICKET_KNOWLEDGE_FATAL_FAILED,
+            ...getTicketKnowledgeScopeContext(tId, sId),
+            ...getTicketKnowledgeSourceErrorContext(error),
+        });
     }
 
     return result;

@@ -50,6 +50,7 @@ import {
 } from 'react-icons/lu';
 
 const { Text, Title, Paragraph } = Typography;
+const ANSWERLATTICE_ARTICLE_TRANSLATION_FAILED = 'Failed to translate article';
 
 interface ArticleSummary {
     id: string;
@@ -237,8 +238,8 @@ export default function MultiLanguageArticles({
                 }
             }
             message.success(`Translation for ${getLocaleLabel(locale)} saved`);
-        } catch (err: any) {
-            message.error(err?.message || 'Failed to translate article');
+        } catch {
+            message.error(ANSWERLATTICE_ARTICLE_TRANSLATION_FAILED);
         } finally {
             setTranslatingKey(null);
         }

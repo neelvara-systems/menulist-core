@@ -499,7 +499,7 @@ async function validateSourceFile(file: File, profile: MediaImageProfile): Promi
     });
 
     if (!validation.valid) {
-        throw new Error(validation.error || 'Use a valid image file.');
+        throw new Error('Use a valid image file.');
     }
 
     return dataUrl;

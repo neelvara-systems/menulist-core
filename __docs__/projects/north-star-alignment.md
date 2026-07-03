@@ -222,7 +222,7 @@ const syncChanges = useCallback(async (updatedData: Project = projectData) => {
 
 > **Key Insight (Dec 16, 2025):** The current customer-facing menu is "just an ordinary menu" — this is why word-of-mouth is zero. Customers don't notice anything different from paper menus.
 
-**See:** [`client-menu/autosell-features/`](../__docs__/client-menu/autosell-features/) for full implementation plan.
+**See:** [`client-menu/autosell-features/`](../client-menu/autosell-features/) for full implementation plan.
 
 ### The Auto-Sell Ladder (Build in Order)
 

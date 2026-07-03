@@ -1,7 +1,7 @@
 import { BATCH_IMAGE_GENERATION_JOB_STATUS } from '@constant/AI';
 import { APP_THEME_COLOR } from '@constant/common';
 import { FEATURE_FLAGS } from '@config/features';
-import { addImageBatchProcessingJob, updateImageBatchProcessingJob } from '@database/imageBatchProcessing';
+import { addImageBatchProcessingJob, assertImageBatchJobCreateSucceeded, assertImageBatchJobUpdateSucceeded, updateImageBatchProcessingJob } from '@database/imageBatchProcessing';
 import { applyProjectImagePreferencesToGenerationConfig, extractImagePreferencePatch, mergeProjectAIPreferences } from '@lib/ai/projectAIPreferences';
 import { useAppDispatch } from '@hook/useAppDispatch';
 import useDeviceType from '@hook/useDeviceType';
@@ -9,7 +9,6 @@ import { loadImageGenPreferences, saveImageGenPreferences } from '@lib/imageGenP
 import { assessItemPhotoReadiness, type ItemPhotoCaptureMode, type ItemPhotoReadinessResult } from '@lib/media/itemPhotoCaptureAssist';
 import { getMediaProfileAcceptAttribute, getSafeMediaAspectRatio } from '@lib/media/imageProfiles';
 import { prepareMediaImage, toPreparedUploadName } from '@lib/media/prepareMediaImage';
-import { logger } from '@lib/monitoring/logger';
 import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from '@providers/platformProviders/platformGlobalDataProvider';
 import { ProjectsDataContext, ProjectsDataProviderType } from '@providers/projectsDataProvider';
 import { startLoader, stopLoader } from '@reduxSlices/loader';
@@ -32,6 +31,11 @@ import BatchImageGenerationResultView from './AiImageGenerator/batchImageGenerat
 import BatchImageGenerationView from './AiImageGenerator/batchImageGeneration/BatchImageGenerationView';
 import EditImageModal from './AiImageGenerator/EditImageModal';
 import UploadedImagesList from './uploadedImagesList';
+import {
+    getBoundedMenuEditorStringContext,
+    getMenuEditorProjectLogContext,
+    logMenuEditorFailure,
+} from '../utils/editorDiagnostics';
 
 const { Text } = Typography;
 
@@ -340,7 +344,6 @@ const ImageUploadModal: React.FC<ImageUploadModalProps> = ({
         dispatch(startLoader("Uploading image"));
         try {
             await onImageUpload(selectedItem, imagesToUpload);
-            logger.debug('Image uploaded successfully after onImageUpload');
             if (storeDetails?.tenantId && storeDetails?.storeId) {
                 saveImageGenPreferences(storeDetails.tenantId, storeDetails.storeId, generationConfig);
             }
@@ -375,6 +378,7 @@ const ImageUploadModal: React.FC<ImageUploadModalProps> = ({
                 itemsList: []//initially its empty and whene image is generated via task queue it will be pushed to this array on by one
             };
             const jobId = await addImageBatchProcessingJob(newJob);
+            assertImageBatchJobCreateSucceeded(jobId, 'image_upload_batch_job_create_rejected');
             createdJobId = jobId;
             createdJobSnapshot = {
                 ...newJob,
@@ -418,16 +422,27 @@ const ImageUploadModal: React.FC<ImageUploadModalProps> = ({
                     reason: failureReason,
                     createdOn: getISOStringDate(),
                 };
-                await updateImageBatchProcessingJob({
-                    error: failureReason,
-                    id: createdJobId,
-                    status: BATCH_IMAGE_GENERATION_JOB_STATUS.FAILED,
-                    statusHistory: [
-                        failedStatusEntry,
-                    ],
-                }, activeProject.projectId).catch((updateError) => {
-                    logger.error('Failed to mark batch image job failed after trigger error', updateError, { jobId: createdJobId });
-                });
+                try {
+                    const failedJobUpdate = await updateImageBatchProcessingJob({
+                        error: failureReason,
+                        id: createdJobId,
+                        status: BATCH_IMAGE_GENERATION_JOB_STATUS.FAILED,
+                        statusHistory: [
+                            failedStatusEntry,
+                        ],
+                    }, activeProject.projectId);
+                    assertImageBatchJobUpdateSucceeded(
+                        failedJobUpdate,
+                        createdJobId,
+                        BATCH_IMAGE_GENERATION_JOB_STATUS.FAILED,
+                        'image_upload_batch_job_mark_failed_rejected',
+                    );
+                } catch (updateError) {
+                    logMenuEditorFailure('menu_editor_batch_image_job_mark_failed', updateError, {
+                        ...getMenuEditorProjectLogContext(activeProject.projectId, activeProject.masterProjectId),
+                        ...getBoundedMenuEditorStringContext('jobId', createdJobId),
+                    });
+                }
                 if (createdJobSnapshot) {
                     setActiveBatchImageJob?.({
                         ...createdJobSnapshot,
@@ -443,8 +458,13 @@ const ImageUploadModal: React.FC<ImageUploadModalProps> = ({
             if (error instanceof AICapacityError) {
                 message.info('Get more enhancements to continue. Visit Billing to add an enhancement pack.');
             } else {
-                message.error(`Image generation failed: ${error.message}`);
-                logger.error('Batch generation error', error);
+                logMenuEditorFailure('menu_editor_batch_image_generation_start_failed', error, {
+                    ...getMenuEditorProjectLogContext(activeProject?.projectId, activeProject?.masterProjectId),
+                    ...getBoundedMenuEditorStringContext('jobId', createdJobId),
+                    batchItemCount: selectedItemsForBatch.length,
+                    hasExistingJobSnapshot: Boolean(createdJobSnapshot),
+                });
+                message.error('Image generation could not start. Please try again.');
             }
         } finally {
             dispatch(stopLoader("Starting batch image generation"));
@@ -524,8 +544,12 @@ const ImageUploadModal: React.FC<ImageUploadModalProps> = ({
             try {
                 await addPreparedUploadFile(file as File & { uid?: string }, 'device-upload');
             } catch (error) {
-                logger.error('Error preparing image', error);
-                message.error(error instanceof Error ? error.message : `Error processing file ${file.name}`);
+                logMenuEditorFailure('menu_editor_item_image_prepare_failed', error, {
+                    ...getMenuEditorProjectLogContext(activeProject?.projectId, activeProject?.masterProjectId),
+                    ...getBoundedMenuEditorStringContext('fileName', file.name),
+                    ...getBoundedMenuEditorStringContext('selectedItemId', selectedItem?.id),
+                });
+                message.error('Could not process this image. Please try another image.');
             }
 
             // Keep this as a local preview flow. Actual upload happens only on the final save action.

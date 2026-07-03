@@ -9,9 +9,22 @@
 
 import { checkRateLimit } from '@lib/rateLimit';
 import { getRateLimitForFeature, RateLimitFeature } from '@lib/rateLimit/configs';
+import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';
+import { getBoundedSecurityStringContext, logSecurityFailure } from '@lib/security/securityDiagnostics';
+import { secureError } from '@lib/security/secureLogger';
+import { createHmac } from 'crypto';
 import { NextRequest, NextResponse } from 'next/server';
 
 const PUBLIC_FORM_TURNSTILE_SECRET = process.env.TURNSTILE_SECRET_KEY;
+const PUBLIC_RATE_LIMIT_HASH_SECRET =
+    process.env.NEXTAUTH_SECRET
+    || process.env.TURNSTILE_SECRET_KEY
+    || 'menulist-public-rate-limit-local';
+const TURNSTILE_RESPONSE_JSON_MAX_BYTES = 8 * 1024;
+
+type TurnstileVerificationResponse = {
+    success?: boolean;
+};
 
 /**
  * Extract client IP from request headers
@@ -44,6 +57,14 @@ export const getClientIp = (req: NextRequest): string => {
     return 'unknown';
 };
 
+export const hashPublicRateLimitValue = (value: unknown): string => {
+    const normalized = value === undefined || value === null ? 'unknown' : String(value);
+    return createHmac('sha256', PUBLIC_RATE_LIMIT_HASH_SECRET)
+        .update(normalized)
+        .digest('hex')
+        .slice(0, 40);
+};
+
 /**
  * Check public endpoint rate limit using existing Upstash
  * 
@@ -56,17 +77,25 @@ export async function checkPublicRateLimit(
     feature: RateLimitFeature = 'FEEDBACK_SUBMISSION'
 ): Promise<NextResponse | null> {
     const ip = getClientIp(req);
+    const ipHash = hashPublicRateLimitValue(ip);
     const config = getRateLimitForFeature(feature);
     let result;
 
     try {
         result = await checkRateLimit({
-            key: `public:${feature}:${ip}`,
+            key: `public:${feature}:${ipHash}`,
             limit: config.limit,
             window: config.window,
         });
     } catch (error) {
-        console.error('[Public API] Rate limit check failed, allowing request:', error);
+        secureError(
+            '[Public API] Rate limit check failed, allowing request',
+            error instanceof Error ? error : new Error(String(error)),
+            {
+                feature,
+                pathname: req.nextUrl.pathname,
+            },
+        );
         return null;
     }
 
@@ -150,12 +179,32 @@ export const verifyTurnstileToken = async (
         });
 
         if (!response.ok) {
+            logSecurityFailure('public_turnstile_http_rejected', undefined, {
+                ...getBoundedSecurityStringContext('pathname', request.nextUrl.pathname),
+                responseStatus: response.status,
+            });
             return { ok: false, reason: 'verification_http_error' };
         }
 
-        const payload = await response.json().catch(() => ({} as any));
+        let payload: TurnstileVerificationResponse | null = null;
+        try {
+            payload = await readJsonResponseWithLimit<TurnstileVerificationResponse>(
+                response,
+                TURNSTILE_RESPONSE_JSON_MAX_BYTES,
+            );
+        } catch (error) {
+            logSecurityFailure('public_turnstile_response_parse_failed', error, {
+                ...getBoundedSecurityStringContext('pathname', request.nextUrl.pathname),
+                responseStatus: response.status,
+                maxBytes: TURNSTILE_RESPONSE_JSON_MAX_BYTES,
+            });
+        }
+
         return payload?.success ? { ok: true } : { ok: false, reason: 'verification_failed' };
-    } catch {
+    } catch (error) {
+        logSecurityFailure('public_turnstile_verification_failed', error, {
+            ...getBoundedSecurityStringContext('pathname', request.nextUrl.pathname),
+        });
         return { ok: false, reason: 'verification_exception' };
     }
 };

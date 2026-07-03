@@ -2,7 +2,7 @@
 
 **Version:** 1.0
 **Status:** ✅ IMPLEMENTED — Mobile-first public flow
-**Last Updated:** May 20, 2026
+**Last Updated:** July 2, 2026
 
 ---
 
@@ -51,13 +51,13 @@ This feature lives in the `(website)` route group, NOT in the mobile PWA shell. 
 - **No antd-mobile needed** — this is a public page, uses Tailwind CSS (consistent with website redesign direction)
 - **No MobileShell integration** — this is pre-auth, not part of the dashboard
 - **Responsive design** — same page for mobile and desktop, mobile-first CSS
-- **Camera capture** — `<input type="file" accept="image/*" capture="environment">` triggers phone camera on mobile
+- **Camera capture** — `<input type="file" accept="image/jpeg,image/png,image/webp" capture="environment">` keeps the browser prompt aligned with the server image allowlist
 
 ### Mobile-Specific Considerations
 
 | Aspect             | Implementation                                                                        |
 | ------------------ | ------------------------------------------------------------------------------------- |
-| Camera access      | Standard file input with `accept="image/*"` — shows both camera and gallery on mobile |
+| Camera access      | Standard file input with `accept="image/jpeg,image/png,image/webp"` and `capture="environment"` — opens the rear camera path on supported mobile browsers while keeping the server allowlist exact |
 | Image optimization | Client-side Compressor.js (max 1920px, 80% quality) — already in dependencies         |
 | Upload progress    | Visual progress bar (not just spinner)                                                |
 | Processing wait    | Animated skeleton with "Reading your menu..." text                                    |

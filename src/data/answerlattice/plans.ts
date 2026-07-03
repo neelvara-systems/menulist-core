@@ -5,7 +5,7 @@
  * based on canonical answer volume, knowledge coverage, signals, and workspaces.
  *
  * Public packaging is founder-friendly and INR-first:
- * Starter, Growth, Studio. Beta remains available as a controlled launch path.
+ * Starter, Growth, Studio only. Active packaging has no zero-price tier.
  *
  * Prices are in smallest currency unit (paise for INR, cents for USD).
  *
@@ -32,25 +32,6 @@ export interface AnswerlatticePlan {
 }
 
 const AnswerlatticePlansList: AnswerlatticePlan[] = [
-    // Beta Plan — Free (Monthly)
-    {
-        planId: 'answerlattice_beta',
-        name: 'Beta',
-        description: 'Controlled launch access before paid packaging is enabled.',
-        isRecommended: true,
-        billingInterval: 'MONTH',
-        priceINR: { price: 0, monthlyCredits: 500 },
-        priceUSD: { price: 0, monthlyCredits: 500 },
-        limits: {
-            maxEntities: 200,
-            maxCanonicalAnswers: 500,
-            maxKBArticles: 200,
-            maxSignalEventsPerMonth: 10000,
-            maxWorkspaces: 1,
-            widgetIncluded: true,
-            apiAccessIncluded: false,
-        },
-    },
     // Starter Plan — Monthly
     {
         planId: 'answerlattice_starter',
@@ -169,10 +150,6 @@ const AnswerlatticePlansList: AnswerlatticePlan[] = [
 
 export function getAnswerlatticePlans(): AnswerlatticePlan[] {
     return AnswerlatticePlansList;
-}
-
-export function getAnswerlatticeBetaPlan(): AnswerlatticePlan {
-    return AnswerlatticePlansList[0];
 }
 
 export function getAnswerlatticePlanById(planId: string, interval: 'MONTH' | 'YEAR'): AnswerlatticePlan | undefined {

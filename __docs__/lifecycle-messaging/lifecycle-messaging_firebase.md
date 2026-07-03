@@ -50,6 +50,8 @@ None. Message logs are never deleted.
 | `retryFailedMessages()`      | `functions/src/messaging/messagingEngine.ts` | 1 read (failed msgs, limit 20) + N writes (retryCount update)  |
 | `getDailyMessageDigest()`    | `functions/src/messaging/messagingEngine.ts` | 2 count queries (sent + failed from last 24h)                  |
 
+June 29 Functions lifecycle messaging diagnostic hardening caps source error names, codes, and status values before idempotency, store lookup, message-log write, owner-notification fallback, renewal/suspension reminder, retry, and digest failure logs. This changes no Firestore read/write count, SMTP send behavior, retry behavior, scheduler cadence, collection shape, index, Storage operation, Firebase Auth operation, Cloud Function invocation path, cache invalidation, owner setting, public route, or rules behavior.
+
 ---
 
 ## Cost Estimate

@@ -4,6 +4,13 @@
  */
 
 import type { DashboardData } from '@lib/analytics/dal';
+import {
+  copyExportTextToClipboard,
+  getBoundedExportStringContext,
+  hasExportClipboardWrite,
+  hasExportCopyFallback,
+  logExportFailure,
+} from '@lib/export/exportDiagnostics';
 import { logger } from '@lib/monitoring/logger';
 
 // ================================================================
@@ -286,9 +293,13 @@ function downloadFile(content: string, filename: string, mimeType: string): void
  */
 export async function copyToClipboard(content: string): Promise<void> {
   try {
-    await navigator.clipboard.writeText(content);
+    await copyExportTextToClipboard(content);
   } catch (error) {
-    console.error('Failed to copy to clipboard:', error);
+    logExportFailure('menu_export_clipboard_copy_failed', error, {
+      contentLength: content.length,
+      hasClipboardWrite: hasExportClipboardWrite(),
+      hasCopyFallback: hasExportCopyFallback(),
+    });
     throw error;
   }
 }
@@ -313,7 +324,11 @@ export async function shareContent(
     });
   } catch (error) {
     if ((error as Error).name !== 'AbortError') {
-      console.error('Failed to share:', error);
+      logExportFailure('menu_export_web_share_failed', error, {
+        ...getBoundedExportStringContext('title', title),
+        ...getBoundedExportStringContext('text', text),
+        ...getBoundedExportStringContext('url', url),
+      });
       throw error;
     }
   }

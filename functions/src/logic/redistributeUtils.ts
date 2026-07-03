@@ -2,7 +2,7 @@
  * Redistribute Combined AI Response to Individual Files
  * 
  * Ported from: src/components/templates/main-app/projects/utils/redistributeExtractedData.ts
- * Spec Reference: MENU-IMAGE-PROCESSING-JOB-QUEUE-SPEC.md Section 5
+ * Spec Reference: menu-image-processing-job-queue-spec.md Section 5
  * 
  * When parallel processing returns combined data with sourceFileIndex,
  * this utility splits it back into per-file extractedData.

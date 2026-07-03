@@ -36,6 +36,7 @@ export const AiMenuManagerCommandRequestSchema = z.object({
     })).max(5).optional(),
     composerContext: commandContextSchema.optional(),
     clientContextVersion: z.string().trim().max(80).optional(),
+    replaceOperationId: idSchema.optional(),
     idempotencyKey: idSchema,
 });
 

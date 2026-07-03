@@ -300,6 +300,8 @@ src/components/templates/answerlattice/governance/PredictiveTriggerManager.tsx  
 functions-answerlattice/src/answerlattice/predictiveTriggerSync.ts  — Nightly: auto-gen + cache rebuild (~200 lines)
 ```
 
+`src/hooks/answerlattice/usePredictiveTriggers.ts` uses fixed local failure copy for trigger load/create/update/activate/disable/delete paths. Route, Firestore, provider, or browser exception text must not be copied into trigger manager toasts or error state.
+
 ### 4.2 — Modified Files
 
 ```
@@ -477,7 +479,7 @@ async function setCooldown(
 ```
 POST /api/answerlattice/predictive-help
 Content-Type: application/json
-X-API-Key: ml_<api_key>
+X-API-Key: al_<api_key>
 
 Request Body:
 {
@@ -513,7 +515,9 @@ No body.
 - **Validation:** `validatePublicApiKey(apiKey)` — same as widget search route
 - **Tenant isolation:** `tId`/`sId` extracted from auth result, **never** from request body
 - **Origin control:** Reuses `widgetAllowedOrigins`; if configured, missing or unlisted origins return 204
+- **Body admission:** 4KB bounded JSON body after API key, rate-limit, product, purpose, scope, and origin checks
 - **Context normalization:** Request context is parsed through `AnswerlatticeContextSchema` before trigger evaluation, and stored trigger conditions are normalized at read time for backward compatibility
+- **Diagnostics:** Invalid workspace context and unexpected route failures log fixed runtime codes with bounded metadata only
 - **Graceful failure:** All auth/validation failures return 204 (not error JSON) — widget must never show errors
 
 ---
@@ -531,6 +535,8 @@ Step 16: Predictive Trigger Sync
   16c. Compute effectiveness scores for active triggers
   16d. Auto-disable low-performing triggers (score < -0.3 after 100+ impressions)
 ```
+
+Predictive trigger sync failures use fixed `ANSWERLATTICE_PREDICTIVE_TRIGGER_*` codes. Auto-generation, cache rebuild, and effectiveness update logs include source error name/code/status and tenant/store scope booleans only; valid trigger suggestions, summary rebuilds, source-hash skips, compiled-context invalidation, and effectiveness updates are unchanged.
 
 ### Auto-Trigger Generation Logic
 

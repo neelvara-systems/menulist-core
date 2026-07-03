@@ -1,12 +1,13 @@
 # URL Routing Architecture
 
 > **Feature:** Core URL Handling & Public Routing Infrastructure
-> **Status:** 🔒 **LOCKED** — Phase 1 + Phase 2 + Product-Domain Guardrails Complete
-> **Date:** May 30, 2026
+> **Status:** 🔒 **LOCKED** — Slug, canonical, product-domain, and path-segment guardrails implemented
+> **Date:** July 2, 2026
 > **Author:** Cascade (Lead Architect)
 > **Feature Flags:** `ENABLE_STORED_SLUGS` (ON), `ENABLE_MULTI_OUTLET` (ON), `ENABLE_OBP` (OFF), `ENABLE_MYCODEX_READER` (ON)
 > **ADRs:** 12 decisions documented — see [url-routing-architecture_adr.md](./url-routing-architecture_adr.md)
 > **Codebase = Single Source of Truth**
+> **Local Source Gate:** `npm run verify:url-routing-boundary`
 
 ---
 
@@ -21,7 +22,7 @@
 | Mobile     | [Mobile Support](./url-routing-architecture_mobile-support.md)   | Infrastructure — no mobile UI        |
 | CEO / PM   | [Executive Summary](#executive-summary)                          | What and why                         |
 | Developers | [Current Architecture](#current-architecture-as-is)              | What exists today                    |
-| Developers | [Implementation Plan](#implementation-plan)                      | Phase 1 + Phase 2 complete           |
+| Developers | [Implementation Plan](#implementation-plan)                      | Implemented source plan and file paths |
 | Developers | [File Changes](#file-changes-inventory)                          | Exact files created/modified         |
 | Archive    | [ChatGPT Review](./_archive/chatgpt-review.md)                   | Full cross-check                     |
 | Archive    | [Architecture Validation](./_archive/architecture-validation.md) | Brand-level vs store-level audit     |
@@ -34,10 +35,12 @@
 
 Core URL routing infrastructure for MenuList's public pages:
 
-- **Product-domain separation** (`menulist.ai` = MenuList, `constantlayer.in` = ConstantLayer, `answerlattice.com` = Answerlattice, `campaigncue.ai` = CampaignCue, `menulist.digital` = MyCodex)
+- **Product-domain separation** (`menulist.ai` = MenuList, `neelvara.com` = Neelvara, `answerlattice.com` = Answerlattice, `campaigncue.ai` = CampaignCue, `menulist.digital` = MyCodex)
 - **Product site vs product app separation** (`src/app/sites/[productId]` is public website only; owner/product dashboards live in product route groups such as `src/app/(answerlattice)/answerlattice` or `src/app/(campaigncue)/campaigncue`)
 - **Brand-level subdomain ownership** (subdomain = brand, not individual location)
 - **Multi-store location routing** (`brand.menulist.ai/pune/menu`)
+- **safe outlet path segments** for brand OBP location cards, outlet OBP links, sitemap outlet entries, and outlet canonical redirects
+- **safe project path segments** for menu lookup, sitemap project URLs, old-slug redirects, canonical menu URLs, and OBP menu CTA links
 - **Permanent project slugs** (stored, not derived from names)
 - **Old slug → 301 redirects** (QR codes never break)
 - **Reserved slug namespace** (prevent future conflicts)
@@ -82,7 +85,7 @@ Tenant (account container — billing, stores list)
 
 Requests are classified before tenant routing:
 
-1. `src/constants/deploymentTargets.ts` defines the active domains for MenuList, ConstantLayer, Answerlattice, CampaignCue, MyCodex, and private SignalDesk app hosts by deployment stage.
+1. `src/constants/deploymentTargets.ts` defines the active domains for MenuList, Neelvara, Answerlattice, CampaignCue, MyCodex, and private SignalDesk app hosts by deployment stage.
 2. `src/constants/productDomains.ts` registers enabled product sites and maps product hosts to `/sites/{productId}` route groups.
 3. `src/lib/multiTenant/domainResolver.ts` checks `resolveProductSiteByHostname()` before treating a host as a platform, subdomain, or custom tenant domain.
 4. `src/middleware.ts` rewrites product domains directly to their product route group and never sends them through `/client`.
@@ -92,7 +95,7 @@ Requests are classified before tenant routing:
 | Host                                    | Classification | Rewrite / Behavior                 |
 | --------------------------------------- | -------------- | ---------------------------------- |
 | `menulist.ai` / `www.menulist.ai` | Platform | MenuList website / platform routes |
-| `constantlayer.in` / `www.constantlayer.in` | Product | Public site: `/sites/constantlayer` |
+| `neelvara.com` / `www.neelvara.com` | Product | Public site: `/sites/neelvara` |
 | `answerlattice.com` / `www.answerlattice.com` | Product | Public site: `/sites/answerlattice`; app routes: `/answerlattice/*` |
 | `campaigncue.ai` / `www.campaigncue.ai` | Product | Public site: `/sites/campaigncue`; owner app: `/campaigncue/app` |
 | `menulist.digital` / `www.menulist.digital` | Product | `/sites/mycodex` |
@@ -117,7 +120,7 @@ Because MyCodex reads markdown from `__docs__` at runtime, `next.config.js` must
 
 Localhost `/__mycodex` remains open for development.
 
-Internal portfolio aliases `/cl`, `/ml`, `/al`, and `/cc` are only enabled on the MyCodex product host or an already-resolved MyCodex request. They are convenience path aliases for private portfolio navigation, not public canonical product URLs, tenant paths, Firebase targets, or product-code aliases. `/cl` maps to the ConstantLayer public site route group.
+Internal portfolio aliases `/nv`, `/ml`, `/al`, and `/cc` are only enabled on the MyCodex product host or an already-resolved MyCodex request. They are convenience path aliases for private portfolio navigation, not public canonical product URLs, tenant paths, Firebase targets, or product-code aliases. `/nv` maps to the Neelvara public site route group.
 
 SignalDesk uses the app-only MyCodex-host alias `/sd`. `https://menulist.digital/sd` rewrites to the private `/signaldesk` app, and SignalDesk navigation preserves `/sd/*` while serving through that host. `/sd/app` is accepted as a compatibility alias for people expecting the CampaignCue-style app suffix, but it still rewrites to the same private SignalDesk app and normalizes navigation to `/sd/*`. `/sd/signin` rewrites to the shared sign-in page so the callback can return to `/sd`.
 
@@ -129,7 +132,7 @@ Authenticated owner dashboards, product workspaces, admin tools, and paid/runtim
 
 | Product | Public site folder | Owner/product app folder | Product-domain mapping |
 | --- | --- | --- | --- |
-| ConstantLayer | `src/app/sites/constantlayer` | None | Static entity/trust site only; no product app route. MyCodex-only alias: `/cl`. |
+| Neelvara | `src/app/sites/neelvara` | None | Static entity/trust site only; no product app route. MyCodex-only alias: `/nv`. |
 | Answerlattice | `src/app/sites/answerlattice` | `src/app/(answerlattice)/answerlattice` | Dashboard roots rewrite to `/answerlattice/*`. |
 | CampaignCue | `src/app/sites/campaigncue` | `src/app/(campaigncue)/campaigncue` | `/app` rewrites to `/campaigncue/app`; local `/__campaigncue/app` also rewrites to `/campaigncue/app`. |
 | SignalDesk | None | `src/app/(signaldesk)/signaldesk` | Local `/signaldesk`; dedicated hosts rewrite to `/signaldesk/*`; MyCodex-host aliases `/sd` and `/sd/app` rewrite to `/signaldesk/*`. |
@@ -149,11 +152,11 @@ Customer opens: storypizza.menulist.ai/pune/menu
                     │     → type: subdomain  │
                     │     → subdomain: "storypizza" │
                     │  2. Set headers        │
-                    │  3. Rewrite to /_client │
+                    │  3. Rewrite to /client  │
                     └───────────┬───────────┘
                                 │
                     ┌───────────┴───────────┐
-                    │  _client/[[...slug]]   │
+                    │  client/[[...slug]]    │
                     │  page.tsx              │
                     │                        │
                     │  1. Read headers       │
@@ -169,6 +172,10 @@ Customer opens: storypizza.menulist.ai/pune/menu
                     │  5. Render menu        │
                     └────────────────────────┘
 ```
+
+Public client pages use `src/lib/multiTenant/getTenantFromHeaders.ts` for middleware-set tenant headers and host fallbacks. Missing-host diagnostics are bounded: the helper logs header-presence booleans through secure logging and does not emit raw request header values. Domain lookup failure diagnostics in `src/lib/multiTenant/domainLookup.ts` are bounded the same way: lookup type and value length only, not raw subdomain/custom-domain values.
+
+The public menu resolver at `src/app/client/[[...slug]]/page.tsx` follows the same logging rule for fallback paths. Multi-outlet linked-project failures and special-menu graceful degradation keep the existing public behavior, but diagnostics log only failure type, ID presence/length, and error name.
 
 ### Current URL Patterns
 
@@ -198,7 +205,21 @@ Customer opens: storypizza.menulist.ai/pune/menu
 | Vercel `unstable_cache` | Cross-request Data Cache                  | 60 seconds  |
 | `revalidateTag()`       | Instant invalidation on store/menu update | On-demand   |
 
-Admin subdomain renames also update `platformSummary/storesSummary` and revalidate `menu-store-{storeId}`, `store-{storeId}`, and `client-stores` after the transaction. This keeps old-subdomain redirect lookup, current-subdomain lookup, OBP/menu rendering, and internal store selectors aligned without owner-facing rename controls.
+Admin subdomain renames also apply platform-only auth, reject bodies above 8KB before validation or store/collision reads, update `platformSummary/storesSummary`, and revalidate `menu-store-{storeId}`, `store-{storeId}`, and `client-stores` after the transaction. This keeps old-subdomain redirect lookup, current-subdomain lookup, OBP/menu rendering, and internal store selectors aligned without owner-facing rename controls.
+
+Owner subdomain availability checks (`GET /api/subdomain/check`) use session-scoped `MANAGE_PUBLIC_PRESENCE`, apply the cheap `DATA_READ` limiter before permission and store availability reads, and store only HMAC-hashed owner/tenant/store key material in the limiter key.
+
+Mobile Domain Settings subdomain saves must require an explicit `updateStore()` acknowledgement before local public URL state or saved copy changes. A swallowed store-write fallback is treated as `mobile_domain_settings_subdomain_store_update_rejected` and routes through the fixed failure path.
+
+Owner custom-domain management (`POST/GET/DELETE /api/domain`) uses session-scoped `MANAGE_PUBLIC_PRESENCE`, rejects mutation bodies above 4KB before Vercel/provider or store work, stores only HMAC-hashed owner/store key material in the domain-management rate limiter, logs bounded provider diagnostics, and revalidates public menu/OBP cache after successful domain state writes.
+
+Desktop Domain Settings, embedded Custom Domain, and Mobile Domain Settings browser calls to `/api/domain` and `/api/subdomain/check` use the shared authenticated browser request policy before bounded response parsing. This keeps owner domain setup uncached, same-origin, and manual-redirect across desktop/mobile surfaces without duplicating fetch policy blocks.
+
+Desktop and mobile Domain Settings browser handoffs for subdomain/custom-domain copy, external open, and DNS-record copy log only bounded URL/DNS presence-length metadata on failure. They must not log raw domains, DNS record values, generated public URLs, or browser exception text.
+
+Custom-domain removal acknowledgements must include both `success: true` and `removed: true` before desktop Domain Settings, embedded Custom Domain, or Mobile Domain Settings clear local custom-domain state. Missing `removed` is treated as an invalid remove response.
+
+Owner-side browser update paths use `src/lib/cache/publicClientCache.ts` to request the same public menu/OBP/customer-app cache refresh after store, project, tenant, PWA, extraction, or outlet propagation changes. The helper de-duplicates in-flight requests per store, times out after 4 seconds, fails open, and uses dev-only bounded secure logging for revalidation failures instead of raw fetch exception logs.
 
 ### What's Already Well-Built
 
@@ -237,15 +258,15 @@ Admin subdomain renames also update `platformSummary/storesSummary` and revalida
 
 ## Implementation Plan
 
-### Phase 0: Prerequisites (Before Starting)
+### Prerequisite: Routing Freeze Before Source Changes
 
-**Feature freeze** — Do not start any new features, experiments, or UI additions until Phase 1 + Phase 2 are complete. URL permanence is foundational infrastructure that must be uninterrupted.
+**Routing freeze** — Do not start URL-affecting features, experiments, or UI additions while slug permanence and canonical routing source changes are in progress. URL permanence is foundational infrastructure that must be uninterrupted.
 
 **Why:** Slug system touches project creation, rename, and public routing. Concurrent feature work risks conflicts. Complete this foundation first, then resume normal feature work.
 
 ---
 
-### Phase 1: Slug Infrastructure (P0) — Estimated: 1 session
+### Milestone A: Slug Infrastructure (P0) — Implemented
 
 The most impactful change. Makes URLs permanent and reliable.
 
@@ -323,7 +344,7 @@ export function isReservedProjectSlug(slug: string): boolean {
 
 **What:** Modify `getProjectBySlugOrDefault()` to check `project.slug` field first, then fall back to `slugify(name)` for backward compatibility.
 
-**File:** `src/app/_client/[[...slug]]/page.tsx`
+**File:** `src/app/client/[[...slug]]/page.tsx`
 
 Current logic:
 
@@ -375,13 +396,13 @@ if (!targetProject) {
 
 ---
 
-### Phase 2: CDN & Canonical URL Improvements (P1) — Estimated: 1 session
+### Milestone B: CDN & Canonical URL Improvements (P1) — Implemented
 
 #### 2.1 Add CDN cache headers to public pages
 
 **What:** Add `Cache-Control` response headers to public menu and OBP pages for Vercel Edge Network caching.
 
-**Where:** `src/app/_client/layout.tsx`
+**Where:** `src/app/client/layout.tsx`
 
 ```typescript
 // Add to layout or via next.config.js headers
@@ -392,7 +413,7 @@ export const metadata = {
 };
 ```
 
-Or via `next.config.js` headers configuration for `/_client/*` paths.
+Or via `next.config.js` headers configuration for `/client/*` paths.
 
 **Effect:** Vercel's CDN caches rendered HTML. Most repeat visitors = 0 origin hits.
 
@@ -400,7 +421,7 @@ Or via `next.config.js` headers configuration for `/_client/*` paths.
 
 **What:** When a store has a verified custom domain, requests to the subdomain should 301 redirect to the custom domain.
 
-**Where:** `src/middleware.ts` or `src/app/_client/[[...slug]]/page.tsx`
+**Where:** `src/middleware.ts` or `src/app/client/[[...slug]]/page.tsx`
 
 **Logic:**
 
@@ -451,11 +472,11 @@ if (pathname !== lowerPath) {
 
 ---
 
-### Phase 3: Brand OBP for Multi-Store — IMPLEMENTED (Feb 19, 2026)
+### Implemented Capability: Brand OBP for Multi-Store (Feb 19, 2026)
 
 When a multi-store tenant's master store OBP is visited and the tenant has >1 active store, the Brand OBP store selector renders automatically.
 
-**Implementation:** `src/app/_client/obp/BrandOBPContent.tsx`
+**Implementation:** `src/app/client/obp/BrandOBPContent.tsx`
 
 **URL patterns:**
 
@@ -471,36 +492,36 @@ When a multi-store tenant's master store OBP is visited and the tenant has >1 ac
 
 ## File Changes Inventory
 
-### Phase 1: Slug Infrastructure
+### Milestone A: Slug Infrastructure
 
 | Action     | File                                              | Change                                                           |
 | ---------- | ------------------------------------------------- | ---------------------------------------------------------------- |
 | **CREATE** | `src/constants/reservedSlugs.ts`                  | Reserved slug namespace constant + validation function           |
-| **MODIFY** | `src/app/_client/[[...slug]]/page.tsx`            | Update resolver to check stored slug, add previousSlugs redirect |
+| **MODIFY** | `src/app/client/[[...slug]]/page.tsx`             | Update resolver to check stored slug, add previousSlugs redirect |
 | **MODIFY** | `src/lib/utils/slugify.ts`                        | Add `validateProjectSlug()` function                             |
 | **MODIFY** | Project creation DAL (where projects are created) | Add slug generation + validation                                 |
 | **MODIFY** | Project rename flow (if exists)                   | Add old slug → previousSlugs append                              |
 | **CREATE** | `scripts/migrate-project-slugs.ts`                | One-time migration: stamp slug field on existing projects        |
 
-### Phase 2: CDN & Canonical
+### Milestone B: CDN & Canonical
 
 | Action     | File                                             | Change                                       |
 | ---------- | ------------------------------------------------ | -------------------------------------------- |
 | **MODIFY** | `src/middleware.ts`                              | Add trailing slash + lowercase normalization |
-| **MODIFY** | `src/app/_client/[[...slug]]/page.tsx`           | Add subdomain→custom domain redirect check   |
-| **MODIFY** | `next.config.js` OR `src/app/_client/layout.tsx` | Add Cache-Control headers for public pages   |
+| **MODIFY** | `src/app/client/[[...slug]]/page.tsx`            | Add subdomain→custom domain redirect check   |
+| **MODIFY** | `next.config.js` OR `src/app/client/layout.tsx`  | Add Cache-Control headers for public pages   |
 
 ---
 
 ## Firebase Cost Impact
 
-### Phase 1: Slug Infrastructure
+### Milestone A: Slug Infrastructure
 
 - **Reads:** ZERO additional reads. Slug field is read alongside existing project metadata (same document)
 - **Writes:** ZERO additional writes. Slug is part of project metadata document (same `setDoc` call)
 - **Migration script:** One-time batch read+write for existing projects
 
-### Phase 2: CDN & Canonical
+### Milestone B: CDN & Canonical
 
 - **Reads:** REDUCED. CDN caching reduces origin hits
 - **Writes:** ZERO
@@ -517,7 +538,7 @@ When a multi-store tenant's master store OBP is visited and the tenant has >1 ac
 | **SEO/AEO**         | ✅ Built            | Better slugs + canonical URLs directly improve SEO. Schema.org already complete                 |
 | **Digital Screens** | ✅ Built            | Screen URLs use project-specific paths. Reserved namespace prevents `screen` conflicts          |
 | **Guest Feedback**  | ✅ Built            | Reserved namespace prevents `feedback` slug conflicts                                           |
-| **Custom Domains**  | ✅ Architected      | Phase 2 adds subdomain→custom domain redirect for SEO dedup                                     |
+| **Custom Domains**  | ✅ Architected      | Canonical routing adds subdomain→custom domain redirect for SEO dedup                           |
 
 ---
 
@@ -560,7 +581,7 @@ When a multi-store tenant's master store OBP is visited and the tenant has >1 ac
 
 ## Testing Strategy
 
-### Phase 1 Tests
+### Slug Infrastructure Tests
 
 | Test                                       | Expected                          |
 | ------------------------------------------ | --------------------------------- |
@@ -572,7 +593,7 @@ When a multi-store tenant's master store OBP is visited and the tenant has >1 ac
 | Two projects with same slugified name      | Second project gets unique suffix |
 | Visit non-existent slug                    | Fallback to store OBP or 404      |
 
-### Phase 2 Tests
+### CDN & Canonical Tests
 
 | Test                                      | Expected                                     |
 | ----------------------------------------- | -------------------------------------------- |
@@ -585,7 +606,7 @@ When a multi-store tenant's master store OBP is visited and the tenant has >1 ac
 
 ## Migration Plan
 
-### For Existing Projects (Phase 1)
+### For Existing Projects (Slug Infrastructure)
 
 1. **Backward compatible deployment:** New code checks `slug` field first, falls back to `slugify(name)`
 2. **Run migration script:** Stamp `slug` field on all existing project metadata docs

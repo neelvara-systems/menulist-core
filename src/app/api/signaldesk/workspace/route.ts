@@ -2,11 +2,13 @@ export const dynamic = "force-dynamic";
 
 import {
     applySignalDeskRateLimit,
+    getBoundedSignalDeskStringContext,
+    getSignalDeskAccessLogContext,
+    logSignalDeskFailure,
     requireSignalDeskAccess,
     requireSignalDeskRuntime,
 } from "@lib/signaldesk/apiGuards";
 import { loadSignalDeskWorkspaceServer } from "@lib/signaldesk/workflowServer";
-import { secureError } from "@lib/security/secureLogger";
 import type { SignalDeskSection } from "@type/signaldesk";
 import { withAuth } from "@/middleware/auth";
 import type { NextRequest } from "next/server";
@@ -60,9 +62,16 @@ export const GET = withAuth(async (request: NextRequest, session) => {
             },
         });
     } catch (error) {
-        secureError("[SignalDesk API] Workspace failed", error as Error, {
-            userId: accessResult.access.userId,
-        });
+        logSignalDeskFailure(
+            "signaldesk_workspace_route_failed",
+            error,
+            {
+                route: "/api/signaldesk/workspace",
+                ...getSignalDeskAccessLogContext(accessResult.access),
+                ...getBoundedSignalDeskStringContext("section", section),
+                ...getBoundedSignalDeskStringContext("requiredPermission", requiredPermission),
+            },
+        );
         return NextResponse.json({ error: "Failed to load SignalDesk workspace" }, { status: 500 });
     }
 });

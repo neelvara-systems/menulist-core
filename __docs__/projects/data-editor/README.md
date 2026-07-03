@@ -1,7 +1,9 @@
 # Data Editor
 
 **Sub-feature of:** Projects (Menu Digitization)  
-**Status:** ✅ Production Ready
+**Status:** Implemented source evidence; not current launch certification
+
+**Launch boundary:** This hub links data-editor source docs. Current release approval requires the active [production-readiness audit](../../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../../production-readiness/external-certification-runbook.md) evidence, browser/mobile editor QA, publish/cache evidence for edited public truth, and deploy evidence for the target environment.
 
 ---
 
@@ -62,9 +64,9 @@ The following files have been **consolidated** into this folder:
 
 | Legacy File                                            | Status                    |
 | ------------------------------------------------------ | ------------------------- |
-| `Assessments/ASSESSMENT-03-EDITOR.md`                  | → Consolidated            |
+| `Assessments/assessment-03-editor.md`                  | → Consolidated            |
 | `04-DATA-EDITOR.md`                                    | → Consolidated            |
-| `development_done/3-IMPLEMENTATION-EDITOR-COMPLETE.md` | → Consolidated            |
+| `development_done/3-implementation-editor-complete.md` | → Consolidated            |
 | `Editor/` folder (8 files)                             | → Referenced in \_impl.md |
 
 ---

@@ -172,7 +172,7 @@
 | 6 | Feedback Inbox | Feedback | Daily | P1 | ✅ In original spec |
 | 7 | Feedback Detail | Feedback (drill-in) | Daily | P1 | ✅ In original spec |
 | 8 | Share & QR Screen | More | Daily | P1 | ✅ In original spec |
-| 9 | Public Info Screen | More | Monthly | P2 | ✅ In original spec |
+| 9 | Brand Settings Screen | More | Monthly | P2 | ✅ Active in current shell |
 | 10 | Billing Screen (enhanced) | More | Monthly | P2 | ✅ Enhanced |
 | 11 | More Screen | More | As needed | P2 | ✅ Enhanced |
 
@@ -224,9 +224,11 @@ import { useCampaignActions } from '@template/main-app/today/hooks/useCampaignAc
 // These hooks already provide:
 // - todayCampaigns.primary (the main daily action)
 // - todayCampaigns.operational (secondary actions)
-// - completeCampaign() (mark as shared)
-// - skipCampaign() (skip for today)
+// - completeCampaign() (mark as shared after shaped campaign/export acknowledgement)
+// - skipCampaign() (skip for today after shaped campaign/status acknowledgement)
 ```
+
+**July 1, 2026 acknowledgement note:** mobile Today completion and skip actions share the desktop campaign guards. The UI must not update local Today state or show success from a generic DAL fallback; completion requires campaign/project/type/surface/method/export identity plus updated Today state, and skip requires campaign/type/status/skip-count plus updated Today state. Download-surface feedback must also match the requested surface and `download` method before success copy appears.
 
 ---
 

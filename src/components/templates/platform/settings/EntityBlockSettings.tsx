@@ -202,9 +202,9 @@ export default function EntityBlockSettings() {
                     });
                     setReason('');
                     message.success(nextBlockedState ? 'Entity blocked' : 'Entity unblocked');
-                } catch (error) {
-                    message.error(error instanceof Error ? error.message : 'Could not update block status');
-                    throw error;
+                } catch {
+                    message.error('Could not update block status');
+                    throw new Error('Could not update block status');
                 } finally {
                     setLoading(false);
                 }

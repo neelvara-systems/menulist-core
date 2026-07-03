@@ -56,11 +56,8 @@ const rawData = await request.json();
 const validation = validateAPIInput(TranslationRequestSchema, rawData);
 
 if (!validation.success) {
-    const errorMsg = 'error' in validation ? validation.error : 'Invalid input';
-    console.warn('[API] Invalid input:', errorMsg);
     return NextResponse.json({ 
-        error: 'Invalid input', 
-        details: errorMsg 
+        error: 'Invalid input'
     }, { status: 400 });
 }
 
@@ -74,6 +71,12 @@ const { inputJson, targetLang, sourceLang } = validation.data;
 // All dangerous characters are blocked
 // All formats are validated
 ```
+
+### Shared Validation Diagnostics
+
+Shared input and file validators use `src/lib/security/securityDiagnostics.ts` for internal diagnostics. Do not log raw query keys, uploaded file contents, base64 payloads, MIME strings, token-bearing objects, or raw exception messages with `console.*`. Use bounded presence/length metadata and generic caller-facing failure text.
+
+`validateAPIInput()` returns generic `Invalid input` failure text. It must not expose raw Zod issue paths or schema messages through API `details`; routes that need more specific owner copy should return fixed local messages outside the shared validator.
 
 ---
 
@@ -103,10 +106,8 @@ export async function POST(request: Request) {
         const validation = validateAPIInput(TranslationRequestSchema, rawData);
         
         if (!validation.success) {
-            const errorMsg = 'error' in validation ? validation.error : 'Invalid input';
             return NextResponse.json({ 
-                error: 'Invalid input', 
-                details: errorMsg 
+                error: 'Invalid input'
             }, { status: 400 });
         }
 

@@ -40,7 +40,7 @@ After a few minutes of effort, the owner has:
 
 - A live official customer link
 - QR and official business page access through existing MenuList share surfaces
-- A dashboard account (for future use)
+- A dashboard account for owner login after publish
 
 ### Why This Matters
 

@@ -1,12 +1,12 @@
 export const dynamic = "force-dynamic";
 
 import { writeGrowthOSSummaryServer } from "@database/growthos/server";
+import { getGrowthOSBoundedStringContext, getGrowthOSSecurityLogContext, logGrowthOSApiFailure } from "@lib/growthos/diagnostics";
 import { isGrowthOSMasterEnabled } from "@lib/growthos/entitlements";
 import { buildGrowthOSEmptySummary, loadGrowthOSServerContext } from "@lib/growthos/serverContext";
 import { logger } from "@lib/monitoring/logger";
 import { checkDataWriteLimit } from "@lib/rateLimit/helpers";
 import { validateAPIInput } from "@lib/security/inputValidation";
-import { buildSecurityContext } from "@lib/security/securityContext";
 import { GrowthOSRefreshRequestSchema, parseGrowthOSJsonBody } from "@lib/validation/growthosSchemas";
 import type { GrowthOSSummaryDocument } from "@type/growthos";
 import { NextResponse } from "next/server";
@@ -52,19 +52,19 @@ export const POST = withAuth(async (request, session) => {
         const jsonBody = await parseGrowthOSJsonBody(request);
         if (!jsonBody.success) {
             logger.security("Invalid JSON - GrowthOS Refresh API", {
-                ...buildSecurityContext(session, request),
-                endpoint: "/api/growthos/actions/refresh",
+                ...getGrowthOSSecurityLogContext(session, request, "/api/growthos/actions/refresh"),
             }, "medium");
-            return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+            return ("response" in jsonBody && jsonBody.response)
+                || NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
         }
 
         const validation = validateAPIInput(GrowthOSRefreshRequestSchema, jsonBody.data);
         if (!validation.success) {
             const errorMsg = "error" in validation ? validation.error : "Invalid input";
             logger.security("GrowthOS Refresh Input Validation Failed", {
-                ...buildSecurityContext(session, request),
-                endpoint: "/api/growthos/actions/refresh",
-                error: errorMsg,
+                ...getGrowthOSSecurityLogContext(session, request, "/api/growthos/actions/refresh", {
+                    ...getGrowthOSBoundedStringContext("validationError", errorMsg),
+                }),
             }, "medium");
             return NextResponse.json({ error: "Invalid input", details: errorMsg }, { status: 400 });
         }
@@ -72,9 +72,9 @@ export const POST = withAuth(async (request, session) => {
 
         if (!verifyTenantAccess(session, session.tId, session.sId, request)) {
             logger.security("Tenant Access Violation - GrowthOS Refresh API", {
-                ...buildSecurityContext(session, request),
-                endpoint: "/api/growthos/actions/refresh",
-                attemptedProjectId: projectId,
+                ...getGrowthOSSecurityLogContext(session, request, "/api/growthos/actions/refresh", {
+                    ...getGrowthOSBoundedStringContext("attemptedProjectId", projectId),
+                }),
             }, "critical");
             return NextResponse.json({ error: "Forbidden" }, { status: 403 });
         }
@@ -145,9 +145,9 @@ export const POST = withAuth(async (request, session) => {
         });
         return NextResponse.json({ data: summary }, { status: 200 });
     } catch (error) {
-        logger.error("GrowthOS Refresh API error", error, {
+        logGrowthOSApiFailure("GrowthOS Refresh API error", "growthos_refresh_api_failed", error, {
             endpoint: "/api/growthos/actions/refresh",
-            userId: session?.uId || session?.user?.id,
+            ...getGrowthOSBoundedStringContext("userId", session?.uId || session?.user?.id),
         });
         return NextResponse.json({ error: "Growth Kits refresh failed" }, { status: 500 });
     }

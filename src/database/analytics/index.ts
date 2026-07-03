@@ -1,10 +1,10 @@
 import { DB_COLLECTIONS } from "@constant/database";
 import { apiCallComposer } from "@lib/apiHelper/apiCallComposer";
+import { getAnalyticsQueueContext, getAnalyticsTrackingContext, logAnalyticsFailure } from "@lib/analytics/analyticsDiagnostics";
 import { getBusinessAnalyticsDateKey } from "@lib/analytics/businessDay";
 import { addDaysToAnalyticsDateKey } from "@lib/analytics/dateKey";
 import { filterAnalyticsUpdateData } from "@lib/analytics/writePolicy";
 import { firebaseClient } from "@lib/firebase/firebaseClient";
-import { logger } from "@lib/monitoring/logger";
 import { collection, doc, DocumentData, getDoc, getDocs, increment, orderBy, query, serverTimestamp, setDoc, Timestamp, where } from "firebase/firestore";
 
 // Base collection path
@@ -101,15 +101,9 @@ const reportAnalyticsQueueFlushError = (
   reportedAnalyticsQueueFailures.add(queueKey);
 
   const queued = analyticsWriteQueue.get(queueKey);
-  logger.warn('[AnalyticsQueue] Queued analytics flush failed', {
+  logAnalyticsFailure('analytics_queue_flush_failed', error, {
     phase,
-    queueKey,
-    tenantId: queued?.tenantId,
-    storeId: queued?.storeId,
-    projectId: queued?.projectId,
-    dateString: queued?.dateString,
-    eventCount: queued?.eventCount,
-    error: error instanceof Error ? error.message : String(error),
+    ...getAnalyticsQueueContext(queueKey, queued),
   });
 };
 
@@ -126,6 +120,7 @@ const mergeQueuedAnalyticsData = (target: Record<string, any>, source: Record<st
 
 const TWO_LEVEL_ANALYTICS_MAP_FIELDS = new Set([
   'actionSessionsBySource',
+  'actionSessionsByOpenHoursState',
   'appOpensByPlatform',
   'appOpensBySurface',
   'attributeFilterActionClicks',
@@ -163,15 +158,22 @@ const TWO_LEVEL_ANALYTICS_MAP_FIELDS = new Set([
   'languageAdoptions',
   'languageNames',
   'menuActionClicks',
+  'menuActionClicksByOpenHoursState',
   'menuActionClicksBySource',
   'menuResolutionLayer',
   'menuSessionsByLanguage',
   'menuSessionsBySource',
   'obpActionClicks',
+  'obpActionClicksByOpenHoursState',
+  'obpActionClicksBySource',
   'obpLinkClicks',
+  'obpLinkClicksByOpenHoursState',
+  'obpLinkClicksBySource',
   'obpLanguageAdoptions',
   'obpLanguageNames',
   'obpSessionsByLanguage',
+  'obpMenuClicksByOpenHoursState',
+  'obpMenuClicksBySource',
   'obpMenuClicksBySurface',
   'obpShares',
   'obpViewsByLanguage',
@@ -303,11 +305,14 @@ const writeAnalyticsEventViaPublicApi = async (
   if (Object.keys(policyData).length === 0) return;
 
   const response = await fetch('/api/public/analytics/track', {
-    method: 'POST',
+    cache: 'no-store',
+    credentials: 'same-origin',
     headers: {
       'Content-Type': 'application/json',
     },
     keepalive: true,
+    method: 'POST',
+    redirect: 'manual',
     body: JSON.stringify({
       updateData: policyData,
       tenantId: String(tenantId),
@@ -455,9 +460,7 @@ if (typeof window !== 'undefined') {
       persistAnalyticsQueue();
     }
   } catch (error) {
-    logger.warn('[AnalyticsQueue] Dropped invalid persisted analytics queue', {
-      error: error instanceof Error ? error.message : String(error),
-    });
+    logAnalyticsFailure('analytics_persisted_queue_invalid', error);
     window.localStorage.removeItem(ANALYTICS_QUEUE_STORAGE_KEY);
   }
 
@@ -655,7 +658,13 @@ export const trackAnalyticsEvent = async (
 ) => {
   // Validate required IDs for project-wise analytics
   if (!tenantId || !storeId || !projectId) {
-    console.warn('Analytics tracking skipped: Missing tenantId, storeId, or projectId');
+    logAnalyticsFailure('analytics_missing_required_identity', undefined, getAnalyticsTrackingContext({
+      tenantId,
+      storeId,
+      projectId,
+      storeTimeZone,
+      businessDayEndTime,
+    }));
     return false;
   }
 
@@ -675,11 +684,13 @@ export const trackAnalyticsEvent = async (
     await writeAnalyticsEventNow(updateData, tenantId, storeId, projectId, dateString, storeTimeZone, businessDayEndTime);
     return true;
   } catch (error) {
-    logger.error('[AnalyticsQueue] Failed to enqueue analytics event', error, {
+    logAnalyticsFailure('analytics_enqueue_failed', error, getAnalyticsTrackingContext({
       tenantId,
       storeId,
       projectId,
-    });
+      storeTimeZone,
+      businessDayEndTime,
+    }));
     return false;
   }
 };
@@ -723,12 +734,16 @@ const updateAnalyticsSummary = async (
     // Update summary document with merge
     await setDoc(summaryDocRef, summaryData, { merge: true });
 
-    // TODO: In a production environment, we would implement a Cloud Function
-    // to properly aggregate top items and rolling period data
+    // Summary aggregation is intentionally limited to the fields written above;
+    // scheduled analytics aggregation owns heavier rolling-period computation.
 
     return true;
   } catch (error) {
-    console.error('Error updating analytics summary:', error);
+    logAnalyticsFailure('analytics_summary_update_failed', error, getAnalyticsTrackingContext({
+      tenantId,
+      storeId,
+      projectId,
+    }));
     return false;
   }
 };

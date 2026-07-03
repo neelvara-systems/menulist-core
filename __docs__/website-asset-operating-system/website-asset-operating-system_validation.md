@@ -21,7 +21,7 @@
 | Audit implementation exists | Pass | `packages/asset-factory/scripts/lib/asset-audit.ts:277` |
 | Audit blocks broken generated/approved assets | Pass | `packages/asset-factory/scripts/lib/asset-audit.ts:294` |
 | Fingerprint locking exists | Pass | `packages/asset-factory/scripts/lock-fingerprints.ts:30` |
-| Docs/changelog reflect implemented v1 | Pass | `__docs__/CHANGELOG.md:63` |
+| Docs/changelog reflect implemented v1 | Pass | `__docs__/changelog.md:63` |
 
 ## Command Verification
 
@@ -65,7 +65,7 @@ These warnings preserve the internal-only gate. They are not implementation fail
 | Agent skill | Added | `.agents/skills/website-asset-factory/SKILL.md:1` |
 | Review prompt | Added | `.github/codex/prompts/asset-review.md:1` |
 | Feature docs | Updated | `__docs__/website-asset-operating-system/README.md:1` |
-| Changelog | Updated | `__docs__/CHANGELOG.md:56` |
+| Changelog | Updated | `__docs__/changelog.md:56` |
 
 ## Security And Cost
 

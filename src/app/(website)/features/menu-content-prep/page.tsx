@@ -7,7 +7,7 @@ import '@/styles/website.css';
 import { Metadata } from 'next';
 
 const title = 'Menu Content Prep - MenuList | Descriptions, Images, and Languages';
-const description = 'Prepare customer-friendly descriptions, menu images, and customer languages from the same owner-approved menu source before publishing.';
+const description = 'Prepare customer-friendly descriptions, menu images, and customer languages from the same approved menu before publishing.';
 
 export const metadata: Metadata = {
   title,

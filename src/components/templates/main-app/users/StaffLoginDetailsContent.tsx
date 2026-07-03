@@ -1,14 +1,26 @@
 'use client'
 
-import { buildStaffLoginDetailsText, copyTextToClipboard, isNativeStaffShareAvailable, openWhatsAppWebShare, shareStaffLoginDetails } from "@lib/staffManagement/shareLoginDetails";
+import { getBoundedStaffStringContext, logStaffClientFailure } from "@lib/staffManagement/diagnostics";
+import {
+    buildStaffLoginDetailsText,
+    copyTextToClipboard,
+    hasStaffLoginClipboardWrite,
+    hasStaffLoginCopyFallback,
+    isNativeStaffShareAvailable,
+    openWhatsAppWebShare,
+    shareStaffLoginDetails,
+} from "@lib/staffManagement/shareLoginDetails";
 import { Button, message, Space, Typography } from "antd";
 import { useEffect, useState } from "react";
 import { LuCopy, LuSend, LuShare2 } from "react-icons/lu";
 
 const { Text } = Typography;
 
+type StaffLoginDetailsDiagnosticContext = Record<string, boolean | number | string | undefined>;
+
 type StaffLoginDetailsContentProps = {
     countryCode?: string;
+    diagnosticContext?: StaffLoginDetailsDiagnosticContext;
     dialCode?: string;
     phoneNumber?: string;
     productName?: string;
@@ -16,10 +28,25 @@ type StaffLoginDetailsContentProps = {
     temporaryPasscode: string;
 };
 
-export default function StaffLoginDetailsContent({ countryCode, dialCode, phoneNumber, productName, staffLoginId, temporaryPasscode }: StaffLoginDetailsContentProps) {
+export default function StaffLoginDetailsContent({ countryCode, diagnosticContext = {}, dialCode, phoneNumber, productName, staffLoginId, temporaryPasscode }: StaffLoginDetailsContentProps) {
     const [supportsNativeShare, setSupportsNativeShare] = useState(false);
     const details = { countryCode, dialCode, phoneNumber, productName, staffLoginId, temporaryPasscode };
     const fullText = buildStaffLoginDetailsText(details);
+    const buildLoginShareLogContext = (flow: string, metadata: StaffLoginDetailsDiagnosticContext = {}): StaffLoginDetailsDiagnosticContext => ({
+        ...diagnosticContext,
+        flow,
+        hasCountryCode: Boolean(countryCode),
+        hasDialCode: Boolean(dialCode),
+        hasPhoneNumber: Boolean(phoneNumber),
+        fullTextLength: fullText.length,
+        ...getBoundedStaffStringContext('staffLoginId', staffLoginId),
+        ...getBoundedStaffStringContext('temporaryPasscode', temporaryPasscode),
+        ...metadata,
+    });
+    const getCopySupportContext = (): StaffLoginDetailsDiagnosticContext => ({
+        hasClipboardWrite: hasStaffLoginClipboardWrite(),
+        hasCopyFallback: hasStaffLoginCopyFallback(),
+    });
 
     useEffect(() => {
         setSupportsNativeShare(isNativeStaffShareAvailable());
@@ -31,17 +58,33 @@ export default function StaffLoginDetailsContent({ countryCode, dialCode, phoneN
             message.success(`${label} copied`);
             return;
         }
+        logStaffClientFailure('desktop_staff_login_details_copy_failed', new Error('staff_login_details_copy_failed'), buildLoginShareLogContext('copy_login_detail', {
+            ...getBoundedStaffStringContext('copyLabel', label),
+            ...getCopySupportContext(),
+            copyValueLength: value.length,
+        }));
         message.error(`Could not copy ${label.toLowerCase()}`);
     };
 
     const shareOnWhatsAppWeb = async () => {
         const opened = openWhatsAppWebShare(details);
+        const copied = await copyTextToClipboard(fullText);
+        if (!opened) {
+            logStaffClientFailure('desktop_staff_login_details_whatsapp_open_failed', new Error('staff_login_details_whatsapp_open_failed'), buildLoginShareLogContext('whatsapp_login_details', {
+                copiedFallback: copied,
+            }));
+        }
+        if (!copied) {
+            logStaffClientFailure('desktop_staff_login_details_copy_failed', new Error('staff_login_details_copy_failed'), buildLoginShareLogContext('whatsapp_fallback_copy', {
+                ...getCopySupportContext(),
+                copyValueLength: fullText.length,
+                whatsappOpened: opened,
+            }));
+        }
         if (opened) {
-            const copied = await copyTextToClipboard(fullText);
             message.success(copied ? 'WhatsApp opened. Login details copied too.' : 'WhatsApp opened');
             return;
         }
-        const copied = await copyTextToClipboard(fullText);
         if (copied) {
             message.success('Login details copied. Paste them in WhatsApp.');
             return;
@@ -56,7 +99,18 @@ export default function StaffLoginDetailsContent({ countryCode, dialCode, phoneN
             return;
         }
         if (result === 'cancelled') return;
-        message.error('Could not share login details');
+        logStaffClientFailure('desktop_staff_login_details_native_share_failed', new Error('staff_login_details_native_share_failed'), buildLoginShareLogContext('native_share_login_details', {
+            ...getBoundedStaffStringContext('shareResult', result),
+        }));
+        const copied = await copyTextToClipboard(fullText);
+        if (!copied) {
+            logStaffClientFailure('desktop_staff_login_details_copy_failed', new Error('staff_login_details_copy_failed'), buildLoginShareLogContext('native_share_fallback_copy', {
+                ...getCopySupportContext(),
+                copyValueLength: fullText.length,
+                ...getBoundedStaffStringContext('shareResult', result),
+            }));
+        }
+        message[copied ? 'success' : 'error'](copied ? 'Login details copied' : 'Could not share login details');
     };
 
     return (

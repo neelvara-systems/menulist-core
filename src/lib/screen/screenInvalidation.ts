@@ -5,12 +5,43 @@ import { firebaseClient } from "@lib/firebase/firebaseClient";
 import { parseSummaryProjects } from "@lib/firestore/parseSummaryProjects";
 import { extractScreenMenuItemsFromProject } from "@lib/screen/screenContent";
 import { syncPublicScreenState } from "@lib/screen/publicScreenState";
+import { secureError } from "@lib/security/secureLogger";
 import type { ScreenMenuProjection } from "@type/campaigns";
 
 const pendingScreenTouches = new Map<string, Promise<void>>();
 
 type ScreenContentTouchOptions = {
     projectId?: string | number | null;
+};
+
+const getLogErrorName = (error: unknown): string => (
+    error instanceof Error ? error.name : typeof error
+);
+
+const logScreenInvalidationFailure = (
+    failureCode: string,
+    error: unknown,
+    context: string,
+    storeId: string,
+    options: ScreenContentTouchOptions = {},
+): void => {
+    if (process.env.NODE_ENV === "production") {
+        return;
+    }
+
+    const projectId = String(options.projectId ?? "").trim();
+    secureError(
+        "[Digital Screen] Invalidation failed",
+        new Error(failureCode),
+        {
+            contextPresent: Boolean(String(context || "").trim()),
+            contextLength: String(context || "").length,
+            storeIdLength: storeId.length,
+            hasProjectId: Boolean(projectId),
+            projectIdLength: projectId.length,
+            errorName: getLogErrorName(error),
+        },
+    );
 };
 
 const parseProjectPath = (projectId?: string | number | null) => {
@@ -119,9 +150,13 @@ export const touchDigitalScreenContentVersion = async (
                 nextContentVersion,
                 normalizedStoreId,
             ).catch((error) => {
-                if (process.env.NODE_ENV !== "production") {
-                    console.warn(`[screen-invalidation] ${context} failed to build screen menu projection`, error);
-                }
+                logScreenInvalidationFailure(
+                    "digital_screen_projection_build_failed",
+                    error,
+                    context,
+                    normalizedStoreId,
+                    options,
+                );
                 return null;
             });
 
@@ -136,9 +171,13 @@ export const touchDigitalScreenContentVersion = async (
                 lastContentChangeAt: now,
             });
         } catch (error) {
-            if (process.env.NODE_ENV !== "production") {
-                console.warn(`[screen-invalidation] ${context} failed to update screen content version`, error);
-            }
+            logScreenInvalidationFailure(
+                "digital_screen_content_version_touch_failed",
+                error,
+                context,
+                normalizedStoreId,
+                options,
+            );
         } finally {
             pendingScreenTouches.delete(normalizedStoreId);
         }

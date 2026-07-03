@@ -21,6 +21,7 @@ import { sendTelegramAlert } from '../monitoring/telegramAlert';
 import { intakeProcessorLogic } from '../messagingOnboarding';
 import { PLATFORM_NOTIFICATION_TRIGGER_TYPES } from '../sharedData/platformNotificationRegistry';
 import { runAiProviderHealthCheckLogic } from './aiProviderHealth';
+import { rebuildFounderMonitorSnapshotLogic } from './founderMonitorSnapshot';
 import {
     cleanupExpiredPreviewJobsLogic,
     cleanupOldJobsLogic,
@@ -30,6 +31,8 @@ import {
     monitorExtractionHealthLogic,
 } from './menuJobCleanup';
 import { messagingSessionCleanupLogic } from './messagingSessionCleanup';
+import { revalidatePublicClientCacheForStore } from '../logic/publicCacheRevalidation';
+import { invalidateOwnerBusinessAssistantContextPackets } from '../ownerBusinessAssistant/contextPacketCacheInvalidation';
 
 const logger = functions.logger;
 
@@ -39,6 +42,23 @@ const SCHEDULER_NAME = 'menulistMaintenanceScheduler';
 const STATE_DOC_ID = 'menulistMaintenanceScheduler';
 const LOCK_DOC_PREFIX = 'menulistMaintenanceTaskLock_';
 const MAX_DETAILS_JSON_BYTES = 12_000;
+const SCHEDULER_ALERT_CREATE_FAILED_CODE = 'MAINTENANCE_SCHEDULER_ALERT_CREATE_FAILED';
+const SCHEDULER_LEASE_RELEASE_FAILED_CODE = 'MAINTENANCE_TASK_LEASE_RELEASE_FAILED';
+const PUBLIC_MENU_DRAFT_IMAGE_DELETE_FAILED_CODE = 'PUBLIC_MENU_DRAFT_IMAGE_DELETE_FAILED';
+const RESELLER_LICENSE_EXPIRE_FAILED_CODE = 'RESELLER_LICENSE_EXPIRE_FAILED';
+const RESELLER_PROFILE_COUNT_DECREMENT_FAILED_CODE = 'RESELLER_PROFILE_COUNT_DECREMENT_FAILED';
+const IMAGE_BATCH_STORAGE_DELETE_FAILED_CODE = 'IMAGE_BATCH_STORAGE_DELETE_FAILED';
+const IMAGE_PROMPT_CACHE_SOURCE_DELETE_FAILED_CODE = 'IMAGE_PROMPT_CACHE_SOURCE_DELETE_FAILED';
+const UNRESOLVED_CRITICAL_ALERT_TITLE = 'Still unresolved: Critical system alert';
+const UNRESOLVED_CRITICAL_ALERT_MESSAGE =
+    'A critical platform alert has been unacknowledged for 30+ minutes. Review the alert record in the ops console; outbound escalation includes bounded metadata only.';
+const IMAGE_BATCH_TERMINAL_STATUSES = ['completed', 'failed', 'cancelled', 'finished', 'discarded'];
+const IMAGE_BATCH_STORAGE_DELETE_STATUSES = new Set(['completed', 'failed', 'discarded']);
+const IMAGE_BATCH_RETENTION_STORE_SCAN_LIMIT = 200;
+const IMAGE_BATCH_RETENTION_LIMIT_PER_STORE = 10;
+const IMAGE_BATCH_LEGACY_RETENTION_LIMIT_PER_STORE = 5;
+const IMAGE_PROMPT_CACHE_STORAGE_PREFIX = 'system/aiImagePromptCache/';
+const IMAGE_PROMPT_CACHE_CLEANUP_LIMIT = 25;
 
 type TaskStatus = 'success' | 'failed' | 'skipped';
 
@@ -109,6 +129,17 @@ function getDailyTargetMillis(date: Date, hourUtc: number, minuteUtc: number): n
 
 function timestampMillis(value: unknown): number | null {
     if (!value) return null;
+    if (value instanceof Date) {
+        const millis = value.getTime();
+        return Number.isFinite(millis) ? millis : null;
+    }
+    if (typeof value === 'number') {
+        return Number.isFinite(value) ? value : null;
+    }
+    if (typeof value === 'string') {
+        const millis = Date.parse(value);
+        return Number.isFinite(millis) ? millis : null;
+    }
     if (typeof (value as any).toMillis === 'function') {
         return (value as any).toMillis();
     }
@@ -158,8 +189,69 @@ function compactDetails(details: Record<string, unknown> | undefined): Record<st
     };
 }
 
-function errorMessage(error: unknown): string {
-    return error instanceof Error ? error.message : String(error || 'Unknown error');
+function getTaskFailureCode(taskName: string): string {
+    const suffix = taskName
+        .toUpperCase()
+        .replace(/[^A-Z0-9]+/g, '_')
+        .replace(/^_+|_+$/g, '')
+        .slice(0, 64) || 'UNKNOWN';
+
+    return `MAINTENANCE_TASK_FAILED_${suffix}`;
+}
+
+function getSchedulerErrorName(error: unknown): string {
+    if (error instanceof Error) return (error.name || 'Error').slice(0, 80);
+    return typeof error;
+}
+
+function getSchedulerErrorCode(error: Error): string | undefined {
+    const code = (error as { code?: unknown }).code;
+    if (code === undefined || code === null) return undefined;
+    return String(code).slice(0, 64);
+}
+
+function getSchedulerErrorStatus(error: Error): number | undefined {
+    const status = Number((error as { status?: unknown; statusCode?: unknown }).status
+        || (error as { statusCode?: unknown }).statusCode);
+    return Number.isFinite(status) ? status : undefined;
+}
+
+function getSchedulerErrorContext(error: unknown): {
+    sourceErrorName: string;
+    sourceErrorCode?: string;
+    sourceErrorStatus?: number;
+} {
+    if (error instanceof Error) {
+        return {
+            sourceErrorName: getSchedulerErrorName(error),
+            sourceErrorCode: getSchedulerErrorCode(error),
+            sourceErrorStatus: getSchedulerErrorStatus(error),
+        };
+    }
+
+    return {
+        sourceErrorName: getSchedulerErrorName(error),
+    };
+}
+
+function getSchedulerStringContext(label: string, value: unknown): Record<string, boolean | number> {
+    const normalized = value === undefined || value === null ? '' : String(value);
+    return {
+        [`${label}Present`]: normalized.length > 0,
+        [`${label}Length`]: normalized.length,
+    };
+}
+
+function getUnresolvedCriticalAlertMetadata(docId: string, alert: Record<string, any>): Record<string, unknown> {
+    const alertTimestamp = alert.timestamp?.toDate?.()?.toISOString?.() || '';
+    return {
+        ...getSchedulerStringContext('alertId', docId),
+        ...getSchedulerStringContext('storeId', alert.sId),
+        ...getSchedulerStringContext('tenantId', alert.tId),
+        ...getSchedulerStringContext('alertTitle', alert.title),
+        ...getSchedulerStringContext('alertMessage', alert.message),
+        ...getSchedulerStringContext('alertTimestamp', alertTimestamp),
+    };
 }
 
 async function acquireTaskLease(
@@ -351,7 +443,8 @@ async function runTask(task: MaintenanceTask, runId: string, dueAt: Date): Promi
     } catch (error) {
         const finishedAt = new Date();
         const durationMs = finishedAt.getTime() - startedAt.getTime();
-        const message = errorMessage(error);
+        const failureCode = getTaskFailureCode(task.name);
+        const errorContext = getSchedulerErrorContext(error);
 
         await recordTaskOutcome({
             task,
@@ -360,12 +453,13 @@ async function runTask(task: MaintenanceTask, runId: string, dueAt: Date): Promi
             finishedAt,
             status: 'failed',
             durationMs,
-            error: message,
+            error: failureCode,
         });
 
         logger.error(`[${SCHEDULER_NAME}] Task failed`, {
             task: task.name,
-            error: message,
+            failureCode,
+            ...errorContext,
         });
 
         await createAlert({
@@ -374,11 +468,13 @@ async function runTask(task: MaintenanceTask, runId: string, dueAt: Date): Promi
             type: 'health',
             severity: 'critical',
             title: 'Maintenance Scheduler Task Failed',
-            message: `Task ${task.name} failed: ${message}`,
+            message: `Task ${task.name} failed with code ${failureCode}. See bounded scheduler diagnostics.`,
             metadata: {
                 schedulerName: SCHEDULER_NAME,
                 taskName: task.name,
-                runId,
+                ...getSchedulerStringContext('runId', runId),
+                failureCode,
+                ...errorContext,
             },
             triggerType: PLATFORM_NOTIFICATION_TRIGGER_TYPES.SCHEDULER_FAILURE,
             productId: 'PLATFORM',
@@ -387,7 +483,8 @@ async function runTask(task: MaintenanceTask, runId: string, dueAt: Date): Promi
         }).catch((alertError) => {
             logger.error(`[${SCHEDULER_NAME}] Failed to create scheduler failure alert`, {
                 task: task.name,
-                error: errorMessage(alertError),
+                failureCode: SCHEDULER_ALERT_CREATE_FAILED_CODE,
+                ...getSchedulerErrorContext(alertError),
             });
         });
 
@@ -396,13 +493,14 @@ async function runTask(task: MaintenanceTask, runId: string, dueAt: Date): Promi
             status: 'failed',
             durationMs,
             activity: true,
-            error: message,
+            error: failureCode,
         };
     } finally {
         await releaseTaskLease(task, lease.leaseId).catch((error) => {
             logger.error(`[${SCHEDULER_NAME}] Failed to release task lease`, {
                 task: task.name,
-                error: errorMessage(error),
+                failureCode: SCHEDULER_LEASE_RELEASE_FAILED_CODE,
+                ...getSchedulerErrorContext(error),
             });
         });
     }
@@ -433,7 +531,8 @@ async function runMenuStuckCleanup(): Promise<MaintenanceTaskResult> {
             metadata: {
                 subsystem: 'ai-extraction',
                 cleanedJobs: stuckResult.cleaned,
-                sampleJobIds: stuckResult.jobIds.slice(0, 5),
+                sampleJobCount: stuckResult.sampleJobCount,
+                sampleJobIdLengthTotal: stuckResult.sampleJobIdLengthTotal,
             },
             triggerType: PLATFORM_NOTIFICATION_TRIGGER_TYPES.JOB_STUCK,
             productId: 'ML',
@@ -505,7 +604,8 @@ async function runPublicMenuDraftCleanup(): Promise<MaintenanceTaskResult> {
     const batch = db.batch();
     let deletedFiles = 0;
     let errors = 0;
-    const sampleDraftIds: string[] = [];
+    let sampleDraftCount = 0;
+    let sampleDraftIdLengthTotal = 0;
     const bucket = storageAdmin.bucket();
 
     for (const doc of snapshot.docs) {
@@ -518,14 +618,16 @@ async function runPublicMenuDraftCleanup(): Promise<MaintenanceTaskResult> {
             } catch (error) {
                 errors += 1;
                 logger.warn('[public_menu_draft_cleanup] Failed to delete draft image', {
-                    draftId: doc.id,
-                    error: errorMessage(error),
+                    ...getSchedulerStringContext('draftId', doc.id),
+                    failureCode: PUBLIC_MENU_DRAFT_IMAGE_DELETE_FAILED_CODE,
+                    ...getSchedulerErrorContext(error),
                 });
             }
         }
 
-        if (sampleDraftIds.length < 5) {
-            sampleDraftIds.push(doc.id);
+        if (sampleDraftCount < 5) {
+            sampleDraftCount += 1;
+            sampleDraftIdLengthTotal += doc.id.length;
         }
         batch.delete(doc.ref);
     }
@@ -539,7 +641,8 @@ async function runPublicMenuDraftCleanup(): Promise<MaintenanceTaskResult> {
             deletedDrafts: snapshot.size,
             deletedFiles,
             errors,
-            sampleDraftIds,
+            sampleDraftCount,
+            sampleDraftIdLengthTotal,
         },
     };
 }
@@ -737,6 +840,493 @@ async function runAiOperationDetailCleanup(): Promise<MaintenanceTaskResult> {
     };
 }
 
+function isImageBatchTerminalStatus(status: unknown): status is string {
+    return typeof status === 'string' && IMAGE_BATCH_TERMINAL_STATUSES.includes(status);
+}
+
+function shouldDeleteImageBatchStorage(status: string): boolean {
+    return IMAGE_BATCH_STORAGE_DELETE_STATUSES.has(status);
+}
+
+function getImageBatchActivityMillis(data: FirebaseFirestore.DocumentData): number | null {
+    const historyTimes = Array.isArray(data.statusHistory)
+        ? data.statusHistory.map((entry: any) => timestampMillis(entry?.createdOn)).filter((value): value is number => value !== null)
+        : [];
+
+    const candidates = [
+        timestampMillis(data.modifiedOn),
+        timestampMillis(data.createdOn),
+        ...historyTimes,
+    ].filter((value): value is number => value !== null);
+
+    if (!candidates.length) return null;
+    return Math.max(...candidates);
+}
+
+function getImageBatchImageUrls(data: FirebaseFirestore.DocumentData): string[] {
+    if (!Array.isArray(data.itemsList)) return [];
+
+    const urls = new Set<string>();
+    data.itemsList.forEach((item: any) => {
+        if (!Array.isArray(item?.images)) return;
+        item.images.forEach((image: any) => {
+            if (typeof image?.url === 'string' && image.url.trim()) {
+                urls.add(image.url.trim());
+            }
+        });
+    });
+    return Array.from(urls);
+}
+
+function parseMenuItemStoragePathFromUrl(params: {
+    bucketName: string;
+    sId: string;
+    tId: string;
+    url: string;
+}): string | null {
+    const expectedPrefix = `media/menuItem/${params.tId}/${params.sId}/`;
+    if (params.url.startsWith(expectedPrefix)) {
+        return params.url;
+    }
+
+    try {
+        const parsed = new URL(params.url);
+        if (parsed.hostname !== 'firebasestorage.googleapis.com') return null;
+
+        const segments = parsed.pathname.split('/').filter(Boolean);
+        const bucketIndex = segments.indexOf('b');
+        const objectIndex = segments.indexOf('o');
+        const bucketName = bucketIndex >= 0 ? decodeURIComponent(segments[bucketIndex + 1] || '') : '';
+        if (bucketName && bucketName !== params.bucketName) return null;
+        if (objectIndex < 0 || !segments[objectIndex + 1]) return null;
+
+        const objectPath = decodeURIComponent(segments.slice(objectIndex + 1).join('/'));
+        return objectPath.startsWith(expectedPrefix) ? objectPath : null;
+    } catch {
+        return null;
+    }
+}
+
+function isStorageObjectNotFound(error: unknown): boolean {
+    const code = (error as { code?: unknown }).code;
+    const statusCode = (error as { statusCode?: unknown }).statusCode;
+    return code === 404
+        || code === '404'
+        || code === 'storage/object-not-found'
+        || code === 'not-found'
+        || statusCode === 404;
+}
+
+function isImagePromptCacheSourcePath(value: unknown): value is string {
+    return typeof value === 'string' && value.startsWith(IMAGE_PROMPT_CACHE_STORAGE_PREFIX);
+}
+
+async function runImagePromptCacheCleanup(): Promise<MaintenanceTaskResult> {
+    const now = Timestamp.now();
+    const snapshot = await db
+        .collection(DB_COLLECTIONS.AI_IMAGE_PROMPT_CACHE)
+        .where('expiresAt', '<=', now)
+        .limit(IMAGE_PROMPT_CACHE_CLEANUP_LIMIT)
+        .get();
+
+    if (snapshot.empty) {
+        return {
+            activity: false,
+            details: {
+                deletedDocs: 0,
+                deletedSources: 0,
+                errors: 0,
+                scanned: 0,
+                skippedSources: 0,
+            },
+        };
+    }
+
+    const bucket = storageAdmin.bucket();
+    const batch = db.batch();
+    let deletedDocs = 0;
+    let deletedSources = 0;
+    let errors = 0;
+    let skippedSources = 0;
+
+    for (const doc of snapshot.docs) {
+        const sourcePath = doc.data().sourcePath;
+        if (isImagePromptCacheSourcePath(sourcePath)) {
+            try {
+                await bucket.file(sourcePath).delete({ ignoreNotFound: true });
+                deletedSources += 1;
+            } catch (error) {
+                errors += 1;
+                logger.warn('[ai_image_prompt_cache_cleanup] Failed to delete expired cache source', {
+                    failureCode: IMAGE_PROMPT_CACHE_SOURCE_DELETE_FAILED_CODE,
+                    pathLength: sourcePath.length,
+                    ...getSchedulerStringContext('cacheDocId', doc.id),
+                    ...getSchedulerErrorContext(error),
+                });
+                continue;
+            }
+        } else {
+            skippedSources += 1;
+        }
+
+        batch.delete(doc.ref);
+        deletedDocs += 1;
+    }
+
+    if (deletedDocs > 0) {
+        await batch.commit();
+    }
+
+    return {
+        activity: deletedDocs > 0 || deletedSources > 0 || errors > 0,
+        details: {
+            deletedDocs,
+            deletedSources,
+            errors,
+            limit: IMAGE_PROMPT_CACHE_CLEANUP_LIMIT,
+            scanned: snapshot.size,
+            skippedSources,
+        },
+    };
+}
+
+async function runFounderMonitorSnapshot(): Promise<MaintenanceTaskResult> {
+    const result = await rebuildFounderMonitorSnapshotLogic();
+    return {
+        activity: result.activity,
+        details: result.details,
+    };
+}
+
+async function deleteImageBatchStorageUrls(params: {
+    sId: string;
+    tId: string;
+    urls: string[];
+}): Promise<{ attempted: number; deleted: number; skipped: number; errors: number }> {
+    const bucket = storageAdmin.bucket();
+    const bucketName = bucket.name;
+    let attempted = 0;
+    let deleted = 0;
+    let skipped = 0;
+    let errors = 0;
+
+    for (const url of params.urls) {
+        const storagePath = parseMenuItemStoragePathFromUrl({
+            bucketName,
+            sId: params.sId,
+            tId: params.tId,
+            url,
+        });
+        if (!storagePath) {
+            skipped++;
+            continue;
+        }
+
+        attempted++;
+        try {
+            await bucket.file(storagePath).delete();
+            deleted++;
+        } catch (error) {
+            if (isStorageObjectNotFound(error)) {
+                deleted++;
+                continue;
+            }
+
+            errors++;
+            logger.warn('[image_batch_job_retention_cleanup] Failed to delete generated image', {
+                failureCode: IMAGE_BATCH_STORAGE_DELETE_FAILED_CODE,
+                pathLength: storagePath.length,
+                ...getSchedulerStringContext('storeId', params.sId),
+                ...getSchedulerStringContext('tenantId', params.tId),
+                ...getSchedulerErrorContext(error),
+            });
+        }
+    }
+
+    return { attempted, deleted, skipped, errors };
+}
+
+function addStorageTotals(
+    total: { attempted: number; deleted: number; skipped: number; errors: number },
+    next: { attempted: number; deleted: number; skipped: number; errors: number },
+) {
+    total.attempted += next.attempted;
+    total.deleted += next.deleted;
+    total.skipped += next.skipped;
+    total.errors += next.errors;
+}
+
+async function compactImageBatchJobsInCollectionRef(params: {
+    collectionRef: FirebaseFirestore.CollectionReference;
+    now: Timestamp;
+    sId: string;
+    tId: string;
+    limit?: number;
+}): Promise<{
+    scanned: number;
+    compacted: number;
+    skipped: number;
+    storage: { attempted: number; deleted: number; skipped: number; errors: number };
+}> {
+    const snapshot = await params.collectionRef
+        .where('itemsExpiresAt', '<=', params.now)
+        .limit(params.limit || IMAGE_BATCH_RETENTION_LIMIT_PER_STORE)
+        .get();
+    const batch = db.batch();
+    let compacted = 0;
+    let skipped = 0;
+    const storage = { attempted: 0, deleted: 0, skipped: 0, errors: 0 };
+
+    for (const doc of snapshot.docs) {
+        const data = doc.data();
+        const status = data.status;
+        if (!isImageBatchTerminalStatus(status)) {
+            skipped++;
+            continue;
+        }
+
+        const imageUrls = getImageBatchImageUrls(data);
+        let docStorage = { attempted: 0, deleted: 0, skipped: 0, errors: 0 };
+        if (shouldDeleteImageBatchStorage(status) && imageUrls.length > 0) {
+            docStorage = await deleteImageBatchStorageUrls({
+                sId: params.sId,
+                tId: params.tId,
+                urls: imageUrls,
+            });
+            addStorageTotals(storage, docStorage);
+            if (docStorage.errors > 0) {
+                skipped++;
+                continue;
+            }
+        }
+
+        batch.update(doc.ref, {
+            generatedImageUrlCountBeforePrune: imageUrls.length,
+            itemsExpiresAt: FieldValue.delete(),
+            itemsList: FieldValue.delete(),
+            itemsPrunedAt: params.now,
+            itemsPrunedReason: shouldDeleteImageBatchStorage(status)
+                ? 'retention_window_expired_storage_cleaned'
+                : 'retention_window_expired_metadata_only',
+            storageCleanupAttempted: docStorage.attempted,
+            storageCleanupDeleted: docStorage.deleted,
+            storageCleanupSkipped: docStorage.skipped,
+        });
+        compacted++;
+    }
+
+    if (compacted > 0) {
+        await batch.commit();
+    }
+
+    return { scanned: snapshot.size, compacted, skipped, storage };
+}
+
+async function deleteExpiredImageBatchJobsInCollectionRef(params: {
+    collectionRef: FirebaseFirestore.CollectionReference;
+    now: Timestamp;
+    sId: string;
+    tId: string;
+    limit?: number;
+}): Promise<{
+    scanned: number;
+    deleted: number;
+    skipped: number;
+    storage: { attempted: number; deleted: number; skipped: number; errors: number };
+}> {
+    const snapshot = await params.collectionRef
+        .where('expiresAt', '<=', params.now)
+        .limit(params.limit || IMAGE_BATCH_RETENTION_LIMIT_PER_STORE)
+        .get();
+    const batch = db.batch();
+    let deleted = 0;
+    let skipped = 0;
+    const storage = { attempted: 0, deleted: 0, skipped: 0, errors: 0 };
+
+    for (const doc of snapshot.docs) {
+        const data = doc.data();
+        const status = data.status;
+        if (!isImageBatchTerminalStatus(status)) {
+            skipped++;
+            continue;
+        }
+
+        const imageUrls = getImageBatchImageUrls(data);
+        if (shouldDeleteImageBatchStorage(status) && imageUrls.length > 0) {
+            const cleanup = await deleteImageBatchStorageUrls({
+                sId: params.sId,
+                tId: params.tId,
+                urls: imageUrls,
+            });
+            addStorageTotals(storage, cleanup);
+            if (cleanup.errors > 0) {
+                skipped++;
+                continue;
+            }
+        }
+
+        batch.delete(doc.ref);
+        deleted++;
+    }
+
+    if (deleted > 0) {
+        await batch.commit();
+    }
+
+    return { scanned: snapshot.size, deleted, skipped, storage };
+}
+
+async function compactLegacyImageBatchJobsInCollectionRef(params: {
+    collectionRef: FirebaseFirestore.CollectionReference;
+    now: Timestamp;
+    sId: string;
+    tId: string;
+    limit?: number;
+}): Promise<{
+    scanned: number;
+    compacted: number;
+    deleted: number;
+    skipped: number;
+    storage: { attempted: number; deleted: number; skipped: number; errors: number };
+}> {
+    const snapshot = await params.collectionRef
+        .where('status', 'in', IMAGE_BATCH_TERMINAL_STATUSES)
+        .limit(params.limit || IMAGE_BATCH_LEGACY_RETENTION_LIMIT_PER_STORE)
+        .get();
+    const batch = db.batch();
+    const nowMillis = params.now.toMillis();
+    const compactCutoffMillis = nowMillis - FUNCTION_RETENTION_CONFIG.IMAGE_BATCH_ITEMS_RETENTION_DAYS * DAY_MS;
+    const deleteCutoffMillis = nowMillis - FUNCTION_RETENTION_CONFIG.IMAGE_BATCH_JOB_RETENTION_DAYS * DAY_MS;
+    let compacted = 0;
+    let deleted = 0;
+    let skipped = 0;
+    const storage = { attempted: 0, deleted: 0, skipped: 0, errors: 0 };
+
+    for (const doc of snapshot.docs) {
+        const data = doc.data();
+        if (data.itemsExpiresAt || data.expiresAt || !isImageBatchTerminalStatus(data.status)) {
+            skipped++;
+            continue;
+        }
+
+        const activityMillis = getImageBatchActivityMillis(data);
+        if (!activityMillis || activityMillis > compactCutoffMillis) {
+            skipped++;
+            continue;
+        }
+
+        const imageUrls = getImageBatchImageUrls(data);
+        let docStorage = { attempted: 0, deleted: 0, skipped: 0, errors: 0 };
+        if (shouldDeleteImageBatchStorage(data.status) && imageUrls.length > 0) {
+            docStorage = await deleteImageBatchStorageUrls({
+                sId: params.sId,
+                tId: params.tId,
+                urls: imageUrls,
+            });
+            addStorageTotals(storage, docStorage);
+            if (docStorage.errors > 0) {
+                skipped++;
+                continue;
+            }
+        }
+
+        if (activityMillis <= deleteCutoffMillis) {
+            batch.delete(doc.ref);
+            deleted++;
+            continue;
+        }
+
+        batch.update(doc.ref, {
+            expiresAt: Timestamp.fromMillis(activityMillis + FUNCTION_RETENTION_CONFIG.IMAGE_BATCH_JOB_RETENTION_DAYS * DAY_MS),
+            generatedImageUrlCountBeforePrune: imageUrls.length,
+            itemsList: FieldValue.delete(),
+            itemsPrunedAt: params.now,
+            itemsPrunedReason: shouldDeleteImageBatchStorage(data.status)
+                ? 'legacy_retention_window_expired_storage_cleaned'
+                : 'legacy_retention_window_expired_metadata_only',
+            storageCleanupAttempted: docStorage.attempted,
+            storageCleanupDeleted: docStorage.deleted,
+            storageCleanupSkipped: docStorage.skipped,
+        });
+        compacted++;
+    }
+
+    if (compacted > 0 || deleted > 0) {
+        await batch.commit();
+    }
+
+    return { scanned: snapshot.size, compacted, deleted, skipped, storage };
+}
+
+async function runImageBatchJobRetentionCleanup(): Promise<MaintenanceTaskResult> {
+    const now = Timestamp.now();
+    const storesSummaryDoc = await db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc('storesSummary').get();
+    const storesSummary = storesSummaryDoc.exists ? storesSummaryDoc.data()?.stores || {} : {};
+    const storeEntries = Object.entries(storesSummary)
+        .filter((entry) => {
+            const storeInfo = entry[1] as any;
+            return storeInfo?.active !== false && storeInfo?.tId != null;
+        })
+        .slice(0, IMAGE_BATCH_RETENTION_STORE_SCAN_LIMIT);
+
+    let storesScanned = 0;
+    let scanned = 0;
+    let compacted = 0;
+    let deleted = 0;
+    let skipped = 0;
+    const storage = { attempted: 0, deleted: 0, skipped: 0, errors: 0 };
+
+    for (const [sId, storeInfo] of storeEntries as [string, any][]) {
+        const tId = String(storeInfo.tId);
+        if (!tId || !sId) continue;
+        const collectionRef = db.collection(DB_COLLECTIONS.IMAGE_BATCH_PROCESSING_JOBS).doc(tId).collection(String(sId));
+        const expired = await deleteExpiredImageBatchJobsInCollectionRef({
+            collectionRef,
+            now,
+            sId: String(sId),
+            tId,
+            limit: IMAGE_BATCH_RETENTION_LIMIT_PER_STORE,
+        });
+        const pruned = await compactImageBatchJobsInCollectionRef({
+            collectionRef,
+            now,
+            sId: String(sId),
+            tId,
+            limit: IMAGE_BATCH_RETENTION_LIMIT_PER_STORE,
+        });
+        const legacy = await compactLegacyImageBatchJobsInCollectionRef({
+            collectionRef,
+            now,
+            sId: String(sId),
+            tId,
+            limit: IMAGE_BATCH_LEGACY_RETENTION_LIMIT_PER_STORE,
+        });
+
+        scanned += expired.scanned + pruned.scanned + legacy.scanned;
+        compacted += pruned.compacted + legacy.compacted;
+        deleted += expired.deleted + legacy.deleted;
+        skipped += expired.skipped + pruned.skipped + legacy.skipped;
+        addStorageTotals(storage, expired.storage);
+        addStorageTotals(storage, pruned.storage);
+        addStorageTotals(storage, legacy.storage);
+        storesScanned++;
+    }
+
+    return {
+        activity: compacted > 0 || deleted > 0 || storage.deleted > 0 || storage.errors > 0,
+        details: {
+            storesScanned,
+            scanned,
+            compacted,
+            deleted,
+            skipped,
+            storage,
+            itemsRetentionDays: FUNCTION_RETENTION_CONFIG.IMAGE_BATCH_ITEMS_RETENTION_DAYS,
+            jobRetentionDays: FUNCTION_RETENTION_CONFIG.IMAGE_BATCH_JOB_RETENTION_DAYS,
+        },
+    };
+}
+
 async function runMenuSnapshotCleanup(): Promise<MaintenanceTaskResult> {
     const now = Timestamp.now();
     const storesSummaryDoc = await db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc('storesSummary').get();
@@ -896,23 +1486,22 @@ async function runAlertEscalation(): Promise<MaintenanceTaskResult> {
 
     for (const doc of snapshot.docs) {
         const alert = doc.data();
+        const escalationMetadata = getUnresolvedCriticalAlertMetadata(doc.id, alert);
         await sendTelegramAlert({
             severity: 'critical',
-            title: `STILL UNRESOLVED: ${alert.title}`,
-            message: `This critical alert has been unacknowledged for 30+ minutes.\n\n${alert.message}\n\nOriginal time: ${alert.timestamp?.toDate?.()?.toISOString() || 'unknown'}`,
-            metadata: { alertId: doc.id, storeId: alert.sId, tenantId: alert.tId },
+            title: UNRESOLVED_CRITICAL_ALERT_TITLE,
+            message: UNRESOLVED_CRITICAL_ALERT_MESSAGE,
+            metadata: escalationMetadata,
         });
         await sendPlatformAlertDelivery({
             id: doc.id,
             severity: 'critical',
-            title: `STILL UNRESOLVED: ${alert.title}`,
-            message: `This critical alert has been unacknowledged for 30+ minutes.\n\n${alert.message}\n\nOriginal time: ${alert.timestamp?.toDate?.()?.toISOString() || 'unknown'}`,
+            title: UNRESOLVED_CRITICAL_ALERT_TITLE,
+            message: UNRESOLVED_CRITICAL_ALERT_MESSAGE,
             tId: alert.tId,
             sId: alert.sId,
             metadata: {
-                alertId: doc.id,
-                storeId: alert.sId,
-                tenantId: alert.tId,
+                ...escalationMetadata,
                 platformTriggerType: PLATFORM_NOTIFICATION_TRIGGER_TYPES.UNRESOLVED_CRITICAL_ALERT,
                 productId: 'PLATFORM',
                 category: 'system',
@@ -951,6 +1540,147 @@ async function runAiProviderHealthCheck(): Promise<MaintenanceTaskResult> {
     };
 }
 
+async function runResellerLicenseExpiry(): Promise<MaintenanceTaskResult> {
+    if (!isFunctionFeatureEnabled('ENABLE_RESELLER_DASHBOARD')) {
+        return {
+            activity: false,
+            details: { enabled: false, checked: 0, expired: 0, errors: 0 },
+        };
+    }
+
+    const graceDate = new Date();
+    graceDate.setDate(graceDate.getDate() - 7);
+
+    const expiredSubs = await db.collection(DB_COLLECTIONS.SUBSCRIPTIONS)
+        .where('billingMode', '==', 'manual')
+        .where('status', '==', 'active')
+        .where('validUntil', '<=', Timestamp.fromDate(graceDate))
+        .limit(100)
+        .get();
+
+    let expired = 0;
+    let errors = 0;
+    let profileDecrementErrors = 0;
+    let entitlementSyncErrors = 0;
+
+    for (const subDoc of expiredSubs.docs) {
+        const subData = subDoc.data();
+        const storeId = String(subData.storeId || subData.sId || '').trim();
+        const tenantId = String(subData.tenantId || subData.tId || '').trim();
+        const resellerProfileId = String(subData.resellerProfileId || subData.resellerId || '').trim();
+        const now = Timestamp.now();
+
+        try {
+            await subDoc.ref.update({
+                status: 'expired',
+                subscriptionEndDate: now,
+                cycleEndDate: now,
+                modifiedOn: now,
+                lastWebhook: {
+                    event: 'manual_license.expired',
+                    timestamp: now,
+                },
+                analyticsEntitlement: {
+                    activePlanType: null,
+                    status: 'expired',
+                    syncedAt: now,
+                    source: 'menulistMaintenanceScheduler:resellerLicenseExpiry',
+                },
+                statuses: [
+                    ...(Array.isArray(subData.statuses) ? subData.statuses : []),
+                    {
+                        status: 'expired',
+                        timestamp: now,
+                        amount: Number(subData.amount || 0),
+                        currency: subData.currency || 'INR',
+                        remark: 'Manual license expired after grace period',
+                    },
+                ],
+            });
+
+            if (resellerProfileId) {
+                await db.collection(DB_COLLECTIONS.RESELLER_PROFILES)
+                    .doc(resellerProfileId)
+                    .update({
+                        currentActiveOfflineStores: FieldValue.increment(-1),
+                        modifiedOn: now,
+                    })
+                    .catch((profileError) => {
+                        profileDecrementErrors += 1;
+                        logger.warn('[reseller_license_expiry] Failed to decrement reseller offline count', {
+                            failureCode: RESELLER_PROFILE_COUNT_DECREMENT_FAILED_CODE,
+                            ...getSchedulerStringContext('subscriptionId', subDoc.id),
+                            ...getSchedulerStringContext('resellerProfileId', resellerProfileId),
+                            ...getSchedulerStringContext('storeId', storeId),
+                            ...getSchedulerStringContext('tenantId', tenantId),
+                            ...getSchedulerErrorContext(profileError),
+                        });
+                    });
+            }
+
+            if (storeId) {
+                try {
+                    const entitlementUpdate = {
+                        activePlanType: FieldValue.delete(),
+                        analyticsEntitlementUpdatedAt: FieldValue.serverTimestamp(),
+                    };
+                    await Promise.all([
+                        db.collection(DB_COLLECTIONS.STORES).doc(storeId).set(entitlementUpdate, { merge: true }),
+                        db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc('storesSummary').set({
+                            lastUpdated: FieldValue.serverTimestamp(),
+                            stores: {
+                                [storeId]: {
+                                    activePlanType: FieldValue.delete(),
+                                },
+                            },
+                        }, { merge: true }),
+                        revalidatePublicClientCacheForStore(storeId, 'resellerLicenseExpiry', {
+                            touchDigitalScreen: true,
+                        }),
+                        invalidateOwnerBusinessAssistantContextPackets({
+                            tId: tenantId,
+                            sId: storeId,
+                        }),
+                    ]);
+                } catch (entitlementError) {
+                    entitlementSyncErrors += 1;
+                    logger.warn('[reseller_license_expiry] Failed to sync expired manual entitlement', {
+                        failureCode: RESELLER_LICENSE_EXPIRE_FAILED_CODE,
+                        ...getSchedulerStringContext('subscriptionId', subDoc.id),
+                        ...getSchedulerStringContext('storeId', storeId),
+                        ...getSchedulerStringContext('tenantId', tenantId),
+                        ...getSchedulerErrorContext(entitlementError),
+                    });
+                }
+            }
+
+            expired += 1;
+        } catch (error) {
+            errors += 1;
+            logger.error('[reseller_license_expiry] Failed to expire manual subscription', {
+                failureCode: RESELLER_LICENSE_EXPIRE_FAILED_CODE,
+                ...getSchedulerStringContext('subscriptionId', subDoc.id),
+                ...getSchedulerStringContext('storeId', storeId),
+                ...getSchedulerStringContext('tenantId', tenantId),
+                ...getSchedulerErrorContext(error),
+            });
+        }
+    }
+
+    return {
+        activity: expired > 0 || errors > 0 || profileDecrementErrors > 0 || entitlementSyncErrors > 0,
+        details: {
+            enabled: true,
+            checked: expiredSubs.size,
+            expired,
+            errors,
+            profileDecrementErrors,
+            entitlementSyncErrors,
+            limited: expiredSubs.size >= 100,
+        },
+    };
+}
+
 const TASKS: MaintenanceTask[] = [
     {
         name: 'messaging_intake',
@@ -971,6 +1701,12 @@ const TASKS: MaintenanceTask[] = [
         run: runAlertEscalation,
     },
     {
+        name: 'founder_monitor_snapshot',
+        cadence: { type: 'every', minutes: 30 },
+        lockTtlMs: 10 * MINUTE_MS,
+        run: runFounderMonitorSnapshot,
+    },
+    {
         name: 'chat_stats_aggregation',
         cadence: { type: 'daily', hourUtc: 1, minuteUtc: 0, retryAfterMinutes: 60 },
         lockTtlMs: 10 * MINUTE_MS,
@@ -981,6 +1717,12 @@ const TASKS: MaintenanceTask[] = [
         cadence: { type: 'daily', hourUtc: 1, minuteUtc: 20, retryAfterMinutes: 60 },
         lockTtlMs: 5 * MINUTE_MS,
         run: runAiProviderHealthCheck,
+    },
+    {
+        name: 'reseller_license_expiry',
+        cadence: { type: 'daily', hourUtc: 2, minuteUtc: 30, retryAfterMinutes: 120 },
+        lockTtlMs: 10 * MINUTE_MS,
+        run: runResellerLicenseExpiry,
     },
     {
         name: 'menu_old_cleanup',
@@ -1011,6 +1753,18 @@ const TASKS: MaintenanceTask[] = [
         cadence: { type: 'daily', hourUtc: 4, minuteUtc: 45, retryAfterMinutes: 120 },
         lockTtlMs: 10 * MINUTE_MS,
         run: runAiOperationDetailCleanup,
+    },
+    {
+        name: 'image_batch_job_retention_cleanup',
+        cadence: { type: 'daily', hourUtc: 4, minuteUtc: 55, retryAfterMinutes: 120 },
+        lockTtlMs: 10 * MINUTE_MS,
+        run: runImageBatchJobRetentionCleanup,
+    },
+    {
+        name: 'ai_image_prompt_cache_cleanup',
+        cadence: { type: 'daily', hourUtc: 4, minuteUtc: 57, retryAfterMinutes: 120 },
+        lockTtlMs: 10 * MINUTE_MS,
+        run: runImagePromptCacheCleanup,
     },
     {
         name: 'menu_snapshot_cleanup',

@@ -1,12 +1,12 @@
 /**
  * Guest Feedback Data Access Layer (DAL)
- * 
+ *
  * Handles all Firestore operations for the guest feedback collection.
- * 
+ *
  * NOTE: This DAL has TWO modes:
  * 1. PUBLIC (no auth) - Used by submit endpoint for anonymous guest submissions
  * 2. AUTHENTICATED - Used by owner dashboard for viewing/updating feedback
- * 
+ *
  * @see __docs__/projects/internal-feedback-system/
  */
 
@@ -30,9 +30,51 @@ import {
     updateDoc,
     where
 } from 'firebase/firestore';
+import { getBoundedGuestFeedbackStringContext, logGuestFeedbackFailure } from './guestFeedbackDiagnostics';
 
 const COLLECTION = DB_COLLECTIONS.GUEST_FEEDBACK;
 const DAY_MS = 24 * 60 * 60 * 1000;
+
+export type GuestFeedbackListResult = {
+    items: GuestFeedback[];
+    lastDocId: string | null;
+    hasMore: boolean;
+};
+
+const isGuestFeedbackRecord = (result: unknown, expectedFeedbackId?: string): result is GuestFeedback => (
+    Boolean(result && typeof result === 'object')
+    && !Array.isArray(result)
+    && typeof (result as GuestFeedback).id === 'string'
+    && (!expectedFeedbackId || (result as GuestFeedback).id === expectedFeedbackId)
+);
+
+export const isGuestFeedbackListResult = (result: unknown): result is GuestFeedbackListResult => (
+    Boolean(result && typeof result === 'object')
+    && !Array.isArray(result)
+    && Array.isArray((result as GuestFeedbackListResult).items)
+    && (result as GuestFeedbackListResult).items.every((item) => isGuestFeedbackRecord(item))
+    && typeof (result as GuestFeedbackListResult).hasMore === 'boolean'
+    && (
+        (result as GuestFeedbackListResult).lastDocId === null
+        || typeof (result as GuestFeedbackListResult).lastDocId === 'string'
+    )
+);
+
+export function assertFeedbackListLoadSucceeded(
+    result: unknown,
+    rejectionCode = 'feedback_list_load_rejected',
+): asserts result is GuestFeedbackListResult {
+    if (isGuestFeedbackListResult(result)) return;
+    throw new Error(rejectionCode);
+}
+
+export function assertFeedbackCountLoadSucceeded(
+    result: unknown,
+    rejectionCode = 'feedback_count_load_rejected',
+): asserts result is number {
+    if (typeof result === 'number' && Number.isFinite(result) && result >= 0) return;
+    throw new Error(rejectionCode);
+}
 
 /**
  * Get collection reference for guest feedback
@@ -55,10 +97,10 @@ const getDocRef = (feedbackId: string) => {
 
 /**
  * Submit new guest feedback (PUBLIC - no auth)
- * 
+ *
  * NOTE: This function does NOT use requestBodyComposer because
  * there is no authenticated session. All fields must be explicitly provided.
- * 
+ *
  * @param data - Feedback data from validated request
  * @returns Created feedback with ID
  */
@@ -105,7 +147,7 @@ export const submitGuestFeedback = async (
 /**
  * Get feedback list for a store (AUTHENTICATED)
  * Uses session from getActiveSession() for tenant/store isolation
- * 
+ *
  * @param filter - Filter type: all, needs_attention, resolved
  * @param pageSize - Number of items per page
  * @param cursorId - Pagination cursor (document ID from previous page)
@@ -114,7 +156,7 @@ export const getFeedbackList = async (
     filter: GuestFeedbackFilter = 'all',
     pageSize: number = 50,
     cursorId?: string
-) => {
+): Promise<GuestFeedbackListResult> => {
     return await apiCallComposer(
         async () => {
             const session = await getActiveSession();
@@ -174,10 +216,10 @@ export const getFeedbackList = async (
 /**
  * Get single feedback by ID (AUTHENTICATED)
  * Uses session from getActiveSession() for tenant isolation
- * 
+ *
  * @param feedbackId - Feedback document ID
  */
-export const getFeedbackById = async (feedbackId: string) => {
+export const getFeedbackById = async (feedbackId: string): Promise<GuestFeedback | null> => {
     return await apiCallComposer(
         async () => {
             const session = await getActiveSession();
@@ -209,7 +251,7 @@ export const getFeedbackById = async (feedbackId: string) => {
 /**
  * Update feedback status (AUTHENTICATED)
  * Uses session from getActiveSession() for tenant isolation and modifiedBy
- * 
+ *
  * @param feedbackId - Feedback document ID
  * @param status - New status
  * @param ownerNote - Optional note
@@ -218,14 +260,14 @@ export const updateFeedbackStatus = async (
     feedbackId: string,
     status: 'new' | 'resolved',
     ownerNote?: string
-) => {
+): Promise<GuestFeedback | null> => {
     return await apiCallComposer(
         async () => {
             const session = await getActiveSession();
 
             // First verify the feedback belongs to this tenant
             const existing = await getFeedbackById(feedbackId);
-            if (!existing) {
+            if (!isGuestFeedbackRecord(existing, feedbackId)) {
                 return null;
             }
 
@@ -255,18 +297,33 @@ export const updateFeedbackStatus = async (
     );
 };
 
+export function assertFeedbackStatusUpdateSucceeded(
+    result: unknown,
+    expectedFeedbackId: string,
+    expectedStatus: 'new' | 'resolved',
+    rejectionCode = 'feedback_status_update_rejected',
+): asserts result is GuestFeedback {
+    if (!isGuestFeedbackRecord(result, expectedFeedbackId)) throw new Error(rejectionCode);
+    const updatedFeedback = result as GuestFeedback;
+    if (
+        updatedFeedback.status !== expectedStatus
+    ) {
+        throw new Error(rejectionCode);
+    }
+}
+
 /**
  * Get feedback count by filter (for badge display)
  * Uses session from getActiveSession() for tenant/store isolation
- * 
+ *
  * NOTE: This is a simple count query. For large datasets,
  * consider using a counter document instead.
- * 
+ *
  * @param filter - Filter type
  */
 export const getFeedbackCount = async (
     filter: GuestFeedbackFilter = 'needs_attention'
-) => {
+): Promise<number> => {
     return await apiCallComposer(
         async () => {
             const session = await getActiveSession();
@@ -316,7 +373,7 @@ interface FeedbackMOLEvent {
 /**
  * Log anonymized feedback event to MOL
  * Called when feedback is submitted or resolved
- * 
+ *
  * NOTE: This logs to insights collection for now (lightweight approach)
  * Future: Could move to dedicated MOL collection if volume requires
  */
@@ -348,6 +405,12 @@ export const logFeedbackMOLEvent = async (
         });
     } catch (error) {
         // Non-blocking - log error but don't fail the main operation
-        console.error('[MOL] Failed to log feedback event:', error);
+        logGuestFeedbackFailure('guest_feedback_mol_event_log_failed', error, {
+            eventType,
+            rating,
+            ...getBoundedGuestFeedbackStringContext('tenantId', tId),
+            ...getBoundedGuestFeedbackStringContext('storeId', sId),
+            ...getBoundedGuestFeedbackStringContext('projectId', projectId),
+        });
     }
 };

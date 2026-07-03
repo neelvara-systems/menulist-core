@@ -1,7 +1,7 @@
 # Agent Readiness Strategy — Implementation Plan
 
 **Feature:** Agent Readiness Strategy
-**Status:** Phase 1 COMPLETE — Post-feedback updates applied
+**Status:** STATIC DISCOVERY LAYER COMPLETE — no dynamic agent endpoint
 **Last Updated:** February 19, 2026
 **Audience:** Developers
 
@@ -9,11 +9,11 @@
 
 ## Architecture Overview
 
-This is a **lightweight infrastructure enhancement**, not a product feature. No new Firestore collections, no new API routes, no new UI components. The original Phase 1 changes were limited to:
+This is a **lightweight infrastructure enhancement**, not a product feature. No new Firestore collections, no new API routes, no new UI components. The implemented source changes were limited to:
 
 1. Static file enhancement (`public/llms.txt`)
 2. New static file (`public/llms-full.txt`)
-3. Feature flag placeholder (`src/config/features.ts`)
+3. Reserved disabled flag (`src/config/features.ts`)
 
 All changes leverage existing infrastructure:
 
@@ -31,7 +31,7 @@ All changes leverage existing infrastructure:
 | --------------------------- | ------------------------------------------------- | ----------------------------------------- |
 | Build capability manifest   | `public/llms.txt` exists but is generic           | ENHANCE llms.txt                          |
 | Build truth response engine | OBP + menu pages already serve structured truth   | NO ACTION — pages ARE the engine          |
-| Build agent API             | No demand, premature                              | DEFER — add feature flag placeholder only |
+| Build agent API             | No demand, premature                              | NOT CURRENT RUNTIME — keep reserved flag disabled |
 | Trust scoring layer         | `dateModified` in OBP schema, MCE on project docs | NO ACTION — sufficient for now            |
 | Speed optimization          | `unstable_cache`, SSR, CDN already configured     | NO ACTION — continue current path         |
 
@@ -71,7 +71,7 @@ Both served as static files by Next.js/Vercel. No auth, no rate limiting, no dyn
 | File                     | LOC Changed          | Purpose                     |
 | ------------------------ | -------------------- | --------------------------- |
 | `public/llms.txt`        | ~80 lines (rewrite)  | Enhanced LLM discovery file |
-| `src/config/features.ts` | ~15 lines (addition) | Feature flag placeholder    |
+| `src/config/features.ts` | ~15 lines (addition) | Reserved disabled flag      |
 
 ### New Files
 
@@ -117,8 +117,8 @@ Key information about MenuList's data capabilities
 
 ## Public Pages
 
-- [OBP Pages](url): Canonical business identity with schema.org
-- [Menu Pages](url): Full structured menu with items, prices, availability
+- OBP Pages: Canonical business identity with schema.org
+- Menu Pages: Full structured menu with items, prices, availability
 
 ## Data Format
 
@@ -147,10 +147,10 @@ Extended version that includes:
 **Location:** `src/config/features.ts`
 
 ```typescript
-ENABLE_AGENT_DISCOVERY: false; // Placeholder for future agent-facing endpoints
+ENABLE_AGENT_DISCOVERY: false; // Reserved only; no current source reads this flag
 ```
 
-Not connected to any code. Pure placeholder for architectural readiness.
+Not connected to any current route, API, Cloud Function, or client workflow.
 
 ---
 
@@ -166,35 +166,35 @@ Not connected to any code. Pure placeholder for architectural readiness.
 
 ---
 
-## Implementation Phases
+## Implementation Scope
 
-### Phase 1: Documentation + Static Files (Feb 19, 2026) — ✅ COMPLETE
+### Static Discovery Files (Feb 19, 2026) — ✅ COMPLETE
 
 - [x] Create `__docs__/agent-readiness-strategy/` doc suite (9 files)
 - [x] Archive ChatGPT review
 - [x] Archive article analysis with market data
 - [x] Enhance `public/llms.txt` (19 → 36 lines, structured capability description)
 - [x] Create `public/llms-full.txt` (~130 lines, full data format documentation)
-- [x] Add feature flag placeholder (`ENABLE_AGENT_DISCOVERY`)
+- [x] Add reserved disabled flag (`ENABLE_AGENT_DISCOVERY`)
 - [x] Update changelog
 - [x] Cross-reference SEO/AEO docs
 - [x] Type check passes
 
-### Phase 2: Monitor (Ongoing, No Code)
+### Monitoring Boundary (No Code)
 
-> **Strategic context:** Phase 1 delivered infrastructure hygiene. The real metric is **primary link adoption** — SMBs using their MenuList OBP URL as their official public link. Agent discovery is a lagging indicator of adoption + accuracy, not a leading one. Do not invest further engineering time in "agent readiness" until adoption proves the data layer is valuable.
+> **Strategic context:** The static layer delivered infrastructure hygiene. The real metric is **primary link adoption** — SMBs using their MenuList OBP URL as their official public link. Agent discovery is a lagging indicator of adoption + accuracy, not a leading one. Do not invest further engineering time in "agent readiness" until adoption proves the data layer is valuable.
 
 - **Track OBP primary link adoption** — #1 metric. How many SMBs use their MenuList link on Google, Instagram bio, QR, WhatsApp?
 - Manually test AI citations for MenuList businesses (early signal, not KPI)
 - Monitor llms.txt standard evolution
 - Watch Google UCP expansion
 
-### Phase 3: Future (If Demand Appears)
+### Conditional Agent Endpoint Candidates (Not Current Runtime)
 
 - Read-only structured data API endpoint
 - Agent partner verification
 - Trust/reliability metadata in responses
-- Activate `ENABLE_AGENT_DISCOVERY` flag
+- Enable `ENABLE_AGENT_DISCOVERY` only after an approved endpoint reads it
 
 ---
 
@@ -229,7 +229,7 @@ Not connected to any code. Pure placeholder for architectural readiness.
 
 | Document                                              | Purpose                                      |
 | ----------------------------------------------------- | -------------------------------------------- |
-| `__docs__/seo-aeo-discovery-infrastructure/README.md` | Parent strategy — schema enrichment          |
+| `__docs__/discovery-infrastructure/README.md`         | Parent strategy — schema enrichment          |
 | `__docs__/official-business-page/`                    | OBP implementation (canonical identity page) |
 | `__docs__/menu-correctness-engine/`                   | MCE implementation (data accuracy)           |
 | `__docs__/url-routing-architecture/`                  | Stable URLs for agent references             |

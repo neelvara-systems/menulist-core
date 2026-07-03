@@ -17,12 +17,6 @@ export const ANSWERLATTICE_FAQS_COLLECTION = DB_COLLECTIONS.ANSWERLATTICE_FAQS;
 export const MENU_IMAGE_PROCESSING_JOBS_COLLECTION = DB_COLLECTIONS.MENU_IMAGE_PROCESSING_JOBS;
 
 // ═══════════════════════════════════════════════════════════════════════════
-// AI CONFIGURATION
-// ═══════════════════════════════════════════════════════════════════════════
-
-export const AI_TYPE = "gemini"; // "vertex" or "gemini"
-
-// ═══════════════════════════════════════════════════════════════════════════
 // FILE TYPES
 // ═══════════════════════════════════════════════════════════════════════════
 

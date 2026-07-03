@@ -15,12 +15,50 @@
  */
 
 import { Redis } from '@upstash/redis';
+import { createHmac } from 'crypto';
 import * as functions from 'firebase-functions';
 import { isFunctionFeatureEnabled } from '../constants/features';
 
 // Initialize Upstash client using Firebase Function config/secrets
 // These must be set via: firebase functions:secrets:set UPSTASH_REDIS_REST_URL
 let upstash: Redis | null = null;
+const FUNCTIONS_RATE_LIMIT_HASH_SECRET =
+    process.env.NEXTAUTH_SECRET
+    || process.env.UPSTASH_REDIS_REST_TOKEN
+    || 'menulist-functions-rate-limit-local';
+
+function hashFunctionsRateLimitValue(value: unknown): string {
+    const normalized = value === undefined || value === null ? 'unknown' : String(value);
+    return createHmac('sha256', FUNCTIONS_RATE_LIMIT_HASH_SECRET)
+        .update(normalized)
+        .digest('hex')
+        .slice(0, 40);
+}
+
+function getRateLimitErrorContext(error: unknown): {
+    sourceErrorName?: string;
+    sourceErrorCode?: string;
+    sourceStatusCode?: number;
+} {
+    if (!error || typeof error !== 'object') return {};
+    const record = error as { code?: unknown; status?: unknown; statusCode?: unknown };
+    const status = Number(record.status ?? record.statusCode);
+    return {
+        sourceErrorName: error instanceof Error ? error.name || 'Error' : typeof error,
+        sourceErrorCode: record.code === undefined || record.code === null
+            ? undefined
+            : String(record.code).slice(0, 64),
+        sourceStatusCode: Number.isFinite(status) ? status : undefined,
+    };
+}
+
+function getBoundedRateLimitStringContext(label: string, value: unknown): Record<string, boolean | number> {
+    const normalized = value === undefined || value === null ? '' : String(value);
+    return {
+        [`${label}Present`]: normalized.length > 0,
+        [`${label}Length`]: normalized.length,
+    };
+}
 
 function getUpstashClient(): Redis | null {
     if (upstash) return upstash;
@@ -37,7 +75,9 @@ function getUpstashClient(): Redis | null {
         upstash = new Redis({ url, token });
         return upstash;
     } catch (error) {
-        functions.logger.error('[RateLimit] Failed to initialize Upstash client - rate limiting disabled', error);
+        functions.logger.error('[RateLimit] Failed to initialize Upstash client - rate limiting disabled', {
+            error: getRateLimitErrorContext(error),
+        });
         return null;
     }
 }
@@ -132,7 +172,7 @@ export async function checkRateLimit(config: RateLimitConfig): Promise<RateLimit
             const resetAt = oldestTimestamp + (window * 1000);
 
             logger.warn('[RateLimit] Rate limit exceeded', {
-                key,
+                ...getBoundedRateLimitStringContext('key', key),
                 currentCount,
                 limit,
                 resetAt
@@ -155,7 +195,12 @@ export async function checkRateLimit(config: RateLimitConfig): Promise<RateLimit
         };
 
     } catch (error) {
-        logger.error('[RateLimit] Upstash error:', error);
+        logger.error('[RateLimit] Upstash error - allowing request', {
+            ...getBoundedRateLimitStringContext('key', key),
+            limit,
+            window,
+            error: getRateLimitErrorContext(error),
+        });
 
         // FALLBACK: Allow request on Upstash error (fail open)
         return {
@@ -184,8 +229,9 @@ export const RATE_LIMIT_CONFIGS = {
  * This should match the frontend's checkExpensiveAILimit
  */
 export async function checkExpensiveAIRateLimit(projectId: string): Promise<RateLimitResult> {
+    const projectRateLimitHash = hashFunctionsRateLimitValue(projectId);
     return checkRateLimit({
-        key: `ai-expensive:parallel:${projectId}`,
+        key: `ai-expensive:parallel:${projectRateLimitHash}`,
         ...RATE_LIMIT_CONFIGS.AI_EXPENSIVE
     });
 }

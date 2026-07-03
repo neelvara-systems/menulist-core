@@ -17,6 +17,7 @@
  */
 
 import { Timestamp } from 'firebase-admin/firestore';
+import * as functions from 'firebase-functions';
 import { DB_COLLECTIONS } from '../constants/database';
 import { FUNCTION_FLAGS, FUNCTION_RETENTION_CONFIG } from '../constants/features';
 import { firestoreAdmin as db } from '../firebaseAdmin';
@@ -29,6 +30,8 @@ import {
   SendMessagePayload,
 } from './types';
 
+const logger = functions.logger;
+
 // ================================================================
 // FEATURE FLAG CHECK
 // ================================================================
@@ -37,6 +40,57 @@ let cachedFlag: boolean | null = null;
 let cachedFlagAt = 0;
 const FLAG_CACHE_TTL = 60_000; // 60 seconds
 const DAY_MS = 24 * 60 * 60 * 1000;
+
+function getErrorLogContext(error: unknown): {
+  errorName: string;
+  errorCode?: string;
+  errorStatus?: string;
+} {
+  if (error instanceof Error) {
+    const record = error as Error & { code?: unknown; status?: unknown; statusCode?: unknown };
+    const status = record.status ?? record.statusCode;
+
+    return {
+      errorName: (error.name || 'Error').slice(0, 80),
+      ...(record.code === undefined || record.code === null ? {} : {
+        errorCode: String(record.code).slice(0, 64),
+      }),
+      ...(status === undefined || status === null ? {} : {
+        errorStatus: String(status).slice(0, 32),
+      }),
+    };
+  }
+
+  return {
+    errorName: typeof error,
+  };
+}
+
+function getMessagingIdLogContext(label: string, value: unknown): Record<string, boolean | number> {
+  const normalized = value === undefined || value === null ? '' : String(value);
+  return {
+    [`${label}Present`]: normalized.length > 0,
+    [`${label}Length`]: normalized.length,
+  };
+}
+
+function getMessagingOperationLogContext(context: {
+  eventType?: unknown;
+  referenceId?: unknown;
+  status?: unknown;
+  storeId?: unknown;
+  subscriptionId?: unknown;
+  tenantId?: unknown;
+}): Record<string, boolean | number | string> {
+  return {
+    eventType: typeof context.eventType === 'string' ? context.eventType : String(context.eventType || ''),
+    status: typeof context.status === 'string' ? context.status : String(context.status || ''),
+    ...getMessagingIdLogContext('storeId', context.storeId),
+    ...getMessagingIdLogContext('tenantId', context.tenantId),
+    ...getMessagingIdLogContext('referenceId', context.referenceId),
+    ...getMessagingIdLogContext('subscriptionId', context.subscriptionId),
+  };
+}
 
 async function isMessagingEnabled(): Promise<boolean> {
   if (cachedFlag !== null && Date.now() - cachedFlagAt < FLAG_CACHE_TTL) {
@@ -70,7 +124,10 @@ async function isDuplicate(storeId: string, eventType: string, referenceId: stri
       .get();
     return !snapshot.empty;
   } catch (error) {
-    console.error('[Messaging] Idempotency check failed:', error);
+    logger.error('[Messaging] Idempotency check failed', {
+      ...getMessagingOperationLogContext({ storeId, eventType, referenceId }),
+      error: getErrorLogContext(error),
+    });
     return false; // Fail-open: allow send if check fails
   }
 }
@@ -130,7 +187,10 @@ async function getStoreInfo(storeId: string, tenantId: string): Promise<StoreInf
       billingEmail: notifSettings?.billingEmail,
     };
   } catch (error) {
-    console.error('[Messaging] Failed to get store info:', error);
+    logger.error('[Messaging] Failed to get store info', {
+      ...getMessagingOperationLogContext({ storeId, tenantId }),
+      error: getErrorLogContext(error),
+    });
     return null;
   }
 }
@@ -143,7 +203,16 @@ async function logMessage(log: MessageLogDoc): Promise<void> {
   try {
     await db.collection(DB_COLLECTIONS.MESSAGE_LOGS).add(log);
   } catch (error) {
-    console.error('[Messaging] Failed to log message:', error);
+    logger.error('[Messaging] Failed to log message', {
+      ...getMessagingOperationLogContext({
+        storeId: log.storeId,
+        tenantId: log.tenantId,
+        eventType: log.eventType,
+        referenceId: log.referenceId,
+        status: log.status,
+      }),
+      error: getErrorLogContext(error),
+    });
   }
 }
 
@@ -167,21 +236,24 @@ export async function sendLifecycleMessage(payload: SendMessagePayload): Promise
       const { sendOwnerLifecycleNotification } = await import('../ownerNotifications/processor');
       return await sendOwnerLifecycleNotification(payload);
     } catch (error) {
-      console.error('[Messaging] Owner notification path failed, using legacy sender:', error);
+      logger.error('[Messaging] Owner notification path failed, using legacy sender', {
+        ...getMessagingOperationLogContext({ storeId, tenantId, eventType, referenceId }),
+        error: getErrorLogContext(error),
+      });
     }
   }
 
   // 1. Feature flag
   const enabled = await isMessagingEnabled();
   if (!enabled) {
-    console.log('[Messaging] Feature disabled, skipping:', eventType);
+    logger.info('[Messaging] Feature disabled, skipping', { eventType });
     return false;
   }
 
   // 2. Idempotency
   const duplicate = await isDuplicate(storeId, eventType, referenceId);
   if (duplicate) {
-    console.log('[Messaging] Duplicate detected, skipping:', eventType, referenceId);
+    logger.info('[Messaging] Duplicate detected, skipping', getMessagingOperationLogContext({ eventType, referenceId }));
     return false;
   }
 
@@ -190,7 +262,7 @@ export async function sendLifecycleMessage(payload: SendMessagePayload): Promise
   if (priority !== 'critical') {
     const limited = await isRateLimited(storeId);
     if (limited) {
-      console.log('[Messaging] Rate limited, skipping:', eventType, storeId);
+      logger.warn('[Messaging] Rate limited, skipping', getMessagingOperationLogContext({ eventType, storeId }));
       return false;
     }
   }
@@ -198,7 +270,7 @@ export async function sendLifecycleMessage(payload: SendMessagePayload): Promise
   // 4. Get store info
   const storeInfo = await getStoreInfo(storeId, tenantId);
   if (!storeInfo || !storeInfo.email) {
-    console.warn('[Messaging] No recipient email for store:', storeId);
+    logger.warn('[Messaging] No recipient email for store', getMessagingOperationLogContext({ storeId, tenantId, eventType }));
     return false;
   }
 
@@ -211,7 +283,7 @@ export async function sendLifecycleMessage(payload: SendMessagePayload): Promise
   const templateMeta = { ...metadata, storeName: storeInfo.storeName };
   const template = resolveTemplate(eventType, templateMeta);
   if (!template) {
-    console.warn('[Messaging] No template for event:', eventType);
+    logger.warn('[Messaging] No template for event', { eventType });
     return false;
   }
 
@@ -241,9 +313,15 @@ export async function sendLifecycleMessage(payload: SendMessagePayload): Promise
   await logMessage(logDoc);
 
   if (result.success) {
-    console.log('[Messaging] Sent:', eventType, 'to', recipientEmail.replace(/(.{2}).*(@.*)/, '$1***$2'));
+    logger.info('[Messaging] Sent', {
+      ...getMessagingOperationLogContext({ storeId, tenantId, eventType, referenceId }),
+      hasProviderMessageId: Boolean(result.providerMessageId),
+    });
   } else {
-    console.error('[Messaging] Failed:', eventType, result.error);
+    logger.error('[Messaging] Failed', {
+      ...getMessagingOperationLogContext({ storeId, tenantId, eventType, referenceId }),
+      error: result.error,
+    });
   }
 
   return result.success;
@@ -273,7 +351,7 @@ export async function checkRenewalReminders(): Promise<void> {
       .where('renewsOn', '<', Timestamp.fromDate(fourDaysFromNow))
       .get();
 
-    console.log(`[Messaging] Found ${snapshot.size} subscriptions for renewal reminder`);
+    logger.info('[Messaging] Renewal reminder subscriptions found', { count: snapshot.size });
 
     for (const doc of snapshot.docs) {
       const sub = doc.data();
@@ -291,11 +369,16 @@ export async function checkRenewalReminders(): Promise<void> {
           },
         });
       } catch (err) {
-        console.error('[Messaging] Renewal reminder failed for sub:', doc.id, err);
+        logger.error('[Messaging] Renewal reminder failed for subscription', {
+          ...getMessagingOperationLogContext({ subscriptionId: doc.id, eventType: 'RENEWAL_REMINDER' }),
+          error: getErrorLogContext(err),
+        });
       }
     }
   } catch (error) {
-    console.error('[Messaging] checkRenewalReminders failed:', error);
+    logger.error('[Messaging] checkRenewalReminders failed', {
+      error: getErrorLogContext(error),
+    });
   }
 }
 
@@ -315,7 +398,7 @@ export async function checkSuspensionWarnings(): Promise<void> {
       .where('pastDueSinceAt', '<=', Timestamp.fromDate(sevenDaysAgo))
       .get();
 
-    console.log(`[Messaging] Found ${snapshot.size} subscriptions for suspension warning`);
+    logger.info('[Messaging] Suspension warning subscriptions found', { count: snapshot.size });
 
     for (const doc of snapshot.docs) {
       const sub = doc.data();
@@ -335,11 +418,16 @@ export async function checkSuspensionWarnings(): Promise<void> {
           },
         });
       } catch (err) {
-        console.error('[Messaging] Suspension warning failed for sub:', doc.id, err);
+        logger.error('[Messaging] Suspension warning failed for subscription', {
+          ...getMessagingOperationLogContext({ subscriptionId: doc.id, eventType: 'SUSPENSION_WARNING' }),
+          error: getErrorLogContext(err),
+        });
       }
     }
   } catch (error) {
-    console.error('[Messaging] checkSuspensionWarnings failed:', error);
+    logger.error('[Messaging] checkSuspensionWarnings failed', {
+      error: getErrorLogContext(error),
+    });
   }
 }
 
@@ -358,7 +446,9 @@ export async function retryFailedMessages(): Promise<{ retried: number; succeede
       const { retryFailedOwnerNotifications } = await import('../ownerNotifications/processor');
       return await retryFailedOwnerNotifications();
     } catch (error) {
-      console.error('[Messaging] Owner notification retry failed, using legacy retry:', error);
+      logger.error('[Messaging] Owner notification retry failed, using legacy retry', {
+        error: getErrorLogContext(error),
+      });
     }
   }
 
@@ -399,7 +489,9 @@ export async function retryFailedMessages(): Promise<{ retried: number; succeede
       }
     }
   } catch (error) {
-    console.error('[Messaging] retryFailedMessages failed:', error);
+    logger.error('[Messaging] retryFailedMessages failed', {
+      error: getErrorLogContext(error),
+    });
   }
 
   return { retried, succeeded };
@@ -419,7 +511,9 @@ export async function getDailyMessageDigest(): Promise<{ sent: number; failed: n
       const { getOwnerNotificationDigest } = await import('../ownerNotifications/processor');
       return await getOwnerNotificationDigest();
     } catch (error) {
-      console.error('[Messaging] Owner notification digest failed, using legacy digest:', error);
+      logger.error('[Messaging] Owner notification digest failed, using legacy digest', {
+        error: getErrorLogContext(error),
+      });
     }
   }
 
@@ -442,7 +536,9 @@ export async function getDailyMessageDigest(): Promise<{ sent: number; failed: n
     const failed = failedSnap.data().count;
     return { sent, failed, total: sent + failed };
   } catch (error) {
-    console.error('[Messaging] getDailyMessageDigest failed:', error);
+    logger.error('[Messaging] getDailyMessageDigest failed', {
+      error: getErrorLogContext(error),
+    });
     return { sent: 0, failed: 0, total: 0 };
   }
 }

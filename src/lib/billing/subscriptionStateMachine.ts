@@ -1,5 +1,6 @@
 import { PaymentStatus } from "@type/razorpay";
 import { logger } from "@lib/monitoring/logger";
+import { getBoundedRazorpayStringContext } from "@lib/billing/razorpayDiagnostics";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SUBSCRIPTION STATE MACHINE
@@ -36,6 +37,18 @@ const VALID_TRANSITIONS: Record<string, PaymentStatus[]> = {
     completed: [],
 };
 
+const getTransitionLogContext = (
+    from: PaymentStatus,
+    to: PaymentStatus,
+    context: string,
+    allowedTransitions: PaymentStatus[] = [],
+) => ({
+    ...getBoundedRazorpayStringContext('fromStatus', from),
+    ...getBoundedRazorpayStringContext('toStatus', to),
+    ...getBoundedRazorpayStringContext('transitionContext', context),
+    allowedTransitionCount: allowedTransitions.length,
+});
+
 /**
  * Validates whether a status transition is allowed.
  * Logs a warning for invalid transitions but does NOT throw — Razorpay webhooks
@@ -52,18 +65,13 @@ export function validateTransition(from: PaymentStatus, to: PaymentStatus, conte
 
     const allowed = VALID_TRANSITIONS[from];
     if (!allowed) {
-        logger.warn(`[StateMachine] Unknown current state: "${from}" → "${to}" (${context})`);
+        logger.warn('[StateMachine] Unknown current state', getTransitionLogContext(from, to, context));
         return false;
     }
 
     const isValid = allowed.includes(to);
     if (!isValid) {
-        logger.warn(`[StateMachine] Invalid transition: "${from}" → "${to}" (${context})`, {
-            from,
-            to,
-            context,
-            allowedTransitions: allowed,
-        });
+        logger.warn('[StateMachine] Invalid transition', getTransitionLogContext(from, to, context, allowed));
     }
     return isValid;
 }

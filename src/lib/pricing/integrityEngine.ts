@@ -18,7 +18,6 @@
 
 import { replaceUndefined } from "@lib/apiHelper";
 import { firebaseClient as db } from "@lib/firebase/firebaseClient";
-import { secureError, secureLog } from "@lib/security/secureLogger";
 import type { PricingIntegrityState } from "@template/main-app/projects/types/project.types";
 import {
     Timestamp,
@@ -29,6 +28,11 @@ import {
 } from "firebase/firestore";
 import { logPriceChange } from "./molLogger";
 import { enqueuePDFRegen, isBackgroundPDFRegenEnabled } from "./pdfQueue";
+import {
+    getBoundedPricingStringContext,
+    logPricingDiagnostic,
+    logPricingFailure,
+} from "./pricingDiagnostics";
 
 /**
  * Parameters for running pricing integrity
@@ -194,16 +198,26 @@ export async function runPricingIntegrity(
             }
         });
 
-        secureLog("[Pricing Integrity] Price updated successfully", {
-            projectId,
-            itemId,
-            attributeId: attributeId || null,
+        logPricingDiagnostic("pricing_integrity_price_update_succeeded", {
             changeType,
+            attributePriceChange: Boolean(attributeId),
+            ...getBoundedPricingStringContext("projectId", projectId),
+            ...getBoundedPricingStringContext("itemId", itemId),
+            ...getBoundedPricingStringContext("attributeId", attributeId),
+            ...getBoundedPricingStringContext("userId", actorUserId),
+            ...getBoundedPricingStringContext("tenantId", tId),
+            ...getBoundedPricingStringContext("storeId", sId),
         });
     } catch (error) {
-        secureError("[Pricing Integrity] Failed to update price", error as Error, {
-            projectId,
-            itemId,
+        logPricingFailure("pricing_integrity_price_update_failed", error, {
+            changeType,
+            attributePriceChange: Boolean(attributeId),
+            ...getBoundedPricingStringContext("projectId", projectId),
+            ...getBoundedPricingStringContext("itemId", itemId),
+            ...getBoundedPricingStringContext("attributeId", attributeId),
+            ...getBoundedPricingStringContext("userId", actorUserId),
+            ...getBoundedPricingStringContext("tenantId", tId),
+            ...getBoundedPricingStringContext("storeId", sId),
         });
         throw error;
     }
@@ -233,7 +247,12 @@ export async function markPDFFresh(params: {
         }),
     );
 
-    secureLog("[Pricing Integrity] PDF marked as fresh", { projectId, version });
+    logPricingDiagnostic("pricing_integrity_pdf_marked_fresh", {
+        version,
+        ...getBoundedPricingStringContext("projectId", projectId),
+        ...getBoundedPricingStringContext("tenantId", tId),
+        ...getBoundedPricingStringContext("storeId", sId),
+    });
 }
 
 /**
@@ -257,7 +276,12 @@ export async function markPDFFailed(params: {
         }),
     );
 
-    secureLog("[Pricing Integrity] PDF marked as failed", { projectId, error });
+    logPricingDiagnostic("pricing_integrity_pdf_marked_failed", {
+        ...getBoundedPricingStringContext("projectId", projectId),
+        ...getBoundedPricingStringContext("tenantId", tId),
+        ...getBoundedPricingStringContext("storeId", sId),
+        ...getBoundedPricingStringContext("failureReason", error),
+    });
 }
 
 /**

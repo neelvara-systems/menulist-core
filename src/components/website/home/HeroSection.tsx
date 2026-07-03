@@ -1,8 +1,7 @@
 'use client';
 
-import Image from 'next/image';
 import { useTranslations } from 'next-intl';
-import { LuArrowRight, LuBot, LuFileText, LuGlobe, LuLayoutGrid, LuMonitor, LuQrCode, LuShieldCheck, LuSmartphone } from 'react-icons/lu';
+import { LuArrowRight, LuBot, LuFileText, LuGlobe, LuLayoutGrid, LuMonitor, LuQrCode, LuSearch, LuShieldCheck, LuSmartphone } from 'react-icons/lu';
 import AnimateOnScroll from '../shared/AnimateOnScroll';
 import WebsiteButton from '../shared/WebsiteButton';
 import WebsiteHeadline from '../shared/WebsiteHeadline';
@@ -74,17 +73,71 @@ export default function HeroSection() {
           </AnimateOnScroll>
 
           <AnimateOnScroll preset="media" delay={0.12} className="ws-hero-official__visual">
-            <div className="ws-hero-product-stage ws-hero-product-stage--image">
-              <Image
-                src="/images/website/menulist-hero-official-source.webp"
-                alt={t('Hero.visualLabel')}
-                width={1600}
-                height={1000}
-                priority
-                unoptimized
-                sizes="(min-width: 1024px) 560px, 100vw"
-                className="ws-draft-product-image"
-              />
+            <div className="ws-hero-product-stage" aria-label={t('Hero.visualLabel')}>
+              <div className="ws-source-card">
+                <p className="ws-source-card__label">{t('Hero.sourceLabel')}</p>
+                <p className="ws-source-card__title">{t('Hero.sourceTitle')}</p>
+                <div className="ws-source-card__row">
+                  <span>{t('Hero.sourceMenu')}</span>
+                  <strong>{t('Hero.sourceCurrent')}</strong>
+                </div>
+                <div className="ws-source-card__row">
+                  <span>{t('Hero.officialBadge')}</span>
+                  <strong>{t('Hero.sourceApproved')}</strong>
+                </div>
+                <div className="ws-source-card__row">
+                  <span>{t('Hero.viewMenu')}</span>
+                  <strong>{t('Hero.sourceStatus')}</strong>
+                </div>
+              </div>
+
+              <div className="ws-obp-frame">
+                <div className="ws-browser-bar">
+                  <span />
+                  <span />
+                  <span />
+                  <p>{t('Hero.obpUrl')}</p>
+                </div>
+                <div className="ws-obp-body">
+                  <p className="ws-official-badge">
+                    <LuShieldCheck size={15} aria-hidden="true" />
+                    {t('Hero.officialBadge')}
+                  </p>
+                  <h2>{t('Hero.obpBusiness')}</h2>
+                  <p>{t('Hero.obpMeta')}</p>
+                  <div className="ws-obp-actions">
+                    <span>{t('Hero.actionCall')}</span>
+                    <span>{t('Hero.actionWhatsapp')}</span>
+                    <span>{t('Hero.actionDirections')}</span>
+                  </div>
+                  <div className="ws-obp-menu-cta">{t('Hero.viewMenu')}</div>
+                </div>
+              </div>
+
+              <div className="ws-menu-phone">
+                <div className="ws-phone-top" />
+                <div className="ws-menu-phone__content">
+                  <p className="ws-menu-phone__status">{t('Hero.phoneStatus')}</p>
+                  <div className="ws-phone-search">
+                    <LuSearch size={14} aria-hidden="true" />
+                    <span>{t('Hero.phoneSearch')}</span>
+                  </div>
+                  <div className="ws-phone-chips">
+                    <span>{t('Hero.phoneChip0')}</span>
+                    <span>{t('Hero.phoneChip1')}</span>
+                  </div>
+                  <div className="ws-phone-item">
+                    <div />
+                    <p>{t('Hero.phoneItem0')}</p>
+                    <strong>{t('Hero.phonePrice0')}</strong>
+                  </div>
+                  <div className="ws-phone-item">
+                    <div />
+                    <p>{t('Hero.phoneItem1')}</p>
+                    <strong>{t('Hero.phonePrice1')}</strong>
+                  </div>
+                </div>
+              </div>
             </div>
 
             <div className="ws-hero-surfaces">

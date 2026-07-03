@@ -12,6 +12,7 @@
  */
 
 import { z } from 'zod';
+import { getBoundedSecurityStringContext, logSecurityDiagnostic } from './securityDiagnostics';
 
 /**
  * Sanitize string input - remove dangerous characters
@@ -61,7 +62,9 @@ export function sanitizeFirestoreQuery(query: Record<string, any>): Record<strin
     for (const [key, value] of Object.entries(query)) {
         // Only allow alphanumeric keys
         if (!/^[a-zA-Z0-9_]+$/.test(key)) {
-            console.warn(`[Security] Blocked invalid query key: ${key}`);
+            logSecurityDiagnostic('firestore_query_invalid_key_blocked', {
+                ...getBoundedSecurityStringContext('queryKey', key),
+            });
             continue;
         }
 
@@ -187,14 +190,23 @@ export function validateAPIInput<T>(
         return { success: true, data: validated };
     } catch (error) {
         if (error instanceof z.ZodError) {
-            const firstError = error.issues[0];
-            return {
-                success: false,
-                error: `${firstError.path.join('.')}: ${firstError.message}`
-            };
+            return { success: false, error: 'Invalid input' };
         }
         return { success: false, error: 'Invalid input' };
     }
+}
+
+export function getSafeZodValidationDetails(error: z.ZodError): {
+    issueCount: number;
+    issues: Array<{ code: string; field: string }>;
+} {
+    return {
+        issueCount: error.issues.length,
+        issues: error.issues.slice(0, 25).map((issue) => ({
+            code: issue.code,
+            field: issue.path.map(part => String(part)).join('.'),
+        })),
+    };
 }
 
 /**

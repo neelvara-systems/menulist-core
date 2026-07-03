@@ -18,11 +18,13 @@ export function sanitizeComplianceContent(raw: string): string | null {
 
     let text = raw;
 
+    // Strip executable/style blocks before removing tags so their inner text
+    // cannot survive as policy copy.
+    text = text.replace(/<script[\s\S]*?<\/script>/gi, '');
+    text = text.replace(/<style[\s\S]*?<\/style>/gi, '');
+
     // Strip HTML tags
     text = text.replace(/<[^>]*>/g, '');
-
-    // Strip script content
-    text = text.replace(/<script[\s\S]*?<\/script>/gi, '');
 
     // Strip event handlers
     text = text.replace(/on\w+="[^"]*"/gi, '');

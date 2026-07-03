@@ -5,7 +5,7 @@
 **Internal feature name:** AI Menu Manager
 **Public launch name:** AI Menu Manager
 **In-app owner label:** Menu Manager, with AI badge where useful
-**Last Updated:** June 19, 2026
+**Last Updated:** June 27, 2026
 
 ---
 
@@ -15,7 +15,7 @@ AI Menu Manager lets an owner tell MenuList what changed and receive a prepared 
 
 The owner should not need to remember whether the work lives in editor, settings, image generation, menu import, special menus, sharing, or publishing. AMM resolves the request, shows what will change, asks for approval when needed, and applies supported approved work through existing MenuList systems.
 
-The product is not a chatbot. It is a controlled, proposal-driven, approval-safe menu operations layer.
+The product is not a generic chatbot. It is a bounded conversational operations agent for MenuList: conversation is flexible, but execution is registered, scoped, previewed, approved when needed, and applied through existing MenuList systems.
 
 It can answer MenuList-domain questions only from the loaded selected menu context. Those answers are read-only `system_context_answer` cards for menu readiness, missing photos/descriptions, unavailable or hidden entries, share readiness, and price-change guidance. They do not perform provider calls, external lookups, Firestore scans, or mutations.
 
@@ -23,11 +23,14 @@ Core loop:
 
 ```text
 Owner intent
-  -> AMM proposal
-  -> approved MenuList operation
-  -> existing system write
-  -> receipt
+  -> selected store/project context
+  -> answer, diagnostic, recommendation, clarification, proposal, local export, handoff, unsupported, or receipt/status card
+  -> owner approval when needed
+  -> existing MenuList operation path when truth changes
+  -> compact receipt
 ```
+
+Conversation is flexible. Execution is registered.
 
 ---
 
@@ -42,6 +45,7 @@ Owner intent
 - Action registry for supported MenuList operations.
 - Manual UI parity for every action.
 - Store selector and project selector inside AMM so commands run in the same selected store/project context as current manual flows.
+- Disabled-by-default model-router contract for future Gemini/Gemma-compatible planners. Model output can only choose router outcomes, targets, values, or read/prepare tool names; MenuList remains the validation and execution authority.
 - Approval, edit, cancel, scope, time, and rollback controls.
 - Compact session and proposal history.
 - Existing image generation, extraction, project save, design setting, public cache, MOL, and multi-outlet paths.
@@ -52,6 +56,7 @@ Owner intent
 - A generic "ask anything" chatbot.
 - Live weather, news, sports, stock, trivia, or general web-answering questions.
 - Provider-backed open-ended consulting answers without a registered read-only or action adapter.
+- Cloud or local model providers by default. The deterministic selected-project router remains the current cost-safe path until provider flags and adapters are intentionally enabled.
 - A second menu data model.
 - Always-on full transcript storage.
 - Hidden AI writes to live public menu truth.
@@ -166,7 +171,7 @@ The first screen should not be an empty generic chat screen. It should show:
 
 ## Core Interaction Rules
 
-1. AMM creates actions, not advice.
+1. AMM creates actionable outcomes, not generic advice.
 2. Every meaningful action becomes a card.
 3. Every card has a registered action type.
 4. The card payload contains before/after, scope, risk, approval need, and available actions.
@@ -181,7 +186,7 @@ The first screen should not be an empty generic chat screen. It should show:
 13. Work on and Suggestions are mutually exclusive composer guidance surfaces. Opening either closes the other on desktop and mobile.
 14. Commands default to the selected store and selected project shown on the AMM screen.
 15. AMM must not silently apply project-level work to all projects; cross-project or all-store scope requires an explicit scope card and owner approval.
-16. Clarification options are draft prompts only. Choosing one fills the composer and does not approve, execute, or create a new card until the owner sends it.
+16. Clarification options may resolve the pending clarification into the next preview/proposal card in one tap. They must not approve, execute, publish, or persist menu truth by themselves. Normal suggestion and starter choices remain draft-only.
 
 ---
 
@@ -231,8 +236,8 @@ This table is the product-level catalog. Exact action IDs, readiness states, sou
 | `item_availability_update` | "Cold coffee is back" | Availability toggle; sets `available: true` | Light/normal |
 | `item_visibility_update` | "Deactivate Masala Tea item" | Item active toggle | Normal |
 | `category_visibility_update` | "Deactivate Desserts category" | Category active toggle | Normal |
-| `item_create` | "Add cheese dosa 90" | Add item | Normal |
-| `special_menu_create` | "Add lunch thali today only" | Special menu / item editor | Normal/heavy depending publish |
+| `item_create` | "Add cheese dosa 90" / "Add today special Rajma Chawal 129" | Add item | Normal |
+| `special_menu_create` | "Create lunch special menu for today" | Special menu / item editor | Normal/heavy depending publish |
 | `menu_missing_photo_task` | "Ask staff for photos" | Manual task / staff workflow | Light |
 | `image_item_generate` | "Generate image for masala tea" | AI Image Generator | Normal before apply |
 | `image_item_apply_generated` | "Use this image" | Apply generated image to item | Normal |
@@ -260,6 +265,16 @@ Owner language around "today special" resolves by intent and scope:
 | "Show today's note/banner" | `menu_special_note_update` because the owner is asking for public message text, not an item or menu. |
 
 If the command is ambiguous between a single item, a scheduled special menu, and a banner/note, AMM must ask a clarification question before creating a proposal.
+
+## Non-Mutation Outcome Categories
+
+Non-mutation cards must not collapse into one generic manual-task bucket. AMM uses three owner-visible categories:
+
+| Category | Meaning | Completion rule |
+| --- | --- | --- |
+| Local export | MenuList/browser-owned copy, open, share, or download action such as menu link, QR, feedback link, customer app link, digital screen link, or POS setup text. | Can show local controls. It does not mutate menu truth or create a proposal doc by default. |
+| Manual handoff | Guides the owner to an existing MenuList flow such as settings, design, feedback inbox, staff access, print assets, or locations. | Can open/copy instructions for the MenuList-owned flow. It must not claim direct AMM execution. |
+| Unsupported | External or out-of-scope work such as Zomato, Swiggy, Google Business Profile direct mutation, Instagram/Facebook posting, Google review posting, or weather/news/general chat. | No `Mark done`, no fake completion, and no claim that external work happened. |
 
 ---
 
@@ -380,10 +395,16 @@ Business Health remains separate.
 
 AMM may consume a Business Health signal only through an explicit action adapter, for example:
 
-- "Popular item missing photo" -> `photo_task_create`
-- "High-view item has missing description" -> `description_batch_update`
+- "Popular item missing photo" -> `menu_missing_photo_task`
+- "High-view item has missing description" -> `menu_repair_descriptions` or an exact `item_description_update` proposal when the target item and replacement copy are known.
 
 AMM must not reuse Business Health's disabled public-truth write path or turn Business Health into an execution system. Evidence: Business Health action flags keep public-truth writes disabled in `src/config/features.ts:1053`.
+
+## Website Claim Guard
+
+Website and launch copy may say AI Menu Manager handles verified daily menu operations, selected-menu answers, local exports, and unsupported handoffs.
+
+Website and launch copy must not imply every checklist action is executable, direct external posting is live, rule execution is live, durable rollback is universally available, provider-backed image/import/publish jobs are complete, or full speech-to-command is production-ready unless the matching adapter and runtime sweep have been verified.
 
 ---
 

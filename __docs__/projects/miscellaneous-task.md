@@ -1,17 +1,14 @@
-# 📝 Miscellaneous / Next-Phase Tasks
+# Historical Projects Backlog / Conditional Tasks
 
-This document collects all tasks that are **explicitly deferred**:
+**Status:** Historical backlog evidence; not current launch certification.
 
-- "we will do after our other work gets done"
-- "next phase"
-- "before prod"
-- or tasks you say we should **skip for now**.
+This document preserves old Projects follow-up notes and resolved backlog items. Do not use it as approval to defer current launch blockers. Current release approval must come from the active [production-readiness audit](../audits/menulist-production-readiness-audit.md), [production-readiness checklist](../production-readiness/README.md), and [External Certification Runbook](../production-readiness/external-certification-runbook.md).
 
-We will use this file as a backlog and work through it later in a focused phase.
+New launch-blocking findings should be fixed or routed through the active audit, not added here as future-phase work.
 
 ---
 
-## 🔐 DEFERRED P0 TASKS (Phase 2 - Post-Launch)
+## Historical P0 Follow-Ups (Not Current Launch Approval)
 
 ### 1. AI Cost Control & Budget Tracking (Cross-Feature)
 
@@ -29,7 +26,7 @@ We will use this file as a backlog and work through it later in a focused phase.
 **Codebase Evidence**: `src/lib/ai/capacityCheck.ts`, `src/database/aiOperations/index.tsx`, all 6 API routes
 
 **Original Priority**: P0  
-~~**Deferred To**: Phase 2~~  
+~~**Original Routing**: historical deferral note~~
 **Affects**: Multiple AI features (consolidated approach)
 
 **Features Requiring Cost Control**:
@@ -134,10 +131,10 @@ interface CostEstimate {
 
 ### 2. Virtualization for Long Lists (ASSESSMENT-04)
 
-**Why Deferred**: Code already optimized, handles 300-400 items smoothly
+**Current Boundary**: Code already optimized, handles 300-400 items smoothly
 
 **Original Priority**: P0  
-**Deferred To**: Only if production data shows menus >400 items
+**Current Boundary**: Conditional only if target-environment data shows menus >400 items
 
 **Current Optimizations** (Already Done ✅):
 
@@ -190,7 +187,7 @@ Files to modify:
 **How It Works**: Each audit point calls `logger.security(event, details, severity)`. In dev: styled console output. In prod: Sentry event with `type: 'security'` tag, severity level, fingerprinting for grouping, and searchable tags.
 
 **Original Priority**: P0  
-~~**Deferred To**: Phase 2~~
+~~**Original Routing**: historical deferral note~~
 
 **What to Track** (If Implemented):
 
@@ -230,10 +227,10 @@ interface SecurityAuditLog {
 
 ### 4. Data Encryption at Rest (ASSESSMENT-05)
 
-**Why Deferred**: Firestore default encryption is sufficient for menu data
+**Current Boundary**: Firestore default encryption is sufficient for menu data
 
 **Original Priority**: P1  
-**Deferred To**: Only if handling sensitive data or compliance requirements
+**Current Boundary**: Conditional only if handling sensitive data or compliance requirements
 
 **Current State**: Firestore encrypts all data at rest by default ✅
 
@@ -267,37 +264,37 @@ interface SecurityAuditLog {
 
 ---
 
-## 1️⃣ ASSESSMENT-02: AI Extraction – Performance & Edge Cases (Deferred)
+## 1. ASSESSMENT-02: AI Extraction - Performance & Edge Cases (Conditional)
 
-Source: [ASSESSMENT-02-AI-EXTRACTION.md](./ASSESSMENT-02-AI-EXTRACTION.md)
+Source: [assessment-02-ai-extraction.md](./Assessments/assessment-02-ai-extraction.md)
 
-### 1.1 Edge Cases (Deferred to Phase 2)
+### 1.1 Edge Cases (Conditional Audit Items)
 
 - **Edge Case 1: Menu in Multiple Languages**  
   **Current**: Extracts first language only  
-  **Fix (later)**: Detect multiple languages, ask user to confirm primary.
+  **Conditional fix**: Detect multiple languages, ask user to confirm primary.
 
 - **Edge Case 2: Menu with No Prices**  
   **Current**: Sets price to 0  
-  **Fix (later)**: Mark as "Price on request" or prompt user.
+  **Conditional fix**: Mark as "Price on request" or prompt user.
 
 - **Edge Case 3: Handwritten Menu**  
   **Current**: Poor OCR quality  
-  **Fix (later)**: Warn user upfront, suggest typed menu.
+  **Conditional fix**: Warn user upfront, suggest typed menu.
 
 - **Edge Case 4: Menu with Special Characters (€, ¥, ₹)**  
   **Current**: May not parse correctly  
-  **Fix (later)**: Normalize currency symbols in prompt.
+  **Conditional fix**: Normalize currency symbols in prompt.
 
 - **Edge Case 5: Very Long Item Names (50+ chars)**  
   **Current**: May truncate in UI  
-  **Fix (later)**: Add validation, truncate with ellipsis.
+  **Conditional fix**: Add validation, truncate with ellipsis.
 
 ---
 
-### 1.2 Performance Optimizations (Deferred)
+### 1.2 Performance Optimizations (Conditional)
 
-These are **not implemented now**. We will revisit when focusing on optimization/cost.
+These are conditional ideas, not current launch approval. Current extraction release approval uses the active production-readiness audit and extraction source gates.
 
 #### Opt 1: Batch Processing
 
@@ -349,31 +346,19 @@ These are **not implemented now**. We will revisit when focusing on optimization
 
 ---
 
-## How We Will Use This File
+## Current Use Boundary
 
-- Whenever you say:
-  - "we will do this after"
-  - "in next phase"
-  - "before prod"
-  - or "skip for now"
-
-  → I will **add that task here** with:
-  - Source file / assessment
-  - Short description
-  - Implementation notes
-  - Decision rationale
-
-Later, when you say "now let's do the pending/misc tasks", we can just open this file and pick items one by one.
+Use this file only as historical backlog evidence. Do not add current launch blockers here as deferrals. Current blockers belong in the production-readiness audit with proof, owner-side blocker status, or a scoped fix.
 
 ---
 
-## 2️⃣ UI LABEL CUSTOMIZATION: Business-Type-Wise Labeling (Deferred)
+## 2. UI LABEL CUSTOMIZATION: Business-Type-Wise Labeling (Resolved)
 
 **Status**: ✅ **DONE** (implemented via `src/config/businessLabels.ts`)
 
 **Added**: December 15, 2025  
 **Original State**: Using universal term "Catalog" for all business types  
-~~**Deferred To**: Phase 2~~
+~~**Original Routing**: historical deferral note~~
 
 **What Was Built**: `src/config/businessLabels.ts` provides `getOwnerLabels()` for business-type-aware UI labels. `getBusinessCategory()` in `src/data/shared/businessTypes.ts` maps business types to categories. Labels are used in editor components.
 
@@ -482,7 +467,7 @@ export function useCatalogLabel() {
 **What Was Built**: `businessCategory` is now stored directly in the store document. `src/database/stores/index.tsx` computes it from `getBusinessCategory(businessType)` on both `createStore()` and `updateStore()`. Also synced to `storesSummary` for Cloud Function optimization. `src/types/platform/store.ts` has `businessCategory: string` field.
 
 **Original Context**: Decision Intelligence feature implementation  
-~~**Deferred To**: Phase 2~~
+~~**Original Routing**: historical deferral note~~
 
 **Problem Discovered**:
 Two different implementations of `getBusinessCategory()` existed:
@@ -582,7 +567,7 @@ interface StoreDataType {
 
 ## Summary (Updated Feb 25, 2026)
 
-**Total Tasks**: 15 | **Done/Superseded**: 7 | **Still Deferred**: 6 | **Not Recommended**: 1 | **N/A**: 1
+**Total Tasks**: 15 | **Done/Superseded**: 7 | **Conditional**: 6 | **Not Recommended**: 1 | **N/A**: 1
 
 ### ✅ Completed / Superseded (no action needed)
 
@@ -596,16 +581,16 @@ interface StoreDataType {
 | 4.1 | Transaction Recording             | `addAiOperation()` active in all 6 AI routes                  |
 | 4.2 | Batch Size Limit                  | Superseded by `checkAICapacity()` enforcement                 |
 
-### ⏸️ Still Deferred (no action needed now)
+### Conditional / Not Current Launch Gates
 
 | #       | Task                         | When to Revisit                     |
 | ------- | ---------------------------- | ----------------------------------- |
 | 2       | Virtualization               | Only if production shows >400 items |
 | 4       | Data Encryption              | Firestore default sufficient        |
 | 3.2     | Auto-Merge Items             | During multi-outlet feature work    |
-| 5.1     | Translation Memory (Cache)   | After 1-2 months production usage   |
+| 5.1     | Translation Memory (Cache)   | If target cost evidence proves need |
 | 5.2     | Allergen Translation         | If food safety compliance required  |
-| 1.1-1.2 | Extraction Edge Cases & Perf | Post-launch optimization phase      |
+| 1.1-1.2 | Extraction Edge Cases & Perf | Separate scoped extraction audit    |
 
 ### ❌ Not Recommended
 
@@ -615,7 +600,7 @@ interface StoreDataType {
 
 ---
 
-## 3️⃣ AI DATA EXTRACTION: Production Review Deferred Items
+## 3. AI DATA EXTRACTION: Production Review Conditional Items
 
 **Added**: January 23, 2026  
 **Source**: `__docs__/projects/ai-data-extraction/production-review.md`
@@ -634,9 +619,9 @@ interface StoreDataType {
 
 ### 3.2 Auto-Merge Items Implementation (M5)
 
-**Status**: ⏸️ **STILL DEFERRED**
+**Status**: **CONDITIONAL**
 
-**Why Deferred**: Will implement during multi-chain/multi-outlet feature work
+**Current Boundary**: Belongs only in scoped multi-chain/multi-outlet feature work if current source and QA evidence proves it is needed.
 
 **Current State**: `saveFilesToProject.ts` computes auto-merge stats but doesn't actually merge items. Comment at lines 187-190 states: "Note: For now, we still append new files with their items. The auto-merge stats are for reporting; actual item merging would require restructuring..."
 
@@ -658,7 +643,7 @@ interface StoreDataType {
 
 ---
 
-## 4️⃣ AI IMAGE GENERATION: Deferred Items
+## 4. AI IMAGE GENERATION: Historical Items
 
 **Added**: January 30, 2026  
 **Source**: `__docs__/projects/ai-image-generation/ai-image-generation_verification.md`
@@ -760,17 +745,17 @@ const checkBatchLimit = async (
 
 ---
 
-## 5️⃣ MULTI-LANGUAGE TRANSLATION: Deferred Items
+## 5. MULTI-LANGUAGE TRANSLATION: Conditional Items
 
 **Added**: January 31, 2026  
 **Source**: `__docs__/projects/multi-language-translation/multi-language-translation_impl.md`
 
 ### 5.1 Translation Memory (Cache)
 
-**Why Deferred**: Requires new Firestore collection and lookup infrastructure
+**Current Boundary**: Requires new Firestore collection and lookup infrastructure
 
 **Priority**: P2  
-**Deferred To**: Phase 2 (after production cost data available)
+**Current Boundary**: Conditional; requires target cost evidence and a scoped audit.
 
 **What it is:**
 A cache of previously translated phrases. When you translate "Chicken Wings" to Spanish once, the system remembers "Alitas de Pollo" and reuses it next time. Saves API costs and ensures consistency across menus.
@@ -817,7 +802,7 @@ return fresh;
 
 **When to Implement:**
 
-- After 1-2 months of production usage with cost data
+- When target cost evidence proves repeated translation spend needs cache support
 - When translation costs become significant
 - Before opening to high-volume users
 
@@ -827,10 +812,10 @@ return fresh;
 
 ### 5.2 Allergen Translation Double-Check
 
-**Why Deferred**: Manual editing is the safety layer; no compliance requirement yet
+**Current Boundary**: Manual editing is the safety layer; no compliance requirement yet
 
 **Priority**: P3  
-**Deferred To**: Phase 2 (if compliance requirements arise)
+**Current Boundary**: Conditional; requires compliance or safety evidence and a scoped audit.
 
 **What it is:**
 Allergen information (nuts, gluten, dairy, shellfish) is **safety-critical**. A mistranslation could cause severe allergic reactions. Industry best practice recommends that allergen translations get extra validation beyond normal menu items.
@@ -853,7 +838,7 @@ const allergenItems = items.filter((i) => i.allergens?.length > 0);
 const allergenTranslations = await translateWithHigherAccuracy(allergenItems);
 ```
 
-**Why Deferred:**
+**Current Boundary:**
 
 - Current AI translation is reliable enough for allergens
 - Users can manually edit translations (the real safety layer)

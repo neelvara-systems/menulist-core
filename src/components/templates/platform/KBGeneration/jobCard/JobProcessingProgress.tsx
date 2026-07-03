@@ -24,26 +24,19 @@ export default function JobProcessingProgress({ job, totalArticlesCount, status 
 
     const [progress, setProgress] = useState(0);
     const [finishIndex, setFinishIndex] = useState(0);
-    let jobStart = job.modifiedOn;
-
-    //###- only for testing -###
-
-    //jobStart = Timestamp.fromMillis(Date.now() - 5 * 60 * 1000);
-    // totalArticlesCount = 60;
-
-    //###- only for testing -###
-
-    // const jobStart = job.modifiedOn;
-    const startedXMinutesAgo = jobStart.toDate().getTime();
+    const safeTotalArticlesCount = Math.max(0, Math.floor(Number(totalArticlesCount) || 0));
 
     useEffect(() => {
 
         if (!job?.modifiedOn) return;
 
-        const totalDuration = totalArticlesCount * TIME_REQUIRED_PER_ARTICLE_SEC; // seconds
+        const startedAtMs = typeof job.modifiedOn.toDate === 'function'
+            ? job.modifiedOn.toDate().getTime()
+            : Date.now();
+        const totalDuration = Math.max(safeTotalArticlesCount, 1) * TIME_REQUIRED_PER_ARTICLE_SEC; // seconds
 
         const updateProgress = () => {
-            const elapsed = (Date.now() - startedXMinutesAgo) / 1000; // in seconds
+            const elapsed = (Date.now() - startedAtMs) / 1000; // in seconds
             const pct = Math.min((elapsed / totalDuration) * 100, 90);
             setProgress(status === INGESTION_JOB_STATUS.NEEDS_REVIEW ? 100 : pct);
         };
@@ -52,7 +45,7 @@ export default function JobProcessingProgress({ job, totalArticlesCount, status 
 
         const interval = setInterval(updateProgress, 1000);
         return () => clearInterval(interval);
-    }, [job.modifiedOn, status, totalArticlesCount]);
+    }, [job.modifiedOn, safeTotalArticlesCount, status]);
 
     // cycle finishing messages once we reach the threshold
     useEffect(() => {
@@ -64,10 +57,14 @@ export default function JobProcessingProgress({ job, totalArticlesCount, status 
         }
     }, [progress]);
 
-    const processed = Math.floor((progress / 100) * totalArticlesCount);
+    const processed = Math.floor((progress / 100) * safeTotalArticlesCount);
     const showFinishing = progress >= 90 && progress < 100;
 
-    const textContent = showFinishing ? FINISH_MESSAGES[finishIndex] : `${processed || 0} of ${totalArticlesCount} articles processed`;
+    const textContent = showFinishing
+        ? FINISH_MESSAGES[finishIndex]
+        : safeTotalArticlesCount > 0
+            ? `${processed || 0} of ${safeTotalArticlesCount} articles processed`
+            : 'Processing articles';
 
     return (
         <Flex vertical align='center' gap={8} style={{ marginBottom: 26 }}>

@@ -3,6 +3,7 @@
 import { Alert, Card, Space } from 'antd';
 import { FEATURE_FLAGS } from '@config/features';
 import { useOwnerBusinessContextPacket } from '@hook/ownerBusinessAssistant/useOwnerBusinessContextPacket';
+import { useOwnerPublicTruthReadiness } from '@hook/publicTruthTools/useOwnerPublicTruthReadiness';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { usePathname, useRouter } from 'next/navigation';
 import { useCallback, useContext, useEffect, useState } from 'react';
@@ -13,6 +14,7 @@ import { BusinessHealthPriorityChecks } from './BusinessHealthPriorityChecks';
 import { BusinessHealthProjectScopeSelector } from './BusinessHealthProjectScopeSelector';
 import { BusinessHealthSummaryCard } from './BusinessHealthSummaryCard';
 import { OwnerAssistantPanel } from './OwnerAssistantPanel';
+import { PublicTruthOwnerCheckCard } from './PublicTruthOwnerCheckCard';
 import styles from './OwnerBusinessAssistant.module.scss';
 
 export function BusinessHealthPage({ projectId }: { projectId?: string }) {
@@ -21,6 +23,15 @@ export function BusinessHealthPage({ projectId }: { projectId?: string }) {
   const router = useRouter();
   const [scopedProjectId, setScopedProjectId] = useState<string | undefined>(projectId);
   const { current, isLoading, error, refresh } = useOwnerBusinessContextPacket(undefined, storeDetails?.storeId);
+  const {
+    error: publicTruthError,
+    isLoading: isPublicTruthLoading,
+    refresh: refreshPublicTruth,
+    report: publicTruthReport,
+  } = useOwnerPublicTruthReadiness({
+    selectedProjectId: scopedProjectId,
+    storeDetails,
+  });
   const isHealthReady = Boolean(current && current.status !== 'not_ready' && current.sourceRefs?.length);
   const hasMultipleStores = Array.isArray(tenantDetails?.storesList)
     && tenantDetails.storesList.filter((store: any) => store?.active !== false && store?.storeDetails?.active !== false).length > 1;
@@ -58,6 +69,12 @@ export function BusinessHealthPage({ projectId }: { projectId?: string }) {
           <div className={`${styles.summaryGrid} ${isHealthReady ? '' : styles.summaryGridSingle}`}>
             <Space direction="vertical" size="middle" style={{ width: '100%' }}>
               <BusinessHealthSummaryCard current={current} />
+              <PublicTruthOwnerCheckCard
+                error={publicTruthError}
+                isLoading={isPublicTruthLoading}
+                onRefresh={() => void refreshPublicTruth()}
+                report={publicTruthReport}
+              />
               <BusinessHealthLocationSummary
                 enabled={hasMultipleStores}
                 scopeKey={tenantDetails?.tenantId || storeDetails?.tenantId || storeDetails?.storeId}

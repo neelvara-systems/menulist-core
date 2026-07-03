@@ -2,11 +2,12 @@
 
 import { FEATURE_FLAGS } from '@config/features';
 import GlobalLanguagesList from '@data/languages';
-import { updateStore } from '@database/stores';
+import { assertStoreUpdateSucceeded, updateStore } from '@database/stores';
 import { getStoreSourceLanguage } from '@lib/localization/storeContent';
 import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
 import { getPublicBusinessDescription } from '@lib/obp/getPublicBusinessDescription';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
+import { AICapacityError } from '@services/ai/capacityError';
 import generateBusinessCopyViaAPI from '@services/ai/businessCopy/generateBusinessCopyViaAPI';
 import localizeBusinessCopyResult, { mergeLocalizedField, mergeLocalizedKeywordField } from '@services/ai/businessCopy/localizeBusinessCopyResult';
 import { buildBusinessCopyGeneratedMeta, buildBusinessCopyRepairMeta } from '@services/ai/businessCopy/metadata';
@@ -23,10 +24,17 @@ import { Button, Card, DotLoading, Flex, List, Tag, Text, Toast } from '../antd'
 import AiActionProgressPanel from '../components/AiActionProgressPanel';
 import MobileSettingsScreenHeader from '../components/MobileSettingsScreenHeader';
 import { getStoreLanguageLabel, getStoreManagedLanguages } from '../utils/localizedStoreContent';
+import {
+    getBoundedMobileOwnerStringContext,
+    getMobileOwnerStoreLogContext,
+    logMobileOwnerFailure,
+} from '../utils/mobileOwnerDiagnostics';
 
 interface MobileBusinessCopySetupScreenProps {
     onBack: () => void;
 }
+
+const BUSINESS_COPY_CAPACITY_MESSAGE = 'Get more enhancements to continue. Visit Billing to add an enhancement pack.';
 
 export default function MobileBusinessCopySetupScreen({ onBack }: MobileBusinessCopySetupScreenProps) {
     const t = useTranslations('BusinessSettings');
@@ -193,7 +201,12 @@ export default function MobileBusinessCopySetupScreen({ onBack }: MobileBusiness
                 storeId: storeDetails.storeId,
                 tagline: mergeLocalizedField(storeDetails?.tagline, localized.tagline),
             };
-            await updateStore(nextStoreUpdate);
+            const writeResult = await updateStore(nextStoreUpdate);
+            assertStoreUpdateSucceeded(
+                writeResult,
+                storeDetails.storeId,
+                'mobile_business_copy_store_update_rejected',
+            );
 
             setStoreDetails((previous: any) => ({
                 ...previous,
@@ -212,8 +225,19 @@ export default function MobileBusinessCopySetupScreen({ onBack }: MobileBusiness
             }));
 
             Toast.show({ content: t('businessCopySuccess'), duration: 1500 });
-        } catch (error: any) {
-            Toast.show({ content: error?.message || t('businessCopyFailed'), duration: 2000 });
+        } catch (error) {
+            logMobileOwnerFailure('mobile_business_copy_generation_failed', error, {
+                ...getMobileOwnerStoreLogContext(storeDetails?.storeId, storeDetails?.tenantId),
+                ...getBoundedMobileOwnerStringContext('businessName', storeDetails?.name),
+                coverageMissingFieldCount: coverage.missingFieldCount,
+                managedLanguageCount: managedLanguages.length,
+            });
+            Toast.show({
+                content: error instanceof AICapacityError
+                    ? BUSINESS_COPY_CAPACITY_MESSAGE
+                    : t('businessCopyFailed'),
+                duration: 2000,
+            });
         } finally {
             setIsGenerating(false);
         }
@@ -276,7 +300,12 @@ export default function MobileBusinessCopySetupScreen({ onBack }: MobileBusiness
                 storeId: storeDetails.storeId,
                 tagline: mergeLocalizedField(storeDetails?.tagline, localized.tagline),
             };
-            await updateStore(nextStoreUpdate);
+            const writeResult = await updateStore(nextStoreUpdate);
+            assertStoreUpdateSucceeded(
+                writeResult,
+                storeDetails.storeId,
+                'mobile_business_copy_translation_store_update_rejected',
+            );
 
             setStoreDetails((previous: any) => ({
                 ...previous,
@@ -295,8 +324,20 @@ export default function MobileBusinessCopySetupScreen({ onBack }: MobileBusiness
             }));
 
             Toast.show({ content: t('businessCopyCoverageGenerateSuccess'), duration: 1500 });
-        } catch (error: any) {
-            Toast.show({ content: error?.message || t('businessCopyCoverageGenerateFailed'), duration: 2000 });
+        } catch (error) {
+            logMobileOwnerFailure('mobile_business_copy_translation_repair_failed', error, {
+                ...getMobileOwnerStoreLogContext(storeDetails?.storeId, storeDetails?.tenantId),
+                ...getBoundedMobileOwnerStringContext('referenceLanguage', coverage.referenceLanguage),
+                coverageMissingFieldCount: coverage.missingFieldCount,
+                managedLanguageCount: managedLanguages.length,
+                repairableGapCount: coverage.repairableGapCount,
+            });
+            Toast.show({
+                content: error instanceof AICapacityError
+                    ? BUSINESS_COPY_CAPACITY_MESSAGE
+                    : t('businessCopyCoverageGenerateFailed'),
+                duration: 2000,
+            });
         } finally {
             setIsGeneratingTranslations(false);
         }

@@ -1,7 +1,7 @@
 # AnswerLattice Website — Spec
 
-> **Version:** 1.2.91
-> **Last Updated:** 2026-06-26
+> **Version:** 1.2.95
+> **Last Updated:** 2026-06-29
 > **Audience:** CEO / PM / Marketing
 
 ---
@@ -45,20 +45,21 @@ Public fit and setup copy must not imply founders need existing support volume b
 
 **Sections:**
 1. **Hero** — Centered founder-readable promise: "Support your product users without hiring a support team." The eyebrow should make the answer-order contract immediate: approved answers before fallback. The supporting copy must explain that scattered product knowledge becomes reviewed support knowledge, approved answers are served first, fallback opens only when coverage is missing, and each miss becomes review work. Keep in-product help, hosted help, FAQs, changelog, ticket fallback, feedback, approved answers, and reviewable gaps visible without claiming outsourced support, full helpdesk replacement, or autonomous support.
-2. **Support Suite** — A compact transformation flow plus four concrete support-surface cards. The section must show `Collect → Shape → Serve`: scattered docs/tickets/releases/screenshots/recordings/notes become reviewed support structure, then appear as widget help, hosted help, FAQ answers, documentation, ticket gaps, feedback review, changelog review, and future AI-agent context. Keep this section intentionally light: one shared flow rail, four suite cards for in-app support, hosted help, ticket fallback, and owner-approved answers, and a non-sticky build-path panel. Do not add another large transformation-card grid or proof-card row here because Product, feature, and Support Surfaces sections carry the detailed route-level proof.
+2. **Support Suite** — A compact transformation flow plus four concrete support-surface cards. The section must show `Collect → Shape → Serve`: scattered docs/tickets/releases/screenshots/recordings/notes become reviewed support structure, then appear as widget help, hosted help, FAQ answers, documentation, ticket gaps, feedback review, changelog review, and future AI-agent context. Keep this section intentionally light: one shared flow rail, one compact category-switch strip that compares by official answer source, four suite cards for in-app support, hosted help, ticket fallback, and owner-approved answers, and a non-sticky build-path panel. Do not add another large transformation-card grid or proof-card row here because Product, feature, and Support Surfaces sections carry the detailed route-level proof.
 3. **Support Surfaces in Motion** — Scroll-led product surface story showing the complete support layer: owner inputs, in-app help, hosted help, gaps/fallback, and the review loop. This section exists to make the product feel broader than Q&A or a chatbot while keeping the copy founder-readable.
-4. **Product Overview** — Feature-wise product cards for in-app widget, hosted help, tickets, FAQ, changelog, feedback, Support Board, knowledge intake, and workflow notifications.
+4. **Product Overview** — Feature-wise priority bento for in-app widget, hosted help, tickets, FAQ, changelog, feedback, Support Board, approved answers, knowledge intake, and workflow notifications. The grid should preserve every product route while giving visually larger weight to high-intent support-layer capabilities instead of rendering all tools as equal cards.
 5. **Support Improvement Loop** — Large loop diagram: user asks, approved answers checked, trusted help served, fallback ticket if missing, repeated gaps become review work, owner approves improvement.
 6. **Install Surface Quickstarts** — Install confidence section for the widget contract, framework-specific setup paths, safe context rules, and verification before launch.
-7. **AI-Built SaaS Fit** — Compact fit strip for AI-built SaaS, solo founders, technical founders, and small SaaS teams launching faster than traditional support processes.
-8. **Positioning Boundary** — Three-card boundary: not a chatbot, not static docs, not a full helpdesk.
-9. **Pricing Preview** — Starter/Growth/Studio guidance and beta setup note.
-10. **Objections / FAQ Preview** — Top setup, safety, pricing, and fit objections.
-11. **CTA** — Final conversion panel with `Create workspace` as primary and demo as secondary.
+7. **Founder Fit and Category Boundary** — One consolidated section with a best-fit founder panel plus the three boundary messages: not another chatbot, not a full helpdesk, and not static docs. Keep fit and boundary together so the lower page does not repeat multiple card grids.
+8. **Pricing Preview** — Starter/Growth/Studio guidance and beta setup note.
+9. **Objections / FAQ Preview** — Top setup, safety, pricing, and fit objections.
+10. **CTA** — Final conversion panel with `Create workspace` as primary and demo as secondary.
 
-The homepage must stay compressed, diagram-controlled, and product-led: one hero product scene with capability proof, one support-suite/transformation section, the sticky support-surface story, one feature-wise product overview card section, one large support-improvement loop diagram, one install-confidence section, concise fit/positioning/pricing/FAQ sections, and final CTA. Detailed setup path, trust cards, founder review proof, and category comparison belong on Product, feature, resource, security, and comparison pages instead of returning as separate homepage sections. Pre-Onboarding/source-preparation content stays available through Resources, Get Started, footer, and its dedicated route, but should not add another homepage section unless the primary funnel becomes too thin.
+The homepage must stay compressed, diagram-controlled, and product-led: one hero product scene with capability proof, one support-suite/transformation section, the sticky support-surface story, one priority-bento product overview section, one large support-improvement loop diagram, one install-confidence section, one concise fit/boundary section, pricing/FAQ sections, and final CTA. Detailed setup path, trust cards, founder review proof, and full category comparison tables belong on Product, feature, resource, security, and comparison pages instead of returning as separate homepage sections. The homepage may keep a compact support-suite switch cue for chatbots, helpdesks, static knowledge bases, and scattered support sources when the copy stays category-level and doctrine-safe. Pre-Onboarding/source-preparation content stays available through Resources, Get Started, footer, and its dedicated route, but should not add another homepage section unless the primary funnel becomes too thin.
 
 Visual assets for the homepage and feature pages must be planned through `src/content/answerlatticePublic/visualAssets.ts` before generation or capture. Current stable PNG slots are generated product-scene assets at `1440 x 1200`; final screenshots or GIFs may replace them only when they preserve the same product-truth, safe-context, fallback, and owner-review meaning. Concept illustrations may use inline SVG when the subject is abstract, such as safe context, install verification, source-to-answer flow, governance loop, or category positioning. Decorative mascot/cartoon assets, fake customers, fake metrics, and unsupported helpdesk/chatbot claims are not part of the AnswerLattice public-site style.
+
+Prism-glass card hover effects must feel attached to the user's pointer on desktop and laptop devices. Eligible cards should use a pointer-tracked spotlight glow on fine-pointer hover, fall back to centered glow variables when pointer tracking is unavailable, and preserve the existing Light/System/Dark theme colors. This polish must not add new content sections, new feature claims, per-card client state, or mobile-only hover behavior.
 
 ### 2. Product (`/product`)
 **Goal:** Explain the product in founder/operator language while preserving the real AnswerLattice architecture.
@@ -601,6 +602,10 @@ Get Started → signs in → creates workspace → lands in Activation Command C
 
 | Date | Version | Change |
 |------|---------|--------|
+| 2026-06-29 | 1.2.95 | Required a compact homepage support-suite switch cue that compares AnswerLattice by official answer source while keeping full category comparison detail on `/comparisons` and avoiding unsupported competitor claims |
+| 2026-06-27 | 1.2.94 | Required Prism-glass card hover glows to track the desktop pointer with a centered fallback while preserving existing AnswerLattice theme tokens, layouts, and product claims |
+| 2026-06-26 | 1.2.93 | Required the homepage Product Overview to use a priority bento and required AI-built founder fit plus category-boundary messaging to stay merged as one concise section |
+| 2026-06-26 | 1.2.92 | Required Prism-glass-inspired card/surface polish to stay token-led and identity-preserving: no new palette, no section or diagram layout changes, and no new product claims |
 | 2026-06-26 | 1.2.91 | Added consent-gated Plausible Cloud support for public website events and removed API-key material from onboarding success analytics labels |
 | 2026-06-25 | 1.2.90 | Removed custom repo-generated resource analytics session identifiers from GA4 payloads while preserving consent-gated acquisition context |
 | 2026-06-21 | 1.2.89 | Required the homepage Support Suite to present scattered founder materials as a lighter `Collect → Shape → Serve` flow rail with four suite cards and a non-sticky build-path panel, avoiding another dense transformation-card grid on the homepage |

@@ -1,6 +1,7 @@
 // This file will export the basic utitlity function to use globally.
 import Compressor from 'compressorjs';
 import { getPublicBusinessDescription } from '@lib/obp/getPublicBusinessDescription';
+import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { Timestamp } from 'firebase/firestore';
 import { v4 as uuid } from 'uuid';
 import { windowRef } from './window';
@@ -299,7 +300,6 @@ export function updateManifestFile(storeData: any) {
       ]
     },
   });
-  // console.log(manifestString)
   const manifestElement = document.getElementById("manifest");
   manifestElement?.setAttribute("href", "data:application/json;charset=utf-8," + encodeURIComponent(manifestString));
 }
@@ -729,8 +729,12 @@ export const getCompressedImage = (file, quality = 0.8) => {
         resolve(base64)
       },
       error(err) {
+        logRuntimeFailure('image_compression_failed', err, {
+          ...getBoundedRuntimeStringContext('fileType', file?.type),
+          fileSizeBytes: Number.isFinite(Number(file?.size)) ? Number(file.size) : undefined,
+          quality,
+        });
         resolve(null)
-        console.log(err.message);
       },
     });
   });

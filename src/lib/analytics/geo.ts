@@ -1,6 +1,7 @@
 /**
  * Client-side geolocation utilities for analytics
  */
+import { logAnalyticsFailure } from './analyticsDiagnostics';
 
 /**
  * Get the user's location information if available
@@ -43,7 +44,7 @@ export const getLocationInfo = async (): Promise<string> => {
     // Last resort fallback
     return 'unknown';
   } catch (error) {
-    console.error('Error getting location info:', error);
+    logAnalyticsFailure('analytics_location_lookup_failed', error);
     return 'unknown';
   }
 };

@@ -9,7 +9,7 @@
  */
 
 import { spawn } from 'node:child_process';
-import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import process from 'node:process';
@@ -18,7 +18,18 @@ import dotenv from 'dotenv';
 import { encode } from 'next-auth/jwt';
 import WebSocket from 'ws';
 
-dotenv.config({ path: '.env' });
+const envFile = process.env.MOBILE_QA_ENV_FILE || '.env';
+dotenv.config({ path: envFile });
+
+function readPositiveIntegerEnv(name, fallback) {
+  const raw = process.env[name];
+  if (!raw) return fallback;
+  const parsed = Number(raw);
+  if (!Number.isInteger(parsed) || parsed <= 0) {
+    throw new Error(`${name} must be a positive integer.`);
+  }
+  return parsed;
+}
 
 const chromePath = process.env.CHROME_PATH || '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
 const baseUrl = process.env.MOBILE_QA_BASE_URL || 'http://localhost:3000';
@@ -28,7 +39,9 @@ const expectedProjectName = process.env.MOBILE_QA_PROJECT_NAME || '';
 const storeId = process.env.MOBILE_QA_STORE_ID || '15';
 const email = process.env.MOBILE_QA_EMAIL || 'danny.tools.4884@gmail.com';
 const outputDir = process.env.MOBILE_QA_OUTPUT_DIR || '/tmp';
-const debugPort = Number(process.env.MOBILE_QA_DEBUG_PORT || 9333);
+const debugPort = readPositiveIntegerEnv('MOBILE_QA_DEBUG_PORT', 9333);
+const cdpTimeoutMs = readPositiveIntegerEnv('MOBILE_QA_CDP_TIMEOUT_MS', 45000);
+const requireExplicitFixture = process.env.MOBILE_QA_REQUIRE_EXPLICIT_FIXTURE === '1';
 const screenshotPath = path.join(outputDir, `mobile-owner-menu-${projectId}.png`);
 const bulkSheetScreenshotPath = path.join(outputDir, `mobile-owner-menu-bulk-${projectId}.png`);
 const visibilitySheetScreenshotPath = path.join(outputDir, `mobile-owner-menu-visibility-${projectId}.png`);
@@ -36,6 +49,18 @@ const textCaseSheetScreenshotPath = path.join(outputDir, `mobile-owner-menu-text
 
 if (!process.env.NEXTAUTH_SECRET) {
   throw new Error('NEXTAUTH_SECRET is required in .env for authenticated mobile QA.');
+}
+
+if (requireExplicitFixture) {
+  const missing = [
+    'MOBILE_QA_EMAIL',
+    'MOBILE_QA_STORE_ID',
+    'MOBILE_QA_PROJECT_ID',
+    'MOBILE_QA_PROJECT_NAME',
+  ].filter((name) => !process.env[name]);
+  if (missing.length) {
+    throw new Error(`MOBILE_QA_REQUIRE_EXPLICIT_FIXTURE=1 requires ${missing.join(', ')}.`);
+  }
 }
 
 const iPhoneUserAgent = [
@@ -57,7 +82,7 @@ async function waitForChromeEndpoint() {
   const endpoint = `http://127.0.0.1:${debugPort}/json/version`;
   const started = Date.now();
   let lastError;
-  while (Date.now() - started < 15000) {
+  while (Date.now() - started < cdpTimeoutMs) {
     try {
       return await fetchJson(endpoint);
     } catch (error) {
@@ -104,7 +129,7 @@ function createCdpClient(wsUrl) {
           pending.delete(nextId);
           reject(new Error(`CDP command timed out: ${method}`));
         }
-      }, 30000);
+      }, cdpTimeoutMs);
       pending.set(nextId, { resolve, reject, timer });
     });
   }
@@ -117,7 +142,7 @@ function createCdpClient(wsUrl) {
   return { ready, send, on, close: () => ws.close() };
 }
 
-async function waitForExpression(client, sessionId, expression, timeoutMs = 45000) {
+async function waitForExpression(client, sessionId, expression, timeoutMs = cdpTimeoutMs) {
   const started = Date.now();
   let lastValue;
   while (Date.now() - started < timeoutMs) {
@@ -150,6 +175,60 @@ async function captureScreenshot(client, sessionId, filePath) {
   await writeFile(filePath, Buffer.from(screenshot.data, 'base64'));
 }
 
+async function getMobileShellDebugState(client, sessionId) {
+  return evaluate(client, sessionId, `(() => {
+    const text = document.body?.innerText || '';
+    return {
+      url: location.href,
+      hash: location.hash,
+      readyState: document.readyState,
+      width: innerWidth,
+      height: innerHeight,
+      hasMobileShellScroll: Boolean(document.querySelector('[data-mobile-shell-scroll="true"]')),
+      hasMobileNavLabels: text.includes('Menu') && text.includes('Share') && text.includes('More'),
+      hasSignIn: /sign in/i.test(text),
+      hasErrorText: /application error|internal server error|something went wrong|this page could not be found/i.test(text),
+      selectedProjectId: localStorage.getItem('mobileSelectedProjectId:${storeId}') || localStorage.getItem('mobileSelectedProjectId') || '',
+      text: text.replace(/\\s+/g, ' ').trim().slice(0, 2200),
+    };
+  })()`);
+}
+
+async function waitForMobileShellOrAccessBlocker(client, sessionId) {
+  return waitForExpression(client, sessionId, `(() => {
+    const text = (document.body?.innerText || '').replace(/\\s+/g, ' ').trim();
+    const hasMobileNavLabels = text.includes('Menu') && text.includes('Share') && text.includes('More');
+    if (hasMobileNavLabels) {
+      return { status: 'ready' };
+    }
+    const hasSubscriptionGate = /Subscribe to Get Started/i.test(text) || /View Plans/i.test(text);
+    if (hasSubscriptionGate) {
+      return {
+        status: 'fixture_blocked',
+        reason: 'subscription_or_starter_required',
+        text: text.slice(0, 900),
+      };
+    }
+    const hasSignIn = /sign in/i.test(text);
+    if (hasSignIn) {
+      return {
+        status: 'auth_blocked',
+        reason: 'sign_in_required',
+        text: text.slice(0, 900),
+      };
+    }
+    const hasRuntimeError = /application error|internal server error|something went wrong|this page could not be found/i.test(text);
+    if (hasRuntimeError) {
+      return {
+        status: 'runtime_blocked',
+        reason: 'runtime_or_not_found',
+        text: text.slice(0, 900),
+      };
+    }
+    return null;
+  })()`);
+}
+
 async function clickByText(client, sessionId, text, exact = false) {
   return evaluate(client, sessionId, `
     (() => {
@@ -179,6 +258,7 @@ function isIgnorablePageError(message) {
 }
 
 async function main() {
+  await mkdir(outputDir, { recursive: true });
   const userDataDir = await mkdtemp(path.join(tmpdir(), 'menulist-mobile-qa-'));
   let client = null;
   const chrome = spawn(chromePath, [
@@ -280,12 +360,30 @@ async function main() {
     }, sessionId);
 
     await client.send('Page.navigate', { url: `${baseUrl}/projects#mobile/menu` }, sessionId);
-    await waitForExpression(client, sessionId, `
-      document.body &&
-      document.body.innerText.includes('Menu') &&
-      document.body.innerText.includes('Share') &&
-      document.body.innerText.includes('More')
-    `);
+    try {
+      const initialState = await waitForMobileShellOrAccessBlocker(client, sessionId);
+      if (initialState?.status !== 'ready') {
+        const initialShellFailureScreenshot = path.join(outputDir, `mobile-owner-menu-initial-shell-failed-${projectId}.png`);
+        await captureScreenshot(client, sessionId, initialShellFailureScreenshot);
+        const debugState = await getMobileShellDebugState(client, sessionId);
+        throw new Error(`Mobile owner Menu QA cannot continue: ${initialState?.status || 'unknown_initial_state'}. ${JSON.stringify({
+          blocker: initialState,
+          debugState,
+          screenshot: initialShellFailureScreenshot,
+        })}`);
+      }
+    } catch (error) {
+      if (error.message.includes('Mobile owner Menu QA cannot continue:')) {
+        throw error;
+      }
+      const initialShellFailureScreenshot = path.join(outputDir, `mobile-owner-menu-initial-shell-timeout-${projectId}.png`);
+      await captureScreenshot(client, sessionId, initialShellFailureScreenshot);
+      const debugState = await getMobileShellDebugState(client, sessionId);
+      throw new Error(`${error.message}. Initial mobile shell debug: ${JSON.stringify({
+        ...debugState,
+        screenshot: initialShellFailureScreenshot,
+      })}`);
+    }
     await delay(8000);
 
     const mainState = await evaluate(client, sessionId, `(() => {

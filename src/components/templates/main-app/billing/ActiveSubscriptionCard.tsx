@@ -1,4 +1,4 @@
-//////add handling for past_due statuses to show your payment failed 
+//////add handling for past_due statuses to show your payment failed
 //////add handling for cancelled statuses to show your subscription has been cancelled
 //////add handling for expired statuses to show your subscription has expired
 
@@ -8,9 +8,9 @@
 import { helpCenterTabRouting } from '@constant/navigations';
 import { PRODUCT_IDS, type ProductId } from '@constant/product';
 import { isFeatureEnabled } from '@config/features';
+import { getBoundedPaymentStringContext, logPaymentFailure } from '@hook/paymentDiagnostics';
 import { useAppDispatch } from '@hook/useAppDispatch';
 import usePaymentHandler from '@hook/usePaymentHandler';
-import { logger } from '@lib/monitoring/logger';
 import { startLoader, stopLoader } from '@reduxSlices/loader';
 import { FirestoreSubscriptionDoc } from '@type/razorpay';
 import { formatDateTime } from '@util/dateTime';
@@ -67,6 +67,15 @@ function ActiveSubscriptionCard({
     const router = useRouter();
     const formatter = useFormatter();
     const { onCancelSubscription, onPauseSubscription, onResumeSubscription } = usePaymentHandler(dispatch, { productId, productName });
+    const buildSubscriptionActionPaymentLogContext = (flow: string, metadata: Record<string, unknown> = {}) => ({
+        surface: 'desktop_billing_subscription_card',
+        flow,
+        status: activeSubscription.status || 'unknown',
+        ...getBoundedPaymentStringContext('productId', productId),
+        ...getBoundedPaymentStringContext('planId', activeSubscription.planId),
+        ...getBoundedPaymentStringContext('subscriptionId', activeSubscription.providerSubscriptionId),
+        ...metadata,
+    });
     const canPauseSubscriptions = isFeatureEnabled('ENABLE_SUBSCRIPTION_PAUSE');
     const monthlyCredits = Number(activeSubscription.monthlyCredits || 0);
     const topUpCredits = Number(activeSubscription.topUpCredits || 0);
@@ -103,8 +112,12 @@ function ActiveSubscriptionCard({
             message.success('Your subscription has been cancelled successfully.');
             refetchActiveSubscription();
         } catch (error: any) {
-            logger.error('Cancellation failed', error);
-            message.error(error.message || 'An unexpected error occurred.');
+            logPaymentFailure('payment_desktop_subscription_cancel_failed', error, buildSubscriptionActionPaymentLogContext('cancel_subscription', {
+                ...getBoundedPaymentStringContext('reason', reason),
+                hasOtherReason: Boolean(otherReason),
+                consent: Boolean(consent),
+            }));
+            message.error('Subscription cancellation failed. Please contact support.');
         } finally {
             dispatch(stopLoader("Cancelling subscription"));
             setIsCancellationModalOpen(false);
@@ -118,8 +131,8 @@ function ActiveSubscriptionCard({
             message.success('Your subscription has been paused.');
             refetchActiveSubscription();
         } catch (error: any) {
-            logger.error('Pause failed', error);
-            message.error(error.message || 'Failed to pause subscription.');
+            logPaymentFailure('payment_desktop_subscription_pause_failed', error, buildSubscriptionActionPaymentLogContext('pause_subscription'));
+            message.error('Failed to pause subscription.');
         } finally {
             dispatch(stopLoader("Pausing subscription"));
         }
@@ -132,10 +145,25 @@ function ActiveSubscriptionCard({
             message.success('Your subscription has been resumed.');
             refetchActiveSubscription();
         } catch (error: any) {
-            logger.error('Resume failed', error);
-            message.error(error.message || 'Failed to resume subscription.');
+            logPaymentFailure('payment_desktop_subscription_resume_failed', error, buildSubscriptionActionPaymentLogContext('resume_subscription'));
+            message.error('Failed to resume subscription.');
         } finally {
             dispatch(stopLoader("Resuming subscription"));
+        }
+    };
+
+    const handleOpenPaymentLink = (flow: 'pending_payment' | 'retry_payment') => {
+        if (!activeSubscription.shortUrl) return;
+        try {
+            const opened = window.open(activeSubscription.shortUrl, '_blank', 'noopener,noreferrer');
+            if (!opened) {
+                throw new Error('desktop_subscription_payment_link_open_blocked');
+            }
+        } catch (error) {
+            logPaymentFailure('payment_desktop_subscription_payment_link_open_failed', error, buildSubscriptionActionPaymentLogContext(flow, {
+                ...getBoundedPaymentStringContext('shortUrl', activeSubscription.shortUrl),
+            }));
+            message.error('Could not open payment link.');
         }
     };
 
@@ -150,7 +178,7 @@ function ActiveSubscriptionCard({
             && Math.abs(activeSubscription.renewsOn.seconds - activeSubscription.subscriptionEndDate.seconds) <= 86400;
         if (isPaymentPending) {
             return activeSubscription.shortUrl ? (
-                <Button type="primary" icon={<LuCreditCard />} href={activeSubscription.shortUrl} target="_blank">
+                <Button type="primary" icon={<LuCreditCard />} onClick={() => handleOpenPaymentLink('pending_payment')}>
                     Pay Now
                 </Button>
             ) : (
@@ -196,7 +224,7 @@ function ActiveSubscriptionCard({
             return <Space>
                 {!isFinalCycle && <Button icon={<LuXCircle />} danger onClick={() => setIsCancellationModalOpen(true)}>Cancel Subscription</Button>}
                 {activeSubscription.shortUrl ? (
-                    <Button type="primary" icon={<LuCreditCard />} href={activeSubscription.shortUrl} target="_blank">
+                    <Button type="primary" icon={<LuCreditCard />} onClick={() => handleOpenPaymentLink('retry_payment')}>
                         Retry Payment
                     </Button>
                 ) : (

@@ -13,6 +13,10 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { FieldValue, getFirestore as getAdminFirestore } from 'firebase-admin/firestore';
 import { answerlatticeFirestoreDatabaseId, shouldUseSharedAnswerlatticeFirebase } from './answerlatticeConfig';
+import {
+    getBoundedFirebaseAdminStringContext,
+    logFirebaseAdminFailure,
+} from './firebaseAdminDiagnostics';
 
 const ANSWERLATTICE_APP_NAME = 'answerlattice-admin';
 const DEFAULT_APP_NAME = '[DEFAULT]';
@@ -46,11 +50,11 @@ function getAdminCredential(prefix: 'FIREBASE' | 'ANSWERLATTICE_FIREBASE'): admi
             clientEmail,
         });
     } catch (error) {
-        if (process.env.NODE_ENV !== 'production') {
-            console.warn(`[Answerlattice Firebase Admin] Ignoring invalid ${prefix} service-account credentials for local runtime.`, {
-                error: error instanceof Error ? error.message : String(error),
-            });
-        }
+        logFirebaseAdminFailure('answerlattice_admin_env_credential_invalid', error, {
+            credentialSource: 'env',
+            product: 'answerlattice',
+            usesProductCredential: prefix === 'ANSWERLATTICE_FIREBASE',
+        }, { developmentOnly: true });
         return null;
     }
 }
@@ -78,11 +82,11 @@ function getAnswerlatticeServiceAccountFileCredential(): admin.credential.Creden
             clientEmail,
         });
     } catch (error) {
-        if (process.env.NODE_ENV !== 'production') {
-            console.warn('[Answerlattice Firebase Admin] Could not load ANSWERLATTICE_GOOGLE_APPLICATION_CREDENTIALS.', {
-                error: error instanceof Error ? error.message : String(error),
-            });
-        }
+        logFirebaseAdminFailure('answerlattice_admin_file_credential_load_failed', error, {
+            credentialSource: 'file',
+            product: 'answerlattice',
+            ...getBoundedFirebaseAdminStringContext('credentialPath', credentialPath),
+        }, { developmentOnly: true });
         return null;
     }
 }
@@ -102,9 +106,12 @@ function initializeLocalAnswerlatticeAdcApp(appName?: string): admin.app.App | n
             ? admin.initializeApp(options, appName)
             : admin.initializeApp(options);
     } catch (error) {
-        console.warn('[Answerlattice Firebase Admin] Local ADC initialization failed.', {
-            error: error instanceof Error ? error.message : String(error),
-        });
+        logFirebaseAdminFailure('answerlattice_admin_local_adc_initialize_failed', error, {
+            credentialSource: 'adc',
+            hasProjectId: Boolean(projectId),
+            hasStorageBucket: Boolean(getAnswerlatticeStorageBucket()),
+            product: 'answerlattice',
+        }, { developmentOnly: true });
         return null;
     }
 }

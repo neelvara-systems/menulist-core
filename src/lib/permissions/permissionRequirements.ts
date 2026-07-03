@@ -11,7 +11,7 @@ const routeRequirements: Array<{
     requirement: PermissionRequirement;
 }> = [
     {
-        matcher: (pathname) => pathname === "/dashboard",
+        matcher: (pathname) => pathname === "/dashboard" || pathname === "/business-health",
         requirement: { anyOf: [PERMISSIONS.VIEW_ANALYTICS], label: "Analytics" },
     },
     {
@@ -54,6 +54,18 @@ const routeRequirements: Array<{
         requirement: {
             anyOf: [PERMISSIONS.MANAGE_MENU_SHARING, PERMISSIONS.PUBLISH_MENU],
             label: "Sharing and QR",
+        },
+    },
+    {
+        matcher: (pathname) => (
+            pathname === "/assets"
+            || pathname === "/use-menulist/print-assets"
+            || pathname === "/use-menulist/menu-card-export"
+            || pathname === "/use-menulist/ai-menu-manager"
+        ),
+        requirement: {
+            anyOf: [PERMISSIONS.MANAGE_MENU_SHARING, PERMISSIONS.PUBLISH_MENU, PERMISSIONS.MANAGE_MENU],
+            label: "Assets and print outputs",
         },
     },
     {

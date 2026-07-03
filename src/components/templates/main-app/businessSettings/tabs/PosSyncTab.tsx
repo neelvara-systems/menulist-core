@@ -14,7 +14,16 @@ import { DB_COLLECTIONS } from "@constant/database";
 import { firebaseClient } from "@lib/firebase/firebaseClient";
 import { logPosSyncSecretRotationAudit } from "@lib/posSync/secretAudit";
 import { formatWebhookSecretPreview } from "@lib/posSync/secretDisplay";
+import {
+    isPosSyncTestResponse,
+    isSuccessfulPosSyncTestResponse,
+    POS_SYNC_TEST_REQUEST_POLICY,
+    POS_SYNC_TEST_RESPONSE_JSON_MAX_BYTES,
+    type PosSyncTestResponse,
+} from "@lib/posSync/testResponse";
 import { validatePosSyncWebhookUrl } from "@lib/posSync/webhookUrl";
+import { readJsonResponseWithLimit } from "@lib/security/boundedResponseBody";
+import { getBoundedBusinessSettingsStringContext, logBusinessSettingsFailure } from "../utils/businessSettingsDiagnostics";
 import { formatDateTime } from "@util/dateTime";
 import {
     Alert,
@@ -57,6 +66,9 @@ import {
 const { Title, Text } = Typography;
 const REGENERATE_SECRET_CONFIRMATION = 'REGENERATE';
 const PROVIDER_EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const POS_SYNC_TEST_FAILED_MESSAGE = 'Could not reach connected system';
+const DESKTOP_POS_SYNC_COPY_UNAVAILABLE = 'desktop_pos_sync_copy_unavailable';
+const DESKTOP_POS_SYNC_COPY_FALLBACK_FAILED = 'desktop_pos_sync_copy_fallback_failed';
 
 interface PosSyncTabProps {
     scrollRef?: React.RefObject<HTMLDivElement>;
@@ -73,6 +85,117 @@ interface DeliveryLogEntry {
     sentAt: string | null;
     duration: number;
     error: string | null;
+}
+
+function createPosSyncStatusError(failureCode: string, status?: number): Error & { code: string; status?: number } {
+    return Object.assign(new Error(failureCode), {
+        code: failureCode,
+        status,
+    });
+}
+
+function buildPosSyncLogContext(
+    action: string,
+    storeId?: unknown,
+    tenantId?: unknown,
+    extra: Record<string, boolean | number | string | null | undefined> = {},
+) {
+    return {
+        action,
+        ...getBoundedBusinessSettingsStringContext('storeId', storeId),
+        ...getBoundedBusinessSettingsStringContext('tenantId', tenantId),
+        ...extra,
+    };
+}
+
+const hasDesktopPosSyncClipboardWrite = (): boolean => (
+    typeof navigator !== 'undefined'
+    && Boolean(navigator.clipboard)
+    && typeof navigator.clipboard.writeText === 'function'
+);
+
+const hasDesktopPosSyncCopyFallback = (): boolean => (
+    typeof document !== 'undefined'
+    && typeof document.createElement === 'function'
+    && typeof document.execCommand === 'function'
+    && Boolean(document.body)
+);
+
+const copyDesktopPosSyncText = async (value: string): Promise<void> => {
+    let clipboardWriteError: unknown;
+
+    if (hasDesktopPosSyncClipboardWrite()) {
+        try {
+            await navigator.clipboard.writeText(value);
+            return;
+        } catch (error) {
+            clipboardWriteError = error;
+            // Continue to the acknowledged textarea fallback before showing failure copy.
+        }
+    }
+
+    if (!hasDesktopPosSyncCopyFallback()) {
+        throw clipboardWriteError || new Error(DESKTOP_POS_SYNC_COPY_UNAVAILABLE);
+    }
+
+    const textarea = document.createElement('textarea');
+    textarea.value = value;
+    textarea.setAttribute('readonly', '');
+    textarea.style.position = 'fixed';
+    textarea.style.left = '-9999px';
+    textarea.style.top = '0';
+    document.body.appendChild(textarea);
+    textarea.focus();
+    textarea.select();
+
+    try {
+        const copied = document.execCommand('copy');
+        if (!copied) {
+            throw new Error(DESKTOP_POS_SYNC_COPY_FALLBACK_FAILED);
+        }
+    } finally {
+        document.body.removeChild(textarea);
+    }
+};
+
+async function readDesktopPosSyncTestResponse(
+    response: Response,
+    storeId?: unknown,
+    tenantId?: unknown,
+): Promise<PosSyncTestResponse | null> {
+    let payload: unknown;
+    try {
+        payload = await readJsonResponseWithLimit<unknown>(
+            response,
+            POS_SYNC_TEST_RESPONSE_JSON_MAX_BYTES,
+        );
+    } catch (error) {
+        logBusinessSettingsFailure(
+            'desktop_pos_sync_test_response_parse_failed',
+            error,
+            buildPosSyncLogContext('test_connection', storeId, tenantId, {
+                maxBytes: POS_SYNC_TEST_RESPONSE_JSON_MAX_BYTES,
+                responseOk: response.ok,
+                responseStatus: response.status,
+            }),
+        );
+        return null;
+    }
+
+    if (!isPosSyncTestResponse(payload)) {
+        logBusinessSettingsFailure(
+            'desktop_pos_sync_test_response_invalid',
+            createPosSyncStatusError('desktop_pos_sync_test_response_invalid', response.status),
+            buildPosSyncLogContext('test_connection', storeId, tenantId, {
+                maxBytes: POS_SYNC_TEST_RESPONSE_JSON_MAX_BYTES,
+                responseOk: response.ok,
+                responseStatus: response.status,
+            }),
+        );
+        return null;
+    }
+
+    return payload;
 }
 
 const PosSyncTab: React.FC<PosSyncTabProps> = ({
@@ -98,6 +221,7 @@ const PosSyncTab: React.FC<PosSyncTabProps> = ({
     const [secretVisible, setSecretVisible] = useState(false);
     const [regenerateSecretModalOpen, setRegenerateSecretModalOpen] = useState(false);
     const [regenerateSecretConfirmationText, setRegenerateSecretConfirmationText] = useState('');
+    const [regeneratingSecret, setRegeneratingSecret] = useState(false);
     const [providerEmail, setProviderEmail] = useState('');
     const [sendingInstructions, setSendingInstructions] = useState(false);
 
@@ -138,16 +262,24 @@ const PosSyncTab: React.FC<PosSyncTabProps> = ({
                     attempt: data.attempt || 1,
                     sentAt: data.sentAt?.toDate?.()?.toISOString() || null,
                     duration: data.duration || 0,
-                    error: data.error || null,
+                    error: null,
                 } as DeliveryLogEntry;
             });
             setDeliveryEntries(entries);
-        } catch {
-            // Silent failure
+        } catch (error) {
+            logBusinessSettingsFailure(
+                'desktop_pos_sync_delivery_history_load_failed',
+                error,
+                buildPosSyncLogContext('load_delivery_history', storeId, tenantId, {
+                    enabled,
+                    requestedLimit: 20,
+                    ...getBoundedBusinessSettingsStringContext('status', status),
+                }),
+            );
         } finally {
             setLoadingEntries(false);
         }
-    }, [storeId]);
+    }, [enabled, status, storeId, tenantId]);
 
     useEffect(() => {
         if (enabled && storeId) {
@@ -155,18 +287,23 @@ const PosSyncTab: React.FC<PosSyncTabProps> = ({
         }
     }, [enabled, storeId, fetchDeliveryHistory]);
 
-    const handleToggle = useCallback((checked: boolean) => {
+    const handleToggle = useCallback(async (checked: boolean) => {
+        const previousEnabled = enabled;
+        const previousWebhookSecret = webhookSecret;
+        let generatedSecret = '';
         setEnabled(checked);
 
         const updates: Record<string, any> = {
             'posSync.enabled': checked,
             'posSync.status': checked ? 'healthy' : 'disabled',
+            'posSync.consecutiveFailures': 0,
         };
 
         if (checked && !webhookSecret) {
             const bytes = new Uint8Array(32);
             crypto.getRandomValues(bytes);
             const newSecret = 'whsec_' + Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
+            generatedSecret = newSecret;
             setWebhookSecret(newSecret);
             updates['posSync.webhookSecret'] = newSecret;
             updates['posSync.menuVersion'] = 0;
@@ -176,20 +313,60 @@ const PosSyncTab: React.FC<PosSyncTabProps> = ({
             updates['posSync.instructionsSentDate'] = '';
         }
 
-        onStoreUpdate?.(updates);
-    }, [webhookSecret, onStoreUpdate]);
+        try {
+            if (!onStoreUpdate) {
+                throw createPosSyncStatusError('desktop_pos_sync_settings_missing_store_update_handler');
+            }
+            await Promise.resolve(onStoreUpdate(updates));
+        } catch (error) {
+            setEnabled(previousEnabled);
+            setWebhookSecret(previousWebhookSecret);
+            logBusinessSettingsFailure(
+                'desktop_pos_sync_toggle_save_failed',
+                error,
+                buildPosSyncLogContext('toggle_sync', storeId, tenantId, {
+                    enabled: checked,
+                    previousEnabled,
+                    generatedSecret: Boolean(generatedSecret),
+                    generatedSecretLength: generatedSecret.length,
+                    previousWebhookSecretLength: previousWebhookSecret.length,
+                }),
+            );
+            message.error('Failed to save external sync settings.');
+        }
+    }, [enabled, webhookSecret, onStoreUpdate, storeId, tenantId]);
 
-    const handleSaveUrl = useCallback(() => {
+    const handleSaveUrl = useCallback(async () => {
         if (!webhookUrl.trim()) return;
         const validation = validatePosSyncWebhookUrl(webhookUrl);
         if (!validation.valid || !validation.normalizedUrl) {
             message.error(validation.error || 'Please enter a valid URL');
             return;
         }
-        setWebhookUrl(validation.normalizedUrl);
-        onStoreUpdate?.({ 'posSync.webhookUrl': validation.normalizedUrl });
-        message.success('Provider connection URL saved');
-    }, [webhookUrl, onStoreUpdate]);
+        try {
+            if (!onStoreUpdate) {
+                throw createPosSyncStatusError('desktop_pos_sync_settings_missing_store_update_handler');
+            }
+            await Promise.resolve(onStoreUpdate({
+                'posSync.webhookUrl': validation.normalizedUrl,
+                'posSync.status': enabled ? 'healthy' : 'disabled',
+                'posSync.lastError': '',
+                'posSync.consecutiveFailures': 0,
+            }));
+            setWebhookUrl(validation.normalizedUrl);
+            message.success('Provider connection URL saved');
+        } catch (error) {
+            logBusinessSettingsFailure(
+                'desktop_pos_sync_url_save_failed',
+                error,
+                buildPosSyncLogContext('save_provider_url', storeId, tenantId, {
+                    webhookUrlLength: validation.normalizedUrl.length,
+                    previousWebhookUrlLength: webhookUrl.trim().length,
+                }),
+            );
+            message.error('Failed to save external sync settings.');
+        }
+    }, [enabled, webhookUrl, onStoreUpdate, storeId, tenantId]);
 
     const handleTest = useCallback(async () => {
         if (!storeId || !tenantId) return;
@@ -197,25 +374,44 @@ const PosSyncTab: React.FC<PosSyncTabProps> = ({
         setTestResult(null);
         try {
             const res = await fetch('/api/pos-sync/test', {
+                ...POS_SYNC_TEST_REQUEST_POLICY,
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ storeId, tenantId }),
             });
-            const data = await res.json();
-            if (data.success) {
+            const data = await readDesktopPosSyncTestResponse(res, storeId, tenantId);
+            if (res.ok && isSuccessfulPosSyncTestResponse(data)) {
                 setTestResult({
                     success: true,
                     message: `Connection reachable (${data.responseTime}ms, HTTP ${data.statusCode})`,
                 });
                 fetchDeliveryHistory();
+            } else if (data) {
+                logBusinessSettingsFailure(
+                    'desktop_pos_sync_test_failed',
+                    createPosSyncStatusError('desktop_pos_sync_test_rejected', res.status),
+                    buildPosSyncLogContext('test_connection', storeId, tenantId, {
+                        apiStatusCode: typeof data.statusCode === 'number' ? data.statusCode : undefined,
+                        responseTimeMs: typeof data.responseTime === 'number' ? data.responseTime : undefined,
+                    }),
+                );
+                setTestResult({
+                    success: false,
+                    message: POS_SYNC_TEST_FAILED_MESSAGE,
+                });
             } else {
                 setTestResult({
                     success: false,
-                    message: data.error || 'Could not reach connected system',
+                    message: POS_SYNC_TEST_FAILED_MESSAGE,
                 });
             }
-        } catch {
-            setTestResult({ success: false, message: 'Network error' });
+        } catch (error) {
+            logBusinessSettingsFailure(
+                'desktop_pos_sync_test_failed',
+                error,
+                buildPosSyncLogContext('test_connection', storeId, tenantId),
+            );
+            setTestResult({ success: false, message: POS_SYNC_TEST_FAILED_MESSAGE });
         } finally {
             setIsTesting(false);
         }
@@ -244,40 +440,86 @@ const PosSyncTab: React.FC<PosSyncTabProps> = ({
         };
     }, [session]);
 
-    const confirmSecretRegeneration = useCallback(() => {
+    const confirmSecretRegeneration = useCallback(async () => {
         if (regenerateSecretConfirmationText.trim() !== REGENERATE_SECRET_CONFIRMATION) {
             message.error(`Type ${REGENERATE_SECRET_CONFIRMATION} to continue.`);
             return;
         }
 
+        const previousSecret = webhookSecret;
         const bytes = new Uint8Array(32);
         crypto.getRandomValues(bytes);
         const newSecret = 'whsec_' + Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
         const secretRotationAudit = buildSecretRotationAudit();
+
         setWebhookSecret(newSecret);
         setSecretVisible(false);
-        const updateResult = onStoreUpdate?.({
-            'posSync.webhookSecret': newSecret,
-            ...secretRotationAudit.storeUpdates,
+        setRegeneratingSecret(true);
+
+        try {
+            if (!onStoreUpdate) {
+                throw createPosSyncStatusError('desktop_pos_sync_secret_rotation_missing_store_update_handler');
+            }
+
+            await Promise.resolve(onStoreUpdate({
+                'posSync.webhookSecret': newSecret,
+                'posSync.status': enabled ? 'healthy' : 'disabled',
+                'posSync.lastError': '',
+                'posSync.consecutiveFailures': 0,
+                ...secretRotationAudit.storeUpdates,
+            }));
+        } catch (error) {
+            setWebhookSecret(previousSecret);
+            logBusinessSettingsFailure(
+                'desktop_pos_sync_secret_rotation_save_failed',
+                error,
+                buildPosSyncLogContext('secret_rotation_save', storeId, tenantId, {
+                    hasPreviousWebhookSecret: Boolean(previousSecret),
+                    previousWebhookSecretLength: previousSecret.length,
+                    nextWebhookSecretLength: newSecret.length,
+                    hasStoreUpdateHandler: Boolean(onStoreUpdate),
+                    hasActorEmail: Boolean(secretRotationAudit.actorEmail),
+                    hasActorUserId: Boolean(secretRotationAudit.actorUserId),
+                }),
+            );
+            message.error('Could not save the new secret. Try again.');
+            return;
+        } finally {
+            setRegeneratingSecret(false);
+        }
+
+        logPosSyncSecretRotationAudit({
+            actorEmail: secretRotationAudit.actorEmail,
+            actorUserId: secretRotationAudit.actorUserId,
+            rotatedAt: secretRotationAudit.rotatedAt,
+            storeId,
+            tenantId,
         });
-        void Promise.resolve(updateResult).then(() => {
-            logPosSyncSecretRotationAudit({
-                actorEmail: secretRotationAudit.actorEmail,
-                actorUserId: secretRotationAudit.actorUserId,
-                rotatedAt: secretRotationAudit.rotatedAt,
-                storeId,
-                tenantId,
-            });
-        }).catch(() => undefined);
         setRegenerateSecretModalOpen(false);
         setRegenerateSecretConfirmationText('');
         message.success('New secret generated. Use Copy to share it with your provider.');
-    }, [buildSecretRotationAudit, onStoreUpdate, regenerateSecretConfirmationText, storeId, tenantId]);
+    }, [buildSecretRotationAudit, enabled, onStoreUpdate, regenerateSecretConfirmationText, storeId, tenantId, webhookSecret]);
 
-    const handleCopySecret = useCallback(() => {
-        navigator.clipboard.writeText(webhookSecret);
-        message.success('Secret copied to clipboard');
-    }, [webhookSecret]);
+    const handleCopySecret = useCallback(async () => {
+        if (!webhookSecret) return;
+        try {
+            await copyDesktopPosSyncText(webhookSecret);
+            message.success('Secret copied to clipboard');
+        } catch (error) {
+            logBusinessSettingsFailure(
+                'desktop_pos_sync_secret_copy_failed',
+                error,
+                buildPosSyncLogContext('copy_secret', storeId, tenantId, {
+                    hasWebhookSecret: Boolean(webhookSecret),
+                    webhookSecretLength: webhookSecret.length,
+                    secretVisible,
+                    hasClipboardWrite: hasDesktopPosSyncClipboardWrite(),
+                    hasCopyFallback: hasDesktopPosSyncCopyFallback(),
+                }),
+            );
+            message.error('Unable to copy secret.');
+        }
+    }, [secretVisible, storeId, tenantId, webhookSecret]);
 
     const buildTechnicalSummary = useCallback(() => [
         'MenuList External Menu Sync — Setup Info',
@@ -317,10 +559,13 @@ const PosSyncTab: React.FC<PosSyncTabProps> = ({
                 return;
             }
 
-            onStoreUpdate?.({
+            if (!onStoreUpdate) {
+                throw createPosSyncStatusError('desktop_pos_sync_settings_missing_store_update_handler');
+            }
+            await Promise.resolve(onStoreUpdate({
                 'posSync.instructionsSentCount': sentCount + 1,
                 'posSync.instructionsSentDate': today,
-            });
+            }));
 
             const subject = encodeURIComponent('MenuList External Menu Sync setup');
             const body = encodeURIComponent(buildTechnicalSummary());
@@ -328,17 +573,39 @@ const PosSyncTab: React.FC<PosSyncTabProps> = ({
 
             message.success(`Email draft prepared (${MAX_SENDS_PER_DAY - sentCount - 1} sends remaining today)`);
             setProviderEmail('');
-        } catch {
+        } catch (error) {
+            logBusinessSettingsFailure(
+                'desktop_pos_sync_instructions_prepare_failed',
+                error,
+                buildPosSyncLogContext('prepare_provider_instructions', storeId, tenantId, {
+                    ...getBoundedBusinessSettingsStringContext('providerEmail', recipient),
+                    technicalSummaryLength: buildTechnicalSummary().length,
+                }),
+            );
             message.error('Failed to prepare instructions');
         } finally {
             setSendingInstructions(false);
         }
-    }, [buildTechnicalSummary, providerEmail, posSync, onStoreUpdate]);
+    }, [buildTechnicalSummary, providerEmail, posSync, onStoreUpdate, storeId, tenantId]);
 
-    const handleCopyTechnicalSummary = useCallback(() => {
-        navigator.clipboard.writeText(buildTechnicalSummary());
-        message.success('Technical summary copied');
-    }, [buildTechnicalSummary]);
+    const handleCopyTechnicalSummary = useCallback(async () => {
+        const technicalSummary = buildTechnicalSummary();
+        try {
+            await copyDesktopPosSyncText(technicalSummary);
+            message.success('Technical summary copied');
+        } catch (error) {
+            logBusinessSettingsFailure(
+                'desktop_pos_sync_technical_summary_copy_failed',
+                error,
+                buildPosSyncLogContext('copy_technical_summary', storeId, tenantId, {
+                    technicalSummaryLength: technicalSummary.length,
+                    hasClipboardWrite: hasDesktopPosSyncClipboardWrite(),
+                    hasCopyFallback: hasDesktopPosSyncCopyFallback(),
+                }),
+            );
+            message.error('Could not copy technical summary');
+        }
+    }, [buildTechnicalSummary, storeId, tenantId]);
 
     const handleDownloadSample = useCallback(() => {
         const sample = {
@@ -376,16 +643,33 @@ const PosSyncTab: React.FC<PosSyncTabProps> = ({
             },
         };
 
-        const blob = new Blob([JSON.stringify(sample, null, 2)], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'menulist-external-menu-sync-sample.json';
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-    }, []);
+        const sampleJson = JSON.stringify(sample, null, 2);
+        let url: string | null = null;
+        try {
+            const blob = new Blob([sampleJson], { type: 'application/json' });
+            url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'menulist-external-menu-sync-sample.json';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        } catch (error) {
+            logBusinessSettingsFailure(
+                'desktop_pos_sync_sample_download_failed',
+                error,
+                buildPosSyncLogContext('download_sample_payload', storeId, tenantId, {
+                    sampleJsonLength: sampleJson.length,
+                    ...getBoundedBusinessSettingsStringContext('currency', sample.currency),
+                }),
+            );
+            message.error('Could not download sample payload');
+        } finally {
+            if (url) {
+                URL.revokeObjectURL(url);
+            }
+        }
+    }, [storeDetails?.currencyCode, storeId, tenantId]);
 
     const getStatusBadge = () => {
         switch (status) {
@@ -594,7 +878,7 @@ const PosSyncTab: React.FC<PosSyncTabProps> = ({
                                         <Button
                                             size="small"
                                             icon={<LuCopy size={14} />}
-                                            onClick={handleCopySecret}
+                                            onClick={() => void handleCopySecret()}
                                         />
                                     </Tooltip>
                                     <Tooltip title={t('regenerateSecret')}>
@@ -713,7 +997,7 @@ const PosSyncTab: React.FC<PosSyncTabProps> = ({
                                     />
                                     <Button
                                         icon={<LuSend size={14} />}
-                                        onClick={handleSendInstructions}
+                                        onClick={() => void handleSendInstructions()}
                                         loading={sendingInstructions}
                                         disabled={!providerEmail.trim()}
                                     >
@@ -733,7 +1017,7 @@ const PosSyncTab: React.FC<PosSyncTabProps> = ({
                                 <Button
                                     size="small"
                                     icon={<LuCopy size={12} />}
-                                    onClick={handleCopyTechnicalSummary}
+                                    onClick={() => void handleCopyTechnicalSummary()}
                                 >
                                     {t('copyTechnicalSummary')}
                                 </Button>
@@ -746,15 +1030,17 @@ const PosSyncTab: React.FC<PosSyncTabProps> = ({
             <Modal
                 title="Regenerate verification secret"
                 open={regenerateSecretModalOpen}
-                onOk={confirmSecretRegeneration}
+                confirmLoading={regeneratingSecret}
+                onOk={() => void confirmSecretRegeneration()}
                 onCancel={() => {
+                    if (regeneratingSecret) return;
                     setRegenerateSecretModalOpen(false);
                     setRegenerateSecretConfirmationText('');
                 }}
                 okText="Regenerate"
                 okButtonProps={{
                     danger: true,
-                    disabled: regenerateSecretConfirmationText.trim() !== REGENERATE_SECRET_CONFIRMATION,
+                    disabled: regeneratingSecret || regenerateSecretConfirmationText.trim() !== REGENERATE_SECRET_CONFIRMATION,
                 }}
             >
                 <Flex vertical gap={12}>

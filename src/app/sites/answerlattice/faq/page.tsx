@@ -172,7 +172,7 @@ const FAQS = [
     },
     {
         question: 'Is pricing per resolved question?',
-        answer: 'No. Public packaging is predictable monthly pricing in INR. Beta setup starts with a controlled workspace path, paid plans and support-credit top-ups live in AnswerLattice Billing, and usage limits protect infrastructure without punishing support deflection.',
+        answer: 'No. Public packaging is predictable monthly pricing in INR. Setup starts on a paid plan, plan changes and support-credit top-ups live in AnswerLattice Billing, and usage limits protect infrastructure without punishing support deflection.',
     },
     {
         question: 'Does widget context decide workspace identity?',

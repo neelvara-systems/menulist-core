@@ -9,11 +9,15 @@ import {
 import { checkSafeMode } from "@lib/ops/safeMode";
 import { checkRateLimit } from "@lib/rateLimit";
 import { getRateLimitForFeature } from "@lib/rateLimit/configs";
+import { readBoundedJsonBody } from "@lib/security/boundedRequestBody";
+import { getSafeZodValidationDetails } from "@lib/security/inputValidation";
 import { NextRequest, NextResponse } from "next/server";
 import { verifyTenantAccess, withAuth } from "src/middleware/auth";
+import { hashPublicRateLimitValue } from "src/middleware/publicApi";
 import { z } from "zod";
 
 export const dynamic = "force-dynamic";
+const MENU_INTAKE_IDENTITY_MAX_BODY_BYTES = 256 * 1024;
 
 const IntakeFileSchema = z.object({
   uid: z.string().min(1).max(120),
@@ -39,31 +43,6 @@ export const POST = withAuth(async (request: NextRequest, session) => {
   const safeModeResponse = await checkSafeMode();
   if (safeModeResponse) return safeModeResponse;
 
-  let body: unknown;
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
-  }
-
-  const validation = IntakeRequestSchema.safeParse(body);
-  if (!validation.success) {
-    return NextResponse.json(
-      { error: "Invalid input", details: validation.error.flatten() },
-      { status: 400 },
-    );
-  }
-
-  const { projectId } = validation.data;
-  const files = validation.data.files as MenuIntakeFileInput[];
-  const unsupportedFile = files.find((file) => !isSupportedMenuIntakeMimeType(file.type));
-  if (unsupportedFile) {
-    return NextResponse.json(
-      { error: "Unsupported file type. Upload menu images or PDFs only." },
-      { status: 400 },
-    );
-  }
-
   const ids = {
     tId: String(session.tId || ""),
     sId: String(session.sId || ""),
@@ -75,8 +54,11 @@ export const POST = withAuth(async (request: NextRequest, session) => {
   }
 
   const rateLimitConfig = getRateLimitForFeature("AI_OPERATION");
+  const userRateLimitHash = hashPublicRateLimitValue(ids.uId);
+  const tenantRateLimitHash = hashPublicRateLimitValue(ids.tId);
+  const storeRateLimitHash = hashPublicRateLimitValue(ids.sId);
   const rateLimit = await checkRateLimit({
-    key: `menu-intake:${ids.uId}:${ids.tId}:${ids.sId}`,
+    key: `menu-intake:${userRateLimitHash}:${tenantRateLimitHash}:${storeRateLimitHash}`,
     ...rateLimitConfig,
   });
   if (!rateLimit.allowed) {
@@ -84,6 +66,27 @@ export const POST = withAuth(async (request: NextRequest, session) => {
     return NextResponse.json(
       { error: "Too many checks. Please wait before trying again.", retryAfter: waitSeconds },
       { status: 429, headers: { "Retry-After": String(waitSeconds) } },
+    );
+  }
+
+  const bodyResult = await readBoundedJsonBody(request, MENU_INTAKE_IDENTITY_MAX_BODY_BYTES);
+  if (bodyResult.ok === false) return bodyResult.response;
+
+  const validation = IntakeRequestSchema.safeParse(bodyResult.data);
+  if (!validation.success) {
+    return NextResponse.json(
+      { error: "Invalid input", details: getSafeZodValidationDetails(validation.error) },
+      { status: 400 },
+    );
+  }
+
+  const { projectId } = validation.data;
+  const files = validation.data.files as MenuIntakeFileInput[];
+  const unsupportedFile = files.find((file) => !isSupportedMenuIntakeMimeType(file.type));
+  if (unsupportedFile) {
+    return NextResponse.json(
+      { error: "Unsupported file type. Upload menu images or PDFs only." },
+      { status: 400 },
     );
   }
 

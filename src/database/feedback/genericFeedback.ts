@@ -61,8 +61,7 @@ export const updateContentFeedback = async (params: FeedbackUpdateParams) => {
             return await updateFaqFeedback(contentId, feedbackType, increment);
 
         case 'workflow':
-            // TODO: Implement Workflow feedback when Workflow feature is added
-            throw new Error('Workflow feedback not yet implemented');
+            throw new Error('Workflow feedback is not supported by this feedback DAL');
 
         default:
             throw new Error(`Unknown content type: ${contentType}`);

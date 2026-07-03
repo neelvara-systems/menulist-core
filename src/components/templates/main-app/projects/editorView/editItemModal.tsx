@@ -26,6 +26,8 @@ import React, { memo, useCallback, useContext, useEffect, useMemo, useState } fr
 import { LuCheck, LuClock, LuDownload, LuExternalLink, LuFileImage, LuLock, LuPlus, LuShare2, LuSparkles, LuTrendingUp, LuX } from 'react-icons/lu';
 import { ExtractedDataAttribute, ExtractedDataItem, ItemForDropdown, NewItemMetadataAPIParams, Project, ProjectFileType } from '../types';
 import { sanitizeUserInput } from '../utils';
+import { getBoundedMenuEditorStringContext, getMenuEditorProjectLogContext, logMenuEditorFailure } from '../utils/editorDiagnostics';
+import { getBoundedTranslationStringContext, getTranslationLanguageLogContext, getTranslationScopeLogContext, logTranslationFailure } from '../utils/translationDiagnostics';
 import { clearStaleTranslations, translateItem } from '../utils/translationsUtils';
 import UploadedImagesList from './uploadedImagesList';
 
@@ -415,7 +417,11 @@ const EditItemModal: React.FC<EditItemModalProps> = ({ modalData, onClose, selec
                 antdMessage.info('Get more enhancements to continue. Visit Billing to add an enhancement pack.');
             } else {
                 antdMessage.error('Translation failed');
-                console.error('Translation failed:', error);
+                logTranslationFailure('menu_translation_item_retry_failed', error, {
+                    ...getTranslationScopeLogContext(projectData.projectId, fileData.uid),
+                    ...getTranslationLanguageLogContext(language, getCanonicalProjectSourceLanguage(projectData.languages)),
+                    ...getBoundedTranslationStringContext('itemId', itemData?.id),
+                });
             }
         } finally {
             dispatch(stopLoader("retrying translations"))
@@ -500,12 +506,12 @@ const EditItemModal: React.FC<EditItemModalProps> = ({ modalData, onClose, selec
         }
 
         dispatch(startLoader("generating_content"));
-        try {
-            const sourceLanguage = GlobalLanguagesList.find(
-                (gl) => gl.code === getCanonicalProjectSourceLanguage(projectData.languages),
-            );
-            const targetLanguages = projectData.languages.map(lang => GlobalLanguagesList.find(gl => gl.code === lang));
+        const sourceLanguage = GlobalLanguagesList.find(
+            (gl) => gl.code === getCanonicalProjectSourceLanguage(projectData.languages),
+        );
+        const targetLanguages = projectData.languages.map(lang => GlobalLanguagesList.find(gl => gl.code === lang));
 
+        try {
             // Validate if item name is present in the source language
             if (!itemData.name[sourceLanguage.code]) {
                 antdMessage.error(`Item name in ${sourceLanguage.name} is required to generate ${contentActionCopy.validation}.`);
@@ -543,7 +549,14 @@ const EditItemModal: React.FC<EditItemModalProps> = ({ modalData, onClose, selec
             if (error instanceof AICapacityError) {
                 antdMessage.info('Get more enhancements to continue. Visit Billing to add an enhancement pack.');
             } else {
-                console.error("Error generating content:", error);
+                logMenuEditorFailure('menu_editor_item_content_generation_failed', error, {
+                    ...getMenuEditorProjectLogContext(projectData.projectId, (projectData as { masterProjectId?: unknown }).masterProjectId),
+                    ...getBoundedMenuEditorStringContext('fileId', fileData.uid),
+                    ...getBoundedMenuEditorStringContext('itemId', itemData.id),
+                    sourceLanguagePresent: Boolean(sourceLanguage?.code),
+                    targetLanguageCount: targetLanguages.length,
+                    attributeCount: itemData.attributes?.length || 0,
+                });
                 antdMessage.error(contentActionCopy.unexpected);
             }
         } finally {

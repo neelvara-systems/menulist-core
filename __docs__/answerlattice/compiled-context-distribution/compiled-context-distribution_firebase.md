@@ -15,6 +15,8 @@ The centralized Answerlattice scheduler compares `sourceVersions_*` with `bundle
 
 Knowledge Intake counters should not increase bundle churn. Intake-only counters can be stored in summary/source-version docs for owner UI and scheduler repair, but they are excluded from compiled context equality. Bundle rebuilds happen when approved destination content changes existing bundle inputs: KB/docs navigation, canonical answers, surfaces, releases, entities, entity relations, widget config, branding, MCP policy, or predictive triggers.
 
+Build failure diagnostics are bounded. Manifests keep fixed status fields such as `lastBuildError: "build_failed"`, build locks store fixed failure codes plus source error name/code/status metadata, and scheduler-facing repair results return fixed codes only. Raw exception text is not stored in `platformSummary`.
+
 ## Storage
 
 Allowed public bundle path:
@@ -32,12 +34,13 @@ Private reads and all client writes are denied by Storage rules. Server/admin co
 - Widget and MCP runtime reads must not query raw source collections.
 - Storage bundles must be versioned and cacheable.
 - Storage downloads are still billable, so server, browser, and CDN caches are required.
-- Public bundle proxy cache misses are rate-limited by `ANSWERLATTICE_PUBLIC_BUNDLE` before Storage existence/download calls; when rate limiting is enabled but the provider is bypassing, the proxy fails closed with a no-store `503`.
+- Public bundle proxy cache misses are rate-limited by `ANSWERLATTICE_PUBLIC_BUNDLE` before Storage existence/download calls; when rate limiting is enabled but the provider is bypassing, the proxy fails closed with a no-store `503`. Cache-miss objects are checked against a 512 KB proxy download ceiling through Storage metadata before download, with a second byte check after download. Rate-limit, oversized-object, and proxy failures log fixed runtime codes with bounded path metadata only.
 - Bundle rebuild reads are bounded and source-change driven.
 - Runtime reads never trigger rebuilds.
-- MCP session auth avoids API-key Firestore lookup per tool call.
-- MCP tool calls are rate-limited per tenant/store session before bundle reads.
-- MCP read tools use cached manifests/objects; `report_missing_context` can write its aggregate bucket without loading a bundle first.
+- MCP session auth avoids API-key Firestore lookup per tool call, and manifest-read failures log `answerlattice_mcp_session_bundle_manifest_load_failed` before returning the existing missing-bundle session metadata.
+- MCP tool calls are rate-limited per tenant/store session before a 16KB bounded JSON-RPC body parse and bundle reads. MCP session and JSON-RPC failures log fixed runtime codes with bounded metadata only.
+- MCP read tools use cached manifests/objects. Cold private bundle reads check Storage metadata before download, repeat the byte check after download, and treat oversized objects as unavailable. `report_missing_context` can write its aggregate bucket without loading a bundle first.
+- Best-effort Storage `manifest.json` copy failures add bounded diagnostics only. They do not add Firestore operations, do not change object paths, and do not change the Firestore manifest write that selects the active bundle version.
 
 ## Cache-Control
 

@@ -1,7 +1,7 @@
 # Changelog System — Technical Implementation Blueprint
 
-> **Version:** 1.0.0
-> **Last Updated:** 2026-03-02
+> **Version:** 1.0.1
+> **Last Updated:** 2026-06-30
 > **Audience:** Developers
 > **Source:** Codebase forensic audit (code is truth)
 
@@ -76,6 +76,10 @@ The Changelog System is a **client-side DAL feature** with no API routes. All CR
 
 - `getItem()` — Returns cached latest page or fetches from Firestore
 - Uses `PlatformGlobalDataContext` for session-level caching
+- Failed cache fetches use bounded `answerlattice_changelog_cache_fetch_failed` diagnostics; normal cache hit/miss/clear paths stay quiet.
+- `src/components/templates/platform/changelog/displayChangelog.tsx` keeps its last-viewed timestamp in browser `localStorage` only. Blocked read/write attempts use fixed `platform_changelog_last_viewed_read_failed` and `platform_changelog_last_viewed_write_failed` runtime diagnostics with static surface metadata; they do not log changelog content, entry IDs, browser storage values, or user payload.
+- When product surfaces are enabled, `src/components/templates/platform/changelog/addEditChangelog.tsx` awaits `rebuildProductSurfaceContentSummaryWithDiagnostics()` after a confirmed add/update and before success copy. Refresh failures log `answerlattice_changelog_summary_refresh_after_create_failed` or `answerlattice_changelog_summary_refresh_after_update_failed` with bounded entry/title/version metadata and show fixed contextual-help refresh warning copy. Surface-option load failures log `answerlattice_changelog_surface_options_load_failed`.
+- `src/components/templates/platform/changelog/ChangelogPreview.tsx` keeps KB-category cache prefetch best-effort, but blocked prefetches now log `answerlattice_changelog_preview_kb_categories_prefetch_failed` with bounded changelog entry/page metadata instead of disappearing.
 
 ---
 

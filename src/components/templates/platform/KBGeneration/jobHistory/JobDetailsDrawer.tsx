@@ -1,14 +1,22 @@
 import DateTimeDisplay from '@atoms/DateTimeDisplay';
 import KbSourceFile from '@atoms/KbSourceFile';
-import { FILE_TYPE, IngestionJob, IngestionJobSourceFile } from '@type/knowledgeBase';
+import {
+    copyAnswerlatticeSupportTextToClipboard,
+    hasAnswerlatticeSupportClipboardWrite,
+    hasAnswerlatticeSupportCopyFallback,
+} from '@lib/answerlattice/supportClipboard';
+import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
+import { getIngestionJobStatusData, IngestionJob, IngestionJobSourceFile } from '@type/knowledgeBase';
 import { Button, Drawer, Flex, message, Tag, Tooltip, Typography } from 'antd';
 import React from 'react';
-import { LuClipboard, LuFileCheck2, LuFileClock, LuFileCog, LuFileQuestion, LuFileSearch, LuFileSignature, LuFileX } from 'react-icons/lu';
+import { LuClipboard } from 'react-icons/lu';
 import GeneratedContentTree from './GeneratedContentTree';
 import JobDetailItem from './JobDetailItem';
 import JobDetailsSection from './JobDetailsSection';
 
 const { Title, Text } = Typography;
+const ANSWERLATTICE_KB_JOB_ID_COPY_CLIPBOARD_UNAVAILABLE = 'answerlattice_kb_job_id_copy_clipboard_unavailable';
+const ANSWERLATTICE_KB_JOB_ID_COPY_FALLBACK_FAILED = 'answerlattice_kb_job_id_copy_fallback_failed';
 
 interface JobDetailsDrawerProps {
     open: boolean;
@@ -16,41 +24,54 @@ interface JobDetailsDrawerProps {
     job: IngestionJob | null;
 }
 
-const statusConfig: { [key: string]: { color: string; icon?: React.ReactNode; label: string } } = {
-    pending: { color: 'default', label: 'Pending' },
-    processing: { color: 'blue', icon: <LuFileCog />, label: 'Processing' },
-    reconciling: { color: 'cyan', icon: <LuFileSearch />, label: 'Reconciling' },
-    needs_review: { color: 'orange', icon: <LuFileQuestion />, label: 'Needs Review' },
-    approved: { color: 'lime', icon: <LuFileSignature />, label: 'Approved' },
-    publishing: { color: 'purple', icon: <LuFileClock />, label: 'Publishing' },
-    published: { color: 'green', icon: <LuFileCheck2 />, label: 'Published' },
-    failed: { color: 'red', icon: <LuFileX />, label: 'Failed' },
-};
-
-
 const JobDetailsDrawer: React.FC<JobDetailsDrawerProps> = ({ open, onClose, job }) => {
 
     if (!job) return null;
 
-    const config = statusConfig[job.status];
+    const statusConfig = getIngestionJobStatusData()[job.status] || {
+        color: 'default',
+        icon: null,
+        label: 'Unknown',
+    };
+    const StatusIcon = statusConfig.icon;
 
-    const onClickDocument = (url: string) => {
-        window.open(url, '_blank');
+    const onClickDocument = (url: string, file: IngestionJobSourceFile) => {
+        try {
+            const opened = window.open(url, '_blank', 'noopener,noreferrer');
+            if (!opened) {
+                throw new Error('answerlattice_kb_source_open_blocked');
+            }
+        } catch (error) {
+            logRuntimeFailure('answerlattice_kb_source_open_failed', error, {
+                surface: 'kb_generation_job_details',
+                ...getBoundedRuntimeStringContext('jobId', job.id),
+                ...getBoundedRuntimeStringContext('jobStatus', job.status),
+                ...getBoundedRuntimeStringContext('sourceUrl', url),
+                ...getBoundedRuntimeStringContext('sourceName', file.fileName),
+                ...getBoundedRuntimeStringContext('sourceType', file.type),
+            });
+            message.error('Unable to open source');
+        }
     };
 
-    // --- DUMMY DATA FOR ICON REVIEW ---
-    const dummySourceFiles: IngestionJobSourceFile[] = [
-        { fileName: 'datasheet.pdf', type: FILE_TYPE.PDF, downloadURL: '#', storagePath: '', gsUri: '' },
-        { fileName: 'logo.png', type: FILE_TYPE.IMAGE, downloadURL: '#', storagePath: '', gsUri: '' },
-        { fileName: 'tutorial.mp4', type: FILE_TYPE.VIDEO, downloadURL: '#', storagePath: '', gsUri: '' },
-        { fileName: 'podcast.mp3', type: FILE_TYPE.AUDIO, downloadURL: '#', storagePath: '', gsUri: '' },
-        { fileName: 'report.docx', type: FILE_TYPE.DOCUMENT, downloadURL: '#', storagePath: '', gsUri: '' },
-        { fileName: 'menulist.ai', type: FILE_TYPE.WEBSITE, downloadURL: '#', storagePath: '', gsUri: '' },
-        { fileName: 'youtube.com/watch?v=xyz', type: FILE_TYPE.YOUTUBE, downloadURL: '#', storagePath: '', gsUri: '' },
-        { fileName: 'My Google Doc', type: FILE_TYPE.GOOGLE_DRIVE, downloadURL: '#', storagePath: '', gsUri: '' },
-        { fileName: 'Pasted content', type: FILE_TYPE.COPIED_TEXT, downloadURL: '#', storagePath: '', gsUri: '' },
-    ];
-    // ---------------------------------
+    const handleCopyJobId = async () => {
+        try {
+            await copyAnswerlatticeSupportTextToClipboard(job.id, {
+                unavailable: ANSWERLATTICE_KB_JOB_ID_COPY_CLIPBOARD_UNAVAILABLE,
+                fallbackFailed: ANSWERLATTICE_KB_JOB_ID_COPY_FALLBACK_FAILED,
+            });
+            message.success('Job ID copied to clipboard');
+        } catch (error) {
+            logRuntimeFailure('answerlattice_kb_job_id_copy_failed', error, {
+                surface: 'kb_generation_job_details',
+                hasClipboardWrite: hasAnswerlatticeSupportClipboardWrite(),
+                hasCopyFallback: hasAnswerlatticeSupportCopyFallback(),
+                ...getBoundedRuntimeStringContext('jobId', job.id),
+                ...getBoundedRuntimeStringContext('jobStatus', job.status),
+            });
+            message.error('Unable to copy Job ID');
+        }
+    };
 
     let categoryCount = 0;
     let sectionCount = 0;
@@ -89,16 +110,13 @@ const JobDetailsDrawer: React.FC<JobDetailsDrawerProps> = ({ open, onClose, job 
                                         type="text"
                                         shape="circle"
                                         icon={<LuClipboard />}
-                                        onClick={() => {
-                                            navigator.clipboard.writeText(job.id);
-                                            message.success('Job ID copied to clipboard');
-                                        }}
+                                        onClick={() => { void handleCopyJobId(); }}
                                     />
                                 </Tooltip>
                             </Flex>
                         </JobDetailItem>
                         <JobDetailItem label="Status">
-                            <Tag icon={config.icon} color={config.color}>{config.label}</Tag>
+                            <Tag icon={StatusIcon ? <StatusIcon /> : undefined} color={statusConfig.color}>{statusConfig.label}</Tag>
                         </JobDetailItem>
                         <JobDetailItem label="Created On">
                             <DateTimeDisplay value={job.createdOn} mode="datetime" />
@@ -113,24 +131,10 @@ const JobDetailsDrawer: React.FC<JobDetailsDrawerProps> = ({ open, onClose, job 
                         )}
                     </JobDetailsSection>
 
-                    {/* --- DUMMY SECTION FOR ICON REVIEW --- */}
-                    {/* <JobDetailsSection title="File Icon Review (Temporary)">
-                        <List
-                            size="small"
-                            dataSource={dummySourceFiles}
-                            renderItem={(file) => (
-                                <List.Item style={{ border: 'none', padding: '8px 0' }}>
-                                    <Flex align="center"><FileIcon fileType={file.type} /><Text>{file.fileName}</Text></Flex>
-                                </List.Item>
-                            )}
-                        />
-                    </JobDetailsSection> */}
-                    {/* --------------------------------------- */}
-
                     <JobDetailsSection title="Sources">
                         <Flex vertical align="flex-start" gap={8}>
                             {job.sourceFiles.map((file) => (
-                                <KbSourceFile key={file.fileName} file={{ ...file, name: file.fileName }} onClickSource={() => onClickDocument(file.downloadURL)} />
+                                <KbSourceFile key={file.fileName} file={{ ...file, name: file.fileName }} onClickSource={() => onClickDocument(file.downloadURL, file)} />
                             ))}
                         </Flex>
                     </JobDetailsSection>

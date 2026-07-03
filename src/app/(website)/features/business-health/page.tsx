@@ -7,14 +7,14 @@ import '@/styles/website.css';
 import { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Business Health - MenuList | AI Health Check for Your Menu',
-  description: 'Business Health is an AI health check for your menu and public presence. It shows what needs attention and keeps real changes inside approved AI Menu Manager or owner-screen flows.',
+  title: 'Business Health - MenuList | Know What Needs Attention',
+  description: 'Business Health checks your menu, customer links, activity, locations, and freshness so owners know what needs attention before changing anything publicly.',
   alternates: {
     canonical: '/features/business-health',
   },
   openGraph: {
-    title: 'Business Health - MenuList | AI Health Check for Your Menu',
-    description: 'Business Health is an AI health check for your menu and public presence. It shows what needs attention and keeps real changes inside approved AI Menu Manager or owner-screen flows.',
+    title: 'Business Health - MenuList | Know What Needs Attention',
+    description: 'Business Health checks your menu, customer links, activity, locations, and freshness so owners know what needs attention before changing anything publicly.',
     url: '/features/business-health',
   },
 };
@@ -24,8 +24,8 @@ export default function Page() {
     <div className="ws-page">
       <WebsitePageStructuredData
         path="/features/business-health"
-        title="Business Health - MenuList | AI Health Check for Your Menu"
-        description="Business Health is an AI health check for your menu and public presence. It shows what needs attention and keeps real changes inside approved AI Menu Manager or owner-screen flows."
+        title="Business Health - MenuList | Know What Needs Attention"
+        description="Business Health checks your menu, customer links, activity, locations, and freshness so owners know what needs attention before changing anything publicly."
       />
       <Header />
       <BusinessHealthFeaturePage />

@@ -2,7 +2,7 @@
 
 **Feature:** Centralized AI Infrastructure for MenuList  
 **Status:** 📝 DOCUMENTED  
-**Last Updated:** March 12, 2026
+**Last Updated:** June 29, 2026
 
 ---
 
@@ -30,6 +30,7 @@ The AI System Layer is backend infrastructure (Cloud Functions). It has zero mob
 Mobile users benefit indirectly because:
 - Menu extraction (triggered from `MenuUploadSheet.tsx`) uses the same pipeline
 - Processing reliability improves for mobile uploads
+- Help Center search response parsing and request policy are shared at the browser helper level. The current changed callers are desktop Help Chat and AI Search modal surfaces; no new mobile screen, route bypass, or mobile-specific data load was added.
 - No mobile-specific changes required
 
 ---

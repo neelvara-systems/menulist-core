@@ -187,6 +187,7 @@ const OwnerDashboard: React.FC = () => {
                         <OverviewView
                             data={data?.overview || null}
                             qualitySignalsSlot={<MenuQualitySignals projectId={activeProjectId} />}
+                            projectId={activeProjectId}
                         />
                         <OBPMetricsCard
                             data={obpDashboard.data}

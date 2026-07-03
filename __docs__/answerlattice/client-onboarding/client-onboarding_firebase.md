@@ -1,7 +1,7 @@
 # Answerlattice Client Onboarding — Firebase Cost
 
-> **Version:** 1.6.1
-> **Last Updated:** 2026-05-21
+> **Version:** 1.6.2
+> **Last Updated:** 2026-06-30
 > **Audience:** Developers / Ops
 
 ---
@@ -24,6 +24,8 @@
 
 **Approx total per onboarding: 2 reads + 13-18 writes = still negligible for a one-time client event.** Actual billed reads can vary slightly with duplicate checks and rule/auth behavior.
 
+The get-started browser client now parses onboarding responses through a 16 KB bounded JSON reader and validates the success shape before showing the widget key or completion state. This adds no Firestore reads/writes, Storage operations, Cloud Functions, provider calls, rules, indexes, or deployment work; it only prevents malformed, oversized, redirected, or wrong-shape browser responses from being treated as completed onboarding.
+
 ## No New Collections
 
 Reuses ALL existing collections. Zero new Firestore collections created.
@@ -42,6 +44,8 @@ Reuses ALL existing collections. Zero new Firestore collections created.
 `GET /api/answerlattice/workspace-profile` reads the existing `stores/{sId}` document once.
 
 `PUT /api/answerlattice/workspace-profile` reads the store once, skips the write when unchanged, and writes only the product profile fields plus `answerlatticeLaunchProfile` when values changed.
+
+The Settings UI sends workspace-profile load/save calls with no-store cache, same-origin credentials, and manual redirect handling, then parses responses through a 64 KB bounded response reader and requires a valid `profile` object before form state or success copy advances. This adds no Firestore operations; it prevents cached, redirected, malformed, oversized, rejected, or wrong-shape browser responses from being shown as saved product details.
 
 No new collection is introduced.
 
@@ -73,8 +77,7 @@ The import flow must use Answerlattice session scope and `answerlatticeStorage` 
 
 ## Razorpay Cost
 
-- Beta plan: $0 (no Razorpay call)
-- Paid plans: Standard Razorpay subscription creation fee (same provider flow as MenuList)
+- Plans: Standard Razorpay subscription creation fee (same provider flow as MenuList)
 - Paid onboarding passes `productId: 'AL'` into Razorpay plan lookup and provider notes, so Answerlattice paid plans cannot reuse or collide with MenuList plan lookup keys.
 - Paid activation: shared Razorpay verify/webhook routes write to Answerlattice Firebase when `productId: 'AL'` is present in request body or Razorpay notes.
 - Support credit packs: one `topups` write on order creation, one transaction update on verification, and one subscription balance update.
@@ -85,6 +88,7 @@ The import flow must use Answerlattice session scope and `answerlatticeStorage` 
 
 | Date | Version | Change |
 |------|---------|--------|
+| 2026-06-30 | 1.6.2 | Documented that get-started response-boundary hardening is browser-local and adds no Firebase operations |
 | 2026-05-21 | 1.6.1 | Documented product-scoped Razorpay plan lookup for paid Answerlattice onboarding |
 | 2026-05-21 | 1.6.0 | Added Answerlattice subscription ownership fields and store-summary direct-read billing contract |
 | 2026-05-21 | 1.5.0 | Added product-aware Razorpay activation and support credit pack cost notes |

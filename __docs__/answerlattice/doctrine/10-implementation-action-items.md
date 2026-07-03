@@ -26,7 +26,7 @@
 17. Switched 3 helpCenter API routes to `answerlatticeFirestoreAdmin` (search-kb, search-kb-stream, article-embedding)
 18. Added `src/lib/answerlattice/documentComposer.ts` — Answerlattice DAL writes now force `pId = 'AL'` and attach `sourceContext`, `traceId`, and `requestId`; source product scope (`pId/tId/sId`) is accepted only when explicitly provided by session/CCT context
 19. Exported KB callables from `functions-answerlattice/src/index.ts`: `embedArticleWorker`, `regenerateEmbedding`, `publishApprovedJobFn`
-20. Added Answerlattice Functions KB embedding helpers using Answerlattice Firebase Admin + Vertex AI
+20. Added Answerlattice Functions KB embedding helpers using Answerlattice Firebase Admin + Answerlattice-owned Gemini API secrets
 21. Hardened Answerlattice auth sync so Firebase Auth lookup failures are not mistaken for missing users
 22. Hardened direct Answerlattice identity: Answerlattice onboarding writes `pId/productId = 'AL'`, Firebase custom claims include `pId`, and direct Answerlattice `sourceContext` omits cross-product `pId/tId/sId` while MenuList-client writes retain `sourceContext.pId = "ML"`
 
@@ -77,11 +77,12 @@ Go to Vercel project settings → Environment Variables → add all `ANSWERLATTI
 ### 4. Deploy
 
 ```bash
-# Deploy MenuList functions (local/preview target)
-firebase deploy --only functions --project menulist-qa
+# Deploy MenuList functions only when MenuList infrastructure changed.
+# Use External Certification Gate 1; do not run a broad --only functions deploy.
+npm run verify:functions-deploy-preflight
+firebase deploy --project menulist-qa --config firebase.json --only functions:processMenuImages,functions:processMenuImagesJob,functions:menulistMaintenanceScheduler,functions:computeDecisionBlocksScores,functions:triggerDecisionBlocksScoring,functions:triggerStoreNightlyScheduler,functions:verifyMenuPublish --non-interactive
 
-# Deploy MenuList functions (production target)
-firebase deploy --only functions --project menulist
+# MenuList production Functions require QA evidence and explicit production deploy approval.
 
 # Deploy Answerlattice functions
 cd functions-answerlattice && npm run deploy:qa

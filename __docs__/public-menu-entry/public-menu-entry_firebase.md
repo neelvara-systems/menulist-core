@@ -2,7 +2,7 @@
 
 **Version:** 1.0
 **Status:** ✅ IMPLEMENTED — Production-audited
-**Last Updated:** June 11, 2026
+**Last Updated:** July 2, 2026
 
 ---
 
@@ -14,6 +14,8 @@
 | `projects/{tId}/{sId}/{projectId}` | EXISTING | Final project after claim |
 | `stores` | EXISTING | Store created on claim; starter activation and distribution signal fields live here |
 | `tenants` | EXISTING | Tenant created on claim for new users; starter activation deadline mirrored for new tenants |
+
+**June 29, 2026 browser handoff note; June 30 copy rejection fallback:** `/create-menu/success` Copy Link and WhatsApp actions are browser-local. Failed handoffs log only menu/official-page URL presence-length metadata plus generated message/WhatsApp URL lengths, and starter activation signals are recorded only after copy/open succeeds. June 30 hardening made Copy Link support checks explicit and falls through from rejected Clipboard API writes to acknowledged textarea fallback before failure: the success page now records clipboard/fallback availability as booleans and only advances copied state after Clipboard API acknowledgement or an acknowledged textarea fallback. This adds no Firestore reads/writes/deletes, Storage operations, Cloud Function calls, provider calls, cache invalidations, rules, indexes, schema changes, or deploy requirements.
 
 ---
 
@@ -33,34 +35,55 @@
 | **Subtotal (new source)** | | | **2-3R + 3W + 1 job write + 1 Storage** | |
 | **Subtotal (reused source)** | | | **1-2R + 0W + 0 Storage + 0 AI job** | |
 
-For public menu links, the route performs one bounded outbound source acquisition only after auth, active-draft reuse, same-input dedupe, and the `PUBLIC_MENU_ENTRY_AUTH` user limit. Unsafe protocols, private IPs, unsafe redirects, unsupported content types, login/CAPTCHA-dependent sources, and low-confidence non-menu pages are rejected before draft creation. Link input is additionally gated by `ENABLE_MENU_LINK_IMPORT`.
+For public menu links, the route rejects JSON bodies above 8KB before link validation, active-draft reuse, same-input dedupe, the `PUBLIC_MENU_ENTRY_AUTH` user limit, outbound source acquisition, Storage writes, or extraction job creation. Unsafe protocols, private IPs, unsafe redirects, unsupported content types, login/CAPTCHA-dependent sources, and low-confidence non-menu pages are rejected before draft creation. Link input is additionally gated by `ENABLE_MENU_LINK_IMPORT`.
+
+June 29 authenticated limiter-key hardening is Firebase-cost neutral. `POST /api/public/create-menu` still uses the 5-per-owner-per-day `PUBLIC_MENU_ENTRY_AUTH` cap, and `POST /api/public/create-menu/claim` still uses the payment-onboarding publish bucket, but both routes hash the owner id segment with `hashPublicRateLimitValue()` before the key reaches Upstash. This resets existing rate-limit buckets once and changes no Firestore reads/writes/deletes, Storage operations, provider calls, cache invalidations, rules, indexes, schema fields, or claim/publish behavior.
+
+June 29 create-menu cleanup diagnostics are cost-neutral in the success path. When upload or link draft creation fails after a Storage artifact or draft document exists, the route still attempts the same best-effort Storage delete and draft delete. Failed cleanup is now logged through bounded `public_menu_entry_storage_cleanup_failed` / `public_menu_entry_draft_cleanup_failed` diagnostics only. This adds no new reads, writes, Storage operations, indexes, rules, schema fields, owner-facing settings, or deploy requirements beyond the already-attempted cleanup operations.
+
+June 29 browser response-parse hardening is Firebase-cost neutral. `src/app/(website)/create-menu/CreateMenuClient.tsx` caps upload/link POST response parsing at 8KB, logs `public_create_menu_response_parse_failed` / `public_create_menu_response_invalid`, and redirects only after a non-empty `draftId` is present. This adds no Firestore reads/writes/deletes, Storage operations, provider calls, source-acquisition calls, route calls, cache invalidations, rules, indexes, schema changes, Cloud Function logic changes, owner-facing settings, Firebase deploy requirement, or Vercel deploy action.
+
+June 29 preview response-parse hardening is Firebase-cost neutral. `src/app/(website)/create-menu/PreviewClient.tsx` caps preview status/full response parsing at 4MB, caps claim acknowledgement parsing at 32KB, logs `public_create_menu_preview_response_parse_failed` / `public_create_menu_preview_response_invalid` and `public_create_menu_preview_claim_response_parse_failed` / `public_create_menu_preview_claim_response_invalid`, and redirects after claim only when the required success URLs are present. July 1 status-handling hardening keeps the status-only poll and full-result fetch on the same `401` sign-in, `410` expired, `404` missing, and fixed load-failure branches. This adds no Firestore reads/writes/deletes, Storage operations, provider calls, route calls, cache invalidations, rules, indexes, schema changes, Cloud Function logic changes, owner-facing settings, Firebase deploy requirement, or Vercel deploy action.
+
+July 2 upload validation and mobile camera hardening is Firebase-cost neutral. `POST /api/public/create-menu` now runs server-side magic-byte validation for JPEG, PNG, and WebP uploads before draft creation, Storage writes, or extraction job creation, and `/create-menu` adds the rear-camera capture hint to the existing image input. This rejects spoofed or unverifiable files earlier and adds no Firestore reads/writes/deletes, Storage operations, provider calls, route calls, cache invalidations, rules, indexes, schema changes, Cloud Function logic changes, owner-facing settings, Firebase deploy requirement, or Vercel deploy action.
 
 ### 2.2 Preview (Authenticated Owner Polling)
 
 | Operation | Collection | Type | Count | Trigger |
 |-----------|-----------|------|-------|---------|
 | Read owner-bound draft (by token) | `publicMenuDrafts` | READ | 1 per poll, client capped at 30 polls | GET /api/public/create-menu |
-| Rate-limit status polling | Upstash rate limiter | READ/WRITE | 90 requests / 5 min per user+draft | GET /api/public/create-menu |
+| Rate-limit status polling | Upstash rate limiter | READ/WRITE | 90 requests / 5 min per hashed user+draft key | GET /api/public/create-menu |
 | **Subtotal** | | | **1-30 Firestore reads in the normal polling window; 429 after backend limit** | |
 
 The normal preview client polls with `statusOnly=1` while the extraction is pending or processing, so each poll returns status and detected business metadata without the full `extractedData` payload. When the draft is completed, the client performs one full read to load the final extracted menu for claim/review. Firestore read count is unchanged; response size and browser JSON work are reduced during polling.
+
+Preview polling rate-limit keys use `hashPublicRateLimitValue()` for both the owner identity segment and draft token segment before reaching the provider. The June 29 hardening resets existing polling buckets once, but does not change the 90 requests / 5 minute cap or any Firestore read behavior.
+
+Failed draft polling returns one fixed owner-safe retry message and never serializes raw worker/provider/parser error text from `publicMenuDrafts` or `menuImageProcessingJobs`. This is a response-shaping and diagnostic-boundary rule only; it adds no reads, writes, Storage operations, indexes, or cache invalidations.
 
 ### 2.3 Claim + Publish (Authenticated)
 
 | Operation | Collection | Type | Count | Trigger |
 |-----------|-----------|------|-------|---------|
 | Read draft (by token) | `publicMenuDrafts` | READ | 1 | Claim API transaction |
+| Read tenant/store counters | `platformSummary` | READ | 0-2 | New user only, shared tenant/store creation helper |
+| Verify existing store + tenant eligibility | `stores`, `tenants` | READ | 0-2 | Existing account only, before public truth writes |
+| Read existing projects summary | `platformSummary/projects_{storeId}` | READ | 0-1 | Existing account only, to demote any current default project |
 | Create tenant (if new user) | `tenants` | WRITE | 0-1 | New user only |
-| Create store | `stores` | WRITE | 1 | Claim API |
+| Create store or update missing store defaults | `stores` | WRITE | 0-1 | Claim API |
 | Create project metadata | `projects` (metadata) | WRITE | 1 | Claim API |
 | Create project data | `projects` (data) | WRITE | 1 | Claim API |
 | Update draft (claimed) | `publicMenuDrafts` | WRITE | 1 | Mark as claimed |
 | Sync storesSummary | `platformSummary` | WRITE | 1 | Nested `stores.{storeId}` map for scheduler-readable store metadata |
 | Sync projectsSummary | `platformSummary` | WRITE | 1 | Existing pattern |
-| Revalidate public cache | Next.js cache tags | INVALIDATE | 3 tags | `menu-store-{storeId}`, `store-{storeId}`, `client-stores` |
-| **Subtotal** | | | **1R + 5-6W + 3 cache tags** | |
+| Revalidate public cache | Next.js cache tags | INVALIDATE | 4 tags | `menu-store-{storeId}`, `store-{storeId}`, `client-stores`, `screen-data` |
+| **Subtotal** | | | **3-4R + 4-6W + 4 cache tags** | |
 
 The project metadata and `projectsSummary` writes include the resolved `businessType` and `businessCategory`. Low-confidence unknown types resolve to canonical `Other` while preserving the best known category when the draft has one. This mirrors the already-created store truth without adding extra reads, writes, collections, indexes, or Storage operations.
+
+Existing-account claims now fail closed before project/store/summary writes unless the transaction can read the session store and tenant, confirm the store belongs to that tenant, and confirm neither document is inactive, deleted, or platform-blocked. This adds up to two reads on existing-account claims only. It adds no new writes, collections, indexes, Storage operations, Cloud Function logic changes, Firebase deploy requirement, or Vercel deploy action.
+
+Claim route diagnostics are bounded only. Successful claim, cache-revalidation failure, and unexpected claim failure logs record draft/user/tenant/store/project presence and length metadata plus account-state booleans and source error metadata only. Raw draft IDs, user IDs, tenant IDs, store IDs, project IDs, cache errors, and route exceptions must not be passed to `secureLog()` or `secureError()`. This does not add reads, writes, indexes, cache invalidations, or owner-facing settings.
 
 Unpaid starter OBP placeholders are render-time only. They are computed from the already-loaded store document and missing publicPresence/social/service/payment fields, add no extra reads or writes, and never persist fake MenuList-owned links, service modes, payment methods, or placeholder attributes. Compact starter layout and deterministic menu placeholder thumbnails are CSS/React render behavior only.
 
@@ -86,8 +109,8 @@ Because the same payment entitlement sync revalidates `menu-store-{storeId}`, `s
 |-------|-------|--------|---------|
 | Upload + Extract (new source) | 2-3 | 4 | 1 upload |
 | Preview (avg 3 polls) | 3 | 0 | 0 |
-| Claim + Publish | 1 | 6 | 0 |
-| **TOTAL** | **6-7** | **10** | **1 upload** |
+| Claim + Publish | 3-4 | 4-6 | 0 |
+| **TOTAL** | **8-10** | **8-10** | **1 upload** |
 
 ### 2.5 Total Per Abandoned Draft (No Conversion)
 
@@ -218,13 +241,15 @@ match /publicMenuDrafts/{draftId}/{fileName} {
 
 1. **SAFE_MODE:** Blocks public AI extraction during maintenance or incidents.
 2. **Rate limit:** 5 new sources per signed-in owner per 24h — caps daily extraction calls without punishing shared networks.
-3. **Claim rate limit:** Authenticated publish attempts are rate-limited through the payment-onboarding bucket.
+3. **Claim rate limit:** Authenticated publish attempts are rate-limited through the payment-onboarding bucket with a hashed owner key segment.
 4. **Feature flag:** `ENABLE_PUBLIC_MENU_ENTRY` — instant kill switch.
 5. **TTL cleanup:** 24h auto-delete prevents storage accumulation.
 6. **Batch cleanup limit:** Max 100 expired drafts per daily scheduler run.
-7. **Max image size:** 10MB — prevents storage abuse.
-8. **Draft reuse/dedupe:** Active pending/processing drafts and same-source completed drafts return the existing preview before new Storage or AI work.
-9. **Public link safety:** Permission confirmation plus SSRF-safe acquisition blocks unsafe hosts, private IPs, unsupported protocols, and unbounded crawling before AI work.
+7. **Max image size:** 10MB image limit plus pre-parse `content-length` and bounded form-data body caps — prevents large multipart bodies, including no-length/chunked requests, from reaching file buffering or Storage writes.
+8. **Link body size:** 8KB bounded JSON cap prevents oversized link-import requests from reaching draft reads, source acquisition, Storage writes, or extraction job creation.
+9. **Claim body size:** 8KB bounded JSON cap prevents oversized claim requests from reaching draft reads or project/store writes.
+10. **Draft reuse/dedupe:** Active pending/processing drafts and same-source completed drafts return the existing preview before new Storage or AI work.
+11. **Public link safety:** Permission confirmation plus SSRF-safe acquisition blocks unsafe hosts, private IPs, unsupported protocols, and unbounded crawling before AI work.
 
 ---
 

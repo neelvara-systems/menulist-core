@@ -4,12 +4,17 @@ import { FEATURE_FLAGS } from '@config/features';
 import { formatDateTime, type IntlFormatter } from '@util/dateTime';
 import type { TableColumnsType } from 'antd';
 import { Alert, Button, Card, Empty, Modal, Select, Space, Spin, Statistic, Table, Tag, Tooltip, Typography, message, theme } from 'antd';
+import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
+import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';
 import { useSession } from 'next-auth/react';
 import { useFormatter } from 'next-intl';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { LuActivity, LuAlertTriangle, LuBookOpen, LuCheckCircle, LuClock3, LuCreditCard, LuPlay, LuRefreshCw, LuXCircle } from 'react-icons/lu';
 
 const { Title, Text } = Typography;
+const ANSWERLATTICE_INTAKE_MONITOR_LOAD_FAILED = 'Failed to load Answerlattice intake monitor.';
+const ANSWERLATTICE_INTAKE_MONITOR_RETRY_FAILED = 'Manual Answerlattice retry failed.';
+const ANSWERLATTICE_INTAKE_MONITOR_RESPONSE_JSON_MAX_BYTES = 512 * 1024;
 
 type IntakeMonitorJob = {
     id: string;
@@ -123,6 +128,264 @@ type IntakeMonitorSnapshot = {
 
 type SelectedScope = { tId: number; sId: number };
 
+type IntakeMonitorRetryTask = {
+    name: string;
+    status: string;
+    activity: boolean;
+    durationMs: number | null;
+};
+
+type IntakeMonitorRetryResult = {
+    scheduler: string | null;
+    runId: string | null;
+    status: string;
+    trigger: string | null;
+    durationMs: number | null;
+    taskCount: number;
+    failedTaskCount: number;
+    tasks: IntakeMonitorRetryTask[];
+};
+
+type IntakeMonitorRetryResponse = {
+    success: true;
+    scope: SelectedScope;
+    result: IntakeMonitorRetryResult;
+    costModel: IntakeMonitorSnapshot['costModel'];
+};
+
+type IntakeMonitorResponseKind = 'snapshot_load' | 'manual_retry';
+
+const isRecord = (value: unknown): value is Record<string, unknown> => (
+    Boolean(value) && typeof value === 'object' && !Array.isArray(value)
+);
+
+const isFiniteNumber = (value: unknown): value is number => (
+    typeof value === 'number' && Number.isFinite(value)
+);
+
+const isNullableString = (value: unknown): value is string | null => (
+    value === null || typeof value === 'string'
+);
+
+const isOptionalNullableString = (value: unknown): value is string | null | undefined => (
+    value === undefined || isNullableString(value)
+);
+
+const isOptionalNullableNumber = (value: unknown): value is number | null | undefined => (
+    value === undefined || value === null || isFiniteNumber(value)
+);
+
+const isStringArray = (value: unknown): value is string[] => (
+    Array.isArray(value) && value.every(item => typeof item === 'string')
+);
+
+const isIntakeMonitorCostModel = (value: unknown): value is IntakeMonitorSnapshot['costModel'] => (
+    isRecord(value)
+    && typeof value.readPattern === 'string'
+    && typeof value.realtime === 'boolean'
+    && typeof value.writes === 'boolean'
+);
+
+const isIntakeMonitorTenant = (value: unknown): value is IntakeMonitorTenant => (
+    isRecord(value)
+    && typeof value.key === 'string'
+    && isFiniteNumber(value.tId)
+    && isFiniteNumber(value.sId)
+    && typeof value.active === 'boolean'
+    && (value.hasEntities === undefined || typeof value.hasEntities === 'boolean')
+    && isOptionalNullableString(value.source)
+    && isOptionalNullableString(value.timeZone)
+    && isOptionalNullableString(value.businessDayEndTime)
+    && isOptionalNullableNumber(value.schedulerHour)
+    && isOptionalNullableString(value.lastSeenAt)
+    && isOptionalNullableString(value.updatedAt)
+);
+
+const isIntakeMonitorJob = (value: unknown): value is IntakeMonitorJob => (
+    isRecord(value)
+    && typeof value.id === 'string'
+    && isFiniteNumber(value.tId)
+    && isFiniteNumber(value.sId)
+    && typeof value.title === 'string'
+    && typeof value.status === 'string'
+    && isFiniteNumber(value.sourceCount)
+    && isFiniteNumber(value.readySourceCount)
+    && isFiniteNumber(value.reviewItemCount)
+    && isFiniteNumber(value.acceptedItemCount)
+    && isFiniteNumber(value.publishedItemCount)
+    && isFiniteNumber(value.rejectedItemCount)
+    && isFiniteNumber(value.usageUnitsConsumed)
+    && isNullableString(value.modifiedOn)
+    && isNullableString(value.errorMessage)
+);
+
+const isIntakeMonitorLedgerRow = (value: unknown): value is IntakeMonitorLedgerRow => (
+    isRecord(value)
+    && typeof value.id === 'string'
+    && isFiniteNumber(value.tId)
+    && isFiniteNumber(value.sId)
+    && isNullableString(value.jobId)
+    && typeof value.action === 'string'
+    && typeof value.status === 'string'
+    && isNullableString(value.provider)
+    && isNullableString(value.model)
+    && isNullableString(value.fileName)
+    && isNullableString(value.mimeType)
+    && isFiniteNumber(value.byteSize)
+    && isFiniteNumber(value.unitsReserved)
+    && isFiniteNumber(value.unitsCharged)
+    && isNullableString(value.createdOn)
+    && isNullableString(value.settledOn)
+    && isNullableString(value.refundedOn)
+    && isNullableString(value.errorMessage)
+);
+
+const isIntakeMonitorSelectedTenantRun = (
+    value: unknown,
+): value is NonNullable<IntakeMonitorSchedulerRun['selectedTenantRun']> => (
+    isRecord(value)
+    && isFiniteNumber(value.tId)
+    && isFiniteNumber(value.sId)
+    && typeof value.status === 'string'
+    && isFiniteNumber(value.durationMs)
+    && isFiniteNumber(value.taskCount)
+    && isFiniteNumber(value.errorCount)
+    && isFiniteNumber(value.driftDetected)
+    && isFiniteNumber(value.proposalsCreated)
+    && isFiniteNumber(value.coverageRate)
+);
+
+const isIntakeMonitorSchedulerRun = (value: unknown): value is IntakeMonitorSchedulerRun => (
+    isRecord(value)
+    && typeof value.id === 'string'
+    && typeof value.runLogId === 'string'
+    && typeof value.status === 'string'
+    && typeof value.trigger === 'string'
+    && isFiniteNumber(value.tenantsProcessed)
+    && isFiniteNumber(value.durationMs)
+    && isNullableString(value.startedAt)
+    && isNullableString(value.updatedAt)
+    && isFiniteNumber(value.knowledgeIntakeJobsScanned)
+    && isFiniteNumber(value.knowledgeIntakeSummaryWritten)
+    && isFiniteNumber(value.knowledgeIntakeUsageUnits)
+    && typeof value.knowledgeIntakeSchedulerEnabled === 'boolean'
+    && (value.selectedTenantRun === null || isIntakeMonitorSelectedTenantRun(value.selectedTenantRun))
+    && isFiniteNumber(value.errorCount)
+    && isStringArray(value.errorMessages)
+);
+
+const isIntakeMonitorStats = (value: unknown): value is IntakeMonitorSnapshot['stats'] => (
+    isRecord(value)
+    && isFiniteNumber(value.recentJobs)
+    && isFiniteNumber(value.activeJobs)
+    && isFiniteNumber(value.failedJobs)
+    && isFiniteNumber(value.readySources)
+    && isFiniteNumber(value.reviewItems)
+    && isFiniteNumber(value.acceptedItems)
+    && isFiniteNumber(value.publishedItems)
+    && isFiniteNumber(value.usageUnitsConsumed)
+    && isFiniteNumber(value.ledgerRows)
+    && isFiniteNumber(value.ledgerReservedUnits)
+    && isFiniteNumber(value.ledgerChargedUnits)
+    && isFiniteNumber(value.ledgerRefundedUnits)
+    && isFiniteNumber(value.mediaExtractions)
+    && (value.latestSchedulerRun === null || isIntakeMonitorSchedulerRun(value.latestSchedulerRun))
+);
+
+const isIntakeMonitorSnapshot = (value: unknown): value is IntakeMonitorSnapshot => (
+    isRecord(value)
+    && Array.isArray(value.tenants)
+    && value.tenants.every(isIntakeMonitorTenant)
+    && isNullableString(value.tenantSummaryUpdatedAt)
+    && (value.selectedTenant === null || isIntakeMonitorTenant(value.selectedTenant))
+    && isIntakeMonitorStats(value.stats)
+    && Array.isArray(value.jobs)
+    && value.jobs.every(isIntakeMonitorJob)
+    && Array.isArray(value.ledger)
+    && value.ledger.every(isIntakeMonitorLedgerRow)
+    && Array.isArray(value.schedulerRuns)
+    && value.schedulerRuns.every(isIntakeMonitorSchedulerRun)
+    && isStringArray(value.warnings)
+    && isIntakeMonitorCostModel(value.costModel)
+);
+
+const isIntakeMonitorRetryTask = (value: unknown): value is IntakeMonitorRetryTask => (
+    isRecord(value)
+    && typeof value.name === 'string'
+    && typeof value.status === 'string'
+    && typeof value.activity === 'boolean'
+    && (value.durationMs === null || isFiniteNumber(value.durationMs))
+);
+
+const isIntakeMonitorRetryResult = (value: unknown): value is IntakeMonitorRetryResult => (
+    isRecord(value)
+    && isNullableString(value.scheduler)
+    && isNullableString(value.runId)
+    && typeof value.status === 'string'
+    && isNullableString(value.trigger)
+    && (value.durationMs === null || isFiniteNumber(value.durationMs))
+    && isFiniteNumber(value.taskCount)
+    && isFiniteNumber(value.failedTaskCount)
+    && Array.isArray(value.tasks)
+    && value.tasks.every(isIntakeMonitorRetryTask)
+);
+
+const isIntakeMonitorRetryResponse = (value: unknown): value is IntakeMonitorRetryResponse => (
+    isRecord(value)
+    && value.success === true
+    && isRecord(value.scope)
+    && isFiniteNumber(value.scope.tId)
+    && isFiniteNumber(value.scope.sId)
+    && isIntakeMonitorRetryResult(value.result)
+    && isIntakeMonitorCostModel(value.costModel)
+);
+
+const getIntakeMonitorResponseLogContext = (
+    kind: IntakeMonitorResponseKind,
+    response: Response,
+) => ({
+    surface: 'answerlattice_intake_monitor',
+    ...getBoundedRuntimeStringContext('responseKind', kind),
+    responseOk: response.ok,
+    responseStatus: response.status,
+});
+
+const readIntakeMonitorResponse = async <T,>(
+    response: Response,
+    kind: IntakeMonitorResponseKind,
+    isValid: (value: unknown) => value is T,
+    failureMessage: string,
+): Promise<T> => {
+    const context = getIntakeMonitorResponseLogContext(kind, response);
+    let payload: unknown;
+
+    try {
+        payload = await readJsonResponseWithLimit<unknown>(
+            response,
+            ANSWERLATTICE_INTAKE_MONITOR_RESPONSE_JSON_MAX_BYTES,
+        );
+    } catch (error) {
+        logRuntimeFailure('answerlattice_intake_monitor_response_parse_failed', error, context);
+        throw new Error(failureMessage);
+    }
+
+    if (!response.ok) {
+        logRuntimeFailure('answerlattice_intake_monitor_response_rejected', undefined, context);
+        throw new Error(failureMessage);
+    }
+
+    if (!isValid(payload)) {
+        logRuntimeFailure('answerlattice_intake_monitor_response_invalid', undefined, context);
+        throw new Error(failureMessage);
+    }
+
+    return payload;
+};
+
+const getManualRetryStatusLabel = (response: IntakeMonitorRetryResponse): string => {
+    return response.result.status.trim() || 'complete';
+};
+
 const STATUS_COLORS: Record<string, string> = {
     draft: 'default',
     collecting: 'blue',
@@ -196,13 +459,15 @@ export default function AnswerlatticeIntakeMonitor() {
             const response = await fetch(`/api/platform/answerlattice-intake?${params.toString()}`, {
                 cache: 'no-store',
             });
-            const data = await response.json();
-            if (!response.ok) {
-                throw new Error(data?.error || 'Failed to load Answerlattice intake monitor.');
-            }
+            const data = await readIntakeMonitorResponse(
+                response,
+                'snapshot_load',
+                isIntakeMonitorSnapshot,
+                ANSWERLATTICE_INTAKE_MONITOR_LOAD_FAILED,
+            );
             setSnapshot(data);
-        } catch (error: any) {
-            message.error(error?.message || 'Failed to load Answerlattice intake monitor');
+        } catch {
+            message.error(ANSWERLATTICE_INTAKE_MONITOR_LOAD_FAILED);
         } finally {
             setLoading(false);
             setRefreshing(false);
@@ -292,14 +557,16 @@ export default function AnswerlatticeIntakeMonitor() {
                             ...selectedScope,
                         }),
                     });
-                    const data = await response.json().catch(() => ({}));
-                    if (!response.ok) {
-                        throw new Error(data?.error || 'Manual Answerlattice retry failed.');
-                    }
-                    message.success(`Manual retry finished: ${data?.result?.status || 'complete'}`);
+                    const data = await readIntakeMonitorResponse(
+                        response,
+                        'manual_retry',
+                        isIntakeMonitorRetryResponse,
+                        ANSWERLATTICE_INTAKE_MONITOR_RETRY_FAILED,
+                    );
+                    message.success(`Manual retry finished: ${getManualRetryStatusLabel(data)}`);
                     await loadSnapshot('refresh', selectedScope);
-                } catch (error: any) {
-                    message.error(error?.message || 'Manual Answerlattice retry failed.');
+                } catch {
+                    message.error(ANSWERLATTICE_INTAKE_MONITOR_RETRY_FAILED);
                 } finally {
                     setTriggering(false);
                 }

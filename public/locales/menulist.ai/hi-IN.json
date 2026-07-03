@@ -541,6 +541,17 @@
     "publicOfficialPagePoweredBy": "आधिकारिक पेज · MenuList द्वारा संचालित",
     "publicAllRightsReserved": "सर्वाधिकार सुरक्षित.",
     "publicCreateMenuCta": "अपना official customer link बनाएं",
+    "publicCustomerAnswersTitle": "Quick answers",
+    "publicCustomerAnswerHoursQuestion": "क्या आप आज खुले हैं?",
+    "publicCustomerAnswerHoursAnswer": "{hours}",
+    "publicCustomerAnswerLocationQuestion": "आप कहाँ स्थित हैं?",
+    "publicCustomerAnswerLocationAnswer": "{address}",
+    "publicCustomerAnswerMenuQuestion": "Current menu कहाँ देख सकता हूँ?",
+    "publicCustomerAnswerMenuAnswer": "इस page के menu button का उपयोग करें. Prices वहीं दिखती हैं जहाँ business ने publish की हैं.",
+    "publicCustomerAnswerWhatsAppQuestion": "क्या WhatsApp पर message कर सकता हूँ?",
+    "publicCustomerAnswerWhatsAppAnswer": "हाँ. इस page का WhatsApp button उपयोग करें.",
+    "publicCustomerAnswerDirectionsQuestion": "क्या directions मिल सकती हैं?",
+    "publicCustomerAnswerDirectionsAnswer": "हाँ. इस page का Directions button उपयोग करें.",
     "publicFaqOpeningHoursQuestion": "{storeName} के खुलने का समय क्या है?",
     "publicFaqOpeningHoursAnswer": "{storeName} इन समयों में खुला है: {days}.",
     "publicFaqLocationQuestion": "{storeName} कहाँ स्थित है?",
@@ -548,7 +559,7 @@
     "publicFaqPhoneQuestion": "{storeName} का फोन नंबर क्या है?",
     "publicFaqPhoneAnswer": "आप {storeName} से {phone} पर संपर्क कर सकते हैं.",
     "publicFaqMenuQuestion": "{storeName} का मेनू कहाँ देख सकता हूँ?",
-    "publicFaqMenuAnswer": "पूरा मेनू {url} पर देखा जा सकता है. यह हमेशा अपडेट रहता है.",
+    "publicFaqMenuAnswer": "पूरा published मेनू {url} पर देखा जा सकता है.",
     "publicPrivacy": "गोपनीयता",
     "publicTerms": "शर्तें",
     "publicRefund": "रिफंड",
@@ -867,6 +878,17 @@
     "publicOfficialPagePoweredBy": "आधिकारिक पेज · MenuList द्वारा संचालित",
     "publicAllRightsReserved": "सर्वाधिकार सुरक्षित.",
     "publicCreateMenuCta": "अपना official customer link बनाएं",
+    "publicCustomerAnswersTitle": "Quick answers",
+    "publicCustomerAnswerHoursQuestion": "क्या आप आज खुले हैं?",
+    "publicCustomerAnswerHoursAnswer": "{hours}",
+    "publicCustomerAnswerLocationQuestion": "आप कहाँ स्थित हैं?",
+    "publicCustomerAnswerLocationAnswer": "{address}",
+    "publicCustomerAnswerMenuQuestion": "Current menu कहाँ देख सकता हूँ?",
+    "publicCustomerAnswerMenuAnswer": "इस page के menu button का उपयोग करें. Prices वहीं दिखती हैं जहाँ business ने publish की हैं.",
+    "publicCustomerAnswerWhatsAppQuestion": "क्या WhatsApp पर message कर सकता हूँ?",
+    "publicCustomerAnswerWhatsAppAnswer": "हाँ. इस page का WhatsApp button उपयोग करें.",
+    "publicCustomerAnswerDirectionsQuestion": "क्या directions मिल सकती हैं?",
+    "publicCustomerAnswerDirectionsAnswer": "हाँ. इस page का Directions button उपयोग करें.",
     "publicFaqOpeningHoursQuestion": "{storeName} के खुलने का समय क्या है?",
     "publicFaqOpeningHoursAnswer": "{storeName} इन समयों में खुला है: {days}.",
     "publicFaqLocationQuestion": "{storeName} कहाँ स्थित है?",
@@ -874,7 +896,7 @@
     "publicFaqPhoneQuestion": "{storeName} का फोन नंबर क्या है?",
     "publicFaqPhoneAnswer": "आप {storeName} से {phone} पर संपर्क कर सकते हैं.",
     "publicFaqMenuQuestion": "{storeName} का मेनू कहाँ देख सकता हूँ?",
-    "publicFaqMenuAnswer": "पूरा मेनू {url} पर देखा जा सकता है. यह हमेशा अपडेट रहता है.",
+    "publicFaqMenuAnswer": "पूरा published मेनू {url} पर देखा जा सकता है.",
     "publicPrivacy": "गोपनीयता",
     "publicTerms": "शर्तें",
     "publicRefund": "रिफंड"
@@ -2837,19 +2859,20 @@
       "featureQrMenuLinksDesc": "Current approved list हर जगह share करें.",
       "featurePrintReadyKit": "Print-ready kit",
       "featurePrintReadyKitDesc": "Templates, editor, QR और printer files.",
-      "featureOwnerPhoneDashboard": "Owner PWA dashboard",
+      "featureOwnerPhoneDashboard": "Owner phone dashboard",
       "featureOwnerPhoneDashboardDesc": "Phone या PWA से core owner workflows.",
-      "featureAnalytics": "Analytics dashboard",
+      "featureAnalytics": "Activity view",
       "featureAnalyticsDesc": "Menu, page और app activity से customer signals.",
       "featureBusinessHealth": "Business Health",
       "featureBusinessHealthDesc": "आपके public source का health check.",
       "featureCustomerFeedbackLoop": "Customer feedback loop",
       "featureCustomerFeedbackLoopDesc": "Public views से private issue reports.",
       "featurePublicDiscovery": "Public discovery",
-      "featurePublicDiscoveryDesc": "Search और answer systems के लिए clearer source.",
+      "featurePublicDiscoveryDesc": "Search और AI tools के लिए public page को समझना आसान बनाएं.",
       "resources": "Resources",
       "resourcesMenuAria": "MenuList resources खोलें",
       "resourcesMenuTitle": "MenuList resources",
+      "resourceToolsHub": "MenuList Tools",
       "resourceMenuEngineering": "Menu Engineering",
       "resourceQrMenuGuide": "QR Menu Guide",
       "resourceDigitalVsPdf": "Digital Menu vs PDF",
@@ -2863,8 +2886,8 @@
       "login": "लॉगिन",
       "dashboard": "डैशबोर्ड",
       "logout": "लॉगआउट",
-      "cta": "Customer link बनाएं →",
-      "ctaAria": "अपना official customer link बनाएं",
+      "cta": "Menu preview शुरू करें",
+      "ctaAria": "अपना private MenuList preview शुरू करें",
       "openMenu": "नेविगेशन मेनू खोलें",
       "closeMenu": "मेनू बंद करें",
       "featureGroupStart": "Start",
@@ -2885,7 +2908,7 @@
       "proofLabel": "MenuList footer proof",
       "proof0Title": "Publishing से पहले owner approval",
       "proof0Desc": "Public menu या service list business से आना चाहिए, पुराने PDFs या scattered screenshots से नहीं।",
-      "proof1Title": "One approved source",
+      "proof1Title": "One approved list",
       "proof1Desc": "Customers पुराने PDFs, screenshots या scattered links की जगह current version तक पहुँचते हैं।",
       "proof2Title": "एक location के लिए simple. कई locations के लिए ready.",
       "proof2Desc": "एक business से शुरू करें। Structure locations, governance और public consistency के लिए ready रहता है।",
@@ -2900,6 +2923,7 @@
       "pricing": "मूल्य",
       "publicProof": "Public proof",
       "officialPage": "Official Business Page",
+      "toolsHub": "MenuList Tools",
       "getStarted": "Customer link बनाएं",
       "about": "हमारे बारे में",
       "privacyPolicy": "गोपनीयता नीति",
@@ -2916,11 +2940,12 @@
       "restaurantMenuSeo": "Restaurant Menu SEO",
       "aiSearchDiscovery": "AI Search & Menu Discovery",
       "officialMenuSource": "Official Menu Source",
+      "faq": "FAQ",
       "googleMenuSource": "Google menu source",
       "qrPlacement": "QR placement",
       "menuUpdateChecklist": "Menu update checklist",
       "copyright": "© {year} MenuList. भारत में बनाया गया।",
-      "bottomTagline": "एक public source. खोजे जाने के लिए बना.",
+      "bottomTagline": "एक public link. Customers के लिए ढूंढना आसान.",
       "preferencesLabel": "वेबसाइट पसंद",
       "languagePreference": "भाषा",
       "themePreference": "थीम",
@@ -2934,10 +2959,10 @@
       "title": "Public list current रखना सीखें.",
       "highlight": "list current",
       "subtitle": "Menu और service-list setup, QR placement, Google links, PDFs, SEO, AI search discovery, official source control और multi-location lists के लिए practical resources.",
-      "card0Title": "Menu engineering",
-      "card0Desc": "Improvements उस menu से शुरू करें जो customers सच में देखते हैं.",
-      "card1Title": "QR menu setup",
-      "card1Desc": "QR को one current menu source पर point करें.",
+      "card0Title": "Menu और service-list setup",
+      "card0Desc": "Improvements उस list से शुरू करें जो customers सच में देखते हैं.",
+      "card1Title": "QR और link setup",
+      "card1Desc": "QR को one current approved source पर point करें.",
       "card2Title": "Digital menu vs PDF",
       "card2Desc": "PDF, paper menu और QR print cards useful रखें, पर main public source न बनाएं.",
       "card3Title": "Google menu source",
@@ -2945,23 +2970,23 @@
       "card4Title": "Restaurant menu SEO",
       "card4Desc": "Menu text, metadata और schema easier to read बनाएं.",
       "card5Title": "AI search discovery",
-      "card5Desc": "Answer systems के लिए clearer source prepare करें.",
-      "card6Title": "Official menu source",
-      "card6Desc": "हर public surface को one current approved menu पर point करें.",
+      "card5Desc": "Search और AI tools के लिए clearer customer page prepare करें.",
+      "card6Title": "Official public source",
+      "card6Desc": "हर public surface को one current approved list पर point करें.",
       "card7Title": "Multi-location control",
       "card7Desc": "Shared menus aligned रखें और branch differences preserve करें.",
       "cta": "All resources खोलें"
     },
     "Hero": {
-      "eyebrow": "One approved source. हर customer surface.",
+      "eyebrow": "One approved list. हर customer link.",
       "titlePart1": "अपने current menu या service list को बनाएं",
       "titleHighlight": "अपना official customer link.",
       "titlePart2": "",
       "subtitle": "Photo, PDF, existing menu/service link या typed list से शुरू करें। MenuList customer-facing version review के लिए prepare करता है और हर public surface को approved source से connected रखता है।",
       "cta": "Customer link बनाएं →",
       "ctaAria": "अपना official customer link बनाएं",
-      "secondaryCta": "Customer link देखें",
-      "secondaryCtaAria": "Official customer link देखें",
+      "secondaryCta": "Example customer page देखें",
+      "secondaryCtaAria": "MenuList example customer page देखें",
       "caption": "7-day setup से start करें। Paid plan choose करने से पहले public version review करें।",
       "proof0": "Owner-approved",
       "proof1": "Website link की तरह use करें",
@@ -3049,6 +3074,78 @@
       "tile4Desc": "Dead links और 404 pages जहाँ आपकी public list होनी चाहिए",
       "tile5Label": "हर जगह मैन्युअल अपडेट",
       "tile5Desc": "एक कीमत बदलने के लिए पांच जगह मैन्युअली अपडेट करना"
+    },
+    "SwitchComparison": {
+      "eyebrow": "Why switch",
+      "title": "Most tools page publish करते हैं. MenuList list current रखता है.",
+      "highlight": "list current रखता है",
+      "subtitle": "PDFs, QR pages, websites और link pages कुछ online कर सकते हैं. समस्या तब आती है जब prices, services, hours या items बदलते हैं.",
+      "label": "MenuList switching comparison",
+      "commonLabel": "Common option",
+      "menulistLabel": "MenuList",
+      "row0Option": "PDFs और screenshots",
+      "row0OptionDesc": "एक बार भेजना आसान, बदलाव के बाद वापस लेना मुश्किल.",
+      "row0Menulist": "एक current link",
+      "row0MenulistDesc": "Prices या services बदलने के बाद भी customers owner-approved list खोलते हैं.",
+      "row1Option": "QR-only pages",
+      "row1OptionDesc": "Scan काम करता है, लेकिन page अक्सर अकेला रहता है.",
+      "row1Menulist": "QR, page, print और actions connected",
+      "row1MenulistDesc": "वही approved list customer pages, QR files, print handoff और contact actions में काम आती है.",
+      "row2Option": "Website builders",
+      "row2OptionDesc": "Full website के लिए useful, रोज़ list बदलने के लिए slow.",
+      "row2Menulist": "उस list के लिए built जिसे customers आज check करते हैं",
+      "row2MenulistDesc": "Menus, services, prices, hours और customer actions owner approval flow के पास रहते हैं.",
+      "row3Option": "Link pages",
+      "row3OptionDesc": "Links collect करने के लिए ठीक, actual offer list trusted रखने में weak.",
+      "row3Menulist": "Offer list ही customer link बनती है",
+      "row3MenulistDesc": "Customers current list, business details और next actions एक owner-approved जगह पर देखते हैं.",
+      "caption": "MenuList हर website को replace करने की कोशिश नहीं कर रहा. यह उन जगहों के पीछे current customer link है जिन्हें customers पहले से check करते हैं."
+    },
+    "BeforeAfter": {
+      "title": "Scattered menu files को one customer link से replace करें.",
+      "highlight": "one customer link",
+      "subtitle": "जो list आपके पास already है उससे start करें, private preview review करें, फिर customers के लिए trusted version publish करें.",
+      "beforeLabel": "MenuList से पहले",
+      "afterLabel": "MenuList के साथ",
+      "before0Title": "पुराने PDFs और screenshots",
+      "before0Desc": "Customers ऐसी file या image देख सकते हैं जिसे update करना कोई याद नहीं रखता.",
+      "before1Title": "QR गलत जगह ले जाता है",
+      "before1Desc": "Code scan होता है, लेकिन पीछे वाली page stale या incomplete हो सकती है.",
+      "before2Title": "हर channel पर अलग price",
+      "before2Desc": "WhatsApp, Instagram, Google और print copies approved list से drift कर सकते हैं.",
+      "after0Title": "पहले private preview",
+      "after0Desc": "कुछ public होने से पहले MenuList customer-facing version prepare करता है.",
+      "after1Title": "One approved customer link",
+      "after1Desc": "Owner-approved list menu, services, prices और actions के लिए customer link बनती है.",
+      "after2Title": "QR, page और print उसी से जुड़े रहते हैं",
+      "after2Desc": "Customer surfaces अलग files के बजाय same approved list पर point कर सकते हैं.",
+      "caption": "Public क्या होगा, owner approve करता है. MenuList repeated list work कम करता है.",
+      "cta": "कैसे काम करता है देखें"
+    },
+    "CreateMenuPreview": {
+      "eyebrow": "अपनी current list try करें",
+      "title": "अपना menu customer link की तरह देखें.",
+      "highlight": "customer link",
+      "subtitle": "Photo या owned public link से start करें. MenuList आपके account से जुड़ा private preview तैयार करता है.",
+      "sourceLabel": "MenuList preview शुरू करने के तरीके",
+      "photoTitle": "Photo लें या upload करें",
+      "photoBody": "वही menu या service list इस्तेमाल करें जो customers पहले से देखते हैं.",
+      "linkTitle": "Owned public link paste करें",
+      "linkBody": "MenuList supported public menu, catalogue, price-list, service-list, image या PDF links पढ़ता है.",
+      "reviewTitle": "Publish से पहले review करें",
+      "reviewBody": "Prepared customer-facing version check करने से पहले कुछ भी public नहीं होता.",
+      "previewLabel": "Private preview",
+      "previewUrl": "menulist.ai/your-business",
+      "previewStatus": "अभी public नहीं",
+      "previewTitle": "Customer-ready list",
+      "previewStep0": "Sign-in के बाद source connected",
+      "previewStep1": "Owner review के लिए items prepared",
+      "previewStep2": "Confirmation के बाद customer link created",
+      "trust0": "Processing से पहले account connected",
+      "trust1": "हर दिन 5 preview attempts",
+      "trust2": "Drafts 24 hours बाद expire होते हैं",
+      "cta": "Menu preview शुरू करें",
+      "note": "पहले sign in करने से preview private रहता है और spam limit होता है."
     },
     "SetupRelief": {
       "title": "पब्लिश करने से पहले ज़्यादातर setup work तैयार हो जाता है।",
@@ -3147,7 +3244,7 @@
       "surface4Subtitle": "रिपीट ग्राहकों से एक टैप दूर रहें",
       "surface4Desc": "Customers आपकी current list आपके business name और identity के साथ phone पर रख सकते हैं।",
       "surface5Title": "Clear public source",
-      "surface5Subtitle": "Search और answer systems के लिए साफ business information",
+      "surface5Subtitle": "Search और AI tools के लिए साफ business information",
       "surface5Desc": "आपका official customer link clear public business information की तरह तैयार होता है। Ranking promise नहीं, बस better source.",
       "surface6Title": "Simple activity signals",
       "surface6Subtitle": "Another dashboard के बिना usage और freshness",
@@ -3185,31 +3282,50 @@
     "CustomerBrowse": {
       "title": "ग्राहक जो चाहते हैं, उसे जल्दी ढूंढ लेते हैं।",
       "highlight": "जल्दी",
-      "subtitle": "MenuList पेज असली browsing के लिए बना है। Customers search कर सकते हैं, sections पर जा सकते हैं, language बदल सकते हैं, और approved menu से guided choices देख सकते हैं।",
+      "subtitle": "MenuList पेज असली browsing के लिए बना है। Customers search कर सकते हैं, sections पर जा सकते हैं, language बदल सकते हैं, और approved list से guided choices देख सकते हैं।",
       "proof0Title": "सर्च हमेशा पास रहती है",
-      "proof0Desc": "ग्राहक बड़े मेन्यू में अपनी जगह खोए बिना सर्च कर सकते हैं। जरूरत पड़ने पर सर्च बार फैलता है और बाकी समय शांत रहता है।",
+      "proof0Desc": "ग्राहक बड़े menu या service list में अपनी जगह खोए बिना search कर सकते हैं। जरूरत पड़ने पर search bar फैलता है और बाकी समय शांत रहता है।",
       "proof1Title": "सेक्शन बड़े मेन्यू को आसान बनाते हैं",
       "proof1Desc": "कैटेगरी साफ टेबल ऑफ कंटेंट की तरह काम करती हैं। ग्राहक ड्रिंक्स, सर्विस, लंच, डेजर्ट या किसी भी सेक्शन पर आसानी से जा सकते हैं।",
-      "proof2Title": "भाषा मेन्यू का हिस्सा है",
-      "proof2Desc": "अगर आप एक से ज्यादा भाषा पब्लिश करते हैं, तो ग्राहक उसी पब्लिक मेन्यू पर अपनी पसंद की भाषा चुन सकते हैं।",
+      "proof2Title": "Language list का हिस्सा है",
+      "proof2Desc": "अगर आप एक से ज्यादा language publish करते हैं, तो customers उसी public list पर अपनी पसंद की language चुन सकते हैं।",
       "proof3Title": "भरोसे के सिग्नल दिखते रहते हैं",
       "proof3Desc": "बिज़नेस पहचान, ओपन स्टेटस, हाल का अपडेट, कीमतें, आइटम डिटेल और एक्शन सभी ग्राहक-फेसिंग मेन्यू अनुभव के अंदर रहते हैं।",
       "proof4Title": "डिसीजन ब्लॉक्स विकल्प आसान बनाते हैं",
-      "proof4Desc": "Top picks, quick options और value choices ऊपर दिख सकते हैं। Owner controls रहते हैं, और choices official menu source से जुड़े रहते हैं।",
-      "previewLabel": "ग्राहक-फेसिंग मेन्यू प्रीव्यू",
-      "previewBusiness": "Habibis Restaurant",
-      "previewMeta": "Food Menu · Baner road",
+      "proof4Desc": "Top picks, quick options और value choices ऊपर दिख सकते हैं। Owner controls रहते हैं, और choices official source से जुड़े रहते हैं।",
+      "previewLabel": "Customer-facing list preview",
+      "previewBusiness": "Urban Glow Studio",
+      "previewMeta": "Services · Baner Road",
       "previewFreshness": "Open · Updated today",
-      "previewSearch": "मेन्यू खोजें...",
-      "previewSectionActive": "Cold beverages",
-      "previewSectionNext": "Hot beverages",
-      "previewCategory": "Cold beverages",
-      "previewItem0Name": "Chocolate milk shake",
-      "previewItem0Desc": "आइटम डिटेल, कीमत और उपलब्धता एक जगह",
-      "previewItem0Price": "₹200",
-      "previewItem1Name": "Fruit smoothie",
-      "previewItem1Desc": "ऑर्डर करने से पहले ग्राहक जल्दी तुलना कर सकते हैं",
-      "previewItem1Price": "₹300"
+      "previewSearch": "Services खोजें",
+      "previewSectionActive": "Hair care",
+      "previewSectionNext": "Packages",
+      "previewCategory": "Hair care",
+      "previewItem0Name": "Haircut",
+      "previewItem0Desc": "Service detail, price और availability एक जगह",
+      "previewItem0Price": "₹700",
+      "previewItem1Name": "Glow facial",
+      "previewItem1Desc": "Booking से पहले customers quickly compare कर सकते हैं",
+      "previewItem1Price": "₹1,800"
+    },
+    "CustomerLinkIncludes": {
+      "title": "One customer link useful pieces साथ रखता है.",
+      "highlight": "useful pieces",
+      "subtitle": "Review के बाद वही approved link public page, QR, print files, customer actions, owner phone view और simple activity signals support कर सकता है.",
+      "label": "MenuList customer link के साथ क्या मिलता है",
+      "officialPageTitle": "Official business page",
+      "officialPageDesc": "Hours, contact, photos, directions और current list एक public जगह पर.",
+      "qrLinkTitle": "QR link",
+      "qrLinkDesc": "Table, counter, packaging और poster QR files approved version पर point करती हैं.",
+      "printFilesTitle": "Print files",
+      "printFilesDesc": "Paper menus, table cards और printer handoff files उसी list से connected रह सकते हैं.",
+      "customerActionsTitle": "Customer actions",
+      "customerActionsDesc": "Call, WhatsApp, directions, booking, ordering, sharing और list access पास रहते हैं.",
+      "phoneDashboardTitle": "Phone dashboard",
+      "phoneDashboardDesc": "Owners important parts phone-friendly view से check और update कर सकते हैं.",
+      "activityFeedbackTitle": "Activity और feedback",
+      "activityFeedbackDesc": "Customers क्या open करते हैं देखें और wrong-price या missing-item reports collect करें.",
+      "caption": "यह homepage summary ही है. Deeper workflows feature pages पर रहते हैं ताकि first visit पढ़ने में आसान रहे."
     },
     "AnalyticsInsights": {
       "title": "Publishing के बाद customers क्या करते हैं, देखें।",
@@ -3218,7 +3334,7 @@
       "signal0Title": "मेन्यू और पेज की यात्रा साथ में",
       "signal0Desc": "अनाम मेन्यू सेशन, एंगेज्ड सेशन, इंटेंट सेशन, एक्शन सेशन और ऑफिशियल बिज़नेस पेज विज़िट साथ-साथ दिखते हैं।",
       "signal1Title": "डिमांड मेन्यू से जुड़ी रहती है",
-      "signal1Desc": "टॉप आइटम, टॉप कैटेगरी, सर्च, नो-रिजल्ट सर्च, अनुपलब्ध आइटम में रुचि, भाषा उपयोग और फिल्टर इंटेंट ओनर को दिखते हैं।",
+      "signal1Desc": "टॉप आइटम, item status labels, टॉप कैटेगरी, सर्च, नो-रिजल्ट सर्च, अनुपलब्ध आइटम में रुचि, भाषा उपयोग और फिल्टर इंटेंट ओनर को दिखते हैं।",
       "signal2Title": "अंतिम एक्शन असली इंटेंट दिखाते हैं",
       "signal2Desc": "Call, WhatsApp, directions, reservation, order clicks, shares, View Menu clicks और official-page link taps ग्राहक एक्शन के रूप में गिने जाते हैं।",
       "signal3Title": "सिर्फ ट्रैफिक नहीं, सोर्स क्वालिटी",
@@ -3227,7 +3343,7 @@
       "ownerVisibility0": "Today so far, साथ में settled daily, weekly, monthly और lifetime views",
       "ownerVisibility1": "हर analytics view पर अलग Menu और Official Business Page कार्ड",
       "ownerVisibility2": "Engaged Sessions %, Intent Rate %, Action Rate %, और source-wise action rate",
-      "ownerVisibility3": "Top items, top categories, languages, searches, no-result searches और unavailable demand",
+      "ownerVisibility3": "Top items, item status labels, top categories, languages, searches, no-result searches, unavailable demand और actions while closed",
       "ownerVisibility4": "Pro action suggestions जो settled metrics को छोटे owner action list में बदलते हैं",
       "safetyCardTitle": "डिफ़ॉल्ट रूप से private और cost-safe",
       "transparency0": "Passive events batch होते हैं; final customer actions तुरंत record होते हैं",
@@ -3236,13 +3352,33 @@
       "transparency3": "यह analytics flow visitors से exact GPS coordinates नहीं मांगता",
       "footer": "Customer menu simple रहता है। Owner dashboard दिखाता है कि customers ने क्या notice किया, क्या चाहा, और किस source से real action आया।"
     },
+    "OwnerProof": {
+      "title": "Publish के बाद MenuList इसे current रखने में मदद करता है.",
+      "highlight": "current रखने",
+      "subtitle": "Approved list के पास दो owner-side checks रहते हैं: message-based updates और calm health check.",
+      "aiEyebrow": "Message से update",
+      "aiTitle": "AI Menu Manager",
+      "aiDesc": "MenuList को बताएं क्या बदला. यह update card prepare करता है और important change पर approval मांगता है.",
+      "aiPoint0": "Price, sold-out, special, note, image और import cards",
+      "aiPoint1": "Automatic public changes नहीं",
+      "aiPoint2": "Supported updates के बाद receipts",
+      "aiCta": "AI Menu Manager देखें",
+      "healthEyebrow": "जो matter करता है उसे check करें",
+      "healthTitle": "Business Health",
+      "healthDesc": "MenuList latest customer link, activity, locations और freshness check करता है. Stable checks No action needed कहते हैं.",
+      "healthPoint0": "Latest check पहले",
+      "healthPoint1": "Fixes safely hand off होते हैं",
+      "healthPoint2": "Owner phone view से काम करता है",
+      "healthCta": "Business Health देखें",
+      "caption": "यह homepage proof है. Deep workflows अपने feature pages पर रहते हैं."
+    },
     "BusinessHealth": {
-      "title": "Business Health आपका AI health check है.",
+      "title": "Business Health दिखाता है कि क्या ध्यान चाहिए.",
       "primaryHighlight": "Business Health",
-      "highlight": "AI health check है.",
+      "highlight": "क्या ध्यान चाहिए.",
       "subtitle": "Publish के बाद MenuList latest menu state, public surfaces, customer attention और locations check करता है। यह बताता है कहाँ ध्यान चाहिए, और stable checks पर No action needed दिखाता है.",
       "panelLabel": "Business Health owner dashboard preview",
-      "panelMeta": "AI health check",
+      "panelMeta": "Latest check",
       "panelTitle": "Business stable दिख रहा है",
       "panelBadge": "No action needed",
       "panelMessage": "Latest check में MenuList को कोई action वाली चीज़ नहीं मिली.",
@@ -3271,13 +3407,13 @@
     },
     "BusinessHealthFeature": {
       "heroEyebrow": "Business Health",
-      "heroTitle": "आपके menu के लिए AI health checks.",
-      "heroHighlight": "AI health checks",
+      "heroTitle": "जानें क्या ध्यान चाहिए.",
+      "heroHighlight": "ध्यान चाहिए",
       "heroSubtitle": "Business Health latest MenuList facts check करता है: menu state, public surfaces, customer attention, locations और freshness। यह बताता है कहाँ ध्यान चाहिए और real changes approved AI Menu Manager या owner-screen flows में ही रखता है.",
       "primaryCta": "Customer link बनाएं →",
       "secondaryCta": "सभी features देखें",
       "previewLabel": "Business Health dashboard preview",
-      "previewMeta": "AI health check",
+      "previewMeta": "Latest check",
       "previewDate": "Last checked date shown",
       "previewStatusLabel": "Business Health",
       "previewStatus": "Business stable दिख रहा है",
@@ -3491,7 +3627,7 @@
         "proof1Title": "Plan and credit boundaries",
         "proof1Desc": "Generation-heavy work stays tied to plan and credit rules, while the core public menu, QR, and link remain separate from usage credits.",
         "proof2Title": "Clearer public menu text",
-        "proof2Desc": "Better visible item text and language coverage give customers, search engines, and answer systems a clearer source to read, without placement promises.",
+        "proof2Desc": "Better visible item text and language coverage give customers, search engines, and AI tools a clearer page to read, without placement promises.",
         "proof3Title": "Same approved source",
         "proof3Desc": "Content support works around the approved menu data instead of creating a second version for owners to maintain.",
         "finalEyebrow": "Prepare before publishing",
@@ -3576,7 +3712,7 @@
         "support0Item1": "Image support",
         "support0Item2": "Translations",
         "support1Title": "Public clarity without false discovery promises",
-        "support1Desc": "Prepared text customers, search engines और answer systems के लिए public source clear कर सकता है, while MenuList placement promises avoid करता है.",
+        "support1Desc": "Prepared text customers, search engines और AI tools के लिए public page clear कर सकता है, while MenuList placement promises avoid करता है.",
         "support1Item0": "Clear labels",
         "support1Item1": "Owner-approved copy",
         "support1Item2": "No ranking claim"
@@ -3875,8 +4011,8 @@
         "strip3": "Print files",
         "strip4": "Packaging",
         "journeyEyebrow": "Sharing journey",
-        "journeyTitle": "One link से real customer surfaces तक.",
-        "journeyHighlight": "real customer surfaces",
+        "journeyTitle": "One link से real customer places तक.",
+        "journeyHighlight": "real customer places",
         "journeySubtitle": "Value सिर्फ QR code बनाना नहीं है. QR और link current approved source से जुड़े रहते हैं.",
         "journeyNavLabel": "QR menu and links steps",
         "journey0Nav": "Create",
@@ -4126,13 +4262,13 @@
         "support1Item2": "Reprint guidance"
       },
       "ownerPhoneDashboard": {
-        "heroEyebrow": "Owner PWA dashboard",
+        "heroEyebrow": "Owner phone dashboard",
         "heroTitle": "MenuList अपने phone से manage करें.",
         "heroHighlight": "phone से",
         "heroSubtitle": "Phone browser या installed PWA में MenuList खोलें. Core owner workflows - menu edits, publishing, QR/link sharing, Business Health, feedback, screens, status, hours और key settings - desktop wait किए बिना available रहते हैं.",
         "primaryCta": "Customer link बनाएं →",
         "secondaryCta": "सभी features देखें",
-        "previewLabel": "Owner PWA dashboard preview",
+        "previewLabel": "Owner phone dashboard preview",
         "previewMeta": "Owner PWA",
         "previewStatus": "Phone-ready dashboard",
         "previewTitle": "Core owner workflows phone पर fit होते हैं",
@@ -4166,7 +4302,7 @@
         "finalHighlight": "phone से manage",
         "finalSubtitle": "Current menu से start करें, फिर daily owner operations को phone browser या PWA से practical रखें.",
         "finalLink": "सभी features पर वापस जाएं",
-        "stripLabel": "Owner PWA dashboard actions",
+        "stripLabel": "Owner phone dashboard actions",
         "strip0": "Owner PWA",
         "strip1": "Dashboard checks",
         "strip2": "Publish updates",
@@ -4176,7 +4312,7 @@
         "journeyTitle": "Laptop dependency से phone-first owner control तक.",
         "journeyHighlight": "phone-first owner control",
         "journeySubtitle": "Non-technical owners को business menu चलाने के लिए desktop का wait नहीं करना पड़ता.",
-        "journeyNavLabel": "Owner PWA dashboard steps",
+        "journeyNavLabel": "Owner phone dashboard steps",
         "journey0Nav": "Open",
         "journey0Summary": "Use MenuList from the phone owners already use.",
         "journey0Eyebrow": "Phone or PWA",
@@ -4255,11 +4391,11 @@
         "heroSubtitle": "MenuList public menu, Official Business Page और customer app activity को owner-ready dashboard views में बदलता है: today, daily, weekly, monthly और overall. यह read-only रहता है और customers से नाम या email नहीं मांगता.",
         "primaryCta": "Customer link बनाएं →",
         "secondaryCta": "सभी features देखें",
-        "previewLabel": "Analytics dashboard preview",
+        "previewLabel": "Activity view preview",
         "previewMeta": "Owner dashboard",
         "previewStatus": "Read-only signals",
         "previewTitle": "Today, daily, weekly, monthly और overall views",
-        "previewBody": "Owner dashboard menu sessions, engaged sessions, top items, top categories, searches, action rate, official-page actions और customer app activity को settled MenuList summaries से दिखाता है.",
+        "previewBody": "Owner dashboard menu sessions, engaged sessions, top items, item status labels, top categories, searches, action rate, actions while closed, official-page actions और customer app activity को settled MenuList summaries से दिखाता है.",
         "previewPill0": "Today",
         "previewPill1": "Weekly",
         "previewPill2": "Overall",
@@ -4279,7 +4415,7 @@
         "proof0Title": "Read-only owner summaries",
         "proof0Desc": "Analytics MenuList surfaces पर हुई activity दिखाता है, लेकिन public menu truth खुद change नहीं करता.",
         "proof1Title": "Decision-ready signals",
-        "proof1Desc": "Top items, top categories, searches, no-result searches और action rate owners को customer attention समझाते हैं.",
+        "proof1Desc": "Top items, item status labels, top categories, no-result searches, unavailable demand, actions while closed और action rate owners को customer attention समझाते हैं.",
         "proof2Title": "Desktop और mobile dashboard",
         "proof2Desc": "Same owner dashboard periods desktop और mobile owner experience में available हैं.",
         "proof3Title": "Personal customer profiles नहीं",
@@ -4289,7 +4425,7 @@
         "finalHighlight": "matter करती है",
         "finalSubtitle": "Current menu से start करें, approved source publish करें, और owner dashboard में customer activity calm period summaries में देखें.",
         "finalLink": "सभी features पर वापस जाएं",
-        "stripLabel": "Analytics dashboard periods and signals",
+        "stripLabel": "Activity view periods and customer activity",
         "strip0": "Today",
         "strip1": "Daily",
         "strip2": "Weekly",
@@ -4299,7 +4435,7 @@
         "journeyTitle": "Public activity से owner-ready summaries तक.",
         "journeyHighlight": "owner-ready summaries",
         "journeySubtitle": "यह page desktop और mobile owner surfaces पर shipped analytics dashboard explain करता है.",
-        "journeyNavLabel": "Analytics dashboard steps",
+        "journeyNavLabel": "Activity view steps",
         "journey0Nav": "Open",
         "journey0Summary": "Business day के हिसाब से सही owner dashboard view खोलें.",
         "journey0Eyebrow": "Dashboard views",
@@ -4346,7 +4482,7 @@
         "journey3Summary": "MenuList को BI tool बनाए बिना summaries use करें.",
         "journey3Eyebrow": "MenuList boundary",
         "journey3Title": "Analytics operational रहता है, overwhelming नहीं.",
-        "journey3Desc": "Dashboard clear activity summaries, Business Health और eligible practical next actions पर focus करता है. यह revenue promises, customer profiling और raw-data busywork avoid करता है.",
+        "journey3Desc": "Dashboard clear activity summaries, Business Health, searched-but-not-found terms, attention without taps और actions while closed के eligible practical next actions पर focus करता है. यह revenue promises, customer profiling और raw-data busywork avoid करता है.",
         "journey3Pill0": "Summaries",
         "journey3Pill1": "No profiles",
         "journey3Pill2": "Owner-only",
@@ -4373,8 +4509,8 @@
       },
       "publicDiscovery": {
         "heroEyebrow": "Public discovery",
-        "heroTitle": "Search और answer systems को clearer source दें.",
-        "heroHighlight": "clearer source",
+        "heroTitle": "Search और AI tools को clear page दें.",
+        "heroHighlight": "clear page",
         "heroSubtitle": "MenuList public pages, structured business information, sitemap signals, crawler context और owner-controlled copy prepare करता है ताकि business के पास clearer public source रहे. Ranking या answer-placement promises नहीं.",
         "primaryCta": "Customer link बनाएं →",
         "secondaryCta": "सभी features देखें",
@@ -4395,7 +4531,7 @@
         "story1Title": "Structured information prepare करें",
         "story1Desc": "Schema, visible page metadata, sitemap policy, robots rules और LLM context describe करते हैं कि business ने actually क्या publish किया है.",
         "story2Title": "Claim boundary honest रखें",
-        "story2Desc": "Search engines और answer systems decide करते हैं क्या crawl, show, cite या summarize करना है. MenuList better source देता है, guarantee नहीं.",
+        "story2Desc": "Search engines और AI tools decide करते हैं क्या read, show, cite या summarize करना है. MenuList better page देता है, guarantee नहीं.",
         "proofEyebrow": "Credibility",
         "proofTitle": "Search copy should stay owner-controlled.",
         "proofSubtitle": "Clear public information works best when it reflects the actual current business source.",
@@ -4410,7 +4546,7 @@
         "finalEyebrow": "Public source",
         "finalTitle": "Online clear रहें, false promises के बिना.",
         "finalHighlight": "false promises",
-        "finalSubtitle": "MenuList public business source prepare करने में मदद करता है जिसे customers, search engines और answer systems read कर सकते हैं.",
+        "finalSubtitle": "MenuList public business page prepare करने में मदद करता है जिसे customers, search engines और AI tools read कर सकते हैं.",
         "finalLink": "सभी features पर वापस जाएं",
         "stripLabel": "Public discovery source signals",
         "strip0": "Official page",
@@ -4421,7 +4557,7 @@
         "journeyEyebrow": "Discovery journey",
         "journeyTitle": "Scattered details से clearer public source तक.",
         "journeyHighlight": "clearer public source",
-        "journeySubtitle": "Clear public pages search और answer systems को better source देते हैं, placement promise नहीं.",
+        "journeySubtitle": "Clear public pages search और AI tools को better page देते हैं, placement promise नहीं.",
         "journeyNavLabel": "Public discovery steps",
         "journey0Nav": "Publish",
         "journey0Summary": "Make visible public pages from approved business truth.",
@@ -4434,14 +4570,14 @@
         "journey0Card0Title": "Business details",
         "journey0Card0Desc": "Customers and systems can read visible public information.",
         "journey0Card1Title": "Public page",
-        "journey0Card1Desc": "The business gets a clearer source than scattered screenshots.",
+        "journey0Card1Desc": "The business gets a clearer page than scattered screenshots.",
         "journey0Card2Title": "Menu content",
         "journey0Card2Desc": "The approved menu becomes part of the public record.",
         "journey1Nav": "Clarify",
         "journey1Summary": "Avoid vague or stale public business information.",
         "journey1Eyebrow": "Discovery problem",
         "journey1Title": "Reduce unclear public signals.",
-        "journey1Desc": "Search engines and answer systems can struggle when old PDFs, thin pages, and scattered social links carry conflicting details.",
+        "journey1Desc": "Search engines and AI tools can struggle when old PDFs, thin pages, and scattered social links carry conflicting details.",
         "journey1Pill0": "Old PDFs",
         "journey1Pill1": "Thin pages",
         "journey1Pill2": "Conflicting details",
@@ -4868,7 +5004,7 @@
     },
     "Workflow": {
       "eyebrow": "List से customer link तक",
-      "title": "One approved source हर customer touchpoint current रखता है।",
+      "title": "One approved list हर customer link current रखता है।",
       "highlight": "customer touchpoint",
       "pipelinePhoto": "फोटो",
       "pipelinePdf": "PDF",
@@ -4945,6 +5081,7 @@
     "Faq": {
       "title": "अक्सर पूछे जाने वाले सवाल।",
       "highlight": "पूछे जाने वाले सवाल।",
+      "homeSubtitle": "Private preview बनाने से पहले owners usually यही सवाल पूछते हैं.",
       "q0": "MenuList क्या है?",
       "a0": "MenuList आपके menu, service list और business information को एक official customer-facing version देता है। Public pages और related customer links आपके approved version के around aligned रहते हैं।",
       "q1": "क्या इसे इस्तेमाल करने के लिए टेक्निकल होना ज़रूरी है?",
@@ -4960,7 +5097,7 @@
       "q6": "क्या आप मल्टिपल लोकेशन सपोर्ट करते हैं?",
       "a6": "हाँ। MenuList multi-location control support करता है ताकि brand shared menu truth, branding और public presence aligned रख सके, और जरूरत पड़ने पर location-specific differences भी रख सके।",
       "q7": "इसकी क्या कीमत है?",
-      "a7": "MenuList में 7-day setup से start कर सकते हैं ताकि paid plan चुनने से पहले public menu review हो सके। Paid plan वही link live और updated रखता है।",
+      "a7": "MenuList में 7-day setup से start कर सकते हैं ताकि paid plan चुनने से पहले public version review हो सके। Paid plan वही link live और updated रखता है।",
       "q8": "क्या इससे Google या AI search में placement guarantee होती है?",
       "a8": "नहीं। Search engines और AI systems खुद decide करते हैं कि वे क्या crawl, cite और show करते हैं। MenuList आपका official page और menu clear, structured public business information की तरह तैयार करता है ताकि उन systems के पास पढ़ने के लिए बेहतर source हो।",
       "q9": "क्या staff MenuList use कर सकता है बिना full owner access के?",
@@ -4976,7 +5113,18 @@
       "q14": "क्या staff AI Menu Manager use कर सकता है?",
       "a14": "Staff access owner permissions पर depend करता है। High-risk work approval rules follow करता है और owner-controlled access bypass नहीं कर सकता।",
       "q15": "क्या यह Zomato, Swiggy, Google या Instagram directly update कर सकता है?",
-      "a15": "नहीं। AI Menu Manager इन platforms पर publish या update नहीं करता। Unsupported destinations not-supported card दिखाते हैं और MenuList truth unchanged रहता है।"
+      "a15": "नहीं। AI Menu Manager इन platforms पर publish या update नहीं करता। Unsupported destinations not-supported card दिखाते हैं और MenuList truth unchanged रहता है।",
+      "viewAllCta": "Full FAQ देखें"
+    },
+    "FaqPage": {
+      "eyebrow": "MenuList FAQ",
+      "title": "Customer link बनाने से पहले सवाल.",
+      "highlight": "Customer link",
+      "subtitle": "Setup, imports, publishing से पहले review, pricing, safety, staff access, AI Menu Manager और external platforms के बारे में clear answers.",
+      "primaryCta": "Menu preview शुरू करें",
+      "secondaryCta": "Pricing देखें",
+      "sectionTitle": "Common questions",
+      "sectionSubtitle": "Homepage पर सिर्फ short conversion questions रहते हैं. Full owner checklist यहाँ एक जगह है."
     },
     "FinalCta": {
       "title": "एक public list बनाएं ",
@@ -4989,24 +5137,65 @@
       "heroTitle": "अपना official customer link live, current और owner-approved रखें.",
       "heroHighlight": "owner-approved",
       "heroSubtitle": "Menu, services, prices, business page, QR, print files, customer actions, owner updates, feedback और health checks one approved source से connected रहते हैं।",
-      "heroSourceLine": "वह plan चुनें जो आपकी customer surfaces, owner controls और location count से match करता है।",
+      "heroSourceLine": "वह plan चुनें जो आपकी customer links, owner controls और location count से match करता है।",
       "proof0": "Customers के लिए trusted official link",
-            "proof1": "Scattered list files नहीं",
+      "proof1": "Scattered list files नहीं",
       "proof2": "Owner-approved updates",
       "planStarter": "Starter",
       "planPro": "Pro (Recommended)",
       "planPremium": "Premium",
+      "planRecommendedBadge": "Most businesses यहाँ से start करते हैं",
+      "planAudienceLabel": "किसके लिए",
+      "planSurfacesLabel": "Public surfaces",
+      "planControlsLabel": "Owner controls",
+      "planNotIncludedLabel": "Included नहीं",
+      "planMonthlyShort": "mo",
+      "planYearlyShort": "yr",
+      "planPriceUnavailable": "Contact us",
+      "planDailySuffix": "{daily}/day · yearly billed",
+      "starterAudience": "एक business जिसे heavy setup के बिना one trusted customer link, QR और official page चाहिए।",
+      "starterSurface0": "One official customer link",
+      "starterSurface1": "QR-ready public page और business profile",
+      "starterControl0": "Owner-approved updates",
+      "starterControl1": "Basic visit signals",
+      "starterControl2": "Starter setup और review path",
+      "starterNotIncluded": "Advanced presentation, AI Menu Manager, language/image enhancements और multi-location governance higher plans में रहते हैं।",
+      "starterCta": "One customer link से start करें",
+      "proAudience": "Growing businesses जो list frequently change करते हैं और better presentation, message-based updates और customer-facing control चाहते हैं।",
+      "proSurface0": "Starter में सब कुछ",
+      "proSurface1": "Enhanced public presentation, language support और brand controls",
+      "proControl0": "Message-based updates के लिए AI Menu Manager",
+      "proControl1": "Content, image, translation और edit enhancements के लिए credits",
+      "proControl2": "Customer activity से action summaries",
+      "proNotIncluded": "Multi-location master menu governance और outlet-level controls Premium में रहते हैं।",
+      "proCta": "Pro setup से start करें",
+      "premiumAudience": "Multi-location businesses जिन्हें one master source, outlet-level flexibility और consistent public output चाहिए।",
+      "premiumSurface0": "Multiple locations के लिए linked customer links",
+      "premiumSurface1": "Location-aware public pages और customer links",
+      "premiumControl0": "Outlet-level overrides वाला master menu",
+      "premiumControl1": "Location scope के साथ AI Menu Manager",
+      "premiumControl2": "Priority support और location governance",
+      "premiumNotIncluded": "Start करने के लिए custom enterprise procurement जरूरी नहीं; business grow होने पर locations add करें।",
+      "premiumCta": "Locations set up करें",
+      "customAudience": "जिन businesses को plan चुनने से पहले custom contract, rollout या integration review चाहिए।",
+      "customSurface0": "Custom public-surface scope",
+      "customSurface1": "Custom location या integration planning",
+      "customControl0": "MenuList के साथ rollout review",
+      "customControl1": "Custom support boundary",
+      "customControl2": "Setup review के दौरान plan fit confirmed",
+      "customNotIncluded": "अगर custom rollout needed नहीं है, तो standard self-serve pricing better fit हो सकती है।",
+      "customCta": "Contact us",
       "monthly": "Monthly",
       "yearly": "Yearly",
       "saveYearly": "SAVE 17%",
       "billingToggleLabel": "Monthly और yearly billing switch करें",
       "locationNote": "Pricing आपकी location के हिसाब से shown है",
-      "setupStateEyebrow": "Free setup plan नहीं है",
+      "setupStateEyebrow": "Setup review plan नहीं है",
       "setupStateTitle": "7-day starter setup से start करें, फिर same official customer link live रखने के लिए plan चुनें।",
-      "setupStateBody": "Upload, review, starter public list publish करें, और payment से पहले real link और QR use करें। Paid plans वही URL preserve करते हैं और उसके around operating workspace unlock करते हैं।",
-      "decisionEyebrow": "Plan चुनने से पहले",
-      "decisionTitle": "आप approved customer link के around customer-facing system खरीद रहे हैं।",
-      "decisionSubtitle": "सही plan इस पर depend करता है कि first list prepare होने के बाद आपको कितनी public surfaces, owner controls, presentation tools, AI-assisted updates, locations और customer signals चाहिए।",
+      "setupStateBody": "सही plan चुनने से पहले starter public list upload और review करें। Publish करना, real customer link, और QR sharing paid plan require करते हैं।",
+      "decisionEyebrow": "Plan कैसे चुनें",
+      "decisionTitle": "Feature count नहीं, reach से choose करें।",
+      "decisionSubtitle": "Starter one official link के लिए है। Pro better presentation और message-based updates के लिए है। Premium location governance के लिए है।",
       "decision0Title": "List से start करें",
       "decision0Desc": "Plan चुनने से पहले setup path देखना है तो current menu या service list upload करें।",
       "decision1Title": "Source review करें",
@@ -5021,7 +5210,7 @@
       "creditNote": "Credit-based usage. कभी भी top up करें।",
       "setupTitle": "Current menu से official customer link तक",
       "setupHighlight": "live menu",
-      "setupStep0Title": "Payment से पहले upload करें",
+      "setupStep0Title": "Setup review के लिए upload करें",
       "setupStep0Desc": "Photo, PDF, screenshot, या link से start करें।",
       "setupStep1Title": "Starter link use करें",
       "setupStep1Desc": "Public menu review करें और real QR/link share करें।",
@@ -5061,7 +5250,17 @@
       "subtitle": "Sign in करें, menu, catalogue, price-list या service-list photo या owned public list link जोड़ें, और public होने से पहले prepared customer-facing version review करें।",
       "authTitle": "Official link start करने के लिए sign in करें",
       "authHint": "इससे business source, preview और public link आपके account से connected रहते हैं।",
-      "authChecking": "आपका account check हो रहा है...",
+      "authChecking": "Saved sign-in check हो रहा है...",
+      "authStepsLabel": "Customer link बनाने के steps",
+      "authStep0Title": "Sign in करें",
+      "authStep0Desc": "Preview को अपने business account से connect करें।",
+      "authStep1Title": "Current list add करें",
+      "authStep1Desc": "Photo, PDF image, owned public link, catalogue, price list या service list use करें।",
+      "authStep2Title": "Publish से पहले review करें",
+      "authStep2Desc": "Customer-facing version check करने से पहले कुछ भी public नहीं होता।",
+      "authSupportedLabel": "Supported inputs",
+      "authSupportedInputs": "Photo, screenshot, menu image, catalogue, price list, service list, या owned public list link.",
+      "authTrustLine": "Review से पहले कुछ भी public नहीं होता।",
       "authCta": "Sign in और continue करें",
       "phoneLabel": "WhatsApp phone number",
       "phonePlaceholder": "98765 43210",
@@ -5171,7 +5370,9 @@
       "officialPageLabel": "आपका official business page",
       "copied": "Copy हो गया",
       "copyLink": "Link copy करें",
+      "copyFailed": "Link copy नहीं हो पाया। फिर try करें।",
       "whatsAppCta": "WhatsApp पर share करें",
+      "whatsAppFailed": "WhatsApp नहीं खुल पाया। फिर try करें।",
       "whatsAppMessage": "हमारा current menu यहाँ है: {menuUrl}",
       "qrTitle": "QR same रहेगा",
       "qrBody": "इस link को QR और customer sharing के लिए use करें। Payment के बाद भी link same रहेगा।",
@@ -5181,7 +5382,7 @@
     },
     "Features": {
       "heroEyebrow": "Full lifecycle",
-      "heroTitle1": "One approved source.",
+      "heroTitle1": "One approved list.",
       "heroTitle2": "हर customer touchpoint.",
       "heroSubtitle": "MenuList आपके current menu से start करता है, उसे review के लिए prepare करता है, official customer link publish करता है, QR और print पर place करता है, फिर owner updates, feedback और health checks connected रखता है।",
       "heroCta": "Customer link बनाएं →",
@@ -5249,7 +5450,7 @@
       "group3F1Title": "स्टाफ रेफरेंस",
       "group3F1Desc": "स्टाफ किसी भी फोन पर मौजूदा कीमतें, उपलब्धता और आइटम डिटेल देख सकता है। नया स्टाफ पहले दिन से ग्राहकों के सवालों का जवाब दे सकता है।",
       "group3F2Title": "मेन्यू एनालिटिक्स",
-      "group3F2Desc": "मेन्यू सेशन, एंगेज्ड सेशन, एक्शन रेट, टॉप आइटम, टॉप कैटेगरी, सोर्स क्वालिटी और ऑफिशियल पेज एक्शन — अपने आप कैप्चर होकर आपके डैशबोर्ड में दिखते हैं।",
+      "group3F2Desc": "मेन्यू सेशन, एंगेज्ड सेशन, एक्शन रेट, item status labels, टॉप आइटम, टॉप कैटेगरी, सोर्स क्वालिटी और ऑफिशियल पेज एक्शन — अपने आप कैप्चर होकर आपके डैशबोर्ड में दिखते हैं।",
       "group3F3Title": "मेन्यू क्वालिटी सिग्नल",
       "group3F3Desc": "सिंपल सिग्नल बताते हैं क्या कमी है — डिस्क्रिप्शन, इमेज, कीमतें। हर सिग्नल सीधे उस टूल से जुड़ा है जो इसे ठीक करता है। हर बार MenuList खोलने पर आपका मेन्यू बेहतर होता है।",
       "group4Label": "Operate",
@@ -5258,7 +5459,7 @@
       "group4F0Title": "AI Menu Manager",
       "group4F0Desc": "Prices, sold-out items, photos, specials, imports, design और publishing simple messages से update करें। MenuList card prepare करता है और important changes live होने से पहले approval का इंतज़ार करता है।",
       "group4F1Title": "Business Health",
-      "group4F1Desc": "आपके menu और public presence के लिए AI health checks। Business Health बताता है कहाँ ध्यान चाहिए, stable होने पर No action needed दिखाता है, और fixes AI Menu Manager या existing owner screens को hand off करता है.",
+      "group4F1Desc": "Business Health आपके menu, customer links, activity, locations, और freshness check करता है ताकि owner को पता चले क्या ध्यान चाहिए.",
       "group4F2Title": "स्पेशल मेन्यू स्विचिंग",
       "group4F2Desc": "फेस्टिवल या इवेंट मेन्यू एक्टिवेट करें, शेड्यूल्ड ऑटोमैटिक स्विच-बैक के साथ। एक बार सेट करें — अपने आप वापस आ जाता है।",
       "group4F3Title": "टेम्परेरी स्टेटस बैनर",
@@ -5273,7 +5474,7 @@
       "group4F7Desc": "मूल्य निर्धारण, उपलब्धता, श्रेणियों और स्थिति के लिए बल्क ऑपरेशन। कई आइटम चुनें और एक एक्शन में बदलाव लागू करें — लागू करने से पहले पूर्वावलोकन के साथ।",
       "group4F8Title": "Connected-system snapshot export",
       "group4F8Desc": "सिर्फ supported connected systems के लिए approved menu changes publishing के बाद signed full-menu snapshot भेज सकते हैं। इसका मतलब यह नहीं कि MenuList Google, Instagram, Zomato, Swiggy, delivery apps, POS systems या unsupported external platforms को automatically update करता है।",
-      "group4F9Title": "Owner PWA dashboard",
+      "group4F9Title": "Owner phone dashboard",
       "group4F9Desc": "Phone browser या installed PWA से MenuList use करें — menus edit करें, changes publish करें, QR/link assets share करें, feedback review करें, Business Health check करें, screens manage करें, key settings adjust करें और daily operations desktop wait किए बिना handle करें।",
       "group5Label": "Trust",
       "group5Heading": "Accuracy operating standard है।",
@@ -5290,11 +5491,11 @@
       "analytics0Title": "Session quality measured रहती है",
       "analytics0Desc": "Menu sessions, engaged sessions, intent sessions और action sessions visitors से names या emails मांगे बिना count होते हैं।",
       "analytics1Title": "Interest items और categories से जुड़ी रहती है",
-      "analytics1Desc": "Item views, item taps, top categories, searches, no-result searches और unavailable-item taps visible रहते हैं।",
+      "analytics1Desc": "Item views, item taps, item status labels, top categories, searches, no-result searches और unavailable-item taps visible रहते हैं।",
       "analytics2Title": "Final actions बताते हैं क्या काम किया",
       "analytics2Desc": "Calls, WhatsApp, directions, reservations, order clicks, shares और official-page CTA taps Action Rate में जुड़ते हैं।",
       "analytics3Title": "Pro metrics को next actions में बदल सकता है",
-      "analytics3Desc": "Eligible Pro plans settled dashboard data से short action list और plain-language summaries दिखा सकते हैं।",
+      "analytics3Desc": "Eligible Pro plans searched-but-not-found terms, attention without taps, actions while closed और settled summaries के लिए short action list दिखा सकते हैं।",
       "analyticsFooter": "MenuList decision-ready signals और privacy-conscious reporting पर focus करता है: यह analytics flow customer names, emails, payment details, scroll heatmaps, hover tracking या exact GPS coordinates नहीं मांगता।",
       "ctaTitle": "आपके मेन्यू का एक आधिकारिक वर्शन होना चाहिए।",
       "ctaSubtitle": "कोई design या technical setup नहीं।",
@@ -5309,9 +5510,9 @@
     "HowItWorks": {
       "heroTitle": "MenuList कैसे ",
       "heroHighlight": "काम करता है।",
-      "heroSubtitle": "जो menu source आपके पास already है, वहीं से start करें। MenuList उसे owner review के लिए prepare करता है, फिर approved version को customer surfaces पर publish करने में मदद करता है।",
+      "heroSubtitle": "जो menu आपके पास already है, वहीं से start करें। MenuList उसे owner review के लिए prepare करता है, फिर approved version को customer links और pages पर publish करने में मदद करता है।",
       "heroCta": "Customer link बनाएं →",
-      "flowTitle": "एक approved source. हर customer surface.",
+      "flowTitle": "एक approved list. हर customer link.",
       "flowSubtitle": "एक menu source से start करें, एक बार review करें, फिर QR, links, screens, PDF और official page उसी approved source से publish करें.",
       "flowPhoto": "फोटो",
       "flowPdf": "PDF",
@@ -5497,6 +5698,8 @@
       "formAgreeEnd": " से सहमत हूं।",
       "formSubmit": "मैसेज भेजें",
       "formSubmitting": "भेज रहे हैं...",
+      "submitFailed": "अभी मैसेज नहीं भेजा जा सका। कृपया hello@menulist.ai पर ईमेल करें।",
+      "securityCheckRequired": "Security check पूरा करें और फिर कोशिश करें।",
       "successTitle": "मैसेज भेज दिया गया",
       "successBody": "हमें आपका मैसेज मिल गया है और जल्द ही जवाब देंगे।",
       "successAnother": "एक और मैसेज भेजें"
@@ -5596,10 +5799,10 @@
     "AnalyticsConsent": {
       "panelAria": "Analytics privacy preference",
       "title": "Analytics privacy",
-      "body": "Essential storage site चलाता है। Optional analytics तभी load होती है जब आप accept करते हैं।",
+      "body": "Analytics optional है। Essential storage हमेशा चलता है।",
       "accept": "ठीक है",
       "decline": "Decline",
-      "learnMore": "Privacy policy",
+      "learnMore": "Privacy",
       "close": "Analytics privacy panel बंद करें",
       "currentAccepted": "Current choice: analytics accepted.",
       "currentDeclined": "Current choice: essentials only.",
@@ -5626,7 +5829,7 @@
       "receipt": "Handled. Approved source से menu updated.",
       "command0Input": "Cold coffee sold out",
       "command0Output": "Customer preview के साथ availability card",
-      "command1Input": "Add mango lassi 99 today special",
+      "command1Input": "Show note: Fresh menu today",
       "command1Output": "Price और expiry के साथ Today Special card",
       "command2Input": "Increase all paneer items by ₹20",
       "command2Output": "Affected count वाला bulk approval card",
@@ -5676,7 +5879,7 @@
       "demo0Output": "Old price, new price और approval वाला price card.",
       "demo1Input": "Cold coffee over",
       "demo1Output": "Customer preview वाला unavailable card.",
-      "demo2Input": "Add mango lassi 99 today special",
+      "demo2Input": "Show note: Fresh menu today",
       "demo2Output": "Placement और expiry वाला special item card.",
       "demo3Input": "Make menu look premium",
       "demo3Output": "Existing MenuList theme controls से design card.",
@@ -5691,7 +5894,7 @@
       "ops0Title": "Prices और availability",
       "ops0Desc": "Selected menu से single-item, selected-item, category या bulk price, sold-out, visibility और status cards prepare करें।",
       "ops1Title": "Specials और publishing",
-      "ops1Desc": "Today specials, banners, special menus और publishing work सही approval level के साथ prepare करें।",
+      "ops1Desc": "Menu notes, supported MenuList publishing work और review/handoff cards सही approval level के साथ prepare करें।",
       "ops2Title": "Images और content",
       "ops2Desc": "Drafts generate करें और owner choose करने के बाद ही menu पर apply करें।",
       "ops3Title": "Imports और review",
@@ -5789,6 +5992,2758 @@
       "finalSubtitle": "Us menu, service list, rate card, package PDF, catalog या screenshot से शुरू करें jo business already भेजता है। MenuList public version prepare करता है और approval owner के पास रहता है।",
       "finalCta": "WhatsApp पर list भेजें",
       "finalLink": "Plans देखें"
+    },
+    "PublicTruthCheckPage": {
+      "eyebrow": "Public Truth Check",
+      "heroTitle": "Check करें कि customers आपके public business source पर भरोसा कर सकते हैं या नहीं।",
+      "heroHighlight": "public business source",
+      "heroSubtitle": "Aaj visible facts use करें। MenuList business name, menu या service source, prices, hours, location, contact, action links, photos और one current customer link के लिए short gap report देता है।",
+      "trust0": "Browser में चलता है",
+      "trust1": "External page fetch नहीं",
+      "trust2": "Ranking promise नहीं",
+      "formTitle": "Current source enter करें",
+      "formSubtitle": "Jo source customers already देखते हैं या jo text aap उन्हें भेजते हैं, वही use करें।",
+      "fields": {
+        "businessName": "Business name",
+        "cityOrArea": "City या locality",
+        "businessType": "Business type",
+        "sourceKind": "Source type",
+        "publicUrl": "Current public link",
+        "sourceText": "Visible menu या service text"
+      },
+      "sourceKinds": {
+        "menu": "Menu",
+        "service_list": "Service list",
+        "catalog": "Catalog",
+        "rate_card": "Rate card",
+        "package_list": "Package list",
+        "price_list": "Price list",
+        "other": "Other"
+      },
+      "factsLegend": "Customers ko visible facts",
+      "facts": {
+        "pricesShown": "Prices shown हैं",
+        "pricesNotNeeded": "Prices needed नहीं हैं",
+        "hoursShown": "Hours shown हैं",
+        "locationShown": "Location shown है",
+        "contactShown": "Phone, WhatsApp या email shown है",
+        "customerActionShown": "Order, booking, call या directions action shown है",
+        "photosShown": "Photos या visual identity shown है"
+      },
+      "runCheck": "Check run करें",
+      "reset": "Reset",
+      "resultsEyebrow": "Report",
+      "resultsTitle": "Publish या share करने से पहले gap report.",
+      "resultsHighlight": "gap report",
+      "resultsSubtitle": "First version Google, Instagram, WhatsApp, ChatGPT या external systems inspect नहीं करता। यह सिर्फ entered source customers के लिए clear है या नहीं, वही check करता है।",
+      "learnMore": "Public Discovery देखें",
+      "reportEyebrow": "Public source status",
+      "emptyTitle": "Check के बाद report दिखाई देगी",
+      "emptyBody": "Checker present, missing, unclear और not checked items दिखाएगा।",
+      "boundary0": "Sirf entered facts use करता है",
+      "boundary1": "External platforms change नहीं करता",
+      "boundary2": "Follow-up form submit करने तक kuch store नहीं करता",
+      "summaryLabel": "Public truth check summary",
+      "summary": {
+        "present": "{count} present",
+        "missing": "{count} missing",
+        "unclear": "{count} unclear",
+        "notChecked": "{count} not checked"
+      },
+      "reportActions": {
+        "title": "Report use करें",
+        "body": "Source update करने या customer link create करने से पहले checklist copy या download करें।",
+        "copy": "Report copy करें",
+        "download": "Report download करें",
+        "statuses": {
+          "copied": "Report copied.",
+          "downloaded": "Report downloaded.",
+          "copy_failed": "Report copy नहीं हो सका। Download करें।",
+          "download_failed": "Report download नहीं हो सका। Copy करें।"
+        }
+      },
+      "export": {
+        "title": "Public Truth Check report",
+        "business": "Business",
+        "city": "City या locality",
+        "sourceKind": "Source type",
+        "status": "Status",
+        "generatedAt": "Generated at",
+        "summary": "Summary",
+        "checks": "Checks",
+        "nextStep": "Next step",
+        "boundary": "Boundary: यह report sirf entered facts use करती है। External pages fetch नहीं करती, Google inspect नहीं करती, AI/search providers call नहीं करती, ranking promise नहीं करती, और external platforms change नहीं करती।",
+        "notProvided": "Not provided"
+      },
+      "handoff": {
+        "title": "Fix checklist मुझे भेजें",
+        "body": "Is report ko MenuList ke saath share करें ताकि हम one current customer link create करने के बारे में follow up कर सकें।",
+        "name": "Name",
+        "email": "Work email",
+        "phone": "Phone या WhatsApp",
+        "website": "Website",
+        "consentPrefix": "मैं agree करता/करती हूं कि MenuList इस report के बारे में contact कर सकता है और मैं ",
+        "privacy": "privacy policy",
+        "consentMiddle": " और ",
+        "terms": "terms",
+        "consentSuffix": " accept करता/करती हूं।",
+        "submit": "Checklist request भेजें",
+        "submitting": "Sending",
+        "success": "Request sent. Hum इस report को context की तरह use करेंगे।",
+        "nameRequired": "Name enter करें।",
+        "emailRequired": "Valid email enter करें।",
+        "consentRequired": "Checklist request भेजने से पहले agree करें।",
+        "securityCheckRequired": "Send करने से पहले security check complete करें।",
+        "securityCheckLoadFailed": "Security check load नहीं हुआ। Page refresh करके try करें।",
+        "submitFailed": "Abhi send नहीं हो सका। Customer link create करें या बाद में try करें।"
+      },
+      "statuses": {
+        "ready": {
+          "title": "Current बनाने के लिए enough ready",
+          "description": "Core public facts present हैं। MenuList customer link इन्हें ek source में साथ रख सकता है।"
+        },
+        "missing_basics": {
+          "title": "Basics missing",
+          "description": "Customers ke paas current source से समझने या act करने के लिए enough information नहीं हो सकती।"
+        },
+        "unclear": {
+          "title": "Source exists, cleanup चाहिए",
+          "description": "कुछ facts present हैं, लेकिन customer-facing details और clear होनी चाहिए।"
+        },
+        "not_checked": {
+          "title": "Not checked",
+          "description": "Useful report बनाने के लिए entered information enough नहीं थी।"
+        },
+        "manual_review_needed": {
+          "title": "Manual review needed",
+          "description": "Customers rely करें उससे पहले इस source को human review चाहिए।"
+        }
+      },
+      "results": {
+        "present": "Present",
+        "missing": "Missing",
+        "unclear": "Unclear",
+        "not_applicable": "Not needed",
+        "not_checked": "Not checked"
+      },
+      "evidence": {
+        "owner_entered": "Is check में entered",
+        "owner_selected": "Owner selected",
+        "source_text_hint": "Entered text में मिला",
+        "valid_public_url": "Valid public URL format",
+        "invalid_public_url": "URL correction चाहिए",
+        "not_provided": "Not provided",
+        "not_checked": "First version में checked नहीं"
+      },
+      "checks": {
+        "business_identity": {
+          "label": "Business identity",
+          "helper": "Report ko clear business name और locality चाहिए ताकि customers इसे दूसरे business से confuse न करें।"
+        },
+        "menu_or_service_source": {
+          "label": "Menu या service source",
+          "helper": "Customers ko current menu, service list, catalog, rate card, package list या price list के लिए one visible source चाहिए।"
+        },
+        "prices": {
+          "label": "Prices",
+          "helper": "Jahan customers choose, compare या order करते हैं, wahan prices visible होने चाहिए।"
+        },
+        "hours": {
+          "label": "Hours",
+          "helper": "Hours customers को visit, call, order या book करने का time समझाते हैं।"
+        },
+        "location": {
+          "label": "Location",
+          "helper": "Location या service area wrong-store और wrong-area confusion रोकता है।"
+        },
+        "contact": {
+          "label": "Contact",
+          "helper": "Phone, WhatsApp, email या contact path customers को guessing के बिना act करने देता है।"
+        },
+        "customer_actions": {
+          "label": "Customer actions",
+          "helper": "Source में next step clear होना चाहिए, जैसे call, WhatsApp, directions, order या booking।"
+        },
+        "public_link": {
+          "label": "Current public link",
+          "helper": "One stable link QR, WhatsApp, Instagram, Google profile links, websites और staff replies में share करना आसान करता है।"
+        },
+        "photos": {
+          "label": "Photos या visual identity",
+          "helper": "Photos, logo या basic visual proof customers को सही business पहचानने में help कर सकते हैं।"
+        },
+        "machine_readable_source": {
+          "label": "Machine-readable source",
+          "helper": "First public version schema, sitemap या crawler files inspect नहीं करता।"
+        }
+      },
+      "nextActions": {
+        "create_customer_link": {
+          "title": "Isse one current customer source बनाएं",
+          "description": "MenuList customer link create करें ताकि facts साथ रहें और cleanly share हो सकें।",
+          "cta": "Customer link बनाएं"
+        },
+        "complete_business_facts": {
+          "title": "Missing basics complete करें",
+          "description": "Missing public facts add करें, फिर approved source से one customer link create करें।",
+          "cta": "Customer link बनाएं"
+        },
+        "manual_review": {
+          "title": "Publish से पहले review करें",
+          "description": "Customers rely करें उससे पहले team या agency को source review करना चाहिए।",
+          "cta": "Customer link बनाएं"
+        }
+      }
+    },
+    "QrLinkHealthCheckPage": {
+      "eyebrow": "QR Link Health Check",
+      "heroTitle": "Check करें कि आपका QR code सही customer link खोलता है या नहीं।",
+      "heroHighlight": "सही customer link",
+      "heroSubtitle": "QR ko किसी भी camera app से scan करें, खुलने वाला URL paste करें, और print, share या replace करने से पहले short report पाएं।",
+      "trust0": "Sirf pasted URL",
+      "trust1": "QR image decode नहीं",
+      "trust2": "Target page open नहीं",
+      "formTitle": "QR target enter करें",
+      "formSubtitle": "QR scan करने के बाद jo URL open होता है, वही use करें। यह tool sirf entered URL text check करता है।",
+      "fields": {
+        "businessName": "Business name",
+        "cityOrArea": "City या locality",
+        "qrTargetUrl": "QR से opened URL",
+        "expectedDestination": "Expected destination"
+      },
+      "destinationKinds": {
+        "menulist_customer_link": "MenuList customer link",
+        "menu_or_services": "Menu या services",
+        "website": "Website",
+        "whatsapp": "WhatsApp",
+        "booking_or_order": "Booking या order",
+        "google_profile": "Google profile",
+        "other": "Other"
+      },
+      "factsLegend": "Customers kya देख सकते हैं",
+      "facts": {
+        "targetLooksCurrent": "यह target current है",
+        "customerActionVisible": "Customers इस target से act कर सकते हैं",
+        "printedContextClear": "Printed QR context clear है",
+        "replacementNeeded": "इस QR को शायद replace करना है"
+      },
+      "runCheck": "Check run करें",
+      "reset": "Reset",
+      "resultsEyebrow": "Report",
+      "resultsTitle": "Customers scan करने से पहले QR target report.",
+      "resultsHighlight": "QR target report",
+      "resultsSubtitle": "First version QR images decode नहीं करता और target page open नहीं करता। यह check करता है कि entered QR target customers ko route करने के लिए clear है या नहीं।",
+      "learnMore": "Public Discovery देखें",
+      "reportEyebrow": "QR target status",
+      "emptyTitle": "Check के बाद report दिखाई देगी",
+      "emptyBody": "Checker present, missing, unclear और not checked items दिखाएगा।",
+      "boundary0": "Sirf entered facts use करता है",
+      "boundary1": "Target page open नहीं करता",
+      "boundary2": "Follow-up form submit करने तक kuch store नहीं करता",
+      "summaryLabel": "QR link health check summary",
+      "summary": {
+        "present": "{count} present",
+        "missing": "{count} missing",
+        "unclear": "{count} unclear",
+        "notChecked": "{count} not checked"
+      },
+      "reportActions": {
+        "title": "Report use करें",
+        "body": "QR target replace करने या customer link create करने से पहले checklist copy या download करें।",
+        "copy": "Report copy करें",
+        "download": "Report download करें",
+        "statuses": {
+          "copied": "Report copied.",
+          "downloaded": "Report downloaded.",
+          "copy_failed": "Report copy नहीं हो सका। Download करें।",
+          "download_failed": "Report download नहीं हो सका। Copy करें।"
+        }
+      },
+      "export": {
+        "title": "QR Link Health Check report",
+        "business": "Business",
+        "city": "City या locality",
+        "expectedDestination": "Expected destination",
+        "status": "Status",
+        "generatedAt": "Generated at",
+        "summary": "Summary",
+        "checks": "Checks",
+        "nextStep": "Next step",
+        "boundary": "Boundary: यह report sirf entered facts use करती है। QR images decode नहीं करती, target pages open नहीं करती, external pages fetch नहीं करती, AI/search providers call नहीं करती, ranking promise नहीं करती, scans track नहीं करती, और external platforms change नहीं करती।",
+        "notProvided": "Not provided"
+      },
+      "handoff": {
+        "title": "QR fix checklist मुझे भेजें",
+        "body": "Is report ko MenuList ke saath share करें ताकि हम one current customer link create करने के बारे में follow up कर सकें।",
+        "name": "Name",
+        "email": "Work email",
+        "phone": "Phone या WhatsApp",
+        "website": "Website",
+        "consentPrefix": "मैं agree करता/करती हूं कि MenuList इस report के बारे में contact कर सकता है और मैं ",
+        "privacy": "privacy policy",
+        "consentMiddle": " और ",
+        "terms": "terms",
+        "consentSuffix": " accept करता/करती हूं।",
+        "submit": "Checklist request भेजें",
+        "submitting": "Sending",
+        "success": "Request sent. Hum इस report को context की तरह use करेंगे।",
+        "nameRequired": "Name enter करें।",
+        "emailRequired": "Valid email enter करें।",
+        "consentRequired": "Checklist request भेजने से पहले agree करें।",
+        "securityCheckRequired": "Send करने से पहले security check complete करें।",
+        "securityCheckLoadFailed": "Security check load नहीं हुआ। Page refresh करके try करें।",
+        "submitFailed": "Abhi send नहीं हो सका। Customer link create करें या बाद में try करें।"
+      },
+      "statuses": {
+        "ready": {
+          "title": "One current customer link के लिए ready",
+          "description": "Entered QR target current और action-ready लगता है। MenuList customer link इस target को clean रख सकता है।"
+        },
+        "missing_basics": {
+          "title": "QR target basics missing",
+          "description": "Customers current QR target से usable link तक नहीं पहुंच पाएंगे।"
+        },
+        "unclear": {
+          "title": "QR target cleanup चाहिए",
+          "description": "URL exists करता है, लेकिन current target, action path या printed context और clear होना चाहिए।"
+        },
+        "not_checked": {
+          "title": "Not checked",
+          "description": "Useful report बनाने के लिए entered information enough नहीं थी।"
+        },
+        "manual_review_needed": {
+          "title": "Print से पहले review करें",
+          "description": "QR target old या replacement-ready हो सकता है। Customers rely करें उससे पहले review करें।"
+        }
+      },
+      "results": {
+        "present": "Present",
+        "missing": "Missing",
+        "unclear": "Unclear",
+        "not_applicable": "Not needed",
+        "not_checked": "Not checked"
+      },
+      "checks": {
+        "qr_target": {
+          "label": "QR target",
+          "helper": "Report ko QR scan करने के बाद खुलने वाला URL चाहिए।"
+        },
+        "url_format": {
+          "label": "URL format",
+          "helper": "Target browser-openable link जैसा दिखना चाहिए।"
+        },
+        "menulist_customer_link": {
+          "label": "MenuList customer link",
+          "helper": "MenuList customer link QR को open करने के लिए one current public source देता है।"
+        },
+        "current_link": {
+          "label": "Current link confidence",
+          "helper": "Customers old PDF, old menu, stale booking page या outdated profile link पर land नहीं करने चाहिए।"
+        },
+        "customer_action": {
+          "label": "Customer action",
+          "helper": "Destination में next step clear होना चाहिए, जैसे view menu, order, book, WhatsApp, call या directions।"
+        },
+        "printed_context": {
+          "label": "Printed context",
+          "helper": "QR clearly placed या labeled होना चाहिए ताकि customers समझें कि scan क्यों कर रहे हैं।"
+        },
+        "target_page_inspection": {
+          "label": "Target page inspection",
+          "helper": "यह public version target page open नहीं करता और live content verify नहीं करता।"
+        }
+      },
+      "nextActions": {
+        "create_customer_link": {
+          "title": "Isse one current customer source रखें",
+          "description": "MenuList customer link create या use करें ताकि QR target clear रहे और replace करना easy हो।",
+          "cta": "Customer link बनाएं"
+        },
+        "replace_qr_target": {
+          "title": "QR target को one current link से replace करें",
+          "description": "MenuList customer link create करें, फिर printed या shared QR code replace करते समय वही use करें।",
+          "cta": "Customer link बनाएं"
+        },
+        "manual_review": {
+          "title": "Print या share करने से पहले review करें",
+          "description": "Old QR target check करें, फिर code replace करने से पहले one current customer link create करें।",
+          "cta": "Customer link बनाएं"
+        }
+      }
+    },
+    "MenuReadabilityCheckPage": {
+      "eyebrow": "Menu Readability Check",
+      "heroTitle": "Check करें कि customers आपकी list समझ सकते हैं या नहीं।",
+      "heroHighlight": "आपकी list समझ सकते हैं",
+      "heroSubtitle": "Jo menu, service list, catalog, rate card या package text aap already share करते हैं, उसे paste करें। MenuList one current customer link create करने से पहले short clarity report देता है।",
+      "trust0": "Sirf pasted text",
+      "trust1": "File upload नहीं",
+      "trust2": "URL fetch नहीं",
+      "formTitle": "Current list paste करें",
+      "formSubtitle": "WhatsApp, PDFs, screenshots, social captions या old pages में jo text customers देखते हैं, वही use करें। यह tool sirf pasted text check करता है।",
+      "fields": {
+        "businessName": "Business name",
+        "cityOrArea": "City या locality",
+        "sourceKind": "Source type",
+        "publicUrl": "Current public link",
+        "sourceText": "Menu या service text"
+      },
+      "sourceKinds": {
+        "menu": "Menu",
+        "service_list": "Service list",
+        "catalog": "Catalog",
+        "rate_card": "Rate card",
+        "package_list": "Package list",
+        "price_list": "Price list",
+        "other": "Other"
+      },
+      "factsLegend": "Customers already kya देख सकते हैं",
+      "facts": {
+        "categoriesClear": "Categories या sections clear हैं",
+        "pricesShown": "Prices या rates shown हैं",
+        "pricesNotNeeded": "Prices needed नहीं हैं",
+        "descriptionsHelpful": "Details customers को choose करने में help करते हैं",
+        "notesShown": "Dietary, service या availability notes shown हैं",
+        "customerActionShown": "Order, booking, call या message action shown है"
+      },
+      "runCheck": "Check run करें",
+      "reset": "Reset",
+      "resultsEyebrow": "Report",
+      "resultsTitle": "Customers पढ़ें उससे पहले clarity report.",
+      "resultsHighlight": "clarity report",
+      "resultsSubtitle": "First version files upload नहीं करता, links open नहीं करता, और content rewrite नहीं करता। यह check करता है कि pasted source customers के लिए clear है या नहीं।",
+      "learnMore": "Public Discovery देखें",
+      "reportEyebrow": "List clarity status",
+      "emptyTitle": "Check के बाद report दिखाई देगी",
+      "emptyBody": "Checker present, missing, unclear और not checked items दिखाएगा।",
+      "boundary0": "Sirf pasted text और entered facts use करता है",
+      "boundary1": "Link open नहीं करता",
+      "boundary2": "Follow-up form submit करने तक kuch store नहीं करता",
+      "summaryLabel": "Menu readability check summary",
+      "summary": {
+        "present": "{count} present",
+        "missing": "{count} missing",
+        "unclear": "{count} unclear",
+        "notChecked": "{count} not checked"
+      },
+      "reportActions": {
+        "title": "Report use करें",
+        "body": "Source clean up करने या customer link create करने से पहले checklist copy या download करें।",
+        "copy": "Report copy करें",
+        "download": "Report download करें",
+        "statuses": {
+          "copied": "Report copied.",
+          "downloaded": "Report downloaded.",
+          "copy_failed": "Report copy नहीं हो सका। Download करें।",
+          "download_failed": "Report download नहीं हो सका। Copy करें।"
+        }
+      },
+      "export": {
+        "title": "Menu Readability Check report",
+        "business": "Business",
+        "city": "City या locality",
+        "sourceKind": "Source type",
+        "status": "Status",
+        "generatedAt": "Generated at",
+        "summary": "Summary",
+        "checks": "Checks",
+        "nextStep": "Next step",
+        "boundary": "Boundary: यह report sirf pasted text और entered facts use करती है। Files upload नहीं करती, PDFs parse नहीं करती, links open नहीं करती, external pages fetch नहीं करती, AI rewrite generate नहीं करती, AI/search providers call नहीं करती, ranking promise नहीं करती, और external platforms change नहीं करती।",
+        "notProvided": "Not provided"
+      },
+      "handoff": {
+        "title": "Clarity checklist मुझे भेजें",
+        "body": "Is report ko MenuList ke saath share करें ताकि हम one current customer link create करने के बारे में follow up कर सकें।",
+        "name": "Name",
+        "email": "Work email",
+        "phone": "Phone या WhatsApp",
+        "website": "Website",
+        "consentPrefix": "मैं agree करता/करती हूं कि MenuList इस report के बारे में contact कर सकता है और मैं ",
+        "privacy": "privacy policy",
+        "consentMiddle": " और ",
+        "terms": "terms",
+        "consentSuffix": " accept करता/करती हूं।",
+        "submit": "Checklist request भेजें",
+        "submitting": "Sending",
+        "success": "Request sent. Hum इस report को context की तरह use करेंगे।",
+        "nameRequired": "Name enter करें।",
+        "emailRequired": "Valid email enter करें।",
+        "consentRequired": "Checklist request भेजने से पहले agree करें।",
+        "securityCheckRequired": "Send करने से पहले security check complete करें।",
+        "securityCheckLoadFailed": "Security check load नहीं हुआ। Page refresh करके try करें।",
+        "submitFailed": "Abhi send नहीं हो सका। Customer link create करें या बाद में try करें।"
+      },
+      "statuses": {
+        "ready": {
+          "title": "Customer link बनाने के लिए ready",
+          "description": "Pasted source में customers ke liye main details present हैं। MenuList इसे one current customer link बना सकता है।"
+        },
+        "missing_basics": {
+          "title": "Source basics missing",
+          "description": "Customers ko समझने और act करने के लिए readable source material enough नहीं है।"
+        },
+        "unclear": {
+          "title": "List cleanup चाहिए",
+          "description": "Source exists करता है, लेकिन कुछ customer-facing details और clear होनी चाहिए।"
+        },
+        "not_checked": {
+          "title": "Not checked",
+          "description": "Useful report बनाने के लिए entered information enough नहीं थी।"
+        },
+        "manual_review_needed": {
+          "title": "Manual review needed",
+          "description": "Customers rely करें उससे पहले इस source को review करना चाहिए।"
+        }
+      },
+      "results": {
+        "present": "Present",
+        "missing": "Missing",
+        "unclear": "Unclear",
+        "not_applicable": "Not needed",
+        "not_checked": "Not checked"
+      },
+      "checks": {
+        "source_material": {
+          "label": "Source material",
+          "helper": "Customers ko offer समझने के लिए enough pasted menu, service, catalog, rate-card, package या price-list text चाहिए।"
+        },
+        "categories_or_sections": {
+          "label": "Categories या sections",
+          "helper": "Sections customers को एक लंबे block की जगह choices scan करने में help करते हैं।"
+        },
+        "items_or_services": {
+          "label": "Items या services",
+          "helper": "List में concrete चीज़ें होनी चाहिए जिन्हें customers choose, order, book या ask कर सकें।"
+        },
+        "prices_or_rates": {
+          "label": "Prices या rates",
+          "helper": "Jahan customers choose, compare या order करते हैं, wahan prices visible होने चाहिए।"
+        },
+        "descriptions_or_details": {
+          "label": "Descriptions या details",
+          "helper": "Helpful details packages, services, ingredients, sizes और availability में guessing कम करते हैं।"
+        },
+        "customer_action": {
+          "label": "Customer action",
+          "helper": "Customers को पता होना चाहिए कि order, book, call, message, visit या details ask कैसे करना है।"
+        },
+        "current_customer_link": {
+          "label": "Current customer link",
+          "helper": "One stable link QR, WhatsApp, Instagram, Google profile links, websites और staff replies में share करना आसान करता है।"
+        }
+      },
+      "nextActions": {
+        "create_customer_link": {
+          "title": "Isse one current customer link बनाएं",
+          "description": "MenuList customer link create करें ताकि list share करना और current रखना आसान हो।",
+          "cta": "Customer link बनाएं"
+        },
+        "clean_up_source": {
+          "title": "Missing basics clean up करें",
+          "description": "Missing customer-facing details add करें, फिर approved source से one customer link create करें।",
+          "cta": "Customer link बनाएं"
+        },
+        "manual_review": {
+          "title": "Publish से पहले review करें",
+          "description": "Customers rely करें उससे पहले team या agency को source review करना चाहिए।",
+          "cta": "Customer link बनाएं"
+        }
+      }
+    },
+    "CustomerQuestionCoverageCheckPage": {
+      "eyebrow": "Customer Question Coverage Check",
+      "heroTitle": "Check करें कि आपका source customer questions answer करता है या नहीं।",
+      "heroHighlight": "customer questions answer करता है",
+      "heroSubtitle": "Public source और customers ke common questions paste करें। MenuList one current customer link बनाने से पहले short answer coverage report देता है।",
+      "trust0": "Sirf pasted text",
+      "trust1": "Chatbot नहीं",
+      "trust2": "URL fetch नहीं",
+      "formTitle": "Source और questions paste करें",
+      "formSubtitle": "Calls, WhatsApp, Google, Instagram या counter पर customers jo questions पूछते हैं, unhe current public text ke saath paste करें।",
+      "fields": {
+        "businessName": "Business name",
+        "cityOrArea": "City या locality",
+        "sourceKind": "Source type",
+        "publicUrl": "Current public link",
+        "sourceText": "Current public source text",
+        "commonQuestions": "Common customer questions"
+      },
+      "sourceKinds": {
+        "menu": "Menu",
+        "service_list": "Service list",
+        "catalog": "Catalog",
+        "rate_card": "Rate card",
+        "package_list": "Package list",
+        "price_list": "Price list",
+        "other": "Other"
+      },
+      "answersLegend": "Customers already kya answer पा सकते हैं",
+      "answers": {
+        "menuOrServicesAnswered": "Menu, services, catalog या packages answered हैं",
+        "hoursAnswered": "Hours या timing questions answered हैं",
+        "pricesAnswered": "Prices या rates answered हैं",
+        "pricesNotNeeded": "Contact se pehle prices needed नहीं हैं",
+        "locationOrContactAnswered": "Location या contact questions answered हैं",
+        "actionAnswered": "Order, booking, call या message action answered है",
+        "notesOrAvailabilityAnswered": "Availability, dietary, service या policy notes answered हैं"
+      },
+      "runCheck": "Check run करें",
+      "reset": "Reset",
+      "resultsEyebrow": "Report",
+      "resultsTitle": "Customers पूछें उससे पहले answer coverage report.",
+      "resultsHighlight": "answer coverage report",
+      "resultsSubtitle": "First version links open नहीं करता, chats read नहीं करता, और answers generate नहीं करता। यह sirf owner-entered questions और pasted source text check करता है।",
+      "learnMore": "Business Health देखें",
+      "reportEyebrow": "Answer coverage status",
+      "emptyTitle": "Check ke baad report दिखाई देगी",
+      "emptyBody": "Checker common question areas ko present, missing, unclear और not checked के रूप में दिखाएगा।",
+      "boundary0": "Sirf pasted source और questions use करता है",
+      "boundary1": "Link open नहीं करता",
+      "boundary2": "Follow-up form submit करने तक kuch store नहीं करता",
+      "summaryLabel": "Customer question coverage check summary",
+      "summary": {
+        "present": "{count} present",
+        "missing": "{count} missing",
+        "unclear": "{count} unclear",
+        "notChecked": "{count} not checked"
+      },
+      "reportActions": {
+        "title": "Report use करें",
+        "body": "Source clean up करने या customer link create करने से पहले checklist copy या download करें।",
+        "copy": "Report copy करें",
+        "download": "Report download करें",
+        "statuses": {
+          "copied": "Report copied.",
+          "downloaded": "Report downloaded.",
+          "copy_failed": "Report copy नहीं हो सका। Download करें।",
+          "download_failed": "Report download नहीं हो सका। Copy करें।"
+        }
+      },
+      "export": {
+        "title": "Customer Question Coverage Check report",
+        "business": "Business",
+        "city": "City या locality",
+        "sourceKind": "Source type",
+        "status": "Status",
+        "generatedAt": "Generated at",
+        "summary": "Summary",
+        "checks": "Checks",
+        "nextStep": "Next step",
+        "boundary": "Boundary: यह report sirf owner-entered questions, pasted source text और entered facts use करती है। Links open नहीं करती, customer conversations read नहीं करती, chatbot answers generate नहीं करती, AI/search providers call नहीं करती, ranking promise नहीं करती, और external platforms change नहीं करती।",
+        "notProvided": "Not provided"
+      },
+      "handoff": {
+        "title": "Question checklist मुझे भेजें",
+        "body": "Is report ko MenuList ke saath share करें ताकि हम one current customer link create करने के बारे में follow up कर सकें।",
+        "name": "Name",
+        "email": "Work email",
+        "phone": "Phone या WhatsApp",
+        "website": "Website",
+        "consentPrefix": "मैं agree करता/करती हूं कि MenuList इस report के बारे में contact कर सकता है और मैं ",
+        "privacy": "privacy policy",
+        "consentMiddle": " और ",
+        "terms": "terms",
+        "consentSuffix": " accept करता/करती हूं।",
+        "submit": "Checklist request भेजें",
+        "submitting": "Sending",
+        "success": "Request sent. Hum इस report को context की तरह use करेंगे।",
+        "nameRequired": "Name enter करें।",
+        "emailRequired": "Valid email enter करें।",
+        "consentRequired": "Checklist request भेजने से पहले agree करें।",
+        "securityCheckRequired": "Send करने से पहले security check complete करें।",
+        "securityCheckLoadFailed": "Security check load नहीं हुआ। Page refresh करके try करें।",
+        "submitFailed": "Abhi send नहीं हो सका। Customer link create करें या बाद में try करें।"
+      },
+      "statuses": {
+        "ready": {
+          "title": "Customer link बनाने के लिए ready",
+          "description": "Pasted source common customer questions ka answer देता है।"
+        },
+        "missing_basics": {
+          "title": "Answer basics missing",
+          "description": "Useful answer coverage report बनाने के लिए question या source text enough नहीं है।"
+        },
+        "unclear": {
+          "title": "Answers cleanup चाहिए",
+          "description": "Source exists करता है, लेकिन कुछ common customer questions clear answer नहीं करते।"
+        },
+        "not_checked": {
+          "title": "Not checked",
+          "description": "Useful report बनाने के लिए entered information enough नहीं थी।"
+        },
+        "manual_review_needed": {
+          "title": "Manual review needed",
+          "description": "Customers rely करें उससे पहले इस source को review करना चाहिए।"
+        }
+      },
+      "results": {
+        "present": "Present",
+        "missing": "Missing",
+        "unclear": "Unclear",
+        "not_applicable": "Not needed",
+        "not_checked": "Not checked"
+      },
+      "checks": {
+        "customer_questions": {
+          "label": "Customer questions",
+          "helper": "Report ke liye real questions चाहिए jo customers order, book, visit, call या message करने से पहले पूछते हैं।"
+        },
+        "source_material": {
+          "label": "Public source text",
+          "helper": "Customers ko reply wait किए बिना answer पाने के लिए enough current public text चाहिए।"
+        },
+        "menu_or_services_answers": {
+          "label": "Menu या service answers",
+          "helper": "Customers ko follow-up पूछने से पहले समझ आना चाहिए कि available kya है।"
+        },
+        "hours_answers": {
+          "label": "Hours answers",
+          "helper": "Customers ko दिखना चाहिए कि business कब open है या kab contact करना है।"
+        },
+        "prices_answers": {
+          "label": "Price answers",
+          "helper": "Jahan customers order, book या ask करने से पहले prices need करते हैं, wahan prices clear होने चाहिए।"
+        },
+        "location_contact_answers": {
+          "label": "Location और contact answers",
+          "helper": "Customers ko पता होना चाहिए कहां जाना है और business ko kaise reach करना है।"
+        },
+        "action_answers": {
+          "label": "Next action answers",
+          "helper": "Customers ko पता होना चाहिए कि order, book, call, message, visit या details ask कैसे करना है।"
+        },
+        "notes_availability_answers": {
+          "label": "Notes और availability answers",
+          "helper": "Availability, dietary, service, policy या stock notes repeated questions कम करते हैं।"
+        },
+        "current_customer_link": {
+          "label": "Current customer link",
+          "helper": "One stable link QR, WhatsApp, Instagram, Google profile links, websites और staff replies में share करना आसान करता है।"
+        }
+      },
+      "nextActions": {
+        "create_customer_link": {
+          "title": "Isse one current customer link बनाएं",
+          "description": "MenuList customer link create करें ताकि common answers one place में रहें।",
+          "cta": "Customer link बनाएं"
+        },
+        "add_missing_answers": {
+          "title": "Missing answers add करें",
+          "description": "Missing customer-facing answers add करें, फिर approved source से one customer link create करें।",
+          "cta": "Customer link बनाएं"
+        },
+        "manual_review": {
+          "title": "Publish करने से पहले review करें",
+          "description": "Customers rely करें उससे पहले team या agency ko इस source को review करना चाहिए।",
+          "cta": "Customer link बनाएं"
+        }
+      }
+    },
+    "BookingInquiryReadinessCheckPage": {
+      "eyebrow": "Free MenuList Tool",
+      "heroTitle": "Booking Inquiry Readiness Check",
+      "heroHighlight": "Check karein customers act kar paayenge",
+      "heroSubtitle": "Jo action details customers abhi dekhte hain unhe paste karein. MenuList check karta hai ki order, booking, reservation, call, message, quote request, ya visit ka path clear hai ya nahi.",
+      "trust0": "Browser-local report",
+      "trust1": "Provider login ki zaroorat nahi",
+      "trust2": "Koi message send nahi hota",
+      "formTitle": "Customer action path check karein",
+      "formSubtitle": "Aaj customers jis public text, action link, phone number, ya customer link par rely karte hain use daalein.",
+      "fields": {
+        "businessName": "Business name",
+        "cityOrArea": "City ya area",
+        "sourceKind": "Source type",
+        "primaryAction": "Main customer action",
+        "actionText": "Customers ko dikhne wala action text",
+        "actionLinkOrNumber": "Action link, phone number, WhatsApp link, ya email",
+        "publicUrl": "Current public customer link"
+      },
+      "sourceKinds": {
+        "menu": "Menu",
+        "service_list": "Service list",
+        "catalog": "Catalog",
+        "rate_card": "Rate card",
+        "package_list": "Package list",
+        "price_list": "Price list",
+        "other": "Other public source"
+      },
+      "primaryActions": {
+        "order": "Order",
+        "book": "Book",
+        "reserve": "Reserve",
+        "call": "Call",
+        "whatsapp": "WhatsApp",
+        "visit": "Visit",
+        "quote": "Quote request",
+        "message": "Message",
+        "other": "Other action"
+      },
+      "factsLegend": "Public source par kya already clear hai?",
+      "facts": {
+        "actionVisible": "Main action visible hai",
+        "responseTimeShown": "Reply ya response expectation dikh rahi hai",
+        "hoursShown": "Hours ya timing context dikh raha hai",
+        "fallbackContactShown": "Fallback contact dikh raha hai",
+        "confirmationExpectationShown": "Confirmation expectation clear hai",
+        "serviceAreaOrLocationShown": "Location ya service area clear hai"
+      },
+      "runCheck": "Run check",
+      "reset": "Reset",
+      "resultsEyebrow": "Report",
+      "resultsTitle": "Interest se action tak",
+      "resultsHighlight": "clear path",
+      "resultsSubtitle": "Report batati hai kya check hua, kya missing hai, aur MenuList mein next step kya hai.",
+      "learnMore": "Public Discovery ke baare mein dekhein",
+      "reportEyebrow": "Booking / Inquiry report",
+      "emptyTitle": "Check ke baad report yahan dikhegi",
+      "emptyBody": "Yeh tool sirf owner-entered fields check karta hai. Booking pages open nahi karta, messages send nahi karta, calendars inspect nahi karta, aur payment systems check nahi karta.",
+      "boundary0": "External page open nahi hota",
+      "boundary1": "Booking provider check nahi hota",
+      "boundary2": "Message send nahi hota",
+      "summaryLabel": "Booking inquiry readiness summary",
+      "summary": {
+        "present": "{count} present",
+        "missing": "{count} missing",
+        "unclear": "{count} unclear",
+        "notChecked": "{count} not checked"
+      },
+      "reportActions": {
+        "title": "Report rakhein",
+        "body": "Page chhodne se pehle report copy ya download karein.",
+        "copy": "Copy",
+        "download": "Download",
+        "statuses": {
+          "copied": "Report copy ho gayi.",
+          "downloaded": "Report download ho gayi.",
+          "copy_failed": "Copy failed. Report download karke try karein.",
+          "download_failed": "Download failed. Report copy karke try karein."
+        }
+      },
+      "export": {
+        "title": "Booking Inquiry Readiness Check report",
+        "business": "Business",
+        "city": "City ya area",
+        "sourceKind": "Source type",
+        "primaryAction": "Main customer action",
+        "status": "Status",
+        "generatedAt": "Generated at",
+        "summary": "Summary",
+        "checks": "Checks",
+        "nextStep": "Next step",
+        "boundary": "Boundary: Sirf owner-entered fields check hue. Koi booking provider, calendar, inbox, payment system, external URL, search result, ya AI answer inspect nahi hua.",
+        "notProvided": "Not provided"
+      },
+      "handoff": {
+        "title": "Isse ek customer link mein badalne mein MenuList help kare?",
+        "body": "Consent ke saath report bhejein aur hum current source setup karne ke liye follow up karenge.",
+        "name": "Name",
+        "email": "Work email",
+        "phone": "Phone ya WhatsApp number",
+        "website": "Website",
+        "consentPrefix": "Main ",
+        "privacy": "Privacy Policy",
+        "consentMiddle": " aur ",
+        "terms": "Terms of Service",
+        "consentSuffix": " se agree karta/karti hoon.",
+        "submit": "Report send karein",
+        "submitting": "Sending",
+        "success": "Report send ho gayi. MenuList follow up karega.",
+        "nameRequired": "Apna name daalein.",
+        "emailRequired": "Valid work email daalein.",
+        "consentRequired": "Send karne se pehle consent confirm karein.",
+        "securityCheckRequired": "Send karne se pehle security check complete karein.",
+        "securityCheckLoadFailed": "Security check load nahi ho paya. Refresh karke dobara try karein.",
+        "submitFailed": "Report send nahi ho paayi. Baad mein try karein."
+      },
+      "statuses": {
+        "ready": {
+          "title": "Customer action path ready hai",
+          "description": "Entered source mein main action, destination, timing, fallback, confirmation, location, aur customer link clear hain."
+        },
+        "missing_basics": {
+          "title": "Main action missing hai",
+          "description": "Source ready hone se pehle customers ko ek visible action aur clear place to act chahiye."
+        },
+        "unclear": {
+          "title": "Action path cleanup chahiye",
+          "description": "Kuch action details present hain, lekin customers ko order, book, reserve, call, message, quote request, ya visit karne mein confusion ho sakta hai."
+        },
+        "not_checked": {
+          "title": "Not checked",
+          "description": "Useful report ke liye owner-entered information kaafi nahi thi."
+        },
+        "manual_review_needed": {
+          "title": "Manual review needed",
+          "description": "Is action path ko customer-ready maanane se pehle human review chahiye."
+        }
+      },
+      "results": {
+        "present": "Present",
+        "missing": "Missing",
+        "unclear": "Unclear",
+        "not_applicable": "Not applicable",
+        "not_checked": "Not checked"
+      },
+      "checks": {
+        "primary_action": {
+          "label": "Primary action",
+          "helper": "Kya customer jaldi samajh sakta hai next kya karna hai?"
+        },
+        "action_destination": {
+          "label": "Action destination",
+          "helper": "Kya clear link, phone number, WhatsApp link, email, ya customer page hai?"
+        },
+        "response_expectation": {
+          "label": "Response expectation",
+          "helper": "Kya source reply, response, ya availability expectation set karta hai?"
+        },
+        "hours_context": {
+          "label": "Hours context",
+          "helper": "Kya customer ko pata hai action kab available hai?"
+        },
+        "fallback_contact": {
+          "label": "Fallback contact",
+          "helper": "Agar main action fail ho to poochne ka doosra tareeka hai?"
+        },
+        "confirmation_expectation": {
+          "label": "Confirmation expectation",
+          "helper": "Kya customer ko pata hai action final hai ya confirmation chahiye?"
+        },
+        "location_or_service_area": {
+          "label": "Location ya service area",
+          "helper": "Kya visit location ya service area clear hai?"
+        },
+        "current_customer_link": {
+          "label": "Current customer link",
+          "helper": "Kya customers ke liye ek current public link hai?"
+        },
+        "external_booking_inspection": {
+          "label": "External booking inspection",
+          "helper": "Booking providers, calendars, inboxes, payments, aur external pages V0 ke bahar hain."
+        }
+      },
+      "nextActions": {
+        "create_customer_link": {
+          "title": "Ek current customer link publish karein",
+          "description": "MenuList se action path, hours, contact, aur public source ko saath rakhein.",
+          "cta": "Create customer link"
+        },
+        "fix_booking_inquiry": {
+          "title": "Source par action path fix karein",
+          "description": "Share karne se pehle missing action, destination, response, hours, fallback, confirmation, ya customer link add karein.",
+          "cta": "MenuList se fix karein"
+        },
+        "manual_review": {
+          "title": "Manual review karein",
+          "description": "Publish ya share karne se pehle action path kisi se check karwa lein.",
+          "cta": "Help request karein"
+        }
+      }
+    },
+    "PriceAvailabilityGapCheckPage": {
+      "eyebrow": "Free MenuList Tool",
+      "heroTitle": "Price Availability Gap Check",
+      "heroHighlight": "Prices aur availability clarity check karein",
+      "heroSubtitle": "Customers jo menu, service list, catalog, package, ya price list abhi dekhte hain use paste karein. MenuList check karta hai ki prices, rates, available items, unavailable items, aur quote paths clear hain ya nahi.",
+      "trust0": "Browser-local report",
+      "trust1": "POS ya inventory access nahi",
+      "trust2": "External URL open nahi hota",
+      "formTitle": "Price aur availability clarity check karein",
+      "formSubtitle": "Aaj customers jis public source par rely karte hain use daalein. Tool sirf text aur selected facts check karta hai.",
+      "fields": {
+        "businessName": "Business name",
+        "cityOrArea": "City ya area",
+        "sourceKind": "Source type",
+        "sourceText": "Menu, service, catalog, package, ya price-list text",
+        "pricingMode": "Prices kaise dikhte hain",
+        "availabilityMode": "Availability kaise dikh rahi hai",
+        "publicUrl": "Current public customer link"
+      },
+      "sourceKinds": {
+        "menu": "Menu",
+        "service_list": "Service list",
+        "catalog": "Catalog",
+        "rate_card": "Rate card",
+        "package_list": "Package list",
+        "price_list": "Price list",
+        "other": "Other public source"
+      },
+      "pricingModes": {
+        "fixed_prices": "Fixed prices dikh rahe hain",
+        "starting_prices": "Starting prices dikh rahe hain",
+        "quote_based": "Quote ya estimate based",
+        "not_needed": "Prices ki zaroorat nahi",
+        "unknown": "Pakka nahi"
+      },
+      "availabilityModes": {
+        "available_items_marked": "Available items clear hain",
+        "unavailable_items_marked": "Unavailable items marked hain",
+        "seasonal_or_limited": "Seasonal ya limited items marked hain",
+        "not_needed": "Availability ki zaroorat nahi",
+        "unknown": "Pakka nahi"
+      },
+      "factsLegend": "Public source par kya already clear hai?",
+      "facts": {
+        "currencyOrUnitShown": "Currency, unit, serving, ya per-person context dikh raha hai",
+        "variantOrPackagePricesShown": "Size, variant, package, combo, ya option prices dikh rahe hain",
+        "quoteOrContactShown": "Quote, contact, call, WhatsApp, booking, ya inquiry path dikh raha hai"
+      },
+      "runCheck": "Run check",
+      "reset": "Reset",
+      "resultsEyebrow": "Report",
+      "resultsTitle": "Customers poochne se pehle",
+      "resultsHighlight": "price aur stock facts clear karein",
+      "resultsSubtitle": "Report batati hai kya check hua, kya missing hai, aur MenuList mein clean next step kya hai.",
+      "learnMore": "Public Discovery ke baare mein dekhein",
+      "reportEyebrow": "Price / Availability report",
+      "emptyTitle": "Check ke baad report yahan dikhegi",
+      "emptyBody": "Yeh tool sirf owner-entered fields check karta hai. External pages open nahi karta, prices verify nahi karta, live inventory check nahi karta, POS systems inspect nahi karta, ordering providers inspect nahi karta, aur AI/search providers call nahi karta.",
+      "boundary0": "External page open nahi hota",
+      "boundary1": "Live inventory ya POS check nahi hota",
+      "boundary2": "AI/search answer check nahi hota",
+      "summaryLabel": "Price availability gap summary",
+      "summary": {
+        "present": "{count} present",
+        "missing": "{count} missing",
+        "unclear": "{count} unclear",
+        "notChecked": "{count} not checked"
+      },
+      "reportActions": {
+        "title": "Keep this report",
+        "body": "Copy or download the report before you leave this page.",
+        "copy": "Copy",
+        "download": "Download",
+        "statuses": {
+          "copied": "Report copied.",
+          "downloaded": "Report downloaded.",
+          "copy_failed": "Copy failed. Try downloading the report.",
+          "download_failed": "Download failed. Try copying the report."
+        }
+      },
+      "export": {
+        "title": "Price Availability Gap Check report",
+        "business": "Business",
+        "city": "City ya area",
+        "sourceKind": "Source type",
+        "pricingMode": "Pricing mode",
+        "availabilityMode": "Availability mode",
+        "status": "Status",
+        "generatedAt": "Generated at",
+        "summary": "Summary",
+        "checks": "Checks",
+        "nextStep": "Next step",
+        "boundary": "Boundary: Sirf owner-entered fields check hue. Koi external URL, POS system, ordering provider, live inventory, search result, ya AI answer inspect nahi hua.",
+        "notProvided": "Not provided"
+      },
+      "handoff": {
+        "title": "Kya MenuList isse ek current customer link mein badalne mein help kare?",
+        "body": "Consent ke saath report bhejein aur hum current source setup karne ke liye follow up karenge.",
+        "name": "Name",
+        "email": "Work email",
+        "phone": "Phone ya WhatsApp number",
+        "website": "Website",
+        "consentPrefix": "Main ",
+        "privacy": "Privacy Policy",
+        "consentMiddle": " aur ",
+        "terms": "Terms of Service",
+        "consentSuffix": " se agree karta/karti hoon.",
+        "submit": "Report send karein",
+        "submitting": "Sending",
+        "success": "Report send ho gayi. MenuList follow up karega.",
+        "nameRequired": "Apna name daalein.",
+        "emailRequired": "Valid work email daalein.",
+        "consentRequired": "Send karne se pehle consent confirm karein.",
+        "securityCheckRequired": "Send karne se pehle security check complete karein.",
+        "securityCheckLoadFailed": "Security check load nahi ho paya. Refresh karke dobara try karein.",
+        "submitFailed": "Report send nahi ho paayi. Baad mein try karein."
+      },
+      "statuses": {
+        "ready": {
+          "title": "Price aur availability source ready hai",
+          "description": "Entered source mein prices, units, availability, quote path, aur current customer link clear hain."
+        },
+        "missing_basics": {
+          "title": "Price basics missing hain",
+          "description": "Source ready hone se pehle customers ko clear source aur price ya quote path chahiye."
+        },
+        "unclear": {
+          "title": "Price ya availability cleanup chahiye",
+          "description": "Kuch facts present hain, lekin customers ko kya cost hai, kya available hai, ya kaise poochna hai ismein confusion ho sakta hai."
+        },
+        "not_checked": {
+          "title": "Not checked",
+          "description": "Useful report ke liye owner-entered information kaafi nahi thi."
+        },
+        "manual_review_needed": {
+          "title": "Manual review needed",
+          "description": "Is source ko customer-ready maanane se pehle human review chahiye."
+        }
+      },
+      "results": {
+        "present": "Present",
+        "missing": "Missing",
+        "unclear": "Unclear",
+        "not_applicable": "Not applicable",
+        "not_checked": "Not checked"
+      },
+      "checks": {
+        "source_material": {
+          "label": "Source material",
+          "helper": "Kya check karne ke liye enough pasted text hai?"
+        },
+        "price_clarity": {
+          "label": "Price clarity",
+          "helper": "Kya customers prices, rates, costs, fees, starting prices, ya quote path dekh sakte hain?"
+        },
+        "currency_or_unit_context": {
+          "label": "Currency ya unit context",
+          "helper": "Kya currency, serving, per-unit, per-person, ya package context clear hai?"
+        },
+        "variant_or_package_prices": {
+          "label": "Variant ya package prices",
+          "helper": "Jab size, option, combo, package, ya variants hote hain to unke prices clear hain?"
+        },
+        "availability_clarity": {
+          "label": "Availability clarity",
+          "helper": "Kya customers samajh sakte hain kya available, limited, seasonal, ya not available hai?"
+        },
+        "unavailable_items_marked": {
+          "label": "Unavailable items marked",
+          "helper": "Kya sold-out, unavailable, seasonal, ya limited items clearly marked hain?"
+        },
+        "quote_or_contact_path": {
+          "label": "Quote ya contact path",
+          "helper": "Kya call, message, book, ask, order, ya quote request ka clear tareeka hai?"
+        },
+        "current_customer_link": {
+          "label": "Current customer link",
+          "helper": "Kya customers ke liye ek current public link hai?"
+        },
+        "external_price_availability_inspection": {
+          "label": "External price and availability inspection",
+          "helper": "External menus, POS systems, ordering providers, live inventory, search, aur AI answers V0 ke bahar hain."
+        }
+      },
+      "nextActions": {
+        "create_customer_link": {
+          "title": "Ek current customer link publish karein",
+          "description": "MenuList se prices, availability, quote path, aur customer actions ko saath rakhein.",
+          "cta": "Create customer link"
+        },
+        "fix_price_availability": {
+          "title": "Source par price aur availability facts fix karein",
+          "description": "Share karne se pehle missing price, unit, variant, availability, quote, ya customer-link detail add karein.",
+          "cta": "MenuList se fix karein"
+        },
+        "manual_review": {
+          "title": "Manual review karein",
+          "description": "Publish ya share karne se pehle price aur availability clarity kisi se check karwa lein.",
+          "cta": "Help request karein"
+        }
+      }
+    },
+    "MenuPdfCleanupCheckPage": {
+      "eyebrow": "Free MenuList Tool",
+      "heroTitle": "Menu PDF Cleanup Check",
+      "heroHighlight": "Check karein old PDF replace honi chahiye ya nahi",
+      "heroSubtitle": "Customers jo PDF abhi dekhte hain uske baare mein details daalein. MenuList check karta hai ki woh current, readable, actionable hai ya ek customer link mein badalni chahiye.",
+      "trust0": "Browser-local report",
+      "trust1": "PDF upload ya parsing nahi",
+      "trust2": "External URL open nahi hota",
+      "formTitle": "Old PDF source check karein",
+      "formSubtitle": "PDF aaj kahan use hoti hai aur customers kya samajh paate hain, yeh daalein. File upload mat karein.",
+      "fields": {
+        "businessName": "Business name",
+        "cityOrArea": "City ya area",
+        "sourceKind": "PDF type",
+        "pdfLocation": "Customers ise kahan dekhte hain",
+        "pdfReference": "PDF link, filename, QR label, ya note",
+        "lastUpdated": "PDF last update kab hui?",
+        "currentCustomerLink": "Current public customer link"
+      },
+      "sourceKinds": {
+        "menu_pdf": "Menu PDF",
+        "service_pdf": "Service-list PDF",
+        "catalog_pdf": "Catalog PDF",
+        "rate_card_pdf": "Rate-card PDF",
+        "package_pdf": "Package PDF",
+        "unknown_pdf": "Pakka nahi",
+        "other": "Other PDF source"
+      },
+      "pdfLocations": {
+        "website": "Website",
+        "google_profile": "Google Business Profile",
+        "whatsapp": "WhatsApp",
+        "instagram": "Instagram ya social bio",
+        "qr_code": "QR code",
+        "printed_material": "Printed material",
+        "unknown": "Pakka nahi",
+        "other": "Other place"
+      },
+      "lastUpdated": {
+        "this_month": "Is month",
+        "last_3_months": "Last 3 months ke andar",
+        "older_than_3_months": "3 months se purani",
+        "unknown": "Pakka nahi"
+      },
+      "factsLegend": "Customers jo PDF dekhte hain uske baare mein kya true hai?",
+      "facts": {
+        "mobileReadable": "Phone par zyada zoom kiye bina readable hai",
+        "copyableText": "Text select ya copy ho sakta hai",
+        "pricesClear": "Items, services, prices, ya rates clear hain",
+        "actionClear": "Call, WhatsApp, order, book, visit, ya quote path clear hai",
+        "oldVersionsRemoved": "Old versions remove ya replace ho chuki hain",
+        "qrOrPrintStillUsesPdf": "QR ya printed material abhi bhi PDF par point karta hai"
+      },
+      "runCheck": "Run check",
+      "reset": "Reset",
+      "resultsEyebrow": "Report",
+      "resultsTitle": "Old PDFs ko badlein",
+      "resultsHighlight": "one current customer link mein",
+      "resultsSubtitle": "Report batati hai kya check hua, kya missing hai, aur MenuList ko PDF ko cleaner public source se replace karna chahiye ya nahi.",
+      "learnMore": "Menu Import ke baare mein dekhein",
+      "reportEyebrow": "Menu PDF cleanup report",
+      "emptyTitle": "Check ke baad report yahan dikhegi",
+      "emptyBody": "Yeh tool sirf owner-entered fields check karta hai. PDF files ya external pages upload, parse, OCR, open, fetch, store, ya inspect nahi hote.",
+      "boundary0": "PDF file upload nahi hoti",
+      "boundary1": "PDF ya URL open nahi hota",
+      "boundary2": "OCR ya AI parsing use nahi hoti",
+      "summaryLabel": "Menu PDF cleanup summary",
+      "summary": {
+        "present": "{count} present",
+        "missing": "{count} missing",
+        "unclear": "{count} unclear",
+        "notChecked": "{count} not checked"
+      },
+      "reportActions": {
+        "title": "Keep this report",
+        "body": "Copy or download the report before you leave this page.",
+        "copy": "Copy",
+        "download": "Download",
+        "statuses": {
+          "copied": "Report copied.",
+          "downloaded": "Report downloaded.",
+          "copy_failed": "Copy failed. Try downloading the report.",
+          "download_failed": "Download failed. Try copying the report."
+        }
+      },
+      "export": {
+        "title": "Menu PDF Cleanup Check report",
+        "business": "Business",
+        "city": "City ya area",
+        "sourceKind": "PDF type",
+        "pdfLocation": "PDF location",
+        "lastUpdated": "Last updated",
+        "status": "Status",
+        "generatedAt": "Generated at",
+        "summary": "Summary",
+        "checks": "Checks",
+        "nextStep": "Next step",
+        "boundary": "Boundary: Sirf owner-entered fields check hue. Koi PDF upload, parse, OCR, open, fetch, store, ya externally inspect nahi hui.",
+        "notProvided": "Not provided"
+      },
+      "handoff": {
+        "title": "Kya MenuList is PDF ko ek current customer link se replace karne mein help kare?",
+        "body": "Consent ke saath report bhejein aur hum current source setup karne ke liye follow up karenge.",
+        "name": "Name",
+        "email": "Work email",
+        "phone": "Phone ya WhatsApp number",
+        "website": "Website",
+        "consentPrefix": "Main ",
+        "privacy": "Privacy Policy",
+        "consentMiddle": " aur ",
+        "terms": "Terms of Service",
+        "consentSuffix": " se agree karta/karti hoon.",
+        "submit": "Report send karein",
+        "submitting": "Sending",
+        "success": "Report send ho gayi. MenuList follow up karega.",
+        "nameRequired": "Apna name daalein.",
+        "emailRequired": "Valid work email daalein.",
+        "consentRequired": "Send karne se pehle consent confirm karein.",
+        "securityCheckRequired": "Send karne se pehle security check complete karein.",
+        "securityCheckLoadFailed": "Security check load nahi ho paya. Refresh karke dobara try karein.",
+        "submitFailed": "Report send nahi ho paayi. Baad mein try karein."
+      },
+      "statuses": {
+        "ready": {
+          "title": "PDF source replace karne ke liye ready hai",
+          "description": "Entered facts mein current, readable source, clear prices, action path, aur customer-link replacement path dikh raha hai."
+        },
+        "missing_basics": {
+          "title": "PDF basics missing hain",
+          "description": "Source ready hone se pehle customers ko clear items, prices ya rates, aur action path chahiye."
+        },
+        "unclear": {
+          "title": "PDF source cleanup chahiye",
+          "description": "Kuch facts present hain, lekin customers ko stale, hard-to-read, ya scattered PDF details mil sakti hain."
+        },
+        "not_checked": {
+          "title": "Not checked",
+          "description": "Useful report ke liye owner-entered information kaafi nahi thi."
+        },
+        "manual_review_needed": {
+          "title": "Manual review needed",
+          "description": "Is PDF source ko customer-ready maanane se pehle human review chahiye."
+        }
+      },
+      "results": {
+        "present": "Present",
+        "missing": "Missing",
+        "unclear": "Unclear",
+        "not_applicable": "Not applicable",
+        "not_checked": "Not checked"
+      },
+      "checks": {
+        "pdf_source_present": {
+          "label": "PDF source present",
+          "helper": "Kya customers jo PDF dekhte hain uske baare mein enough owner-entered information hai?"
+        },
+        "pdf_source_current": {
+          "label": "PDF source current",
+          "helper": "Kya owner jaanta hai ki PDF recent enough hai?"
+        },
+        "mobile_readability": {
+          "label": "Mobile readability",
+          "helper": "Kya customers phone par zyada zoom ya friction ke bina ise padh sakte hain?"
+        },
+        "text_copyability": {
+          "label": "Text copyability",
+          "helper": "Kya customers names, prices, phone numbers, ya details copy kar sakte hain?"
+        },
+        "price_and_item_clarity": {
+          "label": "Items aur prices clear",
+          "helper": "Kya items, services, prices, rates, ya packages act karne layak clear hain?"
+        },
+        "action_path": {
+          "label": "Action path",
+          "helper": "Kya call, WhatsApp, order, book, visit, ya quote request ka clear tareeka hai?"
+        },
+        "qr_or_print_dependency": {
+          "label": "QR ya print dependency",
+          "helper": "Kya old QR ya printed material abhi bhi customers ko PDF par bhejta hai?"
+        },
+        "current_customer_link": {
+          "label": "Current customer link",
+          "helper": "Kya PDF ke badle customers ke liye ek current public link hai?"
+        },
+        "external_pdf_inspection": {
+          "label": "External PDF inspection",
+          "helper": "PDF files, URLs, QR scans, print materials, search, aur AI answers V0 ke bahar hain."
+        }
+      },
+      "nextActions": {
+        "create_customer_link": {
+          "title": "Ek current customer link publish karein",
+          "description": "MenuList se PDF ko aise customer source se replace karein jo current reh sake.",
+          "cta": "Create customer link"
+        },
+        "replace_pdf_source": {
+          "title": "PDF source replace karein",
+          "description": "Share karne se pehle current menu, service list, catalog, ya rate card ko ek MenuList customer link mein le aayein.",
+          "cta": "MenuList se replace karein"
+        },
+        "manual_review": {
+          "title": "Manual review karein",
+          "description": "Publish ya replace karne se pehle PDF aur source material kisi se check karwa lein.",
+          "cta": "Help request karein"
+        }
+      }
+    },
+    "WhatsAppActionLinkCheckPage": {
+      "eyebrow": "WhatsApp Action Link Check",
+      "heroTitle": "देखें कि ग्राहक आपको",
+      "heroHighlight": "एक टैप में मैसेज कर सकते हैं या नहीं.",
+      "heroSubtitle": "वह WhatsApp action दर्ज करें जिसे आप अभी share करते हैं. MenuList एक छोटी readiness report देता है, फिर आप इसे एक current customer link में जोड़ सकते हैं.",
+      "trust0": "सिर्फ format check",
+      "trust1": "कोई message नहीं भेजा गया",
+      "trust2": "कोई link नहीं खोला गया",
+      "formTitle": "WhatsApp action check करें",
+      "formSubtitle": "वही number, link, और message prompt इस्तेमाल करें जो ग्राहक आज देखते हैं.",
+      "fields": {
+        "businessName": "Business name",
+        "cityOrArea": "City or locality",
+        "whatsappNumber": "WhatsApp number",
+        "existingWhatsappLink": "Existing WhatsApp link",
+        "currentCustomerLink": "Current customer link",
+        "messageIntent": "Message intent",
+        "suggestedMessage": "Suggested first message"
+      },
+      "messageIntents": {
+        "ask_question": "Ask a question",
+        "order": "Order",
+        "book": "Book or reserve",
+        "quote": "Request a quote",
+        "support": "Support request",
+        "other": "Other"
+      },
+      "factsLegend": "ग्राहक अभी क्या देख सकते हैं",
+      "facts": {
+        "menuOrServiceLinkAttached": "Menu या service link जुड़ा हुआ है",
+        "hoursExpectationSet": "Reply timing या hours साफ हैं",
+        "fallbackActionShown": "Call, booking, या public-link fallback दिखता है"
+      },
+      "runCheck": "Run check",
+      "reset": "Reset",
+      "resultsEyebrow": "Report",
+      "resultsTitle": "WhatsApp action report",
+      "resultsHighlight": "customer tap से पहले.",
+      "resultsSubtitle": "पहला version WhatsApp को contact नहीं करता, links नहीं खोलता, और messages नहीं भेजता. यह केवल entered action path की clarity check करता है.",
+      "learnMore": "Public Discovery देखें",
+      "emptyTitle": "Check के बाद report दिखेगी",
+      "emptyBody": "Checker दिखाएगा कि क्या present, missing, unclear, और not checked है.",
+      "boundary0": "सिर्फ entered fields use होते हैं",
+      "boundary1": "WhatsApp contact नहीं होता",
+      "boundary2": "Follow-up form submit न करें तो कुछ store नहीं होता",
+      "reportEyebrow": "WhatsApp action status",
+      "summaryLabel": "WhatsApp action report summary",
+      "summary": {
+        "present": "{count} present",
+        "missing": "{count} missing",
+        "unclear": "{count} unclear",
+        "notChecked": "{count} not checked"
+      },
+      "statuses": {
+        "ready": {
+          "title": "Customer link में जोड़ने के लिए ready",
+          "description": "Entered WhatsApp action में customer message से पहले जरूरी details मौजूद हैं."
+        },
+        "missing_basics": {
+          "title": "WhatsApp basics missing हैं",
+          "description": "Customers के साथ share करने से पहले WhatsApp number या usable click-to-chat link जोड़ें."
+        },
+        "unclear": {
+          "title": "Action path unclear है",
+          "description": "WhatsApp action मौजूद है, लेकिन current link, message intent, hours, या fallback action अभी unclear हो सकता है."
+        },
+        "not_checked": {
+          "title": "Check करने के लिए details कम हैं",
+          "description": "यह check चलाने से पहले WhatsApp action details जोड़ें."
+        },
+        "manual_review_needed": {
+          "title": "Manual review needed",
+          "description": "Public customer path बनाने से पहले इस action path को setup help की जरूरत है."
+        }
+      },
+      "results": {
+        "present": "Present",
+        "missing": "Missing",
+        "unclear": "Unclear",
+        "not_applicable": "Not needed",
+        "not_checked": "Not checked"
+      },
+      "checks": {
+        "whatsapp_number": {
+          "label": "WhatsApp number",
+          "helper": "Customers को clear WhatsApp number या business chat link चाहिए."
+        },
+        "click_to_chat_format": {
+          "label": "Click-to-chat format",
+          "helper": "Action wa.me या WhatsApp send link format के लिए ready होना चाहिए."
+        },
+        "message_intent": {
+          "label": "Message intent",
+          "helper": "Customers को पता होना चाहिए कि वे question, order, booking, या help request भेज रहे हैं."
+        },
+        "suggested_message": {
+          "label": "Suggested message",
+          "helper": "Useful first message request को clear करता है और back-and-forth कम करता है."
+        },
+        "menu_or_service_link": {
+          "label": "Menu or service link",
+          "helper": "Message करने से पहले customer के पास current menu, service, catalog, या customer page होना चाहिए."
+        },
+        "hours_expectation": {
+          "label": "Hours or reply expectation",
+          "helper": "Customers को replies, pickup, delivery, booking, या availability timing पता होना चाहिए."
+        },
+        "fallback_action": {
+          "label": "Fallback action",
+          "helper": "जब WhatsApp काफी न हो, तब call, booking, या public-link fallback मदद करता है."
+        },
+        "message_delivery": {
+          "label": "Message delivery",
+          "helper": "V0 WhatsApp message नहीं भेजता और delivery verify नहीं करता."
+        }
+      },
+      "preview": {
+        "title": "Local preview link",
+        "body": "यह URL shape local review के लिए बनाया गया. इसे खोला नहीं गया और कोई message नहीं भेजा गया."
+      },
+      "nextActions": {
+        "create_customer_link": {
+          "title": "इसे एक customer link में जोड़ें",
+          "description": "WhatsApp action के पीछे current menu या service source रखें ताकि customers message करने से पहले context देख सकें.",
+          "cta": "Create customer link"
+        },
+        "fix_whatsapp_action": {
+          "title": "पहले action path ठीक करें",
+          "description": "इस WhatsApp link को widely share करने से पहले current customer link, message prompt, reply expectation, और fallback action जोड़ें.",
+          "cta": "Create customer link"
+        },
+        "manual_review": {
+          "title": "Setup help request करें",
+          "description": "Public customer path बनने से पहले इस WhatsApp action को review की जरूरत है.",
+          "cta": "Request setup help"
+        }
+      },
+      "reportActions": {
+        "title": "Report रखें",
+        "body": "Local report को setup notes के लिए copy या download करें.",
+        "copy": "Copy report",
+        "download": "Download report",
+        "statuses": {
+          "copied": "Report copied.",
+          "downloaded": "Report downloaded.",
+          "copy_failed": "Could not copy the report.",
+          "download_failed": "Could not download the report."
+        }
+      },
+      "handoff": {
+        "title": "इसे ठीक करने में help चाहिए?",
+        "body": "Report MenuList के साथ share करें. हम इसे केवल आपके setup request का reply देने के लिए use करेंगे.",
+        "name": "Name",
+        "email": "Work email",
+        "phone": "Phone or WhatsApp",
+        "website": "Website",
+        "consentPrefix": "I agree to the ",
+        "privacy": "Privacy Policy",
+        "consentMiddle": " and ",
+        "terms": "Terms of Service",
+        "consentSuffix": ".",
+        "submit": "Send report",
+        "submitting": "Sending",
+        "success": "Report भेज दी गई. हम आपके दिए गए details से follow up करेंगे.",
+        "submitFailed": "Could not send the report. Please try again.",
+        "nameRequired": "Enter your name.",
+        "emailRequired": "Enter a valid work email.",
+        "consentRequired": "Agree to the terms before sending.",
+        "securityCheckRequired": "Complete the security check before sending.",
+        "securityCheckLoadFailed": "Security check could not load. Refresh and try again."
+      },
+      "export": {
+        "title": "WhatsApp Action Link Check report",
+        "business": "Business",
+        "city": "City or area",
+        "messageIntent": "Message intent",
+        "status": "Status",
+        "generatedAt": "Generated at",
+        "previewLink": "Local preview link",
+        "notGenerated": "Not generated",
+        "notProvided": "Not provided",
+        "summary": "Summary",
+        "checks": "Checks",
+        "nextStep": "Next step",
+        "boundary": "Boundary: सिर्फ entered fields check हुए. WhatsApp contact नहीं हुआ, links नहीं खोले गए, और messages नहीं भेजे गए."
+      }
+    },
+    "HoursCheckPage": {
+      "eyebrow": "Hours Check",
+      "heroTitle": "देखें कि customers को open hours साफ दिखते हैं या नहीं",
+      "heroHighlight": "open hours साफ दिखते हैं",
+      "heroSubtitle": "वह hours दर्ज करें जो customers आज देखते हैं. MenuList एक छोटी report देता है, फिर आप इसे one current customer link में publish कर सकते हैं.",
+      "trust0": "सिर्फ entered facts",
+      "trust1": "Google scan नहीं",
+      "trust2": "Report store नहीं होती",
+      "formTitle": "Hours check करें",
+      "formSubtitle": "Regular hours, closed days, holiday hours, और customer link वही रखें जो आप आज share करते हैं.",
+      "fields": {
+        "businessName": "Business name",
+        "cityOrArea": "City or locality",
+        "timeZone": "Timezone or country",
+        "regularHoursText": "Regular hours",
+        "closedDaysText": "Closed days",
+        "lateNightClarity": "Late-night handling",
+        "specialHoursStatus": "Special or holiday hours",
+        "specialHoursText": "Special hours note",
+        "currentCustomerLink": "Current customer link"
+      },
+      "lateNightOptions": {
+        "not_applicable": "Not applicable",
+        "same_day_clear": "Late hours same day end होते हैं",
+        "past_midnight_clear": "Midnight के बाद hours clear हैं",
+        "unclear": "Late-night timing unclear है"
+      },
+      "specialHoursOptions": {
+        "missing": "अभी listed नहीं",
+        "listed": "Customers के लिए listed",
+        "not_applicable": "अभी कोई special day नहीं"
+      },
+      "factsLegend": "Customer fallback",
+      "facts": {
+        "contactFallbackShown": "Call, WhatsApp, booking, या contact fallback visible है"
+      },
+      "runCheck": "Run check",
+      "reset": "Reset",
+      "resultsEyebrow": "Report",
+      "resultsTitle": "Customer visit से पहले Hours clarity report",
+      "resultsHighlight": "customer visit से पहले",
+      "resultsSubtitle": "पहला version Google, maps, websites, या holiday calendars inspect नहीं करता. यह केवल entered hours facts की clarity check करता है.",
+      "learnMore": "Public Discovery देखें",
+      "emptyTitle": "Check के बाद report दिखेगी",
+      "emptyBody": "Checker दिखाएगा कि क्या present, missing, unclear, और not checked है.",
+      "boundary0": "सिर्फ entered fields use होते हैं",
+      "boundary1": "Google या maps inspect नहीं होते",
+      "boundary2": "Follow-up form submit न करें तो कुछ store नहीं होता",
+      "reportEyebrow": "Hours status",
+      "summaryLabel": "Hours check report summary",
+      "summary": {
+        "present": "{count} present",
+        "missing": "{count} missing",
+        "unclear": "{count} unclear",
+        "notChecked": "{count} not checked"
+      },
+      "statuses": {
+        "ready": {
+          "title": "Hours customer link के लिए ready हैं",
+          "description": "Entered hours में customers के visit, call, booking, या order से पहले जरूरी facts मौजूद हैं."
+        },
+        "missing_basics": {
+          "title": "Basic hours missing हैं",
+          "description": "Customers के साथ share करने से पहले regular hours और location timing जोड़ें."
+        },
+        "unclear": {
+          "title": "Hours unclear हैं",
+          "description": "Basic hours मौजूद हैं, लेकिन closed days, holiday timing, contact fallback, या current customer link unclear हो सकता है."
+        },
+        "not_checked": {
+          "title": "Check करने के लिए details कम हैं",
+          "description": "यह check चलाने से पहले visible hours details जोड़ें."
+        },
+        "manual_review_needed": {
+          "title": "Manual review needed",
+          "description": "Public customer path बनाने से पहले इन hours को setup help की जरूरत है."
+        }
+      },
+      "results": {
+        "present": "Present",
+        "missing": "Missing",
+        "unclear": "Unclear",
+        "not_applicable": "Not needed",
+        "not_checked": "Not checked"
+      },
+      "checks": {
+        "regular_hours": {
+          "label": "Regular hours",
+          "helper": "Customers को normal business days के day और time details चाहिए."
+        },
+        "closed_days": {
+          "label": "Closed days",
+          "helper": "Customers को weekly closed days या open daily status पता होना चाहिए."
+        },
+        "late_night_hours": {
+          "label": "Late-night hours",
+          "helper": "Midnight cross करने वाले hours में same-day या next-day wording clear होनी चाहिए."
+        },
+        "holiday_hours": {
+          "label": "Holiday hours",
+          "helper": "Special days, festival days, seasonal changes, या clear no-special-days note visible होना चाहिए."
+        },
+        "timezone_context": {
+          "label": "Location timing",
+          "helper": "City, area, country, या timezone context hours को customers के लिए clear रखता है."
+        },
+        "contact_fallback": {
+          "label": "Contact fallback",
+          "helper": "Hours uncertain हों तो call, WhatsApp, booking, या contact fallback काम आता है."
+        },
+        "current_customer_link": {
+          "label": "Current customer link",
+          "helper": "Current hours current menu, service list, या customer page के साथ रहने चाहिए."
+        },
+        "external_hours_verification": {
+          "label": "External hours verification",
+          "helper": "V0 Google, maps, websites, या holiday calendars inspect नहीं करता."
+        }
+      },
+      "nextActions": {
+        "create_customer_link": {
+          "title": "Hours को एक customer link पर publish करें",
+          "description": "Current hours को current menu या service source के साथ रखें ताकि customers old pages compare न करें.",
+          "cta": "Create customer link"
+        },
+        "fix_hours": {
+          "title": "पहले hours ठीक करें",
+          "description": "इस source को widely share करने से पहले regular hours, closed days, special hours, contact fallback, और one current customer link जोड़ें.",
+          "cta": "Create customer link"
+        },
+        "manual_review": {
+          "title": "Setup help request करें",
+          "description": "Public customer path बनने से पहले इन hours को review की जरूरत है.",
+          "cta": "Request setup help"
+        }
+      },
+      "reportActions": {
+        "title": "Report रखें",
+        "body": "Local report को setup notes के लिए copy या download करें.",
+        "copy": "Copy report",
+        "download": "Download report",
+        "statuses": {
+          "copied": "Report copied.",
+          "downloaded": "Report downloaded.",
+          "copy_failed": "Could not copy the report.",
+          "download_failed": "Could not download the report."
+        }
+      },
+      "handoff": {
+        "title": "इसे ठीक करने में help चाहिए?",
+        "body": "Report MenuList के साथ share करें. हम इसे केवल आपके setup request का reply देने के लिए use करेंगे.",
+        "name": "Name",
+        "email": "Work email",
+        "phone": "Phone or WhatsApp",
+        "website": "Website",
+        "consentPrefix": "I agree to the ",
+        "privacy": "Privacy Policy",
+        "consentMiddle": " and ",
+        "terms": "Terms of Service",
+        "consentSuffix": ".",
+        "submit": "Send report",
+        "submitting": "Sending",
+        "success": "Report भेज दी गई. हम आपके दिए गए details से follow up करेंगे.",
+        "submitFailed": "Could not send the report. Please try again.",
+        "nameRequired": "Enter your name.",
+        "emailRequired": "Enter a valid work email.",
+        "consentRequired": "Agree to the terms before sending.",
+        "securityCheckRequired": "Complete the security check before sending.",
+        "securityCheckLoadFailed": "Security check could not load. Refresh and try again."
+      },
+      "export": {
+        "title": "Hours Check report",
+        "business": "Business",
+        "city": "City or area",
+        "timeZone": "Timezone",
+        "status": "Status",
+        "generatedAt": "Generated at",
+        "notProvided": "Not provided",
+        "summary": "Summary",
+        "checks": "Checks",
+        "nextStep": "Next step",
+        "boundary": "Boundary: सिर्फ entered fields check हुए. Google, maps, websites, holiday calendars, और AI/search answers inspect नहीं हुए."
+      }
+    },
+    "PhotoGapCheckPage": {
+      "eyebrow": "Photo Gap Check",
+      "heroTitle": "देखें कि customers आपके business को पहचान सकते हैं या नहीं",
+      "heroHighlight": "business को पहचान सकते हैं",
+      "heroSubtitle": "जो visual basics customers अभी देख सकते हैं उन्हें select करें. MenuList one current customer link publish करने से पहले छोटी report देता है.",
+      "trust0": "Self-report only",
+      "trust1": "Image upload नहीं",
+      "trust2": "Image analysis नहीं",
+      "formTitle": "Visual basics check करें",
+      "formSubtitle": "वही logo, photos, और customer link use करें जो आप अभी publicly show करते हैं.",
+      "fields": {
+        "businessName": "Business name",
+        "cityOrArea": "City or locality",
+        "businessType": "Business type",
+        "currentCustomerLink": "Current customer link"
+      },
+      "businessTypes": {
+        "restaurant": "Restaurant or cafe",
+        "salon": "Salon or spa",
+        "clinic": "Clinic or wellness",
+        "shop": "Shop or retail",
+        "local_service": "Local service",
+        "other": "Other business"
+      },
+      "factsLegend": "Customers अभी क्या देख सकते हैं",
+      "facts": {
+        "logoPresent": "Logo या brand mark visible है",
+        "coverImagePresent": "Cover image visible है",
+        "locationOrTeamPhotoPresent": "Storefront, location, team, या work photo visible है",
+        "productOrServicePhotosPresent": "Product, menu item, service, या catalogue photos visible हैं",
+        "photosLookCurrent": "Photos current लगती हैं और business को represent करती हैं",
+        "publicPageHasImages": "Public customer page पर images already दिखती हैं"
+      },
+      "runCheck": "Run check",
+      "reset": "Reset",
+      "resultsEyebrow": "Report",
+      "resultsTitle": "Customers decide करने से पहले visual identity report",
+      "resultsHighlight": "Customers decide करने से पहले",
+      "resultsSubtitle": "पहला version images upload, analyze, fetch, या inspect नहीं करता. यह केवल आपके selected visual facts check करता है.",
+      "learnMore": "Official Business Page देखें",
+      "emptyTitle": "Check के बाद report दिखेगी",
+      "emptyBody": "Checker दिखाएगा कि क्या present, missing, unclear, और not checked है.",
+      "boundary0": "सिर्फ selected facts use होते हैं",
+      "boundary1": "Images upload या analyze नहीं होतीं",
+      "boundary2": "Google या Instagram inspect नहीं होते",
+      "reportEyebrow": "Visual identity status",
+      "summaryLabel": "Photo gap report summary",
+      "summary": {
+        "present": "{count} present",
+        "missing": "{count} missing",
+        "unclear": "{count} unclear",
+        "notChecked": "{count} not checked"
+      },
+      "statuses": {
+        "ready": {
+          "title": "Visual basics ready हैं",
+          "description": "Selected facts में public business page खोलने से पहले customers के लिए जरूरी visual proof मौजूद है."
+        },
+        "missing_basics": {
+          "title": "Visual basics missing हैं",
+          "description": "इस source को widely share करने से पहले logo, location photo, product photo, service photo, या cover image जोड़ें."
+        },
+        "unclear": {
+          "title": "Visual profile incomplete है",
+          "description": "कुछ visual basics मौजूद हैं, लेकिन current photos, public page images, या current customer link अभी missing हो सकते हैं."
+        },
+        "not_checked": {
+          "title": "Check करने के लिए details कम हैं",
+          "description": "यह check चलाने से पहले visible photo facts select करें."
+        },
+        "manual_review_needed": {
+          "title": "Manual review needed",
+          "description": "Public customer path बनने से पहले इस visual profile को setup help की जरूरत है."
+        }
+      },
+      "results": {
+        "present": "Present",
+        "missing": "Missing",
+        "unclear": "Unclear",
+        "not_applicable": "Not needed",
+        "not_checked": "Not checked"
+      },
+      "checks": {
+        "logo": {
+          "label": "Logo",
+          "helper": "Customers को clear logo या brand mark दिखना चाहिए."
+        },
+        "cover_image": {
+          "label": "Cover image",
+          "helper": "Cover image public page को recognizable first visual देता है."
+        },
+        "location_or_team_photo": {
+          "label": "Location or team photo",
+          "helper": "Storefront, location, team, या work photo customers को real business पहचानने में help करता है."
+        },
+        "product_or_service_photos": {
+          "label": "Product or service photos",
+          "helper": "Menu items, products, services, catalogue items, या work examples की photos offer को समझने में help करती हैं."
+        },
+        "photo_context": {
+          "label": "Photo context",
+          "helper": "Photos current लगनी चाहिए और customers जिस business को देखेंगे उसे represent करनी चाहिए."
+        },
+        "public_page_images": {
+          "label": "Public page images",
+          "helper": "Current customer page पर customers के लिए जरूरी visual basics दिखने चाहिए."
+        },
+        "current_customer_link": {
+          "label": "Current customer link",
+          "helper": "Visual proof current menu, service list, catalogue, या customer page के साथ रहना चाहिए."
+        },
+        "external_photo_verification": {
+          "label": "External photo verification",
+          "helper": "V0 Google, Instagram, websites, या external photo source inspect नहीं करता."
+        }
+      },
+      "nextActions": {
+        "create_customer_link": {
+          "title": "Visuals को एक customer link में जोड़ें",
+          "description": "Logo, photos, current offer list, और contact actions साथ रखें ताकि customers one current source देखें.",
+          "cta": "Create customer link"
+        },
+        "complete_visual_profile": {
+          "title": "पहले visual profile complete करें",
+          "description": "इस business source को widely share करने से पहले missing visual basics जोड़ें.",
+          "cta": "Create customer link"
+        },
+        "manual_review": {
+          "title": "Setup help request करें",
+          "description": "Public customer path बनने से पहले इस visual profile को review की जरूरत है.",
+          "cta": "Request setup help"
+        }
+      },
+      "reportActions": {
+        "title": "Report रखें",
+        "body": "Local report को setup notes के लिए copy या download करें.",
+        "copy": "Copy report",
+        "download": "Download report",
+        "statuses": {
+          "copied": "Report copied.",
+          "downloaded": "Report downloaded.",
+          "copy_failed": "Could not copy the report.",
+          "download_failed": "Could not download the report."
+        }
+      },
+      "handoff": {
+        "title": "इसे ठीक करने में help चाहिए?",
+        "body": "Report MenuList के साथ share करें. हम इसे केवल आपके setup request का reply देने के लिए use करेंगे.",
+        "name": "Name",
+        "email": "Work email",
+        "phone": "Phone or WhatsApp",
+        "website": "Website",
+        "consentPrefix": "I agree to the ",
+        "privacy": "Privacy Policy",
+        "consentMiddle": " and ",
+        "terms": "Terms of Service",
+        "consentSuffix": ".",
+        "submit": "Send report",
+        "submitting": "Sending",
+        "success": "Report भेज दी गई. हम आपके दिए गए details से follow up करेंगे.",
+        "submitFailed": "Could not send the report. Please try again.",
+        "nameRequired": "Enter your name.",
+        "emailRequired": "Enter a valid work email.",
+        "consentRequired": "Agree to the terms before sending.",
+        "securityCheckRequired": "Complete the security check before sending.",
+        "securityCheckLoadFailed": "Security check could not load. Refresh and try again."
+      },
+      "export": {
+        "title": "Photo Gap Check report",
+        "business": "Business",
+        "city": "City or area",
+        "businessType": "Business type",
+        "status": "Status",
+        "generatedAt": "Generated at",
+        "notProvided": "Not provided",
+        "summary": "Summary",
+        "checks": "Checks",
+        "nextStep": "Next step",
+        "boundary": "Boundary: सिर्फ selected facts check हुए. Images upload, analyze, fetch, या external platforms पर inspect नहीं हुईं."
+      }
+    },
+    "GoogleProfileBasicsChecklistPage": {
+      "eyebrow": "Public truth tool",
+      "heroTitle": "Google Profile Basics",
+      "heroHighlight": "Checklist",
+      "heroSubtitle": "Check करें कि आपके maintained Google Business Profile facts customers के लिए ready हैं और one current customer link से connected हैं.",
+      "trust0": "Self-report only",
+      "trust1": "Google open नहीं होता",
+      "trust2": "Ranking promise नहीं",
+      "formTitle": "Profile basics check करें",
+      "formSubtitle": "जो facts आपके maintained profile पर already clear हैं उन्हें mark करें.",
+      "fields": {
+        "businessName": "Business name",
+        "cityOrArea": "City or area",
+        "websiteOrCustomerLink": "Website या current customer link"
+      },
+      "factsLegend": "आपके Google profile पर क्या clear है?",
+      "facts": {
+        "profileClaimedOrVerified": "Profile access claimed या verified है",
+        "nameMatchesRealWorld": "Business name real business name से match करता है",
+        "primaryCategorySet": "Primary category set है",
+        "addressOrServiceAreaClear": "Address या service area clear है",
+        "hoursCurrent": "Hours current हैं",
+        "phoneOrMessagePresent": "Phone या message action present है",
+        "menuOrServiceLinkPresent": "Menu, service, catalog या rate-card link present है",
+        "orderBookingOrActionPresent": "Order, booking, reservation या enquiry link जहां needed है वहां present है",
+        "photosPresent": "Logo, storefront, product या service photos present हैं"
+      },
+      "runCheck": "Checklist run करें",
+      "reset": "Reset",
+      "resultsEyebrow": "Report",
+      "resultsTitle": "Google को connect रखें",
+      "resultsHighlight": "one current link से",
+      "resultsSubtitle": "Report दिखाता है कि owner-entered fields से कौन से Google-profile basics clear हैं और कौन से facts पहले MenuList में fix होने चाहिए.",
+      "learnMore": "Official Business Page देखें",
+      "reportEyebrow": "Checklist result",
+      "summaryLabel": "Google profile basics checklist summary",
+      "emptyTitle": "Checklist के बाद report दिखेगा",
+      "emptyBody": "यह tool owner-entered fields only check करता है. यह Google Search, Google Maps या Business Profile को open, fetch, inspect, verify या update नहीं करता.",
+      "boundary0": "Google open नहीं होता",
+      "boundary1": "Profile change नहीं होता",
+      "boundary2": "Ranking promise नहीं",
+      "statuses": {
+        "ready": {
+          "title": "Profile basics ready लगते हैं",
+          "description": "Owner-entered facts core public profile basics cover करते हैं. Current customer link profile के पीछे रखें."
+        },
+        "missing_basics": {
+          "title": "Important profile basics missing हैं",
+          "description": "कई owner-entered basics missing हैं. One current customer link create करें और उसे Google profile actions के पीछे source बनाएं."
+        },
+        "unclear": {
+          "title": "कुछ profile basics unclear हैं",
+          "description": "Profile में कुछ basics हैं, लेकिन एक या अधिक customer facts को clearer current source चाहिए."
+        },
+        "not_checked": {
+          "title": "Profile check नहीं हुआ",
+          "description": "कोई external profile inspect नहीं हुआ. Local report बनाने के लिए maintained facts enter करें."
+        },
+        "manual_review_needed": {
+          "title": "Manual review needed",
+          "description": "इस profile setup पर भरोसा करने से पहले person review कर सकता है."
+        }
+      },
+      "results": {
+        "present": "Present",
+        "missing": "Missing",
+        "unclear": "Unclear",
+        "not_applicable": "Not needed",
+        "not_checked": "Not checked"
+      },
+      "summary": {
+        "present": "{count} present",
+        "missing": "{count} missing",
+        "unclear": "{count} unclear",
+        "notChecked": "{count} not checked"
+      },
+      "checks": {
+        "profile_access": {
+          "label": "Profile access",
+          "helper": "Owner Business Profile maintain कर सकता है या verified/claimed access है."
+        },
+        "business_identity": {
+          "label": "Business identity",
+          "helper": "Business name और area clear हैं और real business से match करते हैं."
+        },
+        "category": {
+          "label": "Primary category",
+          "helper": "Business के लिए specific primary category set है."
+        },
+        "address_or_service_area": {
+          "label": "Address या service area",
+          "helper": "Customers समझ सकते हैं कि business कहाँ located है या कहाँ serve करता है."
+        },
+        "hours": {
+          "label": "Current hours",
+          "helper": "Regular hours customers के लिए current enough हैं."
+        },
+        "contact_and_website": {
+          "label": "Contact और website link",
+          "helper": "Phone/message action और one current customer link present हैं."
+        },
+        "menu_or_service_link": {
+          "label": "Menu या service link",
+          "helper": "Profile customers को current menu, service list, catalog, package या rate card तक भेजता है."
+        },
+        "customer_action_links": {
+          "label": "Customer action links",
+          "helper": "Order, booking, reservation, enquiry या visit action जहाँ needed है वहां clear है."
+        },
+        "photos": {
+          "label": "Photos और visual identity",
+          "helper": "Profile में enough visual proof है ताकि customers business पहचान सकें."
+        },
+        "google_profile_inspection": {
+          "label": "Google inspection",
+          "helper": "यह row boundary confirm करती है: Google Search, Maps और Business Profile inspect नहीं हुए."
+        }
+      },
+      "nextActions": {
+        "create_customer_link": {
+          "title": "One current customer link use करें",
+          "description": "MenuList को Google profile website, menu, service, order, booking या enquiry link के पीछे source रखें.",
+          "cta": "Create customer link"
+        },
+        "complete_profile_basics": {
+          "title": "पहले source complete करें",
+          "description": "Google या दूसरे public profiles पर link रखने से पहले MenuList में current customer link create करें.",
+          "cta": "Create customer link"
+        },
+        "manual_review": {
+          "title": "Setup help request करें",
+          "description": "Google पर customer link रखने से पहले report को setup checklist की तरह use करें.",
+          "cta": "Start setup"
+        }
+      },
+      "reportActions": {
+        "title": "इस report का use करें",
+        "body": "Setup handoff के लिए checklist copy या download करें.",
+        "copy": "Copy",
+        "download": "Download",
+        "statuses": {
+          "copied": "Report copied.",
+          "downloaded": "Report downloaded.",
+          "copy_failed": "Copy failed.",
+          "download_failed": "Download failed."
+        }
+      },
+      "export": {
+        "title": "Google Profile Basics Checklist report",
+        "business": "Business",
+        "city": "City or area",
+        "status": "Status",
+        "generatedAt": "Generated at",
+        "summary": "Summary",
+        "checks": "Checks",
+        "nextStep": "Next step",
+        "boundary": "Boundary: owner-entered fields only checked. Google Search, Google Maps, Business Profile, external URLs, rankings और AI answers inspect या change नहीं हुए.",
+        "notProvided": "Not provided"
+      },
+      "handoff": {
+        "title": "MenuList को भेजें",
+        "body": "जब profile source को one current customer link में बदलने में help चाहिए तब checklist share करें.",
+        "name": "Name",
+        "email": "Work email",
+        "phone": "Phone या WhatsApp",
+        "website": "Website",
+        "consentPrefix": "मैं ",
+        "privacy": "Privacy Policy",
+        "consentMiddle": " और ",
+        "terms": "Terms of Service",
+        "consentSuffix": " से agree करता/करती हूं.",
+        "nameRequired": "Name enter करें.",
+        "emailRequired": "Valid email enter करें.",
+        "consentRequired": "Consent required है.",
+        "securityCheckRequired": "Security check complete करें.",
+        "securityCheckLoadFailed": "Security check temporarily unavailable है.",
+        "submit": "Send report",
+        "submitting": "Sending",
+        "success": "Report sent.",
+        "submitFailed": "Report send नहीं हुआ. Try again."
+      }
+    },
+    "ToolsHubPage": {
+      "eyebrow": "MenuList Tools",
+      "heroTitle": "Public business truth के लिए MenuList Tools",
+      "heroHighlight": "Public business truth",
+      "heroSubtitle": "SMB owners के लिए free checks ताकि menu, service list, hours, QR, WhatsApp, photos, prices और customer link customers के action लेने से पहले clear रहें।",
+      "heroPrimary": "Public Truth Check शुरू करें",
+      "heroSecondary": "Customer link बनाएं",
+      "panel": {
+        "title": "Small checks जो one current source तक ले जाते हैं",
+        "body": "हर tool एक concrete public gap दिखाता है, क्या check हुआ साफ बताता है, और owner को MenuList fix path देता है."
+      },
+      "statsLabel": "MenuList Tools summary",
+      "stats": {
+        "toolCount": {
+          "label": "free public checks"
+        },
+        "browserLocal": {
+          "value": "V0",
+          "label": "browser-local by default"
+        },
+        "fixPath": {
+          "value": "1 link",
+          "label": "MenuList fix path"
+        }
+      },
+      "groupsEyebrow": "Owner job चुनें",
+      "groupsTitle": "जिस public gap से problem है, वही check चुनें",
+      "groupsHighlight": "public gap",
+      "groupsSubtitle": "Problem पता है तो direct check खोलें. Source scattered है तो Public Truth Check से शुरू करें.",
+      "toolCount": "{count} tools",
+      "groups": {
+        "publicTruth": {
+          "title": "Public Truth",
+          "description": "Customer trust, call, visit, order या ask करने से पहले जरूरी facts check करें."
+        },
+        "menuServiceClarity": {
+          "title": "Menu / Service Clarity",
+          "description": "Pasted menu, service, catalog, package और price-list material को clearer customer information में बदलने की readiness check करें."
+        },
+        "customerActionReadiness": {
+          "title": "Customer Action Readiness",
+          "description": "Check करें कि customers scan, tap, message, book, call, visit या order बिना confusion कर सकते हैं."
+        },
+        "trustSetup": {
+          "title": "Trust / Setup",
+          "description": "Simple setup gaps खोजें जिनसे public page incomplete या hard to trust लगता है."
+        }
+      },
+      "ownerPaths": {
+        "create": "One customer link बनाएं",
+        "fix": "MenuList में fix करें",
+        "review": "Current link review करें"
+      },
+      "tools": {
+        "publicTruthCheck": {
+          "meta": "Truth basics",
+          "title": "Public Truth Check",
+          "description": "Check करें कि public source में name, list, prices, hours, location, contact, action और current link basics हैं या नहीं."
+        },
+        "customerQuestionCoverageCheck": {
+          "meta": "Questions",
+          "title": "Customer Question Coverage Check",
+          "description": "Pasted public text customers के action से पहले पूछे जाने वाले questions answer करता है या नहीं, check करें."
+        },
+        "customerLinkPreview": {
+          "meta": "One link",
+          "title": "One Customer Link Preview",
+          "description": "Check करें कि one customer-facing link में call, visit, order, book या ask से पहले जरूरी basics हैं या नहीं."
+        },
+        "googleProfileBasicsChecklist": {
+          "meta": "Google profile handoff",
+          "title": "Google Profile Basics Checklist",
+          "description": "Owner-confirmed Google profile basics से check करें कि profile customers को one current source तक भेजता है."
+        },
+        "menuReadabilityCheck": {
+          "meta": "Readable list",
+          "title": "Menu / Service Readability Check",
+          "description": "Menu, service, catalog, rate-card या package text paste करके देखें कि customers उसे समझ पाएंगे या नहीं."
+        },
+        "priceAvailabilityGapCheck": {
+          "meta": "Prices and availability",
+          "title": "Price & Availability Gap Check",
+          "description": "Pasted source text में unclear prices, rates, variants, unavailable items और quote paths खोजें."
+        },
+        "menuPdfCleanupCheck": {
+          "meta": "Old PDF",
+          "title": "Menu PDF Cleanup Check",
+          "description": "Check करें कि old PDF को one current customer link से replace करना चाहिए या नहीं."
+        },
+        "qrLinkHealthCheck": {
+          "meta": "QR target",
+          "title": "QR Link Health Check",
+          "description": "Check करें कि pasted QR target सही current customer link जैसा दिखता है या नहीं."
+        },
+        "bookingInquiryReadinessCheck": {
+          "meta": "Next action",
+          "title": "Booking / Inquiry Readiness Check",
+          "description": "Check करें कि customers clearly order, book, reserve, call, message, quote request या visit कर सकते हैं."
+        },
+        "whatsappActionLinkCheck": {
+          "meta": "WhatsApp",
+          "title": "WhatsApp Action Link Check",
+          "description": "Check करें कि customers WhatsApp से one tap में message, order, book या ask कर सकते हैं."
+        },
+        "hoursCheck": {
+          "meta": "Hours",
+          "title": "Hours & Holiday Hours Check",
+          "description": "Regular hours, closed days, holiday hours, timing context और fallback contact clear हैं या नहीं, check करें."
+        },
+        "photoGapCheck": {
+          "meta": "Visual proof",
+          "title": "Photo / Visual Identity Gap Check",
+          "description": "Logo, cover, location, product, service, team या page photos customers के लिए ready हैं या नहीं, check करें."
+        },
+        "socialBioLinkCheck": {
+          "meta": "Social bio links",
+          "title": "Social Bio Link Consistency Check",
+          "description": "Check करें कि social bios, public profiles, website links, QR codes और print materials one current customer link पर point करते हैं या नहीं."
+        }
+      },
+      "boundaryEyebrow": "Tool boundary",
+      "boundaryTitle": "Clear checks, clear limits",
+      "boundaryHighlight": "clear limits",
+      "boundarySubtitle": "Hub सिर्फ index है. Individual tools evidence text और report boundaries अपने check के हिसाब से रखते हैं.",
+      "boundaries": {
+        "checked": {
+          "title": "Owner-entered या pasted source only",
+          "body": "Public V0 tools owner-entered fields use करते हैं. वे silently external websites, Google profiles, social profiles या search results inspect नहीं करते."
+        },
+        "notChecked": {
+          "title": "No ranking or citation promise",
+          "body": "Reports search ranking, answer placement, external platform updates या AI citations promise नहीं करते."
+        },
+        "nextAction": {
+          "title": "Useful gap MenuList पर वापस आता है",
+          "body": "Fix path one current customer link, Business Health, Official Business Page completion, QR/share readiness या setup help है."
+        }
+      },
+      "finalEyebrow": "Fix path",
+      "finalTitle": "Destination one current customer link है",
+      "finalBody": "Free check से public gap खोजें, फिर MenuList customer link create या clean up करें ताकि facts current रहें.",
+      "finalPrimary": "Customer link बनाएं",
+      "finalSecondary": "Business Health देखें"
+    },
+    "CustomerLinkPreviewPage": {
+      "eyebrow": "MenuList Tools",
+      "heroTitle": "One Customer Link Preview",
+      "heroSubtitle": "Check करें कि एक customer-facing business link में call, visit, order, book या question पूछने से पहले जरूरी basics साफ हैं या नहीं।",
+      "heroPrimary": "Link preview करें",
+      "heroSecondary": "Customer link बनाएं",
+      "heroCardTitle": "Customer को ढूंढना नहीं पड़ना चाहिए.",
+      "heroCardBody": "Owner-entered details से देखें कि identity, list, prices, hours, contact, action और visual proof एक जगह हैं या नहीं।",
+      "trust0": "Owner-entered only",
+      "trust1": "No link fetch",
+      "trust2": "No ranking promise",
+      "formEyebrow": "Self-check",
+      "formTitle": "Customer क्या देखेगा?",
+      "formSubtitle": "Current link या planned public source डालें, फिर customer को दिखने वाले facts mark करें।",
+      "fields": {
+        "businessName": "Business name",
+        "businessNamePlaceholder": "Example: Blue Spoon Cafe",
+        "cityOrArea": "City या area",
+        "cityOrAreaPlaceholder": "Example: Pune, Baner",
+        "businessKind": "Business type",
+        "currentCustomerLink": "Current customer link",
+        "currentCustomerLinkPlaceholder": "https://your-link.example/menu"
+      },
+      "businessKinds": {
+        "restaurant": "Restaurant या food business",
+        "service": "Service business",
+        "retail": "Retail या catalog business",
+        "clinic": "Clinic या health service",
+        "salon": "Salon या beauty service",
+        "other": "Other local business"
+      },
+      "factsLegend": "Customer link पर visible facts",
+      "facts": {
+        "businessNameVisible": "Business name और area clear हैं",
+        "menuOrServiceVisible": "Menu, services, catalog या packages visible हैं",
+        "pricesOrRatesVisible": "Prices, rates या quote path clear है",
+        "hoursVisible": "Hours या availability clear है",
+        "locationVisible": "Address, area, delivery zone या service area clear है",
+        "contactVisible": "Phone, WhatsApp, email या contact path clear है",
+        "customerActionVisible": "Customer order, book, call, message, visit या quote request कर सकता है",
+        "photosOrIdentityVisible": "Logo, cover, product, service, team या place photo present है",
+        "mobileFriendly": "Phone से read और act करना आसान है"
+      },
+      "submit": "Preview report बनाएं",
+      "reportEyebrow": "Preview report",
+      "statuses": {
+        "ready": {
+          "title": "Customer link review के लिए ready है",
+          "description": "Owner-entered fields से required basics present हैं. Customer actions के पीछे one current MenuList link रखें."
+        },
+        "missing_basics": {
+          "title": "Customer link में basics missing हैं",
+          "description": "कई required facts missing या unclear हैं. Link को widely share करने से पहले public source fix करें."
+        },
+        "unclear": {
+          "title": "Customer link cleanup चाहता है",
+          "description": "कुछ required facts visible हैं, लेकिन customer path अभी भी enough clear नहीं है."
+        },
+        "not_checked": {
+          "title": "Customer link check नहीं हुआ",
+          "description": "Useful report के लिए owner-entered details चाहिए."
+        },
+        "manual_review_needed": {
+          "title": "Manual review चाहिए",
+          "description": "Link को ready मानने से पहले details को human setup pass चाहिए."
+        }
+      },
+      "summaryLabel": "Customer link preview summary",
+      "summary": {
+        "present": "{count} present",
+        "missing": "{count} missing",
+        "unclear": "{count} unclear",
+        "notChecked": "{count} not checked"
+      },
+      "results": {
+        "present": "Present",
+        "missing": "Missing",
+        "unclear": "Unclear",
+        "not_applicable": "Not needed",
+        "not_checked": "Not checked"
+      },
+      "preview": {
+        "ariaLabel": "Local customer link preview",
+        "label": "Local preview",
+        "visibleFacts": "{count} visible facts"
+      },
+      "checks": {
+        "customer_link_present": {
+          "label": "Customer link",
+          "helper": "Customer के पास one current place होना चाहिए, scattered screenshots, PDFs और profile links नहीं."
+        },
+        "business_identity": {
+          "label": "Business identity",
+          "helper": "Customer next step लेने से पहले business name और area clear होने चाहिए."
+        },
+        "menu_or_service_summary": {
+          "label": "Menu या service list",
+          "helper": "Customer को same link से समझना चाहिए कि business क्या बेचता या provide करता है."
+        },
+        "prices_or_rates": {
+          "label": "Prices या rates",
+          "helper": "जहां relevant हो, prices, rates, packages या quote path clear होना चाहिए."
+        },
+        "hours": {
+          "label": "Hours या availability",
+          "helper": "Customer को पता होना चाहिए कि कब visit, order, book या reply expect कर सकते हैं."
+        },
+        "location": {
+          "label": "Location या service area",
+          "helper": "Public link में address, area, delivery zone या service area समझना आसान होना चाहिए."
+        },
+        "contact": {
+          "label": "Contact path",
+          "helper": "Phone, WhatsApp, email या contact route obvious होना चाहिए."
+        },
+        "customer_action": {
+          "label": "Customer action",
+          "helper": "Next step visible होना चाहिए: call, message, order, book, visit या quote request."
+        },
+        "visual_identity": {
+          "label": "Visual identity",
+          "helper": "Basic photos या identity cues customer को सही जगह पहचानने में मदद करते हैं."
+        },
+        "mobile_readiness": {
+          "label": "Mobile readability",
+          "helper": "ज्यादातर customers phone से links खोलते हैं, इसलिए page read और act करने में easy होना चाहिए."
+        },
+        "external_link_inspection": {
+          "label": "External inspection",
+          "helper": "यह V0 tool external links open, fetch, inspect या verify नहीं करता."
+        }
+      },
+      "nextActions": {
+        "create_customer_link": {
+          "title": "One current customer link बनाएं",
+          "description": "Visible facts को one MenuList source में move करें जिसे customers QR, Google, WhatsApp, social bios और print से use कर सकें.",
+          "cta": "Customer link बनाएं"
+        },
+        "complete_customer_facts": {
+          "title": "Public facts complete करें",
+          "description": "Link को ज्यादा share करने से पहले missing customer-facing details add करें.",
+          "cta": "MenuList में complete करें"
+        },
+        "review_customer_link": {
+          "title": "Current link review करें",
+          "description": "Owner-entered fields से basics ready लगते हैं. इसे current customer link के रूप में रखें.",
+          "cta": "Link create या review करें"
+        }
+      },
+      "reportActions": {
+        "title": "Report रखें",
+        "body": "Checklist को team, agency या setup notes के लिए copy या download करें.",
+        "copy": "Report copy करें",
+        "download": "Report download करें",
+        "statuses": {
+          "copied": "Report copied.",
+          "downloaded": "Report downloaded.",
+          "copy_failed": "Report copy नहीं हुआ.",
+          "download_failed": "Report download नहीं हुआ."
+        }
+      },
+      "export": {
+        "title": "One Customer Link Preview report",
+        "business": "Business",
+        "city": "City या area",
+        "businessKind": "Business type",
+        "status": "Status",
+        "generatedAt": "Generated at",
+        "summary": "Summary",
+        "preview": "Preview",
+        "visibleFacts": "Visible facts",
+        "customerLink": "Customer link",
+        "checks": "Checks",
+        "nextStep": "Next step",
+        "boundary": "Boundary: owner-entered fields only. External links, websites, profiles, search results और AI answers open, fetch, inspect या change नहीं हुए.",
+        "notProvided": "Not provided"
+      },
+      "handoff": {
+        "title": "Link create करने में help चाहिए?",
+        "body": "Consent के साथ यह report MenuList को भेजें. Report सिर्फ form submit करने के बाद भेजी जाती है.",
+        "name": "Your name",
+        "email": "Work email",
+        "phone": "Phone या WhatsApp",
+        "website": "Current website या link",
+        "consent": "मैं follow-up के लिए यह report और contact details MenuList के साथ share करने से agree करता/करती हूं.",
+        "submit": "Help request करें",
+        "submitting": "Sending",
+        "submitted": "Request sent. हम follow up करेंगे.",
+        "nameRequired": "अपना name डालें.",
+        "emailRequired": "Valid work email डालें.",
+        "consentRequired": "Send करने से पहले consent required है.",
+        "securityCheckRequired": "Send करने से पहले security check complete करें.",
+        "submitFailed": "Request send नहीं हो पाया. Please try again."
+      },
+      "empty": {
+        "title": "Preview checklist के बाद दिखेगा",
+        "body": "यह tool owner-entered fields only use करता है. यह customer link या external profile open, fetch, inspect, verify या update नहीं करता.",
+        "boundary0": "No external fetch",
+        "boundary1": "No report storage",
+        "boundary2": "No ranking promise"
+      }
+    },
+    "ToolReportPage": {
+      "eyebrow": "MenuList Tools",
+      "heroTitle": "Shareable tool report",
+      "heroSubtitle": "Checked facts, evidence text, clear limits और next MenuList action के साथ public MenuList tool report खोलें.",
+      "heroPrimary": "Free tool चलाएं",
+      "heroSecondary": "Customer link बनाएं",
+      "heroCardTitle": "Free tool से report link.",
+      "heroCardBody": "Report दिखाता है कि क्या check हुआ, क्या check नहीं हुआ, और उसके बाद practical job list क्या है.",
+      "trust0": "Public link",
+      "trust1": "Clear evidence",
+      "trust2": "Natural next step",
+      "summaryLabel": "Tool report summary",
+      "summary": {
+        "primary": "{count} {label}",
+        "present": "{count} present",
+        "missing": "{count} missing",
+        "unclear": "{count} unclear",
+        "notChecked": "{count} not checked"
+      },
+      "results": {
+        "present": "Present",
+        "missing": "Missing",
+        "unclear": "Unclear",
+        "not_applicable": "Not applicable",
+        "not_checked": "Not checked"
+      },
+      "sourcePreview": {
+        "ariaLabel": "Shareable report source preview",
+        "label": "Report context",
+        "defaultBusiness": "Business not provided",
+        "defaultContext": "Public tool report",
+        "generated": "Generated"
+      },
+      "reportActions": {
+        "title": "इस report को share या keep करें",
+        "body": "Public report link copy करें, report text copy करें, या setup handoff के लिए report download करें.",
+        "copyLink": "Link copy करें",
+        "copyReport": "Report copy करें",
+        "download": "Report download करें",
+        "statuses": {
+          "link_copied": "Report link copied.",
+          "report_copied": "Report copied.",
+          "downloaded": "Report downloaded.",
+          "action_failed": "यह action complete नहीं हो पाया."
+        }
+      },
+      "delivery": {
+        "title": "इस report को follow-up के लिए भेजें",
+        "body": "Report details MenuList को share करें ताकि हम next setup step के साथ reply कर सकें. Public report link open और ungated रहता है.",
+        "name": "Name",
+        "email": "Work email",
+        "phone": "Phone या WhatsApp",
+        "website": "Website",
+        "consentPrefix": "मैं agree करता/करती हूं कि MenuList इस report के बारे में मुझसे contact कर सकता है और मैं ",
+        "privacy": "privacy policy",
+        "consentMiddle": " और ",
+        "terms": "terms",
+        "consentSuffix": " accept करता/करती हूं.",
+        "submit": "Report follow-up के लिए भेजें",
+        "submitting": "Sending",
+        "success": "Report भेज दी गई. हम इसे follow-up context के रूप में use करेंगे.",
+        "nameRequired": "Name enter करें.",
+        "emailRequired": "Valid email enter करें.",
+        "consentRequired": "Report भेजने से पहले agree करें.",
+        "securityCheckRequired": "भेजने से पहले security check complete करें.",
+        "securityCheckLoadFailed": "Security check load नहीं हुआ. Page refresh करके फिर try करें.",
+        "submitFailed": "अभी send नहीं हो पाया. Report link copy करें या बाद में try करें."
+      },
+      "boundaryTitle": "Report limits",
+      "empty": {
+        "eyebrow": "Report link",
+        "title": "Tool से report खोलें",
+        "body": "Public MenuList tool run करें और report दिखने के बाद Copy public report link use करें.",
+        "nextTitle": "Free check से start करें",
+        "nextBody": "हर report next MenuList action पर जाने से पहले checked facts और limits visible रखता है.",
+        "cta": "Free tools देखें"
+      },
+      "invalid": {
+        "title": "Report link open नहीं हो पाया",
+        "body": "Report payload missing, incomplete, too large, या supported MenuList tool report नहीं है."
+      }
+    },
+    "PublicTruthToolSharedReport": {
+      "checkedSourceText": "Owner-entered fields only check हुए.",
+      "notCheckedText": "कोई external source open, fetch, inspect, store या change नहीं हुआ.",
+      "primaryLabel": "gaps या unclear items",
+      "boundary0": "Report shared link payload में रहता है. V0 में MenuList कोई report record store नहीं करता.",
+      "boundary1": "Owner-entered fields browser में locally check हुए.",
+      "boundary2": "External sources, profiles, websites, QR targets, files, search results और AI answers inspect नहीं हुए, जब तक source tool clearly न कहे.",
+      "boundary3": "Report rankings, citations, traffic या external platform updates का promise नहीं करता.",
+      "reportActions": {
+        "shareLink": "Public report link copy करें",
+        "statuses": {
+          "share_copied": "Public report link copied.",
+          "share_copy_failed": "Public report link copy नहीं हुआ."
+        }
+      }
+    },
+    "SocialBioLinkCheckPage": {
+      "eyebrow": "MenuList Tools",
+      "heroTitle": "Social Bio Link Consistency Check",
+      "heroSubtitle": "Check करें कि social bios, profiles, website links, QR codes और print materials customers को one current customer link तक ले जाते हैं या नहीं।",
+      "heroPrimary": "Social links check करें",
+      "heroSecondary": "Customer link बनाएं",
+      "heroCardTitle": "हर public path same current link तक जाना चाहिए.",
+      "heroCardBody": "Owner-confirmed facts से old links, missing profile placements और unclear customer actions खोजें.",
+      "trust0": "Owner-confirmed only",
+      "trust1": "No profile inspection",
+      "trust2": "No ranking promise",
+      "formEyebrow": "Self-check",
+      "formTitle": "Customer link कहां दिखता है?",
+      "formSubtitle": "Current customer link डालें, फिर mark करें कि आपने उसे कहां लगाया है.",
+      "fields": {
+        "businessName": "Business name",
+        "businessNamePlaceholder": "Example: Blue Spoon Cafe",
+        "cityOrArea": "City या area",
+        "cityOrAreaPlaceholder": "Example: Pune, Baner",
+        "currentCustomerLink": "Current customer link",
+        "currentCustomerLinkPlaceholder": "https://your-link.example/menu"
+      },
+      "placementsLegend": "Places जहां current customer link use हो रहा है",
+      "placementsForm": {
+        "instagramBioUsesCustomerLink": "Instagram bio इस link पर point करता है",
+        "facebookPageUsesCustomerLink": "Facebook page इस link पर point करता है",
+        "whatsappProfileUsesCustomerLink": "WhatsApp Business profile इस link पर point करता है",
+        "googleProfileUsesCustomerLink": "Google profile website या menu field इस link पर point करता है",
+        "websiteUsesCustomerLink": "Website, landing page या domain इस link पर point करता है",
+        "qrOrPrintUsesCustomerLink": "QR codes या printed materials इस link पर point करते हैं"
+      },
+      "cleanupLegend": "Cleanup और customer action",
+      "cleanup": {
+        "oldLinksRemoved": "Old menu links, PDFs और profile links remove या replace हो चुके हैं",
+        "actionClear": "Customers link से clearly call, message, order, book, visit या ask कर सकते हैं"
+      },
+      "submit": "Consistency report बनाएं",
+      "reportEyebrow": "Consistency report",
+      "statuses": {
+        "ready": {
+          "title": "Social links consistent लगते हैं",
+          "description": "Owner-confirmed placements one customer link पर point करते हैं और customer action clear है."
+        },
+        "missing_basics": {
+          "title": "Social links में basics missing हैं",
+          "description": "Current customer link, कम से कम one placement, या customer action missing है."
+        },
+        "unclear": {
+          "title": "Social links cleanup चाहते हैं",
+          "description": "Link present है, लेकिन old links या limited placements customers को confuse कर सकते हैं."
+        },
+        "not_checked": {
+          "title": "Social links check नहीं हुए",
+          "description": "Useful report के लिए owner-entered details चाहिए."
+        },
+        "manual_review_needed": {
+          "title": "Manual review चाहिए",
+          "description": "Profile link setup को ready मानने से पहले human setup pass चाहिए."
+        }
+      },
+      "summaryLabel": "Social bio link consistency summary",
+      "summary": {
+        "present": "{count} present",
+        "missing": "{count} missing",
+        "unclear": "{count} unclear",
+        "notChecked": "{count} not checked"
+      },
+      "results": {
+        "present": "Present",
+        "missing": "Missing",
+        "unclear": "Unclear",
+        "not_checked": "Not checked"
+      },
+      "placementPreview": {
+        "ariaLabel": "Local social bio link placement preview",
+        "label": "Local placement preview",
+        "defaultBusiness": "Your business",
+        "defaultArea": "Public customer paths",
+        "placementCount": "{count} placements confirmed"
+      },
+      "placements": {
+        "instagram": "Instagram bio",
+        "facebook": "Facebook page",
+        "whatsapp": "WhatsApp Business profile",
+        "google": "Google profile",
+        "website": "Website या landing page",
+        "qr_or_print": "QR या print materials",
+        "none": "No placement confirmed"
+      },
+      "checks": {
+        "customer_link_present": {
+          "label": "Current customer link",
+          "helper": "Social bios और profiles update करने से पहले one current customer-facing link होना चाहिए."
+        },
+        "instagram_bio_link": {
+          "label": "Instagram bio link",
+          "helper": "Customers Instagram से discover करते हैं तो bio उन्हें current customer link तक भेजना चाहिए."
+        },
+        "facebook_page_link": {
+          "label": "Facebook page link",
+          "helper": "Facebook page में old menu, PDF, domain या campaign link main customer path नहीं रहना चाहिए."
+        },
+        "whatsapp_profile_link": {
+          "label": "WhatsApp Business profile link",
+          "helper": "WhatsApp profile से current menu, services, booking या order path open करना आसान होना चाहिए."
+        },
+        "google_profile_link": {
+          "label": "Google profile link",
+          "helper": "Owner-maintained Google profile website या menu fields customers को current source तक भेजने चाहिए."
+        },
+        "website_link": {
+          "label": "Website या landing page link",
+          "helper": "Website, landing page या domain current customer link से contradict नहीं करना चाहिए."
+        },
+        "qr_print_link": {
+          "label": "QR और print links",
+          "helper": "Printed QR codes, table cards, flyers और signs same current source तक जाने चाहिए."
+        },
+        "old_link_cleanup": {
+          "label": "Old link cleanup",
+          "helper": "Old PDFs, outdated menus, temporary campaign links और stale profile links remove या replace होने चाहिए."
+        },
+        "customer_action": {
+          "label": "Customer action",
+          "helper": "Next step clear होना चाहिए: call, message, order, book, visit या ask."
+        },
+        "external_social_inspection": {
+          "label": "External social inspection",
+          "helper": "यह V0 tool social profiles या external pages open, fetch, inspect, verify या update नहीं करता."
+        }
+      },
+      "nextActions": {
+        "create_customer_link": {
+          "title": "One current customer link बनाएं",
+          "description": "पहले MenuList link बनाएं, फिर वही link social bios, public profiles, QR codes और print materials में लगाएं.",
+          "cta": "Customer link बनाएं"
+        },
+        "place_customer_link": {
+          "title": "Current link place करें",
+          "description": "जहां customers already business find करते हैं, वहां same customer link add करें.",
+          "cta": "Link create या place करें"
+        },
+        "clean_up_old_links": {
+          "title": "Old links clean up करें",
+          "description": "Stale PDFs, old menus, temporary links और outdated profile links को current customer link से replace करें.",
+          "cta": "Cleanup plan बनाएं"
+        },
+        "review_customer_link": {
+          "title": "Current link review करें",
+          "description": "Owner-confirmed placements consistent लगते हैं. Facts change हों तो MenuList customer link current रखें.",
+          "cta": "Link create या review करें"
+        }
+      },
+      "reportActions": {
+        "title": "Report रखें",
+        "body": "Checklist को team, agency या setup notes के लिए copy या download करें.",
+        "copy": "Report copy करें",
+        "shareLink": "Public report link copy करें",
+        "download": "Report download करें",
+        "statuses": {
+          "copied": "Report copied.",
+          "downloaded": "Report downloaded.",
+          "share_copied": "Public report link copied.",
+          "copy_failed": "Report copy नहीं हुआ.",
+          "download_failed": "Report download नहीं हुआ.",
+          "share_copy_failed": "Public report link copy नहीं हुआ."
+        }
+      },
+      "export": {
+        "title": "Social Bio Link Consistency Check report",
+        "business": "Business",
+        "city": "City या area",
+        "status": "Status",
+        "generatedAt": "Generated at",
+        "summary": "Summary",
+        "placements": "Placements",
+        "placementCount": "Confirmed placements",
+        "customerLink": "Customer link",
+        "highestPriorityPlacement": "Top confirmed placement",
+        "checks": "Checks",
+        "nextStep": "Next step",
+        "boundary": "Boundary: owner-confirmed fields only. Social profiles, websites, QR codes, print materials, search results और AI answers open, fetch, inspect, store या change नहीं हुए.",
+        "notProvided": "Not provided"
+      },
+      "shareReport": {
+        "checkedSourceText": "Owner-entered social link placement facts only check हुए.",
+        "notCheckedText": "कोई social profile, website, QR code, print material, search result या AI answer open, fetch, inspect, store या change नहीं हुआ.",
+        "primaryLabel": "gaps या unclear items",
+        "boundary0": "Report shared link payload में रहता है. V0 में MenuList कोई report record store नहीं करता.",
+        "boundary1": "Owner-entered fields browser में locally check हुए.",
+        "boundary2": "External profiles, websites, QR targets, print materials, search results और AI answers inspect नहीं हुए.",
+        "boundary3": "Report rankings, citations, traffic या external platform updates का promise नहीं करता."
+      },
+      "handoff": {
+        "title": "Links cleanup करने में help चाहिए?",
+        "body": "Consent के साथ यह report MenuList को भेजें. Report सिर्फ form submit करने के बाद भेजी जाती है.",
+        "name": "Your name",
+        "email": "Work email",
+        "phone": "Phone या WhatsApp",
+        "website": "Current website या link",
+        "consent": "मैं follow-up के लिए यह report और contact details MenuList के साथ share करने से agree करता/करती हूं.",
+        "submit": "Help request करें",
+        "submitting": "Sending",
+        "submitted": "Request sent. हम follow up करेंगे.",
+        "nameRequired": "अपना name डालें.",
+        "emailRequired": "Valid work email डालें.",
+        "consentRequired": "Send करने से पहले consent required है.",
+        "securityCheckRequired": "Send करने से पहले security check complete करें.",
+        "submitFailed": "Request send नहीं हो पाया. Please try again."
+      },
+      "empty": {
+        "title": "Report checklist के बाद दिखेगा",
+        "body": "यह tool owner-confirmed fields only use करता है. यह कोई social profile या external link open, fetch, inspect, verify, store या update नहीं करता.",
+        "boundary0": "No profile inspection",
+        "boundary1": "No report storage",
+        "boundary2": "No ranking promise"
+      }
     }
   },
   "MobileProjectSelector": {

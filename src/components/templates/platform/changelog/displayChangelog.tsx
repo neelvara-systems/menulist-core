@@ -7,6 +7,7 @@ import { helpCenterTabRouting } from '@constant/navigations';
 import { loadOlderChangelogPage } from '@database/changelog';
 import { useAppDispatch } from '@hook/useAppDispatch';
 import { useChangelogCache } from '@hook/useChangelogCache';
+import { logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { getTextFromTiptapJson } from '@lib/tiptap';
 import { startLoader, stopLoader } from '@reduxSlices/loader';
 import { ChangelogEntry, ChangelogPage } from '@type/changelog';
@@ -86,11 +87,21 @@ function DisplayChangelog({
         try {
             const stored = localStorage.getItem(LAST_VIEWED_KEY);
             lastViewedRef.current = stored ? parseInt(stored, 10) : 0;
-        } catch { /* localStorage unavailable */ }
+        } catch (error) {
+            logRuntimeFailure('platform_changelog_last_viewed_read_failed', error, {
+                surface: 'platform_changelog_display',
+            });
+        }
 
         // Update lastViewed after 2s delay so user sees "New" badges first
         const timer = setTimeout(() => {
-            try { localStorage.setItem(LAST_VIEWED_KEY, Date.now().toString()); } catch { }
+            try {
+                localStorage.setItem(LAST_VIEWED_KEY, Date.now().toString());
+            } catch (error) {
+                logRuntimeFailure('platform_changelog_last_viewed_write_failed', error, {
+                    surface: 'platform_changelog_display',
+                });
+            }
         }, 2000);
         return () => clearTimeout(timer);
     }, []);

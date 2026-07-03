@@ -6,13 +6,15 @@ import {
     searchAnswerlatticeEntityLookupOptions,
 } from '@lib/answerlattice/entityLookup';
 import {
+    getAnswerlatticeKnowledgeIntakeClientErrorMessage,
     getAnswerlatticeKnowledgeIntakeErrorStatus,
     requireAnswerlatticeKnowledgeIntakeContext,
 } from '@lib/answerlattice/knowledgeIntakeApi';
-import { secureError } from '@lib/security/secureLogger';
+import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { withAuth } from '@/middleware/auth';
+import { applyAnswerlatticeDashboardReadRateLimit } from '../../readRateLimit';
 
 const EntityLookupSchema = z.object({
     q: z.string().trim().min(3).max(80),
@@ -33,11 +35,10 @@ export const GET = withAuth(async (request: NextRequest, session) => {
         return NextResponse.json({ error: 'Enter a valid entity search query.' }, { status: 400 });
     }
 
-    const access = await requireAnswerlatticeKnowledgeIntakeContext(request, session, {
-        rateLimitKey: 'answerlattice-intake:entity-search',
-        rateLimit: 60,
-        rateWindow: 60,
-    });
+    const rateLimitResponse = await applyAnswerlatticeDashboardReadRateLimit(request, session, 'knowledge-intake-entities');
+    if (rateLimitResponse) return rateLimitResponse;
+
+    const access = await requireAnswerlatticeKnowledgeIntakeContext(request, session);
     if (access.response) return access.response;
 
     try {
@@ -46,8 +47,12 @@ export const GET = withAuth(async (request: NextRequest, session) => {
     } catch (error) {
         const status = getAnswerlatticeKnowledgeIntakeErrorStatus(error);
         if (status >= 500) {
-            secureError('[Answerlattice Intake] Entity lookup failed', error as Error, access.context.scope);
+            logRuntimeFailure('answerlattice_intake_entity_lookup_failed', error, {
+                ...getBoundedRuntimeStringContext('tenantId', access.context.scope.tId),
+                ...getBoundedRuntimeStringContext('storeId', access.context.scope.sId),
+                ...getBoundedRuntimeStringContext('query', parsed.data.q),
+            });
         }
-        return NextResponse.json({ error: status >= 500 ? 'Failed to search product entities.' : (error instanceof Error ? error.message : 'Failed to search product entities.') }, { status });
+        return NextResponse.json({ error: getAnswerlatticeKnowledgeIntakeClientErrorMessage(error, 'Failed to search product entities.') }, { status });
     }
 });

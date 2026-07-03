@@ -1,21 +1,21 @@
 # Messaging Onboarding — Product Specification
 
 **Feature:** Messaging Onboarding — Zero-Friction SMB Acquisition Engine
-**Status:** Implementation-Complete — WhatsApp runtime env enabled; live provider path requires real credentials and webhook registration
-**Last Updated:** May 17, 2026
+**Status:** Implementation-Complete — WhatsApp runtime exists; checked-in provider processing defaults off until real credentials and webhook registration are configured
+**Last Updated:** July 2, 2026
 **Source:** ChatGPT Brainstorm (Feb 16, 2026) + Cascade Architecture Validation + Deep Codebase Cross-Check (Feb 17) + Review #5 Final Spec Walkthrough + Review #6 Blocks/Stress-Test Cross-Check + Runtime Code Audit (May 17, 2026)
 
 ---
 
 ## Executive Summary
 
-Messaging Onboarding is MenuList's primary global acquisition engine. It allows any SMB owner to go from **no digital presence** to a **fully live MenuList presence** in minutes of perceived effort — using any supported messaging app (WhatsApp is the v1 launch provider).
+Messaging Onboarding is MenuList's primary global acquisition engine. It allows an SMB owner to go from **no digital presence** to a **fully live MenuList presence** in minutes of perceived effort through the active WhatsApp Cloud API path when the Cloud Function flag, real Meta credentials, and webhook registration are enabled for the target environment.
 
 The owner sends menu photos or a PDF via their messaging app. The system automatically extracts the menu, generates a preview, and on approval publishes a live MenuList presence: store, menu project, public menu URL, and claimable dashboard account. Official Business Page and QR surfaces use the existing store/public-link infrastructure after publish; they are not separately generated inside the approval transaction.
 
 The messaging channel is the **intake pipe only**. After publish, all management happens in the MenuList dashboard. The messaging tunnel is permanently closed — never used for editing, support, or ongoing communication.
 
-> **Multi-Provider Architecture:** While WhatsApp is the launch provider, the system is designed with a **provider-agnostic core**. The session engine, asset intelligence, extraction pipeline, preview page, and publish pipeline are completely decoupled from the messaging provider. Adding a new provider (e.g., Telegram) requires only implementing a thin adapter — zero changes to core logic. See `_impl.md §2` for the `IMessagingProvider` interface.
+> **Provider Boundary:** The core is provider-agnostic, but current source registers WhatsApp only. Telegram, LINE, Viber, or any other provider require a separate adapter, secrets, webhook registration, docs, cost review, deploy evidence, and provider smoke before they are runtime behavior. See `_impl.md §2` for the `IMessagingProvider` interface.
 
 ### What It Does
 
@@ -100,16 +100,16 @@ The messaging channel is the **intake pipe only**. After publish, all management
 | Payment before publish      | Kills conversion                                  |
 | Human review/correction     | Automation-only design                            |
 
-### Future Scope (Not v1)
+### Conditional Candidate Scope (Not Current Runtime)
 
 | Feature                                    | When                                                       |
 | ------------------------------------------ | ---------------------------------------------------------- |
-| Link import (URL → menu extraction)        | After v1 stable, architecture ready                        |
-| WhatsApp Flows for structured fix requests | After v1, reduces friction                                 |
+| Link import (URL → menu extraction)        | Separate implementation and validation required            |
+| WhatsApp Flows for structured fix requests | Separate provider/product review required                  |
 | Multi-language auto-detection              | Already supported by extraction pipeline                   |
-| Basic content moderation (offensive text)  | After v1, add simple keyword/flag check                    |
+| Basic content moderation (offensive text)  | Separate rule set and public-output review required        |
 | Auto-rotate detection for sideways PDFs    | Gemini handles orientation implicitly                      |
-| Multi-provider support (Telegram, LINE)    | After WhatsApp v1 stable. Architecture ready from day one. |
+| Additional providers such as Telegram or LINE | Separate adapter, secrets, webhook registration, deploy evidence, and provider smoke required |
 
 ---
 
@@ -141,23 +141,23 @@ Everything else is shared and provider-independent:
 
 ### Adding a New Provider
 
-To add a new messaging provider (e.g., Telegram), the following changes are required:
+To add a new messaging provider, the following changes are required:
 
 1. **Implement `IMessagingProvider` adapter** — ~200 lines of provider-specific code
 2. **Add provider webhook endpoint** — New Cloud Function route
 3. **Add provider environment variables** — API keys/tokens
-4. **Add provider to enabled list** — `MESSAGING_ONBOARDING_PROVIDERS: ['whatsapp', 'telegram']`
+4. **Add provider to enabled list** only after code, secrets, docs, deployment evidence, and provider smoke are complete
 
-**Zero changes required to:** Session engine, asset intelligence, extraction, preview page, publish pipeline, cleanup, rate limiting, Firestore schema, security rules.
+**Current source truth:** `functions/src/messagingOnboarding/providers/providerRegistry.ts` registers only `whatsapp`. Additional providers are reserved extension candidates, not active code.
 
-### Supported Providers (Planned)
+### Provider Inventory
 
-| Provider                      | Status      | Target Markets                            | Notes                                    |
-| ----------------------------- | ----------- | ----------------------------------------- | ---------------------------------------- |
-| **WhatsApp** (Meta Cloud API) | v1 — Launch | India, Brazil, SE Asia, Africa            | Most popular messaging app globally      |
-| **Telegram** (Bot API)        | Future      | Russia, Central Asia, Middle East, Europe | Strong where WhatsApp is weak. Free API. |
-| **LINE**                      | Future      | Japan, Thailand, Taiwan                   | Dominant in East Asia                    |
-| **Viber**                     | Future      | Eastern Europe, Philippines               | Strong in specific regional markets      |
+| Provider                      | Status      | Notes                                    |
+| ----------------------------- | ----------- | ---------------------------------------- |
+| **WhatsApp** (Meta Cloud API) | Active source adapter; Functions processing defaults off in checked-in env templates | Requires real Meta credentials and webhook registration before runtime smoke |
+| **Telegram** (Bot API)        | Reserved candidate | No active adapter registered             |
+| **LINE**                      | Reserved candidate | No active adapter registered             |
+| **Viber**                     | Reserved candidate | No active adapter registered             |
 
 ### Provider Selection Strategy (Global Expansion)
 
@@ -500,7 +500,7 @@ Extracted aggressively but treated as **editable suggestions only**.
 - `business_name` — Pre-fills preview, editable before publish
 - `phone_number` — Pre-fills preview, editable before publish
 - `address` — Pre-fills preview, editable before publish
-- `logo_present` — Boolean flag for future use
+- `logo_present` — Reserved boolean flag
 - `cuisine_hint` — Used for `businessType` mapping
 - `detected_business_type` — AI-detected from menu content (e.g., "Restaurant", "Salon", "Cafe"). Uses existing `BUSINESS_TYPES` from `src/data/shared/businessTypes.ts` (60+ types plus canonical `Other`, 7 categories). Pre-fills editable dropdown on preview page. Drives: schema.org mapping, OBP structure, time slot defaults, UI labels, menu filters. Confidence-based: HIGH/MEDIUM → use directly, LOW/missing → fallback to `Other` with the best known business category, or `specialty` if category is unknown.
 
@@ -643,7 +643,7 @@ All messages follow Language Governance — no hype, no AI language, calm profes
 
 | Flag                             | Type     | Default        | Purpose                                                                                                   |
 | -------------------------------- | -------- | -------------- | --------------------------------------------------------------------------------------------------------- |
-| `ENABLE_MESSAGING_ONBOARDING`    | boolean  | App config currently `true`; Cloud Function runtime env templates currently `true` | App/preview surfaces are available; Cloud Function webhooks and schedulers process when real WhatsApp secrets and webhook registration exist. |
+| `ENABLE_MESSAGING_ONBOARDING`    | boolean  | App config currently `true`; checked-in Cloud Function runtime env templates default `false` | App/preview surfaces are available; Cloud Function webhooks and schedulers process only after real WhatsApp secrets and webhook registration exist and the target runtime flag is set `true`. |
 | `MESSAGING_ONBOARDING_PROVIDERS` | string[] | `['whatsapp']` | Runtime env comma-separated provider list. Only enabled providers accept and process webhooks.             |
 
 ### Zero-Impact Guarantees
@@ -761,7 +761,7 @@ This feature is successful when:
 
 | Risk                               | Impact                           | Mitigation                                                                                                             |
 | ---------------------------------- | -------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| WhatsApp becomes support channel   | High — kills scalability         | Hard boundary: tunnel closes after publish, all future messages get dashboard link                                     |
+| WhatsApp becomes support channel   | High — kills scalability         | Hard boundary: tunnel closes after publish, all later messages get dashboard link                                      |
 | Extraction quality too low         | High — trust collapse            | Quality scoring + preview approval gate. Owner sees before publish.                                                    |
 | Identity ambiguity (who approves?) | Medium — wrong person publishes  | Token-based approval (INV-2). Token sent only to owner's WhatsApp. If forwarded, owner's delegation choice.            |
 | Cost explosion from reprocessing   | Medium — burns money             | **Max 2 extraction runs per session (INV-3).** Per-phone rate limits. Per-session correction cap.                      |

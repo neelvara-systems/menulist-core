@@ -47,6 +47,7 @@
 │    + escalationContext (NEW field on SupportTicketType)      │
 │    + source: 'ai_escalation'                                │
 │    + knowledgeCandidate: true                               │
+│    + assertSupportTicketCreateSucceeded() before success UI  │
 │                                                             │
 │  Fire-and-forget:                                           │
 │    + emitAnswerlatticeSignal(type: ESCALATION)                   │
@@ -353,6 +354,8 @@ In `src/components/templates/main-app/helpChat/`:
 ### §4.6 — Ticket Creation Enhancement
 
 In `src/database/tickets/index.ts`, modify `addTicket()`:
+
+Runtime acknowledgement: `addTicket()` returns `{ success: true, id, displayId }` after the support ticket is persisted. HelpChat AI escalation must call `assertSupportTicketCreateSucceeded()` before showing support-ticket success copy.
 
 ```typescript
 // After existing signal emission:

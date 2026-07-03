@@ -173,11 +173,11 @@ BrightLocal 2025: Only 35% have GBP. Only 40% have a website. This is the real o
 
 **Action:** This validates the "auto-generated on sign-up" approach. OBP should be the easiest canonical presence page on the internet to create.
 
-### Discovery 5 — Review Schema Markup (AggregateRating)
+### Discovery 5 — Review Reference Display
 
-If a business has a Google review URL and we can reference their rating, we can add `AggregateRating` schema markup. This is one of the strongest trust signals for both search engines AND AI systems.
+If a business has a Google review URL and rating/count reference, OBP can render it visibly as a trust badge and review link. MenuList does not emit `AggregateRating` markup for owner-entered Google rating references because MenuList is not hosting first-party review markup.
 
-**Action:** When owner provides Google review URL + optional rating info, emit `AggregateRating` in schema.
+**Action:** When owner provides Google review URL + optional rating info, render the visible trust badge/link only.
 
 ---
 
@@ -189,7 +189,7 @@ If a business has a Google review URL and we can reference their rating, we can 
 - [x] Add `publicPresence.googleRating?: number` to store.ts
 - [x] Add `publicPresence.googleReviewCount?: number` to store.ts
 - [x] Display on OBP: "⭐ 4.5 on Google (320 reviews)" with link to Google review page
-- [x] Add `AggregateRating` to schema.org when rating data available (`buildAggregateRating()`)
+- [x] Keep Google rating references visible only; do not emit `AggregateRating` schema for owner-entered Google review data
 - [x] Add Google review fields to OfficialPageTab.tsx (URL + rating + count inputs)
 
 ### Priority 2: Business Photos (first 3 preview, full tap viewer) — ✅ IMPLEMENTED

@@ -1,13 +1,19 @@
 'use client'
 
-import { updateFeedbackStatus } from '@database/guestFeedback';
+import { assertFeedbackStatusUpdateSucceeded, updateFeedbackStatus } from '@database/guestFeedback';
+import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { formatDateTime } from '@util/dateTime';
 import { theme } from 'antd';
 import { useFormatter, useTranslations } from 'next-intl';
-import { useState } from 'react';
+import { useContext, useState } from 'react';
 import { LuCheck, LuMail, LuPhone, LuStar } from 'react-icons/lu';
 import { Button, Card, Flex, NavBar, Tag, Text, TextArea, Title, Toast } from '../antd';
 import type { MobileFeedbackItemType } from '../types';
+import {
+    getBoundedMobileOwnerStringContext,
+    getMobileOwnerStoreLogContext,
+    logMobileOwnerFailure,
+} from '../utils/mobileOwnerDiagnostics';
 
 interface MobileFeedbackDetailProps {
     feedback: MobileFeedbackItemType;
@@ -19,33 +25,61 @@ export default function MobileFeedbackDetail({ feedback, onBack, onStatusUpdate 
     const t = useTranslations('MobileFeedbackDetail');
     const { token } = theme.useToken();
     const format = useFormatter();
+    const { storeDetails } = useContext(PlatformGlobalDataContext);
     const [replyText, setReplyText] = useState('');
     const [isSending, setIsSending] = useState(false);
+
+    const getFeedbackWriteLogContext = (nextStatus: 'new' | 'resolved', replyLength?: number) => ({
+        ...getMobileOwnerStoreLogContext(storeDetails?.storeId, storeDetails?.tenantId),
+        ...getBoundedMobileOwnerStringContext('feedbackId', feedback.id),
+        previousStatus: feedback.status,
+        nextStatus,
+        needsAttention: Boolean(feedback.needsAttention),
+        rating: Number.isFinite(Number(feedback.rating)) ? Number(feedback.rating) : undefined,
+        ...(replyLength === undefined ? {} : {
+            hasReplyText: replyLength > 0,
+            replyLength,
+        }),
+    });
 
     const statusTag = feedback.status === 'resolved'
         ? <Tag color="success">{t('resolve')}</Tag>
         : <Tag color={feedback.needsAttention ? 'warning' : 'primary'}>{feedback.needsAttention ? t('needsAttention') : t('statusNew')}</Tag>;
 
     const handleResolve = async () => {
-        onStatusUpdate(feedback.id, 'resolved');
-        Toast.show({ content: t('markedResolved'), duration: 1000 });
         try {
-            await updateFeedbackStatus(feedback.id, 'resolved');
-        } catch {
-            onStatusUpdate(feedback.id, 'new');
+            const updated = await updateFeedbackStatus(feedback.id, 'resolved');
+            assertFeedbackStatusUpdateSucceeded(
+                updated,
+                feedback.id,
+                'resolved',
+                'mobile_feedback_status_update_rejected',
+            );
+            onStatusUpdate(feedback.id, 'resolved');
+            Toast.show({ content: t('markedResolved'), duration: 1000 });
+        } catch (error) {
+            logMobileOwnerFailure('mobile_feedback_status_update_failed', error, getFeedbackWriteLogContext('resolved'));
             Toast.show({ content: t('failedToUpdate'), duration: 2000 });
         }
     };
 
     const handleSendReply = async () => {
-        if (!replyText.trim()) return;
+        const trimmedReply = replyText.trim();
+        if (!trimmedReply) return;
         setIsSending(true);
         try {
-            await updateFeedbackStatus(feedback.id, 'resolved', replyText.trim());
+            const updated = await updateFeedbackStatus(feedback.id, 'resolved', trimmedReply);
+            assertFeedbackStatusUpdateSucceeded(
+                updated,
+                feedback.id,
+                'resolved',
+                'mobile_feedback_reply_save_rejected',
+            );
             onStatusUpdate(feedback.id, 'resolved');
             Toast.show({ content: t('replySavedResolved'), duration: 1500 });
             setReplyText('');
-        } catch {
+        } catch (error) {
+            logMobileOwnerFailure('mobile_feedback_reply_save_failed', error, getFeedbackWriteLogContext('resolved', trimmedReply.length));
             Toast.show({ content: t('failedToSend'), duration: 2000 });
         } finally {
             setIsSending(false);

@@ -14,12 +14,14 @@ import { createTenantStoreInTransaction, preCheckSubdomain } from "@lib/onboardi
 import { invalidateOwnerBusinessAssistantPacketCache } from "@lib/ownerBusinessAssistant/server/contextPacketCache";
 import { STARTER_ACTIVATION_MS, STARTER_ACTIVATION_STATUS } from "@lib/onboarding/starterActivation";
 import { inferPhoneCountryFromInternationalNumber, normalizePhoneNumberForStorage } from "@lib/phone/phoneNumber";
-import { secureError } from "@lib/security/secureLogger";
+import { getBoundedRuntimeStringContext, logRuntimeFailure } from "@lib/runtime/runtimeDiagnostics";
+import { touchDigitalScreenContentVersionForStoreServer } from "@lib/screen/serverScreenInvalidation";
 import { slugify } from "@lib/utils/slugify";
 import { DEFAULTS } from "@template/main-app/projects/b2cView/designSystem";
 import crypto from "crypto";
 import { FieldValue, Timestamp } from "firebase-admin/firestore";
 import { revalidateTag } from "next/cache";
+import { sanitizeMessagingOnboardingEventMetadata } from "./eventMetadata";
 
 const db = admin.firestore();
 
@@ -400,13 +402,22 @@ export async function executeMessagingOnboardingPublish(
     revalidateTag(`menu-store-${result.storeId}`);
     revalidateTag(`store-${result.storeId}`);
     revalidateTag("client-stores");
+    revalidateTag("screen-data");
+    await touchDigitalScreenContentVersionForStoreServer(result.storeId, "messagingOnboardingPublish");
     await invalidateOwnerBusinessAssistantPacketCache({
       tId: result.tenantId,
       sId: result.storeId,
       projectId: result.projectId,
     });
   } catch (cacheError) {
-    secureError("[msg-preview/approve] Cache revalidation failed", cacheError as Error);
+    logRuntimeFailure("messaging_onboarding_publish_cache_revalidation_failed", cacheError, {
+      ...getBoundedRuntimeStringContext("tenantId", result.tenantId),
+      ...getBoundedRuntimeStringContext("storeId", result.storeId),
+      ...getBoundedRuntimeStringContext("projectId", result.projectId),
+      ...getBoundedRuntimeStringContext("userId", result.userId),
+      tagCount: 4,
+      ownerAssistantPacketCacheInvalidated: true,
+    });
   }
 
   logPublishEvent(sessionId, sessionData, "PUBLISH_COMPLETED", "LIVE", {
@@ -439,14 +450,22 @@ function logPublishEvent(
       eventType,
       sessionState,
       userIdMasked: (sessionData.providerUserId || "").slice(-4),
-      metadata,
+      metadata: sanitizeMessagingOnboardingEventMetadata(metadata),
       timestamp: Timestamp.now(),
       expiresAt: Timestamp.fromMillis(Date.now() + 30 * 24 * 60 * 60 * 1000),
       sessionAgeMs: sessionData.createdAt
         ? Date.now() - sessionData.createdAt.toMillis()
         : 0,
     })
-    .catch(() => {});
+    .catch((error) => {
+      logRuntimeFailure("messaging_onboarding_publish_event_write_failed", error, {
+        ...getBoundedRuntimeStringContext("sessionId", sessionId),
+        ...getBoundedRuntimeStringContext("provider", sessionData.provider),
+        eventType,
+        sessionState,
+        metadataKeyCount: Object.keys(metadata || {}).length,
+      });
+    });
 }
 
 // ═══════════════════════════════════════════════════════════════

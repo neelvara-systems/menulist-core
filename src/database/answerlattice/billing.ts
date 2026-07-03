@@ -1,5 +1,6 @@
 import { DB_COLLECTIONS } from '@constant/database';
 import { apiCallComposer } from '@lib/apiHelper/apiCallComposer';
+import { getAnswerlatticeScopeLogContext, logAnswerlatticeFailure } from '@lib/answerlattice/diagnostics';
 import { answerlatticeFirebaseClient } from '@lib/firebase/answerlatticeFirebaseClient';
 import type { FirestoreSubscriptionDoc } from '@type/razorpay';
 import { collection, doc, getDoc, getDocs, limit, query, where } from 'firebase/firestore';
@@ -122,10 +123,11 @@ export const getAnswerlatticeActiveSubscriptionForStore = async (
 
     const request = fetchAnswerlatticeSubscriptionRaw(tenantId, storeId)
         .catch((error) => {
-            console.error('[Answerlattice Billing] Failed to load active subscription', {
-                tenantId,
-                storeId,
-                error: error instanceof Error ? error.message : String(error),
+            logAnswerlatticeFailure('answerlattice_billing_active_subscription_load_failed', error, {
+                ...getAnswerlatticeScopeLogContext({
+                    sId: storeId,
+                    tId: tenantId,
+                }),
             });
             return null;
         })

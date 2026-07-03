@@ -15,6 +15,18 @@ import { DB_COLLECTIONS } from '@constant/database';
 import getActiveSession from '@lib/auth/getActiveSession';
 import { revalidatePublicClientCache, revalidatePublicClientCacheForProject } from '@lib/cache/publicClientCache';
 import { firebaseClient } from '@lib/firebase/firebaseClient';
+import {
+    getBoundedMenuProcessingStringContext,
+    getMenuProcessingJobLogContext,
+    getMenuProcessingProjectLogContext,
+    logMenuProcessingFailure,
+} from '@lib/firebase/menuProcessingDiagnostics';
+import {
+    LINKED_OUTLET_SAVE_RESPONSE_JSON_MAX_BYTES,
+    LINKED_OUTLET_SAVE_REQUEST_POLICY,
+    isLinkedOutletSaveResponse,
+    readLinkedOutletSaveResponseJson,
+} from '@lib/multiOutlet/linkedOutletSaveResponse';
 import { getBusinessAttributesWithMenuDefaults } from '@lib/obp/inferBusinessAttributesFromMenu';
 import { logMOLEvent } from '@lib/pricing/molLogger';
 import { doc, getDoc, Timestamp, updateDoc } from 'firebase/firestore';
@@ -28,6 +40,8 @@ export interface ApplyChangesParams {
     projectId: string;
     applyPlan: ApplyPlan;
     jobId: string;
+    /** Number of owner-approved visible changes the caller expects to apply. */
+    expectedChangeCount?: number;
     /** Primary language code for data operations */
     primaryLang?: string;
     /** Optional: MOL audit logging context. If provided, logs EXTRACTION_APPLIED event. */
@@ -41,6 +55,11 @@ export interface ApplyChangesParams {
 
 export interface ApplyChangesResult {
     success: boolean;
+    projectId: string;
+    jobId: string;
+    mode: ApplyPlan['mode'];
+    completed: boolean;
+    appliedChangeCount: number;
     error?: string;
     stats: {
         categoriesAdded: number;
@@ -48,7 +67,23 @@ export interface ApplyChangesResult {
         itemsAdded: number;
         itemsUpdated: number;
         overridesApplied: number;
+        categoryOverridesApplied: number;
     };
+}
+
+const APPLY_CHANGES_GENERIC_ERROR = 'Could not apply changes. Please try again.';
+
+type LinkedOutletProjectSaveError = Error & { code?: string; status?: number };
+
+export function getAppliedExtractionChangeCount(stats: ApplyChangesResult['stats']): number {
+    return (
+        stats.categoriesAdded
+        + stats.categoriesUpdated
+        + stats.itemsAdded
+        + stats.itemsUpdated
+        + stats.overridesApplied
+        + stats.categoryOverridesApplied
+    );
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -77,6 +112,15 @@ function sanitizeFirestoreValue<T>(value: T): T {
         result[key] = sanitizeFirestoreValue(nestedValue);
         return result;
     }, {}) as T;
+}
+
+function throwMissingReviewSourceFile(targetFileUid: unknown, mutationType: string): never {
+    logMenuProcessingFailure('menu_review_apply_source_file_missing', undefined, {
+        mutationType,
+        ...getBoundedMenuProcessingStringContext('targetFileUid', targetFileUid),
+    });
+
+    throw new Error(APPLY_CHANGES_GENERIC_ERROR);
 }
 
 /**
@@ -354,23 +398,108 @@ function buildLinkedOutletProjectSavePayload(params: {
     });
 }
 
-async function saveLinkedOutletProject(project: Record<string, any>): Promise<void> {
+const createLinkedOutletProjectSaveError = (
+    code: string,
+    status?: number,
+): LinkedOutletProjectSaveError => {
+    const error = new Error('Linked outlet save failed') as LinkedOutletProjectSaveError;
+    error.code = code.slice(0, 64);
+    error.status = status;
+    return error;
+};
+
+const getLinkedOutletApplyLogContext = (
+    project: Record<string, any>,
+    jobId: string,
+) => ({
+    ...getMenuProcessingProjectLogContext(project.projectId),
+    ...getMenuProcessingJobLogContext(jobId),
+    ...getBoundedMenuProcessingStringContext('masterProjectId', project.masterProjectId),
+});
+
+async function saveLinkedOutletProject(project: Record<string, any>, jobId: string): Promise<void> {
+    const logContext = getLinkedOutletApplyLogContext(project, jobId);
     const response = await fetch('/api/projects/outlet-save', {
+        ...LINKED_OUTLET_SAVE_REQUEST_POLICY,
         body: JSON.stringify({ project }),
-        cache: 'no-store',
-        credentials: 'same-origin',
         headers: { 'Content-Type': 'application/json' },
         method: 'POST',
     });
-    const result = await response.json().catch(() => ({}));
 
     if (!response.ok) {
-        throw new Error(result.error || `Linked outlet save failed: ${response.status}`);
+        const error = createLinkedOutletProjectSaveError(
+            'linked_outlet_project_save_rejected',
+            response.status,
+        );
+        logMenuProcessingFailure(
+            'menu_review_linked_outlet_save_rejected',
+            error,
+            logContext,
+        );
+        throw error;
+    }
+
+    let payload: unknown = null;
+    try {
+        payload = await readLinkedOutletSaveResponseJson(response);
+    } catch (error) {
+        logMenuProcessingFailure(
+            'menu_review_linked_outlet_save_response_parse_failed',
+            error,
+            {
+                ...logContext,
+                maxBytes: LINKED_OUTLET_SAVE_RESPONSE_JSON_MAX_BYTES,
+                responseOk: response.ok,
+                responseStatus: response.status,
+            },
+        );
+        throw createLinkedOutletProjectSaveError(
+            'linked_outlet_project_save_response_parse_failed',
+            response.status,
+        );
+    }
+
+    if (!isLinkedOutletSaveResponse(payload, project.projectId, project.masterProjectId)) {
+        const error = createLinkedOutletProjectSaveError(
+            'linked_outlet_project_save_response_invalid',
+            response.status,
+        );
+        logMenuProcessingFailure(
+            'menu_review_linked_outlet_save_response_invalid',
+            error,
+            {
+                ...logContext,
+                responseOk: response.ok,
+                responseStatus: response.status,
+            },
+        );
+        throw error;
     }
 }
 
 function idsMatch(left: unknown, right: unknown): boolean {
     return String(left ?? '').trim() === String(right ?? '').trim();
+}
+
+export function isAcknowledgedApplyChangesResult(
+    result: ApplyChangesResult,
+    expected: {
+        appliedChangeCount: number;
+        jobId: string;
+        mode: ApplyPlan['mode'];
+        projectId: string;
+    },
+): result is ApplyChangesResult & { success: true; completed: true } {
+    return Boolean(
+        result.success === true
+        && result.completed === true
+        && idsMatch(result.projectId, expected.projectId)
+        && idsMatch(result.jobId, expected.jobId)
+        && result.mode === expected.mode
+        && Number.isInteger(result.appliedChangeCount)
+        && result.appliedChangeCount === expected.appliedChangeCount
+        && getAppliedExtractionChangeCount(result.stats) === result.appliedChangeCount,
+    );
 }
 
 function assertOwnedPreviewJob(jobData: any, session: Awaited<ReturnType<typeof getActiveSession>>, projectId?: string): void {
@@ -422,7 +551,7 @@ function assertOwnedPreviewJob(jobData: any, session: Awaited<ReturnType<typeof 
 export async function applyExtractionChanges(
     params: ApplyChangesParams
 ): Promise<ApplyChangesResult> {
-    const { projectId, applyPlan, jobId, primaryLang = 'en', molContext } = params;
+    const { projectId, applyPlan, jobId, expectedChangeCount, primaryLang = 'en', molContext } = params;
 
     const stats = {
         categoriesAdded: 0,
@@ -430,18 +559,13 @@ export async function applyExtractionChanges(
         itemsAdded: 0,
         itemsUpdated: 0,
         overridesApplied: 0,
+        categoryOverridesApplied: 0,
     };
 
     try {
         const session = await getActiveSession();
         const projectRef = doc(firebaseClient, `${DB_COLLECTIONS.PROJECTS}/${session.tId}/${session.sId}`, projectId);
         const jobRef = doc(firebaseClient, DB_COLLECTIONS.MENU_IMAGE_PROCESSING_JOBS, jobId);
-
-        console.log('[applyExtractionChanges] Starting apply', {
-            projectId,
-            jobId,
-            mode: applyPlan.mode,
-        });
 
         // ═══════════════════════════════════════════════════════════
         // STEP 1: Read current project state ONCE
@@ -480,8 +604,7 @@ export async function applyExtractionChanges(
                 if (cat.newCategory) {
                     const fileIndex = findMutationFileIndex(files, jobData, cat.targetFileUid);
                     if (fileIndex === -1) {
-                        console.warn(`[applyExtractionChanges] File not found for UID: ${cat.targetFileUid}`);
-                        throw new Error('Could not apply changes because the source file is missing. Re-upload and try again.');
+                        throwMissingReviewSourceFile(cat.targetFileUid, 'new_category');
                     }
                     if (!files[fileIndex].extractedData) {
                         files[fileIndex].extractedData = { data: { categories: [], items: [] } };
@@ -502,8 +625,7 @@ export async function applyExtractionChanges(
                 if (item.newItem) {
                     const fileIndex = findMutationFileIndex(files, jobData, item.targetFileUid);
                     if (fileIndex === -1) {
-                        console.warn(`[applyExtractionChanges] File not found for UID: ${item.targetFileUid}`);
-                        throw new Error('Could not apply changes because the source file is missing. Re-upload and try again.');
+                        throwMissingReviewSourceFile(item.targetFileUid, 'new_item');
                     }
                     if (!files[fileIndex].extractedData?.data?.items) {
                         files[fileIndex].extractedData = files[fileIndex].extractedData || {};
@@ -526,8 +648,7 @@ export async function applyExtractionChanges(
                 if (catPatch.categoryId && catPatch.patch) {
                     const fileIndex = findMutationFileIndex(files, jobData, catPatch.targetFileUid);
                     if (fileIndex === -1) {
-                        console.warn(`[applyExtractionChanges] File not found for UID: ${catPatch.targetFileUid}`);
-                        throw new Error('Could not apply changes because the source file is missing. Re-upload and try again.');
+                        throwMissingReviewSourceFile(catPatch.targetFileUid, 'category_patch');
                     }
 
                     const categories = files[fileIndex]?.extractedData?.data?.categories || [];
@@ -544,8 +665,7 @@ export async function applyExtractionChanges(
                 if (itemPatch.itemId && itemPatch.patch) {
                     const fileIndex = findMutationFileIndex(files, jobData, itemPatch.targetFileUid);
                     if (fileIndex === -1) {
-                        console.warn(`[applyExtractionChanges] File not found for UID: ${itemPatch.targetFileUid}`);
-                        throw new Error('Could not apply changes because the source file is missing. Re-upload and try again.');
+                        throwMissingReviewSourceFile(itemPatch.targetFileUid, 'item_patch');
                     }
 
                     const items = files[fileIndex]?.extractedData?.data?.items || [];
@@ -605,7 +725,6 @@ export async function applyExtractionChanges(
 
             for (const override of mutations.applyOverrides) {
                 if (!override.masterItemId) {
-                    console.warn('[applyExtractionChanges] Skipping override with empty masterItemId');
                     continue;
                 }
                 nextOverrides.items[override.masterItemId] = {
@@ -622,6 +741,7 @@ export async function applyExtractionChanges(
                         ...(nextOverrides.categories[override.masterCategoryId] || {}),
                         ...sanitizeFirestoreValue(override.patch || {}),
                     };
+                    stats.categoryOverridesApplied++;
                 }
             }
 
@@ -643,11 +763,28 @@ export async function applyExtractionChanges(
             }
         }
 
+        const appliedChangeCount = getAppliedExtractionChangeCount(stats);
+        const hasExpectedChangeCount = Number.isInteger(expectedChangeCount);
+        if (
+            appliedChangeCount <= 0
+            || (hasExpectedChangeCount && appliedChangeCount !== expectedChangeCount)
+        ) {
+            const error = new Error('menu_review_apply_acknowledgement_mismatch');
+            logMenuProcessingFailure('menu_review_apply_acknowledgement_mismatch', error, {
+                ...getMenuProcessingProjectLogContext(projectId),
+                ...getMenuProcessingJobLogContext(jobId),
+                mode: applyPlan.mode,
+                appliedChangeCount,
+                expectedChangeCount: hasExpectedChangeCount ? expectedChangeCount : null,
+            });
+            throw new Error(APPLY_CHANGES_GENERIC_ERROR);
+        }
+
         // ═══════════════════════════════════════════════════════════
         // STEP 2: SINGLE ATOMIC WRITE — all project mutations
         // ═══════════════════════════════════════════════════════════
         if (linkedOutletProjectPayload) {
-            await saveLinkedOutletProject(linkedOutletProjectPayload);
+            await saveLinkedOutletProject(linkedOutletProjectPayload, jobId);
             await revalidatePublicClientCacheForProject(projectId, 'applyExtractionChanges');
         } else if (Object.keys(updatePayload).length > 0) {
             await updateDoc(projectRef, sanitizeFirestoreValue(updatePayload));
@@ -667,7 +804,10 @@ export async function applyExtractionChanges(
                     await revalidatePublicClientCache(session.sId, 'applyExtractionBusinessAttributes');
                 }
             } catch (error) {
-                console.warn('[applyExtractionChanges] Could not apply menu-derived business attributes', error);
+                logMenuProcessingFailure('menu_review_apply_business_attributes_failed', error, {
+                    ...getMenuProcessingProjectLogContext(projectId),
+                    ...getMenuProcessingJobLogContext(jobId),
+                });
             }
         }
 
@@ -697,19 +837,31 @@ export async function applyExtractionChanges(
             }).catch(() => { /* MOL should never block */ });
         }
 
-        console.log('[applyExtractionChanges] Apply complete (single atomic write)', stats);
-
         return {
+            appliedChangeCount,
+            completed: true,
+            jobId,
+            mode: applyPlan.mode,
+            projectId,
             success: true,
             stats,
         };
 
     } catch (error: any) {
-        console.error('[applyExtractionChanges] Error applying changes', error);
+        logMenuProcessingFailure('menu_review_apply_failed', error, {
+            ...getMenuProcessingProjectLogContext(projectId),
+            ...getMenuProcessingJobLogContext(jobId),
+            mode: applyPlan.mode,
+        });
 
         return {
+            appliedChangeCount: getAppliedExtractionChangeCount(stats),
+            completed: false,
             success: false,
-            error: error.message || 'Unknown error',
+            jobId,
+            mode: applyPlan.mode,
+            projectId,
+            error: APPLY_CHANGES_GENERIC_ERROR,
             stats,
         };
     }
@@ -733,8 +885,6 @@ export async function discardExtractionChanges(jobId: string): Promise<void> {
         updatedAt: Timestamp.now(),
         currentStep: 'Changes discarded by user',
     });
-
-    console.log('[discardExtractionChanges] Job discarded', { jobId });
 }
 
 export default applyExtractionChanges;

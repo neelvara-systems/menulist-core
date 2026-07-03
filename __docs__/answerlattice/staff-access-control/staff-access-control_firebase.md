@@ -1,7 +1,7 @@
 # Answerlattice Staff Access Control Firebase Notes
 
 > Status: Implemented
-> Last updated: 2026-05-26
+> Last updated: 2026-06-30
 
 ## Firestore Writes
 
@@ -26,6 +26,10 @@
 Permission claims are emitted by `/api/auth/set-claims` using Answerlattice roles stored on `stores/{sId}.answerlatticeRoles`. Rules also keep default Owner, Manager, and Support Staff fallbacks for existing role tokens.
 
 Owner-triggered reset/sign-out operations revoke default Firebase refresh tokens and Answerlattice Firebase refresh tokens. Existing ID tokens can remain usable until their normal expiry window, so Answerlattice also records `sessionRevokedAt`, `authTokensRevokedAt`, and a revocation reason for server-side checks and audit trails.
+
+Staff client request/response validation adds no Firestore reads, writes, deletes, rules, indexes, Auth operations, or Cloud Function work. The browser caller uses no-store cache, same-origin credentials, and manual redirect handling before rejecting malformed, oversized, rejected, or wrong-shape responses before Team Access treats staff or role actions as loaded/saved. The shared Answerlattice access provider now applies the same browser request policy and a 64 KB bounded response guard to `/api/answerlattice/access`; this changes no access-context Firestore reads or role backfill writes beyond the existing route behavior.
+
+Staff setup email provider hardening adds no Firestore reads, writes, deletes, rules, indexes, Auth operations beyond the existing valid Firebase Auth setup-email request, Cloud Function work, or browser API calls. The provider call now has a timeout and bounded provider diagnostics, and failures continue to return the existing `password_reset_email_failed` marker while staff creation remains acknowledged.
 
 ## Deploy
 

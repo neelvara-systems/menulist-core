@@ -11,7 +11,7 @@
  * @see __docs__/menu-presence-monitor/menu-presence-monitor_impl.md
  */
 
-import { type MenuPresenceSurface, updateMenuPresence } from '@database/stores';
+import { assertMenuPresenceUpdateSucceeded, type MenuPresenceSurface, updateMenuPresence } from '@database/stores';
 import { withAnalyticsSource } from '@lib/analytics/sourceAttribution';
 import {
     STARTER_ACTIVATION_PRESENCE_SIGNAL_BY_SURFACE,
@@ -36,13 +36,66 @@ import {
 } from 'react-icons/lu';
 import type { ManualSurfaceId } from './presenceTypes';
 import type { UseMenuListData } from './types';
+import { getBoundedUseMenuListStringContext, logUseMenuListFailure } from './useMenuListDiagnostics';
 
 const { Text } = Typography;
+
+const USE_MENULIST_PRESENCE_COPY_UNAVAILABLE = 'use_menulist_presence_copy_unavailable';
+const USE_MENULIST_PRESENCE_COPY_FALLBACK_FAILED = 'use_menulist_presence_copy_fallback_failed';
+
+const hasUseMenuListPresenceClipboardWrite = (): boolean => (
+    typeof navigator !== 'undefined'
+    && Boolean(navigator.clipboard)
+    && typeof navigator.clipboard.writeText === 'function'
+);
+
+const hasUseMenuListPresenceCopyFallback = (): boolean => (
+    typeof document !== 'undefined'
+    && typeof document.createElement === 'function'
+    && typeof document.execCommand === 'function'
+    && Boolean(document.body)
+);
+
+const copyUseMenuListPresenceLink = async (value: string): Promise<void> => {
+    let clipboardWriteError: unknown;
+
+    if (hasUseMenuListPresenceClipboardWrite()) {
+        try {
+            await navigator.clipboard.writeText(value);
+            return;
+        } catch (error) {
+            clipboardWriteError = error;
+            // Continue to the acknowledged textarea fallback before showing failure copy.
+        }
+    }
+
+    if (!hasUseMenuListPresenceCopyFallback()) {
+        throw clipboardWriteError || new Error(USE_MENULIST_PRESENCE_COPY_UNAVAILABLE);
+    }
+
+    const textarea = document.createElement('textarea');
+    textarea.value = value;
+    textarea.setAttribute('readonly', '');
+    textarea.style.position = 'fixed';
+    textarea.style.left = '-9999px';
+    textarea.style.top = '0';
+    document.body.appendChild(textarea);
+    textarea.focus();
+    textarea.select();
+
+    try {
+        const copied = document.execCommand('copy');
+        if (!copied) {
+            throw new Error(USE_MENULIST_PRESENCE_COPY_FALLBACK_FAILED);
+        }
+    } finally {
+        document.body.removeChild(textarea);
+    }
+};
 
 interface PresenceMonitorProps {
     data: UseMenuListData;
     storeDetails: StoreDataType;
-    onCopyLink: (url: string, label: string) => void;
 }
 
 // ── Manual surface configuration ─────────────────────────────
@@ -139,7 +192,7 @@ function buildAutoSurfaces(data: UseMenuListData): AutoSurface[] {
 
 // ── Component ────────────────────────────────────────────────
 
-export default function PresenceMonitor({ data, storeDetails, onCopyLink }: PresenceMonitorProps) {
+export default function PresenceMonitor({ data, storeDetails }: PresenceMonitorProps) {
     const { token } = theme.useToken();
     const [updating, setUpdating] = useState<string | null>(null);
     const [localPresence, setLocalPresence] = useState<Record<string, string | undefined>>(
@@ -172,14 +225,52 @@ export default function PresenceMonitor({ data, storeDetails, onCopyLink }: Pres
     // Find first incomplete manual surface for "Start here" / "Next" highlighting
     const nextManualSurface = MANUAL_SURFACES.find(s => !isManualActive(s.id));
 
+    const buildPresenceLogContext = (action: 'confirm' | 'copy' | 'open' | 'remove', surface?: ManualSurfaceConfig) => ({
+        ...getBoundedUseMenuListStringContext('storeId', storeDetails.storeId),
+        ...getBoundedUseMenuListStringContext('tenantId', (storeDetails as any).tenantId),
+        ...getBoundedUseMenuListStringContext('projectId', data.projectId),
+        ...getBoundedUseMenuListStringContext('menuLink', data.menuLink),
+        ...getBoundedUseMenuListStringContext('obpLink', data.obpLink),
+        ...getBoundedUseMenuListStringContext('openUrl', surface?.openUrl),
+        ...getBoundedUseMenuListStringContext('surfaceId', surface?.id),
+        ...getBoundedUseMenuListStringContext('surfaceKey', surface?.dalKey),
+        action,
+        autoActiveCount,
+        hasFeedbackEnabled: data.hasFeedbackEnabled,
+        hasPublishedMenu: data.hasPublishedMenu,
+        hasScreen: data.hasScreen,
+        hasStarterActivationSignal: Boolean(surface && STARTER_ACTIVATION_PRESENCE_SIGNAL_BY_SURFACE[surface.dalKey]),
+        manualActiveCount,
+        recordsStarterActivationSignal: Boolean(surface && shouldRecordStarterActivationSignal(storeDetails)),
+        totalActive,
+        totalSurfaces,
+    });
+
+    const handleOpenExternalSurface = (surface: ManualSurfaceConfig) => {
+        if (!surface.openUrl) return;
+        try {
+            const opened = window.open(surface.openUrl, '_blank', 'noopener,noreferrer');
+            if (!opened) {
+                throw new Error('use_menulist_presence_external_open_blocked');
+            }
+        } catch (error) {
+            logUseMenuListFailure('use_menulist_presence_external_open_failed', error, buildPresenceLogContext('open', surface));
+            message.error('Failed to open link');
+        }
+    };
+
     const handleCopyAndExpand = async (surface: ManualSurfaceConfig) => {
         const sourcedObpLink = withAnalyticsSource(data.obpLink, 'copy_link');
         try {
-            await navigator.clipboard.writeText(sourcedObpLink);
+            await copyUseMenuListPresenceLink(sourcedObpLink);
             message.success('Official business link copied');
-        } catch {
-            // Fallback: use onCopyLink which handles failure
-            onCopyLink(sourcedObpLink, 'Official business link');
+        } catch (error) {
+            logUseMenuListFailure('use_menulist_presence_official_link_copy_failed', error, {
+                ...buildPresenceLogContext('copy', surface),
+                hasClipboardWrite: hasUseMenuListPresenceClipboardWrite(),
+                hasCopyFallback: hasUseMenuListPresenceCopyFallback(),
+            });
+            message.error('Failed to copy');
         }
         setExpandedGuide(surface.id);
     };
@@ -187,15 +278,23 @@ export default function PresenceMonitor({ data, storeDetails, onCopyLink }: Pres
     const handleConfirm = async (surface: ManualSurfaceConfig) => {
         setUpdating(surface.id);
         try {
-            await updateMenuPresence(storeDetails.storeId, surface.dalKey, true, {
+            const result = await updateMenuPresence(storeDetails.storeId, surface.dalKey, true, {
                 starterSignal: shouldRecordStarterActivationSignal(storeDetails)
                     ? STARTER_ACTIVATION_PRESENCE_SIGNAL_BY_SURFACE[surface.dalKey]
                     : undefined,
             });
+            assertMenuPresenceUpdateSucceeded(
+                result,
+                storeDetails.storeId,
+                surface.dalKey,
+                true,
+                'use_menulist_presence_confirm_update_rejected',
+            );
             setLocalPresence(prev => ({ ...prev, [surface.id]: new Date().toISOString() }));
             message.success(`${surface.label} — official link added`);
             setExpandedGuide(null);
-        } catch {
+        } catch (error) {
+            logUseMenuListFailure('use_menulist_presence_confirm_failed', error, buildPresenceLogContext('confirm', surface));
             message.error('Failed to update');
         } finally {
             setUpdating(null);
@@ -205,13 +304,21 @@ export default function PresenceMonitor({ data, storeDetails, onCopyLink }: Pres
     const handleRemove = async (surface: ManualSurfaceConfig) => {
         setUpdating(surface.id);
         try {
-            await updateMenuPresence(storeDetails.storeId, surface.dalKey, false);
+            const result = await updateMenuPresence(storeDetails.storeId, surface.dalKey, false);
+            assertMenuPresenceUpdateSucceeded(
+                result,
+                storeDetails.storeId,
+                surface.dalKey,
+                false,
+                'use_menulist_presence_remove_update_rejected',
+            );
             setLocalPresence(prev => {
                 const next = { ...prev };
                 delete next[surface.id];
                 return next;
             });
-        } catch {
+        } catch (error) {
+            logUseMenuListFailure('use_menulist_presence_remove_failed', error, buildPresenceLogContext('remove', surface));
             message.error('Failed to update');
         } finally {
             setUpdating(null);
@@ -412,7 +519,7 @@ export default function PresenceMonitor({ data, storeDetails, onCopyLink }: Pres
                                             <Button
                                                 size="small" type="text"
                                                 icon={<LuExternalLink size={12} />}
-                                                onClick={() => window.open(surface.openUrl, '_blank')}
+                                                onClick={() => handleOpenExternalSurface(surface)}
                                                 style={{ fontSize: 11, minHeight: 32 }}
                                             >
                                                 Open {surface.label.split(' ')[0]}

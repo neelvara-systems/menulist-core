@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic';
 
 import { DB_COLLECTIONS } from '@constant/database';
+import { getBoundedAnalyticsStringContext, logAnalyticsFailure } from '@lib/analytics/analyticsDiagnostics';
 import { getBusinessAnalyticsDateKey, resolveBusinessDayEndTime } from '@lib/analytics/businessDay';
 import { addDaysToAnalyticsDateKey } from '@lib/analytics/dateKey';
 import { getResolvedAnalyticsPreferences, type ResolvedAnalyticsPreferences } from '@lib/analytics/preferences';
@@ -9,7 +10,7 @@ import { writePublicAnalyticsEventAdmin } from '@lib/analytics/serverWrite';
 import { firestoreAdmin } from '@lib/firebase/firebaseAdmin';
 import { parseSummaryProjects } from '@lib/firestore/parseSummaryProjects';
 import { isPlatformEntityBlocked } from '@lib/platform/entityBlock';
-import { secureError } from '@lib/security/secureLogger';
+import { readBoundedJsonBody } from '@lib/security/boundedRequestBody';
 import { withCORS } from '@lib/security/corsValidation';
 import { unstable_cache } from 'next/cache';
 import { NextRequest, NextResponse } from 'next/server';
@@ -39,6 +40,7 @@ const AnalyticsTrackSchema = z.object({
 });
 
 const RESERVED_PROJECT_IDS = new Set(['obp', 'customerApp']);
+const PUBLIC_ANALYTICS_TRACK_MAX_BODY_BYTES = 64 * 1024;
 
 type ValidatedAnalyticsTarget = {
     analyticsPreferences: ResolvedAnalyticsPreferences;
@@ -58,6 +60,9 @@ async function validateAnalyticsTargetUncached(
     const storeTenantId = String(store.tenantId ?? store.tId ?? '');
     if (storeTenantId !== tenantId) return null;
     if (store.active === false || store.deleted === true || isPlatformEntityBlocked(store)) return null;
+
+    const tenantSnap = await firestoreAdmin.collection(DB_COLLECTIONS.TENANTS).doc(tenantId).get();
+    if (!tenantSnap.exists || isPlatformEntityBlocked(tenantSnap.data())) return null;
 
     const target: ValidatedAnalyticsTarget = {
         analyticsPreferences: getResolvedAnalyticsPreferences(store.analytics || null),
@@ -143,14 +148,18 @@ async function postAnalyticsTrack(req: NextRequest) {
     const rateLimitResponse = await checkPublicRateLimit(req, 'PUBLIC_ANALYTICS');
     if (rateLimitResponse) return rateLimitResponse;
 
-    let body: unknown;
-    try {
-        body = await req.json();
-    } catch {
-        return NextResponse.json({ success: false, error: 'Invalid JSON body.' }, { status: 400 });
+    const bodyResult = await readBoundedJsonBody(req, PUBLIC_ANALYTICS_TRACK_MAX_BODY_BYTES);
+    if (bodyResult.ok === false) {
+        return NextResponse.json(
+            {
+                success: false,
+                error: bodyResult.response.status === 413 ? 'Request body too large.' : 'Invalid JSON body.',
+            },
+            { status: bodyResult.response.status },
+        );
     }
 
-    const validation = AnalyticsTrackSchema.safeParse(body);
+    const validation = AnalyticsTrackSchema.safeParse(bodyResult.data);
     if (!validation.success) {
         return NextResponse.json({ success: false, error: 'Validation failed.' }, { status: 400 });
     }
@@ -198,11 +207,13 @@ async function postAnalyticsTrack(req: NextRequest) {
 
         return NextResponse.json({ success: true });
     } catch (error) {
-        secureError(
-            '[PublicAnalytics] Track failed',
-            error instanceof Error ? error : new Error(String(error)),
-            { tenantId, storeId, projectId: data.projectId },
-        );
+        logAnalyticsFailure('public_analytics_track_failed', error, {
+            ...getBoundedAnalyticsStringContext('tenantId', tenantId),
+            ...getBoundedAnalyticsStringContext('storeId', storeId),
+            ...getBoundedAnalyticsStringContext('projectId', data.projectId),
+            updateFieldCount: Object.keys(data.updateData).length,
+            hasRequestedDate: Boolean(data.dateString),
+        });
         return NextResponse.json({ success: false, error: 'Analytics unavailable.' }, { status: 500 });
     }
 }

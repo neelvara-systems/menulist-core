@@ -1,6 +1,12 @@
 'use client'
 
 import PhoneNumberInput from '@atoms/phoneNumberInput';
+import {
+    AUTH_ACCOUNT_REQUEST_POLICY,
+    type AuthProfileUpdateResponse,
+    readAuthAccountResponse,
+} from '@lib/auth/accountClientResponses';
+import { getBoundedAuthStringContext, logAuthFailure } from '@lib/auth/authDiagnostics';
 import { getStoreContextName } from '@lib/businessIdentity/names';
 import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from '@providers/platformProviders/platformGlobalDataProvider';
 import { useAppDispatch } from '@hook/useAppDispatch';
@@ -52,6 +58,28 @@ const buildPhoneLabel = (data: any) => {
     const phoneNumber = data?.phoneNumber || data?.phone || '';
     if (!phoneNumber) return '';
     return `${data?.dialCode || ''} ${phoneNumber}`.trim();
+};
+
+const getDesktopProfileLogContext = (session: any, storeDetails: any) => ({
+    ...getBoundedAuthStringContext('userId', session?.uId ?? session?.user?.id),
+    ...getBoundedAuthStringContext('tenantId', session?.tId ?? session?.user?.tenantId),
+    ...getBoundedAuthStringContext('storeId', session?.sId ?? session?.user?.storeId ?? storeDetails?.storeId),
+});
+
+const throwDesktopAccountRejectedResponse = async (
+    response: Response,
+    kind: 'profile_update' | 'password_change',
+    code: 'desktop_account_profile_update_rejected' | 'desktop_account_password_change_rejected',
+) => {
+    try {
+        await readAuthAccountResponse(response, kind);
+    } catch {
+        // The shared parser already logs malformed rejection bodies; the UI keeps a local status-only code.
+    }
+
+    const error = new Error(code) as Error & { status?: number };
+    error.status = response.status;
+    throw error;
 };
 
 function UserProfileModal({ open, onClose }: UserProfileModalProps) {
@@ -148,6 +176,7 @@ function UserProfileModal({ open, onClose }: UserProfileModalProps) {
         setProfileLoading(true);
         try {
             const res = await fetch('/api/auth/update-profile', {
+                ...AUTH_ACCOUNT_REQUEST_POLICY,
                 body: JSON.stringify({
                     countryCode: phoneValue.countryCode,
                     dialCode: phoneValue.dialCode,
@@ -157,23 +186,27 @@ function UserProfileModal({ open, onClose }: UserProfileModalProps) {
                 headers: { 'Content-Type': 'application/json' },
                 method: 'POST',
             });
-            const data = await res.json();
-
-            if (res.ok && data.success) {
-                const nextProfilePatch = {
-                    ...(data.updates || {}),
-                    name,
-                };
-                setLocalProfilePatch(nextProfilePatch);
-                profileForm.setFieldsValue({ name });
-                dispatch(showSuccessToast('Profile updated'));
-                await updateSession();
-                setActiveSection('overview');
-            } else {
-                dispatch(showErrorToast(data.error || 'Failed to update profile'));
+            if (!res.ok) {
+                await throwDesktopAccountRejectedResponse(res, 'profile_update', 'desktop_account_profile_update_rejected');
             }
+            const data = await readAuthAccountResponse<AuthProfileUpdateResponse>(res, 'profile_update');
+            const nextProfilePatch = {
+                ...data.updates,
+                name,
+            };
+            setLocalProfilePatch(nextProfilePatch);
+            profileForm.setFieldsValue({ name });
+            dispatch(showSuccessToast('Profile updated'));
+            await updateSession();
+            setActiveSection('overview');
         } catch (err) {
-            dispatch(showErrorToast('An error occurred'));
+            logAuthFailure('desktop_account_profile_update_failed', err, {
+                ...getDesktopProfileLogContext(session, storeDetails),
+                ...getBoundedAuthStringContext('name', name),
+                ...getBoundedAuthStringContext('phoneNumber', phoneValue.phoneNumber),
+                ...getBoundedAuthStringContext('countryCode', phoneValue.countryCode),
+            });
+            dispatch(showErrorToast('Failed to update profile'));
         } finally {
             setProfileLoading(false);
         }
@@ -183,6 +216,7 @@ function UserProfileModal({ open, onClose }: UserProfileModalProps) {
         setPasswordLoading(true);
         try {
             const res = await fetch('/api/auth/change-password', {
+                ...AUTH_ACCOUNT_REQUEST_POLICY,
                 body: JSON.stringify({
                     currentPassword: values.currentPassword,
                     newPassword: values.newPassword,
@@ -190,17 +224,20 @@ function UserProfileModal({ open, onClose }: UserProfileModalProps) {
                 headers: { 'Content-Type': 'application/json' },
                 method: 'POST',
             });
-            const data = await res.json();
-
-            if (res.ok && data.success) {
-                dispatch(showSuccessToast('Password changed successfully'));
-                passwordForm.resetFields();
-                setActiveSection('overview');
-            } else {
-                dispatch(showErrorToast(data.error || 'Failed to change password'));
+            if (!res.ok) {
+                await throwDesktopAccountRejectedResponse(res, 'password_change', 'desktop_account_password_change_rejected');
             }
+            await readAuthAccountResponse(res, 'password_change');
+            dispatch(showSuccessToast('Password changed successfully'));
+            passwordForm.resetFields();
+            setActiveSection('overview');
         } catch (err) {
-            dispatch(showErrorToast('An error occurred'));
+            logAuthFailure('desktop_account_password_change_failed', err, {
+                ...getDesktopProfileLogContext(session, storeDetails),
+                hasCurrentPassword: Boolean(values?.currentPassword),
+                hasNewPassword: Boolean(values?.newPassword),
+            });
+            dispatch(showErrorToast('Failed to change password'));
         } finally {
             setPasswordLoading(false);
         }

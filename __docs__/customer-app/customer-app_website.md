@@ -2,8 +2,8 @@
 
 **Feature Name:** Customer App (Installable Customer-Facing Menu)  
 **Document Type:** Public Website Content  
-**Status:** 📋 Ready for Implementation  
-**Last Updated:** April 18, 2026  
+**Status:** Source-backed website draft; publish/use with current Customer App runtime boundary
+**Last Updated:** July 2, 2026
 **Audience:** Potential customers visiting menulist.ai
 
 ---
@@ -238,5 +238,5 @@ One tap. Your logo appears on their home screen. From now on, one tap opens your
 
 ---
 
-_Document Status: 📋 READY FOR IMPLEMENTATION_  
-_Last Updated: April 18, 2026_
+_Document Status: Source-backed website draft; not standalone launch certification_
+_Last Updated: July 2, 2026_

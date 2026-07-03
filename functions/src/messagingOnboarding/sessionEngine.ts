@@ -37,6 +37,36 @@ const db = firestoreAdmin;
 const sessionsCol = DB_COLLECTIONS.MESSAGING_ONBOARDING_SESSIONS;
 const rateLimitsCol = DB_COLLECTIONS.MESSAGING_ONBOARDING_RATE_LIMITS;
 
+function getSessionEngineIdLogContext(
+  label: string,
+  value: unknown,
+): Record<string, boolean | number> {
+  const normalized = value === undefined || value === null ? "" : String(value);
+  return {
+    [`${label}Present`]: normalized.length > 0,
+    [`${label}Length`]: normalized.length,
+  };
+}
+
+function getSessionEngineErrorName(error: unknown): string {
+  if (error instanceof Error) return (error.name || "Error").slice(0, 80);
+  return typeof error;
+}
+
+function getSessionEngineErrorCode(error: unknown): string | undefined {
+  if (!(error instanceof Error)) return undefined;
+  const code = (error as { code?: unknown }).code;
+  if (code === undefined || code === null) return undefined;
+  return String(code).slice(0, 64);
+}
+
+function getSessionEngineErrorContext(error: unknown): Record<string, string | undefined> {
+  return {
+    errorName: getSessionEngineErrorName(error),
+    errorCode: getSessionEngineErrorCode(error),
+  };
+}
+
 // ═══════════════════════════════════════════════════════════════
 // SESSION LOOKUP & CREATION
 // ═══════════════════════════════════════════════════════════════
@@ -203,7 +233,7 @@ export async function transitionState(
   const forbidden = isTransitionForbidden(currentState, newState);
   if (forbidden) {
     logger.error("[SessionEngine] Forbidden state transition attempted", {
-      sessionId,
+      ...getSessionEngineIdLogContext("sessionId", sessionId),
       from: currentState,
       to: newState,
       reason: forbidden,
@@ -335,8 +365,8 @@ export async function processAndStoreUpload(
     return upload;
   } catch (err) {
     logger.error("[SessionEngine] Failed to process upload", {
-      sessionId,
-      error: (err as Error).message,
+      ...getSessionEngineIdLogContext("sessionId", sessionId),
+      ...getSessionEngineErrorContext(err),
     });
 
     logOnboardingEvent({
@@ -347,7 +377,6 @@ export async function processAndStoreUpload(
       userIdMasked: maskUserId(msg.userId),
       error: {
         code: "MEDIA_DOWNLOAD_FAILED",
-        message: (err as Error).message,
         retryable: true,
       },
     });
@@ -825,8 +854,13 @@ async function handleUploadInCollectingState(
     try {
       const bucket = storageAdmin.bucket();
       await bucket.file(upload.storagePath).delete();
-    } catch {
-      // Silent — file cleanup is non-critical
+    } catch (error) {
+      logger.warn("[SessionEngine] Duplicate upload cleanup failed", {
+        ...getSessionEngineIdLogContext("sessionId", session.sessionId),
+        ...getSessionEngineIdLogContext("uploadId", upload.id),
+        ...getSessionEngineIdLogContext("storagePath", upload.storagePath),
+        ...getSessionEngineErrorContext(error),
+      });
     }
 
     logOnboardingEvent({

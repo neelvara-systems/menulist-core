@@ -2,16 +2,23 @@
 
 import { FEATURE_FLAGS } from '@config/features';
 import GlobalLanguagesList from '@data/languages';
-import { addProject, uploadFile } from '@database/projects';
+import { addProject, assertProjectUpdateSucceeded, uploadFile } from '@database/projects';
 import { deleteFileByUrl } from '@database/storage/deleteFromStorage';
-import { updateStore } from '@database/stores';
+import { assertStoreUpdateSucceeded, updateStore } from '@database/stores';
 import { checkExistingActiveJob } from '@lib/firebase/menuProcessing';
+import {
+    getBoundedMenuProcessingStringContext,
+    getMenuProcessingProjectLogContext,
+    logMenuProcessingFailure,
+} from '@lib/firebase/menuProcessingDiagnostics';
+import { createRandomIdSegment } from '@lib/runtime/randomId';
 import { MENU_IMAGE_CONFIG, optimizeImage } from '@lib/image/optimizeImage';
 import { createMenuLinkImportJob } from '@lib/menu-link-import/client';
 import { runMenuIntakeIdentityPreflight } from '@lib/menu-intake-identity/client';
 import { buildOwnerDetectedUploadDetails, buildOwnerUploadConcernDetails, type OwnerDetectedDetail } from '@lib/menu-intake-identity/ownerPresentation';
 import { buildBusinessIdentitySuggestions, buildBusinessIdentityUpdatePayload, type BusinessIdentitySuggestion, type BusinessIdentitySuggestionField } from '@lib/menu-intake-identity/suggestionAcceptance';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
+import { MAX_MENU_EXTRACTION_FILES } from '@template/main-app/projects/constants';
 import createProcessingJob from '@template/main-app/projects/getProcessedFile';
 import type { ProjectFileType } from '@template/main-app/projects/types';
 import { generateMenuFileUid } from '@template/main-app/projects/utils';
@@ -20,7 +27,7 @@ import { DEFAULT_OUTLET_POLICY, type OutletPolicy } from '@type/multiOutlet.type
 import type { UploadProps } from 'antd';
 import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
-import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { LuFileText, LuGlobe2, LuTrash2, LuUpload } from 'react-icons/lu';
 import { Button, Card, Checkbox, Dialog, DotLoading, Flex, Image, Input, NavBar, Popup, ProgressBar, Result, Tag, Text, Title, Toast, Upload } from '../antd';
 import { MENU_SHEET_CONTAINER_STYLE, MENU_SHEET_BODY_STYLE } from './menuSheetLayout';
@@ -62,6 +69,10 @@ type ProjectCreationPayload = Parameters<typeof addProject>[0] & {
     defaultLanguage?: string;
     languages?: string[];
 };
+
+const getPendingMenuExtractionFileCount = (files?: ProjectFileType[] | null): number => (
+    (files || []).filter((file) => !file?.extractedData).length
+);
 
 function BusinessIdentitySuggestionList({
     details,
@@ -170,6 +181,7 @@ export default function MenuUploadSheet({
     const [linkUrl, setLinkUrl] = useState('');
     const [linkPermissionConfirmed, setLinkPermissionConfirmed] = useState(false);
     const [linkImporting, setLinkImporting] = useState(false);
+    const selectedFileCountRef = useRef(0);
 
     useEffect(() => {
         return () => {
@@ -179,9 +191,17 @@ export default function MenuUploadSheet({
         };
     }, [selectedFiles]);
 
+    useEffect(() => {
+        selectedFileCountRef.current = selectedFiles.length;
+    }, [selectedFiles.length]);
+
     const totalSelectedBytes = useMemo(
         () => selectedFiles.reduce((sum, file) => sum + file.size, 0),
         [selectedFiles]
+    );
+    const existingPendingFileCount = useMemo(
+        () => getPendingMenuExtractionFileCount(existingFiles),
+        [existingFiles],
     );
     const outletPolicy = useMemo<OutletPolicy | null>(() => {
         if (isMasterUser || storeDetails?.isMaster !== false) return null;
@@ -195,6 +215,32 @@ export default function MenuUploadSheet({
 
     const hasSelectedFiles = selectedFiles.length > 0;
     const totalSelectedMb = (totalSelectedBytes / (1024 * 1024)).toFixed(1);
+
+    const getRemainingMenuUploadSlots = useCallback(
+        () => Math.max(0, MAX_MENU_EXTRACTION_FILES - existingPendingFileCount - selectedFileCountRef.current),
+        [existingPendingFileCount],
+    );
+
+    const showMenuUploadFileLimitError = useCallback(() => {
+        const remainingSlots = getRemainingMenuUploadSlots();
+        Toast.show({
+            content: remainingSlots > 0
+                ? `Upload up to ${MAX_MENU_EXTRACTION_FILES} menu photos or PDF pages at a time. You can add ${remainingSlots} more.`
+                : `Upload up to ${MAX_MENU_EXTRACTION_FILES} menu photos or PDF pages at a time. Remove one before adding another.`,
+            duration: 2600,
+        });
+    }, [getRemainingMenuUploadSlots]);
+
+    const reserveMenuUploadSlots = useCallback((incomingFileCount: number) => {
+        if (incomingFileCount <= 0) return true;
+        if (incomingFileCount > getRemainingMenuUploadSlots()) {
+            showMenuUploadFileLimitError();
+            return false;
+        }
+        selectedFileCountRef.current += incomingFileCount;
+        return true;
+    }, [getRemainingMenuUploadSlots, showMenuUploadFileLimitError]);
+
     const updateSelectedFiles = useCallback((updater: (current: SelectedUploadFile[]) => SelectedUploadFile[]) => {
         setSelectedFiles((current) => {
             const next = updater(current);
@@ -215,6 +261,12 @@ export default function MenuUploadSheet({
             return false;
         }
 
+        const incomingSelectionCount = fileList?.length || 1;
+        if (incomingSelectionCount > 1 && incomingSelectionCount > getRemainingMenuUploadSlots()) {
+            showMenuUploadFileLimitError();
+            return false;
+        }
+
         const validationResult = await validateFile(file, fileList, existingFiles);
         if (validationResult) {
             return validationResult;
@@ -222,6 +274,12 @@ export default function MenuUploadSheet({
 
         if (file.type === 'application/pdf') {
             try {
+                const remainingPageSlots = getRemainingMenuUploadSlots();
+                if (remainingPageSlots <= 0) {
+                    showMenuUploadFileLimitError();
+                    return false;
+                }
+
                 setProgress(0);
                 setStatusText(t('uploadConvertingPdf'));
                 setStep('uploading');
@@ -229,16 +287,22 @@ export default function MenuUploadSheet({
                 const { convertPdfToImages } = await import('@template/main-app/projects/utils/pdfUtils');
                 const convertedPdfImages = await convertPdfToImages([
                     {
-                        uid: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+                        uid: `${Date.now()}-${createRandomIdSegment(8)}`,
                         name: file.name,
                         size: file.size,
                         type: file.type,
                         arrayBuffer: () => file.arrayBuffer(),
                     },
-                ], 'mobile', 'mobile') as any[];
+                ], 'mobile', 'mobile', { maxPages: remainingPageSlots }) as any[];
 
                 if (!convertedPdfImages.length) {
                     throw new Error(t('menuUploadNoFilesPrepared'));
+                }
+
+                if (!reserveMenuUploadSlots(convertedPdfImages.length)) {
+                    setStatusText('');
+                    setStep(selectedFileCountRef.current > 0 ? 'review' : 'select');
+                    return false;
                 }
 
                 updateSelectedFiles((current) => [
@@ -256,16 +320,23 @@ export default function MenuUploadSheet({
                 setStep('review');
                 return false;
             } catch (error: any) {
-                console.error('[MobileMenuUpload] PDF conversion failed:', error);
-                setErrorMessage(error?.message || t('menuUploadRetry'));
+                logMenuProcessingFailure('mobile_menu_upload_pdf_conversion_failed', error, {
+                    ...getBoundedMenuProcessingStringContext('fileType', file.type),
+                    fileSize: Number(file.size || 0),
+                });
+                setErrorMessage(t('menuUploadRetry'));
                 setStep('error');
                 return false;
             }
         }
 
+        if (!reserveMenuUploadSlots(1)) {
+            return false;
+        }
+
         const previewUrl = file.type.startsWith('image/') ? URL.createObjectURL(file) : undefined;
         const nextFile: SelectedUploadFile = {
-            id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+            id: `${Date.now()}-${createRandomIdSegment(8)}`,
             name: file.name,
             previewUrl,
             size: file.size,
@@ -277,7 +348,16 @@ export default function MenuUploadSheet({
         setStep('review');
 
         return false;
-    }, [canUploadToCurrentContext, existingFiles, t, updateSelectedFiles]);
+    }, [
+        canUploadToCurrentContext,
+        existingFiles,
+        existingPendingFileCount,
+        getRemainingMenuUploadSlots,
+        reserveMenuUploadSlots,
+        showMenuUploadFileLimitError,
+        t,
+        updateSelectedFiles,
+    ]);
 
     const uploadProps: UploadProps = useMemo(() => ({
         accept: '.pdf,.jpg,.jpeg,.png,.webp,image/*,application/pdf',
@@ -291,6 +371,9 @@ export default function MenuUploadSheet({
     }), [handleSelectedFile]);
 
     const handleRemoveFile = useCallback((fileId: string) => {
+        if (selectedFiles.some((file) => file.id === fileId)) {
+            selectedFileCountRef.current = Math.max(0, selectedFileCountRef.current - 1);
+        }
         updateSelectedFiles((current) => {
             const next = current.filter((file) => file.id !== fileId);
             if (next.length === 0) {
@@ -298,9 +381,10 @@ export default function MenuUploadSheet({
             }
             return next;
         });
-    }, [updateSelectedFiles]);
+    }, [selectedFiles, updateSelectedFiles]);
 
     const handleReset = useCallback(() => {
+        selectedFileCountRef.current = 0;
         setStep('select');
         setProgress(0);
         setStatusText('');
@@ -377,15 +461,25 @@ export default function MenuUploadSheet({
                 if (!Object.keys(updates).length) return;
 
                 try {
-                    await updateStore({
+                    const writeResult = await updateStore({
                         storeId: storeDetails.storeId,
                         tenantId: storeDetails.tenantId,
                         ...updates,
                     });
+                    assertStoreUpdateSucceeded(
+                        writeResult,
+                        storeDetails.storeId,
+                        'mobile_menu_upload_business_details_store_update_rejected',
+                    );
                     setStoreDetails((previous: any) => ({ ...previous, ...updates }));
                     Toast.show({ content: 'Business details updated', duration: 1400 });
-                } catch (error: any) {
-                    Toast.show({ content: error?.message || 'Could not update business details.', duration: 2200 });
+                } catch (error) {
+                    logMenuProcessingFailure('mobile_menu_upload_business_details_update_failed', error, {
+                        ...getBoundedMenuProcessingStringContext('storeId', storeDetails.storeId),
+                        ...getBoundedMenuProcessingStringContext('tenantId', storeDetails.tenantId),
+                        selectedFieldCount: selectedFields.length,
+                    });
+                    Toast.show({ content: 'Could not update business details.', duration: 2200 });
                 }
             },
         });
@@ -456,8 +550,13 @@ export default function MenuUploadSheet({
                     defaultLanguage: languageCodes[0] || 'en',
                 };
                 const newProject = await addProject(projectPayload);
+                assertProjectUpdateSucceeded(
+                    newProject,
+                    undefined,
+                    'mobile_menu_upload_create_project_update_rejected',
+                );
                 if (!newProject?.projectId) {
-                    throw new Error(t('menuUploadCreateProjectFailed'));
+                    throw new Error('mobile_menu_upload_create_project_update_rejected');
                 }
 
                 Toast.show({ content: 'Created a new menu for this upload', duration: 1600 });
@@ -476,7 +575,10 @@ export default function MenuUploadSheet({
                 return { action: 'cancel' };
             }
         } catch (error: any) {
-            console.warn('[MobileMenuUpload] Intake preflight skipped:', error?.message || error);
+            logMenuProcessingFailure('mobile_menu_upload_intake_preflight_skipped', error, {
+                ...getMenuProcessingProjectLogContext(projectId),
+                fileCount: files.length,
+            });
             return { action: 'continue', files, ignoredFiles: [] };
         }
     }, [
@@ -489,8 +591,32 @@ export default function MenuUploadSheet({
         token.colorTextSecondary,
     ]);
 
+    const cleanupUploadedMenuFiles = useCallback(async (
+        files: PreparedFile[],
+        cleanupReason: string,
+        projectId?: string | null,
+    ) => {
+        if (files.length === 0) return;
+
+        const cleanupResults = await Promise.allSettled(files.map(file => deleteFileByUrl(file.url)));
+        const failedCleanups = cleanupResults.filter((result) => result.status === 'rejected') as PromiseRejectedResult[];
+
+        if (failedCleanups.length > 0) {
+            logMenuProcessingFailure('mobile_menu_upload_uploaded_file_cleanup_failed', failedCleanups[0]?.reason, {
+                ...getMenuProcessingProjectLogContext(projectId),
+                ...getBoundedMenuProcessingStringContext('cleanupReason', cleanupReason),
+                attemptedCleanupCount: files.length,
+                failedCleanupCount: failedCleanups.length,
+            });
+        }
+    }, []);
+
     const handleUploadAndProcess = useCallback(async () => {
         if (!selectedFiles.length) return;
+        if (existingPendingFileCount + selectedFiles.length > MAX_MENU_EXTRACTION_FILES) {
+            showMenuUploadFileLimitError();
+            return;
+        }
 
         try {
             setStep('uploading');
@@ -508,8 +634,13 @@ export default function MenuUploadSheet({
                     businessType: storeDetails?.businessType,
                     name: t('myMenu'),
                 });
+                assertProjectUpdateSucceeded(
+                    newProject,
+                    undefined,
+                    'mobile_menu_upload_create_project_update_rejected',
+                );
                 if (!newProject?.projectId) {
-                    throw new Error(t('menuUploadCreateProjectFailed'));
+                    throw new Error('mobile_menu_upload_create_project_update_rejected');
                 }
                 projectId = newProject.projectId;
             }
@@ -517,6 +648,13 @@ export default function MenuUploadSheet({
             const preparedFiles = await prepareFilesForUpload();
             if (!preparedFiles.length) {
                 throw new Error(t('menuUploadNoFilesPrepared'));
+            }
+            if (existingPendingFileCount + preparedFiles.length > MAX_MENU_EXTRACTION_FILES) {
+                showMenuUploadFileLimitError();
+                setStep('review');
+                setProgress(0);
+                setStatusText('');
+                return;
             }
 
             setProgress(35);
@@ -550,16 +688,16 @@ export default function MenuUploadSheet({
 
             const intakeDecision = await confirmMenuIntakeDecision(projectId, uploadedFiles);
             if (intakeDecision.action === 'cancel') {
-                await Promise.allSettled(uploadedFiles.map(file => deleteFileByUrl(file.url)));
+                await cleanupUploadedMenuFiles(uploadedFiles, 'intake_cancelled', projectId);
                 setStep('review');
                 setProgress(0);
                 setStatusText('');
                 return;
             }
-            await Promise.allSettled(intakeDecision.ignoredFiles.map(file => deleteFileByUrl(file.url)));
+            await cleanupUploadedMenuFiles(intakeDecision.ignoredFiles, 'intake_ignored_files', projectId);
             const filesForJob = intakeDecision.files;
             if (filesForJob.length === 0) {
-                await Promise.allSettled(uploadedFiles.map(file => deleteFileByUrl(file.url)));
+                await cleanupUploadedMenuFiles(uploadedFiles, 'no_files_for_job', projectId);
                 setStep('review');
                 setProgress(0);
                 setStatusText('');
@@ -572,7 +710,7 @@ export default function MenuUploadSheet({
 
             const existingJobId = await checkExistingActiveJob(targetProjectId);
             if (existingJobId) {
-                await Promise.allSettled(filesForJob.map(file => deleteFileByUrl(file.url)));
+                await cleanupUploadedMenuFiles(filesForJob, 'existing_active_job', targetProjectId);
                 Toast.show({ content: t('menuUploadProcessingInProgress'), duration: 1800 });
                 onJobCreated({ jobId: existingJobId, projectId: targetProjectId });
                 return;
@@ -597,18 +735,24 @@ export default function MenuUploadSheet({
             setProgress(100);
             onJobCreated({ jobId, projectId: targetProjectId });
         } catch (error: any) {
-            console.error('[MobileMenuUpload] Failed:', error);
-            setErrorMessage(error?.message || t('menuUploadRetry'));
+            logMenuProcessingFailure('mobile_menu_upload_job_create_failed', error, {
+                ...getMenuProcessingProjectLogContext(currentProjectId),
+                fileCount: selectedFiles.length,
+            });
+            setErrorMessage(t('menuUploadRetry'));
             setStep('error');
         }
     }, [
         canCreateLocalProjects,
+        cleanupUploadedMenuFiles,
         confirmMenuIntakeDecision,
         currentProjectId,
         currentProjectLanguages,
+        existingPendingFileCount,
         onJobCreated,
         prepareFilesForUpload,
         selectedFiles,
+        showMenuUploadFileLimitError,
         storeDetails?.businessCategory,
         storeDetails?.businessType,
         t,
@@ -642,8 +786,13 @@ export default function MenuUploadSheet({
                     businessType: storeDetails?.businessType,
                     name: t('myMenu'),
                 });
+                assertProjectUpdateSucceeded(
+                    newProject,
+                    undefined,
+                    'mobile_menu_upload_create_project_update_rejected',
+                );
                 if (!newProject?.projectId) {
-                    throw new Error(t('menuUploadCreateProjectFailed'));
+                    throw new Error('mobile_menu_upload_create_project_update_rejected');
                 }
                 projectId = newProject.projectId;
             }
@@ -661,8 +810,11 @@ export default function MenuUploadSheet({
             setLinkPermissionConfirmed(false);
             onJobCreated({ jobId: result.jobId, projectId: result.projectId });
         } catch (error: any) {
-            console.error('[MobileMenuUpload] Link import failed:', error);
-            setErrorMessage(error?.message || 'We could not read this menu link. Upload a photo/PDF or add the menu manually.');
+            logMenuProcessingFailure('mobile_menu_upload_link_import_failed', error, {
+                ...getMenuProcessingProjectLogContext(currentProjectId),
+                ...getBoundedMenuProcessingStringContext('linkUrl', linkUrl),
+            });
+            setErrorMessage('We could not read this menu link. Upload a photo/PDF or add the menu manually.');
             setStep('error');
         } finally {
             setLinkImporting(false);
@@ -973,7 +1125,7 @@ export default function MenuUploadSheet({
                                 <Upload {...uploadProps}>
                                     <Button
                                         block
-                                        disabled={!canUploadToCurrentContext}
+                                        disabled={!canUploadToCurrentContext || selectedFiles.length >= MAX_MENU_EXTRACTION_FILES}
                                         fill="outline"
                                         icon={<LuUpload size={16} />}
                                         size="large"

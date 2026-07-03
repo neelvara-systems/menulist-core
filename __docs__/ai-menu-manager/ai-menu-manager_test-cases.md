@@ -2,7 +2,7 @@
 
 **Status:** Current QA plan
 **Audience:** Engineering, QA, product review
-**Last Updated:** June 20, 2026
+**Last Updated:** June 27, 2026
 
 ---
 
@@ -36,6 +36,28 @@ Current executable write boundary: QA treats `AI_MENU_MANAGER_EXECUTABLE_ACTIONS
 
 ---
 
+## First Screen Tests
+
+### AMM-HOME-001: First Screen Shows Context
+
+**Given** the owner opens Menu Manager with AMM enabled.
+**Then** the screen shows the selected store and selected menu/project context.
+**And** the screen shows the menu live/current status when that data is available.
+**And** the screen shows either pending cards or a no-pending/no-action state.
+**And** the screen shows a needs-attention summary when the loaded selected project has actionable gaps.
+**And** the composer is visible without opening another panel.
+**And** starter prompts include both commands and questions.
+**And** Work On and Suggestions are available but do not crowd the initial composer.
+
+### AMM-HOME-002: First Screen Does Not Feel Like An Action Bot
+
+**Given** the owner opens Menu Manager.
+**Then** the main prompt language is conversational, such as "Ask or tell MenuList anything about this menu."
+**And** the owner is not required to choose an action type before typing.
+**And** internal terms such as resolver, patch, hash, execution directive, context packet, action type, or proposal state are not visible.
+
+---
+
 ## Command Intake Tests
 
 ### AMM-INTAKE-001: Single Item Price Update
@@ -52,6 +74,8 @@ Current executable write boundary: QA treats `AI_MENU_MANAGER_EXECUTABLE_ACTIONS
 **When** the owner sends "Sandwich 80."
 **Then** AMM creates a clarification card instead of a price card.
 **And** the owner must choose the item before any proposal can be approved.
+**And** the clarification options include the matching item names and submit the selected item into the next proposal card in one tap.
+**And** AMM must not guess the first candidate when multiple loaded items share the same short name.
 
 ### AMM-INTAKE-003: Mixed-Language Command
 
@@ -82,6 +106,7 @@ Current executable write boundary: QA treats `AI_MENU_MANAGER_EXECUTABLE_ACTIONS
 **Then** AMM creates a destination-specific not-supported card such as `Zomato is not supported`, not a generic manual-task placeholder.
 **And** the card has no `Mark done` control because MenuList cannot complete that external action.
 **And** AMM does not mark external platform work complete.
+**And** the same unsupported behavior applies to spaced external names such as "Update this on Uber Eats."
 
 ### AMM-INTAKE-004B: General Question Is Out Of Scope
 
@@ -127,6 +152,38 @@ Current executable write boundary: QA treats `AI_MENU_MANAGER_EXECUTABLE_ACTIONS
 **When** the owner sends "Show Featured section" without an item name.
 **Then** AMM prepares a `decision_blocks_update` card that enables Featured with automatic MenuList choice.
 
+### AMM-INTAKE-009: Follow-Up Updates Pending Card
+
+**Given** AMM has one matching pending card and no conflicting pending card for the same entity.
+**When** the owner sends "Tea 20."
+**And** AMM prepares a Masala Tea price card.
+**And** the owner sends "Actually 25."
+**Then** AMM updates the same pending card to Rs 25 instead of creating an unrelated duplicate.
+**And** no project write occurs before approval.
+
+**Also verify** one pending visibility, category visibility, menu note, and design card can be safely adjusted by short follow-ups such as "show it", "hide it", "change note to Fresh menu today", or "try warmer".
+**And** AMM must not rewrite a follow-up when there is more than one pending proposal or when the follow-up does not clearly match the pending card type.
+
+**When** the owner sends "Cold coffee sold out."
+**And** AMM prepares an availability card.
+**And** the owner sends "till 6 PM."
+**Then** AMM updates the matching availability card with the 6 PM restore detail when timed restore is supported.
+**And** AMM asks a clarification or leaves the field unset when the current adapter does not support timed restore.
+
+**When** the owner sends "Make menu premium."
+**And** AMM prepares a Premium & Minimal design card.
+**And** the owner sends "try warmer."
+**Then** AMM updates or replaces the matching pending design card with the Warm & Inviting choice.
+
+### AMM-INTAKE-010: One-Tap Clarification Moves Forward
+
+**Given** the menu contains Veg Sandwich and Cheese Sandwich.
+**When** the owner sends "Sandwich 80."
+**Then** AMM creates a clarification card.
+**When** the owner taps "Veg Sandwich."
+**Then** AMM replaces the clarification with a Veg Sandwich price proposal card.
+**And** tapping the clarification option does not approve, execute, publish, persist menu truth, or mark work done.
+
 ---
 
 ## Proposal Card Tests
@@ -152,7 +209,7 @@ The card must show:
 - item name.
 - current availability.
 - proposed unavailable/available state.
-- optional restore time.
+- restore details only when the selected adapter supports timed restore.
 - scope.
 - customer-facing preview text.
 
@@ -188,7 +245,8 @@ Theme/layout/color/display clarification behavior:
 - "change menu layout" shows List, Grid, and Card.
 - "change theme color" shows the existing brand color presets.
 - "change display options" shows show/hide choices for item prices, item images, category icons, and category tabs.
-- Choosing any option drafts the next owner message; sending that message creates the proposal card.
+- Choosing a clarification option submits the selected answer and creates the next proposal/clarification card without approving, executing, publishing, or mutating truth.
+- Suggestion sheets and card Edit remain draft-first composer behavior.
 
 ### AMM-CARD-004A: Featured Section Card
 
@@ -202,6 +260,29 @@ The card must show:
 - approval button and cancel option.
 
 The card must map to existing `menuSettings.decisionBlocks`, not a separate Featured source of truth.
+
+### AMM-CARD-004B: Owner Copy Quality
+
+Owner-facing cards and receipts must use calm operational language.
+
+Allowed examples:
+
+- "I found Cold Coffee."
+- "This will change Rs 15 to Rs 20."
+- "Customers will see it as unavailable."
+- "Approve?"
+- "Done."
+
+Forbidden owner-visible terms:
+
+- `patch`
+- `hash`
+- `resolver`
+- `execution directive`
+- `context packet`
+- `action type`
+- `proposal state`
+- provider/model/token/confidence details
 
 ### AMM-CARD-005: Multi-Outlet Scope Card
 
@@ -258,6 +339,14 @@ For a linked outlet or HQ menu, the card must show:
 **When** the client completes the proposal.
 **Then** the completion route verifies proposal status, idempotency key, action type, selected store/project scope, `executionId`, `patchHash`, and resulting project marker.
 **And** a modified patch, stale base marker, or mismatched scope cannot mark the proposal executed.
+
+### AMM-EXEC-005B: Receipt Completion Failure After Successful Save
+
+**Given** an approved client project mutation saved through the existing project update path.
+**And** compact-session receipt completion fails after the project save.
+**Then** AMM must not mark the project update as failed.
+**And** the owner sees a recoverable receipt warning.
+**And** applying the same card again may complete the receipt when the selected project already contains the approved patch.
 
 ### AMM-EXEC-006: Rollback Proposal
 
@@ -345,8 +434,7 @@ The parity matrix must be generated from [ai-menu-manager_action-type-checklist.
 
 **When** the owner says "Change working hours", "Set temporary status", "Setup customer app", "Show menu on TV", or "Manage feedback".
 **Then** AMM creates a `system_clarification_request` card with bounded option rows.
-**And** choosing an option drafts a follow-up owner command instead of executing immediately.
-**And** the drafted command resolves to the exact registered action-family card that names the existing Mobile More path.
+**And** choosing an option resolves the clarification into the exact next registered action-family card that names the existing Mobile More path.
 **And** no store, screen, feedback, PWA, or temporary-status truth is mutated by the guided choice itself.
 
 ### AMM-DOMAIN-ANSWER-001: Selected Menu Read-Only Answers
@@ -357,6 +445,22 @@ The parity matrix must be generated from [ai-menu-manager_action-type-checklist.
 **And** the answer is built from the loaded selected project context packet only.
 **And** there is no provider call, external lookup, proposal doc write, project/store mutation, or extra Firestore read.
 **And** any suggested reply only drafts the next owner command; the owner must send it before a proposal card is prepared.
+
+### AMM-DOMAIN-ANSWER-001A: Diagnostic Questions
+
+**When** the owner asks "Why is my QR menu old?", "Why is my print menu wrong?", "Why is this item hidden?", "Customer says Cold Coffee price is wrong", or "What is pending approval?".
+**Then** AMM creates a diagnostic `system_context_answer` card when the answer can be derived from loaded selected-project/session context.
+**And** the card explains the current state in owner language.
+**And** the card offers at most a small number of safe next actions or draft replies.
+**And** the card does not claim a surface was regenerated, published, restored, or fixed unless an approved registered operation completed.
+**And** customer price concern diagnostics show the currently loaded item price and offer a next price-card prompt instead of treating the request as a public-link freshness issue.
+
+### AMM-DOMAIN-ANSWER-001B: Recommendation Questions
+
+**When** the owner asks "What should I promote today?", "How can I make my menu better?", or "Can I increase prices?".
+**Then** AMM creates a bounded recommendation card from the loaded selected-menu context.
+**And** recommendations must be short, specific, and tied to visible menu evidence such as missing prices, missing photos, unavailable items, hidden sections, or current design state.
+**And** recommendation buttons only draft or prepare registered next actions; they do not mutate truth by themselves.
 
 ### AMM-DOMAIN-ANSWER-002: Domain Answers Do Not Capture Direct Commands
 
@@ -404,6 +508,14 @@ The parity matrix must be generated from [ai-menu-manager_action-type-checklist.
 Normal deterministic selected-project cards must update the compact daily session doc rather than creating a proposal document per card.
 Server-backed cards may create or update one proposal document when provider secrets, import/upload jobs, external policy, or durable ledger detail requires it.
 Status transitions should update the same compact session/proposal record unless retention/audit requirements explicitly require a separate artifact.
+
+### AMM-COST-002B: Direct-DAL Permission Fallback Is Bounded
+
+If the open AMM screen has selected project context but direct compact-session read/write returns Firestore `permission-denied`, desktop and mobile may fall back to authenticated AMM API routes.
+The fallback must enforce `MANAGE_MENU`, selected tenant/store/project scope, request size caps, schema validation, and rate limits.
+The fallback must send only API-safe command fields, not full project JSON, full compact session JSON, staff data, billing data, secrets, or unrelated store history.
+The fallback may create a bounded server-backed proposal/session record, but it must not become the default deterministic path when direct client DAL access works.
+Fallback responses must be parsed through the shared bounded client reader. Malformed, oversized, or empty successful response bodies must log `ai_menu_manager_response_parse_failed` and use fixed owner-safe failure copy rather than leaking raw response text.
 
 ### AMM-COST-003: Heavy Artifacts Go To Storage
 
@@ -505,6 +617,16 @@ Image generation, import analysis, provider calls, and batch actions must be rat
 
 Logs must not include raw owner prompts when they may contain private details, secrets, phone numbers, payment details, or staff/customer data.
 Logs should use proposal IDs, action types, tenant IDs, and redacted summaries.
+
+### AMM-SEC-007: Manual Completion Is Card-Scoped
+
+Only cards whose payload kind is `manual_task` and whose available owner action includes `mark_done` can be completed as manual work.
+Proposal, clarification, answer, unsupported, local export, or receipt cards must not be converted into a manual completion by changing the client result payload.
+
+### AMM-SEC-008: Server Fallback Payload Stays Minimal
+
+The direct-DAL permission fallback command request must include only selected context and command fields: `storeId`, `projectId`, `inputType`, owner text/upload refs, `composerContext`, `clientContextVersion`, `replaceOperationId`, `idempotencyKey`, and `sessionId`.
+The test fails if the fallback spreads the full request/session/project object into the API body.
 
 ---
 
@@ -641,7 +763,7 @@ Disabling `ENABLE_AI_MENU_MANAGER_RULES` stops rule suggestion and rule executio
 - Mobile Work on picker remains a MobileShell bottom sheet with large touch rows.
 - Mobile suggestion chooser shows back navigation from the second layer and never routes out of `MobileShell`.
 - Vague choice commands such as "change the theme", "generate image", or "promote this item" create clarification cards with selectable option rows instead of generic dead-end text.
-- Selecting a clarification option row fills the composer and does not approve, complete, or execute anything until the owner sends the drafted message.
+- Selecting a clarification option row submits the selected answer, replaces the clarification, and creates the next card without approving, completing, executing, publishing, or mutating truth.
 - Card Edit fills the composer with an owner-readable draft command and leaves the pending card unchanged unless the owner sends/cancels separately.
 - Business Health dashboard still loads without AMM data dependencies.
 - Menu Command Center still applies its supported operations.
@@ -649,6 +771,25 @@ Disabling `ENABLE_AI_MENU_MANAGER_RULES` stops rule suggestion and rule executio
 - Existing image generation page/API still works without AMM enabled.
 - Existing extraction job creation still works without AMM enabled.
 - Existing mobile menu editor still works without AMM enabled.
+
+---
+
+## Public Claim Guard Tests
+
+### AMM-CONTENT-001: Website Claims Match Verified Scope
+
+**When** website, marketing, helpdoc, or demo copy mentions AI Menu Manager.
+**Then** copy may claim verified daily menu operations, selected-menu answers, local exports, and unsupported handoffs.
+**And** copy must not claim every checklist row is executable.
+**And** copy must not claim direct external posting to Zomato, Swiggy, Uber Eats, Google Business Profile, Instagram, Facebook, or Google reviews.
+**And** copy must not claim production rule execution, universal rollback, full voice command execution, provider-backed image/import/publish execution, or staff/billing/account mutation unless the matching adapter and runtime sweep are verified.
+
+### AMM-CONTENT-002: Public Copy Keeps Feature-Level AI Boundary
+
+**When** copy uses `AI Menu Manager`.
+**Then** it must position AI as this feature's owner-controlled menu operations surface.
+**And** it must not reposition all of MenuList as generic AI restaurant software.
+**And** it must include owner-control language such as approval, review, prepared update, supported changes, or MenuList-controlled surfaces.
 
 ---
 

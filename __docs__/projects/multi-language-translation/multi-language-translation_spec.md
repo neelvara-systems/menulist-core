@@ -2,9 +2,11 @@
 
 > **Feature:** AI-Powered Menu Translation  
 > **Parent Feature:** Projects (Menu Digitization)  
-> **Status:** ✅ Production Ready  
+> **Status:** Implemented source evidence; not current launch certification
 > **Last Updated:** January 31, 2026  
 > **Version:** 3.0
+
+> **Launch boundary:** This spec documents multi-language translation. Current release approval requires the active [production-readiness audit](../../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../../production-readiness/external-certification-runbook.md) evidence, target feature-flag/provider review, deploy evidence, browser/mobile QA for translated menu flows, and public renderer fallback/RTL evidence.
 
 ---
 
@@ -468,5 +470,5 @@ When outlet adds local-only items (L*I*\* prefix):
 
 ---
 
-_Document Status: ✅ PRODUCTION READY_
+_Document Status: Historical multi-language translation source evidence - not current launch certification_
 _Generated from codebase: January 31, 2026_

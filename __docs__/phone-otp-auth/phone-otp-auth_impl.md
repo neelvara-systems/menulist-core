@@ -6,14 +6,23 @@
 2. If the identity looks like a phone number, the form embeds `PhoneOtpAuthPanel` as the active phone row, with country dial code and number aligned together, and offers WhatsApp OTP as the primary action.
 3. If the owner chooses passcode instead, or if the identity is email/staff ID, the same form shows the password/passcode field.
 4. `PhoneOtpAuthPanel` sends `phone`, `countryCode`, and `dialCode`; dashboard embedded mode syncs phone-row edits back to the identity value and defaults to India unless the owner entered an international `+...` number.
-5. `POST /api/auth/phone-otp/start` validates and rate-limits by IP and normalized phone hash.
+5. `POST /api/auth/phone-otp/start` rate-limits by IP before reading the body, rejects bodies above 1KB, validates, then rate-limits by normalized phone hash.
 6. `createPhoneOtpChallenge()` normalizes to E.164, stores a server-only challenge with country metadata, and sends WhatsApp OTP.
 7. Owner submits code to `POST /api/auth/phone-otp/verify`.
-8. `verifyPhoneOtpChallenge()` checks TTL, attempts, and HMAC hash.
-9. The helper reuses or creates a `users` profile and stores a one-time login token.
-10. Browser calls `signIn('credentials', { phoneOtpLoginToken })`.
-11. NextAuth `CredentialsProvider.authorize()` consumes the token, loads the user, applies block-state inheritance, and returns the existing minimal session user shape.
-12. Dashboard login continues to sync Firebase Auth through `/api/auth/set-claims`.
+8. The verify route rate-limits by IP before reading the body, rejects bodies above 1KB, validates, then rate-limits by challenge hash.
+9. `verifyPhoneOtpChallenge()` checks TTL, attempts, and HMAC hash.
+10. The helper reuses or creates a `users` profile and stores a one-time login token.
+11. Browser calls `signIn('credentials', { phoneOtpLoginToken })`.
+12. NextAuth `CredentialsProvider.authorize()` consumes the token, loads the user, applies block-state inheritance, and returns the existing minimal session user shape.
+13. Dashboard login continues to sync Firebase Auth through `/api/auth/set-claims`.
+
+Start-route custom errors are mapped through a client-safe response helper. Invalid phone input can return "Enter a valid phone number."; delivery and unexpected custom failures return "Could not send code. Please try again." while the internal code is logged with secure logging. The route does not return raw `PhoneOtpError.message` text to the browser.
+
+Unexpected start/verify route failures and consumed-token user mismatches are logged through `src/lib/auth/authDiagnostics.ts` with stable `phone_otp_*` failure codes, source error name/code/status, and bounded request/user metadata only. Expected `PhoneOtpError` branches still log code-only and return fixed client-safe copy. The shared `PhoneOtpAuthPanel` also allowlists local send/verify/account-open failure copy, so browser fetch errors or unexpected exception text are not shown to owners.
+
+June 29 follow-up: `PhoneOtpAuthPanel` parses start and verify responses through `readJsonResponseWithLimit()` with an 8KB cap. Malformed or oversized responses log `phone_otp_response_parse_failed` with bounded action/status metadata only. Successful start responses must include `success: true` and a non-empty `challengeId`; successful verify responses must include `success: true` and a non-empty `loginToken`. Invalid acknowledgement shapes log `phone_otp_response_invalid` and still show the existing fixed send/verify failure copy.
+
+July 1 acknowledgement follow-up: the start route now returns `action: "start"` and the accepted purpose, and the verify route returns `action: "verify"` with the verified challenge id. `PhoneOtpAuthPanel` requires those acknowledgements before showing code entry or using the login token. Challenge creation, OTP verification, token consumption, WhatsApp delivery, NextAuth credentials login, and Firebase Auth claim sync are unchanged.
 
 ## User Resolution
 

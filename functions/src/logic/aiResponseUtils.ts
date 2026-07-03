@@ -13,9 +13,14 @@
  * - Data flows: Firebase (basic validation) → Frontend (full sanitization)
  */
 
+import * as functions from 'firebase-functions';
 import { BusinessAttributeSuggestion, ExtractedMenuData } from '../types';
 import { getAllBusinessAttributeInferenceKeys } from '../sharedData/businessAttributeInference';
 import { normalizeExtractedBusinessProfile } from '../sharedData/extractedBusinessProfile';
+
+const logger = functions.logger;
+const AI_RESPONSE_PARSE_FAILED = 'AI_RESPONSE_PARSE_FAILED';
+const AI_RESPONSE_VALIDATION_WARNINGS = 'AI_RESPONSE_VALIDATION_WARNINGS';
 
 const SAFE_DIETARY_TAGS = new Set([
     'vegetarian',
@@ -366,7 +371,12 @@ function parseAIResponseText(rawText: string | object): any {
     try {
         return JSON.parse(cleanedText);
     } catch (parseError) {
-        console.error('[parseAIResponseText] JSON parse error:', (parseError as Error).message);
+        logger.warn('[AIResponseUtils] JSON parse failed', {
+            failureCode: AI_RESPONSE_PARSE_FAILED,
+            inputType: typeof rawText,
+            inputLength: typeof rawText === 'string' ? rawText.length : undefined,
+            errorName: parseError instanceof Error ? parseError.name : typeof parseError,
+        });
         throw new Error('AI returned malformed data. Please try again.');
     }
 }
@@ -397,7 +407,12 @@ export function processAIResponseForFirebase(rawText: string | object): {
     // Step 2: Validate structure
     const validation = validateResponseStructure(parsed);
     if (!validation.valid) {
-        console.warn('[processAIResponseForFirebase] Validation warnings:', validation.errors);
+        logger.warn('[AIResponseUtils] Response validation warnings', {
+            failureCode: AI_RESPONSE_VALIDATION_WARNINGS,
+            warningCount: validation.errors.length,
+            hasMessage: typeof parsed?.message === 'string',
+            hasData: Boolean(parsed?.data),
+        });
         // Continue anyway - we'll normalize what we can
     }
 

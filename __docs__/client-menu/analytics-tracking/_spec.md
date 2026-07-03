@@ -3,7 +3,7 @@
 **Sub-Feature of:** Client Menu  
 **Document Type:** Product Specification  
 **Status:** ✅ Implemented  
-**Last Updated:** May 1, 2026
+**Last Updated:** June 30, 2026
 
 ---
 
@@ -49,7 +49,7 @@ Customer-Facing Analytics tracks all customer interactions on the public menu to
 | `SEARCH`                   | Unique search term per session | Track real demand without per-keystroke cost |
 | Active filter context      | Attached to later item/search/action writes only | Show owner-visible customer filter intent without a separate Firebase write |
 | `UNAVAILABLE_ITEM_ATTEMPT` | Tap on unavailable item | Track missed demand / stock friction |
-| `MENU_ACTION_CLICK`        | Final CTA click from menu footer or recovery UI | Track action intent without passive telemetry cost |
+| `MENU_ACTION_CLICK`        | Final CTA click from menu footer or recovery UI | Track action intent without passive telemetry cost; includes open/closed/unknown store-hours state on the same write |
 
 Public customer analytics events are coalesced on the client for a short flush window before writing to Firestore. Final action/conversion events are persisted into the local queue immediately and flushed with the same queue, so a burst of menu view, featured tap, item open, search, and CTA activity can settle as one daily-document write.
 
@@ -88,6 +88,18 @@ The nightly scheduler precomputes `sourceQuality` and `ownerConfidence` into the
 OBP language usage is shown only for multi-language OBPs. Language switch links remain URL-based for SEO/AEO, preserve `entry_source` plus intentional `utm_source`, `utm_medium`, and `utm_campaign` parameters, and only count adoption after the switched language page remains active for the dwell window.
 
 Pro menu intelligence joins existing analytics counters with compact owner-authored menu catalog fields during nightly settlement. It produces deterministic owner action candidates for unavailable demand, best-seller validation, category order, hidden demand, variant clarity, metadata demand, timed categories, and price signals.
+
+Owner action receipts close the loop without adding public tracking. When an owner marks a Menu Intelligence action as done, MenuList stores one bounded receipt in the existing dashboard summary doc. The next settled scheduler cycles compare the same precomputed metrics and show whether action rate improved, there was no clear change, or there is not enough settled activity yet.
+
+### Owner Trust Signals
+
+These dashboard signals are produced from existing counters and catalog fields. They do not add new customer-facing event types.
+
+| Signal | Source | Purpose |
+| ------ | ------ | ------- |
+| Item status labels | `viewsByItem`, `clicksByItem`, `recommendationClicksByItem`, `unavailableItemTapsByItem`, `itemNames` | Label items as `Strong item`, `Getting attention`, `Needs work`, or `Unavailable demand` so owners can read item health without a heatmap |
+| Search-fix actions | `zeroResultSearchTerms` | Suggest adding, renaming, or mapping searched terms that produced no result |
+| Open/closed action timing | Existing final menu action writes with `openHoursState` | Show whether customers tried to act while the business appeared open, closed, or hours were hidden |
 
 Paid Gemini wording is gated by both the Cloud Functions env flag `ENABLE_OWNER_ANALYTICS_AI_SUMMARIES=true` and `platformSummary/storesSummary.stores.{sId}.activePlanType`. Only `pro` and `premium` are eligible. Missing plan data fails closed and writes an `analyticsAiEntitlement` lock state into the dashboard read model. When enabled, owner analytics wording uses the analytics-specific `gemini-2.5-flash-lite` model because the underlying metrics and action choices are deterministic.
 
@@ -142,6 +154,8 @@ Paid Gemini wording is gated by both the Cloud Functions env flag `ENABLE_OWNER_
   menuSessionsBySource: { qr: n, whatsapp: n, obp: n, direct: n };
   actionSessionsBySource: { qr: n, whatsapp: n, obp: n, direct: n };
   menuActionClicksBySource: { qr: n, whatsapp: n, obp: n, direct: n };
+  actionSessionsByOpenHoursState: { open: n, closed: n, unknown: n };
+  menuActionClicksByOpenHoursState: { open: n, closed: n, unknown: n };
   hourlyClicksByItem: { "item_id": { "12": 5, "13": 8 } };
 
   // Hourly (store-local)
@@ -196,6 +210,8 @@ Paid Gemini wording is gated by both the Cloud Functions env flag `ENABLE_OWNER_
   unavailableItemTapsByItem: { "item_id": n };
   viewsByCategory: { "category_id": n };
   clicksByCategory: { "category_id": n };
+  actionSessionsByOpenHoursState: { open: n, closed: n, unknown: n };
+  menuActionClicksByOpenHoursState: { open: n, closed: n, unknown: n };
   categoryNames: { "category_id": "Starters" };
   lifetimeTotalSessions: number;
   topItems: Array<{ menuItemId; name; totalClicks }>;
@@ -234,6 +250,7 @@ Paid Gemini wording is gated by both the Cloud Functions env flag `ENABLE_OWNER_
 | Scroll telemetry  | Rejected      | Avoids noisy per-scroll writes |
 | Session milestones | Existing writes | Adds decision rates without extra event docs |
 | Category interest | Existing item events | Adds category-level demand without scroll/open tracking |
+| Open/closed action timing | Existing final actions | Adds hours-friction insight without polling or heartbeat writes |
 
 ### Estimated Monthly Cost (100 projects)
 
@@ -293,6 +310,7 @@ Google Analytics and Meta Pixel are owner-provided external scripts. MenuList lo
 - The recommended owner flow is: load `Today so far` first, then load settled historical analytics only when the owner asks for them.
 - That live card must stay cost-safe: no realtime listener, no polling, no new rollup, no new collection.
 - Search demand, unavailable-item demand, and final menu CTA clicks are visible in dashboard views after nightly aggregation.
+- Item status labels, search-fix actions, and open/closed action timing are visible in dashboard detail/action sections after nightly aggregation.
 - Attribute filter intent is visible as `Top filters` only when a customer selected a public filter chip and then performed a meaningful existing action such as item view, search, unavailable tap, recommendation tap, or final CTA.
 - Catalog variants/options are not tracked as clicks unless they become real selectable customer controls. Current menu intelligence uses catalog fields plus existing item/category analytics only.
 - Dashboard read models carry `engagedSessionRate`, `intentRate`, and `actionRate` precomputed by the scheduler/DAL from `menuSessions`.

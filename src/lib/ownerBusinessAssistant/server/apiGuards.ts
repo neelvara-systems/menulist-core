@@ -4,8 +4,9 @@ import { getRateLimitForFeature, type RateLimitFeature } from '@lib/rateLimit/co
 import { checkRateLimit } from '@lib/rateLimit';
 import { logger } from '@lib/monitoring/logger';
 import { canUserAccessStore } from '@lib/multiOutlet/storeSwitchAccess';
-import { buildSecurityContext } from '@lib/security/securityContext';
+import { getBoundedSecurityRouteContext, getBoundedSecurityStringContext } from '@lib/security/securityDiagnostics';
 import { verifyTenantAccess } from '@/middleware/auth';
+import { hashPublicRateLimitValue } from 'src/middleware/publicApi';
 
 export const getOwnerAssistantSessionScope = (session: any) => {
   const tId = session?.tId || session?.user?.tenantId;
@@ -47,11 +48,11 @@ export const resolveOwnerAssistantSelectedStoreScope = (
   const sessionUser = buildSessionUserForStoreAccess(session, sId);
   if (!canUserAccessStore({ sessionUser, storeId: selectedStoreId })) {
     logger.security('Tenant Access Violation - Owner Business Assistant Store Scope', {
-      ...buildSecurityContext(session, request),
+      ...getBoundedSecurityRouteContext(session, request),
       endpoint: request.nextUrl.pathname,
-      attemptedStoreId: selectedStoreId,
-      sessionStoreId: sId,
-      tenantId: tId,
+      ...getBoundedSecurityStringContext('attemptedStoreId', selectedStoreId),
+      ...getBoundedSecurityStringContext('sessionStoreId', sId),
+      ...getBoundedSecurityStringContext('tenantId', tId),
     }, 'critical');
     return {
       error: NextResponse.json({ error: 'Forbidden' }, { status: 403 }),
@@ -73,7 +74,7 @@ export const ensureOwnerAssistantTenantAccess = (
 
   if (!verifyTenantAccess(session, tId, sId, request)) {
     logger.security('Tenant Access Violation - Owner Business Assistant', {
-      ...buildSecurityContext(session, request),
+      ...getBoundedSecurityRouteContext(session, request),
       endpoint: request.nextUrl.pathname,
     }, 'critical');
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
@@ -90,8 +91,11 @@ export async function applyOwnerBusinessAssistantRateLimit(params: {
 }) {
   const { tId, sId, userId } = getOwnerAssistantSessionScope(params.session);
   const rateLimitConfig = getRateLimitForFeature(params.feature);
+  const userRateLimitHash = hashPublicRateLimitValue(userId || 'unknown');
+  const tenantRateLimitHash = hashPublicRateLimitValue(tId || '_');
+  const storeRateLimitHash = hashPublicRateLimitValue(sId || '_');
   const rateLimit = await checkRateLimit({
-    key: `${params.keyPrefix}:${userId || 'unknown'}:${tId || '_'}:${sId || '_'}`,
+    key: `${params.keyPrefix}:${userRateLimitHash}:${tenantRateLimitHash}:${storeRateLimitHash}`,
     ...rateLimitConfig,
   });
 
@@ -99,13 +103,13 @@ export async function applyOwnerBusinessAssistantRateLimit(params: {
 
   const waitSeconds = Math.max(1, Math.ceil((rateLimit.resetAt - Date.now()) / 1000));
   logger.security('Rate Limit Exceeded', {
-    ...buildSecurityContext(params.session, params.request),
+    ...getBoundedSecurityRouteContext(params.session, params.request),
     endpoint: params.request.nextUrl.pathname,
     feature: params.feature,
     limit: rateLimitConfig.limit,
-    storeId: sId,
-    tenantId: tId,
-    userId,
+    ...getBoundedSecurityStringContext('storeId', sId),
+    ...getBoundedSecurityStringContext('tenantId', tId),
+    ...getBoundedSecurityStringContext('userId', userId),
     waitSeconds,
     window: rateLimitConfig.window,
   }, 'medium');

@@ -70,7 +70,7 @@ src/
 │       │   ├── MobileFeedbackDetail.tsx     ← Drill-in: Feedback detail
 │       │   ├── MobileMoreScreen.tsx         ← Tab: More hub (19 sub-screens)
 │       │   ├── MobileShareScreen.tsx        ← More > Share & QR
-│       │   ├── MobilePublicInfoScreen.tsx   ← More > Public info
+│       │   ├── MobileBasicSettingsScreen.tsx ← More > Brand settings, public address, coordinates
 │       │   ├── MobileBillingScreen.tsx      ← More > Billing
 │       │   ├── MobileDashboardScreen.tsx    ← More > Dashboard analytics
 │       │   ├── MobileHoursScreen.tsx        ← Tab: Today hours, status, campaigns, GrowthOS Sales Pack
@@ -157,7 +157,7 @@ The owner mobile cross-check confirmed the handheld owner workflow remains shell
 - `AntdLayoutWrapper` renders `MobileShell` on handheld devices when `ENABLE_MOBILE_UI` is enabled.
 - Owner routes such as `/dashboard`, `/projects`, `/use-menulist`, `/qr-code`, `/feedback`, `/billing`, `/transactions`, `/locations`, `/users`, and `/business-settings` are mapped into the mobile shell instead of rendering desktop pages on phones.
 - More-tab sub-screens remain state/hash driven through `#mobile/more/...`; setup fallbacks should route through those hashes instead of assigning desktop settings URLs.
-- Owner PWA public preview links for menu, OBP, feedback, customer app, and screen links should open through `openMobilePublicLink()` instead of same-window `window.location.assign(...)`, so dismissing the external view returns to the existing shell state without remounting the app.
+- Owner PWA public preview links for menu, OBP, feedback, customer app, and screen links should open through `openMobilePublicLink()` instead of same-window `window.location.assign(...)`, so dismissing the external view returns to the existing shell state without remounting the app. The helper uses `noopener,noreferrer`, detects blocked browser opens, logs `mobile_public_link_open_failed` with bounded source/link metadata only, and shows fixed owner feedback.
 - Shared mobile primitives must preserve the 44px minimum touch-target rule for navigation, picker, filter, close, color, and date/time controls.
 - Literal colors in mobile screens are allowed only for previews, swatches, brand-output examples, or existing Ant Design CSS variables; owner screen surfaces should use theme tokens.
 
@@ -202,12 +202,13 @@ export default function AntdLayoutWrapper(props: any) {
 
 Mobile and desktop share the same Next.js routes. The layout wrapper decides which shell to render. On handheld devices, `MobileShell` maps canonical desktop owner URLs to the matching phone surface so owners can open shared/bookmarked desktop links without needing a laptop:
 
-- `/dashboard` on mobile → MobileShell → Today tab
-- `/today` and `/today/history` on mobile → MobileShell → Today tab
+- `/dashboard` and `/today` on mobile -> MobileShell -> Today tab
+- `/today/history` on mobile -> MobileShell -> Today history when Past Activity is enabled
 - `/projects` on mobile → MobileShell → Menu tab
 - `/use-menulist`, `/qr-code`, and legacy `/qrCode` on mobile → MobileShell → Share tab
-- `/feedback`, `/billing`, `/transactions`, `/locations`, `/users`, and `/users/permissions` on mobile → MobileShell → More sub-screen
+- `/business-health`, `/feedback`, `/billing`, `/transactions`, `/locations`, `/users`, and `/users/permissions` on mobile -> MobileShell -> More sub-screen
 - `/business-settings` on mobile → MobileShell → More hub with searchable settings
+- `/platform/*`, `/ops/*`, and `/reseller/*` on mobile -> MobileShell -> role-gated More sub-screen
 
 `/transactions` keeps the desktop source of truth (`getPaginatedAiOperations`) and renders the phone-native equivalent of desktop filtering and drilldown: action filter, date range, reset, refresh, infinite scroll, and transaction detail sheet.
 
@@ -444,8 +445,8 @@ export const MOBILE_NAV_TABS = [
 export const MOBILE_MORE_ITEMS = [
   { key: "share", label: "Share Menu & QR", icon: LuQrCode, route: "/qr-code" },
   {
-    key: "public-info",
-    label: "Public Info",
+    key: "business-profile",
+    label: "Business Profile",
     icon: LuHotel,
     route: "/business-settings",
   },

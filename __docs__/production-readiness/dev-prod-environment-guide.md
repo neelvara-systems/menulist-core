@@ -34,7 +34,7 @@ MenuList can embed Answerlattice as an external client on owner routes only when
 | 2   | Separate storage buckets                         | **AGREE**          | `firebaseStorageUrl` hardcoded to `menulist-qa.appspot.com` — needs per-env config                                                 |
 | 3   | Separate API keys (Gemini, etc.)                 | **AGREE**          | Single `GEMINI_AI_KEY` used everywhere. Multi-key rotation exists but all keys are for same project                            |
 | 4   | Separate domains                                 | **ALREADY EXISTS** | Vercel handles this: `main` → prod domain, `dev` → preview URLs                                                                |
-| 5   | No shared anything between dev/prod              | **PARTIAL**        | Feature flags are code-level (not env-level), so they're shared. Need env-aware flag overrides                                 |
+| 5   | No shared anything between dev/prod              | **PARTIAL**        | Feature flags are code-level (not env-level), so target-specific changes require explicit review and certification evidence rather than env overrides |
 | 6   | `.env.local` for dev, `.env.production` for prod | **WRONG**          | Next.js uses `.env.local` (all envs) + Vercel env vars per environment. No `.env.production` file needed                       |
 | 7   | Use `NEXT_PUBLIC_ENV=dev\|prod` variable         | **UNNECESSARY**    | `process.env.NODE_ENV` already handles this. Vercel sets `VERCEL_ENV` for preview vs production                                |
 | 8   | MCE validation on publish                        | **ALREADY EXISTS** | `src/lib/mce/` — 17-rule engine, publish-gate in Editor.tsx. Flag: `ENABLE_MCE: true`                                          |
@@ -100,6 +100,7 @@ MenuList can embed Answerlattice as an external client on owner routes only when
 | **Console Removal**  | `removeConsole` in production build                  | ✅ COMPLETE            |
 | **Security Headers** | X-Frame-Options, nosniff, referrer-policy            | ✅ COMPLETE            |
 | **PWA**              | Disabled in dev, enabled in prod builds              | ✅ COMPLETE            |
+| **Dependency Freeze Gate** | `npm run verify:dependency-freeze` pins root and Functions package declarations to lockfile-resolved versions and blocks accidental semver drift | ✅ COMPLETE |
 
 ### What's Missing (Action Required)
 
@@ -107,7 +108,7 @@ MenuList can embed Answerlattice as an external client on owner routes only when
 | ---------------------------------------------- | --------- | --------- |
 | **Vercel env values for production Firebase targets** | 🔴 HIGH   | Console setup |
 | **Environment variable validation at startup** | 🔴 HIGH   | 30 min    |
-| **Feature flags that differ between dev/prod** | 🟡 MEDIUM | 1 hour    |
+| **Target-environment feature flag evidence** | 🟡 MEDIUM | Review + certification evidence |
 | **Incident response playbook**                 | 🟡 MEDIUM | 1 hour    |
 | **Pre-deploy checklist script**                | 🟢 LOW    | 30 min    |
 
@@ -119,15 +120,15 @@ MenuList can embed Answerlattice as an external client on owner routes only when
 
 | #   | Service                 | Package                                      | Purpose                                 | Env Vars (Next.js)                                                                                 | Env Vars (CF)                            | Dev Setup                      | Prod Setup                  |
 | --- | ----------------------- | -------------------------------------------- | --------------------------------------- | -------------------------------------------------------------------------------------------------- | ---------------------------------------- | ------------------------------ | --------------------------- |
-| 1   | **Firebase (MenuList)** | `firebase` v11.7.3, `firebase-admin` v12.2.0 | Core database, auth, storage            | `NEXT_PUBLIC_FIREBASE_*` (7 vars), `FIREBASE_*` (4 vars)                                           | Auto from project                        | Local/Preview: `menulist-qa`       | Production: `menulist` |
+| 1   | **Firebase (MenuList)** | Root app: `firebase` v11.7.3, `firebase-admin` v12.7.0; MenuList Functions: `firebase-admin` v13.5.0, `firebase-functions` v6.6.0 | Core database, auth, storage            | `NEXT_PUBLIC_FIREBASE_*` (7 vars), `FIREBASE_*` (4 vars)                                           | Auto from project                        | Local/Preview: `menulist-qa`       | Production: `menulist` |
 | 2   | **Firebase (Answerlattice)** | Same packages                                | Answerlattice product database               | `NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_*` (6 vars), `NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_MODE`, optional `NEXT_PUBLIC_ANSWERLATTICE_FIRESTORE_DATABASE_ID` | `ANSWERLATTICE_FIREBASE_*`, optional `ANSWERLATTICE_FIRESTORE_DATABASE_ID` | Local/Preview: `answerlattice-qa` | Production: `answerlattice` |
 | 3   | **Razorpay**            | `razorpay` v2.9.6                            | Payments & subscriptions                | `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, `RAZORPAY_WEBHOOK_SECRET`, `NEXT_PUBLIC_RAZORPAY_KEY_ID` | `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET` | **NEEDS: Test mode keys**      | Live mode keys              |
 | 4   | **Google Gemini AI**    | `@google/genai` v0.12.0                      | OCR, descriptions, translations, images | `GEMINI_AI_KEY`                                                                                    | `GEMINI_AI_KEY` + `_2`, `_3`, `_4`       | Same key (OK for dev)          | Same key + rotation keys    |
-| 5   | **Upstash Redis**       | `@upstash/redis` v1.35.6                     | Rate limiting, Answerlattice cache           | `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`                                               | Same                                     | **Can skip** (flag OFF in dev) | Required                    |
-| 6   | **Sentry**              | `@sentry/nextjs` v10.22.0                    | Error tracking                          | `SENTRY_DSN`, `NEXT_PUBLIC_SENTRY_DSN`                                                             | `SENTRY_DSN`                             | Dev Sentry project             | Prod Sentry project         |
-| 7   | **NextAuth**            | `next-auth` v4.24.3                          | Authentication (Google OAuth)           | `NEXTAUTH_SECRET`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`                                      | N/A                                      | Same OAuth app (OK)            | Same OAuth app              |
+| 5   | **Upstash Redis**       | Root app: `@upstash/redis` v1.35.6; MenuList Functions: v1.35.7 | Rate limiting, Answerlattice cache           | `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`                                               | Same                                     | **Can skip** (flag OFF in dev) | Required                    |
+| 6   | **Sentry**              | Root app: `@sentry/nextjs` v10.22.0; MenuList Functions: `@sentry/node` v8.55.0 | Error tracking                          | `SENTRY_DSN`, `NEXT_PUBLIC_SENTRY_DSN`                                                             | `SENTRY_DSN`                             | Dev Sentry project             | Prod Sentry project         |
+| 7   | **NextAuth**            | `next-auth` v4.24.13                         | Authentication (Google OAuth)           | `NEXTAUTH_SECRET`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`                                      | N/A                                      | Same OAuth app (OK)            | Same OAuth app              |
 | 8   | **Google Analytics**    | `@google-analytics/data` v5.1.0              | Server-side analytics reads             | `GA_CLIENT_EMAIL`, `GA_PRIVATE_KEY`, `GA_PROJECT_ID`                                               | N/A                                      | Same (OK for dev)              | Same                        |
-| 9   | **SMTP (Nodemailer)**   | `nodemailer` v7.0.7                          | Lifecycle emails, notifications         | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`                                                 | Same secrets                             | Optional (skip in dev)         | Gmail SMTP or custom        |
+| 9   | **SMTP (Nodemailer)**   | Root app: `nodemailer` v7.0.13; MenuList Functions: v8.0.1; Answerlattice Functions: v8.0.2 | Lifecycle emails, notifications         | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`                                                 | Same secrets                             | Optional (skip in dev)         | Gmail SMTP or custom        |
 | 10  | **Telegram Bot**        | Raw HTTP fetch                               | Ops alerts                              | `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`                                                           | Same secrets                             | Optional (skip in dev)         | Required                    |
 | 11  | **Google Cloud Tasks**  | `@google-cloud/tasks` v6.1.0                 | Batch image generation queue            | `BATCH_IMAGE_GENERATION_WORKER_URL`, `BATCH_IMAGE_GENERATION_QUEUE_ID`                             | N/A                                      | Skip in dev                    | Required                    |
 | 12  | **Vercel**              | Hosting platform                             | Deployment                              | `VERCEL`, `VERCEL_ENV` (auto-set)                                                                  | N/A                                      | Auto (`dev` branch)            | Auto (`main` branch)        |
@@ -156,44 +157,30 @@ MenuList can embed Answerlattice as an external client on owner routes only when
 
 ---
 
-## Feature Flags: Dev vs Prod Recommended State
+## Feature Flags: Target-Environment Review
 
-### Flags That Should Differ Between Environments
+Feature flags live in `src/config/features.ts`. This guide does not authorize blanket env-specific overrides or a "turn everything on" launch ritual.
 
-| Flag                         | Dev     | Prod   | Reason                            |
-| ---------------------------- | ------- | ------ | --------------------------------- |
-| `ENABLE_RATE_LIMITING`       | `false` | `true` | Unlimited testing in dev          |
-| `ENABLE_APP_CHECK`           | `false` | `true` | Skip reCAPTCHA setup in dev       |
-| `ENABLE_SENTRY`              | `false` | `true` | Avoid polluting error dashboard   |
-| `ENABLE_COST_PROTECTION`     | `false` | `true` | SAFE_MODE active in prod only     |
-| `ENABLE_OPS_ALERTS`          | `false` | `true` | No Telegram noise in dev          |
-| `ENABLE_MENU_HEALTH_MONITOR` | `false` | `true` | Post-publish verification in prod |
-| `ENABLE_LIFECYCLE_MESSAGING` | `false` | `true` | No emails from dev                |
+### Current Contract
 
-### Flags That Should Be Same in Both
+- Keep `src/config/features.ts` as the source of truth unless a separate architecture decision introduces env-specific overrides.
+- Review only the flags tied to the target gate being certified.
+- Provider-backed flags require target secrets/account setup, source gates, QA evidence where applicable, and explicit production approval before production use.
+- If a flag is already `true` in source, treat it as code-enabled; still verify the underlying provider/runtime evidence before launch.
 
-All other flags should be **identical** between dev and prod. This ensures dev accurately represents prod behavior.
+### Operational Flags To Review
 
-### Current Problem
+| Flag | Required evidence before production launch |
+| --- | --- |
+| `ENABLE_RATE_LIMITING` | Upstash env is configured for the target and public menu setup/claim strict-fail behavior is verified |
+| `ENABLE_APP_CHECK` | Firebase App Check site keys are configured for the target domains |
+| `ENABLE_SENTRY` | Target DSN exists and error capture is verified without leaking local/dev DSNs |
+| `ENABLE_COST_PROTECTION` | SAFE_MODE toggle, AI-route `503`, public menu/OBP unaffected behavior, and worker coverage are verified |
+| `ENABLE_OPS_ALERTS` | Telegram secrets/channel and scoped QA Functions deploy evidence exist |
+| `ENABLE_MENU_HEALTH_MONITOR` | `verifyMenuPublish` deploy evidence and post-publish monitor smoke evidence exist |
+| `ENABLE_LIFECYCLE_MESSAGING` | SMTP secrets, provider send evidence, and owner-safe copy review exist |
 
-Feature flags are **hardcoded in source code** — same value in both envs. No env-level override mechanism.
-
-### Recommended Solution
-
-Add env-level override support at the top of `features.ts`:
-
-```typescript
-// Allow environment-level overrides for flags that differ between dev/prod
-const envOverrides: Partial<Record<string, boolean>> = {
-  ENABLE_RATE_LIMITING: process.env.NEXT_PUBLIC_ENABLE_RATE_LIMITING === "true",
-  ENABLE_SENTRY: process.env.NEXT_PUBLIC_ENABLE_SENTRY === "true",
-  // etc.
-};
-```
-
-**However:** This adds complexity. The simpler approach: keep flags in code and manually change them before production enable. The current pattern has worked for 80+ flags already.
-
-**Recommendation:** Do NOT add env-based flag overrides. Keep the current pattern. Change flags in code when ready for production.
+Do not add `NEXT_PUBLIC_ENABLE_*` flag env keys or per-env overrides as a quick launch fix. If target-specific flag behavior becomes necessary later, document the architecture change first and add verifier coverage before relying on it.
 
 ---
 
@@ -264,6 +251,7 @@ TELEGRAM_CHAT_ID=
 
 # Error Tracking (ENABLE_SENTRY)
 SENTRY_DSN=
+SENTRY_DEV_DSN=
 NEXT_PUBLIC_SENTRY_DSN=
 
 # Answerlattice Product (if using)
@@ -325,11 +313,12 @@ NEXT_PUBLIC_MENULIST_ANSWERLATTICE_WIDGET_SCRIPT_SRC=
 4. Set `NEXT_PUBLIC_PLATFORM_DOMAIN=menulist.ai` in Production and `NEXT_PUBLIC_PLATFORM_DOMAIN=menulist.online` in Preview.
 5. Run `npm run verify:env-targets` after env/documentation edits.
 
-**Step 4: Seed Dev Data**
+**Step 4: Seed Non-Production QA Data**
 
-1. Create test tenant/store in dev project
+1. Create or confirm a test tenant/store in `menulist-qa`.
 2. Upload sample menu for testing
-3. Create test subscription
+3. Create test subscription or unexpired starter activation
+4. Do not create or target `menulist-dev` for the current local/preview path.
 
 ### Phase 2: Razorpay Test/Live Split
 
@@ -346,16 +335,14 @@ NEXT_PUBLIC_MENULIST_ANSWERLATTICE_WIDGET_SCRIPT_SRC=
 - Dev: Configure webhook URL to local tunnel (ngrok) or skip
 - Prod: Keep current Vercel webhook URL
 
-### Phase 3: Feature Flag Production Activation
+### Phase 3: Target Feature Flag Activation Review
 
-When ready for production, change these flags to `true` in order:
+Do not flip every operational flag as a launch ritual. For each target, compare `src/config/features.ts` against the active certification gate, then record the evidence for only the flags that gate that release.
 
-1. `ENABLE_COST_PROTECTION` — SAFE_MODE kill switch (enable FIRST)
-2. `ENABLE_SENTRY` — Error tracking
-3. `ENABLE_RATE_LIMITING` — Already `true`, verify Upstash configured
-4. `ENABLE_OPS_ALERTS` — Telegram alerts (after bot setup)
-5. `ENABLE_MENU_HEALTH_MONITOR` — Post-publish verification
-6. `ENABLE_LIFECYCLE_MESSAGING` — Email notifications (after SMTP setup)
+1. Run the maintained source gate for the feature or provider path.
+2. Confirm target secrets/accounts exist before treating provider-backed flags as usable.
+3. Capture QA evidence before production activation when Firebase Functions, Storage, Firestore, provider delivery, or public runtime behavior is involved.
+4. Require explicit production approval before changing production-facing flag behavior or deploy targets.
 
 ### Phase 4: Runtime Guards (Code Changes)
 
@@ -363,11 +350,13 @@ See "Codebase Changes" section below.
 
 ---
 
-## Production Go-Live Checklist
+## Production Certification Checklist
+
+This guide is a companion environment checklist. It does not approve production launch by itself. The launch verdict remains blocked until every [External Certification Runbook](./external-certification-runbook.md) gate relevant to the release has audit evidence.
 
 ### Pre-Launch (Do Once)
 
-- [ ] Firebase dev project created and configured
+- [ ] Local/preview Firebase targets confirmed for `menulist-qa` and `answerlattice-qa`
 - [ ] Razorpay test keys in dev, live keys in prod (Vercel)
 - [ ] All required env vars set in Vercel (see master list above)
 - [ ] Sentry dev + prod projects configured
@@ -385,17 +374,18 @@ See "Codebase Changes" section below.
 - [ ] No test data or test endpoints active
 - [ ] Razorpay webhook signature validation tested
 
-### Go-Live Decision
+### Launch Verdict Evidence
 
-You go LIVE only when:
+This checklist supports launch review only when:
 
-- ✅ MCE blocks bad data (`ENABLE_MCE: true` — already enabled)
-- ✅ MOL logs mutations (`ENABLE_MENU_OBSERVATION: true` — already enabled)
-- ✅ SAFE_MODE kill switch ready (`ENABLE_COST_PROTECTION` → enable)
-- ✅ Error tracking active (`ENABLE_SENTRY` → enable)
-- ✅ Rate limiting enforced (`ENABLE_RATE_LIMITING: true` — already enabled)
-- ✅ Tenant isolation verified (`withAuth()` on all routes)
-- ✅ Cost predictable (credit system + feature flag kill switches)
+- MCE blocks bad data (`ENABLE_MCE: true` source state verified)
+- MOL logs mutations (`ENABLE_MENU_OBSERVATION: true` source state verified)
+- SAFE_MODE kill switch has target evidence for toggle behavior and unaffected public menu/OBP traffic
+- Error tracking has target DSN evidence and bounded logging behavior
+- Rate limiting has target Upstash evidence and strict public setup/claim fallback coverage
+- Tenant isolation is verified through maintained source gates and authenticated smoke evidence where applicable
+- Cost posture is predictable through credit controls, SAFE_MODE, provider quotas, and budget-alert evidence
+- Every External Certification Runbook gate relevant to the release has audit evidence
 
 ---
 
@@ -469,7 +459,7 @@ These are mandatory before launch. Without them, core features break.
 - **Steps:**
   1. Keep local/Preview env vars pointed at `menulist-qa`.
   2. Set Production `NEXT_PUBLIC_FIREBASE_PROJECT_ID` and `FIREBASE_PROJECT_ID` to `menulist`.
-  3. Deploy MenuList production rules/indexes/functions explicitly with `--project menulist` when production infrastructure changes.
+  3. Deploy MenuList production rules/indexes/functions explicitly with `--project menulist` only after QA evidence and explicit production approval.
 - **Env vars provided:** `NEXT_PUBLIC_FIREBASE_*`, `FIREBASE_*` (14 vars)
 - **Cost:** No new local/preview project; production costs move to `menulist`.
 
@@ -492,10 +482,11 @@ These are mandatory before launch. Without them, core features break.
 - **What to do:** Configure Preview vs Production env vars
 - **Where:** https://vercel.com/dashboard → Your Project → Settings → Environment Variables
 - **Steps:**
-  1. Go to Environment Variables
-  2. Set "Production" scope for prod values (.env.prod)
-  3. Set "Preview" scope for dev values (.env.local)
-  4. Redeploy after adding vars
+  1. Go to Environment Variables.
+  2. Use `.env.production.example` as the Production key checklist and fill real production values in Vercel only.
+  3. Use `.env.staging.example` as the Preview/local key checklist and fill QA values in Vercel only.
+  4. Treat existing `.env`, `.env.local`, or `.env.prod` files as legacy local files until rebuilt from the canonical templates in `__docs__/deployment/three-product-environment-setup.md`.
+  5. Redeploy only through the approved Vercel workflow for the active session.
 - **Cost:** Free tier sufficient for launch (100GB bandwidth, 10k serverless function invocations/day)
 
 ---
@@ -514,6 +505,7 @@ These enable ops visibility and alerts. Launch without them is risky but possibl
   3. Create project "javascript-nextjs" (for prod errors)
   4. Copy DSN from each project settings
 - **Env vars:** `SENTRY_DSN`, `NEXT_PUBLIC_SENTRY_DSN`, `SENTRY_DEV_DSN`, `NEXT_PUBLIC_SENTRY_DEV_DSN`
+- **Functions runtime rule:** deployed Functions read `SENTRY_DSN` only; local emulators may use `SENTRY_DEV_DSN`. If no DSN is configured, Functions Sentry stays disabled and Firebase logs remain active.
 - **Cost:** Free tier — 5,000 errors/month
 - **Feature flag:** `ENABLE_SENTRY: true`
 
@@ -532,7 +524,7 @@ These enable ops visibility and alerts. Launch without them is risky but possibl
   8. Find `"chat":{"id": -100XXXXXXXXXX}` — that's chat ID
 - **Env vars:** `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` (also set in Firebase Functions secrets)
 - **Cost:** Free
-- **Setup Firebase Functions:** `firebase functions:secrets:set TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID`
+- **Setup Firebase Functions:** Set QA secrets first with `--project menulist-qa`; production secrets require QA evidence and explicit production secret approval.
 - **Feature flag:** `ENABLE_OPS_ALERTS: true`
 
 #### 6. Gmail SMTP — Lifecycle Emails
@@ -692,7 +684,7 @@ These enable ops visibility and alerts. Launch without them is risky but possibl
 
 | #   | Service              | Account Type          | Cost            | Priority | Feature Flag                 |
 | --- | -------------------- | --------------------- | --------------- | -------- | ---------------------------- |
-| 1   | Firebase Dev Project | Create new project    | Free            | P0       | N/A                          |
+| 1   | Firebase QA Project Access | Confirm `menulist-qa` and `answerlattice-qa` access | Existing project access | P0       | N/A                          |
 | 2   | Razorpay Live        | Switch to live mode   | Per transaction | P0       | N/A                          |
 | 3   | Vercel               | Configure env scopes  | Free tier       | P0       | N/A                          |
 | 4   | Sentry               | Create 2 projects     | Free            | P1       | `ENABLE_SENTRY`              |
@@ -716,6 +708,7 @@ These enable ops visibility and alerts. Launch without them is risky but possibl
 
 - [ ] Configure MenuList production Firebase env vars for `menulist`
 - [ ] Configure Answerlattice production Firebase env vars for `answerlattice`
+- [ ] Confirm local/preview Firebase env vars for `menulist-qa` and `answerlattice-qa`
 - [ ] Get Razorpay live API keys
 - [ ] Configure Vercel env vars (Preview + Production)
 
@@ -725,7 +718,7 @@ These enable ops visibility and alerts. Launch without them is risky but possibl
 - [ ] Create Telegram bot, get bot token + chat ID
 - [ ] Set Gmail App Password
 - [ ] Configure Firebase Functions secrets for Telegram + SMTP
-- [ ] Enable monitoring feature flags (order: SAFE_MODE → Sentry → Ops Alerts → Health Monitor)
+- [ ] Confirm monitoring feature flags and External Certification Runbook evidence (SAFE_MODE, Sentry, Ops Alerts, Health Monitor)
 
 **Month 1 After Launch (P2):**
 
@@ -742,14 +735,16 @@ These enable ops visibility and alerts. Launch without them is risky but possibl
 
 ## Cross-Check Summary
 
-### Environment Files Created
+### Environment File Sources
 
 | File                      | Purpose                                         | Git Ignored? |
 | ------------------------- | ----------------------------------------------- | ------------ |
-| `.env.local`              | Dev environment (local + Vercel Preview)        | ✅ Yes       |
-| `.env.prod`               | Production template (copy to Vercel Production) | ✅ Yes       |
-| `functions/.env.local`    | Firebase Functions emulator secrets             | ✅ Yes       |
-| `functions/.secret.local` | Functions overrides (existing)                  | ✅ Yes       |
+| `.env.staging.example`    | Canonical local/staging Vercel env checklist    | No, placeholder template |
+| `.env.production.example` | Canonical production Vercel env checklist       | No, placeholder template |
+| `.env.local`              | Local runtime values rebuilt from staging template | Yes       |
+| `.env.prod`               | Legacy local file only; do not copy blindly to Vercel | Yes       |
+| `functions/.env.menulist-qa.example` | MenuList QA Functions non-secret template | No, placeholder template |
+| `functions/.env.menulist.example` | MenuList production Functions non-secret template | No, placeholder template |
 
 ### All Environment Variables Covered
 
@@ -782,55 +777,23 @@ These enable ops visibility and alerts. Launch without them is risky but possibl
 | Wired env validation         | `src/instrumentation.ts`                | ✅ Modified |
 | Updated functions .gitignore | `functions/.gitignore`                  | ✅ Modified |
 
-### Files Created/Modified in This Session
+### Current Setup Handoff
 
-1. **Created:** `.env.local` — Dev environment (95 lines, fully documented)
-2. **Created:** `.env.prod` — Production template (95 lines, with change instructions)
-3. **Modified:** `functions/.env.local` — Added all secrets for emulator
-4. **Modified:** `functions/.gitignore` — Added `.env.local` and `.secret.local`
-5. **Created:** `src/lib/env/validateEnv.ts` — Runtime validation utility
-6. **Modified:** `src/instrumentation.ts` — Wired env validation
-7. **Modified:** `src/lib/firebase/firebaseClient.ts` — Fixed hardcoded storage URL
-8. **Modified:** `__docs__/production-readiness/dev-prod-environment-guide.md` — Added third-party guide
+Use `__docs__/deployment/three-product-environment-setup.md` as the detailed setup runbook. This environment guide is a companion overview only.
 
-### Ready for Vercel
+### Vercel Env Handoff
 
-Copy-paste these into Vercel Dashboard:
+- Preview/local key checklist: `.env.staging.example`
+- Production key checklist: `.env.production.example`
+- Do not copy `.env.local` or `.env.prod` wholesale into Vercel.
+- Vercel deploys still require explicit approval in the active session.
 
-**For Preview Environment (dev):**
+### Firebase Functions Secret Handoff
 
-- Copy ALL variables from `.env.local`
-- Set scope to "Preview"
-
-**For Production Environment:**
-
-- Copy ALL variables from `.env.prod`
-- Update `[CHANGE FOR PROD]` marked variables
-- Set scope to "Production"
-
-### Ready for Firebase Functions
-
-**For Emulator (local dev):**
-
-- Values are in `functions/.env.local` (already configured)
-
-**For Production (deployed):**
-
-```bash
-# One-time setup for each secret:
-firebase functions:secrets:set GEMINI_AI_KEY
-firebase functions:secrets:set UPSTASH_REDIS_REST_URL
-firebase functions:secrets:set UPSTASH_REDIS_REST_TOKEN
-firebase functions:secrets:set RAZORPAY_KEY_ID
-firebase functions:secrets:set RAZORPAY_KEY_SECRET
-firebase functions:secrets:set SMTP_HOST
-firebase functions:secrets:set SMTP_PORT
-firebase functions:secrets:set SMTP_USER
-firebase functions:secrets:set SMTP_PASS
-firebase functions:secrets:set TELEGRAM_BOT_TOKEN
-firebase functions:secrets:set TELEGRAM_CHAT_ID
-firebase functions:secrets:set SENTRY_DSN
-```
+- Configure MenuList QA secrets first with commands that include `--project menulist-qa`.
+- Use `__docs__/deployment/three-product-environment-setup.md` for the current full secret list.
+- Repeat for `--project menulist` only after QA evidence and explicit production secret approval.
+- Secret setup alone does not certify deployed Functions; Gate 1 in the External Certification Runbook still requires local preflight and scoped deploy evidence.
 
 ---
 

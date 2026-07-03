@@ -56,6 +56,10 @@ export const metadata: Metadata = {
     alternates: { canonical: buildCampaignCueUrl('/') },
 };
 
+function serializeJsonLd(data: Record<string, unknown>): string {
+    return JSON.stringify(data).replace(/</g, '\\u003c');
+}
+
 type IconCard = {
     title: string;
     description: string;
@@ -126,14 +130,6 @@ type LocalProof = {
     title: string;
     detail: string;
     proof: string;
-};
-
-type CatalogItem = {
-    group: string;
-    title: string;
-    detail: string;
-    tag: string;
-    icon: IconType;
 };
 
 type ProofDeckPreviewRow = {
@@ -283,6 +279,33 @@ const USE_CASE_MEGA_MENU_GROUPS: MegaMenuGroup[] = [
                 icon: LuDownload,
             },
         ],
+    },
+];
+
+const SWITCH_OPTIONS = [
+    {
+        title: 'Generic design tools',
+        common: 'Start with a blank canvas, templates, and manual campaign thinking.',
+        campaigncue: 'Start with today\'s business facts and a pack the owner can use.',
+        icon: LuBrush,
+    },
+    {
+        title: 'Social schedulers',
+        common: 'Assume the post is already written and ready to publish.',
+        campaigncue: 'Prepare the copy, assets, proof notes, and manual handoff before posting.',
+        icon: LuCalendarClock,
+    },
+    {
+        title: 'AI copy tools',
+        common: 'Generate loose text that still needs channel formatting and fact checks.',
+        campaigncue: 'Build WhatsApp, Google, creative, print, video, and review pieces together.',
+        icon: LuSparkles,
+    },
+    {
+        title: 'Agency handoff',
+        common: 'Campaign files, comments, source facts, and approvals drift into separate threads.',
+        campaigncue: 'Keep the pack, proof deck, reusable template, and result memory together.',
+        icon: LuClipboardCheck,
     },
 ];
 
@@ -481,62 +504,6 @@ const OUTPUTS: OutputFormat[] = [
     },
 ];
 
-const WORKFLOW_STEPS: WorkflowStep[] = [
-    {
-        label: '01',
-        title: 'Read the business facts',
-        detail: 'Offers, items, services, photos, hours, links, source notes, and owner inputs become the campaign base.',
-        icon: LuStore,
-    },
-    {
-        label: '02',
-        title: 'Pick the useful cue',
-        detail: 'CampaignCue suggests practical work: promote an item, fill a slot, refresh an offer, or prepare a local update.',
-        icon: LuRadar,
-    },
-    {
-        label: '03',
-        title: 'Prepare the pack',
-        detail: 'One cue becomes channel text, creative notes, scripts, approval notes, manual tasks, and export files.',
-        icon: LuSparkles,
-    },
-    {
-        label: '04',
-        title: 'Check the risky parts',
-        detail: 'Price, consent, photo rights, source freshness, sales promises, ranking claims, and ad spend are checked before handoff.',
-        icon: LuShieldCheck,
-    },
-    {
-        label: '05',
-        title: 'Export, post, remember',
-        detail: 'Download the pack, copy text, mark what was used, and reuse approved work without connecting social accounts.',
-        icon: LuDownload,
-    },
-];
-
-const OWNER_DAY_STEPS: IconCard[] = [
-    {
-        title: 'Open Today',
-        description: 'See one recommended cue instead of staring at an empty content box.',
-        icon: LuLayoutDashboard,
-    },
-    {
-        title: 'Confirm the facts',
-        description: 'Add price, photo, service, booking link, or event detail only when the pack needs it.',
-        icon: LuBadgeCheck,
-    },
-    {
-        title: 'Download the pack',
-        description: 'Use WhatsApp text, Google fields, social creative, reel brief, or print handoff manually.',
-        icon: LuDownload,
-    },
-    {
-        title: 'Mark what happened',
-        description: 'Record posted, skipped, booked, sold, or needs follow-up so the next cue gets better.',
-        icon: LuBarChart3,
-    },
-];
-
 const LOCAL_PROOFS: LocalProof[] = [
     {
         title: 'Lunch combo push',
@@ -552,86 +519,6 @@ const LOCAL_PROOFS: LocalProof[] = [
         title: 'Local service callout',
         detail: 'Area served, availability, phone CTA, proof note, and manual posting checklist.',
         proof: 'No unsupported promise',
-    },
-];
-
-const CATALOG_ITEMS: CatalogItem[] = [
-    {
-        group: 'Start',
-        title: 'Today cue',
-        detail: 'One practical thing to promote, pulled from current business facts and missing detail prompts.',
-        tag: 'First screen',
-        icon: LuLayoutDashboard,
-    },
-    {
-        group: 'Start',
-        title: 'Offer facts',
-        detail: 'Price, date, slot, service, product, link, photo, or rule that the pack is allowed to use.',
-        tag: 'Owner input',
-        icon: LuFileText,
-    },
-    {
-        group: 'Pack',
-        title: 'WhatsApp and Google',
-        detail: 'Manual-ready message, local update, CTA, image note, and publish checklist for the same cue.',
-        tag: 'Channel pack',
-        icon: LuMessageSquare,
-    },
-    {
-        group: 'Pack',
-        title: 'Creative and print',
-        detail: 'Square, story, poster, table card, shelf note, or staff handoff copy from one source-backed pack.',
-        tag: 'Asset pack',
-        icon: LuImage,
-    },
-    {
-        group: 'Pack',
-        title: 'Reusable templates',
-        detail: 'Platform and saved workspace templates keep recurring restaurant, salon, retail, agency, and location campaigns consistent.',
-        tag: 'Template',
-        icon: LuWalletCards,
-    },
-    {
-        group: 'Review',
-        title: 'Claim check',
-        detail: 'Sales promises, ranking claims, before/after copy, consent, and sensitive wording stay visible.',
-        tag: 'Safety',
-        icon: LuShieldAlert,
-    },
-    {
-        group: 'Review',
-        title: 'Brand Playbook',
-        detail: 'Brand feel, visual motifs, product focus, and avoid-list wording guide the pack without replacing campaign proof.',
-        tag: 'Brand guide',
-        icon: LuPalette,
-    },
-    {
-        group: 'Review',
-        title: 'Proof deck',
-        detail: 'Brand direction, source trace, UGC/reel reference, review checklist, and delivery boundary travel with the pack.',
-        tag: 'Review brief',
-        icon: LuClipboardCheck,
-    },
-    {
-        group: 'Review',
-        title: 'Image reuse',
-        detail: 'CueLayers can keep a flat-safe fallback while editable candidates remain reviewable.',
-        tag: 'CueLayers',
-        icon: LuLayers,
-    },
-    {
-        group: 'Handoff',
-        title: 'Manual export',
-        detail: 'Download assets, copy channel text, create a manual schedule task, or send for approval.',
-        tag: 'No direct post',
-        icon: LuDownload,
-    },
-    {
-        group: 'Handoff',
-        title: 'Result memory',
-        detail: 'Mark used, skipped, booked, sold, or needs follow-up so the next cue has better context.',
-        tag: 'Learning',
-        icon: LuBarChart3,
     },
 ];
 
@@ -1010,7 +897,7 @@ const FOOTER_GROUPS: FooterGroup[] = [
         title: 'Company',
         links: [
             { label: 'Open workspace', href: '/app' },
-            { label: 'Product loop', href: '#workflow' },
+            { label: 'Product loop', href: '#pack-room' },
             { label: 'Owner outcomes', href: '#editor' },
             { label: 'Use cases', href: '#use-cases' },
         ],
@@ -1249,28 +1136,6 @@ function CampaignPackRoom() {
     );
 }
 
-function WorkflowRail() {
-    return (
-        <div className="campaigncue-workflow-rail">
-            {WORKFLOW_STEPS.map((step) => {
-                const Icon = step.icon;
-                return (
-                    <div className="campaigncue-workflow-step" key={step.title}>
-                        <span className="campaigncue-workflow-marker">
-                            <span>{step.label}</span>
-                            <Icon aria-hidden="true" />
-                        </span>
-                        <div>
-                            <h3>{step.title}</h3>
-                            <p>{step.detail}</p>
-                        </div>
-                    </div>
-                );
-            })}
-        </div>
-    );
-}
-
 function CampaignCueProblemBand() {
     return (
         <section className="campaigncue-problem-band" id="fit-check" aria-label="CampaignCue owner problems">
@@ -1295,6 +1160,38 @@ function CampaignCueProblemBand() {
                                 <p>{item.description}</p>
                             </div>
                             <em>{item.action}</em>
+                        </article>
+                    );
+                })}
+            </div>
+        </section>
+    );
+}
+
+function CampaignCueSwitchStrip() {
+    return (
+        <section className="campaigncue-switch-strip" id="switch" aria-label="CampaignCue category comparison">
+            <div className="campaigncue-switch-strip-copy">
+                <span>Why switch</span>
+                <h2>Do not buy another blank marketing tool.</h2>
+                <p>
+                    CampaignCue starts where local marketing actually breaks: facts, proof, channel handoff,
+                    and the owner&apos;s next usable pack.
+                </p>
+            </div>
+            <div className="campaigncue-switch-grid">
+                {SWITCH_OPTIONS.map((option) => {
+                    const Icon = option.icon;
+                    return (
+                        <article className="campaigncue-switch-card" key={option.title}>
+                            <span aria-hidden="true">
+                                <Icon />
+                            </span>
+                            <div>
+                                <h3>{option.title}</h3>
+                                <p><strong>Common path:</strong> {option.common}</p>
+                                <p><strong>CampaignCue:</strong> {option.campaigncue}</p>
+                            </div>
                         </article>
                     );
                 })}
@@ -1470,32 +1367,6 @@ function CampaignAssetWall() {
     );
 }
 
-function OwnerDayPath() {
-    return (
-        <section className="campaigncue-owner-path" aria-label="How owners use CampaignCue">
-            <div className="campaigncue-owner-path-intro">
-                <span>Owner path</span>
-                <strong>Four plain moves, no marketing calendar required.</strong>
-            </div>
-            <ol>
-                {OWNER_DAY_STEPS.map((step, index) => {
-                    const Icon = step.icon;
-                    return (
-                        <li key={step.title}>
-                            <span>{String(index + 1).padStart(2, '0')}</span>
-                            <Icon aria-hidden="true" />
-                            <div>
-                                <strong>{step.title}</strong>
-                                <p>{step.description}</p>
-                            </div>
-                        </li>
-                    );
-                })}
-            </ol>
-        </section>
-    );
-}
-
 function ProofDeckPreview() {
     return (
         <div className="campaigncue-proof-deck-preview" aria-label="Campaign proof deck preview">
@@ -1602,46 +1473,6 @@ function RealWorkProof() {
                             {item.proof}
                         </span>
                     </div>
-                ))}
-            </div>
-        </section>
-    );
-}
-
-function CampaignCueCatalog() {
-    const groups = Array.from(new Set(CATALOG_ITEMS.map((item) => item.group)));
-
-    return (
-        <section className="campaigncue-catalog" id="catalog" aria-label="CampaignCue pack index">
-            <aside className="campaigncue-catalog-rail" aria-label="CampaignCue pack categories">
-                <span>Pack index</span>
-                <h2>Browse by owner job.</h2>
-                <nav>
-                    {groups.map((group) => (
-                        <a href={`#catalog-${group.toLowerCase()}`} key={group}>
-                            {group}
-                        </a>
-                    ))}
-                </nav>
-            </aside>
-            <div className="campaigncue-catalog-list">
-                {groups.map((group) => (
-                    <section id={`catalog-${group.toLowerCase()}`} key={group}>
-                        <h3>{group}</h3>
-                        {CATALOG_ITEMS.filter((item) => item.group === group).map((item) => {
-                            const Icon = item.icon;
-                            return (
-                                <div className="campaigncue-catalog-row" key={`${item.group}-${item.title}`}>
-                                    <Icon aria-hidden="true" />
-                                    <div>
-                                        <strong>{item.title}</strong>
-                                        <p>{item.detail}</p>
-                                    </div>
-                                    <span>{item.tag}</span>
-                                </div>
-                            );
-                        })}
-                    </section>
                 ))}
             </div>
         </section>
@@ -1793,9 +1624,11 @@ export default function CampaignCueHomePage() {
 
     return (
         <main className="campaigncue-site">
+            <div className="campaigncue-page-mesh" aria-hidden="true" />
+            <div className="campaigncue-page-grain" aria-hidden="true" />
             <script
                 type="application/ld+json"
-                dangerouslySetInnerHTML={{ __html: JSON.stringify(JSON_LD) }}
+                dangerouslySetInnerHTML={{ __html: serializeJsonLd(JSON_LD) }}
             />
             <header className="campaigncue-nav">
                 <a className="campaigncue-brand" href={withBasePath(basePath, '/')}>
@@ -1807,7 +1640,7 @@ export default function CampaignCueHomePage() {
                         basePath={basePath}
                         label="Product"
                         ariaLabel="CampaignCue product pages"
-                        overviewHref="#catalog"
+                        overviewHref="#pack-room"
                         overviewTitle="Product overview"
                         overviewDetail="See the complete CampaignCue workflow from cue to checked export."
                         groups={PRODUCT_MEGA_MENU_GROUPS}
@@ -1849,16 +1682,12 @@ export default function CampaignCueHomePage() {
                     <span className="campaigncue-eyebrow">Daily campaign desk for local businesses</span>
                     <h1>CampaignCue</h1>
                     <p>
-                        Know what to promote today. Get the WhatsApp text, Google update, social creative,
-                        print note, video brief, and safety checks in one source-backed pack.
+                        One daily cue becomes WhatsApp, Google, social, print, video, and proof notes ready for owner-controlled export.
                     </p>
                     <div className="campaigncue-actions">
                         <a className="campaigncue-primary-action" href={withBasePath(basePath, '/app')}>
                             Open workspace
                             <LuArrowRight aria-hidden="true" />
-                        </a>
-                        <a className="campaigncue-secondary-action" href="#studio">
-                            See pack examples
                         </a>
                     </div>
                     <div className="campaigncue-hero-pills" aria-label="CampaignCue launch boundaries">
@@ -1879,9 +1708,11 @@ export default function CampaignCueHomePage() {
                 ))}
             </section>
 
-            <CampaignCueFlowMap />
-
             <CampaignCueProblemBand />
+
+            <CampaignCueSwitchStrip />
+
+            <CampaignCueFlowMap />
 
             <CampaignPackRoom />
 
@@ -1889,19 +1720,7 @@ export default function CampaignCueHomePage() {
 
             <RealWorkProof />
 
-            <CampaignCueCatalog />
-
-            <OwnerDayPath />
-
             <CampaignCueProofSystem basePath={basePath} />
-
-            <section className="campaigncue-section" id="workflow">
-                <SectionIntro eyebrow="Workflow" title="A simple daily loop from business fact to usable campaign pack.">
-                    The product behaves like an operating desk, not a blank design tool: pick the cue,
-                    confirm missing facts, export the work, and keep a memory of what happened.
-                </SectionIntro>
-                <WorkflowRail />
-            </section>
 
             <section className="campaigncue-section campaigncue-band" id="daily-desk">
                 <div className="campaigncue-band-copy">

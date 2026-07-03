@@ -16,10 +16,17 @@ import {
     regenerateMutationProposalDraft,
     rejectMutationProposal,
 } from '@database/answerlattice/mutationProposals';
-import { getAnswerlatticeUiErrorMessage } from '@lib/answerlattice/uiErrors';
 import { AnswerlatticeMutationProposal } from '@type/answerlattice';
 import { message } from 'antd';
 import { useCallback, useEffect, useState } from 'react';
+
+const ANSWERLATTICE_MUTATION_PROPOSALS_LOAD_FAILED = 'Could not load proposals';
+const ANSWERLATTICE_MUTATION_PROPOSAL_APPROVE_FAILED = 'Could not approve proposal';
+const ANSWERLATTICE_MUTATION_PROPOSAL_REJECT_FAILED = 'Could not reject proposal';
+const ANSWERLATTICE_MUTATION_PROPOSAL_IMPLEMENT_FAILED = 'Could not mark proposal as implemented';
+const ANSWERLATTICE_MUTATION_DRAFT_PUBLISH_FAILED = 'Could not publish canonical answer';
+const ANSWERLATTICE_MUTATION_DRAFT_GENERATE_FAILED = 'Could not generate draft';
+const ANSWERLATTICE_WORKSPACE_SCOPE_MISSING = 'Answerlattice workspace scope is missing';
 
 type DraftApprovalContent = {
     title?: string;
@@ -54,8 +61,8 @@ export function useMutationProposals(tId: number, sId: number): UseMutationPropo
         try {
             const result = await getPendingMutationProposals(tId, sId);
             setProposals(result || []);
-        } catch (err) {
-            setError(getAnswerlatticeUiErrorMessage(err, 'Could not load proposals'));
+        } catch {
+            setError(ANSWERLATTICE_MUTATION_PROPOSALS_LOAD_FAILED);
         } finally {
             setLoading(false);
         }
@@ -70,8 +77,8 @@ export function useMutationProposals(tId: number, sId: number): UseMutationPropo
             await approveMutationProposal(proposalId);
             message.success('Proposal approved');
             await refresh();
-        } catch (err) {
-            message.error(getAnswerlatticeUiErrorMessage(err, 'Could not approve proposal'));
+        } catch {
+            message.error(ANSWERLATTICE_MUTATION_PROPOSAL_APPROVE_FAILED);
         }
     }, [refresh]);
 
@@ -80,8 +87,8 @@ export function useMutationProposals(tId: number, sId: number): UseMutationPropo
             await rejectMutationProposal(proposalId);
             message.success('Proposal rejected');
             await refresh();
-        } catch (err) {
-            message.error(getAnswerlatticeUiErrorMessage(err, 'Could not reject proposal'));
+        } catch {
+            message.error(ANSWERLATTICE_MUTATION_PROPOSAL_REJECT_FAILED);
         }
     }, [refresh]);
 
@@ -90,8 +97,8 @@ export function useMutationProposals(tId: number, sId: number): UseMutationPropo
             await markMutationImplemented(proposalId);
             message.success('Proposal marked as implemented');
             await refresh();
-        } catch (err) {
-            message.error(getAnswerlatticeUiErrorMessage(err, 'Could not mark proposal as implemented'));
+        } catch {
+            message.error(ANSWERLATTICE_MUTATION_PROPOSAL_IMPLEMENT_FAILED);
         }
     }, [refresh]);
 
@@ -100,15 +107,15 @@ export function useMutationProposals(tId: number, sId: number): UseMutationPropo
             await approveDraftAsCanonicalAnswer(proposalId, editedContent, tId, sId, approvedBy);
             message.success('Canonical answer published');
             await refresh();
-        } catch (err) {
-            message.error(getAnswerlatticeUiErrorMessage(err, 'Could not publish canonical answer'));
-            throw err;
+        } catch {
+            message.error(ANSWERLATTICE_MUTATION_DRAFT_PUBLISH_FAILED);
+            throw new Error(ANSWERLATTICE_MUTATION_DRAFT_PUBLISH_FAILED);
         }
     }, [refresh, sId, tId]);
 
     const regenerateDraft = useCallback(async (proposalId: string, regeneratedBy: string) => {
         if (!tId || !sId) {
-            message.error('Answerlattice workspace scope is missing');
+            message.error(ANSWERLATTICE_WORKSPACE_SCOPE_MISSING);
             return;
         }
 
@@ -116,14 +123,14 @@ export function useMutationProposals(tId: number, sId: number): UseMutationPropo
             const result = await regenerateMutationProposalDraft(proposalId, regeneratedBy);
 
             if (!result.success) {
-                throw new Error(result.error || 'Draft generation failed');
+                throw new Error(ANSWERLATTICE_MUTATION_DRAFT_GENERATE_FAILED);
             }
 
             message.success('Draft generated');
             await refresh();
-        } catch (err) {
-            message.error(getAnswerlatticeUiErrorMessage(err, 'Could not generate draft'));
-            throw err;
+        } catch {
+            message.error(ANSWERLATTICE_MUTATION_DRAFT_GENERATE_FAILED);
+            throw new Error(ANSWERLATTICE_MUTATION_DRAFT_GENERATE_FAILED);
         }
     }, [refresh, sId, tId]);
 

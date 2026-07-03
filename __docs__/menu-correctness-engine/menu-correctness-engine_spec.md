@@ -1,11 +1,17 @@
 # Menu Correctness Engine — Product Specification
 
-**Version:** 3.1  
-**Status:** ✅ IMPLEMENTED — Flag OFF (ENABLE_MCE: false)  
-**Owner:** Product  
+**Version:** 3.1
+**Status:** Implemented source evidence; active runtime flag (`ENABLE_MCE: true`); not current launch certification
+**Owner:** Product
 **Last Updated:** February 14, 2026
 
 ---
+
+## Launch Boundary
+
+This specification describes the current Menu Correctness Engine source contract and preserves February 2026 external-review evidence. It is not current MenuList launch certification.
+
+Current release approval requires the active [production-readiness audit](../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../production-readiness/external-certification-runbook.md) evidence, `npm run verify:public-business-truth`, browser/mobile save and publish-gate QA, customer-facing surface smoke for validated project data, Firestore rules/deploy evidence if rules change, target deploy evidence, and production-host smoke.
 
 ## 1. Executive Summary
 
@@ -535,13 +541,13 @@ These are known limitations documented in code comments, accepted for v1:
 
 ### ChatGPT Post-Implementation Audit (February 14, 2026)
 
-Full implementation (v3.1) shared with ChatGPT for production readiness audit. Rating: Architecture 9.5/10, Implementation 9/10, Production ready: Yes.
+Full implementation (v3.1) was shared with ChatGPT for an external review in February 2026. Historical rating: Architecture 9.5/10 and Implementation 9/10. Treat that rating only as historical external-review evidence, not current launch certification.
 
 | #   | Feedback Point                                                         | Our Action                                                              |
 | --- | ---------------------------------------------------------------------- | ----------------------------------------------------------------------- |
 | 1   | `sanitizeForClient` duplication in page.tsx + utils.ts                 | **Already fixed** — page.tsx now imports from `@lib/mce/utils`          |
 | 2   | Add INVARIANT comment in `updateProject()` above MCE hook              | **Implemented** — added trust model comment referencing spec §19        |
-| 3   | Add lightweight console logging for MCE results                        | **Implemented** — `[MCE] verified=true rules=17/18 warnings=0 errors=0` |
+| 3   | Add lightweight console logging for MCE results                        | **Updated June 27, 2026** — bounded dev-only validation result logging plus secure normalized failure diagnostics; surrounding editor modal failures use the same bounded diagnostics contract |
 | 4   | Do NOT add drift guardian, background revalidation, fallback rendering | **Already aligned** — per spec §17 D3, §18                              |
 | 5   | MCE is DONE once stable — resist urge to keep improving                | **Documented** — added MCE Stability Doctrine to marketing doc          |
 

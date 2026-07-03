@@ -167,8 +167,9 @@ activateRelease(releaseId)
 - Empty dataset safety: All functions handle `null`/empty returns gracefully
 - Manual trigger safety: `triggerAnswerlatticeNightly` requires `Authorization: Bearer ${CRON_SECRET}` outside the Firebase emulator
 - Dedicated Firebase auth safety: `/api/auth/set-claims` mints a separate Answerlattice custom token in separate mode so client DAL calls satisfy `firestore-answerlattice.rules`
-- KB callable safety: `embedArticleWorker`, `regenerateEmbedding`, and `publishApprovedJobFn` are exported from Answerlattice Functions and run against Answerlattice Firebase Admin + Vertex AI in separate mode
+- KB callable safety: `embedArticleWorker`, `regenerateEmbedding`, and `publishApprovedJobFn` are exported from Answerlattice Functions and run against Answerlattice Firebase Admin + Answerlattice-owned Gemini API secrets in separate mode
 - Expensive callable auth safety: `regenerateEmbedding` and `publishApprovedJobFn` require callable auth and `platformRole`/`role` of `PLATFORM` or `PLATFORM_SUPPORT` before embedding/publish work starts
+- KB runtime diagnostic safety: `startGeneration`, `embedArticleWorker`, `regenerateEmbedding`, `publishApprovedJobFn`, the publish finalizer, shared/separate AI helpers, and shared/separate trigger/callable wrappers use stable failure codes and bounded source/request metadata. Failed publish/generation records store fixed `Publishing failed` / `Finalize publish failed` / `Knowledge generation failed` text instead of raw provider/runtime exception text.
 
 ### Flow F — Widget Key → Search → Feedback
 
@@ -305,13 +306,13 @@ Platform operator opens Answerlattice management
 | 12  | Owner shell not mobile-safe      | Answerlattice layout now uses mobile drawer navigation and no fixed-width content      |
 | 13  | Widget image previews assumed PNG | Widget messages now retain MIME type for uploaded images                          |
 | 14  | Help Center did not pass context-aware product context into AI search | `HeroSearchBar` now builds tab-aware `productContext`; `HelpChat` sends it as top-level request data |
-| 14a | Help Center image search could over-trust stored image URLs or replay image context | Chat image URLs are tenant/store path-checked, images are not saved as localStorage drafts, previous image URLs are not replayed in assistant context, and answer generation receives bounded visual context instead of a second raw image pass |
+| 14a | Help Center image search could over-trust stored image URLs or replay image context | Chat image URLs are tenant/store path-checked and fetched with manual redirect handling, images are not saved as localStorage drafts, previous image URLs are not replayed in assistant context, and answer generation receives bounded visual context instead of a second raw image pass |
 | 15  | Server retrieval fast paths could depend on client Firebase DALs | Canonical retrieval, instant-cache search, and server signal writes now use Answerlattice Admin Firestore |
 | 16  | Widget context clearing could leave stale context inside iframe | `setContext(null)` now clears widget state and posts the cleared context to the iframe |
 | 17  | Graph suggestions could render non-string objects in the widget | Widget suggestions are normalized before rendering and before quick-question clicks |
 | 18  | Help Center hero used token-dependent render state during SSR | Token-dependent decorative layer is mounted client-side with stable SSR fallbacks |
 | 19  | Pillar 5 public API was deferred | Flag-gated public API now exposes canonical answers, entity registry, and signal ingestion |
-| 20  | Paid Answerlattice onboarding was beta-only | Non-beta plans now create Razorpay recurring subscriptions and pending subscription records |
+| 20  | Answerlattice onboarding used legacy pre-payment packaging | Public onboarding now creates Razorpay recurring subscriptions and pending paid subscription records |
 | 21  | Repeated-question caches could serve stale source snapshots | Firestore answer cache and Redis instant cache now validate live source freshness before returning cached answers |
 | 22  | Shared Answerlattice document composer could infer MenuList as source product | Composer now accepts source product scope only from explicit session/source context and keeps direct-client context product-neutral |
 
@@ -394,7 +395,7 @@ All fixes verified with `npx tsc --noEmit` → 0 errors.
 | 3   | Entity Creation from Candidates | ✅ `promoteCandidate()` — one-click: candidate → entity + search index  |
 | 4   | Mutation Proposal Review UI     | ✅ `MutationProposalReview.tsx` + `useMutationProposals.ts`             |
 | 5   | Canonical Coverage KPI          | ✅ `aggregateCoverageKPI()` → `platformSummary/answerlattice_{sId}`          |
-| 6   | Scheduler Observability         | ✅ Structured run logs in `answerlattice_schedulerRunLogs` with per-tenant task diagnostics |
+| 6   | Scheduler Observability         | ✅ Structured run logs and master scheduler state use bounded task diagnostics with fixed failure codes |
 
 **Additional Verification:**
 

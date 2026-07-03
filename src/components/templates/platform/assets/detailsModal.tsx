@@ -3,12 +3,13 @@ import ImageRenderer from "@atoms/imageRenderer";
 import { BUSINESS_TYPES } from "@data/shared/businessTypes";
 import { addAssetsCategory, addAssetsItem, addAssetsSubCategory, deleteAssetsCategory, deleteAssetsItem, deleteAssetsSubCategory, updateAssetsCategory, updateAssetsItem, updateAssetsSubCategory } from "@database/static/static";
 import { useAppDispatch } from "@hook/useAppDispatch";
+import { getBoundedRuntimeStringContext, logRuntimeFailure } from "@lib/runtime/runtimeDiagnostics";
+import { isResponseBodyTooLargeError, readResponseUint8ArrayWithLimit } from "@lib/security/boundedResponseBody";
 import { startLoader, stopLoader } from "@reduxSlices/loader";
 import { showErrorToast, showSuccessToast } from "@reduxSlices/toast";
 import { AssetsCategoryType } from "@type/assets";
 import { getBase64, getBase64Length, removeObjRef } from "@util/utils";
 import { Button, Flex, Input, Popconfirm, Select, Switch, Tag, Typography, Upload } from "antd";
-import axios from "axios";
 import { useEffect, useState } from "react";
 import { LuPen, LuRefreshCcw, LuSave, LuUpload, LuX } from "react-icons/lu";
 import { MdOutlineDelete } from "react-icons/md";
@@ -18,6 +19,72 @@ const { Text } = Typography;
 const { Search } = Input;
 
 const emptyFileData = { textContent: "", name: "", size: 0, type: "", src: null, compressed: { size: 0, src: "" } }
+const PLATFORM_ASSET_REMOTE_IMAGE_MAX_BYTES = 4 * 1024 * 1024;
+const PLATFORM_ASSET_REMOTE_IMAGE_ALLOWED_MIME_TYPES = new Set([
+    "image/gif",
+    "image/jpeg",
+    "image/png",
+    "image/svg+xml",
+    "image/webp",
+]);
+const PLATFORM_ASSET_REMOTE_IMAGE_FAILED_MESSAGE = "Unable to fetch image. Please check the URL and try again.";
+const PLATFORM_ASSET_REMOTE_IMAGE_TOO_LARGE_MESSAGE = "Image is too large. Use an image under 4 MB.";
+const PLATFORM_ASSET_REMOTE_IMAGE_UNSUPPORTED_MESSAGE = "Only HTTPS image URLs with PNG, JPG, WebP, GIF, or SVG files are supported.";
+
+const normalizePlatformAssetRemoteImageMimeType = (value?: string | null) => {
+    return (value || "").split(";")[0].trim().toLowerCase().replace("image/jpg", "image/jpeg");
+};
+
+const isLocalDevImageHost = (hostname: string) => {
+    return ["localhost", "127.0.0.1", "::1"].includes(hostname);
+};
+
+const resolvePlatformAssetRemoteImageUrl = (value: string) => {
+    const trimmed = value.trim();
+    if (!trimmed) throw new Error("Platform asset image URL is required.");
+
+    let parsed: URL;
+    try {
+        parsed = new URL(trimmed);
+    } catch {
+        throw new Error(PLATFORM_ASSET_REMOTE_IMAGE_UNSUPPORTED_MESSAGE);
+    }
+
+    if (parsed.protocol === "https:") return parsed;
+    if (parsed.protocol === "http:" && process.env.NODE_ENV !== "production" && isLocalDevImageHost(parsed.hostname)) {
+        return parsed;
+    }
+
+    throw new Error(PLATFORM_ASSET_REMOTE_IMAGE_UNSUPPORTED_MESSAGE);
+};
+
+const assertPlatformAssetRemoteImageMimeType = (mimeType: string) => {
+    if (!PLATFORM_ASSET_REMOTE_IMAGE_ALLOWED_MIME_TYPES.has(mimeType)) {
+        throw new Error(PLATFORM_ASSET_REMOTE_IMAGE_UNSUPPORTED_MESSAGE);
+    }
+};
+
+const bytesToBase64 = (bytes: Uint8Array) => {
+    const chunkSize = 0x8000;
+    let binary = "";
+    for (let index = 0; index < bytes.byteLength; index += chunkSize) {
+        const chunk = bytes.subarray(index, index + chunkSize);
+        let chunkBinary = "";
+        for (let chunkIndex = 0; chunkIndex < chunk.byteLength; chunkIndex += 1) {
+            chunkBinary += String.fromCharCode(chunk[chunkIndex]);
+        }
+        binary += chunkBinary;
+    }
+    return btoa(binary);
+};
+
+const getPlatformAssetRemoteImageErrorMessage = (error: unknown) => {
+    if (isResponseBodyTooLargeError(error)) return PLATFORM_ASSET_REMOTE_IMAGE_TOO_LARGE_MESSAGE;
+    if (error instanceof Error && error.message === PLATFORM_ASSET_REMOTE_IMAGE_UNSUPPORTED_MESSAGE) {
+        return PLATFORM_ASSET_REMOTE_IMAGE_UNSUPPORTED_MESSAGE;
+    }
+    return PLATFORM_ASSET_REMOTE_IMAGE_FAILED_MESSAGE;
+};
 
 function DetailsModal({ activeAssetsType, modalData, onClose, onSubmit, activeCategory, activeSubCategory }) {
 
@@ -220,32 +287,6 @@ function DetailsModal({ activeAssetsType, modalData, onClose, onSubmit, activeCa
         }
     };
 
-    // const uploadSVGToFirebase = async () => {
-    //     dispatch(toggleLoader("uploadingToFirebase"));
-    //     try {
-    //         const fileName = `svg_${new Date().getTime()}.svg`;
-    //         const storageRef = ref(firebaseStorage, `myassets/${fileName}`);
-
-    //         await uploadString(storageRef, selectedFile.textContent, 'raw', { contentType: 'image/svg+xml' });
-    //         const downloadURL = await getDownloadURL(storageRef);
-    //         console.log("downloadURL", downloadURL)
-    //         debugger
-    //         setSelectedFile({
-    //             ...selectedFile,
-    //             src: downloadURL,
-    //             name: fileName,
-    //             type: 'image/svg+xml',
-    //             textContent: selectedFile.textContent,
-    //         });
-    //         dispatch(showSuccessToast("SVG uploaded successfully!"));
-    //     } catch (error) {
-    //         console.error("Error uploading SVG:", error);
-    //         dispatch(showErrorToast("Failed to upload SVG to Firebase."));
-    //     }
-    //     dispatch(toggleLoader(""));
-    // };
-
-
     const getBase64FromUrl = async () => {
         if (!deployedUrl) {
             dispatch(showErrorToast("Please enter a deployed URL"));
@@ -253,36 +294,33 @@ function DetailsModal({ activeAssetsType, modalData, onClose, onSubmit, activeCa
         }
 
         dispatch(startLoader("fetchingBase64"));
+        let statusCode: number | undefined;
+        let responseContentType = "";
         try {
-            const response = await axios.get(deployedUrl, {
-                responseType: 'arraybuffer',
-                validateStatus: function (status) {
-                    return status >= 200 && status < 300; // default
-                },
-            });
-            const mimeType = response.headers['content-type'];
-
-            let content, base64, dataUrl;
-
-            if (mimeType.includes('svg')) {
-                // For SVG files, read as text
-                content = new TextDecoder().decode(response.data);
-                base64 = btoa(content);
-                dataUrl = `data:${mimeType};base64,${base64}`;
-            } else {
-                // For other image types, process as before
-                base64 = Buffer.from(response.data, 'binary').toString('base64');
-                dataUrl = `data:${mimeType};base64,${base64}`;
-                content = null;
+            const imageUrl = resolvePlatformAssetRemoteImageUrl(deployedUrl);
+            const response = await fetch(imageUrl.toString());
+            statusCode = response.status;
+            responseContentType = response.headers.get("content-type") || "";
+            if (!response.ok) {
+                throw new Error("Platform asset image fetch rejected.");
             }
+
+            const mimeType = normalizePlatformAssetRemoteImageMimeType(responseContentType);
+            assertPlatformAssetRemoteImageMimeType(mimeType);
+
+            const imageBytes = await readResponseUint8ArrayWithLimit(response, PLATFORM_ASSET_REMOTE_IMAGE_MAX_BYTES);
+            if (!imageBytes.byteLength) throw new Error("Platform asset image response was empty.");
+            const base64 = bytesToBase64(imageBytes);
+            const dataUrl = `data:${mimeType};base64,${base64}`;
+            const content = mimeType === "image/svg+xml" ? new TextDecoder().decode(imageBytes) : null;
 
 
             setSelectedFile({
                 ...selectedFile,
                 src: dataUrl,
-                size: response.data.length,
+                size: imageBytes.byteLength,
                 type: mimeType,
-                name: deployedUrl.split('/').pop() || 'fetchedImage',
+                name: imageUrl.pathname.split('/').pop() || 'fetchedImage',
                 textContent: content,
                 compressed: {
                     size: getBase64Length(dataUrl),
@@ -291,18 +329,14 @@ function DetailsModal({ activeAssetsType, modalData, onClose, onSubmit, activeCa
             });
             dispatch(showSuccessToast("Image fetched successfully!"));
         } catch (error) {
-            console.error("Error fetching image:", error);
-            if (error.response) {
-                if (error.response.status === 404) {
-                    dispatch(showErrorToast("Image not found. Please check the URL."));
-                } else {
-                    dispatch(showErrorToast(`Failed to fetch image. Server responded with status ${error.response.status}.`));
-                }
-            } else if (error.request) {
-                dispatch(showErrorToast("No response received from the server. Please check your internet connection."));
-            } else {
-                dispatch(showErrorToast("An unexpected error occurred while fetching the image."));
-            }
+            logRuntimeFailure('platform_asset_fetch_image_failed', error, {
+                ...getBoundedRuntimeStringContext('deployedUrl', deployedUrl),
+                ...getBoundedRuntimeStringContext('responseContentType', responseContentType),
+                statusCode,
+                maxBytes: isResponseBodyTooLargeError(error) ? error.maxBytes : undefined,
+                receivedBytes: isResponseBodyTooLargeError(error) ? error.receivedBytes : undefined,
+            });
+            dispatch(showErrorToast(statusCode === 404 ? "Image not found. Please check the URL." : getPlatformAssetRemoteImageErrorMessage(error)));
         }
         dispatch(stopLoader(""));
     };

@@ -18,6 +18,7 @@ import { appendPublicPath, getMenuUrl } from '@constant/urls';
 import { FALLBACK_BUSINESS_TYPE, resolveStoreBusinessCategory } from '@data/shared/businessTypes';
 import { getSuggestionValue } from '@data/shared/extractedBusinessProfile';
 import { admin } from '@lib/firebase/firebaseAdmin';
+import { isPlatformEntityBlocked } from '@lib/platform/entityBlock';
 import { CANONICAL_SOURCE_LANGUAGE, normalizeProjectLanguages } from '@lib/localization/languagePolicy';
 import { getBusinessAttributesWithMenuDefaults } from '@lib/obp/inferBusinessAttributesFromMenu';
 import { createTenantStoreInTransaction, preCheckSubdomain, updateUserWithTenantStore } from '@lib/onboarding/createTenantStore';
@@ -26,17 +27,21 @@ import { normalizePhoneNumberForStorage } from '@lib/phone/phoneNumber';
 import { invalidateOwnerBusinessAssistantPacketCache } from '@lib/ownerBusinessAssistant/server/contextPacketCache';
 import { checkRateLimit } from '@lib/rateLimit';
 import { getRateLimitForFeature } from '@lib/rateLimit/configs';
-import { secureError, secureLog } from '@lib/security/secureLogger';
+import { readBoundedJsonBody } from '@lib/security/boundedRequestBody';
+import { getBoundedSecurityStringContext, logSecurityDiagnostic, logSecurityFailure } from '@lib/security/securityDiagnostics';
+import { touchDigitalScreenContentVersionForStoreServer } from '@lib/screen/serverScreenInvalidation';
 import { parseSummaryProjects } from '@lib/firestore/parseSummaryProjects';
 import { buildSummaryProjectPayload } from '@lib/firestore/summaryProjectsWriter';
 import { slugify } from '@lib/utils/slugify';
 import { revalidateTag } from 'next/cache';
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from 'src/middleware/auth';
-import { sanitizeString } from 'src/middleware/publicApi';
+import { hashPublicRateLimitValue, sanitizeString } from 'src/middleware/publicApi';
 import { z } from 'zod';
 
 const COLLECTION = DB_COLLECTIONS.PUBLIC_MENU_DRAFTS;
+const PUBLIC_MENU_CLAIM_MAX_BODY_BYTES = 8 * 1024;
+const PUBLIC_MENU_DRAFT_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 const getCanonicalExtractionLanguages = (languages: any): string[] => normalizeProjectLanguages(
     Array.isArray(languages)
@@ -107,7 +112,7 @@ function mergeDefinedObject<T extends Record<string, any>>(value: T | null | und
 }
 
 const ClaimSchema = z.object({
-    draftId: z.string().min(1),
+    draftId: z.string().regex(PUBLIC_MENU_DRAFT_ID_PATTERN),
     businessName: z.string().min(2).max(100),
     businessType: z.string().max(80).optional(),
     businessCategory: z.string().max(80).optional(),
@@ -126,6 +131,28 @@ class PublicMenuClaimError extends Error {
     }
 }
 
+type PublicMenuClaimDiagnosticContext = {
+    draftId?: unknown;
+    hasExistingAccount?: boolean;
+    isNewAccount?: boolean;
+    projectId?: unknown;
+    storeId?: unknown;
+    tenantId?: unknown;
+    userId?: unknown;
+};
+
+const getPublicMenuClaimDiagnosticContext = (
+    context: PublicMenuClaimDiagnosticContext,
+) => ({
+    ...getBoundedSecurityStringContext('draftId', context.draftId),
+    ...getBoundedSecurityStringContext('userId', context.userId),
+    ...getBoundedSecurityStringContext('tenantId', context.tenantId),
+    ...getBoundedSecurityStringContext('storeId', context.storeId),
+    ...getBoundedSecurityStringContext('projectId', context.projectId),
+    hasExistingAccount: context.hasExistingAccount,
+    isNewAccount: context.isNewAccount,
+});
+
 /**
  * POST /api/public/create-menu/claim
  * 
@@ -141,19 +168,29 @@ export const POST = withAuth(async (request: NextRequest, session) => {
     }
 
     const userId = session.user.id;
+    const hasExistingAccount = !!(session.user.tenantId && session.user.storeId);
+    let draftIdForDiagnostics: string | undefined;
 
     try {
         const rateLimitConfig = getRateLimitForFeature('PAYMENT_ONBOARDING');
+        const userRateLimitHash = hashPublicRateLimitValue(userId);
         const rateLimitResult = await checkRateLimit({
-            key: `public-menu-claim:${userId}`,
+            key: `public-menu-claim:${userRateLimitHash}`,
             ...rateLimitConfig,
+            failClosedOnProviderError: true,
         });
 
         if (!rateLimitResult.allowed) {
+            const providerUnavailable = rateLimitResult.reason === 'provider_unavailable';
             return NextResponse.json(
-                { success: false, error: 'Too many publish attempts. Please try again later.' },
                 {
-                    status: 429,
+                    success: false,
+                    error: providerUnavailable
+                        ? 'Publishing is temporarily unavailable. Please try again in a minute.'
+                        : 'Too many publish attempts. Please try again later.',
+                },
+                {
+                    status: providerUnavailable ? 503 : 429,
                     headers: {
                         'Retry-After': String(Math.ceil((rateLimitResult.resetAt - Date.now()) / 1000)),
                     },
@@ -162,8 +199,10 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         }
 
         // 2. Parse and validate input
-        const body = await request.json();
-        const validation = ClaimSchema.safeParse(body);
+        const bodyResult = await readBoundedJsonBody(request, PUBLIC_MENU_CLAIM_MAX_BODY_BYTES);
+        if (bodyResult.ok === false) return bodyResult.response;
+
+        const validation = ClaimSchema.safeParse(bodyResult.data);
 
         if (!validation.success) {
             return NextResponse.json(
@@ -181,6 +220,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             city: rawCity,
             addressLine: rawAddressLine,
         } = validation.data;
+        draftIdForDiagnostics = draftId;
         const businessName = sanitizeString(rawBusinessName) || '';
         const businessType = sanitizeString(rawBusinessType) || '';
         const businessCategory = sanitizeString(rawBusinessCategory) || '';
@@ -203,7 +243,6 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         // 5. Check if user already has a tenant/store
         // If they do, create a new project under existing tenant
         // If they don't, create new tenant + store (full onboarding)
-        const hasExistingAccount = !!(session.user.tenantId && session.user.storeId);
         const preCheckedSubdomain = hasExistingAccount
             ? ''
             : await preCheckSubdomain(db, businessName, city);
@@ -257,14 +296,38 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 items: extractedData.items || [],
                 languages: extractedData.languages || [],
             };
+            let existingSummaryProjectsForDefaultDemotion: Record<string, any> = {};
 
             if (hasExistingAccount) {
                 tenantId = Number(session.user.tenantId);
                 storeId = Number(session.user.storeId);
+                if (!Number.isSafeInteger(tenantId) || !Number.isSafeInteger(storeId)) {
+                    throw new PublicMenuClaimError(403, 'Account is not ready to publish this menu.');
+                }
 
                 const storeRef = db.collection(DB_COLLECTIONS.STORES).doc(String(storeId));
+                const tenantRef = db.collection(DB_COLLECTIONS.TENANTS).doc(String(tenantId));
+                const existingProjectsSummaryRef = db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc(`projects_${storeId}`);
                 const storeDoc = await transaction.get(storeRef);
+                const tenantDoc = await transaction.get(tenantRef);
+                const existingSummaryDoc = await transaction.get(existingProjectsSummaryRef);
+                if (!storeDoc.exists || !tenantDoc.exists) {
+                    throw new PublicMenuClaimError(403, 'Account is not ready to publish this menu.');
+                }
                 const storeData = storeDoc.data() || {};
+                existingSummaryProjectsForDefaultDemotion = existingSummaryDoc.exists
+                    ? parseSummaryProjects(existingSummaryDoc.data())
+                    : {};
+                const storeTenantId = Number(storeData.tenantId ?? storeData.tId ?? 0);
+                if (
+                    storeTenantId !== tenantId
+                    || storeData.active === false
+                    || storeData.deleted === true
+                    || isPlatformEntityBlocked(storeData)
+                    || isPlatformEntityBlocked(tenantDoc.data())
+                ) {
+                    throw new PublicMenuClaimError(403, 'Account is not ready to publish this menu.');
+                }
                 resolvedBusinessType = storeData.businessType || resolvedBusinessType;
                 resolvedBusinessCategory = resolveStoreBusinessCategory(resolvedBusinessType, storeData.businessCategory || resolvedBusinessCategory);
                 subdomain = storeData.subdomain || `store-${storeId}`;
@@ -363,11 +426,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             const projectsSummaryRef = db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc(`projects_${storeId}`);
             const summaryUpdate: Record<string, any> = { lastUpdated: now };
             if (hasExistingAccount) {
-                const existingSummaryDoc = await transaction.get(projectsSummaryRef);
-                const existingSummaryProjects = existingSummaryDoc.exists
-                    ? parseSummaryProjects(existingSummaryDoc.data())
-                    : {};
-                Object.entries(existingSummaryProjects).forEach(([existingProjectId, existingProject]) => {
+                Object.entries(existingSummaryProjectsForDefaultDemotion).forEach(([existingProjectId, existingProject]) => {
                     if (
                         existingProjectId !== projectId
                         && existingProject?.isDefault === true
@@ -446,26 +505,37 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             return { tenantId, storeId, subdomain, projectId, projectSlug };
         });
 
-        secureLog('[PublicMenuEntry] Draft claimed successfully', {
+        logSecurityDiagnostic('public_menu_claim_succeeded', getPublicMenuClaimDiagnosticContext({
             draftId,
             userId,
             tenantId: result.tenantId,
             storeId: result.storeId,
             projectId: result.projectId,
-            isExistingUser: hasExistingAccount,
-        });
+            hasExistingAccount,
+            isNewAccount: !hasExistingAccount,
+        }));
 
         try {
             revalidateTag(`menu-store-${result.storeId}`);
             revalidateTag(`store-${result.storeId}`);
             revalidateTag('client-stores');
+            revalidateTag('screen-data');
+            await touchDigitalScreenContentVersionForStoreServer(result.storeId, 'publicCreateMenuClaim');
             await invalidateOwnerBusinessAssistantPacketCache({
                 tId: result.tenantId,
                 sId: result.storeId,
                 projectId: result.projectId,
             });
         } catch (cacheError) {
-            secureError('[PublicMenuEntry] Cache revalidation failed', cacheError instanceof Error ? cacheError : new Error(String(cacheError)), { draftId, storeId: result.storeId });
+            logSecurityFailure('public_menu_claim_cache_revalidation_failed', cacheError, getPublicMenuClaimDiagnosticContext({
+                draftId,
+                userId,
+                tenantId: result.tenantId,
+                storeId: result.storeId,
+                projectId: result.projectId,
+                hasExistingAccount,
+                isNewAccount: !hasExistingAccount,
+            }));
         }
 
         // 9. Return success with URLs
@@ -491,7 +561,11 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             );
         }
 
-        secureError('[PublicMenuEntry] Claim failed', error instanceof Error ? error : new Error(String(error)), { userId });
+        logSecurityFailure('public_menu_claim_failed', error, getPublicMenuClaimDiagnosticContext({
+            draftId: draftIdForDiagnostics,
+            userId,
+            hasExistingAccount,
+        }));
         return NextResponse.json(
             { success: false, error: 'Failed to publish your menu. Please try again.' },
             { status: 500 }

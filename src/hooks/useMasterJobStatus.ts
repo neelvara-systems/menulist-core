@@ -13,7 +13,13 @@
  * - Capped polling through an authenticated route
  */
 
-import { logger } from '@lib/monitoring/logger';
+import { getBoundedHookStringContext, logHookFailure } from '@hook/hookDiagnostics';
+import {
+    isMasterJobStatusResponse,
+    MASTER_JOB_STATUS_RESPONSE_JSON_MAX_BYTES,
+    type MasterJobStatusResponse,
+} from '@lib/multiOutlet/masterJobStatusResponse';
+import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';
 import { useEffect, useState } from 'react';
 
 export interface MasterJobStatus {
@@ -28,6 +34,57 @@ export interface MasterJobStatus {
     /** Whether loading */
     isLoading: boolean;
 }
+
+type MasterJobStatusHookLogContext = Record<string, boolean | number | string | null | undefined>;
+
+const MASTER_JOB_STATUS_REQUEST_POLICY: RequestInit = {
+    cache: 'no-store',
+    credentials: 'same-origin',
+    redirect: 'manual',
+};
+
+const getMasterJobStatusHookLogContext = (
+    masterProjectId: string | null,
+    outletProjectId?: string | null,
+): MasterJobStatusHookLogContext => ({
+    ...getBoundedHookStringContext('masterProjectId', masterProjectId),
+    ...getBoundedHookStringContext('outletProjectId', outletProjectId),
+});
+
+const readMasterJobStatusResponse = async (
+    response: Response,
+    logContext: MasterJobStatusHookLogContext,
+): Promise<MasterJobStatusResponse | null> => {
+    const responseContext = {
+        ...logContext,
+        responseOk: response.ok,
+        responseStatus: response.status,
+        maxBytes: MASTER_JOB_STATUS_RESPONSE_JSON_MAX_BYTES,
+    };
+
+    if (!response.ok) {
+        logHookFailure('master_job_status_response_rejected', new Error('master_job_status_response_rejected'), responseContext);
+        return null;
+    }
+
+    let payload: unknown = null;
+    try {
+        payload = await readJsonResponseWithLimit<unknown>(
+            response,
+            MASTER_JOB_STATUS_RESPONSE_JSON_MAX_BYTES,
+        );
+    } catch (error) {
+        logHookFailure('master_job_status_response_parse_failed', error, responseContext);
+        return null;
+    }
+
+    if (!isMasterJobStatusResponse(payload)) {
+        logHookFailure('master_job_status_response_invalid', new Error('master_job_status_response_invalid'), responseContext);
+        return null;
+    }
+
+    return payload;
+};
 
 /**
  * Hook to monitor master project's extraction job status
@@ -62,24 +119,26 @@ export function useMasterJobStatus(
         const fetchStatus = async () => {
             abortController?.abort();
             abortController = new AbortController();
+            const logContext = getMasterJobStatusHookLogContext(masterProjectId, outletProjectId);
 
             try {
                 const params = new URLSearchParams({ masterProjectId });
                 if (outletProjectId) params.set('outletProjectId', outletProjectId);
 
                 const response = await fetch(`/api/projects/master-job-status?${params.toString()}`, {
-                    cache: 'no-store',
+                    ...MASTER_JOB_STATUS_REQUEST_POLICY,
                     signal: abortController.signal,
                 });
 
-                if (!response.ok) {
-                    throw new Error(`Status request failed with ${response.status}`);
+                const data = await readMasterJobStatusResponse(response, logContext);
+                if (cancelled) return;
+                if (!data) {
+                    setStatus({ isMasterJobActive: false, isLoading: false });
+                    hasLoaded = true;
+                    return;
                 }
 
-                const data = await response.json();
-                if (cancelled) return;
-
-                const jobStatus = data.masterJobStatus as 'pending' | 'processing' | 'preview_ready' | undefined;
+                const jobStatus = data.masterJobStatus;
                 let blockingMessage = 'Master menu is being updated. Please wait.';
                 if (jobStatus === 'preview_ready') {
                     blockingMessage = 'Master menu changes are pending review. Please wait or contact the master outlet.';
@@ -96,11 +155,7 @@ export function useMasterJobStatus(
             } catch (error: any) {
                 if (cancelled || error?.name === 'AbortError') return;
 
-                logger.warn('[useMasterJobStatus] Status check failed', {
-                    masterProjectId,
-                    outletProjectId,
-                    error: error?.message || String(error),
-                });
+                logHookFailure('master_job_status_check_failed', error, logContext);
                 // On error, don't block - fail open
                 setStatus({ isMasterJobActive: false, isLoading: false });
                 hasLoaded = true;

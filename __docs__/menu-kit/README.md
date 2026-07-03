@@ -184,6 +184,8 @@ See `__docs__/digital-screens/_archive/digital-screens_chatgpt-review-v4.md` for
 
 The original Physical Surfaces feature (`src/lib/physical-surfaces/`, `__docs__/physical-surfaces/`) generates **campaign-based recommendation cards** shown in the Today tab. Menu Kit **supersedes** it for all identity/infrastructure surface needs. The old code remains functional for Today/mobile Hours and is maintenance-only; it now reuses the same premium logo/color/QR treatment so active downloads do not regress to plain black-and-white output. See `__docs__/physical-surfaces/README.md` for the comparison table.
 
+For all new physical surface work, use Menu Kit.
+
 ---
 
 **Document Signature:** Feature Documentation  

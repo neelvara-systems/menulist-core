@@ -1,11 +1,13 @@
 # Multi-Outlet Consistency — Test Cases & Scenarios
 
-> **Status:** ✅ Production Ready  
+> **Status:** Historical QA evidence; not current launch certification
 > **Original Date:** 2026-01-22  
 > **Last Reviewed:** 2026-05-20
 
 > **Source:** ChatGPT Deep Analysis + Codebase Cross-Check  
 > **Purpose:** Comprehensive test matrix for stability and scalability
+>
+> **Launch Boundary:** This file records historical QA scenarios and source-audit evidence, not current production-launch approval. Current release approval requires the active [production-readiness audit](../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../production-readiness/external-certification-runbook.md) evidence, `npm run verify:multi-location-boundary`, desktop/mobile Locations browser QA, linked outlet save QA, Razorpay sandbox evidence where billing is involved, Firebase deploy evidence where rules/functions change, and target-environment smoke.
 
 > **Post-Implementation Note (Feb 13, 2026; line-audited May 19, 2026):** This file now covers 90 numbered scenario cases, 40 QA matrix rows, the Firestore write contract, and deferred/by-design governance decisions for the core multi-outlet feature (master/outlet linking, overrides, AI extraction). The earlier "124 test cases" wording was stale because later chain-permission cases were appended without updating the count.
 >
@@ -47,7 +49,7 @@
 
 ## Executive Summary
 
-This document captures **90 real-world multi-outlet scenarios**, a **QA test matrix (40 tests)**, and the Firestore write contract to ensure the multi-outlet feature is production-ready. Each scenario is reviewed against the current codebase implementation.
+This document captures **90 real-world multi-outlet scenarios**, a **QA test matrix (40 tests)**, and the Firestore write contract used to verify source behavior and release-gate coverage. Each scenario is reviewed against the current codebase implementation.
 
 **Legend:**
 
@@ -983,7 +985,7 @@ When AI extraction runs on a master project, outlets must be blocked until revie
 | **Risk**            | Outlet edits while master SSOT is unstable → data corruption            |
 | **Resolution Rule** | Block outlet when `isMasterJobActive = true`                            |
 | **Status**          | ✅ HANDLED                                                              |
-| **Evidence**        | `useMasterJobStatus.ts` calls `/api/projects/master-job-status`; the API validates tenant/store access before checking active jobs |
+| **Evidence**        | `useMasterJobStatus.ts` calls `/api/projects/master-job-status` with same-origin credentials, no-store cache policy, and manual redirect handling, then parses the response through an 8KB bounded guard; the API validates tenant/store access before checking active jobs |
 | **Notes**           | `ExtractionJobBlockingOverlay` shows "Master menu update in progress"   |
 
 #### Case 43: Outlet opens different project while master review pending (same chain)
@@ -993,7 +995,7 @@ When AI extraction runs on a master project, outlets must be blocked until revie
 | **Scenario** | Master has pending review for Project P1, outlet opens P2       |
 | **Expected** | P2 is allowed — lock is per-project, not per-tenant             |
 | **Status**   | ✅ HANDLED                                                      |
-| **Evidence** | `useMasterJobStatus` polls only the specific `masterProjectId` and optional outlet project |
+| **Evidence** | `useMasterJobStatus` polls only the specific `masterProjectId` and optional outlet project, using the shared browser request policy before bounded response parsing |
 
 #### Case 44: Outlet tries to publish while master review pending
 
@@ -1029,10 +1031,10 @@ When AI extraction runs on a master project, outlets must be blocked until revie
 | Aspect       | Detail                                                          |
 | ------------ | --------------------------------------------------------------- |
 | **Scenario** | Master preview_ready, master hits Save                          |
-| **Expected** | Job becomes `completed`, lock removed, outlets see updated menu |
+| **Expected** | Approved changes are applied, job becomes `completed`, lock removed, outlets see updated menu |
 | **Status**   | ✅ HANDLED                                                      |
-| **Evidence** | `applyExtractionChanges()` sets job status to `completed`       |
-| **Notes**    | Outlet menu refreshes on next load with resolved master data    |
+| **Evidence** | `applyExtractionChanges()` refuses no-op/partial apply counts before writes, returns project/job/mode/count acknowledgement, then sets job status to `completed` |
+| **Notes**    | Desktop and mobile review screens show success only after the acknowledgement matches the selected-change count. Outlet menu refreshes on next load with resolved master data |
 
 ---
 
@@ -1623,7 +1625,7 @@ All spec requirements verified against implementation:
 
 | Metric               | Status                                         |
 | -------------------- | ---------------------------------------------- |
-| Feature completeness | ✅ Production ready                            |
+| Feature completeness | Historical QA evidence; not current launch certification |
 | Security             | ✅ Tenant isolation + Firestore rules          |
 | Performance          | ✅ 2-read architecture + cache                 |
 | Firebase costs       | ✅ Negligible (~$0.18/month for 100 outlets)   |

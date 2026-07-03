@@ -45,6 +45,27 @@ const DEFAULT_OPTIONS: Required<CircuitBreakerOptions> = {
     name: 'default',
 };
 
+function getCircuitBreakerErrorContext(error: unknown): Record<string, string> {
+    if (error instanceof Error) {
+        const record = error as Error & { code?: unknown; status?: unknown; statusCode?: unknown };
+        const status = record.status ?? record.statusCode;
+
+        return {
+            sourceErrorName: (error.name || 'Error').slice(0, 80),
+            ...(record.code === undefined || record.code === null ? {} : {
+                sourceErrorCode: String(record.code).slice(0, 64),
+            }),
+            ...(status === undefined || status === null ? {} : {
+                sourceErrorStatus: String(status).slice(0, 32),
+            }),
+        };
+    }
+
+    return {
+        sourceErrorName: typeof error,
+    };
+}
+
 export class CircuitBreaker {
     private state: CircuitState = 'CLOSED';
     private failures = 0;
@@ -132,7 +153,7 @@ export class CircuitBreaker {
             failures: this.failures,
             threshold: this.options.failureThreshold,
             state: this.state,
-            error: error?.message || 'Unknown error',
+            ...getCircuitBreakerErrorContext(error),
         });
 
         if (this.state === 'HALF_OPEN') {

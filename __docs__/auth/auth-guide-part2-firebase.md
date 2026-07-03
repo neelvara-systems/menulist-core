@@ -42,7 +42,7 @@ Can now:
 
 ### Firebase Auth Token Structure
 
-When you log `firebaseAuth.currentUser`, you see:
+Do not log `firebaseAuth.currentUser` in application code. It can contain Firebase SDK token manager fields. The rough internal shape includes:
 
 ```typescript
 {
@@ -54,8 +54,8 @@ When you log `firebaseAuth.currentUser`, you see:
   
   // Token Manager
   stsTokenManager: {
-    accessToken: "eyJhbGc...", // ⏰ Expires in 1 hour
-    refreshToken: "AMf-vBw...", // 🔄 Long-lived, auto-refreshes accessToken
+    accessToken: "[redacted]", // Expires in 1 hour
+    refreshToken: "[redacted]", // Long-lived, auto-refreshes accessToken
     expirationTime: 1762457811075 // Unix timestamp
   },
   
@@ -88,14 +88,10 @@ await authAdmin.setCustomUserClaims(uid, {
 ```typescript
 const user = firebaseAuth.currentUser;
 const tokenResult = await user.getIdTokenResult();
-console.log(tokenResult.claims);
-// {
-//   role: "OWNER",
-//   tenantId: "14",
-//   storeId: "15",
-//   uId: "abc123"
-// }
+const hasTenantScope = Boolean(tokenResult.claims.tenantId && tokenResult.claims.storeId);
 ```
+
+Do not copy token claims, access tokens, refresh tokens, tenant/store IDs, or raw Firebase user objects into browser logs. Use the bounded auth and Firebase diagnostic helpers documented in `README.md` when this flow fails.
 
 **Using claims in Firestore rules:**
 
@@ -215,7 +211,8 @@ const response = await fetch('/api/auth/set-claims', { method: 'POST' });
 const { customToken } = await response.json();
 
 await signInWithCustomToken(firebaseAuth, customToken);
-console.log('✅ Firebase Auth active:', firebaseAuth.currentUser);
+// Do not log firebaseAuth.currentUser. Verify readiness through the app loader
+// state or bounded Firebase bootstrap diagnostics.
 ```
 
 #### 2. **signInWithEmailAndPassword()**
@@ -228,7 +225,7 @@ import { signInWithEmailAndPassword } from 'firebase/auth';
 
 // Password-based login
 await signInWithEmailAndPassword(firebaseAuth, email, password);
-console.log('✅ Logged in:', firebaseAuth.currentUser);
+// Do not log firebaseAuth.currentUser. Verify readiness through app state.
 ```
 
 #### 3. **signOut()**

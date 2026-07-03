@@ -1,25 +1,26 @@
-# Pricing Integrity System — Mobile Support
+# Pricing Integrity System - Mobile Support
 
-**Last Updated:** February 16, 2026
-**Decision:** ✅ AUTOMATIC — Price changes from mobile propagate to all surfaces automatically
-
----
-
-## Feature Admission Test
-
-Not applicable — Pricing Integrity is a backend propagation system, not an owner-facing feature.
+**Status:** Mobile source-boundary evidence, not current launch certification
+**Last Updated:** July 2, 2026
+**Decision:** Mobile price edits use the shared project save path
 
 ---
 
-## How Mobile Contributes
+## Current Mobile Boundary
 
-When an owner edits a price via MobileMenuScreen → ItemEditSheet → `updateProject()`, the Pricing Integrity System ensures the new price propagates to:
+Mobile does not have a separate Pricing Integrity UI. When mobile owner flows save project/menu price changes through the shared project persistence path, the same source-boundary applies:
 
-| Surface | Propagation Method | Mobile Edit Support |
-|---------|-------------------|-------------------|
-| QR/Web Menu | Live Firestore read | ✅ Automatic |
-| Digital Screens | Version polling | ✅ Automatic |
-| Staff Prompt | Live Firestore read | ✅ Automatic |
-| PDF Menu | Staleness tracking | ✅ Flagged on next generation |
+- Saved project truth is the price source.
+- Public cache revalidation is triggered by the shared save path.
+- Configured Digital Screens receive a content-version touch where applicable.
+- PDF downloads are generated on demand from current menu data.
 
-No separate mobile UI needed — the system works via shared Firestore data.
+## Not Active Runtime
+
+- No mobile background PDF regeneration control exists.
+- No mobile Pricing Integrity engine control exists.
+- `runPricingIntegrity()` is not currently called by mobile or desktop editor saves.
+
+## Current QA Gate
+
+Release approval still requires the active production-readiness audit, External Certification Runbook evidence, `npm run verify:pricing-integrity-boundary`, `npm run verify:agent-readiness`, `npm run verify:menulist-api-tenant-safety`, authenticated mobile editor price-change QA, public menu and PDF artifact QA, configured-screen refresh QA where applicable, target deploy evidence, and production-host smoke.

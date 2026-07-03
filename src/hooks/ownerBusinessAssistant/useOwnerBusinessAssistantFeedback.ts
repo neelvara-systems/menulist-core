@@ -1,5 +1,9 @@
 import { useCallback, useState } from 'react';
 import { OWNER_BUSINESS_ASSISTANT_ENDPOINTS } from '@lib/ownerBusinessAssistant/constants';
+import {
+  OWNER_BUSINESS_ASSISTANT_REQUEST_POLICY,
+  readOwnerBusinessAssistantFeedbackResponse,
+} from '@lib/ownerBusinessAssistant/clientResponses';
 
 export function useOwnerBusinessAssistantFeedback(storeScopeKey?: string | number) {
   const [isLoading, setIsLoading] = useState(false);
@@ -13,6 +17,7 @@ export function useOwnerBusinessAssistantFeedback(storeScopeKey?: string | numbe
     setIsLoading(true);
     try {
       const response = await fetch(OWNER_BUSINESS_ASSISTANT_ENDPOINTS.feedback, {
+        ...OWNER_BUSINESS_ASSISTANT_REQUEST_POLICY,
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -20,8 +25,14 @@ export function useOwnerBusinessAssistantFeedback(storeScopeKey?: string | numbe
           storeId: storeScopeKey ? String(storeScopeKey) : undefined,
         }),
       });
-      if (!response.ok) return false;
-      return true;
+      const result = await readOwnerBusinessAssistantFeedbackResponse(response, {
+        answerIdLength: params.answerId.length,
+        hasQuestion: Boolean(params.question),
+        hasReason: Boolean(params.reason),
+        hasStoreScope: Boolean(storeScopeKey),
+        rating: params.rating,
+      });
+      return result?.data.success === true;
     } finally {
       setIsLoading(false);
     }

@@ -1,9 +1,11 @@
 # AI Extraction Internal Monitoring Dashboard — Product Specification
 
-**Feature:** Internal monitoring dashboard for the menu extraction pipeline  
-**Status:** ✅ IMPLEMENTED — Feature flag OFF (`ENABLE_EXTRACTION_MONITORING_DASHBOARD`)  
-**Feature Flag:** `ENABLE_EXTRACTION_MONITORING_DASHBOARD`  
-**Last Updated:** April 5, 2026
+**Feature:** Internal monitoring dashboard for the menu extraction pipeline
+**Status:** ✅ IMPLEMENTED — Feature flag OFF (`ENABLE_EXTRACTION_MONITORING_DASHBOARD`); controlled internal testing ready, not launch certification
+**Feature Flag:** `ENABLE_EXTRACTION_MONITORING_DASHBOARD`
+**Last Updated:** July 2, 2026
+
+**Launch boundary:** This spec describes the implemented internal debug console. Enabling it for a release still requires target feature-flag review, platform-role access verification, current extraction data, and the External Certification Runbook evidence that applies to the release. It is not a standalone production-launch approval.
 
 ---
 
@@ -68,7 +70,7 @@ As a solo founder, debugging time must be under 5 minutes from alert to diagnosi
 │                                                    │
 │  • menuImageProcessingJobs (job status + results) │
 │  • MENULIST_AI_OPERATIONS (cost/token data)       │
-│  • aiUsageLog (cross-feature costs, from AI SL)   │
+│  • No separate aiUsageLog collection is read      │
 │  • platformSummary/extractionLearning (HCR data)  │
 └──────────────────────────────────────────────────┘
 ```
@@ -337,4 +339,4 @@ Events needed:
 
 ---
 
-_Document Status: ✅ IMPLEMENTED — Feature flag OFF, ready for production_
+_Document Status: ✅ IMPLEMENTED — Feature flag OFF; source-verified for controlled internal testing, with launch certification gated by the External Certification Runbook and current production-readiness audit._

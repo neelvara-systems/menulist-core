@@ -1,6 +1,6 @@
 import FileIcon from '@atoms/FileIcon';
 import PasteUpload, { PastedFile } from '@atoms/PasteUpload';
-import { addIngestionJob } from '@database/kb-generation/jobs';
+import { addIngestionJob, assertIngestionJobWriteSucceeded } from '@database/kb-generation/jobs';
 import { useAppDispatch } from '@hook/useAppDispatch';
 import { useClientAuthSession } from '@hook/useClientAuthSession';
 import { uploadFile } from '@lib/firebase/storage';
@@ -199,6 +199,11 @@ const UploadModal: React.FC<UploadModalProps> = ({ open, onClose }) => {
       };
 
       const newJob = await addIngestionJob(newJobData);
+      assertIngestionJobWriteSucceeded(
+        newJob,
+        newJob.id,
+        'kb_generation_upload_job_create_rejected',
+      );
       message.success('New generation job created successfully!');
       handleClose();
     } catch (error) {

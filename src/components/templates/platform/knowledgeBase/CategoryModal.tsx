@@ -1,5 +1,5 @@
 import IconPicker from "@atoms/IconPicker";
-import { addCategory, updateCategory } from "@database/knowledgeBase/categories";
+import { addCategory, assertKnowledgeBaseCategoryWriteSucceeded, updateCategory } from "@database/knowledgeBase/categories";
 import { useAppDispatch } from "@hook/useAppDispatch";
 import { startLoader, stopLoader } from "@reduxSlices/loader";
 import { KnowledgeBaseCategoriesType, KnowledgeBaseCategory } from "@type/knowledgeBase";
@@ -54,11 +54,21 @@ const CategoryModal = ({ open, editingCategory, categoriesData, form, onOk, onCa
             let categoryToSave;
             if (isEditing) {
                 categoryToSave = { ...editingCategory, ...values };
-                await updateCategory(categoryToSave);
+                const result = await updateCategory(categoryToSave);
+                assertKnowledgeBaseCategoryWriteSucceeded(
+                    result,
+                    categoryToSave.id,
+                    'platform_kb_category_update_rejected',
+                );
             } else {
                 const id = new Date().getTime().toString();
                 categoryToSave = { ...values, id, sections: [], articles: [] };
-                await addCategory(categoryToSave);
+                const result = await addCategory(categoryToSave);
+                assertKnowledgeBaseCategoryWriteSucceeded(
+                    result,
+                    categoryToSave.id,
+                    'platform_kb_category_create_rejected',
+                );
             }
 
             const updatedCategoriesMap = {

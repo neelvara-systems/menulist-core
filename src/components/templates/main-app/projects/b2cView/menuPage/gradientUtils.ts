@@ -76,8 +76,7 @@ export const parseGradientString = (gradientStr: string): { angle: number; color
     });
 
     return { angle, colors: parsedColors };
-  } catch (e) {
-    console.error('Error parsing gradient:', e);
+  } catch {
     return null;
   }
 };

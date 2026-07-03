@@ -11,6 +11,10 @@
 
 import { firebaseStorage } from "@lib/firebase/firebaseClient";
 import { getDownloadURL, ref, uploadString, type FirebaseStorage, type UploadMetadata } from "firebase/storage";
+import {
+    getBoundedStringLogContext,
+    logStorageHelperFailure,
+} from "./storageDiagnostics";
 
 /**
  * Supported file types for upload
@@ -141,7 +145,6 @@ function normalizeFileType(type?: SupportedFileType): FileTypeConfig {
     }
 
     // Default fallback to JPEG for images, or keep as-is for unknown types
-    console.warn(`Unknown file type: ${type}, defaulting to JPEG`);
     return {
         extension: '.jpeg',
         contentType: 'image/jpeg',
@@ -202,10 +205,19 @@ const uploadBase64ToStorage = async (fileData: UploadFileData): Promise<string> 
         return downloadURL;
         
     } catch (error) {
-        // Re-throw error so caller can handle it
-        throw new Error(
-            `Failed to upload file: ${error instanceof Error ? error.message : 'Unknown error'}`
+        logStorageHelperFailure(
+            "storage_base64_upload_failed",
+            error,
+            {
+                ...getBoundedStringLogContext("fileId", fileData?.fileId),
+                ...getBoundedStringLogContext("path", fileData?.path),
+                ...getBoundedStringLogContext("type", fileData?.type),
+                hasStorageOverride: Boolean(fileData?.storage),
+                hasCustomMetadata: Boolean(fileData?.customMetadata),
+                hasCacheControl: Boolean(fileData?.cacheControl),
+            },
         );
+        throw new Error('Failed to upload file');
     }
 };
 

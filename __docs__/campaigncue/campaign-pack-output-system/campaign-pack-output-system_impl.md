@@ -20,6 +20,8 @@
 7. `recordAction(..., "export")` builds the ZIP blob locally first, calls the protected export action API, and downloads the ZIP only after the server accepts the action.
 8. `buildCampaignPackZipBlob()`/`downloadCampaignPackZip()` use the existing `jszip` dependency to create a browser-local ZIP with `campaign-pack-summary.md`, `campaign-pack.json`, and every `outputPack.downloadBundle.file`.
 
+Manual delivery field copies in `CampaignCueWorkspaceApp` remain browser-local. Copied feedback appears only after Clipboard API success or acknowledged textarea fallback success, and failed handoffs log `campaigncue_handoff_copy_failed` with clipboard/fallback support booleans plus copied value length only.
+
 ## ZIP Contents
 
 The bundle root is `{campaign-title}-campaign-pack`.

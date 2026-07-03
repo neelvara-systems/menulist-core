@@ -5,6 +5,7 @@
 | Check | Expected |
 | --- | --- |
 | `npx next lint --file src/app/sites/mycodex/components/MyCodexClientContainer.tsx --file src/app/sites/mycodex/favorites/page.tsx --file src/app/sites/mycodex/queue/page.tsx --file src/app/sites/mycodex/api/document/route.ts --file src/app/sites/mycodex/[[...slug]]/page.tsx --file src/lib/mycodex/docs.ts --file src/config/features.ts` | Pass |
+| `npm run verify:auth-security-failure-matrix` | Pass; MyCodex login and favorite-document playback keep bounded body/response parsing. |
 | `npx tsc --noEmit --incremental false` | Pass |
 
 ## Manual Checks
@@ -17,6 +18,7 @@
 | Settings read-page button | Page chunks play sequentially. |
 | Favorites page Play all | Starred docs load one by one and play as one queue until stopped or completed. |
 | Favorites page per-doc Play | Only the selected favorite plays. |
+| Favorite document route returns malformed, oversized, redirected, or non-OK JSON | Playback fails closed with `Could not load favorite`; no Markdown content or raw source path is logged. |
 | Queue page Play queue | Queued docs load one by one and play as one queue until stopped or completed. |
 | Mobile home | Root route shows continue-reading, queue, favorites, and recent docs before the master index. |
 | Scroll resume | Reopening a document can restore the saved scroll position. |

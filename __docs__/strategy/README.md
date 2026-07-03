@@ -8,9 +8,9 @@
 
 | Document                                                                                       | Date     | Purpose                                                                                 |
 | ---------------------------------------------------------------------------------------------- | -------- | --------------------------------------------------------------------------------------- |
-| [5year-vision-2026-complete.md](./5year-vision-2026-complete.md)                               | 2026     | Complete 5-year product vision + language governance appendix                           |
-| [executive-strategy-doc.md](./Executive%20Strategy%20Doc.md)                                   | 2026     | Executive-level strategy overview                                                       |
-| [founder-manifesto.md](./Founder%20Manifesto.md)                                               | 2026     | Founder's product philosophy and core beliefs                                           |
+| [five-year-vision-2026-complete.md](./five-year-vision-2026-complete.md)                               | 2026     | Complete 5-year product vision + language governance appendix                           |
+| executive-strategy-doc.md                                                                      | 2026     | Legacy strategy artifact not present in the active docs tree                            |
+| founder-manifesto.md                                                                           | 2026     | Legacy manifesto artifact not present in the active docs tree                           |
 | [expansion-surfaces-master-analysis.md](./expansion-surfaces-master-analysis.md)               | 2026     | Analysis of all expansion surfaces (WhatsApp, posters, etc.)                            |
 | [pricing-strategy.md](./pricing-strategy.md)                                                   | 2026     | Pricing tiers, positioning, competitive analysis                                        |
 | [product-strategy-market-research.md](./product-strategy-market-research.md)                   | 2026     | Market research and product strategy                                                    |

@@ -6,7 +6,13 @@
 
 import { AI_MODEL } from '../../constants/ai';
 import { genAIClient } from '../../genAiClient';
+import { geminiLogger, getGeminiErrorContext } from './geminiDiagnostics';
 import { weeklyNarrativePrompt } from './prompts/v1/weeklyNarrative.prompt';
+
+const GEMINI_WEEKLY_NARRATIVE_EMPTY_RESPONSE = 'GEMINI_WEEKLY_NARRATIVE_EMPTY_RESPONSE';
+const GEMINI_WEEKLY_NARRATIVE_FAILED = 'GEMINI_WEEKLY_NARRATIVE_FAILED';
+const GEMINI_WEEKLY_NARRATIVE_INVALID_RESPONSE = 'GEMINI_WEEKLY_NARRATIVE_INVALID_RESPONSE';
+const GEMINI_WEEKLY_NARRATIVE_PARSE_FAILED = 'GEMINI_WEEKLY_NARRATIVE_PARSE_FAILED';
 
 // ================================================================
 // TYPES
@@ -34,7 +40,9 @@ export async function generateWeeklyNarrative(
   metrics: any
 ): Promise<WeeklyNarrativeResult> {
   try {
-    console.log(`[Gemini] Generating weekly narrative`);
+    geminiLogger.info('[Gemini] Generating weekly narrative', {
+      totalChats: metrics.totalChats || 0,
+    });
 
     // Build prompt
     const prompt = weeklyNarrativePrompt(metrics);
@@ -50,7 +58,7 @@ export async function generateWeeklyNarrative(
     });
     const text = geminiResult.text;
     if (!text) {
-      throw new Error('Empty response from Gemini');
+      throw new Error(GEMINI_WEEKLY_NARRATIVE_EMPTY_RESPONSE);
     }
 
     // Parse JSON response
@@ -66,16 +74,27 @@ export async function generateWeeklyNarrative(
       },
     };
 
-    console.log(`[Gemini] Weekly narrative generated successfully`);
+    geminiLogger.info('[Gemini] Weekly narrative generated successfully', {
+      totalChats: metrics.totalChats || 0,
+    });
 
     return finalResult;
 
   } catch (error) {
-    console.error('[Gemini] Error generating weekly narrative:', error);
+    geminiLogger.error('[Gemini] Weekly narrative generation failed', {
+      failureCode: GEMINI_WEEKLY_NARRATIVE_FAILED,
+      totalChats: metrics.totalChats || 0,
+      error: getGeminiErrorContext(error),
+    });
 
     // Fallback response if Gemini fails
     return {
-      narrative: `This week saw ${metrics.totalChats} total conversations with a ${metrics.satisfactionRate.toFixed(1)}% satisfaction rate. Performance ${metrics.volumeChange > 0 ? 'increased' : 'decreased'} by ${Math.abs(metrics.volumeChange).toFixed(1)}% compared to last week.`,
+      narrative: [
+        `This week saw ${metrics.totalChats} total conversations`,
+        `with a ${metrics.satisfactionRate.toFixed(1)}% satisfaction rate.`,
+        `Performance ${metrics.volumeChange > 0 ? 'increased' : 'decreased'}`,
+        `by ${Math.abs(metrics.volumeChange).toFixed(1)}% compared to last week.`,
+      ].join(' '),
       highlights: [
         `Total conversations: ${metrics.totalChats}`,
         `Satisfaction rate: ${metrics.satisfactionRate.toFixed(1)}%`,
@@ -114,7 +133,7 @@ function parseGeminiResponse(text: string): Omit<WeeklyNarrativeResult, 'keyMetr
 
     // Validate structure
     if (!parsed.narrative || typeof parsed.narrative !== 'string') {
-      throw new Error('Invalid response: missing narrative');
+      throw new Error(GEMINI_WEEKLY_NARRATIVE_INVALID_RESPONSE);
     }
 
     return {
@@ -124,9 +143,12 @@ function parseGeminiResponse(text: string): Omit<WeeklyNarrativeResult, 'keyMetr
     };
 
   } catch (error) {
-    console.error('[Gemini] Failed to parse response:', error);
+    geminiLogger.error('[Gemini] Failed to parse weekly narrative response', {
+      failureCode: GEMINI_WEEKLY_NARRATIVE_PARSE_FAILED,
+      error: getGeminiErrorContext(error),
+    });
 
-    throw new Error(`Failed to parse Gemini response: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    throw new Error(GEMINI_WEEKLY_NARRATIVE_PARSE_FAILED);
   }
 }
 

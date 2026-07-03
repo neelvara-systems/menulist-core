@@ -1,13 +1,18 @@
 # 💾 Auto-Save System
 
 **File**: `Editor.tsx`  
-**Last Updated**: Nov 27, 2025
+**Last Updated**: July 2, 2026
+**Status**: Implemented source documentation; not current launch certification
+
+## Launch Boundary
+
+This note documents the current editor auto-save source behavior and Firestore cost-control intent. It is not production-launch approval. Current release approval still requires the production-readiness audit, External Certification Runbook evidence, browser/mobile editor QA, publish/cache evidence for edited public truth, Firestore write observation for the target environment, and target-environment smoke.
 
 ---
 
 ## 📋 Overview
 
-The Editor implements a production-ready auto-save system that balances user experience with Firestore cost control.
+The Editor implements an auto-save system that balances user experience with Firestore cost control. Treat this document as implementation evidence, not current launch certification.
 
 ---
 

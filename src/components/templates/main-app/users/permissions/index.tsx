@@ -6,6 +6,7 @@ import { DEFAULT_ROLE_IDS } from "@data/defaultRoles";
 import { PERMISSION_CATEGORIES_CONFIG, PERMISSION_LABELS } from "@data/rolesPermissionsInitialData";
 import { useAppDispatch } from "@hook/useAppDispatch";
 import { deleteRoleDefinition } from "@lib/staffManagement/client";
+import { getBoundedStaffStringContext, logStaffClientFailure } from "@lib/staffManagement/diagnostics";
 import EditorWrapper from "@organisms/editor/editorWrapper";
 import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from "@providers/platformProviders/platformGlobalDataProvider";
 import { showErrorToast, showSuccessToast } from "@reduxSlices/toast";
@@ -16,6 +17,13 @@ import { Fragment, useContext, useState } from "react";
 import { LuCheck, LuPen, LuPlus, LuShieldCheck, LuTrash2, LuX } from "react-icons/lu";
 import RoleDetailsModal from "./roleDetailsModal";
 const { Meta } = Card
+
+const getDesktopRoleLogContext = (storeDetails: any, role?: StoreRoleDataType) => ({
+    ...getBoundedStaffStringContext('storeId', storeDetails?.storeId),
+    ...getBoundedStaffStringContext('tenantId', storeDetails?.tenantId),
+    ...getBoundedStaffStringContext('roleId', role?.id),
+    ...getBoundedStaffStringContext('roleName', role?.name),
+});
 
 function UserPermissionsPage() {
     const [activeRole, setActiveRole] = useState<StoreRoleDataType>(null);
@@ -47,8 +55,9 @@ function UserPermissionsPage() {
             const nextActiveRole = response.roles.find((item) => item.id === role.id) || null;
             setActiveRole(nextActiveRole);
             dispatch(showSuccessToast("Role deactivated"));
-        } catch (err: any) {
-            dispatch(showErrorToast(err?.message || "Could not deactivate role"));
+        } catch (err) {
+            logStaffClientFailure('desktop_staff_role_delete_failed', err, getDesktopRoleLogContext(storeDetails, role));
+            dispatch(showErrorToast("Could not deactivate role"));
         }
     };
 

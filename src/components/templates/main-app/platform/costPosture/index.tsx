@@ -9,6 +9,7 @@ import type {
   PlatformCostSignal,
   PlatformCostSourceCoverage,
 } from '@lib/ops/costPostureTypes';
+import { logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { formatInrPaise } from '@util/formatters';
 import { Alert, Button, Card, Empty, Select, Space, Spin, Statistic, Table, Tag, Typography, message } from 'antd';
 import { useSession } from 'next-auth/react';
@@ -56,7 +57,8 @@ export default function PlatformCostPosture() {
       const payload = await getPlatformCostPosture(days);
       setData(payload);
     } catch (error) {
-      message.error(error instanceof Error ? error.message : 'Failed to load platform cost posture');
+      logRuntimeFailure('platform_cost_posture_load_failed', error, { days });
+      message.error('Failed to load platform cost posture');
     } finally {
       setLoading(false);
     }

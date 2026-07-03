@@ -21,10 +21,11 @@ import { getAnswerlatticeBundleManifestDocId } from '@lib/answerlattice/compiled
 import { getContextContentSummaryDocId } from '@lib/answerlattice/productSurfaceContent';
 import { resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
 import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
-import { secureError } from '@lib/security/secureLogger';
+import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import * as admin from 'firebase-admin';
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '../../../../../middleware/auth';
+import { applyAnswerlatticeDashboardReadRateLimit } from '../../readRateLimit';
 
 const buildCompiledContextReadiness = (manifest: Record<string, any> | null) => {
     if (!manifest) {
@@ -96,6 +97,10 @@ export const GET = withAuth(async (_request: NextRequest, session) => {
     if (!FEATURE_FLAGS.ENABLE_ANSWERLATTICE_ACTIVATION_COMMAND_CENTER) {
         return NextResponse.json({ error: 'Activation summary is not enabled.' }, { status: 403 });
     }
+
+    const rateLimitResponse = await applyAnswerlatticeDashboardReadRateLimit(_request, session, 'activation-summary');
+    if (rateLimitResponse) return rateLimitResponse;
+
     const permission = await requireAnswerlatticePermission(_request, session, ANSWERLATTICE_PERMISSION_KEYS.VIEW_READINESS);
     if (permission.response) return permission.response;
 
@@ -182,7 +187,10 @@ export const GET = withAuth(async (_request: NextRequest, session) => {
             },
         );
     } catch (error) {
-        secureError('[Answerlattice Activation] Failed to load summary', error as Error, { tId, sId });
+        logRuntimeFailure('answerlattice_activation_summary_route_failed', error, {
+            ...getBoundedRuntimeStringContext('tenantId', tId),
+            ...getBoundedRuntimeStringContext('storeId', sId),
+        });
         return NextResponse.json({ error: 'Failed to load activation summary' }, { status: 500 });
     }
 });

@@ -3,7 +3,9 @@
 **Audit Date:** March 13, 2026  
 **Scope:** All Cloud Functions in the menu extraction pipeline  
 **Files Audited:** 20 files, ~4,800 lines  
-**Result:** **GO ✅** — 1 bug fixed, 3 minor items documented
+**Historical Result:** Code-audit GO — 1 bug fixed, 3 minor items documented; superseded by current external certification gates for launch status.
+
+**Current status note (July 2, 2026):** This file is historical Cloud Functions code-audit evidence, not current MenuList launch certification. Current launch authority is the External Certification Runbook and `__docs__/audits/menulist-production-readiness-audit.md`: menu extraction source gates pass locally, but live effect still requires the blocked QA Firebase Functions deploy and the external provider/browser/device/production-host evidence.
 
 ---
 
@@ -351,9 +353,9 @@ firestoreAdmin.settings({ ignoreUndefinedProperties: true });
 | **Cleanup/Recovery** | 10/10 | 15-min stuck job cleanup + 24h TTL + 7-day purge |
 | **Error State Recovery** | 10/10 | Double try/catch on failure; cleanup scheduler backstop |
 
-### **VERDICT: GO ✅ (118/120)**
+### **VERDICT: Historical Code Audit GO (118/120)**
 
-The extraction pipeline Cloud Functions are **production-ready**. The architecture demonstrates mature serverless patterns:
+The extraction pipeline Cloud Functions passed this March 2026 code audit. This historical verdict does not certify current live Firebase behavior; current launch status depends on the scoped QA deploy and external certification gates. The architecture demonstrates mature serverless patterns:
 
 1. **Idempotency** — Transaction guard prevents duplicate processing
 2. **Fault tolerance** — Circuit breaker + retry + cleanup scheduler provide defense in depth

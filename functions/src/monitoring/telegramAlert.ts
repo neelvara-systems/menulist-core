@@ -14,6 +14,8 @@
  * @see __docs__/ops-alerting-delivery/ops-alerting-delivery_impl.md
  */
 
+import * as functions from 'firebase-functions';
+
 // ================================================================
 // TYPES
 // ================================================================
@@ -31,6 +33,39 @@ const SEVERITY_EMOJI: Record<string, string> = {
   critical: '🚨',
 };
 
+const TELEGRAM_BOT_TOKEN_PATTERN = /^\d{5,20}:[A-Za-z0-9_-]{20,256}$/;
+
+const logger = functions.logger;
+
+function getErrorLogContext(error: unknown): { name?: string; code?: string; status?: number } {
+  if (!error || typeof error !== 'object') return {};
+
+  const record = error as Record<string, unknown>;
+  return {
+    name: error instanceof Error ? error.name : undefined,
+    code: typeof record.code === 'string' ? record.code : undefined,
+    status: typeof record.status === 'number' ? record.status : undefined,
+  };
+}
+
+function getTelegramSendMessageUrl(botToken: string): string | null {
+  const normalizedToken = botToken.trim();
+  if (!TELEGRAM_BOT_TOKEN_PATTERN.test(normalizedToken)) return null;
+  return `https://api.telegram.org/bot${encodeURIComponent(normalizedToken)}/sendMessage`;
+}
+
+function escapeTelegramHtml(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
+function getTelegramMetadataStringContext(label: string, value: unknown): string {
+  const normalized = typeof value === 'string' ? value : '';
+  return `${label}Present=${normalized.length > 0} ${label}Length=${normalized.length}`;
+}
+
 // ================================================================
 // CORE FUNCTION
 // ================================================================
@@ -43,10 +78,25 @@ const SEVERITY_EMOJI: Record<string, string> = {
  */
 export async function sendTelegramAlert(alert: TelegramAlertPayload): Promise<void> {
   const token = process.env.TELEGRAM_BOT_TOKEN;
-  const chatId = process.env.TELEGRAM_CHAT_ID;
+  const chatId = process.env.TELEGRAM_CHAT_ID?.trim();
 
   if (!token || !chatId) {
-    console.warn('[Telegram] Bot token or chat ID not configured. Skipping alert delivery.');
+    logger.warn('[Telegram] Bot token or chat ID not configured. Skipping alert delivery.', {
+      hasToken: Boolean(token),
+      hasChatId: Boolean(chatId),
+    });
+    return;
+  }
+
+  const telegramSendMessageUrl = getTelegramSendMessageUrl(token);
+  if (!telegramSendMessageUrl) {
+    logger.warn('[Telegram] Bot token format invalid. Skipping alert delivery.', {
+      tokenLength: token.trim().length,
+      hasChatId: Boolean(chatId),
+      severity: alert.severity,
+      titleLength: alert.title.length,
+      messageLength: alert.message.length,
+    });
     return;
   }
 
@@ -55,7 +105,7 @@ export async function sendTelegramAlert(alert: TelegramAlertPayload): Promise<vo
 
   try {
     const response = await fetch(
-      `https://api.telegram.org/bot${token}/sendMessage`,
+      telegramSendMessageUrl,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -70,12 +120,21 @@ export async function sendTelegramAlert(alert: TelegramAlertPayload): Promise<vo
     );
 
     if (!response.ok) {
-      const errorText = await response.text().catch(() => 'Unable to read response');
-      console.error(`[Telegram] Failed to send alert: ${response.status} - ${errorText}`);
+      logger.error('[Telegram] Failed to send alert', {
+        status: response.status,
+        severity: alert.severity,
+        titleLength: alert.title.length,
+        messageLength: alert.message.length,
+      });
     }
   } catch (error) {
     // Fire-and-forget — log but don't throw
-    console.error('[Telegram] Error sending alert:', error);
+    logger.error('[Telegram] Error sending alert', {
+      severity: alert.severity,
+      titleLength: alert.title.length,
+      messageLength: alert.message.length,
+      error: getErrorLogContext(error),
+    });
   }
 }
 
@@ -85,17 +144,17 @@ export async function sendTelegramAlert(alert: TelegramAlertPayload): Promise<vo
 
 function formatAlertMessage(emoji: string, alert: TelegramAlertPayload): string {
   const lines = [
-    `${emoji} <b>[${alert.severity.toUpperCase()}] ${alert.title}</b>`,
+    `${emoji} <b>[${alert.severity.toUpperCase()}] ${escapeTelegramHtml(alert.title)}</b>`,
     '',
-    alert.message,
+    escapeTelegramHtml(alert.message),
   ];
 
   if (alert.metadata) {
     lines.push('');
-    if (alert.metadata.storeId) lines.push(`Store: ${alert.metadata.storeId}`);
-    if (alert.metadata.tenantId) lines.push(`Tenant: ${alert.metadata.tenantId}`);
-    if (alert.metadata.failureCode) lines.push(`Code: ${alert.metadata.failureCode}`);
-    if (alert.metadata.consecutiveFailures) lines.push(`Consecutive: ${alert.metadata.consecutiveFailures}`);
+    if (alert.metadata.storeId) lines.push(`Store: ${escapeTelegramHtml(getTelegramMetadataStringContext('storeId', alert.metadata.storeId))}`);
+    if (alert.metadata.tenantId) lines.push(`Tenant: ${escapeTelegramHtml(getTelegramMetadataStringContext('tenantId', alert.metadata.tenantId))}`);
+    if (alert.metadata.failureCode) lines.push(`Code: ${escapeTelegramHtml(String(alert.metadata.failureCode))}`);
+    if (alert.metadata.consecutiveFailures) lines.push(`Consecutive: ${escapeTelegramHtml(String(alert.metadata.consecutiveFailures))}`);
   }
 
   lines.push('');

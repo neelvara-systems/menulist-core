@@ -14,9 +14,10 @@
  */
 
 import { FEATURE_FLAGS } from "@config/features";
-import { getScreenState, initializeScreenState, updateScreenSettings } from "@database/campaigns";
+import { assertDigitalScreenMutationSucceeded, getScreenState, initializeScreenState, updateScreenSettings } from "@database/campaigns";
 import { trackOwnerControlUsage } from "@database/ownerControlUsage";
 import { generateOBPUrl } from "@lib/obp/generateOBPUrl";
+import { getBoundedScreenStringContext, logScreenSettingsFailure } from "@lib/screen/screenDiagnostics";
 import { buildScreenUrl } from "@lib/screen/utils";
 import { PlatformGlobalDataContext } from "@providers/platformProviders/platformGlobalDataProvider";
 import { ScreenSlide } from "@type/campaigns";
@@ -80,7 +81,11 @@ export default function DigitalScreenSettings() {
             setError(null);
         } catch (err) {
             setError('Unable to load screen settings');
-            console.error('[DigitalScreenSettings] Error:', err);
+            logScreenSettingsFailure('digital_screen_settings_load_failed', err, {
+                ...getBoundedScreenStringContext('publicBaseUrl', publicBaseUrl),
+                ...getBoundedScreenStringContext('subdomain', storeDetails?.subdomain),
+                hasCustomDomain: Boolean(storeDetails?.customDomain),
+            });
         } finally {
             setLoading(false);
         }
@@ -89,17 +94,27 @@ export default function DigitalScreenSettings() {
     const handleOverrideToggle = async (enabled: boolean) => {
         try {
             // Track screen override toggle (Authority Maturation Doctrine)
-            trackOwnerControlUsage('screenOverride', {
+            void trackOwnerControlUsage('screenOverride', {
                 previousValue: settings?.ownerOverrideEnabled || false,
                 newValue: enabled,
             });
 
             // Use DAL directly (follows existing pattern)
-            await updateScreenSettings({ ownerOverrideEnabled: enabled });
+            const updateResult = await updateScreenSettings({ ownerOverrideEnabled: enabled });
+            assertDigitalScreenMutationSucceeded(
+                updateResult,
+                'desktop_digital_screen_override_update_rejected',
+            );
 
             setSettings(prev => prev ? { ...prev, ownerOverrideEnabled: enabled } : null);
             message.success(enabled ? 'Only custom slides is on' : 'Menu highlights restored');
         } catch (err) {
+            logScreenSettingsFailure('digital_screen_settings_override_toggle_failed', err, {
+                desiredEnabled: enabled,
+                currentEnabled: settings?.ownerOverrideEnabled,
+                hasSettings: Boolean(settings),
+                pinnedSlideCount: settings?.pinnedSlides.length ?? 0,
+            });
             message.error('Failed to update setting');
         }
     };
@@ -115,7 +130,7 @@ export default function DigitalScreenSettings() {
     };
 
     const handleSlideUploaded = () => {
-        fetchSettings(); // Refresh to get new slide
+        void fetchSettings(); // Refresh to get new slide
     };
 
     if (!FEATURE_FLAGS.DIGITAL_SCREENS_ENABLED) {

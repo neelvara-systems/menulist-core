@@ -13,16 +13,11 @@ import {
 } from '@lib/ai-menu-manager/apiGuards';
 import { AiMenuManagerProposalCompleteSchema } from '@lib/ai-menu-manager/schemas';
 import { requireAnyStorePermissionForStore } from '@lib/permissions/server';
+import { readBoundedJsonBody } from '@lib/security/boundedRequestBody';
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/middleware/auth';
 
-const readJsonBody = async (request: NextRequest) => {
-    try {
-        return await request.json();
-    } catch {
-        return null;
-    }
-};
+const AI_MENU_MANAGER_PROPOSAL_COMPLETE_MAX_BODY_BYTES = 16 * 1024;
 
 export const POST = withAuth(async (
     request: NextRequest,
@@ -46,7 +41,17 @@ export const POST = withAuth(async (
     });
     if (rateLimit) return rateLimit;
 
-    const parsed = AiMenuManagerProposalCompleteSchema.safeParse(await readJsonBody(request));
+    const bodyResult = await readBoundedJsonBody(request, AI_MENU_MANAGER_PROPOSAL_COMPLETE_MAX_BODY_BYTES, {
+        invalidJsonMessage: 'Invalid request',
+    });
+    if (bodyResult.ok === false) {
+        if (bodyResult.response.status === 400) {
+            return buildAiMenuManagerInvalidRequestResponse(request, session, 'proposal-complete');
+        }
+        return bodyResult.response;
+    }
+
+    const parsed = AiMenuManagerProposalCompleteSchema.safeParse(bodyResult.data);
     if (!parsed.success) {
         return buildAiMenuManagerInvalidRequestResponse(request, session, 'proposal-complete');
     }

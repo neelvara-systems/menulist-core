@@ -42,7 +42,57 @@ const ANSWERLATTICE_AI_OPTIONS = {
     timeoutSeconds: 540,
     memory: '1GiB' as const,
     maxInstances: 3,
+    secrets: ANSWERLATTICE_SECRET_GROUPS.AI,
 };
+
+function assertFirestoreDocumentId(value: unknown, fieldName: string): string {
+    const id = typeof value === 'string' ? value.trim() : '';
+    if (!id || id === '.' || id === '..' || id.includes('/') || /^__.*__$/.test(id)) {
+        throw new HttpsError('invalid-argument', `${fieldName} must be a valid Firestore document ID.`);
+    }
+    return id;
+}
+
+function getKbCallableContext(value: string, fieldName: 'articleId' | 'jobId', caller?: { platformRole?: string; uid?: string }): Record<string, string | number | boolean> {
+    return {
+        fieldName,
+        idLength: value.length,
+        callerUidLength: caller?.uid?.length || 0,
+        platformRole: caller?.platformRole || '',
+    };
+}
+
+function getKbTaskContext(articleData: EmbedArticleType, jobId: string): Record<string, string | number | boolean> {
+    return {
+        jobIdLength: jobId.length,
+        articleIdLength: articleData.id?.length || 0,
+        categoryTitleLength: articleData.categoryTitle?.length || 0,
+        hasSectionTitle: Boolean(articleData.sectionTitle),
+    };
+}
+
+function getAnswerlatticeIndexStringContext(label: string, value: unknown): Record<string, number | boolean> {
+    const text = typeof value === 'string' ? value : '';
+    return {
+        [`${label}Present`]: text.length > 0,
+        [`${label}Length`]: text.length,
+    };
+}
+
+function getManualSchedulerScopeContext(scope?: { tId: number; sId: number } | null): Record<string, boolean> {
+    return {
+        scoped: Boolean(scope),
+        hasTenantScope: Number.isFinite(scope?.tId),
+        hasStoreScope: Number.isFinite(scope?.sId),
+    };
+}
+
+function getManualSchedulerScopeErrorResponse(error: unknown): { code: string; status: number } {
+    if (error instanceof HttpsError && error.code === 'invalid-argument') {
+        return { code: 'ANSWERLATTICE_MANUAL_SCOPE_INVALID', status: 400 };
+    }
+    return { code: 'ANSWERLATTICE_MANUAL_SCOPE_INVALID', status: 400 };
+}
 
 // ═══════════════════════════════════════════════════════════════
 // ANSWERLATTICE MASTER SCHEDULER
@@ -59,6 +109,7 @@ export const answerlatticeNightly = onSchedule(
         timeoutSeconds: 540,
         memory: '512MiB',
         maxInstances: 1,
+        secrets: ANSWERLATTICE_SECRET_GROUPS.AI,
     },
     async () => {
         logger.info('[Answerlattice Scheduler] Starting master scheduler tick...');
@@ -102,12 +153,13 @@ export const triggerAnswerlatticeNightly = onRequest(
         timeoutSeconds: 540,
         memory: '512MiB',
         maxInstances: 1,
-        secrets: ANSWERLATTICE_SECRET_GROUPS.MANUAL_SCHEDULER,
+        secrets: ANSWERLATTICE_SECRET_GROUPS.MANUAL_SCHEDULER_WITH_AI,
     },
     async (req, res) => {
         if (!isManualTriggerAuthorized(req)) {
             logger.warn('[Answerlattice Manual] Unauthorized manual scheduler trigger blocked', {
-                ip: req.ip,
+                failureCode: 'answerlattice_manual_scheduler_unauthorized',
+                ...getAnswerlatticeIndexStringContext('requestIp', req.ip),
                 hasAuthorizationHeader: Boolean(req.get?.('authorization') || req.headers?.authorization),
             });
             res.status(401).json({ error: 'Unauthorized' });
@@ -118,14 +170,13 @@ export const triggerAnswerlatticeNightly = onRequest(
         try {
             scope = parseManualTenantScope(req);
         } catch (error) {
-            const message = error instanceof Error ? error.message : 'Invalid manual scheduler scope.';
-            res.status(400).json({ error: message });
+            const response = getManualSchedulerScopeErrorResponse(error);
+            res.status(response.status).json({ error: response.code });
             return;
         }
 
         logger.info('[Answerlattice Manual] Triggered master scheduler manually...', {
-            scoped: Boolean(scope),
-            ...(scope ? { tId: scope.tId, sId: scope.sId } : {}),
+            ...getManualSchedulerScopeContext(scope),
         });
         const result = await runAnswerlatticeMasterScheduler({
             trigger: 'manual',
@@ -171,11 +222,18 @@ export const processIntegrationEvent = onDocumentCreated(
         const eventId = firestoreEvent.params.eventId;
         const event = snapshot.data() as IntegrationEvent;
 
-        logger.info('[Answerlattice Integration] Processing event', { eventType: event.eventType, eventId });
+        logger.info('[Answerlattice Integration] Processing event', {
+            eventType: event.eventType,
+            ...getAnswerlatticeIndexStringContext('eventId', eventId),
+        });
 
         const result = await processEvent(eventId, event);
 
-        logger.info('[Answerlattice Integration] Event processed', { eventId, delivered: result.delivered, failed: result.failed });
+        logger.info('[Answerlattice Integration] Event processed', {
+            ...getAnswerlatticeIndexStringContext('eventId', eventId),
+            delivered: result.delivered,
+            failed: result.failed,
+        });
     }
 );
 
@@ -192,7 +250,7 @@ export const embedArticleWorker = onTaskDispatched(ANSWERLATTICE_AI_OPTIONS, asy
         throw new HttpsError('invalid-argument', 'Missing required payload: articleData.id, jobId.');
     }
 
-    logger.info('[Answerlattice KB] Re-embedding queued article', { jobId, articleId: articleData.id });
+    logger.info('[Answerlattice KB] Re-embedding queued article', getKbTaskContext(articleData, jobId));
     await embedArticleWorkerLogic(articleData, jobId);
 });
 
@@ -202,13 +260,12 @@ export const regenerateEmbedding = onCall(ANSWERLATTICE_AI_OPTIONS, async (reque
     if (!articleId) {
         throw new HttpsError('invalid-argument', 'The function must be called with articleId.');
     }
+    const safeArticleId = assertFirestoreDocumentId(articleId, 'articleId');
 
     logger.info('[Answerlattice KB] Authorized regenerateEmbedding request', {
-        articleId,
-        uid: caller.uid,
-        platformRole: caller.platformRole,
+        ...getKbCallableContext(safeArticleId, 'articleId', caller),
     });
-    return regenerateEmbeddingLogic(articleId);
+    return regenerateEmbeddingLogic(safeArticleId);
 });
 
 export const publishApprovedJobFn = onCall(ANSWERLATTICE_AI_OPTIONS, async (request) => {
@@ -217,11 +274,10 @@ export const publishApprovedJobFn = onCall(ANSWERLATTICE_AI_OPTIONS, async (requ
     if (!jobId || !finalCategories) {
         throw new HttpsError('invalid-argument', 'Missing required payload: jobId, finalCategories.');
     }
+    const safeJobId = assertFirestoreDocumentId(jobId, 'jobId');
 
     logger.info('[Answerlattice KB] Authorized publishApprovedJobFn request', {
-        jobId,
-        uid: caller.uid,
-        platformRole: caller.platformRole,
+        ...getKbCallableContext(safeJobId, 'jobId', caller),
     });
-    return publishApprovedJobLogic(jobId, finalCategories);
+    return publishApprovedJobLogic(safeJobId, finalCategories);
 });

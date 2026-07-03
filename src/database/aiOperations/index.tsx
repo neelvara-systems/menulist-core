@@ -1,4 +1,6 @@
 import { apiCallComposer } from "@lib/apiHelper/apiCallComposer";
+import { getBoundedRuntimeStringContext, logRuntimeFailure } from "@lib/runtime/runtimeDiagnostics";
+import { readJsonResponseWithLimit } from "@lib/security/boundedResponseBody";
 import dayjs from "dayjs";
 
 interface PaginationOptions {
@@ -19,6 +21,68 @@ const EMPTY_PAGINATED_RESPONSE: PaginatedResponse = {
     data: [],
     lastVisibleDoc: null,
     hasMore: false,
+};
+const AI_OPERATIONS_RESPONSE_JSON_MAX_BYTES = 512 * 1024;
+const AI_OPERATIONS_RESPONSE_PARSE_FAILED = 'ai_operations_client_response_parse_failed';
+const AI_OPERATIONS_RESPONSE_REJECTED = 'ai_operations_client_response_rejected';
+const AI_OPERATIONS_RESPONSE_INVALID = 'ai_operations_client_response_invalid';
+
+const isRecord = (value: unknown): value is Record<string, unknown> => (
+    Boolean(value) && typeof value === 'object' && !Array.isArray(value)
+);
+
+const isValidCursor = (value: unknown): value is { id?: string } | null => (
+    value === null
+    || value === undefined
+    || (isRecord(value) && (value.id === undefined || typeof value.id === 'string'))
+);
+
+const isPaginatedResponse = (response: unknown): response is PaginatedResponse => (
+    isRecord(response)
+    && Array.isArray(response.data)
+    && typeof response.hasMore === 'boolean'
+    && isValidCursor(response.lastVisibleDoc)
+);
+
+const getAiOperationsResponseLogContext = (response: Response, options: PaginationOptions) => ({
+    ...getBoundedRuntimeStringContext('action', options.action),
+    ...getBoundedRuntimeStringContext('cursorId', options.lastVisibleDoc?.id),
+    hasDateRange: Boolean(options.dateRange?.[0] || options.dateRange?.[1]),
+    pageNumber: options.pageNumber,
+    pageSize: options.pageSize,
+    product: 'menulist',
+    responseOk: response.ok,
+    responseStatus: response.status,
+});
+
+const readAiOperationsResponse = async (
+    response: Response,
+    options: PaginationOptions,
+): Promise<PaginatedResponse | null> => {
+    const context = getAiOperationsResponseLogContext(response, options);
+
+    if (!response.ok) {
+        logRuntimeFailure(AI_OPERATIONS_RESPONSE_REJECTED, undefined, context);
+        return null;
+    }
+
+    let payload: unknown;
+    try {
+        payload = await readJsonResponseWithLimit<unknown>(
+            response,
+            AI_OPERATIONS_RESPONSE_JSON_MAX_BYTES,
+        );
+    } catch (error) {
+        logRuntimeFailure(AI_OPERATIONS_RESPONSE_PARSE_FAILED, error, context);
+        return null;
+    }
+
+    if (!isPaginatedResponse(payload)) {
+        logRuntimeFailure(AI_OPERATIONS_RESPONSE_INVALID, undefined, context);
+        return null;
+    }
+
+    return payload;
 };
 
 const normalizePaginatedResponse = (response: unknown): PaginatedResponse => {
@@ -68,11 +132,12 @@ export const getPaginatedAiOperations = async (options: PaginationOptions): Prom
                 method: 'GET',
             });
 
-            if (!result.ok) {
+            const payload = await readAiOperationsResponse(result, options);
+            if (!payload) {
                 throw new Error('Failed to load AI operations');
             }
 
-            return result.json();
+            return payload;
         },
         options,
         "getPaginatedAiOperations"

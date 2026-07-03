@@ -23,7 +23,7 @@ MenuList's long-term asset is **canonical public business pages**. This feature 
 - **One new public page** — `src/app/(website)/create-menu/page.tsx`
 - **One API route** — `/api/public/create-menu` (POST and GET are authenticated, owner-bound, rate-limited, and reusable for photo/link source + extraction status)
 - **Temporary storage** — extracted data stored in `publicMenuDrafts` collection with 24h TTL
-- **Conversion flow** — preview draft is converted after authenticated claim via the existing project/store creation path
+- **Conversion flow** — preview draft is converted after authenticated claim; existing accounts are rechecked for store/tenant eligibility before public truth writes
 
 ## Documents
 
@@ -48,6 +48,7 @@ MenuList's long-term asset is **canonical public business pages**. This feature 
 6. **Feature-flagged** — `ENABLE_PUBLIC_MENU_ENTRY` controls the public flow; `ENABLE_MENU_LINK_IMPORT` additionally gates the public link input
 7. **Mobile-first design** — SMB owners will use this from phone
 8. **Nested storesSummary writes** — starter claim/payment mirrors store plan fields into the scheduler-readable `stores.{storeId}` map, not only flat dot-notation keys
+9. **Existing-account claims fail closed** — claim writes only proceed when the session store exists, belongs to the session tenant, and the store/tenant are not inactive, deleted, or platform-blocked
 
 ## Related Features
 

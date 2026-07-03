@@ -10,9 +10,14 @@ import { normalizePhoneNumberForStorage } from "@lib/phone/phoneNumber";
 import { isPlatformEntityBlocked } from "@lib/platform/entityBlock";
 import { checkRateLimit } from "@lib/rateLimit";
 import { getRateLimitForFeature } from "@lib/rateLimit/configs";
+import { readBoundedJsonBody } from "@lib/security/boundedRequestBody";
 import { validateAPIInput } from "@lib/security/inputValidation";
-import { buildSecurityContext } from "@lib/security/securityContext";
+import {
+    getBoundedSecurityRouteContext,
+    getBoundedSecurityStringContext,
+} from "@lib/security/securityDiagnostics";
 import { logger } from "@lib/monitoring/logger";
+import { hashPublicRateLimitValue } from "src/middleware/publicApi";
 import type { StoreRoleDataType } from "@type/platform/roles";
 import type { StoreDataType } from "@type/platform/store";
 import type { UserStoreMappingType } from "@type/platform/user";
@@ -34,12 +39,15 @@ import type {
     StaffUserSummary,
     UpdateStaffInput,
 } from "./types";
+import { getBoundedStaffStringContext, logStaffDiagnostic } from "./diagnostics";
 
 const USERS_COLLECTION = DB_COLLECTIONS.USERS;
 const STORES_COLLECTION = DB_COLLECTIONS.STORES;
 const STAFF_AUTH_MODE_EMAIL = "email";
 const STAFF_AUTH_MODE_OWNER_PASSCODE = "owner_passcode";
 const STAFF_LOGIN_ID_PREFIX = "88";
+const STAFF_MUTATION_MAX_BODY_BYTES = 16 * 1024;
+const FIREBASE_AUTH_SEND_OOB_CODE_URL = "https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode";
 
 const optionalEmailSchema = z.string()
     .trim()
@@ -153,6 +161,28 @@ const jsonError = (
     code?: string,
 ) => NextResponse.json({ error, code }, { status });
 
+const readStaffMutationBody = (request: NextRequest) => readBoundedJsonBody(
+    request,
+    STAFF_MUTATION_MAX_BODY_BYTES,
+    {
+        invalidJsonMessage: "Invalid input",
+        tooLargeMessage: "Request body too large",
+    },
+);
+
+const STAFF_STORE_MAPPING_ERROR_CODES = new Set([
+    'DUPLICATE_STORE_MAPPING',
+    'STORE_NOT_FOUND',
+    'ROLE_NOT_FOUND',
+] as const);
+
+type StaffStoreMappingErrorCode = typeof STAFF_STORE_MAPPING_ERROR_CODES extends Set<infer Code> ? Code : never;
+
+const createStaffStoreMappingError = (code: StaffStoreMappingErrorCode) => Object.assign(
+    new Error('STAFF_STORE_MAPPING_VALIDATION_FAILED'),
+    { staffMappingCode: code },
+);
+
 const sanitizeFirestoreValue = (value: any): any => {
     if (value === undefined) return undefined;
     if (value === null) return null;
@@ -199,6 +229,29 @@ const serializeStaffTimestamp = (value: any) => {
     return undefined;
 };
 
+const getStaffAuthDiagnosticContext = ({
+    context,
+    data,
+    disabled,
+    email,
+    firebaseUid,
+}: {
+    context?: Record<string, unknown>;
+    data?: Record<string, any>;
+    disabled?: boolean;
+    email?: string;
+    firebaseUid?: string;
+}) => ({
+    ...(typeof disabled === "boolean" ? { disabled } : {}),
+    hasEmail: Boolean(email),
+    hasFirebaseUid: Boolean(firebaseUid),
+    ...getBoundedStaffStringContext("action", context?.action),
+    ...getBoundedStaffStringContext("reason", context?.reason),
+    ...getBoundedStaffStringContext("tenantId", context?.tenantId ?? data?.tenantId),
+    ...getBoundedStaffStringContext("storeId", context?.storeId ?? data?.storeId),
+    ...getBoundedStaffStringContext("userId", context?.userId ?? data?.id),
+});
+
 const syncStaffFirebaseAuthDisabledState = async (
     data: any,
     disabled: boolean,
@@ -220,10 +273,13 @@ const syncStaffFirebaseAuthDisabledState = async (
         return true;
     } catch (error: any) {
         if (error?.code === "auth/user-not-found") {
-            logger.warn("[staff] Firebase Auth user missing during staff access sync", {
-                ...context,
+            logStaffDiagnostic("staff_auth_user_missing_during_access_sync", getStaffAuthDiagnosticContext({
+                context,
+                data,
                 disabled,
-            });
+                email,
+                firebaseUid,
+            }));
             return false;
         }
 
@@ -248,7 +304,12 @@ const revokeStaffFirebaseRefreshTokens = async (
         return true;
     } catch (error: any) {
         if (error?.code === "auth/user-not-found") {
-            logger.warn("[staff] Firebase Auth user missing during staff token revocation", context);
+            logStaffDiagnostic("staff_auth_user_missing_during_token_revocation", getStaffAuthDiagnosticContext({
+                context,
+                data,
+                email,
+                firebaseUid,
+            }));
             return false;
         }
 
@@ -402,6 +463,17 @@ const fetchStoreById = async (storeId: number): Promise<StoreDataType | null> =>
     return snapshot.exists ? snapshot.data() as StoreDataType : null;
 };
 
+const isEligibleStaffTargetStore = (
+    store: StoreDataType | null | undefined,
+    tenantId: number,
+): store is StoreDataType => (
+    Boolean(store)
+    && Number(store?.tenantId) === tenantId
+    && store?.active !== false
+    && store?.deleted !== true
+    && !isPlatformEntityBlocked(store)
+);
+
 const fetchStoresByIds = async (storeIds: number[]) => {
     const uniqueIds = Array.from(new Set(storeIds));
     const entries = await Promise.all(uniqueIds.map(async (storeId) => {
@@ -458,11 +530,11 @@ const ensureDefaultRolesForStore = async (
         roles: nextRoles,
     }));
 
-    logger.info("[staff] Backfilled missing default roles for store", {
-        missingDefaults,
+    logStaffDiagnostic("staff_default_roles_backfilled", {
+        missingDefaultRoleCount: missingDefaults.length,
         normalizedDefaultRoles: changed,
-        storeId: store.storeId,
-        tenantId: store.tenantId,
+        ...getBoundedStaffStringContext("storeId", store.storeId),
+        ...getBoundedStaffStringContext("tenantId", store.tenantId),
     });
 
     return {
@@ -489,7 +561,7 @@ const getAuthority = async (session: any, tenantId: number, targetStoreIds: numb
     }
 
     const authorityStore = await fetchStoreById(sessionStoreId);
-    if (!authorityStore || Number(authorityStore.tenantId) !== tenantId) {
+    if (!isEligibleStaffTargetStore(authorityStore, tenantId)) {
         return null;
     }
 
@@ -511,6 +583,46 @@ const getAuthority = async (session: any, tenantId: number, targetStoreIds: numb
     };
 };
 
+const DIRECT_STAFF_SECURITY_DETAIL_KEYS = new Set(["code", "feature"]);
+
+const getStaffSecurityDetailsLogContext = (
+    details: Record<string, unknown> = {},
+): Record<string, boolean | number | string | undefined> => {
+    const boundedDetails: Record<string, boolean | number | string | undefined> = {};
+
+    Object.entries(details).forEach(([key, value]) => {
+        if (value === undefined || value === null) {
+            boundedDetails[`${key}Present`] = false;
+            return;
+        }
+
+        if (typeof value === "boolean") {
+            boundedDetails[key] = value;
+            return;
+        }
+
+        if (DIRECT_STAFF_SECURITY_DETAIL_KEYS.has(key)) {
+            boundedDetails[key] = String(value).slice(0, 64);
+            return;
+        }
+
+        if (Array.isArray(value)) {
+            boundedDetails[`${key}Count`] = value.length;
+            return;
+        }
+
+        if (typeof value === "object") {
+            boundedDetails[`${key}Present`] = true;
+            boundedDetails[`${key}FieldCount`] = Object.keys(value).length;
+            return;
+        }
+
+        Object.assign(boundedDetails, getBoundedStaffStringContext(key, value));
+    });
+
+    return boundedDetails;
+};
+
 const logSecurity = (
     event: string,
     session: any,
@@ -519,9 +631,9 @@ const logSecurity = (
     severity: "low" | "medium" | "high" | "critical" = "high",
 ) => {
     logger.security(event, {
-        ...buildSecurityContext(session, request),
-        endpoint: request.nextUrl.pathname,
-        ...details,
+        ...getBoundedSecurityRouteContext(session, request),
+        ...getBoundedSecurityStringContext("endpoint", request.nextUrl.pathname),
+        ...getStaffSecurityDetailsLogContext(details),
     }, severity);
 };
 
@@ -539,15 +651,15 @@ const validateStoreMappings = async (
         .map((mapping) => mapping.storeId)
         .filter((storeId, index, list) => list.indexOf(storeId) !== index);
     if (duplicateStoreIds.length) {
-        throw new Error("DUPLICATE_STORE_MAPPING");
+        throw createStaffStoreMappingError("DUPLICATE_STORE_MAPPING");
     }
 
     const storeMap = await fetchStoresByIds(normalized.map((mapping) => mapping.storeId));
 
     for (const mapping of normalized) {
         let store = storeMap.get(mapping.storeId);
-        if (!store || Number(store.tenantId) !== tenantId) {
-            throw new Error("STORE_NOT_FOUND");
+        if (!isEligibleStaffTargetStore(store, tenantId)) {
+            throw createStaffStoreMappingError("STORE_NOT_FOUND");
         }
 
         const roleExists = (store.roles || []).some((item: StoreRoleDataType) => item.id === mapping.role && item.active !== false);
@@ -558,7 +670,7 @@ const validateStoreMappings = async (
 
         const role = (store.roles || []).find((item: StoreRoleDataType) => item.id === mapping.role && item.active !== false);
         if (!role) {
-            throw new Error("ROLE_NOT_FOUND");
+            throw createStaffStoreMappingError("ROLE_NOT_FOUND");
         }
 
         mapping.name = mapping.name || store.name || `Store ${mapping.storeId}`;
@@ -653,15 +765,12 @@ const applyRateLimit = async (
     keyPrefix: string,
 ) => {
     const config = getRateLimitForFeature(feature);
-    const key = `${keyPrefix}:${session?.uId || session?.user?.id || getRequestIp(request)}`;
+    const identityKey = hashPublicRateLimitValue(session?.uId || session?.user?.id || getRequestIp(request));
+    const key = `${keyPrefix}:${identityKey}`;
     const result = await checkRateLimit({ key, ...config });
     if (result.allowed) return null;
 
-    logger.security("Rate Limit Exceeded", {
-        ...buildSecurityContext(session, request),
-        endpoint: request.nextUrl.pathname,
-        feature,
-    }, "medium");
+    logSecurity("Rate Limit Exceeded", session, request, { feature }, "medium");
 
     return NextResponse.json(
         { error: "Too many requests. Please wait before trying again." },
@@ -671,9 +780,23 @@ const applyRateLimit = async (
 
 const getFirebaseAuthApiKey = () => process.env.FIREBASE_API_KEY;
 
+const normalizeFirebaseAuthApiKey = (value?: string) => {
+    const apiKey = String(value || "").trim();
+    if (!apiKey || /[\s\x00-\x1F\x7F]/.test(apiKey)) return null;
+    return apiKey;
+};
+
+const buildFirebasePasswordResetEndpoint = (apiKey: string) => {
+    const endpoint = new URL(FIREBASE_AUTH_SEND_OOB_CODE_URL);
+    endpoint.searchParams.set("key", apiKey);
+    return endpoint.toString();
+};
+
 const resolveStoreMappingErrorCode = (error: unknown): string => {
-    const rawCode = error instanceof Error ? error.message : '';
-    if (rawCode === 'DUPLICATE_STORE_MAPPING' || rawCode === 'STORE_NOT_FOUND' || rawCode === 'ROLE_NOT_FOUND') {
+    const rawCode = error && typeof error === 'object'
+        ? (error as { staffMappingCode?: unknown }).staffMappingCode
+        : null;
+    if (typeof rawCode === 'string' && STAFF_STORE_MAPPING_ERROR_CODES.has(rawCode as StaffStoreMappingErrorCode)) {
         return rawCode;
     }
 
@@ -681,27 +804,25 @@ const resolveStoreMappingErrorCode = (error: unknown): string => {
 };
 
 const sendFirebasePasswordResetEmail = async (email: string) => {
-    const apiKey = getFirebaseAuthApiKey();
+    const apiKey = normalizeFirebaseAuthApiKey(getFirebaseAuthApiKey());
     if (!apiKey) {
         return { ok: false, error: "FIREBASE_API_KEY_MISSING" };
     }
 
-    const response = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode?key=${apiKey}`, {
+    const response = await fetch(buildFirebasePasswordResetEndpoint(apiKey), {
         body: JSON.stringify({
             email,
             requestType: "PASSWORD_RESET",
         }),
         headers: { "Content-Type": "application/json" },
         method: "POST",
+        redirect: "manual",
     });
 
     if (response.ok) return { ok: true };
-
-    const data = await response.json().catch(() => ({}));
-    const apiError = data?.error?.message || "PASSWORD_RESET_EMAIL_FAILED";
     return {
         ok: false,
-        error: apiError,
+        error: "PASSWORD_RESET_EMAIL_FAILED",
     };
 };
 
@@ -725,12 +846,17 @@ export const listStaffUsers = async (
         return jsonError("Forbidden", 403, "FORBIDDEN");
     }
 
+    const targetStore = await fetchStoreById(storeId);
+    if (!isEligibleStaffTargetStore(targetStore, tenantId)) {
+        return jsonError("Store not found", 404, "STORE_NOT_FOUND");
+    }
+
     const docs = await getUsersForStore(tenantId, storeId);
     const rawStoreOptionDocs = authority.isMaster
         ? await fetchStoresForTenant(tenantId)
-        : [await fetchStoreById(storeId)].filter(Boolean) as StoreDataType[];
+        : [targetStore];
     const storeOptionDocs = await Promise.all(rawStoreOptionDocs
-        .filter((store): store is StoreDataType => Boolean(store && Number(store.tenantId) === tenantId))
+        .filter((store): store is StoreDataType => isEligibleStaffTargetStore(store, tenantId))
         .map((store) => ensureDefaultRolesForStore(store, session?.user?.email)));
     const stores = storeOptionDocs
         .map(sanitizeStoreOption)
@@ -751,8 +877,10 @@ export const createStaffUser = async (
     const rateLimit = await applyRateLimit(request, session, "AUTH_SENSITIVE", "staff-create");
     if (rateLimit) return rateLimit;
 
-    const body = await request.json();
-    const validation = validateAPIInput(CreateStaffSchema, body);
+    const bodyResult = await readStaffMutationBody(request);
+    if (bodyResult.ok === false) return bodyResult.response;
+
+    const validation = validateAPIInput(CreateStaffSchema, bodyResult.data);
     if (!validation.success) {
         const validationError = (validation as { success: false; error: string }).error;
         logSecurity("Input Validation Failed - Staff Create", session, request, { error: validationError }, "medium");
@@ -860,10 +988,10 @@ export const createStaffUser = async (
             stores: nextStores,
         }, authority);
 
-        logger.info("[staff] Existing user added to store", {
-            tenantId: input.tenantId,
-            storeId: input.storeId,
-            userId: existingDoc.id,
+        logStaffDiagnostic("staff_existing_user_added_to_store", {
+            ...getBoundedStaffStringContext("tenantId", input.tenantId),
+            ...getBoundedStaffStringContext("storeId", input.storeId),
+            ...getBoundedStaffStringContext("userId", existingDoc.id),
         });
 
         const response: StaffMutationResponse = {
@@ -959,20 +1087,20 @@ export const createStaffUser = async (
                 passwordResetRequestedBy: session?.uId || session?.user?.id,
             }));
         } else {
-            logger.warn("[staff] Password setup email failed", {
-                error: passwordResetEmail.error,
-                tenantId: input.tenantId,
-                storeId: input.storeId,
-                userId: docRef.id,
+            logStaffDiagnostic("staff_password_setup_email_failed", {
+                ...getBoundedStaffStringContext("providerFailureCode", passwordResetEmail.error),
+                ...getBoundedStaffStringContext("tenantId", input.tenantId),
+                ...getBoundedStaffStringContext("storeId", input.storeId),
+                ...getBoundedStaffStringContext("userId", docRef.id),
             });
         }
     }
 
-    logger.info("[staff] New staff user created", {
+    logStaffDiagnostic("staff_user_created", {
         authMode,
-        tenantId: input.tenantId,
-        storeId: input.storeId,
-        userId: docRef.id,
+        ...getBoundedStaffStringContext("tenantId", input.tenantId),
+        ...getBoundedStaffStringContext("storeId", input.storeId),
+        ...getBoundedStaffStringContext("userId", docRef.id),
     });
 
     const response: StaffMutationResponse = {
@@ -1001,8 +1129,10 @@ export const updateStaffUser = async (
     const rateLimit = await applyRateLimit(request, session, "DATA_WRITE", "staff-update");
     if (rateLimit) return rateLimit;
 
-    const body = await request.json();
-    const validation = validateAPIInput(UpdateStaffSchema, body);
+    const bodyResult = await readStaffMutationBody(request);
+    if (bodyResult.ok === false) return bodyResult.response;
+
+    const validation = validateAPIInput(UpdateStaffSchema, bodyResult.data);
     if (!validation.success) {
         const validationError = (validation as { success: false; error: string }).error;
         logSecurity("Input Validation Failed - Staff Update", session, request, { error: validationError }, "medium");
@@ -1283,8 +1413,10 @@ export const requestStaffPasswordReset = async (
     const rateLimit = await applyRateLimit(request, session, "AUTH_SENSITIVE", "staff-password-reset");
     if (rateLimit) return rateLimit;
 
-    const body = await request.json();
-    const validation = validateAPIInput(ResetStaffPasswordSchema, body);
+    const bodyResult = await readStaffMutationBody(request);
+    if (bodyResult.ok === false) return bodyResult.response;
+
+    const validation = validateAPIInput(ResetStaffPasswordSchema, bodyResult.data);
     if (!validation.success) {
         const validationError = (validation as { success: false; error: string }).error;
         logSecurity("Input Validation Failed - Staff Password Reset", session, request, { error: validationError }, "medium");
@@ -1370,10 +1502,10 @@ export const requestStaffPasswordReset = async (
         staffLoginId: loginId,
     }));
 
-    logger.info("[staff] Owner-managed staff passcode reset", {
-        tenantId: input.tenantId,
-        storeId: input.storeId,
-        userId: input.userId,
+    logStaffDiagnostic("staff_owner_passcode_reset", {
+        ...getBoundedStaffStringContext("tenantId", input.tenantId),
+        ...getBoundedStaffStringContext("storeId", input.storeId),
+        ...getBoundedStaffStringContext("userId", input.userId),
     });
 
     const updatedSnapshot = await targetDoc.ref.get();
@@ -1397,8 +1529,10 @@ export const forceSignOutStaffUser = async (
     const rateLimit = await applyRateLimit(request, session, "AUTH_SENSITIVE", "staff-force-signout");
     if (rateLimit) return rateLimit;
 
-    const body = await request.json();
-    const validation = validateAPIInput(ForceSignOutStaffSchema, body);
+    const bodyResult = await readStaffMutationBody(request);
+    if (bodyResult.ok === false) return bodyResult.response;
+
+    const validation = validateAPIInput(ForceSignOutStaffSchema, bodyResult.data);
     if (!validation.success) {
         const validationError = (validation as { success: false; error: string }).error;
         logSecurity("Input Validation Failed - Staff Force Signout", session, request, { error: validationError }, "medium");
@@ -1459,10 +1593,10 @@ export const forceSignOutStaffUser = async (
         ...sessionRevocationFields,
     }));
 
-    logger.info("[staff] Owner forced staff session signout", {
-        tenantId: input.tenantId,
-        storeId: input.storeId,
-        userId: input.userId,
+    logStaffDiagnostic("staff_owner_forced_session_signout", {
+        ...getBoundedStaffStringContext("tenantId", input.tenantId),
+        ...getBoundedStaffStringContext("storeId", input.storeId),
+        ...getBoundedStaffStringContext("userId", input.userId),
     });
 
     const updatedSnapshot = await targetDoc.ref.get();
@@ -1499,8 +1633,10 @@ export const saveRoleDefinition = async (
     const rateLimit = await applyRateLimit(request, session, "DATA_WRITE", "staff-role-save");
     if (rateLimit) return rateLimit;
 
-    const body = await request.json();
-    const validation = validateAPIInput(SaveRoleSchema, body);
+    const bodyResult = await readStaffMutationBody(request);
+    if (bodyResult.ok === false) return bodyResult.response;
+
+    const validation = validateAPIInput(SaveRoleSchema, bodyResult.data);
     if (!validation.success) {
         const validationError = (validation as { success: false; error: string }).error;
         logSecurity("Input Validation Failed - Role Save", session, request, { error: validationError }, "medium");
@@ -1512,7 +1648,7 @@ export const saveRoleDefinition = async (
     if (!authority) return jsonError("Forbidden", 403, "FORBIDDEN");
 
     const store = await fetchStoreById(input.storeId);
-    if (!store || Number(store.tenantId) !== input.tenantId) {
+    if (!isEligibleStaffTargetStore(store, input.tenantId)) {
         return jsonError("Store not found", 404, "STORE_NOT_FOUND");
     }
 
@@ -1591,7 +1727,7 @@ export const deleteRoleDefinition = async (
     }
 
     const store = await fetchStoreById(input.storeId);
-    if (!store || Number(store.tenantId) !== input.tenantId) {
+    if (!isEligibleStaffTargetStore(store, input.tenantId)) {
         return jsonError("Store not found", 404, "STORE_NOT_FOUND");
     }
 

@@ -112,7 +112,7 @@ export default function AnswerlatticeQuickstartsPage() {
                         ))}
                     </div>
                     <p className="mx-auto mt-6 max-w-3xl text-center text-sm leading-relaxed text-[#6b6b8a]">
-                        Private beta workspaces can use the exact dashboard snippet immediately. AnswerLattice supports the stable v1 script URL and browser global for client installs.
+                        Private rollout workspaces can use the exact dashboard snippet immediately. AnswerLattice supports the stable v1 script URL and browser global for client installs.
                     </p>
                 </section>
 

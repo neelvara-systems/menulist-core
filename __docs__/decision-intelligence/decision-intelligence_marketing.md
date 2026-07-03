@@ -1,8 +1,10 @@
 # Decision Intelligence - Marketing Document
 
 **Created:** January 11, 2026  
-**Status:** ✅ **PRODUCTION READY**  
+**Status:** Marketing/source evidence; not current launch certification
 **Source:** Codebase (Proven Capabilities Only)
+
+**Launch boundary:** This marketing note describes Decision Intelligence positioning and owner/customer value. Current release approval requires the active [production-readiness audit](../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../production-readiness/external-certification-runbook.md) evidence, scoped scheduler deploy evidence, analytics summary evidence, public-menu browser/mobile QA, and production-host smoke for the target release.
 
 ---
 

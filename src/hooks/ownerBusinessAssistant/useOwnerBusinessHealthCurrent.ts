@@ -2,24 +2,24 @@ import useSWR from 'swr';
 import { FEATURE_FLAGS } from '@config/features';
 import { getCachedData, removeCachedData, setCachedData, shouldRevalidate } from '@lib/cache/swrLocalStorageProvider';
 import { OWNER_BUSINESS_ASSISTANT_CACHE, OWNER_BUSINESS_ASSISTANT_ENDPOINTS } from '@lib/ownerBusinessAssistant/constants';
-import type { OwnerBusinessHealthCurrentDoc } from '@lib/ownerBusinessAssistant/types';
+import {
+  OWNER_BUSINESS_ASSISTANT_REQUEST_POLICY,
+  readOwnerBusinessAssistantCurrentResponse,
+  type OwnerBusinessAssistantCurrentResponse,
+} from '@lib/ownerBusinessAssistant/clientResponses';
+import { getBoundedRuntimeStringContext } from '@lib/runtime/runtimeDiagnostics';
 
-type CurrentResponse = {
-  data: OwnerBusinessHealthCurrentDoc;
-  cache?: {
-    source: string;
-    cacheKey: string;
-    generatedAt: string;
-  };
+const fetcher = async ([url, storeScopeKey]: readonly [string, string]): Promise<OwnerBusinessAssistantCurrentResponse> => {
+  const response = await fetch(url, OWNER_BUSINESS_ASSISTANT_REQUEST_POLICY);
+  const payload = await readOwnerBusinessAssistantCurrentResponse(response, {
+    ...getBoundedRuntimeStringContext('url', url),
+    ...getBoundedRuntimeStringContext('storeScopeKey', storeScopeKey),
+  });
+  if (!payload) throw new Error('Failed to load Business Health');
+  return payload;
 };
 
-const fetcher = async ([url]: readonly [string, string]): Promise<CurrentResponse> => {
-  const response = await fetch(url);
-  if (!response.ok) throw new Error('Failed to load Business Health');
-  return response.json();
-};
-
-const isNotReadyFallbackResponse = (response: CurrentResponse | undefined) =>
+const isNotReadyFallbackResponse = (response: OwnerBusinessAssistantCurrentResponse | undefined) =>
   response?.data?.status === 'not_ready' && !response.data.sourceRefs?.length;
 
 export function useOwnerBusinessHealthCurrent(projectId?: string, storeScopeKey?: string | number, options?: { enabled?: boolean }) {
@@ -30,11 +30,11 @@ export function useOwnerBusinessHealthCurrent(projectId?: string, storeScopeKey?
   const url = `${OWNER_BUSINESS_ASSISTANT_ENDPOINTS.current}${params.toString() ? `?${params.toString()}` : ''}`;
   const cacheKey = `${OWNER_BUSINESS_ASSISTANT_CACHE.browserCurrentPrefix}:${storeScopeKey || 'store'}:${projectId || 'all'}`;
   const cached = typeof window !== 'undefined'
-    ? getCachedData<CurrentResponse>(cacheKey, OWNER_BUSINESS_ASSISTANT_CACHE.browserReadModelTtlMs)
+    ? getCachedData<OwnerBusinessAssistantCurrentResponse>(cacheKey, OWNER_BUSINESS_ASSISTANT_CACHE.browserReadModelTtlMs)
     : undefined;
   const cachedNotReady = isNotReadyFallbackResponse(cached);
 
-  const swr = useSWR<CurrentResponse>(
+  const swr = useSWR<OwnerBusinessAssistantCurrentResponse>(
     enabled ? [url, String(storeScopeKey || 'store')] as const : null,
     fetcher,
     {

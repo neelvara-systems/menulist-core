@@ -73,6 +73,12 @@ firebase functions:secrets:set GCP_BUDGET_WEBHOOK_SECRET --project menulist-qa
 firebase functions:secrets:set REVALIDATION_SECRET --project menulist-qa
 ```
 
+`SENTRY_DSN` is required only when Functions Sentry is enabled. Functions do
+not embed a fallback Sentry project DSN; if the secret/env value is missing,
+Sentry initialization is skipped and Firebase logs remain active. For local
+emulator-only server error routing, set `SENTRY_DEV_DSN` in the local Functions
+env file instead of adding another deployed secret.
+
 Set production secrets by repeating the same commands with:
 
 ```bash
@@ -91,10 +97,10 @@ Non-secret runtime env lives in the Firebase Functions dotenv files:
 - `functions/.env.menulist-qa.example`
 - `functions/.env.menulist.example`
 
-Messaging onboarding is enabled in those files:
+Messaging onboarding processing is disabled by default in those files. Enable it only on a target with real Meta secrets and webhook registration:
 
 ```text
-ENABLE_MESSAGING_ONBOARDING=true
+ENABLE_MESSAGING_ONBOARDING=false
 MESSAGING_ONBOARDING_PROVIDERS=whatsapp
 ENABLE_MESSAGING_ONBOARDING_TRACKING=true
 ```
@@ -200,7 +206,9 @@ Answerlattice: platformSummary/answerlatticeAiProviderHealth
 ```
 
 After deploying Functions, confirm those records update once per UTC day and
-that failed checks surface through the scheduler alert path.
+that failed checks surface through the scheduler alert path. Failed MenuList
+provider-health records store stable local failure codes plus source error
+name/code/status metadata only; they do not store raw SDK/provider messages.
 
 ## Deploy Note
 

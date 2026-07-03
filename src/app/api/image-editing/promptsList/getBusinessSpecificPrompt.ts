@@ -1,21 +1,24 @@
 import { IMAGE_VIEW_TYPES } from "@template/main-app/projects/editorView/AiImageGenerator/imageViewType";
 import { GenerateImageViaApiPayloadItemDetailsType } from "@template/main-app/projects/types";
+import { logImageEditingPromptFailure } from "./diagnostics";
+import { sanitizeImageEditingItemDetails } from "./promptInput";
 
 function replacePlaceholders(promptTemplate: string, itemDetails: GenerateImageViaApiPayloadItemDetailsType): string {
     let populatedPrompt = promptTemplate;
+    const safeItemDetails = sanitizeImageEditingItemDetails(itemDetails);
 
     // Replace required placeholders if the details exist
-    if (itemDetails.name) {
-        populatedPrompt = populatedPrompt.replace(/\[Item\/Service Name,.*?\]/g, itemDetails.name);
+    if (safeItemDetails.name) {
+        populatedPrompt = populatedPrompt.replace(/\[Item\/Service Name,.*?\]/g, safeItemDetails.name);
     }
-    if (itemDetails.category) {
-        populatedPrompt = populatedPrompt.replace(/\[Category Name,.*?\]/g, itemDetails.category);
+    if (safeItemDetails.category) {
+        populatedPrompt = populatedPrompt.replace(/\[Category Name,.*?\]/g, safeItemDetails.category);
     }
 
     // Handle the optional description placeholder with more robust logic
-    if (itemDetails.description && itemDetails.description.trim() !== '') {
+    if (safeItemDetails.description && safeItemDetails.description.trim() !== '') {
         // If a description exists, replace the placeholder with it.
-        populatedPrompt = populatedPrompt.replace(/\[Optional Description:.*?\]/g, itemDetails.description);
+        populatedPrompt = populatedPrompt.replace(/\[Optional Description:.*?\]/g, safeItemDetails.description);
     } else {
         // If no description exists, remove the placeholder and its surrounding sentence structure cleanly.
         // This regex looks for an optional preceding space, the placeholder, and an optional trailing period.
@@ -28,11 +31,14 @@ function replacePlaceholders(promptTemplate: string, itemDetails: GenerateImageV
     return populatedPrompt;
 }
 
-export default function getBusinessSpecificPrompt(businessType: string, featureName: string, itemDetails: GenerateImageViaApiPayloadItemDetailsType): string {
+export default function getBusinessSpecificPrompt(businessType: string, featureName: string, itemDetails: GenerateImageViaApiPayloadItemDetailsType): string | null {
 
     const business = IMAGE_VIEW_TYPES.find((b) => b.businessType === businessType);
     if (!business) {
-        console.error(`Error: Business type "${businessType}" not found.`);
+        logImageEditingPromptFailure("image_editing_business_type_not_found", undefined, {
+            businessType,
+            knownBusinessTypeCount: IMAGE_VIEW_TYPES.length,
+        });
         return null;
     }
 
@@ -40,7 +46,11 @@ export default function getBusinessSpecificPrompt(businessType: string, featureN
     // Please adjust these if your actual keys are different.
     const feature = business.editingFeatures.find((f) => f.featureName === featureName);
     if (!feature) {
-        console.error(`Error: Feature "${featureName}" not found for business type "${businessType}".`);
+        logImageEditingPromptFailure("image_editing_feature_not_found", undefined, {
+            businessType,
+            feature: featureName,
+            configuredFeatureCount: business.editingFeatures.length,
+        });
         return null;
     }
 

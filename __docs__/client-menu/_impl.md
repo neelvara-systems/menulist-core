@@ -1,8 +1,8 @@
 # Customer-Facing Digital Menu — Implementation Blueprint
 
-**Feature Name:** Client Menu (Customer-Facing Digital Menu)  
-**Document Type:** Technical Implementation Plan  
-**Status:** ✅ Production Ready  
+**Feature Name:** Client Menu (Customer-Facing Digital Menu)
+**Document Type:** Technical Implementation Plan
+**Status:** Historical implementation evidence; not current launch certification
 **Last Updated:** May 8, 2026
 **Audience:** Engineers, Technical Leads
 
@@ -95,7 +95,7 @@ The following infrastructure improvements were implemented to make the menu surf
 | --------------------------- | ---------------------------------------------------------------- |
 | **Client Sanitization**     | `sanitizeForClient()` strips `_mce` and internal metadata        |
 | **MCE Publish Gate**        | 17 validation rules prevent corrupt data from reaching customers |
-| **Multi-Outlet Resolution** | `resolveProjectForRender()` merges master + outlet data          |
+| **Multi-Outlet Resolution** | `resolveProjectForRender()` merges master + outlet data. Metadata outlet lookup, metadata project lookup, and runtime outlet lookup failures remain fail-open but log bounded `public_menu_resolution_*` diagnostics with tenant/store/slug presence-length context only. |
 
 ### Public UI Governance Hardening (May 2026)
 
@@ -110,7 +110,7 @@ The public renderer keeps the project-wise `config.design.menu` mood/layout mode
 | Sticky retrieval layer | Search focus keeps `Sections` and language controls reachable, the clear action exits search mode, compact suggestions come from the already-loaded menu payload, the compact top language trigger shows language initials only, and category chips remain a lightweight rail below the command row. The command row avoids transform-based compositor hints and clipped sticky ancestors, scroll-spy updates are frame-throttled to avoid visible row vibration during vertical scroll, mobile public output switches to a measured fixed layer once the row reaches `top: 0` while keeping safe-area breathing room inside row padding, stable `svh` viewport height is used for iOS PWA/Chrome stability, and active search scrolls a result anchor back under the command controls when the customer starts searching from a deep menu position. | `src/components/templates/main-app/projects/b2cView/output/MenuSearchBar.tsx`, `src/components/templates/main-app/projects/b2cView/menuPage/menuPageNew.tsx`, `src/components/templates/main-app/projects/b2cView/output/MenuLanguageSwitcher.tsx` |
 | Card rhythm | Item titles/descriptions use line governance, price weight is restrained, item image frames render only when an item has an image instead of showing blank placeholders, and compact two-column mobile Grid output lets a single odd final card span the full row. | `src/components/templates/main-app/projects/b2cView/menuPage/menuPageNew.tsx` |
 | Public image normalization | Public menu output normalizes array, object-map, object-with-url, and string image values before cards, featured choices, PDP galleries, metadata, and image-quality checks read item images. | `src/lib/menu/publicMenuImages.ts`, `src/components/templates/main-app/projects/b2cView/menuPage/menuPageNew.tsx`, `src/components/templates/main-app/projects/b2cView/output/PDPModal.tsx`, `src/components/templates/main-app/projects/b2cView/output/DecisionBlocks.tsx`, `src/app/client/[[...slug]]/page.tsx`, `src/lib/mce/qualitySignals.ts` |
-| PWA interaction stability | PDP open blurs active search input, top-of-page PDP scroll lock avoids fixed-body locking on iPhone PWAs, item-history close waits for `popstate`, modal cleanup restores scroll without dispatching synthetic scroll/resize events that can move the category rail, open PDP state syncs the client document head so browser share sheets see the item URL instead of the base menu canonical, and the PDP itself exposes a native-share/copy fallback for installed PWAs. | `src/components/templates/main-app/projects/b2cView/menuPage/menuPageNew.tsx`, `src/components/templates/main-app/projects/b2cView/output/PDPModal.tsx` |
+| PWA interaction stability | PDP open blurs active search input, top-of-page PDP scroll lock avoids fixed-body locking on iPhone PWAs, item-history close waits for `popstate`, modal cleanup restores scroll without dispatching synthetic scroll/resize events that can move the category rail, open PDP state syncs the client document head so browser share sheets see the item URL instead of the base menu canonical, and the PDP itself exposes a native-share/copy fallback for installed PWAs. Item-share copy first attempts Clipboard API, falls through to textarea fallback if the Clipboard API rejects, and requires `document.execCommand('copy')` acknowledgement before copied state, share analytics, or success copy advance; failed final copy fallback logs `public_menu_pdp_item_share_copy_failed` with bounded item/share URL/title/language metadata and clipboard/fallback support booleans only. | `src/components/templates/main-app/projects/b2cView/menuPage/menuPageNew.tsx`, `src/components/templates/main-app/projects/b2cView/output/PDPModal.tsx` |
 | Long PDP content handling | PDP modal/sheet height is capped to the viewport, scroll stays inside the detail surface, and the close control remains sticky while long item content scrolls. | `src/components/templates/main-app/projects/b2cView/output/PDPModal.tsx` |
 | PDP and footer polish | Public item detail opens as a desktop modal and mobile bottom sheet, uses contain-fit gallery images with touch swiping plus fullscreen pinch-to-zoom inspection, shows category identity and owner-entered nutrition facts when present, offers quiet item sharing with current-language URLs, and the common Call / WhatsApp / Directions footer actions use centered compact chips on desktop while preserving equal-width touch targets on mobile. | `src/components/templates/main-app/projects/b2cView/output/PDPModal.tsx`, `src/components/shared/media/PublicImageViewer.tsx`, `src/components/templates/main-app/projects/b2cView/output/MenuFooter.tsx`, `src/components/templates/main-app/projects/b2cView/output/BackToTop.tsx` |
 | Featured layout polish | Featured choices fill the available desktop content width as a grid and keep the horizontal scroller only for smaller touch layouts. | `src/components/templates/main-app/projects/b2cView/output/DecisionBlocks.tsx` |
@@ -129,7 +129,7 @@ The public menu search and schema layer now use the same stored menu truth that 
 | Transliteration fold | Lightweight Devanagari/Marathi and Gujarati text fold supports practical India-first Roman search without adding a search dependency. | `src/lib/menu/publicMenuSearch.ts` |
 | Search scope | Search covers item names/descriptions, category names, attribute names, tags, decision facts, and optional public prices. Compact `_publicSearch.terms` may be shipped for structured payload efficiency, but the public UI does not re-read generated terms as source text for live matching. | `src/lib/menu/publicMenuSearch.ts`, `src/components/templates/main-app/projects/b2cView/menuPage/menuPageNew.tsx` |
 | Multilingual payload | Public SSR keeps enabled-language menu text available for the client language picker so category labels, item names, and item descriptions remain aligned when the customer switches language after arriving from OBP or an installed PWA launch. Compact search terms can still be attached for retrieval, but visible language data is not stripped from the public renderer. | `src/app/client/[[...slug]]/page.tsx` |
-| PWA language state | Customer menu page/language/scroll state is scoped by store and project, public language changes update `?lang=` through router navigation so server-rendered menu names and metadata update, item URLs preserve the selected language query, and the menu language switcher ignores the retired global language key on customer output. Explicit `?lang=` remains authoritative. | `src/components/templates/website/clientWebsite/index.tsx`, `src/components/templates/main-app/projects/b2cView/output/MenuLanguageSwitcher.tsx`, `src/components/templates/main-app/projects/b2cView/menuPage/menuPageNew.tsx` |
+| PWA language and menu state | Customer menu page/language/scroll state is scoped to the rendered store/project context, public language changes update `?lang=` through router navigation so server-rendered menu names and metadata update, item URLs preserve the selected language query, and the menu language switcher ignores the retired global language key on customer output. Explicit `?lang=` remains authoritative. Public menu filter/category/scroll restore and save failures log bounded `public_menu_state_restore_failed` / `public_menu_state_save_failed` diagnostics and remain fail-open when browser storage is blocked. | `src/components/templates/website/clientWebsite/index.tsx`, `src/components/templates/main-app/projects/b2cView/output/MenuLanguageSwitcher.tsx`, `src/components/templates/main-app/projects/b2cView/menuPage/menuPageNew.tsx` |
 | Structured freshness | JSON-LD uses project `lastPublishedAt`/`menuVersion` before store modified timestamps, and emits active public categories/items only. | `src/lib/menu/publicMenuStructuredData.ts`, `src/app/client/[[...slug]]/page.tsx` |
 | Offline boundary | Customer service worker remains network-first and only serves `/offline` after failure or bounded navigation timeout. It does not cache menu HTML/data/images. | `public/sw-customer.js` |
 
@@ -145,6 +145,7 @@ Feature flag: `FEATURE_FLAGS.ENABLE_PUBLIC_MENU_RETRIEVAL_FOUNDATION`.
 src/app/client/
 ├── [[...slug]]/
 │   └── page.tsx              # Main entry point
+├── error.tsx                 # Branded customer error boundary with bounded secure diagnostics
 ├── obp/
 │   ├── OBPContent.tsx        # Official Business Page (server component)
 │   ├── OBPSkeleton.tsx       # OBP loading skeleton
@@ -647,30 +648,34 @@ const withPWA = require("next-pwa")({
 
 ```typescript
 // menuPageNew.tsx
-const STORAGE_KEY = `menuState_${projectId}`;
+const storageKey = `menuState_${projectId}`;
 
 // Save state (debounced)
-const saveState = useDebouncedCallback(() => {
-  sessionStorage.setItem(
-    STORAGE_KEY,
-    JSON.stringify({
-      scrollY: window.scrollY,
-      activeCategory,
-      activeFilters,
-    }),
-  );
-}, 300);
+sessionStorage.setItem(
+  storageKey,
+  JSON.stringify({
+    scrollY,
+    filter: activeFilter,
+    category: savedCategoryId,
+  }),
+);
 
 // Restore state on mount
 useEffect(() => {
-  const saved = sessionStorage.getItem(STORAGE_KEY);
+  const saved = sessionStorage.getItem(storageKey);
   if (saved) {
-    const { scrollY, activeCategory, activeFilters } = JSON.parse(saved);
-    setActiveCategory(activeCategory);
-    setActiveFilters(activeFilters);
-    window.scrollTo(0, scrollY);
+    const { scrollY, filter, category } = JSON.parse(saved);
+    if (filter) setActiveFilter(filter);
+    const restoredCategory = allCategories.find((cat) => cat.id === category);
+    if (restoredCategory) setActiveCategory(restoredCategory);
+    restoreScrollPosition(scrollY);
   }
 }, []);
+
+// Browser storage failures are non-blocking:
+// - restore failures log public_menu_state_restore_failed
+// - save failures log public_menu_state_save_failed
+// Diagnostics include bounded storage-key, filter, category, scroll, and context metadata only.
 ```
 
 ---
@@ -811,7 +816,7 @@ All 8 items from the ChatGPT infrastructure review have been implemented or veri
 | #30 | **Lazy Language Loading**    | `optimizeLanguagePayload()` strips non-primary language descriptions from SSR payload (3+ languages) | `page.tsx:619-645`                                 |
 | #31 | **Progressive Rendering**    | IntersectionObserver-based category rendering for menus with 150+ items; 500px pre-load margin       | `menuPageNew.tsx:101-108, 266-302, 742-748`        |
 | #32 | **Structured Dish Metadata** | Added optional metadata fields to `ExtractedDataItem`; AI no longer invents high-liability or easily stale fields | `extractedData.types.ts:66-76`, `page.tsx:570-607` |
-| #33 | **State Version Key**        | Storage key changed to `menuState_v2_${projectId}` — prevents stale schema parse errors              | `menuPageNew.tsx:103-106`                          |
+| #33 | **Project-scoped State Key** | Public menu filter/category/scroll state uses `menuState_${projectId}` and logs bounded restore/save diagnostics when browser storage is unavailable. | `menuPageNew.tsx`                                  |
 | #34 | **Analytics Lazy Loading**   | GA4, Facebook Pixel, Enhanced Ecommerce converted to `dynamic()` imports with `ssr: false`           | `clientWebsite/index.tsx:17-20`                    |
 | #35 | **Text-First Fallback**      | "Loading menu..." message fades in after 3s delay via CSS animation in MenuSkeleton                  | `page.tsx:731-753`                                 |
 
@@ -911,7 +916,7 @@ Registry policy fields:
 
 ## The 3 Questions That Matter (Execution Focus)
 
-> These are the ONLY verification criteria before declaring production-ready.
+> These are P0 manual/device verification criteria before client-menu launch approval; they do not replace the active production-readiness audit or External Certification Runbook evidence.
 
 ### Q1: Can the menu survive a flaky Indian internet connection?
 
@@ -1005,6 +1010,12 @@ Registry policy fields:
 
 ---
 
+## Current Launch Boundary
+
+This implementation note is customer-facing menu-output implementation evidence; it is not current production certification. Client-menu launch approval requires the active production-readiness audit, External Certification Runbook evidence, Digital Menu Output Constitution checks, physical/mobile browser QA, low-bandwidth/offline/back-button tests, public cache and deploy evidence, and target production smoke.
+
+---
+
 ## Related Documents
 
 | Document                                         | Purpose                          |
@@ -1013,10 +1024,10 @@ Registry policy fields:
 | `analytics-tracking/_impl.md`                    | Analytics implementation details |
 | `autosell-features/_spec.md`                     | Auto-Sell features specification |
 | `autosell-features/_impl.md`                     | Auto-Sell implementation details |
-| `__docs__/projects/DECISION-BLOCKS-SCHEDULER.md` | Decision Blocks nightly job      |
+| `__docs__/decision-intelligence/decision-intelligence_firebase.md` | Decision Blocks nightly job      |
 | `__docs__/continuous-menu-intelligence/`         | CMI system documentation         |
 
 ---
 
-_Document Status: ✅ PRODUCTION READY_  
+_Document Status: Historical implementation evidence - not current launch certification_
 _Last Updated: May 7, 2026_

@@ -1,4 +1,4 @@
-import { updateProject } from '@database/projects';
+import { assertProjectUpdateSucceeded, updateProject } from '@database/projects';
 import { deleteFileByUrl } from '@database/storage/deleteFromStorage';
 import { useAppDispatch } from '@hook/useAppDispatch';
 import useDeviceType from '@hook/useDeviceType';
@@ -10,6 +10,7 @@ import { Button, Flex, Image, Modal, Popover, Space, Tooltip, message, theme } f
 import { Fragment, useContext, useState } from 'react';
 import { LuMoreVertical, LuPencil, LuTrash } from 'react-icons/lu';
 import { ExtractedDataItem, Project } from '../types';
+import { getBoundedMenuEditorStringContext, getMenuEditorProjectLogContext, logMenuEditorFailure } from '../utils/editorDiagnostics';
 import EditImageModal from './AiImageGenerator/EditImageModal';
 
 function UploadedImagesList({
@@ -43,7 +44,6 @@ function UploadedImagesList({
             cancelText: 'Cancel',
             onOk: async () => {
                 dispatch(startLoader("deleting image"));
-                console.log(`Deleting image: ${imageToDelete} for item: ${selectedItem.id}`);
                 const updatedProjectData: Project = removeObjRef(projectData);
                 let itemUpdated = false;
 
@@ -75,12 +75,24 @@ function UploadedImagesList({
                         if (onProjectDataUpdate) {
                             await onProjectDataUpdate({ ...updatedProjectData, projectId: activeProject.projectId });
                         } else {
-                            await updateProject({ ...updatedProjectData, projectId: activeProject.projectId });
-                            setActiveProject(removeObjRef(updatedProjectData));
+                            const savedProject = await updateProject({ ...updatedProjectData, projectId: activeProject.projectId });
+                            assertProjectUpdateSucceeded(
+                                savedProject,
+                                activeProject.projectId,
+                                'menu_editor_item_image_delete_project_update_rejected',
+                            );
+                            setActiveProject(removeObjRef(savedProject));
                         }
                         message.success('Image deleted successfully!');
                     } catch (error) {
-                        console.error("Failed to delete image:", error);
+                        logMenuEditorFailure('menu_editor_item_image_delete_failed', error, {
+                            ...getMenuEditorProjectLogContext(activeProject?.projectId || projectData.projectId, (projectData as { masterProjectId?: unknown }).masterProjectId),
+                            ...getBoundedMenuEditorStringContext('itemId', selectedItem.id),
+                            ...getBoundedMenuEditorStringContext('imageUrl', imageToDelete.url),
+                            hasProjectDataUpdateOverride: Boolean(onProjectDataUpdate),
+                            fileCount: updatedProjectData.files?.length || 0,
+                            imageCount: selectedItem.images?.length || 0,
+                        });
                         message.error('Failed to delete image.');
                     } finally {
                         dispatch(stopLoader("deleting image"));
@@ -90,9 +102,6 @@ function UploadedImagesList({
                     dispatch(stopLoader("deleting image"));
                     message.error('Failed to find the image to delete.');
                 }
-            },
-            onCancel() {
-                console.log('Image deletion cancelled');
             },
         });
     };

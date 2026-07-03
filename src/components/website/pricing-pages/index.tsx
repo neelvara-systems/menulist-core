@@ -3,6 +3,7 @@
 import { BillingInterval, Currency, Plan, PlanType, PurchaseIntent } from '@data/common';
 import PlatformFeaturesList from '@data/PlatformFeaturesList';
 import { CustomePlanForB2B, getB2BPlansList, getB2CPlansList } from '@data/PlatformPlansList';
+import { getBoundedPaymentStringContext, logPaymentFailure } from '@hook/paymentDiagnostics';
 import usePaymentHandler from '@hook/usePaymentHandler';
 import { Switch } from '@shadcncomponents/switch';
 import { useToast } from '@shadcnhooks/use-toast';
@@ -71,6 +72,31 @@ const PricingPageRenderer: React.FC<{ welcomeTenantName?: string | null, activeS
         setIsLoading(action.type === "loader/startLoader");
     }
     const { onClickPaymentCard, pendingPlan, executePostOnboarding, isScriptLoaded } = usePaymentHandler(handleLoader);
+    const buildPricingPaymentLogContext = (flow: string, metadata: Record<string, unknown> = {}) => ({
+        surface: 'website_pricing',
+        flow,
+        hasSession: Boolean(session?.user?.id),
+        hasTenant: Boolean(session?.user?.tenantId),
+        activeBusinessType,
+        billingInterval,
+        currency,
+        ...metadata,
+    });
+
+    const readStoredPurchaseIntent = (flow: string): PurchaseIntent | null => {
+        const purchaseIntentString = localStorage.getItem('purchaseIntent');
+        if (!purchaseIntentString) return null;
+
+        try {
+            return JSON.parse(purchaseIntentString) as PurchaseIntent;
+        } catch (error) {
+            logPaymentFailure('payment_pricing_purchase_intent_parse_failed', error, buildPricingPaymentLogContext(flow, {
+                ...getBoundedPaymentStringContext('purchaseIntent', purchaseIntentString),
+            }));
+            localStorage.removeItem('purchaseIntent');
+            return null;
+        }
+    };
 
     useEffect(() => {
         try {
@@ -79,7 +105,7 @@ const PricingPageRenderer: React.FC<{ welcomeTenantName?: string | null, activeS
                 setCurrency('INR');
             }
         } catch (error) {
-            console.error("Error detecting user's timezone:", error);
+            logPaymentFailure('payment_pricing_timezone_detect_failed', error, buildPricingPaymentLogContext('timezone_detection'));
         }
     }, []);
 
@@ -89,9 +115,16 @@ const PricingPageRenderer: React.FC<{ welcomeTenantName?: string | null, activeS
         if (status === 'authenticated' && session?.user) {
             if (onboardingInProgress.current) return;
             if (intentExists) {
+                const purchaseIntent = readStoredPurchaseIntent('resume_purchase_intent');
+                if (!purchaseIntent) return;
                 onboardingInProgress.current = true;
                 if (session.user.tenantId) {//user is already onboarded and his licen is expired
-                    handlePaymentCardClick(JSON.parse(intentExists).plan)
+                    if (!purchaseIntent.plan) {
+                        logPaymentFailure('payment_pricing_purchase_intent_plan_missing', undefined, buildPricingPaymentLogContext('resume_purchase_intent'));
+                        descardPaymentFlow();
+                        return;
+                    }
+                    handlePaymentCardClick(purchaseIntent.plan)
                 } else {
                     startPaymentprocessing()
                 }
@@ -107,7 +140,7 @@ const PricingPageRenderer: React.FC<{ welcomeTenantName?: string | null, activeS
 
     const handleOnboardingModalSubmit = (details: { businessName: string; businessIndustry: string; timeZone?: string; businessDayEndTime?: string }) => {
         if (!pendingPlan) {
-            console.error("User selection was lost. Cannot proceed.");
+            logPaymentFailure('payment_pricing_pending_plan_missing', undefined, buildPricingPaymentLogContext('onboarding_submit'));
             return;
         }
 
@@ -126,7 +159,7 @@ const PricingPageRenderer: React.FC<{ welcomeTenantName?: string | null, activeS
 
     const handlePaymentSuccessResponse = async (paymentResponse: any) => {
         if (Boolean(paymentResponse)) {
-            const purchaseIntent = JSON.parse(localStorage.getItem('purchaseIntent') || '{}');
+            const purchaseIntent = readStoredPurchaseIntent('payment_success_modal');
             setIsSuccessModalOpen({ active: true, purchaseIntent: purchaseIntent, paymentDetails: paymentResponse, });
             descardPaymentFlow();
         }
@@ -134,13 +167,20 @@ const PricingPageRenderer: React.FC<{ welcomeTenantName?: string | null, activeS
 
     const startPaymentprocessing = () => {
         setIsLoading(true);
-        const purchaseIntent = JSON.parse(localStorage.getItem('purchaseIntent') || '{}');
+        const purchaseIntent = readStoredPurchaseIntent('post_onboarding_start');
+        if (!purchaseIntent) {
+            descardPaymentFlow();
+            toast({ variant: 'destructive', title: 'Error', description: 'Payment Processing Failed, If your money gets deducted, please contact support or try again.' });
+            return;
+        }
         executePostOnboarding(purchaseIntent).then((paymentResponse) => {
             handlePaymentSuccessResponse(paymentResponse);
         })
             .catch((error) => {
                 descardPaymentFlow()
-                console.error('Post-onboarding process failed in startPaymentprocessing', error);
+                logPaymentFailure('payment_pricing_post_onboarding_failed', error, buildPricingPaymentLogContext('post_onboarding_start', {
+                    ...getBoundedPaymentStringContext('planId', purchaseIntent.plan?.planId),
+                }));
                 toast({ variant: 'destructive', title: 'Error', description: 'Payment Processing Failed, If your money gets deducted, please contact support or try again.' });
             });
     }
@@ -148,18 +188,27 @@ const PricingPageRenderer: React.FC<{ welcomeTenantName?: string | null, activeS
     const handlePaymentCardClick = (plan: Plan) => {
         try {
             setIsLoading(true);
-            onClickPaymentCard(plan, currency, () => setIsOnboardingModalOpen(true)).then((paymentResponse) => {
+            const paymentPromise = onClickPaymentCard(plan, currency, () => setIsOnboardingModalOpen(true)) as Promise<any> | undefined;
+            if (!paymentPromise) {
+                setIsLoading(false);
+                return;
+            }
+            paymentPromise.then((paymentResponse) => {
                 handlePaymentSuccessResponse(paymentResponse);
             })
                 .catch((error) => {
                     descardPaymentFlow();
-                    console.error('Payment flow failed in handlePaymentCardClick', error);
+                    logPaymentFailure('payment_pricing_card_click_failed', error, buildPricingPaymentLogContext('payment_card_click', {
+                        ...getBoundedPaymentStringContext('planId', plan.planId),
+                    }));
                     toast({ variant: 'destructive', title: 'Error', description: 'Payment Processing Failed, If your money gets deducted, please contact support or try again.' });
                 });
         } catch (error) {
             descardPaymentFlow();
             toast({ variant: 'destructive', title: 'Error', description: 'Payment Processing Failed, If your money gets deducted, please contact support or try again.' });
-            console.error('Payment flow failed in handlePaymentCardClick', error);
+            logPaymentFailure('payment_pricing_card_click_failed', error, buildPricingPaymentLogContext('payment_card_click', {
+                ...getBoundedPaymentStringContext('planId', plan.planId),
+            }));
         }
     }
 
@@ -299,79 +348,11 @@ const PricingPageRenderer: React.FC<{ welcomeTenantName?: string | null, activeS
                 </AnimateOnScroll>
             </section>
 
-            <WebsiteReplacementBlock variant="subtle" />
-
             <section style={{ padding: '0 var(--ws-space-6) var(--ws-space-16)' }}>
                 <div className="ws-container">
                     <AnimateOnScroll>
                         <div id="subscription-plans" style={{ paddingTop: 'var(--ws-space-6)' }}>
-                            <div
-                                style={{
-                                    display: 'grid',
-                                    gridTemplateColumns: 'minmax(0, 0.72fr) minmax(0, 1.28fr)',
-                                    gap: 'var(--ws-space-6)',
-                                    alignItems: 'stretch',
-                                    marginBottom: 'var(--ws-space-8)',
-                                }}
-                            >
-                                <div
-                                    className="ws-card"
-                                    style={{
-                                        background: 'var(--ws-bg-subtle)',
-                                        borderColor: 'var(--ws-border-default)',
-                                    }}
-                                >
-                                    <p
-                                        style={{
-                                            margin: 0,
-                                            color: 'var(--ws-brand-secondary)',
-                                            fontSize: '0.75rem',
-                                            fontWeight: 800,
-                                            textTransform: 'uppercase',
-                                        }}
-                                    >
-                                        {t('Pricing.decisionEyebrow')}
-                                    </p>
-                                    <h2
-                                        style={{
-                                            margin: 'var(--ws-space-3) 0 0',
-                                            color: 'var(--ws-text-primary)',
-                                            fontSize: '1.5rem',
-                                            lineHeight: 1.2,
-                                            fontWeight: 800,
-                                        }}
-                                    >
-                                        {t('Pricing.decisionTitle')}
-                                    </h2>
-                                    <p className="ws-caption" style={{ marginTop: 'var(--ws-space-3)' }}>
-                                        {t('Pricing.decisionSubtitle')}
-                                    </p>
-                                </div>
-
-                                <div
-                                    style={{
-                                        display: 'grid',
-                                        gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
-                                        gap: 'var(--ws-space-4)',
-                                    }}
-                                >
-                                    {pricingDecisionSteps.map((step, index) => {
-                                        const Icon = step.icon;
-                                        return (
-                                            <AnimateStaggerChild key={step.title} index={index}>
-                                                <WebsiteFeatureCard
-                                                    icon={Icon}
-                                                    title={step.title}
-                                                    description={step.desc}
-                                                    compact
-                                                />
-                                            </AnimateStaggerChild>
-                                        );
-                                    })}
-                                </div>
-                            </div>
-
-                            <div className="mb-20">
+                            <div className="mb-12">
                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 items-stretch">
                                     {activePlans.map((plan, index) => (
                                         <AnimateStaggerChild key={`${plan.planId}-${plan.billingInterval}`} index={index}>
@@ -403,8 +384,78 @@ const PricingPageRenderer: React.FC<{ welcomeTenantName?: string | null, activeS
                             {t('Pricing.proReinforcementAdvice')}
                         </p>
                     </AnimateOnScroll>
+
+                    <AnimateOnScroll delay={0.12}>
+                        <div
+                            style={{
+                                display: 'grid',
+                                gridTemplateColumns: 'minmax(0, 0.72fr) minmax(0, 1.28fr)',
+                                gap: 'var(--ws-space-6)',
+                                alignItems: 'stretch',
+                                marginTop: 'var(--ws-space-10)',
+                            }}
+                        >
+                            <div
+                                className="ws-card"
+                                style={{
+                                    background: 'var(--ws-bg-subtle)',
+                                    borderColor: 'var(--ws-border-default)',
+                                }}
+                            >
+                                <p
+                                    style={{
+                                        margin: 0,
+                                        color: 'var(--ws-brand-secondary)',
+                                        fontSize: '0.8125rem',
+                                        fontWeight: 800,
+                                        textTransform: 'uppercase',
+                                    }}
+                                >
+                                    {t('Pricing.decisionEyebrow')}
+                                </p>
+                                <h2
+                                    style={{
+                                        margin: 'var(--ws-space-3) 0 0',
+                                        color: 'var(--ws-text-primary)',
+                                        fontSize: '1.5rem',
+                                        lineHeight: 1.2,
+                                        fontWeight: 800,
+                                    }}
+                                >
+                                    {t('Pricing.decisionTitle')}
+                                </h2>
+                                <p className="ws-caption" style={{ marginTop: 'var(--ws-space-3)' }}>
+                                    {t('Pricing.decisionSubtitle')}
+                                </p>
+                            </div>
+
+                            <div
+                                style={{
+                                    display: 'grid',
+                                    gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+                                    gap: 'var(--ws-space-4)',
+                                }}
+                            >
+                                {pricingDecisionSteps.map((step, index) => {
+                                    const Icon = step.icon;
+                                    return (
+                                        <AnimateStaggerChild key={step.title} index={index}>
+                                            <WebsiteFeatureCard
+                                                icon={Icon}
+                                                title={step.title}
+                                                description={step.desc}
+                                                compact
+                                            />
+                                        </AnimateStaggerChild>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    </AnimateOnScroll>
                 </div>
             </section>
+
+            <WebsiteReplacementBlock variant="subtle" />
 
             <SectionWrapper variant="subtle">
                 <AnimateOnScroll>

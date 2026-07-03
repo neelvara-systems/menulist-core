@@ -6,9 +6,13 @@ import { appendImageBatchItemResultAdmin, getImageBatchProcessingJobByIdAdmin, u
 import { uploadBase64MediaImageAdmin } from "@database/storage/uploadBase64MediaImageAdmin";
 import { finalizeAiOperationAccounting } from "@lib/ai/accounting";
 import { checkAICapacity } from "@lib/ai/capacityCheck";
+import { copyCachedImagePromptToStore, isImagePromptCacheEligible, writeImagePromptCacheSource } from "@lib/ai/imageGenerationPromptCache";
 import { sanitizeImageGenerationConfigForLogging, summarizeImageProviderResponse } from "@lib/ai/imageOperationLogging";
 import { mapWithConcurrency } from "@lib/async/boundedConcurrency";
 import { logger } from "@lib/monitoring/logger";
+import { createUppercaseRandomIdSegment } from "@lib/runtime/randomId";
+import { getBoundedRuntimeStringContext, logRuntimeDiagnostic, logRuntimeFailure } from "@lib/runtime/runtimeDiagnostics";
+import { readBoundedJsonBody } from "@lib/security/boundedRequestBody";
 import { BatchImageGenerationJobType, GenerateImageViaApiPayloadBatchType, GenerateImageViaApiPayloadItemDetailsType } from "@template/main-app/projects/types";
 import { getBase64Length } from "@util/utils";
 import { writeErrorLogEntry, writeLogEntry, writeMissingParamsLogEntry } from 'logs/utils';
@@ -21,7 +25,9 @@ import { BatchImageGenerationWorkerRequestSchema } from "@lib/validation/apiSche
 
 const AI_MODEL: AI_MODEL_TYPE = "GEMINI";
 const LOG_FILE = "batch-image-generation.log"
+const BATCH_IMAGE_WORKER_MAX_BODY_BYTES = 16 * 1024 * 1024;
 const IMAGE_UPLOAD_CONCURRENCY = 3;
+const IMAGE_BATCH_WORKER_JOB_NOT_FOUND = 'image_batch_worker_job_not_found';
 const TERMINAL_JOB_STATUSES = new Set([
     BATCH_IMAGE_GENERATION_JOB_STATUS.CANCELLED,
     BATCH_IMAGE_GENERATION_JOB_STATUS.FAILED,
@@ -30,12 +36,43 @@ const TERMINAL_JOB_STATUSES = new Set([
     BATCH_IMAGE_GENERATION_JOB_STATUS.DISCARDED,
 ]);
 
+type BatchWorkerLogContext = Record<string, boolean | number | string | null | undefined>;
+
 function summarizeBatchItem(item: GenerateImageViaApiPayloadItemDetailsType) {
     return {
         attributeCount: item.attributes?.length || 0,
         hasDescription: Boolean(item.description),
-        id: item.id,
-        name: item.name,
+        ...getBoundedRuntimeStringContext('itemId', item.id),
+        ...getBoundedRuntimeStringContext('itemName', item.name),
+        ...getBoundedRuntimeStringContext('itemCategory', item.category),
+    };
+}
+
+function getBatchWorkerLogContext({
+    itemId,
+    itemName,
+    jobId,
+    projectId,
+    sId,
+    status,
+    tId,
+}: {
+    itemId?: unknown;
+    itemName?: unknown;
+    jobId?: unknown;
+    projectId?: unknown;
+    sId?: unknown;
+    status?: unknown;
+    tId?: unknown;
+}): BatchWorkerLogContext {
+    return {
+        ...getBoundedRuntimeStringContext('projectId', projectId),
+        ...getBoundedRuntimeStringContext('jobId', jobId),
+        ...getBoundedRuntimeStringContext('itemId', itemId),
+        ...getBoundedRuntimeStringContext('itemName', itemName),
+        ...getBoundedRuntimeStringContext('tenantId', tId),
+        ...getBoundedRuntimeStringContext('storeId', sId),
+        jobStatus: status === undefined || status === null ? undefined : String(status).slice(0, 48),
     };
 }
 
@@ -47,11 +84,13 @@ function summarizeUploadedGeneratedImages(images: Array<{ mimeType: string; uplo
 }
 
 async function uploadGeneratedImages({
+    aspectRatio,
     images,
     itemDetails,
     sId,
     tId,
 }: {
+    aspectRatio?: string | null;
     images: GeneratedImagePayload[];
     itemDetails: GenerateImageViaApiPayloadItemDetailsType & { id: string; name: string };
     sId: string;
@@ -60,13 +99,14 @@ async function uploadGeneratedImages({
     return mapWithConcurrency(images, IMAGE_UPLOAD_CONCURRENCY, async (imageData, index) => {
         if (!imageData.base64 || imageData.uploadedUrl) return imageData;
 
-        const randomStr = Math.random().toString(36).substring(2, 5).toUpperCase();
+        const randomStr = createUppercaseRandomIdSegment(6);
         let base64Url = imageData.base64;
         if (!base64Url.startsWith('data:')) {
             base64Url = `data:${imageData.mimeType};base64,${base64Url}`;
         }
 
         const uploadedUrl = await uploadBase64MediaImageAdmin({
+            aspectRatio,
             dataUrl: base64Url,
             entityId: `${itemDetails.id}-${index}-${randomStr}`,
             profile: 'menuItem',
@@ -97,7 +137,12 @@ export async function POST(request: Request) {
         const { checkSafeMode } = await import('@lib/ops/safeMode');
         const safeModeResponse = await checkSafeMode();
         if (safeModeResponse) return safeModeResponse;
-    } catch { /* fail-open */ }
+    } catch (safeModeError) {
+        logRuntimeFailure('image_batch_worker_safe_mode_check_failed', safeModeError, {
+            endpoint: '/api/image-generation/batch-generation',
+            failOpen: true,
+        });
+    }
 
     const expectedProjectId = process.env.FIREBASE_PROJECT_ID;
     const requestProjectId = request.headers.get('project-id');
@@ -114,7 +159,10 @@ export async function POST(request: Request) {
     }
 
     let userIdForLog = 'N/A';
-    const rawData = await request.json();
+    const bodyResult = await readBoundedJsonBody(request, BATCH_IMAGE_WORKER_MAX_BODY_BYTES);
+    if (bodyResult.ok === false) return bodyResult.response;
+
+    const rawData = bodyResult.data as any;
     const validation = validateAPIInput(BatchImageGenerationWorkerRequestSchema, rawData);
     if (!validation.success) {
         const errorMsg = 'error' in validation ? validation.error : 'Invalid input';
@@ -129,30 +177,54 @@ export async function POST(request: Request) {
     const { generationConfig, projectId, itemDetails, businessType, jobId } = validation.data as unknown as GenerateImageViaApiPayloadBatchType & { itemDetails: GenerateImageViaApiPayloadItemDetailsType & { id: string; name: string } };
 
     const [tId, , sId] = projectId.split("-");
+    const workerLogContext = getBatchWorkerLogContext({
+        itemId: itemDetails.id,
+        itemName: itemDetails.name,
+        jobId,
+        projectId,
+        sId,
+        tId,
+    });
     if (!tId || !sId) {
         return NextResponse.json({ error: 'Invalid project scope' }, { status: 400 });
     }
 
     const currentJobData = await getImageBatchProcessingJobByIdAdmin(jobId, { tId, sId });
-    logger.debug('Fetched job data', { jobId, projectId, tId, sId, status: currentJobData?.status });
+    logger.debug('Fetched job data', {
+        ...workerLogContext,
+        jobStatus: currentJobData?.status,
+    });
 
     if (!currentJobData) {
-        logger.warn('Batch image generation task skipped - job not found', { item: itemDetails.name, jobId, projectId });
+        logRuntimeDiagnostic(IMAGE_BATCH_WORKER_JOB_NOT_FOUND, workerLogContext);
         return NextResponse.json({ success: true, message: 'Task acknowledged because job no longer exists.' }, { status: 200 });
     }
 
     if (TERMINAL_JOB_STATUSES.has(currentJobData.status)) {
-        logger.info(`Task skipped`, { item: itemDetails.name, jobId, status: currentJobData.status });
-        await writeLogEntry({ logFileName: LOG_FILE, userId: userIdForLog, projectId, logType: 'BATCH_GENERATION_IMAGE_GEN_SKIPPED', error: `Task for item ${itemDetails.name} in job ${jobId} skipped due to ${currentJobData.status}.`, data: { jobId, item: summarizeBatchItem(itemDetails) } });
+        logger.info(`Task skipped`, {
+            ...workerLogContext,
+            jobStatus: currentJobData.status,
+        });
+        await writeLogEntry({
+            logFileName: LOG_FILE,
+            userId: userIdForLog,
+            projectId,
+            logType: 'BATCH_GENERATION_IMAGE_GEN_SKIPPED',
+            error: { message: 'Task skipped due to terminal job status' },
+            data: {
+                item: summarizeBatchItem(itemDetails),
+                jobId,
+                jobStatus: currentJobData.status,
+            },
+        });
         return NextResponse.json({ success: true, message: `Task skipped due to job ${currentJobData.status}.` }, { status: 200 });
     }
 
     if (currentJobData.projectId !== projectId) {
         logger.security('Batch image generation task/project mismatch', {
             endpoint: '/api/image-generation/batch-generation',
-            jobId,
-            jobProjectId: currentJobData.projectId,
-            requestProjectId: projectId,
+            ...workerLogContext,
+            ...getBoundedRuntimeStringContext('jobProjectId', currentJobData.projectId),
         }, 'critical');
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
@@ -162,9 +234,8 @@ export async function POST(request: Request) {
         && !currentJobData.requestedItemIds.includes(String(itemDetails.id))) {
         logger.security('Batch image generation item not registered on job', {
             endpoint: '/api/image-generation/batch-generation',
-            itemId: itemDetails.id,
-            jobId,
-            projectId,
+            ...workerLogContext,
+            requestedItemCount: currentJobData.requestedItemIds.length,
         }, 'critical');
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
@@ -172,9 +243,8 @@ export async function POST(request: Request) {
     const existingItem = (currentJobData.itemsList || []).find((item) => item.id === itemDetails.id);
     if (existingItem?.images?.length) {
         logger.info('Batch image generation task skipped - item already has generated images', {
-            itemId: itemDetails.id,
-            jobId,
-            projectId,
+            ...workerLogContext,
+            existingImageCount: existingItem.images.length,
         });
         return NextResponse.json({ success: true, message: 'Task skipped because item already has generated images.' }, { status: 200 });
     }
@@ -190,21 +260,40 @@ export async function POST(request: Request) {
         1,
     );
 
+    let promptCacheImage: GeneratedImagePayload | null = null;
+    if (isImagePromptCacheEligible({ generationConfig, prompts: promptsToExecute })) {
+        promptCacheImage = await copyCachedImagePromptToStore({
+            aiModel: AI_MODEL,
+            entityId: `${itemDetails.id}-cache-${createUppercaseRandomIdSegment(6)}`,
+            generationConfig,
+            prompt: promptsToExecute[0],
+            sId,
+            tId,
+        });
+    }
+
     // 🔋 AI CAPACITY CHECK: Verify store has sufficient capacity (uses tId/sId from projectId)
-    const capacityCheck = await checkAICapacity(
-        Number(tId),
-        Number(sId),
-        AI_ACTIONS_TYPES.BATCH_IMAGE_GENERATION,
-        estimatedImageQuantity,
-    );
-    if (!capacityCheck.allowed) {
-        logger.info('Batch image generation blocked - insufficient capacity', { jobId, tId, sId, reason: capacityCheck.reason });
-        return NextResponse.json({
-            error: capacityCheck.reason === 'maintenance'
-                ? 'AI enhancements are temporarily unavailable.'
-                : 'Additional AI enhancements needed for your menu.',
-            code: capacityCheck.reason,
-        }, { status: 402 });
+    let capacityCheck: Awaited<ReturnType<typeof checkAICapacity>> | null = null;
+    if (!promptCacheImage) {
+        capacityCheck = await checkAICapacity(
+            Number(tId),
+            Number(sId),
+            AI_ACTIONS_TYPES.BATCH_IMAGE_GENERATION,
+            estimatedImageQuantity,
+        );
+        if (!capacityCheck.allowed) {
+            logger.info('Batch image generation blocked - insufficient capacity', {
+                ...workerLogContext,
+                capacityReason: capacityCheck.reason,
+                estimatedImageQuantity,
+            });
+            return NextResponse.json({
+                error: capacityCheck.reason === 'maintenance'
+                    ? 'AI enhancements are temporarily unavailable.'
+                    : 'Additional AI enhancements needed for your menu.',
+                code: capacityCheck.reason,
+            }, { status: 402 });
+        }
     }
 
     try {
@@ -224,16 +313,39 @@ export async function POST(request: Request) {
             },
         });
 
-        const promptRun = await runImageGenerationPrompts({
-            aiModel: AI_MODEL,
-            generationConfig,
-            logFile: LOG_FILE,
-            prompts: promptsToExecute,
-        });
+        const promptRun = promptCacheImage
+            ? {
+                failedPromptCount: 0,
+                images: [promptCacheImage],
+                promptCount: promptsToExecute.length,
+                responses: [],
+            }
+            : await runImageGenerationPrompts({
+                aiModel: AI_MODEL,
+                generationConfig,
+                logFile: LOG_FILE,
+                prompts: promptsToExecute,
+                referenceImageStorageScope: { sId, tId },
+            });
         let genratedImages = promptRun.images;
         const generatedImagesResponse = promptRun.responses;
 
-        genratedImages = await uploadGeneratedImages({ images: genratedImages, itemDetails, sId, tId });
+        if (!promptCacheImage && isImagePromptCacheEligible({ generationConfig, prompts: promptsToExecute }) && genratedImages[0]) {
+            await writeImagePromptCacheSource({
+                aiModel: AI_MODEL,
+                generationConfig,
+                image: genratedImages[0],
+                prompt: promptsToExecute[0],
+            });
+        }
+
+        genratedImages = await uploadGeneratedImages({
+            aspectRatio: generationConfig?.aspectRatio,
+            images: genratedImages,
+            itemDetails,
+            sId,
+            tId,
+        });
         if (!genratedImages?.length) {
             throw new Error('Image generation produced no image.');
         }
@@ -251,7 +363,44 @@ export async function POST(request: Request) {
             transactionId: null
         };
 
-        if (generatedImagesResponse?.length > 0) {
+        if (promptCacheImage) {
+            transactionObject = {
+                ...transactionObject,
+                action: AI_ACTIONS_TYPES.BATCH_IMAGE_GENERATION,
+                billingMode: 'free',
+                failedPromptCount: 0,
+                imageCount: genratedImages.length,
+                itemDetails,
+                promptCacheHitCount: genratedImages.filter((image) => image.cacheHit).length,
+                promptCount: promptRun.promptCount,
+                generationConfig: sanitizeImageGenerationConfigForLogging(generationConfig as unknown as Record<string, unknown>),
+                projectId,
+                processingTime,
+                clientResponse: genratedImages.map((image: { mimeType: string }) => image.mimeType),
+                model: AI_MODEL,
+                geminiResponse: [],
+                tokenPerCredit: TOKENS_PER_CREDIT,
+                chargePerCredit: CHARGE_PER_CREDIT,
+                realCostPaise: 0,
+                ourChargePaise: 0,
+                marginPaise: 0,
+                sId: Number(sId),
+                source: 'ai_image_prompt_cache',
+                tId: Number(tId),
+                totalCharge: 0,
+                totalCredits: 0,
+                totalTokenCount: 0,
+                uId: userIdForLog === 'N/A' ? undefined : userIdForLog,
+                unitsConsumed: 0,
+            };
+            const accounting = await finalizeAiOperationAccounting({
+                context: { jobId, projectId, itemId: itemDetails.id, action: transactionObject.action, tId, sId, cacheHit: true },
+                input: transactionObject,
+                logLabel: 'Batch image generation cache hit',
+            });
+            transactionObject.transactionId = accounting.transactionId;
+            transactionObject.unitsConsumed = accounting.unitsConsumed;
+        } else if (generatedImagesResponse?.length > 0 && capacityCheck) {
 
             if (AI_MODEL === "GEMINI") {
                 generatedImagesResponse.forEach((response) => {
@@ -312,7 +461,7 @@ export async function POST(request: Request) {
             logger.debug('Batch generation capacity consumed', { remainingBalance: accounting.remainingBalance });
         }
 
-        const randomStr = Math.random().toString(36).substring(2, 5).toUpperCase();
+        const randomStr = createUppercaseRandomIdSegment(6);
         const updatedItem = {
             id: itemDetails.id,
             name: itemDetails.name,
@@ -357,15 +506,19 @@ export async function POST(request: Request) {
                 ...updatedJobSummary,
             },
         });
-        logger.debug('Batch job updated', { jobId, ...updatedJobSummary });
+        logger.debug('Batch job updated', {
+            ...workerLogContext,
+            ...updatedJobSummary,
+        });
 
         // Task succeeded, return 200 OK to Cloud Tasks
-        return NextResponse.json({ success: true, message: `Image generation completed for item ${itemDetails.name}-${itemDetails.id}` }, { status: 200 });
+        return NextResponse.json({ success: true, message: 'Image generation completed for this item.' }, { status: 200 });
 
     } catch (error) {
-        logger.error('Batch image generation API error', error);
+        logRuntimeFailure('image_batch_worker_generation_failed', error, workerLogContext);
         await writeErrorLogEntry(LOG_FILE, error);
-        const errorMessage = error instanceof Error ? error.message : 'Unknown error in worker.';
+        const ownerSafeError = 'Image generation failed for this item.';
+        const ownerSafeReason = 'Image generation failed for this item.';
         // Update job with error for this specific item if possible, or general job error
         try {
 
@@ -376,7 +529,7 @@ export async function POST(request: Request) {
                 : BATCH_IMAGE_GENERATION_JOB_STATUS.PROCESSING;
 
             await updateImageBatchProcessingJobAdmin({
-                error: errorMessage,
+                error: ownerSafeError,
                 id: jobId,
                 generatedCount: failedAttemptCount,
                 status: nextStatus,
@@ -384,18 +537,18 @@ export async function POST(request: Request) {
                     ...(latestJobData?.statusHistory || currentJobData.statusHistory),
                     {
                         status: BATCH_IMAGE_GENERATION_JOB_STATUS.FAILED,
-                        reason: `Failed on item ${itemDetails.name}-${itemDetails.id}: ${errorMessage}`,
+                        reason: ownerSafeReason,
                         createdOn: new Date().toISOString(),
                     },
                 ],
             }, projectId);
         } catch (updateError) {
             await writeErrorLogEntry(LOG_FILE, updateError);
-            logger.error('Failed to update batch job with error status', { jobId, error: updateError });
+            logRuntimeFailure('image_batch_worker_failure_status_update_failed', updateError, workerLogContext);
         }
         // For Cloud Tasks, if you return an error status (5xx), it might retry.
         // If the error is non-recoverable for this item, return 200 to stop retries for THIS task.
         // The job itself is marked as having an error.
-        return NextResponse.json({ error: `Processing failed for ${itemDetails.name}-${itemDetails.id}: ${errorMessage}` }, { status: 200 });
+        return NextResponse.json({ error: ownerSafeReason }, { status: 200 });
     }
 }

@@ -171,7 +171,7 @@ The mobile More tab does not route-hop to `/answerlattice/*`; it renders `src/co
 - `/sites/answerlattice/sitemap.xml`, `/sites/answerlattice/robots.txt` → Answerlattice product-domain SEO metadata routes
 - `/widget/[apiKey]` → embeddable end-user help widget
 
-The public widget is mobile-first and uses `100dvh`, 44px launcher/input actions, MIME-safe image preview, canonical answer badges, guided workflow rendering, safe page context from `AnswerlatticeWidget.page()/setContext()`, and fire-and-forget feedback. Widget keys are managed as bounded named keys on `stores/{sId}.answerlatticeWidgetApi`; malformed keys short-circuit before Firestore lookup, runtime validation uses key hashes, and raw keys are shown only once at creation time. The public site avoids exposing tenant/store ids and routes completed onboarding to `/answerlattice/activation`.
+The public widget is mobile-first and uses `100dvh`, 44px launcher/input actions, MIME-safe image preview, canonical answer badges, guided workflow rendering, safe page context from `AnswerlatticeWidget.page()/setContext()`, and fire-and-forget feedback. Widget keys are managed as bounded named keys on `stores/{sId}.answerlatticeWidgetApi`; malformed keys short-circuit before Firestore lookup, runtime validation uses key hashes, raw keys are shown only once at creation time, and widget search/feedback JSON bodies are byte-capped after API key, rate-limit, product, purpose, scope, and origin admission. The iframe client also bounds and shape-validates widget search responses before rendering assistant messages. The public site avoids exposing tenant/store ids and routes completed onboarding to `/answerlattice/activation`.
 
 ### API Routes
 
@@ -246,6 +246,7 @@ Planned docs only: Owner Support Assistant reserves `POST /api/answerlattice/sup
 - `src/lib/answerlattice/entityExtraction.ts` — AI entity extraction pipeline
 - `src/lib/answerlattice/signalEmitter.ts` — Fire-and-forget signal emission
 - `src/lib/answerlattice/signalMutation.ts` — Signal clustering + mutation proposals
+- `src/lib/answerlattice/diagnostics.ts` — Bounded runtime diagnostics for signal, mutation, entity extraction, draft, and billing fallback paths
 - `src/lib/answerlattice/tokenizer.ts` — Deterministic tokenizer (frozen)
 
 ---
@@ -413,6 +414,8 @@ Each sub-feature folder contains:
 
 | Date       | Version | Change                                                                                                                                                                                 |
 | ---------- | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-06-28 | 3.4.13  | Hardened public API/widget runtime diagnostics with fixed failure codes and bounded tenant/store metadata while preserving existing auth, admission, cache, and response contracts. |
+| 2026-06-27 | 3.4.12  | Completed bounded request-body admission across Answerlattice, widget, and Help Center route files, including public APIs, widget runtime, MCP, protected AI routes, config saves, onboarding, rebuild actions, and Knowledge Intake. |
 | 2026-06-11 | 3.4.11  | Hardened founder/operator usability across Answerlattice setup surfaces: product-scoped dashboard metadata, safer widget-key placeholders, clearer intake/governance empty states, mobile file selection, and owner-readable digest copy. |
 | 2026-06-07 | 3.4.10  | Marked Owner Support Assistant docs frozen after final codebase-truth cross-check across storage, routes, permissions, tickets, Support Board, analytics, actions, and Firebase cost. |
 | 2026-06-07 | 3.4.9   | Added Owner Support Assistant supported cases/actions catalogue covering handled prompts, permission gates, confirmed actions, and unsupported boundaries. |

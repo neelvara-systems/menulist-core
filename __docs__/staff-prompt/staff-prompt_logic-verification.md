@@ -2,9 +2,11 @@
 
 **Date:** January 11, 2026  
 **Target Feature:** staff-prompt  
-**Status:** ✅ **DEPLOYABLE**
+**Status:** Historical logic verification evidence; not current launch certification
 
 > **Runtime note (June 11, 2026):** Standalone helper logic referenced below is historical. The active runtime reads `staffPrompt` from `platformSummary/campaigns_{sId}` and renders it read-only in Today/mobile Today only when `eligible` is true.
+>
+> **Current release boundary (July 2, 2026):** This logic-verification report preserves January 2026 source evidence only. It is not current release approval. Current Staff Prompt approval requires the active production-readiness audit, External Certification Runbook evidence, `npm run verify:staff-prompt-runtime`, authenticated desktop/mobile Today QA with an eligible target-store `staffPrompt`, target deploy evidence, and production-host smoke. If release scope claims generated prompts end-to-end, upstream summary-writer evidence for `platformSummary/campaigns_{sId}.staffPrompt` is also required.
 
 ---
 
@@ -14,7 +16,7 @@
 STAFF PROMPT LOGIC AUDIT
 TOTAL FLOWS VERIFIED: 4
 CRITICAL ISSUES: 0
-PRODUCTION READINESS: SAFE
+EVIDENCE SCOPE: HISTORICAL SOURCE VERIFICATION ONLY
 COVERAGE: 100% (4/4 flows)
 ```
 
@@ -319,9 +321,9 @@ Decision Blocks (0.65) → Digital Screens (0.7) → Physical Surfaces (0.7-0.8)
 
 ---
 
-## FINAL VERDICT: ✅ DEPLOYABLE
+## Historical Logic Verification Result: Source Evidence Only
 
-**Staff Prompt logic verification complete. All 4 flows verified. Zero critical issues.**
+**This report is historical Staff Prompt flow evidence only, not current release approval. Current certification still requires the active production-readiness audit, External Certification Runbook evidence, `npm run verify:staff-prompt-runtime`, authenticated desktop/mobile Today QA with an eligible target-store `staffPrompt`, target deploy evidence, production-host smoke, and upstream summary-writer evidence if release scope claims generated prompts end-to-end.**
 
 ---
 

@@ -48,6 +48,8 @@ Source file uploads attach Storage custom metadata for operational inspection:
 
 This does not add Firestore writes. The pipeline preserves source-file fidelity for generation, so image files are not re-encoded or EXIF-stripped before upload. Admin-facing upload copy warns users to remove private customer data from images and screenshots before importing them.
 
+June 29 browser-handoff hardening changes only new-tab source-file opens in the KB generation UI to use `noopener,noreferrer`. It adds no Firestore reads/writes/deletes, Storage operations, Cloud Functions, provider calls, rules, indexes, schema fields, or job-state changes.
+
 ---
 
 ## 3. Operations Per Action
@@ -134,6 +136,8 @@ This does not add Firestore writes. The pipeline preserves source-file fidelity 
 | **Total** | | **~$0.02/month** |
 
 This is a very low-frequency feature — cost is negligible.
+
+Job acknowledgement hardening is cost-neutral. `addIngestionJob()`, `updateJob()`, `deleteIngestionJob()`, `retryJob()`, and `cancelJob()` still use the same existing job writes, transaction delete, storage cleanup, and dev trigger behavior, but KB Generation upload, job-card, job-history, review, and reconciliation callers now require explicit job write/delete acknowledgements before local job/review state or success copy advances. This adds no reads, writes, deletes, Storage operations, routes, rules, indexes, schema fields, Cloud Functions, owner settings, Firebase deployment, or Vercel deployment.
 
 ---
 

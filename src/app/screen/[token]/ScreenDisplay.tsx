@@ -21,6 +21,7 @@ import {
     resolveScreenText,
     truncateScreenText,
 } from "@lib/screen/screenContent";
+import { getBoundedScreenStringContext, logScreenDisplayFailure } from "@lib/screen/screenDiagnostics";
 import { getPublicScreenStateDocId } from "@lib/screen/publicScreenState";
 import { guardedReload as _guardedReload, guardedReloadWithJitter as _guardedReloadWithJitter } from "@lib/screen/utils";
 import { ScreenSlide, ScreenStoreInfo } from "@type/campaigns";
@@ -30,8 +31,12 @@ import { AnimatePresence, motion } from "framer-motion";
 import { useCallback, useEffect, useRef, useState } from "react";
 import ScreenAttribution from "./ScreenAttribution";
 
-// Build version for debugging (hardening)
 const SCREEN_BUILD_VERSION = process.env.NEXT_PUBLIC_BUILD_ID || 'dev';
+const SCREEN_SEEN_REQUEST_POLICY = {
+    cache: 'no-store' as RequestCache,
+    credentials: 'same-origin' as RequestCredentials,
+    redirect: 'manual' as RequestRedirect,
+};
 
 // Bind guardedReload to this component's identity for unique localStorage key
 const guardedReload = () => _guardedReload('screen');
@@ -72,7 +77,6 @@ export default function ScreenDisplay({ initialData }: ScreenDisplayProps) {
                     const parsedCache = JSON.parse(cached);
                     // Only use cache if it has valid slides
                     if (parsedCache.slides && parsedCache.slides.length > 0) {
-                        console.log(`[Screen] v${SCREEN_BUILD_VERSION} - Using cached data (${parsedCache.slides.length} slides)`);
                         return {
                             slides: parsedCache.slides,
                             currentIndex: 0,
@@ -81,11 +85,15 @@ export default function ScreenDisplay({ initialData }: ScreenDisplayProps) {
                     }
                 }
             } catch (e) {
-                console.warn('[Screen] Cache read failed:', e);
+                logScreenDisplayFailure('digital_screen_display_cache_read_failed', e, {
+                    ...getBoundedScreenStringContext('token', token),
+                    ...getBoundedScreenStringContext('storeId', storeId),
+                    buildVersionPresent: Boolean(SCREEN_BUILD_VERSION),
+                    buildVersionLength: SCREEN_BUILD_VERSION.length,
+                });
             }
         }
         // Fall back to server data
-        console.log(`[Screen] v${SCREEN_BUILD_VERSION} - Using server data (${initialSlides.length} slides)`);
         return {
             slides: initialSlides,
             currentIndex: 0,
@@ -106,7 +114,6 @@ export default function ScreenDisplay({ initialData }: ScreenDisplayProps) {
             const serverDataStr = JSON.stringify(initialSlides);
             const currentDataStr = JSON.stringify(state.slides);
             if (serverDataStr !== currentDataStr) {
-                console.log(`[Screen] Updating from server data (${initialSlides.length} slides)`);
                 setState(prev => ({ ...prev, slides: initialSlides }));
             }
         }
@@ -116,17 +123,19 @@ export default function ScreenDisplay({ initialData }: ScreenDisplayProps) {
     useEffect(() => {
         try {
             localStorage.setItem(cacheKey, JSON.stringify(initialData));
-            console.log(`[Screen] Cache updated (${state.slides.length} slides)`);
         } catch (e) {
-            console.warn('[Screen] Cache write failed:', e);
+            logScreenDisplayFailure('digital_screen_display_cache_write_failed', e, {
+                ...getBoundedScreenStringContext('token', token),
+                ...getBoundedScreenStringContext('storeId', storeId),
+                slideCount: state.slides.length,
+            });
         }
-    }, [cacheKey, initialData, state.slides.length]);
+    }, [cacheKey, initialData, state.slides.length, storeId, token]);
 
     // HARDENING: Delay QR loading for faster cold boot
     useEffect(() => {
         const timer = setTimeout(() => {
             setQrReady(true);
-            console.log('[Screen] QR ready');
         }, 2000);
         return () => clearTimeout(timer);
     }, []);
@@ -138,17 +147,28 @@ export default function ScreenDisplay({ initialData }: ScreenDisplayProps) {
         const todayKey = `screen_seen_${token}_${new Date().toISOString().slice(0, 10)}`;
         if (!localStorage.getItem(todayKey)) {
             fetch('/api/screen/seen', {
+                ...SCREEN_SEEN_REQUEST_POLICY,
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ token, storeId }),
             })
-                .then(() => {
+                .then((response) => {
+                    if (!response.ok) {
+                        logScreenDisplayFailure('digital_screen_display_seen_signal_rejected', new Error('screen_seen_signal_rejected'), {
+                            ...getBoundedScreenStringContext('token', token),
+                            ...getBoundedScreenStringContext('storeId', storeId),
+                            responseStatus: response.status,
+                        });
+                        return;
+                    }
                     localStorage.setItem(todayKey, '1');
-                    console.log('[Screen] Daily seen signal sent');
                 })
-                .catch(() => {
-                    // Silent fail - don't break screen for ops signal
-                    console.warn('[Screen] Daily seen signal failed (will retry tomorrow)');
+                .catch((error) => {
+                    // Seen-signal failures must not break the public screen.
+                    logScreenDisplayFailure('digital_screen_display_seen_signal_failed', error, {
+                        ...getBoundedScreenStringContext('token', token),
+                        ...getBoundedScreenStringContext('storeId', storeId),
+                    });
                 });
         }
     }, [token, storeId]);
@@ -180,7 +200,6 @@ export default function ScreenDisplay({ initialData }: ScreenDisplayProps) {
     // At 5k+ screens, this saves significant Firestore cost.
     useEffect(() => {
         const docId = getPublicScreenStateDocId(storeId);
-        console.log(`[Screen] Setting up doc listener: platformSummary/${docId}`);
 
         const docRef = doc(firebaseClient, DB_COLLECTIONS.PLATFORM_SUMMARY, docId);
 
@@ -193,14 +212,16 @@ export default function ScreenDisplay({ initialData }: ScreenDisplayProps) {
 
                     // Only reload if content version changed (real update)
                     if (newVersion > currentVersion) {
-                        console.log(`[Screen] Content version changed (${currentVersion} → ${newVersion}), refreshing...`);
                         // Per ChatGPT review v3: Use jitter to prevent mass reload spikes
                         guardedReloadWithJitter();
                     }
                 }
             },
             (error) => {
-                console.warn('[Screen] Listener error:', error);
+                logScreenDisplayFailure('digital_screen_display_listener_failed', error, {
+                    ...getBoundedScreenStringContext('storeId', storeId),
+                    currentVersion: initialData.contentVersion,
+                });
                 // On listener error, set offline mode but keep showing cached slides
                 setState(prev => ({ ...prev, isOffline: true }));
             }
@@ -208,7 +229,6 @@ export default function ScreenDisplay({ initialData }: ScreenDisplayProps) {
 
         // Cleanup listener on unmount
         return () => {
-            console.log('[Screen] Cleaning up real-time listener');
             unsubscribe();
         };
     }, [storeId, initialData.contentVersion]);
@@ -217,7 +237,6 @@ export default function ScreenDisplay({ initialData }: ScreenDisplayProps) {
     useEffect(() => {
         const fallbackRefresh = setInterval(() => {
             if (state.isOffline) {
-                console.log('[Screen] Offline fallback refresh attempt');
                 guardedReload();
             }
         }, 30 * 60 * 1000); // 30 minutes
@@ -233,7 +252,6 @@ export default function ScreenDisplay({ initialData }: ScreenDisplayProps) {
     useEffect(() => {
         const SIX_HOURS_MS = 6 * 60 * 60 * 1000;
         const proactiveRefresh = setInterval(() => {
-            console.log('[Screen] Proactive 6-hour refresh for health maintenance');
             guardedReload();
         }, SIX_HOURS_MS);
 
@@ -243,10 +261,10 @@ export default function ScreenDisplay({ initialData }: ScreenDisplayProps) {
     // Per ChatGPT review v3: Auto-fullscreen recovery
     // Staff may accidentally exit fullscreen via remote or touch
     const [showFullscreenHint, setShowFullscreenHint] = useState(false);
-    useEffect(() => {
-        const handleFullscreenChange = () => {
-            if (!document.fullscreenElement) {
-                setShowFullscreenHint(true);
+	    useEffect(() => {
+	        const handleFullscreenChange = () => {
+	            if (!document.fullscreenElement) {
+	                setShowFullscreenHint(true);
                 // Auto-hide hint after 10 seconds
                 setTimeout(() => setShowFullscreenHint(false), 10000);
             } else {
@@ -254,11 +272,25 @@ export default function ScreenDisplay({ initialData }: ScreenDisplayProps) {
             }
         };
         document.addEventListener('fullscreenchange', handleFullscreenChange);
-        return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
-    }, []);
+	        return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+	    }, []);
 
-    // Current slide with zero-blank guarantee
-    const currentSlide = state.slides[state.currentIndex];
+	    const handleFullscreenHintClick = () => {
+	        const fullscreenRequest = document.documentElement.requestFullscreen?.();
+	        if (fullscreenRequest) {
+	            fullscreenRequest.catch((error) => {
+	                logScreenDisplayFailure('digital_screen_display_fullscreen_request_failed', error, {
+	                    ...getBoundedScreenStringContext('token', token),
+	                    ...getBoundedScreenStringContext('storeId', storeId),
+	                    component: 'highlights',
+	                });
+	            });
+	        }
+	        setShowFullscreenHint(false);
+	    };
+
+	    // Current slide with zero-blank guarantee
+	    const currentSlide = state.slides[state.currentIndex];
 
     // HARDENING: Zero-blank guarantee - always show something
     if (!currentSlide && state.slides.length === 0) {
@@ -332,13 +364,10 @@ export default function ScreenDisplay({ initialData }: ScreenDisplayProps) {
         <div className="screen-container">
             {/* Fullscreen recovery hint */}
             {showFullscreenHint && (
-                <div
-                    className="fullscreen-hint"
-                    onClick={() => {
-                        document.documentElement.requestFullscreen?.().catch(() => { });
-                        setShowFullscreenHint(false);
-                    }}
-                >
+	                <div
+	                    className="fullscreen-hint"
+	                    onClick={handleFullscreenHintClick}
+	                >
                     Tap to return to fullscreen
                 </div>
             )}

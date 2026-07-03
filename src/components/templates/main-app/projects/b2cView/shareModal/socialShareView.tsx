@@ -1,5 +1,12 @@
 import { useOfferingLabels } from '@hook/useOfferingLabels';
 import { withAnalyticsSource, type AnalyticsEntrySource } from '@lib/analytics/sourceAttribution';
+import {
+    copyExportTextToClipboard,
+    getBoundedExportStringContext,
+    hasExportClipboardWrite,
+    hasExportCopyFallback,
+    logExportFailure,
+} from '@lib/export/exportDiagnostics';
 import { Button, Card, Flex, message, theme, Tooltip, Typography } from 'antd';
 import React from 'react';
 import { FaFacebook, FaInstagram, FaLine, FaLinkedin, FaTelegram, FaVk, FaWeixin, FaWhatsapp, FaXTwitter } from 'react-icons/fa6';
@@ -88,18 +95,38 @@ function SocialShareView({ shareUrl }: SocialShareViewProps) {
     ];
 
     const handleCopyPlatformLink = async (platform: string) => {
+        const urlWithUTM = withEntrySource(shareUrl, platform);
         try {
-            const urlWithUTM = withEntrySource(shareUrl, platform);
-            await navigator.clipboard.writeText(urlWithUTM);
+            await copyExportTextToClipboard(urlWithUTM);
             message.success(`Link with ${platform} tracking copied!`);
-        } catch (err) {
+        } catch (error) {
+            logExportFailure('project_share_legacy_social_copy_failed', error, {
+                ...getBoundedExportStringContext('platform', platform),
+                ...getBoundedExportStringContext('shareUrl', shareUrl),
+                copyUrlLength: urlWithUTM.length,
+                hasClipboardWrite: hasExportClipboardWrite(),
+                hasCopyFallback: hasExportCopyFallback(),
+            });
             message.error('Failed to copy link');
         }
     };
 
     const handleShareOnPlatform = (platform: SocialPlatform) => {
         const urlWithUTM = withEntrySource(shareUrl, platform.name);
-        window.open(platform.shareUrl(urlWithUTM), '_blank');
+        const socialShareUrl = platform.shareUrl(urlWithUTM);
+        try {
+            const opened = window.open(socialShareUrl, '_blank', 'noopener,noreferrer');
+            if (!opened) {
+                throw new Error('project_share_legacy_social_open_blocked');
+            }
+        } catch (error) {
+            logExportFailure('project_share_legacy_social_open_failed', error, {
+                ...getBoundedExportStringContext('platform', platform.name),
+                ...getBoundedExportStringContext('shareUrl', shareUrl),
+                socialShareUrlLength: socialShareUrl.length,
+            });
+            message.error('Failed to open share link');
+        }
     };
 
     return (
@@ -166,7 +193,7 @@ function SocialShareView({ shareUrl }: SocialShareViewProps) {
                                     <Button
                                         icon={<LuClipboard />}
                                         onClick={(e) => {
-                                            handleCopyPlatformLink(platform.name);
+                                            void handleCopyPlatformLink(platform.name);
                                             e.stopPropagation();
                                         }}
                                         style={{

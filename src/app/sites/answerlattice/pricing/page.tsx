@@ -11,7 +11,7 @@ import SectionHeader from '../components/SectionHeader';
 
 export const metadata: Metadata = {
     title: 'Pricing',
-    description: 'Founder-friendly INR pricing, beta setup, support credits, intake media processing, and paid AnswerLattice plans for founder-led SaaS teams.',
+    description: 'Founder-friendly INR pricing, paid setup, support credits, intake media processing, and AnswerLattice plans for founder-led SaaS teams.',
     alternates: { canonical: '/pricing' },
 };
 
@@ -61,7 +61,7 @@ const PLAN_GUIDANCE: Record<string, string> = {
 const formatPrice = (paise: number) => `₹${Math.round(paise / 100).toLocaleString('en-IN')}`;
 
 const publicPlans = getAnswerlatticePlans()
-    .filter((plan) => plan.billingInterval === 'MONTH' && plan.planId !== 'answerlattice_beta')
+    .filter((plan) => plan.billingInterval === 'MONTH')
     .sort((left, right) => left.priceINR.price - right.priceINR.price);
 
 const SHARED_INCLUDED = [
@@ -102,7 +102,7 @@ export default function AnswerlatticePricingPage() {
                     <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">Pricing</p>
                     <h1 className="text-4xl font-bold sm:text-5xl">Choose capacity when support volume is real.</h1>
                     <p className="mx-auto mt-4 max-w-lg text-lg text-[#a0a0c0]">
-                        Create the workspace, install the widget, and prove the support loop before choosing monthly capacity.
+                        Choose a paid plan, create the workspace, install the widget, and prove the support loop with bounded capacity.
                     </p>
                     <PageProofStrip
                         className="mx-auto mt-8 max-w-6xl text-left"
@@ -119,17 +119,17 @@ export default function AnswerlatticePricingPage() {
                     <div className="mx-auto max-w-6xl rounded-2xl border border-teal-500/25 bg-teal-500/[0.07] p-6">
                         <div className="grid gap-4 md:grid-cols-[1.2fr_0.8fr] md:items-center">
                             <div>
-                                <p className="mb-2 text-xs font-semibold uppercase tracking-widest text-teal-200">Controlled setup</p>
-                                <h2 className="text-2xl font-bold text-white">Create the workspace first. Upgrade when the support layer is ready.</h2>
+                                <p className="mb-2 text-xs font-semibold uppercase tracking-widest text-teal-200">Paid setup</p>
+                                <h2 className="text-2xl font-bold text-white">Start with Starter. Upgrade when support volume is real.</h2>
                                 <p className="mt-3 text-sm leading-relaxed text-[#a0a0c0]">
-                                    Public onboarding currently creates the AnswerLattice beta workspace, product account bridge, subscription summary, and one-time widget key. Paid plans and top-ups run through the AnswerLattice Billing screen with product-scoped Razorpay requests.
+                                    Public onboarding creates the AnswerLattice workspace, product account bridge, pending paid subscription, product surfaces, and one-time widget key. Plans and top-ups run through the AnswerLattice Billing screen with product-scoped Razorpay requests.
                                 </p>
                             </div>
                             <AnswerlatticeLink
                                 basePath={basePath}
                                 href="/get-started"
-                                data-answerlattice-event="pricing_beta_setup_clicked"
-                                data-answerlattice-label="controlled_setup_banner"
+                                data-answerlattice-event="pricing_paid_setup_clicked"
+                                data-answerlattice-label="starter_setup_banner"
                                 className="rounded-xl bg-teal-700 px-6 py-3 text-center text-sm font-semibold text-white shadow-lg shadow-teal-500/25 transition-all hover:bg-teal-800"
                             >
                                 Create workspace

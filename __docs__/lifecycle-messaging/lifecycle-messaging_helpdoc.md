@@ -61,7 +61,7 @@ You can update your notification email in **Business Settings → Notifications*
 
 ## Related Features
 
-- [Billing & Subscription](../billing/)
+- [Billing & Subscription](../razorpay/)
 - [Business Settings](../stores-management/)
 
 ---

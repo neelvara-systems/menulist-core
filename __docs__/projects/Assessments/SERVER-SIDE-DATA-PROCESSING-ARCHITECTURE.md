@@ -5,6 +5,8 @@
 > **Status:** Under Discussion  
 > **Author:** Development Team
 
+> **Launch Boundary:** This ADR is architecture discussion evidence, not production launch certification. Current release approval still requires the active [production-readiness audit](../../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../../production-readiness/external-certification-runbook.md) evidence, queue/runtime QA, Cloud Function/deploy evidence where server processing changes, provider smoke, and target-environment smoke.
+
 ---
 
 ## Table of Contents
@@ -518,7 +520,7 @@ Move to Firestore-triggered architecture:
 - Detailed progress tracking
 - Automatic retry support
 
-**Why:** Production-grade reliability for scale
+**Why:** Scale-oriented reliability; release still depends on the active launch gates above
 
 ---
 
@@ -534,7 +536,7 @@ Move to Firestore-triggered architecture:
 
 ### Final Thought
 
-> The user's intuition is correct: **server-side processing with real-time status updates is the right pattern** for long-running AI operations. The recommended approach adds structure (job queue) to make it production-ready.
+> The user's intuition is correct: **server-side processing with real-time status updates is the right pattern** for long-running AI operations. The recommended approach adds queue structure, but release approval still depends on the active launch gates above.
 
 ---
 

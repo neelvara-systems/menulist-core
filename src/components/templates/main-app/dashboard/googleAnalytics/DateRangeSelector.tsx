@@ -5,7 +5,8 @@ import type { Dayjs } from 'dayjs';
 import dayjs from 'dayjs';
 import React, { useContext } from 'react';
 import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from '@providers/platformProviders/platformGlobalDataProvider';
-import { updateStore } from '@database/stores';
+import { assertStoreUpdateSucceeded, updateStore } from '@database/stores';
+import { getBoundedAnalyticsStringContext, logAnalyticsFailure } from '@lib/analytics/analyticsDiagnostics';
 
 const { RangePicker } = DatePicker;
 
@@ -22,9 +23,11 @@ interface DateRangeSelectorProps {
 const DateRangeSelector: React.FC<DateRangeSelectorProps> = ({ value, onChange }) => {
     const { storeDetails } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext);
     const saveDashboardPreferences = async (dateRange: string) => {
-        if (storeDetails?.storeId) {
+        if (!storeDetails?.storeId) return;
+
+        try {
             const currentPrefs = storeDetails.analytics?.dashboardPreferences || {};
-            await updateStore({
+            const writeResult = await updateStore({
                 storeId: storeDetails.storeId,
                 analytics: {
                     ...storeDetails.analytics,
@@ -34,34 +37,47 @@ const DateRangeSelector: React.FC<DateRangeSelectorProps> = ({ value, onChange }
                     }
                 }
             });
+            assertStoreUpdateSucceeded(
+                writeResult,
+                storeDetails.storeId,
+                'dashboard_google_date_range_preference_store_update_rejected',
+            );
+        } catch (error) {
+            logAnalyticsFailure('dashboard_google_date_range_preference_save_failed', error, {
+                surface: 'dashboard_google_analytics_date_range_selector',
+                ...getBoundedAnalyticsStringContext('storeId', storeDetails.storeId),
+                ...getBoundedAnalyticsStringContext('tenantId', storeDetails.tenantId),
+                ...getBoundedAnalyticsStringContext('dateRange', dateRange),
+                hasExistingDashboardPreferences: Boolean(storeDetails.analytics?.dashboardPreferences),
+            });
         }
     };
 
     const handleQuickSelect = (range: string) => {
         switch (range) {
             case 'today':
-                saveDashboardPreferences(range);
+                void saveDashboardPreferences(range);
                 onChange({
                     startDate: 'today',
                     endDate: 'today'
                 });
                 break;
             case '7days':
-                saveDashboardPreferences(range);
+                void saveDashboardPreferences(range);
                 onChange({
                     startDate: '7daysAgo',
                     endDate: 'today'
                 });
                 break;
             case '30days':
-                saveDashboardPreferences(range);
+                void saveDashboardPreferences(range);
                 onChange({
                     startDate: '30daysAgo',
                     endDate: 'today'
                 });
                 break;
             case '90days':
-                saveDashboardPreferences(range);
+                void saveDashboardPreferences(range);
                 onChange({
                     startDate: '90daysAgo',
                     endDate: 'today'

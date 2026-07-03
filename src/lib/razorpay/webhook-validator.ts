@@ -1,4 +1,8 @@
-import { secureError, secureLog } from '@lib/security/secureLogger';
+import {
+  getBoundedSecurityStringContext,
+  logSecurityDiagnostic,
+  logSecurityFailure,
+} from '@lib/security/securityDiagnostics';
 import { createHmac, timingSafeEqual } from 'crypto';
 
 /**
@@ -41,10 +45,11 @@ export async function validateRazorpayWebhookSignature(
   try {
     // Validate inputs
     if (!requestBody || !signature || !secret) {
-      secureLog('[Webhook Validator] Missing required parameters', {
+      logSecurityDiagnostic('razorpay_webhook_validator_missing_parameters', {
         hasBody: !!requestBody,
         hasSignature: !!signature,
-        hasSecret: !!secret
+        hasSecret: !!secret,
+        ...getBoundedSecurityStringContext('provider', 'razorpay'),
       });
       return false;
     }
@@ -66,9 +71,10 @@ export async function validateRazorpayWebhookSignature(
 
     // Lengths must match for timingSafeEqual
     if (generatedBuffer.length !== receivedBuffer.length) {
-      secureLog('[Webhook Validator] Signature length mismatch', {
-        expected: generatedBuffer.length,
-        received: receivedBuffer.length
+      logSecurityDiagnostic('razorpay_webhook_validator_signature_length_mismatch', {
+        expectedLength: generatedBuffer.length,
+        receivedLength: receivedBuffer.length,
+        ...getBoundedSecurityStringContext('provider', 'razorpay'),
       });
       return false;
     }
@@ -77,16 +83,16 @@ export async function validateRazorpayWebhookSignature(
     const isValid = timingSafeEqual(generatedBuffer, receivedBuffer);
 
     if (!isValid) {
-      secureLog('[Webhook Validator] Invalid signature received', {
-        provider: 'razorpay',
-        signatureLength: signature.length
+      logSecurityDiagnostic('razorpay_webhook_validator_invalid_signature', {
+        signatureLength: signature.length,
+        ...getBoundedSecurityStringContext('provider', 'razorpay'),
       });
     }
 
     return isValid;
   } catch (error) {
-    secureError('[Webhook Validator] Error during signature validation', error as Error, {
-      provider: 'razorpay'
+    logSecurityFailure('razorpay_webhook_validator_validation_failed', error, {
+      ...getBoundedSecurityStringContext('provider', 'razorpay'),
     });
     return false;
   }

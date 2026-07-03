@@ -23,6 +23,7 @@ import { getSessionId } from '@lib/analytics/session';
 import { trackEvent, TrackingEvent } from '@lib/analytics/unified';
 import { getLuminance } from '@lib/colorEnforcement';
 import type { BeforeInstallPromptEvent } from '@lib/pwa/installDetection';
+import { getBoundedPwaStringContext, logPwaTrackingFailure } from '@lib/pwa/pwaDiagnostics';
 import { recordPromptShown } from '@lib/pwa/installTracker';
 import { detectPlatform } from '@lib/pwa/platformDetection';
 import { APP_THEME_COLOR } from '@constant/common';
@@ -134,7 +135,14 @@ export default function InstallPrompt({
                     onInstallAccepted();
                 }
             } catch (err) {
-                console.warn('[pwa] native install prompt failed:', err);
+                logPwaTrackingFailure('customer_app_native_install_prompt_failed', err, {
+                    ...getBoundedPwaStringContext('storeId', storeId),
+                    ...getBoundedPwaStringContext('tenantId', tenantId),
+                    ...getBoundedPwaStringContext('pwaPlatform', platform.platform),
+                    ...getBoundedPwaStringContext('pwaBrowser', platform.browser),
+                    includeLocation: locationTrackingEnabled,
+                    trackingEnabled,
+                });
             } finally {
                 setBusy(false);
             }

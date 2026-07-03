@@ -23,6 +23,7 @@ import {
     CAMPAIGNCUE_FIREBASE_PROJECT_ID_ENV_KEYS,
 } from '@constant/campaigncue/firebase';
 import { SIGNALDESK_FIREBASE_PROJECT_ID_ENV_KEYS } from '@constant/signaldesk/firebase';
+import { logEnvValidationDiagnostic, logEnvValidationFailure } from './envDiagnostics';
 
 interface EnvValidationResult {
     valid: boolean;
@@ -69,6 +70,10 @@ const OPTIONAL_VARS: readonly string[] = [
     'PLATFORM_ALERT_EMAIL_TO',       // Platform alert email recipient override
     'PLATFORM_ALERT_WHATSAPP_TO',    // Platform alert WhatsApp recipient
     'PLATFORM_ALERT_WHATSAPP_TEMPLATE_NAME', // Platform alert WhatsApp template
+    'WHATSAPP_PHONE_NUMBER_ID',       // WhatsApp provider phone number id
+    'WHATSAPP_ACCESS_TOKEN',          // WhatsApp provider Graph API token
+    'WHATSAPP_APP_SECRET',            // WhatsApp webhook signature verification
+    'WHATSAPP_VERIFY_TOKEN',          // WhatsApp webhook registration challenge
     'TELEGRAM_BOT_TOKEN',           // Ops alerts (ENABLE_OPS_ALERTS)
     'TELEGRAM_CHAT_ID',             // Ops alerts
     'GA_CLIENT_EMAIL',              // Analytics
@@ -85,7 +90,7 @@ const PRODUCT_PROJECT_VARS: Record<DeploymentProductId, readonly string[]> = {
         'NEXT_PUBLIC_FIREBASE_PROJECT_ID',
         'FIREBASE_PROJECT_ID',
     ],
-    constantlayer: [],
+    neelvara: [],
     answerlattice: [
         'NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_PROJECT_ID',
         'ANSWERLATTICE_FIREBASE_PROJECT_ID',
@@ -104,7 +109,7 @@ const MYCODEX_AUTH_VARS = [
 
 const describeProduct = (productId: DeploymentProductId) => {
     if (productId === 'menulist') return 'MenuList';
-    if (productId === 'constantlayer') return 'ConstantLayer';
+    if (productId === 'neelvara') return 'Neelvara';
     if (productId === 'answerlattice') return 'Answerlattice';
     if (productId === 'campaigncue') return 'CampaignCue';
     if (productId === 'signaldesk') return 'MenuList SignalDesk';
@@ -250,20 +255,24 @@ export function runEnvValidation(): void {
     const result = validateEnvironment();
     const isProd = process.env.NODE_ENV === 'production';
     const isVercel = process.env.VERCEL === '1';
+    const validationContext = {
+        isProduction: isProd,
+        isVercel,
+        missingCount: result.missing.length,
+        warningCount: result.warnings.length,
+    };
 
     if (!result.valid) {
-        const errorMsg = `[ENV] Missing required environment variables:\n${result.missing.map(v => `  - ${v}`).join('\n')}`;
-
         if (isProd && isVercel) {
             // In production on Vercel: log error but don't crash
             // (Vercel builds run without all env vars during static generation)
-            console.error(errorMsg);
+            logEnvValidationFailure('env_required_variables_missing_vercel', validationContext);
         } else if (isProd) {
             // In production locally: hard error
-            console.error(errorMsg);
+            logEnvValidationFailure('env_required_variables_missing_production', validationContext);
         } else {
             // In development: warn only
-            console.warn(`[ENV] ⚠️ ${result.missing.length} required vars missing (OK for local dev if using emulators)`);
+            logEnvValidationDiagnostic('env_required_variables_missing_development', validationContext);
         }
     }
 
@@ -271,7 +280,11 @@ export function runEnvValidation(): void {
     if (!isProd && result.warnings.length > 0) {
         const paymentWarnings = result.warnings.filter(w => w.includes('RAZORPAY'));
         if (paymentWarnings.length > 0) {
-            console.warn(`[ENV] ⚠️ Payment vars missing — billing will not work`);
+            logEnvValidationDiagnostic('env_payment_variables_missing_development', {
+                isProduction: isProd,
+                isVercel,
+                paymentWarningCount: paymentWarnings.length,
+            });
         }
     }
 }

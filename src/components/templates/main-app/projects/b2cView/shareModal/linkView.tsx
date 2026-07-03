@@ -1,5 +1,12 @@
 import { useOfferingLabels } from '@hook/useOfferingLabels';
 import { withAnalyticsSource } from '@lib/analytics/sourceAttribution';
+import {
+    copyExportTextToClipboard,
+    getBoundedExportStringContext,
+    hasExportClipboardWrite,
+    hasExportCopyFallback,
+    logExportFailure,
+} from '@lib/export/exportDiagnostics';
 import { Button, Flex, message, Typography } from 'antd';
 import { LuCopy, LuExternalLink } from 'react-icons/lu';
 
@@ -19,9 +26,15 @@ function LinkView({ shareUrl }: LinkViewProps) {
 
     const handleCopyLink = async () => {
         try {
-            await navigator.clipboard.writeText(copyUrl);
+            await copyExportTextToClipboard(copyUrl);
             message.success('Link copied to clipboard!');
-        } catch (err) {
+        } catch (error) {
+            logExportFailure('project_share_legacy_link_copy_failed', error, {
+                ...getBoundedExportStringContext('shareUrl', shareUrl),
+                copyUrlLength: copyUrl.length,
+                hasClipboardWrite: hasExportClipboardWrite(),
+                hasCopyFallback: hasExportCopyFallback(),
+            });
             message.error('Failed to copy link');
         }
     };

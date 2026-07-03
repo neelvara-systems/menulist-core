@@ -13,6 +13,13 @@ import {
     logMenuChange,
     logMenuChanges,
 } from "@database/menuChangeLog";
+import {
+    getBoundedProjectPersistenceStringContext,
+    getProjectPersistenceProjectLogContext,
+    logProjectPersistenceFailure,
+    logProjectPersistenceInfo,
+    type ProjectPersistenceLogContext,
+} from "@database/projects/diagnostics";
 import uploadBase64ToStorage from "@database/storage/uploadBase64ToStorage";
 import { uploadPreparedMediaImage } from "@database/storage/uploadPreparedMediaImage";
 import {
@@ -34,6 +41,7 @@ import { apiCallComposer } from "@lib/apiHelper/apiCallComposer";
 import { apiCallComposerClientWithoutLoader } from "@lib/apiHelper/apiCallComposerClientWithoutLoader";
 import getActiveSession from "@lib/auth/getActiveSession";
 import { firebaseClient } from "@lib/firebase/firebaseClient";
+import { logMCEValidationFailure, logMCEValidationResult } from "@lib/mce/diagnostics";
 import {
     getLocalizedText,
     getPrimaryLocalizedLanguage,
@@ -53,6 +61,12 @@ import {
 } from "@lib/firestore/summaryProjectsWriter";
 import { revalidatePublicClientCacheForProject } from "@lib/cache/publicClientCache";
 import { getMenuDesignPresetPatch, getRecommendedMenuDesignPresets } from "@lib/menu/menuDesignPresets";
+import {
+    LINKED_OUTLET_SAVE_RESPONSE_JSON_MAX_BYTES,
+    LINKED_OUTLET_SAVE_REQUEST_POLICY,
+    isLinkedOutletSaveResponse,
+    readLinkedOutletSaveResponseJson,
+} from "@lib/multiOutlet/linkedOutletSaveResponse";
 import type { MediaImageType, MediaImageVariantId } from "@lib/media/imageProfiles";
 import { isDataUrl } from "@lib/media/mediaStorage";
 import { prepareMediaImage } from "@lib/media/prepareMediaImage";
@@ -76,10 +90,49 @@ import { TimeSlotPreset } from "@type/platform/store";
 const DATA_COLLECTION = DB_COLLECTIONS.PROJECTS;
 const PLATFORM_SUMMARY = DB_COLLECTIONS.PLATFORM_SUMMARY;
 
+type ProjectDefaultHandoffOptions = {
+    unsetProjectId?: string | number | null;
+    setProjectId?: string | number | null;
+};
+
+type ProjectSummaryWriteOptions = {
+    defaultHandoff?: ProjectDefaultHandoffOptions | null;
+    defaultHandoffSummaryMap?: Record<string, ProjectSummaryData>;
+    cacheContext?: string;
+};
+
+const createProjectPersistenceStatusError = (
+    failureCode: string,
+    status?: number,
+    message = failureCode,
+): Error & { code: string; status?: number } => Object.assign(new Error(message), {
+    code: failureCode,
+    status,
+});
+
+const readLinkedOutletSaveResponse = async (
+    response: Response,
+    context: ProjectPersistenceLogContext,
+    failureCode: string,
+    failureMessage: string,
+): Promise<unknown> => {
+    try {
+        return await readLinkedOutletSaveResponseJson(response);
+    } catch (error) {
+        logProjectPersistenceFailure('project_linked_outlet_response_parse_failed', error, {
+            ...context,
+            maxBytes: LINKED_OUTLET_SAVE_RESPONSE_JSON_MAX_BYTES,
+            responseOk: response.ok,
+            responseStatus: response.status,
+        });
+        throw createProjectPersistenceStatusError(failureCode, response.status, failureMessage);
+    }
+};
+
 // ═══════════════════════════════════════════════════════════════
 // MENU OBSERVATION LAYER (MOL v0) - Change Detection
 // Silent infrastructure - NO UI, NO owner visibility
-// @see __docs__/internal-tracking/MOL-V0-IMPLEMENTATION-PLAN.md
+// @see __docs__/internal-tracking/mol-v0-implementation-plan.md
 // ═══════════════════════════════════════════════════════════════
 
 /**
@@ -335,7 +388,11 @@ async function detectAndLogChanges(
         }));
     } catch (error) {
         // Fire-and-forget - silent fail, don't block project update
-        console.warn("[MOL] Change detection error (non-blocking):", error);
+        logProjectPersistenceFailure('project_change_detection_failed', error, {
+            ...getProjectPersistenceProjectLogContext(projectId),
+            oldProjectPresent: Boolean(oldProject),
+            newProjectPresent: Boolean(newProject),
+        });
     }
 }
 
@@ -396,10 +453,17 @@ async function createMenuSnapshot(
             snapshotMode: "full_menu_short_term",
         });
 
-        console.debug("[Snapshot] Menu snapshot created for", projectId);
+        logProjectPersistenceInfo('project_snapshot_created', {
+            ...getProjectPersistenceProjectLogContext(projectId),
+            itemCount: Object.keys(items).length,
+            categoryCount: Object.keys(categories).length,
+            retentionDays,
+        });
     } catch (error) {
         // Fire-and-forget — snapshot failure never blocks publish
-        console.warn("[Snapshot] Failed to create menu snapshot (non-blocking):", error);
+        logProjectPersistenceFailure('project_snapshot_create_failed', error, {
+            ...getProjectPersistenceProjectLogContext(projectId),
+        });
     }
 }
 
@@ -503,6 +567,70 @@ const stripUndefinedProjectSummaryFields = (
     ) as Partial<ProjectSummaryData>
 );
 
+const normalizeProjectDefaultHandoffId = (
+    value?: string | number | null,
+): string | undefined => {
+    const normalized = String(value ?? '').trim();
+    return normalized || undefined;
+};
+
+const buildProjectDefaultHandoffSummaryPayload = (
+    projectId: string,
+    options?: ProjectSummaryWriteOptions,
+): { payload: Record<string, any>; projectIds: string[] } => {
+    const unsetProjectId = normalizeProjectDefaultHandoffId(options?.defaultHandoff?.unsetProjectId);
+    const setProjectId = normalizeProjectDefaultHandoffId(options?.defaultHandoff?.setProjectId);
+    const payload: Record<string, any> = {};
+    const projectIds: string[] = [];
+
+    if (unsetProjectId && unsetProjectId !== projectId) {
+        Object.assign(payload, buildSummaryProjectFieldPayload(unsetProjectId, 'isDefault', false));
+        projectIds.push(unsetProjectId);
+    }
+
+    if (setProjectId && setProjectId !== projectId) {
+        const setProjectSummary = options?.defaultHandoffSummaryMap?.[setProjectId];
+        if (options?.defaultHandoffSummaryMap && !setProjectSummary) {
+            throw new Error('Replacement default project was not found.');
+        }
+        if (setProjectSummary?.isSpecialMenu) {
+            throw new Error('A special menu cannot be set as the default project.');
+        }
+        Object.assign(payload, buildSummaryProjectFieldPayload(setProjectId, 'isDefault', true));
+        projectIds.push(setProjectId);
+    }
+
+    return { payload, projectIds };
+};
+
+const writeProjectSummary = async (
+    projectId: string,
+    data: ProjectSummaryData,
+    options: ProjectSummaryWriteOptions = {},
+) => {
+    const docRef = await getProjectsSummaryDocRef();
+    const cleanData = stripUndefinedProjectSummaryFields(data) as ProjectSummaryData;
+    const handoff = buildProjectDefaultHandoffSummaryPayload(projectId, options);
+
+    await setDoc(
+        docRef,
+        {
+            lastUpdated: serverTimestamp(),
+            ...buildSummaryProjectPayload(projectId, cleanData),
+            ...handoff.payload,
+        },
+        { merge: true },
+    );
+
+    const cacheContext = options.cacheContext || 'syncProjectToSummary';
+    await Promise.all(
+        Array.from(new Set([projectId, ...handoff.projectIds]))
+            .map((cacheProjectId) => revalidatePublicClientCacheForProject(cacheProjectId, cacheContext)),
+    );
+
+    return { projectId, ...cleanData };
+};
+
 // ═══════════════════════════════════════════════════════════════
 // SLUG RESERVATION (T1-N-04 / A-12 PUBLIC-ROUTING-DOCTRINE)
 // ═══════════════════════════════════════════════════════════════
@@ -528,7 +656,7 @@ const SLUG_RESERVATION_WINDOW_MS = 90 * 24 * 60 * 60 * 1000;
  * very few deleted projects in any 90-day window). Skipped entirely
  * when the proposed slug is empty.
  *
- * @see __docs__/client-menu/PUBLIC-ROUTING-DOCTRINE.md §A-12, T1-N-04
+ * @see __docs__/client-menu/public-routing-doctrine.md §A-12, T1-N-04
  */
 const isSlugReservedByRecentlyDeleted = async (
     proposedSlug: string,
@@ -569,7 +697,10 @@ const isSlugReservedByRecentlyDeleted = async (
     } catch (error) {
         // Fail-open on infrastructure errors — create/rename validation is
         // a best-effort guard, not a security boundary. Log for visibility.
-        console.warn('[SlugReservation] Check failed (fail-open):', error);
+        logProjectPersistenceFailure('deleted_project_slug_reservation_check_failed', error, {
+            ...getBoundedProjectPersistenceStringContext('slug', normalized),
+            slugReservationWindowDays: SLUG_RESERVATION_WINDOW_MS / (24 * 60 * 60 * 1000),
+        });
     }
 
     return false;
@@ -602,26 +733,16 @@ export const getProjectsSummary = async (): Promise<
 export const syncProjectToSummary = async (
     projectId: string,
     data: ProjectSummaryData,
+    options?: ProjectSummaryWriteOptions,
 ) => {
     return await apiCallComposer(
         async () => {
-            const docRef = await getProjectsSummaryDocRef();
-            // Firestore rejects undefined values — strip them before writing
-            const cleanData = Object.fromEntries(
-                Object.entries(data).filter(([, v]) => v !== undefined)
-            ) as ProjectSummaryData;
-            await setDoc(
-                docRef,
-                {
-                    lastUpdated: serverTimestamp(),
-                    ...buildSummaryProjectPayload(projectId, cleanData),
-                },
-                { merge: true },
-            );
-            await revalidatePublicClientCacheForProject(projectId, "syncProjectToSummary");
-            return { projectId, ...cleanData };
+            return await writeProjectSummary(projectId, data, {
+                ...options,
+                cacheContext: options?.cacheContext || "syncProjectToSummary",
+            });
         },
-        { projectId, data },
+        { projectId, data, options },
         "syncProjectToSummary",
     );
 };
@@ -649,6 +770,17 @@ export const removeProjectFromSummary = async (projectId: string) => {
     );
 };
 
+const getTenantScopedProjectUploadFileId = (projectId: string, fileId: string): string => {
+    const stableId = `${projectId || 'project'}-${fileId || Date.now()}`;
+    const normalizedId = stableId
+        .trim()
+        .replace(/[^a-zA-Z0-9._-]+/g, '-')
+        .replace(/^-+|-+$/g, '')
+        .slice(0, 120);
+
+    return normalizedId || `${Date.now()}`;
+};
+
 export const uploadProjectFile = async (
     data: any,
     type = "",
@@ -658,14 +790,21 @@ export const uploadProjectFile = async (
     let newUrl: any = "";
     let fileType: any = data.fileType;
     let fileToUpdate: any = data.fileToUpdate;
-    const docId = `${projectId}/${fileId}`;
+    const storageFileId = getTenantScopedProjectUploadFileId(projectId, fileId);
+    const storageFileType = type || "files";
 
     if (fileToUpdate) {
         if (fileToUpdate?.includes("base64")) {
+            const session = await getActiveSession();
             newUrl = await uploadBase64ToStorage({
-                fileId: docId,
+                fileId: storageFileId,
                 url: fileToUpdate,
-                path: `${DATA_COLLECTION}/${type}/${docId}`,
+                path: generateStoragePath({
+                    collection: DATA_COLLECTION,
+                    fileType: storageFileType,
+                    session,
+                    fileId: storageFileId,
+                }),
                 type: fileType,
             });
         }
@@ -681,7 +820,7 @@ export const uploadProjectFile = async (
 export const addProject = async (data: Partial<ProjectMetadata> & {
     businessCategory?: string;
     businessType?: string;
-}) => {
+}, options: { defaultHandoff?: ProjectDefaultHandoffOptions | null } = {}) => {
     return await apiCallComposer(
         async () => {
             const isActive = data.active !== false;
@@ -770,7 +909,10 @@ export const addProject = async (data: Partial<ProjectMetadata> & {
                 isDefault: data.isDefault ?? false,
                 slug: projectSlug,
             };
-            await syncProjectToSummary(projectId, summaryData);
+            await writeProjectSummary(projectId, summaryData, {
+                defaultHandoff: options.defaultHandoff,
+                cacheContext: "addProject",
+            });
 
             // Propagation hook (Feature #4C): Auto-create outlet projects
             if (FEATURE_FLAGS.ENABLE_PROJECT_PROPAGATION) {
@@ -782,13 +924,16 @@ export const addProject = async (data: Partial<ProjectMetadata> & {
                     await propagateNewProjectToOutlets(sess.tId, sess.sId, projectId, resolvedName);
                 } catch (e) {
                     // Non-blocking: log but don't fail project creation
-                    console.warn("[Propagation] Auto-create outlet projects failed (non-blocking):", e);
+                    logProjectPersistenceFailure('project_outlet_propagation_create_failed', e, {
+                        ...getProjectPersistenceProjectLogContext(projectId),
+                        ...getBoundedProjectPersistenceStringContext('projectName', resolvedName),
+                    });
                 }
             }
 
             return { projectId, projectData, summaryData };
         },
-        data,
+        { data, options },
         "addProject",
     );
 };
@@ -804,6 +949,7 @@ export const addProject = async (data: Partial<ProjectMetadata> & {
 export const updateProjectMetadata = async (
     projectId: string,
     data: Partial<ProjectSummaryData>,
+    options: { defaultHandoff?: ProjectDefaultHandoffOptions | null } = {},
 ) => {
     return await apiCallComposer(
         async () => {
@@ -878,10 +1024,14 @@ export const updateProjectMetadata = async (
                 active: data.active ?? currentSummary.active ?? true,
             };
 
-            await syncProjectToSummary(projectId, updatedSummary);
+            await writeProjectSummary(projectId, updatedSummary, {
+                defaultHandoff: options.defaultHandoff,
+                defaultHandoffSummaryMap: summaryMap,
+                cacheContext: "updateProjectMetadata",
+            });
             return { projectId, ...updatedSummary };
         },
-        { projectId, data },
+        { projectId, data, options },
         "updateProjectMetadata",
     );
 };
@@ -891,6 +1041,58 @@ const stripGeneratedProjectReadModels = <T extends Partial<Project>>(data: T): T
     delete cleanData.publicDecisionBlocks;
     return cleanData as T;
 };
+
+export function assertProjectUpdateSucceeded(
+    result: unknown,
+    expectedProjectId?: string | number,
+    rejectionCode = 'project_update_rejected',
+): asserts result is Record<string, any> {
+    if (!result || typeof result !== 'object' || Array.isArray(result)) {
+        throw new Error(rejectionCode);
+    }
+
+    if (expectedProjectId === undefined || expectedProjectId === null) return;
+
+    const savedProjectId = (result as { projectId?: unknown; id?: unknown }).projectId
+        ?? (result as { projectId?: unknown; id?: unknown }).id;
+    if (String(savedProjectId) !== String(expectedProjectId)) {
+        throw new Error(rejectionCode);
+    }
+}
+
+export type ProjectDeleteResult = {
+    projectId: string;
+    deleted: true;
+};
+
+export function isProjectDeleteResult(
+    result: unknown,
+    expectedProjectId?: string | number,
+): result is ProjectDeleteResult {
+    if (!result || typeof result !== 'object' || Array.isArray(result)) {
+        return false;
+    }
+
+    const candidate = result as { projectId?: unknown; deleted?: unknown };
+    if (candidate.deleted !== true || typeof candidate.projectId !== 'string') {
+        return false;
+    }
+
+    if (expectedProjectId === undefined || expectedProjectId === null) {
+        return true;
+    }
+
+    return String(candidate.projectId) === String(expectedProjectId);
+}
+
+export function assertProjectDeleteSucceeded(
+    result: unknown,
+    expectedProjectId?: string | number,
+    rejectionCode = 'project_delete_rejected',
+): asserts result is ProjectDeleteResult {
+    if (isProjectDeleteResult(result, expectedProjectId)) return;
+    throw new Error(rejectionCode);
+}
 
 const runUpdateProject = async (data: Partial<Project>) => {
     data = stripGeneratedProjectReadModels(data);
@@ -938,7 +1140,9 @@ const runUpdateProject = async (data: Partial<Project>) => {
                 oldProject = docSnap.data() as Project;
             }
         } catch (e) {
-            // Silent fail - don't block update
+            logProjectPersistenceFailure('project_current_state_load_failed', e, {
+                ...getProjectPersistenceProjectLogContext(data.projectId, data.masterProjectId),
+            });
         }
     }
 
@@ -962,28 +1166,57 @@ const runUpdateProject = async (data: Partial<Project>) => {
             });
             // Merge verification metadata into save data
             (data as any)._mce = toMCEMetadata(result);
-            // Lightweight internal logging (dev console only, no UI)
-            console.log(`[MCE] verified=${result.verified} rules=${result.rulesPassed}/${result.rulesEvaluated} warnings=${result.warnings.length} errors=${result.errors.length}`);
+            logMCEValidationResult(result);
         } catch (e) {
             // Silent fail — MCE failure never blocks owner
-            console.warn("[MCE] Validation failed (non-blocking):", e);
+            logMCEValidationFailure(e, {
+                isOutlet: Boolean(oldProject?.masterProjectId),
+                oldProjectPresent: Boolean(oldProject),
+            });
         }
     }
 
     if (FEATURE_FLAGS.ENABLE_MULTI_OUTLET && data.projectId && data.masterProjectId) {
+        const linkedOutletLogContext = getProjectPersistenceProjectLogContext(data.projectId, data.masterProjectId);
         const response = await fetch('/api/projects/outlet-save', {
+            ...LINKED_OUTLET_SAVE_REQUEST_POLICY,
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            credentials: 'same-origin',
-            cache: 'no-store',
             body: JSON.stringify({ project: data }),
         });
-        const result = await response.json().catch(() => ({}));
         if (!response.ok) {
-            throw new Error(result.error || `Linked outlet save failed: ${response.status}`);
+            const error = createProjectPersistenceStatusError(
+                "linked_outlet_save_rejected",
+                response.status,
+                "Linked outlet save failed. Please try again.",
+            );
+            logProjectPersistenceFailure("project_linked_outlet_save_rejected", error, {
+                ...linkedOutletLogContext,
+            });
+            throw error;
         }
 
-        const updateData = result.project || data;
+        const result = await readLinkedOutletSaveResponse(
+            response,
+            linkedOutletLogContext,
+            "linked_outlet_save_response_parse_failed",
+            "Linked outlet save failed. Please try again.",
+        );
+        if (!isLinkedOutletSaveResponse(result, data.projectId, data.masterProjectId)) {
+            const error = createProjectPersistenceStatusError(
+                "linked_outlet_save_response_invalid",
+                response.status,
+                "Linked outlet save failed. Please try again.",
+            );
+            logProjectPersistenceFailure("project_linked_outlet_save_response_invalid", error, {
+                ...linkedOutletLogContext,
+                responseOk: response.ok,
+                responseStatus: response.status,
+            });
+            throw error;
+        }
+
+        const updateData = result.project;
         await revalidatePublicClientCacheForProject(data.projectId as string, "updateProject");
         if (data.projectId) {
             detectAndLogChanges(data.projectId, oldProject, data);
@@ -1017,8 +1250,10 @@ const runUpdateProject = async (data: Partial<Project>) => {
         try {
             const { invalidateMasterCache } = await import("@lib/multiOutlet");
             invalidateMasterCache(data.projectId as string);
-        } catch {
-            // Silent fail - don't block update
+        } catch (e) {
+            logProjectPersistenceFailure('project_master_cache_invalidation_failed', e, {
+                ...getProjectPersistenceProjectLogContext(data.projectId, data.masterProjectId),
+            });
         }
     }
 
@@ -1060,10 +1295,9 @@ const runUpdateProject = async (data: Partial<Project>) => {
             }
         } catch (e) {
             // Silent fail — don't block master save
-            console.warn(
-                "[MasterUpdateAwareness] Signal doc update failed (non-blocking):",
-                e,
-            );
+            logProjectPersistenceFailure('master_update_awareness_signal_update_failed', e, {
+                ...getProjectPersistenceProjectLogContext(data.projectId, data.masterProjectId),
+            });
         }
     }
 
@@ -1114,8 +1348,12 @@ const runUpdateProject = async (data: Partial<Project>) => {
                 },
             });
         } catch (e) {
-            // Silent fail - don't block update
-            console.warn("[MOL] Menu edit logging failed (non-blocking):", e);
+            // Non-blocking; the persistence diagnostic keeps the optional edit log observable.
+            logProjectPersistenceFailure('menu_observation_edit_log_failed', e, {
+                ...getProjectPersistenceProjectLogContext(data.projectId, data.masterProjectId),
+                oldProjectPresent: Boolean(oldProject),
+                changedFieldCount: Object.keys(data).filter((k) => k !== "projectId").length,
+            });
         }
     }
 
@@ -1207,6 +1445,17 @@ export const removePresetFromAllCategories = async (presetId: string) => {
             const snapshot = await getDocs(dataRef);
 
             let updatedCount = 0;
+            let pendingBatchWrites = 0;
+            let batch = writeBatch(firebaseClient);
+            const modifiedProjectIds: string[] = [];
+            const PROJECT_PRESET_CASCADE_BATCH_LIMIT = 450;
+
+            const commitPendingProjectPresetWrites = async () => {
+                if (!pendingBatchWrites) return;
+                await batch.commit();
+                batch = writeBatch(firebaseClient);
+                pendingBatchWrites = 0;
+            };
 
             for (const docSnap of snapshot.docs) {
                 const project = docSnap.data() as Project;
@@ -1231,20 +1480,50 @@ export const removePresetFromAllCategories = async (presetId: string) => {
 
                 // Save if modified
                 if (projectModified) {
-                    await setDoc(await getDataDocRef(project.projectId), project, {
-                        merge: true,
-                    });
-                    await revalidatePublicClientCacheForProject(project.projectId, "removePresetFromAllCategories");
+                    batch.set(docSnap.ref, project, { merge: true });
+                    modifiedProjectIds.push(project.projectId);
                     updatedCount++;
+                    pendingBatchWrites++;
+
+                    if (pendingBatchWrites >= PROJECT_PRESET_CASCADE_BATCH_LIMIT) {
+                        await commitPendingProjectPresetWrites();
+                    }
                 }
             }
 
-            return { success: true, updatedProjects: updatedCount };
+            await commitPendingProjectPresetWrites();
+            await Promise.all(
+                modifiedProjectIds
+                    .filter(Boolean)
+                    .map((projectId) => revalidatePublicClientCacheForProject(projectId, "removePresetFromAllCategories")),
+            );
+
+            return { success: true, updatedProjects: updatedCount } satisfies ProjectPresetCascadeUpdateResult;
         },
         { presetId },
         "removePresetFromAllCategories",
     );
 };
+
+export type ProjectPresetCascadeUpdateResult = {
+    success: true;
+    updatedProjects: number;
+};
+
+export const isProjectPresetCascadeUpdateResult = (result: unknown): result is ProjectPresetCascadeUpdateResult => (
+    Boolean(result && typeof result === 'object')
+    && !Array.isArray(result)
+    && (result as ProjectPresetCascadeUpdateResult).success === true
+    && typeof (result as ProjectPresetCascadeUpdateResult).updatedProjects === 'number'
+);
+
+export function assertProjectPresetCascadeSucceeded(
+    result: unknown,
+    rejectionCode = 'project_preset_cascade_update_rejected',
+): asserts result is ProjectPresetCascadeUpdateResult {
+    if (isProjectPresetCascadeUpdateResult(result)) return;
+    throw new Error(rejectionCode);
+}
 
 /**
  * Update copied category time windows for every category referencing a preset.
@@ -1305,7 +1584,7 @@ export const updatePresetInAllCategories = async (preset: TimeSlotPreset) => {
                 }
             }
 
-            return { success: true, updatedProjects: updatedCount };
+            return { success: true, updatedProjects: updatedCount } satisfies ProjectPresetCascadeUpdateResult;
         },
         { presetId: preset?.id },
         "updatePresetInAllCategories",
@@ -1369,11 +1648,11 @@ export const publishProject = async (data: Partial<Project>) => {
             // @see __docs__/canonical-truth-infrastructure/
             // ═══════════════════════════════════════════════════════════════
             if (FEATURE_FLAGS.ENABLE_MULTI_OUTLET && data.masterProjectId) {
+                const linkedOutletPublishLogContext = getProjectPersistenceProjectLogContext(data.projectId, data.masterProjectId);
                 const response = await fetch('/api/projects/outlet-save', {
+                    ...LINKED_OUTLET_SAVE_REQUEST_POLICY,
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    credentials: 'same-origin',
-                    cache: 'no-store',
                     body: JSON.stringify({
                         project: {
                             ...updatedData,
@@ -1383,13 +1662,40 @@ export const publishProject = async (data: Partial<Project>) => {
                         publish: true,
                     }),
                 });
-                const result = await response.json().catch(() => ({}));
                 if (!response.ok) {
-                    throw new Error(result.error || `Linked outlet publish failed: ${response.status}`);
+                    const error = createProjectPersistenceStatusError(
+                        "linked_outlet_publish_rejected",
+                        response.status,
+                        "Linked outlet publish failed. Please try again.",
+                    );
+                    logProjectPersistenceFailure("project_linked_outlet_publish_rejected", error, {
+                        ...linkedOutletPublishLogContext,
+                    });
+                    throw error;
+                }
+
+                const result = await readLinkedOutletSaveResponse(
+                    response,
+                    linkedOutletPublishLogContext,
+                    "linked_outlet_publish_response_parse_failed",
+                    "Linked outlet publish failed. Please try again.",
+                );
+                if (!isLinkedOutletSaveResponse(result, data.projectId, data.masterProjectId)) {
+                    const error = createProjectPersistenceStatusError(
+                        "linked_outlet_publish_response_invalid",
+                        response.status,
+                        "Linked outlet publish failed. Please try again.",
+                    );
+                    logProjectPersistenceFailure("project_linked_outlet_publish_response_invalid", error, {
+                        ...linkedOutletPublishLogContext,
+                        responseOk: response.ok,
+                        responseStatus: response.status,
+                    });
+                    throw error;
                 }
 
                 await revalidatePublicClientCacheForProject(data.projectId, "publishProject");
-                return result.project || updatedData;
+                return result.project;
             }
 
             const { increment } = await import("@firebase/firestore");
@@ -1421,7 +1727,9 @@ export const publishProject = async (data: Partial<Project>) => {
                         changedBy: "OWNER",
                     });
                 } catch (e) {
-                    console.warn("[Publish] MOL event failed (non-blocking):", e);
+                    logProjectPersistenceFailure('menu_observation_publish_event_failed', e, {
+                        ...getProjectPersistenceProjectLogContext(data.projectId, data.masterProjectId),
+                    });
                 }
             }
 
@@ -1465,7 +1773,12 @@ const getProjectsListCore = async (includeInactive = false) => {
             description: "Your digital menu",
             isDefault: true,
         };
-        await addProject(defaultProject);
+        const defaultProjectResult = await addProject(defaultProject);
+        assertProjectUpdateSucceeded(
+            defaultProjectResult,
+            projectId,
+            'projects_list_default_project_create_rejected',
+        );
         return {
             projects: [
                 {
@@ -1867,10 +2180,7 @@ export const deleteProject = async (
         "deleteProject",
     );
 
-    if (!result || Array.isArray(result) || result.deleted !== true || result.projectId !== projectId) {
-        throw new Error("Project delete failed");
-    }
-
+    assertProjectDeleteSucceeded(result, projectId);
     return result;
 };
 
@@ -2042,7 +2352,9 @@ export const duplicateProject = async (
                         resolveProjectSummaryName(summaryData.name, 'Untitled'),
                     );
                 } catch (e) {
-                    console.warn("[Propagation] Auto-create outlet projects for duplicate failed (non-blocking):", e);
+                    logProjectPersistenceFailure('project_outlet_propagation_duplicate_failed', e, {
+                        ...getProjectPersistenceProjectLogContext(newProjectId),
+                    });
                 }
             }
 
@@ -2054,89 +2366,6 @@ export const duplicateProject = async (
         },
         { localizedDescriptionInput, localizedNameInput, newDescription, newName, projectId },
         "duplicateProject",
-    );
-};
-
-// ═══════════════════════════════════════════════════════════════
-// ONE-TIME BACKFILL (Delete after use)
-// ═══════════════════════════════════════════════════════════════
-
-/**
- * TEMPORARY: Backfill projectsSummary from existing projects
- *
- * This function migrates existing project data to the new projectsSummary pattern.
- * DELETE THIS FUNCTION after backfill is complete.
- *
- * Usage:
- * 1. Call from browser console or a temporary admin page
- * 2. Verify data in Firebase Console
- * 3. Delete this function
- */
-export const backfillProjectsSummary = async () => {
-    return await apiCallComposer(
-        async () => {
-            console.log("🔄 [backfillProjectsSummary] Starting migration...");
-
-            // Get all projects from projects collection
-            const dataRef = await getDataCollectionRef();
-            const snapshot = await getDocs(dataRef);
-
-            if (snapshot.empty) {
-                console.log("ℹ️ [backfillProjectsSummary] No projects found");
-                return { status: "empty", count: 0 };
-            }
-
-            console.log(
-                `📦 [backfillProjectsSummary] Found ${snapshot.size} projects`,
-            );
-
-            // Build summary from projects data
-            const summaryData: Record<string, ProjectSummaryData> = {};
-            let activeCount = 0;
-            let deletedCount = 0;
-
-            for (const docSnap of snapshot.docs) {
-                const data = docSnap.data();
-                const projectId = data.projectId || docSnap.id;
-
-                // Skip deleted projects (they shouldn't be in summary)
-                if (data.deleted === true) {
-                    deletedCount++;
-                    console.log(`  ⏭️ Skipping deleted: ${projectId}`);
-                    continue;
-                }
-
-                // Try to get name from project data, or use a default
-                // Note: In old structure, name was in projectsMetadata
-                // We'll need to fetch it or use projectId as fallback
-                summaryData[projectId] = {
-                    name: data.name || projectId.split("-")[1] || "Untitled",
-                    description: data.description || "",
-                    active: data.active !== false, // Default to true
-                    isDefault: data.isDefault || projectId.includes("-default-"),
-                };
-                activeCount++;
-                console.log(
-                    `  ✅ Added: ${projectId} (${summaryData[projectId].name})`,
-                );
-            }
-
-            // Save to projectsSummary
-            const summaryRef = await getProjectsSummaryDocRef();
-            await setDoc(summaryRef, {
-                lastUpdated: serverTimestamp(),
-                projects: summaryData,
-            });
-
-            return {
-                status: "success",
-                activeCount,
-                deletedCount,
-                projects: Object.keys(summaryData),
-            };
-        },
-        null,
-        "backfillProjectsSummary",
     );
 };
 
@@ -2552,7 +2781,9 @@ export const activateSpecialMenu = async (projectId: string) => {
 
             const data = projectDoc.data() as Project;
             if (!data._specialMenu) throw new Error("Not a special menu project");
-            if (data._specialMenu.status === "active") return { success: true, message: "Already active" };
+            if (data._specialMenu.status === "active") {
+                return { success: true, projectId, status: "active", message: "Already active" };
+            }
             if (data._specialMenu.status !== "scheduled") {
                 throw new Error(`Cannot activate a ${data._specialMenu.status} special menu`);
             }
@@ -2582,7 +2813,7 @@ export const activateSpecialMenu = async (projectId: string) => {
             }, { merge: true });
             await revalidatePublicClientCacheForProject(projectId, "activateSpecialMenu");
 
-            return { success: true };
+            return { success: true, projectId, status: "active" };
         },
         projectId,
         "activateSpecialMenu",
@@ -2633,7 +2864,7 @@ export const deactivateSpecialMenu = async (projectId: string) => {
             }, { merge: true });
             await revalidatePublicClientCacheForProject(projectId, "deactivateSpecialMenu");
 
-            return { success: true };
+            return { success: true, projectId, status: "expired" };
         },
         projectId,
         "deactivateSpecialMenu",
@@ -2668,17 +2899,9 @@ export const cancelSpecialMenu = async (projectId: string) => {
             }, { merge: true });
             await revalidatePublicClientCacheForProject(projectId, "cancelSpecialMenu");
 
-            return { success: true };
+            return { success: true, projectId, status: "cancelled" };
         },
         projectId,
         "cancelSpecialMenu",
     );
 };
-
-// ═══════════════════════════════════════════════════════════════
-// TEMPORARY: Expose backfill to window for browser console access
-// DELETE THIS after backfill is complete
-// ═══════════════════════════════════════════════════════════════
-if (typeof window !== "undefined") {
-    (window as any).__backfillProjectsSummary = backfillProjectsSummary;
-}

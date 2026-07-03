@@ -32,6 +32,31 @@ function buildExpiry(days: number): Timestamp {
     return Timestamp.fromMillis(Date.now() + days * 24 * 60 * 60 * 1000);
 }
 
+function getIntegrationEventScopeContext(params: { tId: number; sId: number }): Record<string, boolean> {
+    return {
+        hasTenantScope: Number.isFinite(params.tId),
+        hasStoreScope: Number.isFinite(params.sId),
+    };
+}
+
+function getIntegrationEventErrorContext(error: unknown): Record<string, string | number | null> {
+    const source = error as { code?: unknown; status?: unknown; statusCode?: unknown };
+    const code = typeof source?.code === 'string' || typeof source?.code === 'number'
+        ? String(source.code).slice(0, 80)
+        : null;
+    const status = typeof source?.status === 'string' || typeof source?.status === 'number'
+        ? String(source.status).slice(0, 80)
+        : typeof source?.statusCode === 'string' || typeof source?.statusCode === 'number'
+            ? String(source.statusCode).slice(0, 80)
+            : null;
+
+    return {
+        sourceErrorName: error instanceof Error ? (error.name || 'Error').slice(0, 80) : typeof error,
+        sourceErrorCode: code,
+        sourceErrorStatus: status,
+    };
+}
+
 /**
  * Reset nightly event counters. Called at the start of each nightly batch.
  */
@@ -61,8 +86,11 @@ export async function emitIntegrationEvent(params: {
         const currentCount = nightlyEventCounts.get(tenantKey) || 0;
         if (currentCount >= INTEGRATION_LIMITS.MAX_EVENTS_PER_NIGHTLY_RUN) {
             logger.warn('[Answerlattice Integration] Event cap reached', {
-                tenantKey,
+                failureCode: 'answerlattice_integration_event_cap_reached',
                 eventType: params.eventType,
+                currentCount,
+                maxEvents: INTEGRATION_LIMITS.MAX_EVENTS_PER_NIGHTLY_RUN,
+                ...getIntegrationEventScopeContext(params),
             });
             return;
         }
@@ -84,16 +112,19 @@ export async function emitIntegrationEvent(params: {
 
         logger.info('[Answerlattice Integration] Event emitted', {
             eventType: params.eventType,
-            tId: params.tId,
-            sId: params.sId,
+            severity: params.severity,
+            payloadKeyCount: Object.keys(event.payload || {}).length,
+            ...getIntegrationEventScopeContext(params),
         });
     } catch (error) {
         // Fire-and-forget: log but never throw
         logger.warn('[Answerlattice Integration] Failed to emit event', {
+            failureCode: 'answerlattice_integration_event_emit_failed',
             eventType: params.eventType,
-            tId: params.tId,
-            sId: params.sId,
-            error: error instanceof Error ? error.message : String(error),
+            severity: params.severity,
+            payloadKeyCount: Object.keys(params.payload || {}).length,
+            ...getIntegrationEventScopeContext(params),
+            ...getIntegrationEventErrorContext(error),
         });
     }
 }

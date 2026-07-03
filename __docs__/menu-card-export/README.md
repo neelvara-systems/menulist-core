@@ -1,9 +1,11 @@
 # Menu Card Export
 
-**Status:** Production-ready client-first route with Pro/Premium layout suggestion
+**Status:** Source-gated route evidence; not current launch certification
 **Owner route:** `/use-menulist/menu-card-export`
 **Current predecessor:** `__docs__/pdf-surface/`
 **Last Updated:** June 3, 2026
+
+> **Current release boundary (July 2, 2026):** This document records source/runtime evidence only. It is not current production-release approval. Current Menu Card Export approval requires the active [production-readiness audit](../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../production-readiness/external-certification-runbook.md) evidence, Digital Menu Output Constitution checks, `npm run verify:menu-card-export`, authenticated desktop/mobile browser QA, visual PDF and print-shop artifact review, provider smoke for the AI advisor where enabled, target deploy evidence, and production-host smoke.
 
 ---
 

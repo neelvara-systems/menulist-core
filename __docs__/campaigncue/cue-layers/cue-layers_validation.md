@@ -32,7 +32,7 @@ CueLayers currently supports the conservative production path:
 | Owner UI | `src/components/templates/campaigncue/CampaignCueWorkspaceApp.tsx` |
 | Firebase | `firestore-campaigncue.rules`, `storage-campaigncue.rules`, `firestore-campaigncue.indexes.json` |
 | Verification | `scripts/verification/verify-campaigncue-runtime.js` |
-| Docs | `__docs__/campaigncue/cue-layers/*`, `__docs__/CHANGELOG.md` |
+| Docs | `__docs__/campaigncue/cue-layers/*`, `__docs__/changelog.md` |
 
 ## Issues Found And Fixed
 

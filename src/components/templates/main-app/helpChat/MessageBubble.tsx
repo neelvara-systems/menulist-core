@@ -2,7 +2,7 @@
 
 import ChatHighlight from '@atoms/ChatHighlight';
 import ArticleViewModal from '@organisms/ArticleViewModal';
-import { Button, Card, Flex, Image, Typography, theme } from 'antd';
+import { Button, Card, Flex, Image, Typography, message as antMessage, theme } from 'antd';
 import { motion } from 'framer-motion';
 import { memo, useEffect, useState } from 'react';
 import { LuAlertCircle, LuBookOpen, LuCheckCircle, LuHelpCircle, LuFileText, LuReceipt, LuSparkles, LuUser } from 'react-icons/lu';
@@ -13,6 +13,7 @@ import MessageActions from './MessageActions';
 import styles from './MessageBubble.module.scss';
 import MessageReferences from './MessageReferences';
 import { ChatMessage } from './types';
+import { getBoundedHelpChatStringContext, logHelpChatFailure } from './helpChatDiagnostics';
 
 const { Text, Paragraph } = Typography;
 
@@ -55,6 +56,29 @@ const MessageBubble = memo(({ message, onCopy, onRegenerate, onFeedback, isTypin
 
     const handleArticleModalClose = () => {
         setModal({ active: false, article: null });
+    };
+
+    const handleRelatedArticleOpen = (article: any) => {
+        const articleUrl = article?.url;
+        if (!articleUrl) return;
+
+        try {
+            const opened = window.open(articleUrl, '_blank', 'noopener,noreferrer');
+            if (!opened) {
+                throw new Error('help_chat_related_article_open_blocked');
+            }
+        } catch (error) {
+            logHelpChatFailure('help_chat_related_article_open_failed', error, {
+                isMobile,
+                hasSearchQuery: Boolean(searchQuery),
+                relatedArticleCount: relatedContent?.articles?.length || 0,
+                ...getBoundedHelpChatStringContext('messageId', message.id),
+                ...getBoundedHelpChatStringContext('articleId', article?.id),
+                ...getBoundedHelpChatStringContext('articleTitle', article?.title),
+                ...getBoundedHelpChatStringContext('articleUrl', articleUrl),
+            });
+            antMessage.error('Unable to open article');
+        }
     };
 
     // Local typing animation effect (only runs when isTyping prop is true)
@@ -300,7 +324,7 @@ const MessageBubble = memo(({ message, onCopy, onRegenerate, onFeedback, isTypin
                                                 size="small"
                                                 type="text"
                                                 icon={<LuBookOpen size={13} />}
-                                                onClick={() => article.url && window.open(article.url, '_blank', 'noopener,noreferrer')}
+                                                onClick={() => handleRelatedArticleOpen(article)}
                                                 style={{ maxWidth: isMobile ? '100%' : 240 }}
                                             >
                                                 <Text ellipsis style={{ maxWidth: isMobile ? 220 : 180 }}>

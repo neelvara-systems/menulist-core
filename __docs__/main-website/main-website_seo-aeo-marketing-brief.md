@@ -375,6 +375,7 @@ Named search/AI crawler considerations include:
 - OAI-SearchBot
 - GPTBot
 - ChatGPT-User
+- OAI-AdsBot for ad-validation fetches, not search ranking
 - ClaudeBot
 - Claude-SearchBot
 - Claude-User

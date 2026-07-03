@@ -10,6 +10,15 @@
  *
  * @see __docs__/ai-enhancement-packs/ai-enhancement-packs_impl.md
  */
+import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';
+import { logAiServiceFailure } from '@services/ai/aiServiceDiagnostics';
+
+const AI_CAPACITY_RESPONSE_JSON_MAX_BYTES = 8 * 1024;
+
+type AiCapacityResponse = {
+    code?: unknown;
+};
+
 export class AICapacityError extends Error {
     public code: string;
 
@@ -28,10 +37,26 @@ export class AICapacityError extends Error {
  */
 export async function checkCapacityResponse(response: Response): Promise<void> {
     if (response.status === 402) {
-        const data = await response.json().catch(() => ({}));
+        let parsedData: AiCapacityResponse | null = null;
+        try {
+            parsedData = await readJsonResponseWithLimit<AiCapacityResponse>(
+                response,
+                AI_CAPACITY_RESPONSE_JSON_MAX_BYTES,
+            );
+        } catch (error) {
+            logAiServiceFailure('ai_capacity_response_parse_failed', error, {
+                maxBytes: AI_CAPACITY_RESPONSE_JSON_MAX_BYTES,
+                responseStatus: response.status,
+            });
+        }
+
+        const data = parsedData || {};
+        const code = typeof data.code === 'string' && data.code.length > 0
+            ? data.code.slice(0, 64)
+            : "exhausted";
         throw new AICapacityError(
-            data.error || "Additional AI enhancements needed for your menu.",
-            data.code || "exhausted",
+            "Additional AI enhancements needed for your menu.",
+            code,
         );
     }
 }

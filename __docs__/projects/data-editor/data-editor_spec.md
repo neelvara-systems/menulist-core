@@ -2,8 +2,10 @@
 
 **Feature:** Visual Menu Data Editor  
 **Parent Feature:** Projects (Menu Digitization)  
-**Status:** ✅ Production Ready  
+**Status:** Implemented source evidence; not current launch certification
 **Last Updated:** January 2026
+
+**Launch boundary:** This spec documents the menu data editor. Current release approval requires the active [production-readiness audit](../../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../../production-readiness/external-certification-runbook.md) evidence, browser/mobile editor QA, publish/cache evidence for edited public truth, and deploy evidence for the target environment.
 
 ---
 
@@ -262,4 +264,4 @@ Show "All changes saved ✓"
 
 ---
 
-_Document Status: ✅ PRODUCTION READY_
+_Document Status: Historical data-editor source evidence - not current launch certification_

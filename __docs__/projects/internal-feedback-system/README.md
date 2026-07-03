@@ -1,9 +1,9 @@
 # Guest Feedback System
 
-**Feature Status:** ✅ FULLY IMPLEMENTED  
-**Priority:** Medium (#5 in Expansion Surfaces)  
+**Feature Status:** ✅ FULLY IMPLEMENTED
+**Priority:** Medium (#5 in Expansion Surfaces)
 **Feature Flag:** `ENABLE_GUEST_FEEDBACK: true`
-**Last Production Audit:** June 11, 2026
+**Last Production Audit:** July 2, 2026
 
 ---
 
@@ -13,6 +13,9 @@
 | ------------------------------------------------------------ | ---------------- | --------------------------------------------- |
 | [Spec](./internal-feedback-system_spec.md)                   | CEO, PM, Clients | Business requirements, user flows, scope      |
 | [Implementation](./internal-feedback-system_impl.md)         | Developers       | Technical blueprint, DB schema, API contracts |
+| [Firebase](./internal-feedback-system_firebase.md)           | Developers, Ops  | Firestore rules, indexes, costs, retention    |
+| [Mobile Support](./internal-feedback-system_mobile-support.md) | Mobile, QA      | Owner mobile shell behavior and parity gates   |
+| [Help Doc](./internal-feedback-system_helpdoc.md)            | Support, Owners  | Owner-facing guidance and support boundaries  |
 | [Marketing](./internal-feedback-system_marketing.md)         | Sales, Marketing | Pitch deck, landing page copy, messaging      |
 | [Website](./internal-feedback-system_website.md)             | Website, Docs    | Public website placement and claim boundaries |
 | [Validation](./internal-feedback-system_validation.md)       | QA               | Implementation validation report              |
@@ -104,15 +107,19 @@ The Guest Feedback System is a **private correction channel** for guest feedback
 | --------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- | ------ |
 | `src/types/guestFeedback.ts`                                                      | GuestFeedback type + FeedbackDefaults + form types                                | ✅     |
 | `src/database/guestFeedback/index.ts`                                             | Client owner DAL: getFeedbackList, updateFeedbackStatus, getFeedbackCount         | ✅     |
+| `src/database/guestFeedback/guestFeedbackDiagnostics.ts`                          | Bounded client feedback MOL failure diagnostics                                   | ✅     |
 | `src/database/guestFeedback/server.ts`                                            | Admin DAL: public API feedback writes + compact MOL event writes                  | ✅     |
 | `src/app/api/public/feedback/submit/route.ts`                                     | Public submit endpoint (no auth, rate limited, Admin SDK write)                   | ✅     |
 | `src/app/feedback/[projectId]/page.tsx`                                           | Standalone feedback page (QR surface, server component)                           | ✅     |
+| `src/lib/feedback/publicFeedbackDiagnostics.ts`                                   | Bounded public feedback page/form failure diagnostics                             | ✅     |
+| `src/lib/feedback/guestFeedbackSubmitResponse.ts`                                 | Shared public feedback submit response cap and shape guard                        | ✅     |
 | `src/middleware/publicApi.ts`                                                     | Public rate limiting + honeypot + sanitization                                    | ✅     |
 | `src/lib/utils/whatsappLink.ts`                                                   | WhatsApp deep link + phone validation + formatting                                | ✅     |
 | `src/lib/utils/feedbackQrCode.ts`                                                 | QR code generation + download + URL builder                                       | ✅     |
 | `src/components/atoms/GuestFeedbackForm/index.tsx`                                | Guest-facing feedback form (mobile-first)                                         | ✅     |
 | `src/components/atoms/GuestFeedbackForm/StarRating.tsx`                           | Star rating input + display component                                             | ✅     |
 | `src/components/templates/main-app/feedback/index.tsx`                            | Owner feedback inbox page                                                         | ✅     |
+| `src/components/templates/main-app/feedback/feedbackInboxDiagnostics.ts`           | Bounded desktop inbox failure diagnostics                                         | ✅     |
 | `src/components/templates/main-app/feedback/FeedbackCard.tsx`                     | Feedback card with contact/WhatsApp/resolve                                       | ✅     |
 | `src/components/templates/main-app/feedback/FeedbackFilters.tsx`                  | All / Needs Attention / Resolved filters                                          | ✅     |
 | `src/components/templates/main-app/feedback/FeedbackQrDownload.tsx`               | QR code preview + download modal                                                  | ✅     |
@@ -121,6 +128,7 @@ The Guest Feedback System is a **private correction channel** for guest feedback
 | `src/components/mobile/screens/MobileFeedbackDetail.tsx`                          | Mobile feedback detail view                                                       | ✅     |
 | `src/hooks/useFeedback.ts`                                                        | Generic feedback hook (KB articles/changelog)                                     | ✅     |
 | `functions/src/analytics/guestFeedbackRetention.ts`                               | Nightly 90-day retention cleanup CF                                               | ✅     |
+| `scripts/verification/verify-guest-feedback-boundary.js`                          | Source gate for public submit, safe review URL, owner/mobile parity, docs parity   | ✅     |
 
 Public feedback pages reuse the same temporary-status banner, business identity header, and shared public footer pattern as the customer menu. The feedback footer keeps the same Call / WhatsApp / Directions, policy, social, Share Feedback, and MenuList attribution treatment, plus the same OBP theme toggle behavior, so the footer stays consistent across the menu, OBP, and feedback surfaces.
 
@@ -173,11 +181,16 @@ reviewUrl?: string;        // Google Review URL for CTA
 
 ### Production Boundary Confirmed June 11, 2026
 
-- Public submissions go through `POST /api/public/feedback/submit`; direct unauthenticated Firestore creates are denied. When `TURNSTILE_SECRET_KEY` is configured, the browser form must send `captchaToken` from `NEXT_PUBLIC_TURNSTILE_SITE_KEY`.
-- The public API verifies project existence, project active/deleted status, store tenant match, store active/deleted/blocked state, project feedback toggle, and store feedback toggle before writing.
+- Public submissions go through `POST /api/public/feedback/submit`; direct unauthenticated Firestore creates are denied. The API applies the public feedback IP rate limit, rejects JSON bodies above 16KB before schema validation, and then verifies Turnstile when `TURNSTILE_SECRET_KEY` is configured. The browser form must send `captchaToken` from `NEXT_PUBLIC_TURNSTILE_SITE_KEY` in that mode.
+- The guest-facing form submits with same-origin credentials, no-store cache policy, and manual redirect handling, then parses acknowledgements through a 16KB bounded JSON response guard before showing the success state. Successful acknowledgements must include an OK HTTP response, `success: true`, a non-empty `feedbackId`, and an optional string/null `reviewUrl`; malformed or oversized responses log bounded form diagnostics and show fixed failure copy.
+- Safe review URL boundary: the public API and browser form normalize returned `reviewUrl` values through `normalizeGuestFeedbackReviewUrl()`. Only HTTPS Google review/maps URLs are accepted; invalid, non-Google, non-HTTPS, or oversized URLs are treated as absent.
+- The public API verifies project existence, project active/deleted status, store tenant match, store active/deleted/blocked state, tenant block state, project feedback toggle, and store feedback toggle before writing.
 - Store-owned field defaults are enforced on the server. Hidden contact fields are dropped even if a caller posts them directly, and required fields are validated by the API.
 - Store-scoped owner/manager sessions can update only feedback from their store. Updates are limited to `status`, `needsAttention`, `modifiedOn`, `modifiedBy`, and `ownerNote`.
+- Owner desktop/mobile list loads require a shaped `{ items, lastDocId, hasMore }` DAL result before state updates. Desktop badge counts require a finite non-negative count before rendering. Composer fallback values route through bounded load diagnostics.
+- Owner status/reply updates require a shaped feedback record with the expected id and status before success state advances. `updateFeedbackStatus()` also verifies the internal `getFeedbackById()` result shape before writing, so fallback values cannot bypass tenant/store record verification.
 - Guest feedback writes do not invalidate public menu/OBP cache because feedback is private owner workflow data and does not change public truth packets.
+- Source gate: run `npm run verify:guest-feedback-boundary` after any change to public feedback submission, owner feedback inboxes, mobile feedback screens, Firestore feedback rules/indexes, retention wiring, or this feature doc set.
 
 ---
 
@@ -199,7 +212,7 @@ reviewUrl?: string;        // Google Review URL for CTA
 - **Constraint:** Must remain small, silent, inbox-based. Never expand into analytics/CRM/NPS
 - **Naming:** Externally "Guest Feedback" — never "Internal Feedback System"
 - **Compliance:** FTC-compliant (Google CTA shown to ALL ratings, no review gating)
-- **Scalability:** Current architecture handles 10-50k submissions/day. Hardening deferred to post-launch
+- **Scalability:** Current architecture has bounded source gates, but load claims require current audit evidence before release.
 
 ## Permanent Rejection List
 
@@ -232,6 +245,7 @@ Never add to this feature:
 
 | Version | Date         | Changes                                                                |
 | ------- | ------------ | ---------------------------------------------------------------------- |
+| 2.15    | July 1, 2026 | Guest-facing feedback success now requires an OK HTTP response plus a non-empty feedback id acknowledgement before showing the success state. |
 | 1.0     | Feb 1, 2026  | Initial documentation                                                  |
 | 1.1     | Feb 2, 2026  | Bug fixes (project path, store fetch), verification complete           |
 | 2.0     | Mar 14, 2026 | ChatGPT strategic review, doc refresh, all files confirmed implemented |

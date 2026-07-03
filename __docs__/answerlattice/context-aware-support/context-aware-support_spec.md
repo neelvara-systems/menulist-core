@@ -60,8 +60,8 @@ The payload is:
 **Then** Answerlattice returns "Only admins can add team members" instead of the admin workflow.
 
 ### US-3: End-User Gets Plan-Aware Answers
-**As** a free-tier user asking "How do I use advanced analytics?",
-**When** the context includes `plan: "free"`,
+**As** a starter-tier user asking "How do I use advanced analytics?",
+**When** the context includes `plan: "starter"`,
 **Then** Answerlattice returns "Advanced analytics is available on Pro plan" instead of the setup guide.
 
 ### US-4: Vague Query With Context
@@ -207,7 +207,7 @@ Answerlattice targets **SaaS developers** (ICP). Explicit browser-contract instr
 | AC-2 | Context payload accepted by search-kb API | POST with context returns 200 |
 | AC-3 | entityHints boost entity matching scores | Query "why failing" + hint "stripe" → stripe entity ranked #1 |
 | AC-4 | Page context boosts entity matching | Query "why failing" + page "stripe_page" → stripe entity ranked #1 |
-| AC-5 | Plan/role context flows to specificity scoring | Plan "free" → free-tier specific answer preferred |
+| AC-5 | Plan/role context flows to specificity scoring | Plan "starter" → starter-tier specific answer preferred |
 | AC-6 | No context = no regression | All existing queries return identical results |
 | AC-7 | Invalid context silently sanitized | Bad payload → cleaned, query still processed |
 | AC-8 | Context payload <2KB enforced | Oversized payload → 400 error |

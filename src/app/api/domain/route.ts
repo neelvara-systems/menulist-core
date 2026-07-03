@@ -25,7 +25,11 @@ import { revalidateMenuCache } from "@lib/actions/revalidateMenuCache";
 import { requireAnyStorePermission } from "@lib/permissions/server";
 import { checkRateLimit } from "@lib/rateLimit";
 import { getRateLimitForFeature } from "@lib/rateLimit/configs";
+import { readBoundedJsonBody } from "@lib/security/boundedRequestBody";
+import { getSafeZodValidationDetails } from "@lib/security/inputValidation";
+import { secureError } from "@lib/security/secureLogger";
 import { NextRequest, NextResponse } from "next/server";
+import { hashPublicRateLimitValue } from "src/middleware/publicApi";
 import { z } from "zod";
 import { withAuth } from "../../../middleware/auth";
 
@@ -38,12 +42,46 @@ const AddDomainSchema = z.object({
             message: "Invalid domain format. Example: yourbusiness.com",
         }),
 });
+const DOMAIN_ACTION_MAX_BODY_BYTES = 4 * 1024;
+const DOMAIN_PROVIDER_FAILURE_MESSAGE = "Failed to add domain to Vercel";
+const DOMAIN_STATUS_PROVIDER_FAILURE_MESSAGE = "Failed to check domain status with Vercel";
+const DOMAIN_REMOVE_PROVIDER_FAILURE_MESSAGE = "Failed to remove domain from Vercel";
+
+const getBoundedDomainRouteStringContext = (label: string, value: unknown) => {
+    const normalized = value === undefined || value === null ? '' : String(value);
+    return {
+        [`${label}Present`]: normalized.length > 0,
+        [`${label}Length`]: normalized.length,
+    };
+};
+
+const normalizeDomainRouteFailure = (error: unknown, message: string): Error => {
+    const normalized = new Error(message);
+    if (error instanceof Error && error.name) {
+        normalized.name = error.name;
+    }
+    return normalized;
+};
+
+const buildDomainRouteLogContext = (
+    domain: unknown,
+    storeId: unknown,
+    tenantId: unknown,
+    metadata: Record<string, boolean | number | string | undefined> = {},
+) => ({
+    ...getBoundedDomainRouteStringContext('domain', domain),
+    ...getBoundedDomainRouteStringContext('storeId', storeId),
+    ...getBoundedDomainRouteStringContext('tenantId', tenantId),
+    ...metadata,
+});
 
 async function checkDomainManagementRateLimit(session: any, storeId: string | number) {
     const config = getRateLimitForFeature('DOMAIN_MANAGEMENT');
     const userId = session?.uId || session?.user?.id || session?.userId || 'unknown';
+    const userRateLimitHash = hashPublicRateLimitValue(userId || session.user?.id || 'unknown');
+    const storeRateLimitHash = hashPublicRateLimitValue(storeId);
     const result = await checkRateLimit({
-        key: `domain-management:${userId}:${storeId}`,
+        key: `domain-management:${userRateLimitHash}:${storeRateLimitHash}`,
         ...config,
     });
 
@@ -79,11 +117,15 @@ export const POST = withAuth(async (request: NextRequest, session) => {
     const rateLimitResponse = await checkDomainManagementRateLimit(session, storeId);
     if (rateLimitResponse) return rateLimitResponse;
 
-    const body = await request.json();
+    const bodyResult = await readBoundedJsonBody(request, DOMAIN_ACTION_MAX_BODY_BYTES, {
+        invalidJsonMessage: "Invalid domain",
+    });
+    if (bodyResult.ok === false) return bodyResult.response;
+    const body = bodyResult.data;
     const validation = AddDomainSchema.safeParse(body);
     if (!validation.success) {
         return NextResponse.json(
-            { error: "Invalid domain", details: validation.error.flatten() },
+            { error: "Invalid domain", details: getSafeZodValidationDetails(validation.error) },
             { status: 400 }
         );
     }
@@ -116,9 +158,15 @@ export const POST = withAuth(async (request: NextRequest, session) => {
 
         if (!result.ok && result.status !== 409) {
             // 409 = domain already exists on project (re-adding is fine)
-            console.error("[Domain] Vercel API error:", result.data);
+            secureError(
+                "[Domain] Vercel API error",
+                new Error(DOMAIN_PROVIDER_FAILURE_MESSAGE),
+                buildDomainRouteLogContext(normalizedDomain, storeId, tenantId, {
+                    providerStatus: result.status,
+                }),
+            );
             return NextResponse.json(
-                { error: result.data?.error?.message || "Failed to add domain to Vercel" },
+                { error: DOMAIN_PROVIDER_FAILURE_MESSAGE },
                 { status: result.status }
             );
         }
@@ -145,7 +193,11 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             message: "Domain added. Configure your DNS records to complete setup.",
         });
     } catch (error) {
-        console.error("[Domain] Error adding domain:", error);
+        secureError(
+            "[Domain] Error adding domain",
+            normalizeDomainRouteFailure(error, "Domain add failed"),
+            buildDomainRouteLogContext(normalizedDomain, storeId, tenantId),
+        );
         return NextResponse.json(
             { error: "Failed to add domain. Please try again." },
             { status: 500 }
@@ -182,6 +234,15 @@ export const GET = withAuth(async (request: NextRequest, session) => {
     try {
         // Check domain config from Vercel
         const configResult = await getVercelDomainConfig(domain);
+        if (!configResult.ok) {
+            secureError(
+                "[Domain] Vercel status API error",
+                new Error(DOMAIN_STATUS_PROVIDER_FAILURE_MESSAGE),
+                buildDomainRouteLogContext(domain, storeId, tenantId, {
+                    statusProviderStatus: configResult.status,
+                }),
+            );
+        }
 
         // Check if domain is properly configured
         const isConfigured = isVercelDomainConfigured(configResult.data);
@@ -204,6 +265,11 @@ export const GET = withAuth(async (request: NextRequest, session) => {
             config: configResult.data,
         });
     } catch (error) {
+        secureError(
+            "[Domain] Error checking domain status",
+            normalizeDomainRouteFailure(error, "Domain status check failed"),
+            buildDomainRouteLogContext(domain, storeId, tenantId),
+        );
         return NextResponse.json({
             hasDomain: true,
             domain,
@@ -240,8 +306,22 @@ export const DELETE = withAuth(async (request: NextRequest, session) => {
 
     try {
         // Remove from Vercel
-        await removeDomainFromVercelProject(domain);
-    } catch {
+        const removeResult = await removeDomainFromVercelProject(domain);
+        if (!removeResult.ok && removeResult.status !== 404) {
+            secureError(
+                "[Domain] Vercel remove API error",
+                new Error(DOMAIN_REMOVE_PROVIDER_FAILURE_MESSAGE),
+                buildDomainRouteLogContext(domain, storeId, tenantId, {
+                    removeProviderStatus: removeResult.status,
+                }),
+            );
+        }
+    } catch (error) {
+        secureError(
+            "[Domain] Error removing domain from Vercel",
+            normalizeDomainRouteFailure(error, "Domain remove failed"),
+            buildDomainRouteLogContext(domain, storeId, tenantId),
+        );
         // Non-blocking — even if Vercel fails, remove from our side
     }
 
@@ -257,6 +337,7 @@ export const DELETE = withAuth(async (request: NextRequest, session) => {
     await revalidateMenuCache(storeId, { tId: tenantId });
 
     return NextResponse.json({
+        removed: true,
         success: true,
         message: "Custom domain removed",
     });

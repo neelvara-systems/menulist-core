@@ -64,6 +64,8 @@ Required indexes:
 | Nightly summary | up to 121 | 0-1 | Disabled by default; reads recent cards plus existing summary; skips unchanged summary writes |
 | Create answer proposal | 0-1 | 3 | Proposal write, card update, note transaction |
 
+Nightly sync diagnostics add no Firestore operations. Success and failure logs use scope booleans, fixed failure codes, and source error name/code/status only.
+
 ## Scaling Guardrails
 
 - No realtime board listener.

@@ -25,7 +25,7 @@ export const ANSWERLATTICE_SYSTEM_COVERAGE = [
             },
             {
                 title: 'Billing and credits',
-                detail: 'Beta setup starts immediately; paid plans, invoices, transactions, and support credit top-ups live inside AnswerLattice billing.',
+                detail: 'Paid setup starts with Starter; plans, invoices, transactions, and support credit top-ups live inside AnswerLattice billing.',
             },
         ],
     },

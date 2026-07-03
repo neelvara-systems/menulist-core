@@ -73,15 +73,15 @@ You are **Kilo Code**, operating within the MenuList AI ecosystem. All actions m
 ## Technology Stack Constraints
 
 ### Frontend Framework
-- **Next.js 14.2.5** - No version upgrades without constitutional review
+- **Next.js 14.2.35** - Current pinned runtime; no version drift without constitutional/security review and `npm run verify:dependency-freeze` update
 - **React 18.3.1** - Use modern hooks and patterns only
-- **TypeScript 5** - Strict type checking required
+- **TypeScript 5.8.3** - Strict type checking required
 
 ### UI Architecture
 - **Desktop**: Ant Design + SCSS modules (unchanged)
-- **Mobile**: antd-mobile + Tailwind CSS (new layer)
+- **Mobile**: Tailwind-driven mobile shell/screens with shared business logic; do not import `antd-mobile` unless it is intentionally added as a dependency and the freeze verifier is updated
 - **Icons**: react-icons/lu (Lucide) only - never mix icon sets
-- **Animations**: Framer Motion 10.16.4 for interactions
+- **Animations**: Framer Motion 10.18.0 for interactions
 
 ### State Management
 - **Redux Toolkit 1.9.7** - Default state management

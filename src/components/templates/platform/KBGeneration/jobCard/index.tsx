@@ -1,8 +1,9 @@
 import { LoadingOutlined } from '@ant-design/icons';
 import DateTimeDisplay from '@atoms/DateTimeDisplay';
 import KbSourceFile from '@atoms/KbSourceFile';
-import { cancelJob, deleteIngestionJob, retryJob } from '@database/kb-generation/jobs';
+import { assertIngestionJobDeleteSucceeded, assertIngestionJobWriteSucceeded, cancelJob, deleteIngestionJob, retryJob } from '@database/kb-generation/jobs';
 import { useAppDispatch } from '@hook/useAppDispatch';
+import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { startLoader, stopLoader } from '@reduxSlices/loader';
 import { getIngestionJobStatusData, INGESTION_JOB_STATUS, IngestionJob } from '@type/knowledgeBase';
 import { Alert, Button, Card, Col, Descriptions, Flex, message, Popconfirm, Row, Spin, Steps, theme, Typography } from 'antd';
@@ -22,14 +23,6 @@ interface JobCardProps {
 const JobCard: React.FC<JobCardProps> = ({ job, onReviewClick }) => {
   let { id, status, createdOn, modifiedOn, sourceFiles, categories, articlesEmbeddedCount, articlesToEmbedCount } = job;
 
-  //###- only for testing -###
-
-  // articlesToEmbedCount = articlesToEmbedCount || 100;
-  // articlesEmbeddedCount = articlesEmbeddedCount || 20;
-  // status = INGESTION_JOB_STATUS.PUBLISHING;
-
-  //###- only for testing -###
-
   const totalCategoriesCount = categories ? Object.keys(categories).length : 0;
   const totalSectionsCount = categories ? Object.values(categories).reduce((acc, cat) => acc + (cat.sections?.length || 0), 0) : 0;
   const totalArticlesCount = categories
@@ -43,11 +36,30 @@ const JobCard: React.FC<JobCardProps> = ({ job, onReviewClick }) => {
   const dispatch = useAppDispatch();
   const { token } = theme.useToken();
 
+  const handleSourceOpen = (sourceUrl: string, fileName: string, fileType: string) => {
+    try {
+      const opened = window.open(sourceUrl, '_blank', 'noopener,noreferrer');
+      if (!opened) {
+        throw new Error('answerlattice_kb_source_open_blocked');
+      }
+    } catch (error) {
+      logRuntimeFailure('answerlattice_kb_source_open_failed', error, {
+        surface: 'kb_generation_job_card',
+        ...getBoundedRuntimeStringContext('jobId', id),
+        ...getBoundedRuntimeStringContext('sourceUrl', sourceUrl),
+        ...getBoundedRuntimeStringContext('sourceName', fileName),
+        ...getBoundedRuntimeStringContext('sourceType', fileType),
+      });
+      message.error('Unable to open source');
+    }
+  };
+
   const handleDelete = async (e: React.MouseEvent) => {
     e.stopPropagation();
     dispatch(startLoader('Deleting job...'));
     try {
-      await deleteIngestionJob(id);
+      const result = await deleteIngestionJob(id);
+      assertIngestionJobDeleteSucceeded(result, id, 'kb_generation_job_card_delete_rejected');
       message.success('Job deleted successfully');
     } catch (error) {
       message.error('Failed to delete job');
@@ -60,7 +72,8 @@ const JobCard: React.FC<JobCardProps> = ({ job, onReviewClick }) => {
     e.stopPropagation();
     dispatch(startLoader('Retrying job...'));
     try {
-      await retryJob(id);
+      const result = await retryJob(id);
+      assertIngestionJobWriteSucceeded(result, id, 'kb_generation_job_card_retry_rejected');
       message.success('Job retry initiated');
     } catch (error) {
       message.error('Failed to retry job');
@@ -73,7 +86,8 @@ const JobCard: React.FC<JobCardProps> = ({ job, onReviewClick }) => {
     e.stopPropagation();
     dispatch(startLoader('Cancelling job...'));
     try {
-      await cancelJob(id);
+      const result = await cancelJob(id);
+      assertIngestionJobWriteSucceeded(result, id, 'kb_generation_job_card_cancel_rejected');
       message.success('Job cancelled');
     } catch (error) {
       message.error('Failed to cancel job');
@@ -82,7 +96,14 @@ const JobCard: React.FC<JobCardProps> = ({ job, onReviewClick }) => {
     }
   };
 
-  const statusConfig = getIngestionJobStatusData(token)[status];
+  const statusOptions = getIngestionJobStatusData(token);
+  const statusConfig = statusOptions[status] || {
+    title: 'Job status unavailable',
+    color: 'default',
+    icon: LuFileQuestion,
+    label: 'Unknown',
+    gradient: `linear-gradient(135deg, ${token.colorBgBase} 0%, ${token.colorBgBase} 100%)`,
+  };
   const jobCardStyle: React.CSSProperties = { background: statusConfig.gradient, width: '100%', borderRadius: 28, };
 
   const stepItems = [
@@ -160,7 +181,7 @@ const JobCard: React.FC<JobCardProps> = ({ job, onReviewClick }) => {
                   <Card style={{ background: 'transparent', borderRadius: 8 }} styles={{ body: { padding: 5 } }}>
                     <KbSourceFile
                       file={{ ...file, name: file.fileName }}
-                      onClickSource={(url) => window.open(url, '_blank')}
+                      onClickSource={(url) => handleSourceOpen(url, file.fileName, file.type)}
                     />
                   </Card>
                 </Col>
@@ -199,4 +220,3 @@ const JobCard: React.FC<JobCardProps> = ({ job, onReviewClick }) => {
 };
 
 export default JobCard;
-

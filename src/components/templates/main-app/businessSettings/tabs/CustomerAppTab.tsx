@@ -14,12 +14,20 @@
 import { FEATURE_FLAGS } from '@config/features';
 import ImageUploadInput from '@atoms/imageUploadInput';
 import { getMenuUrl, normalizeBaseUrl } from '@constant/urls';
-import { updateStore } from '@database/stores';
-import { resolvePWASettings, updatePWAIconOverride, updatePWASettings, uploadPWAIconOverride } from '@database/pwa';
+import { assertStoreUpdateSucceeded, updateStore } from '@database/stores';
+import {
+    assertPWAIconOverrideUpdateSucceeded,
+    assertPWASettingsUpdateSucceeded,
+    resolvePWASettings,
+    updatePWAIconOverride,
+    updatePWASettings,
+    uploadPWAIconOverride,
+} from '@database/pwa';
 import { deleteFileByUrl } from '@database/storage/deleteFromStorage';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { applyLocalizedDraftMap, getLocalizedStoreValue, getStoreLanguageLabel, getStoreManagedLanguages, getStorePreferredLanguage } from '@lib/localization/storeContent';
 import { preparePWAIconFile } from '@lib/pwa/iconUploadUtils';
+import { getBoundedPwaStringContext, logPwaTrackingFailure } from '@lib/pwa/pwaDiagnostics';
 import { buildBusinessCopyManualOverrideMeta } from '@services/ai/businessCopy/metadata';
 import type { UserUploadedFileType } from '@type/common';
 import { Alert, Button, Card, Flex, Input, Select, Space, Switch, Tag, Typography, message, theme } from 'antd';
@@ -27,6 +35,58 @@ import { useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { LuCopy, LuImage, LuRefreshCw, LuShare2, LuSmartphone, LuSquare, LuTrash2, LuUpload } from 'react-icons/lu';
 
 const { Title, Text, Paragraph } = Typography;
+const CUSTOMER_APP_DESKTOP_INSTALL_LINK_COPY_UNAVAILABLE = 'customer_app_desktop_install_link_copy_unavailable';
+const CUSTOMER_APP_DESKTOP_INSTALL_LINK_COPY_FALLBACK_FAILED = 'customer_app_desktop_install_link_copy_fallback_failed';
+
+const hasCustomerAppDesktopClipboardWrite = (): boolean => (
+    typeof navigator !== 'undefined'
+    && Boolean(navigator.clipboard)
+    && typeof navigator.clipboard.writeText === 'function'
+);
+
+const hasCustomerAppDesktopCopyFallback = (): boolean => (
+    typeof document !== 'undefined'
+    && typeof document.createElement === 'function'
+    && typeof document.execCommand === 'function'
+    && Boolean(document.body)
+);
+
+const copyCustomerAppDesktopInstallLink = async (value: string): Promise<void> => {
+    let clipboardWriteError: unknown;
+
+    if (hasCustomerAppDesktopClipboardWrite()) {
+        try {
+            await navigator.clipboard.writeText(value);
+            return;
+        } catch (error) {
+            clipboardWriteError = error;
+            // Continue to the acknowledged textarea fallback before showing failure copy.
+        }
+    }
+
+    if (!hasCustomerAppDesktopCopyFallback()) {
+        throw clipboardWriteError || new Error(CUSTOMER_APP_DESKTOP_INSTALL_LINK_COPY_UNAVAILABLE);
+    }
+
+    const textarea = document.createElement('textarea');
+    textarea.value = value;
+    textarea.setAttribute('readonly', '');
+    textarea.style.position = 'fixed';
+    textarea.style.left = '-9999px';
+    textarea.style.top = '0';
+    document.body.appendChild(textarea);
+    textarea.focus();
+    textarea.select();
+
+    try {
+        const copied = document.execCommand('copy');
+        if (!copied) {
+            throw new Error(CUSTOMER_APP_DESKTOP_INSTALL_LINK_COPY_FALLBACK_FAILED);
+        }
+    } finally {
+        document.body.removeChild(textarea);
+    }
+};
 
 interface CustomerAppTabProps {
     scrollRef?: React.RefObject<HTMLDivElement>;
@@ -165,16 +225,22 @@ export default function CustomerAppTab({ scrollRef }: CustomerAppTabProps) {
                 );
             }
             if (Object.keys(settingsPatch).length > 0) {
-                await updatePWASettings(storeDetails.storeId, settingsPatch);
+                const settingsResult = await updatePWASettings(storeDetails.storeId, settingsPatch);
+                assertPWASettingsUpdateSucceeded(settingsResult);
                 if ('pwaShortName' in settingsPatch) {
                     const nextBusinessCopyMeta = buildBusinessCopyManualOverrideMeta({
                         existingMeta: storeDetails?.businessCopyMeta,
                         fieldKeys: ['pwaShortName'],
                     });
-                    await updateStore({
+                    const metaResult = await updateStore({
                         businessCopyMeta: nextBusinessCopyMeta,
                         storeId: storeDetails.storeId,
                     });
+                    assertStoreUpdateSucceeded(
+                        metaResult,
+                        storeDetails.storeId,
+                        'customer_app_business_copy_meta_update_rejected',
+                    );
                     setStoreDetails((previous: any) => ({
                         ...previous,
                         businessCopyMeta: nextBusinessCopyMeta,
@@ -203,7 +269,8 @@ export default function CustomerAppTab({ scrollRef }: CustomerAppTabProps) {
                     pwaIconOverrideUrl: uploadedUrl,
                     pwaIconMode: 'override',
                 });
-                nextIconUpdatedAt = iconResult?.pwaIconUpdatedAt;
+                assertPWAIconOverrideUpdateSucceeded(iconResult);
+                nextIconUpdatedAt = iconResult.pwaIconUpdatedAt;
                 if (nextIconUrl && nextIconUrl !== uploadedUrl && nextIconUrl.includes('firebasestorage.googleapis.com')) {
                     void deleteFileByUrl(nextIconUrl);
                 }
@@ -213,7 +280,8 @@ export default function CustomerAppTab({ scrollRef }: CustomerAppTabProps) {
                     pwaIconOverrideUrl: null,
                     pwaIconMode: 'generated',
                 });
-                nextIconUpdatedAt = iconResult?.pwaIconUpdatedAt;
+                assertPWAIconOverrideUpdateSucceeded(iconResult);
+                nextIconUpdatedAt = iconResult.pwaIconUpdatedAt;
                 if (nextIconUrl.includes('firebasestorage.googleapis.com')) {
                     void deleteFileByUrl(nextIconUrl);
                 }
@@ -251,7 +319,15 @@ export default function CustomerAppTab({ scrollRef }: CustomerAppTabProps) {
             setOriginalLocalizedShortNameDrafts(localizedShortNameDrafts);
             message.success('Customer App settings saved');
         } catch (err) {
-            console.error('[CustomerAppTab] save failed:', err);
+            logPwaTrackingFailure('customer_app_desktop_settings_save_failed', err, {
+                ...getBoundedPwaStringContext('storeId', storeDetails?.storeId),
+                ...getBoundedPwaStringContext('tenantId', (storeDetails as any)?.tenantId),
+                enableInstallableApp,
+                promoteInstallation,
+                hasIconChanges,
+                removeIconOnSave,
+                managedLanguageCount: managedLanguages.length,
+            });
             message.error('Could not save. Please try again.');
         } finally {
             setSaving(false);
@@ -303,9 +379,20 @@ export default function CustomerAppTab({ scrollRef }: CustomerAppTabProps) {
     const handleCopyInstallLink = async () => {
         if (!installLink) return;
         try {
-            await navigator.clipboard.writeText(installLink);
+            await copyCustomerAppDesktopInstallLink(installLink);
             message.success('Install link copied');
-        } catch {
+        } catch (error) {
+            logPwaTrackingFailure('customer_app_desktop_install_link_copy_failed', error, {
+                ...getBoundedPwaStringContext('storeId', storeDetails?.storeId),
+                ...getBoundedPwaStringContext('tenantId', (storeDetails as any)?.tenantId),
+                ...getBoundedPwaStringContext('installLink', installLink),
+                enableInstallableApp,
+                promoteInstallation,
+                hasCustomDomain: Boolean((storeDetails as any)?.customDomain),
+                hasSubdomain: Boolean(storeDetails?.subdomain),
+                hasClipboardWrite: hasCustomerAppDesktopClipboardWrite(),
+                hasCopyFallback: hasCustomerAppDesktopCopyFallback(),
+            });
             message.error('Could not copy — please select and copy manually.');
         }
     };

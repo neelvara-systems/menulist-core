@@ -95,7 +95,7 @@ They pay because they want:
 
 GrowthOS is not for:
 
-- free-tier users
+- Starter/base plan users
 - businesses with incomplete menu truth
 - agencies
 - marketing teams
@@ -397,7 +397,7 @@ Allowed offer types later:
 - fixed price offer
 - Buy X Get Y
 - bundle/combo
-- free add-on
+- complimentary add-on offer
 
 Not allowed:
 
@@ -535,7 +535,7 @@ Current rollout requirements:
 - master feature flag is enabled
 - paid access mode remains active
 - Pro/Premium entitlement gate works on desktop and mobile
-- free/base users cannot access paid generation APIs
+- Starter/base plan users cannot access paid generation APIs
 - generated output cites only current MenuList facts
 - stale kit warning appears when source facts change
 - no direct posting path is active

@@ -694,6 +694,7 @@ export default function MobileDashboardScreen({ onBack, onOpenBusinessHealth, on
                             sourceQuality={data?.sourceQuality || overview?.sourceQuality || []}
                             analyticsAiEntitlement={data?.analyticsAiEntitlement || overview?.analyticsAiEntitlement}
                             title={t('menuIntelligenceActionPlan')}
+                            projectId={selectedProjectId}
                         />
 
                         {overview?.aiSummary?.bulletPoints?.length ? (

@@ -1,5 +1,4 @@
 import { functions } from '@lib/firebase/firebaseClient';
-import { logger } from '@lib/monitoring/logger';
 import { httpsCallable } from 'firebase/functions';
 
 /**
@@ -26,12 +25,7 @@ import { httpsCallable } from 'firebase/functions';
  * 
  * Usage:
  * ```typescript
- * try {
- *   const result = await triggerManualAggregation(1);
- *   logger.info('Aggregation successful', { result });
- * } catch (error) {
- *   logger.error('Aggregation failed', error);
- * }
+ * const result = await triggerManualAggregation(1);
  * ```
  */
 export const triggerManualAggregation = async (daysToBackfill: number = 1): Promise<{
@@ -43,7 +37,6 @@ export const triggerManualAggregation = async (daysToBackfill: number = 1): Prom
     errors?: string[];
     lastAttemptedRun?: string;
 }> => {
-    logger.info('Triggering analytics aggregation', { daysToBackfill });
     const triggerFunction = httpsCallable(functions, 'triggerAggregationManual');
     const response = await triggerFunction({ daysToBackfill });
     return response.data as any;
@@ -62,7 +55,6 @@ export const triggerManualAggregation = async (daysToBackfill: number = 1): Prom
  * Usage:
  * ```typescript
  * const result = await backfillAggregates(123, 456, 30);  // Prefer numbers (matches Firestore)
- * logger.info('Backfill complete', { results: result.results });
  * ```
  */
 export const backfillAggregates = async (
@@ -80,7 +72,6 @@ export const backfillAggregates = async (
         error?: string;
     }>;
 }> => {
-    logger.info('Triggering analytics backfill', { tenantId, storeId, days });
     const backfillFunction = httpsCallable(functions, 'backfillAggregates');
     const response = await backfillFunction({ tenantId, storeId, days });
     return response.data as any;

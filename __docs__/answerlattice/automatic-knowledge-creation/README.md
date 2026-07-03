@@ -1,9 +1,9 @@
 # Answerlattice — Automatic Knowledge Creation
 
-> **Status:** DOCUMENTED — Ready for Implementation
-> **Version:** 1.0.0
+> **Status:** IMPLEMENTED — Capped and human-reviewed
+> **Version:** 1.1.2
 > **Created:** 2026-03-09
-> **Last Updated:** 2026-03-09
+> **Last Updated:** 2026-06-28
 > **Feature Flag:** `ENABLE_ANSWERLATTICE_AUTO_KNOWLEDGE` (ready-to-use default ON; capped and human-reviewed)
 > **Expansion Item:** #4 in answerlattice-expansion-tracker.md
 > **Doctrine Compliance:** ⚠️ CAREFUL — AI drafts are PROPOSALS only, never auto-published
@@ -72,6 +72,13 @@ Current governance UI coverage:
 - Product owners can publish a generated draft as a canonical answer after editing.
 - Product owners can explicitly generate/regenerate a draft from the queue; this is manual, feature-flagged by `ENABLE_ANSWERLATTICE_AUTO_KNOWLEDGE`, and uses one AI request per click.
 
+Runtime diagnostics coverage:
+- Manual draft regeneration, scheduled draft generation, signal mutation, signal emission, and entity extraction use bounded diagnostics.
+- Manual draft regeneration logs optional grounding-read failures with fixed codes and continues with empty signal/example context instead of exposing provider or Firestore errors to the owner UI.
+- Manual draft regeneration and article entity extraction check safe mode and rate limits before permission/body/provider work; article-save extraction triggers stay non-blocking but use no-store/same-origin/manual-redirect requests plus bounded acknowledgement parsing.
+- Scheduled Cloud Function draft failures use fixed `ANSWERLATTICE_DRAFT_*` codes with source error name/code/status, tenant/store scope booleans, identifier presence/length metadata, and prompt/response lengths only.
+- Diagnostics must not emit raw tenant/store IDs, proposal IDs, entity IDs, entity names, provider exceptions, generated content, or prompt text.
+
 ---
 
 ## Key Decisions (Cascade, NOT ChatGPT)
@@ -115,4 +122,8 @@ Current governance UI coverage:
 
 | Date | Version | Change |
 |------|---------|--------|
+| 2026-06-29 | 1.1.4 | Added manual draft-regeneration grounding-read diagnostics for signal examples and existing answer context without changing operation counts |
+| 2026-06-28 | 1.1.3 | Added manual draft/entity extraction route safe-mode admission and bounded route diagnostics notes |
+| 2026-06-28 | 1.1.2 | Added scheduled draft generator bounded diagnostics contract and runtime status |
+| 2026-06-20 | 1.1.1 | Added manual draft regeneration and scheduled AI operation accounting notes |
 | 2026-03-09 | 1.0.0 | Initial documentation from ChatGPT conversation + codebase audit + external research |

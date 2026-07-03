@@ -13,9 +13,9 @@ MenuList uses Google Gemini AI across multiple features: menu extraction, descri
 ### What It Does
 
 - **AI Gateway** → Single entry point for all Gemini API calls across Cloud Functions
-- **Rate Limiting** → Global request throttle protecting the Gemini API
+- **Rate Limiting** → Existing route/job guards protecting Gemini API entry points
 - **Retry Handler** → Consistent exponential backoff with circuit breaker
-- **Cost Tracking** → Per-feature, per-tenant AI cost monitoring
+- **Cost Tracking** → Extraction and billable app-route operation ledgers for cost monitoring
 - **Model Constants** → Product/runtime-specific model selection
 - **SDK Standardization** → Single Gemini SDK across all features
 - **Provider Health** → Daily Gemini health records for MenuList and Answerlattice
@@ -23,9 +23,9 @@ MenuList uses Google Gemini AI across multiple features: menu extraction, descri
 ### What It Does NOT Do
 
 - ❌ Does not change AI prompts or extraction logic (each feature keeps its own adapter)
-- ❌ Does not introduce a task queue for all features (extraction already has one; others don't need it yet)
+- ❌ Does not introduce a task queue for all features (extraction already has one; other paths use route guards or schedulers)
 - ✅ API key rotation with multi-key pool (1-4 keys, auto-discovered from env vars)
-- ❌ Does not add knowledge caching (Phase 3, needs data volume)
+- ❌ Does not add a knowledge caching runtime
 - ✅ Covers BOTH frontend API routes AND Cloud Functions (transparent proxy on both sides)
 
 ---
@@ -60,7 +60,7 @@ MenuList uses Google Gemini AI across multiple features: menu extraction, descri
 
 3. **Provider abstraction**
    - Gemini is still the only live provider in active production paths.
-   - A future OpenAI/Anthropic fallback should use a shared interface, not direct provider calls.
+   - Any non-Gemini fallback needs a shared interface and source-backed architecture decision, not direct provider calls.
 
 ---
 
@@ -217,17 +217,17 @@ Frontend routes use the same gateway entry point from `src/lib/google/genAi/` an
 
 ## Phased Implementation
 
-### Phase 1 — Gateway Foundation (MVP)
+### Current Runtime — Gateway Foundation
 
-- AI Gateway module with `executeAITask()`
+- AI Gateway module behind the active Gemini client entry points
 - Reuse existing circuit breaker
-- Reuse existing rate limiter (add global limiter)
+- Reuse existing route/job rate limiters
 - Model constants with product/runtime-specific names
 - Migrate Cloud Function AI features to gateway
-- Per-feature cost tracking
+- Extraction and billable app-route operation ledgers
 - Gateway entry points stay always-on; no `ENABLE_AI_GATEWAY` bypass exists in active code.
 
-### Phase 2 — Cost Control & Caching (Future)
+### Conditional Cost Control Candidates
 
 - ✅ ~~API key pool with failover~~ (DONE — moved to Phase 1)
 - ✅ ~~Key health monitoring and cooldown~~ (DONE — exponential cooldown per key)
@@ -235,12 +235,16 @@ Frontend routes use the same gateway entry point from `src/lib/google/genAi/` an
 - Per-tenant AI budget guardrails
 - Provider abstraction for non-Gemini fallback
 
-### Phase 3 — Knowledge Reuse
+These items are not current runtime behavior. They require source-backed demand evidence, invalidation rules, cost impact, and docs before implementation.
+
+### Conditional Knowledge Reuse Candidates
 
 - Translation memory (shared dictionary)
 - Description cache (common dishes)
 - Image prompt library
 - Dish name normalization
+
+These items are not current runtime behavior. They require source-backed volume evidence and a separate architecture decision before implementation.
 
 ---
 
@@ -257,7 +261,7 @@ Frontend routes use the same gateway entry point from `src/lib/google/genAi/` an
 | Nightly AI (5 features × 30 days × 1000 stores) | 150,000     | $0.0005   | $75.00         |
 | **Total**                                       |             |           | **~$91/month** |
 
-### Cost Reduction with Knowledge Reuse (Phase 3)
+### Conditional Cost-Reduction Ideas (Not Current Runtime)
 
 | Optimization       | Reduction              |
 | ------------------ | ---------------------- |
@@ -265,6 +269,8 @@ Frontend routes use the same gateway entry point from `src/lib/google/genAi/` an
 | Description cache  | -40% description calls |
 | Request dedup      | -10% overall           |
 | **Net reduction**  | **~25-35%**            |
+
+These are planning estimates only. Do not treat them as production savings, launched behavior, or committed runtime scope.
 
 ---
 

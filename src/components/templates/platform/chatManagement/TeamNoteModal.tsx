@@ -2,7 +2,7 @@
 
 import DateTimeDisplay from '@atoms/DateTimeDisplay';
 import TiptapEditor from '@atoms/TiptapEditor';
-import { updateSessionInternalNote } from '@database/chatSessions';
+import { assertChatSessionInternalNoteUpdateSucceeded, updateSessionInternalNote } from '@database/chatSessions';
 import { useClientAuthSession } from '@hook/useClientAuthSession';
 import { Button, Flex, message, Modal, Typography } from 'antd';
 import { Timestamp } from 'firebase/firestore';
@@ -60,7 +60,12 @@ function TeamNoteModal({ open, onClose, sessionId, initialNote, noteMetadata, on
         setSavingNote(true);
         try {
             // Save TipTap JSON with user metadata
-            await updateSessionInternalNote(sessionId, noteContent, loggedInSession);
+            const noteUpdateResult = await updateSessionInternalNote(sessionId, noteContent, loggedInSession);
+            assertChatSessionInternalNoteUpdateSucceeded(
+                noteUpdateResult,
+                sessionId,
+                'platform_chat_team_note_update_rejected',
+            );
 
             // Update parent component's state
             if (onSave) {

@@ -14,7 +14,7 @@
 | -------------------------------------------------------------------------- | ---------- | ------------------------------------ |
 | [ops-control-room_spec.md](./ops-control-room_spec.md)                     | CEO/PM     | What it shows, why it matters        |
 | [ops-control-room_impl.md](./ops-control-room_impl.md)                     | Developers | Technical blueprint, route, sections |
-| [ops-control-room_mobile-support.md](./ops-control-room_mobile-support.md) | Mobile     | Admission test (DESKTOP ONLY)        |
+| [ops-control-room_mobile-support.md](./ops-control-room_mobile-support.md) | Mobile     | Platform-only emergency mobile support |
 
 ---
 
@@ -64,6 +64,10 @@ Layout: Single page, numeric blocks only
 The manual recovery button uses the selected store from `platformSummary/storesSummary`. It does not expose project IDs in the UI; the callable reruns the store-level nightly path for every active project under that store, including analytics settlement, Decision Blocks, and Menu Intelligence.
 
 Manual recovery creates a deterministic `schedulerRunLogs/manual_store_{tId}_{sId}_{timestamp}` document before work starts. Failed runs keep `phase`, `manualScope`, `runLogId`, task counts, and structured `errors[]` entries with `code`, `operation`, optional `settlementDate`, and safe details so the broken step can be fixed before retrying. MenuList scheduler run logs carry `expiresAt` and are retained for the configured operational window rather than permanent history.
+
+Source gate: `npm run verify:scheduler-monitor-boundary` locks the read-only scheduler DAL, bounded desktop/mobile scheduler detail rendering, MobileShell mapping, and the store-level manual recovery boundary. It does not run Firestore reads/writes, callable invocations, browser smoke, Firebase deploy, or Vercel deploy.
+
+Scheduler and alert failure diagnostics use bounded `ops_*` codes through `src/lib/ops/opsDiagnostics.ts`. Functions-side ops triggers use stable `OPERATIONS_*` codes for publish verification, force republish, budget alerts, and stores-summary backfill failures. The operator UI may show a run-log ID for manual recovery failures, but it does not show raw provider/callable exception messages.
 
 ## Cost Posture Monitor
 

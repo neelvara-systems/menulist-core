@@ -7,13 +7,23 @@ import type {
     PlatformNotificationSeverity,
 } from '@data/shared/platformNotificationRegistry';
 import type {
-    PlatformNotificationActionResult,
     PlatformNotificationRow,
     PlatformNotificationSnapshot,
     PlatformNotificationStatusFilter,
     PlatformNotificationSeverityFilter,
 } from '@lib/ops/platformNotificationTypes';
+import {
+    readPlatformNotificationActionResponse,
+    readPlatformNotificationSnapshotResponse,
+} from '@lib/ops/platformNotificationClientResponse';
 import { buildWhatsAppPhoneParam } from '@lib/phone/phoneNumber';
+import {
+    copyRuntimeTextToClipboard,
+    getBoundedRuntimeStringContext,
+    hasRuntimeClipboardWrite,
+    hasRuntimeCopyFallback,
+    logRuntimeFailure,
+} from '@lib/runtime/runtimeDiagnostics';
 import { formatDateTime, type IntlFormatter } from '@util/dateTime';
 import {
     Alert,
@@ -205,14 +215,28 @@ export default function PlatformNotificationMonitor() {
 
             const response = await fetch(`/api/ops/platform-notifications?${query.toString()}`, {
                 cache: 'no-store',
+                credentials: 'same-origin',
+                redirect: 'manual',
             });
-            const data = await response.json().catch(() => ({}));
-            if (!response.ok) {
-                throw new Error(data?.error || 'Failed to load platform notifications');
+            const data = await readPlatformNotificationSnapshotResponse(response, {
+                ...getBoundedRuntimeStringContext('eventId', eventId),
+                ...getBoundedRuntimeStringContext('statusFilter', statusFilter),
+                ...getBoundedRuntimeStringContext('severityFilter', severityFilter),
+                ...getBoundedRuntimeStringContext('triggerFilter', triggerFilter),
+            });
+            if (!data) {
+                message.error('Failed to load platform notifications');
+                return;
             }
             setSnapshot(data);
-        } catch (error: any) {
-            message.error(error?.message || 'Failed to load platform notifications');
+        } catch (error) {
+            logRuntimeFailure('platform_notification_monitor_load_failed', error, {
+                ...getBoundedRuntimeStringContext('eventId', eventId),
+                ...getBoundedRuntimeStringContext('statusFilter', statusFilter),
+                ...getBoundedRuntimeStringContext('severityFilter', severityFilter),
+                ...getBoundedRuntimeStringContext('triggerFilter', triggerFilter),
+            });
+            message.error('Failed to load platform notifications');
         } finally {
             setLoading(false);
         }
@@ -228,20 +252,30 @@ export default function PlatformNotificationMonitor() {
         setActionLoading(true);
         try {
             const response = await fetch('/api/ops/platform-notifications', {
+                cache: 'no-store',
+                credentials: 'same-origin',
                 method: 'POST',
+                redirect: 'manual',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(body),
             });
-            const result = await response.json().catch(() => ({}));
-            if (!response.ok) {
-                throw new Error(result?.error || 'Platform notification action failed');
+            const actionResult = await readPlatformNotificationActionResponse(response, {
+                ...getBoundedRuntimeStringContext('action', body.action),
+                ...getBoundedRuntimeStringContext('selectedEventId', selectedEventId),
+            });
+            if (!actionResult) {
+                message.error('Platform notification action failed');
+                return false;
             }
-            const actionResult = result as PlatformNotificationActionResult;
             message.success(actionResult.message || 'Action completed');
             await loadData(selectedEventId);
             return true;
-        } catch (error: any) {
-            message.error(error?.message || 'Platform notification action failed');
+        } catch (error) {
+            logRuntimeFailure('platform_notification_monitor_action_failed', error, {
+                ...getBoundedRuntimeStringContext('action', body.action),
+                ...getBoundedRuntimeStringContext('selectedEventId', selectedEventId),
+            });
+            message.error('Platform notification action failed');
             return false;
         } finally {
             setActionLoading(false);
@@ -281,8 +315,51 @@ export default function PlatformNotificationMonitor() {
             return;
         }
 
-        window.open(buildWhatsappWebHref(prefillModal.destination, prefillModal.body), '_blank', 'noopener,noreferrer');
-    }, [prefillModal]);
+        const whatsappWebHref = buildWhatsappWebHref(prefillModal.destination, prefillModal.body);
+        try {
+            const opened = window.open(whatsappWebHref, '_blank', 'noopener,noreferrer');
+            if (!opened) {
+                throw new Error('platform_notification_monitor_whatsapp_open_blocked');
+            }
+        } catch (error) {
+            logRuntimeFailure('platform_notification_monitor_whatsapp_open_failed', error, {
+                ...getBoundedRuntimeStringContext('selectedEventId', selectedEventId),
+                ...getBoundedRuntimeStringContext('statusFilter', statusFilter),
+                ...getBoundedRuntimeStringContext('severityFilter', severityFilter),
+                ...getBoundedRuntimeStringContext('triggerFilter', triggerFilter),
+                ...getBoundedRuntimeStringContext('destination', prefillModal.destination),
+                ...getBoundedRuntimeStringContext('messageBody', prefillModal.body),
+                ...getBoundedRuntimeStringContext('whatsappWebHref', whatsappWebHref),
+            });
+            message.error('Unable to open WhatsApp Web');
+        }
+    }, [prefillModal, selectedEventId, severityFilter, statusFilter, triggerFilter]);
+
+    const copyPrefillMessage = useCallback(async () => {
+        if (!prefillModal) return;
+        const messageText = prefillModal.channel === 'email'
+            ? `${prefillModal.subject}\n\n${prefillModal.body}`
+            : prefillModal.body || '';
+        try {
+            await copyRuntimeTextToClipboard(messageText);
+            message.success('Message copied');
+        } catch (error) {
+            logRuntimeFailure('platform_notification_monitor_message_copy_failed', error, {
+                ...getBoundedRuntimeStringContext('selectedEventId', selectedEventId),
+                ...getBoundedRuntimeStringContext('statusFilter', statusFilter),
+                ...getBoundedRuntimeStringContext('severityFilter', severityFilter),
+                ...getBoundedRuntimeStringContext('triggerFilter', triggerFilter),
+                ...getBoundedRuntimeStringContext('channel', prefillModal.channel),
+                ...getBoundedRuntimeStringContext('destination', prefillModal.destination),
+                ...getBoundedRuntimeStringContext('subject', prefillModal.subject),
+                ...getBoundedRuntimeStringContext('messageBody', prefillModal.body),
+                messageTextLength: messageText.length,
+                hasClipboardWrite: hasRuntimeClipboardWrite(),
+                hasCopyFallback: hasRuntimeCopyFallback(),
+            });
+            message.error('Unable to copy message');
+        }
+    }, [prefillModal, selectedEventId, severityFilter, statusFilter, triggerFilter]);
 
     const selectedEvent = snapshot?.selectedEvent?.id === selectedEventId ? snapshot.selectedEvent : undefined;
     const counts = snapshot?.counts || { active: 0, acknowledged: 0, critical: 0, warning: 0, info: 0 };
@@ -481,7 +558,7 @@ export default function PlatformNotificationMonitor() {
                 open={Boolean(selectedEventId)}
                 onClose={closeDrawer}
                 width={760}
-                destroyOnClose
+                destroyOnHidden
                 extra={selectedEvent ? (
                     <Space wrap>
                         <Button
@@ -556,12 +633,7 @@ export default function PlatformNotificationMonitor() {
                     <Button
                         key="copy"
                         icon={<LuCopy />}
-                        onClick={async () => {
-                            await navigator.clipboard.writeText(prefillModal?.channel === 'email'
-                                ? `${prefillModal?.subject}\n\n${prefillModal?.body}`
-                                : prefillModal?.body || '');
-                            message.success('Message copied');
-                        }}
+                        onClick={() => void copyPrefillMessage()}
                     >
                         Copy Message
                     </Button>,

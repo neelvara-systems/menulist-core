@@ -10,7 +10,11 @@
 import { trackAnalyticsEvent } from '@database/analytics';
 import { getBusinessAnalyticsDateKey } from '@lib/analytics/businessDay';
 import { getAnalyticsHourKey } from '@lib/analytics/dateKey';
-import { logger } from '@lib/monitoring/logger';
+import {
+  getAnalyticsTrackingContext,
+  getBoundedAnalyticsStringContext,
+  logAnalyticsFailure,
+} from './analyticsDiagnostics';
 import { getDeviceInfo } from './device';
 import { getLocationInfo } from './geo';
 import { getSessionId } from './session';
@@ -85,7 +89,10 @@ const shouldRateLimit = (eventKey: string): boolean => {
 
   // Check if over limit
   if (timestamps.length >= RATE_LIMIT.MAX_EVENTS_PER_MINUTE) {
-    logger.warn('Analytics rate limit exceeded', { eventKey, count: timestamps.length });
+    logAnalyticsFailure('analytics_rate_limit_exceeded', undefined, {
+      ...getBoundedAnalyticsStringContext('eventKey', eventKey),
+      eventCount: timestamps.length,
+    });
     return true;
   }
 
@@ -106,7 +113,6 @@ const shouldDebounce = (eventType: string, projectId?: string): boolean => {
   const lastTime = lastEventTime.get(key) || 0;
 
   if (now - lastTime < RATE_LIMIT.DEBOUNCE_MS) {
-    logger.debug('Analytics event debounced', { eventType, projectId });
     return true;
   }
 
@@ -125,7 +131,6 @@ const shouldBlockMenuView = (projectId?: string): boolean => {
   const lastViewTime = menuViewTracker.get(projectId) || 0;
 
   if (now - lastViewTime < RATE_LIMIT.MENU_VIEW_COOLDOWN_MS) {
-    logger.debug('Menu view cooldown active', { projectId });
     return true;
   }
 
@@ -297,6 +302,10 @@ const normalizeEntrySource = (value?: string | null): EntrySource | null => {
   if (source.includes('shortcut')) return 'shortcut';
   if (source === 'direct' || source === 'open') return 'direct';
   return 'other';
+};
+
+const normalizeOpenHoursState = (value?: string | null): 'open' | 'closed' | 'unknown' => {
+  return value === 'open' || value === 'closed' ? value : 'unknown';
 };
 
 const inferEntrySource = (data: TrackingData): EntrySource => {
@@ -582,6 +591,7 @@ export interface TrackingData {
   searchTerm?: string;        // What the user searched for
   searchResults?: number;     // Number of search results
   menuAction?: 'call' | 'whatsapp' | 'directions' | 'reserve' | 'order';
+  openHoursState?: 'open' | 'closed' | 'unknown';
   shareMethod?: 'native_share' | 'copy_link';
   shareContentType?: 'menu_item' | 'menu' | 'obp';
   obpAction?: 'call' | 'whatsapp' | 'directions' | 'reserve' | 'order' | 'feedback' | 'copy_link' | 'copy_message';
@@ -652,6 +662,18 @@ export interface TrackingData {
   [key: string]: any;         // Any other custom properties
 }
 
+const logMissingRequiredAnalyticsField = (
+  eventName: TrackingEvent,
+  fieldName: string,
+  data: TrackingData,
+): void => {
+  logAnalyticsFailure('analytics_missing_required_field', undefined, {
+    eventName,
+    fieldName,
+    ...getAnalyticsTrackingContext(data),
+  });
+};
+
 /**
  * Unified tracking function that handles both Firebase and GA4
  * 
@@ -670,18 +692,17 @@ export const trackEvent = async (eventName: TrackingEvent, data: TrackingData = 
     // COST OPTIMIZATION: Rate limiting check
     const sessionId = data.sessionId;
     if (shouldRateLimit(sessionId)) {
-      logger.warn('Analytics event blocked by rate limit', { eventName });
       return;
     }
 
     // COST OPTIMIZATION: Debounce rapid-fire same events
     if (shouldDebounce(eventName, data.projectId)) {
-      return; // Silently skip (already logged in shouldDebounce)
+      return; // Silently skip duplicate event.
     }
 
     // COST OPTIMIZATION: Special handling for menu views
     if (eventName === TrackingEvent.MENU_VIEW && shouldBlockMenuView(data.projectId)) {
-      return; // Silently skip (already logged in shouldBlockMenuView)
+      return; // Silently skip repeated menu view.
     }
 
     // Track in Firebase Analytics
@@ -689,10 +710,11 @@ export const trackEvent = async (eventName: TrackingEvent, data: TrackingData = 
 
     // Track in Google Analytics 4
     trackGA4Event(eventName, data);
-
-    logger.debug('Analytics event tracked', { eventName, hasData: !!data });
   } catch (error) {
-    logger.error('Analytics tracking failed', error, { eventName });
+    logAnalyticsFailure('analytics_track_event_failed', error, {
+      eventName,
+      ...getAnalyticsTrackingContext(data),
+    });
   }
 };
 
@@ -726,7 +748,10 @@ const trackFirebaseEvent = async (eventName: TrackingEvent, data: TrackingData):
       try {
         locationKey = await getLocationInfo();
       } catch (error) {
-        console.warn('Could not get location info:', error);
+        logAnalyticsFailure('analytics_location_context_failed', error, {
+          eventName,
+          ...getAnalyticsTrackingContext(data),
+        });
       }
     }
 
@@ -792,7 +817,7 @@ const trackFirebaseEvent = async (eventName: TrackingEvent, data: TrackingData):
 
       case TrackingEvent.MENU_LANGUAGE_ADOPTION:
         if (!data.menuLanguage) {
-          console.error('menuLanguage is required for menu language adoption tracking');
+          logMissingRequiredAnalyticsField(eventName, 'menuLanguage', data);
           return;
         }
         if (!addMenuLanguageCounters(updateData, sessionMilestones, data, 'adoption')) return;
@@ -802,7 +827,7 @@ const trackFirebaseEvent = async (eventName: TrackingEvent, data: TrackingData):
         // ITEM_VIEW = item modal opened (impression)
         // Separate from ITEM_CLICK for proper CTR calculation
         if (!data.itemId) {
-          console.error('Item ID is required for item view tracking');
+          logMissingRequiredAnalyticsField(eventName, 'itemId', data);
           return;
         }
 
@@ -824,7 +849,7 @@ const trackFirebaseEvent = async (eventName: TrackingEvent, data: TrackingData):
       case TrackingEvent.ITEM_CLICK:
         // ITEM_CLICK = explicit user action (add to cart, order, etc.)
         if (!data.itemId) {
-          console.error('Item ID is required for item click tracking');
+          logMissingRequiredAnalyticsField(eventName, 'itemId', data);
           return;
         }
 
@@ -872,7 +897,7 @@ const trackFirebaseEvent = async (eventName: TrackingEvent, data: TrackingData):
 
       case TrackingEvent.UNAVAILABLE_ITEM_ATTEMPT:
         if (!data.itemId) {
-          console.error('Item ID is required for unavailable item tracking');
+          logMissingRequiredAnalyticsField(eventName, 'itemId', data);
           return;
         }
         updateData.totalUnavailableItemTaps = 1;
@@ -887,11 +912,13 @@ const trackFirebaseEvent = async (eventName: TrackingEvent, data: TrackingData):
 
       case TrackingEvent.MENU_ACTION_CLICK:
         if (!data.menuAction) {
-          console.error('menuAction is required for menu action click tracking');
+          logMissingRequiredAnalyticsField(eventName, 'menuAction', data);
           return;
         }
+        const menuActionOpenHoursState = normalizeOpenHoursState(data.openHoursState);
         updateData.totalMenuActionClicks = 1;
         updateData[`menuActionClicks.${data.menuAction}`] = 1;
+        updateData[`menuActionClicksByOpenHoursState.${menuActionOpenHoursState}`] = 1;
         updateData[`hourlyMenuActionClicks.${hour}`] = 1;
         markEngagedIntentSession(updateData, sessionMilestones);
         const hadActionSession = Boolean(sessionMilestones?.action);
@@ -899,12 +926,13 @@ const trackFirebaseEvent = async (eventName: TrackingEvent, data: TrackingData):
         updateData[`menuActionClicksBySource.${entrySource}`] = 1;
         if (!hadActionSession && updateData.actionSessions) {
           updateData[`actionSessionsBySource.${entrySource}`] = 1;
+          updateData[`actionSessionsByOpenHoursState.${menuActionOpenHoursState}`] = 1;
         }
         break;
 
       case TrackingEvent.DECISION_BLOCK_CLICK:
         if (!data.itemId || !data.blockType) {
-          console.error('Item ID and block type are required for recommendation click tracking');
+          logMissingRequiredAnalyticsField(eventName, data.itemId ? 'blockType' : 'itemId', data);
           return;
         }
         updateData.totalRecommendationClicks = 1;
@@ -938,7 +966,7 @@ const trackFirebaseEvent = async (eventName: TrackingEvent, data: TrackingData):
 
       case TrackingEvent.OBP_LANGUAGE_ADOPTION:
         if (!data.obpLanguage && !data.menuLanguage) {
-          console.error('obpLanguage is required for OBP language adoption tracking');
+          logMissingRequiredAnalyticsField(eventName, 'obpLanguage', data);
           return;
         }
         if (!addOBPLanguageCounters(updateData, sessionMilestones, data, 'adoption')) return;
@@ -947,12 +975,14 @@ const trackFirebaseEvent = async (eventName: TrackingEvent, data: TrackingData):
       case TrackingEvent.OBP_ACTION_CLICK:
         // OBP action button click (Call, WhatsApp, Directions)
         if (!data.obpAction) {
-          console.error('obpAction is required for OBP action click tracking');
+          logMissingRequiredAnalyticsField(eventName, 'obpAction', data);
           return;
         }
+        const obpActionOpenHoursState = normalizeOpenHoursState(data.openHoursState);
         updateData.totalOBPActionClicks = 1;
         updateData[`obpActionClicks.${data.obpAction}`] = 1;
         updateData[`obpActionClicksBySource.${entrySource}`] = 1;
+        updateData[`obpActionClicksByOpenHoursState.${obpActionOpenHoursState}`] = 1;
         updateData[`hourlyOBPActionClicks.${hour}`] = 1;
         break;
 
@@ -963,6 +993,7 @@ const trackFirebaseEvent = async (eventName: TrackingEvent, data: TrackingData):
         updateData.totalOBPMenuClicks = 1;
         updateData[`hourlyOBPMenuClicks.${hour}`] = 1;
         updateData[`obpMenuClicksBySource.${entrySource}`] = 1;
+        updateData[`obpMenuClicksByOpenHoursState.${normalizeOpenHoursState(data.openHoursState)}`] = 1;
         const obpSurface = data.obpSurface === 'outlet' ? 'outlet' : 'brand';
         updateData[`obpMenuClicksBySurface.${obpSurface}`] = 1;
         break;
@@ -970,19 +1001,20 @@ const trackFirebaseEvent = async (eventName: TrackingEvent, data: TrackingData):
 
       case TrackingEvent.OBP_LINK_CLICK:
         if (!data.obpLink) {
-          console.error('obpLink is required for OBP link click tracking');
+          logMissingRequiredAnalyticsField(eventName, 'obpLink', data);
           return;
         }
         updateData.totalOBPLinkClicks = 1;
         updateData[`obpLinkClicks.${data.obpLink}`] = 1;
         updateData[`obpLinkClicksBySource.${entrySource}`] = 1;
+        updateData[`obpLinkClicksByOpenHoursState.${normalizeOpenHoursState(data.openHoursState)}`] = 1;
         updateData[`hourlyOBPLinkClicks.${hour}`] = 1;
         break;
 
       case TrackingEvent.OBP_SHARE:
         // Owner shared OBP link via WhatsApp/copy — measures distribution behavior
         if (!data.obpAction) {
-          console.error('obpAction (shareMethod) is required for OBP share tracking');
+          logMissingRequiredAnalyticsField(eventName, 'obpAction', data);
           return;
         }
         updateData.totalOBPShares = 1;
@@ -995,7 +1027,7 @@ const trackFirebaseEvent = async (eventName: TrackingEvent, data: TrackingData):
         // - Smart Picks Visibility Rate (rendered / views)
         // - Engagement Rate (clicks / rendered) - THE MONEY METRIC
         if (!data.blocksShown || !Array.isArray(data.blocksShown) || data.blocksShown.length === 0) {
-          console.error('blocksShown array is required for render tracking');
+          logMissingRequiredAnalyticsField(eventName, 'blocksShown', data);
           return;
         }
         updateData.totalDecisionBlocksRendered = 1;
@@ -1147,7 +1179,10 @@ const trackFirebaseEvent = async (eventName: TrackingEvent, data: TrackingData):
       writeSessionEntrySource(sessionSourceKey, entrySource);
     }
   } catch (error) {
-    console.error('Error tracking Firebase event:', error);
+    logAnalyticsFailure('analytics_firebase_event_failed', error, {
+      eventName,
+      ...getAnalyticsTrackingContext(data),
+    });
     throw error;
   }
 };
@@ -1294,7 +1329,10 @@ const trackGA4Event = (
         });
     }
   } catch (error) {
-    console.error('Error tracking GA4 event:', error);
+    logAnalyticsFailure('analytics_ga4_event_failed', error, {
+      eventName,
+      ...getAnalyticsTrackingContext(data),
+    });
   }
 };
 

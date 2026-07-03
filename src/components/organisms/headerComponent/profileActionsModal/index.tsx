@@ -74,8 +74,7 @@ function ProfileActionsModal({ children, userData = { name: "", email: "", image
             .then(() => {
                 dispatch(showSuccessToast(t('logoutSuccess')))
                 setIsLoading(false);
-            }).catch((error) => {
-                console.error("Error while signing out:", error);
+            }).catch(() => {
                 dispatch(showSuccessToast(t('logoutFailed')))
                 setIsLoading(false);
             })

@@ -1,7 +1,7 @@
 # Razorpay Payment System — Complete Technical Reference
 
 **For:** Developers, Founder, CEO, Co-Founder
-**Last Updated:** June 11, 2026
+**Last Updated:** July 1, 2026
 **Status:** Implemented and billing-slice audited — full MenuList production certification still pending
 **Codebase:** Single source of truth. Every claim links to exact file:line.
 
@@ -13,8 +13,24 @@ June 11, 2026 audit corrections:
 - `/api/razorpay/create-subscription` no longer accepts browser-supplied carry-forward credit. New subscriptions start with `topUpCredits: 0`.
 - `/api/razorpay/upgrade-subscription` verifies both old and new subscription ownership, computes remaining credits from the old subscription server-side, writes `carryForwardFromSubscriptionId`, and applies carry-forward idempotently.
 - `/api/razorpay/create-topup-order` verifies an active subscription exists before opening paid top-up checkout.
+- Authenticated billing JSON routes use bounded body readers before schema validation, Razorpay provider calls, tenant/store reads, or subscription/top-up writes: 8KB for Razorpay payment actions and 16KB for onboarding subscription setup.
 - Browser subscription reads no longer attempt forbidden subscription writes when grace period has ended; server-owned paths perform expiry writes and entitlement/cache sync.
 - Owner billing history is capped to the latest 50 successful payment events.
+- `usePaymentHandler` and `useRazorpayScript` now use bounded payment diagnostics instead of direct console logging. Subscription/top-up verification failures no longer log raw verification response payloads, payment identifiers, signatures, provider errors, or checkout exception objects.
+- Browser billing route requests in `usePaymentHandler` now use no-store caching, same-origin credentials, and manual redirect handling for create, cancel, pause, resume, upgrade, top-up, onboarding, and verification handoffs before accepting route responses.
+- Browser billing route responses in `usePaymentHandler` now pass through `readPaymentResponseJson()`, which uses `readJsonResponseWithLimit()` with a 32KB cap. Malformed or oversized create, cancel, pause, resume, upgrade, top-up, onboarding, and verification responses log `payment_response_parse_failed` with status/OK/max-byte metadata plus bounded plan/pack/subscription context only, then continue through fixed generic failure codes. Successful subscription, top-up order, and onboarding responses are shape-checked before checkout opens or session state updates. Cancel, pause, resume, and upgrade responses must also parse as `{ success: true }` before owner success copy or follow-up state refresh can continue.
+- Browser payment verification acknowledgements are shape-checked before checkout success resolves. `/api/razorpay/verify-subscription` must return `{ success: true, status: "active" }`, and `/api/razorpay/verify-topup` must return `{ success: true, newCreditBalance: number }`; malformed 2xx responses fail through fixed payment verification failure codes.
+- Authenticated Razorpay route `logger.security()` events use `getBoundedRazorpaySecurityContext()` instead of raw `buildSecurityContext()` output. Validation failure `attemptedData`, billing-permission failures, signature failures, tenant/store mismatches, and mutation mismatch breadcrumbs record identifier presence/length metadata instead of raw user IDs, emails, tenant/store IDs, request IP/user-agent values, product/plan/pack IDs, subscription IDs, order IDs, or payment IDs.
+- Authenticated MenuList billing mutations use `canManageBillingMutation()` to fail closed for missing store/tenant/role context, cross-tenant stores, inactive stores, soft-deleted stores, and platform-blocked stores before subscription, top-up, cancellation, pause, resume, or upgrade mutations proceed.
+- Website pricing, website credit packs, desktop billing, subscription self-service, and mobile billing callers now use the same bounded payment diagnostics for payment failures. They do not direct-console or raw-log checkout/store-switch/history/refetch errors, and owner-visible payment failure messages stay generic.
+- Desktop and mobile retry-payment and invoice links now open through guarded `noopener,noreferrer` browser handoffs. Blocked opens log bounded URL presence/length and invoice/subscription context only.
+- Server-side plan creation and entitlement sync diagnostics are bounded. Razorpay plan lookup/create logs use lookup/provider-plan presence and length metadata only, throw fixed local failure text, and store source error name/code/status only in diagnostics. MenuList entitlement sync failures use `billing_store_plan_entitlement_sync_failed` with bounded subscription/tenant/store/plan/status/source metadata.
+- Cancellation flow logs now use `getRazorpaySubscriptionMutationLogContext()` instead of raw subscription, provider-subscription, tenant, store, or plan identifiers. Cancellation failure logs also use the fixed `razorpay_cancel_subscription_failed` code with bounded source-error metadata.
+- Subscription verification local logs no longer set raw top-level `userId` fields. Payment, provider subscription, internal subscription, update, and failure breadcrumbs keep user identity as bounded presence/length metadata inside the log payload.
+- Successful authenticated billing mutations keep lifecycle/internal notification sends fire-and-forget, but failed notification imports/sends now emit bounded `logRazorpayNonBlockingFailure` diagnostics. Verify-subscription, verify-topup, cancel, pause, resume, and upgrade routes log stable notification failure codes plus identifier presence/length metadata only; they do not log raw emails, store names, provider payloads, or raw tenant/store/payment/subscription IDs.
+- Razorpay webhook notification, alert, and failed-status bookkeeping fallbacks also use bounded `logRazorpayNonBlockingFailure` diagnostics. Webhook receipt and duplicate breadcrumbs bound provider event IDs/event keys as presence/length metadata instead of logging raw provider identifiers.
+- Onboarding subscription diagnostics and the shared `handlePaymentError()` helper are bounded. Onboarding validation security breadcrumbs, existing-user attempts, success breadcrumbs, failure logs, and local dev payment logs store stable codes plus identifier presence/length metadata only. Shared Firestore/Razorpay payment-handler logs no longer include raw exception messages, stacks, provider descriptions, or raw user/tenant/store IDs; generic Firestore/Razorpay fallback responses use fixed detail text in every environment.
+- Billing entitlement boundary source gate: `npm run verify:billing-entitlement-boundary`. This locks server-side payment verification, active-subscription top-up gating, checkout response acknowledgement, and entitlement/cache sync source contracts. It is source/docs parity only and does not replace real Razorpay sandbox checkout or webhook smoke.
 
 ---
 
@@ -125,10 +141,27 @@ June 11, 2026 audit corrections:
 | File                                    | Purpose                                                       | Lines |
 | --------------------------------------- | ------------------------------------------------------------- | ----- |
 | `src/lib/razorpay/razorpay.ts`          | Razorpay SDK singleton client                                 | 18    |
-| `src/lib/razorpay/plan-handler.ts`      | `getOrCreateRazorpayPlan()` — dedup plans by lookup key       | 64    |
+| `src/lib/razorpay/plan-handler.ts`      | `getOrCreateRazorpayPlan()` — dedup plans by lookup key       | 130   |
 | `src/lib/razorpay/webhook-validator.ts` | HMAC-SHA256 signature validation with timing-safe compare     | 94    |
 | `src/utils/razorpay.ts`                 | `getGracePeriodInfo()`, `calculateRemainingCredits()`         | 74    |
 | `src/lib/ai/capacityCheck.ts`           | `checkAICapacity()`, `consumeAICapacity()`, lazy credit reset | 202   |
+
+### Frontend Diagnostics
+
+| File | Purpose |
+| ---- | ------- |
+| `src/hooks/paymentDiagnostics.ts` | Shared bounded diagnostics for browser payment and Razorpay script failures. |
+| `src/hooks/usePaymentHandler.ts` | Opens checkout, posts verification payloads to server routes, parses billing route responses with a bounded 32KB reader, shape-checks subscription/order/onboarding payloads, and logs only normalized failure codes plus bounded product/plan/pack/status metadata. |
+| `src/hooks/useRazorpayScript.ts` | Loads Razorpay Checkout and logs script-load failure through bounded payment diagnostics. |
+| `src/components/website/pricing-pages/index.tsx` | Handles website subscription/onboarding checkout failures with bounded diagnostics and generic user-facing failure text. |
+| `src/components/website/pricing-pages/SubscriptionPayementSuccessModal.tsx` | Opens the post-payment dashboard handoff with `noopener,noreferrer`, logs bounded blocked-open diagnostics, and falls back to same-tab navigation without raw purchase/payment payloads. |
+| `src/components/website/pricing-pages/shared/CreditPacksCtaSection.tsx` | Handles website credit-pack top-up failures with bounded diagnostics. |
+| `src/components/templates/main-app/billing/index.tsx` | Handles owner desktop upgrade, paid-location, credit-pack, and store-switch failures with bounded diagnostics. |
+| `src/components/templates/main-app/billing/ActiveSubscriptionCard.tsx` | Handles desktop cancel, pause, resume, and retry-payment link-open failures with bounded diagnostics and generic owner messages. |
+| `src/components/templates/main-app/billing/BillingHistory.tsx` | Handles desktop invoice link-open failures with bounded diagnostics and generic owner messages. |
+| `src/components/mobile/screens/MobileBillingScreen.tsx` | Handles mobile billing payment-action, subscription refetch, history-load, store-switch, retry-payment, pending-payment, and invoice link-open failures with bounded diagnostics and generic toast text. |
+
+Frontend diagnostics must not log raw `razorpay_payment_id`, `razorpay_subscription_id`, `razorpay_order_id`, `razorpay_signature`, `shortUrl`, `invoiceUrl`, verification responses, billing route response bodies, provider exception payloads, owner identity, or full plan/subscription objects. `npm run verify:menulist-api-tenant-safety` guards this contract.
 
 ### Backend — Database Layer
 
@@ -179,7 +212,7 @@ June 11, 2026 audit corrections:
 | File                                                                                                     | Purpose                             | Lines |
 | -------------------------------------------------------------------------------------------------------- | ----------------------------------- | ----- |
 | `src/components/templates/website/platformSite/landingPage/pricing/SubscriptionManagement.tsx`           | Public subscription management page | 204   |
-| `src/components/templates/website/platformSite/landingPage/pricing/SubscriptionPayementSuccessModal.tsx` | Onboarding success modal            | 108   |
+| `src/components/website/pricing-pages/SubscriptionPayementSuccessModal.tsx` | Onboarding success modal with safe dashboard handoff | 108   |
 
 **Total: 34 files, ~4,000+ lines of code**
 
@@ -336,7 +369,7 @@ interface BillingHistoryItem {
 
 ### Razorpay Plan Deduplication
 
-**File:** `src/lib/razorpay/plan-handler.ts:19-63`
+**File:** `src/lib/razorpay/plan-handler.ts:57-130`
 
 Plans are created on Razorpay's side using a **lookup key** pattern to avoid duplicates:
 
@@ -345,7 +378,7 @@ lookupKey = "{userType}_{planId}_{interval}_{currency}_{price}".toUpperCase()
 Example: "B2C_PRO_MONTH_INR_149900"
 ```
 
-`getOrCreateRazorpayPlan()` searches existing Razorpay plans (up to 100) for a matching `lookupKey` in `notes`. If found, returns existing plan ID. If not, creates a new plan.
+`getOrCreateRazorpayPlan()` searches existing Razorpay plans (up to 100) for a matching `lookupKey` in `notes`. If found, returns existing plan ID. If not, creates a new plan. Lookup, found-plan, create-plan, and failure diagnostics use bounded metadata only; raw lookup keys, provider plan IDs, and provider exception messages are not logged or rethrown.
 
 ---
 
@@ -371,34 +404,35 @@ BACKEND:
 6. withAuth() verifies session
 7. Verify user does NOT already have tenant/store (security)
 8. Rate limit check: PAYMENT_ONBOARDING config
-9. Zod input validation (OnboardingSubscriptionSchema)
-10. Find plan from PlatformPlansList constants
-11. ATOMIC TRANSACTION (Firestore runTransaction):
+9. Bounded JSON body parse (16KB cap)
+10. Zod input validation (OnboardingSubscriptionSchema)
+11. Find plan from PlatformPlansList constants
+12. ATOMIC TRANSACTION (Firestore runTransaction):
     a. Create tenant document
     b. Create store document (with default roles, time slot presets)
     c. Sync to storesSummary (Cloud Function optimization)
     d. Update user document with tenantId + storeId
     e. Update platformSummary counts
-12. getOrCreateRazorpayPlan() — find or create Razorpay plan
-13. razorpayClient.subscriptions.create() — create Razorpay subscription
-    - total_count: 24 (monthly) or 1 (yearly)
+13. getOrCreateRazorpayPlan() — find or create Razorpay plan
+14. razorpayClient.subscriptions.create() — create Razorpay subscription
+    - total_count: 36 (monthly) or 3 (yearly)
     - notes: { tenantId, storeId, userId, userType, planId, priceKey, interval, ... }
-14. createInitialSubscription() — Firestore doc with:
+15. createInitialSubscription() — Firestore doc with:
     - status: "pending"
     - monthlyCreditsAllowance: plan credits
     - monthlyCredits: plan credits (full balance)
     - topUpCredits: 0
     - creditsLastResetMonth: YYYYMM (calendar month, corrected later by verify)
     - cycleStartDate/EndDate: null (set after payment)
-15. Return { subscription, tenantId, storeId }
+16. Return { subscription, tenantId, storeId }
 
 FRONTEND (continued):
-16. Update NextAuth session with new tenantId/storeId
-17. Open Razorpay Checkout modal (subscription_id)
-18. User completes payment
-19. Razorpay handler callback → verifySubscriptionPaymentResponse()
-20. POST /api/razorpay/verify-subscription (see Flow 3)
-21. Show SubscriptionPayementSuccessModal with confetti
+17. Update NextAuth session with new tenantId/storeId
+18. Open Razorpay Checkout modal (subscription_id)
+19. User completes payment
+20. Razorpay handler callback → verifySubscriptionPaymentResponse()
+21. POST /api/razorpay/verify-subscription (see Flow 3)
+22. Show SubscriptionPayementSuccessModal with confetti
 ```
 
 ### Analytics Assistant Entitlement Sync
@@ -410,6 +444,8 @@ When a subscription becomes `active`, payment verification and Razorpay webhooks
 - `subscriptions/{subscriptionId}.analyticsEntitlement`
 
 Only `active` subscriptions carry an active plan type. `past_due`, `paused`, `cancelled`, `expired`, and `completed` remove the store-level plan mirror so paid analytics AI summaries and action-list wording fail closed. The nightly reconciliation job repairs stale or missing entitlement mirrors without scanning stores.
+
+The active Firebase Functions reconciler at `functions/src/billing/reconcileSubscriptions.ts` is the only supported subscription reconciliation path. The deprecated Vercel fallback route at `src/app/api/internal/reconcile-subscriptions/route.ts` was removed on July 1, 2026, after the Firebase scheduler migration. Functions per-subscription failures use `BILLING_SUBSCRIPTION_RECONCILIATION_SUBSCRIPTION_FAILED`. Subscription/provider IDs are logged as presence-length metadata only, update logs use counts/booleans instead of raw field arrays, and source error names/codes/status values are capped before Functions logging.
 
 ### Key Security
 
@@ -436,31 +472,34 @@ Only `active` subscriptions carry an active plan type. `past_due`, `paused`, `ca
 3. User confirms → handleConfirmUpgrade() called
 
 FRONTEND:
-4. createSubscription(plan, currency, user, remainingCredits=0)
+4. createSubscription(plan, currency, user)
 5. POST /api/razorpay/create-subscription
-   Body: { planId, interval, currency, userType, rc: remainingCredits }
+   Body: { planId, interval, currency, userType, quantity? }
 
 BACKEND:
-6. withAuth() + verifyTenantAccess()
-7. Rate limit check: PAYMENT_SUBSCRIPTION config
+6. withAuth()
+7. Bounded JSON body parse (8KB cap)
 8. Zod validation
-9. Find plan from PlatformPlansList constants
-10. getOrCreateRazorpayPlan()
-11. razorpayClient.subscriptions.create()
-    - total_count: 24 (monthly) or 1 (yearly)
-    - notes include remainingCredits for carry-forward tracking
-12. createInitialSubscription():
+9. Resolve billing scope, verify tenant/store access, and check billing mutation permission
+10. Rate limit check: PAYMENT_SUBSCRIPTION config
+11. Find plan from PlatformPlansList constants
+12. getOrCreateRazorpayPlan()
+13. razorpayClient.subscriptions.create()
+    - total_count: 36 (monthly) or 3 (yearly)
+    - notes include zero server-owned carried credits for new subscriptions
+    - billing name/email come from the authenticated session only, not request body fallbacks
+14. createInitialSubscription():
     - status: "pending"
     - monthlyCredits: plan's monthlyCredits
-    - topUpCredits: remainingCredits || 0 (carry-forward from upgrade)
+    - topUpCredits: 0
     - creditsLastResetMonth: YYYYMM
-13. Return { subscription }
+15. Return { subscription }
 
 FRONTEND (continued):
-14. Open Razorpay Checkout modal
-15. User pays → handler → verifySubscriptionPaymentResponse()
-16. POST /api/razorpay/verify-subscription
-17. Refetch subscription, show success modal
+16. Open Razorpay Checkout modal
+17. User pays → handler → verifySubscriptionPaymentResponse()
+18. POST /api/razorpay/verify-subscription
+19. Refetch subscription, show success modal
 ```
 
 ---
@@ -475,20 +514,23 @@ Called immediately after Razorpay Checkout completes on the frontend. This is an
 
 ```
 1. Frontend POST /api/razorpay/verify-subscription
-   Body: { razorpay_payment_id, razorpay_subscription_id }
+   Body: { razorpay_payment_id, razorpay_subscription_id, razorpay_signature, productId? }
 
-2. withAuth() + verifyTenantAccess() + canManageSubscription + Zod validation (VerifyPaymentRequestSchema)
-3. Fetch payment from Razorpay: razorpayClient.payments.fetch(payment_id)
-4. Fetch subscription from Razorpay: razorpayClient.subscriptions.fetch(sub_id)
-5. Find internal Firestore subscription: getSubscriptionById(sub_id)
-6. verifyTenantAccess() — verify user owns this subscription
-7. If already active → return { success: true } (webhook may have beaten us)
-8. Get plan details from constants using subscription notes
-9. Calculate creditsLastResetMonth (billing-period-aware):
+2. withAuth() + bounded JSON body parse (8KB cap) + Zod validation (VerifyPaymentRequestSchema)
+3. Verify Razorpay checkout HMAC signature before provider or Firestore reads
+4. Fetch payment from Razorpay: razorpayClient.payments.fetch(payment_id)
+5. Fetch subscription from Razorpay: razorpayClient.subscriptions.fetch(sub_id)
+6. Resolve billing scope, verify tenant/store access, and check billing mutation permission
+7. Find internal Firestore subscription: getSubscriptionById(sub_id)
+8. Verify payment is captured and belongs to the submitted subscription
+9. Verify internal subscription belongs to the session billing scope
+10. If already active → return { success: true } (webhook may have beaten us)
+11. Get plan details from constants using subscription notes
+12. Calculate creditsLastResetMonth (billing-period-aware):
    - Anchor day = cycleStartDate day-of-month
    - Cap anchor to days in current month (month-end edge case)
    - If today < anchor: still in previous billing period
-10. Build updatePayload:
+13. Build updatePayload:
     - status: "active"
     - monthlyCreditsAllowance: from plan constants
     - monthlyCredits: full allowance
@@ -499,8 +541,8 @@ Called immediately after Razorpay Checkout completes on the frontend. This is an
     - paymentMethod: { type, brand, last4, upiId, upiTransactionId }
     - billingHistory: [payment_id]
     - statuses: append "verified" entry
-11. updateSubscription() — write to Firestore
-12. Return { success: true, status: "active" }
+14. updateSubscription() — write to Firestore
+15. Return { success: true, status: "active" }
 ```
 
 ### Subscription End Date Calculation
@@ -510,7 +552,7 @@ Called immediately after Razorpay Checkout completes on the frontend. This is an
 ```typescript
 // For YEAR plans: start_at + total_count years
 // For MONTH plans: start_at + total_count months
-// total_count = 24 for monthly (2 years), 1 for yearly
+// total_count = 36 for monthly (3 years), 3 for yearly
 ```
 
 ---
@@ -519,7 +561,7 @@ Called immediately after Razorpay Checkout completes on the frontend. This is an
 
 **File:** `src/app/api/razorpay/webhook/route.ts:63-260`
 
-Razorpay sends webhook events for subscription lifecycle changes. This route is **unauthenticated** (no `withAuth()`) but **signature-validated**.
+Razorpay sends webhook events for subscription lifecycle changes. This route is **unauthenticated** (no `withAuth()`) but **signature-validated**. Before the raw body is read, it rejects malformed or oversized `content-length` headers above 256KB and applies the shared `WEBHOOK` IP rate limit. Chunked/no-length bodies are still read through a bounded raw-body reader, so oversized streams are rejected before JSON parse, idempotency claims, or billing mutations.
 
 ### Security — Webhook Signature Validation
 
@@ -527,9 +569,12 @@ Razorpay sends webhook events for subscription lifecycle changes. This route is 
 
 ```
 1. Extract x-razorpay-signature header
-2. HMAC-SHA256(requestBody, RAZORPAY_WEBHOOK_SECRET)
-3. Timing-safe comparison (crypto.timingSafeEqual)
-4. If mismatch → 400 "Invalid signature"
+2. Reject malformed/oversized declared bodies above 256KB
+3. Apply `WEBHOOK` public rate limit
+4. Read the raw body with a 256KB stream cap
+5. HMAC-SHA256(requestBody, RAZORPAY_WEBHOOK_SECRET)
+6. Timing-safe comparison (crypto.timingSafeEqual)
+7. If mismatch -> 400 "Invalid signature"
 ```
 
 ### Durable Webhook Replay Guard
@@ -608,9 +653,9 @@ FRONTEND:
 4. calculateRemainingCredits(currentPlan):
    - Monthly: unusedThisMonth + topUpCredits
    - Yearly: unusedThisMonth + (remainingMonths * monthlyCreditsAllowance) + topUpCredits
-5. createSubscription(newPlan, currency, user, totalRemainingCredits)
+5. createSubscription(newPlan, currency, user)
    → This creates a NEW Razorpay subscription + pending Firestore doc
-   → topUpCredits in new doc = totalRemainingCredits (carry-forward!)
+   → topUpCredits in new doc = 0 until the server applies carry-forward
 6. User pays via Razorpay Checkout
 7. verify-subscription activates the new subscription
 
@@ -618,17 +663,23 @@ FRONTEND:
    Body: { rc: remainingCredits, nSi: newSubscriptionId, oSi: oldSubscriptionId }
 
 BACKEND:
-9. withAuth() + verifyTenantAccess()
-10. getSubscriptionById(oldSubscriptionId) — find old subscription
-11. Verify old subscription belongs to user's tenant/store
-12. Fetch old subscription from Razorpay
-13. If not "completed" → razorpayClient.subscriptions.cancel(oldSubId)
-14. updateSubscription(oldSubId):
+9. withAuth() + rate limit + bounded JSON body parse (8KB cap)
+10. Resolve billing scope, verify tenant/store access, and check billing mutation permission
+11. getProductSubscriptionById(oldSubscriptionId) and getProductSubscriptionById(newSubscriptionId)
+12. Verify both old and new subscriptions belong to the same tenant/store billing scope
+13. Compute remaining credits server-side from the old subscription
+14. Fetch old subscription from Razorpay
+15. If not "completed" → razorpayClient.subscriptions.cancel(oldSubId)
+16. updateSubscription(oldSubId):
     - status: "expired"
     - cycleEndDate: now
     - subscriptionEndDate: now
     - Append status entry with carry-forward details
-15. Return { success: true }
+17. updateSubscription(newSubscriptionId):
+    - topUpCredits: server-computed remainingCredits
+    - carryForwardCredits: remainingCredits
+    - carryForwardFromSubscriptionId: oldSubscriptionId
+18. Return { success: true }
 ```
 
 ### Credit Carry-Forward Calculation
@@ -666,20 +717,21 @@ FRONTEND:
    Body: { reason, otherReason, consent, subscriptionId? }
 
 BACKEND:
-5. withAuth() + verifyTenantAccess()
-6. Find subscription: by subscriptionId or direct current-store subscription lookup
-7. Verify subscription belongs to user's tenant/store
-8. Fetch subscription from Razorpay
-9. If Razorpay status is "completed" → skip cancel (already ended)
-10. Else → razorpayClient.subscriptions.cancel(providerSubscriptionId)
+5. withAuth() + rate limit + bounded JSON body parse (8KB cap)
+6. Resolve billing scope, verify tenant/store access, and check billing mutation permission
+7. Find subscription: by subscriptionId or direct current-store subscription lookup
+8. Verify subscription belongs to user's tenant/store
+9. Fetch subscription from Razorpay
+10. If Razorpay status is "completed" → skip cancel (already ended)
+11. Else → razorpayClient.subscriptions.cancel(providerSubscriptionId)
     This is IMMEDIATE cancellation on Razorpay's side
-11. Verify Razorpay status is now "cancelled" or "completed"
-12. updateSubscription():
+12. Verify Razorpay status is now "cancelled" or "completed"
+13. updateSubscription():
     - status: "cancelled"
     - cycleEndDate: preserved (user keeps access until end of paid period)
     - subscriptionEndDate: set to cycleEndDate
     - Append status entry with reason, otherReason, consent
-13. Return { success: true }
+14. Return { success: true }
 ```
 
 ### Cancellation Reasons
@@ -860,6 +912,7 @@ When `past_due`:
 - Grace period countdown: "X days left"
 - Warning message: "Your last payment attempt failed..."
 - Action buttons: "Cancel Subscription" + "Retry Payment" (links to Razorpay short_url)
+- Webhook status remarks use fixed local text such as "Payment failed" or "Payment retry pending"; raw Razorpay `error_description` / `error_reason` values stay out of subscription history and platform alert messages.
 
 ---
 
@@ -965,13 +1018,16 @@ All protected routes use `withAuth()` middleware:
 Every protected route verifies `verifyTenantAccess(session, tenantId, storeId, request)`:
 
 - Verify subscription belongs to the user's tenant/store
-- Log security events on mismatch with `logger.security()` at CRITICAL level
+- Log security events on mismatch with `logger.security()` at CRITICAL level using bounded identifier presence/length metadata from `getBoundedRazorpaySecurityContext()` and `getBoundedRazorpayStringContext()`
+- MenuList billing mutations also require `canManageBillingMutation()` to confirm the session store still belongs to the session tenant and is not inactive, soft-deleted, or platform-blocked before provider or Firestore mutation work continues.
 
 ### Input Validation
 
-- `VerifyPaymentRequestSchema` (Zod) on verify-subscription and verify-topup
-- `OnboardingSubscriptionSchema` (Zod) on onboarding
-- Manual field checks on remaining routes
+- 8KB bounded JSON body cap before Zod validation on authenticated Razorpay payment action routes.
+- 16KB bounded JSON body cap before onboarding subscription validation and tenant/store creation.
+- `VerifyPaymentRequestSchema` (Zod) on verify-subscription and `VerifyTopupRequestSchema` on verify-topup.
+- `OnboardingSubscriptionSchema` (Zod) on onboarding.
+- Subscription create, upgrade, cancel, pause, resume, and top-up create routes validate through the shared billing API schemas.
 
 ### Rate Limiting
 
@@ -980,6 +1036,11 @@ Every protected route verifies `verifyTenantAccess(session, tenantId, storeId, r
 | Onboarding          | `PAYMENT_ONBOARDING`   |
 | Create subscription | `PAYMENT_SUBSCRIPTION` |
 | Create topup        | `PAYMENT_TOPUP`        |
+| Cancel/upgrade/pause/resume | `SUBSCRIPTION_MUTATION` |
+
+Provider keys keep the route/product bucket names but hash authenticated user and tenant key material before calling the shared limiter. Raw user IDs and tenant IDs must not be stored in Razorpay or onboarding subscription rate-limit provider keys.
+
+Onboarding subscription security events use `getBoundedSecurityRouteContext(session, request)` for user/request route metadata and the bounded Razorpay/onboarding helpers for business, tenant, store, plan, and subscription fields. Raw `buildSecurityContext()` output must not be spread into onboarding subscription security logs.
 
 ### Webhook Security
 
@@ -1108,9 +1169,9 @@ Used in:
 
 ### getOrCreateRazorpayPlan()
 
-**File:** `src/lib/razorpay/plan-handler.ts:19-63`
+**File:** `src/lib/razorpay/plan-handler.ts:57-130`
 
-Deduplicates Razorpay plans using a lookup key in `notes`. Prevents creating duplicate plans for the same price/currency/interval combination.
+Deduplicates Razorpay plans using a lookup key in `notes`. Prevents creating duplicate plans for the same price/currency/interval combination. Diagnostics are bounded through `getRazorpayPlanLogContext()` and `razorpay_plan_lookup_or_create_failed`; callers receive fixed local failure text instead of provider messages.
 
 ### getBillingPeriodKey()
 
@@ -1154,8 +1215,10 @@ Calculates billing-cycle-aware YYYYMM key from subscription's `cycleStartDate`. 
 
 - **Webhook replay protection:** Added `razorpayWebhookEvents` server-only idempotency locks. Duplicate signed events now return without repeating payment transaction writes or subscription mutations.
 - **State transitions now block invalid writes:** API routes, DAL grace expiry, webhook handlers, and reconciliation only write status changes when `subscriptionStateMachine.ts` allows the transition.
+- **State-machine diagnostics bounded:** App-side transition validation and the active Functions reconciliation mirror now log invalid/unknown transition warnings with fixed text plus bounded status/context presence metadata only.
 - **Payment mutation lookup tightened:** Cancel, pause, and resume no longer use master/outlet fallback when no subscription ID is provided; they fetch only the current store's direct subscription.
 - **Mutation validation tightened:** Verify-subscription now requires `razorpay_subscription_id`; cancel, pause, resume, and upgrade use Zod schemas and return controlled 400/404/409 responses instead of leaking internal errors.
+- **Reconciliation diagnostics bounded:** The active Firebase Functions reconciler logs stable reconciliation failure codes with bounded subscription/provider metadata, update counts/booleans, and no raw sync detail rows in local dev logs. The deprecated `/api/internal/reconcile-subscriptions` fallback route has been removed.
 - **Client mutation errors fixed:** Dashboard cancel and upgrade promises now stop after failed responses instead of rejecting and then resolving.
 - **Rate limiter outage behavior improved:** Upstash provider calls now have a short timeout and temporary bypass window so a Redis outage does not stall billing actions.
 

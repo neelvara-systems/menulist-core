@@ -2,6 +2,7 @@ import { FEATURE_FLAGS } from '@config/features';
 import { DB_COLLECTIONS } from '@constant/database';
 import { admin, firestoreAdmin } from '@lib/firebase/firebaseAdmin';
 import type { GuestFeedback } from '@type/guestFeedback';
+import { getBoundedGuestFeedbackStringContext, logGuestFeedbackFailure } from './guestFeedbackDiagnostics';
 
 type SubmitGuestFeedbackAdminInput = Omit<
     GuestFeedback,
@@ -64,7 +65,14 @@ export async function logFeedbackMOLEventAdmin(
             timestamp: now,
             expiresAt: admin.firestore.Timestamp.fromMillis(now.toMillis() + retentionDays * DAY_MS),
         });
-    } catch {
+    } catch (error) {
         // Non-blocking operational signal. Feedback submission must not fail.
+        logGuestFeedbackFailure('guest_feedback_admin_mol_event_log_failed', error, {
+            eventType,
+            rating,
+            ...getBoundedGuestFeedbackStringContext('tenantId', tId),
+            ...getBoundedGuestFeedbackStringContext('storeId', sId),
+            ...getBoundedGuestFeedbackStringContext('projectId', projectId),
+        });
     }
 }

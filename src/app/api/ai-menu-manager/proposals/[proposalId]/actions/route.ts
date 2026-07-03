@@ -16,16 +16,12 @@ import {
 import { buildAiMenuManagerContextBaseHash, buildAiMenuManagerContextPacket } from '@lib/ai-menu-manager/contextPacket';
 import { AiMenuManagerProposalActionSchema } from '@lib/ai-menu-manager/schemas';
 import { requireAnyStorePermissionForStore } from '@lib/permissions/server';
+import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
+import { readBoundedJsonBody } from '@lib/security/boundedRequestBody';
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/middleware/auth';
 
-const readJsonBody = async (request: NextRequest) => {
-    try {
-        return await request.json();
-    } catch {
-        return null;
-    }
-};
+const AI_MENU_MANAGER_PROPOSAL_ACTION_MAX_BODY_BYTES = 16 * 1024;
 
 export const POST = withAuth(async (
     request: NextRequest,
@@ -49,7 +45,17 @@ export const POST = withAuth(async (
     });
     if (rateLimit) return rateLimit;
 
-    const parsed = AiMenuManagerProposalActionSchema.safeParse(await readJsonBody(request));
+    const bodyResult = await readBoundedJsonBody(request, AI_MENU_MANAGER_PROPOSAL_ACTION_MAX_BODY_BYTES, {
+        invalidJsonMessage: 'Invalid request',
+    });
+    if (bodyResult.ok === false) {
+        if (bodyResult.response.status === 400) {
+            return buildAiMenuManagerInvalidRequestResponse(request, session, 'proposal-action');
+        }
+        return bodyResult.response;
+    }
+
+    const parsed = AiMenuManagerProposalActionSchema.safeParse(bodyResult.data);
     if (!parsed.success) {
         return buildAiMenuManagerInvalidRequestResponse(request, session, 'proposal-action');
     }
@@ -79,7 +85,27 @@ export const POST = withAuth(async (
     }
 
     const userId = scope.userId || session?.user?.id || 'unknown';
+    const getProposalActionLogContext = () => ({
+        ...getBoundedRuntimeStringContext('proposalId', proposalId),
+        ...getBoundedRuntimeStringContext('projectId', parsed.data.projectId),
+        ...getBoundedRuntimeStringContext('actionType', parsed.data.actionType),
+        ...getBoundedRuntimeStringContext('tenantId', scope.tId),
+        ...getBoundedRuntimeStringContext('storeId', scope.sId),
+        ...getBoundedRuntimeStringContext('userId', userId),
+        action: parsed.data.action,
+    });
+
     if (parsed.data.action === 'cancel' || parsed.data.action === 'reject' || parsed.data.action === 'mark_done') {
+        if (
+            parsed.data.action === 'mark_done'
+            && (
+                proposal.cardPayload?.kind !== 'manual_task'
+                || !proposal.cardPayload.actions?.includes('mark_done')
+            )
+        ) {
+            return NextResponse.json({ error: 'This card cannot be marked done' }, { status: 409 });
+        }
+
         try {
             const status = parsed.data.action === 'reject'
                 ? 'rejected'
@@ -96,11 +122,7 @@ export const POST = withAuth(async (
             });
             return NextResponse.json({ data: result });
         } catch (error) {
-            console.warn('[AI Menu Manager] Proposal status update failed', {
-                proposalId,
-                action: parsed.data.action,
-                error: error instanceof Error ? error.message : 'unknown',
-            });
+            logRuntimeFailure('ai_menu_manager_proposal_status_update_failed', error, getProposalActionLogContext());
             return NextResponse.json({ error: 'Card could not be updated' }, { status: 409 });
         }
     }
@@ -146,7 +168,8 @@ export const POST = withAuth(async (
             idempotencyKey: parsed.data.idempotencyKey,
             userId,
         });
-    } catch {
+    } catch (error) {
+        logRuntimeFailure('ai_menu_manager_proposal_approval_failed', error, getProposalActionLogContext());
         return NextResponse.json({ error: 'Card could not be approved' }, { status: 409 });
     }
 

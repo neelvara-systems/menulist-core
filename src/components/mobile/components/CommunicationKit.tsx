@@ -7,6 +7,14 @@ import { useTranslations } from 'next-intl';
 import { useEffect, useMemo, useState } from 'react';
 import { LuCheck, LuCopy, LuMessageCircle, LuShare2 } from 'react-icons/lu';
 import { Button, Card, Flex, Text, Toast } from '../antd';
+import {
+    getBoundedMobileOwnerStringContext,
+    logMobileOwnerFailure,
+    type MobileOwnerLogContext,
+} from '../utils/mobileOwnerDiagnostics';
+
+const MOBILE_COMMUNICATION_KIT_COPY_UNAVAILABLE = 'mobile_communication_kit_copy_unavailable';
+const MOBILE_COMMUNICATION_KIT_COPY_FALLBACK_FAILED = 'mobile_communication_kit_copy_fallback_failed';
 
 interface MobileCommunicationKitProps {
     storeName: string;
@@ -23,6 +31,61 @@ interface MobileCommunicationKitProps {
     phone?: string;
     workingHours?: Record<string, string>;
     timeZone?: string;
+    diagnosticContext?: MobileOwnerLogContext;
+}
+
+function hasMobileCommunicationKitClipboardWrite(): boolean {
+    return typeof navigator !== 'undefined' && typeof navigator.clipboard?.writeText === 'function';
+}
+
+function hasMobileCommunicationKitCopyFallback(): boolean {
+    return typeof document !== 'undefined'
+        && Boolean(document.body)
+        && typeof document.createElement === 'function'
+        && typeof document.execCommand === 'function';
+}
+
+async function copyMobileCommunicationKitMessage(copyMessage: string): Promise<void> {
+    let clipboardWriteError: unknown;
+
+    if (hasMobileCommunicationKitClipboardWrite()) {
+        try {
+            await navigator.clipboard.writeText(copyMessage);
+            return;
+        } catch (error) {
+            clipboardWriteError = error;
+        }
+    }
+
+    if (!hasMobileCommunicationKitCopyFallback()) {
+        throw Object.assign(new Error(MOBILE_COMMUNICATION_KIT_COPY_UNAVAILABLE), {
+            code: MOBILE_COMMUNICATION_KIT_COPY_UNAVAILABLE,
+            clipboardWriteRejected: Boolean(clipboardWriteError),
+        });
+    }
+
+    const textarea = document.createElement('textarea');
+    textarea.value = copyMessage;
+    textarea.readOnly = true;
+    textarea.setAttribute('aria-hidden', 'true');
+    textarea.style.position = 'fixed';
+    textarea.style.left = '-9999px';
+    textarea.style.top = '0';
+
+    document.body.appendChild(textarea);
+    textarea.select();
+    textarea.setSelectionRange(0, textarea.value.length);
+
+    try {
+        const copied = document.execCommand('copy');
+        if (!copied) {
+            throw Object.assign(new Error(MOBILE_COMMUNICATION_KIT_COPY_FALLBACK_FAILED), {
+                code: MOBILE_COMMUNICATION_KIT_COPY_FALLBACK_FAILED,
+            });
+        }
+    } finally {
+        document.body.removeChild(textarea);
+    }
 }
 
 export default function MobileCommunicationKit({
@@ -37,6 +100,7 @@ export default function MobileCommunicationKit({
     storeName,
     timeZone,
     workingHours,
+    diagnosticContext,
 }: MobileCommunicationKitProps) {
     const t = useTranslations('MobileCommunicationKit');
     const todayResult = useMemo(() => getTodayHours(workingHours, timeZone), [workingHours, timeZone]);
@@ -71,6 +135,7 @@ export default function MobileCommunicationKit({
                     <MobileMessageCard
                         key={template.id}
                         copyMessage={copyTemplates.find((entry) => entry.id === template.id)?.message || template.message}
+                        diagnosticContext={diagnosticContext}
                         nativeShareMessage={nativeShareTemplates.find((entry) => entry.id === template.id)?.message || template.message}
                         template={template}
                         whatsappMessage={whatsappTemplates.find((entry) => entry.id === template.id)?.message || template.message}
@@ -95,11 +160,13 @@ function withSource(input: MessageTemplateInput, source: AnalyticsEntrySource): 
 
 function MobileMessageCard({
     copyMessage,
+    diagnosticContext,
     nativeShareMessage,
     template,
     whatsappMessage,
 }: {
     copyMessage: string;
+    diagnosticContext?: MobileOwnerLogContext;
     nativeShareMessage: string;
     template: MessageTemplate;
     whatsappMessage: string;
@@ -113,13 +180,29 @@ function MobileMessageCard({
         setSupportsNativeShare(typeof navigator !== 'undefined' && typeof navigator.share === 'function');
     }, []);
 
+    const buildCommunicationKitLogContext = (action: 'copy' | 'native_share' | 'whatsapp_open') => ({
+        ...diagnosticContext,
+        ...getBoundedMobileOwnerStringContext('templateId', template.id),
+        ...getBoundedMobileOwnerStringContext('templateTitle', template.title),
+        action,
+        copyMessageLength: copyMessage.length,
+        nativeShareMessageLength: nativeShareMessage.length,
+        supportsNativeShare,
+        whatsappMessageLength: whatsappMessage.length,
+    });
+
     const handleCopy = async () => {
         try {
-            await navigator.clipboard.writeText(copyMessage);
+            await copyMobileCommunicationKitMessage(copyMessage);
             setCopied(true);
             Toast.show({ content: t('messageCopied'), duration: 1500 });
             setTimeout(() => setCopied(false), 2000);
-        } catch {
+        } catch (error) {
+            logMobileOwnerFailure('mobile_communication_kit_copy_failed', error, {
+                ...buildCommunicationKitLogContext('copy'),
+                hasClipboardWrite: hasMobileCommunicationKitClipboardWrite(),
+                hasCopyFallback: hasMobileCommunicationKitCopyFallback(),
+            });
             Toast.show({ content: t('copyFailed'), duration: 1500 });
         }
     };
@@ -134,6 +217,23 @@ function MobileMessageCard({
             });
         } catch (error) {
             if (error instanceof DOMException && error.name === 'AbortError') return;
+            logMobileOwnerFailure('mobile_communication_kit_native_share_failed', error, buildCommunicationKitLogContext('native_share'));
+            Toast.show({ content: t('copyFailed'), duration: 1500 });
+        }
+    };
+
+    const handleWhatsAppOpen = () => {
+        const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(whatsappMessage)}`;
+        try {
+            const opened = window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
+            if (!opened) {
+                throw new Error('mobile_communication_kit_whatsapp_open_blocked');
+            }
+        } catch (error) {
+            logMobileOwnerFailure('mobile_communication_kit_whatsapp_open_failed', error, {
+                ...buildCommunicationKitLogContext('whatsapp_open'),
+                whatsappUrlLength: whatsappUrl.length,
+            });
             Toast.show({ content: t('copyFailed'), duration: 1500 });
         }
     };
@@ -169,7 +269,7 @@ function MobileMessageCard({
                     <ActionTile
                         iconColor={token.colorSuccess}
                         icon={<LuMessageCircle size={18} />}
-                        onClick={() => window.open(`https://wa.me/?text=${encodeURIComponent(whatsappMessage)}`, '_blank')}
+                        onClick={handleWhatsAppOpen}
                     />
                 </Flex>
             </Flex>

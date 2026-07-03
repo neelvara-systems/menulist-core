@@ -2,9 +2,11 @@ export const dynamic = 'force-dynamic';
 
 import { FEATURE_FLAGS } from "@config/features";
 import { DB_COLLECTIONS } from "@constant/database";
+import { getBoundedResellerApiStringContext, logResellerApiFailure } from "@lib/billing/resellerApiDiagnostics";
 import { admin } from "@lib/firebase/firebaseAdmin";
 import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "../../../../middleware/auth";
+import { applyResellerReadRateLimit } from "../readRateLimit";
 
 const INDIA_TZ = "Asia/Kolkata";
 const INDIA_UTC_OFFSET_HOURS = -5;
@@ -80,14 +82,19 @@ async function getVisibleProfileDocs(
 }
 
 export const GET = withAuth(async (request: NextRequest, session) => {
+    let reportMonth = getCurrentIndiaMonth();
     try {
         if (!FEATURE_FLAGS.ENABLE_RESELLER_DASHBOARD) {
             return NextResponse.json({ error: "Feature not available." }, { status: 404 });
         }
 
+        const rateLimitResponse = await applyResellerReadRateLimit(session, "monthly-summary");
+        if (rateLimitResponse) return rateLimitResponse;
+
         const isPlatform = session.user.platformRole === "PLATFORM" || session.platformRole === "PLATFORM";
         const sessionResellerId = session.user.id;
         const { month, start, end } = parseMonth(request.nextUrl.searchParams.get("month"));
+        reportMonth = month;
         const db = admin.firestore();
         let transactionQuery = db.collection(DB_COLLECTIONS.RESELLER_TRANSACTIONS)
             .where("createdOn", ">=", admin.firestore.Timestamp.fromDate(start))
@@ -179,13 +186,16 @@ export const GET = withAuth(async (request: NextRequest, session) => {
         return NextResponse.json({
             generatedAt: new Date().toISOString(),
             isPartial: transactionSnapshot.size >= MONTHLY_TRANSACTION_LIMIT,
-            month,
+            month: reportMonth,
             period: { end: end.toISOString(), start: start.toISOString(), timeZone: INDIA_TZ },
             resellers,
             totals,
         });
     } catch (error) {
-        console.error("[Reseller Monthly Summary] Failed:", error);
+        logResellerApiFailure("reseller_monthly_summary_route_failed", error, {
+            month: reportMonth,
+            ...getBoundedResellerApiStringContext("userId", session.uId || session.user?.id),
+        });
         return NextResponse.json({ error: "Failed to fetch reseller monthly summary." }, { status: 500 });
     }
 }, { requiredPlatformRole: "RESELLER" });

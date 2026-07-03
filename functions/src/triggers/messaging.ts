@@ -15,6 +15,51 @@ import { FUNCTION_OPTIONS, SECRET_GROUPS } from '../config/secrets';
 import { handleExtractionJobUpdate, messagingOnboardingWebhook } from '../messagingOnboarding';
 import { MENU_IMAGE_PROCESSING_JOBS_COLLECTION } from '../types';
 
+const MSG_EXTRACTION_WATCHER_FAILED = 'MSG_EXTRACTION_WATCHER_FAILED';
+
+function getMessagingTriggerStringContext(label: string, value: unknown): Record<string, boolean | number> {
+    const normalized = value === undefined || value === null ? '' : String(value);
+    return {
+        [`${label}Present`]: normalized.length > 0,
+        [`${label}Length`]: normalized.length,
+    };
+}
+
+function getMessagingTriggerErrorCode(error: Error): string | undefined {
+    const code = (error as { code?: unknown }).code;
+    if (code === undefined || code === null) return undefined;
+    return String(code).slice(0, 64);
+}
+
+function getMessagingTriggerErrorStatus(error: Error): number | undefined {
+    const status = Number((error as { status?: unknown; statusCode?: unknown }).status
+        || (error as { statusCode?: unknown }).statusCode);
+    return Number.isFinite(status) ? status : undefined;
+}
+
+function getMessagingTriggerErrorName(error: unknown): string {
+    if (error instanceof Error) return (error.name || 'Error').slice(0, 80);
+    return typeof error;
+}
+
+function getMessagingTriggerErrorContext(error: unknown): {
+    sourceErrorName: string;
+    sourceErrorCode?: string;
+    sourceErrorStatus?: number;
+} {
+    if (error instanceof Error) {
+        return {
+            sourceErrorName: getMessagingTriggerErrorName(error),
+            sourceErrorCode: getMessagingTriggerErrorCode(error),
+            sourceErrorStatus: getMessagingTriggerErrorStatus(error),
+        };
+    }
+
+    return {
+        sourceErrorName: getMessagingTriggerErrorName(error),
+    };
+}
+
 // Messaging onboarding webhook — onRequest (first in codebase — §19.1)
 // Route: /messagingOnboarding/{provider}
 export const messagingOnboarding = onRequest(
@@ -51,10 +96,11 @@ export const msgExtractionWatcher = onDocumentUpdated(
 
         try {
             await handleExtractionJobUpdate(event.params.jobId, before, after);
-        } catch (error: any) {
+        } catch (error) {
             functions.logger.error('[msgExtractionWatcher] Failed', {
-                jobId: event.params.jobId,
-                error: error.message,
+                failureCode: MSG_EXTRACTION_WATCHER_FAILED,
+                ...getMessagingTriggerStringContext('jobId', event.params.jobId),
+                ...getMessagingTriggerErrorContext(error),
             });
         }
     },

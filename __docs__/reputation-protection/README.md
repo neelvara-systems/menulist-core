@@ -77,6 +77,8 @@ Owner Dashboard
 - ❌ Review gating (FTC violation)
 - ❌ "Get more reviews" campaigns
 
+**Current runtime boundary:** Review reply suggestions remain feature-flag disabled and unmounted. If enabled, `/api/reviews/suggest` requires an authenticated session, tenant/store access, bounded input, and the `canManageFeedback` store permission before AI capacity, Gemini, or accounting work.
+
 ## Feature Flags
 
 ```typescript

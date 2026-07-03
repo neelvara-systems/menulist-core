@@ -18,7 +18,7 @@ import {
     INTEGRATION_EVENT_TYPES,
     INTEGRATION_LIMITS,
 } from '../types';
-import { escapeHtml, safeText, sanitizeDeliveryError } from '../safety';
+import { escapeHtml, safeText } from '../safety';
 
 const EVENT_TITLES: Record<string, string> = {
     [INTEGRATION_EVENT_TYPES.DRIFT_DETECTED]: 'Drift Detected',
@@ -180,10 +180,10 @@ export class EmailAdapter implements IIntegrationAdapter {
                 success: true,
                 durationMs: Date.now() - startMs,
             };
-        } catch (error) {
+        } catch {
             return {
                 success: false,
-                error: sanitizeDeliveryError(error instanceof Error ? error.message : 'SMTP send failed'),
+                error: 'SMTP delivery failed',
                 durationMs: Date.now() - startMs,
             };
         }

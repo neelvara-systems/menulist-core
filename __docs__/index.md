@@ -65,7 +65,7 @@
 
 | #   | Feature                          | Folder                    | spec | impl | marketing | website | helpdoc | firebase | README |
 | --- | -------------------------------- | ------------------------- | :--: | :--: | :-------: | :-----: | :-----: | :------: | :----: |
-| C0  | **ConstantLayer Main Website**   | `constantlayer-main-website/` |  ✅  |  ✅  |    ✅     |   ✅    |   ✅    |    ✅    |   ✅   |
+| C0  | **Neelvara Main Website**   | `neelvara-main-website/` |  ✅  |  ✅  |    ✅     |   ✅    |   ✅    |    ✅    |   ✅   |
 | C1  | **Main Website (menulist.ai)**   | `main-website/`           |  ✅  |  ✅  |    ✅     |   ➖    |   ➖    |    ➖    |   ✅   |
 | C2  | **Official Business Page (OBP)** | `official-business-page/` |  ✅  |  ✅  |    ✅     |   ✅    |   ✅    |    ✅    |   ✅   |
 

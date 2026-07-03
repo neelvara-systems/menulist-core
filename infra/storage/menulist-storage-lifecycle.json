@@ -1,0 +1,16 @@
+{
+  "rule": [
+    {
+      "action": {
+        "type": "SetStorageClass",
+        "storageClass": "COLDLINE"
+      },
+      "condition": {
+        "age": 365,
+        "matchesPrefix": [
+          "MenuListAi/project/files/"
+        ]
+      }
+    }
+  ]
+}

@@ -4,7 +4,7 @@
  * Generates AI draft canonical answers for new_answer_required mutation proposals.
  * Called as Step 9 of the nightly batch in answerlatticeNightly.ts.
  * 
- * Uses firebase-admin (server-side Firestore) + Gemini through the Answerlattice Vertex AI client.
+ * Uses firebase-admin (server-side Firestore) + Gemini through the Answerlattice GenAI client.
  * 
  * Expansion Item #4 — Automatic Knowledge Creation
  * Feature-flagged: ENABLE_ANSWERLATTICE_AUTO_KNOWLEDGE
@@ -38,6 +38,11 @@ import {
 const MAX_DRAFTS_PER_RUN = 10;
 const DRAFT_PROMPT_VERSION = 'v1';
 const DRAFT_ACTOR = 'system:draft_generator_nightly';
+const ANSWERLATTICE_DRAFT_GEMINI_CALL_FAILED = 'ANSWERLATTICE_DRAFT_GEMINI_CALL_FAILED';
+const ANSWERLATTICE_DRAFT_PARSE_FAILED = 'ANSWERLATTICE_DRAFT_PARSE_FAILED';
+const ANSWERLATTICE_DRAFT_PROPOSAL_FAILED = 'ANSWERLATTICE_DRAFT_PROPOSAL_FAILED';
+const ANSWERLATTICE_DRAFT_STATUS_MARK_FAILED = 'ANSWERLATTICE_DRAFT_STATUS_MARK_FAILED';
+const ANSWERLATTICE_DRAFT_BATCH_FAILED = 'ANSWERLATTICE_DRAFT_BATCH_FAILED';
 
 // ═══════════════════════════════════════════════════════════════
 // SYSTEM PROMPT (mirrors src/lib/answerlattice/draftPrompt.ts)
@@ -95,6 +100,61 @@ interface ProposalForDraft {
     };
     mutationType: string;
     suggestedChange: Record<string, any>;
+}
+
+function getDraftSourceErrorContext(error: unknown): {
+    sourceErrorName: string | null;
+    sourceErrorCode: string | number | null;
+    sourceStatusCode: number | null;
+} {
+    const source = error && typeof error === 'object' ? error as Record<string, unknown> : {};
+    const sourceStatusCode = typeof source.status === 'number'
+        ? source.status
+        : (typeof source.statusCode === 'number' ? source.statusCode : null);
+
+    return {
+        sourceErrorName: typeof source.name === 'string' ? source.name : null,
+        sourceErrorCode: typeof source.code === 'string' || typeof source.code === 'number' ? source.code : null,
+        sourceStatusCode,
+    };
+}
+
+function getDraftScopeContext(tId?: number, sId?: number): {
+    hasTenantScope: boolean;
+    hasStoreScope: boolean;
+} {
+    return {
+        hasTenantScope: Number.isFinite(tId),
+        hasStoreScope: Number.isFinite(sId),
+    };
+}
+
+function getDraftIdentifierContext(value?: string | null): {
+    hasValue: boolean;
+    valueLength: number;
+} {
+    return {
+        hasValue: typeof value === 'string' && value.length > 0,
+        valueLength: typeof value === 'string' ? value.length : 0,
+    };
+}
+
+function getDraftDiagnosticContext(context: {
+    tId?: number;
+    sId?: number;
+    proposalId?: string | null;
+    entityId?: string | null;
+}): {
+    hasTenantScope: boolean;
+    hasStoreScope: boolean;
+    proposalId: ReturnType<typeof getDraftIdentifierContext>;
+    entityId: ReturnType<typeof getDraftIdentifierContext>;
+} {
+    return {
+        ...getDraftScopeContext(context.tId, context.sId),
+        proposalId: getDraftIdentifierContext(context.proposalId),
+        entityId: getDraftIdentifierContext(context.entityId),
+    };
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -292,9 +352,13 @@ function parseDraftResponse(rawResponse: string | null): ParsedDraft | null {
 
 /**
  * Call Gemini for draft generation.
- * Uses the Answerlattice Firebase project's Vertex AI client.
+ * Uses the Answerlattice GenAI gateway with product-owned Gemini API credentials.
  */
-async function callGeminiForDraft(systemPrompt: string, userPrompt: string): Promise<AnswerlatticeGeminiCallResult | null> {
+async function callGeminiForDraft(
+    systemPrompt: string,
+    userPrompt: string,
+    context: { tId?: number; sId?: number; proposalId?: string | null; entityId?: string | null } = {}
+): Promise<AnswerlatticeGeminiCallResult | null> {
     try {
         return await callAnswerlatticeGeminiContent({
             model: ANSWERLATTICE_TEXT_MODEL,
@@ -302,7 +366,13 @@ async function callGeminiForDraft(systemPrompt: string, userPrompt: string): Pro
             userPrompt,
         });
     } catch (error) {
-        logger.error('[Answerlattice Draft] Gemini call failed', { error });
+        logger.error('[Answerlattice Draft] Gemini call failed', {
+            failureCode: ANSWERLATTICE_DRAFT_GEMINI_CALL_FAILED,
+            ...getDraftDiagnosticContext(context),
+            ...getDraftSourceErrorContext(error),
+            systemPromptLength: systemPrompt.length,
+            userPromptLength: userPrompt.length,
+        });
         return null;
     }
 }
@@ -393,7 +463,12 @@ export async function generateDraftsForNewProposals(
 
                 // Build prompt and call Gemini
                 const userPrompt = buildUserPrompt(entity, signalExamples, existingAnswers);
-                const geminiResult = await callGeminiForDraft(DRAFT_SYSTEM_PROMPT, userPrompt);
+                const geminiResult = await callGeminiForDraft(DRAFT_SYSTEM_PROMPT, userPrompt, {
+                    tId,
+                    sId,
+                    proposalId: proposal.id,
+                    entityId,
+                });
                 const rawResponse = geminiResult?.text || null;
 
                 if (geminiResult) {
@@ -422,9 +497,15 @@ export async function generateDraftsForNewProposals(
                     });
                     result.draftsFailed++;
                     logger.warn('[Answerlattice Draft] Failed to parse Gemini response', {
-                        tId,
-                        sId,
-                        proposalId: proposal.id,
+                        failureCode: ANSWERLATTICE_DRAFT_PARSE_FAILED,
+                        ...getDraftDiagnosticContext({
+                            tId,
+                            sId,
+                            proposalId: proposal.id,
+                            entityId,
+                        }),
+                        hasResponse: rawResponse != null,
+                        responseLength: rawResponse?.length ?? 0,
                     });
                     continue;
                 }
@@ -472,10 +553,14 @@ export async function generateDraftsForNewProposals(
             } catch (error) {
                 // Per-proposal failure — continue with next
                 logger.error('[Answerlattice Draft] Proposal draft generation failed', {
-                    tId,
-                    sId,
-                    proposalId: proposal.id,
-                    error,
+                    failureCode: ANSWERLATTICE_DRAFT_PROPOSAL_FAILED,
+                    ...getDraftDiagnosticContext({
+                        tId,
+                        sId,
+                        proposalId: proposal.id,
+                        entityId: proposal.relatedEntityIds?.[0] ?? null,
+                    }),
+                    ...getDraftSourceErrorContext(error),
                 });
                 try {
                     await proposalDoc.ref.update({
@@ -483,12 +568,27 @@ export async function generateDraftsForNewProposals(
                         modifiedOn: Timestamp.now(),
                         modifiedBy: DRAFT_ACTOR,
                     });
-                } catch { /* non-blocking */ }
+                } catch (statusError) {
+                    logger.error('[Answerlattice Draft] Failed to mark proposal draft failed', {
+                        failureCode: ANSWERLATTICE_DRAFT_STATUS_MARK_FAILED,
+                        ...getDraftDiagnosticContext({
+                            tId,
+                            sId,
+                            proposalId: proposal.id,
+                            entityId: proposal.relatedEntityIds?.[0] ?? null,
+                        }),
+                        ...getDraftSourceErrorContext(statusError),
+                    });
+                }
                 result.draftsFailed++;
             }
         }
     } catch (error) {
-        logger.error('[Answerlattice Draft] Batch failed', { tId, sId, error });
+        logger.error('[Answerlattice Draft] Batch failed', {
+            failureCode: ANSWERLATTICE_DRAFT_BATCH_FAILED,
+            ...getDraftScopeContext(tId, sId),
+            ...getDraftSourceErrorContext(error),
+        });
     }
 
     return result;

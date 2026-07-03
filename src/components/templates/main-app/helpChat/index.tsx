@@ -64,6 +64,7 @@ function HelpChat({ open, onClose, productContext }: HelpChatProps) {
         activeSession,
         currentMode,
         setCurrentMode,
+        searchQuery,
         setSearchQuery,
         dispatchChatState,
         loggedInSession,

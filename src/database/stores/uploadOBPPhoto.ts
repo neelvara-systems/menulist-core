@@ -14,6 +14,7 @@ import type { PreparedMediaImage } from '@lib/media/prepareMediaImage';
 import { STORAGE_CACHE_CONTROL } from '@lib/storage/cacheControl';
 import { generateStoragePath } from '@lib/storage/pathGenerator';
 import { uploadPreparedMediaImage } from '@database/storage/uploadPreparedMediaImage';
+import { getBoundedStringLogContext, logStorageHelperFailure } from '@database/storage/storageDiagnostics';
 import { getDownloadURL, ref, uploadBytesResumable, deleteObject } from 'firebase/storage';
 
 function getPhotoExtension(mimeType?: string): string {
@@ -157,8 +158,17 @@ export async function deleteOBPPhotos(photoUrls: Array<string | null | undefined
         uniquePhotoUrls.map((photoUrl) => deleteOBPPhoto(photoUrl)),
     );
 
-    const failed = results.find((result) => result.status === 'rejected');
-    if (failed) {
-        console.warn('[deleteOBPPhotos] Some OBP photo deletes failed.', failed.reason);
+    const failedIndex = results.findIndex((result) => result.status === 'rejected');
+    const failed = failedIndex >= 0 ? results[failedIndex] : null;
+    if (failed?.status === 'rejected') {
+        logStorageHelperFailure(
+            'storage_obp_photo_batch_delete_failed',
+            failed.reason,
+            {
+                requestedDeleteCount: uniquePhotoUrls.length,
+                failedDeleteCount: results.filter((result) => result.status === 'rejected').length,
+                ...getBoundedStringLogContext('firstFailedPhotoUrl', uniquePhotoUrls[failedIndex]),
+            },
+        );
     }
 }

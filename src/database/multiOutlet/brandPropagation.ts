@@ -16,7 +16,8 @@ import { DB_COLLECTIONS } from "@constant/database";
 import { mergeStoreSummaryFields } from "@database/platformSummary";
 import { revalidatePublicClientCache } from "@lib/cache/publicClientCache";
 import { firebaseClient } from "@lib/firebase/firebaseClient";
-import { secureError } from "@lib/security/secureLogger";
+import { getBoundedMultiOutletStringContext, logMultiOutletFailure } from "@lib/multiOutlet/diagnostics";
+import { touchDigitalScreenContentVersion } from "@lib/screen/screenInvalidation";
 import { doc, getDoc, serverTimestamp, updateDoc } from "firebase/firestore";
 
 /** Master-controlled fields propagated from master to outlets when overrides are locked. */
@@ -37,6 +38,12 @@ const STORE_SUMMARY_PROPAGATED_FIELDS = new Set<string>([
     'businessCategory',
     'logo',
     'timeZone',
+]);
+
+const DIGITAL_SCREEN_PROPAGATED_OUTPUT_FIELDS = new Set<string>([
+    'currencyCode',
+    'currencySymbol',
+    'logo',
 ]);
 
 type MasterStorePropagatedField = typeof MASTER_STORE_PROPAGATED_FIELDS[number];
@@ -88,6 +95,10 @@ function extractStoresSummaryPropagationChanges(propagatedChanges: Record<string
     if (Object.keys(summaryPatch).length === 0) return null;
 
     return summaryPatch;
+}
+
+function hasDigitalScreenPropagatedOutputChanges(propagatedChanges: Record<string, any>) {
+    return Object.keys(propagatedChanges).some((field) => DIGITAL_SCREEN_PROPAGATED_OUTPUT_FIELDS.has(field));
 }
 
 /**
@@ -149,14 +160,24 @@ export async function propagateMasterStoreChangesToOutlets(
                     await mergeStoreSummaryFields(outlet.storeId, summaryChanges);
                 }
                 await revalidatePublicClientCache(outlet.storeId, "propagateMasterStoreChangesToOutlets");
+                if (hasDigitalScreenPropagatedOutputChanges(propagatedChanges)) {
+                    await touchDigitalScreenContentVersion(outlet.storeId, "propagateMasterStoreChangesToOutlets");
+                }
                 result.propagated++;
             } catch (e) {
-                secureError(`[BrandPropagation] Failed for outlet ${outlet.storeId}`, e as Error);
+                logMultiOutletFailure('multi_outlet_brand_propagation_outlet_failed', e, {
+                    ...getBoundedMultiOutletStringContext('masterStoreId', masterStoreId),
+                    ...getBoundedMultiOutletStringContext('outletStoreId', outlet.storeId),
+                    propagatedFieldCount: Object.keys(propagatedChanges).length,
+                });
                 result.failed++;
             }
         }
     } catch (e) {
-        secureError(`[BrandPropagation] Fatal error`, e as Error);
+        logMultiOutletFailure('multi_outlet_brand_propagation_failed', e, {
+            ...getBoundedMultiOutletStringContext('masterStoreId', masterStoreId),
+            propagatedFieldCount: Object.keys(propagatedChanges).length,
+        });
     }
 
     return result;

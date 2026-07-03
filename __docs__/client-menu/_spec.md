@@ -1,8 +1,8 @@
 # Customer-Facing Digital Menu — Product Specification
 
-**Feature Name:** Client Menu (Customer-Facing Digital Menu)  
-**Document Type:** Product Requirements Document (PRD)  
-**Status:** ✅ Production Ready  
+**Feature Name:** Client Menu (Customer-Facing Digital Menu)
+**Document Type:** Product Requirements Document (PRD)
+**Status:** Historical spec evidence; not current launch certification
 **Last Updated:** May 8, 2026
 **Audience:** Product, CEO, Business Teams, Non-Technical Stakeholders
 
@@ -472,6 +472,12 @@ Current architecture is ~80% compatible with non-restaurant SMBs (salons, gyms, 
 
 ---
 
+## Current Launch Boundary
+
+This specification is customer-facing menu-output design/spec evidence; it is not current production certification. Current client-menu launch approval requires the active production-readiness audit, External Certification Runbook evidence, Digital Menu Output Constitution checks, physical/mobile browser QA, low-bandwidth/offline/back-button tests, public cache and deploy evidence, and target production smoke.
+
+---
+
 ## Approval
 
 | Role             | Name        | Date       |
@@ -482,5 +488,5 @@ Current architecture is ~80% compatible with non-restaurant SMBs (salons, gyms, 
 
 ---
 
-_Document Status: ✅ PRODUCTION READY_  
+_Document Status: Historical spec evidence - not current launch certification_
 _Last Updated: May 7, 2026_

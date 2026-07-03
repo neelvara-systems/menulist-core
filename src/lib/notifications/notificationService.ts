@@ -1,9 +1,29 @@
-/**
- * Notification Service
- * Handles in-app notifications and external integrations
- */
+import { logNotificationFailure } from './notificationDiagnostics';
 
-import { logger } from '@lib/monitoring/logger';
+export const LEGACY_NOTIFICATION_SERVICE_DISABLED = 'LEGACY_NOTIFICATION_SERVICE_DISABLED';
+
+export class LegacyNotificationServiceDisabledError extends Error {
+  code = LEGACY_NOTIFICATION_SERVICE_DISABLED;
+
+  constructor(operation: string) {
+    super(`Legacy notification service disabled for ${operation}. Use @lib/notifications or @lib/owner-notifications.`);
+    this.name = 'LegacyNotificationServiceDisabledError';
+  }
+}
+
+const createLegacyNotificationServiceError = (operation: string) => (
+  new LegacyNotificationServiceDisabledError(operation)
+);
+
+const logLegacyNotificationServiceBlocked = (
+  operation: string,
+  context: Record<string, boolean | number | string>,
+) => {
+  logNotificationFailure(LEGACY_NOTIFICATION_SERVICE_DISABLED, createLegacyNotificationServiceError(operation), {
+    operation,
+    ...context,
+  });
+};
 
 // ================================================================
 // TYPES
@@ -43,27 +63,14 @@ export async function createNotification(
   storeId: string,
   payload: NotificationPayload
 ): Promise<string> {
-  try {
-    // TODO: Store in Firestore
-    // const docRef = await db.collection('notifications').add({
-    //   tId: tenantId,
-    //   sId: storeId,
-    //   ...payload,
-    //   timestamp: new Date(),
-    //   read: false,
-    // });
-
-    logger.debug('[STUB] Notification created (not yet implemented)', { 
-      title: payload.title,
-      type: payload.type,
-      tenantId,
-      storeId
-    });
-    return 'notification-id';
-  } catch (error) {
-    logger.error('Notification creation failed', error, { tenantId, storeId });
-    throw error;
-  }
+  const operation = 'createNotification';
+  logLegacyNotificationServiceBlocked(operation, {
+    tenantIdPresent: Boolean(tenantId),
+    storeIdPresent: Boolean(storeId),
+    titleLength: payload.title.length,
+    type: payload.type,
+  });
+  throw createLegacyNotificationServiceError(operation);
 }
 
 // ================================================================
@@ -76,25 +83,13 @@ export async function createNotification(
 export async function sendEmailNotification(
   notification: EmailNotification
 ): Promise<void> {
-  try {
-    // TODO: Integrate with email service (SendGrid, AWS SES, etc.)
-    logger.debug('[STUB] Email notification (not yet implemented)', {
-      to: notification.to,
-      subject: notification.subject
-    });
-
-    // Example integration:
-    // await sendgrid.send({
-    //   to: notification.to,
-    //   from: 'noreply@menulistai.com',
-    //   subject: notification.subject,
-    //   text: notification.body,
-    //   html: notification.html,
-    // });
-  } catch (error) {
-    logger.error('Email notification failed', error, { to: notification.to });
-    throw error;
-  }
+  const operation = 'sendEmailNotification';
+  logLegacyNotificationServiceBlocked(operation, {
+    recipientCount: notification.to.length,
+    subjectLength: notification.subject.length,
+    hasHtml: Boolean(notification.html),
+  });
+  throw createLegacyNotificationServiceError(operation);
 }
 
 // ================================================================
@@ -107,34 +102,13 @@ export async function sendEmailNotification(
 export async function sendSlackNotification(
   notification: SlackNotification
 ): Promise<void> {
-  try {
-    // TODO: Integrate with Slack webhook
-    const webhookUrl = process.env.SLACK_WEBHOOK_URL;
-    
-    if (!webhookUrl) {
-      logger.warn('Slack webhook URL not configured');
-      return;
-    }
-
-    logger.debug('[STUB] Slack notification (not yet implemented)', {
-      channel: notification.channel,
-      hasBlocks: !!notification.blocks
-    });
-
-    // Example integration:
-    // await fetch(webhookUrl, {
-    //   method: 'POST',
-    //   headers: { 'Content-Type': 'application/json' },
-    //   body: JSON.stringify({
-    //     channel: notification.channel,
-    //     text: notification.text,
-    //     blocks: notification.blocks,
-    //   }),
-    // });
-  } catch (error) {
-    logger.error('Slack notification failed', error, { channel: notification.channel });
-    throw error;
-  }
+  const operation = 'sendSlackNotification';
+  logLegacyNotificationServiceBlocked(operation, {
+    channelPresent: Boolean(notification.channel),
+    textLength: notification.text.length,
+    hasBlocks: Boolean(notification.blocks),
+  });
+  throw createLegacyNotificationServiceError(operation);
 }
 
 // ================================================================

@@ -1,7 +1,7 @@
 # Business Entity Index
 
-> Cross-business queryable discovery index for AI systems and structured search.
-> Phase 2A of Infrastructure Expansion.
+> Cross-business queryable discovery-index builder for AI systems and structured search.
+> Builder and types exist; the scheduler writer and query API are not active.
 > Last Updated: May 9, 2026
 
 ---
@@ -137,8 +137,8 @@ Flow:
 
 - **Nightly scheduler:** Not wired yet. No `functions/src/infrastructure/discoveryIndexTask.ts` exists in the current codebase.
 - **Store deactivation:** Not wired yet. When this flag is activated, store deactivation must delete or mark the index entry inactive.
-- **Future Discovery API (Phase 4):** Queries this collection
-- **Future Feed Infrastructure (Phase 3):** Reads from this collection
+- **Conditional Discovery API:** May query this collection only after separate API/security/cost audit.
+- **Conditional Feed Infrastructure:** May read this collection only after separate webhook/feed design approval.
 
 ## 8. Feature Flag
 

@@ -2,6 +2,7 @@
 
 > **Version:** 1.1.0
 > **Created:** 2026-03-09
+> **Last Updated:** 2026-06-30
 > **Audience:** DevOps, Finance, Developers
 
 ---
@@ -9,6 +10,8 @@
 ## §1 — Firestore Operations
 
 This feature uses one tiny Answerlattice-owned metadata collection, `answerlattice_cacheVersions`, to validate cached answers without reading every source article or canonical answer document on fresh hits. It reduces Firestore reads by inserting an Upstash Redis cache before the Firestore path and by validating cached rows against a per-store source-version manifest.
+
+June 30 diagnostics hardening is cost-neutral. Redis lookup, stale-delete, and write failures now log bounded `answerlattice_instant_cache_*` diagnostics, and `searchCore.ts` logs bounded Stage 2.5/cache-version/perf-log fallback failures. This adds no Redis commands, Firestore reads/writes/deletes, Storage operations, API routes, schema fields, rules, indexes, Cloud Functions, Firebase deployment, or Vercel deployment. The cache remains best-effort and still degrades to the live retrieval pipeline.
 
 ### 1.1 — Operations Per Query (Cache HIT)
 

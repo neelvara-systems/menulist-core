@@ -8,6 +8,7 @@ import { LuArrowLeft, LuDownload, LuPalette, LuRefreshCcw, LuShare } from "react
 import JsonView from 'react18-json-view';
 import 'react18-json-view/src/style.css'; // Import base styles for JsonView
 import { ShareModal } from './ShareModal';
+import { getBoundedProjectPageStringContext, getProjectPageProjectLogContext, logProjectPageFailure } from './utils/projectPageDiagnostics';
 import { transformForSingleLanguage } from "./utils";
 
 // Lazy load Excel export to avoid loading ExcelJS on initial bundle
@@ -103,7 +104,6 @@ function B2BView() {
     const handleJsonEdit = (file: any, edit: JsonEditResult) => {
         try {
             // Validate edited JSON before updating state
-            console.log(edit);
             // With react18-json-view we directly use the src object which is already updated
             const index = projectData.files.findIndex((f) => f.uid === file.uid);
             if (index !== -1) {
@@ -114,7 +114,14 @@ function B2BView() {
             }
             // Consider adding Redux dispatch here if needed
         } catch (error) {
-            console.error('Invalid JSON edit:', error);
+            logProjectPageFailure('projects_page_b2b_json_edit_failed', error, {
+                ...getProjectPageProjectLogContext(activeProject?.projectId, activeProject?.masterProjectId),
+                ...getBoundedProjectPageStringContext('fileId', file?.uid),
+                ...getBoundedProjectPageStringContext('indexOrName', edit?.indexOrName),
+                editDepth: Number.isFinite(edit?.depth) ? edit.depth : undefined,
+                parentPathDepth: Array.isArray(edit?.parentPath) ? edit.parentPath.length : 0,
+                isArrayParent: edit?.parentType === 'array',
+            });
         }
     }
 
@@ -128,9 +135,6 @@ function B2BView() {
             onOk: () => {
                 setProjectData(removeObjRef(activeProject)); // Reset local state
                 setIsUpdated(false); // Reset updated flag
-            },
-            onCancel() {
-                console.log('Reset changes cancelled');
             },
         });
     };

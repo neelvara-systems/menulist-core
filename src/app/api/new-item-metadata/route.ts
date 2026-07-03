@@ -3,16 +3,19 @@ import { AI_BLOCKED_METADATA_FIELDS } from "@config/itemMetadataConfig";
 import { getModelName } from "@constant/AI/models";
 import { getOurChargePaise, getRealCostPaise, getUnitCost } from "@constant/AI/unitCosts";
 import { AI_ACTIONS_TYPES, CHARGE_PER_CREDIT, TOKENS_PER_CREDIT } from "@constant/common";
+import { PERMISSIONS } from "@constant/permissions";
 import { HarmBlockThreshold, HarmCategory } from "@google/genai";
 import { finalizeAiOperationAccounting } from "@lib/ai/accounting";
 import { checkAICapacity } from "@lib/ai/capacityCheck";
-import { getAIGatewayDiagnostics, getAIErrorDiagnostics, getPreviewText } from "@lib/google/genAi/diagnostics";
+import { getAIGatewayDiagnostics, getAIErrorDiagnostics, getPreviewText, getAIRouteLogContext, getAIRouteSecurityContext, logAIRouteFailure } from "@lib/google/genAi/diagnostics";
 import { genAIClient } from "@lib/google/genAi";
 import { logger } from "@lib/monitoring/logger";
+import { requireAnyStorePermission } from "@lib/permissions/server";
 import { checkAIOperationLimit } from "@lib/rateLimit/helpers";
+import { readBoundedJsonBody } from "@lib/security/boundedRequestBody";
 import { validateAPIInput } from "@lib/security/inputValidation";
-import { buildSecurityContext } from "@lib/security/securityContext";
 import { NewItemMetadataRequestSchema } from "@lib/validation/apiSchemas";
+import type { LanguageType, NewItemMetadataItem } from "@template/main-app/projects/types";
 import { writeErrorLogEntry, writeLogEntry, writeMissingParamsLogEntry } from 'logs/utils';
 import { NextResponse } from 'next/server';
 import { withAuth } from "../../../middleware/auth";
@@ -21,6 +24,7 @@ import getMultilingualNewItemPrompt from "./prompt";
 const AI_MODEL = getModelName('NEW_ITEM_METADATA');
 const LOG_FILE = "new-item-metadata.log";
 const action = AI_ACTIONS_TYPES.NEW_ITEM_METADATA;
+const NEW_ITEM_METADATA_AI_MAX_BODY_BYTES = 256 * 1024;
 
 function stripForbiddenGeneratedMetadata<T extends Record<string, unknown>>(generatedData: T): T {
     const sanitized = { ...generatedData };
@@ -35,6 +39,44 @@ function stripForbiddenGeneratedMetadata<T extends Record<string, unknown>>(gene
         (sanitized as Record<string, unknown>).decisionFacts = Object.keys(decisionFacts).length > 0 ? decisionFacts : undefined;
     }
     return sanitized;
+}
+
+function toPromptLanguage(language: {
+    code?: string;
+    direction?: 'ltr' | 'rtl';
+    name?: string;
+    nativeName?: string;
+}): LanguageType {
+    return {
+        code: language.code || 'und',
+        direction: language.direction,
+        name: language.name || language.code || 'Unknown',
+        nativeName: language.nativeName,
+    };
+}
+
+function toPromptItem(item: {
+    attributes?: Array<{
+        id?: string;
+        name?: string;
+        price?: number | string;
+    }>;
+    category?: string;
+    description?: string;
+    id?: string;
+    name?: string;
+}): NewItemMetadataItem {
+    return {
+        attributes: item.attributes?.map((attribute) => ({
+            id: attribute.id || '',
+            name: attribute.name || '',
+            price: attribute.price === undefined ? undefined : String(attribute.price),
+        })),
+        category: item.category || '',
+        description: item.description,
+        id: item.id || '',
+        name: item.name || '',
+    };
 }
 
 export const POST = withAuth(async (request, session) => {
@@ -54,28 +96,30 @@ export const POST = withAuth(async (request, session) => {
         if (rateLimitResponse) return rateLimitResponse;
 
         // 🔒 INPUT VALIDATION: Prevent injection attacks (OWASP A03)
-        const rawData = await request.json();
+        const bodyResult = await readBoundedJsonBody(request, NEW_ITEM_METADATA_AI_MAX_BODY_BYTES);
+        if (bodyResult.ok === false) return bodyResult.response;
+
+        const rawData = bodyResult.data as any;
         const validation = validateAPIInput(NewItemMetadataRequestSchema, rawData);
 
         if (!validation.success) {
             const errorMsg = 'error' in validation ? validation.error : 'Invalid input';
+            const attemptedData = getAIRouteLogContext({
+                contentLength: rawData?.contentLength,
+                itemCount: rawData?.item ? 1 : 0,
+                sourceLang: rawData?.sourceLang?.code || rawData?.sourceLang,
+                targetLang: rawData?.targetLang?.code || rawData?.targetLang,
+            });
 
             // Log to Sentry (potential attack attempt)
             logger.security('Input Validation Failed', {
-                ...buildSecurityContext(session, request),
+                ...getAIRouteSecurityContext(session, request),
                 endpoint: '/api/new-item-metadata',
                 error: errorMsg,
-                attemptedData: {
-                    item: typeof rawData?.item === 'string'
-                        ? rawData.item.substring(0, 50)
-                        : rawData?.item?.name?.substring?.(0, 50) || '[object]',
-                    targetLang: rawData?.targetLang,
-                    sourceLang: rawData?.sourceLang,
-                    contentLength: rawData?.contentLength,
-                },
+                attemptedData,
             }, 'medium');
 
-            await writeMissingParamsLogEntry(LOG_FILE, userId, undefined, undefined, rawData);
+            await writeMissingParamsLogEntry(LOG_FILE, userId, undefined, undefined, attemptedData);
             return NextResponse.json({
                 error: 'Invalid input',
                 details: errorMsg
@@ -83,29 +127,34 @@ export const POST = withAuth(async (request, session) => {
         }
 
         const validated = validation.data;
-        // Use raw data for complex types that schemas can't fully validate
-        const item = rawData.item;
-        const targetLang = rawData.targetLang;
-        const sourceLang = rawData.sourceLang;
-        const { projectId, fileId, contentLength, businessType, tone } = validated;
-        const targetLangCodes = Array.isArray(targetLang)
-            ? targetLang.map((language: { code?: string }) => language?.code || 'unspecified')
-            : [targetLang?.code || 'unspecified'];
+        const { item, targetLang, sourceLang, projectId, fileId, contentLength, businessType, tone } = validated;
+        const promptItem = toPromptItem(item);
+        const promptTargetLang = targetLang.map(toPromptLanguage);
+        const promptSourceLang = toPromptLanguage(sourceLang);
+        const targetLangCodes = promptTargetLang.map((language) => language.code || 'unspecified');
 
-        logger.info('New item metadata requested', {
+        const permissionError = await requireAnyStorePermission(
+            request,
+            session,
+            [PERMISSIONS.GENERATE_DESCRIPTIONS],
+            "New item metadata",
+        );
+        if (permissionError) return permissionError;
+
+        logger.info('New item metadata requested', getAIRouteLogContext({
             businessType: businessType || 'unspecified',
             contentLength,
             fileId,
             model: AI_MODEL,
             projectId,
             requestId,
-            sourceLang: sourceLang?.code || 'unspecified',
+            sourceLang: promptSourceLang.code || 'unspecified',
             storeId: session.sId,
             targetLangs: targetLangCodes,
             tenantId: session.tId,
             tone: tone || 'Professional',
             userId,
-        });
+        }));
 
         // 🔋 AI CAPACITY CHECK: Verify store has sufficient capacity
         const capacityCheck = await checkAICapacity(
@@ -132,7 +181,13 @@ export const POST = withAuth(async (request, session) => {
             topP = 0.92;
         }
 
-        const prompt = getMultilingualNewItemPrompt({ item, targetLang, sourceLang, businessType, tone });
+        const prompt = getMultilingualNewItemPrompt({
+            businessType: businessType || 'unspecified',
+            item: promptItem,
+            sourceLang: promptSourceLang,
+            targetLang: promptTargetLang,
+            tone,
+        });
         const generationConfig = {
             responseMimeType: "application/json",
             temperature,
@@ -156,20 +211,18 @@ export const POST = withAuth(async (request, session) => {
             const errorDiagnostics = getAIErrorDiagnostics(generationError);
             const gatewayDiagnostics = getAIGatewayDiagnostics(genAIClient);
 
-            logger.error('New item metadata model call failed', generationError, {
-                ...errorDiagnostics,
+            logAIRouteFailure('new_item_metadata_model_call_failed', generationError, {
                 businessType: businessType || 'unspecified',
                 contentLength,
                 gatewayDiagnostics,
                 model: AI_MODEL,
                 projectId,
                 requestId,
-                sourceLang: sourceLang?.code || 'unspecified',
+                sourceLang: promptSourceLang.code || 'unspecified',
                 storeId: session.sId,
                 targetLangs: targetLangCodes,
                 tenantId: session.tId,
                 tone: tone || 'Professional',
-                userId,
             });
             await writeLogEntry({
                 logFileName: LOG_FILE,
@@ -184,7 +237,7 @@ export const POST = withAuth(async (request, session) => {
                     model: AI_MODEL,
                     projectId,
                     requestId,
-                    sourceLang: sourceLang?.code || 'unspecified',
+                    sourceLang: promptSourceLang.code || 'unspecified',
                     storeId: session.sId,
                     targetLangs: targetLangCodes,
                     tenantId: session.tId,
@@ -208,18 +261,17 @@ export const POST = withAuth(async (request, session) => {
             generatedData = JSON.parse(rawText);
         } catch (parseError) {
             const rawText = String(response.text || '').trim();
-            logger.error('New item metadata returned invalid JSON', parseError, {
+            logAIRouteFailure('new_item_metadata_invalid_json', parseError, {
                 model: AI_MODEL,
                 projectId,
-                rawTextLength: rawText.length,
-                rawTextPreview: getPreviewText(rawText, 300),
+                responseTextLength: rawText.length,
+                responseTextSummary: getPreviewText(rawText, 300),
                 requestId,
                 responseUsage: response.usageMetadata || null,
-                sourceLang: sourceLang?.code || 'unspecified',
+                sourceLang: promptSourceLang.code || 'unspecified',
                 storeId: session.sId,
                 targetLangs: targetLangCodes,
                 tenantId: session.tId,
-                userId,
             });
             await writeLogEntry({
                 logFileName: LOG_FILE,
@@ -229,11 +281,11 @@ export const POST = withAuth(async (request, session) => {
                 logType: 'INVALID_JSON_RESPONSE',
                 data: {
                     model: AI_MODEL,
-                    rawTextLength: rawText.length,
-                    rawTextPreview: getPreviewText(rawText, 300),
+                    responseTextLength: rawText.length,
+                    responseTextSummary: getPreviewText(rawText, 300),
                     requestId,
                     responseUsage: response.usageMetadata || null,
-                    sourceLang: sourceLang?.code || 'unspecified',
+                    sourceLang: promptSourceLang.code || 'unspecified',
                     storeId: session.sId,
                     targetLangs: targetLangCodes,
                     tenantId: session.tId,
@@ -244,17 +296,16 @@ export const POST = withAuth(async (request, session) => {
         }
 
         if (!generatedData || typeof generatedData !== 'object' || Array.isArray(generatedData)) {
-            logger.error('New item metadata returned non-object response', null, {
+            logAIRouteFailure('new_item_metadata_non_object_response', undefined, {
                 isArray: Array.isArray(generatedData),
                 model: AI_MODEL,
                 projectId,
                 requestId,
                 responseType: typeof generatedData,
-                sourceLang: sourceLang?.code || 'unspecified',
+                sourceLang: promptSourceLang.code || 'unspecified',
                 storeId: session.sId,
                 targetLangs: targetLangCodes,
                 tenantId: session.tId,
-                userId,
             });
             await writeLogEntry({
                 logFileName: LOG_FILE,
@@ -267,7 +318,7 @@ export const POST = withAuth(async (request, session) => {
                     model: AI_MODEL,
                     requestId,
                     responseType: typeof generatedData,
-                    sourceLang: sourceLang?.code || 'unspecified',
+                    sourceLang: promptSourceLang.code || 'unspecified',
                     storeId: session.sId,
                     targetLangs: targetLangCodes,
                     tenantId: session.tId,
@@ -319,7 +370,16 @@ export const POST = withAuth(async (request, session) => {
             transactionObject.transactionId = accounting.transactionId;
             remainingBalance = accounting.remainingBalance;
         } catch (transactionError) {
-            logger.error('Failed to record new item metadata transaction', transactionError, { userId, projectId, fileId });
+            logAIRouteFailure('new_item_metadata_accounting_failed', transactionError, {
+                action,
+                fileId,
+                model: AI_MODEL,
+                projectId,
+                requestId,
+                storeId: session.sId,
+                tenantId: session.tId,
+                userId,
+            });
             await writeLogEntry({ logFileName: LOG_FILE, userId, projectId, fileId, logType: 'TRANSACTION_DB_ERROR', data: transactionObject, error: transactionError });
             throw transactionError;
         }
@@ -334,19 +394,20 @@ export const POST = withAuth(async (request, session) => {
             }
         });
 
-        logger.info('New item metadata completed', {
+        logger.info('New item metadata completed', getAIRouteLogContext({
+            action,
             businessType: businessType || 'unspecified',
             contentLength,
             fileId,
             projectId,
             requestId,
-            sourceLang: sourceLang?.code || 'unspecified',
+            sourceLang: promptSourceLang.code || 'unspecified',
             storeId: session.sId,
             targetLangs: targetLangCodes,
             tenantId: session.tId,
             transactionId: transactionObject.transactionId,
             userId,
-        });
+        }));
 
         return NextResponse.json({
             data: generatedData,
@@ -361,12 +422,11 @@ export const POST = withAuth(async (request, session) => {
         }, { status: 200 });
     } catch (error) {
         if (!(error && typeof error === 'object' && '__newItemMetadataLogged' in error)) {
-            logger.error('New item metadata API error', error, {
+            logAIRouteFailure('new_item_metadata_api_failed', error, {
                 action,
                 gatewayDiagnostics: getAIGatewayDiagnostics(genAIClient),
                 model: AI_MODEL,
                 requestId,
-                ...getAIErrorDiagnostics(error),
                 storeId: session.sId,
                 tenantId: session.tId,
                 userId,

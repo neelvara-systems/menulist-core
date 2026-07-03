@@ -1,11 +1,29 @@
 import { languageActionType } from './types/api.types';
+import { AI_SERVICE_ROUTE_REQUEST_OPTIONS, readAiServiceResponseJson } from "@services/ai/aiServiceDiagnostics";
 import { syncBalanceFromResponse } from "@services/ai/balanceSync";
 import { AICapacityError, checkCapacityResponse } from "@services/ai/capacityError";
 import { TranslationAPIParams } from './types';
+import {
+    getBoundedTranslationStringContext,
+    getTranslationLanguageLogContext,
+    getTranslationScopeLogContext,
+    logTranslationFailure,
+} from './utils/translationDiagnostics';
+
+const MENU_TRANSLATION_RESPONSE_JSON_MAX_BYTES = 1024 * 1024;
+
+type MenuTranslationApiResponse = {
+    data?: unknown;
+    remainingBalance?: unknown;
+    transaction?: unknown;
+};
 
 async function getTranslations({ inputJson, targetLang, sourceLang, action, projectId, fileId }: TranslationAPIParams): Promise<Record<string, string>> {
+    const normalizedAction = (languageActionType as Record<string, string>)[action] || action;
+    const translationKeyCount = inputJson && typeof inputJson === 'object' ? Object.keys(inputJson).length : 0;
+    let responseStatus: number | undefined;
+
     try {
-        const normalizedAction = (languageActionType as Record<string, string>)[action] || action;
         const payload = {
             inputJson,
             targetLang,
@@ -15,26 +33,53 @@ async function getTranslations({ inputJson, targetLang, sourceLang, action, proj
             fileId
         }
         const response = await fetch('/api/translations', {
+            ...AI_SERVICE_ROUTE_REQUEST_OPTIONS,
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify(payload)
         });
+        responseStatus = response.status;
 
         await checkCapacityResponse(response);
         if (!response.ok) {
-            throw new Error(`Translation request failed: ${response.statusText}`);
+            throw new Error('translation_request_failed');
         }
 
-        const responseJson = await response.json();
+        const responseJson = await readAiServiceResponseJson<MenuTranslationApiResponse>(response, {
+            context: {
+                ...getTranslationScopeLogContext(projectId, fileId),
+                ...getTranslationLanguageLogContext(targetLang?.code, sourceLang?.code),
+                ...getBoundedTranslationStringContext('action', normalizedAction),
+                translationKeyCount,
+                responseStatus,
+            },
+            invalidFailureCode: 'menu_translation_response_invalid',
+            maxBytes: MENU_TRANSLATION_RESPONSE_JSON_MAX_BYTES,
+            parseFailureCode: 'menu_translation_response_parse_failed',
+        });
         syncBalanceFromResponse(responseJson);
         const { data } = responseJson;
-        return data?.translations || data || null;
+        if (data && typeof data === 'object' && !Array.isArray(data) && 'translations' in data) {
+            const translations = (data as { translations?: unknown }).translations;
+            return translations && typeof translations === 'object' && !Array.isArray(translations)
+                ? translations as Record<string, string>
+                : null;
+        }
+        return data && typeof data === 'object' && !Array.isArray(data)
+            ? data as Record<string, string>
+            : null;
 
     } catch (error) {
         if (error instanceof AICapacityError) throw error;
-        console.error('Error calling translation API:', error);
+        logTranslationFailure('menu_translation_api_request_failed', error, {
+            ...getTranslationScopeLogContext(projectId, fileId),
+            ...getTranslationLanguageLogContext(targetLang?.code, sourceLang?.code),
+            ...getBoundedTranslationStringContext('action', normalizedAction),
+            translationKeyCount,
+            responseStatus,
+        });
         return null; // Return original strings if API call fails
     }
 }

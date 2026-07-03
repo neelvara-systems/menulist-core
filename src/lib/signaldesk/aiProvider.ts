@@ -1,6 +1,7 @@
 import { SIGNALDESK_DEFAULT_AI_MODEL, SIGNALDESK_INTEGRATION_ENV } from "@constant/signaldesk/integrations";
 import { HarmBlockThreshold, HarmCategory } from "@google/genai";
 import { genAIClient } from "@lib/google/genAi";
+import { getBoundedRuntimeStringContext, logRuntimeFailure } from "@lib/runtime/runtimeDiagnostics";
 import type { SignalDeskAiTask, SignalDeskTargetSummary } from "@type/signaldesk";
 
 type SignalDeskAiAssistInput = {
@@ -28,6 +29,8 @@ const hasGeminiKey = () => Boolean(
 );
 
 const getModel = () => process.env[SIGNALDESK_INTEGRATION_ENV.AI_MODEL] || SIGNALDESK_DEFAULT_AI_MODEL;
+const SIGNALDESK_AI_RESPONSE_PARSE_FAILED = "signaldesk_ai_response_parse_failed";
+const SIGNALDESK_AI_RESPONSE_SHAPE_INVALID = "signaldesk_ai_response_shape_invalid";
 
 const SYSTEM_INSTRUCTION = [
     "You are SignalDesk, a private internal MenuList growth-review assistant.",
@@ -50,10 +53,47 @@ const buildPrompt = (input: SignalDeskAiAssistInput) => JSON.stringify({
     target: input.target,
 }, null, 2);
 
-const parseJson = (text: string) => {
+const getAiParseLogContext = (input: { model: string; task: SignalDeskAiTask; text: string }) => ({
+    ...getBoundedRuntimeStringContext("model", input.model),
+    ...getBoundedRuntimeStringContext("responseText", input.text),
+    product: "signaldesk",
+    task: input.task,
+});
+
+const isRecord = (value: unknown): value is Record<string, unknown> => (
+    Boolean(value) && typeof value === "object" && !Array.isArray(value)
+);
+
+const parseSignalDeskAiJsonResponse = (
+    text: string,
+    context: { model: string; task: SignalDeskAiTask },
+): Record<string, unknown> => {
     const cleaned = text.trim().replace(/^```json\s*/i, "").replace(/^```\s*/i, "").replace(/```$/i, "").trim();
     const objectMatch = cleaned.match(/\{[\s\S]*\}/);
-    return JSON.parse(objectMatch ? objectMatch[0] : cleaned);
+    const jsonText = objectMatch ? objectMatch[0] : cleaned;
+    try {
+        const parsed = JSON.parse(jsonText) as unknown;
+        if (!isRecord(parsed)) {
+            const error = new Error(SIGNALDESK_AI_RESPONSE_SHAPE_INVALID);
+            logRuntimeFailure(SIGNALDESK_AI_RESPONSE_SHAPE_INVALID, error, getAiParseLogContext({
+                model: context.model,
+                task: context.task,
+                text,
+            }));
+            throw error;
+        }
+        return parsed;
+    } catch (error) {
+        if (error instanceof Error && error.message === SIGNALDESK_AI_RESPONSE_SHAPE_INVALID) {
+            throw new Error("SignalDesk AI response shape is invalid");
+        }
+        logRuntimeFailure(SIGNALDESK_AI_RESPONSE_PARSE_FAILED, error, getAiParseLogContext({
+            model: context.model,
+            task: context.task,
+            text,
+        }));
+        throw new Error("SignalDesk AI response was not valid JSON");
+    }
 };
 
 export async function runSignalDeskAiAssist(input: SignalDeskAiAssistInput): Promise<SignalDeskAiAssistResult> {
@@ -78,7 +118,10 @@ export async function runSignalDeskAiAssist(input: SignalDeskAiAssistInput): Pro
         },
     });
 
-    const output = parseJson(String((response as any).text || ""));
+    const output = parseSignalDeskAiJsonResponse(String((response as any).text || ""), {
+        model,
+        task: input.task,
+    });
     const confidence = output?.confidence === "high" || output?.confidence === "medium" || output?.confidence === "low"
         ? output.confidence
         : "low";

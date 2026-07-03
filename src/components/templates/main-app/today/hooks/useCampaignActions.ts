@@ -1,4 +1,10 @@
-import { completeCampaign as dbCompleteCampaign, skipCampaign as dbSkipCampaign } from '@database/campaigns';
+import {
+    assertCampaignCompleteSucceeded,
+    assertCampaignSkipSucceeded,
+    completeCampaign as dbCompleteCampaign,
+    skipCampaign as dbSkipCampaign,
+} from '@database/campaigns';
+import { getBoundedCampaignStringContext, logCampaignFailure } from '@lib/campaigns/campaignDiagnostics';
 import { CampaignType, ExecutionSurface, ExportMethod } from '@type/campaigns';
 import { notification } from 'antd';
 import { useState } from 'react';
@@ -21,9 +27,23 @@ export const useCampaignActions = () => {
         setIsProcessing(true);
         try {
             const result = await dbCompleteCampaign(campaignId, projectId, campaignType, surface, method, menuLinkWithTracking);
+            assertCampaignCompleteSucceeded(result, {
+                campaignId,
+                campaignType,
+                method,
+                projectId,
+                surface,
+            });
             return result;
         } catch (error) {
-            console.error('Failed to complete campaign:', error);
+            logCampaignFailure('today_campaign_complete_failed', error, {
+                ...getBoundedCampaignStringContext('campaignId', campaignId),
+                ...getBoundedCampaignStringContext('projectId', projectId),
+                ...getBoundedCampaignStringContext('campaignType', campaignType),
+                ...getBoundedCampaignStringContext('surface', surface),
+                ...getBoundedCampaignStringContext('method', method),
+                hasTrackedMenuLink: Boolean(menuLinkWithTracking),
+            });
             notification.error({
                 message: 'Something went wrong',
                 description: 'Please try again.',
@@ -39,9 +59,16 @@ export const useCampaignActions = () => {
         setIsProcessing(true);
         try {
             const result = await dbSkipCampaign(campaignId, campaignType);
+            assertCampaignSkipSucceeded(result, {
+                campaignId,
+                campaignType,
+            });
             return result;
         } catch (error) {
-            console.error('Failed to skip campaign:', error);
+            logCampaignFailure('today_campaign_skip_failed', error, {
+                ...getBoundedCampaignStringContext('campaignId', campaignId),
+                ...getBoundedCampaignStringContext('campaignType', campaignType),
+            });
             notification.error({
                 message: 'Something went wrong',
                 description: 'Please try again.',

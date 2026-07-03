@@ -25,6 +25,8 @@ The behavioral adoption layer consists of:
 - **Share modal:** Static content (0 Firebase ops)
 - **Post-publish nudge:** localStorage flag (0 Firebase ops)
 
+Failed Owner Dashboard behavior-nudge dismiss load/save and link-copy diagnostics are browser-local secure logs with bounded metadata only. They do not add Firestore reads/writes. The Google listing "Done" action continues to use the existing store update path documented under Official Business Page.
+
 ### Existing Operations (Already Counted)
 
 | Operation | Source | Reads/Day | Writes/Day |

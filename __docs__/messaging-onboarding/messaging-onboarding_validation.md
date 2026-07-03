@@ -27,7 +27,7 @@
 | 1.11 | DB_COLLECTIONS constants       | ✅     | `src/constants/database.ts:91-95` + `functions/src/constants/database.ts:70-74` — both files synced                                                                           |
 | 1.12 | Durable inbound queue          | ✅     | `functions/src/messagingOnboarding/inboundQueue.ts` — SHA-256 provider-message dedup, PENDING/PROCESSING/PROCESSED/FAILED state, retry drain                                  |
 
-### Phase 2: Intelligence Layer
+### Runtime Area: Intelligence Layer
 
 | #   | Checklist Item                 | Status | Evidence                                                                                                                             |
 | --- | ------------------------------ | ------ | ------------------------------------------------------------------------------------------------------------------------------------ |
@@ -36,11 +36,11 @@
 | 2.3 | Extraction pipeline connection | ✅     | `intakeProcessor.ts:triggerExtraction` — creates job in menuImageProcessingJobs collection via Admin SDK (§19.3)                     |
 | 2.4 | Extraction watcher             | ✅     | `functions/src/messagingOnboarding/extractionWatcher.ts` — handleExtractionJobUpdate, preview token generation, per-file extraction handoff, legacy temp project cleanup guard |
 
-### Phase 3: Preview & Publish
+### Runtime Area: Preview & Publish
 
 | #   | Checklist Item                    | Status | Evidence                                                                                                                                                  |
 | --- | --------------------------------- | ------ | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 3.1 | Preview page                      | ✅     | `src/app/(global-pages)/msg-preview/[sessionId]/page.tsx` — Mobile-first, inline styles, business info edit, menu display, approve/fix buttons            |
+| 3.1 | Preview page                      | ✅     | `src/app/(global-pages)/msg-preview/[sessionId]/page.tsx` — Mobile-first, inline styles, business info edit, menu display, approve/fix buttons, bounded preview/approve/fix response parsing |
 | 3.2 | Preview API route (GET)           | ✅     | `src/app/api/msg-preview/[sessionId]/route.ts` — Token validation, session state check, sanitized response                                                |
 | 3.3 | Approve API route (POST)          | ✅     | `src/app/api/msg-preview/[sessionId]/approve/route.ts` — Zod validation, double-publish protection via transaction, failure recovery to AWAITING_APPROVAL |
 | 3.4 | Fix request API route (POST)      | ✅     | `src/app/api/msg-preview/[sessionId]/fix/route.ts` — Max 3 corrections, structured issues, session reset                                                  |
@@ -84,7 +84,7 @@
 | 9   | 13 ADRs followed                                 | ✅ ADR-1 through ADR-13 all respected                           |
 | 10  | Extraction-only save skip                        | ✅ messaging jobs use `skipProjectSave`; watcher only cleans legacy msg-onboarding-\* temp projects |
 | 11  | Observation layer (MOL-inspired)                 | ✅ eventLogger with 35 event types, fire-and-forget             |
-| 12  | 3-year architecture freeze                       | ✅ Multi-provider from day one, no "Phase 2" language           |
+| 12  | 3-year architecture freeze                       | ✅ Provider-agnostic core with WhatsApp-only registered runtime |
 | 13  | Durable webhook processing                       | ✅ Inbound queue persists sanitized messages before provider ACK |
 
 ## Security Checklist (11/11 PASS)
@@ -202,7 +202,7 @@
 | 17  | **Approve route outer retry did not treat already-live as success** | HIGH | Inner publish transaction was idempotent, but the outer approve transaction rejected non-`AWAITING_APPROVAL` states before reaching it | Outer approve transaction now returns existing `publishedResult` for `LIVE` sessions and rejects only active `PUBLISHING` as in-progress |
 | 18  | **Cloud Function feature flag was hardcoded in constants** | MEDIUM | Function runtime had to be rebuilt/redeployed to change onboarding processing state | `functions/src/messagingOnboarding/constants.ts` now reads `ENABLE_MESSAGING_ONBOARDING`, `MESSAGING_ONBOARDING_PROVIDERS`, and tracking flag from runtime env |
 | 19  | **INV-8 cost monitoring was documented but not operationalized** | HIGH | Events existed, but no bounded runtime snapshot/alert process summarized cost, failures, publish rate, or retained source storage | Added `healthMonitor.ts` hourly `systemHealth` snapshots and `systemAlerts` threshold alerts with default alert cooldown |
-| 20  | **Oversized provider media could be downloaded before rejection** | MEDIUM | File size check ran after `downloadMedia()`, wasting provider/API bandwidth and function memory when the provider supplied size metadata | `processAndStoreUpload()` now rejects files larger than `MAX_FILE_SIZE_BYTES` before download when `msg.media.fileSize` is present |
+| 20  | **Oversized provider media could be downloaded before rejection** | MEDIUM | File size check ran after `downloadMedia()`, wasting provider/API bandwidth and function memory when provider metadata was missing, stale, or too late | `processAndStoreUpload()` rejects files larger than `MAX_FILE_SIZE_BYTES` before download when `msg.media.fileSize` is present; `WhatsAppAdapter.downloadMedia()` and Asset Intelligence re-reads now use a bounded response reader that rejects oversized headers and cancels streams that cross the limit |
 | 21  | **Published source retention had a correctness fix but no cost policy** | MEDIUM | Cleanup correctly retained LIVE-session media, but there was no runtime visibility into retained published-source growth | Health monitor samples recent LIVE sessions, records retained source bytes, and alerts before source storage becomes a cost problem |
 | 22  | **Active publish logic lived inside the route and drifted from legacy Functions copy** | MEDIUM | The route owned real publish behavior while `functions/src/messagingOnboarding/publishPipeline.ts` remained a stale duplicate | Active publish execution moved to `src/lib/messaging-onboarding/publish.ts`; the Functions file is explicitly marked legacy/non-runtime |
 | 23  | **Active-session messages still paid a redundant session write for provider-message dedup** | LOW | Durable inbound queue owned provider-message dedup, but session engine still appended message IDs to `providerMessageIds` for active sessions | Removed the active-session `providerMessageIds` append; kept legacy read-only safety for older sessions |
@@ -230,16 +230,16 @@
 1. Confirm app preview surfaces remain enabled in `src/config/features.ts`.
 2. Set real WhatsApp secrets in Firebase Functions:
    ```bash
-   firebase functions:secrets:set WHATSAPP_PHONE_NUMBER_ID
-   firebase functions:secrets:set WHATSAPP_ACCESS_TOKEN
-   firebase functions:secrets:set WHATSAPP_APP_SECRET
-   firebase functions:secrets:set WHATSAPP_VERIFY_TOKEN
+   firebase functions:secrets:set WHATSAPP_PHONE_NUMBER_ID --project menulist-qa
+   firebase functions:secrets:set WHATSAPP_ACCESS_TOKEN --project menulist-qa
+   firebase functions:secrets:set WHATSAPP_APP_SECRET --project menulist-qa
+   firebase functions:secrets:set WHATSAPP_VERIFY_TOKEN --project menulist-qa
    ```
-3. Runtime env files now set `ENABLE_MESSAGING_ONBOARDING=true`; verify those secrets are real before routing Meta webhooks to the function. `MESSAGING_ONBOARDING_PROVIDERS=whatsapp` remains the active provider list.
-4. Deploy Cloud Functions: `cd functions && npm run deploy`
+3. Checked-in runtime env files default `ENABLE_MESSAGING_ONBOARDING=false`; after real non-production secrets and Meta webhook registration exist, set only that target to `ENABLE_MESSAGING_ONBOARDING=true` for the provider smoke. `MESSAGING_ONBOARDING_PROVIDERS=whatsapp` remains the active provider list.
+4. Deploy Cloud Functions through External Certification Gate 1: run `npm run verify:functions-deploy-preflight`, then use the scoped `menulist-qa` command from `__docs__/production-readiness/external-certification-runbook.md`.
 5. Register webhook URL with Meta: `https://us-central1-{project}.cloudfunctions.net/messagingOnboarding/whatsapp`
-6. Deploy Firestore indexes: `firebase deploy --only firestore:indexes`
-7. Deploy Firestore rules: `firebase deploy --only firestore:rules`
+6. Deploy Firestore indexes to QA after `npm run verify:env-targets`: `firebase deploy --only firestore:indexes --project menulist-qa --config firebase.json`
+7. Deploy Firestore rules to QA after targeted validation: `firebase deploy --only firestore:rules --project menulist-qa --config firebase.json`
 8. Enable Firestore TTL policies: `scripts/setup-firestore-ttl.sh` (must include `messagingOnboardingEvents.expiresAt` and `messagingOnboardingInboundMessages.expiresAt`); the daily `menulistMaintenanceScheduler` cleanup also deletes a capped batch of expired inbound queue docs as a fallback.
 9. Send a test message from WhatsApp to the registered number
 10. Monitor sessions in Firebase Console: `messagingOnboardingSessions`

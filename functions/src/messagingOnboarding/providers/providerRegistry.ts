@@ -8,11 +8,8 @@ import { MessagingProvider } from "../../types/messagingOnboarding.types";
 import { IMessagingProvider } from "./IMessagingProvider";
 import { WhatsAppAdapter } from "./whatsapp/WhatsAppAdapter";
 
-const providerRegistry: Record<MessagingProvider, () => IMessagingProvider> = {
+const providerRegistry: Partial<Record<MessagingProvider, () => IMessagingProvider>> = {
   whatsapp: () => new WhatsAppAdapter(),
-  telegram: () => {
-    throw new Error("Telegram adapter not implemented yet");
-  },
 };
 
 /** Resolve adapter for a given provider */
@@ -20,7 +17,7 @@ export function getProviderAdapter(
   provider: MessagingProvider,
 ): IMessagingProvider {
   const factory = providerRegistry[provider];
-  if (!factory) throw new Error(`Unknown provider: ${provider}`);
+  if (!factory) throw new Error(`Unsupported messaging provider: ${provider}`);
   return factory();
 }
 
@@ -35,7 +32,7 @@ export function getProviderFromWebhookPath(
   const match = path.match(/\/(\w+)$/);
   if (!match) return null;
   const candidate = match[1];
-  if (candidate in providerRegistry) {
+  if (candidate in providerRegistry && providerRegistry[candidate as MessagingProvider]) {
     return candidate as MessagingProvider;
   }
   return null;

@@ -12,6 +12,7 @@ import { ANSWERLATTICE_PERMISSION_KEYS } from '@constant/answerlattice/permissio
 import { DB_COLLECTIONS } from '@constant/database';
 import { requireAnswerlatticePermission } from '@lib/answerlattice/accessControl';
 import { markAnswerlatticeCompiledContextSourceChangedAdmin } from '@lib/answerlattice/compiledSourceVersionsAdmin';
+import { buildAnswerlatticeRateLimitKey } from '@lib/answerlattice/rateLimitKeys';
 import { resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
 import { getWidgetRuntimeStatusFromStoreData } from '@lib/answerlattice/widgetRuntimeStatus';
 import {
@@ -27,11 +28,13 @@ import {
 } from '@lib/answerlattice/widgetConfig';
 import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
 import { checkRateLimit } from '@lib/rateLimit';
-import { secureError, secureLog } from '@lib/security/secureLogger';
+import { getBoundedRuntimeStringContext, logRuntimeDiagnostic, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
+import { readBoundedJsonBody } from '@lib/security/boundedRequestBody';
 import * as admin from 'firebase-admin';
 import { NextRequest, NextResponse } from 'next/server';
 import { ZodError } from 'zod';
 import { withAuth } from '../../../../middleware/auth';
+import { applyAnswerlatticeDashboardReadRateLimit } from '../readRateLimit';
 
 const resolveSessionScope = (session: any): { tenantId: number; storeId: number } | null => {
     const answerlatticeScope = resolveAnswerlatticeSessionScope(session);
@@ -47,6 +50,7 @@ const getAnswerlatticeDb = () => {
     const db = answerlatticeFirestoreAdmin as any;
     return db && typeof db.collection === 'function' ? answerlatticeFirestoreAdmin : null;
 };
+const WIDGET_CONFIG_SAVE_MAX_BODY_BYTES = 32 * 1024;
 
 const buildConfigResponse = (storeData: Record<string, any>) => ({
     schemaVersion: ANSWERLATTICE_WIDGET_CONFIG_SCHEMA_VERSION,
@@ -77,6 +81,9 @@ export const GET = withAuth(async (_request: NextRequest, session) => {
     if (!FEATURE_FLAGS.ENABLE_ANSWERLATTICE_WIDGET) {
         return NextResponse.json({ error: 'Answerlattice widget is not enabled.' }, { status: 403 });
     }
+    const rateLimitResponse = await applyAnswerlatticeDashboardReadRateLimit(_request, session, 'widget-config');
+    if (rateLimitResponse) return rateLimitResponse;
+
     const permission = await requireAnswerlatticePermission(_request, session, ANSWERLATTICE_PERMISSION_KEYS.MANAGE_WIDGET);
     if (permission.response) return permission.response;
 
@@ -104,8 +111,9 @@ export const GET = withAuth(async (_request: NextRequest, session) => {
 
         return NextResponse.json(buildConfigResponse(storeData));
     } catch (error) {
-        secureError('[Answerlattice Widget Config] Failed to load settings', error as Error, {
-            storeId: scope.storeId,
+        logRuntimeFailure('answerlattice_widget_config_settings_load_failed', error, {
+            ...getBoundedRuntimeStringContext('tenantId', scope.tenantId),
+            ...getBoundedRuntimeStringContext('storeId', scope.storeId),
         });
         return NextResponse.json({ error: 'Failed to load widget settings' }, { status: 500 });
     }
@@ -129,7 +137,7 @@ export const PUT = withAuth(async (request: NextRequest, session) => {
 
     try {
         const rateLimitResult = await checkRateLimit({
-            key: `answerlattice-widget-config:${scope.storeId}`,
+            key: buildAnswerlatticeRateLimitKey('answerlattice-widget-config', scope.storeId),
             limit: 20,
             window: 60,
         });
@@ -151,7 +159,18 @@ export const PUT = withAuth(async (request: NextRequest, session) => {
             });
         }
 
-        const body = await request.json().catch(() => null);
+        const bodyResult = await readBoundedJsonBody(request, WIDGET_CONFIG_SAVE_MAX_BODY_BYTES, {
+            invalidJsonMessage: 'Invalid widget settings',
+            tooLargeMessage: 'Request body too large',
+        });
+        if (bodyResult.ok === false) {
+            return NextResponse.json(
+                { error: bodyResult.response.status === 413 ? 'Request body too large' : 'Invalid widget settings' },
+                { status: bodyResult.response.status },
+            );
+        }
+
+        const body = bodyResult.data;
         const { config, allowedOrigins } = parseWidgetConfigSaveInput(body);
 
         const storeRef = db.collection(DB_COLLECTIONS.STORES).doc(String(scope.storeId));
@@ -187,16 +206,16 @@ export const PUT = withAuth(async (request: NextRequest, session) => {
             sourceType: 'stores',
             sourceId: String(scope.storeId),
         }).catch((sourceVersionError) => {
-            secureError('[Answerlattice Widget Config] Failed to mark compiled context stale', sourceVersionError as Error, {
-                storeId: scope.storeId,
-                tenantId: scope.tenantId,
+            logRuntimeFailure('answerlattice_widget_config_compiled_context_stale_mark_failed', sourceVersionError, {
+                ...getBoundedRuntimeStringContext('tenantId', scope.tenantId),
+                ...getBoundedRuntimeStringContext('storeId', scope.storeId),
             });
         });
 
-        secureLog('[Answerlattice Widget Config] Settings saved', {
+        logRuntimeDiagnostic('answerlattice_widget_config_saved', {
+            ...getBoundedRuntimeStringContext('tenantId', scope.tenantId),
+            ...getBoundedRuntimeStringContext('storeId', scope.storeId),
             originsCount: allowedOrigins.length,
-            storeId: scope.storeId,
-            tenantId: scope.tenantId,
         });
 
         return NextResponse.json({
@@ -215,8 +234,9 @@ export const PUT = withAuth(async (request: NextRequest, session) => {
             return NextResponse.json({ error: 'Invalid widget settings' }, { status: 400 });
         }
 
-        secureError('[Answerlattice Widget Config] Failed to save settings', error as Error, {
-            storeId: scope.storeId,
+        logRuntimeFailure('answerlattice_widget_config_settings_save_failed', error, {
+            ...getBoundedRuntimeStringContext('tenantId', scope.tenantId),
+            ...getBoundedRuntimeStringContext('storeId', scope.storeId),
         });
         return NextResponse.json({ error: 'Failed to save widget settings' }, { status: 500 });
     }

@@ -3,10 +3,14 @@
 import ErrorReportButton from '@/components/shared/debug/ErrorReportButton';
 import { logger, trackUserAction, trackAPICall, trackBusinessEvent } from '@lib/monitoring/logger';
 import { isSentryMonitoringEnabled, monitoringDsn, monitoringEnvironment, monitoringRelease } from '@lib/monitoring/sentryShared';
+import { getBoundedRuntimeStringContext } from '@lib/runtime/runtimeDiagnostics';
 import { Button, Card, Flex, Space, Typography } from 'antd';
 import { useState } from 'react';
 
 const { Title, Text, Paragraph } = Typography;
+
+const TEST_USER_CONTEXT = getBoundedRuntimeStringContext('testUserId', 'sentry-test-user');
+const TEST_PRODUCT_CONTEXT = getBoundedRuntimeStringContext('testProductId', 'sentry-test-product');
 
 /**
  * Sentry Testing Dashboard Component
@@ -34,7 +38,7 @@ export default function TestSentryPage() {
 
   // Test 2: Info log
   const testInfoLog = () => {
-    logger.info('Test info message', { userId: 'test-user-123', action: 'button-click' });
+    logger.info('Test info message', { ...TEST_USER_CONTEXT, action: 'button-click' });
     addResult('✅ Info log triggered (console in dev, Sentry breadcrumb in prod)');
   };
 
@@ -52,7 +56,7 @@ export default function TestSentryPage() {
     const testError = new Error('Test error - This is intentional!');
     logger.error('Test error occurred', testError, { 
       context: 'Sentry test page',
-      userId: 'test-user-123' 
+      ...TEST_USER_CONTEXT,
     });
     addResult('❌ Error logged (should appear in Sentry dashboard in prod)');
   };
@@ -92,7 +96,7 @@ export default function TestSentryPage() {
   // Test 8: User action tracking
   const testUserActionTracking = () => {
     trackUserAction('Form Submitted', { form: 'contact', fields: 5 });
-    trackUserAction('Product Added to Cart', { productId: 'abc123', price: 29.99 });
+    trackUserAction('Product Added to Cart', { ...TEST_PRODUCT_CONTEXT, price: 29.99 });
     trackUserAction('Page Scrolled', { scrollDepth: '75%' });
     addResult('✅ User actions tracked (3 events)');
   };

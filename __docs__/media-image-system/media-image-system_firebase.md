@@ -20,9 +20,15 @@ Existing Firestore write paths remain. Storage writes for media-system images no
 
 No new Firestore reads are added by the media preparation layer.
 
+## External Provider Diagnostics
+
+Legacy optional background-image provider helpers for Unsplash, Pexels, and Pixabay use `src/lib/imageProviderDiagnostics.ts` for bounded failure diagnostics and `src/lib/imageProviderRequests.ts` for outbound request normalization. Provider search/topic calls encode query params through `URLSearchParams`, clamp page/orientation/search-query inputs, apply a 10s timeout, and pass Pexels credentials through Axios `headers`. Failed provider calls reject with generic owner-safe text and log only provider name, operation, page, bounded query/orientation metadata, and source error name/code/status. Raw provider response bodies, API errors, search queries, image URLs, and credentials are not direct-console logged.
+
+This diagnostic/request hardening adds no Firestore reads/writes, Storage operations, Cloud Function calls, cache invalidations, additional provider calls, or provider/vendor changes.
+
 ## Deletes
 
-Official Business Page cover/gallery replacements and removals queue the previously saved Storage URL and delete the old Storage object after the related store save succeeds. Failed deletes are logged and do not roll back the saved store update.
+Official Business Page cover/gallery replacements and removals queue the previously saved Storage URL and delete the old Storage object after the related store save succeeds. Failed deletes are logged through bounded Storage diagnostics and do not roll back the saved store update.
 
 ## Cost Control
 

@@ -15,6 +15,7 @@ No Firebase impact.
 | Cloud Functions | 0 | No backend synthesis or queue. |
 | Storage reads/writes | 0 | No audio files are created. |
 | Provider calls | 0 | No OpenAI, Google Cloud, Gemini, wake-lock service, or other TTS API. |
+| Browser response validation | 0 | Favorite/read-later Markdown responses are capped and shape-checked in the browser before playback; no Firebase operation is added. |
 
 ## Cost Boundary
 

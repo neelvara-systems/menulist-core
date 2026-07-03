@@ -5,7 +5,7 @@
 **Route:** `/ops/messaging-onboarding`
 **Access:** `platformRole === "PLATFORM"` through protected API route
 **Feature Flag:** `ENABLE_MESSAGING_ONBOARDING_DASHBOARD`
-**Last Updated:** May 17, 2026
+**Last Updated:** June 29, 2026
 
 ---
 
@@ -68,6 +68,7 @@ The dashboard intentionally does not add OpenWA, `whatsapp-web.js`, QR-scanned s
 4. **No owner API-key model** — OpenWA's API-key idea maps to our existing platform role gate. Messaging provider credentials stay in Firebase Secret Manager.
 5. **Webhook observability from existing events** — Invalid HMAC, queue, processing, provider media, and send failures are surfaced from the existing event log.
 6. **Manual refresh only** — No realtime listeners and no polling loop.
+7. **Bounded browser response** — The monitor caps API response JSON at 256KB and validates the snapshot shape before updating UI state.
 
 ---
 
@@ -111,4 +112,4 @@ The dashboard intentionally does not add OpenWA, `whatsapp-web.js`, QR-scanned s
 
 ---
 
-_Document Status: IMPLEMENTED. May 17, 2026._
+_Document Status: IMPLEMENTED. June 29, 2026._

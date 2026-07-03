@@ -1,4 +1,5 @@
 import { AppState } from '@reduxStore/index';
+import { logHookFailure } from '@hook/hookDiagnostics';
 import { TypedUseSelectorHook, useSelector } from 'react-redux';
 
 /**
@@ -11,7 +12,9 @@ export function useSafeAppSelector<T>(selector: (state: AppState) => T, defaultV
   try {
     return useSelector<AppState, T>(selector);
   } catch (error) {
-    console.error('Error in useSafeAppSelector:', error);
+    logHookFailure('redux_selector_access_failed', error, {
+      defaultValueType: typeof defaultValue,
+    });
     return defaultValue;
   }
 }

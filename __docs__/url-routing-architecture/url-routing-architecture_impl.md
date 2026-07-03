@@ -1,10 +1,11 @@
 # URL Routing Architecture — Implementation Guide
 
-> **Audience:** Developers  
-> **Last Updated:** February 19, 2026  
-> **Version:** 2.0  
-> **Status:** Phase 1 + Phase 2 Complete  
+> **Audience:** Developers
+> **Last Updated:** July 2, 2026
+> **Version:** 2.1
+> **Status:** Slug, canonical, product-domain, and path-segment guardrails implemented
 > **ADRs:** See [url-routing-architecture_adr.md](./url-routing-architecture_adr.md) for all architecture decisions
+> **Local Source Gate:** `npm run verify:url-routing-boundary`
 
 ---
 
@@ -21,23 +22,35 @@ Customer opens: storypizza.menulist.ai/food-menu
                     │     → subdomain        │
                     │  2. Set CDN headers    │
                     │  3. Set tenant headers │
-                    │  4. Rewrite /_client   │
+                    │  4. Rewrite /client    │
                     └───────────┬───────────┘
                                 │
                     ┌───────────┴───────────┐
-                    │  _client/[[...slug]]   │
-                    │  page.tsx              │
-                    │                        │
-                    │  1. Read headers       │
-                    │  2. getStoreBySubdomain│
+	                    │  client/[[...slug]]    │
+	                    │  page.tsx              │
+	                    │                        │
+	                    │  1. Read headers       │
+	                    │  2. getStoreBySubdomain│
                     │  3. getProjectBySlug   │
                     │     a. stored slug     │
                     │     b. slugify(name)   │
                     │     c. previousSlugs   │
                     │        → 301 redirect  │
                     │  4. Render menu        │
-                    └────────────────────────┘
+	                    └────────────────────────┘
 ```
+
+`src/lib/multiTenant/getTenantFromHeaders.ts` reads middleware-set tenant headers and host fallbacks for public menu, OBP, compliance, and PWA handoff pages. If no host header is available, it logs only bounded header-presence booleans through `secureError()` and never emits raw request header values. `src/lib/multiTenant/domainLookup.ts` follows the same rule for Firestore lookup failures: it logs lookup type and value length only, not raw subdomain/custom-domain values or provider exception text.
+
+The current internal tenant route namespace is `/client`, backed by `src/app/client/[[...slug]]/page.tsx`. Retired route wording is kept only in archived review history, not active implementation guidance.
+
+safe outlet path segments are enforced at public-output time through `src/lib/publicRouting/pathSegments.ts`. Brand OBP location cards, outlet OBP breadcrumbs/menu prefixes, client menu outlet lookup/canonical redirects, and `src/app/client/sitemap.ts` sitemap outlet entries must call `normalizePublicOutletSlug()` before emitting or resolving an outlet path segment. Invalid, reserved, oversized, slash/dot/query/encoded, or malformed legacy `outletSlug` values are ignored instead of being emitted as public links, redirects, canonical URLs, or sitemap URLs. Source gate: `npm run verify:url-routing-boundary`.
+
+Outlet slugs reserve `menu` even though project slugs intentionally do not. A project may own `/menu` under R5 Layer 1, but an outlet cannot own `/menu` because outlet resolution happens at the same first path segment and would intercept the universal menu alias.
+
+safe project path segments are enforced at public-output time through `src/lib/publicRouting/pathSegments.ts`. Client menu project lookup, previous-slug redirects, canonical menu URLs, metadata lookup, `src/app/client/sitemap.ts` project entries, and OBP menu CTA project links must call `normalizePublicProjectSlug()` before comparing or emitting a project path segment. Invalid, reserved, oversized, slash/dot/query/encoded, or malformed legacy `project.slug` and `previousSlugs[]` values are treated as unavailable instead of being emitted as public links, redirects, canonical URLs, metadata URLs, or sitemap URLs. Project slug `menu` remains allowed by design for R5 Layer 1; reserved project slugs such as `screen` remain hidden/skipped. Source gate: `npm run verify:url-routing-boundary`.
+
+Owner-side domain setup browser calls use `AUTH_BROWSER_REQUEST_POLICY` from `src/lib/auth/browserRequestPolicy.ts` for desktop Domain Settings, embedded Custom Domain, and Mobile Domain Settings `/api/domain` and `/api/subdomain/check` calls. The shared policy pins no-store cache, same-origin credentials, and manual redirect handling before the existing bounded response parsers and acknowledgement checks run.
 
 ---
 
@@ -69,21 +82,23 @@ outletSlug?: string;  // NEW: URL path segment for outlet routing
 
 ## File Inventory
 
-### New Files (Phase 1 + Phase 2)
+### New Files (Slug + Canonical Milestones)
 
 | File                                                                | Purpose                                                   |
 | ------------------------------------------------------------------- | --------------------------------------------------------- |
 | `src/constants/reservedSlugs.ts`                                    | Reserved slug/subdomain namespace constants + validators  |
 | `src/app/api/subdomain/check/route.ts`                              | Subdomain availability checker API (GET)                  |
 | `src/app/api/domain/route.ts`                                       | MenuList store custom-domain management via Vercel API (POST/GET/DELETE) |
+| `src/lib/auth/browserRequestPolicy.ts`                              | Shared authenticated browser request policy for owner domain setup calls |
 | `src/lib/domains/vercelDomains.ts`                                  | Shared Vercel domain add/check/remove helper used by MenuList and Answerlattice hosted help |
 | `src/components/.../businessSettings/tabs/SubdomainTab.tsx`         | Subdomain settings UI tab                                 |
 | `src/components/.../businessSettings/tabs/CustomDomainTab.tsx`      | Custom domain UI with DNS verification flow               |
-| `src/app/_client/obp/BrandOBPContent.tsx`                           | Multi-store brand OBP (store selector)                    |
+| `src/components/mobile/screens/MobileDomainSettingsScreen.tsx`      | Active combined mobile domain/subdomain UI with normalized, copyable DNS verification rows, bounded subdomain-check response parsing, and acknowledged subdomain store saves |
+| `src/app/client/obp/BrandOBPContent.tsx`                             | Multi-store brand OBP (store selector)                    |
 | `scripts/backfill-project-slugs.ts`                                 | Migration: backfill slugs on existing projects            |
 | `__docs__/url-routing-architecture/url-routing-architecture_adr.md` | All architecture decision records (ADR-1 through ADR-11)  |
 
-### Modified Files (Phase 1 + Phase 2)
+### Modified Files (Slug + Canonical Milestones)
 
 | File                                                   | Change                                                                     |
 | ------------------------------------------------------ | -------------------------------------------------------------------------- |
@@ -91,12 +106,12 @@ outletSlug?: string;  // NEW: URL path segment for outlet routing
 | `src/types/platform/store.ts`                          | Added `outletSlug` + `subdomain` to `MinimalStoreDataType`                 |
 | `src/database/projects/index.ts`                       | `addProject` slug gen, `updateProjectMetadata` slug change + previousSlugs |
 | `src/app/api/outlets/create/route.ts`                  | `outletSlug` generation on outlet creation                                 |
-| `src/app/_client/[[...slug]]/page.tsx`                 | Stored slug resolver, previousSlugs 301, subdomain→custom domain 301       |
+| `src/app/client/[[...slug]]/page.tsx`                  | Stored slug resolver, previousSlugs 301, subdomain→custom domain 301       |
 | `src/config/features.ts`                               | Added `ENABLE_STORED_SLUGS` feature flag                                   |
 | `src/middleware.ts`                                    | CDN cache headers, lowercase + trailing slash normalization                |
 | `src/app/api/onboarding/create-subscription/route.ts`  | Auto-generate subdomain, `subDomain` on tenant, `subdomain` in storesList  |
 | `src/app/api/msg-preview/[sessionId]/approve/route.ts` | **BUG FIX**: Added subdomain, slug, projectsSummary, fixed publicUrl       |
-| `src/app/_client/obp/OBPContent.tsx`                   | Multi-store brand detection → BrandOBP                                     |
+| `src/app/client/obp/OBPContent.tsx`                    | Multi-store brand detection → BrandOBP                                     |
 | `src/components/.../businessSettings/index.tsx`        | Integrated SubdomainTab + CustomDomainTab into tab list                    |
 | `src/components/.../businessSettings/tabs/index.ts`    | Added SubdomainTab + CustomDomainTab exports                               |
 
@@ -131,7 +146,7 @@ When project name changes:
 
 ### 3. Client Resolver (getProjectBySlugOrDefault)
 
-**File:** `src/app/_client/[[...slug]]/page.tsx:196-220`
+**File:** `src/app/client/[[...slug]]/page.tsx:196-220`
 
 Resolution order:
 
@@ -190,6 +205,8 @@ When disabled: slugs derived from name at runtime (current behavior), no redirec
 
 **Setup:** Add to `.env.local` for development, Vercel Environment Variables for production.
 
+The shared Vercel helper keeps the provider target fixed at `https://api.vercel.com`, URL-encodes every dynamic provider path segment (`VERCEL_PROJECT_ID`, custom domain, hosted-help domain) before add, status, or removal calls, uses manual redirect handling plus a provider timeout for provider requests, clears the abort timer after each request, and reads provider responses through a 64KB bounded JSON parser. Request bodies keep the normalized domain string expected by Vercel.
+
 ```bash
 # Custom Domain Management (URL Routing Architecture — ADR-5)
 VERCEL_TOKEN=your_vercel_api_token
@@ -204,11 +221,22 @@ VERCEL_TEAM_ID=team_xxxxxxxxxxxx  # Optional
 | Check                          | Status | Notes                                                 |
 | ------------------------------ | ------ | ----------------------------------------------------- |
 | API routes auth-protected      | ✅     | `/api/domain` + `/api/subdomain/check` use `withAuth` |
+| Domain mutation body bounded   | ✅     | `/api/domain` rejects bodies above 4KB before validation or Vercel provider calls |
+| Domain management limiter      | ✅     | `/api/domain` hashes owner/store key material before storing the domain-management rate-limit key |
+| Subdomain check limiter        | ✅     | `/api/subdomain/check` hashes owner/tenant/store key material before storing the availability-check rate-limit key |
+| Desktop subdomain check parse  | ✅     | Desktop Domain Settings caps `/api/subdomain/check` response parsing at 8KB and requires a boolean `available` field before applying availability state |
+| Desktop custom-domain ack      | ✅     | Desktop Domain Settings and Custom Domain add/status/remove parse `/api/domain` responses through bounded 32KB readers and require the expected acknowledged response before local domain state changes. Remove requires `success: true` plus `removed: true`. |
+| Mobile domain remove state     | ✅     | Mobile Domain Settings only clears local domain state after a successful `/api/domain` delete response with `{ success: true, removed: true }` |
+| Browser request boundary       | ✅     | Desktop and mobile Domain Settings call `/api/domain` and `/api/subdomain/check` with same-origin credentials, no-store cache policy, and manual redirect handling before response parsing |
 | Reserved slug validation       | ✅     | Blocked at project creation/rename/onboarding         |
 | No user-provided slugs exposed | ✅     | Auto-generated from name via `slugify()`              |
 | XSS prevention                 | ✅     | `slugify()` strips all non-alphanumeric chars         |
 | Redirect loop prevention       | ✅     | Only redirects if `redirectSlug !== slug`             |
 | Domain ownership validation    | ✅     | Vercel handles DNS verification + SSL                 |
+| DNS setup display              | ✅     | Desktop and mobile Domain Settings render Vercel verification/configured records as copyable rows, not raw provider JSON |
+| Domain browser handoffs        | ✅     | Desktop and mobile copy/open/DNS-copy failures log bounded URL/DNS metadata only |
+| Mobile rejected domain reads   | ✅     | Mobile Domain Settings keeps current status/availability state on rejected `/api/domain` and `/api/subdomain/check` reads; malformed subdomain-check responses log bounded parse/shape diagnostics before fixed failure copy |
+| Mobile subdomain save ack      | ✅     | Mobile Domain Settings requires `updateStore()` acknowledgement before local public URL state or saved copy changes |
 | Subdomain uniqueness           | ✅     | Pre-checked before transaction in both flows          |
 
 ---
@@ -239,7 +267,7 @@ For each tenant:
 | Product  | Local access                 | Preview/QA domains                         | Production domains                         | Purpose                                      |
 | -------- | ---------------------------- | ------------------------------------------ | ------------------------------------------ | -------------------------------------------- |
 | MenuList | `localhost:3000`             | `menulist.online`, `www.menulist.online`   | `menulist.ai`, `www.menulist.ai`           | Marketing, dashboard, client menus           |
-| ConstantLayer | `localhost:3000/__constantlayer` | `constantlayer.menulist.online` | `constantlayer.in`, `www.constantlayer.in` | Static parent/entity trust website |
+| Neelvara | `localhost:3000/__neelvara` | `neelvara.menulist.online` | `neelvara.com`, `www.neelvara.com` | Static parent/entity trust website |
 | Answerlattice | `localhost:3000/__answerlattice`  | `answerlattice.menulist.online`, `www.answerlattice.menulist.online`           | `answerlattice.com`, `www.answerlattice.com`         | Answerlattice website and product routes          |
 | CampaignCue | `localhost:3000/__campaigncue` | `campaigncue.menulist.online` | `campaigncue.ai`, `www.campaigncue.ai` | CampaignCue website and workspace routes |
 | MyCodex  | `localhost:3000/__mycodex`   | `menulist.digital`, `www.menulist.digital` | `menulist.digital`, `www.menulist.digital` | Internal documentation reader on Vercel      |
@@ -247,9 +275,9 @@ For each tenant:
 
 Source of truth: `src/constants/deploymentTargets.ts`.
 
-ConstantLayer is deliberately a product-domain site route, not a MenuList tenant/custom domain and not a database-backed product. It rewrites to `/sites/constantlayer`, has no owner/product app route, and uses an empty Firebase project id in `src/constants/deploymentTargets.ts`.
+Neelvara is deliberately a product-domain site route, not a MenuList tenant/custom domain and not a database-backed product. It rewrites to `/sites/neelvara`, has no owner/product app route, and uses an empty Firebase project id in `src/constants/deploymentTargets.ts`.
 
-Internal portfolio aliases `/cl`, `/ml`, `/al`, and `/cc` are guarded by `src/middleware.ts` and only resolve on the MyCodex product host or already-resolved MyCodex requests. They do not change product slugs, env names, Firebase targets, or public canonical URLs. `/cl` is only a shortcut to the ConstantLayer public site route group.
+Internal portfolio aliases `/nv`, `/ml`, `/al`, and `/cc` are guarded by `src/middleware.ts` and only resolve on the MyCodex product host or already-resolved MyCodex requests. They do not change product slugs, env names, Firebase targets, or public canonical URLs. `/nv` is only a shortcut to the Neelvara public site route group.
 
 SignalDesk also has a MyCodex-host app alias: `/sd`. `https://menulist.digital/sd` rewrites to `/signaldesk`, `/sd/targets` rewrites to `/signaldesk/targets`, and `/sd/signin` rewrites to the shared sign-in page so the callback can return to `/sd`. This alias is for private testing/operation only and does not make SignalDesk a public `/sites` product.
 
@@ -257,7 +285,7 @@ SignalDesk also has a MyCodex-host app alias: `/sd`. `https://menulist.digital/s
 
 MyCodex is an internal documentation reader. It reserves `MC` as its internal product code, but runtime routing and session checks use the `mycodex` slug. Outside localhost, `src/middleware.ts` requires a signed MyCodex session cookie before rewriting protected pages to `/sites/mycodex`. Unauthenticated MyCodex requests redirect to `/login`, where `src/app/sites/mycodex/api/session/route.ts` validates `MYCODEX_BASIC_AUTH_USER` and `MYCODEX_BASIC_AUTH_PASSWORD` server-side and sets an `HttpOnly` `mycodex_session` cookie. MyCodex responses also set no-index/no-follow robot headers and serve a product-scoped disallow-all `robots.txt`; these crawler restrictions are scoped to MyCodex and do not change MenuList tenant/menu SEO or Answerlattice public-site discovery.
 
-MyCodex PWA assets are scoped to the MyCodex product host. `src/app/sites/mycodex/layout.tsx` points to `/mycodex.webmanifest`, `/mycodex-logo.svg`, MyCodex PNG icons, and Apple startup images under `/mycodex-splash/`. `src/components/ServiceWorkerRegister.tsx` registers `/mycodex-sw.js` only when `resolveDomain()` returns the `mycodex` product host. The worker is a private-docs offline shell: it caches `/offline` plus static MyCodex logo assets only, and does not cache markdown, `__docs__` pages, or document HTML.
+MyCodex PWA assets are scoped to the MyCodex product host. `src/app/sites/mycodex/layout.tsx` points to `/mycodex.webmanifest`, `/mycodex-logo.svg`, MyCodex PNG icons, and Apple startup images under `/mycodex-splash/`. Its inline pre-paint theme script reads browser-local theme preference only; if storage or media-query access is blocked, it removes the `dark` class and falls back to light mode without adding runtime storage, network logging, Firebase, or document reads. `src/components/ServiceWorkerRegister.tsx` registers `/mycodex-sw.js` only when `resolveDomain()` returns the `mycodex` product host. The worker is a private-docs offline shell: it caches `/offline` plus static MyCodex logo assets only, and does not cache markdown, `__docs__` pages, or document HTML.
 
 MyCodex reads markdown from `__docs__` at runtime. `next.config.js` therefore includes `./__docs__/**/*` in `experimental.outputFileTracingIncludes` for `/sites/mycodex` routes so Vercel serverless functions receive the same documentation files that local `/__mycodex` reads from disk. Do not broaden this include to MenuList or Answerlattice routes unless those products also gain explicit filesystem-backed runtime content.
 
@@ -276,7 +304,7 @@ Set per environment on Vercel:
 | Environment | Value                            |
 | ----------- | -------------------------------- |
 | Production  | `https://menulist.ai`            |
-| Preview     | `https://menulist-ai.vercel.app` |
+| Preview     | `https://menulist.online`        |
 
 Used by: CORS (`corsValidation.ts`), sitemap (`sitemap.ts`), screen URLs (`screen/utils.ts`), QR codes (`feedbackQrCode.ts`), SEO metadata (`layout.tsx`, `SchemaMarkup.tsx`).
 

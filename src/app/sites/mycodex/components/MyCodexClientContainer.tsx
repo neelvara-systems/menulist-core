@@ -4,6 +4,8 @@ import React, { useState, useEffect, useMemo, useRef, useCallback, type CSSPrope
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { FEATURE_FLAGS } from '@config/features';
+import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
+import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';
 import MyCodexLogoMark from './MyCodexLogoMark';
 import { 
     LuMenu, 
@@ -71,6 +73,13 @@ interface FavoriteDocEntry extends ReaderDocEntry {
 interface QueueDocEntry extends ReaderDocEntry {
     queuedAt: number;
 }
+
+type MyCodexDocumentResponse = {
+    markdown: string;
+    sourcePath?: string;
+};
+
+type MyCodexDocumentResponseLogContext = Record<string, boolean | number | string | null | undefined>;
 
 interface ScrollPositionEntry {
     y: number;
@@ -154,6 +163,7 @@ const MAX_READER_FONT_SIZE = 22;
 const DEFAULT_READER_AUDIO_RATE = 1;
 const MIN_READER_AUDIO_RATE = 0.75;
 const MAX_READER_AUDIO_RATE = 1.5;
+const MYCODEX_DOCUMENT_RESPONSE_JSON_MAX_BYTES = 4 * 1024 * 1024;
 const SPEECH_CHUNK_MAX_LENGTH = 900;
 const INDIA_SPEECH_LANGUAGE_CODES = [
     'en-in',
@@ -293,6 +303,12 @@ const formatDocumentTitle = (name: string) => {
     return toTitleCase(baseName);
 };
 
+const isPlainRecord = (value: unknown): value is Record<string, unknown> => (
+    Boolean(value)
+    && typeof value === 'object'
+    && !Array.isArray(value)
+);
+
 const isReaderHistoryEntry = (value: unknown): value is ReaderHistoryEntry => {
     if (!value || typeof value !== 'object') return false;
     const entry = value as Partial<ReaderHistoryEntry>;
@@ -335,6 +351,51 @@ const isScrollPositionRecord = (value: unknown): value is Record<string, ScrollP
 const isExpandedFoldersRecord = (value: unknown): value is Record<string, boolean> => {
     if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
     return Object.values(value).every((entry) => typeof entry === 'boolean');
+};
+
+const isMyCodexDocumentResponse = (value: unknown): value is MyCodexDocumentResponse => (
+    isPlainRecord(value)
+    && typeof value.markdown === 'string'
+    && (value.sourcePath === undefined || typeof value.sourcePath === 'string')
+);
+
+const getMyCodexDocumentResponseLogContext = (
+    entry: ReaderDocEntry,
+    response: Response,
+): MyCodexDocumentResponseLogContext => ({
+    responseStatus: response.status,
+    responseOk: response.ok,
+    ...getBoundedRuntimeStringContext('favoritePath', entry.path),
+    ...getBoundedRuntimeStringContext('favoriteTitle', entry.title),
+});
+
+const readMyCodexDocumentResponse = async (
+    response: Response,
+    entry: ReaderDocEntry,
+): Promise<MyCodexDocumentResponse | null> => {
+    const logContext = getMyCodexDocumentResponseLogContext(entry, response);
+    let payload: unknown;
+
+    try {
+        payload = await readJsonResponseWithLimit<unknown>(
+            response,
+            MYCODEX_DOCUMENT_RESPONSE_JSON_MAX_BYTES,
+        );
+    } catch (error) {
+        logRuntimeFailure('mycodex_document_response_parse_failed', error, logContext);
+        return null;
+    }
+
+    if (!isMyCodexDocumentResponse(payload)) {
+        logRuntimeFailure(
+            'mycodex_document_response_invalid',
+            new Error('mycodex_document_response_invalid'),
+            logContext,
+        );
+        return null;
+    }
+
+    return payload;
 };
 
 const clampReaderFontSize = (value: number) => Math.min(MAX_READER_FONT_SIZE, Math.max(MIN_READER_FONT_SIZE, value));
@@ -1441,10 +1502,11 @@ export default function MyCodexClientContainer({
         const response = await fetch(buildUrl(`/api/document?path=${encodeURIComponent(entry.path)}`), {
             cache: 'no-store',
             credentials: 'same-origin',
+            redirect: 'manual',
         });
 
-        const payload = await response.json() as { markdown?: unknown };
-        if (!response.ok || typeof payload.markdown !== 'string') {
+        const payload = await readMyCodexDocumentResponse(response, entry);
+        if (!response.ok || !payload) {
             throw new Error('Favorite document could not be loaded');
         }
 

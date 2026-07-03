@@ -2,26 +2,25 @@
 
 > **Feature:** Google Business Profile Synchronization  
 > **Status:** Feature-Flagged (ENABLE_GBP_SYNC) — BLOCKED on API access  
-> **Last Updated:** March 21, 2026
+> **Last Updated:** July 2, 2026
 
 ---
 
-## Strategic Context
+## Current Source Boundary
 
-GBP integration follows a **3-phase strategy** that does NOT depend on API access:
+Current runtime truth:
 
-| Phase | Name               | API Required | Status                               | Key Feature                              |
-| ----- | ------------------ | ------------ | ------------------------------------ | ---------------------------------------- |
-| 1     | Shadow Authority   | NO           | **Active via Menu Presence Monitor** | Guide owners to set OBP link on Google   |
-| 2     | Behavior Influence | NO           | Planned                              | Mismatch detection + correction tracking |
-| 3     | Sync Layer         | YES          | BLOCKED on API                       | Automated link/hours enforcement         |
+- `ENABLE_GBP_SYNC` is `false` in `src/config/features.ts`.
+- `src/database/integrations/gbp.ts` contains server-only token-shape scaffolding, but token operations fail closed with `GBP_TOKEN_STORE_DISABLED`.
+- `src/components/templates/main-app/businessSettings/tabs/IntegrationsTab.tsx` gates the Google Business Profile card behind `gbpEnabled`; the shared Integrations tab may still host Platform Pull API controls when `ENABLE_PUBLIC_API` is on.
+- No Google OAuth route, Google Business Profile callback route, nightly GBP sync worker, or active apply-hours route is shipped.
+- Current owner-facing behavior is manual Google handoff through Official Business Page links, Menu Presence Monitor, and owner-managed Google Business Profile updates.
 
-**Principle:** MenuList becomes the system Google trusts BEFORE it integrates with it.
+Reserved capability:
 
-### When to Apply for API Access
+GBP API sync remains a conditional integration candidate after Google Business Profile API access, separate OAuth setup, target secrets, provider smoke, scoped deploy evidence, browser/device QA, and production-host smoke exist. Until those gates pass, docs and public copy must not say MenuList updates Google automatically.
 
-Do NOT apply before: **300–500 active businesses + 30–50 multi-outlet brands + measurable correction behavior.**  
-See `_archive/chatgpt-review-session2-api-strategy.md` §3 for full thresholds.
+**Principle:** MenuList becomes the source owners can safely point Google to before it writes to Google.
 
 ---
 
@@ -49,7 +48,7 @@ See `_archive/chatgpt-review-session2-api-strategy.md` §3 for full thresholds.
 
 | Feature                         | Location                                      | Status                      | Relationship                                              |
 | ------------------------------- | --------------------------------------------- | --------------------------- | --------------------------------------------------------- |
-| **Menu Presence Monitor**       | `__docs__/menu-presence-monitor/`             | Documented, flag OFF        | Pre-API Phase 1 — guides owners to add OBP link to Google |
+| **Menu Presence Monitor**       | `__docs__/menu-presence-monitor/`             | Documented, flag OFF        | Current pre-API handoff — guides owners to add OBP link to Google |
 | **Reviews & Reputation**        | `__docs__/reviews-reputation/`                | SPEC LOCKED, BLOCKED on API | Requires same GBP API access                              |
 | **Reputation Protection**       | `__docs__/reputation-protection/`             | Draft, BLOCKED on API       | AI reply assist layer on top of reviews                   |
 | **OBP**                         | `__docs__/official-business-page/`            | ✅ IMPLEMENTED              | The canonical page GBP should point to                    |
@@ -57,8 +56,8 @@ See `_archive/chatgpt-review-session2-api-strategy.md` §3 for full thresholds.
 
 ## One-Liner
 
-Automatically sync menu data to Google Business Profile — hours, links, contact details — keeping GBP always accurate without manual updates.
+Reserved Google Business Profile sync scaffolding exists, but current MenuList behavior is owner-managed Google handoff using the Official Business Page and menu links.
 
 ## Problem Solved
 
-Business owners forget to update their Google Business Profile when menu items or hours change. GBP Sync ensures the GBP listing always reflects the latest MenuList data. Pre-API, the Menu Presence Monitor guides owners to manually keep Google aligned.
+Business owners forget to update their Google Business Profile when menu links or hours change. Until GBP API access is approved and the integration is built end-to-end, MenuList keeps the canonical OBP/menu links ready and guides owners to keep Google aligned manually.

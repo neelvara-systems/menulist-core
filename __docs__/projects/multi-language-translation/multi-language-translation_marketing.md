@@ -3,6 +3,26 @@
 **Feature:** AI-Powered Menu Translation  
 **Audience:** Sales Team, Marketing, Partners  
 **Last Updated:** February 2026
+**Status:** Historical marketing draft; not current sales, publication, or launch certification
+
+---
+
+## Current Sales/Launch Boundary
+
+This document preserves February 2026 positioning notes only. Do not use it as current sales collateral, website copy, partner copy, or launch approval until release-specific evidence is recorded.
+
+Current Multi-Language Translation collateral approval requires:
+
+- Active production-readiness audit evidence.
+- External Certification Runbook evidence.
+- `npm run verify:agent-readiness`.
+- Target feature-flag/provider review.
+- Provider smoke for the target translation model and environment.
+- Browser/mobile editor QA for translated menu flows.
+- Public renderer fallback/RTL evidence.
+- Customer-menu browser/device QA for translated output.
+- Target deploy evidence and production-host smoke.
+- Release-specific evidence for any language-count, timing, quality, or customer-behavior claims before those claims are used.
 
 ---
 
@@ -238,4 +258,4 @@ Serve **every customer in their language**—without the translation bill.
 
 ---
 
-_Document Status: ✅ READY FOR USE_
+_Document Status: Historical marketing draft; not current sales or launch certification._

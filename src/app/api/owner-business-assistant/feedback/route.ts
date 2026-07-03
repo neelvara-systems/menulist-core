@@ -7,6 +7,8 @@ import { DB_COLLECTIONS } from '@constant/database';
 import { firestoreAdmin } from '@lib/firebase/firebaseAdmin';
 import { OwnerBusinessAssistantFeedbackRequestSchema } from '@lib/ownerBusinessAssistant/schemas';
 import { requireAnyStorePermissionForStore } from '@lib/permissions/server';
+import { readBoundedJsonBody } from '@lib/security/boundedRequestBody';
+import { getSafeZodValidationDetails } from '@lib/security/inputValidation';
 import {
   applyOwnerBusinessAssistantRateLimit,
   resolveOwnerAssistantSelectedStoreScope,
@@ -15,14 +17,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/middleware/auth';
 
 const FEEDBACK_RETENTION_MS = 90 * 24 * 60 * 60 * 1000;
-
-const readJsonBody = async (request: NextRequest) => {
-  try {
-    return await request.json();
-  } catch {
-    return null;
-  }
-};
+const OWNER_BUSINESS_ASSISTANT_FEEDBACK_MAX_BODY_BYTES = 8 * 1024;
 
 export const POST = withAuth(async (request: NextRequest, session) => {
   if (!FEATURE_FLAGS.ENABLE_OWNER_BUSINESS_HEALTH || !FEATURE_FLAGS.ENABLE_OWNER_BUSINESS_HEALTH_USAGE_LOGGING) {
@@ -37,14 +32,16 @@ export const POST = withAuth(async (request: NextRequest, session) => {
   });
   if (rateLimit) return rateLimit;
 
-  const json = await readJsonBody(request);
-  if (!json) {
-    return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
-  }
+  const bodyResult = await readBoundedJsonBody(
+    request,
+    OWNER_BUSINESS_ASSISTANT_FEEDBACK_MAX_BODY_BYTES,
+    { invalidJsonMessage: 'Invalid request' },
+  );
+  if (bodyResult.ok === false) return bodyResult.response;
 
-  const parsed = OwnerBusinessAssistantFeedbackRequestSchema.safeParse(json);
+  const parsed = OwnerBusinessAssistantFeedbackRequestSchema.safeParse(bodyResult.data);
   if (!parsed.success) {
-    return NextResponse.json({ error: 'Invalid request', details: parsed.error.flatten() }, { status: 400 });
+    return NextResponse.json({ error: 'Invalid request', details: getSafeZodValidationDetails(parsed.error) }, { status: 400 });
   }
 
   const scope = resolveOwnerAssistantSelectedStoreScope(request, session, parsed.data.storeId);

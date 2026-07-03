@@ -178,6 +178,8 @@ function verifyMetadataAndRegistration() {
   assertIncludes(layout, '/mycodex-favicon-16.png', 'MyCodex layout metadata');
   assertIncludes(layout, '/mycodex-apple-touch-icon.png', 'MyCodex layout metadata');
   assertIncludes(layout, 'startupImage: getStaticMyCodexAppleStartupImages()', 'MyCodex layout metadata');
+  assertIncludes(layout, "document.documentElement.classList.remove('dark');", 'MyCodex theme script blocked-storage fallback');
+  assertNotIncludes(layout, 'catch(e) {}', 'MyCodex theme script silent catch');
   assertIncludes(serviceWorkerRegister, "const MYCODEX_SW_URL = '/mycodex-sw.js';", 'service worker registration');
   assertIncludes(serviceWorkerRegister, "resolved.productSite?.id === 'mycodex'", 'service worker registration');
   assertIncludes(middleware, 'mycodex-sw\\\\.js', 'middleware matcher');

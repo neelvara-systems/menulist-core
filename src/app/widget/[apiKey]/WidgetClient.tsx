@@ -2,6 +2,9 @@
 
 import type { CSSProperties } from 'react';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { createTimestampedRuntimeId } from '@lib/runtime/randomId';
+import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
+import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';
 import {
     LuAlertTriangle,
     LuBookOpen,
@@ -29,6 +32,10 @@ import {
 const MAX_SESSION_MESSAGES = 5;
 const MAX_CONTEXT_PAYLOAD_BYTES = 2048;
 const MAX_VISITOR_PAYLOAD_BYTES = 1024;
+const WIDGET_SEARCH_RESPONSE_JSON_MAX_BYTES = 256 * 1024;
+const WIDGET_ANSWER_FAILED_MESSAGE = 'Could not answer that right now. Try again.';
+const WIDGET_FEEDBACK_FAILED_MESSAGE = 'Could not save feedback. Try again.';
+const WIDGET_LINK_OPEN_FAILED_MESSAGE = 'Could not open link. Try again.';
 
 type WidgetHistoryMode = 'session' | 'forget';
 
@@ -74,7 +81,135 @@ interface WidgetClientProps {
     apiKey: string;
 }
 
+type WidgetSearchResponse = {
+    answer: string;
+    canonical?: boolean;
+    confidence?: string;
+    answerSource?: string;
+    references?: WidgetMessage['references'];
+    relatedContent?: WidgetMessage['relatedContent'];
+    suggestedQuestions?: unknown[];
+    searchHistoryId?: string;
+    procedure?: WidgetProcedure;
+    graphExpansion?: {
+        relatedSuggestions?: unknown[];
+    };
+};
+
+type WidgetResponseLogContext = Record<string, boolean | number | string | null | undefined>;
+
 const SENSITIVE_CONTEXT_PATTERN = /(?:[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}|\+?\d[\d\s().-]{7,}\d)/i;
+
+const isPlainRecord = (value: unknown): value is Record<string, unknown> => (
+    Boolean(value) && typeof value === 'object' && !Array.isArray(value)
+);
+
+const isOptionalString = (value: unknown): value is string | undefined => (
+    value === undefined || typeof value === 'string'
+);
+
+const isOptionalNullableString = (value: unknown): value is string | null | undefined => (
+    value === undefined || value === null || typeof value === 'string'
+);
+
+const isWidgetReference = (value: unknown): value is NonNullable<WidgetMessage['references']>[number] => (
+    isPlainRecord(value)
+    && typeof value.id === 'string'
+    && typeof value.title === 'string'
+    && isOptionalString(value.url)
+);
+
+const isWidgetProcedureStep = (value: unknown): value is WidgetProcedureStep => (
+    isPlainRecord(value)
+    && typeof value.stepOrder === 'number'
+    && Number.isFinite(value.stepOrder)
+    && typeof value.instruction === 'string'
+    && isOptionalString(value.action)
+    && isOptionalString(value.target)
+    && isOptionalString(value.expectedResult)
+    && isOptionalString(value.troubleshootingHint)
+);
+
+const isWidgetProcedure = (value: unknown): value is WidgetProcedure => {
+    if (!isPlainRecord(value)) return false;
+    if (value.steps !== undefined && (!Array.isArray(value.steps) || !value.steps.every(isWidgetProcedureStep))) return false;
+    if (value.warnings !== undefined && (!Array.isArray(value.warnings) || !value.warnings.every((item) => (
+        isPlainRecord(item) && typeof item.message === 'string' && isOptionalString(item.severity)
+    )))) return false;
+    if (value.prerequisites !== undefined && (!Array.isArray(value.prerequisites) || !value.prerequisites.every((item) => (
+        isPlainRecord(item) && typeof item.description === 'string' && isOptionalString(item.type) && isOptionalString(item.value)
+    )))) return false;
+    return true;
+};
+
+const isWidgetRelatedContent = (value: unknown): value is WidgetMessage['relatedContent'] => {
+    if (!isPlainRecord(value)) return false;
+    if (!isOptionalString(value.key) || !isOptionalString(value.label)) return false;
+    if (value.articles !== undefined && (!Array.isArray(value.articles) || !value.articles.every((item) => (
+        isPlainRecord(item)
+        && typeof item.id === 'string'
+        && typeof item.title === 'string'
+        && isOptionalString(item.url)
+    )))) return false;
+    if (value.faqs !== undefined && (!Array.isArray(value.faqs) || !value.faqs.every((item) => (
+        isPlainRecord(item)
+        && typeof item.id === 'string'
+        && typeof item.question === 'string'
+        && isOptionalString(item.answer)
+        && isOptionalNullableString(item.articleId)
+    )))) return false;
+    if (value.changelogs !== undefined && (!Array.isArray(value.changelogs) || !value.changelogs.every((item) => (
+        isPlainRecord(item)
+        && typeof item.id === 'string'
+        && typeof item.title === 'string'
+        && isOptionalNullableString(item.pageId)
+        && isOptionalNullableString(item.version)
+    )))) return false;
+    return true;
+};
+
+const isWidgetSearchResponse = (value: unknown): value is WidgetSearchResponse => {
+    if (!isPlainRecord(value) || typeof value.answer !== 'string') return false;
+    if (value.canonical !== undefined && typeof value.canonical !== 'boolean') return false;
+    if (!isOptionalString(value.confidence) || !isOptionalString(value.answerSource) || !isOptionalString(value.searchHistoryId)) return false;
+    if (value.references !== undefined && (!Array.isArray(value.references) || !value.references.every(isWidgetReference))) return false;
+    if (value.relatedContent !== undefined && !isWidgetRelatedContent(value.relatedContent)) return false;
+    if (value.suggestedQuestions !== undefined && !Array.isArray(value.suggestedQuestions)) return false;
+    if (value.procedure !== undefined && !isWidgetProcedure(value.procedure)) return false;
+    if (value.graphExpansion !== undefined) {
+        if (!isPlainRecord(value.graphExpansion)) return false;
+        if (value.graphExpansion.relatedSuggestions !== undefined && !Array.isArray(value.graphExpansion.relatedSuggestions)) return false;
+    }
+    return true;
+};
+
+const readWidgetSearchResponse = async (
+    response: Response,
+    context: WidgetResponseLogContext,
+): Promise<WidgetSearchResponse | null> => {
+    let payload: unknown;
+    try {
+        payload = await readJsonResponseWithLimit<unknown>(response, WIDGET_SEARCH_RESPONSE_JSON_MAX_BYTES);
+    } catch (error) {
+        logRuntimeFailure('answerlattice_widget_client_search_response_parse_failed', error, {
+            ...context,
+            responseOk: response.ok,
+            responseStatus: response.status,
+            maxBytes: WIDGET_SEARCH_RESPONSE_JSON_MAX_BYTES,
+        });
+        return null;
+    }
+
+    if (!isWidgetSearchResponse(payload)) {
+        logRuntimeFailure('answerlattice_widget_client_search_response_invalid', new Error('answerlattice_widget_client_search_response_invalid'), {
+            ...context,
+            responseStatus: response.status,
+        });
+        return null;
+    }
+
+    return payload;
+};
 
 const sanitizeContextString = (value: unknown, maxLength = 100): string | null => {
     if (typeof value !== 'string') return null;
@@ -264,7 +399,7 @@ export default function WidgetClient({ apiKey }: WidgetClientProps) {
     const inputRef = useRef<HTMLInputElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const activeRequestRef = useRef(0);
-    const widgetSessionIdRef = useRef(`w_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`);
+    const widgetSessionIdRef = useRef(createTimestampedRuntimeId('w', 8));
 
     const scrollToBottom = useCallback(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -283,6 +418,33 @@ export default function WidgetClient({ apiKey }: WidgetClientProps) {
 
     const closeWidget = useCallback(() => {
         window.parent?.postMessage({ type: 'answerlattice-widget-close' }, '*');
+    }, []);
+
+    const openWidgetLink = useCallback((
+        url: string | undefined,
+        context: {
+            linkId?: string;
+            linkTitle?: string;
+            linkSource: string;
+        },
+    ) => {
+        if (!url) return;
+
+        try {
+            const opened = window.open(url, '_blank', 'noopener,noreferrer');
+            if (!opened) {
+                throw new Error('answerlattice_widget_link_open_blocked');
+            }
+        } catch (error) {
+            logRuntimeFailure('answerlattice_widget_link_open_failed', error, {
+                surface: 'widget_client',
+                ...getBoundedRuntimeStringContext('linkUrl', url),
+                ...getBoundedRuntimeStringContext('linkId', context.linkId),
+                ...getBoundedRuntimeStringContext('linkTitle', context.linkTitle),
+                ...getBoundedRuntimeStringContext('linkSource', context.linkSource),
+            });
+            setError(WIDGET_LINK_OPEN_FAILED_MESSAGE);
+        }
     }, []);
 
     // Listen for context updates from embed script via postMessage
@@ -415,9 +577,21 @@ export default function WidgetClient({ apiKey }: WidgetClientProps) {
                 body.imageBase64 = currentImage.base64;
                 body.imageMimeType = currentImage.mimeType;
             }
+            const responseLogContext = {
+                surface: 'widget_client',
+                queryLength: q.length,
+                hasImage: Boolean(currentImage),
+                hasProductContext: Boolean(productContext),
+                hasVisitorContext: Boolean(visitorContext),
+                historyCount: history?.length || 0,
+                widgetSessionIdLength: widgetSessionIdRef.current.length,
+            };
 
             const res = await fetch('/api/widget/search', {
                 method: 'POST',
+                cache: 'no-store',
+                credentials: 'same-origin',
+                redirect: 'manual',
                 headers: {
                     'Content-Type': 'application/json',
                     'X-API-Key': apiKey,
@@ -426,11 +600,13 @@ export default function WidgetClient({ apiKey }: WidgetClientProps) {
             });
 
             if (!res.ok) {
-                const data = await res.json().catch(() => ({}));
-                throw new Error(data.error || `Request failed (${res.status})`);
+                throw new Error(WIDGET_ANSWER_FAILED_MESSAGE);
             }
 
-            const data = await res.json();
+            const data = await readWidgetSearchResponse(res, responseLogContext);
+            if (!data) {
+                throw new Error(WIDGET_ANSWER_FAILED_MESSAGE);
+            }
             if (activeRequestRef.current !== requestId) return;
 
             const relatedSuggestions = Array.isArray(data.graphExpansion?.relatedSuggestions)
@@ -456,9 +632,9 @@ export default function WidgetClient({ apiKey }: WidgetClientProps) {
             };
 
             setMessages(prev => [...prev, aiMsg]);
-        } catch (err: any) {
+        } catch {
             if (activeRequestRef.current !== requestId) return;
-            setError(err.message || 'Something went wrong');
+            setError(WIDGET_ANSWER_FAILED_MESSAGE);
         } finally {
             if (activeRequestRef.current === requestId) {
                 setLoading(false);
@@ -536,18 +712,20 @@ export default function WidgetClient({ apiKey }: WidgetClientProps) {
         try {
             const response = await fetch('/api/widget/feedback', {
                 method: 'POST',
+                cache: 'no-store',
+                credentials: 'same-origin',
+                redirect: 'manual',
                 headers: { 'Content-Type': 'application/json', 'X-API-Key': apiKey },
                 body: JSON.stringify({ searchHistoryId: msg.searchHistoryId, isGood }),
             });
             if (!response.ok) {
-                const data = await response.json().catch(() => ({}));
-                throw new Error(data.error || 'Could not save feedback');
+                throw new Error(WIDGET_FEEDBACK_FAILED_MESSAGE);
             }
-        } catch (feedbackError: any) {
+        } catch {
             setMessages(prev => prev.map(m =>
                 m.id === msgId ? { ...m, feedback: null } : m
             ));
-            setError(feedbackError?.message || 'Could not save feedback. Try again.');
+            setError(WIDGET_FEEDBACK_FAILED_MESSAGE);
         }
     };
 
@@ -700,7 +878,11 @@ export default function WidgetClient({ apiKey }: WidgetClientProps) {
                                                 ...styles.refTag,
                                                 ...(ref.url ? styles.refTagButton : {}),
                                             }}
-                                            onClick={() => ref.url && window.open(ref.url, '_blank', 'noopener,noreferrer')}
+                                            onClick={() => openWidgetLink(ref.url, {
+                                                linkId: ref.id,
+                                                linkTitle: ref.title,
+                                                linkSource: 'message_reference',
+                                            })}
                                             disabled={!ref.url}
                                             title={ref.title}
                                         >
@@ -721,7 +903,11 @@ export default function WidgetClient({ apiKey }: WidgetClientProps) {
                                             <button
                                                 key={`article-${article.id}`}
                                                 style={styles.relatedBtn}
-                                                onClick={() => article.url && window.open(article.url, '_blank', 'noopener,noreferrer')}
+                                                onClick={() => openWidgetLink(article.url, {
+                                                    linkId: article.id,
+                                                    linkTitle: article.title,
+                                                    linkSource: 'related_article',
+                                                })}
                                                 title={article.title}
                                             >
                                                 <LuBookOpen size={12} aria-hidden />

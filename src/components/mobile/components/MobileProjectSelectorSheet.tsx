@@ -1,6 +1,6 @@
 'use client'
 
-import { addProject, deleteProject, duplicateProject, getProjectDataWithoutLoader, setProjectActive, updateProjectMetadata, updateProjectWithoutLoader } from '@database/projects';
+import { addProject, assertProjectDeleteSucceeded, assertProjectUpdateSucceeded, deleteProject, duplicateProject, getProjectDataWithoutLoader, setProjectActive, updateProjectMetadata, updateProjectWithoutLoader } from '@database/projects';
 import { canHaveLinkedOutlets } from '@database/multiOutlet';
 import { useOfferingLabels } from '@hook/useOfferingLabels';
 import { withAnalyticsSource } from '@lib/analytics/sourceAttribution';
@@ -27,6 +27,13 @@ import { LuArchiveRestore, LuCopy, LuExternalLink, LuPalette, LuPen, LuPower, Lu
 import MobileQrCodeSheet from './MobileQrCodeSheet';
 import MobileLocalizedLanguageSelector from './MobileLocalizedLanguageSelector';
 import { useMobileProjects } from '../providers/MobileProjectsProvider';
+import {
+    getBoundedMobileProjectStringContext,
+    getMobileProjectLogContext,
+    getMobileProjectStoreLogContext,
+    logMobileProjectFailure,
+    type MobileProjectLogContext,
+} from '../utils/mobileProjectDiagnostics';
 import { openMobilePublicLink } from '../utils/openMobilePublicLink';
 import { Button, Card, Dialog, DotLoading, Flex, Input, List, Popup, Switch, Tag, Text, TextArea, Title, Toast } from '../antd';
 
@@ -71,6 +78,59 @@ type ActionItem = {
     label: string;
     labelStyle?: CSSProperties;
     onClick: () => void;
+};
+
+const MOBILE_PROJECT_SELECTOR_COPY_UNAVAILABLE = 'mobile_project_selector_copy_unavailable';
+const MOBILE_PROJECT_SELECTOR_COPY_FALLBACK_FAILED = 'mobile_project_selector_copy_fallback_failed';
+
+const hasMobileProjectSelectorClipboardWrite = (): boolean => (
+    typeof navigator !== 'undefined'
+    && Boolean(navigator.clipboard)
+    && typeof navigator.clipboard.writeText === 'function'
+);
+
+const hasMobileProjectSelectorCopyFallback = (): boolean => (
+    typeof document !== 'undefined'
+    && typeof document.createElement === 'function'
+    && typeof document.execCommand === 'function'
+    && Boolean(document.body)
+);
+
+const copyMobileProjectSelectorText = async (value: string): Promise<void> => {
+    let clipboardWriteError: unknown;
+
+    if (hasMobileProjectSelectorClipboardWrite()) {
+        try {
+            await navigator.clipboard.writeText(value);
+            return;
+        } catch (error) {
+            clipboardWriteError = error;
+            // Continue to the acknowledged textarea fallback before showing failure copy.
+        }
+    }
+
+    if (!hasMobileProjectSelectorCopyFallback()) {
+        throw clipboardWriteError || new Error(MOBILE_PROJECT_SELECTOR_COPY_UNAVAILABLE);
+    }
+
+    const textarea = document.createElement('textarea');
+    textarea.value = value;
+    textarea.setAttribute('readonly', '');
+    textarea.style.position = 'fixed';
+    textarea.style.left = '-9999px';
+    textarea.style.top = '0';
+    document.body.appendChild(textarea);
+    textarea.focus();
+    textarea.select();
+
+    try {
+        const copied = document.execCommand('copy');
+        if (!copied) {
+            throw new Error(MOBILE_PROJECT_SELECTOR_COPY_FALLBACK_FAILED);
+        }
+    } finally {
+        document.body.removeChild(textarea);
+    }
 };
 
 const getResolvedSpecialMenuStatus = (
@@ -297,6 +357,37 @@ export default function MobileProjectSelectorSheet({
     const resolvedCurrentProjectName = currentProjectName
         ? resolveProjectName(currentProjectName, '')
         : null;
+    const buildProjectSelectorMutationLogContext = (
+        flow: string,
+        project?: ProjectSheetProject | null,
+        metadata: MobileProjectLogContext = {},
+    ): MobileProjectLogContext => {
+        const resolvedProjectId = project?.projectId || formProjectId;
+        return {
+            surface: 'mobile_project_selector',
+            flow,
+            ...getMobileProjectLogContext(resolvedProjectId, project?.specialMenuBaseProjectId || formSourceProject?.specialMenuBaseProjectId),
+            ...getMobileProjectStoreLogContext(storeDetails?.storeId, storeDetails?.tenantId),
+            ...getBoundedMobileProjectStringContext('selectedLanguage', formSelectedLanguage),
+            ...getBoundedMobileProjectStringContext('referenceLanguage', formReferenceLanguage),
+            formMode: formMode || undefined,
+            languageCount: formLanguages.length,
+            projectCount: projects.length,
+            nameDraftLanguageCount: Object.keys(formNameDrafts).length,
+            descriptionDraftLanguageCount: Object.keys(formDescriptionDrafts).length,
+            nameDraftLength: String(formNameDrafts[formSelectedLanguage] || '').length,
+            descriptionDraftLength: String(formDescriptionDrafts[formSelectedLanguage] || '').length,
+            hasInitialNameDrafts: Object.keys(initialFormNameDrafts).length > 0,
+            hasInitialDescriptionDrafts: Object.keys(initialFormDescriptionDrafts).length > 0,
+            hasProjectImage: Boolean(formProjectImage),
+            hasProjectImageDraft: Boolean(formProjectImageDraft),
+            isActiveDraft: formActive,
+            isCurrentProject: resolvedProjectId === currentProjectId,
+            isDefaultDraft: formIsDefault,
+            isSpecialMenu: project?.isSpecialMenu === true || formSourceProject?.isSpecialMenu === true,
+            ...metadata,
+        };
+    };
 
     const resetFormState = () => {
         setFormMode(null);
@@ -523,10 +614,18 @@ export default function MobileProjectSelectorSheet({
                     isDefault: nextIsDefault,
                     name: localizedName,
                     projectImage: savedProjectImage || null,
+                }, {
+                    defaultHandoff: {
+                        unsetProjectId: nextIsDefault ? currentDefault?.projectId : undefined,
+                    },
                 });
-
-                if (nextIsDefault && currentDefault?.projectId && currentDefault.projectId !== result?.projectId) {
-                    await updateProjectMetadata(currentDefault.projectId, { isDefault: false });
+                assertProjectUpdateSucceeded(
+                    result,
+                    undefined,
+                    'mobile_project_selector_create_project_update_rejected',
+                );
+                if (!result.projectId) {
+                    throw new Error('mobile_project_selector_create_project_update_rejected');
                 }
 
                 if (currentDefault?.projectId && nextIsDefault && currentDefault.projectId !== result?.projectId) {
@@ -569,16 +668,34 @@ export default function MobileProjectSelectorSheet({
                     localizedName,
                     localizedDescription,
                 );
+                assertProjectUpdateSucceeded(
+                    result,
+                    undefined,
+                    'mobile_project_selector_duplicate_project_update_rejected',
+                );
+                if (!result.projectId) {
+                    throw new Error('mobile_project_selector_duplicate_project_update_rejected');
+                }
 
                 if (savedProjectImage !== (formSourceProject?.projectImage || null) && result?.projectId) {
-                    await updateProjectMetadata(result.projectId, { projectImage: savedProjectImage || null });
+                    const imageMetadataResult = await updateProjectMetadata(result.projectId, { projectImage: savedProjectImage || null });
+                    assertProjectUpdateSucceeded(
+                        imageMetadataResult,
+                        result.projectId,
+                        'mobile_project_selector_duplicate_image_metadata_update_rejected',
+                    );
                 }
                 if (result?.projectId) {
-                    await updateProjectWithoutLoader({
+                    const languageResult = await updateProjectWithoutLoader({
                         projectId: result.projectId,
                         languages: formLanguages,
                         defaultLanguage: formSelectedLanguage,
                     });
+                    assertProjectUpdateSucceeded(
+                        languageResult,
+                        result.projectId,
+                        'mobile_project_selector_duplicate_language_project_update_rejected',
+                    );
                 }
                 if (result?.projectId) {
                     upsertCachedProject({
@@ -636,24 +753,38 @@ export default function MobileProjectSelectorSheet({
                     metadataUpdate.specialMenuEndsAt = fromNativeDateTimeInputValue(formEndsAt);
                 }
 
-                await updateProjectMetadata(formProjectId, metadataUpdate);
-                await updateProjectWithoutLoader({
+                const metadataResult = await updateProjectMetadata(formProjectId, metadataUpdate, {
+                    defaultHandoff: {
+                        unsetProjectId: shouldUnsetPreviousDefault ? currentDefault?.projectId : undefined,
+                        setProjectId: defaultReplacement?.projectId,
+                    },
+                });
+                assertProjectUpdateSucceeded(
+                    metadataResult,
+                    formProjectId,
+                    'mobile_project_selector_metadata_update_rejected',
+                );
+                const languageResult = await updateProjectWithoutLoader({
                     projectId: formProjectId,
                     languages: formLanguages,
                     defaultLanguage: formSelectedLanguage,
                 });
+                assertProjectUpdateSucceeded(
+                    languageResult,
+                    formProjectId,
+                    'mobile_project_selector_language_project_update_rejected',
+                );
                 if (activeChanged) {
-                    await setProjectActive(formProjectId, nextActive);
-                }
-                if (shouldUnsetPreviousDefault && currentDefault?.projectId) {
-                    await updateProjectMetadata(currentDefault.projectId, { isDefault: false });
-                }
-                if (defaultReplacement?.projectId) {
-                    await updateProjectMetadata(defaultReplacement.projectId, { isDefault: true });
+                    const activeResult = await setProjectActive(formProjectId, nextActive);
+                    assertProjectUpdateSucceeded(
+                        activeResult,
+                        formProjectId,
+                        'mobile_project_selector_active_project_update_rejected',
+                    );
                 }
 
                 if (isEditingSpecialMenu) {
-                    await updateProjectWithoutLoader({
+                    const specialMenuResult = await updateProjectWithoutLoader({
                         projectId: formProjectId,
                         _specialMenu: {
                             displayName: localizedName,
@@ -661,6 +792,11 @@ export default function MobileProjectSelectorSheet({
                             startsAt: fromNativeDateTimeInputValue(formStartsAt),
                         } as any,
                     });
+                    assertProjectUpdateSucceeded(
+                        specialMenuResult,
+                        formProjectId,
+                        'mobile_project_selector_special_menu_project_update_rejected',
+                    );
                 }
 
                 if (shouldUnsetPreviousDefault && currentDefault?.projectId) {
@@ -701,7 +837,12 @@ export default function MobileProjectSelectorSheet({
                 await syncSelectionOnly(formProjectId);
                 Toast.show({ content: t('catalogUpdated'), duration: 1400 });
             }
-        } catch {
+        } catch (error) {
+            logMobileProjectFailure('mobile_project_selector_save_failed', error, buildProjectSelectorMutationLogContext('save_form', formSourceProject, {
+                isCreate: formMode === 'create',
+                isDuplicate: formMode === 'duplicate',
+                isEdit: formMode === 'edit',
+            }));
             Toast.show({ content: t('saveFailed'), duration: 1800 });
         } finally {
             setIsSubmitting(false);
@@ -752,8 +893,14 @@ export default function MobileProjectSelectorSheet({
                 sourceDataUrl: prepared.sourceDataUrl,
             });
         } catch (error) {
-            console.error('Failed to prepare project image:', error);
-            Toast.show({ content: error instanceof Error ? error.message : 'Could not prepare image. Please try again.', duration: 1800 });
+            logMobileProjectFailure('mobile_project_image_prepare_failed', error, {
+                ...getMobileProjectLogContext(formProjectId, formSourceProject?.specialMenuBaseProjectId),
+                ...getMobileProjectStoreLogContext(storeDetails?.storeId, storeDetails?.tenantId),
+                ...getBoundedMobileProjectStringContext('fileName', file.name),
+                formMode: formMode || undefined,
+                languageCount: formLanguages.length,
+            });
+            Toast.show({ content: 'Could not prepare image. Please try again.', duration: 1800 });
         }
 
         return false;
@@ -808,8 +955,15 @@ export default function MobileProjectSelectorSheet({
                 sourceDataUrl: prepared.sourceDataUrl,
             });
             Toast.show({ content: 'Menu image generated', icon: 'success', duration: 1400 });
-        } catch (error: any) {
-            Toast.show({ content: error?.message || 'Failed to generate menu image', duration: 2200 });
+        } catch (error) {
+            logMobileProjectFailure('mobile_project_image_generate_failed', error, {
+                ...getMobileProjectLogContext(formProjectId, formSourceProject?.specialMenuBaseProjectId),
+                ...getMobileProjectStoreLogContext(storeDetails?.storeId, storeDetails?.tenantId),
+                ...getBoundedMobileProjectStringContext('projectName', projectName),
+                formMode: formMode || undefined,
+                languageCount: formLanguages.length,
+            });
+            Toast.show({ content: 'Could not generate menu image. Please try again.', duration: 2200 });
         } finally {
             setIsGeneratingProjectImage(false);
         }
@@ -857,7 +1011,7 @@ export default function MobileProjectSelectorSheet({
                 return;
             }
 
-            await updateProjectWithoutLoader({
+            const translationProjectResult = await updateProjectWithoutLoader({
                 projectId: formProjectId,
                 ...(translated.name ? { name: translated.name } : {}),
                 ...(translated.description ? { description: translated.description } : {}),
@@ -874,13 +1028,23 @@ export default function MobileProjectSelectorSheet({
                     },
                 } : {}),
             } as any);
+            assertProjectUpdateSucceeded(
+                translationProjectResult,
+                formProjectId,
+                'mobile_project_public_content_translation_project_update_rejected',
+            );
 
             const metadataUpdate: Record<string, any> = {};
             if (translated.name) metadataUpdate.name = translated.name;
             if (translated.description) metadataUpdate.description = translated.description;
             if (translated.specialMenuDisplayName) metadataUpdate.specialMenuDisplayName = translated.specialMenuDisplayName;
             if (Object.keys(metadataUpdate).length > 0) {
-                await updateProjectMetadata(formProjectId, metadataUpdate);
+                const translationMetadataResult = await updateProjectMetadata(formProjectId, metadataUpdate);
+                assertProjectUpdateSucceeded(
+                    translationMetadataResult,
+                    formProjectId,
+                    'mobile_project_public_content_translation_metadata_update_rejected',
+                );
             }
 
             const resolvedName = translated.name || detailedProject?.name || formSourceProject?.name;
@@ -900,7 +1064,20 @@ export default function MobileProjectSelectorSheet({
                 projectId: formProjectId,
             });
             Toast.show({ content: 'Project public content translations added.', duration: 1800 });
-        } catch {
+        } catch (error) {
+            logMobileProjectFailure('mobile_project_public_content_translation_failed', error, {
+                ...getMobileProjectLogContext(formProjectId, formSourceProject?.specialMenuBaseProjectId),
+                ...getMobileProjectStoreLogContext(storeDetails?.storeId, storeDetails?.tenantId),
+                ...getBoundedMobileProjectStringContext('selectedLanguage', formSelectedLanguage),
+                ...getBoundedMobileProjectStringContext('referenceLanguage', formReferenceLanguage),
+                formMode: formMode || undefined,
+                isSpecialMenu: formSourceProject?.isSpecialMenu === true,
+                languageCount: formLanguages.length,
+                nameDraftLength: String(formNameDrafts[formSelectedLanguage] || '').length,
+                descriptionDraftLength: String(formDescriptionDrafts[formSelectedLanguage] || '').length,
+                hasInitialNameDrafts: Object.keys(initialFormNameDrafts).length > 0,
+                hasInitialDescriptionDrafts: Object.keys(initialFormDescriptionDrafts).length > 0,
+            });
             Toast.show({ content: 'Could not translate project public content.', duration: 1800 });
         } finally {
             setIsTranslatingPublicContent(false);
@@ -911,43 +1088,70 @@ export default function MobileProjectSelectorSheet({
         const nextActive = project.active === false;
         const isCurrent = project.projectId === currentProjectId;
 
-        if (!nextActive && !canDeactivateLinkedProjects && await isLinkedOutletProject(project)) {
-            Toast.show({ content: 'Deactivating inherited menus is not enabled for this location.', duration: 1800 });
-            return;
-        }
+        try {
+            if (!nextActive && !canDeactivateLinkedProjects && await isLinkedOutletProject(project)) {
+                Toast.show({ content: 'Deactivating inherited menus is not enabled for this location.', duration: 1800 });
+                return;
+            }
 
-        if (!nextActive && isCurrent) {
-            const fallback = getDeleteFallbackProject(project.projectId);
-            await setProjectActive(project.projectId, false);
-            upsertCachedProject({ ...project, active: false });
+            if (!nextActive && isCurrent) {
+                const fallback = getDeleteFallbackProject(project.projectId);
+                const inactiveResult = await setProjectActive(project.projectId, false);
+                assertProjectUpdateSucceeded(
+                    inactiveResult,
+                    project.projectId,
+                    'mobile_project_selector_active_toggle_project_update_rejected',
+                );
+                upsertCachedProject({ ...project, active: false });
+                setManagingProjectId(null);
+                await syncSelectionOnly(fallback?.projectId || null);
+                Toast.show({ content: t('catalogInactive'), duration: 1400 });
+                return;
+            }
+
+            const activeResult = await setProjectActive(project.projectId, nextActive);
+            assertProjectUpdateSucceeded(
+                activeResult,
+                project.projectId,
+                'mobile_project_selector_active_toggle_project_update_rejected',
+            );
+            upsertCachedProject({ ...project, active: nextActive });
             setManagingProjectId(null);
-            await syncSelectionOnly(fallback?.projectId || null);
-            Toast.show({ content: t('catalogInactive'), duration: 1400 });
-            return;
+            await syncSelectionOnly(nextActive ? project.projectId : currentProjectId || null);
+            Toast.show({ content: nextActive ? t('catalogActive') : t('catalogInactive'), duration: 1400 });
+        } catch (error) {
+            logMobileProjectFailure('mobile_project_selector_active_toggle_failed', error, buildProjectSelectorMutationLogContext('active_toggle', project, {
+                nextActive,
+            }));
+            Toast.show({ content: t('saveFailed'), duration: 1800 });
         }
-
-        await setProjectActive(project.projectId, nextActive);
-        upsertCachedProject({ ...project, active: nextActive });
-        setManagingProjectId(null);
-        await syncSelectionOnly(nextActive ? project.projectId : currentProjectId || null);
-        Toast.show({ content: nextActive ? t('catalogActive') : t('catalogInactive'), duration: 1400 });
     };
 
     const handleResetProject = async (project: ProjectSheetProject) => {
-        setManagingProjectId(null);
-        const isLinkedProject = await isLinkedOutletProject(project);
-        await updateProjectWithoutLoader({
-            files: [],
-            projectId: project.projectId,
-            ...(isLinkedProject ? { overrides: { items: {}, categories: {}, attributes: {} } } : {}),
-        } as any);
-        upsertCachedProject({
-            ...project,
-            files: [],
-            ...(isLinkedProject ? { overrides: { items: {}, categories: {}, attributes: {} } } : {}),
-        });
-        await syncSelectionOnly(project.projectId);
-        Toast.show({ content: t('catalogReset'), duration: 1400 });
+        try {
+            setManagingProjectId(null);
+            const isLinkedProject = await isLinkedOutletProject(project);
+            const resetResult = await updateProjectWithoutLoader({
+                files: [],
+                projectId: project.projectId,
+                ...(isLinkedProject ? { overrides: { items: {}, categories: {}, attributes: {} } } : {}),
+            } as any);
+            assertProjectUpdateSucceeded(
+                resetResult,
+                project.projectId,
+                'mobile_project_selector_reset_project_update_rejected',
+            );
+            upsertCachedProject({
+                ...project,
+                files: [],
+                ...(isLinkedProject ? { overrides: { items: {}, categories: {}, attributes: {} } } : {}),
+            });
+            await syncSelectionOnly(project.projectId);
+            Toast.show({ content: t('catalogReset'), duration: 1400 });
+        } catch (error) {
+            logMobileProjectFailure('mobile_project_selector_reset_failed', error, buildProjectSelectorMutationLogContext('reset_project', project));
+            Toast.show({ content: t('saveFailed'), duration: 1800 });
+        }
     };
 
     const handleDeleteProject = async (project: ProjectSheetProject) => {
@@ -960,7 +1164,12 @@ export default function MobileProjectSelectorSheet({
             const isCurrent = project.projectId === currentProjectId;
             const fallback = getDeleteFallbackProject(project.projectId);
             const defaultReplacement = project.isDefault ? getDeleteDefaultReplacement(project.projectId) : null;
-            await deleteProject(project.projectId, { skipLinkedOutletCheck: skipLinkedOutletDeleteCheck });
+            const deleteResult = await deleteProject(project.projectId, { skipLinkedOutletCheck: skipLinkedOutletDeleteCheck });
+            assertProjectDeleteSucceeded(
+                deleteResult,
+                project.projectId,
+                'mobile_project_selector_delete_project_rejected',
+            );
             setManagingProjectId(null);
             removeCachedProject(project.projectId);
             if (defaultReplacement?.projectId) {
@@ -974,7 +1183,14 @@ export default function MobileProjectSelectorSheet({
             await syncSelectionOnly(isCurrent ? fallback?.projectId || null : currentProjectId || null);
             Toast.show({ content: t('catalogDeleted'), duration: 1400 });
         } catch (error) {
-            console.error('Error deleting project:', error);
+            logMobileProjectFailure('mobile_project_delete_failed', error, {
+                ...getMobileProjectLogContext(project.projectId, project.specialMenuBaseProjectId),
+                ...getMobileProjectStoreLogContext(storeDetails?.storeId, storeDetails?.tenantId),
+                isCurrentProject: project.projectId === currentProjectId,
+                isDefaultProject: project.isDefault === true,
+                isSpecialMenu: project.isSpecialMenu === true,
+                projectCount: projects.length,
+            });
             Toast.show({ content: `Could not delete ${labels.offeringLower}`, duration: 1800 });
         }
     };
@@ -1006,8 +1222,9 @@ export default function MobileProjectSelectorSheet({
             return;
         }
 
+        const sourcedShareUrl = withSource(shareUrl, 'copy');
         try {
-            await navigator.clipboard.writeText(withSource(shareUrl, 'copy'));
+            await copyMobileProjectSelectorText(sourcedShareUrl);
             setManagingProjectId(null);
             Toast.show({
                 content: tShare('copiedLabel', {
@@ -1015,7 +1232,13 @@ export default function MobileProjectSelectorSheet({
                 }),
                 duration: 1200,
             });
-        } catch {
+        } catch (error) {
+            logMobileProjectFailure('mobile_project_selector_link_copy_failed', error, buildProjectSelectorMutationLogContext('copy_project_link', project, {
+                ...getBoundedMobileProjectStringContext('shareUrl', shareUrl),
+                ...getBoundedMobileProjectStringContext('sourcedShareUrl', sourcedShareUrl),
+                hasClipboardWrite: hasMobileProjectSelectorClipboardWrite(),
+                hasCopyFallback: hasMobileProjectSelectorCopyFallback(),
+            }));
             Toast.show({
                 content: tShare('copyFailedLabel', {
                     label: tShare('directOfferingLinkCopyLabel', { offering: labels.offeringLower }).toLowerCase(),
@@ -1033,7 +1256,11 @@ export default function MobileProjectSelectorSheet({
         }
 
         setManagingProjectId(null);
-        openMobilePublicLink(withSource(shareUrl, 'direct'));
+        openMobilePublicLink(withSource(shareUrl, 'direct'), {
+            flow: 'project_preview_open',
+            metadata: buildProjectSelectorMutationLogContext('preview_project_link', project),
+            source: 'mobile_project_selector',
+        });
     };
 
     const handleShowProjectQr = (project: ProjectSheetProject) => {
@@ -1542,6 +1769,7 @@ export default function MobileProjectSelectorSheet({
                 copySuccessMessage={tShare('copiedLabel', {
                     label: tShare('directOfferingLinkCopyLabel', { offering: labels.offeringLower }),
                 })}
+                diagnosticSource="mobile_project_selector_qr"
                 downloadSuccessMessage={tShare('qrDownloaded')}
                 filename={qrSheet?.filename || buildQrCodeFilename('menu-link', 'qr')}
                 generatingLabel={tShare('generatingQr')}

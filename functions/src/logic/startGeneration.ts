@@ -6,11 +6,51 @@ import { ARTICLE_RECONCILIATION_STATUS, ARTICLE_STATUS, INGESTION_JOB_COLLECTION
 import { mergeArticleIdAfterProcessing } from '../utils';
 import { findSimilarArticles, genrateEmbedding, getKBFromSource } from "../utils/aiUtils";
 
+const START_GENERATION_FAILED_CODE = 'ANSWERLATTICE_START_GENERATION_FAILED';
+const START_GENERATION_FAILED_MESSAGE = 'Knowledge generation failed';
+
+function boundedDiagnosticValue(value: unknown): string | number | null {
+    if (typeof value === 'number' && Number.isFinite(value)) return value;
+    if (typeof value === 'string') {
+        const trimmed = value.trim();
+        return trimmed ? trimmed.slice(0, 80) : null;
+    }
+    return null;
+}
+
+function getStartGenerationErrorContext(error: unknown): Record<string, string | number | null> {
+    const sourceError = error as { code?: unknown; status?: unknown; statusCode?: unknown };
+    return {
+        sourceErrorName: error instanceof Error ? (error.name || 'Error').slice(0, 80) : typeof error,
+        sourceErrorCode: boundedDiagnosticValue(sourceError?.code),
+        sourceErrorStatus: boundedDiagnosticValue(sourceError?.status || sourceError?.statusCode),
+    };
+}
+
+function getStartGenerationJobContext(job: IngestionJob, jobId: string): Record<string, string | number | boolean> {
+    return {
+        jobIdLength: jobId.length,
+        sourceFileCount: Array.isArray(job.sourceFiles) ? job.sourceFiles.length : 0,
+        hasTenantScope: job.tId != null,
+        hasStoreScope: job.sId != null,
+    };
+}
+
+function getProcessedArticleContext(article: ProcessedKBArticle, jobId: string): Record<string, string | number | boolean> {
+    return {
+        jobIdLength: jobId.length,
+        articleIdLength: article.id?.length || 0,
+        titleLength: article.title?.length || 0,
+        sourceCount: Array.isArray(article.sources) ? article.sources.length : 0,
+        generatedFaqCount: Array.isArray(article.generatedFaqs) ? article.generatedFaqs.length : 0,
+    };
+}
+
 export const startGenerationLogic = async (jobId: string, job: IngestionJob) => {
     const logger = functions.logger;
     const jobRef = firestoreAdmin.collection(INGESTION_JOB_COLLECTION).doc(jobId);
 
-    logger.info(`[startGenerationLogic] inside startGeneration function. with job id ${jobId} and job data ${job}`);
+    logger.info('[startGenerationLogic] Starting generation function', getStartGenerationJobContext(job, jobId));
 
     try {
         logger.info(`[startGenerationLogic] Starting generation. Updating status to 'processing'.`);
@@ -18,10 +58,13 @@ export const startGenerationLogic = async (jobId: string, job: IngestionJob) => 
 
         const sourceFiles = job.sourceFiles;
         const prompt = constructKbGenerationPrompt();
-        logger.info(`[startGenerationLogic:constructKbGenerationPrompt] Constructed prompt parts. with job id ${jobId}`);
+        logger.info('[startGenerationLogic:constructKbGenerationPrompt] Constructed prompt parts', getStartGenerationJobContext(job, jobId));
 
-        const generatedData: ProcessedKBMap = await getKBFromSource(prompt, sourceFiles);
-        logger.info(`[startGenerationLogic:getKBFromSource] Generated data. with job id ${jobId} is ${generatedData}`);
+        const generatedData: ProcessedKBMap = await getKBFromSource(prompt, sourceFiles, { tId: job.tId, sId: job.sId });
+        logger.info('[startGenerationLogic:getKBFromSource] Generated data received', {
+            ...getStartGenerationJobContext(job, jobId),
+            categoryCount: Object.keys(generatedData || {}).length,
+        });
 
         const UpdatedJobAfter = { categories: generatedData, modifiedOn: Timestamp.now() }
         await jobRef.update(UpdatedJobAfter);
@@ -30,7 +73,10 @@ export const startGenerationLogic = async (jobId: string, job: IngestionJob) => 
         const articlesToCreate: ProcessedArticleToSave[] = [];
         const articlesToReview: IngestionJobArticleToReview[] = [];
 
-        logger.info(`[startGenerationLogic] AI call successful. Parsing and processing articles in memory with categoryMap:.`, categoryMap);
+        logger.info('[startGenerationLogic] AI call successful. Parsing and processing articles in memory.', {
+            ...getStartGenerationJobContext(job, jobId),
+            categoryCount: Object.keys(categoryMap || {}).length,
+        });
 
         const processArticle = async (article: ProcessedKBArticle, category: ProcessedKBCategory, section?: ProcessedKBSection | null, categoryId?: string, sectionId?: string | null) => {
             const embeddingVector = await genrateEmbedding({
@@ -70,7 +116,7 @@ export const startGenerationLogic = async (jobId: string, job: IngestionJob) => 
                 ...(jobSId ? { sId: jobSId } : {}),
             };
 
-            logger.info(`[startGenerationLogic:processArticle] Processed article:`, article);
+            logger.info('[startGenerationLogic:processArticle] Processed article.', getProcessedArticleContext(article, jobId));
 
             const similarArticles = await findSimilarArticles(embeddingVector);
 
@@ -110,7 +156,10 @@ export const startGenerationLogic = async (jobId: string, job: IngestionJob) => 
 
         await Promise.all(processArticlePromises);
 
-        logger.info(`[startGenerationLogic] In-memory processing complete. Committing ${articlesToCreate.length} articles to Firestore.`, articlesToCreate);
+        logger.info('[startGenerationLogic] In-memory processing complete. Committing articles to Firestore.', {
+            ...getStartGenerationJobContext(job, jobId),
+            articleCount: articlesToCreate.length,
+        });
         const batch = firestoreAdmin.batch();
         const articleIds: string[] = [];
 
@@ -135,11 +184,20 @@ export const startGenerationLogic = async (jobId: string, job: IngestionJob) => 
         }
         await jobRef.update(UpdatedJob);
 
-        logger.info(`[startGenerationLogic] Process completed successfully. Job is now a Work Order.Payload is ${UpdatedJob}`);
+        logger.info('[startGenerationLogic] Process completed successfully. Job is now a Work Order.', {
+            ...getStartGenerationJobContext(job, jobId),
+            articleCount: articleIds.length,
+            reviewItemCount: articlesToReview.length,
+            categoryCount: Object.keys(categoryMap || {}).length,
+        });
 
     } catch (error: any) {
-        const errorMessage = error.message || "An unknown error occurred.";
-        logger.error(`[startGenerationLogic] Generation failed:`, error);
+        logger.error('[startGenerationLogic] Generation failed', {
+            failureCode: START_GENERATION_FAILED_CODE,
+            ...getStartGenerationJobContext(job, jobId),
+            ...getStartGenerationErrorContext(error),
+        });
+        const errorMessage = START_GENERATION_FAILED_MESSAGE;
         await jobRef.update({ status: INGESTION_JOB_STATUS.FAILED, errorMessage, modifiedOn: Timestamp.now() });
     }
 

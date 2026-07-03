@@ -2,7 +2,7 @@
 
 **Feature:** Menu Image Generation & Editing
 **Status:** Controlled owner testing ready after June 2026 worker/auth/logging hardening
-**Last Updated:** June 11, 2026
+**Last Updated:** July 1, 2026
 **Audience:** Developers, Future Maintainers
 
 ---
@@ -96,6 +96,21 @@
 | `gemini-2.5-flash-image`                    | Primary generation, editing | Supports reference images   |
 | `imagen-3.0-generate-002`                   | Alternative generation      | Better for text-free images |
 
+### Reference Image Fetch Guard
+
+`src/lib/apiUtils/index.ts` is the shared app-server helper that converts owner reference images into base64 provider parts for single generation, batch generation, and image editing.
+
+For local owner previews, `data:image/jpeg|png|webp;base64,...` inputs remain accepted under the existing 10 MB decoded-byte cap.
+
+For persisted Firebase Storage references, the helper now fails closed unless all of these checks pass before `fetch()`:
+
+- URL host is `firebasestorage.googleapis.com` and bucket equals `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET`, `FIREBASE_STORAGE_BUCKET`, or the MenuList QA default.
+- Decoded object path starts with `media/menuItem/{tId}/{sId}/` or the legacy `projects/itemImages/{tId}/{sId}/` prefix.
+- The app-server network target validator accepts the HTTPS URL and DNS result as public, non-local, non-private, non-link-local, and non-metadata-style.
+- The app-server fetch uses manual redirect handling so a Storage 3xx response is rejected instead of reading bytes from an unvalidated redirected target.
+
+After target validation, persisted references are read through `src/lib/security/boundedResponseBody.ts`, which rejects oversized `content-length` headers and cancels response streams that cross the 10 MB reference-image cap. The scope is passed from the authenticated session for `/api/image-generation` and `/api/image-editing`, and from the validated `projectId` tenant/store tuple in the Cloud Tasks batch worker. This preserves existing valid item-image references while rejecting cross-tenant Storage objects, malformed/unsafe fetch targets, and oversized source responses before provider upload.
+
 ---
 
 ## Multi-Outlet Governance
@@ -188,6 +203,11 @@ interface BatchImageGenerationJobType {
     reason?: string;
     createdOn: string | number | Date;
   }>;
+  itemsExpiresAt?: string | number | Date;
+  expiresAt?: string | number | Date;
+  itemsPrunedAt?: string | number | Date;
+  itemsPrunedReason?: string;
+  generatedImageUrlCountBeforePrune?: number;
   error?: string;
   modifiedOn?: string | number | Date;
   createdOn?: string | number | Date;
@@ -212,6 +232,8 @@ interface BatchImageGenerationJobType {
 └───────────┘  └────────┘
 ```
 
+Terminal status writes set retention markers on the job document. `itemsExpiresAt` is seven days after the terminal transition and is used by `menulistMaintenanceScheduler` to prune the heavy `itemsList` payload; `expiresAt` is 30 days after the terminal transition and is used to delete the terminal job document. For old `completed`, `failed`, and `discarded` jobs, the scheduler attempts same-tenant/store generated-image Storage cleanup before pruning item URLs. `finished` and `cancelled` jobs skip Storage deletion because those statuses can include owner-accepted project images.
+
 ---
 
 ## API Contracts
@@ -219,6 +241,8 @@ interface BatchImageGenerationJobType {
 ### 1. Single Image Generation
 
 **Endpoint:** `POST /api/image-generation`
+
+The route rejects request bodies above 16MB after auth/Safe Mode/rate limit and before schema validation, AI capacity checks, or provider work. This preserves the existing single-reference-image data URL support while preventing unbounded JSON parsing.
 
 **Request Schema (Zod):**
 
@@ -277,6 +301,10 @@ const ImageGenerationRequestSchema = z.object({
 
 **Endpoint:** `POST /api/image-generation/batch-trigger`
 
+The batch trigger route rejects request bodies above 16MB after auth/Safe Mode/batch rate limit and before schema validation, linked-outlet policy checks, capacity preflight, job updates, or Cloud Task fanout.
+
+Batch trigger failure responses, job status reasons, per-task enqueue failure summaries, and runtime diagnostics use owner-safe text, stable local failure codes, source error name/code/status metadata, and bounded project/job/item presence/length metadata only. Raw Cloud Tasks/provider exceptions, task names, job IDs, project IDs, and item IDs are not returned to the browser or written into batch-trigger diagnostics.
+
 **Request:**
 
 ```typescript
@@ -316,17 +344,26 @@ Worker requirements:
 
 - `project-id` header must match `FIREBASE_PROJECT_ID`.
 - `x-menulist-task-secret` must match `BATCH_IMAGE_GENERATION_WORKER_SECRET`.
+- Worker request bodies are capped at 16MB after the secret/header check and before job reads or provider work.
 - Payload is validated with `BatchImageGenerationWorkerRequestSchema`.
 - Worker reads the batch job through Admin SDK, verifies project/job match and requested item id, and skips duplicate item tasks that already have generated images.
 - Worker builds deterministic prompts before provider work and checks AI capacity using the prompt/image quantity.
 - Shared `runImageGenerationPrompts()` executes one prompt directly and caps multi-prompt execution at a small concurrency limit.
-- Worker uploads item images through `uploadBase64MediaImageAdmin()` to public `media/menuItem/{tId}/{sId}/...` paths without relying on an owner browser session.
+- Worker prepares generated item images through `uploadBase64MediaImageAdmin()` / `prepareMediaImageAdmin()` before uploading to public `media/menuItem/{tId}/{sId}/...` paths without relying on an owner browser session.
 - Worker uploads generated images with bounded concurrency and then calls `appendImageBatchItemResultAdmin()` so generated count/status are computed transactionally from the latest job state.
 - Provider responses and reference-image data are summarized in operation logs/accounting; image bytes are not stored in Firestore logs.
+- Worker catch paths persist generic item failure text in the batch job, return generic task success/failure text to Cloud Tasks, and log stable worker failure codes with bounded project/job/item metadata plus source error name/code/status only.
+- The client listener keeps the existing bounded Firestore query and logs setup/snapshot failures and normal debug breadcrumbs through shared hook diagnostics with project/tenant/store/job presence-length metadata only.
+- The batch results view keeps the existing accept, discard, cancel, and retry flows, but action failures log fixed `image_batch_result_*` codes with bounded project/job/count/status metadata instead of raw browser exception objects.
+- Batch job create/update writes use explicit acknowledgement guards in `src/database/imageBatchProcessing/index.tsx`. Batch start requires a persisted job ID before triggering work; cancel, upload/finish, discard, retry, and failed-start marking require a matching job/status acknowledgement before owner success copy or completion callbacks advance.
 
 ### 4. Image Editing
 
 **Endpoint:** `POST /api/image-editing`
+
+The route rejects request bodies above 64MB after auth/Safe Mode/rate limit and before schema validation, capacity checks, or provider work. The larger cap preserves the current multi-reference-image schema while preventing unbounded JSON parsing.
+
+June 30 prompt-input boundary: `src/app/api/image-editing/promptsList/promptInput.ts` is the shared sanitizer for the active edit-prompt router. `generateImageEditingPrompt()` normalizes owner prompt text before feature-specific helper calls, normalizes item name/category/description placeholders before business-specific template interpolation, and keeps the existing feature switch and template instructions intact. `/api/image-editing` now stores the generated prompt in a local variable and returns fixed 400 copy when no prompt can be generated, so missing business/feature matches do not reach Gemini as a `"null"` prompt.
 
 **Request:**
 
@@ -379,19 +416,22 @@ Worker requirements:
 | -------------------------------------------------------- | --- | --------------------- |
 | `src/app/api/image-generation/route.ts`                  | 300 | Single generation API |
 | `src/app/api/image-generation/prompt.ts`                 | 279 | Prompt construction   |
-| `src/app/api/image-generation/batch-trigger/route.ts`    | 105 | Batch trigger API     |
-| `src/app/api/image-generation/batch-generation/route.ts` | 358 | Cloud Task worker     |
+| `src/app/api/image-generation/batch-trigger/route.ts`    | 339 | Batch trigger API     |
+| `src/app/api/image-generation/batch-generation/route.ts` | 469 | Cloud Task worker     |
 | `src/app/api/image-editing/route.ts`                     | 162 | Image editing API     |
 | `src/app/api/image-editing/promptsList/index.ts`         | 67  | Editing prompt router |
+| `src/app/api/image-editing/promptsList/diagnostics.ts`   | 27  | Bounded editing prompt diagnostics |
 
 ### Services & Hooks
 
 | File                                                      | LOC | Purpose                      |
 | --------------------------------------------------------- | --- | ---------------------------- |
-| `src/services/ai/image/generateImageViaApi.ts`            | 66  | Single generation service    |
-| `src/services/ai/image/triggerBatchImageGenerationApi.ts` | 26  | Batch trigger service        |
-| `src/services/ai/image/editImageViaApi.ts`                | 35  | Image editing service        |
+| `src/services/ai/image/generateImageViaApi.ts`            | 108 | Single generation service    |
+| `src/services/ai/image/triggerBatchImageGenerationApi.ts` | 53  | Batch trigger service        |
+| `src/services/ai/image/editImageViaApi.ts`                | 73  | Image editing service        |
 | `src/hooks/useImageBatchJobListener.ts`                   | 94  | Firestore real-time listener |
+
+June 29 response diagnostics: the single-image and edit-image clients parse successful image responses through bounded 24MB readers because valid payloads can include base64 image data. The batch-trigger client parses its acknowledgement through a 64KB reader. Malformed, oversized, empty, or non-object responses log `ai_image_generation_response_parse_failed` / `ai_image_generation_response_invalid`, `ai_image_edit_response_parse_failed` / `ai_image_edit_response_invalid`, or `ai_batch_image_trigger_response_parse_failed` / `ai_batch_image_trigger_response_invalid` before the existing owner fallback behavior runs.
 
 ### Database & Infrastructure
 
@@ -400,7 +440,7 @@ Worker requirements:
 | `src/database/imageBatchProcessing/index.tsx`   | 119 | Batch job DAL                      |
 | `src/database/storage/uploadBase64ToStorage.ts` | 219 | Upload base64 to Firebase Storage  |
 | `src/database/storage/deleteFromStorage.ts`     | 67  | Delete files from Firebase Storage |
-| `src/lib/google/cloudTask/index.ts`             | 67  | Cloud Task client                  |
+| `src/lib/google/cloudTask/index.ts`             | 97  | Cloud Task client                  |
 
 ### Types & Constants
 
@@ -457,7 +497,8 @@ if (config.selectedImageTypes?.length > 0) {
 // src/lib/google/cloudTask/index.ts
 
 export async function enqueueImageGenerationTask(data) {
-  const parent = client.queuePath(PROJECT_ID, QUEUE_LOCATION, QUEUE_ID);
+  const cloudTasksClient = getCloudTasksClient();
+  const parent = cloudTasksClient.queuePath(PROJECT_ID, QUEUE_LOCATION, QUEUE_ID);
 
   const task = {
     httpRequest: {
@@ -471,10 +512,12 @@ export async function enqueueImageGenerationTask(data) {
     },
   };
 
-  const [response] = await client.createTask({ parent, task });
+  const [response] = await cloudTasksClient.createTask({ parent, task });
   return response.name;
 }
 ```
+
+The Cloud Tasks client is initialized lazily. Client initialization failures and task creation failures use `cloud_tasks_client_initialization_failed` and `cloud_tasks_batch_image_task_create_failed` diagnostics with configuration booleans, bounded project/job/item/task-name metadata, and source error name/code/status only.
 
 ### Real-time Listener
 
@@ -681,7 +724,7 @@ safetySettings: [
 | `GenerationHistory.tsx` | Built, NOT integrated     | Track and reuse generation settings        | Integrate to improve UX - users can regenerate with same settings |
 | `PromptEnhancer.tsx`    | Built, NOT integrated     | Enhance prompts with quality tags          | Integrate with API call for AI-enhanced prompts                   |
 | `imageQualityGuard.ts`  | Built, NOT used in AI gen | Validates image quality (min 400×300px)    | Apply to generated images before upload                           |
-| `optimizeImage.ts`      | Built, NOT used in AI gen | Optimizes images (max 1500px, 70% quality) | Apply to reduce storage costs                                     |
+| `optimizeImage.ts`      | Legacy helper; AI upload path uses media profiles | Optimizes images (max 1500px, 70% quality) | ✅ AI upload storage cost risk is resolved through `prepareMediaImage()` and `prepareMediaImageAdmin()` |
 
 ### 2. Google Best Practices (From Official Docs - Jan 2026)
 
@@ -842,7 +885,7 @@ BATCH_IMAGE_GENERATION_WORKER_SECRET=generate-a-long-random-secret
 | 9   | **Extract shared `generateImage()` function** | `route.ts`, `batch-generation/route.ts`, `generators.ts` | Duplicate route/worker model execution code | ✅ Done with shared prompt runner |
 | 10  | **Use centralized model constants**           | Multiple files                          | Hardcoded model names instead of `AI_MODELS`                | ⬜ Pending |
 | 11  | **Integrate `imageQualityGuard.ts`**          | Generation flow                         | Quality guard exists but not applied to AI-generated images | ⬜ Pending |
-| 12  | **Integrate `optimizeImage.ts`**              | Upload flow                             | Optimizer exists but not used for generated images          | ⬜ Pending |
+| 12  | **Prepare generated images before upload**    | Upload flow                             | Browser accepted images and batch worker saves must not persist raw provider bytes | ✅ Done via media-profile preparation (`prepareMediaImage()` and `prepareMediaImageAdmin()`) |
 
 ### UX Improvements (P2) — Next Sprint
 
@@ -1289,6 +1332,12 @@ If this metric is below 60%, the system is asking users to do the system's job.
 #### 9. Batch Results View (`BatchImageGenerationResultView.tsx`)
 
 **File**: `src/components/.../batchImageGeneration/BatchImageGenerationResultView.tsx` (~520 lines)
+
+June 29 follow-up: accept/upload, discard, cancel, and retry failure diagnostics now route through `logRuntimeFailure()` with fixed `image_batch_result_*` codes, source error name/code/status metadata, and bounded job/project/count/status context. Owner-visible messages, batch job writes, project image writes, Storage cleanup, selection defaults, and confirmation behavior are unchanged.
+
+June 30 follow-up: batch job create and owner result-action updates now require explicit acknowledgement before the UI advances. `ImageUploadModal` fails closed when `addImageBatchProcessingJob()` does not return a job ID and requires failed-start status marking to acknowledge `failed`. `BatchImageGenerationResultView` requires matching `cancelled`, `finished`, `discarded`, or `queued` acknowledgements before success copy or `onComplete()` runs. Rejected acknowledgement codes are `image_upload_batch_job_create_rejected`, `image_upload_batch_job_mark_failed_rejected`, `image_batch_result_cancel_update_rejected`, `image_batch_result_upload_update_rejected`, `image_batch_result_discard_update_rejected`, and `image_batch_result_retry_update_rejected`.
+
+July 1 follow-up: terminal batch jobs now receive `itemsExpiresAt` and `expiresAt` retention markers from both browser and Admin SDK status-update paths. `menulistMaintenanceScheduler` runs `image_batch_job_retention_cleanup` inside the existing leased scheduler, pruning `itemsList` after seven days and deleting terminal job docs after 30 days. Old `completed`, `failed`, and `discarded` jobs attempt same-tenant/store `media/menuItem/{tId}/{sId}/` Storage cleanup before item URL pruning; `finished` and `cancelled` jobs skip Storage deletion to avoid deleting owner-accepted project images.
 
 | What Works                                            | What Doesn't                                                       |
 | ----------------------------------------------------- | ------------------------------------------------------------------ |

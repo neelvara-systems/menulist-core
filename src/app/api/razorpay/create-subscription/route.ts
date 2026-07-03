@@ -9,21 +9,29 @@ import {
     isAnswerlatticeBillingProduct,
     normalizeBillingProductId,
 } from "@lib/billing/productBillingPlans";
+import {
+    getBoundedRazorpaySecurityContext,
+    getBoundedRazorpayStringContext,
+    getRazorpayFailureLogData,
+    getRazorpaySubscriptionMutationLogContext,
+} from "@lib/billing/razorpayDiagnostics";
 import { logger } from "@lib/monitoring/logger";
 import { checkRateLimit } from "@lib/rateLimit";
 import { getRateLimitForFeature } from "@lib/rateLimit/configs";
 import { getOrCreateRazorpayPlan } from "@lib/razorpay/plan-handler";
 import { razorpayClient } from "@lib/razorpay/razorpay";
+import { readBoundedJsonBody } from "@lib/security/boundedRequestBody";
 import { validateAPIInput } from "@lib/security/inputValidation";
-import { buildSecurityContext } from "@lib/security/securityContext";
 import { CreateSubscriptionRequestSchema } from "@lib/validation/apiSchemas";
 import { FirestoreSubscriptionDoc } from "@type/razorpay";
 import { Timestamp } from "firebase/firestore";
 import { writeLogEntry } from "logs/utils";
 import { NextResponse } from "next/server";
+import { hashPublicRateLimitValue } from "src/middleware/publicApi";
 import { verifyTenantAccess, withAuth } from "../../../../middleware/auth";
 
 const LOG_FILE = "razorpay-subscription.log";
+const RAZORPAY_PAYMENT_ACTION_MAX_BODY_BYTES = 8 * 1024;
 
 const createSubscriptionLogSummary = (input: {
     currency: string;
@@ -36,24 +44,29 @@ const createSubscriptionLogSummary = (input: {
     unitAmount: number;
     userType?: string;
 }) => ({
-    currency: input.currency,
-    interval: input.interval,
-    planId: input.planId,
+    ...getBoundedRazorpayStringContext('currency', input.currency),
+    ...getBoundedRazorpayStringContext('interval', input.interval),
+    ...getBoundedRazorpayStringContext('planId', input.planId),
     quantity: input.quantity,
     hasCarriedCredits: input.remainingCredits > 0,
-    storeId: input.storeId,
-    tenantId: input.tenantId,
+    ...getBoundedRazorpayStringContext('storeId', input.storeId),
+    ...getBoundedRazorpayStringContext('tenantId', input.tenantId),
     unitAmount: input.unitAmount,
-    userType: input.userType,
+    ...getBoundedRazorpayStringContext('userType', input.userType),
 });
 
 export const POST = withAuth(async (request, session) => {
     // ✅ Session guaranteed by withAuth middleware
     // ✅ Auth failures automatically logged to Sentry
     const userId = session.user.id;
+    let subscriptionForLog: any = null;
 
     try {
-        const body = await request.json();
+        const bodyResult = await readBoundedJsonBody(request, RAZORPAY_PAYMENT_ACTION_MAX_BODY_BYTES, {
+            invalidJsonMessage: 'Invalid input',
+        });
+        if (bodyResult.ok === false) return bodyResult.response;
+        const body = bodyResult.data as any;
 
         // 🔒 INPUT VALIDATION: Prevent injection attacks (OWASP A03)
         const validation = validateAPIInput(CreateSubscriptionRequestSchema, body);
@@ -62,16 +75,16 @@ export const POST = withAuth(async (request, session) => {
             const errorMsg = 'error' in validation ? validation.error : 'Invalid input';
 
             logger.security('Input Validation Failed', {
-                ...buildSecurityContext(session, request),
+                ...getBoundedRazorpaySecurityContext(session, request),
                 endpoint: '/api/razorpay/create-subscription',
                 error: errorMsg,
                 attemptedData: {
-                    productId: body?.productId,
-                    planId: body?.planId,
-                    interval: body?.interval,
-                    currency: body?.currency,
-                    userType: body?.userType,
-                    quantity: body?.quantity,
+                    ...getBoundedRazorpayStringContext('productId', body?.productId),
+                    ...getBoundedRazorpayStringContext('planId', body?.planId),
+                    ...getBoundedRazorpayStringContext('interval', body?.interval),
+                    ...getBoundedRazorpayStringContext('currency', body?.currency),
+                    ...getBoundedRazorpayStringContext('userType', body?.userType),
+                    quantity: Number.isFinite(Number(body?.quantity)) ? Number(body.quantity) : undefined,
                 },
             }, 'critical');
 
@@ -85,7 +98,7 @@ export const POST = withAuth(async (request, session) => {
         const scope = resolveBillingScopeFromSession(session, productId);
         if (!scope) {
             logger.security('User Not Onboarded - Create Subscription', {
-                ...buildSecurityContext(session, request),
+                ...getBoundedRazorpaySecurityContext(session, request),
                 endpoint: '/api/razorpay/create-subscription',
                 error: 'User attempted to create subscription without product tenant/store',
                 productId,
@@ -115,14 +128,16 @@ export const POST = withAuth(async (request, session) => {
 
         // 🔒 RATE LIMITING: Prevent subscription spam (centralized config)
         const rateLimitConfig = getRateLimitForFeature('PAYMENT_SUBSCRIPTION');
+        const userRateLimitHash = hashPublicRateLimitValue(userId);
+        const tenantRateLimitHash = hashPublicRateLimitValue(tenantId);
         const rateLimitResult = await checkRateLimit({
-            key: `subscription:${productId}:${userId}:${tenantId}`,
+            key: `subscription:${productId}:${userRateLimitHash}:${tenantRateLimitHash}`,
             ...rateLimitConfig
         });
 
         if (!rateLimitResult.allowed) {
             logger.security('Subscription Creation Rate Limit Exceeded', {
-                ...buildSecurityContext(session, request),
+                ...getBoundedRazorpaySecurityContext(session, request),
                 endpoint: '/api/razorpay/create-subscription',
                 error: 'Too many subscription attempts',
                 productId,
@@ -138,8 +153,8 @@ export const POST = withAuth(async (request, session) => {
 
         // 2. Extract validated data
         const { planId, interval, currency, userType, quantity: requestedQuantity = 1 } = validation.data;
-        const name = session?.user?.name || body.name;
-        const email = session?.user?.email || body.email;
+        const name = session?.user?.name || '';
+        const email = session?.user?.email || '';
         const remainingCredits = 0;
         const quantity = Math.max(1, requestedQuantity);
 
@@ -213,12 +228,12 @@ export const POST = withAuth(async (request, session) => {
             }),
         });
         const razorpaySubscription = await razorpayClient.subscriptions.create(RazorpayCreateObj);
+        subscriptionForLog = razorpaySubscription;
         await writeLogEntry({
             logFileName: LOG_FILE,
             logType: 'RAZORPAY_CREATE_SUBSCRIPTION_RESPONSE',
             data: {
-                subscriptionId: razorpaySubscription.id,
-                status: razorpaySubscription.status,
+                ...getRazorpaySubscriptionMutationLogContext(razorpaySubscription),
                 totalCount: razorpaySubscription.total_count,
                 hasShortUrl: Boolean(razorpaySubscription.short_url),
             },
@@ -284,14 +299,17 @@ export const POST = withAuth(async (request, session) => {
             logFileName: LOG_FILE,
             logType: 'RAZORPAY_CREATE_SUBSCRIPTION_INTERNAL',
             data: {
-                subscriptionId: razorpaySubscription.id,
-                tenantId,
-                storeId,
-                planId,
-                interval,
-                currency,
+                ...getRazorpaySubscriptionMutationLogContext({
+                    id: razorpaySubscription.id,
+                    planId,
+                    providerSubscriptionId: razorpaySubscription.id,
+                    status: subscriptionPayload.status,
+                    storeId,
+                    tenantId,
+                }),
+                ...getBoundedRazorpayStringContext('interval', interval),
+                ...getBoundedRazorpayStringContext('currency', currency),
                 quantity,
-                status: subscriptionPayload.status,
             },
         });
         await createProductInitialSubscription(productId, razorpaySubscription.id, subscriptionPayload);
@@ -299,20 +317,18 @@ export const POST = withAuth(async (request, session) => {
         // 5. Response
         return NextResponse.json({ subscription: razorpaySubscription });
     } catch (error) {
-        logger.error('Subscription creation failed', error as Error, {
-            operation: 'create-subscription',
-            userId,
-            tenantId: session.user.tenantId,
-            storeId: session.user.storeId,
-            endpoint: '/api/razorpay/create-subscription',
+        const failureData = getRazorpayFailureLogData('razorpay_create_subscription_failed', error, {
+            ...getRazorpaySubscriptionMutationLogContext(subscriptionForLog),
+            ...getBoundedRazorpayStringContext('userId', userId),
+            ...getBoundedRazorpayStringContext('tenantId', session.user.tenantId),
+            ...getBoundedRazorpayStringContext('storeId', session.user.storeId),
         });
+        logger.error('Subscription creation failed', new Error('razorpay_create_subscription_failed'), failureData);
 
         await writeLogEntry({
             logFileName: LOG_FILE,
             logType: 'RAZORPAY_CREATE_SUBSCRIPTION_ERROR',
-            data: {
-                message: error instanceof Error ? error.message : 'Unknown error',
-            },
+            data: failureData,
         });
 
         return NextResponse.json(

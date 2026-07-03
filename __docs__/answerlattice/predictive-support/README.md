@@ -3,7 +3,7 @@
 > **Status:** ✅ IMPLEMENTED — Enabled with guards
 > **Version:** 1.1.0
 > **Created:** 2026-03-10
-> **Last Updated:** 2026-05-24
+> **Last Updated:** 2026-06-28
 > **Feature Flag:** `ENABLE_ANSWERLATTICE_PREDICTIVE_SUPPORT` (enabled)
 > **Expansion Item:** #12 (answerlattice-expansion-tracker.md)
 > **Dependencies:** #1 Context-Aware (DONE), #5 Friction Intelligence (DONE), #11 Knowledge Graph (DONE)
@@ -37,6 +37,8 @@ Suggestion Payload → Widget renders contextual help
 ```
 
 **Key design choice:** Reuses existing Answerlattice infrastructure (context payload, friction stats, entity index, canonical answers, Upstash Redis). Only **1 new collection** + **1 platformSummary doc** + **1 API route** + **1 lib module** needed.
+
+Nightly predictive trigger sync diagnostics use fixed failure codes with source error name/code/status metadata and tenant/store scope booleans. Auto-generation, summary rebuild, and effectiveness failures do not log raw exception text or raw tenant/store identifiers.
 
 ---
 
@@ -73,6 +75,7 @@ Suggestion Payload → Widget renders contextual help
 
 | Date | Version | Change |
 |------|---------|--------|
+| 2026-06-28 | 1.1.1 | Bounded nightly predictive trigger sync diagnostics with fixed failure codes and source metadata. |
 | 2026-05-24 | 1.1.0 | Added capability gating, summary-backed resolved suggestions, targeted answer lookup, unchanged-write skip, and Redis fail-closed notes. |
 | 2026-03-10 | 1.0.0 | Initial predictive support documentation. |
 

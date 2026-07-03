@@ -1,9 +1,10 @@
-Framework: Next.js (v14.2.5) with React (v18.3.1)
-Language: TypeScript (v5)
+Framework: Next.js (v14.2.35) with React (v18.3.1)
+Language: TypeScript (v5.8.3)
+Dependency freeze gate: npm run verify:dependency-freeze
 
 UI Components:
-Ant Design (v5.20.2)
-Framer Motion (v10.16.4)
+Ant Design (v5.25.1)
+Framer Motion (v10.18.0)
 React Icons (v4.12.0)
 
 State Management:
@@ -14,16 +15,19 @@ Rich Text Editing:
 Tiptap Editor Suite (v2.11.0)
 
 Authentication:
-NextAuth.js (v4.24.3)
+NextAuth.js (v4.24.13)
 
 Backend Integration:
-Axios (v1.5.1)
-Firebase (v10.5.0)
-OpenAI SDK (v4.52.2)
+Axios (v1.13.2)
+Firebase client (v11.7.3)
+Firebase Admin root app (v12.7.0)
+MenuList Functions: firebase-admin (v13.5.0), firebase-functions (v6.6.0)
+Answerlattice Functions: firebase-admin (v12.7.0), firebase-functions (v5.1.1)
+Google GenAI SDK (@google/genai v0.12.0)
 
 Build Tools:
-SASS (v1.69.4)
-ESLint (v8)
+SASS (v1.89.0)
+ESLint (v8.57.1)
 
 Image Processing:
 Compressor.js (v1.2.1)
@@ -36,9 +40,9 @@ Internationalization (next-intl v3.17.2)
 Date handling (date-fns v3.6.0)
 
 Mobile Support:
-antd-mobile (v5.x) for mobile-native components
+Current mobile runtime: Tailwind-driven owner mobile shell/screens; no antd-mobile runtime dependency is installed.
 Desktop: antd + SCSS modules (unchanged)
-Mobile: antd-mobile + Tailwind CSS (new layer)
+Mobile: Tailwind CSS + shared business logic; add antd-mobile only through an explicit dependency/freeze update guarded by npm run verify:dependency-freeze.
 Icons: react-icons/lu (Lucide) only — never mix icon sets
 ICP: Non-tech SMB owner — zero jargon, large touch targets, instant feedback
 

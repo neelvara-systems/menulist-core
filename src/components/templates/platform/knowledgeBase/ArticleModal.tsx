@@ -1,9 +1,11 @@
 import TiptapEditor from "@atoms/TiptapEditor";
 import { FEATURE_FLAGS } from "@config/features";
 import { getFaqsByArticleId } from '@database/answerlattice/faqs';
-import { getProductSurfacesForSession, rebuildProductSurfaceContentSummary } from '@database/answerlattice/productSurfaces';
-import { addArticle, updateArticle } from '@database/knowledgeBase/articles';
+import { getProductSurfacesForSession, rebuildProductSurfaceContentSummaryWithDiagnostics } from '@database/answerlattice/productSurfaces';
+import { addArticle, assertKnowledgeBaseArticleWriteSucceeded, updateArticle } from '@database/knowledgeBase/articles';
 import { useAppDispatch } from "@hook/useAppDispatch";
+import { getBoundedAnswerlatticeStringContext, logAnswerlatticeFailure } from '@lib/answerlattice/diagnostics';
+import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';
 import { extractEditortextForComparison } from "@lib/vectorEmbeddings/articleEmbeddings";
 import { startLoader, stopLoader } from "@reduxSlices/loader";
 import { KnowledgeBaseArticleEmbeddingPayload, KnowledgeBaseArticleType, KnowledgeBaseCategoriesType, KnowledgeBaseCategory, KnowledgeBaseSection } from "@type/knowledgeBase";
@@ -14,6 +16,31 @@ import { Button, Col, Divider, Form, Grid, Input, InputNumber, Modal, Row, Selec
 import { FormInstance } from 'antd/lib/form';
 import { useEffect, useMemo, useState } from "react";
 import { LuBookOpen, LuCheckCircle, LuFileText, LuHelpCircle, LuLink, LuPlus, LuRefreshCw, LuSave, LuSearch, LuTrash2, LuX } from "react-icons/lu";
+
+const FAQ_SUGGESTIONS_REFRESH_FAILED = 'Failed to refresh FAQ suggestions.';
+const ARTICLE_EMBEDDING_GENERATION_FAILED = 'Could not generate embedding for the article.';
+const ARTICLE_CONTEXTUAL_HELP_REFRESH_FAILED = 'Article saved, but contextual help refresh failed. Try Refresh after checking product surfaces.';
+const ARTICLE_MODAL_RESPONSE_JSON_MAX_BYTES = 64 * 1024;
+const ARTICLE_MODAL_REQUEST_POLICY: Pick<RequestInit, 'cache' | 'credentials' | 'redirect'> = {
+    cache: 'no-store',
+    credentials: 'same-origin',
+    redirect: 'manual',
+};
+
+type ArticleModalResponseKind = 'faq_suggestions_refresh' | 'article_embedding_generation';
+
+type ArticleFaqSuggestionResponse = {
+    articleId: string;
+    createdCount: number;
+    skippedDuplicateCount: number;
+    faqs: Array<Pick<AnswerlatticeFaq, 'id' | 'question'> & Partial<AnswerlatticeFaq>>;
+    message?: string;
+};
+
+type ArticleEmbeddingResponse = {
+    ok: true;
+    status: number;
+};
 
 interface ArticleModalProps {
     open: boolean;
@@ -27,6 +54,90 @@ interface ArticleModalProps {
     categoriesData: KnowledgeBaseCategoriesType | null;
     from?: string;
 }
+
+const isRecord = (value: unknown): value is Record<string, any> => (
+    Boolean(value) && typeof value === 'object' && !Array.isArray(value)
+);
+
+const isFiniteNumber = (value: unknown): value is number => (
+    typeof value === 'number' && Number.isFinite(value)
+);
+
+const isArticleFaqSuggestion = (
+    value: unknown,
+): value is ArticleFaqSuggestionResponse['faqs'][number] => (
+    isRecord(value)
+    && typeof value.id === 'string'
+    && value.id.length > 0
+    && typeof value.question === 'string'
+    && value.question.length > 0
+);
+
+const isArticleFaqSuggestionResponse = (value: unknown): value is ArticleFaqSuggestionResponse => (
+    isRecord(value)
+    && typeof value.articleId === 'string'
+    && isFiniteNumber(value.createdCount)
+    && isFiniteNumber(value.skippedDuplicateCount)
+    && Array.isArray(value.faqs)
+    && value.faqs.every(isArticleFaqSuggestion)
+);
+
+const isArticleEmbeddingResponse = (value: unknown): value is ArticleEmbeddingResponse => (
+    isRecord(value)
+    && value.ok === true
+    && value.status === 200
+);
+
+const getArticleModalResponseLogContext = (
+    kind: ArticleModalResponseKind,
+    response: Response,
+    articleId?: string,
+) => ({
+    ...getBoundedAnswerlatticeStringContext('responseKind', kind),
+    ...getBoundedAnswerlatticeStringContext('articleId', articleId),
+    responseOk: response.ok,
+    responseStatus: response.status,
+});
+
+const readArticleModalResponse = async <T,>(
+    response: Response,
+    kind: ArticleModalResponseKind,
+    isValid: (value: unknown) => value is T,
+    fallbackMessage: string,
+    articleId?: string,
+): Promise<T> => {
+    let payload: unknown = null;
+    try {
+        payload = await readJsonResponseWithLimit<unknown>(response, ARTICLE_MODAL_RESPONSE_JSON_MAX_BYTES);
+    } catch (error) {
+        logAnswerlatticeFailure(
+            'answerlattice_article_modal_response_parse_failed',
+            error,
+            getArticleModalResponseLogContext(kind, response, articleId),
+        );
+        throw new Error(fallbackMessage);
+    }
+
+    if (!response.ok) {
+        logAnswerlatticeFailure(
+            'answerlattice_article_modal_response_rejected',
+            undefined,
+            getArticleModalResponseLogContext(kind, response, articleId),
+        );
+        throw new Error(fallbackMessage);
+    }
+
+    if (!isValid(payload)) {
+        logAnswerlatticeFailure(
+            'answerlattice_article_modal_response_invalid',
+            undefined,
+            getArticleModalResponseLogContext(kind, response, articleId),
+        );
+        throw new Error(fallbackMessage);
+    }
+
+    return payload;
+};
 
 const ArticleModal = ({ open, editingArticle, form, onOk, onCancel, onSuccess, selectedCategory, selectedSection, categoriesData, from }: ArticleModalProps) => {
     const dispatch = useAppDispatch();
@@ -115,9 +226,13 @@ const ArticleModal = ({ open, editingArticle, form, onOk, onCancel, onSuccess, s
                         .map(surface => ({ label: surface.label, value: surface.key })),
                 );
             })
-            .catch(() => undefined);
+            .catch((error) => {
+                logAnswerlatticeFailure('answerlattice_article_surface_options_load_failed', error, {
+                    ...getBoundedAnswerlatticeStringContext('source', from),
+                });
+            });
         return () => { mounted = false; };
-    }, [open, showSurfaceBinding, showGeneratedFaqs]);
+    }, [open, showSurfaceBinding, showGeneratedFaqs, from]);
 
     useEffect(() => {
         if (!open || !showFaqLinks || !editingArticle?.id) return;
@@ -132,7 +247,11 @@ const ArticleModal = ({ open, editingArticle, form, onOk, onCancel, onSuccess, s
                     })),
                 );
             })
-            .catch(() => undefined);
+            .catch((error) => {
+                logAnswerlatticeFailure('answerlattice_article_linked_faq_options_load_failed', error, {
+                    ...getBoundedAnswerlatticeStringContext('articleId', editingArticle.id),
+                });
+            });
         return () => { mounted = false; };
     }, [open, showFaqLinks, editingArticle?.id]);
 
@@ -150,18 +269,22 @@ const ArticleModal = ({ open, editingArticle, form, onOk, onCancel, onSuccess, s
         setRefreshingFaqs(true);
         try {
             const response = await fetch('/api/answerlattice/faqs/generate-from-article', {
+                ...ARTICLE_MODAL_REQUEST_POLICY,
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ articleId: editingArticle.id }),
             });
-            const result = await response.json().catch(() => ({}));
-            if (!response.ok) {
-                throw new Error(result?.error || 'Failed to refresh FAQ suggestions.');
-            }
+            const result = await readArticleModalResponse(
+                response,
+                'faq_suggestions_refresh',
+                isArticleFaqSuggestionResponse,
+                FAQ_SUGGESTIONS_REFRESH_FAILED,
+                editingArticle.id,
+            );
 
-            const generatedFaqs = Array.isArray(result?.faqs) ? result.faqs : [];
+            const generatedFaqs = result.faqs;
             if (generatedFaqs.length > 0) {
-                const nextOptions = generatedFaqs.map((faq: AnswerlatticeFaq) => ({
+                const nextOptions = generatedFaqs.map((faq) => ({
                     label: `${faq.question} (needs review)`,
                     value: faq.id,
                 }));
@@ -174,7 +297,7 @@ const ArticleModal = ({ open, editingArticle, form, onOk, onCancel, onSuccess, s
                 });
                 setLinkedFaqIds(previous => Array.from(new Set([
                     ...previous,
-                    ...generatedFaqs.map((faq: AnswerlatticeFaq) => faq.id).filter(Boolean),
+                    ...generatedFaqs.map(faq => faq.id).filter(Boolean),
                 ])));
             }
 
@@ -186,8 +309,8 @@ const ArticleModal = ({ open, editingArticle, form, onOk, onCancel, onSuccess, s
             } else {
                 message.info('No new FAQ suggestions were found for this article.');
             }
-        } catch (error: any) {
-            message.error(error?.message || 'Failed to refresh FAQ suggestions.');
+        } catch {
+            message.error(FAQ_SUGGESTIONS_REFRESH_FAILED);
         } finally {
             setRefreshingFaqs(false);
         }
@@ -207,16 +330,28 @@ const ArticleModal = ({ open, editingArticle, form, onOk, onCancel, onSuccess, s
             sectionTitle: section?.title ?? '',
         };
 
-        const embeddingRes = await fetch('/api/helpCenter/article-embedding', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ embeddingPayload })
-        });
-        const embeddingResult = await embeddingRes.json();
-        if (!embeddingRes.ok) {
-            message.warning(embeddingResult.error || 'Could not generate embedding for the article.');
-        } else {
+        try {
+            const embeddingRes = await fetch('/api/helpCenter/article-embedding', {
+                ...ARTICLE_MODAL_REQUEST_POLICY,
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ embeddingPayload })
+            });
+            await readArticleModalResponse(
+                embeddingRes,
+                'article_embedding_generation',
+                isArticleEmbeddingResponse,
+                ARTICLE_EMBEDDING_GENERATION_FAILED,
+                article.id,
+            );
             message.success('Article embedding has been generated.');
+        } catch (error) {
+            logAnswerlatticeFailure('answerlattice_article_embedding_generation_failed', error, {
+                ...getBoundedAnswerlatticeStringContext('articleId', article.id),
+                ...getBoundedAnswerlatticeStringContext('categoryId', article.categoryId),
+                ...getBoundedAnswerlatticeStringContext('sectionId', article.sectionId),
+            });
+            message.warning(ARTICLE_EMBEDDING_GENERATION_FAILED);
         }
     }
 
@@ -247,16 +382,34 @@ const ArticleModal = ({ open, editingArticle, form, onOk, onCancel, onSuccess, s
 
                 // Ensure the ID is included for the update operation
                 const updatedArticle = await updateArticle(dataToUpload);
+                assertKnowledgeBaseArticleWriteSucceeded(
+                    updatedArticle,
+                    editingArticle.id,
+                    'platform_kb_article_update_rejected',
+                );
                 const mergedArticle = { ...data, ...updatedArticle, id: editingArticle.id } as KnowledgeBaseArticleType;
-                rebuildProductSurfaceContentSummary().catch(() => undefined);
-                message.success("Article updated successfully!");
+                let summaryRefreshSucceeded = true;
+                if (FEATURE_FLAGS.ENABLE_ANSWERLATTICE_PRODUCT_SURFACES) {
+                    summaryRefreshSucceeded = await rebuildProductSurfaceContentSummaryWithDiagnostics({
+                        failureCode: 'answerlattice_article_summary_refresh_after_update_failed',
+                        context: {
+                            ...getBoundedAnswerlatticeStringContext('articleId', editingArticle.id),
+                            ...getBoundedAnswerlatticeStringContext('categoryId', mergedArticle.categoryId),
+                            ...getBoundedAnswerlatticeStringContext('sectionId', mergedArticle.sectionId),
+                            ...getBoundedAnswerlatticeStringContext('articleStatus', mergedArticle.status),
+                        },
+                    });
+                }
+                if (summaryRefreshSucceeded) {
+                    message.success("Article updated successfully!");
+                } else {
+                    message.warning(ARTICLE_CONTEXTUAL_HELP_REFRESH_FAILED);
+                }
 
                 const newContent = extractEditortextForComparison(data.content);
                 const prevContent = extractEditortextForComparison(editingArticle.content);
                 if (newContent !== prevContent) {
                     await generateEmbedding(mergedArticle);
-                } else {
-                    console.log("No content changes detected.");
                 }
                 onSuccess(mergedArticle);
             } else {
@@ -269,9 +422,29 @@ const ArticleModal = ({ open, editingArticle, form, onOk, onCancel, onSuccess, s
                     index: values.index,
                 };
                 const createdArticle = await addArticle(newArticleData as KnowledgeBaseArticleType);
-                rebuildProductSurfaceContentSummary().catch(() => undefined);
+                assertKnowledgeBaseArticleWriteSucceeded(
+                    createdArticle,
+                    undefined,
+                    'platform_kb_article_create_rejected',
+                );
+                let summaryRefreshSucceeded = true;
+                if (FEATURE_FLAGS.ENABLE_ANSWERLATTICE_PRODUCT_SURFACES) {
+                    summaryRefreshSucceeded = await rebuildProductSurfaceContentSummaryWithDiagnostics({
+                        failureCode: 'answerlattice_article_summary_refresh_after_create_failed',
+                        context: {
+                            ...getBoundedAnswerlatticeStringContext('articleId', createdArticle.id),
+                            ...getBoundedAnswerlatticeStringContext('categoryId', createdArticle.categoryId),
+                            ...getBoundedAnswerlatticeStringContext('sectionId', createdArticle.sectionId),
+                            ...getBoundedAnswerlatticeStringContext('articleStatus', createdArticle.status),
+                        },
+                    });
+                }
                 await generateEmbedding(createdArticle);
-                message.success("Article created successfully!");
+                if (summaryRefreshSucceeded) {
+                    message.success("Article created successfully!");
+                } else {
+                    message.warning(ARTICLE_CONTEXTUAL_HELP_REFRESH_FAILED);
+                }
                 onSuccess(createdArticle);
             }
         } catch (error) {

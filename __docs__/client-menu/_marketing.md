@@ -2,9 +2,15 @@
 
 **Feature Name:** Client Menu (Customer-Facing Digital Menu)  
 **Document Type:** Marketing & Sales Collateral  
-**Status:** ✅ Ready for Use  
+**Status:** Marketing evidence - not current launch certification
 **Last Updated:** January 12, 2026  
 **Audience:** Sales, Marketing, Partnerships
+
+---
+
+## Current Launch Boundary
+
+This marketing document is sales/source evidence for the customer-facing menu. It is not current production deployment approval. Current release approval requires the active [production-readiness audit](../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../production-readiness/external-certification-runbook.md) evidence, Digital Menu Output Constitution checks, public cache/deploy evidence, browser/mobile customer-menu QA, physical QR/menu device QA, low-bandwidth/offline/back-button tests, analytics delivery checks where relevant, target deployment evidence, and production-host smoke.
 
 ---
 
@@ -61,7 +67,7 @@ Restaurant owners don't have time to manage marketing. They're busy cooking, ser
 | Aspect                | Static QR | MenuListAi |
 | --------------------- | --------- | ---------- |
 | Real-time updates     | ❌        | ✅         |
-| Smart recommendations | ❌        | ✅         |
+| Featured choices      | ❌        | ✅         |
 | Time-based categories | ❌        | ✅         |
 | Availability status   | ❌        | ✅         |
 | "Live" trust signal   | ❌        | ✅         |
@@ -71,7 +77,7 @@ Restaurant owners don't have time to manage marketing. They're busy cooking, ser
 | Aspect                | POS Display | MenuListAi         |
 | --------------------- | ----------- | ------------------ |
 | Customer-facing       | ❌ Internal | ✅ Customer-facing |
-| Smart recommendations | ❌          | ✅                 |
+| Featured choices      | ❌          | ✅                 |
 | Word-of-mouth trigger | ❌          | ✅                 |
 | Setup complexity      | High        | Low (scan QR)      |
 | Monthly cost          | ₹5,000+     | ₹999               |
@@ -135,7 +141,7 @@ Restaurant owners don't have time to manage marketing. They're busy cooking, ser
 **Steps:**
 
 1. Upload your menu (photo or PDF)
-2. Our AI extracts items and prices
+2. MenuList prepares items and prices for review
 3. Customize look and feel
 4. Get your QR code
 5. Print and place on tables
@@ -208,7 +214,7 @@ Restaurant owners don't have time to manage marketing. They're busy cooking, ser
 ### Key Benefits (3-5 Bullets)
 
 - **Update in seconds** — Change a price, add a dish, mark sold out. Customers see it immediately.
-- **Customers decide faster** — Smart recommendations show what's popular, what's quick, what's a good deal.
+- **Customers decide faster** — Featured choices show what's popular, what's quick, and what's a good deal.
 - **Zero daily effort** — Time-based menus switch automatically. No morning toggle needed.
 - **Works on any phone** — Customers just scan the QR. No app download.
 - **Your branding, your domain** — Looks like your restaurant, not ours.
@@ -269,7 +275,7 @@ Restaurant owners don't have time to manage marketing. They're busy cooking, ser
 **Key messages:**
 
 - "Your menu updates itself"
-- "Smart recommendations help customers decide"
+- "Featured choices help customers decide"
 - "Analytics show what's working"
 - "Custom domain for professional presence"
 - "$10-15/month for a complete solution"
@@ -336,7 +342,7 @@ Restaurant owners don't have time to manage marketing. They're busy cooking, ser
 | ------------------------------ | --------------------------------- |
 | "Live menu"                    | Implies real-time, modern         |
 | "Instant updates"              | Clear benefit                     |
-| "Smart recommendations"        | Implies intelligence without "AI" |
+| "Featured choices"             | Plain customer benefit without AI or algorithm language |
 | "Customers see it immediately" | Outcome-focused                   |
 | "One tap"                      | Simplicity                        |
 | "Runs itself"                  | Zero effort promise               |
@@ -418,5 +424,5 @@ Restaurant owners don't have time to manage marketing. They're busy cooking, ser
 
 ---
 
-_Document Status: ✅ READY FOR USE_  
+_Document Status: Marketing evidence - not current launch certification_
 _Last Updated: January 12, 2026_

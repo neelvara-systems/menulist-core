@@ -6,6 +6,12 @@
 
 ---
 
+## Current Launch Boundary
+
+This marketing document is sales/source evidence for the customer-facing menu. It is not current launch certification or current production deployment approval. Current release approval requires the active [production-readiness audit](../../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../../production-readiness/external-certification-runbook.md) evidence, Digital Menu Output Constitution checks, `npm run verify:menu-design-presentation-boundary`, public cache/deploy evidence, browser/mobile customer-menu QA, and target production smoke.
+
+---
+
 ## Elevator Pitch
 
 ### One-Liner
@@ -14,7 +20,7 @@
 
 ### 30-Second Pitch
 
-> "Your menu, your brand, beautifully displayed on any device. Customers scan a QR code and see your full menu instantly—no app to download. You customize colors, fonts, and layouts. It loads fast, looks professional, and works on every phone."
+> "Your menu, your brand, clearly displayed on any device. Customers scan a QR code and see your full menu instantly—no app to download. You set a mood, compatible layout, brand accent, and logo inside safe design rails. It loads fast, looks professional, and works on every phone."
 
 ---
 
@@ -35,8 +41,8 @@ MenuList's B2C View:
 
 - **Instant loading:** Under 2 seconds on mobile
 - **No app needed:** Works in any browser
-- **Your brand:** Customize colors, fonts, logo
-- **Multiple layouts:** Grid, list, or tab views
+- **Your brand:** Set mood, brand accent, logo, and compatible layout
+- **Multiple layouts:** List, grid, or card views filtered by mood compatibility
 - **Mobile-first:** Designed for phone browsing
 - **QR ready:** One-click QR code generation
 
@@ -85,7 +91,7 @@ A **beautiful, fast, branded digital menu** customers can access instantly.
 **"Beautiful menus, instant access"**
 
 - No app download
-- Your colors, your fonts
+- Your menu mood and brand accent
 - Fast loading
 - Easy updates
 
@@ -102,9 +108,9 @@ A **beautiful, fast, branded digital menu** customers can access instantly.
 
 **"Your brand, your way"**
 
-- Custom colors and fonts
+- Menu mood and brand accent
 - Upload your logo
-- Choose layout style
+- Choose a compatible layout style
 - Preview on devices
 
 ### Slide 5: Performance
@@ -149,7 +155,7 @@ A **beautiful, fast, branded digital menu** customers can access instantly.
 
 - **⚡ Instant** — Loads in under 2 seconds
 - **📱 Mobile-First** — Designed for phones
-- **🎨 Your Brand** — Custom colors, fonts, logo
+- **Your Brand** — Brand accent, logo, and controlled display settings
 - **📲 No Download** — Works in any browser
 - **🔗 Easy Sharing** — QR codes, links, social
 
@@ -183,7 +189,7 @@ A **beautiful, fast, branded digital menu** customers can access instantly.
 
 ### Objection: "Can we customize it to match our brand?"
 
-**Response:** "Absolutely. You choose colors, fonts, upload your logo, pick your layout. It looks like your menu, not a generic template."
+**Response:** "Absolutely. You set the mood, brand accent, logo, and compatible layout. It looks like your menu without letting the customer view become hard to read."
 
 ---
 
@@ -221,7 +227,7 @@ A **beautiful, fast, branded digital menu** customers can access instantly.
 
 ### Branding (20 sec)
 
-"Notice the colors and fonts? This matches the restaurant's brand. They customized it in the dashboard—chose their logo, picked their colors."
+"Notice the style? This matches the restaurant's brand. They chose a mood, added their logo, and set a brand accent in the dashboard."
 
 ### Sharing (15 sec)
 
@@ -235,7 +241,7 @@ A **beautiful, fast, branded digital menu** customers can access instantly.
 | ------------------- | --------------------- | ------------------- |
 | Phone mockup        | Menu on iPhone        | High-res screenshot |
 | QR scan demo        | Scan → Menu           | 5-10 sec video      |
-| Layout comparison   | Grid vs List vs Tabs  | Side-by-side        |
+| Layout comparison   | Grid vs List vs Card  | Side-by-side        |
 | Theme customization | Before/after branding | Comparison          |
 | Speed comparison    | PDF vs MenuList       | Load time video     |
 
@@ -252,4 +258,4 @@ A **beautiful, fast, branded digital menu** customers can access instantly.
 
 ---
 
-_Document Status: ✅ READY FOR USE_
+_Document Status: Marketing evidence - not current launch certification_

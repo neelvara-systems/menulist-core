@@ -17,8 +17,16 @@ import {
     LuCheck, LuPencil,
     LuPhone, LuPlus, LuRefreshCw, LuUser, LuUsers
 } from "react-icons/lu";
+import { readJsonResponseWithLimit } from "@lib/security/boundedResponseBody";
+import {
+    RESELLER_REQUEST_POLICY,
+    createResellerStatusError,
+    getBoundedResellerStringContext,
+    logResellerFailure,
+} from "./resellerDiagnostics";
 
 const { Title, Text, Paragraph } = Typography;
+const RESELLER_MANAGEMENT_RESPONSE_JSON_MAX_BYTES = 64 * 1024;
 
 type ResellerMonthlySummary = {
     month: string;
@@ -41,6 +49,125 @@ type ResellerMonthlySummary = {
         recognizedRevenuePaise: number;
         totalExpectedPaise: number;
     };
+};
+
+type ResellerProfilesResponse = {
+    profiles: ResellerProfile[];
+};
+
+type ResellerManagementSaveResponse = {
+    action: 'created' | 'updated';
+    profileId: string;
+    success: true;
+};
+
+type ResellerManagementResponseContext = {
+    action: string;
+    isEditing?: boolean;
+};
+
+const isRecord = (value: unknown): value is Record<string, unknown> => (
+    Boolean(value) && typeof value === 'object' && !Array.isArray(value)
+);
+
+const isFiniteNumber = (value: unknown): value is number => (
+    typeof value === 'number' && Number.isFinite(value)
+);
+
+const isNonEmptyString = (value: unknown): value is string => (
+    typeof value === 'string' && value.trim().length > 0
+);
+
+const isValidResellerProfile = (value: unknown): value is ResellerProfile => (
+    isRecord(value)
+    && isNonEmptyString(value.id)
+    && isNonEmptyString(value.name)
+    && isNonEmptyString(value.phone)
+    && isNonEmptyString(value.email)
+    && isNonEmptyString(value.username)
+    && typeof value.active === 'boolean'
+    && isFiniteNumber(value.maxOfflineActivations)
+    && isFiniteNumber(value.currentActiveOfflineStores)
+    && isFiniteNumber(value.totalStoresOnboarded)
+    && isFiniteNumber(value.totalOnlineStores)
+    && isFiniteNumber(value.totalOfflineStores)
+    && isFiniteNumber(value.totalRevenueCollectedPaise)
+    && isFiniteNumber(value.totalTransactions)
+);
+
+const isValidResellerProfilesResponse = (data: unknown): data is ResellerProfilesResponse => (
+    isRecord(data)
+    && Array.isArray(data.profiles)
+    && data.profiles.every(isValidResellerProfile)
+);
+
+const isValidMonthlySummaryTotals = (value: unknown): value is ResellerMonthlySummary['totals'] => (
+    isRecord(value)
+    && isFiniteNumber(value.clientCount)
+    && isFiniteNumber(value.transactionCount)
+    && isFiniteNumber(value.offlineCollectedPaise)
+    && isFiniteNumber(value.onlinePendingPaise)
+    && isFiniteNumber(value.recognizedRevenuePaise)
+    && isFiniteNumber(value.totalExpectedPaise)
+);
+
+const isValidMonthlySummaryRow = (value: unknown): value is ResellerMonthlySummary['resellers'][number] => (
+    isRecord(value)
+    && isNonEmptyString(value.resellerId)
+    && isNonEmptyString(value.resellerName)
+    && typeof value.resellerEmail === 'string'
+    && isFiniteNumber(value.clientCount)
+    && isFiniteNumber(value.transactionCount)
+    && isFiniteNumber(value.offlineCollectedPaise)
+    && isFiniteNumber(value.onlinePendingPaise)
+    && isFiniteNumber(value.recognizedRevenuePaise)
+    && isFiniteNumber(value.totalExpectedPaise)
+);
+
+const isValidResellerMonthlySummary = (data: unknown): data is ResellerMonthlySummary => (
+    isRecord(data)
+    && isNonEmptyString(data.month)
+    && Array.isArray(data.resellers)
+    && data.resellers.every(isValidMonthlySummaryRow)
+    && isValidMonthlySummaryTotals(data.totals)
+);
+
+const isValidResellerManagementSaveResponse = (data: unknown): data is ResellerManagementSaveResponse => (
+    isRecord(data)
+    && data.success === true
+    && isNonEmptyString(data.profileId)
+    && (data.action === 'created' || data.action === 'updated')
+);
+
+const isExpectedResellerManagementSaveResponse = (
+    data: unknown,
+    expectedProfileId?: string,
+): data is ResellerManagementSaveResponse => (
+    isValidResellerManagementSaveResponse(data)
+    && (
+        data.action === 'created'
+        || (isNonEmptyString(expectedProfileId) && data.profileId === expectedProfileId)
+    )
+);
+
+const readResellerManagementResponse = async (
+    response: Response,
+    context: ResellerManagementResponseContext,
+): Promise<unknown> => {
+    try {
+        return await readJsonResponseWithLimit<unknown>(
+            response,
+            RESELLER_MANAGEMENT_RESPONSE_JSON_MAX_BYTES,
+        );
+    } catch (error) {
+        logResellerFailure('desktop_reseller_management_response_parse_failed', error, {
+            ...context,
+            maxBytes: RESELLER_MANAGEMENT_RESPONSE_JSON_MAX_BYTES,
+            responseOk: response.ok,
+            responseStatus: response.status,
+        });
+        throw error;
+    }
 };
 
 /**
@@ -77,11 +204,23 @@ function ResellerManagement() {
     const loadProfiles = useCallback(async () => {
         setLoading(true);
         try {
-            const res = await fetch('/api/reseller/manage');
-            if (!res.ok) throw new Error('Failed to fetch');
-            const data = await res.json();
-            setProfiles(data.profiles || []);
+            const res = await fetch('/api/reseller/manage', RESELLER_REQUEST_POLICY);
+            if (!res.ok) throw createResellerStatusError('desktop_reseller_profiles_load_rejected', res.status);
+            const data = await readResellerManagementResponse(res, { action: 'load_profiles' });
+            if (!isValidResellerProfilesResponse(data)) {
+                const invalidResponseError = createResellerStatusError('desktop_reseller_management_profiles_response_invalid', res.status);
+                logResellerFailure('desktop_reseller_management_profiles_response_invalid', invalidResponseError, {
+                    action: 'load_profiles',
+                    responseOk: res.ok,
+                    responseStatus: res.status,
+                });
+                throw invalidResponseError;
+            }
+            setProfiles(data.profiles);
         } catch (error) {
+            logResellerFailure('desktop_reseller_profiles_load_failed', error, {
+                action: 'load_profiles',
+            });
             message.error('Failed to load reseller profiles');
         } finally {
             setLoading(false);
@@ -91,11 +230,23 @@ function ResellerManagement() {
     const loadMonthlySummary = useCallback(async () => {
         setMonthlyLoading(true);
         try {
-            const res = await fetch('/api/reseller/monthly-summary');
-            if (!res.ok) throw new Error('Failed to fetch');
-            const data = await res.json();
+            const res = await fetch('/api/reseller/monthly-summary', RESELLER_REQUEST_POLICY);
+            if (!res.ok) throw createResellerStatusError('desktop_reseller_monthly_summary_load_rejected', res.status);
+            const data = await readResellerManagementResponse(res, { action: 'load_monthly_summary' });
+            if (!isValidResellerMonthlySummary(data)) {
+                const invalidResponseError = createResellerStatusError('desktop_reseller_management_monthly_summary_response_invalid', res.status);
+                logResellerFailure('desktop_reseller_management_monthly_summary_response_invalid', invalidResponseError, {
+                    action: 'load_monthly_summary',
+                    responseOk: res.ok,
+                    responseStatus: res.status,
+                });
+                throw invalidResponseError;
+            }
             setMonthlySummary(data);
         } catch (error) {
+            logResellerFailure('desktop_reseller_monthly_summary_load_failed', error, {
+                action: 'load_monthly_summary',
+            });
             message.error('Failed to load monthly reseller summary');
         } finally {
             setMonthlyLoading(false);
@@ -117,24 +268,44 @@ function ResellerManagement() {
                 : values;
 
             const res = await fetch('/api/reseller/manage', {
+                ...RESELLER_REQUEST_POLICY,
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload),
             });
 
             if (!res.ok) {
-                const err = await res.json();
-                throw new Error(err.error || 'Failed');
+                throw createResellerStatusError('desktop_reseller_save_rejected', res.status);
             }
 
-            const result = await res.json();
+            const result = await readResellerManagementResponse(res, {
+                action: editingProfile ? 'update_profile' : 'create_profile',
+                isEditing: Boolean(editingProfile),
+            });
+            if (!isExpectedResellerManagementSaveResponse(result, editingProfile?.id)) {
+                const invalidResponseError = createResellerStatusError('desktop_reseller_management_save_response_invalid', res.status);
+                logResellerFailure('desktop_reseller_management_save_response_invalid', invalidResponseError, {
+                    action: editingProfile ? 'update_profile' : 'create_profile',
+                    hasExpectedProfileId: isRecord(result) && result.profileId === editingProfile?.id,
+                    isEditing: Boolean(editingProfile),
+                    responseOk: res.ok,
+                    responseStatus: res.status,
+                });
+                throw invalidResponseError;
+            }
             message.success(`Reseller ${result.action} successfully`);
             setDrawerOpen(false);
             setEditingProfile(null);
             form.resetFields();
             loadProfiles();
-        } catch (error: any) {
-            message.error(error.message || 'Failed to save reseller');
+        } catch (error) {
+            logResellerFailure('desktop_reseller_save_failed', error, {
+                action: editingProfile ? 'update_profile' : 'create_profile',
+                ...getBoundedResellerStringContext('profileId', editingProfile?.id),
+                ...getBoundedResellerStringContext('email', values?.email),
+                ...getBoundedResellerStringContext('username', values?.username),
+            });
+            message.error('Failed to save reseller');
         } finally {
             setSaving(false);
         }

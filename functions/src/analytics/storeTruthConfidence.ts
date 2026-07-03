@@ -27,6 +27,7 @@
 import * as admin from 'firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
 import { DB_COLLECTIONS } from '../constants/database';
+import { analyticsLogger, getAnalyticsErrorContext } from './analyticsDiagnostics';
 
 // ================================================================
 // TYPES
@@ -144,7 +145,7 @@ export async function computeStoreTruthConfidenceForAllStores(): Promise<StoreTr
         writesCount: 0,
     };
 
-    console.log('[StoreTruthConfidence] Starting nightly computation...');
+    analyticsLogger.info('[StoreTruthConfidence] Starting nightly computation');
 
     try {
         // Read storesSummary (shared with scheduler — already loaded)
@@ -229,14 +230,18 @@ export async function computeStoreTruthConfidenceForAllStores(): Promise<StoreTr
         });
         result.writesCount++;
 
-        console.log(`[StoreTruthConfidence] Computation complete:`);
-        console.log(`  - Stores processed: ${result.processed}`);
-        console.log(`  - Average score: ${result.averageScore}`);
-        console.log(`  - Stale stores (>${STALE_THRESHOLD_DAYS} days): ${result.staleCount}`);
+        analyticsLogger.info('[StoreTruthConfidence] Computation complete', {
+            storesProcessed: result.processed,
+            averageScore: result.averageScore,
+            staleCount: result.staleCount,
+            staleThresholdDays: STALE_THRESHOLD_DAYS,
+        });
 
         return result;
     } catch (error: any) {
-        console.error('[StoreTruthConfidence] Fatal error:', error.message);
+        analyticsLogger.error('[StoreTruthConfidence] Fatal error', {
+            error: getAnalyticsErrorContext(error),
+        });
         throw error;
     }
 }

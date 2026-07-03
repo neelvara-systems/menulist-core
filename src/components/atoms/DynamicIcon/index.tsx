@@ -15,7 +15,6 @@ const DynamicIcon: React.FC<DynamicIconProps> = ({ icon, style }) => {
     const IconComponent = iconMap[icon];
 
     if (!IconComponent) {
-        // console.warn(`Icon "${icon}" not found.`);
         return null; // Or a fallback icon
     }
 

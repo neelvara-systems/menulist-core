@@ -1,6 +1,11 @@
 'use client';
 
 import { fetchAnswerlatticePublicCategories } from '@lib/answerlattice/publicContentClient';
+import {
+    HELP_CENTER_SEARCH_REQUEST_POLICY,
+    getHelpCenterSearchClientFailureMessage,
+    readHelpCenterSearchResponse,
+} from '@lib/search/helpCenterSearchResponse';
 import { KnowledgeBaseArticleType, KnowledgeBaseCategoriesType } from '@type/knowledgeBase';
 import { Alert, Button, Flex, theme, Typography } from 'antd';
 import { useEffect, useReducer, useRef, useState } from 'react';
@@ -11,6 +16,8 @@ import SearchResultDisplay from './SearchResultDisplay';
 import { initialState, reducer } from './state';
 import { SearchDisplayResultDataType, SearchDisplayResultReferenceType, SerachAPIResponseType } from './types';
 import TypingIndicator from './TypingIndicator';
+
+const AI_SEARCH_FAILED_MESSAGE = 'Search failed. Please try again.';
 
 function AiSearchBarComponent({ initialCategories }: { initialCategories: KnowledgeBaseCategoriesType | null }) {
     const { token } = theme.useToken();
@@ -28,7 +35,6 @@ function AiSearchBarComponent({ initialCategories }: { initialCategories: Knowle
         try {
             const categoriesResult = await fetchAnswerlatticePublicCategories();
             if (categoriesResult) {
-                // console.log("knowledge base categories", categoriesResult);
                 setCategoriesData(categoriesResult);
             }
         } catch (error) {
@@ -61,14 +67,12 @@ function AiSearchBarComponent({ initialCategories }: { initialCategories: Knowle
 
         try {
             const response = await fetch('/api/helpCenter/search-kb', {
+                ...HELP_CENTER_SEARCH_REQUEST_POLICY,
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ query })
             });
-            const data: SerachAPIResponseType = await response.json();
-            if (!response.ok) {
-                throw new Error((data as any).error || 'Search failed');
-            }
+            const data = await readHelpCenterSearchResponse(response, 'ai_search_modal') as SerachAPIResponseType;
 
             const responseToDisplay: SearchDisplayResultDataType = {
                 craftedAnswer: data.craftedAnswer,
@@ -89,8 +93,8 @@ function AiSearchBarComponent({ initialCategories }: { initialCategories: Knowle
             };
 
             dispatch({ type: 'SEARCH_SUCCESS', payload: responseToDisplay });
-        } catch (error: any) {
-            dispatch({ type: 'SEARCH_ERROR', payload: error.message || 'An unexpected error occurred. Please try again.' });
+        } catch (error) {
+            dispatch({ type: 'SEARCH_ERROR', payload: getHelpCenterSearchClientFailureMessage(error, AI_SEARCH_FAILED_MESSAGE) });
         }
     };
 

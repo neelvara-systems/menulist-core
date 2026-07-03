@@ -29,8 +29,10 @@ function normalizePhotoList(photos: unknown): string[] {
 }
 
 interface OfficialPageTabProps {
+    actionsScrollRef?: React.RefObject<HTMLDivElement>;
     businessCategory?: string | null;
     businessType?: string | null;
+    photosScrollRef?: React.RefObject<HTMLDivElement>;
     scrollRef?: React.RefObject<HTMLDivElement>;
     compact?: boolean;
     showDistributionTools?: boolean;
@@ -83,9 +85,11 @@ type ObpMediaDraft = {
 
 const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
     ({
+        actionsScrollRef,
         scrollRef,
         businessCategory,
         businessType,
+        photosScrollRef,
         compact = false,
         showDistributionTools = true,
         publicPresence = {},
@@ -469,9 +473,12 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
                 ) : null}
                 {showDistributionTools ? (
                     <GoogleListingGuide
+                        businessName={getLocalizedStoreValue(watchedStoreName || watchedTenantName, currentLanguage, '')}
                         subdomain={subdomain}
                         customDomain={customDomain}
+                        descriptor={getLocalizedStoreValue(watchedDescriptor, currentLanguage, '')}
                         googleLinkUpdated={publicPresence?.googleLinkUpdated}
+                        knownFor={getLocalizedStoreValue(watchedKnownFor, currentLanguage, '')}
                         onMarkDone={onGoogleLinkDone || (() => { })}
                         onDismiss={onGoogleLinkDismiss || (() => { })}
                     />
@@ -520,115 +527,117 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
                         </Form.Item>
                     ) : null}
 
-                    <Form.Item hidden name={['publicPresence', 'businessCover']}>
-                        <Input />
-                    </Form.Item>
-                    {FEATURE_FLAGS.ENABLE_VISUAL_PROFILE_COMPLETION ? (
-                        <Card
-                            size="small"
-                            style={{
-                                background: token.colorFillQuaternary,
-                                borderColor: visualProfileCompletion.status === 'complete'
-                                    ? token.colorSuccessBorder
-                                    : token.colorWarningBorder,
-                                marginBottom: 16,
-                            }}
-                        >
-                            <Flex gap={12} vertical>
-                                <Flex align="flex-start" justify="space-between" gap={12}>
-                                    <Flex gap={4} style={{ minWidth: 0 }} vertical>
-                                        <Text strong>Visual profile</Text>
-                                        <Text>{visualProfileCompletion.headline}</Text>
-                                        <Text type="secondary">{visualProfileCompletion.helperText}</Text>
+                    <div ref={photosScrollRef}>
+                        <Form.Item hidden name={['publicPresence', 'businessCover']}>
+                            <Input />
+                        </Form.Item>
+                        {FEATURE_FLAGS.ENABLE_VISUAL_PROFILE_COMPLETION ? (
+                            <Card
+                                size="small"
+                                style={{
+                                    background: token.colorFillQuaternary,
+                                    borderColor: visualProfileCompletion.status === 'complete'
+                                        ? token.colorSuccessBorder
+                                        : token.colorWarningBorder,
+                                    marginBottom: 16,
+                                }}
+                            >
+                                <Flex gap={12} vertical>
+                                    <Flex align="flex-start" justify="space-between" gap={12}>
+                                        <Flex gap={4} style={{ minWidth: 0 }} vertical>
+                                            <Text strong>Visual profile</Text>
+                                            <Text>{visualProfileCompletion.headline}</Text>
+                                            <Text type="secondary">{visualProfileCompletion.helperText}</Text>
+                                        </Flex>
+                                        <Tag color={visualProfileCompletion.status === 'complete' ? 'success' : 'warning'}>
+                                            {visualProfileCompletion.statusLabel}
+                                        </Tag>
                                     </Flex>
-                                    <Tag color={visualProfileCompletion.status === 'complete' ? 'success' : 'warning'}>
-                                        {visualProfileCompletion.statusLabel}
-                                    </Tag>
-                                </Flex>
-                                <Flex gap={8} vertical>
-                                    {visualProfileCompletion.tasks.map((task) => {
-                                        const isComplete = task.status === 'complete';
-                                        return (
-                                            <Flex align="flex-start" gap={8} key={task.id}>
-                                                {isComplete ? (
-                                                    <LuCheckCircle color={token.colorSuccess} size={16} style={{ flex: '0 0 auto', marginTop: 2 }} />
-                                                ) : (
-                                                    <LuAlertCircle color={token.colorWarning} size={16} style={{ flex: '0 0 auto', marginTop: 2 }} />
-                                                )}
-                                                <Flex gap={1} style={{ minWidth: 0 }} vertical>
-                                                    <Text>{task.label}</Text>
-                                                    <Text type="secondary" style={{ fontSize: 12 }}>{task.detail}</Text>
+                                    <Flex gap={8} vertical>
+                                        {visualProfileCompletion.tasks.map((task) => {
+                                            const isComplete = task.status === 'complete';
+                                            return (
+                                                <Flex align="flex-start" gap={8} key={task.id}>
+                                                    {isComplete ? (
+                                                        <LuCheckCircle color={token.colorSuccess} size={16} style={{ flex: '0 0 auto', marginTop: 2 }} />
+                                                    ) : (
+                                                        <LuAlertCircle color={token.colorWarning} size={16} style={{ flex: '0 0 auto', marginTop: 2 }} />
+                                                    )}
+                                                    <Flex gap={1} style={{ minWidth: 0 }} vertical>
+                                                        <Text>{task.label}</Text>
+                                                        <Text type="secondary" style={{ fontSize: 12 }}>{task.detail}</Text>
+                                                    </Flex>
                                                 </Flex>
-                                            </Flex>
-                                        );
-                                    })}
+                                            );
+                                        })}
+                                    </Flex>
                                 </Flex>
-                            </Flex>
-                        </Card>
-                    ) : null}
-                    <Divider orientation="left" orientationMargin={0}>
-                        <Text type="secondary" style={{ fontSize: 12 }}>
-                            {t('businessCover')}
+                            </Card>
+                        ) : null}
+                        <Divider orientation="left" orientationMargin={0}>
+                            <Text type="secondary" style={{ fontSize: 12 }}>
+                                {t('businessCover')}
+                            </Text>
+                        </Divider>
+                        <Text type="secondary" style={{ fontSize: 12, marginBottom: 8, display: 'block' }}>
+                            {t('businessCoverHelp')}
                         </Text>
-                    </Divider>
-                    <Text type="secondary" style={{ fontSize: 12, marginBottom: 8, display: 'block' }}>
-                        {t('businessCoverHelp')}
-                    </Text>
-                    <Row gutter={[12, 12]} style={{ marginBottom: 16 }}>
-                        <Col xs={24} md={12}>
-                            <MediaImageCard
-                                accept={getMediaProfileAcceptAttribute('businessCover')}
-                                alt={t('businessCover')}
-                                canAdjust={Boolean(coverDraft?.sourceDataUrl)}
-                                imageType="businessCover"
-                                imageUrl={coverDraft?.previewDataUrl || watchedBusinessCover}
-                                isBusy={coverUploading}
-                                onAdjust={() => setIsCoverAdjustOpen(true)}
-                                onRemove={watchedBusinessCover || coverDraft?.previewDataUrl ? handleCoverCardRemove : undefined}
-                                onSelectFile={(file) => { void handleCoverUpload(file); }}
-                                placeholderDescription={t('businessCoverPlaceholder')}
-                                placeholderTitle={t('businessCover')}
-                                showDropHint={false}
-                            />
-                            {coverDraft?.uploadFailed && coverDraft.prepared ? (
-                                <Flex align="center" gap={8} justify="space-between" style={{ marginTop: 8 }}>
-                                    <Text type="danger" style={{ fontSize: 12 }}>{t('businessCoverUploadFailed')}</Text>
-                                    <Button
-                                        disabled={coverUploading}
-                                        loading={coverUploading}
-                                        onClick={handleRetryCoverUpload}
-                                        size="small"
-                                    >
-                                        Retry
-                                    </Button>
-                                </Flex>
-                            ) : null}
-                            <div style={{ marginTop: 12 }}>
-                                <MediaPublicContextPreview
-                                    accentColor={watchedAccentColor}
+                        <Row gutter={[12, 12]} style={{ marginBottom: 16 }}>
+                            <Col xs={24} md={12}>
+                                <MediaImageCard
+                                    accept={getMediaProfileAcceptAttribute('businessCover')}
+                                    alt={t('businessCover')}
+                                    canAdjust={Boolean(coverDraft?.sourceDataUrl)}
                                     imageType="businessCover"
                                     imageUrl={coverDraft?.previewDataUrl || watchedBusinessCover}
-                                    subtitle={t('officialPage')}
-                                    title={businessPreviewName}
+                                    isBusy={coverUploading}
+                                    onAdjust={() => setIsCoverAdjustOpen(true)}
+                                    onRemove={watchedBusinessCover || coverDraft?.previewDataUrl ? handleCoverCardRemove : undefined}
+                                    onSelectFile={(file) => { void handleCoverUpload(file); }}
+                                    placeholderDescription={t('businessCoverPlaceholder')}
+                                    placeholderTitle={t('businessCover')}
+                                    showDropHint={false}
                                 />
-                            </div>
-                        </Col>
-                        <Col xs={24} md={12}>
-                            <Button
-                                block
-                                disabled={coverUploading}
-                                loading={coverGenerating}
-                                onClick={() => { void handleGenerateBusinessCover(); }}
-                                size="large"
-                                style={{ minHeight: 48 }}
-                            >
-                                <Flex align="center" gap={8} justify="center">
-                                    <LuSparkles size={18} />
-                                    <span>{watchedBusinessCover ? t('regenerateBusinessCover') : t('generateBusinessCover')}</span>
-                                </Flex>
-                            </Button>
-                        </Col>
-                    </Row>
+                                {coverDraft?.uploadFailed && coverDraft.prepared ? (
+                                    <Flex align="center" gap={8} justify="space-between" style={{ marginTop: 8 }}>
+                                        <Text type="danger" style={{ fontSize: 12 }}>{t('businessCoverUploadFailed')}</Text>
+                                        <Button
+                                            disabled={coverUploading}
+                                            loading={coverUploading}
+                                            onClick={handleRetryCoverUpload}
+                                            size="small"
+                                        >
+                                            Retry
+                                        </Button>
+                                    </Flex>
+                                ) : null}
+                                <div style={{ marginTop: 12 }}>
+                                    <MediaPublicContextPreview
+                                        accentColor={watchedAccentColor}
+                                        imageType="businessCover"
+                                        imageUrl={coverDraft?.previewDataUrl || watchedBusinessCover}
+                                        subtitle={t('officialPage')}
+                                        title={businessPreviewName}
+                                    />
+                                </div>
+                            </Col>
+                            <Col xs={24} md={12}>
+                                <Button
+                                    block
+                                    disabled={coverUploading}
+                                    loading={coverGenerating}
+                                    onClick={() => { void handleGenerateBusinessCover(); }}
+                                    size="large"
+                                    style={{ minHeight: 48 }}
+                                >
+                                    <Flex align="center" gap={8} justify="center">
+                                        <LuSparkles size={18} />
+                                        <span>{watchedBusinessCover ? t('regenerateBusinessCover') : t('generateBusinessCover')}</span>
+                                    </Flex>
+                                </Button>
+                            </Col>
+                        </Row>
+                    </div>
 
                     <Row gutter={[16, 0]}>
                         <Col {...halfCol}>
@@ -1003,98 +1012,100 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
                         </Flex>
                     </Form.Item>
 
-                    <Divider orientation="left" orientationMargin={0}>
-                        <Text type="secondary" style={{ fontSize: 12 }}>
-                            {t('quickActionButtons')}
-                        </Text>
-                    </Divider>
+                    <div ref={actionsScrollRef}>
+                        <Divider orientation="left" orientationMargin={0}>
+                            <Text type="secondary" style={{ fontSize: 12 }}>
+                                {t('quickActionButtons')}
+                            </Text>
+                        </Divider>
 
-                    <Row gutter={[16, 16]}>
-                        <Col {...actionCol}>
-                            <Form.Item
-                                name={['publicPresence', 'showCall']}
-                                label={t('showCallButton')}
-                                valuePropName="checked"
-                            >
-                                <Switch
-                                    checkedChildren={<LuPhone size={12} />}
-                                    onChange={handleToggle('showCall')}
-                                />
-                            </Form.Item>
-                        </Col>
-                        <Col {...actionCol}>
-                            <Form.Item
-                                name={['publicPresence', 'showWhatsApp']}
-                                label={t('showWhatsAppButton')}
-                                valuePropName="checked"
-                            >
-                                <Switch
-                                    checkedChildren={<LuMessageSquare size={12} />}
-                                    onChange={handleToggle('showWhatsApp')}
-                                />
-                            </Form.Item>
-                        </Col>
-                        <Col {...actionCol}>
-                            <Form.Item
-                                name={['publicPresence', 'showDirections']}
-                                label={t('showDirectionsButton')}
-                                valuePropName="checked"
-                            >
-                                <Switch
-                                    checkedChildren={<LuMapPin size={12} />}
-                                    onChange={handleToggle('showDirections')}
-                                />
-                            </Form.Item>
-                        </Col>
-                        <Col {...actionCol}>
-                            <Form.Item
-                                name={['publicPresence', 'showReservation']}
-                                label={t('showReservationButton')}
-                                valuePropName="checked"
-                            >
-                                <Switch
-                                    checkedChildren={<LuCalendar size={12} />}
-                                    onChange={handleToggle('showReservation')}
-                                />
-                            </Form.Item>
-                        </Col>
-                        <Col {...actionCol}>
-                            <Form.Item
-                                name={['publicPresence', 'showOrder']}
-                                label={t('showOrderButton')}
-                                valuePropName="checked"
-                            >
-                                <Switch
-                                    checkedChildren={<LuShoppingBag size={12} />}
-                                    onChange={handleToggle('showOrder')}
-                                />
-                            </Form.Item>
-                        </Col>
-                        <Col {...actionCol}>
-                            <Form.Item
-                                name={['publicPresence', 'showGoogleReview']}
-                                label={t('showGoogleReviewButton')}
-                                valuePropName="checked"
-                            >
-                                <Switch
-                                    checkedChildren={<LuStar size={12} />}
-                                    onChange={handleToggle('showGoogleReview')}
-                                />
-                            </Form.Item>
-                        </Col>
-                        <Col {...actionCol}>
-                            <Form.Item
-                                name={['publicPresence', 'showFeedback']}
-                                label={t('showFeedbackButton')}
-                                valuePropName="checked"
-                            >
-                                <Switch
-                                    checkedChildren={<LuMessageSquarePlus size={12} />}
-                                    onChange={handleToggle('showFeedback')}
-                                />
-                            </Form.Item>
-                        </Col>
-                    </Row>
+                        <Row gutter={[16, 16]}>
+                            <Col {...actionCol}>
+                                <Form.Item
+                                    name={['publicPresence', 'showCall']}
+                                    label={t('showCallButton')}
+                                    valuePropName="checked"
+                                >
+                                    <Switch
+                                        checkedChildren={<LuPhone size={12} />}
+                                        onChange={handleToggle('showCall')}
+                                    />
+                                </Form.Item>
+                            </Col>
+                            <Col {...actionCol}>
+                                <Form.Item
+                                    name={['publicPresence', 'showWhatsApp']}
+                                    label={t('showWhatsAppButton')}
+                                    valuePropName="checked"
+                                >
+                                    <Switch
+                                        checkedChildren={<LuMessageSquare size={12} />}
+                                        onChange={handleToggle('showWhatsApp')}
+                                    />
+                                </Form.Item>
+                            </Col>
+                            <Col {...actionCol}>
+                                <Form.Item
+                                    name={['publicPresence', 'showDirections']}
+                                    label={t('showDirectionsButton')}
+                                    valuePropName="checked"
+                                >
+                                    <Switch
+                                        checkedChildren={<LuMapPin size={12} />}
+                                        onChange={handleToggle('showDirections')}
+                                    />
+                                </Form.Item>
+                            </Col>
+                            <Col {...actionCol}>
+                                <Form.Item
+                                    name={['publicPresence', 'showReservation']}
+                                    label={t('showReservationButton')}
+                                    valuePropName="checked"
+                                >
+                                    <Switch
+                                        checkedChildren={<LuCalendar size={12} />}
+                                        onChange={handleToggle('showReservation')}
+                                    />
+                                </Form.Item>
+                            </Col>
+                            <Col {...actionCol}>
+                                <Form.Item
+                                    name={['publicPresence', 'showOrder']}
+                                    label={t('showOrderButton')}
+                                    valuePropName="checked"
+                                >
+                                    <Switch
+                                        checkedChildren={<LuShoppingBag size={12} />}
+                                        onChange={handleToggle('showOrder')}
+                                    />
+                                </Form.Item>
+                            </Col>
+                            <Col {...actionCol}>
+                                <Form.Item
+                                    name={['publicPresence', 'showGoogleReview']}
+                                    label={t('showGoogleReviewButton')}
+                                    valuePropName="checked"
+                                >
+                                    <Switch
+                                        checkedChildren={<LuStar size={12} />}
+                                        onChange={handleToggle('showGoogleReview')}
+                                    />
+                                </Form.Item>
+                            </Col>
+                            <Col {...actionCol}>
+                                <Form.Item
+                                    name={['publicPresence', 'showFeedback']}
+                                    label={t('showFeedbackButton')}
+                                    valuePropName="checked"
+                                >
+                                    <Switch
+                                        checkedChildren={<LuMessageSquarePlus size={12} />}
+                                        onChange={handleToggle('showFeedback')}
+                                    />
+                                </Form.Item>
+                            </Col>
+                        </Row>
+                    </div>
 
                     {FEATURE_FLAGS.ENABLE_COMPLIANCE_PAGES ? (
                         <>

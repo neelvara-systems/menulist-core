@@ -1,6 +1,7 @@
 'use client';
 
 import { fetchLocationStats } from '@services/analytics';
+import { getBoundedAnalyticsStringContext, logAnalyticsFailure } from '@lib/analytics/analyticsDiagnostics';
 import { Card, Progress, Space, Table, Typography, theme } from 'antd';
 import React, { useEffect, useState } from 'react';
 import { LuGlobe } from 'react-icons/lu';
@@ -39,11 +40,11 @@ const LocationInsights: React.FC<LocationInsightsProps> = ({ propertyId, dateRan
                 const response = await fetchLocationStats(propertyId, dateRange);
 
                 const locationData = response?.rows?.map(row => ({
-                    country: row.dimensionValues[0].value,
-                    city: row.dimensionValues[1].value,
-                    visitors: parseInt(row.metricValues[0].value),
-                    views: parseInt(row.metricValues[1].value),
-                    revenue: parseFloat(row.metricValues[2].value)
+                    country: row.dimensionValues?.[0]?.value || 'Unknown country',
+                    city: row.dimensionValues?.[1]?.value || 'Unknown city',
+                    visitors: parseInt(row.metricValues?.[0]?.value || '0', 10),
+                    views: parseInt(row.metricValues?.[1]?.value || '0', 10),
+                    revenue: parseFloat(row.metricValues?.[2]?.value || '0')
                 })) || [];
 
                 // Calculate total visitors for percentage
@@ -54,13 +55,17 @@ const LocationInsights: React.FC<LocationInsightsProps> = ({ propertyId, dateRan
                 const processedData = locationData
                     .map(loc => ({
                         ...loc,
-                        percentage: (loc.visitors / total) * 100
+                        percentage: total > 0 ? (loc.visitors / total) * 100 : 0
                     }))
                     .sort((a, b) => b.visitors - a.visitors);
 
                 setLocations(processedData);
             } catch (error) {
-                console.error('Error fetching location stats:', error);
+                logAnalyticsFailure('dashboard_google_location_insights_load_failed', error, {
+                    ...getBoundedAnalyticsStringContext('propertyId', propertyId),
+                    ...getBoundedAnalyticsStringContext('startDate', dateRange.startDate),
+                    ...getBoundedAnalyticsStringContext('endDate', dateRange.endDate),
+                });
             }
             setLoading(false);
         };

@@ -1,9 +1,9 @@
 # Automatic Knowledge Creation — Implementation Blueprint
 
-> **Status:** DOCUMENTED — Ready for Implementation
-> **Version:** 1.0.0
+> **Status:** IMPLEMENTED — Capped and human-reviewed
+> **Version:** 1.1.2
 > **Created:** 2026-03-09
-> **Last Updated:** 2026-03-09
+> **Last Updated:** 2026-06-28
 > **Audience:** Developers
 > **Feature Flag:** `ENABLE_ANSWERLATTICE_AUTO_KNOWLEDGE`
 
@@ -50,6 +50,12 @@ Governance UI → founder reviews draft → approve → canonical answer
 | Canonical answer DAL | `src/database/answerlattice/canonicalAnswers.ts` | ✅ Built (8 functions) |
 | Entity extraction | `src/lib/answerlattice/entityExtraction.ts` | ✅ Built |
 | Types | `src/types/answerlattice/index.ts` | ✅ Built (604 lines) |
+
+Runtime diagnostics for signal emission and signal mutation proposal creation use `src/lib/answerlattice/diagnostics.ts`. Manual draft regeneration, FAQ generation, translation, and article entity extraction route failures use fixed-code runtime diagnostics with bounded tenant/store/user/item metadata. FAQ generation and translation cap Gemini response text before parsing; FAQ truncation logs provider-response length metadata only, while oversized translation output fails closed before article writes. Article-save entity extraction remains non-blocking, but its browser trigger uses no-store cache, same-origin credentials, manual redirect handling, and a 16 KB bounded acknowledgement parser before logging rejected, malformed, oversized, or invalid route responses. Manual draft regeneration also logs `answerlattice_draft_regeneration_signal_examples_load_failed` and `answerlattice_draft_regeneration_existing_answers_load_failed` when optional grounding reads fail, then continues with empty grounding context. These paths must preserve graceful degradation and must not log raw tenant/store IDs, entity names, article IDs, proposal IDs, provider errors, signal text, prompt text, or generated content.
+
+The manual draft regeneration DAL in `src/database/answerlattice/mutationProposals.ts` also keeps failed route responses bounded. The browser request uses no-store cache, same-origin credentials, and manual redirect handling before the response parser runs. Failed `/api/answerlattice/mutation-proposals/regenerate-draft` responses throw fixed local copy to the governance UI instead of copying route/provider text. Successful responses are parsed through a 16 KB bounded response reader and must include the route's `{ success: true }` acknowledgement before the governance hook shows draft-generated success.
+
+The scheduled Cloud Function draft generator in `functions-answerlattice/src/answerlattice/draftGenerator.ts` uses fixed `ANSWERLATTICE_DRAFT_*` diagnostics for Gemini call, response-parse, per-proposal, failed draft-status marking, and batch failures. Those logs include source error name/code/status, tenant/store scope booleans, identifier presence/length metadata, and prompt/response lengths only; valid proposal writes, audit writes, draft content storage, and AI operation accounting remain unchanged.
 
 ### §2.2 — What Must Be Built (NEW)
 
@@ -229,7 +235,7 @@ Generate a canonical answer draft for this knowledge gap.
 ```
 src/lib/answerlattice/draftGenerator.ts          — Shared manual draft-generation logic, called through the governance API route
 src/lib/answerlattice/draftPrompt.ts             — Prompt template + response parser
-src/app/api/answerlattice/mutation-proposals/regenerate-draft/route.ts — Manual regeneration route; owns Gemini call, permission/rate-limit checks, and AI operation accounting
+src/app/api/answerlattice/mutation-proposals/regenerate-draft/route.ts — Manual regeneration route; owns safe-mode/rate-limit admission, permission checks, Gemini call, and AI operation accounting
 ```
 
 ### §5.2 — CF Files (Server-Side Draft Generation)
@@ -238,7 +244,7 @@ src/app/api/answerlattice/mutation-proposals/regenerate-draft/route.ts — Manua
 functions-answerlattice/src/answerlattice/draftGenerator.ts  — Server-side draft generation (for nightly batch)
 ```
 
-Note: Draft generation in the nightly CF uses `firebase-admin` + Gemini server-side. Manual regeneration from the governance UI calls `/api/answerlattice/mutation-proposals/regenerate-draft`, which invokes the shared draft helper server-side and records Answerlattice AI operation metadata.
+Note: Draft generation in the nightly CF uses `firebase-admin` + Gemini server-side. Manual regeneration from the governance UI calls `/api/answerlattice/mutation-proposals/regenerate-draft`, which resolves Answerlattice scope, checks safe mode, rate-limits before permission/body/provider work, invokes the shared draft helper server-side, records Answerlattice AI operation metadata, and logs unexpected failures with fixed-code bounded metadata. Optional signal-example and existing-answer grounding read failures keep the owner action running with empty grounding arrays, but log fixed diagnostics so draft-quality degradation is visible.
 
 ### §5.3 — Modified Files
 
@@ -475,7 +481,7 @@ ENABLE_ANSWERLATTICE_AUTO_KNOWLEDGE: true,
 
 ### ADR-4: Server-Side Draft Generation (CF, not Client)
 **Decision:** Draft generation happens through server-owned execution: nightly Cloud Function for batches, governance API route for manual regeneration.
-**Rationale:** Draft generation is a batch operation in normal operation and a manual owner action from the UI. Both paths keep Gemini credentials server-side, apply permission/rate-limit checks, and record AI operation accounting.
+**Rationale:** Draft generation is a batch operation in normal operation and a manual owner action from the UI. Both paths keep Gemini credentials server-side, apply safe-mode/rate-limit/permission checks, and record AI operation accounting.
 **Status:** LOCKED
 
 ### ADR-5: Structured Skeleton Over Full Article

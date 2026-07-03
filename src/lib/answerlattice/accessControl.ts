@@ -15,9 +15,13 @@ import {
     ECOMSAI_PLATFORM_SUPPORT_USER_ROLE,
     ECOMSAI_PLATFORM_USER_ROLE,
 } from '@constant/user';
+import {
+    getAnswerlatticeSecurityLogContext,
+    getAnswerlatticeScopeLogContext,
+    getBoundedAnswerlatticeStringContext,
+} from '@lib/answerlattice/diagnostics';
 import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
 import { admin } from '@lib/firebase/firebaseAdmin';
-import { buildSecurityContext } from '@lib/security/securityContext';
 import { logger } from '@lib/monitoring/logger';
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
@@ -278,11 +282,13 @@ export async function requireAnswerlatticePermission(
     }
 
     logger.security('Authorization Failed - Answerlattice Permission', {
-        ...buildSecurityContext(session, request),
-        endpoint: request.nextUrl.pathname,
-        permission,
-        tenantId: access?.scope.tenantId,
-        storeId: access?.scope.storeId,
+        ...getAnswerlatticeSecurityLogContext(session, request, request.nextUrl.pathname, {
+            ...getBoundedAnswerlatticeStringContext('permission', permission),
+            ...getAnswerlatticeScopeLogContext({
+                sId: access?.scope.storeId,
+                tId: access?.scope.tenantId,
+            }),
+        }),
     }, 'high');
 
     return {

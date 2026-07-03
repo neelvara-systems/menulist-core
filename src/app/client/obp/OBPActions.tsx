@@ -10,6 +10,7 @@
 import { getSessionId } from '@lib/analytics/session';
 import { trackBeforeNavigate } from '@lib/analytics/trackBeforeNavigate';
 import { trackOBPAction, trackOBPLinkClick } from '@lib/analytics/unified';
+import { normalizeOBPExternalHttpsUrl, normalizeOBPGoogleMapsUrl, normalizeOBPReviewUrl } from '@lib/obp/publicLinks';
 import { buildTelHref, buildWhatsAppPhoneParam } from '@lib/phone/phoneNumber';
 import { useState, type ReactNode } from 'react';
 import { LuCalendarCheck, LuMessageSquarePlus, LuPhone, LuShoppingBag } from 'react-icons/lu';
@@ -17,6 +18,7 @@ import { TbBrandGoogleFilled, TbBrandWhatsapp, TbMapPinFilled } from 'react-icon
 import styles from './obp.module.scss';
 
 export type OBPActionPlaceholder = 'call' | 'whatsapp' | 'directions' | 'reserve' | 'order' | 'reviews' | 'feedback';
+type OBPOpenHoursState = 'open' | 'closed' | 'unknown';
 
 interface OBPActionsProps {
     tenantId: number;
@@ -25,6 +27,7 @@ interface OBPActionsProps {
     includeLocation?: boolean;
     storeTimeZone?: string;
     businessDayEndTime?: string;
+    openHoursState?: OBPOpenHoursState;
     countryCode?: string;
     dialCode?: string;
     phoneNumber?: string;
@@ -62,6 +65,7 @@ export default function OBPActions({
     includeLocation = false,
     storeTimeZone,
     businessDayEndTime,
+    openHoursState = 'unknown',
     countryCode,
     dialCode,
     phoneNumber,
@@ -84,7 +88,11 @@ export default function OBPActions({
     labels,
 }: OBPActionsProps) {
     const [placeholderNotice, setPlaceholderNotice] = useState('');
-    const hasAnyAction = showCall || showWhatsApp || showDirections || (showReservation && !!reservationUrl) || (showOrder && !!orderUrl) || (showGoogleReview && !!googleReviewUrl) || (showFeedback && !!feedbackUrl) || placeholderActions.length > 0;
+    const safeDirectionsUrl = normalizeOBPGoogleMapsUrl(directionsUrl);
+    const safeReservationUrl = normalizeOBPExternalHttpsUrl(reservationUrl);
+    const safeOrderUrl = normalizeOBPExternalHttpsUrl(orderUrl);
+    const safeGoogleReviewUrl = normalizeOBPReviewUrl(googleReviewUrl);
+    const hasAnyAction = showCall || showWhatsApp || (showDirections && !!safeDirectionsUrl) || (showReservation && !!safeReservationUrl) || (showOrder && !!safeOrderUrl) || (showGoogleReview && !!safeGoogleReviewUrl) || (showFeedback && !!feedbackUrl) || placeholderActions.length > 0;
     if (!hasAnyAction) return null;
 
     const handleAction = (action: 'call' | 'whatsapp' | 'directions' | 'reserve' | 'order' | 'feedback') => {
@@ -94,6 +102,7 @@ export default function OBPActions({
             sessionId: getSessionId(),
             storeTimeZone,
             businessDayEndTime,
+            openHoursState,
             includeLocation,
         });
     };
@@ -105,6 +114,7 @@ export default function OBPActions({
             sessionId: getSessionId(),
             storeTimeZone,
             businessDayEndTime,
+            openHoursState,
             includeLocation,
         });
     };
@@ -143,10 +153,10 @@ export default function OBPActions({
     const renderedRealActions = new Set<OBPActionPlaceholder>([
         ...(showCall && phoneNumber ? ['call' as const] : []),
         ...(showWhatsApp && whatsappNumber ? ['whatsapp' as const] : []),
-        ...(showDirections && directionsUrl ? ['directions' as const] : []),
-        ...(showReservation && reservationUrl ? ['reserve' as const] : []),
-        ...(showOrder && orderUrl ? ['order' as const] : []),
-        ...(showGoogleReview && googleReviewUrl ? ['reviews' as const] : []),
+        ...(showDirections && safeDirectionsUrl ? ['directions' as const] : []),
+        ...(showReservation && safeReservationUrl ? ['reserve' as const] : []),
+        ...(showOrder && safeOrderUrl ? ['order' as const] : []),
+        ...(showGoogleReview && safeGoogleReviewUrl ? ['reviews' as const] : []),
         ...(showFeedback && feedbackUrl ? ['feedback' as const] : []),
     ]);
     const placeholderLabels: Record<OBPActionPlaceholder, string> = {
@@ -176,15 +186,15 @@ export default function OBPActions({
                     <span>{labels.call}</span>
                 </a>
             )}
-            {showDirections && directionsUrl && (
+            {showDirections && safeDirectionsUrl && (
                 <a
-                    href={directionsUrl}
+                    href={safeDirectionsUrl}
                     className={`${styles.actionButton} ${styles.actionButtonPrimary}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     onClick={(event) => trackBeforeNavigate({
                         event,
-                        href: directionsUrl,
+                        href: safeDirectionsUrl,
                         target: '_blank',
                         track: () => handleAction('directions'),
                     })}
@@ -210,15 +220,15 @@ export default function OBPActions({
                     <span>{labels.whatsapp}</span>
                 </a>
             )}
-            {showGoogleReview && googleReviewUrl && (
+            {showGoogleReview && safeGoogleReviewUrl && (
                 <a
-                    href={googleReviewUrl}
+                    href={safeGoogleReviewUrl}
                     className={`${styles.actionButton} ${styles.actionButtonUtility}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     onClick={(event) => trackBeforeNavigate({
                         event,
-                        href: googleReviewUrl,
+                        href: safeGoogleReviewUrl,
                         target: '_blank',
                         track: handleGoogleReview,
                     })}
@@ -227,15 +237,15 @@ export default function OBPActions({
                     <span>{labels.reviews}</span>
                 </a>
             )}
-            {showReservation && reservationUrl && (
+            {showReservation && safeReservationUrl && (
                 <a
-                    href={reservationUrl}
+                    href={safeReservationUrl}
                     className={`${styles.actionButton} ${styles.actionButtonUtility}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     onClick={(event) => trackBeforeNavigate({
                         event,
-                        href: reservationUrl,
+                        href: safeReservationUrl,
                         target: '_blank',
                         track: () => handleAction('reserve'),
                     })}
@@ -244,15 +254,15 @@ export default function OBPActions({
                     <span>{labels.reserve}</span>
                 </a>
             )}
-            {showOrder && orderUrl && (
+            {showOrder && safeOrderUrl && (
                 <a
-                    href={orderUrl}
+                    href={safeOrderUrl}
                     className={`${styles.actionButton} ${styles.actionButtonUtility}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     onClick={(event) => trackBeforeNavigate({
                         event,
-                        href: orderUrl,
+                        href: safeOrderUrl,
                         target: '_blank',
                         track: () => handleAction('order'),
                     })}

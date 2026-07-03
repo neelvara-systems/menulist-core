@@ -29,7 +29,7 @@ For every new feature, follow this build order:
 1. DAL function (src/database/*)     — shared business logic
 2. Hook (src/hooks/*)                — shared state management
 3. Desktop UI (antd + SCSS)          — full desktop experience
-4. Mobile UI (antd-mobile + Tailwind) — IF feature passes admission test
+4. Mobile UI (Tailwind-driven mobile shell/screens + shared business logic) — IF feature passes admission test; do not import `antd-mobile` unless it is intentionally added as a dependency and `npm run verify:dependency-freeze` is updated.
 ```
 
 Mobile screens MUST use the SAME DAL functions and hooks as desktop. NEVER create separate mobile-specific DAL.

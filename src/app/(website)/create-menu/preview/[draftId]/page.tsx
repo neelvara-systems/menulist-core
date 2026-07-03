@@ -19,8 +19,8 @@ import { useTranslations } from 'next-intl';
 import PreviewClient from '../../PreviewClient';
 
 export const metadata: Metadata = {
-    title: 'Menu Source Preview — MenuList',
-    description: 'Review your prepared menu source before publishing.',
+    title: 'Menu Preview - MenuList',
+    description: 'Review your prepared menu before publishing.',
     robots: {
         index: false,
         follow: false,

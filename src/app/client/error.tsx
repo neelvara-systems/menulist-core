@@ -12,7 +12,18 @@
  */
 
 import ErrorReportButton from "@/components/shared/debug/ErrorReportButton";
+import { secureError } from "@lib/security/secureLogger";
 import { useEffect, useState } from "react";
+
+const buildClientMenuErrorLogContext = (error: Error & { digest?: string }) => {
+    const digest = String(error.digest ?? "").trim();
+
+    return {
+        errorName: (error.name || "Error").slice(0, 80),
+        hasDigest: Boolean(digest),
+        digestLength: digest.length,
+    };
+};
 
 export default function ClientMenuError({
     error,
@@ -24,7 +35,11 @@ export default function ClientMenuError({
     const [isRetrying, setIsRetrying] = useState(false);
 
     useEffect(() => {
-        console.error("[Client Menu] Error:", error.message, error.digest);
+        secureError(
+            "[Client Menu] Error boundary triggered",
+            new Error("client_menu_error_boundary"),
+            buildClientMenuErrorLogContext(error),
+        );
     }, [error]);
 
     const handleRetry = () => {

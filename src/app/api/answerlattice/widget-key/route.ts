@@ -21,10 +21,12 @@ import {
     normalizeAnswerlatticeWidgetApiState,
     renameAnswerlatticeWidgetKey,
 } from '@lib/answerlattice/widgetKeyManager';
+import { buildAnswerlatticeRateLimitKey } from '@lib/answerlattice/rateLimitKeys';
 import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
 import { hashApiKey } from '@lib/publicApi/auth';
 import { checkRateLimit } from '@lib/rateLimit';
-import { secureError, secureLog } from '@lib/security/secureLogger';
+import { getBoundedRuntimeStringContext, logRuntimeDiagnostic, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
+import { readBoundedJsonBody } from '@lib/security/boundedRequestBody';
 import { randomUUID } from 'crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
@@ -53,6 +55,7 @@ const RequestSchema = z.discriminatedUnion('action', [
         keyId: z.string().trim().min(1).max(120).optional(),
     }),
 ]);
+const WIDGET_KEY_ACTION_MAX_BODY_BYTES = 4 * 1024;
 
 const getAnswerlatticeDb = () => {
     const db = answerlatticeFirestoreAdmin as any;
@@ -71,12 +74,16 @@ const toKeyResponse = (state: unknown) => {
 };
 
 export const POST = withAuth(async (request: NextRequest, session) => {
+    let tenantIdForLog: number | string | undefined;
+    let storeIdForLog: number | string | undefined;
+    let userIdForLog: string | undefined = session?.uId || session?.user?.id;
+    let actionForLog: string | undefined;
+    let keyIdForLog: string | undefined;
+
     try {
         if (!FEATURE_FLAGS.ENABLE_ANSWERLATTICE_WIDGET) {
             return NextResponse.json({ error: 'Answerlattice widget is not enabled.' }, { status: 403 });
         }
-        const permission = await requireAnswerlatticePermission(request, session, ANSWERLATTICE_PERMISSION_KEYS.MANAGE_WIDGET);
-        if (permission.response) return permission.response;
 
         const scope = resolveAnswerlatticeSessionScope(session);
         if (!scope) {
@@ -84,16 +91,14 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         }
 
         const { tenantId, storeId } = scope;
+        tenantIdForLog = tenantId;
+        storeIdForLog = storeId;
         if (!tenantId || !storeId) {
             return NextResponse.json({ error: 'Not onboarded' }, { status: 400 });
         }
-        const db = getAnswerlatticeDb();
-        if (!db) {
-            return NextResponse.json({ error: 'Answerlattice Firebase is not configured' }, { status: 503 });
-        }
 
         const rateLimitResult = await checkRateLimit({
-            key: `answerlattice-widget-key:${storeId}`,
+            key: buildAnswerlatticeRateLimitKey('answerlattice-widget-key', storeId),
             limit: 10,
             window: 60,
         });
@@ -115,10 +120,31 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             });
         }
 
-        const validation = RequestSchema.safeParse(await request.json().catch(() => null));
+        const permission = await requireAnswerlatticePermission(request, session, ANSWERLATTICE_PERMISSION_KEYS.MANAGE_WIDGET);
+        if (permission.response) return permission.response;
+
+        const db = getAnswerlatticeDb();
+        if (!db) {
+            return NextResponse.json({ error: 'Answerlattice Firebase is not configured' }, { status: 503 });
+        }
+
+        const bodyResult = await readBoundedJsonBody(request, WIDGET_KEY_ACTION_MAX_BODY_BYTES, {
+            invalidJsonMessage: 'Invalid input',
+            tooLargeMessage: 'Request body too large',
+        });
+        if (bodyResult.ok === false) {
+            return NextResponse.json(
+                { error: bodyResult.response.status === 413 ? 'Request body too large' : 'Invalid input' },
+                { status: bodyResult.response.status },
+            );
+        }
+
+        const validation = RequestSchema.safeParse(bodyResult.data);
         if (!validation.success) {
             return NextResponse.json({ error: 'Invalid input' }, { status: 400 });
         }
+        actionForLog = validation.data.action;
+        keyIdForLog = 'keyId' in validation.data ? validation.data.keyId : undefined;
 
         const storeRef = db.collection(DB_COLLECTIONS.STORES).doc(String(storeId));
         const storeSnap = await storeRef.get();
@@ -156,9 +182,10 @@ export const POST = withAuth(async (request: NextRequest, session) => {
 
             await storeRef.set({ answerlatticeWidgetApi: generated.state }, { merge: true });
 
-            secureLog('[Answerlattice Widget] Key generated', {
-                storeId,
-                keyId: generated.record.id,
+            logRuntimeDiagnostic('answerlattice_widget_key_generated', {
+                ...getBoundedRuntimeStringContext('tenantId', tenantId),
+                ...getBoundedRuntimeStringContext('storeId', storeId),
+                ...getBoundedRuntimeStringContext('keyId', generated.record.id),
                 copyable: generated.copyable,
             });
             return NextResponse.json({
@@ -188,9 +215,10 @@ export const POST = withAuth(async (request: NextRequest, session) => {
 
             await storeRef.set({ answerlatticeWidgetApi: nextState }, { merge: true });
 
-            secureLog('[Answerlattice Widget] Key renamed', {
-                storeId,
-                keyId: validation.data.keyId,
+            logRuntimeDiagnostic('answerlattice_widget_key_renamed', {
+                ...getBoundedRuntimeStringContext('tenantId', tenantId),
+                ...getBoundedRuntimeStringContext('storeId', storeId),
+                ...getBoundedRuntimeStringContext('keyId', validation.data.keyId),
             });
             return NextResponse.json({ success: true, ...toKeyResponse(nextState) });
         }
@@ -211,14 +239,19 @@ export const POST = withAuth(async (request: NextRequest, session) => {
 
         await storeRef.set({ answerlatticeWidgetApi: nextState }, { merge: true });
 
-        secureLog('[Answerlattice Widget] Key revoked', {
-            storeId,
-            keyId: targetKeyId,
+        logRuntimeDiagnostic('answerlattice_widget_key_revoked', {
+            ...getBoundedRuntimeStringContext('tenantId', tenantId),
+            ...getBoundedRuntimeStringContext('storeId', storeId),
+            ...getBoundedRuntimeStringContext('keyId', targetKeyId),
         });
         return NextResponse.json({ success: true, ...toKeyResponse(nextState) });
     } catch (error) {
-        secureError('[Answerlattice Widget] Failed to manage key', error as Error, {
-            userId: session?.user?.id,
+        logRuntimeFailure('answerlattice_widget_key_manage_failed', error, {
+            ...getBoundedRuntimeStringContext('tenantId', tenantIdForLog),
+            ...getBoundedRuntimeStringContext('storeId', storeIdForLog),
+            ...getBoundedRuntimeStringContext('userId', userIdForLog),
+            ...getBoundedRuntimeStringContext('action', actionForLog),
+            ...getBoundedRuntimeStringContext('keyId', keyIdForLog),
         });
         return NextResponse.json({ error: 'Failed to manage widget key' }, { status: 500 });
     }

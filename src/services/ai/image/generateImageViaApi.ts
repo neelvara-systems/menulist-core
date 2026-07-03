@@ -1,7 +1,20 @@
-import { logger } from "@lib/monitoring/logger";
+import { AI_SERVICE_ROUTE_REQUEST_OPTIONS, createAiServiceHttpError, getBoundedAiServiceStringContext, logAiServiceFailure, readAiServiceResponseJson } from "@services/ai/aiServiceDiagnostics";
 import { syncBalanceFromResponse } from "@services/ai/balanceSync";
 import { AICapacityError, checkCapacityResponse } from "@services/ai/capacityError";
 import { GenerateImageViaApiPayloadType, ImageGenerationConfigType, ItemForDropdown } from "@template/main-app/projects/types";
+
+const IMAGE_GENERATION_RESPONSE_JSON_MAX_BYTES = 24 * 1024 * 1024;
+
+type GeneratedImageResponseItem = {
+    base64: string;
+    mimeType: string;
+};
+
+type ImageGenerationApiResponse = {
+    data?: GeneratedImageResponseItem[] | null;
+    remainingBalance?: unknown;
+    transaction?: unknown;
+};
 
 async function generateImageViaApi({ itemDetails, generationConfig, projectId, fileId, businessType }: { itemDetails: ItemForDropdown, generationConfig: ImageGenerationConfigType, projectId: string, fileId: string, businessType: string }) {
     try {
@@ -38,6 +51,7 @@ async function generateImageViaApi({ itemDetails, generationConfig, projectId, f
             },
         }
         const response = await fetch('/api/image-generation', {
+            ...AI_SERVICE_ROUTE_REQUEST_OPTIONS,
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -47,12 +61,30 @@ async function generateImageViaApi({ itemDetails, generationConfig, projectId, f
 
         await checkCapacityResponse(response);
         if (!response.ok) {
-            throw new Error(`Image generation request failed: ${response.statusText}`);
+            throw createAiServiceHttpError('ai_image_generation_request_failed', response);
         }
-        const responseJson = await response.json();
+        const responseJson = await readAiServiceResponseJson<ImageGenerationApiResponse>(response, {
+            context: {
+                ...getBoundedAiServiceStringContext('projectId', projectId),
+                ...getBoundedAiServiceStringContext('fileId', fileId),
+                ...getBoundedAiServiceStringContext('businessType', businessType),
+            },
+            invalidFailureCode: 'ai_image_generation_response_invalid',
+            maxBytes: IMAGE_GENERATION_RESPONSE_JSON_MAX_BYTES,
+            parseFailureCode: 'ai_image_generation_response_parse_failed',
+        });
         syncBalanceFromResponse(responseJson);
-        const { data, transaction } = responseJson;
-        logger.debug('Image generation response', { transactionId: transaction?.id, imageCount: data?.length });
+        const { data } = responseJson;
+        if (data !== undefined && data !== null && !Array.isArray(data)) {
+            logAiServiceFailure('ai_image_generation_response_invalid', new Error('ai_image_generation_data_invalid'), {
+                ...getBoundedAiServiceStringContext('projectId', projectId),
+                ...getBoundedAiServiceStringContext('fileId', fileId),
+                ...getBoundedAiServiceStringContext('businessType', businessType),
+                maxBytes: IMAGE_GENERATION_RESPONSE_JSON_MAX_BYTES,
+                responseStatus: response.status,
+            });
+            return [];
+        }
         if (data?.length > 0) {
             data.map((item: { base64: string; mimeType: string }) => {
                 if (!item.base64.startsWith('data:')) {
@@ -65,7 +97,11 @@ async function generateImageViaApi({ itemDetails, generationConfig, projectId, f
 
     } catch (error) {
         if (error instanceof AICapacityError) throw error;
-        logger.error('Image generation API failed', error, { projectId, fileId });
+        logAiServiceFailure('ai_image_generation_api_failed', error, {
+            ...getBoundedAiServiceStringContext('projectId', projectId),
+            ...getBoundedAiServiceStringContext('fileId', fileId),
+            ...getBoundedAiServiceStringContext('businessType', businessType),
+        });
         return [];
     }
 }

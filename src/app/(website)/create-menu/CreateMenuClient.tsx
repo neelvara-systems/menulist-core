@@ -18,12 +18,56 @@ import { LuAlertCircle, LuCamera, LuCheck, LuLink, LuLoader, LuUpload } from 're
 import WebsiteHeadline from '@/components/website/shared/WebsiteHeadline';
 import AnimateOnScroll, { AnimateStaggerChild } from '@/components/website/shared/AnimateOnScroll';
 import PhoneOtpAuthPanel from '@/components/auth/PhoneOtpAuthPanel';
+import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
+import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';
 
 type UploadState = 'idle' | 'optimizing' | 'uploading' | 'processing' | 'success' | 'error';
 type InputMode = 'photo' | 'link';
+type CreateMenuResponseSource = 'upload' | 'link';
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+const CREATE_MENU_RESPONSE_JSON_MAX_BYTES = 8 * 1024;
+
+type CreateMenuDraftResponse = {
+    draftId?: unknown;
+};
+
+const isNonEmptyString = (value: unknown): value is string => (
+    typeof value === 'string' && value.trim().length > 0
+);
+
+const getCreateMenuResponseLogContext = (
+    source: CreateMenuResponseSource,
+    menuLink?: string,
+) => ({
+    source,
+    ...(source === 'link' ? getBoundedRuntimeStringContext('menuLink', menuLink) : {}),
+});
+
+async function readCreateMenuDraftResponseJson(
+    response: Response,
+    source: CreateMenuResponseSource,
+    menuLink?: string,
+): Promise<{ payload: CreateMenuDraftResponse | null; parseFailed: boolean }> {
+    try {
+        return {
+            payload: await readJsonResponseWithLimit<CreateMenuDraftResponse>(
+                response,
+                CREATE_MENU_RESPONSE_JSON_MAX_BYTES,
+            ),
+            parseFailed: false,
+        };
+    } catch (error) {
+        logRuntimeFailure('public_create_menu_response_parse_failed', error, {
+            ...getCreateMenuResponseLogContext(source, menuLink),
+            responseOk: response.ok,
+            responseStatus: response.status,
+            maxBytes: CREATE_MENU_RESPONSE_JSON_MAX_BYTES,
+        });
+        return { payload: null, parseFailed: true };
+    }
+}
 
 export default function CreateMenuClient() {
     const t = useTranslations('Website');
@@ -90,7 +134,10 @@ export default function CreateMenuClient() {
             formData.append('image', optimizedFile);
 
             const response = await fetch('/api/public/create-menu', {
+                cache: 'no-store',
+                credentials: 'same-origin',
                 method: 'POST',
+                redirect: 'manual',
                 body: formData,
             });
 
@@ -105,18 +152,32 @@ export default function CreateMenuClient() {
                 return;
             }
 
+            const { payload, parseFailed } = await readCreateMenuDraftResponseJson(response, 'upload');
+
             if (!response.ok) {
-                const data = await response.json().catch(() => ({}));
-                setError(data.error || t('CreateMenu.uploadFailed'));
+                setError(t('CreateMenu.uploadFailed'));
                 setState('error');
                 return;
             }
 
-            const data = await response.json();
+            if (parseFailed || !isNonEmptyString(payload?.draftId)) {
+                if (!parseFailed) {
+                    logRuntimeFailure('public_create_menu_response_invalid', new Error('public_create_menu_response_invalid'), {
+                        ...getCreateMenuResponseLogContext('upload'),
+                        responseOk: response.ok,
+                        responseStatus: response.status,
+                        maxBytes: CREATE_MENU_RESPONSE_JSON_MAX_BYTES,
+                        hasDraftId: isNonEmptyString(payload?.draftId),
+                    });
+                }
+                setError(t('CreateMenu.uploadFailed'));
+                setState('error');
+                return;
+            }
 
             // Step 3: Redirect to preview page
             setState('success');
-            router.push(`/create-menu/preview/${data.draftId}`);
+            router.push(`/create-menu/preview/${payload.draftId}`);
 
         } catch (err) {
             setError(t('CreateMenu.genericError'));
@@ -179,8 +240,11 @@ export default function CreateMenuClient() {
                     sourceType: 'menu_link',
                     url: trimmedLink,
                 }),
+                cache: 'no-store',
+                credentials: 'same-origin',
                 headers: { 'Content-Type': 'application/json' },
                 method: 'POST',
+                redirect: 'manual',
             });
 
             if (response.status === 401) {
@@ -194,16 +258,31 @@ export default function CreateMenuClient() {
                 return;
             }
 
+            const { payload, parseFailed } = await readCreateMenuDraftResponseJson(response, 'link', trimmedLink);
+
             if (!response.ok) {
-                const data = await response.json().catch(() => ({}));
-                setError(data.error || t('CreateMenu.linkFailed'));
+                setError(t('CreateMenu.linkFailed'));
                 setState('error');
                 return;
             }
 
-            const data = await response.json();
+            if (parseFailed || !isNonEmptyString(payload?.draftId)) {
+                if (!parseFailed) {
+                    logRuntimeFailure('public_create_menu_response_invalid', new Error('public_create_menu_response_invalid'), {
+                        ...getCreateMenuResponseLogContext('link', trimmedLink),
+                        responseOk: response.ok,
+                        responseStatus: response.status,
+                        maxBytes: CREATE_MENU_RESPONSE_JSON_MAX_BYTES,
+                        hasDraftId: isNonEmptyString(payload?.draftId),
+                    });
+                }
+                setError(t('CreateMenu.linkFailed'));
+                setState('error');
+                return;
+            }
+
             setState('success');
-            router.push(`/create-menu/preview/${data.draftId}`);
+            router.push(`/create-menu/preview/${payload.draftId}`);
         } catch {
             setError(t('CreateMenu.genericError'));
             setState('error');
@@ -252,19 +331,43 @@ export default function CreateMenuClient() {
             {!isAuthenticated ? (
                 <AnimateOnScroll delay={0.08}>
                     <div style={authGateStyle}>
-                        {isSessionLoading ? (
-                            <LuLoader size={30} color="var(--ws-brand-secondary)" style={{ animation: 'spin 1s linear infinite' }} />
-                        ) : null}
                         <div style={{ textAlign: 'center', width: '100%' }}>
                             <h2 style={{ color: 'var(--ws-text-primary)', fontSize: '19px', fontWeight: 700, margin: '0 0 6px' }}>
-                                {isSessionLoading ? t('CreateMenu.authChecking') : t('CreateMenu.authTitle')}
+                                {t('CreateMenu.authTitle')}
                             </h2>
-                            {!isSessionLoading ? (
-                                <p style={{ color: 'var(--ws-text-secondary)', fontSize: '14px', lineHeight: 1.45, margin: 0 }}>
+                            <p style={{ color: 'var(--ws-text-secondary)', fontSize: '14px', lineHeight: 1.45, margin: 0 }}>
                                 {t('CreateMenu.authHint')}
-                                </p>
-                            ) : null}
+                            </p>
                         </div>
+
+                        <div style={authStepListStyle} aria-label={t('CreateMenu.authStepsLabel')}>
+                            {[
+                                { step: '1', title: t('CreateMenu.authStep0Title'), desc: t('CreateMenu.authStep0Desc') },
+                                { step: '2', title: t('CreateMenu.authStep1Title'), desc: t('CreateMenu.authStep1Desc') },
+                                { step: '3', title: t('CreateMenu.authStep2Title'), desc: t('CreateMenu.authStep2Desc') },
+                            ].map((item) => (
+                                <div key={item.step} style={authStepStyle}>
+                                    <span style={authStepNumberStyle}>{item.step}</span>
+                                    <div>
+                                        <p style={authStepTitleStyle}>{item.title}</p>
+                                        <p style={authStepDescStyle}>{item.desc}</p>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+
+                        <div style={authSupportedStyle}>
+                            <span style={authSupportedLabelStyle}>{t('CreateMenu.authSupportedLabel')}</span>
+                            <p style={authSupportedCopyStyle}>{t('CreateMenu.authSupportedInputs')}</p>
+                        </div>
+
+                        {isSessionLoading ? (
+                            <div style={authCheckingStyle} role="status" aria-live="polite">
+                                <LuLoader size={18} color="var(--ws-brand-secondary)" style={{ animation: 'spin 1s linear infinite' }} />
+                                <span>{t('CreateMenu.authChecking')}</span>
+                            </div>
+                        ) : null}
+
                         {!isSessionLoading ? (
                             <>
                                 <PhoneOtpAuthPanel
@@ -301,6 +404,7 @@ export default function CreateMenuClient() {
                                     <FcGoogle size={19} />
                                     {t('CreateMenu.googleCta')}
                                 </button>
+                                <p style={authTrustLineStyle}>{t('CreateMenu.authTrustLine')}</p>
                             </>
                         ) : null}
                     </div>
@@ -378,6 +482,7 @@ export default function CreateMenuClient() {
                                     ref={fileInputRef}
                                     type="file"
                                     accept="image/jpeg,image/png,image/webp"
+                                    capture="environment"
                                     onChange={handleInputChange}
                                     style={{ display: 'none' }}
                                 />
@@ -699,11 +804,101 @@ const authGateStyle: React.CSSProperties = {
     width: '100%',
 };
 
+const authStepListStyle: React.CSSProperties = {
+    display: 'grid',
+    gap: '10px',
+    width: '100%',
+};
+
+const authStepStyle: React.CSSProperties = {
+    alignItems: 'flex-start',
+    backgroundColor: 'var(--ws-bg-subtle)',
+    border: '1px solid var(--ws-border-subtle)',
+    borderRadius: 'var(--ws-radius-lg)',
+    display: 'grid',
+    gap: '10px',
+    gridTemplateColumns: '28px minmax(0, 1fr)',
+    padding: '12px',
+    width: '100%',
+};
+
+const authStepNumberStyle: React.CSSProperties = {
+    alignItems: 'center',
+    backgroundColor: 'var(--ws-brand-secondary)',
+    borderRadius: '999px',
+    color: '#fff',
+    display: 'inline-flex',
+    fontSize: '13px',
+    fontWeight: 800,
+    height: '28px',
+    justifyContent: 'center',
+    lineHeight: 1,
+    width: '28px',
+};
+
+const authStepTitleStyle: React.CSSProperties = {
+    color: 'var(--ws-text-primary)',
+    fontSize: '14px',
+    fontWeight: 800,
+    lineHeight: 1.25,
+    margin: 0,
+};
+
+const authStepDescStyle: React.CSSProperties = {
+    color: 'var(--ws-text-secondary)',
+    fontSize: '13px',
+    lineHeight: 1.45,
+    margin: '3px 0 0',
+};
+
+const authSupportedStyle: React.CSSProperties = {
+    backgroundColor: 'var(--ws-bg-accent)',
+    border: '1px solid color-mix(in srgb, var(--ws-brand-secondary) 18%, var(--ws-border-default))',
+    borderRadius: 'var(--ws-radius-lg)',
+    padding: '12px',
+    width: '100%',
+};
+
+const authSupportedLabelStyle: React.CSSProperties = {
+    color: 'var(--ws-brand-secondary)',
+    display: 'block',
+    fontSize: '13px',
+    fontWeight: 800,
+    lineHeight: 1.2,
+    marginBottom: '4px',
+};
+
+const authSupportedCopyStyle: React.CSSProperties = {
+    color: 'var(--ws-text-secondary)',
+    fontSize: '13px',
+    lineHeight: 1.45,
+    margin: 0,
+};
+
+const authCheckingStyle: React.CSSProperties = {
+    alignItems: 'center',
+    color: 'var(--ws-text-secondary)',
+    display: 'inline-flex',
+    fontSize: '13px',
+    fontWeight: 700,
+    gap: '8px',
+    justifyContent: 'center',
+    minHeight: '32px',
+};
+
+const authTrustLineStyle: React.CSSProperties = {
+    color: 'var(--ws-text-secondary)',
+    fontSize: '13px',
+    lineHeight: 1.45,
+    margin: 0,
+    textAlign: 'center',
+};
+
 const authDividerStyle: React.CSSProperties = {
     alignItems: 'center',
     color: 'var(--ws-text-muted)',
     display: 'grid',
-    fontSize: '12px',
+    fontSize: '13px',
     gap: '10px',
     gridTemplateColumns: '1fr auto 1fr',
     lineHeight: 1,

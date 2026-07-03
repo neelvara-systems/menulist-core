@@ -18,7 +18,19 @@ import {
     renderAnswerlatticeCursorRuleMd,
     renderAnswerlatticeWindsurfRule,
 } from '@lib/answerlattice/installContract/contract';
-import { getAnswerlatticeUiErrorMessage } from '@lib/answerlattice/uiErrors';
+import {
+    ANSWERLATTICE_ACTIVATION_DASHBOARD_REQUEST_POLICY,
+    isAnswerlatticeActivationSummaryResponse,
+    readAnswerlatticeActivationDashboardResponse,
+} from '@lib/answerlattice/activationDashboardResponseClient';
+import {
+    copyAnswerlatticeSupportTextToClipboard,
+    hasAnswerlatticeSupportClipboardWrite,
+    hasAnswerlatticeSupportCopyFallback,
+} from '@lib/answerlattice/supportClipboard';
+import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
+import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';
+import type { AnswerlatticeActivationSummary } from '@type/answerlattice';
 import {
     Alert,
     Button,
@@ -78,13 +90,7 @@ type WidgetConfigResponse = {
 };
 
 type ActivationSummaryResponse = {
-    summary?: {
-        readinessScore?: number;
-        workspace?: {
-            productName?: string | null;
-            companyName?: string | null;
-        };
-    };
+    summary?: AnswerlatticeActivationSummary;
     error?: string;
 };
 
@@ -115,6 +121,93 @@ const FRAMEWORK_ITEMS = [
 ];
 
 const FULL_WIDGET_KEY_PLACEHOLDER = 'al_full_widget_key_shown_once';
+const ANSWERLATTICE_INSTALL_RESPONSE_JSON_MAX_BYTES = 64 * 1024;
+const ANSWERLATTICE_INSTALL_REQUEST_POLICY: Pick<RequestInit, 'cache' | 'credentials' | 'redirect'> = {
+    cache: 'no-store',
+    credentials: 'same-origin',
+    redirect: 'manual',
+};
+const ANSWERLATTICE_INSTALL_SETUP_LOAD_FAILED = 'Could not load install setup';
+const ANSWERLATTICE_INSTALL_LINK_OPEN_FAILED = 'Could not open install link';
+const ANSWERLATTICE_INSTALL_COPY_CLIPBOARD_UNAVAILABLE = 'answerlattice_install_copy_clipboard_unavailable';
+const ANSWERLATTICE_INSTALL_COPY_FALLBACK_FAILED = 'answerlattice_install_copy_fallback_failed';
+
+const isRecord = (value: unknown): value is Record<string, unknown> => (
+    Boolean(value) && typeof value === 'object' && !Array.isArray(value)
+);
+
+const isStringArray = (value: unknown): value is string[] => (
+    Array.isArray(value) && value.every((entry) => typeof entry === 'string')
+);
+
+const isWidgetRuntimeStatus = (value: unknown): value is WidgetRuntimeStatus => {
+    if (!isRecord(value)) return false;
+    return (
+        (value.lastOrigin === undefined || value.lastOrigin === null || typeof value.lastOrigin === 'string')
+        && (value.lastPath === undefined || value.lastPath === null || typeof value.lastPath === 'string')
+        && (value.lastContextKey === undefined || value.lastContextKey === null || typeof value.lastContextKey === 'string')
+        && (value.lastFeature === undefined || value.lastFeature === null || typeof value.lastFeature === 'string')
+        && (value.lastPage === undefined || value.lastPage === null || typeof value.lastPage === 'string')
+        && (value.seenCount === undefined || typeof value.seenCount === 'number')
+    );
+};
+
+const isWidgetConfigResponse = (value: unknown): value is WidgetConfigResponse => {
+    if (!isRecord(value)) return false;
+    const config = value.config;
+    return (
+        (config === undefined || (isRecord(config) && (config.blockedRoutes === undefined || isStringArray(config.blockedRoutes))))
+        && (value.allowedOrigins === undefined || isStringArray(value.allowedOrigins))
+        && (value.keyPrefix === undefined || value.keyPrefix === null || typeof value.keyPrefix === 'string')
+        && (value.hasWidgetKey === undefined || typeof value.hasWidgetKey === 'boolean')
+        && (value.runtimeStatus === undefined || value.runtimeStatus === null || isWidgetRuntimeStatus(value.runtimeStatus))
+        && (value.error === undefined || typeof value.error === 'string')
+    );
+};
+
+const getInstallResponseLogContext = (response: Response, responseKind: string) => ({
+    surface: 'answerlattice_install_center',
+    ...getBoundedRuntimeStringContext('responseKind', responseKind),
+    responseOk: response.ok,
+    responseStatus: response.status,
+});
+
+const readInstallWidgetConfigResponse = async (response: Response): Promise<WidgetConfigResponse> => {
+    let payload: unknown = null;
+    try {
+        payload = await readJsonResponseWithLimit<unknown>(
+            response,
+            ANSWERLATTICE_INSTALL_RESPONSE_JSON_MAX_BYTES,
+        );
+    } catch (error) {
+        logRuntimeFailure(
+            'answerlattice_install_widget_config_response_parse_failed',
+            error,
+            getInstallResponseLogContext(response, 'widget_config'),
+        );
+        throw new Error(ANSWERLATTICE_INSTALL_SETUP_LOAD_FAILED);
+    }
+
+    if (!response.ok) {
+        logRuntimeFailure(
+            'answerlattice_install_widget_config_response_rejected',
+            undefined,
+            getInstallResponseLogContext(response, 'widget_config'),
+        );
+        throw new Error(ANSWERLATTICE_INSTALL_SETUP_LOAD_FAILED);
+    }
+
+    if (!isWidgetConfigResponse(payload)) {
+        logRuntimeFailure(
+            'answerlattice_install_widget_config_response_invalid',
+            undefined,
+            getInstallResponseLogContext(response, 'widget_config'),
+        );
+        throw new Error(ANSWERLATTICE_INSTALL_SETUP_LOAD_FAILED);
+    }
+
+    return payload;
+};
 
 const formatDateTime = (value: any): string => {
     if (!value) return 'Not seen yet';
@@ -147,7 +240,7 @@ export default function AnswerlatticeInstallCenter() {
     const { token } = theme.useToken();
     const isMobile = screens.md !== true;
     const [widgetConfig, setWidgetConfig] = useState<WidgetConfigResponse | null>(null);
-    const [activationSummary, setActivationSummary] = useState<ActivationSummaryResponse['summary']>(null);
+    const [activationSummary, setActivationSummary] = useState<ActivationSummaryResponse['summary'] | null>(null);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
 
@@ -161,20 +254,46 @@ export default function AnswerlatticeInstallCenter() {
         }
 
         try {
-            const widgetResponse = await fetch('/api/answerlattice/widget-config', { method: 'GET' });
-            const widgetData: WidgetConfigResponse = await widgetResponse.json().catch(() => ({}));
-            if (!widgetResponse.ok) {
-                throw new Error(widgetData.error || 'Failed to load install setup');
-            }
+            const widgetResponse = await fetch('/api/answerlattice/widget-config', {
+                ...ANSWERLATTICE_INSTALL_REQUEST_POLICY,
+                method: 'GET',
+            });
+            const widgetData = await readInstallWidgetConfigResponse(widgetResponse);
             setWidgetConfig(widgetData);
 
-            const activationResponse = await fetch('/api/answerlattice/activation/summary', { method: 'GET' }).catch(() => null);
-            if (activationResponse?.ok) {
-                const activationData: ActivationSummaryResponse = await activationResponse.json().catch(() => ({}));
-                setActivationSummary(activationData.summary || null);
+            let activationResponse: Response | null = null;
+            try {
+                activationResponse = await fetch('/api/answerlattice/activation/summary', {
+                    ...ANSWERLATTICE_ACTIVATION_DASHBOARD_REQUEST_POLICY,
+                    method: 'GET',
+                });
+            } catch (error) {
+                logRuntimeFailure('answerlattice_install_activation_summary_request_failed', error, {
+                    surface: 'answerlattice_install_center',
+                });
+            }
+
+            if (activationResponse) {
+                try {
+                    const activationData = await readAnswerlatticeActivationDashboardResponse(
+                        activationResponse,
+                        'activation_summary_load',
+                        isAnswerlatticeActivationSummaryResponse,
+                        ANSWERLATTICE_INSTALL_SETUP_LOAD_FAILED,
+                    );
+                    setActivationSummary(activationData.summary);
+                } catch (error) {
+                    logRuntimeFailure('answerlattice_install_activation_summary_response_failed', error, {
+                        surface: 'answerlattice_install_center',
+                    });
+                    setActivationSummary(null);
+                }
             }
         } catch (error) {
-            message.error(getAnswerlatticeUiErrorMessage(error, 'Could not load install setup'));
+            logRuntimeFailure('answerlattice_install_setup_load_failed', error, {
+                surface: 'answerlattice_install_center',
+            });
+            message.error(ANSWERLATTICE_INSTALL_SETUP_LOAD_FAILED);
         } finally {
             setLoading(false);
             setRefreshing(false);
@@ -191,10 +310,37 @@ export default function AnswerlatticeInstallCenter() {
 
     const copyText = useCallback(async (value: string, successMessage = 'Copied') => {
         try {
-            await navigator.clipboard.writeText(value);
+            await copyAnswerlatticeSupportTextToClipboard(value, {
+                unavailable: ANSWERLATTICE_INSTALL_COPY_CLIPBOARD_UNAVAILABLE,
+                fallbackFailed: ANSWERLATTICE_INSTALL_COPY_FALLBACK_FAILED,
+            });
             message.success(successMessage);
-        } catch {
+        } catch (error) {
+            logRuntimeFailure('answerlattice_install_copy_failed', error, {
+                surface: 'answerlattice_install_center',
+                hasClipboardWrite: hasAnswerlatticeSupportClipboardWrite(),
+                hasCopyFallback: hasAnswerlatticeSupportCopyFallback(),
+                ...getBoundedRuntimeStringContext('copyValue', value),
+                ...getBoundedRuntimeStringContext('successMessage', successMessage),
+            });
             message.error('Unable to copy');
+        }
+    }, []);
+
+    const openInstallLink = useCallback((href: string, linkKey: string, linkLabel: string) => {
+        try {
+            const opened = window.open(href, '_blank', 'noopener,noreferrer');
+            if (!opened) {
+                throw new Error('answerlattice_install_link_open_blocked');
+            }
+        } catch (error) {
+            logRuntimeFailure('answerlattice_install_link_open_failed', error, {
+                surface: 'answerlattice_install_center',
+                ...getBoundedRuntimeStringContext('linkHref', href),
+                ...getBoundedRuntimeStringContext('linkKey', linkKey),
+                ...getBoundedRuntimeStringContext('linkLabel', linkLabel),
+            });
+            message.error(ANSWERLATTICE_INSTALL_LINK_OPEN_FAILED);
         }
     }, []);
 
@@ -353,7 +499,7 @@ export default function AnswerlatticeInstallCenter() {
                                         Copy {item.label}
                                     </Button>
                                 ))}
-                                <Button icon={<LuDownload />} onClick={() => window.open('/api/answerlattice/widget-agent-kit', '_blank', 'noopener,noreferrer')}>
+                                <Button icon={<LuDownload />} onClick={() => openInstallLink('/api/answerlattice/widget-agent-kit', 'widget-agent-kit', 'Widget agent kit')}>
                                     Download Kit
                                 </Button>
                             </Space>
@@ -497,7 +643,7 @@ export default function AnswerlatticeInstallCenter() {
                                             key="open"
                                             size="small"
                                             icon={<LuExternalLink />}
-                                            onClick={() => window.open(item.href, '_blank', 'noopener,noreferrer')}
+                                            onClick={() => openInstallLink(item.href, item.label, item.label)}
                                         >
                                             Open
                                         </Button>,

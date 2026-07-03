@@ -22,6 +22,8 @@ These routes are operational product screens, not overview cards. They render th
 
 MenuList is only the first independent client integration for Answerlattice. The chat monitoring screens remain Answerlattice/platform operator workflows and must not hard-code MenuList-only product assumptions beyond the host route that exposes them in the MenuList More tab.
 
+Runtime note: the current Cloud Function analytics jobs behind these screens are still MenuList-hosted. Feedback Intelligence, KB Quality, and Weekly Narrative run from `functions/src/` and write MenuList `insights/{tId}/stores/{sId}/ai/*` documents; they are not active `functions-answerlattice/` scheduler exports.
+
 ## Mobile Scope
 
 Mobile support is required for emergency and lightweight operator use:

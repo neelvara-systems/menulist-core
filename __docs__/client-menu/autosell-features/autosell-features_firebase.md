@@ -1,9 +1,15 @@
 # AutoSell Features — Firebase Cost Tracking
 
-**Feature:** Automatic Menu Behaviors (Live Indicator, Instant Availability, Time-Based Categories)  
-**Status:** ✅ Production Ready  
-**Last Updated:** February 7, 2026  
+**Feature:** Automatic Menu Behaviors (Live Indicator, Instant Availability, Time-Based Categories)
+**Status:** Firebase cost evidence; not current launch certification
+**Last Updated:** February 7, 2026
 **Priority:** LOW — Zero incremental Firebase cost. All features use existing data.
+
+---
+
+## Current Launch Boundary
+
+This Firebase cost document is customer-facing menu-output cost evidence; it is not current production certification. Current AutoSell/public-menu launch approval requires the active [production-readiness audit](../../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../../production-readiness/external-certification-runbook.md) evidence, Digital Menu Output Constitution checks, physical/mobile browser QA, public cache/deploy evidence, and target production smoke.
 
 ---
 

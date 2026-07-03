@@ -1,10 +1,18 @@
 'use client'
 
 import { FEATURE_FLAGS } from '@config/features';
-import { updateStore } from '@database/stores';
+import { assertStoreUpdateSucceeded, updateStore } from '@database/stores';
 import { logPosSyncSecretRotationAudit } from '@lib/posSync/secretAudit';
 import { formatWebhookSecretPreview } from '@lib/posSync/secretDisplay';
+import {
+    isPosSyncTestResponse,
+    isSuccessfulPosSyncTestResponse,
+    POS_SYNC_TEST_REQUEST_POLICY,
+    POS_SYNC_TEST_RESPONSE_JSON_MAX_BYTES,
+    type PosSyncTestResponse,
+} from '@lib/posSync/testResponse';
 import { validatePosSyncWebhookUrl } from '@lib/posSync/webhookUrl';
+import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { Modal, theme } from 'antd';
 import { useSession } from 'next-auth/react';
@@ -13,17 +21,111 @@ import { useContext, useEffect, useMemo, useState } from 'react';
 import { LuArrowRight, LuCheck, LuCopy, LuEye, LuEyeOff, LuRefreshCw, LuSend, LuShield, LuWifi, LuWifiOff } from 'react-icons/lu';
 import { Button, Card, Collapse, Flex, Input, Switch, Tag, Text, TextArea, Toast } from '../antd';
 import MobileSettingsScreenHeader from '../components/MobileSettingsScreenHeader';
+import {
+    getBoundedMobileOwnerStringContext,
+    getMobileOwnerStoreLogContext,
+    logMobileOwnerFailure,
+} from '../utils/mobileOwnerDiagnostics';
 
 interface MobilePosSyncScreenProps {
     onBack: () => void;
 }
 
 const REGENERATE_SECRET_CONFIRMATION = 'REGENERATE';
+const POS_SYNC_CONNECTION_ISSUE_MESSAGE = 'Could not reach connected system';
+const MOBILE_POS_SYNC_COPY_UNAVAILABLE = 'mobile_pos_sync_copy_unavailable';
+const MOBILE_POS_SYNC_COPY_FALLBACK_FAILED = 'mobile_pos_sync_copy_fallback_failed';
 
 interface SecretRotationAuditDraft {
     secretRotatedAt: string;
     secretRotatedByEmail: string;
     secretRotatedByUserId: string;
+}
+
+const hasMobilePosSyncClipboardWrite = (): boolean => (
+    typeof navigator !== 'undefined'
+    && Boolean(navigator.clipboard)
+    && typeof navigator.clipboard.writeText === 'function'
+);
+
+const hasMobilePosSyncCopyFallback = (): boolean => (
+    typeof document !== 'undefined'
+    && typeof document.createElement === 'function'
+    && typeof document.execCommand === 'function'
+    && Boolean(document.body)
+);
+
+const copyMobilePosSyncText = async (value: string): Promise<void> => {
+    let clipboardWriteError: unknown;
+
+    if (hasMobilePosSyncClipboardWrite()) {
+        try {
+            await navigator.clipboard.writeText(value);
+            return;
+        } catch (error) {
+            clipboardWriteError = error;
+            // Continue to the acknowledged textarea fallback before showing failure copy.
+        }
+    }
+
+    if (!hasMobilePosSyncCopyFallback()) {
+        throw clipboardWriteError || new Error(MOBILE_POS_SYNC_COPY_UNAVAILABLE);
+    }
+
+    const textarea = document.createElement('textarea');
+    textarea.value = value;
+    textarea.setAttribute('readonly', '');
+    textarea.style.position = 'fixed';
+    textarea.style.left = '-9999px';
+    textarea.style.top = '0';
+    document.body.appendChild(textarea);
+    textarea.focus();
+    textarea.select();
+
+    try {
+        const copied = document.execCommand('copy');
+        if (!copied) {
+            throw new Error(MOBILE_POS_SYNC_COPY_FALLBACK_FAILED);
+        }
+    } finally {
+        document.body.removeChild(textarea);
+    }
+};
+
+async function readMobilePosSyncTestResponse(
+    response: Response,
+    storeId?: unknown,
+    tenantId?: unknown,
+): Promise<PosSyncTestResponse | null> {
+    let payload: unknown;
+    try {
+        payload = await readJsonResponseWithLimit<unknown>(
+            response,
+            POS_SYNC_TEST_RESPONSE_JSON_MAX_BYTES,
+        );
+    } catch (error) {
+        logMobileOwnerFailure('mobile_pos_sync_test_response_parse_failed', error, {
+            ...getMobileOwnerStoreLogContext(storeId, tenantId),
+            maxBytes: POS_SYNC_TEST_RESPONSE_JSON_MAX_BYTES,
+            responseOk: response.ok,
+            responseStatus: response.status,
+        });
+        return null;
+    }
+
+    if (!isPosSyncTestResponse(payload)) {
+        const invalidResponseError = new Error('mobile_pos_sync_test_response_invalid') as Error & { status?: number };
+        invalidResponseError.status = response.status;
+        logMobileOwnerFailure('mobile_pos_sync_test_response_invalid', invalidResponseError, {
+            ...getMobileOwnerStoreLogContext(storeId, tenantId),
+            maxBytes: POS_SYNC_TEST_RESPONSE_JSON_MAX_BYTES,
+            responseOk: response.ok,
+            responseStatus: response.status,
+        });
+        return null;
+    }
+
+    return payload;
 }
 
 export default function MobilePosSyncScreen({ onBack }: MobilePosSyncScreenProps) {
@@ -48,6 +150,7 @@ export default function MobilePosSyncScreen({ onBack }: MobilePosSyncScreenProps
         lastSentAt: storeDetails?.posSync?.lastSentAt ?? null,
         lastStatus: storeDetails?.posSync?.lastStatus ?? 'never_sent',
         menuVersion: storeDetails?.posSync?.menuVersion ?? 0,
+        consecutiveFailures: storeDetails?.posSync?.consecutiveFailures ?? 0,
         secretRotatedAt: storeDetails?.posSync?.secretRotatedAt ?? '',
         secretRotatedByEmail: storeDetails?.posSync?.secretRotatedByEmail ?? '',
         secretRotatedByUserId: storeDetails?.posSync?.secretRotatedByUserId ?? '',
@@ -88,17 +191,35 @@ export default function MobilePosSyncScreen({ onBack }: MobilePosSyncScreenProps
 
         setIsSaving(true);
         try {
-            await updateStore({
+            const writeResult = await updateStore({
                 storeId: storeDetails.storeId,
                 tenantId: storeDetails.tenantId,
                 posSync: nextPosSync,
             });
+            assertStoreUpdateSucceeded(
+                writeResult,
+                storeDetails.storeId,
+                'mobile_pos_sync_store_update_rejected',
+            );
             setStoreDetails({
                 ...storeDetails,
                 posSync: nextPosSync,
             });
             return true;
-        } catch {
+        } catch (error) {
+            logMobileOwnerFailure('mobile_pos_sync_settings_save_failed', error, {
+                ...getMobileOwnerStoreLogContext(storeDetails.storeId, storeDetails.tenantId),
+                ...getBoundedMobileOwnerStringContext('status', nextPosSync.status),
+                enabled: Boolean(nextPosSync.enabled),
+                previousEnabled: Boolean(currentPosSync.enabled),
+                hasWebhookUrl: Boolean(nextPosSync.webhookUrl),
+                webhookUrlLength: String(nextPosSync.webhookUrl || '').length,
+                hasWebhookSecret: Boolean(nextPosSync.webhookSecret),
+                webhookSecretLength: String(nextPosSync.webhookSecret || '').length,
+                pendingSecretRotation: Boolean(pendingSecretRotationAudit),
+                webhookUrlChanged: String(nextPosSync.webhookUrl || '').trim() !== originalDraft.webhookUrl.trim(),
+                secretChanged: nextPosSync.webhookSecret !== originalDraft.webhookSecret,
+            });
             Toast.show({ content: 'Failed to save external sync settings.', duration: 1500 });
             return false;
         } finally {
@@ -142,14 +263,20 @@ export default function MobilePosSyncScreen({ onBack }: MobilePosSyncScreenProps
             normalizedWebhookUrl = validation.normalizedUrl;
         }
 
+        const connectionChanged = enabled !== currentPosSync.enabled
+            || normalizedWebhookUrl !== currentPosSync.webhookUrl
+            || webhookSecret !== currentPosSync.webhookSecret
+            || Boolean(pendingSecretRotationAudit);
+
         const nextPosSync = {
             ...currentPosSync,
             enabled,
             webhookSecret,
-            lastError: enabled ? currentPosSync.lastError : '',
+            consecutiveFailures: enabled && !connectionChanged ? currentPosSync.consecutiveFailures : 0,
+            lastError: enabled && !connectionChanged && currentPosSync.lastError ? POS_SYNC_CONNECTION_ISSUE_MESSAGE : '',
             menuVersion: enabled ? currentPosSync.menuVersion : 0,
             ...(pendingSecretRotationAudit ?? {}),
-            status: enabled ? (currentPosSync.status === 'disabled' ? 'healthy' : currentPosSync.status) : 'disabled',
+            status: enabled ? (connectionChanged || currentPosSync.status === 'disabled' ? 'healthy' : currentPosSync.status) : 'disabled',
             webhookUrl: normalizedWebhookUrl,
         };
 
@@ -217,9 +344,18 @@ export default function MobilePosSyncScreen({ onBack }: MobilePosSyncScreenProps
     const handleCopySecret = async () => {
         if (!webhookSecret) return;
         try {
-            await navigator.clipboard.writeText(webhookSecret);
+            await copyMobilePosSyncText(webhookSecret);
             Toast.show({ content: t('copySecret'), duration: 1000 });
-        } catch {
+        } catch (error) {
+            logMobileOwnerFailure('mobile_pos_sync_secret_copy_failed', error, {
+                ...getMobileOwnerStoreLogContext(storeDetails?.storeId, storeDetails?.tenantId),
+                hasWebhookSecret: Boolean(webhookSecret),
+                webhookSecretLength: webhookSecret.length,
+                secretVisible,
+                pendingSecretRotation: Boolean(pendingSecretRotationAudit),
+                hasClipboardWrite: hasMobilePosSyncClipboardWrite(),
+                hasCopyFallback: hasMobilePosSyncCopyFallback(),
+            });
             Toast.show({ content: 'Unable to copy secret.', duration: 1500 });
         }
     };
@@ -231,6 +367,7 @@ export default function MobilePosSyncScreen({ onBack }: MobilePosSyncScreenProps
         setTestResult(null);
         try {
             const response = await fetch('/api/pos-sync/test', {
+                ...POS_SYNC_TEST_REQUEST_POLICY,
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -238,22 +375,35 @@ export default function MobilePosSyncScreen({ onBack }: MobilePosSyncScreenProps
                     tenantId: storeDetails.tenantId,
                 }),
             });
-            const data = await response.json();
-            if (data.success) {
+            const data = await readMobilePosSyncTestResponse(response, storeDetails.storeId, storeDetails.tenantId);
+            if (response.ok && isSuccessfulPosSyncTestResponse(data)) {
                 setTestResult({
                     success: true,
                     message: `Connection reachable (${data.responseTime}ms, HTTP ${data.statusCode})`,
                 });
+            } else if (data) {
+                const testError = new Error('mobile_pos_sync_test_rejected') as Error & { status?: number };
+                testError.status = response.status;
+                logMobileOwnerFailure('mobile_pos_sync_test_failed', testError, {
+                    ...getMobileOwnerStoreLogContext(storeDetails.storeId, storeDetails.tenantId),
+                    responseOk: response.ok,
+                    apiStatusCode: typeof data.statusCode === 'number' ? data.statusCode : undefined,
+                });
+                setTestResult({
+                    success: false,
+                    message: POS_SYNC_CONNECTION_ISSUE_MESSAGE,
+                });
             } else {
                 setTestResult({
                     success: false,
-                    message: data.error || 'Could not reach connected system',
+                    message: POS_SYNC_CONNECTION_ISSUE_MESSAGE,
                 });
             }
-        } catch {
+        } catch (error) {
+            logMobileOwnerFailure('mobile_pos_sync_test_failed', error, getMobileOwnerStoreLogContext(storeDetails.storeId, storeDetails.tenantId));
             setTestResult({
                 success: false,
-                message: 'Network error',
+                message: POS_SYNC_CONNECTION_ISSUE_MESSAGE,
             });
         } finally {
             setIsTesting(false);
@@ -434,7 +584,7 @@ export default function MobilePosSyncScreen({ onBack }: MobilePosSyncScreenProps
                             </Tag>
                         ) : null}
                         {currentPosSync.lastError ? (
-                            <Text type="secondary">{currentPosSync.lastError}</Text>
+                            <Text type="secondary">{POS_SYNC_CONNECTION_ISSUE_MESSAGE}</Text>
                         ) : null}
                     </Flex>
                 </Card>

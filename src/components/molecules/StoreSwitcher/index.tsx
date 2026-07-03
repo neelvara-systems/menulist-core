@@ -6,14 +6,18 @@
  */
 
 import { getStoreContextName } from '@lib/businessIdentity/names';
+import { AUTH_ACCOUNT_REQUEST_POLICY } from '@lib/auth/accountClientResponses';
 import { refreshFirebaseAuthClaims } from '@lib/auth/firebaseAuthSync';
-import { logger } from '@lib/monitoring/logger';
+import { getBoundedAuthStringContext, logAuthFailure } from '@lib/auth/authDiagnostics';
 import { getAccessibleStoreSummaries } from '@lib/multiOutlet/storeSwitchAccess';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { Select } from 'antd';
 import { useSession } from 'next-auth/react';
 import { useContext, useMemo } from 'react';
 import { LuMapPin, LuStar } from 'react-icons/lu';
+
+const HEADER_STORE_SWITCH_FAILED = 'header_store_switch_failed';
+const HEADER_STORE_SWITCH_REJECTED = 'header_store_switch_rejected';
 
 export default function StoreSwitcher() {
     const { tenantDetails, storeDetails, userPermissions, activeStoreContext, setActiveStoreContext } =
@@ -44,24 +48,42 @@ export default function StoreSwitcher() {
         ),
     }));
 
+    const getHeaderStoreSwitchLogContext = (targetStoreId: number) => ({
+        accessibleStoreCount: accessibleStoresList.length,
+        hasStoreSwitchPermission: Boolean(userPermissions?.canSwitchStores),
+        targetMatchesLoginStore: Number(targetStoreId) === loginStoreId,
+        ...getBoundedAuthStringContext('currentStoreId', currentStoreId),
+        ...getBoundedAuthStringContext('loginStoreId', loginStoreId),
+        ...getBoundedAuthStringContext('targetStoreId', targetStoreId),
+        ...getBoundedAuthStringContext('tenantId', session?.user?.tenantId),
+        ...getBoundedAuthStringContext('userId', session?.user?.id),
+    });
+
     const handleSwitch = async (targetStoreId: number) => {
-        if (Number(targetStoreId) === loginStoreId) {
-            if (loginStoreId) await refreshFirebaseAuthClaims(loginStoreId);
-            setActiveStoreContext(null);
-            return;
-        }
         try {
+            if (Number(targetStoreId) === loginStoreId) {
+                if (loginStoreId) await refreshFirebaseAuthClaims(loginStoreId);
+                setActiveStoreContext(null);
+                return;
+            }
+
             const res = await fetch('/api/auth/switch-store', {
+                ...AUTH_ACCOUNT_REQUEST_POLICY,
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ targetStoreId }),
             });
-            if (res.ok) {
-                await refreshFirebaseAuthClaims(targetStoreId);
-                setActiveStoreContext(targetStoreId);
+
+            if (!res.ok) {
+                const switchError = new Error(HEADER_STORE_SWITCH_REJECTED) as Error & { status?: number };
+                switchError.status = res.status;
+                throw switchError;
             }
-        } catch (e) {
-            logger.error('[StoreSwitcher] Switch failed', e);
+
+            await refreshFirebaseAuthClaims(targetStoreId);
+            setActiveStoreContext(targetStoreId);
+        } catch (error) {
+            logAuthFailure(HEADER_STORE_SWITCH_FAILED, error, getHeaderStoreSwitchLogContext(targetStoreId));
         }
     };
 

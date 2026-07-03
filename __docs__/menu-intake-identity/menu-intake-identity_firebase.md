@@ -1,7 +1,7 @@
 # Menu Intake Identity — Firebase Cost
 
 **Status:** Implemented  
-**Last Updated:** May 3, 2026
+**Last Updated:** June 30, 2026
 
 ## Operations
 
@@ -27,3 +27,4 @@ The expected extra cost is justified when it prevents a wrong-project extraction
 - Use rate limiting before Gemini.
 - Do not run the preflight repeatedly for the same already-confirmed upload within a single UI action.
 - Do not write suggested identity fields unless the owner explicitly chooses `Save selected`.
+- June 30 browser request-policy hardening is Firebase-cost neutral. The shared desktop/mobile preflight helper now submits `POST /api/menu-intake-identity` with same-origin credentials, `no-store` cache policy, and manual redirect handling before bounded response parsing. This adds no Firestore reads/writes/deletes, Storage operations, provider calls, job writes, rules, indexes, Cloud Function logic, Firebase deploy requirement, or Vercel deploy action.

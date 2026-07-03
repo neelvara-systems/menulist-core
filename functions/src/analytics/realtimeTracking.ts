@@ -11,6 +11,33 @@
 import * as admin from 'firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
 import { DB_COLLECTIONS, getChatAnalyticsDocId } from '../constants/database';
+import {
+  analyticsLogger,
+  getAnalyticsErrorContext,
+  getAnalyticsIdContext,
+} from './analyticsDiagnostics';
+
+const REALTIME_CHAT_COMPLETION_TRACKING_FAILED = 'REALTIME_CHAT_COMPLETION_TRACKING_FAILED';
+const REALTIME_FEEDBACK_TRACKING_FAILED = 'REALTIME_FEEDBACK_TRACKING_FAILED';
+const REALTIME_REGENERATION_TRACKING_FAILED = 'REALTIME_REGENERATION_TRACKING_FAILED';
+const REALTIME_TODAY_STATS_FETCH_FAILED = 'REALTIME_TODAY_STATS_FETCH_FAILED';
+const REALTIME_TODAY_DOC_INIT_FAILED = 'REALTIME_TODAY_DOC_INIT_FAILED';
+
+function getRealtimeScope(data: {
+  tId: string;
+  sId: string;
+  sessionId?: string;
+}): {
+  tenantId: ReturnType<typeof getAnalyticsIdContext>;
+  storeId: ReturnType<typeof getAnalyticsIdContext>;
+  sessionId?: ReturnType<typeof getAnalyticsIdContext>;
+} {
+  return {
+    tenantId: getAnalyticsIdContext(data.tId),
+    storeId: getAnalyticsIdContext(data.sId),
+    ...(data.sessionId ? { sessionId: getAnalyticsIdContext(data.sessionId) } : {}),
+  };
+}
 
 // ================================================================
 // TYPES
@@ -76,9 +103,19 @@ export async function onChatComplete(data: ChatCompletionData): Promise<void> {
     // Merge mode - preserves existing data
     await todayDoc.set(updateData, { merge: true });
 
-    console.log(`[Realtime Tracking] Chat completed: ${data.sessionId}`);
+    analyticsLogger.info('[Realtime Tracking] Chat completion tracked', {
+      ...getRealtimeScope(data),
+      mode: data.mode,
+      messageCount: data.messageCount || 0,
+      regenerationCount: data.regenerationCount || 0,
+      hasFeedback: data.hasFeedback,
+    });
   } catch (error) {
-    console.error('[Realtime Tracking] Error tracking chat completion:', error);
+    analyticsLogger.error('[Realtime Tracking] Chat completion tracking failed', {
+      ...getRealtimeScope(data),
+      failureCode: REALTIME_CHAT_COMPLETION_TRACKING_FAILED,
+      error: getAnalyticsErrorContext(error),
+    });
     // Don't throw - tracking failures shouldn't break chat flow
   }
 }
@@ -112,9 +149,17 @@ export async function onFeedbackAdded(data: {
 
     await doc.set(updateData, { merge: true });
 
-    console.log(`[Realtime Tracking] Feedback added: ${data.isPositive ? 'positive' : 'negative'}`);
+    analyticsLogger.info('[Realtime Tracking] Feedback tracked', {
+      ...getRealtimeScope(data),
+      targetDate,
+      isPositive: data.isPositive,
+    });
   } catch (error) {
-    console.error('[Realtime Tracking] Error tracking feedback:', error);
+    analyticsLogger.error('[Realtime Tracking] Feedback tracking failed', {
+      ...getRealtimeScope(data),
+      failureCode: REALTIME_FEEDBACK_TRACKING_FAILED,
+      error: getAnalyticsErrorContext(error),
+    });
   }
 }
 
@@ -138,9 +183,16 @@ export async function onRegenerationEvent(data: {
       lastUpdated: FieldValue.serverTimestamp(),
     }, { merge: true });
 
-    console.log('[Realtime Tracking] Regeneration tracked');
+    analyticsLogger.info('[Realtime Tracking] Regeneration tracked', {
+      ...getRealtimeScope(data),
+      targetDate,
+    });
   } catch (error) {
-    console.error('[Realtime Tracking] Error tracking regeneration:', error);
+    analyticsLogger.error('[Realtime Tracking] Regeneration tracking failed', {
+      ...getRealtimeScope(data),
+      failureCode: REALTIME_REGENERATION_TRACKING_FAILED,
+      error: getAnalyticsErrorContext(error),
+    });
   }
 }
 
@@ -194,7 +246,11 @@ export async function getTodayLiveStats(data: {
       totalRegenerations: docData.totalRegenerations || 0,
     };
   } catch (error) {
-    console.error('[Realtime Tracking] Error fetching today\'s stats:', error);
+    analyticsLogger.error('[Realtime Tracking] Today stats fetch failed', {
+      ...getRealtimeScope(data),
+      failureCode: REALTIME_TODAY_STATS_FETCH_FAILED,
+      error: getAnalyticsErrorContext(error),
+    });
     return {
       totalChats: 0,
       qnaChats: 0,
@@ -240,8 +296,15 @@ export async function initializeTodayDoc(data: {
       lastUpdated: FieldValue.serverTimestamp(),
     }, { merge: true });
 
-    console.log(`[Realtime Tracking] Initialized document for ${today}`);
+    analyticsLogger.info('[Realtime Tracking] Initialized today document', {
+      ...getRealtimeScope(data),
+      date: today,
+    });
   } catch (error) {
-    console.error('[Realtime Tracking] Error initializing document:', error);
+    analyticsLogger.error('[Realtime Tracking] Today document initialization failed', {
+      ...getRealtimeScope(data),
+      failureCode: REALTIME_TODAY_DOC_INIT_FAILED,
+      error: getAnalyticsErrorContext(error),
+    });
   }
 }

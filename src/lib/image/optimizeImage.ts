@@ -127,7 +127,7 @@ function loadImage(source: File | Blob | string): Promise<HTMLImageElement> {
  * @example
  * ```typescript
  * const optimized = await optimizeImage(file, { maxDimension: 1500, quality: 0.7 });
- * console.log(`Reduced from ${optimized.originalSize} to ${optimized.optimizedSize} bytes`);
+ * const savedBytes = optimized.originalSize - optimized.optimizedSize;
  * ```
  */
 export async function optimizeImage(

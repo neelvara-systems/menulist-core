@@ -11,7 +11,7 @@
 | `npx tsc --noEmit --incremental false --pretty false` | Passed after store-level default-doc simplification |
 | `npm run lint -- --file ...` for registry/editor/print-assets source files | Passed after store-level default-doc simplification |
 | `git diff --check -- ...` | Passed after store-level default-doc simplification |
-| `firebase deploy --only firestore:rules,storage --project ecomsai` | Passed; Firestore and Storage rules released |
+| `firebase deploy --only firestore:rules,storage --project ecomsai` | Historical deployment evidence only for the retired shared MenuList project; current MenuList rules/storage deploy evidence must target `menulist-qa` first with `firebase.json`, then production only after QA evidence and explicit production approval. |
 | Chrome smoke on `http://localhost:3000/assets` | Passed route render, asset switching, template options modal, and editor open/close. Save attempt is externally blocked by Firebase Storage bucket quota and now shows a clear inline storage-full message with no console error. |
 
 ## Reviewed Behavior
@@ -28,7 +28,7 @@
 | Single-template actions | Open/delete paths match template id plus product, source, and optional asset id before loading Storage or rewriting the `default` index. |
 | Asset switching | The route does not refetch registry docs when the selected asset type changes; it filters the already-loaded platform/user arrays by product, source, and asset. |
 | Source freshness | Saved printable templates rehydrate QR and short-link source refs from the selected project before editing/download. |
-| Browser lifecycle | Generated template opens in the options modal, launches the editor, and closes back to `/assets` without console errors. Save/delete code paths are implemented, but the live bucket currently returns `storage/quota-exceeded`, so the browser save round trip cannot complete until storage quota is cleared/upgraded. |
+| Browser lifecycle | Generated template opens in the options modal, launches the editor, and closes back to `/assets` without console errors. Save/delete code paths are implemented, but the live bucket currently returns structured code `storage/quota-exceeded`, so the browser save round trip cannot complete until storage quota is cleared/upgraded. |
 
 ## Remaining Manual QA
 

@@ -4,7 +4,7 @@
 **Status:** 🔒 LOCKED — Permanent separation rules
 **Authority:** Maximum — Overrides all bundling, merging, or feature-sharing proposals
 **Source:** ChatGPT Strategic Session → Cascade Review + Codebase Cross-Check
-**Review:** `__docs__/growthos-addon/_archive/growth-execution-strategy-2026-05-31/_archive/chatgpt-review.md`
+**Review:** GrowthOS ChatGPT review artifact archived outside the active docs tree
 **GrowthOS Current Plan:** `__docs__/growthos-addon/README.md`
 **Positioning Map:** `__docs__/strategy/product-positioning-map.md`
 

@@ -1,12 +1,13 @@
 import TimeSlotPresetForm, { DEFAULT_PRESET_COLORS } from '@atoms/timeSlotPresetForm';
-import { removePresetFromAllCategories, updatePresetInAllCategories } from '@database/projects';
-import { generatePresetId, updateTimeSlotPresets } from '@database/stores';
+import { assertProjectPresetCascadeSucceeded, removePresetFromAllCategories, updatePresetInAllCategories } from '@database/projects';
+import { assertTimeSlotPresetUpdateSucceeded, generatePresetId, updateTimeSlotPresets } from '@database/stores';
 import { TimeSlotPreset } from '@type/platform/store';
 import { formatClockTime } from '@util/dateTime';
 import { Button, Card, Divider, Empty, Flex, message, Modal, Popconfirm, Typography, theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import { useCallback, useState } from 'react';
 import { LuClock, LuPen, LuPlus, LuTrash2 } from 'react-icons/lu';
+import { getBoundedBusinessSettingsStringContext, logBusinessSettingsFailure } from '../utils/businessSettingsDiagnostics';
 
 const { Title, Text } = Typography;
 
@@ -90,6 +91,7 @@ const TimeSlotPresetsTab: React.FC<TimeSlotPresetsTabProps> = ({
         setLoading(true);
         try {
             let updatedPresets: TimeSlotPreset[];
+            let successMessage: string;
 
             if (editingPreset) {
                 // Update existing preset
@@ -101,7 +103,7 @@ const TimeSlotPresetsTab: React.FC<TimeSlotPresetsTabProps> = ({
                     color: formData.color
                 };
                 updatedPresets = presets.map(p => p.id === updatedPreset.id ? updatedPreset : p);
-                message.success(t('timeSlotUpdated'));
+                successMessage = t('timeSlotUpdated');
             } else {
                 // Create new preset with generated ID
                 const newPreset: TimeSlotPreset = {
@@ -112,24 +114,39 @@ const TimeSlotPresetsTab: React.FC<TimeSlotPresetsTabProps> = ({
                     color: formData.color
                 };
                 updatedPresets = [...presets, newPreset];
-                message.success(t('timeSlotCreated'));
+                successMessage = t('timeSlotCreated');
             }
 
             // Persist to DB and update context
-            await updateTimeSlotPresets(storeId, updatedPresets);
+            const writeResult = await updateTimeSlotPresets(storeId, updatedPresets);
+            assertTimeSlotPresetUpdateSucceeded(writeResult);
             if (editingPreset) {
                 const updatedPreset = updatedPresets.find((preset) => preset.id === editingPreset.id);
                 if (updatedPreset) {
-                    await updatePresetInAllCategories(updatedPreset);
+                    const cascadeResult = await updatePresetInAllCategories(updatedPreset);
+                    assertProjectPresetCascadeSucceeded(
+                        cascadeResult,
+                        'business_settings_time_slot_preset_cascade_update_rejected',
+                    );
                 }
             }
             onPresetsChange(updatedPresets);
 
             setIsModalOpen(false);
             resetForm();
+            message.success(successMessage);
         } catch (error) {
+            logBusinessSettingsFailure('business_settings_time_slot_preset_save_failed', error, {
+                ...getBoundedBusinessSettingsStringContext('tenantId', tenantId),
+                ...getBoundedBusinessSettingsStringContext('storeId', storeId),
+                ...getBoundedBusinessSettingsStringContext('presetId', editingPreset?.id),
+                ...getBoundedBusinessSettingsStringContext('label', formData.label),
+                ...getBoundedBusinessSettingsStringContext('startTime', formData.startTime),
+                ...getBoundedBusinessSettingsStringContext('endTime', formData.endTime),
+                isEditing: Boolean(editingPreset),
+                presetCount: presets.length,
+            });
             message.error(t('failedToSaveTimeSlot'));
-            console.error(error);
         } finally {
             setLoading(false);
         }
@@ -140,16 +157,26 @@ const TimeSlotPresetsTab: React.FC<TimeSlotPresetsTabProps> = ({
         try {
             // 1. Remove preset from store
             const updatedPresets = presets.filter(p => p.id !== presetId);
-            await updateTimeSlotPresets(storeId, updatedPresets);
+            const writeResult = await updateTimeSlotPresets(storeId, updatedPresets);
+            assertTimeSlotPresetUpdateSucceeded(writeResult);
 
             // 2. Cascade delete: Remove from all categories that use this preset
-            await removePresetFromAllCategories(presetId);
+            const cascadeResult = await removePresetFromAllCategories(presetId);
+            assertProjectPresetCascadeSucceeded(
+                cascadeResult,
+                'business_settings_time_slot_preset_cascade_delete_rejected',
+            );
 
             onPresetsChange(updatedPresets);
             message.success(t('timeSlotDeleted'));
         } catch (error) {
+            logBusinessSettingsFailure('business_settings_time_slot_preset_delete_failed', error, {
+                ...getBoundedBusinessSettingsStringContext('tenantId', tenantId),
+                ...getBoundedBusinessSettingsStringContext('storeId', storeId),
+                ...getBoundedBusinessSettingsStringContext('presetId', presetId),
+                presetCount: presets.length,
+            });
             message.error(t('failedToDeleteTimeSlot'));
-            console.error(error);
         } finally {
             setLoading(false);
         }

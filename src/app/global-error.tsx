@@ -1,6 +1,7 @@
 "use client";
 
 import ErrorReportButton from "@/components/shared/debug/ErrorReportButton";
+import { getBoundedRuntimeStringContext, logRuntimeFailure } from "@lib/runtime/runtimeDiagnostics";
 import { useEffect, useState } from "react";
 
 // Default colors from constants/common.ts
@@ -42,7 +43,10 @@ export default function GlobalError({ error, reset }: { error: Error & { digest?
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    console.error('[GlobalError]', error);
+    logRuntimeFailure('global_error_boundary_rendered', error, {
+      hasDigest: Boolean(error?.digest),
+      ...getBoundedRuntimeStringContext('digest', error?.digest),
+    });
     setTheme(getPersistedTheme());
     setMounted(true);
   }, [error]);

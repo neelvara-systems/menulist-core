@@ -2,16 +2,18 @@ export const dynamic = 'force-dynamic';
 import { getModelName } from "@constant/AI/models";
 import { getOurChargePaise, getRealCostPaise, getUnitCost } from "@constant/AI/unitCosts";
 import { CHARGE_PER_CREDIT, TOKENS_PER_CREDIT } from "@constant/common";
+import { PERMISSIONS } from "@constant/permissions";
 import { HarmBlockThreshold, HarmCategory } from "@google/genai";
 import { finalizeAiOperationAccounting } from "@lib/ai/accounting";
 import { checkAICapacity } from "@lib/ai/capacityCheck";
-import { getAIGatewayDiagnostics, getAIErrorDiagnostics, getPreviewText } from "@lib/google/genAi/diagnostics";
+import { getAIGatewayDiagnostics, getAIErrorDiagnostics, getPreviewText, getAIRouteLogContext, getAIRouteSecurityContext, logAIRouteFailure } from "@lib/google/genAi/diagnostics";
 import { genAIClient } from "@lib/google/genAi";
 import { logger } from "@lib/monitoring/logger";
 import { getLinkedOutletPolicyBlockReason } from "@lib/multiOutlet/serverOutletPolicy";
+import { requireAnyStorePermission } from "@lib/permissions/server";
 import { checkAIOperationLimit } from "@lib/rateLimit/helpers";
+import { readBoundedJsonBody } from "@lib/security/boundedRequestBody";
 import { validateAPIInput } from "@lib/security/inputValidation";
-import { buildSecurityContext } from "@lib/security/securityContext";
 import { TranslationRequestSchema } from "@lib/validation/apiSchemas";
 import { writeErrorLogEntry, writeLogEntry, writeMissingParamsLogEntry } from 'logs/utils';
 import { NextResponse } from 'next/server';
@@ -20,6 +22,7 @@ import getPrompt, { systemInstruction } from "./prompt";
 
 const AI_MODEL = getModelName('TRANSLATION');
 const LOG_FILE = "translations.log"
+const TRANSLATION_AI_MAX_BODY_BYTES = 1024 * 1024;
 
 const isStringRecord = (value: unknown): value is Record<string, string> =>
     typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -165,26 +168,30 @@ export const POST = withAuth(async (request, session) => {
         if (rateLimitResponse) return rateLimitResponse;
 
         // 🔒 INPUT VALIDATION: Prevent injection attacks (OWASP A03)
-        const rawData = await request.json();
+        const bodyResult = await readBoundedJsonBody(request, TRANSLATION_AI_MAX_BODY_BYTES);
+        if (bodyResult.ok === false) return bodyResult.response;
+
+        const rawData = bodyResult.data as any;
         const validation = validateAPIInput(TranslationRequestSchema, rawData);
 
         if (!validation.success) {
             const errorMsg = 'error' in validation ? validation.error : 'Invalid input';
+            const attemptedData = getAIRouteLogContext({
+                action: rawData?.action,
+                inputKeyCount: Object.keys(rawData?.inputJson || {}).length,
+                sourceLang: rawData?.sourceLang?.code || rawData?.sourceLang,
+                targetLang: rawData?.targetLang?.code || rawData?.targetLang,
+            });
 
             // Log to Sentry (potential attack attempt)
             logger.security('Input Validation Failed', {
-                ...buildSecurityContext(session, request),
+                ...getAIRouteSecurityContext(session, request),
                 endpoint: '/api/translations',
                 error: errorMsg,
-                attemptedData: {
-                    inputJsonKeys: Object.keys(rawData?.inputJson || {}).length,
-                    targetLang: rawData?.targetLang,
-                    sourceLang: rawData?.sourceLang,
-                    action: rawData?.action,
-                },
+                attemptedData,
             }, 'medium');
 
-            await writeMissingParamsLogEntry(LOG_FILE, userId, undefined, undefined, rawData);
+            await writeMissingParamsLogEntry(LOG_FILE, userId, undefined, undefined, attemptedData);
             return NextResponse.json({
                 error: 'Invalid input',
                 details: errorMsg
@@ -195,7 +202,15 @@ export const POST = withAuth(async (request, session) => {
         const { inputJson, targetLang, sourceLang, action, projectId, fileId } = validated;
         requestAction = action;
         const targetLanguages = Array.isArray(targetLang) ? targetLang : [targetLang];
-        logger.info('Translation requested', {
+        const permissionError = await requireAnyStorePermission(
+            request,
+            session,
+            [PERMISSIONS.GENERATE_DESCRIPTIONS],
+            "Translation generation",
+        );
+        if (permissionError) return permissionError;
+
+        logger.info('Translation requested', getAIRouteLogContext({
             action,
             fileId,
             inputKeyCount: Object.keys(inputJson || {}).length,
@@ -208,14 +223,14 @@ export const POST = withAuth(async (request, session) => {
             targetLangs: targetLanguages.map((language) => language.code),
             tenantId: session.tId,
             userId,
-        });
+        }));
 
         if (projectId) {
             if (!verifyTenantAccess(session, session.tId, session.sId, request)) {
                 logger.security('Tenant Access Violation - Translation API', {
-                    ...buildSecurityContext(session, request),
+                    ...getAIRouteSecurityContext(session, request),
                     endpoint: '/api/translations',
-                    attemptedProjectId: projectId,
+                    attemptedProject: getAIRouteLogContext({ projectId }),
                 }, 'critical');
                 return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
             }
@@ -230,9 +245,9 @@ export const POST = withAuth(async (request, session) => {
             });
             if (outletPolicyBlockReason) {
                 logger.security('Outlet Policy Violation - Translation API', {
-                    ...buildSecurityContext(session, request),
+                    ...getAIRouteSecurityContext(session, request),
                     endpoint: '/api/translations',
-                    projectId,
+                    project: getAIRouteLogContext({ projectId }),
                     reason: outletPolicyBlockReason,
                 }, 'medium');
                 return NextResponse.json({ error: outletPolicyBlockReason }, { status: 403 });
@@ -285,8 +300,7 @@ export const POST = withAuth(async (request, session) => {
             const errorDiagnostics = getAIErrorDiagnostics(generationError);
             const gatewayDiagnostics = getAIGatewayDiagnostics(genAIClient);
 
-            logger.error('Translation model call failed', generationError, {
-                ...errorDiagnostics,
+            logAIRouteFailure('translation_model_call_failed', generationError, {
                 action,
                 gatewayDiagnostics,
                 inputKeyCount: Object.keys(inputJson || {}).length,
@@ -298,7 +312,6 @@ export const POST = withAuth(async (request, session) => {
                 storeId: session.sId,
                 targetLangs: targetLanguages.map((language) => language.code),
                 tenantId: session.tId,
-                userId,
             });
             await writeLogEntry({
                 logFileName: LOG_FILE,
@@ -336,12 +349,12 @@ export const POST = withAuth(async (request, session) => {
             generatedData = JSON.parse(response.text);
         } catch (parseError) {
             // Retry once — LLMs occasionally produce malformed JSON
-            logger.warn('Translation returned invalid JSON, retrying once', {
+            logger.warn('Translation returned invalid JSON, retrying once', getAIRouteLogContext({
                 inputKeyCount: Object.keys(inputJson || {}).length,
                 isBatch: Array.isArray(targetLang),
                 model: AI_MODEL,
-                rawTextLength: response.text?.length || 0,
-                rawTextPreview: getPreviewText(response.text, 300),
+                responseTextLength: response.text?.length || 0,
+                responseTextSummary: getPreviewText(response.text, 300),
                 requestId,
                 responseUsage: response.usageMetadata || null,
                 sourceLang: sourceLang.code,
@@ -349,7 +362,7 @@ export const POST = withAuth(async (request, session) => {
                 targetLangs: targetLanguages.map((language) => language.code),
                 tenantId: session.tId,
                 userId,
-            });
+            }));
             let retryResponse;
             try {
                 retryResponse = await genAIClient.models.generateContent({
@@ -361,8 +374,7 @@ export const POST = withAuth(async (request, session) => {
                 const errorDiagnostics = getAIErrorDiagnostics(retryGenerationError);
                 const gatewayDiagnostics = getAIGatewayDiagnostics(genAIClient);
 
-                logger.error('Translation retry model call failed', retryGenerationError, {
-                    ...errorDiagnostics,
+                logAIRouteFailure('translation_retry_model_call_failed', retryGenerationError, {
                     action,
                     attempt: 'retry',
                     gatewayDiagnostics,
@@ -375,7 +387,6 @@ export const POST = withAuth(async (request, session) => {
                     storeId: session.sId,
                     targetLangs: targetLanguages.map((language) => language.code),
                     tenantId: session.tId,
-                    userId,
                 });
                 await writeLogEntry({
                     logFileName: LOG_FILE,
@@ -409,19 +420,18 @@ export const POST = withAuth(async (request, session) => {
                 generatedData = JSON.parse(retryResponse.text);
                 response = retryResponse;
             } catch (retryParseError) {
-                logger.error('Translation returned invalid JSON after retry', retryParseError, {
+                logAIRouteFailure('translation_invalid_json_after_retry', retryParseError, {
                     inputKeyCount: Object.keys(inputJson || {}).length,
                     isBatch: Array.isArray(targetLang),
                     model: AI_MODEL,
-                    rawTextLength: retryResponse.text.length,
-                    rawTextPreview: getPreviewText(retryResponse.text, 300),
+                    responseTextLength: retryResponse.text.length,
+                    responseTextSummary: getPreviewText(retryResponse.text, 300),
                     requestId,
                     responseUsage: retryResponse.usageMetadata || null,
                     sourceLang: sourceLang.code,
                     storeId: session.sId,
                     targetLangs: targetLanguages.map((language) => language.code),
                     tenantId: session.tId,
-                    userId,
                 });
                 await writeLogEntry({
                     logFileName: LOG_FILE,
@@ -433,8 +443,8 @@ export const POST = withAuth(async (request, session) => {
                         inputKeyCount: Object.keys(inputJson || {}).length,
                         isBatch: Array.isArray(targetLang),
                         model: AI_MODEL,
-                        rawTextLength: retryResponse.text.length,
-                        rawTextPreview: getPreviewText(retryResponse.text, 300),
+                        responseTextLength: retryResponse.text.length,
+                        responseTextSummary: getPreviewText(retryResponse.text, 300),
                         requestId,
                         responseUsage: retryResponse.usageMetadata || null,
                         sourceLang: sourceLang.code,
@@ -444,7 +454,9 @@ export const POST = withAuth(async (request, session) => {
                     },
                     error: retryParseError,
                 });
-                throw new Error('Translation failed: AI returned invalid JSON after retry');
+                const translationError = new Error('Translation failed: AI returned invalid JSON after retry');
+                (translationError as unknown as Record<string, unknown>).__translationLogged = true;
+                throw translationError;
             }
         }
 
@@ -478,7 +490,7 @@ export const POST = withAuth(async (request, session) => {
             action,
             unitsConsumed: 0,
             clientResponse: normalizedData,
-            geminiResponse: JSON.stringify(response),
+            geminiResponse: response,
             generationConfig,
             model: AI_MODEL,
             promptTokenCount: response.usageMetadata?.promptTokenCount || 0,
@@ -519,9 +531,10 @@ export const POST = withAuth(async (request, session) => {
             transactionObject.transactionId = accounting.transactionId;
             remainingBalance = accounting.remainingBalance;
         } catch (transactionError) {
-            logger.error('Failed to record translation transaction', transactionError, {
+            logAIRouteFailure('translation_accounting_failed', transactionError, {
                 action,
                 fileId,
+                model: AI_MODEL,
                 projectId,
                 requestId,
                 storeId: session.sId,
@@ -547,9 +560,10 @@ export const POST = withAuth(async (request, session) => {
         });
 
         if (hasPartialCoverage) {
-            logger.warn('Translation completed with partial coverage', {
+            logger.warn('Translation completed with partial coverage', getAIRouteLogContext({
                 action,
                 fileId,
+                fallbackKeyCount: translationCoverage.reduce((total, entry) => total + entry.fallbackKeyCount, 0),
                 inputKeyCount: inputKeys.length,
                 projectId,
                 requestId,
@@ -557,11 +571,12 @@ export const POST = withAuth(async (request, session) => {
                 storeId: session.sId,
                 targetLangs: targetLanguages.map((language) => language.code),
                 tenantId: session.tId,
-                translationCoverage,
+                translatedKeyCount: translationCoverage.reduce((total, entry) => total + entry.translatedKeyCount, 0),
+                translationCoverageCount: translationCoverage.length,
                 transactionId: transactionObject.transactionId,
-            });
+            }));
         } else {
-            logger.info('Translation completed with full coverage', {
+            logger.info('Translation completed with full coverage', getAIRouteLogContext({
                 action,
                 fileId,
                 inputKeyCount: inputKeys.length,
@@ -573,7 +588,7 @@ export const POST = withAuth(async (request, session) => {
                 targetLangs: targetLanguages.map((language) => language.code),
                 tenantId: session.tId,
                 transactionId: transactionObject.transactionId,
-            });
+            }));
         }
 
         return NextResponse.json({
@@ -590,12 +605,11 @@ export const POST = withAuth(async (request, session) => {
 
     } catch (error) {
         if (!(error && typeof error === 'object' && '__translationLogged' in error)) {
-            logger.error('Translation API error', error, {
+            logAIRouteFailure('translation_api_failed', error, {
                 action: requestAction,
                 gatewayDiagnostics: getAIGatewayDiagnostics(genAIClient),
                 model: AI_MODEL,
                 requestId,
-                ...getAIErrorDiagnostics(error),
                 storeId: session.sId,
                 tenantId: session.tId,
                 userId,

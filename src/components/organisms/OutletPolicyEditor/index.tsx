@@ -14,6 +14,7 @@
 
 import { OUTLET_POLICY_CATEGORIES } from '@config/outletPolicy';
 import { updateOutletPolicy } from '@database/multiOutlet';
+import { getBoundedMultiOutletStringContext, logMultiOutletFailure } from '@lib/multiOutlet/diagnostics';
 import { DEFAULT_OUTLET_POLICY, OutletPolicy } from '@type/multiOutlet.types';
 import { Card, Divider, message, Space, Switch, Tag, Tooltip, Typography } from 'antd';
 import { useCallback, useEffect, useState } from 'react';
@@ -55,8 +56,12 @@ export default function OutletPolicyEditor({
             setPolicy(updatedPolicy);
             onPolicyUpdate?.(updatedPolicy);
             message.success('Outlet rules updated');
-        } catch (err: any) {
-            message.error(err?.message || 'Failed to update policy');
+        } catch (err) {
+            logMultiOutletFailure('desktop_outlet_policy_update_failed', err, {
+                ...getBoundedMultiOutletStringContext('storeId', storeId),
+                ...getBoundedMultiOutletStringContext('policyKey', key),
+            });
+            message.error('Failed to update policy');
         } finally {
             setSaving(null);
         }

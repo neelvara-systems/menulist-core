@@ -1,7 +1,9 @@
 # Razorpay Payment System — Documentation Hub
 
-**Status:** Production Ready — Billing Architecture FROZEN | Razorpay is the ONLY payment provider
-**Last Updated:** May 20, 2026
+**Status:** Billing architecture reference; not current launch certification | Razorpay is the ONLY payment provider
+**Last Updated:** June 26, 2026
+
+> **Launch Boundary:** This hub records the frozen Razorpay billing architecture and source-gated implementation evidence, not current MenuList production-launch approval. Current release approval requires the active [production-readiness audit](../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../production-readiness/external-certification-runbook.md) evidence, `npm run verify:billing-entitlement-boundary`, Razorpay sandbox subscription/top-up/reseller/webhook smoke, desktop/mobile Billing browser QA, target deploy evidence, and production-host smoke.
 
 ---
 
@@ -9,10 +11,10 @@
 
 | Document                                                                                | Audience            | Description                                                                                                              |
 | --------------------------------------------------------------------------------------- | ------------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| [ACTIVE_SUBSCRIPTION_FLOW.md](./ACTIVE_SUBSCRIPTION_FLOW.md)                            | Developers, Founder | Complete subscription architecture — state machine, DAL layers, reconciliation, testing matrix, frozen core governance   |
+| [active-subscription-flow.md](./active-subscription-flow.md)                            | Developers, Founder | Complete subscription architecture — state machine, DAL layers, reconciliation, testing matrix, frozen core governance   |
 | [razorpay_impl.md](./razorpay_impl.md)                                                  | Developers, Founder | Complete technical reference — all 34+ files, every flow, DB schema, security, credit system, frontend, webhook handling |
-| [USER_JOURNEY_TRACKING.md](./USER_JOURNEY_TRACKING.md)                                  | QA, Developers      | Comprehensive tracking of all 20 user journeys, webhook coverage, API security                                           |
-| [RAZORPAY_PAYMENT_FLOW.md](./RAZORPAY_PAYMENT_FLOW.md)                                  | Quick Reference     | Original payment flow doc (superseded by razorpay_impl.md, kept for historical reference)                                |
+| [user-journey-tracking.md](./user-journey-tracking.md)                                  | QA, Developers      | Comprehensive tracking of all 20 user journeys, webhook coverage, API security                                           |
+| [razorpay-payment-flow.md](./razorpay-payment-flow.md)                                  | Quick Reference     | Original payment flow doc (superseded by razorpay_impl.md, kept for historical reference)                                |
 | [razorpay_firebase.md](./razorpay_firebase.md)                                          | Founder, DevOps     | Firebase cost tracking — every Firestore read/write/delete in the billing system                                         |
 | [\_archive/razorpay_code-feedback-audit.md](./_archive/razorpay_code-feedback-audit.md) | Archive             | ChatGPT feedback audit — decisions on all 8 hardening suggestions                                                        |
 
@@ -68,6 +70,8 @@ All 34 files are inventoried in [§2 — File Inventory](./razorpay_impl.md#2-fi
 - **Grace period:** 7 days for failed payments, enforced in DAL (`expireIfGracePeriodEnded`)
 - **Top-ups:** One-time Razorpay Orders (not Subscriptions)
 - **Billing history:** Sourced from webhook event log (`paymentTransactions` collection, append-only lean v2 summaries)
+- **Payment action body caps:** Authenticated subscription, top-up, verification, upgrade, pause/resume, cancel, and onboarding billing JSON routes use bounded request parsing before Zod validation, provider calls, or Firestore writes.
+- **Webhook cheap-fail:** Missing signature/secret, oversized bodies above 256KB, and IP-rate-limited bursts are rejected before raw-body signature verification or Firestore idempotency work.
 - **Webhook idempotency:** Signed webhook events are claimed in server-only `razorpayWebhookEvents/{eventKey}` before billing mutations, so duplicate retries do not repeat writes.
 - **State machine:** All status transitions validated by `subscriptionStateMachine.ts`; invalid transitions are blocked before status writes.
 - **DAL architecture:** 3-layer composition — `fetchSubscriptionRaw` → `expireIfGracePeriodEnded` → `getActiveSubscriptionForStore`

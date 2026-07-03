@@ -2,10 +2,10 @@
 
 /**
  * TempStatusCard — Desktop Business Settings card for temporary status banners
- * 
+ *
  * Allows owner to set/clear temporary status ("Closed today", "Opening late", etc.)
  * on their public pages (OBP + digital menu) with auto-expiry.
- * 
+ *
  * @see __docs__/temp-status-layer/temp-status-layer_impl.md
  */
 
@@ -15,6 +15,9 @@ import { useFormatter } from 'next-intl';
 import { useCallback, useState } from 'react';
 import { LuAlertTriangle, LuCheck, LuClock, LuX } from 'react-icons/lu';
 import { formatDateTime } from '@util/dateTime';
+import { AUTH_BROWSER_REQUEST_POLICY } from '@lib/auth/browserRequestPolicy';
+import { readTempStatusResponse } from '@lib/tempStatus/clientResponse';
+import { getBoundedBusinessSettingsStringContext, logBusinessSettingsFailure } from './utils/businessSettingsDiagnostics';
 
 const { Text } = Typography;
 
@@ -26,6 +29,15 @@ const STATUS_OPTIONS = [
     { value: 'special_menu', label: 'Special Menu', icon: '🍽️', defaultMsg: 'Special menu available today' },
     { value: 'custom', label: 'Custom Message', icon: 'ℹ️', defaultMsg: '' },
 ] as const;
+
+function buildTempStatusLogContext(storeDetails: any, action: string, statusType?: unknown) {
+    return {
+        action,
+        ...getBoundedBusinessSettingsStringContext('storeId', storeDetails?.storeId),
+        ...getBoundedBusinessSettingsStringContext('tenantId', storeDetails?.tenantId),
+        ...getBoundedBusinessSettingsStringContext('statusType', statusType),
+    };
+}
 
 interface TempStatusCardProps {
     storeDetails: any;
@@ -73,6 +85,7 @@ export default function TempStatusCard({ storeDetails, setStoreDetails }: TempSt
 
         try {
             const res = await fetch('/api/store/temp-status', {
+                ...AUTH_BROWSER_REQUEST_POLICY,
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -83,18 +96,20 @@ export default function TempStatusCard({ storeDetails, setStoreDetails }: TempSt
                 }),
             });
 
-            if (!res.ok) {
-                const data = await res.json();
-                throw new Error(data.error || 'Failed to set status');
-            }
-        } catch (err: any) {
+            await readTempStatusResponse(res, 'set', buildTempStatusLogContext(storeDetails, 'set_temp_status', statusType));
+        } catch (err) {
             // Revert optimistic update
             setStoreDetails((prev: any) => ({ ...prev, tempStatus: currentStatus }));
-            setError(err.message || 'Failed to set status');
+            logBusinessSettingsFailure(
+                'desktop_temp_status_set_failed',
+                err,
+                buildTempStatusLogContext(storeDetails, 'set_temp_status', statusType),
+            );
+            setError('Failed to set status');
         } finally {
             setIsLoading(false);
         }
-    }, [statusType, customMessage, expiresAt, setStoreDetails, currentStatus]);
+    }, [statusType, customMessage, expiresAt, setStoreDetails, currentStatus, storeDetails]);
 
     const handleClear = useCallback(async () => {
         setIsLoading(true);
@@ -109,19 +124,22 @@ export default function TempStatusCard({ storeDetails, setStoreDetails }: TempSt
 
         try {
             const res = await fetch('/api/store/temp-status', {
+                ...AUTH_BROWSER_REQUEST_POLICY,
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ action: 'clear' }),
             });
 
-            if (!res.ok) {
-                const data = await res.json();
-                throw new Error(data.error || 'Failed to clear status');
-            }
-        } catch (err: any) {
+            await readTempStatusResponse(res, 'clear', buildTempStatusLogContext(storeDetails, 'clear_temp_status', prevStatus?.type));
+        } catch (err) {
             // Revert optimistic update
             setStoreDetails((prev: any) => ({ ...prev, tempStatus: prevStatus }));
-            setError(err.message || 'Failed to clear status');
+            logBusinessSettingsFailure(
+                'desktop_temp_status_clear_failed',
+                err,
+                buildTempStatusLogContext(storeDetails, 'clear_temp_status', prevStatus?.type),
+            );
+            setError('Failed to clear status');
         } finally {
             setIsLoading(false);
         }

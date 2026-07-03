@@ -15,6 +15,8 @@ import {
 } from "@lib/screen/screenContent";
 import { syncPublicScreenState } from "@lib/screen/publicScreenState";
 import { generateScreenToken } from "@lib/screen/utils";
+import { secureError } from "@lib/security/secureLogger";
+import { createRandomIdSegment } from "@lib/runtime/randomId";
 import {
     Campaign,
     CampaignExport,
@@ -33,6 +35,181 @@ import { UserUploadedFileType } from "@type/common";
 const CAMPAIGNS_COLLECTION = DB_COLLECTIONS.CAMPAIGNS;
 const EXPORTS_COLLECTION = DB_COLLECTIONS.CAMPAIGN_EXPORTS;
 const PLATFORM_SUMMARY = DB_COLLECTIONS.PLATFORM_SUMMARY;
+
+const getLogErrorName = (error: unknown): string => (
+    error instanceof Error ? error.name : typeof error
+);
+
+const logCampaignScreenFailure = (
+    failureCode: string,
+    error: unknown,
+    context: Record<string, unknown> = {},
+): void => {
+    secureError(
+        "[Digital Screen] Campaign helper failed",
+        new Error(failureCode),
+        {
+            ...context,
+            errorName: getLogErrorName(error),
+        },
+    );
+};
+
+export type DigitalScreenMutationResult = {
+    success: true;
+    screen: DigitalScreenState;
+};
+
+export const isDigitalScreenMutationResult = (result: unknown): result is DigitalScreenMutationResult => (
+    Boolean(result && typeof result === 'object')
+    && !Array.isArray(result)
+    && (result as DigitalScreenMutationResult).success === true
+    && Boolean((result as DigitalScreenMutationResult).screen)
+);
+
+export function assertDigitalScreenMutationSucceeded(
+    result: unknown,
+    rejectionCode = 'digital_screen_mutation_rejected',
+): asserts result is DigitalScreenMutationResult {
+    if (isDigitalScreenMutationResult(result)) return;
+    throw new Error(rejectionCode);
+}
+
+export const isDigitalScreenSlideUploadResult = (result: unknown): result is ScreenSlide => (
+    Boolean(result && typeof result === 'object')
+    && !Array.isArray(result)
+    && typeof (result as ScreenSlide).id === 'string'
+    && (result as ScreenSlide).id.length > 0
+    && (result as ScreenSlide).source === 'pinned'
+    && (result as ScreenSlide).type === 'owner_upload'
+    && typeof (result as ScreenSlide).imageUrl === 'string'
+    && (result as ScreenSlide).imageUrl.length > 0
+);
+
+export function assertDigitalScreenSlideUploadSucceeded(
+    result: unknown,
+    rejectionCode = 'digital_screen_slide_upload_rejected',
+): asserts result is ScreenSlide {
+    if (isDigitalScreenSlideUploadResult(result)) return;
+    throw new Error(rejectionCode);
+}
+
+type CampaignTodayState = CampaignsSummaryDocument['today'];
+
+export type CampaignCompleteResult = {
+    success: true;
+    campaignId: string;
+    campaignType: CampaignType;
+    exportEvent: CampaignExport;
+    exportId: string;
+    method: CampaignExport['method'];
+    projectId: string;
+    status: 'completed';
+    surface: ExecutionSurface;
+    today: CampaignTodayState;
+};
+
+export type CampaignSkipResult = {
+    success: true;
+    campaignId: string;
+    campaignType: CampaignType;
+    skipCount: number;
+    status: Extract<CampaignStatus, 'skipped' | 'suppressed'>;
+    today: CampaignTodayState;
+};
+
+function isCampaignTodayState(value: unknown): value is CampaignTodayState {
+    return Boolean(
+        value
+        && typeof value === 'object'
+        && !Array.isArray(value)
+        && typeof (value as CampaignTodayState).date === 'string'
+        && Array.isArray((value as CampaignTodayState).operational)
+        && typeof (value as CampaignTodayState).isEmpty === 'boolean',
+    );
+}
+
+export function isCampaignCompleteResult(
+    result: unknown,
+    expected: {
+        campaignId: string;
+        campaignType: CampaignType;
+        method: CampaignExport['method'];
+        projectId: string;
+        surface: ExecutionSurface;
+    },
+): result is CampaignCompleteResult {
+    const data = result as CampaignCompleteResult;
+    return Boolean(
+        data
+        && typeof data === 'object'
+        && !Array.isArray(data)
+        && data.success === true
+        && data.status === 'completed'
+        && data.campaignId === expected.campaignId
+        && data.campaignType === expected.campaignType
+        && data.projectId === expected.projectId
+        && data.surface === expected.surface
+        && data.method === expected.method
+        && typeof data.exportId === 'string'
+        && data.exportId.length > 0
+        && data.exportEvent?.id === data.exportId
+        && data.exportEvent?.campaignId === expected.campaignId
+        && data.exportEvent?.projectId === expected.projectId
+        && data.exportEvent?.surface === expected.surface
+        && data.exportEvent?.method === expected.method
+        && isCampaignTodayState(data.today),
+    );
+}
+
+export function assertCampaignCompleteSucceeded(
+    result: unknown,
+    expected: {
+        campaignId: string;
+        campaignType: CampaignType;
+        method: CampaignExport['method'];
+        projectId: string;
+        surface: ExecutionSurface;
+    },
+    rejectionCode = 'today_campaign_complete_acknowledgement_rejected',
+): asserts result is CampaignCompleteResult {
+    if (isCampaignCompleteResult(result, expected)) return;
+    throw new Error(rejectionCode);
+}
+
+export function isCampaignSkipResult(
+    result: unknown,
+    expected: {
+        campaignId: string;
+        campaignType: CampaignType;
+    },
+): result is CampaignSkipResult {
+    const data = result as CampaignSkipResult;
+    return Boolean(
+        data
+        && typeof data === 'object'
+        && !Array.isArray(data)
+        && data.success === true
+        && data.campaignId === expected.campaignId
+        && data.campaignType === expected.campaignType
+        && (data.status === 'skipped' || data.status === 'suppressed')
+        && Number.isInteger(data.skipCount)
+        && data.skipCount > 0
+        && isCampaignTodayState(data.today),
+    );
+}
+
+export function assertCampaignSkipSucceeded(
+    result: unknown,
+    expected: {
+        campaignId: string;
+        campaignType: CampaignType;
+    },
+    rejectionCode = 'today_campaign_skip_acknowledgement_rejected',
+): asserts result is CampaignSkipResult {
+    if (isCampaignSkipResult(result, expected)) return;
+    throw new Error(rejectionCode);
+}
 
 // ═══════════════════════════════════════════════════════════════
 // DOCUMENT REFERENCES
@@ -176,7 +353,16 @@ export const getCampaignHistory = async (
                     .map(doc => doc.data() as Campaign)
                     .filter(campaign => ["completed", "skipped", "suggested"].includes(campaign.status));
             } catch (error) {
-                console.error("[getCampaignHistory] Failed to load campaign history:", error);
+                secureError(
+                    "[Campaigns] Campaign history load failed",
+                    new Error("campaign_history_load_failed"),
+                    {
+                        limitCount,
+                        hasProjectId: Boolean(projectId),
+                        projectIdLength: String(projectId || "").length,
+                        errorName: getLogErrorName(error),
+                    },
+                );
                 return [];
             }
         },
@@ -192,7 +378,7 @@ export const getCampaignHistory = async (
 /**
  * Complete a campaign (user acted on it)
  * Records export and updates status
- * 
+     *
  * OPTIMIZATION: Accepts projectId and campaignType as params to avoid refetching
  * campaign data we already have from useTodayCampaigns hook.
  */
@@ -281,7 +467,18 @@ export const completeCampaign = async (
                 },
             }, { merge: true });
 
-            return { exportEvent, today: nextToday };
+            return {
+                campaignId,
+                campaignType,
+                exportEvent,
+                exportId,
+                method,
+                projectId,
+                status: 'completed',
+                success: true,
+                surface,
+                today: nextToday,
+            } satisfies CampaignCompleteResult;
         },
         { campaignId, projectId, campaignType, surface, method },
         "completeCampaign"
@@ -291,7 +488,7 @@ export const completeCampaign = async (
 /**
  * Skip a campaign (user chose not to act)
  * Updates campaign status and removes from today
- * 
+     *
  * OPTIMIZATION: Accepts campaignType as param to avoid refetching
  * campaign data we already have from useTodayCampaigns hook.
  */
@@ -373,7 +570,14 @@ export const skipCampaign = async (campaignId: string, campaignType: CampaignTyp
                 },
             }, { merge: true });
 
-            return { ...(campaign as Campaign), ...updateData, today: nextToday };
+            return {
+                campaignId,
+                campaignType,
+                skipCount: nextSkipCount,
+                status,
+                success: true,
+                today: nextToday,
+            } satisfies CampaignSkipResult;
         },
         { campaignId, campaignType },
         "skipCampaign"
@@ -389,7 +593,7 @@ export const skipCampaign = async (campaignId: string, campaignType: CampaignTyp
  * Get screen data by token (PUBLIC - no session required)
  * Used by /screen/[token] page for TV display
  * Per DAL pattern: Direct Firestore query, no API route needed
- * 
+     *
  * LICENSE CHECK: Returns null if store is inactive/blocked
  */
 export const getScreenDataByToken = async (token: string): Promise<{
@@ -407,18 +611,12 @@ export const getScreenDataByToken = async (token: string): Promise<{
         const q = query(summaryRef, where('screen.screenToken', '==', token));
         const snapshot = await getDocs(q);
 
-        if (snapshot.empty) {
-            console.log(`[getScreenDataByToken] Token not found: ${token}`);
-            return null;
-        }
+        if (snapshot.empty) return null;
 
         const docSnap = snapshot.docs[0];
         const data = docSnap.data() as CampaignsSummaryDocument;
 
-        if (!data.screen?.enabled) {
-            console.log(`[getScreenDataByToken] Screen disabled for token: ${token}`);
-            return null;
-        }
+        if (!data.screen?.enabled) return null;
 
         // Extract storeId from document ID (campaigns_{sId})
         const storeId = docSnap.id.replace('campaigns_', '');
@@ -428,10 +626,7 @@ export const getScreenDataByToken = async (token: string): Promise<{
         const storeData = storeDoc.exists() ? storeDoc.data() : null;
 
         // LICENSE CHECK: Block if store is inactive or blocked
-        if (storeData && (storeData.active === false || storeData.blocked === true)) {
-            console.log(`[getScreenDataByToken] Store inactive/blocked for token: ${token}`);
-            return null;
-        }
+        if (storeData && (storeData.active === false || storeData.blocked === true)) return null;
 
         // R5 link-emitter audit (§9 PUBLIC-ROUTING-DOCTRINE): emit the real
         // canonical slug URL for the QR, not the /menu alias. If the QR
@@ -483,7 +678,13 @@ export const getScreenDataByToken = async (token: string): Promise<{
             storeInfo
         };
     } catch (error) {
-        console.error('[getScreenDataByToken] Error:', error);
+        logCampaignScreenFailure(
+            "digital_screen_client_token_resolver_failed",
+            error,
+            {
+                tokenLength: token.length,
+            },
+        );
         return null;
     }
 };
@@ -492,7 +693,7 @@ export const getScreenDataByToken = async (token: string): Promise<{
  * Get menu items for screen display (PUBLIC - no session required)
  * Fetches top items from the store's default project for evergreen slides
  * Returns empty array on any failure (graceful fallback — screen still works with brand slides)
- * 
+ *
  * Cost: 2 reads (1 metadata query + 1 project data get)
  */
 export const getMenuItemsForScreen = async (
@@ -623,17 +824,21 @@ export const getMenuItemsForScreen = async (
             if (!projectDoc) continue;
 
             const fallbackItems = extractMenuItemsFromProject(projectDoc.data());
-            if (fallbackItems.length > 0) {
-                if (projectId !== orderedProjectIds[0]) {
-                    console.log(`[getMenuItemsForScreen] Fallback project used: ${projectId}`);
-                }
-                return fallbackItems;
-            }
+            if (fallbackItems.length > 0) return fallbackItems;
         }
 
         return [];
     } catch (error) {
-        console.error('[getMenuItemsForScreen] Error:', error);
+        logCampaignScreenFailure(
+            "digital_screen_client_menu_items_failed",
+            error,
+            {
+                storeIdLength: storeId.length,
+                tenantIdLength: tenantId.length,
+                hasActiveSpecialMenuId: Boolean(activeSpecialMenuId),
+                activeSpecialMenuIdLength: String(activeSpecialMenuId || "").length,
+            },
+        );
         return [];
     }
 };
@@ -691,7 +896,6 @@ export const initializeScreenState = async (): Promise<DigitalScreenState> => {
             }, { merge: true });
             await syncPublicScreenState(session.sId, screenState);
 
-            console.log(`✅ [initializeScreenState] Created screen with token: ${screenToken}`);
             return screenState;
         },
         null,
@@ -703,7 +907,7 @@ export const initializeScreenState = async (): Promise<DigitalScreenState> => {
  * Update screen settings (toggle override mode)
  * Per spec: Owner can toggle "Use my designs instead"
  */
-export const updateScreenSettings = async (settings: { ownerOverrideEnabled?: boolean }): Promise<void> => {
+export const updateScreenSettings = async (settings: { ownerOverrideEnabled?: boolean }): Promise<DigitalScreenMutationResult> => {
     return await apiCallComposer(
         async () => {
             const session = await getActiveSession();
@@ -729,8 +933,7 @@ export const updateScreenSettings = async (settings: { ownerOverrideEnabled?: bo
                 screen: nextScreen
             }, { merge: true });
             await syncPublicScreenState(session.sId, nextScreen);
-
-            console.log(`✅ [updateScreenSettings] Updated:`, settings);
+            return { success: true, screen: nextScreen } satisfies DigitalScreenMutationResult;
         },
         settings,
         "updateScreenSettings"
@@ -741,7 +944,7 @@ export const updateScreenSettings = async (settings: { ownerOverrideEnabled?: bo
  * Add pinned slide (owner upload)
  * Per spec: Max 3 pinned slides, 14-day expiry
  */
-export const addPinnedSlide = async (slide: ScreenSlide): Promise<void> => {
+export const addPinnedSlide = async (slide: ScreenSlide): Promise<DigitalScreenMutationResult> => {
     return await apiCallComposer(
         async () => {
             const session = await getActiveSession();
@@ -776,8 +979,7 @@ export const addPinnedSlide = async (slide: ScreenSlide): Promise<void> => {
                 screen: nextScreen
             }, { merge: true });
             await syncPublicScreenState(session.sId, nextScreen);
-
-            console.log(`✅ [addPinnedSlide] Added slide: ${slide.id}`);
+            return { success: true, screen: nextScreen } satisfies DigitalScreenMutationResult;
         },
         { slideId: slide.id },
         "addPinnedSlide"
@@ -787,7 +989,7 @@ export const addPinnedSlide = async (slide: ScreenSlide): Promise<void> => {
 /**
  * Remove pinned slide
  */
-export const removePinnedSlide = async (slideId: string): Promise<void> => {
+export const removePinnedSlide = async (slideId: string): Promise<DigitalScreenMutationResult> => {
     return await apiCallComposer(
         async () => {
             const session = await getActiveSession();
@@ -817,8 +1019,7 @@ export const removePinnedSlide = async (slideId: string): Promise<void> => {
                 screen: nextScreen
             }, { merge: true });
             await syncPublicScreenState(session.sId, nextScreen);
-
-            console.log(`✅ [removePinnedSlide] Removed slide: ${slideId}`);
+            return { success: true, screen: nextScreen } satisfies DigitalScreenMutationResult;
         },
         { slideId },
         "removePinnedSlide"
@@ -828,7 +1029,7 @@ export const removePinnedSlide = async (slideId: string): Promise<void> => {
 /**
  * Update pinned slide caption without re-uploading image.
  */
-export const updatePinnedSlideCaption = async (slideId: string, caption: string): Promise<void> => {
+export const updatePinnedSlideCaption = async (slideId: string, caption: string): Promise<DigitalScreenMutationResult> => {
     return await apiCallComposer(
         async () => {
             const session = await getActiveSession();
@@ -863,8 +1064,7 @@ export const updatePinnedSlideCaption = async (slideId: string, caption: string)
                 screen: nextScreen
             }, { merge: true });
             await syncPublicScreenState(session.sId, nextScreen);
-
-            console.log(`✅ [updatePinnedSlideCaption] Updated slide: ${slideId}`);
+            return { success: true, screen: nextScreen } satisfies DigitalScreenMutationResult;
         },
         { slideId },
         "updatePinnedSlideCaption"
@@ -899,8 +1099,6 @@ export const bumpScreenContentVersion = async (): Promise<void> => {
                 screen: nextScreen
             }, { merge: true });
             await syncPublicScreenState(session.sId, nextScreen);
-
-            console.log(`✅ [bumpScreenContentVersion] Bumped to v${(data.screen?.contentVersion || 0) + 1}`);
         },
         null,
         "bumpScreenContentVersion"
@@ -911,7 +1109,7 @@ export const bumpScreenContentVersion = async (): Promise<void> => {
  * Upload screen slide image to Firebase Storage (client-side)
  * Follows existing pattern from tickets/projects DAL
  * Per spec: Max 3 pinned slides, 14-day expiry
- * 
+ *
  * @param data - File data with base64 content
  * @param caption - Optional caption for the slide
  * @returns ScreenSlide object with Firebase Storage URL
@@ -920,7 +1118,7 @@ export const uploadScreenSlide = async (
     data: UserUploadedFileType,
     caption?: string
 ): Promise<ScreenSlide> => {
-    return await apiCallComposer(
+    const result = await apiCallComposer(
         async () => {
             const session = await getActiveSession();
 
@@ -936,7 +1134,7 @@ export const uploadScreenSlide = async (
             }
 
             // Generate unique slide ID
-            const slideId = `upload-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+            const slideId = `upload-${Date.now()}-${createRandomIdSegment(9)}`;
             let imageUrl = data.url;
 
             // Upload prepared media to immutable profile-aware Storage path
@@ -974,12 +1172,21 @@ export const uploadScreenSlide = async (
             };
 
             // Add to pinned slides
-            await addPinnedSlide(newSlide);
+            const addResult = await addPinnedSlide(newSlide);
+            assertDigitalScreenMutationSucceeded(
+                addResult,
+                'digital_screen_slide_upload_update_rejected',
+            );
 
-            console.log(`✅ [uploadScreenSlide] Uploaded slide: ${slideId}`);
             return newSlide;
         },
         { caption },
         "uploadScreenSlide"
     );
+
+    assertDigitalScreenSlideUploadSucceeded(
+        result,
+        'digital_screen_slide_upload_rejected',
+    );
+    return result;
 };

@@ -5,7 +5,9 @@ import { firestoreAdmin } from '@lib/firebase/firebaseAdmin';
 import { logger } from '@lib/monitoring/logger';
 import { checkRateLimit } from '@lib/rateLimit';
 import { getRateLimitForFeature } from '@lib/rateLimit/configs';
-import { secureError } from '@lib/security/secureLogger';
+import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
+import { getSafeZodValidationDetails } from '@lib/security/inputValidation';
+import { hashPublicRateLimitValue } from 'src/middleware/publicApi';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { withAuth } from '../../../middleware/auth';
@@ -14,6 +16,7 @@ const MAX_PAGE_SIZE = 50;
 const DEFAULT_PAGE_SIZE = 15;
 const FILTER_SCAN_LIMIT = 100;
 const MAX_FILTER_SCAN_DOCS = 500;
+const AI_OPERATIONS_ENDPOINT = '/api/ai-operations';
 
 const QuerySchema = z.object({
     action: z.string().trim().max(80).optional(),
@@ -68,6 +71,55 @@ const OWNER_VISIBLE_FIELDS = new Set([
     'unitsConsumed',
 ]);
 
+const PLATFORM_VISIBLE_FIELDS = new Set([
+    ...Array.from(OWNER_VISIBLE_FIELDS),
+    'candidatesTokenCount',
+    'chargePerCredit',
+    'fileId',
+    'marginPaise',
+    'model',
+    'ourChargePaise',
+    'promptTokenCount',
+    'realCostPaise',
+    'tokenPerCredit',
+    'totalCharge',
+    'totalCredits',
+    'totalTokenCount',
+    'transactionId',
+]);
+
+function getAiOperationsReadLogContext(
+    request: NextRequest,
+    session: any,
+    metadata: {
+        action?: unknown;
+        cursorId?: unknown;
+        pageSize?: unknown;
+        platformRole?: unknown;
+    } = {},
+) {
+    const searchParams = request.nextUrl.searchParams;
+    const requestedPageSize = Number(metadata.pageSize ?? searchParams.get('pageSize'));
+    const tenantId = session.tId || session.user?.tenantId;
+    const storeId = session.sId || session.user?.storeId;
+    const userId = session.uId || session.user?.id;
+    const platformRole = metadata.platformRole ?? (session.platformRole || session.user?.platformRole);
+
+    return {
+        endpoint: AI_OPERATIONS_ENDPOINT,
+        ...getBoundedRuntimeStringContext('tenantId', tenantId),
+        ...getBoundedRuntimeStringContext('storeId', storeId),
+        ...getBoundedRuntimeStringContext('userId', userId),
+        ...getBoundedRuntimeStringContext('platformRole', platformRole),
+        ...getBoundedRuntimeStringContext('action', metadata.action ?? searchParams.get('action')),
+        ...getBoundedRuntimeStringContext('cursorId', metadata.cursorId ?? searchParams.get('cursorId')),
+        hasStartDate: searchParams.has('startDate'),
+        hasEndDate: searchParams.has('endDate'),
+        pageSize: Number.isFinite(requestedPageSize) ? requestedPageSize : null,
+        queryParamCount: Array.from(searchParams.keys()).length,
+    };
+}
+
 function serializeFirestoreValue(value: any): any {
     if (value == null) return value;
     if (typeof value?.toDate === 'function') {
@@ -97,8 +149,11 @@ function sanitizeOwnerOperation(id: string, data: Record<string, any>) {
     );
 }
 
-function serializePlatformOperation(id: string, data: Record<string, any>) {
-    return serializeFirestoreValue({ id, ...data });
+function sanitizePlatformOperation(id: string, data: Record<string, any>) {
+    const serialized = serializeFirestoreValue({ id, ...data });
+    return Object.fromEntries(
+        Object.entries(serialized).filter(([key]) => PLATFORM_VISIBLE_FIELDS.has(key)),
+    );
 }
 
 async function getCursorDoc(
@@ -181,7 +236,7 @@ export const GET = withAuth(async (request: NextRequest, session) => {
         const validation = QuerySchema.safeParse(Object.fromEntries(request.nextUrl.searchParams.entries()));
         if (!validation.success) {
             return NextResponse.json(
-                { error: 'Invalid query parameters', details: validation.error.flatten() },
+                { error: 'Invalid query parameters', details: getSafeZodValidationDetails(validation.error) },
                 { status: 400 },
             );
         }
@@ -191,22 +246,30 @@ export const GET = withAuth(async (request: NextRequest, session) => {
         if (!tenantId || !storeId) {
             return NextResponse.json({ error: 'User not onboarded' }, { status: 400 });
         }
+        const platformRole = session.platformRole || session.user?.platformRole;
+        const isPlatform = platformRole === 'PLATFORM';
+        const { action, cursorId, pageSize, startDate, endDate } = validation.data;
 
         const rateLimitConfig = getRateLimitForFeature('DATA_READ');
         const userId = session.uId || session.user?.id || 'unknown';
+        const userRateLimitHash = hashPublicRateLimitValue(userId);
+        const tenantRateLimitHash = hashPublicRateLimitValue(tenantId);
+        const storeRateLimitHash = hashPublicRateLimitValue(storeId);
         const rateLimit = await checkRateLimit({
-            key: `ai-operations:${userId}:${tenantId}:${storeId}`,
+            key: `ai-operations:${userRateLimitHash}:${tenantRateLimitHash}:${storeRateLimitHash}`,
             ...rateLimitConfig,
         });
 
         if (!rateLimit.allowed) {
             const waitSeconds = Math.max(1, Math.ceil((rateLimit.resetAt - Date.now()) / 1000));
             logger.security('Rate Limit Exceeded', {
-                endpoint: '/api/ai-operations',
+                ...getAiOperationsReadLogContext(request, session, {
+                    action,
+                    cursorId,
+                    pageSize,
+                    platformRole,
+                }),
                 limit: rateLimitConfig.limit,
-                storeId,
-                tenantId,
-                userId,
                 waitSeconds,
                 window: rateLimitConfig.window,
             }, 'medium');
@@ -229,9 +292,6 @@ export const GET = withAuth(async (request: NextRequest, session) => {
             );
         }
 
-        const platformRole = session.platformRole || session.user?.platformRole;
-        const isPlatform = platformRole === 'PLATFORM';
-        const { action, cursorId, pageSize, startDate, endDate } = validation.data;
         const start = getDateParam(startDate);
         const end = getDateParam(endDate);
 
@@ -268,7 +328,7 @@ export const GET = withAuth(async (request: NextRequest, session) => {
         const { docs } = result;
         const data = docs.map((doc) => (
             isPlatform
-                ? serializePlatformOperation(doc.id, doc.data())
+                ? sanitizePlatformOperation(doc.id, doc.data())
                 : sanitizeOwnerOperation(doc.id, doc.data())
         ));
 
@@ -278,9 +338,7 @@ export const GET = withAuth(async (request: NextRequest, session) => {
             lastVisibleDoc: result.lastVisibleDoc,
         });
     } catch (error) {
-        secureError('[ai-operations] Failed to load operations', error as Error, {
-            path: request.nextUrl.pathname,
-        });
+        logRuntimeFailure('ai_operations_read_failed', error, getAiOperationsReadLogContext(request, session));
         return NextResponse.json({ error: 'Failed to load transactions' }, { status: 500 });
     }
 });

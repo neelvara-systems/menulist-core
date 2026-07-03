@@ -23,6 +23,15 @@ const logger = functions.logger;
 const db = firestoreAdmin;
 const sessionsCol = DB_COLLECTIONS.MESSAGING_ONBOARDING_SESSIONS;
 const inboundMessagesCol = DB_COLLECTIONS.MESSAGING_ONBOARDING_INBOUND_MESSAGES;
+const SESSION_EXPIRE_FAILED_CODE = "MESSAGING_SESSION_EXPIRE_FAILED";
+const EXPIRED_SESSION_QUERY_FAILED_CODE = "MESSAGING_EXPIRED_SESSION_QUERY_FAILED";
+const REMINDER_SEND_FAILED_CODE = "MESSAGING_SESSION_REMINDER_SEND_FAILED";
+const REMINDER_SESSION_FAILED_CODE = "MESSAGING_SESSION_REMINDER_FAILED";
+const REMINDER_QUERY_FAILED_CODE = "MESSAGING_SESSION_REMINDER_QUERY_FAILED";
+const SESSION_CLEAN_FAILED_CODE = "MESSAGING_SESSION_CLEAN_FAILED";
+const SESSION_FILE_CLEAN_FAILED_CODE = "MESSAGING_SESSION_FILE_CLEAN_FAILED";
+const CLEANUP_QUERY_FAILED_CODE = "MESSAGING_SESSION_CLEANUP_QUERY_FAILED";
+const INBOUND_CLEANUP_FAILED_CODE = "MESSAGING_INBOUND_CLEANUP_FAILED";
 const EXPIRABLE_STATES: MessagingOnboardingState[] = [
   "COLLECTING_INPUT",
   "VALIDATING_ASSETS",
@@ -33,6 +42,59 @@ const EXPIRABLE_STATES: MessagingOnboardingState[] = [
   "PUBLISHING",
   "FAILED",
 ];
+
+function getCleanupErrorName(error: unknown): string {
+  if (error instanceof Error) return (error.name || "Error").slice(0, 80);
+  return typeof error;
+}
+
+function getCleanupErrorCode(error: Error): string | undefined {
+  const code = (error as { code?: unknown }).code;
+  if (code === undefined || code === null) return undefined;
+  return String(code).slice(0, 64);
+}
+
+function getCleanupErrorStatus(error: Error): number | undefined {
+  const status = Number((error as { status?: unknown; statusCode?: unknown }).status
+    || (error as { statusCode?: unknown }).statusCode);
+  return Number.isFinite(status) ? status : undefined;
+}
+
+function getCleanupErrorContext(error: unknown): {
+  sourceErrorName: string;
+  sourceErrorCode?: string;
+  sourceErrorStatus?: number;
+} {
+  if (error instanceof Error) {
+    return {
+      sourceErrorName: getCleanupErrorName(error),
+      sourceErrorCode: getCleanupErrorCode(error),
+      sourceErrorStatus: getCleanupErrorStatus(error),
+    };
+  }
+
+  return {
+    sourceErrorName: getCleanupErrorName(error),
+  };
+}
+
+function getCleanupIdLogContext(
+  label: string,
+  value: unknown,
+): Record<string, boolean | number> {
+  const normalized = value === undefined || value === null ? "" : String(value);
+  return {
+    [`${label}Present`]: normalized.length > 0,
+    [`${label}Length`]: normalized.length,
+  };
+}
+
+function isMissingStorageObjectError(error: unknown): boolean {
+  if (!(error instanceof Error)) return false;
+  const code = (error as { code?: unknown }).code;
+  const codeText = code === undefined || code === null ? "" : String(code).toLowerCase();
+  return getCleanupErrorStatus(error) === 404 || codeText === "404" || codeText === "not-found";
+}
 
 /**
  * Main cleanup logic — called by onSchedule daily.
@@ -90,15 +152,17 @@ export async function messagingSessionCleanupLogic(): Promise<{
         expired++;
       } catch (err) {
         logger.error("[Cleanup] Failed to expire session", {
-          sessionId: doc.id,
-          error: (err as Error).message,
+          sessionIdLength: doc.id.length,
+          failureCode: SESSION_EXPIRE_FAILED_CODE,
+          ...getCleanupErrorContext(err),
         });
         errors++;
       }
     }
   } catch (err) {
     logger.error("[Cleanup] Failed to query expired sessions", {
-      error: (err as Error).message,
+      failureCode: EXPIRED_SESSION_QUERY_FAILED_CODE,
+      ...getCleanupErrorContext(err),
     });
     errors++;
   }
@@ -161,17 +225,25 @@ export async function messagingSessionCleanupLogic(): Promise<{
           reminders++;
         } catch (sendErr) {
           logger.warn("[Cleanup] Failed to send reminder", {
-            sessionId: session.sessionId,
-            error: (sendErr as Error).message,
+            sessionIdLength: session.sessionId.length,
+            provider: session.provider,
+            failureCode: REMINDER_SEND_FAILED_CODE,
+            ...getCleanupErrorContext(sendErr),
           });
         }
       } catch (err) {
+        logger.error("[Cleanup] Failed to process reminder session", {
+          sessionIdLength: doc.id.length,
+          failureCode: REMINDER_SESSION_FAILED_CODE,
+          ...getCleanupErrorContext(err),
+        });
         errors++;
       }
     }
   } catch (err) {
     logger.error("[Cleanup] Failed to query reminder sessions", {
-      error: (err as Error).message,
+      failureCode: REMINDER_QUERY_FAILED_CODE,
+      ...getCleanupErrorContext(err),
     });
   }
 
@@ -198,8 +270,18 @@ export async function messagingSessionCleanupLogic(): Promise<{
         for (const upload of session.uploads) {
           try {
             await bucket.file(upload.storagePath).delete();
-          } catch {
-            // File may already be deleted
+          } catch (err) {
+            if (isMissingStorageObjectError(err)) {
+              continue;
+            }
+            logger.warn("[Cleanup] Failed to clean session upload file", {
+              failureCode: SESSION_FILE_CLEAN_FAILED_CODE,
+              ...getCleanupIdLogContext("sessionId", session.sessionId),
+              ...getCleanupIdLogContext("uploadId", upload.id),
+              ...getCleanupIdLogContext("storagePath", upload.storagePath),
+              ...getCleanupErrorContext(err),
+            });
+            errors++;
           }
         }
 
@@ -208,15 +290,17 @@ export async function messagingSessionCleanupLogic(): Promise<{
         cleaned++;
       } catch (err) {
         logger.error("[Cleanup] Failed to clean session", {
-          sessionId: doc.id,
-          error: (err as Error).message,
+          sessionIdLength: doc.id.length,
+          failureCode: SESSION_CLEAN_FAILED_CODE,
+          ...getCleanupErrorContext(err),
         });
         errors++;
       }
     }
   } catch (err) {
     logger.error("[Cleanup] Failed to query cleanup sessions", {
-      error: (err as Error).message,
+      failureCode: CLEANUP_QUERY_FAILED_CODE,
+      ...getCleanupErrorContext(err),
     });
   }
 
@@ -242,7 +326,8 @@ export async function messagingSessionCleanupLogic(): Promise<{
     }
   } catch (err) {
     logger.error("[Cleanup] Failed to clean inbound queue", {
-      error: (err as Error).message,
+      failureCode: INBOUND_CLEANUP_FAILED_CODE,
+      ...getCleanupErrorContext(err),
     });
     errors++;
   }

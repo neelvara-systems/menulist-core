@@ -1,9 +1,11 @@
 # System Strengthening — Firebase Cost Tracking
 
 **Feature:** Infrastructure Hardening & Performance Optimization  
-**Status:** ✅ Production Ready  
+**Status:** Firebase cost evidence; not current launch certification
 **Last Updated:** February 7, 2026  
 **Priority:** LOW — Infrastructure improvements that reduce Firebase costs, not increase them.
+
+> **Launch Boundary:** This file records System Strengthening Firebase cost evidence, not current production-launch approval. Current release approval requires the active [production-readiness audit](../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../production-readiness/external-certification-runbook.md) evidence, `npm run verify:system-strengthening`, deploy evidence where rules/functions change, browser/API smoke for touched flows, and production-host smoke.
 
 ---
 

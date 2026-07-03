@@ -5,6 +5,7 @@ import { CAMPAIGNCUE_API_ROUTES } from "@constant/campaigncue/routes";
 import {
     applyCampaignCueRateLimit,
     getCampaignCueSessionScope,
+    getCampaignCueSecurityLogContext,
     parseCampaignCueJsonBody,
     requireCampaignCueRuntime,
     requireCampaignCueSessionScope,
@@ -14,7 +15,7 @@ import {
     logCampaignCueServerError,
 } from "@lib/campaigncue/server";
 import { validateAPIInput } from "@lib/security/inputValidation";
-import { buildSecurityContext } from "@lib/security/securityContext";
+import { getBoundedSecurityStringContext } from "@lib/security/securityDiagnostics";
 import { logger } from "@lib/monitoring/logger";
 import { CampaignCueDesignCueTurnSchema } from "@lib/validation/campaigncueDesignCueSchemas";
 import { NextRequest, NextResponse } from "next/server";
@@ -51,9 +52,9 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         const validation = validateAPIInput(CampaignCueDesignCueTurnSchema, body.data);
         if ("error" in validation) {
             logger.security("Input Validation Failed - CampaignCue Design Cue", {
-                ...buildSecurityContext(session, request),
-                endpoint: CAMPAIGNCUE_API_ROUTES.DESIGN_CUE_TURNS,
-                error: validation.error,
+                ...getCampaignCueSecurityLogContext(session, request, CAMPAIGNCUE_API_ROUTES.DESIGN_CUE_TURNS, {
+                    ...getBoundedSecurityStringContext("validationError", validation.error),
+                }),
             }, "medium");
             return NextResponse.json({ error: "Invalid input", details: validation.error }, { status: 400 });
         }

@@ -39,7 +39,7 @@ This is **NOT a customer-facing feature**. Customers never see or interact with 
 It is **infrastructure** that:
 - Reduces operational risk as AI usage grows
 - Enables cost tracking for pricing decisions
-- Provides the foundation for future AI features (knowledge reuse, caching)
+- Provides the foundation for source-backed AI infrastructure candidates such as knowledge reuse or caching
 - Makes the founder's life easier (single monitoring point)
 
 ---

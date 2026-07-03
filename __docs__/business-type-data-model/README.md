@@ -1,10 +1,11 @@
 # Business Type Data Model — Inconsistency Fix
 
-**Feature:** Business Type / Category / Industry Data Model Cleanup  
-**Status:** Planning — Pre-Implementation  
-**Last Updated:** February 17, 2026  
-**Priority:** CRITICAL — Affects schema.org, OBP, time slots, UI labels, filters, image generation, decision blocks  
+**Feature:** Business Type / Category / Industry Data Model Cleanup
+**Status:** Implemented source evidence; migration guarded; not current launch certification
+**Last Updated:** July 2, 2026
+**Priority:** CRITICAL — Affects schema.org, OBP, time slots, UI labels, filters, image generation, decision blocks
 **Triggered By:** Messaging Onboarding deep codebase cross-check (§18.1)
+**Local Source Gate:** `npm run verify:agent-readiness`
 
 ---
 
@@ -16,6 +17,16 @@
 
 ---
 
+## Current Launch Boundary
+
+This document records the current source contract for MenuList business identity fields. It is not live-data or production-launch certification by itself.
+
+Current release approval still requires the active [production-readiness audit](../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../production-readiness/external-certification-runbook.md) evidence, `npm run verify:agent-readiness`, a target-project dry run of `scripts/migrate-business-type-swap.ts`, Firestore backup evidence before live migration, an explicit live command with `--write --confirm-project <projectId> --all-stores-and-tenants`, post-migration spot checks for stores and tenants, public menu/OBP/schema smoke for corrected business types, target deploy evidence where runtime code changes, and production-host smoke.
+
+The local source gate verifies code and documentation contracts only. It does not run Firestore reads/writes, execute the migration, certify existing production data, deploy Firebase, deploy Vercel, run a production build, call providers, or run browser/device QA.
+
+---
+
 ## The Problem
 
 Three fields exist on store/tenant documents for business identification:
@@ -24,7 +35,7 @@ Three fields exist on store/tenant documents for business identification:
 | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------ |
 | `businessType`     | Stores `'B2C'` or `'B2B'` from onboarding (WRONG)                                                                                          | Actual business type from `BUSINESS_TYPES`: e.g., `"Restaurant"`, `"Salon"`, `"Cafe"`            |
 | `businessCategory` | Derived from `businessType` via `getBusinessCategory()` — but gets `undefined` because input is `'B2C'`                                    | Derived from `businessType` via `getBusinessCategory()`: e.g., `"food"`, `"service"`, `"health"` |
-| `businessIndustry` | Stores actual business type selected from `IMAGE_VIEW_TYPES` during onboarding (e.g., "Restaurant") — **THIS IS WHERE THE REAL TYPE WENT** | `'B2C'` or `'B2B'` — plan/industry identifier (future scope)                                     |
+| `businessIndustry` | Stores actual business type selected from `IMAGE_VIEW_TYPES` during onboarding (e.g., "Restaurant") — **THIS IS WHERE THE REAL TYPE WENT** | `'B2C'` or `'B2B'` — plan-type marker; no current B2B runtime depends on this field               |
 
 **Root cause:** During onboarding, `userType` (which is `'B2C'`/`'B2B'`) was stored as `store.businessType`, and the actual type (e.g., "Restaurant") was stored as `store.businessIndustry`. The field names are swapped from their semantic meaning.
 
@@ -40,7 +51,7 @@ Three fields exist on store/tenant documents for business identification:
 | `tenant.businessType`     | `'B2C'` / `'B2B'`                                     | Same as store — actual business type                             |
 | `tenant.businessIndustry` | Actual type (e.g., `"Restaurant"`)                    | `'B2C'` / `'B2B'`                                                |
 
-**`businessIndustry` = `'B2B'` | `'B2C'`** — This is the plan/industry identifier. B2B = POS software providers. B2C = SMB businesses. This is future scope — MenuList is currently B2C only.
+**`businessIndustry` = `'B2B'` | `'B2C'`** — This is the plan/industry identifier. B2B = POS software providers. B2C = SMB businesses. MenuList's current owner runtime is B2C-first and does not depend on B2B behavior from this field.
 
 ---
 
@@ -62,7 +73,7 @@ These functions already expect the CORRECT value. After the fix, they'll work pr
 | `src/database/stores/index.tsx:134`          | `addStore()` — derives businessCategory             | Gets `'B2C'` → `undefined`                          | Gets `'Restaurant'` → `'food'` ✅                         |
 | `src/database/stores/index.tsx:167`          | `updateStore()` — derives businessCategory          | Same                                                | Same ✅                                                   |
 | `src/app/api/outlets/create/route.ts:118`    | Outlet creation — copies from master                | Gets master's `'B2C'` → `'specialty'` fallback      | Gets actual type ✅                                       |
-| `functions/src/index.ts:307`                 | storesSummary rebuild — derives category            | Gets `'B2C'` → uses `BUSINESS_TYPE_TO_CATEGORY` map | Gets actual type → correct category ✅                    |
+| `functions/src/triggers/operations.ts`       | Store-operation summaries derive category           | Gets `'B2C'` → shared resolver falls back           | Gets actual type → correct category ✅                    |
 | `functions/src/decisionBlocksScoring.ts:530` | Decision blocks scoring — uses category             | Gets `'specialty'` fallback                         | Gets correct category ✅                                  |
 
 #### Category 2: IMAGE_VIEW_TYPES lookups (expects actual type)
@@ -78,16 +89,15 @@ These look up `storeDetails.businessType` against `IMAGE_VIEW_TYPES[].businessTy
 | `src/app/api/image-editing/promptsList/prompt.ts:124`                     | Same for editing                                                                  | Same                                                    | Same ✅                     |
 | `src/app/api/image-editing/promptsList/getBusinessSpecificPrompt.ts:33`   | Same                                                                              | Same                                                    | Same ✅                     |
 
-#### Category 3: Stores `'B2C'`/`'B2B'` (the BROKEN onboarding write)
+#### Category 3: Onboarding write path (fixed)
 
-These are the SOURCES of the bug — where the wrong value gets written.
+The historical source of the bug was the onboarding write path. The current path is centralized through `createTenantStoreInTransaction()`:
 
-| File                                                      | Usage                                                             | Fix Required                                  |
-| --------------------------------------------------------- | ----------------------------------------------------------------- | --------------------------------------------- |
-| `src/app/api/onboarding/create-subscription/route.ts:146` | `tenant.businessType = userType` (writes `'B2C'`)                 | **FIX:** Use `businessIndustry` value instead |
-| `src/app/api/onboarding/create-subscription/route.ts:174` | `store.businessType = userType` (writes `'B2C'`)                  | **FIX:** Use `businessIndustry` value instead |
-| `src/app/api/onboarding/create-subscription/route.ts:147` | `tenant.businessIndustry = businessIndustry` (writes actual type) | **FIX:** Write `userType` ('B2C'/'B2B') here  |
-| `src/app/api/onboarding/create-subscription/route.ts:176` | `store.businessIndustry = businessIndustry` (writes actual type)  | **FIX:** Write `userType` ('B2C'/'B2B') here  |
+| File | Current Contract | Status |
+| ---- | ---------------- | ------ |
+| `src/app/api/onboarding/create-subscription/route.ts` | Passes `businessType: businessIndustry || FALLBACK_BUSINESS_TYPE` and `businessIndustry: userType` into `createTenantStoreInTransaction()` | ✅ Fixed |
+| `src/lib/onboarding/createTenantStore.ts` | Writes the same `businessType`, `businessIndustry`, and derived `businessCategory` to tenant, store, and `platformSummary/storesSummary` inside the transaction | ✅ Fixed |
+| `src/data/shared/businessTypes.ts` and `functions/src/sharedData/businessTypes.ts` | Share `resolveStoreBusinessCategory()` for current source and Functions consumers | ✅ Fixed |
 
 #### Category 4: UI Components (Settings — already correct)
 
@@ -127,37 +137,25 @@ All usages are CORRECT — they expect derived category values like `'food'`, `'
 ALL usages are in the onboarding flow only. After the fix:
 
 - Onboarding writes `businessIndustry = userType` (`'B2C'` or `'B2B'`) instead of actual type
-- `businessIndustry` is NOT in `StoreDataType` type definition (`src/types/platform/store.ts`)
+- `businessIndustry` is in `StoreDataType` as an optional plan-type marker
 - `businessIndustry` is only stored in Firestore, never read by any system logic
-- Future scope: can be used to identify B2B vs B2C tenants
+- No current owner/customer runtime depends on B2B behavior from this field
 
 ---
 
-## Fix Plan (Minimal, Surgical)
+## Implemented Source Contract
 
-### Phase 1: Fix the Onboarding Route (THE FIX — 4 lines)
+### Source Check A: Onboarding Route and Centralized Creator
 
-**File:** `src/app/api/onboarding/create-subscription/route.ts`
+**Files:** `src/app/api/onboarding/create-subscription/route.ts`, `src/lib/onboarding/createTenantStore.ts`
 
-| Line | Current                                       | After                                                            |
-| ---- | --------------------------------------------- | ---------------------------------------------------------------- |
-| 146  | `businessType: userType,`                     | `businessType: businessIndustry,` (swap: now stores actual type) |
-| 147  | `businessIndustry: businessIndustry \|\| '',` | `businessIndustry: userType,` (swap: now stores B2C/B2B)         |
-| 174  | `businessType: userType,`                     | `businessType: businessIndustry,`                                |
-| 176  | `businessIndustry: businessIndustry \|\| '',` | `businessIndustry: userType,`                                    |
+The onboarding route now passes the owner-selected actual business type as `businessType` and the plan type as `businessIndustry`. The centralized creator derives `businessCategory` with `resolveStoreBusinessCategory()` and writes tenant, store, and storesSummary values in the same transaction.
 
-**Also update:**
-| Line | Current | After |
-|------|---------|-------|
-| 164 | `getDefaultTimeSlotPresets(userType, ...)` | `getDefaultTimeSlotPresets(businessIndustry, ...)` |
-| 166 | `getBusinessCategory(userType) \|\| 'specialty'` | `getBusinessCategory(businessIndustry) \|\| 'specialty'` |
-| 197 | `businessType: userType,` (storesSummary) | `businessType: businessIndustry,` |
-
-### Phase 2: Fix the usePaymentHandler Hook (passes data to route)
+### Source Check B: Payment Handler Payload
 
 **File:** `src/hooks/usePaymentHandler.ts` — No change needed. It already passes `businessIndustry` correctly from the form. The fix is in the route handler where values are swapped.
 
-### Phase 3: Data Migration (Existing Stores)
+### Source Check C: Existing Data Migration (Guarded, Not Run Here)
 
 **CRITICAL:** Existing stores have `businessType = 'B2C'` and `businessIndustry = 'Restaurant'`. Need to swap these values for all existing stores.
 
@@ -204,13 +202,15 @@ const tenants = await db.collection("tenants").get();
 // ... same swap logic
 ```
 
-### Phase 4: Update StoreDataType (add businessIndustry)
+The maintained migration script is `scripts/migrate-business-type-swap.ts`. It is dry-run by default, derives categories from `src/data/shared/businessTypes.ts`, and refuses live writes unless the command includes `--write`, `--project-id`, matching `--confirm-project`, and `--all-stores-and-tenants`.
+
+### Source Check D: StoreDataType
 
 **File:** `src/types/platform/store.ts`
 
-Add `businessIndustry?: string;` after line 91 (after `businessCategory`).
+`businessIndustry?: string;` is present after `businessCategory`.
 
-### Phase 5: Verify — No Other Changes Needed
+### Source Check E: Consumer Behavior
 
 After the swap:
 
@@ -227,7 +227,7 @@ After the swap:
 
 | Risk                                     | Severity | Mitigation                                                                                                       |
 | ---------------------------------------- | -------- | ---------------------------------------------------------------------------------------------------------------- |
-| Data migration corrupts stores           | HIGH     | Backup before migration. Only swap where `businessType` is exactly `'B2C'`/`'B2B'`.                              |
+| Data migration corrupts stores           | HIGH     | Backup before migration. Script is dry-run by default and live mode requires explicit project confirmation plus `--all-stores-and-tenants`. |
 | Stores with owner-corrected businessType | LOW      | If owner already set correct type via Settings, `businessType` won't be `'B2C'`/`'B2B'` — migration skips these. |
 | Cloud Functions reference old values     | MEDIUM   | `functions/src/index.ts` storesSummary rebuild runs daily — will pick up new values.                             |
 | Decision blocks scoring uses stale data  | LOW      | Next scheduled run (every 6h) will use correct category.                                                         |
@@ -255,7 +255,7 @@ After the swap:
 | 1   | `src/app/api/onboarding/create-subscription/route.ts` | Swap businessType ↔ businessIndustry values (7 lines) | HIGH — core onboarding | ✅ DONE                  |
 | 2   | `src/types/platform/store.ts`                         | Add `businessIndustry?: string` field                 | LOW — type addition    | ✅ DONE                  |
 | 3   | `scripts/migrate-business-type-swap.ts`               | Migration script with dry run mode                    | HIGH — data migration  | ✅ CREATED (not yet run) |
-| 4   | `__docs__/messaging-onboarding/_impl.md`              | Update §18 to reflect fix                             | LOW — docs             | ✅ DONE                  |
+| 4   | `__docs__/messaging-onboarding/messaging-onboarding_impl.md` | Update §18 to reflect fix                             | LOW — docs             | ✅ DONE                  |
 | 5   | `__docs__/business-type-data-model/README.md`         | Mark as complete                                      | LOW — docs             | ✅ DONE                  |
 
 **Total code changes: ~10 lines + migration script**  
@@ -266,10 +266,10 @@ After the swap:
 - [x] Code fix applied to `create-subscription/route.ts`
 - [x] `StoreDataType` updated with `businessIndustry` field
 - [x] Migration script created with dry-run safety
-- [ ] **RUN migration in DRY_RUN mode first** (`DRY_RUN=true npx tsx scripts/migrate-business-type-swap.ts`)
+- [ ] **RUN migration in dry-run mode first** (`npx tsx scripts/migrate-business-type-swap.ts --project-id <projectId>`)
 - [ ] Review dry-run output — verify swap count matches expected stores
 - [ ] **Backup Firestore** before live migration
-- [ ] Run migration LIVE (`DRY_RUN=false npx tsx scripts/migrate-business-type-swap.ts`)
+- [ ] Run migration LIVE (`npx tsx scripts/migrate-business-type-swap.ts --project-id <projectId> --write --confirm-project <projectId> --all-stores-and-tenants`)
 - [ ] Verify post-migration: spot-check 5 stores in Firestore console
 - [ ] Rebuild storesSummary (daily cron will do this, or trigger manually)
 
@@ -295,9 +295,9 @@ Every file using `businessType`, `businessCategory`, or `businessIndustry` was t
 | `config/defaultTimeSlotPresets.ts:96` | `getDefaultTimeSlotPresets()` | Actual type → derives category          | ✅ Now receives correct value |
 | `config/businessLabels.ts:74`         | `getAvailabilityLabels()`     | Actual type → derives category → labels | ✅ Now works                  |
 | `config/decisionBlocks.ts:246`        | `getDecisionConfig()`         | Actual type → derives category → config | ✅ Now works                  |
-| `constants/common.ts:297`             | `getBusinessCategory()`       | Actual type → case-insensitive lookup   | ✅ Now finds match            |
-| `lib/schema/index.ts:149`             | `getSchemaType()`             | Actual type → lowercase lookup          | ✅ Now returns specific type  |
-| `app/_client/obp/schema.ts:32`        | OBP schema builder            | Calls `getSchemaType()`                 | ✅ Now correct                |
+| `src/data/shared/businessTypes.ts`    | `getBusinessCategory()`       | Actual type → case-insensitive lookup   | ✅ Now finds match            |
+| `src/lib/schema/index.ts`             | `getSchemaType()`             | Actual type → shared schema mapping     | ✅ Now returns specific type  |
+| `src/app/client/obp/schema.ts`        | OBP schema builder            | Calls `getSchemaType()`                 | ✅ Now correct                |
 
 ### GROUP 3: IMAGE_VIEW_TYPES lookup (4 files) — All ✅
 
@@ -361,5 +361,6 @@ The onboarding form field is named `businessIndustry` but collects the actual bu
 | Version | Date         | Changes                                                                                                                                                             |
 | ------- | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 1.0     | Feb 17, 2026 | Initial analysis — complete codebase audit of businessType/businessCategory/businessIndustry usage across 55+ files. Fix plan created.                              |
-| 1.1     | Feb 17, 2026 | Implementation — Code fix applied (create-subscription/route.ts:146-197), StoreDataType updated, migration script created at scripts/migrate-business-type-swap.ts. |
+| 1.1     | Feb 17, 2026 | Implementation — Code fix applied, StoreDataType updated, migration script created at scripts/migrate-business-type-swap.ts. |
 | 1.2     | Feb 17, 2026 | Post-fix verification — Line-by-line audit of all 55 files. Every consumer verified correct after fix. Migration command fixed (tsx not ts-node).                   |
+| 1.3     | Jul 2, 2026  | Launch boundary refreshed from current source: onboarding creator contract documented, migration script guarded with project confirmation, and source gate added.       |

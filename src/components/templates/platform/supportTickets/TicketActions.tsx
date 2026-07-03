@@ -1,12 +1,14 @@
 import DateTimeDisplay from '@atoms/DateTimeDisplay';
 import { FEATURE_FLAGS } from '@config/features';
 import { getProductSurfacesForSession } from '@database/answerlattice/productSurfaces';
+import { getBoundedAnswerlatticeStringContext, logAnswerlatticeFailure } from '@lib/answerlattice/diagnostics';
+import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { sanitizeFeedbackComment } from '@lib/sanitization';
 import SupportTicketCategory from '@organisms/SupportTicket/SupportTicketCategory';
 import SupportTicketPriority from '@organisms/SupportTicket/SupportTicketPriority';
 import SupportTicketStatus from '@organisms/SupportTicket/SupportTicketStatus';
 import { PLATFORM_SUPPORT_TICKET_TAG_OPTIONS, SUPPORT_TICKET_CATEGORY, SUPPORT_TICKET_PRIORITY, SUPPORT_TICKET_STATUS, SupportTicketType } from '@type/supportTicket';
-import { Image as AntImage, Divider, Flex, Input, Select, Typography, theme } from 'antd';
+import { Image as AntImage, Divider, Flex, Input, message, Select, Typography, theme } from 'antd';
 import React, { useEffect, useState } from 'react';
 import { LuPaperclip } from 'react-icons/lu';
 
@@ -27,6 +29,26 @@ const TicketActions: React.FC<TicketActionsProps> = ({ ticket, setTicket, from }
         setTicket({ ...ticket, [key]: value });
     };
 
+    const handleAttachmentOpen = (item: { url?: string; name?: string; type?: string; size?: number }) => {
+        try {
+            const opened = window.open(item.url, '_blank', 'noopener,noreferrer');
+            if (!opened) {
+                throw new Error('answerlattice_ticket_attachment_open_blocked');
+            }
+        } catch (error) {
+            logRuntimeFailure('answerlattice_ticket_attachment_open_failed', error, {
+                surface: 'ticket_actions',
+                ...getBoundedRuntimeStringContext('ticketId', ticket.id),
+                ...getBoundedRuntimeStringContext('ticketDisplayId', ticket.displayId),
+                ...getBoundedRuntimeStringContext('attachmentUrl', item.url),
+                ...getBoundedRuntimeStringContext('attachmentName', item.name),
+                ...getBoundedRuntimeStringContext('attachmentType', item.type),
+                attachmentSizePresent: typeof item.size === 'number',
+            });
+            message.error('Unable to open attachment');
+        }
+    };
+
     useEffect(() => {
         if (from !== 'platform' || !FEATURE_FLAGS.ENABLE_ANSWERLATTICE_PRODUCT_SURFACES) return;
         let mounted = true;
@@ -39,9 +61,14 @@ const TicketActions: React.FC<TicketActionsProps> = ({ ticket, setTicket, from }
                         .map(surface => ({ label: surface.label, value: surface.key })),
                 );
             })
-            .catch(() => undefined);
+            .catch((error) => {
+                logAnswerlatticeFailure('answerlattice_ticket_surface_options_load_failed', error, {
+                    ...getBoundedAnswerlatticeStringContext('ticketId', ticket.id),
+                    ...getBoundedAnswerlatticeStringContext('ticketDisplayId', ticket.displayId),
+                });
+            });
         return () => { mounted = false; };
-    }, [from]);
+    }, [from, ticket.displayId, ticket.id]);
 
     return (
         <Flex vertical gap={24}>
@@ -221,7 +248,7 @@ const TicketActions: React.FC<TicketActionsProps> = ({ ticket, setTicket, from }
                                         borderRadius: 8,
                                         cursor: 'pointer'
                                     }}
-                                    onClick={() => window.open(item.url, '_blank')}
+                                    onClick={() => handleAttachmentOpen(item)}
                                 >
                                     <LuPaperclip size={16} style={{ color: token.colorTextSecondary }} />
                                     <Flex vertical gap={2} style={{ flex: 1 }}>

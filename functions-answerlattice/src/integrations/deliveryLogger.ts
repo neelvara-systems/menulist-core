@@ -28,6 +28,31 @@ function getHealthDocId(tId: number, sId: number): string {
     return `integrationHealth_${tId}_${sId}`;
 }
 
+function boundedDeliveryStringContext(label: string, value: unknown): Record<string, number | boolean> {
+    const text = typeof value === 'string' ? value : '';
+    return {
+        [`${label}Present`]: text.length > 0,
+        [`${label}Length`]: text.length,
+    };
+}
+
+function getDeliveryLoggerErrorContext(error: unknown): Record<string, string | number | null> {
+    const source = error as { code?: unknown; status?: unknown; statusCode?: unknown };
+    const code = typeof source?.code === 'string' || typeof source?.code === 'number'
+        ? String(source.code).slice(0, 80)
+        : null;
+    const status = typeof source?.status === 'string' || typeof source?.status === 'number'
+        ? String(source.status).slice(0, 80)
+        : typeof source?.statusCode === 'string' || typeof source?.statusCode === 'number'
+            ? String(source.statusCode).slice(0, 80)
+            : null;
+    return {
+        sourceErrorName: error instanceof Error ? (error.name || 'Error').slice(0, 80) : typeof error,
+        sourceErrorCode: code,
+        sourceErrorStatus: status,
+    };
+}
+
 /**
  * Log a delivery attempt (success or failure).
  * Fire-and-forget — errors logged, never thrown.
@@ -60,9 +85,15 @@ export async function logDeliveryAttempt(params: {
         await db.collection(DB_COLLECTIONS.ANSWERLATTICE_INTEGRATION_DELIVERY_LOGS).add(entry);
     } catch (error) {
         logger.warn('[Answerlattice Integration] Failed to log delivery attempt', {
-            error: error instanceof Error ? error.message : String(error),
-            eventId: params.eventId,
+            failureCode: 'answerlattice_integration_delivery_log_write_failed',
+            ...boundedDeliveryStringContext('eventId', params.eventId),
             adapter: params.adapter,
+            attempt: params.attempt,
+            hasTenantScope: Number.isFinite(params.tId),
+            hasStoreScope: Number.isFinite(params.sId),
+            resultSuccess: params.result.success,
+            statusCode: params.result.statusCode ?? null,
+            ...getDeliveryLoggerErrorContext(error),
         });
     }
 }
@@ -78,9 +109,10 @@ export async function updateEventStatus(
         await db.collection(DB_COLLECTIONS.ANSWERLATTICE_INTEGRATION_EVENTS).doc(eventId).update({ status });
     } catch (error) {
         logger.warn('[Answerlattice Integration] Failed to update event status', {
-            error: error instanceof Error ? error.message : String(error),
-            eventId,
+            failureCode: 'answerlattice_integration_event_status_update_failed',
+            ...boundedDeliveryStringContext('eventId', eventId),
             status,
+            ...getDeliveryLoggerErrorContext(error),
         });
     }
 }
@@ -125,10 +157,15 @@ export async function updateIntegrationHealth(params: {
             .set(update, { merge: true });
     } catch (error) {
         logger.warn('[Answerlattice Integration] Failed to update integration health', {
-            tId: params.tId,
-            sId: params.sId,
+            failureCode: 'answerlattice_integration_health_update_failed',
+            ...boundedDeliveryStringContext('eventId', params.eventId),
+            hasTenantScope: Number.isFinite(params.tId),
+            hasStoreScope: Number.isFinite(params.sId),
             adapter: params.adapter,
-            error: error instanceof Error ? error.message : String(error),
+            status: params.status,
+            resultSuccess: params.result.success,
+            statusCode: params.result.statusCode ?? null,
+            ...getDeliveryLoggerErrorContext(error),
         });
     }
 }

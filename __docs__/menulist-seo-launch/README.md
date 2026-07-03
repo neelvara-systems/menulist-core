@@ -22,7 +22,7 @@ This folder covers MenuList only:
 - MenuList public menu, Official Business Page, tenant sitemap, robots, and public truth indexing policy.
 - MenuList Search Console, indexing, page performance, structured data, and launch measurement.
 
-This folder does not cover Answerlattice, CampaignCue, ConstantLayer, Canonica, MyCodex, GrowthOS, or KitStamp unless a future entry explicitly says a cross-product SEO issue affects MenuList.
+This folder does not cover Answerlattice, CampaignCue, Neelvara, Canonica, MyCodex, GrowthOS, or KitStamp unless a future entry explicitly says a cross-product SEO issue affects MenuList.
 
 ## Market Scope
 
@@ -72,7 +72,7 @@ Outside help, if used, should be narrow and fixed-scope only:
 | Discovery infrastructure and public machine-readability | [`../discovery-infrastructure/README.md`](../discovery-infrastructure/README.md) |
 | Public tenant indexing gate | [`../discovery-infrastructure/public-truth-indexing-policy.md`](../discovery-infrastructure/public-truth-indexing-policy.md) |
 | Production launch prerequisites | [`../production-readiness/launch-prerequisites.md`](../production-readiness/launch-prerequisites.md) |
-| Global release/change log | [`../CHANGELOG.md`](../CHANGELOG.md) |
+| Global release/change log | [`../changelog.md`](../changelog.md) |
 
 ## Runtime Evidence Anchors
 

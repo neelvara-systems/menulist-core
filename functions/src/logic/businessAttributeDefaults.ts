@@ -166,6 +166,7 @@ export async function applyMenuDerivedBusinessAttributeDefaultsForStore(params: 
     context: string;
     menuData: MenuDataLike | null | undefined;
     storeId: string | number;
+    touchDigitalScreen?: boolean;
 }): Promise<boolean> {
     const storeId = String(params.storeId || '').trim();
     if (!storeId) return false;
@@ -179,14 +180,16 @@ export async function applyMenuDerivedBusinessAttributeDefaultsForStore(params: 
     if (!nextBusinessAttributes) return false;
 
     await storeRef.update({ businessAttributes: nextBusinessAttributes });
-    await revalidatePublicClientCacheForStore(storeId, params.context);
+    await revalidatePublicClientCacheForStore(storeId, params.context, {
+        touchDigitalScreen: params.touchDigitalScreen === true,
+    });
 
     functions.logger.info('[businessAttributeDefaults] Applied menu-derived business attribute defaults', {
-        storeId,
-        context: params.context,
-        appliedKeys: Object.keys(nextBusinessAttributes).filter((key) => (
+        storeIdLength: storeId.length,
+        contextLength: params.context.length,
+        appliedKeyCount: Object.keys(nextBusinessAttributes).filter((key) => (
             nextBusinessAttributes[key] === true && storeData.businessAttributes?.[key] !== true
-        )),
+        )).length,
     });
 
     return true;

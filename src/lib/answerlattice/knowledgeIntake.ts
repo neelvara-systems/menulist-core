@@ -11,13 +11,17 @@ import { ANSWERLATTICE_CACHE_SOURCES } from '@lib/answerlattice/cacheVersionMani
 import { markAnswerlatticeCompiledContextSourceChangedAdmin } from '@lib/answerlattice/compiledSourceVersionsAdmin';
 import { buildAnswerlatticeRouteKey, normalizeAnswerlatticeRoutePath } from '@lib/answerlattice/compiledContext';
 import {
+    getAnswerlatticeKnowledgeIntakeLogContext,
+    logAnswerlatticeKnowledgeIntakeFailure,
+} from '@lib/answerlattice/knowledgeIntakeDiagnostics';
+import {
     finalizeAnswerlatticeIntakeUsage,
     refundAnswerlatticeIntakeUsage,
     reserveAnswerlatticeIntakeUsage,
 } from '@lib/answerlattice/intakeUsageLedger';
 import { rebuildProductSurfaceContentSummaryServer } from '@lib/answerlattice/productSurfaceContentServer';
 import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
-import { secureError, secureLog } from '@lib/security/secureLogger';
+import { secureLog } from '@lib/security/secureLogger';
 import { normalizeGeminiUsageMetadata } from '@lib/vectorEmbeddings';
 import {
     ANSWERLATTICE_INTAKE_REVIEW_STATUS,
@@ -111,12 +115,20 @@ const DISCOVERY_TIMEOUT_MS = 9000;
 const DISCOVERY_MAX_REDIRECTS = 3;
 const DISCOVERY_USER_AGENT = 'AnswerlatticeKnowledgeIntake/1.0 (+https://answerlattice.com)';
 const INTAKE_MEDIA_MODEL = ANSWERLATTICE_TEXT_MODEL;
+const ANSWERLATTICE_INTAKE_MEDIA_REFUND_FAILURE_REASON = 'media_extraction_failed';
+const ANSWERLATTICE_INTAKE_PUBLISH_FAILURE_MESSAGE = 'Publish failed.';
 const INTAKE_IMAGE_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif']);
 const INTAKE_AUDIO_MIME_TYPES = new Set(['audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/x-wav', 'audio/mp4', 'audio/m4a', 'audio/x-m4a', 'audio/aac', 'audio/webm', 'audio/ogg']);
 const INTAKE_VIDEO_MIME_TYPES = new Set(['video/mp4', 'video/x-m4v', 'video/quicktime', 'video/webm', 'video/ogg']);
 
 export const getKnowledgeIntakeSummaryDocId = (tId: number, sId: number) =>
     `knowledgeIntakeSummary_${Number(tId)}_${Number(sId)}`;
+
+const getKnowledgeIntakePublishFailureMessage = (publishedCount: number): string => (
+    publishedCount > 0
+        ? `Published ${publishedCount} item${publishedCount === 1 ? '' : 's'}, then stopped. Review the remaining approved items and publish again.`
+        : ANSWERLATTICE_INTAKE_PUBLISH_FAILURE_MESSAGE
+);
 
 const assertEnabled = () => {
     if (!FEATURE_FLAGS.ENABLE_ANSWERLATTICE_KNOWLEDGE_INTAKE) {
@@ -729,12 +741,12 @@ export async function processKnowledgeIntakeMediaSource(scopeInput: IntakeScope,
             },
         };
     } catch (error) {
-        await refundAnswerlatticeIntakeUsage(scope, reservation.ledgerId, error instanceof Error ? error.message : 'Media extraction failed.');
-        secureError('[Answerlattice Intake] Media extraction failed', error as Error, {
-            ...scope,
+        await refundAnswerlatticeIntakeUsage(scope, reservation.ledgerId, ANSWERLATTICE_INTAKE_MEDIA_REFUND_FAILURE_REASON);
+        logAnswerlatticeKnowledgeIntakeFailure('[Answerlattice Intake] Media extraction failed', 'answerlattice_intake_media_extraction_failed', error, {
             jobId,
-            mediaKind,
             ledgerId: reservation.ledgerId,
+            mediaKind,
+            scope,
         });
         throw error;
     }
@@ -910,26 +922,32 @@ export async function publishKnowledgeIntakeJob(scopeInput: IntakeScope, jobId: 
             tId: scope.tId,
             sId: scope.sId,
             reason: 'knowledge_intake_publish',
-        }).catch((error) => secureError('[Answerlattice Intake] Context summary rebuild failed after publish', error as Error, scope));
+        }).catch((error) => logAnswerlatticeKnowledgeIntakeFailure(
+            '[Answerlattice Intake] Context summary rebuild failed after publish',
+            'answerlattice_intake_context_summary_rebuild_failed',
+            error,
+            { scope },
+        ));
         await Promise.all(Array.from(segments).map(segment => revalidateAnswerlatticePublicCache(scope.tId, scope.sId, segment)));
 
         return { published };
     } catch (error) {
         const failedAt = now();
-        const message = error instanceof Error ? error.message : 'Publish failed.';
+        const safeFailureMessage = getKnowledgeIntakePublishFailureMessage(published.length);
         const counters = await refreshJobCounters(scope, jobId).catch((counterError) => {
-            secureError('[Answerlattice Intake] Failed to refresh counters after partial publish failure', counterError as Error, {
-                ...scope,
+            logAnswerlatticeKnowledgeIntakeFailure('[Answerlattice Intake] Failed to refresh counters after partial publish failure', 'answerlattice_intake_publish_counter_refresh_failed', counterError, {
                 jobId,
+                scope,
             });
             return null;
         });
 
         if (segments.size > 0) {
             await Promise.all(Array.from(segments).map(segment => revalidateAnswerlatticePublicCache(scope.tId, scope.sId, segment))).catch((cacheError) => {
-                secureError('[Answerlattice Intake] Public cache revalidation failed after partial publish failure', cacheError as Error, {
-                    ...scope,
+                logAnswerlatticeKnowledgeIntakeFailure('[Answerlattice Intake] Public cache revalidation failed after partial publish failure', 'answerlattice_intake_publish_cache_revalidation_failed', cacheError, {
+                    cacheSegment: Array.from(segments)[0],
                     jobId,
+                    scope,
                 });
             });
         }
@@ -957,9 +975,7 @@ export async function publishKnowledgeIntakeJob(scopeInput: IntakeScope, jobId: 
                 rejectedItemCount: counters.rejected,
                 publishedItemCount: counters.published,
             } : {}),
-            errorMessage: published.length > 0
-                ? `Published ${published.length} item${published.length === 1 ? '' : 's'}, then stopped: ${message}`
-                : message,
+            errorMessage: safeFailureMessage,
             modifiedOn: failedAt,
             ...mutableActorFields(actor),
         }, { merge: true });
@@ -1316,10 +1332,13 @@ async function maybeEmbedArticle(articleData: Record<string, any>, actor?: Intak
     } catch (error) {
         articleData.embedding = null;
         articleData.embeddingStatus = 'failed';
-        secureError('[Answerlattice Intake] Article embedding failed during publish', error as Error, {
+        logAnswerlatticeKnowledgeIntakeFailure('[Answerlattice Intake] Article embedding failed during publish', 'answerlattice_intake_article_embedding_failed', error, {
+            articleId: articleData.id,
             articleTitle: articleData.title,
-            tId: articleData.tId,
-            sId: articleData.sId,
+            scope: {
+                tId: articleData.tId,
+                sId: articleData.sId,
+            },
         });
     }
 }
@@ -1822,10 +1841,21 @@ const isAllowedDiscoveryContentType = (contentType: string) => {
 
 async function readResponseBodyWithCap(response: Response, maxBytes: number) {
     if (!response.body) {
+        const contentLengthHeader = response.headers.get('content-length');
+        const contentLength = contentLengthHeader ? Number(contentLengthHeader) : null;
+        if (response.status === 204 || contentLength === 0) {
+            return { text: '', truncated: false };
+        }
+        if (contentLength === null || !Number.isFinite(contentLength) || contentLength < 0 || contentLength > maxBytes) {
+            throw new Error('URL response body could not be streamed safely.');
+        }
         const bytes = Buffer.from(await response.arrayBuffer());
+        if (bytes.byteLength > maxBytes) {
+            throw new Error('URL content is too large for bounded intake.');
+        }
         return {
-            text: bytes.subarray(0, maxBytes).toString('utf8'),
-            truncated: bytes.byteLength > maxBytes,
+            text: bytes.toString('utf8'),
+            truncated: false,
         };
     }
 

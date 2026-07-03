@@ -10,6 +10,8 @@
 
 Your official business page is a single link you can share with anyone. When customers open it, they see your business name, photos, Google rating, whether you're open, and a button to view your full menu. They can also call you, message you on WhatsApp, get directions, reserve a table, or place an order — all from one page.
 
+Only secure public links are shown to customers. If a reservation, order, directions, review, website, or social link is missing or not a valid secure public link, MenuList hides that action instead of sending customers to it. Source gate: `npm run verify:official-business-page-boundary`.
+
 ---
 
 ## Getting Started

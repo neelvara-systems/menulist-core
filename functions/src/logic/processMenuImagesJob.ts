@@ -1,7 +1,7 @@
 /**
  * Menu Image Processing Job Logic
  * 
- * Spec Reference: MENU-IMAGE-PROCESSING-JOB-QUEUE-SPEC.md Section 5
+ * Spec Reference: menu-image-processing-job-queue-spec.md Section 5
  * 
  * This module handles job-based menu image processing:
  * 1. Updates job status to "processing"
@@ -20,6 +20,7 @@ import * as functions from 'firebase-functions';
 import { DB_COLLECTIONS } from "../constants/database";
 import { FUNCTION_RETENTION_CONFIG, isFunctionFeatureEnabled } from "../constants/features";
 import { firestoreAdmin } from "../firebaseAdmin";
+import { isSafeModeActive } from "../monitoring/safeMode";
 import { normalizeBusinessCategory, resolveStoreBusinessCategory } from "../sharedData/businessTypes";
 import { applyCategoryIconDefaults } from "../sharedData/categoryIconSuggestions";
 import {
@@ -71,6 +72,55 @@ const PROFILE_CONFIDENCE_RANK: Record<ExtractedBusinessProfileConfidence, number
     low: 1,
 };
 const EXTRACTION_DETAIL_RETENTION_MS = FUNCTION_RETENTION_CONFIG.MENU_EXTRACTION_DETAIL_RETENTION_HOURS * 60 * 60 * 1000;
+const PROCESS_MENU_IMAGES_JOB_FAILED = "PROCESS_MENU_IMAGES_JOB_FAILED";
+const PROCESS_MENU_IMAGES_JOB_STATUS_UPDATE_FAILED = "PROCESS_MENU_IMAGES_JOB_STATUS_UPDATE_FAILED";
+const PROCESS_MENU_IMAGES_JOB_TENANT_MISMATCH = "PROCESS_MENU_IMAGES_JOB_TENANT_MISMATCH";
+const PROCESS_MENU_IMAGES_JOB_BUSINESS_DEFAULTS_FAILED = "PROCESS_MENU_IMAGES_JOB_BUSINESS_DEFAULTS_FAILED";
+const PROCESS_MENU_IMAGES_JOB_PUBLIC_DRAFT_STATUS_UPDATE_FAILED = "PROCESS_MENU_IMAGES_JOB_PUBLIC_DRAFT_STATUS_UPDATE_FAILED";
+const PROCESS_MENU_IMAGES_JOB_SAFE_MODE_ACTIVE = "PROCESS_MENU_IMAGES_JOB_SAFE_MODE_ACTIVE";
+const PROCESS_MENU_IMAGES_JOB_FAILED_MESSAGE = "Menu extraction failed";
+const PROCESS_MENU_IMAGES_JOB_SAFE_MODE_MESSAGE = "Menu extraction is paused. Please try again in a few minutes.";
+
+function getBoundedFunctionStringContext(label: string, value: unknown): Record<string, boolean | number> {
+    const normalized = value === undefined || value === null ? "" : String(value);
+    return {
+        [`${label}Present`]: normalized.length > 0,
+        [`${label}Length`]: normalized.length,
+    };
+}
+
+function getMenuExtractionJobLogContext(jobId: string, job: MenuImageProcessingJob): Record<string, string | boolean | number> {
+    return {
+        ...getBoundedFunctionStringContext("jobId", jobId),
+        ...getBoundedFunctionStringContext("projectId", job.projectId),
+        ...getBoundedFunctionStringContext("tenantId", job.tId),
+        ...getBoundedFunctionStringContext("storeId", job.sId),
+        source: job.source || "unknown",
+        destinationType: job.destination?.type || job.destinationType || "project",
+    };
+}
+
+function getFunctionErrorName(error: unknown): string | undefined {
+    if (error === undefined) return undefined;
+    if (error instanceof Error) return (error.name || "Error").slice(0, 64);
+    return typeof error;
+}
+
+function getFunctionErrorCode(error: unknown): string | undefined {
+    if (!error || typeof error !== "object" || !("code" in error)) return undefined;
+    const code = (error as { code?: unknown }).code;
+    if (code === undefined || code === null) return undefined;
+    return String(code).slice(0, 64);
+}
+
+function getFunctionErrorStatus(error: unknown): number | undefined {
+    if (!error || typeof error !== "object") return undefined;
+    const statusValue = "status" in error
+        ? (error as { status?: unknown }).status
+        : (error as { statusCode?: unknown }).statusCode;
+    const status = Number(statusValue);
+    return Number.isFinite(status) ? status : undefined;
+}
 
 function timestampMillis(value: unknown): number | null {
     if (!value) return null;
@@ -525,29 +575,43 @@ async function updatePublicDraftFromExtraction(
     });
 }
 
-async function markPublicDraftExtractionFailed(job: MenuImageProcessingJob, message: string): Promise<void> {
+async function updatePublicDraftExtractionStatus(
+    jobId: string,
+    job: MenuImageProcessingJob,
+    status: "processing" | "failed",
+    updateData: Record<string, unknown>,
+): Promise<void> {
     if (job.destination?.type !== MENU_EXTRACTION_DESTINATION_TYPES.PUBLIC_MENU_DRAFT) return;
-    await firestoreAdmin
-        .collection(DB_COLLECTIONS.PUBLIC_MENU_DRAFTS)
-        .doc(job.destination.draftId)
-        .update({
-            extractionStatus: "failed",
-            extractionError: message,
-            updatedAt: Timestamp.now(),
-        })
-        .catch(() => undefined);
+    try {
+        await firestoreAdmin
+            .collection(DB_COLLECTIONS.PUBLIC_MENU_DRAFTS)
+            .doc(job.destination.draftId)
+            .update({
+                ...updateData,
+                extractionStatus: status,
+                updatedAt: Timestamp.now(),
+            });
+    } catch (error) {
+        functions.logger.error("[processMenuImagesJob] Public draft status update failed", {
+            failureCode: PROCESS_MENU_IMAGES_JOB_PUBLIC_DRAFT_STATUS_UPDATE_FAILED,
+            ...getMenuExtractionJobLogContext(jobId, job),
+            ...getBoundedFunctionStringContext("draftId", job.destination.draftId),
+            targetStatus: status,
+            sourceErrorName: getFunctionErrorName(error),
+            sourceErrorCode: getFunctionErrorCode(error),
+            sourceStatusCode: getFunctionErrorStatus(error),
+        });
+    }
 }
 
-async function markPublicDraftExtractionProcessing(job: MenuImageProcessingJob): Promise<void> {
-    if (job.destination?.type !== MENU_EXTRACTION_DESTINATION_TYPES.PUBLIC_MENU_DRAFT) return;
-    await firestoreAdmin
-        .collection(DB_COLLECTIONS.PUBLIC_MENU_DRAFTS)
-        .doc(job.destination.draftId)
-        .update({
-            extractionStatus: "processing",
-            updatedAt: Timestamp.now(),
-        })
-        .catch(() => undefined);
+async function markPublicDraftExtractionFailed(jobId: string, job: MenuImageProcessingJob, message: string): Promise<void> {
+    await updatePublicDraftExtractionStatus(jobId, job, "failed", {
+        extractionError: message,
+    });
+}
+
+async function markPublicDraftExtractionProcessing(jobId: string, job: MenuImageProcessingJob): Promise<void> {
+    await updatePublicDraftExtractionStatus(jobId, job, "processing", {});
 }
 
 function getExtractionShapeError(menuData: any): string | null {
@@ -623,7 +687,7 @@ function computeConfidenceSummary(items: MenuItem[]): ConfidenceSummary | undefi
 
 // ═══════════════════════════════════════════════════════════════════════════
 // SHARED JOB PROCESSING LOGIC
-// Spec Reference: MENU-IMAGE-PROCESSING-JOB-QUEUE-SPEC.md Section 5
+// Spec Reference: menu-image-processing-job-queue-spec.md Section 5
 // ═══════════════════════════════════════════════════════════════════════════
 
 /**
@@ -661,7 +725,7 @@ export async function processMenuImagesJobLogic(
     };
 
     logger.info(`[processMenuProcessingJob] === JOB PROCESSING START ===`, {
-        jobId,
+        ...getMenuExtractionJobLogContext(jobId, job),
         step: 'START',
         timestamp: Date.now(),
     });
@@ -695,12 +759,10 @@ export async function processMenuImagesJobLogic(
                 const projectSId = projectIdParts[projectIdParts.length - 1];
                 if (projectTId !== String(job.tId) || projectSId !== String(job.sId)) {
                     logger.error(`[processMenuImagesJob] SECURITY: projectId tenant mismatch`, {
-                        jobId,
-                        jobTId: job.tId,
-                        jobSId: job.sId,
-                        projectTId,
-                        projectSId,
-                        projectId: job.projectId,
+                        failureCode: PROCESS_MENU_IMAGES_JOB_TENANT_MISMATCH,
+                        ...getMenuExtractionJobLogContext(jobId, job),
+                        ...getBoundedFunctionStringContext("projectTenantId", projectTId),
+                        ...getBoundedFunctionStringContext("projectStoreId", projectSId),
                     });
                     await jobRef.update({
                         status: MENU_PROCESSING_STATUS.FAILED,
@@ -721,14 +783,14 @@ export async function processMenuImagesJobLogic(
         // Step 1: Update status to processing (with idempotency check)
         // Spec Reference: Section 8.6 (Idempotency)
         // ─────────────────────────────────────────────────────────────
-        logger.info(`[processMenuImagesJob] Starting transaction for job ${jobId}`);
+        logger.info(`[processMenuImagesJob] Starting transaction for job`, getMenuExtractionJobLogContext(jobId, job));
 
         const updated = await firestoreAdmin.runTransaction(async (transaction) => {
             const jobDoc = await transaction.get(jobRef);
             const jobData = jobDoc.data();
 
             logger.info(`[processMenuImagesJob] Transaction - Job status check:`, {
-                jobId,
+                ...getMenuExtractionJobLogContext(jobId, job),
                 status: jobData?.status,
                 startedAt: jobData?.startedAt?.toMillis?.(),
                 now: Date.now()
@@ -737,13 +799,16 @@ export async function processMenuImagesJobLogic(
             if (jobData?.status !== MENU_PROCESSING_STATUS.PENDING) {
                 // Job already picked up by another instance - skip immediately
                 // Strict idempotency: only PENDING jobs can be processed
-                logger.info(`[processMenuImagesJob] Transaction - Job ${jobId} already being processed (status: ${jobData?.status}), skipping`);
+                logger.info(`[processMenuImagesJob] Transaction - job already being processed, skipping`, {
+                    ...getMenuExtractionJobLogContext(jobId, job),
+                    status: jobData?.status || "unknown",
+                });
                 return false;
             }
 
             // Set timeoutAt to 10 minutes from now (spec Section 8.2)
             const timeoutMs = 10 * 60 * 1000; // 10 minutes
-            const processingUpdate: Record<string, unknown> = {
+            const processingUpdate: FirebaseFirestore.UpdateData<FirebaseFirestore.DocumentData> = {
                 status: MENU_PROCESSING_STATUS.PROCESSING,
                 startedAt: Timestamp.now(),
                 updatedAt: Timestamp.now(),
@@ -764,10 +829,42 @@ export async function processMenuImagesJobLogic(
             return; // Job already being processed
         }
 
-        await markPublicDraftExtractionProcessing(job);
+        if (await isSafeModeActive()) {
+            logger.warn(`[processMenuImagesJob] SAFE_MODE active; skipping provider work`, {
+                failureCode: PROCESS_MENU_IMAGES_JOB_SAFE_MODE_ACTIVE,
+                ...getMenuExtractionJobLogContext(jobId, job),
+            });
+            await markPublicDraftExtractionFailed(
+                jobId,
+                job,
+                "Menu setup is paused right now. Please try again in a few minutes.",
+            );
+            const failedAtMillis = Date.now();
+            await jobRef.update({
+                status: MENU_PROCESSING_STATUS.FAILED,
+                completedAt: Timestamp.fromMillis(failedAtMillis),
+                updatedAt: Timestamp.fromMillis(failedAtMillis),
+                progress: 0,
+                currentStep: "Paused",
+                timings: buildExtractionTimings({
+                    failedAtMillis,
+                    jobCreatedAt: job.createdAt,
+                    workerStartedAtMillis,
+                }),
+                error: {
+                    code: "SAFE_MODE_ACTIVE",
+                    message: PROCESS_MENU_IMAGES_JOB_SAFE_MODE_MESSAGE,
+                    retryable: true,
+                    retryAfterSeconds: 60,
+                },
+            });
+            return;
+        }
+
+        await markPublicDraftExtractionProcessing(jobId, job);
 
         logger.info(`[processMenuImagesJob] === STEP 1 COMPLETE - Transaction updated ===`, {
-            jobId,
+            ...getMenuExtractionJobLogContext(jobId, job),
             step: 'TRANSACTION_COMPLETE',
             status: MENU_PROCESSING_STATUS.PROCESSING,
             timestamp: Date.now()
@@ -779,10 +876,7 @@ export async function processMenuImagesJobLogic(
         );
         if (outletPolicyBlockReason) {
             logger.warn(`[processMenuImagesJob] Outlet policy blocked extraction`, {
-                jobId,
-                projectId: job.projectId,
-                storeId: job.sId,
-                tenantId: job.tId,
+                ...getMenuExtractionJobLogContext(jobId, job),
                 reason: outletPolicyBlockReason,
             });
             await jobRef.update({
@@ -803,16 +897,15 @@ export async function processMenuImagesJobLogic(
         // ─────────────────────────────────────────────────────────────
         // Step 2: Process images using existing AI logic
         // Spec Reference: Section 5 (Function Design)
-        // Note: Removed pre-AI cancellation check to save 1 read
-        //       (AI is the expensive part, so we check AFTER)
+        // SAFE_MODE has already been checked before provider work.
         // ─────────────────────────────────────────────────────────────
 
         // Build request for existing processMenuImagesLogic
         logger.info(`[processMenuImagesJob] === STEP 2 START - Building AI request ===`, {
-            jobId,
+            ...getMenuExtractionJobLogContext(jobId, job),
             step: 'AI_REQUEST_BUILD',
             filesCount: job.files.length,
-            targetLanguages: job.targetLanguages,
+            targetLanguageCount: job.targetLanguages.length,
             timestamp: Date.now()
         });
         const request: ProcessMenuImagesRequest = {
@@ -851,7 +944,7 @@ export async function processMenuImagesJobLogic(
         // and browser rendering. Parse those directly when names/prices are
         // already explicit; otherwise fall through to the normal AI extractor.
         logger.info(`[processMenuImagesJob] === STEP 2 AI PROCESSING START ===`, {
-            jobId,
+            ...getMenuExtractionJobLogContext(jobId, job),
             step: 'AI_PROCESSING_START',
             timestamp: Date.now()
         });
@@ -862,7 +955,7 @@ export async function processMenuImagesJobLogic(
         aiCompletedAtMillis = Date.now();
 
         logger.info(`[processMenuImagesJob] === STEP 2 AI PROCESSING COMPLETE ===`, {
-            jobId,
+            ...getMenuExtractionJobLogContext(jobId, job),
             step: 'AI_PROCESSING_COMPLETE',
             hasResult: !!result,
             hasData: !!result?.data,
@@ -885,7 +978,7 @@ export async function processMenuImagesJobLogic(
             result.data.data = hardening.data;
 
             logger.info(`[processMenuImagesJob] Hardening complete`, {
-                jobId,
+                ...getMenuExtractionJobLogContext(jobId, job),
                 categoriesMerged: hardening.normalization.mergedCategories,
                 categoriesRenamed: hardening.normalization.renamedCategories,
                 integrityValid: hardening.integrity.valid,
@@ -895,8 +988,10 @@ export async function processMenuImagesJobLogic(
         } catch (hardeningError: any) {
             // Hardening failure must NEVER block extraction
             logger.warn(`[processMenuImagesJob] Hardening failed (non-blocking)`, {
-                jobId,
-                error: hardeningError.message,
+                ...getMenuExtractionJobLogContext(jobId, job),
+                sourceErrorName: getFunctionErrorName(hardeningError),
+                sourceErrorCode: getFunctionErrorCode(hardeningError),
+                sourceStatusCode: getFunctionErrorStatus(hardeningError),
             });
         }
 
@@ -947,7 +1042,7 @@ export async function processMenuImagesJobLogic(
                     workerStartedAtMillis,
                 }),
             });
-            logger.info(`[processMenuImagesJob] Job ${jobId} cancelled after AI processing`);
+            logger.info(`[processMenuImagesJob] Job cancelled after AI processing`, getMenuExtractionJobLogContext(jobId, job));
             return;
         }
 
@@ -975,8 +1070,7 @@ export async function processMenuImagesJobLogic(
         // ─────────────────────────────────────────────────────────────
 
         logger.info(`[processMenuImagesJob] === STEP 5 START - Resolving project context ===`, {
-            jobId,
-            projectId: job.projectId,
+            ...getMenuExtractionJobLogContext(jobId, job),
             step: 'FETCH_PROJECT',
             skipProjectSave,
             timestamp: Date.now()
@@ -988,8 +1082,7 @@ export async function processMenuImagesJobLogic(
         const existingProject = await loadExistingProject();
 
         logger.info(`[processMenuImagesJob] === STEP 5 PROJECT CONTEXT RESOLVED ===`, {
-            jobId,
-            projectId: job.projectId,
+            ...getMenuExtractionJobLogContext(jobId, job),
             step: 'PROJECT_FETCHED',
             hasExistingProject: !!existingProject,
             existingFilesCount: existingProject?.files?.length || 0,
@@ -1016,7 +1109,7 @@ export async function processMenuImagesJobLogic(
         const categoriesWithIconDefaults = (result.data.data?.categories || []).filter((category: any) => typeof category?.icon === 'string' && category.icon.length > 0).length;
 
         logger.info(`[processMenuImagesJob] Category icon defaults applied`, {
-            jobId,
+            ...getMenuExtractionJobLogContext(jobId, job),
             businessCategory: businessCategory || null,
             categoriesCount: categoriesBeforeIconDefaults,
             categoriesWithIcons: categoriesWithIconDefaults,
@@ -1037,14 +1130,14 @@ export async function processMenuImagesJobLogic(
         const isFirstExtraction = !requiresReview;
 
         logger.info(`[processMenuImagesJob] Extraction type detected`, {
-            jobId,
+            ...getMenuExtractionJobLogContext(jobId, job),
             isFirstExtraction,
             hasExistingItems,
             isLinkedOutlet,
             forceReview,
             source: job.source || null,
             existingFilesCount: existingProject?.files?.length || 0,
-            masterProjectId: existingProject?.masterProjectId || null,
+            ...getBoundedFunctionStringContext("masterProjectId", existingProject?.masterProjectId),
         });
 
         // Wrap result.data in the format expected by processParallelResponse
@@ -1070,7 +1163,7 @@ export async function processMenuImagesJobLogic(
             // ═══════════════════════════════════════════════════════════
 
             logger.info(`[processMenuImagesJob] === STEP 6 FIRST EXTRACTION - Processing ===`, {
-                jobId,
+                ...getMenuExtractionJobLogContext(jobId, job),
                 step: 'FIRST_EXTRACTION_START',
                 isFirstExtraction,
                 timestamp: Date.now()
@@ -1078,7 +1171,7 @@ export async function processMenuImagesJobLogic(
 
             // Redistribute and transform IDs (passing existing categories for cross-file refs)
             logger.info(`[processMenuImagesJob] === STEP 6 REDISTRIBUTING DATA ===`, {
-                jobId,
+                ...getMenuExtractionJobLogContext(jobId, job),
                 step: 'REDISTRIBUTE_START',
                 filesCount: job.files.length,
                 timestamp: Date.now()
@@ -1087,7 +1180,7 @@ export async function processMenuImagesJobLogic(
             const redistributedData = processParallelResponse(combinedResponse, job.files, existingCategories);
 
             logger.info(`[processMenuImagesJob] === STEP 6 REDISTRIBUTION COMPLETE ===`, {
-                jobId,
+                ...getMenuExtractionJobLogContext(jobId, job),
                 step: 'REDISTRIBUTE_COMPLETE',
                 redistributedDataSize: redistributedData?.size,
                 timestamp: Date.now()
@@ -1108,13 +1201,11 @@ export async function processMenuImagesJobLogic(
             if (!skipProjectSave) {
                 // Save files to project directly
                 logger.info(`[processMenuImagesJob] === STEP 6 SAVING TO PROJECT ===`, {
-                    jobId,
-                    projectId: job.projectId,
+                    ...getMenuExtractionJobLogContext(jobId, job),
                     step: 'SAVE_TO_PROJECT_START',
                     filesCount: job.files.length,
                     redistributedDataSize: redistributedData?.size,
                     timestamp: Date.now(),
-                    fullRedistributedData: JSON.stringify([...redistributedData.entries()])
                 });
 
                 await saveFilesToProject(
@@ -1133,21 +1224,25 @@ export async function processMenuImagesJobLogic(
                         storeId: job.sId,
                         menuData: result.data.data,
                         context: 'processMenuImagesJob:firstExtraction',
+                        touchDigitalScreen: true,
                     });
                 } catch (attributeError: any) {
                     logger.warn(`[processMenuImagesJob] Business attribute defaults failed (non-blocking)`, {
-                        jobId,
-                        storeId: job.sId,
-                        error: attributeError?.message || String(attributeError),
+                        failureCode: PROCESS_MENU_IMAGES_JOB_BUSINESS_DEFAULTS_FAILED,
+                        ...getMenuExtractionJobLogContext(jobId, job),
+                        sourceErrorName: getFunctionErrorName(attributeError),
+                        sourceErrorCode: getFunctionErrorCode(attributeError),
+                        sourceStatusCode: getFunctionErrorStatus(attributeError),
                     });
                 }
                 if (!businessAttributeDefaultsApplied) {
-                    await revalidatePublicClientCacheForStore(job.sId, 'processMenuImagesJob:firstExtractionProjectSave');
+                    await revalidatePublicClientCacheForStore(job.sId, 'processMenuImagesJob:firstExtractionProjectSave', {
+                        touchDigitalScreen: true,
+                    });
                 }
 
                 logger.info(`[processMenuImagesJob] === STEP 6 SAVE TO PROJECT COMPLETE ===`, {
-                    jobId,
-                    projectId: job.projectId,
+                    ...getMenuExtractionJobLogContext(jobId, job),
                     step: 'SAVE_TO_PROJECT_COMPLETE',
                     timestamp: Date.now()
                 });
@@ -1156,17 +1251,15 @@ export async function processMenuImagesJobLogic(
                 const projectVerifyRef = firestoreAdmin.collection(DB_COLLECTIONS.PROJECTS).doc(String(job.tId)).collection(String(job.sId)).doc(job.projectId);
                 const verifyDoc = await projectVerifyRef.get();
                 logger.info(`[processMenuImagesJob] === VERIFY PROJECT UPDATE ===`, {
-                    jobId,
-                    projectId: job.projectId,
+                    ...getMenuExtractionJobLogContext(jobId, job),
                     projectExists: verifyDoc.exists,
                     projectFilesCount: verifyDoc.data()?.files?.length || 0,
-                    projectLanguages: verifyDoc.data()?.languages || [],
-                    projectPath: projectVerifyRef.path,
+                    projectLanguageCount: Array.isArray(verifyDoc.data()?.languages) ? verifyDoc.data()?.languages.length : 0,
+                    projectPathLength: projectVerifyRef.path.length,
                 });
             } else {
                 logger.info(`[processMenuImagesJob] Project save skipped for extraction-only job`, {
-                    jobId,
-                    projectId: job.projectId,
+                    ...getMenuExtractionJobLogContext(jobId, job),
                     source: job.source || null,
                 });
                 await updatePublicDraftFromExtraction(jobId, job, result.data.data, redistributedFiles);
@@ -1180,7 +1273,7 @@ export async function processMenuImagesJobLogic(
             const completedAtMillis = Date.now();
 
             // Update job as completed
-            logger.info(`[processMenuImagesJob] Updating job status to COMPLETED`, { jobId });
+            logger.info(`[processMenuImagesJob] Updating job status to COMPLETED`, getMenuExtractionJobLogContext(jobId, job));
             await jobRef.update({
                 status: MENU_PROCESSING_STATUS.COMPLETED,
                 completedAt: Timestamp.fromMillis(completedAtMillis),
@@ -1190,7 +1283,12 @@ export async function processMenuImagesJobLogic(
                 currentStep: "Completed",
                 isFirstExtraction: true,
                 result: {
-                    combinedData: result.data.data,
+                    ...(skipProjectSave
+                        ? { combinedData: result.data.data }
+                        : {
+                            dataPrunedAt: Timestamp.fromMillis(completedAtMillis),
+                            dataPrunedReason: 'project_auto_saved_immediate',
+                        }),
                     ...(extractedBusinessProfile ? { extractedBusinessProfile } : {}),
                     qualityScore: result.data.qualityScore,
                     qualityDetails: result.data.qualityDetails,
@@ -1232,11 +1330,10 @@ export async function processMenuImagesJobLogic(
                 },
             });
 
-            logger.info(`[processMenuImagesJob] Job status updated to COMPLETED successfully`, { jobId });
+            logger.info(`[processMenuImagesJob] Job status updated to COMPLETED successfully`, getMenuExtractionJobLogContext(jobId, job));
 
             logger.info(`[processMenuImagesJob] First extraction completed - auto-saved`, {
-                jobId,
-                projectId: job.projectId,
+                ...getMenuExtractionJobLogContext(jobId, job),
                 qualityScore: result.data.qualityScore,
                 categoriesCount: result.data.data.categories?.length || 0,
                 itemsCount: result.data.data.items?.length || 0,
@@ -1306,8 +1403,7 @@ export async function processMenuImagesJobLogic(
             });
 
             logger.info(`[processMenuImagesJob] Re-extraction ready for preview`, {
-                jobId,
-                projectId: job.projectId,
+                ...getMenuExtractionJobLogContext(jobId, job),
                 qualityScore: result.data.qualityScore,
                 categoriesCount: result.data.data.categories?.length || 0,
                 itemsCount: result.data.data.items?.length || 0,
@@ -1317,20 +1413,26 @@ export async function processMenuImagesJobLogic(
         }
 
     } catch (error: any) {
+        const localErrorCode = getErrorCode(error);
+        const retryAfterSeconds = getRetryAfterSeconds(error);
         // ─────────────────────────────────────────────────────────────
         // Step 7: Update job as failed
         // Spec Reference: Section 4 (Data Models - error field)
         // Safety: If this update itself fails, the 15-min cleanup
         // scheduler will catch the job via timeoutAt and mark it failed.
         // ─────────────────────────────────────────────────────────────
-        logger.error(`[processMenuImagesJob] Job ${jobId} failed`, {
-            jobId,
-            projectId: job.projectId,
-            error: error.message,
+        logger.error("[processMenuImagesJob] Job failed", {
+            failureCode: PROCESS_MENU_IMAGES_JOB_FAILED,
+            ...getMenuExtractionJobLogContext(jobId, job),
+            sourceErrorName: getFunctionErrorName(error),
+            sourceErrorCode: getFunctionErrorCode(error),
+            sourceStatusCode: getFunctionErrorStatus(error),
+            localErrorCode,
         });
 
         try {
             await markPublicDraftExtractionFailed(
+                jobId,
                 job,
                 job.destination?.type === MENU_EXTRACTION_DESTINATION_TYPES.PUBLIC_MENU_DRAFT && job.destination.sourceType === "menu_link_import"
                     ? "We could not read this menu link. Upload a photo or try another public menu link."
@@ -1354,18 +1456,23 @@ export async function processMenuImagesJobLogic(
                     workerStartedAtMillis,
                 }),
                 error: {
-                    code: getErrorCode(error),
-                    message: error.message || "Unknown error",
-                    retryable: isRetryable(error),
-                    ...(getRetryAfterSeconds(error) ? { retryAfterSeconds: getRetryAfterSeconds(error) } : {}),
+                    code: localErrorCode,
+                    message: PROCESS_MENU_IMAGES_JOB_FAILED_MESSAGE,
+                    retryable: isRetryableCode(localErrorCode),
+                    ...(retryAfterSeconds ? { retryAfterSeconds } : {}),
                 },
             });
         } catch (updateError: any) {
             // Critical: job stuck in 'processing' — cleanup scheduler handles via timeoutAt
-            logger.error(`[processMenuImagesJob] CRITICAL: Failed to update job ${jobId} status to failed`, {
-                jobId,
-                originalError: error.message,
-                updateError: updateError.message,
+            logger.error("[processMenuImagesJob] Failed to update job status to failed", {
+                failureCode: PROCESS_MENU_IMAGES_JOB_STATUS_UPDATE_FAILED,
+                ...getMenuExtractionJobLogContext(jobId, job),
+                sourceErrorName: getFunctionErrorName(error),
+                sourceErrorCode: getFunctionErrorCode(error),
+                sourceStatusCode: getFunctionErrorStatus(error),
+                updateErrorName: getFunctionErrorName(updateError),
+                updateErrorCode: getFunctionErrorCode(updateError),
+                updateStatusCode: getFunctionErrorStatus(updateError),
             });
         }
 
@@ -1380,45 +1487,90 @@ export async function processMenuImagesJobLogic(
  * Map error to error code
  */
 function getErrorCode(error: any): string {
-    const message = error.message?.toLowerCase() || "";
+    const sourceCode = String(getFunctionErrorCode(error) || "").toUpperCase();
+    const sourceName = String(getFunctionErrorName(error) || "").toUpperCase();
+    const sourceStatus = getFunctionErrorStatus(error);
 
-    if (message.includes("rate limit") || message.includes("quota")) {
+    if (
+        sourceStatus === 429 ||
+        sourceCode.includes("RATE_LIMIT") ||
+        sourceCode.includes("QUOTA") ||
+        sourceCode.includes("RESOURCE_EXHAUSTED") ||
+        sourceName.includes("RATE_LIMIT")
+    ) {
         return "RATE_LIMIT";
     }
-    if (message.includes("timeout")) {
+    if (
+        sourceStatus === 408 ||
+        sourceStatus === 504 ||
+        sourceCode.includes("TIMEOUT") ||
+        sourceName.includes("TIMEOUT") ||
+        sourceName.includes("ABORT")
+    ) {
         return "TIMEOUT";
     }
-    if (message.includes("circuit") || message.includes("breaker")) {
+    if (
+        sourceCode.includes("CIRCUIT") ||
+        sourceName.includes("CIRCUIT") ||
+        sourceName.includes("BREAKER")
+    ) {
         return "CIRCUIT_BREAKER";
     }
-    if (message.includes("gemini") || message.includes("ai")) {
-        return "AI_ERROR";
-    }
-    if (message.includes("upload") || message.includes("file")) {
+    if (
+        sourceCode.includes("UPLOAD") ||
+        sourceCode.includes("FILE") ||
+        sourceCode.includes("FETCH")
+    ) {
         return "FILE_ERROR";
+    }
+    if (sourceStatus && sourceStatus >= 500) return "AI_ERROR";
+    if (
+        sourceCode.includes("GEMINI") ||
+        sourceCode.includes("AI") ||
+        sourceName.includes("GOOGLE")
+    ) {
+        return "AI_ERROR";
     }
 
     return "INTERNAL_ERROR";
 }
 
-/**
- * Determine if error is retryable
- */
-function isRetryable(error: any): boolean {
-    const code = getErrorCode(error);
-
-    // Rate limits, timeouts, circuit breaker trips, and transient AI errors are retryable
-    // FILE_ERROR and INTERNAL_ERROR are NOT retryable (likely persistent issues)
+function isRetryableCode(code: string): boolean {
     return code === "RATE_LIMIT" || code === "TIMEOUT" || code === "CIRCUIT_BREAKER" || code === "AI_ERROR";
 }
 
 function getRetryAfterSeconds(error: any): number | null {
-    const message = String(error?.message || error || "");
-    const retryDelayMatch = message.match(/retryDelay["']?\s*:\s*["']?(\d+(?:\.\d+)?)s/i);
-    const retryInMatch = message.match(/retry in\s+(\d+(?:\.\d+)?)s/i);
-    const waitSecondsMatch = message.match(/wait\s+(\d+(?:\.\d+)?)\s+seconds/i);
-    const value = retryDelayMatch?.[1] || retryInMatch?.[1] || waitSecondsMatch?.[1];
-    if (!value) return null;
-    const seconds = Number(value);
+    if (!error || typeof error !== "object") return null;
+    const source = error as {
+        retryAfterSeconds?: unknown;
+        retryAfter?: unknown;
+        retryDelaySeconds?: unknown;
+        retryDelay?: unknown;
+        details?: {
+            retryAfterSeconds?: unknown;
+            retryAfter?: unknown;
+            retryDelaySeconds?: unknown;
+            retryDelay?: unknown;
+        };
+    };
+    return normalizeRetryAfterSeconds(
+        source.retryAfterSeconds ??
+        source.retryAfter ??
+        source.retryDelaySeconds ??
+        source.retryDelay ??
+        source.details?.retryAfterSeconds ??
+        source.details?.retryAfter ??
+        source.details?.retryDelaySeconds ??
+        source.details?.retryDelay,
+    );
+}
+
+function normalizeRetryAfterSeconds(value: unknown): number | null {
+    if (value === undefined || value === null) return null;
+    const normalizedValue = typeof value === "string"
+        ? value.trim().match(/^(\d+(?:\.\d+)?)s?$/i)?.[1]
+        : value;
+    if (normalizedValue === undefined) return null;
+    const seconds = Number(normalizedValue);
     return Number.isFinite(seconds) && seconds > 0 ? Math.ceil(seconds) : null;
 }

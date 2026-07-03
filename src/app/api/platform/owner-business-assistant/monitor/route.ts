@@ -2,14 +2,51 @@ export const dynamic = 'force-dynamic';
 
 import { DB_COLLECTIONS } from '@constant/database';
 import { firestoreAdmin } from '@lib/firebase/firebaseAdmin';
-import { secureError } from '@lib/security/secureLogger';
+import { checkRateLimit } from '@lib/rateLimit';
+import { getRateLimitForFeature } from '@lib/rateLimit/configs';
+import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
+import { getSafeZodValidationDetails } from '@lib/security/inputValidation';
+import { createHash } from 'crypto';
 import { NextRequest, NextResponse } from 'next/server';
+import { hashPublicRateLimitValue } from 'src/middleware/publicApi';
 import { z } from 'zod';
 import { withPlatformAuth } from '../../../../../middleware/auth';
 
 const QuerySchema = z.object({
   limit: z.coerce.number().int().min(10).max(100).optional().default(50),
 });
+const OWNER_BUSINESS_ASSISTANT_MONITOR_RATE_LIMIT_KEY = 'owner-business-assistant-monitor';
+
+async function checkOwnerBusinessAssistantMonitorRateLimit(session: any) {
+  const rateLimitConfig = getRateLimitForFeature('DATA_READ');
+  const userId = session?.uId || session?.user?.id || 'platform';
+  const userRateLimitHash = hashPublicRateLimitValue(userId);
+
+  const rateLimit = await checkRateLimit({
+    key: `${OWNER_BUSINESS_ASSISTANT_MONITOR_RATE_LIMIT_KEY}:${userRateLimitHash}`,
+    ...rateLimitConfig,
+  });
+
+  if (rateLimit.allowed) return null;
+
+  const waitSeconds = Math.max(1, Math.ceil((rateLimit.resetAt - Date.now()) / 1000));
+  return NextResponse.json(
+    {
+      error: 'Too many requests. Please try again later.',
+      retryAfter: waitSeconds,
+      resetAt: rateLimit.resetAt,
+    },
+    {
+      headers: {
+        'Retry-After': String(waitSeconds),
+        'X-RateLimit-Limit': String(rateLimitConfig.limit),
+        'X-RateLimit-Remaining': String(rateLimit.remaining),
+        'X-RateLimit-Reset': String(rateLimit.resetAt),
+      },
+      status: 429,
+    },
+  );
+}
 
 function toIso(value: any): string | null {
   if (!value) return null;
@@ -24,30 +61,88 @@ function safeNumber(value: unknown): number {
   return Number.isFinite(numberValue) ? numberValue : 0;
 }
 
-function serializeValue(value: any): any {
-  if (value == null) return value;
-  if (typeof value.toDate === 'function' || typeof value.seconds === 'number') return toIso(value);
-  if (Array.isArray(value)) return value.map(serializeValue);
-  if (typeof value === 'object') {
-    return Object.fromEntries(Object.entries(value).map(([key, entry]) => [key, serializeValue(entry)]));
+function cleanMonitorText(value: unknown, max = 260): string {
+  return String(value || '')
+    .replace(/[\u0000-\u001f\u007f]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, max);
+}
+
+function getMonitorStringContext(label: string, value: unknown): Record<string, boolean | number> {
+  const normalized = cleanMonitorText(value, 1000);
+  return {
+    [`${label}Present`]: normalized.length > 0,
+    [`${label}Length`]: normalized.length,
+  };
+}
+
+function getMonitorTextSummary(label: string, value: unknown): string {
+  const context = getMonitorStringContext(label, value);
+  return context[`${label}Present`]
+    ? `${label} present (${context[`${label}Length`]} chars).`
+    : `No ${label.toLowerCase()} text.`;
+}
+
+function getOptionalMonitorTextSummary(label: string, value: unknown): string | null {
+  const context = getMonitorStringContext(label, value);
+  return context[`${label}Present`]
+    ? `${label} present (${context[`${label}Length`]} chars).`
+    : null;
+}
+
+function getMonitorIdentifierSummary(label: string, value: unknown): string {
+  const normalized = cleanMonitorText(value, 1000);
+  return normalized ? `${label}:${normalized.length}` : `${label}:missing`;
+}
+
+function getOptionalMonitorIdentifierSummary(label: string, value: unknown): string | null {
+  const normalized = cleanMonitorText(value, 1000);
+  return normalized ? `${label}:${normalized.length}` : null;
+}
+
+function buildMonitorResponseId(prefix: string, value: unknown): string {
+  const normalized = cleanMonitorText(value, 1000) || 'missing';
+  return `${prefix}-${createHash('sha256').update(normalized).digest('hex').slice(0, 12)}`;
+}
+
+function getFeedbackRatingLabel(value: unknown): string {
+  const normalized = cleanMonitorText(value, 40);
+  if (/^[1-5]$/.test(normalized)) return `${normalized}/5`;
+
+  const code = normalized.toLowerCase();
+  if (['positive', 'negative', 'helpful', 'not_helpful', 'thumbs_up', 'thumbs_down', 'up', 'down'].includes(code)) {
+    return code;
   }
-  return value;
+
+  return normalized ? 'feedback rating present' : 'feedback';
+}
+
+function serializeFeedbackDoc(doc: FirebaseFirestore.QueryDocumentSnapshot) {
+  const data = doc.data() || {};
+  return {
+    id: buildMonitorResponseId('feedback', doc.id),
+    answerId: getOptionalMonitorIdentifierSummary('answerId', data.answerId),
+    rating: getFeedbackRatingLabel(data.rating),
+    reason: getOptionalMonitorTextSummary('Feedback reason', data.reason || data.comment || data.message || data.text),
+    createdAt: toIso(data.createdAt),
+  };
 }
 
 function serializeDoc(doc: FirebaseFirestore.QueryDocumentSnapshot) {
   const data = doc.data() || {};
   return {
-    id: doc.id,
-    answerId: String(data.answerId || doc.id),
-    threadId: data.threadId ? String(data.threadId) : null,
-    tId: String(data.tId || ''),
-    sId: String(data.sId || ''),
-    userId: data.userId ? String(data.userId) : null,
-    projectId: data.projectId ? String(data.projectId) : null,
-    suggestedQuestionId: data.suggestedQuestionId ? String(data.suggestedQuestionId) : null,
+    id: buildMonitorResponseId('answer-event', doc.id),
+    answerId: getMonitorIdentifierSummary('answerId', data.answerId || doc.id),
+    threadId: getOptionalMonitorIdentifierSummary('threadId', data.threadId),
+    tId: getMonitorIdentifierSummary('tenantId', data.tId),
+    sId: getMonitorIdentifierSummary('storeId', data.sId),
+    userId: getOptionalMonitorIdentifierSummary('userId', data.userId),
+    projectId: getOptionalMonitorIdentifierSummary('projectId', data.projectId),
+    suggestedQuestionId: getOptionalMonitorIdentifierSummary('suggestedQuestionId', data.suggestedQuestionId),
     intent: String(data.intent || 'unknown'),
-    question: String(data.question || ''),
-    answerText: String(data.answerText || ''),
+    question: getMonitorTextSummary('Question', data.question),
+    answerText: getMonitorTextSummary('Answer', data.answerText),
     status: String(data.status || 'unknown'),
     confidence: String(data.confidence || 'low'),
     freshnessLabel: String(data.freshnessLabel || ''),
@@ -60,13 +155,13 @@ function serializeDoc(doc: FirebaseFirestore.QueryDocumentSnapshot) {
     firestoreWriteCount: data.firestoreWriteCount == null ? null : safeNumber(data.firestoreWriteCount),
     answerEventWritten: data.answerEventWritten === true,
     threadWritten: data.threadWritten === true,
-    unsupportedReason: data.unsupportedReason ? String(data.unsupportedReason) : null,
+    unsupportedReason: getOptionalMonitorTextSummary('Unsupported reason', data.unsupportedReason),
     domainCoverage: Array.isArray(data.domainCoverage)
       ? data.domainCoverage.map((entry: any) => ({
-        domain: String(entry?.domain || 'unknown'),
-        status: String(entry?.status || 'unsupported'),
-        reason: entry?.reason ? String(entry.reason) : null,
-    })).slice(0, 20)
+          domain: cleanMonitorText(entry?.domain || 'unknown', 80) || 'unknown',
+          status: cleanMonitorText(entry?.status || 'unsupported', 80) || 'unsupported',
+          reason: getOptionalMonitorTextSummary('Coverage reason', entry?.reason),
+        })).slice(0, 20)
       : [],
     sourceFactCount: safeNumber(data.sourceFactCount),
     artifactCount: safeNumber(data.artifactCount),
@@ -149,12 +244,24 @@ function buildSummary(events: ReturnType<typeof serializeDoc>[]) {
   };
 }
 
-export const GET = withPlatformAuth(async (request: NextRequest) => {
+export const GET = withPlatformAuth(async (request: NextRequest, session: any) => {
+  let failureContext: Record<string, boolean | number | string | null | undefined> = {
+    route: '/api/platform/owner-business-assistant/monitor',
+    ...getBoundedRuntimeStringContext('requestPath', request.nextUrl.pathname),
+  };
+
   try {
     const parsed = QuerySchema.safeParse(Object.fromEntries(request.nextUrl.searchParams.entries()));
     if (!parsed.success) {
-      return NextResponse.json({ error: 'Invalid query', details: parsed.error.flatten() }, { status: 400 });
+      return NextResponse.json({ error: 'Invalid query', details: getSafeZodValidationDetails(parsed.error) }, { status: 400 });
     }
+    failureContext = {
+      ...failureContext,
+      limit: parsed.data.limit,
+    };
+
+    const rateLimitResponse = await checkOwnerBusinessAssistantMonitorRateLimit(session);
+    if (rateLimitResponse) return rateLimitResponse;
 
     const [eventsSnap, feedbackSnap] = await Promise.all([
       firestoreAdmin
@@ -174,14 +281,12 @@ export const GET = withPlatformAuth(async (request: NextRequest) => {
       data: {
         summary: buildSummary(events),
         events,
-        recentFeedback: feedbackSnap.docs.map((doc) => serializeValue({ id: doc.id, ...doc.data() })),
+        recentFeedback: feedbackSnap.docs.map(serializeFeedbackDoc),
         generatedAt: new Date().toISOString(),
       },
     });
   } catch (error) {
-    secureError('[OwnerBusinessAssistantMonitor] Failed to load monitor data', error as Error, {
-      path: request.nextUrl.pathname,
-    });
+    logRuntimeFailure('owner_business_assistant_monitor_route_failed', error, failureContext);
     return NextResponse.json({ error: 'Failed to load Business Health monitor' }, { status: 500 });
   }
 });

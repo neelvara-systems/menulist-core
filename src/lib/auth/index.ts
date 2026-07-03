@@ -5,7 +5,6 @@ import { getDisplayEmail } from "@lib/auth/loginIdentifiers";
 import { firebaseAuth, signOutFirebaseAuth } from "@lib/firebase/firebaseClient";
 import { isPlatformEntityBlocked } from "@lib/platform/entityBlock";
 import { DANGEROUS_KEYS, removeKeys } from "@lib/security/sanitizeObject";
-import { containsSensitiveData, secureError, secureLog } from '@lib/security/secureLogger';
 import { getEmailValidationError, validateEmail } from '@lib/validation/emailDomainValidator';
 import { UserDataType } from "@type/platform/user";
 import { signInWithEmailAndPassword } from 'firebase/auth';
@@ -13,6 +12,7 @@ import { DefaultSession, NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import GoogleProvider from "next-auth/providers/google";
 import { signOut } from "next-auth/react";
+import { getAuthSessionLogContext, getBoundedAuthStringContext, logAuthDiagnostic, logAuthFailure } from "./authDiagnostics";
 import { consumePhoneOtpLoginToken, PhoneOtpError } from "./phoneOtp";
 import { checkAccountLock, getLockoutMessage, logFailedLogin, logSuccessfulLogin } from "./security";
 import {
@@ -28,7 +28,10 @@ if (!process.env.NEXTAUTH_SECRET) {
     throw new Error('NEXTAUTH_SECRET is not set in environment variables');
 }
 if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
-    console.warn('⚠️ Google OAuth credentials not configured - Google login will be disabled');
+    logAuthDiagnostic('google_oauth_credentials_missing', {
+        googleClientIdPresent: Boolean(process.env.GOOGLE_CLIENT_ID),
+        googleClientSecretPresent: Boolean(process.env.GOOGLE_CLIENT_SECRET),
+    });
 }
 
 declare module "next-auth" {
@@ -50,18 +53,25 @@ const AUTH_SESSION_USER_CONTEXT_CACHE_TTL_MS = 15 * 1000;
 const AUTH_SESSION_USER_CONTEXT_CACHE_MAX = 500;
 const authSessionUserContextCache = new Map<string, { expiresAt: number; user: any }>();
 
+const getAuthEmailLogContext = (email: unknown) => getBoundedAuthStringContext('email', email);
+
+const getAuthProviderLogValue = (provider: unknown): string | undefined => {
+    if (typeof provider !== 'string' || provider.trim().length === 0) return undefined;
+    return provider.trim().slice(0, 32);
+};
+
 const sanitizeAuthSessionForLog = (session: any): any => ({
     user: {
-        id: session.user?.id,
-        email: session.user?.email,
-        name: session.user?.name,
+        ...getBoundedAuthStringContext('sessionUserId', session.user?.id),
+        ...getBoundedAuthStringContext('sessionEmail', session.user?.email),
+        namePresent: Boolean(session.user?.name),
     },
-    pId: session.pId,
-    tId: session.tId,
-    sId: session.sId,
-    uId: session.uId,
-    role: session.role,
-    platformRole: session.platformRole,
+    ...getBoundedAuthStringContext('productId', session.pId),
+    ...getBoundedAuthStringContext('tenantId', session.tId),
+    ...getBoundedAuthStringContext('storeId', session.sId),
+    ...getBoundedAuthStringContext('userId', session.uId),
+    ...getBoundedAuthStringContext('role', session.role),
+    ...getBoundedAuthStringContext('platformRole', session.platformRole),
 });
 
 
@@ -129,15 +139,19 @@ export const authOptions: NextAuthOptions = {
             if (email) {
                 const emailValidation = validateEmail(email);
                 if (!emailValidation.valid) {
-                    secureLog('[Auth] Email validation failed', {
-                        email,
+                    logAuthDiagnostic('oauth_email_validation_failed', {
+                        ...getAuthEmailLogContext(email),
                         reason: emailValidation.reason,
-                        provider: account?.provider
+                        provider: getAuthProviderLogValue(account?.provider),
                     });
 
                     // Log failed attempt
                     await logFailedLogin(email, `invalid_email: ${emailValidation.reason}`, 'google').catch(err =>
-                        secureError('[Auth] Failed to log invalid email', err as Error, { email })
+                        logAuthFailure('oauth_invalid_email_login_log_failed', err, {
+                            ...getAuthEmailLogContext(email),
+                            reason: emailValidation.reason,
+                            provider: 'google',
+                        })
                     );
 
                     return '/unauthorized?error=' + encodeURIComponent(emailValidation.reason || 'Invalid email address');
@@ -166,16 +180,28 @@ export const authOptions: NextAuthOptions = {
 
                     try {
                         dbUser = await addAuthPlatformUser(newUser);
-                        secureLog('[Auth] New OAuth user created', { email });
+                        logAuthDiagnostic('oauth_user_created', {
+                            ...getAuthEmailLogContext(email),
+                            provider: 'google',
+                        });
 
                         // Log successful signup
                         await logSuccessfulLogin(email, 'google').catch(err =>
-                            secureError('[Auth] Failed to log new user signup', err as Error, { email })
+                            logAuthFailure('oauth_new_user_signup_log_failed', err, {
+                                ...getAuthEmailLogContext(email),
+                                provider: 'google',
+                            })
                         );
                     } catch (error) {
-                        secureError('[Auth] Failed to create new user', error as Error, { email });
+                        logAuthFailure('oauth_user_create_failed', error, {
+                            ...getAuthEmailLogContext(email),
+                            provider: 'google',
+                        });
                         await logFailedLogin(email, 'user_creation_failed', 'google').catch(err =>
-                            secureError('[Auth] Failed to log user creation failure', err as Error, { email })
+                            logAuthFailure('oauth_user_creation_failure_log_failed', err, {
+                                ...getAuthEmailLogContext(email),
+                                provider: 'google',
+                            })
                         );
                         return '/unauthorized';
                     }
@@ -189,7 +215,10 @@ export const authOptions: NextAuthOptions = {
                 // ✅ SECURITY FIX: Log successful OAuth login
                 if (account?.provider === 'google') {
                     await logSuccessfulLogin(email, 'google').catch(err =>
-                        secureError('[Auth] Failed to log OAuth success', err as Error, { email })
+                        logAuthFailure('oauth_success_log_failed', err, {
+                            ...getAuthEmailLogContext(email),
+                            provider: 'google',
+                        })
                     );
                 }
                 return user;
@@ -197,7 +226,10 @@ export const authOptions: NextAuthOptions = {
                 // ✅ SECURITY FIX: Log failed OAuth attempt
                 if (account?.provider === 'google') {
                     await logFailedLogin(email, 'account_not_verified_or_inactive', 'google').catch(err =>
-                        secureError('[Auth] Failed to log OAuth failure', err as Error, { email })
+                        logAuthFailure('oauth_failure_log_failed', err, {
+                            ...getAuthEmailLogContext(email),
+                            provider: 'google',
+                        })
                     );
                 }
                 return '/unauthorized'
@@ -242,13 +274,13 @@ export const authOptions: NextAuthOptions = {
                 for (const key of dangerousKeys) {
                     // Check for OWN properties only, not inherited from prototype
                     if (Object.hasOwn(dbUser, key)) {
-                        // ✅ SECURITY: Only log if safe (no sensitive data)
                         const sanitized = sanitizeAuthSessionForLog(session);
-                        if (!containsSensitiveData(sanitized) && key !== "__proto__") {
-                            secureLog('[Auth] Blocked dangerous key in dbUser', {
+                        if (key !== "__proto__") {
+                            logAuthDiagnostic('auth_session_dangerous_db_user_key_blocked', {
                                 key,
-                                email: dbUser.email,
-                                session: sanitized
+                                ...getAuthEmailLogContext(dbUser.email),
+                                ...getAuthSessionLogContext(session),
+                                sessionContextKeyCount: Object.keys(sanitized).length,
                             });
                         }
                         return session; // Return without modifying session
@@ -299,7 +331,6 @@ export const authOptions: NextAuthOptions = {
                 session.uId = dbUser.id;
                 session.role = sessionStoreRole || '';
             }
-            // console.log("session inside session", session)
             return session;
         }
     },
@@ -432,7 +463,7 @@ export const signOutSession = (callbackUrl: string = NAVIGARIONS_ROUTINGS.SIGNIN
                 signOut({ redirect: true, callbackUrl })
                 res(true)
             }).catch((error) => {
-                secureError('[Auth] Signout error', error as Error);
+                logAuthFailure('auth_signout_failed', error);
                 rej(error)  // Pass error for proper handling
             })
     })
@@ -444,9 +475,9 @@ const getEntityBlockSnapshot = async (collectionName: string, id?: string | numb
     try {
         return await getAuthEntitySnapshot(collectionName, id);
     } catch (error) {
-        secureError('[Auth] Failed to fetch entity block context', error as Error, {
+        logAuthFailure('auth_entity_block_context_fetch_failed', error, {
             collectionName,
-            id: String(id),
+            ...getBoundedAuthStringContext('entityId', id),
         });
         return null;
     }
@@ -690,47 +721,24 @@ const getAuthSessionUserContext = async (email: string, forceRefresh = false): P
     return sessionUser;
 };
 
-const getDebugUserSnapshot = (dbUser: any) => {
-    if (!dbUser) return null;
-
-    return {
-        id: dbUser.id,
-        email: maskDebugEmail(dbUser.email),
-        name: dbUser.name ? '[present]' : undefined,
-        image: dbUser.image ? '[present]' : undefined,
-        isVerified: dbUser.isVerified,
-        active: dbUser.active,
-        blocked: dbUser.blocked,
-        blockDetails: dbUser.blockDetails,
-        deleted: dbUser.deleted,
-        pId: dbUser.pId,
-        productId: dbUser.productId,
-        tenantId: dbUser.tenantId,
-        storeId: dbUser.storeId,
-        platformRole: dbUser.platformRole,
-        role: dbUser.role,
-        storeIds: dbUser.storeIds,
-        stores: Array.isArray(dbUser.stores)
-            ? dbUser.stores.map((store: any) => ({
-                storeId: store?.storeId,
-                role: store?.role,
-            }))
-            : dbUser.stores,
-    };
-};
-
-const maskDebugEmail = (email: unknown) => {
-    if (typeof email !== 'string') return email;
-    const [local, domain] = email.split('@');
-    if (!local || !domain) return '***';
-    return `${local.slice(0, 2)}***@${domain}`;
-};
-
 const logFetchedUserForDebug = (source: string, dbUser: any) => {
-    if (process.env.NODE_ENV === 'production') return;
-
-    console.info('[MenuList auth fetched user]', {
+    logAuthDiagnostic('auth_user_context_fetched', {
         source,
-        user: getDebugUserSnapshot(dbUser),
-    });
+        userPresent: Boolean(dbUser),
+        namePresent: Boolean(dbUser?.name),
+        imagePresent: Boolean(dbUser?.image),
+        isVerified: Boolean(dbUser?.isVerified),
+        active: Boolean(dbUser?.active),
+        blocked: Boolean(dbUser?.blocked),
+        deleted: Boolean(dbUser?.deleted),
+        storesCount: Array.isArray(dbUser?.stores) ? dbUser.stores.length : 0,
+        storeIdsCount: Array.isArray(dbUser?.storeIds) ? dbUser.storeIds.length : 0,
+        ...getBoundedAuthStringContext('fetchedUserId', dbUser?.id),
+        ...getBoundedAuthStringContext('fetchedUserEmail', dbUser?.email),
+        ...getBoundedAuthStringContext('fetchedProductId', dbUser?.pId ?? dbUser?.productId),
+        ...getBoundedAuthStringContext('fetchedTenantId', dbUser?.tenantId),
+        ...getBoundedAuthStringContext('fetchedStoreId', dbUser?.storeId),
+        ...getBoundedAuthStringContext('fetchedRole', dbUser?.role),
+        ...getBoundedAuthStringContext('fetchedPlatformRole', dbUser?.platformRole),
+    }, { developmentOnly: true });
 };

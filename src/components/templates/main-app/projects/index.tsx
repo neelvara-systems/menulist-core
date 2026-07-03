@@ -3,10 +3,10 @@
 import LoadingMessage from '@antdComponent/loadingMessage';
 import { FEATURE_FLAGS } from '@config/features';
 import { REFRESH_INTERVALS } from '@constant/metrics';
-import { updateStore } from '@database/stores';
+import { assertStoreUpdateSucceeded, updateStore } from '@database/stores';
 import GlobalLanguagesList from '@data/languages';
 import { getSuggestionValue } from '@data/shared/extractedBusinessProfile';
-import { addProject, deleteProject, duplicateProject, getMetadataProjectsList, getProjectData, getProjectDataWithoutLoader, setProjectActive, updateProject, updateProjectMetadata, updateProjectWithoutLoader, uploadFile } from '@database/projects';
+import { addProject, assertProjectDeleteSucceeded, assertProjectUpdateSucceeded, deleteProject, duplicateProject, getMetadataProjectsList, getProjectData, getProjectDataWithoutLoader, setProjectActive, updateProject, updateProjectMetadata, updateProjectWithoutLoader, uploadFile } from '@database/projects';
 import { canHaveLinkedOutlets } from '@database/multiOutlet';
 import { deleteFileByUrl } from '@database/storage/deleteFromStorage';
 import { useAppDispatch } from '@hook/useAppDispatch';
@@ -17,6 +17,12 @@ import { useMenuProcessingJob } from '@hook/useMenuProcessingJob';
 import { useOfferingLabels } from '@hook/useOfferingLabels';
 import { getStoreContextName } from '@lib/businessIdentity/names';
 import { MenuFileToProcess } from '@lib/firebase/menuProcessing';
+import {
+    getBoundedMenuProcessingStringContext,
+    getMenuProcessingJobLogContext,
+    getMenuProcessingProjectLogContext,
+    logMenuProcessingFailure,
+} from '@lib/firebase/menuProcessingDiagnostics';
 import { MENU_IMAGE_CONFIG, optimizeImage } from '@lib/image/optimizeImage';
 import { applyLocalizedProjectDraftMap, getLocalizedProjectValue, getProjectManagedLanguages, getProjectPreferredLanguage, hasMissingProjectPublicDraftContent } from '@lib/localization/projectContent';
 import { normalizeProjectLanguages } from '@lib/localization/languagePolicy';
@@ -55,11 +61,12 @@ import MasterUpdateBanner from '@organisms/MasterUpdateBanner';
 import { lazy, Suspense, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { LuArrowRight, LuFileImage, LuFilePlus, LuFileText, LuGlobe2, LuInfo, LuRocket, LuSparkles, LuUpload, LuZap } from 'react-icons/lu';
 import useSWR from 'swr';
+import { useSearchParams } from 'next/navigation';
 import NoSubscriptionView from '../billing/NoSubscriptionView';
 import PreviewModal from './b2cView/previewModal';
 import ShareModal from './b2cView/shareModal';
 import { DeviceTypes } from './b2cView/types';
-import { PROCESSING_TIMEOUT } from './constants';
+import { MAX_MENU_EXTRACTION_FILES, MAX_PDF_PAGES, PROCESSING_TIMEOUT, WARN_PDF_PAGES } from './constants';
 import { EmptyProjectState } from './EmptyProjectState';
 import ErrorRecoveryAlert, { FailedFile } from './ErrorRecoveryAlert';
 import { FileList } from './FileList';
@@ -80,6 +87,12 @@ import ProjectsSubHeader from './ProjectsSubHeader';
 import SpecialMenuCard from './SpecialMenuCard';
 import { BatchImageGenerationJobType, ConvertedImageType, Project, ProjectFileType, ProjectMetadata } from './types';
 import { generateMenuFileUid } from './utils';
+import {
+    getBoundedProjectPageStringContext,
+    getProjectPageProjectLogContext,
+    getProjectPageStoreLogContext,
+    logProjectPageFailure,
+} from './utils/projectPageDiagnostics';
 import { validateFile } from './validation';
 import { WelcomeModal } from './WelcomeModal';
 
@@ -92,6 +105,19 @@ type ProjectCreationPayload = Parameters<typeof addProject>[0] & {
     defaultLanguage?: string;
     languages?: string[];
 };
+
+const getPendingMenuExtractionFileCount = (files?: ProjectFileType[] | null): number => (
+    (files || []).filter((file) => !file?.extractedData).length
+);
+
+const showMenuUploadFileLimitError = (incomingCount: number, existingPendingCount = 0) => {
+    const totalCount = incomingCount + existingPendingCount;
+    message.error(
+        `Upload up to ${MAX_MENU_EXTRACTION_FILES} menu pages at a time. ` +
+        `You selected ${totalCount}. Clear or process some files before adding more.`,
+    );
+};
+
 type PendingQualityAction = {
     action: string;
     createdAt: number;
@@ -283,6 +309,7 @@ const { useToken } = theme;
 
 function ProjectsPage() {
     const { token } = useToken();
+    const searchParams = useSearchParams();
     const labels = useOfferingLabels();
     const offeringName = labels.offeringPhrase.charAt(0).toUpperCase() + labels.offeringPhrase.slice(1);
     // T4-N-04: divergence advisory modal (G-13) copy.
@@ -304,6 +331,11 @@ function ProjectsPage() {
             return null;
         }
     });
+    const deepLinkIntentHandledRef = useRef<string | null>(null);
+    const projectIdQuery = searchParams.get('projectId') || '';
+    const viewQuery = searchParams.get('view') || '';
+    const focusQuery = searchParams.get('focus') || '';
+    const qualityActionQuery = searchParams.get('qualityAction') || '';
     const [activeDeviceType, setActiveDeviceType] = useState<DeviceTypes>('mobile');
     const [uiEditorHasChanges, setUiEditorHasChanges] = useState(false);
     const b2cViewRef = useRef<B2CViewRef>(null);
@@ -536,6 +568,60 @@ function ProjectsPage() {
     )));
 
     useEffect(() => {
+        const hasDeepLinkIntent = Boolean(projectIdQuery || viewQuery === 'editor' || focusQuery === 'menu-readiness' || qualityActionQuery);
+        if (!hasDeepLinkIntent || projectsList.length === 0) return;
+
+        const targetProject = projectIdQuery
+            ? projectsList.find((project) => String(project.projectId) === String(projectIdQuery))
+            : selectedProject || projectsList[0];
+        if (!targetProject?.projectId) return;
+
+        const intentKey = [
+            targetProject.projectId,
+            viewQuery,
+            focusQuery,
+            qualityActionQuery,
+        ].join(':');
+        if (deepLinkIntentHandledRef.current === intentKey) return;
+        deepLinkIntentHandledRef.current = intentKey;
+
+        if (selectedProject?.projectId !== targetProject.projectId) {
+            setSelectedProject(targetProject);
+        }
+        if (viewQuery === 'editor' || focusQuery === 'menu-readiness' || qualityActionQuery) {
+            setCurrentView(2);
+        }
+
+        const allowedQualityActions = new Set([
+            'categoryIcons',
+            'descriptions',
+            'editor',
+            'hidden',
+            'images',
+            'priceOutliers',
+            'prices',
+            'projectContent',
+            'translations',
+        ]);
+        const qualityAction = allowedQualityActions.has(qualityActionQuery)
+            ? qualityActionQuery
+            : focusQuery === 'menu-readiness'
+                ? 'editor'
+                : '';
+        if (!qualityAction) return;
+
+        const nextAction = {
+            action: qualityAction,
+            createdAt: Date.now(),
+            projectId: targetProject.projectId,
+        };
+        setPendingQualityAction(nextAction);
+        if (typeof window !== 'undefined') {
+            window.sessionStorage.setItem(PENDING_QUALITY_ACTION_STORAGE_KEY, JSON.stringify(nextAction));
+        }
+    }, [focusQuery, projectIdQuery, projectsList, qualityActionQuery, selectedProject, viewQuery]);
+
+    useEffect(() => {
         setSelectedProject(null);
         setCurrentView(1);
     }, [effectiveStoreId]);
@@ -565,7 +651,9 @@ function ProjectsPage() {
                     return;
                 }
             } catch (error) {
-                console.error('[ProjectsPage] Failed to check existing job:', error);
+                logMenuProcessingFailure('menu_upload_existing_job_check_failed', error, {
+                    ...getMenuProcessingProjectLogContext(activeProject.projectId),
+                });
             }
         };
 
@@ -734,7 +822,9 @@ function ProjectsPage() {
                 updateProjectImageInLocalState(projectId, result.imageUrl);
             }
         } catch (error) {
-            console.warn('[ProjectImage] Auto-generation skipped:', error);
+            logMenuProcessingFailure('menu_upload_project_image_generation_skipped', error, {
+                ...getMenuProcessingProjectLogContext(projectId),
+            });
         }
     }, [storeDetails?.businessCategory, storeDetails?.businessType, storeContextName, updateProjectImageInLocalState]);
 
@@ -744,17 +834,24 @@ function ProjectsPage() {
         if (!nextBusinessAttributes) return;
 
         try {
-            await updateStore({
+            const writeResult = await updateStore({
                 id: storeDetails.storeId,
                 storeId: storeDetails.storeId,
                 tenantId: storeDetails.tenantId,
                 businessAttributes: nextBusinessAttributes,
             });
+            assertStoreUpdateSucceeded(
+                writeResult,
+                storeDetails.storeId,
+                'menu_upload_business_attributes_store_update_rejected',
+            );
             setStoreDetails((previous: any) => previous
                 ? { ...previous, businessAttributes: nextBusinessAttributes }
                 : previous);
         } catch (error) {
-            console.warn('[Projects] Could not apply menu-derived business attributes', error);
+            logMenuProcessingFailure('menu_upload_business_attributes_apply_failed', error, {
+                ...getMenuProcessingProjectLogContext(storeDetails.storeId),
+            });
         }
     }, [setStoreDetails, storeDetails]);
 
@@ -770,13 +867,20 @@ function ProjectsPage() {
         if (!patch) return;
 
         try {
-            await updateProjectWithoutLoader(patch);
+            const savedProject = await updateProjectWithoutLoader(patch);
+            assertProjectUpdateSucceeded(
+                savedProject,
+                projectId,
+                'menu_upload_extracted_profile_defaults_project_update_rejected',
+            );
             mutateProject((current: any) => current ? {
                 ...current,
                 ...patch,
             } : current, false);
         } catch (error) {
-            console.warn('[Projects] Could not apply extracted profile defaults', error);
+            logMenuProcessingFailure('menu_upload_extracted_profile_defaults_apply_failed', error, {
+                ...getMenuProcessingProjectLogContext(projectId),
+            });
         }
     }, [activeProject, mutateProject, selectedProject?.projectId]);
 
@@ -873,20 +977,26 @@ function ProjectsPage() {
                     setComparisonResult(comparison);
                     setShowReviewScreen(true);
                 } catch (error) {
-                    console.error('[JobQueue] Comparison engine error:', error);
+                    logMenuProcessingFailure('menu_upload_comparison_engine_failed', error, {
+                        ...getMenuProcessingJobLogContext(activeProcessingJobId),
+                        ...getMenuProcessingProjectLogContext(activeJobProjectId || selectedProject?.projectId || activeProject?.projectId),
+                    });
                     message.error('Failed to compare extracted data');
                 }
             })();
         }
 
         if (jobIsFailed) {
-            console.error('[JobQueue] Job failed:', jobError);
+            logMenuProcessingFailure('menu_upload_job_failed', jobError, {
+                ...getMenuProcessingJobLogContext(activeProcessingJobId),
+                ...getMenuProcessingProjectLogContext(activeJobProjectId || selectedProject?.projectId || activeProject?.projectId),
+            });
             setActiveProcessingJobId(null);
             setFileProcessingId(null);
             setShowReviewScreen(false);
             setComparisonResult(null);
             // Show failure modal
-            setFailureMessage(jobError?.message || 'Processing could not be completed. Please try again.');
+            setFailureMessage('Processing could not be completed. Please try again.');
             setShowFailureModal(true);
         }
 
@@ -904,7 +1014,6 @@ function ProjectsPage() {
     // ═══════════════════════════════════════════════════════════════════════════
 
     const handleReviewSaveComplete = useCallback(() => {
-        console.log('[ExtractionReview] Save complete');
         const previewData = getProjectImageDataFromComparisonPreview(comparisonResult);
         const extractedProfile = activeJob?.result?.extractedBusinessProfile || activeJob?.result?.combinedData?.extractedBusinessProfile;
         void maybeAutoGenerateProjectImage({
@@ -929,7 +1038,6 @@ function ProjectsPage() {
     }, [activeJob?.result, activeProject, applyExtractedProfileProjectDefaults, comparisonResult, maybeAutoGenerateProjectImage, mutateProject, selectedProject, applyMenuDerivedBusinessAttributeDefaults]);
 
     const handleReviewDiscard = useCallback(() => {
-        console.log('[ExtractionReview] Changes discarded');
         if (activeProcessingJobId) {
             markMenuProcessingJobAsDismissed(activeProcessingJobId);
         }
@@ -1123,20 +1231,34 @@ function ProjectsPage() {
                     active: nextActive,
                     defaultLanguage: nextDefaultLanguage,
                 };
-                await updateProjectMetadata(editingProject.projectId!, updatePayload);
-                await updateProjectWithoutLoader({
+                const metadataResult = await updateProjectMetadata(editingProject.projectId!, updatePayload, {
+                    defaultHandoff: {
+                        unsetProjectId: shouldBeDefault ? otherDefault?.projectId : undefined,
+                        setProjectId: defaultReplacement?.projectId,
+                    },
+                });
+                assertProjectUpdateSucceeded(
+                    metadataResult,
+                    editingProject.projectId!,
+                    'projects_page_project_metadata_update_rejected',
+                );
+                const languageResult = await updateProjectWithoutLoader({
                     projectId: editingProject.projectId!,
                     languages: projectFormLanguages,
                     defaultLanguage: nextDefaultLanguage,
                 });
+                assertProjectUpdateSucceeded(
+                    languageResult,
+                    editingProject.projectId!,
+                    'projects_page_project_language_update_rejected',
+                );
                 if (activeChanged) {
-                    await setProjectActive(editingProject.projectId!, nextActive);
-                }
-                if (shouldBeDefault && otherDefault?.projectId) {
-                    await updateProjectMetadata(otherDefault.projectId, { isDefault: false });
-                }
-                if (defaultReplacement?.projectId) {
-                    await updateProjectMetadata(defaultReplacement.projectId, { isDefault: true });
+                    const activeResult = await setProjectActive(editingProject.projectId!, nextActive);
+                    assertProjectUpdateSucceeded(
+                        activeResult,
+                        editingProject.projectId!,
+                        'projects_page_project_active_update_rejected',
+                    );
                 }
 
                 // Update selected project if editing current
@@ -1177,38 +1299,52 @@ function ProjectsPage() {
                     businessType: storeDetails?.businessType,
                     isDefault: shouldBeDefault,
                     defaultLanguage: projectFormSelectedLanguage,
+                }, {
+                    defaultHandoff: {
+                        unsetProjectId: shouldBeDefault ? otherDefault?.projectId : undefined,
+                    },
                 });
-                if (newProject) {
-                    if (shouldBeDefault && otherDefault?.projectId) {
-                        await updateProjectMetadata(otherDefault.projectId, { isDefault: false });
-                    }
-                    const projectMetadata = {
-                        ...newProject.summaryData,
-                        projectId: newProject.projectId,
-                    } as ProjectMetadata;
-                    setSelectedProject(projectMetadata);
-                    // Update SWR cache (single source of truth)
-                    mutateProjects(
-                        (current) => current ? {
-                            ...current,
-                            projects: [
-                                ...normalizeProjectsList(current.projects).map((p) => shouldBeDefault && p.projectId === otherDefault?.projectId
-                                    ? { ...p, isDefault: false }
-                                    : p),
-                                projectMetadata,
-                            ]
-                        } : { projects: [projectMetadata], lastDoc: null },
-                        { revalidate: false }
-                    );
-                    message.success(`${offeringName} created successfully`);
+                assertProjectUpdateSucceeded(
+                    newProject,
+                    undefined,
+                    'projects_page_create_project_update_rejected',
+                );
+                if (!newProject.projectId) {
+                    throw new Error('projects_page_create_project_update_rejected');
                 }
+                const projectMetadata = {
+                    ...newProject.summaryData,
+                    projectId: newProject.projectId,
+                } as ProjectMetadata;
+                setSelectedProject(projectMetadata);
+                // Update SWR cache (single source of truth)
+                mutateProjects(
+                    (current) => current ? {
+                        ...current,
+                        projects: [
+                            ...normalizeProjectsList(current.projects).map((p) => shouldBeDefault && p.projectId === otherDefault?.projectId
+                                ? { ...p, isDefault: false }
+                                : p),
+                            projectMetadata,
+                        ]
+                    } : { projects: [projectMetadata], lastDoc: null },
+                    { revalidate: false }
+                );
+                message.success(`${offeringName} created successfully`);
             }
             setIsModalOpen(false);
             form.resetFields();
             setEditingProject(null);
             setProjectImagePreparedForSave(null);
         } catch (error) {
-            console.error('Error handling project:', error);
+            logProjectPageFailure('projects_page_project_save_failed', error, {
+                ...getProjectPageProjectLogContext(editingProject?.projectId, (editingProject as any)?.masterProjectId),
+                ...getProjectPageStoreLogContext(storeDetails?.storeId, storeDetails?.tenantId),
+                isEditing: Boolean(editingProject),
+                languageCount: projectFormLanguages.length,
+                isDefault: Boolean((editingProject as any)?.isDefault),
+                canCreateLocalProjects,
+            });
             message.error(`Failed to ${editingProject ? 'update' : 'create'} ${labels.offeringPhrase}`);
         }
     };
@@ -1222,7 +1358,12 @@ function ProjectsPage() {
                 }
 
                 dispatch(startLoader("Deleting project"))
-                await deleteProject(editingProject.projectId, { skipLinkedOutletCheck: skipLinkedOutletDeleteCheck });
+                const deleteResult = await deleteProject(editingProject.projectId, { skipLinkedOutletCheck: skipLinkedOutletDeleteCheck });
+                assertProjectDeleteSucceeded(
+                    deleteResult,
+                    editingProject.projectId,
+                    'projects_page_modal_delete_rejected',
+                );
                 message.success(`${offeringName} deleted successfully`);
                 if (selectedProject?.projectId === editingProject.projectId) {
                     setSelectedProject(null);
@@ -1237,7 +1378,12 @@ function ProjectsPage() {
                 );
                 onCloseModal();
             } catch (error) {
-                console.error("Error deleting project:", error);
+                logProjectPageFailure('projects_page_modal_delete_failed', error, {
+                    ...getProjectPageProjectLogContext(editingProject.projectId, (editingProject as any).masterProjectId),
+                    ...getProjectPageStoreLogContext(storeDetails?.storeId, storeDetails?.tenantId),
+                    skipLinkedOutletDeleteCheck,
+                    canDeactivateLinkedProjects,
+                });
                 message.error(`Failed to delete ${labels.offeringPhrase}`);
             }
             dispatch(stopLoader("Deleting project"))
@@ -1258,12 +1404,22 @@ function ProjectsPage() {
                 // Optimistically update cache
                 mutateProject({ ...activeProject, ...resetPatch }, false);
                 setCurrentView(1);
-                await updateProject(resetPatch);
+                const resetResult = await updateProject(resetPatch);
+                assertProjectUpdateSucceeded(
+                    resetResult,
+                    selectedProject.projectId,
+                    'projects_page_reset_project_update_rejected',
+                );
                 // Revalidate cache after mutation
                 mutateProject();
                 message.success(`${offeringName} has been reset`);
             } catch (error) {
-                console.error("Error resetting project:", error);
+                logProjectPageFailure('projects_page_project_reset_failed', error, {
+                    ...getProjectPageProjectLogContext(selectedProject.projectId, activeProject.masterProjectId),
+                    ...getProjectPageStoreLogContext(storeDetails?.storeId, storeDetails?.tenantId),
+                    isLinkedProject: Boolean(activeProject.masterProjectId),
+                    fileCount: activeProject.files?.length ?? 0,
+                });
                 message.error(`Failed to reset ${labels.offeringPhrase}`);
                 // Revert on error
                 mutateProject();
@@ -1307,10 +1463,21 @@ function ProjectsPage() {
                 localizedName,
                 localizedDescription,
             );
+            assertProjectUpdateSucceeded(
+                result,
+                undefined,
+                'projects_page_duplicate_project_update_rejected',
+            );
+            if (!result.projectId) {
+                throw new Error('projects_page_duplicate_project_update_rejected');
+            }
 
             // Auto-select the new project and update local state
             if (result?.summaryData) {
-                const newProjectMetadata = result.summaryData;
+                const newProjectMetadata = {
+                    ...result.summaryData,
+                    projectId: result.projectId,
+                };
                 setSelectedProject(newProjectMetadata);
 
                 // Update local state directly instead of refetching
@@ -1326,7 +1493,12 @@ function ProjectsPage() {
             message.success(`"${newName}" created successfully!`);
 
         } catch (error) {
-            console.error("Error duplicating project:", error);
+            logProjectPageFailure('projects_page_project_duplicate_failed', error, {
+                ...getProjectPageProjectLogContext(projectToDuplicate.projectId, (projectToDuplicate as any).masterProjectId),
+                ...getProjectPageStoreLogContext(storeDetails?.storeId, storeDetails?.tenantId),
+                localizedNameCount: localizedName ? Object.keys(localizedName).length : 0,
+                localizedDescriptionCount: localizedDescription ? Object.keys(localizedDescription).length : 0,
+            });
             message.error(`Failed to duplicate ${labels.offeringPhrase}`);
         } finally {
             dispatch(stopLoader("Duplicating project"));
@@ -1350,7 +1522,12 @@ function ProjectsPage() {
             }
 
             dispatch(startLoader("Deleting project"));
-            await deleteProject(project.projectId, { skipLinkedOutletCheck: skipLinkedOutletDeleteCheck });
+            const deleteResult = await deleteProject(project.projectId, { skipLinkedOutletCheck: skipLinkedOutletDeleteCheck });
+            assertProjectDeleteSucceeded(
+                deleteResult,
+                project.projectId,
+                'projects_page_selector_delete_rejected',
+            );
 
             // Update local state directly instead of refetching
             mutateProjects(
@@ -1370,7 +1547,12 @@ function ProjectsPage() {
                 setCurrentView(1);
             }
         } catch (error) {
-            console.error("Error deleting project:", error);
+            logProjectPageFailure('projects_page_selector_delete_failed', error, {
+                ...getProjectPageProjectLogContext(project.projectId, (project as any).masterProjectId),
+                ...getProjectPageStoreLogContext(storeDetails?.storeId, storeDetails?.tenantId),
+                skipLinkedOutletDeleteCheck,
+                canDeactivateLinkedProjects,
+            });
             message.error(`Failed to delete ${labels.offeringPhrase}`);
         } finally {
             dispatch(stopLoader("Deleting project"));
@@ -1467,7 +1649,7 @@ function ProjectsPage() {
                 return;
             }
 
-            await updateProjectWithoutLoader({
+            const projectTranslationResult = await updateProjectWithoutLoader({
                 projectId: editingProject.projectId,
                 ...(translated.name ? { name: translated.name } : {}),
                 ...(translated.description ? { description: translated.description } : {}),
@@ -1484,13 +1666,23 @@ function ProjectsPage() {
                     },
                 } : {}),
             } as any);
+            assertProjectUpdateSucceeded(
+                projectTranslationResult,
+                editingProject.projectId,
+                'projects_page_public_content_translation_project_update_rejected',
+            );
 
             const nextSummaryUpdate: any = {};
             if (translated.name) nextSummaryUpdate.name = translated.name;
             if (translated.description) nextSummaryUpdate.description = translated.description;
             if (translated.specialMenuDisplayName) nextSummaryUpdate.specialMenuDisplayName = translated.specialMenuDisplayName;
             if (Object.keys(nextSummaryUpdate).length > 0) {
-                await updateProjectMetadata(editingProject.projectId, nextSummaryUpdate);
+                const metadataTranslationResult = await updateProjectMetadata(editingProject.projectId, nextSummaryUpdate);
+                assertProjectUpdateSucceeded(
+                    metadataTranslationResult,
+                    editingProject.projectId,
+                    'projects_page_public_content_translation_metadata_update_rejected',
+                );
             }
 
             const resolvedName = translated.name || detailedProject?.name || editingProject?.name;
@@ -1519,8 +1711,13 @@ function ProjectsPage() {
                 { revalidate: false },
             );
             message.success('Project public content translations added.');
-        } catch (error: any) {
-            message.error(error?.message || 'Could not translate project public content.');
+        } catch (error) {
+            logProjectPageFailure('projects_page_public_content_translation_failed', error, {
+                ...getProjectPageProjectLogContext(editingProject?.projectId, (editingProject as any)?.masterProjectId),
+                ...getProjectPageStoreLogContext(storeDetails?.storeId, storeDetails?.tenantId),
+                languageCount: projectFormLanguages.length,
+            });
+            message.error('Could not translate project public content.');
         } finally {
             setIsTranslatingProjectPublicContent(false);
         }
@@ -1542,6 +1739,13 @@ function ProjectsPage() {
         if (!Boolean(projectDataCopy.files?.length)) {
             projectDataCopy.files = [];
         }
+
+        const existingPendingCount = getPendingMenuExtractionFileCount(projectDataCopy.files);
+        if (existingPendingCount + files.length > MAX_MENU_EXTRACTION_FILES) {
+            showMenuUploadFileLimitError(files.length, existingPendingCount);
+            return;
+        }
+
         projectDataCopy.files = [...projectDataCopy.files, ...files];
         if (action == "quick-action-upload") {
             handleUploadAndContinue(projectDataCopy);
@@ -1560,7 +1764,6 @@ function ProjectsPage() {
         // Reset cancel flag after a longer delay to ensure all files are skipped
         setTimeout(() => {
             cancelPdfRef.current = false;
-            console.log('Cancel flag reset - ready for new uploads');
         }, 3000);
     };
 
@@ -1592,14 +1795,22 @@ function ProjectsPage() {
         }
         // Handle errors
         if (projectsError) {
-            console.error('[ProjectsPage] Projects error:', projectsError);
+            logProjectPageFailure('projects_page_projects_load_failed', projectsError, {
+                ...getProjectPageStoreLogContext(storeDetails?.storeId, storeDetails?.tenantId),
+                projectCount: projectsList.length,
+                selectedProjectPresent: Boolean(selectedProject?.projectId),
+            });
             message.error(`Failed to load ${labels.offeringPhrase} data`);
         }
         if (projectError) {
-            console.error('[ProjectsPage] Project error:', projectError);
+            logProjectPageFailure('projects_page_project_load_failed', projectError, {
+                ...getProjectPageProjectLogContext(selectedProject?.projectId, (selectedProject as any)?.masterProjectId),
+                ...getProjectPageStoreLogContext(storeDetails?.storeId, storeDetails?.tenantId),
+                projectCount: projectsList.length,
+            });
             message.error(`Failed to load ${labels.offeringPhrase} data`);
         }
-    }, [clearPendingQualityAction, currentView, labels.offeringPhrase, pendingQualityAction, projectError, projectsError, projectsList, selectedProject]);
+    }, [clearPendingQualityAction, currentView, labels.offeringPhrase, pendingQualityAction, projectError, projectsError, projectsList, selectedProject, storeDetails?.storeId, storeDetails?.tenantId]);
 
     // Smart initial view: Auto-navigate to Editor if project has processed files
     useEffect(() => {
@@ -1626,7 +1837,7 @@ function ProjectsPage() {
      * Timeout wrapper - wraps a promise with a timeout
      * If promise doesn't resolve within PROCESSING_TIMEOUT (2 minutes), it rejects
      * 
-     * @see ASSESSMENT-01-UPLOAD.md Task 14: Processing Timeout
+     * @see assessment-01-upload.md Task 14: Processing Timeout
      */
     const withTimeout = <T,>(promise: Promise<T>, timeoutMs: number = PROCESSING_TIMEOUT): Promise<T> => {
         return Promise.race([
@@ -1690,15 +1901,26 @@ function ProjectsPage() {
                     }
 
                     try {
-                        await updateStore({
+                        const writeResult = await updateStore({
                             storeId: storeDetails.storeId,
                             tenantId: storeDetails.tenantId,
                             ...updates,
                         });
+                        assertStoreUpdateSucceeded(
+                            writeResult,
+                            storeDetails.storeId,
+                            'projects_page_upload_business_details_store_update_rejected',
+                        );
                         setStoreDetails((previous: any) => ({ ...previous, ...updates }));
                         message.success('Business details updated');
-                    } catch (error: any) {
-                        message.error(error?.message || 'Could not update business details.');
+                    } catch (error) {
+                        logProjectPageFailure('projects_page_upload_business_details_update_failed', error, {
+                            ...getProjectPageProjectLogContext(activeProject?.projectId, (activeProject as any)?.masterProjectId),
+                            ...getProjectPageStoreLogContext(storeDetails?.storeId, storeDetails?.tenantId),
+                            selectedFieldCount: selectedFields.length,
+                            suggestionCount: suggestions.length,
+                        });
+                        message.error('Could not update business details.');
                     } finally {
                         resolve();
                     }
@@ -1777,8 +1999,13 @@ function ProjectsPage() {
                                 ...(sourceProject.defaultLanguage ? { defaultLanguage: sourceProject.defaultLanguage } : {}),
                             };
                             const newProject = await addProject(projectPayload);
+                            assertProjectUpdateSucceeded(
+                                newProject,
+                                undefined,
+                                'projects_page_upload_create_project_update_rejected',
+                            );
                             if (!newProject?.projectId) {
-                                throw new Error('Could not create a new menu.');
+                                throw new Error('projects_page_upload_create_project_update_rejected');
                             }
 
                             const projectMetadata = {
@@ -1804,15 +2031,25 @@ function ProjectsPage() {
                                 ignoredFiles,
                                 identityOverrideConfirmed: true,
                             });
-                        } catch (error: any) {
-                            message.error(error?.message || 'Could not create a new menu.');
+                        } catch (error) {
+                            logProjectPageFailure('projects_page_upload_new_menu_create_failed', error, {
+                                ...getProjectPageProjectLogContext(sourceProject.projectId, (sourceProject as any)?.masterProjectId),
+                                ...getProjectPageStoreLogContext(storeDetails?.storeId, storeDetails?.tenantId),
+                                fileCount: filesForExtraction.length,
+                                ignoredFileCount: ignoredFiles.length,
+                                canCreateLocalProjects,
+                            });
+                            message.error('Could not create a new menu.');
                             resolve({ action: 'cancel' });
                         }
                     },
                 });
             });
         } catch (error: any) {
-            console.warn('[MenuIntakeIdentity] Preflight skipped:', error?.message || error);
+            logMenuProcessingFailure('menu_upload_intake_preflight_skipped', error, {
+                ...getMenuProcessingProjectLogContext(projectId),
+                fileCount: files.length,
+            });
             return { action: 'continue', files, ignoredFiles: [] };
         }
     }, [
@@ -1827,11 +2064,27 @@ function ProjectsPage() {
         filesToProcess: ProjectFileType[],
         projectDataCopy: Project
     ): Promise<{ jobId: string; uploadedUrls: Map<string, string>; projectId: string } | null> => {
-        const startTime = Date.now();
-        console.log('[JobQueue] Starting uploadAndCreateJob with', filesToProcess.length, 'files');
+        const cleanupUploadedMenuFiles = async (
+            files: MenuFileToProcess[],
+            cleanupReason: string,
+            projectId?: string | null,
+        ) => {
+            if (files.length === 0) return;
+
+            const cleanupResults = await Promise.allSettled(files.map(file => deleteFileByUrl(file.url)));
+            const failedCleanups = cleanupResults.filter((result) => result.status === 'rejected') as PromiseRejectedResult[];
+
+            if (failedCleanups.length > 0) {
+                logMenuProcessingFailure('menu_upload_uploaded_file_cleanup_failed', failedCleanups[0]?.reason, {
+                    ...getMenuProcessingProjectLogContext(projectId),
+                    ...getBoundedMenuProcessingStringContext('cleanupReason', cleanupReason),
+                    attemptedCleanupCount: files.length,
+                    failedCleanupCount: failedCleanups.length,
+                });
+            }
+        };
 
         // Step 1: Upload ALL files to Firebase Storage in parallel
-        console.log(`[JobQueue] Uploading ${filesToProcess.length} files in parallel...`);
         const uploadPromises = filesToProcess.map(file =>
             uploadFile({ url: file.url, type: file.type, uid: file.uid })
                 .then(url => ({ uid: file.uid, url, file }))
@@ -1853,7 +2106,12 @@ function ProjectsPage() {
                     size: result.file.size || 0
                 });
             } else {
-                console.error(`[JobQueue] Failed to upload ${result.file.name}:`, (result as any).error);
+                logMenuProcessingFailure('menu_upload_file_upload_failed', (result as any).error, {
+                    ...getMenuProcessingProjectLogContext(projectDataCopy.projectId),
+                    ...getBoundedMenuProcessingStringContext('fileUid', result.file.uid),
+                    ...getBoundedMenuProcessingStringContext('fileType', result.file.type),
+                    fileSize: Number(result.file.size || 0),
+                });
             }
         });
 
@@ -1865,17 +2123,15 @@ function ProjectsPage() {
             throw new Error('All file uploads failed');
         }
 
-        console.log(`[JobQueue] ${successfulUploads.length}/${filesToProcess.length} files uploaded in ${Date.now() - startTime}ms`);
-
         const intakeDecision = await confirmMenuIntakeDecision(projectDataCopy.projectId, successfulUploads, projectDataCopy);
         if (intakeDecision.action === 'cancel') {
-            await Promise.allSettled(successfulUploads.map(file => deleteFileByUrl(file.url)));
+            await cleanupUploadedMenuFiles(successfulUploads, 'intake_cancelled', projectDataCopy.projectId);
             return null;
         }
-        await Promise.allSettled(intakeDecision.ignoredFiles.map(file => deleteFileByUrl(file.url)));
+        await cleanupUploadedMenuFiles(intakeDecision.ignoredFiles, 'intake_ignored_files', projectDataCopy.projectId);
         const filesForJob = intakeDecision.files;
         if (filesForJob.length === 0) {
-            await Promise.allSettled(successfulUploads.map(file => deleteFileByUrl(file.url)));
+            await cleanupUploadedMenuFiles(successfulUploads, 'no_files_for_job', projectDataCopy.projectId);
             return null;
         }
         const targetProjectId = intakeDecision.action === 'create_new_project'
@@ -1885,11 +2141,10 @@ function ProjectsPage() {
         // Step 2: Create job with uploaded files
         const targetLanguages = GlobalLanguagesList.filter(lang => projectDataCopy.languages.includes(lang.code));
 
-        console.log(`[JobQueue] Creating processing job...`);
         const { checkExistingActiveJob } = await import('@lib/firebase/menuProcessing');
         const existingJobId = await checkExistingActiveJob(targetProjectId);
         if (existingJobId) {
-            await Promise.allSettled(filesForJob.map(file => deleteFileByUrl(file.url)));
+            await cleanupUploadedMenuFiles(filesForJob, 'existing_active_job', targetProjectId);
             return { jobId: existingJobId, uploadedUrls, projectId: targetProjectId };
         }
 
@@ -1905,7 +2160,6 @@ function ProjectsPage() {
             PROCESSING_TIMEOUT * filesToProcess.length,
         );
 
-        console.log(`[JobQueue] Job created: ${jobId} - createProcessingJob should have already triggered it`);
         return { jobId, uploadedUrls, projectId: targetProjectId };
     };
 
@@ -1945,8 +2199,13 @@ function ProjectsPage() {
             setMenuLinkPermissionConfirmed(false);
             setMenuLinkImportModalOpen(false);
             message.success(result.reusedExistingJob ? 'Existing import is still running.' : 'Menu link import started.');
-        } catch (error: any) {
-            message.error(error?.message || 'We could not read this menu link. Upload a photo/PDF or add the menu manually.');
+        } catch (error) {
+            logProjectPageFailure('projects_page_menu_link_import_failed', error, {
+                ...getProjectPageProjectLogContext(selectedProject?.projectId, (selectedProject as any)?.masterProjectId),
+                ...getBoundedProjectPageStringContext('menuLinkUrl', menuLinkUrl),
+                permissionConfirmed: Boolean(menuLinkPermissionConfirmed),
+            });
+            message.error('We could not read this menu link. Upload a photo/PDF or add the menu manually.');
         } finally {
             setMenuLinkImporting(false);
         }
@@ -1989,7 +2248,11 @@ function ProjectsPage() {
                 return;
             }
 
-            console.log(`[JobQueue] Processing ${filesToProcess.length} files...`);
+            if (filesToProcess.length > MAX_MENU_EXTRACTION_FILES) {
+                showMenuUploadFileLimitError(filesToProcess.length);
+                return;
+            }
+
             setFileProcessingId(filesToProcess[0].uid);
 
             // Upload files and create job
@@ -2000,8 +2263,6 @@ function ProjectsPage() {
             }
             const { jobId, projectId: targetProjectId } = jobPayload;
 
-            console.log(`[JobQueue] Job created: ${jobId}, waiting for server processing...`);
-
             // Server already saved files + extractedData to the project doc
             // (the callable blocks until processing is complete)
             // Just refetch project data to pick up backend changes
@@ -2010,15 +2271,16 @@ function ProjectsPage() {
             }
 
             // Set active job ID - the useEffect will handle completion
-            console.log('[JobQueue] Setting activeProcessingJobId from job creation:', jobId);
             setActiveProcessingJobId(jobId);
 
             // NOTE: Don't clear fileProcessingId here - it will be cleared when job completes
 
         } catch (error: any) {
-            console.error('[JobQueue] Failed:', error);
+            logMenuProcessingFailure('menu_upload_job_create_failed', error, {
+                ...getMenuProcessingProjectLogContext(projectDataCopy.projectId),
+            });
             setFileProcessingId(null);
-            message.error(`Processing failed: ${error.message || 'Unknown error'}`);
+            message.error('Processing could not be completed. Please try again.');
         }
     };
 
@@ -2145,11 +2407,22 @@ function ProjectsPage() {
                         file.url = optimized.dataUrl;
 
                         if (optimized.wasResized) {
-                            console.log(`[Image Optimization] ${file.name}: ${optimized.originalWidth}x${optimized.originalHeight} → ${optimized.width}x${optimized.height}, ${Math.round(optimized.compressionRatio * 100)}% of original size`);
+                            logMenuProcessingFailure('menu_upload_image_optimization_resized', undefined, {
+                                ...getBoundedMenuProcessingStringContext('fileUid', file.uid),
+                                originalWidth: optimized.originalWidth,
+                                originalHeight: optimized.originalHeight,
+                                optimizedWidth: optimized.width,
+                                optimizedHeight: optimized.height,
+                                compressionPercent: Math.round(optimized.compressionRatio * 100),
+                            });
                         }
                     } catch (err) {
                         // Fallback to original if optimization fails
-                        console.warn(`[Image Optimization] Failed for ${file.name}, using original:`, err);
+                        logMenuProcessingFailure('menu_upload_image_optimization_failed', err, {
+                            ...getBoundedMenuProcessingStringContext('fileUid', file.uid),
+                            ...getBoundedMenuProcessingStringContext('fileType', file.type),
+                            fileSize: Number(file.size || 0),
+                        });
                         file.url = rawBase64;
                     }
 
@@ -2168,6 +2441,12 @@ function ProjectsPage() {
             projectDataCopy.files = [];
         }
 
+        const existingPendingCount = getPendingMenuExtractionFileCount(projectDataCopy.files);
+        if (existingPendingCount + newFileList.length > MAX_MENU_EXTRACTION_FILES) {
+            showMenuUploadFileLimitError(newFileList.length, existingPendingCount);
+            return;
+        }
+
         projectDataCopy.files = [...projectDataCopy.files, ...newFileList];
 
         if (action == "quick-action-upload") {
@@ -2180,7 +2459,6 @@ function ProjectsPage() {
     const processsPdf = async (file: any, action: string) => {
         // Check if user cancelled processing (use ref)
         if (cancelPdfRef.current) {
-            console.log('PDF processing cancelled by user');
             return null;
         }
 
@@ -2199,12 +2477,32 @@ function ProjectsPage() {
 
                     const fileArrayBuffer = await file.arrayBuffer();
                     const pdf = await pdfjsLib.getDocument({ data: fileArrayBuffer }).promise;
+
+                    if (pdf.numPages > MAX_PDF_PAGES) {
+                        message.error({
+                            content: `"${file.name}" has ${pdf.numPages} pages. Upload up to ${MAX_PDF_PAGES} pages at a time. Please split the PDF into smaller files.`,
+                            duration: 8,
+                        });
+                        pdf.cleanup?.();
+                        setFileProcessingId(null);
+                        resolve(null);
+                        return;
+                    }
+
+                    if (pdf.numPages > WARN_PDF_PAGES) {
+                        message.warning({
+                            content: `"${file.name}" has ${pdf.numPages} pages. This will take a few minutes to process and may use significant AI credits.`,
+                            duration: 8,
+                        });
+                    }
+
                     setPdfPagesCount(prev => prev + pdf.numPages);
 
                     for (let i = 1; i <= pdf.numPages; i++) {
                         // Check cancel flag during page processing (use ref)
                         if (cancelPdfRef.current) {
-                            console.log('PDF processing cancelled during page conversion');
+                            pdf.cleanup?.();
+                            setFileProcessingId(null);
                             resolve(null);
                             return;
                         }
@@ -2219,6 +2517,9 @@ function ProjectsPage() {
 
                         await page.render({ canvasContext: context!, viewport: viewport } as any).promise;
                         const pageUrl = canvas.toDataURL('image/jpeg', 0.8);
+                        page.cleanup?.();
+                        canvas.width = 0;
+                        canvas.height = 0;
                         const imageData = {
                             uid: generateMenuFileUid(tenantDetails.tenantId, storeDetails.storeId),
                             name: `${file.name.replace('.pdf', '')}-page-${i + 1}.jpg`,
@@ -2231,17 +2532,24 @@ function ProjectsPage() {
                         setPdfFiles(prev => ({ images: [...(prev?.images || []), imageData], action }));
 
                         if (pdf.numPages === i) {
+                            pdf.cleanup?.();
                             resolve(false);
                         }
                     }
                 } catch (error) {
-                    console.error("error while uploading file", error)
+                    logMenuProcessingFailure('menu_upload_pdf_conversion_failed', error, {
+                        ...getBoundedMenuProcessingStringContext('fileUid', file.uid),
+                        ...getBoundedMenuProcessingStringContext('fileType', file.type),
+                        fileSize: Number(file.size || 0),
+                    });
+                    setFileProcessingId(null);
                     resolve(null);
                 }
             };
 
             script.onerror = () => {
-                console.error("Failed to load pdfjs-dist from CDN");
+                logMenuProcessingFailure('menu_upload_pdf_library_load_failed');
+                setFileProcessingId(null);
                 resolve(null);
             };
 
@@ -2267,7 +2575,6 @@ function ProjectsPage() {
         beforeUpload: async (file, fileList) => {
             // Check if user has cancelled PDF processing (use ref for immediate access)
             if (cancelPdfRef.current) {
-                console.log('Skipping file due to cancel flag:', file.name);
                 return Upload.LIST_IGNORE;
             }
 
@@ -2282,7 +2589,6 @@ function ProjectsPage() {
             if (file.type === 'application/pdf') {
                 // Double-check cancel flag before processing (use ref)
                 if (cancelPdfRef.current) {
-                    console.log('Skipping PDF due to cancel flag:', file.name);
                     return Upload.LIST_IGNORE;
                 }
                 await processsPdf(file, currentView == 1 ? '' : 'quick-action-upload');
@@ -2346,17 +2652,6 @@ function ProjectsPage() {
             </Flex>
         </Flex>
     ) : null;
-
-    // Debug logging for job state
-    // console.log('[ProjectsPage] Render state:', {
-    //     fileProcessingId,
-    //     jobIsProcessing,
-    //     activeProcessingJobId,
-    //     jobProgress,
-    //     jobCurrentStep,
-    //     jobStatus: activeJob?.status,
-    //     shouldShowLoadingMessage: Boolean(fileProcessingId) || jobIsProcessing || activeJob?.status === 'pending'
-    // });
 
     return (
         <Flex vertical gap={10}>

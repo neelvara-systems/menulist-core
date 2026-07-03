@@ -1,7 +1,7 @@
 'use client'
 
-import { removePresetFromAllCategories, updatePresetInAllCategories } from '@database/projects';
-import { generatePresetId, updateTimeSlotPresets } from '@database/stores';
+import { assertProjectPresetCascadeSucceeded, removePresetFromAllCategories, updatePresetInAllCategories } from '@database/projects';
+import { assertTimeSlotPresetUpdateSucceeded, generatePresetId, updateTimeSlotPresets } from '@database/stores';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { TimeSlotPreset } from '@type/platform/store';
 import { formatClockTime } from '@util/dateTime';
@@ -11,6 +11,11 @@ import { useContext, useEffect, useState } from 'react';
 import { LuCheck, LuClock, LuPencil, LuPlus, LuTrash2, LuX } from 'react-icons/lu';
 import { Button, Card, Dialog, DotLoading, Empty, Flex, Input, NavBar, Popup, Text, Toast } from '../antd';
 import MobileSettingsScreenHeader from '../components/MobileSettingsScreenHeader';
+import {
+    getBoundedMobileOwnerStringContext,
+    getMobileOwnerStoreLogContext,
+    logMobileOwnerFailure,
+} from '../utils/mobileOwnerDiagnostics';
 
 const PRESET_COLORS = ['#f50', '#2db7f5', '#87d068', '#108ee9', '#531dab', '#c41d7f', '#d4380d', '#096dd9', '#7cb305', '#cf1322', '#08979c', '#d46b08'];
 
@@ -139,17 +144,33 @@ export default function MobileTimeSlotsScreen({ onBack }: MobileTimeSlotsScreenP
             } else {
                 updated = [...presets, { color: formColor, endTime: formEnd, id: generatePresetId(storeDetails?.tenantId, storeDetails?.storeId), label, startTime: formStart }];
             }
-            await updateTimeSlotPresets(storeDetails?.storeId, updated);
+            const writeResult = await updateTimeSlotPresets(storeDetails?.storeId, updated);
+            assertTimeSlotPresetUpdateSucceeded(writeResult);
             if (editingPreset) {
                 const updatedPreset = updated.find((preset) => preset.id === editingPreset.id);
                 if (updatedPreset) {
-                    await updatePresetInAllCategories(updatedPreset);
+                    const cascadeResult = await updatePresetInAllCategories(updatedPreset);
+                    assertProjectPresetCascadeSucceeded(
+                        cascadeResult,
+                        'mobile_time_slot_preset_cascade_update_rejected',
+                    );
                 }
             }
             setPresets(updated);
             setIsFormOpen(false);
             Toast.show({ content: editingPreset ? t('updated') : t('created'), icon: 'success', duration: 1500 });
-        } catch {
+        } catch (error) {
+            logMobileOwnerFailure('mobile_time_slot_preset_save_failed', error, {
+                ...getMobileOwnerStoreLogContext(storeDetails?.storeId, storeDetails?.tenantId),
+                ...getBoundedMobileOwnerStringContext('presetId', editingPreset?.id),
+                ...getBoundedMobileOwnerStringContext('presetLabel', label),
+                ...getBoundedMobileOwnerStringContext('startTime', formStart),
+                ...getBoundedMobileOwnerStringContext('endTime', formEnd),
+                isEdit: Boolean(editingPreset),
+                presetCount: presets.length,
+                hasColor: Boolean(formColor),
+                shouldCascadeCategoryUpdate: Boolean(editingPreset),
+            });
             Toast.show({ content: t('failedToSave'), duration: 1500 });
         } finally {
             setIsSaving(false);
@@ -217,11 +238,24 @@ export default function MobileTimeSlotsScreen({ onBack }: MobileTimeSlotsScreenP
                                                 onConfirm: async () => {
                                                     try {
                                                         const updated = presets.filter((item) => item.id !== preset.id);
-                                                        await updateTimeSlotPresets(storeDetails?.storeId, updated);
-                                                        await removePresetFromAllCategories(preset.id);
+                                                        const writeResult = await updateTimeSlotPresets(storeDetails?.storeId, updated);
+                                                        assertTimeSlotPresetUpdateSucceeded(writeResult);
+                                                        const cascadeResult = await removePresetFromAllCategories(preset.id);
+                                                        assertProjectPresetCascadeSucceeded(
+                                                            cascadeResult,
+                                                            'mobile_time_slot_preset_cascade_delete_rejected',
+                                                        );
                                                         setPresets(updated);
                                                         Toast.show({ content: t('deleted'), icon: 'success', duration: 1500 });
-                                                    } catch {
+                                                    } catch (error) {
+                                                        logMobileOwnerFailure('mobile_time_slot_preset_delete_failed', error, {
+                                                            ...getMobileOwnerStoreLogContext(storeDetails?.storeId, storeDetails?.tenantId),
+                                                            ...getBoundedMobileOwnerStringContext('presetId', preset.id),
+                                                            ...getBoundedMobileOwnerStringContext('presetLabel', preset.label),
+                                                            presetCount: presets.length,
+                                                            remainingPresetCount: Math.max(presets.length - 1, 0),
+                                                            shouldCascadeCategoryDelete: true,
+                                                        });
                                                         Toast.show({ content: t('failedToDelete'), duration: 1500 });
                                                     }
                                                 },

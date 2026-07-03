@@ -1,5 +1,9 @@
 # Hours & Holiday Accuracy — Help Documentation
 
+## Current Source Boundary
+
+This help doc covers current weekly working-hours status and Today quick-hours edits. Holiday calendars and date-specific exception managers are not shipped. For an unscheduled closure, use Temporary Status or update today's hours.
+
 ## Quick Summary
 Your menu automatically shows customers whether you're currently open or closed, based on the working hours you set in your store settings.
 
@@ -16,14 +20,13 @@ Your menu automatically shows customers whether you're currently open or closed,
 
 ### How the "Open/Closed" badge works
 - When customers scan your QR code, they see a badge at the top of your menu
-- **🟢 Open now** — Your current time is within working hours
-- **🔴 Closed** — Your current time is outside working hours
+- **Open now** — Your current time is within working hours
+- **Closed** — Your current time is outside working hours
 - The badge updates automatically — no action needed from you
 
-### How to set holiday closures (Coming Soon)
-- This feature is being developed
-- You'll be able to mark specific dates as closed ahead of time
-- Customers visiting on those dates will see "Closed today"
+### How to handle an unscheduled closure
+- Use Temporary Status for a clear customer-facing notice.
+- Or update today's hours in the mobile Today screen or Store Settings.
 
 ---
 
@@ -33,14 +36,14 @@ Your menu automatically shows customers whether you're currently open or closed,
 **Fix:** Check your working hours in Store Settings. Make sure the correct times are set and the timezone is right.
 
 ### Badge shows "Open" but I'm closed today
-**Fix:** If you're closed for an unscheduled reason, update your hours temporarily. Holiday exceptions feature is coming soon.
+**Fix:** If you're closed for an unscheduled reason, set Temporary Status or update today's hours.
 
 ---
 
 ## Tips
-- 💡 Set hours accurately — customers rely on them
-- 💡 Remember to update hours if they change seasonally
-- 💡 Working hours also appear in Google search results (via Schema.org)
+- Set hours accurately — customers rely on them
+- Remember to update hours if they change seasonally
+- Working hours also appear in public menu structured data when available
 
 ## Related Features
 - **[Stores Management]** — Where you configure working hours

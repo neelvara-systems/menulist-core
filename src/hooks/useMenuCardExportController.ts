@@ -99,6 +99,9 @@ function makeSettings(preset: MenuCardExportPreset, styleId: string): MenuCardEx
     return buildDefaultSettings(preset, styleId);
 }
 
+const MENU_CARD_ADVICE_PLAN_REQUIRED_MESSAGE = 'Layout suggestions are included in Pro and Premium.';
+const MENU_CARD_ADVICE_CAPACITY_MESSAGE = 'Additional AI enhancements are needed for layout suggestions.';
+
 export function isMenuCardPresetAvailable(preset: MenuCardExportPreset): boolean {
     if (preset === 'print_shop_packet') {
         return FEATURE_FLAGS.ENABLE_MENU_CARD_EXPORT_PRINT_SHOP;
@@ -464,11 +467,11 @@ export default function useMenuCardExportController({
             notify?.({ content: 'Layout suggestion ready', type: 'success' });
         } catch (error) {
             if (error instanceof MenuCardDesignAdvisorPlanError) {
-                setAdviceError(error.message);
+                setAdviceError(MENU_CARD_ADVICE_PLAN_REQUIRED_MESSAGE);
                 return;
             }
             if (error instanceof AICapacityError) {
-                setAdviceError(error.message);
+                setAdviceError(MENU_CARD_ADVICE_CAPACITY_MESSAGE);
                 return;
             }
             setAdviceError('Could not prepare a layout suggestion.');

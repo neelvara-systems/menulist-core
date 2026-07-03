@@ -1,9 +1,11 @@
 # AI Extraction Internal Monitoring Dashboard — Implementation
 
-**Feature:** Internal monitoring dashboard for the menu extraction pipeline  
-**Status:** ✅ IMPLEMENTED — Feature flag OFF (`ENABLE_EXTRACTION_MONITORING_DASHBOARD`)  
-**Feature Flag:** `ENABLE_EXTRACTION_MONITORING_DASHBOARD`  
-**Last Updated:** April 5, 2026
+**Feature:** Internal monitoring dashboard for the menu extraction pipeline
+**Status:** ✅ IMPLEMENTED — Feature flag OFF (`ENABLE_EXTRACTION_MONITORING_DASHBOARD`); controlled internal testing ready, not launch certification
+**Feature Flag:** `ENABLE_EXTRACTION_MONITORING_DASHBOARD`
+**Last Updated:** July 2, 2026
+
+**Launch boundary:** This internal dashboard is source-verified for the reviewed implementation, but enabling it in a release still requires target feature-flag review, platform-role access verification, current extraction data, and the External Certification Runbook evidence that applies to the release. A green source gate does not certify live Firebase deploys, provider behavior, browser/device QA, or production-host behavior.
 
 ---
 
@@ -135,6 +137,8 @@ Actions:
 - "Copy Job ID" button
 - "Copy Raw Data" button
 
+Copy actions in the AI Response tab wait for browser clipboard acknowledgement before showing copied state. They use Clipboard API success or an acknowledged textarea fallback before success copy. Failed local copies log `extraction_job_inspector_copy_failed` with bounded job ID, copy label, copied-text presence/length, clipboard/fallback support booleans, job status, combined-data presence, and raw-response count only; raw extraction payloads and provider responses are not logged.
+
 ### 5. Cost Monitor (`CostMonitor.tsx`)
 
 Simple stat cards:
@@ -172,6 +176,8 @@ Triggered conditions:
 ---
 
 ## DAL Layer (`src/database/ops/extraction.ts`)
+
+The dashboard component calls `getExtractionDashboardSnapshot()` through SWR with a five-minute `dedupingInterval`. This keeps manual cache misses bounded to one recent-job query plus one cost query, while duplicate platform dashboard mounts/revalidations inside five minutes reuse the cached snapshot. The Refresh button calls `mutate()` for an explicit operator refresh; no automatic refresh interval is enabled.
 
 ```typescript
 // Query recent extraction jobs
@@ -434,12 +440,12 @@ Note: Some of these indexes may already exist. Verify before adding duplicates.
 
 | ChatGPT Suggestion                                     | Our Decision     | Reason                                                                                                              |
 | ------------------------------------------------------ | ---------------- | ------------------------------------------------------------------------------------------------------------------- |
-| "Build separate side-by-side diff view (raw vs final)" | **DEFER**        | Raw batch responses now stored in `result.rawBatchResponses[]` (P0 hardening). Diff view possible but not priority. |
+| "Build separate side-by-side diff view (raw vs final)" | **NOT CURRENT SCOPE** | Raw batch responses now stored in `result.rawBatchResponses[]` (P0 hardening). Diff view would require a separate source-backed implementation decision. |
 | "Re-run combine stage button"                          | **REJECT**       | Combine happens inside CF, not separately callable. Retry creates new job instead.                                  |
-| "Track MISR/TTFP/HCR on dashboard"                     | **PHASE 2 (P3)** | HCR data exists (10.2 learning loop). MISR/TTFP need funnel event tracking first.                                   |
+| "Track MISR/TTFP/HCR on dashboard"                     | **NOT CURRENT SCOPE** | HCR data exists (10.2 learning loop). MISR/TTFP need funnel event tracking first.                                   |
 | "Build operational metrics into every page"            | **REJECT**       | Single monitoring page is sufficient for solo founder. Don't spread metrics across UI.                              |
 | "Build AI request queue status panel"                  | **REJECT**       | No universal AI task queue exists (extraction has its own job queue).                                               |
 
 ---
 
-_Document Status: ✅ IMPLEMENTED — Feature flag OFF, ready for production_
+_Document Status: ✅ IMPLEMENTED — Feature flag OFF; source-verified for controlled internal testing, with launch certification gated by the External Certification Runbook and current production-readiness audit._

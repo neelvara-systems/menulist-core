@@ -11,14 +11,17 @@ export const dynamic = 'force-dynamic';
  */
 
 import { DB_COLLECTIONS } from "@constant/database";
+import { getAuthSessionLogContext, getBoundedAuthStringContext, logAuthFailure } from "@lib/auth/authDiagnostics";
 import { admin, authAdmin, firestoreAdmin } from "@lib/firebase/firebaseAdmin";
 import { logger } from "@lib/monitoring/logger";
 import { checkRateLimit } from "@lib/rateLimit";
 import { getRateLimitForFeature } from "@lib/rateLimit/configs";
+import { readBoundedJsonBody } from "@lib/security/boundedRequestBody";
 import { validateAPIInput } from "@lib/security/inputValidation";
-import { buildSecurityContext } from "@lib/security/securityContext";
+import { getBoundedSecurityRouteContext } from "@lib/security/securityDiagnostics";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
+import { hashPublicRateLimitValue } from "src/middleware/publicApi";
 import { z } from "zod";
 import { withAuth } from "../../../../middleware/auth";
 
@@ -26,12 +29,32 @@ const ChangePasswordSchema = z.object({
   currentPassword: z.string().min(1).max(128),
   newPassword: z.string().min(6).max(128),
 });
+const CHANGE_PASSWORD_MAX_BODY_BYTES = 2 * 1024;
+const FIREBASE_AUTH_SIGN_IN_WITH_PASSWORD_URL = "https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword";
+
+const normalizeFirebaseAuthApiKey = (value?: string) => {
+  const apiKey = String(value || "").trim();
+  if (!apiKey || /[\s\x00-\x1F\x7F]/.test(apiKey)) return null;
+  return apiKey;
+};
+
+const buildFirebasePasswordVerificationEndpoint = (apiKey: string) => {
+  const endpoint = new URL(FIREBASE_AUTH_SIGN_IN_WITH_PASSWORD_URL);
+  endpoint.searchParams.set("key", apiKey);
+  return endpoint.toString();
+};
 
 const getRequestIp = (request: NextRequest) => (
   request.headers.get("x-forwarded-for")?.split(",")[0]?.trim()
   || request.headers.get("x-real-ip")
   || "unknown"
 );
+
+const getChangePasswordLogContext = (request: NextRequest, session: any) => ({
+  endpoint: request.nextUrl.pathname,
+  ...getAuthSessionLogContext(session),
+  ...getBoundedAuthStringContext("requestIp", getRequestIp(request)),
+});
 
 export const POST = withAuth(async (request: NextRequest, session) => {
   try {
@@ -41,13 +64,14 @@ export const POST = withAuth(async (request: NextRequest, session) => {
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     }
 
+    const userRateLimitHash = hashPublicRateLimitValue(userId);
     const rl = await checkRateLimit({
-      key: `auth-pwd:${userId || getRequestIp(request)}`,
+      key: `auth-pwd:${userRateLimitHash}`,
       ...getRateLimitForFeature("AUTH_SENSITIVE"),
     });
     if (!rl.allowed) {
       logger.security("Rate Limit Exceeded", {
-        ...buildSecurityContext(session, request),
+        ...getBoundedSecurityRouteContext(session, request),
         endpoint: request.nextUrl.pathname,
         feature: "AUTH_SENSITIVE",
       }, "medium");
@@ -55,11 +79,15 @@ export const POST = withAuth(async (request: NextRequest, session) => {
       return NextResponse.json({ error: "Too many attempts. Please wait before trying again." }, { status: 429 });
     }
 
-    const body = await request.json();
+    const bodyResult = await readBoundedJsonBody(request, CHANGE_PASSWORD_MAX_BODY_BYTES, {
+      invalidJsonMessage: "Invalid password details",
+    });
+    if (bodyResult.ok === false) return bodyResult.response;
+    const body = bodyResult.data;
     const validation = validateAPIInput(ChangePasswordSchema, body);
     if (validation.success === false) {
       logger.security("Input Validation Failed - Change Password", {
-        ...buildSecurityContext(session, request),
+        ...getBoundedSecurityRouteContext(session, request),
         endpoint: request.nextUrl.pathname,
         error: validation.error,
       }, "medium");
@@ -92,20 +120,20 @@ export const POST = withAuth(async (request: NextRequest, session) => {
 
     // Verify current password by attempting to sign in
     // (Admin SDK doesn't have a "verify password" method, so we use a workaround)
-    const firebaseApiKey = process.env.FIREBASE_API_KEY;
+    const firebaseApiKey = normalizeFirebaseAuthApiKey(process.env.FIREBASE_API_KEY);
     if (!firebaseApiKey) {
-      logger.error("[change-password] Firebase API key missing", undefined, {
-        ...buildSecurityContext(session, request),
-        endpoint: request.nextUrl.pathname,
-      });
+      logAuthFailure(
+        "change_password_firebase_api_key_missing",
+        undefined,
+        getChangePasswordLogContext(request, session),
+      );
 
       return NextResponse.json({ error: "Could not verify current password" }, { status: 500 });
     }
 
     try {
       // Admin SDK does not expose password verification; use Firebase Auth REST API.
-      const verifyUrl = `https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${firebaseApiKey}`;
-      const verifyRes = await fetch(verifyUrl, {
+      const verifyRes = await fetch(buildFirebasePasswordVerificationEndpoint(firebaseApiKey), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -113,16 +141,18 @@ export const POST = withAuth(async (request: NextRequest, session) => {
           password: currentPassword,
           returnSecureToken: false,
         }),
+        redirect: "manual",
       });
 
       if (!verifyRes.ok) {
         return NextResponse.json({ error: "Unable to verify current credentials." }, { status: 403 });
       }
     } catch (verifyError) {
-      logger.error("[change-password] Current password verification failed", verifyError, {
-        ...buildSecurityContext(session, request),
-        endpoint: request.nextUrl.pathname,
-      });
+      logAuthFailure(
+        "change_password_current_password_verification_failed",
+        verifyError,
+        getChangePasswordLogContext(request, session),
+      );
 
       return NextResponse.json({ error: "Could not verify current password" }, { status: 500 });
     }
@@ -140,20 +170,18 @@ export const POST = withAuth(async (request: NextRequest, session) => {
       passwordChangedAt: now,
     });
 
-    logger.info("[change-password] Password changed", {
-      ...buildSecurityContext(session, request),
-      endpoint: request.nextUrl.pathname,
-    });
+    logger.info("[change-password] Password changed", getChangePasswordLogContext(request, session));
 
     return NextResponse.json({
       success: true,
       message: "Password changed successfully",
     });
   } catch (error) {
-    logger.error("[change-password] Error", error, {
-      ...buildSecurityContext(session, request),
-      endpoint: request.nextUrl.pathname,
-    });
+    logAuthFailure(
+      "change_password_unexpected_error",
+      error,
+      getChangePasswordLogContext(request, session),
+    );
 
     return NextResponse.json({ error: "Internal error" }, { status: 500 });
   }

@@ -11,10 +11,24 @@ export const dynamic = 'force-dynamic';
 
 import { DB_COLLECTIONS } from "@constant/database";
 import { admin } from "@lib/firebase/firebaseAdmin";
-import { logger } from "@lib/monitoring/logger";
+import { getBoundedAuthStringContext, logAuthFailure } from "@lib/auth/authDiagnostics";
+import { hashPublicRateLimitValue } from "src/middleware/publicApi";
 import { NextRequest, NextResponse } from "next/server";
 
 const db = admin.firestore();
+
+const getRequestIp = (request: NextRequest) => (
+  request.headers.get("x-forwarded-for")?.split(",")[0]?.trim()
+  || request.headers.get("x-real-ip")
+  || "unknown"
+);
+
+const buildValidateClaimFailureLogContext = (request: NextRequest, token: string | null) => ({
+  endpoint: "/api/auth/validate-claim",
+  ...getBoundedAuthStringContext("claimToken", token),
+  ...getBoundedAuthStringContext("requestIp", getRequestIp(request)),
+  ...getBoundedAuthStringContext("userAgent", request.headers.get("user-agent")),
+});
 
 const timestampLikeToMillis = (value: unknown): number | null => {
   if (!value) return null;
@@ -33,8 +47,9 @@ export async function GET(request: NextRequest) {
     // 🔒 RATE LIMITING: Prevent brute force token validation
     const { checkRateLimit } = await import('@lib/rateLimit');
     const { getRateLimitForFeature } = await import('@lib/rateLimit/configs');
-    const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
-    const rl = await checkRateLimit({ key: `auth-validate:${ip}`, ...getRateLimitForFeature('AUTH_SENSITIVE') });
+    const ip = getRequestIp(request);
+    const ipHash = hashPublicRateLimitValue(ip);
+    const rl = await checkRateLimit({ key: `auth-validate:${ipHash}`, ...getRateLimitForFeature('AUTH_SENSITIVE') });
     if (!rl.allowed) {
       return NextResponse.json({ error: "Too many attempts. Please wait." }, { status: 429 });
     }
@@ -75,11 +90,18 @@ export async function GET(request: NextRequest) {
     // Return minimal info for the login page welcome message
     return NextResponse.json({
       valid: true,
+      status: "valid",
+      preview: "claim-token",
       businessName: userData.name || "Your Business",
       phone: userData.phone ? `****${(userData.phone || "").slice(-4)}` : null, // Masked for privacy
     });
   } catch (error) {
-    logger.error("[validate-claim] Error", error);
+    const { searchParams } = new URL(request.url);
+    logAuthFailure(
+      "validate_claim_unexpected_error",
+      error,
+      buildValidateClaimFailureLogContext(request, searchParams.get("token")),
+    );
     return NextResponse.json({ valid: false, error: "Internal error" }, { status: 500 });
   }
 }

@@ -7,21 +7,34 @@ import {
     updateProductSubscription,
     writeProductPaymentTransactionAudit,
 } from "@lib/billing/productBillingServer";
+import {
+    getBoundedRazorpayStringContext,
+    getRazorpayFailureLogData,
+    logRazorpayNonBlockingFailure,
+} from "@lib/billing/razorpayDiagnostics";
 import { isAnswerlatticeBillingProduct, normalizeBillingProductId } from "@lib/billing/productBillingPlans";
 import { validateTransition } from "@lib/billing/subscriptionStateMachine";
 import { admin, firestoreAdmin } from "@lib/firebase/firebaseAdmin";
 import { logger } from "@lib/monitoring/logger";
+import {
+    recordFounderRevenueMovement,
+    recordFounderSubscriptionChurn,
+    recordFounderSubscriptionMrrChange,
+    recordFounderSubscriptionNewMrr,
+} from "@lib/ops/founderRevenueReadModel";
 import { razorpayClient } from "@lib/razorpay/razorpay";
 import { validateRazorpayWebhookSignature } from "@lib/razorpay/webhook-validator";
 import { markResellerTransactionsActiveForSubscription } from "@lib/reseller/resellerLedger";
+import { readBoundedTextBody, rejectInvalidOrOversizedDeclaredBody } from "@lib/security/boundedRequestBody";
 import { FirestoreSubscriptionDoc } from "@type/razorpay";
 import { Timestamp } from "firebase/firestore";
 import { writeLogEntry } from "logs/utils";
-import { headers } from "next/headers";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { createHash } from "crypto";
+import { checkPublicRateLimit } from "src/middleware/publicApi";
 
 const LOG_FILE = "razorpay-subscription.log";
+const RAZORPAY_WEBHOOK_MAX_BODY_BYTES = 256 * 1024;
 
 const sanitizeForAdminFirestore = (value: any): any => {
     if (value === undefined) return null;
@@ -44,9 +57,11 @@ const normalizeNumericId = (value: unknown): number | null => {
 
 const getEventProductId = (eventPayload: any) => {
     const payment = eventPayload?.payload?.payment?.entity || {};
+    const refund = eventPayload?.payload?.refund?.entity || {};
     const subscription = eventPayload?.payload?.subscription?.entity || {};
     const order = eventPayload?.payload?.order?.entity || {};
     const orderNotes = !Array.isArray(order?.notes) ? (order?.notes || {}) : {};
+    const refundNotes = !Array.isArray(refund?.notes) ? (refund?.notes || {}) : {};
     const subscriptionNotes = !Array.isArray(subscription?.notes) ? (subscription?.notes || {}) : {};
     const paymentNotes = !Array.isArray(payment?.notes) ? (payment?.notes || {}) : {};
 
@@ -55,12 +70,45 @@ const getEventProductId = (eventPayload: any) => {
         || eventPayload?.pId
         || orderNotes?.productId
         || orderNotes?.pId
+        || refundNotes?.productId
+        || refundNotes?.pId
         || subscriptionNotes?.productId
         || subscriptionNotes?.pId
         || paymentNotes?.productId
         || paymentNotes?.pId,
     );
 };
+
+const getWebhookNonBlockingContext = ({
+    notificationEventType,
+    webhookEventType,
+    productId,
+    paymentEntity,
+    subscription,
+    fallbackSubscriptionId,
+    tenantId,
+    storeId,
+}: {
+    notificationEventType?: string;
+    webhookEventType?: string;
+    productId?: unknown;
+    paymentEntity?: any;
+    subscription?: any;
+    fallbackSubscriptionId?: unknown;
+    tenantId?: unknown;
+    storeId?: unknown;
+}) => ({
+    notificationEventType,
+    webhookEventType,
+    ...getBoundedRazorpayStringContext('productId', productId),
+    ...getBoundedRazorpayStringContext('paymentId', paymentEntity?.id),
+    ...getBoundedRazorpayStringContext(
+        'subscriptionId',
+        subscription?.id || subscription?.providerSubscriptionId || fallbackSubscriptionId || paymentEntity?.subscription_id,
+    ),
+    ...getBoundedRazorpayStringContext('tenantId', subscription?.tenantId ?? subscription?.tId ?? tenantId),
+    ...getBoundedRazorpayStringContext('storeId', subscription?.storeId ?? subscription?.sId ?? storeId),
+});
 
 const buildWebhookEventKey = (eventPayload: any, rawBody: string): string => {
     const payment = eventPayload?.payload?.payment?.entity;
@@ -173,6 +221,12 @@ const buildPaymentTransactionAudit = (eventPayload: any) => {
     };
 };
 
+const getRazorpayPaymentFailureRemark = (eventType: string | undefined) => {
+    if (eventType === 'subscription.pending') return 'Payment retry pending';
+    if (eventType === 'subscription.halted') return 'Payment retry halted';
+    return 'Payment failed';
+};
+
 const writePaymentTransactionAudit = async (data: any): Promise<string> => {
     const tenantId = normalizeNumericId(data?.tenantId ?? data?.tId);
     const storeId = normalizeNumericId(data?.storeId ?? data?.sId);
@@ -199,9 +253,9 @@ const getInvoiceById = async (eventPayloadToUpload: any, invoiceId: string) => {
         eventPayloadToUpload.payload.invoice = invoice;
         return eventPayloadToUpload;
     } catch (error) {
-        logger.error('Failed to fetch invoice for webhook', error, {
-            invoiceId: eventPayloadToUpload.payload?.invoice?.entity?.id
-        });
+        logger.error('Failed to fetch invoice for webhook', new Error('razorpay_webhook_invoice_fetch_failed'), getRazorpayFailureLogData('razorpay_webhook_invoice_fetch_failed', error, {
+            ...getBoundedRazorpayStringContext('invoiceId', eventPayloadToUpload.payload?.invoice?.entity?.id ?? invoiceId),
+        }));
         return eventPayloadToUpload;
     }
 }
@@ -215,10 +269,10 @@ const getInvoiceById = async (eventPayloadToUpload: any, invoiceId: string) => {
 // What it means: Razorpay has successfully debited the payment for a billing cycle.
 
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
     // 1. Security First: Validate the webhook signature before processing anything.
     // This is a critical step to ensure the request is genuinely from Razorpay.
-    const signature = headers().get('x-razorpay-signature');
+    const signature = request.headers.get('x-razorpay-signature');
     const secret = process.env.RAZORPAY_WEBHOOK_SECRET;
 
     if (!signature || !secret) {
@@ -230,7 +284,24 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: 'Invalid request: Missing signature or secret.' }, { status: 400 });
     }
 
-    const requestBody = await request.text();
+    const declaredBodyResponse = rejectInvalidOrOversizedDeclaredBody(
+        request,
+        RAZORPAY_WEBHOOK_MAX_BODY_BYTES,
+        { tooLargeMessage: 'Webhook payload too large.' },
+    );
+    if (declaredBodyResponse) return declaredBodyResponse;
+
+    const rateLimitResponse = await checkPublicRateLimit(request, 'WEBHOOK');
+    if (rateLimitResponse) return rateLimitResponse;
+
+    const boundedBody = await readBoundedTextBody(
+        request,
+        RAZORPAY_WEBHOOK_MAX_BODY_BYTES,
+        { tooLargeMessage: 'Webhook payload too large.' },
+    );
+    if (boundedBody.ok === false) return boundedBody.response;
+
+    const requestBody = boundedBody.body;
     const isSignatureValid = await validateRazorpayWebhookSignature(requestBody, signature, secret);
 
     if (!isSignatureValid) {
@@ -255,15 +326,18 @@ export async function POST(request: Request) {
 
     logger.info('Webhook event received', {
         eventType: event.event,
-        eventId: event.id || event.payload?.payment?.entity?.id || event.payload?.subscription?.entity?.id,
-        productId: eventProductId,
+        ...getBoundedRazorpayStringContext(
+            'eventId',
+            event.id || event.payload?.payment?.entity?.id || event.payload?.subscription?.entity?.id,
+        ),
+        ...getBoundedRazorpayStringContext('productId', eventProductId),
     });
 
     const webhookClaim = await claimWebhookEventForProcessing(event, requestBody);
     if (!webhookClaim.shouldProcess) {
         logger.info('Duplicate Razorpay webhook skipped', {
             eventType: event.event,
-            eventKey: webhookClaim.eventKey,
+            ...getBoundedRazorpayStringContext('eventKey', webhookClaim.eventKey),
         });
         return NextResponse.json({ status: 'duplicate' });
     }
@@ -283,6 +357,7 @@ export async function POST(request: Request) {
         };
         const shouldSendMenuListBillingMessages = !isAnswerlatticeBillingProduct(eventProductId);
         const paymentEntity = event.payload?.payment?.entity;
+        const refundEntity = event.payload?.refund?.entity;
         if (event.payload?.order) {
             const orderEntity = event.payload?.order?.entity;
             //if its topup credit purchase transaction event
@@ -298,6 +373,11 @@ export async function POST(request: Request) {
             eventPayloadToUpload.storeId = Number(subscriptionEntity?.notes?.storeId);
             eventPayloadToUpload.tenantId = Number(subscriptionEntity?.notes?.tenantId);
             eventPayloadToUpload.transactionType = 'subscription';
+        } else if (paymentEntity) {
+            const paymentNotes = !Array.isArray(paymentEntity?.notes) ? (paymentEntity?.notes || {}) : {};
+            eventPayloadToUpload.storeId = Number(paymentNotes.storeId);
+            eventPayloadToUpload.tenantId = Number(paymentNotes.tenantId);
+            eventPayloadToUpload.transactionType = paymentEntity?.subscription_id ? 'subscription' : paymentEntity?.order_id ? 'topup' : 'payment';
         }
         //fetch invoice data from razorpay
         if ((event.event === 'order.paid' || event.event === 'subscription.charged') && paymentEntity?.invoice_id) {
@@ -306,6 +386,63 @@ export async function POST(request: Request) {
         // await writeLogEntry({ logFileName: LOG_FILE, logType: `RAZORPAY_WEBHOOK_EVENT_${event.event}`, data: eventPayloadToUpload });
         const auditSummary = buildPaymentTransactionAudit(eventPayloadToUpload);
         await writeProductPaymentTransactionAudit(eventProductId, auditSummary);
+        const paymentAmountPaise = Number(paymentEntity?.amount || auditSummary.amount || 0);
+        const paymentOccurredAt = paymentEntity?.created_at ? Number(paymentEntity.created_at) * 1000 : Date.now();
+        if (event.event === 'order.paid' || event.event === 'subscription.charged') {
+            await recordFounderRevenueMovement({
+                amountPaise: paymentAmountPaise,
+                currency: paymentEntity?.currency || auditSummary.currency || 'INR',
+                description: event.event === 'subscription.charged' ? 'Razorpay subscription payment collected.' : 'Razorpay order payment collected.',
+                eventName: event.event,
+                id: `cash:${paymentEntity?.id || webhookClaim.eventKey}`,
+                kind: 'cash_collected',
+                occurredAt: paymentOccurredAt,
+                paymentId: paymentEntity?.id || null,
+                productId: eventProductId,
+                source: `webhook:${event.event}`,
+                storeId: eventPayloadToUpload.storeId,
+                subscriptionId: paymentEntity?.subscription_id || event.payload?.subscription?.entity?.id || null,
+                tenantId: eventPayloadToUpload.tenantId,
+            });
+        }
+        if (event.event === 'payment.failed' || event.event === 'subscription.pending' || event.event === 'subscription.halted') {
+            await recordFounderRevenueMovement({
+                amountPaise: paymentAmountPaise,
+                currency: paymentEntity?.currency || auditSummary.currency || 'INR',
+                description: getRazorpayPaymentFailureRemark(event.event),
+                eventName: event.event,
+                id: `failed_payment:${paymentEntity?.id || webhookClaim.eventKey}`,
+                kind: 'failed_payment',
+                occurredAt: paymentOccurredAt,
+                paymentId: paymentEntity?.id || null,
+                productId: eventProductId,
+                source: `webhook:${event.event}`,
+                storeId: eventPayloadToUpload.storeId,
+                subscriptionId: paymentEntity?.subscription_id || event.payload?.subscription?.entity?.id || null,
+                tenantId: eventPayloadToUpload.tenantId,
+            });
+        }
+        if (event.event === 'payment.refunded' || event.event === 'refund.processed') {
+            const refundAmountPaise = Number(refundEntity?.amount || paymentEntity?.amount_refunded || paymentEntity?.amount || auditSummary.amount || 0);
+            const refundPaymentId = refundEntity?.payment_id || paymentEntity?.id || null;
+            await recordFounderRevenueMovement({
+                amountPaise: refundAmountPaise,
+                currency: refundEntity?.currency || paymentEntity?.currency || auditSummary.currency || 'INR',
+                description: 'Razorpay refund processed.',
+                eventName: event.event,
+                id: `refund:${refundEntity?.id || refundPaymentId || webhookClaim.eventKey}`,
+                kind: 'refund',
+                occurredAt: refundEntity?.created_at
+                    ? Number(refundEntity.created_at) * 1000
+                    : paymentOccurredAt,
+                paymentId: refundPaymentId,
+                productId: eventProductId,
+                source: `webhook:${event.event}`,
+                storeId: eventPayloadToUpload.storeId,
+                subscriptionId: paymentEntity?.subscription_id || event.payload?.subscription?.entity?.id || null,
+                tenantId: eventPayloadToUpload.tenantId,
+            });
+        }
         if (!eventPayloadToUpload.transactionType) {
             await markWebhookEvent(webhookClaim.eventKey, 'processed', {
                 transactionType: null,
@@ -333,15 +470,39 @@ export async function POST(request: Request) {
                     const { PLATFORM_NOTIFICATION_TRIGGER_TYPES } = await import('@data/shared/platformNotificationRegistry');
                     await createAlert({
                         severity: event.event === 'subscription.halted' ? 'critical' : 'warning',
-                        title: `Payment ${event.event === 'subscription.halted' ? 'HALTED' : 'Failed'}: Store ${eventPayloadToUpload.storeId}`,
-                        message: `Event: ${event.event}\nStore: ${eventPayloadToUpload.storeId}\nTenant: ${eventPayloadToUpload.tenantId}\nError: ${paymentEntity?.error_description || paymentEntity?.error_reason || 'Unknown'}`,
+                        title: event.event === 'subscription.halted'
+                            ? 'Razorpay payment halted'
+                            : 'Razorpay payment failed',
+                        message: 'Razorpay reported a payment failure. Check bounded payment metadata and the provider dashboard.',
                         sId: eventPayloadToUpload.storeId ? String(eventPayloadToUpload.storeId) : undefined,
                         tId: eventPayloadToUpload.tenantId ? String(eventPayloadToUpload.tenantId) : undefined,
                         triggerType: PLATFORM_NOTIFICATION_TRIGGER_TYPES.PAYMENT_FAILURE,
                         productId: 'ML',
                         category: 'payments',
+                        metadata: getRazorpayFailureLogData('razorpay_webhook_payment_failure_event', undefined, {
+                            eventType: event.event,
+                            productId: eventProductId,
+                            ...getBoundedRazorpayStringContext('tenantId', eventPayloadToUpload.tenantId),
+                            ...getBoundedRazorpayStringContext('storeId', eventPayloadToUpload.storeId),
+                            ...getBoundedRazorpayStringContext('paymentId', paymentEntity?.id),
+                            ...getBoundedRazorpayStringContext(
+                                'subscriptionId',
+                                paymentEntity?.subscription_id || event.payload?.subscription?.entity?.id,
+                            ),
+                            ...getBoundedRazorpayStringContext('providerErrorDescription', paymentEntity?.error_description),
+                            ...getBoundedRazorpayStringContext('providerErrorReason', paymentEntity?.error_reason),
+                        }),
                     });
-                } catch { /* non-blocking */ }
+                } catch (alertError) {
+                    logRazorpayNonBlockingFailure('razorpay_webhook_payment_failure_alert_failed', alertError, getWebhookNonBlockingContext({
+                        webhookEventType: event.event,
+                        productId: eventProductId,
+                        paymentEntity,
+                        fallbackSubscriptionId: event.payload?.subscription?.entity?.id,
+                        tenantId: eventPayloadToUpload.tenantId,
+                        storeId: eventPayloadToUpload.storeId,
+                    }));
+                }
 
                 if (shouldSendMenuListBillingMessages) {
                     // 📧 LIFECYCLE MESSAGE: Notify store owner about payment failure
@@ -362,9 +523,28 @@ export async function POST(request: Request) {
                                     amount: paymentEntity?.amount ? (paymentEntity.amount / 100) : subForMsg.amount || 0,
                                     currency: paymentEntity?.currency?.toUpperCase() || subForMsg.currency || 'INR',
                                 },
-                            }).catch(() => { /* non-blocking */ });
+                            }).catch((notificationError) => {
+                                logRazorpayNonBlockingFailure('razorpay_webhook_payment_failure_lifecycle_message_failed', notificationError, getWebhookNonBlockingContext({
+                                    notificationEventType: event.event === 'subscription.pending' ? 'GRACE_PERIOD_STARTED' : 'PAYMENT_FAILED',
+                                    webhookEventType: event.event,
+                                    productId: eventProductId,
+                                    paymentEntity,
+                                    subscription: subForMsg,
+                                    fallbackSubscriptionId: event.payload?.subscription?.entity?.id,
+                                }));
+                            });
                         }
-                    } catch { /* non-blocking */ }
+                    } catch (notificationSetupError) {
+                        logRazorpayNonBlockingFailure('razorpay_webhook_payment_failure_lifecycle_message_setup_failed', notificationSetupError, getWebhookNonBlockingContext({
+                            notificationEventType: event.event === 'subscription.pending' ? 'GRACE_PERIOD_STARTED' : 'PAYMENT_FAILED',
+                            webhookEventType: event.event,
+                            productId: eventProductId,
+                            paymentEntity,
+                            fallbackSubscriptionId: event.payload?.subscription?.entity?.id,
+                            tenantId: eventPayloadToUpload.tenantId,
+                            storeId: eventPayloadToUpload.storeId,
+                        }));
+                    }
                 }
 
                 if (paymentEntity?.subscription_id) {
@@ -385,7 +565,7 @@ export async function POST(request: Request) {
                                     timestamp: Timestamp.now(),
                                     amount: paymentEntity.amount,
                                     currency: paymentEntity.currency,
-                                    remark: paymentEntity.error_description || paymentEntity.error_reason || `Subscription ${event.event}`,
+                                    remark: getRazorpayPaymentFailureRemark(event.event),
                                 },
                             ],
                         });
@@ -501,6 +681,34 @@ export async function POST(request: Request) {
                         } as FirestoreSubscriptionDoc,
                         `webhook:${event.event}`,
                     );
+                    if (internalSub.status !== 'active') {
+                        const activatedSubscription = {
+                            ...internalSub,
+                            ...updatePayload,
+                            id: internalSub.id,
+                            planId: planDetails.planId || internalSub.planId,
+                            status: 'active',
+                        } as FirestoreSubscriptionDoc;
+                        const replacementSubscriptionId = (internalSub as any).founderMonitorReplacementForSubscriptionId;
+                        const replacementMrrPaise = Number((internalSub as any).founderMonitorReplacementMrrPaise || 0);
+                        if (replacementSubscriptionId && replacementMrrPaise > 0) {
+                            await recordFounderSubscriptionMrrChange({
+                                eventKey: `${replacementSubscriptionId}:${internalSub.id}`,
+                                previousMrrPaise: replacementMrrPaise,
+                                productId: eventProductId,
+                                source: `webhook:${event.event}:replacement`,
+                                subscription: activatedSubscription,
+                                occurredAt: subscriptionEntity.current_start ? subscriptionEntity.current_start * 1000 : Date.now(),
+                            });
+                        } else {
+                            await recordFounderSubscriptionNewMrr({
+                                productId: eventProductId,
+                                source: `webhook:${event.event}`,
+                                subscription: activatedSubscription,
+                                occurredAt: subscriptionEntity.current_start ? subscriptionEntity.current_start * 1000 : Date.now(),
+                            });
+                        }
+                    }
 
                     if (shouldSendMenuListBillingMessages) {
                         // 📧 LIFECYCLE MESSAGE: Payment success confirmation to store owner
@@ -521,8 +729,26 @@ export async function POST(request: Request) {
                                         ? new Date(subscriptionEntity.charge_at * 1000).toISOString()
                                         : null,
                                 },
-                            }).catch(() => { /* non-blocking */ });
-                        } catch { /* non-blocking */ }
+                            }).catch((notificationError) => {
+                                logRazorpayNonBlockingFailure('razorpay_webhook_subscription_success_lifecycle_message_failed', notificationError, getWebhookNonBlockingContext({
+                                    notificationEventType: 'PAYMENT_SUCCESS',
+                                    webhookEventType: event.event,
+                                    productId: eventProductId,
+                                    paymentEntity,
+                                    subscription: internalSub,
+                                    fallbackSubscriptionId: subscriptionEntity.id,
+                                }));
+                            });
+                        } catch (notificationSetupError) {
+                            logRazorpayNonBlockingFailure('razorpay_webhook_subscription_success_lifecycle_message_setup_failed', notificationSetupError, getWebhookNonBlockingContext({
+                                notificationEventType: 'PAYMENT_SUCCESS',
+                                webhookEventType: event.event,
+                                productId: eventProductId,
+                                paymentEntity,
+                                subscription: internalSub,
+                                fallbackSubscriptionId: subscriptionEntity.id,
+                            }));
+                        }
 
                         // 📧 INTERNAL: Notify founder about renewal revenue
                         try {
@@ -542,8 +768,26 @@ export async function POST(request: Request) {
                                     storeId: String(internalSub.storeId),
                                     tenantId: String(internalSub.tenantId),
                                 },
-                            }).catch(() => { /* non-blocking */ });
-                        } catch { /* non-blocking */ }
+                            }).catch((notificationError) => {
+                                logRazorpayNonBlockingFailure('razorpay_webhook_subscription_success_internal_notification_failed', notificationError, getWebhookNonBlockingContext({
+                                    notificationEventType: event.event === 'subscription.activated' ? 'INTERNAL_SUBSCRIPTION_PURCHASED' : 'INTERNAL_SUBSCRIPTION_RENEWED',
+                                    webhookEventType: event.event,
+                                    productId: eventProductId,
+                                    paymentEntity,
+                                    subscription: internalSub,
+                                    fallbackSubscriptionId: subscriptionEntity.id,
+                                }));
+                            });
+                        } catch (notificationSetupError) {
+                            logRazorpayNonBlockingFailure('razorpay_webhook_subscription_success_internal_notification_setup_failed', notificationSetupError, getWebhookNonBlockingContext({
+                                notificationEventType: event.event === 'subscription.activated' ? 'INTERNAL_SUBSCRIPTION_PURCHASED' : 'INTERNAL_SUBSCRIPTION_RENEWED',
+                                webhookEventType: event.event,
+                                productId: eventProductId,
+                                paymentEntity,
+                                subscription: internalSub,
+                                fallbackSubscriptionId: subscriptionEntity.id,
+                            }));
+                        }
                     }
                 }
                 break;
@@ -577,6 +821,12 @@ export async function POST(request: Request) {
                         { ...internalSub, status: 'completed' },
                         'webhook:subscription.completed',
                     );
+                    await recordFounderSubscriptionChurn({
+                        productId: eventProductId,
+                        source: 'webhook:subscription.completed',
+                        subscription: { ...internalSub, status: 'completed' },
+                        occurredAt: subscriptionEntity.ended_at ? subscriptionEntity.ended_at * 1000 : Date.now(),
+                    });
                 }
                 break;
             }
@@ -609,6 +859,12 @@ export async function POST(request: Request) {
                             { ...cancelledInternalSub, status: 'cancelled' },
                             'webhook:subscription.cancelled',
                         );
+                        await recordFounderSubscriptionChurn({
+                            productId: eventProductId,
+                            source: 'webhook:subscription.cancelled',
+                            subscription: { ...cancelledInternalSub, status: 'cancelled' },
+                            occurredAt: cancelledSubEntity.ended_at ? cancelledSubEntity.ended_at * 1000 : Date.now(),
+                        });
                         if (shouldSendMenuListBillingMessages) {
                             try {
                                 const { sendLifecycleMessage } = await import('@lib/messaging');
@@ -625,8 +881,24 @@ export async function POST(request: Request) {
                                         planName: cancelledInternalSub.planName || 'Subscription',
                                         sentAt: new Date().toISOString(),
                                     },
-                                }).catch(() => { /* non-blocking */ });
-                            } catch { /* non-blocking */ }
+                                }).catch((notificationError) => {
+                                    logRazorpayNonBlockingFailure('razorpay_webhook_subscription_cancelled_lifecycle_message_failed', notificationError, getWebhookNonBlockingContext({
+                                        notificationEventType: 'SUBSCRIPTION_CANCELLED',
+                                        webhookEventType: event.event,
+                                        productId: eventProductId,
+                                        subscription: cancelledInternalSub,
+                                        fallbackSubscriptionId: cancelledSubEntity.id,
+                                    }));
+                                });
+                            } catch (notificationSetupError) {
+                                logRazorpayNonBlockingFailure('razorpay_webhook_subscription_cancelled_lifecycle_message_setup_failed', notificationSetupError, getWebhookNonBlockingContext({
+                                    notificationEventType: 'SUBSCRIPTION_CANCELLED',
+                                    webhookEventType: event.event,
+                                    productId: eventProductId,
+                                    subscription: cancelledInternalSub,
+                                    fallbackSubscriptionId: cancelledSubEntity.id,
+                                }));
+                            }
                         }
                     }
                 }
@@ -676,8 +948,24 @@ export async function POST(request: Request) {
                                     planName: pausedInternalSub.planName || 'Subscription',
                                     sentAt: new Date().toISOString(),
                                 },
-                            }).catch(() => { /* non-blocking */ });
-                        } catch { /* non-blocking */ }
+                            }).catch((notificationError) => {
+                                logRazorpayNonBlockingFailure('razorpay_webhook_subscription_paused_lifecycle_message_failed', notificationError, getWebhookNonBlockingContext({
+                                    notificationEventType: 'SUBSCRIPTION_PAUSED',
+                                    webhookEventType: event.event,
+                                    productId: eventProductId,
+                                    subscription: pausedInternalSub,
+                                    fallbackSubscriptionId: pausedSubEntity.id,
+                                }));
+                            });
+                        } catch (notificationSetupError) {
+                            logRazorpayNonBlockingFailure('razorpay_webhook_subscription_paused_lifecycle_message_setup_failed', notificationSetupError, getWebhookNonBlockingContext({
+                                notificationEventType: 'SUBSCRIPTION_PAUSED',
+                                webhookEventType: event.event,
+                                productId: eventProductId,
+                                subscription: pausedInternalSub,
+                                fallbackSubscriptionId: pausedSubEntity.id,
+                            }));
+                        }
                     }
                 }
                 break;
@@ -690,10 +978,24 @@ export async function POST(request: Request) {
                 if (!updatedSubEntity?.id) break;
                 const updatedInternalSub = await getSubscription(updatedSubEntity.id);
                 if (updatedInternalSub && updatedSubEntity.quantity !== undefined) {
+                    const nextSubscription = {
+                        ...updatedInternalSub,
+                        quantity: updatedSubEntity.quantity,
+                    } as FirestoreSubscriptionDoc;
                     await updateSubscriptionForProduct(updatedInternalSub.id, {
                         quantity: updatedSubEntity.quantity,
                         lastWebhook: { event: event.event, timestamp: Timestamp.now() },
                     });
+                    if (updatedInternalSub.status === 'active' || updatedInternalSub.status === 'past_due') {
+                        await recordFounderSubscriptionMrrChange({
+                            eventKey: webhookClaim.eventKey,
+                            productId: eventProductId,
+                            previousSubscription: updatedInternalSub,
+                            source: 'webhook:subscription.updated',
+                            subscription: nextSubscription,
+                            occurredAt: updatedSubEntity.updated_at ? updatedSubEntity.updated_at * 1000 : Date.now(),
+                        });
+                    }
                 }
                 break;
             }
@@ -741,8 +1043,24 @@ export async function POST(request: Request) {
                                     planName: resumedInternalSub.planName || 'Subscription',
                                     sentAt: new Date().toISOString(),
                                 },
-                            }).catch(() => { /* non-blocking */ });
-                        } catch { /* non-blocking */ }
+                            }).catch((notificationError) => {
+                                logRazorpayNonBlockingFailure('razorpay_webhook_subscription_resumed_lifecycle_message_failed', notificationError, getWebhookNonBlockingContext({
+                                    notificationEventType: 'SUBSCRIPTION_RESUMED',
+                                    webhookEventType: event.event,
+                                    productId: eventProductId,
+                                    subscription: resumedInternalSub,
+                                    fallbackSubscriptionId: resumedSubEntity.id,
+                                }));
+                            });
+                        } catch (notificationSetupError) {
+                            logRazorpayNonBlockingFailure('razorpay_webhook_subscription_resumed_lifecycle_message_setup_failed', notificationSetupError, getWebhookNonBlockingContext({
+                                notificationEventType: 'SUBSCRIPTION_RESUMED',
+                                webhookEventType: event.event,
+                                productId: eventProductId,
+                                subscription: resumedInternalSub,
+                                fallbackSubscriptionId: resumedSubEntity.id,
+                            }));
+                        }
                     }
                 }
                 break;
@@ -766,15 +1084,26 @@ export async function POST(request: Request) {
         return NextResponse.json({ status: 'ok' });
 
     } catch (error) {
-        logger.error('Webhook processing failed', error, {
+        const failureData = getRazorpayFailureLogData('razorpay_webhook_processing_failed', error, {
             eventType: event?.event,
             api: 'razorpay-webhook'
         });
+        logger.error('Webhook processing failed', new Error('razorpay_webhook_processing_failed'), failureData);
 
         await markWebhookEvent(webhookClaim.eventKey, 'failed', {
             eventType: event?.event || null,
-            errorMessage: error instanceof Error ? error.message : 'Unknown error',
-        }).catch(() => { /* non-blocking */ });
+            ...failureData,
+        }).catch((markError) => {
+            logRazorpayNonBlockingFailure('razorpay_webhook_failed_status_mark_failed', markError, {
+                ...getWebhookNonBlockingContext({
+                    webhookEventType: event?.event,
+                    productId: eventProductId,
+                    tenantId: event?.tenantId,
+                    storeId: event?.storeId,
+                }),
+                ...getBoundedRazorpayStringContext('eventKey', webhookClaim.eventKey),
+            });
+        });
 
         // 🚨 CRITICAL ALERT: Webhook processing failure = potential payment state inconsistency
         try {
@@ -783,14 +1112,27 @@ export async function POST(request: Request) {
             await createAlert({
                 severity: 'critical',
                 title: `Razorpay Webhook FAILED: ${event?.event || 'unknown'}`,
-                message: `Webhook processing crashed. Payment state may be inconsistent.\nEvent: ${event?.event}\nStore: ${event?.storeId || 'unknown'}\nError: ${error instanceof Error ? error.message : 'Unknown'}`,
+                message: 'Webhook processing crashed. Payment state may be inconsistent. See bounded Razorpay webhook diagnostics.',
                 sId: event?.storeId ? String(event.storeId) : undefined,
                 tId: event?.tenantId ? String(event.tenantId) : undefined,
                 triggerType: PLATFORM_NOTIFICATION_TRIGGER_TYPES.PAYMENT_WEBHOOK_FAILURE,
                 productId: eventProductId,
                 category: 'payments',
+                metadata: {
+                    eventType: event?.event || 'unknown',
+                    ...getBoundedRazorpayStringContext('storeId', event?.storeId),
+                    ...getBoundedRazorpayStringContext('tenantId', event?.tenantId),
+                    ...getRazorpayFailureLogData('razorpay_webhook_processing_failed', error),
+                },
             });
-        } catch { /* non-blocking */ }
+        } catch (alertError) {
+            logRazorpayNonBlockingFailure('razorpay_webhook_processing_alert_failed', alertError, getWebhookNonBlockingContext({
+                webhookEventType: event?.event,
+                productId: eventProductId,
+                tenantId: event?.tenantId,
+                storeId: event?.storeId,
+            }));
+        }
 
         return NextResponse.json({ error: 'Webhook processing failed.' }, { status: 500 });
     }

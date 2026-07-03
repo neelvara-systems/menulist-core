@@ -2,7 +2,9 @@
 
 **Problem:** `firebaseAuth.currentUser` is `null` even when logged in via NextAuth  
 **Solution:** Use `useFirebaseAuthSync` hook to automatically sync them  
-**Status:** ✅ Production Ready
+**Status:** Implemented source evidence; not current launch certification
+
+> **Launch Boundary:** This note records the Firebase Auth sync pattern, not current production-launch approval. Current release approval requires the active [production-readiness audit](../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../production-readiness/external-certification-runbook.md) evidence, auth browser/API smoke, Firebase Auth custom-claims evidence, App Check/session-cookie review, target deploy evidence, and production-host smoke.
 
 ---
 
@@ -75,6 +77,10 @@ Even though you're logged in via NextAuth (OAuth), Firebase Auth doesn't know ab
 8. Result: Both systems are synced!
 ```
 
+June 29 response diagnostics: `src/lib/auth/firebaseAuthSync.ts` parses `/api/auth/set-claims` sync and refresh responses through `readJsonResponseWithLimit()` with a 32KB cap before using returned custom tokens. Malformed, oversized, empty, or non-object responses log `firebase_auth_sync_response_parse_failed` / `firebase_auth_sync_response_invalid` with status/phase metadata only and fail through the existing generic Firebase Auth sync error path.
+
+June 30 request boundary: `src/lib/auth/firebaseAuthSync.ts` now spreads `AUTH_BROWSER_REQUEST_POLICY` before both `/api/auth/set-claims` sync and refresh calls, so Firebase claim handoffs stay uncached, same-origin, and manual-redirect before bounded response parsing. This does not change custom-token creation, claim refresh, Firestore reads/writes, Firebase Auth operations, route contracts, or deploy requirements.
+
 ---
 
 ## 🔧 **Implementation**
@@ -91,16 +97,17 @@ const MyComponent = () => {
   // ✅ Automatically syncs Firebase Auth with NextAuth
   const { firebaseUser, isSyncing } = useFirebaseAuthSync();
   
-  console.log('NextAuth session:', session);
-  console.log('Firebase user:', firebaseUser);  // ✅ No longer null!
+  const isReady = Boolean(session?.user) && Boolean(firebaseUser);
   
   if (isSyncing) {
     return <div>Syncing authentication...</div>;
   }
   
-  return <div>Welcome {firebaseUser?.email}</div>;
+  return <div>{isReady ? 'Authentication ready' : 'Authentication unavailable'}</div>;
 };
 ```
+
+Do not log `session`, `firebaseAuth.currentUser`, custom tokens, Firebase SDK token managers, emails, tenant/store IDs, or raw provider errors while debugging this flow. Use `src/lib/firebase/firebaseDiagnostics.ts` for bootstrap/sync failures and `src/lib/auth/authDiagnostics.ts` for client session/sign-out diagnostics.
 
 ### **2. Hook Signature**
 
@@ -123,6 +130,7 @@ function useFirebaseAuthSync(): {
 2. **Calls Server API:**
    ```typescript
    fetch('/api/auth/set-claims', {
+     ...AUTH_BROWSER_REQUEST_POLICY,
      method: 'POST',
      body: JSON.stringify({})
    })
@@ -201,15 +209,11 @@ src/
 # Go to http://localhost:3000
 # Click "Sign in with Google"
 
-# 2. Check console logs
-# Should see:
-[Firebase Auth Sync] Starting sync...
-[Firebase Auth Sync] ✅ Sync complete
-[Firebase Auth Sync] User: your@email.com
+# 2. Verify the app leaves the "Connecting Account" state.
+# Successful sync is intentionally quiet in browser logs.
 
-# 3. Verify both auth systems
-console.log('NextAuth:', session);        // ✅ Has data
-console.log('Firebase:', firebaseUser);   // ✅ Has data
+# 3. If sync fails, check bounded Firebase bootstrap diagnostics.
+# Do not log session, firebaseAuth.currentUser, emails, tenant/store IDs, or custom tokens.
 ```
 
 ### **2. Test Password Login:**
@@ -218,12 +222,8 @@ console.log('Firebase:', firebaseUser);   // ✅ Has data
 # 1. Login with email/password
 # No sync needed - already handled in authorize()
 
-# 2. Check console
-# Should NOT see sync messages (already synced)
-
-# 3. Verify both auth systems
-console.log('NextAuth:', session);        // ✅ Has data
-console.log('Firebase:', firebaseUser);   // ✅ Has data
+# 2. Verify the dashboard loads without the Firebase bootstrap loader.
+# Password login should not emit Firebase Auth sync console messages.
 ```
 
 ### **3. Test Error Handling:**
@@ -231,7 +231,7 @@ console.log('Firebase:', firebaseUser);   // ✅ Has data
 ```bash
 # 1. Disconnect from Firebase (simulate error)
 # 2. Login with Google
-# 3. Check console for error messages
+# 3. Check bounded Firebase bootstrap diagnostics for normalized failure codes
 # 4. Hook should retry automatically
 ```
 
@@ -347,7 +347,9 @@ useEffect(() => {
     fetch('/api/auth/set-claims', { method: 'POST' })
       .then(res => res.json())
       .then(data => signInWithCustomToken(firebaseAuth, data.customToken))
-      .catch(console.error);
+      .catch(() => {
+        // Old pattern had no bounded diagnostics.
+      });
   }
 }, [session]);
 ```
@@ -371,5 +373,5 @@ const { firebaseUser, isSyncing } = useFirebaseAuthSync();
 ---
 
 **Last Updated:** November 6, 2025  
-**Status:** ✅ Production Active  
+**Status:** Implemented source evidence; not current launch certification
 **Maintainer:** Auth Team

@@ -1,8 +1,15 @@
 import type { AnswerlatticePublicCacheSegment } from '@lib/actions/revalidateAnswerlatticePublicCache';
+import { secureError } from '@lib/security/secureLogger';
 
 const ANSWERLATTICE_PUBLIC_CACHE_REVALIDATION_TIMEOUT_MS = 4000;
+const ANSWERLATTICE_PUBLIC_CACHE_CONTEXT_MAX_LENGTH = 64;
 
 const pendingRevalidations = new Map<string, Promise<void>>();
+
+const ANSWERLATTICE_PUBLIC_CACHE_FAILURE_CODES = {
+    bad_status: 'answerlattice_public_cache_revalidation_bad_status',
+    request_failed: 'answerlattice_public_cache_revalidation_request_failed',
+} as const;
 
 type AnswerlatticePublicCacheScope = {
     tId?: string | number | null;
@@ -12,6 +19,52 @@ type AnswerlatticePublicCacheScope = {
 const normalizeSegmentList = (segments?: AnswerlatticePublicCacheSegment | AnswerlatticePublicCacheSegment[]) => {
     const list = Array.isArray(segments) ? segments : [segments || 'all'];
     return Array.from(new Set(list.filter(Boolean)));
+};
+
+const sanitizeAnswerlatticePublicCacheContext = (context: string): string => {
+    const value = String(context || 'answerlatticePublicClientCache').trim();
+    if (!value) {
+        return 'answerlatticePublicClientCache';
+    }
+
+    const bounded = value.slice(0, ANSWERLATTICE_PUBLIC_CACHE_CONTEXT_MAX_LENGTH);
+    return /^[a-zA-Z0-9:_-]+$/.test(bounded) ? bounded : 'answerlatticePublicClientCache';
+};
+
+const getBoundedAnswerlatticePublicCacheStringContext = (
+    label: string,
+    value: unknown,
+) => {
+    const normalized = value === undefined || value === null ? '' : String(value);
+
+    return {
+        [`${label}Present`]: normalized.length > 0,
+        [`${label}Length`]: normalized.length,
+    };
+};
+
+const logAnswerlatticePublicClientCacheFailure = (
+    context: string,
+    scope: AnswerlatticePublicCacheScope | null | undefined,
+    segmentCount: number,
+    failureType: 'bad_status' | 'request_failed',
+    metadata: Record<string, unknown> = {},
+): void => {
+    if (process.env.NODE_ENV === 'production') {
+        return;
+    }
+
+    secureError(
+        '[answerlattice-public-cache] Failed to revalidate public client cache',
+        new Error(ANSWERLATTICE_PUBLIC_CACHE_FAILURE_CODES[failureType]),
+        {
+            context: sanitizeAnswerlatticePublicCacheContext(context),
+            segmentCount,
+            ...getBoundedAnswerlatticePublicCacheStringContext('tenantId', scope?.tId),
+            ...getBoundedAnswerlatticePublicCacheStringContext('storeId', scope?.sId),
+            ...metadata,
+        },
+    );
 };
 
 export const revalidateAnswerlatticePublicClientCache = async (
@@ -58,17 +111,15 @@ export const revalidateAnswerlatticePublicClientCache = async (
             });
 
             if (!response.ok && process.env.NODE_ENV !== 'production') {
-                console.warn(
-                    `[answerlattice-public-cache] ${context} failed to revalidate public cache`,
-                    response.status,
-                );
+                logAnswerlatticePublicClientCacheFailure(context, scope, normalizedSegments.length, 'bad_status', {
+                    responseStatus: response.status,
+                });
             }
         } catch (error) {
             if (process.env.NODE_ENV !== 'production') {
-                console.warn(
-                    `[answerlattice-public-cache] ${context} failed to revalidate public cache`,
-                    error,
-                );
+                logAnswerlatticePublicClientCacheFailure(context, scope, normalizedSegments.length, 'request_failed', {
+                    errorName: error instanceof Error ? error.name : typeof error,
+                });
             }
         } finally {
             window.clearTimeout(timeout);

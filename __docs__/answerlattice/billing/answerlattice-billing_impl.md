@@ -1,7 +1,7 @@
 # Answerlattice Billing — Implementation
 
-> **Version:** 1.1.2
-> **Last Updated:** 2026-06-20
+> **Version:** 1.1.3
+> **Last Updated:** 2026-06-28
 > **Audience:** Developers
 
 ## Architecture
@@ -19,6 +19,7 @@ Answerlattice reuses the MenuList Razorpay routes and payment hook through a pro
 - MenuList payments use the existing default Firestore subscription DAL.
 - Answerlattice payments use `answerlatticeFirestoreAdmin`.
 - Answerlattice entitlement sync writes a compact `stores/{sId}.answerlatticeSubscription` summary, current monthly/top-up credit balances, and subscription `analyticsEntitlement`.
+- Answerlattice entitlement sync failures use `answerlattice_subscription_entitlement_sync_failed` with bounded subscription/tenant/store/plan/status/source metadata plus source error name/code/status only.
 
 ## API Behavior
 
@@ -61,9 +62,15 @@ The transactions screen also reads Answerlattice AI operation history through `/
 - model/source/timing metadata
 - support-credit debit breakdown when the operation consumes credits
 
+The browser DAL sends the usage-history request with no-store cache, same-origin credentials, and manual redirect handling before the existing 512 KB bounded response parser accepts the paginated `{ data, hasMore, lastVisibleDoc }` envelope.
+
 Provider payloads, raw prompts, real cost, margin, and charge internals stay server/platform-only.
 
-Manual draft regeneration and article entity extraction now run through Answerlattice API routes instead of browser-side provider calls. Those routes permission-check, rate-limit, resolve Answerlattice scope from the session, call Gemini server-side, and store zero-unit internal operation rows.
+AI accounting failure diagnostics are bounded. `src/lib/answerlattice/aiAccounting.ts` logs operation-log, credit-consumption, and balance-detail update failures through `answerlattice_ai_accounting_*` failure codes with tenant/store/action/user presence and length metadata, units consumed, context key counts, and source error name/code/status only. Operation logging remains best-effort; credit consumption still rethrows and fails paid requests when debiting cannot be confirmed.
+
+Answerlattice subscription entitlement sync diagnostics are bounded. `src/lib/billing/productBillingServer.ts` logs `answerlattice_subscription_entitlement_sync_failed` through the Answerlattice diagnostic helper and does not log raw subscription IDs, tenant/store IDs, plan IDs, provider payloads, or exception messages.
+
+Manual draft regeneration and article entity extraction now run through Answerlattice API routes instead of browser-side provider calls. Those routes resolve Answerlattice scope from the session, check safe mode, rate-limit before permission/body/provider work, call Gemini server-side, store zero-unit internal operation rows, and log unexpected route failures with bounded diagnostics.
 
 ## Credit And Token Reconciliation
 
@@ -83,6 +90,8 @@ Answerlattice keeps three layers separate:
 
 | Date | Version | Change |
 |------|---------|--------|
+| 2026-06-28 | 1.1.4 | Documented safe-mode/rate-limit admission and bounded diagnostics for manual draft/entity extraction routes |
+| 2026-06-28 | 1.1.3 | Documented bounded Answerlattice entitlement sync diagnostics |
 | 2026-06-20 | 1.1.2 | Documented purchased-credit, consumed-credit, and provider-token reconciliation |
 | 2026-06-20 | 1.1.1 | Moved manual draft regeneration and article entity extraction behind server routes with AI operation accounting |
 | 2026-06-20 | 1.1.0 | Added Answerlattice AI operation/support-credit usage history to the transactions screen |

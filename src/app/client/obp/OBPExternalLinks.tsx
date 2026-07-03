@@ -3,6 +3,7 @@
 import { getSessionId } from '@lib/analytics/session';
 import { trackBeforeNavigate } from '@lib/analytics/trackBeforeNavigate';
 import { trackOBPLinkClick } from '@lib/analytics/unified';
+import { normalizeOBPReviewUrl, normalizeOBPSocialUrl, normalizeOBPWebsiteUrl } from '@lib/obp/publicLinks';
 import { buildWhatsAppPhoneParam } from '@lib/phone/phoneNumber';
 import { useState, type ElementType } from 'react';
 import { LuGlobe } from 'react-icons/lu';
@@ -16,6 +17,7 @@ interface OBPExternalLinksProps {
     includeLocation?: boolean;
     storeTimeZone?: string;
     businessDayEndTime?: string;
+    openHoursState?: OBPOpenHoursState;
     countryCode?: string;
     dialCode?: string;
     googleReviewLabel?: string;
@@ -35,6 +37,7 @@ interface OBPExternalLinksProps {
 
 type OBPTrackedLink = 'google_review' | 'instagram' | 'facebook' | 'twitter' | 'linkedin' | 'youtube' | 'whatsapp' | 'website';
 type OBPSocialLink = Exclude<OBPTrackedLink, 'google_review'>;
+type OBPOpenHoursState = 'open' | 'closed' | 'unknown';
 
 const SOCIAL_ICONS: Partial<Record<OBPTrackedLink, ElementType>> = {
     instagram: TbBrandInstagram,
@@ -45,13 +48,6 @@ const SOCIAL_ICONS: Partial<Record<OBPTrackedLink, ElementType>> = {
     whatsapp: TbBrandWhatsapp,
 };
 
-function normalizeUrl(value: string, prefix: string) {
-    const trimmed = String(value || '').trim();
-    if (!trimmed) return '';
-    if (trimmed.startsWith('http') || trimmed.startsWith('mailto:') || trimmed.startsWith('tel:')) return trimmed;
-    return `${prefix}${trimmed.replace(/^@/, '')}`;
-}
-
 export default function OBPExternalLinks({
     tenantId,
     storeId,
@@ -59,6 +55,7 @@ export default function OBPExternalLinks({
     includeLocation = false,
     storeTimeZone,
     businessDayEndTime,
+    openHoursState = 'unknown',
     countryCode,
     dialCode,
     googleReviewLabel,
@@ -76,8 +73,17 @@ export default function OBPExternalLinks({
     website,
 }: OBPExternalLinksProps) {
     const [placeholderNotice, setPlaceholderNotice] = useState('');
-    const hasSocials = !!(instagram || facebook || twitter || linkedin || youtube || whatsapp || website || placeholderPlatforms.length);
-    const hasReview = !!(googleReviewUrl && googleReviewLabel);
+    const reviewUrl = normalizeOBPReviewUrl(googleReviewUrl);
+    const instagramUrl = normalizeOBPSocialUrl('instagram', instagram);
+    const facebookUrl = normalizeOBPSocialUrl('facebook', facebook);
+    const twitterUrl = normalizeOBPSocialUrl('twitter', twitter);
+    const linkedinUrl = normalizeOBPSocialUrl('linkedin', linkedin);
+    const youtubeUrl = normalizeOBPSocialUrl('youtube', youtube);
+    const whatsappDigits = whatsapp ? buildWhatsAppPhoneParam({ countryCode, dialCode, phoneNumber: whatsapp }) : '';
+    const whatsappUrl = whatsappDigits ? `https://wa.me/${whatsappDigits}` : '';
+    const websiteUrl = normalizeOBPWebsiteUrl(website);
+    const hasSocials = !!(instagramUrl || facebookUrl || twitterUrl || linkedinUrl || youtubeUrl || whatsappUrl || websiteUrl || placeholderPlatforms.length);
+    const hasReview = !!(reviewUrl && googleReviewLabel);
 
     if (!hasSocials && !hasReview) return null;
 
@@ -88,18 +94,11 @@ export default function OBPExternalLinks({
             sessionId: getSessionId(),
             storeTimeZone,
             businessDayEndTime,
+            openHoursState,
             includeLocation,
         });
     };
 
-    const instagramUrl = instagram ? normalizeUrl(instagram, 'https://instagram.com/') : '';
-    const facebookUrl = facebook ? normalizeUrl(facebook, 'https://facebook.com/') : '';
-    const twitterUrl = twitter ? normalizeUrl(twitter, 'https://twitter.com/') : '';
-    const linkedinUrl = linkedin ? normalizeUrl(linkedin, 'https://linkedin.com/in/') : '';
-    const youtubeUrl = youtube ? normalizeUrl(youtube, 'https://youtube.com/') : '';
-    const whatsappDigits = whatsapp ? buildWhatsAppPhoneParam({ countryCode, dialCode, phoneNumber: whatsapp }) : '';
-    const whatsappUrl = whatsappDigits ? `https://wa.me/${whatsappDigits}` : '';
-    const websiteUrl = website ? normalizeUrl(website, 'https://') : '';
     const InstagramIcon = SOCIAL_ICONS.instagram;
     const FacebookIcon = SOCIAL_ICONS.facebook;
     const TwitterIcon = SOCIAL_ICONS.twitter;
@@ -107,13 +106,13 @@ export default function OBPExternalLinks({
     const YoutubeIcon = SOCIAL_ICONS.youtube;
     const WhatsappIcon = SOCIAL_ICONS.whatsapp;
     const realPlatforms = new Set<OBPSocialLink>([
-        ...(instagram ? ['instagram' as const] : []),
-        ...(facebook ? ['facebook' as const] : []),
-        ...(twitter ? ['twitter' as const] : []),
-        ...(linkedin ? ['linkedin' as const] : []),
-        ...(youtube ? ['youtube' as const] : []),
-        ...(whatsapp ? ['whatsapp' as const] : []),
-        ...(website ? ['website' as const] : []),
+        ...(instagramUrl ? ['instagram' as const] : []),
+        ...(facebookUrl ? ['facebook' as const] : []),
+        ...(twitterUrl ? ['twitter' as const] : []),
+        ...(linkedinUrl ? ['linkedin' as const] : []),
+        ...(youtubeUrl ? ['youtube' as const] : []),
+        ...(whatsappUrl ? ['whatsapp' as const] : []),
+        ...(websiteUrl ? ['website' as const] : []),
     ]);
     const visiblePlaceholderPlatforms = placeholderPlatforms.filter((platform) => !realPlatforms.has(platform));
     const getSocialLabel = (platform: OBPSocialLink) => labels?.[platform] || platform;
@@ -133,15 +132,15 @@ export default function OBPExternalLinks({
 
     return (
         <>
-            {hasReview && googleReviewUrl && googleReviewLabel ? (
+            {hasReview && reviewUrl && googleReviewLabel ? (
                 <a
-                    href={googleReviewUrl}
+                    href={reviewUrl}
                     target="_blank"
                     rel="noopener noreferrer"
                     className={styles.reviewLink}
                     onClick={(event) => trackBeforeNavigate({
                         event,
-                        href: googleReviewUrl,
+                        href: reviewUrl,
                         target: '_blank',
                         track: () => handleClick('google_review'),
                     })}
@@ -152,7 +151,7 @@ export default function OBPExternalLinks({
 
             {hasSocials ? (
                 <div className={styles.socials}>
-                    {instagram ? (
+                    {instagramUrl ? (
                         <a
                             href={instagramUrl}
                             className={styles.socialLink}
@@ -169,7 +168,7 @@ export default function OBPExternalLinks({
                             {InstagramIcon ? <InstagramIcon aria-hidden="true" size={20} /> : null}
                         </a>
                     ) : null}
-                    {facebook ? (
+                    {facebookUrl ? (
                         <a
                             href={facebookUrl}
                             className={styles.socialLink}
@@ -186,7 +185,7 @@ export default function OBPExternalLinks({
                             {FacebookIcon ? <FacebookIcon aria-hidden="true" size={20} /> : null}
                         </a>
                     ) : null}
-                    {twitter ? (
+                    {twitterUrl ? (
                         <a
                             href={twitterUrl}
                             className={styles.socialLink}
@@ -203,7 +202,7 @@ export default function OBPExternalLinks({
                             {TwitterIcon ? <TwitterIcon aria-hidden="true" size={20} /> : null}
                         </a>
                     ) : null}
-                    {linkedin ? (
+                    {linkedinUrl ? (
                         <a
                             href={linkedinUrl}
                             className={styles.socialLink}
@@ -220,7 +219,7 @@ export default function OBPExternalLinks({
                             {LinkedinIcon ? <LinkedinIcon aria-hidden="true" size={20} /> : null}
                         </a>
                     ) : null}
-                    {youtube ? (
+                    {youtubeUrl ? (
                         <a
                             href={youtubeUrl}
                             className={styles.socialLink}
@@ -237,7 +236,7 @@ export default function OBPExternalLinks({
                             {YoutubeIcon ? <YoutubeIcon aria-hidden="true" size={20} /> : null}
                         </a>
                     ) : null}
-                    {whatsapp ? (
+                    {whatsappUrl ? (
                         <a
                             href={whatsappUrl}
                             className={styles.socialLink}
@@ -254,7 +253,7 @@ export default function OBPExternalLinks({
                             {WhatsappIcon ? <WhatsappIcon aria-hidden="true" size={20} /> : null}
                         </a>
                     ) : null}
-                    {website ? (
+                    {websiteUrl ? (
                         <a
                             href={websiteUrl}
                             className={styles.socialLink}

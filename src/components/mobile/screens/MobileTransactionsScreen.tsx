@@ -369,9 +369,6 @@ export default function MobileTransactionsScreen({ onBack }: MobileTransactionsS
                                     {tx.projectId ? <List.Item title={t('projectId')} extra={<Text>{tx.projectId}</Text>} /> : null}
                                     {tx.fileId ? <List.Item title={t('fileId')} extra={<Text>{tx.fileId}</Text>} /> : null}
                                 </List>
-                                <pre style={{ backgroundColor: token.colorFillQuaternary, borderRadius: 6, fontSize: 11, margin: 0, maxHeight: 260, overflow: 'auto', padding: 10, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-                                    {JSON.stringify(tx, null, 2)}
-                                </pre>
                             </Flex>
                         </Card>
                     ) : null}

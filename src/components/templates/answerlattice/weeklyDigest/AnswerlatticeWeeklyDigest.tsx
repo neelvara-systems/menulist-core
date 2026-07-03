@@ -1,7 +1,11 @@
 'use client';
 
 import { ANSWERLATTICE_ROUTES, toAnswerlatticeDashboardRoute } from '@constant/answerlattice/navigations';
-import { getAnswerlatticeUiErrorMessage } from '@lib/answerlattice/uiErrors';
+import {
+    ANSWERLATTICE_ACTIVATION_DASHBOARD_REQUEST_POLICY,
+    isAnswerlatticeActivationSummaryResponse,
+    readAnswerlatticeActivationDashboardResponse,
+} from '@lib/answerlattice/activationDashboardResponseClient';
 import type { AnswerlatticeActivationStep, AnswerlatticeActivationSummary } from '@type/answerlattice';
 import { Alert, Button, Card, Col, Empty, Flex, Grid, List, Row, Skeleton, Space, Statistic, Tag, Typography, message } from 'antd';
 import { useRouter } from 'next/navigation';
@@ -9,11 +13,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { LuBookOpen, LuExternalLink, LuMailCheck, LuRefreshCw, LuShieldCheck, LuTicket } from 'react-icons/lu';
 
 const { Title, Text, Paragraph } = Typography;
-
-type SummaryResponse = {
-    summary?: AnswerlatticeActivationSummary;
-    error?: string;
-};
+const ANSWERLATTICE_WEEKLY_DIGEST_LOAD_FAILED = 'Could not load weekly digest';
 
 const STATUS_COLOR: Record<AnswerlatticeActivationStep['status'], string> = {
     complete: 'success',
@@ -36,14 +36,19 @@ export default function AnswerlatticeWeeklyDigest() {
         else setLoading(true);
 
         try {
-            const response = await fetch('/api/answerlattice/activation/summary', { method: 'GET' });
-            const data: SummaryResponse = await response.json().catch(() => ({}));
-            if (!response.ok || !data.summary) {
-                throw new Error(data.error || 'Failed to load weekly digest');
-            }
+            const response = await fetch('/api/answerlattice/activation/summary', {
+                ...ANSWERLATTICE_ACTIVATION_DASHBOARD_REQUEST_POLICY,
+                method: 'GET',
+            });
+            const data = await readAnswerlatticeActivationDashboardResponse(
+                response,
+                'weekly_digest_load',
+                isAnswerlatticeActivationSummaryResponse,
+                ANSWERLATTICE_WEEKLY_DIGEST_LOAD_FAILED,
+            );
             setSummary(data.summary);
-        } catch (error) {
-            message.error(getAnswerlatticeUiErrorMessage(error, 'Could not load weekly digest'));
+        } catch {
+            message.error(ANSWERLATTICE_WEEKLY_DIGEST_LOAD_FAILED);
         } finally {
             setLoading(false);
             setRefreshing(false);

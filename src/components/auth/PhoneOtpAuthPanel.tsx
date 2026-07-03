@@ -9,6 +9,9 @@ import {
     getUniquePhoneCountries,
     inferPhoneCountryFromInternationalNumber,
 } from '@lib/phone/phoneNumber';
+import { getBoundedAuthStringContext, logAuthFailure } from '@lib/auth/authDiagnostics';
+import { AUTH_BROWSER_REQUEST_POLICY } from '@lib/auth/browserRequestPolicy';
+import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';
 import { signIn } from 'next-auth/react';
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { LuArrowLeft, LuCheck, LuLoader, LuMessageCircle, LuPhone } from 'react-icons/lu';
@@ -49,7 +52,97 @@ type PhoneOtpAuthPanelProps = {
 
 type Step = 'phone' | 'code' | 'success';
 
+const PHONE_OTP_SEND_FAILED_MESSAGE = 'Could not send code. Please try again.';
+const PHONE_OTP_VERIFY_FAILED_MESSAGE = 'Invalid verification code.';
+const PHONE_OTP_OPEN_ACCOUNT_FAILED_MESSAGE = 'Could not open your account. Please request a new code.';
+const PHONE_OTP_RESPONSE_JSON_MAX_BYTES = 8 * 1024;
+const PHONE_OTP_VERIFY_SAFE_MESSAGES = new Set([
+    PHONE_OTP_VERIFY_FAILED_MESSAGE,
+    PHONE_OTP_OPEN_ACCOUNT_FAILED_MESSAGE,
+]);
+
+type PhoneOtpResponseAction = 'start' | 'verify';
+
+type PhoneOtpStartResponse = {
+    action?: unknown;
+    purpose?: unknown;
+    success?: boolean;
+    challengeId?: unknown;
+    phoneMasked?: unknown;
+    resendAfterSeconds?: unknown;
+};
+
+type PhoneOtpVerifyResponse = {
+    action?: unknown;
+    challengeId?: unknown;
+    success?: boolean;
+    loginToken?: unknown;
+};
+
+const isNonEmptyString = (value: unknown): value is string => (
+    typeof value === 'string' && value.trim().length > 0
+);
+
+const isSuccessfulPhoneOtpStartResponse = (
+    value: PhoneOtpStartResponse | null | undefined,
+    expectedPurpose: PhoneOtpPurpose,
+): value is PhoneOtpStartResponse & {
+    action: 'start';
+    challengeId: string;
+    purpose: PhoneOtpPurpose;
+    success: true;
+} => (
+    value?.success === true
+    && value.action === 'start'
+    && value.purpose === expectedPurpose
+    && isNonEmptyString(value.challengeId)
+);
+
+const isSuccessfulPhoneOtpVerifyResponse = (
+    value: PhoneOtpVerifyResponse | null | undefined,
+    expectedChallengeId: string,
+): value is PhoneOtpVerifyResponse & {
+    action: 'verify';
+    challengeId: string;
+    loginToken: string;
+    success: true;
+} => (
+    value?.success === true
+    && value.action === 'verify'
+    && value.challengeId === expectedChallengeId
+    && isNonEmptyString(value.loginToken)
+);
+
+const readPhoneOtpResponseJson = async <T,>(
+    response: Response,
+    action: PhoneOtpResponseAction,
+    context: Record<string, boolean | number | string | null | undefined> = {},
+): Promise<{ payload: T | null; parseFailed: boolean }> => {
+    try {
+        return {
+            payload: await readJsonResponseWithLimit<T>(response, PHONE_OTP_RESPONSE_JSON_MAX_BYTES),
+            parseFailed: false,
+        };
+    } catch (error) {
+        logAuthFailure('phone_otp_response_parse_failed', error, {
+            ...context,
+            action,
+            responseOk: response.ok,
+            responseStatus: response.status,
+            maxBytes: PHONE_OTP_RESPONSE_JSON_MAX_BYTES,
+        });
+        return { payload: null, parseFailed: true };
+    }
+};
+
 const normalizeCode = (value: string) => value.replace(/[^0-9]/g, '').slice(0, 6);
+
+const getPhoneOtpVerifyErrorMessage = (error: unknown) => {
+    if (!(error instanceof Error)) return 'Could not verify code. Please try again.';
+    return PHONE_OTP_VERIFY_SAFE_MESSAGES.has(error.message)
+        ? error.message
+        : 'Could not verify code. Please try again.';
+};
 
 const formatPhoneForDisplay = (phone: string, countryCode: string, dialCode: string) => {
     const raw = String(phone || '').trim();
@@ -135,23 +228,49 @@ export default function PhoneOtpAuthPanel({
         setError('');
         try {
             const response = await fetch('/api/auth/phone-otp/start', {
+                ...AUTH_BROWSER_REQUEST_POLICY,
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ countryCode, dialCode, phone, purpose }),
             });
-            const data = await response.json().catch(() => ({}));
+            const { payload: data, parseFailed } = await readPhoneOtpResponseJson<PhoneOtpStartResponse>(
+                response,
+                'start',
+                {
+                    ...getBoundedAuthStringContext('countryCode', countryCode),
+                    ...getBoundedAuthStringContext('purpose', purpose),
+                    phoneDigitsLength: normalizedPhoneDigits.length,
+                },
+            );
 
-            if (!response.ok || !data.success) {
-                throw new Error(data.error || 'Could not send code. Please try again.');
+            if (!response.ok || parseFailed) {
+                throw new Error(PHONE_OTP_SEND_FAILED_MESSAGE);
+            }
+
+            if (!isSuccessfulPhoneOtpStartResponse(data, purpose)) {
+                logAuthFailure('phone_otp_response_invalid', new Error('phone_otp_start_response_invalid'), {
+                    ...getBoundedAuthStringContext('countryCode', countryCode),
+                    ...getBoundedAuthStringContext('purpose', purpose),
+                    action: 'start',
+                    hasExpectedAction: data?.action === 'start',
+                    hasExpectedPurpose: data?.purpose === purpose,
+                    phoneDigitsLength: normalizedPhoneDigits.length,
+                    responseOk: response.ok,
+                    responseStatus: response.status,
+                    maxBytes: PHONE_OTP_RESPONSE_JSON_MAX_BYTES,
+                    success: data?.success === true,
+                    hasChallengeId: isNonEmptyString(data?.challengeId),
+                });
+                throw new Error(PHONE_OTP_SEND_FAILED_MESSAGE);
             }
 
             setChallengeId(data.challengeId);
-            setPhoneMasked(data.phoneMasked || '');
+            setPhoneMasked(isNonEmptyString(data.phoneMasked) ? data.phoneMasked : '');
             setCode('');
             setStep('code');
             setCooldown(Number(data.resendAfterSeconds || 60));
-        } catch (requestError) {
-            setError(requestError instanceof Error ? requestError.message : 'Could not send code. Please try again.');
+        } catch {
+            setError(PHONE_OTP_SEND_FAILED_MESSAGE);
         } finally {
             setLoading(false);
         }
@@ -165,14 +284,38 @@ export default function PhoneOtpAuthPanel({
         setError('');
         try {
             const response = await fetch('/api/auth/phone-otp/verify', {
+                ...AUTH_BROWSER_REQUEST_POLICY,
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ challengeId, code }),
             });
-            const data = await response.json().catch(() => ({}));
+            const { payload: data, parseFailed } = await readPhoneOtpResponseJson<PhoneOtpVerifyResponse>(
+                response,
+                'verify',
+                {
+                    ...getBoundedAuthStringContext('challengeId', challengeId),
+                    codeLength: code.length,
+                },
+            );
 
-            if (!response.ok || !data.success || !data.loginToken) {
-                throw new Error(data.error || 'Invalid verification code.');
+            if (!response.ok || parseFailed) {
+                throw new Error(PHONE_OTP_VERIFY_FAILED_MESSAGE);
+            }
+
+            if (!isSuccessfulPhoneOtpVerifyResponse(data, challengeId)) {
+                logAuthFailure('phone_otp_response_invalid', new Error('phone_otp_verify_response_invalid'), {
+                    ...getBoundedAuthStringContext('challengeId', challengeId),
+                    action: 'verify',
+                    codeLength: code.length,
+                    hasExpectedAction: data?.action === 'verify',
+                    hasExpectedChallengeId: data?.challengeId === challengeId,
+                    responseOk: response.ok,
+                    responseStatus: response.status,
+                    maxBytes: PHONE_OTP_RESPONSE_JSON_MAX_BYTES,
+                    success: data?.success === true,
+                    hasLoginToken: isNonEmptyString(data?.loginToken),
+                });
+                throw new Error(PHONE_OTP_VERIFY_FAILED_MESSAGE);
             }
 
             const signInResult = await signIn('credentials', {
@@ -181,13 +324,13 @@ export default function PhoneOtpAuthPanel({
             });
 
             if (signInResult?.error) {
-                throw new Error('Could not open your account. Please request a new code.');
+                throw new Error(PHONE_OTP_OPEN_ACCOUNT_FAILED_MESSAGE);
             }
 
             setStep('success');
             await onAuthenticated?.();
         } catch (verifyError) {
-            setError(verifyError instanceof Error ? verifyError.message : 'Could not verify code. Please try again.');
+            setError(getPhoneOtpVerifyErrorMessage(verifyError));
         } finally {
             setLoading(false);
         }

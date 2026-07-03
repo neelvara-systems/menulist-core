@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { message } from 'antd';
 import { useClientAuthSession } from '@hook/useClientAuthSession';
+import { getBoundedHookStringContext, logHookFailure } from '@hook/hookDiagnostics';
 
 export type ContentType = 'article' | 'changelog' | 'faq' | 'workflow';
 export type FeedbackType = 'like' | 'dislike';
@@ -82,7 +83,10 @@ export const useFeedback = (
 
         // Check pageId requirement for changelog
         if (contentType === 'changelog' && !pageId) {
-            console.error('pageId is required for changelog feedback');
+            logHookFailure('answerlattice_feedback_missing_page_id', undefined, {
+                contentType,
+                ...getBoundedHookStringContext('contentId', contentId),
+            });
             return;
         }
 
@@ -108,6 +112,13 @@ export const useFeedback = (
                 await Promise.all(promises);
                 message.success('Feedback removed.');
             } catch (error) {
+                logHookFailure('answerlattice_feedback_remove_failed', error, {
+                    contentType,
+                    feedbackType: type,
+                    hasSubmitComment: Boolean(submitComment),
+                    ...getBoundedHookStringContext('contentId', contentId),
+                    ...getBoundedHookStringContext('pageId', pageId),
+                });
                 message.error('Failed to remove feedback. Please try again.');
                 // Rollback UI
                 if (type === 'like') {
@@ -145,6 +156,13 @@ export const useFeedback = (
                 }
                 await Promise.all(promises);
             } catch (error) {
+                logHookFailure('answerlattice_feedback_submit_failed', error, {
+                    contentType,
+                    feedbackType: type,
+                    hasSubmitComment: Boolean(submitComment),
+                    ...getBoundedHookStringContext('contentId', contentId),
+                    ...getBoundedHookStringContext('pageId', pageId),
+                });
                 message.error('Failed to submit feedback. Please try again.');
                 setLikes(prev => prev - 1);
                 setFeedbackGiven(null);
@@ -178,6 +196,14 @@ export const useFeedback = (
             await Promise.all(promises);
             message.success('Thank you for your feedback!');
         } catch (error) {
+            logHookFailure('answerlattice_feedback_comment_submit_failed', error, {
+                contentType,
+                commentPresent: comment.trim().length > 0,
+                commentLength: comment.length,
+                hasSubmitComment: Boolean(submitComment),
+                ...getBoundedHookStringContext('contentId', contentId),
+                ...getBoundedHookStringContext('pageId', pageId),
+            });
             message.error('Failed to submit feedback. Please try again.');
             setDislikes(prev => prev - 1);
             setFeedbackGiven(null);

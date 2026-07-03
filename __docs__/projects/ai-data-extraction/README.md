@@ -122,11 +122,11 @@ The following files have been **consolidated** into this folder:
 
 | Legacy File                                                   | Status         |
 | ------------------------------------------------------------- | -------------- |
-| `Assessments/ASSESSMENT-02-AI-EXTRACTION.md`                  | → Consolidated |
-| `Assessments/MENU-IMAGE-PROCESSING-JOB-QUEUE-SPEC.md`         | → Referenced   |
-| `development_done/2-IMPLEMENTATION-AI-EXTRACTION-COMPLETE.md` | → Consolidated |
-| `development_done/2-TESTING-GUIDE-AI-EXTRACTION.md`           | → Consolidated |
-| `development_done/2-CROSS-CHECK-AI-EXTRACTION.md`             | → Consolidated |
+| `Assessments/assessment-02-ai-extraction.md`                  | → Consolidated |
+| `Assessments/menu-image-processing-job-queue-spec.md`         | → Referenced   |
+| `development_done/2-implementation-ai-extraction-complete.md` | → Consolidated |
+| `development_done/2-testing-guide-ai-extraction.md`           | → Consolidated |
+| `development_done/2-cross-check-ai-extraction.md`             | → Consolidated |
 
 ---
 

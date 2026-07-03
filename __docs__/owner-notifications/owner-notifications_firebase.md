@@ -21,6 +21,8 @@ Append-only trigger queue.
 
 MenuList recipient and formatting context reads use canonical top-level `stores/{storeId}` first. The processor keeps a nested tenant-store fallback only for old data compatibility, so normal MenuList delivery does not depend on duplicate store documents under tenants.
 
+June 30, 2026 legacy notification trigger browser request hardening is cost-neutral. `src/lib/notifications/client.ts` still fire-and-forgets `/api/notifications/send` without blocking ticket/message source operations, but the browser POST now uses no-store cache, same-origin credentials, manual redirect handling, and development-only bounded rejected-response diagnostics. This adds no Firestore reads/writes/deletes, Storage operations, provider calls, route behavior, rules, indexes, schema fields, owner settings, Firebase deploy requirement, or Vercel deploy action.
+
 | Field | Type | Cost note |
 | --- | --- | --- |
 | `productId` | string | Required for product boundary |
@@ -56,10 +58,32 @@ One document per channel attempt.
 | `templateVersion` | string | Migration/debug |
 | `providerMessageId` | string | Provider result |
 | `attempt` | number | Retry count |
-| `error` | string | Sanitized error |
+| `error` | string | Sanitized local error code only |
 | `createdAt` | Timestamp | History |
 | `sentAt` | Timestamp | Success |
 | `expiresAt` | Timestamp | TTL target |
+
+MenuList Functions delivery processing writes stable local failure codes such as `whatsapp_send_failed`, `owner_notification_processing_failed`, and existing skipped/rate-limit reasons. It does not persist raw SMTP/WhatsApp provider responses, raw Graph API response bodies, raw exception messages, or raw event IDs in diagnostic logs. This changes no collection, index, read/write count, retention field, provider call count, owner setting, public route, or Firestore rule behavior.
+
+Deployment of the June 28, 2026 MenuList Functions processor diagnostic hardening was attempted with `firebase deploy --only functions:computeDecisionBlocksScores,functions:triggerDecisionBlocksScoring,functions:triggerStoreNightlyScheduler,functions:verifyMenuPublish --project menulist-qa --non-interactive`. The predeploy lint/build completed, but Firebase failed to read `menulist-qa` project metadata through Cloud Resource Manager with HTTP 403: caller does not have permission.
+
+WhatsApp Graph API endpoint-ID encoding and response parsing hardening adds no Firestore reads/writes/deletes, Storage operations, provider calls, indexes, rules, API routes, owner/customer UI, durable event streams, retention fields, or rate-limit changes. It changes only the URL path construction for existing app-side and Functions WhatsApp delivery calls so configured phone-number IDs are encoded before the `/messages` request, and successful Graph API responses are parsed through a 64KB bounded JSON reader. Delivery rows keep only bounded string provider message IDs. The app-side path requires the normal Next.js deployment path when released; the Functions processor path requires a scoped Firebase Functions deploy after validation.
+
+The June 29 app-side and Functions processor response-parse diagnostics add no Firestore reads/writes/deletes, Storage operations, provider calls, indexes, rules, API routes, owner/customer UI, durable event streams, retention fields, or rate-limit changes. Malformed or oversized successful Graph API JSON still produces a sent delivery without a provider message ID, matching the existing fallback, but now emits `whatsapp_response_parse_failed` with bounded source metadata for production support. The app-side path requires the normal Next.js release path when released; no Vercel deploy was run.
+
+The June 29 platform dashboard response parsing guard adds no Firestore reads/writes/deletes, Storage operations, provider calls, indexes, rules, API routes, owner/customer UI, durable event streams, retention fields, Cloud Function logic, Firebase deploy requirement, or Vercel deploy action. `/api/ops/owner-notifications` load/action response JSON is capped at 256KB in the browser and must match the expected snapshot/action envelope before UI state or success copy changes.
+
+The June 30 platform dashboard message-copy acknowledgement adds no Firestore reads/writes/deletes, Storage operations, provider calls, indexes, rules, API routes, owner/customer UI, durable event streams, retention fields, Cloud Function logic, Firebase deploy requirement, or Vercel deploy action. Prefilled Email/WhatsApp message copy feedback waits for Clipboard API success or acknowledged textarea fallback success, and failed copy diagnostics record only bounded support metadata.
+
+The June 30 platform dashboard request-boundary hardening is browser-local only. It adds no Firestore reads/writes/deletes, Storage operations, provider calls, indexes, rules, API routes, Cloud Function logic, Firebase deploy requirement, or Vercel deploy action. The dashboard still uses the same platform-role API and 256KB response cap; browser requests now use no-store cache policy, same-origin credentials, and manual redirect handling before response validation.
+
+The June 30 app-side WhatsApp redirect boundary adds no Firestore reads/writes/deletes, Storage operations, provider calls, indexes, rules, API routes, owner/customer UI, durable event streams, retention fields, Cloud Function logic, Firebase deploy requirement, or Firebase deploy action. It changes only the Next.js app-side Graph API fetch policy to `redirect: 'manual'`, so a provider 3xx response is not followed. No Vercel deploy was run.
+
+Deployment of the June 29, 2026 Functions processor response-parse diagnostic was attempted with `PATH="$HOME/.nvm/versions/node/v20.20.2/bin:$PATH" firebase deploy --only functions:messagingOnboarding,functions:menulistMaintenanceScheduler,functions:verifyMenuPublish,functions:computeDecisionBlocksScores,functions:triggerStoreNightlyScheduler,functions:triggerDecisionBlocksScoring --project menulist-qa --non-interactive`. The predeploy lint/build completed, but Firebase failed to read `menulist-qa` project metadata through Cloud Resource Manager with HTTP 403: caller does not have permission.
+
+Deployment of the June 28, 2026 Meta Graph endpoint-ID encoding change was attempted with `firebase deploy --only functions:messagingOnboarding,functions:menulistMaintenanceScheduler,functions:verifyMenuPublish,functions:gcpBudgetAlertWebhook,functions:computeDecisionBlocksScores,functions:triggerDecisionBlocksScoring,functions:triggerStoreNightlyScheduler,functions:triggerSchedulerManually --project menulist-qa --non-interactive`. The predeploy lint/build completed, but Firebase failed to read `menulist-qa` project metadata through Cloud Resource Manager with HTTP 403: caller does not have permission.
+
+Deployment of the June 29, 2026 bounded WhatsApp provider JSON response parsing change was attempted with `firebase deploy --only functions:messagingOnboarding,functions:menulistMaintenanceScheduler,functions:verifyMenuPublish,functions:computeDecisionBlocksScores,functions:triggerStoreNightlyScheduler,functions:triggerDecisionBlocksScoring --project menulist-qa --non-interactive`. The predeploy lint/build completed, but Firebase failed to read `menulist-qa` project metadata through Cloud Resource Manager with HTTP 403: caller does not have permission. The app-side WhatsApp sender still requires the normal Next.js release path; no Vercel deploy was run.
 
 ### `ownerNotificationRateLimits`
 
@@ -142,7 +166,13 @@ Estimated Firestore operations: 4-7 reads, 6 writes.
 
 ## Internal Tracking Dashboard Cost
 
-The platform dashboard at `/ops/owner-notifications` is intentionally manual and bounded.
+The platform dashboard at `/ops/owner-notifications` is intentionally manual and bounded. POST recovery actions keep the platform-role gate, apply the per-operator limiter with HMAC-hashed key material, and reject bodies above 8KB before event reads, retry processing, manual send enqueueing, or manual handoff writes.
+
+June 30 follow-up: `/api/ops/owner-notifications` query validation, recovery-action rate-limit, and recovery-action validation security events use bounded route metadata instead of raw session/request context. Invalid attempted action text is summarized as presence/length metadata. This changes no Firestore reads/writes/deletes, provider calls, API routes, Cloud Function logic, rules, indexes, Firebase deploy requirement, or Vercel deploy action.
+
+July 1 source gate: `npm run verify:owner-notifications-boundary` checks the owner-notification registry mirror, platform-only route/body/rate-limit boundaries, bounded platform monitor responses, canonical store recipient lookup, WhatsApp response caps, and retention cleanup registration. The verifier does not run Firestore reads/writes, SMTP, WhatsApp, browser smoke, Firebase deploy, or Vercel deploy.
+
+June 29 follow-up: `src/lib/notifications/notificationService.ts` remains a disabled legacy facade. Moving its blocked-call breadcrumbs from the generic logger to bounded notification diagnostics adds no Firestore reads/writes/deletes, no Storage operations, no Firebase Auth operations, no Cloud Function logic changes, no provider calls, no delivery attempts, no rules/indexes/schema changes, and no Firebase deploy requirement.
 
 ### List refresh
 

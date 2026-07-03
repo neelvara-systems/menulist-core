@@ -13,7 +13,9 @@ import { requireAnswerlatticePermission } from '@lib/answerlattice/accessControl
 import { upsertAnswerlatticeTenantSummaryAdmin } from '@lib/answerlattice/tenantSummaryAdmin';
 import { resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
 import { checkRateLimit } from '@lib/rateLimit';
-import { secureError, secureLog } from '@lib/security/secureLogger';
+import { getBoundedRuntimeStringContext, logRuntimeDiagnostic, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
+import { readBoundedJsonBody } from '@lib/security/boundedRequestBody';
+import { hashPublicRateLimitValue } from 'src/middleware/publicApi';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { withAuth } from '../../../../middleware/auth';
@@ -24,6 +26,7 @@ const TenantSummarySyncSchema = z.object({
     hasEntities: z.boolean().optional().default(true),
     source: z.enum(['entity_created', 'candidate_promoted']).optional().default('entity_created'),
 });
+const TENANT_SUMMARY_SYNC_MAX_BODY_BYTES = 2 * 1024;
 
 const getSessionScope = (session: any) => {
     const answerlatticeScope = resolveAnswerlatticeSessionScope(session);
@@ -35,13 +38,23 @@ const getSessionScope = (session: any) => {
         tenantId: Number.isFinite(tenantId) ? tenantId : null,
         storeId: Number.isFinite(storeId) ? storeId : null,
         isPlatform: platformRole === 'PLATFORM',
-        userKey: String(session?.user?.id || session?.user?.email || 'unknown'),
+        userKey: hashPublicRateLimitValue(session?.user?.id || session?.user?.email || 'unknown'),
     };
 };
 
 export const POST = withAuth(async (request: NextRequest, session) => {
-    const body = await request.json().catch(() => null);
-    const parsed = TenantSummarySyncSchema.safeParse(body);
+    const bodyResult = await readBoundedJsonBody(request, TENANT_SUMMARY_SYNC_MAX_BODY_BYTES, {
+        invalidJsonMessage: 'Invalid tenant summary payload',
+        tooLargeMessage: 'Request body too large',
+    });
+    if (bodyResult.ok === false) {
+        return NextResponse.json(
+            { error: bodyResult.response.status === 413 ? 'Request body too large' : 'Invalid tenant summary payload' },
+            { status: bodyResult.response.status },
+        );
+    }
+
+    const parsed = TenantSummarySyncSchema.safeParse(bodyResult.data);
     if (!parsed.success) {
         return NextResponse.json({ error: 'Invalid tenant summary payload' }, { status: 400 });
     }
@@ -53,10 +66,6 @@ export const POST = withAuth(async (request: NextRequest, session) => {
     ) {
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
-    if (!scope.isPlatform) {
-        const permission = await requireAnswerlatticePermission(request, session, ANSWERLATTICE_PERMISSION_KEYS.MANAGE_KNOWLEDGE);
-        if (permission.response) return permission.response;
-    }
 
     const rateLimit = await checkRateLimit({
         key: `answerlattice-tenant-summary:${scope.userKey}`,
@@ -67,6 +76,11 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
     }
 
+    if (!scope.isPlatform) {
+        const permission = await requireAnswerlatticePermission(request, session, ANSWERLATTICE_PERMISSION_KEYS.MANAGE_KNOWLEDGE);
+        if (permission.response) return permission.response;
+    }
+
     try {
         const result = await upsertAnswerlatticeTenantSummaryAdmin({
             tId: parsed.data.tId,
@@ -75,18 +89,19 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             hasEntities: parsed.data.hasEntities,
         });
 
-        secureLog('[Answerlattice Tenant Summary] Synced tenant registry', {
-            tId: parsed.data.tId,
-            sId: parsed.data.sId,
+        logRuntimeDiagnostic('answerlattice_tenant_summary_synced', {
+            ...getBoundedRuntimeStringContext('tenantId', parsed.data.tId),
+            ...getBoundedRuntimeStringContext('storeId', parsed.data.sId),
             source: parsed.data.source,
             skipped: result.skipped,
         });
 
         return NextResponse.json({ success: true, skipped: result.skipped });
     } catch (error) {
-        secureError('[Answerlattice Tenant Summary] Sync failed', error as Error, {
-            tId: parsed.data.tId,
-            sId: parsed.data.sId,
+        logRuntimeFailure('answerlattice_tenant_summary_sync_failed', error, {
+            ...getBoundedRuntimeStringContext('tenantId', parsed.data.tId),
+            ...getBoundedRuntimeStringContext('storeId', parsed.data.sId),
+            ...getBoundedRuntimeStringContext('source', parsed.data.source),
         });
         return NextResponse.json({ error: 'Failed to sync Answerlattice tenant summary' }, { status: 500 });
     }

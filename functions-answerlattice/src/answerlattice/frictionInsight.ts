@@ -26,10 +26,39 @@ import {
 
 const PROMPT_VERSION = 'friction_insight_v1';
 const MIN_SIGNALS_FOR_INSIGHT = 5;
+const ANSWERLATTICE_FRICTION_INSIGHT_GEMINI_FAILED = 'ANSWERLATTICE_FRICTION_INSIGHT_GEMINI_FAILED';
+const ANSWERLATTICE_FRICTION_INSIGHT_FAILED = 'ANSWERLATTICE_FRICTION_INSIGHT_FAILED';
 
 export interface FrictionInsightResult {
     generated: boolean;
     skippedReason?: string;
+}
+
+function getFrictionInsightSourceErrorContext(error: unknown): {
+    sourceErrorName: string | null;
+    sourceErrorCode: string | number | null;
+    sourceStatusCode: number | null;
+} {
+    const source = error && typeof error === 'object' ? error as Record<string, unknown> : {};
+    const sourceStatusCode = typeof source.status === 'number'
+        ? source.status
+        : (typeof source.statusCode === 'number' ? source.statusCode : null);
+
+    return {
+        sourceErrorName: typeof source.name === 'string' ? source.name : null,
+        sourceErrorCode: typeof source.code === 'string' || typeof source.code === 'number' ? source.code : null,
+        sourceStatusCode,
+    };
+}
+
+function getFrictionInsightScopeContext(tId?: number, sId?: number): {
+    hasTenantScope: boolean;
+    hasStoreScope: boolean;
+} {
+    return {
+        hasTenantScope: Number.isFinite(tId),
+        hasStoreScope: Number.isFinite(sId),
+    };
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -111,7 +140,10 @@ Rules:
             usageMetadata: geminiResult.usageMetadata,
         };
     } catch (error) {
-        logger.error('[Answerlattice Friction Insight] Gemini call failed', { error });
+        logger.error('[Answerlattice Friction Insight] Gemini call failed', {
+            failureCode: ANSWERLATTICE_FRICTION_INSIGHT_GEMINI_FAILED,
+            ...getFrictionInsightSourceErrorContext(error),
+        });
         return null;
     }
 }
@@ -141,8 +173,7 @@ export async function generateFrictionInsight(tId: number, sId: number): Promise
         // 2. Check minimum signal threshold
         if ((snapshot.totalSignals7d || 0) < MIN_SIGNALS_FOR_INSIGHT) {
             logger.info('[Answerlattice Friction Insight] Skipped for insufficient data', {
-                tId,
-                sId,
+                ...getFrictionInsightScopeContext(tId, sId),
                 totalSignals7d: snapshot.totalSignals7d || 0,
                 minimumSignals: MIN_SIGNALS_FOR_INSIGHT,
             });
@@ -215,11 +246,18 @@ export async function generateFrictionInsight(tId: number, sId: number): Promise
             generatedAt: Timestamp.now(),
         }, { merge: true });
 
-        logger.info('[Answerlattice Friction Insight] Generated', { tId, sId, overallHealth: aiResult.insight.overallHealth });
+        logger.info('[Answerlattice Friction Insight] Generated', {
+            ...getFrictionInsightScopeContext(tId, sId),
+            overallHealth: aiResult.insight.overallHealth,
+        });
         return { generated: true };
 
     } catch (error) {
-        logger.error('[Answerlattice Friction Insight] Failed', { tId, sId, error });
-        return { generated: false, skippedReason: `error: ${error instanceof Error ? error.message : 'unknown'}` };
+        logger.error('[Answerlattice Friction Insight] Failed', {
+            failureCode: ANSWERLATTICE_FRICTION_INSIGHT_FAILED,
+            ...getFrictionInsightScopeContext(tId, sId),
+            ...getFrictionInsightSourceErrorContext(error),
+        });
+        return { generated: false, skippedReason: ANSWERLATTICE_FRICTION_INSIGHT_FAILED };
     }
 }

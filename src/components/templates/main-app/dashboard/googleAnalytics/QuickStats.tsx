@@ -1,6 +1,7 @@
 'use client';
 
 import { fetchDateRangeStats, fetchRealTimeStats } from '@services/analytics';
+import { getBoundedAnalyticsStringContext, logAnalyticsFailure } from '@lib/analytics/analyticsDiagnostics';
 import { Card, Col, Row, Statistic, Typography, theme } from 'antd';
 import React, { useEffect, useState } from 'react';
 import { LuDollarSign, LuEye, LuShoppingCart, LuUser } from 'react-icons/lu';
@@ -41,20 +42,23 @@ const QuickStats: React.FC<QuickStatsProps> = ({ propertyId, dateRange }) => {
 
                 // Process date range data
                 const totalVisitors = rangeData?.rows?.reduce((sum, row) =>
-                    sum + parseInt(row.metricValues[0].value), 0) || 0;
+                    sum + parseInt(row.metricValues?.[0]?.value || '0', 10), 0) || 0;
                 const totalRevenue = rangeData?.rows?.reduce((sum, row) =>
-                    sum + parseFloat(row.metricValues[3].value), 0) || 0;
-                const totalOrders = rangeData?.rows?.reduce((sum, row) =>
-                    sum + parseInt(row.metricValues[2].value), 0) || 0;
+                    sum + parseFloat(row.metricValues?.[2]?.value || '0'), 0) || 0;
+                const totalOrders = 0;
 
                 setStats({
-                    activeUsers: parseInt(activeUsers),
+                    activeUsers: parseInt(String(activeUsers), 10),
                     totalVisitors,
                     totalOrders,
                     totalRevenue
                 });
             } catch (error) {
-                console.error('Error fetching stats:', error);
+                logAnalyticsFailure('dashboard_google_quick_stats_load_failed', error, {
+                    ...getBoundedAnalyticsStringContext('propertyId', propertyId),
+                    ...getBoundedAnalyticsStringContext('startDate', dateRange.startDate),
+                    ...getBoundedAnalyticsStringContext('endDate', dateRange.endDate),
+                });
             }
             setLoading(false);
         };

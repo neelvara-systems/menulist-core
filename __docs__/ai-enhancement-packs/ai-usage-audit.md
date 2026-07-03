@@ -601,7 +601,7 @@ This audit directly feeds into the implementation plan documented in:
 3. **Spec doc "Internal Cost Accounting"** — The `TOKENS_PER_CREDIT` mismatch (500 vs 1000) was NOT caught in the spec review. This audit surfaces it as a **critical fix**.
 4. **Firebase doc** — Platform AI calls (Features I-L, 12 call points) were not accounted for in the Firebase cost estimates. They don't consume user credits but do consume Google AI quota and should be tracked for observability.
 5. **Spec doc "Existing Infrastructure Alignment"** (added Feb 2026) — Documents 7 critical conflicts between the existing credit system (`PlatformPlansList.ts`, `CreditPack`, Razorpay top-up flow, `subscription.topUpCredits`) and the proposed AI Enhancement Packs model. Key findings:
-   - Existing Razorpay top-up flow is production-ready and must be **adapted**, not replaced
+   - Existing Razorpay top-up flow is implemented, billing-slice audited, and must be **adapted**, not replaced; current release approval still requires the active production-readiness audit, External Certification Runbook evidence, `npm run verify:billing-entitlement-boundary`, Razorpay sandbox top-up smoke, desktop/mobile Billing browser QA, target deploy evidence, and production-host smoke
    - Credit storage **stays on subscription** (per-store). Per-tenant was REJECTED after codebase validation — see spec doc Conflict 2
    - UI currently exposes "credits" (violates doctrine) — needs label rename to "AI enhancements"
    - `PlatformFeaturesList.ts` marks AI features as "Unlimited" — must change to "Included" to align with capacity enforcement

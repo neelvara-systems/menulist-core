@@ -4,6 +4,18 @@ import { DEFAULT_FEEDBACK_SETTINGS, FeedbackDefaults, GuestFeedbackSubmitState }
 import type { StoreDataType } from '@type/platform/store';
 import OBPThemeToggle from '@/app/client/obp/OBPThemeToggle';
 import TurnstileWidget, { isTurnstileClientEnabled, type TurnstileStatus } from '@/components/security/TurnstileWidget';
+import {
+    GUEST_FEEDBACK_SUBMIT_RESPONSE_JSON_MAX_BYTES,
+    isGuestFeedbackSubmitResponse,
+    isSuccessfulGuestFeedbackSubmitResponse,
+    normalizeGuestFeedbackReviewUrl,
+    type GuestFeedbackSubmitResponse,
+} from '@lib/feedback/guestFeedbackSubmitResponse';
+import {
+    getBoundedPublicFeedbackStringContext,
+    logPublicFeedbackFormFailure,
+} from '@lib/feedback/publicFeedbackDiagnostics';
+import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';
 import { getMoodWithBrandColor, MenuMood } from '@template/main-app/projects/b2cView/designSystem';
 import MenuFooter from '@template/main-app/projects/b2cView/output/MenuFooter';
 import { message } from 'antd';
@@ -50,6 +62,13 @@ const DEFAULT_FORM_STATE: FormState = {
     customerPhone: '',
     message: '',
     website: '',
+};
+
+const GUEST_FEEDBACK_SUBMIT_FAILED_MESSAGE = 'Failed to submit feedback';
+const GUEST_FEEDBACK_SUBMIT_REQUEST_POLICY = {
+    cache: 'no-store' as RequestCache,
+    credentials: 'same-origin' as RequestCredentials,
+    redirect: 'manual' as RequestRedirect,
 };
 
 const RATING_COPY: Record<number, { eyebrow: string; notePrompt: string; placeholder: string; prompt: string }> = {
@@ -123,6 +142,87 @@ function getReadableTextColor(backgroundColor?: string): string {
     const luminance = (0.299 * red + 0.587 * green + 0.114 * blue) / 255;
 
     return luminance > 0.62 ? '#0f172a' : '#ffffff';
+}
+
+function createGuestFeedbackSubmitStatusError(code: string, status?: number): Error & { code: string; status?: number } {
+    return Object.assign(new Error(code), {
+        code,
+        status,
+    });
+}
+
+function buildGuestFeedbackSubmitLogContext({
+    projectId,
+    rating,
+    responseOk,
+    responseStatus,
+    sId,
+    source,
+    tId,
+}: {
+    projectId: string;
+    rating: number;
+    responseOk?: boolean;
+    responseStatus?: number;
+    sId: number;
+    source: GuestFeedbackFormProps['source'];
+    tId: number;
+}) {
+    return {
+        ...getBoundedPublicFeedbackStringContext('tenantId', tId),
+        ...getBoundedPublicFeedbackStringContext('storeId', sId),
+        ...getBoundedPublicFeedbackStringContext('projectId', projectId),
+        ...getBoundedPublicFeedbackStringContext('source', source),
+        maxBytes: GUEST_FEEDBACK_SUBMIT_RESPONSE_JSON_MAX_BYTES,
+        rating,
+        responseOk,
+        responseStatus,
+    };
+}
+
+async function readGuestFeedbackSubmitResponse(
+    response: Response,
+    context: {
+        projectId: string;
+        rating: number;
+        sId: number;
+        source: GuestFeedbackFormProps['source'];
+        tId: number;
+    },
+): Promise<GuestFeedbackSubmitResponse | null> {
+    let payload: unknown;
+    try {
+        payload = await readJsonResponseWithLimit<unknown>(
+            response,
+            GUEST_FEEDBACK_SUBMIT_RESPONSE_JSON_MAX_BYTES,
+        );
+    } catch (error) {
+        logPublicFeedbackFormFailure(
+            'public_guest_feedback_submit_response_parse_failed',
+            error,
+            buildGuestFeedbackSubmitLogContext({
+                ...context,
+                responseOk: response.ok,
+                responseStatus: response.status,
+            }),
+        );
+        return null;
+    }
+
+    if (!isGuestFeedbackSubmitResponse(payload)) {
+        logPublicFeedbackFormFailure(
+            'public_guest_feedback_submit_response_invalid',
+            createGuestFeedbackSubmitStatusError('public_guest_feedback_submit_response_invalid', response.status),
+            buildGuestFeedbackSubmitLogContext({
+                ...context,
+                responseOk: response.ok,
+                responseStatus: response.status,
+            }),
+        );
+        return null;
+    }
+
+    return payload;
 }
 
 function validateField(field: keyof Omit<FormState, 'website'>, value: string): string {
@@ -273,6 +373,7 @@ export const GuestFeedbackForm: React.FC<GuestFeedbackFormProps> = ({
 
         try {
             const response = await fetch('/api/public/feedback/submit', {
+                ...GUEST_FEEDBACK_SUBMIT_REQUEST_POLICY,
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -290,22 +391,37 @@ export const GuestFeedbackForm: React.FC<GuestFeedbackFormProps> = ({
                 }),
             });
 
-            const data = await response.json();
+            const data = await readGuestFeedbackSubmitResponse(response, {
+                projectId,
+                rating,
+                sId,
+                source,
+                tId,
+            });
             resetCaptcha();
 
-            if (response.ok && data.success) {
+            if (response.ok && isSuccessfulGuestFeedbackSubmitResponse(data)) {
+                const nextReviewUrl = normalizeGuestFeedbackReviewUrl(data.reviewUrl);
                 setSubmitState('success');
-                setReviewUrl(data.reviewUrl || null);
-                onSuccess?.(data.reviewUrl);
+                setReviewUrl(nextReviewUrl);
+                onSuccess?.(nextReviewUrl);
                 return;
             }
 
             setSubmitState('error');
-            const validationMessage = Array.isArray(data.details) && data.details.length > 0
-                ? data.details[0]?.message
-                : '';
-            message.error(validationMessage || data.error || 'Failed to submit feedback');
-        } catch {
+            message.error(GUEST_FEEDBACK_SUBMIT_FAILED_MESSAGE);
+        } catch (error) {
+            logPublicFeedbackFormFailure(
+                'public_guest_feedback_submit_request_failed',
+                error,
+                buildGuestFeedbackSubmitLogContext({
+                    projectId,
+                    rating,
+                    sId,
+                    source,
+                    tId,
+                }),
+            );
             resetCaptcha();
             setSubmitState('error');
             message.error('Network error. Please try again.');

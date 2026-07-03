@@ -4,6 +4,7 @@ import { getStaticAnswerlatticeAppleStartupImages } from '@lib/answerlattice/pwa
 import AnswerlatticeAnalytics from './components/AnswerlatticeAnalytics';
 import AnswerlatticeScrollReveal from './components/AnswerlatticeScrollReveal';
 import AnswerlatticeSmoothScroll from './components/AnswerlatticeSmoothScroll';
+import AnswerlatticeSpotlightCards from './components/AnswerlatticeSpotlightCards';
 import { AnswerlatticeThemeProvider } from './components/AnswerlatticeThemeProvider';
 import { buildAnswerlatticeUrl, ANSWERLATTICE_SITE_DESCRIPTION, ANSWERLATTICE_SITE_TITLE, ANSWERLATTICE_SITE_URL } from './siteConfig';
 import {
@@ -175,6 +176,7 @@ export default function AnswerlatticeWebsiteLayout({ children }: AnswerlatticeLa
                 <AnswerlatticeAnalytics privacyHref={withBasePath(basePath, '/privacy-policy')} />
                 <AnswerlatticeSmoothScroll />
                 <AnswerlatticeScrollReveal />
+                <AnswerlatticeSpotlightCards />
                 {/* AnswerlatticeClientLayout is imported dynamically to avoid making the entire layout a client component */}
                 {children}
             </AnswerlatticeThemeProvider>

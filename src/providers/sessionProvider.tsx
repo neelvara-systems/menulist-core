@@ -9,13 +9,14 @@ import { getStoreById, readStoreById } from '@database/stores';
 import { getActiveSubscriptionForStore } from '@database/subscriptions';
 import { readTenantById } from '@database/tenants';
 import { ensureFirebaseAuthForSession } from '@lib/auth/firebaseAuthSync';
+import { getBoundedFirebaseStringContext, getFirebaseAuthSessionLogContext, logFirebaseBootstrapFailure } from '@lib/firebase/firebaseDiagnostics';
 import {
     getAnswerlatticeScopedSession,
     isAnswerlatticeRuntimeRoute,
     resolveAnswerlatticeSessionScope,
 } from '@lib/answerlattice/sessionScope';
 import { startLogCapture } from '@lib/localLogs/localLogsTracker';
-import { clearUserContext, logger, setUserContext } from '@lib/monitoring/logger';
+import { clearUserContext, setUserContext } from '@lib/monitoring/logger';
 import {
     readActiveStoreContextId,
     writeActiveStoreContextId,
@@ -193,8 +194,12 @@ export default function SessionProvider({ children, session }: Props) {
                 if (!cancelled) setFirebaseAuthReady(true);
             })
             .catch((error) => {
-                const normalizedError = error instanceof Error ? error : new Error('Firebase Auth sync failed');
-                logger.error('[MenuList] Firebase Auth sync failed before store bootstrap', normalizedError);
+                const normalizedError = new Error('Firebase Auth sync failed');
+                logFirebaseBootstrapFailure('firebase_auth_session_provider_sync_failed', error, {
+                    ...getFirebaseAuthSessionLogContext(effectiveSession),
+                    pathPresent: Boolean(pathname),
+                    pathLength: pathname?.length || 0,
+                });
                 if (!cancelled) {
                     setFirebaseAuthSyncError(normalizedError);
                     setActiveSubscriptionLoading(false);
@@ -243,7 +248,6 @@ export default function SessionProvider({ children, session }: Props) {
                 isVerified: session?.user?.isVerified,
             };
             (window as any).__MENULIST_SESSION_DEBUG__ = debugSession;
-            console.info('[MenuList session debug]', debugSession);
         }
 
         if (isAnswerlatticeRoute) {
@@ -263,7 +267,6 @@ export default function SessionProvider({ children, session }: Props) {
 
         // Skip if session data hasn't meaningfully changed
         if (currentSessionKey === prevSessionKeyRef.current) {
-            // console.log("Session update skipped - no meaningful changes");
             return;
         }
         prevSessionKeyRef.current = currentSessionKey;
@@ -327,12 +330,8 @@ export default function SessionProvider({ children, session }: Props) {
                     }
 
                     // Update the store details state with the fetched fetchedStore
-                    // console.log("storeDetails fetched inside SessionProvider", fetchedStore)
                     setLoginStoreDetails(fetchedStore);
                     setStoreDetails(fetchedStore);
-
-                    // const users = await getUsersByStoreId(session.user.storeId);
-                    // setUsersList(removeObjRef(users))
 
                     // Fetch subscription data
                     const subscriptionData = await fetchActiveSubscriptionForStore(
@@ -357,7 +356,9 @@ export default function SessionProvider({ children, session }: Props) {
                 } catch (e) {
                     if (cancelled) return;
                     setActiveSubscriptionLoading(false)
-                    logger.error('[MenuList] Store bootstrap failed', e);
+                    logFirebaseBootstrapFailure('session_provider_store_bootstrap_failed', e, {
+                        ...getFirebaseAuthSessionLogContext(session),
+                    });
                 }
             };
 
@@ -533,7 +534,10 @@ export default function SessionProvider({ children, session }: Props) {
                 });
             })
             .catch((error) => {
-                logger.error('[MenuList] Master outlet policy load failed', error, { masterStoreId });
+                logFirebaseBootstrapFailure('session_provider_master_outlet_policy_load_failed', error, {
+                    ...getFirebaseAuthSessionLogContext(session),
+                    ...getBoundedFirebaseStringContext('masterStoreId', masterStoreId),
+                });
             });
 
         return () => {

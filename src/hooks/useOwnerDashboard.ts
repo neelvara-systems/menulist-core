@@ -4,15 +4,15 @@
  * Provides all data and state management for the Owner Dashboard.
  * 
  * OPTIMIZED: Using SWR for automatic caching and deduplication
- * - Fetches overview + overall on initial load (default view)
- * - Overview includes: WTD, MTD, yesterday, historical weeks, AI summary
- * - Lazy loads weekly/monthly detail views only when needed
+ * - Fetches live Today data first for the default view
+ * - Loads settled overview/daily/weekly/monthly/overall only when callers opt into historical views
+ * - Uses cached dashboard summary docs where available before falling back to period reads
  * - SWR handles caching, deduplication, and revalidation
  * 
  * v2 Changes:
- * - Default view is now 'overview' (simplified hero + expandable detail)
- * - WTD/MTD calculated from daily docs (aggregated on frontend)
- * - Historical weeks comparison (last 4 weeks)
+ * - Default view is now 'today' (live partial business-day activity)
+ * - Settled historical reads are guarded by loadHistorical
+ * - WTD/MTD and historical weeks come from the scheduler summary when available
  * 
  * Usage:
  * const { data, loading, viewMode, setViewMode, currentViewData } = useOwnerDashboard();

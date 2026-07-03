@@ -35,6 +35,10 @@
 12. Knowledge Governance remains the place where drafts are generated, edited, approved, and published.
 13. UI reads `platformSummary/supportBoardSummary_{tId}_{sId}` only when `ENABLE_ANSWERLATTICE_SUPPORT_BOARD_NIGHTLY_SUMMARY` is enabled.
 
+Hook load/action failures use fixed local owner-facing copy. Ticket, signal, Firestore, mutation-proposal, scheduler-summary, or browser exception text must not be copied into Support Board toasts or error state. If the optional nightly summary read fails, the hook logs `answerlattice_support_board_summary_load_failed` with bounded tenant/store metadata and still renders the card list with `summary: null`.
+
+Nightly sync diagnostics in `functions-answerlattice/src/answerlattice/supportBoardSync.ts` use fixed `ANSWERLATTICE_SUPPORT_BOARD_SYNC_FAILED` result/log codes, source error name/code/status metadata, and tenant/store scope booleans. Success logs use scope booleans and counts only. Valid source scans, deterministic card upserts, unchanged/resolved skips, and compact summary writes are unchanged.
+
 ## Manual Sync
 
 Manual sync is implemented but rollout-gated. Enable `ENABLE_ANSWERLATTICE_SUPPORT_BOARD_SOURCE_SYNC` only for tenants that want tickets/signals consolidated into the board.
@@ -62,6 +66,8 @@ Nightly sync does not:
 - scan unbounded history
 
 Deduplication uses deterministic source keys. Existing resolved cards are not reopened by the scheduler.
+
+Failure output returned to the scheduler is an object-shaped bounded diagnostic with a fixed error code, source error name/code/status, and scope booleans. Do not return raw exception messages or scoped identifiers from `SupportBoardSyncResult.errors`.
 
 ## Type Model
 

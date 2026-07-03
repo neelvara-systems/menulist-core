@@ -8,7 +8,7 @@ import {
     getCachedPublishedFaqs,
 } from '@lib/answerlattice/publicContentCache';
 import { resolveAnswerlatticePublicContentScope } from '@lib/answerlattice/publicContentScope';
-import { secureError } from '@lib/security/secureLogger';
+import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { withAuth } from '../../../../middleware/auth';
@@ -57,10 +57,10 @@ export const GET = withAuth(async (request: NextRequest, session) => {
             : await getCachedLatestChangelogPage(scope);
         return NextResponse.json({ data });
     } catch (error) {
-        secureError('[Answerlattice Public Content] Failed to load cached content', error as Error, {
-            type: parsed.data.type,
-            tenantId: scope.tId,
-            storeId: scope.sId,
+        logRuntimeFailure('answerlattice_public_content_cache_load_failed', error, {
+            contentType: parsed.data.type,
+            ...getBoundedRuntimeStringContext('tenantId', scope.tId),
+            ...getBoundedRuntimeStringContext('storeId', scope.sId),
         });
         return NextResponse.json({ error: 'Failed to load public content' }, { status: 500 });
     }

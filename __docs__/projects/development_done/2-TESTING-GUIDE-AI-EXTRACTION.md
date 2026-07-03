@@ -1,7 +1,7 @@
 # 🧪 Testing Guide: AI Extraction & OCR
 
 **Feature**: AI Data Extraction  
-**Implementation**: [2-IMPLEMENTATION-AI-EXTRACTION-COMPLETE.md](./2-IMPLEMENTATION-AI-EXTRACTION-COMPLETE.md)
+**Implementation**: [2-implementation-ai-extraction-complete.md](./2-implementation-ai-extraction-complete.md)
 
 ---
 
@@ -324,9 +324,9 @@ Keep DevTools open to see:
 
 ---
 
-## 🚀 Production Testing Checklist
+## Launch Certification Testing Checklist
 
-Before marking as production-ready:
+Before launch certification:
 
 - [ ] All tests pass
 - [ ] No XSS vulnerabilities found
@@ -339,4 +339,4 @@ Before marking as production-ready:
 
 ---
 
-**Related**: [2-IMPLEMENTATION-AI-EXTRACTION-COMPLETE.md](./2-IMPLEMENTATION-AI-EXTRACTION-COMPLETE.md)
+**Related**: [2-implementation-ai-extraction-complete.md](./2-implementation-ai-extraction-complete.md)

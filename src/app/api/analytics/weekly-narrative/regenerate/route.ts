@@ -7,15 +7,18 @@ export const dynamic = 'force-dynamic';
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { logger } from '@lib/monitoring/logger';
-import { POST as generateWeeklyNarrativeLocally } from '../generate-local/route';
+import { logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
+import { withAuth } from '@/middleware/auth';
+import { generateWeeklyNarrativeLocally } from '../generate-local/route';
 
-export async function POST(request: NextRequest) {
+export const POST = withAuth(async (request: NextRequest, session) => {
   try {
-    return await generateWeeklyNarrativeLocally(request);
+    return await generateWeeklyNarrativeLocally(request, session);
 
   } catch (error: any) {
-    logger.error('[Weekly Narrative Regeneration] Error', error);
+    logRuntimeFailure('weekly_narrative_regeneration_failed', error, {
+      endpoint: '/api/analytics/weekly-narrative/regenerate',
+    });
 
     return NextResponse.json(
       {
@@ -24,4 +27,4 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+});

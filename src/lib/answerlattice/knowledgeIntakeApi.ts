@@ -2,8 +2,14 @@ import { FEATURE_FLAGS } from '@config/features';
 import { ANSWERLATTICE_PERMISSION_KEYS } from '@constant/answerlattice/permissions';
 import { DB_COLLECTIONS } from '@constant/database';
 import { requireAnswerlatticePermission } from '@lib/answerlattice/accessControl';
+import {
+    getAnswerlatticeSecurityLogContext,
+    getBoundedAnswerlatticeStringContext,
+} from '@lib/answerlattice/diagnostics';
+import { buildAnswerlatticeRateLimitKey } from '@lib/answerlattice/rateLimitKeys';
 import { resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
 import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
+import { logger } from '@lib/monitoring/logger';
 import { checkRateLimit } from '@lib/rateLimit';
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -19,9 +25,52 @@ export type AnswerlatticeIntakeApiContext = {
     };
 };
 
+const ANSWERLATTICE_KNOWLEDGE_INTAKE_CLIENT_ERROR_PATTERNS = [
+    /^Answerlattice knowledge intake is not enabled\.$/,
+    /^Answerlattice workspace is not available\.$/,
+    /^An active Answerlattice beta or subscription is required before importing sources\.$/,
+    /^An active Answerlattice subscription is required before running paid intake processing\.$/,
+    /^Not enough Answerlattice support credits for this (?:operation|intake processing step)\.$/,
+    /^Knowledge intake job not found\.$/,
+    /^Knowledge intake job is not available\.$/,
+    /^This intake job can no longer accept new sources\.$/,
+    /^One intake job can hold up to \d+ sources\.$/,
+    /^Repeated reply import is not enabled\.$/,
+    /^Screenshot and media extraction is not enabled\.$/,
+    /^Use a supported image, audio, or video file\.$/,
+    /^The uploaded file is empty\.$/,
+    /^File is too large for intake extraction\. Limit is \d+MB\.$/,
+    /^No support-relevant text was extracted from this file\.$/,
+    /^Review item not found\.$/,
+    /^Review item is not available\.$/,
+    /^Review item is not available for this intake job\.$/,
+    /^Published review items cannot be edited from intake\.$/,
+    /^Published status is set only by the publish action\.$/,
+    /^Use a valid review item status\.$/,
+    /^Use a valid review item target\.$/,
+    /^Changelog entries are owner-managed\. Use (?:release notes as source context, not as an intake publish target|the Changelog screen to publish release notes)\.$/,
+    /^Add at least one related entity before (?:accepting|publishing) a canonical answer proposal\.$/,
+    /^Add at least one source with readable text before generating drafts\.$/,
+    /^Accept at least one review item before publishing\.$/,
+    /^Publish up to \d+ items at a time\.$/,
+    /^Add one repeated question and a reusable answer before importing a repeated reply\.$/,
+    /^File signature does not match a supported intake media type\.$/,
+    /^Use a valid public http\(s\) URL\.$/,
+    /^Private or local URLs cannot be imported\.$/,
+    /^URL resolves to a private network address\.$/,
+    /^URL redirected too many times\.$/,
+    /^URL is not a text page that Answerlattice can import\.$/,
+    /^URL content is too large for bounded intake\.$/,
+    /^URL (?:intake|discovery) is not enabled\.$/,
+];
+
 export function getAnswerlatticeKnowledgeIntakeErrorStatus(error: unknown): number {
     if (!(error instanceof Error)) return 500;
     const message = error.message.toLowerCase();
+    const urlStatusMatch = message.match(/^url returned (\d{3})/);
+    if (urlStatusMatch) {
+        return Number(urlStatusMatch[1]) >= 500 ? 502 : 400;
+    }
     if (message.includes('not found')) return 404;
     if (message.includes('not enough answerlattice support credits') || message.includes('active answerlattice subscription')) return 402;
     if (message.includes('not available') || message.includes('active answerlattice beta or subscription')) return 403;
@@ -51,6 +100,16 @@ export function getAnswerlatticeKnowledgeIntakeErrorStatus(error: unknown): numb
         return 400;
     }
     return 500;
+}
+
+export function getAnswerlatticeKnowledgeIntakeClientErrorMessage(error: unknown, fallback: string): string {
+    const status = getAnswerlatticeKnowledgeIntakeErrorStatus(error);
+    if (status >= 500 || !(error instanceof Error)) return fallback;
+    const message = String(error.message || '').replace(/\s+/g, ' ').trim();
+    if (!message) return fallback;
+    return ANSWERLATTICE_KNOWLEDGE_INTAKE_CLIENT_ERROR_PATTERNS.some(pattern => pattern.test(message))
+        ? message
+        : fallback;
 }
 
 export async function requireAnswerlatticeKnowledgeIntakeContext(
@@ -86,12 +145,41 @@ export async function requireAnswerlatticeKnowledgeIntakeContext(
 
     if (options.rateLimitKey && options.rateLimit && options.rateWindow) {
         const rateLimit = await checkRateLimit({
-            key: `${options.rateLimitKey}:${tId}:${sId}`,
+            key: buildAnswerlatticeRateLimitKey(options.rateLimitKey, tId, sId),
             limit: options.rateLimit,
             window: options.rateWindow,
         });
         if (!rateLimit.allowed) {
-            return { response: NextResponse.json({ error: 'Too many requests. Please wait before trying again.' }, { status: 429 }) };
+            const waitSeconds = Math.max(1, Math.ceil((rateLimit.resetAt - Date.now()) / 1000));
+            logger.security('Rate Limit Exceeded - Answerlattice Knowledge Intake', {
+                ...getAnswerlatticeSecurityLogContext(session, request, request.nextUrl.pathname, {
+                    ...getBoundedAnswerlatticeStringContext('rateLimitKey', options.rateLimitKey),
+                    ...getBoundedAnswerlatticeStringContext('tenantId', tId),
+                    ...getBoundedAnswerlatticeStringContext('storeId', sId),
+                }),
+                limit: options.rateLimit,
+                waitSeconds,
+                window: options.rateWindow,
+            }, 'medium');
+            return {
+                response: NextResponse.json(
+                    {
+                        error: 'Too many requests. Please wait before trying again.',
+                        retryAfter: waitSeconds,
+                        resetAt: rateLimit.resetAt,
+                    },
+                    {
+                        headers: {
+                            'Cache-Control': 'private, no-store',
+                            'Retry-After': String(waitSeconds),
+                            'X-RateLimit-Limit': String(options.rateLimit),
+                            'X-RateLimit-Remaining': String(rateLimit.remaining),
+                            'X-RateLimit-Reset': String(rateLimit.resetAt),
+                        },
+                        status: 429,
+                    },
+                ),
+            };
         }
     }
 

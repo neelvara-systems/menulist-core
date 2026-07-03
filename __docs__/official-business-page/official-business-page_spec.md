@@ -73,7 +73,7 @@
 - Permanent closure state: "Permanently Closed" with disabled menu CTA
 - Footer: "Official Page · Powered by MenuList" for non-Premium stores
 - Dashboard integration: link display, copy link, copy message, dual QR (Share + Menu)
-- Schema.org: `@id`, `mainEntityOfPage`, `identifier` (MenuList Entity ID), `AggregateRating`, `foundingDate`, image array, `permanentlyClosed` signal
+- Schema.org: `@id`, `mainEntityOfPage`, `identifier` (MenuList Entity ID), normalized telephone, bounded `priceRange`, temporary full-day closure hours, `foundingDate`, image array, and `permanentlyClosed` signal. Owner-entered Google rating references render visibly only and are not emitted as `AggregateRating` markup.
 - AEO canonical title: "Name — Menu, Hours, Contact"
 - Custom domain support
 - "Menu coming soon" state before menu publish

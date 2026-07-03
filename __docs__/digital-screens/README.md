@@ -1,7 +1,7 @@
 # Digital Screens — Documentation Hub
 
-**Feature:** In-Store Digital Menu Display (TV/Tablet Screens)  
-**Status:** 🔒 v2.3 LOCKED (readability, owner-trust, public-read, and listener-isolation hardening applied June 2026) — Only readability/reliability/scale fixes allowed.
+**Feature:** In-Store Digital Menu Display (TV/Tablet Screens)
+**Status:** 🔒 v2.3 LOCKED (readability, owner-trust, public-read, listener-isolation, bounded-diagnostics hardening, and dedicated source-gate verification applied July 2026) — Only readability/reliability/scale fixes allowed.
 **One-liner:** "Your full menu on your shop TV. Always up to date. Never touch it."
 
 ---
@@ -27,6 +27,9 @@ June 2026 hardening keeps that boundary while making the feature owner-trustwort
 - Public menu cache invalidation now also touches screen content version when a screen exists, so ordinary menu edits can refresh connected TVs.
 - Public screen cold renders now use a generated available-item menu projection inside the existing screen summary when it matches the current menu/version and base menu slug context, with the old project-read fallback still intact.
 - Public screen clients now listen to a tiny safe `platformSummary/screen_{storeId}` mirror instead of the internal `campaigns_{storeId}` owner summary document.
+- The daily seen signal rejects oversized anonymous requests, applies the IP rate limit before JSON parsing or Firestore lookup, requires an enabled screen plus public-safe active/non-blocked store eligibility before writing, and public display clients send it as same-origin/no-store/manual-redirect before caching the daily local marker only after an OK response.
+- Public token resolvers, menu fallback helpers, invalidation, and reload utilities no longer direct-console raw screen tokens, project IDs, slide IDs, settings, or error objects; failures use normalized bounded diagnostics.
+- `npm run verify:digital-screens-boundary` now locks the screen-token route, public-safe `platformSummary/screen_{storeId}` mirror, seen-signal cheap-fail ordering, screen cache invalidation touches, owner copy/open acknowledgement guards, and Digital Screens docs parity as a dedicated source gate.
 
 **Problem solved:** Shop TVs showing outdated slideshows or blank screens because nobody remembers to update them. And the 70%+ of restaurants that need a full menu board on screen, not just promotional slides.
 
@@ -73,6 +76,7 @@ src/app/api/screen/seen/route.ts            # Daily seen signal endpoint
 src/database/campaigns/serverScreen.ts      # Public screen DAL: token lookup, projection guard, project fallback
 src/database/campaigns/index.ts             # Owner/session DAL: setup, settings, uploads, version bumps
 src/components/.../DigitalScreenSettings/   # Owner settings UI (4 components)
+scripts/verification/verify-digital-screens-boundary.js # Dedicated local source gate for Digital Screens
 ```
 
 ---
@@ -81,7 +85,7 @@ src/components/.../DigitalScreenSettings/   # Owner settings UI (4 components)
 
 **One TV (most common):**
 
-1. Settings → Digital Screen → copy Menu Board link from the TV setup card → open on TV → fullscreen → done
+1. Settings → Digital Screen → copy Menu Board link from the TV setup card → open on TV → fullscreen → done. Copied feedback appears only after the browser acknowledges the copy handoff.
 
 **Two TVs:**
 
@@ -91,6 +95,8 @@ src/components/.../DigitalScreenSettings/   # Owner settings UI (4 components)
 **Trust signal:** The settings screen shows when a TV was last seen after it sends the daily screen signal.
 
 **Content management:** Owner edits menu in Projects/Editor. Screen updates automatically. No separate screen content management.
+
+**Upload acknowledgement:** Custom slide uploads only show success after the DAL returns a shaped owner-upload slide. Storage or add-slide fallback values route to the existing failed-upload message.
 
 ---
 
@@ -102,17 +108,19 @@ src/components/.../DigitalScreenSettings/   # Owner settings UI (4 components)
 4. **Change default mode** → `DIGITAL_SCREENS_MODE` in `features.ts`
 5. **Modify menu board layout** → `MenuBoardDisplay.tsx` (v2.0)
 
+Run `npm run verify:digital-screens-boundary` after any Digital Screens route, DAL, cache, rules, desktop/mobile settings, or docs change. This local source gate does not replace browser TV smoke, physical-device QA, Firebase deploy evidence, Vercel deploy evidence, or production-host runtime verification.
+
 ---
 
 ## Firebase Cost Summary
 
 - **Per screen/month:** ~$0.00027-$0.00041
-- **1,000 screens:** ~$0.27-$0.41/month
+- **1,000 screens:** ~$0.28-$0.43/month
 - **Menu Board mode:** $0.00 additional (same menu data resolver)
-- **Two screens per store (1K stores):** ~$0.54-$0.82/month
+- **Two screens per store (1K stores):** ~$0.58-$0.86/month
 
 See `digital-screens_firebase.md` for full breakdown.
 
 ---
 
-**Last Updated:** June 11, 2026
+**Last Updated:** July 1, 2026

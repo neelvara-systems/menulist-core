@@ -1,6 +1,7 @@
 import ImageUploadInput from '@atoms/imageUploadInput';
 import { useAppDispatch } from '@hook/useAppDispatch';
 import useDeviceType from '@hook/useDeviceType';
+import { createUppercaseRandomIdSegment } from '@lib/runtime/randomId';
 import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from '@providers/platformProviders/platformGlobalDataProvider';
 import { ProjectsDataContext, ProjectsDataProviderType } from '@providers/projectsDataProvider';
 import { startLoader, stopLoader } from '@reduxSlices/loader';
@@ -141,7 +142,7 @@ const EditImageModal: React.FC<EditImageModalProps> = ({
                 return;
             }
 
-            const uniqueId = Math.random().toString(36).substring(2, 5).toUpperCase();
+            const uniqueId = createUppercaseRandomIdSegment(6);
 
             const newEditedImage: UserUploadedFileType = {
                 ...sourceImage,

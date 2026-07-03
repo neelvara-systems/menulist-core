@@ -1,10 +1,12 @@
-# 🚀 AI Social Media Content Generator - Strategic Product Document
+# AI Social Media Content Generator - Strategic Product Document
 
 **Created:** January 2, 2026  
-**Status:** 🔒 **LOCKED — Ready for Implementation**  
+**Status:** Historical strategy evidence; not current launch certification
 **Author:** Product Strategy Analysis  
 **Source:** ChatGPT Brainstorm + Expert Analysis + Market Research + CEO Synthesis  
 **Calibration:** Expert + ChatGPT converged on all critical decisions
+
+> **Current runtime boundary (July 2, 2026):** This strategy document is source context only. It is not current launch certification or current implementation approval. Owner generation path: deleted. Do not show `Generate Today Action` or add a replacement Social Content generation route while GrowthOS owns new generated actions. Current release approval requires the active production-readiness audit, External Certification Runbook evidence, current source gates including `npm run verify:agent-readiness` and `npm run verify:public-business-truth`, Today desktop/mobile/browser QA, campaign AI/provider smoke where enabled, target deploy evidence, and production-host smoke.
 
 ---
 
@@ -679,7 +681,7 @@ If you can only ship 3 before launch, do these:
 2. ✅ **Printable Poster** (captures non-digital owners)
 3. ✅ **WhatsApp Message** (copy-based, zero friction)
 
-Add QR tent + TV image **post-launch**.
+Treat QR tent and TV image as separate scoped additions; do not imply they are automatic launch exceptions.
 
 ---
 
@@ -1661,11 +1663,11 @@ The AI Social Media Content feature is a **high-leverage, low-risk** addition to
 4. **Preserves focus** (enhances core, doesn't distract)
 5. **Costs almost nothing** (reuses existing infrastructure)
 
-**Build it. Ship everything in 3 weeks. Architecture frozen for 3+ years.**
+This remains historical strategy evidence only. Do not treat the original three-week implementation recommendation as current release approval.
 
 ---
 
-**Document Status:** ✅ Ready for Implementation (3-Year Architecture Freeze)  
-**Next Step:** Hand engineering checklist to dev team, begin implementation  
+**Document Status:** Historical strategy evidence only; not current launch certification or current implementation approval
+**Next Step:** Use as source context only. Any reintroduction of owner-generated Social Content actions requires a current audited implementation path.
 **Architecture Rule:** No re-architecture for 3+ years. Capability upgrades via config only.  
 **Owner:** [Assign]

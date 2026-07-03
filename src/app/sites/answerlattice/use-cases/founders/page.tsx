@@ -33,7 +33,7 @@ export default function FoundersUseCasePage() {
             answerlatticeAnswer="You are on Billing Invoices. AnswerLattice serves the approved billing retry answer first, links the invoice FAQ, and only falls back to a ticket if payment still fails."
             ownerReview="You approve what becomes official. When AnswerLattice misses, the gap becomes review work instead of disappearing into chat history."
             setupSteps={[
-                'Sign in and create the AnswerLattice beta workspace.',
+                'Sign in and create the AnswerLattice paid Starter workspace.',
                 'Add company, product, support email, and support-heavy pages.',
                 'Import docs, FAQs, owner answers, release notes, and recurring support answers.',
                 'Install the widget and verify page context.',

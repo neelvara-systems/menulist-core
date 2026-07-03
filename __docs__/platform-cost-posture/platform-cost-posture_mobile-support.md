@@ -4,7 +4,11 @@
 
 No owner mobile PWA screen is added.
 
-This is an internal platform control surface. It does not belong in `MobileShell`, Today, Menu, Share, or More.
+This is an internal platform control surface. It does not belong in owner Today, Menu, Share, or More workflows.
+
+Current runtime exposes the same platform tool through the platform-only mobile internal wrapper for operators with `platformRole === "PLATFORM"`. That wrapper is reachable from the platform-only More section and the `/platform/cost-posture` MobileShell route mapping, uses the desktop component inside the shared internal platform wrapper, and provides an "open desktop tools" action for full-width inspection.
+
+Source gate: `npm run verify:platform-cost-posture-boundary` locks the mobile platform-only Cost Posture gate, MobileShell route mapping, internal wrapper config, desktop fallback route, and docs parity.
 
 ## Responsive Requirement
 

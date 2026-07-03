@@ -19,21 +19,23 @@ import { FEATURE_FLAGS } from '@config/features';
 import {
     getExtractionDashboardSnapshot,
 } from '@database/ops/extraction';
+import { logOpsFailure } from '@lib/ops/opsDiagnostics';
 import type {
-    ExtractionCostMetrics,
+    ExtractionDashboardSnapshot,
     ExtractionHealthMetrics,
     ExtractionJobSummary,
-    ExtractionQualityMetrics,
 } from '@lib/ops/extractionTypes';
 import { Button, Card, Empty, notification, Spin, Statistic, Table, Tag, Tooltip, Typography, theme } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { useSession } from 'next-auth/react';
 import { useCallback, useEffect, useState } from 'react';
 import { LuActivity, LuAlertTriangle, LuCheckCircle, LuClock, LuEye, LuRefreshCw, LuXCircle } from 'react-icons/lu';
+import useSWR from 'swr';
 import CostMonitor from './CostMonitor';
 import JobInspector from './JobInspector';
 
 const { Title, Text } = Typography;
+const EXTRACTION_MONITOR_DEDUPING_INTERVAL_MS = 5 * 60 * 1000;
 
 // ================================================================
 // HEALTH STATUS BADGE
@@ -82,6 +84,11 @@ function PipelineTag({ value }: { value?: string | null }) {
     return <Tag color={colorMap[value] || 'default'}>{label}</Tag>;
 }
 
+function getBoundedStatusFilter(value: string | undefined): string {
+    if (!value) return 'all';
+    return String(value).slice(0, 32);
+}
+
 // ================================================================
 // MAIN COMPONENT
 // ================================================================
@@ -89,11 +96,6 @@ function PipelineTag({ value }: { value?: string | null }) {
 export default function ExtractionMonitor() {
     const { token } = theme.useToken();
     const { data: session, status: sessionStatus } = useSession();
-    const [loading, setLoading] = useState(true);
-    const [health, setHealth] = useState<ExtractionHealthMetrics | null>(null);
-    const [quality, setQuality] = useState<ExtractionQualityMetrics | null>(null);
-    const [cost, setCost] = useState<ExtractionCostMetrics | null>(null);
-    const [jobs, setJobs] = useState<ExtractionJobSummary[]>([]);
     const [statusFilter, setStatusFilter] = useState<string | undefined>(undefined);
     const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
     const [refreshCounter, setRefreshCounter] = useState(0);
@@ -101,33 +103,45 @@ export default function ExtractionMonitor() {
     const isEnabled = FEATURE_FLAGS.ENABLE_EXTRACTION_MONITORING_DASHBOARD;
     const platformRole = (session as any)?.platformRole || (session?.user as any)?.platformRole;
     const isPlatform = platformRole === 'PLATFORM';
-
-    const fetchData = useCallback(async () => {
-        if (!isEnabled || !isPlatform) {
-            setLoading(false);
-            return;
-        }
-        setLoading(true);
-        try {
-            const snapshot = await getExtractionDashboardSnapshot({ status: statusFilter, pageSize: 30 });
-            setHealth(snapshot.health);
-            setQuality(snapshot.quality);
-            setCost(snapshot.cost);
-            setJobs(snapshot.jobs);
-        } catch (error: any) {
-            notification.error({
-                message: 'Failed to load extraction data',
-                description: error.message,
-            });
-        } finally {
-            setLoading(false);
-        }
-    }, [statusFilter, isEnabled, isPlatform]);
+    const dashboardKey = isEnabled && isPlatform
+        ? ['extraction-dashboard', getBoundedStatusFilter(statusFilter)]
+        : null;
+    const {
+        data: snapshot,
+        error: loadError,
+        isLoading,
+        isValidating,
+        mutate,
+    } = useSWR<ExtractionDashboardSnapshot>(
+        dashboardKey,
+        () => getExtractionDashboardSnapshot({ status: statusFilter, pageSize: 30 }),
+        {
+            dedupingInterval: EXTRACTION_MONITOR_DEDUPING_INTERVAL_MS,
+            revalidateOnFocus: false,
+        },
+    );
 
     useEffect(() => {
-        if (sessionStatus === 'loading') return;
-        fetchData();
-    }, [fetchData, sessionStatus]);
+        if (!loadError) return;
+        logOpsFailure('extraction_monitor_load_failed', loadError, {
+            statusFilter: getBoundedStatusFilter(statusFilter),
+        });
+        notification.error({
+            message: 'Failed to load extraction data',
+            description: 'Refresh the monitor and try again.',
+        });
+    }, [loadError, statusFilter]);
+
+    const refreshData = useCallback(() => {
+        setRefreshCounter(c => c + 1);
+        void mutate();
+    }, [mutate]);
+
+    const loading = sessionStatus === 'loading' || isLoading || isValidating;
+    const health = snapshot?.health ?? null;
+    const quality = snapshot?.quality ?? null;
+    const cost = snapshot?.cost ?? null;
+    const jobs = snapshot?.jobs ?? [];
 
     // Feature flag check (after hooks)
     if (!isEnabled) {
@@ -290,7 +304,7 @@ export default function ExtractionMonitor() {
                 </div>
                 <Button
                     icon={<LuRefreshCw />}
-                    onClick={() => { fetchData(); setRefreshCounter(c => c + 1); }}
+                    onClick={refreshData}
                     loading={loading}
                 >
                     Refresh
@@ -392,7 +406,7 @@ export default function ExtractionMonitor() {
                 jobId={selectedJobId}
                 open={!!selectedJobId}
                 onClose={() => setSelectedJobId(null)}
-                onRetrySuccess={() => { fetchData(); setRefreshCounter(c => c + 1); }}
+                onRetrySuccess={refreshData}
             />
         </div>
     );

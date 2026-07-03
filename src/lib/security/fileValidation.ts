@@ -20,7 +20,11 @@ import {
     MAX_PDF_SIZE
 } from '@template/main-app/projects/constants';
 import { FILE_SIGNATURES } from './fileSignatures';
-import { secureError, secureLog } from './secureLogger';
+import {
+    getBoundedSecurityStringContext,
+    logSecurityDiagnostic,
+    logSecurityFailure,
+} from './securityDiagnostics';
 
 /**
  * Maximum file sizes (in bytes)
@@ -93,9 +97,9 @@ export async function validateFileUpload(
     try {
         // 1. Check if file type is allowed
         if (!ALLOWED_MIME_TYPES.includes(claimedType)) {
-            secureLog('[File Validation] Blocked disallowed file type', {
-                claimedType,
-                allowedTypes: ALLOWED_MIME_TYPES
+            logSecurityDiagnostic('file_validation_disallowed_type_blocked', {
+                allowedTypeCount: ALLOWED_MIME_TYPES.length,
+                ...getBoundedSecurityStringContext('claimedType', claimedType),
             });
             return {
                 valid: false,
@@ -128,9 +132,9 @@ export async function validateFileUpload(
         const detectedType = detectFileType(buffer);
 
         if (!detectedType) {
-            secureLog('[File Validation] Could not detect file type from magic bytes', {
-                claimedType,
-                fileSize: claimedSize
+            logSecurityDiagnostic('file_validation_magic_type_missing', {
+                fileSize: claimedSize,
+                ...getBoundedSecurityStringContext('claimedType', claimedType),
             });
             return {
                 valid: false,
@@ -140,10 +144,10 @@ export async function validateFileUpload(
 
         // 5. Verify claimed type matches actual type
         if (detectedType !== claimedType) {
-            secureLog('[File Validation] File type mismatch', {
-                claimedType,
-                detectedType,
-                severity: 'high' // Potential attack attempt
+            logSecurityDiagnostic('file_validation_type_mismatch', {
+                severity: 'high', // Potential attack attempt
+                ...getBoundedSecurityStringContext('claimedType', claimedType),
+                ...getBoundedSecurityStringContext('detectedType', detectedType),
             });
             return {
                 valid: false,
@@ -158,9 +162,9 @@ export async function validateFileUpload(
             // Check for embedded scripts in image metadata (basic check)
             const fileContent = new TextDecoder('utf-8', { fatal: false }).decode(bytes);
             if (fileContent.includes('<script') || fileContent.includes('javascript:')) {
-                secureLog('[File Validation] Blocked image with embedded script', {
-                    detectedType,
-                    severity: 'critical'
+                logSecurityDiagnostic('file_validation_embedded_script_blocked', {
+                    severity: 'critical',
+                    ...getBoundedSecurityStringContext('detectedType', detectedType),
                 });
                 return {
                     valid: false,
@@ -173,9 +177,9 @@ export async function validateFileUpload(
         return { valid: true };
 
     } catch (error) {
-        secureError('[File Validation] Error validating file', error as Error, {
-            claimedType,
-            claimedSize
+        logSecurityFailure('file_validation_failed', error, {
+            claimedSize,
+            ...getBoundedSecurityStringContext('claimedType', claimedType),
         });
         return {
             valid: false,

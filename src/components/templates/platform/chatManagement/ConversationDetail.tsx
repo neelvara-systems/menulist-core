@@ -3,7 +3,7 @@
 import DateTimeDisplay from '@atoms/DateTimeDisplay';
 import ScrollToBottomButton, { useScrollToBottom } from '@atoms/ScrollToBottomButton/ScrollToBottomButton';
 import ArticleViewModal from '@organisms/ArticleViewModal';
-import { updateChatSession } from '@database/chatSessions';
+import { assertChatSessionUpdateSucceeded, updateChatSession } from '@database/chatSessions';
 import { getAnswerlatticeCustomerIdentity } from '@lib/answerlattice/customerIdentity';
 import { ChatSession, ADMIN_STATUS_OPTIONS, ADMIN_PRIORITY_OPTIONS } from '@type/chatSession';
 import { Avatar, Button, Empty, Flex, Input, message, Popover, Tag, theme, Tooltip, Typography } from 'antd';
@@ -32,7 +32,12 @@ function ConversationDetail({ session, onNoteUpdate, onSessionUpdate }: Conversa
         if (!session?.id) return;
         try {
             // Single database call with all updates
-            await updateChatSession(session.id, updates);
+            const updateResult = await updateChatSession(session.id, updates);
+            assertChatSessionUpdateSucceeded(
+                updateResult,
+                session.id,
+                'platform_chat_metadata_session_update_rejected',
+            );
             onSessionUpdate?.(session.id, updates);
             message.success('Metadata updated', 2);
         } catch (error) {

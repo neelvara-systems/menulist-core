@@ -1,8 +1,12 @@
 # 🎯 Projects Feature - Complete Overview
 
 **Last Updated:** November 20, 2025  
-**Status:** ✅ Production Ready  
+**Status:** Implemented reference; not current launch certification
 **Version:** 1.0
+
+---
+
+**Launch boundary:** This overview documents the Projects feature architecture. It is not current production-launch approval. Current release readiness requires the active [production-readiness audit](../audits/menulist-production-readiness-audit.md), [production-readiness checklist](../production-readiness/README.md), and [External Certification Runbook](../production-readiness/external-certification-runbook.md) evidence.
 
 ---
 
@@ -343,20 +347,20 @@ __docs__/projects/
 
 **For Developers:**
 
-- Start with: [01-UPLOAD-FILE-PROCESSING.md](./01-UPLOAD-FILE-PROCESSING.md)
-- Then: [04-DATA-EDITOR.md](./04-DATA-EDITOR.md)
+- Start with: [01-UPLOAD-FILE-PROCESSING.md](./upload-file-processing/README.md)
+- Then: [04-DATA-EDITOR.md](./data-editor/README.md)
 - Reference: [13-types-interfaces.md](./13-types-interfaces.md)
 
 **For Backend Engineers:**
 
 - Start with: [12-api-routes.md](./12-api-routes.md)
 - Then: [11-database-layer.md](./11-database-layer.md)
-- Reference: [02-AI-DATA-EXTRACTION.md](./02-AI-DATA-EXTRACTION.md)
+- Reference: [02-AI-DATA-EXTRACTION.md](./ai-data-extraction/README.md)
 
 **For UI/UX:**
 
-- Start with: [09-B2C-VIEW.md](./09-B2C-VIEW.md)
-- Then: [06-IMAGE-EDITING-UPLOAD.md](./06-IMAGE-EDITING-UPLOAD.md)
+- Start with: [09-B2C-VIEW.md](./b2c-view/README.md)
+- Then: [06-IMAGE-EDITING-UPLOAD.md](./Assessments/assessment-08-image-editing.md)
 
 ---
 
@@ -437,8 +441,8 @@ Example paths:
 
 ## Next Steps
 
-1. **Read Feature Docs**: Start with [01-UPLOAD-FILE-PROCESSING.md](./01-UPLOAD-FILE-PROCESSING.md)
-2. **Understand Data Flow**: Review [02-AI-DATA-EXTRACTION.md](./02-AI-DATA-EXTRACTION.md)
+1. **Read Feature Docs**: Start with [01-UPLOAD-FILE-PROCESSING.md](./upload-file-processing/README.md)
+2. **Understand Data Flow**: Review [02-AI-DATA-EXTRACTION.md](./ai-data-extraction/README.md)
 3. **Study Types**: Check [13-types-interfaces.md](./13-types-interfaces.md)
 4. **Review APIs**: See [12-api-routes.md](./12-api-routes.md)
 
@@ -460,4 +464,4 @@ Example paths:
 
 ---
 
-**End of Overview** | [Next: File Upload →](./01-UPLOAD-FILE-PROCESSING.md)
+**End of Overview** | [Next: File Upload →](./upload-file-processing/README.md)

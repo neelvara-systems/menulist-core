@@ -10,6 +10,7 @@
 import { FEATURE_FLAGS } from "@config/features";
 import GlobalLanguagesList from "@data/languages";
 import { getProjectDataByStore } from "@database/projects";
+import { getMultiOutletProjectLogContext, logMultiOutletFailure } from "@lib/multiOutlet/diagnostics";
 import {
     ExtractedDataCategory,
     ExtractedDataItem,
@@ -216,10 +217,11 @@ export async function resolveProjectForRender(
 
     // Graceful handling: If master not found, return store as-is with warning
     if (!masterProject || !masterProject.files?.length) {
-        console.warn(
-            `[MultiOutlet] Master project not found: ${storeProject.masterProjectId}. ` +
-            `Returning store project as standalone.`,
-        );
+        logMultiOutletFailure('multi_outlet_master_project_missing', undefined, {
+            ...getMultiOutletProjectLogContext(storeProject.projectId, storeProject.masterProjectId),
+            masterProjectPresent: Boolean(masterProject),
+            masterFileCount: masterProject?.files?.length ?? 0,
+        });
         return {
             ...storeProject,
             _resolved: {

@@ -3,7 +3,7 @@ import { SIGNALDESK_COLLECTIONS, SIGNALDESK_SUMMARY_DOCS } from "@constant/signa
 import { SIGNALDESK_PRODUCT_CODE } from "@constant/signaldesk/product";
 import { admin, signaldeskFirestoreAdmin } from "@lib/firebase/signaldeskFirebaseAdmin";
 import { isSignalDeskFirebaseConfigured } from "@lib/firebase/signaldeskConfig";
-import { secureError } from "@lib/security/secureLogger";
+import { getSignalDeskAccessLogContext, logSignalDeskFailure } from "@lib/signaldesk/apiGuards";
 import type {
     SignalDeskAccessContext,
     SignalDeskControlRoomSummary,
@@ -252,7 +252,11 @@ export async function loadSignalDeskOverviewServer(access: SignalDeskAccessConte
             },
         };
     } catch (error) {
-        secureError("[SignalDesk] Failed to load overview", error as Error, { userId: access.userId });
+        logSignalDeskFailure(
+            "signaldesk_overview_load_failed",
+            error,
+            getSignalDeskAccessLogContext(access),
+        );
         throw error;
     }
 }

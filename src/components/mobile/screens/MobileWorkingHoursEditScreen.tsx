@@ -1,12 +1,16 @@
 'use client'
 
-import { updateStore } from '@database/stores';
+import { assertStoreUpdateSucceeded, updateStore } from '@database/stores';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import { useCallback, useContext, useState } from 'react';
 import { Button, Card, DotLoading, Flex, Input, NavBar, Switch, Text, Toast } from '../antd';
 import MobileSettingsScreenHeader from '../components/MobileSettingsScreenHeader';
+import {
+    getMobileOwnerStoreLogContext,
+    logMobileOwnerFailure,
+} from '../utils/mobileOwnerDiagnostics';
 
 interface MobileWorkingHoursEditScreenProps {
     onBack: () => void;
@@ -101,9 +105,20 @@ export default function MobileWorkingHoursEditScreen({ onBack }: MobileWorkingHo
         Toast.show({ content: t('hoursSaved'), duration: 1000 });
 
         try {
-            await updateStore({ ...storeDetails, hoursLastUpdatedAt, workingHours } as any);
+            const writeResult = await updateStore({ ...storeDetails, hoursLastUpdatedAt, workingHours } as any);
+            assertStoreUpdateSucceeded(
+                writeResult,
+                storeDetails.storeId,
+                'mobile_working_hours_store_update_rejected',
+            );
             setOriginalSchedule(schedule);
-        } catch {
+        } catch (error) {
+            logMobileOwnerFailure('mobile_working_hours_save_failed', error, {
+                ...getMobileOwnerStoreLogContext(storeDetails.storeId, storeDetails.tenantId),
+                changedDayCount: DAYS.filter(({ key }) => serializeDay(schedule[key]) !== (storeDetails.workingHours?.[key] || '')).length,
+                closedDayCount: DAYS.filter(({ key }) => schedule[key]?.isClosed).length,
+                hasPreviousWorkingHours: Boolean(storeDetails.workingHours),
+            });
             setStoreDetails((previous: any) => ({
                 ...previous,
                 hoursLastUpdatedAt: (storeDetails as any).hoursLastUpdatedAt,

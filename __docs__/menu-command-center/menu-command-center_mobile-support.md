@@ -1,7 +1,9 @@
 # Menu Command Center — Mobile Support
 
-**Last Updated:** February 16, 2026 (v2 — simplified mobile bulk actions implemented)
+**Last Updated:** July 2, 2026
 **Decision:** ⚠️ PARTIAL — Availability + Show/Hide on mobile; Pricing + Category moves desktop-only
+
+**Source gate:** `npm run verify:menu-project-editor-boundary` checks that Mobile bulk actions stay on the same project persistence contract as desktop: `BulkActionsSheet` returns an updated project, `MobileMenuScreen` persists through `updateProjectWithoutLoader`, and `assertProjectUpdateSucceeded` rejects missing acknowledgements before local state is treated as saved.
 
 ---
 
@@ -35,3 +37,4 @@
 - Uses same `getProjectData`, `updateProject` DAL functions
 - Same project data structure manipulation (item.available, item.active fields)
 - Triggered via button next to search bar in `MobileMenuScreen`
+- Mobile bulk actions stay on the same project persistence contract and do not create per-item writes.

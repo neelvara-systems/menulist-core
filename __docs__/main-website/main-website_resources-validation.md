@@ -1,7 +1,7 @@
 # MenuList Main Website Resources Validation
 
-**Status:** Passed - resource expansion verification
-**Last Verified:** June 2, 2026
+**Status:** Passed - resource expansion verification and checklist-copy handoff hardening
+**Last Verified:** June 30, 2026
 **Scope:** MenuList public website resources layer
 
 ---
@@ -20,6 +20,8 @@ Included:
 - resource content registry
 - resource JSON-LD builders
 - homepage, header, and footer resource links
+- browser-local checklist-copy handoff acknowledgement and bounded diagnostics
+- Clipboard API rejection fallback before checklist copied state or checklist-copy analytics
 - sitemap, robots, LLM context, and discovery-policy updates
 - `verify:agent-readiness` route/discovery checks
 

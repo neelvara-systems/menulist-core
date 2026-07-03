@@ -7,7 +7,7 @@ import '@/styles/website.css';
 import { Metadata } from 'next';
 
 const title = 'Public Discovery - MenuList | Clear Business Information for Search';
-const description = 'MenuList prepares clear public business information, structured pages, sitemap signals, crawler context, and owner-controlled copy without ranking or answer-placement promises.';
+const description = 'MenuList prepares clear public business pages, discovery files, AI context, and owner-controlled copy without ranking or answer-placement promises.';
 
 export const metadata: Metadata = {
   title,

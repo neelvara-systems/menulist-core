@@ -80,7 +80,6 @@ export const getUserByTenantId = (tenantId: string) => {
             const ref = query(getCollectionRef(), where("tenantId", "==", tenantId));
             const querySnapshot = await getDocs(ref);
             if (querySnapshot.empty) {
-                console.log(`${tenantId} Users not available getUserByTenantId`);
                 return ([]);
             } else {
                 const list: any = [];
@@ -150,7 +149,7 @@ export const addPlatformUser = async (data: any) => {
     return await apiCallComposer(
         async () => {
             // 🔒 EMAIL UNIQUENESS GUARD: Prevent duplicate user docs
-            // @see __docs__/auth/ADR-email-uniqueness-strategy.md
+            // @see __docs__/auth/adr-email-uniqueness-strategy.md
             if (data.email) {
                 const normalizedEmail = data.email.toLowerCase().trim();
                 const q = query(getCollectionRef(), where("email", "==", normalizedEmail));
@@ -181,6 +180,24 @@ export const updatePlatformUser = async (data: any) => {
     );
 }
 
+export function assertUserUpdateSucceeded(
+    result: unknown,
+    expectedUserId?: string | number,
+    rejectionCode = 'user_update_rejected',
+): asserts result is Record<string, unknown> {
+    if (!result || typeof result !== 'object' || Array.isArray(result)) {
+        throw new Error(rejectionCode);
+    }
+
+    if (expectedUserId === undefined || expectedUserId === null) return;
+
+    const savedUserId = (result as { id?: unknown; userId?: unknown }).id
+        ?? (result as { id?: unknown; userId?: unknown }).userId;
+    if (String(savedUserId) !== String(expectedUserId)) {
+        throw new Error(rejectionCode);
+    }
+}
+
 export const getAllPlatformUsers = async () => {
     return await apiCallComposer(
         async () => {
@@ -202,7 +219,6 @@ export const getUsersByStoreId = async (storeId) => {
             const ref = query(await getCollectionRef(), where("storeIds", "array-contains", storeId));
             const querySnapshot = await getDocs(ref);
             if (querySnapshot.empty) {
-                console.log(`${storeId} users not available getUsersByStoreId`);
                 return ([]);
             } else {
                 const list: any = [];

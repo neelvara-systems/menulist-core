@@ -5,12 +5,20 @@ import { useTranslations } from 'next-intl';
 import { useEffect, useState } from 'react';
 import { LuCopy, LuDownload, LuX } from 'react-icons/lu';
 import { Button, Card, DotLoading, Flex, Image, NavBar, Popup, Text, Toast } from '../antd';
+import {
+    getBoundedMobileOwnerStringContext,
+    logMobileOwnerFailure,
+} from '../utils/mobileOwnerDiagnostics';
+
+const MOBILE_QR_SHEET_COPY_UNAVAILABLE = 'mobile_qr_sheet_copy_unavailable';
+const MOBILE_QR_SHEET_COPY_FALLBACK_FAILED = 'mobile_qr_sheet_copy_fallback_failed';
 
 interface MobileQrCodeSheetProps {
     activePlanType?: string | null;
     brandColor?: string;
     copyErrorMessage: string;
     copySuccessMessage: string;
+    diagnosticSource?: string;
     downloadSuccessMessage: string;
     filename: string;
     generatingLabel: string;
@@ -26,11 +34,66 @@ interface MobileQrCodeSheetProps {
     visible: boolean;
 }
 
+function hasMobileQrSheetClipboardWrite(): boolean {
+    return typeof navigator !== 'undefined' && typeof navigator.clipboard?.writeText === 'function';
+}
+
+function hasMobileQrSheetCopyFallback(): boolean {
+    return typeof document !== 'undefined'
+        && Boolean(document.body)
+        && typeof document.createElement === 'function'
+        && typeof document.execCommand === 'function';
+}
+
+async function copyMobileQrSheetUrlToClipboard(url: string): Promise<void> {
+    let clipboardWriteError: unknown;
+
+    if (hasMobileQrSheetClipboardWrite()) {
+        try {
+            await navigator.clipboard.writeText(url);
+            return;
+        } catch (error) {
+            clipboardWriteError = error;
+        }
+    }
+
+    if (!hasMobileQrSheetCopyFallback()) {
+        throw Object.assign(new Error(MOBILE_QR_SHEET_COPY_UNAVAILABLE), {
+            code: MOBILE_QR_SHEET_COPY_UNAVAILABLE,
+            clipboardWriteRejected: Boolean(clipboardWriteError),
+        });
+    }
+
+    const textarea = document.createElement('textarea');
+    textarea.value = url;
+    textarea.readOnly = true;
+    textarea.setAttribute('aria-hidden', 'true');
+    textarea.style.position = 'fixed';
+    textarea.style.left = '-9999px';
+    textarea.style.top = '0';
+
+    document.body.appendChild(textarea);
+    textarea.select();
+    textarea.setSelectionRange(0, textarea.value.length);
+
+    try {
+        const copied = document.execCommand('copy');
+        if (!copied) {
+            throw Object.assign(new Error(MOBILE_QR_SHEET_COPY_FALLBACK_FAILED), {
+                code: MOBILE_QR_SHEET_COPY_FALLBACK_FAILED,
+            });
+        }
+    } finally {
+        document.body.removeChild(textarea);
+    }
+}
+
 export default function MobileQrCodeSheet({
     activePlanType,
     brandColor,
     copyErrorMessage,
     copySuccessMessage,
+    diagnosticSource = 'mobile_qr_code_sheet',
     downloadSuccessMessage,
     filename,
     generatingLabel,
@@ -48,6 +111,26 @@ export default function MobileQrCodeSheet({
     const common = useTranslations('Common');
     const [isLoading, setIsLoading] = useState(false);
     const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
+
+    const buildQrSheetLogContext = (
+        action: 'copy' | 'download' | 'generate',
+        metadata: Record<string, boolean | number | string | null | undefined> = {},
+    ) => ({
+        ...getBoundedMobileOwnerStringContext('diagnosticSource', diagnosticSource),
+        ...getBoundedMobileOwnerStringContext('url', url),
+        ...getBoundedMobileOwnerStringContext('filename', filename),
+        ...getBoundedMobileOwnerStringContext('title', title),
+        ...getBoundedMobileOwnerStringContext('helperText', helperText),
+        ...getBoundedMobileOwnerStringContext('storeName', storeName),
+        ...getBoundedMobileOwnerStringContext('activePlanType', activePlanType),
+        action,
+        hasBrandColor: Boolean(brandColor),
+        hasLogoUrl: Boolean(logoUrl),
+        hasQrDataUrl: Boolean(qrDataUrl),
+        qrDataUrlLength: qrDataUrl?.length || 0,
+        visible,
+        ...metadata,
+    });
 
     useEffect(() => {
         if (!visible) {
@@ -76,8 +159,9 @@ export default function MobileQrCodeSheet({
                 if (!cancelled) {
                     setQrDataUrl(dataUrl);
                 }
-            } catch {
+            } catch (error) {
                 if (!cancelled) {
+                    logMobileOwnerFailure('mobile_qr_sheet_generate_failed', error, buildQrSheetLogContext('generate'));
                     Toast.show({ content: qrErrorMessage, duration: 1500 });
                     onClose();
                 }
@@ -93,22 +177,31 @@ export default function MobileQrCodeSheet({
         return () => {
             cancelled = true;
         };
-    }, [activePlanType, brandColor, helperText, logoUrl, storeName, title, visible, url, qrErrorMessage, onClose]);
+    }, [activePlanType, brandColor, diagnosticSource, filename, helperText, logoUrl, storeName, title, visible, url, qrErrorMessage, onClose]);
 
     const handleCopy = async () => {
         try {
-            await navigator.clipboard.writeText(url);
+            await copyMobileQrSheetUrlToClipboard(url);
             Toast.show({ content: copySuccessMessage, duration: 1500 });
-        } catch {
+        } catch (error) {
+            logMobileOwnerFailure('mobile_qr_sheet_copy_failed', error, buildQrSheetLogContext('copy', {
+                hasClipboardWrite: hasMobileQrSheetClipboardWrite(),
+                hasCopyFallback: hasMobileQrSheetCopyFallback(),
+            }));
             Toast.show({ content: copyErrorMessage, duration: 1500 });
         }
     };
 
     const handleDownload = () => {
         if (!qrDataUrl) return;
-        downloadQrCode(qrDataUrl, filename);
-        Toast.show({ content: downloadSuccessMessage, duration: 1500 });
-        onDownload?.();
+        try {
+            downloadQrCode(qrDataUrl, filename);
+            Toast.show({ content: downloadSuccessMessage, duration: 1500 });
+            onDownload?.();
+        } catch (error) {
+            logMobileOwnerFailure('mobile_qr_sheet_download_failed', error, buildQrSheetLogContext('download'));
+            Toast.show({ content: qrErrorMessage, duration: 1500 });
+        }
     };
 
     return (

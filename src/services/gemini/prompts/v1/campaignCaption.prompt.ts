@@ -11,6 +11,26 @@
 
 import { GeminiPrompt } from '../types';
 
+const PROMPT_INPUT_TEXT_MAX_LENGTH = 300;
+
+function sanitizePromptText(
+    value: unknown,
+    fallback = 'Not provided',
+    maxLength = PROMPT_INPUT_TEXT_MAX_LENGTH,
+) {
+    if (typeof value !== 'string') return fallback;
+
+    const normalized = value
+        .replace(/[\u0000-\u001f\u007f]/g, ' ')
+        .replace(/[{}<>`$\\]/g, '')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .slice(0, maxLength)
+        .trim();
+
+    return normalized || fallback;
+}
+
 export interface CampaignCaptionInput {
     itemName: string;
     itemDescription?: string;
@@ -26,6 +46,38 @@ export interface CampaignCaptionResult {
     caption: string;
     shortCaption: string; // For limited space surfaces
     hashtags: string[];
+}
+
+const surfaceGuidelines: Record<CampaignCaptionInput['surface'], string> = {
+    whatsapp_status: 'Max 100 characters. Very casual. 1-2 emojis max. Like sharing with a friend.',
+    whatsapp_message: 'Max 150 characters. Warm greeting style. Include price if available.',
+    print_poster: 'Max 50 characters for main caption. Bold, clear, readable from distance.',
+    qr_tent: 'Max 30 characters. Just item name and key appeal. Ultra minimal.',
+    digital_screen: 'Max 40 characters. Big text energy. Include price prominently.',
+};
+
+const campaignContext: Record<string, string> = Object.freeze({
+    todays_special: 'Highlight that this is available today',
+    weekend_pick: 'Perfect for the weekend vibe',
+    now_available: 'Just letting people know it is ready',
+    menu_highlight: 'Simply showcasing a nice item',
+    meal_push: 'Lunch/dinner time appropriate',
+    bestseller_boost: 'Popular with customers without saying bestseller',
+    slow_item_rescue: 'Just share it nicely, no desperation',
+    festival: 'Festive, celebratory mood',
+    new_item: 'Introducing something new',
+});
+
+function getSafeCampaignType(value: string) {
+    return Object.prototype.hasOwnProperty.call(campaignContext, value)
+        ? value
+        : 'menu_highlight';
+}
+
+function getSafeSurface(value: CampaignCaptionInput['surface']) {
+    return Object.prototype.hasOwnProperty.call(surfaceGuidelines, value)
+        ? value
+        : 'whatsapp_status';
 }
 
 export const CAMPAIGN_CAPTION_PROMPT_V1: GeminiPrompt = {
@@ -57,42 +109,24 @@ Return ONLY valid JSON, no additional text.`,
 
     user: (data: CampaignCaptionInput) => {
         const { itemName, itemDescription, itemPrice, categoryName, businessName, campaignType, surface, language } = data;
-
-        const surfaceGuidelines: Record<string, string> = {
-            whatsapp_status: 'Max 100 characters. Very casual. 1-2 emojis max. Like sharing with a friend.',
-            whatsapp_message: 'Max 150 characters. Warm greeting style. Include price if available.',
-            print_poster: 'Max 50 characters for main caption. Bold, clear, readable from distance.',
-            qr_tent: 'Max 30 characters. Just item name and key appeal. Ultra minimal.',
-            digital_screen: 'Max 40 characters. Big text energy. Include price prominently.',
-        };
-
-        const campaignContext: Record<string, string> = {
-            todays_special: 'Highlight that this is available today',
-            weekend_pick: 'Perfect for the weekend vibe',
-            now_available: 'Just letting people know it\'s ready',
-            menu_highlight: 'Simply showcasing a nice item',
-            meal_push: 'Lunch/dinner time appropriate',
-            bestseller_boost: 'Popular with customers (don\'t say "bestseller")',
-            slow_item_rescue: 'Just share it nicely, no desperation',
-            festival: 'Festive, celebratory mood',
-            new_item: 'Introducing something new',
-        };
+        const safeCampaignType = getSafeCampaignType(campaignType);
+        const safeSurface = getSafeSurface(surface);
 
         return `Generate a caption for this item:
 
 Item Details:
-- Name: ${itemName}
-- Description: ${itemDescription || 'Not provided'}
-- Price: ${itemPrice || 'Not provided'}
-- Category: ${categoryName || 'Not provided'}
-- Business: ${businessName || 'Not provided'}
+- Name: ${sanitizePromptText(itemName, 'Not provided', 160)}
+- Description: ${sanitizePromptText(itemDescription, 'Not provided', 500)}
+- Price: ${sanitizePromptText(itemPrice, 'Not provided', 60)}
+- Category: ${sanitizePromptText(categoryName, 'Not provided', 120)}
+- Business: ${sanitizePromptText(businessName, 'Not provided', 160)}
 
 Context:
-- Campaign Type: ${campaignType}
-- Context: ${campaignContext[campaignType] || 'General sharing'}
-- Surface: ${surface}
-- Surface Guidelines: ${surfaceGuidelines[surface]}
-- Language: ${language}
+- Campaign Type: ${safeCampaignType}
+- Context: ${campaignContext[safeCampaignType]}
+- Surface: ${safeSurface}
+- Surface Guidelines: ${surfaceGuidelines[safeSurface]}
+- Language: ${sanitizePromptText(language, 'en', 60)}
 
 Return JSON in this exact format:
 {

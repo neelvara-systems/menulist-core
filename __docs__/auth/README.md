@@ -2,6 +2,10 @@
 
 **Complete authentication system documentation for MenuListAI**
 
+> **Status:** Auth documentation hub; not current launch certification
+>
+> **Launch Boundary:** This hub routes current auth approval to the active [production-readiness audit](../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../production-readiness/external-certification-runbook.md), `npm run verify:agent-readiness`, `npm run verify:auth-security-failure-matrix`, auth browser/API smoke, Firebase Auth custom-claims/token smoke, App Check/session-cookie review, login/logout/OAuth/password/staff-passcode QA, target deploy evidence where auth-adjacent routes or rules change, and production-host smoke.
+
 ---
 
 ## 📚 Documentation Structure
@@ -56,6 +60,18 @@ This folder contains the **complete authentication guide** split into manageable
 | **Add security logging** | [login-source-tracking.md](../security/login-source-tracking.md) |
 | **Debug session issues** | Part 5: Token Management                                         |
 | **Implement logout**     | Part 4: Logout Flow                                              |
+
+### Current Auth Diagnostic Rule
+
+Firebase client bootstrap, App Check initialization, Firebase Auth sync, and session-provider auth bootstrap failures use `src/lib/firebase/firebaseDiagnostics.ts`. Do not debug these paths by logging `session`, `firebaseAuth.currentUser`, emails, tenant/store IDs, custom tokens, or raw provider errors in browser logs. Use the bounded failure codes guarded by `npm run verify:auth-security-failure-matrix`.
+
+NextAuth callback, client sign-out, active-session fetch, and development-only fetched-user diagnostics use `src/lib/auth/authDiagnostics.ts`. Do not debug these paths by logging callback URLs, hostnames, pathnames, sessions, tenant/store IDs, user objects, masked emails, or raw provider errors. The helper records presence/length/count metadata, normalized auth codes, and source error name/code/status only.
+
+Login, forgot-password, and Phone OTP auth pages render only fixed local failure copy. Do not pass API response text, NextAuth response errors, Firebase browser exceptions, fetch errors, or provider messages into owner-visible auth form state.
+
+Login-page claim setup and Google claim linking must not treat `success: true` alone as account ownership completion. The browser must receive an OK `/api/auth/claim-account` response with `success: true`, the expected claim `mode`, and tenant/store identity before it clears `pendingClaimToken`, shows success, refreshes session state, or redirects.
+
+Firebase SDK `accessToken` and `refreshToken` values must not be copied into app user objects or logs. The old unused `src/utils/usersUtils.ts` token extraction helper was removed; the auth/security verifier guards against reintroducing Firebase `stsTokenManager` token extraction.
 
 ---
 
@@ -462,7 +478,11 @@ Compatibility route for staff creation. Current owner UI uses `POST /api/staff`,
 
 - **Body:** `{ email?, name, tenantId, storeId }`
 - **Auth:** Requires active NextAuth session
+- **Admission:** `AUTH_SENSITIVE` limiter, then 16KB bounded JSON body before validation, Firebase Auth, or Firestore writes
 - **Returns:** `{ success, userId, email, passwordResetEmailSent, staffLoginId?, temporaryPasscode? }`
+- **Browser request/response boundary:** Platform Users sends the compatibility request with the shared staff request policy: same-origin credentials, no browser cache, and manual redirect handling. It then parses the response through `readCreateStaffCompatibilityResponse()` in `src/lib/staffManagement/client.ts`, using the shared 256KB bounded staff response reader before marking a user verified. Successful verification must match create-staff modes (`new_user_created` or `existing_user_added_to_store`) and return user identity. The existing `EMAIL_EXISTS` compatibility code remains bounded and allowlisted.
+- **User document acknowledgement:** After staff verification or platform user edits, Platform Users requires `assertUserUpdateSucceeded()` before local table state, drawer close, or success copy changes.
+- **Staff login handoff:** Desktop and mobile staff login detail copy actions use `src/lib/staffManagement/shareLoginDetails.ts`, which waits for Clipboard API success or an acknowledged textarea fallback before showing copied feedback. Failed copy diagnostics include clipboard/fallback support booleans and bounded Staff ID/passcode/text length metadata only.
 
 ### `POST /api/staff/password-reset`
 
@@ -470,7 +490,19 @@ Resets staff access for a staff member assigned to the current store. Owner rese
 
 - **Body:** `{ userId, tenantId, storeId }`
 - **Auth:** Requires active NextAuth session with `canManageUsers`
+- **Admission:** `AUTH_SENSITIVE` limiter, then 16KB bounded JSON body before staff lookup or Firebase Auth update
 - **Returns:** `{ success, userId, passwordResetEmailSent?, staffLoginId?, temporaryPasscode? }`
+- **Staff login handoff:** Temporary passcode copy/share actions use the same acknowledged browser-local copy helper as staff creation. Raw passcodes are shown to the owner for one-time handoff but are not written to diagnostic logs.
+
+### `POST /api/staff` and `PATCH /api/staff`
+
+Owner staff list and mutations stay behind the authenticated staff server helper. Create and update use a 16KB bounded JSON body before schema validation, tenant/store authority checks, Firebase Auth work, or Firestore writes. `DELETE /api/staff` uses query parameters for remove-from-store and does not parse a JSON body. Browser calls use the shared staff request policy: same-origin credentials, no browser cache, and manual redirect handling before bounded response parsing.
+
+### `POST|PATCH /api/staff/roles`
+
+Role create/update uses the same 16KB bounded JSON body before role validation, role-assignment checks, store reads, or store-role writes. `DELETE /api/staff/roles` uses query parameters and does not parse a JSON body. Browser calls use the shared staff request policy before bounded role response parsing.
+
+Role create/update/delete also rejects inactive, soft-deleted, or platform-blocked target stores during the canonical store read. Staff list and staff store-mapping validation use the same store eligibility boundary before returning users or assigning staff to a store.
 
 ### `POST /api/auth/phone-otp/start`
 
@@ -478,8 +510,11 @@ Starts WhatsApp phone OTP login for dashboard and `/create-menu`.
 
 - **Body:** `{ phone, purpose }`
 - **Auth:** Public endpoint; OTP is the proof
-- **Rate limit:** `AUTH_PHONE_OTP_SEND` by IP and phone hash
-- **Returns:** `{ success, challengeId, phoneMasked, expiresInSeconds, resendAfterSeconds }`
+- **Rate limit:** `AUTH_PHONE_OTP_SEND` by IP before parsing, then by phone hash after validation
+- **Body admission:** 1KB bounded JSON body before phone normalization or challenge creation
+- **Diagnostics:** Expected OTP errors log code-only; unexpected route failures use bounded auth diagnostics with request metadata presence-length only.
+- **Returns:** `{ success, action: "start", purpose, challengeId, phoneMasked, expiresInSeconds, resendAfterSeconds }`
+- **Browser acknowledgement:** `PhoneOtpAuthPanel` requires the start action, echoed purpose, and challenge id before showing the code-entry step.
 
 ### `POST /api/auth/phone-otp/verify`
 
@@ -487,8 +522,11 @@ Verifies the OTP challenge and returns a short-lived one-time login token for th
 
 - **Body:** `{ challengeId, code }`
 - **Auth:** Public endpoint; valid unexpired OTP is required
-- **Rate limit:** `AUTH_PHONE_OTP_VERIFY` by IP and challenge hash
-- **Returns:** `{ success, loginToken, phoneMasked, expiresInSeconds }`
+- **Rate limit:** `AUTH_PHONE_OTP_VERIFY` by IP before parsing, then by challenge hash after validation
+- **Body admission:** 1KB bounded JSON body before challenge verification
+- **Diagnostics:** Expected OTP errors log code-only; unexpected route failures and consumed-token user mismatches use bounded auth diagnostics.
+- **Returns:** `{ success, action: "verify", challengeId, loginToken, phoneMasked, expiresInSeconds }`
+- **Browser acknowledgement:** `PhoneOtpAuthPanel` requires the verify action and matching challenge id before using the login token.
 - **Follow-up:** Client calls `signIn('credentials', { phoneOtpLoginToken })`; dashboard Firebase sync continues through `/api/auth/set-claims`.
 
 ### `POST /api/auth/claim-account`
@@ -499,15 +537,27 @@ Links a messaging-onboarded business to a real account. Three modes:
 - **MODE 2 (Email/Password):** `{ claimToken, email, password, name? }` — no session required. Creates Firebase Auth user and converts placeholder user doc. The WhatsApp phone also becomes a login alias for the same password.
 - **MODE 3 (WhatsApp Phone/Passcode):** `{ claimToken, password, name?, useWhatsappPhone: true }` — no session required. Uses the verified WhatsApp number as the login identifier with the generated messaging email behind Firebase Auth.
 
+Modes 1 and 2 also sync the claimed tenant/store email. Because store email is public business truth, the route revalidates public menu, Official Business Page, store, and client-store cache tags after those store email writes.
+
+The route applies the `AUTH_SENSITIVE` hashed-IP limiter before a 16KB bounded JSON body and claim-token lookup. Missing-token diagnostics record only claim-token presence and length, never token characters.
+
+Before any ownership write, each claim mode re-reads the messaging user document in a Firestore transaction and verifies the same claim token is still present, unexpired, and attached to tenant/store identity. This keeps the token single-use even under duplicate submit or parallel claim attempts.
+
 ### `GET /api/auth/validate-claim?token=TOKEN`
 
 Validates a claim token from messaging onboarding. Returns business info for login page welcome. No authentication required.
+
+- **Rate limit:** `AUTH_SENSITIVE` by hashed IP before claim-token lookup
+- **Success acknowledgement:** The browser only enters claim setup when the route returns `valid: true`, `status: "valid"`, `preview: "claim-token"`, and a non-empty business name. Phone values are displayed only when already masked.
+- **Diagnostics:** Unexpected failures use bounded auth diagnostics with claim-token and request metadata presence-length only; the token value is never logged.
 
 ### `POST /api/auth/update-profile`
 
 Updates logged-in user's profile fields (name, phone, countryCode, dialCode). Email changes not supported.
 
 - **Auth:** Requires active NextAuth session
+- **Admission:** `DATA_WRITE` limiter by HMAC-hashed session user ID, then 4KB bounded JSON body before validation or user-document reads
+- **Client request/response boundary:** Desktop account modal and mobile More profile screen send the request with same-origin credentials, no browser cache, and manual redirect handling. They parse the response through `src/lib/auth/accountClientResponses.ts`, cap JSON at 16KB, and require `success: true`, `updated`, and `updates` before showing success.
 
 ### `POST /api/auth/change-password`
 
@@ -515,6 +565,9 @@ Changes logged-in user's password. Verifies current password via Firebase Auth R
 
 - **Body:** `{ currentPassword, newPassword }`
 - **Auth:** Requires active NextAuth session
+- **Body admission:** `AUTH_SENSITIVE` rate limit by authenticated user ID before a 2KB bounded JSON body and Firebase Auth verification
+- **Client request/response boundary:** Desktop account modal and mobile More account access screen send the request with same-origin credentials, no browser cache, and manual redirect handling. They parse the response through `src/lib/auth/accountClientResponses.ts`, cap JSON at 16KB, and require `success: true` before showing success.
+- **Diagnostics:** Missing Firebase API key, current-password verification exceptions, and unexpected route failures use bounded auth diagnostics with session/request metadata presence-length only.
 - **Note:** Works for password/passcode accounts, including email/password, Staff ID/passcode, and WhatsApp-number/passcode accounts. OAuth-only users manage their password with the OAuth provider.
 
 ### Key Design Decisions (Auth Audit)
@@ -522,18 +575,18 @@ Changes logged-in user's password. Verifies current password via Firebase Auth R
 - **`isVerified`** — KEPT. Gate for login: `false` = user doc exists but no Firebase Auth account.
 - **`platformRole`** — KEPT. Controls platform admin access (`"PLATFORM"` vs `"OWNER"` vs `"USER"`).
 - **`role` vs `roles`** — Only `role` (singular) is used. One role per store per user. `roles` removed from sanitizer.
-- **Claim token expiry** — REMOVED. Token is 256-bit cryptographic random (brute force impossible). No support dependency.
+- **Claim token expiry** — Enforced when `claimTokenExpiresAt` is present. Expired tokens are cleared and rejected before account claim or claim-preview data is returned.
 
 ---
 
 ## �🔄 Related Documentation
 
 - **Security:** `__docs__/security/README.md`
-- **Database:** `__docs__/database/README.md`
-- **API:** `__docs__/api/README.md`
+- **Database:** `__docs__/projects/11-database-layer.md`
+- **API:** `__docs__/projects/12-api-routes.md`
 
 ---
 
 **Last Updated:** February 2026 (Auth Audit)  
 **Maintainer:** Platform Team  
-**Status:** ✅ Production Active
+**Status:** Auth documentation hub; not current launch certification

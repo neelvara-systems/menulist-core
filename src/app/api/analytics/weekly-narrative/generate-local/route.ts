@@ -7,14 +7,18 @@ export const dynamic = 'force-dynamic';
  * POST /api/analytics/weekly-narrative/generate-local
  */
 
-import getActiveSession from '@lib/auth/getActiveSession';
 import { GEMINI_MODELS } from '@constant/AI/models';
 import { AI_ACTIONS_TYPES } from '@constant/common';
 import { DB_COLLECTIONS } from '@constant/database';
+import { PERMISSIONS } from '@constant/permissions';
 import { recordAiOperationForSession } from '@lib/ai/operationLog';
 import { logger } from '@lib/monitoring/logger';
+import { requireAnyStorePermission } from '@lib/permissions/server';
 import { checkRateLimit } from '@lib/rateLimit';
 import { getRateLimitForFeature } from '@lib/rateLimit/configs';
+import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
+import { hashPublicRateLimitValue } from 'src/middleware/publicApi';
+import { withAuth } from '@/middleware/auth';
 import { NextRequest, NextResponse } from 'next/server';
 
 type WeeklyNarrativePayload = {
@@ -22,6 +26,58 @@ type WeeklyNarrativePayload = {
   narrative: string;
   recommendations: string[];
 };
+
+const WEEKLY_NARRATIVE_LOCAL_ENDPOINT = '/api/analytics/weekly-narrative/generate-local';
+const WEEKLY_NARRATIVE_CATEGORY_MAX_LENGTH = 80;
+const WEEKLY_NARRATIVE_TOP_QUESTIONS_SCAN_LIMIT = 25;
+const WEEKLY_NARRATIVE_METRIC_MAX_VALUE = 1_000_000;
+
+const normalizeWeeklyNarrativeMetric = (
+  value: unknown,
+  maxValue = WEEKLY_NARRATIVE_METRIC_MAX_VALUE,
+): number => {
+  const numericValue = typeof value === 'number'
+    ? value
+    : typeof value === 'string'
+      ? Number(value)
+      : 0;
+
+  if (!Number.isFinite(numericValue) || numericValue <= 0) return 0;
+  return Math.min(numericValue, maxValue);
+};
+
+const normalizeWeeklyNarrativeCategory = (value: unknown): string => {
+  if (typeof value !== 'string') return 'General';
+
+  const normalized = value
+    .replace(/[\u0000-\u001f\u007f]/g, ' ')
+    .replace(/[{}<>`$\\]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, WEEKLY_NARRATIVE_CATEGORY_MAX_LENGTH)
+    .trim();
+
+  return normalized || 'General';
+};
+
+const getWeeklyNarrativeRouteLogContext = (
+  session: any,
+  metadata: {
+    highlightsCount?: number;
+    recommendationsCount?: number;
+    weekEnd?: unknown;
+    weekStart?: unknown;
+  } = {},
+) => ({
+  endpoint: WEEKLY_NARRATIVE_LOCAL_ENDPOINT,
+  ...getBoundedRuntimeStringContext('tenantId', session?.tId),
+  ...getBoundedRuntimeStringContext('storeId', session?.sId),
+  ...getBoundedRuntimeStringContext('userId', session?.uId),
+  ...getBoundedRuntimeStringContext('weekStart', metadata.weekStart),
+  ...getBoundedRuntimeStringContext('weekEnd', metadata.weekEnd),
+  highlightsCount: metadata.highlightsCount,
+  recommendationsCount: metadata.recommendationsCount,
+});
 
 const normalizeStringArray = (value: unknown, fallback: string[]): string[] => {
   if (!Array.isArray(value)) return fallback;
@@ -46,6 +102,7 @@ const stripJsonFence = (value: string) => {
 const parseWeeklyNarrativeResponse = (
   text: string,
   fallback: WeeklyNarrativePayload,
+  logContext: ReturnType<typeof getWeeklyNarrativeRouteLogContext>,
 ): WeeklyNarrativePayload => {
   try {
     const parsed = JSON.parse(stripJsonFence(text));
@@ -59,22 +116,26 @@ const parseWeeklyNarrativeResponse = (
       recommendations: normalizeStringArray(parsed?.recommendations, fallback.recommendations),
     };
   } catch (error) {
-    logger.warn('[Weekly Narrative Local] AI response parse failed; using fallback narrative', {
-      reason: error instanceof Error ? error.message : 'unknown',
+    logRuntimeFailure('weekly_narrative_response_parse_failed', error, {
+      ...logContext,
+      fallbackUsed: true,
     });
     return fallback;
   }
 };
 
-export async function POST(request: NextRequest) {
+export async function generateWeeklyNarrativeLocally(request: NextRequest, session: any) {
+  let sessionForLog: any = session;
+  let weekStartForLog: string | undefined;
+  let weekEndForLog: string | undefined;
+
   try {
     // 🛡️ SAFE_MODE: Block expensive AI operations during system maintenance
     const { checkSafeMode } = await import('@lib/ops/safeMode');
     const safeModeResponse = await checkSafeMode();
     if (safeModeResponse) return safeModeResponse;
 
-    // 1. Authentication
-    const session = await getActiveSession();
+    // 1. Scope validation. withAuth handles authentication, CORS, role, and blocked-account checks.
     if (!session?.tId || !session?.sId) {
       return NextResponse.json(
         { error: 'Unauthorized' },
@@ -86,8 +147,11 @@ export async function POST(request: NextRequest) {
     const sId = String(session.sId);
 
     const rateLimitConfig = getRateLimitForFeature('BATCH_OPERATION');
+    const userRateLimitHash = hashPublicRateLimitValue(session.uId);
+    const tenantRateLimitHash = hashPublicRateLimitValue(tId);
+    const storeRateLimitHash = hashPublicRateLimitValue(sId);
     const rateLimit = await checkRateLimit({
-      key: `weekly-narrative:${session.uId}:${tId}:${sId}`,
+      key: `weekly-narrative:${userRateLimitHash}:${tenantRateLimitHash}:${storeRateLimitHash}`,
       ...rateLimitConfig,
     });
     if (!rateLimit.allowed) {
@@ -106,7 +170,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    logger.info('[Weekly Narrative Local] Generating weekly narrative', { tId, sId });
+    const permissionError = await requireAnyStorePermission(
+      request,
+      session,
+      [PERMISSIONS.VIEW_ANALYTICS],
+      'Weekly narrative',
+    );
+    if (permissionError) return permissionError;
+
+    logger.info('[Weekly Narrative Local] Generating weekly narrative', getWeeklyNarrativeRouteLogContext(session));
 
     // 2. Import Gemini service (uses shared client — same pattern as descriptions/route.ts)
     const { genAIClient } = await import('@lib/google/genAi');
@@ -124,6 +196,8 @@ export async function POST(request: NextRequest) {
 
     const weekStart = startDate.toISOString().split('T')[0];
     const weekEnd = endDate.toISOString().split('T')[0];
+    weekStartForLog = weekStart;
+    weekEndForLog = weekEnd;
 
     // Query chatAnalytics for the last 7 days
     const snapshot = await firestoreAdmin
@@ -146,19 +220,21 @@ export async function POST(request: NextRequest) {
     let totalSatisfied = 0;
     let totalFeedback = 0;
     let totalMessages = 0;
-    const categories: Record<string, number> = {};
+    const categories: Record<string, number> = Object.create(null);
 
     snapshot.forEach((doc: any) => {
       const data = doc.data();
-      totalChats += data.totalChats || 0;
-      totalSatisfied += data.satisfiedUsers || 0;
-      totalFeedback += data.totalFeedback || 0;
-      totalMessages += data.totalMessages || 0;
+      totalChats += normalizeWeeklyNarrativeMetric(data.totalChats);
+      totalSatisfied += normalizeWeeklyNarrativeMetric(data.satisfiedUsers);
+      totalFeedback += normalizeWeeklyNarrativeMetric(data.totalFeedback);
+      totalMessages += normalizeWeeklyNarrativeMetric(data.totalMessages);
 
       if (data.topQuestions && Array.isArray(data.topQuestions)) {
-        data.topQuestions.forEach((q: any) => {
-          if (q.category) {
-            categories[q.category] = (categories[q.category] || 0) + q.count;
+        data.topQuestions.slice(0, WEEKLY_NARRATIVE_TOP_QUESTIONS_SCAN_LIMIT).forEach((q: any) => {
+          const category = normalizeWeeklyNarrativeCategory(q?.category);
+          const count = normalizeWeeklyNarrativeMetric(q?.count);
+          if (count > 0) {
+            categories[category] = (categories[category] || 0) + count;
           }
         });
       }
@@ -194,17 +270,17 @@ export async function POST(request: NextRequest) {
 
     prevSnapshot.forEach((doc: any) => {
       const data = doc.data();
-      prevTotalChats += data.totalChats || 0;
-      prevTotalSatisfied += data.satisfiedUsers || 0;
-      prevTotalFeedback += data.totalFeedback || 0;
+      prevTotalChats += normalizeWeeklyNarrativeMetric(data.totalChats);
+      prevTotalSatisfied += normalizeWeeklyNarrativeMetric(data.satisfiedUsers);
+      prevTotalFeedback += normalizeWeeklyNarrativeMetric(data.totalFeedback);
     });
 
     const volumeChange = prevTotalChats > 0
       ? ((totalChats - prevTotalChats) / prevTotalChats) * 100
       : 0;
 
-    const currentSatRate = totalFeedback > 0 ? (totalSatisfied / totalFeedback) * 100 : 0;
-    const prevSatRate = prevTotalFeedback > 0 ? (prevTotalSatisfied / prevTotalFeedback) * 100 : 0;
+    const currentSatRate = totalFeedback > 0 ? Math.min((totalSatisfied / totalFeedback) * 100, 100) : 0;
+    const prevSatRate = prevTotalFeedback > 0 ? Math.min((prevTotalSatisfied / prevTotalFeedback) * 100, 100) : 0;
     const satisfactionChange = prevSatRate > 0 ? currentSatRate - prevSatRate : 0;
     const fallbackNarrative: WeeklyNarrativePayload = {
       narrative: `MenuList reviewed ${totalChats} customer conversations for the week ending ${weekEnd}. The main topic was ${topCategory}, with satisfaction at ${currentSatRate.toFixed(1)}%.`,
@@ -243,7 +319,10 @@ Generate a JSON response with:
       model: aiModel,
       contents: prompt,
     });
-    const parsed = parseWeeklyNarrativeResponse(geminiResult.text ?? '', fallbackNarrative);
+    const parsed = parseWeeklyNarrativeResponse(geminiResult.text ?? '', fallbackNarrative, getWeeklyNarrativeRouteLogContext(session, {
+      weekEnd,
+      weekStart,
+    }));
 
     // 7. Save to Firestore
     const narrative = {
@@ -287,10 +366,20 @@ Generate a JSON response with:
       processingTime: Date.now() - operationStart,
       source: 'weekly_narrative_local',
     }).catch((logError) => {
-      logger.error('[Weekly Narrative Local] Operation log failed', logError);
+      logRuntimeFailure('weekly_narrative_operation_log_failed', logError, getWeeklyNarrativeRouteLogContext(session, {
+        highlightsCount: parsed.highlights?.length || 0,
+        recommendationsCount: parsed.recommendations?.length || 0,
+        weekEnd,
+        weekStart,
+      }));
     });
 
-    logger.info('[Weekly Narrative Local] Generated successfully', { tId, sId, weekEnd, weekStart });
+    logger.info('[Weekly Narrative Local] Generated successfully', getWeeklyNarrativeRouteLogContext(session, {
+      highlightsCount: parsed.highlights?.length || 0,
+      recommendationsCount: parsed.recommendations?.length || 0,
+      weekEnd,
+      weekStart,
+    }));
 
     // 8. Return success
     return NextResponse.json({
@@ -305,7 +394,10 @@ Generate a JSON response with:
     });
 
   } catch (error: any) {
-    logger.error('[Weekly Narrative Local] Error', error);
+    logRuntimeFailure('weekly_narrative_local_generation_failed', error, getWeeklyNarrativeRouteLogContext(sessionForLog, {
+      weekEnd: weekEndForLog,
+      weekStart: weekStartForLog,
+    }));
 
     return NextResponse.json(
       {
@@ -315,3 +407,5 @@ Generate a JSON response with:
     );
   }
 }
+
+export const POST = withAuth(generateWeeklyNarrativeLocally);

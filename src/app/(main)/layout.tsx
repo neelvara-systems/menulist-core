@@ -48,7 +48,6 @@ export default async function MainLayout({ children }: { children: React.ReactNo
 
   const session = await getServerSession(authOptions);
   if (!session) {
-    console.log("No session found in MainLayout, redirecting to signin");
     redirect("/signin");
   }
   if (session.user?.active === false || (session.user as any)?.deleted === true || session.user?.isVerified === false || isPlatformEntityBlocked(session.user)) {

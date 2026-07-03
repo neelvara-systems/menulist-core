@@ -1,10 +1,12 @@
 # MenuListAi — Complete Feature Specification
 
 **Document Type:** CEO-Level Product Spec  
-**Status:** ✅ Production Ready  
+**Status:** Codebase-derived feature map; not current launch certification
 **Date:** January 9, 2026  
 **Confidence:** 97% — All features validated against codebase  
 **Source:** Reverse-engineered from codebase + documentation audit
+
+> Launch boundary: this feature map preserves source-discovery evidence. Current MenuList release readiness is decided by the active [production-readiness audit](../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../production-readiness/external-certification-runbook.md), current source verifiers, browser/mobile QA, target deploy evidence, provider smoke where relevant, and production-host evidence.
 
 ---
 
@@ -536,6 +538,10 @@ AI recommends WHERE to post:
 - Long description → WhatsApp Business
 - Time-limited offer → WhatsApp Status
 - High-price item → Consider print poster
+
+### Runtime Acknowledgement Boundary
+
+As of July 1, 2026, Today completion and skip actions require shaped DAL acknowledgements before desktop or mobile UI advances local Today state or shows success. Completion must return `success: true`, the requested campaign/project/type/surface/method, `status: "completed"`, export id/event identity, and the updated Today state. Skip must return `success: true`, the requested campaign/type, resulting `status: "skipped" | "suppressed"`, skip count, and updated Today state. Download surface feedback also requires the execution result to return the requested surface and `method: "download"`. Generic `apiCallComposer()` fallback values and generic surface `success` values are rejected by the shared campaign guards.
 
 ### Business Value
 

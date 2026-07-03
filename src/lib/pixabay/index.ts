@@ -1,7 +1,15 @@
 import { BACKGROUND_IMAGES_ORIENTATIONS, SEARCHED_IMAGES_COUNT_PER_REQUEST_PIXABAY } from "@constant/common";
+import { getImageProviderRequestLogContext, logImageProviderFailure } from "@lib/imageProviderDiagnostics";
+import {
+    buildImageProviderUrl,
+    IMAGE_PROVIDER_REQUEST_TIMEOUT_MS,
+    normalizeImageProviderPage,
+    normalizeImageProviderQuery,
+    normalizePixabayImageProviderOrientation,
+} from "@lib/imageProviderRequests";
 import { axiosClient } from "../axios/axiosClient";
 
-const SEARCH_API_URL = `https://pixabay.com/api?key=${process.env.NEXT_PUBLIC_PIXABAY_API_CLIENTID}&`;
+const SEARCH_API_URL = 'https://pixabay.com/api';
 
 export const PIXABAY_IMAGE_SIZES = {
     "largeImageURL": 'largeImageURL',//56kb
@@ -10,10 +18,18 @@ export const PIXABAY_IMAGE_SIZES = {
 }
 
 export const getPixabayImagesBySearchQuery = (searchQuery: any, orientation = BACKGROUND_IMAGES_ORIENTATIONS.LANDSCAPE, page = 1) => {
-    if (orientation == BACKGROUND_IMAGES_ORIENTATIONS.LANDSCAPE || orientation == BACKGROUND_IMAGES_ORIENTATIONS.SQUARE) orientation = 'horizontal';
-    if (orientation == BACKGROUND_IMAGES_ORIENTATIONS.PORTRAIT) orientation = 'vertical';
+    const normalizedOrientation = normalizePixabayImageProviderOrientation(orientation);
+    const normalizedPage = normalizeImageProviderPage(page);
+    const requestUrl = buildImageProviderUrl(SEARCH_API_URL, {
+        key: process.env.NEXT_PUBLIC_PIXABAY_API_CLIENTID || '',
+        orientation: normalizedOrientation,
+        page: normalizedPage,
+        per_page: SEARCHED_IMAGES_COUNT_PER_REQUEST_PIXABAY,
+        q: normalizeImageProviderQuery(searchQuery),
+    });
+
     return new Promise((res, rej) => {
-        axiosClient.GET(`${SEARCH_API_URL}orientation=${orientation}&page=${page}&per_page=${SEARCHED_IMAGES_COUNT_PER_REQUEST_PIXABAY}&q=${searchQuery}`)
+        axiosClient.GET(requestUrl, { timeout: IMAGE_PROVIDER_REQUEST_TIMEOUT_MS })
             .then((response) => {
                 const data = {
                     total: response.data.total,
@@ -22,8 +38,14 @@ export const getPixabayImagesBySearchQuery = (searchQuery: any, orientation = BA
                 }
                 res(data);
             }).catch(function (error) {
-                rej(error?.response?.data || 'Error while fetching images');
-                console.log(`Error in api/unsplash/getImages = `, error);
+                logImageProviderFailure('image_provider_pixabay_search_failed', error, getImageProviderRequestLogContext({
+                    operation: 'search',
+                    orientation: normalizedOrientation,
+                    page: normalizedPage,
+                    provider: 'pixabay',
+                    query: searchQuery,
+                }));
+                rej('Error while fetching images');
             });
     })
 }

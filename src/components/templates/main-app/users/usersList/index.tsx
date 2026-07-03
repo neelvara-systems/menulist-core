@@ -2,6 +2,7 @@
 
 import TextElement from "@antdComponent/textElement";
 import { fetchStaffUsers, forceSignOutStaffUser, removeStaffFromStore, requestStaffPasswordReset } from "@lib/staffManagement/client";
+import { getBoundedStaffStringContext, logStaffClientFailure } from "@lib/staffManagement/diagnostics";
 import type { StaffStoreOption } from "@lib/staffManagement/types";
 import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from "@providers/platformProviders/platformGlobalDataProvider";
 import { showErrorToast, showSuccessToast } from "@reduxSlices/toast";
@@ -15,6 +16,8 @@ import UserDetailsModal from "./userDetailsModal";
 import UserAddUpdateForm from "./userForm";
 import UsersListTable from "./usersListTable";
 const { Search } = Input;
+
+type StaffClientLogContext = Record<string, boolean | number | string | undefined>;
 
 const getSafeUsersList = (usersList: unknown) => Array.isArray(usersList) ? usersList : [];
 
@@ -44,6 +47,12 @@ const userHasCurrentStore = (user: any, storeId: number | string | undefined) =>
     )
 );
 
+const getDesktopStaffLogContext = (storeDetails: any, user?: any) => ({
+    ...getBoundedStaffStringContext('storeId', storeDetails?.storeId),
+    ...getBoundedStaffStringContext('tenantId', storeDetails?.tenantId),
+    ...getBoundedStaffStringContext('userId', user?.id),
+});
+
 function UsersListPage() {
 
     const [searchQuery, setSearchQuery] = useState('')
@@ -56,6 +65,15 @@ function UsersListPage() {
     const { storeDetails, userPermissions, usersList, setUsersList } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext)
     const canManageUsers = userPermissions?.canManageUsers === true;
     const canAssignRoles = userPermissions?.canAssignRoles === true;
+    const buildDesktopUsersLogContext = (flow: string, user?: any, metadata: StaffClientLogContext = {}): StaffClientLogContext => ({
+        surface: 'desktop_users',
+        flow,
+        canAssignRoles,
+        canManageUsers,
+        userCount: getSafeUsersList(usersList).length,
+        ...getDesktopStaffLogContext(storeDetails, user),
+        ...metadata,
+    });
 
     useEffect(() => {
         if (storeDetails?.storeId) {
@@ -80,6 +98,14 @@ function UsersListPage() {
                 setFilterdUsersList(data.users || []);
                 setStaffStores(data.stores || []);
             })
+            .catch((error) => {
+                if (cancelled) return;
+                logStaffClientFailure('desktop_staff_users_load_failed', error, getDesktopStaffLogContext(storeDetails));
+                dispatch(showErrorToast("Could not load staff members"));
+                setUsersList([]);
+                setFilterdUsersList([]);
+                setStaffStores([]);
+            })
             .finally(() => {
                 if (!cancelled) setIsLoadingUsers(false);
             });
@@ -87,7 +113,7 @@ function UsersListPage() {
         return () => {
             cancelled = true;
         };
-    }, [canManageUsers, setUsersList, storeDetails?.storeId, storeDetails?.tenantId])
+    }, [canManageUsers, dispatch, setUsersList, storeDetails?.storeId, storeDetails?.tenantId])
 
     const onChangeSearchQuery = (query: string) => {
         query = query ? query.toLowerCase() : '';
@@ -107,6 +133,7 @@ function UsersListPage() {
             content: (
                 <StaffLoginDetailsContent
                     countryCode={data.user?.countryCode}
+                    diagnosticContext={buildDesktopUsersLogContext('login_details_share', data.user)}
                     dialCode={data.user?.dialCode}
                     phoneNumber={data.user?.phoneNumber}
                     staffLoginId={data.staffLoginId}
@@ -147,19 +174,24 @@ function UsersListPage() {
 
     const onDeleteUser = async (user) => {
         if (!user?.id || !storeDetails?.tenantId || !storeDetails?.storeId) return;
-        const response = await removeStaffFromStore({
-            storeId: storeDetails.storeId,
-            tenantId: storeDetails.tenantId,
-            userId: user.id,
-        });
-        const usersListCopy = removeObjRef(getSafeUsersList(usersList));
-        const nextUsers = response.user?.deleted
-            || !userHasCurrentStore(response.user, storeDetails.storeId)
-            ? usersListCopy.filter((item) => item.id !== user.id)
-            : usersListCopy.map((item) => item.id === user.id ? response.user : item);
-        resetFilters(nextUsers);
-        if (userDetailsModal.active && userDetailsModal.data?.id === user.id) {
-            setUserDetailsModal({ active: false, data: null });
+        try {
+            const response = await removeStaffFromStore({
+                storeId: storeDetails.storeId,
+                tenantId: storeDetails.tenantId,
+                userId: user.id,
+            });
+            const usersListCopy = removeObjRef(getSafeUsersList(usersList));
+            const nextUsers = response.user?.deleted
+                || !userHasCurrentStore(response.user, storeDetails.storeId)
+                ? usersListCopy.filter((item) => item.id !== user.id)
+                : usersListCopy.map((item) => item.id === user.id ? response.user : item);
+            resetFilters(nextUsers);
+            if (userDetailsModal.active && userDetailsModal.data?.id === user.id) {
+                setUserDetailsModal({ active: false, data: null });
+            }
+        } catch (err) {
+            logStaffClientFailure('desktop_staff_remove_failed', err, getDesktopStaffLogContext(storeDetails, user));
+            dispatch(showErrorToast("Could not remove staff member"));
         }
     }
 
@@ -184,8 +216,9 @@ function UsersListPage() {
             } else {
                 dispatch(showSuccessToast("Staff access reset"));
             }
-        } catch (err: any) {
-            dispatch(showErrorToast(err?.message || "Could not reset staff access"));
+        } catch (err) {
+            logStaffClientFailure('desktop_staff_password_reset_failed', err, getDesktopStaffLogContext(storeDetails, user));
+            dispatch(showErrorToast("Could not reset staff access"));
         }
     }
 
@@ -205,8 +238,9 @@ function UsersListPage() {
                 }
             }
             dispatch(showSuccessToast("Staff member signed out"));
-        } catch (err: any) {
-            dispatch(showErrorToast(err?.message || "Could not sign out staff member"));
+        } catch (err) {
+            logStaffClientFailure('desktop_staff_force_signout_failed', err, getDesktopStaffLogContext(storeDetails, user));
+            dispatch(showErrorToast("Could not sign out staff member"));
         }
     }
 

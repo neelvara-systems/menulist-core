@@ -7,6 +7,7 @@ import React, { useState } from 'react';
 import { Button, Dropdown, message, theme } from 'antd';
 import { DownloadOutlined, FileTextOutlined, FileExcelOutlined, FilePdfOutlined } from '@ant-design/icons';
 import type { MenuProps } from 'antd';
+import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 
 export type ExportFormat = 'csv' | 'json' | 'pdf';
 
@@ -101,16 +102,19 @@ export const ExportButton: React.FC<ExportButtonProps> = ({
           break;
         }
         case 'pdf': {
-          // PDF export would require a library like jsPDF
-          // For now, show message that it's not implemented
-          message.info('PDF export coming soon!');
+          message.info('PDF export is not available here.');
           return;
         }
       }
 
       message.success(`Exported as ${format.toUpperCase()}`);
     } catch (error) {
-      console.error('Export error:', error);
+      logRuntimeFailure('analytics_export_failed', error, {
+        ...getBoundedRuntimeStringContext('filename', filename),
+        format,
+        rowCount: Array.isArray(data) ? data.length : 0,
+        hasCustomExport: Boolean(onExport),
+      });
       message.error('Failed to export data');
     } finally {
       setExporting(false);

@@ -33,7 +33,7 @@ function buildSitemapAlternates(path: string, baseUrl: string): MetadataRoute.Si
  * 
  * Each client has their own sitemap at their domain (see /app/client/sitemap.ts)
  * 
- * See: __docs__/SEO-IMPLEMENTATION-GUIDE.md for full architecture
+ * See: __docs__/seo-implementation-guide.md for full architecture
  */
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     // Platform pages only - NOT client menus

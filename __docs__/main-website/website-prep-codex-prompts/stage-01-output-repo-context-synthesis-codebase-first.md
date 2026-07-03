@@ -267,7 +267,7 @@ Surface perception vs underlying architecture:
   - Evidence: project/store/PWA/multi-outlet write paths revalidate public menu/OBP cache tags.
   - Strategic meaning: "update once" has technical backing.
 - Signal: deterministic public routing.
-  - Evidence: public routing doctrine fixes OBP root, `/menu`, canonical URLs, slug rules, and performance boundaries (`__docs__/client-menu/PUBLIC-ROUTING-DOCTRINE.md`).
+  - Evidence: public routing doctrine fixes OBP root, `/menu`, canonical URLs, slug rules, and performance boundaries (`__docs__/client-menu/public-routing-doctrine.md`).
   - Strategic meaning: links and QR codes behave like infrastructure.
 - Signal: multi-outlet read-time inheritance.
   - Evidence: resolver merges master and outlet overrides instead of copying state (`src/lib/multiOutlet/resolveProject.ts`).
@@ -606,7 +606,7 @@ CTA angle directions:
   - `src/app/client/obp/*`: official business page runtime.
   - `src/components/templates/website/clientWebsite/index.tsx`: public menu renderer and analytics/PWA mount.
   - `src/app/api/revalidate/menu/route.ts`: public cache revalidation.
-  - `__docs__/client-menu/PUBLIC-ROUTING-DOCTRINE.md`: public URL authority rules.
+  - `__docs__/client-menu/public-routing-doctrine.md`: public URL authority rules.
 - Owner surfaces:
   - `src/components/templates/main-app/businessSettings/tabs/OfficialPageTab.tsx`: desktop OBP controls.
   - `src/components/mobile/screens/MobileOfficialPageScreen.tsx`: mobile OBP controls.

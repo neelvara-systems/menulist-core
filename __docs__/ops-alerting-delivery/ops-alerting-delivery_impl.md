@@ -2,7 +2,7 @@
 
 **Status:** ✅ IMPLEMENTED — Ops alerts plus platform notification dashboard
 **Created:** February 20, 2026  
-**Last Updated:** June 2, 2026
+**Last Updated:** June 30, 2026
 **Audience:** Developers
 
 ---
@@ -15,6 +15,8 @@ createAlert() [EXISTING in alerts.ts]
   └─→ Check deploy mute window
   └─→ sendTelegramAlert(alert)
       ├─ Check ENABLE_OPS_ALERTS flag
+      ├─ Validate TELEGRAM_BOT_TOKEN shape
+      ├─ URL-encode bot-token path segment
       ├─ Format message (severity + title + details)
       └─ HTTP POST to Telegram Bot API
   └─→ sendPlatformAlertDelivery(alert)
@@ -48,13 +50,18 @@ The file is mirrored to `functions/src/sharedData/platformNotificationRegistry.t
 
 `/ops/platform-notifications` is platform-role only and uses `src/app/api/ops/platform-notifications/route.ts`.
 
+June 30 follow-up: route-side query validation, rate-limit, and action-validation security logs use bounded route metadata instead of raw session/request context. Invalid attempted action text is summarized as presence/length metadata.
+
 Capabilities:
 
 - Manual refresh, no realtime listener.
+- POST actions keep the platform-role gate, apply a per-operator limiter with HMAC-hashed key material, and reject bodies above 8KB before alert reads, writes, or manual handoff work.
 - Filters by active/acknowledged/all, severity, and trigger type.
 - Detail drawer for runbook, channels, metadata preview, scope, and status.
 - Acknowledge button writes `acknowledged`, `acknowledgedAt`, and `acknowledgedBy`.
-- Email and WhatsApp Web buttons open a prefilled message for manual sending.
+- Browser responses are capped at 256KB and validated before UI state or action success copy changes. Load responses must match the feature/filter/count/event/registry/cost snapshot shape, and action responses must return `ok: true` with a supported action and fixed message text.
+- Browser requests use no-store cache policy, same-origin credentials, and manual redirect handling before response validation. Auth or API redirects are handled as failed monitor responses instead of being followed by the browser.
+- Email and WhatsApp Web buttons open a prefilled message for manual sending. WhatsApp Web opens check the returned browser window and log `platform_notification_monitor_whatsapp_open_failed` with bounded destination/message/link presence-length metadata only when the browser blocks or rejects the handoff. Message copy feedback waits for Clipboard API success or an acknowledged textarea fallback; failed copy diagnostics include clipboard/fallback support booleans and bounded destination, subject, body, channel, status, severity, trigger, and selected-event metadata only.
 - Record Manual marks `actionTaken` and stores masked handoff metadata on the alert document.
 - Manual Alert can create a classified alert for operator-created incidents.
 
@@ -65,7 +72,7 @@ Capabilities:
 - `SAFE_MODE_ACTIVATED` is critical, product `PLATFORM`, category `cost`.
 - `SAFE_MODE_DEACTIVATED` is warning, product `PLATFORM`, category `cost`.
 
-The route is rate limited and remains protected by `withAuth(..., { requiredPlatformRole: 'PLATFORM' })`.
+The route is rate limited with HMAC-hashed operator key material, rejects bodies above 2KB before validation or writes, and remains protected by `withAuth(..., { requiredPlatformRole: 'PLATFORM' })`. Its security events use bounded route metadata, and activation reason text is summarized as presence/length in security logs. `POST /api/ops/mute-alerts` follows the same platform-role, bounded security-log context, and hashed per-operator limiter boundary with a 1KB body cap before the mute-window write.
 
 ## Automatic Platform Email/WhatsApp Delivery
 
@@ -76,6 +83,8 @@ Platform-owner delivery now runs from both alert helpers:
 - Both helpers resolve trigger metadata from `metadata.platformTriggerType`, `metadata.productId`, and `metadata.category`.
 - Unknown legacy alerts stay visible in `systemAlerts` but are not automatically sent to Email/WhatsApp.
 - `metadata.platformDeliverySuppressed: true` keeps low-value events, such as scheduler heartbeats, out of automatic delivery while preserving the alert record when needed.
+- Email/WhatsApp delivery stays best-effort and non-blocking, but failed/skipped provider results and thrown delivery exceptions are no longer silent. The helpers log `ops_platform_alert_email_delivery_failed` or `ops_platform_alert_whatsapp_delivery_failed` with bounded alert, tenant, store, trigger, product, channel-error, and skipped-reason presence/length metadata only.
+- Cloud Functions platform WhatsApp delivery treats non-2xx Meta Graph responses as `whatsapp_send_failed` and logs the bounded status code without reading or storing the provider response body.
 
 Required runtime configuration:
 
@@ -97,6 +106,12 @@ Deployment note: `functions/src/config/secrets.ts` keeps `SECRET_GROUPS.PLATFORM
 
 Before production launch, complete [Step 7B in the Launch Prerequisites guide](../production-readiness/launch-prerequisites.md#step-7b-platform-alert-emailwhatsapp-go-live-checklist-10-minutes): set the missing Secret Manager values, platform recipient envs, WhatsApp template/session config, redeploy the affected Functions, and verify dashboard, Email, WhatsApp, and manual fallback delivery.
 
+## Telegram Bot API URL Guard
+
+App-side alerts in `src/lib/ops/alerts.ts` and Cloud Functions alerts in `functions/src/monitoring/telegramAlert.ts` keep the fixed `https://api.telegram.org` provider host, but no longer interpolate the raw `TELEGRAM_BOT_TOKEN` into the request path. Both helpers trim the configured chat ID, validate the bot token against the expected Telegram `digits:token` shape, and build `/bot.../sendMessage` with `encodeURIComponent(normalizedToken)`. App-side Telegram sends use manual redirect handling and log bounded `ops_alert_telegram_delivery_failed` diagnostics for non-2xx provider responses, including 3xx redirects, without blocking alert creation.
+
+If the token is missing or malformed, Telegram delivery is skipped and only bounded setup diagnostics are logged. The alert write, mute check, platform email/WhatsApp delivery, fire-and-forget behavior, provider payload shape, and owner/customer surfaces are unchanged.
+
 ## Direct Trigger Wiring
 
 The registry is wired into the main platform alert emitters so the dashboard and automatic delivery no longer depend only on title/message heuristics:
@@ -112,16 +127,19 @@ The registry is wired into the main platform alert emitters so the dashboard and
 - Decision Blocks scheduler failure runs, with successful hourly heartbeats suppressed from automatic delivery.
 - GCP budget webhook alerts.
 
+Alert-rule evaluation keeps the existing fail-open behavior for monitoring callers. Individual rule condition failures are logged with bounded tenant/store context. When a rule condition triggers but `createAlert()` later rejects, `evaluateAlertRules()` now logs `[Alerts] Rule alert creation failed` with failed/triggered counts, the first failed rule ID, and bounded source error metadata instead of discarding the `Promise.allSettled()` result.
+
 ## Telegram Bot Setup (Prerequisites)
 
 1. Create Telegram bot via @BotFather → get `TELEGRAM_BOT_TOKEN`
 2. Create private channel/group for alerts
 3. Add bot to channel → get `TELEGRAM_CHAT_ID`
-4. Store both as Firebase Functions secrets:
+4. Store both as Firebase Functions secrets in QA first:
    ```bash
-   firebase functions:secrets:set TELEGRAM_BOT_TOKEN
-   firebase functions:secrets:set TELEGRAM_CHAT_ID
+   firebase functions:secrets:set TELEGRAM_BOT_TOKEN --project menulist-qa
+   firebase functions:secrets:set TELEGRAM_CHAT_ID --project menulist-qa
    ```
+   Production values require QA alert-delivery evidence and explicit production secret approval before repeating the same commands with `--project menulist`.
 
 ## File Structure
 

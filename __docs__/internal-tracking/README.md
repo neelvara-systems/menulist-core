@@ -94,11 +94,14 @@ ENABLE_MENU_OBSERVATION: true,  // Default: false
 | ------------------------------------- | ---------------------------- |
 | `src/types/menuObservation.ts`        | All MOL types                |
 | `src/database/menuChangeLog/index.ts` | Change log DAL               |
+| `src/database/menuChangeLog/menuChangeLogDiagnostics.ts` | Bounded MOL failure diagnostics |
 | `src/database/projects/index.ts`      | Change detection interceptor |
 | `src/config/features.ts`              | Feature flags                |
 | `src/constants/database.ts`           | Collection constants         |
 
+**Diagnostics note**: MOL write paths remain non-blocking. Tracking, scoped tracking, debounced writes, and flush-time session lookup failures log bounded `menu_change_log_*` diagnostics; `flushPendingChanges()` logs `menu_change_log_flush_session_failed` if session lookup fails before queued write handoff.
+
 ---
 
-**Last Updated**: January 14, 2026
+**Last Updated**: June 30, 2026
 **Version**: 1.0

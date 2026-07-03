@@ -15,10 +15,15 @@ import {
     promoteCandidate,
     mergeCandidateStatus,
 } from '@database/answerlattice/entityCandidates';
-import { getAnswerlatticeUiErrorMessage } from '@lib/answerlattice/uiErrors';
 import { AnswerlatticeEntityCandidate } from '@type/answerlattice';
 import { message } from 'antd';
 import { useCallback, useEffect, useState } from 'react';
+
+const ANSWERLATTICE_ENTITY_CANDIDATES_LOAD_FAILED = 'Could not load candidates';
+const ANSWERLATTICE_ENTITY_CANDIDATE_APPROVE_FAILED = 'Could not approve candidate';
+const ANSWERLATTICE_ENTITY_CANDIDATE_REJECT_FAILED = 'Could not reject candidate';
+const ANSWERLATTICE_ENTITY_CANDIDATE_PROMOTE_FAILED = 'Could not promote candidate';
+const ANSWERLATTICE_ENTITY_CANDIDATE_MERGE_FAILED = 'Could not merge candidate';
 
 interface UseEntityCandidatesReturn {
     candidates: AnswerlatticeEntityCandidate[];
@@ -44,8 +49,8 @@ export function useEntityCandidates(tId: number, sId: number): UseEntityCandidat
         try {
             const result = await getPendingCandidates(tId, sId);
             setCandidates(result || []);
-        } catch (err) {
-            setError(getAnswerlatticeUiErrorMessage(err, 'Could not load candidates'));
+        } catch {
+            setError(ANSWERLATTICE_ENTITY_CANDIDATES_LOAD_FAILED);
         } finally {
             setLoading(false);
         }
@@ -60,8 +65,8 @@ export function useEntityCandidates(tId: number, sId: number): UseEntityCandidat
             await approveCandidateStatus(candidateId);
             message.success('Candidate approved');
             await refresh();
-        } catch (err) {
-            message.error(getAnswerlatticeUiErrorMessage(err, 'Could not approve candidate'));
+        } catch {
+            message.error(ANSWERLATTICE_ENTITY_CANDIDATE_APPROVE_FAILED);
         }
     }, [refresh]);
 
@@ -70,8 +75,8 @@ export function useEntityCandidates(tId: number, sId: number): UseEntityCandidat
             await rejectCandidateStatus(candidateId);
             message.success('Candidate rejected');
             await refresh();
-        } catch (err) {
-            message.error(getAnswerlatticeUiErrorMessage(err, 'Could not reject candidate'));
+        } catch {
+            message.error(ANSWERLATTICE_ENTITY_CANDIDATE_REJECT_FAILED);
         }
     }, [refresh]);
 
@@ -80,8 +85,8 @@ export function useEntityCandidates(tId: number, sId: number): UseEntityCandidat
             await promoteCandidate(candidateId, tId, sId);
             message.success('Candidate promoted to entity');
             await refresh();
-        } catch (err) {
-            message.error(getAnswerlatticeUiErrorMessage(err, 'Could not promote candidate'));
+        } catch {
+            message.error(ANSWERLATTICE_ENTITY_CANDIDATE_PROMOTE_FAILED);
         }
     }, [tId, sId, refresh]);
 
@@ -90,8 +95,8 @@ export function useEntityCandidates(tId: number, sId: number): UseEntityCandidat
             await mergeCandidateStatus(candidateId);
             message.success('Candidate marked as merged');
             await refresh();
-        } catch (err) {
-            message.error(getAnswerlatticeUiErrorMessage(err, 'Could not merge candidate'));
+        } catch {
+            message.error(ANSWERLATTICE_ENTITY_CANDIDATE_MERGE_FAILED);
         }
     }, [refresh]);
 

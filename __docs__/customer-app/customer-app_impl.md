@@ -3,7 +3,7 @@
 **Feature Name:** Customer App
 **Document Type:** Validated implementation contract
 **Status:** Runtime implemented; manual device QA still required
-**Last Updated:** May 2, 2026
+**Last Updated:** June 30, 2026
 **Audience:** Engineers, Technical Leads
 
 ---
@@ -61,12 +61,34 @@ Owner install behavior is intentionally auth-independent: installing from `/sign
 | Desktop owner settings | Implemented | `src/components/templates/main-app/businessSettings/tabs/CustomerAppTab.tsx` |
 | Mobile owner settings | Implemented | `src/components/mobile/screens/MobileCustomerAppScreen.tsx` |
 | Owner readiness/status cards | Implemented | `src/components/templates/main-app/businessSettings/tabs/CustomerAppTab.tsx`, `src/components/mobile/screens/MobileCustomerAppScreen.tsx` |
+| Owner settings diagnostics | Implemented | `src/lib/pwa/pwaDiagnostics.ts` |
 | Customer App DAL | Implemented | `src/database/pwa/index.ts` |
 | Customer App analytics events | Implemented | `src/lib/analytics/unified.ts` |
 | Install/open/shortcut detectors | Implemented | `src/lib/pwa/installTracker.ts`, `src/lib/pwa/standaloneDetector.ts`, `src/lib/pwa/shortcutSourceDetector.ts` |
 | Dashboard rollups | Implemented | `functions/src/aggregateCustomerAnalytics.ts`, `functions/src/analytics/dashboardSummaryAggregation.ts` |
 | Desktop analytics card | Implemented | `src/components/templates/main-app/dashboard/AnalyticsDashboard/CustomerAppMetrics.tsx` |
 | Mobile analytics card | Implemented | `src/components/mobile/screens/dashboardSections/MobileCustomerAppMetrics.tsx` |
+
+---
+
+## Owner Settings Diagnostic Contract
+
+Desktop and mobile owner settings save failures use `src/lib/pwa/pwaDiagnostics.ts`.
+
+| Surface | Failure Code | Source |
+| --- | --- | --- |
+| Desktop Customer App settings | `customer_app_desktop_settings_save_failed` | `src/components/templates/main-app/businessSettings/tabs/CustomerAppTab.tsx` |
+| Desktop Customer App install-link copy | `customer_app_desktop_install_link_copy_failed` | `src/components/templates/main-app/businessSettings/tabs/CustomerAppTab.tsx` |
+| Mobile Customer App settings | `customer_app_mobile_settings_save_failed` | `src/components/mobile/screens/MobileCustomerAppScreen.tsx` |
+| Mobile Customer App install-link copy | `customer_app_mobile_install_link_copy_failed` | `src/components/mobile/screens/MobileCustomerAppScreen.tsx` |
+
+Diagnostics record only bounded store/tenant presence and length metadata, install-link presence/length metadata, install toggles, icon-change flags, language count, domain/subdomain presence, clipboard/fallback support booleans, and source error name/code. They must not direct-console raw store records, localized short names, install URLs, icon URLs, upload payloads, Storage errors, or provider/browser exception objects.
+
+Desktop and mobile install-link copied feedback must wait for Clipboard API success or acknowledged textarea fallback success. Failed copy handoffs use `customer_app_desktop_install_link_copy_failed` / `customer_app_mobile_install_link_copy_failed` and fixed owner copy.
+
+Settings saves must also require explicit DAL acknowledgements. `updatePWASettings()` must return a valid settings acknowledgement before desktop or mobile updates local draft baselines. `updatePWAIconOverride()` must return `success: true` and `pwaIconUpdatedAt` before desktop or mobile updates the local icon state. The pwaShortName business-copy metadata side write must be checked before the UI reports the save as complete.
+
+`npm run verify:customer-app-pwa` enforces the desktop/mobile settings diagnostic contract and the Customer App analytics source-chain contract from event field mapping through public analytics preference checks, daily writes, summary aggregation, dashboard-summary generation, scheduler inclusion, dashboard DAL reads, `useCustomerAppDashboard`, and desktop/mobile KPI cards.
 
 ---
 
@@ -95,6 +117,7 @@ Important rules:
 - Deleted or renamed project slugs do not define installed app identity.
 - `MANIFEST_START_URL_DEGRADED` is no longer part of this architecture.
 - `pwaInstallSurface` is analytics source context only.
+- Unexpected manifest generation failures still return the existing empty 404 manifest fallback, but internal diagnostics use bounded secure logging: hostname presence/length, domain type, client-domain booleans, store-id presence/length, and error name only.
 
 ---
 
@@ -114,6 +137,10 @@ Frozen rules:
 Owner dashboard can keep `next-pwa`/Workbox behavior through `public/sw.js`, but tenant/customer origins must use the minimal customer SW.
 
 Platform public website routes do not install the owner Workbox worker, but they preserve an already-registered `public/sw.js` owner worker. Standalone platform launches are treated as owner-app context so an installed owner PWA can repair/register `public/sw.js` even if iOS opens it at `/`. This keeps a normal visit to `menulist.online/` from removing the owner PWA offline fallback for the same origin.
+
+Service-worker cleanup is best-effort but observable. If unregistering a stale or wrong-scope worker fails, `src/components/ServiceWorkerRegister.tsx` logs `service_worker_unregister_failed` with only bounded worker labels (`owner`, `customer`, `mycodex`, `none`, or `unknown`), cleanup reason, controller presence, and source error name/code/status. It does not log tenant hostnames, raw service-worker URLs, store IDs, tenant IDs, or route paths.
+
+Local development has an additional root-layout cleanup guard because stale Workbox registrations can serve old `_next` chunks during localhost testing. That guard remains development-only and browser-local; failed registration lookup or unregister attempts emit bounded `get_registrations_failed` / `unregister_failed` dev console diagnostics with host presence/length and source error name/code/status only.
 
 Offline fallback requires a prior successful online service-worker registration. A first-ever offline open before Safari has registered the worker can still show a browser-native network error.
 
@@ -184,9 +211,17 @@ Supported sizes:
 
 Resolution order:
 
-1. Redirect to `publicPresence.pwaIconOverrideUrl` if set.
-2. Redirect to store logo if it is a usable image URL.
+1. Render `publicPresence.pwaIconOverrideUrl` into a square padded PNG when set.
+2. Render the store logo into a square padded PNG when it is a usable image URL.
 3. Generate deterministic first-letter PNG with `ImageResponse`.
+
+The icon route validates store ID shape and applies the shared `PUBLIC_DYNAMIC_ASSET` rate limit before resolving store branding through `getPublicStoreById()`. That shared lookup returns `null` for inactive, deleted, platform-blocked, or tenant-blocked stores. Invalid, rate-limited, or non-public-safe stores receive the deterministic generic icon so install flows do not receive a 500 and blocked store branding is not exposed. Failure paths use `logRuntimeFailure()` with the stable `customer_app_icon_generation_failed` code, size, source error name/code/status, and store-id presence/length metadata only.
+
+### Splash Images
+
+Route: `src/app/api/app-splash/[storeId]/[size]/route.tsx`
+
+Splash images use the same public dynamic asset limiter and public-safe store fallback behavior as icons. Generation failures use `logRuntimeFailure()` with the stable `customer_app_splash_generation_failed` code, dimensions, source error name/code/status, and store-id presence/length metadata only, then return a generic startup image.
 
 ### Screenshots
 
@@ -197,7 +232,9 @@ Supported form factors:
 - `narrow` -> 1080 x 1920
 - `wide` -> 1920 x 1080
 
-The manifest includes both generated screenshots for richer install UI support.
+The manifest includes both generated screenshots for richer install UI support. Screenshot branding also resolves through `getPublicStoreById()` and falls back to generic generated screenshots when the store is not public-safe.
+
+The screenshot route validates store ID shape and applies the shared `PUBLIC_DYNAMIC_ASSET` rate limit before reading `stores/{storeId}`. Failure paths use `logRuntimeFailure()` with the stable `customer_app_screenshot_generation_failed` code, dimensions, form factor, source error name/code/status, and store-id presence/length metadata only, then return a generic screenshot image.
 
 Not current runtime:
 
@@ -281,6 +318,10 @@ Dashboard summary doc:
 
 `{tId}_{sId}_customerApp_dashboard_summary`
 
+Dashboard read path:
+
+`src/hooks/useCustomerAppDashboard.ts` -> `getCustomerAppDashboardSummary()` -> `{tId}_{sId}_customerApp_dashboard_summary`
+
 Tracked metric families:
 
 - Prompt funnel totals.
@@ -303,6 +344,13 @@ Privacy and owner controls:
 - If menu analytics are disabled, Customer App analytics are disabled.
 - No customer identity, device fingerprint, heatmap, or person-level install tracking is introduced.
 - iOS installs are inferred because Safari does not fire `appinstalled`.
+
+Diagnostics:
+
+- Shortcut launch, standalone-open, install tracking, native install prompt, and mobile owner settings save failures use `src/lib/pwa/pwaDiagnostics.ts`.
+- Diagnostics record only store/tenant/platform/source/surface presence and length metadata, timezone/cutoff booleans, location-inclusion boolean, storage-availability boolean, settings booleans, language counts, and normalized source error name/code.
+- Raw analytics exceptions, raw store IDs, raw tenant IDs, URLs, storage values, owner-entered short names, icon data, and provider/browser exceptions must not be direct-console logged.
+- If localStorage is unavailable and install tracking fails, the failure stays non-fatal and the customer app continues to load.
 
 Important wording:
 
@@ -393,10 +441,12 @@ Use these for static/runtime guard verification:
 ```bash
 npx tsc --noEmit
 npm run lint
+npm run verify:customer-app-pwa
 npx ts-node --compiler-options '{"module":"CommonJS"}' -r tsconfig-paths/register src/__tests__/manifestStoreIdentity.ts
 ```
 
 Manual device QA remains required for installation behavior on iOS Safari, Android Chrome, and Samsung Internet.
+Live event-write, rollup, dashboard-value, real-device install, deployment, and production-host smoke remain External Certification Runbook gates even when the source-chain verifier passes.
 
 ---
 

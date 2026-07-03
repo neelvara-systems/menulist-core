@@ -1,319 +1,141 @@
 # Production Deployment Checklist
 
-## 🚀 Pre-Deployment Steps
+**Status:** Active handoff checklist
+**Last updated:** July 1, 2026
+**Primary runbook:** [External Certification Runbook](../production-readiness/external-certification-runbook.md)
 
-### **1. Environment Variables**
+---
 
-✅ **Vercel Dashboard → Settings → Environment Variables:**
+## Deployment Guard
+
+Do not run Vercel deploys, preview deploys, production deploys, Vercel remote builds, or production-host smoke from this checklist unless the user explicitly asks for a Vercel deploy in the active session.
+
+Firebase infrastructure auto-deploy applies only to Firebase rules, indexes, Storage rules, and Firebase Cloud Function logic. It does not authorize Vercel deployment, Next.js production builds, hosting deploys, or unrelated app deployment.
+
+This checklist is a handoff map. The authoritative remaining gate order and evidence format live in the [External Certification Runbook](../production-readiness/external-certification-runbook.md). Every external gate result must be recorded in [MenuList Production Readiness Audit](../audits/menulist-production-readiness-audit.md).
+
+---
+
+## 1. Local Source Gate
+
+Run this immediately before any external gate or explicitly approved deploy:
 
 ```bash
-# Required
-NEXTAUTH_SECRET=<generate-with: openssl rand -base64 32>
-GOOGLE_CLIENT_ID=<from-google-cloud-console>
-GOOGLE_CLIENT_SECRET=<from-google-cloud-console>
-
-# Firebase Admin (for API routes)
-FIREBASE_PROJECT_ID=menulist
-FIREBASE_CLIENT_EMAIL=<service-account-email>
-FIREBASE_PRIVATE_KEY=<service-account-private-key>
-
-# Optional (if using custom Firebase)
-FB_DATABASE_URL=<menulist-realtime-database-url>
+npm run verify:production-readiness-local
 ```
+
+This aggregate includes child root `verify:*` scripts, documentation link checks, TypeScript, lint, and `git diff --check`. Passing it does not prove a Vercel build, deployed artifact, Firebase project access, provider credentials, production environment variables, custom-domain routing, CDN behavior, production-host runtime behavior, or physical-device behavior.
+
+Stop and fix code/docs first if the local source gate fails.
 
 ---
 
-### **2. Firebase Setup**
+## 2. Firebase Functions Gate
 
-✅ **Deploy Firestore Indexes:**
-```bash
-cd ~/Projects/MenuListAi/dashboard
-firebase deploy --only firestore:indexes --config firestore-indexes-auth.json
-```
+Use [External Certification Runbook Gate 1](../production-readiness/external-certification-runbook.md#gate-1-firebase-functions-deployment).
 
-✅ **Update Firestore Security Rules:**
-```javascript
-// Add to firestore.rules
-match /authSecurityEvents/{eventId} {
-  allow read, write: if false;  // Server-side only
-}
-```
+Required local preflight:
 
 ```bash
-firebase deploy --only firestore:rules
+npm run verify:functions-deploy-preflight
 ```
 
-✅ **Verify Firebase Functions (if using):**
-```bash
-cd functions
-npm run build
-firebase deploy --only functions
-```
-
----
-
-### **3. Test Locally First**
-
-✅ **Run complete test suite:**
-```bash
-# 1. Start dev server
-npm run dev
-
-# 2. Test email/password login
-# 3. Test Google OAuth login
-# 4. Test account lockout (5 failed attempts)
-# 5. Test logout
-# 6. Test Cloud Functions with custom claims
-```
-
----
-
-## 📦 Deployment Commands
-
-### **Option A: Deploy to Vercel (Recommended)**
+Current MenuList QA retry target:
 
 ```bash
-# 1. Install Vercel CLI
-npm i -g vercel
-
-# 2. Link project (first time only)
-vercel link
-
-# 3. Deploy to production
-vercel --prod
-
-# 4. Verify deployment
-vercel inspect <deployment-url>
+firebase deploy --project menulist-qa --config firebase.json --only functions:processMenuImages,functions:processMenuImagesJob,functions:menulistMaintenanceScheduler,functions:computeDecisionBlocksScores,functions:triggerDecisionBlocksScoring,functions:triggerStoreNightlyScheduler,functions:verifyMenuPublish --non-interactive
 ```
 
-### **Option B: Deploy via Git (Auto-deploy)**
+If certification is retrying only the July 2 source-file path hardening slice, use the exact changed subset from the External Certification Runbook instead of broadening the deploy:
 
 ```bash
-# 1. Commit all changes
-git add .
-git commit -m "Production-ready auth system with rate limiting"
-
-# 2. Push to main branch (triggers Vercel auto-deploy)
-git push origin main
-
-# 3. Monitor deployment in Vercel dashboard
+firebase deploy --project menulist-qa --config firebase.json --only functions:processMenuImages,functions:processMenuImagesJob,functions:startGeneration,functions:embedArticleWorker,functions:regenerateEmbedding --non-interactive
 ```
+
+Stop and record the blocker if Firebase fails on Cloud Resource Manager, IAM, billing, Secret Manager, missing secrets, or project access after local checks pass. Production Function deployment requires QA evidence and explicit production deploy approval.
 
 ---
 
-## ✅ Post-Deployment Verification
+## 3. Data And Storage Gates
 
-### **1. Test Authentication Flow**
+Use the External Certification Runbook before any live Firestore or Storage mutation.
+
+- Tenant-block backfill: run `npm run verify:tenant-block-backfill-safety`, `npm run verify:public-business-truth`, and `npm run verify:menulist-api-tenant-safety` before any target dry-run or write-mode backfill.
+- Storage lifecycle config: run `npm run verify:storage-lifecycle` before applying the bucket lifecycle config to `menulist-qa`, then repeat for `menulist` only when production apply is approved.
+- Storage rules cutover: run `npm run verify:storage-paths`, then retry `firebase deploy --project menulist-qa --config firebase.json --only storage --non-interactive`; production Storage rules deploy requires QA evidence and explicit production approval.
+- Firestore rules or indexes: use the scoped `menulist-qa` target first and record exact command output in the production readiness audit.
+
+Do not use legacy project IDs, sample Firebase projects, or broad deploy shortcuts.
+
+---
+
+## 4. Provider Gates
+
+Provider gates remain external proof, not local source proof.
+
+- Razorpay: run `npm run verify:billing-entitlement-boundary` before sandbox payment/webhook smoke.
+- WhatsApp and messaging onboarding: confirm staging secrets, webhook registration, and fail-closed feature flags before sending any message.
+- Cloud Tasks and batch image worker: run `npm run verify:agent-readiness` before queue/worker smoke.
+- AI providers: confirm staging keys, quota, budgets, and SAFE_MODE behavior before live provider calls.
+
+Stop if credentials are missing, dummy, expired, production-scoped by mistake, or tied to the wrong environment.
+
+---
+
+## 5. Browser And Device Gates
+
+Before physical-device or authenticated owner-shell QA, run:
 
 ```bash
-# Visit production URL
-https://your-app.vercel.app/signin
-
-# Test scenarios:
-✓ Email/password login
-✓ Google OAuth login  
-✓ Failed login (wrong password)
-✓ Account lockout (5 failed attempts)
-✓ Lockout message shows time remaining
-✓ Logout works
+node --check scripts/verification/verify-mobile-owner-menu.mjs
+npm run verify:mobile-shell-route-map
+npm run verify:staff-roles-route-parity
+npm run verify:customer-app-pwa
+npm run verify:public-business-truth
+npm run verify:menu-extraction-pipeline
+npm run verify:public-truth-tools
 ```
 
-### **2. Test Cloud Functions**
-
-```bash
-# Visit Analytics Backfill page
-https://your-app.vercel.app/platform/admin/analytics-backfill
-
-# Verify:
-✓ Function loads
-✓ request.auth is populated
-✓ Custom claims present (role, tenantId, storeId)
-✓ Function executes successfully
-```
-
-### **3. Check Firestore**
-
-```bash
-# Firebase Console → Firestore Database
-
-# Verify collections exist:
-✓ authSecurityEvents (created on first login)
-✓ users
-✓ chatSessions
-✓ chatAnalytics
-
-# Check indexes status:
-✓ All indexes show "Enabled" (not "Building")
-```
-
-### **4. Monitor Errors**
-
-```bash
-# Vercel Dashboard → Your Project → Logs
-# Filter: "errors only"
-
-# Check for:
-✓ No authentication errors
-✓ No Firebase connection errors
-✓ No missing environment variable errors
-```
+Manual QA must cover the minimum flow set in the External Certification Runbook: public website, sign-in, public menu, Official Business Page, compliance page, feedback route, authenticated owner shell, mobile owner shell, and customer/mobile rendering.
 
 ---
 
-## 🔍 Smoke Tests
+## 6. Vercel And Production Host Gate
 
-### **Test 1: New User Signup + Login**
-1. Sign up new user
-2. Login with credentials
-3. Verify session created
-4. Verify Firebase Auth token has custom claims
+Use [External Certification Runbook Gate 8](../production-readiness/external-certification-runbook.md#gate-8-vercelproduction-host-smoke).
 
-### **Test 2: Rate Limiting**
-1. Attempt 5 failed logins
-2. Verify lockout message on 6th attempt
-3. Wait 15 minutes or manually unlock
-4. Verify can login again
+Prerequisites:
 
-### **Test 3: Cloud Functions**
-1. Login as platform owner
-2. Navigate to analytics backfill
-3. Trigger function
-4. Verify execution in function logs
+- The user explicitly approved a Vercel deploy in the active session.
+- `npm run verify:production-readiness-local` passed immediately before deploy.
+- Production env vars and Firebase targets are confirmed.
+- Release scope is clear.
+- Previous external gates have audit evidence or explicit blockers.
+
+If approval is missing, do not deploy. Record the deploy command as pending instead.
 
 ---
 
-## 🛠️ Rollback Procedure (If Needed)
+## 7. Evidence Checklist
 
-```bash
-# 1. Revert to previous deployment
-vercel rollback
+For each gate, append evidence to [MenuList Production Readiness Audit](../audits/menulist-production-readiness-audit.md):
 
-# 2. Or deploy specific commit
-git checkout <previous-commit-hash>
-vercel --prod
-
-# 3. Monitor for stability
+```text
+Gate:
+Date:
+Environment:
+Command or manual path:
+Expected:
+Actual:
+Result: passed | blocked | failed
+Evidence:
+Follow-up:
 ```
+
+Do not record secrets, tokens, phone numbers, payment identifiers, or full customer payloads.
 
 ---
 
-## 📊 Monitoring Setup
+## Launch Verdict
 
-### **1. Set Up Alerts**
-
-**Vercel Alerts:**
-- Error rate > 5%
-- Function timeout rate > 1%
-- Build failures
-
-**Firebase Alerts:**
-- Firestore usage > 80%
-- Auth failures spike
-- Function errors
-
-### **2. Add Analytics**
-
-```typescript
-// Track auth events
-import { logger } from '@lib/monitoring/logger';
-
-// On successful login
-logger.info('User logged in', { email: user.email });
-
-// On failed login
-logger.warn('Failed login attempt', { email, reason });
-```
-
----
-
-## 🔐 Security Hardening
-
-### **Post-Deploy Security Checks**
-
-✅ **1. Verify CORS settings**
-```
-Allowed origins: your-domain.com only
-```
-
-✅ **2. Check CSP headers**
-```
-Content-Security-Policy set correctly
-```
-
-✅ **3. Enable HTTPS only**
-```
-Force SSL redirect enabled
-```
-
-✅ **4. Review Firebase Security Rules**
-```
-No overly permissive allow rules
-```
-
-✅ **5. Rotate secrets if exposed**
-```
-NEXTAUTH_SECRET not in git history
-API keys not in client code
-```
-
----
-
-## 📝 Documentation Updates
-
-✅ **Update README.md:**
-- New environment variables
-- Auth security features
-- Deployment instructions
-
-✅ **Update API Documentation:**
-- New endpoints (if any)
-- Auth requirements
-- Rate limiting info
-
----
-
-## 🎯 Success Criteria
-
-- [ ] All tests pass in production
-- [ ] No errors in Vercel logs (first 24 hours)
-- [ ] Auth flow works for all user types
-- [ ] Rate limiting functioning correctly
-- [ ] Cloud Functions accessible with auth
-- [ ] Firestore indexes operational
-- [ ] Monitoring/alerts configured
-- [ ] Team notified of deployment
-- [ ] Documentation updated
-
----
-
-## 🆘 Emergency Contacts
-
-**If deployment fails:**
-1. Check Vercel deployment logs
-2. Check Firebase Console for errors
-3. Review recent commits for breaking changes
-4. Rollback if critical issues found
-5. Debug in staging before re-deploying
-
----
-
-## 📅 Post-Deployment Tasks
-
-### **Week 1:**
-- [ ] Monitor error rates daily
-- [ ] Check auth security events
-- [ ] Verify no user complaints
-- [ ] Review performance metrics
-
-### **Week 2:**
-- [ ] Add 2FA/MFA (optional)
-- [ ] Implement CAPTCHA (if bot attacks detected)
-- [ ] Optimize Firestore queries if slow
-- [ ] Clean up old security events
-
----
-
-**Deployment Date:** _____________  
-**Deployed By:** _____________  
-**Version:** 1.0.0  
-**Status:** ✅ Production Ready
+MenuList is not fully production ready until every required external gate has passed evidence or an accepted owner-side blocker is recorded. Local green checks are necessary but not enough for a launch verdict.

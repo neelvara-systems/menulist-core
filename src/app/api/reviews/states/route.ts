@@ -13,7 +13,9 @@ import { FEATURE_FLAGS } from "@config/features";
 import { DB_COLLECTIONS } from "@constant/database";
 import { admin } from "@lib/firebase/firebaseAdmin";
 import { checkRateLimit } from "@lib/rateLimit";
+import { getBoundedRuntimeStringContext, logRuntimeFailure } from "@lib/runtime/runtimeDiagnostics";
 import { NextRequest, NextResponse } from "next/server";
+import { hashPublicRateLimitValue } from "src/middleware/publicApi";
 import { withAuth } from "../../../../middleware/auth";
 
 /**
@@ -31,8 +33,11 @@ export const GET = withAuth(async (request: NextRequest, session) => {
         return NextResponse.json({ error: "Not onboarded" }, { status: 400 });
     }
 
+    const userRateLimitHash = hashPublicRateLimitValue(session.uId);
+    const tenantRateLimitHash = hashPublicRateLimitValue(tenantId);
+    const storeRateLimitHash = hashPublicRateLimitValue(storeId);
     const rateLimit = await checkRateLimit({
-        key: `review-states:${session.uId}:${tenantId}:${storeId}`,
+        key: `review-states:${userRateLimitHash}:${tenantRateLimitHash}:${storeRateLimitHash}`,
         limit: 30,
         window: 60,
     });
@@ -76,7 +81,11 @@ export const GET = withAuth(async (request: NextRequest, session) => {
             data: { hasBlockActive, hasEscalationActive },
         });
     } catch (error) {
-        console.error("[Reviews] Error fetching states:", error);
+        logRuntimeFailure("reviews_states_fetch_failed", error, {
+            ...getBoundedRuntimeStringContext("tenantId", tenantId),
+            ...getBoundedRuntimeStringContext("storeId", storeId),
+            ...getBoundedRuntimeStringContext("userId", session.uId || session.user?.id),
+        });
         return NextResponse.json(
             { error: "Failed to fetch review states" },
             { status: 500 }

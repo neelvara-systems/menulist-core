@@ -1,7 +1,7 @@
 # Answerlattice — Founder Onboarding (Knowledge Bootstrap Engine) — Firebase
 
-> **Version:** 1.0.0
-> **Last Updated:** 2026-03-09
+> **Version:** 1.0.1
+> **Last Updated:** 2026-06-29
 > **Audience:** DevOps / Cost Management
 > **Feature Flag:** `ENABLE_ANSWERLATTICE_FOUNDER_ONBOARDING`
 
@@ -85,6 +85,15 @@
 | Feature flag | OFF by default | Zero cost until enabled |
 | Skip if entities exist | Configurable | Prevents re-bootstrap for existing tenants |
 | Idempotent design | Always | Re-runs don't duplicate writes |
+
+---
+
+## 5. Diagnostic and Failure Storage
+
+- `kb_generation_jobs.onboardingBootstrap.errorMessage` stores a fixed failure code such as `ANSWERLATTICE_BOOTSTRAP_TENANT_FAILED`, not raw provider/Admin exception text.
+- Bootstrap logs use fixed failure codes, source error name/code/status metadata, tenant/store scope booleans, and presence/length metadata for job/entity/candidate identifiers.
+- If the best-effort failed-status update on `kb_generation_jobs` itself fails, the function logs `ANSWERLATTICE_BOOTSTRAP_JOB_STATUS_MARK_FAILED` with bounded job and scope metadata while preserving the scheduler-facing tenant failure code.
+- `runOnboardingBootstrap().errors` returns fixed scheduler-facing codes so nightly run logs keep the bounded scheduler diagnostic contract.
 
 ---
 

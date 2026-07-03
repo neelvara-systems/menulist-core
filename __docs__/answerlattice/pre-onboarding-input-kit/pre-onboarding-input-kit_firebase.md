@@ -16,7 +16,7 @@ It is a public static website resource plus a prompt.
 | Cloud Functions | None. |
 | AI/provider calls | None. |
 | Scheduler | None. |
-| Public website bandwidth | Normal static page and markdown response. |
+| Public website bandwidth | Normal static page and markdown response. The prompt modal caps the Markdown preview response at 128 KB before decoding. Copy and download actions stay browser-local, including the acknowledged textarea fallback. |
 
 ## When Costs Start
 

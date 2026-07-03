@@ -1,19 +1,68 @@
 import { useCallback, useEffect, useState } from 'react';
 import { FEATURE_FLAGS } from '@config/features';
 import { OWNER_BUSINESS_ASSISTANT_ENDPOINTS } from '@lib/ownerBusinessAssistant/constants';
+import { OWNER_BUSINESS_ASSISTANT_REQUEST_POLICY } from '@lib/ownerBusinessAssistant/clientResponses';
+import { createRuntimeId } from '@lib/runtime/randomId';
+import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';
 import type {
   OwnerBusinessAssistantAnswer,
   OwnerBusinessAssistantClientContext,
 } from '@lib/ownerBusinessAssistant/types';
+import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
+
+const OWNER_BUSINESS_ASSISTANT_SAFE_ERROR = 'Business Health could not answer that.';
+const OWNER_BUSINESS_ASSISTANT_SAFE_ERROR_CODE = 'OWNER_BUSINESS_ASSISTANT_SAFE_ERROR';
+const OWNER_BUSINESS_ASSISTANT_ANSWER_RESPONSE_JSON_MAX_BYTES = 32 * 1024;
+
+type OwnerBusinessAssistantAnswerPayload = {
+  data?: OwnerBusinessAssistantAnswer & {
+    threadId?: string;
+  };
+};
+
+type OwnerBusinessAssistantAnswerLogContext = Record<string, boolean | number | string | null | undefined>;
+
+class OwnerBusinessAssistantSafeError extends Error {
+  readonly code = OWNER_BUSINESS_ASSISTANT_SAFE_ERROR_CODE;
+
+  constructor() {
+    super(OWNER_BUSINESS_ASSISTANT_SAFE_ERROR);
+    this.name = 'OwnerBusinessAssistantSafeError';
+  }
+}
+
+const isOwnerBusinessAssistantSafeError = (error: unknown): error is OwnerBusinessAssistantSafeError => (
+  error instanceof OwnerBusinessAssistantSafeError
+  || (
+    typeof error === 'object'
+    && error !== null
+    && (error as { code?: unknown }).code === OWNER_BUSINESS_ASSISTANT_SAFE_ERROR_CODE
+  )
+);
 
 const buildThreadStorageKey = (projectId?: string, storeScopeKey?: string | number) =>
   `ownerBusinessAssistant-thread:${storeScopeKey || 'store'}:${projectId || 'all'}`;
 
-const createThreadId = () => {
-  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
-    return crypto.randomUUID();
+const createThreadId = () => createRuntimeId('oba');
+
+const readOwnerBusinessAssistantAnswerResponseJson = async (
+  response: Response,
+  logContext: OwnerBusinessAssistantAnswerLogContext,
+): Promise<OwnerBusinessAssistantAnswerPayload | null> => {
+  try {
+    return await readJsonResponseWithLimit<OwnerBusinessAssistantAnswerPayload>(
+      response,
+      OWNER_BUSINESS_ASSISTANT_ANSWER_RESPONSE_JSON_MAX_BYTES,
+    );
+  } catch (error) {
+    logRuntimeFailure('owner_business_assistant_answer_response_parse_failed', error, {
+      ...logContext,
+      responseOk: response.ok,
+      responseStatus: response.status,
+      maxBytes: OWNER_BUSINESS_ASSISTANT_ANSWER_RESPONSE_JSON_MAX_BYTES,
+    });
+    return null;
   }
-  return `oba_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
 };
 
 export function useOwnerBusinessAssistantAnswer(
@@ -65,6 +114,13 @@ export function useOwnerBusinessAssistantAnswer(
 
   const ask = useCallback(async (question: string, suggestedQuestionId?: string) => {
     const nextThreadId = ensureThreadId();
+    const logContext = {
+      ...getBoundedRuntimeStringContext('projectId', projectId),
+      ...getBoundedRuntimeStringContext('storeScopeKey', storeScopeKey),
+      ...getBoundedRuntimeStringContext('suggestedQuestionId', suggestedQuestionId),
+      hasClientContext: Boolean(clientContext),
+      questionLength: question.length,
+    };
     setIsLoading(true);
     setError(null);
     setAnswer(null);
@@ -75,6 +131,7 @@ export function useOwnerBusinessAssistantAnswer(
     });
     try {
       const response = await fetch(OWNER_BUSINESS_ASSISTANT_ENDPOINTS.answer, {
+        ...OWNER_BUSINESS_ASSISTANT_REQUEST_POLICY,
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -86,17 +143,34 @@ export function useOwnerBusinessAssistantAnswer(
           clientContext,
         }),
       });
-      const payload = await response.json();
-      if (!response.ok) throw new Error(payload?.error || 'Business Health could not answer that.');
-      if (FEATURE_FLAGS.ENABLE_OWNER_BUSINESS_HEALTH_THREADS && payload.data?.threadId && typeof window !== 'undefined') {
-        window.localStorage.setItem(buildThreadStorageKey(projectId, storeScopeKey), payload.data.threadId);
-        setThreadId(payload.data.threadId);
-        setLastQuestion((current) => current ? { ...current, threadId: payload.data.threadId } : current);
+      const payload = await readOwnerBusinessAssistantAnswerResponseJson(response, logContext);
+      if (!response.ok) {
+        logRuntimeFailure('owner_business_assistant_answer_rejected', new Error('owner_business_assistant_answer_rejected'), {
+          ...logContext,
+          responseStatus: response.status,
+        });
+        throw new OwnerBusinessAssistantSafeError();
       }
-      setAnswer(payload.data);
-      return payload.data as OwnerBusinessAssistantAnswer;
+      const answerData = payload?.data;
+      if (!answerData) {
+        logRuntimeFailure('owner_business_assistant_answer_response_invalid', new Error('owner_business_assistant_answer_response_invalid'), {
+          ...logContext,
+          responseStatus: response.status,
+        });
+        throw new OwnerBusinessAssistantSafeError();
+      }
+      if (FEATURE_FLAGS.ENABLE_OWNER_BUSINESS_HEALTH_THREADS && answerData.threadId && typeof window !== 'undefined') {
+        window.localStorage.setItem(buildThreadStorageKey(projectId, storeScopeKey), answerData.threadId);
+        setThreadId(answerData.threadId);
+        setLastQuestion((current) => current ? { ...current, threadId: answerData.threadId } : current);
+      }
+      setAnswer(answerData);
+      return answerData as OwnerBusinessAssistantAnswer;
     } catch (err) {
-      const normalized = err instanceof Error ? err : new Error('Business Health could not answer that.');
+      if (!isOwnerBusinessAssistantSafeError(err)) {
+        logRuntimeFailure('owner_business_assistant_answer_failed', err, logContext);
+      }
+      const normalized = new OwnerBusinessAssistantSafeError();
       setLastQuestion(null);
       setError(normalized);
       throw normalized;

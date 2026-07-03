@@ -262,7 +262,9 @@ This changes the product category from "digital menu" to "ordering system."
 
 ---
 
-## Phase 4 Ship Gate
+## Historical Phase 4 Source Gate
+
+This December 2025 phase note is historical implementation evidence only. Current release approval for customer-facing menu/editor behavior still requires the active production-readiness audit, External Certification Runbook evidence, Digital Menu Output Constitution checks, physical/mobile browser QA, low-bandwidth/offline/back-button tests, public cache/deploy evidence, analytics delivery checks where relevant, and target production smoke.
 
 | Item | Status      | Ship?  |
 | ---- | ----------- | ------ |
@@ -271,4 +273,4 @@ This changes the product category from "digital menu" to "ordering system."
 | G05  | ⏸️ DEFERRED | N/A    |
 | G15  | ❌ N/A      | N/A    |
 
-**Phase 4 = SHIP READY** ✅
+**Historical Phase 4 result:** Source evidence only; not current launch certification

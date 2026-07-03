@@ -39,7 +39,7 @@ interface OpsConfig {
 ```
 
 **Location:** Single document at `ops_config/system`  
-**Cost:** 1 read per check. Cloud Functions cache warm instances, so effective cost is much lower.
+**Cost:** Next.js API route checks perform 1 read per checked call. Cloud Functions cache warm instances, so function-side effective cost is lower.
 
 ## File Structure
 
@@ -52,7 +52,7 @@ src/
 ├── config/
 │   └── features.ts                # MODIFY — Add ENABLE_COST_PROTECTION flag
 ├── lib/
-│   └── safeMode.ts                # NEW — Frontend SAFE_MODE check (for API routes)
+│   └── ops/safeMode.ts            # Next.js API route SAFE_MODE check
 ```
 
 ## New File: `functions/src/monitoring/safeMode.ts`
@@ -265,8 +265,11 @@ export async function POST(request: Request) {
 ## Security Checklist
 
 - [x] SAFE_MODE toggle restricted to superadmin only
+- [x] SAFE_MODE toggle is operator-rate-limited and rejects bodies above 2KB before Firestore writes or alert creation
 - [x] Fail-open design — SAFE_MODE check failure doesn't block operations
-- [x] In-memory cache prevents Firestore read on every request
+- [x] Cloud Functions in-memory cache reduces function-side SAFE_MODE reads; Next.js API route checks remain 1 feature-flag-gated read per checked call
+- [x] Next.js API route helper fail-open errors use secure logging instead of direct console logging
+- [x] Route-local fail-open wrappers must log fixed diagnostics before proceeding; the batch image worker uses `image_batch_worker_safe_mode_check_failed` with `failOpen: true` when its SAFE_MODE check throws
 - [x] Core product (menu viewing, publishing) never affected by SAFE_MODE
 - [x] Manual deactivation only — no auto-recovery (human must verify)
 

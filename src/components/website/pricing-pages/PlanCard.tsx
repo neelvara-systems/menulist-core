@@ -3,44 +3,10 @@
 import { Currency, Plan } from '@data/common';
 
 import React from 'react';
+import { useTranslations } from 'next-intl';
 import { LuBuilding2, LuCheck, LuStore, LuZap } from 'react-icons/lu';
 import { formatCurrencyOnPricingPage } from '.';
 import './main.css';
-
-const getPlanBullets = (planId: string) => {
-    switch (planId) {
-        case 'starter':
-            return [
-                'Keep one business menu live',
-                'Stable public link and QR',
-                'Official business page',
-                'Owner-approved menu updates',
-                'Basic visit signals'
-            ];
-        case 'pro':
-            return [
-                'Better customer-facing presentation',
-                'AI Menu Manager for message-based updates',
-                'AI enhancement credits for content and images',
-                'Multi-language menu support',
-                'Action summaries from menu activity',
-                'Brand and presentation controls',
-                'Update once from the approved source'
-            ];
-        case 'premium':
-            return [
-                'Run multiple locations from one place',
-                'AI Menu Manager with outlet scope',
-                'Keep menus consistent across locations',
-                'Central menu with outlet-level overrides',
-                'Location governance controls',
-                'Action summaries across the brand',
-                'Priority support'
-            ];
-        default:
-            return ['Custom pricing and features'];
-    }
-};
 
 type PlanCardProps = {
     plan: Plan;
@@ -49,49 +15,40 @@ type PlanCardProps = {
 };
 
 const PlanCard: React.FC<PlanCardProps> = ({ plan, currency, onPurchase }) => {
+    const t = useTranslations('Website');
 
     const price = plan[`price${currency}`].price;
+    const normalizedPlanId = ['starter', 'pro', 'premium'].includes(plan.planId) ? plan.planId : 'custom';
+    const planCopy = {
+        audience: t(`Pricing.${normalizedPlanId}Audience`),
+        surfaces: [
+            t(`Pricing.${normalizedPlanId}Surface0`),
+            t(`Pricing.${normalizedPlanId}Surface1`),
+        ],
+        controls: [
+            t(`Pricing.${normalizedPlanId}Control0`),
+            t(`Pricing.${normalizedPlanId}Control1`),
+            t(`Pricing.${normalizedPlanId}Control2`),
+        ],
+        notIncluded: t(`Pricing.${normalizedPlanId}NotIncluded`),
+        buttonText: t(`Pricing.${normalizedPlanId}Cta`),
+    };
     const planStyles = {
         starter: {
             icon: <LuStore className="w-full h-full text-blue-500" />,
-            bgColor: 'bg-gradient-to-b from-blue-500/5 to-transparent',
-            borderColor: 'border-slate-200 dark:border-slate-700',
-            buttonClass: 'bg-blue-600 hover:bg-blue-700',
-            buttonText: 'Keep Menu Live'
         },
         pro: {
             icon: <LuBuilding2 className="w-full h-full text-blue-500" />,
-            bgColor: 'bg-gradient-to-b from-blue-500/5 to-transparent',
-            borderColor: 'border-blue-400 dark:border-blue-500',
-            buttonClass: 'bg-blue-600 hover:bg-blue-700',
-            buttonText: 'Improve Presentation'
         },
         premium: {
             icon: <LuZap className="w-full h-full text-blue-500" />,
-            bgColor: 'bg-gradient-to-b from-blue-500/5 to-transparent',
-            borderColor: 'border-slate-200 dark:border-slate-700',
-            buttonClass: 'bg-blue-600 hover:bg-blue-700',
-            buttonText: 'Control Locations'
         },
         custom: {
             icon: <LuZap className="w-full h-full text-blue-500" />,
-            bgColor: 'bg-gradient-to-b from-blue-500/5 to-transparent',
-            borderColor: 'border-slate-200 dark:border-slate-700',
-            buttonClass: 'bg-blue-600 hover:bg-blue-700',
-            buttonText: 'Contact us'
         },
     };
 
-    const currentStyle = planStyles[plan.planId as keyof typeof planStyles];
-
-    const cardClasses = `
-        relative flex flex-col h-full p-8 rounded-2xl transition-all duration-300 hover:-translate-y-1.5 text-white
-        ${currentStyle.bgColor} ${currentStyle.borderColor}
-        ${plan.isRecommended
-            ? `border-2 shadow-[0_0_25px_hsl(var(--primary)/0.4)] scale-[1.03] z-10`
-            : `border`
-        }
-    `;
+    const currentStyle = planStyles[normalizedPlanId as keyof typeof planStyles];
 
     const getDailyPrice = () => {
         if (!price || plan.billingInterval !== 'YEAR') return null;
@@ -104,50 +61,237 @@ const PlanCard: React.FC<PlanCardProps> = ({ plan, currency, onPurchase }) => {
         }).format(dailyAmount);
     };
 
-    return (
-        <div className={cardClasses}>
-            {plan.isRecommended && <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 text-white px-4 py-1 text-sm font-semibold rounded-full shadow-md bg-blue-600">Most chosen</div>}
+    const intervalLabel = plan.billingInterval === 'MONTH' ? t('Pricing.planMonthlyShort') : t('Pricing.planYearlyShort');
+    const planName = plan.name.replace(` (Yearly)`, '').replace(` (Monthly)`, '');
+    const dailyPrice = getDailyPrice();
 
-            <div className="text-center flex justify-center items-center gap-6">
-                <div className="flex justify-center w-12">{currentStyle.icon}</div>
-                <div className="flex flex-col align-start gap-1">
-                    <h3 className="text-xl font-semibold m-0 text-left text-gray-600 dark:text-gray-400">{plan.name.replace(` (Yearly)`, '').replace(` (Monthly)`, '')}</h3>
-                    {plan.planId !== 'custom' && <div className="flex items-center gap-2">
-                        <span className="text-3xl font-extrabold text-gray-900 dark:text-white">{price !== null ? formatCurrencyOnPricingPage(price, currency) : 'N/A'}</span>
-                        <span className="text-gray-500 dark:text-gray-400"> / {plan.billingInterval === 'MONTH' ? 'mo' : 'yr'}</span>
-                    </div>}
-                    {getDailyPrice() && (
-                        <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">{getDailyPrice()}/day · billed yearly</p>
-                    )}
+    return (
+        <article style={planCardStyle(plan.isRecommended)}>
+            {plan.isRecommended ? (
+                <div style={recommendedBadgeStyle}>{t('Pricing.planRecommendedBadge')}</div>
+            ) : null}
+
+            <div style={planHeaderStyle}>
+                <div style={planIconStyle}>{currentStyle.icon}</div>
+                <div style={{ minWidth: 0 }}>
+                    <h3 style={planNameStyle}>{planName}</h3>
+                    {normalizedPlanId !== 'custom' ? (
+                        <div style={planPriceRowStyle}>
+                            <span style={planPriceStyle}>{price !== null ? formatCurrencyOnPricingPage(price, currency) : t('Pricing.planPriceUnavailable')}</span>
+                            <span style={planIntervalStyle}>/ {intervalLabel}</span>
+                        </div>
+                    ) : null}
+                    {dailyPrice ? (
+                        <p style={planDailyStyle}>{t('Pricing.planDailySuffix', { daily: dailyPrice })}</p>
+                    ) : null}
                 </div>
             </div>
 
-            <div className="text-center flex justify-center items-center gap-6 mt-4 text-gray-300">
-                {plan.description}
+            <div style={planAudienceStyle}>
+                <span style={planSectionLabelStyle}>{t('Pricing.planAudienceLabel')}</span>
+                <p style={planAudienceCopyStyle}>{planCopy.audience}</p>
             </div>
 
-            {/* <div className="w-full h-[1px] bg-white/10 my-4"></div> */}
-            <div className="mt-auto pt-8 pb-8">
-                <button
-                    className={`w-full inline-flex items-center justify-center rounded-md px-8 h-11 font-semibold text-white transition-transform duration-300 hover:scale-105 ${currentStyle.buttonClass}`}
-                    onClick={() => onPurchase(plan)}
-                >
-                    {currentStyle.buttonText}
-                </button>
-            </div>
-
-            <div className="flex-grow">
-                <ul className="space-y-3 text-gray-600 dark:text-gray-300">
-                    {getPlanBullets(plan.planId).map((bullet, index) => (
-                        <li key={index} className="flex items-center">
-                            <LuCheck className="h-5 w-5 mr-3 flex-shrink-0 text-green-500" />
-                            <span className='text-gray-700 dark:text-gray-200 text-sm'>{bullet}</span>
+            <div style={planSectionStyle}>
+                <span style={planSectionLabelStyle}>{t('Pricing.planSurfacesLabel')}</span>
+                <ul style={planListStyle}>
+                    {planCopy.surfaces.map((item) => (
+                        <li key={item} style={planListItemStyle}>
+                            <LuCheck style={planCheckIconStyle} aria-hidden="true" />
+                            <span>{item}</span>
                         </li>
                     ))}
                 </ul>
             </div>
-        </div>
+
+            <div style={planSectionStyle}>
+                <span style={planSectionLabelStyle}>{t('Pricing.planControlsLabel')}</span>
+                <ul style={planListStyle}>
+                    {planCopy.controls.map((item) => (
+                        <li key={item} style={planListItemStyle}>
+                            <LuCheck style={planCheckIconStyle} aria-hidden="true" />
+                            <span>{item}</span>
+                        </li>
+                    ))}
+                </ul>
+            </div>
+
+            <div style={planNotIncludedStyle}>
+                <span style={planSectionLabelStyle}>{t('Pricing.planNotIncludedLabel')}</span>
+                <p style={planNotIncludedCopyStyle}>{planCopy.notIncluded}</p>
+            </div>
+
+            <button
+                onClick={() => onPurchase(plan)}
+                style={planButtonStyle}
+            >
+                {planCopy.buttonText}
+            </button>
+        </article>
     );
+};
+
+const planCardStyle = (isRecommended?: boolean): React.CSSProperties => ({
+    background: isRecommended ? 'linear-gradient(180deg, color-mix(in srgb, var(--ws-brand-secondary) 8%, var(--ws-bg-surface)), var(--ws-bg-surface) 34%)' : 'var(--ws-bg-surface)',
+    border: isRecommended ? '2px solid var(--ws-brand-secondary)' : '1px solid var(--ws-border-default)',
+    borderRadius: 'var(--ws-radius-lg)',
+    boxShadow: isRecommended ? '0 18px 44px color-mix(in srgb, var(--ws-brand-secondary) 14%, transparent)' : 'var(--ws-shadow-sm)',
+    color: 'var(--ws-text-primary)',
+    display: 'flex',
+    flexDirection: 'column',
+    height: '100%',
+    padding: 'var(--ws-space-7)',
+    position: 'relative',
+});
+
+const recommendedBadgeStyle: React.CSSProperties = {
+    alignSelf: 'flex-start',
+    backgroundColor: 'var(--ws-brand-secondary)',
+    borderRadius: '999px',
+    color: '#fff',
+    fontSize: '0.8125rem',
+    fontWeight: 800,
+    lineHeight: 1,
+    marginBottom: 'var(--ws-space-4)',
+    padding: '8px 12px',
+};
+
+const planHeaderStyle: React.CSSProperties = {
+    alignItems: 'center',
+    display: 'grid',
+    gap: 'var(--ws-space-4)',
+    gridTemplateColumns: '48px minmax(0, 1fr)',
+};
+
+const planIconStyle: React.CSSProperties = {
+    alignItems: 'center',
+    backgroundColor: 'var(--ws-bg-accent)',
+    border: '1px solid var(--ws-border-subtle)',
+    borderRadius: 'var(--ws-radius-lg)',
+    display: 'flex',
+    height: '48px',
+    justifyContent: 'center',
+    padding: '12px',
+    width: '48px',
+};
+
+const planNameStyle: React.CSSProperties = {
+    color: 'var(--ws-text-primary)',
+    fontSize: '1.25rem',
+    fontWeight: 800,
+    lineHeight: 1.2,
+    margin: 0,
+};
+
+const planPriceRowStyle: React.CSSProperties = {
+    alignItems: 'baseline',
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: '8px',
+    marginTop: '6px',
+};
+
+const planPriceStyle: React.CSSProperties = {
+    color: 'var(--ws-text-primary)',
+    fontSize: '2rem',
+    fontWeight: 850,
+    lineHeight: 1.05,
+};
+
+const planIntervalStyle: React.CSSProperties = {
+    color: 'var(--ws-text-secondary)',
+    fontSize: '0.9375rem',
+    fontWeight: 650,
+};
+
+const planDailyStyle: React.CSSProperties = {
+    color: 'var(--ws-text-secondary)',
+    fontSize: '0.8125rem',
+    lineHeight: 1.35,
+    margin: '6px 0 0',
+};
+
+const planAudienceStyle: React.CSSProperties = {
+    borderBottom: '1px solid var(--ws-border-subtle)',
+    marginTop: 'var(--ws-space-5)',
+    paddingBottom: 'var(--ws-space-5)',
+};
+
+const planAudienceCopyStyle: React.CSSProperties = {
+    color: 'var(--ws-text-secondary)',
+    fontSize: '0.9375rem',
+    lineHeight: 1.55,
+    margin: '6px 0 0',
+};
+
+const planSectionStyle: React.CSSProperties = {
+    marginTop: 'var(--ws-space-5)',
+};
+
+const planSectionLabelStyle: React.CSSProperties = {
+    color: 'var(--ws-brand-secondary)',
+    display: 'block',
+    fontSize: '0.8125rem',
+    fontWeight: 850,
+    lineHeight: 1.2,
+    textTransform: 'uppercase',
+};
+
+const planListStyle: React.CSSProperties = {
+    display: 'grid',
+    gap: '10px',
+    listStyle: 'none',
+    margin: 'var(--ws-space-3) 0 0',
+    padding: 0,
+};
+
+const planListItemStyle: React.CSSProperties = {
+    alignItems: 'flex-start',
+    color: 'var(--ws-text-secondary)',
+    display: 'grid',
+    fontSize: '0.9375rem',
+    gap: '10px',
+    gridTemplateColumns: '18px minmax(0, 1fr)',
+    lineHeight: 1.45,
+};
+
+const planCheckIconStyle: React.CSSProperties = {
+    color: 'var(--ws-success)',
+    height: '18px',
+    marginTop: '2px',
+    width: '18px',
+};
+
+const planNotIncludedStyle: React.CSSProperties = {
+    backgroundColor: 'var(--ws-bg-subtle)',
+    border: '1px solid var(--ws-border-subtle)',
+    borderRadius: 'var(--ws-radius-md)',
+    marginTop: 'var(--ws-space-5)',
+    padding: 'var(--ws-space-4)',
+};
+
+const planNotIncludedCopyStyle: React.CSSProperties = {
+    color: 'var(--ws-text-secondary)',
+    fontSize: '0.875rem',
+    lineHeight: 1.5,
+    margin: '6px 0 0',
+};
+
+const planButtonStyle: React.CSSProperties = {
+    alignItems: 'center',
+    backgroundColor: 'var(--ws-cta-default)',
+    border: 'none',
+    borderRadius: 'var(--ws-radius-md)',
+    color: '#fff',
+    cursor: 'pointer',
+    display: 'inline-flex',
+    fontSize: '0.9375rem',
+    fontWeight: 800,
+    justifyContent: 'center',
+    marginTop: 'auto',
+    minHeight: '48px',
+    padding: '12px 18px',
+    width: '100%',
 };
 
 export default PlanCard;

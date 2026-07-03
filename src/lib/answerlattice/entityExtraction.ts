@@ -18,6 +18,11 @@
 
 import { FEATURE_FLAGS } from "@config/features";
 import { addEntityCandidate } from "@database/answerlattice/entityCandidates";
+import {
+    getAnswerlatticeScopeLogContext,
+    getBoundedAnswerlatticeStringContext,
+    logAnswerlatticeFailure,
+} from "@lib/answerlattice/diagnostics";
 import { buildAnswerlatticeEntityPrefixTokens } from "@lib/answerlattice/entitySearchTokens";
 import { answerlatticeTokenize } from "@lib/answerlattice/tokenizer";
 import { ANSWERLATTICE_ENTITY_TYPES, AnswerlatticeEntityCandidate, AnswerlatticeEntityType } from "@type/answerlattice";
@@ -226,7 +231,11 @@ export async function extractEntitiesFromArticles(
             }
         } catch (error) {
             // Continue with next batch on extraction failure (graceful degradation)
-            console.error(`Entity extraction failed for batch starting at article ${i}:`, error);
+            logAnswerlatticeFailure('answerlattice_entity_extraction_batch_failed', error, {
+                ...getAnswerlatticeScopeLogContext({ sId, tId }),
+                batchStartIndex: i,
+                batchSize: batch.length,
+            });
         }
     }
 
@@ -265,7 +274,11 @@ export async function extractEntitiesFromArticles(
                 status: 'pending',
             } as Omit<AnswerlatticeEntityCandidate, 'id'>);
         } catch (error) {
-            console.error(`Failed to store entity candidate "${entity.name}":`, error);
+            logAnswerlatticeFailure('answerlattice_entity_candidate_store_failed', error, {
+                ...getAnswerlatticeScopeLogContext({ sId, tId }),
+                ...getBoundedAnswerlatticeStringContext('entityName', entity.name),
+                ...getBoundedAnswerlatticeStringContext('entityType', entity.type),
+            });
         }
     }
 
@@ -415,7 +428,13 @@ export async function extractEntitiesForArticle(
             newCandidateCount: result.newCandidateCount || 0,
         };
     } catch (error) {
-        console.error(`Entity extraction failed for article ${article.id}:`, error);
+        logAnswerlatticeFailure('answerlattice_entity_extraction_article_failed', error, {
+            ...getAnswerlatticeScopeLogContext({
+                articleId: article.id,
+                sId,
+                tId,
+            }),
+        });
         return null;
     }
 }

@@ -1,9 +1,9 @@
 # 📋 GBP SYNC — Product Specification
 
 **Feature:** #3 — Google Business Profile Minimal Sync  
-**Version:** 1.0  
-**Status:** 🔶 BLOCKED (Awaiting GBP API Access)  
-**Last Updated:** January 19, 2026  
+**Version:** 1.1
+**Status:** Reserved integration; current runtime blocked by GBP API/OAuth/provider gates
+**Last Updated:** July 2, 2026
 **Author:** Lead Architect (Cascade)
 
 ---
@@ -12,47 +12,51 @@
 
 ### What Is This Feature?
 
-**Google Listing Sync** keeps your Google Business Profile accurate without daily work. MenuList automatically ensures your menu link is correct and alerts you when hours drift.
+**Google Listing Sync** is a reserved integration candidate for keeping Google Business Profile aligned with MenuList. Current runtime does not write to Google: `ENABLE_GBP_SYNC` is false, token operations fail closed, and owners use manual Google handoff with the Official Business Page/menu link.
 
 ### Goals
 
 | Goal               | Description                             |
 | ------------------ | --------------------------------------- |
-| **Correctness**    | Google always shows the right menu link |
-| **Awareness**      | Owner knows when hours mismatch exists  |
-| **Minimal Effort** | Connect once, stays handled             |
+| **Correctness**    | Owner has the right MenuList link to put on Google |
+| **Awareness**      | Owner understands Google updates are manual until provider gates pass |
+| **Minimal Effort** | Reserved sync path stays bounded behind explicit approval gates |
 
 ### Success Metric
 
-> **"Owner never worries if Google is showing the wrong menu link or wrong hours."**
+> **"Owner has one trusted MenuList source to copy into Google until direct sync is approved and shipped."**
 
 ---
 
 ## 🎯 SCOPE
 
-### ✅ What We WILL Do (Phase 1)
+### Current Runtime
 
-| #   | Capability                | Description                                             | Autonomy          |
-| --- | ------------------------- | ------------------------------------------------------- | ----------------- |
-| 1   | **GBP Connection**        | Connect Google account, select location per outlet      | Manual (one-time) |
-| 2   | **Menu Link Sync**        | Auto-fix wrong/missing menu link on Google              | Autonomous        |
-| 3   | **Hours Drift Detection** | Detect when Google hours ≠ MenuList hours (weekly only) | Autonomous        |
-| 4   | **Manual Hours Apply**    | "Apply MenuList hours to Google" button                 | Owner-approved    |
-| 5   | **Audit Logging**         | All actions logged internally (MOL)                     | Silent            |
+| Capability | Current status |
+| --- | --- |
+| Google OAuth connection | Not shipped; Google Business Profile controls are hidden while `ENABLE_GBP_SYNC` is false |
+| Menu link sync | Not shipped; owner updates Google manually |
+| Hours drift detection | Not shipped for Google; MenuList hours remain local source truth |
+| Manual hours apply to Google | Not shipped |
+| Audit logging for GBP actions | Reserved with integration implementation |
 
-### ❌ What We Will NOT Do (Phase 1)
+### Reserved Integration Scope After Provider Gates
+
+Direct GBP sync requires approved Google Business Profile API access, separate OAuth credentials, token storage rules, route implementation, provider smoke, deploy evidence, browser/device QA, and production-host smoke before it becomes runtime.
+
+### Excluded From Current Runtime
 
 | Excluded              | Reason                                  |
 | --------------------- | --------------------------------------- |
-| Review automation     | Feature #5 territory (brand risk)       |
-| Review drafting       | Feature #5 territory                    |
-| Photo sync            | Rate-limited, quality review by Google  |
+| Review automation     | Separate Reviews/Reputation scope; also blocked on API access |
+| Review drafting       | Separate feature boundary               |
+| Photo sync            | Provider quality/review risk            |
 | Posts/announcements   | Marketing tool creep                    |
-| Q&A management        | API deprecated Sept 2024                |
-| Performance dashboard | Violates "silence" doctrine             |
+| Q&A management        | Not current MenuList runtime            |
+| Performance dashboard | Violates silence doctrine               |
 | Auto-hours write      | Too risky without approval              |
 | Push notifications    | Breaks silence governor                 |
-| Holiday/special hours | Complex edge cases, Phase 1 weekly only |
+| Holiday/special hours | Not current runtime                     |
 
 ---
 
@@ -66,10 +70,9 @@
 
 **Acceptance Criteria:**
 
-- Can sign in with Google account
-- Can select the correct GBP location for my outlet
-- Connection status shown in settings
-- Can disconnect at any time
+- Not available while `ENABLE_GBP_SYNC` is false
+- Requires approved API/OAuth/provider smoke before release
+- Connection status cannot be claimed in current runtime
 
 ### US-2: Menu Link Stays Correct
 
@@ -79,10 +82,9 @@
 
 **Acceptance Criteria:**
 
-- System computes canonical MenuList URL
-- Nightly check detects wrong/missing link
-- Auto-fix when safe (high confidence)
-- Skip and log when uncertain
+- System exposes stable MenuList OBP/menu links
+- Owner manually copies the link into Google Business Profile
+- MenuList does not currently auto-fix Google links
 
 ### US-3: Hours Mismatch Awareness
 
@@ -92,66 +94,33 @@
 
 **Acceptance Criteria:**
 
-- Nightly check compares GBP `regularHours` vs MenuList `workingHours` (weekly only)
-- Ignore `specialHours`/holiday hours in Phase 1
-- If store has overnight hours → mark `hoursStatus='UNKNOWN'` (avoid false mismatch)
-- Status shown: "Synced" or "Not synced"
-- One-button fix when mismatch exists
-- No automatic overwrites
+- Google hours drift detection is not shipped
+- Owner compares MenuList hours and Google hours manually
+- MenuList does not currently overwrite Google hours
 
 ---
 
 ## 🔄 USER FLOWS
 
-### Flow 1: Initial Connection
+### Current Flow: Manual Google Handoff
 
 ```
-Owner opens Settings → Business Settings
+Owner opens MenuList Official Business Page or Share
     ↓
-Sees "Google Business Profile" section
+Copies menu link or OBP link
     ↓
-Clicks "Connect Google"
+Opens Google Business Profile in Google
     ↓
-Google OAuth consent screen
+Pastes the MenuList link into the allowed Google field
     ↓
-Selects correct location from list
-    ↓
-Confirms mapping
-    ↓
-Status: "Connected"
-Menu link: "Managed"
+Saves in Google
 ```
 
-### Flow 2: Nightly Sync (Autonomous)
+### Reserved Flow: Provider Sync
 
 ```
-2 AM UTC — Nightly job runs
-    ↓
-For each connected store:
-    ↓
-Read GBP current state (websiteUrl, hours)
-    ↓
-Compare with MenuList truth
-    ↓
-Menu link wrong? → Auto-fix if confident
-    ↓
-Hours mismatch? → Log, update state
-    ↓
-Owner sees status next login
-```
-
-### Flow 3: Manual Hours Fix
-
-```
-Owner sees "Hours: Not synced"
-    ↓
-Clicks "Apply MenuList hours to Google"
-    ↓
-System writes hours to GBP
-    ↓
-Status updates to "Synced"
-    ↓
-Action logged in MOL
+Only after API/OAuth/provider/deploy/browser gates pass:
+connect Google → select location → sync allowed websiteUri → show status → owner-approved hours apply
 ```
 
 ---
@@ -162,26 +131,20 @@ Action logged in MOL
 
 | ID    | Requirement                                       | Priority |
 | ----- | ------------------------------------------------- | -------- |
-| FR-1  | OAuth flow with Google (separate client)          | P0       |
-| FR-2  | Location selection with verification              | P0       |
-| FR-3  | Token storage (server-only, secure)               | P0       |
-| FR-4  | Canonical URL computation                         | P0       |
-| FR-5  | Nightly link check + auto-fix (`websiteUri` only) | P0       |
-| FR-6  | Nightly hours drift detection (weekly hours only) | P0       |
-| FR-7  | Manual hours apply button                         | P1       |
-| FR-8  | Disconnect capability                             | P1       |
-| FR-9  | MOL logging for all actions                       | P1       |
-| FR-10 | Feature flag gating                               | P0       |
+| FR-1  | Keep `ENABLE_GBP_SYNC` false until provider gates pass | P0 |
+| FR-2  | Keep token operations fail-closed while disabled | P0 |
+| FR-3  | Keep active public/help/marketing copy bounded to manual Google handoff | P0 |
+| FR-4  | Require separate audit before OAuth, provider routes, or sync workers ship | P0 |
 
 ### Non-Functional Requirements
 
 | ID    | Requirement               | Target                   |
 | ----- | ------------------------- | ------------------------ |
-| NFR-1 | API rate limit compliance | 300 QPM max              |
-| NFR-2 | Token security            | Server-only access       |
-| NFR-3 | Nightly job reliability   | 99.9% uptime             |
-| NFR-4 | Error recovery            | Exponential backoff      |
-| NFR-5 | Cost efficiency           | <$1/month for 100 stores |
+| NFR-1 | API rate limit compliance | Required before provider activation |
+| NFR-2 | Token security            | Server-only access before any token write |
+| NFR-3 | Sync reliability          | Required before any automated sync claim |
+| NFR-4 | Error recovery            | Required before any provider route ships |
+| NFR-5 | Cost efficiency           | Must be re-estimated before activation |
 
 ---
 
@@ -230,7 +193,7 @@ Action logged in MOL
 
 ---
 
-## ⚠️ PREREQUISITES (BLOCKING)
+## Blocking Prerequisites
 
 | #   | Prerequisite                 | Owner | Status           |
 | --- | ---------------------------- | ----- | ---------------- |
@@ -239,7 +202,7 @@ Action logged in MOL
 | 3   | GBP OAuth client created     | User  | ❌ Blocked by #1 |
 | 4   | Test account available       | User  | ❓ Unknown       |
 
-**⚠️ CANNOT PROCEED until prerequisites are met.**
+**Cannot become active runtime until prerequisites are met and verified.**
 
 ---
 
@@ -251,7 +214,7 @@ Action logged in MOL
 | API quota exceeded     | Service degraded  | Rate limiting, throttling      |
 | Token revoked          | Connection breaks | Auto-disconnect, re-auth flow  |
 | Wrong location mapped  | Data corruption   | Verification gate on connect   |
-| Hours auto-write error | Trust loss        | Manual approval only (Phase 1) |
+| Hours auto-write error | Trust loss        | Manual approval only after provider gates |
 
 ---
 
@@ -261,13 +224,13 @@ Action logged in MOL
 | --- | ------------------------ | --------------------- | ------------------ |
 | 1   | GBP API access timeline? | Blocks implementation | User               |
 | 2   | Test account available?  | Blocks testing        | User               |
-| 3   | Photos in Phase 2?       | Scope expansion       | Product            |
+| 3   | Should photos ever be included? | Scope expansion | Product |
 
 ---
 
-## 📅 TIMELINE
+## Reserved Implementation Gates
 
-### Phase 0: Foundation (While Waiting for API Access)
+### Source Scaffold
 
 | Week | Tasks                                   |
 | ---- | --------------------------------------- |
@@ -277,7 +240,7 @@ Action logged in MOL
 | 1    | DAL skeleton                            |
 | 1    | UI stub ("Not connected" state)         |
 
-### Phase 1: Implementation (After API Access)
+### Provider Integration
 
 | Week | Tasks                      |
 | ---- | -------------------------- |
@@ -289,7 +252,7 @@ Action logged in MOL
 
 ---
 
-## ✅ ACCEPTANCE CRITERIA (Feature Complete)
+## Acceptance Criteria Before Any Release Claim
 
 - [ ] Owner can connect GBP and select location
 - [ ] Owner can disconnect GBP
@@ -299,9 +262,11 @@ Action logged in MOL
 - [ ] All actions logged in MOL
 - [ ] Feature flag gates all functionality
 - [ ] No Q&A/reviews/photos features
+- [ ] Provider smoke evidence exists against a real Google test listing
+- [ ] Scoped deploy and production-host smoke evidence exists
 
 ---
 
 **DOCUMENT SIGNATURE:** Lead Architect (Cascade)  
-**REVIEW STATUS:** SPEC COMPLETE ✅  
-**IMPLEMENTATION STATUS:** 🔶 BLOCKED (API Access)
+**REVIEW STATUS:** Source-boundary updated
+**IMPLEMENTATION STATUS:** Blocked by API/OAuth/provider gates

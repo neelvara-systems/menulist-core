@@ -27,6 +27,10 @@ import { ANSWERLATTICE_PERMISSION_KEYS, getAnswerlatticeRouteRequiredPermission 
 import { useAppSelector } from '@hook/useAppSelector';
 import { ensureFirebaseAuthForSession } from '@lib/auth/firebaseAuthSync';
 import { canUseAnswerlatticeManagement } from '@lib/answerlattice/sessionScope';
+import {
+    getFirebaseAuthSessionLogContext,
+    logFirebaseBootstrapFailure,
+} from '@lib/firebase/firebaseDiagnostics';
 import AntdThemeProvider from '@providers/antdThemeProvider';
 import { AnswerlatticeAccessProvider, useAnswerlatticeAccess } from '@providers/answerlatticeAccessProvider';
 import NetworkStatusProvider from '@providers/NetworkStatusProvider';
@@ -163,7 +167,7 @@ function AnswerlatticeDashboardLayoutContent({ children }: { children: React.Rea
             })
             .catch((error) => {
                 if (process.env.NODE_ENV !== 'production') {
-                    console.error('[Answerlattice] Firebase Auth sync failed', error);
+                    logFirebaseBootstrapFailure('answerlattice_dashboard_firebase_auth_sync_failed', error, getFirebaseAuthSessionLogContext(session));
                 }
                 if (!cancelled) {
                     setFirebaseAuthError(true);

@@ -203,8 +203,14 @@ $obp-closed-color: #c62828;
 
   .infoRow,
   .note,
-  .locationAddress {
+  .locationAddress,
+  .customerAnswerQuestion,
+  .customerAnswerText {
     color: #d8ddd4;
+  }
+
+  .customerAnswerItem {
+    border-top-color: rgba(255, 255, 255, 0.1);
   }
 
   .groupTitle {
@@ -994,6 +1000,42 @@ $obp-closed-color: #c62828;
   font-size: 14px;
   font-weight: 560;
   line-height: 1.45;
+}
+
+.customerAnswers {
+  gap: 14px;
+}
+
+.customerAnswerList {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+
+.customerAnswerItem {
+  padding-top: 12px;
+  border-top: 1px solid rgba(17, 17, 17, 0.08);
+
+  &:first-child {
+    padding-top: 0;
+    border-top: 0;
+  }
+}
+
+.customerAnswerQuestion {
+  margin: 0 0 4px;
+  color: #222;
+  font-size: 14px;
+  font-weight: 720;
+  line-height: 1.35;
+}
+
+.customerAnswerText {
+  margin: 0;
+  color: $obp-text-info;
+  font-size: 13.5px;
+  font-weight: 520;
+  line-height: 1.5;
 }
 
 .utilityInfo {
@@ -1846,13 +1888,15 @@ $obp-closed-color: #c62828;
   }
 
   .note,
-  .locationInfo {
+  .locationInfo,
+  .customerAnswers {
     grid-column: 2;
     margin-bottom: 0;
   }
 
   .starterPreviewShell .note,
-  .starterPreviewShell .locationInfo {
+  .starterPreviewShell .locationInfo,
+  .starterPreviewShell .customerAnswers {
     grid-column: auto;
     width: 100%;
   }
@@ -1872,7 +1916,9 @@ $obp-closed-color: #c62828;
   }
 
   .locationAddress,
-  .infoRow {
+  .infoRow,
+  .customerAnswerQuestion,
+  .customerAnswerText {
     font-size: 15.5px;
   }
 

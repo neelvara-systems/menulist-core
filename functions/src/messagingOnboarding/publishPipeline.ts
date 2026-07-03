@@ -33,6 +33,7 @@ const logger = functions.logger;
 const db = firestoreAdmin;
 const sessionsCol = DB_COLLECTIONS.MESSAGING_ONBOARDING_SESSIONS;
 const CANONICAL_SOURCE_LANGUAGE = "en";
+const PUBLISH_CONFIRMATION_SEND_FAILED_CODE = "PUBLISH_CONFIRMATION_SEND_FAILED";
 
 function normalizeProjectLanguages(languages: any): string[] {
   const collected = Array.isArray(languages)
@@ -55,6 +56,50 @@ function getDetectedDefaultLanguage(languages: any): string {
     if (firstCode) return String(firstCode).trim().toLowerCase();
   }
   return CANONICAL_SOURCE_LANGUAGE;
+}
+
+function getPublishPipelineIdLogContext(
+  label: string,
+  value: unknown,
+): Record<string, boolean | number> {
+  const normalized = value === undefined || value === null ? "" : String(value);
+  return {
+    [`${label}Present`]: normalized.length > 0,
+    [`${label}Length`]: normalized.length,
+  };
+}
+
+function getPublishPipelineLogContext(context: {
+  projectId?: unknown;
+  sessionId?: unknown;
+  storeId?: unknown;
+  tenantId?: unknown;
+}): Record<string, boolean | number> {
+  return {
+    ...getPublishPipelineIdLogContext("sessionId", context.sessionId),
+    ...getPublishPipelineIdLogContext("tenantId", context.tenantId),
+    ...getPublishPipelineIdLogContext("storeId", context.storeId),
+    ...getPublishPipelineIdLogContext("projectId", context.projectId),
+  };
+}
+
+function getPublishPipelineErrorName(error: unknown): string {
+  if (error instanceof Error) return (error.name || "Error").slice(0, 80);
+  return typeof error;
+}
+
+function getPublishPipelineErrorCode(error: unknown): string | undefined {
+  if (!(error instanceof Error)) return undefined;
+  const code = (error as { code?: unknown }).code;
+  if (code === undefined || code === null) return undefined;
+  return String(code).slice(0, 64);
+}
+
+function getPublishPipelineErrorContext(error: unknown): Record<string, string | undefined> {
+  return {
+    errorName: getPublishPipelineErrorName(error),
+    errorCode: getPublishPipelineErrorCode(error),
+  };
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -128,7 +173,7 @@ export async function executePublish(
   if (!hasPrice && menuData.items.length > 0) {
     // Allow publish even without prices — some menus don't have prices
     logger.warn("[PublishPipeline] Publishing without priced items", {
-      sessionId,
+      ...getPublishPipelineLogContext({ sessionId }),
       itemCount: menuData.items.length,
     });
   }
@@ -396,15 +441,18 @@ export async function executePublish(
     });
   } catch (err) {
     logger.error("[PublishPipeline] Failed to send confirmation", {
-      sessionId,
-      error: (err as Error).message,
+      failureCode: PUBLISH_CONFIRMATION_SEND_FAILED_CODE,
+      ...getPublishPipelineLogContext({ sessionId }),
+      ...getPublishPipelineErrorContext(err),
     });
   }
 
   logger.info("[PublishPipeline] Published successfully", {
-    sessionId,
-    tenantId: result.tenantId,
-    storeId: result.storeId,
+    ...getPublishPipelineLogContext({
+      sessionId,
+      tenantId: result.tenantId,
+      storeId: result.storeId,
+    }),
   });
 
   return publishedResult;

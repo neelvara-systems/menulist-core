@@ -19,6 +19,11 @@
 import { SYSTEM_EMAIL_FROM } from '@constant/urls';
 import { FEATURE_FLAGS } from '@config/features';
 import { admin } from '@lib/firebase/firebaseAdmin';
+import {
+  getBoundedNotificationStringContext,
+  getNotificationPayloadLogContext,
+  logNotificationFailure,
+} from '@lib/notifications/notificationDiagnostics';
 import { Timestamp } from 'firebase-admin/firestore';
 import * as nodemailer from 'nodemailer';
 
@@ -27,6 +32,19 @@ const MESSAGE_LOGS = 'messageLogs';
 const OPS_CONFIG = 'ops_config';
 const DEFAULT_FROM = SYSTEM_EMAIL_FROM;
 const MAX_PER_DAY = 10;
+
+const getLifecycleMessageLogContext = (payload: Partial<LifecycleMessagePayload> = {}) => ({
+  ...getNotificationPayloadLogContext({
+    eventType: payload.eventType,
+    productId: 'ML',
+    referenceId: payload.referenceId,
+    recipientEmail: payload.recipientEmail,
+    recipientName: payload.storeName,
+    metadata: payload.metadata,
+  }),
+  ...getBoundedNotificationStringContext('storeId', payload.storeId),
+  ...getBoundedNotificationStringContext('tenantId', payload.tenantId),
+});
 
 // ================================================================
 // TYPES (minimal, matches CF types)
@@ -56,7 +74,12 @@ async function isEnabled(): Promise<boolean> {
     flagCache = doc.data()?.ENABLE_LIFECYCLE_MESSAGING === true;
     flagCacheAt = Date.now();
     return flagCache!;
-  } catch { return false; }
+  } catch (error) {
+    logNotificationFailure('lifecycle_messaging_flag_read_failed', error, {
+      ...getBoundedNotificationStringContext('configDocId', 'system'),
+    });
+    return false;
+  }
 }
 
 // ================================================================
@@ -72,7 +95,14 @@ async function isDuplicate(storeId: string, eventType: string, referenceId: stri
       .where('status', '==', 'sent')
       .limit(1).get();
     return !snap.empty;
-  } catch { return false; }
+  } catch (error) {
+    logNotificationFailure('lifecycle_message_duplicate_check_failed', error, {
+      eventType: eventType.slice(0, 80),
+      ...getBoundedNotificationStringContext('storeId', storeId),
+      ...getBoundedNotificationStringContext('referenceId', referenceId),
+    });
+    return false;
+  }
 }
 
 // ================================================================
@@ -88,7 +118,13 @@ async function isRateLimited(storeId: string): Promise<boolean> {
       .where('createdAt', '>=', Timestamp.fromDate(today))
       .limit(MAX_PER_DAY + 1).get();
     return snap.size >= MAX_PER_DAY;
-  } catch { return false; }
+  } catch (error) {
+    logNotificationFailure('lifecycle_message_rate_limit_check_failed', error, {
+      ...getBoundedNotificationStringContext('storeId', storeId),
+      maxPerDay: MAX_PER_DAY,
+    });
+    return false;
+  }
 }
 
 // ================================================================
@@ -108,13 +144,22 @@ function getTransporter(): nodemailer.Transporter | null {
   return cachedTransporter;
 }
 
+function getLifecycleDeliveryError(result: { ok: boolean; error?: string }): string | null {
+  if (result.ok) return null;
+  const { error } = result;
+  const errorCode = typeof error === 'string' && error.length > 0
+    ? error
+    : 'lifecycle_message_delivery_failed';
+  return errorCode;
+}
+
 // Track SMTP health to avoid flooding alerts
 let smtpHealthy: boolean | null = null;
 let smtpAlertedToday = '';
 
 async function sendViaSMTP(to: string, subject: string, html: string): Promise<{ ok: boolean; id?: string; error?: string }> {
   const transporter = getTransporter();
-  if (!transporter) return { ok: false, error: 'SMTP not configured (SMTP_HOST, SMTP_USER, SMTP_PASS)' };
+  if (!transporter) return { ok: false, error: 'smtp_not_configured' };
 
   try {
     // SMTP Health Check: verify connection on first send (cached)
@@ -122,8 +167,12 @@ async function sendViaSMTP(to: string, subject: string, html: string): Promise<{
       try {
         await transporter.verify();
         smtpHealthy = true;
-      } catch (verifyErr) {
+      } catch (error) {
         smtpHealthy = false;
+        logNotificationFailure('lifecycle_message_smtp_verify_failed', error, {
+          ...getBoundedNotificationStringContext('recipientEmail', to),
+          ...getBoundedNotificationStringContext('subject', subject),
+        });
         // Alert founder ONCE per day if SMTP is broken
         const today = new Date().toISOString().split('T')[0];
         if (smtpAlertedToday !== today) {
@@ -133,24 +182,33 @@ async function sendViaSMTP(to: string, subject: string, html: string): Promise<{
             const { PLATFORM_NOTIFICATION_TRIGGER_TYPES } = await import('@data/shared/platformNotificationRegistry');
             await createAlert({
               severity: 'critical',
-              title: '🚨 SMTP Connection Failed — Emails NOT Sending',
-              message: `SMTP verify failed: ${verifyErr instanceof Error ? verifyErr.message : 'Unknown'}\nHost: ${process.env.SMTP_HOST}\nAll lifecycle emails will fail until SMTP is fixed.`,
+              title: 'SMTP connection failed',
+              message: 'SMTP provider check failed. Lifecycle emails will fail until SMTP is fixed.',
               triggerType: PLATFORM_NOTIFICATION_TRIGGER_TYPES.EMAIL_PROVIDER_FAILURE,
               productId: 'PLATFORM',
               category: 'owner_notifications',
             });
-          } catch { /* non-blocking */ }
+          } catch (alertError) {
+            logNotificationFailure('lifecycle_message_smtp_alert_failed', alertError, {
+              ...getBoundedNotificationStringContext('recipientEmail', to),
+              ...getBoundedNotificationStringContext('subject', subject),
+            });
+          }
         }
-        return { ok: false, error: `SMTP verify failed: ${verifyErr instanceof Error ? verifyErr.message : 'Unknown'}` };
+        return { ok: false, error: 'smtp_verify_failed' };
       }
     }
 
     const info = await transporter.sendMail({ from: DEFAULT_FROM, to, subject, html });
     smtpHealthy = true; // Reset on successful send
     return { ok: true, id: info.messageId };
-  } catch (e) {
+  } catch (error) {
     smtpHealthy = null; // Reset so next send re-verifies
-    return { ok: false, error: e instanceof Error ? e.message : 'Unknown' };
+    logNotificationFailure('lifecycle_message_smtp_send_failed', error, {
+      ...getBoundedNotificationStringContext('recipientEmail', to),
+      ...getBoundedNotificationStringContext('subject', subject),
+    });
+    return { ok: false, error: 'smtp_send_failed' };
   }
 }
 
@@ -204,7 +262,8 @@ export async function sendLifecycleMessage(payload: LifecycleMessagePayload): Pr
       return 'sent' in result
         ? result.sent > 0
         : result.status === 'pending';
-    } catch {
+    } catch (error) {
+      logNotificationFailure('lifecycle_message_owner_notification_enqueue_failed', error, getLifecycleMessageLogContext(payload));
       // Fall through to the legacy sender so billing/publish operations keep their
       // current fire-and-forget behavior if the new queue is unavailable.
     }
@@ -237,10 +296,12 @@ export async function sendLifecycleMessage(payload: LifecycleMessagePayload): Pr
       subject: template.subject,
       referenceId,
       providerMessageId: result.id || null,
-      error: result.error || null,
+      error: getLifecycleDeliveryError(result),
       createdAt: Timestamp.now(),
     });
-  } catch { /* logging failure is non-blocking */ }
+  } catch (error) {
+    logNotificationFailure('lifecycle_message_log_write_failed', error, getLifecycleMessageLogContext(payload));
+  }
 
   return result.ok;
 }
@@ -278,7 +339,15 @@ export async function sendInternalNotification(params: {
     if (template) {
       await sendViaSMTP(INTERNAL_RECIPIENTS.FOUNDER_EMAIL, template.subject, template.html);
     }
-  } catch { /* non-blocking */ }
+  } catch (error) {
+    logNotificationFailure('internal_lifecycle_notification_email_failed', error, {
+      eventType: eventType.slice(0, 80),
+      metadataPresent: Boolean(metadata),
+      metadataKeyCount: metadata && typeof metadata === 'object' ? Object.keys(metadata).length : 0,
+      ...getBoundedNotificationStringContext('storeId', storeId),
+      ...getBoundedNotificationStringContext('tenantId', tenantId),
+    });
+  }
 
   // Also fire Telegram alert for instant push notification
   try {
@@ -297,5 +366,13 @@ export async function sendInternalNotification(params: {
       tId: tenantId,
       metadata: { ...metadata, isRevenue },
     });
-  } catch { /* non-blocking */ }
+  } catch (error) {
+    logNotificationFailure('internal_lifecycle_notification_alert_failed', error, {
+      eventType: eventType.slice(0, 80),
+      metadataPresent: Boolean(metadata),
+      metadataKeyCount: metadata && typeof metadata === 'object' ? Object.keys(metadata).length : 0,
+      ...getBoundedNotificationStringContext('storeId', storeId),
+      ...getBoundedNotificationStringContext('tenantId', tenantId),
+    });
+  }
 }

@@ -8,7 +8,7 @@
  * 4. Track progress on the KB generation job
  * 
  * Called as Step 12 of the nightly batch in answerlatticeNightly.ts.
- * Uses firebase-admin (server-side Firestore) + Gemini through the Answerlattice Vertex AI client.
+ * Uses firebase-admin (server-side Firestore) + Gemini through the Answerlattice GenAI client.
  * 
  * CRITICAL: This runs as a SEPARATE discovery loop (not inside the main per-tenant loop)
  * because new tenants may have zero entities and would not be discovered by discoverActiveTenants().
@@ -59,6 +59,18 @@ const CONFIG = {
 
 const BOOTSTRAP_PROMPT_VERSION = 'v1';
 const ANSWERLATTICE_PRODUCT_ID = 'AL';
+const ANSWERLATTICE_BOOTSTRAP_GEMINI_CALL_FAILED = 'ANSWERLATTICE_BOOTSTRAP_GEMINI_CALL_FAILED';
+const ANSWERLATTICE_BOOTSTRAP_DISCOVERY_FAILED = 'ANSWERLATTICE_BOOTSTRAP_DISCOVERY_FAILED';
+const ANSWERLATTICE_BOOTSTRAP_EXTRACTION_BATCH_FAILED = 'ANSWERLATTICE_BOOTSTRAP_EXTRACTION_BATCH_FAILED';
+const ANSWERLATTICE_BOOTSTRAP_ENTITY_CANDIDATE_WRITE_FAILED = 'ANSWERLATTICE_BOOTSTRAP_ENTITY_CANDIDATE_WRITE_FAILED';
+const ANSWERLATTICE_BOOTSTRAP_ENTITY_PROMOTION_FAILED = 'ANSWERLATTICE_BOOTSTRAP_ENTITY_PROMOTION_FAILED';
+const ANSWERLATTICE_BOOTSTRAP_COMPILED_CONTEXT_STALE_MARK_FAILED = 'ANSWERLATTICE_BOOTSTRAP_COMPILED_CONTEXT_STALE_MARK_FAILED';
+const ANSWERLATTICE_BOOTSTRAP_TENANT_SUMMARY_SYNC_FAILED = 'ANSWERLATTICE_BOOTSTRAP_TENANT_SUMMARY_SYNC_FAILED';
+const ANSWERLATTICE_BOOTSTRAP_DRAFT_PARSE_FAILED = 'ANSWERLATTICE_BOOTSTRAP_DRAFT_PARSE_FAILED';
+const ANSWERLATTICE_BOOTSTRAP_DRAFT_GENERATION_FAILED = 'ANSWERLATTICE_BOOTSTRAP_DRAFT_GENERATION_FAILED';
+const ANSWERLATTICE_BOOTSTRAP_TENANT_FAILED = 'ANSWERLATTICE_BOOTSTRAP_TENANT_FAILED';
+const ANSWERLATTICE_BOOTSTRAP_JOB_STATUS_MARK_FAILED = 'ANSWERLATTICE_BOOTSTRAP_JOB_STATUS_MARK_FAILED';
+const ANSWERLATTICE_BOOTSTRAP_FATAL_FAILED = 'ANSWERLATTICE_BOOTSTRAP_FATAL_FAILED';
 
 // ═══════════════════════════════════════════════════════════════
 // TYPES
@@ -85,6 +97,41 @@ interface ExtractedEntityRaw {
     confidence: number;
     description: string;
     source?: 'existing' | 'new';
+}
+
+function getBootstrapSourceErrorContext(error: unknown): {
+    sourceErrorName: string | null;
+    sourceErrorCode: string | number | null;
+    sourceStatusCode: number | null;
+} {
+    const source = error && typeof error === 'object' ? error as Record<string, unknown> : {};
+    const sourceStatusCode = typeof source.status === 'number'
+        ? source.status
+        : (typeof source.statusCode === 'number' ? source.statusCode : null);
+
+    return {
+        sourceErrorName: typeof source.name === 'string' ? source.name : null,
+        sourceErrorCode: typeof source.code === 'string' || typeof source.code === 'number' ? source.code : null,
+        sourceStatusCode,
+    };
+}
+
+function getBootstrapScopeContext(tId?: number, sId?: number): {
+    hasTenantScope: boolean;
+    hasStoreScope: boolean;
+} {
+    return {
+        hasTenantScope: Number.isFinite(tId),
+        hasStoreScope: Number.isFinite(sId),
+    };
+}
+
+function getBootstrapStringContext(label: string, value: unknown): Record<string, boolean | number> {
+    const stringValue = typeof value === 'string' ? value : '';
+    return {
+        [`${label}Present`]: stringValue.length > 0,
+        [`${label}Length`]: stringValue.length,
+    };
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -212,7 +259,10 @@ async function callGemini(systemPrompt: string, userPrompt: string): Promise<Ans
             userPrompt,
         });
     } catch (error) {
-        logger.error('[Answerlattice Bootstrap] Gemini call failed', { error });
+        logger.error('[Answerlattice Bootstrap] Gemini call failed', {
+            failureCode: ANSWERLATTICE_BOOTSTRAP_GEMINI_CALL_FAILED,
+            ...getBootstrapSourceErrorContext(error),
+        });
         return null;
     }
 }
@@ -251,7 +301,10 @@ async function discoverBootstrapCandidates(): Promise<BootstrapCandidate[]> {
             candidates.push({ tId, sId, jobId: jobDoc.id });
         }
     } catch (error) {
-        logger.error('[Answerlattice Bootstrap] Discovery failed', { error });
+        logger.error('[Answerlattice Bootstrap] Discovery failed', {
+            failureCode: ANSWERLATTICE_BOOTSTRAP_DISCOVERY_FAILED,
+            ...getBootstrapSourceErrorContext(error),
+        });
     }
 
     return candidates;
@@ -277,8 +330,7 @@ async function extractEntitiesForTenant(
 
     if (articlesSnap.size < CONFIG.MIN_ARTICLES_FOR_BOOTSTRAP) {
         logger.info('[Answerlattice Bootstrap] Skipping extraction because article count is below minimum', {
-            tId,
-            sId,
+            ...getBootstrapScopeContext(tId, sId),
             articleCount: articlesSnap.size,
             minimumArticles: CONFIG.MIN_ARTICLES_FOR_BOOTSTRAP,
         });
@@ -322,7 +374,9 @@ async function extractEntitiesForTenant(
     }
 
     if (articles.length === 0) {
-        logger.info('[Answerlattice Bootstrap] No unprocessed articles found. Skipping extraction.', { tId, sId });
+        logger.info('[Answerlattice Bootstrap] No unprocessed articles found. Skipping extraction.', {
+            ...getBootstrapScopeContext(tId, sId),
+        });
         return result;
     }
 
@@ -366,10 +420,10 @@ async function extractEntitiesForTenant(
             }
         } catch (error) {
             logger.error('[Answerlattice Bootstrap] Extraction failed for article batch', {
-                tId,
-                sId,
+                failureCode: ANSWERLATTICE_BOOTSTRAP_EXTRACTION_BATCH_FAILED,
+                ...getBootstrapScopeContext(tId, sId),
                 batchIndex: i,
-                error,
+                ...getBootstrapSourceErrorContext(error),
             });
         }
     }
@@ -409,10 +463,10 @@ async function extractEntitiesForTenant(
             result.extracted++;
         } catch (error) {
             logger.error('[Answerlattice Bootstrap] Failed to store entity candidate', {
-                tId,
-                sId,
-                entityName: entity.name,
-                error,
+                failureCode: ANSWERLATTICE_BOOTSTRAP_ENTITY_CANDIDATE_WRITE_FAILED,
+                ...getBootstrapScopeContext(tId, sId),
+                ...getBootstrapStringContext('entityName', entity.name),
+                ...getBootstrapSourceErrorContext(error),
             });
         }
     }
@@ -540,11 +594,11 @@ async function autoPromoteEntities(
                 result.promoted++;
             } catch (error) {
                 logger.error('[Answerlattice Bootstrap] Failed to promote entity candidate', {
-                    tId,
-                    sId,
-                    candidateId: candidateDoc.id,
-                    candidateName: candidate.name,
-                    error,
+                    failureCode: ANSWERLATTICE_BOOTSTRAP_ENTITY_PROMOTION_FAILED,
+                    ...getBootstrapScopeContext(tId, sId),
+                    ...getBootstrapStringContext('candidateId', candidateDoc.id),
+                    ...getBootstrapStringContext('candidateName', candidate.name),
+                    ...getBootstrapSourceErrorContext(error),
                 });
             }
         } else {
@@ -558,9 +612,9 @@ async function autoPromoteEntities(
             sourceType: 'answerlattice_entities',
         }).catch(error => {
             logger.warn('[Answerlattice Onboarding] Failed to mark compiled context stale after entity promotion', {
-                tId,
-                sId,
-                error: error instanceof Error ? error.message : String(error),
+                failureCode: ANSWERLATTICE_BOOTSTRAP_COMPILED_CONTEXT_STALE_MARK_FAILED,
+                ...getBootstrapScopeContext(tId, sId),
+                ...getBootstrapSourceErrorContext(error),
             });
         });
         await upsertAnswerlatticeTenantSummary(db, tId, sId, {
@@ -568,9 +622,9 @@ async function autoPromoteEntities(
             hasEntities: true,
         }).catch(error => {
             logger.warn('[Answerlattice Onboarding] Failed to sync tenant summary after entity promotion', {
-                tId,
-                sId,
-                error: error instanceof Error ? error.message : String(error),
+                failureCode: ANSWERLATTICE_BOOTSTRAP_TENANT_SUMMARY_SYNC_FAILED,
+                ...getBootstrapScopeContext(tId, sId),
+                ...getBootstrapSourceErrorContext(error),
             });
         });
     }
@@ -723,10 +777,10 @@ async function generateDraftsForPromotedEntities(
             if (!parsed) {
                 result.failed++;
                 logger.warn('[Answerlattice Bootstrap] Failed to parse draft response', {
-                    tId,
-                    sId,
-                    entityId: entityDoc.id,
-                    entityName: entity.name,
+                    failureCode: ANSWERLATTICE_BOOTSTRAP_DRAFT_PARSE_FAILED,
+                    ...getBootstrapScopeContext(tId, sId),
+                    ...getBootstrapStringContext('entityId', entityDoc.id),
+                    ...getBootstrapStringContext('entityName', entity.name),
                 });
                 continue;
             }
@@ -789,11 +843,11 @@ async function generateDraftsForPromotedEntities(
             result.generated++;
         } catch (error) {
             logger.error('[Answerlattice Bootstrap] Draft generation failed', {
-                tId,
-                sId,
-                entityId: entityDoc.id,
-                entityName: entity.name,
-                error,
+                failureCode: ANSWERLATTICE_BOOTSTRAP_DRAFT_GENERATION_FAILED,
+                ...getBootstrapScopeContext(tId, sId),
+                ...getBootstrapStringContext('entityId', entityDoc.id),
+                ...getBootstrapStringContext('entityName', entity.name),
+                ...getBootstrapSourceErrorContext(error),
             });
             result.failed++;
         }
@@ -894,8 +948,7 @@ export async function runOnboardingBootstrap(): Promise<BootstrapResult> {
                         .get();
                     if (!existingEntities.empty) {
                         logger.info('[Answerlattice Bootstrap] Entities already exist, skipping tenant', {
-                            tId,
-                            sId,
+                            ...getBootstrapScopeContext(tId, sId),
                             reason: 'SKIP_IF_ENTITIES_EXIST',
                         });
                         await jobRef.update({ 'onboardingBootstrap.status': 'completed', 'onboardingBootstrap.completedAt': Timestamp.now() });
@@ -947,8 +1000,7 @@ export async function runOnboardingBootstrap(): Promise<BootstrapResult> {
                 result.tenantsBootstrapped++;
 
                 logger.info('[Answerlattice Bootstrap] Tenant bootstrap completed', {
-                    tId,
-                    sId,
+                    ...getBootstrapScopeContext(tId, sId),
                     extracted: extractionResult.extracted,
                     promoted: promoteResult.promoted,
                     review: promoteResult.forReview,
@@ -957,21 +1009,35 @@ export async function runOnboardingBootstrap(): Promise<BootstrapResult> {
                 });
 
             } catch (error) {
-                const msg = `${tId}/${sId}: ${error instanceof Error ? error.message : 'Unknown error'}`;
-                result.errors.push(msg);
-                logger.error('[Answerlattice Bootstrap] Tenant bootstrap failed', { tId, sId, error });
+                result.errors.push(ANSWERLATTICE_BOOTSTRAP_TENANT_FAILED);
+                logger.error('[Answerlattice Bootstrap] Tenant bootstrap failed', {
+                    failureCode: ANSWERLATTICE_BOOTSTRAP_TENANT_FAILED,
+                    ...getBootstrapScopeContext(tId, sId),
+                    ...getBootstrapStringContext('jobId', jobId),
+                    ...getBootstrapSourceErrorContext(error),
+                });
 
                 try {
                     await jobRef.update({
                         'onboardingBootstrap.status': 'failed',
-                        'onboardingBootstrap.errorMessage': msg.substring(0, 500),
+                        'onboardingBootstrap.errorMessage': ANSWERLATTICE_BOOTSTRAP_TENANT_FAILED,
                     });
-                } catch { /* non-blocking */ }
+                } catch (statusError) {
+                    logger.error('[Answerlattice Bootstrap] Job failure status update failed', {
+                        failureCode: ANSWERLATTICE_BOOTSTRAP_JOB_STATUS_MARK_FAILED,
+                        ...getBootstrapScopeContext(tId, sId),
+                        ...getBootstrapStringContext('jobId', jobId),
+                        ...getBootstrapSourceErrorContext(statusError),
+                    });
+                }
             }
         }
     } catch (error) {
-        logger.error('[Answerlattice Bootstrap] Fatal error', { error });
-        result.errors.push(`Fatal: ${error instanceof Error ? error.message : 'Unknown'}`);
+        logger.error('[Answerlattice Bootstrap] Fatal error', {
+            failureCode: ANSWERLATTICE_BOOTSTRAP_FATAL_FAILED,
+            ...getBootstrapSourceErrorContext(error),
+        });
+        result.errors.push(ANSWERLATTICE_BOOTSTRAP_FATAL_FAILED);
     }
 
     return result;

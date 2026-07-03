@@ -1,5 +1,5 @@
 import DateTimeDisplay from '@atoms/DateTimeDisplay';
-import { addTicketMessage } from '@database/tickets';
+import { addTicketMessage, assertSupportTicketMessageAddSucceeded } from '@database/tickets';
 import { useAppDispatch } from '@hook/useAppDispatch';
 import { sanitizeFeedbackComment } from '@lib/sanitization';
 import { startLoader, stopLoader } from '@reduxSlices/loader';
@@ -93,14 +93,22 @@ const ConversationTimeline: React.FC<ConversationTimelineProps> = ({ ticket, onR
             };
 
             // Add message to ticket via DAL (writes messages ONLY - status is separate)
-            await addTicketMessage(
+            const result = await addTicketMessage(
                 ticket.id,
                 ticket.messages || [], // Pass existing messages (no DB read needed)
-                newMessage
+                newMessage,
+                undefined,
+                { tId: ticket.tId, sId: ticket.sId }
+            );
+            assertSupportTicketMessageAddSucceeded(
+                result,
+                ticket.id,
+                newMessage.id,
+                'platform_ticket_message_add_rejected',
             );
 
             // Update local state only (no second DB write)
-            const updatedMessages = [...(ticket.messages || []), newMessage];
+            const updatedMessages = [...(ticket.messages || []), result.message];
             const updatedTicket: Partial<SupportTicketType> = {
                 messages: updatedMessages
             };

@@ -12,11 +12,11 @@
  * Supported sizes: common iOS + Android PWA icon sizes. Unsupported sizes clamp to 512.
  */
 
-import { DB_COLLECTIONS } from '@constant/database';
 import { getStoreContextName } from '@lib/businessIdentity/names';
-import { firestoreAdmin } from '@lib/firebase/firebaseAdmin';
+import { getPublicStoreById } from '@lib/firestore/clientStoreLookup';
 import { checkRateLimit } from '@lib/rateLimit';
 import { getRateLimitForFeature } from '@lib/rateLimit/configs';
+import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import {
     clampCustomerAppIconSize,
     CUSTOMER_APP_ICON_CACHE_CONTROL,
@@ -25,7 +25,7 @@ import {
 } from '@lib/pwa/customerAppAssets';
 import { ImageResponse } from 'next/og';
 import { NextRequest } from 'next/server';
-import { getClientIp } from 'src/middleware/publicApi';
+import { getClientIp, hashPublicRateLimitValue } from 'src/middleware/publicApi';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -35,8 +35,9 @@ async function shouldUseFallbackAsset(request: NextRequest, storeId: string): Pr
     if (!STORE_ID_PATTERN.test(storeId)) return true;
 
     const config = getRateLimitForFeature('PUBLIC_DYNAMIC_ASSET');
+    const ipHash = hashPublicRateLimitValue(getClientIp(request));
     const limit = await checkRateLimit({
-        key: `public-dynamic-asset:icon:${getClientIp(request)}`,
+        key: `public-dynamic-asset:icon:${ipHash}`,
         ...config,
     });
     return !limit.allowed;
@@ -70,8 +71,18 @@ export async function GET(
             });
         }
 
-        const snap = await firestoreAdmin.collection(DB_COLLECTIONS.STORES).doc(storeId).get();
-        const store = snap.exists ? snap.data() : null;
+        const store = await getPublicStoreById(storeId);
+        if (!store) {
+            return new ImageResponse(renderCustomerAppIcon({
+                displayName: 'Menu',
+                seed: storeId,
+                size,
+            }), {
+                width: size,
+                height: size,
+                headers: { 'Cache-Control': CUSTOMER_APP_ICON_CACHE_CONTROL },
+            });
+        }
 
         const displayName: string = getStoreContextName(store, 'Menu');
         const iconSource = resolveCustomerAppIconSource(store);
@@ -91,7 +102,10 @@ export async function GET(
             headers: { 'Cache-Control': CUSTOMER_APP_ICON_CACHE_CONTROL },
         });
     } catch (err) {
-        console.error('[app-icons] generation failed:', err);
+        logRuntimeFailure('customer_app_icon_generation_failed', err, {
+            size,
+            ...getBoundedRuntimeStringContext('storeId', storeId),
+        });
         // Always return an icon — never 500 for install flows.
         return new ImageResponse(renderCustomerAppIcon({
             displayName: 'Menu',

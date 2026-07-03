@@ -1,5 +1,11 @@
 'use client'
 
+import {
+    getBoundedBusinessSettingsStringContext,
+    logBusinessSettingsFailure,
+} from '@template/main-app/businessSettings/utils/businessSettingsDiagnostics';
+import { AUTH_BROWSER_REQUEST_POLICY } from '@lib/auth/browserRequestPolicy';
+import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';
 import { theme } from 'antd';
 import { useEffect, useMemo, useState } from 'react';
 import { LuEye, LuPenLine, LuRotateCcw } from 'react-icons/lu';
@@ -8,6 +14,14 @@ import { Button, Card, Flex, NavBar, Popup, Text, TextArea, Toast } from '../ant
 type ComplianceTab = 'privacy' | 'terms' | 'refund';
 type CompliancePageData = { content: string; customContent?: string; source: string; systemContent?: string } | null;
 type CompliancePagesState = Record<ComplianceTab, CompliancePageData>;
+type ComplianceMutationAction = 'save' | 'reset';
+type ComplianceApiMutationAction = 'override' | 'reset';
+type ComplianceMutationResponse = {
+    action?: unknown;
+    success?: boolean;
+    type?: unknown;
+};
+type ComplianceLoadResponse = Partial<CompliancePagesState>;
 
 interface MobileCompliancePagesEditorProps {
     baseUrl?: string;
@@ -26,6 +40,50 @@ const EMPTY_COMPLIANCE_PAGES: CompliancePagesState = {
     refund: null,
     terms: null,
 };
+const MOBILE_COMPLIANCE_MUTATION_RESPONSE_JSON_MAX_BYTES = 8 * 1024;
+const MOBILE_COMPLIANCE_LOAD_RESPONSE_JSON_MAX_BYTES = 32 * 1024;
+
+const createMobileComplianceStatusError = (code: string, status: number) => {
+    const error = new Error(code) as Error & { code?: string; status?: number };
+    error.code = code;
+    error.status = status;
+    return error;
+};
+
+function getExpectedComplianceApiMutationAction(action: ComplianceMutationAction): ComplianceApiMutationAction {
+    return action === 'save' ? 'override' : 'reset';
+}
+
+function isSuccessfulComplianceMutationResponse(
+    value: ComplianceMutationResponse | null,
+    type: ComplianceTab,
+    action: ComplianceMutationAction,
+): value is ComplianceMutationResponse & {
+    action: ComplianceApiMutationAction;
+    success: true;
+    type: ComplianceTab;
+} {
+    return Boolean(
+        value
+        && value.success === true
+        && value.type === type
+        && value.action === getExpectedComplianceApiMutationAction(action),
+    );
+}
+
+function buildMobileComplianceMutationResponseLogContext(
+    result: ComplianceMutationResponse | null,
+    type: ComplianceTab,
+    action: ComplianceMutationAction,
+) {
+    return {
+        ...getBoundedBusinessSettingsStringContext('complianceType', type),
+        ...getBoundedBusinessSettingsStringContext('mutationAction', action),
+        hasExpectedAction: result?.action === getExpectedComplianceApiMutationAction(action),
+        hasExpectedType: result?.type === type,
+        success: result?.success === true,
+    };
+}
 
 let compliancePagesCache: CompliancePagesState | null = null;
 let compliancePagesRequest: Promise<CompliancePagesState | null> | null = null;
@@ -44,6 +102,69 @@ function publishCompliancePages(pages: CompliancePagesState) {
     compliancePagesListeners.forEach((listener) => listener(pages));
 }
 
+async function readMobileComplianceMutationResponseJson(
+    response: Response,
+    type: ComplianceTab,
+    action: ComplianceMutationAction,
+): Promise<ComplianceMutationResponse | null> {
+    try {
+        return await readJsonResponseWithLimit<ComplianceMutationResponse>(
+            response,
+            MOBILE_COMPLIANCE_MUTATION_RESPONSE_JSON_MAX_BYTES,
+        );
+    } catch (error) {
+        logBusinessSettingsFailure(
+            'mobile_compliance_page_response_parse_failed',
+            error,
+            {
+                ...getBoundedBusinessSettingsStringContext('complianceType', type),
+                ...getBoundedBusinessSettingsStringContext('mutationAction', action),
+                responseOk: response.ok,
+                responseStatus: response.status,
+                maxBytes: MOBILE_COMPLIANCE_MUTATION_RESPONSE_JSON_MAX_BYTES,
+            },
+        );
+        return null;
+    }
+}
+
+async function readMobileComplianceLoadResponseJson(
+    response: Response,
+): Promise<ComplianceLoadResponse | null> {
+    try {
+        const payload = await readJsonResponseWithLimit<unknown>(
+            response,
+            MOBILE_COMPLIANCE_LOAD_RESPONSE_JSON_MAX_BYTES,
+        );
+        if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+            logBusinessSettingsFailure(
+                'mobile_compliance_pages_load_response_invalid',
+                createMobileComplianceStatusError('mobile_compliance_pages_load_response_invalid', response.status),
+                {
+                    ...getBoundedBusinessSettingsStringContext('complianceSurface', 'mobile'),
+                    responseOk: response.ok,
+                    responseStatus: response.status,
+                    maxBytes: MOBILE_COMPLIANCE_LOAD_RESPONSE_JSON_MAX_BYTES,
+                },
+            );
+            return null;
+        }
+        return payload as ComplianceLoadResponse;
+    } catch (error) {
+        logBusinessSettingsFailure(
+            'mobile_compliance_pages_load_response_parse_failed',
+            error,
+            {
+                ...getBoundedBusinessSettingsStringContext('complianceSurface', 'mobile'),
+                responseOk: response.ok,
+                responseStatus: response.status,
+                maxBytes: MOBILE_COMPLIANCE_LOAD_RESPONSE_JSON_MAX_BYTES,
+            },
+        );
+        return null;
+    }
+}
+
 async function loadCompliancePages(force = false) {
     if (!force && compliancePagesCache) {
         return compliancePagesCache;
@@ -53,13 +174,29 @@ async function loadCompliancePages(force = false) {
         return compliancePagesRequest;
     }
 
-    compliancePagesRequest = fetch('/api/compliance')
+    compliancePagesRequest = fetch('/api/compliance', AUTH_BROWSER_REQUEST_POLICY)
         .then(async (response) => {
-            if (!response.ok) return null;
-            const data = await response.json();
+            if (!response.ok) {
+                logBusinessSettingsFailure(
+                    'mobile_compliance_pages_load_failed',
+                    createMobileComplianceStatusError('mobile_compliance_pages_load_rejected', response.status),
+                    getBoundedBusinessSettingsStringContext('complianceSurface', 'mobile'),
+                );
+                return null;
+            }
+            const data = await readMobileComplianceLoadResponseJson(response);
+            if (!data) return null;
             const pages = normalizeCompliancePages(data);
             publishCompliancePages(pages);
             return pages;
+        })
+        .catch((error) => {
+            logBusinessSettingsFailure(
+                'mobile_compliance_pages_load_failed',
+                error,
+                getBoundedBusinessSettingsStringContext('complianceSurface', 'mobile'),
+            );
+            return null;
         })
         .finally(() => {
             compliancePagesRequest = null;
@@ -85,6 +222,25 @@ export default function MobileCompliancePagesEditor({ baseUrl, compact, type }: 
         if (!baseUrl) return `/${type}`;
         return `${baseUrl.replace(/\/$/, '')}/${type}`;
     }, [baseUrl, type]);
+
+    const handleOpenPage = () => {
+        try {
+            const opened = window.open(pageUrl, '_blank', 'noopener,noreferrer');
+            if (!opened) {
+                throw new Error('mobile_compliance_page_open_blocked');
+            }
+        } catch (error) {
+            logBusinessSettingsFailure(
+                'mobile_compliance_page_open_failed',
+                error,
+                {
+                    ...getBoundedBusinessSettingsStringContext('complianceType', type),
+                    ...getBoundedBusinessSettingsStringContext('pageUrl', pageUrl),
+                },
+            );
+            Toast.show({ content: 'Failed to open page.', duration: 1500 });
+        }
+    };
 
     const fetchData = async () => {
         try {
@@ -120,6 +276,7 @@ export default function MobileCompliancePagesEditor({ baseUrl, compact, type }: 
         try {
             setSaving(true);
             const response = await fetch('/api/compliance', {
+                ...AUTH_BROWSER_REQUEST_POLICY,
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -128,14 +285,35 @@ export default function MobileCompliancePagesEditor({ baseUrl, compact, type }: 
                     type,
                 }),
             });
-            const data = await response.json();
+            const result = await readMobileComplianceMutationResponseJson(response, type, 'save');
             if (!response.ok) {
-                Toast.show({ content: data?.error || 'Failed to save.', duration: 1500 });
+                logBusinessSettingsFailure(
+                    'mobile_compliance_page_save_failed',
+                    createMobileComplianceStatusError('mobile_compliance_page_save_rejected', response.status),
+                    getBoundedBusinessSettingsStringContext('complianceType', type),
+                );
+                Toast.show({ content: 'Failed to save.', duration: 1500 });
+                return;
+            }
+            if (!isSuccessfulComplianceMutationResponse(result, type, 'save')) {
+                logBusinessSettingsFailure(
+                    'mobile_compliance_page_response_invalid',
+                    createMobileComplianceStatusError('mobile_compliance_page_save_response_invalid', response.status),
+                    buildMobileComplianceMutationResponseLogContext(result, type, 'save'),
+                );
+                Toast.show({ content: 'Failed to save.', duration: 1500 });
                 return;
             }
             await loadCompliancePages(true);
             setIsEditing(false);
             Toast.show({ content: `${pageLabel} updated.`, duration: 1200 });
+        } catch (error) {
+            logBusinessSettingsFailure(
+                'mobile_compliance_page_save_failed',
+                error,
+                getBoundedBusinessSettingsStringContext('complianceType', type),
+            );
+            Toast.show({ content: 'Failed to save.', duration: 1500 });
         } finally {
             setSaving(false);
         }
@@ -145,6 +323,7 @@ export default function MobileCompliancePagesEditor({ baseUrl, compact, type }: 
         try {
             setResetting(true);
             const response = await fetch('/api/compliance', {
+                ...AUTH_BROWSER_REQUEST_POLICY,
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -152,15 +331,36 @@ export default function MobileCompliancePagesEditor({ baseUrl, compact, type }: 
                     type,
                 }),
             });
-            const data = await response.json();
+            const result = await readMobileComplianceMutationResponseJson(response, type, 'reset');
             if (!response.ok) {
-                Toast.show({ content: data?.error || 'Failed to reset.', duration: 1500 });
+                logBusinessSettingsFailure(
+                    'mobile_compliance_page_reset_failed',
+                    createMobileComplianceStatusError('mobile_compliance_page_reset_rejected', response.status),
+                    getBoundedBusinessSettingsStringContext('complianceType', type),
+                );
+                Toast.show({ content: 'Failed to reset.', duration: 1500 });
+                return;
+            }
+            if (!isSuccessfulComplianceMutationResponse(result, type, 'reset')) {
+                logBusinessSettingsFailure(
+                    'mobile_compliance_page_response_invalid',
+                    createMobileComplianceStatusError('mobile_compliance_page_reset_response_invalid', response.status),
+                    buildMobileComplianceMutationResponseLogContext(result, type, 'reset'),
+                );
+                Toast.show({ content: 'Failed to reset.', duration: 1500 });
                 return;
             }
             await loadCompliancePages(true);
             setCustomText('');
             setIsEditing(false);
             Toast.show({ content: `${pageLabel} reset to default.`, duration: 1200 });
+        } catch (error) {
+            logBusinessSettingsFailure(
+                'mobile_compliance_page_reset_failed',
+                error,
+                getBoundedBusinessSettingsStringContext('complianceType', type),
+            );
+            Toast.show({ content: 'Failed to reset.', duration: 1500 });
         } finally {
             setResetting(false);
         }
@@ -191,7 +391,7 @@ export default function MobileCompliancePagesEditor({ baseUrl, compact, type }: 
                     <NavBar
                         onBack={() => setIsOpen(false)}
                         right={
-                            <Button fill="none" onClick={() => window.open(pageUrl, '_blank')} size="small">
+                            <Button fill="none" onClick={handleOpenPage} size="small">
                                 View page
                             </Button>
                         }

@@ -16,6 +16,7 @@
 import { Redis } from '@upstash/redis';
 import { FEATURE_FLAGS } from '@config/features';
 import { AnswerlatticeCanonicalAnswer } from '@type/answerlattice';
+import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { isCachedCanonicalAnswerFresh } from './cacheFreshness';
 import { CachedCanonicalAnswer, INSTANT_CACHE_DEFAULTS } from './instantCache.types';
 import type { AnswerlatticeCacheSourceVersions } from './cacheVersionManifest';
@@ -33,6 +34,26 @@ const redis = FEATURE_FLAGS.ENABLE_ANSWERLATTICE_INSTANT_CACHE && hasRedisConfig
         token: process.env.UPSTASH_REDIS_REST_TOKEN!,
     })
     : null;
+
+const getInstantCacheLogContext = (params: {
+    answerId?: unknown;
+    answerVersion?: unknown;
+    matchedEntityCount?: number;
+    planId?: unknown;
+    roleId?: unknown;
+    sId?: unknown;
+    tId?: unknown;
+    topEntityId?: unknown;
+}) => ({
+    ...getBoundedRuntimeStringContext('answerId', params.answerId),
+    ...getBoundedRuntimeStringContext('answerVersion', params.answerVersion),
+    ...getBoundedRuntimeStringContext('planId', params.planId),
+    ...getBoundedRuntimeStringContext('roleId', params.roleId),
+    ...getBoundedRuntimeStringContext('storeId', params.sId),
+    ...getBoundedRuntimeStringContext('tenantId', params.tId),
+    ...getBoundedRuntimeStringContext('topEntityId', params.topEntityId),
+    matchedEntityCount: params.matchedEntityCount,
+});
 
 // ═══════════════════════════════════════════════════════════
 // CACHE KEY GENERATION
@@ -90,14 +111,30 @@ export async function instantCacheLookup(
         });
 
         if (!isFresh) {
-            redis.del(key).catch(() => {
-                // Best-effort cleanup only. Retrieval falls back to the live pipeline.
+            redis.del(key).catch((error) => {
+                logRuntimeFailure('answerlattice_instant_cache_stale_delete_failed', error, getInstantCacheLogContext({
+                    answerId: result.canonicalAnswerId,
+                    answerVersion,
+                    planId,
+                    roleId,
+                    sId,
+                    tId,
+                    topEntityId,
+                }));
             });
             return null;
         }
 
         return result;
-    } catch {
+    } catch (error) {
+        logRuntimeFailure('answerlattice_instant_cache_lookup_failed', error, getInstantCacheLogContext({
+            answerVersion,
+            planId,
+            roleId,
+            sId,
+            tId,
+            topEntityId,
+        }));
         // Graceful degradation — cache failure never blocks user
         return null;
     }
@@ -144,10 +181,27 @@ export async function instantCacheWrite(
         if (payloadStr.length > INSTANT_CACHE_DEFAULTS.maxPayloadBytes) return;
 
         // Fire-and-forget — don't await in hot path
-        redis.set(key, payload, { ex: INSTANT_CACHE_DEFAULTS.ttlSeconds }).catch(() => {
-            // Silent failure — cache write is best-effort
+        redis.set(key, payload, { ex: INSTANT_CACHE_DEFAULTS.ttlSeconds }).catch((error) => {
+            logRuntimeFailure('answerlattice_instant_cache_write_failed', error, getInstantCacheLogContext({
+                answerId: answer.id,
+                answerVersion,
+                matchedEntityCount: matchedEntityIds.length,
+                planId,
+                roleId,
+                sId,
+                tId,
+                topEntityId,
+            }));
         });
-    } catch {
-        // Silent failure
+    } catch (error) {
+        logRuntimeFailure('answerlattice_instant_cache_write_failed', error, getInstantCacheLogContext({
+            answerId: answer.id,
+            matchedEntityCount: matchedEntityIds.length,
+            planId,
+            roleId,
+            sId,
+            tId,
+            topEntityId,
+        }));
     }
 }

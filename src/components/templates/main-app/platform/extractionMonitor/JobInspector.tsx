@@ -17,6 +17,7 @@ import {
     getExtractionJobDetails,
     retryExtractionJob,
 } from '@database/ops/extraction';
+import { getBoundedOpsStringContext, logOpsFailure } from '@lib/ops/opsDiagnostics';
 import type { ExtractionJobDetails } from '@lib/ops/extractionTypes';
 import { formatInrPaise } from '@util/formatters';
 import {
@@ -39,6 +40,59 @@ import { LuCopy, LuRefreshCw } from 'react-icons/lu';
 
 const { Text } = Typography;
 
+const EXTRACTION_JOB_INSPECTOR_CLIPBOARD_UNAVAILABLE = 'extraction_job_inspector_clipboard_unavailable';
+const EXTRACTION_JOB_INSPECTOR_CLIPBOARD_FALLBACK_FAILED = 'extraction_job_inspector_clipboard_fallback_failed';
+
+function buildExtractionJobInspectorClipboardError(code: string) {
+    return Object.assign(new Error(code), { code });
+}
+
+function hasExtractionJobInspectorClipboardWrite() {
+    return typeof navigator !== 'undefined'
+        && Boolean(navigator.clipboard?.writeText);
+}
+
+function hasExtractionJobInspectorCopyFallback() {
+    return typeof document !== 'undefined'
+        && Boolean(document.body)
+        && typeof document.createElement === 'function'
+        && typeof document.execCommand === 'function';
+}
+
+async function copyExtractionJobInspectorTextToClipboard(text: string) {
+    if (hasExtractionJobInspectorClipboardWrite()) {
+        try {
+            await navigator.clipboard.writeText(text);
+            return;
+        } catch {
+            // Continue to the acknowledged textarea fallback before surfacing failure.
+        }
+    }
+
+    if (!hasExtractionJobInspectorCopyFallback()) {
+        throw buildExtractionJobInspectorClipboardError(EXTRACTION_JOB_INSPECTOR_CLIPBOARD_UNAVAILABLE);
+    }
+
+    const textarea = document.createElement('textarea');
+    textarea.value = text;
+    textarea.setAttribute('readonly', '');
+    textarea.style.position = 'fixed';
+    textarea.style.left = '-9999px';
+    textarea.style.top = '0';
+    document.body.appendChild(textarea);
+    textarea.focus();
+    textarea.select();
+
+    try {
+        const copied = document.execCommand('copy');
+        if (!copied) {
+            throw buildExtractionJobInspectorClipboardError(EXTRACTION_JOB_INSPECTOR_CLIPBOARD_FALLBACK_FAILED);
+        }
+    } finally {
+        document.body.removeChild(textarea);
+    }
+}
+
 function PipelineTag({ value }: { value?: string | null }) {
     if (!value) return <>—</>;
     const colorMap: Record<string, string> = {
@@ -51,6 +105,11 @@ function PipelineTag({ value }: { value?: string | null }) {
         MESSAGING_ONBOARDING: 'geekblue',
     };
     return <Tag color={colorMap[value] || 'default'}>{value.replace(/_/g, ' ')}</Tag>;
+}
+
+function getBoundedJobErrorCode(error: ExtractionJobDetails['error']): string {
+    const code = error?.code;
+    return code ? String(code).slice(0, 64) : 'extraction_failed';
 }
 
 interface JobInspectorProps {
@@ -72,8 +131,14 @@ export default function JobInspector({ jobId, open, onClose, onRetrySuccess }: J
         try {
             const details = await getExtractionJobDetails(jobId);
             setJob(details);
-        } catch (error: any) {
-            notification.error({ message: 'Failed to load job details', description: error.message });
+        } catch (error) {
+            logOpsFailure('extraction_job_inspector_load_failed', error, {
+                ...getBoundedOpsStringContext('jobId', jobId),
+            });
+            notification.error({
+                message: 'Failed to load job details',
+                description: 'Refresh the drawer and try again.',
+            });
         } finally {
             setLoading(false);
         }
@@ -95,16 +160,39 @@ export default function JobInspector({ jobId, open, onClose, onRetrySuccess }: J
             notification.success({ message: 'Retry started', description: `New job: ${newJobId.substring(0, 12)}...` });
             onRetrySuccess?.();
             onClose();
-        } catch (error: any) {
-            notification.error({ message: 'Retry failed', description: error.message });
+        } catch (error) {
+            logOpsFailure('extraction_job_retry_failed', error, {
+                ...getBoundedOpsStringContext('jobId', jobId),
+            });
+            notification.error({
+                message: 'Retry failed',
+                description: 'The extraction retry could not be started.',
+            });
         } finally {
             setRetrying(false);
         }
     };
 
-    const copyToClipboard = (text: string, label: string) => {
-        navigator.clipboard.writeText(text);
-        notification.success({ message: `${label} copied to clipboard`, duration: 2 });
+    const copyToClipboard = async (text: string, label: string) => {
+        try {
+            await copyExtractionJobInspectorTextToClipboard(text);
+            notification.success({ message: `${label} copied to clipboard`, duration: 2 });
+        } catch (error) {
+            logOpsFailure('extraction_job_inspector_copy_failed', error, {
+                ...getBoundedOpsStringContext('jobId', jobId),
+                ...getBoundedOpsStringContext('copyLabel', label),
+                ...getBoundedOpsStringContext('copyText', text),
+                hasClipboardWrite: hasExtractionJobInspectorClipboardWrite(),
+                hasCopyFallback: hasExtractionJobInspectorCopyFallback(),
+                jobStatus: job?.status ? String(job.status).slice(0, 64) : undefined,
+                hasCombinedData: Boolean(job?.result?.combinedData),
+                rawBatchResponseCount: job?.result?.rawBatchResponses?.length || 0,
+            });
+            notification.error({
+                message: 'Copy failed',
+                description: 'Try selecting and copying the text manually.',
+            });
+        }
     };
 
     const formatMs = (value: unknown) => typeof value === 'number' && Number.isFinite(value)
@@ -210,9 +298,9 @@ export default function JobInspector({ jobId, open, onClose, onRetrySuccess }: J
                 {job.error && (
                     <div style={{ background: token.colorErrorBg, padding: 12, borderRadius: 6, border: `1px solid ${token.colorErrorBorder}` }}>
                         <Text strong type="danger" style={{ display: 'block', marginBottom: 4 }}>Error Details</Text>
-                        <Text type="danger">{job.error.message}</Text>
+                        <Text type="danger">Extraction failed. Use the bounded code below for investigation.</Text>
                         <div style={{ marginTop: 4, display: 'flex', gap: 8 }}>
-                            <Tag>{job.error.code}</Tag>
+                            <Tag>{getBoundedJobErrorCode(job.error)}</Tag>
                             <Tag color={job.error.retryable ? 'green' : 'red'}>
                                 {job.error.retryable ? 'Retryable' : 'Not Retryable'}
                             </Tag>
@@ -255,7 +343,7 @@ export default function JobInspector({ jobId, open, onClose, onRetrySuccess }: J
                         size="small"
                         icon={<LuCopy />}
                         disabled={!job.result.combinedData}
-                        onClick={() => copyToClipboard(combinedJson, 'Normalized AI data')}
+                        onClick={() => void copyToClipboard(combinedJson, 'Normalized AI data')}
                     >
                         Copy Normalized Data
                     </Button>
@@ -286,7 +374,7 @@ export default function JobInspector({ jobId, open, onClose, onRetrySuccess }: J
                             <Button
                                 size="small"
                                 icon={<LuCopy />}
-                                onClick={() => copyToClipboard(rawResponsesJson, 'Raw provider responses')}
+                                onClick={() => void copyToClipboard(rawResponsesJson, 'Raw provider responses')}
                             >
                                 Copy Raw Responses
                             </Button>

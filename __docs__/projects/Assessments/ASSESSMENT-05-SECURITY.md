@@ -1,10 +1,11 @@
 # 🔒 Security Assessment
 
-**Feature**: Projects Security & Data Protection  
-**Risk Level**: 🔴 CRITICAL → ✅ RESOLVED  
-**Production Ready**: ❌ NO → ✅ YES (security hardened)  
-**Implementation Status**: ✅ **COMPLETED** on Nov 19, 2025  
-**Implementation Doc**: [5-SECURITY-IMPLEMENTATION-COMPLETE.md](./development_done/5-SECURITY-IMPLEMENTATION-COMPLETE.md)
+**Feature**: Projects Security & Data Protection
+**Risk Level**: 🔴 CRITICAL → ✅ RESOLVED
+**Historical Result**: Security hardening fixes recorded as completed in the November 2025 assessment
+**Launch Boundary**: Historical assessment result only; not current launch certification. Current release approval requires the active [production-readiness audit](../../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../../production-readiness/external-certification-runbook.md) evidence, security-rule deploy evidence, auth/tenant-isolation review, and target-environment smoke.
+**Implementation Status**: ✅ **COMPLETED** on Nov 19, 2025
+**Implementation Doc**: [5-security-implementation-complete.md](../development_done/5-security-implementation-complete.md)
 
 ---
 
@@ -162,7 +163,7 @@ if (!result.valid) {
 - Server-side now imports from shared `constants.ts` (single source of truth)
 - Enhanced FILE_SIGNATURES with comprehensive variants (multiple JPEG types, full 8-byte PNG)
 - Resolved PDF size conflict (now consistently 50MB)
-- See: [5-REFACTOR-FILE-VALIDATION.md](./development_done/5-REFACTOR-FILE-VALIDATION.md)
+- See: [5-refactor-file-validation.md](../development_done/5-refactor-file-validation.md)
 
 ---
 
@@ -666,4 +667,4 @@ npm audit fix
 
 ---
 
-**Next**: [Performance Assessment →](./ASSESSMENT-04-PERFORMANCE.md)
+**Next**: [Performance Assessment →](./assessment-04-performance.md)

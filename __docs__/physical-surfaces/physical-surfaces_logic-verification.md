@@ -2,7 +2,9 @@
 
 **Date:** January 11, 2026  
 **Target Feature:** physical-surfaces  
-**Status:** ✅ **DEPLOYABLE**
+**Status:** Historical logic verification evidence for legacy campaign surfaces; not current launch certification
+
+> **Current release boundary (July 2, 2026):** This logic-verification report preserves January 2026 source evidence for legacy campaign-based recommendation cards only. Menu Kit is now the canonical physical surface system for identity surfaces. Current release approval for active physical/print output requires the active production-readiness audit, External Certification Runbook evidence, `npm run verify:menu-card-export`, Digital Menu Output Constitution checks, browser/mobile output QA, visual print artifact review, target deploy evidence, and production-host smoke.
 
 ---
 
@@ -12,7 +14,7 @@
 PHYSICAL SURFACES LOGIC AUDIT
 TOTAL FLOWS VERIFIED: 5
 CRITICAL ISSUES: 0
-PRODUCTION READINESS: SAFE
+EVIDENCE SCOPE: HISTORICAL SOURCE VERIFICATION ONLY
 COVERAGE: 100% (5/5 flows)
 ```
 
@@ -307,9 +309,9 @@ useTodayCampaigns() → physicalSurfaces → TentCardSection/StickerSection
 
 ---
 
-## FINAL VERDICT: ✅ DEPLOYABLE
+## Historical Logic Verification Result: Source Evidence Only
 
-**Physical Surfaces logic verification complete. All 5 flows verified. Zero critical issues.**
+**This report is historical legacy Physical Surfaces flow evidence only, not current release approval. Current certification for active physical/print output still requires the active production-readiness audit, External Certification Runbook evidence, `npm run verify:menu-card-export`, Digital Menu Output Constitution checks, browser/mobile output QA, visual print artifact review, target deploy evidence, and production-host smoke.**
 
 ---
 

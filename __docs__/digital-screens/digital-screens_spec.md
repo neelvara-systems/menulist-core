@@ -1,11 +1,28 @@
 # Digital Screens - Product Specification
 
 **Created:** January 4, 2026  
-**Status:** 🔒 **v2.2 LOCKED — Production complete. Only readability/reliability/scale fixes allowed.**  
+**Status:** 🔒 **v2.3 source-bounded screen runtime evidence; not current launch certification. Only readability/reliability/scale fixes allowed.**
 **Author:** Lead Architect (Cascade)  
 **Source:** ChatGPT Brainstorm + Codebase Analysis + Architecture Alignment + Market Research (Feb 2026)  
 **Applies:** 3-Year Architecture Freeze Rule  
-**Last Audit:** June 2, 2026 (market scan + owner-trust/readability hardening; feature remains locked)
+**Last Audit:** July 2, 2026 (dedicated `npm run verify:digital-screens-boundary` source gate plus launch-boundary wording)
+
+## Current Release Boundary (July 2, 2026)
+
+This spec preserves the locked Digital Screens product boundary and source-backed implementation evidence. It is not a current launch certificate.
+
+Current Digital Screens release approval routes through:
+
+- this production-readiness audit and the External Certification Runbook;
+- `npm run verify:digital-screens-boundary`;
+- browser TV smoke for Menu Board and Highlights display modes;
+- authenticated owner settings QA for desktop and mobile setup/copy/upload actions;
+- physical-device QA for the target TV/tablet/browser environment;
+- Firebase deploy evidence where Firestore rules, Storage rules, indexes, or Cloud Function logic change;
+- Vercel deploy evidence where app routes or display clients change;
+- production-host smoke for the target tenant and screen URL.
+
+The dedicated local source gate does not replace browser TV smoke, physical-device QA, Firebase deploy evidence, Vercel deploy evidence, or production-host runtime verification.
 
 ---
 
@@ -263,11 +280,11 @@ Restaurant screens operate in:
 | Screen page load      | Per TV boot       | 2-4 typical reads (screen, store, optional project summary/fallback) |
 | Real-time listener    | On content change | 1 read per change (onSnapshot) |
 | 6hr proactive refresh | 3x/day            | 2-4 typical reads per refresh  |
-| Daily seen signal     | 1x/day            | 1 read + 1 write               |
+| Daily seen signal     | 1x/day            | 1-2 reads + 1 write (screen summary plus cached public store eligibility when needed) |
 | Owner view            | Occasional        | 1 screen summary read          |
 | Owner upload          | Rare              | 1 write + storage              |
 
-**Estimated daily cost per store:** ~12-20 reads + 1 write = **~$0.00027-$0.00041/month per screen** (see `digital-screens_firebase.md` for full breakdown)
+**Estimated daily cost per store:** ~13-21 reads + 1 write = **~$0.00029-$0.00043/month per screen** (see `digital-screens_firebase.md` for full breakdown)
 
 ---
 
@@ -783,3 +800,5 @@ All three surfaces depend on the same data: menu, prices, availability, hours, i
 | 3.0     | 2026-02-08 | Cascade | **🔒 v2.2 LOCKED:** Metadata enrichment (description, tags, dietary badges). AI image gen rejected. Architectural Boundaries + Readability First constraints added. QR pairing rejected (2/5). ChatGPT Strategic Review v2 appended. Feature now LOCKED                                                                                     |
 | 4.0     | 2026-03-15 | Cascade | **v2.3 HARDENING:** Token security (22-char), reload jitter, MenuBoard hardening (broken image, offline retry, sold-out, menu cap), auto-fullscreen recovery, Settings UI (activity status, Main TV/Second TV labels). Strategic Appendix D added (three-surface moat, Google positioning, distribution engine). ChatGPT review v3 archived |
 | 5.0     | 2026-06-06 | Codex   | **Public read hardening:** Documented generated `screen.menuProjection` inside existing screen summary state, projection/fallback read economics, base menu slug context, and no separate screen-menu document. |
+| 5.1     | 2026-07-01 | Codex   | **Seen-signal eligibility hardening:** Updated cost and boundary notes for enabled-screen plus public store eligibility checks before daily liveness writes. |
+| 5.2     | 2026-07-02 | Codex   | **Launch-boundary wording:** Replaced the stale production-complete status with source-bounded runtime evidence and routed release approval through the active audit, External Certification Runbook, dedicated source gate, browser TV smoke, physical-device QA, deploy evidence, and production-host smoke. |

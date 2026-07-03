@@ -1,7 +1,7 @@
 # Menu Correctness Engine — Website Content
 
 **Version:** 3.1  
-**Status:** ✅ IMPLEMENTED — READY FOR WEBSITE TEAM  
+**Status:** Source-gated website evidence; not current launch certification
 **Audience:** Website Content Writers, Designers  
 **Last Updated:** February 14, 2026
 
@@ -13,15 +13,25 @@
 
 ---
 
+## Current Launch Boundary
+
+This website draft describes the current Menu Correctness Engine source contract and active runtime flag. It is not current launch certification and must not be published as a blanket guarantee that every surface has been externally certified.
+
+Current website approval requires the active [production-readiness audit](../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../production-readiness/external-certification-runbook.md) evidence, `npm run verify:public-business-truth`, browser/mobile save and publish-gate QA, customer-facing surface smoke for validated project data, public menu/device QA where the page references QR menus or screens, PDF artifact review where PDF copy is used, POS/provider smoke where POS copy is used, target deploy evidence, and production-host smoke.
+
+Use this page only as source-gated website copy. When a surface has separate refresh, download, provider, or device timing, say it reads from the same verified project truth after that surface refreshes or is regenerated.
+
+---
+
 ## 1. Hero Section
 
 ### Headline
 
-**Your menu. Verified correct. Everywhere.**
+**Your menu. Verified at save time.**
 
 ### Subheadline
 
-Change a price once. MenuList verifies it and updates every surface — QR code, website, digital screen, PDF, POS — automatically.
+Change a price once. MenuList verifies the menu state and keeps supported surfaces reading from the same project truth, with each surface updating through its own refresh, download, or provider flow.
 
 ### CTA
 
@@ -55,7 +65,7 @@ Most menu systems write changes and hope they sync. You're left checking each su
 
 ### Body
 
-When you save your menu, MenuList checks that everything is complete, correct, and consistent. Only verified menu data reaches your customers — on every surface, at every location.
+When you save your menu, MenuList checks that everything is complete, correct, and consistent before customer-facing publishing flows continue.
 
 If something needs your attention, you'll know before it goes live. Not after a customer complains.
 
@@ -66,7 +76,7 @@ If something needs your attention, you'll know before it goes live. Not after a 
 ### Benefit 1: Consistent Prices Across Every Surface
 
 **Title:** Same price. Every screen. Every printout. Every link.  
-**Body:** Your QR menu, digital screen, PDF, and POS system all show the same verified prices. Change once, correct everywhere.  
+**Body:** Your QR menu, digital screen, PDF export, and POS connection all read from the same verified project truth after their normal refresh, download, or provider flow completes.
 **Visual suggestion:** [Split screen showing QR code, digital screen, and PDF — all showing identical price for "Butter Chicken ₹350"]
 
 ### Benefit 2: Catch Errors Before Customers Do
@@ -78,13 +88,13 @@ If something needs your attention, you'll know before it goes live. Not after a 
 ### Benefit 3: Every Location, Same Menu
 
 **Title:** All your outlets. One verified menu.  
-**Body:** Master menu changes reach every location as verified, complete data. No outlet shows a partial update or stale price.  
+**Body:** Master menu changes and outlet overrides are checked against the same verified project truth, so release QA can confirm each location receives the expected menu state.
 **Visual suggestion:** [Map with 3-4 location pins, each showing the same menu card with identical prices]
 
 ### Benefit 4: Always Available, Never Blank
 
 **Title:** Your menu is always visible. Even if something goes wrong.  
-**Body:** If a system issue occurs, customers see your cached menu — not a blank page or error message. Screens and QR menus have built-in fallback caching. Your business stays open, always.  
+**Body:** If a normal cache fallback is available during a system issue, customers see the cached menu instead of a blank page. Screens and QR menus use fallback caching so the business can keep serving while the issue is handled.
 **Visual suggestion:** [Phone screen showing complete menu with subtle "Verified" checkmark]
 
 ### Benefit 5: Zero Cost, Zero Effort
@@ -107,7 +117,7 @@ Every save is automatically checked for completeness and correctness. MenuList v
 
 ### Step 3: Every Surface Updates
 
-Your QR code, digital screen, PDF, POS, and website all receive the same verified menu. Automatically.
+Your QR code, digital screen, PDF, POS, and website read from the same verified project truth through their own normal refresh or regeneration path.
 
 ---
 
@@ -148,11 +158,11 @@ Your QR code, digital screen, PDF, POS, and website all receive the same verifie
 
 ### Q: Does this work for all my surfaces?
 
-**A:** Yes. QR menus, digital screens, PDFs, POS systems, and your website all receive the same verified menu data.
+**A:** Yes, supported surfaces read from the same verified project data. Each surface still follows its own refresh, download, provider, or device timing.
 
 ### Q: What if I have multiple locations?
 
-**A:** Each location receives verified data from your master menu. Changes at the master level are verified before reaching any outlet.
+**A:** Master menu changes and outlet overrides are verified through the same project truth. Multi-location releases still need target QA when outlet inheritance or publishing changes.
 
 ### Q: Is this included in my plan?
 
@@ -168,7 +178,7 @@ Menu Correctness — Verified Menus Across All Surfaces | MenuList
 
 ### Meta Description
 
-MenuList verifies your menu before publishing to QR codes, digital screens, PDFs, and POS systems. One change, every surface, always correct.
+MenuList verifies menu state before customer-facing publishing flows continue. QR menus, screens, PDFs, and POS connections read from the same project truth.
 
 ### Keywords
 
@@ -176,11 +186,11 @@ menu consistency, verified menu, QR menu accuracy, digital menu sync, multi-surf
 
 ### Open Graph Title
 
-Your Menu. Verified Correct. Everywhere.
+Your Menu. Verified at Save Time.
 
 ### Open Graph Description
 
-Change a price once. MenuList verifies it and updates every surface automatically. QR code, digital screen, PDF, POS — all the same verified menu.
+Change a price once. MenuList verifies the menu state and keeps supported surfaces reading from the same project truth.
 
 ---
 
@@ -196,7 +206,7 @@ Use existing MenuList brand colors. No red/orange "alert" colors in hero or bene
 
 ### Imagery
 
-- Show real menu surfaces (phone with QR menu, TV screen, printed PDF) displaying identical content
+- Show real menu surfaces (phone with QR menu, TV screen, printed PDF) reading from the same project truth after their normal refresh or regeneration paths
 - Use checkmarks sparingly — one per section maximum
 - Show Indian restaurant context (₹ currency, familiar dishes, local restaurant setting)
 - No stock photos of stressed restaurant owners — show calm, confident operators

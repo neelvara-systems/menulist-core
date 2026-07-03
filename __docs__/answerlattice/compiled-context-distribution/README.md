@@ -24,3 +24,7 @@ Read-hot Answerlattice runtimes must read:
 `memory cache -> Redis/server cache -> Storage bundle -> platformSummary manifest -> Firestore source`
 
 Governance and editing screens can still use Firestore because they need fresh mutable review state. Widget bootstrap, MCP tools, and public read APIs use compiled approved context first.
+
+## Diagnostics Rule
+
+Manual and nightly bundle builders must keep failure output bounded. Changelog fallback warnings, best-effort Storage manifest-copy failures, build locks, manifests, scheduler results, and owner-visible responses use fixed status/error codes plus source error name/code/status metadata only. They must not store or emit raw exception text, tenant/store identifiers, Storage paths beyond approved bundle refs, or source content.

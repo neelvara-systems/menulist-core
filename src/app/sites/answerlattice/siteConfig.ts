@@ -249,7 +249,7 @@ export const ANSWERLATTICE_PUBLIC_PAGES: Array<{
     {
         path: '/pricing',
         title: 'Pricing | AnswerLattice',
-        description: 'Founder-friendly INR pricing, beta setup, support credits, intake media processing, and paid AnswerLattice plans for founder-led SaaS teams.',
+        description: 'Founder-friendly INR pricing, paid setup, support credits, intake media processing, and AnswerLattice plans for founder-led SaaS teams.',
         priority: 0.85,
         changeFrequency: 'weekly',
     },

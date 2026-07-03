@@ -3,6 +3,8 @@ import { CANONICAL_SOURCE_LANGUAGE } from '@lib/localization/languagePolicy';
 import { LocalizedStringList, LocalizedText, normalizeStringList, toLocalizedStringList, toLocalizedText } from '@lib/localization/text';
 import { syncBalanceFromResponse } from '@services/ai/balanceSync';
 import { AICapacityError, checkCapacityResponse } from '@services/ai/capacityError';
+import { AI_SERVICE_ROUTE_REQUEST_OPTIONS, readAiServiceResponseJson } from '@services/ai/aiServiceDiagnostics';
+import { getBoundedTranslationStringContext, getTranslationScopeLogContext, logTranslationFailure } from '@template/main-app/projects/utils/translationDiagnostics';
 import { LanguageType } from '../../../components/templates/main-app/projects/types/common.types';
 import { BusinessCopyGenerationResult } from './generateBusinessCopyViaAPI';
 import { BUSINESS_COPY_FIELD_LIMITS, BusinessCopyLocalizedFieldKey, getBusinessCopyFieldConfigs } from './fieldConfig';
@@ -19,6 +21,15 @@ export type LocalizedBusinessCopyFields = {
 };
 
 export const FIELD_LIMITS = BUSINESS_COPY_FIELD_LIMITS;
+const BUSINESS_COPY_TRANSLATION_RESPONSE_JSON_MAX_BYTES = 1024 * 1024;
+
+type BusinessCopyTranslationApiResponse = {
+    data?: {
+        translationsByLanguage?: unknown;
+    } | null;
+    remainingBalance?: unknown;
+    transaction?: unknown;
+};
 
 const LANGUAGE_INDEX = new Map(
     GlobalLanguagesList.map((language) => [language.code.toLowerCase(), language]),
@@ -70,6 +81,7 @@ export async function getBatchTranslations({
 }): Promise<Record<string, Record<string, string>> | null> {
     try {
         const response = await fetch('/api/translations', {
+            ...AI_SERVICE_ROUTE_REQUEST_OPTIONS,
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -86,15 +98,35 @@ export async function getBatchTranslations({
 
         await checkCapacityResponse(response);
         if (!response.ok) {
-            throw new Error(`Translation request failed: ${response.statusText}`);
+            const requestError = new Error('business_copy_translation_request_failed') as Error & { status?: number };
+            requestError.status = response.status;
+            throw requestError;
         }
 
-        const responseJson = await response.json();
+        const responseJson = await readAiServiceResponseJson<BusinessCopyTranslationApiResponse>(response, {
+            context: {
+                ...getTranslationScopeLogContext(projectId, fileId),
+                ...getBoundedTranslationStringContext('sourceLanguageCode', sourceLang?.code),
+                targetLanguageCount: targetLang.length,
+                inputFieldCount: Object.keys(inputJson).length,
+            },
+            invalidFailureCode: 'business_copy_batch_translation_response_invalid',
+            maxBytes: BUSINESS_COPY_TRANSLATION_RESPONSE_JSON_MAX_BYTES,
+            parseFailureCode: 'business_copy_batch_translation_response_parse_failed',
+        });
         syncBalanceFromResponse(responseJson);
-        return responseJson?.data?.translationsByLanguage || null;
+        const translationsByLanguage = responseJson.data?.translationsByLanguage;
+        return translationsByLanguage && typeof translationsByLanguage === 'object' && !Array.isArray(translationsByLanguage)
+            ? translationsByLanguage as Record<string, Record<string, string>>
+            : null;
     } catch (error) {
         if (error instanceof AICapacityError) throw error;
-        console.error('Error calling batch translation API:', error);
+        logTranslationFailure('business_copy_batch_translation_failed', error, {
+            ...getTranslationScopeLogContext(projectId, fileId),
+            ...getBoundedTranslationStringContext('sourceLanguageCode', sourceLang?.code),
+            targetLanguageCount: targetLang.length,
+            inputFieldCount: Object.keys(inputJson).length,
+        });
         return null;
     }
 }

@@ -13,16 +13,10 @@
  */
 
 import { ensureFirebaseAuthForSession } from '@lib/auth/firebaseAuthSync';
+import { getFirebaseAuthSessionLogContext, logFirebaseBootstrapFailure } from '@lib/firebase/firebaseDiagnostics';
 import { firebaseAuth } from '@lib/firebase/firebaseClient';
 import { useSession } from 'next-auth/react';
 import { useEffect, useState } from 'react';
-
-const maskDebugEmail = (email: unknown) => {
-    if (typeof email !== 'string') return email;
-    const [local, domain] = email.split('@');
-    if (!local || !domain) return '***';
-    return `${local.slice(0, 2)}***@${domain}`;
-};
 
 export function useFirebaseAuthSync() {
     const { data: session, status } = useSession();
@@ -54,17 +48,14 @@ export function useFirebaseAuthSync() {
         setError(null);
 
         try {
-            console.log('[Firebase Auth Sync] Starting sync...');
-
             await ensureFirebaseAuthForSession(session);
-
-            console.log('[Firebase Auth Sync] ✅ Sync complete');
-            console.log('[Firebase Auth Sync] User:', maskDebugEmail(firebaseAuth.currentUser?.email));
-            
             setIsSynced(true);
         } catch (err) {
-            console.error('[Firebase Auth Sync] ❌ Sync failed:', err);
-            setError(err instanceof Error ? err : new Error('Unknown error'));
+            logFirebaseBootstrapFailure('firebase_auth_hook_sync_failed', err, {
+                ...getFirebaseAuthSessionLogContext(session),
+                firebaseUserPresent: Boolean(firebaseAuth.currentUser),
+            });
+            setError(new Error('Firebase Auth sync failed'));
         } finally {
             setIsSyncing(false);
         }

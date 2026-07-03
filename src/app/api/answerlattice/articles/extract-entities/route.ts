@@ -9,13 +9,16 @@ import { PRODUCT_IDS } from '@constant/product';
 import { requireAnswerlatticePermission } from '@lib/answerlattice/accessControl';
 import { recordAnswerlatticeAiOperation } from '@lib/answerlattice/aiAccounting';
 import { extractEntitiesFromArticles, extractPlainTextFromTipTap } from '@lib/answerlattice/entityExtraction';
+import { buildAnswerlatticeRateLimitKey } from '@lib/answerlattice/rateLimitKeys';
 import { resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
 import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
 import { admin } from '@lib/firebase/firebaseAdmin';
 import { logger } from '@lib/monitoring/logger';
 import { checkRateLimit } from '@lib/rateLimit';
 import { getRateLimitForFeature } from '@lib/rateLimit/configs';
-import { secureError } from '@lib/security/secureLogger';
+import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
+import { readBoundedJsonBody } from '@lib/security/boundedRequestBody';
+import { getSafeZodValidationDetails } from '@lib/security/inputValidation';
 import { callGeminiChatWithMetadata } from '@lib/vectorEmbeddings';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
@@ -27,29 +30,30 @@ const ArticleSchema = z.object({
     id: z.string().trim().min(1).max(160),
     title: z.string().trim().min(1).max(240),
 });
+const ARTICLE_ENTITY_EXTRACTION_MAX_BODY_BYTES = 256 * 1024;
 
 export const POST = withAuth(async (request: NextRequest, session) => {
+    let tenantIdForLog: number | string | undefined;
+    let storeIdForLog: number | string | undefined;
+    const userIdForLog = session.uId || session.user?.id;
+    let articleIdForLog: string | undefined;
+
     try {
-        const permission = await requireAnswerlatticePermission(request, session, ANSWERLATTICE_PERMISSION_KEYS.MANAGE_KNOWLEDGE);
-        if (permission.response) return permission.response;
-
-        const validation = ArticleSchema.safeParse(await request.json().catch(() => null));
-        if (!validation.success) {
-            return NextResponse.json(
-                { error: 'Invalid entity extraction request', details: validation.error.flatten() },
-                { status: 400 },
-            );
-        }
-
         const scope = resolveAnswerlatticeSessionScope(session);
+        tenantIdForLog = scope?.tenantId;
+        storeIdForLog = scope?.storeId;
         if (!scope) {
             return NextResponse.json({ error: 'Answerlattice account scope is missing' }, { status: 400 });
         }
 
+        const { checkSafeMode } = await import('@lib/ops/safeMode');
+        const safeModeResponse = await checkSafeMode();
+        if (safeModeResponse) return safeModeResponse;
+
         const rateLimitConfig = getRateLimitForFeature('AI_OPERATION');
-        const userId = session.uId || session.user?.id || 'unknown';
+        const userId = userIdForLog || 'unknown';
         const rateLimit = await checkRateLimit({
-            key: `answerlattice-article-entity-extraction:${userId}:${scope.tenantId}:${scope.storeId}`,
+            key: buildAnswerlatticeRateLimitKey('answerlattice-article-entity-extraction', userId, scope.tenantId, scope.storeId),
             ...rateLimitConfig,
         });
 
@@ -58,9 +62,9 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             logger.security('Rate Limit Exceeded', {
                 endpoint: '/api/answerlattice/articles/extract-entities',
                 limit: rateLimitConfig.limit,
-                storeId: scope.storeId,
-                tenantId: scope.tenantId,
-                userId,
+                ...getBoundedRuntimeStringContext('storeId', scope.storeId),
+                ...getBoundedRuntimeStringContext('tenantId', scope.tenantId),
+                ...getBoundedRuntimeStringContext('userId', userId),
                 waitSeconds,
                 window: rateLimitConfig.window,
             }, 'medium');
@@ -83,7 +87,30 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             );
         }
 
+        const permission = await requireAnswerlatticePermission(request, session, ANSWERLATTICE_PERMISSION_KEYS.MANAGE_KNOWLEDGE);
+        if (permission.response) return permission.response;
+
+        const bodyResult = await readBoundedJsonBody(request, ARTICLE_ENTITY_EXTRACTION_MAX_BODY_BYTES, {
+            invalidJsonMessage: 'Invalid entity extraction request',
+            tooLargeMessage: 'Request body too large',
+        });
+        if (bodyResult.ok === false) {
+            return NextResponse.json(
+                { error: bodyResult.response.status === 413 ? 'Request body too large' : 'Invalid entity extraction request' },
+                { status: bodyResult.response.status },
+            );
+        }
+
+        const validation = ArticleSchema.safeParse(bodyResult.data);
+        if (!validation.success) {
+            return NextResponse.json(
+                { error: 'Invalid entity extraction request', details: getSafeZodValidationDetails(validation.error) },
+                { status: 400 },
+            );
+        }
+
         const article = validation.data;
+        articleIdForLog = article.id;
         const tenantId = Number(scope.tenantId);
         const storeId = Number(scope.storeId);
         const articleRef = answerlatticeFirestoreAdmin.collection(DB_COLLECTIONS.KB_ARTICLES).doc(article.id);
@@ -95,12 +122,12 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         const persistedArticle = articleSnap.data() || {};
         if (Number(persistedArticle.tId) !== tenantId || Number(persistedArticle.sId) !== storeId) {
             logger.security('Authorization Failed - Answerlattice Article Entity Extraction Scope Mismatch', {
-                articleId: article.id,
-                requestedStoreId: storeId,
-                requestedTenantId: tenantId,
-                storeId: persistedArticle.sId,
-                tenantId: persistedArticle.tId,
-                userId,
+                ...getBoundedRuntimeStringContext('articleId', article.id),
+                ...getBoundedRuntimeStringContext('requestedStoreId', storeId),
+                ...getBoundedRuntimeStringContext('requestedTenantId', tenantId),
+                ...getBoundedRuntimeStringContext('storeId', persistedArticle.sId),
+                ...getBoundedRuntimeStringContext('tenantId', persistedArticle.tId),
+                ...getBoundedRuntimeStringContext('userId', userId),
             }, 'critical');
             return NextResponse.json({ error: 'Article not found' }, { status: 404 });
         }
@@ -193,8 +220,11 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             newCandidateCount: result?.newCandidateCount || 0,
         });
     } catch (error) {
-        secureError('[Answerlattice Entity Extraction] Article extraction failed', error as Error, {
-            path: request.nextUrl.pathname,
+        logRuntimeFailure('answerlattice_article_entity_extraction_failed', error, {
+            ...getBoundedRuntimeStringContext('tenantId', tenantIdForLog),
+            ...getBoundedRuntimeStringContext('storeId', storeIdForLog),
+            ...getBoundedRuntimeStringContext('userId', userIdForLog),
+            ...getBoundedRuntimeStringContext('articleId', articleIdForLog),
         });
         return NextResponse.json({ error: 'Could not extract article entities' }, { status: 500 });
     }

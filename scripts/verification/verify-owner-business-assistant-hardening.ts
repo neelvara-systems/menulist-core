@@ -177,6 +177,13 @@ assert.match(threadStore, /messages: nextMessages/);
 assert.match(threadStore, /params\.request\.projectId \|\| params\.request\.clientContext\?\.selectedProjectId/);
 assert.doesNotMatch(threadStore, /OWNER_BUSINESS_ASSISTANT_MESSAGES/);
 
+const apiGuards = readFileSync(join(repoRoot, 'src/lib/ownerBusinessAssistant/server/apiGuards.ts'), 'utf8');
+assert.match(apiGuards, /getBoundedSecurityRouteContext/);
+assert.match(apiGuards, /getBoundedSecurityStringContext\('attemptedStoreId', selectedStoreId\)/);
+assert.match(apiGuards, /key: `\$\{params\.keyPrefix\}:\$\{userRateLimitHash\}:\$\{tenantRateLimitHash\}:\$\{storeRateLimitHash\}`/);
+assert.doesNotMatch(apiGuards, /buildSecurityContext/);
+assert.doesNotMatch(apiGuards, /key: `\$\{params\.keyPrefix\}:\$\{userId/);
+
 const removedActionSupportPaths = [
   'src/app/api/owner-business-assistant/action/route.ts',
   'src/hooks/ownerBusinessAssistant/useOwnerBusinessAssistantAction.ts',
@@ -241,13 +248,59 @@ assert.match(locationsHook, /\[url, scope, selectedStoreScope\] as const/);
 assert.match(locationsHook, /fallbackData: cached/);
 assert.match(locationsHook, /shouldRevalidate/);
 assert.match(locationsHook, /browserReadModelTtlMs/);
+assert.match(locationsHook, /readOwnerBusinessAssistantLocationsResponse/);
+assert.match(locationsHook, /OWNER_BUSINESS_ASSISTANT_REQUEST_POLICY/);
+assert.match(locationsHook, /getBoundedRuntimeStringContext/);
+assert.doesNotMatch(locationsHook, /response\.json\(\)/);
 
 const currentHook = readFileSync(join(repoRoot, 'src/hooks/ownerBusinessAssistant/useOwnerBusinessHealthCurrent.ts'), 'utf8');
 assert.match(currentHook, /browserReadModelTtlMs/);
 assert.match(currentHook, /params\.set\('storeId', String\(storeScopeKey\)\)/);
+assert.match(currentHook, /readOwnerBusinessAssistantCurrentResponse/);
+assert.match(currentHook, /OWNER_BUSINESS_ASSISTANT_REQUEST_POLICY/);
+assert.match(currentHook, /getBoundedRuntimeStringContext/);
+assert.doesNotMatch(currentHook, /response\.json\(\)/);
+const answerHook = readFileSync(join(repoRoot, 'src/hooks/ownerBusinessAssistant/useOwnerBusinessAssistantAnswer.ts'), 'utf8');
+assert.match(answerHook, /OWNER_BUSINESS_ASSISTANT_REQUEST_POLICY/);
+assert.match(answerHook, /readJsonResponseWithLimit/);
+assert.match(answerHook, /OWNER_BUSINESS_ASSISTANT_ANSWER_RESPONSE_JSON_MAX_BYTES/);
+assert.match(answerHook, /owner_business_assistant_answer_response_parse_failed/);
+assert.match(answerHook, /owner_business_assistant_answer_response_invalid/);
+assert.doesNotMatch(answerHook, /response\.json\(\)\.catch\(\(\) => null\)/);
 const analyticsHook = readFileSync(join(repoRoot, 'src/hooks/ownerBusinessAssistant/useOwnerBusinessAnalyticsIndex.ts'), 'utf8');
 assert.match(analyticsHook, /browserReadModelTtlMs/);
 assert.match(analyticsHook, /params\.set\('storeId', String\(storeScopeKey\)\)/);
+assert.match(analyticsHook, /readOwnerBusinessAssistantAnalyticsResponse/);
+assert.match(analyticsHook, /OWNER_BUSINESS_ASSISTANT_REQUEST_POLICY/);
+assert.match(analyticsHook, /getBoundedRuntimeStringContext/);
+assert.doesNotMatch(analyticsHook, /response\.json\(\)/);
+const clientResponses = readFileSync(join(repoRoot, 'src/lib/ownerBusinessAssistant/clientResponses.ts'), 'utf8');
+assert.match(clientResponses, /OWNER_BUSINESS_ASSISTANT_READ_MODEL_RESPONSE_JSON_MAX_BYTES = 256 \* 1024/);
+assert.match(clientResponses, /OWNER_BUSINESS_ASSISTANT_REQUEST_POLICY/);
+assert.match(clientResponses, /cache: 'no-store'/);
+assert.match(clientResponses, /credentials: 'same-origin'/);
+assert.match(clientResponses, /redirect: 'manual'/);
+assert.match(clientResponses, /readJsonResponseWithLimit<unknown>/);
+assert.match(clientResponses, /isOwnerBusinessHealthCurrentDoc/);
+assert.match(clientResponses, /isOwnerBusinessAssistantAnalyticsResponse/);
+assert.match(clientResponses, /isOwnerBusinessAssistantLocationsResponse/);
+assert.match(clientResponses, /isOwnerBusinessAssistantThreadResponse/);
+[
+  'owner_business_assistant_current_response_rejected',
+  'owner_business_assistant_current_response_parse_failed',
+  'owner_business_assistant_current_response_invalid',
+  'owner_business_assistant_analytics_response_rejected',
+  'owner_business_assistant_analytics_response_parse_failed',
+  'owner_business_assistant_analytics_response_invalid',
+  'owner_business_assistant_locations_response_rejected',
+  'owner_business_assistant_locations_response_parse_failed',
+  'owner_business_assistant_locations_response_invalid',
+  'owner_business_assistant_thread_response_rejected',
+  'owner_business_assistant_thread_response_parse_failed',
+  'owner_business_assistant_thread_response_invalid',
+].forEach((failureCode) => {
+  assert.match(clientResponses, new RegExp(failureCode));
+});
 const contextPacketHook = readFileSync(join(repoRoot, 'src/hooks/ownerBusinessAssistant/useOwnerBusinessContextPacket.ts'), 'utf8');
 assert.match(contextPacketHook, /useOwnerBusinessHealthCurrent/);
 assert.doesNotMatch(contextPacketHook, /useOwnerBusinessAnalyticsIndex/);
@@ -304,6 +357,14 @@ assert.match(businessHealthPage, /isHealthReady/);
 assert.match(businessHealthPage, /styles\.summaryGridSingle/);
 assert.match(businessHealthPage, /<BusinessHealthAnalyticsStrip\s+enabled=\{isHealthReady\}/);
 assert.match(businessHealthPage, /key=\{`\$\{storeDetails\?\.storeId \|\| 'store'\}:\$\{scopedProjectId \|\| 'all'\}`\}/);
+const publicTruthOwnerCard = readFileSync(join(repoRoot, 'src/components/templates/main-app/ownerBusinessAssistant/PublicTruthOwnerCheckCard.tsx'), 'utf8');
+assert.match(publicTruthOwnerCard, /Public readiness/);
+assert.match(publicTruthOwnerCard, /report\.modules\.map/);
+assert.match(publicTruthOwnerCard, /module\.fixHref/);
+assert.match(publicTruthOwnerCard, /moduleAction = report\.modules\.find/);
+assert.match(publicTruthOwnerCard, /moduleAction\.fixHref/);
+assert.match(publicTruthOwnerCard, /moduleAction\.actionLabel/);
+assert.match(publicTruthOwnerCard, /No external sites were scanned/);
 const desktopAssistantPanel = readFileSync(join(repoRoot, 'src/components/templates/main-app/ownerBusinessAssistant/OwnerAssistantPanel.tsx'), 'utf8');
 assert.doesNotMatch(desktopAssistantPanel, /OwnerAssistantActionSheet/);
 assert.doesNotMatch(desktopAssistantPanel, /Open dashboard/);
@@ -334,6 +395,22 @@ assert.match(mobileHealthScreen, /isLoading: isProjectsLoading/);
 assert.match(mobileHealthScreen, /if \(!businessHealthProjectId \|\| isProjectsLoading\) return/);
 assert.doesNotMatch(mobileHealthScreen, /current\?\.analyticsTeaser/);
 assert.doesNotMatch(mobileHealthScreen, /<Card title="Open">/);
+const mobilePublicTruthOwnerCard = readFileSync(join(repoRoot, 'src/components/mobile/components/MobilePublicTruthOwnerCheckCard.tsx'), 'utf8');
+assert.match(mobilePublicTruthOwnerCard, /report\.modules\.map/);
+assert.match(mobilePublicTruthOwnerCard, /No external sites scanned/);
+assert.match(mobilePublicTruthOwnerCard, /onFixTarget/);
+assert.match(mobilePublicTruthOwnerCard, /module\.mobileFixTarget/);
+assert.match(mobilePublicTruthOwnerCard, /module\.actionLabel/);
+assert.doesNotMatch(mobilePublicTruthOwnerCard, /window\.location/);
+assert.match(mobileHealthScreen, /handlePublicTruthFixTarget/);
+assert.match(mobileHealthScreen, /onOpenMenuTab\?\.\(\)/);
+assert.match(mobileHealthScreen, /onOpenShareTab\?\.\(\)/);
+assert.match(mobileHealthScreen, /onOpenMoreScreen\?\.\(moreTarget\)/);
+const threadHook = readFileSync(join(repoRoot, 'src/hooks/ownerBusinessAssistant/useOwnerBusinessAssistantThread.ts'), 'utf8');
+assert.match(threadHook, /readOwnerBusinessAssistantThreadResponse/);
+assert.match(threadHook, /OwnerBusinessAssistantThreadResponse/);
+assert.match(threadHook, /getBoundedRuntimeStringContext/);
+assert.doesNotMatch(threadHook, /response\.json\(\)/);
 const mobileDashboardScreen = readFileSync(join(repoRoot, 'src/components/mobile/screens/MobileDashboardScreen.tsx'), 'utf8');
 assert.match(mobileDashboardScreen, /isBusinessHealthReady/);
 assert.match(mobileDashboardScreen, /enabled: canShowBusinessHealthAnalytics && isBusinessHealthReady/);
@@ -361,6 +438,10 @@ const platformMonitorRoute = readFileSync(join(repoRoot, 'src/app/api/platform/o
 assert.doesNotMatch(platformMonitorRoute, /OWNER_BUSINESS_ASSISTANT_ACTIONS/);
 assert.doesNotMatch(platformMonitorRoute, /recentActions/);
 assert.doesNotMatch(platformMonitorRoute, /actionOptionCount/);
+assert.match(platformMonitorRoute, /owner_business_assistant_monitor_route_failed/);
+assert.match(platformMonitorRoute, /logRuntimeFailure/);
+assert.match(platformMonitorRoute, /getBoundedRuntimeStringContext\('requestPath', request\.nextUrl\.pathname\)/);
+assert.doesNotMatch(platformMonitorRoute, /secureError\('\[OwnerBusinessAssistantMonitor\] Failed to load monitor data'/);
 
 const currentRoute = readFileSync(join(repoRoot, 'src/app/api/owner-business-assistant/current/route.ts'), 'utf8');
 assert.match(currentRoute, /OwnerBusinessAssistantScopeSchema/);
@@ -376,5 +457,31 @@ assert.match(answerRoute, /resolveOwnerAssistantSelectedStoreScope/);
 assert.match(answerRoute, /threadWritten: true/);
 assert.match(answerRoute, /answerEventWritten: true/);
 assert.match(answerRoute, /firestoreWriteCount: \(answer\.metrics\?\.firestoreWriteCount \?\? 0\) \+ 1/);
+assert.match(answerRoute, /owner_business_assistant_thread_persistence_failed/);
+assert.match(answerRoute, /owner_business_assistant_answer_event_logging_failed/);
+assert.doesNotMatch(answerRoute, /logger\.warn/);
+assert.doesNotMatch(answerRoute, /error instanceof Error \? error\.message/);
+const feedbackRoute = readFileSync(join(repoRoot, 'src/app/api/owner-business-assistant/feedback/route.ts'), 'utf8');
+const feedbackHook = readFileSync(join(repoRoot, 'src/hooks/ownerBusinessAssistant/useOwnerBusinessAssistantFeedback.ts'), 'utf8');
+assert.match(feedbackRoute, /readBoundedJsonBody/);
+assert.match(feedbackRoute, /OWNER_BUSINESS_ASSISTANT_FEEDBACK_MAX_BODY_BYTES = 8 \* 1024/);
+assert.doesNotMatch(feedbackRoute, /request\.json\(\)/);
+assert.match(feedbackRoute, /applyOwnerBusinessAssistantRateLimit[\s\S]+readBoundedJsonBody/);
+assert.match(feedbackRoute, /OwnerBusinessAssistantFeedbackRequestSchema\.safeParse\(bodyResult\.data\)/);
+assert.match(feedbackRoute, /resolveOwnerAssistantSelectedStoreScope\(request, session, parsed\.data\.storeId\)/);
+assert.match(feedbackRoute, /requireAnyStorePermissionForStore/);
+assert.match(feedbackRoute, /OWNER_BUSINESS_ASSISTANT_FEEDBACK/);
+assert.match(clientResponses, /OWNER_BUSINESS_ASSISTANT_MUTATION_RESPONSE_JSON_MAX_BYTES = 16 \* 1024/);
+assert.match(clientResponses, /readOwnerBusinessAssistantFeedbackResponse/);
+assert.match(clientResponses, /owner_business_assistant_feedback_response_rejected/);
+assert.match(clientResponses, /owner_business_assistant_feedback_response_parse_failed/);
+assert.match(clientResponses, /owner_business_assistant_feedback_response_invalid/);
+assert.match(clientResponses, /isOwnerBusinessAssistantFeedbackResponse/);
+assert.match(clientResponses, /value\.data\.success === true/);
+assert.match(feedbackHook, /OWNER_BUSINESS_ASSISTANT_REQUEST_POLICY/);
+assert.match(feedbackHook, /\.\.\.OWNER_BUSINESS_ASSISTANT_REQUEST_POLICY/);
+assert.match(feedbackHook, /readOwnerBusinessAssistantFeedbackResponse/);
+assert.match(feedbackHook, /return result\?\.data\.success === true/);
+assert.doesNotMatch(feedbackHook, /if \(!response\.ok\) return false;\s*return true;/);
 
 console.log('Owner Business Assistant hardening verification passed.');

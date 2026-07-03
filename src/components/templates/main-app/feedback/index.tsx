@@ -2,14 +2,21 @@
 
 /**
  * FeedbackInbox Page Component
- * 
+ *
  * Main dashboard page for viewing and managing guest feedback.
  * Uses client-side Firebase via DAL pattern.
- * 
+ *
  * @see __docs__/projects/internal-feedback-system/
  */
 
-import { getFeedbackCount, getFeedbackList, updateFeedbackStatus } from '@database/guestFeedback';
+import {
+    assertFeedbackCountLoadSucceeded,
+    assertFeedbackListLoadSucceeded,
+    assertFeedbackStatusUpdateSucceeded,
+    getFeedbackCount,
+    getFeedbackList,
+    updateFeedbackStatus,
+} from '@database/guestFeedback';
 import { useAppDispatch } from '@hook/useAppDispatch';
 import { startLoader, stopLoader } from '@reduxSlices/loader';
 import { GuestFeedback, GuestFeedbackFilter } from '@type/guestFeedback';
@@ -18,6 +25,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { FeedbackCard } from './FeedbackCard';
 import { FeedbackFilters } from './FeedbackFilters';
 import { FeedbackQrDownload } from './FeedbackQrDownload';
+import { getBoundedFeedbackInboxStringContext, logFeedbackInboxFailure } from './feedbackInboxDiagnostics';
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -54,6 +62,10 @@ export const FeedbackInbox: React.FC<FeedbackInboxProps> = ({
         try {
             // Call DAL directly - session handled internally by DAL
             const result = await getFeedbackList(filter, 50, cursorId || undefined);
+            assertFeedbackListLoadSucceeded(
+                result,
+                'feedback_inbox_list_load_rejected',
+            );
 
             if (loadMore) {
                 setFeedbackItems(prev => [...prev, ...result.items]);
@@ -61,12 +73,21 @@ export const FeedbackInbox: React.FC<FeedbackInboxProps> = ({
                 setFeedbackItems(result.items);
                 // Get needs attention count for badge
                 const count = await getFeedbackCount('needs_attention');
+                assertFeedbackCountLoadSucceeded(
+                    count,
+                    'feedback_inbox_count_load_rejected',
+                );
                 setNeedsAttentionCount(count);
             }
             setHasMore(result.hasMore);
             setLastDocId(result.lastDocId);
         } catch (error) {
-            console.error('[FeedbackInbox] Fetch error:', error);
+            logFeedbackInboxFailure('feedback_inbox_load_failed', error, {
+                ...getBoundedFeedbackInboxStringContext('projectId', projectId),
+                ...getBoundedFeedbackInboxStringContext('filter', filter),
+                ...getBoundedFeedbackInboxStringContext('cursorId', cursorId),
+                loadMore,
+            });
             notification.error({
                 message: 'Error',
                 description: 'Failed to load feedback',
@@ -79,47 +100,54 @@ export const FeedbackInbox: React.FC<FeedbackInboxProps> = ({
                 setIsLoading(false);
             }
         }
-    }, [filter, dispatch]);
+    }, [dispatch, filter, projectId]);
 
     useEffect(() => {
         setLastDocId(null);
         fetchFeedback(false, null);
-    }, [filter]);
+    }, [fetchFeedback]);
 
     const handleStatusUpdate = async (feedbackId: string, status: 'new' | 'resolved') => {
         try {
             // Call DAL directly - session handled internally by DAL
             const updated = await updateFeedbackStatus(feedbackId, status);
+            assertFeedbackStatusUpdateSucceeded(
+                updated,
+                feedbackId,
+                status,
+                'feedback_inbox_status_update_rejected',
+            );
 
-            if (updated) {
-                // Update local state
-                setFeedbackItems(prev =>
-                    prev.map(item =>
-                        item.id === feedbackId
-                            ? { ...item, status, needsAttention: updated.needsAttention, modifiedOn: updated.modifiedOn }
-                            : item
-                    )
-                );
+            // Update local state
+            setFeedbackItems(prev =>
+                prev.map(item =>
+                    item.id === feedbackId
+                        ? { ...item, status, needsAttention: updated.needsAttention, modifiedOn: updated.modifiedOn }
+                        : item
+                )
+            );
 
-                // Update needs attention count
-                const updatedItem = feedbackItems.find(f => f.id === feedbackId);
-                if (updatedItem && updatedItem.rating <= 3) {
-                    if (status === 'resolved') {
-                        setNeedsAttentionCount(prev => Math.max(0, prev - 1));
-                    } else {
-                        setNeedsAttentionCount(prev => prev + 1);
-                    }
+            // Update needs attention count
+            const updatedItem = feedbackItems.find(f => f.id === feedbackId);
+            if (updatedItem && updatedItem.rating <= 3) {
+                if (status === 'resolved') {
+                    setNeedsAttentionCount(prev => Math.max(0, prev - 1));
+                } else {
+                    setNeedsAttentionCount(prev => prev + 1);
                 }
-
-                notification.success({
-                    message: status === 'resolved' ? 'Marked as resolved' : 'Marked as new',
-                    duration: 2,
-                });
-            } else {
-                throw new Error('Feedback not found or access denied');
             }
+
+            notification.success({
+                message: status === 'resolved' ? 'Marked as resolved' : 'Marked as new',
+                duration: 2,
+            });
         } catch (error) {
-            console.error('[FeedbackInbox] Update error:', error);
+            logFeedbackInboxFailure('feedback_inbox_status_update_failed', error, {
+                ...getBoundedFeedbackInboxStringContext('feedbackId', feedbackId),
+                ...getBoundedFeedbackInboxStringContext('projectId', projectId),
+                ...getBoundedFeedbackInboxStringContext('status', status),
+                visibleFeedbackCount: feedbackItems.length,
+            });
             notification.error({
                 message: 'Error',
                 description: 'Failed to update feedback',

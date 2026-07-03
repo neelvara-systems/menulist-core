@@ -2,6 +2,7 @@
 
 > **Version:** 1.0.0
 > **Created:** 2026-03-09
+> **Last Updated:** 2026-06-30
 > **Audience:** Developers
 > **Feature Flag:** `ENABLE_ANSWERLATTICE_INSTANT_CACHE`
 > **Dependencies:** Upstash Redis (already installed: `@upstash/redis`)
@@ -554,7 +555,13 @@ Context (page, feature, workflow) affects entity matching scores but NOT the cac
 | `INSTANT_CACHE_MISS`  | Entity matched but no Redis entry | query, entityId, mountContext                    |
 | `CACHE_STALE_BYPASS`  | Firestore answer cache exists but source validation fails | query, canonical flag, answerId/reference count |
 | `INSTANT_CACHE_WRITE` | New canonical answer cached       | entityId, answerId, answerVersion, key           |
-| `INSTANT_CACHE_ERROR` | Redis operation failed            | error message (no PII)                           |
+| `answerlattice_instant_cache_lookup_failed` | Redis lookup or freshness validation failed | bounded tenant/store/entity/version context only |
+| `answerlattice_instant_cache_stale_delete_failed` | Best-effort stale Redis cleanup failed | bounded tenant/store/entity/version context only |
+| `answerlattice_instant_cache_write_failed` | Redis write setup or async write failed | bounded tenant/store/entity/version/count context only |
+| `answerlattice_instant_cache_stage_failed` | Search-core Stage 2.5 import/lookup wrapper failed | bounded tenant/store/query-length/mount context only |
+| `answerlattice_canonical_cache_version_load_failed` | Canonical source-version manifest lookup failed before cache write | bounded tenant/store context only |
+
+Instant-cache diagnostics are observability only. Cache lookup, stale cleanup, and write failures continue to degrade to the live retrieval pipeline; they do not block canonical retrieval, FAQ fallback, RAG fallback, search-history writes, or widget/help-center responses.
 
 ### 7.2 — Upstash Dashboard
 

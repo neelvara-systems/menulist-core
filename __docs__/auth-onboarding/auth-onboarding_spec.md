@@ -1,14 +1,22 @@
 # Auth & Onboarding — Product Specification
 
-**Feature:** Complete Signup/Login/Onboarding/Payment Flow  
-**Status:** ✅ Production Ready  
-**Date:** January 26, 2026
+**Feature:** Complete Signup/Login/Onboarding/Payment Flow
+**Status:** Implemented source evidence; not current launch certification
+**Date:** July 2, 2026
 
 ---
 
 ## Executive Summary
 
 This document describes the complete user journey from first visit to paying customer with full dashboard access.
+
+### Current Launch Boundary
+
+This specification describes the intended and implemented source path for MenuList signup, login, onboarding, subscription creation, and dashboard entry. It is not current production-launch approval by itself.
+
+Current release approval still requires the active [production-readiness audit](../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../production-readiness/external-certification-runbook.md) evidence, Google OAuth and credentials login smoke, claim-account smoke, sign-out/session refresh smoke, Razorpay sandbox checkout and webhook/payment-verification evidence, mobile browser onboarding/payment QA, Firebase Auth custom-claims verification, and target-environment deploy smoke.
+
+The source gates verify current code contracts only. They do not run live OAuth, Razorpay checkout, Firebase Auth token minting, Firestore writes, browser/device QA, Firebase deploys, Vercel deploys, a production build, or production-host behavior.
 
 ### The Flow in 30 Seconds
 
@@ -24,7 +32,7 @@ This document describes the complete user journey from first visit to paying cus
 
 ## User Journey (Step by Step)
 
-### Phase 1: Discovery (Pricing Page)
+### Step 1: Discovery (Pricing Page)
 
 **URL:** `/pricing`
 
@@ -36,7 +44,7 @@ This document describes the complete user journey from first visit to paying cus
 
 **User Action:** Clicks "Get Started" on a plan
 
-### Phase 2: Business Details (Onboarding Modal)
+### Step 2: Business Details (Onboarding Modal)
 
 **Trigger:** Plan card click
 
@@ -60,7 +68,7 @@ This document describes the complete user journey from first visit to paying cus
    ```
 2. If not logged in → Triggers Google OAuth
 
-### Phase 3: Authentication (Google OAuth)
+### Step 3: Authentication (Google OAuth)
 
 **Provider:** NextAuth with Google Provider
 
@@ -86,7 +94,7 @@ This document describes the complete user journey from first visit to paying cus
    ```
 6. JWT created → Session available
 
-### Phase 4: Onboarding (Tenant/Store Creation)
+### Step 4: Onboarding (Tenant/Store Creation)
 
 **API:** `POST /api/onboarding/create-subscription`
 
@@ -112,8 +120,8 @@ This document describes the complete user journey from first visit to paying cus
    // tenants/{newTenantId}
    {
      name: businessName,
-     businessType: 'B2C',
-     businessIndustry: 'Restaurant',
+     businessType: 'Restaurant',
+     businessIndustry: 'B2C',
      email: user.email,
      active: true,
      storesList: [{ storeId: newStoreId, name: '...' }],
@@ -126,8 +134,9 @@ This document describes the complete user journey from first visit to paying cus
    // stores/{newStoreId}
    {
      name: `${businessName} - Main Store`,
-     businessType: 'B2C',
-     businessCategory: 'food_beverage',
+     businessType: 'Restaurant',
+     businessCategory: 'food',
+     businessIndustry: 'B2C',
      tenantId: newTenantId,
      storeId: newStoreId,
      active: true
@@ -152,7 +161,7 @@ This document describes the complete user journey from first visit to paying cus
    - Increment tenant/store counts
    - Add to storesSummary for Cloud Functions
 
-### Phase 5: Payment (Razorpay)
+### Step 5: Payment (Razorpay)
 
 **What Happens:**
 
@@ -179,11 +188,11 @@ This document describes the complete user journey from first visit to paying cus
 
 1. **Session Update:**
    ```typescript
-   await update({ 
-     tenantId, 
-     storeId, 
-     sId: storeId, 
-     tId: tenantId 
+   await update({
+     tenantId,
+     storeId,
+     sId: storeId,
+     tId: tenantId
    });
    ```
 
@@ -260,4 +269,4 @@ This document describes the complete user journey from first visit to paying cus
 
 ---
 
-**DOCUMENT STATUS:** ✅ Production Ready
+**DOCUMENT STATUS:** Source evidence only - not current launch certification

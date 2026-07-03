@@ -1,5 +1,11 @@
 # OWASP Top 10 2021 - Security Implementation
 
+**Status:** Historical OWASP implementation evidence; not current launch certification
+
+## Current Launch Boundary
+
+Current release approval requires the active [production-readiness audit](../../audits/menulist-production-readiness-audit.md) and [External Certification Runbook](../../production-readiness/external-certification-runbook.md) evidence, current security-source review, OWASP gap review for touched routes, provider/deploy evidence where relevant, and browser/API QA for the release target. This document is historical OWASP implementation evidence; it is not production-launch approval.
+
 ## ✅ Implementation Status
 
 ### **A01: Broken Access Control** ✅ IMPLEMENTED
@@ -380,5 +386,5 @@ if (!verifyTenantAccess(session, requestTenantId, requestStoreId)) {
 ---
 
 **Last Updated:** 2025-11-04  
-**Security Status:** Production Ready ✅  
+**Security Status:** Historical OWASP evidence; not current launch certification
 **OWASP Compliance:** 80% (8/10 categories complete)

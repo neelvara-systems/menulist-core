@@ -1,8 +1,10 @@
 # Upload & File Processing — Implementation
 
 **Feature:** File Upload & PDF Processing  
-**Status:** ✅ Production Ready  
+**Status:** Implemented source evidence; not current launch certification
 **Last Updated:** January 2026
+
+**Launch boundary:** This implementation note documents upload/PDF processing architecture. Current release approval still requires the active [production-readiness audit](../../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../../production-readiness/external-certification-runbook.md) evidence, target deploy evidence, browser/mobile upload QA, Storage quota/rules evidence, and extraction-job evidence for the release.
 
 ---
 
@@ -47,12 +49,18 @@
 │       │                                                          │
 │       ▼                                                          │
 │  Firebase Storage                                                │
-│       │  Path: MenuListAi/project/files/{timestamp}-{uid}       │
+│       │  Path: projects/files/{tId}/{sId}/{fileId}              │
 │       │                                                          │
 │       ▼                                                          │
-│  /api/image-processor (Next.js API Route)                       │
+│  /api/menu-extraction/jobs (Next.js API Route)                  │
+│       │  • Auth, tenant, URL, MIME, dedupe, and size gates      │
+│       │  • Rejects projected oversized project appends before AI│
+│       │  • Creates the extraction job for the worker            │
+│       │                                                          │
+│       ▼                                                          │
+│  processMenuImagesJob / saveFilesToProject                      │
 │       │  • AI OCR via Gemini 2.5 Flash                          │
-│       │  • Returns extracted menu data                          │
+│       │  • Final 900KB transaction save guard                   │
 │                                                                  │
 └─────────────────────────────────────────────────────────────────┘
 ```
@@ -90,9 +98,10 @@ export const MAX_PDF_SIZE = 50 * 1024 * 1024; // 50MB per PDF
 export const MAX_TOTAL_UPLOAD_SIZE = 200 * 1024 * 1024; // 200MB session
 export const WARN_FILE_SIZE = 30 * 1024 * 1024; // 30MB warning
 
-// PDF limits
-export const MAX_PDF_PAGES = 50; // Hard limit
-export const WARN_PDF_PAGES = 30; // Warning threshold
+// Extraction/PDF limits
+export const MAX_MENU_EXTRACTION_FILES = MENU_EXTRACTION_JOB_LIMITS.MAX_FILES; // 15
+export const MAX_PDF_PAGES = MAX_MENU_EXTRACTION_FILES; // Hard limit
+export const WARN_PDF_PAGES = Math.max(10, MAX_PDF_PAGES - 3); // Warning threshold
 
 // Allowed types
 export const ALLOWED_FILE_TYPES = {
@@ -127,7 +136,7 @@ export const convertPdfToImages = async (
 
 - Lazy loads `pdfjs-dist` (only when PDF uploaded)
 - Canvas cleanup after each page (prevents memory leaks)
-- 50-page hard limit, 30-page warning
+- 15-page/job hard limit, near-limit warning
 - Corrupted PDF detection with friendly error
 - Progress logging every 10 pages
 - JPEG output at 80% quality, 1.5x scale
@@ -139,10 +148,12 @@ export const convertPdfToImages = async (
 ### Firebase Storage Path
 
 ```
-MenuListAi/project/files/{timestamp}-{uid}
+projects/files/{tId}/{sId}/{fileId}
 ```
 
-Example: `MenuListAi/project/files/1699876543210-ABC123`
+Example: `projects/files/14/22/1699876543210-ABC123`
+
+Legacy files may still exist under `MenuListAi/project/files/` from older deployments. New project upload flows use `generateStoragePath()` so active writes include tenant/store path segments, and legacy project Storage paths are read-only in `storage.rules` so old paths cannot receive new uploads or deletes.
 
 ### ProjectFileType Interface
 
@@ -208,7 +219,7 @@ const FILE_SIGNATURES = {
 
 ### Problem Solved
 
-Large PDFs (30+ pages) caused browser crashes due to canvas memory leaks.
+Large PDFs previously caused browser crashes due to canvas memory leaks and could exceed the backend extraction job file cap.
 
 ### Solution
 
@@ -242,9 +253,9 @@ finally {
 
 | Scenario      | Before Fix         | After Fix                |
 | ------------- | ------------------ | ------------------------ |
-| 30-page PDF   | 150MB → stays high | 85MB → returns to 52MB   |
-| 50-page PDF   | Browser crash      | Completes, memory stable |
-| Multiple PDFs | Crash on 3rd       | Handles 10+ PDFs         |
+| 12-page PDF   | 60MB → stays high | Memory returns after canvas cleanup |
+| 20-page PDF   | Browser work then API rejection risk | Blocked before Storage upload |
+| Multiple PDFs | Could exceed job cap after conversion | Combined pending files capped at 15 |
 
 ---
 
@@ -258,10 +269,16 @@ export const uploadFile = async (data: UserUploadedFileType) => {
   const docId = `${new Date().getTime()}-${data.uid}`;
 
   if (data.url?.includes("base64")) {
+    const session = await getActiveSession();
     const fileUrl = await uploadBase64ToStorage({
       fileId: docId,
       url: data.url,
-      path: `MenuListAi/project/files/${docId}`,
+      path: generateStoragePath({
+        collection: DATA_COLLECTION,
+        fileType: "files",
+        session,
+        fileId: docId,
+      }),
       type: data.type,
     });
     return fileUrl;
@@ -300,7 +317,7 @@ const response = await fetch("/api/image-processor", {
 | Extension validation   | Part of `validateFileType()` | validation.ts:80    | ✅     |
 | Magic bytes validation | `validateFileMagicBytes()`   | validation.ts:107   | ✅     |
 | Duplicate detection    | `detectDuplicateFile()`      | validation.ts:163   | ✅     |
-| 50-page PDF limit      | In `convertPdfToImages()`    | pdfUtils.ts:84      | ✅     |
+| 15-page PDF/job limit  | Shared extraction cap        | constants.ts        | ✅     |
 | Canvas memory cleanup  | In `convertPdfToImages()`    | pdfUtils.ts:139-143 | ✅     |
 | Lazy PDF worker load   | `ensurePdfLibLoaded()`       | pdfUtils.ts:14      | ✅     |
 | Corrupted PDF handling | try/catch in conversion      | pdfUtils.ts:66-77   | ✅     |
@@ -316,9 +333,9 @@ const response = await fetch("/api/image-processor", {
 | **Large image**    | Upload 15MB JPG                    | Error: "too large. Max 10MB"  |
 | **Large PDF**      | Upload 60MB PDF                    | Error: "too large. Max 50MB"  |
 | **Fake extension** | Rename .exe to .pdf, upload        | Error: "corrupted or invalid" |
-| **Many pages**     | Upload 55-page PDF                 | Error: "Maximum 50 pages"     |
+| **Many pages**     | Upload 20-page PDF                 | Error: "Maximum 15 pages"     |
 | **Duplicate**      | Upload same file twice             | Modal: "already exists"       |
-| **Memory**         | Upload 30-page PDF, check DevTools | Memory returns to baseline    |
+| **Memory**         | Upload 12-page PDF, check DevTools | Memory returns to baseline    |
 
 ### Smoke Test (5 minutes)
 
@@ -348,7 +365,7 @@ const response = await fetch("/api/image-processor", {
 | ----------------------- | ------- | ------ |
 | 5MB image upload        | < 2s    | ~1.5s  |
 | 10-page PDF conversion  | < 10s   | ~8s    |
-| 30-page PDF conversion  | < 30s   | ~25s   |
+| 12-page PDF conversion  | < 15s   | ~12s   |
 | Memory per PDF page     | < 2MB   | ~1.5MB |
 | Validation (all checks) | < 500ms | ~200ms |
 
@@ -360,9 +377,9 @@ const response = await fetch("/api/image-processor", {
 | --------------------------------------------------------- | ---------------------- |
 | `_spec.md`                                                | Product specification  |
 | `_marketing.md`                                           | Sales collateral       |
-| `../Assessments/ASSESSMENT-01-UPLOAD.md`                  | Original assessment    |
-| `../development_done/1-IMPLEMENTATION-UPLOAD-COMPLETE.md` | Implementation details |
-| `../development_done/1-TESTING-GUIDE-UPLOAD.md`           | Full testing guide     |
+| `../Assessments/assessment-01-upload.md`                  | Original assessment    |
+| `../development_done/1-implementation-upload-complete.md` | Implementation details |
+| `../development_done/1-testing-guide-upload.md`           | Full testing guide     |
 
 ---
 
@@ -415,4 +432,4 @@ const response = await fetch("/api/image-processor", {
 
 ---
 
-_Document Status: ✅ PRODUCTION READY_
+_Document Status: Historical upload-processing implementation evidence - not current launch certification_

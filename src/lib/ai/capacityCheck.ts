@@ -3,6 +3,7 @@ import { getUnitCost, isFreeTierAction, OVERDRAFT_BUFFER_PERCENT } from "@consta
 import { DB_COLLECTIONS } from "@constant/database";
 import { getActiveSubscriptionForStore } from "@database/subscriptions/server";
 import { admin, firestoreAdmin } from "@lib/firebase/firebaseAdmin";
+import { getBoundedRuntimeStringContext, logRuntimeFailure } from "@lib/runtime/runtimeDiagnostics";
 import { FirestoreSubscriptionDoc } from "@type/razorpay";
 
 /**
@@ -224,8 +225,28 @@ export async function consumeAICapacity(
                 recipientEmail: updatedBalance.subscription.email || '',
                 storeName: updatedBalance.subscription.name || '',
                 metadata: {},
-            }).catch(() => { /* non-blocking */ });
-        } catch { /* non-blocking */ }
+            }).catch((notificationError) => {
+                logRuntimeFailure('ai_capacity_credits_exhausted_lifecycle_message_failed', notificationError, {
+                    eventType: 'CREDITS_EXHAUSTED',
+                    unitsToConsume,
+                    monthlyCredits: updatedBalance.monthlyCredits,
+                    topUpCredits: updatedBalance.topUpCredits,
+                    ...getBoundedRuntimeStringContext('subscriptionId', updatedBalance.subscription.id),
+                    ...getBoundedRuntimeStringContext('tenantId', updatedBalance.subscription.tenantId),
+                    ...getBoundedRuntimeStringContext('storeId', updatedBalance.subscription.storeId),
+                });
+            });
+        } catch (notificationImportError) {
+            logRuntimeFailure('ai_capacity_credits_exhausted_lifecycle_message_import_failed', notificationImportError, {
+                eventType: 'CREDITS_EXHAUSTED',
+                unitsToConsume,
+                monthlyCredits: updatedBalance.monthlyCredits,
+                topUpCredits: updatedBalance.topUpCredits,
+                ...getBoundedRuntimeStringContext('subscriptionId', updatedBalance.subscription.id),
+                ...getBoundedRuntimeStringContext('tenantId', updatedBalance.subscription.tenantId),
+                ...getBoundedRuntimeStringContext('storeId', updatedBalance.subscription.storeId),
+            });
+        }
     }
 
     return {

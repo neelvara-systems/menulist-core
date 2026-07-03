@@ -1,6 +1,6 @@
 # Roles & Permissions — Technical Implementation
 
-**Status:** ✅ Staff CRUD + permissions wired end-to-end | **Last Updated:** June 11, 2026
+**Status:** ✅ Staff CRUD + permissions wired end-to-end | **Last Updated:** July 1, 2026
 
 > **Scope:** This document covers Layer 1 (staff-level RBAC). For Layer 2 (OutletPolicy chain restrictions) and the two-layer interaction model, see [Multi-Chain Permissions](../multi-chain-permissions/multi-chain-permissions_impl.md).
 
@@ -50,6 +50,9 @@ roles: StoreRoleDataType[]          stores: [{
 | Desktop and mobile staff screens use API             | ✅ Done |
 | Desktop Users navigation split (`Users List` + `Roles`) | ✅ Done |
 | Desktop staff details/add/edit UI aligned to current staff fields | ✅ Done |
+| Staff/role client response parsing bounded and shape-checked | ✅ Done |
+| Staff mutation acknowledgements require operation-specific mode + matching returned user/userId before UI state updates | ✅ Done |
+| Staff and role target-store eligibility rejects inactive, soft-deleted, or platform-blocked stores | ✅ Done |
 
 ---
 
@@ -148,6 +151,10 @@ export function getPermissionsForRole(
 }
 ```
 
+Server-side permission guards in `src/lib/permissions/server.ts` fail closed when the session store is missing, belongs to another tenant, is inactive, is soft-deleted, or is platform-blocked. This applies to `requireAnyStorePermission()`, `requireAnyStorePermissionForStore()`, and `requireAnyStorePermissionForStoreData()` for non-platform sessions, so owner public-truth writers inherit the same blocked-store boundary before route-specific writes or provider calls.
+
+Owner AI routes now use the same server guard before expensive work. Text/menu AI routes require `canGenerateDescriptions`; image routes require `canGenerateImages`; public-presence copy routes require `canManagePublicPresence` or `canManageStore`; campaign/Menu Card output routes require the existing menu output permissions; AI pack status requires `canAccessBilling`; weekly narrative requires `canViewAnalytics`.
+
 ---
 
 ## 6. File Summary
@@ -163,14 +170,16 @@ export function getPermissionsForRole(
 | `src/lib/permissions/server.ts`                       | ✅ OK  |
 | `src/lib/permissions/applyOutletPolicy.ts`            | ✅ OK  |
 | `src/lib/staffManagement/server.ts`                   | ✅ OK  |
-| `src/lib/staffManagement/client.ts`                   | ✅ OK  |
+| `src/lib/staffManagement/client.ts`                   | ✅ OK — uses 256KB bounded response parsing and staff-list/staff-mutation/role-mutation envelope checks |
 | `src/app/api/staff/route.ts`                          | ✅ OK  |
 | `src/app/api/staff/password-reset/route.ts`            | ✅ OK  |
 | `src/app/api/staff/force-signout/route.ts`             | ✅ OK  |
 | `src/app/api/auth/access-status/route.ts`              | ✅ OK  |
-| `src/app/api/auth/change-password/route.ts`            | ✅ OK  |
+| `src/app/api/auth/change-password/route.ts`            | ✅ OK — fixed Firebase Auth verification endpoint builder, encoded API key, manual redirect handling |
 | `src/app/api/staff/roles/route.ts`                    | ✅ OK  |
 | `src/app/api/onboarding/create-subscription/route.ts` | ✅ OK  |
+
+June 30 security-log boundary: `src/lib/permissions/server.ts` and `src/lib/staffManagement/server.ts` now keep authorization, validation, and rate-limit security breadcrumbs on bounded route/session metadata plus length/count-only permission, role, tenant, store, and label context. They do not import or spread raw `buildSecurityContext()` output into central security events.
 | `src/lib/staffManagement/shareLoginDetails.ts`        | ✅ OK  |
 | `src/components/templates/main-app/users/StaffLoginDetailsContent.tsx` | ✅ OK |
 | `src/components/.../users/permissions/*`              | ✅ OK  |
@@ -230,6 +239,18 @@ Categories:
 | `src/app/api/subdomain/check/route.ts` | `GET` | Owner subdomain availability check | `canManagePublicPresence` |
 | `src/app/api/pos-sync/test/route.ts` | `POST` | Test POS webhook connectivity | `canManageIntegrations` |
 | `src/app/api/pos-sync/deliver/route.ts` | `POST` | Deliver menu snapshot to configured POS webhook | `canManageIntegrations` or `canPublishMenu` |
+| `src/app/api/business-copy/route.ts` | `POST` | Generate public business copy | `canManagePublicPresence` or `canManageStore` |
+| `src/app/api/campaigns/caption/route.ts` | `POST` | Generate campaign caption copy | `canManageMenuSharing`, `canPublishMenu`, or `canManageMenu` |
+| `src/app/api/descriptions/route.ts` | `POST` | Generate or rewrite item descriptions | `canGenerateDescriptions` |
+| `src/app/api/new-item-metadata/route.ts` | `POST` | Generate metadata for a new menu item | `canGenerateDescriptions` |
+| `src/app/api/translations/route.ts` | `POST` | Generate menu translations | `canGenerateDescriptions` |
+| `src/app/api/image-generation/route.ts` | `POST` | Generate a menu item image | `canGenerateImages` |
+| `src/app/api/image-editing/route.ts` | `POST` | Edit a menu item image | `canGenerateImages` |
+| `src/app/api/image-generation/batch-trigger/route.ts` | `POST` | Start a batch image generation job | `canGenerateImages` |
+| `src/app/api/menu-card-export/design-advisor/route.ts` | `POST` | Generate Menu Card layout suggestions | `canManageMenuSharing`, `canPublishMenu`, or `canManageMenu` |
+| `src/app/api/seo/route.ts` | `POST` | Generate SEO/public discovery copy | `canManagePublicPresence` or `canManageStore` |
+| `src/app/api/ai-packs/status/route.ts` | `GET` | Check AI pack availability/capacity status | `canAccessBilling` |
+| `src/app/api/analytics/weekly-narrative/generate-local/route.ts` | `POST` | Generate weekly analytics narrative | `canViewAnalytics` |
 
 ### Server Guards
 
@@ -238,13 +259,18 @@ Categories:
 - Non-master store users can only manage their own store.
 - Master store users can manage staff mappings inside the same tenant.
 - Staff list payloads are current-store scoped. Non-master managers receive only the current store mapping for each staff member; cross-location staff mappings stay hidden unless the acting user has master authority.
-- Store mappings are validated against real store documents and active role definitions.
+- Store mappings are validated against real, same-tenant, active, not soft-deleted, and not platform-blocked store documents plus active role definitions.
+- Staff list target stores and role create/update/deactivate target stores use the same target-store eligibility check before returning users or writing `roles[]`.
 - Staff list/create repairs legacy stores that are missing default `owner` / `manager` / `staff` role definitions and normalizes missing permission keys on existing default roles. Custom roles keep missing permission keys denied.
 - The `owner` role definition is locked from edits/deactivation.
 - Last active owner protection prevents removing/demoting/deactivating the only owner for a store.
 - Protected API routes reject sessions whose user is inactive, unverified, deleted, or platform-blocked.
 - `users/{userId}` Firestore writes are not a normal client path. Owner/staff profile edits, password changes, role changes, staff mappings, and revocation metadata go through authenticated server APIs; direct Firestore user writes are platform-admin only.
-- The app shell runs `SessionExpiryMonitor`, which checks `/api/auth/access-status` on focus and every 30 seconds while visible. It signs out the browser when `sessionRevokedAt`, `active`, `deleted`, direct user block, tenant block, or store block invalidates access.
+- Staff authorization, validation, and rate-limit security events use bounded detail shaping before `logger.security()`. Tenant/store/user IDs, requested/target tenant IDs, role IDs, validation payloads, and request-derived values are logged as presence/length/count metadata instead of raw identifiers.
+- Owner AI route permission checks run after bounded body parsing and schema validation where a body exists, and before outlet policy, capacity checks, provider/media work, task fanout, analytics Firestore reads, insight writes, or accounting.
+- Desktop staff create/update/list/reset/remove/sign-out failures, mobile staff mutations, desktop/mobile one-time login-detail copy/share failures, and server-side staff Auth, lifecycle, and role-repair breadcrumbs use `src/lib/staffManagement/diagnostics.ts` for bounded diagnostics. Unknown failures show generic owner-facing copy while diagnostics record only operation name, bounded tenant/store/user/action/reason/provider-code metadata, safe presence/count booleans, copy/share result metadata, text/value lengths, and source error name/code/status. Raw staff mutation errors, staff IDs, temporary passcodes, names, emails, phone numbers, generated login messages, server payloads, Firebase Auth missing-user context, password setup provider details, staff lifecycle identifiers, and provider objects are not direct-console logged.
+- `src/lib/staffManagement/client.ts` requires operation-specific staff mutation acknowledgements before desktop or mobile staff state updates. Create must return `new_user_created` or `existing_user_added_to_store`; update/reset must return `user_updated`; remove must return `store_mapping_removed` or `user_deactivated`; force sign-out must return `session_revoked`. These calls also require returned `user` and `userId` envelopes, and the returned `user.id` must match `userId`, so a generic `{ success: true }` or mismatched successful envelope is treated as invalid and routed through the existing bounded failure path.
+- The app shell runs `SessionExpiryMonitor`, which checks `/api/auth/access-status` on focus and every 30 seconds while visible using same-origin credentials, no-store cache policy, and manual redirect handling. The route applies the shared `DATA_READ` gate before user/tenant/store reads; throttled checks return a no-store `429` without `valid: false`, so the browser does not sign out on throttling. It signs out the browser when the access-status request redirects, or when `sessionRevokedAt`, `active`, `deleted`, direct user block, tenant block, or store block invalidates access.
 
 ### Staff Access Revocation Contract
 
@@ -253,7 +279,7 @@ Categories:
 - **Remove last store mapping:** soft-deletes the user, revokes sessions, disables Firebase Auth, and preserves the Firestore user document for audit history.
 - **Owner passcode reset:** updates Firebase Auth password, revokes refresh tokens, writes `sessionRevokedAt`, and returns the temporary passcode once. No passcode is stored in Firestore.
 - **Self-service password/passcode change:** a signed-in owner or staff member can change their own password/passcode after current password verification. The route is protected by `withAuth()`, `AUTH_SENSITIVE` rate limiting, Zod validation, and secure logging. It updates Firebase Auth and writes `passwordChangedAt` to the user document.
-- **One-time login sharing:** desktop and mobile login-detail popups let owners copy Staff ID, copy passcode, copy both details, use the native browser share sheet when `navigator.share` exists, or open WhatsApp Web with a prefilled login message. If the staff phone number is saved, WhatsApp Web opens with that number in the URL. This is client-only and does not create extra Firebase reads or writes.
+- **One-time login sharing:** desktop and mobile login-detail popups let owners copy Staff ID, copy passcode, copy both details, use the native browser share sheet when `navigator.share` exists, or open WhatsApp Web with a prefilled login message. If the staff phone number is saved, WhatsApp Web opens with that number in the URL. Desktop failures log `desktop_staff_login_details_copy_failed`, `desktop_staff_login_details_whatsapp_open_failed`, or `desktop_staff_login_details_native_share_failed`; mobile failures log the matching `mobile_staff_login_details_*` codes. Both surfaces record bounded presence/length metadata only. This is client-only and does not create extra Firebase reads or writes.
 - **Platform user block:** sets `blocked` / `blockDetails`, disables Firebase Auth, revokes sessions, and is enforced by the same access-status route. Tenant/store blocks are inherited at login/session refresh and checked fresh by `/api/auth/access-status`.
 - **Business A to business B:** user documents are tenant-scoped. A staff member leaving business A should be removed/deactivated there. Business B creates a new staff account. Personal email reuse across tenants stays blocked until a platform-owned transfer flow is built because `getAuthUserByEmail()` assumes a single user document per email.
 

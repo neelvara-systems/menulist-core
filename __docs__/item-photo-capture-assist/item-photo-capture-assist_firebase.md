@@ -8,6 +8,8 @@ Item Photo Capture Assist adds no Firebase operation by itself. Camera preview, 
 
 The only Firebase cost happens when the owner accepts a captured photo and uses the existing item image upload/save action.
 
+June 30 diagnostic hardening is cost-neutral. Failed browser-local readiness sampling logs bounded `item_photo_readiness_stats_failed` diagnostics and keeps the existing ready-to-save fallback; it adds no Firebase reads, writes, deletes, Storage operations, Cloud Functions, API routes, rules, indexes, owner settings, or deploy requirement.
+
 ## Reads
 
 | Operation | Firebase reads | Notes |

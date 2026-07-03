@@ -47,14 +47,17 @@ import type {
   OwnerNotificationOpsSnapshot,
   OwnerNotificationOpsStatusFilter,
 } from '@lib/ops/ownerNotificationTypes';
+import { getBoundedOpsStringContext, logOpsFailure } from '@lib/ops/opsDiagnostics';
 import { logger } from '@lib/monitoring/logger';
 import { checkRateLimit } from '@lib/rateLimit';
+import { readBoundedJsonBody } from '@lib/security/boundedRequestBody';
 import { validateAPIInput } from '@lib/security/inputValidation';
-import { buildSecurityContext } from '@lib/security/securityContext';
+import { getBoundedSecurityRouteContext } from '@lib/security/securityDiagnostics';
 import { createHash } from 'crypto';
 import type { Firestore } from 'firebase-admin/firestore';
 import { Timestamp } from 'firebase-admin/firestore';
 import { NextResponse } from 'next/server';
+import { hashPublicRateLimitValue } from 'src/middleware/publicApi';
 import { z } from 'zod';
 import { withAuth } from '../../../../middleware/auth';
 
@@ -74,6 +77,21 @@ const PRODUCT_IDS_FOR_OPS: OwnerNotificationProductId[] = [
 
 const STATUS_FILTERS: OwnerNotificationOpsStatusFilter[] = ['all', ...EVENT_STATUSES];
 const DELIVERY_DETAIL_LIMIT = 12;
+const OWNER_NOTIFICATION_OPS_ACTION_MAX_BODY_BYTES = 8 * 1024;
+const SAFE_METADATA_PREVIEW_KEYS = new Set([
+  'amount',
+  'currency',
+  'currencySymbol',
+  'planName',
+]);
+const BOUNDED_METADATA_PREVIEW_KEYS = new Set([
+  'error',
+  'projectId',
+  'reason',
+  'storeName',
+  'subscriptionId',
+  'workspaceName',
+]);
 
 const GetQuerySchema = z.object({
   productId: z.enum(PRODUCT_IDS_FOR_OPS as [OwnerNotificationProductId, OwnerNotificationProductId]).default(PRODUCT_IDS.MENULIST),
@@ -189,23 +207,48 @@ function normalizeDestinationForAudit(channel: OwnerNotificationChannel, destina
   return buildWhatsAppPhoneParam({ phoneNumber: destination }) || destination.trim();
 }
 
+function cleanOpsText(value: unknown, max = 260): string {
+  return String(value || '')
+    .replace(/[\u0000-\u001f\u007f]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, max);
+}
+
+function getOwnerNotificationStringContext(label: string, value: unknown): Record<string, boolean | number> {
+  const normalized = cleanOpsText(value, 1000);
+  return {
+    [`${label}Present`]: normalized.length > 0,
+    [`${label}Length`]: normalized.length,
+  };
+}
+
+function getOwnerNotificationStoredTextSummary(label: string, value: unknown): string | null {
+  const normalized = cleanOpsText(value, 1000);
+  return normalized
+    ? `${label} present (${normalized.length} chars).`
+    : null;
+}
+
+function getOwnerNotificationErrorSummary(value: unknown): string | null {
+  const normalized = cleanOpsText(value, 1000);
+  if (!normalized) return null;
+  return /^[A-Za-z0-9_.:-]{1,80}$/.test(normalized)
+    ? normalized
+    : `Stored error present (${normalized.length} chars).`;
+}
+
 function sanitizeMetadataPreview(metadata: any): Record<string, string | number | boolean | null> {
   if (!metadata || typeof metadata !== 'object') return {};
-  const safeKeys = [
-    'amount',
-    'currency',
-    'currencySymbol',
-    'error',
-    'planName',
-    'projectId',
-    'reason',
-    'storeName',
-    'subscriptionId',
-    'workspaceName',
-  ];
 
-  return safeKeys.reduce<Record<string, string | number | boolean | null>>((acc, key) => {
+  return Object.keys(metadata).reduce<Record<string, string | number | boolean | null>>((acc, key) => {
     const value = metadata[key];
+    if (BOUNDED_METADATA_PREVIEW_KEYS.has(key)) {
+      Object.assign(acc, getOwnerNotificationStringContext(key, value));
+      return acc;
+    }
+    if (!SAFE_METADATA_PREVIEW_KEYS.has(key)) return acc;
+
     if (
       value === null ||
       typeof value === 'string' ||
@@ -242,7 +285,7 @@ function serializeEventDoc(
     priority: String(data.priority || '-'),
     status: EVENT_STATUSES.includes(data.status) ? data.status : 'pending',
     sourcePath: String(data.source?.path || data.sourcePath || '-'),
-    error: typeof data.error === 'string' ? data.error : null,
+    error: getOwnerNotificationErrorSummary(data.error),
     createdAt: toIso(data.createdAt),
     updatedAt: toIso(data.updatedAt),
     processedAt: toIso(data.processedAt),
@@ -265,11 +308,11 @@ function serializeDeliveryDoc(doc: FirebaseFirestore.QueryDocumentSnapshot): Own
     recipientRole: data.recipientRole || 'primary_owner',
     recipientMasked: String(data.recipientMasked || '***'),
     status: data.status || 'failed',
-    subject: data.subject || null,
+    subject: getOwnerNotificationStoredTextSummary('Subject', data.subject),
     templateKey: String(data.templateKey || '-'),
     templateVersion: String(data.templateVersion || '-'),
-    providerMessageId: data.providerMessageId || null,
-    error: data.error || null,
+    providerMessageId: getOwnerNotificationStoredTextSummary('Provider message id', data.providerMessageId),
+    error: getOwnerNotificationErrorSummary(data.error),
     attempt: Number(data.attempt || 1),
     createdAt: toIso(data.createdAt),
     sentAt: toIso(data.sentAt),
@@ -411,7 +454,13 @@ async function getDetail(params: {
     };
     manualTemplate = buildManualTemplate(rawEvent, scope, resolvedRecipient);
   } catch (error) {
-    logger.error('[API /ops/owner-notifications] Recipient resolution failed', error);
+    logOpsFailure('owner_notifications_recipient_resolution_failed', error, {
+      ...getBoundedOpsStringContext('productId', rawEvent.productId),
+      ...getBoundedOpsStringContext('eventId', params.eventId),
+      ...getBoundedOpsStringContext('triggerType', rawEvent.triggerType),
+      ...getBoundedOpsStringContext('storeId', rawEvent.storeId),
+      ...getBoundedOpsStringContext('workspaceId', rawEvent.workspaceId),
+    });
   }
 
   return {
@@ -564,7 +613,7 @@ export const GET = withAuth(async (request, session) => {
   const params = validateAPIInput(GetQuerySchema, Object.fromEntries(request.nextUrl.searchParams.entries()));
   if (params.success === false) {
     logger.security('Owner Notification Ops Query Validation Failed', {
-      ...buildSecurityContext(session, request),
+      ...getBoundedSecurityRouteContext(session, request),
       endpoint: request.nextUrl.pathname,
       error: params.error,
     }, 'medium');
@@ -622,7 +671,15 @@ export const GET = withAuth(async (request, session) => {
       headers: { 'Cache-Control': 'no-store' },
     });
   } catch (error) {
-    logger.error('[API /ops/owner-notifications] Error', error, buildSecurityContext(session, request));
+    logOpsFailure('owner_notifications_route_failed', error, {
+      ...getBoundedOpsStringContext('userId', getOperatorId(session)),
+      ...getBoundedOpsStringContext('requestPath', request.nextUrl.pathname),
+      ...getBoundedOpsStringContext('productId', productId),
+      ...getBoundedOpsStringContext('status', status),
+      ...getBoundedOpsStringContext('eventId', eventId),
+      limit,
+      scanLimit,
+    });
     return NextResponse.json({ error: 'Failed to load owner notification ops snapshot' }, { status: 500 });
   }
 }, { requiredPlatformRole: 'PLATFORM' });
@@ -632,35 +689,40 @@ export const POST = withAuth(async (request, session) => {
     return NextResponse.json({ error: 'Owner notification ops dashboard is disabled' }, { status: 404 });
   }
 
-  const body = await request.json().catch(() => ({}));
-  const validation = validateAPIInput(PostActionSchema, body);
-  if (validation.success === false) {
-    logger.security('Owner Notification Ops Action Validation Failed', {
-      ...buildSecurityContext(session, request),
-      endpoint: request.nextUrl.pathname,
-      error: validation.error,
-      action: typeof body?.action === 'string' ? body.action : 'unknown',
-    }, 'medium');
-    return NextResponse.json({ error: 'Invalid owner notification action' }, { status: 400 });
-  }
-
   const userId = getOperatorId(session);
+  const userRateLimitHash = hashPublicRateLimitValue(userId);
   const rateLimitResult = await checkRateLimit({
-    key: `owner-notification-ops:${userId}`,
+    key: `owner-notification-ops:${userRateLimitHash}`,
     limit: 30,
     window: 60 * 60,
   });
   if (!rateLimitResult.allowed) {
     const retryAfter = Math.max(1, Math.ceil((rateLimitResult.resetAt - Date.now()) / 1000));
     logger.security('Owner Notification Ops Rate Limited', {
-      ...buildSecurityContext(session, request),
+      ...getBoundedSecurityRouteContext(session, request),
       endpoint: request.nextUrl.pathname,
-      action: validation.data.action,
     }, 'medium');
     return NextResponse.json(
       { error: 'Too many owner notification recovery actions', retryAfter },
       { status: 429, headers: { 'Retry-After': String(retryAfter) } },
     );
+  }
+
+  const bodyResult = await readBoundedJsonBody(request, OWNER_NOTIFICATION_OPS_ACTION_MAX_BODY_BYTES, {
+    invalidJsonMessage: 'Invalid owner notification action',
+  });
+  if (bodyResult.ok === false) return bodyResult.response;
+
+  const body = bodyResult.data as any;
+  const validation = validateAPIInput(PostActionSchema, body);
+  if (validation.success === false) {
+    logger.security('Owner Notification Ops Action Validation Failed', {
+      ...getBoundedSecurityRouteContext(session, request),
+      endpoint: request.nextUrl.pathname,
+      error: validation.error,
+      ...getBoundedOpsStringContext('action', body?.action),
+    }, 'medium');
+    return NextResponse.json({ error: 'Invalid owner notification action' }, { status: 400 });
   }
 
   const db = getDbForProduct(validation.data.productId);
@@ -722,7 +784,13 @@ export const POST = withAuth(async (request, session) => {
     });
     return NextResponse.json(result);
   } catch (error) {
-    logger.error('[API /ops/owner-notifications] Action error', error, buildSecurityContext(session, request));
+    logOpsFailure('owner_notifications_action_failed', error, {
+      ...getBoundedOpsStringContext('userId', userId),
+      ...getBoundedOpsStringContext('requestPath', request.nextUrl.pathname),
+      ...getBoundedOpsStringContext('action', validation.data.action),
+      ...getBoundedOpsStringContext('productId', validation.data.productId),
+      ...getBoundedOpsStringContext('eventId', validation.data.eventId),
+    });
     return NextResponse.json({ error: 'Owner notification recovery action failed' }, { status: 500 });
   }
 }, { requiredPlatformRole: 'PLATFORM' });

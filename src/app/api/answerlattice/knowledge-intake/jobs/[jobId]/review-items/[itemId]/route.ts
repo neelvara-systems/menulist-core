@@ -4,11 +4,13 @@ import {
     serializeIntakeValue,
     updateKnowledgeIntakeReviewItem,
 } from '@lib/answerlattice/knowledgeIntake';
+import { logAnswerlatticeKnowledgeIntakeFailure } from '@lib/answerlattice/knowledgeIntakeDiagnostics';
 import {
+    getAnswerlatticeKnowledgeIntakeClientErrorMessage,
     getAnswerlatticeKnowledgeIntakeErrorStatus,
     requireAnswerlatticeKnowledgeIntakeContext,
 } from '@lib/answerlattice/knowledgeIntakeApi';
-import { secureError } from '@lib/security/secureLogger';
+import { readOptionalBoundedJsonBody } from '@lib/security/boundedRequestBody';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { withAuth } from '@/middleware/auth';
@@ -26,6 +28,7 @@ const ReviewItemPatchSchema = z.object({
     contextKeys: z.array(z.string().trim().max(100)).max(20).optional(),
     entityIds: z.array(z.string().trim().max(160)).max(25).optional(),
 });
+const KNOWLEDGE_INTAKE_REVIEW_ITEM_MAX_BODY_BYTES = 32 * 1024;
 
 export const PATCH = withAuth(async (request: NextRequest, session, params: { jobId: string; itemId: string }) => {
     const access = await requireAnswerlatticeKnowledgeIntakeContext(request, session, {
@@ -37,8 +40,18 @@ export const PATCH = withAuth(async (request: NextRequest, session, params: { jo
     if (access.response) return access.response;
 
     try {
-        const body = await request.json().catch(() => ({}));
-        const parsed = ReviewItemPatchSchema.parse(body);
+        const bodyResult = await readOptionalBoundedJsonBody(request, KNOWLEDGE_INTAKE_REVIEW_ITEM_MAX_BODY_BYTES, {
+            invalidJsonMessage: 'Invalid review item update.',
+            tooLargeMessage: 'Request body too large.',
+        });
+        if (bodyResult.ok === false) {
+            return NextResponse.json(
+                { error: bodyResult.response.status === 413 ? 'Request body too large.' : 'Invalid review item update.' },
+                { status: bodyResult.response.status },
+            );
+        }
+
+        const parsed = ReviewItemPatchSchema.parse(bodyResult.data);
         const item = await updateKnowledgeIntakeReviewItem(access.context.scope, params.jobId, params.itemId, parsed as any, access.context.actor);
         return NextResponse.json({ item: serializeIntakeValue(item) });
     } catch (error) {
@@ -47,12 +60,12 @@ export const PATCH = withAuth(async (request: NextRequest, session, params: { jo
         }
         const status = getAnswerlatticeKnowledgeIntakeErrorStatus(error);
         if (status >= 500) {
-            secureError('[Answerlattice Intake] Failed to update review item', error as Error, {
-                ...access.context.scope,
-                jobId: params.jobId,
+            logAnswerlatticeKnowledgeIntakeFailure('[Answerlattice Intake] Failed to update review item', 'answerlattice_intake_review_item_update_failed', error, {
                 itemId: params.itemId,
+                jobId: params.jobId,
+                scope: access.context.scope,
             });
         }
-        return NextResponse.json({ error: error instanceof Error ? error.message : 'Failed to update review item.' }, { status });
+        return NextResponse.json({ error: getAnswerlatticeKnowledgeIntakeClientErrorMessage(error, 'Failed to update review item.') }, { status });
     }
 });

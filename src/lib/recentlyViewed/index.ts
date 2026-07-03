@@ -1,4 +1,5 @@
 import { Timestamp } from 'firebase/firestore';
+import { getBoundedHookStringContext, logHookFailure } from '@hook/hookDiagnostics';
 
 const STORAGE_PREFIX = 'recentlyViewed:';
 export const RECENTLY_VIEWED_EVENT = 'recentlyViewed:update';
@@ -54,7 +55,7 @@ const isBrowser = typeof window !== 'undefined';
 
 const getStorageKey = (userId: string) => `${STORAGE_PREFIX}${userId}`;
 
-const safeParse = (value: string | null): RecentlyViewedEntry[] => {
+const safeParse = (value: string | null, userId?: string): RecentlyViewedEntry[] => {
     if (!value) return [];
     try {
         const parsed = JSON.parse(value);
@@ -64,22 +65,39 @@ const safeParse = (value: string | null): RecentlyViewedEntry[] => {
             );
         }
     } catch (error) {
-        console.warn('Failed to parse recently viewed entries', error);
+        logHookFailure('recently_viewed_parse_failed', error, {
+            ...getBoundedHookStringContext('userId', userId),
+            storedValueLength: value.length,
+        });
     }
     return [];
 };
 
-const writeEntries = (key: string, entries: RecentlyViewedEntry[]) => {
+const writeEntries = (key: string, entries: RecentlyViewedEntry[], userId: string) => {
     if (!isBrowser) return;
-    window.localStorage.setItem(key, JSON.stringify(entries));
-    window.dispatchEvent(new CustomEvent(RECENTLY_VIEWED_EVENT, { detail: { storageKey: key } }));
+    try {
+        window.localStorage.setItem(key, JSON.stringify(entries));
+        window.dispatchEvent(new CustomEvent(RECENTLY_VIEWED_EVENT, { detail: { storageKey: key } }));
+    } catch (error) {
+        logHookFailure('recently_viewed_write_failed', error, {
+            ...getBoundedHookStringContext('userId', userId),
+            entryCount: entries.length,
+        });
+    }
 };
 
 export const getRecentlyViewedEntries = (userId: string): RecentlyViewedEntry[] => {
     if (!isBrowser) return [];
-    const key = getStorageKey(userId);
-    const raw = window.localStorage.getItem(key);
-    return safeParse(raw);
+    try {
+        const key = getStorageKey(userId);
+        const raw = window.localStorage.getItem(key);
+        return safeParse(raw, userId);
+    } catch (error) {
+        logHookFailure('recently_viewed_read_failed', error, {
+            ...getBoundedHookStringContext('userId', userId),
+        });
+        return [];
+    }
 };
 
 export const addRecentlyViewedEntry = (userId: string, entry: RecentlyViewedEntry) => {
@@ -92,12 +110,18 @@ export const addRecentlyViewedEntry = (userId: string, entry: RecentlyViewedEntr
     const existing = getRecentlyViewedEntries(userId);
     const filtered = existing.filter(item => !(item.id === entry.id && item.type === entry.type));
     const updated = [serializedEntry, ...filtered].slice(0, MAX_ENTRIES);
-    writeEntries(key, updated);
+    writeEntries(key, updated, userId);
 };
 
 export const clearRecentlyViewedEntries = (userId: string) => {
     if (!isBrowser) return;
-    const key = getStorageKey(userId);
-    window.localStorage.removeItem(key);
-    window.dispatchEvent(new CustomEvent(RECENTLY_VIEWED_EVENT, { detail: { storageKey: key } }));
+    try {
+        const key = getStorageKey(userId);
+        window.localStorage.removeItem(key);
+        window.dispatchEvent(new CustomEvent(RECENTLY_VIEWED_EVENT, { detail: { storageKey: key } }));
+    } catch (error) {
+        logHookFailure('recently_viewed_clear_failed', error, {
+            ...getBoundedHookStringContext('userId', userId),
+        });
+    }
 };

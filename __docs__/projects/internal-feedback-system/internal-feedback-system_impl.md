@@ -1,10 +1,10 @@
 # Internal Feedback System — Implementation Plan
 
-**Document Type:** Technical Implementation Blueprint  
-**Audience:** Developers, Technical Leads  
-**Version:** 1.0  
+**Document Type:** Technical Implementation Blueprint
+**Audience:** Developers, Technical Leads
+**Version:** 1.0
 **Date:** February 1, 2026
-**Last Runtime Audit:** June 11, 2026
+**Last Runtime Audit:** July 2, 2026
 
 ---
 
@@ -30,11 +30,26 @@
 The current production contract is stricter than the original implementation plan:
 
 - Public feedback writes are API/Admin-SDK only. `firestore.rules` denies unauthenticated direct creates to `guestFeedback`.
-- `src/app/api/public/feedback/submit/route.ts` verifies the nested project, store tenant match, active/deleted/blocked state, project/store feedback toggles, and store-owned field defaults before writing.
+- `src/app/api/public/feedback/submit/route.ts` verifies the nested project, store tenant match, store active/deleted/blocked state, tenant block state, project/store feedback toggles, and store-owned field defaults before writing.
+- The shared public endpoint helper rate-limits by IP before public feedback writes and logs rate-limit infrastructure failures through `secureError()` while preserving the existing fail-open behavior.
 - `src/database/guestFeedback/server.ts` owns public feedback creates and compact feedback event writes.
+- Public feedback submit route failures use `src/database/guestFeedback/guestFeedbackDiagnostics.ts` with normalized `public_guest_feedback_scope_verification_failed` and `public_guest_feedback_submit_failed` diagnostics. Context is limited to bounded tenant/store/project metadata, source enum, rating, captcha/comment/contact presence booleans, and source error metadata. It must not pass raw route exceptions, guest names, phone/email values, messages, raw project IDs, tenant IDs, store IDs, or provider exceptions to `secureError()`.
+- Admin-side compact feedback MOL event failures use the same diagnostics helper with normalized `guest_feedback_admin_mol_event_log_failed` diagnostics. The write remains non-blocking for public feedback submissions, but failed event writes must record only event type, rating, bounded tenant/store/project metadata, and source error metadata.
+- Client-side compact feedback MOL event failures use `src/database/guestFeedback/guestFeedbackDiagnostics.ts` with normalized `guest_feedback_mol_event_log_failed` diagnostics. Context is limited to event type, rating, bounded tenant/store/project metadata, and source error metadata; it must not direct-console guest names, messages, contact fields, raw project IDs, tenant IDs, store IDs, or provider exceptions.
+- The public QR feedback page uses `src/lib/feedback/publicFeedbackDiagnostics.ts` for bounded server-side page diagnostics. Project/store fetch failures record normalized `public_feedback_page_*` codes with project/store/tenant length metadata and source error name/code/status only; malformed project IDs continue to 404 quietly. The page must not direct-console raw project IDs, store IDs, tenant IDs, Firestore documents, customer feedback, or provider exceptions.
+- The guest-facing feedback form uses `src/lib/feedback/guestFeedbackSubmitResponse.ts` and `src/lib/security/boundedResponseBody.ts` to parse `/api/public/feedback/submit` acknowledgements with a 16KB cap before showing success. Successful acknowledgements must include an OK HTTP response, `success: true`, a non-empty `feedbackId`, and optional string/null `reviewUrl`. Parse/shape failures log `public_guest_feedback_submit_response_parse_failed` or `public_guest_feedback_submit_response_invalid` through `src/lib/feedback/publicFeedbackDiagnostics.ts`; network failures log `public_guest_feedback_submit_request_failed`. Diagnostics record only bounded tenant/store/project/source metadata, rating, response status, cap, and source error metadata.
+- Safe review URL boundary: returned `reviewUrl` values pass through `normalizeGuestFeedbackReviewUrl()` in both the API and browser form. Only HTTPS Google review/maps URLs are accepted; invalid, non-Google, non-HTTPS, or oversized URLs are treated as absent before rendering.
 - Owner desktop and mobile feedback screens use the shared client DAL for reads/status updates. Store-scoped sessions cannot update feedback from another store in the same tenant.
+- Owner desktop and mobile feedback status/reply saves must require `assertFeedbackStatusUpdateSucceeded()` before local inbox/detail state, success copy, or resolved status advances. Rejected acknowledgements use `feedback_inbox_status_update_rejected`, `mobile_feedback_status_update_rejected`, or `mobile_feedback_reply_save_rejected` and route through the existing bounded failure handlers.
+- Owner desktop and mobile feedback list loads must require `assertFeedbackListLoadSucceeded()` before rendering items. Desktop needs-attention badge counts must require `assertFeedbackCountLoadSucceeded()` before updating the count. Rejected list/count acknowledgements route through the existing bounded load failure handlers.
+- `updateFeedbackStatus()` must verify that the internal `getFeedbackById()` result is a shaped feedback record with the expected id before writing. This prevents `apiCallComposer()` fallback values from bypassing tenant/store record verification.
+- Desktop feedback load/status-update failures use `src/components/templates/main-app/feedback/feedbackInboxDiagnostics.ts` with normalized `feedback_inbox_load_failed` and `feedback_inbox_status_update_failed` codes. Diagnostics record only bounded project/filter/cursor/status/count metadata and normalized source error metadata; they must not direct-console raw feedback documents, guest contact details, store IDs, tenant IDs, project IDs, or provider/browser exceptions.
+- Desktop Feedback QR generation, download, feedback-link copy/open, WhatsApp open, and message-copy failures use the same feedback inbox diagnostics helper with normalized `desktop_feedback_qr_generate_failed`, `desktop_feedback_qr_download_failed`, `desktop_feedback_link_copy_failed`, `desktop_feedback_link_open_failed`, `desktop_feedback_whatsapp_open_failed`, and `desktop_feedback_message_copy_failed` codes. Copy Link and Copy Message check Clipboard API support, use a textarea fallback only when the document fallback is available, and show copied success only after acknowledgement. Diagnostics record only bounded project/store/feedback URL metadata, QR data URL length, filename length, message length, URL length, clipboard/fallback support booleans, and source error metadata; they must not log raw public feedback URLs, QR data URLs, WhatsApp messages, store IDs, tenant IDs, project IDs, or browser exceptions.
+- Mobile feedback load failures use `src/components/mobile/utils/mobileOwnerDiagnostics.ts` with the normalized `mobile_feedback_load_failed` code. Diagnostics record only bounded store/tenant/filter metadata, selected-project presence, and normalized source error metadata; they must not direct-console raw feedback documents, guest contact details, store IDs, tenant IDs, project IDs, or provider/browser exceptions.
+- Mobile feedback detail resolve/reply failures use the same mobile owner diagnostics helper with normalized `mobile_feedback_status_update_failed` and `mobile_feedback_reply_save_failed` codes. Diagnostics record only bounded store/tenant and feedback ID metadata, previous/next status, rating/attention flags, reply presence, reply length, and normalized source error metadata; they must not direct-console raw feedback documents, customer names, phone/email values, reply text, raw feedback IDs, store IDs, tenant IDs, or provider/browser exceptions.
 - Client updates are status-only in rules; original guest rating/message/contact/source fields are immutable from owner clients.
 - Feedback writes do not trigger public menu/OBP cache invalidation because they are private workflow records, not public truth packet changes.
+- Source gate: `npm run verify:guest-feedback-boundary` locks the public submit route, bounded response parser, safe review URL boundary, Firestore rule/index anchors, owner desktop/mobile acknowledgement guards, retention wiring, and docs parity.
 
 ### System Flow
 
@@ -164,7 +179,7 @@ The current production contract is stricter than the original implementation pla
 
 ### 3.1 GuestFeedback Document
 
-**Collection:** `guestFeedback`  
+**Collection:** `guestFeedback`
 **Path:** `guestFeedback/{feedbackId}`
 
 ```typescript
@@ -292,7 +307,7 @@ export type GuestFeedbackSort =
 
 ### 3.2 MenuSettings Extension (Per-Project Toggle)
 
-**File:** `src/components/templates/main-app/projects/types/project.types.ts`  
+**File:** `src/components/templates/main-app/projects/types/project.types.ts`
 **Location:** Lines 113-130 (inside `MenuSettings` interface)
 
 ```typescript
@@ -321,7 +336,7 @@ export interface MenuSettings {
 
 ### 3.2.1 Store Extension (Contact Field Defaults)
 
-**File:** `src/types/store.ts` (or equivalent store type file)  
+**File:** `src/types/store.ts` (or equivalent store type file)
 **Location:** Inside Store interface
 
 ```typescript
@@ -365,7 +380,7 @@ export interface Store {
 
 ### 3.3 Store Extension (Google Review URL)
 
-**File:** `src/database/integrations/gbp.ts`  
+**File:** `src/database/integrations/gbp.ts`
 **Location:** Lines 39-51 (inside `GBPConnectionStatus` interface)
 
 ```typescript
@@ -388,7 +403,7 @@ export interface GBPConnectionStatus {
 
 ### 3.4 DB_COLLECTIONS Update
 
-**File:** `src/constants/database.ts`  
+**File:** `src/constants/database.ts`
 **Location:** Line 25 area
 
 ```typescript
@@ -470,9 +485,10 @@ match /guestFeedback/{feedbackId} {
 
 ### 4.1 Public Submit Endpoint (No Auth)
 
-**Endpoint:** `POST /api/public/feedback/submit`  
-**Auth:** None (public)  
+**Endpoint:** `POST /api/public/feedback/submit`
+**Auth:** None (public)
 **Rate Limit:** 10 requests / 10 minutes / IP
+**Body cap:** 16KB bounded JSON before Zod validation, Turnstile verification, project/store reads, or feedback writes.
 
 #### Request Schema (Zod)
 
@@ -517,8 +533,7 @@ export type GuestFeedbackSubmitRequest = z.infer<
 // Error (400 - Validation)
 {
   "success": false,
-  "error": "Validation failed",
-  "details": [...]
+  "error": "Validation failed."
 }
 
 // Error (429 - Rate Limited)
@@ -530,8 +545,8 @@ export type GuestFeedbackSubmitRequest = z.infer<
 
 ### 4.2 Get Feedback List (Authenticated)
 
-**Endpoint:** `GET /api/feedback`  
-**Auth:** Required (`withAuth`)  
+**Endpoint:** `GET /api/feedback`
+**Auth:** Required (`withAuth`)
 **Rate Limit:** Standard authenticated rate limit
 
 #### Query Parameters
@@ -558,8 +573,8 @@ export type GuestFeedbackSubmitRequest = z.infer<
 
 ### 4.3 Update Feedback Status (Authenticated)
 
-**Endpoint:** `PATCH /api/feedback/[id]`  
-**Auth:** Required (`withAuth`)  
+**Endpoint:** `PATCH /api/feedback/[id]`
+**Auth:** Required (`withAuth`)
 **Rate Limit:** Standard authenticated rate limit
 
 #### Request Schema
@@ -1008,10 +1023,11 @@ export async function withPublicRateLimit(
 
 | Operation             | Frequency (Monthly) | Reads per Op | Total Reads |      Cost |
 | --------------------- | ------------------: | -----------: | ----------: | --------: |
+| Submit scope check    |               1,000 |            3 |       3,000 |    $0.018 |
 | Load inbox (50 items) |                 500 |           50 |      25,000 |     $0.15 |
 | View feedback detail  |               1,000 |            1 |       1,000 |    $0.006 |
 | Check settings        |                 500 |            1 |         500 |    $0.003 |
-| **Total Reads**       |                   — |            — |  **26,500** | **$0.16** |
+| **Total Reads**       |                   — |            — |  **29,500** | **$0.18** |
 
 ### Write Operations
 
@@ -1031,12 +1047,20 @@ export async function withPublicRateLimit(
 ### Monthly Total
 
 ```
-Reads:   $0.16
+Reads:   $0.18
 Writes:  $0.03
 Storage: $0.0004
 ─────────────────
-Total:   $0.19 / month (per 1000 feedback/month)
+Total:   $0.21 / month (per 1000 feedback/month)
 ```
+
+Mobile feedback diagnostic and copy-acknowledgement hardening is cost-neutral. It changes failed read diagnostics plus the browser-local feedback-link copy handoff in `MobileFeedbackScreen`. Copy success now waits for Clipboard API or acknowledged textarea fallback success, and failures add clipboard/fallback support booleans to the existing bounded mobile owner context. This adds no Firestore reads/writes, Storage operations, Cloud Functions, API routes, provider calls, cache invalidations, fields, rules, indexes, Firebase deploy requirement, Vercel deploy action, or owner settings.
+
+Desktop Feedback QR handoff hardening is also cost-neutral. It changes only browser-local QR generation/download, feedback-link copy/open, WhatsApp open, and message-copy acknowledgement/diagnostics in `FeedbackQrDownload`. Copy success now waits for Clipboard API or acknowledged textarea fallback success, and failures add clipboard/fallback support booleans. This adds no Firestore reads/writes, Storage operations, Cloud Functions, API routes, provider calls, cache invalidations, fields, rules, indexes, Firebase deploy requirement, Vercel deploy action, or owner settings.
+
+Guest feedback submit response/request hardening is cost-neutral. It changes only browser-side submit request policy, response parsing, acknowledgement checks, and bounded diagnostics in `GuestFeedbackForm`; the form submits with same-origin credentials, no-store cache policy, and manual redirect handling before the 16KB acknowledgement guard, then shows success only after an OK HTTP response plus a non-empty `feedbackId`. This adds no Firestore reads/writes/deletes, Storage operations, Cloud Functions, API routes, provider calls, cache invalidations, fields, rules, indexes, owner settings, Firebase deploy requirement, or Vercel deploy action.
+
+July 1, 2026 public submit tenant-block hardening adds one tenant-document read to the valid public feedback scope check, after IP rate limiting, bounded body parsing, schema validation, honeypot handling, and Turnstile verification. Valid submissions now read project, store, and tenant before writing so tenant-blocked stores cannot accept new public feedback. This adds no writes/deletes, Storage operations, Cloud Functions, cache invalidations, fields, rules, indexes, owner settings, Firebase deploy requirement, or Vercel deploy action.
 
 ---
 
@@ -1204,6 +1228,6 @@ export const FEATURE_FLAGS = {
 
 ---
 
-_Document Owner: Engineering Team_  
-_Last Updated: March 14, 2026_  
+_Document Owner: Engineering Team_
+_Last Updated: July 1, 2026_
 _Status: ✅ FULLY IMPLEMENTED — All 28 tasks complete_

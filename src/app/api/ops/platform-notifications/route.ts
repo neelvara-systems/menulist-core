@@ -19,6 +19,7 @@ import {
 import { firestoreAdmin } from '@lib/firebase/firebaseAdmin';
 import { logger } from '@lib/monitoring/logger';
 import { createAlert } from '@lib/ops/alerts';
+import { getBoundedOpsStringContext, logOpsFailure } from '@lib/ops/opsDiagnostics';
 import { classifyPlatformAlert } from '@lib/ops/platformNotificationClassifier';
 import type {
   PlatformNotificationActionResult,
@@ -30,15 +31,18 @@ import type {
 } from '@lib/ops/platformNotificationTypes';
 import { buildWhatsAppPhoneParam } from '@lib/phone/phoneNumber';
 import { checkRateLimit } from '@lib/rateLimit';
+import { readBoundedJsonBody } from '@lib/security/boundedRequestBody';
 import { validateAPIInput } from '@lib/security/inputValidation';
-import { buildSecurityContext } from '@lib/security/securityContext';
+import { getBoundedSecurityRouteContext } from '@lib/security/securityDiagnostics';
 import { Timestamp } from 'firebase-admin/firestore';
 import { NextResponse } from 'next/server';
+import { hashPublicRateLimitValue } from 'src/middleware/publicApi';
 import { z } from 'zod';
 import { withAuth } from '../../../../middleware/auth';
 
 const SEVERITY_FILTERS: PlatformNotificationSeverityFilter[] = ['all', 'critical', 'warning', 'info'];
 const STATUS_FILTERS: PlatformNotificationStatusFilter[] = ['active', 'acknowledged', 'all'];
+const PLATFORM_NOTIFICATION_OPS_ACTION_MAX_BODY_BYTES = 8 * 1024;
 const CATEGORY_VALUES: [PlatformNotificationCategory, ...PlatformNotificationCategory[]] = [
   'cost',
   'security',
@@ -53,6 +57,22 @@ const CATEGORY_VALUES: [PlatformNotificationCategory, ...PlatformNotificationCat
   'manual',
   'system',
 ];
+const SAFE_METADATA_PREVIEW_KEYS = new Set([
+  'category',
+  'consecutiveFailures',
+  'failureCode',
+  'platformTriggerType',
+  'productId',
+  'ruleId',
+]);
+const BOUNDED_METADATA_PREVIEW_KEYS = new Set([
+  'alertId',
+  'componentName',
+  'functionName',
+  'sessionId',
+  'storeId',
+  'tenantId',
+]);
 
 const GetQuerySchema = z.object({
   status: z.enum(STATUS_FILTERS as [PlatformNotificationStatusFilter, ...PlatformNotificationStatusFilter[]]).default('active'),
@@ -136,25 +156,48 @@ function validateDestination(channel: 'email' | 'whatsapp_web', destination?: st
   return null;
 }
 
+function cleanOpsText(value: unknown, max = 260): string {
+  return String(value || '')
+    .replace(/[\u0000-\u001f\u007f]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, max);
+}
+
+function getPlatformAlertStringContext(label: string, value: unknown): Record<string, boolean | number> {
+  const normalized = cleanOpsText(value, 1000);
+  return {
+    [`${label}Present`]: normalized.length > 0,
+    [`${label}Length`]: normalized.length,
+  };
+}
+
+function buildPlatformAlertDisplayMessage(description: string, data: Record<string, any>): string {
+  const context = {
+    ...getPlatformAlertStringContext('title', data.title),
+    ...getPlatformAlertStringContext('message', data.message),
+  };
+  const parts = [
+    context.titlePresent ? `title=${context.titleLength}` : null,
+    context.messagePresent ? `message=${context.messageLength}` : null,
+  ].filter(Boolean);
+
+  return parts.length > 0
+    ? `${description} Stored alert text present (${parts.join(', ')} chars).`
+    : description;
+}
+
 function safeMetadataPreview(metadata: any): Record<string, string | number | boolean | null> {
   if (!metadata || typeof metadata !== 'object') return {};
-  const keys = [
-    'alertId',
-    'category',
-    'componentName',
-    'consecutiveFailures',
-    'failureCode',
-    'functionName',
-    'platformTriggerType',
-    'productId',
-    'ruleId',
-    'sessionId',
-    'storeId',
-    'tenantId',
-  ];
 
-  return keys.reduce<Record<string, string | number | boolean | null>>((acc, key) => {
+  return Object.keys(metadata).reduce<Record<string, string | number | boolean | null>>((acc, key) => {
     const value = metadata[key];
+    if (BOUNDED_METADATA_PREVIEW_KEYS.has(key)) {
+      Object.assign(acc, getPlatformAlertStringContext(key, value));
+      return acc;
+    }
+    if (!SAFE_METADATA_PREVIEW_KEYS.has(key)) return acc;
+
     if (
       value === null ||
       typeof value === 'string' ||
@@ -181,8 +224,8 @@ function serializeAlertDoc(
     productId: classified.productId,
     category: classified.category,
     severity: classified.severity,
-    title: String(data.title || classified.entry.title),
-    message: String(data.message || classified.entry.description),
+    title: classified.entry.title,
+    message: buildPlatformAlertDisplayMessage(classified.entry.description, data),
     tId: String(data.tId || 'system'),
     sId: String(data.sId || 'system'),
     acknowledged: data.acknowledged === true,
@@ -259,7 +302,7 @@ export const GET = withAuth(async (request, session) => {
   const validation = validateAPIInput(GetQuerySchema, Object.fromEntries(request.nextUrl.searchParams.entries()));
   if (validation.success === false) {
     logger.security('Platform Notification Ops Query Validation Failed', {
-      ...buildSecurityContext(session, request),
+      ...getBoundedSecurityRouteContext(session, request),
       endpoint: request.nextUrl.pathname,
       error: validation.error,
     }, 'medium');
@@ -310,7 +353,16 @@ export const GET = withAuth(async (request, session) => {
       headers: { 'Cache-Control': 'no-store' },
     });
   } catch (error) {
-    logger.error('[API /ops/platform-notifications] Error', error, buildSecurityContext(session, request));
+    logOpsFailure('platform_notifications_route_failed', error, {
+      ...getBoundedOpsStringContext('userId', getOperatorId(session)),
+      ...getBoundedOpsStringContext('requestPath', request.nextUrl.pathname),
+      ...getBoundedOpsStringContext('status', status),
+      ...getBoundedOpsStringContext('severity', severity),
+      ...getBoundedOpsStringContext('triggerType', triggerType),
+      ...getBoundedOpsStringContext('eventId', eventId),
+      limit,
+      scanLimit,
+    });
     return NextResponse.json({ error: 'Failed to load platform notifications' }, { status: 500 });
   }
 }, { requiredPlatformRole: 'PLATFORM' });
@@ -320,35 +372,40 @@ export const POST = withAuth(async (request, session) => {
     return NextResponse.json({ error: 'Platform notification dashboard is disabled' }, { status: 404 });
   }
 
-  const body = await request.json().catch(() => ({}));
-  const validation = validateAPIInput(PostActionSchema, body);
-  if (validation.success === false) {
-    logger.security('Platform Notification Ops Action Validation Failed', {
-      ...buildSecurityContext(session, request),
-      endpoint: request.nextUrl.pathname,
-      error: validation.error,
-      action: typeof body?.action === 'string' ? body.action : 'unknown',
-    }, 'medium');
-    return NextResponse.json({ error: 'Invalid platform notification action' }, { status: 400 });
-  }
-
   const operatorId = getOperatorId(session);
+  const operatorRateLimitHash = hashPublicRateLimitValue(operatorId);
   const rateLimit = await checkRateLimit({
-    key: `platform-notification-ops:${operatorId}`,
+    key: `platform-notification-ops:${operatorRateLimitHash}`,
     limit: 40,
     window: 60 * 60,
   });
   if (!rateLimit.allowed) {
     const retryAfter = Math.max(1, Math.ceil((rateLimit.resetAt - Date.now()) / 1000));
     logger.security('Platform Notification Ops Rate Limited', {
-      ...buildSecurityContext(session, request),
+      ...getBoundedSecurityRouteContext(session, request),
       endpoint: request.nextUrl.pathname,
-      action: validation.data.action,
     }, 'medium');
     return NextResponse.json(
       { error: 'Too many platform notification actions', retryAfter },
       { status: 429, headers: { 'Retry-After': String(retryAfter) } },
     );
+  }
+
+  const bodyResult = await readBoundedJsonBody(request, PLATFORM_NOTIFICATION_OPS_ACTION_MAX_BODY_BYTES, {
+    invalidJsonMessage: 'Invalid platform notification action',
+  });
+  if (bodyResult.ok === false) return bodyResult.response;
+
+  const body = bodyResult.data as any;
+  const validation = validateAPIInput(PostActionSchema, body);
+  if (validation.success === false) {
+    logger.security('Platform Notification Ops Action Validation Failed', {
+      ...getBoundedSecurityRouteContext(session, request),
+      endpoint: request.nextUrl.pathname,
+      error: validation.error,
+      ...getBoundedOpsStringContext('action', body?.action),
+    }, 'medium');
+    return NextResponse.json({ error: 'Invalid platform notification action' }, { status: 400 });
   }
 
   try {
@@ -423,7 +480,20 @@ export const POST = withAuth(async (request, session) => {
       message: 'Manual platform alert created',
     } satisfies PlatformNotificationActionResult);
   } catch (error) {
-    logger.error('[API /ops/platform-notifications] Action error', error, buildSecurityContext(session, request));
+    logOpsFailure('platform_notifications_action_failed', error, {
+      ...getBoundedOpsStringContext('userId', operatorId),
+      ...getBoundedOpsStringContext('requestPath', request.nextUrl.pathname),
+      ...getBoundedOpsStringContext('action', validation.data.action),
+      ...('eventId' in validation.data
+        ? getBoundedOpsStringContext('eventId', validation.data.eventId)
+        : {}),
+      ...('triggerType' in validation.data
+        ? getBoundedOpsStringContext('triggerType', validation.data.triggerType)
+        : {}),
+      ...('productId' in validation.data
+        ? getBoundedOpsStringContext('productId', validation.data.productId)
+        : {}),
+    });
     return NextResponse.json({ error: 'Platform notification action failed' }, { status: 500 });
   }
 }, { requiredPlatformRole: 'PLATFORM' });

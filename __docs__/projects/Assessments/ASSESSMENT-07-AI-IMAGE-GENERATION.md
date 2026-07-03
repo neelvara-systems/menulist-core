@@ -1,8 +1,9 @@
 # 🎨 AI Image Generation Assessment
 
-**Feature**: AI-Powered Menu Item Image Generation  
-**Risk Level**: ✅ RESOLVED  
-**Production Ready**: ✅ YES  
+**Feature**: AI-Powered Menu Item Image Generation
+**Risk Level**: ✅ RESOLVED
+**Historical Result**: AI image-generation fixes recorded as completed in the November 2025 assessment
+**Launch Boundary**: Historical assessment result only; not current launch certification. Current release approval requires the active [production-readiness audit](../../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../../production-readiness/external-certification-runbook.md) evidence, AI accounting/source gates, provider smoke, browser/mobile editor QA, Storage rules/deploy evidence, and target-environment smoke.
 **Implementation Status**: ✅ **COMPLETED** Nov 20, 2025
 
 ---
@@ -416,7 +417,7 @@ safetySettings: [
 
 **Decision**: Low priority for MVP - images are menu items (not highly sensitive)
 
-**Status**: ⏳ **PHASE 2** - Documented for post-launch implementation
+**Status**: Historical follow-up note - requires current launch-boundary review before implementation
 
 ---
 
@@ -478,13 +479,13 @@ safetySettings: [
 | **Security**           | ✅ COMPLETED        | withAuth, validation, rate limiting, terms, prompt sanitization, AI safety filters ✅ |
 | **Background Jobs**    | ✅ VERIFIED         | Continues after browser close, auto-resumes                                           |
 | **Progress Tracking**  | ✅ VERIFIED         | Real-time updates with Firebase                                                       |
-| **Code Quality**       | ✅ PRODUCTION READY | Minor fixes applied (finally block, duplicates)                                       |
+| **Code Quality**       | ✅ HISTORICAL A-    | Minor fixes applied (finally block, duplicates)                                       |
 
 ---
 
 ## ✅ Assessment Results
 
-### **Production Readiness**: ✅ YES
+### **Historical Assessment Result**: ✅ Completed Fix Record
 
 **Overall Grade**: A- (Excellent implementation)
 
@@ -527,11 +528,11 @@ safetySettings: [
 
 **Note**: Both route.ts and batch-generation/route.ts now have identical safety implementations for consistency.
 
-### **Next Feature Assessment**: ASSESSMENT-08-IMAGE-EDITING.md
+### **Next Feature Assessment**: assessment-08-image-editing.md
 
 ---
 
-**Assessment Date**: Nov 20, 2025  
-**Assessor**: AI Assistant + Code Review  
-**Status**: ✅ **PRODUCTION READY** - Feature can launch immediately  
+**Assessment Date**: Nov 20, 2025
+**Assessor**: AI Assistant + Code Review
+**Status**: Historical assessment result only; not current launch certification
 **Priority**: Core feature - Significant value, controlled costs

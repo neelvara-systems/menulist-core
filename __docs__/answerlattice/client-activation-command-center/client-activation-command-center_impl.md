@@ -27,6 +27,10 @@ Readiness Metrics also renders the Surface Readiness matrix (`src/components/tem
 
 The Daily Governance panel (`src/components/templates/answerlattice/activation/AnswerlatticeOperationsPanel.tsx`) loads `GET /api/answerlattice/operations/status` separately from the activation summary. It shows scheduler status, workspace-local support-day timing, last completion, and recent workspace-filtered governance runs. It links to Settings for timezone/EOD edits and does not expose the full manual scheduler trigger.
 
+Activation, Daily Governance, Workspace Settings, and Weekly Digest failure notices use fixed local dashboard copy. Route response errors, stored scheduler/integration error detail, and browser exceptions must not be copied into owner-visible messages.
+
+Activation, Readiness Metrics, Daily Governance, Weekly Digest, and the Install Center's optional activation-summary snapshot parse dashboard route responses through a shared 64 KB bounded response reader before updating local state or success copy. These browser calls also apply the shared activation dashboard request policy: no browser cache, same-origin credentials only, and manual redirect handling before the bounded reader runs. The reader validates activation-summary, operations-status, notification-test, and compiled-context rebuild response shapes and logs fixed `answerlattice_activation_dashboard_response_*` diagnostics for malformed, oversized, rejected, or wrong-shape responses.
+
 ## Server API
 
 `GET /api/answerlattice/activation/summary`:

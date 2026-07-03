@@ -2,7 +2,7 @@
 
 **Feature:** Menu Translation
 **Status:** Controlled owner testing ready after June 2026 server-governance hardening
-**Last Updated:** June 11, 2026
+**Last Updated:** July 1, 2026
 **Priority:** MEDIUM — Gemini API cost per translation batch.
 
 ---
@@ -61,4 +61,14 @@
 
 | Route               | Method | Firebase Ops          | Rate Limited? | Notes                                                                 |
 | ------------------- | ------ | --------------------- | ------------- | --------------------------------------------------------------------- |
-| `/api/translations` | POST   | 1-2R + 0W when `projectId` is supplied; 0R + 0W without project context | Yes (20/min)  | Returns translated text. Project-scoped calls validate tenant/store and linked-outlet policy before Gemini. Client saves accepted text via `updateProject`. |
+| `/api/translations` | POST   | 1 permission read + 1-2R + 0W when `projectId` is supplied; 1 permission read + 0W without project context | Yes (20/min)  | Returns translated text. Calls require `canGenerateDescriptions` before linked-outlet policy, capacity, Gemini, or accounting. Client saves accepted text via `updateProject`. |
+
+## Failure Diagnostics
+
+`src/components/templates/main-app/projects/utils/translationDiagnostics.ts` is a client-side secure logging helper only. Translation API client failures, empty translation responses, file/category/item failures, and desktop retry catches log normalized failure codes plus bounded project/file/language/action presence, length, response status, and translation-key counts. `src/app/api/translations/route.ts` route-side Gemini parse failures also keep response text diagnostics to length/presence summary metadata only.
+
+These diagnostics add no Firestore read/write, Storage operation, Cloud Function call, API route, provider call, cache invalidation, index, rule, durable event stream, or owner-facing setting. They do not log raw menu text, translated strings, prompt/input JSON, language names, project names, file names, provider responses, status text, browser/provider error objects, full project/store/file payloads, `rawTextLength` fields, or raw provider previews.
+
+June 30 prompt-input normalization is cost-neutral. `TranslationRequestSchema` now rejects translation identifiers over 240 characters, translation values over 2000 characters, and maps over 1000 entries before provider work. The prompt builder serializes a sanitized bounded copy of values while preserving original keys for response mapping. This changes no Firestore read/write/delete count, Storage operations, Cloud Function calls, provider calls beyond existing valid requests, cache invalidations, rules, indexes, project schema, owner settings, Firebase deploy requirement, or Vercel deploy action.
+
+July 1 permission hardening adds the existing store permission read before translation policy, capacity, provider, and accounting work. Rejected users do not reach project/outlet reads, Gemini calls, operation writes, credit consumption, rules, indexes, Cloud Functions, Firebase deploy requirement, or Vercel deploy action.

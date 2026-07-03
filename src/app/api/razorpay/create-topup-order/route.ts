@@ -6,20 +6,27 @@ import {
     getBillingFirestoreAdminForProduct,
     resolveBillingScopeFromSession,
 } from "@lib/billing/productBillingServer";
+import {
+    getBoundedRazorpaySecurityContext,
+    getBoundedRazorpayStringContext,
+    getRazorpayFailureLogData,
+} from "@lib/billing/razorpayDiagnostics";
 import { getCreditPacksForProduct, isAnswerlatticeBillingProduct, normalizeBillingProductId } from "@lib/billing/productBillingPlans";
 import { admin } from "@lib/firebase/firebaseAdmin";
 import { logger } from "@lib/monitoring/logger";
 import { checkRateLimit } from "@lib/rateLimit";
 import { getRateLimitForFeature } from "@lib/rateLimit/configs";
 import { razorpayClient } from "@lib/razorpay/razorpay";
+import { readBoundedJsonBody } from "@lib/security/boundedRequestBody";
 import { validateAPIInput } from "@lib/security/inputValidation";
-import { buildSecurityContext } from "@lib/security/securityContext";
 import { CreateTopupOrderRequestSchema } from "@lib/validation/apiSchemas";
 import { writeLogEntry } from 'logs/utils';
 import { NextResponse } from 'next/server';
+import { hashPublicRateLimitValue } from "src/middleware/publicApi";
 import { verifyTenantAccess, withAuth } from "../../../../middleware/auth";
 
 const LOG_FILE = "razorpay-topup.log";
+const RAZORPAY_PAYMENT_ACTION_MAX_BODY_BYTES = 8 * 1024;
 
 export const POST = withAuth(async (request, session) => {
     // ✅ Session guaranteed by withAuth middleware
@@ -30,19 +37,23 @@ export const POST = withAuth(async (request, session) => {
 
     try {
         // 2. 🔒 INPUT VALIDATION: Prevent injection attacks (OWASP A03)
-        const body = await request.json();
+        const bodyResult = await readBoundedJsonBody(request, RAZORPAY_PAYMENT_ACTION_MAX_BODY_BYTES, {
+            invalidJsonMessage: 'Invalid credit pack request.',
+        });
+        if (bodyResult.ok === false) return bodyResult.response;
+        const body = bodyResult.data as any;
         const validation = validateAPIInput(CreateTopupOrderRequestSchema, body);
 
         if (!validation.success) {
             const validationError = 'error' in validation ? validation.error : 'Invalid input';
             logger.security('Input Validation Failed', {
-                ...buildSecurityContext(session, request),
+                ...getBoundedRazorpaySecurityContext(session, request),
                 endpoint: '/api/razorpay/create-topup-order',
                 error: validationError,
                 attemptedData: {
-                    productId: body?.productId,
-                    packId: body?.packId,
-                    currency: body?.currency,
+                    ...getBoundedRazorpayStringContext('productId', body?.productId),
+                    ...getBoundedRazorpayStringContext('packId', body?.packId),
+                    ...getBoundedRazorpayStringContext('currency', body?.currency),
                 },
             }, 'critical');
 
@@ -56,7 +67,7 @@ export const POST = withAuth(async (request, session) => {
         const scope = resolveBillingScopeFromSession(session, productId);
         if (!scope) {
             logger.security('User Not Onboarded - Create Topup Order', {
-                ...buildSecurityContext(session, request),
+                ...getBoundedRazorpaySecurityContext(session, request),
                 endpoint: '/api/razorpay/create-topup-order',
                 error: 'User attempted to create topup order without product tenant/store',
                 productId,
@@ -88,14 +99,16 @@ export const POST = withAuth(async (request, session) => {
 
         // 🔒 RATE LIMITING: Prevent topup spam (centralized config)
         const rateLimitConfig = getRateLimitForFeature('PAYMENT_TOPUP');
+        const userRateLimitHash = hashPublicRateLimitValue(userId);
+        const tenantRateLimitHash = hashPublicRateLimitValue(tenantId);
         const rateLimitResult = await checkRateLimit({
-            key: `topup:${productId}:${userId}:${tenantId}`,
+            key: `topup:${productId}:${userRateLimitHash}:${tenantRateLimitHash}`,
             ...rateLimitConfig
         });
 
         if (!rateLimitResult.allowed) {
             logger.security('Topup Order Rate Limit Exceeded', {
-                ...buildSecurityContext(session, request),
+                ...getBoundedRazorpaySecurityContext(session, request),
                 endpoint: '/api/razorpay/create-topup-order',
                 error: 'Too many topup attempts',
                 productId,
@@ -181,20 +194,19 @@ export const POST = withAuth(async (request, session) => {
         return NextResponse.json({ order: razorpayOrder });
 
     } catch (error) {
-        logger.error('Top-up order creation failed', error as Error, {
+        const failureData = getRazorpayFailureLogData('razorpay_create_topup_order_failed', error, {
             operation: 'create-topup-order',
-            userId,
-            tenantId: logTenantId,
-            storeId: logStoreId,
+            ...getBoundedRazorpayStringContext('userId', userId),
+            ...getBoundedRazorpayStringContext('tenantId', logTenantId),
+            ...getBoundedRazorpayStringContext('storeId', logStoreId),
             endpoint: '/api/razorpay/create-topup-order',
         });
+        logger.error('Top-up order creation failed', new Error('razorpay_create_topup_order_failed'), failureData);
 
         await writeLogEntry({
             logFileName: LOG_FILE,
             logType: 'RAZORPAY_CREATE_TOPUP_ORDER_ERROR',
-            data: {
-                message: error instanceof Error ? error.message : 'Unknown error',
-            },
+            data: failureData,
         });
 
         return NextResponse.json(

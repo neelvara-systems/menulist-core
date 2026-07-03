@@ -1,12 +1,12 @@
 'use client';
 
 import { getIngestionJobCollectionRef } from '@database/kb-generation/jobs';
+import { getBoundedHookStringContext, logHookDiagnostic, logHookFailure } from '@hook/hookDiagnostics';
 import { useAppDispatch } from '@hook/useAppDispatch';
 import { triggerFinalizePublish } from '@lib/firebase/functions';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { startLoader, stopLoader } from '@reduxSlices/loader';
 import { INGESTION_JOB_STATUS, IngestionJob } from '@type/knowledgeBase';
-import { logger } from '@lib/monitoring/logger';
 import { message } from 'antd';
 import { onSnapshot } from 'firebase/firestore';
 import { useContext, useEffect, useRef, useState } from 'react';
@@ -15,6 +15,14 @@ export type IngestionJobsScope = {
     tId?: number | string | null;
     sId?: number | string | null;
 };
+
+const getIngestionJobsListenerLogContext = (
+    tenantId: number,
+    storeId: number,
+) => ({
+    ...getBoundedHookStringContext('tenantId', tenantId),
+    ...getBoundedHookStringContext('storeId', storeId),
+});
 
 export const useIngestionJobsListener = (scope?: IngestionJobsScope) => {
     const [activeJob, setActiveJob] = useState<IngestionJob | null>(null);
@@ -42,13 +50,16 @@ export const useIngestionJobsListener = (scope?: IngestionJobsScope) => {
                     if (process.env.NODE_ENV !== 'production' && currentActiveJob.status === INGESTION_JOB_STATUS.PUBLISHING) {
                         await triggerFinalizePublish(currentActiveJob.id, currentActiveJob);
                     }
-                    logger.debug('Active ingestion job found', { jobId: currentActiveJob.id, status: currentActiveJob.status });
+                    logHookDiagnostic('ingestion_jobs_listener_active_job_found', {
+                        ...getBoundedHookStringContext('jobId', currentActiveJob.id),
+                        ...getBoundedHookStringContext('jobStatus', currentActiveJob.status),
+                    }, { developmentOnly: true });
                 }
                 setActiveJob(currentActiveJob);
                 dispatch(stopLoader(loaderId));
             },
                 (error) => {
-                    logger.error('Ingestion jobs listener error', error, { tenantId, storeId });
+                    logHookFailure('ingestion_jobs_listener_snapshot_failed', error, getIngestionJobsListenerLogContext(tenantId, storeId));
                     message.error('Failed to fetch real-time job updates.');
                     dispatch(stopLoader(loaderId));
                 }
@@ -56,7 +67,7 @@ export const useIngestionJobsListener = (scope?: IngestionJobsScope) => {
 
             unsubscribeRef.current = unsubscribe;
         } catch (error) {
-            logger.error('Failed to setup ingestion jobs listener', error, { tenantId, storeId });
+            logHookFailure('ingestion_jobs_listener_setup_failed', error, getIngestionJobsListenerLogContext(tenantId, storeId));
             message.error('Failed to set up real-time job updates.');
             dispatch(stopLoader(loaderId));
         }

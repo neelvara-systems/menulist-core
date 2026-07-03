@@ -1,10 +1,18 @@
-import { logger } from "@lib/monitoring/logger";
+import { AI_SERVICE_ROUTE_REQUEST_OPTIONS, createAiServiceHttpError, logAiServiceFailure, readAiServiceResponseJson } from "@services/ai/aiServiceDiagnostics";
 import { syncBalanceFromResponse } from "@services/ai/balanceSync";
 import { AICapacityError, checkCapacityResponse } from "@services/ai/capacityError";
 import { ExtractedDataItem, NewItemMetadataAPIParams } from "@template/main-app/projects/types";
 
 export type GeneratedItemMetadata = Partial<ExtractedDataItem> & {
     attributes?: Array<Partial<ExtractedDataItem["attributes"][number]>>;
+};
+
+const NEW_ITEM_METADATA_RESPONSE_JSON_MAX_BYTES = 1024 * 1024;
+
+type NewItemMetadataApiResponse = {
+    data?: GeneratedItemMetadata | null;
+    remainingBalance?: unknown;
+    transaction?: unknown;
 };
 
 export function mergeGeneratedItemMetadata(
@@ -74,6 +82,7 @@ async function getNewItemMetadataViaAPI(payload: NewItemMetadataAPIParams): Prom
     try {
 
         const response = await fetch('/api/new-item-metadata', {
+            ...AI_SERVICE_ROUTE_REQUEST_OPTIONS,
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -83,18 +92,21 @@ async function getNewItemMetadataViaAPI(payload: NewItemMetadataAPIParams): Prom
 
         await checkCapacityResponse(response);
         if (!response.ok) {
-            throw new Error(`New Item Metadata request failed: ${response.statusText}`);
+            throw createAiServiceHttpError('ai_new_item_metadata_request_failed', response);
         }
 
-        const responseJson = await response.json();
+        const responseJson = await readAiServiceResponseJson<NewItemMetadataApiResponse>(response, {
+            invalidFailureCode: 'ai_new_item_metadata_response_invalid',
+            maxBytes: NEW_ITEM_METADATA_RESPONSE_JSON_MAX_BYTES,
+            parseFailureCode: 'ai_new_item_metadata_response_parse_failed',
+        });
         syncBalanceFromResponse(responseJson);
         const { data } = responseJson;
-        logger.debug('Metadata API response', { hasData: !!data });
         return data || null;
 
     } catch (error) {
         if (error instanceof AICapacityError) throw error;
-        logger.error('Metadata API failed', error);
+        logAiServiceFailure('ai_new_item_metadata_api_failed', error);
         return null; // Return original strings if API call fails
     }
 }

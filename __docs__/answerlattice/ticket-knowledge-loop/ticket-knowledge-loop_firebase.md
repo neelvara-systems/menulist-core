@@ -1,8 +1,8 @@
 # Ticket → Knowledge Loop — Firebase Cost & Operations
 
-> **Version:** 1.1.0
+> **Version:** 1.1.1
 > **Created:** 2026-03-09
-> **Last Updated:** 2026-05-22
+> **Last Updated:** 2026-06-29
 > **Audience:** Developers
 > **Feature Flag:** `ENABLE_ANSWERLATTICE_TICKET_KNOWLEDGE`
 
@@ -36,6 +36,8 @@
 | Proposal merge update | Write | 0-5 | Increment sourceTicketCount on existing proposals |
 | Audit log writes | Write | 0-5 | One per extraction attempt |
 | **Total per tenant** | | **~66-76** | |
+
+Existing-answer lookup failures during dedupe are non-blocking. They log `ANSWERLATTICE_TICKET_KNOWLEDGE_EXISTING_ANSWERS_LOAD_FAILED` with source error name/code/status, tenant/store scope booleans, and bounded entity identifier metadata before continuing with an empty title list.
 
 ### Enhanced Signal Emission (Frontend, Per Ticket Resolution)
 
@@ -122,6 +124,8 @@ New CF file `resolutionExtractor.ts` uses firebase-admin directly:
 - `db.collection().where().get()` — standard Firestore queries
 - `db.collection().add()` — proposal creation
 - `db.collection().doc().update()` — proposal merge
+
+Failure results returned to the nightly scheduler use fixed `ANSWERLATTICE_TICKET_KNOWLEDGE_*` codes. Runtime logs keep only source error name/code/status, scope booleans, and identifier presence/length metadata. Proposal and audit lineage fields remain unchanged.
 
 ---
 

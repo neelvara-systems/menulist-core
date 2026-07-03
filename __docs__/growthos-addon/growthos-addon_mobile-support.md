@@ -197,7 +197,7 @@ These are not launch scope:
 
 Mobile does not need every desktop layout control, but it must support the core paid job.
 
-Copy behavior must not depend only on the browser Clipboard API. Mobile copy uses a textarea fallback when the Clipboard API is blocked, slow, or unavailable.
+Copy behavior must not depend only on the browser Clipboard API. Mobile copy uses a textarea fallback when the Clipboard API is blocked, slow, or unavailable. Copied feedback and GrowthOS export recording must wait for Clipboard API success or acknowledged textarea fallback success; failed handoff diagnostics include only clipboard/fallback support booleans and bounded output metadata.
 
 ## 6. Mobile Copy Rules
 

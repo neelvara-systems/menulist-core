@@ -3,7 +3,7 @@ import { PRODUCT_IDS } from "@constant/product";
 import { ECOMSAI_PLATFORM_SUPPORT_USER_ROLE, ECOMSAI_PLATFORM_USER_ROLE } from "@constant/user";
 import { deleteFileByUrl } from "@database/storage/deleteFromStorage";
 import uploadBase64ToStorage from "@database/storage/uploadBase64ToStorage";
-import { collection, deleteDoc, doc, getDoc, getDocs, limit, onSnapshot, orderBy, query, setDoc, where, type QueryConstraint } from "@firebase/firestore";
+import { collection, deleteDoc, doc, getDoc, getDocs, limit, onSnapshot, orderBy, query, setDoc, Timestamp, where, type QueryConstraint } from "@firebase/firestore";
 import { answerlatticeRequestBodyComposer } from '@lib/answerlattice/documentComposer';
 import { apiCallComposer } from "@lib/apiHelper/apiCallComposer";
 import getActiveSession from "@lib/auth/getActiveSession";
@@ -31,6 +31,57 @@ const getDocRef = (docId: string) => {
 }
 
 const getDisplayId = (id: string) => id.slice(0, 6).toUpperCase()
+
+export type SupportTicketCreateResult = SupportTicketType & {
+    id: string;
+    displayId: string;
+    success: true;
+};
+
+export type SupportTicketMessageAddResult = {
+    ticketId: string;
+    messageId: string;
+    success: true;
+    messageCount: number;
+    attachmentCount: number;
+    message: TicketMessage;
+};
+
+export type SupportTicketStatusUpdateResult = {
+    ticketId: string;
+    success: true;
+    status: string;
+    statusCount: number;
+    statusEntry: SupportTicketType['statuses'][number];
+};
+
+type SupportTicketMutationScope = {
+    tId?: number | string | null;
+    sId?: number | string | null;
+};
+
+type NormalizedSupportTicketScope = {
+    tId: number;
+    sId: number;
+};
+
+const isRecord = (value: unknown): value is Record<string, unknown> => (
+    Boolean(value) && typeof value === 'object' && !Array.isArray(value)
+);
+
+const normalizeSupportTicketScopeValue = (value: unknown): number | undefined => {
+    if (value === null || value === undefined || value === '') return undefined;
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : undefined;
+};
+
+const normalizeSupportTicketScope = (scope?: SupportTicketMutationScope): NormalizedSupportTicketScope | undefined => {
+    const tId = normalizeSupportTicketScopeValue(scope?.tId);
+    const sId = normalizeSupportTicketScopeValue(scope?.sId);
+
+    if (tId === undefined || sId === undefined) return undefined;
+    return { tId, sId };
+};
 
 const collectTicketAttachmentUrls = (ticket: Partial<SupportTicketType> = {}): string[] => {
     const urls = new Set<string>();
@@ -61,6 +112,51 @@ const isPlatformTicketSession = (session: any): boolean => {
         || ''
     ).toUpperCase();
     return platformRole === ECOMSAI_PLATFORM_USER_ROLE || platformRole === ECOMSAI_PLATFORM_SUPPORT_USER_ROLE;
+};
+
+const getSessionSupportTicketScope = (session: any): NormalizedSupportTicketScope | undefined => normalizeSupportTicketScope({
+    tId: session?.tId ?? session?.user?.tenantId,
+    sId: session?.sId ?? session?.user?.storeId,
+});
+
+const requireSupportTicketMutationScope = async (
+    scope: SupportTicketMutationScope | undefined,
+    operationCode: string,
+): Promise<NormalizedSupportTicketScope | undefined> => {
+    const session = await getActiveSession();
+    const ticketScope = normalizeSupportTicketScope(scope);
+
+    if (isPlatformTicketSession(session)) {
+        return ticketScope;
+    }
+
+    const sessionScope = getSessionSupportTicketScope(session);
+    if (!sessionScope) {
+        throw new Error(`${operationCode}_session_scope_missing`);
+    }
+    if (!ticketScope) {
+        throw new Error(`${operationCode}_ticket_scope_missing`);
+    }
+    if (ticketScope.tId !== sessionScope.tId || ticketScope.sId !== sessionScope.sId) {
+        throw new Error(`${operationCode}_ticket_scope_mismatch`);
+    }
+
+    return ticketScope;
+};
+
+const applySupportTicketMutationScope = (
+    updateData: Record<string, any>,
+    scope: NormalizedSupportTicketScope | undefined,
+) => {
+    if (scope) {
+        updateData.tId = scope.tId;
+        updateData.sId = scope.sId;
+        return updateData;
+    }
+
+    delete updateData.tId;
+    delete updateData.sId;
+    return updateData;
 };
 
 const getScopedTicketConstraints = (session: any): QueryConstraint[] => {
@@ -214,17 +310,38 @@ export const addTicket = async (data: SupportTicketType) => {
                 });
             }
 
-            return { ...submitData, id: docRef.id, displayId };
+            return {
+                ...submitData,
+                id: docRef.id,
+                displayId,
+                success: true,
+            } satisfies SupportTicketCreateResult;
         },
         data,
         "addTicket"
     );
 }
 
+export function assertSupportTicketCreateSucceeded(
+    result: unknown,
+    rejectionCode = 'support_ticket_create_rejected',
+): asserts result is SupportTicketCreateResult {
+    if (
+        !isRecord(result)
+        || result.success !== true
+        || typeof result.id !== 'string'
+        || typeof result.displayId !== 'string'
+    ) {
+        throw new Error(rejectionCode);
+    }
+}
+
 export const updateTicket = async (data: any) => {
     return await apiCallComposer(
         async () => {
+            const mutationScope = await requireSupportTicketMutationScope(data, 'support_ticket_update');
             const updateData = await answerlatticeRequestBodyComposer(data);
+            applySupportTicketMutationScope(updateData, mutationScope);
 
             const files = data.documents?.filter(doc => doc.url.includes('base64')) || [];
             if (files.length) {
@@ -241,9 +358,75 @@ export const updateTicket = async (data: any) => {
     );
 }
 
-export const addTicketMessage = async (ticketId: string, currentMessages: TicketMessage[], message: TicketMessage, attachments?: any[]) => {
+export function assertSupportTicketUpdateSucceeded(
+    result: unknown,
+    expectedTicketId: string,
+    rejectionCode = 'support_ticket_update_rejected',
+): asserts result is Partial<SupportTicketType> {
+    if (!result || typeof result !== 'object' || Array.isArray(result)) {
+        throw new Error(rejectionCode);
+    }
+
+    const ticket = result as Partial<SupportTicketType>;
+    if (ticket.id !== expectedTicketId) {
+        throw new Error(rejectionCode);
+    }
+}
+
+export function assertSupportTicketMessageAddSucceeded(
+    result: unknown,
+    expectedTicketId: string,
+    expectedMessageId: string,
+    rejectionCode = 'support_ticket_message_add_rejected',
+): asserts result is SupportTicketMessageAddResult {
+    if (
+        !isRecord(result)
+        || result.success !== true
+        || result.ticketId !== expectedTicketId
+        || result.messageId !== expectedMessageId
+        || typeof result.messageCount !== 'number'
+        || typeof result.attachmentCount !== 'number'
+    ) {
+        throw new Error(rejectionCode);
+    }
+
+    if (!isRecord(result.message) || result.message.id !== expectedMessageId) {
+        throw new Error(rejectionCode);
+    }
+}
+
+export function assertSupportTicketStatusUpdateSucceeded(
+    result: unknown,
+    expectedTicketId: string,
+    expectedStatus: string,
+    rejectionCode = 'support_ticket_status_update_rejected',
+): asserts result is SupportTicketStatusUpdateResult {
+    if (
+        !isRecord(result)
+        || result.success !== true
+        || result.ticketId !== expectedTicketId
+        || result.status !== expectedStatus
+        || typeof result.statusCount !== 'number'
+    ) {
+        throw new Error(rejectionCode);
+    }
+
+    if (!isRecord(result.statusEntry) || result.statusEntry.status !== expectedStatus) {
+        throw new Error(rejectionCode);
+    }
+}
+
+export const addTicketMessage = async (
+    ticketId: string,
+    currentMessages: TicketMessage[],
+    message: TicketMessage,
+    attachments?: any[],
+    scope?: SupportTicketMutationScope,
+) => {
     return await apiCallComposer(
         async () => {
+            const mutationScope = await requireSupportTicketMutationScope(scope, 'support_ticket_message');
+
             // Handle file uploads for attachments (same pattern as ticket documents)
             if (attachments?.length) {
                 message.attachments = [];
@@ -270,8 +453,10 @@ export const addTicketMessage = async (ticketId: string, currentMessages: Ticket
             // Update ticket with new message ONLY (requestBodyComposer adds timestamps)
             // No logs - only send logs on initial ticket creation
             const updateData = await answerlatticeRequestBodyComposer({
-                messages: updatedMessages
+                messages: updatedMessages,
+                ...(mutationScope ? mutationScope : {}),
             });
+            applySupportTicketMutationScope(updateData, mutationScope);
 
             const ticketRef = getDocRef(ticketId);
             await setDoc(ticketRef, updateData, { merge: true });
@@ -295,20 +480,36 @@ export const addTicketMessage = async (ticketId: string, currentMessages: Ticket
                 });
             }
 
-            return message;
+            return {
+                ticketId,
+                messageId: message.id,
+                success: true,
+                messageCount: updatedMessages.length,
+                attachmentCount: message.attachments?.length || 0,
+                message,
+            } satisfies SupportTicketMessageAddResult;
         },
         { ticketId, currentMessages, message, attachments },
         "addTicketMessage"
     );
 }
 
-export const updateTicketStatus = async (ticketId: string, currentStatuses: any[], newStatus: string, remark: string = '', changedBy: { id: string, name: string, email: string }) => {
+export const updateTicketStatus = async (
+    ticketId: string,
+    currentStatuses: any[],
+    newStatus: string,
+    remark: string = '',
+    changedBy: { id: string, name: string, email: string },
+    scope?: SupportTicketMutationScope,
+) => {
     return await apiCallComposer(
         async () => {
+            const mutationScope = await requireSupportTicketMutationScope(scope, 'support_ticket_status');
+
             // Create new status entry for audit trail
             const newStatusEntry = {
                 status: newStatus,
-                timestamp: { seconds: Math.floor(Date.now() / 1000), nanoseconds: 0 },
+                timestamp: Timestamp.now(),
                 createdBy: changedBy,
                 remark: remark || `Status changed to ${newStatus}`
             };
@@ -320,8 +521,10 @@ export const updateTicketStatus = async (ticketId: string, currentStatuses: any[
             // No logs - only send logs on initial ticket creation
             const updateData = await answerlatticeRequestBodyComposer({
                 status: newStatus,
-                statuses: updatedStatuses
+                statuses: updatedStatuses,
+                ...(mutationScope ? mutationScope : {}),
             });
+            applySupportTicketMutationScope(updateData, mutationScope);
 
             const ticketRef = getDocRef(ticketId);
             await setDoc(ticketRef, updateData, { merge: true });
@@ -347,7 +550,13 @@ export const updateTicketStatus = async (ticketId: string, currentStatuses: any[
                 });
             }
 
-            return { status: newStatus, statusEntry: newStatusEntry };
+            return {
+                ticketId,
+                success: true,
+                status: newStatus,
+                statusCount: updatedStatuses.length,
+                statusEntry: newStatusEntry,
+            } satisfies SupportTicketStatusUpdateResult;
         },
         { ticketId, currentStatuses, newStatus, remark, changedBy },
         "updateTicketStatus"

@@ -1,5 +1,5 @@
 /**
- * Deployment target matrix for the shared MenuList + ConstantLayer +
+ * Deployment target matrix for the shared MenuList + Neelvara +
  * Answerlattice + CampaignCue Vercel app.
  *
  * Domain routing and Firebase project selection must stay aligned:
@@ -9,7 +9,7 @@
  */
 
 export type DeploymentStage = 'local' | 'preview' | 'production';
-export type DeploymentProductId = 'menulist' | 'constantlayer' | 'answerlattice' | 'campaigncue' | 'mycodex' | 'signaldesk';
+export type DeploymentProductId = 'menulist' | 'neelvara' | 'answerlattice' | 'campaigncue' | 'mycodex' | 'signaldesk';
 
 export interface ProductDeploymentTarget {
     productId: DeploymentProductId;
@@ -35,11 +35,11 @@ export const DEPLOYMENT_TARGETS: Record<DeploymentStage, Record<DeploymentProduc
             devPathPrefix: '',
             firebaseProjectId: 'menulist-qa',
         },
-        constantlayer: {
-            productId: 'constantlayer',
-            url: 'http://localhost:3000/__constantlayer/',
+        neelvara: {
+            productId: 'neelvara',
+            url: 'http://localhost:3000/__neelvara/',
             domains: [],
-            devPathPrefix: '/__constantlayer',
+            devPathPrefix: '/__neelvara',
             firebaseProjectId: '',
         },
         answerlattice: {
@@ -79,10 +79,10 @@ export const DEPLOYMENT_TARGETS: Record<DeploymentStage, Record<DeploymentProduc
             devPathPrefix: '',
             firebaseProjectId: 'menulist-qa',
         },
-        constantlayer: {
-            productId: 'constantlayer',
-            url: 'https://constantlayer.menulist.online',
-            domains: ['constantlayer.menulist.online'],
+        neelvara: {
+            productId: 'neelvara',
+            url: 'https://neelvara.menulist.online',
+            domains: ['neelvara.menulist.online'],
             devPathPrefix: '',
             firebaseProjectId: '',
         },
@@ -123,10 +123,10 @@ export const DEPLOYMENT_TARGETS: Record<DeploymentStage, Record<DeploymentProduc
             devPathPrefix: '',
             firebaseProjectId: 'menulist',
         },
-        constantlayer: {
-            productId: 'constantlayer',
-            url: 'https://constantlayer.in',
-            domains: ['constantlayer.in', 'www.constantlayer.in'],
+        neelvara: {
+            productId: 'neelvara',
+            url: 'https://neelvara.com',
+            domains: ['neelvara.com', 'www.neelvara.com'],
             devPathPrefix: '',
             firebaseProjectId: '',
         },
@@ -203,7 +203,7 @@ export function resolveKnownProductIdByHostname(hostname: string | null | undefi
     if (!hostname) return null;
     const normalizedHost = hostname.split(':')[0].toLowerCase();
 
-    for (const productId of ['menulist', 'constantlayer', 'answerlattice', 'campaigncue', 'mycodex', 'signaldesk'] as DeploymentProductId[]) {
+    for (const productId of ['menulist', 'neelvara', 'answerlattice', 'campaigncue', 'mycodex', 'signaldesk'] as DeploymentProductId[]) {
         if (getKnownProductDomains(productId).includes(normalizedHost)) {
             return productId;
         }

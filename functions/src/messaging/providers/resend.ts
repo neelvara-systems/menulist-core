@@ -15,12 +15,33 @@
  */
 
 import * as nodemailer from 'nodemailer';
+import * as functions from 'firebase-functions';
 import { ProviderSendResult } from '../types';
 
 const DEFAULT_FROM = 'MenuList <system@menulist.ai>';
+const SMTP_NOT_CONFIGURED_ERROR = 'SMTP_NOT_CONFIGURED';
+const SMTP_SEND_FAILED_ERROR = 'SMTP_SEND_FAILED';
+const logger = functions.logger;
 
 // Cached transporter (reused across invocations in same CF instance)
 let cachedTransporter: nodemailer.Transporter | null = null;
+
+function getSmtpErrorContext(error: unknown): {
+  name?: string;
+  code?: string;
+  responseCode?: number;
+  command?: string;
+} {
+  if (!error || typeof error !== 'object') return {};
+
+  const record = error as Record<string, unknown>;
+  return {
+    name: error instanceof Error ? error.name : undefined,
+    code: typeof record.code === 'string' ? record.code : undefined,
+    responseCode: typeof record.responseCode === 'number' ? record.responseCode : undefined,
+    command: typeof record.command === 'string' ? record.command : undefined,
+  };
+}
 
 function getTransporter(): nodemailer.Transporter | null {
   if (cachedTransporter) return cachedTransporter;
@@ -31,7 +52,11 @@ function getTransporter(): nodemailer.Transporter | null {
   const pass = process.env.SMTP_PASS;
 
   if (!host || !user || !pass) {
-    console.error('[Mailer] SMTP credentials not configured (SMTP_HOST, SMTP_USER, SMTP_PASS)');
+    logger.error('[Mailer] SMTP credentials not configured', {
+      hasHost: Boolean(host),
+      hasUser: Boolean(user),
+      hasPassword: Boolean(pass),
+    });
     return null;
   }
 
@@ -57,7 +82,7 @@ export async function sendEmailViaSMTP(params: {
 }): Promise<ProviderSendResult> {
   const transporter = getTransporter();
   if (!transporter) {
-    return { success: false, error: 'SMTP not configured' };
+    return { success: false, error: SMTP_NOT_CONFIGURED_ERROR };
   }
 
   try {
@@ -73,8 +98,11 @@ export async function sendEmailViaSMTP(params: {
       providerMessageId: info.messageId,
     };
   } catch (error) {
-    const msg = error instanceof Error ? error.message : 'Unknown error';
-    console.error('[Mailer] Send failed:', msg);
-    return { success: false, error: msg };
+    logger.error('[Mailer] Send failed', {
+      toPresent: Boolean(params.to),
+      subjectLength: params.subject.length,
+      source: getSmtpErrorContext(error),
+    });
+    return { success: false, error: SMTP_SEND_FAILED_ERROR };
   }
 }

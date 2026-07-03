@@ -167,6 +167,31 @@ MenuList is a platform that helps small and medium businesses (restaurants, cafe
 Website: https://menulist.ai
 Contact: support@menulist.ai
 
+Owner website pages:
+
+- https://menulist.ai/
+- https://menulist.ai/create-menu
+- https://menulist.ai/pricing
+- https://menulist.ai/faq
+
+Tool pages:
+
+- https://menulist.ai/tools
+- https://menulist.ai/tools/reports
+- https://menulist.ai/tools/public-truth-check
+- https://menulist.ai/tools/qr-link-health-check
+- https://menulist.ai/tools/menu-readability-check
+- https://menulist.ai/tools/customer-question-coverage-check
+- https://menulist.ai/tools/booking-inquiry-readiness-check
+- https://menulist.ai/tools/price-availability-gap-check
+- https://menulist.ai/tools/menu-pdf-cleanup-check
+- https://menulist.ai/tools/google-profile-basics-checklist
+- https://menulist.ai/tools/customer-link-preview
+- https://menulist.ai/tools/social-bio-link-check
+- https://menulist.ai/tools/whatsapp-action-link-check
+- https://menulist.ai/tools/hours-check
+- https://menulist.ai/tools/photo-gap-check
+
 Feature pages:
 
 - https://menulist.ai/ai-menu-manager
@@ -204,7 +229,7 @@ Do not call MenuList:
 - generic AI restaurant software
 - A food delivery marketplace
 - A POS replacement
-- A guaranteed SEO, ranking, or AI visibility tool
+- A tool that promises SEO, ranking, or AI visibility outcomes
 - A full menu-profit optimization system
 
 MenuList prepares clearer, owner-approved, structured public menu information. Google, Bing, ChatGPT, Perplexity, Claude, Common Crawl, and other external search or AI systems decide what they crawl, index, show, cite, summarize, or refresh.

@@ -1,9 +1,14 @@
+const fs = require('fs');
+const path = require('path');
+
 require('ts-node').register({
     transpileOnly: true,
     compilerOptions: {
         module: 'commonjs',
     },
 });
+
+const root = process.cwd();
 
 const {
     buildExportData,
@@ -96,8 +101,120 @@ async function main() {
     assert(firstCategoryRow.getCell(1).value === 'c2', 'Expected first exported category row to use sorted category order');
     assert(firstItemRow.getCell(1).value === 'i3', 'Expected first exported item row to use sorted item order');
 
+    const exportDiagnostics = fs.readFileSync(path.join(root, 'src/lib/export/exportDiagnostics.ts'), 'utf8');
+    [
+        'secureError',
+        'getBoundedExportStringContext',
+        'logExportFailure',
+        'sourceErrorName',
+        'sourceErrorCode',
+        'sourceStatusCode',
+        'copyExportTextToClipboard',
+        'EXPORT_CLIPBOARD_COPY_UNAVAILABLE',
+        'EXPORT_CLIPBOARD_COPY_FALLBACK_FAILED',
+        'hasExportClipboardWrite',
+        'hasExportCopyFallback',
+        "const copied = document.execCommand('copy');",
+    ].forEach((token) => {
+        assert(exportDiagnostics.includes(token), `Expected export diagnostics helper to include ${token}`);
+    });
+
+    const exportService = fs.readFileSync(path.join(root, 'src/lib/export/exportService.ts'), 'utf8');
+    [
+        'menu_export_clipboard_copy_failed',
+        'menu_export_web_share_failed',
+        'getBoundedExportStringContext',
+        'copyExportTextToClipboard(content)',
+        'contentLength',
+        'hasClipboardWrite',
+        'hasCopyFallback',
+    ].forEach((token) => {
+        assert(exportService.includes(token), `Expected export service diagnostic token ${token}`);
+    });
+    assert(!exportService.includes('await navigator.clipboard.writeText(content);'), 'Export service copy must not use unguarded Clipboard API success');
+    [
+        "console.error('Failed to copy to clipboard:'",
+        "console.error('Failed to share:'",
+    ].forEach((token) => {
+        assert(!exportService.includes(token), `Export service must not use raw diagnostic ${token}`);
+    });
+
+    const projectSharePostModal = fs.readFileSync(path.join(root, 'src/components/templates/main-app/projects/ShareModal.tsx'), 'utf8');
+    [
+        'project_share_endpoint_post_failed',
+        'SHARE_ENDPOINT_INVALID_MESSAGE',
+        'SHARE_ENDPOINT_REQUEST_POLICY',
+        "cache: 'no-store'",
+        "credentials: 'omit'",
+        "redirect: 'manual' as RequestRedirect",
+        "referrerPolicy: 'no-referrer'",
+        'normalizeShareEndpointUrl',
+        'isBlockedShareEndpointHost',
+        "url.protocol !== 'https:'",
+        'url.username || url.password',
+        "host === 'localhost'",
+        "host === 'metadata.google.internal'",
+        'const apiUrl = normalizeShareEndpointUrl(values.apiUrl);',
+        'const response = await fetch(apiUrl, {',
+        '...SHARE_ENDPOINT_REQUEST_POLICY',
+        "getBoundedExportStringContext('apiUrl'",
+        "getBoundedExportStringContext('projectId'",
+        'responseStatus',
+        'categoryCount',
+        'itemCount',
+    ].forEach((token) => {
+        assert(projectSharePostModal.includes(token), `Expected project share POST modal diagnostic token ${token}`);
+    });
+    assert(!projectSharePostModal.includes("console.error('Error sharing data:'"), 'Project share POST modal must not log raw share errors');
+    assert(!projectSharePostModal.includes('fetch(values.apiUrl'), 'Project share POST modal must not post to unnormalized owner-entered URLs');
+    assert(!projectSharePostModal.includes("type: 'url'"), 'Project share POST modal must not rely on generic URL validation for endpoint admission');
+
+    const projectShareModal = fs.readFileSync(path.join(root, 'src/components/templates/main-app/projects/b2cView/shareModal/index.tsx'), 'utf8');
+    [
+        'project_share_structured_export_failed',
+        'project_share_pdf_generation_failed',
+        "getBoundedExportStringContext('shareUrl'",
+        "getBoundedExportStringContext('currencyCode'",
+        'copyExportTextToClipboard(copyUrl)',
+        'hasClipboardWrite',
+        'hasCopyFallback',
+        'hasBrandColor',
+        'hasBusinessType',
+    ].forEach((token) => {
+        assert(projectShareModal.includes(token), `Expected project share modal diagnostic token ${token}`);
+    });
+    [
+        "console.error('[ShareModal] Structured export failed:'",
+        "console.error('[ShareModal] PDF generation failed:'",
+    ].forEach((token) => {
+        assert(!projectShareModal.includes(token), `Project share modal must not use raw diagnostic ${token}`);
+    });
+
+    const menuKitSection = fs.readFileSync(path.join(root, 'src/components/templates/main-app/projects/b2cView/shareModal/MenuKitSection.tsx'), 'utf8');
+    [
+        'project_share_menu_kit_generation_failed',
+        'project_share_menu_kit_asset_generation_failed',
+        "getBoundedExportStringContext('menuUrl'",
+        'copyExportTextToClipboard(msg)',
+        'copyExportTextToClipboard(labels.staffScript)',
+        'hasClipboardWrite',
+        'hasCopyFallback',
+        'hasMenuModifiedOn',
+        'assetKey',
+    ].forEach((token) => {
+        assert(menuKitSection.includes(token), `Expected Menu Kit section diagnostic token ${token}`);
+    });
+    [
+        'secureError(',
+        "'[MenuKit] Generation failed'",
+        'new Error(String(error))',
+        'error instanceof Error ? error',
+    ].forEach((token) => {
+        assert(!menuKitSection.includes(token), `Menu Kit section must not use raw diagnostic ${token}`);
+    });
+
     console.log('PASS verify-menu-export');
-    console.log('Validated dedupe, ordering, default flags, multilingual rows, and attribute export sheets.');
+    console.log('Validated dedupe, ordering, default flags, multilingual rows, attribute export sheets, and bounded share/export diagnostics.');
 }
 
 main().catch((error) => {

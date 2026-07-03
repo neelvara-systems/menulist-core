@@ -2,17 +2,20 @@ export const dynamic = 'force-dynamic';
 import { GEMINI_MODELS } from "@constant/AI/models";
 import { getOurChargePaise, getRealCostPaise, getUnitCost } from "@constant/AI/unitCosts";
 import { AI_ACTIONS_TYPES, CHARGE_PER_CREDIT, TOKENS_PER_CREDIT } from "@constant/common";
+import { PERMISSIONS } from "@constant/permissions";
 import { GenerateContentResponse, Modality } from "@google/genai";
 import { finalizeAiOperationAccounting } from "@lib/ai/accounting";
 import { checkAICapacity } from "@lib/ai/capacityCheck";
 import { sanitizeImageGenerationConfigForLogging, summarizeImageProviderResponse } from "@lib/ai/imageOperationLogging";
-import { getImageAsBase64 } from "@lib/apiUtils";
+import { getImageAsBase64, type ImageFetchStorageScope } from "@lib/apiUtils";
 import { genAIClient } from "@lib/google/genAi";
+import { getAIGatewayDiagnostics, getAIRouteLogContext, getAIRouteSecurityContext, logAIRouteFailure } from "@lib/google/genAi/diagnostics";
 import { logger } from "@lib/monitoring/logger";
 import { getLinkedOutletPolicyBlockReason } from "@lib/multiOutlet/serverOutletPolicy";
+import { requireAnyStorePermission } from "@lib/permissions/server";
 import { checkExpensiveAILimit } from "@lib/rateLimit/helpers";
+import { readBoundedJsonBody } from "@lib/security/boundedRequestBody";
 import { validateAPIInput } from "@lib/security/inputValidation";
-import { buildSecurityContext } from "@lib/security/securityContext";
 import { ImageEditingRequestSchema } from "@lib/validation/apiSchemas";
 import { EditImageViaApiPayloadType } from "@template/main-app/projects/types";
 import { UserUploadedFileType } from "@type/common";
@@ -22,16 +25,25 @@ import { withAuth } from "../../../middleware/auth";
 import { generateImageEditingPrompt } from "./promptsList";
 
 const AI_MODEL = GEMINI_MODELS.IMAGE_GEN;
+const ACTION = AI_ACTIONS_TYPES.IMAGE_EDITING;
 const LOG_FILE = "image-editing.log"
+const IMAGE_EDITING_AI_MAX_BODY_BYTES = 64 * 1024 * 1024;
 
-async function editImageViaFlash(generationConfig: { prompt?: string, referanceImage: UserUploadedFileType, promptImages?: UserUploadedFileType[] }): Promise<{ images: { base64: string; mimeType: string }[], response: GenerateContentResponse } | null> {
+async function editImageViaFlash(
+    generationConfig: { prompt?: string, referanceImage: UserUploadedFileType, promptImages?: UserUploadedFileType[] },
+    referenceImageStorageScope?: ImageFetchStorageScope,
+): Promise<{ images: { base64: string; mimeType: string }[], response: GenerateContentResponse } | null> {
     try {
 
-        const { base64ImageData, mimeType } = await getImageAsBase64(generationConfig.referanceImage);
+        const { base64ImageData, mimeType } = await getImageAsBase64(generationConfig.referanceImage, {
+            storageScope: referenceImageStorageScope,
+        });
         let promptImagesBase64Data: { base64: string; mimeType: string }[] = [];
         if (generationConfig.promptImages && generationConfig.promptImages.length > 0) {
             for (const promptImage of generationConfig.promptImages) {
-                const { base64ImageData, mimeType } = await getImageAsBase64(promptImage);
+                const { base64ImageData, mimeType } = await getImageAsBase64(promptImage, {
+                    storageScope: referenceImageStorageScope,
+                });
                 promptImagesBase64Data.push({ base64: base64ImageData, mimeType });
             }
         }
@@ -63,7 +75,13 @@ async function editImageViaFlash(generationConfig: { prompt?: string, referanceI
         logger.debug('Completed image edit via flash', { imageCount: genratedImages.length })
         return { images: genratedImages, response };
     } catch (error) {
-        logger.error('Error editing image', error);
+        logAIRouteFailure('image_editing_flash_failed', error, {
+            action: ACTION,
+            hasReferenceImage: Boolean(generationConfig.referanceImage?.url),
+            model: AI_MODEL,
+            promptImageCount: generationConfig.promptImages?.length || 0,
+            promptLength: generationConfig.prompt?.length || 0,
+        });
         await writeLogEntry({ logFileName: LOG_FILE, logType: 'FLASH_ERROR', error });
         throw error;
     }
@@ -73,6 +91,9 @@ export const POST = withAuth(async (request, session) => {
     // ✅ Session guaranteed by withAuth middleware
     // ✅ Auth failures automatically logged to Sentry
     const userId = session.user.id;
+    const requestId = crypto.randomUUID();
+    let projectIdForLog: string | undefined;
+    let fileIdForLog: string | undefined;
 
     try {
         // �️ SAFE_MODE: Block expensive operations during system maintenance
@@ -85,7 +106,10 @@ export const POST = withAuth(async (request, session) => {
         if (rateLimitResponse) return rateLimitResponse;
 
         // 🔒 INPUT VALIDATION: Prevent injection attacks (OWASP A03)
-        const rawData = await request.json();
+        const bodyResult = await readBoundedJsonBody(request, IMAGE_EDITING_AI_MAX_BODY_BYTES);
+        if (bodyResult.ok === false) return bodyResult.response;
+
+        const rawData = bodyResult.data as any;
         const validation = validateAPIInput(ImageEditingRequestSchema, rawData);
 
         if (!validation.success) {
@@ -93,14 +117,15 @@ export const POST = withAuth(async (request, session) => {
 
             // Log to Sentry (potential attack attempt - HIGH severity: very expensive)
             logger.security('Input Validation Failed', {
-                ...buildSecurityContext(session, request),
+                ...getAIRouteSecurityContext(session, request),
                 endpoint: '/api/image-editing',
                 error: errorMsg,
-                attemptedData: {
+                attemptedData: getAIRouteLogContext({
                     hasGenerationConfig: !!rawData?.generationConfig,
                     projectId: rawData?.projectId,
                     fileId: rawData?.fileId,
-                },
+                }),
+                requestId,
             }, 'high'); // HIGH severity - very expensive
 
             await writeMissingParamsLogEntry(LOG_FILE, userId, rawData?.projectId, rawData?.fileId, {
@@ -120,6 +145,16 @@ export const POST = withAuth(async (request, session) => {
         }
 
         const { generationConfig, projectId, fileId, itemDetails, businessType } = validation.data as unknown as EditImageViaApiPayloadType;
+        projectIdForLog = projectId;
+        fileIdForLog = fileId;
+
+        const permissionError = await requireAnyStorePermission(
+            request,
+            session,
+            [PERMISSIONS.GENERATE_IMAGES],
+            "Image editing",
+        );
+        if (permissionError) return permissionError;
 
         const outletPolicyBlockReason = await getLinkedOutletPolicyBlockReason({
             action: "image",
@@ -129,10 +164,11 @@ export const POST = withAuth(async (request, session) => {
         });
         if (outletPolicyBlockReason) {
             logger.security('Outlet Policy Violation - Image Editing API', {
-                ...buildSecurityContext(session, request),
+                ...getAIRouteSecurityContext(session, request),
                 endpoint: '/api/image-editing',
-                projectId,
+                project: getAIRouteLogContext({ projectId }),
                 reason: outletPolicyBlockReason,
+                requestId,
             }, 'medium');
             return NextResponse.json({ error: outletPolicyBlockReason }, { status: 403 });
         }
@@ -141,7 +177,7 @@ export const POST = withAuth(async (request, session) => {
         const capacityCheck = await checkAICapacity(
             session.tId,
             session.sId,
-            AI_ACTIONS_TYPES.IMAGE_EDITING,
+            ACTION,
         );
         if (!capacityCheck.allowed) {
             return NextResponse.json({
@@ -153,12 +189,19 @@ export const POST = withAuth(async (request, session) => {
         }
 
         const startTime = new Date().getTime();
-        generationConfig.prompt = generateImageEditingPrompt(businessType, generationConfig, itemDetails)
+        const generatedPrompt = generateImageEditingPrompt(businessType, generationConfig, itemDetails);
+        if (!generatedPrompt) {
+            return NextResponse.json({ error: 'Image editing needs a valid editing prompt' }, { status: 400 });
+        }
+        generationConfig.prompt = generatedPrompt;
         logger.debug('Prompt generated for image edit', { promptLength: generationConfig.prompt?.length })
         const promptImages = (generationConfig.promptImages || []).filter((image): image is UserUploadedFileType => Boolean(image?.url));
         let imageEditGemeiniResponse = await editImageViaFlash({
             ...generationConfig,
             promptImages,
+        }, {
+            sId: session.sId,
+            tId: session.tId,
         });
 
         const endTime = new Date().getTime();
@@ -183,7 +226,7 @@ export const POST = withAuth(async (request, session) => {
         // Update the transaction object with calculated values and other details
         const transactionObject = {
             transactionId: null,
-            action: AI_ACTIONS_TYPES.IMAGE_EDITING,
+            action: ACTION,
             unitsConsumed: 0,
             itemDetails,
             generationConfig: sanitizeImageGenerationConfigForLogging(generationConfig as unknown as Record<string, unknown>),
@@ -200,9 +243,9 @@ export const POST = withAuth(async (request, session) => {
             totalCredits: ((imageEditGemeiniResponse?.response?.usageMetadata?.totalTokenCount || 0) / TOKENS_PER_CREDIT),
             totalCharge: CHARGE_PER_CREDIT * ((imageEditGemeiniResponse?.response?.usageMetadata?.totalTokenCount || 0) / TOKENS_PER_CREDIT),//in paise
             // Deep tracking: real Google cost vs our charge vs margin (all in paise)
-            realCostPaise: getRealCostPaise(AI_ACTIONS_TYPES.IMAGE_EDITING),
-            ourChargePaise: getOurChargePaise(AI_ACTIONS_TYPES.IMAGE_EDITING),
-            marginPaise: getOurChargePaise(AI_ACTIONS_TYPES.IMAGE_EDITING) - getRealCostPaise(AI_ACTIONS_TYPES.IMAGE_EDITING),
+            realCostPaise: getRealCostPaise(ACTION),
+            ourChargePaise: getOurChargePaise(ACTION),
+            marginPaise: getOurChargePaise(ACTION) - getRealCostPaise(ACTION),
         };
 
         // Add the operation to the database
@@ -220,7 +263,19 @@ export const POST = withAuth(async (request, session) => {
             transactionObject.transactionId = accounting.transactionId;
             remainingBalance = accounting.remainingBalance;
         } catch (transactionError) {
-            logger.error('Failed to record transaction', transactionError);
+            logAIRouteFailure('image_editing_accounting_failed', transactionError, {
+                action: ACTION,
+                fileId,
+                imageCount: imageEditGemeiniResponse.images.length,
+                model: AI_MODEL,
+                processingTime,
+                projectId,
+                requestId,
+                userId,
+            });
+            if (transactionError && typeof transactionError === 'object') {
+                (transactionError as Record<string, unknown>).__imageEditingLogged = true;
+            }
             await writeLogEntry({ logFileName: LOG_FILE, userId: "N/A", projectId, fileId, logType: 'TRANSACTION_DB_ERROR', data: transactionObject, error: transactionError });
             throw transactionError;
         }
@@ -254,7 +309,17 @@ export const POST = withAuth(async (request, session) => {
         }, { status: 200 });
 
     } catch (error) {
-        logger.error('Image editing API error', error);
+        if (!(error && typeof error === 'object' && '__imageEditingLogged' in error)) {
+            logAIRouteFailure('image_editing_api_failed', error, {
+                action: ACTION,
+                fileId: fileIdForLog,
+                gatewayDiagnostics: getAIGatewayDiagnostics(genAIClient),
+                model: AI_MODEL,
+                projectId: projectIdForLog,
+                requestId,
+                userId,
+            });
+        }
         await writeErrorLogEntry(LOG_FILE, error);
         return NextResponse.json({ error: 'Image editing failed' }, { status: 500 });
     }

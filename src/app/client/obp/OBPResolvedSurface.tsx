@@ -1,4 +1,6 @@
 import MenuBreadcrumb from "@/app/client/[[...slug]]/MenuBreadcrumb";
+import JsonLdScript from "@/components/seo/JsonLdScript";
+import TempStatusBanner from "@atoms/TempStatusBanner";
 import { FEATURE_FLAGS } from "@config/features";
 import GlobalLanguagesList from "@data/languages";
 import PublicMenuListAttribution from "@/components/customer/PublicMenuListAttribution";
@@ -18,9 +20,11 @@ import { getBusinessAttributeConfigForType, normalizeCustomBusinessAttributes } 
 import { resolveOBPAccentColor } from "@lib/obp/accentColor";
 import { generateOBPUrl, getDefaultProjectUrl } from "@lib/obp/generateOBPUrl";
 import { getStoreOpenStatus } from "@lib/obp/hoursStatus";
+import { normalizeOBPExternalHttpsUrl, normalizeOBPGoogleMapsUrl, normalizeOBPReviewUrl, normalizeOBPSocialUrl, normalizeOBPWebsiteUrl } from "@lib/obp/publicLinks";
 import { resolveHoursOutput } from "@lib/outputControl";
 import { shouldShowStarterPublicPlaceholders } from "@lib/onboarding/starterActivation";
 import { resolveMenuListAttributionPolicy } from "@lib/platform/menuListBranding";
+import { normalizePublicOutletSlug } from "@lib/publicRouting/pathSegments";
 import { formatClockTime } from "@util/dateTime";
 import type { ReactNode } from "react";
 import {
@@ -510,6 +514,7 @@ export default function OBPResolvedSurface({
         ? { isOpen: hoursOutput.styleHint === "open", statusText: hoursOutput.statusText, nextChange: hoursOutput.secondaryText }
         : getStoreOpenStatus(store?.workingHours, store?.timeZone);
     const showStatusBadge = hoursOutput ? hoursOutput.showStatusBadge : true;
+    const openHoursState = showStatusBadge ? (status.isOpen ? 'open' : 'closed') : 'unknown';
     const statusText = localizeStatusText(status.statusText, t);
     const statusNextChange = localizeStatusNextChange(status.nextChange, t);
     const todayDayKey = getTodayDayKey(store?.timeZone);
@@ -521,8 +526,9 @@ export default function OBPResolvedSurface({
     const originCustomDomain = isOutletSurface
         ? masterCustomDomain
         : (store?.customDomain ?? undefined);
-    const outletPrefix = isOutletSurface && store?.outletSlug
-        ? `/${store.outletSlug}`
+    const publicOutletSlug = isOutletSurface ? normalizePublicOutletSlug(store?.outletSlug) : null;
+    const outletPrefix = publicOutletSlug
+        ? `/${publicOutletSlug}`
         : '';
     const masterBase = generateOBPUrl(originSubdomain, originCustomDomain);
     const obpUrl = isOutletSurface
@@ -563,10 +569,14 @@ export default function OBPResolvedSurface({
     }));
     const showCall = (pp.showCall !== false) && !!store?.phoneNumber;
     const showWhatsApp = (pp.showWhatsApp !== false) && !!(pp.whatsappNumber || store?.phoneNumber);
-    const showDirections = (pp.showDirections !== false) && !!(pp.googleMapsUrl || fullAddress);
-    const showReservation = (pp.showReservation !== false) && !!pp.reservationUrl;
-    const showOrder = (pp.showOrder !== false) && !!pp.orderUrl;
-    const showGoogleReview = (pp.showGoogleReview !== false) && !!pp.googleReviewUrl;
+    const safeGoogleMapsUrl = normalizeOBPGoogleMapsUrl(pp.googleMapsUrl);
+    const safeReservationUrl = normalizeOBPExternalHttpsUrl(pp.reservationUrl);
+    const safeOrderUrl = normalizeOBPExternalHttpsUrl(pp.orderUrl);
+    const safeGoogleReviewUrl = normalizeOBPReviewUrl(pp.googleReviewUrl);
+    const showDirections = (pp.showDirections !== false) && !!(safeGoogleMapsUrl || fullAddress);
+    const showReservation = (pp.showReservation !== false) && !!safeReservationUrl;
+    const showOrder = (pp.showOrder !== false) && !!safeOrderUrl;
+    const showGoogleReview = (pp.showGoogleReview !== false) && !!safeGoogleReviewUrl;
     const showFeedback = (pp.showFeedback !== false) && store?.feedbackEnabled !== false && !!feedbackUrl;
     const showStarterPlaceholders = !isPermanentlyClosed && shouldShowStarterPublicPlaceholders(store);
     const starterPlaceholderActions: OBPActionPlaceholder[] = showStarterPlaceholders ? [
@@ -579,12 +589,12 @@ export default function OBPResolvedSurface({
         ...((pp.showFeedback !== false) && store?.feedbackEnabled !== false && !showFeedback ? ['feedback' as const] : []),
     ] : [];
     const whatsappNumber = pp.whatsappNumber || store?.phoneNumber || '';
-    const directionsUrl = pp.googleMapsUrl || (fullAddress ? `https://maps.google.com/?q=${encodeURIComponent(fullAddress)}` : '');
+    const directionsUrl = safeGoogleMapsUrl || (fullAddress ? `https://maps.google.com/?q=${encodeURIComponent(fullAddress)}` : '');
     const googleMapsEmbedUrl = buildGoogleMapsEmbedUrl({
         address: fullAddress,
         apiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_EMBED_API_KEY,
         geo: store?.geo || { latitude: store?.latitude, longitude: store?.longitude },
-        googleMapsUrl: pp.googleMapsUrl,
+        googleMapsUrl: safeGoogleMapsUrl || undefined,
     });
     const hasStarterPreviewVisualDepth = Boolean(
         businessCover ||
@@ -594,13 +604,13 @@ export default function OBPResolvedSurface({
     );
     const useStarterCompactLayout = showStarterPlaceholders && !hasStarterPreviewVisualDepth;
     const socialMedia = store?.socialMedia || {};
-    const instagram = socialMedia.instagram;
-    const facebook = socialMedia.facebook;
-    const twitter = socialMedia.twitter;
-    const linkedin = socialMedia.linkedin;
-    const youtube = socialMedia.youtube;
+    const instagram = normalizeOBPSocialUrl('instagram', socialMedia.instagram);
+    const facebook = normalizeOBPSocialUrl('facebook', socialMedia.facebook);
+    const twitter = normalizeOBPSocialUrl('twitter', socialMedia.twitter);
+    const linkedin = normalizeOBPSocialUrl('linkedin', socialMedia.linkedin);
+    const youtube = normalizeOBPSocialUrl('youtube', socialMedia.youtube);
     const socialWhatsApp = socialMedia.whatsapp;
-    const website = store?.url || socialMedia.website;
+    const website = normalizeOBPWebsiteUrl(store?.url) || normalizeOBPWebsiteUrl(socialMedia.website);
     const starterPlaceholderSocials = showStarterPlaceholders ? [
         ...(!instagram ? ['instagram' as const] : []),
         ...(!facebook ? ['facebook' as const] : []),
@@ -647,7 +657,7 @@ export default function OBPResolvedSurface({
     const rawSpecialNote = getLocalizedPublicText(pp.specialNote, contentLanguage, '');
     const specialNote = isLegacySpecialNoteHelper(rawSpecialNote) ? '' : rawSpecialNote.trim();
     const areaContext = store?.area || store?.city || null;
-    const googleReviewUrl = pp.googleReviewUrl;
+    const googleReviewUrl = safeGoogleReviewUrl;
     const googleRating = pp.googleRating;
     const googleReviewCount = pp.googleReviewCount;
     const hasGoogleReview = !!(googleReviewUrl && googleRating);
@@ -720,6 +730,33 @@ export default function OBPResolvedSurface({
     const priceRange = store?.priceRange;
     const hasStructuredInfo = !!(allHours || serviceModeTags.length || paymentTags.length || cuisineTypes.length || priceRange);
     const hasStarterPreviewUtilityPlaceholders = starterPreviewServiceItems.length > 0 || starterPreviewPaymentItems.length > 0;
+    const customerQuickAnswers = [
+        todayHours ? {
+            key: 'hours',
+            question: t('publicCustomerAnswerHoursQuestion'),
+            answer: t('publicCustomerAnswerHoursAnswer', { hours: todayHours }),
+        } : null,
+        fullAddress ? {
+            key: 'location',
+            question: t('publicCustomerAnswerLocationQuestion'),
+            answer: t('publicCustomerAnswerLocationAnswer', { address: fullAddress }),
+        } : null,
+        hasMenu ? {
+            key: 'menu',
+            question: t('publicCustomerAnswerMenuQuestion'),
+            answer: t('publicCustomerAnswerMenuAnswer'),
+        } : null,
+        showWhatsApp ? {
+            key: 'whatsapp',
+            question: t('publicCustomerAnswerWhatsAppQuestion'),
+            answer: t('publicCustomerAnswerWhatsAppAnswer'),
+        } : null,
+        showDirections ? {
+            key: 'directions',
+            question: t('publicCustomerAnswerDirectionsQuestion'),
+            answer: t('publicCustomerAnswerDirectionsAnswer'),
+        } : null,
+    ].filter((answer): answer is { key: string; question: string; answer: string } => Boolean(answer)).slice(0, 4);
     const identityPills = [
         ...(isOutletSurface && areaContext ? [areaContext] : []),
         ...serviceModeTags.slice(0, 3),
@@ -758,10 +795,7 @@ export default function OBPResolvedSurface({
                         activeLanguageName={showLanguageSwitcher ? activeLanguageName : undefined}
                         trackLanguageUsage={showLanguageSwitcher}
                     />
-                    <script
-                        type="application/ld+json"
-                        dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
-                    />
+                    {schema ? <JsonLdScript id="obp-schema-jsonld" data={schema} /> : null}
                 </>
             ) : null}
             <main className={styles.page} data-obp-page="true" style={{ '--obp-accent': accentColor } as any}>
@@ -775,12 +809,16 @@ export default function OBPResolvedSurface({
                         />
                     ) : null}
 
-                    {isOutletSurface && store?.outletSlug && (masterBrandName || store?.name) ? (
+                    {isOutletSurface && publicOutletSlug && (masterBrandName || store?.name) ? (
                         <MenuBreadcrumb
                             businessName={masterBrandName || brandName}
                             outletName={storeLocationName || undefined}
-                            outletSlug={store.outletSlug}
+                            outletSlug={publicOutletSlug}
                         />
+                    ) : null}
+
+                    {FEATURE_FLAGS.ENABLE_TEMP_STATUS && store?.tempStatus ? (
+                        <TempStatusBanner tempStatus={store.tempStatus} variant="pill" />
                     ) : null}
 
                     {businessCover ? (
@@ -871,6 +909,7 @@ export default function OBPResolvedSurface({
                                         countryCode={store?.countryCode}
                                         dialCode={store?.dialCode}
                                         includeLocation={includeLocation}
+                                        openHoursState={openHoursState}
                                         googleReviewUrl={googleReviewUrl}
                                         googleReviewLabel={
                                             googleReviewCount
@@ -906,6 +945,7 @@ export default function OBPResolvedSurface({
                                     obpSurface={isOutletSurface ? 'outlet' : 'brand'}
                                     trackingEnabled={runtimeTrackingEnabled}
                                     includeLocation={includeLocation}
+                                    openHoursState={openHoursState}
                                 />
                             ) : (
                                 <span className={styles.menuButtonDisabled}>
@@ -923,11 +963,12 @@ export default function OBPResolvedSurface({
                             countryCode={store?.countryCode}
                             dialCode={store?.dialCode}
                             includeLocation={includeLocation}
+                            openHoursState={openHoursState}
                             phoneNumber={store?.phoneNumber}
                             whatsappNumber={whatsappNumber}
                             directionsUrl={directionsUrl}
-                            reservationUrl={pp.reservationUrl}
-                            orderUrl={pp.orderUrl}
+                            reservationUrl={safeReservationUrl || undefined}
+                            orderUrl={safeOrderUrl || undefined}
                             googleReviewUrl={googleReviewUrl}
                             feedbackUrl={feedbackUrl}
                             iconVariant={iconVariant}
@@ -1000,6 +1041,23 @@ export default function OBPResolvedSurface({
                                 )}
                             </section>
                         )}
+
+                        {customerQuickAnswers.length > 0 && !isPermanentlyClosed ? (
+                            <section className={`${styles.info} ${styles.customerAnswers}`} aria-label={t('publicCustomerAnswersTitle')}>
+                                <h2 className={styles.groupTitle}>
+                                    <span className={styles.groupTitleIcon}>{renderDisplayIcon(iconVariant, LuInfo, 'ℹ️')}</span>
+                                    {t('publicCustomerAnswersTitle')}
+                                </h2>
+                                <div className={styles.customerAnswerList}>
+                                    {customerQuickAnswers.map((item) => (
+                                        <div key={item.key} className={styles.customerAnswerItem}>
+                                            <p className={styles.customerAnswerQuestion}>{item.question}</p>
+                                            <p className={styles.customerAnswerText}>{item.answer}</p>
+                                        </div>
+                                    ))}
+                                </div>
+                            </section>
+                        ) : null}
                     </div>
 
                     {(hasStructuredInfo || hasStarterPreviewUtilityPlaceholders || (FEATURE_FLAGS.ENABLE_BUSINESS_ATTRIBUTES && allAttributeTags.length > 0)) && (
@@ -1095,6 +1153,7 @@ export default function OBPResolvedSurface({
                                         countryCode={store?.countryCode}
                                         dialCode={store?.dialCode}
                                         includeLocation={includeLocation}
+                                        openHoursState={openHoursState}
                                         labels={{
                                             facebook: t('publicSocialPlatforms.facebook'),
                                             instagram: t('publicSocialPlatforms.instagram'),

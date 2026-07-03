@@ -365,7 +365,7 @@ if (FUNCTION_FLAGS.ENABLE_YOUR_TASK) {
 }
 ```
 
-5. Deploy: `firebase deploy --only functions:computeDecisionBlocksScores`
+5. Run `npm run verify:functions-deploy-preflight`, then deploy only the affected MenuList Functions to `menulist-qa` through `__docs__/production-readiness/external-certification-runbook.md` Gate 1. Production deploy requires QA evidence and explicit production deploy approval.
 
 **Rules:**
 

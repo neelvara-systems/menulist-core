@@ -2,7 +2,7 @@
 
 **Owner-Facing Name:** Business Health
 **Status:** Current read-only architecture
-**Last Updated:** June 17, 2026
+**Last Updated:** June 29, 2026
 
 ## Architecture Summary
 
@@ -97,7 +97,9 @@ All APIs must keep:
 - auth/session guard
 - tenant/store/project scope validation
 - Zod or equivalent runtime validation
-- bounded payloads
+- bounded payloads, including a 32KB `/answer` request body cap before answer resolution
+- bounded browser request/response handling: current, analytics, locations, thread, answer, and platform monitor callers use same-origin credentials, no browser cache, manual redirect handling, and the appropriate bounded response reader before UI or SWR state updates
+- bounded guard security metadata: selected-store, tenant-access, and rate-limit security events record route/session/request presence-length metadata instead of raw IDs, emails, IPs, or user-agent strings
 - generic owner-safe errors
 - rate limits before provider-backed answer calls
 - no raw sensitive prompt, staff/customer/payment, secret, or stack-trace logging
@@ -133,6 +135,8 @@ Mobile Business Health is a `MobileShell` sub-screen. It must not route to deskt
 ## Public Truth and Cache Boundary
 
 Business Health does not write public truth. Existing project/store/outlet/publish flows remain responsible for public cache invalidation. Menu Manager must use existing MenuList mutation paths when it performs approved work.
+
+Public Truth readiness inside Business Health is read-only. The current owner card computes eight modules from existing store/project data: public truth basics, QR link health, menu/service clarity, WhatsApp action link, hours, photo/visual identity, Google profile handoff, and menu freshness. Google profile handoff uses owner-confirmed MenuList state and live customer-link readiness only; it does not scan Google or update external profiles. Menu freshness uses selected/default MenuList menu timestamps only; it does not crawl external menus.
 
 ## Business Health and Menu Manager
 

@@ -4,21 +4,130 @@ import { FALLBACK_BUSINESS_TYPE } from "@data/shared/businessTypes";
 import { createInitialSubscription } from "@database/subscriptions/server";
 import { handlePaymentError } from "@lib/errors/firestoreErrors";
 import { admin } from "@lib/firebase/firebaseAdmin";
+import { revalidateMenuCache } from "@lib/actions/revalidateMenuCache";
 import { logger } from "@lib/monitoring/logger";
+import { compensateFailedTenantStoreOnboarding } from "@lib/onboarding/compensateFailedOnboarding";
 import { createTenantStoreInTransaction, preCheckSubdomain, updateUserWithTenantStore } from "@lib/onboarding/createTenantStore";
 import { checkRateLimit } from "@lib/rateLimit";
 import { getRateLimitForFeature } from "@lib/rateLimit/configs";
 import { getOrCreateRazorpayPlan } from "@lib/razorpay/plan-handler";
 import { razorpayClient } from "@lib/razorpay/razorpay";
+import { getBoundedRazorpayStringContext, getRazorpayFailureLogData } from "@lib/billing/razorpayDiagnostics";
+import { readBoundedJsonBody } from "@lib/security/boundedRequestBody";
+import { getBoundedSecurityRouteContext } from "@lib/security/securityDiagnostics";
 import { validateAPIInput } from "@lib/security/inputValidation";
-import { buildSecurityContext } from "@lib/security/securityContext";
 import { OnboardingSubscriptionSchema } from "@lib/validation/apiSchemas";
 import { FirestoreSubscriptionDoc } from "@type/razorpay";
 import { writeLogEntry } from "logs/utils";
 import { NextResponse } from "next/server";
+import { hashPublicRateLimitValue } from "src/middleware/publicApi";
 import { withAuth } from "../../../../middleware/auth";
 
 const LOG_FILE = "razorpay-subscription.log";
+const ONBOARDING_SUBSCRIPTION_MAX_BODY_BYTES = 16 * 1024;
+const ONBOARDING_SUBSCRIPTION_FAILURE_CODE = 'razorpay_onboarding_subscription_failed';
+const ONBOARDING_SUBSCRIPTION_CACHE_REVALIDATION_FAILURE_CODE = 'razorpay_onboarding_cache_revalidation_failed';
+const ONBOARDING_SUBSCRIPTION_COMPENSATION_FAILED_CODE = 'razorpay_onboarding_compensation_failed';
+const ONBOARDING_SUBSCRIPTION_COMPENSATION_CACHE_REVALIDATION_FAILED_CODE = 'razorpay_onboarding_compensation_cache_revalidation_failed';
+const ONBOARDING_SUBSCRIPTION_VALIDATION_FAILED_CODE = 'razorpay_onboarding_subscription_validation_failed';
+
+const getOnboardingSubscriptionLogContext = (input: {
+    businessIndustry?: unknown;
+    businessName?: unknown;
+    currency?: unknown;
+    interval?: unknown;
+    planId?: unknown;
+    storeId?: unknown;
+    subscriptionId?: unknown;
+    tenantId?: unknown;
+    userId: unknown;
+    userType?: unknown;
+}) => ({
+    endpoint: '/api/onboarding/create-subscription',
+    operation: 'onboarding-create-subscription',
+    businessNameLength: typeof input.businessName === 'string' ? input.businessName.length : 0,
+    ...getBoundedRazorpayStringContext('businessIndustry', input.businessIndustry),
+    ...getBoundedRazorpayStringContext('currency', input.currency),
+    ...getBoundedRazorpayStringContext('interval', input.interval),
+    ...getBoundedRazorpayStringContext('userType', input.userType),
+    ...getBoundedRazorpayStringContext('userId', input.userId),
+    ...getBoundedRazorpayStringContext('tenantId', input.tenantId),
+    ...getBoundedRazorpayStringContext('storeId', input.storeId),
+    ...getBoundedRazorpayStringContext('planId', input.planId),
+    ...getBoundedRazorpayStringContext('subscriptionId', input.subscriptionId),
+});
+
+const getOnboardingSubscriptionValidationContext = (
+    body: any,
+    errorMsg: string,
+    userId: unknown,
+) => ({
+    ...getOnboardingSubscriptionLogContext({
+        businessIndustry: body?.businessIndustry,
+        businessName: body?.businessName,
+        currency: body?.currency,
+        interval: body?.interval,
+        planId: body?.planId,
+        userId,
+        userType: body?.userType,
+    }),
+    bodyFieldCount: body && typeof body === 'object' && !Array.isArray(body)
+        ? Object.keys(body).length
+        : 0,
+    validationErrorPresent: errorMsg.length > 0,
+    validationErrorLength: errorMsg.length,
+});
+
+async function compensateOnboardingPaymentProviderFailure(params: {
+    businessIndustry?: unknown;
+    businessName?: unknown;
+    currency?: unknown;
+    db: admin.firestore.Firestore;
+    interval?: unknown;
+    planId?: unknown;
+    storeId: number;
+    tenantId: number;
+    userId: string;
+    userType?: unknown;
+}) {
+    const context = getOnboardingSubscriptionLogContext(params);
+
+    try {
+        await compensateFailedTenantStoreOnboarding({
+            db: params.db,
+            reason: ONBOARDING_SUBSCRIPTION_FAILURE_CODE,
+            source: "WEBSITE_ONBOARDING",
+            storeId: params.storeId,
+            tenantId: params.tenantId,
+            userId: params.userId,
+        });
+    } catch (compensationError) {
+        logger.error(
+            '[Onboarding] Compensation after payment provider failure failed',
+            new Error(ONBOARDING_SUBSCRIPTION_COMPENSATION_FAILED_CODE),
+            getRazorpayFailureLogData(
+                ONBOARDING_SUBSCRIPTION_COMPENSATION_FAILED_CODE,
+                compensationError,
+                context,
+            ),
+        );
+        return;
+    }
+
+    try {
+        await revalidateMenuCache(params.storeId, { tId: params.tenantId });
+    } catch (cacheError) {
+        logger.error(
+            '[Onboarding] Compensation cache revalidation failed',
+            new Error(ONBOARDING_SUBSCRIPTION_COMPENSATION_CACHE_REVALIDATION_FAILED_CODE),
+            getRazorpayFailureLogData(
+                ONBOARDING_SUBSCRIPTION_COMPENSATION_CACHE_REVALIDATION_FAILED_CODE,
+                cacheError,
+                context,
+            ),
+        );
+    }
+}
 
 /**
  * Onboarding API - Create Tenant, Store & Subscription (New Users Only)
@@ -41,16 +150,17 @@ const LOG_FILE = "razorpay-subscription.log";
 export const POST = withAuth(async (request, session) => {
     // ✅ Session guaranteed by withAuth middleware
     const userId = session.user.id;
+    let onboardingLogContext = getOnboardingSubscriptionLogContext({ userId });
 
     try {
         // 1. CRITICAL: Verify user does NOT already have tenant/store
         if (session.user.tenantId || session.user.storeId) {
             logger.security('Onboarding Attempt by Existing User', {
-                ...buildSecurityContext(session, request),
+                ...getBoundedSecurityRouteContext(session, request),
                 endpoint: '/api/onboarding/create-subscription',
                 error: 'User already has tenant/store',
-                tenantId: session.user.tenantId,
-                storeId: session.user.storeId,
+                ...getBoundedRazorpayStringContext('tenantId', session.user.tenantId),
+                ...getBoundedRazorpayStringContext('storeId', session.user.storeId),
             }, 'medium');
 
             return NextResponse.json(
@@ -61,14 +171,15 @@ export const POST = withAuth(async (request, session) => {
 
         // 2. 🔒 RATE LIMITING: Prevent onboarding spam (centralized config)
         const rateLimitConfig = getRateLimitForFeature('PAYMENT_ONBOARDING');
+        const userRateLimitHash = hashPublicRateLimitValue(userId);
         const rateLimitResult = await checkRateLimit({
-            key: `onboarding:${userId}`,
+            key: `onboarding:${userRateLimitHash}`,
             ...rateLimitConfig
         });
 
         if (!rateLimitResult.allowed) {
             logger.security('Onboarding Rate Limit Exceeded', {
-                ...buildSecurityContext(session, request),
+                ...getBoundedSecurityRouteContext(session, request),
                 endpoint: '/api/onboarding/create-subscription',
                 error: 'Too many onboarding attempts',
                 currentAttempts: rateLimitResult.current,
@@ -82,24 +193,21 @@ export const POST = withAuth(async (request, session) => {
         }
 
         // 3. Validate Input
-        const body = await request.json();
+        const bodyResult = await readBoundedJsonBody(request, ONBOARDING_SUBSCRIPTION_MAX_BODY_BYTES, {
+            invalidJsonMessage: 'Invalid input',
+        });
+        if (bodyResult.ok === false) return bodyResult.response;
+        const body = bodyResult.data as any;
         const validation = validateAPIInput(OnboardingSubscriptionSchema, body);
 
         if (!validation.success) {
             const errorMsg = 'error' in validation ? validation.error : 'Invalid input';
 
             logger.security('Onboarding Input Validation Failed', {
-                ...buildSecurityContext(session, request),
+                ...getBoundedSecurityRouteContext(session, request),
                 endpoint: '/api/onboarding/create-subscription',
-                error: errorMsg,
-                attemptedData: {
-                    businessName: body?.businessName?.substring(0, 50), // Truncate for logging
-                    businessIndustry: body?.businessIndustry,
-                    planId: body?.planId,
-                    interval: body?.interval,
-                    currency: body?.currency,
-                    userType: body?.userType,
-                },
+                error: ONBOARDING_SUBSCRIPTION_VALIDATION_FAILED_CODE,
+                ...getOnboardingSubscriptionValidationContext(body, errorMsg, userId),
             }, 'critical');
 
             return NextResponse.json({
@@ -109,6 +217,15 @@ export const POST = withAuth(async (request, session) => {
         }
 
         const { businessName, businessIndustry, planId, interval, currency, userType, timeZone, businessDayEndTime } = validation.data;
+        onboardingLogContext = getOnboardingSubscriptionLogContext({
+            businessName,
+            businessIndustry,
+            currency,
+            interval,
+            planId,
+            userId,
+            userType,
+        });
 
         // 3. Find Plan Details
         const plans = userType === "B2C" ? getB2CPlansList() : getB2BPlansList();
@@ -121,7 +238,11 @@ export const POST = withAuth(async (request, session) => {
         const priceKey = `price${currency.toUpperCase()}`;
 
         // 4. 🔒 ATOMIC TRANSACTION: Create Tenant, Store, Update User
-        await writeLogEntry({ logFileName: LOG_FILE, logType: 'ONBOARDING_STARTED', data: { userId, businessName, planId } });
+        await writeLogEntry({
+            logFileName: LOG_FILE,
+            logType: 'ONBOARDING_STARTED',
+            data: onboardingLogContext,
+        });
 
         const db = admin.firestore();
 
@@ -151,43 +272,107 @@ export const POST = withAuth(async (request, session) => {
         await writeLogEntry({
             logFileName: LOG_FILE,
             logType: 'ONBOARDING_TRANSACTION_COMPLETE',
-            data: { userId, tenantId: result.tenantId, storeId: result.storeId }
-        });
-
-        // 5. Create Razorpay Subscription (AFTER transaction succeeds)
-        const razorpayPlanId = await getOrCreateRazorpayPlan({
-            price: selectedPlan[priceKey].price,
-            currency,
-            interval,
-            userType,
-            planId,
-        });
-
-        let totalCount: number = interval === 'MONTH' ? 36 : 3; // Monthly: 36 cycles (3 years), Yearly: 3 cycles (3 years)
-
-        const razorpaySubscription = await razorpayClient.subscriptions.create({
-            plan_id: razorpayPlanId,
-            total_count: totalCount,
-            quantity: 1,
-            notes: {
-                tenantId: result.tenantId,  // ← Server-created IDs (secure)
+            data: getOnboardingSubscriptionLogContext({
+                businessName,
+                businessIndustry,
+                currency,
+                interval,
+                planId,
                 storeId: result.storeId,
+                tenantId: result.tenantId,
                 userId,
                 userType,
-                planId,
-                priceKey,
-                interval,
-                name: session.user.name,
-                email: session.user.email,
-                price: selectedPlan[priceKey].price,
-                remainingCredits: 0, // New user, no carry-forward credits
-            },
+            }),
         });
+        onboardingLogContext = getOnboardingSubscriptionLogContext({
+            businessName,
+            businessIndustry,
+            currency,
+            interval,
+            planId,
+            storeId: result.storeId,
+            tenantId: result.tenantId,
+            userId,
+            userType,
+        });
+
+        try {
+            await revalidateMenuCache(result.storeId, { tId: result.tenantId });
+        } catch (cacheError) {
+            logger.error(
+                '[Onboarding] Cache revalidation failed',
+                new Error(ONBOARDING_SUBSCRIPTION_CACHE_REVALIDATION_FAILURE_CODE),
+                getRazorpayFailureLogData(
+                    ONBOARDING_SUBSCRIPTION_CACHE_REVALIDATION_FAILURE_CODE,
+                    cacheError,
+                    onboardingLogContext,
+                ),
+            );
+        }
+
+        // 5. Create Razorpay Subscription (AFTER transaction succeeds)
+        let razorpayPlanId = '';
+        let razorpaySubscription: any;
+        const totalCount: number = interval === 'MONTH' ? 36 : 3; // Monthly: 36 cycles (3 years), Yearly: 3 cycles (3 years)
+
+        try {
+            razorpayPlanId = await getOrCreateRazorpayPlan({
+                price: selectedPlan[priceKey].price,
+                currency,
+                interval,
+                userType,
+                planId,
+            });
+
+            razorpaySubscription = await razorpayClient.subscriptions.create({
+                plan_id: razorpayPlanId,
+                total_count: totalCount,
+                quantity: 1,
+                notes: {
+                    tenantId: result.tenantId,  // ← Server-created IDs (secure)
+                    storeId: result.storeId,
+                    userId,
+                    userType,
+                    planId,
+                    priceKey,
+                    interval,
+                    name: session.user.name,
+                    email: session.user.email,
+                    price: selectedPlan[priceKey].price,
+                    remainingCredits: 0, // New user, no carry-forward credits
+                },
+            });
+        } catch (providerError) {
+            await compensateOnboardingPaymentProviderFailure({
+                businessName,
+                businessIndustry,
+                currency,
+                db,
+                interval,
+                planId,
+                storeId: result.storeId,
+                tenantId: result.tenantId,
+                userId,
+                userType,
+            });
+            throw providerError;
+        }
 
         await writeLogEntry({
             logFileName: LOG_FILE,
             logType: 'ONBOARDING_RAZORPAY_SUBSCRIPTION_CREATED',
-            data: { subscriptionId: razorpaySubscription.id, tenantId: result.tenantId }
+            data: getOnboardingSubscriptionLogContext({
+                businessName,
+                businessIndustry,
+                currency,
+                interval,
+                planId,
+                storeId: result.storeId,
+                subscriptionId: razorpaySubscription.id,
+                tenantId: result.tenantId,
+                userId,
+                userType,
+            }),
         });
 
         // 6. Create Firestore Subscription Record
@@ -246,10 +431,32 @@ export const POST = withAuth(async (request, session) => {
         await writeLogEntry({
             logFileName: LOG_FILE,
             logType: 'ONBOARDING_COMPLETE',
-            data: { userId, tenantId: result.tenantId, storeId: result.storeId, subscriptionId: razorpaySubscription.id }
+            data: getOnboardingSubscriptionLogContext({
+                businessName,
+                businessIndustry,
+                currency,
+                interval,
+                planId,
+                storeId: result.storeId,
+                subscriptionId: razorpaySubscription.id,
+                tenantId: result.tenantId,
+                userId,
+                userType,
+            }),
         });
 
-        console.log(`✅ [Onboarding] User ${userId} onboarded successfully with tenant ${result.tenantId}`);
+        logger.info('[Onboarding] User onboarded successfully', getOnboardingSubscriptionLogContext({
+            businessName,
+            businessIndustry,
+            currency,
+            interval,
+            planId,
+            storeId: result.storeId,
+            subscriptionId: razorpaySubscription.id,
+            tenantId: result.tenantId,
+            userId,
+            userType,
+        }));
 
         // 7. Return subscription + new IDs for session update
         return NextResponse.json({
@@ -259,11 +466,17 @@ export const POST = withAuth(async (request, session) => {
         });
 
     } catch (error) {
-        console.error('[Onboarding] Failed:', error);
+        const failureData = getRazorpayFailureLogData(
+            ONBOARDING_SUBSCRIPTION_FAILURE_CODE,
+            error,
+            onboardingLogContext,
+        );
+
+        logger.error('[Onboarding] Failed', new Error(ONBOARDING_SUBSCRIPTION_FAILURE_CODE), failureData);
         await writeLogEntry({
             logFileName: LOG_FILE,
             logType: 'ONBOARDING_ERROR',
-            data: { userId, error: (error as Error).message }
+            data: failureData,
         });
 
         // Use improved error handler with Firestore/Razorpay specific handling

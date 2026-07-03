@@ -210,6 +210,13 @@ Planned files:
 | `src/database/growthos/server.ts` | Admin SDK server read/write helpers for scoped kit/export documents. |
 | `src/lib/growthos/serverContext.ts` | Server-only source snapshot, entitlement context, and bounded API loading helpers. |
 
+Client response boundary:
+
+- `src/database/growthos/index.ts` sends GrowthOS route requests with no-store cache, same-origin credentials, and manual redirect handling.
+- `src/database/growthos/index.ts` parses GrowthOS route responses through `readJsonResponseWithLimit()` with a 64 KB cap.
+- Parse failures, rejected responses, and invalid successful envelopes log fixed GrowthOS client failure codes with bounded operation and response-status metadata only.
+- Owner-facing failure copy remains fixed per operation; raw API response text is not surfaced.
+
 ## 6. API Routes
 
 Use API routes only for operations that need server-side auth, paid capacity checks, provider calls, or write validation.
@@ -245,9 +252,9 @@ Implemented V1 launch accounting:
 
 | Operation | Accounting |
 | --- | --- |
-| Deterministic action ranking | Free. No provider call. |
-| Text kit generation | Free deterministic templates in V1. No provider call and no AI operation row. |
-| Review reply draft | Free deterministic triage in V1. No raw review text persisted. |
+| Deterministic action ranking | Platform-absorbed. No provider call. |
+| Text kit generation | Platform-absorbed deterministic templates in V1. No provider call and no AI operation row. |
+| Review reply draft | Platform-absorbed deterministic triage in V1. No raw review text persisted. |
 | Staff brief | 0 units in V1 deterministic mode. |
 | Existing image adaptation | 0 provider units; Storage/render cost only when pilot-enabled and owner-triggered. |
 | Missing item image | No provider call in V1. Use photo prompt later instead of generating fake food. |
@@ -334,6 +341,7 @@ Allowed:
 
 - copy to clipboard
 - fallback textarea copy when Clipboard API is unavailable, blocked, or slow
+- copied feedback only after Clipboard API success or acknowledged textarea fallback success
 - native share sheet
 - download text/image/PDF
 - print/export
@@ -397,7 +405,7 @@ If a background refresh is later approved, it must be added to the existing Menu
 Security-sensitive implementation requirements:
 
 - tenant isolation is mandatory on every API route and write
-- free/base users cannot call paid generation APIs directly
+- Starter/base plan users cannot call paid generation APIs directly
 - client Firestore writes to GrowthOS kit/export documents are not allowed; authenticated APIs write through server Admin SDK after entitlement and stale checks
 - output must not include hidden prompts, provider text, or raw model responses
 - review text must not be logged raw

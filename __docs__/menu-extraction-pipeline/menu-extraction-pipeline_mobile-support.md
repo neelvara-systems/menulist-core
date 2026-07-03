@@ -1,7 +1,7 @@
 # Menu Extraction Pipeline — Mobile Support
 
 **Status:** Implemented
-**Last Updated:** June 2, 2026
+**Last Updated:** July 1, 2026
 
 Mobile upload keeps the same owner flow:
 
@@ -13,3 +13,8 @@ Mobile upload keeps the same owner flow:
 
 Mobile does not use a separate extraction DAL. `src/components/mobile/sheets/MenuUploadSheet.tsx` calls the same `createProcessingJob()` helper used by desktop.
 
+Mobile upload enforces the same extraction file/page cap as desktop and the owner job API. The sheet imports `MAX_MENU_EXTRACTION_FILES`, rejects oversize multi-select batches, passes the remaining page slots into PDF conversion before canvas rendering, and checks the prepared file count before any Storage upload or processing-job creation. Owners can upload up to 15 menu photos or PDF pages at a time.
+
+Mobile upload cleanup is best-effort but observable. When mobile intake is cancelled, preflight ignores uploaded files, no files remain for job creation, or an existing active job is reused, the sheet still attempts the same uploaded-file deletes and logs `mobile_menu_upload_uploaded_file_cleanup_failed` if any cleanup promise rejects. The diagnostic records bounded project presence/length, cleanup reason presence/length, attempted cleanup count, failed cleanup count, and source error metadata only. It must not log raw Storage URLs, filenames, file UIDs, project IDs, job IDs, or exception text.
+
+Mobile and desktop review apply use the shared extraction apply path. When that path saves linked-outlet review changes through `/api/projects/outlet-save`, it uses the shared no-store, same-origin, manual-redirect request policy, caps the acknowledgement at 2MB, and requires `success: true` plus matching `projectId` and `masterProjectId` before treating the save as complete.

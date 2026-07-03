@@ -15,17 +15,52 @@ import {
     updateRazorpaySubscriptionQuantity,
 } from "@lib/billing/subscriptionProviderSync";
 import { logger } from "@lib/monitoring/logger";
+import { getBoundedMultiOutletStringContext, logMultiOutletFailure } from "@lib/multiOutlet/diagnostics";
 import { invalidateOwnerBusinessAssistantPacketCache } from "@lib/ownerBusinessAssistant/server/contextPacketCache";
 import { requireAnyStorePermissionForStoreData } from "@lib/permissions/server";
 import { checkRateLimit } from "@lib/rateLimit";
+import { readBoundedJsonBody } from "@lib/security/boundedRequestBody";
 import { validateAPIInput } from "@lib/security/inputValidation";
-import { secureError } from "@lib/security/secureLogger";
+import { touchDigitalScreenContentVersionForStoreServer } from "@lib/screen/serverScreenInvalidation";
 import { revalidateTag } from "next/cache";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { verifyTenantAccess, withAuth } from "../../../../middleware/auth";
+import { hashPublicRateLimitValue } from "src/middleware/publicApi";
 
 const schema = z.object({ outletStoreId: z.number().int().positive() });
+const OUTLET_ACTION_MAX_BODY_BYTES = 8 * 1024;
+const INVALID_OUTLET_TARGET_CODE = "INVALID_OUTLET_TARGET";
+
+class InvalidOutletTargetError extends Error {
+    readonly code = INVALID_OUTLET_TARGET_CODE;
+
+    constructor() {
+        super(INVALID_OUTLET_TARGET_CODE);
+        this.name = "InvalidOutletTargetError";
+    }
+}
+
+const isInvalidOutletTargetError = (error: unknown): error is InvalidOutletTargetError => (
+    error instanceof InvalidOutletTargetError
+    || (
+        typeof error === "object"
+        && error !== null
+        && (error as { code?: unknown }).code === INVALID_OUTLET_TARGET_CODE
+    )
+);
+
+const getOutletDeactivateLogContext = (
+    tenantId: number,
+    storeId: number,
+    outletStoreId?: number,
+    extra: Record<string, boolean | number | string | null | undefined> = {},
+) => ({
+    ...getBoundedMultiOutletStringContext("tenantId", tenantId),
+    ...getBoundedMultiOutletStringContext("storeId", storeId),
+    ...getBoundedMultiOutletStringContext("outletStoreId", outletStoreId),
+    ...extra,
+});
 
 export const POST = withAuth(async (request, session) => {
     if (!FEATURE_FLAGS.ENABLE_OUTLET_DEACTIVATE) {
@@ -35,14 +70,22 @@ export const POST = withAuth(async (request, session) => {
     if (!tenantId || !storeId) return NextResponse.json({ error: "Not onboarded" }, { status: 400 });
     if (!verifyTenantAccess(session, tenantId, storeId, request)) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
-    const rlResult = await checkRateLimit({ key: `outlet-deactivate:${tenantId}`, limit: 10, window: 3600 });
+    const tenantRateLimitHash = hashPublicRateLimitValue(tenantId);
+    const rlResult = await checkRateLimit({ key: `outlet-deactivate:${tenantRateLimitHash}`, limit: 10, window: 3600 });
     if (!rlResult.allowed) return NextResponse.json({ error: "Too many requests" }, { status: 429 });
 
+    let parsedOutletStoreId: number | undefined;
+
     try {
-        const body = await request.json();
+        const bodyResult = await readBoundedJsonBody(request, OUTLET_ACTION_MAX_BODY_BYTES, {
+            invalidJsonMessage: "Invalid input",
+        });
+        if (bodyResult.ok === false) return bodyResult.response;
+        const body = bodyResult.data as any;
         const v = validateAPIInput(schema, body);
         if (!v.success) return NextResponse.json({ error: "Invalid input" }, { status: 400 });
         const { outletStoreId } = v.data;
+        parsedOutletStoreId = outletStoreId;
 
         const db = admin.firestore();
         const now = admin.firestore.Timestamp.now();
@@ -104,7 +147,7 @@ export const POST = withAuth(async (request, session) => {
                 || Number(freshTarget?.tenantId) !== Number(tenantId)
                 || freshTarget?.isMaster === true
             ) {
-                throw new Error("INVALID_OUTLET_TARGET");
+                throw new InvalidOutletTargetError();
             }
             const freshStoresList = freshTenantSnap.data()?.storesList || [];
             const updatedStoresList = freshStoresList.map((s: any) =>
@@ -149,23 +192,29 @@ export const POST = withAuth(async (request, session) => {
                 }
             } catch (billingErr) {
                 // Log but don't fail deactivation — billing can be reconciled later
-                secureError("[Outlets] Billing reduction failed (non-blocking)", billingErr as Error, {
-                    tenantId, outletStoreId,
-                });
+                logMultiOutletFailure(
+                    "multi_outlet_billing_reduction_failed",
+                    billingErr,
+                    getOutletDeactivateLogContext(tenantId, storeId, outletStoreId, {
+                        activeStoresAfterDeactivation,
+                    }),
+                );
             }
         }
 
         // Security Audit: Log outlet deactivation
         logger.security('Outlet Deactivated', {
             action: 'DEACTIVATE_OUTLET',
-            tenantId,
-            masterStoreId: storeId,
-            outletStoreId,
-            billingReduced,
+            ...getOutletDeactivateLogContext(tenantId, storeId, outletStoreId, {
+                activeStoresAfterDeactivation,
+                billingReduced,
+            }),
         }, 'medium');
         revalidateTag(`menu-store-${outletStoreId}`);
         revalidateTag(`store-${outletStoreId}`);
         revalidateTag('client-stores');
+        revalidateTag('screen-data');
+        await touchDigitalScreenContentVersionForStoreServer(outletStoreId, 'outletDeactivate');
         await invalidateOwnerBusinessAssistantPacketCache({
             tId: tenantId,
             sId: outletStoreId,
@@ -173,10 +222,14 @@ export const POST = withAuth(async (request, session) => {
 
         return NextResponse.json({ success: true, outletStoreId, deactivatedAt: now, billingReduced });
     } catch (error) {
-        if ((error as Error).message === "INVALID_OUTLET_TARGET") {
+        if (isInvalidOutletTargetError(error)) {
             return NextResponse.json({ error: "Invalid outlet" }, { status: 400 });
         }
-        secureError("[Outlets] Deactivate failed", error as Error, { tenantId, storeId });
+        logMultiOutletFailure(
+            "multi_outlet_deactivate_failed",
+            error,
+            getOutletDeactivateLogContext(tenantId, storeId, parsedOutletStoreId),
+        );
         return NextResponse.json({ error: "Deactivation failed" }, { status: 500 });
     }
 });

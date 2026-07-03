@@ -317,6 +317,8 @@ Shared helpers:
 
 Store-level business-copy automation persists lightweight metadata on the store document under `businessCopyMeta`.
 
+Desktop and mobile Business Copy generation or missing-translation repair must require an acknowledged `updateStore()` result before local public copy state, audit metadata, or success copy changes. Swallowed DAL fallbacks use bounded rejected codes such as `desktop_business_copy_store_update_rejected`, `desktop_business_copy_translation_store_update_rejected`, `mobile_business_copy_store_update_rejected`, and `mobile_business_copy_translation_store_update_rejected`.
+
 Current audit fields:
 
 - `lastGeneratedAt`

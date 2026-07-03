@@ -12,14 +12,17 @@ import { FEATURE_FLAGS } from '@config/features';
 import { ANSWERLATTICE_PERMISSION_KEYS } from '@constant/answerlattice/permissions';
 import { DB_COLLECTIONS } from '@constant/database';
 import { requireAnswerlatticePermission } from '@lib/answerlattice/accessControl';
+import { buildAnswerlatticeRateLimitKey } from '@lib/answerlattice/rateLimitKeys';
 import { resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
 import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
 import { checkRateLimit } from '@lib/rateLimit';
-import { secureError, secureLog } from '@lib/security/secureLogger';
+import { getBoundedRuntimeStringContext, logRuntimeDiagnostic, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
+import { readBoundedJsonBody } from '@lib/security/boundedRequestBody';
 import { FieldValue } from 'firebase-admin/firestore';
 import { NextRequest, NextResponse } from 'next/server';
 import { z, ZodError } from 'zod';
 import { withAuth } from '../../../../middleware/auth';
+import { applyAnswerlatticeDashboardReadRateLimit } from '../readRateLimit';
 
 const INTEGRATION_EVENT_TYPES = [
     'drift_detected',
@@ -85,6 +88,7 @@ const getAnswerlatticeDb = () => {
     const db = answerlatticeFirestoreAdmin as any;
     return db && typeof db.collection === 'function' ? answerlatticeFirestoreAdmin : null;
 };
+const INTEGRATIONS_SAVE_MAX_BODY_BYTES = 16 * 1024;
 
 const configDocId = (tenantId: number, storeId: number) => `integrationConfig_${tenantId}_${storeId}`;
 
@@ -112,6 +116,10 @@ const toIso = (value: any): string | null => {
     return null;
 };
 
+const ownerSafeIntegrationError = (value: unknown): string | null => (
+    typeof value === 'string' && value.trim().length > 0 ? 'Delivery needs review.' : null
+);
+
 const buildSafeHealth = (data: Record<string, any> = {}) => {
     const adapters = data.adapters || {};
     return {
@@ -120,14 +128,14 @@ const buildSafeHealth = (data: Record<string, any> = {}) => {
             lastAttemptAt: toIso(adapters.slack?.lastAttemptAt),
             lastSuccessAt: toIso(adapters.slack?.lastSuccessAt),
             lastFailureAt: toIso(adapters.slack?.lastFailureAt),
-            lastError: typeof adapters.slack?.lastError === 'string' ? adapters.slack.lastError : null,
+            lastError: ownerSafeIntegrationError(adapters.slack?.lastError),
         },
         email: {
             lastStatus: typeof adapters.email?.lastStatus === 'string' ? adapters.email.lastStatus : null,
             lastAttemptAt: toIso(adapters.email?.lastAttemptAt),
             lastSuccessAt: toIso(adapters.email?.lastSuccessAt),
             lastFailureAt: toIso(adapters.email?.lastFailureAt),
-            lastError: typeof adapters.email?.lastError === 'string' ? adapters.email.lastError : null,
+            lastError: ownerSafeIntegrationError(adapters.email?.lastError),
         },
     };
 };
@@ -153,6 +161,9 @@ export const GET = withAuth(async (_request: NextRequest, session) => {
     if (!FEATURE_FLAGS.ENABLE_ANSWERLATTICE_WORKFLOW_INTEGRATIONS) {
         return NextResponse.json({ error: 'Answerlattice integrations are not enabled.' }, { status: 403 });
     }
+    const rateLimitResponse = await applyAnswerlatticeDashboardReadRateLimit(_request, session, 'integrations');
+    if (rateLimitResponse) return rateLimitResponse;
+
     const permission = await requireAnswerlatticePermission(_request, session, ANSWERLATTICE_PERMISSION_KEYS.MANAGE_INTEGRATIONS);
     if (permission.response) return permission.response;
 
@@ -171,9 +182,9 @@ export const GET = withAuth(async (_request: NextRequest, session) => {
             healthSnap.exists ? healthSnap.data() || {} : {},
         ));
     } catch (error) {
-        secureError('[Answerlattice Integrations] Failed to load settings', error as Error, {
-            tenantId: scope.tenantId,
-            storeId: scope.storeId,
+        logRuntimeFailure('answerlattice_integrations_settings_load_failed', error, {
+            ...getBoundedRuntimeStringContext('tenantId', scope.tenantId),
+            ...getBoundedRuntimeStringContext('storeId', scope.storeId),
         });
         return NextResponse.json({ error: 'Failed to load integration settings' }, { status: 500 });
     }
@@ -193,7 +204,7 @@ export const PUT = withAuth(async (request: NextRequest, session) => {
 
     try {
         const rateLimitResult = await checkRateLimit({
-            key: `answerlattice-integrations:${scope.storeId}`,
+            key: buildAnswerlatticeRateLimitKey('answerlattice-integrations', scope.storeId),
             limit: 12,
             window: 60,
         });
@@ -201,7 +212,18 @@ export const PUT = withAuth(async (request: NextRequest, session) => {
             return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
         }
 
-        const parsed = IntegrationsSaveSchema.parse(await request.json().catch(() => null));
+        const bodyResult = await readBoundedJsonBody(request, INTEGRATIONS_SAVE_MAX_BODY_BYTES, {
+            invalidJsonMessage: 'Invalid integration settings',
+            tooLargeMessage: 'Request body too large',
+        });
+        if (bodyResult.ok === false) {
+            return NextResponse.json(
+                { error: bodyResult.response.status === 413 ? 'Request body too large' : 'Invalid integration settings' },
+                { status: bodyResult.response.status },
+            );
+        }
+
+        const parsed = IntegrationsSaveSchema.parse(bodyResult.data);
         const docRef = db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc(configDocId(scope.tenantId, scope.storeId));
         const existingSnap = await docRef.get();
         const existing = existingSnap.exists ? existingSnap.data() || {} : {};
@@ -236,9 +258,9 @@ export const PUT = withAuth(async (request: NextRequest, session) => {
         };
 
         await docRef.set(nextConfig, { merge: true });
-        secureLog('[Answerlattice Integrations] Settings saved', {
-            tenantId: scope.tenantId,
-            storeId: scope.storeId,
+        logRuntimeDiagnostic('answerlattice_integrations_settings_saved', {
+            ...getBoundedRuntimeStringContext('tenantId', scope.tenantId),
+            ...getBoundedRuntimeStringContext('storeId', scope.storeId),
             slackEnabled: nextConfig.slack.enabled,
             emailEnabled: nextConfig.email.enabled,
             emailRecipientCount: nextConfig.email.recipients.length,
@@ -249,9 +271,9 @@ export const PUT = withAuth(async (request: NextRequest, session) => {
         if (error instanceof ZodError) {
             return NextResponse.json({ error: 'Invalid integration settings' }, { status: 400 });
         }
-        secureError('[Answerlattice Integrations] Failed to save settings', error as Error, {
-            tenantId: scope.tenantId,
-            storeId: scope.storeId,
+        logRuntimeFailure('answerlattice_integrations_settings_save_failed', error, {
+            ...getBoundedRuntimeStringContext('tenantId', scope.tenantId),
+            ...getBoundedRuntimeStringContext('storeId', scope.storeId),
         });
         return NextResponse.json({ error: 'Failed to save integration settings' }, { status: 500 });
     }

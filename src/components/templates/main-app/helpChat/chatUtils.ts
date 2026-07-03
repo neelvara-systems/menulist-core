@@ -1,3 +1,5 @@
+import { getBoundedHelpChatStringContext, logHelpChatFailure } from './helpChatDiagnostics';
+
 /**
  * Helper: Clear localStorage draft for current session
  */
@@ -8,7 +10,9 @@ export function clearDraft(sessionId: string | null | undefined): void {
         localStorage.removeItem(draftKey);
         localStorage.removeItem(imageDraftKey);
     } catch (error) {
-        console.warn('Failed to clear draft from localStorage:', error);
+        logHelpChatFailure('help_chat_draft_clear_failed', error, {
+            ...getBoundedHelpChatStringContext('sessionId', sessionId),
+        });
     }
 }
 

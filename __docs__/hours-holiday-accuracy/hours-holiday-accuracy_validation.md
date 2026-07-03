@@ -1,11 +1,13 @@
-# 🔒 FINAL COMPREHENSIVE VALIDATION REPORT
+# Historical Validation Report
 
 ## Hours Status Display (Feature #2A) - Spec-Perfect Implementation Check
 
 **Document Type:** Validation Report  
 **Validated On:** January 18, 2026  
 **Spec Version:** P0 (Minimal Badge)  
-**Status:** ✅ READY FOR TESTING
+**Status:** Historical validation evidence
+
+> **Launch boundary (July 2, 2026):** This report is historical source-verification evidence only. It is not current release approval. Current release approval still requires the active production-readiness audit, External Certification Runbook evidence, current source gates including `npm run verify:public-business-truth` and `npm run verify:menulist-api-tenant-safety`, authenticated desktop/mobile working-hours save QA, customer-facing public menu/OBP hours output QA across timezone/open/closed/temporary-status cases, cache/deploy evidence for store-output writes, target deploy evidence, and production-host smoke.
 
 ---
 
@@ -118,12 +120,14 @@
 
 ---
 
-## ✅ FINAL VERDICT: READY FOR TESTING
+## Historical Validation Result: Source Evidence Only
 
 - **Total Files Created:** 4
 - **Total Files Modified:** 3
 - **Lines of Code:** ~320
 - **Spec Compliance:** 100% (18/18 items)
+- **Current Release Approval:** Not granted by this report
+- **Required Current Evidence:** Active production-readiness audit, External Certification Runbook evidence, current source gates including `npm run verify:public-business-truth` and `npm run verify:menulist-api-tenant-safety`, authenticated desktop/mobile working-hours save QA, customer-facing public menu/OBP hours output QA, cache/deploy evidence for store-output writes, target deploy evidence, and production-host smoke
 
 ---
 
@@ -195,7 +199,7 @@ Wait 60 seconds near opening/closing time - badge should update automatically.
 
 **Implementation Complete:** January 18, 2026  
 **Validated By:** Cascade AI  
-**Ready For:** Manual QA Testing
+**Current Release Boundary:** Requires the active production-readiness audit, External Certification Runbook evidence, current source gates, authenticated desktop/mobile working-hours save QA, customer-facing public menu/OBP hours output QA, cache/deploy evidence for store-output writes, target deploy evidence, and production-host smoke.
 
 ---
 

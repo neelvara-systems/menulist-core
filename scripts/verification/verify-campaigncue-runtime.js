@@ -92,6 +92,10 @@ function verifyApiRoutes() {
   assertIncludes(designCueRoute, "feature: \"AI_OPERATION\"", "Design Cue model route AI rate limit");
   assertIncludes(designCueRoute, "programmatic_required", "Design Cue model route fails closed to deterministic path");
   assertIncludes(designCueRoute, "Invalid JSON", "Design Cue model route returns safe invalid JSON response");
+  assertIncludes(designCueRoute, "getCampaignCueSecurityLogContext", "Design Cue model route uses bounded security log context");
+  assertIncludes(designCueRoute, 'getBoundedSecurityStringContext("validationError", validation.error)', "Design Cue validation log bounds validation detail");
+  assertNotIncludes(designCueRoute, "buildSecurityContext", "Design Cue model route must not spread raw security context");
+  assertNotIncludes(designCueRoute, "error: validation.error", "Design Cue model route must not log raw validation errors");
   assertNotIncludes(read("src/app/api/campaigncue/integrations/route.ts"), "export const POST", "CampaignCue integrations route is read-only in export runtime");
   assertIncludes(read("src/app/api/campaigncue/locations/route.ts"), "CampaignCueLocationSchema", "location validation");
   assertIncludes(read("src/app/api/campaigncue/campaigns/route.ts"), "listCampaignCueCampaignsServer", "campaign list direct bounded loader");
@@ -131,8 +135,31 @@ function verifyApiRoutes() {
 
   const apiGuards = read("src/lib/campaigncue/apiGuards.ts");
   assertIncludes(apiGuards, "parseCampaignCueJsonBody", "CampaignCue shared invalid JSON parser");
+  assertIncludes(apiGuards, "readBoundedJsonBody", "CampaignCue shared parser uses bounded JSON body reader");
+  assertIncludes(apiGuards, "CAMPAIGNCUE_JSON_BODY_MAX_BYTES", "CampaignCue shared parser declares a body cap");
   assertIncludes(apiGuards, "Invalid JSON - CampaignCue API", "CampaignCue invalid JSON security log");
-  assertIncludes(apiGuards, "NextResponse.json({ error: \"Invalid JSON\" }, { status: 400 })", "CampaignCue invalid JSON returns 400");
+  assertIncludes(apiGuards, 'invalidJsonMessage: "Invalid JSON"', "CampaignCue malformed JSON response stays generic");
+  assertNotIncludes(apiGuards, "params.request.json()", "CampaignCue shared parser must not parse unbounded JSON");
+  assertIncludes(apiGuards, "getBoundedSecurityRouteContext", "CampaignCue API guard bounded route context");
+  assertIncludes(apiGuards, "getCampaignCueSecurityLogContext", "CampaignCue API guard bounded security log context");
+  assertIncludes(apiGuards, 'getBoundedSecurityStringContext("endpoint", endpoint)', "CampaignCue API guard bounded endpoint metadata");
+  assertIncludes(apiGuards, 'getBoundedSecurityStringContext("method", request.method)', "CampaignCue API guard bounded method metadata");
+  assertNotIncludes(apiGuards, "buildSecurityContext", "CampaignCue API guard must not spread raw security context");
+  assertNotIncludes(apiGuards, "endpoint: request.nextUrl.pathname", "CampaignCue API guard must not log raw route path");
+  assertNotIncludes(apiGuards, "endpoint: params.request.nextUrl.pathname", "CampaignCue API guard must not log raw params route path");
+  assertNotIncludes(apiGuards, "feature: params.feature", "CampaignCue API guard must not log raw rate-limit feature");
+  assertIncludes(apiGuards, "hashPublicRateLimitValue", "CampaignCue API guard hashes rate-limit key segments");
+  assertIncludes(apiGuards, "userRateLimitHash", "CampaignCue API guard computes hashed user segment");
+  assertIncludes(apiGuards, "tenantRateLimitHash", "CampaignCue API guard computes hashed tenant segment");
+  assertIncludes(apiGuards, "storeRateLimitHash", "CampaignCue API guard computes hashed store segment");
+  assertIncludes(apiGuards, "key: `${CAMPAIGNCUE_RATE_LIMIT_NAMESPACE}:${params.keyPrefix}:${userRateLimitHash}:${tenantRateLimitHash}:${storeRateLimitHash}`", "CampaignCue API guard stores hashed rate-limit key segments");
+  assertIncludes(apiGuards, "getBoundedSecurityStringContext(\"tenantId\", scope.tId)", "CampaignCue tenant violation log uses bounded tenant metadata");
+  assertIncludes(apiGuards, "getBoundedSecurityStringContext(\"storeId\", scope.sId)", "CampaignCue tenant/rate-limit logs use bounded store metadata");
+  assertIncludes(apiGuards, "getBoundedSecurityStringContext(\"userId\", scope.userId)", "CampaignCue rate-limit log uses bounded user metadata");
+  assertNotIncludes(apiGuards, "key: `${CAMPAIGNCUE_RATE_LIMIT_NAMESPACE}:${params.keyPrefix}:${scope.userId || \"unknown\"}:${scope.tId || \"_\"}:${scope.sId || \"_\"}`", "CampaignCue API guard must not store raw rate-limit key segments");
+  assertNotIncludes(apiGuards, "tenantId: scope.tId", "CampaignCue API guard must not log raw tenant scope");
+  assertNotIncludes(apiGuards, "storeId: scope.sId", "CampaignCue API guard must not log raw store scope");
+  assertNotIncludes(apiGuards, "userId: scope.userId", "CampaignCue API guard must not log raw user scope");
   [
     "src/app/api/campaigncue/workspace/route.ts",
     "src/app/api/campaigncue/campaigns/route.ts",
@@ -154,6 +181,7 @@ function verifyApiRoutes() {
 
 function verifyServerRuntime() {
   const server = read("src/lib/campaigncue/server.ts");
+  const cueLayersServer = read("src/lib/campaigncue/cue-layers/server.ts");
   const dailyDesk = read("src/lib/campaigncue/dailyDesk.ts");
   const decisionEngine = read("src/lib/campaigncue/decisionEngine.ts");
   const dailyDeskConstants = read("src/constants/campaigncue/dailyDesk.ts");
@@ -271,6 +299,21 @@ function verifyServerRuntime() {
   assertIncludes(server, "manual_export_used", "CampaignCue manual export used event");
   assertIncludes(errors, "CAMPAIGNCUE_FIREBASE_UNAVAILABLE", "CampaignCue Firebase setup error code");
   assertIncludes(server, "status: 503", "CampaignCue Firebase setup HTTP status");
+  assertIncludes(server, "collectCampaignCueFirebaseErrorIndicators", "CampaignCue Firebase setup classifier uses structured indicators");
+  assertIncludes(server, "getStructuredErrorField(error, \"code\")", "CampaignCue idempotency conflict uses structured error code");
+  assertIncludes(server, "clientMessage: string;", "CampaignCue local API errors expose explicit client messages");
+  assertIncludes(server, "error: error.clientMessage", "CampaignCue API errors return explicit client messages");
+  assertNotIncludes(server, "error: error.message", "CampaignCue API errors must not return generic Error.message values");
+  assertIncludes(server, "toCampaignCueFailureCode", "CampaignCue API diagnostics derive fixed failure codes from fixed route labels");
+  assertIncludes(server, "new Error(failureCode)", "CampaignCue API diagnostics capture fixed-code errors");
+  assertIncludes(server, "getCampaignCueSourceErrorContext(error)", "CampaignCue API diagnostics include bounded source metadata");
+  assertIncludes(server, "getCampaignCueSafeLogMetadata(metadata)", "CampaignCue API diagnostics bound route metadata");
+  assertNotIncludes(server, "logger.error(message, error", "CampaignCue API diagnostics must not capture raw route exceptions");
+  assertNotIncludes(server, "stringifyErrorField", "CampaignCue runtime must not classify provider/setup errors from raw stringified error text");
+  assertNotIncludes(server, "message.includes(\"already exists\")", "CampaignCue idempotency conflict must not parse raw exception messages");
+  assertNotIncludes(server, "permission denied on resource project campaigncue", "CampaignCue setup-blocked classifier must not rely on raw Firebase exception text");
+  assertIncludes(cueLayersServer, "logCampaignCueServerError(\"CampaignCue CueLayers API error\"", "CampaignCue CueLayers API uses shared bounded diagnostics");
+  assertNotIncludes(cueLayersServer, "logger.error(\"CampaignCue CueLayers API error\", error", "CampaignCue CueLayers API must not raw-log exceptions");
   assertIncludes(errors, "CAMPAIGNCUE_RUNTIME_ERROR", "CampaignCue generic runtime error code");
   assertIncludes(dailyDesk, "buildCampaignCueDailyDesk", "CampaignCue Daily Desk shared builder exists");
   assertIncludes(dailyDesk, "buildCampaignCueDecisions", "CampaignCue Daily Desk uses deterministic Decision Engine");
@@ -334,7 +377,6 @@ function verifyServerRuntime() {
   assertIncludes(campaigncueTypes, "CampaignCueBrandPlaybook", "CampaignCue Brand Playbook type exists");
   assertIncludes(campaigncueTypes, "CampaignCueOutputPackProofDeck", "CampaignCue Proof Deck type exists");
 
-  const cueLayersServer = read("src/lib/campaigncue/cue-layers/server.ts");
   const cueLayersProjection = read("src/lib/campaigncue/cue-layers/editorProjection.ts");
   const cueLayersStorage = read("src/lib/campaigncue/cue-layers/storagePaths.ts");
   const cueLayersModels = read("src/lib/campaigncue/cue-layers/modelRegistry.ts");
@@ -413,6 +455,22 @@ function verifyClientRuntime() {
   assertIncludes(app, "credentials: \"include\"", "CampaignCue workspace fetch includes credentials");
   assertIncludes(app, "cache: \"no-store\"", "CampaignCue workspace fetch avoids stale auth data");
   assertIncludes(app, "updateOverview(", "CampaignCue mutation responses merge into local overview");
+  assertIncludes(app, "getCampaignCueWorkspaceFailureNotice", "CampaignCue workspace fixed failure-notice helper");
+  assertIncludes(app, "CAMPAIGNCUE_WORKSPACE_RESPONSE_JSON_MAX_BYTES", "CampaignCue workspace response cap");
+  assertIncludes(app, "readCampaignCueWorkspaceData", "CampaignCue workspace shared response acknowledgement helper");
+  assertIncludes(app, "readJsonResponseWithLimit<unknown>", "CampaignCue workspace bounded response parser");
+  assertIncludes(app, "campaigncue_workspace_response_parse_failed", "CampaignCue workspace response parse diagnostic");
+  assertIncludes(app, "campaigncue_workspace_response_rejected", "CampaignCue workspace response rejected diagnostic");
+  assertIncludes(app, "campaigncue_workspace_response_invalid", "CampaignCue workspace response invalid diagnostic");
+  assertIncludes(app, "isCampaignCueOverviewData", "CampaignCue workspace overview response guard");
+  assertIncludes(app, "isCueLayerBootPackageData", "CampaignCue CueLayers boot response guard");
+  assertIncludes(app, "isCueLayerUploadResultData", "CampaignCue CueLayers upload response guard");
+  assertIncludes(app, "isAssetDownloadData", "CampaignCue asset-download response guard");
+  assertNotIncludes(app, "setNotice(error instanceof Error ? error.message", "CampaignCue workspace notices avoid raw exception messages");
+  assertNotIncludes(app, "error: error instanceof Error ? error.message", "CampaignCue workspace template state avoids raw exception messages");
+  assertNotIncludes(app, "payload?.error ||", "CampaignCue workspace response branches avoid raw API response text");
+  assertNotIncludes(app, "res.json().catch(() => ({})", "CampaignCue workspace avoids silent direct JSON fallback");
+  assertNotIncludes(app, "await res.json()", "CampaignCue workspace avoids direct response JSON parsing");
   assertNotIncludes(app, "await load();", "CampaignCue successful mutations avoid full overview reloads");
   assertIncludes(app, "state.status === 401", "CampaignCue signed-out state");
   assertIncludes(app, "CAMPAIGNCUE_ERROR_CODES.FIREBASE_UNAVAILABLE", "CampaignCue setup-blocked client mapping");
@@ -495,6 +553,17 @@ function verifyClientRuntime() {
   assertIncludes(app, "Use this campaign", "CampaignCue owner delivery surface frames manual usage");
   assertIncludes(app, "Local visibility", "CampaignCue owner home exposes local visibility cues");
   assertIncludes(app, "copyHandoffValue", "CampaignCue manual handoff supports browser-local copy only");
+  assertIncludes(app, "copyCampaignCueHandoffValueToClipboard", "CampaignCue manual handoff copy acknowledgement helper");
+  assertIncludes(app, "campaigncue_handoff_copy_clipboard_unavailable", "CampaignCue manual handoff unavailable clipboard failure code");
+  assertIncludes(app, "campaigncue_handoff_copy_fallback_failed", "CampaignCue manual handoff fallback failure code");
+  assertIncludes(app, "campaigncue_handoff_copy_failed", "CampaignCue manual handoff copy failure diagnostic");
+  assertIncludes(app, "hasCampaignCueHandoffClipboardWrite", "CampaignCue manual handoff Clipboard support helper");
+  assertIncludes(app, "hasCampaignCueHandoffCopyFallback", "CampaignCue manual handoff fallback support helper");
+  assertIncludes(app, "const copied = document.execCommand(\"copy\");", "CampaignCue manual handoff textarea copy acknowledgement");
+  assertIncludes(app, "hasClipboardWrite", "CampaignCue manual handoff clipboard support metadata");
+  assertIncludes(app, "hasCopyFallback: hasCampaignCueHandoffCopyFallback()", "CampaignCue manual handoff fallback support metadata");
+  assertNotIncludes(app, "void navigator.clipboard.writeText(value)\n            .then", "CampaignCue manual handoff avoids direct clipboard promise chain");
+  assertNotIncludes(app, "await navigator.clipboard.writeText(value);\n};", "CampaignCue manual handoff avoids Clipboard-only acknowledgement");
   assertIncludes(app, "selectedOutcomeSignalId", "CampaignCue result memory tracks selected owner signal");
   assertIncludes(app, "resultSignalId", "CampaignCue record-result action sends structured result signal");
   assertIncludes(app, "Record result", "CampaignCue owner can record manual outcomes");
@@ -724,10 +793,39 @@ function verifySharedCreativeEditor() {
   assertIncludes(editor, "buildCreativeEditorPathTextElement", "Shared editor path text tool");
   assertIncludes(editor, "buildCreativeEditorHexagonElement", "Shared editor hexagon tool");
   assertIncludes(editor, "buildCreativeEditorStarElement", "Shared editor star tool");
+  assertIncludes(editor, "showCreativeEditorFailure", "Shared editor bounded failure helper");
+  [
+    "creative_editor_canvas_load_failed",
+    "creative_editor_fabric_load_failed",
+    "creative_editor_ai_suggestion_copy_failed",
+    "creative_editor_ai_tool_failed",
+    "creative_editor_design_cue_failed",
+    "creative_editor_design_cue_apply_failed",
+    "creative_editor_design_import_failed",
+    "creative_editor_image_import_failed",
+    "creative_editor_image_replace_failed",
+    "creative_editor_png_clipboard_copy_failed",
+    "creative_editor_base64_clipboard_copy_failed",
+    "creative_editor_export_bundle_failed",
+    "creative_editor_export_failed",
+    "creative_editor_template_save_failed",
+  ].forEach((failureCode) => {
+    assertIncludes(editor, failureCode, `Shared editor bounded failure code ${failureCode}`);
+  });
+  assertNotIncludes(editor, "setNotice(error instanceof Error ? error.message", "Shared editor notices do not surface raw exception messages");
+  assertNotIncludes(editor, "text: error instanceof Error ? error.message", "Shared editor AI findings do not surface raw exception messages");
   assertIncludes(editor, "finishPolygonDraft", "Shared editor interactive polygon drawing");
   assertIncludes(editor, "distributeSelection", "Shared editor multi-select distribution");
   assertIncludes(editor, "copyBase64ToClipboard", "Shared editor base64 clipboard export");
   assertIncludes(editor, "copyPngToClipboard", "Shared editor PNG clipboard export");
+  assertIncludes(editor, "copyRuntimeTextToClipboard(suggestionValue.text)", "Shared editor AI suggestion copy uses acknowledged text clipboard helper");
+  assertIncludes(editor, "copyRuntimeTextToClipboard(dataUrl)", "Shared editor base64 copy uses acknowledged text clipboard helper");
+  assertIncludes(editor, "hasClipboardWrite: hasRuntimeClipboardWrite()", "Shared editor text-copy diagnostics include Clipboard API support");
+  assertIncludes(editor, "hasCopyFallback: hasRuntimeCopyFallback()", "Shared editor text-copy diagnostics include fallback support");
+  assertIncludes(editor, "suggestionTextLength: suggestionValue.text.length", "Shared editor AI suggestion copy logs bounded text length only");
+  assertIncludes(editor, "base64TextLength: dataUrl.length", "Shared editor base64 copy logs bounded text length only");
+  assertNotIncludes(editor, "await navigator.clipboard.writeText(suggestionValue.text)", "Shared editor AI suggestion copy must not use direct Clipboard API success");
+  assertNotIncludes(editor, "await navigator.clipboard.writeText(dataUrl)", "Shared editor base64 copy must not use direct Clipboard API success");
   assertIncludes(editor, "replaceSelectedImageFile", "Shared editor replace-image action");
   assertIncludes(editor, "Upload image file", "Shared editor Images drawer exposes local raster upload");
   assertIncludes(editor, "PROJECT_STYLE_PRESETS", "Shared editor Vista-style project style presets");
@@ -1405,12 +1503,15 @@ function verifyDocsAlignment() {
   assertIncludes(websiteFeatures, "Creative Trust Center", "CampaignCue website feature constants include Creative Trust Center");
   assertIncludes(websiteFeatures, "Brand Playbook and Proof Deck", "CampaignCue website feature constants include Brand Playbook and Proof Deck");
   assertIncludes(websiteFeatures, "Reusable Pack Templates", "CampaignCue website feature constants include Reusable Pack Templates");
-  assertIncludes(publicSite, "CampaignCueCatalog", "CampaignCue public site exposes Seesaw-inspired pack index");
-  assertIncludes(publicSite, "Pack index", "CampaignCue public site labels the pack index");
-  assertIncludes(publicSite, "Reusable templates", "CampaignCue public pack index exposes reusable templates");
-  assertIncludes(publicSite, "Brand Playbook", "CampaignCue public pack index exposes Brand Playbook guidance");
-  assertIncludes(publicSite, "Proof deck", "CampaignCue public pack index exposes proof deck review");
-  assertIncludes(publicSite, "No direct post", "CampaignCue pack index preserves export-first boundary");
+  assertIncludes(publicSite, "CampaignCueSwitchStrip", "CampaignCue public site exposes category switch strip");
+  assertIncludes(publicSite, "Do not buy another blank marketing tool.", "CampaignCue public site explains why visitors should switch");
+  assertIncludes(publicSite, "Generic design tools", "CampaignCue public switch strip compares generic design tools");
+  assertIncludes(publicSite, "Social schedulers", "CampaignCue public switch strip compares social schedulers");
+  assertIncludes(publicSite, "AI copy tools", "CampaignCue public switch strip compares AI copy tools");
+  assertIncludes(publicSite, "Agency handoff", "CampaignCue public switch strip compares agency handoff");
+  assertNotIncludes(publicSite, "CampaignCueCatalog", "CampaignCue compressed homepage removes the separate pack index component");
+  assertNotIncludes(publicSite, "OwnerDayPath", "CampaignCue compressed homepage removes the separate owner path component");
+  assertNotIncludes(publicSite, "WorkflowRail", "CampaignCue compressed homepage removes the duplicate workflow rail component");
   assertIncludes(publicSite, "Do owners only get social posts?", "CampaignCue public FAQ rejects social-only positioning");
   assertIncludes(publicSite, "Do packs include a review record?", "CampaignCue public FAQ exposes proof deck review record");
   assertIncludes(publicSite, "CampaignCueProofSystem", "CampaignCue public site exposes brand and proof layer");
@@ -1457,12 +1558,14 @@ function verifyDocsAlignment() {
   assertIncludes(publicSite, "campaigncue-pack-room-columns", "CampaignCue public site uses pack-room columns");
   assertIncludes(publicScrollRevealComponent, ".campaigncue-flow-map-node", "CampaignCue scroll reveal targets workflow-map nodes");
   assertIncludes(publicScrollRevealComponent, ".campaigncue-problem-band-grid article", "CampaignCue scroll reveal targets owner-problem cards");
+  assertIncludes(publicScrollRevealComponent, ".campaigncue-switch-card", "CampaignCue scroll reveal targets switch cards");
   assertIncludes(publicScrollRevealComponent, ".campaigncue-pack-room-surface", "CampaignCue scroll reveal targets pack-room surface");
   assertNotIncludes(publicScrollRevealComponent, ".campaigncue-fit-check-row", "CampaignCue scroll reveal does not target removed fit-check rows");
   assertIncludes(publicSite, "campaigncue-floating-asset", "CampaignCue public site uses visual floating hero artifacts");
   assertIncludes(publicSite, "campaigncue-powerhouse-grid", "CampaignCue public site uses colorful creative module grid");
   assertIncludes(publicSite, "campaigncue-asset-wall-grid", "CampaignCue public site uses visual asset wall");
-  assertIncludes(publicSite, "campaigncue-owner-path-intro", "CampaignCue public site uses connected owner path intro");
+  assertIncludes(publicSite, "campaigncue-switch-strip", "CampaignCue public site uses category switch strip");
+  assertNotIncludes(publicSite, "campaigncue-owner-path-intro", "CampaignCue compressed homepage removes connected owner path intro");
   assertIncludes(publicSite, "campaigncue-capability-ledger", "CampaignCue public site uses capability ledger");
   assertIncludes(publicSite, "tone: 'rose'", "CampaignCue public site uses rose tone names from the current palette");
   assertNotIncludes(publicSite, "tone: 'lime'", "CampaignCue public site avoids stale lime tone names");
@@ -1583,9 +1686,11 @@ function verifyDocsAlignment() {
   assertIncludes(changelog, "CampaignCue Public Website Visual Finish", "CampaignCue changelog records public website visual finish");
   assertIncludes(changelog, "CampaignCue Product And Use-Case Menus", "CampaignCue changelog records product/use-case menus");
   assertIncludes(changelog, "CampaignCue Small Business Use-Case Page", "CampaignCue changelog records small-business use-case page");
+  assertIncludes(changelog, "CampaignCue Website Compression Pass", "CampaignCue changelog records website compression pass");
   assertIncludes(audit, "Current CampaignCue scroll motion pass", "CampaignCue audit records the scroll motion pass");
   assertIncludes(audit, "Current CampaignCue proof-layer website parity pass", "CampaignCue audit records the proof-layer website parity pass");
-  assertIncludes(websiteDoc, "Pack index", "CampaignCue website doc lists pack index section");
+  assertIncludes(websiteDoc, "Why switch", "CampaignCue website doc lists category switch section");
+  assertIncludes(websiteDoc, "separate rendered pack index, owner path, and duplicate workflow rail are removed", "CampaignCue website doc records removed homepage sections");
   assertIncludes(websiteDoc, "Brand and proof layer", "CampaignCue website doc lists brand and proof layer section");
   assertIncludes(websiteDoc, "Brand Playbook guidance", "CampaignCue website doc records Brand Playbook public boundary");
   assertIncludes(websiteDoc, "Campaign Proof Deck review brief", "CampaignCue website doc records proof deck public boundary");

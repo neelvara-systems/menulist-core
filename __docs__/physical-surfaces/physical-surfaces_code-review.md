@@ -2,9 +2,13 @@
 
 **Date:** January 11, 2026  
 **Reviewer:** Cascade AI (Post-Implementation Quality Gate)  
-**Status:** 🔄 In Progress
+**Status:** Historical code-review evidence for legacy campaign surfaces; not current launch certification
 
 ---
+
+## Launch Boundary
+
+This January 2026 code review covers the legacy campaign-based Physical Surfaces implementation. Menu Kit is the canonical physical surface system for identity surfaces. Current release approval for any active physical/print output requires the active [production-readiness audit](../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../production-readiness/external-certification-runbook.md) evidence, `npm run verify:menu-card-export`, Digital Menu Output Constitution checks, browser/mobile output QA, visual print artifact review, target deploy evidence, and production-host smoke.
 
 ## 1. SPEC ALIGNMENT CHECK
 
@@ -125,4 +129,4 @@ if (!ctx) {
 
 ## ✅ QUALITY GATE: PASS
 
-All bugs fixed. No scope creep. Production ready.
+All reviewed bugs were fixed for this historical code-review scope. This is not current launch certification.

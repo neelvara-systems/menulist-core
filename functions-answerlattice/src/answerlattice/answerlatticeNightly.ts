@@ -77,6 +77,11 @@ const AI_TASK_PHASES = new Set([
     'friction_insight',
     'bootstrap',
 ]);
+const ANSWERLATTICE_SCHEDULER_TASK_FAILED = 'ANSWERLATTICE_SCHEDULER_TASK_FAILED';
+const ANSWERLATTICE_SCHEDULER_RUN_LOG_WRITE_FAILED = 'ANSWERLATTICE_SCHEDULER_RUN_LOG_WRITE_FAILED';
+const ANSWERLATTICE_TENANT_SUMMARY_BACKFILL_FAILED = 'ANSWERLATTICE_TENANT_SUMMARY_BACKFILL_FAILED';
+const ANSWERLATTICE_GRAPH_ORPHAN_RELATIONS_SKIPPED = 'ANSWERLATTICE_GRAPH_ORPHAN_RELATIONS_SKIPPED';
+const ANSWERLATTICE_INTEGRATION_ADAPTER_CHECK_FAILED = 'ANSWERLATTICE_INTEGRATION_ADAPTER_CHECK_FAILED';
 
 type AnswerlatticeNightlyTrigger = 'scheduled' | 'manual';
 type AnswerlatticeNightlyStatus = 'success' | 'partial' | 'failed' | 'skipped' | 'running';
@@ -89,6 +94,7 @@ export interface AnswerlatticeSchedulerDiagnostic {
     error: string;
     code?: string;
     name?: string;
+    sourceStatusCode?: number | null;
     details?: Record<string, any>;
 }
 
@@ -163,24 +169,79 @@ function buildDiagnostic(
         details?: Record<string, any>;
     }
 ): AnswerlatticeSchedulerDiagnostic {
-    const err = error as any;
+    const source = getAnswerlatticeSchedulerSourceErrorContext(error);
     return {
         tId: context.tId,
         sId: context.sId,
         phase: context.phase,
         operation: context.operation,
-        error: err?.message || String(error || 'Unknown error'),
-        code: err?.code,
-        name: err?.name,
-        details: context.details,
+        error: ANSWERLATTICE_SCHEDULER_TASK_FAILED,
+        code: source.sourceErrorCode || undefined,
+        name: source.sourceErrorName || undefined,
+        sourceStatusCode: source.sourceStatusCode,
+        details: getBoundedSchedulerDetails(context.details),
     };
 }
 
 function diagnosticToMessage(diagnostic: AnswerlatticeSchedulerDiagnostic): string {
-    const scope = diagnostic.tId != null && diagnostic.sId != null
-        ? `${diagnostic.tId}/${diagnostic.sId}`
-        : 'global';
+    const scope = diagnostic.tId != null && diagnostic.sId != null ? 'scoped' : 'global';
     return `[${diagnostic.phase}:${diagnostic.operation}] ${scope}: ${diagnostic.error}`;
+}
+
+function getAnswerlatticeSchedulerSourceErrorContext(error: unknown): {
+    sourceErrorName: string;
+    sourceErrorCode: string | null;
+    sourceStatusCode: number | null;
+} {
+    const source = error as { name?: unknown; code?: unknown; status?: unknown; statusCode?: unknown };
+    const status = typeof source?.status === 'number'
+        ? source.status
+        : typeof source?.statusCode === 'number'
+            ? source.statusCode
+            : null;
+    return {
+        sourceErrorName: typeof source?.name === 'string' ? source.name : typeof error,
+        sourceErrorCode: typeof source?.code === 'string' || typeof source?.code === 'number' ? String(source.code) : null,
+        sourceStatusCode: status,
+    };
+}
+
+function getSchedulerScopeContext(tId?: number, sId?: number): Record<string, boolean> {
+    return {
+        hasTenantScope: Number.isFinite(Number(tId)) && Number(tId) > 0,
+        hasStoreScope: Number.isFinite(Number(sId)) && Number(sId) > 0,
+    };
+}
+
+function getBoundedSchedulerDetails(details?: Record<string, any>): Record<string, any> | undefined {
+    if (!details || typeof details !== 'object') return undefined;
+    const out: Record<string, any> = {};
+    for (const [key, value] of Object.entries(details)) {
+        if (typeof value === 'string') {
+            out[`${key}Present`] = value.length > 0;
+            out[`${key}Length`] = value.length;
+        } else if (typeof value === 'number' || typeof value === 'boolean' || value === null) {
+            out[key] = value;
+        } else if (Array.isArray(value)) {
+            out[`${key}Count`] = value.length;
+        } else if (typeof value === 'object') {
+            out[`${key}KeyCount`] = Object.keys(value).length;
+        }
+    }
+    return Object.keys(out).length > 0 ? out : undefined;
+}
+
+function getSchedulerDiagnosticLogContext(diagnostic: AnswerlatticeSchedulerDiagnostic): Record<string, any> {
+    return {
+        failureCode: diagnostic.error,
+        phase: diagnostic.phase,
+        operation: diagnostic.operation,
+        ...getSchedulerScopeContext(diagnostic.tId, diagnostic.sId),
+        sourceErrorName: diagnostic.name || null,
+        sourceErrorCode: diagnostic.code || null,
+        sourceStatusCode: diagnostic.sourceStatusCode || null,
+        detailsKeyCount: diagnostic.details ? Object.keys(diagnostic.details).length : 0,
+    };
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -245,8 +306,9 @@ export async function discoverActiveTenants(): Promise<TenantDiscoveryResult> {
         hasEntities: true,
     }).catch(error => {
         logger.warn('[Answerlattice Nightly] Failed to backfill tenant summary from entity scan', {
-            error: error instanceof Error ? error.message : String(error),
+            failureCode: ANSWERLATTICE_TENANT_SUMMARY_BACKFILL_FAILED,
             tenantCount: tenants.length,
+            ...getAnswerlatticeSchedulerSourceErrorContext(error),
         });
     });
 
@@ -587,7 +649,7 @@ async function runSignalMutation(tId: number, sId: number): Promise<MutationResu
                 details: { entityId },
             });
             result.errors.push(diagnostic);
-            logger.error('[Answerlattice Mutation] Failed for entity', diagnostic);
+            logger.error('[Answerlattice Mutation] Failed for entity', getSchedulerDiagnosticLogContext(diagnostic));
         }
     }
 
@@ -784,7 +846,7 @@ async function aggregateCoverageKPI(tId: number, sId: number): Promise<CoverageK
             operation: 'aggregate_search_history',
         });
         result.errors.push(diagnostic);
-        logger.error('[Answerlattice Coverage] KPI aggregation failed', diagnostic);
+        logger.error('[Answerlattice Coverage] KPI aggregation failed', getSchedulerDiagnosticLogContext(diagnostic));
     }
 
     return result;
@@ -1034,7 +1096,7 @@ async function aggregateTrustMetrics(tId: number, sId: number, coverageResult: C
             operation: 'aggregate_trust_metrics',
         });
         result.errors.push(diagnostic);
-        logger.error('[Answerlattice Trust] Metrics aggregation failed', diagnostic);
+        logger.error('[Answerlattice Trust] Metrics aggregation failed', getSchedulerDiagnosticLogContext(diagnostic));
     }
 
     return result;
@@ -1145,7 +1207,7 @@ async function detectRecurringFallbacks(tId: number, sId: number): Promise<{ pro
             operation: 'detect_and_create_proposals',
         });
         result.errors.push(diagnostic);
-        logger.error('[Answerlattice Fallback] Detection failed', diagnostic);
+        logger.error('[Answerlattice Fallback] Detection failed', getSchedulerDiagnosticLogContext(diagnostic));
     }
 
     return result;
@@ -1219,7 +1281,7 @@ async function trackMutationImpact(tId: number, sId: number): Promise<{ tracked:
             operation: 'track_implemented_proposals',
         });
         result.errors.push(diagnostic);
-        logger.error('[Answerlattice Impact] Tracking failed', diagnostic);
+        logger.error('[Answerlattice Impact] Tracking failed', getSchedulerDiagnosticLogContext(diagnostic));
     }
 
     return result;
@@ -1276,7 +1338,7 @@ async function autoAdjustConfidence(tId: number, sId: number): Promise<{ adjuste
             operation: 'auto_adjust_confidence',
         });
         result.errors.push(diagnostic);
-        logger.error('[Answerlattice Confidence] Auto-adjustment failed', diagnostic);
+        logger.error('[Answerlattice Confidence] Auto-adjustment failed', getSchedulerDiagnosticLogContext(diagnostic));
     }
 
     return result;
@@ -1325,7 +1387,7 @@ async function archiveExpiredSignals(tId: number, sId: number, ttlMonths: number
             operation: 'delete_expired_signals',
         });
         result.errors.push(diagnostic);
-        logger.error('[Answerlattice TTL] Signal archive failed', diagnostic);
+        logger.error('[Answerlattice TTL] Signal archive failed', getSchedulerDiagnosticLogContext(diagnostic));
     }
 
     return result;
@@ -1534,7 +1596,11 @@ async function rebuildEntityGraphIndex(tId: number, sId: number): Promise<GraphR
     result.rebuilt = true;
 
     if (result.orphanRelations > 0) {
-        logger.warn('[Answerlattice GraphIndex] Orphan relation(s) skipped', { tId, sId, orphanRelations: result.orphanRelations });
+        logger.warn('[Answerlattice GraphIndex] Orphan relation(s) skipped', {
+            failureCode: ANSWERLATTICE_GRAPH_ORPHAN_RELATIONS_SKIPPED,
+            ...getSchedulerScopeContext(tId, sId),
+            orphanRelations: result.orphanRelations,
+        });
     }
 
     return result;
@@ -1779,7 +1845,8 @@ export async function runAnswerlatticeNightly(options: {
         } catch (error) {
             logger.error('[Answerlattice Nightly] Failed to persist scheduler run log', {
                 runLogId,
-                error: error instanceof Error ? error.message : String(error),
+                failureCode: ANSWERLATTICE_SCHEDULER_RUN_LOG_WRITE_FAILED,
+                ...getAnswerlatticeSchedulerSourceErrorContext(error),
             });
         }
     };
@@ -1839,7 +1906,7 @@ export async function runAnswerlatticeNightly(options: {
                 durationMs: Date.now() - taskStart,
                 error: message,
             });
-            logger.error('[Answerlattice Nightly] Tenant task failed', diagnostic);
+            logger.error('[Answerlattice Nightly] Tenant task failed', getSchedulerDiagnosticLogContext(diagnostic));
             return null;
         }
     };
@@ -2350,7 +2417,7 @@ export async function runAnswerlatticeNightly(options: {
                 operation: 'cleanupAnswerlatticeOperationalRetention',
             });
             recordDiagnostic(diagnostic);
-            logger.error('[Answerlattice Nightly] Retention cleanup fatal error', diagnostic);
+            logger.error('[Answerlattice Nightly] Retention cleanup fatal error', getSchedulerDiagnosticLogContext(diagnostic));
         }
 
         // ═══════════════════════════════════════════════════════════════
@@ -2388,7 +2455,7 @@ export async function runAnswerlatticeNightly(options: {
                 operation: 'runOnboardingBootstrap',
             });
             recordDiagnostic(diagnostic);
-            logger.error('[Answerlattice Nightly] Bootstrap fatal error', diagnostic);
+            logger.error('[Answerlattice Nightly] Bootstrap fatal error', getSchedulerDiagnosticLogContext(diagnostic));
         }
 
         // ═══════════════════════════════════════════════════════════════
@@ -2408,7 +2475,30 @@ export async function runAnswerlatticeNightly(options: {
                     result.integrationCleanupEvents += cleanupResult.eventsDeleted;
                     result.integrationCleanupLogs += cleanupResult.logsDeleted;
 
-                    const hasEnabledAdapter = await hasEnabledIntegrationAdapter(tId, sId).catch(() => false);
+                    let hasEnabledAdapter = false;
+                    try {
+                        hasEnabledAdapter = await hasEnabledIntegrationAdapter(tId, sId);
+                    } catch (error) {
+                        const diagnostic = buildDiagnostic(error, {
+                            tId,
+                            sId,
+                            phase: 'workflow_integrations',
+                            operation: 'hasEnabledIntegrationAdapter',
+                        });
+                        diagnostic.error = ANSWERLATTICE_INTEGRATION_ADAPTER_CHECK_FAILED;
+                        const message = recordDiagnostic(diagnostic, tenantRun);
+                        tenantRun.status = tenantRun.status === 'failed' ? 'failed' : 'partial';
+                        tenantRun.tasks.push({
+                            name: 'workflow_integrations',
+                            status: 'failed',
+                            durationMs: 0,
+                            details: { reason: 'adapter_check_failed' },
+                            error: message,
+                        });
+                        logger.error('[Answerlattice Nightly] Integration adapter check failed', getSchedulerDiagnosticLogContext(diagnostic));
+                        continue;
+                    }
+
                     if (!hasEnabledAdapter) {
                         tenantRun.tasks.push({
                             name: 'workflow_integrations',
@@ -2479,7 +2569,7 @@ export async function runAnswerlatticeNightly(options: {
                                 signalsResolved: tenantRun.signalsResolved,
                                 coverageRate: tenantRun.coverageRate,
                                 signalsArchived: tenantRun.signalsArchived,
-                                errors: tenantRun.errors.slice(0, 5),
+                                errors: tenantRun.errors.slice(0, 5).map(diagnosticToMessage),
                             },
                         });
                         result.integrationEventsEmitted++;
@@ -2501,7 +2591,7 @@ export async function runAnswerlatticeNightly(options: {
                     operation: 'emit_and_cleanup',
                 });
                 recordDiagnostic(diagnostic);
-                logger.error('[Answerlattice Nightly] Integration fatal error', diagnostic);
+                logger.error('[Answerlattice Nightly] Integration fatal error', getSchedulerDiagnosticLogContext(diagnostic));
             }
         }
 
@@ -2513,7 +2603,7 @@ export async function runAnswerlatticeNightly(options: {
         });
         recordDiagnostic(diagnostic);
         result.status = result.tenantsProcessed > 0 ? 'partial' : 'failed';
-        logger.error('[Answerlattice Nightly] Fatal scheduler failure', diagnostic);
+        logger.error('[Answerlattice Nightly] Fatal scheduler failure', getSchedulerDiagnosticLogContext(diagnostic));
     } finally {
         result.durationMs = Date.now() - startedAtMs;
         if (result.status === 'running') {

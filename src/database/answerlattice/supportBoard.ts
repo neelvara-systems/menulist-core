@@ -12,6 +12,7 @@ import { addDoc, collection, doc, getDoc, getDocs, limit, orderBy, query, runTra
 import { apiCallComposer } from '@lib/apiHelper/apiCallComposer';
 import { answerlatticeRequestBodyComposer } from '@lib/answerlattice/documentComposer';
 import { answerlatticeFirebaseClient } from '@lib/firebase/answerlatticeFirebaseClient';
+import { createRuntimeId } from '@lib/runtime/randomId';
 import {
     ANSWERLATTICE_SUPPORT_BOARD_CONSTRAINTS,
     ANSWERLATTICE_SUPPORT_BOARD_NOTE_STATUS,
@@ -109,11 +110,7 @@ export type UpdateAnswerlatticeSupportBoardCardInput = Partial<Pick<
 };
 
 const makeLocalId = (prefix: string) => {
-    if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
-        return `${prefix}_${crypto.randomUUID()}`;
-    }
-
-    return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+    return createRuntimeId(prefix);
 };
 
 const cleanText = (value: unknown, maxLength: number) => (

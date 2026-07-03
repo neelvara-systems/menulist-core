@@ -99,8 +99,6 @@ functions-answerlattice/
     logic/embedArticleWorker.ts  — KB embedding worker
     logic/regenerateEmbedding.ts — KB embedding regen
     logic/publishApprovedJob.ts  — KB ingestion publish
-    analytics/kbQuality.ts       — KB quality AI
-    services/gemini/kbQuality.ts — KB quality prompts
     firebaseAdmin.ts             — Answerlattice admin init
     constants/database.ts        — Collection names
     constants/features.ts        — Feature flags
@@ -193,8 +191,8 @@ useEntityCandidates.ts, useMutationProposals.ts
 | `logic/embedArticleWorker.ts`  | KB embedding worker (task queue)                 |
 | `logic/regenerateEmbedding.ts` | KB embedding regen (callable)                    |
 | `logic/publishApprovedJob.ts`  | KB ingestion publish (callable)                  |
-| `analytics/kbQuality.ts`       | KB quality AI analysis                           |
-| `services/gemini/kbQuality.ts` | KB quality prompts                               |
+| `analytics/kbQuality.ts`       | Legacy MenuList chat-monitoring boundary. Current runtime remains in `functions/src/analytics/kbQuality.ts`, scans MenuList tenant/store data, and is not exported from `functions-answerlattice/`. Future extraction requires a deliberate Answerlattice runtime design. |
+| `services/gemini/kbQuality.ts` | Legacy MenuList chat-monitoring boundary. Current runtime remains in `functions/src/services/gemini/kbQuality.ts` and is not exported from `functions-answerlattice/`. Future extraction requires a deliberate Answerlattice runtime design. |
 | `types/knowledgeBase.types.ts` | KB types                                         |
 
 ### Copy Shared Utilities to `functions-answerlattice/src/`
@@ -214,14 +212,16 @@ Answerlattice nightly has been removed from `functions/src/decisionBlocksScoring
 
 Keep the legacy MenuList exports for now as explicit shared-mode/emulator recovery compatibility. In `NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_MODE=shared`, `answerlatticeFunctions` resolves to the MenuList Firebase Functions app, so removing the legacy exports would break those recovery deployments. The active local, preview, and production paths call the same function names from `functions-answerlattice/`.
 
+Legacy MenuList chat-monitoring boundary: Feedback Intelligence, KB Quality, and Weekly Narrative remain MenuList-hosted platform-admin chat intelligence jobs. They are wired through `functions/src/decisionBlocksScoring.ts` and `functions/src/schedulers/masterScheduler.ts`, use MenuList `DB_COLLECTIONS`, scan MenuList `tenants`, `stores`, `chatAnalytics`, `aiSearchHistory`, and nested `knowledgeBase`, and write MenuList `insights/{tId}/stores/{sId}/ai/*` documents. They are not active Answerlattice separate-runtime exports.
+
 ### Deployment Commands
 
 ```bash
 # MenuList functions (local/preview target)
-firebase deploy --only functions --project menulist-qa
+npm run verify:functions-deploy-preflight
+firebase deploy --project menulist-qa --config firebase.json --only functions:processMenuImages,functions:processMenuImagesJob,functions:menulistMaintenanceScheduler,functions:computeDecisionBlocksScores,functions:triggerDecisionBlocksScoring,functions:triggerStoreNightlyScheduler,functions:verifyMenuPublish --non-interactive
 
-# MenuList production functions
-firebase deploy --only functions --project menulist
+# MenuList production Functions require QA evidence and explicit production deploy approval.
 
 # Answerlattice QA functions
 firebase deploy --only functions:answerlattice --project answerlattice-qa --config firebase-answerlattice.json
@@ -314,7 +314,7 @@ Older feature docs (`help-center_impl.md`, `ticket-system_impl.md`, `feedback-sy
 
 ### 7.7 `src/services/gemini/prompts/` — Answerlattice KB Quality
 
-3 files in `src/services/gemini/prompts/` are Answerlattice-related (KB quality). These stay in the Next.js app (they're client-side). No Firebase change needed. But the corresponding Cloud Function versions move to `functions-answerlattice/`.
+3 files in `src/services/gemini/prompts/` are Answerlattice-related (KB quality). These stay in the Next.js app (they're client-side). No Firebase change needed. The current Cloud Function KB Quality runtime is still MenuList-hosted chat monitoring code in `functions/src/analytics/kbQuality.ts` plus `functions/src/services/gemini/kbQuality.ts`; it should not be treated as a completed `functions-answerlattice/` migration until a separate Answerlattice scheduler, tenant-shape, cost, and deploy plan is implemented.
 
 ### 7.8 `src/lib/firebase/appCheck.ts`
 
@@ -353,7 +353,7 @@ App Check is per-Firebase project. When Answerlattice project is created, it nee
 - [x] pId validation guard — added to `requestBodyComposer` (never null)
 - [x] `answerlatticeRequestBodyComposer` — Answerlattice DAL writes now force `pId = 'AL'` and attach source context + trace IDs
 - [x] KB callable functions — `embedArticleWorker`, `regenerateEmbedding`, and `publishApprovedJobFn` exported from `functions-answerlattice/src/index.ts`
-- [x] Answerlattice KB embeddings — callable functions use Answerlattice Firebase Admin/Vertex AI so separate-mode cost/accounting stays inside Answerlattice
+- [x] Answerlattice KB embeddings — callable functions use Answerlattice Firebase Admin and Answerlattice-owned Gemini API secrets so separate-mode cost/accounting stays inside Answerlattice
 - [x] API hardening — Answerlattice translate/widget routes use Answerlattice Admin surfaces and structured secure logging
 
 ### Pending (User Action Items)

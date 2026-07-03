@@ -18,7 +18,11 @@
  */
 
 import { createHmac, timingSafeEqual } from 'crypto';
-import { secureError, secureLog } from './secureLogger';
+import {
+    getBoundedSecurityStringContext,
+    logSecurityDiagnostic,
+    logSecurityFailure,
+} from './securityDiagnostics';
 
 /**
  * Supported hashing algorithms for webhook signatures
@@ -87,11 +91,11 @@ export function validateWebhookSignature(
 
         // Validate inputs
         if (!requestBody || !receivedSignature || !secret) {
-            secureLog('[Webhook Validator] Missing required parameters', {
+            logSecurityDiagnostic('webhook_validator_missing_parameters', {
                 hasBody: !!requestBody,
                 hasSignature: !!receivedSignature,
                 hasSecret: !!secret,
-                provider
+                ...getBoundedSecurityStringContext('provider', provider),
             });
             return false;
         }
@@ -113,11 +117,12 @@ export function validateWebhookSignature(
 
         // Lengths must match
         if (expectedBuffer.length !== receivedBuffer.length) {
-            secureLog('[Webhook Validator] Signature length mismatch', {
-                expected: expectedBuffer.length,
-                received: receivedBuffer.length,
-                provider,
-                algorithm
+            logSecurityDiagnostic('webhook_validator_signature_length_mismatch', {
+                expectedLength: expectedBuffer.length,
+                receivedLength: receivedBuffer.length,
+                algorithm,
+                encoding,
+                ...getBoundedSecurityStringContext('provider', provider),
             });
             return false;
         }
@@ -126,18 +131,20 @@ export function validateWebhookSignature(
         const isValid = timingSafeEqual(expectedBuffer, receivedBuffer);
 
         if (!isValid) {
-            secureLog('[Webhook Validator] Invalid signature', {
-                provider,
+            logSecurityDiagnostic('webhook_validator_invalid_signature', {
                 algorithm,
                 encoding,
-                signatureLength: cleanSignature.length
+                signatureLength: cleanSignature.length,
+                ...getBoundedSecurityStringContext('provider', provider),
             });
         }
 
         return isValid;
     } catch (error) {
-        secureError('[Webhook Validator] Validation error', error as Error, {
-            provider: options.provider || 'unknown'
+        logSecurityFailure('webhook_validator_validation_failed', error, {
+            ...getBoundedSecurityStringContext('provider', options.provider || 'unknown'),
+            ...getBoundedSecurityStringContext('algorithm', options.algorithm || 'sha256'),
+            ...getBoundedSecurityStringContext('encoding', options.encoding || 'hex'),
         });
         return false;
     }
@@ -275,7 +282,9 @@ export function validateWebhookIP(
     provider: string = 'unknown'
 ): boolean {
     if (!requestIP) {
-        secureLog('[Webhook IP Validator] Missing IP address', { provider });
+        logSecurityDiagnostic('webhook_ip_validator_missing_ip', {
+            ...getBoundedSecurityStringContext('provider', provider),
+        });
         return false;
     }
 
@@ -285,16 +294,15 @@ export function validateWebhookIP(
         // Exact match
         if (ip === requestIP) return true;
 
-        // TODO: Add CIDR range matching if needed
-        // For now, just exact matches
+        // Current contract is exact-match allowlisting only.
         return false;
     });
 
     if (!isAllowed) {
-        secureLog('[Webhook IP Validator] IP not in allowlist', {
-            requestIP,
-            provider,
-            allowedCount: allowedIPs.length
+        logSecurityDiagnostic('webhook_ip_validator_ip_not_allowed', {
+            allowedCount: allowedIPs.length,
+            ...getBoundedSecurityStringContext('requestIp', requestIP),
+            ...getBoundedSecurityStringContext('provider', provider),
         });
     }
 

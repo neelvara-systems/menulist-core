@@ -11,6 +11,7 @@ import { useKBCategoriesCache } from '@hook/useKBCategoriesCache';
 import { getAnswerlatticeCustomerIdentity } from '@lib/answerlattice/customerIdentity';
 import { renderPublicTiptapHtml } from '@lib/answerlattice/publicRichText';
 import { getStoredContentFeedback, removeStoredContentFeedback, storeContentFeedback } from '@lib/contentFeedbackStorage';
+import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import ArticleViewModal from '@organisms/ArticleViewModal';
 import { ChangelogEntry } from '@type/changelog';
 import { KnowledgeBaseArticleMeta } from '@type/knowledgeBase';
@@ -42,8 +43,13 @@ const ChangelogPreview: React.FC<ChangelogPreviewProps> = ({ item, pageId, mode,
 
     useEffect(() => {
         if (!item.kbSources?.length) return;
-        void getCategoriesCached().catch(() => undefined);
-    }, [getCategoriesCached, item.id, item.kbSources?.length]);
+        void getCategoriesCached().catch((error) => {
+            logRuntimeFailure('answerlattice_changelog_preview_kb_categories_prefetch_failed', error, {
+                ...getBoundedRuntimeStringContext('changelogEntryId', item.id),
+                ...getBoundedRuntimeStringContext('changelogPageId', pageId),
+            });
+        });
+    }, [getCategoriesCached, item.id, item.kbSources?.length, pageId]);
 
     useEffect(() => {
         if (!showFeedbackDetails || !item.id) return;

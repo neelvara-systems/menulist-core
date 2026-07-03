@@ -7,13 +7,13 @@ import '@/styles/website.css';
 import { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Refund Policy — MenuList',
+  title: 'Refund Policy - MenuList',
   description: 'Read MenuList\'s refund policy. Learn about our refund and cancellation process.',
   alternates: {
     canonical: '/refund-policy',
   },
   openGraph: {
-    title: 'Refund Policy — MenuList',
+    title: 'Refund Policy - MenuList',
     description: 'Read MenuList\'s refund policy. Learn about our refund and cancellation process.',
     url: '/refund-policy',
   },

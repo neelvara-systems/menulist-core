@@ -9,8 +9,10 @@ import {
     type ItemPhotoCaptureMode,
     type ItemPhotoReadinessResult,
 } from '@lib/media/itemPhotoCaptureAssist';
+import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 
 const { Text } = Typography;
+const ITEM_PHOTO_CAPTURE_FAILED_MESSAGE = 'Photo could not be used.';
 
 interface ItemPhotoCaptureAssistProps {
     disabled?: boolean;
@@ -154,7 +156,13 @@ const ItemPhotoCaptureAssist: React.FC<ItemPhotoCaptureAssistProps> = ({
             const nextFeedback = await onCapture(file, mode);
             setFeedback(nextFeedback || null);
         } catch (error) {
-            setErrorMessage(error instanceof Error ? error.message : 'Photo could not be used.');
+            logRuntimeFailure('item_photo_capture_failed', error, {
+                ...getBoundedRuntimeStringContext('captureMode', mode),
+                ...getBoundedRuntimeStringContext('itemName', itemName),
+                videoHeight: height,
+                videoWidth: width,
+            });
+            setErrorMessage(ITEM_PHOTO_CAPTURE_FAILED_MESSAGE);
         } finally {
             setIsCapturing(false);
         }

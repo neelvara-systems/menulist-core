@@ -1,8 +1,10 @@
 # Menu Card Export — Help Documentation
 
-**Status:** Ready for support use; screenshots pending
+**Status:** Source-gated support draft; not current launch or support-publication approval
 **Audience:** MenuList owners
 **Last Updated:** June 2, 2026
+
+> **Current collateral boundary (July 2, 2026):** These notes are source evidence only; they are not current sales, demo, support, website-publication, or launch approval. Current collateral approval requires the active [production-readiness audit](../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../production-readiness/external-certification-runbook.md) evidence, Digital Menu Output Constitution checks, `npm run verify:menu-card-export`, authenticated desktop/mobile browser QA, visual PDF and print-shop artifact review, provider smoke for the AI advisor where enabled, target deploy evidence, and production-host smoke.
 
 ---
 

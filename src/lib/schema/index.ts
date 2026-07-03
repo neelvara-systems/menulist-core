@@ -14,6 +14,8 @@ import {
     getBusinessSchemaOrgType,
     resolveBusinessCategory,
 } from '@data/shared/businessTypes';
+import { normalizeOBPSocialUrl, normalizeOBPWebsiteUrl } from '@lib/obp/publicLinks';
+import { normalizePhoneNumberForStorage, type PhoneNumberStorageInput } from '@lib/phone/phoneNumber';
 
 // ── Constants ──
 
@@ -181,7 +183,20 @@ const PRODUCT_OFFERING_SCHEMA_TYPES = new Set([
     'AutoDealer',
 ]);
 
+const SCHEMA_PRICE_RANGE_MAX_LENGTH = 99;
+
 // ── Builders ──
+
+export function buildSchemaTelephone(input: PhoneNumberStorageInput): string | undefined {
+    const telephone = normalizePhoneNumberForStorage(input).phone;
+    return telephone || undefined;
+}
+
+export function buildSchemaPriceRange(priceRange: unknown): string | undefined {
+    const value = String(priceRange ?? '').trim();
+    if (!value || value.length > SCHEMA_PRICE_RANGE_MAX_LENGTH) return undefined;
+    return value;
+}
 
 /**
  * Build PostalAddress schema from store data.
@@ -252,22 +267,20 @@ export function buildOpeningHours(storeData: any) {
 export function buildSameAs(storeData: any) {
     const links: string[] = [];
     const socialMedia = storeData?.socialMedia || {};
-    const addLink = (value: unknown, fallbackBase: string) => {
-        const raw = String(value || '').trim();
-        if (!raw) return;
-        const url = raw.startsWith('http') ? raw : `${fallbackBase}${raw.replace(/^@/, '')}`;
+    const addDirectLink = (url: string | null) => {
+        if (!url) return;
         if (!links.includes(url)) links.push(url);
     };
 
-    addLink(socialMedia.instagram, 'https://instagram.com/');
-    addLink(socialMedia.facebook, 'https://facebook.com/');
-    addLink(socialMedia.twitter, 'https://twitter.com/');
-    addLink(socialMedia.linkedin, 'https://linkedin.com/in/');
-    addLink(socialMedia.youtube, 'https://youtube.com/');
+    addDirectLink(normalizeOBPSocialUrl('instagram', socialMedia.instagram));
+    addDirectLink(normalizeOBPSocialUrl('facebook', socialMedia.facebook));
+    addDirectLink(normalizeOBPSocialUrl('twitter', socialMedia.twitter));
+    addDirectLink(normalizeOBPSocialUrl('linkedin', socialMedia.linkedin));
+    addDirectLink(normalizeOBPSocialUrl('youtube', socialMedia.youtube));
     if (storeData?.url) {
-        addLink(storeData.url, 'https://');
+        addDirectLink(normalizeOBPWebsiteUrl(storeData.url));
     } else if (socialMedia.website) {
-        addLink(socialMedia.website, 'https://');
+        addDirectLink(normalizeOBPWebsiteUrl(socialMedia.website));
     }
 
     return links.length > 0 ? links : undefined;
@@ -536,8 +549,10 @@ export function buildTempStatusSchema(tempStatus?: {
     const expiresAt = new Date(tempStatus.expiresAt);
     if (expiresAt.getTime() <= now.getTime()) return undefined;
 
-    // Only closure-related statuses get schema representation
-    const closureTypes = ['closed_today', 'closing_early', 'kitchen_closed'];
+    // Only full-day closure statuses get schema representation. "closing_early"
+    // needs a real early close time, so omitting it is safer than publishing
+    // 00:00-00:00 for the entire day.
+    const closureTypes = ['closed_today', 'kitchen_closed'];
     if (!closureTypes.includes(tempStatus.type)) return undefined;
 
     const today = now.toISOString().split('T')[0];

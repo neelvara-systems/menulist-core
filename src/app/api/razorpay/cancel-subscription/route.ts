@@ -7,58 +7,64 @@ import {
     safeSyncProductSubscriptionEntitlementFromSubscription,
     updateProductSubscription,
 } from "@lib/billing/productBillingServer";
+import {
+    getBoundedRazorpaySecurityContext,
+    getBoundedRazorpayStringContext,
+    getRazorpayFailureLogData,
+    getRazorpaySubscriptionMutationLogContext,
+    logRazorpayNonBlockingFailure,
+} from "@lib/billing/razorpayDiagnostics";
 import { isAnswerlatticeBillingProduct, normalizeBillingProductId } from "@lib/billing/productBillingPlans";
 import { validateTransition } from "@lib/billing/subscriptionStateMachine";
 import { logger } from "@lib/monitoring/logger";
+import { recordFounderSubscriptionChurn } from "@lib/ops/founderRevenueReadModel";
 import { razorpayClient } from "@lib/razorpay/razorpay";
+import { readBoundedJsonBody } from "@lib/security/boundedRequestBody";
 import { validateAPIInput } from "@lib/security/inputValidation";
-import { buildSecurityContext } from "@lib/security/securityContext";
 import { CancelSubscriptionRequestSchema } from "@lib/validation/apiSchemas";
 import { Timestamp } from "firebase/firestore";
 import { writeLogEntry } from 'logs/utils';
 import { NextResponse } from 'next/server';
+import { hashPublicRateLimitValue } from "src/middleware/publicApi";
 import { verifyTenantAccess, withAuth } from "../../../../middleware/auth";
 
 const LOG_FILE = "razorpay-subscription.log";
-
-const summarizeSubscriptionForCancelLog = (subscription: any) => ({
-    subscriptionId: subscription?.id || subscription?.providerSubscriptionId,
-    status: subscription?.status,
-    tenantId: subscription?.tenantId,
-    storeId: subscription?.storeId,
-    planId: subscription?.planId,
-    quantity: subscription?.quantity,
-    providerSubscriptionId: subscription?.providerSubscriptionId,
-});
+const RAZORPAY_PAYMENT_ACTION_MAX_BODY_BYTES = 8 * 1024;
 
 export const POST = withAuth(async (request, session) => {
     // ✅ Session guaranteed by withAuth middleware
     // ✅ Auth failures automatically logged to Sentry
     const userId = session.user.id;
+    let subscriptionForLog: any = null;
     try {
         // 🔒 RATE LIMITING: Prevent rapid-fire subscription mutations
+        const userRateLimitHash = hashPublicRateLimitValue(userId);
         const { checkRateLimit } = await import('@lib/rateLimit');
         const { getRateLimitForFeature } = await import('@lib/rateLimit/configs');
-        const rl = await checkRateLimit({ key: `sub-mutate:${userId}`, ...getRateLimitForFeature('SUBSCRIPTION_MUTATION') });
+        const rl = await checkRateLimit({ key: `sub-mutate:${userRateLimitHash}`, ...getRateLimitForFeature('SUBSCRIPTION_MUTATION') });
         if (!rl.allowed) {
             return NextResponse.json({ error: "Too many attempts. Please wait before trying again." }, { status: 429 });
         }
 
-        const body = await request.json();
+        const bodyResult = await readBoundedJsonBody(request, RAZORPAY_PAYMENT_ACTION_MAX_BODY_BYTES, {
+            invalidJsonMessage: 'Cancellation reason and consent are required.',
+        });
+        if (bodyResult.ok === false) return bodyResult.response;
+        const body = bodyResult.data as any;
         const validation = validateAPIInput(CancelSubscriptionRequestSchema, body);
 
         if (!validation.success) {
             const errorMsg = 'error' in validation ? validation.error : 'Invalid input';
             // Log to Sentry (CRITICAL - subscription cancellation)
             logger.security('Input Validation Failed', {
-                ...buildSecurityContext(session, request),
+                ...getBoundedRazorpaySecurityContext(session, request),
                 endpoint: '/api/razorpay/cancel-subscription',
                 error: errorMsg,
                 attemptedData: {
-                    productId: body?.productId,
+                    ...getBoundedRazorpayStringContext('productId', body?.productId),
                     hasReason: !!body?.reason,
                     hasConsent: body?.consent !== undefined,
-                    subscriptionId: body?.subscriptionId,
+                    ...getBoundedRazorpayStringContext('subscriptionId', body?.subscriptionId),
                 },
             }, 'critical'); // CRITICAL - subscription cancellation
 
@@ -95,16 +101,17 @@ export const POST = withAuth(async (request, session) => {
         if (!internalSub || !internalSub.providerSubscriptionId) {
             return NextResponse.json({ error: "No active subscription found to cancel." }, { status: 404 });
         }
+        subscriptionForLog = internalSub;
 
         // 🔒 CRITICAL: Verify subscription belongs to user's tenant/store
         if (internalSub.tenantId !== Number(tenantId) || internalSub.storeId !== Number(storeId)) {
             logger.security('Unauthorized Subscription Cancellation Attempt', {
-                ...buildSecurityContext(session, request),
+                ...getBoundedRazorpaySecurityContext(session, request),
                 endpoint: '/api/razorpay/cancel-subscription',
                 error: 'User attempted to cancel subscription for different tenant/store',
-                productId,
-                subscriptionTenantId: internalSub.tenantId,
-                subscriptionStoreId: internalSub.storeId,
+                ...getBoundedRazorpayStringContext('productId', productId),
+                ...getBoundedRazorpayStringContext('subscriptionTenantId', internalSub.tenantId),
+                ...getBoundedRazorpayStringContext('subscriptionStoreId', internalSub.storeId),
             }, 'critical');
 
             return NextResponse.json(
@@ -115,7 +122,7 @@ export const POST = withAuth(async (request, session) => {
         await writeLogEntry({
             logFileName: LOG_FILE,
             logType: 'RAZORPAY_CANCEL_SUBSCRIPTION_FLOW_INTERNAL',
-            data: summarizeSubscriptionForCancelLog(internalSub),
+            data: getRazorpaySubscriptionMutationLogContext(internalSub),
         });
 
         if (!validateTransition(internalSub.status, 'cancelled', 'api:cancel-subscription')) {
@@ -126,14 +133,14 @@ export const POST = withAuth(async (request, session) => {
         await writeLogEntry({
             logFileName: LOG_FILE,
             logType: 'RAZORPAY_CANCEL_SUBSCRIPTION_FLOW_PROVIDER_BEFORE_CANCEL',
-            data: summarizeSubscriptionForCancelLog(providerSubscriptionBeforeCancel),
+            data: getRazorpaySubscriptionMutationLogContext(providerSubscriptionBeforeCancel),
         });
 
         if (providerSubscriptionBeforeCancel.status === "completed") {
             await writeLogEntry({
                 logFileName: LOG_FILE,
                 logType: 'RAZORPAY_CANCEL_SUBSCRIPTION_FLOW_PROVIDER_ALREADY_COMPLETED',
-                data: summarizeSubscriptionForCancelLog(providerSubscriptionBeforeCancel),
+                data: getRazorpaySubscriptionMutationLogContext(providerSubscriptionBeforeCancel),
             });
         } else {
             await razorpayClient.subscriptions.cancel(internalSub.providerSubscriptionId); // Immediate cancel
@@ -142,7 +149,7 @@ export const POST = withAuth(async (request, session) => {
             await writeLogEntry({
                 logFileName: LOG_FILE,
                 logType: 'RAZORPAY_CANCEL_SUBSCRIPTION_FLOW_PROVIDER_AFTER_CANCEL',
-                data: summarizeSubscriptionForCancelLog(providerSubscriptionAfterCancel),
+                data: getRazorpaySubscriptionMutationLogContext(providerSubscriptionAfterCancel),
             });
         }
 
@@ -174,10 +181,16 @@ export const POST = withAuth(async (request, session) => {
                 { ...internalSub, status: targetStatus },
                 'api:cancel-subscription',
             );
+            await recordFounderSubscriptionChurn({
+                productId,
+                source: 'api:cancel-subscription',
+                subscription: { ...internalSub, status: targetStatus },
+                occurredAt: Date.now(),
+            });
             await writeLogEntry({
                 logFileName: LOG_FILE,
                 logType: 'RAZORPAY_CANCEL_SUBSCRIPTION_FLOW_SUCCESS',
-                data: summarizeSubscriptionForCancelLog({ ...internalSub, status: targetStatus }),
+                data: getRazorpaySubscriptionMutationLogContext({ ...internalSub, status: targetStatus }),
             });
 
             if (!isAnswerlatticeBillingProduct(productId) && targetStatus === 'cancelled') {
@@ -196,8 +209,26 @@ export const POST = withAuth(async (request, session) => {
                             planName: internalSub.planName || 'Subscription',
                             sentAt: new Date().toISOString(),
                         },
-                    }).catch(() => { /* non-blocking */ });
-                } catch { /* non-blocking */ }
+                    }).catch((notificationError) => {
+                        logRazorpayNonBlockingFailure('razorpay_cancel_subscription_lifecycle_message_failed', notificationError, {
+                            eventType: 'SUBSCRIPTION_CANCELLED',
+                            ...getBoundedRazorpayStringContext('subscriptionId', internalSub.id),
+                            ...getBoundedRazorpayStringContext('providerSubscriptionId', internalSub.providerSubscriptionId),
+                            ...getBoundedRazorpayStringContext('tenantId', internalSub.tenantId),
+                            ...getBoundedRazorpayStringContext('storeId', internalSub.storeId),
+                            ...getBoundedRazorpayStringContext('userId', userId),
+                        });
+                    });
+                } catch (notificationImportError) {
+                    logRazorpayNonBlockingFailure('razorpay_cancel_subscription_lifecycle_message_import_failed', notificationImportError, {
+                        eventType: 'SUBSCRIPTION_CANCELLED',
+                        ...getBoundedRazorpayStringContext('subscriptionId', internalSub.id),
+                        ...getBoundedRazorpayStringContext('providerSubscriptionId', internalSub.providerSubscriptionId),
+                        ...getBoundedRazorpayStringContext('tenantId', internalSub.tenantId),
+                        ...getBoundedRazorpayStringContext('storeId', internalSub.storeId),
+                        ...getBoundedRazorpayStringContext('userId', userId),
+                    });
+                }
             }
 
             return NextResponse.json({
@@ -208,17 +239,20 @@ export const POST = withAuth(async (request, session) => {
             await writeLogEntry({
                 logFileName: LOG_FILE,
                 logType: 'RAZORPAY_CANCEL_SUBSCRIPTION_FLOW_FAILURE',
-                data: summarizeSubscriptionForCancelLog(internalSub),
+                data: getRazorpaySubscriptionMutationLogContext(internalSub),
             });
             return NextResponse.json({ success: false, error: "Failed to cancel subscription on payment gateway." }, { status: 500 });
         }
     } catch (error) {
+        const failureData = getRazorpayFailureLogData('razorpay_cancel_subscription_failed', error, {
+            ...getRazorpaySubscriptionMutationLogContext(subscriptionForLog),
+            ...getBoundedRazorpayStringContext('userId', userId),
+        });
+        logger.error('Subscription cancellation failed', new Error('razorpay_cancel_subscription_failed'), failureData);
         await writeLogEntry({
             logFileName: LOG_FILE,
             logType: 'RAZORPAY_CANCEL_SUBSCRIPTION_FLOW_ERROR',
-            data: {
-                message: error instanceof Error ? error.message : 'Unknown error',
-            },
+            data: failureData,
         });
         return NextResponse.json({ error: 'Failed to cancel subscription' }, { status: 500 });
     }

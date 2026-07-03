@@ -24,6 +24,7 @@ import { PLATFORM_NOTIFICATION_TRIGGER_TYPES } from '../sharedData/platformNotif
 import { sendEmailViaSMTP } from '../messaging/providers/resend';
 import { resolveTemplate } from '../messaging/templates';
 import { SendMessagePayload } from '../messaging/types';
+import { readJsonResponseWithLimit } from '../utils/boundedResponseBody';
 import { buildWhatsAppPhoneParam } from '../utils/phoneNumber';
 
 const logger = functions.logger;
@@ -32,6 +33,12 @@ const MAX_PER_STORE_PER_DAY = 10;
 const FLAG_CACHE_TTL = 60_000;
 const GRAPH_API_VERSION = 'v21.0';
 const DAY_MS = 24 * 60 * 60 * 1000;
+const OWNER_NOTIFICATION_WHATSAPP_SEND_FAILED = 'whatsapp_send_failed';
+const OWNER_NOTIFICATION_WHATSAPP_RESPONSE_PARSE_FAILED = 'whatsapp_response_parse_failed';
+const OWNER_NOTIFICATION_PROCESSING_FAILED = 'owner_notification_processing_failed';
+const OWNER_NOTIFICATION_ALERT_CREATE_FAILED = 'owner_notification_alert_create_failed';
+const MAX_OWNER_NOTIFICATION_WHATSAPP_PROVIDER_MESSAGE_ID_LENGTH = 200;
+const OWNER_NOTIFICATION_WHATSAPP_RESPONSE_JSON_MAX_BYTES = 64 * 1024;
 
 type EventStatus = 'pending' | 'processing' | 'delivered' | 'partial' | 'failed' | 'skipped';
 
@@ -98,6 +105,45 @@ function sha256(input: string): string {
 
 function safeId(input: string): string {
   return sha256(input).slice(0, 40);
+}
+
+function getOwnerNotificationEventLogContext(eventId: string): Record<string, boolean | number> {
+  return {
+    eventIdPresent: eventId.length > 0,
+    eventIdLength: eventId.length,
+  };
+}
+
+function getOwnerNotificationErrorContext(error: unknown): Record<string, string | number | undefined> {
+  const sourceError = error as { code?: unknown; status?: unknown; statusCode?: unknown };
+  const statusValue = sourceError?.status ?? sourceError?.statusCode;
+  const status = Number(statusValue);
+  return {
+    sourceErrorName: error instanceof Error ? error.name || 'Error' : typeof error,
+    sourceErrorCode: sourceError?.code === undefined || sourceError?.code === null ? undefined : String(sourceError.code).slice(0, 64),
+    sourceStatusCode: Number.isFinite(status) ? status : undefined,
+  };
+}
+
+function getOwnerNotificationWhatsAppProviderMessageId(value: unknown): string | undefined {
+  const providerMessageId = (value as { messages?: Array<{ id?: unknown }> })?.messages?.[0]?.id;
+  if (typeof providerMessageId !== 'string') return undefined;
+  const normalized = providerMessageId.trim();
+  if (!normalized) return undefined;
+  return normalized.slice(0, MAX_OWNER_NOTIFICATION_WHATSAPP_PROVIDER_MESSAGE_ID_LENGTH);
+}
+
+async function readOwnerNotificationWhatsAppResponseJson(response: Response): Promise<unknown | null> {
+  try {
+    return await readJsonResponseWithLimit(response, OWNER_NOTIFICATION_WHATSAPP_RESPONSE_JSON_MAX_BYTES);
+  } catch (error) {
+    logger.warn('[OwnerNotifications] WhatsApp response parse failed', {
+      failureCode: OWNER_NOTIFICATION_WHATSAPP_RESPONSE_PARSE_FAILED,
+      responseStatus: response.status,
+      ...getOwnerNotificationErrorContext(error),
+    });
+    return null;
+  }
 }
 
 function todayKey(): string {
@@ -399,6 +445,7 @@ async function sendWhatsApp(params: {
   const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
   const accessToken = process.env.WHATSAPP_ACCESS_TOKEN;
   if (!phoneNumberId || !accessToken) return { success: false, error: 'whatsapp_not_configured' };
+  const encodedPhoneNumberId = encodeURIComponent(phoneNumberId);
 
   const to = buildWhatsAppPhoneParam({ phoneNumber: params.to });
   if (to.length < 10 || to.length > 15) return { success: false, error: 'whatsapp_recipient_missing' };
@@ -444,7 +491,7 @@ async function sendWhatsApp(params: {
   if (!body) return { success: false, error: 'whatsapp_template_or_session_required' };
 
   try {
-    const response = await fetch(`https://graph.facebook.com/${GRAPH_API_VERSION}/${phoneNumberId}/messages`, {
+    const response = await fetch(`https://graph.facebook.com/${GRAPH_API_VERSION}/${encodedPhoneNumberId}/messages`, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${accessToken}`,
@@ -452,21 +499,24 @@ async function sendWhatsApp(params: {
       },
       body: JSON.stringify(body),
     });
-    const responseText = await response.text();
     if (!response.ok) {
-      return { success: false, error: `WhatsApp send failed: ${response.status} ${responseText.slice(0, 180)}` };
+      logger.warn('[OwnerNotifications] WhatsApp delivery failed', {
+        failureCode: OWNER_NOTIFICATION_WHATSAPP_SEND_FAILED,
+        responseStatus: response.status,
+        providerResponseBodySkipped: true,
+      });
+      return { success: false, error: OWNER_NOTIFICATION_WHATSAPP_SEND_FAILED };
     }
 
-    let providerMessageId: string | undefined;
-    try {
-      const parsed = JSON.parse(responseText);
-      providerMessageId = parsed?.messages?.[0]?.id;
-    } catch {
-      providerMessageId = undefined;
-    }
+    const parsed = await readOwnerNotificationWhatsAppResponseJson(response);
+    const providerMessageId = getOwnerNotificationWhatsAppProviderMessageId(parsed);
     return { success: true, providerMessageId };
   } catch (error) {
-    return { success: false, error: error instanceof Error ? error.message : 'unknown_whatsapp_error' };
+    logger.warn('[OwnerNotifications] WhatsApp delivery threw', {
+      failureCode: OWNER_NOTIFICATION_WHATSAPP_SEND_FAILED,
+      ...getOwnerNotificationErrorContext(error),
+    });
+    return { success: false, error: OWNER_NOTIFICATION_WHATSAPP_SEND_FAILED };
   }
 }
 
@@ -678,8 +728,9 @@ export async function processOwnerNotificationEvent(eventId: string): Promise<bo
         actionRequired: event.priority === 'critical',
       }).catch((alertError) => {
         logger.error('[OwnerNotifications] Failed to create platform alert', {
-          eventId,
-          error: alertError instanceof Error ? alertError.message : String(alertError),
+          failureCode: OWNER_NOTIFICATION_ALERT_CREATE_FAILED,
+          ...getOwnerNotificationEventLogContext(eventId),
+          ...getOwnerNotificationErrorContext(alertError),
         });
       });
     }
@@ -687,12 +738,13 @@ export async function processOwnerNotificationEvent(eventId: string): Promise<bo
     return sent > 0;
   } catch (error) {
     logger.error('[OwnerNotifications] Processing failed', {
-      eventId,
-      error: error instanceof Error ? error.message : String(error),
+      failureCode: OWNER_NOTIFICATION_PROCESSING_FAILED,
+      ...getOwnerNotificationEventLogContext(eventId),
+      ...getOwnerNotificationErrorContext(error),
     });
     await eventRef.set({
       status: 'failed',
-      error: error instanceof Error ? error.message : 'unknown_error',
+      error: OWNER_NOTIFICATION_PROCESSING_FAILED,
       processedAt: Timestamp.now(),
       updatedAt: Timestamp.now(),
     }, { merge: true });

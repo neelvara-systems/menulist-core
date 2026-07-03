@@ -686,7 +686,7 @@ Ready-to-use defaults now keep the core operational loop on. Some optional expan
 
 > **Important:** Cost estimates in Section 10 are average-case. For worst-case projections (300+ canonical answers per tenant, multi-tenant scaling), see `answerlattice-activation-experiment.md` Section 8.
 
-> **Next Step:** Follow `ANSWERLATTICE-BUILD-PRIORITY-ROADMAP.md` and prove the first-client governed answer loop before expanding Jira, native helpdesk connectors, broad distribution, white-label, or multi-language.
+> **Next Step:** Follow `answerlattice-build-priority-roadmap.md` and prove the first-client governed answer loop before expanding Jira, native helpdesk connectors, broad distribution, white-label, or multi-language.
 
 ---
 

@@ -4,6 +4,8 @@ import { FEATURE_FLAGS } from '@config/features';
 import { getEntities } from '@database/answerlattice/entities';
 import {
     archiveProductSurface,
+    assertAnswerlatticeProductSurfaceArchiveSucceeded,
+    assertAnswerlatticeProductSurfaceWriteSucceeded,
     getProductSurfaceContentSummaryForSession,
     getProductSurfacesForSession,
     rebuildProductSurfaceContentSummary,
@@ -11,7 +13,6 @@ import {
 } from '@database/answerlattice/productSurfaces';
 import { ANSWERLATTICE_SURFACE_TEMPLATES, type AnswerlatticeSurfaceTemplate } from '@data/answerlattice/surfaceTemplates';
 import { buildSurfaceKeyFromLabel, normalizeSurfaceKey } from '@lib/answerlattice/productSurfaceContent';
-import { getAnswerlatticeUiErrorMessage } from '@lib/answerlattice/uiErrors';
 import type { AnswerlatticeEntity, AnswerlatticeProductSurface, AnswerlatticeSurfaceContentItem, AnswerlatticeSurfaceContentSummary } from '@type/answerlattice';
 import {
     Alert,
@@ -53,6 +54,12 @@ const DEFAULT_SURFACE_VALUES = {
         changelog: true,
     },
 };
+
+const ANSWERLATTICE_PRODUCT_SURFACES_LOAD_FAILED = 'Could not load product surfaces';
+const ANSWERLATTICE_PRODUCT_SURFACE_SAVE_FAILED = 'Could not save product surface';
+const ANSWERLATTICE_PRODUCT_SURFACE_ARCHIVE_FAILED = 'Could not archive product surface';
+const ANSWERLATTICE_PRODUCT_SURFACE_SUMMARY_REBUILD_FAILED = 'Could not rebuild context summary';
+const ANSWERLATTICE_PRODUCT_SURFACE_TEMPLATES_APPLY_FAILED = 'Could not apply starter surfaces';
 
 const getTimeLabel = (value: any) => {
     if (!value) return 'Not built yet';
@@ -127,8 +134,8 @@ export default function AnswerlatticeProductSurfaces() {
             setSelectedSurfaceId(prev => prev && surfaceList?.some(surface => surface.id === prev)
                 ? prev
                 : surfaceList?.[0]?.id || null);
-        } catch (error) {
-            message.error(getAnswerlatticeUiErrorMessage(error, 'Could not load product surfaces'));
+        } catch {
+            message.error(ANSWERLATTICE_PRODUCT_SURFACES_LOAD_FAILED);
         } finally {
             setLoading(false);
         }
@@ -169,12 +176,17 @@ export default function AnswerlatticeProductSurfaces() {
                 id: selectedSurface?.id,
                 key,
             });
+            assertAnswerlatticeProductSurfaceWriteSucceeded(
+                saved,
+                selectedSurface?.id,
+                'answerlattice_product_surface_management_save_rejected',
+            );
             setSelectedSurfaceId(saved.id || null);
             await rebuildProductSurfaceContentSummary();
             await loadData();
             message.success('Product surface saved');
-        } catch (error) {
-            message.error(getAnswerlatticeUiErrorMessage(error, 'Could not save product surface'));
+        } catch {
+            message.error(ANSWERLATTICE_PRODUCT_SURFACE_SAVE_FAILED);
         } finally {
             setSaving(false);
         }
@@ -184,12 +196,17 @@ export default function AnswerlatticeProductSurfaces() {
         if (!selectedSurface) return;
         setSaving(true);
         try {
-            await archiveProductSurface(selectedSurface);
+            const archived = await archiveProductSurface(selectedSurface);
+            assertAnswerlatticeProductSurfaceArchiveSucceeded(
+                archived,
+                selectedSurface.id,
+                'answerlattice_product_surface_management_archive_rejected',
+            );
             await rebuildProductSurfaceContentSummary();
             await loadData();
             message.success('Product surface archived');
-        } catch (error) {
-            message.error(getAnswerlatticeUiErrorMessage(error, 'Could not archive product surface'));
+        } catch {
+            message.error(ANSWERLATTICE_PRODUCT_SURFACE_ARCHIVE_FAILED);
         } finally {
             setSaving(false);
         }
@@ -201,8 +218,8 @@ export default function AnswerlatticeProductSurfaces() {
             const nextSummary = await rebuildProductSurfaceContentSummary();
             setSummary(nextSummary || null);
             message.success('Context summary rebuilt');
-        } catch (error) {
-            message.error(getAnswerlatticeUiErrorMessage(error, 'Could not rebuild context summary'));
+        } catch {
+            message.error(ANSWERLATTICE_PRODUCT_SURFACE_SUMMARY_REBUILD_FAILED);
         } finally {
             setRebuilding(false);
         }
@@ -233,14 +250,19 @@ export default function AnswerlatticeProductSurfaces() {
                     visibility: template.visibility,
                     active: true,
                 });
+                assertAnswerlatticeProductSurfaceWriteSucceeded(
+                    result,
+                    null,
+                    'answerlattice_product_surface_templates_apply_rejected',
+                );
                 saved.push(result);
             }
             await rebuildProductSurfaceContentSummary();
             await loadData();
             setSelectedSurfaceId(saved[0]?.id || null);
             message.success(`${saved.length} starter surface${saved.length === 1 ? '' : 's'} added`);
-        } catch (error) {
-            message.error(getAnswerlatticeUiErrorMessage(error, 'Could not apply starter surfaces'));
+        } catch {
+            message.error(ANSWERLATTICE_PRODUCT_SURFACE_TEMPLATES_APPLY_FAILED);
         } finally {
             setApplyingTemplates(false);
         }

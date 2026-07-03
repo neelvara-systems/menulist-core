@@ -25,6 +25,7 @@ import useDeviceType from '@hook/useDeviceType';
 import { trackBeforeNavigate } from '@lib/analytics/trackBeforeNavigate';
 import { trackMenuAction, type TrackingData } from '@lib/analytics/unified';
 import { getStoreContextName } from '@lib/businessIdentity/names';
+import { getStoreStatus } from '@lib/hours';
 import { appendPublicLanguageParam } from '@lib/localization/publicRenderLanguage';
 import { buildTelHref, buildWhatsAppPhoneParam } from '@lib/phone/phoneNumber';
 import { resolveMenuListAttributionPolicy } from '@lib/platform/menuListBranding';
@@ -228,6 +229,10 @@ export default function MenuFooter({
         width: useFullWidthActionGrid ? '100%' : undefined,
         whiteSpace: 'nowrap',
     };
+    const hasWorkingHours = !!storeDetails?.workingHours && Object.keys(storeDetails.workingHours).length > 0;
+    const openHoursState: TrackingData['openHoursState'] = hasWorkingHours
+        ? (getStoreStatus(storeDetails.workingHours, storeDetails.timeZone).isOpen ? 'open' : 'closed')
+        : 'unknown';
 
     const handleMenuAction = (menuAction: 'call' | 'whatsapp' | 'directions' | 'reserve' | 'order') => {
         if (!shouldTrackMenuActions) return Promise.resolve();
@@ -237,6 +242,7 @@ export default function MenuFooter({
             projectId: analyticsIds?.projectId,
             storeTimeZone: analyticsIds?.storeTimeZone,
             businessDayEndTime: analyticsIds?.businessDayEndTime,
+            openHoursState,
         });
     };
     const showMenuListAttribution = resolveMenuListAttributionPolicy({

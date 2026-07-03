@@ -26,8 +26,14 @@ import { useArticleViewTracking } from '@hook/useArticleViewTracking';
 import { useClientAuthSession } from '@hook/useClientAuthSession';
 import { useFeedback } from '@hook/useFeedback';
 import { useKeyboardShortcuts } from '@hook/useKeyboardShortcuts';
+import {
+    copyAnswerlatticeSupportTextToClipboard,
+    hasAnswerlatticeSupportClipboardWrite,
+    hasAnswerlatticeSupportCopyFallback,
+} from '@lib/answerlattice/supportClipboard';
 import { getStoredContentFeedback, removeStoredContentFeedback, storeContentFeedback } from '@lib/contentFeedbackStorage';
 import { getReadingTime } from '@lib/readingTime';
+import { secureError } from '@lib/security/secureLogger';
 import { formatViewCountShort, getUserViewCount } from '@lib/viewCount';
 import FeedbackSection from '@molecules/FeedbackSection';
 import { EditorContent, useEditor } from '@tiptap/react';
@@ -37,6 +43,61 @@ import React, { useCallback, useMemo, useState } from 'react';
 import { LuCalendar, LuCheck, LuClock, LuEye, LuFolderOpen, LuLink, LuTag } from 'react-icons/lu';
 
 const { Title, Text } = Typography;
+
+type ArticleViewLogContext = Record<string, boolean | number | string | null | undefined>;
+const ARTICLE_VIEW_LINK_COPY_DOCUMENT_UNAVAILABLE = 'article_view_link_copy_document_unavailable';
+const ARTICLE_VIEW_LINK_COPY_FALLBACK_FAILED = 'article_view_link_copy_fallback_failed';
+
+const getBoundedArticleViewStringContext = (
+    label: string,
+    value: unknown,
+): ArticleViewLogContext => {
+    const normalized = value === undefined || value === null ? '' : String(value);
+
+    return {
+        [`${label}Present`]: normalized.length > 0,
+        [`${label}Length`]: normalized.length,
+    };
+};
+
+const getArticleViewErrorName = (error: unknown): string | undefined => {
+    if (error === undefined) return undefined;
+    if (error instanceof Error) return error.name || 'Error';
+    return typeof error;
+};
+
+const getArticleViewErrorCode = (error: unknown): string | undefined => {
+    if (!error || typeof error !== 'object' || !('code' in error)) return undefined;
+    const code = (error as { code?: unknown }).code;
+    if (code === undefined || code === null) return undefined;
+    return String(code).slice(0, 64);
+};
+
+const getArticleViewErrorStatus = (error: unknown): number | undefined => {
+    if (!error || typeof error !== 'object' || !('status' in error)) return undefined;
+    const status = Number((error as { status?: unknown }).status);
+    return Number.isFinite(status) ? status : undefined;
+};
+
+const logArticleViewFailure = (
+    failureCode: string,
+    error?: unknown,
+    context: ArticleViewLogContext = {},
+): void => {
+    secureError('[Article View] Operation failed', new Error(failureCode), {
+        ...context,
+        sourceErrorName: getArticleViewErrorName(error),
+        sourceErrorCode: getArticleViewErrorCode(error),
+        sourceStatusCode: getArticleViewErrorStatus(error),
+    });
+};
+
+const copyArticleLinkToClipboard = async (url: string): Promise<void> => {
+    await copyAnswerlatticeSupportTextToClipboard(url, {
+        unavailable: ARTICLE_VIEW_LINK_COPY_DOCUMENT_UNAVAILABLE,
+        fallbackFailed: ARTICLE_VIEW_LINK_COPY_FALLBACK_FAILED,
+    });
+};
 
 interface ArticleViewProps {
     article: KnowledgeBaseArticleType;
@@ -135,38 +196,25 @@ const ArticleView: React.FC<ArticleViewProps> = ({
 
     // Copy link to clipboard with visual feedback
     const handleCopyLink = useCallback(async () => {
+        const url = `${window.location.origin}${helpCenterArticleRouting(articleRouteSegment)}`;
         try {
-            const url = `${window.location.origin}${helpCenterArticleRouting(articleRouteSegment)}`;
-
-            if (navigator.clipboard && navigator.clipboard.writeText) {
-                await navigator.clipboard.writeText(url);
-                setLinkCopied(true);
-                message.success('Link copied to clipboard!');
-                setTimeout(() => setLinkCopied(false), 2000);
-            } else {
-                // Fallback for older browsers
-                const textArea = document.createElement('textarea');
-                textArea.value = url;
-                textArea.style.position = 'fixed';
-                textArea.style.left = '-999999px';
-                document.body.appendChild(textArea);
-                textArea.select();
-
-                try {
-                    document.execCommand('copy');
-                    setLinkCopied(true);
-                    message.success('Link copied to clipboard!');
-                    setTimeout(() => setLinkCopied(false), 2000);
-                } catch (err) {
-                    message.error('Failed to copy link.');
-                } finally {
-                    document.body.removeChild(textArea);
-                }
-            }
+            await copyArticleLinkToClipboard(url);
+            setLinkCopied(true);
+            message.success('Link copied to clipboard!');
+            setTimeout(() => setLinkCopied(false), 2000);
         } catch (error) {
+            logArticleViewFailure('article_view_link_copy_failed', error, {
+                ...getBoundedArticleViewStringContext('articleId', article.id),
+                ...getBoundedArticleViewStringContext('articleRouteSegment', articleRouteSegment),
+                ...getBoundedArticleViewStringContext('articleUrl', url),
+                ...getBoundedArticleViewStringContext('mode', mode),
+                hasClipboardWrite: hasAnswerlatticeSupportClipboardWrite(),
+                hasCopyFallback: hasAnswerlatticeSupportCopyFallback(),
+                isMobile,
+            });
             message.error('Failed to copy link. Please try again.');
         }
-    }, [articleRouteSegment]);
+    }, [article.id, articleRouteSegment, isMobile, mode]);
 
     // Feedback functionality
     const feedback = useFeedback(

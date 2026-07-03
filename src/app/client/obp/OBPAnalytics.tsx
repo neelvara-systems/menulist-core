@@ -13,9 +13,11 @@
 import { getSessionId } from '@lib/analytics/session';
 import { getBusinessAnalyticsDateKey } from '@lib/analytics/businessDay';
 import { trackOBPLanguageAdoption, trackOBPView } from '@lib/analytics/unified';
+import { secureError } from '@lib/security/secureLogger';
 import { useEffect } from 'react';
 
 const OBP_LANGUAGE_STORAGE_PREFIX = 'menulist_obp_language_v1';
+type OBPAnalyticsFailureType = 'view_tracking' | 'setup' | 'language_adoption';
 
 interface OBPAnalyticsProps {
     tenantId: number;
@@ -28,6 +30,52 @@ interface OBPAnalyticsProps {
     activeLanguageName?: string;
     trackLanguageUsage?: boolean;
 }
+
+const buildOBPAnalyticsLogContext = (
+    failureType: OBPAnalyticsFailureType,
+    metadata: {
+        tenantId?: number | null;
+        storeId?: number | null;
+        activeLanguage?: string | null;
+        previousLanguage?: string | null;
+        includeLocation?: boolean;
+        hasStoreTimeZone?: boolean;
+        hasBusinessDayEndTime?: boolean;
+        error?: unknown;
+    },
+) => {
+    const tenantId = String(metadata.tenantId ?? '').trim();
+    const storeId = String(metadata.storeId ?? '').trim();
+    const activeLanguage = String(metadata.activeLanguage ?? '').trim();
+    const previousLanguage = String(metadata.previousLanguage ?? '').trim();
+
+    return {
+        failureType,
+        tenantIdPresent: Boolean(tenantId),
+        tenantIdLength: tenantId.length,
+        storeIdPresent: Boolean(storeId),
+        storeIdLength: storeId.length,
+        activeLanguagePresent: Boolean(activeLanguage),
+        activeLanguageLength: activeLanguage.length,
+        previousLanguagePresent: Boolean(previousLanguage),
+        previousLanguageLength: previousLanguage.length,
+        includeLocation: Boolean(metadata.includeLocation),
+        hasStoreTimeZone: Boolean(metadata.hasStoreTimeZone),
+        hasBusinessDayEndTime: Boolean(metadata.hasBusinessDayEndTime),
+        errorName: metadata.error instanceof Error ? metadata.error.name : typeof metadata.error,
+    };
+};
+
+const logOBPAnalyticsFailure = (
+    failureType: OBPAnalyticsFailureType,
+    metadata: Parameters<typeof buildOBPAnalyticsLogContext>[1],
+) => {
+    secureError(
+        '[OBP Analytics] Tracking failed',
+        new Error(`obp_analytics_${failureType}`),
+        buildOBPAnalyticsLogContext(failureType, metadata),
+    );
+};
 
 export default function OBPAnalytics({
     tenantId,
@@ -67,10 +115,26 @@ export default function OBPAnalytics({
                 obpLanguage: trackLanguageUsage ? activeLanguage : undefined,
                 obpLanguageName: trackLanguageUsage ? activeLanguageName : undefined,
             }).catch(err => {
-                console.error('OBP view tracking failed:', err);
+                logOBPAnalyticsFailure('view_tracking', {
+                    tenantId,
+                    storeId,
+                    activeLanguage,
+                    includeLocation,
+                    hasStoreTimeZone: Boolean(storeTimeZone),
+                    hasBusinessDayEndTime: Boolean(businessDayEndTime),
+                    error: err,
+                });
             });
         } catch (error) {
-            console.error('OBP analytics setup failed:', error);
+            logOBPAnalyticsFailure('setup', {
+                tenantId,
+                storeId,
+                activeLanguage,
+                includeLocation,
+                hasStoreTimeZone: Boolean(storeTimeZone),
+                hasBusinessDayEndTime: Boolean(businessDayEndTime),
+                error,
+            });
         }
     }, [tenantId, storeId, storeTimeZone, businessDayEndTime, trackViews, includeLocation, activeLanguage, activeLanguageName, trackLanguageUsage]);
 
@@ -106,9 +170,29 @@ export default function OBPAnalytics({
                     utm_campaign: urlParams.get('utm_campaign') || undefined,
                     utm_content: urlParams.get('utm_content') || undefined,
                     entrySource: urlParams.get('entry_source') || undefined,
+                }).catch((error) => {
+                    logOBPAnalyticsFailure('language_adoption', {
+                        tenantId,
+                        storeId,
+                        activeLanguage,
+                        previousLanguage,
+                        includeLocation,
+                        hasStoreTimeZone: Boolean(storeTimeZone),
+                        hasBusinessDayEndTime: Boolean(businessDayEndTime),
+                        error,
+                    });
                 });
             } catch (error) {
-                console.error('OBP language adoption tracking failed:', error);
+                logOBPAnalyticsFailure('language_adoption', {
+                    tenantId,
+                    storeId,
+                    activeLanguage,
+                    previousLanguage,
+                    includeLocation,
+                    hasStoreTimeZone: Boolean(storeTimeZone),
+                    hasBusinessDayEndTime: Boolean(businessDayEndTime),
+                    error,
+                });
             }
         }, 10000);
 

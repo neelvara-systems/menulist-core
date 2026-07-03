@@ -2,56 +2,56 @@
 
 **Feature:** Google Business Profile Minimal Sync  
 **Status:** 🔶 BLOCKED — Awaiting GBP API Access  
-**Last Updated:** February 7, 2026  
-**Priority:** LOW (currently) — Not yet implemented. Cost plan for future.
+**Last Updated:** July 2, 2026
+**Priority:** Reserved integration; no active GBP Firebase cost.
 
 ---
 
 ## Summary
 
-> **Note:** Blocked pending Google Business Profile API access. All operations below are PLANNED.
+> **Current source boundary:** `ENABLE_GBP_SYNC` is false. The token DAL defines the server-only path shape but throws `GBP_TOKEN_STORE_DISABLED`; no active Google OAuth route, token write, sync worker, Firestore rule change, or scheduled Cloud Function is shipped.
 
-- **Collections (Planned):** `gbpConnections/{tId}/{sId}`, `gbpAuditLog/{tId}/{sId}`, `stores` (menu link field)
+- **Current GBP Firestore operations:** none
+- **Reserved token path:** `tenants/{tId}/integrations/gbp/{sId}` (server-only; disabled)
 - **Storage Buckets:** None
-- **Cloud Functions (Planned):** `gbpMenuLinkSync` (on menu URL change), `gbpHoursDriftCheck` (weekly scheduled)
-- **Estimated Monthly Cost:** **Very Low** — Weekly checks + rare sync operations
+- **Current Cloud Functions:** none
+- **Estimated Current Monthly Cost:** ₹0 for GBP sync
 
 ---
 
-## Planned Firestore Operations
+## Reserved Firestore Operations
 
 ### Reads
 
 | Operation | Collection | Trigger | Frequency | Notes |
 |-----------|-----------|---------|-----------|-------|
-| Load GBP connection | `gbpConnections/{tId}/{sId}` | Any GBP operation | Per operation | OAuth tokens, selected location ID. |
-| Load store hours | `stores/{storeId}` | Weekly hours drift check | Weekly per store | Compare MenuList hours vs GBP hours. |
+| Load GBP token | `tenants/{tId}/integrations/gbp/{sId}` | Reserved provider operation | Per operation | Requires server-only rules and enabled token store. |
+| Load store hours | `stores/{storeId}` | Reserved provider operation | Per sync check | Compare MenuList hours vs Google hours after provider gates. |
 
 ### Writes
 
 | Operation | Collection | Trigger | Frequency | Notes |
 |-----------|-----------|---------|-----------|-------|
-| Save GBP connection | `gbpConnections/{tId}/{sId}` | Owner connects Google account | One-time setup | OAuth tokens, location ID. |
-| Log audit entry | `gbpAuditLog/{tId}/{sId}` | Any GBP sync action | Per action | Action type, result, timestamp. Internal MOL. |
-| Update menu link status | `stores/{storeId}` | After menu link sync | Per sync | Last sync time, sync status. |
+| Save GBP token | `tenants/{tId}/integrations/gbp/{sId}` | Reserved OAuth callback | Per connection | Not active while `GBP_TOKEN_STORE_DISABLED` is thrown. |
+| Log audit event | Existing MOL path | Reserved provider action | Per action | Must reuse Menu Observation Layer, not a new noisy ledger. |
+| Update GBP state | `stores/{storeId}` | Reserved provider action | Per sync | Requires cache invalidation and owner-safe copy review. |
 
 ---
 
-## Cloud Functions (Planned)
+## Reserved Cloud Functions
 
 | Function | Trigger | Frequency | Duration | Notes |
 |----------|---------|-----------|----------|-------|
-| `gbpMenuLinkSync` | Menu URL changes | Per URL change | 5-10s | Updates GBP menu link via API. |
-| `gbpHoursDriftCheck` | Scheduled (weekly) | 1x/week per store | 5s per store | Compares hours, logs drift. |
+| GBP sync worker | Reserved scheduler task | TBD after provider approval | TBD after smoke | Must be added to the approved scheduler pattern with cost note and scoped deploy evidence. |
 
 ---
 
-## Cost Estimate (Planned)
+## Reserved Cost Estimate
 
-Minimal — weekly checks + rare sync operations. Under $0.05/month for 1000 stores.
+No active GBP cost exists today. Re-estimate before activation using real provider call count, Firestore read/write count, scheduler cadence, and target store volume.
 
 ---
 
 ## Implementation Status
 
-❌ **Not yet implemented.** Blocked on GBP API access.
+❌ **Not active runtime.** Blocked on GBP API access, OAuth setup, provider smoke, deploy evidence, browser/device QA, and production-host smoke.

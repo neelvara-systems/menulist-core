@@ -17,7 +17,7 @@ import {
     INTEGRATION_LIMITS,
     INTEGRATION_EVENT_TYPES,
 } from '../types';
-import { safeText, sanitizeDeliveryError } from '../safety';
+import { safeText } from '../safety';
 
 const LINEAR_API_URL = 'https://api.linear.app/graphql';
 
@@ -161,30 +161,33 @@ export class LinearAdapter implements IIntegrationAdapter {
             const durationMs = Date.now() - startMs;
 
             if (!response.ok) {
-                const errorText = await response.text().catch(() => 'Unknown error');
-                return { success: false, statusCode: response.status, error: sanitizeDeliveryError(errorText), durationMs };
+                return { success: false, statusCode: response.status, error: 'Linear issue creation returned bad status', durationMs };
             }
 
             const data = await response.json() as any;
 
             if (data.errors && data.errors.length > 0) {
-                return { success: false, error: sanitizeDeliveryError(data.errors[0]?.message || 'GraphQL error'), durationMs };
+                return { success: false, error: 'Linear issue creation returned errors', durationMs };
             }
 
             if (data.data?.issueCreate?.success) {
                 const issue = data.data.issueCreate.issue;
+                const issueIdentifier = typeof issue?.identifier === 'string' ? issue.identifier : '';
+                const issueId = typeof issue?.id === 'string' ? issue.id : '';
                 logger.info('[Answerlattice Integration] Linear issue created', {
-                    issueIdentifier: issue?.identifier,
-                    issueId: issue?.id,
+                    issueIdentifierPresent: issueIdentifier.length > 0,
+                    issueIdentifierLength: issueIdentifier.length,
+                    issueIdPresent: issueId.length > 0,
+                    issueIdLength: issueId.length,
                 });
                 return { success: true, statusCode: 200, durationMs };
             }
 
             return { success: false, error: 'Issue creation returned success=false', durationMs };
-        } catch (error) {
+        } catch {
             return {
                 success: false,
-                error: sanitizeDeliveryError(error),
+                error: 'Linear issue creation failed',
                 durationMs: Date.now() - startMs,
             };
         }

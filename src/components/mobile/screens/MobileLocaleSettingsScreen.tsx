@@ -4,7 +4,7 @@ import { LANGUAGE_CONSTANTS } from '@constant/languages';
 import { FEATURE_FLAGS } from '@config/features';
 import GlobalLanguagesList from '@data/languages';
 import TIMEZONES_LIST from '@data/timeZones';
-import { updateStore } from '@database/stores';
+import { assertStoreUpdateSucceeded, updateStore } from '@database/stores';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import countryData from '@atoms/phoneNumberInput/countryData';
 import { normalizeStoreLanguagePolicy } from '@lib/localization/languagePolicy';
@@ -23,6 +23,11 @@ import { useCallback, useContext, useMemo, useState } from 'react';
 import { LuClock, LuDollarSign, LuGlobe, LuLanguages } from 'react-icons/lu';
 import { Button, Card, DotLoading, Flex, NavBar, Select, Text, Toast } from '../antd';
 import MobileSettingsScreenHeader from '../components/MobileSettingsScreenHeader';
+import {
+    getBoundedMobileOwnerStringContext,
+    getMobileOwnerStoreLogContext,
+    logMobileOwnerFailure,
+} from '../utils/mobileOwnerDiagnostics';
 
 const BUSINESS_DAY_END_OPTIONS = [
     { label: 'Calendar day (12:00 AM)', value: '00:00' },
@@ -147,7 +152,12 @@ export default function MobileLocaleSettingsScreen({ onBack, onOpenBusinessCopyS
         setStoreDetails((previous: any) => ({ ...previous, ...payload }));
 
         try {
-            await updateStore(payload as any);
+            const writeResult = await updateStore(payload as any);
+            assertStoreUpdateSucceeded(
+                writeResult,
+                storeDetails.storeId,
+                'mobile_locale_settings_store_update_rejected',
+            );
             setFormData((previous) => ({
                 ...previous,
                 activeLanguages: normalizedLanguagePolicy.activeLanguages,
@@ -160,7 +170,21 @@ export default function MobileLocaleSettingsScreen({ onBack, onOpenBusinessCopyS
                 defaultLanguage: normalizedLanguagePolicy.defaultLanguage,
             }));
             Toast.show({ content: t('saved'), duration: 1000 });
-        } catch {
+        } catch (error) {
+            logMobileOwnerFailure('mobile_locale_settings_save_failed', error, {
+                ...getMobileOwnerStoreLogContext(storeDetails?.storeId, storeDetails?.tenantId),
+                ...getBoundedMobileOwnerStringContext('defaultLanguage', normalizedLanguagePolicy.defaultLanguage),
+                ...getBoundedMobileOwnerStringContext('timeZone', formData.timeZone),
+                ...getBoundedMobileOwnerStringContext('currencyCode', formData.currencyCode),
+                activeLanguageCount: normalizedLanguagePolicy.activeLanguages.length,
+                previousActiveLanguageCount: Array.isArray(storeDetails.activeLanguages) ? storeDetails.activeLanguages.length : 0,
+                defaultLanguageChanged: normalizedLanguagePolicy.defaultLanguage !== storeDetails.defaultLanguage,
+                timeZoneChanged: formData.timeZone !== storeDetails.timeZone,
+                currencyChanged: formData.currencyCode !== storeDetails.currencyCode || formData.currencySymbol !== storeDetails.currencySymbol,
+                dateFormatChanged: formData.dateFormat !== storeDetails.dateFormat,
+                timeFormatChanged: formData.timeFormat !== storeDetails.timeFormat,
+                businessDayEndTimeChanged: formData.businessDayEndTime !== storeDetails.businessDayEndTime,
+            });
             setStoreDetails((previous: any) => ({
                 ...previous,
                 activeLanguages: storeDetails.activeLanguages,

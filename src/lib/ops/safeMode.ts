@@ -17,6 +17,7 @@
 
 import { FEATURE_FLAGS } from '@config/features';
 import { DB_COLLECTIONS } from '@constant/database';
+import { logOpsFailure } from '@lib/ops/opsDiagnostics';
 import { NextResponse } from 'next/server';
 
 /**
@@ -55,7 +56,9 @@ export async function checkSafeMode(): Promise<NextResponse | null> {
     return null;
   } catch (error) {
     // Fail-open: don't block operations if check fails
-    console.error('[SAFE_MODE] Check failed (fail-open):', error);
+    logOpsFailure('ops_safe_mode_check_failed', error, {
+      failOpen: true,
+    });
     return null;
   }
 }

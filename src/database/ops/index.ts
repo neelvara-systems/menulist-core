@@ -12,6 +12,7 @@
 
 import { DB_COLLECTIONS } from '@constant/database';
 import { firebaseClient } from '@lib/firebase/firebaseClient';
+import { getBoundedOpsStringContext, logOpsFailure } from '@lib/ops/opsDiagnostics';
 import type { AdoptionPulse, IntegritySignals, OpsAlert, OpsConfig, SystemState } from '@lib/ops/types';
 import {
   collection,
@@ -25,6 +26,13 @@ import {
   Timestamp,
   where,
 } from 'firebase/firestore';
+
+function buildOpsStoredTextSummary(displayLabel: string, contextLabel: string, value: unknown): string | null {
+  const context = getBoundedOpsStringContext(contextLabel, value);
+  return context[`${contextLabel}Present`]
+    ? `${displayLabel} present (${context[`${contextLabel}Length`]} chars).`
+    : null;
+}
 
 // ================================================================
 // SYSTEM STATE (Section 1)
@@ -54,7 +62,7 @@ export async function getSystemState(): Promise<SystemState> {
     if (opsDoc.exists()) {
       const data = opsDoc.data() as OpsConfig;
       result.safeModeActive = data.SAFE_MODE === true;
-      result.safeModeReason = data.reason || null;
+      result.safeModeReason = buildOpsStoredTextSummary('SAFE_MODE reason', 'safeModeReason', data.reason);
       result.safeModeActivatedAt = data.activatedAt || null;
 
       if (data.alertsMutedUntil) {
@@ -71,11 +79,11 @@ export async function getSystemState(): Promise<SystemState> {
 
     if (!alertsSnap.empty) {
       const lastAlert = alertsSnap.docs[0].data();
-      result.lastAlertTitle = lastAlert.title || null;
+      result.lastAlertTitle = buildOpsStoredTextSummary('Alert title', 'lastAlertTitle', lastAlert.title);
       result.lastAlertTimestamp = lastAlert.timestamp || null;
     }
   } catch (error) {
-    console.error('[OpsDAL] Failed to get system state:', error);
+    logOpsFailure('ops_system_state_load_failed', error);
   }
 
   return result;
@@ -120,7 +128,7 @@ export async function getAdoptionPulse(): Promise<AdoptionPulse> {
     const activeSnap = await getCountFromServer(activeQuery);
     result.activeStores7d = activeSnap.data().count;
   } catch (error) {
-    console.error('[OpsDAL] Failed to get adoption pulse:', error);
+    logOpsFailure('ops_adoption_pulse_load_failed', error);
   }
 
   return result;
@@ -155,7 +163,7 @@ export async function getIntegritySignals(): Promise<IntegritySignals> {
     const staleSnap = await getCountFromServer(staleQuery);
     result.noPublish60d = staleSnap.data().count;
   } catch (error) {
-    console.error('[OpsDAL] Failed to get integrity signals:', error);
+    logOpsFailure('ops_integrity_signals_load_failed', error);
   }
 
   return result;
@@ -184,7 +192,9 @@ export async function getRecentAlerts(maxResults: number = 10): Promise<OpsAlert
       ...d.data(),
     })) as OpsAlert[];
   } catch (error) {
-    console.error('[OpsDAL] Failed to get recent alerts:', error);
+    logOpsFailure('ops_recent_alerts_load_failed', error, {
+      maxResults,
+    });
     return [];
   }
 }

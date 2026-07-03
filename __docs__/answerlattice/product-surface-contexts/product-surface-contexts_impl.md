@@ -13,6 +13,12 @@ Answerlattice-owned code lives under Answerlattice folders:
 - `src/app/(answerlattice)/answerlattice/product-surfaces/page.tsx`
 - `src/app/api/answerlattice/product-surfaces/rebuild-summary/route.ts`
 
+The rebuild-summary route resolves Answerlattice session scope, applies the existing per-workspace rebuild limiter before permission/rebuild work, then requires `MANAGE_KNOWLEDGE` before reading the bounded optional body and rebuilding `platformSummary/contextContent_{tId}_{sId}`. Failure diagnostics use the fixed `answerlattice_product_surface_summary_rebuild_failed` code with bounded tenant/store metadata.
+
+The Product Surfaces owner screen must treat `saveProductSurface()` and `archiveProductSurface()` as complete only after `src/database/answerlattice/productSurfaces.ts` returns explicit acknowledgement envelopes and `AnswerlatticeProductSurfaces` calls `assertAnswerlatticeProductSurfaceWriteSucceeded()` or `assertAnswerlatticeProductSurfaceArchiveSucceeded()`. Starter template creation uses the same write acknowledgement guard for every created surface before summary rebuild, reload, selection, or success copy continues. The manual/post-write summary rebuild client sends the browser request with no-store cache, same-origin credentials, and manual redirect handling, uses a 64 KB bounded JSON response parser, and rejects successful HTTP responses that do not contain a valid `summary` object.
+
+Client-side linked-content writers use `rebuildProductSurfaceContentSummaryWithDiagnostics()` from `src/database/answerlattice/productSurfaces.ts` after confirmed KB article, approved KB-generation publish, changelog, or ticket writes. The helper keeps the same rebuild route and summary write path, but failed refreshes now log caller-specific bounded `answerlattice_*_summary_refresh_*_failed` diagnostics and return `false` so callers can show fixed contextual-help refresh warning copy instead of silently dropping the failure.
+
 Shared existing surfaces receive additive fields only:
 
 - KB article modal: `contextKeys`
@@ -88,3 +94,4 @@ Summary rebuild:
 - Runs after owner saves a surface or linked KB/changelog/ticket content, and can also be triggered manually.
 - Uses bounded queries and compact output.
 - Writes one summary document.
+- Linked-content refresh failures are observable through bounded diagnostics; the primary linked-content write is not rolled back.

@@ -55,7 +55,12 @@
 import { DB_COLLECTIONS } from '@constant/database';
 import { deleteFileByUrl } from '@database/storage/deleteFromStorage';
 import { firebaseClient } from '@lib/firebase/firebaseClient';
+import { getBoundedRuntimeStringContext, logRuntimeDiagnostic, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { collection, getDocs, writeBatch } from 'firebase/firestore';
+
+const logDevCleanupDiagnostic = (diagnosticCode: string, context: Record<string, boolean | number | string | null | undefined> = {}) => {
+    logRuntimeDiagnostic(diagnosticCode, context, { developmentOnly: true });
+};
 
 /**
  * Delete all documents from a Firestore collection using batch operations
@@ -70,14 +75,15 @@ import { collection, getDocs, writeBatch } from 'firebase/firestore';
  * 
  * @example
  * const deletedCount = await deleteCollection('chatSessions');
- * console.log(`Deleted ${deletedCount} chat sessions`);
  */
 async function deleteCollection(collectionName: string) {
     const collectionRef = collection(firebaseClient, collectionName);
     const snapshot = await getDocs(collectionRef);
     
     if (snapshot.empty) {
-        console.log(`✓ Collection ${collectionName} is already empty`);
+        logDevCleanupDiagnostic('dev_chat_collection_empty', {
+            ...getBoundedRuntimeStringContext('collectionName', collectionName),
+        });
         return 0;
     }
 
@@ -100,7 +106,10 @@ async function deleteCollection(collectionName: string) {
     });
 
     await Promise.all(batches);
-    console.log(`✓ Deleted ${snapshot.size} documents from ${collectionName}`);
+    logDevCleanupDiagnostic('dev_chat_collection_deleted', {
+        ...getBoundedRuntimeStringContext('collectionName', collectionName),
+        deletedCount: snapshot.size,
+    });
     return snapshot.size;
 }
 
@@ -117,14 +126,14 @@ async function deleteCollection(collectionName: string) {
  * @returns Number of images deleted from Storage
  */
 async function deleteAllChatImages(): Promise<number> {
-    console.log('🖼️  Extracting chat images for deletion...');
+    logDevCleanupDiagnostic('dev_chat_images_delete_started');
     
     try {
         const chatSessionsRef = collection(firebaseClient, DB_COLLECTIONS.CHAT_SESSIONS);
         const snapshot = await getDocs(chatSessionsRef);
         
         if (snapshot.empty) {
-            console.log('✓ No chat sessions found, skipping image deletion');
+            logDevCleanupDiagnostic('dev_chat_images_no_sessions');
             return 0;
         }
 
@@ -144,20 +153,24 @@ async function deleteAllChatImages(): Promise<number> {
         });
 
         if (imageUrls.length === 0) {
-            console.log('✓ No uploaded images found in chat sessions');
+            logDevCleanupDiagnostic('dev_chat_images_none_found');
             return 0;
         }
 
-        console.log(`📸 Found ${imageUrls.length} images to delete from Storage`);
+        logDevCleanupDiagnostic('dev_chat_images_found', {
+            imageCount: imageUrls.length,
+        });
 
         // Delete all images from Firebase Storage
         const deletePromises = imageUrls.map(url => deleteFileByUrl(url));
         await Promise.all(deletePromises);
 
-        console.log(`✓ Deleted ${imageUrls.length} images from Firebase Storage`);
+        logDevCleanupDiagnostic('dev_chat_images_deleted', {
+            imageCount: imageUrls.length,
+        });
         return imageUrls.length;
     } catch (error) {
-        console.error('❌ Error deleting chat images:', error);
+        logRuntimeFailure('dev_chat_images_delete_failed', error, {}, { developmentOnly: true });
         // Don't throw - continue with collection deletion even if image deletion fails
         return 0;
     }
@@ -205,10 +218,10 @@ async function deleteAllChatImages(): Promise<number> {
 export async function clearAllChatData() {
     // Double-check we're in development
     if (process.env.NODE_ENV === 'production') {
-        throw new Error('🚨 This function is disabled in production!');
+        throw new Error('This function is disabled in production.');
     }
 
-    console.log('🗑️ Starting to clear all chat data...');
+    logDevCleanupDiagnostic('dev_chat_data_clear_started');
 
     try {
         // STEP 1: Delete uploaded images from Firebase Storage
@@ -229,7 +242,11 @@ export async function clearAllChatData() {
             totalDeleted += deleted;
         }
 
-        console.log(`✅ Successfully deleted ${totalDeleted} documents and ${imagesDeleted} images`);
+        logDevCleanupDiagnostic('dev_chat_data_clear_completed', {
+            totalDeleted,
+            imagesDeleted,
+            collectionCount: collections.length,
+        });
         return {
             success: true,
             totalDeleted,
@@ -237,7 +254,7 @@ export async function clearAllChatData() {
             collections: collections
         };
     } catch (error) {
-        console.error('❌ Failed to clear chat data:', error);
+        logRuntimeFailure('dev_chat_data_clear_failed', error, {}, { developmentOnly: true });
         throw error;
     }
 }

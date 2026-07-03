@@ -1,3 +1,5 @@
+import { secureError } from '@lib/security/secureLogger';
+
 /**
  * SWR LocalStorage Cache Provider
  * 
@@ -16,6 +18,18 @@
 const CACHE_PREFIX = 'swr-cache-';
 const CACHE_VERSION = 'v1';
 const MAX_CACHE_SIZE = 50; // Max number of cached keys
+
+type SwrLocalStorageFailureType = 'cleanup' | 'get' | 'set' | 'remove' | 'prefix_remove' | 'clear';
+
+interface SwrLocalStorageFailureMetadata {
+    key?: string;
+    keyPrefix?: string;
+    maxAgeMs?: number;
+    dayKey?: string;
+    hasData?: boolean;
+    removedCount?: number;
+    error?: unknown;
+}
 
 interface CacheEntry<T> {
     data: T;
@@ -52,6 +66,44 @@ function isCacheValid(entry: CacheEntry<unknown>, maxAgeMs?: number, dayKey?: st
     return true;
 }
 
+const buildSwrLocalStorageFailureContext = (
+    failureType: SwrLocalStorageFailureType,
+    metadata: SwrLocalStorageFailureMetadata = {},
+) => {
+    const key = String(metadata.key ?? '').trim();
+    const keyPrefix = String(metadata.keyPrefix ?? '').trim();
+    const dayKey = String(metadata.dayKey ?? '').trim();
+
+    return {
+        failureType,
+        keyPresent: Boolean(key),
+        keyLength: key.length,
+        keyPrefixPresent: Boolean(keyPrefix),
+        keyPrefixLength: keyPrefix.length,
+        hasMaxAgeMs: typeof metadata.maxAgeMs === 'number',
+        dayKeyPresent: Boolean(dayKey),
+        dayKeyLength: dayKey.length,
+        hasData: Boolean(metadata.hasData),
+        removedCount: metadata.removedCount,
+        errorName: metadata.error instanceof Error ? metadata.error.name : typeof metadata.error,
+    };
+};
+
+const logSwrLocalStorageFailure = (
+    failureType: SwrLocalStorageFailureType,
+    metadata: SwrLocalStorageFailureMetadata = {},
+): void => {
+    if (process.env.NODE_ENV === 'production') {
+        return;
+    }
+
+    secureError(
+        '[SWR Cache] Local storage operation failed',
+        new Error(`swr_local_storage_${failureType}`),
+        buildSwrLocalStorageFailureContext(failureType, metadata),
+    );
+};
+
 /**
  * Clean up old cache entries to prevent localStorage bloat
  */
@@ -85,7 +137,7 @@ function cleanupOldEntries(): void {
             toRemove.forEach(({ key }) => localStorage.removeItem(key));
         }
     } catch (e) {
-        console.warn('[SWR Cache] Cleanup failed:', e);
+        logSwrLocalStorageFailure('cleanup', { error: e });
     }
 }
 
@@ -115,7 +167,12 @@ export function getCachedData<T>(key: string, maxAgeMs?: number, dayKey?: string
 
         return entry.data;
     } catch (e) {
-        console.warn('[SWR Cache] Get failed:', e);
+        logSwrLocalStorageFailure('get', {
+            key,
+            maxAgeMs,
+            dayKey,
+            error: e,
+        });
         return undefined;
     }
 }
@@ -139,7 +196,12 @@ export function setCachedData<T>(key: string, data: T, dayKey?: string): void {
             cleanupOldEntries();
         }
     } catch (e) {
-        console.warn('[SWR Cache] Set failed:', e);
+        logSwrLocalStorageFailure('set', {
+            key,
+            dayKey,
+            hasData: typeof data !== 'undefined',
+            error: e,
+        });
         // If quota exceeded, clear old entries and retry
         if (e instanceof DOMException && e.name === 'QuotaExceededError') {
             cleanupOldEntries();
@@ -166,7 +228,7 @@ export function removeCachedData(key: string): void {
         const cacheKey = createCacheKey(key);
         localStorage.removeItem(cacheKey);
     } catch (e) {
-        console.warn('[SWR Cache] Remove failed:', e);
+        logSwrLocalStorageFailure('remove', { key, error: e });
     }
 }
 
@@ -189,7 +251,11 @@ export function removeCachedDataByPrefix(keyPrefix: string): number {
             removed++;
         });
     } catch (e) {
-        console.warn('[SWR Cache] Prefix remove failed:', e);
+        logSwrLocalStorageFailure('prefix_remove', {
+            keyPrefix,
+            removedCount: removed,
+            error: e,
+        });
     }
     return removed;
 }
@@ -208,7 +274,7 @@ export function clearAllCache(): void {
         }
         keysToRemove.forEach(key => localStorage.removeItem(key));
     } catch (e) {
-        console.warn('[SWR Cache] Clear failed:', e);
+        logSwrLocalStorageFailure('clear', { error: e });
     }
 }
 

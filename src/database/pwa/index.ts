@@ -64,6 +64,44 @@ export interface PWAIconUploadInput {
     onProgress?: (progress: number) => void;
 }
 
+export type PWASettingsUpdateResult = {
+    success: true;
+    updated: string[];
+} | {
+    noop: true;
+};
+
+export type PWAIconOverrideUpdateResult = {
+    success: true;
+    pwaIconUpdatedAt: string;
+};
+
+export const isPWASettingsUpdateResult = (result: unknown): result is PWASettingsUpdateResult => {
+    if (!result || typeof result !== 'object' || Array.isArray(result)) return false;
+    const candidate = result as { success?: unknown; updated?: unknown; noop?: unknown };
+    return (
+        (candidate.success === true && Array.isArray(candidate.updated))
+        || candidate.noop === true
+    );
+};
+
+export function assertPWASettingsUpdateSucceeded(result: unknown): asserts result is PWASettingsUpdateResult {
+    if (isPWASettingsUpdateResult(result)) return;
+    throw new Error('pwa_settings_update_rejected');
+}
+
+export const isPWAIconOverrideUpdateResult = (result: unknown): result is PWAIconOverrideUpdateResult => (
+    Boolean(result && typeof result === 'object')
+    && !Array.isArray(result)
+    && (result as PWAIconOverrideUpdateResult).success === true
+    && typeof (result as PWAIconOverrideUpdateResult).pwaIconUpdatedAt === 'string'
+);
+
+export function assertPWAIconOverrideUpdateSucceeded(result: unknown): asserts result is PWAIconOverrideUpdateResult {
+    if (isPWAIconOverrideUpdateResult(result)) return;
+    throw new Error('pwa_icon_override_update_rejected');
+}
+
 // ─────────────────────────────────────────────────────────────
 // Mutations
 // ─────────────────────────────────────────────────────────────
@@ -97,11 +135,11 @@ export const updatePWASettings = async (
                     ]),
                 );
             }
-            if (Object.keys(update).length === 0) return { noop: true };
+            if (Object.keys(update).length === 0) return { noop: true } satisfies PWASettingsUpdateResult;
 
             await updateDoc(getDocRef(storeId), await requestBodyComposer(update));
             await revalidatePublicClientCache(storeId, 'updatePWASettings');
-            return { success: true, updated: Object.keys(update) };
+            return { success: true, updated: Object.keys(update) } satisfies PWASettingsUpdateResult;
         },
         { storeId, settings },
         'updatePWASettings',
@@ -126,7 +164,7 @@ export const updatePWAIconOverride = async (
             };
             await updateDoc(getDocRef(storeId), await requestBodyComposer(update));
             await revalidatePublicClientCache(storeId, 'updatePWAIconOverride');
-            return { success: true, pwaIconUpdatedAt };
+            return { success: true, pwaIconUpdatedAt } satisfies PWAIconOverrideUpdateResult;
         },
         { storeId, override },
         'updatePWAIconOverride',

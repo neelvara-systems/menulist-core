@@ -1,4 +1,5 @@
 import { DB_COLLECTIONS } from '@constant/database';
+import { getBoundedAnswerlatticeStringContext, logAnswerlatticeFailure } from '@lib/answerlattice/diagnostics';
 import { getAnswerlatticeRetentionFields } from '@lib/answerlattice/dataRetention';
 import { answerlatticeFirestoreAdmin as firestoreAdmin, AnswerlatticeVector as Vector } from '@lib/firebase/answerlatticeFirebaseAdmin';
 
@@ -24,6 +25,7 @@ export interface QueryEmbeddingCache {
  * @returns Cached Vector instance or null if not found
  */
 const CACHE_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
+const DAY_MS = 24 * 60 * 60 * 1000;
 
 const toMillis = (value: any): number => {
     if (!value) return 0;
@@ -49,7 +51,12 @@ export const getCachedEmbedding = async (cacheKey: string): Promise<VectorInstan
     if (data.createdAt) {
         const createdMs = toMillis(data.createdAt);
         if (Date.now() - createdMs > CACHE_TTL_MS) {
-            await docRef.delete().catch(() => undefined);
+            await docRef.delete().catch((error) => {
+                logAnswerlatticeFailure('answerlattice_query_embedding_stale_delete_failed', error, {
+                    ...getBoundedAnswerlatticeStringContext('cacheKey', cacheKey),
+                    cacheAgeDays: Math.max(0, Math.floor((Date.now() - createdMs) / DAY_MS)),
+                });
+            });
             return null;
         }
     }

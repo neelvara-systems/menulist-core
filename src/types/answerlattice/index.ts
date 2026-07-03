@@ -1053,6 +1053,7 @@ export interface AnswerlatticeContextBundleStats {
 export interface AnswerlatticeContextBundleLimits {
     maxPublicBootstrapBytes: number;
     maxPublicRouteBytes: number;
+    maxPrivateObjectBytes: number;
     maxMcpResponseBytes: number;
     maxMcpToolCallsPerMinute: number;
 }

@@ -9,6 +9,10 @@ import {
 import { getGeneratedEmail } from '@constant/urls';
 import { normalizeLoginDigits } from '@lib/auth/loginIdentifiers';
 import {
+    getBoundedAuthStringContext,
+    logAuthFailure,
+} from '@lib/auth/authDiagnostics';
+import {
     getAuthUserByEmail,
     getAuthUserByLoginIdentifier,
 } from '@lib/auth/serverUserContext';
@@ -20,7 +24,7 @@ import {
     type PhoneNumberStorageInput,
 } from '@lib/phone/phoneNumber';
 import { removeDangerousKeys } from '@lib/security/sanitizeObject';
-import { secureError, secureLog } from '@lib/security/secureLogger';
+import { secureLog } from '@lib/security/secureLogger';
 
 const OTP_TTL_MS = 5 * 60 * 1000;
 const LOGIN_TOKEN_TTL_MS = 10 * 60 * 1000;
@@ -589,9 +593,11 @@ export async function consumePhoneOtpLoginToken(params: {
 
     const dbUser = await getAuthUserByEmail(tokenData.email);
     if (!dbUser || (tokenData.userId && String(dbUser.id) !== tokenData.userId)) {
-        secureError('[Phone OTP] Consumed token did not resolve to auth user', new Error('phone_otp_user_not_found'), {
-            userId: tokenData.userId,
-        });
+        logAuthFailure(
+            'phone_otp_user_not_found',
+            new Error('phone_otp_user_not_found'),
+            getBoundedAuthStringContext('userId', tokenData.userId),
+        );
         throw new PhoneOtpError('user_not_found', 'User not found.');
     }
 

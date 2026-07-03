@@ -20,9 +20,9 @@ export interface ComparisonResult {
 
 export interface PeriodComparison {
   volume: ComparisonResult;
+  totalMessages: ComparisonResult;
   satisfaction: ComparisonResult;
   avgMessages: ComparisonResult;
-  activeUsers: ComparisonResult;
 }
 
 export type ComparisonPeriod = 'wow' | 'mom' | 'custom';
@@ -44,6 +44,11 @@ export function compareMetrics(
       previous.totalChats,
       true // Higher volume is positive
     ),
+    totalMessages: calculateChange(
+      current.totalMessages,
+      previous.totalMessages,
+      true // More answered messages indicates more support usage
+    ),
     satisfaction: calculateChange(
       current.satisfactionRate,
       previous.satisfactionRate,
@@ -53,11 +58,6 @@ export function compareMetrics(
       current.avgMessagesPerChat,
       previous.avgMessagesPerChat,
       false // Lower messages might indicate better answers
-    ),
-    activeUsers: calculateChange(
-      current.activeUsers,
-      previous.activeUsers,
-      true // More active users is positive
     ),
   };
 }

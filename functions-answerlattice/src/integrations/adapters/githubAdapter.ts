@@ -17,9 +17,10 @@ import {
     INTEGRATION_LIMITS,
     INTEGRATION_EVENT_TYPES,
 } from '../types';
-import { safeText, sanitizeDeliveryError } from '../safety';
+import { safeText } from '../safety';
 
 const GITHUB_API_URL = 'https://api.github.com';
+const GITHUB_PATH_SEGMENT_PATTERN = /^[A-Za-z0-9_.-]{1,100}$/;
 
 const EVENT_TITLES: Record<string, string> = {
     [INTEGRATION_EVENT_TYPES.DRIFT_DETECTED]: 'Drift Detected',
@@ -123,6 +124,12 @@ function getLabels(event: IntegrationEvent): string[] {
     return labels;
 }
 
+function encodeGithubPathSegment(value: string): string {
+    const normalized = value.trim();
+    if (!GITHUB_PATH_SEGMENT_PATTERN.test(normalized)) return '';
+    return encodeURIComponent(normalized);
+}
+
 export class GithubAdapter implements IIntegrationAdapter {
     readonly adapterType = ADAPTER_TYPES.GITHUB;
 
@@ -152,7 +159,12 @@ export class GithubAdapter implements IIntegrationAdapter {
 
         try {
             const { title, body, labels } = this.formatPayload(event);
-            const url = `${GITHUB_API_URL}/repos/${config.owner}/${config.repo}/issues`;
+            const encodedOwner = encodeGithubPathSegment(config.owner);
+            const encodedRepo = encodeGithubPathSegment(config.repo);
+            if (!encodedOwner || !encodedRepo) {
+                return { success: false, error: 'No owner/repo configured', durationMs: Date.now() - startMs };
+            }
+            const url = `${GITHUB_API_URL}/repos/${encodedOwner}/${encodedRepo}/issues`;
 
             const controller = new AbortController();
             const timeout = setTimeout(() => controller.abort(), INTEGRATION_LIMITS.GITHUB_TIMEOUT_MS);
@@ -174,19 +186,20 @@ export class GithubAdapter implements IIntegrationAdapter {
 
             if (response.ok) {
                 const data = await response.json() as any;
+                const issueUrl = typeof data.html_url === 'string' ? data.html_url : '';
                 logger.info('[Answerlattice Integration] GitHub issue created', {
-                    issueNumber: data.number,
-                    issueUrl: data.html_url,
+                    issueNumber: typeof data.number === 'number' ? data.number : undefined,
+                    issueUrlPresent: issueUrl.length > 0,
+                    issueUrlLength: issueUrl.length,
                 });
                 return { success: true, statusCode: response.status, durationMs };
             }
 
-            const errorText = await response.text().catch(() => 'Unknown error');
-            return { success: false, statusCode: response.status, error: sanitizeDeliveryError(errorText), durationMs };
-        } catch (error) {
+            return { success: false, statusCode: response.status, error: 'GitHub issue creation returned bad status', durationMs };
+        } catch {
             return {
                 success: false,
-                error: sanitizeDeliveryError(error),
+                error: 'GitHub issue creation failed',
                 durationMs: Date.now() - startMs,
             };
         }

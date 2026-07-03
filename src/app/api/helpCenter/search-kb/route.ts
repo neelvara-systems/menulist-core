@@ -24,6 +24,8 @@ import {
     resolveAnswerlatticeSessionScope,
 } from '@lib/answerlattice/sessionScope';
 import { checkAIOperationLimit } from '@lib/rateLimit/helpers';
+import { readBoundedJsonBody } from '@lib/security/boundedRequestBody';
+import { getSafeZodValidationDetails } from '@lib/security/inputValidation';
 import { coreSearch } from '@lib/search/searchCore';
 import { SearchRequestSchema } from '@lib/validation/chatSchemas';
 import { writeLogEntry } from 'logs/utils';
@@ -32,6 +34,47 @@ import { ZodError } from 'zod';
 import { withAuth } from '../../../../middleware/auth';
 
 const PERF_LOG = LOG_FILES.KB_SEARCH_PERFORMANCE;
+const HELP_CENTER_SEARCH_MAX_BODY_BYTES = 64 * 1024;
+
+type HelpCenterSearchErrorLike = Error & {
+    code?: unknown;
+    status?: unknown;
+    statusCode?: unknown;
+};
+
+const getHelpCenterSearchErrorName = (error: unknown): string | undefined => {
+    if (error === undefined) return undefined;
+    if (error instanceof Error) return error.name || 'Error';
+    return typeof error;
+};
+
+const getHelpCenterSearchErrorCode = (error: unknown): string | undefined => {
+    if (!error || typeof error !== 'object' || !('code' in error)) return undefined;
+    const code = (error as HelpCenterSearchErrorLike).code;
+    if (code === undefined || code === null) return undefined;
+    return String(code).slice(0, 64);
+};
+
+const getHelpCenterSearchErrorStatus = (error: unknown): number | undefined => {
+    if (!error || typeof error !== 'object') return undefined;
+    const statusValue = 'status' in error
+        ? (error as HelpCenterSearchErrorLike).status
+        : (error as HelpCenterSearchErrorLike).statusCode;
+    const status = Number(statusValue);
+    return Number.isFinite(status) ? status : undefined;
+};
+
+const getHelpCenterSearchFailureLogData = (
+    failureCode: string,
+    error?: unknown,
+    context: Record<string, boolean | number | string | null | undefined> = {},
+) => ({
+    failureCode,
+    ...context,
+    sourceErrorName: getHelpCenterSearchErrorName(error),
+    sourceErrorCode: getHelpCenterSearchErrorCode(error),
+    sourceStatusCode: getHelpCenterSearchErrorStatus(error),
+});
 
 const parseHeaderUrl = (value: string | null): URL | null => {
     if (!value) return null;
@@ -46,21 +89,21 @@ export const POST = withAuth(async (request: NextRequest, session) => {
     try {
         // ✅ Session guaranteed by withAuth middleware
 
+        // 🔒 RATE LIMITING: Prevent API abuse
+        const rateLimitResponse = await checkAIOperationLimit();
+        if (rateLimitResponse) return rateLimitResponse;
+
         // 🔒 VALIDATE INPUT: Prevent injection attacks and invalid data
-        const rawBody = await request.json();
+        const bodyResult = await readBoundedJsonBody(request, HELP_CENTER_SEARCH_MAX_BODY_BYTES);
+        if (bodyResult.ok === false) return bodyResult.response;
 
         let validatedInput;
         try {
-            validatedInput = SearchRequestSchema.parse(rawBody);
+            validatedInput = SearchRequestSchema.parse(bodyResult.data);
         } catch (error) {
             if (error instanceof ZodError) {
-                const errors = error.issues.map(err => ({
-                    field: err.path.join('.'),
-                    message: err.message
-                }));
-
                 return NextResponse.json(
-                    { error: 'Validation failed', details: errors },
+                    { error: 'Validation failed', details: getSafeZodValidationDetails(error) },
                     { status: 400 }
                 );
             }
@@ -75,10 +118,6 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             productContext: rawProductContext,
             sessionFailureCount
         } = validatedInput;
-
-        // 🔒 RATE LIMITING: Prevent API abuse
-        const rateLimitResponse = await checkAIOperationLimit();
-        if (rateLimitResponse) return rateLimitResponse;
 
         // ===== CONTEXT-AWARE SUPPORT =====
         // Parse product context from request if present (feature-flagged)
@@ -204,7 +243,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                     logFileName: PERF_LOG,
                     userId: session?.uId,
                     logType: 'SEARCH_OPERATION_LOG_ERROR',
-                    data: { error: error instanceof Error ? error.message : String(error) },
+                    data: getHelpCenterSearchFailureLogData('answerlattice_search_operation_log_failed', error),
                 });
             });
         }
@@ -216,10 +255,9 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             logFileName: PERF_LOG,
             userId: session?.uId,
             logType: 'SEARCH_ERROR',
-            data: {
+            data: getHelpCenterSearchFailureLogData('answerlattice_help_center_search_failed', err, {
                 mountContext: 'help_center',
-                error: err.message,
-            }
+            }),
         });
 
         if (isAIProviderRateLimitError(err)) {

@@ -86,4 +86,4 @@ Implementation should not start until these docs are reviewed for:
 
 ## Changelog
 
-This documentation package is tracked in [../CHANGELOG.md](../CHANGELOG.md).
+This documentation package is tracked in [../changelog.md](../changelog.md).

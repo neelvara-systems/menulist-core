@@ -7,10 +7,14 @@ import {
 import { logger } from "@lib/monitoring/logger";
 import { checkRateLimit } from "@lib/rateLimit";
 import { getRateLimitForFeature } from "@lib/rateLimit/configs";
+import { readBoundedTextBody } from "@lib/security/boundedRequestBody";
+import { getClientIp, hashPublicRateLimitValue } from "src/middleware/publicApi";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
 const PROVIDERS = new Set(["email", "whatsapp", "instagram", "messenger", "apify"]);
+const SIGNALDESK_WEBHOOK_MAX_BODY_BYTES = 256 * 1024;
+const SIGNALDESK_WEBHOOK_REJECTED_REASON = "webhook_rejected";
 
 const resolveProvider = (provider: string) => PROVIDERS.has(provider) ? provider as "email" | "whatsapp" | "instagram" | "messenger" | "apify" : null;
 
@@ -29,8 +33,9 @@ export async function POST(request: NextRequest, context: { params: { provider: 
 
     try {
         const rateLimitConfig = getRateLimitForFeature("DATA_WRITE");
+        const ipHash = hashPublicRateLimitValue(getClientIp(request));
         const rateLimit = await checkRateLimit({
-            key: `signaldesk:webhook:${provider}:${request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip") || "unknown"}`,
+            key: `signaldesk:webhook:${provider}:${ipHash}`,
             ...rateLimitConfig,
         });
         if (!rateLimit.allowed) {
@@ -40,7 +45,13 @@ export async function POST(request: NextRequest, context: { params: { provider: 
             }, "medium");
             return NextResponse.json({ error: "Too many requests" }, { status: 429 });
         }
-        const rawBody = await request.text();
+        const bodyResult = await readBoundedTextBody(request, SIGNALDESK_WEBHOOK_MAX_BODY_BYTES, {
+            invalidRequestMessage: "Invalid webhook request",
+            tooLargeMessage: "Webhook body too large",
+        });
+        if (bodyResult.ok === false) return bodyResult.response;
+
+        const rawBody = bodyResult.body;
         const result = await processSignalDeskProviderWebhook({
             provider,
             rawBody,
@@ -51,10 +62,10 @@ export async function POST(request: NextRequest, context: { params: { provider: 
                 "Cache-Control": "no-store",
             },
         });
-    } catch (error) {
+    } catch {
         logger.security("SignalDesk Webhook Rejected", {
             endpoint: request.nextUrl.pathname,
-            error: error instanceof Error ? error.message : "Webhook failed",
+            error: SIGNALDESK_WEBHOOK_REJECTED_REASON,
             provider,
         }, "high");
         return NextResponse.json({ error: "Webhook rejected" }, { status: 400 });

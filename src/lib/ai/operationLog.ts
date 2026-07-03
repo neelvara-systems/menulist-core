@@ -60,17 +60,105 @@ function sanitizeForFirestore(value: any): any {
 
 function serializeGeminiResponse(response: any) {
     if (!response) return null;
-    if (typeof response === "string") return response;
 
     const usageMetadata = getGeminiUsageMetadata(response);
+    let responseText: string | null = null;
+    if (typeof response === "string") {
+        responseText = response;
+    } else if (typeof response.text === "string") {
+        responseText = response.text;
+    }
+
     return sanitizeForFirestore({
-        text: typeof response.text === "string" ? response.text.slice(0, 4000) : null,
+        responseTextPresent: typeof responseText === "string" && responseText.length > 0,
+        responseTextLength: typeof responseText === "string" ? responseText.length : 0,
         usageMetadata,
     });
 }
 
 function shouldStoreDetailedAiOperation(): boolean {
     return FEATURE_FLAGS.AI_OPERATION_LOG_MODE === "detailed";
+}
+
+function omitUndefined(value: JsonRecord): JsonRecord {
+    return Object.fromEntries(
+        Object.entries(value).filter(([, nestedValue]) => nestedValue !== undefined),
+    );
+}
+
+function isPlainRecord(value: unknown): value is JsonRecord {
+    return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function countRecordKeys(value: unknown): number {
+    return isPlainRecord(value) ? Object.keys(value).length : 0;
+}
+
+function toFiniteNumber(value: unknown): number | undefined {
+    const numberValue = Number(value);
+    return Number.isFinite(numberValue) ? numberValue : undefined;
+}
+
+function countNestedRecordValues(value: unknown): number {
+    if (!isPlainRecord(value)) return 0;
+
+    return Object.values(value).reduce((total, nestedValue) => {
+        if (!isPlainRecord(nestedValue)) return total;
+        return total + Object.keys(nestedValue).length;
+    }, 0);
+}
+
+function isDescriptionOperation(action: unknown): boolean {
+    return action === AI_ACTIONS_TYPES.ADD_DESCRIPTION || action === AI_ACTIONS_TYPES.REWRITE_DESCRIPTION;
+}
+
+function isImageGenerationOperation(action: unknown): boolean {
+    return action === AI_ACTIONS_TYPES.IMAGE_GENERATION || action === AI_ACTIONS_TYPES.BATCH_IMAGE_GENERATION;
+}
+
+function summarizeClientResponseForOperation(response: any, action?: string): JsonRecord | null {
+    if (response === undefined || response === null) return null;
+
+    if (Array.isArray(response)) {
+        return omitUndefined({
+            responseShape: "array",
+            arrayCount: response.length,
+            generatedImageCount: isImageGenerationOperation(action) ? response.length : undefined,
+        });
+    }
+
+    if (!isPlainRecord(response)) {
+        return {
+            responseShape: typeof response,
+            scalarPresent: true,
+        };
+    }
+
+    const data = isPlainRecord(response.data) ? response.data : null;
+    const message = typeof response.message === "string" ? response.message : "";
+    const descriptionCount = isDescriptionOperation(action) ? countNestedRecordValues(response) : undefined;
+    const translationCount = countRecordKeys(response.translations);
+
+    return omitUndefined({
+        responseShape: "object",
+        objectKeyCount: Object.keys(response).length,
+        messagePresent: message.length > 0,
+        messageLength: message.length,
+        qualityScore: toFiniteNumber(response.qualityScore),
+        dataSummary: data ? {
+            languagesCount: Array.isArray(data.languages) ? data.languages.length : 0,
+            categoriesCount: Array.isArray(data.categories) ? data.categories.length : 0,
+            itemsCount: Array.isArray(data.items) ? data.items.length : 0,
+        } : undefined,
+        descriptionSummary: descriptionCount !== undefined ? {
+            itemCount: countRecordKeys(response),
+            descriptionCount,
+        } : undefined,
+        translationsCount: translationCount || undefined,
+        referencesCount: toFiniteNumber(response.referencesCount),
+        createdCount: toFiniteNumber(response.createdCount),
+        matchedEntityCount: toFiniteNumber(response.matchedEntityCount),
+    });
 }
 
 export function buildAiOperationLog(input: AiOperationLogInput): AiOperationLogInput {
@@ -95,6 +183,7 @@ export function buildAiOperationLog(input: AiOperationLogInput): AiOperationLogI
         billingMode: input.billingMode || (unitsConsumed > 0 ? "billable" : "free"),
         candidatesTokenCount,
         chargePerCredit,
+        clientResponse: detailed ? input.clientResponse : summarizeClientResponseForOperation(input.clientResponse, input.action),
         geminiResponse: detailed ? serializeGeminiResponse(input.geminiResponse) : null,
         marginPaise: Number(input.marginPaise ?? (ourChargePaise - realCostPaise)),
         ourChargePaise,

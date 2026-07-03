@@ -1,10 +1,18 @@
 # Auth & Onboarding — Technical Implementation
 
-**Feature:** Complete Signup/Login/Onboarding/Payment Flow  
-**Status:** ✅ Production Ready  
-**Date:** January 26, 2026
+**Feature:** Complete Signup/Login/Onboarding/Payment Flow
+**Status:** Implemented source evidence; not current launch certification
+**Date:** July 2, 2026
 
 ---
+
+## Current Launch Boundary
+
+This implementation guide records current source evidence for MenuList auth, onboarding, subscription setup, custom claims, and payment verification. It is not current production-launch approval by itself.
+
+Current release approval still requires the active [production-readiness audit](../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../production-readiness/external-certification-runbook.md) evidence, current auth/security source review against mandatory rules, Google OAuth and credentials smoke, claim-account and store-switch smoke, Firebase Auth custom-claims/token evidence, Razorpay sandbox checkout plus payment-verification evidence, webhook/provider failure evidence, mobile browser onboarding/payment QA, target deploy evidence, and production-host smoke.
+
+The local verifier source-gates current code wiring only. It does not run live OAuth, Razorpay checkout, provider webhooks, Firebase Auth token minting, Firestore writes, browser/device QA, Firebase deploys, Vercel deploys, a production build, or production-host behavior.
 
 ## 1. System Architecture
 
@@ -188,69 +196,34 @@ dbUser = await addPlatformUser(newUser);
 - Rate limited (centralized config)
 - Blocks if user already has tenantId/storeId
 - Atomic Firestore transaction
+- Onboarding subscription validation, existing-user attempts, success breadcrumbs, and local dev payment logs use stable codes plus identifier presence/length metadata only; raw business names, user IDs, tenant IDs, store IDs, plan IDs, subscription IDs, and exception messages are not persisted in diagnostics.
 
 ### 4.2 Atomic Transaction
 
 ```typescript
 const result = await db.runTransaction(async (transaction) => {
-  // 1. Lock platformSummary (prevents race conditions)
-  const platformSummary = await transaction.get(platformSummaryRef);
-
-  // 2. Get next sequential IDs
-  const newTenantId = summaryData.tenants.count + 1;
-  const newStoreId = summaryData.stores.count + 1;
-
-  // 3. Create tenant: tenants/{newTenantId}
-  transaction.set(tenantRef, {
-    name: businessName,
-    businessType: userType,
-    tenantId: newTenantId,
-    storesList: [{ storeId: newStoreId, name: "..." }],
-    // ...
+  // 1. Create tenant, store, roles, storesSummary entry, and platform counters.
+  const core = await createTenantStoreInTransaction(transaction, db, {
+    businessName,
+    businessType: businessIndustry || FALLBACK_BUSINESS_TYPE,
+    businessIndustry: userType,
+    timeZone,
+    businessDayEndTime,
+    email: session.user.email,
+    onboardingSource: "WEBSITE_ONBOARDING",
+    subdomain: { preChecked: preCheckedSubdomain },
+    includeTimeSlotPresets: true,
   });
 
-  // 4. Create store: stores/{newStoreId}
-  transaction.set(storeRef, {
-    name: `${businessName} - Main Store`,
-    tenantId: newTenantId,
-    storeId: newStoreId,
-    businessCategory: getBusinessCategory(userType),
-    // ...
-  });
+  // createTenantStoreInTransaction writes:
+  // - tenant/store businessType = actual type, for example "Restaurant"
+  // - tenant/store businessIndustry = plan type, for example "B2C"
+  // - store/storesSummary businessCategory from shared business-type data
 
-  // 5. Sync to storesSummary (for Cloud Functions)
-  transaction.set(
-    storesSummaryRef,
-    {
-      [`stores.${newStoreId}`]: {
-        tId: newTenantId,
-        businessType: userType,
-        active: true,
-      },
-    },
-    { merge: true },
-  );
+  // 2. Update user: users/{userId}
+  updateUserWithTenantStore(transaction, db, userId, core);
 
-  // 6. Update user: users/{userId}
-  transaction.update(userRef, {
-    tenantId: newTenantId,
-    storeId: newStoreId,
-    stores: [
-      {
-        storeId: newStoreId,
-        name: `${businessName} - Main Store`,
-        roles: ["OWNER"], // ← FIRST USER = OWNER
-      },
-    ],
-  });
-
-  // 7. Increment counts
-  transaction.update(platformSummaryRef, {
-    "tenants.count": newTenantId,
-    "stores.count": newStoreId,
-  });
-
-  return { tenantId: newTenantId, storeId: newStoreId };
+  return { tenantId: core.tenantId, storeId: core.storeId };
 });
 ```
 
@@ -280,6 +253,8 @@ await createInitialSubscription(razorpaySubscription.id, {
   // ...
 });
 ```
+
+If Razorpay plan lookup or subscription creation fails after the tenant/store/user transaction succeeds, the route calls `compensateFailedTenantStoreOnboarding()`. That failure path marks the created tenant and store inactive, updates `platformSummary/storesSummary.stores.{storeId}.active` to `false`, clears the failed tenant/store mapping from the user document when it matches the just-created scope, and revalidates the public menu/OBP cache. The route then rethrows the provider error through the existing bounded payment error handler.
 
 ---
 
@@ -505,8 +480,8 @@ export const signOutSession = (callbackUrl = "/signin") => {
 {
   tenantId: number;
   name: string;
-  businessType: 'B2C' | 'B2B';
-  businessIndustry: string;
+  businessType: string; // Actual business type, for example "Restaurant"
+  businessIndustry: 'B2C' | 'B2B'; // Plan type marker
   email: string;
   active: boolean;
   verified: boolean;
@@ -525,9 +500,9 @@ export const signOutSession = (callbackUrl = "/signin") => {
   storeId: number;
   tenantId: number;
   name: string;
-  businessType: 'B2C' | 'B2B';
+  businessType: string; // Actual business type, for example "Restaurant"
   businessCategory: string;
-  businessIndustry: string;
+  businessIndustry: 'B2C' | 'B2B'; // Plan type marker
   email: string;
   active: boolean;
   verified: boolean;
@@ -655,15 +630,33 @@ MODE 1: Google OAuth (requires active NextAuth session)
   2. Owner clicks "Sign in with Google" → Google OAuth
   3. Post-login: localStorage pendingClaimToken → POST /api/auth/claim-account { claimToken }
   4. API transfers tenant/store from messaging user to Google user doc
-  5. Redirect to dashboard
+  5. API syncs tenant/store email and revalidates public menu/OBP/store cache
+  6. Redirect to dashboard
 
 MODE 2: Email + Password (no session required)
   1. Owner clicks claim link → login page shows welcome message
   2. Owner clicks "Set up with email and password" → form appears
   3. Owner enters email + password → POST /api/auth/claim-account { claimToken, email, password }
   4. API creates Firebase Auth user, updates messaging user doc with real email
-  5. Owner can now log in via email/password
+  5. API syncs tenant/store email and revalidates public menu/OBP/store cache
+  6. Owner can now log in via email/password
 ```
+
+**June 26 admission note:** `POST /api/auth/claim-account` now applies the `AUTH_SENSITIVE` IP limiter before a 16KB bounded JSON body and claim-token lookup. `POST /api/auth/change-password` keeps `AUTH_SENSITIVE` before a 2KB body cap and Firebase Auth verification.
+
+**June 29 rate-limit key note:** `POST /api/auth/change-password` and `POST /api/auth/switch-store` hash authenticated user limiter key material before calling the shared rate-limit provider. Limits, windows, admission order, Firebase Auth verification, store-switch reads, and owner responses are unchanged except that raw user IDs are no longer stored in provider key names.
+
+**June 30 provider-boundary note:** `POST /api/auth/change-password` now builds the Firebase Auth `accounts:signInWithPassword` verification URL from a fixed host/path with `URLSearchParams`, rejects malformed local API keys before network I/O, and fetches with manual redirect handling. Password verification, password update, Firestore `passwordChangedAt`, rate limits, and owner-facing responses remain unchanged.
+
+**June 27 diagnostic note:** Firebase client bootstrap, App Check initialization, Firebase Auth sync hook failures, and session-provider auth bootstrap failures now use `src/lib/firebase/firebaseDiagnostics.ts`. Normal successful sync paths stay quiet; failures log normalized failure codes, error name/code/status, and bounded session/path metadata only.
+
+**June 28 diagnostic note:** `POST /api/auth/claim-account` unexpected catch-path failures now use `src/lib/auth/authDiagnostics.ts` with the stable `claim_account_unexpected_error` code, source error name/code/status, and bounded request metadata only. Claim-token lookup, Firebase Auth user creation/update, custom claims, tenant/store email sync, subscription linking, and public cache revalidation behavior are unchanged.
+
+**June 28 follow-up:** `GET /api/auth/validate-claim` and `POST /api/auth/change-password` now also use bounded auth diagnostics for unexpected claim validation failures, missing Firebase API key, current-password verification exceptions, and unexpected password-route failures. Claim validation, password verification, password update, Firestore `passwordChangedAt`, and owner-facing response behavior are unchanged.
+
+**July 1 acknowledgement note:** `GET /api/auth/validate-claim` now returns an explicit preview acknowledgement (`valid: true`, `status: "valid"`, `preview: "claim-token"`) with the business preview name. `src/components/templates/loginPage/index.tsx` requires that shaped acknowledgement before showing claim setup options and only displays masked phone values. Claim-token lookup, claim-account writes, Firebase Auth operations, tenant/store email sync, public cache revalidation, and owner-facing failure copy are unchanged.
+
+**July 1 Platform Users verification note:** `/api/auth/create-staff` compatibility responses are still parsed through the shared bounded staff client, but successful verification now must match a create-staff mode (`new_user_created` or `existing_user_added_to_store`) and return user identity before Platform Users marks the user verified. The existing `EMAIL_EXISTS` compatibility fallback remains allowlisted. Staff creation, Firebase Auth lookup, platform user document updates, and owner-facing behavior are unchanged.
 
 ### Key Decisions (see `__docs__/auth/auth_audit-decisions.md` for full reasoning)
 
@@ -675,6 +668,6 @@ MODE 2: Email + Password (no session required)
 
 ---
 
-**DOCUMENT STATUS:** ✅ Production Ready  
-**LAST UPDATED:** February 19, 2026 (Auth Audit)  
-**CROSS-CHECKED:** All paths verified against codebase
+**DOCUMENT STATUS:** Source evidence only - not current launch certification
+**LAST UPDATED:** July 2, 2026 (Launch boundary clarification)
+**CROSS-CHECKED:** Source paths reviewed against codebase; live launch evidence still belongs in the production-readiness audit and External Certification Runbook

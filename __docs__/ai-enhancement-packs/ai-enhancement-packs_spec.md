@@ -832,7 +832,7 @@ The payment system was designed provider-agnostic from the start:
 
 | Item                | Current Docs              | Actual Code                                         |
 | ------------------- | ------------------------- | --------------------------------------------------- |
-| Spec: "Billing" row | "Stripe one-time product" | Razorpay fully built                                |
+| Spec: "Billing" row | "Stripe one-time product" | Razorpay implementation exists and is billing-slice audited |
 | Impl: Task 3.1      | "Create Stripe Product"   | Razorpay dashboard                                  |
 | Impl: Task 3.2      | "Stripe checkout session" | Razorpay order creation                             |
 | Impl: Task 3.3      | "Stripe webhook handler"  | Razorpay webhook (`/api/razorpay/webhook/route.ts`) |

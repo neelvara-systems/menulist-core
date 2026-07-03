@@ -4,13 +4,23 @@ import { PRODUCT_IDS } from '@constant/product';
 import { FEATURE_FLAGS } from '@config/features';
 import type { OwnerNotificationChannel, OwnerNotificationProductId } from '@data/shared/ownerNotificationRegistry';
 import type {
-    OwnerNotificationOpsActionResult,
     OwnerNotificationOpsDeliveryRow,
     OwnerNotificationOpsEventRow,
     OwnerNotificationOpsSnapshot,
     OwnerNotificationOpsStatusFilter,
 } from '@lib/ops/ownerNotificationTypes';
+import {
+    readOwnerNotificationActionResponse,
+    readOwnerNotificationSnapshotResponse,
+} from '@lib/ops/ownerNotificationClientResponse';
 import { buildWhatsAppPhoneParam } from '@lib/phone/phoneNumber';
+import {
+    copyRuntimeTextToClipboard,
+    getBoundedRuntimeStringContext,
+    hasRuntimeClipboardWrite,
+    hasRuntimeCopyFallback,
+    logRuntimeFailure,
+} from '@lib/runtime/runtimeDiagnostics';
 import { formatDateTime, type IntlFormatter } from '@util/dateTime';
 import {
     Alert,
@@ -78,6 +88,14 @@ function metadataText(record: OwnerNotificationOpsEventRow): string {
     const entries = Object.entries(record.metadataPreview || {});
     if (!entries.length) return '-';
     return entries.map(([key, value]) => `${key}: ${String(value)}`).join(' / ');
+}
+
+function formatMonitorError(value: unknown): string {
+    const text = String(value || '').trim();
+    if (!text) return '-';
+    if (/^[A-Za-z0-9_.:-]{1,80}$/.test(text)) return text;
+    if (/^(Stored error|Subject|Provider message id) present \(\d+ chars\)\.$/.test(text)) return text;
+    return `Stored error present (${text.length} chars).`;
 }
 
 function canRetry(status: string): boolean {
@@ -161,14 +179,26 @@ export default function OwnerNotificationMonitor() {
 
             const response = await fetch(`/api/ops/owner-notifications?${query.toString()}`, {
                 cache: 'no-store',
+                credentials: 'same-origin',
+                redirect: 'manual',
             });
-            const data = await response.json().catch(() => ({}));
-            if (!response.ok) {
-                throw new Error(data?.error || 'Failed to load owner notification state');
+            const data = await readOwnerNotificationSnapshotResponse(response, {
+                ...getBoundedRuntimeStringContext('eventId', eventId),
+                ...getBoundedRuntimeStringContext('productId', productId),
+                ...getBoundedRuntimeStringContext('statusFilter', statusFilter),
+            });
+            if (!data) {
+                message.error('Failed to load owner notifications');
+                return;
             }
             setSnapshot(data);
-        } catch (error: any) {
-            message.error(error?.message || 'Failed to load owner notifications');
+        } catch (error) {
+            logRuntimeFailure('owner_notification_monitor_load_failed', error, {
+                ...getBoundedRuntimeStringContext('eventId', eventId),
+                ...getBoundedRuntimeStringContext('productId', productId),
+                ...getBoundedRuntimeStringContext('statusFilter', statusFilter),
+            });
+            message.error('Failed to load owner notifications');
         } finally {
             setLoading(false);
         }
@@ -184,19 +214,29 @@ export default function OwnerNotificationMonitor() {
         setActionLoading(true);
         try {
             const response = await fetch('/api/ops/owner-notifications', {
+                cache: 'no-store',
+                credentials: 'same-origin',
                 method: 'POST',
+                redirect: 'manual',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(body),
             });
-            const result = await response.json().catch(() => ({}));
-            if (!response.ok) {
-                throw new Error(result?.error || 'Owner notification action failed');
+            const actionResult = await readOwnerNotificationActionResponse(response, {
+                ...getBoundedRuntimeStringContext('action', body.action),
+                ...getBoundedRuntimeStringContext('selectedEventId', selectedEventId),
+            });
+            if (!actionResult) {
+                message.error('Owner notification action failed');
+                return;
             }
-            const actionResult = result as OwnerNotificationOpsActionResult;
             message.success(actionResult.message || 'Action completed');
             await loadData(selectedEventId);
-        } catch (error: any) {
-            message.error(error?.message || 'Owner notification action failed');
+        } catch (error) {
+            logRuntimeFailure('owner_notification_monitor_action_failed', error, {
+                ...getBoundedRuntimeStringContext('action', body.action),
+                ...getBoundedRuntimeStringContext('selectedEventId', selectedEventId),
+            });
+            message.error('Owner notification action failed');
         } finally {
             setActionLoading(false);
         }
@@ -268,8 +308,49 @@ export default function OwnerNotificationMonitor() {
             return;
         }
 
-        window.open(buildWhatsappWebHref(prefillDestination, prefillBody), '_blank', 'noopener,noreferrer');
-    }, [prefillBody, prefillDestination, prefillModal, prefillSubject]);
+        const whatsappWebHref = buildWhatsappWebHref(prefillDestination, prefillBody);
+        try {
+            const opened = window.open(whatsappWebHref, '_blank', 'noopener,noreferrer');
+            if (!opened) {
+                throw new Error('owner_notification_monitor_whatsapp_open_blocked');
+            }
+        } catch (error) {
+            logRuntimeFailure('owner_notification_monitor_whatsapp_open_failed', error, {
+                ...getBoundedRuntimeStringContext('selectedEventId', selectedEventId),
+                ...getBoundedRuntimeStringContext('productId', productId),
+                ...getBoundedRuntimeStringContext('statusFilter', statusFilter),
+                ...getBoundedRuntimeStringContext('destination', prefillDestination),
+                ...getBoundedRuntimeStringContext('messageBody', prefillBody),
+                ...getBoundedRuntimeStringContext('whatsappWebHref', whatsappWebHref),
+            });
+            message.error('Unable to open WhatsApp Web');
+        }
+    }, [prefillBody, prefillDestination, prefillModal, prefillSubject, productId, selectedEventId, statusFilter]);
+
+    const copyPrefillMessage = useCallback(async () => {
+        if (!prefillModal) return;
+        const messageText = prefillModal.channel === 'email'
+            ? `${prefillSubject}\n\n${prefillBody}`
+            : prefillBody;
+        try {
+            await copyRuntimeTextToClipboard(messageText);
+            message.success('Message copied');
+        } catch (error) {
+            logRuntimeFailure('owner_notification_monitor_message_copy_failed', error, {
+                ...getBoundedRuntimeStringContext('selectedEventId', selectedEventId),
+                ...getBoundedRuntimeStringContext('productId', productId),
+                ...getBoundedRuntimeStringContext('statusFilter', statusFilter),
+                ...getBoundedRuntimeStringContext('channel', prefillModal.channel),
+                ...getBoundedRuntimeStringContext('destination', prefillDestination),
+                ...getBoundedRuntimeStringContext('subject', prefillSubject),
+                ...getBoundedRuntimeStringContext('messageBody', prefillBody),
+                messageTextLength: messageText.length,
+                hasClipboardWrite: hasRuntimeClipboardWrite(),
+                hasCopyFallback: hasRuntimeCopyFallback(),
+            });
+            message.error('Unable to copy message');
+        }
+    }, [prefillBody, prefillDestination, prefillModal, prefillSubject, productId, selectedEventId, statusFilter]);
 
     const eventColumns: ColumnsType<OwnerNotificationOpsEventRow> = useMemo(() => [
         {
@@ -337,7 +418,7 @@ export default function OwnerNotificationMonitor() {
             render: (value, record) => (
                 <Space size={4} direction="vertical">
                     <Text copyable>{value}</Text>
-                    <Text type={record.error ? 'danger' : 'secondary'}>{record.error || metadataText(record)}</Text>
+                    <Text type={record.error ? 'danger' : 'secondary'}>{record.error ? formatMonitorError(record.error) : metadataText(record)}</Text>
                 </Space>
             ),
         },
@@ -439,7 +520,7 @@ export default function OwnerNotificationMonitor() {
             title: 'Error',
             dataIndex: 'error',
             key: 'error',
-            render: (value) => <Text type="danger">{value || '-'}</Text>,
+            render: (value) => <Text type="danger">{formatMonitorError(value)}</Text>,
         },
     ], [formatter]);
 
@@ -534,7 +615,7 @@ export default function OwnerNotificationMonitor() {
                 open={Boolean(selectedEventId)}
                 onClose={closeDrawer}
                 width={760}
-                destroyOnClose
+                destroyOnHidden
                 extra={selectedEvent ? (
                     <Space>
                         <Button
@@ -577,7 +658,7 @@ export default function OwnerNotificationMonitor() {
                             <Descriptions.Item label="Scope">{formatScope(selectedEvent)}</Descriptions.Item>
                             <Descriptions.Item label="Source">{selectedEvent.sourcePath}</Descriptions.Item>
                             <Descriptions.Item label="Updated">{formatTimestamp(selectedEvent.updatedAt, formatter)}</Descriptions.Item>
-                            <Descriptions.Item label="Error">{selectedEvent.error || '-'}</Descriptions.Item>
+                            <Descriptions.Item label="Error">{formatMonitorError(selectedEvent.error)}</Descriptions.Item>
                             <Descriptions.Item label="Metadata">{metadataText(selectedEvent)}</Descriptions.Item>
                         </Descriptions>
 
@@ -633,12 +714,7 @@ export default function OwnerNotificationMonitor() {
                     <Button key="cancel" onClick={() => setPrefillModal(null)}>Cancel</Button>,
                     <Button
                         key="copy"
-                        onClick={async () => {
-                            await navigator.clipboard.writeText(prefillModal?.channel === 'email'
-                                ? `${prefillSubject}\n\n${prefillBody}`
-                                : prefillBody);
-                            message.success('Message copied');
-                        }}
+                        onClick={() => void copyPrefillMessage()}
                     >
                         Copy Message
                     </Button>,

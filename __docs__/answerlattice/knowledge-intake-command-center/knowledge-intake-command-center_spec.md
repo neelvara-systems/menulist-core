@@ -124,6 +124,7 @@ Rules:
 - selected pages receive compact source metadata and source lineage
 - homepage and marketing pages can explain product positioning, but cannot override pricing, legal, security, policy, or owner-approved answers
 - URL query tracking parameters are stripped before dedupe and source hashing
+- fetched URL bodies must be streamed and capped; non-streaming responses are accepted only with a trustworthy safe content length
 - repeated imports compare source hash, ETag, Last-Modified, canonical URL, and normalized text hash before running extraction again
 - if unchanged, Answerlattice updates freshness metadata only and skips AI/provider work
 

@@ -1,10 +1,12 @@
-# AI Data Extraction — Final Production Readiness Audit
+# AI Data Extraction — Historical Code-Readiness Audit
 
 **Date:** March 13, 2026  
 **Auditor:** Cascade (Master Execution Prompt)  
 **Scope:** Complete AI Data Extraction system — codebase, documentation, architecture, runtime behavior  
 **Files Audited:** 35+ code files, 24+ documentation files across 3 doc folders  
 **TypeScript Errors:** 0
+
+**Current status note (July 2, 2026):** This file is historical code-readiness evidence, not current MenuList launch certification. Current launch authority is the External Certification Runbook and `__docs__/audits/menulist-production-readiness-audit.md`: menu extraction source gates pass locally, but live production certification still requires the blocked QA Firebase Functions/Storage deploys, provider smoke, authenticated browser/device QA, and production-host evidence. If this slice needs Firestore index redeploy evidence, use the scoped QA command first: `firebase deploy --only firestore:indexes --project menulist-qa --config firebase.json`. Production index deploy requires QA evidence and explicit production approval.
 
 ---
 
@@ -148,8 +150,8 @@ Full pipeline verified:
 - **~$3.59/month per 1,000 extractions** (Gemini API dominates)
 - Monitoring dashboard: ~$0.02/month (read-only)
 - Job cleanup: 7-day TTL hard delete, up to 500/day ✅
-- Known risk: `MENULIST_AI_OPERATIONS` unbounded growth (tracked in infrastructure risk tracker as CG-1)
-- Known risk: Project `files[]` unbounded growth (tracked as DS-1)
+- Known risk now code-resolved: `MENULIST_AI_OPERATIONS` / `menulistAiOperations` detailed-field growth uses compact-not-delete retention (tracked as CG-1; scheduler deploy still required for detailed-mode cleanup live effect)
+- Known risk now code-resolved: Project `files[]` growth is bounded by file/page caps, document-size gates, and reset/create-new replacement policy (tracked as DS-1)
 
 ### Cloud Function Audit: ✅ PASS
 
@@ -176,12 +178,12 @@ Full pipeline verified:
 
 | ID | Risk | Severity | Status |
 | --- | --- | --- | --- |
-| DS-1 | Project `files[]` array grows unbounded (1MB limit risk at heavy re-upload) | ⚠️ HIGH | OPEN |
-| DS-2 | Job `result.combinedData` can be large (400+ item menus) | ⚠️ MEDIUM | OPEN |
-| CG-1 | `MENULIST_AI_OPERATIONS` unbounded growth (~120GB/yr at 100K/mo) | ⚠️ HIGH | OPEN |
-| SG-1 | Menu images never deleted (900GB/yr at 100K/mo) | ⚠️ MEDIUM-HIGH | OPEN |
-| SG-2 | Legacy storage paths lack tenant isolation | ⚠️ LOW | OPEN |
-| QP-1 | Monitoring dashboard 220 reads per load (OK for founder-only) | ⚠️ LOW | OPEN |
+| DS-1 | Project `files[]` array growth | ⚠️ HIGH | ✅ RESOLVED IN CODE — append remains the incremental upload model, desktop/mobile caps block oversized pending batches before Storage upload, 700KB warning and 900KB hard block remain verified, oversized append attempts are rejected before AI work with reset/create-new copy, and owner reset clears `files[]` / extracted data for replacement uploads |
+| DS-2 | Job `result.combinedData` can be large (400+ item menus) | ⚠️ MEDIUM | 🔧 PARTIAL — completed first-extraction project jobs are pruned after downstream consumption; public, messaging, and review jobs intentionally retain payloads |
+| CG-1 | `MENULIST_AI_OPERATIONS` / `menulistAiOperations` ledger growth | ⚠️ MEDIUM | ✅ RESOLVED IN CODE — compact-not-delete retention keeps accounting/audit and owner transaction-history rows while avoiding indefinite raw provider/output detail retention; detailed-mode cleanup still needs the updated maintenance scheduler deployed for live effect |
+| SG-1 | Legacy extraction upload lifecycle artifact | ⚠️ MEDIUM-HIGH | ✅ RESOLVED IN CODE — `COLDLINE` bucket lifecycle config pending QA-first apply |
+| SG-2 | Active project fallback uploads are tenant-scoped; legacy project Storage paths are read-only | ⚠️ LOW | ✅ RESOLVED IN CODE — active writes use scoped paths and legacy project writes/deletes are denied in `storage.rules`; pending scoped Storage rules deploy for live effect |
+| QP-1 | Monitoring dashboard duplicate-load read cost | ⚠️ LOW | ✅ RESOLVED IN CODE — SWR 5-minute dedupe; cache miss or explicit Refresh remains bounded |
 
 ### Not-Yet-Implemented Items (Non-Blocking)
 
@@ -221,9 +223,9 @@ Full pipeline verified:
 
 ---
 
-## SECTION 7 — Final Production Readiness Verdict
+## SECTION 7 — Historical Code-Readiness Verdict
 
-# ✅ READY FOR PRODUCTION
+# Historical code-readiness pass; not current production certification
 
 ### Reasoning
 
@@ -231,7 +233,7 @@ Full pipeline verified:
 
 **Reliability (10/10):** Failures cannot corrupt project data (Firestore transaction in `saveFilesToProject`). Jobs cannot get stuck indefinitely (15-min cleanup scheduler catches stuck processing, expired previews, and stuck cancelling states). Double-safety error handling (catch block + cleanup scheduler via `timeoutAt`).
 
-**Scalability (9/10):** Firestore design supports increasing workloads. Sequential batch processing prevents Gemini rate limits. 65,536 output tokens support large menus. Two known growth risks (DS-1: `files[]` array, CG-1: `MENULIST_AI_OPERATIONS` unbounded) are tracked in infrastructure risk tracker — not blocking at current scale but need attention before 10K+ extractions/month.
+**Scalability (8/10):** Firestore design supports increasing workloads. Sequential batch processing prevents Gemini rate limits. 65,536 output tokens support large menus. DS-1, DS-2, and CG-1 now have code-side guards or compaction, and desktop/mobile upload blocks over-limit extraction batches before Storage upload. DS-1 replacement is explicit through reset/create-new instead of automatic stripping because `files[].extractedData` remains live editor data. CG-1 uses compact-not-delete retention: compact accounting/audit rows remain available for owner transaction history and platform cost review, while heavy detailed fields are compacted or pruned instead of retained indefinitely.
 
 **Security (10/10):** Tenant isolation enforced at multiple layers (Firestore rules, server-side validation in CF, `tId`/`sId`/`uId` on every document). Output sanitization via `stripHtml()`. Rate limiting via Upstash Redis. Platform admin gate on monitoring dashboard.
 
@@ -243,12 +245,14 @@ Full pipeline verified:
 
 **Total: 68/70 (97%)**
 
-### What's Needed Before First Real Restaurant Extraction
+### What's Needed Before Launch Certification
 
-1. ✅ Deploy Firestore indexes: `firebase deploy --only firestore:indexes` (7 indexes for menuImageProcessingJobs)
-2. ✅ Ensure `GEMINI_AI_KEY` is set in Firebase secrets and Vercel env
-3. ✅ Feature flag `ENABLE_EXTRACTION_MONITORING_DASHBOARD` → set `true` when ready to monitor
-4. ⚠️ Monitor DS-1 and CG-1 risks after first 1,000 extractions
+1. Run `npm run verify:production-readiness-local` immediately before external evidence collection.
+2. Restore `menulist-qa` Firebase project access and complete the scoped Functions and Storage deploy retries in `__docs__/production-readiness/external-certification-runbook.md`.
+3. If Gate 1 requires an index refresh, use the scoped QA command first: `firebase deploy --only firestore:indexes --project menulist-qa --config firebase.json`. Production index deploy requires QA evidence and explicit production approval.
+4. Verify `GEMINI_AI_KEY`, Upstash, and related Firebase/Vercel environment values on the target environment without copying legacy local env files wholesale.
+5. Run provider smoke, authenticated owner/browser QA, mobile/device QA, and production-host evidence collection through the current external certification gates.
+6. Monitor DS-1 and CG-1 guard behavior after real extraction traffic, especially blocked append attempts, compact ledger row size, and scheduler cleanup state.
 
 ### What Can Wait
 

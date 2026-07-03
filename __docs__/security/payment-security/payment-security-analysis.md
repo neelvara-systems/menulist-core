@@ -1,8 +1,12 @@
 # 🔍 **COMPLETE FLOW ANALYSIS - Payment & Onboarding Security**
 
 **Date:** November 5, 2025  
-**Status:** Analysis Complete - Ready for Implementation  
+**Status:** Historical payment/onboarding security analysis; implemented source evidence only; not current launch certification
 **Priority:** 🔴 **CRITICAL SECURITY FIXES**
+
+> **Current Release Boundary (July 3, 2026):** This file is a historical analysis and source-evidence note, not current implementation approval, launch approval, or payment-security certification. Current payment/onboarding release approval requires the active [production-readiness audit](../../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../../production-readiness/external-certification-runbook.md) evidence, `npm run verify:agent-readiness`, `npm run verify:billing-entitlement-boundary`, `npm run verify:auth-security-failure-matrix`, authenticated onboarding browser/API smoke, Razorpay sandbox subscription/top-up/webhook smoke, Firebase Auth custom-claims/token smoke where onboarding is in scope, provider-failure compensation evidence for tenant/store creation, target deploy evidence where auth/payment/rules/functions change, and production-host smoke.
+
+> **Current Source Baseline:** The active source now uses the server-owned onboarding route `src/app/api/onboarding/create-subscription/route.ts`, the shared tenant/store transaction helper `src/lib/onboarding/createTenantStore.ts`, bounded request parsing, Zod validation, rate limiting, provider-failure compensation, cache revalidation, and session-derived Razorpay billing scope. Protected Razorpay routes resolve tenant/store scope from the session/product context and verify MenuList tenant access before billing mutations. The checklist below is retained as historical context only.
 
 ---
 
@@ -709,6 +713,8 @@ const subResponse = await fetch("/api/razorpay/create-subscription", {
 
 ## 📋 **IMPLEMENTATION CHECKLIST**
 
+> **Historical checklist boundary:** The checklist below records the November 2025 remediation plan. Do not use the unchecked boxes as current implementation status or launch approval. Current source truth is gated by `npm run verify:agent-readiness`, `npm run verify:billing-entitlement-boundary`, `npm run verify:auth-security-failure-matrix`, browser/API smoke, Razorpay sandbox evidence, and the External Certification Runbook.
+
 ### **Phase 1: Auth & Onboarding (Critical)**
 
 - [ ] Fix auth callback to allow new users (lib/auth/index.ts)
@@ -1033,20 +1039,21 @@ Both in `__docs__/` folder.
 
 ---
 
-## 🚀 **Ready to Test?**
+## Current Approval Boundary
 
-**Please test the new user signup flow:**
+This historical analysis is not enough to approve payment/onboarding launch.
 
-1. ✅ Open pricing page in incognito
-2. ✅ Try to sign up with new Google account
-3. ✅ Fill onboarding modal
-4. ✅ Complete OAuth login
-5. ✅ Verify account creation succeeds
-6. ✅ Check Razorpay modal opens
+Current approval requires:
 
-**If everything works:** We proceed to **Phase 2** (securing existing payment routes)
-
-**If issues arise:** Let me know what error you see and I'll fix it immediately!
+1. `npm run verify:agent-readiness`
+2. `npm run verify:billing-entitlement-boundary`
+3. `npm run verify:auth-security-failure-matrix`
+4. Authenticated onboarding browser/API smoke for pricing, OAuth return, tenant/store creation, session refresh, and payment handoff.
+5. Razorpay sandbox subscription/top-up/webhook smoke for the target release scope.
+6. Provider-failure compensation evidence for tenant/store creation and subscription creation.
+7. Firebase Auth custom-claims/token smoke when onboarding or session handoff changes.
+8. Target deploy evidence where auth, payment, Firestore rules, indexes, Storage rules, Cloud Functions, or app routes change.
+9. Production-host smoke after the approved deploy path.
 
 ---
 
@@ -1059,4 +1066,4 @@ Both in `__docs__/` folder.
 - ✅ **Logging:** Full audit trail for debugging
 - ✅ **UX:** Zero changes to user experience
 
-**Phase 1 is complete and ready for testing!** 🎉
+**Phase 1 historical implementation evidence is retained; it is not current testing approval and not current launch certification.** Current testing or release approval follows the Current Release Boundary above.

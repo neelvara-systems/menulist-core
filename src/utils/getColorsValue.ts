@@ -15,7 +15,6 @@ export const getGradientValue = (configObj: gradientConfigObj) => {
     colors.map((c, i) => {
         colorsString = `${colorsString}${c}${i != colors.length - 1 ? ', ' : ''}`
     })
-    // console.log("configObj.props", configObj.props)
     return (`${type}-gradient(${direction}, ${colorsString})`);
 }
 

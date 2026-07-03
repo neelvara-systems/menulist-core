@@ -9,48 +9,32 @@ export const dynamic = 'force-dynamic';
  */
 
 import { getChatStatisticsOptimized } from '@database/chatAnalytics';
+import { getBoundedAnalyticsStringContext, logAnalyticsFailure } from '@lib/analytics/analyticsDiagnostics';
 import { calculateROI, ChatAnalyticsData, getDefaultROIParams, ROICalculationParams } from '@lib/analytics/roiCalculations';
-import getActiveSession from '@lib/auth/getActiveSession';
-import { checkRateLimit } from '@lib/rateLimit';
-import { getRateLimitForFeature } from '@lib/rateLimit/configs';
+import { withAuth } from '../../../../middleware/auth';
 import { NextRequest, NextResponse } from 'next/server';
+import { applyAnalyticsReadRateLimit } from '../readRateLimit';
 
 const MAX_ROI_RANGE_DAYS = 90;
 
-export async function GET(request: NextRequest) {
+export const GET = withAuth(async (request: NextRequest, session) => {
+    let userIdForLog: string | number | null | undefined;
+    let tenantIdForLog: string | number | null | undefined;
+    let daysForLog = 0;
+
     try {
-        // Get active session
-        const session = await getActiveSession();
-        if (!session) {
+        // withAuth handles authentication, CORS, role, and blocked-account checks.
+        if (!session?.tId || !session?.sId) {
             return NextResponse.json(
                 { error: 'Unauthorized' },
                 { status: 401 }
             );
         }
+        userIdForLog = session.uId || session.user?.id;
+        tenantIdForLog = session.tId;
 
-        // Rate limiting
-        const rateLimitConfig = getRateLimitForFeature('DATA_READ');
-        const rateLimit = await checkRateLimit({ key: `roi-metrics:${session.uId}:${session.tId}`, ...rateLimitConfig });
-
-        if (!rateLimit.allowed) {
-            const waitSeconds = Math.ceil((rateLimit.resetAt - Date.now()) / 1000);
-            return NextResponse.json(
-                {
-                    error: `Too many requests. Please wait ${waitSeconds} seconds.`,
-                    retryAfter: waitSeconds,
-                    resetAt: rateLimit.resetAt
-                },
-                {
-                    status: 429,
-                    headers: {
-                        'X-RateLimit-Limit': String(rateLimitConfig.limit),
-                        'X-RateLimit-Remaining': String(rateLimit.remaining),
-                        'X-RateLimit-Reset': String(rateLimit.resetAt),
-                        'Retry-After': String(waitSeconds)
-                    }
-                }
-            );
-        }
+        const rateLimitResponse = await applyAnalyticsReadRateLimit(session, 'roi-metrics');
+        if (rateLimitResponse) return rateLimitResponse;
 
         // Get date range from query params (default: last 30 days)
         const searchParams = request.nextUrl.searchParams;
@@ -59,6 +43,7 @@ export async function GET(request: NextRequest) {
         const days = Number.isFinite(parsedDays)
             ? Math.min(Math.max(parsedDays, 1), MAX_ROI_RANGE_DAYS)
             : 30;
+        daysForLog = days;
 
         const endDate = new Date();
         const startDate = new Date();
@@ -114,13 +99,18 @@ export async function GET(request: NextRequest) {
         });
 
     } catch (error) {
-        console.error('[ROI Metrics API] Error:', error);
+        logAnalyticsFailure('analytics_roi_metrics_api_failed', error, {
+            ...getBoundedAnalyticsStringContext('endpoint', '/api/analytics/roi-metrics'),
+            ...getBoundedAnalyticsStringContext('tenantId', tenantIdForLog),
+            ...getBoundedAnalyticsStringContext('userId', userIdForLog),
+            days: daysForLog,
+        });
         return NextResponse.json(
             { error: 'Failed to calculate ROI metrics' },
             { status: 500 }
         );
     }
-}
+});
 
 /**
  * Calculate average resolution time from stats

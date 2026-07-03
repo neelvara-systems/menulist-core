@@ -3,14 +3,26 @@
 import { getActiveResellerTiers, calculateOfflineAmount, RESELLER_COMMITMENT_OPTIONS, ResellerPricingTier } from "@config/resellerPricing";
 import { BUSINESS_TYPES } from "@data/shared/businessTypes";
 import { DEFAULT_PHONE_COUNTRY_CODE, getDialCodeForCountry, getUniquePhoneCountries, normalizePhoneNumberForStorage } from "@lib/phone/phoneNumber";
+import { readJsonResponseWithLimit } from "@lib/security/boundedResponseBody";
 import { formatInrPaise } from "@util/formatters";
 import { Button, Card, Col, Divider, Flex, Form, Input, InputNumber, message, Radio, Result, Row, Select, Steps, Typography, theme } from "antd";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { LuArrowLeft, LuArrowRight, LuCheck, LuCopy, LuStore } from "react-icons/lu";
+import {
+    copyResellerTextToClipboard,
+    createResellerStatusError,
+    getBoundedResellerStringContext,
+    hasResellerClipboardWrite,
+    hasResellerCopyFallback,
+    logResellerFailure,
+    RESELLER_REQUEST_POLICY,
+    type ResellerLogContext,
+} from "./resellerDiagnostics";
 
 const { Title, Text, Paragraph } = Typography;
+const RESELLER_ONBOARD_RESPONSE_JSON_MAX_BYTES = 16 * 1024;
 
 interface OnboardResult {
     dashboardUrl?: string;
@@ -25,6 +37,50 @@ interface OnboardResult {
     subscriptionId: string;
     shortUrl?: string;
     status: string;
+}
+
+type ResellerOnboardingCopyKind =
+    | 'dashboard_link'
+    | 'login_email'
+    | 'owner_password'
+    | 'owner_username'
+    | 'payment_link'
+    | 'public_link';
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+    return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
+
+function isValidOnboardResult(data: unknown): data is OnboardResult {
+    if (!isRecord(data)) return false;
+    const storeId = Number(data.storeId);
+    const tenantId = Number(data.tenantId);
+    return Number.isFinite(storeId)
+        && Number.isFinite(tenantId)
+        && typeof data.subscriptionId === 'string'
+        && data.subscriptionId.length > 0
+        && typeof data.status === 'string'
+        && data.status.length > 0;
+}
+
+async function readOnboardResponse(
+    response: Response,
+    context: ResellerLogContext,
+): Promise<unknown> {
+    try {
+        return await readJsonResponseWithLimit<unknown>(
+            response,
+            RESELLER_ONBOARD_RESPONSE_JSON_MAX_BYTES,
+        );
+    } catch (error) {
+        logResellerFailure('desktop_reseller_onboard_response_parse_failed', error, {
+            ...context,
+            maxBytes: RESELLER_ONBOARD_RESPONSE_JSON_MAX_BYTES,
+            responseOk: response.ok,
+            responseStatus: response.status,
+        });
+        return null;
+    }
 }
 
 function OnboardingWizard() {
@@ -85,9 +141,18 @@ function OnboardingWizard() {
                 ...(form.getFieldValue('paymentMode') === 'offline' ? ['commitmentMonths'] : ['billingInterval']),
             ]);
             const values = form.getFieldsValue(true);
+            const onboardLogContext: ResellerLogContext = {
+                action: 'onboard_client',
+                locationCount: Number(values?.locationCount || 0),
+                ...getBoundedResellerStringContext('businessName', values?.businessName),
+                ...getBoundedResellerStringContext('businessType', values?.businessType),
+                ...getBoundedResellerStringContext('paymentMode', values?.paymentMode),
+                ...getBoundedResellerStringContext('pricingTier', values?.pricingTier),
+            };
             setLoading(true);
 
             const response = await fetch('/api/reseller/onboard', {
+                ...RESELLER_REQUEST_POLICY,
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -106,19 +171,73 @@ function OnboardingWizard() {
                 }),
             });
 
+            const data = await readOnboardResponse(response, onboardLogContext);
             if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.error || 'Failed to onboard client');
+                throw createResellerStatusError('desktop_reseller_onboard_rejected', response.status);
             }
 
-            const data = await response.json();
+            if (!isValidOnboardResult(data)) {
+                const invalidResponseError = createResellerStatusError(
+                    'desktop_reseller_onboard_response_invalid',
+                    response.status,
+                );
+                logResellerFailure('desktop_reseller_onboard_response_invalid', invalidResponseError, {
+                    ...onboardLogContext,
+                    responseOk: response.ok,
+                    responseStatus: response.status,
+                });
+                throw invalidResponseError;
+            }
             setResult(data);
             setCurrentStep(3); // Success step
             message.success('Client onboarded successfully!');
-        } catch (error: any) {
-            message.error(error.message || 'Failed to onboard client');
+        } catch (error) {
+            const values = form.getFieldsValue(true);
+            logResellerFailure('desktop_reseller_onboard_failed', error, {
+                action: 'onboard_client',
+                locationCount: Number(values?.locationCount || 0),
+                ...getBoundedResellerStringContext('businessName', values?.businessName),
+                ...getBoundedResellerStringContext('businessType', values?.businessType),
+                ...getBoundedResellerStringContext('paymentMode', values?.paymentMode),
+                ...getBoundedResellerStringContext('pricingTier', values?.pricingTier),
+            });
+            message.error('Failed to onboard client');
         } finally {
             setLoading(false);
+        }
+    };
+
+    const buildOnboardingHandoffLogContext = (
+        action: string,
+        metadata: ResellerLogContext = {},
+    ): ResellerLogContext => ({
+        action,
+        currentStep,
+        hasResult: Boolean(result),
+        ...getBoundedResellerStringContext('storeId', result?.storeId),
+        ...getBoundedResellerStringContext('tenantId', result?.tenantId),
+        ...getBoundedResellerStringContext('subscriptionId', result?.subscriptionId),
+        ...metadata,
+    });
+
+    const handleCopyResultValue = async (
+        value: string | number | null | undefined,
+        copyKind: ResellerOnboardingCopyKind,
+        successMessage: string,
+    ) => {
+        const copyValue = value === undefined || value === null ? '' : String(value);
+        if (!copyValue) return;
+        try {
+            await copyResellerTextToClipboard(copyValue);
+            message.success(successMessage);
+        } catch (error) {
+            logResellerFailure('desktop_reseller_onboarding_copy_failed', error, buildOnboardingHandoffLogContext('copy_result_value', {
+                copyKind,
+                ...getBoundedResellerStringContext('copyValue', copyValue),
+                hasClipboardWrite: hasResellerClipboardWrite(),
+                hasCopyFallback: hasResellerCopyFallback(),
+            }));
+            message.error('Could not copy.');
         }
     };
 
@@ -338,10 +457,7 @@ function OnboardingWizard() {
                                 <Text type="secondary">Payment Link (share with client):</Text>
                                 <Flex align="center" gap={8} style={{ marginTop: 8 }}>
                                     <Input value={result.shortUrl} readOnly />
-                                    <Button icon={<LuCopy />} onClick={() => {
-                                        navigator.clipboard.writeText(result.shortUrl || '');
-                                        message.success('Link copied!');
-                                    }}>Copy</Button>
+                                    <Button icon={<LuCopy />} onClick={() => void handleCopyResultValue(result.shortUrl, 'payment_link', 'Link copied!')}>Copy</Button>
                                 </Flex>
                             </Card>
                         ),
@@ -352,27 +468,18 @@ function OnboardingWizard() {
                                     {result.ownerUsername && (
                                         <Flex align="center" gap={8}>
                                             <Input addonBefore="Username" value={result.ownerUsername} readOnly />
-                                            <Button icon={<LuCopy />} onClick={() => {
-                                                navigator.clipboard.writeText(result.ownerUsername || '');
-                                                message.success('Username copied!');
-                                            }}>Copy</Button>
+                                            <Button icon={<LuCopy />} onClick={() => void handleCopyResultValue(result.ownerUsername, 'owner_username', 'Username copied!')}>Copy</Button>
                                         </Flex>
                                     )}
                                     {result.loginEmail && (
                                         <Flex align="center" gap={8}>
                                             <Input addonBefore="Login email" value={result.loginEmail} readOnly />
-                                            <Button icon={<LuCopy />} onClick={() => {
-                                                navigator.clipboard.writeText(result.loginEmail || '');
-                                                message.success('Login email copied!');
-                                            }}>Copy</Button>
+                                            <Button icon={<LuCopy />} onClick={() => void handleCopyResultValue(result.loginEmail, 'login_email', 'Login email copied!')}>Copy</Button>
                                         </Flex>
                                     )}
                                     <Flex align="center" gap={8}>
                                         <Input.Password addonBefore="Password" value={form.getFieldValue('ownerPassword') || ''} readOnly />
-                                        <Button icon={<LuCopy />} onClick={() => {
-                                            navigator.clipboard.writeText(form.getFieldValue('ownerPassword') || '');
-                                            message.success('Password copied!');
-                                        }}>Copy</Button>
+                                        <Button icon={<LuCopy />} onClick={() => void handleCopyResultValue(form.getFieldValue('ownerPassword'), 'owner_password', 'Password copied!')}>Copy</Button>
                                     </Flex>
                                 </Flex>
                             </Card>
@@ -382,10 +489,7 @@ function OnboardingWizard() {
                                 <Text type="secondary">Client dashboard link:</Text>
                                 <Flex align="center" gap={8} style={{ marginTop: 8 }}>
                                     <Input value={result.dashboardUrl} readOnly />
-                                    <Button icon={<LuCopy />} onClick={() => {
-                                        navigator.clipboard.writeText(result.dashboardUrl || '');
-                                        message.success('Dashboard link copied!');
-                                    }}>Copy</Button>
+                                    <Button icon={<LuCopy />} onClick={() => void handleCopyResultValue(result.dashboardUrl, 'dashboard_link', 'Dashboard link copied!')}>Copy</Button>
                                 </Flex>
                             </Card>
                         ),
@@ -394,10 +498,7 @@ function OnboardingWizard() {
                                 <Text type="secondary">Public menu link:</Text>
                                 <Flex align="center" gap={8} style={{ marginTop: 8 }}>
                                     <Input value={result.publicUrl} readOnly />
-                                    <Button icon={<LuCopy />} onClick={() => {
-                                        navigator.clipboard.writeText(result.publicUrl || '');
-                                        message.success('Public link copied!');
-                                    }}>Copy</Button>
+                                    <Button icon={<LuCopy />} onClick={() => void handleCopyResultValue(result.publicUrl, 'public_link', 'Public link copied!')}>Copy</Button>
                                 </Flex>
                             </Card>
                         ),

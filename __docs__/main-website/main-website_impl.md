@@ -1,7 +1,7 @@
 # Main Website (menulist.ai) — Implementation
 
-**Status:** IMPLEMENTED — v3.6.88 Plausible Marketing Website Analytics
-**Last Updated:** June 26, 2026
+**Status:** IMPLEMENTED — v3.6.100 Mobile Try-First Homepage Compression
+**Last Updated:** July 3, 2026
 **Audience:** Developers
 
 ---
@@ -46,6 +46,7 @@ Build:       Minimal src/pages defaults satisfy generated Pages Router manifest 
 | `/pricing` | `(website)/pricing/page.tsx` | `PricingWrapper` | Server | Per-page |
 | `/about` | `(website)/about/page.tsx` | `AboutPage` | Server | Per-page |
 | `/contact` | `(website)/contact/page.tsx` | `ContactPage` | Server | Per-page |
+| `/faq` | `(website)/faq/page.tsx` | `FaqPage` | Server route + client FAQ accordions | Per-page `export const metadata` |
 | `/get-started` | `(website)/get-started/page.tsx` | `GetStartedPage` | Server | Per-page |
 | `/multi-location` | `(website)/multi-location/page.tsx` | `MultiLocationPage` | Server | Per-page |
 | `/trust-security` | `(website)/trust-security/page.tsx` | `TrustSecurityPage` | Server | Per-page |
@@ -53,6 +54,7 @@ Build:       Minimal src/pages defaults satisfy generated Pages Router manifest 
 | `/create-menu/preview/[draftId]` | `(website)/create-menu/preview/[draftId]/page.tsx` | `PreviewClient` | — | — |
 | `/create-menu/success` | `(website)/create-menu/success/page.tsx` + `CreateMenuSuccessClient.tsx` | `CreateMenuSuccessClient` | Server metadata wrapper + client success UI | `noindex, nofollow, nocache` |
 | `/resources` | `(website)/resources/page.tsx` | `ResourcesHub` | Server | Per-page |
+| `/tools` | `(website)/tools/page.tsx` | `ToolsHubPage` | Feature-gated static route with client index component | Per-page |
 | `/resources/[slug]` | `(website)/resources/[slug]/page.tsx` | `ArticleLayout` | Server static params | Dynamic per article |
 | `/{locale}/resources` | `(website)/[locale]/resources/page.tsx` | `ResourceHubPageShell` | Server static params | Localized per-page for `hi-IN`, `ta-IN`, `te-IN`, `mr-IN`, `bn-IN`, `ar-SA`, `es-ES` |
 | `/{locale}/resources/[slug]` | `(website)/[locale]/resources/[slug]/page.tsx` | `ResourceArticlePageShell` | Server static params | Localized per article for `hi-IN`, `ta-IN`, `te-IN`, `mr-IN`, `bn-IN`, `ar-SA`, `es-ES` |
@@ -65,14 +67,18 @@ Build:       Minimal src/pages defaults satisfy generated Pages Router manifest 
 | `/terms-of-service` | `(website)/terms-of-service/page.tsx` | `TermsOfServicePage` | Server | Per-page |
 | `/refund-policy` | `(website)/refund-policy/page.tsx` | `RefundPolicyPage` | Server | Per-page |
 
-**Total: 153 routes (8 core + WhatsApp campaign + feature campaign pages + 3 create-menu + 16 English resources + 112 reviewed localized resources + 4 industry pages + 1 redirect + 3 legal + 1 trust)**
+**Total: 155 routes (8 core + FAQ + WhatsApp campaign + feature campaign pages + 3 create-menu + Tools Hub + 16 English resources + 112 reviewed localized resources + 4 industry pages + 1 redirect + 3 legal + 1 trust)**
 
 ### Notes
 - Homepage (`/`) is a server route that renders `SchemaMarkup` as server HTML before mounting the client homepage composition.
 - `/whatsapp` is the public campaign route for the implemented messaging-onboarding flow. It uses localized copy, page-level structured data, a chat-style proof visual, trust boundaries, `PLATFORM_DISCOVERY_PAGES`, static sitemap, and LLM context coverage. Its primary and final CTA use a page-local external anchor to open the supplied test WhatsApp number with a prefilled owner-started onboarding message.
 - `/product` is a framework-level permanent redirect to `/how-it-works` (legacy URL preservation) and is intentionally omitted from sitemap and LLM discovery inventories.
+- `/faq` carries the full 16-question owner FAQ that was removed from the homepage scroll. It is registered in platform discovery, static sitemap, footer resources, `llms.txt`, and `llms-full.txt`.
 - `/create-menu` is feature-gated by `ENABLE_PUBLIC_MENU_ENTRY` — shows a locale-backed guided-setup fallback when OFF.
 - `/create-menu/success` is a post-setup utility route that may carry query-string menu URLs. It must remain outside discovery inventories and emit explicit `noindex, nofollow, nocache` robots metadata from the server wrapper, with a self canonical to `/create-menu/success`.
+- `/create-menu/success` Copy Link and WhatsApp handoffs are browser-local, use localized fixed failure copy, log bounded presence/length metadata only, open WhatsApp with `noopener,noreferrer`, and record starter activation signals only after copy/open succeeds. Copy Link falls through from rejected Clipboard API writes to acknowledged textarea fallback before failure.
+- `/create-menu` upload/link creation, preview polling, and claim submission use same-origin credentials, no-store cache policy, and manual redirect handling before trusting route responses. Upload/link acknowledgements stay capped at 8KB, preview polling at 4MB, and claim acknowledgements at 32KB.
+- `/pricing` subscription success dashboard handoff is browser-local, opens with `noopener,noreferrer`, logs bounded dashboard URL presence/length plus success-modal state only, and falls back to same-tab dashboard navigation if the browser blocks the new tab.
 - `/resources` and resource article routes are feature-gated by `ENABLE_WEBSITE_RESOURCES`.
 - Resource article routes are generated from `src/content/websiteResources/` and use `generateStaticParams()` for the 15 article slugs.
 - Reviewed localized resource routes are generated from the same resource registry for `hi-IN`, `ta-IN`, `te-IN`, `mr-IN`, `bn-IN`, `ar-SA`, and `es-ES`; non-reviewed locales are not exposed as resource routes.
@@ -111,32 +117,27 @@ LocalisationProvider (locale from next-intl/server)
 
 ---
 
-## 4. Homepage Sections (13 sections plus sticky CTA, in order)
+## 4. Homepage Sections (7 sections plus sticky CTA, in order)
 
 **File:** `src/components/website/home/HomePage.tsx`
 
 | # | Section | Component File |
 |---|---------|---------------|
 | 1 | Hero | `HeroSection.tsx` |
-| 2 | Problem | `ProblemSection.tsx` |
-| 3 | Interactive Workflow | `InteractiveWorkflowSection.tsx` |
-| 4 | Public Truth Loop | `PublicTruthLoopSection.tsx` |
-| 5 | Website Replacement Doubt Block | `WebsiteReplacementBlock.tsx` |
-| 6 | AI Menu Manager | `AiMenuManagerSection.tsx` |
-| 7 | Setup Relief | `SetupReliefSection.tsx` |
-| 8 | Surfaces | `SurfacesSection.tsx` |
-| 9 | Customer Browse | `CustomerBrowseSection.tsx` |
-| 10 | Prepared For You | `PreparedForYouSection.tsx` |
-| 11 | Business Health | `BusinessHealthSection.tsx` |
-| 12 | Resources | `ResourcesSection.tsx` |
-| 13 | FAQ | `FaqSection.tsx` |
-| 14 | Final CTA | `FinalCtaSection.tsx` |
+| 2 | Create menu preview | `CreateMenuPreviewSection.tsx` |
+| 3 | Before/after | `BeforeAfterSection.tsx` |
+| 4 | Customer browse proof | `CustomerBrowseSection.tsx` |
+| 5 | Owner USP proof | `OwnerProofSection.tsx` |
+| 6 | FAQ preview | `FaqSection.tsx` |
+| 7 | Final CTA | `FinalCtaSection.tsx` |
 
-`RevenuePathSection.tsx`, `StatsSection.tsx`, `SearchDiscoverySection.tsx`, `AnalyticsInsightsSection.tsx`, `SmartFeaturesSection.tsx`, `BusinessSection.tsx`, and `IndustrySection.tsx` remain in the codebase as supporting components/future page material, but they are not mounted in the current compressed homepage. The old `SolutionSection.tsx` was removed in v3.5.8 because its one-source SVG and bullet grid duplicated the hero, problem, workflow source map, setup proof, and public-surface proof.
+`ProblemSection.tsx`, `SwitchComparisonSection.tsx`, `InteractiveWorkflowSection.tsx`, `PublicTruthLoopSection.tsx`, `AiMenuManagerSection.tsx`, `SetupReliefSection.tsx`, `SurfacesSection.tsx`, `BusinessHealthSection.tsx`, `ResourcesSection.tsx`, `RevenuePathSection.tsx`, `StatsSection.tsx`, `SearchDiscoverySection.tsx`, `AnalyticsInsightsSection.tsx`, `SmartFeaturesSection.tsx`, `BusinessSection.tsx`, and `IndustrySection.tsx` remain in the codebase as supporting components/future page material, but they are not mounted in the current compressed homepage. The old `SolutionSection.tsx` was removed in v3.5.8 because its one-source SVG and bullet grid duplicated the hero, problem, workflow source map, setup proof, and public-surface proof.
+
+**Mobile try-first compression:** v3.6.100 moves `CreateMenuPreviewSection` almost immediately after the hero, replaces the old separate Problem and Switch comparison flow with `BeforeAfterSection`, combines AI Menu Manager and Business Health homepage proof into `OwnerProofSection`, removes the homepage resources bridge, and trims `FaqSection` to six conversion-critical questions. The full 16-question FAQ now lives on `/faq`. This is public website component/CSS/locale/discovery/docs work only; `/create-menu` processing, sign-in, upload/link validation, claim/publish behavior, Firebase rules, Cloud Functions, Vercel deployment, and DNS were not changed.
 
 **Official customer link framing pass:** v3.6.70 makes the current website story explicit: one approved menu source becomes one official customer link, then QR, print, actions, owner updates, feedback, and health checks stay connected. `InteractiveWorkflowSection.tsx` now uses six guided lifecycle steps, `WebsiteReplacementBlock.tsx` is mounted on the homepage, pricing, and Official Business Page feature page, Pricing/Features/OBP metadata and locale copy are updated, and `public/llms.txt` / `public/llms-full.txt` use the same customer-link framing. The public Features page adds a lifecycle strip before the feature catalog. External-sync website copy is bounded as supported connected-system snapshot export only. This is public website component/CSS/locale/metadata/discovery/docs work only; owner dashboard runtime labels, customer menu/OBP runtime, pricing/payment/Razorpay/subscription logic, Firebase rules, Cloud Functions, and Vercel deployment were not changed.
 
-**Analytics feature page:** v3.6.71 adds `/features/analytics` for the existing owner analytics dashboard. The route shell renders `FeatureDetailPage` with the `analytics` config, localized English/Hindi copy, and page metadata. The `/features` Menu analytics card now links to it, and platform discovery is updated through `PLATFORM_DISCOVERY_PAGES`, `public/sitemap.xml`, `public/llms.txt`, and `public/llms-full.txt`. The page stays bounded to implemented desktop/mobile Owner Dashboard behavior: today, overview, daily, weekly, monthly, and overall views; public menu activity; Official Business Page actions; customer app activity; aggregate privacy-conscious signals; and Business Health handoff. As of v3.6.86, Analytics Dashboard is included in `websiteFeatureNavGroups` so it appears in both the desktop hover dropdown and mobile hamburger feature accordion. This is public website route/locale/discovery/docs work only; owner dashboard runtime, mobile runtime, analytics aggregation, Firebase rules, Cloud Functions, pricing/payment, auth, customer menu runtime, and Vercel deployment were not changed.
+**Analytics feature page:** v3.6.71 adds `/features/analytics` for the existing owner analytics dashboard. The route shell renders `FeatureDetailPage` with the `analytics` config, localized English/Hindi copy, and page metadata. The `/features` Menu analytics card now links to it, and platform discovery is updated through `PLATFORM_DISCOVERY_PAGES`, `public/sitemap.xml`, `public/llms.txt`, and `public/llms-full.txt`. The page stays bounded to implemented desktop/mobile Owner Dashboard behavior: today, overview, daily, weekly, monthly, and overall views; public menu activity; item status labels; searched-but-not-found terms; unavailable demand; actions while open, closed, or unknown; Official Business Page actions; customer app activity; aggregate privacy-conscious signals; and Business Health handoff. As of v3.6.86, Analytics Dashboard is included in `websiteFeatureNavGroups` so it appears in both the desktop hover dropdown and mobile hamburger feature accordion. v3.6.98 aligns the copy with shipped owner-trust signals without changing website layout, owner dashboard runtime, analytics aggregation, Firebase rules, Cloud Functions, pricing/payment, auth, customer menu runtime, or Vercel deployment.
 
 **WhatsApp onboarding campaign page:** v3.6.82 keeps `/whatsapp` as the campaign route for the implemented messaging-onboarding flow and switches the primary/final CTA to a prefilled `wa.me/15556571424` test-number link. The route renders `WhatsAppOnboardingPage`, uses English/Hindi `Website.WhatsAppOnboardingPage` locale keys, and is registered in `PLATFORM_DISCOVERY_PAGES`, `public/sitemap.xml`, `public/llms.txt`, and `public/llms-full.txt`. The page markets broad current-list intake: menus, service lists, rate cards, package lists, catalogs, photos, screenshots, PDFs, and text. Claims are intentionally bounded: owner approval before publish, no WhatsApp/Meta partnership claim, no automatic WhatsApp catalog sync claim, and no scraped-number outreach. Production campaign launch still needs the final public WhatsApp account, response owner, operating hours, consent copy, and tracking decision.
 
@@ -228,6 +229,8 @@ The existing public platform-domain env config now uses `NEXT_PUBLIC_PLATFORM_DO
 
 **Resource navigation and discovery hardening:** v3.6.21 updates the website to match the complete resource strategy without changing product runtime. Header navigation is now Features -> How it works -> Multi-location -> Pricing -> Resources, with a compact desktop Resources dropdown and mobile nested resource links. The homepage Resources section now uses the eight strategic cards: Menu engineering, QR menu setup, Digital menu vs PDF, Google menu source, Restaurant menu SEO, AI search discovery, Official menu source, and Multi-location control. Footer Resources links now point to the core resource set plus Trust & Security. `public/robots.txt` now groups named search/AI crawlers with the same private-route disallows as the generic crawler group, `CCBot` is listed in `DISCOVERY_CRAWLERS`, and `llms.txt` / `llms-full.txt` now include preferred positioning and claim limits. Resource analytics uses consent-gated public website events and now includes secondary CTA, create-customer-link, pricing, checklist-copy, and AI/search referrer events including `chat.openai.com`, UTM/referrer properties, locale, entry page, and target URL without sending custom session identifiers. The search/discovery-ready product copy was softened so it describes a clearer public source for crawlers rather than implying search or AI systems must answer from MenuList. Owner dashboard, customer menu runtime, tenant routing, auth, middleware, Firebase, Cloud Functions, Canonica, Answerlattice, MyCodex, GrowthOS, and KitStamp surfaces were not changed.
 
+**Tools Hub website index:** v3.6.96 adds `/tools` as the static MenuList Tools index. `src/app/(website)/tools/page.tsx` gates the route with `ENABLE_PUBLIC_TRUTH_TOOLS` and `ENABLE_PUBLIC_TRUTH_TOOLS_HUB`, renders `ToolsHubPage`, and adds structured page data. `ToolsHubPage` groups the current 12 public tool routes by owner job and links to `/create-menu` and Business Health without running reports, submitting handoffs, fetching URLs, storing state, or calling providers. Header Resources and footer Start navigation now include MenuList Tools. Discovery updates flow through `PLATFORM_DISCOVERY_PAGES`, `public/sitemap.xml`, `public/llms.txt`, `public/llms-full.txt`, `__docs__/menulist-tools/tools-hub/`, and `npm run verify:tools-hub`.
+
 **Resource expansion and industry pages:** v3.6.22 adds three resource articles for restaurant menu schema, official menu URL checks, and common QR menu mistakes; updates every reviewed resource locale pack to the new source version; adds four industry landing pages for restaurants, cafes/bakeries, takeaway/cloud kitchens, and multi-location food businesses; extends sitemap, LLM context, and discovery-policy coverage; and adds a real checklist-copy button/event for visible checklist sections. `resource_template_download` remains intentionally absent because there are no downloadable assets to track. Owner dashboard, customer menu runtime, tenant routing, auth, middleware, Firebase, Cloud Functions, Canonica, Answerlattice, MyCodex, GrowthOS, and KitStamp surfaces were not changed.
 
 **Marketing feedback quality pass:** v3.6.23 sharpens the highest-value English resource and industry pages after marketing review. The live copy now uses `Official Menu Source` as the category concept and `current approved menu` as the owner-readable explanation across `/resources/official-menu-source`, `/resources/menu-source-audit`, `/resources/google-business-profile-menu`, `/resources/qr-menu-for-restaurants`, `/resources/multi-location-menu-management`, and `/industries/restaurants`. The pass intentionally does not add comparison pages, bars/pubs, food trucks, or additional generic resources until there is enough reviewed content depth. Owner dashboard, customer menu runtime, tenant routing, auth, middleware, Firebase, Cloud Functions, Canonica, Answerlattice, MyCodex, GrowthOS, and KitStamp surfaces were not changed.
@@ -266,7 +269,7 @@ src/components/website/
 ├── ClarityAnalytics.tsx        — Microsoft Clarity script
 ├── home/                       — compressed homepage sections + supporting section components + StickyCta
 ├── about/AboutPage.tsx         — About page
-├── contact/ContactPage.tsx     — Contact page
+├── contact/ContactPage.tsx     — Contact page; submits through `/api/public/contact` with same-origin credentials, no-store cache policy, and manual redirect handling; keeps fixed localized fallback copy and uses the shared 8KB public-contact response helper before accepting source/status/help-topic acknowledgement
 ├── features/FeaturesPage.tsx   — Features page
 ├── features/BusinessHealthFeaturePage.tsx — Business Health campaign page
 ├── get-started/GetStartedPage.tsx  — Get Started page

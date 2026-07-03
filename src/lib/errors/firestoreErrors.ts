@@ -7,11 +7,82 @@
 
 import { NextResponse } from 'next/server';
 import { logger } from '@lib/monitoring/logger';
+import { getBoundedRuntimeStringContext } from '@lib/runtime/runtimeDiagnostics';
 
 export interface FirestoreError extends Error {
     code?: string;
     details?: any;
 }
+
+type PaymentErrorContext = {
+    operation?: string;
+    userId?: string;
+    tenantId?: number | string;
+    storeId?: number | string;
+    productId?: string;
+    endpoint?: string;
+    [key: string]: any;
+};
+
+type PaymentErrorLike = Error & {
+    code?: unknown;
+    status?: unknown;
+    statusCode?: unknown;
+    error?: {
+        code?: unknown;
+        description?: unknown;
+    };
+};
+
+const getPaymentErrorName = (error: unknown): string | undefined => {
+    if (error === undefined) return undefined;
+    if (error instanceof Error) return error.name || 'Error';
+    return typeof error;
+};
+
+const getPaymentErrorCode = (error: unknown): string | undefined => {
+    if (!error || typeof error !== 'object') return undefined;
+    const paymentError = error as PaymentErrorLike;
+    const code = paymentError.code ?? paymentError.error?.code;
+    if (code === undefined || code === null) return undefined;
+    return String(code).slice(0, 64);
+};
+
+const getPaymentErrorStatus = (error: unknown): number | undefined => {
+    if (!error || typeof error !== 'object') return undefined;
+    const paymentError = error as PaymentErrorLike;
+    const status = Number(paymentError.status ?? paymentError.statusCode);
+    return Number.isFinite(status) ? status : undefined;
+};
+
+const getPaymentHandlerLogContext = (
+    context: PaymentErrorContext | undefined,
+    responseStatus?: number,
+): Record<string, boolean | number | string | null | undefined> => ({
+    operation: typeof context?.operation === 'string' ? context.operation.slice(0, 64) : undefined,
+    endpoint: typeof context?.endpoint === 'string' ? context.endpoint.slice(0, 128) : undefined,
+    productId: typeof context?.productId === 'string' ? context.productId.slice(0, 32) : undefined,
+    responseStatus,
+    ...getBoundedRuntimeStringContext('userId', context?.userId),
+    ...getBoundedRuntimeStringContext('tenantId', context?.tenantId),
+    ...getBoundedRuntimeStringContext('storeId', context?.storeId),
+});
+
+const logPaymentFailure = (
+    message: string,
+    failureCode: string,
+    error: unknown,
+    context?: PaymentErrorContext,
+    responseStatus?: number,
+): void => {
+    logger.error(message, new Error(failureCode), {
+        failureCode,
+        ...getPaymentHandlerLogContext(context, responseStatus),
+        sourceErrorName: getPaymentErrorName(error),
+        sourceErrorCode: getPaymentErrorCode(error),
+        sourceStatusCode: getPaymentErrorStatus(error),
+    });
+};
 
 /**
  * Firestore error codes and their meanings
@@ -59,13 +130,7 @@ export const FIRESTORE_ERROR_CODES = {
  */
 export function handleFirestoreError(
     error: any,
-    context?: {
-        operation?: string;
-        userId?: string;
-        tenantId?: number;
-        endpoint?: string;
-        [key: string]: any;
-    }
+    context?: PaymentErrorContext
 ): NextResponse {
     const firestoreError = error as FirestoreError;
     const errorCode = firestoreError.code;
@@ -75,13 +140,13 @@ export function handleFirestoreError(
         const errorInfo = FIRESTORE_ERROR_CODES[errorCode as keyof typeof FIRESTORE_ERROR_CODES];
         
         // Log based on severity
-        const severity = errorInfo.status >= 500 ? 'high' : 'medium';
-        logger.error('Firestore Error', {
-            errorCode,
-            errorMessage: firestoreError.message,
-            status: errorInfo.status,
-            ...context
-        }, severity);
+        logPaymentFailure(
+            'Firestore Error',
+            'payment_firestore_error',
+            error,
+            context,
+            errorInfo.status,
+        );
         
         return NextResponse.json(
             {
@@ -94,10 +159,13 @@ export function handleFirestoreError(
     
     // Special handling for transaction errors
     if (firestoreError.message?.includes('transaction')) {
-        logger.error('Firestore Transaction Error', {
-            errorMessage: firestoreError.message,
-            ...context
-        }, 'high');
+        logPaymentFailure(
+            'Firestore Transaction Error',
+            'payment_firestore_transaction_failed',
+            error,
+            context,
+            409,
+        );
         
         return NextResponse.json(
             {
@@ -110,10 +178,13 @@ export function handleFirestoreError(
     
     // Special handling for quota/rate limit errors from Firebase
     if (firestoreError.message?.includes('quota') || firestoreError.message?.includes('rate limit')) {
-        logger.error('Firestore Quota Exceeded', {
-            errorMessage: firestoreError.message,
-            ...context
-        }, 'critical');
+        logPaymentFailure(
+            'Firestore Quota Exceeded',
+            'payment_firestore_quota_or_rate_limited',
+            error,
+            context,
+            503,
+        );
         
         return NextResponse.json(
             {
@@ -125,17 +196,18 @@ export function handleFirestoreError(
     }
     
     // Generic error fallback
-    logger.error('Unhandled Firestore Error', {
-        errorCode,
-        errorMessage: firestoreError.message,
-        stack: firestoreError.stack,
-        ...context
-    }, 'high');
+    logPaymentFailure(
+        'Unhandled Firestore Error',
+        'payment_firestore_unhandled',
+        error,
+        context,
+        500,
+    );
     
     return NextResponse.json(
         {
             error: 'An error occurred while processing your request',
-            details: process.env.NODE_ENV === 'development' ? firestoreError.message : undefined
+            details: 'Request could not be completed'
         },
         { status: 500 }
     );
@@ -150,29 +222,24 @@ export function handleFirestoreError(
  */
 export function handleRazorpayError(
     error: any,
-    context?: {
-        operation?: string;
-        userId?: string;
-        tenantId?: number;
-        endpoint?: string;
-        [key: string]: any;
-    }
+    context?: PaymentErrorContext
 ): NextResponse {
     const razorpayError = error as any;
     
     // Razorpay errors have statusCode property
     if (razorpayError.statusCode) {
-        logger.error('Razorpay API Error', {
-            statusCode: razorpayError.statusCode,
-            errorMessage: razorpayError.error?.description || razorpayError.message,
-            errorCode: razorpayError.error?.code,
-            ...context
-        }, 'high');
+        logPaymentFailure(
+            'Razorpay API Error',
+            'payment_razorpay_api_failed',
+            error,
+            context,
+            razorpayError.statusCode >= 500 ? 502 : razorpayError.statusCode,
+        );
         
         return NextResponse.json(
             {
                 error: 'Payment service error',
-                details: razorpayError.error?.description || 'Failed to process payment request'
+                details: 'Failed to process payment request'
             },
             { status: razorpayError.statusCode >= 500 ? 502 : razorpayError.statusCode }
         );
@@ -180,10 +247,13 @@ export function handleRazorpayError(
     
     // Network/timeout errors
     if (razorpayError.code === 'ECONNABORTED' || razorpayError.message?.includes('timeout')) {
-        logger.error('Razorpay Timeout', {
-            errorMessage: razorpayError.message,
-            ...context
-        }, 'high');
+        logPaymentFailure(
+            'Razorpay Timeout',
+            'payment_razorpay_timeout',
+            error,
+            context,
+            504,
+        );
         
         return NextResponse.json(
             {
@@ -195,16 +265,18 @@ export function handleRazorpayError(
     }
     
     // Generic Razorpay error
-    logger.error('Unhandled Razorpay Error', {
-        errorMessage: razorpayError.message,
-        stack: razorpayError.stack,
-        ...context
-    }, 'high');
+    logPaymentFailure(
+        'Unhandled Razorpay Error',
+        'payment_razorpay_unhandled',
+        error,
+        context,
+        502,
+    );
     
     return NextResponse.json(
         {
             error: 'Failed to process payment request',
-            details: process.env.NODE_ENV === 'development' ? razorpayError.message : undefined
+            details: 'Failed to process payment request'
         },
         { status: 502 }
     );
@@ -227,13 +299,7 @@ export function handleRazorpayError(
  */
 export function handlePaymentError(
     error: any,
-    context?: {
-        operation?: string;
-        userId?: string;
-        tenantId?: number;
-        endpoint?: string;
-        [key: string]: any;
-    }
+    context?: PaymentErrorContext
 ): NextResponse {
     // Check if it's a Firestore error
     if (error.code && error.code.includes('firestore')) {

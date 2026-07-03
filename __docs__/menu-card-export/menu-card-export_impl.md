@@ -1,9 +1,11 @@
 # Menu Card Export — Implementation Plan
 
-**Status:** Production-ready client-first with Pro/Premium layout suggestion
+**Status:** Source-gated implementation evidence; not current launch certification
 **Primary route:** `/use-menulist/menu-card-export`
 **Predecessor:** `src/lib/export/menuPdfGenerator.ts`
-**Last Updated:** June 3, 2026
+**Last Updated:** July 1, 2026
+
+> **Current release boundary (July 2, 2026):** This document records source/runtime evidence only. It is not current production-release approval. Current Menu Card Export approval requires the active [production-readiness audit](../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../production-readiness/external-certification-runbook.md) evidence, Digital Menu Output Constitution checks, `npm run verify:menu-card-export`, authenticated desktop/mobile browser QA, visual PDF and print-shop artifact review, provider smoke for the AI advisor where enabled, target deploy evidence, and production-host smoke.
 
 ---
 
@@ -12,6 +14,8 @@
 Create a routed owner workflow for menu-card PDF and print packet exports while preserving MenuList's canonical truth model and keeping Firebase export cost at zero.
 
 The implementation must not be a modal-only extension. The route owns job presets, style selection, preflight, preview, final export, print-shop packet creation, and export history. Share modal, Use MenuList, Mobile Share, Mobile Menu, and More become entry points into the route.
+
+July 1 route guard: `/api/menu-card-export/design-advisor` now requires `canManageMenuSharing`, `canPublishMenu`, or `canManageMenu` after bounded body parsing and schema validation, and before Pro/Premium subscription lookup, AI capacity checks, Gemini calls, recommendation normalization, or AI accounting.
 
 ---
 
@@ -380,6 +384,19 @@ Route behavior:
 
 The export path deliberately avoids Firestore writes, Storage uploads, export API rate limits, server rendering, and signed download URLs.
 
+### Failure Diagnostics
+
+Export/share failure diagnostics are bounded through `src/lib/export/exportDiagnostics.ts`.
+
+Required callers:
+
+- `src/lib/export/exportService.ts` logs clipboard and Web Share API failures with normalized failure codes and content/title/text/url length metadata only.
+- `src/components/templates/main-app/projects/ShareModal.tsx` allows external endpoint POST only to credential-free public HTTPS URLs, blocks localhost/private/local hosts, does not follow endpoint redirects, and logs POST failures with API URL presence/length, project ID presence/length, response status, and normalized export counts only.
+- `src/components/templates/main-app/projects/b2cView/shareModal/index.tsx` logs structured JSON/XLSX export and PDF generation failures with project/store/share URL/currency presence/length plus item/category/language counts and boolean output context only.
+- `src/components/templates/main-app/projects/b2cView/shareModal/MenuKitSection.tsx` logs Menu Kit ZIP and single-asset generation failures with store/menu URL/short link/business type/business category/locale presence and length metadata, asset key for single-file actions, and output-context booleans only.
+
+Do not log raw exported menu content, owner-entered endpoint URLs, public share URLs, project names, store names, currency strings, generated file bodies, browser/provider error objects, or full project/store payloads. Owner-facing export messages stay generic and actionable; successful export paths stay quiet.
+
 ### Pro/Premium Layout Suggestion
 
 The layout suggestion route is deliberately separate from PDF rendering:
@@ -388,6 +405,7 @@ The layout suggestion route is deliberately separate from PDF rendering:
 owner clicks Suggest layout
   -> /api/menu-card-export/design-advisor
   -> withAuth + tenant/store access check
+  -> reject request bodies above 128KB
   -> validate bounded request payload
   -> active subscription plan gate: pro/premium only
   -> AI capacity check
@@ -401,9 +419,12 @@ owner clicks Suggest layout
 Contract:
 
 - Request payload includes `projectId`, `sourceHash`, current settings, bounded menu summary, and preflight warnings.
+- Request payload is capped at 128KB before validation, plan reads, AI capacity checks, or provider work.
 - It does not send full raw project/store documents.
+- The prompt builder normalizes prompt-boundary strings before provider serialization: control/template characters are stripped, whitespace is collapsed, scalar text is capped, `categoryNames` and warning arrays scan at most 20 entries, and the source hash is sanitized before interpolation.
 - Response is `MenuCardDesignAdvisorRecommendation`: approved preset, style, density, `includeDescriptions`, `includeQr`, `includeContactBlock`, `ownerNote`, `reason`, and bounded warnings.
 - Starter/no-subscription users receive `403 plan_required` before the provider call.
+- The browser client parses plan-gate and recommendation responses through a 16KB bounded JSON reader. Malformed or oversized route responses log `ai_menu_card_design_advisor_response_parse_failed` with bounded project/source/status/phase metadata only and fall back to the existing owner-safe suggestion failure path.
 - Provider/validation failure returns no usable suggestion and consumes no credits.
 - Applying the suggestion changes route settings only; final PDF/packet generation still runs through `renderPdf()` / `buildPrintShopPacket()`.
 
@@ -417,6 +438,7 @@ Use existing authenticated owner page context and DAL access for export. The Pro
 - `POST /api/menu-card-export/design-advisor` uses `withAuth()`.
 - Verify tenant/store access before subscription lookup and provider work.
 - Validate input with `MenuCardDesignAdvisorRequestSchema`.
+- Normalize and cap validated prompt strings in `src/app/api/menu-card-export/design-advisor/prompt.ts`; do not serialize raw `sourceSummary`, `preflightWarnings`, or `sourceHash` directly into the provider prompt.
 - Rate-limit before provider call.
 - Check plan and AI capacity before provider call.
 - Do not expose public Storage URLs because no Storage object is created.
@@ -638,15 +660,21 @@ Implementation verification:
 
 ```bash
 npx tsc --noEmit --incremental false
+npm run verify:menu-export
 npm run verify:menu-card-export
 ```
 
-`npm run verify:menu-card-export` verifies route/library files, feature flags, auto print design, client-side preflight, client-side PDF/packet generation, local history flag wiring, print-shop flag wiring, mobile Share/Menu/More entry points, the Pro/Premium AI advisor guard path, and the absence of export-storage API routes.
+`npm run verify:menu-export` verifies structured export normalization plus bounded share/export diagnostics for clipboard share, Web Share API, external endpoint share, structured JSON/XLSX export, and PDF generation. It also guards the ShareModal external endpoint admission so the browser does not post menu data to raw owner-entered, non-HTTPS, credentialed, localhost, private/local, or redirected URLs.
+
+`npm run verify:menu-card-export` verifies route/library files, feature flags, auto print design, client-side preflight, client-side PDF/packet generation, local history flag wiring, print-shop flag wiring, mobile Share/Menu/More entry points, the Pro/Premium AI advisor guard path, bounded AI advisor response parsing, bounded share-modal export diagnostics, and the absence of export-storage API routes.
 
 Verifier must also assert:
 
 - no export-storage API route or artifact Firebase write path was added
+- share/export failure handlers use `src/lib/export/exportDiagnostics.ts` and do not reintroduce raw console diagnostics
+- external endpoint sharing normalizes and admits only public HTTPS URLs before fetch, and uses manual redirect handling
 - AI advisor route uses auth, tenant access, plan gate, capacity check, operation logging, and credit consumption
+- AI advisor browser response handling uses the bounded response parser and does not silently swallow malformed JSON
 - feature flags are present
 - mobile Share, Menu command sheet, and More route into the same shared URL helper
 - route and shared library exist

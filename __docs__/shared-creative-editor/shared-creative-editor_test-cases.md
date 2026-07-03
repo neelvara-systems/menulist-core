@@ -9,6 +9,7 @@
 | Fabric dependency exists | `fabric@5.3.0` and matching types are installed for the shared editor runtime. |
 | CampaignCue verifier includes editor checks | `npm run verify:campaigncue` catches missing integration. |
 | Design Cue panel is neutral | `DesignCuePanel.tsx` imports shared editor types only and no CampaignCue product types. |
+| Bounded failure notices | `npm run verify:campaigncue` confirms editor runtime/provider/callback failures use `showCreativeEditorFailure()` and do not surface raw exception text in notices or AI findings. |
 | Type check | `npx tsc --noEmit --incremental false` passes. |
 | Full shell verifier | `npm run verify:campaigncue` checks rail, drawer, inspector, bottom controls, dark theme styles, and product-neutral shared defaults. |
 | Smoke QA verifier | `npm run verify:creative-editor-smoke` checks the internal smoke route, stress variant, QA selectors, focus restoration, and documentation guardrails. |

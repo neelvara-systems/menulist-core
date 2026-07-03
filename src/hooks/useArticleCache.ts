@@ -1,4 +1,5 @@
 import { fetchAnswerlatticePublicArticle } from '@lib/answerlattice/publicContentClient';
+import { getBoundedHookStringContext, logHookFailure } from '@hook/hookDiagnostics';
 import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from '@providers/platformProviders/platformGlobalDataProvider';
 import { KnowledgeBaseArticleType } from '@type/knowledgeBase';
 import { Timestamp } from 'firebase/firestore';
@@ -41,8 +42,7 @@ export const useArticleCache = () => {
 
             // Keep only last MAX_CACHED_ARTICLES
             if (newArticles.length > MAX_CACHED_ARTICLES) {
-                const evicted = newArticles.shift(); // Remove oldest (first item)
-                console.log('🗑️ Evicted oldest article from cache:', evicted?.id);
+                newArticles.shift(); // Remove oldest (first item)
             }
 
             return {
@@ -96,7 +96,6 @@ export const useArticleCache = () => {
      */
     const clearCache = useCallback(() => {
         setCachedArticles({ cachedOn: null, articles: [] });
-        console.log('🗑️ Article cache cleared');
     }, [setCachedArticles]);
 
     /**
@@ -166,7 +165,6 @@ export const useArticleCache = () => {
         // STEP 1: Force Refresh (Skip Cache)
         // ============================================
         if (options?.forceRefresh) {
-            console.log('🔄 Force refresh article, skipping cache:', articleId);
             options.onCacheMiss?.();
 
             try {
@@ -180,7 +178,11 @@ export const useArticleCache = () => {
 
                 return null; // Not found or inactive
             } catch (error) {
-                console.error('❌ Failed to fetch article:', error);
+                logHookFailure('answerlattice_article_cache_fetch_failed', error, {
+                    forceRefresh: true,
+                    cachedArticleCount: cachedArticles.articles.length,
+                    ...getBoundedHookStringContext('articleId', articleId),
+                });
                 return null;
             }
         }
@@ -192,7 +194,6 @@ export const useArticleCache = () => {
 
         if (cached) {
             // ✅ Cache hit - instant return
-            console.log('📦 Article cache hit:', articleId, `(${cachedArticles.articles.length}/${MAX_CACHED_ARTICLES} cached)`);
             options?.onCacheHit?.();
 
             // Move to end (mark as recently used for LRU)
@@ -204,7 +205,6 @@ export const useArticleCache = () => {
         // ============================================
         // STEP 3: Cache Miss - Fetch from Database
         // ============================================
-        console.log('🌐 Article cache miss, fetching:', articleId);
         options?.onCacheMiss?.();
 
         try {
@@ -213,15 +213,17 @@ export const useArticleCache = () => {
             // Filter: Only cache and return active articles
             if (article && isArticleActive(article)) {
                 addArticleToCache(article);
-                console.log('✅ Article fetched and cached:', articleId);
                 return article;
             }
 
             // Article not found or inactive
-            console.log('⚠️ Article not found or inactive:', articleId);
             return null;
         } catch (error) {
-            console.error('❌ Failed to fetch article:', error);
+            logHookFailure('answerlattice_article_cache_fetch_failed', error, {
+                forceRefresh: false,
+                cachedArticleCount: cachedArticles.articles.length,
+                ...getBoundedHookStringContext('articleId', articleId),
+            });
             return null;
         }
     }, [cachedArticles.articles, addArticleToCache, moveArticleToEnd, isArticleActive]);

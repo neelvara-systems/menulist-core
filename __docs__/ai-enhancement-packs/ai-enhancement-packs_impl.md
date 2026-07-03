@@ -2,7 +2,7 @@
 
 **Feature:** AI Enhancement Packs (Outcome-Based AI Pricing & Usage Tracking)
 **Status:** Implemented and hardened
-**Last Updated:** June 2, 2026
+**Last Updated:** July 1, 2026
 **Audience:** Developers only
 
 ## June 2, 2026 Accounting Hardening Contract
@@ -20,6 +20,27 @@ Regression command:
 ```bash
 npm run verify:ai-accounting
 ```
+
+## July 1, 2026 Protected Owner AI Route Permission Contract
+
+Owner-facing AI routes require the existing store-role permission before capacity, provider, task fanout, Firestore analytics reads, or accounting work. Body-based routes run bounded body parsing and schema validation before the permission guard so rejected malformed requests do not incur a store permission read.
+
+| Route | Required permission | Expensive work blocked before |
+| --- | --- | --- |
+| `src/app/api/business-copy/route.ts` | `canManagePublicPresence` or `canManageStore` | Capacity check, Gemini call, accounting |
+| `src/app/api/campaigns/caption/route.ts` | `canManageMenuSharing`, `canPublishMenu`, or `canManageMenu` | Tenant check, capacity check, Gemini call, accounting |
+| `src/app/api/descriptions/route.ts` | `canGenerateDescriptions` | Outlet policy, capacity check, Gemini call, accounting |
+| `src/app/api/new-item-metadata/route.ts` | `canGenerateDescriptions` | Capacity check, Gemini call, accounting |
+| `src/app/api/translations/route.ts` | `canGenerateDescriptions` | Outlet policy, capacity check, Gemini call, accounting |
+| `src/app/api/image-generation/route.ts` | `canGenerateImages` | Outlet policy, capacity check, media fetch, Gemini call, accounting |
+| `src/app/api/image-editing/route.ts` | `canGenerateImages` | Outlet policy, capacity check, media fetch, Gemini call, accounting |
+| `src/app/api/image-generation/batch-trigger/route.ts` | `canGenerateImages` | Outlet policy, prompt estimation, capacity check, Cloud Tasks fanout |
+| `src/app/api/menu-card-export/design-advisor/route.ts` | `canManageMenuSharing`, `canPublishMenu`, or `canManageMenu` | Subscription plan read, capacity check, Gemini call, accounting |
+| `src/app/api/seo/route.ts` | `canManagePublicPresence` or `canManageStore` | Capacity check, Gemini call, accounting |
+| `src/app/api/ai-packs/status/route.ts` | `canAccessBilling` | Capacity status read |
+| `src/app/api/analytics/weekly-narrative/generate-local/route.ts` | `canViewAnalytics` | Firestore analytics reads, Gemini call, insight write, operation log |
+
+`npm run verify:menulist-api-tenant-safety` and `npm run verify:auth-security-failure-matrix` guard this route ordering so future AI routes cannot rely only on authenticated tenant/store scope before consuming AI capacity, reading analytics, enqueuing tasks, or calling provider work.
 
 ## May 13, 2026 Runtime Contract
 
@@ -57,15 +78,15 @@ May 20 hardening: Transactions render `createdOn` through the shared date normal
 | `/tenants/{tenantId}/` Firestore paths | Existing pattern is `{collection}/{tId}/{sId}` (`src/database/aiOperations/index.tsx:14`) | Use existing `MENULIST_AI_OPERATIONS` + `TOPUPS` collections |
 | "MOL v0 already exists"                | `ENABLE_MENU_OBSERVATION: false` (`src/config/features.ts:510`) — not built               | Ignore MOL references                                        |
 | Mutable `aiCapacityUsed` counter only  | No event-driven backup                                                                    | Use atomic counter + append-only events (reconcilable)       |
-| Stripe as payment provider             | MenuList uses **Razorpay** (fully built, production-ready)                                | Adapt existing Razorpay top-up flow for enhancement packs    |
+| Stripe as payment provider             | MenuList uses **Razorpay** (implemented and billing-slice audited; current launch certification still requires active gates) | Adapt existing Razorpay top-up flow for enhancement packs    |
 
 ---
 
 ## Existing Payment Infrastructure (Razorpay — Already Built)
 
-### CRITICAL: The top-up purchase flow already exists and works
+### CRITICAL: The top-up purchase flow already exists and is source-gated
 
-The following Razorpay-based credit purchase system is **fully built and production-ready**. The AI Enhancement Packs implementation must adapt this existing flow, not build a parallel one.
+The following Razorpay-based credit purchase system is implemented and covered by the billing entitlement source gate. The AI Enhancement Packs implementation must adapt this existing flow, not build a parallel one. Current release approval still requires the active [production-readiness audit](../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../production-readiness/external-certification-runbook.md) evidence, `npm run verify:billing-entitlement-boundary`, Razorpay sandbox top-up smoke, desktop/mobile Billing browser QA, target deploy evidence, and production-host smoke.
 
 #### Existing Top-Up Flow (End-to-End)
 
@@ -130,7 +151,7 @@ Webhook: /api/razorpay/webhook                               [webhook/route.ts]
 ### Architecture: Single Billing System (Razorpay Only)
 
 Stripe was fully removed in Feb 2026. Razorpay is the only payment provider.
-See `__docs__/razorpay/RAZORPAY_PAYMENT_FLOW.md` for complete reference.
+See `__docs__/razorpay/razorpay-payment-flow.md` for complete reference.
 
 #### `billing/` folder (Razorpay — 11 files)
 
@@ -229,6 +250,8 @@ SessionProvider: event listener
 - Frontend AI services — call `syncBalanceFromResponse()` after parsing responses that include `remainingBalance`
 
 **Firebase cost saved:** 1 Firestore read per AI operation (frontend no longer needs to re-fetch subscription after each AI call).
+
+June 29 response-parsing note: frontend AI services now call `syncBalanceFromResponse()` only after parsing successful API responses through bounded response readers. Text, translation, and business-copy clients use 1MB caps, batch image trigger uses a 64KB acknowledgement cap, and image generation/editing use 24MB caps for base64 image payloads. Malformed, oversized, empty, or non-object successful responses log stable AI service diagnostics and fall back through the existing owner-safe behavior without adding Firestore reads.
 
 ### Monthly Credit Reset (Two-Layer)
 
@@ -855,10 +878,15 @@ Each paid AI route gets the same enforcement pattern:
 
 | Route                                        | Action Type              | Quantity Logic             |
 | -------------------------------------------- | ------------------------ | -------------------------- |
+| `business-copy/route.ts`                     | `BUSINESS_COPY_GENERATION` | 1 per call               |
+| `campaigns/caption/route.ts`                 | `CAMPAIGN_CAPTION`       | 1 per call                 |
 | `descriptions/route.ts`                      | `REWRITE_DESCRIPTION`    | 1 per call                 |
 | `image-generation/route.ts`                  | `IMAGE_GENERATION`       | 1 per call                 |
 | `image-generation/batch-generation/route.ts` | `BATCH_IMAGE_GENERATION` | `items.length`             |
+| `image-generation/batch-trigger/route.ts`    | `BATCH_IMAGE_GENERATION` | Estimated batch quantity before worker enqueue |
 | `image-editing/route.ts`                     | `IMAGE_GENERATION`       | 1 per call                 |
+| `menu-card-export/design-advisor/route.ts`   | `MENU_CARD_EXPORT_DESIGN_ADVISOR` | 1 per call       |
+| `seo/route.ts`                               | `SEO_AEO_GENERATION`     | 1 per call                 |
 | `translations/route.ts`                      | `LANGUAGE_ADDITION`      | 1 per language             |
 | `new-item-metadata/route.ts`                 | `NEW_ITEM_METADATA`      | 0 (free) — allowed by free short-circuit |
 
@@ -1138,6 +1166,7 @@ AI_ADMIN_DASHBOARD: false,
 | Requirement                                           | Implementation                               | Status |
 | ----------------------------------------------------- | -------------------------------------------- | ------ |
 | `withAuth()` on all owner AI routes                   | Required on authenticated owner AI routes    | ✅     |
+| Store-role permission on protected owner AI routes    | Route-specific role guard before capacity/provider/task/accounting work | ✅     |
 | `withAuth()` on pack purchase route                   | `create-topup-order/route.ts`                | ✅     |
 | `withAuth()` on pack status route                     | `GET /api/ai-packs/status`                   | ✅     |
 | Zod validation on pack purchase input                 | `validateAPIInput()` in create-topup-order   | ✅     |

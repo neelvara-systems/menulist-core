@@ -25,6 +25,7 @@
 import { DB_COLLECTIONS } from "@constant/database";
 import { apiCallComposer } from "@lib/apiHelper/apiCallComposer";
 import { getBusinessAnalyticsDateKey, getLatestSettledBusinessDateKey } from "@lib/analytics/businessDay";
+import { getBoundedAnalyticsStringContext, logAnalyticsFailure } from "@lib/analytics/analyticsDiagnostics";
 import {
     addDaysToAnalyticsDateKey,
     getAnalyticsDateKey,
@@ -44,10 +45,13 @@ import {
     MenuActionBreakdown,
     MonthlyViewData,
     MTDViewData,
+    OpenHoursActionBreakdown,
     OverallData,
     OVERVIEW_GUARDRAILS,
     OverviewData,
+    OwnerActionReceipt,
     OwnerActionPlan,
+    OwnerActionSuggestion,
     OwnerConfidence,
     OwnerDashboardData,
     OwnerDashboardMetrics,
@@ -61,9 +65,11 @@ import {
     WTDViewData,
 } from "@template/main-app/projects/types";
 import { doc, getDoc } from "firebase/firestore";
+import { readJsonResponseWithLimit } from "@lib/security/boundedResponseBody";
 
 // Collection
 const COLLECTION = DB_COLLECTIONS.ANALYTICS;
+const OWNER_ACTION_MARK_DONE_RESPONSE_JSON_MAX_BYTES = 16 * 1024;
 
 // ================================================================
 // DOCUMENT ID HELPERS
@@ -212,19 +218,97 @@ function readAnalyticsMap(data: any, field: string): Record<string, any> {
     return result;
 }
 
-function transformToTopItems(data: any): Array<{ itemId: string; name?: string; clicks: number }> {
-    const clicksByItem = readAnalyticsMap(data, 'clicksByItem');
-    const itemNames = readAnalyticsMap(data, 'itemNames');
-    if (!Object.keys(clicksByItem).length) return [];
+function buildItemStatusLabel(input: {
+    views: number;
+    clicks: number;
+    recommendationClicks: number;
+    unavailableTaps: number;
+}): Pick<TopItem, 'statusLabel' | 'statusTone' | 'statusReason'> {
+    const totalActionTaps = input.clicks + input.recommendationClicks;
+    if (input.unavailableTaps > 0) {
+        return {
+            statusLabel: 'Unavailable demand',
+            statusTone: 'warning',
+            statusReason: `${input.unavailableTaps} unavailable taps`,
+        };
+    }
+    if (input.clicks >= 5 || input.recommendationClicks >= 3) {
+        return {
+            statusLabel: 'Strong item',
+            statusTone: 'success',
+            statusReason: `${totalActionTaps} item taps`,
+        };
+    }
+    if (input.views >= 5 && totalActionTaps === 0) {
+        return {
+            statusLabel: 'Needs work',
+            statusTone: 'warning',
+            statusReason: `${input.views} views, no taps`,
+        };
+    }
+    if (input.views >= 5) {
+        return {
+            statusLabel: 'Getting attention',
+            statusTone: 'default',
+            statusReason: `${input.views} views`,
+        };
+    }
+    return {};
+}
 
-    return Object.entries(clicksByItem)
-        .map(([itemId, clicks]) => ({
-            itemId,
-            clicks: clicks as number,
-            name: itemNames[itemId],
-        }))
-        .sort((a, b) => b.clicks - a.clicks)
-        .slice(0, 5);
+function transformToTopItems(data: any): TopItem[] {
+    const viewsByItem = readAnalyticsMap(data, 'viewsByItem');
+    const clicksByItem = readAnalyticsMap(data, 'clicksByItem');
+    const recommendationClicksByItem = readAnalyticsMap(data, 'recommendationClicksByItem');
+    const unavailableItemTapsByItem = readAnalyticsMap(data, 'unavailableItemTapsByItem');
+    const itemNames = readAnalyticsMap(data, 'itemNames');
+    const itemIds = new Set<string>([
+        ...Object.keys(viewsByItem),
+        ...Object.keys(clicksByItem),
+        ...Object.keys(recommendationClicksByItem),
+        ...Object.keys(unavailableItemTapsByItem),
+    ]);
+    if (!itemIds.size) return [];
+
+    return Array.from(itemIds)
+        .map((itemId) => {
+            const views = Number(viewsByItem[itemId]) || 0;
+            const clicks = Number(clicksByItem[itemId]) || 0;
+            const recommendationClicks = Number(recommendationClicksByItem[itemId]) || 0;
+            const unavailableTaps = Number(unavailableItemTapsByItem[itemId]) || 0;
+            return {
+                itemId,
+                clicks,
+                name: itemNames[itemId],
+                views,
+                recommendationClicks,
+                unavailableTaps,
+                ...buildItemStatusLabel({ views, clicks, recommendationClicks, unavailableTaps }),
+                score: clicks + recommendationClicks + unavailableTaps + (views * 0.25),
+            };
+        })
+        .filter((item) => item.score > 0)
+        .sort((a, b) => b.score - a.score)
+        .slice(0, 5)
+        .map(({ score, ...item }) => item);
+}
+
+function transformOpenHoursActionBreakdown(data: any): OpenHoursActionBreakdown {
+    const actionClicks = readAnalyticsMap(data, 'menuActionClicksByOpenHoursState');
+    const actionSessions = readAnalyticsMap(data, 'actionSessionsByOpenHoursState');
+    const open = Number(actionClicks.open) || 0;
+    const closed = Number(actionClicks.closed) || 0;
+    const unknown = Number(actionClicks.unknown) || 0;
+    const total = open + closed + unknown;
+    return {
+        open,
+        closed,
+        unknown,
+        actionSessionsOpen: Number(actionSessions.open) || 0,
+        actionSessionsClosed: Number(actionSessions.closed) || 0,
+        actionSessionsUnknown: Number(actionSessions.unknown) || 0,
+        closedShare: total > 0 ? Math.round((closed / total) * 100) : 0,
+    };
 }
 
 function transformBlockPerformance(data: any): BlockPerformance {
@@ -497,6 +581,7 @@ interface DailyDocData {
         quickPick?: number;
         bestValue?: number;
     };
+    viewsByItem?: Record<string, number>;
     clicksByItem?: Record<string, number>;
     recommendationClicksByItem?: Record<string, number>;
     viewsByCategory?: Record<string, number>;
@@ -508,7 +593,9 @@ interface DailyDocData {
     viewsByEntrySource?: Record<string, number>;
     menuSessionsBySource?: Record<string, number>;
     actionSessionsBySource?: Record<string, number>;
+    actionSessionsByOpenHoursState?: Record<string, number>;
     menuActionClicksBySource?: Record<string, number>;
+    menuActionClicksByOpenHoursState?: Record<string, number>;
     menuViewsByLanguage?: Record<string, number>;
     menuSessionsByLanguage?: Record<string, number>;
     languageAdoptions?: Record<string, number>;
@@ -528,6 +615,12 @@ interface DailyDocData {
     categoryNames?: Record<string, string>;
     languageNames?: Record<string, string>;
     attributeFilterNames?: Record<string, string>;
+}
+
+function mergeNumericMap(target: Record<string, number>, source?: Record<string, number>): void {
+    Object.entries(source || {}).forEach(([key, value]) => {
+        target[key] = (target[key] || 0) + (Number(value) || 0);
+    });
 }
 
 async function fetchDailyDocs(
@@ -566,6 +659,7 @@ async function fetchDailyDocs(
                     languageTrackingEnabled: Boolean(data.languageTrackingEnabled),
                     decisionBlocksRendered: readAnalyticsMap(data, 'decisionBlocksRendered'),
                     recommendationClicks: readAnalyticsMap(data, 'recommendationClicks'),
+                    viewsByItem: readAnalyticsMap(data, 'viewsByItem'),
                     clicksByItem: readAnalyticsMap(data, 'clicksByItem'),
                     recommendationClicksByItem: readAnalyticsMap(data, 'recommendationClicksByItem'),
                     viewsByCategory: readAnalyticsMap(data, 'viewsByCategory'),
@@ -577,7 +671,9 @@ async function fetchDailyDocs(
                     viewsByEntrySource: readAnalyticsMap(data, 'viewsByEntrySource'),
                     menuSessionsBySource: readAnalyticsMap(data, 'menuSessionsBySource'),
                     actionSessionsBySource: readAnalyticsMap(data, 'actionSessionsBySource'),
+                    actionSessionsByOpenHoursState: readAnalyticsMap(data, 'actionSessionsByOpenHoursState'),
                     menuActionClicksBySource: readAnalyticsMap(data, 'menuActionClicksBySource'),
+                    menuActionClicksByOpenHoursState: readAnalyticsMap(data, 'menuActionClicksByOpenHoursState'),
                     menuViewsByLanguage: readAnalyticsMap(data, 'menuViewsByLanguage'),
                     menuSessionsByLanguage: readAnalyticsMap(data, 'menuSessionsByLanguage'),
                     languageAdoptions: readAnalyticsMap(data, 'languageAdoptions'),
@@ -617,6 +713,7 @@ function aggregateDailyDocs(docs: DailyDocData[]): {
     topLanguages: LanguageUsage[];
     topAttributeFilters: AttributeFilterInterest[];
     menuActions: MenuActionBreakdown;
+    openHoursActionBreakdown: OpenHoursActionBreakdown;
     topSearchTerms: SearchTerm[];
     topZeroResultSearchTerms: SearchTerm[];
     unavailableItems: TopItem[];
@@ -652,6 +749,13 @@ function aggregateDailyDocs(docs: DailyDocData[]): {
     };
 
     const itemClicksMap: Record<string, { clicks: number; name?: string }> = {};
+    const topItemData = {
+        viewsByItem: {} as Record<string, number>,
+        clicksByItem: {} as Record<string, number>,
+        recommendationClicksByItem: {} as Record<string, number>,
+        unavailableItemTapsByItem: {} as Record<string, number>,
+        itemNames: {} as Record<string, string>,
+    };
     const categoryMap: Record<string, { views: number; clicks: number; name?: string }> = {};
     const searchTermMap: Record<string, number> = {};
     const zeroResultSearchTermMap: Record<string, number> = {};
@@ -664,6 +768,10 @@ function aggregateDailyDocs(docs: DailyDocData[]): {
         viewsByMedium: {} as Record<string, number>,
         viewsByCampaign: {} as Record<string, number>,
         viewsByContent: {} as Record<string, number>,
+    };
+    const openHoursData = {
+        menuActionClicksByOpenHoursState: {} as Record<string, number>,
+        actionSessionsByOpenHoursState: {} as Record<string, number>,
     };
     const languageData = {
         languageTrackingEnabled: false,
@@ -718,6 +826,11 @@ function aggregateDailyDocs(docs: DailyDocData[]): {
                 itemClicksMap[itemId].clicks += clicks;
             }
         }
+        mergeNumericMap(topItemData.viewsByItem, doc.viewsByItem);
+        mergeNumericMap(topItemData.clicksByItem, doc.clicksByItem);
+        mergeNumericMap(topItemData.recommendationClicksByItem, doc.recommendationClicksByItem);
+        mergeNumericMap(topItemData.unavailableItemTapsByItem, doc.unavailableItemTapsByItem);
+        Object.assign(topItemData.itemNames, doc.itemNames || {});
 
         if (doc.viewsByCategory) {
             for (const [categoryId, views] of Object.entries(doc.viewsByCategory)) {
@@ -753,6 +866,8 @@ function aggregateDailyDocs(docs: DailyDocData[]): {
             ['menuSessionsBySource', sourceData.menuSessionsBySource],
             ['actionSessionsBySource', sourceData.actionSessionsBySource],
             ['menuActionClicksBySource', sourceData.menuActionClicksBySource],
+            ['actionSessionsByOpenHoursState', openHoursData.actionSessionsByOpenHoursState],
+            ['menuActionClicksByOpenHoursState', openHoursData.menuActionClicksByOpenHoursState],
             ['viewsBySource', sourceData.viewsBySource],
             ['viewsByMedium', sourceData.viewsByMedium],
             ['viewsByCampaign', sourceData.viewsByCampaign],
@@ -805,14 +920,7 @@ function aggregateDailyDocs(docs: DailyDocData[]): {
     metrics.intentRate = menuSessions > 0 ? Math.round(((metrics.intentSessions || 0) / menuSessions) * 100) : 0;
     metrics.actionRate = menuSessions > 0 ? Math.round(((metrics.actionSessions || 0) / menuSessions) * 100) : 0;
 
-    const topItems: TopItem[] = Object.entries(itemClicksMap)
-        .map(([itemId, data]) => ({
-            itemId,
-            clicks: data.clicks,
-            name: data.name,
-        }))
-        .sort((a, b) => b.clicks - a.clicks)
-        .slice(0, 5);
+    const topItems = transformToTopItems(topItemData);
 
     const topSearchTerms: SearchTerm[] = Object.entries(searchTermMap)
         .map(([term, count]) => ({ term, count }))
@@ -853,6 +961,7 @@ function aggregateDailyDocs(docs: DailyDocData[]): {
         topLanguages,
         topAttributeFilters,
         menuActions,
+        openHoursActionBreakdown: transformOpenHoursActionBreakdown(openHoursData),
         topSearchTerms,
         topZeroResultSearchTerms,
         unavailableItems,
@@ -891,6 +1000,7 @@ function buildDailyViewData(
         topLanguages: data.topLanguages || transformTopLanguages(data),
         topAttributeFilters: data.topAttributeFilters || transformTopAttributeFilters(data),
         menuActions: transformMenuActions(data),
+        openHoursActionBreakdown: data.openHoursActionBreakdown || transformOpenHoursActionBreakdown(data),
         topSearchTerms: transformTopSearchTerms(data),
         topZeroResultSearchTerms: data.topZeroResultSearchTerms || transformTopSearchTerms(data, 'zeroResultSearchTerms'),
         unavailableItems: transformUnavailableItems(data),
@@ -942,6 +1052,7 @@ function normalizeDailyViewData(data: any): DailyViewData | null {
         topLanguages: data.topLanguages || transformTopLanguages(data),
         topAttributeFilters: data.topAttributeFilters || transformTopAttributeFilters(data),
         menuActions: data.menuActions || transformMenuActions(data),
+        openHoursActionBreakdown: data.openHoursActionBreakdown || transformOpenHoursActionBreakdown(data),
         topSearchTerms: data.topSearchTerms || transformTopSearchTerms(data),
         topZeroResultSearchTerms: data.topZeroResultSearchTerms || transformTopSearchTerms(data, 'zeroResultSearchTerms'),
         unavailableItems: data.unavailableItems || transformUnavailableItems(data),
@@ -970,6 +1081,7 @@ function normalizePeriodViewData<T extends WeeklyViewData | MonthlyViewData | WT
         topLanguages: data.topLanguages || transformTopLanguages(data),
         topAttributeFilters: data.topAttributeFilters || transformTopAttributeFilters(data),
         menuActions: data.menuActions || transformMenuActions(data),
+        openHoursActionBreakdown: data.openHoursActionBreakdown || transformOpenHoursActionBreakdown(data),
         topSearchTerms: data.topSearchTerms || transformTopSearchTerms(data),
         topZeroResultSearchTerms: data.topZeroResultSearchTerms || transformTopSearchTerms(data, 'zeroResultSearchTerms'),
         unavailableItems: data.unavailableItems || transformUnavailableItems(data),
@@ -1006,19 +1118,100 @@ function normalizeOverviewData(data: any): OverviewData | null {
     } as OverviewData;
 }
 
-function normalizeOwnerActionPlan(data: any): OwnerActionPlan | undefined {
+function normalizeOwnerActionReceipt(data: any): OwnerActionReceipt | undefined {
+    if (!data || !data.receiptId || !data.actionId) return undefined;
+    const result = data.result ? {
+        ...data.result,
+        checkedAt: parseDateValue(data.result.checkedAt),
+    } : undefined;
+
+    return {
+        ...data,
+        markedDoneAt: parseDateValue(data.markedDoneAt) || new Date(),
+        result,
+    } as OwnerActionReceipt;
+}
+
+type OwnerActionMarkDonePayload = {
+    success: true;
+    receipt: unknown;
+};
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+    return Boolean(value && typeof value === 'object' && !Array.isArray(value));
+}
+
+function isOwnerActionMarkDonePayload(value: unknown): value is OwnerActionMarkDonePayload {
+    return isRecord(value) && value.success === true && isRecord(value.receipt);
+}
+
+function getOwnerActionMarkDoneResponseContext(params: {
+    projectId: string;
+    action: OwnerActionSuggestion;
+    response?: Response;
+}) {
+    return {
+        ...getBoundedAnalyticsStringContext('projectId', params.projectId),
+        ...getBoundedAnalyticsStringContext('actionId', params.action.id),
+        ...getBoundedAnalyticsStringContext('actionType', params.action.type),
+        ...getBoundedAnalyticsStringContext('actionTitle', params.action.title),
+        ...getBoundedAnalyticsStringContext('actionLabel', params.action.actionLabel),
+        responseOk: params.response?.ok,
+        responseStatus: params.response?.status,
+    };
+}
+
+async function readOwnerActionMarkDoneResponse(
+    response: Response,
+    params: {
+        projectId: string;
+        action: OwnerActionSuggestion;
+    },
+): Promise<unknown> {
+    try {
+        return await readJsonResponseWithLimit<unknown>(response, OWNER_ACTION_MARK_DONE_RESPONSE_JSON_MAX_BYTES);
+    } catch (error) {
+        logAnalyticsFailure(
+            'owner_dashboard_action_mark_done_response_parse_failed',
+            error,
+            getOwnerActionMarkDoneResponseContext({ ...params, response }),
+        );
+        return null;
+    }
+}
+
+function normalizeOwnerActionReceipts(data: any): Record<string, OwnerActionReceipt> | undefined {
+    if (!data || typeof data !== 'object') return undefined;
+    const receipts = Object.entries(data).reduce<Record<string, OwnerActionReceipt>>((acc, [key, value]) => {
+        const receipt = normalizeOwnerActionReceipt(value);
+        if (receipt) acc[key] = receipt;
+        return acc;
+    }, {});
+    return Object.keys(receipts).length > 0 ? receipts : undefined;
+}
+
+function normalizeOwnerActionPlan(data: any, fallbackReceipts?: any): OwnerActionPlan | undefined {
     if (!data || !Array.isArray(data.actions)) return undefined;
+    const receipts = normalizeOwnerActionReceipts(data.receipts || fallbackReceipts);
     return {
         generatedBy: data.generatedBy || 'rules',
-        actions: data.actions,
+        actions: data.actions.map((action: any) => ({
+            ...action,
+            receipt: normalizeOwnerActionReceipt(action.receipt),
+            result: action.result ? {
+                ...action.result,
+                checkedAt: parseDateValue(action.result.checkedAt),
+            } : undefined,
+        })),
         fingerprint: data.fingerprint,
+        receipts,
     };
 }
 
 function normalizeOwnerDashboardData(data: any, projectId: string): OwnerDashboardData {
     const overview = normalizeOverviewData(data.overview);
     const daily = normalizeDailyViewData(data.daily || data.overview?.yesterday);
-    const ownerActionPlan = normalizeOwnerActionPlan(data.ownerActionPlan || overview?.ownerActionPlan);
+    const ownerActionPlan = normalizeOwnerActionPlan(data.ownerActionPlan || overview?.ownerActionPlan, data.ownerActionReceipts);
 
     return {
         overview,
@@ -1037,6 +1230,7 @@ function normalizeOwnerDashboardData(data: any, projectId: string): OwnerDashboa
             topLanguages: data.overall.topLanguages || transformTopLanguages(data.overall),
             topAttributeFilters: data.overall.topAttributeFilters || transformTopAttributeFilters(data.overall),
             menuActions: data.overall.menuActions || transformMenuActions(data.overall),
+            openHoursActionBreakdown: data.overall.openHoursActionBreakdown || transformOpenHoursActionBreakdown(data.overall),
             topSearchTerms: data.overall.topSearchTerms || transformTopSearchTerms(data.overall),
             topZeroResultSearchTerms: data.overall.topZeroResultSearchTerms || transformTopSearchTerms(data.overall, 'zeroResultSearchTerms'),
             unavailableItems: data.overall.unavailableItems || transformUnavailableItems(data.overall),
@@ -1290,7 +1484,7 @@ export async function getOwnerDashboardWTD(
                 return null;
             }
 
-            const { metrics, blockPerformance, topItems, topCategories, topLanguages, topAttributeFilters, menuActions, topSearchTerms, topZeroResultSearchTerms, unavailableItems, sourceQuality, utmSources, utmMediums, utmCampaigns, utmContent, ownerConfidence } = aggregateDailyDocs(docs);
+            const { metrics, blockPerformance, topItems, topCategories, topLanguages, topAttributeFilters, menuActions, openHoursActionBreakdown, topSearchTerms, topZeroResultSearchTerms, unavailableItems, sourceQuality, utmSources, utmMediums, utmCampaigns, utmContent, ownerConfidence } = aggregateDailyDocs(docs);
 
             return {
                 startDate: dates[0],
@@ -1303,6 +1497,7 @@ export async function getOwnerDashboardWTD(
                 topLanguages,
                 topAttributeFilters,
                 menuActions,
+                openHoursActionBreakdown,
                 topSearchTerms,
                 topZeroResultSearchTerms,
                 unavailableItems,
@@ -1343,7 +1538,7 @@ export async function getOwnerDashboardMTD(
                 return null;
             }
 
-            const { metrics, blockPerformance, topItems, topCategories, topLanguages, topAttributeFilters, menuActions, topSearchTerms, topZeroResultSearchTerms, unavailableItems, sourceQuality, utmSources, utmMediums, utmCampaigns, utmContent, ownerConfidence } = aggregateDailyDocs(docs);
+            const { metrics, blockPerformance, topItems, topCategories, topLanguages, topAttributeFilters, menuActions, openHoursActionBreakdown, topSearchTerms, topZeroResultSearchTerms, unavailableItems, sourceQuality, utmSources, utmMediums, utmCampaigns, utmContent, ownerConfidence } = aggregateDailyDocs(docs);
 
             // Get month name
             const firstDate = parseAnalyticsDateKey(dates[0]);
@@ -1369,6 +1564,7 @@ export async function getOwnerDashboardMTD(
                 topLanguages,
                 topAttributeFilters,
                 menuActions,
+                openHoursActionBreakdown,
                 topSearchTerms,
                 topZeroResultSearchTerms,
                 unavailableItems,
@@ -1489,7 +1685,7 @@ export async function getOwnerDashboardOverview(
 
             let wtd: WTDViewData | null = null;
             if (wtdDocs.length > 0) {
-                const { metrics, blockPerformance, topItems, topCategories, topLanguages, topAttributeFilters, menuActions, topSearchTerms, topZeroResultSearchTerms, unavailableItems, sourceQuality, utmSources, utmMediums, utmCampaigns, utmContent, ownerConfidence } = aggregateDailyDocs(wtdDocs);
+                const { metrics, blockPerformance, topItems, topCategories, topLanguages, topAttributeFilters, menuActions, openHoursActionBreakdown, topSearchTerms, topZeroResultSearchTerms, unavailableItems, sourceQuality, utmSources, utmMediums, utmCampaigns, utmContent, ownerConfidence } = aggregateDailyDocs(wtdDocs);
                 wtd = {
                     startDate: wtdDates[0],
                     endDate: wtdDates[wtdDates.length - 1],
@@ -1501,6 +1697,7 @@ export async function getOwnerDashboardOverview(
                     topLanguages,
                     topAttributeFilters,
                     menuActions,
+                    openHoursActionBreakdown,
                     topSearchTerms,
                     topZeroResultSearchTerms,
                     unavailableItems,
@@ -1520,7 +1717,7 @@ export async function getOwnerDashboardOverview(
 
             let mtd: MTDViewData | null = null;
             if (mtdDocs.length > 0) {
-                const { metrics, blockPerformance, topItems, topCategories, topLanguages, topAttributeFilters, menuActions, topSearchTerms, topZeroResultSearchTerms, unavailableItems, sourceQuality, utmSources, utmMediums, utmCampaigns, utmContent, ownerConfidence } = aggregateDailyDocs(mtdDocs);
+                const { metrics, blockPerformance, topItems, topCategories, topLanguages, topAttributeFilters, menuActions, openHoursActionBreakdown, topSearchTerms, topZeroResultSearchTerms, unavailableItems, sourceQuality, utmSources, utmMediums, utmCampaigns, utmContent, ownerConfidence } = aggregateDailyDocs(mtdDocs);
                 const firstDate = parseAnalyticsDateKey(mtdDates[0]);
                 const monthName = formatMonthLabel(mtdDates[0]);
                 const daysInMonth = new Date(Date.UTC(
@@ -1542,6 +1739,7 @@ export async function getOwnerDashboardOverview(
                     topLanguages,
                     topAttributeFilters,
                     menuActions,
+                    openHoursActionBreakdown,
                     topSearchTerms,
                     topZeroResultSearchTerms,
                     unavailableItems,
@@ -1723,6 +1921,60 @@ export async function getOwnerDashboardSettled(
     );
 }
 
+export async function markOwnerActionDone(params: {
+    projectId: string;
+    action: OwnerActionSuggestion;
+}): Promise<OwnerActionReceipt> {
+    const response = await fetch('/api/analytics/owner-action/mark-done', {
+        cache: 'no-store',
+        credentials: 'same-origin',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        method: 'POST',
+        redirect: 'manual',
+        body: JSON.stringify({
+            projectId: params.projectId,
+            actionId: params.action.id,
+            actionType: params.action.type,
+            actionTitle: params.action.title,
+            actionLabel: params.action.actionLabel,
+            metricLabel: params.action.metricLabel,
+        }),
+    });
+
+    const payload = await readOwnerActionMarkDoneResponse(response, params);
+    if (!response.ok) {
+        logAnalyticsFailure(
+            'owner_dashboard_action_mark_done_response_rejected',
+            undefined,
+            getOwnerActionMarkDoneResponseContext({ ...params, response }),
+        );
+        throw new Error('Could not mark action done');
+    }
+
+    if (!isOwnerActionMarkDonePayload(payload)) {
+        logAnalyticsFailure(
+            'owner_dashboard_action_mark_done_response_invalid',
+            undefined,
+            getOwnerActionMarkDoneResponseContext({ ...params, response }),
+        );
+        throw new Error('Could not mark action done');
+    }
+
+    const receipt = normalizeOwnerActionReceipt(payload.receipt);
+    if (!receipt) {
+        logAnalyticsFailure(
+            'owner_dashboard_action_mark_done_receipt_invalid',
+            undefined,
+            getOwnerActionMarkDoneResponseContext({ ...params, response }),
+        );
+        throw new Error('Could not mark action done');
+    }
+
+    return receipt;
+}
+
 // ================================================================
 // FETCH ALL DASHBOARD DATA (legacy fallback when read model is missing)
 // ================================================================
@@ -1858,6 +2110,13 @@ export interface OBPSourceBreakdown {
     linkClicks: number;
 }
 
+export interface OBPOpenHoursActionBreakdown {
+    open: number;
+    closed: number;
+    unknown: number;
+    closedShare?: number;
+}
+
 export interface OBPLanguageUsage {
     language: string;
     label: string;
@@ -1876,6 +2135,7 @@ export interface OBPPeriodMetrics {
     shareMethods: OBPShareBreakdown;
     links: OBPLinkBreakdown;
     sources: OBPSourceBreakdown[];
+    openHoursActionBreakdown?: OBPOpenHoursActionBreakdown;
     topLanguages?: OBPLanguageUsage[];
     daysWithData: number;
 }
@@ -1915,6 +2175,7 @@ export interface OBPOverallData {
     lifetimeShareMethods: OBPShareBreakdown;
     lifetimeLinks: OBPLinkBreakdown;
     lifetimeSources: OBPSourceBreakdown[];
+    lifetimeOpenHoursActionBreakdown?: OBPOpenHoursActionBreakdown;
     lifetimeLanguages?: OBPLanguageUsage[];
     firstDataDate?: string;
     lastUpdated?: Date;
@@ -1943,6 +2204,9 @@ interface OBPDailyDoc {
     obpActionClicksBySource: Record<string, number>;
     obpMenuClicksBySource: Record<string, number>;
     obpLinkClicksBySource: Record<string, number>;
+    obpActionClicksByOpenHoursState: Record<string, number>;
+    obpMenuClicksByOpenHoursState: Record<string, number>;
+    obpLinkClicksByOpenHoursState: Record<string, number>;
     obpLanguageTrackingEnabled?: boolean;
     obpViewsByLanguage?: Record<string, number>;
     obpSessionsByLanguage?: Record<string, number>;
@@ -2004,6 +2268,28 @@ function buildOBPSourceBreakdown(data: {
         .filter((entry) => entry.views > 0 || entry.actionClicks > 0 || entry.menuClicks > 0 || entry.linkClicks > 0)
         .sort((a, b) => (b.views + b.actionClicks + b.menuClicks + b.linkClicks) - (a.views + a.actionClicks + a.menuClicks + a.linkClicks))
         .slice(0, 6);
+}
+
+function buildOBPOpenHoursActionBreakdown(data: {
+    obpActionClicksByOpenHoursState?: Record<string, number>;
+    obpMenuClicksByOpenHoursState?: Record<string, number>;
+    obpLinkClicksByOpenHoursState?: Record<string, number>;
+}): OBPOpenHoursActionBreakdown {
+    const read = (state: 'open' | 'closed' | 'unknown') => (
+        (data.obpActionClicksByOpenHoursState?.[state] || 0)
+        + (data.obpMenuClicksByOpenHoursState?.[state] || 0)
+        + (data.obpLinkClicksByOpenHoursState?.[state] || 0)
+    );
+    const open = read('open');
+    const closed = read('closed');
+    const unknown = read('unknown');
+    const total = open + closed + unknown;
+    return {
+        open,
+        closed,
+        unknown,
+        closedShare: total > 0 ? Math.round((closed / total) * 100) : 0,
+    };
 }
 
 function buildOBPLanguageBreakdown(data: {
@@ -2107,6 +2393,9 @@ async function fetchOBPDailyDocs(
                 obpActionClicksBySource: readAnalyticsMap(data, 'obpActionClicksBySource'),
                 obpMenuClicksBySource: readAnalyticsMap(data, 'obpMenuClicksBySource'),
                 obpLinkClicksBySource: readAnalyticsMap(data, 'obpLinkClicksBySource'),
+                obpActionClicksByOpenHoursState: readAnalyticsMap(data, 'obpActionClicksByOpenHoursState'),
+                obpMenuClicksByOpenHoursState: readAnalyticsMap(data, 'obpMenuClicksByOpenHoursState'),
+                obpLinkClicksByOpenHoursState: readAnalyticsMap(data, 'obpLinkClicksByOpenHoursState'),
                 obpLanguageTrackingEnabled: Boolean(data.obpLanguageTrackingEnabled),
                 obpViewsByLanguage: readAnalyticsMap(data, 'obpViewsByLanguage'),
                 obpSessionsByLanguage: readAnalyticsMap(data, 'obpSessionsByLanguage'),
@@ -2139,6 +2428,9 @@ function aggregateOBPDocs(docs: OBPDailyDoc[]): OBPPeriodMetrics {
         obpActionClicksBySource: {} as Record<string, number>,
         obpMenuClicksBySource: {} as Record<string, number>,
         obpLinkClicksBySource: {} as Record<string, number>,
+        obpActionClicksByOpenHoursState: {} as Record<string, number>,
+        obpMenuClicksByOpenHoursState: {} as Record<string, number>,
+        obpLinkClicksByOpenHoursState: {} as Record<string, number>,
         obpLanguageTrackingEnabled: false,
         obpViewsByLanguage: {} as Record<string, number>,
         obpSessionsByLanguage: {} as Record<string, number>,
@@ -2169,6 +2461,9 @@ function aggregateOBPDocs(docs: OBPDailyDoc[]): OBPPeriodMetrics {
         sumOBPMap(sourceAccumulator.obpActionClicksBySource, d.obpActionClicksBySource);
         sumOBPMap(sourceAccumulator.obpMenuClicksBySource, d.obpMenuClicksBySource);
         sumOBPMap(sourceAccumulator.obpLinkClicksBySource, d.obpLinkClicksBySource);
+        sumOBPMap(sourceAccumulator.obpActionClicksByOpenHoursState, d.obpActionClicksByOpenHoursState);
+        sumOBPMap(sourceAccumulator.obpMenuClicksByOpenHoursState, d.obpMenuClicksByOpenHoursState);
+        sumOBPMap(sourceAccumulator.obpLinkClicksByOpenHoursState, d.obpLinkClicksByOpenHoursState);
         sourceAccumulator.obpLanguageTrackingEnabled = Boolean(sourceAccumulator.obpLanguageTrackingEnabled || d.obpLanguageTrackingEnabled);
         sumOBPMap(sourceAccumulator.obpViewsByLanguage, d.obpViewsByLanguage);
         sumOBPMap(sourceAccumulator.obpSessionsByLanguage, d.obpSessionsByLanguage);
@@ -2177,6 +2472,7 @@ function aggregateOBPDocs(docs: OBPDailyDoc[]): OBPPeriodMetrics {
     }
 
     result.sources = buildOBPSourceBreakdown(sourceAccumulator);
+    result.openHoursActionBreakdown = buildOBPOpenHoursActionBreakdown(sourceAccumulator);
     result.topLanguages = buildOBPLanguageBreakdown(sourceAccumulator);
     return result;
 }
@@ -2198,6 +2494,11 @@ function buildOBPTodayData(data: Record<string, any>, date: string): OBPTodayDat
             obpActionClicksBySource: readAnalyticsMap(data, 'obpActionClicksBySource'),
             obpMenuClicksBySource: readAnalyticsMap(data, 'obpMenuClicksBySource'),
             obpLinkClicksBySource: readAnalyticsMap(data, 'obpLinkClicksBySource'),
+        }),
+        openHoursActionBreakdown: buildOBPOpenHoursActionBreakdown({
+            obpActionClicksByOpenHoursState: readAnalyticsMap(data, 'obpActionClicksByOpenHoursState'),
+            obpMenuClicksByOpenHoursState: readAnalyticsMap(data, 'obpMenuClicksByOpenHoursState'),
+            obpLinkClicksByOpenHoursState: readAnalyticsMap(data, 'obpLinkClicksByOpenHoursState'),
         }),
         topLanguages: buildOBPLanguageBreakdown({
             obpLanguageTrackingEnabled: Boolean(data.obpLanguageTrackingEnabled),
@@ -2259,6 +2560,7 @@ export async function getOBPDashboardOverview(
                 shareMethods: yesterdayDoc.obpShares,
                 links: yesterdayDoc.obpLinkClicks,
                 sources: buildOBPSourceBreakdown(yesterdayDoc),
+                openHoursActionBreakdown: buildOBPOpenHoursActionBreakdown(yesterdayDoc),
                 daysWithData: 1,
             } : null;
 
@@ -2418,6 +2720,11 @@ export async function getOBPDashboardOverall(
                     obpMenuClicksBySource: readAnalyticsMap(lifetime, 'obpMenuClicksBySource'),
                     obpLinkClicksBySource: readAnalyticsMap(lifetime, 'obpLinkClicksBySource'),
                 }),
+                lifetimeOpenHoursActionBreakdown: buildOBPOpenHoursActionBreakdown({
+                    obpActionClicksByOpenHoursState: readAnalyticsMap(lifetime, 'obpActionClicksByOpenHoursState'),
+                    obpMenuClicksByOpenHoursState: readAnalyticsMap(lifetime, 'obpMenuClicksByOpenHoursState'),
+                    obpLinkClicksByOpenHoursState: readAnalyticsMap(lifetime, 'obpLinkClicksByOpenHoursState'),
+                }),
                 lifetimeLanguages: buildOBPLanguageBreakdown({
                     obpLanguageTrackingEnabled: Boolean(lifetime.obpLanguageTrackingEnabled),
                     obpViewsByLanguage: readAnalyticsMap(lifetime, 'obpViewsByLanguage'),
@@ -2452,6 +2759,7 @@ export async function getOBPDashboardData(
                 const normalizeOBPPeriod = (period: any) => period ? {
                     ...period,
                     sources: period.sources || [],
+                    openHoursActionBreakdown: period.openHoursActionBreakdown || { open: 0, closed: 0, unknown: 0, closedShare: 0 },
                     topLanguages: period.topLanguages || [],
                 } : null;
                 const overview = data.overview ? {
@@ -2465,6 +2773,7 @@ export async function getOBPDashboardData(
                     overall: data.overall ? {
                         ...data.overall,
                         lifetimeSources: data.overall.lifetimeSources || [],
+                        lifetimeOpenHoursActionBreakdown: data.overall.lifetimeOpenHoursActionBreakdown || { open: 0, closed: 0, unknown: 0, closedShare: 0 },
                         lifetimeLanguages: data.overall.lifetimeLanguages || [],
                         lastUpdated: parseDateValue(data.overall.lastUpdated),
                     } : null,

@@ -27,6 +27,12 @@ MenuList creates one official page for your business. It shows your menu, hours,
 
 ---
 
+## Core Claims
+
+- External link safety: customer-facing reservation, order, directions, review, website, social, manifest, PWA handoff, and schema links are normalized before output. Invalid or unsafe stored links are hidden instead of rendered. Source gate: `npm run verify:official-business-page-boundary`.
+
+---
+
 ## Feature Benefits (7 blocks)
 
 ### 1. One Link Replaces Everything

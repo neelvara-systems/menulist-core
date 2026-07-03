@@ -5,17 +5,31 @@ import { apiCallComposer } from "@lib/apiHelper/apiCallComposer";
 import getActiveSession from "@lib/auth/getActiveSession";
 import { ANSWERLATTICE_CACHE_SOURCES } from "@lib/answerlattice/cacheVersionManifest";
 import { bumpAnswerlatticeCacheVersion } from "@lib/answerlattice/cacheVersionClient";
+import { getAnswerlatticeScopeLogContext, logAnswerlatticeFailure } from "@lib/answerlattice/diagnostics";
 import { revalidateAnswerlatticePublicClientCache } from "@lib/cache/answerlatticePublicClientCache";
 import { answerlatticeFirebaseClient } from "@lib/firebase/answerlatticeFirebaseClient";
+import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';
 import { KnowledgeBaseArticleType } from "@type/knowledgeBase";
 import { addDoc } from "firebase/firestore";
 
 const COLLECTION = DB_COLLECTIONS.KB_ARTICLES;
 const KB_ARTICLE_LIST_LIMIT = 500;
 const KB_ARTICLE_ID_QUERY_CHUNK_SIZE = 30;
+const ARTICLE_ENTITY_EXTRACTION_RESPONSE_JSON_MAX_BYTES = 16 * 1024;
+const ARTICLE_ENTITY_EXTRACTION_REQUEST_POLICY: RequestInit = {
+    cache: 'no-store',
+    credentials: 'same-origin',
+    redirect: 'manual',
+};
 
 type ReadableArticleScope = {
     isPlatform: boolean;
+    tId?: number;
+    sId?: number;
+};
+
+type ArticleFaqMaintenanceScope = {
+    id: string;
     tId?: number;
     sId?: number;
 };
@@ -67,6 +81,75 @@ const getReadableScopeFilters = (scope: ReadableArticleScope): QueryConstraint[]
         where("tId", "==", scope.tId),
         where("sId", "==", scope.sId),
     ];
+};
+
+const logArticleFaqMaintenanceFailure = (
+    failureCode: string,
+    error: unknown,
+    article: ArticleFaqMaintenanceScope,
+) => {
+    logAnswerlatticeFailure(failureCode, error, {
+        ...getAnswerlatticeScopeLogContext({
+            articleId: article.id,
+            tId: article.tId,
+            sId: article.sId,
+        }),
+    });
+};
+
+type ArticleEntityExtractionResponse = {
+    ok: true;
+    entityIds: unknown[];
+    newCandidateCount: number;
+};
+
+const isArticleEntityExtractionResponse = (value: unknown): value is ArticleEntityExtractionResponse => (
+    Boolean(value)
+    && typeof value === 'object'
+    && !Array.isArray(value)
+    && (value as { ok?: unknown }).ok === true
+    && Array.isArray((value as { entityIds?: unknown }).entityIds)
+    && typeof (value as { newCandidateCount?: unknown }).newCandidateCount === 'number'
+);
+
+const getArticleEntityExtractionResponseLogContext = (
+    response: Response,
+    article: ArticleFaqMaintenanceScope,
+) => ({
+    ...getAnswerlatticeScopeLogContext({
+        articleId: article.id,
+        tId: article.tId,
+        sId: article.sId,
+    }),
+    responseOk: response.ok,
+    responseStatus: response.status,
+});
+
+const acknowledgeArticleEntityExtractionResponse = async (
+    response: Response,
+    article: ArticleFaqMaintenanceScope,
+): Promise<void> => {
+    const context = getArticleEntityExtractionResponseLogContext(response, article);
+    let payload: unknown;
+
+    try {
+        payload = await readJsonResponseWithLimit<unknown>(
+            response,
+            ARTICLE_ENTITY_EXTRACTION_RESPONSE_JSON_MAX_BYTES,
+        );
+    } catch (error) {
+        logAnswerlatticeFailure('answerlattice_article_entity_extraction_response_parse_failed', error, context);
+        return;
+    }
+
+    if (!response.ok) {
+        logAnswerlatticeFailure('answerlattice_article_entity_extraction_response_rejected', undefined, context);
+        return;
+    }
+
+    if (!isArticleEntityExtractionResponse(payload)) {
+        logAnswerlatticeFailure('answerlattice_article_entity_extraction_response_invalid', undefined, context);
+    }
 };
 
 const readableScopeAllowsArticle = (scope: ReadableArticleScope, article: Partial<KnowledgeBaseArticleType> | null | undefined) => {
@@ -147,11 +230,12 @@ export const updateArticle = async (data: Partial<KnowledgeBaseArticleType>) => 
 
             // Mark linked FAQs for review when article truth changes.
             if ((data.content || data.title) && data.id) {
-                import('@database/answerlattice/faqs')
-                    .then(({ markFaqsNeedReviewForArticle }) => {
-                        markFaqsNeedReviewForArticle({ id: data.id as string, tId: data.tId, sId: data.sId }).catch(() => undefined);
-                    })
-                    .catch(() => undefined);
+                const article = { id: data.id as string, tId: data.tId, sId: data.sId };
+                void import('@database/answerlattice/faqs')
+                    .then(({ markFaqsNeedReviewForArticle }) => markFaqsNeedReviewForArticle(article))
+                    .catch((error) => {
+                        logArticleFaqMaintenanceFailure('answerlattice_article_faq_review_marker_failed', error, article);
+                    });
             }
 
             // E4: Fire-and-forget entity extraction when article content changes
@@ -171,6 +255,37 @@ export const updateArticle = async (data: Partial<KnowledgeBaseArticleType>) => 
     );
 }
 
+export function assertKnowledgeBaseArticleWriteSucceeded(
+    result: unknown,
+    expectedArticleId?: string,
+    rejectionCode = 'knowledge_base_article_write_rejected',
+): asserts result is KnowledgeBaseArticleType {
+    if (!result || typeof result !== 'object' || Array.isArray(result)) {
+        throw new Error(rejectionCode);
+    }
+
+    const article = result as Partial<KnowledgeBaseArticleType>;
+    if (typeof article.id !== 'string' || article.id.length === 0) {
+        throw new Error(rejectionCode);
+    }
+
+    if (expectedArticleId && article.id !== expectedArticleId) {
+        throw new Error(rejectionCode);
+    }
+}
+
+export type KnowledgeBaseArticleDeleteResult = {
+    success: true;
+    id: string;
+};
+
+export type KnowledgeBaseArticleBulkStatusUpdateResult = {
+    success: true;
+    ids: string[];
+    status: string;
+    updatedCount: number;
+};
+
 export const deleteArticle = async (id: string) => {
     return await apiCallComposer(
         async () => {
@@ -180,16 +295,59 @@ export const deleteArticle = async (id: string) => {
             await bumpKnowledgeBaseVersion(articleData, 'article_delete', id);
             await deleteDoc(docRef);
             await revalidateAnswerlatticePublicClientCache(await resolveArticleScope(articleData), ['kb', 'context'], 'deleteArticle');
-            import('@database/answerlattice/faqs')
-                .then(({ archiveFaqsForArticle }) => {
-                    archiveFaqsForArticle({ id, tId: articleData?.tId, sId: articleData?.sId }).catch(() => undefined);
-                })
-                .catch(() => undefined);
-            return null;
+            const article = { id, tId: articleData?.tId, sId: articleData?.sId };
+            void import('@database/answerlattice/faqs')
+                .then(({ archiveFaqsForArticle }) => archiveFaqsForArticle(article))
+                .catch((error) => {
+                    logArticleFaqMaintenanceFailure('answerlattice_article_faq_archive_failed', error, article);
+                });
+            return { success: true, id } satisfies KnowledgeBaseArticleDeleteResult;
         },
         id,
         "deleteArticle"
     );
+}
+
+export function assertKnowledgeBaseArticleDeleteSucceeded(
+    result: unknown,
+    expectedArticleId: string,
+    rejectionCode = 'knowledge_base_article_delete_rejected',
+): asserts result is KnowledgeBaseArticleDeleteResult {
+    if (!result || typeof result !== 'object' || Array.isArray(result)) {
+        throw new Error(rejectionCode);
+    }
+
+    const deleteResult = result as Partial<KnowledgeBaseArticleDeleteResult>;
+    if (deleteResult.success !== true || deleteResult.id !== expectedArticleId) {
+        throw new Error(rejectionCode);
+    }
+}
+
+export function assertKnowledgeBaseArticleBulkStatusUpdateSucceeded(
+    result: unknown,
+    expectedIds: string[],
+    expectedStatus: string,
+    rejectionCode = 'knowledge_base_article_bulk_status_update_rejected',
+): asserts result is KnowledgeBaseArticleBulkStatusUpdateResult {
+    if (!result || typeof result !== 'object' || Array.isArray(result)) {
+        throw new Error(rejectionCode);
+    }
+
+    const updateResult = result as Partial<KnowledgeBaseArticleBulkStatusUpdateResult>;
+    if (
+        updateResult.success !== true
+        || updateResult.status !== expectedStatus
+        || updateResult.updatedCount !== expectedIds.length
+        || !Array.isArray(updateResult.ids)
+        || updateResult.ids.length !== expectedIds.length
+    ) {
+        throw new Error(rejectionCode);
+    }
+
+    const expectedIdSet = new Set(expectedIds);
+    if (updateResult.ids.some((id) => !expectedIdSet.has(id))) {
+        throw new Error(rejectionCode);
+    }
 }
 
 export const bulkUpdateArticleStatus = async (ids: string[], status: string) => {
@@ -206,7 +364,12 @@ export const bulkUpdateArticleStatus = async (ids: string[], status: string) => 
             }
             await batch.commit();
             await revalidateAnswerlatticePublicClientCache(await resolveArticleScope(composedData as Partial<KnowledgeBaseArticleType>), ['kb', 'context'], 'bulkUpdateArticleStatus');
-            return { updatedCount: ids.length, status };
+            return {
+                success: true,
+                ids,
+                updatedCount: ids.length,
+                status,
+            } satisfies KnowledgeBaseArticleBulkStatusUpdateResult;
         },
         { ids, status },
         "bulkUpdateArticleStatus"
@@ -391,7 +554,8 @@ function _triggerEntityExtraction(article: KnowledgeBaseArticleType): void {
         const session = await getActiveSession().catch(() => null);
         if (!session?.tId || !session?.sId) return;
 
-        await fetch('/api/answerlattice/articles/extract-entities', {
+        const response = await fetch('/api/answerlattice/articles/extract-entities', {
+            ...ARTICLE_ENTITY_EXTRACTION_REQUEST_POLICY,
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -403,7 +567,15 @@ function _triggerEntityExtraction(article: KnowledgeBaseArticleType): void {
                 categoryTitle: article.categoryTitle,
             }),
         });
-    }).catch(() => {
+        await acknowledgeArticleEntityExtractionResponse(response, article);
+    }).catch((error) => {
+        logAnswerlatticeFailure('answerlattice_article_entity_extraction_request_failed', error, {
+            ...getAnswerlatticeScopeLogContext({
+                articleId: article.id,
+                tId: article.tId,
+                sId: article.sId,
+            }),
+        });
         // Silent failure — entity extraction must never break article operations
     });
 }

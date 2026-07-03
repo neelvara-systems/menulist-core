@@ -1,9 +1,15 @@
 # Client Menu (Customer-Facing Digital Menu) — Firebase Cost Tracking
 
-**Feature:** Client Menu — QR code digital menu for restaurant customers  
-**Status:** ✅ Production Ready  
-**Last Updated:** June 11, 2026
+**Feature:** Client Menu — QR code digital menu for restaurant customers
+**Status:** Firebase cost evidence; not current launch certification
+**Last Updated:** July 1, 2026
 **Priority:** HIGHEST — This is the most trafficked feature. Every customer scan = Firebase reads.
+
+---
+
+## Current Launch Boundary
+
+This Firebase cost document is customer-facing menu-output cost evidence; it is not current production certification. Current client-menu launch approval requires the active [production-readiness audit](../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../production-readiness/external-certification-runbook.md) evidence, Digital Menu Output Constitution checks, physical/mobile browser QA, public cache/deploy evidence, and target production smoke.
 
 ---
 
@@ -84,19 +90,18 @@
 - **Shared store lookup helpers**: OBP/menu/compliance share cached `getStoreBySubdomain()` and `getStoreByCustomDomain()` under the `client-stores` tag.
 - **Summary-first slug routing**: `platformSummary/projects_{storeId}` replaces the old metadata subcollection scan for project slug/default resolution.
 - **Embedded decision blocks**: Public menu recommendation blocks come from the loaded project doc; the menu path no longer performs a separate decision-block document read.
-- **Validated cache revalidation**: `/api/revalidate/menu` accepts only primitive `storeId` values or bounded valid tag arrays before calling `revalidateTag()`, and authenticated app callers can revalidate only stores present in their session unless they are platform admins.
+- **Validated cache revalidation**: `/api/revalidate/menu` accepts only numeric `storeId` values or bounded valid tag arrays (`menu-store-{numericStoreId}`, `store-{numericStoreId}`, `client-stores`, `screen-data`) before calling `revalidateTag()`, and authenticated app callers can revalidate only stores present in their session unless they are platform admins. Browser-side cache revalidation handoffs use same-origin credentials, no-store cache policy, timeout handling, and manual redirect handling so redirected API handoffs do not look like accepted invalidations.
 - **Special note rendering is payload-only**: Public menus resolve special notes from the already-fetched project/store payload (`menuSettings.specialNote`, legacy project note fields, then `publicPresence.specialNote`). This adds no Firestore reads or writes.
-- **PDP item sharing is no-write**: Public item sharing uses the Web Share API or clipboard fallback from the already-open PDP URL. Its generic `share` analytics event is GA4-only and does not add Firestore analytics writes.
+- **PDP item sharing is no-write**: Public item sharing uses the Web Share API or clipboard fallback from the already-open PDP URL. Its generic `share` analytics event is GA4-only and does not add Firestore analytics writes. Browser-local copy hardening logs failed final copy fallbacks through runtime diagnostics with bounded item/share URL/title/language metadata only; it adds no Firestore, Storage, Cloud Function, provider, cache, rule, index, or schema operations.
 
 ### Potential Optimizations
 - **Increase cache TTL**: 60s → 300s for low-change menus (trade-off: stale data for 5 min)
 - **Edge caching**: Vercel Edge Middleware could cache entire HTML for ultra-low latency
-- **Tenant block denormalization**: Store lookup currently verifies inherited tenant block state. If tenant block state is fully denormalized onto store docs, public store-cache misses can avoid the extra tenant check without weakening safety.
 
 ### Warnings: Expensive Patterns
 - **Multi-outlet resolution**: Adds +1 read per page load for outlet stores (reads master project)
 - **Heavy project docs**: ~50KB per project doc. Firestore charges per document, not per byte, but large docs increase transfer time
-- **Tenant block enforcement**: Inherited tenant-block checks protect public truth but can add a tenant-doc read on store-cache misses.
+- **Tenant block enforcement**: Inherited tenant-block checks use `stores/{storeId}.tenantBlocked` after platform tenant block/unblock has synced the store. Legacy stores without that field still fall back to a tenant-doc read on store-cache misses until `scripts/backfill-store-tenant-block-state.ts` is reviewed and run with `--write`, matching `--confirm-project`, and a scoped `--tenant-id`, `--store-id`, or explicit `--all-stores`.
 
 ---
 
@@ -135,4 +140,4 @@
 | `/client/[[...slug]]` (SSR) | GET | 3-5 cached reads on menu path; fewer on OBP root; +1 when outlet/master/special-menu branches apply | No (public) | Server-rendered page. Reads are cached and invalidated by store/project tags. Analytics writes happen from client tracking only. |
 | `/client/sitemap.ts` | GET | 2+ cached reads depending on outlet/project count | No (public) | Reads store seed, project summaries, and outlet summaries. Weak, blocked, starter, or incomplete records stay out of sitemap. |
 | `/client/robots.ts` | GET | 0R | No (public) | Static response, no Firestore |
-| `/api/revalidate/menu` | POST | 0 Firestore reads/writes | Yes for app callers; secret for server callers | Validates `storeId`/tags, checks authenticated store access for app callers, revalidates `menu-store-{storeId}`, `store-{storeId}`, `client-stores`, and `screen-data`, and clears owner-business-assistant packet cache. |
+| `/api/revalidate/menu` | POST | 0 Firestore reads/writes | Yes for app callers; secret for server callers | Validates numeric `storeId`/cache-tag shape, checks authenticated store access for app callers, revalidates `menu-store-{storeId}`, `store-{storeId}`, `client-stores`, and `screen-data`, and clears owner-business-assistant packet cache. |

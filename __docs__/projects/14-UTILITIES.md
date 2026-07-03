@@ -2,7 +2,11 @@
 
 **File**: `src/components/templates/main-app/projects/utils.ts`  
 **Lines**: 626 total  
-**Status**: ✅ Production Ready
+**Status**: Implemented reference; not current launch certification
+
+---
+
+**Launch boundary:** This utilities reference documents helper behavior for the Projects feature. It is not production-launch approval. Current release readiness requires the active [production-readiness audit](../audits/menulist-production-readiness-audit.md), [production-readiness checklist](../production-readiness/README.md), and [External Certification Runbook](../production-readiness/external-certification-runbook.md) evidence.
 
 ---
 
@@ -859,4 +863,4 @@ describe('transformDataIds', () => {
 
 ---
 
-**[← Back: Project Management](./10-PROJECT-MANAGEMENT.md)** | **[Back to Overview →](./00-overview.md)**
+**[← Back: Project Management](./project-management/README.md)** | **[Back to Overview →](./00-overview.md)**

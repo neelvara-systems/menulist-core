@@ -78,7 +78,10 @@ for (const [storeId, storeInfo] of Object.entries(stores)) {
       businessCategory: "food",
       active: true,
       name: "My Restaurant",     // Optional: for display
-      activePlanType: "pro"      // Optional: denormalized billing plan for scheduler entitlements
+      activePlanType: "pro",     // Optional: denormalized billing plan for scheduler entitlements
+      menuPresence: {            // Optional: bounded distribution-presence hints only
+        googleBusiness: "2026-07-03T10:30:00.000Z"
+      }
     },
     "store456": {
       tId: 2,
@@ -136,7 +139,9 @@ export const syncStoreToSummary = async (
     storesSummaryDocRef(),
     {
       lastUpdated: serverTimestamp(),
-      [`stores.${storeId}`]: data,
+      stores: {
+        [storeId]: data,
+      },
     },
     { merge: true }
   );
@@ -150,6 +155,8 @@ export const removeStoreFromSummary = async (storeId: string) => {
   });
 };
 ```
+
+`platformSummary/storesSummary` feeds public store lookup surfaces such as OBP, menus, PWA shortcuts, compliance pages, outlet routing, and platform-wide scheduler snapshots. Keep each row compact: store identity/status fields, scheduling fields, publish counters/timestamps, plan entitlement, and bounded distribution-presence hints are acceptable; full store documents, settings blobs, menu content, analytics rows, and owner-private payloads are not. Any path that changes public-facing store summary truth must invalidate the same public cache tags as store saves through `src/lib/cache/publicClientCache.ts` or the server `revalidateMenuCache()` path. One-off browser-console summary backfills are not part of production runtime and must not be reintroduced.
 
 ---
 

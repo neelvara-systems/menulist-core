@@ -2,8 +2,8 @@
 
 > **Document Type:** Business Requirements (CEO/PM readable)
 > **Status:** Implemented (Feature flag: `ENABLE_POS_SYNC: true`)
-> **Last Updated:** May 23, 2026
-> **Version:** 2.4
+> **Last Updated:** July 2, 2026
+> **Version:** 2.5
 
 ---
 
@@ -63,8 +63,8 @@ MenuList is NOT building POS integrations, workflow automation, or an integratio
 3. **Debounce system** — 25 sec after last edit, send one snapshot
 4. **Menu versioning** — integer version incremented on every menu change
 5. **HMAC-SHA256 signature** — every payload signed with store secret
-6. **Async delivery** — via API route (Cloud Function deferred), never blocks UI
-7. **Retry logic** — Single attempt per delivery (multi-attempt retry deferred to Cloud Functions)
+6. **Async delivery** — via API route, never blocks UI
+7. **Retry logic** — one delivery attempt per menu-affecting save; no active retry worker
 8. **Delivery logs** — last 20 deliveries visible in store settings
 9. **Test webhook button** — sends realistic test payload
 10. **"Send instructions" email** — structured setup instructions to POS provider
@@ -108,7 +108,7 @@ MenuList is NOT building POS integrations, workflow automation, or an integratio
 3. System auto-generates signing secret
 4. Owner enters webhook URL (provided by POS vendor)
 5. Owner clicks "Send Test" → sees success/failure
-6. Done — all future menu changes auto-sync
+6. Done — subsequent menu-affecting changes auto-sync
 
 ### Story 2: Ongoing Silent Operation
 
@@ -125,7 +125,7 @@ MenuList is NOT building POS integrations, workflow automation, or an integratio
 5. POS receives, verifies signature, applies menu
 6. Owner sees nothing — silent operation
 
-> **Implementation note (Feb 14, 2026):** Delivery is handled by API route directly, not Cloud Function. Single attempt per delivery. Cloud Function retry scheduler is deferred — see `_impl.md` §14 ADR.
+> **Implementation note (July 2, 2026):** Delivery is handled by API route directly, not a Cloud Function. Each menu-affecting save creates one delivery attempt after debounce. No Cloud Function retry scheduler is active in the current runtime.
 
 ### Story 3: POS Provider Onboarding
 
@@ -157,13 +157,14 @@ MenuList is NOT building POS integrations, workflow automation, or an integratio
 
 1. Webhook returns non-200 or times out (5 sec max)
 2. Log delivery failure in posDeliveryLogs
-3. After 3 consecutive failures → mark status "connection_issue"
-4. Show calm warning in settings: "Menu updates are not reaching your POS"
-5. When owner fixes URL and clicks "Send Test" → status recovers
+3. Increment `posSync.consecutiveFailures`
+4. First and second failed live deliveries stay quiet for the owner; the delivery table records the failed attempts
+5. Third consecutive failed live delivery → mark status "connection_issue"
+6. When owner fixes URL and clicks "Send Test" successfully, or changes the connection URL/secret, the counter resets
 
-> **Why 3, not 1:** Network glitches happen. A single timeout or 5xx shouldn't alarm the owner. 3 consecutive failures = genuine connectivity issue. (ChatGPT audit, Mar 14, 2026)
+> **Why 3, not 1:** Network glitches happen. A single timeout or 5xx should not alarm the owner. Three failed live deliveries in a row is treated as a real connectivity issue. Explicit connection-test failures and invalid or blocked provider URL configuration still mark `connection_issue` immediately because they are deliberate checks or configuration faults.
 
-> **Deferred (Cloud Function retry):** Multi-attempt retry with exponential backoff (5 attempts: 0s → 30s → 2min → 10min → 1hr) is designed but deferred until Cloud Functions are implemented. See `_impl.md` §14 ADR.
+> **No active retry worker:** Multi-attempt exponential backoff is not part of the current runtime. A separate audited worker implementation would be required before automatic retries exist.
 
 ---
 
@@ -179,9 +180,9 @@ MenuList is NOT building POS integrations, workflow automation, or an integratio
 | FR-04 | Full menu snapshot on every menu-affecting change        | P0       |
 | FR-05 | Debounce: 25 sec after last edit before sending          | P0       |
 | FR-06 | Menu version integer, incremented on change              | P0       |
-| FR-07 | Async delivery via API route (CF deferred)               | P0       |
-| FR-08 | Single attempt per delivery (multi-retry deferred to CF) | P0       |
-| FR-09 | Mark "connection_issue" after 3 consecutive failures     | P0       |
+| FR-07 | Async delivery via API route                             | P0       |
+| FR-08 | Single delivery attempt per menu-affecting save          | P0       |
+| FR-09 | Mark "connection_issue" after 3 failed live deliveries in a row | P0 |
 | FR-10 | Test webhook button with realistic payload               | P0       |
 | FR-11 | Delivery logs: last 20 deliveries per store              | P0       |
 | FR-12 | Status display: Connected / Connection Issue / Disabled  | P0       |
@@ -203,7 +204,7 @@ MenuList is NOT building POS integrations, workflow automation, or an integratio
 | Delivery latency | < 60 sec from last edit to webhook sent                  |
 | Payload timeout  | 5 seconds max per delivery attempt                       |
 | Payload size     | Support up to 5 MB (gzip allowed)                        |
-| Retry ceiling    | Single attempt (multi-retry deferred to Cloud Functions) |
+| Retry ceiling    | Single attempt; no active retry worker                   |
 | UI impact        | Zero — webhook delivery never blocks owner's UI          |
 | Availability     | Matches Cloud Functions SLA                              |
 | Security         | HMAC-SHA256 signed, secret never transmitted in payload  |
@@ -438,9 +439,9 @@ Business Settings → "External Menu Sync" tab (internal key: `posSync`; sits af
 | ---------------------- | ----------------------- | ------------------------------------------------------------------------------------ |
 | Sync strategy          | Full snapshot only      | Eliminates sync corruption, simplest for POS, no delta logic                         |
 | Webhook scope          | Store-level only        | Each outlet may use different POS vendor                                             |
-| Delivery mechanism     | API route (CF deferred) | Never blocks UI; Cloud Function retry deferred                                       |
+| Delivery mechanism     | API route               | Never blocks UI                                                                     |
 | UI feedback on success | None (silent)           | Infrastructure should be invisible when healthy                                      |
-| Failure handling       | Mark after 3 failures   | 3 consecutive failures = connection_issue; single glitch = silent retry on next edit |
+| Failure handling       | Mark after 3 failed live deliveries | First and second failed live deliveries stay quiet; explicit test/config failures mark immediately |
 | Master webhook control | Not supported           | Store-level isolation is industry standard                                           |
 | Delta/event streaming  | Rejected permanently    | Full snapshot is simpler, more reliable, better for SMBs                             |
 | POS-specific adapters  | Rejected permanently    | One standard format; POS adapts to MenuList                                          |
@@ -466,8 +467,8 @@ Business Settings → "External Menu Sync" tab (internal key: `posSync`; sits af
 | --------------------------------------------------------- | -------- | --------------------------------------------------------------- |
 | Exact debounce duration (20s vs 30s)?                     | RESOLVED | 25 sec — implemented in `eventBuilder.ts`                       |
 | Should delivery logs be stored in subcollection or array? | RESOLVED | Subcollection at `stores/{storeId}/posDeliveryLogs` — see ADR-4 |
-| Email template: use SendGrid or Firebase Extension?       | DEFERRED | Email integration deferred; counter tracking implemented        |
-| Public docs page: static or dynamic?                      | DEFERRED | Low priority — POS vendor technical docs                        |
+| Email template: use SendGrid or Firebase Extension?       | OUT OF CURRENT RUNTIME | Owner-device `mailto:` handoff plus counter tracking implemented |
+| Public docs page: static or dynamic?                      | OUT OF CURRENT RUNTIME | Technical docs remain in this repo until a separate public-docs release scope exists |
 
 ---
 
@@ -511,13 +512,13 @@ Business Settings → "External Menu Sync" tab (internal key: `posSync`; sits af
 - **Silent operation** — no success toasts, no "menu synced" messages
 - **Reliability > features** — perfect debounce, versioning, retries matter more than UI polish
 
-### Future Scope (Only If Organic Demand)
+### Conditional Candidate Scope (Requires Separate Audit)
 
 - POS vendor recognition (detect which POS is consuming)
 - ~~Public API (read-only menu endpoint)~~ → **BUILT** as Platform Pull API (`ENABLE_PUBLIC_API: false`). See `__docs__/platform-pull-api/`
 - Scheduled menu publishing (auto-switch breakfast/lunch/dinner menus)
 - Time-window availability (daypart-based item visibility: breakfast/lunch/dinner)
-- These are NOT planned. Only build if real-world pressure appears.
+- These are NOT planned. Only build with real-world pressure, scoped docs, source review, and release evidence.
 
 ### POS Feature Ceiling (Permanent Boundary)
 
@@ -565,7 +566,7 @@ This means MenuList already has the "event ledger" that infrastructure-grade web
 
 - **Audit trail** — every menu change is already recorded
 - **Self-healing** — if a delivery fails, MOL proves what changed
-- **Future event streaming** — other systems can subscribe to MOL events
+- **Event subscription candidate** — other systems could subscribe to MOL events only after a separate scoped implementation
 
 POS Sync does NOT need a separate `menu_events` collection — MOL already serves this purpose.
 

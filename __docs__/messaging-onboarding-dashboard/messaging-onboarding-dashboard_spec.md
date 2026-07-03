@@ -2,7 +2,7 @@
 
 **Feature:** Internal Monitoring Dashboard for Messaging Onboarding Pipeline
 **Status:** IMPLEMENTED — Lean v1
-**Last Updated:** May 17, 2026
+**Last Updated:** June 29, 2026
 
 ---
 
@@ -35,6 +35,14 @@ This dashboard is platform-only and supports the official WhatsApp Cloud API pat
 | Access | `platformRole === "PLATFORM"` |
 | Feature Flag | `ENABLE_MESSAGING_ONBOARDING_DASHBOARD` |
 | Navigation | Ops Control Room button |
+
+---
+
+## Response Safety
+
+- The browser monitor caps `/api/ops/messaging-onboarding` response JSON at 256KB.
+- UI state updates only after the response matches the expected dashboard snapshot shape.
+- Rejected, oversized, malformed, or invalid responses show fixed platform failure copy and emit bounded runtime diagnostics.
 
 ---
 
@@ -142,4 +150,4 @@ Show recent `systemAlerts` where `metadata.subsystem === "messaging_onboarding"`
 
 ---
 
-_Document Status: IMPLEMENTED. May 17, 2026._
+_Document Status: IMPLEMENTED. June 29, 2026._

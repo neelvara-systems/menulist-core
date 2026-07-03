@@ -26,7 +26,7 @@ Navigate to: `http://localhost:3000`
 
 - [ ] Set `SOCIAL_CONTENT_ENABLED = false`
 - [ ] Navigate to Today tab
-- [ ] **Expected**: "This feature is coming soon." message
+- [ ] **Expected**: "Today is not available for this location." message
 - [ ] Reset to `true` after testing
 
 #### 2.2 Loading State

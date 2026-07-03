@@ -10,11 +10,18 @@ import {
 type PromptItem = {
     active?: boolean;
     available?: boolean;
+    categoryId?: string;
     hasDescription?: boolean;
     hasImage?: boolean;
     isBestSeller?: boolean;
     name: string;
     price?: string;
+};
+
+type PromptCategory = {
+    active?: boolean;
+    itemCount: number;
+    name: string;
 };
 
 export type AiMenuManagerPromptKind =
@@ -155,6 +162,7 @@ function getPromptItems(project?: Project | null): PromptItem[] {
             .map((item) => ({
                 active: item.active !== false,
                 available: item.available !== false,
+                categoryId: item.category,
                 hasDescription: Boolean(readLocalized(item.description, language, '')),
                 hasImage: Boolean(item.images?.length),
                 isBestSeller: item.isBestSeller === true,
@@ -163,6 +171,27 @@ function getPromptItems(project?: Project | null): PromptItem[] {
             }))
             .filter((item) => item.name && item.name !== 'Menu item')
     ));
+}
+
+function getPromptCategories(project?: Project | null): PromptCategory[] {
+    if (!project) return [];
+    const language = project.defaultLanguage || project.languages?.[0] || 'en';
+    return (project.files || []).flatMap((file) => {
+        const data = file.extractedData?.data;
+        if (!data) return [];
+        const activeItemCounts = new Map<string, number>();
+        (data.items || []).forEach((item) => {
+            if (item.active === false) return;
+            activeItemCounts.set(item.category, (activeItemCounts.get(item.category) || 0) + 1);
+        });
+        return (data.categories || [])
+            .map((category) => ({
+                active: category.active !== false,
+                itemCount: activeItemCounts.get(category.id) || 0,
+                name: readLocalized(category.name, language, 'Menu section'),
+            }))
+            .filter((category) => category.name && category.name !== 'Menu section');
+    });
 }
 
 function nextPriceLabel(price?: string) {
@@ -181,6 +210,61 @@ export function getAiMenuManagerProjectPromptHints(project?: Project | null) {
         pricePrompt: priceItem ? `${priceItem.name} ${nextPriceLabel(priceItem.price)}` : undefined,
         availabilityPrompt: availabilityItem ? `${availabilityItem.name} sold out` : undefined,
     };
+}
+
+export function getAiMenuManagerAttentionSuggestions(project?: Project | null): AiMenuManagerPromptSuggestion[] {
+    const items = getPromptItems(project);
+    const categories = getPromptCategories(project);
+    const activeItems = items.filter((item) => item.active !== false);
+    const hiddenCategory = categories.find((category) => category.active === false);
+    const unavailableItem = activeItems.find((item) => item.available === false);
+    const hiddenItem = items.find((item) => item.active === false);
+    const missingPriceItem = activeItems.find((item) => !Number(String(item.price || '').replace(/[^0-9.]/g, '')));
+    const missingImageItem = activeItems.find((item) => !item.hasImage);
+    const missingDescriptionItem = activeItems.find((item) => !item.hasDescription);
+    const candidates: Array<AiMenuManagerPromptSuggestion | null | undefined> = [
+        hiddenCategory && {
+            kind: 'visibility',
+            label: `Show ${hiddenCategory.name} category`,
+            helper: 'Hidden menu section',
+        },
+        unavailableItem && {
+            kind: 'availability',
+            label: `Make ${unavailableItem.name} available`,
+            helper: 'Sold-out item still hidden from ordering',
+        },
+        hiddenItem && {
+            kind: 'visibility',
+            label: `Show ${hiddenItem.name}`,
+            helper: 'Hidden item',
+        },
+        missingPriceItem && {
+            kind: 'price',
+            label: `${missingPriceItem.name} ${nextPriceLabel(missingPriceItem.price)}`,
+            helper: 'Missing price',
+        },
+        missingImageItem && {
+            kind: 'image',
+            label: `Generate image for ${missingImageItem.name}`,
+            helper: 'Missing item photo',
+        },
+        missingDescriptionItem && {
+            kind: 'content',
+            label: `Add description for ${missingDescriptionItem.name}: Freshly prepared and served hot.`,
+            helper: 'Missing item description',
+        },
+    ];
+
+    const seen = new Set<string>();
+    return candidates
+        .filter((suggestion): suggestion is AiMenuManagerPromptSuggestion => Boolean(suggestion))
+        .filter((suggestion) => {
+            const key = suggestion.prompt || suggestion.label;
+            if (seen.has(key)) return false;
+            seen.add(key);
+            return true;
+        })
+        .slice(0, 3);
 }
 
 function addSuggestion(

@@ -1,13 +1,15 @@
 # Store Onboarding Flow — Implementation Plan
 
 **Feature:** #4C — Store Onboarding (Master + Local Outlet) — PATH 2: Internal Flow  
-**Status:** ✅ Production Ready  
+**Status:** Implemented source evidence; not current launch certification
 **Original Date:** February 7, 2026 (Updated: February 12, 2026 — Session 3)  
-**Last Reviewed:** February 13, 2026  
+**Last Reviewed:** July 2, 2026
 **Author:** Cascade (Primary Master — Full Codebase Access)  
 **Inputs:** Cascade spec analysis + ChatGPT architectural review (3 sessions)  
 **Governance:** `IDE_PROMPTS/00. MASTER RULES & WORKFLOW.md` (overrides all)  
 **Companion:** `store-onboarding-billing_impl.md` (PATH 1: Razorpay Billing Flow)
+
+> **Launch Boundary:** This implementation plan records store-onboarding source evidence, not current production-launch approval. Current release approval requires the active [production-readiness audit](../../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../../production-readiness/external-certification-runbook.md) evidence, `npm run verify:multi-location-boundary`, desktop/mobile Locations browser QA, outlet create/deactivate/rename QA, Razorpay sandbox evidence where billing is involved, Firebase deploy evidence where rules/functions change, and target-environment smoke.
 
 ---
 
@@ -21,6 +23,12 @@ This document covers **PATH 2 (Internal Flow)** — store creation, project repl
 4. Follows Law 1 (3-Year Architecture Freeze) — everything ships Day 1, some behind feature flags
 
 **Companion doc:** `store-onboarding-billing_impl.md` covers **PATH 1 (Billing Flow)** — Razorpay quantity-based billing, proration, mandate auto-debit. Billing succeeds FIRST, then this flow executes.
+
+June 29, 2026 hardening note: if outlet creation fails after acquiring `outletCreationLock`, the cleanup path still releases the lock best-effort. A cleanup failure no longer disappears silently; `POST /api/outlets/create` logs `multi_outlet_create_lock_release_failed` with bounded tenant/store and rollback-state metadata before returning the original create failure response.
+
+June 29, 2026 browser response hardening note: desktop Locations, desktop add/rename modals, and `MobileLocationsScreen` now parse `/api/outlets/create`, `/api/outlets/rename`, and `/api/outlets/deactivate` acknowledgements through the shared 16KB `MULTI_OUTLET_ACTION_RESPONSE_JSON_MAX_BYTES` guard. Successful responses must include the expected `success`, store/outlet ID, slug, billing, and previous-slug fields before local tenant/store UI state is updated. Malformed or oversized responses log stable `desktop_location_outlet_action_response_parse_failed` / `mobile_location_outlet_action_response_parse_failed` and `*_response_invalid` diagnostics with bounded outlet context only.
+
+June 30, 2026 browser request hardening note: desktop Locations, desktop add/rename modals, `MobileLocationsScreen`, and the shared `updateOutletPolicy()` DAL now spread `MULTI_OUTLET_ACTION_REQUEST_POLICY` before `/api/outlets/create`, `/api/outlets/rename`, `/api/outlets/deactivate`, and `/api/outlets/policy` calls. This keeps outlet mutations same-origin, uncached, and manual-redirect before the existing route contracts and bounded response guards run.
 
 ### Two-Path Execution Model
 
@@ -574,7 +582,7 @@ session.user.storeId; // Single value — user locked to one store
 
 The `session.user.stores[]` array already exists (it's set during onboarding for role mapping). The switcher needs:
 
-1. **API endpoint** (`/api/auth/switch-store`) — Validates user belongs to target store, calls NextAuth session update
+1. **API endpoint** (`/api/auth/switch-store`) — Validates user belongs to target store, checks canonical target-store eligibility, calls NextAuth session update
 2. **UI component** — Header dropdown showing `tenantDetails.storesList`
 3. **Page reload** — After switch, reload to re-initialize `SessionProvider` with new `storeId`
 
@@ -626,6 +634,8 @@ This is **derived at session init**, not stored in DB. Avoids sync issues.
 ### 8.5 Security
 
 - Validate `targetStoreId` belongs to same tenant
+- Read `stores/{targetStoreId}` and reject missing, cross-tenant, inactive, soft-deleted, or platform-blocked target stores before switch success
+- Reject platform-blocked tenant documents before target selection
 - Validate user has access to target store (check `user.stores[]`)
 - Rate limit: `AUTH_LOGIN` config (5 per 5 min)
 - **Master impersonation**: only if user has `owner` role on master store
@@ -1146,7 +1156,7 @@ Each outlet row in the Chain Control Panel has:
 
 ---
 
-**DOCUMENT STATUS:** 📋 IMPLEMENTATION PLAN READY  
+**DOCUMENT STATUS:** Implemented source evidence - not current launch certification
 **PREREQUISITE:** `store-onboarding-flow_spec.md` (gap analysis)  
 **COMPANION:** `store-onboarding-billing_impl.md` (PATH 1: Razorpay Billing)  
 **EXECUTION ORDER:** Billing tasks (BT1-BT15) THEN internal tasks (T1-T25)  

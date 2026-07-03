@@ -2,7 +2,7 @@
 
 **Feature:** AI Enhancement Packs
 **Status:** ✅ Runtime Updated
-**Last Updated:** June 2, 2026
+**Last Updated:** July 1, 2026
 **Audience:** Developers, DevOps, Cost Auditing
 
 ---
@@ -64,9 +64,9 @@ Append-only log of every AI operation. Each document represents one API call to 
     marginPaise: number,            // ourChargePaise - realCostPaise (profit per operation)
 
     // Response Data
-    clientResponse: any,            // What was returned to the client
-    geminiResponse: any,            // Raw Gemini API response (for debugging)
-    generationConfig: any,          // Model config used for this call
+    clientResponse: any,            // Detailed only in detailed mode; accounting_only stores count/shape summaries
+    geminiResponse: any,            // Null in accounting_only; detailed mode stores bounded metadata, not raw provider text
+    generationConfig: any,          // Model config summary used for this call
 }
 ```
 
@@ -164,6 +164,12 @@ Record of every AI Enhancement Pack purchase. Links Razorpay order/payment to th
 `verify-topup` requires authenticated tenant/store access plus `canManageSubscription`, validates the Razorpay checkout signature, reads `topups/{orderId}` before changing the subscription, and writes the credit update plus paid top-up audit record in one Firestore transaction. If the top-up is already `paid`, the route returns success without adding credits again. If the order is not paid yet, the route fetches the Razorpay order and requires `order.notes.tenantId` and `order.notes.storeId` to match the authenticated session before updating `subscriptions.topUpCredits`.
 
 AI usage reset and consumption both write through Firestore transactions. Paid AI routes run `checkAICapacity()` before the provider call; if a billing-period reset is due, `checkAICapacity()` re-reads and resets the subscription inside a transaction. After the provider succeeds, the route calls `finalizeAiOperationAccounting()`, which records the operation and then calls `consumeAICapacity()`. Operation-log failure is monitored and does not skip credit consumption. Credit-consumption failure fails the paid response. Consumption deducts recurring `monthlyCredits` first and purchased `topUpCredits` second, leaving top-up balance untouched by billing-cycle resets.
+
+July 1 owner AI permission hardening adds one existing store permission read before expensive AI or capacity work on business copy, campaign caption, description generation, new-item metadata, translation, image generation, image editing, batch image trigger, Menu Card design advisor, SEO generation, AI pack status, and weekly narrative routes. Rejected users can incur the permission read but do not reach capacity checks, media fetches, Cloud Tasks enqueue, provider calls, analytics Firestore reads, insight writes, operation-log writes, or credit consumption. This adds no writes for rejected requests, deletes, rules, indexes, Cloud Functions, Firebase deploy requirement, or Vercel deploy action.
+
+July 1 batch image Cloud Tasks config preflight keeps rejected misconfigured batch requests ahead of AI capacity reads and task fanout. If the app is missing the worker URL, queue id, project location, project id, or worker secret, `/api/image-generation/batch-trigger` marks the existing batch job failed with owner-safe unavailable copy and does not enqueue Cloud Tasks or call providers. Configured runs keep the existing capacity check, task enqueue, worker secret validation, provider call, Storage upload, accounting, and credit-consumption flow. This adds no new collections, rules, indexes, Cloud Function logic, Firebase deploy requirement, or Vercel deploy action.
+
+July 1 batch image prompt-cache retention is bounded by the consolidated maintenance scheduler. Cache-eligible batch worker misses write a private prepared source object under `system/aiImagePromptCache/` and an `aiImagePromptCache/{cacheKey}` doc with `expiresAt`; cache hits copy source bytes into the requesting store's own `media/menuItem/{tId}/{sId}/...` path and record a free `unitsConsumed: 0` operation. `menulistMaintenanceScheduler` now runs `ai_image_prompt_cache_cleanup` daily, scanning up to 25 expired cache docs, deleting only source paths under `system/aiImagePromptCache/`, and then deleting the cache docs. This changes Firebase Function logic and remains pending live effect until the updated scheduler can be deployed.
 
 ---
 
@@ -348,7 +354,7 @@ match /subscriptions/{subId} {
 
 | Collection                  | Retention                             | Backup                 |
 | --------------------------- | ------------------------------------- | ---------------------- |
-| `menulistAiOperations`      | Indefinite (append-only, audit trail) | Daily Firestore export |
+| `menulistAiOperations`      | Indefinite compact accounting/audit rows; detailed fields pruned when `detailExpiresAt` is due | Daily Firestore export |
 | `topups`                    | Indefinite (financial records)        | Daily Firestore export |
 | `tenants` (capacity fields) | Active (reset on renewal)             | Part of tenant backup  |
 
@@ -367,9 +373,10 @@ match /subscriptions/{subId} {
 ### Capacity Enforcement (Day 1)
 
 1. No new fields needed — `monthlyCredits` and `topUpCredits` already exist on subscription documents
-2. Add capacity check (`checkAICapacity`) before each paid AI API route
-3. Add credit decrement (`consumeAICapacity`) after each successful AI operation
-4. User confirmed not live yet — no migration needed (3-year freeze rule)
+2. Add the matching owner permission guard before each paid owner AI API route reaches capacity or provider work
+3. Add capacity check (`checkAICapacity`) before each paid AI API route
+4. Add credit decrement (`consumeAICapacity`) after each successful AI operation
+5. User confirmed not live yet — no migration needed (3-year freeze rule)
 
 ### Composite Index Creation (Before Launch)
 

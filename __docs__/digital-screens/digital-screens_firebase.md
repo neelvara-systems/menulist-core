@@ -1,8 +1,8 @@
 # Digital Screens — Firebase Cost Tracking
 
-**Feature:** In-Store Digital Menu Screens (TV/Tablet Display)  
-**Status:** 🔒 **v2.3 LOCKED** (readability/reliability/owner-trust/listener-isolation hardening only)
-**Last Updated:** June 11, 2026
+**Feature:** In-Store Digital Menu Screens (TV/Tablet Display)
+**Status:** 🔒 **v2.3 LOCKED** (readability/reliability/owner-trust/listener-isolation/bounded-diagnostics hardening only)
+**Last Updated:** July 1, 2026
 **Source:** Codebase analysis (not spec — actual implementation)
 
 ---
@@ -12,11 +12,11 @@
 - **Collections Used:** `platformSummary` (existing — canonical `campaigns_{sId}.screen` plus public-safe `screen_{sId}` listener mirror), `stores` (existing), `projects` (existing — fallback/source menu item data)
 - **NO new collections created** — screen state and generated available-item menu projection live inside existing `CampaignsSummaryDocument.screen`; only a small safe `platformSummary/screen_{sId}` mirror is maintained for public client listeners.
 - **Storage Buckets:** `MenuListAi/platform_summary/screen_slides/` (owner uploads only)
-- **Cloud Functions:** None — all screen logic is SSR + client-side
+- **Cloud Functions:** No dedicated Digital Screen function. Existing MenuList Functions public-cache revalidation can optionally touch initialized screen versions for server-side public-output changes.
 - **Real-time:** Firebase `onSnapshot` doc listener on `platformSummary/screen_{sId}` (not polling, no internal owner summary exposure)
-- **Screen invalidation:** Public client cache invalidation touches `screen.contentVersion` only when an initialized screen token exists, and refreshes `screen.menuProjection` from the automatic default menu when available.
+- **Screen invalidation:** Browser project/menu public cache invalidation touches `screen.contentVersion` only when an initialized screen token exists, and refreshes `screen.menuProjection` from the automatic default menu when available. Store-profile saves, master-to-outlet propagation, and server-side Functions public-output changes can also touch the version after public cache revalidation when rendered screen output changes.
 - **Content normalization:** Text, price, category, tag, caption, and dedupe logic is shared by projection generation and fallback DAL/render paths.
-- **Estimated Monthly Cost:** **~$0.27-$0.41/month for 1000 screens** depending on projection hit rate and menu-save frequency.
+- **Estimated Monthly Cost:** **~$0.28-$0.43/month for 1000 screens** depending on projection hit rate, menu-save frequency, and public store eligibility cache hits.
 - **v2.0 Menu Board Mode Impact:** **$0.00 additional cost** (same menu data resolver, different client render)
 
 ---
@@ -34,22 +34,22 @@
 | Menu items fallback    | `projects`        | Missing/stale projection, special menu active, or old screen state | As needed | Usually 1 default project read after `baseProjectId`; special overlay can read 2 project docs | `database/campaigns/serverScreen.ts` |
 | onSnapshot initial     | `platformSummary/screen_{storeId}` | Screen connect        | 1x/day/screen  | 1                             | `ScreenDisplay.tsx`, `MenuBoardDisplay.tsx` |
 | onSnapshot updates     | `platformSummary/screen_{storeId}` | Content changes       | ~1-5x/day      | 1 per change                  | `publicScreenState.ts`, display clients |
-| Daily seen signal      | `platformSummary` | 1x/day/screen         | 1x/day         | 1 (direct doc get)            | `api/screen/seen/route.ts:44-53`      |
+| Daily seen signal      | `platformSummary`, `stores` | 1x/day/screen after declared-size, bounded-body, IP-rate, token-rate, enabled-screen, and public store eligibility checks | 1x/day | 1 direct screen-summary doc get + 0-1 cached store eligibility read | `api/screen/seen/route.ts`, `lib/firestore/clientStoreLookup.ts` |
 | Owner: getScreenState  | `platformSummary` | Settings view         | Occasional     | 1                             | `database/campaigns/index.ts:599`     |
 | Owner: addPinnedSlide  | `platformSummary` | Upload image          | Rare           | 2 (read + check)              | `database/campaigns/index.ts:677`     |
-| Screen version touch   | `platformSummary`, `projects` | Public menu cache invalidation | Per menu/store change where screen exists | 1 screen doc get; up to 2 projection rebuild reads | `lib/screen/screenInvalidation.ts` |
+| Screen version touch   | `platformSummary`, `projects` | Public menu cache invalidation or rendered store-output change | Per menu/store change where screen exists | 1 screen doc get; up to 2 projection rebuild reads for browser project/menu changes; 0 projection reads for store-output-only and Functions touches | `lib/screen/screenInvalidation.ts`, `functions/src/logic/publicCacheRevalidation.ts` |
 
 ### Writes
 
 | Operation                    | Collection        | Trigger                  | Frequency | Writes                        | Code Evidence                     |
 | ---------------------------- | ----------------- | ------------------------ | --------- | ----------------------------- | --------------------------------- |
-| Daily seen signal            | `platformSummary` | 1x/day/screen            | 1/day     | 1 (update `screenLastSeenAt`) | `api/screen/seen/route.ts:52`     |
+| Daily seen signal            | `platformSummary` | 1x/day/screen after enabled-screen and public store eligibility checks | 1/day     | 1 (update `screenLastSeenAt`) | `api/screen/seen/route.ts`     |
 | Owner: initializeScreenState | `platformSummary` | First-time setup         | 1x ever   | 2 (`campaigns_{sId}` + safe `screen_{sId}` mirror) | `database/campaigns/index.ts`, `publicScreenState.ts` |
 | Owner: addPinnedSlide        | `platformSummary` | Upload image             | Rare      | 2 (canonical screen update + safe mirror) | `database/campaigns/index.ts`, `publicScreenState.ts` |
 | Owner: removePinnedSlide     | `platformSummary` | Delete upload            | Rare      | 2 (canonical screen update + safe mirror) | `database/campaigns/index.ts`, `publicScreenState.ts` |
 | Owner: updateScreenSettings  | `platformSummary` | Toggle override          | Rare      | 2 (canonical screen update + safe mirror) | `database/campaigns/index.ts`, `publicScreenState.ts` |
 | bumpScreenContentVersion     | `platformSummary` | Menu/availability change | ~1-5x/day | 2 (canonical screen update + safe mirror) | `database/campaigns/index.ts`, `publicScreenState.ts` |
-| touchDigitalScreenContentVersion | `platformSummary` | Public cache invalidation after project/menu changes | ~1-5x/day when screen exists | 2 writes; may include refreshed `screen.menuProjection` | `lib/screen/screenInvalidation.ts`, `publicScreenState.ts` |
+| touchDigitalScreenContentVersion / Functions screen touch | `platformSummary` | Public cache invalidation after project/menu changes, rendered store-output changes, scheduled special-menu changes, extraction project saves, or entitlement attribution changes | ~1-5x/day when screen exists; extra touches only for public-output paths | 2 writes; browser project/menu touches may include refreshed `screen.menuProjection`; Functions touches only bump version + safe mirror | `lib/screen/screenInvalidation.ts`, `publicScreenState.ts`, `functions/src/logic/publicCacheRevalidation.ts` |
 
 ### Deletes
 
@@ -81,6 +81,8 @@ ScreenDisplay.tsx / MenuBoardDisplay.tsx → onSnapshot(doc(firebaseClient, 'pla
 
 **Why this matters:** Original spec planned 30-60s polling = 43M reads/month for 1000 screens ($25.80). Actual implementation uses onSnapshot = ~150K reads/month for 1000 screens ($0.09). **99.6% cost reduction.**
 
+June 30 mutation acknowledgement hardening is Firebase-cost neutral. `updateScreenSettings()`, `addPinnedSlide()`, `removePinnedSlide()`, and `updatePinnedSlideCaption()` still perform the same canonical `platformSummary/campaigns_{sId}` write plus public-safe `platformSummary/screen_{sId}` mirror sync, but now return a typed acknowledgement that desktop/mobile callers must assert before local state or success copy changes. `uploadScreenSlide()` also asserts the internal `addPinnedSlide()` acknowledgement and the outer upload result before returning the uploaded slide, so `apiCallComposer()` fallback values cannot show false upload success. This adds no reads/writes/deletes beyond existing screen mutation attempts, no Storage operations beyond existing slide uploads, no rules, no indexes, no Cloud Functions, no API routes, no owner settings, no Firebase deploy requirement, and no Vercel deploy action.
+
 **Public-read hardening:** The listener document contains only `storeId`, `screenToken`, `enabled`, `contentVersion`, `lastContentChangeAt`, and `updatedAt`. Firestore rules no longer allow unauthenticated reads of `platformSummary/campaigns_{storeId}`, which also contains Today, campaign, staff-prompt, and physical-surface owner data.
 
 ---
@@ -91,9 +93,9 @@ ScreenDisplay.tsx / MenuBoardDisplay.tsx → onSnapshot(doc(firebaseClient, 'pla
 | ------------------------------- | --------- | ------ | -------- |
 | TV boot (1x SSR + items)        | 2-4       | 0      | Both     |
 | onSnapshot initial + changes    | ~3        | 0      | Both     |
-| Daily seen signal               | 1         | 1      | Both     |
+| Daily seen signal               | 1-2       | 1      | Both     |
 | 6-hour proactive refreshes (3x) | 6-12      | 0      | Both     |
-| **Total per day**               | **~12-20** | **~1** | **Same** |
+| **Total per day**               | **~13-21** | **~1** | **Same** |
 
 > **CRITICAL:** Menu Board mode and Highlights mode have **identical Firebase cost**. Both modes use the same server-side data pipeline (`getScreenDataByToken` + valid `screen.menuProjection` or `getMenuItemsForScreen` fallback). The only difference is which client component renders the data. No additional collections, indexes, functions, or storage.
 
@@ -103,18 +105,18 @@ ScreenDisplay.tsx / MenuBoardDisplay.tsx → onSnapshot(doc(firebaseClient, 'pla
 
 ### Per Screen
 
-- 12-20 reads × 30 days = 360-600 reads/month
+- 13-21 reads × 30 days = 390-630 reads/month
 - 1 write × 30 days = 30 writes/month
-- Cost: ~$0.00027-$0.00041/month per screen
+- Cost: ~$0.00029-$0.00043/month per screen
 
 ### At Scale
 
 | Scale          | Reads/month      | Writes/month | Read Cost   | Write Cost | **Total**       |
 | -------------- | ---------------- | ------------ | ----------- | ---------- | --------------- |
-| 100 screens    | 36,000-60,000    | 3,000        | $0.02-$0.04 | $0.01      | **$0.03-$0.05** |
-| 1,000 screens  | 360,000-600,000  | 30,000       | $0.22-$0.36 | $0.05      | **$0.27-$0.41** |
-| 5,000 screens  | 1.8M-3M          | 150,000      | $1.08-$1.80 | $0.27      | **$1.35-$2.07** |
-| 10,000 screens | 3.6M-6M          | 300,000      | $2.16-$3.60 | $0.54      | **$2.70-$4.14** |
+| 100 screens    | 39,000-63,000    | 3,000        | $0.02-$0.04 | $0.01      | **$0.03-$0.05** |
+| 1,000 screens  | 390,000-630,000  | 30,000       | $0.23-$0.38 | $0.05      | **$0.28-$0.43** |
+| 5,000 screens  | 1.95M-3.15M      | 150,000      | $1.17-$1.89 | $0.27      | **$1.44-$2.16** |
+| 10,000 screens | 3.9M-6.3M        | 300,000      | $2.34-$3.78 | $0.54      | **$2.88-$4.32** |
 
 **Storage:** ~1.5MB/store × stores with uploads (estimated <10%) = negligible
 
@@ -135,19 +137,44 @@ ScreenDisplay.tsx / MenuBoardDisplay.tsx → onSnapshot(doc(firebaseClient, 'pla
 | No separate collection              | Eliminated extra reads           | `CampaignsSummaryDocument.screen` field |
 | onSnapshot instead of polling       | 99.6% read reduction             | `ScreenDisplay.tsx:180`                 |
 | Daily seen signal (not heartbeat)   | 1 write/day vs 1440 writes/day   | `ScreenDisplay.tsx:130-147`             |
+| Seen signal store eligibility | Prevents inactive, deleted, blocked, or tenant-blocked stores from refreshing liveness state; uses the shared cached public store-id lookup | `api/screen/seen/route.ts`, `lib/firestore/clientStoreLookup.ts` |
 | Client-side localStorage cache      | Survives offline, no extra reads | `ScreenDisplay.tsx:59-87`               |
 | 6-hour refresh (not 5-min)          | 4 SSR/day vs 288/day             | `ScreenDisplay.tsx:225-233`             |
 | **Vercel `unstable_cache` (OPT-6)** | **SSR reads cached 60s at edge** | `screen/[token]/page.tsx:31-41`         |
 | Generated screen menu projection | Avoids full project fallback reads on valid cold public renders; stores available display items plus base menu slug context | `CampaignsSummaryDocument.screen.menuProjection`, `screen/[token]/page.tsx` |
 | Public-safe screen listener mirror | Preserves 1-doc listener cost while avoiding public reads of owner/internal campaign summary data | `lib/screen/publicScreenState.ts`, `firestore.rules` |
-| Public cache linked screen touch | Keeps connected TVs fresh after ordinary menu saves | `lib/cache/publicClientCache.ts`, `lib/screen/screenInvalidation.ts` |
+| Public cache linked screen touch | Keeps connected TVs fresh after ordinary menu saves, rendered store-output saves, and selected server-side public-output changes | `lib/cache/publicClientCache.ts`, `lib/screen/screenInvalidation.ts`, `functions/src/logic/publicCacheRevalidation.ts` |
+| Seen signal cheap-fail ordering | Rejects oversized anonymous bodies, including no-length streamed bodies, and hashed-IP/token bursts before Firestore lookup | `api/screen/seen/route.ts` |
 | Content normalization | Prevents weak public screen copy without extra reads/writes | `lib/screen/screenContent.ts` |
+| Dedicated source gate | Locks the route, public-safe listener mirror, seen-signal cheap-fail order, screen invalidation touch, owner acknowledgement guards, and docs parity without adding reads/writes | `scripts/verification/verify-digital-screens-boundary.js` |
 
 > **OPT-6 (Added Feb 19, 2026; updated Jun 6, 2026):** Screen SSR data reads (`getScreenDataByToken` + generated `screen.menuProjection` or `getMenuItemsForScreen` fallback) are wrapped in `unstable_cache` with 60s TTL. Multiple screens hitting the same token within 60s share cached Firestore results instead of repeating raw reads. A valid projection with base menu slug context reduces the default cold raw public path from 4 reads to 2 reads before cache hits.
 
 > **June 2026 invalidation note:** `touchDigitalScreenContentVersion()` first reads `platformSummary/campaigns_{storeId}` and returns without writing if `screen.screenToken` is missing. This avoids creating partial screen state for stores that have never opened Digital Screens. When a screen exists, the helper increments `screen.contentVersion`, updates `screen.lastContentChangeAt`, and attempts to refresh `screen.menuProjection` from the automatic default project. Projection refresh can add up to 2 owner-side reads per invalidation, but removes repeated project reads from later cold public screen renders. If projection refresh fails, the public route falls back to the old project read path.
 
+> **June 28, 2026 Functions invalidation note:** server-side Functions cache revalidation can request the same screen-version touch after cache tags are cleared. This is used for first-extraction project saves, scheduled special-menu activation/deactivation, and subscription entitlement attribution changes. The Functions helper does not build `screen.menuProjection`; it only reads the existing screen state and writes the canonical content version plus the public-safe listener mirror, so stale projections are rejected by the public resolver and fall back to project reads when needed.
+
 > **June 11, 2026 listener-isolation note:** public display clients listen to `platformSummary/screen_{storeId}`. Owner/session DAL writes and public cache invalidation update that mirror after the canonical `campaigns_{storeId}.screen` change. This adds one tiny write per screen-content mutation, but it removes unauthenticated access to internal campaign summary fields.
+
+> **June 27, 2026 seen-signal note:** `/api/screen/seen` now checks a 1 KB declared-size cap, applies the shared `SCREEN_SEEN_SIGNAL` IP rate limit, and reads the JSON body through the shared bounded-body helper. This adds no Firestore operations and keeps invalid, oversized, chunked, or abusive anonymous requests away from Firestore lookup/write paths.
+
+> **July 1, 2026 seen-signal eligibility note:** `/api/screen/seen` now writes only after the token-bound screen is enabled and the backing store passes the shared `getPublicStoreById()` gate, which blocks inactive, deleted, platform-blocked, and tenant-blocked stores. The legacy token-query path also requires a numeric `campaigns_{storeId}` summary id before writing. This can add one cached store eligibility read to the daily seen path, but it does not add collections, indexes, rules, Cloud Functions, Storage operations, or owner settings.
+
+> **July 2, 2026 source-gate note:** `npm run verify:digital-screens-boundary` now guards the public token route, `platformSummary/screen_{storeId}` listener mirror shape, Firestore public-read allowlist, `/api/screen/seen` cheap-fail ordering, browser/server screen content-version touches, desktop/mobile copy/open acknowledgement guards, and Digital Screens docs parity. This adds no Firestore reads/writes/deletes, Storage operations, Cloud Functions, provider calls, route behavior, rules behavior, indexes, schema fields, screen tokens, or owner settings.
+
+> **June 28, 2026 seen-signal diagnostic note:** `/api/screen/seen` now logs success and unexpected route failures with bounded screen-token/store metadata only. This adds no Firestore operations and preserves the one-write-per-day behavior.
+>
+> **June 30, 2026 owner link-copy acknowledgement note:** desktop and mobile Menu Board / Highlights copied feedback now waits for Clipboard API success or acknowledged textarea fallback success. Failed copies log `desktop_digital_screen_link_copy_failed` or `mobile_digital_screen_link_copy_failed` with mode, seen-signal, screen URL presence, bounded copy URL metadata, and clipboard/fallback support booleans only. This adds no Firestore reads/writes/deletes, Storage operations, Cloud Functions, provider calls, routes, rules, indexes, schema fields, screen tokens, or screen-state changes.
+
+> **June 29, 2026 owner link-open diagnostic note:** desktop and mobile Menu Board / Highlights link opens now detect blocked browser handoffs and log `desktop_digital_screen_link_open_failed` or `mobile_digital_screen_link_open_failed` with mode and URL presence/length metadata only. This adds no Firestore reads/writes/deletes, Storage operations, Cloud Functions, provider calls, routes, rules, indexes, schema fields, screen tokens, or screen-state changes.
+
+> **June 29, 2026 fullscreen recovery diagnostic note:** public Highlights and Menu Board display clients now log `digital_screen_display_fullscreen_request_failed` or `digital_screen_menuboard_fullscreen_request_failed` when the browser rejects a tap-to-fullscreen recovery request. The hint still hides after the tap. This adds no Firestore reads/writes/deletes, Storage operations, Cloud Functions, provider calls, routes, rules, indexes, schema fields, screen tokens, or screen-state changes.
+>
+> **June 30, 2026 seen-signal browser-request note:** public Highlights and Menu Board display clients now post `/api/screen/seen` with same-origin credentials, `no-store` cache policy, and manual redirect handling, then set the daily `screen_seen_*` localStorage marker only after the endpoint returns an OK response. Non-OK responses log bounded `digital_screen_display_seen_signal_rejected` or `digital_screen_menuboard_seen_signal_rejected` diagnostics with response status metadata only. This changes no Firestore reads/writes/deletes, Storage operations, Cloud Functions, provider calls, routes, rules, indexes, schema fields, screen tokens, screen-state writes, public display layout, Firebase deploy requirement, or Vercel deploy action.
+>
+> **June 28, 2026 seen-signal key-privacy note:** `/api/screen/seen` still applies the same IP and token rate limits before Firestore lookup, but the Upstash keys now use `hashPublicRateLimitValue()` for IP, store, and screen-token segments. This changes no Firestore read/write behavior and prevents raw screen tokens or IP addresses from being persisted in rate-limit key names.
+
+> **June 27, 2026 diagnostics note:** public token/menu fallback helpers, public display clients, screen invalidation, and reload utilities no longer direct-console raw screen tokens, project IDs, slide IDs, settings payloads, listener errors, cache errors, seen-signal errors, or normal refresh/version events. Unexpected failures use normalized secure diagnostics with bounded metadata only. This adds no reads, writes, Storage operations, cache invalidations, listener changes, functions, indexes, or collections.
 
 ---
 
@@ -177,7 +204,7 @@ page.tsx                               page.tsx
 | `getScreenDataByToken()`  | 2-3 reads         | 2-3 reads         | 2-3 reads         | $0        |
 | Projection/fallback menu data | 0-1+ reads   | 0-1+ reads        | 0-1+ reads        | $0        |
 | onSnapshot listener       | 1 read/connect    | 1 read/connect    | 1 read/connect    | $0        |
-| Daily seen signal         | 1 read + 1 write  | 1 read + 1 write  | 1 read + 1 write  | $0        |
+| Daily seen signal         | 1-2 reads + 1 write | 1-2 reads + 1 write | 1-2 reads + 1 write | $0        |
 | 6-hour refresh            | 6-12 reads/day    | 6-12 reads/day    | 6-12 reads/day    | $0        |
 | Owner uploads (Storage)   | Max 3 images      | N/A (no uploads)  | Max 3 images      | $0        |
 | **Total delta**           | —                 | —                 | —                 | **$0.00** |
@@ -192,12 +219,12 @@ If a store uses TWO screens (one Menu Board + one Highlights):
 
 | Metric                          | 1 Screen | 2 Screens | Delta     |
 | ------------------------------- | -------- | --------- | --------- |
-| Daily reads                     | ~12-20   | ~24-40    | +12-20 reads |
+| Daily reads                     | ~13-21   | ~26-42    | +13-21 reads |
 | Daily writes                    | ~1       | ~2        | +1 write  |
-| Monthly cost                    | $0.00027-$0.00041 | $0.00054-$0.00082 | +$0.00027-$0.00041 |
-| At 1000 stores (2 screens each) | —        | $0.54-$0.82/mo | +$0.27-$0.41 |
+| Monthly cost                    | $0.00029-$0.00043 | $0.00058-$0.00086 | +$0.00029-$0.00043 |
+| At 1000 stores (2 screens each) | —        | $0.58-$0.86/mo | +$0.28-$0.43 |
 
-**Even with 1000 stores each running 2 screens, the total cost increase is roughly $0.27-$0.41/month.** This is negligible.
+**Even with 1000 stores each running 2 screens, the total cost increase is roughly $0.28-$0.43/month.** This is negligible.
 
 ### What Would Increase Cost (And We're NOT Doing It)
 
@@ -225,3 +252,6 @@ If a store uses TWO screens (one Menu Board + one Highlights):
 | 4.3     | 2026-06-02 | Codex   | Added content normalization for screen text, prices, categories, tags, captions, and dedupe. CPU-only; no Firebase cost impact.                                                           |
 | 4.4     | 2026-06-06 | Codex   | Added generated screen menu projection inside existing `screen` summary state. No new collection/index/function; public cold path uses projection when valid and falls back to project reads when stale. |
 | 4.5     | 2026-06-11 | Codex   | Added public-safe `screen_{storeId}` listener mirror, removed unauthenticated reads of `campaigns_{storeId}` from Firestore rules, and documented the one-extra-write mutation cost. |
+| 4.6     | 2026-06-27 | Codex   | Removed direct console diagnostics from public screen resolver/fallback, owner mutation success, invalidation, and reload helper paths. Diagnostics-only change; no Firebase cost impact. |
+| 4.7     | 2026-06-28 | Codex   | Added optional Functions-side screen version touch for server-side public-output changes. No new collections/indexes/routes; only initialized screens receive the existing two-write listener update. |
+| 4.8     | 2026-07-01 | Codex   | Added enabled-screen, numeric summary-id, and shared public store eligibility gates to `/api/screen/seen`; daily seen cost can include one cached store eligibility read. |

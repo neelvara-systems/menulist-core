@@ -14,10 +14,24 @@ import {
     validatePublicApiKey,
 } from '@lib/publicApi/auth';
 import { checkRateLimit } from '@lib/rateLimit';
-import { secureError } from '@lib/security/secureLogger';
+import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { NextRequest, NextResponse } from 'next/server';
 
 const MCP_SESSION_TTL_SECONDS = 15 * 60;
+
+const getMcpSessionLogContext = (tId: number, sId: number) => ({
+    ...getBoundedRuntimeStringContext('tenantId', tId),
+    ...getBoundedRuntimeStringContext('storeId', sId),
+});
+
+const getMcpSessionBundleManifest = async (tId: number, sId: number) => {
+    try {
+        return await getAnswerlatticeContextBundleManifestServer(tId, sId);
+    } catch (error) {
+        logRuntimeFailure('answerlattice_mcp_session_bundle_manifest_load_failed', error, getMcpSessionLogContext(tId, sId));
+        return null;
+    }
+};
 
 export async function POST(request: NextRequest) {
     if (!FEATURE_FLAGS.ENABLE_ANSWERLATTICE_MCP || !FEATURE_FLAGS.ENABLE_ANSWERLATTICE_CONTEXT_BUNDLES) {
@@ -64,7 +78,7 @@ export async function POST(request: NextRequest) {
             return apiError('INVALID_API_KEY', 'Invalid API key', 401);
         }
 
-        const manifest = await getAnswerlatticeContextBundleManifestServer(tId, sId).catch(() => null);
+        const manifest = await getMcpSessionBundleManifest(tId, sId);
         const bundleVersion = Number(manifest?.activeVersion || manifest?.bundleVersion || 0);
         const token = createAnswerlatticeMcpSessionToken({
             tId,
@@ -87,7 +101,7 @@ export async function POST(request: NextRequest) {
             },
         });
     } catch (error) {
-        secureError('[Answerlattice MCP] Session creation failed', error as Error);
+        logRuntimeFailure('answerlattice_mcp_session_creation_failed', error);
         return apiError('INTERNAL_ERROR', 'Internal error', 500);
     }
 }

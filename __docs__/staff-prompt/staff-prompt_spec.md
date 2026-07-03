@@ -1,12 +1,20 @@
 # Staff Prompt Mode — Product Specification
 
 **Created:** January 11, 2026  
-**Status:** 🔒 **LOCKED — READY FOR IMPLEMENTATION**  
+**Status:** Historical spec evidence; active runtime is read-only Today summary display; not current launch certification
 **Source:** ChatGPT Brainstorm (Jan 11, 2026) + Architecture Validation  
 **Applies:** 3-Year Architecture Freeze Rule  
 **Related:** `@__docs__/governance/AUTHORITY_ENFORCEMENT.md`
 
 > **Runtime note (June 11, 2026):** Active MenuList code does not expose a separate staff-facing interface. It renders a read-only `staffPrompt` card in desktop/mobile Today when the existing Today summary marks the prompt eligible.
+
+---
+
+## Current Runtime Boundary
+
+This specification is historical source evidence for the Staff Prompt idea. The active runtime is the read-only Today summary consumer only: `getTodayCampaigns()` reads `platformSummary/campaigns_{sId}.staffPrompt`, desktop/mobile Today render it only when `eligible` is true, and there is no standalone Staff Prompt generator, provider call, staff-facing route, owner setting, mobile-only write, or public Staff Prompt landing page.
+
+Current release approval requires the active [production-readiness audit](../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../production-readiness/external-certification-runbook.md) evidence, `npm run verify:staff-prompt-runtime`, authenticated desktop/mobile Today QA with an eligible target-store `staffPrompt`, target deploy evidence, and production-host smoke. If the release scope claims generated prompts end-to-end, upstream summary-writer evidence for `platformSummary/campaigns_{sId}.staffPrompt` is also required.
 
 ---
 
@@ -329,9 +337,9 @@ None. Spec is complete.
 
 ---
 
-## Definition of Done
+## Historical Definition of Done
 
-Staff Prompt Mode is **COMPLETE** when:
+The original Staff Prompt Mode plan treated the feature as complete when the checklist below passed. For the current release, treat this as historical planning evidence only; the active source gate is `npm run verify:staff-prompt-runtime` plus the launch evidence listed in the runtime boundary above.
 
 - [ ] Appears in Today tab only when eligible
 - [ ] Uses exact sentence structure ("Most people take \_\_\_.")
@@ -342,7 +350,7 @@ Staff Prompt Mode is **COMPLETE** when:
 
 ---
 
-**Document Status:** 🔒 LOCKED — Ready for implementation  
+**Document Status:** Historical spec evidence; not current implementation or launch approval
 **Estimated Effort:** 3 days  
 **Priority:** P1 (after Digital Screen Hardening)  
 **ChatGPT Validation:** ✅ Approved with corrections applied

@@ -8,7 +8,7 @@
 
 ## 📋 Executive Summary
 
-**Overall Status**: ✅ **PRODUCTION READY**
+**Overall Status**: ✅ **Historical code-audit snapshot — not current launch certification**
 
 - **38 API Routes Found**: All critical routes secured
 - **Webhook Security**: ✅ Enhanced with timing-safe comparison
@@ -267,7 +267,7 @@ validateAPIInput(schema, data);
 
 #### Implementation ✅
 
-**File**: `src/lib/rateLimit/helpers.ts`
+**Files**: `src/lib/rateLimit.ts`, `src/lib/rateLimit/helpers.ts`
 
 **Available Limits**:
 
@@ -284,6 +284,8 @@ validateAPIInput(schema, data);
 **Provider**: Upstash Redis
 
 **Feature Flag**: `ENABLE_RATE_LIMITING` in `features.ts` ✅
+
+**Provider Failure Contract**: Upstash setup failures, provider timeouts, provider errors, reset/stat failures, health-check failures, and helper fail-open errors are logged through `secureError()` with normalized error text; provider timeouts use a typed local error code instead of raw exception-message matching. Request checks keep the existing fail-open behavior and temporary local bypass so rate-limit infrastructure does not take the app down.
 
 ---
 
@@ -431,7 +433,7 @@ validateAPIInput(schema, data);
 
 ---
 
-## ✅ What's Production Ready
+## Historical Source Evidence
 
 ### Fully Implemented & Tested ✅
 
@@ -498,7 +500,7 @@ validateAPIInput(schema, data);
 - [ ] Firebase App Check enabled (15 min setup)
 - [ ] CSP switched to Strict Mode (after monitoring)
 
-**Current Status**: **95% Ready** 🎯
+**Historical audit posture**: **95% source-coverage snapshot** - not current launch certification
 
 **Remaining**: Just App Check setup + CSP monitoring
 
@@ -542,13 +544,13 @@ validateAPIInput(schema, data);
 
 ## ✅ Final Verdict
 
-**Status**: ✅ **PRODUCTION READY**
+**Status**: ✅ **Historical security-audit evidence**
 
 **Security Posture**: **EXCELLENT**
 
 **Confidence Level**: **HIGH**
 
-**Recommendation**: **APPROVED FOR PRODUCTION** (after App Check setup)
+**Recommendation**: Use this November 2025 audit as historical security evidence only. Current production approval requires the active production-readiness audit, External Certification Runbook evidence, current App Check setup verification, provider smoke, deployment evidence, and browser/device QA.
 
 ---
 

@@ -9,6 +9,7 @@
 
 import { FEATURE_FLAGS } from "@config/features";
 import { logMenuChangeForScope } from "@database/menuChangeLog";
+import { getBoundedMultiOutletStringContext, logMultiOutletFailure } from "@lib/multiOutlet/diagnostics";
 import { secureLog } from "@lib/security/secureLogger";
 import { MultiStoreMOLEvent } from "@type/multiOutlet.types";
 
@@ -55,13 +56,15 @@ export async function logMultiOutletEvent(
             },
             { tId: event.tId, sId: event.sId },
         ).catch((err) => {
-            secureLog("[MOL] Failed to log multi-store event", {
-                error: err.message,
+            logMultiOutletFailure("multi_outlet_mol_event_log_failed", err, {
+                ...getBoundedMultiOutletStringContext("eventType", event.type),
             });
         });
     } catch (error) {
         // Silent failure - MOL is non-critical
-        secureLog("[MOL] Error preparing multi-store event", { error });
+        logMultiOutletFailure("multi_outlet_mol_event_prepare_failed", error, {
+            ...getBoundedMultiOutletStringContext("eventType", event.type),
+        });
     }
 }
 

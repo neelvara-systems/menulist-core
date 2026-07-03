@@ -13,11 +13,44 @@ import { getChatDashboardAggregatesOptimized } from '@database/chatAnalytics';
 import type { NormalizedKnowledgeGap, NormalizedTopQuestion } from './normalizer';
 import { firebaseClient } from '@lib/firebase/firebaseClient';
 import { doc, getDoc } from 'firebase/firestore';
+import { getBoundedAnalyticsStringContext, logAnalyticsFailure } from './analyticsDiagnostics';
 
 export interface DateRange {
   start: Date;
   end: Date;
 }
+
+type AnalyticsDalLogContext = Record<string, boolean | number | string | null | undefined>;
+
+const getDateRangeDays = (dateRange: DateRange | null | undefined): number => {
+  const startMs = dateRange?.start instanceof Date ? dateRange.start.getTime() : Number.NaN;
+  const endMs = dateRange?.end instanceof Date ? dateRange.end.getTime() : Number.NaN;
+
+  if (!Number.isFinite(startMs) || !Number.isFinite(endMs)) {
+    return 0;
+  }
+
+  return Math.ceil((endMs - startMs) / (1000 * 60 * 60 * 24));
+};
+
+const getAnalyticsDalDateRangeContext = (dateRange: DateRange | null | undefined): AnalyticsDalLogContext => ({
+  hasStartDate: dateRange?.start instanceof Date && Number.isFinite(dateRange.start.getTime()),
+  hasEndDate: dateRange?.end instanceof Date && Number.isFinite(dateRange.end.getTime()),
+  dateRangeDays: getDateRangeDays(dateRange),
+});
+
+const getAnalyticsDalScopeContext = (
+  tenantId: unknown,
+  storeId: unknown,
+): AnalyticsDalLogContext => ({
+  ...getBoundedAnalyticsStringContext('tenantId', tenantId),
+  ...getBoundedAnalyticsStringContext('storeId', storeId),
+});
+
+const getAnalyticsDalSessionContext = (session: any): AnalyticsDalLogContext => getAnalyticsDalScopeContext(
+  session?.tId ?? session?.tenantId,
+  session?.sId ?? session?.storeId,
+);
 
 // ================================================================
 // TYPE DEFINITIONS
@@ -26,6 +59,7 @@ export interface DateRange {
 export interface DashboardData {
   summary: {
     totalChats: number;
+    totalMessages: number;
     satisfactionRate: number;
     avgMessagesPerChat: number;
     knowledgeGaps: number;
@@ -102,7 +136,7 @@ export async function getDashboardData(
 ): Promise<DashboardData> {
   try {
     // Calculate days from date range
-    const days = Math.ceil((dateRange.end.getTime() - dateRange.start.getTime()) / (1000 * 60 * 60 * 24));
+    const days = getDateRangeDays(dateRange);
     
     const { statistics, topQuestions, knowledgeGaps } = await getChatDashboardAggregatesOptimized(session, days);
 
@@ -110,6 +144,7 @@ export async function getDashboardData(
     return {
       summary: {
         totalChats: statistics?.totalChats || 0,
+        totalMessages: statistics?.totalMessages || 0,
         satisfactionRate: statistics?.satisfactionRate || 0,
         avgMessagesPerChat: statistics?.avgMessagesPerChat || 0,
         knowledgeGaps: knowledgeGaps?.length || 0,
@@ -129,7 +164,10 @@ export async function getDashboardData(
       health: generateHealthMetrics(statistics),
     };
   } catch (error) {
-    console.error('[DAL] Error fetching dashboard data:', error);
+    logAnalyticsFailure('analytics_dashboard_data_fetch_failed', error, {
+      ...getAnalyticsDalSessionContext(session),
+      ...getAnalyticsDalDateRangeContext(dateRange),
+    });
     throw error;
   }
 }
@@ -189,7 +227,7 @@ export async function getAIIntelligence(
       feedbackIntelligence,
     };
   } catch (error) {
-    console.error('[DAL] Error fetching AI intelligence:', error);
+    logAnalyticsFailure('analytics_ai_intelligence_fetch_failed', error, getAnalyticsDalScopeContext(tenantId, storeId));
     throw error;
   }
 }
@@ -203,12 +241,13 @@ export async function getSummaryMetrics(
 ): Promise<DashboardData['summary']> {
   try {
     // Calculate days from date range
-    const days = Math.ceil((dateRange.end.getTime() - dateRange.start.getTime()) / (1000 * 60 * 60 * 24));
+    const days = getDateRangeDays(dateRange);
     
     const { statistics, knowledgeGaps } = await getChatDashboardAggregatesOptimized(session, days);
 
     return {
       totalChats: statistics?.totalChats || 0,
+      totalMessages: statistics?.totalMessages || 0,
       satisfactionRate: statistics?.satisfactionRate || 0,
       avgMessagesPerChat: statistics?.avgMessagesPerChat || 0,
       knowledgeGaps: knowledgeGaps?.length || 0,
@@ -218,7 +257,10 @@ export async function getSummaryMetrics(
       },
     };
   } catch (error) {
-    console.error('[DAL] Error fetching summary metrics:', error);
+    logAnalyticsFailure('analytics_summary_metrics_fetch_failed', error, {
+      ...getAnalyticsDalSessionContext(session),
+      ...getAnalyticsDalDateRangeContext(dateRange),
+    });
     throw error;
   }
 }
@@ -230,7 +272,6 @@ export interface AnalyticsSummary {
   totalChats: number;
   satisfactionRate: number;
   avgMessagesPerChat: number;
-  activeUsers: number;
   totalMessages: number;
   totalFeedback: number;
   positiveCount: number;
@@ -258,15 +299,17 @@ export async function getAnalytics(
         totalChats: data.summary.totalChats,
         satisfactionRate: data.summary.satisfactionRate,
         avgMessagesPerChat: data.summary.avgMessagesPerChat,
-        activeUsers: 0, // Not in current summary, add later if needed
-        totalMessages: 0, // Not in current summary
+        totalMessages: data.summary.totalMessages,
         totalFeedback: data.feedback.total,
         positiveCount: data.feedback.positive,
         negativeCount: data.feedback.negative,
       },
     };
   } catch (error) {
-    console.error('[DAL] Error fetching analytics:', error);
+    logAnalyticsFailure('analytics_comparison_fetch_failed', error, {
+      ...getAnalyticsDalScopeContext(tenantId, storeId),
+      ...getAnalyticsDalDateRangeContext(dateRange),
+    });
     throw error;
   }
 }
@@ -281,15 +324,8 @@ export async function getAnalytics(
 function generateHealthMetrics(statistics: any): DashboardData['health'] {
   const metrics: DashboardData['health'] = [];
 
-  // API Response Time (mock for now - Phase 4 will add real monitoring)
-  metrics.push({
-    name: 'API Response Time',
-    status: 'healthy',
-    value: 245,
-    threshold: 1000,
-    unit: 'ms',
-    message: 'All systems operational',
-  });
+  // Only emit health metrics backed by analytics aggregates. Infrastructure
+  // latency/uptime metrics need a real monitoring source before they appear here.
 
   // KB Coverage based on knowledge gaps
   const totalQueries = statistics?.totalChats || 0;

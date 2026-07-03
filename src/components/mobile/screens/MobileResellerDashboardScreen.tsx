@@ -3,6 +3,8 @@
 import { calculateOfflineLocationTopup } from '@config/resellerPricing';
 import { ECOMSAI_PLATFORM_USER_ROLE } from '@constant/user';
 import { useResellerDashboard } from '@hook/useResellerDashboard';
+import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';
+import { RESELLER_REQUEST_POLICY } from '@template/main-app/reseller/resellerDiagnostics';
 import type { ResellerTransaction } from '@type/reseller';
 import { formatDateTime, type IntlFormatter } from '@util/dateTime';
 import { formatInrPaise } from '@util/formatters';
@@ -12,6 +14,7 @@ import { useState } from 'react';
 import { LuCopy, LuExternalLink, LuPlus, LuRefreshCw, LuUsers, LuX } from 'react-icons/lu';
 import { Button, Card, Empty, Flex, Input, NavBar, Popup, Spin, Tag, Text, Title, Toast } from '../antd';
 import MobileSettingsScreenHeader from '../components/MobileSettingsScreenHeader';
+import { getBoundedMobileOwnerStringContext, logMobileOwnerFailure } from '../utils/mobileOwnerDiagnostics';
 
 const STATUS_LABELS: Record<string, string> = {
     active: 'Active',
@@ -25,6 +28,74 @@ const STATUS_COLORS: Record<string, string> = {
     pending_payment: 'warning',
     expired: 'error',
     cancelled: 'default',
+};
+
+const MOBILE_RESELLER_ADD_LOCATION_RESPONSE_JSON_MAX_BYTES = 8 * 1024;
+const MOBILE_RESELLER_DASHBOARD_COPY_UNAVAILABLE = 'mobile_reseller_dashboard_copy_unavailable';
+const MOBILE_RESELLER_DASHBOARD_COPY_FALLBACK_FAILED = 'mobile_reseller_dashboard_copy_fallback_failed';
+
+const hasMobileResellerDashboardClipboardWrite = (): boolean => (
+    typeof navigator !== 'undefined'
+    && Boolean(navigator.clipboard)
+    && typeof navigator.clipboard.writeText === 'function'
+);
+
+const hasMobileResellerDashboardCopyFallback = (): boolean => (
+    typeof document !== 'undefined'
+    && typeof document.createElement === 'function'
+    && typeof document.execCommand === 'function'
+    && Boolean(document.body)
+);
+
+const copyMobileResellerDashboardText = async (value: string): Promise<void> => {
+    let clipboardWriteError: unknown;
+
+    if (hasMobileResellerDashboardClipboardWrite()) {
+        try {
+            await navigator.clipboard.writeText(value);
+            return;
+        } catch (error) {
+            clipboardWriteError = error;
+            // Continue to the acknowledged textarea fallback before showing failure copy.
+        }
+    }
+
+    if (!hasMobileResellerDashboardCopyFallback()) {
+        throw clipboardWriteError || new Error(MOBILE_RESELLER_DASHBOARD_COPY_UNAVAILABLE);
+    }
+
+    const textarea = document.createElement('textarea');
+    textarea.value = value;
+    textarea.setAttribute('readonly', '');
+    textarea.style.position = 'fixed';
+    textarea.style.left = '-9999px';
+    textarea.style.top = '0';
+    document.body.appendChild(textarea);
+    textarea.focus();
+    textarea.select();
+
+    try {
+        const copied = document.execCommand('copy');
+        if (!copied) {
+            throw new Error(MOBILE_RESELLER_DASHBOARD_COPY_FALLBACK_FAILED);
+        }
+    } finally {
+        document.body.removeChild(textarea);
+    }
+};
+
+type MobileResellerAddLocationCapacityResponse = {
+    amountExpected?: unknown;
+    locationCount?: unknown;
+    storeId?: unknown;
+    success?: unknown;
+    tenantId?: unknown;
+};
+
+type MobileResellerAddLocationCapacityExpectation = {
+    locationCount: number;
+    storeId: unknown;
+    tenantId: unknown;
 };
 
 function formatDate(value: any, formatter: IntlFormatter) {
@@ -41,6 +112,67 @@ function getDaysLeft(value: any) {
     return Math.ceil((date.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
 }
 
+function createMobileResellerStatusError(code: string, status?: number) {
+    const error = new Error(code) as Error & { code?: string; status?: number };
+    error.code = code;
+    error.status = status;
+    return error;
+}
+
+function isMatchingMobileResellerEntityId(value: unknown, expected: unknown) {
+    const normalizedValue = String(value ?? '').trim();
+    const normalizedExpected = String(expected ?? '').trim();
+    return normalizedValue.length > 0 && normalizedValue === normalizedExpected;
+}
+
+function isValidMobileAddLocationCapacityResponse(
+    data: MobileResellerAddLocationCapacityResponse | null,
+    expected: MobileResellerAddLocationCapacityExpectation,
+): data is MobileResellerAddLocationCapacityResponse & { amountExpected: number; success: true } {
+    return data?.success === true
+        && typeof data.amountExpected === 'number'
+        && Number.isFinite(data.amountExpected)
+        && data.amountExpected > 0
+        && data.locationCount === expected.locationCount
+        && isMatchingMobileResellerEntityId(data.storeId, expected.storeId)
+        && isMatchingMobileResellerEntityId(data.tenantId, expected.tenantId);
+}
+
+function buildMobileAddLocationResponseShapeContext(
+    data: MobileResellerAddLocationCapacityResponse | null,
+    expected: MobileResellerAddLocationCapacityExpectation,
+): Record<string, boolean | number | string | null | undefined> {
+    return {
+        amountExpectedValid: typeof data?.amountExpected === 'number'
+            && Number.isFinite(data.amountExpected)
+            && data.amountExpected > 0,
+        hasExpectedLocationCount: data?.locationCount === expected.locationCount,
+        hasExpectedStoreId: isMatchingMobileResellerEntityId(data?.storeId, expected.storeId),
+        hasExpectedTenantId: isMatchingMobileResellerEntityId(data?.tenantId, expected.tenantId),
+        success: data?.success === true,
+    };
+}
+
+async function readMobileAddLocationCapacityResponse(
+    response: Response,
+    context: Record<string, boolean | number | string | null | undefined>,
+): Promise<MobileResellerAddLocationCapacityResponse | null> {
+    try {
+        return await readJsonResponseWithLimit<MobileResellerAddLocationCapacityResponse>(
+            response,
+            MOBILE_RESELLER_ADD_LOCATION_RESPONSE_JSON_MAX_BYTES,
+        );
+    } catch (error) {
+        logMobileOwnerFailure('mobile_reseller_dashboard_add_location_response_parse_failed', error, {
+            ...context,
+            maxBytes: MOBILE_RESELLER_ADD_LOCATION_RESPONSE_JSON_MAX_BYTES,
+            responseOk: response.ok,
+            responseStatus: response.status,
+        });
+        return null;
+    }
+}
+
 function ClientCard({
     onAddLocation,
     onCopyPaymentLink,
@@ -48,8 +180,8 @@ function ClientCard({
     transaction,
 }: {
     onAddLocation: (transaction: ResellerTransaction) => void;
-    onCopyPaymentLink: (link: string) => void;
-    onOpenPaymentLink: (link: string) => void;
+    onCopyPaymentLink: (transaction: ResellerTransaction) => void;
+    onOpenPaymentLink: (transaction: ResellerTransaction) => void;
     transaction: ResellerTransaction;
 }) {
     const formatter = useFormatter();
@@ -88,10 +220,10 @@ function ClientCard({
                 ) : null}
                 {hasPendingPaymentLink ? (
                     <Flex gap={8}>
-                        <Button block fill="outline" onClick={() => onCopyPaymentLink(transaction.subscriptionShortUrl || '')} style={{ minHeight: 44 }}>
+                        <Button block fill="outline" onClick={() => onCopyPaymentLink(transaction)} style={{ minHeight: 44 }}>
                             <Flex align="center" gap={6} justify="center"><LuCopy size={16} /> Copy link</Flex>
                         </Button>
-                        <Button block onClick={() => onOpenPaymentLink(transaction.subscriptionShortUrl || '')} style={{ minHeight: 44 }}>
+                        <Button block onClick={() => onOpenPaymentLink(transaction)} style={{ minHeight: 44 }}>
                             <Flex align="center" gap={6} justify="center"><LuExternalLink size={16} /> Open</Flex>
                         </Button>
                     </Flex>
@@ -120,6 +252,16 @@ export default function MobileResellerDashboardScreen({
     const [locationCount, setLocationCount] = useState('1');
     const [addingLocation, setAddingLocation] = useState(false);
     const parsedLocationCount = Math.max(1, Number(locationCount || 1));
+    const buildResellerDashboardLogContext = (flow: string, metadata: Record<string, boolean | number | string | null | undefined> = {}) => ({
+        surface: 'mobile_reseller_dashboard',
+        flow,
+        isPlatform,
+        transactionCount: transactions.length,
+        requestedLocationCount: parsedLocationCount,
+        ...getBoundedMobileOwnerStringContext('resellerId', resellerId),
+        ...getBoundedMobileOwnerStringContext('platformRole', platformRole),
+        ...metadata,
+    });
     const locationTopup = selectedClient
         ? (() => {
             try {
@@ -137,8 +279,14 @@ export default function MobileResellerDashboardScreen({
     const handleAddLocationCapacity = async () => {
         if (!selectedClient) return;
         setAddingLocation(true);
+        const addLocationLogContext = buildResellerDashboardLogContext('add_location_capacity', {
+            ...getBoundedMobileOwnerStringContext('storeId', selectedClient.storeId),
+            ...getBoundedMobileOwnerStringContext('tenantId', selectedClient.tenantId),
+            ...getBoundedMobileOwnerStringContext('pricingTier', selectedClient.pricingTier),
+        });
         try {
             const response = await fetch('/api/reseller/add-location-capacity', {
+                ...RESELLER_REQUEST_POLICY,
                 body: JSON.stringify({
                     locationCount: parsedLocationCount,
                     storeId: selectedClient.storeId,
@@ -147,28 +295,86 @@ export default function MobileResellerDashboardScreen({
                 headers: { 'Content-Type': 'application/json' },
                 method: 'POST',
             });
-            const data = await response.json().catch(() => ({}));
-            if (!response.ok) throw new Error(data.error || 'Could not add location');
+            const data = await readMobileAddLocationCapacityResponse(response, addLocationLogContext);
+            if (!response.ok) {
+                throw createMobileResellerStatusError('mobile_reseller_dashboard_add_location_rejected', response.status);
+            }
+            const expectedAddLocationResponse: MobileResellerAddLocationCapacityExpectation = {
+                locationCount: parsedLocationCount,
+                storeId: selectedClient.storeId,
+                tenantId: selectedClient.tenantId,
+            };
+            if (!isValidMobileAddLocationCapacityResponse(data, expectedAddLocationResponse)) {
+                const invalidResponseError = createMobileResellerStatusError(
+                    'mobile_reseller_dashboard_add_location_response_invalid',
+                    response.status,
+                );
+                logMobileOwnerFailure(
+                    'mobile_reseller_dashboard_add_location_response_invalid',
+                    invalidResponseError,
+                    {
+                        ...addLocationLogContext,
+                        ...buildMobileAddLocationResponseShapeContext(data, expectedAddLocationResponse),
+                        responseOk: response.ok,
+                        responseStatus: response.status,
+                    },
+                );
+                throw invalidResponseError;
+            }
             Toast.show({ content: `Collect ${formatInrPaise(data.amountExpected)}`, duration: 2200, icon: 'success' });
             setSelectedClient(null);
             setLocationCount('1');
             refresh();
-        } catch (error: any) {
-            Toast.show({ content: error?.message || 'Could not add location', duration: 2600 });
+        } catch (error) {
+            logMobileOwnerFailure('mobile_reseller_dashboard_add_location_failed', error, addLocationLogContext);
+            Toast.show({ content: 'Could not add location', duration: 2600 });
         } finally {
             setAddingLocation(false);
         }
     };
 
-    const copyPaymentLink = async (link: string) => {
+    const copyPaymentLink = async (transaction: ResellerTransaction) => {
+        const link = transaction.subscriptionShortUrl || '';
         if (!link) return;
-        await navigator.clipboard.writeText(link);
-        Toast.show({ content: 'Payment link copied', duration: 1600, icon: 'success' });
+        try {
+            await copyMobileResellerDashboardText(link);
+            Toast.show({ content: 'Payment link copied', duration: 1600, icon: 'success' });
+        } catch (error) {
+            logMobileOwnerFailure('mobile_reseller_dashboard_payment_link_copy_failed', error, buildResellerDashboardLogContext('copy_payment_link', {
+                ...getBoundedMobileOwnerStringContext('paymentLink', link),
+                ...getBoundedMobileOwnerStringContext('storeId', transaction.storeId),
+                ...getBoundedMobileOwnerStringContext('tenantId', transaction.tenantId),
+                ...getBoundedMobileOwnerStringContext('subscriptionId', transaction.subscriptionId),
+                ...getBoundedMobileOwnerStringContext('pricingTier', transaction.pricingTier),
+                ...getBoundedMobileOwnerStringContext('paymentMode', transaction.paymentMode),
+                ...getBoundedMobileOwnerStringContext('transactionStatus', transaction.status),
+                hasClipboardWrite: hasMobileResellerDashboardClipboardWrite(),
+                hasCopyFallback: hasMobileResellerDashboardCopyFallback(),
+            }));
+            Toast.show({ content: 'Could not copy payment link', duration: 2200 });
+        }
     };
 
-    const openPaymentLink = (link: string) => {
+    const openPaymentLink = (transaction: ResellerTransaction) => {
+        const link = transaction.subscriptionShortUrl || '';
         if (!link) return;
-        window.open(link, '_blank', 'noopener,noreferrer');
+        try {
+            const opened = window.open(link, '_blank', 'noopener,noreferrer');
+            if (!opened) {
+                throw new Error('mobile_reseller_dashboard_payment_link_open_blocked');
+            }
+        } catch (error) {
+            logMobileOwnerFailure('mobile_reseller_dashboard_payment_link_open_failed', error, buildResellerDashboardLogContext('open_payment_link', {
+                ...getBoundedMobileOwnerStringContext('paymentLink', link),
+                ...getBoundedMobileOwnerStringContext('storeId', transaction.storeId),
+                ...getBoundedMobileOwnerStringContext('tenantId', transaction.tenantId),
+                ...getBoundedMobileOwnerStringContext('subscriptionId', transaction.subscriptionId),
+                ...getBoundedMobileOwnerStringContext('pricingTier', transaction.pricingTier),
+                ...getBoundedMobileOwnerStringContext('paymentMode', transaction.paymentMode),
+                ...getBoundedMobileOwnerStringContext('transactionStatus', transaction.status),
+            }));
+            Toast.show({ content: 'Could not open payment link', duration: 2200 });
+        }
     };
 
     if (isLoading) {

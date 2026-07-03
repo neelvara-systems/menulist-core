@@ -2,23 +2,22 @@ import useSWR from 'swr';
 import { FEATURE_FLAGS } from '@config/features';
 import { getCachedData, setCachedData, shouldRevalidate } from '@lib/cache/swrLocalStorageProvider';
 import { OWNER_BUSINESS_ASSISTANT_CACHE, OWNER_BUSINESS_ASSISTANT_ENDPOINTS } from '@lib/ownerBusinessAssistant/constants';
-import type { OwnerBusinessMultiLocationStoreSummary } from '@lib/ownerBusinessAssistant/types';
+import {
+  OWNER_BUSINESS_ASSISTANT_REQUEST_POLICY,
+  readOwnerBusinessAssistantLocationsResponse,
+  type OwnerBusinessAssistantLocationsResponse,
+} from '@lib/ownerBusinessAssistant/clientResponses';
+import { getBoundedRuntimeStringContext } from '@lib/runtime/runtimeDiagnostics';
 
-type LocationsResponse = {
-  data: {
-    generatedAt?: string | null;
-    stores: OwnerBusinessMultiLocationStoreSummary[];
-  };
-  cache?: {
-    source: string;
-    metrics?: Record<string, unknown>;
-  };
-};
-
-const fetcher = async ([url]: readonly [string, string, string]): Promise<LocationsResponse> => {
-  const response = await fetch(url);
-  if (!response.ok) throw new Error('Failed to load Business Health locations');
-  return response.json();
+const fetcher = async ([url, scope, selectedStoreScope]: readonly [string, string, string]): Promise<OwnerBusinessAssistantLocationsResponse> => {
+  const response = await fetch(url, OWNER_BUSINESS_ASSISTANT_REQUEST_POLICY);
+  const payload = await readOwnerBusinessAssistantLocationsResponse(response, {
+    ...getBoundedRuntimeStringContext('url', url),
+    ...getBoundedRuntimeStringContext('scope', scope),
+    ...getBoundedRuntimeStringContext('selectedStoreScope', selectedStoreScope),
+  });
+  if (!payload) throw new Error('Failed to load Business Health locations');
+  return payload;
 };
 
 export function useOwnerBusinessLocationsSummary(
@@ -33,9 +32,9 @@ export function useOwnerBusinessLocationsSummary(
   const url = `${OWNER_BUSINESS_ASSISTANT_ENDPOINTS.locations}${params.toString() ? `?${params.toString()}` : ''}`;
   const cacheKey = `${OWNER_BUSINESS_ASSISTANT_CACHE.browserLocationsPrefix}:${scope}:${selectedStoreScope}`;
   const cached = typeof window !== 'undefined'
-    ? getCachedData<LocationsResponse>(cacheKey, OWNER_BUSINESS_ASSISTANT_CACHE.browserReadModelTtlMs)
+    ? getCachedData<OwnerBusinessAssistantLocationsResponse>(cacheKey, OWNER_BUSINESS_ASSISTANT_CACHE.browserReadModelTtlMs)
     : undefined;
-  const swr = useSWR<LocationsResponse>(
+  const swr = useSWR<OwnerBusinessAssistantLocationsResponse>(
     FEATURE_FLAGS.ENABLE_OWNER_BUSINESS_HEALTH && enabled
       ? [url, scope, selectedStoreScope] as const
       : null,

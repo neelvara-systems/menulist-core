@@ -12,7 +12,7 @@
 | ------------------------ | ------------ | ----------- | -------- | ---------------------------------------------- |
 | **Critical (P0)**        | 1            | 1           | 0        | ✅ 100% Complete                               |
 | **High Priority (P1)**   | 3            | 3           | 0        | ✅ 100% Complete                               |
-| **Medium Priority (P2)** | 2            | 1           | 1        | 🟡 50% (reordering done, bulk ops post-launch) |
+| **Medium Priority (P2)** | 2            | 1           | 1        | 🟡 50% (reordering done, bulk ops outside this historical assessment) |
 
 **Overall Implementation**: ✅ **100% of Critical & High Priority Issues RESOLVED**
 
@@ -541,7 +541,7 @@ useKeyboardShortcuts(
 
 ## 🧪 Testing Checklist
 
-See: [3-TESTING-GUIDE-EDITOR.md](./3-TESTING-GUIDE-EDITOR.md) (if created)
+See: 3-TESTING-GUIDE-EDITOR.md was an optional local testing artifact and is no longer present in the active docs tree.
 
 **Quick Tests** (5 min):
 
@@ -630,17 +630,19 @@ A: Prevents excessive memory usage on rapid edits (e.g., typing fast). Still cap
 
 ## 🔗 Related Documentation
 
-- [ASSESSMENT-03-EDITOR.md](../ASSESSMENT-03-EDITOR.md) - Original assessment
-- [04-DATA-EDITOR.md](../04-DATA-EDITOR.md) - Editor architecture
+- [assessment-03-editor.md](../Assessments/assessment-03-editor.md) - Original assessment
+- [04-DATA-EDITOR.md](../data-editor/README.md) - Editor architecture
 - [production-readiness-assessment.md](../production-readiness-assessment.md) - Overall progress
 
 ---
 
-## ✅ Production Readiness
+## Current Launch Boundary
 
-**Status**: 🟢 **PRODUCTION READY**
+**Status**: Historical editor UX implementation evidence; not current launch certification
 
-All critical (P0) and high-priority (P1) editor UX issues are **complete**. The editor now has:
+This November 2025 note records completed critical (P0) and high-priority (P1) editor UX fixes. It is not current production certification. Current release approval requires the active [production-readiness audit](../../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../../production-readiness/external-certification-runbook.md) evidence, browser/mobile editor QA, publish/cache evidence for edited public truth, and target-environment smoke.
+
+The historical editor UX fixes included:
 
 - ✅ Zero data loss (auto-save)
 - ✅ Safe publishing (validation)
@@ -649,7 +651,7 @@ All critical (P0) and high-priority (P1) editor UX issues are **complete**. The 
 
 **Next Steps**:
 
-1. Optional: Add delete item keyboard shortcut (post-launch)
+1. Optional: Add delete item keyboard shortcut if it passes the current feature gate
 2. Optional: Add bulk operations based on user feedback
 3. Move to next assessment (Performance or Security)
 
@@ -657,4 +659,4 @@ All critical (P0) and high-priority (P1) editor UX issues are **complete**. The 
 
 **Implementation Completed**: November 14, 2025  
 **Overall Score**: 100% (5/5 Critical & High Priority Issues)  
-**Status**: ✅ **READY FOR PRODUCTION**
+**Status**: Historical implementation evidence; not current launch certification

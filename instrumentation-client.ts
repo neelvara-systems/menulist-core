@@ -5,6 +5,7 @@ import {
     monitoringDsn,
     monitoringEnvironment,
     monitoringRelease,
+    sanitizeMonitoringEvent,
     shouldSendMonitoringEvent,
 } from './src/lib/monitoring/sentryShared';
 
@@ -24,7 +25,7 @@ if (isSentryMonitoringEnabled && monitoringDsn.client) {
             Sentry.replayIntegration(),
         ],
         beforeSend(event, hint) {
-            return shouldSendMonitoringEvent(hint) ? event : null;
+            return shouldSendMonitoringEvent(hint) ? sanitizeMonitoringEvent(event) : null;
         },
     });
 }

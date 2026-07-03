@@ -4,6 +4,12 @@ import ChatHighlight from '@atoms/ChatHighlight';
 import DateTimeDisplay from '@atoms/DateTimeDisplay';
 import MessageReferences from '@template/main-app/helpChat/MessageReferences';
 import { ChatMessage } from '@type/chatSession';
+import {
+    copyAnswerlatticeSupportTextToClipboard,
+    hasAnswerlatticeSupportClipboardWrite,
+    hasAnswerlatticeSupportCopyFallback,
+} from '@lib/answerlattice/supportClipboard';
+import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { calculateQualityFlags } from '@util/qualityMetrics';
 import { Alert, message as antMessage, Button, Card, Flex, Image, Tag, theme, Tooltip, Typography } from 'antd';
 import { motion } from 'framer-motion';
@@ -13,6 +19,16 @@ import rehypeSanitize from 'rehype-sanitize';
 import remarkGfm from 'remark-gfm';
 
 const { Text, Paragraph } = Typography;
+
+const PLATFORM_CHAT_MESSAGE_COPY_CLIPBOARD_UNAVAILABLE = 'platform_chat_message_copy_clipboard_unavailable';
+const PLATFORM_CHAT_MESSAGE_COPY_FALLBACK_FAILED = 'platform_chat_message_copy_fallback_failed';
+
+const copyPlatformChatMessageToClipboard = async (text: string) => {
+    await copyAnswerlatticeSupportTextToClipboard(text, {
+        unavailable: PLATFORM_CHAT_MESSAGE_COPY_CLIPBOARD_UNAVAILABLE,
+        fallbackFailed: PLATFORM_CHAT_MESSAGE_COPY_FALLBACK_FAILED,
+    });
+};
 
 interface MessageBubbleProps {
     message: ChatMessage;
@@ -38,10 +54,21 @@ function MessageBubble({
     const isUser = message.role === 'user';
     const messageText = isUser ? message.content : message.craftedAnswer;
 
-    const handleCopyMessage = (text: string) => {
-        navigator.clipboard.writeText(text)
-            .then(() => antMessage.success('Copied to clipboard'))
-            .catch(() => antMessage.error('Failed to copy'));
+    const handleCopyMessage = async (text: string) => {
+        try {
+            await copyPlatformChatMessageToClipboard(text);
+            antMessage.success('Copied to clipboard');
+        } catch (error) {
+            logRuntimeFailure('platform_chat_message_copy_failed', error, {
+                surface: 'answerlattice_chat_management',
+                role: message.role,
+                textLength: text.length,
+                hasClipboardWrite: hasAnswerlatticeSupportClipboardWrite(),
+                hasCopyFallback: hasAnswerlatticeSupportCopyFallback(),
+                ...getBoundedRuntimeStringContext('messageId', message.id),
+            });
+            antMessage.error('Failed to copy');
+        }
     };
 
     return (

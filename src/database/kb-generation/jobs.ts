@@ -15,9 +15,55 @@ const ACTIVE_JOB_LIMIT = 5;
 const ALL_JOB_LIMIT = 100;
 const PREVIOUS_JOB_LIMIT = 20;
 
+export type IngestionJobWriteResult = Partial<IngestionJob> & {
+    success: true;
+    id: string;
+    updatedFields: string[];
+};
+
+export type IngestionJobDeleteResult = {
+    success: true;
+    jobId: string;
+    deleted: true;
+};
+
 const getCollectionRef = () => {
     return collection(answerlatticeFirebaseClient, COLLECTION);
 };
+
+const isRecord = (value: unknown): value is Record<string, unknown> => (
+    Boolean(value) && typeof value === 'object' && !Array.isArray(value)
+);
+
+export function assertIngestionJobWriteSucceeded(
+    result: unknown,
+    expectedJobId: string,
+    rejectionCode = 'ingestion_job_write_rejected',
+): asserts result is IngestionJobWriteResult {
+    if (
+        !isRecord(result)
+        || result.success !== true
+        || result.id !== expectedJobId
+        || !Array.isArray(result.updatedFields)
+    ) {
+        throw new Error(rejectionCode);
+    }
+}
+
+export function assertIngestionJobDeleteSucceeded(
+    result: unknown,
+    expectedJobId: string,
+    rejectionCode = 'ingestion_job_delete_rejected',
+): asserts result is IngestionJobDeleteResult {
+    if (
+        !isRecord(result)
+        || result.success !== true
+        || result.deleted !== true
+        || result.jobId !== expectedJobId
+    ) {
+        throw new Error(rejectionCode);
+    }
+}
 
 export const getIngestionJobCollectionRef = (session: any) => {
     const collectionRef = getCollectionRef();
@@ -80,7 +126,12 @@ export const updateJob = async (jobId: string, data: Partial<IngestionJob>) => {
             const dataToUpdate = await answerlatticeRequestBodyComposer(data);
             const jobRef = doc(getCollectionRef(), jobId);
             await setDoc(jobRef, dataToUpdate, { merge: true });
-            return { id: jobId, ...dataToUpdate };
+            return {
+                id: jobId,
+                ...dataToUpdate,
+                success: true,
+                updatedFields: Object.keys(dataToUpdate),
+            } satisfies IngestionJobWriteResult;
         },
         data,
         "updateJob"
@@ -141,7 +192,7 @@ export const deleteIngestionJob = async (jobId: string) => {
                 await Promise.all(deletePromises);
             }
 
-            return { jobId };
+            return { success: true, jobId, deleted: true } satisfies IngestionJobDeleteResult;
         },
         jobId,
         "deleteIngestionJob"
@@ -177,7 +228,11 @@ export const retryJob = async (jobId: string) => {
                 await triggerStartGeneration(resetJob.id, resetJob);
             }
 
-            return resetJob;
+            return {
+                ...resetJob,
+                success: true,
+                updatedFields: Object.keys(resetData),
+            } satisfies IngestionJobWriteResult;
         },
         { jobId },
         "retryJob"
@@ -192,7 +247,12 @@ export const cancelJob = async (jobId: string) => {
             });
             const jobRef = doc(getCollectionRef(), jobId);
             await setDoc(jobRef, dataToUpdate, { merge: true });
-            return { id: jobId, ...dataToUpdate };
+            return {
+                id: jobId,
+                ...dataToUpdate,
+                success: true,
+                updatedFields: Object.keys(dataToUpdate),
+            } satisfies IngestionJobWriteResult;
         },
         { jobId },
         "cancelJob"
@@ -212,7 +272,11 @@ export const addIngestionJob = async (data: Partial<IngestionJob>) => {
                 await triggerStartGeneration(newJob.id, newJob);
             }
             // In production, the Firestore trigger will fire automatically. We do nothing.
-            return newJob;
+            return {
+                ...newJob,
+                success: true,
+                updatedFields: Object.keys(submitData),
+            } satisfies IngestionJobWriteResult;
 
         },
         data,

@@ -1,8 +1,10 @@
 # B2C View — Implementation
 
 **Feature:** Customer-Facing Digital Menu  
-**Status:** ✅ Production Ready  
+**Status:** Implemented source evidence; not current launch certification
 **Last Updated:** January 2026
+
+**Launch boundary:** This implementation note documents the customer-facing menu view; it is not current launch certification. Current release approval requires the active [production-readiness audit](../../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../../production-readiness/external-certification-runbook.md) evidence, Digital Menu Output Constitution checks, `npm run verify:menu-design-presentation-boundary`, public cache/deploy evidence, browser/mobile customer-menu QA, and target production smoke.
 
 ---
 
@@ -28,23 +30,21 @@
 
 ---
 
-## File Structure
+## Current Source Files
 
+```text
+src/app/client/[[...slug]]/page.tsx
+src/components/templates/main-app/projects/b2cView/index.tsx
+src/components/templates/main-app/projects/b2cView/designSystem/index.ts
+src/components/templates/main-app/projects/b2cView/menuPage/menuPageNew.tsx
+src/components/templates/main-app/projects/b2cView/menuPage/menuPageSettingsNew.tsx
+src/components/mobile/screens/MobileDesignEditorScreen.tsx
+src/lib/menu/menuDesignPresets.ts
+src/database/projects/index.ts
+src/lib/firebase/functions.ts
 ```
-src/
-├── app/(website)/menu/[projectId]/
-│   └── page.tsx                    # Menu page with generateMetadata
-│
-└── components/templates/main-app/projects/
-    └── b2cView/                    # 30+ files
-        ├── index.tsx               # Main B2C container
-        ├── homePage/               # Homepage components
-        ├── menuPage/               # Menu display components
-        │   └── menuLayout.tsx      # Core menu layout (memoized)
-        ├── layouts/                # Layout templates
-        ├── components/             # Shared components
-        └── shareModal/             # Share/QR functionality
-```
+
+Older route examples in this file are historical notes. Current source truth for design presentation is the file set above plus the active client-menu docs.
 
 ---
 
@@ -187,52 +187,18 @@ const generateSchemaOrgJsonLd = (project, store) => ({
 
 ---
 
-## Theme System
+## Design Presentation System
 
-### ThemeConfig Type
+The current design presentation contract lives in `b2cView/designSystem/index.ts` and `src/lib/menu/menuDesignPresets.ts`.
 
-```typescript
-interface ThemeConfig {
-  homePage: {
-    backgroundColor: string;
-    textColor: string;
-    accentColor: string;
-    logoUrl?: string;
-    coverImageUrl?: string;
-  };
-  menuPage: {
-    backgroundColor: string;
-    textColor: string;
-    categoryColor: string;
-    priceColor: string;
-    fontFamily: string;
-    layout: "grid" | "list" | "horizontal";
-  };
-}
-```
+- `MenuMood` is limited to Clean, Warm, Premium, Bold, and Fast.
+- Owner-selectable layout choices are List, Grid, and Card.
+- `MOOD_LAYOUT_COMPATIBILITY` filters layout choices by mood.
+- `normalizeMenuLayout()` falls back to the default compatible layout when a saved layout is unsupported for the selected mood.
+- Legacy saved `tabs` layout values are mapped into `showCategoryTabs` and normalized away from the layout field.
+- `getMoodWithBrandColor()` runs accent and price colors through contrast enforcement before public output.
 
-### Layout Components
-
-```typescript
-// Grid layout
-<div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-  {items.map(item => <ItemCard key={item.id} item={item} />)}
-</div>
-
-// List layout
-<div className="flex flex-col space-y-4">
-  {items.map(item => <ItemRow key={item.id} item={item} />)}
-</div>
-
-// Horizontal tabs
-<Tabs>
-  {categories.map(cat => (
-    <TabPane tab={cat.name} key={cat.id}>
-      {/* Items */}
-    </TabPane>
-  ))}
-</Tabs>
-```
+Desktop and mobile editors both use the same helper contracts. The public renderer calls `normalizeMenuMood()` and `normalizeMenuLayout()` before reading `MENU_LAYOUTS`, so stale saved values do not become unsupported customer output.
 
 ---
 
@@ -324,16 +290,16 @@ const ShareModal = ({ projectId, isOpen, onClose }) => {
 
 ## Validation Checklist
 
-| Requirement        | Implementation              | Location               | Status |
-| ------------------ | --------------------------- | ---------------------- | ------ |
-| MenuItem memoized  | React.memo + custom compare | menuLayout.tsx:51-156  | ✅     |
-| Styles memoized    | useMemo                     | menuLayout.tsx:176-255 | ✅     |
-| Search debounced   | 300ms debounce              | menuLayout.tsx:167-172 | ✅     |
-| Next.js Image      | fill + sizes                | menuLayout.tsx:84-93   | ✅     |
-| Framer Motion lazy | whileInView                 | menuLayout.tsx:58-59   | ✅     |
-| generateMetadata   | Dynamic SEO                 | page.tsx               | ✅     |
-| Schema.org JSON-LD | Restaurant/Menu             | page.tsx               | ✅     |
-| Accessibility      | role, tabIndex, aria-label  | menuLayout.tsx         | ✅     |
+| Requirement | Implementation | Location | Status |
+| --- | --- | --- | --- |
+| Mood normalization | `normalizeMenuMood()` | `designSystem/index.ts` | Source-gated |
+| Layout compatibility | `normalizeMenuLayout()` and `MOOD_LAYOUT_COMPATIBILITY` | `designSystem/index.ts` | Source-gated |
+| Owner-selectable layouts | `OWNER_SELECTABLE_MENU_LAYOUTS` excludes legacy tabs | `src/lib/menu/menuDesignPresets.ts` | Source-gated |
+| Desktop controls | mood change resets to preferred compatible layout | `menuPageSettingsNew.tsx` | Source-gated |
+| Mobile controls | same helper contracts and publish path | `MobileDesignEditorScreen.tsx` | Source-gated |
+| Public output | normalized mood/layout, image caps, price visibility, category-tabs toggle | `menuPageNew.tsx` | Source-gated |
+| Publish/cache path | `publishProject()` revalidates public menu/client cache | `src/database/projects/index.ts` | Source-gated |
+| External release | External Certification Runbook, Digital Menu Output Constitution checks, browser/mobile customer-menu QA | audit/runbook | Pending |
 
 ---
 
@@ -342,8 +308,9 @@ const ShareModal = ({ projectId, isOpen, onClose }) => {
 | Document                                   | Purpose                     |
 | ------------------------------------------ | --------------------------- |
 | `_spec.md`                                 | Product specification       |
+| `b2c-view_mobile-support.md`               | Mobile parity boundary      |
 | `_marketing.md`                            | Sales collateral            |
-| `../Assessments/ASSESSMENT-11-B2C-VIEW.md` | Original assessment         |
+| `../Assessments/assessment-11-b2c-view.md` | Original assessment         |
 | `../../client-menu/`                       | Detailed B2C implementation |
 
 ---
@@ -393,14 +360,18 @@ const ShareModal = ({ projectId, isOpen, onClose }) => {
    - **Suggested**: BlurHash or LQIP placeholders
    - **Priority**: P2
 
+### Source Gate
+
+Run `npm run verify:menu-design-presentation-boundary` after touching design-system helpers, desktop/mobile design controls, B2C public output, publish/cache code, or this doc set. This source gate is not current launch certification; release approval still needs the External Certification Runbook, Digital Menu Output Constitution checks, browser/mobile customer-menu QA, public cache/deploy evidence, and target production smoke.
+
 ### Technical Debt
 
 | Item                                 | Description                                                   | Effort |
 | ------------------------------------ | ------------------------------------------------------------- | ------ |
 | `getAllCategories()`/`getAllItems()` | Not memoized, acceptable for typical sizes but could optimize | Low    |
 | Console logs                         | Remove `console.log` statements                               | Low    |
-| Theme validation                     | No contrast ratio validation for custom themes                | Medium |
+| Browser visual QA                    | Source contrast guards exist; target browser/mobile customer-menu QA remains required | Medium |
 
 ---
 
-_Document Status: ✅ PRODUCTION READY_
+_Document Status: Historical B2C view implementation evidence - not current launch certification_

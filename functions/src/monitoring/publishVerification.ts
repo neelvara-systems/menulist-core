@@ -13,10 +13,16 @@
  */
 
 import { Timestamp } from 'firebase-admin/firestore';
+import * as functions from 'firebase-functions';
 import { DB_COLLECTIONS } from '../constants/database';
 import { firestoreAdmin as db } from '../firebaseAdmin';
 import { PLATFORM_NOTIFICATION_TRIGGER_TYPES } from '../sharedData/platformNotificationRegistry';
+import { validateNetworkTargetUrl } from '../utils/networkTarget';
 import { createAlert } from './alerts';
+
+const logger = functions.logger;
+const PUBLISH_VERIFICATION_FAILED_ALERT_MESSAGE = 'A published menu failed health verification. Review the store health record and bounded verification metadata.';
+const PUBLISH_VERIFICATION_MIN_BODY_BYTES = 500;
 
 // ================================================================
 // TYPES
@@ -25,6 +31,7 @@ import { createAlert } from './alerts';
 export const FAILURE_CODES = {
   MENU_HTTP_FAIL: 'MENU_HTTP_FAIL',
   MENU_EMPTY: 'MENU_EMPTY',
+  MENU_TARGET_REJECTED: 'MENU_TARGET_REJECTED',
   VERIFICATION_ERROR: 'VERIFICATION_ERROR',
 } as const;
 
@@ -48,6 +55,51 @@ export interface StoreHealth {
   consecutiveFailures: number;
 }
 
+function getErrorLogContext(error: unknown): { name?: string; code?: string; status?: number } {
+  if (!error || typeof error !== 'object') return {};
+
+  const record = error as Record<string, unknown>;
+  return {
+    name: error instanceof Error ? error.name : undefined,
+    code: typeof record.code === 'string' ? record.code : undefined,
+    status: typeof record.status === 'number' ? record.status : undefined,
+  };
+}
+
+function getBoundedPublishVerificationStringContext(label: string, value: unknown): Record<string, boolean | number> {
+  const normalized = typeof value === 'string' ? value : '';
+  return {
+    [`${label}Present`]: normalized.length > 0,
+    [`${label}Length`]: normalized.length,
+  };
+}
+
+async function hasMinimumMenuResponseBytes(response: Response): Promise<boolean> {
+  const contentLengthHeader = response.headers.get('content-length');
+  const contentLength = contentLengthHeader ? Number(contentLengthHeader) : Number.NaN;
+  if (Number.isFinite(contentLength) && contentLength > PUBLISH_VERIFICATION_MIN_BODY_BYTES) {
+    return true;
+  }
+
+  if (!response.body || typeof response.body.getReader !== 'function') {
+    return false;
+  }
+
+  const reader = response.body.getReader();
+  let bytesRead = 0;
+  try {
+    while (bytesRead <= PUBLISH_VERIFICATION_MIN_BODY_BYTES) {
+      const { done, value } = await reader.read();
+      if (done) return bytesRead > PUBLISH_VERIFICATION_MIN_BODY_BYTES;
+      bytesRead += value?.byteLength || 0;
+      if (bytesRead > PUBLISH_VERIFICATION_MIN_BODY_BYTES) return true;
+    }
+    return true;
+  } finally {
+    await reader.cancel().catch(() => undefined);
+  }
+}
+
 // ================================================================
 // CORE FUNCTIONS
 // ================================================================
@@ -68,7 +120,18 @@ export async function verifyPublish(publicMenuUrl: string): Promise<Verification
   try {
     // Check 1: HTTP 200 (cache-busting query param to bypass CDN)
     const cacheBustUrl = `${publicMenuUrl}${publicMenuUrl.includes('?') ? '&' : '?'}_hc=${Date.now()}`;
-    const response = await fetch(cacheBustUrl, {
+    const targetValidation = await validateNetworkTargetUrl(cacheBustUrl, {
+      allowLocalhostInEmulator: true,
+      allowedProtocols: process.env.FUNCTIONS_EMULATOR === 'true' ? ['http:', 'https:'] : ['https:'],
+    });
+
+    if (!targetValidation.valid || !targetValidation.normalizedUrl) {
+      result.status = 'FAILED';
+      result.failureReason = FAILURE_CODES.MENU_TARGET_REJECTED;
+      return result;
+    }
+
+    const response = await fetch(targetValidation.normalizedUrl, {
       method: 'GET',
       headers: { 'User-Agent': 'MenuList-HealthCheck/1.0', 'Cache-Control': 'no-cache' },
       signal: AbortSignal.timeout(15000), // 15s timeout
@@ -82,8 +145,7 @@ export async function verifyPublish(publicMenuUrl: string): Promise<Verification
     }
 
     // Check 2: Non-empty body with content
-    const body = await response.text();
-    const hasContent = body.length > 500; // Reasonable minimum for a menu page
+    const hasContent = await hasMinimumMenuResponseBytes(response);
     result.checks.hasContent = hasContent;
 
     if (!hasContent) {
@@ -142,7 +204,7 @@ export async function updateStoreHealth(
         type: 'health',
         severity: consecutiveFailures >= 3 ? 'critical' : 'warning',
         title: 'Menu Publish Verification Failed',
-        message: `Menu failed verification: ${verificationResult.failureReason}. Response time: ${verificationResult.responseTimeMs}ms. Consecutive failures: ${consecutiveFailures}`,
+        message: PUBLISH_VERIFICATION_FAILED_ALERT_MESSAGE,
         metadata: {
           failureCode: verificationResult.failureReason,
           responseTimeMs: verificationResult.responseTimeMs,
@@ -156,9 +218,22 @@ export async function updateStoreHealth(
       });
     } catch (alertError) {
       // Don't fail verification just because alert creation failed
-      console.error('[PublishVerification] Failed to create alert:', alertError);
+      logger.error('[PublishVerification] Failed to create alert', {
+        ...getBoundedPublishVerificationStringContext('storeId', storeId),
+        ...getBoundedPublishVerificationStringContext('tenantId', tenantId),
+        failureCode: verificationResult.failureReason,
+        consecutiveFailures,
+        error: getErrorLogContext(alertError),
+      });
     }
   }
 
-  console.log(`[PublishVerification] Store ${storeId}: ${verificationResult.status} (${verificationResult.responseTimeMs}ms)`);
+  logger.info('[PublishVerification] Store health updated', {
+    ...getBoundedPublishVerificationStringContext('storeId', storeId),
+    ...getBoundedPublishVerificationStringContext('tenantId', tenantId),
+    status: verificationResult.status,
+    failureCode: verificationResult.failureReason,
+    responseTimeMs: verificationResult.responseTimeMs,
+    consecutiveFailures,
+  });
 }

@@ -22,6 +22,9 @@ import { transitionState } from "./sessionEngine";
 const logger = functions.logger;
 const db = firestoreAdmin;
 const sessionsCol = DB_COLLECTIONS.MESSAGING_ONBOARDING_SESSIONS;
+const EXTRACTION_FAILED_CODE = "EXTRACTION_FAILED";
+const EXTRACTION_PREVIEW_SEND_FAILED_CODE = "EXTRACTION_PREVIEW_SEND_FAILED";
+const EXTRACTION_CLEARER_PHOTOS_SEND_FAILED_CODE = "EXTRACTION_CLEARER_PHOTOS_SEND_FAILED";
 
 const normalizeBaseUrl = (value?: string): string => {
   const trimmed = value?.trim().replace(/\/+$/, "") || "";
@@ -36,6 +39,54 @@ function getPreviewBaseUrl(): string {
     throw new Error("NEXT_PUBLIC_MSG_PREVIEW_BASE_URL is required for messaging onboarding preview links");
   }
   return previewBaseUrl;
+}
+
+function getExtractionWatcherIdContext(label: string, value: unknown): Record<string, boolean | number> {
+  const normalized = value === undefined || value === null ? "" : String(value);
+  return {
+    [`${label}Present`]: normalized.length > 0,
+    [`${label}Length`]: normalized.length,
+  };
+}
+
+function getExtractionWatcherErrorName(error: unknown): string {
+  if (error instanceof Error) return (error.name || "Error").slice(0, 80);
+  return typeof error;
+}
+
+function getExtractionWatcherErrorCode(error: Error): string | undefined {
+  const code = (error as { code?: unknown }).code;
+  if (code === undefined || code === null) return undefined;
+  return String(code).slice(0, 64);
+}
+
+function getExtractionWatcherErrorContext(error: unknown): {
+  sourceErrorName: string;
+  sourceErrorCode?: string;
+} {
+  if (error instanceof Error) {
+    return {
+      sourceErrorName: getExtractionWatcherErrorName(error),
+      sourceErrorCode: getExtractionWatcherErrorCode(error),
+    };
+  }
+
+  return {
+    sourceErrorName: getExtractionWatcherErrorName(error),
+  };
+}
+
+function logClearerPhotosMessageSendFailed(
+  session: MessagingOnboardingSession,
+  error: unknown,
+): void {
+  logger.warn("[ExtractionWatcher] Failed to send clearer photos message", {
+    failureCode: EXTRACTION_CLEARER_PHOTOS_SEND_FAILED_CODE,
+    ...getExtractionWatcherIdContext("sessionId", session.sessionId),
+    provider: session.provider,
+    sessionState: session.state,
+    ...getExtractionWatcherErrorContext(error),
+  });
 }
 
 /**
@@ -74,7 +125,7 @@ async function handleExtractionComplete(
   const sessionDoc = await sessionRef.get();
 
   if (!sessionDoc.exists) {
-    logger.warn("[ExtractionWatcher] Session not found", { sessionId });
+    logger.warn("[ExtractionWatcher] Session not found", getExtractionWatcherIdContext("sessionId", sessionId));
     return;
   }
 
@@ -85,7 +136,7 @@ async function handleExtractionComplete(
   // Prevents generating previews for expired/failed sessions where extraction finished late
   if (session.state !== "PROCESSING_MENU") {
     logger.warn("[ExtractionWatcher] Session not in PROCESSING_MENU, ignoring extraction result", {
-      sessionId,
+      ...getExtractionWatcherIdContext("sessionId", sessionId),
       currentState: session.state,
     });
     if (!jobData.skipProjectSave) await cleanupTempProject(sessionId);
@@ -145,8 +196,8 @@ async function handleExtractionComplete(
         session.providerUserId,
         MESSAGES.ASK_CLEARER_PHOTOS,
       );
-    } catch {
-      // Non-critical
+    } catch (error) {
+      logClearerPhotosMessageSendFailed(session, error);
     }
 
     // Cleanup temp project
@@ -297,8 +348,9 @@ async function handleExtractionComplete(
     });
   } catch (err) {
     logger.error("[ExtractionWatcher] Failed to send preview link", {
-      sessionId,
-      error: (err as Error).message,
+      failureCode: EXTRACTION_PREVIEW_SEND_FAILED_CODE,
+      ...getExtractionWatcherIdContext("sessionId", sessionId),
+      ...getExtractionWatcherErrorContext(err),
     });
 
     logOnboardingEvent({
@@ -309,7 +361,6 @@ async function handleExtractionComplete(
       userIdMasked: userMasked,
       error: {
         code: "SEND_FAILED",
-        message: (err as Error).message,
         retryable: true,
       },
       sessionCreatedAt: session.createdAt,
@@ -319,7 +370,7 @@ async function handleExtractionComplete(
   // Check for pending uploads while processing
   if (session.pendingUploadsWhileProcessing) {
     logger.info("[ExtractionWatcher] Pending uploads detected — owner may re-send", {
-      sessionId,
+      ...getExtractionWatcherIdContext("sessionId", sessionId),
     });
     // Don't auto-restart — owner will see preview and decide
     // If they send 3+ more images, full resend logic in sessionEngine handles it
@@ -351,8 +402,7 @@ async function handleExtractionFailed(
     sessionState: session.state,
     userIdMasked: userMasked,
     error: {
-      code: jobData.error?.code || "EXTRACTION_FAILED",
-      message: jobData.error?.message || "Unknown extraction error",
+      code: jobData.error?.code || EXTRACTION_FAILED_CODE,
       retryable: jobData.error?.retryable || false,
     },
     sessionCreatedAt: session.createdAt,
@@ -362,7 +412,7 @@ async function handleExtractionFailed(
     sessionId,
     session.state,
     "FAILED",
-    `Extraction failed: ${jobData.error?.message || "unknown error"}`,
+    EXTRACTION_FAILED_CODE,
     { _provider: session.provider, _userIdMasked: userMasked },
   );
 
@@ -373,8 +423,8 @@ async function handleExtractionFailed(
       session.providerUserId,
       MESSAGES.ASK_CLEARER_PHOTOS,
     );
-  } catch {
-    // Non-critical
+  } catch (error) {
+    logClearerPhotosMessageSendFailed(session, error);
   }
 
   // Cleanup temp project
@@ -400,10 +450,15 @@ async function cleanupTempProject(sessionId: string): Promise<void> {
     const sId = parts[parts.length - 1]; // sessionId
     await db.collection(DB_COLLECTIONS.PROJECTS).doc(tId).collection(sId).doc(tempProjectId).delete();
     logger.info("[ExtractionWatcher] Cleaned up temp project", {
-      tempProjectId,
-      path: `projects/${tId}/${sId}/${tempProjectId}`,
+      ...getExtractionWatcherIdContext("sessionId", sessionId),
+      ...getExtractionWatcherIdContext("tempProjectId", tempProjectId),
     });
-  } catch {
-    // Silent failure — temp project may not exist if extraction failed before save
+  } catch (error) {
+    logger.warn("[ExtractionWatcher] Temp project cleanup failed", {
+      ...getExtractionWatcherIdContext("sessionId", sessionId),
+      ...getExtractionWatcherIdContext("tempProjectId", tempProjectId),
+      ...getExtractionWatcherErrorContext(error),
+      cleanupTarget: "messaging_onboarding_temp_project",
+    });
   }
 }

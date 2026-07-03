@@ -4,15 +4,20 @@ import { FEATURE_FLAGS } from "@config/features";
 import { DB_COLLECTIONS } from "@constant/database";
 import { createResellerTransaction, getResellerProfile, updateResellerStatsOnRenewal } from "@database/reseller/server";
 import { updateSubscription } from "@database/subscriptions/server";
+import { getBoundedResellerApiStringContext, logResellerApiFailure } from "@lib/billing/resellerApiDiagnostics";
 import { admin, firestoreAdmin } from "@lib/firebase/firebaseAdmin";
 import { logger } from "@lib/monitoring/logger";
 import { checkRateLimit } from "@lib/rateLimit";
 import { getRateLimitForFeature } from "@lib/rateLimit/configs";
+import { readBoundedJsonBody } from "@lib/security/boundedRequestBody";
+import { getBoundedSecurityRouteContext } from "@lib/security/securityDiagnostics";
 import { validateAPIInput } from "@lib/security/inputValidation";
-import { buildSecurityContext } from "@lib/security/securityContext";
 import { ResellerAddLocationCapacitySchema } from "@lib/validation/resellerSchemas";
 import { NextResponse } from "next/server";
 import { withAuth } from "../../../../middleware/auth";
+import { hashPublicRateLimitValue } from "../../../../middleware/publicApi";
+
+const RESELLER_ACTION_MAX_BODY_BYTES = 16 * 1024;
 
 const toDate = (value: any): Date | null => {
     if (!value) return null;
@@ -38,8 +43,9 @@ export const POST = withAuth(async (request, session) => {
         }
 
         const rateLimitConfig = getRateLimitForFeature('DATA_WRITE');
+        const resellerRateLimitHash = hashPublicRateLimitValue(resellerId);
         const rateLimitResult = await checkRateLimit({
-            key: `reseller-add-location:${resellerId}`,
+            key: `reseller-add-location:${resellerRateLimitHash}`,
             ...rateLimitConfig,
         });
         if (!rateLimitResult.allowed) {
@@ -49,12 +55,16 @@ export const POST = withAuth(async (request, session) => {
             }, { status: 429 });
         }
 
-        const body = await request.json();
+        const bodyResult = await readBoundedJsonBody(request, RESELLER_ACTION_MAX_BODY_BYTES, {
+            invalidJsonMessage: 'Invalid input',
+        });
+        if (bodyResult.ok === false) return bodyResult.response;
+        const body = bodyResult.data as any;
         const validation = validateAPIInput(ResellerAddLocationCapacitySchema, body);
         if (!validation.success) {
             const errorMsg = 'error' in validation ? validation.error : 'Invalid input';
             logger.security('Reseller Add Location Capacity Input Validation Failed', {
-                ...buildSecurityContext(session, request),
+                ...getBoundedSecurityRouteContext(session, request),
                 endpoint: '/api/reseller/add-location-capacity',
                 error: errorMsg,
             }, 'medium');
@@ -66,8 +76,8 @@ export const POST = withAuth(async (request, session) => {
         const resellerProfile = await getResellerProfile(resellerId, session.user.email);
         if (!isPlatformUser && (!resellerProfile || !resellerProfile.active)) {
             logger.security('Reseller Add Location Capacity - Profile Not Found or Inactive', {
-                ...buildSecurityContext(session, request),
-                resellerId,
+                ...getBoundedSecurityRouteContext(session, request),
+                ...getBoundedResellerApiStringContext('resellerId', resellerId),
             }, 'high');
             return NextResponse.json({ error: "Reseller profile not found or inactive." }, { status: 403 });
         }
@@ -89,9 +99,12 @@ export const POST = withAuth(async (request, session) => {
 
         if (existingSubData.resellerId !== resellerId && !isPlatformUser) {
             logger.security('Reseller Add Location Capacity - Unauthorized Access', {
-                ...buildSecurityContext(session, request),
-                resellerId,
-                storeId,
+                ...getBoundedSecurityRouteContext(session, request),
+                ...getBoundedResellerApiStringContext('resellerId', resellerId),
+                ...getBoundedResellerApiStringContext('storeId', storeId),
+                ...getBoundedResellerApiStringContext('tenantId', tenantId),
+                ...getBoundedResellerApiStringContext('subscriptionId', existingSub.id),
+                ...getBoundedResellerApiStringContext('actualResellerId', existingSubData.resellerId),
             }, 'high');
             return NextResponse.json({ error: "Access denied." }, { status: 403 });
         }
@@ -171,12 +184,16 @@ export const POST = withAuth(async (request, session) => {
             daysRemaining: topup.daysRemaining,
             locationCount: topup.locationCount,
             quantity: nextQuantity,
+            storeId,
             subscriptionId: existingSub.id,
+            tenantId,
             transactionId,
             validUntil: validUntilDate.toISOString(),
         });
     } catch (error) {
-        console.error('[Reseller Add Location Capacity] Failed:', error);
+        logResellerApiFailure('reseller_add_location_capacity_route_failed', error, {
+            ...getBoundedResellerApiStringContext('resellerId', resellerId),
+        });
         return NextResponse.json(
             { error: 'Failed to add location capacity. Please try again.' },
             { status: 500 },

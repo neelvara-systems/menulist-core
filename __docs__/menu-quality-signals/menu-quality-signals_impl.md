@@ -1,7 +1,7 @@
 # Menu Quality Signals — Implementation Plan
 
-> **Version:** 1.2
-> **Last Updated:** June 1, 2026
+> **Version:** 1.3
+> **Last Updated:** June 29, 2026
 > **Audience:** Developers
 > **Status:** ✅ IMPLEMENTED
 
@@ -93,6 +93,8 @@ src/components/mobile/screens/MobileMenuScreen.tsx                    # Modified
 - "All clear" state reads "No action needed" / "Your public menu is ready"
 - Shows "Checked just now" after compute
 - Stores a pending quality action in `sessionStorage` and routes to `/projects` so the editor can select the matching project and open the relevant repair/filter context
+- Failed project loading or signal computation logs `dashboard_menu_quality_signals_load_failed` through `src/components/templates/main-app/projects/utils/projectPageDiagnostics.ts`
+- Failed `sessionStorage` handoff logs `dashboard_menu_quality_action_handoff_failed` and still routes the owner to `/projects`
 - Gated by `FEATURE_FLAGS.ENABLE_MENU_QUALITY_SIGNALS`
 
 ### 5.2 Editor Banner (`EditorQualityBanner.tsx`)
@@ -127,7 +129,8 @@ Repair Menu intentionally does not invent prices, create item photos, or show hi
 - Dynamic imports `computeQualitySignals` and `getActionableSignals` for tree-shaking
 - Shows `AntdModal.confirm` with signal list + helpText
 - **NEVER blocks publishing** — "Publish Anyway" always available
-- Silent catch — failure never blocks the publish flow
+- Failure never blocks the publish flow
+- If the dynamic import or signal computation fails, `Editor.tsx` logs `menu_editor_quality_signals_publish_intercept_failed` through `src/components/templates/main-app/projects/utils/editorDiagnostics.ts` with bounded project/count metadata only
 
 ---
 
@@ -173,4 +176,4 @@ Algorithm:
 
 **Document Signature:** Technical Implementation Plan
 **Created:** March 15, 2026
-**Updated:** June 1, 2026 — v1.2 (dashboard mount, dashboard-to-editor action handoff, editor banner unified router, Command Center repair deep link, missing-price filter, Menu Check owner polish)
+**Updated:** June 29, 2026 — v1.3 (dashboard and publish-intercept failure diagnostics)

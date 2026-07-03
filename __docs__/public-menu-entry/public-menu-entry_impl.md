@@ -3,7 +3,7 @@
 **Version:** 1.0
 **Status:** ✅ IMPLEMENTED — Production-audited
 **Feature Flag:** `ENABLE_PUBLIC_MENU_ENTRY`
-**Last Updated:** June 3, 2026
+**Last Updated:** July 2, 2026
 
 ---
 
@@ -51,6 +51,8 @@ interface PublicMenuDraft {
     sourceUrl?: string;
     finalUrl?: string;
     sourceKind?: string;
+    sourceTextLength?: number;
+    sourceTextPresent?: boolean;
     permissionConfirmed?: boolean;
   };
 
@@ -61,7 +63,7 @@ interface PublicMenuDraft {
     languages: string[];
   } | null;
   extractionStatus: "pending" | "processing" | "completed" | "failed";
-  extractionError?: string;
+  extractionError?: string; // Fixed owner-safe failure text only; no provider/parser/runtime detail
   extractionJobId?: string;
 
   // AI-detected business info
@@ -70,7 +72,7 @@ interface PublicMenuDraft {
   detectedBusinessCategory?: string; // From BUSINESS_CATEGORIES when known
 
   // Metadata
-  ipHash: string; // SHA-256 hash of IP (for rate limiting, not PII)
+  ipHash: string; // HMAC hash of IP via hashPublicRateLimitValue(); no raw IP storage
   userAgent?: string;
   createdAt: Timestamp;
   expiresAt: Timestamp; // createdAt + 24 hours
@@ -96,9 +98,21 @@ Public create-menu no longer runs extraction inside `src/app/api/public/create-m
 
 `functions/src/logic/processMenuImagesJob.ts` marks the draft `processing`, then updates `publicMenuDrafts/{draftId}` to `completed` with extracted categories/items/languages or `failed` with an owner-safe error.
 
+Failure text is intentionally fixed. Worker failures persist `Menu extraction failed` in the job record and an owner-safe draft failure message, while `GET /api/public/create-menu` normalizes failed polling responses to `We could not prepare this menu. Upload a clearer photo or try another public menu link.` The route and worker do not serialize raw provider, parser, Storage, or runtime exception text to the browser or stored job error message; source diagnostics stay bounded in server logs.
+
+Draft IP metadata is hashed through the shared `hashPublicRateLimitValue()` HMAC helper before Firestore storage or diagnostic context. The route does not store raw client IPs or local unsalted IP hashes.
+
+The `/create-menu` browser client reads upload and link POST responses through `readJsonResponseWithLimit()` with an 8KB cap before redirecting to preview. Malformed or oversized responses log `public_create_menu_response_parse_failed` with bounded source/status metadata only. Successful HTTP responses must include a non-empty `draftId`; invalid acknowledgement shapes log `public_create_menu_response_invalid` and show the same localized fixed upload/link failure copy. The client does not display route response text, owner-provided link values, or browser exception messages.
+
+The `/create-menu/preview` browser client reads draft status/full responses through `readJsonResponseWithLimit()` with a 4MB cap because completed drafts can include extracted menu data. Malformed or oversized preview responses log `public_create_menu_preview_response_parse_failed`; empty/scalar/array or invalid-status responses log `public_create_menu_preview_response_invalid` and show the existing localized load failure copy. Both the lightweight status poll and the follow-up full-result fetch share the same HTTP status handling, so `401` routes back to sign-in, `410` shows the expired-draft state, `404` shows the missing-draft state, and other rejected responses use the fixed load-failure state. The claim submit response uses a 32KB cap, logs `public_create_menu_preview_claim_response_parse_failed` / `public_create_menu_preview_claim_response_invalid`, and redirects only when `success: true`, `menuUrl`, `officialPageUrl`, and `subdomain` are present.
+
+The `/create-menu/success` Copy Link handoff uses `copyCreateMenuSuccessLinkToClipboard()` so copied state and starter activation signals advance only after Clipboard API acknowledgement or an acknowledged textarea fallback. Rejected Clipboard API writes fall through to the same acknowledged textarea fallback before failure. Unavailable or failed copy handoffs log `public_create_menu_success_copy_failed` with bounded menu/official-page URL presence-length metadata plus clipboard/fallback support booleans before showing localized fixed copy.
+
 This keeps the owner preview polling contract simple while reusing the same extraction, validation, hardening, and link-text parser path used by authenticated owner extraction.
 
 For sources supported by the shared menu-intake identity helper, the public route adds `sourceMetadata.identityCheck` to the queued job. The shared worker uses that metadata to keep `detectedBusinessName`, `detectedBusinessType`, and `detectedBusinessCategory` populated for the claim form without restoring the old inline public extraction model. Low-confidence specific types claim as canonical `Other`, preserving the broad category when visible.
+
+If draft/job creation fails after a source artifact or draft document exists, cleanup stays best-effort but observable. Failed Storage cleanup logs `public_menu_entry_storage_cleanup_failed` and failed draft-document cleanup logs `public_menu_entry_draft_cleanup_failed` with only bounded draft/user/storage-path presence and length metadata plus a fixed cleanup reason. The cleanup helpers do not log raw draft tokens, raw owner IDs, raw Storage paths, or raw route exceptions.
 
 ### 2.1A Claimed Starter Activation
 
@@ -210,8 +224,10 @@ firestore.indexes.json                // +2 composite indexes
 ### 4.1 POST `/api/public/create-menu`
 
 **Auth:** `withAuth()` — owner must be signed in before source upload/import
-**Rate Limit:** 5 new extraction attempts per user per 24 hours (using `PUBLIC_MENU_ENTRY_AUTH` rate limit config). Active pending/processing drafts and same-source completed drafts are reused before creating new Storage or AI jobs.
+**Rate Limit:** 5 new extraction attempts per user per 24 hours (using `PUBLIC_MENU_ENTRY_AUTH` rate limit config). Active pending/processing drafts and same-source completed drafts are reused before creating new Storage or AI jobs. The limiter key stores a `hashPublicRateLimitValue(userId)` segment, not the raw owner id.
 **Feature Gate:** `ENABLE_PUBLIC_MENU_ENTRY` must be true (returns 404 if false)
+**Body Limit:** requests over the 10MB image limit plus multipart overhead are rejected by `content-length`, and multipart uploads are read through a bounded form-data helper before file access so no-length/chunked oversized bodies cannot buffer unboundedly. The JSON link-import branch also uses an 8KB bounded body reader before link validation, draft dedupe, source acquisition, Storage writes, or extraction job creation.
+**File Validation:** photo uploads must match the JPEG, PNG, or WebP allowlist by claimed MIME and server-side magic-byte validation before any draft, Storage artifact, or extraction job is created.
 
 **Request — photo upload:**
 
@@ -268,10 +284,10 @@ const linkSchema = z.object({
 
 1. Validate feature flag
 2. Validate authenticated session
-3. Validate source: image file type/size or permission-confirmed public menu link
+3. Validate source: image file type/size/magic bytes or permission-confirmed public menu link
 4. Reuse any active pending/processing owner draft before creating new work
 5. Reuse same-source owner drafts by `contentHash` or link `sourceInputHash` when available
-6. Check `PUBLIC_MENU_ENTRY_AUTH` user rate limit before new Storage/AI work
+6. Check `PUBLIC_MENU_ENTRY_AUTH` user rate limit with the hashed owner key segment before new Storage/AI work
 7. For links, acquire the source through the same SSRF-safe helper used by authenticated Menu Link Import
 8. Upload client-optimized image or acquired link artifact to Storage: `publicMenuDrafts/{draftId}/{filename}`
 9. Store a stable Firebase download-token URL for preview and source-file continuity after claim
@@ -283,7 +299,7 @@ const linkSchema = z.object({
 
 **Auth:** `withAuth()` — only `draft.createdByUId` may poll the draft
 **Purpose:** Poll extraction status for the signed-in owner
-**Cost guard:** backend rate limit `public-menu-entry-status:{userId}:{draftId}` caps refresh/poll loops before reading the draft.
+**Cost guard:** backend rate limit `public-menu-entry-status:{userHash}:{draftHash}` caps refresh/poll loops before reading the draft. Both segments use `hashPublicRateLimitValue()` so raw owner IDs and draft URL tokens are not written into rate-limit provider keys.
 
 **Response (200):**
 
@@ -299,7 +315,7 @@ const linkSchema = z.object({
     detectedBusinessType?: string;
     detectedBusinessCategory?: string;
     sourceType?: "image_upload" | "menu_link_import";
-    error?: string;
+    error?: string; // Fixed owner-safe message only when status is failed
 }
 ```
 
@@ -307,7 +323,11 @@ const linkSchema = z.object({
 
 **Auth:** `withAuth()` — user must be authenticated before claim/publish
 **Purpose:** Convert draft to real store + project
-**Default-project guard:** for existing owners, the transaction demotes existing non-deleted default project summaries before writing the claimed project as default, preserving one `/menu` authority.
+**Rate Limit:** uses the existing `PAYMENT_ONBOARDING` publish bucket with `public-menu-claim:{userHash}` so raw owner ids are not stored in rate-limit provider keys.
+**Body Limit:** claim requests above 8KB are rejected before JSON parsing or draft reads.
+**Existing-account guard:** when a signed-in owner already has tenant/store context, the transaction reads both `stores/{storeId}` and `tenants/{tenantId}` before any project or summary writes. The claim fails closed if the IDs are malformed, the store is missing, the tenant is missing, the store belongs to another tenant, the store is inactive/deleted/platform-blocked, or the tenant is platform-blocked.
+**Default-project guard:** for existing owners, the transaction reads the existing project summary before any store/project writes, then demotes existing non-deleted default project summaries before writing the claimed project as default, preserving one `/menu` authority without violating Firestore transaction read/write ordering.
+**Diagnostics:** success, cache-revalidation failure, and unexpected claim failure paths use bounded security diagnostics (`public_menu_claim_succeeded`, `public_menu_claim_cache_revalidation_failed`, `public_menu_claim_failed`) with draft/user/tenant/store/project presence and length metadata only.
 
 **Request:**
 
@@ -351,16 +371,18 @@ const schema = z.object({
 **Flow:**
 
 1. Verify user is authenticated (`withAuth`)
-2. Look up draft by token
-3. Verify draft exists, not expired, not already claimed
-4. Create tenant (if new user) or use existing
-5. Create store with provided business info and starter activation fields
-6. Create project with extracted data
-7. Publish project (set `isDefault: true`)
-8. Mark draft as claimed
-9. Revalidate public cache tags: `menu-store-{storeId}`, `store-{storeId}`, `client-stores`
-10. Return store/project details and canonical menu URL
-11. Client success handler calls `useSession().update()` so the newly claimed tenant/store is available before opening the workspace
+2. Apply the payment-onboarding publish rate limit with the hashed owner key segment.
+3. Reject bodies above 8KB and validate claim JSON.
+4. Look up draft by token.
+5. Verify draft exists, not expired, not already claimed.
+6. Create tenant/store with provided business info and starter activation fields for new users, or verify the existing tenant/store is still eligible before writing.
+7. For existing owners, fill only missing public presence and business-attribute defaults.
+8. Create project with extracted data.
+9. Publish project (set `isDefault: true`).
+10. Mark draft as claimed.
+11. Revalidate public cache tags: `menu-store-{storeId}`, `store-{storeId}`, `client-stores`, and `screen-data`, then wake initialized digital screens through the server-side screen content-version touch.
+12. Return store/project details and canonical menu URL.
+13. Client success handler calls `useSession().update()` so the newly claimed tenant/store is available before opening the workspace.
 
 ---
 
@@ -395,7 +417,8 @@ const schema = z.object({
 **Error handling:**
 
 - On failure: set `extractionStatus: 'failed'` with a generic owner-safe `extractionError`
-- Raw provider/parse errors are only written to secure server logs
+- Failed polling responses return the fixed public create-menu retry message instead of raw stored or provider text
+- Raw provider/parse/runtime errors are not written into job `error.message` or public polling payloads; bounded source error name/code/status metadata stays in server diagnostics
 
 ---
 
@@ -430,7 +453,7 @@ const schema = z.object({
 
 **Components:**
 
-- File input with drag-drop + camera capture (`accept="image/*"`)
+- File input with drag-drop + camera capture (`accept="image/jpeg,image/png,image/webp"` and `capture="environment"`)
 - Menu link input with owner permission confirmation
 - Client-side image optimization (Compressor.js — max 1920px, 80% quality)
 - Upload progress indicator
@@ -488,6 +511,8 @@ const schema = z.object({
 - "Add to Google Maps" guidance
 - "Open setup workspace" CTA
 
+**June 29, 2026 handoff hardening; June 30 copy rejection fallback:** `src/app/(website)/create-menu/success/CreateMenuSuccessClient.tsx` catches Copy Link and WhatsApp browser failures, shows localized fixed copy from the `Website.CreateMenuSuccess` namespace, opens WhatsApp with `noopener,noreferrer`, and records `MENU_LINK_COPIED` / `WHATSAPP_SHARE_STARTED` starter activation signals only after the browser action succeeds. Copy Link falls through from rejected Clipboard API writes to an acknowledged textarea fallback before failure. Diagnostics log only menu/official-page URL presence-length metadata, clipboard/fallback support booleans, message length, WhatsApp URL length, and normalized source error name/code. Raw URLs, generated messages, browser exception text, and query-string values are not logged.
+
 ---
 
 ## 7. Security
@@ -495,7 +520,8 @@ const schema = z.object({
 | Concern               | Mitigation                                                                             |
 | --------------------- | -------------------------------------------------------------------------------------- |
 | Bot abuse             | IP-based rate limiting (3/day), file type validation, max file size, SAFE_MODE kill switch |
-| Storage abuse         | 24h TTL auto-cleanup, max 10MB per upload                                              |
+| Storage abuse         | 24h TTL auto-cleanup, pre-parse request body cap, max 10MB per image upload            |
+| Claim abuse           | Authenticated publish rate limit and 8KB claim body cap before draft reads             |
 | Draft enumeration     | URL uses crypto-random token, NOT sequential IDs                                       |
 | Cost spikes           | Rate limit caps max daily Gemini calls. Feature flag kill switch.                      |
 | XSS in extracted data | All extracted text rendered through React (auto-escaped)                               |
@@ -625,7 +651,7 @@ const schema = z.object({
 | F6    | 🟢 LOW      | `MIN_DIMENSION` constant declared but never used                                                                                         | Removed                                                                                                                                                                                   |
 | F10   | 🟡 MEDIUM   | No SAFE_MODE check before Gemini call — AI operations should be blockable during maintenance                                             | Added `checkSafeMode()` before rate limiting                                                                                                                                              |
 | G1    | 🔴 CRITICAL | Claim flow completely disconnected — after auth, preview page had no way to trigger claim API. No business name form, no publish button. | Added `isClaimMode` detection via `?claim=true` URL param, business name input (pre-filled from AI detection), publish button calling claim API, redirect to success page with URL params |
-| U1    | 🟡 MEDIUM   | `capture="environment"` forces camera on mobile — prevents gallery selection                                                             | Removed attribute — mobile now shows both camera and gallery options                                                                                                                      |
+| U1    | 🟡 MEDIUM   | Earlier broad camera capture risked hiding gallery selection on some mobile browsers                                                     | Superseded July 2: the current input uses exact JPEG/PNG/WebP accept values with `capture="environment"`, while server validation rejects unsupported files                                |
 
 ### Architectural Deviation from Spec
 
@@ -656,4 +682,4 @@ const schema = z.object({
 
 **Document Signature:** MenuList Technical Implementation
 **Audience:** Developers
-**Last Updated:** May 20, 2026
+**Last Updated:** July 2, 2026

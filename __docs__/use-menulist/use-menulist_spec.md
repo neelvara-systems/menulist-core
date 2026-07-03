@@ -45,9 +45,9 @@ A single "Use MenuList" page that aggregates every usable output into one operat
 ### 4.1 Quick Actions (Top — Always Visible)
 | Action | Description | Implementation |
 |--------|-------------|----------------|
-| Copy Menu Link | Copy OBP/menu URL to clipboard | `navigator.clipboard.writeText(menuUrl)` |
+| Copy Menu Link | Copy OBP/menu URL to clipboard | `copyUseMenuListText(menuUrl)` with Clipboard API or acknowledged textarea fallback |
 | Open Menu | Open menu in new tab | `window.open(menuUrl)` |
-| Copy Screen Link | Copy screen URL | `navigator.clipboard.writeText(screenUrl)` |
+| Copy Screen Link | Copy screen URL | `copyUseMenuListText(screenUrl)` with Clipboard API or acknowledged textarea fallback |
 | Download Menu Kit | Download full ZIP bundle | Reuses `generateMenuKit()` from Menu Kit system |
 
 ### 4.2 Share Your Menu

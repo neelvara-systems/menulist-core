@@ -1,7 +1,7 @@
 # AI QnA Chatbot — Technical Implementation Blueprint
 
 > **Version:** 1.0.0
-> **Last Updated:** 2026-03-02
+> **Last Updated:** 2026-06-30
 > **Audience:** Developers
 > **Source:** Codebase forensic audit (code is truth)
 
@@ -54,6 +54,7 @@ The AI QnA Chatbot is a **hybrid client-server feature**:
 | `LocalSearchResults.tsx`     |   —   | Client-side article search results                                                                                                                                                                                                                                                                                                |
 | `SessionCard.tsx`            |   —   | Session card in history list                                                                                                                                                                                                                                                                                                      |
 | `DevOnlyClearDataButton.tsx` |   —   | Dev-only: clear all chat data                                                                                                                                                                                                                                                                                                     |
+| `helpChatDiagnostics.ts`     |   —   | Bounded secure diagnostics for draft storage failures, duplicate feedback guards, and feedback submission failures                                                                                                                                                                                                                 |
 
 **Hooks:**
 
@@ -62,6 +63,8 @@ The AI QnA Chatbot is a **hybrid client-server feature**:
 | `hooks/useChatData.ts`     |  103  | SWR-based data fetching — chat sessions (dedupe 60s, revalidate on mount) + KB categories (context-cached). Returns `chatSessions`, `setChatSessions`, `categoriesData`, `isLoadingSessions`.                                                                                                                                                                                                                                                               |
 | `hooks/useChatHandlers.ts` |  650  | All action handlers — `onSendMessage`, `onRetry`, `handleRegenerate`, `handleFeedbackUp/Down/Submit`, `handleNewChat`, `handleSessionClick`, `handleModeChange`, `handleCopy`, `handleRenameSession`, `handleDeleteSession`, `handleStartFollowUp`, `handleClearAllData`. Uses refs for latest state, `useRequestQueue` for race prevention, `feedbackInProgressRef` for feedback dedup. Calls `searchKnowledgeBase()` via unified `coreSearch()` pipeline. |
 | `hooks/useRequestQueue.ts` |  73   | Sequential request processing — array queue + boolean flag, `enqueue()` + `isProcessing()`. Prevents duplicate messages, lost messages, wrong session assignment.                                                                                                                                                                                                                                                                                           |
+
+`handleCopy` uses `src/lib/answerlattice/supportClipboard.ts` through the local `copyHelpChatMessageToClipboard()` wrapper. It checks Clipboard API support, falls back to a textarea copy path only when available, treats the fallback as successful only when `document.execCommand('copy')` returns `true`, and routes unavailable or rejected copy attempts through fixed `help_chat_message_copy_failed` diagnostics with bounded message/session/text metadata plus clipboard/fallback support booleans only.
 
 **API Client:**
 
@@ -72,6 +75,29 @@ The AI QnA Chatbot is a **hybrid client-server feature**:
 | `chatState.ts` | Chat state reducer — states: idle/loading/typing/success/error. Actions: SEARCH_START/SUCCESS/ERROR, TYPING_COMPLETE, SKIP_TYPING, RESET |
 | `chatUtils.ts` | Utilities — `clearDraft()`, `detectSimilarQueries()`                                                                                     |
 | `types.ts`     | Component-level types — `ChatMessage`, `ChatMode`                                                                                        |
+
+### 2.2.1 Client Diagnostic Contract
+
+HelpChat client diagnostics use `src/components/templates/main-app/helpChat/helpChatDiagnostics.ts`.
+
+Guarded failure codes:
+
+- `help_chat_draft_clear_failed`
+- `help_chat_draft_load_failed`
+- `help_chat_draft_save_failed`
+- `help_chat_feedback_duplicate_ignored`
+- `help_chat_feedback_up_submit_failed`
+- `help_chat_feedback_down_submit_failed`
+- `help_chat_message_copy_failed`
+- `help_chat_message_copy_clipboard_unavailable`
+- `help_chat_message_copy_fallback_failed`
+- `help_chat_session_persist_failed`
+- `help_chat_related_article_open_failed`
+- `help_chat_related_article_open_blocked`
+
+Diagnostics record only bounded session/message/search-history/tenant/store/article/link presence and length metadata, fixed session-persist reason labels, reason counts, comment presence, feedback in-progress counts, related-article counts, message counts, and normalized source error name/code/status. Failed existing-session persistence after send/retry remains non-blocking for the chat UI, but it must emit `help_chat_session_persist_failed` instead of silently swallowing the Firestore merge failure. Diagnostics must not direct-console raw localStorage exceptions, message IDs, session IDs, search history IDs, owner/user text, feedback comments, image base64 data, tenant/store IDs, article URLs, or provider/browser exception objects.
+
+`npm run verify:public-business-truth` enforces the HelpChat diagnostic contract. This changes diagnostics only; the RAG pipeline, canonical-first retrieval doctrine, API contracts, Firestore collections, Storage usage, and Answerlattice tenant shape are unchanged.
 
 **Styles & Docs:**
 
@@ -98,6 +124,10 @@ The AI QnA Chatbot is a **hybrid client-server feature**:
 | `AiSearchBarComponent.module.scss`   | Styles                       |
 | `AiSearchBarComponentUI.module.scss` | UI styles                    |
 
+`ActionButtons.tsx` uses the shared Answerlattice support clipboard helper before showing "Answer copied" feedback. Failed AI Search answer copy records fixed `ai_search_answer_copy_failed` diagnostics with answer length, search-history presence, and clipboard/fallback support booleans only.
+
+`src/components/organisms/ArticleView/index.tsx` uses the same helper for article-link copy. The shared renderer keeps bounded `article_view_link_copy_failed` diagnostics and now records both Clipboard API support and textarea fallback support before showing fixed failure copy.
+
 ### 2.4 Core Libraries
 
 | File                                            | Lines | Purpose                                                                                                                                                                                                                                                                                                                                                 |
@@ -105,6 +135,7 @@ The AI QnA Chatbot is a **hybrid client-server feature**:
 | `src/lib/vectorEmbeddings/index.ts`             |  290  | **RAG Core** — `callGeminiEmbedding()` (`gemini-embedding-001`), `generateSearchQueryFromImage()` (`gemini-2.5-flash` vision context extraction), `callGeminiChat()` (`gemini-2.5-flash`, JSON output). Builds system instructions per mode (QnA/Assistant/Image). Conversation context from last 5 messages. Temperature=0.0, TopP=0.9, TopK=40. |
 | `src/lib/vectorEmbeddings/articleEmbeddings.ts` |  19   | `extractPlainTextFromEditorContent()` — Recursive TipTap JSON → plain text. `extractEditortextForComparison()` — Lowercase + strip non-alphanumeric.                                                                                                                                                                                                    |
 | `src/lib/validation/chatSchemas.ts`             |  147  | Zod schemas — `SearchRequestSchema` validates: query (1-2000 chars, XSS patterns), imageUrl (HTTPS, Firebase host), mode (qna/assistant), context (max 5 messages, alternating roles). 7 malicious pattern detections.                                                                                                                                  |
+| `src/lib/answerlattice/supportClipboard.ts`     |   —   | Browser-local copy acknowledgement helper shared by HelpChat message copy, AI Search answer copy, and ArticleView link copy. It waits for Clipboard API success or acknowledged textarea fallback success before the UI shows copied feedback.                                                                                                                   |
 
 ### 2.5 Database Layer
 
@@ -113,12 +144,12 @@ The AI QnA Chatbot is a **hybrid client-server feature**:
 | Function                                                  | Reads |  Writes   | Notes                                                          |
 | --------------------------------------------------------- | :---: | :-------: | -------------------------------------------------------------- |
 | `uploadChatImage(image, session)`                         |   0   | 1 storage | Tenant-scoped: `chatSessions/chatimages/{tId}/{sId}/{imageId}` |
-| `saveChatSession(data)`                                   |   0   |     1     | `apiCallComposerClientWithoutLoader` (no global spinner)       |
-| `updateChatSession(sessionId, updates)`                   |   0   |     1     | Merge update                                                   |
-| `deleteChatSession(sessionId)`                            |   0   |     1     | Hard delete                                                    |
+| `saveChatSession(data)`                                   |   0   |     1     | `apiCallComposerClientWithoutLoader` (no global spinner); new-session UI requires a saved session acknowledgement |
+| `updateChatSession(sessionId, updates)`                   |   0   |     1     | Merge update with explicit `{ success, sessionId, updatedFields }` acknowledgement |
+| `deleteChatSession(sessionId)`                            |   0   |     1     | Hard delete with explicit `{ success, sessionId, deleted, storageFilesDeleted }` acknowledgement |
 | `getUserChatSessions(session)`                            |   N   |     0     | `tId + uId`, ordered by modifiedOn desc                        |
 | `getChatSessionById(sessionId)`                           |   1   |     0     | Admin use                                                      |
-| `updateMessageFeedback(sessionId, messageId, feedback)`   |   1   |     1     | Read-modify-write on messages array                            |
+| `updateMessageFeedback(sessionId, messageId, feedback)`   |   1   |     1     | Read-modify-write on messages array; returns explicit `{ success, sessionId, messageId }` acknowledgement |
 | `updateSessionInternalNote(sessionId, noteJson, session)` |   0   |     1     | Admin TipTap notes                                             |
 | `getAllChatSessionsForAdmin(session, filters)`            |  N+1  |     0     | Paginated + client-side search/feedback filter                 |
 | `getChatStatistics(session, dateRange)`                   |   N   |     0     | Full scan (EXPENSIVE — use optimized)                          |
@@ -145,14 +176,18 @@ The AI QnA Chatbot is a **hybrid client-server feature**:
 | ----------------------------------------------- | :---: | :----: | ------------------------------ |
 | `addAiSearchHistory(data)`                      |   0   |   1    | Save full response for caching |
 | `findCachedSearchByCacheKey(cacheKey, session)` |   1   |   0    | Cache lookup by key + tId      |
-| `updateAiSearchHistoryWithFeedback(data)`       |   0   |   1    | Add feedback to search record  |
+| `updateAiSearchHistoryWithFeedback(data)`       |   0   |   1    | Add feedback to search record with explicit `{ success, searchHistoryId, updatedFields }` acknowledgement |
 
-**Query Embeddings:** `src/database/queryEmbeddings/index.ts` (70 lines)
+HelpChat answer feedback requires both write acknowledgements before local feedback state or thank-you copy advances. `submitSearchFeedback()` asserts the `aiSearchHistory` feedback update and the chat-session message feedback mirror, then emits the negative-feedback signal only after both writes are acknowledged. Failed or malformed acknowledgement results route through the existing bounded HelpChat feedback failure diagnostics.
+
+HelpChat session deletion is optimistic for responsiveness but requires `assertChatSessionDeleteSucceeded()` before success copy. If the delete acknowledgement is missing or malformed, the handler reloads chat sessions and restores the previously active session/search state instead of leaving an unconfirmed deletion visible.
+
+**Query Embeddings:** `src/database/queryEmbeddings/index.ts` (93 lines)
 
 | Function                                       | Reads | Writes | Notes                                             |
 | ---------------------------------------------- | :---: | :----: | ------------------------------------------------- |
-| `getCachedEmbedding(cacheKey)`                 |   1   |   1    | Read + increment hitCount (uses `firestoreAdmin`) |
-| `saveCachedEmbedding(cacheKey, query, vector)` |   0   |   1    | Cache 768-dim vector                              |
+| `getCachedEmbedding(cacheKey)`                 |   1   |  0-1   | Read cached vector; stale rows return null and attempt best-effort cleanup with bounded failure diagnostics |
+| `saveCachedEmbedding(cacheKey, query, vector)` |   0   |   1    | Cache 768-dim vector with 30-day retention fields |
 
 ---
 
@@ -316,7 +351,7 @@ All variants include:
 | --- | ------------------------------------------------------- | -------- | ------------------------------------------------------------------------------- | ------------------------------ |
 | 1   | No `withAuth()` on search API routes                    | Medium   | `search-kb/route.ts`, `search-kb-stream/route.ts`, `article-embedding/route.ts` | Relies on `getActiveSession()` |
 | 2   | `console.error` used instead of structured logging      | Resolved | `search-kb/route.ts`, `vectorEmbeddings/index.ts`                               | Image query errors use `writeLogEntry` and degrade gracefully |
-| 3   | Query embedding cache has no TTL                        | Low      | `queryEmbeddings/index.ts`                                                      | Grows indefinitely             |
+| 3   | Query embedding cache had no TTL                        | Resolved | `queryEmbeddings/index.ts`                                                      | 30-day `expiresAt`, TTL override, stale-read cleanup, and fixed cleanup-failure diagnostics are implemented |
 | 4   | No conversation length limit                            | Low      | `useChatHandlers.ts`                                                            | Messages array grows unbounded |
 | 5   | `updateMessageFeedback` is read-then-write (not atomic) | Low      | `chatSessions/index.ts:192`                                                     | Concurrent updates could drift |
 | 6   | Streaming mode untested in production                   | Medium   | Feature-flagged OFF                                                             | Should test before enabling    |

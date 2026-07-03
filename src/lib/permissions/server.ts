@@ -2,7 +2,11 @@ import { DB_COLLECTIONS } from "@constant/database";
 import { ECOMSAI_PLATFORM_USER_ROLE } from "@constant/user";
 import { admin } from "@lib/firebase/firebaseAdmin";
 import { logger } from "@lib/monitoring/logger";
-import { buildSecurityContext } from "@lib/security/securityContext";
+import { isPlatformEntityBlocked } from "@lib/platform/entityBlock";
+import {
+    getBoundedSecurityRouteContext,
+    getBoundedSecurityStringContext,
+} from "@lib/security/securityDiagnostics";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { hasAnyPermission } from "./permissionRequirements";
@@ -16,6 +20,12 @@ const getSessionTenantId = (session: any) => Number(session?.tId ?? session?.use
 const isPlatformSession = (session: any) => (
     session?.platformRole === ECOMSAI_PLATFORM_USER_ROLE
     || session?.user?.platformRole === ECOMSAI_PLATFORM_USER_ROLE
+);
+
+const isStorePermissionTargetBlocked = (storeData: any): boolean => (
+    storeData?.active === false
+    || storeData?.deleted === true
+    || isPlatformEntityBlocked(storeData)
 );
 
 export async function requireAnyStorePermission(
@@ -38,13 +48,13 @@ export async function requireAnyStorePermission(
         .get();
 
     const storeData = storeDoc.data();
-    if (!storeDoc.exists || Number(storeData?.tenantId) !== tenantId) {
+    if (!storeDoc.exists || Number(storeData?.tenantId) !== tenantId || isStorePermissionTargetBlocked(storeData)) {
         logger.security("Authorization Failed - Permission Store Missing", {
-            ...buildSecurityContext(session, request),
-            endpoint: request.nextUrl.pathname,
-            label,
-            storeId,
-            tenantId,
+            ...getBoundedSecurityRouteContext(session, request),
+            ...getBoundedSecurityStringContext("endpoint", request.nextUrl.pathname),
+            ...getBoundedSecurityStringContext("label", label),
+            ...getBoundedSecurityStringContext("storeId", storeId),
+            ...getBoundedSecurityStringContext("tenantId", tenantId),
         }, "high");
         return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
@@ -80,13 +90,13 @@ export async function requireAnyStorePermissionForStore(
         .get();
 
     const storeData = storeDoc.data();
-    if (!storeDoc.exists || Number(storeData?.tenantId) !== normalizedTenantId || storeData?.active === false) {
+    if (!storeDoc.exists || Number(storeData?.tenantId) !== normalizedTenantId || isStorePermissionTargetBlocked(storeData)) {
         logger.security("Authorization Failed - Permission Store Missing", {
-            ...buildSecurityContext(session, request),
-            endpoint: request.nextUrl.pathname,
-            label,
-            storeId: normalizedStoreId,
-            tenantId: normalizedTenantId,
+            ...getBoundedSecurityRouteContext(session, request),
+            ...getBoundedSecurityStringContext("endpoint", request.nextUrl.pathname),
+            ...getBoundedSecurityStringContext("label", label),
+            ...getBoundedSecurityStringContext("storeId", normalizedStoreId),
+            ...getBoundedSecurityStringContext("tenantId", normalizedTenantId),
         }, "high");
         return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
@@ -115,13 +125,13 @@ export function requireAnyStorePermissionForStoreData(
 ) {
     if (isPlatformSession(session)) return null;
 
-    if (!storeId || !tenantId || !storeData || Number(storeData?.tenantId) !== tenantId) {
+    if (!storeId || !tenantId || !storeData || Number(storeData?.tenantId) !== tenantId || isStorePermissionTargetBlocked(storeData)) {
         logger.security("Authorization Failed - Permission Store Missing", {
-            ...buildSecurityContext(session, request),
-            endpoint: request.nextUrl.pathname,
-            label,
-            storeId,
-            tenantId,
+            ...getBoundedSecurityRouteContext(session, request),
+            ...getBoundedSecurityStringContext("endpoint", request.nextUrl.pathname),
+            ...getBoundedSecurityStringContext("label", label),
+            ...getBoundedSecurityStringContext("storeId", storeId),
+            ...getBoundedSecurityStringContext("tenantId", tenantId),
         }, "high");
         return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
@@ -134,12 +144,12 @@ export function requireAnyStorePermissionForStoreData(
     if (hasAnyPermission(effectivePermissions, permissions)) return null;
 
     logger.security("Authorization Failed - Permission Required", {
-        ...buildSecurityContext(session, request),
-        endpoint: request.nextUrl.pathname,
-        label,
-        permissions,
-        storeId,
-        tenantId,
+        ...getBoundedSecurityRouteContext(session, request),
+        ...getBoundedSecurityStringContext("endpoint", request.nextUrl.pathname),
+        ...getBoundedSecurityStringContext("label", label),
+        permissionCount: permissions.length,
+        ...getBoundedSecurityStringContext("storeId", storeId),
+        ...getBoundedSecurityStringContext("tenantId", tenantId),
     }, "high");
 
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });

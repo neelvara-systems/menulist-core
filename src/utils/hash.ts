@@ -11,7 +11,7 @@
  * @example
  * ```typescript
  * const hash = hashString('https://storage.googleapis.com/bucket/image.png');
- * console.log(hash); // "2847562934"
+ * // hash === "2847562934"
  * ```
  */
 export function hashString(str: string): string {

@@ -20,6 +20,7 @@ import { resolveStorePublicLanguage } from "@lib/localization/publicRenderLangua
 import { getTenantFromHeaders as sharedGetTenantFromHeaders } from "@lib/multiTenant/getTenantFromHeaders";
 import { isStarterPublicSurfaceExpired } from "@lib/onboarding/starterActivation";
 import { isPlatformEntityBlocked } from "@lib/platform/entityBlock";
+import { normalizePublicProjectSlug } from "@lib/publicRouting/pathSegments";
 import { unstable_cache } from "next/cache";
 import { notFound } from "next/navigation";
 import BrandOBPContent from "./BrandOBPContent";
@@ -92,29 +93,33 @@ const getObpMenuInfo = unstable_cache(
             ];
 
             const projects = ordered
-                .map((project: any) => ({
-                    projectId: project.projectId,
-                    slug: (project.slug as string) || '',
-                    name: project.isSpecialMenu ? (project.specialMenuDisplayName || project.name) : project.name,
-                    isDefault: !project.isSpecialMenu && project === defaultProj,
-                    projectImage: (project.projectImage as string) || null,
-                    isSpecialMenu: project.isSpecialMenu === true,
-                    specialMenuBaseProjectId: project.specialMenuBaseProjectId,
-                    specialMenuDisplayName: project.specialMenuDisplayName,
-                }))
+                .map((project: any) => {
+                    const projectSlug = normalizePublicProjectSlug(project.slug);
+                    return {
+                        projectId: project.projectId,
+                        slug: projectSlug || '',
+                        name: project.isSpecialMenu ? (project.specialMenuDisplayName || project.name) : project.name,
+                        isDefault: !project.isSpecialMenu && project === defaultProj,
+                        projectImage: (project.projectImage as string) || null,
+                        isSpecialMenu: project.isSpecialMenu === true,
+                        specialMenuBaseProjectId: project.specialMenuBaseProjectId,
+                        specialMenuDisplayName: project.specialMenuDisplayName,
+                    };
+                })
                 .map((project) => {
                     if (!project.isSpecialMenu) return project;
                     const baseProject = activeRegular.find((candidate: any) => candidate.projectId === project.specialMenuBaseProjectId) || defaultProj;
+                    const baseProjectSlug = normalizePublicProjectSlug(baseProject?.slug);
                     return {
                         ...project,
-                        slug: (baseProject?.slug as string) || project.slug,
+                        slug: baseProjectSlug || project.slug,
                     };
                 })
                 .filter((project) => project.slug && project.name);
 
             return {
                 hasMenu: true,
-                defaultSlug: (defaultProj?.slug as string) || undefined,
+                defaultSlug: normalizePublicProjectSlug(defaultProj?.slug) || undefined,
                 projects,
             };
         } catch {

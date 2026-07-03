@@ -21,6 +21,7 @@
 
 import { Redis } from '@upstash/redis';
 import { FEATURE_FLAGS } from '@config/features';
+import { secureError } from '@lib/security/secureLogger';
 
 // Initialize Upstash client (only if rate limiting is enabled)
 const upstash = FEATURE_FLAGS.ENABLE_RATE_LIMITING
@@ -32,7 +33,34 @@ const upstash = FEATURE_FLAGS.ENABLE_RATE_LIMITING
 
 const RATE_LIMIT_PROVIDER_TIMEOUT_MS = 1500;
 const RATE_LIMIT_PROVIDER_BYPASS_MS = 60_000;
+const RATE_LIMIT_PROVIDER_TIMEOUT_CODE = 'RATE_LIMIT_PROVIDER_TIMEOUT';
 let rateLimitProviderBypassUntil = 0;
+
+class RateLimitProviderTimeoutError extends Error {
+    readonly code = RATE_LIMIT_PROVIDER_TIMEOUT_CODE;
+
+    constructor() {
+        super('Rate limit provider timeout');
+        this.name = 'RateLimitProviderTimeoutError';
+    }
+}
+
+const isRateLimitProviderTimeoutError = (error: unknown): error is RateLimitProviderTimeoutError => (
+    error instanceof RateLimitProviderTimeoutError
+    || (
+        typeof error === 'object'
+        && error !== null
+        && (error as { code?: unknown }).code === RATE_LIMIT_PROVIDER_TIMEOUT_CODE
+    )
+);
+
+const normalizeRateLimitLogError = (error: unknown, message: string): Error => {
+    const normalized = new Error(message);
+    if (error instanceof Error && error.name) {
+        normalized.name = error.name;
+    }
+    return normalized;
+};
 
 const withRateLimitTimeout = async <T>(promise: Promise<T>): Promise<T> => {
     let timeoutId: ReturnType<typeof setTimeout> | undefined;
@@ -41,7 +69,7 @@ const withRateLimitTimeout = async <T>(promise: Promise<T>): Promise<T> => {
             promise,
             new Promise<T>((_, reject) => {
                 timeoutId = setTimeout(
-                    () => reject(new Error('Rate limit provider timeout')),
+                    () => reject(new RateLimitProviderTimeoutError()),
                     RATE_LIMIT_PROVIDER_TIMEOUT_MS,
                 );
             }),
@@ -55,6 +83,7 @@ interface RateLimitConfig {
     key: string;           // Unique identifier (userId, IP, etc.)
     limit: number;         // Max requests allowed
     window: number;        // Time window in seconds
+    failClosedOnProviderError?: boolean; // Block instead of bypassing when Upstash is unavailable
 }
 
 interface RateLimitResult {
@@ -62,7 +91,20 @@ interface RateLimitResult {
     remaining: number;     // Remaining requests in window
     resetAt: number;       // Timestamp when limit resets
     current: number;       // Current request count
+    reason?: 'limit_exceeded' | 'provider_unavailable';
 }
+
+const buildRateLimitProviderUnavailableResult = (
+    limit: number,
+    now: number,
+    resetAt: number = now + RATE_LIMIT_PROVIDER_BYPASS_MS,
+): RateLimitResult => ({
+    allowed: false,
+    remaining: 0,
+    resetAt,
+    current: limit,
+    reason: 'provider_unavailable',
+});
 
 /**
  * Check if request is within rate limit using Upstash
@@ -77,8 +119,10 @@ interface RateLimitResult {
  * 
  * @example
  * ```typescript
+ * const userRateLimitHash = hashPublicRateLimitValue(userId);
+ * const tenantRateLimitHash = hashPublicRateLimitValue(tenantId);
  * const result = await checkRateLimit({
- *     key: `chat:${userId}:${tenantId}`,
+ *     key: `chat:${userRateLimitHash}:${tenantRateLimitHash}`,
  *     limit: 30,
  *     window: 60
  * });
@@ -89,12 +133,11 @@ interface RateLimitResult {
  * ```
  */
 export async function checkRateLimit(config: RateLimitConfig): Promise<RateLimitResult> {
-    const { key, limit, window } = config;
+    const { key, limit, window, failClosedOnProviderError = false } = config;
     const now = Date.now();
     
     // 🎛️ Feature Flag: Skip rate limiting in development
     if (!FEATURE_FLAGS.ENABLE_RATE_LIMITING) {
-        console.log('[Rate Limit] Disabled via feature flag - allowing request');
         return {
             allowed: true,
             remaining: limit,
@@ -105,7 +148,13 @@ export async function checkRateLimit(config: RateLimitConfig): Promise<RateLimit
     
     // Safety check: Upstash should be initialized if rate limiting is enabled
     if (!upstash) {
-        console.error('[Rate Limit] Upstash not initialized but rate limiting is enabled!');
+        secureError(
+            '[Rate Limit] Upstash not initialized but rate limiting is enabled',
+            new Error('Rate limit provider missing'),
+        );
+        if (failClosedOnProviderError) {
+            return buildRateLimitProviderUnavailableResult(limit, now);
+        }
         return {
             allowed: true,
             remaining: limit,
@@ -115,6 +164,9 @@ export async function checkRateLimit(config: RateLimitConfig): Promise<RateLimit
     }
 
     if (rateLimitProviderBypassUntil > now) {
+        if (failClosedOnProviderError) {
+            return buildRateLimitProviderUnavailableResult(limit, now, rateLimitProviderBypassUntil);
+        }
         return {
             allowed: true,
             remaining: limit,
@@ -169,7 +221,8 @@ export async function checkRateLimit(config: RateLimitConfig): Promise<RateLimit
                 allowed: false,
                 remaining: 0,
                 resetAt,
-                current: currentCount
+                current: currentCount,
+                reason: 'limit_exceeded',
             };
         }
 
@@ -184,11 +237,22 @@ export async function checkRateLimit(config: RateLimitConfig): Promise<RateLimit
 
     } catch (error) {
         rateLimitProviderBypassUntil = Date.now() + RATE_LIMIT_PROVIDER_BYPASS_MS;
-        const message = error instanceof Error ? error.message : 'Unknown provider error';
-        if (message === 'Rate limit provider timeout') {
-            console.warn('[Rate Limit] Upstash provider timed out; temporarily allowing requests with local bypass.');
+        if (isRateLimitProviderTimeoutError(error)) {
+            secureError(
+                '[Rate Limit] Upstash provider timed out; temporarily allowing requests with local bypass',
+                normalizeRateLimitLogError(error, 'Rate limit provider timeout'),
+                { bypassMs: RATE_LIMIT_PROVIDER_BYPASS_MS },
+            );
         } else {
-            console.error('[Rate Limit] Upstash error:', message);
+            secureError(
+                '[Rate Limit] Upstash provider error; temporarily allowing requests with local bypass',
+                normalizeRateLimitLogError(error, 'Rate limit provider error'),
+                { bypassMs: RATE_LIMIT_PROVIDER_BYPASS_MS },
+            );
+        }
+
+        if (failClosedOnProviderError) {
+            return buildRateLimitProviderUnavailableResult(limit, now, rateLimitProviderBypassUntil);
         }
         
         // FALLBACK: Allow request on Upstash error
@@ -208,10 +272,19 @@ export async function checkRateLimit(config: RateLimitConfig): Promise<RateLimit
  */
 export async function resetRateLimit(key: string): Promise<void> {
     try {
+        if (!upstash) {
+            secureError(
+                '[Rate Limit] Reset skipped because provider is not initialized',
+                new Error('Rate limit provider missing'),
+            );
+            return;
+        }
         await upstash.del(key);
-        console.log(`[Rate Limit] Reset limit for key: ${key}`);
     } catch (error) {
-        console.error('[Rate Limit] Failed to reset:', error);
+        secureError(
+            '[Rate Limit] Failed to reset',
+            normalizeRateLimitLogError(error, 'Rate limit reset failed'),
+        );
     }
 }
 
@@ -225,6 +298,18 @@ export async function getRateLimitStats(key: string): Promise<{
     newestRequest: number | null;
 }> {
     try {
+        if (!upstash) {
+            secureError(
+                '[Rate Limit] Stats unavailable because provider is not initialized',
+                new Error('Rate limit provider missing'),
+            );
+            return {
+                current: 0,
+                oldestRequest: null,
+                newestRequest: null
+            };
+        }
+
         // Get all requests in the sorted set
         const requests = await upstash.zrange(key, 0, -1, { withScores: true }) as Array<{ score: number; member: string }>;
 
@@ -242,7 +327,10 @@ export async function getRateLimitStats(key: string): Promise<{
             newestRequest: requests[requests.length - 1].score
         };
     } catch (error) {
-        console.error('[Rate Limit] Failed to get stats:', error);
+        secureError(
+            '[Rate Limit] Failed to get stats',
+            normalizeRateLimitLogError(error, 'Rate limit stats failed'),
+        );
         return {
             current: 0,
             oldestRequest: null,
@@ -257,10 +345,20 @@ export async function getRateLimitStats(key: string): Promise<{
  */
 export async function checkUpstashHealth(): Promise<boolean> {
     try {
+        if (!upstash) {
+            secureError(
+                '[Rate Limit] Health check failed because provider is not initialized',
+                new Error('Rate limit provider missing'),
+            );
+            return false;
+        }
         await upstash.ping();
         return true;
     } catch (error) {
-        console.error('[Rate Limit] Upstash health check failed:', error);
+        secureError(
+            '[Rate Limit] Upstash health check failed',
+            normalizeRateLimitLogError(error, 'Rate limit health check failed'),
+        );
         return false;
     }
 }

@@ -1,13 +1,15 @@
 # Menu Card Export — Test Cases
 
-**Status:** Production-ready baseline; Pro/Premium layout suggestion added
+**Status:** Test-case evidence; not current launch certification
 **Last Updated:** June 3, 2026
 
 ---
 
-## Release Gate
+## Release Gate Evidence Boundary
 
-Menu Card Export is release-ready for the client-first PDF/packet path after the automated gates and real-data runtime checks below.
+These test cases preserve the June 2026 automated-gate and real-data runtime evidence for the client-first PDF/packet path. They are not current release approval.
+
+Current release approval requires the active [production-readiness audit](../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../production-readiness/external-certification-runbook.md) evidence, Digital Menu Output Constitution checks for print/menu outputs, authenticated desktop/mobile browser QA, visual PDF and print-shop artifact review, provider smoke for the AI advisor where enabled, target deploy evidence, and production-host smoke.
 
 Current validated baseline:
 
@@ -18,7 +20,7 @@ Current validated baseline:
 
 Local unauthenticated HTTP route smoke returned `200 OK` for `/use-menulist/menu-card-export`. Visual Browser inspection was blocked by the local Browser webview attach issue, not by a feature-specific HTTP/runtime failure.
 
-Authenticated browser click-through remains a useful manual smoke before a Vercel release, but authenticated real-data source extraction, PDF rendering, ZIP generation, and cost-path validation passed.
+Authenticated browser click-through remains an external certification gate before a Vercel release. Authenticated real-data source extraction, PDF rendering, ZIP generation, and cost-path validation passed for the June 2026 evidence scope only.
 
 ---
 

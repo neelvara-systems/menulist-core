@@ -25,7 +25,7 @@ The public route resolves tenant/store scope server-side, but does not send that
 scope to the browser. Hydrated payloads are compact DTOs:
 
 - KB index: category/section/article title, URL, active flag, and order only.
-- Article detail: title, category labels, URL, and sanitized HTML only.
+- Article detail: title, category labels, URL, and `renderPublicTiptapHtml()` output only. The server renderer escapes text/attributes, allowlists link and image schemes, and emits a fixed tag set before the client renders `safeHtml`.
 - FAQ: question and answer only.
 - Changelog: title, version, release date, and public description only.
 - Site config: domain plus display config only.
@@ -54,6 +54,12 @@ Hosted Help uses the shared Vercel domain provisioning helper:
 
 New Answerlattice help domains are added to the Vercel project during save. DNS status is not polled in the background; owners refresh status manually from the Hosted Help tab. This keeps Firestore writes and Vercel API calls explicit and avoids background cost.
 
+The shared Vercel helper URL-encodes dynamic project/domain path segments before add, status, or removal calls, uses manual redirect handling, aborts stuck provider requests with a timeout, and clears the abort timer after each request. This does not add provider calls or Firestore operations; it only prevents malformed domain/config values from changing the fixed Vercel API path and keeps hosted-help domain saves from waiting indefinitely on the provider.
+
+Provider failure details are logged through fixed runtime diagnostic codes with bounded context only: tenant/store presence-length metadata, domain presence/length metadata, provider code/status, and provider-message presence and length. Browser responses and `domainProvisioningError` status fields use generic hosted-help messages, so failed Vercel add/config checks do not store, log, or return raw provider exception text.
+
+The Widget Management browser caller also validates hosted-help settings load, save, and manual DNS-refresh responses through a 256 KB bounded JSON reader and route-shape guards before updating local hosted-help state. This is a browser-only acknowledgement layer; it adds no Firestore reads, writes, collections, listeners, background jobs, or Vercel provider calls.
+
 Registry docs store only compact status fields:
 
 - `domainStatus`
@@ -67,6 +73,7 @@ Registry docs store only compact status fields:
 ## Bot and Abuse Controls
 
 - Hosted page requests use `ANSWERLATTICE_HOSTED_HELP` rate limiting.
+- Authenticated Hosted Help settings reads use the shared Answerlattice dashboard `DATA_READ` limiter before permission and store/registry reads.
 - When rate limiting is enabled but the limiter provider returns the shared unavailable sentinel, hosted pages render the public shell without KB/FAQ/changelog content reads. Hosted Help settings saves and manual DNS refreshes return `503` with `Cache-Control: no-store`.
 - Search is client-side over already-loaded published content; it does not call AI.
 - Public pages do not expose tickets, chat history, feedback writes, or user/session data.
@@ -90,3 +97,5 @@ Hosted-help settings additionally revalidate:
 The hosted public help surface is acceptable for launch. It adds one cached
 domain registry read per help domain while reusing existing public-content cache
 paths for the heavier KB, FAQ, and changelog data.
+
+The June 27 provider-error boundary adds no Firestore reads, writes, collections, background jobs, or Vercel calls. It only changes failure text and secure logging on existing save/status paths. The June 28 follow-up keeps hosted-help Vercel add failures to provider code/status plus message presence and length in secure logs. The June 30 hosted-help HTML verifier adds no runtime operations; it only pins the existing server sanitizer and client `safeHtml` render boundary in `npm run verify:answerlattice-runtime-truth`.

@@ -5,7 +5,7 @@
 **Date:** January 24, 2026  
 **Version:** 1.1
 
-> ⚠️ **IMPORTANT CONTEXT:** This document describes PROPOSED changes to add a "preview" path for re-extractions. First extraction continues to use the existing server-side flow documented in `MENU-IMAGE-PROCESSING-JOB-QUEUE-SPEC.md`. See that document for the current implementation details.
+> ⚠️ **IMPORTANT CONTEXT:** This document describes PROPOSED changes to add a "preview" path for re-extractions. First extraction continues to use the existing server-side flow documented in `menu-image-processing-job-queue-spec.md`. See that document for the current implementation details.
 
 ---
 
@@ -990,7 +990,7 @@ Key principles:
 - ADD/UPDATE only, never delete
 - Outlet can only override prices, not update master items
 
-> ⚠️ **IMPORTANT CONTEXT:** This document describes PROPOSED changes to add a "preview" path for re-extractions. First extraction continues to use the existing server-side flow documented in `MENU-IMAGE-PROCESSING-JOB-QUEUE-SPEC.md`.
+> ⚠️ **IMPORTANT CONTEXT:** This document describes PROPOSED changes to add a "preview" path for re-extractions. First extraction continues to use the existing server-side flow documented in `menu-image-processing-job-queue-spec.md`.
 
 **Document Version:** 1.2  
 **Created:** January 24, 2026  

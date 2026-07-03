@@ -23,6 +23,45 @@ Keep implementation details in the source docs. This ledger records the consulta
 
 ## Entries
 
+### July 1, 2026 - Owner SEO/AEO Value Layer Added
+
+**Trigger:** Founder asked whether the SEO/AEO system was complete and whether there was high-value improvement for SMB owners beyond the already-valid JSON-LD and public-discovery foundation.
+
+**Decision / change:** Kept public snapshots out of scope and used existing MenuList truth. Added owner-facing value where the repo was still light: Google Business Profile handoff kit, Public Truth readiness modules for Google profile handoff and menu freshness, and visible OBP customer quick answers sourced only from facts already shown on the page.
+
+**Evidence checked:**
+
+- Current Public Truth owner readiness hook/cards in desktop and mobile Business Health.
+- Existing Google listing guide, OBP public render path, OBP schema boundary, and locale copy.
+- Existing verifier boundaries for Public Truth and OBP diagnostics.
+
+**Consultant interpretation:** This improves SMB-owner value without making Google/AI promises: owners get a copyable GBP handoff and freshness nudge, customers get quick answers, and the public page remains a visible-facts source rather than hidden-schema SEO content.
+
+**Verification:** See `menulist-seo-launch_verification.md` for the July 1, 2026 verification pass.
+
+**Follow-up:** Search Console and production host alignment remain owner/cloud-side blockers. IndexNow remains deferred until host/key strategy and noindex gates are designed.
+
+---
+
+### June 30, 2026 - Current AI/Search Discovery Refresh
+
+**Trigger:** Founder asked Codex to do current web research because the search and AI market is changing quickly, identify where MenuList is lagging, and do the valid work while keeping public snapshots out of scope.
+
+**Decision / change:** Kept Google AI work grounded in normal SEO, visible HTML, structured data that matches the page, sitemaps, robots, and Search Console. Added `OAI-AdsBot` to the named crawler policy for OpenAI ad-validation readiness, but documented that it is not a search-ranking or citation lever. Hardened tenant/custom-domain robots so named crawlers receive the same private-route disallows as the generic group. Added stable `@id`, `mainEntityOfPage`, and `inLanguage` signals to public menu JSON-LD, plus language on the nested `Menu` / `OfferCatalog`.
+
+**Evidence checked:**
+
+- Google Search Central AI features, structured-data policies, LocalBusiness structured data, and review/rating guidance.
+- OpenAI crawler documentation for `OAI-SearchBot`, `GPTBot`, `ChatGPT-User`, and `OAI-AdsBot`.
+- IndexNow documentation.
+- Anthropic and Perplexity crawler documentation.
+- Live host checks for `https://menulist.ai`, `https://menulist.ai/robots.txt`, `https://menulist.ai/sitemap.xml`, `https://menulist.online`, `https://menulist.online/robots.txt`, and `https://menulist.online/sitemap.xml`.
+- Current MenuList discovery policy, platform robots, tenant robots, sitemap split, OBP schema, and menu schema generators.
+
+**Follow-up:** Search Console remains blocked because `menulist.ai` still serves a `/lander` shell and `/lander` sitemap while `menulist.online` serves the app with `menulist.ai` canonicals. IndexNow remains deferred until host/key strategy, publish triggers, noindex gates, and abuse limits are designed.
+
+---
+
 ### June 23, 2026 - Placeholder-Backed Service-List Industry Pages Added
 
 **Trigger:** Founder approved using demo placeholders for now so Codex could proceed past the pending demo screenshots/videos gate before salon/spa/service-list SEO pages.

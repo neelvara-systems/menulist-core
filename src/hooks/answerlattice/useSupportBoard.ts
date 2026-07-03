@@ -13,7 +13,7 @@ import {
 import { getRecentSignalEvents } from '@database/answerlattice/signalEvents';
 import { getStoresTickets } from '@database/tickets';
 import { getAnswerlatticeCustomerIdentity } from '@lib/answerlattice/customerIdentity';
-import { getAnswerlatticeUiErrorMessage } from '@lib/answerlattice/uiErrors';
+import { getBoundedAnswerlatticeStringContext, logAnswerlatticeFailure } from '@lib/answerlattice/diagnostics';
 import {
     ANSWERLATTICE_MUTATION_STATUS,
     ANSWERLATTICE_MUTATION_TYPE,
@@ -38,12 +38,41 @@ type Actor = {
     email?: string | null;
 };
 
+const ANSWERLATTICE_SUPPORT_BOARD_LOAD_FAILED = 'Could not load support board';
+const ANSWERLATTICE_SUPPORT_BOARD_CARD_CREATE_FAILED = 'Could not create support card';
+const ANSWERLATTICE_SUPPORT_BOARD_CARD_UPDATE_FAILED = 'Could not update support card';
+const ANSWERLATTICE_SUPPORT_BOARD_NOTE_ADD_FAILED = 'Could not add note';
+const ANSWERLATTICE_SUPPORT_BOARD_TICKET_SYNC_FAILED = 'Could not sync tickets';
+const ANSWERLATTICE_SUPPORT_BOARD_SIGNAL_SYNC_FAILED = 'Could not sync support signals';
+const ANSWERLATTICE_SUPPORT_BOARD_PROPOSAL_CREATE_FAILED = 'Could not create answer proposal';
+
 const getActorStatusMeta = (actor?: Actor | null, remark?: string) => ({
     statusActorId: actor?.id || 'unknown',
     statusActorName: actor?.name || 'Team member',
     statusActorEmail: actor?.email || 'team@answerlattice.internal',
     statusRemark: remark,
 });
+
+const getSupportBoardSummaryLogContext = (tId: number, sId: number) => ({
+    ...getBoundedAnswerlatticeStringContext('tenantId', tId),
+    ...getBoundedAnswerlatticeStringContext('storeId', sId),
+});
+
+const loadSupportBoardSummary = async (
+    tId: number,
+    sId: number,
+): Promise<AnswerlatticeSupportBoardSummary | null> => {
+    try {
+        return await getAnswerlatticeSupportBoardSummary(tId, sId);
+    } catch (error) {
+        logAnswerlatticeFailure(
+            'answerlattice_support_board_summary_load_failed',
+            error,
+            getSupportBoardSummaryLogContext(tId, sId),
+        );
+        return null;
+    }
+};
 
 const ACTIONABLE_SIGNAL_TYPES = new Set<string>([
     ANSWERLATTICE_SIGNAL_TYPE.TICKET,
@@ -250,15 +279,14 @@ export function useSupportBoard(tId?: number, sId?: number, actor?: Actor | null
             const [result, nextSummary] = await Promise.all([
                 listAnswerlatticeSupportBoardCards(tId, sId),
                 nightlySummaryEnabled
-                    ? getAnswerlatticeSupportBoardSummary(tId, sId).catch(() => null)
+                    ? loadSupportBoardSummary(tId, sId)
                     : Promise.resolve(null),
             ]);
             setCards(result || []);
             setSummary(nextSummary);
-        } catch (err) {
-            const uiError = getAnswerlatticeUiErrorMessage(err, 'Could not load support board');
-            setError(uiError);
-            message.error(uiError);
+        } catch {
+            setError(ANSWERLATTICE_SUPPORT_BOARD_LOAD_FAILED);
+            message.error(ANSWERLATTICE_SUPPORT_BOARD_LOAD_FAILED);
         } finally {
             setLoading(false);
         }
@@ -281,8 +309,8 @@ export function useSupportBoard(tId?: number, sId?: number, actor?: Actor | null
             message.success('Support card created');
             await refresh();
             return created;
-        } catch (err) {
-            message.error(getAnswerlatticeUiErrorMessage(err, 'Could not create support card'));
+        } catch {
+            message.error(ANSWERLATTICE_SUPPORT_BOARD_CARD_CREATE_FAILED);
             return null;
         } finally {
             setSaving(false);
@@ -305,8 +333,8 @@ export function useSupportBoard(tId?: number, sId?: number, actor?: Actor | null
                 } : {}),
             });
             await refresh();
-        } catch (err) {
-            message.error(getAnswerlatticeUiErrorMessage(err, 'Could not update support card'));
+        } catch {
+            message.error(ANSWERLATTICE_SUPPORT_BOARD_CARD_UPDATE_FAILED);
         } finally {
             setSaving(false);
         }
@@ -326,8 +354,8 @@ export function useSupportBoard(tId?: number, sId?: number, actor?: Actor | null
             });
             message.success('Internal note added');
             await refresh();
-        } catch (err) {
-            message.error(getAnswerlatticeUiErrorMessage(err, 'Could not add note'));
+        } catch {
+            message.error(ANSWERLATTICE_SUPPORT_BOARD_NOTE_ADD_FAILED);
         } finally {
             setSaving(false);
         }
@@ -359,8 +387,8 @@ export function useSupportBoard(tId?: number, sId?: number, actor?: Actor | null
                 message.info('No new unresolved tickets to add');
             }
             return created.length;
-        } catch (err) {
-            message.error(getAnswerlatticeUiErrorMessage(err, 'Could not sync tickets'));
+        } catch {
+            message.error(ANSWERLATTICE_SUPPORT_BOARD_TICKET_SYNC_FAILED);
             return 0;
         } finally {
             setSyncing(false);
@@ -393,8 +421,8 @@ export function useSupportBoard(tId?: number, sId?: number, actor?: Actor | null
                 message.info('No new actionable support signals to add');
             }
             return created.length;
-        } catch (err) {
-            message.error(getAnswerlatticeUiErrorMessage(err, 'Could not sync support signals'));
+        } catch {
+            message.error(ANSWERLATTICE_SUPPORT_BOARD_SIGNAL_SYNC_FAILED);
             return 0;
         } finally {
             setSyncing(false);
@@ -452,8 +480,8 @@ export function useSupportBoard(tId?: number, sId?: number, actor?: Actor | null
 
             message.success('Answer proposal created');
             await refresh();
-        } catch (err) {
-            message.error(getAnswerlatticeUiErrorMessage(err, 'Could not create answer proposal'));
+        } catch {
+            message.error(ANSWERLATTICE_SUPPORT_BOARD_PROPOSAL_CREATE_FAILED);
         } finally {
             setSaving(false);
         }

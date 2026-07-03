@@ -17,7 +17,7 @@ This feature extends the existing Official Business Page (OBP) and digital menu 
 | Archive             | [ChatGPT Review](./_archive/chatgpt-review.md)                         | Original conversation critical review            |
 | Archive             | [ChatGPT Feedback R2](./_archive/chatgpt-feedback-round2.md)           | Post-implementation founder-level feedback       |
 
-**Status:** ✅ Phase 2 COMPLETE (Feb 22, 2026) — Schema enrichment + FAQ + BreadcrumbList + sitemap enhancement shipped.
+**Status:** Historical implementation evidence through Feb 22, 2026 — schema enrichment, BreadcrumbList, and sitemap enhancement shipped; generated hidden OBP FAQPage was retired from runtime on June 2, 2026.
 
 **May 9, 2026 parity note:** Active route files now live under `src/app/client/`. Tenant sitemaps index OBP plus active canonical project/outlet URLs; the universal `/menu` fallback is not indexed unless an owner has claimed that slug.
 
@@ -55,7 +55,7 @@ Enrich MenuList's existing OBP and menu pages with deeper schema.org structured 
 | `src/lib/schema/index.ts`              | Shared schema.org utilities (buildAddress, buildGeoCoordinates, buildOpeningHours, buildSameAs, buildBreadcrumbList, buildFaqSchema utility, buildTempStatusSchema, getSchemaType, getMenuSchemaType) |
 | `src/app/client/obp/OBPContent.tsx`   | OBP page — renders visible public business facts; generated hidden FAQ JSON-LD was removed from OBP runtime on June 2, 2026                                                                    |
 | `src/app/client/obp/schema.ts`        | OBP schema — uses shared utilities + geo, sameAs, priceRange, dateModified, business-specific @type                                                                                           |
-| `src/app/client/[[...slug]]/page.tsx` | Menu schema — BreadcrumbList JSON-LD, dateModified, servesCuisine, availability, suitableForDiet (Phase 2)                                                                                    |
+| `src/app/client/[[...slug]]/page.tsx` | Menu schema — BreadcrumbList JSON-LD, dateModified, servesCuisine, availability, suitableForDiet                                                                                              |
 | `src/app/client/sitemap.ts`           | Tenant sitemap — OBP + active canonical menu/outlet URLs; `/menu` is indexed only when owner-claimed                                                                                          |
 | `src/types/platform/store.ts`          | StoreDataType — `geo`, `priceRange`, `cuisineTypes`, `tempStatus` fields                                                                                                                       |
 
@@ -68,7 +68,7 @@ Enrich MenuList's existing OBP and menu pages with deeper schema.org structured 
 | **Official Business Page (OBP)** | ✅ BUILT            | OBP is the canonical identity page this feature enriches                                                         |
 | **GBP Sync**                     | ⚠️ FOUNDATION ONLY (flag OFF) | Store fields and docs exist, but OAuth/token runtime is disabled until API access is approved                   |
 | **Catalog Schema**               | ✅ BUILT            | Food pages generate Menu/MenuItem schema; non-food SMB pages generate OfferCatalog/Offer schema                  |
-| **Guest Feedback**               | ✅ BUILT            | Foundation for future reputation/review signals in schema                                                        |
+| **Guest Feedback**               | ✅ BUILT            | Foundation for separately audited reputation/review signals in schema                                             |
 | **Store Data Model**             | ✅ EXISTS           | Contains 90%+ of fields needed for full schema generation                                                        |
 | **Agent Readiness Strategy**     | ✅ BUILT            | Extends this feature with AI discovery layer (llms.txt, llms-full.txt). See `__docs__/agent-readiness-strategy/` |
 
@@ -137,7 +137,7 @@ Shared utilities in `src/lib/schema/index.ts` are used by both OBP (`schema.ts`)
 - ✅ Shared schema utilities (deduplication)
 - ✅ All shipped Feb 16, 2026
 
-### Phase 2: Search Authority Deepening (Weeks 5-8) — ✅ COMPLETE
+### Search Authority Deepening — Historical Implementation Evidence
 
 Deepen schema.org output for richer search results.
 
@@ -148,9 +148,9 @@ Deepen schema.org output for richer search results.
 - ✅ **Sitemap enhancement** — Added `/menu` URL alongside root OBP URL
 - All shipped Feb 22, 2026
 
-### Phase 3: Controlled Real SMB Data (Weeks 9-12) — PENDING
+### Controlled Real SMB Data — Conditional Operating Work
 
-Only after infra is strong.
+Only after infrastructure evidence, owner approval, and the current production-readiness audit approve the scope.
 
 - Onboard **10-25 premium SMBs** manually (not scale)
 - Observe: data completeness, schema accuracy, page performance, and owner link placement. GBP API sync is disabled until prerequisites are approved.
@@ -208,7 +208,7 @@ This is a **data quality discipline**, not a code feature. Enforced through onbo
 | Feb 16, 2026 | ChatGPT conversation reviewed. Strategic direction validated. Execution plan defined.                          |
 | Feb 16, 2026 | **IMPLEMENTED:** Shared schema utilities, OBP + menu schema enrichment, StoreDataType fields (geo, priceRange) |
 | Feb 16, 2026 | ChatGPT feedback round 2 processed. 90-day roadmap locked. Entity consistency standard defined.                |
-| Feb 22, 2026 | **PHASE 2:** FAQ schema on OBP, BreadcrumbList on menu, dateModified + servesCuisine on menu, sitemap enhanced |
+| Feb 22, 2026 | **SEARCH AUTHORITY:** FAQ schema on OBP at the time, BreadcrumbList on menu, dateModified + servesCuisine on menu, sitemap enhanced |
 | Jun 2, 2026 | **PUBLIC TRUTH UPDATE:** OBP generated hidden FAQPage JSON-LD retired; public truth indexing gate added for metadata and per-tenant sitemap inclusion |
 | May 9, 2026  | **PARITY UPDATE:** Corrected `/client` paths, GBP sync status, sitemap indexing rules, and `cuisineTypes` store field |
 

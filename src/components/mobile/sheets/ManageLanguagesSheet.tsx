@@ -2,7 +2,7 @@
 
 import { AI_ACTIONS_TYPES } from '@constant/common';
 import { LANGUAGE_CONSTANTS } from '@constant/languages';
-import { updateProjectMetadata } from '@database/projects';
+import { assertProjectUpdateSucceeded, updateProjectMetadata } from '@database/projects';
 import GlobalLanguagesList from '@data/languages';
 import { useOfferingLabels } from '@hook/useOfferingLabels';
 import { getAvailableLanguagesForMaster, getAvailableLanguagesForOutlet } from '@lib/localization/languageResolver';
@@ -19,6 +19,12 @@ import type { Project, ProjectSummaryData } from '../../templates/main-app/proje
 import { translateFile } from '../../templates/main-app/projects/utils/translationsUtils';
 import { Button, Card, Dialog, Flex, NavBar, Popup, Select, Text, Toast } from '../antd';
 import AiActionProgressPanel from '../components/AiActionProgressPanel';
+import {
+    getBoundedMobileProjectStringContext,
+    getMobileProjectLogContext,
+    getMobileProjectStoreLogContext,
+    logMobileProjectFailure,
+} from '../utils/mobileProjectDiagnostics';
 import { getProjectLanguageIssues, repairLanguageProject } from '../utils/languageRepair';
 import { MENU_SHEET_CONTAINER_STYLE, MENU_SHEET_BODY_STYLE } from './menuSheetLayout';
 
@@ -147,6 +153,32 @@ export default function ManageLanguagesSheet({
     const hasLatinScriptRepairLanguages = useMemo(() => (
         languagesNeedingRepair.some((issue) => !DISTINCT_SCRIPT_LANGUAGE_CODES.has(issue.code))
     ), [languagesNeedingRepair]);
+    const languageIssueTotal = useMemo(
+        () => languageIssues.reduce((total, issue) => total + issue.total, 0),
+        [languageIssues],
+    );
+    const filesWithDataCount = useMemo(
+        () => (projectData.files || []).filter((file) => file.extractedData?.data).length,
+        [projectData.files],
+    );
+
+    const buildMobileLanguageLogContext = (
+        flow: string,
+        metadata: Record<string, boolean | number | string | null | undefined> = {},
+    ) => ({
+        surface: 'mobile_manage_languages',
+        flow,
+        ...getMobileProjectLogContext(projectData.projectId, (projectData as any)?.masterProjectId),
+        ...getMobileProjectStoreLogContext(storeDetails?.storeId, storeDetails?.tenantId),
+        ...getBoundedMobileProjectStringContext('sourceLanguage', sourceLangCode),
+        fileCount: projectData.files?.length || 0,
+        filesWithDataCount,
+        hasLatinScriptRepairLanguages,
+        languageIssueTotal,
+        projectLanguageCount: projectLanguages.length,
+        repairLanguageCount: languagesNeedingRepair.length,
+        ...metadata,
+    });
 
     const addableLanguages = useMemo(() => {
         if (storeDetails?.activeLanguages?.length) {
@@ -180,7 +212,12 @@ export default function ManageLanguagesSheet({
                     );
                     onSaved(updated);
                     Toast.show({ content: t('languageRemoved'), duration: 1200 });
-                } catch {
+                } catch (error) {
+                    logMobileProjectFailure('mobile_manage_languages_remove_failed', error, buildMobileLanguageLogContext('remove_language', {
+                        ...getBoundedMobileProjectStringContext('targetLanguage', languageCode),
+                        nextLanguageCount: Math.max(projectLanguages.length - 1, 0),
+                        wasPrimaryLanguage: primaryLanguageCode === languageCode,
+                    }));
                     Toast.show({ content: t('languageUpdateFailed'), duration: 2000 });
                 } finally {
                     setIsSaving(false);
@@ -275,13 +312,22 @@ export default function ManageLanguagesSheet({
                 }
             }
 
-            onSaved(updated);
             if (Object.keys(projectMetadataTranslationUpdate).length > 0) {
-                await updateProjectMetadata(updated.projectId, projectMetadataTranslationUpdate);
+                const metadataTranslationResult = await updateProjectMetadata(updated.projectId, projectMetadataTranslationUpdate);
+                assertProjectUpdateSucceeded(
+                    metadataTranslationResult,
+                    updated.projectId,
+                    'mobile_manage_languages_project_metadata_translation_update_rejected',
+                );
             }
+            onSaved(updated);
             setPendingLanguageCode('');
             Toast.show({ content: t('languageAdded', { language: targetLang.name }), duration: 1200 });
         } catch (error) {
+            logMobileProjectFailure('mobile_manage_languages_add_failed', error, buildMobileLanguageLogContext('add_language', {
+                ...getBoundedMobileProjectStringContext('targetLanguage', targetLang.code),
+                nextLanguageCount: projectLanguages.includes(targetLang.code) ? projectLanguages.length : projectLanguages.length + 1,
+            }));
             if (error instanceof AICapacityError) {
                 Toast.show({ content: t('translationCreditsRequired'), duration: 2200 });
             } else {
@@ -310,6 +356,12 @@ export default function ManageLanguagesSheet({
                     onSaved(syncProjectPrimaryLanguage(updated, sourceLang.code));
                     Toast.show({ content: `${language.name} repaired`, duration: 1400 });
                 } catch (error) {
+                    logMobileProjectFailure('mobile_manage_languages_repair_failed', error, buildMobileLanguageLogContext('repair_language', {
+                        ...getBoundedMobileProjectStringContext('targetLanguage', languageCode),
+                        repairMissingCount: issue.missing,
+                        repairMismatchedCount: issue.mismatched,
+                        repairTotalCount: issue.total,
+                    }));
                     if (error instanceof AICapacityError) {
                         Toast.show({ content: t('translationCreditsRequired'), duration: 2200 });
                     } else {
@@ -343,6 +395,10 @@ export default function ManageLanguagesSheet({
                     onSaved(updated);
                     Toast.show({ content: 'All language issues repaired', duration: 1500 });
                 } catch (error) {
+                    logMobileProjectFailure('mobile_manage_languages_repair_all_failed', error, buildMobileLanguageLogContext('repair_all_languages', {
+                        repairMissingCount: languagesNeedingRepair.reduce((total, issue) => total + issue.missing, 0),
+                        repairMismatchedCount: languagesNeedingRepair.reduce((total, issue) => total + issue.mismatched, 0),
+                    }));
                     if (error instanceof AICapacityError) {
                         Toast.show({ content: t('translationCreditsRequired'), duration: 2200 });
                     } else {
@@ -369,7 +425,10 @@ export default function ManageLanguagesSheet({
             syncProjectPrimaryLanguage(updated, languageCode);
             onSaved(updated);
             Toast.show({ content: t('primaryLanguage'), duration: 1200 });
-        } catch {
+        } catch (error) {
+            logMobileProjectFailure('mobile_manage_languages_primary_update_failed', error, buildMobileLanguageLogContext('make_primary_language', {
+                ...getBoundedMobileProjectStringContext('targetLanguage', languageCode),
+            }));
             Toast.show({ content: t('languageUpdateFailed'), duration: 2000 });
         } finally {
             setIsSaving(false);

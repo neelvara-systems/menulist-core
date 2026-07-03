@@ -190,14 +190,19 @@ npm install -D @types/qrcode
 1. **Firestore Indexes** - Deploy indexes before launch:
 
    ```bash
-   firebase deploy --only firestore:indexes
+   npm run verify:env-targets
+   firebase deploy --only firestore:indexes --project menulist-qa --config firebase.json
    ```
+
+   Production index deploy requires QA evidence and explicit production approval.
 
 2. **Firestore Rules** - Deploy updated security rules:
 
    ```bash
-   firebase deploy --only firestore:rules
+   firebase deploy --only firestore:rules --project menulist-qa --config firebase.json
    ```
+
+   Production rules deploy requires QA evidence and explicit production approval.
 
 3. **Feature Flag** - `ENABLE_GUEST_FEEDBACK` is set to `true` by default.
 

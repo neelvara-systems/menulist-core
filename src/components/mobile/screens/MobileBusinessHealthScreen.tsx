@@ -6,6 +6,7 @@ import { useOwnerBusinessAssistantThread } from '@hook/ownerBusinessAssistant/us
 import { useOwnerBusinessAnalyticsIndex } from '@hook/ownerBusinessAssistant/useOwnerBusinessAnalyticsIndex';
 import { useOwnerBusinessHealthCurrent } from '@hook/ownerBusinessAssistant/useOwnerBusinessHealthCurrent';
 import { useOwnerBusinessLocationsSummary } from '@hook/ownerBusinessAssistant/useOwnerBusinessLocationsSummary';
+import { useOwnerPublicTruthReadiness } from '@hook/publicTruthTools/useOwnerPublicTruthReadiness';
 import {
     buildOwnerBusinessActivityMetrics,
     getOwnerBusinessCheckActionLabel,
@@ -18,17 +19,27 @@ import type {
     OwnerBusinessHealthCurrentDoc,
     OwnerBusinessHealthQuestion,
 } from '@lib/ownerBusinessAssistant/types';
+import type { OwnerPublicTruthReadinessMobileFixTarget } from '@lib/public-truth-tools/ownerPublicTruthReadiness';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { theme } from 'antd';
 import { type ReactNode, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { LuActivity, LuCheckCircle2, LuLayers, LuSend, LuSparkles, LuUser, LuX } from 'react-icons/lu';
 import { ProjectSelectorList, ProjectSelectorTrigger, type ProjectSelectorItem } from '../../shared/ProjectSelector';
 import { Button, Card, Flex, Input, Popup, Tag, Text, Title, Toast } from '../antd';
+import MobilePublicTruthOwnerCheckCard from '../components/MobilePublicTruthOwnerCheckCard';
 import MobileSettingsScreenHeader from '../components/MobileSettingsScreenHeader';
 import { useMobileProjects } from '../providers/MobileProjectsProvider';
+import {
+    getBoundedMobileOwnerStringContext,
+    getMobileOwnerStoreLogContext,
+    logMobileOwnerFailure,
+} from '../utils/mobileOwnerDiagnostics';
 
 interface MobileBusinessHealthScreenProps {
     onBack: () => void;
+    onOpenMenuTab?: () => void;
+    onOpenMoreScreen?: (screen: 'basicSettings' | 'domainSettings' | 'hoursEdit' | 'officialPage' | 'presenceMonitor') => void;
+    onOpenShareTab?: () => void;
 }
 
 const ALL_MENUS_SCOPE = '__all_menus__';
@@ -44,16 +55,25 @@ const getFeedbackSummaryLine = (current?: OwnerBusinessHealthCurrentDoc | null) 
     return total > 0 ? 'Guest feedback is clear' : null;
 };
 
-export default function MobileBusinessHealthScreen({ onBack }: MobileBusinessHealthScreenProps) {
+export default function MobileBusinessHealthScreen({ onBack, onOpenMenuTab, onOpenMoreScreen, onOpenShareTab }: MobileBusinessHealthScreenProps) {
     const { token } = theme.useToken();
     const { storeDetails, tenantDetails } = useContext(PlatformGlobalDataContext);
-    const { isLoading: isProjectsLoading, projectsList, selectedProjectId } = useMobileProjects();
+    const { isLoading: isProjectsLoading, projectsById, projectsList, selectedProjectId } = useMobileProjects();
     const [businessHealthProjectId, setBusinessHealthProjectId] = useState<string | null>(selectedProjectId || null);
     const [isScopeSelectorOpen, setIsScopeSelectorOpen] = useState(false);
     const scopeTouchedRef = useRef(false);
     const scopeStoreRef = useRef<string | number | null>(null);
     const scopedProjectId = businessHealthProjectId || undefined;
     const { current, isLoading, refresh } = useOwnerBusinessHealthCurrent(undefined, storeDetails?.storeId);
+    const {
+        isLoading: isPublicTruthLoading,
+        report: publicTruthReport,
+    } = useOwnerPublicTruthReadiness({
+        projectDataById: projectsById,
+        projectSummaries: projectsList,
+        selectedProjectId: scopedProjectId,
+        storeDetails,
+    });
     const isHealthReady = Boolean(current && current.status !== 'not_ready' && current.sourceRefs?.length);
     const { analytics } = useOwnerBusinessAnalyticsIndex(scopedProjectId, storeDetails?.storeId, { enabled: isHealthReady });
     const { answer, ask, threadId, lastQuestion, isLoading: isAnswering } = useOwnerBusinessAssistantAnswer(scopedProjectId, {
@@ -222,12 +242,48 @@ export default function MobileBusinessHealthScreen({ onBack }: MobileBusinessHea
             if (threadId || result?.threadId) void refreshThread();
             setQuestion('');
         } catch (error) {
-            Toast.show({ content: error instanceof Error ? error.message : 'Business Health could not answer that', duration: 2200 });
+            logMobileOwnerFailure('mobile_business_health_answer_failed', error, {
+                ...getMobileOwnerStoreLogContext(storeDetails?.storeId, storeDetails?.tenantId),
+                ...getBoundedMobileOwnerStringContext('projectId', scopedProjectId),
+                hasSuggestedQuestionId: Boolean(suggestedQuestionId),
+                questionLength: normalized.length,
+            });
+            Toast.show({ content: 'Business Health could not answer that.', duration: 2200 });
         }
     };
 
     const handleSuggested = (suggested: OwnerBusinessHealthQuestion) => {
         void handleAsk(suggested.question, suggested.id);
+    };
+
+    const handlePublicTruthFixTarget = (target: OwnerPublicTruthReadinessMobileFixTarget) => {
+        if (target === 'menu_tab') {
+            onOpenMenuTab?.();
+            return;
+        }
+        if (target === 'share_tab') {
+            onOpenShareTab?.();
+            return;
+        }
+
+        const moreTarget = target === 'basic_settings'
+            ? 'basicSettings'
+            : target === 'domain_settings'
+                ? 'domainSettings'
+                : target === 'hours_edit'
+                    ? 'hoursEdit'
+                    : target === 'official_page'
+                        ? 'officialPage'
+                        : target === 'presence_monitor'
+                            ? 'presenceMonitor'
+                            : null;
+
+        if (moreTarget) {
+            onOpenMoreScreen?.(moreTarget);
+            return;
+        }
+
+        Toast.show({ content: 'Open this from desktop settings.', duration: 1600 });
     };
 
     const renderFollowUpQuestions = (questions?: OwnerBusinessHealthQuestion[]) => {
@@ -405,6 +461,12 @@ export default function MobileBusinessHealthScreen({ onBack }: MobileBusinessHea
                         </Button>
                     </Flex>
                 </Card>
+
+                <MobilePublicTruthOwnerCheckCard
+                    isLoading={isPublicTruthLoading}
+                    onFixTarget={handlePublicTruthFixTarget}
+                    report={publicTruthReport}
+                />
 
                 {isHealthReady && analyticsMetrics.length ? (
                     <Card title="Today">

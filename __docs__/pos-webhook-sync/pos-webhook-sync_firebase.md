@@ -3,8 +3,8 @@
 > **Document Type:** Firebase cost tracking (CRITICAL — directly impacts revenue)
 > **Audience:** Founder, developers, cost auditors
 > **Status:** Implemented
-> **Last Updated:** June 11, 2026
-> **Version:** 2.2
+> **Last Updated:** July 2, 2026
+> **Version:** 2.6
 
 ---
 
@@ -12,11 +12,11 @@
 
 - **Collections Used:** `stores`, `stores/{storeId}/posDeliveryLogs` (subcollection), `menuChangeLog/{tId}/{sId}` for secret-rotation audit events
 - **Storage Buckets:** None (no file uploads)
-- **Cloud Functions:** None (deferred — delivery handled by API routes)
+- **Cloud Functions:** None (delivery handled by API routes)
 - **External Services:** Outbound HTTP (webhook delivery)
 - **Estimated Monthly Cost:** Low (~$1-2 per 1000 active stores with POS sync enabled)
 
-> **Implementation note (Feb 14, 2026):** `pos_delivery_queue` collection is NOT used. Delivery is handled directly by the `/api/pos-sync/deliver` API route using Admin SDK. Cloud Functions for delivery worker and retry scheduler are deferred. See `_impl.md` §14 ADR.
+> **Implementation note (July 2, 2026):** `pos_delivery_queue` collection is NOT used. Delivery is handled directly by the `/api/pos-sync/deliver` API route using Admin SDK. No POS Sync Cloud Function delivery worker or retry scheduler is active. See `_impl.md` §14 ADR and §15 inactive worker boundary.
 
 ---
 
@@ -27,7 +27,7 @@
 | Operation                        | Collection                     | Trigger           | Frequency               | Docs Read | Indexed? | Notes                                 |
 | -------------------------------- | ------------------------------ | ----------------- | ----------------------- | --------- | -------- | ------------------------------------- |
 | Load store POS sync config       | `stores`                       | POS Sync tab open | Per settings page visit | 1         | Yes      | Already loaded by page, no extra read |
-| Read webhook config for delivery | `stores`                       | API route trigger | Per delivery job        | 1         | Yes      | Reads webhook URL + secret            |
+| Read webhook config for test/delivery | `stores`                  | API route trigger | Per test/delivery job   | 1         | Yes      | Reads webhook URL + secret, then rejects inactive, soft-deleted, platform-blocked, cross-tenant, or unauthorized target stores before provider validation or outbound fetch |
 | Read project data for delivery   | `projects/{tId}/{sId}`         | API route trigger | Per delivery job        | 1         | Yes      | Admin SDK read scoped to request tenant/store/project |
 | Load delivery logs (client)      | `stores/{sId}/posDeliveryLogs` | POS Sync tab open | Per settings page visit | 20 max    | Yes      | Last 20 logs, ordered by sentAt       |
 
@@ -38,7 +38,8 @@
 | Save POS sync config (client)  | `stores`                       | Owner saves settings    | Rare (setup only)    | 1            | merge update  | posSync object fields via updateStore() DAL  |
 | Enable POS sync + gen secret   | `stores`                       | Owner enables toggle    | Once per store       | 1            | merge update  | Sets posSync.enabled, webhookSecret (client) |
 | Create delivery log (server)   | `stores/{sId}/posDeliveryLogs` | After delivery attempt  | Per delivery attempt | 1            | full document | ~200 bytes per log entry                     |
-| Update store sync status       | `stores`                       | After delivery/test (server) | Per delivery/test | 1            | merge update  | lastSentAt where applicable, lastStatus, lastError, status |
+| Update store sync status       | `stores`                       | After delivery/test (server) | Per delivery/test | 1            | merge update  | lastSentAt where applicable, lastStatus, owner-safe lastError, status |
+| Update delivery failure counter | `stores`                      | After delivery/test or connection edit | Per delivery/test/edit | 1 merged with status write | merge update | `posSync.consecutiveFailures` resets on delivery success, test success, or owner URL/secret edits; live delivery failures increment it |
 | Increment menuVersion (server) | `stores`                       | Menu change             | Per menu change      | 1            | merge update  | posSync.menuVersion++                        |
 | Update instructions count      | `stores`                       | Prepare provider email draft | Max 3/day/store | 1            | merge update  | instructionsSentCount, sentDate (client)     |
 | Regenerate secret (client)     | `stores`                       | Owner action            | Very rare            | 1            | merge update  | webhookSecret + latest rotation metadata via updateStore() DAL |
@@ -61,12 +62,12 @@ No Firebase Storage operations. This feature uses only Firestore and outbound HT
 
 ## Cloud Functions
 
-> **Status (Feb 14, 2026):** No Cloud Functions implemented. Delivery is handled directly by the `/api/pos-sync/deliver` API route. Cloud Functions for delivery worker and retry scheduler are deferred for future implementation.
+> **Status (July 2, 2026):** No Cloud Functions implemented. Delivery is handled directly by the `/api/pos-sync/deliver` API route. POS Sync worker and retry scheduler names below are inactive design notes only.
 
 | Function            | Status   | Notes                                                       |
 | ------------------- | -------- | ----------------------------------------------------------- |
-| `posDeliveryWorker` | Deferred | Currently handled by `/api/pos-sync/deliver` API route      |
-| `posRetryScheduler` | Deferred | Currently single attempt per delivery; multi-retry deferred |
+| `posDeliveryWorker` | Not active | Currently handled by `/api/pos-sync/deliver` API route      |
+| `posRetryScheduler` | Not active | Current runtime uses one attempt per delivery               |
 
 ---
 
@@ -96,11 +97,22 @@ match /stores/{storeId}/posDeliveryLogs/{logId} {
 - **Max 20 logs:** Automatic cleanup prevents unbounded growth.
 - **Log cleanup:** Automatic batch deletion of logs beyond the 20-entry limit prevents unbounded growth.
 - **Scoped project read:** Delivery reads only `projects/{tenantId}/{storeId}/{projectId}` through Admin SDK. No legacy/global project fallback is used in the server route.
-- **Webhook URL guard:** Desktop, mobile, test, and delivery paths require a public HTTPS endpoint and reject localhost/private-network URLs before outbound fetch.
+- **Webhook URL guard:** Desktop and mobile settings require a public HTTPS endpoint. Server-side test and delivery routes also resolve the validated hostname and reject localhost/private-network DNS targets before project reads, menu-version increments, test payload construction, or outbound fetch.
+- **Target-store guard:** Server-side test and delivery routes reuse the existing store config read for `requireAnyStorePermissionForStoreData()`. This adds no extra Firestore read and rejects inactive, soft-deleted, platform-blocked, cross-tenant, or unauthorized target stores before webhook URL validation, project reads, menu-version writes, delivery logs, POS status writes, or outbound fetches.
+- **Limiter-key privacy:** Server-side POS test and delivery routes keep the same store-scoped 10/min and 20/min limits, but store only HMAC-hashed store key material in Upstash. This adds no Firestore reads/writes/deletes, Storage operations, provider calls, cache invalidations, rules, indexes, schema changes, Cloud Function logic changes, owner-facing settings, or Firebase deploy requirement.
+- **Settings save acknowledgements:** Desktop and mobile settings saves require the existing `updateStore()` write to return an acknowledgement before local POS Sync state or success copy changes. Rejected acknowledgements use `desktop_pos_sync_store_update_rejected` or `mobile_pos_sync_store_update_rejected`. This adds no Firestore read/write/delete beyond the existing save attempt.
+- **Delivery failure threshold:** Live delivery failures increment `posSync.consecutiveFailures` on the same store status write. First and second failed live deliveries stay quiet for the owner; the third consecutive failed live delivery marks `connection_issue`. Successful delivery, successful connection test, owner URL save, owner secret rotation, and enable/disable changes reset the counter. This adds no new collection, rule, index, Cloud Function, Storage operation, provider call, Firebase deploy requirement, or Vercel deploy action.
+- **Mobile save diagnostics:** Failed mobile settings saves log `mobile_pos_sync_settings_save_failed` with bounded URL/secret shape metadata only. This adds no Firestore read/write/delete beyond the existing `updateStore()` save attempt and never logs raw webhook URLs or secrets.
+- **Desktop secret-rotation save diagnostics:** Failed desktop secret regeneration saves log `desktop_pos_sync_secret_rotation_save_failed`, roll the local draft secret back, and keep the modal open. This adds no Firestore read/write/delete beyond the existing `updateStore()` save attempt and existing non-blocking MOL audit write, and never logs raw webhook secrets or actor values.
+- **Browser handoff diagnostics:** Failed desktop/mobile secret copy, desktop delivery-history load, provider-instruction prep, technical-summary copy, and sample-payload download actions log bounded metadata only. Secret and technical-summary copied feedback waits for Clipboard API success or acknowledged textarea fallback success, with clipboard/fallback support booleans recorded on failure. These add no Firestore read/write/delete beyond the existing delivery-history read attempt and existing settings/audit writes, and never log raw webhook URLs, webhook secrets, provider emails, setup text, or sample payload JSON.
+- **Debounced delivery admission:** Client-side debounced delivery requires POS Sync to be enabled with both a provider connection URL and signing secret before calling `/api/pos-sync/deliver`. Misconfigured stores missing the signing secret do not create invalid delivery-route calls after menu saves. This avoids an avoidable API route call plus its store/project reads and status/log writes, and adds no Firestore reads/writes/deletes, Storage operations, API routes, Cloud Function logic, provider calls, rules, indexes, schema fields, owner-facing settings, Firebase deploy requirement, or Vercel deploy action.
+- **Debounced delivery diagnostics:** Failed client-side debounced delivery requests, non-OK delivery-route responses, and redirected `/api/pos-sync/deliver` handoffs log bounded `pos_sync_delivery_trigger_failed` diagnostics. This adds no Firestore reads/writes/deletes, Storage operations, API routes, Cloud Function logic, provider calls beyond the already-intended delivery request, rules, indexes, schema fields, owner-facing settings, Firebase deploy requirement, or Vercel deploy action.
+- **Shared test request policy and acknowledgement:** Desktop and mobile connection tests import `POS_SYNC_TEST_REQUEST_POLICY` from `src/lib/posSync/testResponse.ts` before the existing bounded response parser, then show reachable feedback only after an OK HTTP response plus `isSuccessfulPosSyncTestResponse()`. This changes no Firestore reads/writes/deletes, Storage operations, API routes, Cloud Function logic, provider calls, rules, indexes, schema fields, owner-facing settings, Firebase deploy requirement, or Vercel deploy action.
+- **Source gate:** POS Sync boundary source gate: `npm run verify:pos-sync-boundary` performs no Firestore reads/writes/deletes, Storage operations, provider calls, Cloud Function logic changes, cache invalidations, or deploy action. It only checks source/docs parity for the public-HTTPS/DNS guard, route auth/tenant/rate-limit order, debounced delivery URL+secret admission, desktop/mobile test-policy reuse, and MobileShell routing. It does not call an external POS provider.
 
 ### Potential Optimizations
 
-- **Migrate to Cloud Functions:** When ready, move delivery to a Cloud Function triggered by Firestore for better reliability and retry support.
+- **Conditional worker extraction:** Moving delivery into Cloud Functions requires a separate scoped feature, cost review, deploy evidence, and production-host smoke.
 - **Conditional menu snapshot:** Only build snapshot if store has posSync.enabled = true (already checked in API route).
 - **Payload compression:** For large menus (500+ items), consider gzip compression before sending.
 
@@ -149,6 +161,7 @@ match /stores/{storeId}/posDeliveryLogs/{logId} {
 ## Firestore Operations — Server-Side (API Routes)
 
 > Server routes use `admin.firestore()` (Admin SDK). These routes exist because they make outbound HTTP POST requests to external webhook URLs — which cannot be done client-side due to CORS.
+> Webhook route guard (June 30, 2026): test and delivery calls validate public HTTPS URLs plus resolved DNS targets, then use manual redirect handling. Redirect responses are handled as connection issues and do not add Firebase reads, writes, or deletes.
 
 | Operation                               | Route                   | Collection                     | Type           |
 | --------------------------------------- | ----------------------- | ------------------------------ | -------------- |
@@ -159,7 +172,21 @@ match /stores/{storeId}/posDeliveryLogs/{logId} {
 | Increment menuVersion                   | `/api/pos-sync/deliver` | `stores/{sId}`                 | Write (merge)  |
 | Create delivery log entry               | `/api/pos-sync/deliver` | `stores/{sId}/posDeliveryLogs` | Write (add)    |
 | Cleanup old delivery logs (>20)         | `/api/pos-sync/deliver` | `stores/{sId}/posDeliveryLogs` | Delete (batch) |
-| Update store sync status after delivery | `/api/pos-sync/deliver` | `stores/{sId}`                 | Write (merge)  |
+| Update store sync status/failure counter after delivery | `/api/pos-sync/deliver` | `stores/{sId}` | Write (merge) |
+
+> **Failure-text invariant (Jun 27, 2026):** `posSync.lastError`, POS test responses, delivery responses, and delivery-log `error` values use fixed owner-safe connection text. Provider validation text, HTTP failure text, timeout labels, and exception messages stay out of persisted owner state and API responses; route diagnostics keep bounded status/code metadata only. This changes no Firestore read/write/delete counts.
+
+> **Delivery-threshold invariant (July 2, 2026):** `/api/pos-sync/deliver` increments `posSync.consecutiveFailures` on failed live deliveries and only sets owner-facing `connection_issue` when the counter reaches three. Delivery/test success and owner connection edits reset the counter. This changes only fields on existing store merge writes and adds no Firestore collection, rule, index, Cloud Function, Storage operation, cache invalidation, Firebase deploy requirement, or Vercel deploy action.
+
+> **Network-target invariant (Jun 28, 2026):** POS test and delivery routes perform server-side DNS resolution after static HTTPS validation and reject any blocked hostname or resolved local/private address before project reads, menu-version increments, payload construction, or outbound fetch. This adds one DNS lookup for valid server-side POS test/delivery requests and no Firestore read/write/delete, Storage, Cloud Function, rules, index, schema, or owner-setting change.
+
+> **Browser-handoff invariant (Jun 30, 2026):** Secret-copy, setup-instruction, technical-summary, sample-payload, and delivery-history browser-local failures use bounded diagnostics only. Secret and technical-summary copied feedback waits for Clipboard API success or acknowledged textarea fallback success. This changes no POS Sync Firestore read/write/delete counts, routes, rules, indexes, Cloud Functions, Storage operations, cache invalidation, schema, or owner setting.
+
+> **Test-response/request invariant (Jun 30, 2026; acknowledgement tightened July 1, 2026):** Desktop and mobile POS Sync connection tests import `POS_SYNC_TEST_REQUEST_POLICY` from `src/lib/posSync/testResponse.ts`, call `/api/pos-sync/test` with same-origin credentials, no-store cache policy, and manual redirect handling, then parse responses through the shared 16KB bounded response guard. Successful reachable feedback requires an OK HTTP response plus `isSuccessfulPosSyncTestResponse()`. Malformed, oversized, or invalid acknowledgements use bounded diagnostics only. This changes no POS Sync Firestore read/write/delete counts, route behavior, rate limits, outbound webhook checks, POS status writes, delivery logs, rules, indexes, Cloud Functions, Storage operations, cache invalidation, schema, owner setting, Firebase deploy requirement, or Vercel deploy action.
+
+> **Secret-rotation persistence invariant (Jun 29, 2026):** Desktop secret regeneration shows success only after the existing store update resolves. Failed saves use bounded diagnostics and local rollback only; this changes no Firestore operation count, schema, routes, rules, indexes, Cloud Functions, Storage operations, cache invalidation, Firebase deploy requirement, or Vercel deploy action.
+
+> **Settings-save acknowledgement invariant (Jun 30, 2026):** Desktop toggle, URL save, instruction-count update, secret regeneration, and mobile settings save show success or update local POS Sync state only after the existing `updateStore()` call returns an acknowledged store result. Rejected acknowledgements use bounded diagnostics only. This changes no POS Sync Firestore read/write/delete counts, route behavior, rate limits, outbound webhook checks, POS status writes, delivery logs, rules, indexes, Cloud Functions, Storage operations, cache invalidation, schema, owner setting, Firebase deploy requirement, or Vercel deploy action.
 
 ## Firestore Operations — Client-Side (PosSyncTab.tsx)
 
@@ -178,8 +205,8 @@ match /stores/{storeId}/posDeliveryLogs/{logId} {
 
 | Route                   | Method | Firebase Ops           | Rate Limited? | Notes                                                  |
 | ----------------------- | ------ | ---------------------- | ------------- | ------------------------------------------------------ |
-| `/api/pos-sync/test`    | POST   | 1R + 1W (store)        | Yes (10/min)  | Reads config, makes outbound HTTP, updates status      |
-| `/api/pos-sync/deliver` | POST   | 2R + 3W + batch delete | Yes (20/min)  | Read config+project, write version+log+status, cleanup |
+| `/api/pos-sync/test`    | POST   | 1R + 1W (store)        | Yes (10/min)  | 8KB body cap, hashed store limiter key, reads config, makes outbound HTTP, updates status |
+| `/api/pos-sync/deliver` | POST   | 2R + 3W + batch delete | Yes (20/min)  | 8KB body cap, hashed store limiter key, read config+project, write version+log+status, cleanup |
 
 > **Note (Feb 14, 2026):** Originally had 5 API routes. 3 were removed and moved client-side: `regenerate-secret`, `delivery-history`, `send-instructions`. See `_impl.md` §14 ADR-1 for rationale.
 
@@ -187,4 +214,4 @@ match /stores/{storeId}/posDeliveryLogs/{logId} {
 
 **Document Signature:** Firebase Cost Tracking
 **Author:** Cascade + Founder
-**Last Updated:** May 23, 2026
+**Last Updated:** June 29, 2026

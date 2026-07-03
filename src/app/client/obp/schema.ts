@@ -11,6 +11,9 @@
  * - priceRange: $/$$/$$$/$$$$
  * - dateModified: Freshness signal for AI engines
  * - openingHoursSpecification, address, catalog links, telephone, etc.
+ * - Google review links can render visibly on OBP, but are not emitted as
+ *   AggregateRating because MenuList references Google reviews rather than
+ *   hosting first-party review markup.
  *
  * @see __docs__/discovery-infrastructure/
  * @see __docs__/official-business-page/official-business-page_impl.md §9
@@ -20,13 +23,17 @@ import { FEATURE_FLAGS } from '@config/features';
 import { getBrandName, getStoreContextName } from '@lib/businessIdentity/names';
 import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
 import { getPublicBusinessDescription } from '@lib/obp/getPublicBusinessDescription';
+import { normalizeOBPExternalHttpsUrl } from '@lib/obp/publicLinks';
 import {
     buildAddress,
     buildAmenityFeatures,
     buildPublicCatalogUrlSchema,
     buildGeoCoordinates,
     buildOpeningHours,
+    buildSchemaPriceRange,
+    buildSchemaTelephone,
     buildSameAs,
+    buildTempStatusSchema,
     getSchemaType,
     isFoodBusinessCategory,
 } from '@lib/schema';
@@ -59,6 +66,14 @@ export function generateOBPSchema(
     const geo = buildGeoCoordinates(storeData);
     const openingHours = buildOpeningHours(storeData);
     const sameAs = buildSameAs(storeData);
+    const telephone = buildSchemaTelephone({
+        countryCode: storeData?.countryCode,
+        dialCode: storeData?.dialCode,
+        phoneNumber: storeData?.phoneNumber,
+        phone: storeData?.phone,
+    });
+    const priceRange = buildSchemaPriceRange(storeData?.priceRange);
+    const tempStatusHours = buildTempStatusSchema(storeData?.tempStatus);
     const schemaType = getSchemaType(storeData?.businessType, storeData?.businessCategory);
     const menuUrl = options.hasPublishedMenu
         ? (options.menuUrl || buildMenuUrl(canonicalUrl))
@@ -74,6 +89,9 @@ export function generateOBPSchema(
     const paymentAccepted = FEATURE_FLAGS.ENABLE_BUSINESS_ATTRIBUTES
         ? buildPaymentAccepted(storeData?.businessAttributes)
         : undefined;
+
+    const reservationUrl = normalizeOBPExternalHttpsUrl(storeData?.publicPresence?.reservationUrl);
+    const orderUrl = normalizeOBPExternalHttpsUrl(storeData?.publicPresence?.orderUrl);
 
     return {
         '@context': 'https://schema.org',
@@ -98,23 +116,24 @@ export function generateOBPSchema(
             storeData?.publicPresence?.businessCover,
         ),
         url: canonicalUrl,
-        ...(storeData?.phoneNumber && { telephone: storeData.phoneNumber }),
+        ...(telephone && { telephone }),
         ...(storeData?.email && { email: storeData.email }),
         ...(storeData?.currencyCode && { currenciesAccepted: storeData.currencyCode }),
-        ...(storeData?.priceRange && { priceRange: storeData.priceRange }),
+        ...(priceRange && { priceRange }),
         ...(address && { address }),
         ...(geo && { geo }),
         ...(openingHours && { openingHoursSpecification: openingHours }),
+        ...(tempStatusHours && { specialOpeningHoursSpecification: tempStatusHours }),
         ...(sameAs && { sameAs }),
         ...(amenityFeatures && { amenityFeature: amenityFeatures }),
         ...(paymentAccepted && { paymentAccepted }),
-        ...(storeData?.publicPresence?.reservationUrl && {
-            acceptsReservations: storeData.publicPresence.reservationUrl,
+        ...(reservationUrl && {
+            acceptsReservations: !!reservationUrl,
         }),
         ...buildPublicCatalogUrlSchema(menuUrl, storeData?.businessType, storeData?.businessCategory, catalogName),
         ...buildPotentialActions(
-            storeData?.publicPresence?.reservationUrl,
-            storeData?.publicPresence?.orderUrl,
+            reservationUrl,
+            orderUrl,
         ),
         ...(storeData?.modifiedOn && {
             dateModified: typeof storeData.modifiedOn === 'string'
@@ -125,10 +144,6 @@ export function generateOBPSchema(
         ...(storeData?.publicPresence?.establishedYear && {
             foundingDate: String(storeData.publicPresence.establishedYear),
         }),
-        ...buildAggregateRating(
-            storeData?.publicPresence?.googleRating,
-            storeData?.publicPresence?.googleReviewCount,
-        ),
         ...(storeData?.permanentlyClosed && {
             additionalProperty: {
                 '@type': 'PropertyValue',
@@ -213,23 +228,6 @@ function buildImageSchema(logo?: string, photos?: string[], businessCover?: stri
     }
     if (images.length === 0) return {};
     return { image: images.length === 1 ? images[0] : images };
-}
-
-/**
- * Build AggregateRating schema from Google review data.
- * Only emits when both rating and review count are available.
- * @see https://schema.org/AggregateRating
- */
-function buildAggregateRating(rating?: number, reviewCount?: number): Record<string, any> {
-    if (!rating || rating < 1 || rating > 5) return {};
-    return {
-        aggregateRating: {
-            '@type': 'AggregateRating',
-            ratingValue: rating,
-            bestRating: 5,
-            ...(reviewCount && reviewCount > 0 && { reviewCount }),
-        },
-    };
 }
 
 /**

@@ -42,9 +42,9 @@ const pricingFaqData = [
             <div className="space-y-2">
                 <p>Choose based on your stage:</p>
                 <ul className="list-disc list-outside pl-5 space-y-1">
-                    <li><strong>Starter</strong> — keep one public menu live with QR and basic updates.</li>
-                    <li><strong>Pro</strong> — improve presentation, languages, owner controls, and content enhancement capacity.</li>
-                    <li><strong>Premium</strong> — manage multiple locations with central governance.</li>
+                    <li><strong>Starter</strong>: keep one public menu live with QR and basic updates.</li>
+                    <li><strong>Pro</strong>: improve presentation, languages, owner controls, and content enhancement capacity.</li>
+                    <li><strong>Premium</strong>: manage multiple locations with central governance.</li>
                 </ul>
             </div>
         )

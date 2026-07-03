@@ -2,8 +2,10 @@
 ## MenuListAI Authentication System - The Definitive Guide
 
 **Last Updated:** November 7, 2025  
-**Status:** Production Active  
+**Status:** Auth architecture/source evidence; not current launch certification
 **Author:** Platform Team
+
+> **Launch Boundary:** This guide records the MenuList auth architecture and source-backed behavior. It is not production-launch approval. Current auth release approval requires the active [production-readiness audit](../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../production-readiness/external-certification-runbook.md), `npm run verify:agent-readiness`, `npm run verify:auth-security-failure-matrix`, auth browser/API smoke, Firebase Auth custom-claims/token smoke, App Check/session-cookie review, login/logout/OAuth/password/staff-passcode QA, target deploy evidence where auth-adjacent routes or rules change, and production-host smoke.
 
 ---
 

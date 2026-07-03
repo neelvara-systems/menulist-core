@@ -1,6 +1,6 @@
 /**
  * System Health Dashboard Component
- * Displays real-time system health and alerts
+ * Displays system health when a backing source is connected.
  */
 
 'use client';
@@ -66,75 +66,17 @@ export function SystemHealthDashboard({
   const [loading, setLoading] = useState(true);
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
 
-  // Fetch health data
   useEffect(() => {
     fetchHealthData();
     const interval = setInterval(fetchHealthData, refreshInterval);
     return () => clearInterval(interval);
   }, [tenantId, storeId, refreshInterval]);
 
-  async function fetchHealthData() {
-    try {
-      setLoading(true);
-      // TODO: Replace with actual API call
-      // const data = await getSystemHealth(tenantId, storeId);
-      
-      // Mock data for now
-      const mockData: SystemHealthReport = {
-        overall: 'healthy',
-        timestamp: new Date(),
-        components: [
-          {
-            component: 'Firestore',
-            status: 'healthy',
-            lastCheck: new Date(),
-            responseTime: 125,
-            uptime: 99.9,
-          },
-          {
-            component: 'AI Services',
-            status: 'healthy',
-            lastCheck: new Date(),
-            responseTime: 450,
-            details: { hasRecentData: true },
-          },
-          {
-            component: 'KB Coverage',
-            status: 'healthy',
-            lastCheck: new Date(),
-            responseTime: 89,
-            details: { articleCount: 42, coverage: 'Active' },
-          },
-          {
-            component: 'Error Rate',
-            status: 'healthy',
-            lastCheck: new Date(),
-            errorRate: 2,
-            details: { totalErrors: 2, criticalErrors: 0 },
-          },
-          {
-            component: 'Analytics Pipeline',
-            status: 'healthy',
-            lastCheck: new Date(),
-            responseTime: 234,
-            details: { status: 'Active' },
-          },
-        ],
-        summary: {
-          healthyCount: 5,
-          degradedCount: 0,
-          downCount: 0,
-          avgResponseTime: 225,
-        },
-      };
-
-      setHealthReport(mockData);
-      setLastUpdate(new Date());
-    } catch (error) {
-      console.error('Failed to fetch health data:', error);
-    } finally {
-      setLoading(false);
-    }
+  function fetchHealthData() {
+    setLoading(true);
+    setHealthReport(null);
+    setLastUpdate(new Date());
+    setLoading(false);
   }
 
   if (loading && !healthReport) {
@@ -150,7 +92,7 @@ export function SystemHealthDashboard({
   if (!healthReport) {
     return (
       <Card>
-        <Alert message="Unable to load system health data" type="error" />
+        <Alert message="System health data is not connected for this view." type="info" />
       </Card>
     );
   }

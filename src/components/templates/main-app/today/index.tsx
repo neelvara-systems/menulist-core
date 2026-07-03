@@ -6,6 +6,7 @@ import { TODAY_FEATURE_GUIDE_SECTIONS, TODAY_FEATURE_GUIDE_TITLE } from "@consta
 import { useOwnerActionPlan } from "@hook/useOwnerActionPlan";
 import { useTodayCampaigns } from "@hook/useTodayCampaigns";
 import { getStoreContextName } from "@lib/businessIdentity/names";
+import { getBoundedCampaignStringContext, logCampaignFailure } from "@lib/campaigns/campaignDiagnostics";
 import { buildTodayMenuLink, TodayActionFeedback, performTodaySurfaceAction } from "@lib/campaigns/todayActionExecutor";
 import { shouldShowGrowthOSNavigation } from "@lib/growthos/entitlements";
 import { getLocalizedText, getPrimaryLocalizedLanguage } from "@lib/localization/text";
@@ -205,8 +206,11 @@ const TodayScreen = () => {
         method: ExportMethod,
         itemName?: string
     ) => {
+        let menuLink: string | undefined;
+        let hasCampaignImage = false;
+
         try {
-            const menuLink = buildTodayMenuLink(
+            menuLink = buildTodayMenuLink(
                 storeDetails?.subdomain,
                 storeDetails?.customDomain,
                 (activeProject as any)?.name,
@@ -214,6 +218,7 @@ const TodayScreen = () => {
             const fullCampaign = surface === 'whatsapp_status' || surface === 'whatsapp_message'
                 ? null
                 : await getCampaign(campaignId);
+            hasCampaignImage = Boolean(fullCampaign?.assets?.imageUrl);
             const actionFeedback = await performTodaySurfaceAction({
                 surface,
                 itemName: itemName || fullCampaign?.subject?.itemName || 'Item',
@@ -221,9 +226,7 @@ const TodayScreen = () => {
                 imageUrl: fullCampaign?.assets?.imageUrl,
             });
             const result = await completeCampaign(campaignId, projectId, campaignType, surface, method);
-            if (result?.today) {
-                await mutate((current) => current ? { ...current, today: result.today } : current, { revalidate: false });
-            }
+            await mutate((current) => current ? { ...current, today: result.today } : current, { revalidate: false });
             notification.success({
                 message: actionFeedback.title,
                 description: actionFeedback.description,
@@ -239,16 +242,22 @@ const TodayScreen = () => {
                 setLastActionFeedback(null);
             }, 2000);
         } catch (error) {
-            console.error("Failed to complete campaign:", error);
+            logCampaignFailure('today_campaign_action_flow_failed', error, {
+                ...getBoundedCampaignStringContext('campaignId', campaignId),
+                ...getBoundedCampaignStringContext('projectId', projectId),
+                ...getBoundedCampaignStringContext('campaignType', campaignType),
+                ...getBoundedCampaignStringContext('surface', surface),
+                ...getBoundedCampaignStringContext('method', method),
+                hasMenuLink: Boolean(menuLink),
+                hasCampaignImage,
+            });
         }
     };
 
     const handleSkip = async (campaignId: string, campaignType: CampaignType) => {
         try {
             const result = await skipCampaign(campaignId, campaignType);
-            if (result?.today) {
-                await mutate((current) => current ? { ...current, today: result.today } : current, { revalidate: false });
-            }
+            await mutate((current) => current ? { ...current, today: result.today } : current, { revalidate: false });
             setLastActionFeedback({
                 title: 'Skipped for today',
                 description: 'No action needed. This item was removed from Today for now.',
@@ -260,7 +269,10 @@ const TodayScreen = () => {
                 setLastActionFeedback(null);
             }, 2000);
         } catch (error) {
-            console.error("Failed to skip campaign:", error);
+            logCampaignFailure('today_campaign_skip_flow_failed', error, {
+                ...getBoundedCampaignStringContext('campaignId', campaignId),
+                ...getBoundedCampaignStringContext('campaignType', campaignType),
+            });
             notification.error({
                 message: "Failed to skip",
                 description: "Please try again.",
@@ -354,7 +366,7 @@ const TodayScreen = () => {
                 <div className={styles.emptyState}>
                     <LuCalendarOff className={styles.emptyIcon} />
                     <Text type="secondary">
-                        This feature is coming soon.
+                        Today is not available for this location.
                     </Text>
                 </div>
                 {renderGuideDrawer()}
@@ -401,6 +413,7 @@ const TodayScreen = () => {
                     confidence={ownerActionPlan.confidence}
                     sourceQuality={ownerActionPlan.sourceQuality}
                     analyticsAiEntitlement={ownerActionPlan.analyticsAiEntitlement}
+                    projectId={activeProject?.projectId || null}
                 />
                 {shouldShowTodayDigest ? <Text className={styles.todayDigest}>{todayDigest}</Text> : null}
                 {renderInactiveItemsReminder()}
@@ -422,6 +435,7 @@ const TodayScreen = () => {
                 confidence={ownerActionPlan.confidence}
                 sourceQuality={ownerActionPlan.sourceQuality}
                 analyticsAiEntitlement={ownerActionPlan.analyticsAiEntitlement}
+                projectId={activeProject?.projectId || null}
             />
 
             {shouldShowTodayDigest ? <Text className={styles.todayDigest}>{todayDigest}</Text> : null}

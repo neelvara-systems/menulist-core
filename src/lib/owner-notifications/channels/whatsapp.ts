@@ -1,10 +1,37 @@
 import type { OwnerNotificationChannelResult } from '../types';
 import { buildWhatsAppPhoneParam } from '@lib/phone/phoneNumber';
+import { logNotificationFailure } from '@lib/notifications/notificationDiagnostics';
+import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';
 
 const GRAPH_API_VERSION = 'v21.0';
+const MAX_WHATSAPP_PROVIDER_MESSAGE_ID_LENGTH = 200;
+const OWNER_NOTIFICATION_WHATSAPP_RESPONSE_JSON_MAX_BYTES = 64 * 1024;
+const OWNER_NOTIFICATION_WHATSAPP_RESPONSE_PARSE_FAILED = 'whatsapp_response_parse_failed';
+
+function getWhatsAppProviderMessageId(value: unknown): string | undefined {
+    if (!value || typeof value !== 'object') return undefined;
+    const messages = (value as { messages?: unknown }).messages;
+    if (!Array.isArray(messages)) return undefined;
+    const providerMessageId = (messages[0] as { id?: unknown } | undefined)?.id;
+    if (typeof providerMessageId !== 'string') return undefined;
+    const normalized = providerMessageId.trim();
+    if (!normalized || normalized.length > MAX_WHATSAPP_PROVIDER_MESSAGE_ID_LENGTH) return undefined;
+    return normalized;
+}
 
 function normalizeWhatsAppNumber(value: string): string {
     return buildWhatsAppPhoneParam({ phoneNumber: value });
+}
+
+async function readOwnerNotificationWhatsAppResponseJson(response: Response): Promise<unknown | null> {
+    try {
+        return await readJsonResponseWithLimit(response, OWNER_NOTIFICATION_WHATSAPP_RESPONSE_JSON_MAX_BYTES);
+    } catch (error) {
+        logNotificationFailure(OWNER_NOTIFICATION_WHATSAPP_RESPONSE_PARSE_FAILED, error, {
+            responseStatus: response.status,
+        });
+        return null;
+    }
 }
 
 export function isOwnerNotificationWhatsAppConfigured(): boolean {
@@ -25,6 +52,7 @@ export async function sendOwnerNotificationWhatsApp(params: {
     if (!phoneNumberId || !accessToken) {
         return { ok: false, skippedReason: 'whatsapp_not_configured' };
     }
+    const encodedPhoneNumberId = encodeURIComponent(phoneNumberId);
 
     const to = normalizeWhatsAppNumber(params.to);
     if (!to) {
@@ -63,8 +91,9 @@ export async function sendOwnerNotificationWhatsApp(params: {
     }
 
     try {
-        const response = await fetch(`https://graph.facebook.com/${GRAPH_API_VERSION}/${phoneNumberId}/messages`, {
+        const response = await fetch(`https://graph.facebook.com/${GRAPH_API_VERSION}/${encodedPhoneNumberId}/messages`, {
             method: 'POST',
+            redirect: 'manual',
             headers: {
                 Authorization: `Bearer ${accessToken}`,
                 'Content-Type': 'application/json',
@@ -72,27 +101,21 @@ export async function sendOwnerNotificationWhatsApp(params: {
             body: JSON.stringify(body),
         });
 
-        const responseText = await response.text();
         if (!response.ok) {
             return {
                 ok: false,
-                error: `WhatsApp send failed: ${response.status} ${responseText.slice(0, 180)}`,
+                error: 'whatsapp_send_failed',
             };
         }
 
-        let providerMessageId: string | undefined;
-        try {
-            const parsed = JSON.parse(responseText);
-            providerMessageId = parsed?.messages?.[0]?.id;
-        } catch {
-            providerMessageId = undefined;
-        }
+        const parsed = await readOwnerNotificationWhatsAppResponseJson(response);
+        const providerMessageId = getWhatsAppProviderMessageId(parsed);
 
         return { ok: true, providerMessageId };
-    } catch (error) {
+    } catch {
         return {
             ok: false,
-            error: error instanceof Error ? error.message : 'Unknown WhatsApp error',
+            error: 'whatsapp_send_failed',
         };
     }
 }

@@ -2,7 +2,7 @@
 
 **Status:** ✅ IMPLEMENTED — Feature flag OFF by default  
 **Created:** February 20, 2026  
-**Last Updated:** February 20, 2026  
+**Last Updated:** June 29, 2026
 **Audience:** Developers
 
 ---
@@ -13,10 +13,9 @@
 Publish Pipeline (existing)
   └─→ onDocumentUpdated trigger on project doc
       └─→ verifyPublish()
-          ├─ Fetch public menu URL (HTTP GET)
+          ├─ Validate public menu URL target (HTTPS + DNS public target)
+          ├─ Fetch validated public menu URL (HTTP GET)
           ├─ Check HTTP 200 + non-empty body
-          ├─ Check at least 1 category in response
-          ├─ Check sample image loads (HTTP HEAD)
           ├─ Update store.health field
           └─ If FAILED → call createAlert() from monitoring/alerts.ts
 ```
@@ -44,6 +43,12 @@ health: {
 
 No new API routes. This is a Cloud Functions-only system.
 
+## Client Publish Handoff Diagnostics
+
+Desktop B2C publish success remains non-blocking with respect to menu-health verification. `src/components/templates/main-app/projects/b2cView/index.tsx` attempts to prepare the existing `verifyMenuPublish` callable handoff after publish using the routed public project/menu URL from `generateProjectUrl()` rather than the tenant root. If that setup/import/path generation fails, it logs `projects_b2c_publish_verification_setup_failed` with bounded project/store/store-slug/custom-domain/public-url metadata. Callable/provider failures after setup stay inside the existing `verifyMenuPublish` wrapper diagnostics.
+
+Mobile Design publish uses the same routed project/menu URL contract. `src/components/mobile/screens/MobileDesignEditorScreen.tsx` prepares the `verifyMenuPublish` handoff after the acknowledged `publishProject()` result, preserves default-project URL semantics, supports custom domains, logs only `mobile_design_publish_verification_setup_failed` for setup failures, and leaves callable/provider failures to the shared wrapper so the owner-facing publish success remains non-blocking.
+
 ## File Structure
 
 ```
@@ -53,6 +58,8 @@ functions/src/
 │   ├── errorTracking.ts             # EXISTS — Error tracking
 │   ├── healthCheck.ts               # EXISTS — Per-store chat health (keep separate)
 │   └── publishVerification.ts       # NEW — Post-publish menu verification
+├── utils/
+│   └── networkTarget.ts             # Shared HTTPS + DNS public target validator
 └── index.ts                         # MODIFY — Add onDocumentUpdated trigger
 ```
 
@@ -71,15 +78,17 @@ functions/src/
 
 import { Timestamp } from "firebase-admin/firestore";
 import { firestoreAdmin as db } from "../firebaseAdmin";
+import { validateNetworkTargetUrl } from "../utils/networkTarget";
 import { createAlert } from "./alerts";
+
+const PUBLISH_VERIFICATION_MIN_BODY_BYTES = 500;
 
 // Standardized failure codes
 export const FAILURE_CODES = {
   MENU_HTTP_FAIL: "MENU_HTTP_FAIL",
   MENU_EMPTY: "MENU_EMPTY",
-  IMAGE_FAIL: "IMAGE_FAIL",
-  PUBLISH_WRITE_FAIL: "PUBLISH_WRITE_FAIL",
-  CACHE_STALE: "CACHE_STALE",
+  MENU_TARGET_REJECTED: "MENU_TARGET_REJECTED",
+  VERIFICATION_ERROR: "VERIFICATION_ERROR",
 } as const;
 
 interface VerificationResult {
@@ -88,33 +97,66 @@ interface VerificationResult {
   checks: {
     httpOk: boolean;
     hasContent: boolean;
-    imagesOk: boolean;
   };
   responseTimeMs: number;
+}
+
+async function hasMinimumMenuResponseBytes(response: Response): Promise<boolean> {
+  const contentLengthHeader = response.headers.get("content-length");
+  const contentLength = contentLengthHeader ? Number(contentLengthHeader) : Number.NaN;
+  if (Number.isFinite(contentLength) && contentLength > PUBLISH_VERIFICATION_MIN_BODY_BYTES) {
+    return true;
+  }
+
+  if (!response.body || typeof response.body.getReader !== "function") {
+    return false;
+  }
+
+  const reader = response.body.getReader();
+  let bytesRead = 0;
+  try {
+    while (bytesRead <= PUBLISH_VERIFICATION_MIN_BODY_BYTES) {
+      const { done, value } = await reader.read();
+      if (done) return bytesRead > PUBLISH_VERIFICATION_MIN_BODY_BYTES;
+      bytesRead += value?.byteLength || 0;
+      if (bytesRead > PUBLISH_VERIFICATION_MIN_BODY_BYTES) return true;
+    }
+    return true;
+  } finally {
+    await reader.cancel().catch(() => undefined);
+  }
 }
 
 /**
  * Verify a published menu is accessible and has content.
  * Called after project document is updated with new publish data.
  */
-export async function verifyPublish(
-  storeId: string,
-  tenantId: string,
-  publicMenuUrl: string,
-): Promise<VerificationResult> {
+export async function verifyPublish(publicMenuUrl: string): Promise<VerificationResult> {
   const startTime = Date.now();
   const result: VerificationResult = {
     status: "OK",
     failureReason: null,
-    checks: { httpOk: false, hasContent: false, imagesOk: true },
+    checks: { httpOk: false, hasContent: false },
     responseTimeMs: 0,
   };
 
   try {
-    // Check 1: HTTP 200
-    const response = await fetch(publicMenuUrl, {
+    // Check 1: validate then fetch HTTP 200
+    const cacheBustUrl = `${publicMenuUrl}${publicMenuUrl.includes("?") ? "&" : "?"}_hc=${Date.now()}`;
+    const targetValidation = await validateNetworkTargetUrl(cacheBustUrl, {
+      allowLocalhostInEmulator: true,
+      allowedProtocols: process.env.FUNCTIONS_EMULATOR === "true" ? ["http:", "https:"] : ["https:"],
+    });
+
+    if (!targetValidation.valid || !targetValidation.normalizedUrl) {
+      result.status = "FAILED";
+      result.failureReason = FAILURE_CODES.MENU_TARGET_REJECTED;
+      return result;
+    }
+
+    const response = await fetch(targetValidation.normalizedUrl, {
       method: "GET",
-      headers: { "User-Agent": "MenuList-HealthCheck/1.0" },
+      headers: { "User-Agent": "MenuList-HealthCheck/1.0", "Cache-Control": "no-cache" },
       signal: AbortSignal.timeout(15000), // 15s timeout
     });
 
@@ -126,8 +168,7 @@ export async function verifyPublish(
     }
 
     // Check 2: Non-empty body with content
-    const body = await response.text();
-    const hasContent = body.length > 500; // Reasonable minimum for a menu page
+    const hasContent = await hasMinimumMenuResponseBytes(response);
     result.checks.hasContent = hasContent;
 
     if (!hasContent) {
@@ -136,12 +177,9 @@ export async function verifyPublish(
       return result;
     }
 
-    // Check 3: Image spot-check (optional, WARNING only)
-    // This is a lightweight check — don't block on image validation
-    // Images are served via Firebase Storage CDN, rarely fail independently
   } catch (error) {
     result.status = "FAILED";
-    result.failureReason = FAILURE_CODES.MENU_HTTP_FAIL;
+    result.failureReason = FAILURE_CODES.VERIFICATION_ERROR;
   } finally {
     result.responseTimeMs = Date.now() - startTime;
   }
@@ -202,6 +240,8 @@ export async function updateStoreHealth(
   }
 }
 ```
+
+The target guard runs before the outbound health-check fetch. Production accepts public HTTPS targets only; the Functions emulator can accept local HTTP/HTTPS targets for local testing. DNS-resolved localhost, private, link-local, multicast, and metadata-style targets fail with `MENU_TARGET_REJECTED` before any menu fetch is attempted.
 
 ### Trigger in `functions/src/index.ts`
 

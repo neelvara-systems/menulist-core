@@ -16,6 +16,8 @@ import { LuAlertCircle, LuCheck, LuLoader, LuLogIn, LuSend, LuUpload } from 'rea
 import AnimateOnScroll, { AnimateStaggerChild } from '@/components/website/shared/AnimateOnScroll';
 import { useWebsitePath } from '@/components/website/shared/WebsiteProductPathProvider';
 import type { OwnerDetectedDetail } from '@lib/menu-intake-identity/ownerPresentation';
+import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
+import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';
 
 interface ExtractedCategory {
     id: string;
@@ -57,6 +59,86 @@ interface PreviewClientProps {
     draftId: string;
 }
 
+const CREATE_MENU_PREVIEW_RESPONSE_JSON_MAX_BYTES = 4 * 1024 * 1024;
+const CREATE_MENU_PREVIEW_CLAIM_RESPONSE_JSON_MAX_BYTES = 32 * 1024;
+
+type PreviewDraftResponse = Omit<Partial<DraftData>, 'status'> & {
+    status?: unknown;
+};
+
+type PreviewClaimResponse = {
+    isNewAccount?: unknown;
+    menuUrl?: unknown;
+    officialPageUrl?: unknown;
+    projectId?: unknown;
+    storeId?: unknown;
+    subdomain?: unknown;
+    success?: unknown;
+};
+
+type PreviewResponsePhase = 'status' | 'full' | 'claim';
+
+const DRAFT_STATUSES = new Set(['pending', 'processing', 'completed', 'failed', 'expired']);
+
+const isDraftStatus = (value: unknown): value is DraftData['status'] => (
+    typeof value === 'string' && DRAFT_STATUSES.has(value)
+);
+
+const isNonEmptyResponseString = (value: unknown): value is string => (
+    typeof value === 'string' && value.trim().length > 0
+);
+
+const getPreviewResponseByteCap = (phase: PreviewResponsePhase) => (
+    phase === 'claim'
+        ? CREATE_MENU_PREVIEW_CLAIM_RESPONSE_JSON_MAX_BYTES
+        : CREATE_MENU_PREVIEW_RESPONSE_JSON_MAX_BYTES
+);
+
+const getPreviewResponseLogContext = (
+    draftId: string,
+    phase: PreviewResponsePhase,
+    response: Response,
+) => ({
+    ...getBoundedRuntimeStringContext('draftId', draftId),
+    maxBytes: getPreviewResponseByteCap(phase),
+    phase,
+    responseOk: response.ok,
+    responseStatus: response.status,
+});
+
+async function readPreviewResponseJson<T>(
+    response: Response,
+    draftId: string,
+    phase: PreviewResponsePhase,
+): Promise<T | null> {
+    const maxBytes = getPreviewResponseByteCap(phase);
+    const parseFailureCode = phase === 'claim'
+        ? 'public_create_menu_preview_claim_response_parse_failed'
+        : 'public_create_menu_preview_response_parse_failed';
+    const invalidFailureCode = phase === 'claim'
+        ? 'public_create_menu_preview_claim_response_invalid'
+        : 'public_create_menu_preview_response_invalid';
+
+    let payload: unknown;
+    try {
+        payload = await readJsonResponseWithLimit<unknown>(response, maxBytes);
+    } catch (error) {
+        logRuntimeFailure(parseFailureCode, error, getPreviewResponseLogContext(draftId, phase, response));
+        return null;
+    }
+
+    if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+        logRuntimeFailure(
+            invalidFailureCode,
+            new Error(invalidFailureCode),
+            getPreviewResponseLogContext(draftId, phase, response),
+        );
+        return null;
+    }
+
+    return payload as T;
+}
+
 function cleanPreviewText(value: unknown): string {
     return typeof value === 'string' ? value.replace(/\s+/g, ' ').trim() : '';
 }
@@ -80,6 +162,19 @@ function addPreviewDetail(
         value: normalized,
         ...(color ? { color } : {}),
     });
+}
+
+function buildPreviewFailureDraft(status: DraftData['status'], error: string): DraftData {
+    return {
+        status,
+        extractedData: null,
+        detectedBusinessName: null,
+        detectedBusinessType: null,
+        detectedBusinessCategory: null,
+        imageUrl: null,
+        sourceType: undefined,
+        error,
+    };
 }
 
 function buildPublicPreviewDetectedDetails(
@@ -175,6 +270,33 @@ export default function PreviewClient({ draftId }: PreviewClientProps) {
     const [claiming, setClaiming] = useState(false);
     const [claimError, setClaimError] = useState<string | null>(null);
 
+    const handlePreviewDraftResponseStatus = useCallback((res: Response) => {
+        if (res.status === 401) {
+            router.replace(signInUrl);
+            return 'auth_required';
+        }
+
+        if (res.status === 410) {
+            setDraft(buildPreviewFailureDraft('expired', t('CreateMenu.previewErrorExpired')));
+            setLoading(false);
+            return 'expired';
+        }
+
+        if (res.status === 404) {
+            setDraft(buildPreviewFailureDraft('expired', t('CreateMenu.previewErrorNotFound')));
+            setLoading(false);
+            return 'not_found';
+        }
+
+        if (!res.ok) {
+            setDraft(buildPreviewFailureDraft('failed', t('CreateMenu.previewErrorLoadFailed')));
+            setLoading(false);
+            return 'error';
+        }
+
+        return null;
+    }, [router, signInUrl, t]);
+
     const fetchDraft = useCallback(async (statusOnly = true) => {
         if (sessionStatus !== 'authenticated') {
             return 'waiting_for_auth';
@@ -184,57 +306,63 @@ export default function PreviewClient({ draftId }: PreviewClientProps) {
             const requestDraft = async (statusOnlyRequest: boolean) => {
                 const params = new URLSearchParams({ draftId });
                 if (statusOnlyRequest) params.set('statusOnly', '1');
-                return fetch(`/api/public/create-menu?${params.toString()}`);
+                return fetch(`/api/public/create-menu?${params.toString()}`, {
+                    cache: 'no-store',
+                    credentials: 'same-origin',
+                    redirect: 'manual',
+                });
             };
 
             let res = await requestDraft(statusOnly);
 
-            if (res.status === 401) {
-                router.replace(signInUrl);
-                return 'auth_required';
-            }
+            const previewFailure = handlePreviewDraftResponseStatus(res);
+            if (previewFailure) return previewFailure;
 
-            if (res.status === 410) {
-                setDraft({ status: 'expired', extractedData: null, detectedBusinessName: null, detectedBusinessType: null, detectedBusinessCategory: null, imageUrl: null, sourceType: undefined, error: t('CreateMenu.previewErrorExpired') });
-                setLoading(false);
-                return 'expired';
-            }
-
-            if (res.status === 404) {
-                setDraft({ status: 'expired', extractedData: null, detectedBusinessName: null, detectedBusinessType: null, detectedBusinessCategory: null, imageUrl: null, sourceType: undefined, error: t('CreateMenu.previewErrorNotFound') });
-                setLoading(false);
-                return 'not_found';
-            }
-
-            if (!res.ok) {
-                setDraft({ status: 'failed', extractedData: null, detectedBusinessName: null, detectedBusinessType: null, detectedBusinessCategory: null, imageUrl: null, sourceType: undefined, error: t('CreateMenu.previewErrorLoadFailed') });
+            let data = await readPreviewResponseJson<PreviewDraftResponse>(
+                res,
+                draftId,
+                statusOnly ? 'status' : 'full',
+            );
+            if (!data || !isDraftStatus(data.status)) {
+                logRuntimeFailure('public_create_menu_preview_response_invalid', new Error('public_create_menu_preview_status_invalid'), {
+                    ...getPreviewResponseLogContext(draftId, statusOnly ? 'status' : 'full', res),
+                    hasValidStatus: false,
+                });
+                setDraft(buildPreviewFailureDraft('failed', t('CreateMenu.previewErrorLoadFailed')));
                 setLoading(false);
                 return 'error';
             }
-
-            let data = await res.json();
             if (data.status === 'completed' && !data.extractedData && statusOnly) {
                 res = await requestDraft(false);
-                if (!res.ok) {
-                    setDraft({ status: 'failed', extractedData: null, detectedBusinessName: null, detectedBusinessType: null, detectedBusinessCategory: null, imageUrl: null, sourceType: undefined, error: t('CreateMenu.previewErrorLoadFailed') });
+                const fullPreviewFailure = handlePreviewDraftResponseStatus(res);
+                if (fullPreviewFailure) return fullPreviewFailure;
+
+                data = await readPreviewResponseJson<PreviewDraftResponse>(res, draftId, 'full');
+                if (!data || !isDraftStatus(data.status)) {
+                    logRuntimeFailure('public_create_menu_preview_response_invalid', new Error('public_create_menu_preview_status_invalid'), {
+                        ...getPreviewResponseLogContext(draftId, 'full', res),
+                        hasValidStatus: false,
+                    });
+                    setDraft(buildPreviewFailureDraft('failed', t('CreateMenu.previewErrorLoadFailed')));
                     setLoading(false);
                     return 'error';
                 }
-                data = await res.json();
             }
+            const nextStatus = data.status;
             setDraft((previous) => ({
                 ...previous,
                 ...data,
+                status: nextStatus,
                 extractedData: data.extractedData ?? previous?.extractedData ?? null,
             }));
             setLoading(false);
-            return data.status;
+            return nextStatus;
         } catch {
-            setDraft({ status: 'failed', extractedData: null, detectedBusinessName: null, detectedBusinessType: null, detectedBusinessCategory: null, imageUrl: null, sourceType: undefined, error: t('CreateMenu.previewErrorConnection') });
+            setDraft(buildPreviewFailureDraft('failed', t('CreateMenu.previewErrorConnection')));
             setLoading(false);
             return 'error';
         }
-    }, [draftId, router, sessionStatus, signInUrl, t]);
+    }, [draftId, handlePreviewDraftResponseStatus, sessionStatus, t]);
 
     // Poll for extraction completion
     useEffect(() => {
@@ -290,8 +418,6 @@ export default function PreviewClient({ draftId }: PreviewClientProps) {
 
         try {
             const res = await fetch('/api/public/create-menu/claim', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     draftId,
                     businessName: businessName.trim(),
@@ -301,16 +427,37 @@ export default function PreviewClient({ draftId }: PreviewClientProps) {
                     phone: phone.trim() || undefined,
                     addressLine: addressLine.trim() || undefined,
                 }),
+                cache: 'no-store',
+                credentials: 'same-origin',
+                headers: { 'Content-Type': 'application/json' },
+                method: 'POST',
+                redirect: 'manual',
             });
 
             if (!res.ok) {
-                const data = await res.json().catch(() => ({}));
-                setClaimError(data.error || t('CreateMenu.previewClaimFailed'));
+                setClaimError(t('CreateMenu.previewClaimFailed'));
                 setClaiming(false);
                 return;
             }
 
-            const data = await res.json();
+            const data = await readPreviewResponseJson<PreviewClaimResponse>(res, draftId, 'claim');
+            if (
+                data?.success !== true
+                || !isNonEmptyResponseString(data.menuUrl)
+                || !isNonEmptyResponseString(data.officialPageUrl)
+                || !isNonEmptyResponseString(data.subdomain)
+            ) {
+                logRuntimeFailure('public_create_menu_preview_claim_response_invalid', new Error('public_create_menu_preview_claim_ack_invalid'), {
+                    ...getPreviewResponseLogContext(draftId, 'claim', res),
+                    hasMenuUrl: isNonEmptyResponseString(data?.menuUrl),
+                    hasOfficialPageUrl: isNonEmptyResponseString(data?.officialPageUrl),
+                    hasSubdomain: isNonEmptyResponseString(data?.subdomain),
+                    success: data?.success === true,
+                });
+                setClaimError(t('CreateMenu.previewClaimFailed'));
+                setClaiming(false);
+                return;
+            }
             if (typeof window !== 'undefined') {
                 if (data.storeId && data.isNewAccount) {
                     window.sessionStorage.setItem('menulist:create-menu:last-claim', JSON.stringify({
@@ -328,9 +475,9 @@ export default function PreviewClient({ draftId }: PreviewClientProps) {
                 // Non-blocking: the next authenticated page can refresh session state again.
             }
             const params = new URLSearchParams({
-                menuUrl: data.menuUrl || '',
-                officialPageUrl: data.officialPageUrl || '',
-                subdomain: data.subdomain || '',
+                menuUrl: data.menuUrl,
+                officialPageUrl: data.officialPageUrl,
+                subdomain: data.subdomain,
                 name: businessName.trim(),
             });
             router.push(`${createMenuSuccessPath}?${params.toString()}`);

@@ -25,6 +25,52 @@ export type GeminiUsageMetadata = {
 
 const LOG_FILE = "kb.log";
 const MAX_IMAGE_CONTEXT_CHARS = 700;
+const GEMINI_RESPONSE_TEXT_MAX_CHARS = 32 * 1024;
+const IMAGE_QUERY_RESPONSE_TEXT_MAX_CHARS = 4 * 1024;
+
+type BoundedGeminiResponseText = {
+    originalLength: number;
+    text: string;
+    truncated: boolean;
+};
+
+type AnswerlatticeVectorErrorLike = Error & {
+    code?: unknown;
+    status?: unknown;
+    statusCode?: unknown;
+};
+
+const getAnswerlatticeVectorErrorName = (error: unknown): string | undefined => {
+    if (error === undefined) return undefined;
+    if (error instanceof Error) return error.name || 'Error';
+    return typeof error;
+};
+
+const getAnswerlatticeVectorErrorCode = (error: unknown): string | undefined => {
+    if (!error || typeof error !== 'object' || !('code' in error)) return undefined;
+    const code = (error as AnswerlatticeVectorErrorLike).code;
+    if (code === undefined || code === null) return undefined;
+    return String(code).slice(0, 64);
+};
+
+const getAnswerlatticeVectorErrorStatus = (error: unknown): number | undefined => {
+    if (!error || typeof error !== 'object') return undefined;
+    const statusValue = 'status' in error
+        ? (error as AnswerlatticeVectorErrorLike).status
+        : (error as AnswerlatticeVectorErrorLike).statusCode;
+    const status = Number(statusValue);
+    return Number.isFinite(status) ? status : undefined;
+};
+
+const getAnswerlatticeVectorFailureLogData = (
+    failureCode: string,
+    error?: unknown,
+) => ({
+    failureCode,
+    sourceErrorName: getAnswerlatticeVectorErrorName(error),
+    sourceErrorCode: getAnswerlatticeVectorErrorCode(error),
+    sourceStatusCode: getAnswerlatticeVectorErrorStatus(error),
+});
 
 export const estimateGeminiTokenCount = (value: string): number => {
     const text = String(value || '').replace(/\s+/g, ' ').trim();
@@ -70,13 +116,25 @@ export const normalizeGeminiUsageMetadata = (
     };
 };
 
-const getGeminiResponseText = (response: any): string => {
+const getRawGeminiResponseText = (response: any): string => {
     if (!response) return '';
     if (typeof response.text === 'function') return String(response.text() || '');
     if (typeof response.text === 'string') return response.text;
     if (typeof response.response?.text === 'function') return String(response.response.text() || '');
     if (typeof response.response?.text === 'string') return response.response.text;
     return '';
+};
+
+const getGeminiResponseText = (
+    response: any,
+    maxChars = GEMINI_RESPONSE_TEXT_MAX_CHARS,
+): BoundedGeminiResponseText => {
+    const rawText = getRawGeminiResponseText(response);
+    return {
+        originalLength: rawText.length,
+        text: rawText.slice(0, maxChars),
+        truncated: rawText.length > maxChars,
+    };
 };
 
 export async function callGeminiEmbeddingWithMetadata(
@@ -148,13 +206,22 @@ User Question: "${userPrompt}"`;
             contents: contentParts,
         });
 
-        const rawText = getGeminiResponseText(response);
+        const responseText = getGeminiResponseText(response, IMAGE_QUERY_RESPONSE_TEXT_MAX_CHARS);
+        const rawText = responseText.text;
         const text = sanitizeImageSearchContext(rawText || userPrompt);
 
         await writeLogEntry({
             logFileName: LOG_FILE,
             logType: 'IMAGE_TO_TEXT_QUERY_GENERATED',
-            data: { originalPrompt: userPrompt, generatedQuery: text }
+            data: {
+                generatedQueryLength: text.length,
+                generatedQueryPresent: text.length > 0,
+                originalPromptLength: String(userPrompt || '').length,
+                originalPromptPresent: String(userPrompt || '').trim().length > 0,
+                providerResponseTextLength: responseText.originalLength,
+                providerResponseTextMaxChars: IMAGE_QUERY_RESPONSE_TEXT_MAX_CHARS,
+                providerResponseTextTruncated: responseText.truncated,
+            }
         });
 
         return {
@@ -165,9 +232,9 @@ User Question: "${userPrompt}"`;
         await writeLogEntry({
             logFileName: LOG_FILE,
             logType: 'ERROR_IMAGE_QUERY_GENERATION',
-            data: { error: error.message }
+            data: getAnswerlatticeVectorFailureLogData('answerlattice_image_query_generation_failed', error),
         });
-        throw new Error(`Failed to generate search query from image: ${error.message}`);
+        throw new Error('Failed to generate search query from image');
     }
 }
 
@@ -351,7 +418,8 @@ export async function callGeminiChatWithMetadata(
         config: generationConfig,
     });
 
-    const text = getGeminiResponseText(response);
+    const responseText = getGeminiResponseText(response);
+    const text = responseText.text;
     const fallbackInputText = contentParts
         .map((part) => typeof part?.text === 'string' ? part.text : '')
         .filter(Boolean)

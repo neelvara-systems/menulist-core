@@ -2,7 +2,7 @@
 
 **Status:** Draft owner help article
 **Public naming note:** Public website and launch copy use "AI Menu Manager". In-app help may use "Menu Manager" when referring to the owner navigation label.
-**Last Updated:** June 20, 2026
+**Last Updated:** June 27, 2026
 
 ---
 
@@ -47,10 +47,10 @@ Screenshot: Price update card.
 ### Mark An Item Sold Out
 
 1. Type the item status, for example: `Cold coffee over`.
-2. Check the restore time.
+2. Check the item and customer-facing state.
 3. Select **Apply**.
 
-Screenshot: Sold-out card with time option.
+Screenshot: Sold-out card with before/after availability.
 
 ### Restore An Item
 

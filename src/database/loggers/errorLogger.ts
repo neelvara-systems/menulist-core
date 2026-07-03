@@ -2,6 +2,10 @@ import { DB_COLLECTIONS } from "@constant/database";
 import { requestBodyComposer } from "@lib/apiHelper";
 import { firebaseDatabase } from "@lib/firebase/firebaseClient";
 import { child, get, onValue, ref, set } from "firebase/database";
+import {
+    getBoundedDatabaseLoggerStringContext,
+    logDatabaseLoggerFailure,
+} from "./loggerDiagnostics";
 
 const COLLECTION = DB_COLLECTIONS.ERROR_LOGS;
 
@@ -19,7 +23,10 @@ export const addErrorLog = (logDetails) => {
         set(getCollectionRef(logId), await requestBodyComposer(logDetails)).then((docRef: any) => {
             res(logId)
         }).catch((err) => {
-            console.log("err"), err
+            logDatabaseLoggerFailure('error_log_write_failed', err, {
+                ...getBoundedDatabaseLoggerStringContext('logId', logId),
+            });
+            res(null);
         })
     })
 }
@@ -45,7 +52,7 @@ export const getErrorLog = (filters) => {
             }
         }).catch((error) => {
             res(null)
-            console.error(error);
+            logDatabaseLoggerFailure('error_log_read_failed', error);
         });
 
 
@@ -68,7 +75,10 @@ export const getErrorLogById = (logId) => {
                 res(null)
             }
         }).catch((error) => {
-            console.error(error);
+            logDatabaseLoggerFailure('error_log_read_by_id_failed', error, {
+                ...getBoundedDatabaseLoggerStringContext('logId', logId),
+            });
+            res(null);
         });
     })
 }

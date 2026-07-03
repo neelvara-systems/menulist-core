@@ -18,6 +18,7 @@
 import { DB_COLLECTIONS } from "@constant/database";
 import { addDoc, collection, deleteDoc, doc, getCountFromServer, getDoc, getDocs, limit, query, setDoc, where } from "@firebase/firestore";
 import { answerlatticeRequestBodyComposer } from '@lib/answerlattice/documentComposer';
+import { getAnswerlatticeScopeLogContext, logAnswerlatticeFailure } from '@lib/answerlattice/diagnostics';
 import { buildAnswerlatticeEntityPrefixTokens } from '@lib/answerlattice/entitySearchTokens';
 import { apiCallComposer } from "@lib/apiHelper/apiCallComposer";
 import { answerlatticeFirebaseClient } from "@lib/firebase/answerlatticeFirebaseClient";
@@ -158,7 +159,15 @@ export const addEntity = async (data: Omit<AnswerlatticeEntity, 'id'>) => {
                 sourceId: docRef.id,
                 sourceType: ENTITY_COLLECTION,
             });
-            markAnswerlatticeTenantHasEntities(data.tId, data.sId, 'entity_created').catch(() => undefined);
+            void markAnswerlatticeTenantHasEntities(data.tId, data.sId, 'entity_created').catch((error) => {
+                logAnswerlatticeFailure('answerlattice_entity_tenant_summary_marker_failed', error, {
+                    ...getAnswerlatticeScopeLogContext({
+                        tId: data.tId,
+                        sId: data.sId,
+                        entityId: docRef.id,
+                    }),
+                });
+            });
             return { ...submitData, id: docRef.id } as AnswerlatticeEntity;
         },
         data,

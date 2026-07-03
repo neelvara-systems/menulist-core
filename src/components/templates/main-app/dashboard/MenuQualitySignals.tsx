@@ -15,6 +15,11 @@
 import { FEATURE_FLAGS } from '@config/features';
 import { getProjectData } from '@database/projects';
 import { computeQualitySignals, getPrimaryQualitySignal, getVisibleSignals, isAllClear, isRepairMenuSignal, QualitySignal } from '@lib/mce/qualitySignals';
+import {
+    getBoundedProjectPageStringContext,
+    getProjectPageProjectLogContext,
+    logProjectPageFailure,
+} from '@template/main-app/projects/utils/projectPageDiagnostics';
 import { Button, Card, Flex, Skeleton, theme, Typography } from 'antd';
 import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
@@ -71,8 +76,11 @@ const MenuQualitySignals: React.FC<MenuQualitySignalsProps> = ({ projectId }) =>
                     setSignals(getVisibleSignals(computed));
                     setCheckedAt(Date.now());
                 }
-            } catch {
-                // Silent fail — quality signals are non-critical
+            } catch (error) {
+                logProjectPageFailure('dashboard_menu_quality_signals_load_failed', error, {
+                    surface: 'owner_dashboard_menu_quality_signals',
+                    ...getProjectPageProjectLogContext(projectId),
+                });
             } finally {
                 if (!cancelled) setLoading(false);
             }
@@ -101,11 +109,20 @@ const MenuQualitySignals: React.FC<MenuQualitySignalsProps> = ({ projectId }) =>
     const handleAction = (signal: QualitySignal) => {
         if (!signal.actionRoute) return;
         if (typeof window !== 'undefined') {
-            window.sessionStorage.setItem(PENDING_QUALITY_ACTION_STORAGE_KEY, JSON.stringify({
-                action: signal.id,
-                createdAt: Date.now(),
-                projectId,
-            }));
+            try {
+                window.sessionStorage.setItem(PENDING_QUALITY_ACTION_STORAGE_KEY, JSON.stringify({
+                    action: signal.id,
+                    createdAt: Date.now(),
+                    projectId,
+                }));
+            } catch (error) {
+                logProjectPageFailure('dashboard_menu_quality_action_handoff_failed', error, {
+                    surface: 'owner_dashboard_menu_quality_signals',
+                    ...getProjectPageProjectLogContext(projectId),
+                    ...getBoundedProjectPageStringContext('signalId', signal.id),
+                    ...getBoundedProjectPageStringContext('actionRoute', signal.actionRoute),
+                });
+            }
         }
         router.push(`/projects`);
     };

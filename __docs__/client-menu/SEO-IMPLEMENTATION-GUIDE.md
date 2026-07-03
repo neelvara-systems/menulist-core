@@ -1,17 +1,16 @@
-# MenuListAi SEO Implementation Guide
+# MenuList Public Menu SEO Source Contract
 
-> Last Updated: December 21, 2025 (v3 - Multi-Tenant Architecture Complete)
+> Last Updated: July 2, 2026 (source-contract cleanup)
 
 ## Executive Summary
 
-This document tracks all SEO-related implementations in MenuListAi and provides guidance on restaurant SEO best practices for 2025-2026.
+This document tracks current public-menu and Official Business Page SEO/runtime source truth. It does not certify search rankings, crawler behavior, production deploy status, Core Web Vitals, or provider/indexing outcomes.
 
-### Implementation Progress: ✅ 98% Complete
+### Current Source Contract
 
-- Phase 1 (Quick Wins): ✅ Complete
-- Phase 2 (Schema Enhancements): ✅ Complete
-- Phase 3 (Multi-Tenant): ✅ Complete
-- Phase 4 (Advanced): ⏳ Future
+- Implemented: tenant metadata, canonical URLs, schema.org JSON-LD, platform and tenant sitemaps, robots policies, public truth indexability gates, and owner SEO settings.
+- Conditional only: review/rating schema, event schema, API v2/OpenAPI, generic discovery feeds, and Core Web Vitals certification.
+- Current release approval remains controlled by the production-readiness audit and the External Certification Runbook, not this guide.
 
 ---
 
@@ -21,11 +20,11 @@ This document tracks all SEO-related implementations in MenuListAi and provides 
 
 | Component                 | File                                       | Status      | Description                                                             |
 | ------------------------- | ------------------------------------------ | ----------- | ----------------------------------------------------------------------- |
-| **Dynamic Metadata**      | `/app/(website)/menu/[projectId]/page.tsx` | ✅ Complete | Next.js `generateMetadata` with SEO settings priority                   |
-| **Schema.org JSON-LD**    | `/app/(website)/menu/[projectId]/page.tsx` | ✅ Complete | Business type + food Menu or non-food OfferCatalog + hours/address/contact |
-| **SEO Settings Form**     | `/businessSettings/tabs/SeoTab.tsx`        | ✅ Complete | UI for tagline, meta title, description, keywords, canonical URL        |
-| **Dynamic Sitemap**       | `/app/sitemap.ts`                          | ✅ Complete | Next.js dynamic sitemap generation                                      |
-| **robots.txt**            | `/public/robots.txt`                       | ✅ Complete | Crawler directives with sitemap reference                               |
+| **Dynamic Metadata**      | `src/app/client/[[...slug]]/page.tsx`      | ✅ Complete | Next.js `generateMetadata` with SEO settings priority                   |
+| **Schema.org JSON-LD**    | `src/app/client/[[...slug]]/page.tsx` + `src/lib/schema/index.ts` | ✅ Complete | Business type + food Menu or non-food OfferCatalog + hours/address/contact |
+| **SEO Settings Form**     | `src/components/templates/main-app/businessSettings/tabs/SeoTab.tsx` + `src/components/mobile/screens/MobileSeoAnalyticsScreen.tsx` | ✅ Complete | UI for tagline, meta title, description, keywords, canonical URL        |
+| **Dynamic Sitemap**       | `src/app/sitemap.ts` + `src/app/client/sitemap.ts` | ✅ Complete | Platform sitemap plus tenant sitemap generation                         |
+| **robots.txt**            | `public/robots.txt` + `src/app/client/robots.ts` | ✅ Complete | Platform and tenant crawler directives with sitemap references          |
 | **Store Type SEO Fields** | `/types/platform/store.ts`                 | ✅ Complete | `metaTitle`, `metaDescription`, `keywords[]`, `canonicalUrl`, `tagline` |
 | **ShareModal Preview**    | `/b2cView/shareModal/index.tsx`            | ✅ Complete | Shows owner what shared link looks like                                 |
 
@@ -33,7 +32,7 @@ This document tracks all SEO-related implementations in MenuListAi and provides 
 
 | Component            | File                                   | Status        | Reason                                                                                                                                    |
 | -------------------- | -------------------------------------- | ------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| **SharePreviewMeta** | `/b2cView/output/SharePreviewMeta.tsx` | ⚠️ Deprecated | Uses `next/head` which doesn't work with App Router SSR. Menu page uses `generateMetadata` instead. **Keep for reference but don't use.** |
+| **SharePreviewMeta** | legacy output metadata component | ⚠️ Deprecated | Uses `next/head` which doesn't work with App Router SSR. Menu page uses `generateMetadata` instead. **Keep for reference but don't use.** |
 
 ---
 
@@ -116,9 +115,9 @@ SEO Settings (Business Settings) → Store Details → Project Metadata → Defa
 
 ---
 
-## Restaurant SEO Best Practices (2025-2026)
+## Public Menu SEO Practices
 
-Based on current industry research and Google's guidelines.
+Based on current source behavior and general crawler requirements. External crawler/indexing outcomes are not guaranteed by MenuList.
 
 ### 1. Local SEO (Most Important for Restaurants)
 
@@ -157,8 +156,8 @@ Based on current industry research and Google's guidelines.
 | Contact (telephone, email)   | 🟡 High     | ✅ Implemented                      |
 | Image (logo)                 | 🟡 High     | ✅ Implemented                      |
 | CurrenciesAccepted           | 🟢 Medium   | ✅ Implemented                      |
-| GeoCoordinates               | 🟢 Medium   | ⏳ Future (needs lat/lng fields)    |
-| AggregateRating              | 🟢 Medium   | ⏳ Future (needs review system)     |
+| GeoCoordinates               | 🟢 Medium   | ✅ Implemented when `store.geo` exists |
+| AggregateRating              | 🟢 Medium   | ❌ Not active; requires separately audited review schema |
 
 ### 4. AI-Ready SEO (New in 2024-2025)
 
@@ -183,24 +182,24 @@ Based on current industry research and Google's guidelines.
 
 ---
 
-## Implementation Roadmap
+## Current Launch Boundary
 
-### Phase 1: Quick Wins ✅ COMPLETE
+### Implemented Basics
 
 - [x] Add `tagline` field to Business Settings form
-- [x] Generate sitemap.xml for menu pages (dynamic via `/app/sitemap.ts`)
-- [x] Add robots.txt (already existed at `/public/robots.txt`)
+- [x] Generate sitemap.xml for platform and tenant pages (`src/app/sitemap.ts`, `src/app/client/sitemap.ts`)
+- [x] Add platform and tenant robots policies (`public/robots.txt`, `src/app/client/robots.ts`)
 
-### Phase 2: Schema Enhancements ✅ COMPLETE
+### Implemented Schema Enhancements
 
 - [x] Add `OpeningHoursSpecification` to JSON-LD (from workingHours)
 - [x] Add `PostalAddress` to JSON-LD (from store address fields)
 - [x] Add store phone/email to JSON-LD
 - [x] Add store logo/image to JSON-LD
 - [x] Add currency to JSON-LD
-- [ ] Add `GeoCoordinates` (needs lat/lng fields in StoreDataType - Future)
+- [x] Add `GeoCoordinates` when `store.geo` has latitude/longitude
 
-### Phase 3: Multi-Tenant Architecture ✅ COMPLETE
+### Implemented Multi-Tenant Architecture
 
 - [x] Subdomain support (`joespizza.menulist.ai`)
 - [x] Custom domain support (`joespizza.com`)
@@ -210,7 +209,7 @@ Based on current industry research and Google's guidelines.
 - [x] Remove `/menu` prefix for subdomain/custom domain routes
 - [x] Add domain fields to StoreDataType (subdomain, customDomain, domainVerified, primaryProjectId)
 
-### Phase 4: Advanced SEO (Future)
+### Conditional Additions (Not Current Launch Scope)
 
 - [ ] Visible FAQ content with FAQ schema only when the FAQ is rendered and reviewed; do not re-add hidden generated FAQ JSON-LD to OBP runtime
 - [ ] Review/Rating schema (if reviews are collected)
@@ -299,9 +298,11 @@ domainVerified?: boolean;   // DNS verification status
 ```
 src/
 ├── app/
-│   ├── sitemap.ts                  # Dynamic sitemap generation
-│   └── (website)/menu/[projectId]/
-│       └── page.tsx                # generateMetadata + Schema.org JSON-LD
+│   ├── sitemap.ts                  # Platform sitemap generation
+│   └── client/
+│       ├── [[...slug]]/page.tsx    # generateMetadata + Schema.org JSON-LD
+│       ├── sitemap.ts              # Tenant sitemap generation
+│       └── robots.ts               # Tenant robots policy
 ├── components/templates/main-app/
 │   ├── businessSettings/
 │   │   └── tabs/SeoTab.tsx         # SEO form fields (tagline, meta, keywords)
@@ -311,8 +312,9 @@ src/
 │           └── SharePreviewMeta.tsx # DEPRECATED - don't use
 ├── types/platform/
 │   └── store.ts                    # StoreDataType with SEO fields
+├── lib/schema/index.ts             # Shared schema.org utilities
 └── public/
-    └── robots.txt                  # Crawler directives
+    └── robots.txt                  # Platform crawler directives
 ```
 
 ### Key Type Definitions

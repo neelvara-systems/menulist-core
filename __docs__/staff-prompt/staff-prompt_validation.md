@@ -2,11 +2,13 @@
 
 ## Staff Prompt Mode - Spec-Perfect Implementation Check
 
-**Created:** January 11, 2026  
-**Implementation Status:** ✅ COMPLETE  
-**TypeScript Compilation:** ✅ PASS
+**Created:** January 11, 2026
+**Implementation Status:** Historical implementation evidence
+**TypeScript Compilation:** Historical pass
 
 > **Runtime note (June 11, 2026):** Standalone helper files referenced by older rows in this report were removed on June 1, 2026. Current runtime only reads `staffPrompt` from `platformSummary/campaigns_{sId}` and renders it read-only in Today/mobile Today when `eligible` is true.
+>
+> **Launch boundary (July 2, 2026):** This report is historical source-verification evidence only. It is not current release approval. Current release approval still requires the active production-readiness audit, External Certification Runbook evidence, `npm run verify:staff-prompt-runtime`, authenticated desktop/mobile Today QA with an eligible target-store `staffPrompt`, target deploy evidence, and production-host smoke. If the release scope claims generated prompts end-to-end, it also needs evidence for the upstream summary writer that creates `platformSummary/campaigns_{sId}.staffPrompt`.
 
 ---
 
@@ -150,12 +152,14 @@
 
 ---
 
-## ✅ FINAL VERDICT: READY FOR TESTING
+## Historical Validation Result: Source Evidence Only
 
 - **Total Files Created:** 3
 - **Total Files Modified:** 4
 - **Total Lines of Code:** ~334
 - **Spec Compliance:** 100% (23/23 items)
+- **Current Release Approval:** Not granted by this report
+- **Required Current Evidence:** Active production-readiness audit, External Certification Runbook evidence, `npm run verify:staff-prompt-runtime`, authenticated desktop/mobile Today QA with an eligible target-store `staffPrompt`, target deploy evidence, and production-host smoke
 
 ---
 
@@ -164,7 +168,7 @@
 ### Step 1: Verify TypeScript Compilation
 
 ```bash
-npm run type-check
+npx tsc --noEmit --incremental false
 ```
 
 ### Step 2: Run Development Server
@@ -240,7 +244,7 @@ Staff Prompt requires:
 
 ---
 
-## 🚀 PRODUCTION QUALITY GATE: PASS
+## Historical Quality Gate: Source Evidence Only
 
 | Check             | Status         |
 | ----------------- | -------------- |
@@ -249,12 +253,12 @@ Staff Prompt requires:
 | TypeScript Errors | 0              |
 | Security Issues   | 0              |
 
-**Ready For:** Vercel deploy + SMB testing
+**Current Release Boundary:** Requires the active production-readiness audit, External Certification Runbook evidence, `npm run verify:staff-prompt-runtime`, authenticated desktop/mobile Today QA with an eligible target-store `staffPrompt`, target deploy evidence, and production-host smoke before this Staff Prompt evidence can support a release.
 
 ---
 
-**Document Status:** ✅ COMPLETE  
-**Implementation Date:** January 11, 2026  
-**Quality Gate Passed:** January 11, 2026  
-**Validated By:** Cascade AI  
-**Status:** SHIP READY
+**Document Status:** Historical evidence retained
+**Implementation Date:** January 11, 2026
+**Quality Gate Passed:** January 11, 2026
+**Validated By:** Cascade AI
+**Status:** Historical source evidence only; not current release approval

@@ -4,6 +4,7 @@
  */
 
 import { Timestamp } from 'firebase-admin/firestore';
+import * as functions from 'firebase-functions';
 import { ALERT_COOLDOWNS, ALERT_THRESHOLDS } from '../../../src/constants/analyticsMetrics';
 import { DB_COLLECTIONS } from '../constants/database';
 import { firestoreAdmin as db } from '../firebaseAdmin';
@@ -11,6 +12,16 @@ import { isAlertsMuted } from './deployMute';
 import { logSystemError } from './errorTracking';
 import { sendPlatformAlertDelivery } from './platformNotificationDelivery';
 import { sendTelegramAlert } from './telegramAlert';
+
+const logger = functions.logger;
+const SAFE_ALERT_METADATA_KEYS = new Set([
+  'category',
+  'failureCode',
+  'platformTriggerType',
+  'productId',
+  'ruleId',
+  'triggerType',
+]);
 
 // ================================================================
 // TYPES
@@ -37,6 +48,17 @@ export interface Alert {
   actionTaken?: boolean;
 }
 
+export interface ActiveAlertSummary {
+  id: string;
+  type: Alert['type'];
+  severity: Alert['severity'];
+  title: string;
+  message: string;
+  timestamp: Timestamp | null;
+  acknowledged: boolean;
+  metadataPreview: Record<string, boolean | number | string>;
+}
+
 export interface AlertRule {
   id: string;
   name: string;
@@ -47,6 +69,97 @@ export interface AlertRule {
   messageTemplate: string;
   enabled: boolean;
   cooldownMinutes: number; // Prevent spam
+}
+
+type TriggeredAlertCreate = {
+  createPromise: Promise<string>;
+  ruleId: string;
+};
+
+function getErrorLogContext(error: unknown): { name?: string; code?: string; status?: number } {
+  if (!error || typeof error !== 'object') return {};
+
+  const record = error as Record<string, unknown>;
+  return {
+    name: error instanceof Error ? error.name : undefined,
+    code: typeof record.code === 'string' ? record.code : undefined,
+    status: typeof record.status === 'number' ? record.status : undefined,
+  };
+}
+
+function getAlertLogContext(alert: Pick<Alert, 'tId' | 'sId' | 'type' | 'severity' | 'title'>) {
+  return {
+    tIdPresent: alert.tId.length > 0,
+    tIdLength: alert.tId.length,
+    sIdPresent: alert.sId.length > 0,
+    sIdLength: alert.sId.length,
+    type: alert.type,
+    severity: alert.severity,
+    titleLength: alert.title.length,
+  };
+}
+
+function getBoundedAlertStringContext(label: string, value: unknown): Record<string, boolean | number> {
+  const normalized = typeof value === 'string' ? value : '';
+  return {
+    [`${label}Present`]: normalized.length > 0,
+    [`${label}Length`]: normalized.length,
+  };
+}
+
+function cleanAlertText(value: unknown, max = 260): string {
+  return String(value || '')
+    .replace(/[\u0000-\u001f\u007f]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, max);
+}
+
+function getStoredAlertTextSummary(label: string, value: unknown): string {
+  const normalized = cleanAlertText(value, 1000);
+  return normalized
+    ? `${label} present (${normalized.length} chars).`
+    : `No ${label.toLowerCase()} text.`;
+}
+
+function getAlertMetadataPreview(metadata: unknown): Record<string, boolean | number | string> {
+  if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata)) return {};
+
+  return Object.entries(metadata as Record<string, unknown>).reduce<Record<string, boolean | number | string>>((acc, [key, value]) => {
+    if (value === null || value === undefined) return acc;
+    if (typeof value === 'boolean') {
+      acc[key] = value;
+      return acc;
+    }
+    if (typeof value === 'number') {
+      acc[key] = Number.isFinite(value) ? value : 0;
+      return acc;
+    }
+
+    const normalized = cleanAlertText(value, 1000);
+    if (SAFE_ALERT_METADATA_KEYS.has(key)) {
+      acc[key] = normalized.slice(0, 80);
+      return acc;
+    }
+
+    Object.assign(acc, getBoundedAlertStringContext(key, normalized));
+    return acc;
+  }, {});
+}
+
+function buildActiveAlertSummary(doc: FirebaseFirestore.QueryDocumentSnapshot): ActiveAlertSummary {
+  const data = doc.data() || {};
+
+  return {
+    id: doc.id,
+    type: data.type || 'error',
+    severity: data.severity || 'warning',
+    title: getStoredAlertTextSummary('Alert title', data.title),
+    message: getStoredAlertTextSummary('Alert message', data.message),
+    timestamp: data.timestamp || null,
+    acknowledged: data.acknowledged === true,
+    metadataPreview: getAlertMetadataPreview(data.metadata),
+  };
 }
 
 // ================================================================
@@ -125,7 +238,7 @@ export async function createAlert(
     // Check cooldown period
     const shouldCreate = await checkCooldown(alert);
     if (!shouldCreate) {
-      console.log(`[Alerts] Alert on cooldown: ${alert.title}`);
+      logger.info('[Alerts] Alert on cooldown', getAlertLogContext(alert));
       return '';
     }
 
@@ -155,7 +268,10 @@ export async function createAlert(
       actionTaken: false,
     });
 
-    console.log(`[Alerts] Created alert: ${alert.title} (${docRef.id})`);
+    logger.info('[Alerts] Created alert', {
+      ...getAlertLogContext(alert),
+      ...getBoundedAlertStringContext('alertId', docRef.id),
+    });
 
     // Telegram notification delivery (fire-and-forget)
     // Feature flag: ENABLE_OPS_ALERTS (checked via env var set from features.ts)
@@ -171,7 +287,11 @@ export async function createAlert(
             tenantId: alert.tId,
             ...alertMetadata,
           },
-        }).catch(err => console.error('[Alerts] Telegram delivery failed:', err));
+        }).catch((err) => logger.error('[Alerts] Telegram delivery failed', {
+          ...getBoundedAlertStringContext('alertId', docRef.id),
+          ...getAlertLogContext(alert),
+          error: getErrorLogContext(err),
+        }));
         sendPlatformAlertDelivery({
           id: docRef.id,
           severity: alert.severity,
@@ -180,24 +300,34 @@ export async function createAlert(
           tId: alert.tId,
           sId: alert.sId,
           metadata: alertMetadata,
-        }).catch(err => console.error('[Alerts] Platform alert delivery failed:', err));
+        }).catch((err) => logger.error('[Alerts] Platform alert delivery failed', {
+          ...getBoundedAlertStringContext('alertId', docRef.id),
+          ...getAlertLogContext(alert),
+          error: getErrorLogContext(err),
+        }));
       } else {
-        console.log('[Alerts] Alert muted (deploy window active)');
+        logger.info('[Alerts] Alert muted', getBoundedAlertStringContext('alertId', docRef.id));
       }
     } catch (notifError) {
       // Never fail alert creation due to notification error
-      console.error('[Alerts] Notification check failed:', notifError);
+      logger.error('[Alerts] Notification check failed', {
+        ...getBoundedAlertStringContext('alertId', docRef.id),
+        error: getErrorLogContext(notifError),
+      });
     }
 
     return docRef.id;
   } catch (error) {
-    console.error('[Alerts] Failed to create alert:', error);
+    logger.error('[Alerts] Failed to create alert', {
+      ...getAlertLogContext(alert),
+      error: getErrorLogContext(error),
+    });
     await logSystemError({
       tId: alert.tId,
       sId: alert.sId,
       errorType: 'function',
       severity: 'medium',
-      message: `Failed to create alert: ${error instanceof Error ? error.message : 'Unknown'}`,
+      message: 'ALERT_CREATE_FAILED',
       functionName: 'createAlert',
     });
     throw error;
@@ -215,9 +345,15 @@ export async function acknowledgeAlert(alertId: string, userId: string): Promise
       acknowledgedBy: userId,
     });
 
-    console.log(`[Alerts] Alert acknowledged: ${alertId} by ${userId}`);
+    logger.info('[Alerts] Alert acknowledged', {
+      ...getBoundedAlertStringContext('alertId', alertId),
+      ...getBoundedAlertStringContext('userId', userId),
+    });
   } catch (error) {
-    console.error('[Alerts] Failed to acknowledge alert:', error);
+    logger.error('[Alerts] Failed to acknowledge alert', {
+      ...getBoundedAlertStringContext('alertId', alertId),
+      error: getErrorLogContext(error),
+    });
     throw error;
   }
 }
@@ -229,7 +365,7 @@ export async function getActiveAlerts(
   tId: string,
   sId: string,
   limit: number = 50
-): Promise<Alert[]> {
+): Promise<ActiveAlertSummary[]> {
   try {
     const alertsSnapshot = await db
       .collection(DB_COLLECTIONS.SYSTEM_ALERTS)
@@ -240,12 +376,14 @@ export async function getActiveAlerts(
       .limit(limit)
       .get();
 
-    return alertsSnapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data(),
-    } as Alert));
+    return alertsSnapshot.docs.map(buildActiveAlertSummary);
   } catch (error) {
-    console.error('[Alerts] Failed to get active alerts:', error);
+    logger.error('[Alerts] Failed to get active alerts', {
+      ...getBoundedAlertStringContext('tId', tId),
+      ...getBoundedAlertStringContext('sId', sId),
+      limit,
+      error: getErrorLogContext(error),
+    });
     throw error;
   }
 }
@@ -258,7 +396,7 @@ export async function evaluateAlertRules(
   sId: string,
   data: Record<string, any>
 ): Promise<void> {
-  const triggeredAlerts: Promise<string>[] = [];
+  const triggeredAlerts: TriggeredAlertCreate[] = [];
 
   for (const rule of ALERT_RULES) {
     if (!rule.enabled) continue;
@@ -267,8 +405,9 @@ export async function evaluateAlertRules(
       if (rule.condition(data)) {
         const message = renderTemplate(rule.messageTemplate, data);
 
-        triggeredAlerts.push(
-          createAlert({
+        triggeredAlerts.push({
+          ruleId: rule.id,
+          createPromise: createAlert({
             tId,
             sId,
             type: rule.alertType,
@@ -281,15 +420,36 @@ export async function evaluateAlertRules(
               ...data,
             },
             actionRequired: rule.severity === 'critical',
-          })
-        );
+          }),
+        });
       }
     } catch (error) {
-      console.error(`[Alerts] Failed to evaluate rule ${rule.id}:`, error);
+      logger.error('[Alerts] Failed to evaluate rule', {
+        ...getBoundedAlertStringContext('tId', tId),
+        ...getBoundedAlertStringContext('sId', sId),
+        ruleId: rule.id,
+        error: getErrorLogContext(error),
+      });
     }
   }
 
-  await Promise.allSettled(triggeredAlerts);
+  const results = await Promise.allSettled(
+    triggeredAlerts.map((triggeredAlert) => triggeredAlert.createPromise),
+  );
+  const firstFailedIndex = results.findIndex((result) => result.status === 'rejected');
+  const failedCount = results.filter((result) => result.status === 'rejected').length;
+
+  if (firstFailedIndex >= 0) {
+    const firstFailed = results[firstFailedIndex];
+    logger.error('[Alerts] Rule alert creation failed', {
+      ...getBoundedAlertStringContext('tId', tId),
+      ...getBoundedAlertStringContext('sId', sId),
+      failedCount,
+      triggeredCount: triggeredAlerts.length,
+      firstFailedRuleId: triggeredAlerts[firstFailedIndex]?.ruleId,
+      error: firstFailed.status === 'rejected' ? getErrorLogContext(firstFailed.reason) : {},
+    });
+  }
 }
 
 // ================================================================
@@ -318,7 +478,10 @@ async function checkCooldown(alert: Omit<Alert, 'id' | 'timestamp' | 'acknowledg
 
     return recentAlertsSnapshot.empty;
   } catch (error) {
-    console.error('[Alerts] Failed to check cooldown:', error);
+    logger.error('[Alerts] Failed to check cooldown', {
+      ...getAlertLogContext(alert),
+      error: getErrorLogContext(error),
+    });
     return true; // Allow alert on error
   }
 }

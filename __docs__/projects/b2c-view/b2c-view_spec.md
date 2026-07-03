@@ -2,8 +2,10 @@
 
 **Feature:** Customer-Facing Digital Menu  
 **Parent Feature:** Projects (Menu Digitization)  
-**Status:** ✅ Production Ready  
+**Status:** Implemented source evidence; not current launch certification
 **Last Updated:** January 2026
+
+**Launch boundary:** This spec documents the customer-facing menu view; it is not current launch certification. Current release approval requires the active [production-readiness audit](../../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../../production-readiness/external-certification-runbook.md) evidence, Digital Menu Output Constitution checks, `npm run verify:menu-design-presentation-boundary`, public cache/deploy evidence, browser/mobile customer-menu QA, and target production smoke.
 
 ---
 
@@ -13,9 +15,9 @@ B2C View is the customer-facing digital menu that restaurant patrons see. It inc
 
 ### What It Does
 
-- **Visual Menu Display** → Beautiful, responsive menu for customers
+- **Visual Menu Display** → Clear, responsive menu for customers
 - **Menu Design Controls** → Controlled moods, compatible layouts, optional brand accent, display settings
-- **Multiple Layouts** → Grid, list, horizontal tabs
+- **Menu Layouts** → List, grid, and card layouts with controlled category tabs
 - **Device Preview** → Mobile, tablet, desktop frames
 - **Share & Embed** → URL sharing, QR codes
 - **SEO Optimization** → Dynamic metadata, Schema.org markup
@@ -63,7 +65,7 @@ B2C View is the customer-facing digital menu that restaurant patrons see. It inc
 - Choose a controlled mood and compatible layout
 - Optionally apply a brand accent color
 - Upload logo
-- Select layout style
+- Select a compatible layout style
 - Preview on different devices
 - Share via link or QR code
 
@@ -143,12 +145,12 @@ B2C View is the customer-facing digital menu that restaurant patrons see. It inc
 | Option               | Values                      |
 | -------------------- | --------------------------- |
 | **Menu Mood**        | Clean, Warm, Premium, Bold, Fast |
-| **Layout**           | List, Card, Grid, Tabs, filtered by mood compatibility |
+| **Layout**           | List, Card, Grid, filtered by mood compatibility |
 | **Brand Accent**     | Preset colors or custom color |
 | **Item Prices**      | Show or hide menu-level price display |
 | **Item Images**      | Show or hide item images |
 | **Category Icons**   | Show or hide category icons |
-| **Category Tabs**    | Sticky horizontal category navigation on mobile/tablet |
+| **Category Tabs**    | Sticky category navigation on mobile/tablet |
 | **Logo**             | Upload custom logo          |
 | **Menu Background**  | Desktop advanced setting    |
 
@@ -157,9 +159,10 @@ B2C View is the customer-facing digital menu that restaurant patrons see. It inc
 | Template            | Description                | Best For                 |
 | ------------------- | -------------------------- | ------------------------ |
 | **Grid**            | Card-based grid layout     | Visual menus with images |
-| **List**            | Vertical list with details | Text-heavy menus         |
+| **List**            | Stacked item list with details | Text-heavy menus      |
 | **Card**            | Image-top item cards       | Visual, medium-sized menus |
-| **Tabs**            | Sticky category navigation | Quick navigation         |
+
+Category tabs are not an owner-selectable layout template. They are a display/navigation toggle. Legacy saved `tabs` layout values are normalized to a compatible layout while preserving the category-tabs intent.
 
 ---
 
@@ -270,4 +273,10 @@ B2C View is the customer-facing digital menu that restaurant patrons see. It inc
 
 ---
 
-_Document Status: ✅ PRODUCTION READY_
+## Source Gate
+
+`npm run verify:menu-design-presentation-boundary` verifies the current mood/layout compatibility contract, owner-selectable layout list, desktop and mobile editor parity, public menu output behavior, publish/cache revalidation path, and active docs boundary. Passing this source gate is not current launch certification; external approval still needs the External Certification Runbook, Digital Menu Output Constitution checks, browser/mobile customer-menu QA, public cache/deploy evidence, and target production smoke.
+
+---
+
+_Document Status: Historical B2C view source evidence - not current launch certification_

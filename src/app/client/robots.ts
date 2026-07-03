@@ -34,6 +34,7 @@ export default function robots(): MetadataRoute.Robots {
             ...DISCOVERY_CRAWLERS.map((userAgent) => ({
                 userAgent,
                 allow: '/',
+                disallow: [...PUBLIC_DISCOVERY_DISALLOWED_PATHS],
             })),
             {
                 userAgent: '*',

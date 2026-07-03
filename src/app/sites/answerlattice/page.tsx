@@ -120,6 +120,33 @@ const SUPPORT_LAYER_PHASES = [
     },
 ];
 
+const SUPPORT_SWITCH_OPTIONS = [
+    {
+        title: 'Generic chatbots',
+        common: 'Generated replies can drift from approved product truth.',
+        answerlattice: 'Approved answers are checked first, with fallback only when coverage is missing.',
+        icon: LuMessageSquare,
+    },
+    {
+        title: 'Helpdesks',
+        common: 'Ticket queues help teams respond, but tickets become the center.',
+        answerlattice: 'Tickets stay a fallback path and signal source for missing support coverage.',
+        icon: LuTicket,
+    },
+    {
+        title: 'Static knowledge bases',
+        common: 'Articles help, but product pages and releases keep changing.',
+        answerlattice: 'Widget help, hosted help, FAQ, and changelog come from reviewed support knowledge.',
+        icon: LuBookOpen,
+    },
+    {
+        title: 'Scattered docs and replies',
+        common: 'Support memory lives across docs, DMs, tickets, screenshots, and release notes.',
+        answerlattice: 'Those sources become a reviewable support layer before users need the answer.',
+        icon: LuFileText,
+    },
+];
+
 const SUITE_CAPABILITIES = [
     {
         title: 'Answer inside the product',
@@ -222,7 +249,7 @@ const SUPPORT_SURFACE_STORY = [
         id: 'support-surface-owner-inputs',
         navLabel: 'Owner inputs',
         navSummary: 'Scattered docs, notes, screenshots, recordings, and releases become structured support.',
-        eyebrow: '01 / Owner inputs',
+        eyebrow: 'Owner inputs',
         title: 'Start from the knowledge already scattered around your product.',
         description: 'Product docs, repeated replies, screenshots, recordings, release notes, support notes, and founder memory become structured help content and answer drafts.',
         bullets: ['Docs', 'Replies', 'Screenshots', 'Release notes'],
@@ -234,7 +261,7 @@ const SUPPORT_SURFACE_STORY = [
         id: 'support-surface-in-app-help',
         navLabel: 'In-app help',
         navSummary: 'Support appears on billing, onboarding, settings, and error screens.',
-        eyebrow: '02 / In-app help',
+        eyebrow: 'In-app help',
         title: 'Give users help on the screen where they get stuck.',
         description: 'The widget brings support into billing, onboarding, settings, integrations, releases, and error screens without forcing users to leave the product.',
         bullets: ['Safe page context', 'Widget help', 'Fallback path'],
@@ -246,7 +273,7 @@ const SUPPORT_SURFACE_STORY = [
         id: 'support-surface-hosted-help',
         navLabel: 'Hosted help',
         navSummary: 'Docs, FAQ, and changelog come from the same structured support knowledge.',
-        eyebrow: '03 / Hosted help',
+        eyebrow: 'Hosted help',
         title: 'Publish a support home outside the product too.',
         description: 'Hosted help, documentation, FAQ answers, and changelog content come from the same structured support knowledge instead of separate scattered notes.',
         bullets: ['Help center', 'Documentation', 'FAQ', 'Changelog'],
@@ -258,7 +285,7 @@ const SUPPORT_SURFACE_STORY = [
         id: 'support-surface-gaps-fallback',
         navLabel: 'Gaps and fallback',
         navSummary: 'Missing answers become tickets, feedback, and visible support gaps.',
-        eyebrow: '04 / Gaps and fallback',
+        eyebrow: 'Gaps and fallback',
         title: 'When help is missing, users still get a path.',
         description: 'Tickets, low-rated answers, repeated questions, and feedback become visible support gaps instead of hidden founder work.',
         bullets: ['Ticket fallback', 'Feedback review', 'Support gaps'],
@@ -270,7 +297,7 @@ const SUPPORT_SURFACE_STORY = [
         id: 'support-surface-review-loop',
         navLabel: 'Review loop',
         navSummary: 'Drafts stay reviewable until you approve customer-facing guidance.',
-        eyebrow: '05 / Review loop',
+        eyebrow: 'Review loop',
         title: 'You decide what becomes official support.',
         description: 'Drafts and missing answers stay reviewable until you approve them, so the next user gets better support without you repeating the same reply.',
         bullets: ['Approved answers', 'Review queue', 'Support Board'],
@@ -284,7 +311,7 @@ const PRODUCT_OVERVIEW_HERO_FEATURES = [
     {
         label: 'In-app support widget',
         href: '/product/page-aware-widget',
-        eyebrow: '01 / In-app help',
+        eyebrow: 'In-app help',
         title: 'Help users on the screen where they get stuck.',
         description:
             'Add an in-app widget, pass safe page hints, show approved answers or owner FAQ answers first, and open ticket fallback only when coverage is missing.',
@@ -294,7 +321,7 @@ const PRODUCT_OVERVIEW_HERO_FEATURES = [
     {
         label: 'Hosted help center',
         href: '/product/support-control',
-        eyebrow: '02 / Hosted help',
+        eyebrow: 'Hosted help',
         title: 'Give users a support home outside the app too.',
         description:
             'Publish docs, FAQs, owner answers, and changelog content on hosted help while keeping tickets, feedback, and workspace internals private.',
@@ -363,14 +390,14 @@ const PRODUCT_OVERVIEW_FEATURES = [
 ];
 
 const PRODUCT_OVERVIEW_FEATURE_CARD_CLASSES = [
-    'al-product-overview__feature-card--wide',
-    '',
-    '',
-    '',
-    '',
-    'al-product-overview__feature-card--wide',
-    'al-product-overview__feature-card--wide',
-    'al-product-overview__feature-card--wide',
+    'al-product-overview__feature-card--priority',
+    'al-product-overview__feature-card--compact',
+    'al-product-overview__feature-card--compact',
+    'al-product-overview__feature-card--compact',
+    'al-product-overview__feature-card--compact',
+    'al-product-overview__feature-card--priority',
+    'al-product-overview__feature-card--priority',
+    'al-product-overview__feature-card--medium',
 ];
 
 const SETUP_STEPS = [
@@ -473,6 +500,21 @@ const BUILT_FOR = [
     'Small SaaS teams before a support hire',
     'Studios launching multiple SaaS products',
     'AI-built products moving faster than docs',
+];
+
+const POSITIONING_BOUNDARIES = [
+    {
+        title: 'Not another chatbot',
+        description: 'Official help requires approved support knowledge instead of loose generated replies.',
+    },
+    {
+        title: 'Not a full helpdesk',
+        description: 'Tickets stay fallback and signal source, not the center of the product.',
+    },
+    {
+        title: 'Not static docs',
+        description: 'Feedback, tickets, releases, and low-rated answers show what needs review.',
+    },
 ];
 
 function getHeroWordStyle(index: number): CSSProperties {
@@ -600,6 +642,35 @@ function SupportSuiteSection({ basePath }: { basePath: string }) {
                     ))}
                 </div>
 
+                <div className="al-support-switch" data-answerlattice-reveal>
+                    <div className="al-support-switch__intro">
+                        <p>Compare by answer source</p>
+                        <h3>If you are comparing tools, start with where the official answer comes from.</h3>
+                        <span>AnswerLattice is not trying to be the loudest reply box. It keeps approved product support ahead of fallback.</span>
+                    </div>
+                    <div className="al-support-switch__grid" aria-label="AnswerLattice category comparison">
+                        {SUPPORT_SWITCH_OPTIONS.map((option) => {
+                            const Icon = option.icon;
+                            return (
+                                <article key={option.title} className="al-support-switch__item" data-answerlattice-reveal-item>
+                                    <span className="al-support-switch__icon">
+                                        <Icon aria-hidden size={18} />
+                                    </span>
+                                    <div>
+                                        <h3>{option.title}</h3>
+                                        <p><strong>Common path:</strong> {option.common}</p>
+                                        <p><strong>AnswerLattice:</strong> {option.answerlattice}</p>
+                                    </div>
+                                </article>
+                            );
+                        })}
+                    </div>
+                    <AnswerlatticeLink basePath={basePath} href="/comparisons" className="al-support-switch__link">
+                        Open category comparisons
+                        <LuArrowRight aria-hidden size={15} />
+                    </AnswerlatticeLink>
+                </div>
+
                 <div className="mt-8 grid gap-4 lg:grid-cols-4">
                     {SUITE_CAPABILITIES.map((capability) => {
                         const Icon = capability.icon;
@@ -608,7 +679,7 @@ function SupportSuiteSection({ basePath }: { basePath: string }) {
                                 key={capability.title}
                                 basePath={basePath}
                                 href={capability.href}
-                                className="group rounded-[1.75rem] border border-white/[0.08] bg-[#09091a] p-5 transition hover:border-teal-300/25 hover:bg-teal-400/[0.045]"
+                                className="al-suite-card group rounded-[1.75rem] border border-white/[0.08] bg-[#09091a] p-5 transition hover:border-teal-300/25 hover:bg-teal-400/[0.045]"
                                 data-answerlattice-reveal-item
                             >
                                 <span className="flex h-11 w-11 items-center justify-center rounded-2xl border border-teal-200/15 bg-teal-300/[0.08] text-teal-200">
@@ -1196,47 +1267,33 @@ function FounderReviewSection() {
     );
 }
 
-function AiBuiltSaasSection() {
+function FounderFitBoundarySection() {
     return (
-        <section className="border-y border-white/[0.06] px-4 py-20 sm:px-6">
-            <div className="mx-auto max-w-6xl">
+        <section className="al-founder-fit border-y border-white/[0.06] px-4 py-20 sm:px-6">
+            <div className="mx-auto max-w-7xl">
                 <SectionHeader
-                    eyebrow="AI-built SaaS"
-                    title="Built for founders shipping faster than support can keep up."
-                    description="For founders and small teams shipping faster than support processes can keep up."
+                    eyebrow="Founder fit"
+                    title="Built for founders at the support tipping point."
+                    description="For AI-built products, solo founders, technical founders, small SaaS teams, and studios that need a first support layer before support becomes a full-time job."
                 />
-                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                    {BUILT_FOR.map((item) => (
-                        <article key={item} className="rounded-2xl border border-white/[0.08] bg-white/[0.025] p-5 text-sm font-semibold text-[#d6d6ef]">
-                            {item}
-                        </article>
-                    ))}
-                </div>
-            </div>
-        </section>
-    );
-}
-
-function PositioningBoundarySection() {
-    return (
-        <section className="px-4 py-20 sm:px-6">
-            <div className="mx-auto max-w-6xl">
-                <SectionHeader
-                    eyebrow="Not a chatbot"
-                    title="Between DIY support and a full support team."
-                    description="A support layer for governed answers, fallback, and review. Not an AI autopilot."
-                />
-                <div className="grid gap-4 md:grid-cols-3">
-                    {[
-                        ['Not another chatbot', 'Official help requires approved support knowledge instead of loose generated replies.'],
-                        ['Not a full helpdesk', 'Tickets stay fallback and signal source, not the center of the product.'],
-                        ['Not static docs', 'Feedback, tickets, releases, and low-rated answers show what needs review.'],
-                    ].map(([title, description]) => (
-                        <article key={title} className="rounded-[1.5rem] border border-white/[0.08] bg-white/[0.025] p-6">
-                            <h3 className="text-lg font-semibold text-white">{title}</h3>
-                            <p className="mt-3 text-sm leading-relaxed text-[#8f8faa]">{description}</p>
-                        </article>
-                    ))}
+                <div className="al-founder-fit__grid">
+                    <article className="al-founder-fit__panel al-founder-fit__panel--primary" data-answerlattice-reveal-item>
+                        <p>Best fit</p>
+                        <h3>When the product is real, but the support team is not.</h3>
+                        <div className="al-founder-fit__list">
+                            {BUILT_FOR.map((item) => (
+                                <span key={item}>{item}</span>
+                            ))}
+                        </div>
+                    </article>
+                    <div className="al-founder-fit__boundaries">
+                        {POSITIONING_BOUNDARIES.map((item) => (
+                            <article key={item.title} className="al-founder-fit__boundary-card" data-answerlattice-reveal-item>
+                                <h3>{item.title}</h3>
+                                <p>{item.description}</p>
+                            </article>
+                        ))}
+                    </div>
                 </div>
             </div>
         </section>
@@ -1257,8 +1314,7 @@ export default function AnswerlatticeHomePage() {
                 <ProductOverviewSection basePath={basePath} />
                 <ConnectedLoopSection />
                 <InstallSurfaceSection basePath={basePath} />
-                <AiBuiltSaasSection />
-                <PositioningBoundarySection />
+                <FounderFitBoundarySection />
                 <PricingPreviewSection basePath={basePath} />
                 <ObjectionsSection />
                 <CTASection basePath={basePath} />

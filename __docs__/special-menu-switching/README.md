@@ -2,9 +2,9 @@
 
 > **"Activate your Diwali menu, Sunday brunch, or seasonal specials — your regular menu stays safe and comes back automatically."**
 
-**Created:** February 20, 2026  
-**Source:** ChatGPT Strategic Session → Cascade Review + Codebase Cross-Check  
-**Status:** ✅ IMPLEMENTED — Feature Flag OFF by Default  
+**Created:** February 20, 2026
+**Source:** ChatGPT Strategic Session → Cascade Review + Codebase Cross-Check
+**Status:** ✅ IMPLEMENTED — Active behind `ENABLE_SPECIAL_MENU_SWITCHING`
 **Feature Flag:** `ENABLE_SPECIAL_MENU_SWITCHING` in `src/config/features.ts`
 
 ---
@@ -19,7 +19,7 @@
 | [Website](./special-menu-switching_website.md)               | Public       | Landing page content, SEO meta                   |
 | [Help Doc](./special-menu-switching_helpdoc.md)              | Customers    | How to use, FAQ, troubleshooting                 |
 | [Firebase](./special-menu-switching_firebase.md)             | Cost Control | Reads, writes, cost estimate                     |
-| [Mobile Support](./special-menu-switching_mobile-support.md) | Internal     | Mobile admission test, partial support spec      |
+| [Mobile Support](./special-menu-switching_mobile-support.md) | Internal     | Mobile admission test, active mobile support spec |
 | [ChatGPT Review](./_archive/chatgpt-review.md)               | Internal     | Original conversation analysis + decision matrix |
 
 ---
@@ -104,7 +104,7 @@ Client-Side DAL (same-day precision)
 ## Feature Flag
 
 ```typescript
-ENABLE_SPECIAL_MENU_SWITCHING: false; // In src/config/features.ts
+ENABLE_SPECIAL_MENU_SWITCHING: true; // In src/config/features.ts and functions/src/constants/features.ts
 ```
 
 ---

@@ -1,7 +1,7 @@
 'use client';
 
-import { deleteArticle, getArticleById, getArticlesByCategoryId, getArticlesBySectionId } from "@database/knowledgeBase/articles";
-import { deleteArticleFromParent, deleteCategory, getCategories, updateArticleInParent, updateCategory } from "@database/knowledgeBase/categories";
+import { assertKnowledgeBaseArticleDeleteSucceeded, deleteArticle, getArticleById, getArticlesByCategoryId, getArticlesBySectionId } from "@database/knowledgeBase/articles";
+import { assertKnowledgeBaseCategoriesMutationSucceeded, assertKnowledgeBaseCategoryWriteSucceeded, deleteArticleFromParent, deleteCategory, getCategories, updateArticleInParent, updateCategory } from "@database/knowledgeBase/categories";
 import { useAppDispatch } from "@hook/useAppDispatch";
 import AISearchModal from "@organisms/AISearchModal";
 import { startLoader, stopLoader } from "@reduxSlices/loader";
@@ -133,6 +133,11 @@ function PlatformKnowledgeBase() {
         try {
             if (categoriesData) {
                 const updatedCategoriesData = await updateArticleInParent(categoriesData, article.categoryId, article, article.sectionId);
+                assertKnowledgeBaseCategoriesMutationSucceeded(
+                    updatedCategoriesData,
+                    'updateArticleInParent',
+                    'platform_kb_article_parent_update_rejected',
+                );
                 if (updatedCategoriesData) {
                     setCategoriesData(updatedCategoriesData);
 
@@ -196,8 +201,18 @@ function PlatformKnowledgeBase() {
                 dispatch(startLoader(`Deleting ${type}`))
                 try {
                     if (type === 'article' && selectedCategory && categoriesData) {
-                        await deleteArticle(id);
+                        const deleteResult = await deleteArticle(id);
+                        assertKnowledgeBaseArticleDeleteSucceeded(
+                            deleteResult,
+                            id,
+                            'platform_kb_article_delete_rejected',
+                        );
                         const updatedCategoriesData = await deleteArticleFromParent(categoriesData, selectedCategory.id, id, selectedSection?.id);
+                        assertKnowledgeBaseCategoriesMutationSucceeded(
+                            updatedCategoriesData,
+                            'deleteArticleFromParent',
+                            'platform_kb_article_parent_delete_rejected',
+                        );
                         if (updatedCategoriesData) {
                             setCategoriesData(updatedCategoriesData);
                         }
@@ -206,12 +221,24 @@ function PlatformKnowledgeBase() {
                     } else if (type === 'section' && selectedCategory && categoriesData) {
                         const articlesToDelete = await getArticlesBySectionId(id);
                         if (articlesToDelete) {
-                            await Promise.all(articlesToDelete.map(a => deleteArticle(a.id)));
+                            await Promise.all(articlesToDelete.map(async (article) => {
+                                const deleteResult = await deleteArticle(article.id);
+                                assertKnowledgeBaseArticleDeleteSucceeded(
+                                    deleteResult,
+                                    article.id,
+                                    'platform_kb_section_article_delete_rejected',
+                                );
+                            }));
                         }
                         const newCategoriesData = { ...categoriesData.categories };
                         const updatedSections = newCategoriesData[selectedCategory.id].sections.filter(s => s.id !== id);
                         newCategoriesData[selectedCategory.id].sections = updatedSections;
-                        await updateCategory(newCategoriesData[selectedCategory.id]);
+                        const categoryUpdateResult = await updateCategory(newCategoriesData[selectedCategory.id]);
+                        assertKnowledgeBaseCategoryWriteSucceeded(
+                            categoryUpdateResult,
+                            newCategoriesData[selectedCategory.id].id,
+                            'platform_kb_section_delete_category_update_rejected',
+                        );
 
                         setCategoriesData({ categories: newCategoriesData });
                         setSelectedCategory(newCategoriesData[selectedCategory.id]);
@@ -223,11 +250,23 @@ function PlatformKnowledgeBase() {
                     } else if (type === 'category' && categoriesData) {
                         const articlesToDelete = await getArticlesByCategoryId(id);
                         if (articlesToDelete) {
-                            await Promise.all(articlesToDelete.map(a => deleteArticle(a.id)));
+                            await Promise.all(articlesToDelete.map(async (article) => {
+                                const deleteResult = await deleteArticle(article.id);
+                                assertKnowledgeBaseArticleDeleteSucceeded(
+                                    deleteResult,
+                                    article.id,
+                                    'platform_kb_category_article_delete_rejected',
+                                );
+                            }));
                         }
                         const newCategoriesData = { ...categoriesData.categories };
                         delete newCategoriesData[id];
-                        await deleteCategory({ categories: newCategoriesData });
+                        const categoryDeleteResult = await deleteCategory({ categories: newCategoriesData });
+                        assertKnowledgeBaseCategoriesMutationSucceeded(
+                            categoryDeleteResult,
+                            'deleteCategory',
+                            'platform_kb_category_delete_rejected',
+                        );
 
                         setCategoriesData({ categories: newCategoriesData });
 

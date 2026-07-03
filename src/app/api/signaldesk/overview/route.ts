@@ -2,11 +2,12 @@ export const dynamic = "force-dynamic";
 
 import {
     applySignalDeskRateLimit,
+    getSignalDeskAccessLogContext,
+    logSignalDeskFailure,
     requireSignalDeskAccess,
     requireSignalDeskRuntime,
 } from "@lib/signaldesk/apiGuards";
 import { loadSignalDeskOverviewServer } from "@lib/signaldesk/server";
-import { secureError } from "@lib/security/secureLogger";
 import { withAuth } from "@/middleware/auth";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
@@ -34,9 +35,14 @@ export const GET = withAuth(async (request: NextRequest, session) => {
             },
         });
     } catch (error) {
-        secureError("[SignalDesk API] Overview failed", error as Error, {
-            userId: accessResult.access.userId,
-        });
+        logSignalDeskFailure(
+            "signaldesk_overview_route_failed",
+            error,
+            {
+                route: "/api/signaldesk/overview",
+                ...getSignalDeskAccessLogContext(accessResult.access),
+            },
+        );
         return NextResponse.json({ error: "Failed to load SignalDesk" }, { status: 500 });
     }
 });

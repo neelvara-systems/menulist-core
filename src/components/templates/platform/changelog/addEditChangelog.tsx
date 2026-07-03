@@ -4,9 +4,10 @@ import PasteUpload, { PastedFile } from '@atoms/PasteUpload';
 import TiptapEditor from '@atoms/TiptapEditor';
 import { FEATURE_FLAGS } from '@config/features';
 import { CHANGELOG_TAG_CONFIG, CHANGELOG_TAG_OPTIONS } from '@constant/changelog';
-import { getProductSurfacesForSession, rebuildProductSurfaceContentSummary } from '@database/answerlattice/productSurfaces';
+import { getProductSurfacesForSession, rebuildProductSurfaceContentSummaryWithDiagnostics } from '@database/answerlattice/productSurfaces';
 import { addChangelogEntry, updateChangelogEntry } from '@database/changelog';
 import { useAppDispatch } from '@hook/useAppDispatch';
+import { getBoundedAnswerlatticeStringContext, logAnswerlatticeFailure } from '@lib/answerlattice/diagnostics';
 import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from '@providers/platformProviders/platformGlobalDataProvider';
 import { startLoader, stopLoader } from '@reduxSlices/loader';
 import { ChangelogEntry } from '@type/changelog';
@@ -82,7 +83,9 @@ const AddEditChangelog: React.FC<AddEditChangelogProps> = ({ open, onClose, onSa
                         .map(surface => ({ label: surface.label, value: surface.key })),
                 );
             })
-            .catch(() => undefined);
+            .catch((error) => {
+                logAnswerlatticeFailure('answerlattice_changelog_surface_options_load_failed', error);
+            });
         return () => { mounted = false; };
     }, [open]);
 
@@ -189,21 +192,39 @@ const AddEditChangelog: React.FC<AddEditChangelogProps> = ({ open, onClose, onSa
         setIsSaving(true);
         try {
             let result;
+            let savedEntryId = initialData?.id || '';
             if (initialData) {
                 result = await updateChangelogEntry(initialData.id, entryPayload);
-                message.success('Changelog entry updated successfully!');
                 const updatedEntry = { ...initialData, ...entryPayload };
                 // Convert timestamp back to a plain object for state update if needed
                 if (updatedEntry.releasedOn) {
                     updatedEntry.releasedOn = Timestamp.fromDate(updatedEntry.releasedOn.toDate());
                 }
+                savedEntryId = initialData.id;
                 onSave(updatedEntry);
             } else {
                 result = await addChangelogEntry(entryPayload);
-                message.success('Changelog entry saved successfully!');
+                savedEntryId = result?.entryId || result?.id || '';
                 onSave(result);
             }
-            rebuildProductSurfaceContentSummary().catch(() => undefined);
+            let summaryRefreshSucceeded = true;
+            if (FEATURE_FLAGS.ENABLE_ANSWERLATTICE_PRODUCT_SURFACES) {
+                summaryRefreshSucceeded = await rebuildProductSurfaceContentSummaryWithDiagnostics({
+                    failureCode: initialData
+                        ? 'answerlattice_changelog_summary_refresh_after_update_failed'
+                        : 'answerlattice_changelog_summary_refresh_after_create_failed',
+                    context: {
+                        ...getBoundedAnswerlatticeStringContext('changelogEntryId', savedEntryId),
+                        ...getBoundedAnswerlatticeStringContext('changelogTitle', title),
+                        ...getBoundedAnswerlatticeStringContext('changelogVersion', version),
+                    },
+                });
+            }
+            if (summaryRefreshSucceeded) {
+                message.success(initialData ? 'Changelog entry updated successfully!' : 'Changelog entry saved successfully!');
+            } else {
+                message.warning('Changelog saved, but contextual help refresh failed. Try Refresh after checking product surfaces.');
+            }
             form.resetFields();
             setAttachments([]);
             setKbSources([]);

@@ -45,14 +45,14 @@ export function validatePosSyncWebhookUrl(value: string): PosSyncWebhookUrlValid
     return { valid: true, normalizedUrl: url.toString() };
 }
 
-function isBlockedHostname(hostname: string): boolean {
+export function isBlockedHostname(hostname: string): boolean {
     if (BLOCKED_HOSTNAMES.has(hostname)) return true;
     if (hostname.endsWith('.localhost')) return true;
     if (hostname.endsWith('.local')) return true;
     return false;
 }
 
-function isPrivateIpv4(hostname: string): boolean {
+export function isPrivateIpv4(hostname: string): boolean {
     const match = hostname.match(IPV4_PATTERN);
     if (!match) return false;
 
@@ -73,7 +73,7 @@ function isPrivateIpv4(hostname: string): boolean {
     return false;
 }
 
-function isPrivateIpv6(hostname: string): boolean {
+export function isPrivateIpv6(hostname: string): boolean {
     const normalized = hostname.toLowerCase();
     if (!normalized.includes(':')) return false;
     if (normalized === '::1' || normalized === '::') return true;
@@ -85,4 +85,9 @@ function isPrivateIpv6(hostname: string): boolean {
     }
 
     return false;
+}
+
+export function isBlockedPosSyncNetworkTarget(hostnameOrAddress: string): boolean {
+    const normalized = hostnameOrAddress.toLowerCase().replace(/^\[(.*)\]$/, '$1');
+    return isBlockedHostname(normalized) || isPrivateIpv4(normalized) || isPrivateIpv6(normalized);
 }

@@ -1,4 +1,5 @@
 import { fetchLatestChangelogPage } from '@database/changelog';
+import { logHookFailure } from '@hook/hookDiagnostics';
 import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from '@providers/platformProviders/platformGlobalDataProvider';
 import { ChangelogPage } from '@type/changelog';
 import { Timestamp } from 'firebase/firestore';
@@ -42,7 +43,6 @@ export const useChangelogCache = () => {
      */
     const clearCache = useCallback(() => {
         setCachedChangelog({ cachedOn: null, changelog: null });
-        console.log('🗑️ Changelog cache cleared');
     }, [setCachedChangelog]);
 
     /**
@@ -98,7 +98,6 @@ export const useChangelogCache = () => {
         // STEP 1: Force Refresh (Skip Cache)
         // ============================================
         if (options?.forceRefresh) {
-            console.log('🔄 Force refresh item, skipping cache');
             options.onCacheMiss?.();
             
             try {
@@ -109,13 +108,16 @@ export const useChangelogCache = () => {
                         cachedOn: Timestamp.now(),
                         changelog
                     });
-                    console.log('✅ Item fetched and cached');
                     return changelog;
                 }
                 
                 return null; // Not found
             } catch (error) {
-                console.error('❌ Failed to fetch item:', error);
+                logHookFailure('answerlattice_changelog_cache_fetch_failed', error, {
+                    forceRefresh: true,
+                    hadCachedChangelog: Boolean(cachedChangelog.changelog),
+                    cachedEntryCount: cachedChangelog.changelog?.entries?.length || 0,
+                });
                 return null;
             }
         }
@@ -125,7 +127,6 @@ export const useChangelogCache = () => {
         // ============================================
         if (cachedChangelog.changelog) {
             // ✅ Cache hit - instant return
-            console.log('📦 Item cache hit');
             options?.onCacheHit?.();
             
             return cachedChangelog.changelog;
@@ -134,7 +135,6 @@ export const useChangelogCache = () => {
         // ============================================
         // STEP 3: Cache Miss - Fetch from Database
         // ============================================
-        console.log('🌐 Item cache miss, fetching');
         options?.onCacheMiss?.();
 
         try {
@@ -145,15 +145,17 @@ export const useChangelogCache = () => {
                     cachedOn: Timestamp.now(),
                     changelog
                 });
-                console.log('✅ Item fetched and cached');
                 return changelog;
             }
             
             // Item not found
-            console.log('⚠️ Item not found');
             return null;
         } catch (error) {
-            console.error('❌ Failed to fetch item:', error);
+            logHookFailure('answerlattice_changelog_cache_fetch_failed', error, {
+                forceRefresh: false,
+                hadCachedChangelog: Boolean(cachedChangelog.changelog),
+                cachedEntryCount: cachedChangelog.changelog?.entries?.length || 0,
+            });
             return null;
         }
     }, [cachedChangelog, setCachedChangelog]);

@@ -2,7 +2,39 @@
 
 **Date:** January 11, 2026  
 **Target Feature:** social-content  
-**Status:** ✅ **DEPLOYABLE**
+**Status:** Historical logic verification evidence; not current launch certification
+
+> **Current runtime boundary (July 2, 2026):** This report preserves historical Social Content logic evidence only. Owner generation path: deleted. Do not show `Generate Today Action` or add a replacement Social Content generation route while GrowthOS owns new generated actions. Current release approval requires the active production-readiness audit, External Certification Runbook evidence, current source gates including `npm run verify:agent-readiness` and `npm run verify:public-business-truth`, Today desktop/mobile/browser QA, campaign AI/provider smoke where enabled, target deploy evidence, and production-host smoke.
+
+---
+
+## June 27, 2026 Diagnostic Hardening Addendum
+
+Current runtime truth: the old campaign generation engine is removed from active code, while Today still reads prepared campaign summaries and lets owners complete, skip, copy, share, or download the recommended action.
+
+The June 27 audit verified and hardened failure diagnostics for:
+
+| Flow | Source |
+| --- | --- |
+| Desktop Today action flow | `src/components/templates/main-app/today/index.tsx` |
+| Complete/skip action hook | `src/components/templates/main-app/today/hooks/useCampaignActions.ts` |
+| Mobile Today action, hours, status, and physical-surface failures | `src/components/mobile/screens/MobileHoursScreen.tsx` |
+| Project link and WhatsApp fallback executor | `src/lib/campaigns/todayActionExecutor.ts` |
+| WhatsApp/status/poster/tent/screen surfaces | `src/lib/campaigns/executionSurfaces.ts` |
+| Bounded diagnostic helper | `src/lib/campaigns/campaignDiagnostics.ts` |
+| Mobile owner diagnostic helper | `src/components/mobile/utils/mobileOwnerDiagnostics.ts` |
+
+Expected invariant: these paths must not direct-console raw campaign IDs, project IDs, item names, menu links, image URLs, captions, owner-entered text, or browser/provider exception objects. They must use normalized `today_campaign_*` and `campaign_*` failure codes with bounded presence/length metadata.
+
+June 30 Today WhatsApp handoff addendum: `src/lib/campaigns/todayActionExecutor.ts` opens generated WhatsApp URLs with `noopener,noreferrer` and logs `today_campaign_whatsapp_open_failed` when the handoff is blocked or throws. Copy success waits for Clipboard API success or acknowledged textarea fallback success, and rejected Clipboard API writes fall through to the textarea fallback before failure. Logged context is limited to bounded surface/item presence-length metadata, menu-link presence, message length, share URL length, clipboard/fallback support booleans, and normalized source error metadata. Raw generated WhatsApp URLs, menu links, owner item names, generated messages, and browser exception payloads must not be logged.
+
+June 29 addendum with June 30 support metadata: paused Weekly Growth Pack copy failures now log `today_weekly_growth_pack_copy_failed` from both desktop and mobile cards. The shared helper contains Clipboard API and textarea-copy failures and records only bounded asset/copy/primary-subject presence-length metadata, counts, clipboard/fallback support booleans, controlled failure stage, and normalized source error metadata.
+
+Mobile Today also guards close-today, today-hours update, temporary-status set/clear, tent-card download, and counter-sticker download failures through `mobile_today_*` failure codes and `mobileOwnerDiagnostics`.
+
+Verifier: `npm run verify:public-business-truth`.
+
+Cost impact: `$0.00`. This adds no Firestore reads/writes, Storage operations, Cloud Functions, API routes, provider calls, cache invalidations, rules, indexes, or owner-facing settings.
 
 ---
 
@@ -331,9 +363,9 @@ useTodayCampaigns() → todayCampaigns → PrimaryCard + OperationalSection
 
 ---
 
-## FINAL VERDICT: ✅ DEPLOYABLE
+## Historical Logic Verification Result: Source Evidence Only
 
-**Social Content logic verification complete. All 6 flows verified. Zero critical issues.**
+**This report is historical flow evidence only, not current release approval. Current certification still requires the active production-readiness audit, External Certification Runbook evidence, current source gates, Today desktop/mobile/browser QA, campaign AI/provider smoke where enabled, target deploy evidence, and production-host smoke.**
 
 ---
 

@@ -1,8 +1,38 @@
 import type { SeoGenerationRequest } from '@lib/validation/apiSchemas';
 import { normalizeMetaText } from '@lib/seo/publicMetadata';
 
+const PROMPT_INPUT_TEXT_MAX_LENGTH = 300;
+const PROMPT_INPUT_LIST_ITEM_MAX_LENGTH = 120;
+const PROMPT_INPUT_LIST_MAX_ITEMS = 20;
+
+function sanitizePromptText(
+    value: unknown,
+    fallback = 'Not provided',
+    maxLength = PROMPT_INPUT_TEXT_MAX_LENGTH,
+) {
+    if (typeof value !== 'string') return fallback;
+
+    const normalized = value
+        .replace(/[\u0000-\u001f\u007f]/g, ' ')
+        .replace(/[{}<>`$\\]/g, '')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .slice(0, maxLength)
+        .trim();
+
+    return normalized || fallback;
+}
+
+function metaTextOrFallback(value: unknown, fallback = 'Not provided', maxLength = PROMPT_INPUT_TEXT_MAX_LENGTH) {
+    return sanitizePromptText(normalizeMetaText(value, fallback), fallback, maxLength);
+}
+
 function listOrFallback(items?: string[], fallback = 'Not provided') {
-    return items && items.length ? items.join(', ') : fallback;
+    const values = (items || [])
+        .slice(0, PROMPT_INPUT_LIST_MAX_ITEMS)
+        .map((item) => sanitizePromptText(item, '', PROMPT_INPUT_LIST_ITEM_MAX_LENGTH))
+        .filter(Boolean);
+    return values.length ? values.join(', ') : fallback;
 }
 
 export default function seoPrompt(payload: SeoGenerationRequest) {
@@ -23,21 +53,21 @@ Rules:
 - Do not generate canonicalUrl.
 
 Business:
-- Brand name: ${store.tenantName || store.name}
-- Store/location name: ${store.name}
-- Business category: ${store.businessCategory || 'Not provided'}
-- Business type: ${store.businessType || 'Not provided'}
-- City: ${store.city || 'Not provided'}
-- State: ${store.state || 'Not provided'}
-- Country: ${store.country || 'Not provided'}
-- Address line: ${store.addressLine || 'Not provided'}
-- Existing description: ${store.description || 'Not provided'}
-- Current tagline to improve or replace: ${normalizeMetaText(store.tagline, 'Not provided')}
-- Current Customer App short name: ${store.pwaShortName || 'Not provided'}
+- Brand name: ${sanitizePromptText(store.tenantName || store.name, 'Not provided', 120)}
+- Store/location name: ${sanitizePromptText(store.name, 'Not provided', 120)}
+- Business category: ${sanitizePromptText(store.businessCategory)}
+- Business type: ${sanitizePromptText(store.businessType)}
+- City: ${sanitizePromptText(store.city)}
+- State: ${sanitizePromptText(store.state)}
+- Country: ${sanitizePromptText(store.country)}
+- Address line: ${sanitizePromptText(store.addressLine)}
+- Existing description: ${sanitizePromptText(store.description, 'Not provided', 800)}
+- Current tagline to improve or replace: ${metaTextOrFallback(store.tagline, 'Not provided', 200)}
+- Current Customer App short name: ${sanitizePromptText(store.pwaShortName, 'Not provided', 40)}
 - Active business attributes: ${listOrFallback(store.businessAttributes)}
 - Social media handles/links: ${listOrFallback(store.socialMedia)}
-- Public descriptor: ${normalizeMetaText(store.publicPresence?.descriptor, 'Not provided')}
-- Known for: ${normalizeMetaText(store.publicPresence?.knownFor, 'Not provided')}
+- Public descriptor: ${metaTextOrFallback(store.publicPresence?.descriptor, 'Not provided', 120)}
+- Known for: ${metaTextOrFallback(store.publicPresence?.knownFor, 'Not provided', 120)}
 - WhatsApp number present: ${store.publicPresence?.whatsappNumber ? 'Yes' : 'No'}
 - Google Maps URL present: ${store.publicPresence?.googleMapsUrl ? 'Yes' : 'No'}
 - Google Review URL present: ${store.publicPresence?.googleReviewUrl ? 'Yes' : 'No'}
@@ -46,8 +76,8 @@ Business:
 - Established year: ${store.publicPresence?.establishedYear || 'Not provided'}
 
 Menu:
-- Project name: ${normalizeMetaText(menu?.projectName, 'Not provided')}
-- Project description: ${normalizeMetaText(menu?.projectDescription, 'Not provided')}
+- Project name: ${metaTextOrFallback(menu?.projectName, 'Not provided', 160)}
+- Project description: ${metaTextOrFallback(menu?.projectDescription, 'Not provided', 500)}
 - Categories: ${listOrFallback(menu?.categories)}
 - Items: ${listOrFallback(menu?.items)}
 

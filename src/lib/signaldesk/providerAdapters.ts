@@ -1,4 +1,6 @@
 import { SIGNALDESK_INTEGRATION_ENV, SIGNALDESK_META_GRAPH_VERSION } from "@constant/signaldesk/integrations";
+import { logRuntimeFailure } from "@lib/runtime/runtimeDiagnostics";
+import { readJsonResponseWithLimit } from "@lib/security/boundedResponseBody";
 import type { SignalDeskOutboundChannel } from "@type/signaldesk";
 import nodemailer from "nodemailer";
 
@@ -16,6 +18,8 @@ type ProviderSendResult = {
 };
 
 const env = (key: string) => process.env[key]?.trim() || "";
+const SIGNALDESK_META_RESPONSE_JSON_MAX_BYTES = 64 * 1024;
+const SIGNALDESK_META_RESPONSE_PARSE_FAILED = "signaldesk_meta_response_parse_failed";
 
 const isTruthy = (value: string) => /^(1|true|yes)$/i.test(value);
 
@@ -101,6 +105,18 @@ const sendEmail = async (input: ProviderSendInput): Promise<ProviderSendResult> 
     };
 };
 
+async function readMetaProviderResponseJson(response: Response): Promise<any | null> {
+    try {
+        return await readJsonResponseWithLimit<any>(response, SIGNALDESK_META_RESPONSE_JSON_MAX_BYTES);
+    } catch (error) {
+        logRuntimeFailure(SIGNALDESK_META_RESPONSE_PARSE_FAILED, error, {
+            product: "signaldesk",
+            responseStatus: response.status,
+        });
+        return null;
+    }
+}
+
 const sendMetaMessage = async (input: ProviderSendInput): Promise<ProviderSendResult> => {
     const token = env(SIGNALDESK_INTEGRATION_ENV.META_ACCESS_TOKEN);
     const endpointId = input.channel === "whatsapp"
@@ -110,7 +126,8 @@ const sendMetaMessage = async (input: ProviderSendInput): Promise<ProviderSendRe
             : env(SIGNALDESK_INTEGRATION_ENV.MESSENGER_PAGE_ID);
     if (!token || !endpointId) throw new Error("Meta provider is not configured");
 
-    const endpoint = `https://graph.facebook.com/${SIGNALDESK_META_GRAPH_VERSION}/${endpointId}/messages`;
+    const encodedEndpointId = encodeURIComponent(endpointId);
+    const endpoint = `https://graph.facebook.com/${SIGNALDESK_META_GRAPH_VERSION}/${encodedEndpointId}/messages`;
     const payload = input.channel === "whatsapp"
         ? {
             messaging_product: "whatsapp",
@@ -127,14 +144,15 @@ const sendMetaMessage = async (input: ProviderSendInput): Promise<ProviderSendRe
 
     const response = await fetch(endpoint, {
         body: JSON.stringify(payload),
+        redirect: "manual",
         headers: {
             Authorization: `Bearer ${token}`,
             "Content-Type": "application/json",
         },
         method: "POST",
     });
-    const responsePayload = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(`Meta provider send failed: ${response.status}`);
+    const responsePayload = await readMetaProviderResponseJson(response);
 
     return {
         provider: input.channel === "whatsapp" ? "meta-whatsapp" : `meta-${input.channel}`,

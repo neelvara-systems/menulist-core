@@ -1,11 +1,12 @@
 import { Metadata } from 'next';
+import { requirePlatformAdminRouteAccess } from '@lib/auth/platformRouteGuard';
 import TestSentryPage from 'src/components/pages/TestSentryPage';
 
 /**
  * Sentry Testing Page
  * 
  * Route: /platform/test-sentry
- * Access: Requires authentication (platform routes)
+ * Access: Requires platform admin role
  * 
  * Purpose:
  * - Test Sentry error tracking integration
@@ -28,6 +29,8 @@ export const metadata: Metadata = {
     },
 };
 
-export default function Page() {
+export default async function Page() {
+    await requirePlatformAdminRouteAccess();
+
     return <TestSentryPage />;
 }

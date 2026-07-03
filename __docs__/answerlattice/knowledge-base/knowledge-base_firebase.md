@@ -92,6 +92,8 @@
 | Update parent metadata |   0   |   1    |           0            |
 | **Total**              | **0** | **3**  |         **1**          |
 
+The Article Modal FAQ suggestion and embedding browser POSTs use no-store cache, same-origin credentials, and manual redirect handling before the existing 64 KB bounded response reader. This changes no Firestore, Gemini, cache-version, or write count; it only prevents cached or followed-redirect responses from being accepted before the documented acknowledgement shape is validated.
+
 ### 2.8 Admin: Delete Category (Cascade)
 
 | Step                         | Reads | Writes  | Notes                                    |
@@ -109,6 +111,12 @@
 | Delete each article              |   0   |    N    | `deleteArticle()` per article |
 | Update category (remove section) |   0   |    1    | `updateCategory()`            |
 | **Total**                        | **N** | **N+1** | N = articles in section       |
+
+Article acknowledgement hardening is cost-neutral. `addArticle()`, `updateArticle()`, and `deleteArticle()` still use the same existing writes and cache revalidation paths, but UI callers now require explicit article write/delete acknowledgements before local article, category, or ingestion-job state advances. This adds no reads, writes, deletes, Storage operations, routes, rules, indexes, schema fields, Cloud Functions, owner settings, Firebase deployment, or Vercel deployment.
+
+Bulk article status acknowledgement hardening is cost-neutral. `bulkUpdateArticleStatus()` still uses the existing `writeBatch` status update and cache revalidation path, but `ArticlePane` now requires `assertKnowledgeBaseArticleBulkStatusUpdateSucceeded()` before success copy, selected-id clearing, or bulk-mode exit. This adds no reads, writes, deletes, Storage operations, routes, rules, indexes, schema fields, Cloud Functions, owner settings, Firebase deployment, or Vercel deployment.
+
+Category navigation acknowledgement hardening is cost-neutral. `addCategory()`, `updateCategory()`, `deleteCategory()`, `updateArticleInParent()`, and `deleteArticleFromParent()` still use the same existing scoped categories-doc writes and cache revalidation paths, but platform KB category, section, article-parent, and delete callers now require explicit category/categories mutation acknowledgements before local navigation state or success copy advances. This adds no reads, writes, deletes, Storage operations, routes, rules, indexes, schema fields, Cloud Functions, owner settings, Firebase deployment, or Vercel deployment.
 
 ---
 

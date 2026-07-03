@@ -65,10 +65,22 @@ export function buildWhatsAppPhoneParam({
     return buildCanonicalWhatsAppPhoneParam({ countryCode, dialCode, phoneNumber });
 }
 
+export const hasStaffLoginClipboardWrite = () => (
+    typeof navigator !== 'undefined'
+    && Boolean(navigator.clipboard?.writeText)
+);
+
+export const hasStaffLoginCopyFallback = () => (
+    typeof document !== 'undefined'
+    && Boolean(document.body)
+    && typeof document.createElement === 'function'
+    && typeof document.execCommand === 'function'
+);
+
 export async function copyTextToClipboard(text: string) {
     if (!text) return false;
 
-    if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+    if (hasStaffLoginClipboardWrite()) {
         try {
             await navigator.clipboard.writeText(text);
             return true;
@@ -77,23 +89,28 @@ export async function copyTextToClipboard(text: string) {
         }
     }
 
-    if (typeof document === 'undefined') return false;
+    const doc = typeof document === 'undefined' ? null : document;
+    if (!hasStaffLoginCopyFallback() || !doc?.body) return false;
 
-    const textarea = document.createElement('textarea');
-    textarea.value = text;
-    textarea.setAttribute('readonly', 'true');
-    textarea.style.left = '-9999px';
-    textarea.style.opacity = '0';
-    textarea.style.position = 'fixed';
-    textarea.style.top = '0';
-    document.body.appendChild(textarea);
-    textarea.focus();
-    textarea.select();
+    const textarea = doc.createElement('textarea');
 
     try {
-        return document.execCommand('copy');
+        textarea.value = text;
+        textarea.setAttribute('readonly', 'true');
+        textarea.style.left = '-9999px';
+        textarea.style.opacity = '0';
+        textarea.style.position = 'fixed';
+        textarea.style.top = '0';
+        doc.body.appendChild(textarea);
+        textarea.focus();
+        textarea.select();
+
+        const copied = doc.execCommand('copy');
+        return copied;
+    } catch {
+        return false;
     } finally {
-        document.body.removeChild(textarea);
+        textarea.remove();
     }
 }
 

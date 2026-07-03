@@ -10,9 +10,10 @@
 
 import { FEATURE_FLAGS } from '@config/features';
 import { getFrictionInsight, getFrictionSnapshot } from '@database/answerlattice/frictionStats';
-import { getAnswerlatticeUiErrorMessage } from '@lib/answerlattice/uiErrors';
 import { AnswerlatticeFrictionInsight, AnswerlatticeFrictionSnapshot } from '@type/answerlattice';
 import { useEffect, useState } from 'react';
+
+const ANSWERLATTICE_FRICTION_DATA_LOAD_FAILED = 'Could not load friction data';
 
 interface UseFrictionInsightsReturn {
     snapshot: AnswerlatticeFrictionSnapshot | null;
@@ -48,9 +49,9 @@ export function useFrictionInsights(tId: number, sId: number): UseFrictionInsigh
                 setSnapshot(snapshotData);
                 setInsight(insightData);
             })
-            .catch((err) => {
+            .catch(() => {
                 if (cancelled) return;
-                setError(getAnswerlatticeUiErrorMessage(err, 'Could not load friction data'));
+                setError(ANSWERLATTICE_FRICTION_DATA_LOAD_FAILED);
             })
             .finally(() => {
                 if (!cancelled) setLoading(false);

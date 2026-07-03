@@ -5,15 +5,16 @@ import Saperator from '@atoms/Saperator';
 import { BUSINESS_TYPES } from '@data/shared/businessTypes';
 import { ECOMSAI_PLATFORM_TENANT_ID } from '@constant/user';
 import { getStoreById } from '@database/stores';
-import { addTenant, updateTenant } from '@database/tenants';
+import { addTenant, assertTenantUpdateSucceeded, updateTenant } from '@database/tenants';
 import { getStoreContextName } from '@lib/businessIdentity/names';
+import { logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { UserUploadedFileType } from '@type/common';
 import { MinimalStoreDataType } from '@type/platform/store';
 import { TenantDataType } from '@type/platform/tenant';
 import { getFormatedDateAndTime } from '@util/dateTime';
 import { getObjectDifferance } from '@util/deepMerge';
 import { removeObjRef } from '@util/utils';
-import { Button, Divider, Flex, Input, Select, Switch, Tag, Typography } from 'antd'; // Import Ant Design components
+import { Button, Divider, Flex, Input, message, Select, Switch, Tag, Typography } from 'antd'; // Import Ant Design components
 import { useFormatter } from 'next-intl';
 import { Fragment, memo, useEffect, useRef, useState } from 'react';
 import { LuPlus, LuTrash, LuUpload, LuUploadCloud, LuX } from 'react-icons/lu';
@@ -40,40 +41,49 @@ function TenantDetailsModal({ modalData, closeModal, platformSummary, setStoreMo
         setSelectedFile({ name: "", size: 0, type: "", url: null })
     }
 
-    const addUpdateTenantDetails = (updatedTenant: TenantDataType) => {
+    const addUpdateTenantDetails = async (updatedTenant: TenantDataType) => {
         let updatedChanges: any = updatedTenant;
 
-        if (updatedTenant.tenantId || updatedTenant.tenantId == ECOMSAI_PLATFORM_TENANT_ID) {
-            updatedChanges = getObjectDifferance(updatedTenant, modalData.data);
-            if (selectedFile.url) {
-                updatedChanges.imageToUpdate = selectedFile.url
-                updatedChanges.imageType = selectedFile.type
-            }
-            if (Object.keys(updatedChanges).length > 0) {
-                console.log("Changes detected:", updatedChanges);
-                updatedChanges.tenantId = updatedTenant.tenantId;
-                delete updatedChanges.storesList;
-                if ('name' in updatedChanges) {
-                    updatedChanges.tenantKey = updatedChanges.name.toLowerCase().replaceAll(" ", "_");
+        try {
+            if (updatedTenant.tenantId || updatedTenant.tenantId == ECOMSAI_PLATFORM_TENANT_ID) {
+                updatedChanges = getObjectDifferance(updatedTenant, modalData.data);
+                if (selectedFile.url) {
+                    updatedChanges.imageToUpdate = selectedFile.url
+                    updatedChanges.imageType = selectedFile.type
                 }
-                updateTenant(updatedChanges).then((savedTenantDetails) => {
+                if (Object.keys(updatedChanges).length > 0) {
+                    updatedChanges.tenantId = updatedTenant.tenantId;
+                    delete updatedChanges.storesList;
+                    if ('name' in updatedChanges) {
+                        updatedChanges.tenantKey = updatedChanges.name.toLowerCase().replaceAll(" ", "_");
+                    }
+                    const savedTenantDetails = await updateTenant(updatedChanges);
+                    assertTenantUpdateSucceeded(
+                        savedTenantDetails,
+                        updatedTenant.tenantId,
+                        'platform_tenant_update_rejected',
+                    );
                     closeDrawer({ ...updatedTenant, ...savedTenantDetails })
-                })
-
+                }
             } else {
-                console.log("No changes detected.");
-            }
-        } else {
 
-            if (selectedFile.url) {
-                updatedChanges.imageToUpdate = selectedFile.url
-                updatedChanges.imageType = selectedFile.type
-            }
-            updatedChanges.tenantId = platformSummary.tenants.count + 1;
-            updatedChanges.tenantKey = updatedTenant.name.toLowerCase().replaceAll(" ", "_");
-            addTenant(updatedChanges).then((savedTenantDetails) => {
+                if (selectedFile.url) {
+                    updatedChanges.imageToUpdate = selectedFile.url
+                    updatedChanges.imageType = selectedFile.type
+                }
+                updatedChanges.tenantId = platformSummary.tenants.count + 1;
+                updatedChanges.tenantKey = updatedTenant.name.toLowerCase().replaceAll(" ", "_");
+                const savedTenantDetails = await addTenant(updatedChanges);
+                assertTenantUpdateSucceeded(
+                    savedTenantDetails,
+                    updatedChanges.tenantId,
+                    'platform_tenant_create_rejected',
+                );
                 closeDrawer(savedTenantDetails)
-            })
+            }
+        } catch (error) {
+            logRuntimeFailure('platform_tenant_save_failed', error);
+            message.error('Failed to save tenant');
         }
     }
 

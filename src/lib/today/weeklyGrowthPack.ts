@@ -1,3 +1,4 @@
+import { getBoundedCampaignStringContext, type CampaignLogContext } from '@lib/campaigns/campaignDiagnostics';
 import { TodayCampaignSummary } from '@type/campaigns';
 
 export type TodayReadyActionKind = 'critical_fix' | 'growth_move' | 'trust_move';
@@ -16,6 +17,12 @@ export interface TodayGrowthPackAsset {
     title: string;
     destination: string;
     copy: string;
+}
+
+export type TodayGrowthPackCopyFailureStage = 'empty_text' | 'document_unavailable' | 'textarea_copy';
+
+export interface TodayGrowthPackCopyOptions {
+    onFailure?: (failureStage: TodayGrowthPackCopyFailureStage, error?: unknown) => void;
 }
 
 export interface TodayWeeklyGrowthPack {
@@ -192,19 +199,63 @@ export function buildTodayWeeklyGrowthPack({
     };
 }
 
-export async function copyTodayGrowthPackText(text: string): Promise<boolean> {
-    if (!text) return false;
+export function getTodayGrowthPackCopyLogContext(
+    pack: TodayWeeklyGrowthPack,
+    asset: TodayGrowthPackAsset,
+    failureStage: TodayGrowthPackCopyFailureStage,
+): CampaignLogContext {
+    return {
+        ...getBoundedCampaignStringContext('assetId', asset.id),
+        ...getBoundedCampaignStringContext('assetTitle', asset.title),
+        ...getBoundedCampaignStringContext('assetDestination', asset.destination),
+        ...getBoundedCampaignStringContext('assetCopy', asset.copy),
+        ...getBoundedCampaignStringContext('primarySubject', pack.primarySubject),
+        assetCount: pack.assets.length,
+        failureStage,
+        hasClipboardWrite: hasTodayGrowthPackClipboardWrite(),
+        hasCopyFallback: hasTodayGrowthPackCopyFallback(),
+        hasSummary: Boolean(pack.summary),
+        readyActionCount: pack.readyActions.length,
+    };
+}
 
-    if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+export const hasTodayGrowthPackClipboardWrite = () => (
+    typeof navigator !== 'undefined'
+    && typeof navigator.clipboard?.writeText === 'function'
+);
+
+export const hasTodayGrowthPackCopyFallback = () => (
+    typeof document !== 'undefined'
+    && Boolean(document.body)
+    && typeof document.createElement === 'function'
+    && typeof document.execCommand === 'function'
+);
+
+export async function copyTodayGrowthPackText(
+    text: string,
+    options: TodayGrowthPackCopyOptions = {},
+): Promise<boolean> {
+    if (!text) {
+        options.onFailure?.('empty_text');
+        return false;
+    }
+
+    let lastCopyError: unknown;
+
+    if (hasTodayGrowthPackClipboardWrite()) {
         try {
             await navigator.clipboard.writeText(text);
             return true;
-        } catch {
+        } catch (error) {
+            lastCopyError = error;
             // Fall back to textarea copy below.
         }
     }
 
-    if (typeof document === 'undefined') return false;
+    if (!hasTodayGrowthPackCopyFallback()) {
+        options.onFailure?.('document_unavailable', lastCopyError);
+        return false;
+    }
 
     const textarea = document.createElement('textarea');
     textarea.value = text;
@@ -213,13 +264,25 @@ export async function copyTodayGrowthPackText(text: string): Promise<boolean> {
     textarea.style.opacity = '0';
     textarea.style.position = 'fixed';
     textarea.style.top = '0';
-    document.body.appendChild(textarea);
-    textarea.focus();
-    textarea.select();
 
     try {
-        return document.execCommand('copy');
+        document.body.appendChild(textarea);
+        textarea.focus();
+        textarea.select();
+        const copied = document.execCommand('copy');
+        if (!copied) {
+            options.onFailure?.(
+                'textarea_copy',
+                lastCopyError || new Error('today_growth_pack_textarea_copy_returned_false'),
+            );
+        }
+        return copied;
+    } catch (error) {
+        options.onFailure?.('textarea_copy', error);
+        return false;
     } finally {
-        document.body.removeChild(textarea);
+        if (textarea.parentNode) {
+            textarea.parentNode.removeChild(textarea);
+        }
     }
 }

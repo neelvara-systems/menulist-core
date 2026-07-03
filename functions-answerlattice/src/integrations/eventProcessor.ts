@@ -71,6 +71,150 @@ function isValidEvent(event: IntegrationEvent): boolean {
     );
 }
 
+function getEventProcessorStringContext(label: string, value: unknown): Record<string, boolean | number> {
+    const text = typeof value === 'string' ? value : '';
+    return {
+        [`${label}Present`]: text.length > 0,
+        [`${label}Length`]: text.length,
+    };
+}
+
+function getEventProcessorScopeContext(event: Partial<IntegrationEvent>): Record<string, boolean> {
+    return {
+        hasTenantScope: Number.isFinite(Number(event.tId)) && Number(event.tId) > 0,
+        hasStoreScope: Number.isFinite(Number(event.sId)) && Number(event.sId) > 0,
+    };
+}
+
+type EventProcessorLogContext = Record<string, boolean | number | string | null | undefined>;
+
+function getEventProcessorSourceErrorContext(error: unknown): EventProcessorLogContext {
+    const source = error && typeof error === 'object'
+        ? error as { name?: unknown; code?: unknown; status?: unknown; statusCode?: unknown }
+        : null;
+    const status = Number(source?.status ?? source?.statusCode);
+
+    return {
+        sourceErrorName: typeof source?.name === 'string' ? source.name.slice(0, 80) : typeof error,
+        sourceErrorCode: source?.code === undefined || source?.code === null ? undefined : String(source.code).slice(0, 80),
+        sourceStatusCode: Number.isFinite(status) ? status : undefined,
+    };
+}
+
+function logEventProcessorFailure(
+    failureCode: string,
+    error: unknown,
+    context: EventProcessorLogContext,
+): void {
+    logger.error('[Answerlattice Integration] Processor side effect failed', {
+        failureCode,
+        ...context,
+        ...getEventProcessorSourceErrorContext(error),
+    });
+}
+
+async function updateEventStatusWithDiagnostics(
+    eventId: string,
+    status: 'processing' | 'delivered' | 'failed',
+    event: Partial<IntegrationEvent>,
+): Promise<void> {
+    try {
+        await updateEventStatus(eventId, status);
+    } catch (error) {
+        logEventProcessorFailure('answerlattice_integration_event_status_update_failed', error, {
+            ...getEventProcessorStringContext('eventId', eventId),
+            ...getEventProcessorScopeContext(event),
+            eventType: event.eventType,
+            targetStatus: status,
+        });
+    }
+}
+
+async function consumeAdapterMinuteSlotWithDiagnostics(
+    event: IntegrationEvent,
+    adapterType: AdapterType,
+): Promise<boolean> {
+    try {
+        return await consumeAdapterMinuteSlot(event.tId, event.sId, adapterType);
+    } catch (error) {
+        logEventProcessorFailure('answerlattice_integration_adapter_minute_rate_limit_check_failed', error, {
+            ...getEventProcessorScopeContext(event),
+            eventType: event.eventType,
+            adapter: adapterType,
+        });
+        return false;
+    }
+}
+
+async function consumeAdapterDailySlotWithDiagnostics(
+    event: IntegrationEvent,
+    adapterType: AdapterType,
+): Promise<boolean> {
+    try {
+        return await consumeAdapterDailySlot(event.tId, event.sId, adapterType);
+    } catch (error) {
+        logEventProcessorFailure('answerlattice_integration_adapter_daily_rate_limit_check_failed', error, {
+            ...getEventProcessorScopeContext(event),
+            eventType: event.eventType,
+            adapter: adapterType,
+        });
+        return false;
+    }
+}
+
+async function filterEmailRecipientsByDailyLimitWithDiagnostics(
+    event: IntegrationEvent,
+    recipients: string[],
+): Promise<string[]> {
+    try {
+        return await filterEmailRecipientsByDailyLimit(event.tId, event.sId, recipients);
+    } catch (error) {
+        logEventProcessorFailure('answerlattice_integration_email_recipient_limit_check_failed', error, {
+            ...getEventProcessorScopeContext(event),
+            eventType: event.eventType,
+            adapter: ADAPTER_TYPES.EMAIL,
+            recipientCount: recipients.length,
+        });
+        return [];
+    }
+}
+
+async function recordDeliverySuccessWithDiagnostics(
+    event: IntegrationEvent,
+    eventId: string,
+    adapterType: AdapterType,
+): Promise<void> {
+    try {
+        await recordDeliverySuccess(event.tId, event.sId, adapterType);
+    } catch (error) {
+        logEventProcessorFailure('answerlattice_integration_delivery_success_record_failed', error, {
+            ...getEventProcessorStringContext('eventId', eventId),
+            ...getEventProcessorScopeContext(event),
+            eventType: event.eventType,
+            adapter: adapterType,
+        });
+    }
+}
+
+async function recordDeliveryFailureWithDiagnostics(
+    event: IntegrationEvent,
+    eventId: string,
+    adapterType: AdapterType,
+    currentFailures: number,
+): Promise<void> {
+    try {
+        await recordDeliveryFailure(event.tId, event.sId, adapterType, currentFailures);
+    } catch (error) {
+        logEventProcessorFailure('answerlattice_integration_delivery_failure_record_failed', error, {
+            ...getEventProcessorStringContext('eventId', eventId),
+            ...getEventProcessorScopeContext(event),
+            eventType: event.eventType,
+            adapter: adapterType,
+            currentFailures,
+        });
+    }
+}
+
 // ═══════════════════════════════════════════════════════════════
 // MAIN PROCESSOR
 // ═══════════════════════════════════════════════════════════════
@@ -92,8 +236,14 @@ export async function processEvent(
 ): Promise<{ delivered: number; failed: number }> {
     const result = { delivered: 0, failed: 0 };
     if (!isValidEvent(event)) {
-        logger.warn('[Answerlattice Integration] Invalid event skipped', { eventId });
-        await updateEventStatus(eventId, 'failed').catch(() => { });
+        logger.warn('[Answerlattice Integration] Invalid event skipped', {
+            failureCode: 'answerlattice_integration_event_invalid_skipped',
+            ...getEventProcessorStringContext('eventId', eventId),
+            ...getEventProcessorScopeContext(event || {}),
+            eventType: event?.eventType,
+            severity: event?.severity,
+        });
+        await updateEventStatusWithDiagnostics(eventId, 'failed', event || {});
         return result;
     }
 
@@ -101,7 +251,7 @@ export async function processEvent(
     const config = await getIntegrationConfig(event.tId, event.sId);
 
     // Update event to processing (will be overridden to delivered/failed after dispatch)
-    await updateEventStatus(eventId, 'processing').catch(() => { });
+    await updateEventStatusWithDiagnostics(eventId, 'processing', event);
 
     const adapterTypes = Object.values(ADAPTER_TYPES) as AdapterType[];
     let anyDelivered = false;
@@ -125,7 +275,7 @@ export async function processEvent(
 
         let delivered = false;
         let deliveryConfig: AdapterConfig = adapterConfig;
-        const adapterSlotAvailable = await consumeAdapterMinuteSlot(event.tId, event.sId, adapterType).catch(() => false);
+        const adapterSlotAvailable = await consumeAdapterMinuteSlotWithDiagnostics(event, adapterType);
         if (!adapterSlotAvailable) {
             const rateLimitResult = {
                 success: false,
@@ -154,7 +304,7 @@ export async function processEvent(
             continue;
         }
 
-        const adapterDailySlotAvailable = await consumeAdapterDailySlot(event.tId, event.sId, adapterType).catch(() => false);
+        const adapterDailySlotAvailable = await consumeAdapterDailySlotWithDiagnostics(event, adapterType);
         if (!adapterDailySlotAvailable) {
             const rateLimitResult = {
                 success: false,
@@ -185,7 +335,7 @@ export async function processEvent(
 
         if (adapterType === ADAPTER_TYPES.EMAIL) {
             const recipients = Array.isArray((adapterConfig as any).recipients) ? (adapterConfig as any).recipients : [];
-            const allowedRecipients = await filterEmailRecipientsByDailyLimit(event.tId, event.sId, recipients).catch(() => []);
+            const allowedRecipients = await filterEmailRecipientsByDailyLimitWithDiagnostics(event, recipients);
             if (allowedRecipients.length === 0) {
                 const rateLimitResult = {
                     success: false,
@@ -243,9 +393,8 @@ export async function processEvent(
             });
 
             logger.info('[Answerlattice Integration] Delivery attempt completed', {
-                tId: event.tId,
-                sId: event.sId,
-                eventId,
+                ...getEventProcessorStringContext('eventId', eventId),
+                ...getEventProcessorScopeContext(event),
                 eventType: event.eventType,
                 adapter: adapterType,
                 attempt,
@@ -258,14 +407,14 @@ export async function processEvent(
                 delivered = true;
                 // Reset circuit breaker on success
                 if (currentFailures > 0) {
-                    await recordDeliverySuccess(event.tId, event.sId, adapterType).catch(() => { });
+                    await recordDeliverySuccessWithDiagnostics(event, eventId, adapterType);
                 }
                 break;
             }
 
             // If last attempt failed, record failure for circuit breaker
             if (attempt === INTEGRATION_LIMITS.MAX_DELIVERY_ATTEMPTS) {
-                await recordDeliveryFailure(event.tId, event.sId, adapterType, currentFailures).catch(() => { });
+                await recordDeliveryFailureWithDiagnostics(event, eventId, adapterType, currentFailures);
             }
         }
 
@@ -298,15 +447,14 @@ export async function processEvent(
     // Update final event status
     if (anyAttempted) {
         const finalStatus = anyDelivered ? 'delivered' : 'failed';
-        await updateEventStatus(eventId, finalStatus).catch(() => { });
+        await updateEventStatusWithDiagnostics(eventId, finalStatus, event);
     } else {
         logger.info('[Answerlattice Integration] No enabled adapters for event', {
-            tId: event.tId,
-            sId: event.sId,
-            eventId,
+            ...getEventProcessorStringContext('eventId', eventId),
+            ...getEventProcessorScopeContext(event),
             eventType: event.eventType,
         });
-        await updateEventStatus(eventId, 'delivered').catch(() => { });
+        await updateEventStatusWithDiagnostics(eventId, 'delivered', event);
     }
 
     return result;

@@ -1,4 +1,5 @@
 import { AppDispatch } from '@reduxStore/index';
+import { getBoundedHookStringContext, logHookFailure } from '@hook/hookDiagnostics';
 import { useDispatch } from 'react-redux';
 
 /**
@@ -9,10 +10,13 @@ export const useAppDispatch = () => {
   try {
     return useDispatch<AppDispatch>();
   } catch (error) {
-    console.error('Error accessing Redux dispatch:', error);
+    logHookFailure('redux_dispatch_access_failed', error);
     // Return a no-op function that logs errors but doesn't crash
     return ((...args: any) => {
-      console.error('Redux dispatch called without Redux context', args);
+      logHookFailure('redux_dispatch_noop_called', undefined, {
+        actionCount: args.length,
+        ...getBoundedHookStringContext('firstActionType', args[0]?.type),
+      });
       return { type: 'NOOP' };
     }) as AppDispatch;
   }

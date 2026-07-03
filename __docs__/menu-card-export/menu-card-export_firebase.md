@@ -1,7 +1,7 @@
 # Menu Card Export — Firebase Cost And Operations
 
 **Status:** Implemented client-first export / Pro-Premium AI advisor metered separately
-**Last Updated:** June 3, 2026
+**Last Updated:** July 1, 2026
 **Pricing references reviewed:** June 1, 2026
 
 ---
@@ -24,7 +24,13 @@ Business-type-aware output is cost-neutral. The print source reuses `store.busin
 
 Auto print design is also cost-neutral. It runs in the browser after the print source is built, using item count, category count, description coverage, variant presence, business profile, and selected preset to choose the initial style, density, and safe toggles. It does not call the Pro/Premium AI advisor, consume AI capacity, write Firestore, upload Storage, invoke Cloud Functions, or require rules/index changes.
 
-The optional layout suggestion is separate from export generation. It uses `/api/menu-card-export/design-advisor`, is available only to Pro/Premium subscriptions, checks rate limit and AI capacity before provider work, logs one AI operation, and consumes one enhancement unit only after a valid JSON recommendation is returned.
+The optional layout suggestion is separate from export generation. It uses `/api/menu-card-export/design-advisor`, is available only to Pro/Premium subscriptions, caps request bodies at 128KB, checks route permission, rate limit, plan, and AI capacity before provider work, logs one AI operation, and consumes one enhancement unit only after a valid JSON recommendation is returned.
+
+July 1 AI advisor permission hardening adds the existing store permission read before Pro/Premium subscription lookup, capacity check, provider call, AI operation write, or credit consumption. Rejected users do not reach the subscription read or AI cost path. This adds no writes, deletes, rules, indexes, Cloud Functions, Firebase deploy requirement, or Vercel deploy action.
+
+June 30 AI advisor prompt-boundary hardening is Firebase-cost neutral. The route still uses the same auth, tenant access, 128KB body cap, Zod request schema, Pro/Premium plan gate, AI capacity check, Gemini call, recommendation normalization, AI operation write, and credit consumption order. The prompt builder now strips control/template characters, normalizes whitespace, caps prompt strings, caps warning/category scans, and serializes only sanitized `sourceSummary`, `preflightWarnings`, and `sourceHash` values. This adds no Firestore reads/writes/deletes, Storage operations, provider calls beyond existing valid suggestions, cache invalidations, rules, indexes, schema changes, Cloud Function logic changes, owner-facing settings, Firebase deploy requirement, or Vercel deploy action.
+
+June 29 browser response-parser hardening is Firebase-cost neutral. The design-advisor client now caps plan-gate and recommendation response JSON at 16KB and logs malformed or oversized route responses through bounded AI service diagnostics. It adds no Firestore reads/writes/deletes, Storage operations, provider calls, AI accounting writes, credit consumption, rules, indexes, Cloud Functions, Firebase deploy requirement, or Vercel deploy action. Existing Pro/Premium plan gating, capacity handling, recommendation application, and owner-facing failure copy remain unchanged.
 
 Legacy `generateMenuPdf()` direct-download paths are cost-neutral compatibility bridges. They now call the same Menu Card Export print source and browser renderer with existing store/project context. This changes visual output only; it adds no export Firestore write, Storage upload, Cloud Function, rule, index, or server artifact.
 
@@ -197,6 +203,14 @@ The route does perform normal project reads when the owner opens the route or ch
 If `Include logo` is on and the logo is stored in Firebase Storage but not already browser-cached, branded PDF output can add one normal logo-image download during final render. It does not add Firestore cost, export artifact Storage cost, or any persistent export object.
 
 AI advisor operations are not counted as exports. A successful Pro/Premium suggestion adds existing AI-accounting writes only: one operation log write and one subscription credit update. Non-Pro/Premium attempts do not call the provider and do not consume credits.
+
+## Share And Export Failure Diagnostics
+
+`src/lib/export/exportDiagnostics.ts` is a client-side secure logging helper only. Clipboard copy, Web Share API, external endpoint share, structured JSON/XLSX export, PDF generation, and Menu Kit ZIP/single-asset generation failure paths log normalized failure codes plus bounded presence/length/count/status metadata. They do not log raw menu payloads, endpoint URLs, public share URLs, generated file bodies, project/store payloads, or raw browser/provider error objects.
+
+External endpoint sharing is also browser-admitted before POST: ShareModal accepts only public HTTPS URLs without embedded credentials, rejects localhost, private-network, link-local, metadata, and `.local` targets, and uses manual redirect handling. This prevents menu export data from being posted to unsafe, local, or redirected endpoints without adding any Firebase operation.
+
+These diagnostics add no Firestore read/write, Storage operation, Cloud Function call, API route, cache invalidation, index, rule, export artifact, server renderer, provider call, or owner-facing setting. Successful export paths remain quiet and cost-neutral.
 
 ---
 

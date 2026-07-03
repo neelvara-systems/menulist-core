@@ -110,7 +110,7 @@ STOP. Features enabled for demos create maintenance burden. Demo with core featu
 
 | Feature | Phase | Flag | Reopen Triggers |
 |---------|-------|------|----------------|
-| Special Menu Switching | FROZEN | `ENABLE_SPECIAL_MENU_SWITCHING: false` | 30-50 food businesses + 5 requests + festival season |
+| Special Menu Switching | Active guarded runtime; expansion-frozen | `ENABLE_SPECIAL_MENU_SWITCHING: true` in frontend and Functions | Future expansion still requires usage/request evidence before adding new special-menu scope |
 
 *Update this table as features move through lifecycle phases.*
 

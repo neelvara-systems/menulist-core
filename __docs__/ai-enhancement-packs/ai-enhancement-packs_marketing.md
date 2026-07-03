@@ -1,9 +1,17 @@
 # AI Enhancement Packs — Marketing Collateral
 
 **Feature:** AI Enhancement Packs
-**Status:** 📝 Ready for Use
+**Status:** Marketing/source evidence; not current launch certification
 **Last Updated:** February 9, 2026
 **Audience:** Sales, Marketing, Founder
+
+---
+
+## Current Launch Boundary
+
+This marketing collateral is source evidence only. It is not current launch certification and must not be used externally until the active [production-readiness audit](../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../production-readiness/external-certification-runbook.md), `npm run verify:billing-entitlement-boundary`, Razorpay sandbox top-up smoke, desktop/mobile Billing browser QA, website/pricing copy review, target deploy evidence, and production-host smoke are recorded.
+
+Do not publish or sell with TBD price placeholders, unverified activation timing, or provider behavior that lacks current Razorpay evidence.
 
 ---
 
@@ -69,7 +77,7 @@ MenuList includes AI features as part of every subscription. For businesses with
 
 | Pack                | Price           | What It Covers                                                                   |
 | ------------------- | --------------- | -------------------------------------------------------------------------------- |
-| AI Enhancement Pack | ₹[TBD] / $[TBD] | Image generation, description enhancements, translations, and more for your menu |
+| AI Enhancement Pack | Approved launch price only | Image generation, description enhancements, translations, and more for your menu |
 
 **Purchase:** One-time. No subscription. Buy when needed. No expiry.
 
@@ -123,7 +131,7 @@ MenuList includes AI features as part of every subscription. For businesses with
 
 ### Close (15 seconds)
 
-> "One pack, one price. Covers images, descriptions, translations. No per-item charges. Ready when your menu needs it."
+> "One pack, one price. Covers images, descriptions, translations. No per-item charges. Available after payment is confirmed."
 
 ### Do NOT Demo
 

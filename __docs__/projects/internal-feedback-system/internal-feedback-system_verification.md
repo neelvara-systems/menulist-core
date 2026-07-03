@@ -1,6 +1,78 @@
 # Internal Feedback System — Verification Report
 
-**Date:** February 2, 2026 | **Status:** ✅ COMPREHENSIVE REVIEW COMPLETE
+**Date:** February 2, 2026 | **Status:** COMPREHENSIVE REVIEW COMPLETE; not current launch certification
+**Last Runtime Audit:** July 1, 2026
+
+---
+
+**Launch boundary:** This report combines the February 2026 implementation verification with later runtime audit addenda. It is source-verified evidence for the Guest Feedback feature, not standalone production deployment approval. Current release approval still requires the active production-readiness audit, External Certification Runbook evidence, target feature-flag review, provider/browser/mobile QA where applicable, and deploy evidence for the target environment.
+
+---
+
+## July 1, 2026 Runtime Audit Addendum
+
+Public feedback submissions now verify inherited tenant block state before writing:
+
+- `src/app/api/public/feedback/submit/route.ts`
+- `DB_COLLECTIONS.TENANTS`
+- `tenantRef.get()`
+- `isPlatformEntityBlocked(tenantDoc.data())`
+
+The route still fails cheap in the same order: feature flag, IP rate limit, bounded JSON body, Zod schema, honeypot, Turnstile, then Firestore scope reads. Valid submissions now read the project, store, and tenant before `submitGuestFeedbackAdmin()`, so tenant-blocked stores cannot accept new public feedback.
+
+`npm run verify:menulist-api-tenant-safety` enforces the tenant read and tenant-block check before the feedback write.
+
+Cost impact: valid public submissions add one tenant-document read. At 1000 submissions/month this is about 1000 extra reads, approximately `$0.0006/month` at Firestore list pricing. No writes/deletes, Storage operations, rules, indexes, Cloud Functions, public cache invalidation, Firebase deploy requirement, or Vercel deploy action changed.
+
+---
+
+## June 30, 2026 Runtime Audit Addendum
+
+Owner feedback reads and writes now fail closed on DAL fallback values:
+
+- `src/database/guestFeedback/index.ts`
+- `assertFeedbackListLoadSucceeded`
+- `assertFeedbackCountLoadSucceeded`
+- `assertFeedbackStatusUpdateSucceeded`
+- `isGuestFeedbackRecord(existing, feedbackId)`
+
+Desktop inbox list loads must assert the shaped list result before rendering items, and needs-attention badge counts must assert a finite non-negative number before rendering. Mobile feedback list loads use the same list assertion. Status/reply saves must wait for shaped update acknowledgement before success state advances; mobile resolve now waits for the acknowledgement before moving the item to resolved or showing success copy. `updateFeedbackStatus()` must not write after an internal `getFeedbackById()` fallback value; the fetched record must be shaped and match the requested feedback id.
+
+`npm run verify:public-business-truth` enforces the list/count guards, internal fetched-record shape guard, desktop/mobile rejected acknowledgement codes, and mobile resolve acknowledgement order. Manual browser feedback submit/list/filter/resolve/reply/QR checks remain part of the broader authenticated/manual matrix.
+
+Cost impact: `$0.00`. This changes no Firestore read/write counts for valid flows, no public feedback writes, no Storage operations, no rules, no indexes, no Cloud Functions, no public cache invalidation, no Firebase deploy requirement, and no Vercel deploy action.
+
+---
+
+## June 29, 2026 Runtime Audit Addendum
+
+Desktop Feedback QR handoffs now use bounded diagnostics and acknowledged local copy helpers:
+
+- `src/components/templates/main-app/feedback/FeedbackQrDownload.tsx`
+- `desktop_feedback_qr_generate_failed`
+- `desktop_feedback_qr_download_failed`
+- `desktop_feedback_link_copy_failed`
+- `desktop_feedback_link_open_failed`
+- `desktop_feedback_whatsapp_open_failed`
+- `desktop_feedback_message_copy_failed`
+
+The QR card must not direct-console raw feedback URLs, QR data URLs, WhatsApp messages, project/store/tenant identifiers, or browser exception objects. Copy Link and Copy Message must wait for Clipboard API or acknowledged textarea fallback success before showing copied success, and failures may log only support booleans plus bounded presence/length metadata. `npm run verify:public-business-truth` enforces the helper, unavailable-copy codes, fallback acknowledgement, failure codes, safe `noopener,noreferrer` external opens, and absence of the old silent or unguarded copy/open branches.
+
+Cost impact: `$0.00`. The change adds no Firestore reads/writes, API routes, indexes, rules, cache invalidation, Storage operations, Cloud Functions, or owner-facing setting.
+
+---
+
+## June 27, 2026 Runtime Audit Addendum
+
+Desktop owner inbox load and status-update failures now use bounded diagnostics:
+
+- `src/components/templates/main-app/feedback/feedbackInboxDiagnostics.ts`
+- `feedback_inbox_load_failed`
+- `feedback_inbox_status_update_failed`
+
+The inbox must not direct-console raw feedback documents, guest contact details, project/store/tenant identifiers, or provider/browser exception objects. `npm run verify:public-business-truth` enforces the helper, failure codes, and absence of the old raw `FeedbackInbox` diagnostics.
+
+Cost impact: `$0.00`. The change adds no Firestore reads/writes, API routes, indexes, rules, cache invalidation, Storage operations, Cloud Functions, or owner-facing setting.
 
 ---
 
@@ -77,7 +149,7 @@
 - [x] Tenant isolation in queries
 - [x] Auth on owner routes (withAuth)
 - [x] Firestore rules (public create, auth read/update)
-- [ ] Security logging (missing)
+- [x] Security logging (bounded diagnostics on public route, desktop inbox, and mobile inbox failure paths)
 
 ---
 
@@ -347,8 +419,8 @@ const storeDoc = await firestoreAdmin
 | ------------------------------------------------------- | -------------------------------------- |
 | `src/app/api/public/feedback/submit/route.ts`           | Fixed project path, store fetch        |
 | `src/app/feedback/[projectId]/page.tsx`                 | Fixed project path, store fetch, flags |
-| `__docs__/.../internal-feedback-system_impl.md`         | Updated code examples, file structure  |
-| `__docs__/.../internal-feedback-system_verification.md` | Comprehensive review documentation     |
+| `__docs__/projects/internal-feedback-system/internal-feedback-system_impl.md`         | Updated code examples, file structure  |
+| `__docs__/projects/internal-feedback-system/internal-feedback-system_verification.md` | Comprehensive review documentation     |
 
 ---
 
@@ -358,7 +430,7 @@ const storeDoc = await firestoreAdmin
 
 **Date:** February 2, 2026
 
-**Status:** All critical bugs fixed, documentation updated, feature production-ready.
+**Status:** All critical bugs from the February 2026 review were fixed and documented. Current deployment approval is governed by the launch boundary above.
 
 ### Key Accomplishments
 
@@ -379,9 +451,9 @@ const storeDoc = await firestoreAdmin
 | Security (rate limit)   | ✅     |
 | Industry best practices | ✅     |
 
-### Ready for Production
+### Current Launch Boundary
 
-The Internal Feedback System is **ready for production deployment** with:
+The Internal Feedback System has source-verified implementation and runtime-audit evidence. Do not treat this report as current production deployment approval without active production-readiness audit evidence, External Certification Runbook evidence, target feature-flag review, deploy evidence, and browser/mobile QA for the release.
 
 - Feature flag: `ENABLE_GUEST_FEEDBACK`
 - All documented features implemented

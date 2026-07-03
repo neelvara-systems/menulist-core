@@ -16,7 +16,6 @@ export const ANSWERLATTICE_CREDIT_PACKS_LIST: AIEnhancementPack[] = [
 ];
 
 export const ANSWERLATTICE_PLAN_TIER_ORDER: Record<string, number> = {
-    answerlattice_beta: 0,
     answerlattice_starter: 1,
     answerlattice_growth: 2,
     answerlattice_studio: 3,

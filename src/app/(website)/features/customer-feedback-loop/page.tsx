@@ -6,8 +6,8 @@ import ScrollToTopButton from '@/components/website/shared/ScrollToTopButton';
 import '@/styles/website.css';
 import { Metadata } from 'next';
 
-const title = 'Customer Feedback Loop - MenuList | Private Guest Feedback';
-const description = 'Let customers send private feedback from the menu, Official Business Page, QR, or direct link so owners can review issues and keep the public source correct.';
+const title = 'Customer Feedback Loop - MenuList | Customers Can Report Menu Issues';
+const description = 'Let customers send private feedback from the menu, Official Business Page, QR, or direct link so owners can review issues and keep the approved list correct.';
 
 export const metadata: Metadata = {
   title,

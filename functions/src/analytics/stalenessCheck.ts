@@ -25,6 +25,7 @@ import * as admin from 'firebase-admin';
 import { FieldValue, Timestamp } from 'firebase-admin/firestore';
 import { DB_COLLECTIONS } from '../constants/database';
 import { FUNCTION_RETENTION_CONFIG } from '../constants/features';
+import { analyticsLogger, getAnalyticsErrorContext, getAnalyticsIdContext } from './analyticsDiagnostics';
 
 // ================================================================
 // TYPES
@@ -74,7 +75,7 @@ export async function checkStalenessForAllStores(): Promise<StalenessCheckResult
         writesCount: 0,
     };
 
-    console.log('[StalenessCheck] Starting nightly staleness detection...');
+    analyticsLogger.info('[StalenessCheck] Starting nightly staleness detection');
 
     try {
         // Read storeTruthConfidence (computed by 10.3)
@@ -83,7 +84,7 @@ export async function checkStalenessForAllStores(): Promise<StalenessCheckResult
         result.readsCount++;
 
         if (!truthDoc.exists) {
-            console.log('[StalenessCheck] No storeTruthConfidence doc found. Skipping.');
+            analyticsLogger.info('[StalenessCheck] No storeTruthConfidence doc found');
             return result;
         }
 
@@ -156,22 +157,31 @@ export async function checkStalenessForAllStores(): Promise<StalenessCheckResult
 
             } catch (storeError: any) {
                 result.errors++;
-                console.warn(`[StalenessCheck] Error processing store ${sId}:`, storeError.message);
+                analyticsLogger.warn('[StalenessCheck] Error processing store', {
+                    storeId: getAnalyticsIdContext(sId),
+                    error: getAnalyticsErrorContext(storeError),
+                });
             }
         }
 
-        console.log(`[StalenessCheck] Detection complete:`);
-        console.log(`  - Stores checked: ${result.checked}`);
-        console.log(`  - Stale found: ${result.staleFound}`);
-        console.log(`  - New detections: ${result.newStalenessDetected}`);
-        console.log(`  - Skipped (recent): ${result.skippedRecent}`);
+        analyticsLogger.info('[StalenessCheck] Detection complete', {
+            checked: result.checked,
+            staleFound: result.staleFound,
+            newStalenessDetected: result.newStalenessDetected,
+            skippedRecent: result.skippedRecent,
+            errors: result.errors,
+        });
         if (result.errors > 0) {
-            console.warn(`  - Errors: ${result.errors}`);
+            analyticsLogger.warn('[StalenessCheck] Detection completed with store errors', {
+                errors: result.errors,
+            });
         }
 
         return result;
     } catch (error: any) {
-        console.error('[StalenessCheck] Fatal error:', error.message);
+        analyticsLogger.error('[StalenessCheck] Fatal error', {
+            error: getAnalyticsErrorContext(error),
+        });
         throw error;
     }
 }

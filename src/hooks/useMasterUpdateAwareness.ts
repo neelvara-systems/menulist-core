@@ -41,6 +41,7 @@ import {
     createAcknowledgeEvent,
     logMultiOutletEvent,
 } from "@lib/multiOutlet/molEvents";
+import { getMultiOutletProjectLogContext, logMultiOutletFailure } from "@lib/multiOutlet/diagnostics";
 import { parseProjectId, populateMasterCache } from "@lib/multiOutlet/resolveProject";
 import type { Project } from "@template/main-app/projects/types/project.types";
 import type {
@@ -197,7 +198,11 @@ export function useMasterUpdateAwareness(
                 setShowBanner(false);
             }
         } catch (err) {
-            console.error("[MasterUpdateAwareness] Check failed:", err);
+            logMultiOutletFailure('master_update_awareness_check_failed', err, {
+                ...getMultiOutletProjectLogContext(outletProject.projectId, outletProject.masterProjectId),
+                acknowledgedVersion: acknowledgedVersionRef.current,
+                latestVersion: latestVersionRef.current,
+            });
             setError("Failed to check for master updates");
             // Fail open — don't show banner on error
             setShowBanner(false);
@@ -263,8 +268,13 @@ export function useMasterUpdateAwareness(
                         diffToStore?.changes?.length ?? 0,
                     ),
                 );
-            } catch {
+            } catch (err) {
                 // Silent fail — MOL is non-critical
+                logMultiOutletFailure('master_update_awareness_acknowledge_event_failed', err, {
+                    ...getMultiOutletProjectLogContext(outletProject.projectId, outletProject.masterProjectId),
+                    latestVersion: latestVersionRef.current,
+                    diffChangeCount: diffToStore?.changes?.length ?? 0,
+                });
             }
 
             // Update local activeProject with new snapshot so:
@@ -277,7 +287,12 @@ export function useMasterUpdateAwareness(
             setShowBanner(false);
             setDiff(null);
         } catch (err) {
-            console.error("[MasterUpdateAwareness] Acknowledge failed:", err);
+            logMultiOutletFailure('master_update_awareness_acknowledge_failed', err, {
+                ...getMultiOutletProjectLogContext(outletProject.projectId, outletProject.masterProjectId),
+                latestVersion: latestVersionRef.current,
+                hasDiff: Boolean(diff),
+                diffChangeCount: diff?.changes?.length ?? 0,
+            });
             setError("Failed to acknowledge changes");
         } finally {
             setIsAcknowledging(false);
@@ -362,7 +377,11 @@ export function useMasterUpdateAwareness(
                     }, LISTENER_DEBOUNCE_MS);
                 },
                 (err) => {
-                    console.error("[MasterUpdateAwareness] Listener error:", err);
+                    logMultiOutletFailure('master_update_awareness_listener_failed', err, {
+                        ...getMultiOutletProjectLogContext(outletProject.projectId, outletProject.masterProjectId),
+                        acknowledgedVersion: acknowledgedVersionRef.current,
+                        latestVersion: latestVersionRef.current,
+                    });
                     // Fail open — don't show banner on error
                     setShowBanner(false);
                 },

@@ -1,4 +1,30 @@
 import { ExecutionSurface, ExportMethod } from "@type/campaigns";
+import { readResponseUint8ArrayWithLimit } from "@lib/security/boundedResponseBody";
+import { getBoundedCampaignStringContext, logCampaignFailure } from "./campaignDiagnostics";
+
+const CAMPAIGN_SURFACE_IMAGE_MAX_BYTES = 10 * 1024 * 1024;
+const CAMPAIGN_SURFACE_IMAGE_MIME_TYPES = new Set([
+    'image/jpeg',
+    'image/jpg',
+    'image/png',
+    'image/webp',
+]);
+const CAMPAIGN_SURFACE_STORAGE_HOSTS = new Set([
+    'firebasestorage.googleapis.com',
+    'storage.googleapis.com',
+]);
+const CAMPAIGN_SURFACE_CLIPBOARD_DOCUMENT_UNAVAILABLE = 'campaign_surface_clipboard_document_unavailable';
+const CAMPAIGN_SURFACE_TEXTAREA_COPY_RETURNED_FALSE = 'campaign_surface_textarea_copy_returned_false';
+
+interface CampaignClipboardFailureCodes {
+    documentUnavailable: string;
+    fallbackFailed: string;
+}
+
+const DEFAULT_CAMPAIGN_CLIPBOARD_FAILURE_CODES: CampaignClipboardFailureCodes = {
+    documentUnavailable: CAMPAIGN_SURFACE_CLIPBOARD_DOCUMENT_UNAVAILABLE,
+    fallbackFailed: CAMPAIGN_SURFACE_TEXTAREA_COPY_RETURNED_FALSE,
+};
 
 // ═══════════════════════════════════════════════════════════════
 // EXECUTION SURFACES
@@ -24,6 +50,96 @@ export interface SurfaceExecutionResult {
     error?: string;
 }
 
+export const hasCampaignClipboardWrite = () => (
+    typeof navigator !== 'undefined'
+    && typeof navigator.clipboard?.writeText === 'function'
+);
+
+export const hasCampaignCopyFallback = () => (
+    typeof document !== 'undefined'
+    && Boolean(document.body)
+    && typeof document.createElement === 'function'
+    && typeof document.execCommand === 'function'
+);
+
+export const getCampaignClipboardSupportContext = () => ({
+    hasClipboardWrite: hasCampaignClipboardWrite(),
+    hasCopyFallback: hasCampaignCopyFallback(),
+});
+
+function isLocalDevImageHost(hostname: string): boolean {
+    return ['localhost', '127.0.0.1', '[::1]'].includes(hostname);
+}
+
+function normalizeImageMimeType(value?: string | null): string {
+    return String(value || '').split(';')[0].trim().toLowerCase();
+}
+
+function resolveCampaignSurfaceImageUrl(imageUrl: string): string {
+    const value = String(imageUrl || '').trim();
+    if (!value) {
+        throw new Error('Campaign image URL is missing');
+    }
+
+    if (value.startsWith('data:')) {
+        if (/^data:image\/(?:jpeg|jpg|png|webp);base64,/i.test(value)) return value;
+        throw new Error('Unsupported campaign image data URL');
+    }
+
+    const parsed = new URL(value, window.location.origin);
+    if (parsed.protocol === 'blob:') {
+        if (parsed.origin === window.location.origin) return parsed.toString();
+        throw new Error('Unsupported campaign image blob URL');
+    }
+
+    if (parsed.protocol === 'https:') {
+        if (parsed.origin === window.location.origin || CAMPAIGN_SURFACE_STORAGE_HOSTS.has(parsed.hostname)) {
+            return parsed.toString();
+        }
+        throw new Error('Unsupported campaign image HTTPS host');
+    }
+
+    if (parsed.protocol === 'http:') {
+        const isSameOriginHttp = window.location.protocol === 'http:' && parsed.origin === window.location.origin;
+        if (isSameOriginHttp || (process.env.NODE_ENV !== 'production' && isLocalDevImageHost(parsed.hostname))) {
+            return parsed.toString();
+        }
+    }
+
+    throw new Error('Unsupported campaign image URL');
+}
+
+async function fetchCampaignSurfaceImageBlob(imageUrl: string): Promise<Blob> {
+    const targetUrl = resolveCampaignSurfaceImageUrl(imageUrl);
+    const response = await fetch(targetUrl, { redirect: 'manual' });
+    if (!response.ok) {
+        throw new Error('Campaign image fetch failed');
+    }
+
+    const contentLength = Number(response.headers.get('content-length') || 0);
+    if (contentLength > CAMPAIGN_SURFACE_IMAGE_MAX_BYTES) {
+        throw new Error('Campaign image is too large');
+    }
+
+    const responseMimeType = normalizeImageMimeType(response.headers.get('content-type'));
+    if (responseMimeType && !CAMPAIGN_SURFACE_IMAGE_MIME_TYPES.has(responseMimeType)) {
+        throw new Error('Campaign image response is not an allowed image type');
+    }
+
+    const imageBytes = await readResponseUint8ArrayWithLimit(response, CAMPAIGN_SURFACE_IMAGE_MAX_BYTES);
+    const blob = new Blob([imageBytes], { type: responseMimeType || undefined });
+    if (!blob.size || blob.size > CAMPAIGN_SURFACE_IMAGE_MAX_BYTES) {
+        throw new Error('Campaign image blob is empty or too large');
+    }
+
+    const blobMimeType = normalizeImageMimeType(blob.type);
+    if (blobMimeType && !CAMPAIGN_SURFACE_IMAGE_MIME_TYPES.has(blobMimeType)) {
+        throw new Error('Campaign image blob is not an allowed image type');
+    }
+
+    return blob;
+}
+
 // ═══════════════════════════════════════════════════════════════
 // WHATSAPP STATUS (PRIMARY - INDIA)
 // 
@@ -45,9 +161,8 @@ export async function shareToWhatsAppStatus(
         // Check if Web Share API is available (mobile-first approach)
         if (navigator.share && navigator.canShare) {
             // Fetch image and convert to blob for sharing
-            const response = await fetch(imageUrl);
-            const blob = await response.blob();
-            const file = new File([blob], 'menulist-share.jpg', { type: 'image/jpeg' });
+            const blob = await fetchCampaignSurfaceImageBlob(imageUrl);
+            const file = new File([blob], 'menulist-share.jpg', { type: normalizeImageMimeType(blob.type) || 'image/jpeg' });
 
             const shareData: ShareData = {
                 files: [file],
@@ -67,7 +182,7 @@ export async function shareToWhatsAppStatus(
         // Fallback: Open WhatsApp with image URL
         // Note: WhatsApp doesn't support direct status share via URL scheme
         // Best fallback is to copy to clipboard and guide user
-        await copyToClipboard(imageUrl);
+        await copyCampaignTextToClipboard(imageUrl);
 
         return {
             success: true,
@@ -75,7 +190,11 @@ export async function shareToWhatsAppStatus(
             surface: 'whatsapp_status',
         };
     } catch (error) {
-        console.error('WhatsApp Status share failed:', error);
+        logCampaignFailure('campaign_whatsapp_status_share_failed', error, {
+            ...getBoundedCampaignStringContext('imageUrl', imageUrl),
+            ...getBoundedCampaignStringContext('caption', caption),
+            ...getCampaignClipboardSupportContext(),
+        });
         return {
             success: false,
             method: 'whatsapp_share',
@@ -120,7 +239,7 @@ export async function copyWhatsAppMessage(
 ): Promise<SurfaceExecutionResult> {
     try {
         const message = generateWhatsAppMessage(itemName, menuLink);
-        await copyToClipboard(message);
+        await copyCampaignTextToClipboard(message);
 
         return {
             success: true,
@@ -128,7 +247,11 @@ export async function copyWhatsAppMessage(
             surface: 'whatsapp_message'
         };
     } catch (error) {
-        console.error('Copy to clipboard failed:', error);
+        logCampaignFailure('campaign_whatsapp_message_copy_failed', error, {
+            ...getBoundedCampaignStringContext('itemName', itemName),
+            hasMenuLink: Boolean(menuLink),
+            ...getCampaignClipboardSupportContext(),
+        });
         return {
             success: false,
             method: 'copy_text',
@@ -149,8 +272,7 @@ export async function copyWhatsAppMessage(
 
 /**
  * Download printable poster
- * For now, downloads the image directly
- * TODO: PDF generation with QR code in future
+ * Downloads the current generated poster image directly.
  */
 export async function downloadPoster(
     imageUrl: string,
@@ -158,8 +280,7 @@ export async function downloadPoster(
 ): Promise<SurfaceExecutionResult> {
     try {
         // Fetch image
-        const response = await fetch(imageUrl);
-        const blob = await response.blob();
+        const blob = await fetchCampaignSurfaceImageBlob(imageUrl);
 
         // Create download link
         const url = window.URL.createObjectURL(blob);
@@ -177,7 +298,10 @@ export async function downloadPoster(
             surface: 'print_poster'
         };
     } catch (error) {
-        console.error('Poster download failed:', error);
+        logCampaignFailure('campaign_poster_download_failed', error, {
+            ...getBoundedCampaignStringContext('imageUrl', imageUrl),
+            ...getBoundedCampaignStringContext('itemName', itemName),
+        });
         return {
             success: false,
             method: 'download',
@@ -198,8 +322,7 @@ export async function downloadPoster(
 
 /**
  * Download QR tent card
- * For now, same as poster download
- * TODO: Generate tent card format with QR code
+ * Downloads the current generated tent-card image directly.
  */
 export async function downloadQrTent(
     imageUrl: string,
@@ -207,8 +330,7 @@ export async function downloadQrTent(
 ): Promise<SurfaceExecutionResult> {
     try {
         // Same as poster for now
-        const response = await fetch(imageUrl);
-        const blob = await response.blob();
+        const blob = await fetchCampaignSurfaceImageBlob(imageUrl);
 
         const url = window.URL.createObjectURL(blob);
         const link = document.createElement('a');
@@ -225,7 +347,10 @@ export async function downloadQrTent(
             surface: 'qr_tent'
         };
     } catch (error) {
-        console.error('QR tent download failed:', error);
+        logCampaignFailure('campaign_qr_tent_download_failed', error, {
+            ...getBoundedCampaignStringContext('imageUrl', imageUrl),
+            ...getBoundedCampaignStringContext('itemName', itemName),
+        });
         return {
             success: false,
             method: 'download',
@@ -251,8 +376,7 @@ export async function downloadDigitalScreen(
     itemName: string
 ): Promise<SurfaceExecutionResult> {
     try {
-        const response = await fetch(imageUrl);
-        const blob = await response.blob();
+        const blob = await fetchCampaignSurfaceImageBlob(imageUrl);
 
         const url = window.URL.createObjectURL(blob);
         const link = document.createElement('a');
@@ -269,7 +393,10 @@ export async function downloadDigitalScreen(
             surface: 'digital_screen'
         };
     } catch (error) {
-        console.error('Digital screen download failed:', error);
+        logCampaignFailure('campaign_digital_screen_download_failed', error, {
+            ...getBoundedCampaignStringContext('imageUrl', imageUrl),
+            ...getBoundedCampaignStringContext('itemName', itemName),
+        });
         return {
             success: false,
             method: 'download',
@@ -286,19 +413,37 @@ export async function downloadDigitalScreen(
 /**
  * Copy text to clipboard
  */
-async function copyToClipboard(text: string): Promise<void> {
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-        await navigator.clipboard.writeText(text);
-    } else {
-        // Fallback for older browsers
-        const textArea = document.createElement('textarea');
-        textArea.value = text;
-        textArea.style.position = 'fixed';
-        textArea.style.left = '-999999px';
-        document.body.appendChild(textArea);
+export async function copyCampaignTextToClipboard(
+    text: string,
+    failureCodes: CampaignClipboardFailureCodes = DEFAULT_CAMPAIGN_CLIPBOARD_FAILURE_CODES,
+): Promise<void> {
+    if (hasCampaignClipboardWrite()) {
+        try {
+            await navigator.clipboard.writeText(text);
+            return;
+        } catch {
+            // Fall through to the acknowledged textarea fallback for restricted browsers.
+        }
+    }
+
+    if (!hasCampaignCopyFallback()) {
+        throw new Error(failureCodes.documentUnavailable);
+    }
+
+    const textArea = document.createElement('textarea');
+    textArea.value = text;
+    textArea.style.position = 'fixed';
+    textArea.style.left = '-999999px';
+    document.body.appendChild(textArea);
+
+    try {
         textArea.select();
-        document.execCommand('copy');
-        document.body.removeChild(textArea);
+        const copied = document.execCommand('copy');
+        if (!copied) {
+            throw new Error(failureCodes.fallbackFailed);
+        }
+    } finally {
+        textArea.remove();
     }
 }
 

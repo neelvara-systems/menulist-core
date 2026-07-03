@@ -1,8 +1,8 @@
 # Use MenuList - Technical Implementation
 
-**Version:** 1.3
+**Version:** 1.6
 **Feature Flag:** `ENABLE_USE_MENULIST`
-**Last Updated:** June 11, 2026
+**Last Updated:** June 29, 2026
 
 ## Architecture
 
@@ -54,17 +54,18 @@ Desktop renders:
 - project selector for multi-project stores
 - official business link and direct project link cards
 - Store Menu, Business Profile, Project Menu, and outlet-scoped QR downloads
-- Digital Screens links
+- Digital Screens links, including bounded screen-link read failure diagnostics
 - Menu Kit and print asset downloads
 - Print Assets focused route
 - Print Menu / Menu Card Export route entry
 - feedback QR when enabled
 - POS summary when enabled
-- customer communication kit when enabled
+- customer communication kit when enabled, including bounded copy/share/handoff failure diagnostics
+- Menu Presence Monitor when enabled, including bounded official-link copy, confirm, and remove failure diagnostics
 
 ## Mobile Parity
 
-Mobile output actions live in `src/components/mobile/screens/MobileShareScreen.tsx` and route through the `MobileShell` state contract. Mobile uses shared link, QR, Menu Kit, print, and export primitives instead of mobile-only renderers.
+Mobile output actions live in `src/components/mobile/screens/MobileShareScreen.tsx` and route through the `MobileShell` state contract. Mobile uses shared link, QR, Menu Kit, print, export, and presence-monitor primitives instead of mobile-only renderers.
 
 `/use-menulist/print-assets` maps handheld devices into the mobile shell print-assets sub-screen.
 
@@ -74,6 +75,35 @@ Mobile output actions live in `src/components/mobile/screens/MobileShareScreen.t
 - Screen state read: `getScreenState()`, one summary-doc read.
 - Asset generation: browser-local unless a child workflow is opened.
 - Starter activation signal writes: existing onboarding/store signal contract only, not hub-owned data.
+
+## Diagnostics
+
+Desktop Use MenuList failure diagnostics go through `src/components/templates/main-app/useMenuList/useMenuListDiagnostics.ts`. Mobile Share, the shared mobile QR sheet, and the mobile Communication Kit use `src/components/mobile/utils/mobileOwnerDiagnostics.ts` for mobile output failure diagnostics.
+
+Bounded diagnostics cover:
+
+- output hub data-load failures
+- desktop screen-link load failures through `use_menulist_screen_links_load_failed`
+- starter activation signal write failures
+- desktop page-level output copy failures through `use_menulist_copy_failed`; copied feedback and copy-driven starter activation signals wait for Clipboard API or acknowledged textarea fallback success
+- desktop direct public-output open failures through `use_menulist_open_failed`; selected menu, Menu Board, and Highlights opens use `noopener,noreferrer`
+- desktop share-card copy, copy-message, WhatsApp handoff, and direct-open failures through `share_link_card_copy_failed`, `share_link_card_copy_message_failed`, `share_link_card_whatsapp_open_failed`, and `share_link_card_open_failed`; copy success waits for Clipboard API or acknowledged textarea fallback success, and WhatsApp/direct opens use `noopener,noreferrer`
+- desktop Communication Kit copy and WhatsApp handoff failures through `use_menulist_communication_kit_copy_failed` and `use_menulist_communication_kit_whatsapp_open_failed`; rejected Clipboard API writes retry the acknowledged fallback before copied feedback; WhatsApp opens use `noopener,noreferrer`
+- desktop Menu Presence official-link copy, external guide-open, and surface confirm/remove failures through `use_menulist_presence_official_link_copy_failed`, `use_menulist_presence_external_open_failed`, `use_menulist_presence_confirm_failed`, and `use_menulist_presence_remove_failed`; official-link copy success waits for Clipboard API or acknowledged textarea fallback success, and external opens use `noopener,noreferrer`
+- clipboard copy failures with clipboard/fallback support metadata only
+- Menu Kit ZIP and single-asset generation failures
+- asset preview failures
+- QR download failures
+- PDF fallback generation failures
+- feedback QR generation failures
+- mobile shared QR generation, clipboard copy, and download setup failures through `mobile_qr_sheet_generate_failed`, `mobile_qr_sheet_copy_failed`, and `mobile_qr_sheet_download_failed`
+- mobile Share page-level output copy failures through `mobile_share_copy_failed`; copied feedback and copy-driven starter activation signals wait for Clipboard API or acknowledged textarea fallback success
+- mobile Presence Monitor official-link copy, external guide-open, and surface confirm/remove failures through `mobile_presence_official_link_copy_failed`, `mobile_presence_external_open_failed`, `mobile_presence_confirm_failed`, and `mobile_presence_remove_failed`; official-link copy success waits for Clipboard API or acknowledged textarea fallback success, and external opens use `noopener,noreferrer`
+- mobile Communication Kit copy, native share, and WhatsApp handoff failures through `mobile_communication_kit_copy_failed`, `mobile_communication_kit_native_share_failed`, and `mobile_communication_kit_whatsapp_open_failed`; WhatsApp opens use `noopener,noreferrer`
+
+The diagnostics record normalized `use_menulist_*`, `mobile_presence_*`, `mobile_qr_sheet_*`, `mobile_share_*`, and `mobile_communication_kit_*` failure codes with bounded store/project/link/action/source/surface/template/message/open-URL presence and length metadata, booleans, counts, generated-image presence/length, starter-signal booleans, and source error name/code/status only. They must not log raw public URLs, external platform URLs, QR payloads, store records, project documents, owner-entered names, surface labels, generated customer messages, generated data URLs, generated file bodies, or provider/browser error objects.
+
+June 29 direct-open hardening: `src/components/templates/main-app/useMenuList/index.tsx` now logs blocked selected-menu, Menu Board, and Highlights opens as `use_menulist_open_failed` with bounded output context plus URL/label presence-length metadata only. These opens use `noopener,noreferrer` and keep the owner on the page when the browser blocks a popup.
 
 ## Performance
 

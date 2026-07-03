@@ -6,6 +6,8 @@ import { callAnswerlatticeGeminiContent } from './aiOperationAccounting';
 
 const HEALTH_DOC_ID = 'answerlatticeAiProviderHealth';
 const PROVIDER = 'gemini';
+const ANSWERLATTICE_AI_PROVIDER_HEALTH_CHECK_FAILED = 'ANSWERLATTICE_AI_PROVIDER_HEALTH_CHECK_FAILED';
+const ANSWERLATTICE_AI_PROVIDER_HEALTH_UNEXPECTED_RESPONSE = 'ANSWERLATTICE_AI_PROVIDER_HEALTH_UNEXPECTED_RESPONSE';
 
 function utcDayKey(date = new Date()): string {
     return date.toISOString().slice(0, 10);
@@ -18,9 +20,27 @@ function timestampMillis(value: unknown): number | null {
     return null;
 }
 
-function compactError(error: unknown): string {
-    if (error instanceof Error) return error.message.slice(0, 500);
-    return String(error || 'Unknown provider error').slice(0, 500);
+function getProviderHealthSourceErrorContext(error: unknown): {
+    sourceErrorName: string | null;
+    sourceErrorCode: string | number | null;
+    sourceStatusCode: number | null;
+} {
+    const source = error && typeof error === 'object' ? error as Record<string, unknown> : {};
+    const sourceStatusCode = typeof source.status === 'number'
+        ? source.status
+        : (typeof source.statusCode === 'number' ? source.statusCode : null);
+
+    return {
+        sourceErrorName: typeof source.name === 'string' ? source.name : null,
+        sourceErrorCode: typeof source.code === 'string' || typeof source.code === 'number' ? source.code : null,
+        sourceStatusCode,
+    };
+}
+
+function getProviderHealthFailureCode(error: unknown): string {
+    return error instanceof Error && error.message === ANSWERLATTICE_AI_PROVIDER_HEALTH_UNEXPECTED_RESPONSE
+        ? ANSWERLATTICE_AI_PROVIDER_HEALTH_UNEXPECTED_RESPONSE
+        : ANSWERLATTICE_AI_PROVIDER_HEALTH_CHECK_FAILED;
 }
 
 export async function runAnswerlatticeAiProviderHealthCheck(params: {
@@ -62,7 +82,7 @@ export async function runAnswerlatticeAiProviderHealthCheck(params: {
         const latencyMs = Date.now() - startedAt;
         const text = String(result.text || '').trim();
         if (!/^ok[.!]?$/i.test(text)) {
-            throw new Error('Gemini health check returned an unexpected response.');
+            throw new Error(ANSWERLATTICE_AI_PROVIDER_HEALTH_UNEXPECTED_RESPONSE);
         }
 
         const details = {
@@ -93,16 +113,16 @@ export async function runAnswerlatticeAiProviderHealthCheck(params: {
         };
     } catch (error) {
         const latencyMs = Date.now() - startedAt;
-        const message = compactError(error);
+        const failureCode = getProviderHealthFailureCode(error);
         await ref.set({
             ...base,
-            error: message,
+            error: failureCode,
             latencyMs,
             status: 'failed',
+            ...getProviderHealthSourceErrorContext(error),
             success: false,
             updatedAt: Timestamp.now(),
         }, { merge: true });
-        throw new Error(`Answerlattice Gemini provider health check failed: ${message}`);
+        throw new Error(failureCode);
     }
 }
-

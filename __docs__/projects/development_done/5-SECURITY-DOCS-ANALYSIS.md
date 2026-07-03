@@ -1,7 +1,7 @@
 # 🔐 Security Documentation - Cross-Reference Analysis
 
 **Date**: November 14, 2025  
-**Purpose**: Identify overlaps, gaps, and consolidation opportunities between `ASSESSMENT-05-SECURITY.md` and `__docs__/security/*`
+**Purpose**: Identify overlaps, gaps, and consolidation opportunities between `assessment-05-security.md` and `__docs__/security/*`
 
 ---
 
@@ -26,7 +26,7 @@
 
 ### Issue #1: Input Sanitization in Editor ✅
 
-**ASSESSMENT-05-SECURITY.md:**
+**assessment-05-security.md:**
 
 ```typescript
 // Documents DOMPurify implementation
@@ -46,7 +46,7 @@
 
 ### Issue #2: CORS Validation 🔴 GAP
 
-**ASSESSMENT-05-SECURITY.md:**
+**assessment-05-security.md:**
 
 ```typescript
 // Documents implementation
@@ -76,7 +76,7 @@
 
 ## Usage
 
-[Copy from ASSESSMENT-05-SECURITY.md Issue #2]
+[Copy from assessment-05-security.md Issue #2]
 
 ## Security Benefits
 
@@ -89,14 +89,14 @@
 
 ### Issue #3: File Upload Validation 🔴 GAP
 
-**ASSESSMENT-05-SECURITY.md:**
+**assessment-05-security.md:**
 
 ```typescript
 // Documents comprehensive file validation
 - File: /src/lib/security/fileValidation.ts
 - Features: Magic bytes, size limits, type checking
 - Status: ✅ Implemented (consolidated Nov 14)
-- Refactor Doc: development_done/5-REFACTOR-FILE-VALIDATION.md
+- Refactor Doc: development_done/5-refactor-file-validation.md
 ```
 
 ****docs**/security:**
@@ -134,18 +134,18 @@ Server-side file validation using magic byte signatures (not just extensions)
 
 - Client-side: constants.ts + validation.ts
 - Server-side: imports from constants.ts (single source of truth)
-- See: development_done/5-REFACTOR-FILE-VALIDATION.md
+- See: development_done/5-refactor-file-validation.md
 
 ## Usage in API Routes
 
-[Copy examples from ASSESSMENT-05-SECURITY.md Issue #3]
+[Copy examples from assessment-05-security.md Issue #3]
 ```
 
 ---
 
 ### Issue #4: SQL/NoSQL Injection Protection 🟡 OVERLAP
 
-**ASSESSMENT-05-SECURITY.md:**
+**assessment-05-security.md:**
 
 ```typescript
 // Project-specific validators
@@ -200,7 +200,7 @@ Server-side file validation using magic byte signatures (not just extensions)
 
 ### Issue #5: Rate Limiting ✅ ALIGNED
 
-**ASSESSMENT-05-SECURITY.md:**
+**assessment-05-security.md:**
 
 - Says "Already implemented in ASSESSMENT-02"
 - References: `/src/lib/rateLimit/helpers.ts`
@@ -217,7 +217,7 @@ Server-side file validation using magic byte signatures (not just extensions)
 
 ### Issue #6: Content Security Policy (CSP) ✅ ALIGNED
 
-**ASSESSMENT-05-SECURITY.md:**
+**assessment-05-security.md:**
 
 - Says "Already implemented"
 - Location: `/src/middleware.ts` + `/src/config/csp-allowlist.ts`
@@ -234,7 +234,7 @@ Server-side file validation using magic byte signatures (not just extensions)
 
 ### Issue #7: Insufficient Logging ⚠️ PARTIAL
 
-**ASSESSMENT-05-SECURITY.md:**
+**assessment-05-security.md:**
 
 ```typescript
 // Wants comprehensive audit logging
@@ -287,14 +287,14 @@ Server-side file validation using magic byte signatures (not just extensions)
 
 ### Implementation
 
-See: ASSESSMENT-05-SECURITY.md Issue #7 for proposed schema
+See: assessment-05-security.md Issue #7 for proposed schema
 ```
 
 ---
 
 ### Issue #8: Data Encryption at Rest ⏳ PLANNED
 
-**ASSESSMENT-05-SECURITY.md:**
+**assessment-05-security.md:**
 
 - Proposes field-level encryption
 - AES-256-GCM algorithm
@@ -311,7 +311,7 @@ See: ASSESSMENT-05-SECURITY.md Issue #7 for proposed schema
 
 ### Issue #9: API Key Rotation ⏳ PLANNED
 
-**ASSESSMENT-05-SECURITY.md:**
+**assessment-05-security.md:**
 
 - Proposes Firebase App Check
 - reCAPTCHA v3 integration
@@ -328,7 +328,7 @@ See: ASSESSMENT-05-SECURITY.md Issue #7 for proposed schema
 
 ### Issue #10: Session Timeout ⏳ PLANNED
 
-**ASSESSMENT-05-SECURITY.md:**
+**assessment-05-security.md:**
 
 - Proposes 7-day timeout
 - Last activity tracking
@@ -344,7 +344,7 @@ See: ASSESSMENT-05-SECURITY.md Issue #7 for proposed schema
 
 ### Issue #11: HTTPS Enforcement ✅ ALIGNED
 
-**ASSESSMENT-05-SECURITY.md:**
+**assessment-05-security.md:**
 
 - Says "Already implemented"
 - Location: `/src/middleware.ts`
@@ -388,7 +388,7 @@ See: ASSESSMENT-05-SECURITY.md Issue #7 for proposed schema
 1. **Create** `__docs__/security/file-upload/file-upload-security.md`
 
    - Document magic byte validation
-   - Document consolidation work (link to 5-REFACTOR-FILE-VALIDATION.md)
+   - Document consolidation work (link to 5-refactor-file-validation.md)
    - Usage examples
 
 2. **Create** `__docs__/security/cors/cors-implementation.md`
@@ -447,7 +447,7 @@ __docs__/security/
 
 ## 🔄 Cross-Reference Strategy
 
-### ASSESSMENT-05-SECURITY.md Should:
+### assessment-05-security.md Should:
 
 - ✅ Focus on project-specific security issues
 - ✅ Reference security docs for platform features

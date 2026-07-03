@@ -8,7 +8,7 @@
 
 ## Mobile Relevance Decision: NO
 
-This feature has **no customer-facing UI**. It consists of static files (llms.txt, llms-full.txt), a feature flag placeholder, and strategic documentation. No mobile screens needed.
+This feature has **no customer-facing UI**. It consists of static files (llms.txt, llms-full.txt), a reserved disabled flag, and strategic documentation. No mobile screens needed.
 
 ---
 

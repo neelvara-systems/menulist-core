@@ -31,6 +31,8 @@
 
 ---
 
+June 29, 2026 parity note: mobile and desktop OutletPolicy saves now share the same 16KB bounded `/api/outlets/policy` response parser. The returned acknowledgement must include `success: true`, `masterPromoted`, and a complete boolean `outletPolicy` before either surface updates local policy state.
+
 ## Parity Notes
 
 - Desktop and mobile now use the same `canManageLocationSettings()` gate.

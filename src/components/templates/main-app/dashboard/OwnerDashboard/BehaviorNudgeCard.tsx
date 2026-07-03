@@ -1,6 +1,7 @@
 'use client';
 
 import { FEATURE_FLAGS } from '@config/features';
+import { getBoundedStoreStringContext, logStoreDataFailure } from '@database/stores/storeDiagnostics';
 import { generateOBPUrl } from '@lib/obp/generateOBPUrl';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { Button, Card, Flex, Typography, message, theme } from 'antd';
@@ -10,6 +11,58 @@ import { LuCheck, LuCopy, LuLink, LuX } from 'react-icons/lu';
 
 const { Text } = Typography;
 const { useToken } = theme;
+const BEHAVIOR_NUDGE_COPY_UNAVAILABLE = 'owner_dashboard_behavior_nudge_copy_unavailable';
+const BEHAVIOR_NUDGE_COPY_FALLBACK_FAILED = 'owner_dashboard_behavior_nudge_copy_fallback_failed';
+
+const hasBehaviorNudgeClipboardWrite = (): boolean => (
+    typeof navigator !== 'undefined'
+    && Boolean(navigator.clipboard)
+    && typeof navigator.clipboard.writeText === 'function'
+);
+
+const hasBehaviorNudgeCopyFallback = (): boolean => (
+    typeof document !== 'undefined'
+    && typeof document.createElement === 'function'
+    && typeof document.execCommand === 'function'
+    && Boolean(document.body)
+);
+
+const copyBehaviorNudgeLink = async (value: string): Promise<void> => {
+    let clipboardWriteError: unknown;
+
+    if (hasBehaviorNudgeClipboardWrite()) {
+        try {
+            await navigator.clipboard.writeText(value);
+            return;
+        } catch (error) {
+            clipboardWriteError = error;
+            // Continue to the acknowledged textarea fallback before showing failure copy.
+        }
+    }
+
+    if (!hasBehaviorNudgeCopyFallback()) {
+        throw clipboardWriteError || new Error(BEHAVIOR_NUDGE_COPY_UNAVAILABLE);
+    }
+
+    const textarea = document.createElement('textarea');
+    textarea.value = value;
+    textarea.setAttribute('readonly', '');
+    textarea.style.position = 'fixed';
+    textarea.style.left = '-9999px';
+    textarea.style.top = '0';
+    document.body.appendChild(textarea);
+    textarea.focus();
+    textarea.select();
+
+    try {
+        const copied = document.execCommand('copy');
+        if (!copied) {
+            throw new Error(BEHAVIOR_NUDGE_COPY_FALLBACK_FAILED);
+        }
+    } finally {
+        document.body.removeChild(textarea);
+    }
+};
 
 /**
  * BehaviorNudgeCard — Dashboard reinforcement card for official link adoption.
@@ -31,10 +84,20 @@ export default function BehaviorNudgeCard() {
     useEffect(() => {
         if (storeDetails?.storeId) {
             const dismissKey = `behavior_nudge_dismissed_${storeDetails.storeId}`;
-            if (localStorage.getItem(dismissKey)) {
-                setDismissed(true);
+            try {
+                setDismissed(Boolean(localStorage.getItem(dismissKey)));
+            } catch (error) {
+                setDismissed(false);
+                logStoreDataFailure('owner_dashboard_behavior_nudge_dismiss_load_failed', error, {
+                    surface: 'owner_dashboard_behavior_nudge_card',
+                    action: 'load_dismiss_state',
+                    ...getBoundedStoreStringContext('storeId', storeDetails.storeId),
+                    ...getBoundedStoreStringContext('tenantId', (storeDetails as any)?.tenantId),
+                    ...getBoundedStoreStringContext('dismissKey', dismissKey),
+                });
+            } finally {
+                setInitialized(true);
             }
-            setInitialized(true);
         }
     }, [storeDetails?.storeId]);
 
@@ -46,20 +109,43 @@ export default function BehaviorNudgeCard() {
 
     const obpUrl = generateOBPUrl(storeDetails?.subdomain, storeDetails?.customDomain);
     if (!obpUrl) return null;
+    const buildBehaviorNudgeLogContext = (
+        action: string,
+        metadata: Record<string, boolean | number | string | undefined> = {},
+    ) => ({
+        surface: 'owner_dashboard_behavior_nudge_card',
+        action,
+        ...getBoundedStoreStringContext('storeId', storeDetails?.storeId),
+        ...getBoundedStoreStringContext('tenantId', (storeDetails as any)?.tenantId),
+        ...getBoundedStoreStringContext('subdomain', storeDetails?.subdomain),
+        ...getBoundedStoreStringContext('customDomain', storeDetails?.customDomain),
+        ...getBoundedStoreStringContext('obpUrl', obpUrl),
+        ...metadata,
+    });
 
     const handleDismiss = () => {
         setDismissed(true);
         const dismissKey = `behavior_nudge_dismissed_${storeDetails.storeId}`;
-        localStorage.setItem(dismissKey, Date.now().toString());
+        try {
+            localStorage.setItem(dismissKey, Date.now().toString());
+        } catch (error) {
+            logStoreDataFailure('owner_dashboard_behavior_nudge_dismiss_save_failed', error, buildBehaviorNudgeLogContext('save_dismiss_state', {
+                ...getBoundedStoreStringContext('dismissKey', dismissKey),
+            }));
+        }
     };
 
     const handleCopy = async () => {
         try {
-            await navigator.clipboard.writeText(obpUrl);
+            await copyBehaviorNudgeLink(obpUrl);
             setCopied(true);
             message.success(t('behaviorNudge.linkCopied'));
             setTimeout(() => setCopied(false), 2000);
-        } catch {
+        } catch (error) {
+            logStoreDataFailure('owner_dashboard_behavior_nudge_copy_failed', error, buildBehaviorNudgeLogContext('copy_obp_link', {
+                hasClipboardWrite: hasBehaviorNudgeClipboardWrite(),
+                hasCopyFallback: hasBehaviorNudgeCopyFallback(),
+            }));
             message.error(t('behaviorNudge.couldNotCopy'));
         }
     };

@@ -204,9 +204,16 @@ export type BusinessCopyGenerationRequest = z.infer<typeof BusinessCopyGeneratio
 // TRANSLATION API
 // ═══════════════════════════════════════════════════════════
 
+const TRANSLATION_INPUT_KEY_MAX_LENGTH = 240;
+const TRANSLATION_INPUT_VALUE_MAX_LENGTH = 2000;
+const TRANSLATION_INPUT_MAX_ITEMS = 1000;
+
 export const TranslationRequestSchema = z.object({
-    inputJson: z.record(z.string(), z.string()).refine(
-        obj => Object.keys(obj).length <= 1000,
+    inputJson: z.record(
+        z.string().max(TRANSLATION_INPUT_KEY_MAX_LENGTH),
+        z.string().max(TRANSLATION_INPUT_VALUE_MAX_LENGTH)
+    ).refine(
+        obj => Object.keys(obj).length <= TRANSLATION_INPUT_MAX_ITEMS,
         'Too many items to translate'
     ),
     targetLang: z.union([
@@ -234,7 +241,7 @@ export const NewItemMetadataRequestSchema = z.object({
         attributes: z.array(z.object({
             id: z.string().max(100),
             name: z.string().max(500).optional(),
-            price: z.union([z.string(), z.number()]).optional()
+            price: z.union([z.string().max(120), z.number().finite()]).optional()
         })).optional()
     }),
     targetLang: z.array(languageObjectSchema).min(1).max(20),  // Array of language objects

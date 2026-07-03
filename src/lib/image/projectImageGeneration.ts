@@ -1,4 +1,4 @@
-import { syncProjectToSummary, updateProjectMetadata, uploadFile } from '@database/projects';
+import { assertProjectUpdateSucceeded, syncProjectToSummary, updateProjectMetadata, uploadFile } from '@database/projects';
 import { resolveBusinessCategory } from '@data/shared/businessTypes';
 import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
 import { getMediaImageProfile } from '@lib/media/imageProfiles';
@@ -617,12 +617,22 @@ export async function generateAndSaveProjectImageIfMissing(
 
     const summaryUpdate = buildSummaryImageUpdate(params.summaryData);
     if (summaryUpdate) {
-        await syncProjectToSummary(projectId, {
+        const summaryResult = await syncProjectToSummary(projectId, {
             ...summaryUpdate,
             projectImage: imageUrl,
         });
+        assertProjectUpdateSucceeded(
+            summaryResult,
+            projectId,
+            'project_image_generation_summary_update_rejected',
+        );
     } else {
-        await updateProjectMetadata(projectId, { projectImage: imageUrl });
+        const metadataResult = await updateProjectMetadata(projectId, { projectImage: imageUrl });
+        assertProjectUpdateSucceeded(
+            metadataResult,
+            projectId,
+            'project_image_generation_metadata_update_rejected',
+        );
     }
 
     return { imageUrl };

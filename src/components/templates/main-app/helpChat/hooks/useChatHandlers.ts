@@ -1,5 +1,19 @@
-import { deleteChatSession, getUserChatSessions, saveChatSession, updateChatSession, uploadChatImage } from '@database/chatSessions';
+import {
+    assertChatSessionDeleteSucceeded,
+    assertChatSessionSaveSucceeded,
+    assertChatSessionUpdateSucceeded,
+    deleteChatSession,
+    getUserChatSessions,
+    saveChatSession,
+    updateChatSession,
+    uploadChatImage,
+} from '@database/chatSessions';
 import { buildAnswerlatticeActorSnapshot } from '@lib/answerlattice/customerIdentity';
+import {
+    copyAnswerlatticeSupportTextToClipboard,
+    hasAnswerlatticeSupportClipboardWrite,
+    hasAnswerlatticeSupportCopyFallback,
+} from '@lib/answerlattice/supportClipboard';
 import { ChatSession } from '@type/chatSession';
 import { UserUploadedFileType } from '@type/common';
 import { message as antMessage } from 'antd';
@@ -9,8 +23,20 @@ import { searchKnowledgeBase, submitSearchFeedback } from '../api';
 import { SearchAPIResponseType } from '../apiTypes';
 import { clearDraft, detectSimilarQueries, trimMessages } from '../chatUtils';
 import { feedbackOptions } from '../FeedbackModal';
+import { getBoundedHelpChatStringContext, logHelpChatFailure } from '../helpChatDiagnostics';
 import { ChatMessage, ChatMode } from '../types';
 import { useRequestQueue } from './useRequestQueue';
+
+const HELP_CHAT_SEARCH_FAILED_MESSAGE = 'Something went wrong while searching.';
+const HELP_CHAT_MESSAGE_COPY_CLIPBOARD_UNAVAILABLE = 'help_chat_message_copy_clipboard_unavailable';
+const HELP_CHAT_MESSAGE_COPY_FALLBACK_FAILED = 'help_chat_message_copy_fallback_failed';
+
+const copyHelpChatMessageToClipboard = async (text: string): Promise<void> => {
+    await copyAnswerlatticeSupportTextToClipboard(text, {
+        unavailable: HELP_CHAT_MESSAGE_COPY_CLIPBOARD_UNAVAILABLE,
+        fallbackFailed: HELP_CHAT_MESSAGE_COPY_FALLBACK_FAILED,
+    });
+};
 
 interface UseChatHandlersProps {
     chatSessions: ChatSession[];
@@ -20,6 +46,7 @@ interface UseChatHandlersProps {
     activeSession: ChatSession | undefined;
     currentMode: ChatMode;
     setCurrentMode: React.Dispatch<React.SetStateAction<ChatMode>>;
+    searchQuery: string;
     setSearchQuery: React.Dispatch<React.SetStateAction<string>>;
     dispatchChatState: React.Dispatch<any>;
     loggedInSession: any;
@@ -39,6 +66,7 @@ export function useChatHandlers({
     activeSession,
     currentMode,
     setCurrentMode,
+    searchQuery,
     setSearchQuery,
     dispatchChatState,
     loggedInSession,
@@ -70,6 +98,22 @@ export function useChatHandlers({
 
     // 🔒 FIX RACE CONDITIONS: Add request queue
     const { enqueue, isProcessing } = useRequestQueue();
+
+    const logChatSessionPersistFailure = (
+        error: unknown,
+        reason: string,
+        sessionId: unknown,
+        messageCount: number,
+    ) => {
+        logHelpChatFailure('help_chat_session_persist_failed', error, {
+            reason,
+            mode: currentModeRef.current,
+            messageCount,
+            ...getBoundedHelpChatStringContext('sessionId', sessionId),
+            ...getBoundedHelpChatStringContext('tenantId', loggedInSession?.tId),
+            ...getBoundedHelpChatStringContext('storeId', loggedInSession?.sId),
+        });
+    };
 
     // Handler: Create New Chat
     const handleNewChat = () => {
@@ -280,7 +324,20 @@ export function useChatHandlers({
                                     if (isModeTransition) {
                                         updateData.mode = 'assistant';
                                     }
-                                    updateChatSession(activeSession.id, updateData).catch(() => { });
+                                    updateChatSession(activeSession.id, updateData).then((result) => {
+                                        assertChatSessionUpdateSucceeded(
+                                            result,
+                                            activeSession.id,
+                                            'help_chat_message_append_session_update_rejected',
+                                        );
+                                    }).catch((error) => {
+                                        logChatSessionPersistFailure(
+                                            error,
+                                            isModeTransition ? 'message_append_mode_transition' : 'message_append',
+                                            activeSession.id,
+                                            updatedMessages.length
+                                        );
+                                    });
                                 }
 
                                 return {
@@ -305,11 +362,15 @@ export function useChatHandlers({
 
                         try {
                             const savedSession = await saveChatSession(newSession);
+                            assertChatSessionSaveSucceeded(
+                                savedSession,
+                                'help_chat_new_session_save_rejected',
+                            );
                             setChatSessions(prev => {
                                 const withoutTemp = prev.filter(s => s.id !== null || s.messages.length > 1);
-                                return [savedSession as ChatSession, ...withoutTemp];
+                                return [savedSession, ...withoutTemp];
                             });
-                            setActiveSessionId(savedSession.id!);
+                            setActiveSessionId(savedSession.id);
                         } catch (err) {
                             antMessage.error('Failed to save chat session');
                             setChatSessions(prev => prev.map((session, index) =>
@@ -329,13 +390,19 @@ export function useChatHandlers({
                         payload: { messageId: aiMessage.id }
                     });
 
-                } catch (error: any) {
-                    const errorMessage = error?.message || 'Something went wrong while searching.';
+                } catch (error) {
+                    logHelpChatFailure('help_chat_search_failed', error, {
+                        mode: effectiveMode,
+                        ...getBoundedHelpChatStringContext('query', content),
+                        ...getBoundedHelpChatStringContext('activeSessionId', activeSessionId),
+                        ...getBoundedHelpChatStringContext('tenantId', loggedInSession?.tId),
+                        ...getBoundedHelpChatStringContext('storeId', loggedInSession?.sId),
+                    });
                     dispatchChatState({
                         type: 'SEARCH_ERROR',
-                        payload: `${errorMessage} You can still find answers in our documentation.`
+                        payload: `${HELP_CHAT_SEARCH_FAILED_MESSAGE} You can still find answers in our documentation.`
                     });
-                    antMessage.error(`Search failed: ${errorMessage}`);
+                    antMessage.error('Search failed. Please try again.');
                 }
             }
         });
@@ -403,9 +470,25 @@ export function useChatHandlers({
                 ));
 
                 if (activeSession.id) {
-                    await updateChatSession(activeSession.id, {
-                        messages: updatedSession.messages
-                    }).catch(() => { });
+                    try {
+                        const updateResult = await updateChatSession(activeSession.id, {
+                            messages: updatedSession.messages
+                        });
+                        assertChatSessionUpdateSucceeded(
+                            updateResult,
+                            activeSession.id,
+                            retryReason === 'regenerate'
+                                ? 'help_chat_retry_regenerate_session_update_rejected'
+                                : 'help_chat_retry_error_session_update_rejected',
+                        );
+                    } catch (error) {
+                        logChatSessionPersistFailure(
+                            error,
+                            retryReason === 'regenerate' ? 'retry_regenerate_replace' : 'retry_error_replace',
+                            activeSession.id,
+                            updatedSession.messages.length
+                        );
+                    }
                 }
             }
 
@@ -416,13 +499,21 @@ export function useChatHandlers({
                 payload: { messageId: aiMessage.id }
             });
 
-        } catch (error: any) {
-            const errorMessage = error?.message || 'Something went wrong while searching.';
+        } catch (error) {
+            logHelpChatFailure('help_chat_retry_failed', error, {
+                mode: currentModeRef.current,
+                retryReason,
+                ...getBoundedHelpChatStringContext('query', content),
+                ...getBoundedHelpChatStringContext('activeSessionId', activeSession?.id || activeSessionId),
+                ...getBoundedHelpChatStringContext('replacedMessageId', replacedMessageId),
+                ...getBoundedHelpChatStringContext('tenantId', loggedInSession?.tId),
+                ...getBoundedHelpChatStringContext('storeId', loggedInSession?.sId),
+            });
             dispatchChatState({
                 type: 'SEARCH_ERROR',
-                payload: `${errorMessage} You can still find answers in our documentation.`
+                payload: `${HELP_CHAT_SEARCH_FAILED_MESSAGE} You can still find answers in our documentation.`
             });
-            antMessage.error(`Search failed: ${errorMessage}`);
+            antMessage.error('Search failed. Please try again.');
         }
     };
 
@@ -438,13 +529,28 @@ export function useChatHandlers({
     };
 
     // Handler: Copy Message
-    const handleCopy = (messageId: string) => {
+    const handleCopy = async (messageId: string) => {
         const message = activeSession?.messages.find(m => m.id === messageId);
         if (message) {
             const textToCopy = message.craftedAnswer || message.content || '';
-            navigator.clipboard.writeText(textToCopy)
-                .then(() => antMessage.success('Copied to clipboard'))
-                .catch(() => antMessage.error('Failed to copy'));
+            try {
+                await copyHelpChatMessageToClipboard(textToCopy);
+                antMessage.success('Copied to clipboard');
+            } catch (error) {
+                logHelpChatFailure('help_chat_message_copy_failed', error, {
+                    mode: currentModeRef.current,
+                    messageRole: message.role,
+                    hasClipboardWrite: hasAnswerlatticeSupportClipboardWrite(),
+                    hasCopyFallback: hasAnswerlatticeSupportCopyFallback(),
+                    hasCraftedAnswer: Boolean(message.craftedAnswer),
+                    ...getBoundedHelpChatStringContext('messageId', messageId),
+                    ...getBoundedHelpChatStringContext('activeSessionId', activeSession?.id || activeSessionId),
+                    ...getBoundedHelpChatStringContext('copiedMessageText', textToCopy),
+                    ...getBoundedHelpChatStringContext('tenantId', loggedInSession?.tId),
+                    ...getBoundedHelpChatStringContext('storeId', loggedInSession?.sId),
+                });
+                antMessage.error('Failed to copy');
+            }
         }
     };
 
@@ -470,7 +576,11 @@ export function useChatHandlers({
     const handleFeedbackUp = async (messageId: string) => {
         // 🔒 Prevent concurrent feedback submissions
         if (feedbackInProgressRef.current.has(messageId)) {
-            console.warn('Feedback already in progress for message:', messageId);
+            logHelpChatFailure('help_chat_feedback_duplicate_ignored', undefined, {
+                ...getBoundedHelpChatStringContext('messageId', messageId),
+                ...getBoundedHelpChatStringContext('activeSessionId', activeSession?.id),
+                feedbackInProgressCount: feedbackInProgressRef.current.size,
+            });
             return;
         }
 
@@ -509,6 +619,13 @@ export function useChatHandlers({
 
                 antMessage.success('Thank you for your feedback!');
             } catch (error) {
+                logHelpChatFailure('help_chat_feedback_up_submit_failed', error, {
+                    ...getBoundedHelpChatStringContext('messageId', messageId),
+                    ...getBoundedHelpChatStringContext('activeSessionId', activeSession.id),
+                    ...getBoundedHelpChatStringContext('searchHistoryId', message.searchHistoryId),
+                    ...getBoundedHelpChatStringContext('tenantId', loggedInSession?.tId),
+                    ...getBoundedHelpChatStringContext('storeId', loggedInSession?.sId),
+                });
                 antMessage.error('Failed to submit feedback');
             } finally {
                 feedbackInProgressRef.current.delete(messageId);
@@ -528,7 +645,11 @@ export function useChatHandlers({
 
         // 🔒 Prevent concurrent feedback submissions
         if (feedbackInProgressRef.current.has(feedbackMessageId)) {
-            console.warn('Feedback already in progress for message:', feedbackMessageId);
+            logHelpChatFailure('help_chat_feedback_duplicate_ignored', undefined, {
+                ...getBoundedHelpChatStringContext('messageId', feedbackMessageId),
+                ...getBoundedHelpChatStringContext('activeSessionId', activeSession.id),
+                feedbackInProgressCount: feedbackInProgressRef.current.size,
+            });
             return;
         }
 
@@ -580,6 +701,15 @@ export function useChatHandlers({
 
                 antMessage.success('Thank you for your feedback!');
             } catch (error) {
+                logHelpChatFailure('help_chat_feedback_down_submit_failed', error, {
+                    ...getBoundedHelpChatStringContext('messageId', feedbackMessageId),
+                    ...getBoundedHelpChatStringContext('activeSessionId', activeSession.id),
+                    ...getBoundedHelpChatStringContext('searchHistoryId', message.searchHistoryId),
+                    ...getBoundedHelpChatStringContext('tenantId', loggedInSession?.tId),
+                    ...getBoundedHelpChatStringContext('storeId', loggedInSession?.sId),
+                    reasonCount: values.reasonsToImprove?.length || 0,
+                    hasComments: Boolean(values.comments),
+                });
                 antMessage.error('Failed to submit feedback');
             } finally {
                 feedbackInProgressRef.current.delete(feedbackMessageId);
@@ -594,7 +724,12 @@ export function useChatHandlers({
         ));
 
         try {
-            await updateChatSession(sessionId, { title: newTitle });
+            const updateResult = await updateChatSession(sessionId, { title: newTitle });
+            assertChatSessionUpdateSucceeded(
+                updateResult,
+                sessionId,
+                'help_chat_rename_session_update_rejected',
+            );
             antMessage.success('Chat renamed');
         } catch (error) {
             antMessage.error('Failed to rename chat');
@@ -614,7 +749,7 @@ export function useChatHandlers({
         if (!message.escalation?.context) return;
 
         try {
-            const { addTicket } = await import('@database/tickets/index');
+            const ticketsDal: typeof import('@database/tickets/index') = await import('@database/tickets/index');
             const { SUPPORT_TICKET_PRIORITY, SUPPORT_TICKET_CATEGORY } = await import('@type/supportTicket');
 
             const escalationContext = {
@@ -622,7 +757,7 @@ export function useChatHandlers({
                 conversationId: activeSession?.id || undefined,
             };
 
-            await addTicket({
+            const createdTicket = await ticketsDal.addTicket({
                 subject: `AI couldn't help: ${escalationContext.query?.slice(0, 100) || 'Support needed'}`,
                 category: SUPPORT_TICKET_CATEGORY.GENERAL_QUESTION,
                 priority: SUPPORT_TICKET_PRIORITY.NORMAL,
@@ -643,6 +778,10 @@ export function useChatHandlers({
                     phone: '',
                 },
             } as any);
+            ticketsDal.assertSupportTicketCreateSucceeded(
+                createdTicket,
+                'help_chat_escalation_ticket_create_rejected',
+            );
 
             antMessage.success('Support ticket created. Our team will get back to you soon.');
         } catch {
@@ -652,20 +791,33 @@ export function useChatHandlers({
 
     // Handler: Delete Session
     const handleDeleteSession = async (sessionId: string) => {
+        const wasActiveSession = sessionId === activeSessionId;
+        const previousActiveSessionId = activeSessionId;
+        const previousSearchQuery = searchQuery;
+
         setChatSessions(prev => prev.filter(session => session.id !== sessionId));
 
-        if (sessionId === activeSessionId) {
+        if (wasActiveSession) {
             setActiveSessionId(null);
             setSearchQuery('');
         }
 
         try {
-            await deleteChatSession(sessionId);
+            const deleteResult = await deleteChatSession(sessionId);
+            assertChatSessionDeleteSucceeded(
+                deleteResult,
+                sessionId,
+                'help_chat_session_delete_rejected',
+            );
             antMessage.success('Chat deleted');
         } catch (error) {
             antMessage.error('Failed to delete chat');
             const sessions = await getUserChatSessions(loggedInSession);
             setChatSessions(sessions || []);
+            if (wasActiveSession) {
+                setActiveSessionId(previousActiveSessionId);
+                setSearchQuery(previousSearchQuery);
+            }
         }
     };
 

@@ -16,11 +16,14 @@ import {
     getDriftedAnswers,
 } from '@database/answerlattice/canonicalAnswers';
 import { addAuditLog } from '@database/answerlattice/auditLogs';
-import { getAnswerlatticeUiErrorMessage } from '@lib/answerlattice/uiErrors';
 import { AnswerlatticeCanonicalAnswer } from '@type/answerlattice';
 import { message } from 'antd';
 import { Timestamp } from 'firebase/firestore';
 import { useCallback, useEffect, useState } from 'react';
+
+const ANSWERLATTICE_CANONICAL_ANSWERS_LOAD_FAILED = 'Could not load canonical answers';
+const ANSWERLATTICE_CANONICAL_ANSWER_CREATE_FAILED = 'Could not create answer';
+const ANSWERLATTICE_CANONICAL_ANSWER_UPDATE_FAILED = 'Could not update answer';
 
 interface UseCanonicalAnswersReturn {
     answers: AnswerlatticeCanonicalAnswer[];
@@ -54,8 +57,8 @@ export function useCanonicalAnswers(tId: number, sId: number): UseCanonicalAnswe
             ]);
             setAnswers(allAnswers || []);
             setDriftedAnswers(drifted || []);
-        } catch (err) {
-            setError(getAnswerlatticeUiErrorMessage(err, 'Could not load canonical answers'));
+        } catch {
+            setError(ANSWERLATTICE_CANONICAL_ANSWERS_LOAD_FAILED);
         } finally {
             setLoading(false);
         }
@@ -83,8 +86,8 @@ export function useCanonicalAnswers(tId: number, sId: number): UseCanonicalAnswe
                 await refresh();
             }
             return result;
-        } catch (err) {
-            message.error(getAnswerlatticeUiErrorMessage(err, 'Could not create answer'));
+        } catch {
+            message.error(ANSWERLATTICE_CANONICAL_ANSWER_CREATE_FAILED);
             return null;
         }
     }, [tId, sId, refresh]);
@@ -104,8 +107,8 @@ export function useCanonicalAnswers(tId: number, sId: number): UseCanonicalAnswe
             });
             message.success('Answer updated');
             await refresh();
-        } catch (err) {
-            message.error(getAnswerlatticeUiErrorMessage(err, 'Could not update answer'));
+        } catch {
+            message.error(ANSWERLATTICE_CANONICAL_ANSWER_UPDATE_FAILED);
         }
     }, [tId, sId, refresh]);
 

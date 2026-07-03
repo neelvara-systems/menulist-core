@@ -1,8 +1,14 @@
 # 📁 File Upload Security Implementation
 
 **Last Updated**: May 24, 2026
-**Status**: ✅ Fully Implemented & Consolidated  
+**Status**: Implementation guide; not current launch certification
 **Priority**: P0 (Critical)
+
+---
+
+## Current Launch Boundary
+
+Current release approval requires the active [production-readiness audit](../../audits/menulist-production-readiness-audit.md) and [External Certification Runbook](../../production-readiness/external-certification-runbook.md) evidence, current upload-source review, Storage rules/deploy evidence where changed, browser/mobile upload QA, and provider/Storage smoke for the release target. This guide records implementation evidence; it is not production-launch approval.
 
 ---
 
@@ -91,6 +97,12 @@ File validation prevents malicious uploads, but privacy handling depends on the 
 - **Answerlattice knowledge-source uploads** preserve source-file fidelity for generation. Those files are tenant-scoped source inputs, not public assets, and are deleted when the generation job is deleted. Images or screenshots may still contain source metadata, so the upload UI warns users to remove private customer data before upload.
 - **Marketing reuse** is not part of normal upload processing. If MenuList or Answerlattice later reuses customer media for marketing, it must be a separate opt-in flow with consent logging, withdrawal, and policy text tied to that specific purpose.
 - **Retention selectors** should not be added until a backend retention scheduler and deletion policy exist. UI copy must describe the actual lifecycle enforced by code.
+
+### Storage Helper Diagnostics
+
+- Shared Firebase Storage helpers, including `src/lib/firebase/storage.ts`, must not direct-console raw upload/download URLs, Storage full paths, caller-provided paths, file IDs, or provider error objects.
+- Storage helper failures use `storageDiagnostics.ts` and record only normalized failure codes, provider error code/name, and bounded string presence/length metadata.
+- Caller-facing Storage failure text stays generic. Return or throw `"Failed to upload file"` / `"Failed to delete file"` style messages instead of provider exception text.
 
 ---
 
@@ -469,7 +481,7 @@ fileValidation.ts: import from constants.ts ← Uses master
 validation.ts:     import from constants.ts ← Uses master
 ```
 
-**See**: [5-REFACTOR-FILE-VALIDATION.md](../../projects/development_done/5-REFACTOR-FILE-VALIDATION.md)
+**See**: [5-refactor-file-validation.md](../../projects/development_done/5-refactor-file-validation.md)
 
 ---
 
@@ -698,6 +710,7 @@ Before going live:
 - [ ] Filename sanitization applied
 - [ ] Error messages generic (don't leak info)
 - [ ] Storage paths sanitized
+- [ ] Storage helper diagnostics use bounded metadata, not raw URLs or full paths
 - [ ] Rejected uploads logged
 - [ ] Monitor logs for attack patterns
 
@@ -706,8 +719,8 @@ Before going live:
 ## 🔗 Related Documentation
 
 - [OWASP File Upload Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/File_Upload_Cheat_Sheet.html)
-- [ASSESSMENT-05-SECURITY.md](../../projects/ASSESSMENT-05-SECURITY.md#3-no-file-upload-validation-) - Issue #3
-- [5-REFACTOR-FILE-VALIDATION.md](../../projects/development_done/5-REFACTOR-FILE-VALIDATION.md) - Consolidation details
+- [assessment-05-security.md](../../projects/Assessments/assessment-05-security.md#3-no-file-upload-validation-) - Issue #3
+- [5-refactor-file-validation.md](../../projects/development_done/5-refactor-file-validation.md) - Consolidation details
 
 ---
 
@@ -738,9 +751,11 @@ Before going live:
 5. **Log Rejected Uploads**
    - Monitor for attack patterns
    - Alert on repeated rejections
+   - Do not log raw Storage URLs, full paths, or provider exception payloads
 
 ---
 
-**Status**: ✅ Production Ready  
+**Status**: Implementation evidence documented; not current launch certification
 **Consolidation**: ✅ Complete (Nov 14, 2025)  
+**Diagnostics Hardening**: ✅ Storage helper diagnostics bounded (Jun 27, 2026)
 **Maintenance**: Review signatures annually for new file types

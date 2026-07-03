@@ -8,6 +8,7 @@
 import { DB_COLLECTIONS } from '@constant/database';
 import { getStoreContextName } from '@lib/businessIdentity/names';
 import { firestoreAdmin } from '@lib/firebase/firebaseAdmin';
+import { secureError } from '@lib/security/secureLogger';
 
 export interface TenantInfo {
     storeId: number;
@@ -18,6 +19,20 @@ export interface TenantInfo {
     subdomain?: string;
     customDomain?: string;
 }
+
+const normalizeDomainLookupFailure = (error: unknown, message: string): Error => {
+    const normalized = new Error(message);
+    if (error instanceof Error && error.name) {
+        normalized.name = error.name;
+    }
+    return normalized;
+};
+
+const buildLookupLogContext = (lookupType: 'subdomain' | 'customDomain', lookupValue: string) => ({
+    lookupType,
+    hasLookupValue: Boolean(lookupValue),
+    lookupValueLength: lookupValue.length,
+});
 
 /**
  * Lookup tenant by subdomain
@@ -49,7 +64,11 @@ export async function lookupBySubdomain(subdomain: string): Promise<TenantInfo |
             customDomain: storeData.customDomain,
         };
     } catch (error) {
-        console.error('Error looking up subdomain:', subdomain, error);
+        secureError(
+            '[Tenant Domain Lookup] Subdomain lookup failed',
+            normalizeDomainLookupFailure(error, 'Tenant subdomain lookup failed'),
+            buildLookupLogContext('subdomain', subdomain),
+        );
         return null;
     }
 }
@@ -85,7 +104,11 @@ export async function lookupByCustomDomain(domain: string): Promise<TenantInfo |
             customDomain: storeData.customDomain,
         };
     } catch (error) {
-        console.error('Error looking up custom domain:', domain, error);
+        secureError(
+            '[Tenant Domain Lookup] Custom domain lookup failed',
+            normalizeDomainLookupFailure(error, 'Tenant custom domain lookup failed'),
+            buildLookupLogContext('customDomain', domain),
+        );
         return null;
     }
 }

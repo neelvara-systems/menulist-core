@@ -10,19 +10,32 @@
 import { ANSWERLATTICE_ROUTES, toAnswerlatticeDashboardRoute } from '@constant/answerlattice/navigations';
 import TIMEZONES_LIST from '@data/timeZones';
 import { useClientAuthSession } from '@hook/useClientAuthSession';
-import { getAnswerlatticeUiErrorMessage } from '@lib/answerlattice/uiErrors';
+import { getBoundedAnswerlatticeStringContext, logAnswerlatticeFailure } from '@lib/answerlattice/diagnostics';
+import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';
 import { Alert, Button, Card, Checkbox, Descriptions, Divider, Flex, Form, Grid, Input, Select, Skeleton, Space, Switch, Tag, Typography, message } from 'antd';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 import { LuBell, LuCode, LuSave, LuSend, LuSettings } from 'react-icons/lu';
 
 const { Title, Text } = Typography;
+const ANSWERLATTICE_PROFILE_LOAD_FAILED = 'Could not load product details';
+const ANSWERLATTICE_PROFILE_SAVE_FAILED = 'Could not save product details';
+const ANSWERLATTICE_INTEGRATIONS_LOAD_FAILED = 'Could not load workflow notifications';
+const ANSWERLATTICE_INTEGRATIONS_SAVE_FAILED = 'Could not save workflow notifications';
+const ANSWERLATTICE_INTEGRATIONS_TEST_FAILED = 'Could not send test notification';
+const ANSWERLATTICE_LAST_DELIVERY_NEEDS_REVIEW = 'Last delivery needs review';
+const ANSWERLATTICE_SETTINGS_RESPONSE_JSON_MAX_BYTES = 64 * 1024;
+const ANSWERLATTICE_SETTINGS_REQUEST_POLICY: Pick<RequestInit, 'cache' | 'credentials' | 'redirect'> = {
+    cache: 'no-store',
+    credentials: 'same-origin',
+    redirect: 'manual',
+};
 
 type WorkspaceProfile = {
     productName: string;
     productUrl?: string;
     supportEmail?: string;
-    billingModel: 'free' | 'subscription' | 'usage' | 'one_time' | 'not_sure';
+    billingModel: 'subscription' | 'usage' | 'one_time' | 'not_sure';
     primarySurfaces: string[];
     timeZone?: string;
     businessDayEndTime?: string;
@@ -66,6 +79,22 @@ type WorkflowIntegrationsResponse = {
     }>;
 };
 
+type WorkspaceProfileResponse = {
+    profile: WorkspaceProfile;
+};
+
+type IntegrationTestResponse = {
+    eventId: string;
+    message?: string;
+};
+
+type AnswerlatticeSettingsResponseKind =
+    | 'profile_load'
+    | 'profile_save'
+    | 'integrations_load'
+    | 'integrations_save'
+    | 'integrations_test';
+
 const SURFACE_OPTIONS = [
     { label: 'Billing', value: 'billing' },
     { label: 'Onboarding', value: 'onboarding' },
@@ -79,6 +108,85 @@ const TIMEZONE_OPTIONS = (TIMEZONES_LIST as Array<{ label: string; tzCode: strin
     label: zone.label,
     value: zone.tzCode,
 }));
+
+const isRecord = (value: unknown): value is Record<string, unknown> => (
+    Boolean(value) && typeof value === 'object' && !Array.isArray(value)
+);
+
+const isStringArray = (value: unknown): value is string[] => (
+    Array.isArray(value) && value.every(item => typeof item === 'string')
+);
+
+const isWorkspaceProfileResponse = (value: unknown): value is WorkspaceProfileResponse => {
+    if (!isRecord(value) || !isRecord(value.profile)) return false;
+    const profile = value.profile;
+    return (
+        typeof profile.productName === 'string'
+        && typeof profile.billingModel === 'string'
+        && isStringArray(profile.primarySurfaces)
+    );
+};
+
+const isWorkflowIntegrationsResponse = (value: unknown): value is WorkflowIntegrationsResponse => (
+    isRecord(value)
+    && isRecord(value.slack)
+    && isRecord(value.email)
+    && isStringArray(value.eventTypes)
+    && isStringArray(value.defaultEventFilters)
+    && isRecord(value.health)
+);
+
+const isIntegrationTestResponse = (value: unknown): value is IntegrationTestResponse => (
+    isRecord(value)
+    && typeof value.eventId === 'string'
+    && value.eventId.length > 0
+    && (value.message === undefined || typeof value.message === 'string')
+);
+
+const getSettingsResponseLogContext = (kind: AnswerlatticeSettingsResponseKind, response: Response) => ({
+    ...getBoundedAnswerlatticeStringContext('responseKind', kind),
+    responseOk: response.ok,
+    responseStatus: response.status,
+});
+
+const readAnswerlatticeSettingsResponse = async <T,>(
+    response: Response,
+    kind: AnswerlatticeSettingsResponseKind,
+    isValid: (value: unknown) => value is T,
+    fallbackMessage: string,
+): Promise<T> => {
+    let payload: unknown = null;
+    try {
+        payload = await readJsonResponseWithLimit<unknown>(response, ANSWERLATTICE_SETTINGS_RESPONSE_JSON_MAX_BYTES);
+    } catch (error) {
+        logAnswerlatticeFailure(
+            'answerlattice_settings_response_parse_failed',
+            error,
+            getSettingsResponseLogContext(kind, response),
+        );
+        throw new Error(fallbackMessage);
+    }
+
+    if (!response.ok) {
+        logAnswerlatticeFailure(
+            'answerlattice_settings_response_rejected',
+            undefined,
+            getSettingsResponseLogContext(kind, response),
+        );
+        throw new Error(fallbackMessage);
+    }
+
+    if (!isValid(payload)) {
+        logAnswerlatticeFailure(
+            'answerlattice_settings_response_invalid',
+            undefined,
+            getSettingsResponseLogContext(kind, response),
+        );
+        throw new Error(fallbackMessage);
+    }
+
+    return payload;
+};
 
 export default function AnswerlatticeSettings() {
     const session = useClientAuthSession();
@@ -100,12 +208,19 @@ export default function AnswerlatticeSettings() {
     const loadProfile = useCallback(async () => {
         setLoadingProfile(true);
         try {
-            const response = await fetch('/api/answerlattice/workspace-profile', { method: 'GET' });
-            const data = await response.json().catch(() => ({}));
-            if (!response.ok) throw new Error(data.error || 'Failed to load product details');
-            form.setFieldsValue(data.profile || {});
-        } catch (error) {
-            message.error(getAnswerlatticeUiErrorMessage(error, 'Could not load product details'));
+            const response = await fetch('/api/answerlattice/workspace-profile', {
+                ...ANSWERLATTICE_SETTINGS_REQUEST_POLICY,
+                method: 'GET',
+            });
+            const data = await readAnswerlatticeSettingsResponse(
+                response,
+                'profile_load',
+                isWorkspaceProfileResponse,
+                ANSWERLATTICE_PROFILE_LOAD_FAILED,
+            );
+            form.setFieldsValue(data.profile);
+        } catch {
+            message.error(ANSWERLATTICE_PROFILE_LOAD_FAILED);
         } finally {
             setLoadingProfile(false);
         }
@@ -114,9 +229,16 @@ export default function AnswerlatticeSettings() {
     const loadIntegrations = useCallback(async () => {
         setLoadingIntegrations(true);
         try {
-            const response = await fetch('/api/answerlattice/integrations', { method: 'GET' });
-            const data: WorkflowIntegrationsResponse & { error?: string } = await response.json().catch(() => ({}));
-            if (!response.ok) throw new Error(data.error || 'Failed to load workflow notifications');
+            const response = await fetch('/api/answerlattice/integrations', {
+                ...ANSWERLATTICE_SETTINGS_REQUEST_POLICY,
+                method: 'GET',
+            });
+            const data = await readAnswerlatticeSettingsResponse(
+                response,
+                'integrations_load',
+                isWorkflowIntegrationsResponse,
+                ANSWERLATTICE_INTEGRATIONS_LOAD_FAILED,
+            );
             const defaults = data.defaultEventFilters || [];
             setIntegrationEventTypes(data.eventTypes || []);
             setIntegrationHealth(data.health || {});
@@ -135,8 +257,8 @@ export default function AnswerlatticeSettings() {
                     eventFilters: data.email?.eventFilters?.length ? data.email.eventFilters : defaults,
                 },
             });
-        } catch (error) {
-            message.error(getAnswerlatticeUiErrorMessage(error, 'Could not load workflow notifications'));
+        } catch {
+            message.error(ANSWERLATTICE_INTEGRATIONS_LOAD_FAILED);
         } finally {
             setLoadingIntegrations(false);
         }
@@ -152,16 +274,21 @@ export default function AnswerlatticeSettings() {
         try {
             const values = await form.validateFields();
             const response = await fetch('/api/answerlattice/workspace-profile', {
+                ...ANSWERLATTICE_SETTINGS_REQUEST_POLICY,
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(values),
             });
-            const data = await response.json().catch(() => ({}));
-            if (!response.ok) throw new Error(data.error || 'Failed to save product details');
-            form.setFieldsValue(data.profile || values);
+            const data = await readAnswerlatticeSettingsResponse(
+                response,
+                'profile_save',
+                isWorkspaceProfileResponse,
+                ANSWERLATTICE_PROFILE_SAVE_FAILED,
+            );
+            form.setFieldsValue(data.profile);
             message.success('Product details saved');
-        } catch (error) {
-            message.error(getAnswerlatticeUiErrorMessage(error, 'Could not save product details'));
+        } catch {
+            message.error(ANSWERLATTICE_PROFILE_SAVE_FAILED);
         } finally {
             setSavingProfile(false);
         }
@@ -172,12 +299,17 @@ export default function AnswerlatticeSettings() {
         try {
             const values = await integrationsForm.validateFields();
             const response = await fetch('/api/answerlattice/integrations', {
+                ...ANSWERLATTICE_SETTINGS_REQUEST_POLICY,
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(values),
             });
-            const data: WorkflowIntegrationsResponse & { error?: string } = await response.json().catch(() => ({}));
-            if (!response.ok) throw new Error(data.error || 'Failed to save workflow notifications');
+            const data = await readAnswerlatticeSettingsResponse(
+                response,
+                'integrations_save',
+                isWorkflowIntegrationsResponse,
+                ANSWERLATTICE_INTEGRATIONS_SAVE_FAILED,
+            );
             setSlackWebhookConfigured(Boolean(data.slack?.webhookConfigured));
             setIntegrationHealth(data.health || integrationHealth);
             integrationsForm.setFieldsValue({
@@ -195,8 +327,8 @@ export default function AnswerlatticeSettings() {
                 },
             });
             message.success('Workflow notifications saved');
-        } catch (error) {
-            message.error(getAnswerlatticeUiErrorMessage(error, 'Could not save workflow notifications'));
+        } catch {
+            message.error(ANSWERLATTICE_INTEGRATIONS_SAVE_FAILED);
         } finally {
             setSavingIntegrations(false);
         }
@@ -205,13 +337,20 @@ export default function AnswerlatticeSettings() {
     const handleTestIntegrations = useCallback(async () => {
         setTestingIntegrations(true);
         try {
-            const response = await fetch('/api/answerlattice/integrations/test', { method: 'POST' });
-            const data = await response.json().catch(() => ({}));
-            if (!response.ok) throw new Error(data.error || 'Failed to send test notification');
+            const response = await fetch('/api/answerlattice/integrations/test', {
+                ...ANSWERLATTICE_SETTINGS_REQUEST_POLICY,
+                method: 'POST',
+            });
+            const data = await readAnswerlatticeSettingsResponse(
+                response,
+                'integrations_test',
+                isIntegrationTestResponse,
+                ANSWERLATTICE_INTEGRATIONS_TEST_FAILED,
+            );
             message.success(data.message || 'Test notification queued');
             window.setTimeout(loadIntegrations, 2500);
-        } catch (error) {
-            message.error(getAnswerlatticeUiErrorMessage(error, 'Could not send test notification'));
+        } catch {
+            message.error(ANSWERLATTICE_INTEGRATIONS_TEST_FAILED);
         } finally {
             setTestingIntegrations(false);
         }
@@ -234,7 +373,7 @@ export default function AnswerlatticeSettings() {
                 </Space>
                 {status.lastError && (
                     <Text type="secondary">
-                        {getAnswerlatticeUiErrorMessage(status.lastError, 'Last delivery needs review')}
+                        {ANSWERLATTICE_LAST_DELIVERY_NEEDS_REVIEW}
                     </Text>
                 )}
             </Flex>
@@ -282,7 +421,6 @@ export default function AnswerlatticeSettings() {
                                         { value: 'subscription', label: 'Subscription' },
                                         { value: 'usage', label: 'Usage based' },
                                         { value: 'one_time', label: 'One-time payment' },
-                                        { value: 'free', label: 'Free product' },
                                         { value: 'not_sure', label: 'Not sure yet' },
                                     ]}
                                 />

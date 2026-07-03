@@ -1,10 +1,16 @@
 'use client';
 
 import { ANSWERLATTICE_GOVERNANCE_TABS, ANSWERLATTICE_ROUTES, getAnswerlatticeGovernanceRoute, toAnswerlatticeDashboardRoute } from '@constant/answerlattice/navigations';
+import {
+    ANSWERLATTICE_ACTIVATION_DASHBOARD_REQUEST_POLICY,
+    isAnswerlatticeActivationSummaryResponse,
+    isAnswerlatticeCompiledContextRebuildResponse,
+    isAnswerlatticeNotificationTestResponse,
+    readAnswerlatticeActivationDashboardResponse,
+} from '@lib/answerlattice/activationDashboardResponseClient';
 import type { AnswerlatticeActivationStep, AnswerlatticeActivationSummary } from '@type/answerlattice';
 import AnswerlatticeCustomerFlowChecklist from '@template/answerlattice/content/AnswerlatticeCustomerFlowChecklist';
 import AnswerlatticeContentWorkbench from '@template/answerlattice/content/AnswerlatticeContentWorkbench';
-import { getAnswerlatticeUiErrorMessage } from '@lib/answerlattice/uiErrors';
 import AnswerlatticeOperationsPanel from './AnswerlatticeOperationsPanel';
 import {
     Alert,
@@ -47,11 +53,9 @@ import {
 } from 'react-icons/lu';
 
 const { Title, Text, Paragraph } = Typography;
-
-type ActivationSummaryResponse = {
-    summary?: AnswerlatticeActivationSummary;
-    error?: string;
-};
+const ANSWERLATTICE_ACTIVATION_SUMMARY_LOAD_FAILED = 'Could not load activation summary';
+const ANSWERLATTICE_ACTIVATION_NOTIFICATION_TEST_FAILED = 'Could not send test notification';
+const ANSWERLATTICE_COMPILED_CONTEXT_REBUILD_FAILED = 'Could not rebuild compiled context';
 
 const STATUS_META = {
     complete: { color: 'success', label: 'Done', icon: LuCheckCircle2 },
@@ -110,7 +114,7 @@ export default function AnswerlatticeActivationCommandCenter() {
     const router = useRouter();
     const { token } = theme.useToken();
     const isMobile = screens.md !== true;
-    const [summary, setSummary] = useState<ActivationSummaryResponse['summary']>(null);
+    const [summary, setSummary] = useState<AnswerlatticeActivationSummary | null>(null);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [testingNotification, setTestingNotification] = useState(false);
@@ -126,14 +130,19 @@ export default function AnswerlatticeActivationCommandCenter() {
         }
 
         try {
-            const response = await fetch('/api/answerlattice/activation/summary', { method: 'GET' });
-            const data: ActivationSummaryResponse = await response.json().catch(() => ({}));
-            if (!response.ok || !data.summary) {
-                throw new Error(data.error || 'Failed to load activation summary');
-            }
+            const response = await fetch('/api/answerlattice/activation/summary', {
+                ...ANSWERLATTICE_ACTIVATION_DASHBOARD_REQUEST_POLICY,
+                method: 'GET',
+            });
+            const data = await readAnswerlatticeActivationDashboardResponse(
+                response,
+                'activation_summary_load',
+                isAnswerlatticeActivationSummaryResponse,
+                ANSWERLATTICE_ACTIVATION_SUMMARY_LOAD_FAILED,
+            );
             setSummary(data.summary);
-        } catch (error) {
-            message.error(getAnswerlatticeUiErrorMessage(error, 'Could not load activation summary'));
+        } catch {
+            message.error(ANSWERLATTICE_ACTIVATION_SUMMARY_LOAD_FAILED);
         } finally {
             setLoading(false);
             setRefreshing(false);
@@ -183,15 +192,20 @@ export default function AnswerlatticeActivationCommandCenter() {
     const testNotifications = useCallback(async () => {
         setTestingNotification(true);
         try {
-            const response = await fetch('/api/answerlattice/notifications/test', { method: 'POST' });
-            const data = await response.json().catch(() => ({}));
-            if (!response.ok || !data.sent) {
-                throw new Error(data.error || 'Notification test failed');
-            }
+            const response = await fetch('/api/answerlattice/notifications/test', {
+                ...ANSWERLATTICE_ACTIVATION_DASHBOARD_REQUEST_POLICY,
+                method: 'POST',
+            });
+            const data = await readAnswerlatticeActivationDashboardResponse(
+                response,
+                'notification_test',
+                isAnswerlatticeNotificationTestResponse,
+                ANSWERLATTICE_ACTIVATION_NOTIFICATION_TEST_FAILED,
+            );
             message.success(`Test email sent to ${data.recipientEmail}`);
             await loadSummary(true);
-        } catch (error) {
-            message.error(getAnswerlatticeUiErrorMessage(error, 'Could not send test notification'));
+        } catch {
+            message.error(ANSWERLATTICE_ACTIVATION_NOTIFICATION_TEST_FAILED);
         } finally {
             setTestingNotification(false);
         }
@@ -201,20 +215,23 @@ export default function AnswerlatticeActivationCommandCenter() {
         setRebuildingContext(true);
         try {
             const response = await fetch('/api/answerlattice/bundles/rebuild', {
+                ...ANSWERLATTICE_ACTIVATION_DASHBOARD_REQUEST_POLICY,
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ reason: 'activation_manual_rebuild', force: true }),
             });
-            const data = await response.json().catch(() => ({}));
-            if (!response.ok) {
-                throw new Error(data.error || 'Failed to rebuild compiled context');
-            }
+            const data = await readAnswerlatticeActivationDashboardResponse(
+                response,
+                'compiled_context_rebuild',
+                isAnswerlatticeCompiledContextRebuildResponse,
+                ANSWERLATTICE_COMPILED_CONTEXT_REBUILD_FAILED,
+            );
             message.success(data.manifest?.status === 'ready'
                 ? `Compiled context v${data.manifest.bundleVersion} is ready`
                 : 'Compiled context rebuild finished');
             await loadSummary(true);
-        } catch (error) {
-            message.error(getAnswerlatticeUiErrorMessage(error, 'Could not rebuild compiled context'));
+        } catch {
+            message.error(ANSWERLATTICE_COMPILED_CONTEXT_REBUILD_FAILED);
         } finally {
             setRebuildingContext(false);
         }

@@ -16,6 +16,25 @@ import { DB_COLLECTIONS } from '../constants/database';
 import { firestoreAdmin as db } from '../firebaseAdmin';
 import { generateWeeklyNarrative } from '../services/gemini/weeklyNarrative';
 import { logTelemetry } from '../telemetry/logger';
+import {
+  analyticsLogger,
+  getAnalyticsErrorContext,
+  getAnalyticsIdContext,
+} from './analyticsDiagnostics';
+
+const WEEKLY_NARRATIVE_FAILURE = 'WEEKLY_NARRATIVE_FAILED';
+const WEEKLY_NARRATIVE_STORE_FAILURE = 'WEEKLY_NARRATIVE_STORE_FAILED';
+const WEEKLY_NARRATIVE_BATCH_FAILURE = 'WEEKLY_NARRATIVE_BATCH_FAILED';
+
+function getWeeklyNarrativeScope(tId: string, sId: string): {
+  tenantId: ReturnType<typeof getAnalyticsIdContext>;
+  storeId: ReturnType<typeof getAnalyticsIdContext>;
+} {
+  return {
+    tenantId: getAnalyticsIdContext(tId),
+    storeId: getAnalyticsIdContext(sId),
+  };
+}
 
 // ================================================================
 // TYPES
@@ -52,7 +71,10 @@ export async function generateWeeklyNarrativeForStore(
   const startTime = Date.now();
 
   try {
-    console.log(`[Weekly Narrative] Starting generation for store ${sId}`);
+    analyticsLogger.info(
+      '[Weekly Narrative] Starting generation',
+      getWeeklyNarrativeScope(tId, sId),
+    );
 
     // Calculate week boundaries (last 7 days)
     const endDate = new Date();
@@ -66,11 +88,20 @@ export async function generateWeeklyNarrativeForStore(
     const metrics = await getWeeklyMetrics(tId, sId, weekStart, weekEnd);
 
     if (!metrics || metrics.totalChats === 0) {
-      console.log(`[Weekly Narrative] No data found for store ${sId}`);
+      analyticsLogger.info('[Weekly Narrative] No weekly data found', {
+        ...getWeeklyNarrativeScope(tId, sId),
+        weekStart,
+        weekEnd,
+      });
       return null;
     }
 
-    console.log(`[Weekly Narrative] Analyzing ${metrics.totalChats} chats`);
+    analyticsLogger.info('[Weekly Narrative] Metrics ready for narrative generation', {
+      ...getWeeklyNarrativeScope(tId, sId),
+      weekStart,
+      weekEnd,
+      totalChats: metrics.totalChats,
+    });
 
     // Use Gemini to generate narrative
     const analysis = await generateWeeklyNarrative(metrics);
@@ -99,16 +130,24 @@ export async function generateWeeklyNarrativeForStore(
       completedAt: Timestamp.now(),
     });
 
-    console.log(`[Weekly Narrative] Generation complete for store ${sId}`);
+    analyticsLogger.info('[Weekly Narrative] Generation complete', {
+      ...getWeeklyNarrativeScope(tId, sId),
+      weekStart,
+      weekEnd,
+      totalChats: metrics.totalChats,
+    });
     return narrative;
 
   } catch (error) {
-    console.error(`[Weekly Narrative] Error generating for store ${sId}:`, error);
+    analyticsLogger.error('[Weekly Narrative] Store generation failed', {
+      ...getWeeklyNarrativeScope(tId, sId),
+      error: getAnalyticsErrorContext(error),
+    });
 
     await logTelemetry('weeklyNarrative', {
       status: 'failed',
       runTime: Date.now() - startTime,
-      error: error instanceof Error ? error.message : 'Unknown error',
+      error: WEEKLY_NARRATIVE_FAILURE,
       completedAt: Timestamp.now(),
     });
 
@@ -238,7 +277,9 @@ async function saveWeeklyNarrative(narrative: WeeklyNarrative): Promise<void> {
 
   await docRef.set(narrative, { merge: true });
 
-  console.log(`[Weekly Narrative] Saved to insights/${narrative.tId}/stores/${narrative.sId}/ai/weekly`);
+  analyticsLogger.info('[Weekly Narrative] Saved narrative result', {
+    ...getWeeklyNarrativeScope(narrative.tId, narrative.sId),
+  });
 }
 
 // ================================================================
@@ -250,11 +291,13 @@ async function saveWeeklyNarrative(narrative: WeeklyNarrative): Promise<void> {
  * Called by masterScheduler on Sundays
  */
 export async function processWeeklyNarrativeForAllStores(): Promise<void> {
-  console.log('[Weekly Narrative] Starting batch processing');
+  analyticsLogger.info('[Weekly Narrative] Starting batch processing');
 
   try {
     // Get all tenants
     const tenantsSnapshot = await db.collection(DB_COLLECTIONS.TENANTS).get();
+    let storeCount = 0;
+    let failedStoreCount = 0;
 
     for (const tenantDoc of tenantsSnapshot.docs) {
       const tId = tenantDoc.id;
@@ -267,19 +310,32 @@ export async function processWeeklyNarrativeForAllStores(): Promise<void> {
 
       for (const storeDoc of storesSnapshot.docs) {
         const sId = storeDoc.id;
+        storeCount += 1;
 
         try {
           await generateWeeklyNarrativeForStore(tId, sId);
         } catch (error) {
-          console.error(`[Weekly Narrative] Error processing store ${sId}:`, error);
+          failedStoreCount += 1;
+          analyticsLogger.error('[Weekly Narrative] Store processing failed', {
+            ...getWeeklyNarrativeScope(tId, sId),
+            failureCode: WEEKLY_NARRATIVE_STORE_FAILURE,
+            error: getAnalyticsErrorContext(error),
+          });
           // Continue with next store
         }
       }
     }
 
-    console.log('[Weekly Narrative] Batch processing complete');
+    analyticsLogger.info('[Weekly Narrative] Batch processing complete', {
+      tenantCount: tenantsSnapshot.size,
+      storeCount,
+      failedStoreCount,
+    });
   } catch (error) {
-    console.error('[Weekly Narrative] Batch processing failed:', error);
+    analyticsLogger.error('[Weekly Narrative] Batch processing failed', {
+      failureCode: WEEKLY_NARRATIVE_BATCH_FAILURE,
+      error: getAnalyticsErrorContext(error),
+    });
     throw error;
   }
 }

@@ -13,6 +13,7 @@
 import { DB_COLLECTIONS } from '@constant/database';
 import { firebaseClient } from '@lib/firebase/firebaseClient';
 import { createMenuProcessingJob } from '@lib/firebase/menuProcessing';
+import { getBoundedOpsStringContext, logOpsFailure } from '@lib/ops/opsDiagnostics';
 import type {
     ExtractionCostMetrics,
     ExtractionDashboardSnapshot,
@@ -23,7 +24,6 @@ import type {
     ExtractionJobSummary,
     ExtractionQualityMetrics,
 } from '@lib/ops/extractionTypes';
-import { secureError } from '@lib/security/secureLogger';
 import {
     collection,
     doc,
@@ -44,6 +44,27 @@ const DEFAULT_QUALITY_READ_LIMIT = 150;
 // HELPER: Extract summary from raw job doc
 // ================================================================
 
+function getExtractionJobErrorSummary(error: unknown): string | null {
+    if (!error || typeof error !== 'object') return null;
+    const code = (error as { code?: unknown }).code;
+    if (code === undefined || code === null || String(code).trim().length === 0) {
+        return 'extraction_failed';
+    }
+    return String(code).slice(0, 64);
+}
+
+function getExtractionJobErrorDetails(error: unknown): ExtractionJobDetails['error'] {
+    if (!error || typeof error !== 'object') return null;
+    const errorValue = error as { code?: unknown; retryable?: unknown; retryAfterSeconds?: unknown };
+    const retryAfterSeconds = Number(errorValue.retryAfterSeconds);
+    return {
+        code: getExtractionJobErrorSummary(error) || 'extraction_failed',
+        message: 'Extraction failed',
+        retryable: errorValue.retryable !== false,
+        retryAfterSeconds: Number.isFinite(retryAfterSeconds) ? retryAfterSeconds : undefined,
+    };
+}
+
 function jobDocToSummary(id: string, data: any): ExtractionJobSummary {
     const result = data.result;
     const summary = result?.summary || {};
@@ -62,7 +83,7 @@ function jobDocToSummary(id: string, data: any): ExtractionJobSummary {
         destinationType: data.destinationType || data.destination?.type || undefined,
         source: data.source || null,
         hasError: !!data.error,
-        errorMessage: data.error?.message || null,
+        errorMessage: getExtractionJobErrorSummary(data.error),
     };
 }
 
@@ -231,7 +252,10 @@ export async function getRecentExtractionJobs(
             { ...filter, pageSize },
         );
     } catch (error) {
-        secureError('[ExtractionDAL] Failed to get recent jobs', error);
+        logOpsFailure('extraction_dal_recent_jobs_failed', error, {
+            pageSize: filter?.pageSize,
+            ...getBoundedOpsStringContext('status', filter?.status),
+        });
         return [];
     }
 }
@@ -272,12 +296,14 @@ export async function getExtractionJobDetails(
             sourceMetadata: data.sourceMetadata || null,
             timings: data.timings || null,
             result: data.result || null,
-            error: data.error || null,
+            error: getExtractionJobErrorDetails(data.error),
             fileResults: data.fileResults || null,
             transaction: data.transaction || null,
         };
     } catch (error) {
-        secureError('[ExtractionDAL] Failed to get job details', error);
+        logOpsFailure('extraction_dal_job_details_failed', error, {
+            ...getBoundedOpsStringContext('jobId', jobId),
+        });
         return null;
     }
 }
@@ -301,7 +327,9 @@ export async function getExtractionHealthMetrics(): Promise<ExtractionHealthMetr
         const snap = await getDocs(jobsQuery);
         return buildHealthMetricsFromJobs(snap.docs.map(d => d.data()));
     } catch (error) {
-        secureError('[ExtractionDAL] Failed to get health metrics', error);
+        logOpsFailure('extraction_dal_health_metrics_failed', error, {
+            readLimit: DEFAULT_HEALTH_READ_LIMIT,
+        });
         return getEmptyHealthMetrics();
     }
 }
@@ -328,7 +356,9 @@ export async function getExtractionQualityMetrics(
         const snap = await getDocs(jobsQuery);
         return buildQualityMetricsFromJobs(snap.docs.map(d => d.data()), count);
     } catch (error) {
-        secureError('[ExtractionDAL] Failed to get quality metrics', error);
+        logOpsFailure('extraction_dal_quality_metrics_failed', error, {
+            count,
+        });
         return getEmptyQualityMetrics();
     }
 }
@@ -384,7 +414,7 @@ export async function getExtractionCostMetrics(): Promise<ExtractionCostMetrics>
             mostExpensiveJobCost: maxCharge,
         };
     } catch (error) {
-        secureError('[ExtractionDAL] Failed to get cost metrics', error);
+        logOpsFailure('extraction_dal_cost_metrics_failed', error);
         return { callsToday: 0, avgCostPerExtraction: 0, dailySpend: 0, mostExpensiveJobCost: 0 };
     }
 }
@@ -430,7 +460,10 @@ export async function getExtractionDashboardSnapshot(
             jobs: filterJobSummaries(summaries, filter),
         };
     } catch (error) {
-        secureError('[ExtractionDAL] Failed to get dashboard snapshot', error);
+        logOpsFailure('extraction_dal_dashboard_snapshot_failed', error, {
+            pageSize: filter?.pageSize,
+            ...getBoundedOpsStringContext('status', filter?.status),
+        });
         return {
             health: getEmptyHealthMetrics(),
             quality: getEmptyQualityMetrics(),

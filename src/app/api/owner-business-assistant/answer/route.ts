@@ -5,12 +5,14 @@ import { PERMISSIONS } from '@constant/permissions';
 import { getOwnerBusinessHealthQuestionById } from '@data/shared/ownerBusinessHealthQuestionSuggestions';
 import { requireAnyStorePermissionForStore } from '@lib/permissions/server';
 import { checkSafeMode } from '@lib/ops/safeMode';
-import { logger } from '@lib/monitoring/logger';
+import { readBoundedJsonBody } from '@lib/security/boundedRequestBody';
+import { getSafeZodValidationDetails } from '@lib/security/inputValidation';
 import { OwnerBusinessAssistantAnswerRequestSchema } from '@lib/ownerBusinessAssistant/schemas';
 import type { OwnerBusinessAssistantAnswerRequest } from '@lib/ownerBusinessAssistant/schemas';
 import { logOwnerBusinessAssistantAnswerEvent } from '@lib/ownerBusinessAssistant/server/answerEventLogger';
 import { resolveOwnerBusinessAssistantAnswer } from '@lib/ownerBusinessAssistant/server/resolveOwnerBusinessAssistantAnswer';
 import { persistOwnerBusinessAssistantExchange } from '@lib/ownerBusinessAssistant/server/threadStore';
+import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import {
   applyOwnerBusinessAssistantRateLimit,
   resolveOwnerAssistantSelectedStoreScope,
@@ -18,13 +20,21 @@ import {
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/middleware/auth';
 
-const readJsonBody = async (request: NextRequest) => {
-  try {
-    return await request.json();
-  } catch {
-    return null;
-  }
-};
+const OWNER_BUSINESS_ASSISTANT_ANSWER_MAX_BODY_BYTES = 32 * 1024;
+
+const buildOwnerBusinessAssistantAnswerLogContext = (
+  scope: { sId?: unknown; tId?: unknown; userId?: unknown },
+  metadata: {
+    answerId?: unknown;
+    threadId?: unknown;
+  } = {},
+) => ({
+  ...getBoundedRuntimeStringContext('storeId', scope.sId),
+  ...getBoundedRuntimeStringContext('tenantId', scope.tId),
+  ...getBoundedRuntimeStringContext('userId', scope.userId),
+  ...getBoundedRuntimeStringContext('answerId', metadata.answerId),
+  ...getBoundedRuntimeStringContext('threadId', metadata.threadId),
+});
 
 const normalizeSuggestedQuestionRequest = (
   request: OwnerBusinessAssistantAnswerRequest,
@@ -64,14 +74,16 @@ export const POST = withAuth(async (request: NextRequest, session) => {
   });
   if (rateLimit) return rateLimit;
 
-  const json = await readJsonBody(request);
-  if (!json) {
-    return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
-  }
+  const bodyResult = await readBoundedJsonBody(
+    request,
+    OWNER_BUSINESS_ASSISTANT_ANSWER_MAX_BODY_BYTES,
+    { invalidJsonMessage: 'Invalid request' },
+  );
+  if (bodyResult.ok === false) return bodyResult.response;
 
-  const parsed = OwnerBusinessAssistantAnswerRequestSchema.safeParse(json);
+  const parsed = OwnerBusinessAssistantAnswerRequestSchema.safeParse(bodyResult.data);
   if (!parsed.success) {
-    return NextResponse.json({ error: 'Invalid request', details: parsed.error.flatten() }, { status: 400 });
+    return NextResponse.json({ error: 'Invalid request', details: getSafeZodValidationDetails(parsed.error) }, { status: 400 });
   }
 
   const normalizedRequest = normalizeSuggestedQuestionRequest(parsed.data);
@@ -134,13 +146,13 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         };
       }
     } catch (error) {
-      logger.warn('Owner Business Assistant thread persistence failed', {
-        storeId: scope.sId,
-        tenantId: scope.tId,
-        userId: scope.userId,
-        threadId: normalizedRequest.threadId,
-        error: error instanceof Error ? error.message : String(error),
-      });
+      logRuntimeFailure(
+        'owner_business_assistant_thread_persistence_failed',
+        error,
+        buildOwnerBusinessAssistantAnswerLogContext(scope, {
+          threadId: normalizedRequest.threadId,
+        }),
+      );
     }
   }
 
@@ -164,13 +176,13 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         firestoreWriteCount: Math.max(0, (answer.metrics?.firestoreWriteCount ?? 1) - 1),
         answerEventWritten: false,
       };
-      logger.warn('Owner Business Assistant answer event logging failed', {
-        storeId: scope.sId,
-        tenantId: scope.tId,
-        userId: scope.userId,
-        answerId: answer.answerId,
-        error: error instanceof Error ? error.message : String(error),
-      });
+      logRuntimeFailure(
+        'owner_business_assistant_answer_event_logging_failed',
+        error,
+        buildOwnerBusinessAssistantAnswerLogContext(scope, {
+          answerId: answer.answerId,
+        }),
+      );
     }
   }
 

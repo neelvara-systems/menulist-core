@@ -1,9 +1,13 @@
 # 🎨 B2C View & Menu Builder Assessment
 
-**Feature**: Visual Menu Builder, Theme Customization, Customer-Facing Interface  
-**Risk Level**: 🟢 LOW  
-**Production Ready**: ✅ READY (with minor SEO gaps)  
+**Feature**: Visual Menu Builder, Theme Customization, Customer-Facing Interface
+**Risk Level**: 🟢 LOW
+**Historical Result**: Historical assessment result only; not current launch certification
 **Implementation Status**: ✅ ASSESSED Dec 16, 2025
+
+---
+
+**Launch boundary:** This assessment records the November/December 2025 B2C view review. It is not current production deployment approval. Current release approval requires the active [production-readiness audit](../../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../../production-readiness/external-certification-runbook.md) evidence, Digital Menu Output Constitution checks, public cache/deploy evidence, browser/mobile customer-menu QA, and target production smoke.
 
 ---
 
@@ -13,7 +17,7 @@ The B2C View is a visual menu builder that creates beautiful, customizable digit
 
 **Business Impact**: CRITICAL - This is what customers see. Poor UX = lost sales.
 
-**Assessment Result**: ✅ **Core functionality is production-ready.** Performance optimizations are solid. SEO is the main gap (P1, not blocking).
+**Assessment Result**: Core functionality was source-verified in this historical assessment. Performance optimizations were solid. SEO remained the main gap.
 
 **Target Users**:
 
@@ -206,7 +210,7 @@ const validateTheme = (theme: ThemeConfig) => {
 const shareUrl = `${window.location.origin}/menu/${projectId}`;
 ```
 
-**Acceptable for launch** - Rate limiting and CSP are P1 post-launch items.
+**Historical assessment note** - Rate limiting and CSP require current launch-boundary review before release.
 
 ---
 
@@ -329,4 +333,4 @@ const shareUrl = `${window.location.origin}/menu/${projectId}`;
 
 **Assessment Date**: Nov 20, 2025 (Initial) → Dec 16, 2025 (Code Audit)  
 **Priority**: CRITICAL - Customer-facing feature  
-**Result**: ✅ **PRODUCTION READY** (SEO gaps are P1 post-launch)
+**Result**: Historical B2C assessment evidence; current launch approval requires the active audit/runbook evidence and current browser/mobile customer-menu QA.

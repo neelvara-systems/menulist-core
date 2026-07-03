@@ -1,4 +1,11 @@
 import { axiosClient } from "@axiosClient/axiosClient";
+import { logAuthFailure } from "@lib/auth/authDiagnostics";
+
+const getAxiosResponseData = (error: any) => error?.response?.data ?? error;
+const getAxiosResponseStatus = (error: any): number | undefined => {
+    const status = Number(error?.response?.status);
+    return Number.isFinite(status) ? status : undefined;
+};
 
 export const getUserByCredentials = (userDetails: any) => {
     return new Promise((res, rej) => {
@@ -6,8 +13,10 @@ export const getUserByCredentials = (userDetails: any) => {
             .then((response) => {
                 res(response.data);
             }).catch(function (error) {
-                rej(error.response.data);
-                console.log(`Error in /api/user/login = `, error);
+                logAuthFailure('internal_user_login_failed', error, {
+                    responseStatus: getAxiosResponseStatus(error),
+                });
+                rej(getAxiosResponseData(error));
             });
     })
 }
@@ -18,56 +27,10 @@ export const getUserByToken = () => {
             .then((response) => {
                 res(response.data);
             }).catch(function (error) {
+                logAuthFailure('internal_user_token_lookup_failed', error, {
+                    responseStatus: getAxiosResponseStatus(error),
+                });
                 rej(error);
-                console.log(`Error in /api/user/login = `, error);
             });
     })
 }
-
-// export const updateUserAddress = (address, userId) => {
-//     return new Promise((res, rej) => {
-//         APIROUTINGS.POST(`${process.env.NEXT_PUBLIC_UPDATE_ADDRESS}/${userId}`, address)
-//             .then((response) => {
-//                 res(response.data);
-//             }).catch(function (error) {
-//                 rej(error);
-//                 console.log(`Error = ${process.env.NEXT_PUBLIC_UPDATE_ADDRESS}/${userId}=>`, error);
-//             });
-//     })
-// }
-
-// export const getUserByTenantAndMobile = (tenantId, storeId, mobile) => {
-//     return new Promise((res, rej) => {
-//         APIROUTINGS.GET(`${process.env.NEXT_PUBLIC_GET_USER}/userbymobileno?tenantId=${tenantId}&storeId=${storeId}&mobileNo=${mobile}`)
-//             .then((response) => {
-//                 res(response.data);
-//             }).catch(function (error) {
-//                 rej(error);
-//                 console.log(`Error = ${process.env.NEXT_PUBLIC_UPDATE_ADDRESS}/${tenantId}/${mobile}=>`, error);
-//             });
-//     })
-// }
-
-// export const markUserOptInForWhatsapp = (tenantId, storeId, usersList) => {
-//     return new Promise((res, rej) => {
-//         APIROUTINGS.PUT(`${process.env.NEXT_PUBLIC_UPDATE_OPTIN_FOR_WAPP}?tenantId=${tenantId}&storeId=${storeId}`, usersList)
-//             .then((response) => {
-//                 res(response);
-//             }).catch(function (error) {
-//                 rej(error);
-//                 console.log(`Error = ${process.env.NEXT_PUBLIC_UPDATE_ADDRESS}=>`, error);
-//             });
-//     })
-// }
-
-// export const updateUserVisitCount = (userId) => {
-//     return new Promise((res, rej) => {
-//         APIROUTINGS.PUT(`${process.env.NEXT_PUBLIC_UPDATE_VISIT_COUNT}/${userId}`, {})
-//             .then((response) => {
-//                 res(response);
-//             }).catch(function (error) {
-//                 rej(error);
-//                 console.log(`Error = ${process.env.NEXT_PUBLIC_UPDATE_ADDRESS}=>`, error);
-//             });
-//     })
-// }

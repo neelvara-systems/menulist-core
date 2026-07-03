@@ -5,6 +5,8 @@
 **Status:** Controlled owner testing ready; production deploy pending for the legacy callable hardening
 **Last Updated:** June 11, 2026
 
+**Launch boundary:** This spec is AI extraction source evidence, not current production certification. Current launch approval requires the active [production-readiness audit](../../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../../production-readiness/external-certification-runbook.md) evidence, resolved QA Firebase Functions/Storage deploy blockers, provider smoke, authenticated browser/mobile QA, and production-host smoke for the target release.
+
 ---
 
 ## Executive Summary
@@ -263,7 +265,7 @@ AI Data Extraction transforms owner-provided menu, service, or catalog images in
 | `_impl.md`                                               | Technical implementation details |
 | `_marketing.md`                                          | Sales and marketing collateral   |
 | `../upload-file-processing/`                             | What happens before extraction   |
-| `../Assessments/MENU-IMAGE-PROCESSING-JOB-QUEUE-SPEC.md` | Full job queue specification     |
+| `../Assessments/menu-image-processing-job-queue-spec.md` | Full job queue specification     |
 
 ---
 
@@ -277,4 +279,4 @@ AI Data Extraction transforms owner-provided menu, service, or catalog images in
 
 ---
 
-_Document Status: ✅ PRODUCTION READY — Last updated March 13, 2026_
+_Document Status: Historical AI extraction source evidence - not current launch certification_

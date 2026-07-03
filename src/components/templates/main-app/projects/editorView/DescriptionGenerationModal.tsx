@@ -2,7 +2,7 @@ import { AI_ACTIONS_TYPES } from '@constant/common';
 import { useAppDispatch } from '@hook/useAppDispatch';
 import { useOfferingLabels } from '@hook/useOfferingLabels';
 import { getProjectDescriptionContentLength, getProjectDescriptionTone, mergeProjectAIPreferences } from '@lib/ai/projectAIPreferences';
-import { logger } from '@lib/monitoring/logger';
+import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { startLoader, stopLoader } from '@reduxSlices/loader';
 import { AICapacityError } from '@services/ai/capacityError';
 import { DescriptionGovernanceOptions } from '@services/ai/description/descriptionUtils';
@@ -23,6 +23,7 @@ import {
 } from './descriptionGeneration.shared';
 
 const { Text } = Typography;
+const MENU_DESCRIPTION_MODAL_GENERATION_FAILED = 'menu_description_modal_generation_failed';
 
 interface DescriptionGenerationModalProps {
     businessType?: string;
@@ -77,6 +78,21 @@ const DescriptionGenerationModal: React.FC<DescriptionGenerationModalProps> = ({
         () => getDescriptionGenerationStats(projectData, modalData.sourceFile, governance),
         [governance, modalData.sourceFile, projectData]
     );
+
+    const getDescriptionModalLogContext = (action: string) => ({
+        action,
+        aiDescriptionCount,
+        allowInheritedDescriptionOverride,
+        isMasterLinked,
+        itemsCount,
+        itemsWithoutDescriptions,
+        itemsWithDescriptions,
+        manualDescriptionCount,
+        ...getBoundedRuntimeStringContext('businessCategory', businessCategory),
+        ...getBoundedRuntimeStringContext('businessType', businessType),
+        ...getBoundedRuntimeStringContext('projectId', projectData?.projectId),
+        ...getBoundedRuntimeStringContext('sourceFileId', modalData.sourceFile?.uid),
+    });
 
     useEffect(() => {
         setContentLength(getProjectDescriptionContentLength(projectData, businessType, businessCategory));
@@ -136,7 +152,7 @@ const DescriptionGenerationModal: React.FC<DescriptionGenerationModalProps> = ({
                 antdMessage.info('Get more enhancements to continue. Visit Billing to add an enhancement pack.');
             } else {
                 antdMessage.error('Description generation failed. Please try again.');
-                logger.error('Description generation failed', error);
+                logRuntimeFailure(MENU_DESCRIPTION_MODAL_GENERATION_FAILED, error, getDescriptionModalLogContext(action));
             }
         } finally {
             setIsProcessing(false);

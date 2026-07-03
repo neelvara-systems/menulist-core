@@ -21,6 +21,8 @@ const CAMPAIGNCUE_REVEAL_SELECTOR = [
     ".campaigncue-flow-map-node",
     ".campaigncue-problem-band-copy",
     ".campaigncue-problem-band-grid article",
+    ".campaigncue-switch-strip-copy",
+    ".campaigncue-switch-card",
     ".campaigncue-pack-room-copy",
     ".campaigncue-pack-room-surface",
     ".campaigncue-pack-room-columns article",
@@ -28,12 +30,7 @@ const CAMPAIGNCUE_REVEAL_SELECTOR = [
     ".campaigncue-powerhouse-card",
     ".campaigncue-real-work-copy",
     ".campaigncue-real-work-row",
-    ".campaigncue-catalog-rail",
-    ".campaigncue-catalog-row",
-    ".campaigncue-owner-path-intro",
-    ".campaigncue-owner-path li",
     ".campaigncue-section-intro",
-    ".campaigncue-workflow-step",
     ".campaigncue-band-copy",
     ".campaigncue-desk-preview",
     ".campaigncue-output-row",
@@ -76,6 +73,60 @@ const CAMPAIGNCUE_REVEAL_SELECTOR = [
     ".campaigncue-use-case-system-map",
 ].join(", ");
 
+const CAMPAIGNCUE_SPOTLIGHT_SELECTOR = [
+    ".campaigncue-preview-window",
+    ".campaigncue-floating-asset",
+    ".campaigncue-proof-strip",
+    ".campaigncue-flow-map-node",
+    ".campaigncue-flow-map-center",
+    ".campaigncue-pack-room",
+    ".campaigncue-pack-room-surface",
+    ".campaigncue-pack-room-columns article",
+    ".campaigncue-problem-band",
+    ".campaigncue-problem-band-grid article",
+    ".campaigncue-switch-strip",
+    ".campaigncue-switch-card",
+    ".campaigncue-powerhouse",
+    ".campaigncue-powerhouse-card",
+    ".campaigncue-benefit-row",
+    ".campaigncue-output-row",
+    ".campaigncue-capability-row",
+    ".campaigncue-small-business-link",
+    ".campaigncue-start-row",
+    ".campaigncue-asset-tile",
+    ".campaigncue-proof-deck-preview",
+    ".campaigncue-proof-deck-row",
+    ".campaigncue-template-flow",
+    ".campaigncue-template-flow li",
+    ".campaigncue-real-work",
+    ".campaigncue-real-work-row",
+    ".campaigncue-trust-matrix",
+    ".campaigncue-trust-row",
+    ".campaigncue-delivery-list span",
+    ".campaigncue-faq-list details",
+    ".campaigncue-final-cta",
+    ".campaigncue-mega-menu-overview",
+    ".campaigncue-mega-menu-item",
+    ".campaigncue-feature-preview-window",
+    ".campaigncue-feature-outcome div",
+    ".campaigncue-feature-proof-grid article",
+    ".campaigncue-feature-benefits span",
+    ".campaigncue-feature-boundary li",
+    ".campaigncue-feature-system-map",
+    ".campaigncue-feature-faq details",
+    ".campaigncue-feature-related a",
+    ".campaigncue-use-case-floating-card",
+    ".campaigncue-use-case-question-grid article",
+    ".campaigncue-use-case-scenarios article",
+    ".campaigncue-use-case-source-pack",
+    ".campaigncue-use-case-boundary li",
+    ".campaigncue-use-case-system-map",
+].join(", ");
+
+function supportsHoverPointer() {
+    return window.matchMedia("(hover: hover) and (pointer: fine)").matches;
+}
+
 function markVisible(element: HTMLElement) {
     element.classList.remove("cc-scroll-reveal--pending");
     element.classList.add("cc-scroll-reveal--visible");
@@ -104,6 +155,12 @@ function prepareTarget(target: HTMLElement, targets: HTMLElement[]) {
     target.style.setProperty("--cc-reveal-delay", `${Math.min(siblingIndex * REVEAL_DELAY_STEP, REVEAL_MAX_DELAY)}s`);
     target.style.setProperty("--cc-reveal-distance", REVEAL_DISTANCE);
     target.style.setProperty("--cc-reveal-duration", REVEAL_DURATION);
+}
+
+function setSpotlightPointer(card: HTMLElement, event: PointerEvent) {
+    const rect = card.getBoundingClientRect();
+    card.style.setProperty("--cc-card-pointer-x", `${event.clientX - rect.left}px`);
+    card.style.setProperty("--cc-card-pointer-y", `${event.clientY - rect.top}px`);
 }
 
 export default function CampaignCueScrollReveal() {
@@ -179,6 +236,78 @@ export default function CampaignCueScrollReveal() {
             cancelAnimationFrame(initialRevealPrepareFrame);
             cancelAnimationFrame(initialRevealFrame);
             clearTimeout(fallbackTimer);
+        };
+    }, [pathname]);
+
+    useEffect(() => {
+        if (!supportsHoverPointer()) {
+            return undefined;
+        }
+
+        const root = document.querySelector(".campaigncue-site");
+        if (!root) {
+            return undefined;
+        }
+
+        let frame = 0;
+        let activeCard: HTMLElement | null = null;
+        let activeEvent: PointerEvent | null = null;
+
+        const onPointerMove = (event: PointerEvent) => {
+            const target = event.target;
+            if (!(target instanceof Element)) {
+                return;
+            }
+
+            const card = target.closest<HTMLElement>(CAMPAIGNCUE_SPOTLIGHT_SELECTOR);
+            if (!card || !root.contains(card)) {
+                return;
+            }
+
+            activeCard = card;
+            activeEvent = event;
+            card.classList.add("campaigncue-spotlight-card--active");
+
+            if (frame) {
+                return;
+            }
+
+            frame = window.requestAnimationFrame(() => {
+                if (activeCard && activeEvent) {
+                    setSpotlightPointer(activeCard, activeEvent);
+                }
+                frame = 0;
+            });
+        };
+
+        const onPointerOut = (event: PointerEvent) => {
+            const target = event.target;
+            if (!(target instanceof Element)) {
+                return;
+            }
+
+            const card = target.closest<HTMLElement>(CAMPAIGNCUE_SPOTLIGHT_SELECTOR);
+            if (!card) {
+                return;
+            }
+
+            const relatedTarget = event.relatedTarget;
+            if (relatedTarget instanceof Node && card.contains(relatedTarget)) {
+                return;
+            }
+
+            card.classList.remove("campaigncue-spotlight-card--active");
+        };
+
+        root.addEventListener("pointermove", onPointerMove as EventListener);
+        root.addEventListener("pointerout", onPointerOut as EventListener);
+
+        return () => {
+            if (frame) {
+                window.cancelAnimationFrame(frame);
+            }
+            root.removeEventListener("pointermove", onPointerMove as EventListener);
+            root.removeEventListener("pointerout", onPointerOut as EventListener);
         };
     }, [pathname]);
 

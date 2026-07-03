@@ -19,6 +19,7 @@ import { apiCallComposer } from '@lib/apiHelper/apiCallComposer';
 import getActiveSession from '@lib/auth/getActiveSession';
 import { bumpAnswerlatticeCacheVersion } from '@lib/answerlattice/cacheVersionClient';
 import { ANSWERLATTICE_CACHE_SOURCES } from '@lib/answerlattice/cacheVersionManifest';
+import { getAnswerlatticeScopeLogContext, logAnswerlatticeFailure } from '@lib/answerlattice/diagnostics';
 import {
     ANSWERLATTICE_FAQ_ARTICLE_LINK_LIMIT,
     ANSWERLATTICE_FAQ_MANAGEMENT_LIMIT,
@@ -41,6 +42,60 @@ const getCollectionRef = () => collection(answerlatticeFirebaseClient, COLLECTIO
 const getDocRef = (docId: string) => doc(answerlatticeFirebaseClient, COLLECTION, docId);
 const getArticleRef = (articleId: string) => doc(answerlatticeFirebaseClient, ARTICLE_COLLECTION, articleId);
 
+type FaqArticleMaintenanceScope = { tId: number; sId: number };
+type FaqArticleMaintenanceInput = { id: string; tId?: number; sId?: number };
+
+export type AnswerlatticeFaqWriteResult = AnswerlatticeFaq & {
+    success: true;
+    operation: 'create' | 'update';
+};
+
+export type AnswerlatticeFaqArchiveResult = Partial<AnswerlatticeFaq> & {
+    success: true;
+    id: string;
+    operation: 'archive';
+    status: typeof ANSWERLATTICE_FAQ_STATUS.ARCHIVED;
+    active: false;
+};
+
+const isRecord = (value: unknown): value is Record<string, unknown> => (
+    Boolean(value) && typeof value === 'object' && !Array.isArray(value)
+);
+
+export function assertAnswerlatticeFaqWriteSucceeded(
+    result: unknown,
+    expectedFaqId?: string | null,
+    rejectionCode = 'answerlattice_faq_write_rejected',
+): asserts result is AnswerlatticeFaqWriteResult {
+    if (
+        !isRecord(result)
+        || result.success !== true
+        || typeof result.id !== 'string'
+        || result.id.length === 0
+        || (expectedFaqId && result.id !== expectedFaqId)
+        || (result.operation !== 'create' && result.operation !== 'update')
+    ) {
+        throw new Error(rejectionCode);
+    }
+}
+
+export function assertAnswerlatticeFaqArchiveSucceeded(
+    result: unknown,
+    expectedFaqId: string,
+    rejectionCode = 'answerlattice_faq_archive_rejected',
+): asserts result is AnswerlatticeFaqArchiveResult {
+    if (
+        !isRecord(result)
+        || result.success !== true
+        || result.id !== expectedFaqId
+        || result.operation !== 'archive'
+        || result.status !== ANSWERLATTICE_FAQ_STATUS.ARCHIVED
+        || result.active !== false
+    ) {
+        throw new Error(rejectionCode);
+    }
+}
+
 const requireScope = async () => {
     const session = await getActiveSession();
     const tId = Number(session?.tId);
@@ -49,6 +104,32 @@ const requireScope = async () => {
         throw new Error('Answerlattice workspace is not available.');
     }
     return { tId, sId };
+};
+
+const isValidFaqArticleMaintenanceScope = (scope: FaqArticleMaintenanceScope): boolean => (
+    Number.isFinite(scope.tId) && Number.isFinite(scope.sId) && scope.tId > 0 && scope.sId > 0
+);
+
+const resolveFaqArticleMaintenanceScope = async (
+    article: FaqArticleMaintenanceInput,
+    failureCode: string,
+): Promise<FaqArticleMaintenanceScope | null> => {
+    const explicitScope = {
+        tId: Number(article.tId),
+        sId: Number(article.sId),
+    };
+    if (isValidFaqArticleMaintenanceScope(explicitScope)) return explicitScope;
+
+    try {
+        return await requireScope();
+    } catch (error) {
+        logAnswerlatticeFailure(failureCode, error, getAnswerlatticeScopeLogContext({
+            articleId: article.id,
+            tId: article.tId,
+            sId: article.sId,
+        }));
+        return null;
+    }
 };
 
 const getTimestampMillis = (value: any): number => {
@@ -206,7 +287,12 @@ export const saveFaq = async (input: unknown) => {
             await batch.commit();
             await bumpFaqVersion(scope, isNew ? 'faq_create' : 'faq_update', faqRef.id);
             await revalidateAnswerlatticePublicClientCache(scope, ['faqs', 'kb', 'context'], 'saveFaq');
-            return { ...composedData, id: faqRef.id } as AnswerlatticeFaq;
+            return {
+                ...composedData,
+                id: faqRef.id,
+                success: true,
+                operation: isNew ? 'create' : 'update',
+            } satisfies AnswerlatticeFaqWriteResult;
         },
         input,
         'saveFaq',
@@ -237,24 +323,28 @@ export const archiveFaq = async (faqId: string) => {
             await batch.commit();
             await bumpFaqVersion(scope, 'faq_archive', faqId);
             await revalidateAnswerlatticePublicClientCache(scope, ['faqs', 'kb', 'context'], 'archiveFaq');
-            return { id: faqId, ...composedData };
+            return {
+                id: faqId,
+                ...composedData,
+                success: true,
+                operation: 'archive',
+                status: ANSWERLATTICE_FAQ_STATUS.ARCHIVED,
+                active: false,
+            } satisfies AnswerlatticeFaqArchiveResult;
         },
         { faqId },
         'archiveFaq',
     );
 };
 
-export const markFaqsNeedReviewForArticle = async (article: { id: string; tId?: number; sId?: number }) => {
+export const markFaqsNeedReviewForArticle = async (article: FaqArticleMaintenanceInput) => {
     return await apiCallComposer(
         async () => {
-            const fallbackScope = await requireScope().catch(() => null);
-            const scope = {
-                tId: Number(article.tId || fallbackScope?.tId),
-                sId: Number(article.sId || fallbackScope?.sId),
-            };
-            if (!Number.isFinite(scope.tId) || !Number.isFinite(scope.sId) || scope.tId <= 0 || scope.sId <= 0) {
-                return { updatedCount: 0 };
-            }
+            const scope = await resolveFaqArticleMaintenanceScope(
+                article,
+                'answerlattice_faq_article_review_scope_resolve_failed',
+            );
+            if (!scope) return { updatedCount: 0 };
 
             const snapshot = await getDocs(query(
                 getCollectionRef(),
@@ -282,17 +372,14 @@ export const markFaqsNeedReviewForArticle = async (article: { id: string; tId?: 
     );
 };
 
-export const archiveFaqsForArticle = async (article: { id: string; tId?: number; sId?: number }) => {
+export const archiveFaqsForArticle = async (article: FaqArticleMaintenanceInput) => {
     return await apiCallComposer(
         async () => {
-            const fallbackScope = await requireScope().catch(() => null);
-            const scope = {
-                tId: Number(article.tId || fallbackScope?.tId),
-                sId: Number(article.sId || fallbackScope?.sId),
-            };
-            if (!Number.isFinite(scope.tId) || !Number.isFinite(scope.sId) || scope.tId <= 0 || scope.sId <= 0) {
-                return { updatedCount: 0 };
-            }
+            const scope = await resolveFaqArticleMaintenanceScope(
+                article,
+                'answerlattice_faq_article_archive_scope_resolve_failed',
+            );
+            if (!scope) return { updatedCount: 0 };
 
             const snapshot = await getDocs(query(
                 getCollectionRef(),

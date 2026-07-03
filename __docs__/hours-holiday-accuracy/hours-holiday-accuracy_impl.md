@@ -1,11 +1,29 @@
 # Hours Status Display — Implementation Plan (Feature #2A)
 
-**Document Type:** Dev-Centric Technical Blueprint  
-**Status:** ✅ IMPLEMENTED  
-**Priority:** P0  
-**Implemented On:** January 18, 2026  
-**Surfaces:** QR/Web Menu + Digital Screens + Staff Prompt  
+**Document Type:** Dev-Centric Technical Blueprint
+**Status:** ✅ IMPLEMENTED
+**Priority:** P0
+**Implemented On:** January 18, 2026
+**Last Updated:** July 2, 2026
+**Surfaces:** QR/Web Menu + Digital Screens + Staff Prompt
 **Actual Effort:** ~2 hours
+
+---
+
+## Source Gate
+
+This implementation doc is source-gated by `npm run verify:working-hours-boundary`.
+
+Historical blueprint sections below are not launch approval. Current source truth is:
+
+- `src/lib/hours/hoursEngine.ts` computes current open/closed state from `workingHours` and `timeZone`.
+- `src/components/atoms/StoreStatusBadge/index.tsx` renders only when working hours exist.
+- `src/components/templates/website/clientWebsite/index.tsx` shows the urgent badge only when `ENABLE_HOURS_STATUS_DISPLAY` is enabled and Output Control is not the active hours truth surface.
+- Desktop Business Settings writes `workingHours` through `updateStore()` and requires `assertStoreUpdateSucceeded()`.
+- `MobileWorkingHoursEditScreen` and the Today quick-hours sheet use optimistic local state but require `assertStoreUpdateSucceeded()` before treating the save as confirmed.
+- `updateTimeSlotPresets()` revalidates public menu/OBP cache for store-level preset writes.
+- Desktop/mobile time-slot edit/delete flows require store write acknowledgement and project cascade acknowledgement before local success state changes.
+- Holiday calendars, exception managers, extra collections, Cloud Functions, provider calls, and Storage writes are not part of the current implementation.
 
 ---
 
@@ -85,6 +103,7 @@ After codebase review, the original ChatGPT proposal was **significantly over-en
 | `timeZone` field     | `stores/{storeId}.timeZone`        | ✅ Already exists                                            |
 | Working Hours UI     | `WorkingHoursTab.tsx`              | ✅ Basic picker, no changes needed                           |
 | Store update flow    | `updateStore()` in DAL             | ✅ Already saves `workingHours`                              |
+| Time-slot preset flow | `updateTimeSlotPresets()` in DAL   | ✅ Saves presets and refreshes public menu/OBP cache          |
 | Schema.org hours     | `app/_client/[[...slug]]/page.tsx` | ✅ Already uses `workingHours` for SEO                       |
 
 ### P0 Decision: Use Existing Format
@@ -387,6 +406,7 @@ src/
 - [x] No new Firestore collections
 - [x] MOL logging via existing pattern
 - [x] `workingHours` already validated by UI
+- [x] Time-slot preset store writes revalidate public cache through `updateTimeSlotPresets()`
 
 ---
 

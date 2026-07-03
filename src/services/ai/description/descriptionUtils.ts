@@ -1,11 +1,14 @@
 import { AI_ACTIONS_TYPES } from "@constant/common";
-import { logger } from "@lib/monitoring/logger";
+import { getBoundedAiServiceStringContext, logAiServiceFailure } from "@services/ai/aiServiceDiagnostics";
 import { AICapacityError } from "@services/ai/capacityError";
 import type { DescriptionTone } from "@template/main-app/projects/editorView/descriptionGeneration.shared";
 import { LanguageType, Project, ProjectFileType } from "@template/main-app/projects/types";
 import { InheritanceState } from "@type/multiOutlet.types";
 import { removeObjRef } from "@util/utils";
 import getDescriptionsViaAPI from "./generateDescriptionViaAPI";
+
+const AI_DESCRIPTION_EMPTY_RESPONSE = 'ai_description_empty_response';
+const AI_DESCRIPTION_FILE_GENERATION_FAILED = 'ai_description_file_generation_failed';
 
 /**
  * Multi-outlet description governance options
@@ -114,23 +117,8 @@ export const addDescription = async (
 
         // Skip API call if no items to process (e.g., all items already have descriptions for ADD_DESCRIPTION)
         if (itemsList.length === 0) {
-            logger.debug('Skipping description generation - no items to process', {
-                action,
-                projectId: projectData.projectId,
-                fileId: file.uid
-            });
             return { updatedProject: prevData, message: "", messageType: "" };
         }
-
-        logger.debug('Generating descriptions', {
-            itemsCount: itemsList.length,
-            targetLanguages: targetLanguages.map(l => l.code),
-            sourceLanguage: sourceLanguage.code,
-            projectId: projectData.projectId,
-            fileId: file.uid,
-            contentLength,
-            tone
-        });
 
         try {
             const generatedDescription = await getDescriptionsViaAPI({
@@ -160,19 +148,30 @@ export const addDescription = async (
                 }
                 return { updatedProject: updated, message: `${targetLanguages.map(l => l.name).join(', ')} (${targetLanguages.map(l => l.code).join(', ')}) Descriptions added successfully`, messageType: "success" };
             } else {
-                logger.warn('Description generation returned no data', {
-                    targetLanguages: targetLanguages.map(l => l.code),
-                    sourceLanguage: sourceLanguage.code
+                logAiServiceFailure(AI_DESCRIPTION_EMPTY_RESPONSE, undefined, {
+                    action,
+                    contentLength,
+                    itemCount: itemsList.length,
+                    targetLanguageCount: targetLanguages.length,
+                    tone,
+                    ...getBoundedAiServiceStringContext('fileId', file.uid),
+                    ...getBoundedAiServiceStringContext('projectId', projectData.projectId),
+                    ...getBoundedAiServiceStringContext('sourceLanguage', sourceLanguage.code)
                 });
                 return { updatedProject: prevData, message: "Error getting descriptions", messageType: "error" };
             }
 
         } catch (error) {
             if (error instanceof AICapacityError) throw error;
-            logger.error('Description generation failed', error, {
-                targetLanguages: targetLanguages.map(l => l.code),
-                sourceLanguage: sourceLanguage.code,
-                projectId: projectData.projectId
+            logAiServiceFailure(AI_DESCRIPTION_FILE_GENERATION_FAILED, error, {
+                action,
+                contentLength,
+                itemCount: itemsList.length,
+                targetLanguageCount: targetLanguages.length,
+                tone,
+                ...getBoundedAiServiceStringContext('fileId', file.uid),
+                ...getBoundedAiServiceStringContext('projectId', projectData.projectId),
+                ...getBoundedAiServiceStringContext('sourceLanguage', sourceLanguage.code)
             });
             return { updatedProject: prevData, message: "Error getting descriptions", messageType: "error" };
         }

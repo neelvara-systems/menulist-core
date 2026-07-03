@@ -1,8 +1,14 @@
 # 👤 Profile Modal - Industry Standard Redesign
 
 **Date**: Nov 22, 2025  
-**Status**: ✅ Complete; updated Jun 24, 2026 for the self-profile management modal
+**Status**: Implemented source evidence; not current launch certification
 **Quality**: Matches Slack, Linear, Notion
+
+---
+
+## Current Launch Boundary
+
+This document records the profile popover and My Profile modal implementation evidence. It is not current production certification. Current release approval requires the active [production-readiness audit](../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../production-readiness/external-certification-runbook.md) evidence, auth/profile API source review, desktop/mobile profile QA, permission-boundary checks, and target-environment smoke.
 
 ---
 
@@ -495,4 +501,4 @@ const MENU_SECTIONS = [
 
 ---
 
-**The profile modal is now production-ready!** 👤✨
+**Current source state**: profile modal behavior is documented here. Current release approval still requires the launch-boundary evidence above.

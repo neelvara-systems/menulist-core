@@ -1,7 +1,7 @@
 # Menu Extraction Pipeline
 
 **Status:** Implemented
-**Last Updated:** June 11, 2026
+**Last Updated:** June 30, 2026
 
 Menu extraction now uses one durable intake/job contract across owner upload, mobile upload, menu link import, public create-menu, and messaging onboarding.
 
@@ -27,7 +27,7 @@ Entry points do not run separate menu extraction prompts:
 
 Owner upload job creation computes a server-trusted `sourceFingerprint` from Firebase Storage object metadata. If the same owner uploads the same files to the same project again within the reuse window, the route can return the recent completed job instead of creating another AI extraction job. Forced-review, retry, link-import, public draft, and messaging jobs are excluded from this owner-upload reuse path.
 
-Public preview polling uses `statusOnly=1` while extraction is pending/processing and fetches the full extracted draft only after completion. This keeps the public create-menu preview path lightweight without changing Firestore ownership, auth, or claim behavior.
+Public `/create-menu` browser handoffs use same-origin credentials, no-store cache policy, and manual redirect handling before trusting upload/link acknowledgements, preview polling responses, or claim acknowledgements. Public preview polling still uses `statusOnly=1` while extraction is pending/processing and fetches the full extracted draft only after completion. This keeps the public create-menu preview path lightweight without changing Firestore ownership, auth, or claim behavior.
 
 ## Destination Contract
 

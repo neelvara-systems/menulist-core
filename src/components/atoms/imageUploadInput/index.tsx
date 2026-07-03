@@ -3,9 +3,15 @@ import type { MediaImageType } from "@lib/media/imageProfiles";
 import { getMediaProfileAcceptAttribute } from "@lib/media/imageProfiles";
 import { prepareMediaImage, toPreparedUploadName } from "@lib/media/prepareMediaImage";
 import { validateImageFile } from "@lib/security/magicBytesValidator";
+import { getBoundedRuntimeStringContext, logRuntimeFailure } from "@lib/runtime/runtimeDiagnostics";
+import { getBoundedSecurityStringContext, logSecurityDiagnostic } from "@lib/security/securityDiagnostics";
 import { getBase64, getBase64Length, getCompressedImage } from "@util/utils";
 import { message } from "antd";
 import { useState } from "react";
+
+const IMAGE_PREPARE_FAILED_MESSAGE = 'Could not prepare image.';
+const IMAGE_INVALID_TYPE_MESSAGE = 'Use a JPG, PNG, WebP, or GIF image.';
+const IMAGE_INVALID_FILE_MESSAGE = 'Use a valid image file.';
 
 type PropsType = {
     onUploadFile: Function
@@ -96,7 +102,13 @@ function ImageUploadInput({
             if (error.name === 'AbortError') {
                 message.info('Upload cancelled');
             } else {
-                console.error('Image upload error:', error);
+                logRuntimeFailure('image_upload_batch_failed', error, {
+                    fileCount: files.length,
+                    maxSizeMB,
+                    multiple,
+                    compressionEnabled: compression,
+                    hasMediaImageType: Boolean(mediaImageType),
+                });
                 message.error('Failed to upload image. Please try again.');
             }
         } finally {
@@ -135,7 +147,13 @@ function ImageUploadInput({
                     url: prepared.dataUrl,
                 };
             } catch (error) {
-                message.error(`${file.name}: ${error instanceof Error ? error.message : 'Could not prepare image.'}`);
+                logRuntimeFailure('image_upload_prepare_media_failed', error, {
+                    ...getBoundedRuntimeStringContext('fileType', file.type),
+                    ...getBoundedRuntimeStringContext('mediaImageType', mediaImageType),
+                    fileSizeBytes: file.size,
+                    maxSizeMB,
+                });
+                message.error(IMAGE_PREPARE_FAILED_MESSAGE);
                 return null;
             }
         }
@@ -143,19 +161,18 @@ function ImageUploadInput({
         // 1️⃣ CLIENT-SIDE VALIDATION: MIME Type Whitelist
         const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/gif'];
         if (!allowedTypes.includes(file.type)) {
-            message.error(`${file.name}: Invalid file type. Only JPEG, PNG, WebP, and GIF are allowed.`);
+            message.error(IMAGE_INVALID_TYPE_MESSAGE);
             return null;
         }
 
         // 2️⃣ CLIENT-SIDE VALIDATION: File Size Check (before compression)
         if (file.size > maxSizeMB * 1024 * 1024) {
-            const sizeMB = (file.size / (1024 * 1024)).toFixed(2);
-            message.error(`${file.name}: File too large (${sizeMB}MB). Maximum: ${maxSizeMB}MB.`);
+            message.error(`Image must be ${maxSizeMB}MB or smaller.`);
             return null;
         }
 
         if (file.size === 0) {
-            message.error(`${file.name}: Cannot upload empty file.`);
+            message.error(IMAGE_INVALID_FILE_MESSAGE);
             return null;
         }
 
@@ -179,7 +196,7 @@ function ImageUploadInput({
             }
 
             if (!base64) {
-                message.error(`${file.name}: Failed to process image.`);
+                message.error(IMAGE_PREPARE_FAILED_MESSAGE);
                 return null;
             }
 
@@ -198,11 +215,12 @@ function ImageUploadInput({
             });
 
             if (!validation.valid) {
-                message.error(`${file.name}: ${validation.error || 'File validation failed'}`);
-                console.error('🔒 Security: File validation failed', {
-                    fileName: file.name,
-                    declaredType: file.type,
-                    error: validation.error
+                message.error(IMAGE_INVALID_FILE_MESSAGE);
+                logSecurityDiagnostic('image_upload_magic_bytes_validation_rejected', {
+                    ...getBoundedSecurityStringContext('fileType', file.type),
+                    ...getBoundedSecurityStringContext('validationError', validation.error),
+                    fileSizeBytes: file.size,
+                    maxSizeMB,
                 });
                 return null;
             }
@@ -222,8 +240,13 @@ function ImageUploadInput({
             if (error.name === 'AbortError') {
                 throw error; // Re-throw abort errors
             }
-            console.error(`Image upload error (${file.name}):`, error);
-            message.error(`${file.name}: Failed to upload image.`);
+            logRuntimeFailure('image_upload_file_process_failed', error, {
+                ...getBoundedRuntimeStringContext('fileType', file.type),
+                fileSizeBytes: file.size,
+                maxSizeMB,
+                compressionEnabled: compression,
+            });
+            message.error('Failed to upload image.');
             return null;
         }
     };

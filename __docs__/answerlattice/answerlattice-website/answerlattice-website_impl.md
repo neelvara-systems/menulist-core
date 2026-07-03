@@ -1,7 +1,7 @@
 # AnswerLattice Website — Implementation
 
-> **Version:** 1.2.91
-> **Last Updated:** 2026-06-26
+> **Version:** 1.2.95
+> **Last Updated:** 2026-06-29
 > **Audience:** Developers
 
 ---
@@ -56,6 +56,8 @@ Concept illustrations use `AnswerlatticeConceptIllustration.tsx`, a zero-depende
 `src/app/sites/answerlattice/scroll-reveal.css` must not leave visible sections on a persistent `translate3d(0, 0, 0)` or `will-change` compositing layer. Pending reveal can use a temporary transform, but the visible state returns to `transform: none` and `will-change: auto` so inline SVG diagrams remain vector-painted and do not look rasterized when the browser zoom level changes.
 
 `src/app/layout.tsx` imports `src/app/sites/answerlattice/styles.css` and `src/app/sites/answerlattice/scroll-reveal.css` from the root app layout. This keeps the AnswerLattice CSS in the root `app/layout.css` bundle and avoids clean-cache requests for a missing nested `app/sites/answerlattice/layout.css` chunk. AnswerLattice visual rules must remain scoped to `.answerlattice-site`, `.al-home-flow`, `.al-page-flow`, `html[data-answerlattice-theme]`, or explicit AnswerLattice selectors so root loading does not recolor MenuList or other product pages.
+
+Prism-glass card hover uses `AnswerlatticeSpotlightCards.tsx` as a route-level pointer tracker for fine-pointer devices. The client island delegates `pointerover` and `pointermove`, writes `--al-card-pointer-x` / `--al-card-pointer-y` on matching AnswerLattice cards, and leaves touch/mobile cards on the centered CSS fallback. The hover glow must follow the pointer like the Neelvara cards without adding per-card state, changing section layouts, or altering AnswerLattice color tokens.
 
 AnswerLattice public pages support Light/System/Dark mode through `AnswerlatticeThemeProvider.tsx` and `AnswerlatticeThemeSwitcher.tsx`. The provider stores the site-scoped preference in `answerlattice-theme`, resolves System through `prefers-color-scheme`, marks the wrapper with `data-al-theme`, mirrors the resolved mode onto `html[data-answerlattice-theme]`, and updates browser `theme-color` metadata. The route layout includes a pre-hydration bootstrap script so a saved preference applies before React mounts.
 
@@ -161,6 +163,7 @@ src/app/sites/answerlattice/
     ├── AnswerlatticeAnalytics.tsx      # Optional GA/measurement event tracker, no Firestore writes
     ├── AnswerlatticeResourceAnalytics.tsx # Resource/referrer analytics tracker, no Firestore writes
     ├── AnswerlatticeScrollReveal.tsx   # Layout-level reveal observer for public sections, cards, CTA controls, and footer groups
+    ├── AnswerlatticeSpotlightCards.tsx # Layout-level pointer tracker for Prism-glass card hover glows
     ├── HeroSection.tsx            # Page-aware support-answer hero with inline sample workspace preview
     ├── HomeProofBandSection.tsx   # Retained conversion proof band component; compressed homepage uses PageProofStrip inside the hero
     ├── SupportKnowledgeMapSection.tsx # Visual source map for support inputs, the AnswerLattice answer layer, and output surfaces
@@ -204,7 +207,7 @@ src/content/answerlatticePublic/
 
 Related AnswerLattice route constants live in `src/constants/answerlattice/routes.ts`. `src/constants/answerlattice/navigations.ts` re-exports those constants for existing dashboard imports while keeping icon-heavy sidebar metadata out of lightweight public client islands such as `/get-started`.
 
-Public contact submissions use `src/app/api/answerlattice/public/contact/route.ts`. The route is Node-only, rate-limited as `ANSWERLATTICE_CONTACT_FORM`, validates with Zod, ignores honeypot submissions, verifies `captchaToken` when `TURNSTILE_SECRET_KEY` is configured, hashes requester IPs, and writes accepted submissions to `DB_COLLECTIONS.ANSWERLATTICE_CONTACT_ENQUIRIES` in AnswerLattice Firebase. The client form renders Cloudflare Turnstile from `NEXT_PUBLIC_TURNSTILE_SITE_KEY`; both env keys must be configured together.
+Public contact submissions use `src/app/api/answerlattice/public/contact/route.ts`. The route is Node-only, rate-limited as `ANSWERLATTICE_CONTACT_FORM`, caps JSON bodies at 8KB before Zod validation, ignores honeypot submissions, verifies `captchaToken` when `TURNSTILE_SECRET_KEY` is configured, hashes requester IPs, and writes accepted submissions to `DB_COLLECTIONS.ANSWERLATTICE_CONTACT_ENQUIRIES` in AnswerLattice Firebase. The client form renders Cloudflare Turnstile from `NEXT_PUBLIC_TURNSTILE_SITE_KEY`; both env keys must be configured together. Public contact browser submissions use same-origin credentials, no-store cache, manual redirect handling, and an 8KB bounded JSON response parser before accepting `{ accepted: true }`. `/get-started` onboarding uses the same browser request boundary with a 16KB bounded response parser and onboarding-result shape validation before success state. Public contact, `/get-started` onboarding, and the hosted widget use fixed failure copy in the browser and must not display API response text, provider text, or local exception messages.
 
 ## Self-Sellable Positioning Pass
 
@@ -216,6 +219,7 @@ The public website now follows `../self-sellable-product-strategy.md`:
 - homepage exposes the implemented system map: Launch Setup, Support Control, Knowledge Governance, and Runtime Layer
 - June 10 market-pattern pass moved the homepage from a long feature catalog toward a product-led support-suite story: support-suite cards, setup path, install quickstarts, positioning boundary, and category comparison entered the main conversion path without adding runtime reads or unsupported helpdesk claims.
 - June 10 homepage compression pass reduced the rendered homepage from 18 sections to 11, shortened hero/suite/support-surface copy, preserved the sticky support-surface story and feature-wise product overview cards, and moved repeated setup/trust/comparison detail into Product, feature, resource, security, and comparison pages.
+- June 29 switch-positioning pass added a compact category-switch strip inside the homepage Support Suite. It compares generic chatbots, helpdesks, static knowledge bases, and scattered support sources by where the official answer comes from, while full comparison detail stays on `/comparisons` and its child routes.
 - June 18 first-fold sharpening pass changed the homepage hero eyebrow, subtitle, proof strip, suite intro, metadata description, reusable hero copy, and final CTA so the first screen states the doctrine-safe contract: approved answers first, fallback when coverage is missing, and reviewable support gaps for founder approval.
 - June 10 product page and shared feature/capability templates now reconnect every narrower feature page back to the broader suite: setup, in-app support, hosted help, fallback, feedback, and owner-approved answers.
 - June 10 competitive cross-check pass added shared evaluation strips to product-area and product-feature templates so each page answers setup path, security boundary, and category-fit questions before the final CTA.
@@ -268,6 +272,8 @@ The public website now follows `../self-sellable-product-strategy.md`:
 - Three static SEO landing pages were added: `/page-aware-support-widget`, `/hosted-help-center-for-saas`, and `/support-widget-for-solo-founders`.
 - Optional conversion tracking uses GA/measurement events only when a public measurement ID exists; it does not call Firestore or AnswerLattice APIs.
 - The compressed homepage uses an image-backed hero product scene plus compact proof strip instead of another long text grid or decorative parallax effect.
+- Homepage Product Overview now uses a priority bento so high-intent surfaces such as ticket fallback, approved answers, and knowledge intake carry more visual weight while FAQ, changelog, feedback, Support Board, and notifications stay available without turning the page into another uniform card wall.
+- Homepage founder fit and category boundary copy now render as one section: a larger best-fit panel plus three compact boundary cards for not-a-chatbot, not-a-full-helpdesk, and not-static-docs. Keep these messages consolidated unless a future funnel test proves they need separate sections again.
 - Public product scenes are static website assets or controlled HTML/CSS previews; they do not expose private workspace data, do not call Firebase, and keep public browsing at zero Firebase cost.
 - The `/product` page reuses the same product scene before the architecture deep dive so buyers see the working owner flow before reading implementation concepts.
 - May 23 agent-context pass added product-domain `llms.txt` and `llms-full.txt` routes so agents reading `answerlattice.com` get AnswerLattice-specific product context, route links, non-goals, mutation boundaries, and structured-data guidance instead of falling back to generic platform context.
@@ -481,6 +487,10 @@ Conversion analytics is client-side only:
 
 | Date | Version | Change |
 |------|---------|--------|
+| 2026-06-29 | 1.2.95 | Added the compact homepage Support Suite category-switch strip that compares AnswerLattice by official answer source while keeping full comparison tables on `/comparisons` and preserving static public-site behavior |
+| 2026-06-27 | 1.2.94 | Replaced fixed-position Prism-glass card hover glows with a fine-pointer spotlight controller so card highlights follow the mouse while preserving existing AnswerLattice theme tokens, layouts, and product claims |
+| 2026-06-26 | 1.2.93 | Converted the homepage Product Overview feature grid into a priority bento and merged AI-built SaaS fit plus positioning-boundary sections into one founder-fit/category-boundary section without removing product routes, features, or public claims |
+| 2026-06-26 | 1.2.92 | Added a token-led Prism-glass polish pass to AnswerLattice website cards and surface frames: inset highlights, backdrop blur, softer shadows, hover lift/glow, and reduced-motion fallbacks while preserving the existing Verdigris theme, diagrams, layout, and product claims |
 | 2026-06-26 | 1.2.91 | Added consent-gated Plausible Cloud support for public website events and removed API-key material from onboarding success analytics labels |
 | 2026-06-25 | 1.2.90 | Removed the custom repo-generated resource analytics `session_id` parameter from GA4 payloads while preserving consent-gated page, entry-page, referrer, UTM, slug, and target URL context |
 | 2026-06-21 | 1.2.89 | Refined the homepage support-suite presentation after reviewing Supahub, Peppermint, Front, and the supplied Grabee reference, then simplified it after visual QA: the section now uses a lighter `Collect → Shape → Serve` flow rail, keeps the four suite cards, and renders the build path as a stable non-sticky panel without adding runtime behavior or unsupported product claims |
@@ -584,3 +594,5 @@ Conversion analytics is client-side only:
 | 2026-06-02 | 1.2.58 | Reframed `BestFitSection` so the homepage includes launch-ready founders with expected support questions instead of implying AnswerLattice requires existing support volume |
 | 2026-06-02 | 1.2.59 | Completed a launch-readiness wording audit across homepage, Get Started, FAQ, About, Pricing, ROI, metadata, and AI-built SaaS use-case copy so beta and near-launch founders are not excluded by existing-volume-only phrasing |
 | 2026-06-02 | 1.2.60 | Added the public brand/domain decision registry, claim guardrails, resource/comparison/developer content registries, comparison pages, developer docs, LLM/sitemap coverage, Canonica legacy public-host redirect, internal homepage rewrite wrapper, and public discovery verification checks while preserving the existing AnswerLattice runtime routes |
+| 2026-06-30 | 1.2.61 | Hardened the AnswerLattice public contact browser submission with same-origin credentials, no-store cache, manual redirect handling, an 8KB bounded response parser, accepted-shape validation, and bounded diagnostics without changing the contact API or Firebase write path |
+| 2026-06-30 | 1.2.62 | Hardened the `/get-started` onboarding browser response boundary with same-origin credentials, no-store cache, manual redirect handling, a 16KB bounded response parser, onboarding-result shape validation, and bounded diagnostics before success state |

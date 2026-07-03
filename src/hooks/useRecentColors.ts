@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { getBoundedHookStringContext, logHookFailure } from '@hook/hookDiagnostics';
 
 const RECENT_COLORS_KEY = 'app_recent_colors';
 const FAVORITE_COLORS_KEY = 'app_favorite_colors';
@@ -27,7 +28,9 @@ export const useRecentColors = () => {
         setFavoriteColors(JSON.parse(savedFavorites));
       }
     } catch (error) {
-      console.error('Error loading color history:', error);
+      logHookFailure('recent_colors_load_failed', error, {
+        storageKeyCount: 2,
+      });
     }
   }, []);
 
@@ -43,7 +46,10 @@ export const useRecentColors = () => {
       try {
         localStorage.setItem(RECENT_COLORS_KEY, JSON.stringify(updated));
       } catch (error) {
-        console.error('Error saving recent colors:', error);
+        logHookFailure('recent_colors_save_failed', error, {
+          recentColorCount: updated.length,
+          ...getBoundedHookStringContext('color', color),
+        });
       }
       
       return updated;
@@ -70,7 +76,10 @@ export const useRecentColors = () => {
       try {
         localStorage.setItem(FAVORITE_COLORS_KEY, JSON.stringify(updated));
       } catch (error) {
-        console.error('Error saving favorite colors:', error);
+        logHookFailure('favorite_colors_save_failed', error, {
+          favoriteColorCount: updated.length,
+          ...getBoundedHookStringContext('color', color),
+        });
       }
       
       return updated;
@@ -88,7 +97,7 @@ export const useRecentColors = () => {
     try {
       localStorage.removeItem(RECENT_COLORS_KEY);
     } catch (error) {
-      console.error('Error clearing recent colors:', error);
+      logHookFailure('recent_colors_clear_failed', error);
     }
   }, []);
 

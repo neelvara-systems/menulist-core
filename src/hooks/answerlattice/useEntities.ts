@@ -22,11 +22,20 @@ import {
     updateEntity,
     upsertEntitySearchIndex,
 } from '@database/answerlattice/entities';
-import { getAnswerlatticeUiErrorMessage } from '@lib/answerlattice/uiErrors';
 import { AnswerlatticeEntity, AnswerlatticeEntityRelation, AnswerlatticeEntitySearchIndex } from '@type/answerlattice';
 import { message } from 'antd';
 import { Timestamp } from 'firebase/firestore';
 import { useCallback, useEffect, useState } from 'react';
+
+const ANSWERLATTICE_ENTITIES_LOAD_FAILED = 'Could not load entities';
+const ANSWERLATTICE_ENTITY_CREATE_FAILED = 'Could not create entity';
+const ANSWERLATTICE_ENTITY_UPDATE_FAILED = 'Could not update entity';
+const ANSWERLATTICE_ENTITY_DEPRECATE_FAILED = 'Could not deprecate entity';
+const ANSWERLATTICE_ENTITY_ALIASES_UPDATE_FAILED = 'Could not update aliases';
+const ANSWERLATTICE_ENTITY_MERGE_FAILED = 'Could not merge entities';
+const ANSWERLATTICE_ENTITY_RELATION_ADD_FAILED = 'Could not add relation';
+const ANSWERLATTICE_ENTITY_RELATION_REMOVE_FAILED = 'Could not remove relation';
+const ANSWERLATTICE_ENTITY_SEARCH_INDEX_UPDATE_FAILED = 'Could not update search index';
 
 interface UseEntitiesReturn {
     entities: AnswerlatticeEntity[];
@@ -69,8 +78,8 @@ export function useEntities(tId: number, sId: number): UseEntitiesReturn {
             setEntities(entitiesResult || []);
             setRelations(relationsResult || []);
             setSearchIndex(indexResult || []);
-        } catch (err) {
-            setError(getAnswerlatticeUiErrorMessage(err, 'Could not load entities'));
+        } catch {
+            setError(ANSWERLATTICE_ENTITIES_LOAD_FAILED);
         } finally {
             setLoading(false);
         }
@@ -98,8 +107,8 @@ export function useEntities(tId: number, sId: number): UseEntitiesReturn {
                 await refresh();
             }
             return result;
-        } catch (err) {
-            message.error(getAnswerlatticeUiErrorMessage(err, 'Could not create entity'));
+        } catch {
+            message.error(ANSWERLATTICE_ENTITY_CREATE_FAILED);
             return null;
         }
     }, [tId, sId, refresh]);
@@ -119,8 +128,8 @@ export function useEntities(tId: number, sId: number): UseEntitiesReturn {
             });
             message.success('Entity updated');
             await refresh();
-        } catch (err) {
-            message.error(getAnswerlatticeUiErrorMessage(err, 'Could not update entity'));
+        } catch {
+            message.error(ANSWERLATTICE_ENTITY_UPDATE_FAILED);
         }
     }, [tId, sId, refresh]);
 
@@ -129,8 +138,8 @@ export function useEntities(tId: number, sId: number): UseEntitiesReturn {
             await deprecateEntity(entityId);
             message.success('Entity deprecated');
             await refresh();
-        } catch (err) {
-            message.error(getAnswerlatticeUiErrorMessage(err, 'Could not deprecate entity'));
+        } catch {
+            message.error(ANSWERLATTICE_ENTITY_DEPRECATE_FAILED);
         }
     }, [refresh]);
 
@@ -154,8 +163,8 @@ export function useEntities(tId: number, sId: number): UseEntitiesReturn {
             });
             message.success('Aliases updated');
             await refresh();
-        } catch (err) {
-            message.error(getAnswerlatticeUiErrorMessage(err, 'Could not update aliases'));
+        } catch {
+            message.error(ANSWERLATTICE_ENTITY_ALIASES_UPDATE_FAILED);
         }
     }, [tId, sId, refresh]);
 
@@ -166,8 +175,8 @@ export function useEntities(tId: number, sId: number): UseEntitiesReturn {
                 message.success(`Entities merged. ${result.transferredRefs} reference(s) transferred.`);
                 await refresh();
             }
-        } catch (err) {
-            message.error(getAnswerlatticeUiErrorMessage(err, 'Could not merge entities'));
+        } catch {
+            message.error(ANSWERLATTICE_ENTITY_MERGE_FAILED);
         }
     }, [tId, sId, refresh]);
 
@@ -176,8 +185,8 @@ export function useEntities(tId: number, sId: number): UseEntitiesReturn {
             await addEntityRelation(data);
             message.success('Relation added');
             await refresh();
-        } catch (err) {
-            message.error(getAnswerlatticeUiErrorMessage(err, 'Could not add relation'));
+        } catch {
+            message.error(ANSWERLATTICE_ENTITY_RELATION_ADD_FAILED);
         }
     }, [refresh]);
 
@@ -186,8 +195,8 @@ export function useEntities(tId: number, sId: number): UseEntitiesReturn {
             await deleteEntityRelation(relationId);
             message.success('Relation removed');
             await refresh();
-        } catch (err) {
-            message.error(getAnswerlatticeUiErrorMessage(err, 'Could not remove relation'));
+        } catch {
+            message.error(ANSWERLATTICE_ENTITY_RELATION_REMOVE_FAILED);
         }
     }, [refresh]);
 
@@ -196,8 +205,8 @@ export function useEntities(tId: number, sId: number): UseEntitiesReturn {
             await upsertEntitySearchIndex(data);
             message.success('Search index updated');
             await refresh();
-        } catch (err) {
-            message.error(getAnswerlatticeUiErrorMessage(err, 'Could not update search index'));
+        } catch {
+            message.error(ANSWERLATTICE_ENTITY_SEARCH_INDEX_UPDATE_FAILED);
         }
     }, [refresh]);
 

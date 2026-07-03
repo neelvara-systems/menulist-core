@@ -17,6 +17,7 @@ import {
     updateCreativeEditorPlatformTemplateMetadata,
     type CreativeEditorTemplateContext,
 } from '@lib/creative-editor/templateRegistryDal';
+import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { PRINTABLE_ASSET_TYPES, getPrintableAssetType } from '@lib/printable-asset-templates/assetTypes';
 import {
     buildPrintableAssetEditorDocument,
@@ -65,6 +66,11 @@ const { Text, Title } = Typography;
 
 const PRODUCT_ID = 'menulist';
 const SOURCE_SURFACE = 'printable-asset-templates';
+const PLATFORM_TEMPLATE_DELETE_FAILED_MESSAGE = 'Platform template could not be deleted';
+const PLATFORM_TEMPLATE_LOAD_FAILED_MESSAGE = 'Platform templates could not be loaded';
+const PLATFORM_TEMPLATE_OPEN_FAILED_MESSAGE = 'Template could not be opened';
+const PLATFORM_TEMPLATE_SAVE_FAILED_MESSAGE = 'Platform template could not be saved';
+const PLATFORM_TEMPLATE_UPDATE_FAILED_MESSAGE = 'Platform template could not be updated';
 const PLATFORM_CATEGORY_OPTIONS = [
     { label: 'Generic / shared', value: 'generic' },
     ...BUSINESS_CATEGORIES.map((category) => ({
@@ -159,6 +165,22 @@ const makeTemplateContext = (
     templateType: 'platform',
 });
 
+const buildTemplateManagerLogContext = (
+    action: string,
+    metadata: {
+        assetTypeId?: unknown;
+        businessCategory?: unknown;
+        templateFamilyId?: unknown;
+        templateId?: unknown;
+    } = {},
+) => ({
+    action,
+    ...getBoundedRuntimeStringContext('assetTypeId', metadata.assetTypeId),
+    ...getBoundedRuntimeStringContext('businessCategory', metadata.businessCategory),
+    ...getBoundedRuntimeStringContext('templateFamilyId', metadata.templateFamilyId),
+    ...getBoundedRuntimeStringContext('templateId', metadata.templateId),
+});
+
 function PlatformAssetTemplates() {
     const session = useClientAuthSession();
     const { token } = theme.useToken();
@@ -205,11 +227,15 @@ function PlatformAssetTemplates() {
             setTemplates(result);
             setSelectedTemplate((current) => current ? result.find((item) => item.id === current.id) || null : null);
         } catch (error) {
-            messageApi.error(error instanceof Error ? error.message : 'Platform templates could not be loaded');
+            logRuntimeFailure('platform_asset_templates_load_failed', error, buildTemplateManagerLogContext('load_templates', {
+                assetTypeId,
+                businessCategory,
+            }));
+            messageApi.error(PLATFORM_TEMPLATE_LOAD_FAILED_MESSAGE);
         } finally {
             setLoading(false);
         }
-    }, [businessCategory, canManage, canUseManager, messageApi]);
+    }, [assetTypeId, businessCategory, canManage, canUseManager, messageApi]);
 
     useEffect(() => {
         void loadTemplates();
@@ -274,7 +300,12 @@ function PlatformAssetTemplates() {
                 templateId: template.id,
             });
         } catch (error) {
-            messageApi.error(error instanceof Error ? error.message : 'Template could not be opened');
+            logRuntimeFailure('platform_asset_template_open_failed', error, buildTemplateManagerLogContext('open_template', {
+                assetTypeId: selectedAssetType,
+                businessCategory,
+                templateId: template.id,
+            }));
+            messageApi.error(PLATFORM_TEMPLATE_OPEN_FAILED_MESSAGE);
         } finally {
             setBusyKey('');
         }
@@ -303,7 +334,13 @@ function PlatformAssetTemplates() {
             updateTemplatesLocal(template);
             messageApi.success('Platform template updated');
         } catch (error) {
-            messageApi.error(error instanceof Error ? error.message : 'Platform template could not be updated');
+            logRuntimeFailure('platform_asset_template_metadata_update_failed', error, buildTemplateManagerLogContext('update_metadata', {
+                assetTypeId: selectedTemplate.assetTypeId || assetTypeId,
+                businessCategory,
+                templateFamilyId,
+                templateId: selectedTemplate.id,
+            }));
+            messageApi.error(PLATFORM_TEMPLATE_UPDATE_FAILED_MESSAGE);
         } finally {
             setBusyKey('');
         }
@@ -324,6 +361,13 @@ function PlatformAssetTemplates() {
                     setTemplates((current) => current.filter((item) => item.id !== template.id));
                     setSelectedTemplate((current) => current?.id === template.id ? null : current);
                     messageApi.success('Platform template deleted');
+                } catch (error) {
+                    logRuntimeFailure('platform_asset_template_delete_failed', error, buildTemplateManagerLogContext('delete_template', {
+                        assetTypeId: template.assetTypeId || assetTypeId,
+                        businessCategory,
+                        templateId: template.id,
+                    }));
+                    messageApi.error(PLATFORM_TEMPLATE_DELETE_FAILED_MESSAGE);
                 } finally {
                     setBusyKey('');
                 }
@@ -335,20 +379,30 @@ function PlatformAssetTemplates() {
     const handleEditorSave = async ({ document, previewDataUrl }: CreativeEditorTemplateSaveRequest) => {
         const nextTitle = title.trim() || document.title || makeDefaultTitle(editorState?.assetTypeId || assetTypeId, templateFamilyId);
         if (!editorState) throw new Error('Editor is not ready');
-        const template = await saveCreativeEditorPlatformTemplate({
-            ...makeTemplateContext(businessCategory, editorState.assetTypeId),
-            description: description.trim() || undefined,
-            document,
-            status,
-            templateFamilyId,
-            templateId: editorState.templateId,
-            thumbnailDataUrl: previewDataUrl,
-            title: nextTitle,
-        });
-        setEditorState((current) => current ? { ...current, mode: 'edit', templateId: template.id } : current);
-        updateTemplatesLocal(template);
-        messageApi.success('Platform template saved');
-        return { notice: 'Platform template saved.', template };
+        try {
+            const template = await saveCreativeEditorPlatformTemplate({
+                ...makeTemplateContext(businessCategory, editorState.assetTypeId),
+                description: description.trim() || undefined,
+                document,
+                status,
+                templateFamilyId,
+                templateId: editorState.templateId,
+                thumbnailDataUrl: previewDataUrl,
+                title: nextTitle,
+            });
+            setEditorState((current) => current ? { ...current, mode: 'edit', templateId: template.id } : current);
+            updateTemplatesLocal(template);
+            messageApi.success('Platform template saved');
+            return { notice: 'Platform template saved.', template };
+        } catch (error) {
+            logRuntimeFailure('platform_asset_template_save_failed', error, buildTemplateManagerLogContext('save_template', {
+                assetTypeId: editorState.assetTypeId,
+                businessCategory,
+                templateFamilyId,
+                templateId: editorState.templateId,
+            }));
+            throw new Error(PLATFORM_TEMPLATE_SAVE_FAILED_MESSAGE);
+        }
     };
 
     if (!canUseManager) {

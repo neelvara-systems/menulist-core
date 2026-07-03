@@ -2,15 +2,16 @@ export const dynamic = "force-dynamic";
 
 import { FEATURE_FLAGS } from "@config/features";
 import { isGrowthOSMasterEnabled } from "@lib/growthos/entitlements";
+import { getGrowthOSBoundedStringContext, getGrowthOSSecurityLogContext, logGrowthOSApiFailure } from "@lib/growthos/diagnostics";
 import { guardGrowthOSReviewReply } from "@lib/growthos/reviewGuard";
 import { evaluateGrowthOSServerEntitlement } from "@lib/growthos/serverEntitlements";
 import { logger } from "@lib/monitoring/logger";
 import { checkRateLimit } from "@lib/rateLimit";
 import { validateAPIInput } from "@lib/security/inputValidation";
-import { buildSecurityContext } from "@lib/security/securityContext";
 import { GrowthOSReviewSuggestRequestSchema, parseGrowthOSJsonBody } from "@lib/validation/growthosSchemas";
 import { NextResponse } from "next/server";
 import { verifyTenantAccess, withAuth } from "../../../../../middleware/auth";
+import { hashPublicRateLimitValue } from "src/middleware/publicApi";
 
 export const POST = withAuth(async (request, session) => {
     try {
@@ -22,8 +23,10 @@ export const POST = withAuth(async (request, session) => {
             return NextResponse.json({ error: "Feature disabled" }, { status: 404 });
         }
 
+        const userRateLimitHash = hashPublicRateLimitValue(session.uId || session.user?.id || "unknown");
+        const tenantRateLimitHash = hashPublicRateLimitValue(session.tId || "unknown");
         const rateLimit = await checkRateLimit({
-            key: `growthos-review:${session.uId || session.user?.id}:${session.tId}`,
+            key: `growthos-review:${userRateLimitHash}:${tenantRateLimitHash}`,
             limit: 10,
             window: 60,
         });
@@ -34,27 +37,26 @@ export const POST = withAuth(async (request, session) => {
         const jsonBody = await parseGrowthOSJsonBody(request);
         if (!jsonBody.success) {
             logger.security("Invalid JSON - GrowthOS Review Guard API", {
-                ...buildSecurityContext(session, request),
-                endpoint: "/api/growthos/reviews/suggest",
+                ...getGrowthOSSecurityLogContext(session, request, "/api/growthos/reviews/suggest"),
             }, "medium");
-            return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+            return ("response" in jsonBody && jsonBody.response)
+                || NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
         }
 
         const validation = validateAPIInput(GrowthOSReviewSuggestRequestSchema, jsonBody.data);
         if (!validation.success) {
             const errorMsg = "error" in validation ? validation.error : "Invalid input";
             logger.security("GrowthOS Review Guard Input Validation Failed", {
-                ...buildSecurityContext(session, request),
-                endpoint: "/api/growthos/reviews/suggest",
-                error: errorMsg,
+                ...getGrowthOSSecurityLogContext(session, request, "/api/growthos/reviews/suggest", {
+                    ...getGrowthOSBoundedStringContext("validationError", errorMsg),
+                }),
             }, "medium");
             return NextResponse.json({ error: "Invalid input", details: errorMsg }, { status: 400 });
         }
 
         if (!verifyTenantAccess(session, session.tId, session.sId, request)) {
             logger.security("Tenant Access Violation - GrowthOS Review Guard API", {
-                ...buildSecurityContext(session, request),
-                endpoint: "/api/growthos/reviews/suggest",
+                ...getGrowthOSSecurityLogContext(session, request, "/api/growthos/reviews/suggest"),
             }, "critical");
             return NextResponse.json({ error: "Forbidden" }, { status: 403 });
         }
@@ -75,9 +77,9 @@ export const POST = withAuth(async (request, session) => {
         });
         return NextResponse.json({ result }, { status: 200 });
     } catch (error) {
-        logger.error("GrowthOS Review Guard API error", error, {
+        logGrowthOSApiFailure("GrowthOS Review Guard API error", "growthos_review_guard_api_failed", error, {
             endpoint: "/api/growthos/reviews/suggest",
-            userId: session?.uId || session?.user?.id,
+            ...getGrowthOSBoundedStringContext("userId", session?.uId || session?.user?.id),
         });
         return NextResponse.json({ error: "Growth Kit review reply failed" }, { status: 500 });
     }

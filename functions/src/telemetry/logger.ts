@@ -4,8 +4,31 @@
  */
 
 import * as admin from 'firebase-admin';
+import * as functions from 'firebase-functions';
 import { FieldValue, Timestamp } from 'firebase-admin/firestore';
 import { DB_COLLECTIONS } from '../constants/database';
+
+const telemetryLogger = functions.logger;
+const TELEMETRY_LOG_WRITE_FAILED = 'TELEMETRY_LOG_WRITE_FAILED';
+const TELEMETRY_WRAPPED_FUNCTION_FAILED = 'TELEMETRY_WRAPPED_FUNCTION_FAILED';
+const TELEMETRY_TODAY_READ_FAILED = 'TELEMETRY_TODAY_READ_FAILED';
+const TELEMETRY_RANGE_READ_FAILED = 'TELEMETRY_RANGE_READ_FAILED';
+const TELEMETRY_HEALTH_READ_FAILED = 'TELEMETRY_HEALTH_READ_FAILED';
+
+function getTelemetryErrorContext(error: unknown): {
+  name?: string;
+  code?: string;
+  status?: number;
+} {
+  if (!error || typeof error !== 'object') return {};
+
+  const record = error as Record<string, unknown>;
+  return {
+    name: error instanceof Error ? error.name : undefined,
+    code: typeof record.code === 'string' ? record.code : undefined,
+    status: typeof record.status === 'number' ? record.status : undefined,
+  };
+}
 
 // ================================================================
 // TYPES
@@ -62,9 +85,18 @@ export async function logTelemetry(
       'summary.totalRunTime': FieldValue.increment(result.runTime),
     }, { merge: true });
 
-    console.log(`[Telemetry] Logged ${functionName}: ${result.status} (${result.runTime}ms)`);
+    telemetryLogger.info('[Telemetry] Logged function execution', {
+      functionName,
+      status: result.status,
+      runTime: result.runTime,
+    });
   } catch (error) {
-    console.error(`[Telemetry] Error logging ${functionName}:`, error);
+    telemetryLogger.error('[Telemetry] Failed to log function execution', {
+      functionName,
+      status: result.status,
+      failureCode: TELEMETRY_LOG_WRITE_FAILED,
+      error: getTelemetryErrorContext(error),
+    });
     // Don't throw - telemetry failures shouldn't break functions
   }
 }
@@ -111,12 +143,10 @@ export async function withTelemetry<T>(
 
     return result;
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-
     await logTelemetry(functionName, {
       status: 'failed',
       runTime: timer.getElapsed(),
-      error: errorMessage,
+      error: TELEMETRY_WRAPPED_FUNCTION_FAILED,
       startedAt: timer.stop().startedAt,
       completedAt: Timestamp.now(),
     });
@@ -141,7 +171,10 @@ export async function getTodayTelemetry(): Promise<TelemetryLog | null> {
 
     return doc.data() as TelemetryLog;
   } catch (error) {
-    console.error('[Telemetry] Error fetching today\'s data:', error);
+    telemetryLogger.error('[Telemetry] Failed to fetch today data', {
+      failureCode: TELEMETRY_TODAY_READ_FAILED,
+      error: getTelemetryErrorContext(error),
+    });
     return null;
   }
 }
@@ -163,7 +196,10 @@ export async function getTelemetryRange(
 
     return snapshot.docs.map(doc => doc.data() as TelemetryLog);
   } catch (error) {
-    console.error('[Telemetry] Error fetching range:', error);
+    telemetryLogger.error('[Telemetry] Failed to fetch telemetry range', {
+      failureCode: TELEMETRY_RANGE_READ_FAILED,
+      error: getTelemetryErrorContext(error),
+    });
     return [];
   }
 }
@@ -210,7 +246,10 @@ export async function getFunctionHealth(
       lastRun: logs[0],
     };
   } catch (error) {
-    console.error('[Telemetry] Error calculating health:', error);
+    telemetryLogger.error('[Telemetry] Failed to calculate function health', {
+      failureCode: TELEMETRY_HEALTH_READ_FAILED,
+      error: getTelemetryErrorContext(error),
+    });
     return {
       totalRuns: 0,
       successRate: 0,

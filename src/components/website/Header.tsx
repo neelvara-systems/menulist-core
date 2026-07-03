@@ -18,6 +18,7 @@ import {
   LuQrCode,
   LuSearch,
   LuUser,
+  LuWrench,
   LuX,
   LuZap,
 } from "react-icons/lu";
@@ -39,6 +40,7 @@ const navItemKeys = [
 ];
 
 const resourceDropdownLinks = [
+  { href: "/tools", key: "resourceToolsHub", icon: LuWrench },
   { href: "/resources/menu-engineering", key: "resourceMenuEngineering", icon: LuBookOpen },
   { href: "/resources/qr-menu-for-restaurants", key: "resourceQrMenuGuide", icon: LuQrCode },
   { href: "/resources/digital-menu-vs-pdf-menu", key: "resourceDigitalVsPdf", icon: LuFileText },
@@ -76,6 +78,11 @@ export default function Header() {
     publicPathname?.startsWith("/resources")
     || /^\/[a-z]{2}-[A-Z]{2}\/resources/.test(publicPathname || ""),
   );
+  const isToolsPath = Boolean(
+    publicPathname === "/tools"
+    || publicPathname?.startsWith("/tools/")
+    || /^\/[a-z]{2}-[A-Z]{2}\/tools(\/|$)/.test(publicPathname || ""),
+  );
   const isCurrentPath = (href: string) => publicPathname === href || Boolean(publicPathname?.endsWith(href));
   const activeFeatureGroupKey = websiteFeatureNavGroups.find((group) =>
     group.links.some((featureLink) => isCurrentPath(featureLink.href)),
@@ -107,7 +114,7 @@ export default function Header() {
 
     setOpenMobileSections({
       features: true,
-      resources: isResourcesPath,
+      resources: isResourcesPath || isToolsPath,
     });
     setOpenMobileFeatureGroups(
       Object.fromEntries(
@@ -117,7 +124,7 @@ export default function Header() {
         ]),
       ) as Record<string, boolean>,
     );
-  }, [activeFeatureGroupKey, isOpen, isResourcesPath]);
+  }, [activeFeatureGroupKey, isOpen, isResourcesPath, isToolsPath]);
 
   return (
     <>
@@ -171,7 +178,7 @@ export default function Header() {
               const isFeaturesPath = Boolean(publicPathname?.startsWith("/features"));
               const isActive = publicPathname === item.href
                 || (item.href === "/features" && isFeaturesPath)
-                || (item.href === "/resources" && isResourcesPath);
+                || (item.href === "/resources" && (isResourcesPath || isToolsPath));
               if (item.key === "features") {
                 return (
                   <div key={item.href} className="ws-header-feature-menu">
@@ -260,7 +267,7 @@ export default function Header() {
                       style={{
                         fontSize: "0.9375rem",
                         fontWeight: 500,
-                        color: isResourcesPath
+                        color: isResourcesPath || isToolsPath
                           ? "var(--ws-text-primary)"
                           : "var(--ws-text-secondary)",
                         textDecoration: "none",
@@ -472,7 +479,7 @@ export default function Header() {
                 const isFeaturesPath = Boolean(pathname?.startsWith("/features"));
                 const isActive = pathname === item.href
                   || (item.href === "/features" && isFeaturesPath)
-                  || (item.href === "/resources" && isResourcesPath);
+                  || (item.href === "/resources" && (isResourcesPath || isToolsPath));
 
                 if (item.key === "features") {
                   const isFeaturesOpen = openMobileSections.features;

@@ -1,9 +1,11 @@
 # B2C View (Customer Preview) — Firebase Cost Tracking
 
 **Feature:** Visual Menu Builder & Theme Customization (B2C Preview)
-**Status:** Controlled owner testing ready after June 2026 linked-outlet publish hardening
-**Last Updated:** June 11, 2026
+**Status:** Source-cost evidence; not current launch certification
+**Last Updated:** July 2, 2026
 **Priority:** MEDIUM — Preview-only. Reads project data, writes theme config.
+
+**Launch boundary:** This Firebase cost note documents the B2C design save/publish cost surface; it is not current launch certification. Current release approval requires the active [production-readiness audit](../../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../../production-readiness/external-certification-runbook.md) evidence, Digital Menu Output Constitution checks, `npm run verify:menu-design-presentation-boundary`, public cache/deploy evidence, browser/mobile customer-menu QA, and target production smoke.
 
 ---
 
@@ -29,6 +31,7 @@
 | Operation | Collection | Trigger | Frequency | Docs Written | Fields | Notes |
 |-----------|-----------|---------|-----------|-------------|--------|-------|
 | Save/publish theme/design config | `projects/{tId}/{sId}/{projectId}` | User saves design changes | Per design save | 1 | config.design (home, menu, brand), publish metadata | Desktop B2C and mobile design publish through `publishProject()`. Linked outlets route through `/api/projects/outlet-save` so master policy controls theme, brand, and layout overrides before cache invalidation. |
+| Save Official Page fields from B2C editor | `stores` | User publishes Official Page changes from desktop B2C editor | Rare | 1 | `publicPresence`, optional `businessCopyMeta` | Uses existing `updateStore()` DAL and now requires `assertStoreUpdateSucceeded()` before local store state, queued OBP photo cleanup, or publish success copy changes. |
 | Upload brand assets | Storage | User uploads logo/background | Per asset upload | 0 Firestore | — | Direct to Storage, URL saved in project config. |
 
 ### Deletes
@@ -61,7 +64,14 @@ None.
 
 | Function | File | Operation Type |
 |----------|------|---------------|
-| `updateProject` | `src/database/projects/index.ts:382` | Write (setDoc merge) |
+| `updateProject` | `src/database/projects/index.ts` | Write (setDoc merge) |
 | `publishProject` | `src/database/projects/index.ts` | Publish write + public cache invalidation |
+| `updateStore` | `src/database/stores/index.tsx` | Official Page store write + public cache invalidation |
 | `/api/projects/outlet-save` | `src/app/api/projects/outlet-save/route.ts` | Linked-outlet server validation/write |
 | `uploadBase64ToStorage` | `src/database/storage/uploadBase64ToStorage.ts` | Storage upload |
+
+---
+
+## Verification Boundary
+
+`npm run verify:menu-design-presentation-boundary` source-gates the B2C design save path, mobile parity, public output normalization, and project publish/cache invalidation evidence. It does not run live Firestore writes, Storage uploads, Firebase deploy, Vercel deploy, production build, provider smoke, browser/mobile customer-menu QA, or target production smoke.

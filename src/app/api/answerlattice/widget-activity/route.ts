@@ -14,9 +14,10 @@ import { DB_COLLECTIONS } from '@constant/database';
 import { requireAnswerlatticePermission } from '@lib/answerlattice/accessControl';
 import { resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
 import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
-import { secureError } from '@lib/security/secureLogger';
+import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '../../../../middleware/auth';
+import { applyAnswerlatticeDashboardReadRateLimit } from '../readRateLimit';
 
 const MAX_ACTIVITY_ITEMS = 12;
 const FALLBACK_SCAN_LIMIT = 80;
@@ -128,6 +129,9 @@ export const GET = withAuth(async (request: NextRequest, session) => {
         return NextResponse.json({ error: 'Answerlattice widget is not enabled.' }, { status: 403 });
     }
 
+    const rateLimitResponse = await applyAnswerlatticeDashboardReadRateLimit(request, session, 'widget-activity');
+    if (rateLimitResponse) return rateLimitResponse;
+
     const permission = await requireAnswerlatticePermission(request, session, ANSWERLATTICE_PERMISSION_KEYS.MANAGE_WIDGET);
     if (permission.response) return permission.response;
 
@@ -154,9 +158,9 @@ export const GET = withAuth(async (request: NextRequest, session) => {
             items: docs.map(serializeActivityItem),
         });
     } catch (error) {
-        secureError('[Answerlattice Widget Activity] Failed to load recent widget questions', error as Error, {
-            storeId: scope.storeId,
-            tenantId: scope.tenantId,
+        logRuntimeFailure('answerlattice_widget_activity_route_failed', error, {
+            ...getBoundedRuntimeStringContext('tenantId', scope.tenantId),
+            ...getBoundedRuntimeStringContext('storeId', scope.storeId),
         });
         return NextResponse.json({ error: 'Failed to load widget activity' }, { status: 500 });
     }

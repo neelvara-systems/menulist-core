@@ -2,11 +2,14 @@
 
 **Feature:** #4 — Multi-Outlet Brand Consistency  
 **Document Type:** Sales/Marketing Team Resource  
+**Status:** Source-backed marketing evidence; not current collateral approval; not current launch certification
 **Audience:** Sales / Founder-led calls / Website copy  
 **Tone:** Premium, calm, infrastructure-grade  
 **Rules:** No hype • No "AI" language • No over-explaining • Outcome-first  
-**Last Updated:** May 19, 2026
+**Last Updated:** July 2, 2026
 **Author:** Lead Architect
+
+> **Launch Boundary:** This collateral records source-backed Multi-Outlet positioning only. Current sales, website, or customer-publication approval requires the active [production-readiness audit](../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../production-readiness/external-certification-runbook.md) evidence, `npm run verify:multi-location-boundary`, desktop/mobile Locations QA, linked outlet save QA, Razorpay sandbox evidence where billing is involved, approved pricing/package copy, target deploy evidence where relevant, and production-host smoke.
 
 > **May 19, 2026 review:** Sales claims remain accurate after live Chrome + Firebase verification. The important customer-facing promise is unchanged: outlet local changes stay local, master menu data stays protected, and HQ switching does not show outlet-only items/categories.
 
@@ -387,6 +390,6 @@ Sell Multi-Outlet when customer:
 
 ---
 
-**DOCUMENT STATUS:** ✅ Marketing Collateral Ready  
-**SIGNATURE:** Lead Architect  
+**DOCUMENT STATUS:** Source-backed marketing evidence - not current collateral approval; not current launch certification
+**SIGNATURE:** Lead Architect
 **TIMESTAMP:** February 13, 2026

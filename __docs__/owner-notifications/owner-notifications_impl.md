@@ -1,7 +1,7 @@
 # Owner Notifications - Implementation Plan
 
 **Status:** Implemented for MenuList lifecycle owner notifications, Answerlattice owner test notification, and internal ops tracking
-**Last Reviewed:** June 11, 2026
+**Last Reviewed:** June 30, 2026
 **Date:** 2026-06-02
 **Audience:** Developers
 
@@ -15,9 +15,31 @@ This removes direct owner-facing SMTP sends from billing routes, schedulers, and
 
 WhatsApp recipients must be normalized to international digits before hashing, rate limiting, delivery logging, or Graph API calls. Recipient resolution uses the store/workspace `countryCode`, `dialCode`, canonical `phone`, local `phoneNumber`, notification settings WhatsApp number, and explicit recipient hints. Bare local Indian numbers default to `+91`; explicit `+...` / `00...` numbers override the stored/default country.
 
+WhatsApp Graph API endpoint identifiers must be URL-encoded before building the `/messages` path. This applies to the shared app-side WhatsApp channel and the MenuList Functions owner-notification processor; message bodies, templates, recipient normalization, and delivery logs remain unchanged. The app-side channel must not read raw Graph API response bodies as text; it parses successful JSON responses only to keep a bounded string provider message ID. App-side Graph API sends use manual redirect handling so a provider 3xx response is treated as a send failure instead of forwarding the owner-notification request to a redirected target.
+
 For MenuList, recipient and formatting context resolution reads canonical top-level `stores/{storeId}` first. A nested `tenants/{tenantId}/stores/{storeId}` fallback exists only for legacy compatibility; new MenuList owner-notification code must not depend on nested store documents.
 
 Internal recovery is handled through a platform-only dashboard. It does not create owner-facing settings or live workflow notifications; it gives the platform team a bounded tracking surface for failed/partial/skipped events, retry, system send to a chosen destination, and manual handoff recording.
+
+June 28 follow-up: the MenuList Next lifecycle wrapper (`src/lib/messaging/index.ts`) keeps its existing fail-open/fail-closed behavior for feature-flag reads, duplicate checks, rate-limit checks, SMTP health/send failures, owner-notification migration fallback, message-log writes, and internal revenue alerts, but those catch paths now use bounded `logNotificationFailure` diagnostics instead of silent catches. Store, tenant, reference, recipient, and subject values are logged as presence/length metadata only.
+
+June 29 follow-up: the disabled legacy facade at `src/lib/notifications/notificationService.ts` still throws `LegacyNotificationServiceDisabledError` for `createNotification`, `sendEmailNotification`, and `sendSlackNotification`, but blocked-call breadcrumbs now use bounded notification diagnostics instead of the generic logger. This preserves the migration guard and adds no delivery path.
+
+June 28 follow-up: the MenuList Functions publish verification trigger (`functions/src/triggers/operations.ts`) keeps lifecycle success/failure messages fire-and-forget, but failed message imports/sends now log stable `OPERATIONS_VERIFY_MENU_PUBLISH_*_MESSAGE_*` codes with bounded store/tenant/requester/public URL metadata instead of silent catches.
+
+June 29 follow-up: the MenuList app-side WhatsApp channel and Functions owner-notification processor still treat malformed or oversized successful WhatsApp Graph API response JSON as a non-blocking provider-message-ID miss, but they now log `whatsapp_response_parse_failed` with response status and bounded source error metadata before continuing. They do not persist raw provider response bodies or change delivery status semantics.
+
+June 29 follow-up: the platform dashboard now parses `/api/ops/owner-notifications` load and recovery-action responses through `src/lib/ops/ownerNotificationClientResponse.ts`. Browser response bodies are capped at 256KB and must match the snapshot/action envelopes before table/detail state or success copy changes. Rejected, oversized, malformed, or invalid responses show fixed platform failure copy and log bounded `owner_notification_monitor_response_*` diagnostics.
+
+June 30 follow-up: the platform dashboard message-copy action now uses the shared runtime clipboard helper. Prefilled Email/WhatsApp copied feedback waits for Clipboard API success or acknowledged textarea fallback success, and failed copy diagnostics include clipboard/fallback support booleans with bounded destination, subject, body, channel, product, status, and selected-event metadata only.
+
+June 30 follow-up: platform dashboard load and recovery-action requests now use no-store cache policy, same-origin credentials, and manual redirect handling before response parsing. Auth or API redirects are treated as failed monitor responses instead of being followed by the browser.
+
+June 30 follow-up: route-side query validation, rate-limit, and recovery-action validation security logs use bounded route metadata instead of raw session/request context. Invalid attempted action text is summarized as presence/length metadata.
+
+June 30 follow-up: the legacy fire-and-forget `src/lib/notifications/client.ts` trigger now posts `/api/notifications/send` with no-store cache, same-origin credentials, and manual redirect handling. It still never blocks the source operation; in non-production only, rejected responses log `notification_trigger_response_rejected` with bounded notification payload metadata and response status.
+
+July 1 follow-up: Source gate: `npm run verify:owner-notifications-boundary` locks the queue-first registry mirror, platform-only ops route admission, bounded monitor response parsing, app/Functions recipient resolution, WhatsApp provider-response boundaries, retention cleanup registration, and docs parity. It is source-only and does not replace browser QA, SMTP/WhatsApp provider smoke, Firebase deploy, Vercel deploy, or live Firestore certification.
 
 ## Implemented Runtime
 
@@ -37,6 +59,8 @@ Implemented on June 2, 2026:
 - Platform API: `src/app/api/ops/owner-notifications/route.ts`.
 
 The implementation processes events inline after writing `ownerNotificationEvents/{eventId}`. This keeps the queue-first audit model without adding a new Firestore trigger in this pass.
+
+The platform dashboard treats stored event/delivery errors as display summaries only. The API returns compact local codes or stored-text presence/length summaries, and `ownerNotificationMonitor/index.tsx` applies a local display guard before rendering error fields so long stored provider/error text cannot print even if an older or regressed response reaches the browser. Raw event IDs and resolved recipient contact values remain available only where required for retry, manual send, and manual handoff actions.
 
 ## Current Implementation Evidence
 
@@ -145,7 +169,7 @@ Route: `/ops/owner-notifications`.
 
 Access: `platformRole === 'PLATFORM'` only, enforced both by the page guard and `withAuth(..., { requiredPlatformRole: 'PLATFORM' })` on the API route.
 
-The API is also feature-flag guarded: it returns `404` before Firestore reads or recovery writes when either `ENABLE_OWNER_NOTIFICATIONS` or `ENABLE_OWNER_NOTIFICATION_OPS_DASHBOARD` is disabled.
+The API is also feature-flag guarded: it returns `404` before Firestore reads or recovery writes when either `ENABLE_OWNER_NOTIFICATIONS` or `ENABLE_OWNER_NOTIFICATION_OPS_DASHBOARD` is disabled. POST recovery actions apply a per-operator limiter with HMAC-hashed key material and reject bodies above 8KB before event reads, retry processing, manual send enqueueing, or manual handoff writes.
 
 Capabilities:
 
@@ -156,7 +180,9 @@ Capabilities:
 - Send a manual system event to an explicitly entered email or WhatsApp number.
 - Record a manual handoff after the platform operator sends email or WhatsApp outside the system.
 
-The prefilled Email/WhatsApp Web flow uses the same registered owner notification template that the automated channel uses. The API renders the template only in the selected-event detail response, and the dashboard lets the platform operator review/edit the destination, subject, and body before opening the external tool.
+The prefilled Email/WhatsApp Web flow uses the same registered owner notification template that the automated channel uses. The API renders the template only in the selected-event detail response, and the dashboard lets the platform operator review/edit the destination, subject, and body before opening the external tool. WhatsApp Web opens check the returned browser window and log `owner_notification_monitor_whatsapp_open_failed` with bounded destination/message/link presence-length metadata only when the browser blocks or rejects the handoff; raw recipient numbers and message bodies are not logged directly. Message copy feedback waits for Clipboard API success or an acknowledged textarea fallback, and failed copy diagnostics include clipboard/fallback support booleans without logging raw recipient numbers or message bodies.
+
+Dashboard load/action responses are parsed by the shared owner-notification client response helper. The helper caps JSON at 256KB, validates event rows, delivery rows, selected event detail, resolved recipient shape, manual template shape, cost counters, and action acknowledgements, and logs bounded parse/rejected/invalid diagnostics before the component shows fixed platform failure copy.
 
 Manual system send writes a new owner notification event with `metadata.manualRecipientOverride === true`; the recipient resolver prefers the entered email or WhatsApp number only for that marked event. Normal event delivery still resolves recipients from owner/store/workspace notification settings. WhatsApp manual-send validation and manual-handoff recipient hashes use the same international-recipient normalizer used by automated delivery.
 
@@ -443,6 +469,7 @@ All capabilities should exist in the architecture from the first implementation 
 - WhatsApp numbers are never logged raw.
 - Templates are code-owned, not owner-editable.
 - Delivery failures never reveal SMTP, provider tokens, or internal routes to owners.
+- MenuList Functions processor delivery failures store stable local codes only. WhatsApp Graph API response bodies are logged as response length/status metadata, unexpected processor failures log source error name/code/status, and event IDs are logged as presence/length metadata. The app-side WhatsApp channel does not materialize raw Graph API response text and keeps only bounded provider message IDs after successful JSON parsing.
 - Rate limits run before enqueue and before delivery.
 
 ## Verification Commands

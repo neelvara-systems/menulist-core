@@ -6,8 +6,11 @@ import {
     shouldUseAnswerlatticeClientScopeForRoute,
 } from "@lib/answerlattice/sessionScope";
 import { syncAnswerlatticeAuthWithCustomToken } from "@lib/firebase/syncAnswerlatticeAuth";
+import { createFirebaseBootstrapError, logFirebaseBootstrapFailure } from "@lib/firebase/firebaseDiagnostics";
 import { applyActiveStoreContextToSession } from "@lib/multiOutlet/activeStoreContext";
+import { readJsonResponseWithLimit } from "@lib/security/boundedResponseBody";
 import { signInWithCustomToken, type IdTokenResult } from "firebase/auth";
+import { AUTH_BROWSER_REQUEST_POLICY } from "./browserRequestPolicy";
 
 type FirebaseAuthSyncResult = {
     ready: boolean;
@@ -19,8 +22,61 @@ let syncRequestKey = "";
 
 const FIREBASE_AUTH_NETWORK_RETRY_CODES = new Set(['auth/network-request-failed']);
 const FIREBASE_AUTH_RETRY_DELAYS_MS = [750, 1500];
+const FIREBASE_AUTH_SYNC_RESPONSE_JSON_MAX_BYTES = 32 * 1024;
+
+type SetClaimsSyncResponse = {
+    answerlatticeCustomToken?: unknown;
+    customToken?: unknown;
+};
 
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+const getOptionalCustomToken = (value: unknown): string | undefined => (
+    typeof value === 'string' && value.trim().length > 0 ? value : undefined
+);
+
+const readSetClaimsSyncResponseJson = async (
+    response: Response,
+    phase: 'sync' | 'refresh',
+): Promise<SetClaimsSyncResponse> => {
+    const context = {
+        maxBytes: FIREBASE_AUTH_SYNC_RESPONSE_JSON_MAX_BYTES,
+        phase,
+        responseOk: response.ok,
+        responseStatus: response.status,
+        statusCode: response.status,
+    };
+
+    let payload: unknown;
+    try {
+        payload = await readJsonResponseWithLimit<unknown>(
+            response,
+            FIREBASE_AUTH_SYNC_RESPONSE_JSON_MAX_BYTES,
+        );
+    } catch (error) {
+        logFirebaseBootstrapFailure('firebase_auth_sync_response_parse_failed', error, context);
+        throw createFirebaseBootstrapError(
+            'Firebase Auth sync failed',
+            'firebase_auth_sync_response_parse_failed',
+            context,
+        );
+    }
+
+    if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+        logFirebaseBootstrapFailure(
+            'firebase_auth_sync_response_invalid',
+            createFirebaseBootstrapError('Firebase Auth sync failed', 'firebase_auth_sync_response_invalid', context),
+            context,
+        );
+        throw createFirebaseBootstrapError(
+            'Firebase Auth sync failed',
+            'firebase_auth_sync_response_invalid',
+            context,
+        );
+    }
+
+    return payload as SetClaimsSyncResponse;
+};
 
 async function runFirebaseAuthNetworkOperation<T>(
     label: string,
@@ -33,18 +89,15 @@ async function runFirebaseAuthNetworkOperation<T>(
             const canRetry = FIREBASE_AUTH_NETWORK_RETRY_CODES.has(error?.code) && attempt < FIREBASE_AUTH_RETRY_DELAYS_MS.length;
             if (!canRetry) throw error;
 
-            if (process.env.NODE_ENV !== 'production') {
-                console.warn('[MenuList] Firebase Auth network retry', {
-                    attempt: attempt + 1,
-                    code: error?.code,
-                    operation: label,
-                });
-            }
             await wait(FIREBASE_AUTH_RETRY_DELAYS_MS[attempt]);
         }
     }
 
-    throw new Error(`Firebase Auth operation failed: ${label}`);
+    throw createFirebaseBootstrapError(
+        'Firebase Auth operation failed',
+        'firebase_auth_operation_failed',
+        { operationLabelPresent: Boolean(label), operationLabelLength: label.length },
+    );
 }
 
 const normalizeClaimValue = (value: unknown) => (
@@ -121,16 +174,13 @@ async function runFirebaseAuthSync(session: any): Promise<FirebaseAuthSyncResult
                 return { ready: true, claims: currentToken.claims };
             }
             canRefreshCurrentUser = sameEmail(currentUser.email, session.user.email);
-        } catch (error: any) {
-            if (process.env.NODE_ENV !== 'production') {
-                console.warn('[MenuList] Firebase Auth token check failed; requesting a fresh token from the active session.', {
-                    code: error?.code || error?.name || 'unknown',
-                });
-            }
+        } catch {
+            // Continue through the normal fresh-token path when the cached token cannot be inspected.
         }
     }
 
     const response = await fetch("/api/auth/set-claims", {
+        ...AUTH_BROWSER_REQUEST_POLICY,
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -141,15 +191,20 @@ async function runFirebaseAuthSync(session: any): Promise<FirebaseAuthSyncResult
     });
 
     if (!response.ok) {
-        throw new Error(`Failed to sync Firebase Auth: ${response.status}`);
+        throw createFirebaseBootstrapError(
+            'Firebase Auth sync failed',
+            'firebase_auth_sync_http_failed',
+            { statusCode: response.status },
+        );
     }
 
-    const data = await response.json();
+    const data = await readSetClaimsSyncResponseJson(response, 'sync');
+    const customToken = getOptionalCustomToken(data.customToken);
 
-    if (data.customToken) {
+    if (customToken) {
         await runFirebaseAuthNetworkOperation(
             'custom-token sign-in',
-            () => signInWithCustomToken(firebaseAuth, data.customToken),
+            () => signInWithCustomToken(firebaseAuth, customToken),
         );
     } else if (firebaseAuth.currentUser) {
         await runFirebaseAuthNetworkOperation(
@@ -157,17 +212,23 @@ async function runFirebaseAuthSync(session: any): Promise<FirebaseAuthSyncResult
             () => firebaseAuth.currentUser!.getIdToken(true),
         );
     } else {
-        throw new Error("Firebase Auth sync did not return a custom token");
+        throw createFirebaseBootstrapError(
+            'Firebase Auth sync failed',
+            'firebase_auth_sync_missing_custom_token',
+        );
     }
 
-    await syncAnswerlatticeAuthWithCustomToken(data.answerlatticeCustomToken);
+    await syncAnswerlatticeAuthWithCustomToken(getOptionalCustomToken(data.answerlatticeCustomToken));
 
     const refreshedToken = await runFirebaseAuthNetworkOperation<IdTokenResult | undefined>(
         'current-user token result refresh',
         () => firebaseAuth.currentUser?.getIdTokenResult(true) || Promise.resolve(undefined),
     );
     if (!claimsMatchSessionStore(refreshedToken?.claims, session)) {
-        throw new Error("Firebase Auth claims do not match the current store");
+        throw createFirebaseBootstrapError(
+            'Firebase Auth sync failed',
+            'firebase_auth_claims_mismatch',
+        );
     }
 
     return { ready: true, claims: refreshedToken?.claims };
@@ -178,6 +239,7 @@ export async function refreshFirebaseAuthClaims(targetStoreId?: number | null): 
     if (!firebaseAuth?.currentUser) return { ready: false };
 
     const response = await fetch("/api/auth/set-claims", {
+        ...AUTH_BROWSER_REQUEST_POLICY,
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -188,15 +250,20 @@ export async function refreshFirebaseAuthClaims(targetStoreId?: number | null): 
     });
 
     if (!response.ok) {
-        throw new Error(`Failed to refresh Firebase Auth claims: ${response.status}`);
+        throw createFirebaseBootstrapError(
+            'Firebase Auth claims refresh failed',
+            'firebase_auth_claims_refresh_http_failed',
+            { statusCode: response.status },
+        );
     }
 
-    const data = await response.json();
+    const data = await readSetClaimsSyncResponseJson(response, 'refresh');
+    const customToken = getOptionalCustomToken(data.customToken);
 
-    if (data.customToken) {
+    if (customToken) {
         await runFirebaseAuthNetworkOperation(
             'custom-token sign-in',
-            () => signInWithCustomToken(firebaseAuth, data.customToken),
+            () => signInWithCustomToken(firebaseAuth, customToken),
         );
     } else {
         await runFirebaseAuthNetworkOperation(
@@ -205,7 +272,7 @@ export async function refreshFirebaseAuthClaims(targetStoreId?: number | null): 
         );
     }
 
-    await syncAnswerlatticeAuthWithCustomToken(data.answerlatticeCustomToken);
+    await syncAnswerlatticeAuthWithCustomToken(getOptionalCustomToken(data.answerlatticeCustomToken));
 
     const refreshedToken = await runFirebaseAuthNetworkOperation<IdTokenResult | undefined>(
         'current-user token result refresh',

@@ -104,6 +104,70 @@
   max-width: 560px;
 }
 
+.publicTruthCheckCard {
+  overflow: hidden;
+}
+
+.publicTruthScoreRow {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.publicTruthModuleList {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.publicTruthModuleItem {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 128px;
+  padding: 12px;
+  border-radius: 8px;
+  border: 1px solid var(--ant-color-border);
+  background: var(--ant-color-fill-quaternary);
+}
+
+.publicTruthModuleItemHeader {
+  min-width: 0;
+}
+
+.publicTruthModuleAction {
+  align-self: flex-start;
+  height: auto;
+  padding: 0;
+}
+
+.publicTruthCheckList {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.publicTruthCheckItem {
+  min-height: 42px;
+  padding: 9px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--ant-color-border);
+  background: var(--ant-color-bg-container);
+}
+
+.publicTruthCheckItemBody {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.publicTruthCheckEvidence {
+  display: block;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
 .metricGrid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));

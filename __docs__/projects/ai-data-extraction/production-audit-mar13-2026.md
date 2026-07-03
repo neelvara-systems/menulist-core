@@ -4,7 +4,9 @@
 **Auditor:** Cascade
 **Scope:** End-to-end pipeline (client → job queue → AI → hardening → save → editor)
 **Files Audited:** 20 files, ~4,800 lines of code
-**Result:** **GO ✅** (80/80)
+**Historical Result:** Code-audit GO in March 2026 (80/80); superseded by the current external certification gates for launch status.
+
+**Current status note (July 2, 2026):** This file is historical code-audit evidence, not current MenuList launch certification. Current launch authority is the External Certification Runbook and `__docs__/audits/menulist-production-readiness-audit.md`: menu extraction source gates pass locally, but live production certification still requires the blocked QA Firebase Functions/Storage deploys, provider smoke, authenticated browser/device QA, and production-host evidence.
 
 ---
 
@@ -18,7 +20,7 @@
 | 4 | Firebase Cost | 10/10 | 3R + 5W per job, 8 indexes, ~$0 additional cost |
 | 5 | CF Reliability | 10/10 | 5 CF exports, 540s timeout, 2GiB memory, secrets wired |
 | 6 | Security | 10/10 | Auth + Firestore rules + rate limiting + sanitization |
-| 7 | Production Readiness | 10/10 | No blocking prerequisites, deploy-ready |
+| 7 | Code Readiness | 10/10 | March 2026 source audit passed; current launch status is governed by external certification gates |
 | 8 | Data Integrity | 10/10 | 0 TS errors, schema validation, provenance tracking |
 
 ---
@@ -286,9 +288,9 @@ AI Response (raw text/JSON)
 
 ---
 
-## Final Verdict: **GO ✅**
+## Final Historical Verdict: Code Audit GO
 
-The AI Data Extraction feature is production-ready. All 8 phases pass with full marks.
+The AI Data Extraction feature passed this March 2026 code audit. This historical verdict does not certify current live production behavior; use the External Certification Runbook and production-readiness audit for launch approval.
 
 ### Strengths
 - **Robust error handling:** 8 error paths, 4 cleanup schedulers, circuit breaker, retry logic

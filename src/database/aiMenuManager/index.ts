@@ -8,14 +8,18 @@ import {
 } from '@lib/ai-menu-manager/contextPacket';
 import { resolveAiMenuManagerCommand } from '@lib/ai-menu-manager/commandResolver';
 import { ensureFirebaseAuthForSession } from '@lib/auth/firebaseAuthSync';
+import { createRuntimeId } from '@lib/runtime/randomId';
 import {
     buildDailySessionId,
     buildExecutionId,
     buildProposalId,
     todaySessionDate,
 } from '@lib/ai-menu-manager/idempotency';
+import { assertAiMenuManagerPatchAllowedForAction } from '@lib/ai-menu-manager/patchPolicy';
 import getActiveSession from '@lib/auth/getActiveSession';
 import { firebaseClient } from '@lib/firebase/firebaseClient';
+import { logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
+import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';
 import type { Project } from '@template/main-app/projects/types';
 import type {
     AiMenuManagerActionType,
@@ -43,6 +47,18 @@ const MAX_PENDING_SUMMARIES = 25;
 const MAX_PENDING_OPERATIONS = 25;
 const MAX_RECEIPTS = 20;
 const SESSION_TTL_DAYS = 35;
+const AI_MENU_MANAGER_RESPONSE_JSON_MAX_BYTES = 64 * 1024;
+const AI_MENU_MANAGER_REQUEST_POLICY: Pick<RequestInit, 'cache' | 'credentials' | 'redirect'> = {
+    cache: 'no-store',
+    credentials: 'same-origin',
+    redirect: 'manual',
+};
+
+type AiMenuManagerApiPhase = 'command' | 'inbox' | 'proposal_action' | 'proposal_complete';
+
+type AiMenuManagerApiErrorPayload = {
+    code?: unknown;
+};
 
 type ClientScope = {
     tId: string | number;
@@ -55,6 +71,7 @@ type AiMenuManagerClientCommandRequest = Omit<AiMenuManagerCommandRequest, 'idem
     composerContext?: AiMenuManagerCommandContextSelection;
     idempotencyKey?: string;
     project?: Project;
+    replaceOperationId?: string;
     sessionSnapshot?: AiMenuManagerSessionDoc | null;
     storePublicContext?: {
         customDomain?: string;
@@ -62,6 +79,11 @@ type AiMenuManagerClientCommandRequest = Omit<AiMenuManagerCommandRequest, 'idem
         subdomain?: string;
     };
     storeName?: string;
+};
+
+type AiMenuManagerServerBackedResponse = AiMenuManagerCommandResponse & {
+    operations: AiMenuManagerPendingOperation[];
+    session?: undefined;
 };
 
 export type AiMenuManagerClientCommandResponse = AiMenuManagerCommandResponse & {
@@ -74,14 +96,69 @@ export type AiMenuManagerClientInboxResponse = AiMenuManagerInboxResponse & {
     operations: AiMenuManagerPendingOperation[];
 };
 
-async function readApiResponse<T>(response: Response): Promise<T> {
-    const payload = await response.json().catch(() => ({}));
+function createAiMenuManagerApiError(params: {
+    code?: string;
+    message?: string;
+    status?: number;
+}) {
+    const error = new Error(params.message || 'Menu Manager request failed') as Error & {
+        code?: string;
+        status?: number;
+    };
+    if (params.code) {
+        error.code = params.code.slice(0, 64);
+    }
+    if (params.status !== undefined) {
+        error.status = params.status;
+    }
+    return error;
+}
+
+async function readApiResponse<T>(response: Response, phase: AiMenuManagerApiPhase): Promise<T> {
+    let payload: T | null = null;
+    try {
+        payload = await readJsonResponseWithLimit<T>(
+            response,
+            AI_MENU_MANAGER_RESPONSE_JSON_MAX_BYTES,
+        );
+    } catch (error) {
+        logRuntimeFailure('ai_menu_manager_response_parse_failed', error, {
+            maxBytes: AI_MENU_MANAGER_RESPONSE_JSON_MAX_BYTES,
+            phase,
+            responseOk: response.ok,
+            responseStatus: response.status,
+        });
+        if (response.ok) {
+            throw createAiMenuManagerApiError({
+                code: 'response_parse_failed',
+                message: 'Menu Manager response could not be read',
+                status: response.status,
+            });
+        }
+    }
+
     if (!response.ok) {
-        const message = payload?.message || payload?.error || 'Menu Manager request failed';
-        const error = new Error(message) as Error & { status?: number; payload?: any };
-        error.status = response.status;
-        error.payload = payload;
-        throw error;
+        const errorPayload = payload && typeof payload === 'object'
+            ? payload as AiMenuManagerApiErrorPayload
+            : null;
+        throw createAiMenuManagerApiError({
+            code: typeof errorPayload?.code === 'string' ? errorPayload.code : undefined,
+            status: response.status,
+        });
+    }
+
+    if (payload === null) {
+        logRuntimeFailure('ai_menu_manager_response_parse_failed', new Error('empty_response'), {
+            maxBytes: AI_MENU_MANAGER_RESPONSE_JSON_MAX_BYTES,
+            phase,
+            responseOk: response.ok,
+            responseStatus: response.status,
+        });
+        throw createAiMenuManagerApiError({
+            code: 'empty_response',
+            message: 'Menu Manager response could not be read',
+            status: response.status,
+        });
     }
     return payload as T;
 }
@@ -100,6 +177,12 @@ function getSessionDocRef(sessionId: string) {
 
 function normalizeId(value: unknown) {
     return value === undefined || value === null ? '' : String(value);
+}
+
+function isFirestorePermissionDenied(error: unknown) {
+    const code = typeof (error as any)?.code === 'string' ? (error as any).code : '';
+    const message = typeof (error as any)?.message === 'string' ? (error as any).message : '';
+    return code === 'permission-denied' || message.toLowerCase().includes('permission');
 }
 
 function getSessionStoreIds(session: any) {
@@ -123,7 +206,11 @@ async function resolveClientScope(storeId: string | number): Promise<ClientScope
     const requestedStoreId = normalizeId(storeId);
     const allowedStoreIds = getSessionStoreIds(session);
 
-    if (!session?.user || !tId || !requestedStoreId || !allowedStoreIds.has(requestedStoreId)) {
+    if (!session?.user || !tId || !requestedStoreId) {
+        throw new Error('Menu Manager could not access this store');
+    }
+
+    if (allowedStoreIds.size > 0 && !allowedStoreIds.has(requestedStoreId)) {
         throw new Error('Menu Manager could not access this store');
     }
 
@@ -197,6 +284,118 @@ function normalizeOperations(session: AiMenuManagerSessionDoc | null, projectId:
         .slice(0, MAX_PENDING_OPERATIONS);
 }
 
+function firstOperationEntityLabel(operation: AiMenuManagerPendingOperation, kind: string) {
+    return operation.card.entityRefs.find((entity) => entity.kind === kind)?.label;
+}
+
+function buildAiMenuManagerFollowUpCommand(
+    text: string,
+    operations: AiMenuManagerPendingOperation[],
+): { replaceOperationId: string; text: string } | null {
+    const pendingProposals = operations.filter((operation) => (
+        operation.card.kind === 'proposal'
+        && operation.card.status === 'pending_approval'
+    ));
+    if (pendingProposals.length !== 1) return null;
+
+    const operation = pendingProposals[0];
+    const trimmed = text.trim();
+    const lower = trimmed.toLowerCase();
+    const itemName = firstOperationEntityLabel(operation, 'menu_item');
+    const categoryName = firstOperationEntityLabel(operation, 'category');
+
+    if (operation.card.actionType === 'item_price_update' && itemName) {
+        const priceMatch = trimmed.match(/^(?:actually\s+|make\s+it\s+|change\s+(?:it\s+)?to\s+|set\s+(?:it\s+)?to\s+|to\s+)?(?:rs\.?|₹)?\s*(\d+(?:\.\d+)?)\s*(?:rs|rupees)?$/i);
+        if (priceMatch?.[1]) {
+            return {
+                replaceOperationId: operation.operationId,
+                text: `${itemName} ${priceMatch[1]}`,
+            };
+        }
+    }
+
+    if (operation.card.actionType === 'item_availability_update' && itemName) {
+        if (/\b(sold\s*out|unavailable|not\s+available|khatam|over)\b/.test(lower)) {
+            return {
+                replaceOperationId: operation.operationId,
+                text: `${itemName} sold out`,
+            };
+        }
+        if (/\b(available|restore|back|in\s*stock)\b/.test(lower)) {
+            return {
+                replaceOperationId: operation.operationId,
+                text: `${itemName} available`,
+            };
+        }
+    }
+
+    if (operation.card.actionType === 'item_visibility_update' && itemName) {
+        if (/\b(hide|hidden|disable|deactivate|remove|turn\s+off)\b/.test(lower)) {
+            return {
+                replaceOperationId: operation.operationId,
+                text: `Hide ${itemName}`,
+            };
+        }
+        if (/\b(show|visible|restore|enable|activate|turn\s+on)\b/.test(lower)) {
+            return {
+                replaceOperationId: operation.operationId,
+                text: `Show ${itemName}`,
+            };
+        }
+    }
+
+    if (operation.card.actionType === 'category_visibility_update' && categoryName) {
+        if (/\b(hide|hidden|disable|deactivate|remove|turn\s+off)\b/.test(lower)) {
+            return {
+                replaceOperationId: operation.operationId,
+                text: `Hide ${categoryName} category`,
+            };
+        }
+        if (/\b(show|visible|restore|enable|activate|turn\s+on)\b/.test(lower)) {
+            return {
+                replaceOperationId: operation.operationId,
+                text: `Show ${categoryName} category`,
+            };
+        }
+    }
+
+    if (operation.card.actionType === 'menu_special_note_update') {
+        const noteMatch = trimmed.match(/^(?:actually\s+|change\s+(?:it\s+)?to\s+|set\s+(?:it\s+)?to\s+|note\s+to\s+|show\s+note\s*:?\s*)(.+)$/i);
+        if (noteMatch?.[1]?.trim()) {
+            return {
+                replaceOperationId: operation.operationId,
+                text: `Show note: ${noteMatch[1].trim()}`,
+            };
+        }
+    }
+
+    if (operation.card.actionType.startsWith('menu_design_')) {
+        const designFollowUp: Array<[RegExp, string]> = [
+            [/\b(warm|warmer|inviting)\b/, 'Make menu warm and inviting'],
+            [/\b(premium|minimal|fine)\b/, 'Make menu premium'],
+            [/\b(clean|calm|simple)\b/, 'Make menu clean and simple'],
+            [/\b(bold|social|strong)\b/, 'Make menu bold for social sharing'],
+            [/\b(fast|direct|quick)\b/, 'Make menu fast and direct'],
+            [/\b(grid)\b/, 'Use grid layout'],
+            [/\b(list)\b/, 'Use list layout'],
+            [/\b(card|cards)\b/, 'Use card layout'],
+            [/\b(hide|no)\s+(?:item\s+)?prices?\b/, 'Hide item prices'],
+            [/\b(show)\s+(?:item\s+)?prices?\b/, 'Show item prices'],
+            [/\b(hide|no)\s+(?:item\s+)?images?\b/, 'Hide item images'],
+            [/\b(show)\s+(?:item\s+)?images?\b/, 'Show item images'],
+        ];
+        const match = designFollowUp.find(([pattern]) => pattern.test(lower));
+        if (match) {
+            return {
+                replaceOperationId: operation.operationId,
+                text: match[1],
+            };
+        }
+    }
+
+    return null;
+}
+
 function getMatchingSessionSnapshot(params: {
     projectId: string;
     scope: ClientScope;
@@ -253,24 +452,85 @@ function assertAiMenuManagerEnabled() {
 }
 
 export function createAiMenuManagerIdempotencyKey(prefix = 'amm') {
-    const random = typeof crypto !== 'undefined' && 'randomUUID' in crypto
-        ? crypto.randomUUID()
-        : `${Date.now()}_${Math.random().toString(36).slice(2)}`;
-    return `${prefix}_${random}`;
+    return createRuntimeId(prefix);
 }
 
 async function sendAiMenuManagerServerCommand(
     request: Omit<AiMenuManagerCommandRequest, 'idempotencyKey'> & { idempotencyKey?: string },
 ): Promise<AiMenuManagerCommandResponse> {
+    const body: AiMenuManagerCommandRequest = {
+        storeId: String(request.storeId),
+        projectId: request.projectId,
+        inputType: request.inputType,
+        idempotencyKey: request.idempotencyKey || createAiMenuManagerIdempotencyKey('amm_cmd'),
+    };
+    if (request.sessionId) body.sessionId = request.sessionId;
+    if (request.text !== undefined) body.text = request.text;
+    if (request.uploadRefs?.length) body.uploadRefs = request.uploadRefs;
+    if (request.composerContext) body.composerContext = request.composerContext;
+    if (request.clientContextVersion) body.clientContextVersion = request.clientContextVersion;
+    if (request.replaceOperationId) body.replaceOperationId = request.replaceOperationId;
+
     const response = await fetch('/api/ai-menu-manager/command', {
+        ...AI_MENU_MANAGER_REQUEST_POLICY,
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            ...request,
-            idempotencyKey: request.idempotencyKey || createAiMenuManagerIdempotencyKey('amm_cmd'),
-        }),
+        body: JSON.stringify(body),
     });
-    return readApiResponse<AiMenuManagerCommandResponse>(response);
+    return readApiResponse<AiMenuManagerCommandResponse>(response, 'command');
+}
+
+async function getAiMenuManagerServerInbox(params: {
+    projectId: string;
+    sessionDate?: string;
+    sessionId?: string;
+    storeId: string | number;
+}): Promise<AiMenuManagerInboxResponse & { sessionId: string }> {
+    const query = new URLSearchParams({
+        projectId: params.projectId,
+        storeId: String(params.storeId),
+    });
+    if (params.sessionId) query.set('sessionId', params.sessionId);
+    if (params.sessionDate) query.set('sessionDate', params.sessionDate);
+    const response = await fetch(`/api/ai-menu-manager/inbox?${query.toString()}`, AI_MENU_MANAGER_REQUEST_POLICY);
+    return readApiResponse<AiMenuManagerInboxResponse & { sessionId: string }>(response, 'inbox');
+}
+
+function buildServerBackedOperations(params: {
+    cards: AiMenuManagerCommandResponse['cards'];
+    projectId: string;
+    scope: ClientScope;
+    sessionId: string;
+}): AiMenuManagerPendingOperation[] {
+    const now = nowIso();
+    return params.cards.map((card) => ({
+        operationId: card.cardId,
+        sessionId: params.sessionId,
+        tId: params.scope.tId,
+        sId: params.scope.sId,
+        projectId: params.projectId,
+        card,
+        executionMode: 'existing_server_api',
+        idempotencyKeys: [],
+        createdAt: now,
+        updatedAt: now,
+    }));
+}
+
+async function sendAiMenuManagerServerBackedCommand(
+    request: AiMenuManagerClientCommandRequest,
+    scope: ClientScope,
+): Promise<AiMenuManagerServerBackedResponse> {
+    const response = await sendAiMenuManagerServerCommand(request);
+    return {
+        ...response,
+        operations: buildServerBackedOperations({
+            cards: response.cards,
+            projectId: request.projectId,
+            scope,
+            sessionId: response.sessionId,
+        }),
+    };
 }
 
 export async function sendAiMenuManagerCommand(
@@ -303,13 +563,26 @@ export async function sendAiMenuManagerCommand(
         storePublicContext: request.storePublicContext,
     });
     const baseProjectHash = buildAiMenuManagerContextBaseHash(context);
+    const sessionRef = getSessionDocRef(sessionId);
+    const existingSession = getMatchingSessionSnapshot({
+        sessionId,
+        scope,
+        projectId: request.projectId,
+        snapshot: request.sessionSnapshot,
+    });
+    const existingOperations = normalizeOperations(existingSession, request.projectId);
+    const followUp = request.replaceOperationId
+        ? null
+        : buildAiMenuManagerFollowUpCommand(text, existingOperations);
+    const resolverText = followUp?.text || text;
+    const replaceOperationId = request.replaceOperationId || followUp?.replaceOperationId;
     const draft = resolveAiMenuManagerCommand({
-        text,
+        text: resolverText,
         tId: scope.tId,
         sId: scope.sId,
         projectId: request.projectId,
         context,
-        composerContext: request.composerContext,
+        composerContext: followUp ? undefined : request.composerContext,
         cardId: `amm_draft_${idempotencyKey}`,
         createdAt,
     });
@@ -322,12 +595,12 @@ export async function sendAiMenuManagerCommand(
         patchHash: draft.resolved?.patchHash,
     });
     const resolved = resolveAiMenuManagerCommand({
-        text,
+        text: resolverText,
         tId: scope.tId,
         sId: scope.sId,
         projectId: request.projectId,
         context,
-        composerContext: request.composerContext,
+        composerContext: followUp ? undefined : request.composerContext,
         cardId: operationId,
         createdAt,
     });
@@ -347,18 +620,13 @@ export async function sendAiMenuManagerCommand(
         createdAt,
         updatedAt: createdAt,
     };
-    const sessionRef = getSessionDocRef(sessionId);
-    const existingSession = getMatchingSessionSnapshot({
-        sessionId,
-        scope,
-        projectId: request.projectId,
-        snapshot: request.sessionSnapshot,
-    });
-    const existingOperations = normalizeOperations(existingSession, request.projectId)
-        .filter((entry) => entry.operationId !== operation.operationId);
+    const retainedOperations = existingOperations.filter((entry) => (
+        entry.operationId !== operation.operationId
+        && (!replaceOperationId || entry.operationId !== replaceOperationId)
+    ));
     const pendingOperations = [
         operation,
-        ...existingOperations,
+        ...retainedOperations,
     ].slice(0, MAX_PENDING_OPERATIONS);
     const recentReceiptSummaries = (existingSession?.recentReceiptSummaries || []).slice(0, MAX_RECEIPTS);
     const nextSession: AiMenuManagerSessionDoc = sanitizeAiMenuManagerFirestoreValue({
@@ -395,7 +663,17 @@ export async function sendAiMenuManagerCommand(
         ...(!existingSession ? { createdAt: serverTimestamp() } : {}),
     });
 
-    await setDoc(sessionRef, sessionPayload, { merge: true });
+    try {
+        await setDoc(sessionRef, sessionPayload, { merge: true });
+    } catch (error) {
+        if (isFirestorePermissionDenied(error)) {
+            return sendAiMenuManagerServerBackedCommand({
+                ...request,
+                idempotencyKey,
+            }, scope);
+        }
+        throw error;
+    }
 
     return {
         sessionId,
@@ -426,7 +704,29 @@ export async function getAiMenuManagerClientInbox(params: {
         scope,
         projectId: params.projectId,
     });
-    const sessionSnap = await getDoc(getSessionDocRef(sessionId));
+    let sessionSnap;
+    try {
+        sessionSnap = await getDoc(getSessionDocRef(sessionId));
+    } catch (error) {
+        if (isFirestorePermissionDenied(error)) {
+            const inbox = await getAiMenuManagerServerInbox({
+                projectId: params.projectId,
+                sessionDate: params.sessionDate,
+                sessionId,
+                storeId: params.storeId,
+            });
+            return {
+                ...inbox,
+                operations: buildServerBackedOperations({
+                    cards: inbox.cards,
+                    projectId: params.projectId,
+                    scope,
+                    sessionId: inbox.sessionId,
+                }),
+            };
+        }
+        throw error;
+    }
     const session = sessionSnap.exists() ? sessionSnap.data() as AiMenuManagerSessionDoc : null;
 
     if (
@@ -464,6 +764,11 @@ export function buildAiMenuManagerClientExecutionDirective(params: {
     if (!isClientExecutableOperation(params.operation)) {
         throw new Error('This card uses its existing manual flow');
     }
+    assertAiMenuManagerPatchAllowedForAction({
+        actionType: params.operation.card.actionType,
+        patch: params.operation.patch!,
+        patchHash: params.operation.patchHash,
+    });
 
     const context = buildAiMenuManagerContextPacket({
         project: params.project,
@@ -501,6 +806,15 @@ export async function completeAiMenuManagerClientOperation(params: {
     sessionSnapshot?: AiMenuManagerSessionDoc | null;
 }): Promise<{ receipt: AiMenuManagerReceipt; session: AiMenuManagerSessionDoc }> {
     assertAiMenuManagerEnabled();
+    if (
+        params.result === 'manual_task'
+        && (
+            params.operation.card.kind !== 'manual_task'
+            || !params.operation.card.actions.includes('mark_done')
+        )
+    ) {
+        throw new Error('This card cannot be marked done');
+    }
 
     const receipt = buildAiMenuManagerReceipt({
         proposalId: params.operation.operationId,
@@ -586,8 +900,9 @@ export async function submitAiMenuManagerProposalAction(params: {
     actionType?: AiMenuManagerActionType;
     action: AiMenuManagerProposalActionRequest['action'];
     idempotencyKey?: string;
-}): Promise<{ data: { directive?: AiMenuManagerExecutionDirective; proposal?: { proposalId: string; actionType: string; status: string }; status?: string } }> {
+}): Promise<{ data: { directive?: AiMenuManagerExecutionDirective; proposal?: { proposalId: string; actionType: string; status: string }; receipt?: AiMenuManagerReceipt; status?: string } }> {
     const response = await fetch(`/api/ai-menu-manager/proposals/${encodeURIComponent(params.proposalId)}/actions`, {
+        ...AI_MENU_MANAGER_REQUEST_POLICY,
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -598,7 +913,7 @@ export async function submitAiMenuManagerProposalAction(params: {
             idempotencyKey: params.idempotencyKey || createAiMenuManagerIdempotencyKey('amm_action'),
         }),
     });
-    return readApiResponse(response);
+    return readApiResponse(response, 'proposal_action');
 }
 
 export async function completeAiMenuManagerClientProposal(params: {
@@ -611,8 +926,9 @@ export async function completeAiMenuManagerClientProposal(params: {
     result: AiMenuManagerProposalCompleteRequest['result'];
     message?: string;
     idempotencyKey?: string;
-}) {
+}): Promise<{ data: { receipt?: AiMenuManagerReceipt; status: string; verified?: boolean } }> {
     const response = await fetch(`/api/ai-menu-manager/proposals/${encodeURIComponent(params.proposalId)}/complete`, {
+        ...AI_MENU_MANAGER_REQUEST_POLICY,
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -626,5 +942,5 @@ export async function completeAiMenuManagerClientProposal(params: {
             idempotencyKey: params.idempotencyKey || createAiMenuManagerIdempotencyKey('amm_complete'),
         }),
     });
-    return readApiResponse(response);
+    return readApiResponse(response, 'proposal_complete');
 }

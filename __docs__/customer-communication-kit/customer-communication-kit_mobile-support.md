@@ -1,7 +1,7 @@
 # Customer Communication Kit — Mobile Support Assessment
 
-> **Version:** 1.0
-> **Last Updated:** March 15, 2026
+> **Version:** 1.1
+> **Last Updated:** June 29, 2026
 
 ---
 
@@ -20,12 +20,13 @@
 
 ## Mobile Implementation
 
-- **Screen:** New section in `MobileShareScreen.tsx` or integrated into existing share flow
+- **Screen:** Integrated into `MobileShareScreen.tsx`
 - **Component:** `src/components/mobile/components/CommunicationKit.tsx`
 - **UI Library:** antd-mobile `Card` + `Button`
 - **Primary action:** "Send via WhatsApp" (India = WhatsApp-first market)
 - **Secondary action:** "Copy Message"
 - **Data Source:** Same store data from context, same `generateMessageTemplates()` function
+- **Diagnostics:** Failed mobile copy, native share, and WhatsApp handoff actions log `mobile_communication_kit_copy_failed`, `mobile_communication_kit_native_share_failed`, and `mobile_communication_kit_whatsapp_open_failed` with bounded Mobile Share context plus generated-message and WhatsApp URL lengths only. Desktop copy and WhatsApp handoff failures log `use_menulist_communication_kit_copy_failed` and `use_menulist_communication_kit_whatsapp_open_failed` with bounded Use MenuList context plus generated-message and WhatsApp URL lengths only. Desktop and mobile copied feedback must wait for Clipboard API or acknowledged textarea fallback success; failed copy diagnostics may include clipboard/fallback support booleans. WhatsApp handoffs open with `noopener,noreferrer`.
 
 ## Design Priority
 

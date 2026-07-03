@@ -2,7 +2,7 @@
 
 **Status:** Required mobile support plan
 **Decision:** Partial mobile support inside MobileShell with a guarded bottom-tab entry
-**Last Updated:** June 18, 2026
+**Last Updated:** June 30, 2026
 
 ---
 
@@ -44,6 +44,8 @@ Exact per-action mobile handling is tracked in [ai-menu-manager_action-type-chec
 - Approve price/availability only after clear before/after.
 - Restore sold-out item.
 - Mark manual task done.
+- Use browser-local copy/open/download card actions with bounded failure diagnostics and fixed owner-visible failure copy.
+- Use the shared AMM browser request policy for server-backed command/inbox/proposal calls: same-origin credentials, no-store cache, manual redirects, then bounded response parsing.
 - Approve/reject staff photo.
 - Use generated image only from a prepared review card.
 - Apply a prepared menu design preset card.
@@ -62,6 +64,8 @@ Exact per-action mobile handling is tracked in [ai-menu-manager_action-type-chec
 - Direct AMM mutation of account profile, password, logout, billing, transactions, platform, reseller, and Answerlattice/internal screens.
 
 Restricted actions can show a compact card with "Continue review" rather than forcing a cramped workflow.
+
+Mobile local-action failures must stay browser-local and bounded. `MobileAiMenuCardStack.tsx` logs `mobile_ai_menu_manager_local_action_failed` for failed copy/open/download actions with action/card presence-length metadata and copy-support metadata only; URL-bearing copy/open/QR actions normalize through the shared AMM local-action URL helper before browser handoff, rejected Clipboard API writes retry the acknowledged textarea fallback, blocked `open_url` actions use `noopener,noreferrer`, detect a null window handle, and keep the owner inside the MobileShell.
 
 ## Mobile PWA Screen Coverage Sweep
 
@@ -108,7 +112,7 @@ Broad More commands that have fixed manual choices use the same guided-choice pa
 - "Show menu on TV" asks for Copy screen link, Open screen setup, Update slides, or Pause screen.
 - "Manage feedback" asks for Copy feedback link, Download feedback QR, Open feedback inbox, or Prepare reply.
 
-Choosing one option only drafts the next owner message. It does not execute, approve, or write anything until the owner sends that message and finishes the existing flow.
+Choosing one option on a clarification card submits the selected answer, replaces the clarification, and creates the next card. It does not execute, approve, publish, or write business truth unless the resulting card follows the normal approval/execution flow.
 
 When the owner sends "Copy menu link", "Download menu QR", "Copy official page link", "Download official page QR", "Copy feedback link", "Download feedback QR", "Copy customer app install link", "Copy digital screen link", "Copy POS setup details", "Copy POS technical summary", or "Download POS sample payload", AMM prepares the matching browser-local export card for the selected context. The card shows copy/open/download controls where available. This stays inside `MobileShell`, creates no menu-truth write, and does not store generated QR image or text export data in Firestore.
 
@@ -180,7 +184,7 @@ Rules:
 - Use before/after rows.
 - Use bottom sheets for edit/scope/time.
 - Show contextual suggestion groups in a bottom sheet; selecting a suggestion fills the composer and does not submit.
-- Clarification card option rows also fill the composer only; they do not approve or execute work.
+- Clarification card option rows resolve the pending clarification into the next card; they do not approve or execute work.
 - Optimistic UI only after backend accepts approval lock.
 - Non-blocking retry for failed completion.
 - No red/alarming copy unless destructive action requires it.

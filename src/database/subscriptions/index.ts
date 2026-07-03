@@ -81,9 +81,10 @@ const fetchSubscriptionRaw = async (tenantId: number, storeId: number): Promise<
 };
 
 /**
- * LAYER 2 — Grace period enforcement. Single responsibility: expire if grace period ended.
- * This is the ONLY place that performs a write (auto-expire) during a read path.
- * Isolated so the blast radius of a bug here is minimal.
+ * LAYER 2 — Client grace-period enforcement.
+ * Browser reads never mutate billing documents. They return no active access
+ * once grace has ended; server-owned paths perform the authoritative expiry
+ * write and entitlement/cache sync.
  */
 const expireIfGracePeriodEnded = async (sub: FirestoreSubscriptionDoc): Promise<FirestoreSubscriptionDoc | null> => {
     if (!sub.pastDueSinceAt) return sub;

@@ -1,5 +1,23 @@
 # Shared Creative Editor - Validation Record
 
+## June 28, 2026 - Bounded Failure Notices
+
+### Scope
+
+Reviewed the shared editor failure-notice paths after the production-hardening sweep found raw exception messages reaching the editor status notice and AI tool findings. Canvas/Fabric load, AI suggestion copy, AI tool action, Design Cue request/apply, JSON import, image import/replace, clipboard copy, export bundle, export, and template-save failures now flow through one bounded runtime diagnostic helper before showing fixed product-neutral copy.
+
+### Expected Runtime Behavior
+
+- Static owner guidance such as unsupported file type, unsupported clipboard, and invalid editor JSON remains visible as local copy.
+- Runtime/provider/callback failures do not display raw exception text in the editor notice or AI tool findings.
+- Failure diagnostics record bounded product/source/document/action/file/export metadata and source error name/code/status through runtime diagnostics.
+- `npm run verify:campaigncue` guards the shared editor failure codes and raw-notice bans.
+- `npm run verify:creative-editor-smoke` continues to guard the smoke route and stable editor selectors.
+
+### Cost Impact
+
+No Firebase reads, writes, Storage writes, Cloud Functions, provider calls, remote stock search, remote template search, or realtime listeners are added. This changes only browser-local failure copy and diagnostics.
+
 ## June 15, 2026 - Floating Toolbar Viewport Anchor Fix
 
 ### Scope
@@ -274,6 +292,30 @@ Reviewed the logged-in Canva and VistaCreate text panels after the prior Canva/V
 ### Cost Impact
 
 No Firebase reads, writes, Storage writes, Cloud Functions, provider calls, remote stock search, or remote template search are added. The catalogue is local static JSON and only affects browser-local document editing until a product-owned save/export path runs.
+
+## June 30, 2026 - Text Clipboard Acknowledgement
+
+### Scope
+
+The shared editor text-copy sweep found AI suggestion copy and Base64 PNG text export still depended on direct Clipboard API availability. These handoffs are browser-local and can carry generated suggestion text or a large generated data URL, so copied feedback now waits for Clipboard API success or acknowledged textarea fallback success.
+
+### Expected Runtime Behavior
+
+- AI suggestion copy uses the shared runtime clipboard helper before showing "Text copied."
+- Base64 PNG copy uses the shared runtime clipboard helper before showing "Base64 PNG copied."
+- Failed text-copy diagnostics include clipboard/fallback support booleans and text length only.
+- PNG image clipboard export still depends on browser image clipboard support; no image fallback is claimed.
+
+### Checks
+
+- Passed `npm run verify:creative-editor-smoke`.
+- Passed `npm run verify:campaigncue`.
+- Passed `npx tsc --noEmit --incremental false --pretty false`.
+- Passed `git diff --check`.
+
+### Cost Impact
+
+No Firebase reads, writes, deletes, Storage writes, Cloud Functions, provider calls, remote asset search, product persistence, Firebase deploy, or Vercel deploy is added. The change is browser-local clipboard acknowledgement only.
 
 ## June 14, 2026 - VistaCreate Owner Shortcuts
 

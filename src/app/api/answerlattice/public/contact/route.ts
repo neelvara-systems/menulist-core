@@ -13,21 +13,23 @@ import { DB_COLLECTIONS } from '@constant/database';
 import { PRODUCT_IDS } from '@constant/product';
 import { getAnswerlatticeRetentionFields } from '@lib/answerlattice/dataRetention';
 import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
-import { secureError, secureLog } from '@lib/security/secureLogger';
+import { getBoundedRuntimeStringContext, logRuntimeDiagnostic, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
+import { readBoundedJsonBody } from '@lib/security/boundedRequestBody';
 import { withCORS } from '@lib/security/corsValidation';
 import * as admin from 'firebase-admin';
-import { createHash } from 'crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import {
     checkPublicRateLimit,
     getClientIp,
+    hashPublicRateLimitValue,
     sanitizeString,
     validateHoneypot,
     verifyTurnstileToken,
 } from 'src/middleware/publicApi';
 
 const ContactTopicSchema = z.enum(['setup', 'demo', 'pricing', 'partnership', 'security', 'other']);
+const ANSWERLATTICE_PUBLIC_CONTACT_MAX_BODY_BYTES = 8 * 1024;
 
 const ContactRequestSchema = z.object({
     name: z.string().trim().min(2).max(120),
@@ -52,22 +54,25 @@ const clean = (value?: string | null, max = 500): string | null => {
     return sanitized ? sanitized.slice(0, max) : null;
 };
 
-const hashIp = (ip: string): string => (
-    createHash('sha256').update(ip || 'unknown').digest('hex')
-);
-
 async function postAnswerlatticeContact(request: NextRequest) {
     const rateLimitResponse = await checkPublicRateLimit(request, 'ANSWERLATTICE_CONTACT_FORM');
     if (rateLimitResponse) return rateLimitResponse;
 
-    let payload: unknown;
-    try {
-        payload = await request.json();
-    } catch {
-        return NextResponse.json({ accepted: false, error: 'Invalid request body.' }, { status: 400 });
+    const bodyResult = await readBoundedJsonBody(request, ANSWERLATTICE_PUBLIC_CONTACT_MAX_BODY_BYTES, {
+        invalidJsonMessage: 'Invalid request body.',
+        tooLargeMessage: 'Request body too large.',
+    });
+    if (bodyResult.ok === false) {
+        return NextResponse.json(
+            {
+                accepted: false,
+                error: bodyResult.response.status === 413 ? 'Request body too large.' : 'Invalid request body.',
+            },
+            { status: bodyResult.response.status },
+        );
     }
 
-    const validation = ContactRequestSchema.safeParse(payload);
+    const validation = ContactRequestSchema.safeParse(bodyResult.data);
     if (!validation.success) {
         return NextResponse.json({ accepted: false, error: 'Please check the form and try again.' }, { status: 400 });
     }
@@ -110,21 +115,21 @@ async function postAnswerlatticeContact(request: NextRequest) {
             sourcePath: clean(body.sourcePath, 240),
             referrer: clean(request.headers.get('referer'), 300),
             userAgent: clean(request.headers.get('user-agent'), 300),
-            ipHash: hashIp(ip),
+            ipHash: hashPublicRateLimitValue(ip),
             createdAt: now,
             modifiedOn: now,
             ...getAnswerlatticeRetentionFields('contactEnquiries', now),
         });
 
-        secureLog('[Answerlattice Contact] Submission accepted', {
-            enquiryId: docRef.id,
+        logRuntimeDiagnostic('answerlattice_public_contact_submission_accepted', {
+            ...getBoundedRuntimeStringContext('enquiryId', docRef.id),
             helpTopic: body.helpTopic,
             hasProductUrl: Boolean(body.productUrl),
         });
 
         return NextResponse.json({ accepted: true });
     } catch (error) {
-        secureError('[Answerlattice Contact] Submission failed', error as Error, {
+        logRuntimeFailure('answerlattice_public_contact_submission_failed', error, {
             helpTopic: body.helpTopic,
             hasProductUrl: Boolean(body.productUrl),
         });

@@ -1,7 +1,7 @@
 # Design System — MenuList Main Website
 
 **Status:** 🔒 LOCKED — Implementation Reference  
-**Last Updated:** June 22, 2026
+**Last Updated:** June 29, 2026
 
 ---
 
@@ -260,7 +260,7 @@ All spacing is multiples of 4px, aligned with Tailwind's default scale.
 
 - Use `src/components/shared/publicCookieConsent/PublicCookieConsentBanner.tsx` for public marketing/brand website cookie banners.
 - The banner should remain a compact floating card with one clear `Okay` action and an optional decline/privacy link depending on the site's actual tracking behavior.
-- MenuList and AnswerLattice may gate optional analytics scripts behind the shared banner. CampaignCue and ConstantLayer currently use the banner only as essential-storage acknowledgement.
+- MenuList and AnswerLattice may gate optional analytics scripts behind the shared banner. CampaignCue currently uses the banner only as essential-storage acknowledgement. Neelvara currently does not mount the shared cookie banner.
 - Do not copy generic consent wording about ads, personalization, or cross-site tracking unless that exact behavior exists in the implementation.
 - Do not mount the banner on owner dashboards, customer menus, Official Business Pages, widgets, or private reader surfaces unless those surfaces receive their own privacy review.
 - Mobile layout must stay compact enough that the first public CTA remains reachable after one short scroll. The compact mobile banner target is roughly 160-180px tall at 390px viewport width.
@@ -574,6 +574,20 @@ Rules:
 - Use local flow tokens that resolve to light website tokens in light mode and `--ws-panel-contrast*` tokens in dark mode.
 - Labels must be owner-readable: `Menu link`, `Official page`, `Saved shortcut`, `approved updates`.
 - Avoid generic words such as `App`, `Web Page`, `node`, `sync engine`, or integration-style labels.
+
+### 5.11 Homepage Switch Comparison
+
+Use the homepage switch comparison to answer why MenuList is different from common owner alternatives before the workflow section explains how the system works.
+
+Rules:
+
+- Keep it directly after `ProblemSection`.
+- Compare categories only: PDFs/screenshots, QR-only pages, website builders, and link pages.
+- Do not name competitors, imply universal superiority, use fake metrics, add testimonials, or add another CTA inside the section.
+- Use two compact comparison columns on desktop with a small arrow bridge, then stack each row on mobile with the arrow rotated between the alternatives.
+- Keep the MenuList side focused on current owner-approved customer links, connected QR/page/print/action outputs, and a trusted current offer list.
+- Use `react-icons/lu` icons and website tokens only. Do not introduce new color systems or card radius.
+- Let text wrap naturally with `overflow-wrap` guards so Hindi and future locale copy do not overflow narrow phones.
 
 ---
 

@@ -13,7 +13,7 @@
  */
 
 import type { InheritanceState } from '@type/multiOutlet.types';
-import { updateProjectMetadata } from '@database/projects';
+import { assertProjectUpdateSucceeded, updateProjectMetadata } from '@database/projects';
 import { AI_ACTIONS_TYPES } from '@constant/common';
 import { getProjectDescriptionContentLength, getProjectDescriptionTone } from '@lib/ai/projectAIPreferences';
 import { getMissingProjectPublicContentGaps, getProjectDefaultLanguage } from '@lib/localization/projectContent';
@@ -407,7 +407,12 @@ export default function CommandCenterModal({
             }
 
             if (Object.keys(projectMetadataTranslationUpdate).length > 0) {
-                await updateProjectMetadata(updated.projectId, projectMetadataTranslationUpdate);
+                const metadataTranslationResult = await updateProjectMetadata(updated.projectId, projectMetadataTranslationUpdate);
+                assertProjectUpdateSucceeded(
+                    metadataTranslationResult,
+                    updated.projectId,
+                    'command_center_project_metadata_translation_update_rejected',
+                );
             }
 
             const repairSummaryParts = [
@@ -612,7 +617,7 @@ export default function CommandCenterModal({
             onCancel={handleClose}
             closable
             maskClosable={false}
-            destroyOnClose
+            destroyOnHidden
             styles={{
                 mask: { backdropFilter: 'blur(6px)' },
                 body: { padding: 0, height: '70vh' },

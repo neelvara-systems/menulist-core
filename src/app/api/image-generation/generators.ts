@@ -12,16 +12,26 @@
 import { GenerateContentResponse, GenerateImagesResponse, HarmBlockThreshold, HarmCategory, Modality } from "@google/genai";
 import { GEMINI_MODELS } from "@constant/AI/models";
 import { summarizeImageProviderResponse } from "@lib/ai/imageOperationLogging";
-import { getImageAsBase64 } from "@lib/apiUtils";
+import { getImageAsBase64, type ImageFetchStorageScope } from "@lib/apiUtils";
 import { mapWithConcurrency } from "@lib/async/boundedConcurrency";
 import { genAIClient } from "@lib/google/genAi";
+import { logAIRouteFailure } from "@lib/google/genAi/diagnostics";
 import { logger } from "@lib/monitoring/logger";
 import { GenerateImageViaApiPayloadGenerationConfiType } from "@template/main-app/projects/types";
 import { writeLogEntry } from 'logs/utils';
 
 export type AI_MODEL_TYPE = "GEMINI" | "IMAGEN";
-export type GeneratedImagePayload = { base64: string; mimeType: string; uploadedUrl?: string };
+export type GeneratedImagePayload = {
+    base64: string;
+    cacheHit?: boolean;
+    mimeType: string;
+    promptCacheKey?: string;
+    uploadedUrl?: string;
+};
 export type ImageProviderResponse = GenerateContentResponse | GenerateImagesResponse;
+export type ImageGenerationPromptRunOptions = {
+    referenceImageStorageScope?: ImageFetchStorageScope;
+};
 
 export const IMAGE_AI_MODELS = {
     GEMINI: GEMINI_MODELS.IMAGE_GEN,
@@ -70,13 +80,16 @@ const SAFETY_SETTINGS = [
 export async function generateGeminiImageViaFlash(
     prompt: string,
     generationConfig: GenerateImageViaApiPayloadGenerationConfiType,
-    logFile: string
+    logFile: string,
+    options: ImageGenerationPromptRunOptions = {},
 ): Promise<{ images: { base64: string; mimeType: string }[], response: GenerateContentResponse } | null> {
     try {
         logger.info('Image generation started (Gemini Flash)', { promptLength: prompt.length });
         let contents: any = `${SYSTEM_INSTRUCTION}\n\n${prompt}\n\nDo not include any text in image unless specifically requested.`;
         if (generationConfig.referanceImage) {
-            const { base64ImageData, mimeType } = await getImageAsBase64(generationConfig.referanceImage);
+            const { base64ImageData, mimeType } = await getImageAsBase64(generationConfig.referanceImage, {
+                storageScope: options.referenceImageStorageScope,
+            });
             contents = [
                 {
                     inlineData: {
@@ -119,7 +132,11 @@ export async function generateGeminiImageViaFlash(
         });
         return { images: generatedImages, response };
     } catch (error) {
-        logger.error('Error generating image (Gemini Flash)', error);
+        logAIRouteFailure('image_generation_gemini_flash_failed', error, {
+            hasReferenceImage: Boolean(generationConfig.referanceImage?.url),
+            model: IMAGE_AI_MODELS.GEMINI,
+            promptLength: prompt.length,
+        });
         await writeLogEntry({ logFileName: logFile, logType: 'GEMINI_FLASH_ERROR', error: error });
         return null;
     }
@@ -128,7 +145,8 @@ export async function generateGeminiImageViaFlash(
 export async function generateGeminiImageViaImagen3(
     prompt: string,
     generationConfig: GenerateImageViaApiPayloadGenerationConfiType,
-    logFile: string
+    logFile: string,
+    _options: ImageGenerationPromptRunOptions = {},
 ): Promise<{ images: { base64: string; mimeType: string }[], response: GenerateImagesResponse } | null> {
     try {
         logger.info('Image generation started (Imagen 3)', { promptLength: prompt.length });
@@ -160,7 +178,11 @@ export async function generateGeminiImageViaImagen3(
         });
         return { images: generatedImages, response };
     } catch (error) {
-        logger.error('Error generating image (Imagen 3)', error);
+        logAIRouteFailure('image_generation_imagen3_failed', error, {
+            model: IMAGE_AI_MODELS.IMAGEN,
+            promptLength: prompt.length,
+            requestedCount: generationConfig?.numberOfImages || 1,
+        });
         await writeLogEntry({ logFileName: logFile, logType: 'IMAGEN3_ERROR', error: error });
         return null;
     }
@@ -184,11 +206,13 @@ export async function runImageGenerationPrompts({
     generationConfig,
     logFile,
     prompts,
+    referenceImageStorageScope,
 }: {
     aiModel: AI_MODEL_TYPE;
     generationConfig: GenerateImageViaApiPayloadGenerationConfiType;
     logFile: string;
     prompts: string[];
+    referenceImageStorageScope?: ImageFetchStorageScope;
 }): Promise<{
     failedPromptCount: number;
     images: GeneratedImagePayload[];
@@ -206,7 +230,9 @@ export async function runImageGenerationPrompts({
 
     const imageGenerator = selectImageGenerator(aiModel, generationConfig);
     const runPrompt = async (prompt: string) => {
-        const result = await imageGenerator(prompt, generationConfig, logFile);
+        const result = await imageGenerator(prompt, generationConfig, logFile, {
+            referenceImageStorageScope,
+        });
         return result || null;
     };
 

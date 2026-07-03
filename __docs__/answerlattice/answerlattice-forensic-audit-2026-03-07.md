@@ -66,7 +66,7 @@ All backend pillars implemented. Feature flags all OFF. Zero risk to production.
 | 1.2 | Embeddable Help Widget  | ✅ BUILT     | `src/app/api/widget/search/route.ts`. API key auth. Canonical-first retrieval. RAG fallback. Feature flag `ENABLE_ANSWERLATTICE_WIDGET`.                             |
 | 1.3 | Email Notifications     | ✅ BUILT     | `src/lib/notifications/index.ts` (211 lines). Generic service with 3 ticket templates. Idempotent (24h dedup). Rate-limited (20/day/recipient). SMTP transport. |
 | 1.4 | Public API              | ❌ NOT BUILT | Feature flag exists. No API routes. Deferred per roadmap.                                                                                                       |
-| 1.5 | Multi-Tenant Onboarding | ✅ BUILT     | `src/app/api/answerlattice/onboard/route.ts` (288 lines). Atomic transaction. Beta plan (6 months free). API key generation.                                         |
+| 1.5 | Multi-Tenant Onboarding | ✅ BUILT     | `src/app/api/answerlattice/onboard/route.ts`. Atomic transaction. Paid Starter subscription. API key generation.                                         |
 
 ### Phase 3: GOVERN (Governance UX) — ✅ COMPLETE
 

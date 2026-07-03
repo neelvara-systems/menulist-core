@@ -90,7 +90,7 @@ The recommended visual direction is supported by real repo surfaces:
 The website workflow docs had a stale reference to a non-existent file:
 
 - Old stale reference:
-  - `__docs__/main-website/main-website_v2-hype-strategy.md`
+  - Removed legacy hype-strategy doc
 - Actual current file:
   - `__docs__/main-website/main-website_marketing.md`
 

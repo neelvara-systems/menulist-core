@@ -8,6 +8,7 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 const BUNDLE_ROOT = 'answerlattice-context';
 const DEFAULT_BATCH_LIMIT = 100;
 const DEFAULT_STORAGE_DELETE_LIMIT = 250;
+const RETENTION_TASK_FAILED = 'ANSWERLATTICE_RETENTION_TASK_FAILED';
 
 export const ANSWERLATTICE_RETENTION_DAYS = {
     schedulerRunLogs: 90,
@@ -61,6 +62,20 @@ const toMillis = (value?: Timestamp | Date | number | null): number => {
     if (value instanceof Date) return value.getTime();
     return value.toMillis();
 };
+
+function getRetentionErrorContext(error: unknown): Record<string, string | number | null> {
+    const source = error as { name?: unknown; code?: unknown; status?: unknown; statusCode?: unknown };
+    const status = typeof source?.status === 'number'
+        ? source.status
+        : typeof source?.statusCode === 'number'
+            ? source.statusCode
+            : null;
+    return {
+        sourceErrorName: typeof source?.name === 'string' ? source.name : typeof error,
+        sourceErrorCode: typeof source?.code === 'string' || typeof source?.code === 'number' ? String(source.code) : null,
+        sourceStatusCode: status,
+    };
+}
 
 export function getAnswerlatticeRetentionDays(key: AnswerlatticeRetentionKey): number {
     return ANSWERLATTICE_RETENTION_DAYS[key];
@@ -193,9 +208,12 @@ export async function cleanupAnswerlatticeOperationalRetention(options: {
         try {
             await task();
         } catch (error) {
-            const message = error instanceof Error ? error.message : String(error);
-            result.errors.push(`${name}: ${message}`);
-            logger.warn('[Answerlattice Retention] Cleanup task failed', { name, error: message });
+            result.errors.push(`${name}: ${RETENTION_TASK_FAILED}`);
+            logger.warn('[Answerlattice Retention] Cleanup task failed', {
+                failureCode: RETENTION_TASK_FAILED,
+                taskName: name,
+                ...getRetentionErrorContext(error),
+            });
         }
     };
 

@@ -12,6 +12,7 @@
  */
 
 import { resolveDomain } from '@lib/multiTenant/domainResolver';
+import { secureError } from '@lib/security/secureLogger';
 import { headers } from 'next/headers';
 
 export type TenantInfo = {
@@ -21,6 +22,10 @@ export type TenantInfo = {
     host: string | null;
     origin: string | null;
 };
+
+const sanitizeTenantLogContext = (logContext: string): string => (
+    logContext.replace(/[^a-zA-Z0-9:_-]/g, '').slice(0, 80) || 'ClientPage'
+);
 
 /**
  * @param logContext Optional caller tag used when logging a missing host.
@@ -48,11 +53,12 @@ export async function getTenantFromHeaders(logContext = 'ClientPage'): Promise<T
 
     // If still no host we're in a broken state — log once and return nulls
     if (!host) {
-        console.error(`[${logContext}] No host header found. Headers:`, {
-            forwardedHost: headersList.get('x-forwarded-host'),
-            host: headersList.get('host'),
-            vercelHost: headersList.get('x-vercel-proxied-host'),
-            vercelUrl: headersList.get('x-vercel-deployment-url'),
+        secureError('[Tenant Headers] No host header found', new Error('Tenant host header missing'), {
+            logContext: sanitizeTenantLogContext(logContext),
+            hasForwardedHost: Boolean(headersList.get('x-forwarded-host')),
+            hasHost: Boolean(headersList.get('host')),
+            hasVercelHost: Boolean(headersList.get('x-vercel-proxied-host')),
+            hasVercelUrl: Boolean(headersList.get('x-vercel-deployment-url')),
         });
     }
 

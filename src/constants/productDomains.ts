@@ -22,7 +22,7 @@
  *
  * Local Dev:
  *   - Default (localhost:3000) → MenuList website
- *   - localhost:3000/__constantlayer/ → ConstantLayer website
+ *   - localhost:3000/__neelvara/ → Neelvara website
  *   - localhost:3000/__answerlattice/pricing → Answerlattice website
  *   - localhost:3000/__campaigncue/ → CampaignCue website
  *   - No /etc/hosts configuration needed
@@ -47,20 +47,20 @@ import {
     CAMPAIGNCUE_PRODUCT_SLUG,
 } from '@constant/campaigncue/product';
 import {
-    ACTIVE_CONSTANTLAYER_PRODUCT_DOMAINS,
-    CONSTANTLAYER_LOCAL_DEV_PATH_PREFIX,
-    CONSTANTLAYER_SITE_INTERNAL_BASE_PATH,
-} from '@constant/constantlayer/domains';
+    ACTIVE_NEELVARA_PRODUCT_DOMAINS,
+    NEELVARA_LOCAL_DEV_PATH_PREFIX,
+    NEELVARA_SITE_INTERNAL_BASE_PATH,
+} from '@constant/neelvara/domains';
 import {
-    CONSTANTLAYER_PRODUCT_NAME,
-    CONSTANTLAYER_PRODUCT_SLUG,
-} from '@constant/constantlayer/product';
+    NEELVARA_PRODUCT_NAME,
+    NEELVARA_PRODUCT_SLUG,
+} from '@constant/neelvara/product';
 
 // ═══════════════════════════════════════════════════════════════
 // Product Identifiers
 // ═══════════════════════════════════════════════════════════════
 
-export type ProductSiteId = 'menulist' | 'constantlayer' | 'answerlattice' | 'campaigncue' | 'surfaceos' | 'growthOS' | 'kitstamp' | 'mycodex';
+export type ProductSiteId = 'menulist' | 'neelvara' | 'answerlattice' | 'campaigncue' | 'surfaceos' | 'growthOS' | 'kitstamp' | 'mycodex';
 export type ProductId = ProductSiteId;
 
 // ═══════════════════════════════════════════════════════════════
@@ -96,11 +96,11 @@ export const PRODUCT_SITES: ProductDomainConfig[] = [
         enabled: true,
     },
     {
-        id: CONSTANTLAYER_PRODUCT_SLUG,
-        name: CONSTANTLAYER_PRODUCT_NAME,
-        domains: ACTIVE_CONSTANTLAYER_PRODUCT_DOMAINS,
-        devPathPrefix: CONSTANTLAYER_LOCAL_DEV_PATH_PREFIX,
-        internalBasePath: CONSTANTLAYER_SITE_INTERNAL_BASE_PATH,
+        id: NEELVARA_PRODUCT_SLUG,
+        name: NEELVARA_PRODUCT_NAME,
+        domains: ACTIVE_NEELVARA_PRODUCT_DOMAINS,
+        devPathPrefix: NEELVARA_LOCAL_DEV_PATH_PREFIX,
+        internalBasePath: NEELVARA_SITE_INTERNAL_BASE_PATH,
         enabled: true,
     },
     {

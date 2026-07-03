@@ -1,37 +1,45 @@
 import StickyCta from '../shared/StickyCta';
-import AiMenuManagerSection from './AiMenuManagerSection';
-import BusinessHealthSection from './BusinessHealthSection';
+import BeforeAfterSection from './BeforeAfterSection';
+import CreateMenuPreviewSection from './CreateMenuPreviewSection';
 import CustomerBrowseSection from './CustomerBrowseSection';
+import CustomerLinkIncludesSection from './CustomerLinkIncludesSection';
 import FaqSection from './FaqSection';
 import FinalCtaSection from './FinalCtaSection';
 import HeroSection from './HeroSection';
-import InteractiveWorkflowSection from './InteractiveWorkflowSection';
-import PreparedForYouSection from './PreparedForYouSection';
-import ProblemSection from './ProblemSection';
-import PublicTruthLoopSection from './PublicTruthLoopSection';
-import ResourcesSection from './ResourcesSection';
-import SetupReliefSection from './SetupReliefSection';
-import SurfacesSection from './SurfacesSection';
-import WebsiteReplacementBlock from '../shared/WebsiteReplacementBlock';
-import { FEATURE_FLAGS } from '@config/features';
+import OwnerProofSection from './OwnerProofSection';
 
 export default function HomePage() {
   return (
     <main>
-      <HeroSection />
-      <ProblemSection />
-      <InteractiveWorkflowSection />
-      <PublicTruthLoopSection />
-      <WebsiteReplacementBlock variant="default" />
-      <AiMenuManagerSection />
-      <SetupReliefSection />
-      <SurfacesSection />
+      <div id="website-sticky-cta-start" className="ws-sticky-cta-observer">
+        <HeroSection />
+      </div>
+      <CreateMenuPreviewSection />
+      <BeforeAfterSection />
       <CustomerBrowseSection />
-      <PreparedForYouSection />
-      <BusinessHealthSection />
-      {FEATURE_FLAGS.ENABLE_WEBSITE_RESOURCES ? <ResourcesSection /> : null}
+      <CustomerLinkIncludesSection />
+      <OwnerProofSection />
+      {/*
+        Previous/deeper homepage section mounts kept as references.
+        They remain unmounted for the mobile try-first homepage compression:
+
+        <RevenuePathSection />
+        <ProblemSection />
+        <SwitchComparisonSection />
+        <InteractiveWorkflowSection />
+        <PublicTruthLoopSection />
+        <WebsiteReplacementBlock variant="default" />
+        <AiMenuManagerSection />
+        <SetupReliefSection />
+        <SurfacesSection />
+        <PreparedForYouSection />
+        <BusinessHealthSection />
+        <ResourcesSection />
+      */}
       <FaqSection />
-      <FinalCtaSection />
+      <div id="website-sticky-cta-stop" className="ws-sticky-cta-observer">
+        <FinalCtaSection />
+      </div>
       <StickyCta />
     </main>
   );

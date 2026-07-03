@@ -1,9 +1,15 @@
 # Description Generation — Firebase Cost Tracking
 
-**Feature:** AI-Powered Menu Item Description Generation  
-**Status:** ✅ Production Ready  
-**Last Updated:** March 14, 2026  
+**Feature:** AI-Powered Menu Item Description Generation
+**Status:** Firebase cost evidence; not current launch certification
+**Last Updated:** March 14, 2026
 **Priority:** MEDIUM — Gemini API cost per call, but lighter than image generation.
+
+---
+
+## Current Launch Boundary
+
+This Firebase cost document is description-generation cost evidence; it is not current production deployment approval. Current release approval requires the active [production-readiness audit](../../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../../production-readiness/external-certification-runbook.md) evidence, target feature-flag/provider review, AI accounting/source gates, provider smoke, browser/mobile editor QA, and deploy evidence for the target environment.
 
 ---
 

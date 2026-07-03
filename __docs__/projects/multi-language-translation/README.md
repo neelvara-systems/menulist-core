@@ -2,9 +2,11 @@
 
 > **Feature:** AI-Powered Menu Translation  
 > **Classification:** Foundational / Preparation Infrastructure  
-> **Status:** ✅ COMPLETE (Production Ready)  
+> **Status:** Implemented source evidence; not current launch certification
 > **Last Updated:** March 14, 2026  
 > **Version:** 3.3
+>
+> **Launch Boundary:** This documentation hub records Multi-Language Translation source evidence, not current production-launch approval. Current release approval requires the active [production-readiness audit](../../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../../production-readiness/external-certification-runbook.md) evidence, target feature-flag/provider review, deploy evidence, browser/mobile QA for translated menu flows, public renderer fallback/RTL evidence, and production-host smoke.
 
 ### Feature Classification Note
 
@@ -85,6 +87,7 @@ Languages: 90+ including 5 RTL
 
 | Version | Date         | Changes                                                                                                 |
 | ------- | ------------ | ------------------------------------------------------------------------------------------------------- |
+| 3.4     | Jun 30, 2026 | Added request key/value caps plus sanitized prompt-only translation payload serialization                |
 | 3.3     | Mar 14, 2026 | Prompt hardening (entity preservation, anti-injection), temperature 0.8→0.3, JSON retry, ChatGPT review |
 | 3.2     | Feb 1, 2026  | Added feature classification, doctrine guardrails, fixed UI copy                                        |
 | 3.1     | Jan 31, 2026 | Fixed typos, added deferred improvements, verification complete                                         |

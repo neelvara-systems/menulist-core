@@ -11,10 +11,13 @@ import { FEATURE_FLAGS } from '@config/features';
 import { emitAnswerlatticeSignal } from '@lib/answerlattice/signalEmitter';
 import { ANSWERLATTICE_PUBLIC_API_SCHEMA_VERSION, authenticateAnswerlatticePublicApi } from '@lib/answerlattice/publicApi';
 import { apiError } from '@lib/publicApi/auth';
-import { secureError } from '@lib/security/secureLogger';
+import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
+import { readBoundedJsonBody } from '@lib/security/boundedRequestBody';
 import { ANSWERLATTICE_SIGNAL_TYPE, AnswerlatticeSignalType } from '@type/answerlattice';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
+
+const PUBLIC_SIGNAL_REQUEST_MAX_BODY_BYTES = 32 * 1024;
 
 const PublicSignalSchema = z.object({
     type: z.enum(Object.values(ANSWERLATTICE_SIGNAL_TYPE) as [string, ...string[]]),
@@ -56,7 +59,19 @@ export async function POST(request: NextRequest) {
     }
 
     try {
-        const validation = PublicSignalSchema.safeParse(await request.json().catch(() => null));
+        const bodyResult = await readBoundedJsonBody(request, PUBLIC_SIGNAL_REQUEST_MAX_BODY_BYTES, {
+            invalidJsonMessage: 'Invalid request body',
+            tooLargeMessage: 'Request body too large',
+        });
+        if (bodyResult.ok === false) {
+            return apiError(
+                bodyResult.response.status === 413 ? 'REQUEST_BODY_TOO_LARGE' : 'INVALID_INPUT',
+                bodyResult.response.status === 413 ? 'Request body too large' : 'Invalid request body',
+                bodyResult.response.status,
+            );
+        }
+
+        const validation = PublicSignalSchema.safeParse(bodyResult.data);
         if (!validation.success) {
             return apiError('INVALID_INPUT', 'Invalid request body', 400);
         }
@@ -79,9 +94,9 @@ export async function POST(request: NextRequest) {
             accepted: true,
         }, { status: 202 });
     } catch (error) {
-        secureError('[Answerlattice Public API] Signal ingestion failed', error as Error, {
-            tId: auth.context.tId,
-            sId: auth.context.sId,
+        logRuntimeFailure('answerlattice_public_signal_ingestion_failed', error, {
+            ...getBoundedRuntimeStringContext('tenantId', auth.context.tId),
+            ...getBoundedRuntimeStringContext('storeId', auth.context.sId),
         });
         return apiError('INTERNAL_ERROR', 'Internal error', 500);
     }

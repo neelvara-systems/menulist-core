@@ -2,8 +2,15 @@
 
 import { getAdoptionPulse, getIntegritySignals, getRecentAlerts, getSystemState } from '@database/ops';
 import { usePlatformStoreSummaryOptions } from '@hook/usePlatformStoreSummaryOptions';
+import {
+    OPS_CONTROL_ROOM_REQUEST_POLICY,
+    isOpsControlRoomForceRepublishResponse,
+    logInvalidOpsControlRoomForceRepublishResponse,
+    readOpsControlRoomMuteAlertsResponse,
+    readOpsControlRoomSafeModeResponse,
+} from '@lib/ops/opsControlRoomClientResponse';
+import { getBoundedOpsStringContext, logOpsFailure } from '@lib/ops/opsDiagnostics';
 import type { AdoptionPulse, IntegritySignals, OpsAlert, SystemState } from '@lib/ops/types';
-import { secureError } from '@lib/security/secureLogger';
 import { formatDateTime } from '@util/dateTime';
 import { Button, Card, Divider, Modal, Select, Spin, Tag, Typography, message, theme } from 'antd';
 import { useSession } from 'next-auth/react';
@@ -38,6 +45,7 @@ function OpsControlRoom() {
     const [republishLoading, setRepublishLoading] = useState(false);
     const platformRole = (session as any)?.platformRole || (session?.user as any)?.platformRole;
     const isPlatform = platformRole === 'PLATFORM';
+    const hasSessionUser = Boolean(session?.user);
     const {
         loading: storesLoading,
         selectedStore,
@@ -65,12 +73,16 @@ function OpsControlRoom() {
             setIntegrity(integ);
             setAlerts(alertList);
         } catch (error) {
-            secureError('[OpsControlRoom] Failed to load data', error instanceof Error ? error : new Error(String(error)));
+            logOpsFailure('ops_control_room_load_failed', error, {
+                hasSessionUser,
+                isPlatform,
+                ...getBoundedOpsStringContext('platformRole', platformRole),
+            });
             message.error('Failed to load ops data');
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [hasSessionUser, isPlatform, platformRole]);
 
     useEffect(() => {
         if (status === 'loading') return;
@@ -96,17 +108,22 @@ function OpsControlRoom() {
                 setSafeModeLoading(true);
                 try {
                     const res = await fetch('/api/ops/safe-mode', {
+                        ...OPS_CONTROL_ROOM_REQUEST_POLICY,
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ action, reason: 'Manual toggle from ops dashboard' }),
                     });
-                    if (res.ok) {
-                        message.success(`SAFE_MODE ${action === 'activate' ? 'enabled' : 'disabled'}`);
-                        await loadData();
-                    } else {
-                        message.error('Failed to toggle SAFE_MODE');
-                    }
-                } catch {
+                    const data = await readOpsControlRoomSafeModeResponse(res, {
+                        ...getBoundedOpsStringContext('action', action),
+                        ...getBoundedOpsStringContext('endpoint', '/api/ops/safe-mode'),
+                    });
+                    if (!data) throw new Error('ops_control_room_safe_mode_response_unavailable');
+                    message.success(`SAFE_MODE ${data.SAFE_MODE ? 'enabled' : 'disabled'}`);
+                    await loadData();
+                } catch (error) {
+                    logOpsFailure('ops_control_room_safe_mode_toggle_failed', error, {
+                        ...getBoundedOpsStringContext('action', action),
+                    });
                     message.error('Failed to toggle SAFE_MODE');
                 } finally {
                     setSafeModeLoading(false);
@@ -131,15 +148,26 @@ function OpsControlRoom() {
                     const fns = getFunctions();
                     const forceRepublishFn = httpsCallable(fns, 'forceRepublish');
                     const result: any = await forceRepublishFn({ storeId: selectedStore.sId, tenantId: selectedStore.tId });
-                    const verification = result.data?.verification || 'done';
-                    if (result.data?.success === false) {
+                    if (!isOpsControlRoomForceRepublishResponse(result.data)) {
+                        logInvalidOpsControlRoomForceRepublishResponse(result.data, {
+                            ...getBoundedOpsStringContext('storeId', selectedStore.sId),
+                            ...getBoundedOpsStringContext('tenantId', selectedStore.tId),
+                        });
+                        throw new Error('ops_control_room_force_republish_response_invalid');
+                    }
+                    const verification = result.data.verification;
+                    if (result.data.success === false) {
                         message.warning(`Republish triggered, verification: ${verification}`);
                     } else {
                         message.success(`Republish triggered, verification: ${verification}`);
                     }
                     await loadData();
-                } catch (error: any) {
-                    message.error(`Force republish failed: ${error.message}`);
+                } catch (error) {
+                    logOpsFailure('ops_control_room_force_republish_failed', error, {
+                        ...getBoundedOpsStringContext('storeId', selectedStore.sId),
+                        ...getBoundedOpsStringContext('tenantId', selectedStore.tId),
+                    });
+                    message.error('Force republish failed');
                 } finally {
                     setRepublishLoading(false);
                 }
@@ -152,18 +180,22 @@ function OpsControlRoom() {
         setMuteLoading(true);
         try {
             const res = await fetch('/api/ops/mute-alerts', {
+                ...OPS_CONTROL_ROOM_REQUEST_POLICY,
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ durationMinutes: 20 }),
             });
-            if (res.ok) {
-                const data = await res.json();
-                message.success(`Alerts muted until ${formatDateTime(data.mutedUntil, 'time', formatter)}`);
-                await loadData();
-            } else {
-                message.error('Failed to mute alerts');
-            }
-        } catch {
+            const data = await readOpsControlRoomMuteAlertsResponse(res, {
+                ...getBoundedOpsStringContext('endpoint', '/api/ops/mute-alerts'),
+                durationMinutes: 20,
+            });
+            if (!data) throw new Error('ops_control_room_mute_alerts_response_unavailable');
+            message.success(`Alerts muted until ${formatDateTime(data.mutedUntil, 'time', formatter)}`);
+            await loadData();
+        } catch (error) {
+            logOpsFailure('ops_control_room_mute_alerts_failed', error, {
+                durationMinutes: 20,
+            });
             message.error('Failed to mute alerts');
         } finally {
             setMuteLoading(false);
@@ -189,6 +221,7 @@ function OpsControlRoom() {
                     <Button type="default" href="/platform/cost-posture">Cost Posture</Button>
                     <Button type="default" href="/platform/owner-business-assistant">Business Health Monitor</Button>
                     <Button type="default" href="/ops/messaging-onboarding">Messaging Onboarding</Button>
+                    <Button type="default" href="/ops/report-leads">Report Leads</Button>
                     <Button type="default" href="/ops/platform-notifications">Platform Notifications</Button>
                     <Button type="default" href="/ops/owner-notifications">Owner Notifications</Button>
                 </div>

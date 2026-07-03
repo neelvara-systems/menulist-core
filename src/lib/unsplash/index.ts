@@ -1,8 +1,16 @@
 import { BACKGROUND_IMAGES_ORIENTATIONS, SEARCHED_IMAGES_COUNT_PER_REQUEST_UNSPLASH } from "@constant/common";
+import { getImageProviderRequestLogContext, logImageProviderFailure } from "@lib/imageProviderDiagnostics";
+import {
+    buildImageProviderUrl,
+    IMAGE_PROVIDER_REQUEST_TIMEOUT_MS,
+    normalizeImageProviderOrientation,
+    normalizeImageProviderPage,
+    normalizeImageProviderQuery,
+} from "@lib/imageProviderRequests";
 import { axiosClient } from "../axios/axiosClient";
 
-const SEARCH_API_URL = `https://api.unsplash.com/search/photos?client_id=${process.env.NEXT_PUBLIC_UNSPLASH_API_CLIENTID}`;
-const TOPICS_API_URL = `https://api.unsplash.com/topics?client_id=${process.env.NEXT_PUBLIC_UNSPLASH_API_CLIENTID}`;
+const SEARCH_API_URL = 'https://api.unsplash.com/search/photos';
+const TOPICS_API_URL = 'https://api.unsplash.com/topics';
 // {
 //     "total": 133,
 //         "total_pages": 7,
@@ -41,8 +49,18 @@ export const UNPLASH_IMAGE_SIZES = {
 }
 
 export const getUnsplashImagesBySearchQuery = (searchQuery: any, orientation = BACKGROUND_IMAGES_ORIENTATIONS.LANDSCAPE, page = 1) => {
+    const normalizedOrientation = normalizeImageProviderOrientation(orientation);
+    const normalizedPage = normalizeImageProviderPage(page);
+    const requestUrl = buildImageProviderUrl(SEARCH_API_URL, {
+        client_id: process.env.NEXT_PUBLIC_UNSPLASH_API_CLIENTID || '',
+        orientation: normalizedOrientation,
+        page: normalizedPage,
+        per_page: SEARCHED_IMAGES_COUNT_PER_REQUEST_UNSPLASH,
+        query: normalizeImageProviderQuery(searchQuery),
+    });
+
     return new Promise((res, rej) => {
-        axiosClient.GET(`${SEARCH_API_URL}&orientation=${orientation}&page=${page}&per_page=${SEARCHED_IMAGES_COUNT_PER_REQUEST_UNSPLASH}&query=${searchQuery}`)
+        axiosClient.GET(requestUrl, { timeout: IMAGE_PROVIDER_REQUEST_TIMEOUT_MS })
             .then((response) => {
                 const data = {
                     total: response.data.total,
@@ -51,21 +69,34 @@ export const getUnsplashImagesBySearchQuery = (searchQuery: any, orientation = B
                 }
                 res(data);
             }).catch(function (error) {
-                rej(error.response.data);
-                console.log(`Error in api/unsplash/getImages = `, error);
+                logImageProviderFailure('image_provider_unsplash_search_failed', error, getImageProviderRequestLogContext({
+                    operation: 'search',
+                    orientation: normalizedOrientation,
+                    page: normalizedPage,
+                    provider: 'unsplash',
+                    query: searchQuery,
+                }));
+                rej('Error while fetching images');
             });
     })
 }
 
 export const getTrendingWords = () => {
+    const requestUrl = buildImageProviderUrl(TOPICS_API_URL, {
+        client_id: process.env.NEXT_PUBLIC_UNSPLASH_API_CLIENTID || '',
+    });
+
     return new Promise((res, rej) => {
-        axiosClient.GET(`${TOPICS_API_URL}`)
+        axiosClient.GET(requestUrl, { timeout: IMAGE_PROVIDER_REQUEST_TIMEOUT_MS })
             .then((response) => {
                 const words = response.data.slice(0, 4).map((topic: any) => topic.title);
                 res(words);
             }).catch(function (error) {
-                rej(error.response.data);
-                console.log(`Error in api/unsplash/getImages = `, error);
+                logImageProviderFailure('image_provider_unsplash_topics_failed', error, getImageProviderRequestLogContext({
+                    operation: 'topics',
+                    provider: 'unsplash',
+                }));
+                rej('Error while fetching image topics');
             });
     })
 }

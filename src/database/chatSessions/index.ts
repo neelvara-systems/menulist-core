@@ -10,6 +10,7 @@ import {
 import { apiCallComposer } from '@lib/apiHelper/apiCallComposer';
 import { apiCallComposerClientWithoutLoader } from '@lib/apiHelper/apiCallComposerClientWithoutLoader';
 import { answerlatticeFirebaseClient, answerlatticeStorage } from '@lib/firebase/answerlatticeFirebaseClient';
+import { createRandomIdSegment } from '@lib/runtime/randomId';
 import { STORAGE_CACHE_CONTROL } from '@lib/storage/cacheControl';
 import { generateStoragePath } from '@lib/storage/pathGenerator';
 import { ChatSession } from '@type/chatSession';
@@ -22,6 +23,175 @@ const ADMIN_CHAT_SESSION_PAGE_SIZE_LIMIT = 100;
 const ADMIN_CHAT_SESSION_SCAN_LIMIT = 500;
 const CHAT_VOLUME_SESSION_LIMIT = 1000;
 const MAX_CHAT_VOLUME_DAYS = 90;
+
+export type ChatSessionUpdateResult = {
+    sessionId: string;
+    success: true;
+    updatedFields: string[];
+};
+
+export type ChatMessageFeedbackUpdateResult = {
+    sessionId: string;
+    messageId: string;
+    success: true;
+};
+
+export type ChatSessionBatchMetadataUpdateResult = {
+    sessionIds: string[];
+    success: true;
+    updatedCount: number;
+    updatedFields: string[];
+};
+
+export type ChatSessionInternalNoteUpdateResult = {
+    sessionId: string;
+    success: true;
+    note: Record<string, unknown>;
+};
+
+export type ChatSessionDeleteResult = {
+    sessionId: string;
+    success: true;
+    deleted: true;
+    storageFilesDeleted: number;
+};
+
+const isRecord = (value: unknown): value is Record<string, unknown> => (
+    Boolean(value) && typeof value === 'object' && !Array.isArray(value)
+);
+
+const isChatSessionRecord = (value: unknown): value is ChatSession => (
+    isRecord(value)
+    && typeof value.id === 'string'
+    && Array.isArray(value.messages)
+);
+
+const isChatSessionUpdateResult = (value: unknown): value is ChatSessionUpdateResult => (
+    isRecord(value)
+    && value.success === true
+    && typeof value.sessionId === 'string'
+    && Array.isArray(value.updatedFields)
+);
+
+const isChatMessageFeedbackUpdateResult = (value: unknown): value is ChatMessageFeedbackUpdateResult => (
+    isRecord(value)
+    && value.success === true
+    && typeof value.sessionId === 'string'
+    && typeof value.messageId === 'string'
+);
+
+const isStringArray = (value: unknown): value is string[] => (
+    Array.isArray(value) && value.every((item) => typeof item === 'string')
+);
+
+const isChatSessionBatchMetadataUpdateResult = (
+    value: unknown
+): value is ChatSessionBatchMetadataUpdateResult => (
+    isRecord(value)
+    && value.success === true
+    && isStringArray(value.sessionIds)
+    && typeof value.updatedCount === 'number'
+    && isStringArray(value.updatedFields)
+);
+
+const isChatSessionInternalNoteUpdateResult = (
+    value: unknown
+): value is ChatSessionInternalNoteUpdateResult => (
+    isRecord(value)
+    && value.success === true
+    && typeof value.sessionId === 'string'
+    && isRecord(value.note)
+);
+
+const isChatSessionDeleteResult = (value: unknown): value is ChatSessionDeleteResult => (
+    isRecord(value)
+    && value.success === true
+    && value.deleted === true
+    && typeof value.sessionId === 'string'
+    && typeof value.storageFilesDeleted === 'number'
+);
+
+export function assertChatSessionSaveSucceeded(
+    result: unknown,
+    rejectionCode = 'chat_session_save_rejected',
+): asserts result is ChatSession {
+    if (!isChatSessionRecord(result)) {
+        throw new Error(rejectionCode);
+    }
+}
+
+export function assertChatSessionUpdateSucceeded(
+    result: unknown,
+    expectedSessionId?: string,
+    rejectionCode = 'chat_session_update_rejected',
+): asserts result is ChatSessionUpdateResult {
+    if (
+        !isChatSessionUpdateResult(result)
+        || (expectedSessionId !== undefined && result.sessionId !== expectedSessionId)
+    ) {
+        throw new Error(rejectionCode);
+    }
+}
+
+export function assertChatMessageFeedbackUpdateSucceeded(
+    result: unknown,
+    expectedSessionId?: string,
+    expectedMessageId?: string,
+    rejectionCode = 'chat_message_feedback_update_rejected',
+): asserts result is ChatMessageFeedbackUpdateResult {
+    if (
+        !isChatMessageFeedbackUpdateResult(result)
+        || (expectedSessionId !== undefined && result.sessionId !== expectedSessionId)
+        || (expectedMessageId !== undefined && result.messageId !== expectedMessageId)
+    ) {
+        throw new Error(rejectionCode);
+    }
+}
+
+export function assertChatSessionBatchMetadataUpdateSucceeded(
+    result: unknown,
+    expectedSessionIds?: string[],
+    rejectionCode = 'chat_session_batch_metadata_update_rejected',
+): asserts result is ChatSessionBatchMetadataUpdateResult {
+    if (
+        !isChatSessionBatchMetadataUpdateResult(result)
+        || (
+            expectedSessionIds !== undefined
+            && (
+                result.updatedCount !== expectedSessionIds.length
+                || expectedSessionIds.some((sessionId) => !result.sessionIds.includes(sessionId))
+            )
+        )
+    ) {
+        throw new Error(rejectionCode);
+    }
+}
+
+export function assertChatSessionInternalNoteUpdateSucceeded(
+    result: unknown,
+    expectedSessionId?: string,
+    rejectionCode = 'chat_session_internal_note_update_rejected',
+): asserts result is ChatSessionInternalNoteUpdateResult {
+    if (
+        !isChatSessionInternalNoteUpdateResult(result)
+        || (expectedSessionId !== undefined && result.sessionId !== expectedSessionId)
+    ) {
+        throw new Error(rejectionCode);
+    }
+}
+
+export function assertChatSessionDeleteSucceeded(
+    result: unknown,
+    expectedSessionId?: string,
+    rejectionCode = 'chat_session_delete_rejected',
+): asserts result is ChatSessionDeleteResult {
+    if (
+        !isChatSessionDeleteResult(result)
+        || (expectedSessionId !== undefined && result.sessionId !== expectedSessionId)
+    ) {
+        throw new Error(rejectionCode);
+    }
+}
 
 const collectChatImageUrls = (session?: ChatSession | null): string[] => {
     const urls = new Set<string>();
@@ -94,9 +264,7 @@ export const uploadChatImage = async (
                     throw new Error('Chat image size exceeds the supported limit');
                 }
 
-                const randomId = typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
-                    ? crypto.randomUUID()
-                    : Math.random().toString(36).slice(2);
+                const randomId = createRandomIdSegment(16);
                 const imageId = `${Date.now()}-${randomId}`;
                 const base64String = image.url || image.source;
 
@@ -166,7 +334,14 @@ export const batchUpdateSessionMetadata = async (
 ) => {
     return await apiCallComposer(
         async () => {
-            if (!sessionIds || sessionIds.length === 0) return;
+            if (!sessionIds || sessionIds.length === 0) {
+                return {
+                    sessionIds: [],
+                    success: true,
+                    updatedCount: 0,
+                    updatedFields: [],
+                } satisfies ChatSessionBatchMetadataUpdateResult;
+            }
             const { writeBatch } = await import('firebase/firestore');
             const batch = writeBatch(answerlatticeFirebaseClient);
             const composedData = await answerlatticeRequestBodyComposer(metadata);
@@ -175,7 +350,12 @@ export const batchUpdateSessionMetadata = async (
                 batch.update(ref, composedData);
             }
             await batch.commit();
-            return { updatedCount: sessionIds.length };
+            return {
+                sessionIds,
+                success: true,
+                updatedCount: sessionIds.length,
+                updatedFields: Object.keys(composedData),
+            } satisfies ChatSessionBatchMetadataUpdateResult;
         },
         { sessionIds, metadata },
         'batchUpdateSessionMetadata'
@@ -190,7 +370,11 @@ export const updateChatSession = async (sessionId: string, updates: Partial<Chat
         async () => {
             const composedData = await answerlatticeRequestBodyComposer(updates);
             await setDoc(await getDocRef(sessionId), composedData, { merge: true });
-            return composedData;
+            return {
+                sessionId,
+                success: true,
+                updatedFields: Object.keys(composedData),
+            } satisfies ChatSessionUpdateResult;
         },
         updates,
         'updateChatSession'
@@ -214,7 +398,12 @@ export const deleteChatSession = async (sessionId: string) => {
                 imageUrls.map((url) => deleteFileByUrl(url, answerlatticeStorage))
             );
             await deleteDoc(sessionRef);
-            return { id: sessionId, deleted: true, storageFilesDeleted: imageUrls.length };
+            return {
+                sessionId,
+                success: true,
+                deleted: true,
+                storageFilesDeleted: imageUrls.length,
+            } satisfies ChatSessionDeleteResult;
         },
         { sessionId },
         'deleteChatSession'
@@ -299,7 +488,8 @@ export const updateMessageFeedback = async (
 
             const sessionData = sessionDoc.data() as ChatSession;
 
-            // Find and update the message
+            // Feedback is stored on the bounded session message array so the
+            // original message shape and reopening behavior stay in one doc.
             const updatedMessages = sessionData.messages.map(msg => {
                 if (msg.id === messageId) {
                     return { ...msg, feedback };
@@ -307,11 +497,14 @@ export const updateMessageFeedback = async (
                 return msg;
             });
 
-            // Update the session with modified messages
             const composedData = await answerlatticeRequestBodyComposer({ messages: updatedMessages });
             await setDoc(sessionRef, composedData, { merge: true });
 
-            return { sessionId, messageId, feedback };
+            return {
+                sessionId,
+                messageId,
+                success: true,
+            } satisfies ChatMessageFeedbackUpdateResult;
         },
         { sessionId, messageId, feedback },
         'updateMessageFeedback'
@@ -357,7 +550,11 @@ export const updateSessionInternalNote = async (
             const composedData = await answerlatticeRequestBodyComposer(updateData);
             await setDoc(sessionRef, composedData, { merge: true });
 
-            return { sessionId, note: noteObject };
+            return {
+                sessionId,
+                success: true,
+                note: noteObject,
+            } satisfies ChatSessionInternalNoteUpdateResult;
         },
         { sessionId, note: noteJson },
         'updateSessionInternalNote'

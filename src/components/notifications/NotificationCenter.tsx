@@ -55,50 +55,14 @@ export function NotificationCenter({
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [open, setOpen] = useState(false);
 
-  // Fetch notifications
   useEffect(() => {
     fetchNotifications();
     const interval = setInterval(fetchNotifications, 60000); // Refresh every minute
     return () => clearInterval(interval);
   }, [tenantId, storeId]);
 
-  async function fetchNotifications() {
-    try {
-      // TODO: Replace with actual API call
-      // const data = await getNotifications(tenantId, storeId);
-
-      // Mock data for now
-      const mockNotifications: Notification[] = [
-        {
-          id: '1',
-          type: 'warning',
-          title: 'Low Satisfaction Rate',
-          message: 'Satisfaction rate dropped to 58%. Review recent feedback.',
-          timestamp: new Date(Date.now() - 3600000),
-          read: false,
-        },
-        {
-          id: '2',
-          type: 'error',
-          title: 'System Error',
-          message: 'AI service encountered 3 errors in the last hour.',
-          timestamp: new Date(Date.now() - 7200000),
-          read: false,
-        },
-        {
-          id: '3',
-          type: 'success',
-          title: 'Weekly Report Ready',
-          message: 'Your weekly analytics summary has been generated.',
-          timestamp: new Date(Date.now() - 10800000),
-          read: true,
-        },
-      ];
-
-      setNotifications(mockNotifications);
-    } catch (error) {
-      console.error('Failed to fetch notifications:', error);
-    }
+  function fetchNotifications() {
+    setNotifications([]);
   }
 
   const handleMarkAsRead = (id: string) => {

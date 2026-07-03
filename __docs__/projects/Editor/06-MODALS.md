@@ -400,7 +400,7 @@ Display all keyboard shortcuts with guidance.
 - ✅ Usage guidance cards
 - ✅ Example workflows
 
-See [03-KEYBOARD-SHORTCUTS.md](./03-KEYBOARD-SHORTCUTS.md) for details.
+See [03-keyboard-shortcuts.md](./03-keyboard-shortcuts.md) for details.
 
 ---
 

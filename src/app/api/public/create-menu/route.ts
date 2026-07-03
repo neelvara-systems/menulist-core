@@ -24,26 +24,97 @@ import {
 } from '@data/shared/menuExtractionJob';
 import { MenuIntakeFileInput } from '@data/shared/menuIntakeIdentity';
 import { firestoreAdmin, storageAdmin } from '@lib/firebase/firebaseAdmin';
-import { acquireMenuLinkSource, MenuLinkImportError } from '@lib/menu-link-import/sourceAcquisition';
+import {
+    acquireMenuLinkSource,
+    getMenuLinkImportClientMessage,
+    MenuLinkImportError,
+} from '@lib/menu-link-import/sourceAcquisition';
 import { analyzeMenuIntakeIdentity, isSupportedMenuIntakeIdentityMimeType } from '@lib/menu-extraction/menuIntakeIdentityServer';
 import { checkSafeMode } from '@lib/ops/safeMode';
 import { checkRateLimit } from '@lib/rateLimit';
 import { getRateLimitForFeature } from '@lib/rateLimit/configs';
-import { secureError, secureLog } from '@lib/security/secureLogger';
+import { readBoundedFormDataBody, readBoundedJsonBody } from '@lib/security/boundedRequestBody';
+import { validateFileUpload } from '@lib/security/fileValidation';
+import { getBoundedSecurityStringContext, logSecurityDiagnostic, logSecurityFailure } from '@lib/security/securityDiagnostics';
 import { STORAGE_CACHE_CONTROL } from '@lib/storage/cacheControl';
 import crypto from 'crypto';
 import { Timestamp } from 'firebase-admin/firestore';
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from 'src/middleware/auth';
-import { getClientIp } from 'src/middleware/publicApi';
+import { getClientIp, hashPublicRateLimitValue } from 'src/middleware/publicApi';
 import { z } from 'zod';
 
 const COLLECTION = DB_COLLECTIONS.PUBLIC_MENU_DRAFTS;
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+const MAX_CREATE_MENU_BODY_SIZE = MAX_FILE_SIZE + 512 * 1024; // allow multipart overhead
+const PUBLIC_CREATE_MENU_LINK_MAX_BODY_BYTES = 8 * 1024;
 const ALLOWED_TYPES = new Set<string>(PUBLIC_CREATE_MENU_IMAGE_MIME_TYPES);
 const DRAFT_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
 const ACTIVE_DRAFT_STATUSES = new Set(['pending', 'processing']);
 const REUSABLE_DRAFT_STATUSES = new Set(['pending', 'processing', 'completed']);
+const PUBLIC_MENU_DRAFT_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const PUBLIC_CREATE_MENU_DRAFT_FAILED_MESSAGE = 'We could not prepare this menu. Upload a clearer photo or try another public menu link.';
+const PUBLIC_MENU_ENTRY_REUSED_DRAFT = 'public_menu_entry_reused_draft';
+const PUBLIC_MENU_ENTRY_REUSED_LINK_DRAFT = 'public_menu_entry_reused_link_draft';
+const PUBLIC_MENU_ENTRY_REUSED_LINK_DRAFT_AFTER_ACQUISITION = 'public_menu_entry_reused_link_draft_after_acquisition';
+const PUBLIC_MENU_ENTRY_DRAFT_CREATED = 'public_menu_entry_draft_created';
+const PUBLIC_MENU_ENTRY_LINK_DRAFT_CREATED = 'public_menu_entry_link_draft_created';
+const PUBLIC_MENU_ENTRY_DRAFT_JOB_CREATE_FAILED = 'public_menu_entry_draft_job_create_failed';
+const PUBLIC_MENU_ENTRY_LINK_SOURCE_REJECTED = 'public_menu_entry_link_source_rejected';
+const PUBLIC_MENU_ENTRY_LINK_IMPORT_FAILED = 'public_menu_entry_link_import_failed';
+const PUBLIC_MENU_ENTRY_UPLOAD_FAILED = 'public_menu_entry_upload_failed';
+const PUBLIC_MENU_ENTRY_POLL_FAILED = 'public_menu_entry_poll_failed';
+const PUBLIC_MENU_ENTRY_STORAGE_CLEANUP_FAILED = 'public_menu_entry_storage_cleanup_failed';
+const PUBLIC_MENU_ENTRY_DRAFT_CLEANUP_FAILED = 'public_menu_entry_draft_cleanup_failed';
+
+function buildPublicMenuEntryLogContext(context: {
+    draftToken?: unknown;
+    ipHash?: unknown;
+    jobId?: unknown;
+    sourceKind?: unknown;
+    sourceType?: unknown;
+    status?: unknown;
+    userId?: unknown;
+} = {}): Record<string, boolean | number | string | null | undefined> {
+    return {
+        ...getBoundedSecurityStringContext('draftToken', context.draftToken),
+        ...getBoundedSecurityStringContext('userId', context.userId),
+        ...getBoundedSecurityStringContext('jobId', context.jobId),
+        ...getBoundedSecurityStringContext('ipHash', context.ipHash),
+        sourceKind: typeof context.sourceKind === 'string' ? context.sourceKind.slice(0, 64) : undefined,
+        sourceType: typeof context.sourceType === 'string' ? context.sourceType.slice(0, 64) : undefined,
+        status: typeof context.status === 'string' ? context.status.slice(0, 64) : undefined,
+    };
+}
+
+async function deletePublicMenuEntryStoragePath(
+    storagePath: string,
+    context: { cleanupReason: string; draftToken: string; userId: string },
+): Promise<void> {
+    try {
+        await storageAdmin.bucket().file(storagePath).delete({ ignoreNotFound: true });
+    } catch (error) {
+        logSecurityFailure(PUBLIC_MENU_ENTRY_STORAGE_CLEANUP_FAILED, error, {
+            ...buildPublicMenuEntryLogContext({ draftToken: context.draftToken, userId: context.userId }),
+            ...getBoundedSecurityStringContext('storagePath', storagePath),
+            cleanupReason: context.cleanupReason,
+        });
+    }
+}
+
+async function deletePublicMenuEntryDraft(
+    draftToken: string,
+    context: { cleanupReason: string; userId: string },
+): Promise<void> {
+    try {
+        await firestoreAdmin.collection(COLLECTION).doc(draftToken).delete();
+    } catch (error) {
+        logSecurityFailure(PUBLIC_MENU_ENTRY_DRAFT_CLEANUP_FAILED, error, {
+            ...buildPublicMenuEntryLogContext({ draftToken, userId: context.userId }),
+            cleanupReason: context.cleanupReason,
+        });
+    }
+}
 
 const PublicMenuLinkSchema = z.object({
     permissionConfirmed: z.literal(true),
@@ -59,7 +130,8 @@ type PublicDraftSource = {
     size: number;
     sourceContentType?: string;
     sourceKind?: string;
-    sourceTextPreview?: string;
+    sourceTextLength?: number;
+    sourceTextPresent?: boolean;
     sourceUrl?: string;
     storagePath: string;
 };
@@ -79,8 +151,7 @@ function buildDownloadUrl(bucketName: string, storagePath: string, token: string
 }
 
 function hashClientIp(req: NextRequest): string {
-    const ip = getClientIp(req);
-    return crypto.createHash('sha256').update(ip).digest('hex').substring(0, 16);
+    return hashPublicRateLimitValue(getClientIp(req));
 }
 
 function buildPublicDraftProjectId(draftToken: string): string {
@@ -157,21 +228,26 @@ async function findReusableDraftForUser(
 
 async function checkAuthenticatedPublicMenuEntryLimit(userId: string): Promise<NextResponse | null> {
     const rateLimitConfig = getRateLimitForFeature('PUBLIC_MENU_ENTRY_AUTH');
+    const userRateLimitHash = hashPublicRateLimitValue(userId);
     const rateLimitResult = await checkRateLimit({
-        key: `public-menu-entry:${userId}`,
+        key: `public-menu-entry:${userRateLimitHash}`,
         ...rateLimitConfig,
+        failClosedOnProviderError: true,
     });
 
     if (rateLimitResult.allowed) return null;
 
     const waitSeconds = Math.ceil((rateLimitResult.resetAt - Date.now()) / 1000);
+    const providerUnavailable = rateLimitResult.reason === 'provider_unavailable';
     return NextResponse.json(
         {
             success: false,
-            error: 'Too many menu setup attempts. Please try again later.',
+            error: providerUnavailable
+                ? 'Menu setup is temporarily unavailable. Please try again in a minute.'
+                : 'Too many menu setup attempts. Please try again later.',
         },
         {
-            status: 429,
+            status: providerUnavailable ? 503 : 429,
             headers: {
                 'Retry-After': String(waitSeconds),
                 'X-RateLimit-Limit': String(rateLimitConfig.limit),
@@ -249,7 +325,8 @@ async function createPublicDraftExtractionJob(draftToken: string, source: Public
                 finalUrl: source.finalUrl,
                 sourceContentType: source.sourceContentType,
                 sourceKind: source.sourceKind,
-                sourceTextPreview: source.sourceTextPreview || null,
+                sourceTextLength: source.sourceTextLength || 0,
+                sourceTextPresent: Boolean(source.sourceTextPresent),
                 sourceUrl: source.sourceUrl,
             } : {}),
             ...(identityCheck ? { identityCheck } : {}),
@@ -289,15 +366,25 @@ async function createImageDraft(req: NextRequest, userId: string, imageFile: Fil
     }
 
     const buffer = Buffer.from(await imageFile.arrayBuffer());
+    const fileValidation = await validateFileUpload(buffer, imageFile.type, imageFile.size);
+    if (!fileValidation.valid) {
+        return NextResponse.json(
+            { success: false, error: 'Invalid file type. Please upload a JPEG, PNG, or WebP image.' },
+            { status: 400 }
+        );
+    }
+
     const contentHash = hashBuffer(buffer);
     const reusableDraft = await findReusableDraftForUser(userId, { contentHash });
     if (reusableDraft) {
-        secureLog('[PublicMenuEntry] Reusing owner draft', {
-            draftToken: reusableDraft.id,
+        logSecurityDiagnostic(PUBLIC_MENU_ENTRY_REUSED_DRAFT, {
+            ...buildPublicMenuEntryLogContext({
+                draftToken: reusableDraft.id,
+                sourceType: reusableDraft.data.sourceType || 'image_upload',
+                status: reusableDraft.data.extractionStatus,
+                userId,
+            }),
             reason: reusableDraft.data.contentHash === contentHash ? 'content_hash' : 'active_draft',
-            sourceType: reusableDraft.data.sourceType || 'image_upload',
-            status: reusableDraft.data.extractionStatus,
-            userId,
         });
         return buildReusableDraftResponse(reusableDraft);
     }
@@ -366,13 +453,9 @@ async function createImageDraft(req: NextRequest, userId: string, imageFile: Fil
             storagePath,
         }, imageUrl, userId);
 
-        secureLog('[PublicMenuEntry] Draft created', {
-            draftToken,
+        logSecurityDiagnostic(PUBLIC_MENU_ENTRY_DRAFT_CREATED, {
+            ...buildPublicMenuEntryLogContext({ draftToken, ipHash, jobId, sourceType: 'image_upload', userId }),
             fileSize: imageFile.size,
-            ipHash,
-            jobId,
-            sourceType: 'image_upload',
-            userId,
         });
 
         return NextResponse.json({
@@ -382,11 +465,18 @@ async function createImageDraft(req: NextRequest, userId: string, imageFile: Fil
             status: 'processing',
         });
     } catch (error) {
-        await bucket.file(storagePath).delete({ ignoreNotFound: true }).catch(() => undefined);
+        await deletePublicMenuEntryStoragePath(storagePath, {
+            cleanupReason: 'image_draft_job_create_failed',
+            draftToken,
+            userId,
+        });
         if (draftCreated) {
-            await firestoreAdmin.collection(COLLECTION).doc(draftToken).delete().catch(() => undefined);
+            await deletePublicMenuEntryDraft(draftToken, {
+                cleanupReason: 'image_draft_job_create_failed',
+                userId,
+            });
         }
-        secureError('[PublicMenuEntry] Draft job creation failed', error instanceof Error ? error : new Error(String(error)), { draftToken });
+        logSecurityFailure(PUBLIC_MENU_ENTRY_DRAFT_JOB_CREATE_FAILED, error, buildPublicMenuEntryLogContext({ draftToken, userId }));
         return NextResponse.json(
             { success: false, error: 'Failed to process your menu image. Please try again.' },
             { status: 500 },
@@ -414,12 +504,14 @@ async function createMenuLinkDraft(req: NextRequest, userId: string, body: unkno
     const sourceInputHash = hashString(requestedSourceUrl);
     const reusableDraft = await findReusableDraftForUser(userId, { sourceInputHash });
     if (reusableDraft) {
-        secureLog('[PublicMenuEntry] Reusing owner link draft', {
-            draftToken: reusableDraft.id,
+        logSecurityDiagnostic(PUBLIC_MENU_ENTRY_REUSED_LINK_DRAFT, {
+            ...buildPublicMenuEntryLogContext({
+                draftToken: reusableDraft.id,
+                sourceType: reusableDraft.data.sourceType || 'menu_link_import',
+                status: reusableDraft.data.extractionStatus,
+                userId,
+            }),
             reason: reusableDraft.data.sourceInputHash === sourceInputHash ? 'source_input_hash' : 'active_draft',
-            sourceType: reusableDraft.data.sourceType || 'menu_link_import',
-            status: reusableDraft.data.extractionStatus,
-            userId,
         });
         return buildReusableDraftResponse(reusableDraft);
     }
@@ -434,12 +526,14 @@ async function createMenuLinkDraft(req: NextRequest, userId: string, body: unkno
         const acquisition = await acquireMenuLinkSource(requestedSourceUrl);
         const matchingDraft = await findReusableDraftForUser(userId, { contentHash: acquisition.contentHash });
         if (matchingDraft) {
-            secureLog('[PublicMenuEntry] Reusing owner link draft after acquisition', {
-                draftToken: matchingDraft.id,
+            logSecurityDiagnostic(PUBLIC_MENU_ENTRY_REUSED_LINK_DRAFT_AFTER_ACQUISITION, {
+                ...buildPublicMenuEntryLogContext({
+                    draftToken: matchingDraft.id,
+                    sourceKind: acquisition.sourceKind,
+                    status: matchingDraft.data.extractionStatus,
+                    userId,
+                }),
                 reason: matchingDraft.data.contentHash === acquisition.contentHash ? 'content_hash' : 'active_draft',
-                sourceKind: acquisition.sourceKind,
-                status: matchingDraft.data.extractionStatus,
-                userId,
             });
             return buildReusableDraftResponse(matchingDraft);
         }
@@ -486,7 +580,8 @@ async function createMenuLinkDraft(req: NextRequest, userId: string, body: unkno
                 redirectCount: acquisition.redirectCount,
                 sourceContentType: acquisition.sourceContentType,
                 sourceKind: acquisition.sourceKind,
-                sourceTextPreview: acquisition.sourceTextPreview || null,
+                sourceTextLength: acquisition.sourceTextLength || 0,
+                sourceTextPresent: Boolean(acquisition.sourceTextPresent),
                 sourceInputHash,
                 sourceUrl: requestedSourceUrl,
                 storagePath,
@@ -518,18 +613,15 @@ async function createMenuLinkDraft(req: NextRequest, userId: string, body: unkno
             size: acquisition.size,
             sourceContentType: acquisition.sourceContentType,
             sourceKind: acquisition.sourceKind,
-            sourceTextPreview: acquisition.sourceTextPreview,
+            sourceTextLength: acquisition.sourceTextLength,
+            sourceTextPresent: acquisition.sourceTextPresent,
             sourceUrl: requestedSourceUrl,
             storagePath,
         }, sourceArtifactUrl, userId);
 
-        secureLog('[PublicMenuEntry] Link draft created', {
-            draftToken,
+        logSecurityDiagnostic(PUBLIC_MENU_ENTRY_LINK_DRAFT_CREATED, {
+            ...buildPublicMenuEntryLogContext({ draftToken, ipHash, jobId, sourceKind: acquisition.sourceKind, userId }),
             fileSize: acquisition.size,
-            ipHash,
-            jobId,
-            sourceKind: acquisition.sourceKind,
-            userId,
         });
 
         return NextResponse.json({
@@ -539,21 +631,28 @@ async function createMenuLinkDraft(req: NextRequest, userId: string, body: unkno
             status: 'processing',
         });
     } catch (error) {
-        await Promise.allSettled(createdStoragePaths.map((path) => storageAdmin.bucket().file(path).delete({ ignoreNotFound: true })));
-        await firestoreAdmin.collection(COLLECTION).doc(draftToken).delete().catch(() => undefined);
+        await Promise.all(createdStoragePaths.map((path) => deletePublicMenuEntryStoragePath(path, {
+            cleanupReason: 'link_draft_create_failed',
+            draftToken,
+            userId,
+        })));
+        await deletePublicMenuEntryDraft(draftToken, {
+            cleanupReason: 'link_draft_create_failed',
+            userId,
+        });
 
         if (error instanceof MenuLinkImportError) {
-            secureLog('[PublicMenuEntry] Link source rejected', {
+            logSecurityDiagnostic(PUBLIC_MENU_ENTRY_LINK_SOURCE_REJECTED, {
                 code: error.code,
                 status: error.status,
             });
             return NextResponse.json(
-                { success: false, error: error.message, code: error.code },
+                { success: false, error: getMenuLinkImportClientMessage(error, { publicEntry: true }), code: error.code },
                 { status: error.status },
             );
         }
 
-        secureError('[PublicMenuEntry] Link import failed', error instanceof Error ? error : new Error(String(error)));
+        logSecurityFailure(PUBLIC_MENU_ENTRY_LINK_IMPORT_FAILED, error, buildPublicMenuEntryLogContext({ draftToken, userId }));
         return NextResponse.json(
             { success: false, error: 'We could not read this menu link. Upload a photo or try another public menu link.' },
             { status: 500 },
@@ -581,14 +680,33 @@ export const POST = withAuth(async (req: NextRequest, session) => {
     }
 
     try {
+        const contentLength = Number(req.headers.get('content-length') || 0);
+        if (Number.isFinite(contentLength) && contentLength > MAX_CREATE_MENU_BODY_SIZE) {
+            return NextResponse.json(
+                { success: false, error: 'Source is too large. Upload a photo up to 10MB or use a public menu link.' },
+                { status: 413 },
+            );
+        }
+
         const contentType = req.headers.get('content-type') || '';
 
         if (contentType.includes('application/json')) {
-            const body = await req.json().catch(() => null);
-            return createMenuLinkDraft(req, userId, body);
+            const bodyResult = await readBoundedJsonBody(req, PUBLIC_CREATE_MENU_LINK_MAX_BODY_BYTES, {
+                invalidJsonMessage: 'Enter a public menu link and confirm you have permission to import it.',
+                tooLargeMessage: 'Menu link request is too large.',
+            });
+            if (bodyResult.ok === false) return bodyResult.response;
+
+            return createMenuLinkDraft(req, userId, bodyResult.data);
         }
 
-        const formData = await req.formData();
+        const formDataResult = await readBoundedFormDataBody(req, MAX_CREATE_MENU_BODY_SIZE, {
+            invalidFormDataMessage: 'Upload a valid menu photo.',
+            tooLargeMessage: 'Source is too large. Upload a photo up to 10MB or use a public menu link.',
+        });
+        if (formDataResult.ok === false) return formDataResult.response;
+
+        const formData = formDataResult.formData;
         const imageFile = formData.get('image') as File | null;
 
         if (!imageFile) {
@@ -600,7 +718,7 @@ export const POST = withAuth(async (req: NextRequest, session) => {
 
         return createImageDraft(req, userId, imageFile);
     } catch (error) {
-        secureError('[PublicMenuEntry] Upload failed', error instanceof Error ? error : new Error(String(error)));
+        logSecurityFailure(PUBLIC_MENU_ENTRY_UPLOAD_FAILED, error, buildPublicMenuEntryLogContext({ userId }));
         return NextResponse.json(
             { success: false, error: 'Failed to process your menu image. Please try again.' },
             { status: 500 }
@@ -621,16 +739,18 @@ export const GET = withAuth(async (req: NextRequest, session) => {
     const statusOnly = searchParams.get('statusOnly') === '1' || searchParams.get('statusOnly') === 'true';
     const userId = String(session?.user?.id || '');
 
-    if (!draftId) {
+    if (!draftId || !PUBLIC_MENU_DRAFT_ID_PATTERN.test(draftId)) {
         return NextResponse.json(
-            { success: false, error: 'Missing draftId parameter.' },
+            { success: false, error: 'Invalid draftId parameter.' },
             { status: 400 }
         );
     }
 
     try {
+        const userRateLimitHash = hashPublicRateLimitValue(userId);
+        const draftRateLimitHash = hashPublicRateLimitValue(draftId);
         const statusRateLimit = await checkRateLimit({
-            key: `public-menu-entry-status:${userId}:${draftId}`,
+            key: `public-menu-entry-status:${userRateLimitHash}:${draftRateLimitHash}`,
             limit: 90,
             window: 300,
         });
@@ -684,7 +804,7 @@ export const GET = withAuth(async (req: NextRequest, session) => {
             extractedBusinessProfile: draft.extractedBusinessProfile || null,
             imageUrl: draft.imageUrl,
             sourceType: draft.sourceType || 'image_upload',
-            error: draft.extractionError || null,
+            error: draft.extractionStatus === 'failed' ? PUBLIC_CREATE_MENU_DRAFT_FAILED_MESSAGE : null,
             resultReady: draft.extractionStatus === 'completed' && Boolean(draft.extractedData),
         };
 
@@ -694,7 +814,7 @@ export const GET = withAuth(async (req: NextRequest, session) => {
 
         return NextResponse.json(responseBody);
     } catch (error) {
-        secureError('[PublicMenuEntry] Poll failed', error instanceof Error ? error : new Error(String(error)));
+        logSecurityFailure(PUBLIC_MENU_ENTRY_POLL_FAILED, error, buildPublicMenuEntryLogContext({ draftToken: draftId, userId }));
         return NextResponse.json(
             { success: false, error: 'Failed to check status.' },
             { status: 500 }

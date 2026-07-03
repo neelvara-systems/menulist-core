@@ -2,8 +2,10 @@
 
 **Feature:** File Upload & PDF Processing  
 **Parent Feature:** Projects (Menu Digitization)  
-**Status:** ✅ Production Ready  
+**Status:** Implemented source evidence; not current launch certification
 **Last Updated:** January 2026
+
+**Launch boundary:** This spec documents upload and PDF-processing behavior for Projects. Current release approval still requires the active [production-readiness audit](../../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../../production-readiness/external-certification-runbook.md) evidence, target deploy evidence, browser/mobile upload QA, Storage quota/rules evidence, and extraction-job evidence for the release.
 
 ---
 
@@ -96,7 +98,7 @@ Upload & File Processing is the entry point for digitizing physical menus. Resta
 ┌─────────────────────┐   ┌─────────────────────┐
 │ PDF Files           │   │ Image Files         │
 │ → Convert to images │   │ → Add to preview    │
-│ → 50 page max       │   │                     │
+│ → 15 page/job max   │   │                     │
 └─────────┬───────────┘   └─────────┬───────────┘
           │                         │
           └───────────┬─────────────┘
@@ -143,7 +145,7 @@ Upload & File Processing is the entry point for digitizing physical menus. Resta
 | NFR-01 | Individual image size limit | 10MB        | ✅     |
 | NFR-02 | Individual PDF size limit   | 50MB        | ✅     |
 | NFR-03 | Total session upload limit  | 200MB       | ✅     |
-| NFR-04 | Maximum PDF pages           | 50          | ✅     |
+| NFR-04 | Maximum PDF pages/job       | 15          | ✅     |
 | NFR-05 | PDF conversion quality      | 80% JPEG    | ✅     |
 | NFR-06 | PDF conversion scale        | 1.5x        | ✅     |
 | NFR-07 | Memory leak prevention      | 0 leaks     | ✅     |
@@ -165,10 +167,10 @@ Upload & File Processing is the entry point for digitizing physical menus. Resta
 | Limit                 | Value         | Reasoning                                                       |
 | --------------------- | ------------- | --------------------------------------------------------------- |
 | **Image max**         | 10MB          | Typical menu photo is 2-5MB. 10MB covers high-res scans.        |
-| **PDF max**           | 50MB          | 30-page compressed PDF ≈ 15-30MB. 50MB handles large menus.     |
-| **Session max**       | 200MB         | Allows 4x 50MB PDFs or 20x 10MB images per upload session.      |
-| **PDF pages**         | 50 max        | Prevents browser crashes. Split large menus into multiple PDFs. |
-| **Warning threshold** | 30MB/30 pages | Warns user about processing time/cost without blocking.         |
+| **PDF max**           | 50MB          | Handles large source files while the extraction job still caps processed pages. |
+| **Session max**       | 200MB         | Upload session size guard; extraction jobs still cap images/pages to 15. |
+| **PDF pages**         | 15 max        | Mirrors `MENU_EXTRACTION_JOB_LIMITS.MAX_FILES` so the client blocks before Storage upload/API rejection. |
+| **Warning threshold** | 30MB/12 pages | Warns user about processing time/cost without blocking.         |
 
 ---
 
@@ -181,7 +183,7 @@ Upload & File Processing is the entry point for digitizing physical menus. Resta
 | Total limit exceeded | `Total upload size ({x}MB) exceeds the 200MB limit. Please upload files in smaller batches.`                               |
 | Invalid file type    | `"{filename}" has an invalid file type. Please upload only: JPG, PNG, WebP, or PDF files.`                                 |
 | Corrupted PDF        | `"{filename}" is corrupted or invalid. Please try a different PDF file.`                                                   |
-| Too many pages       | `"{filename}" has {x} pages. Maximum allowed is 50 pages per PDF. Please split the PDF into smaller files.`                |
+| Too many pages       | `"{filename}" has {x} pages. Maximum allowed is 15 pages per PDF. Please split the PDF into smaller files.`                |
 | Duplicate detected   | `"{filename}" already exists in this project. Uploading it again will use additional AI credits. Do you want to continue?` |
 
 ---
@@ -218,4 +220,4 @@ Upload & File Processing is the entry point for digitizing physical menus. Resta
 
 ---
 
-_Document Status: ✅ PRODUCTION READY_
+_Document Status: Historical upload-processing source evidence - not current launch certification_

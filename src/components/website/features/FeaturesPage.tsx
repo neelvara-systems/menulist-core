@@ -81,7 +81,8 @@ export default function FeaturesPage() {
               {t('Features.heroEyebrow')}
             </p>
             <WebsiteHeadline as="h1">
-              {t('Features.heroTitle1')}<br />
+              {t('Features.heroTitle1')}{' '}
+              <br />
               <span className="ws-headline__highlight">{t('Features.heroTitle2')}</span>
             </WebsiteHeadline>
             <p className="ws-body" style={{ marginTop: 'var(--ws-space-6)', maxWidth: '560px', marginLeft: 'auto', marginRight: 'auto' }}>

@@ -63,7 +63,7 @@
 | CORS Implementation   | `__docs__/security/cors/`                     | Used by ALL API routes                              |
 | File Upload Security  | `__docs__/security/file-upload/`              | Used by multiple features (Projects, Support, etc.) |
 | withAuth() Middleware | `__docs__/security/authentication/`           | Application-wide pattern                            |
-| Projects API Security | `__docs__/projects/ASSESSMENT-05-SECURITY.md` | Projects feature only                               |
+| Projects API Security | `__docs__/projects/assessment-05-security.md` | Projects feature only                               |
 | Editor Validation     | `__docs__/projects/03-EDITOR-VALIDATION.md`   | Projects feature only                               |
 
 ❌ **INCORRECT PLACEMENT:**
@@ -245,7 +245,7 @@ __docs__/[feature]/
    - Not Projects-specific
 
 4. Updated Projects assessment:
-   __docs__/projects/ASSESSMENT-05-SECURITY.md
+   __docs__/projects/assessment-05-security.md
    - Added: "See [CORS_IMPLEMENTATION.md](...)"
    - Did NOT duplicate CORS documentation
    - Focused on "how Projects uses CORS"

@@ -21,7 +21,7 @@ This folder contains documentation for **internal platform features** that are u
 
 ### Overview
 
-Internal platform roles are **separate from customer RBAC**. They are set directly in the database and give team members access to internal screens under `/platform/*`.
+Internal platform roles are **separate from customer RBAC**. They are set directly in the database. The MenuList `/platform/*` shell and legacy `/ops/*` aliases currently require the full `PLATFORM` role before internal pages render.
 
 ### Role Definitions
 
@@ -50,7 +50,7 @@ export const CRAFT_BUILDER_MAINTAINER_USER_ROLE = "CRAFT_BUILDER_MAINTAINER"
 1. **Database-Managed**: Platform roles are set directly in Firestore `users` collection
 2. **No UI Assignment**: These are NOT assignable through the dashboard UI
 3. **Full Access**: `PLATFORM` role = god mode, access to everything
-4. **Screen Access**: Controls visibility of `/platform/*` routes
+4. **Screen Access**: `src/app/(main)/platform/layout.tsx` blocks `/platform/*` and `src/app/(main)/ops/layout.tsx` blocks legacy `/ops/*` aliases unless `platformRole === PLATFORM`. The desktop Platform navigation is hidden from non-platform sessions.
 
 ### Setting a Platform Role
 
@@ -65,11 +65,14 @@ await updateDoc(doc(db, 'users', userId), {
 
 | Route | Purpose | Required Role |
 |-------|---------|---------------|
+| `/platform/founder-monitor` | Founder operating scoreboard for trusted live stores, MRR, onboarding, Store Truth, distribution, and support risk | PLATFORM |
 | `/platform/stores` | All stores management | PLATFORM |
 | `/platform/tenants` | All tenants management | PLATFORM |
 | `/platform/users` | All users management | PLATFORM |
 | `/platform/analytics` | Platform-wide analytics | PLATFORM |
-| `/platform/support` | Support tickets | PLATFORM_SUPPORT |
+| `/platform/support-tickets` | Platform support tickets | PLATFORM |
+
+`PLATFORM_SUPPORT` and `CRAFT_BUILDER_MAINTAINER` remain reserved internal role constants. They do not grant broad `/platform/*` shell access unless a dedicated route or product shell explicitly implements that access.
 
 ---
 

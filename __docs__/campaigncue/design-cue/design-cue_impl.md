@@ -59,6 +59,8 @@ Use this hierarchy:
 
 Keep CampaignCue-specific constants under `src/constants/campaigncue/`. Do not put CampaignCue constants in a flat shared file.
 
+The guarded model-backed route logs validation failures through the shared CampaignCue bounded security context. It keeps route/session, endpoint, method, and validation-error metadata as presence-length fields and does not spread raw `buildSecurityContext()` output into security events.
+
 ## Core Types
 
 ```ts

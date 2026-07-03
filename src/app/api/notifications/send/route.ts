@@ -12,11 +12,19 @@ export const dynamic = 'force-dynamic';
 
 import { PRODUCT_IDS } from '@constant/product';
 import { sendNotification } from '@lib/notifications';
+import {
+    getBoundedNotificationStringContext,
+    getNotificationPayloadLogContext,
+    logNotificationFailure,
+} from '@lib/notifications/notificationDiagnostics';
 import { checkRateLimit } from '@lib/rateLimit';
-import { secureError } from '@lib/security/secureLogger';
+import { readBoundedJsonBody } from '@lib/security/boundedRequestBody';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { withAuth } from '../../../../middleware/auth';
+import { hashPublicRateLimitValue } from '../../../../middleware/publicApi';
+
+const NOTIFICATION_SEND_MAX_BODY_BYTES = 16 * 1024;
 
 const ALLOWED_CLIENT_NOTIFICATION_EVENTS = [
     'TICKET_CREATED',
@@ -35,10 +43,20 @@ const NotificationRequestSchema = z.object({
 });
 
 export const POST = withAuth(async (request: NextRequest, session) => {
+    let failureContext: Record<string, boolean | number | string | null | undefined> = {
+        endpoint: '/api/notifications/send',
+    };
+
     try {
         const userId = String(session?.uId || session?.user?.id || session?.user?.email || '').trim();
+        failureContext = {
+            ...failureContext,
+            ...getBoundedNotificationStringContext('userId', userId),
+        };
+
+        const userRateLimitHash = hashPublicRateLimitValue(userId || 'unknown');
         const rateLimitResult = await checkRateLimit({
-            key: `notification-send:${userId || 'unknown'}`,
+            key: `notification-send:${userRateLimitHash}`,
             limit: 120,
             window: 60 * 60,
         });
@@ -46,12 +64,22 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             return NextResponse.json({ error: 'Too many notification attempts. Try again later.' }, { status: 429 });
         }
 
-        const parsed = NotificationRequestSchema.safeParse(await request.json());
+        const bodyResult = await readBoundedJsonBody(request, NOTIFICATION_SEND_MAX_BODY_BYTES, {
+            invalidJsonMessage: 'Invalid notification request',
+        });
+        if (bodyResult.ok === false) return bodyResult.response;
+
+        const parsed = NotificationRequestSchema.safeParse(bodyResult.data);
         if (!parsed.success) {
             return NextResponse.json({ error: 'Invalid notification request' }, { status: 400 });
         }
 
         const { eventType, recipientEmail, recipientName, referenceId, metadata, productId, skipDedup } = parsed.data;
+        failureContext = {
+            ...failureContext,
+            ...getNotificationPayloadLogContext(parsed.data),
+        };
+
         if (productId !== PRODUCT_IDS.ANSWERLATTICE) {
             return NextResponse.json({ error: 'Unsupported notification product' }, { status: 400 });
         }
@@ -73,7 +101,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
 
         return NextResponse.json({ sent });
     } catch (err: any) {
-        secureError('[Notification API] Error', err as Error);
+        logNotificationFailure('notification_send_route_failed', err, failureContext);
         return NextResponse.json({ error: 'Failed to send notification' }, { status: 500 });
     }
 });

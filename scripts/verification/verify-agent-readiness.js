@@ -4,10 +4,16 @@ require('ts-node').register({
   require: ['tsconfig-paths/register'],
 });
 
+const { spawnSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 
 const ROOT = path.resolve(__dirname, '..', '..');
+const EXTERNAL_ONLY_VERIFICATION_FILES = [
+  'verify-mobile-owner-menu.mjs',
+  'verify-mobile-upload-extraction.mjs',
+  'verify-public-routing-summary-backfill.mjs',
+];
 
 function read(relPath) {
   return fs.readFileSync(path.join(ROOT, relPath), 'utf8');
@@ -29,6 +35,58 @@ function assertIncludes(content, needle, label) {
 
 function assertNotIncludes(content, needle, label) {
   assert(!content.includes(needle), `${label} must not include ${needle}`);
+}
+
+function assertNodeCheck(relPath) {
+  const result = spawnSync(process.execPath, ['--check', relPath], {
+    cwd: ROOT,
+    encoding: 'utf8',
+  });
+  assert(
+    result.status === 0 && !result.signal,
+    `${relPath} must pass node --check${result.stderr ? `: ${result.stderr.trim()}` : ''}`,
+  );
+}
+
+function verifyVerificationRegistryCoverage() {
+  const packageJson = JSON.parse(read('package.json'));
+  const scriptEntries = Object.entries(packageJson.scripts || {});
+  const rootVerifyScriptEntries = scriptEntries.filter(([name]) => name.startsWith('verify:'));
+  const verificationFiles = fs
+    .readdirSync(path.join(ROOT, 'scripts/verification'))
+    .filter((filename) => /^verify-.*\.(?:js|mjs|ts)$/.test(filename))
+    .sort();
+  const referencedFiles = new Set();
+
+  for (const [, command] of rootVerifyScriptEntries) {
+    for (const file of verificationFiles) {
+      if (command.includes(`scripts/verification/${file}`)) {
+        referencedFiles.add(file);
+      }
+    }
+  }
+
+  const uncoveredFiles = verificationFiles.filter((file) => !referencedFiles.has(file));
+  assert(
+    uncoveredFiles.join('\n') === EXTERNAL_ONLY_VERIFICATION_FILES.join('\n'),
+    `Root verify registry coverage drift. Expected only external files ${EXTERNAL_ONLY_VERIFICATION_FILES.join(', ')} to be outside root verify:* coverage, found ${uncoveredFiles.join(', ') || 'none'}.`,
+  );
+
+  const productionReadinessAudit = read('__docs__/audits/menulist-production-readiness-audit.md');
+  const changelog = read('__docs__/CHANGELOG.md');
+  const productionCertificationRunbook = read('__docs__/production-readiness/external-certification-runbook.md');
+  assertIncludes(changelog, 'Recycle-Bin Verifier Boundary', 'Changelog recycle-bin verifier boundary entry');
+  assertIncludes(changelog, '`npm run verify:recycle-bin` no longer prints manual-testing readiness or dev-server next steps', 'Changelog recycle-bin local-only output boundary');
+  for (const file of EXTERNAL_ONLY_VERIFICATION_FILES) {
+    assertIncludes(productionReadinessAudit, file, `Production readiness audit external verification allowlist ${file}`);
+    assertIncludes(changelog, file, `Changelog external verification allowlist ${file}`);
+    assertIncludes(
+      productionCertificationRunbook,
+      `node --check scripts/verification/${file}`,
+      `External certification runbook syntax preflight ${file}`,
+    );
+    assertNodeCheck(`scripts/verification/${file}`);
+  }
 }
 
 function verifyEnvironmentTargets() {
@@ -66,43 +124,262 @@ function verifyEnvironmentTargets() {
   const setClaimsRoute = read('src/app/api/auth/set-claims/route.ts');
   const envStagingExample = read('.env.staging.example');
   const envProductionExample = read('.env.production.example');
+  const functionsQaEnv = read('functions/.env.menulist-qa');
+  const functionsProductionEnv = read('functions/.env.menulist');
+  const functionsQaEnvExample = read('functions/.env.menulist-qa.example');
+  const functionsProductionEnvExample = read('functions/.env.menulist.example');
   const productSetupDoc = read('__docs__/deployment/three-product-environment-setup.md');
+  const urlRoutingArchitecture = read('__docs__/url-routing-architecture/url-routing-architecture_impl.md');
+  const productionDeploymentChecklist = read('__docs__/deployment/production-deployment-checklist.md');
+  const launchPrerequisites = read('__docs__/production-readiness/launch-prerequisites.md');
+  const productionReadinessReadme = read('__docs__/production-readiness/README.md');
+  const devProdEnvironmentGuide = read('__docs__/production-readiness/dev-prod-environment-guide.md');
+  const productionCertificationRunbook = read('__docs__/production-readiness/external-certification-runbook.md');
+  const productionReadinessLocalRunner = read('scripts/verification/run-production-readiness-local.js');
+  const publicBusinessTruthVerifier = read('scripts/verification/verify-public-business-truth.js');
+  const featureSweepMasterReport = read('FEATURE_SWEEP_MASTER_REPORT.md');
+  const productionTestingGuide = read('__docs__/production-testing-guide.md');
+  const rootDocsReadme = read('__docs__/README.md');
+  const productionReadinessAudit = read('__docs__/audits/menulist-production-readiness-audit.md');
+  const changelog = read('__docs__/CHANGELOG.md');
+  const projectsReadme = read('__docs__/projects/README.md');
+  const projectsOverview = read('__docs__/projects/00-overview.md');
+  const projectsUtilities = read('__docs__/projects/14-utilities.md');
+  const projectsOwnerDashboard = read('__docs__/projects/owner-dashboard.md');
+  const projectsEditorReadme = read('__docs__/projects/Editor/README.md');
+  const projectsEditorAutoSaveDoc = read('__docs__/projects/Editor/07-AUTO-SAVE.md');
+  const uploadFileProcessingReadme = read('__docs__/projects/upload-file-processing/README.md');
+  const uploadFileProcessingFirebase = read('__docs__/projects/upload-file-processing/upload-file-processing_firebase.md');
+  const uploadFileProcessingMarketing = read('__docs__/projects/upload-file-processing/upload-file-processing_marketing.md');
+  const aiDataExtractionMarketing = read('__docs__/projects/ai-data-extraction/ai-data-extraction_marketing.md');
+  const b2bViewFirebase = read('__docs__/projects/b2b-view/b2b-view_firebase.md');
+  const projectsProductionReadinessAssessment = read('__docs__/projects/production-readiness-assessment.md');
+  const projectsTestingChecklist = read('__docs__/projects/testing-checklist.md');
+  const projectsMiscellaneousTask = read('__docs__/projects/miscellaneous-task.md');
+  const mainWebsiteReadme = read('__docs__/main-website/README.md');
+  const mobilePwaAnalysis = read('__docs__/mobile-operational-support/08-full-pwa-mobile-analysis.md');
+  const trustSecurityPageDoc = read('__docs__/features/trust-security-page.md');
+  const profileModalRedesignDoc = read('__docs__/features/profile-modal-redesign.md');
+  const networkStatusMonitoringDoc = read('__docs__/features/network-status-monitoring.md');
+  const authCompleteGuide = read('__docs__/auth/authentication-complete-guide.md');
+  const authReadme = read('__docs__/auth/README.md');
+  const authFirebaseDoc = read('__docs__/auth/auth_firebase.md');
+  const firebaseAuthSyncDoc = read('__docs__/auth/firebase-auth-sync.md');
+  const firebaseAuthNullFixDoc = read('__docs__/auth/firebase-auth-null-fix.md');
+  const authOnboardingReadme = read('__docs__/auth-onboarding/README.md');
+  const authOnboardingSpec = read('__docs__/auth-onboarding/auth-onboarding_spec.md');
+  const authOnboardingImpl = read('__docs__/auth-onboarding/auth-onboarding_impl.md');
+  const authOnboardingFirebase = read('__docs__/auth-onboarding/auth-onboarding_firebase.md');
+  const authOnboardingMobileSupport = read('__docs__/auth-onboarding/auth-onboarding_mobile-support.md');
+  const onboardingCentralizationReadme = read('__docs__/onboarding-centralization/README.md');
+  const ponrOnboardingSpec = read('__docs__/onboarding/ponr-onboarding_spec.md');
+  const businessTypeDataModelReadme = read('__docs__/business-type-data-model/README.md');
+  const clientMenuReadme = read('__docs__/client-menu/README.md');
+  const clientMenuSpec = read('__docs__/client-menu/_spec.md');
+  const clientMenuImpl = read('__docs__/client-menu/_impl.md');
+  const clientMenuMarketing = read('__docs__/client-menu/_marketing.md');
+  const clientMenuFirebase = read('__docs__/client-menu/client-menu_firebase.md');
+  const clientMenuAutosellFirebase = read('__docs__/client-menu/autosell-features/autosell-features_firebase.md');
+  const clientMenuAnalyticsFirebase = read('__docs__/client-menu/analytics-tracking/analytics-tracking_firebase.md');
+  const b2cMenuLayoutConstitution = read('__docs__/projects/menu-editor/b2c-menu-layout-constitution-implementation.md');
+  const physicalSurfacesSpec = read('__docs__/physical-surfaces/physical-surfaces_spec.md');
+  const menuEditorPhase4Advanced = read('__docs__/projects/menu-editor/phase-4-advanced.md');
+  const b2cViewReadme = read('__docs__/projects/b2c-view/README.md');
+  const b2cViewSpec = read('__docs__/projects/b2c-view/b2c-view_spec.md');
+  const b2cViewImpl = read('__docs__/projects/b2c-view/b2c-view_impl.md');
+  const b2cViewMarketing = read('__docs__/projects/b2c-view/b2c-view_marketing.md');
+  const b2cViewAssessment = read('__docs__/projects/Assessments/assessment-11-b2c-view.md');
+  const descriptionGenerationReadme = read('__docs__/projects/description-generation/README.md');
+  const descriptionGenerationSpec = read('__docs__/projects/description-generation/description-generation_spec.md');
+  const descriptionGenerationImpl = read('__docs__/projects/description-generation/description-generation_impl.md');
+  const descriptionGenerationFirebase = read('__docs__/projects/description-generation/description-generation_firebase.md');
+  const descriptionGenerationMarketing = read('__docs__/projects/description-generation/description-generation_marketing.md');
+  const descriptionGenerationProductionAudit = read('__docs__/projects/description-generation/description-generation_production-audit.md');
+  const descriptionGenerationAssessment = read('__docs__/projects/Assessments/assessment-09-description-generation.md');
+  const multiLanguageTranslationReadme = read('__docs__/projects/multi-language-translation/README.md');
+  const multiLanguageTranslationSpec = read('__docs__/projects/multi-language-translation/multi-language-translation_spec.md');
+  const multiLanguageTranslationImpl = read('__docs__/projects/multi-language-translation/multi-language-translation_impl.md');
+  const multiLanguageTranslationMarketing = read('__docs__/projects/multi-language-translation/multi-language-translation_marketing.md');
+  const dataEditorReadme = read('__docs__/projects/data-editor/README.md');
+  const dataEditorSpec = read('__docs__/projects/data-editor/data-editor_spec.md');
+  const dataEditorImpl = read('__docs__/projects/data-editor/data-editor_impl.md');
+  const dataEditorFirebase = read('__docs__/projects/data-editor/data-editor_firebase.md');
+  const dataEditorMarketing = read('__docs__/projects/data-editor/data-editor_marketing.md');
+  const dataEditorAssessment = read('__docs__/projects/Assessments/assessment-03-editor.md');
+  const socialContentReadme = read('__docs__/social-content/README.md');
+  const socialContentImpl = read('__docs__/social-content/social-content_impl.md');
+  const socialContentStrategy = read('__docs__/social-content/social-content-product-strategy.md');
+  const socialContentValidation = read('__docs__/social-content/social-content_validation.md');
+  const socialContentLogicVerification = read('__docs__/social-content/social-content_logic-verification.md');
+  const menuCommandCenterValidation = read('__docs__/menu-command-center/menu-command-center_validation.md');
+  const itemPhotoCaptureAssistValidation = read('__docs__/item-photo-capture-assist/item-photo-capture-assist_validation.md');
+  const itemPhotoCaptureAssistMobile = read('__docs__/item-photo-capture-assist/item-photo-capture-assist_mobile-support.md');
+  const posWebhookSyncImpl = read('__docs__/pos-webhook-sync/pos-webhook-sync_impl.md');
+  const decisionIntelligenceSpec = read('__docs__/decision-intelligence/decision-intelligence_spec.md');
+  const decisionIntelligenceMarketing = read('__docs__/decision-intelligence/decision-intelligence_marketing.md');
+  const decisionIntelligenceLogicVerification = read('__docs__/decision-intelligence/decision-intelligence_logic-verification.md');
+  const storesManagementFirebase = read('__docs__/stores-management/stores-management_firebase.md');
+  const systemStrengtheningFirebase = read('__docs__/system-strengthening/system-strengthening_firebase.md');
+  const networkStatusHook = read('src/hooks/useNetworkStatus.ts');
+  const networkStatusProvider = read('src/providers/NetworkStatusProvider.tsx');
+  const layoutWrapper = read('src/components/antdComponent/layoutWrapper/index.tsx');
+  const campaignCueLayout = read('src/app/(campaigncue)/layout.tsx');
+  const authIndex = read('src/lib/auth/index.ts');
+  const onboardingCreateSubscriptionRoute = read('src/app/api/onboarding/create-subscription/route.ts');
+  const onboardingCreateTenantStore = read('src/lib/onboarding/createTenantStore.ts');
+  const storeTypeSource = read('src/types/platform/store.ts');
+  const businessTypesSharedSource = read('src/data/shared/businessTypes.ts');
+  const businessTypesFunctionsSource = read('functions/src/sharedData/businessTypes.ts');
+  const businessTypeMigrationScript = read('scripts/migrate-business-type-swap.ts');
+  const paymentHandlerHook = read('src/hooks/usePaymentHandler.ts');
+  const razorpayVerifySubscriptionRoute = read('src/app/api/razorpay/verify-subscription/route.ts');
+  const editorMain = read('src/components/templates/main-app/projects/editorView/Editor.tsx');
+  const editorContent = read('src/components/templates/main-app/projects/editorView/EditorContent.tsx');
+  const editorActionsPopover = read('src/components/templates/main-app/projects/editorView/EditorActionsPopover.tsx');
+  const editorShortcutsConfig = read('src/components/templates/main-app/projects/editorView/editorShortcuts.config.ts');
+  const editorKeyboardShortcutsHook = read('src/components/templates/main-app/projects/editorView/hooks/useEditorKeyboardShortcuts.ts');
+  const editorLogicHook = read('src/components/templates/main-app/projects/editorView/hooks/useEditorLogic.ts');
+  const editorFileImagePreview = read('src/components/templates/main-app/projects/editorView/components/FileImagePreview.tsx');
+  const editorAdvancedView = read('src/components/templates/main-app/projects/editorView/views/AdvancedView.tsx');
+  const editorTraditionalView = read('src/components/templates/main-app/projects/editorView/views/TraditionalView.tsx');
+  const editorFocusView = read('src/components/templates/main-app/projects/editorView/views/FocusView.tsx');
+  const comprehensiveSecurityAudit = read('__docs__/security/comprehensive-security-audit.md');
+  const opsInfrastructureGuide = read('__docs__/ops-infrastructure-guide.md');
+  const opsAlertingDeliveryImpl = read('__docs__/ops-alerting-delivery/ops-alerting-delivery_impl.md');
+  const mobileOwnerMenuVerifier = read('scripts/verification/verify-mobile-owner-menu.mjs');
+  const functionsSecrets = read('functions/src/config/secrets.ts');
+  const functionsEnvSetup = read('functions/src/envSetup.md');
+  const messagingOnboardingImpl = read('__docs__/messaging-onboarding/messaging-onboarding_impl.md');
+  const messagingOnboardingReadme = read('__docs__/messaging-onboarding/README.md');
+  const messagingOnboardingSpec = read('__docs__/messaging-onboarding/messaging-onboarding_spec.md');
+  const messagingOnboardingFirebase = read('__docs__/messaging-onboarding/messaging-onboarding_firebase.md');
+  const messagingOnboardingValidation = read('__docs__/messaging-onboarding/messaging-onboarding_validation.md');
+  const messagingOnboardingRunbook = read('__docs__/messaging-onboarding/messaging-onboarding_runbook.md');
+  const ownerActionItems = read('__docs__/owner-action-items.md');
+  const menulistSignalDeskValidation = read('__docs__/menulist-signaldesk/menulist-signaldesk_validation.md');
+  const nightlySchedulerArchitecture = read('__docs__/patterns/nightly-scheduler-architecture.md');
+  const continuousMenuIntelligenceImpl = read('__docs__/continuous-menu-intelligence/continuous-menu-intelligence_impl.md');
+  const continuousMenuIntelligenceValidation = read('__docs__/continuous-menu-intelligence/continuous-menu-intelligence_validation.md');
+  const continuousMenuIntelligenceLogicVerification = read('__docs__/continuous-menu-intelligence/continuous-menu-intelligence_logic-verification.md');
+  const projectsDatabase = read('src/database/projects/index.ts');
+  const publicClientCache = read('src/lib/cache/publicClientCache.ts');
+  const pricingIntegrityEngine = read('src/lib/pricing/integrityEngine.ts');
+  const pricingPdfQueue = read('src/lib/pricing/pdfQueue.ts');
+  const projectShareModal = read('src/components/templates/main-app/projects/b2cView/shareModal/index.tsx');
+  const menuPdfGenerator = read('src/lib/export/menuPdfGenerator.ts');
+  const pricingIntegrityReadme = read('__docs__/pricing-integrity-system/README.md');
+  const pricingIntegritySpec = read('__docs__/pricing-integrity-system/pricing-integrity-system_spec.md');
+  const pricingIntegrityImpl = read('__docs__/pricing-integrity-system/pricing-integrity-system_impl.md');
+  const pricingIntegrityFirebase = read('__docs__/pricing-integrity-system/pricing-integrity-system_firebase.md');
+  const pricingIntegrityMobile = read('__docs__/pricing-integrity-system/pricing-integrity-system_mobile-support.md');
+  const pricingIntegrityWebsite = read('__docs__/pricing-integrity-system/pricing-integrity-system_website.md');
+  const pricingIntegrityHelpdoc = read('__docs__/pricing-integrity-system/pricing-integrity-system_helpdoc.md');
+  const pricingIntegrityMarketing = read('__docs__/pricing-integrity-system/pricing-integrity-system_marketing.md');
+  const pricingIntegrityValidation = read('__docs__/pricing-integrity-system/pricing-integrity-system_validation.md');
+  const hoursHolidayAccuracyValidation = read('__docs__/hours-holiday-accuracy/hours-holiday-accuracy_validation.md');
+  const molV0ImplementationPlan = read('__docs__/internal-tracking/MOL-V0-IMPLEMENTATION-PLAN.md');
+  const customerAppFirebase = read('__docs__/customer-app/customer-app_firebase.md');
+  const creativeEditorTemplateRegistryValidation = read('__docs__/creative-editor-template-registry/creative-editor-template-registry_validation.md');
+  const maintenanceTasks = read('__docs__/maintenance-tasks.md');
+  const securityAuthenticationGuide = read('__docs__/security/authentication/complete-guide.md');
+  const securityEmailValidationGuide = read('__docs__/security/email-validation/complete-guide.md');
+  const securityAppCheckGuide = read('__docs__/security/app-check/complete-guide.md');
+  const securityPaymentAnalysis = read('__docs__/security/payment-security/payment-security-analysis.md');
+  const securityObjectSanitizationPattern = read('__docs__/security/object-sanitization-pattern.md');
+  const securityFirebaseCost = read('__docs__/security/security_firebase.md');
+  const securityLoginSourceTracking = read('__docs__/security/login-source-tracking.md');
+  const securityFileUploadGuide = read('__docs__/security/file-upload/file-upload-security.md');
+  const securityWebhookGuide = read('__docs__/security/webhook/webhook-security.md');
+  const securityMonitoringGuide = read('__docs__/security/monitoring/complete-guide.md');
+  const securityCorsGuide = read('__docs__/security/cors/cors-implementation.md');
+  const securityCorsComplete = read('__docs__/security/cors/cors-implementation-complete.md');
+  const securityApiStatus = read('__docs__/security/api-security/api-security-status.md');
+  const securityOwaspImplementation = read('__docs__/security/owasp/owasp-security-implementation.md');
+  const internalFeedbackReadme = read('__docs__/projects/internal-feedback-system/README.md');
+  const internalFeedbackValidation = read('__docs__/projects/internal-feedback-system/internal-feedback-system_validation.md');
+  const internalFeedbackVerification = read('__docs__/projects/internal-feedback-system/internal-feedback-system_verification.md');
+  const multiLanguageTranslationVerification = read('__docs__/projects/multi-language-translation/multi-language-translation_verification.md');
+  const multiLanguageTranslationAssessment = read('__docs__/projects/Assessments/assessment-13-multi-language-translation.md');
+  const projectsUploadAssessment = read('__docs__/projects/Assessments/assessment-01-upload.md');
+  const projectsAiExtractionAssessment = read('__docs__/projects/Assessments/assessment-02-ai-extraction.md');
+  const projectsPerformanceAssessment = read('__docs__/projects/Assessments/assessment-04-performance.md');
+  const projectsSecurityAssessment = read('__docs__/projects/Assessments/assessment-05-security.md');
+  const projectsUxAssessment = read('__docs__/projects/Assessments/assessment-06-ux-usability.md');
+  const projectsAiImageGenerationAssessment = read('__docs__/projects/Assessments/assessment-07-ai-image-generation.md');
+  const projectsImageEditingAssessment = read('__docs__/projects/Assessments/assessment-08-image-editing.md');
+  const projectsB2bViewAssessment = read('__docs__/projects/Assessments/assessment-10-b2b-view.md');
+  const projectsManagementAssessment = read('__docs__/projects/Assessments/assessment-12-project-management.md');
+  const menuJobQueueAssessment = read('__docs__/projects/Assessments/menu-job-queue-implementation.md');
+  const serverSideDataProcessingArchitecture = read('__docs__/projects/Assessments/server-side-data-processing-architecture.md');
+  const developmentDoneReadme = read('__docs__/projects/development_done/README.md');
+  const developmentDoneUploadImpl = read('__docs__/projects/development_done/1-IMPLEMENTATION-UPLOAD-COMPLETE.md');
+  const developmentDoneUploadCrossCheck = read('__docs__/projects/development_done/1-CROSS-CHECK-UPLOAD.md');
+  const uploadTestingGuide = read('__docs__/projects/development_done/1-TESTING-GUIDE-UPLOAD.md');
+  const developmentDoneAiExtractionImpl = read('__docs__/projects/development_done/2-IMPLEMENTATION-AI-EXTRACTION-COMPLETE.md');
+  const editorCompletionDevelopmentNote = read('__docs__/projects/development_done/3-IMPLEMENTATION-EDITOR-COMPLETE.md');
+  const developmentDoneSecuritySummary = read('__docs__/projects/development_done/5-IMPLEMENTATION-SUMMARY.md');
+  const developmentDoneSecurityImpl = read('__docs__/projects/development_done/5-SECURITY-IMPLEMENTATION-COMPLETE.md');
+  const aiExtractionTestingGuide = read('__docs__/projects/development_done/2-TESTING-GUIDE-AI-EXTRACTION.md');
+  const aiMenuManagerValidation = read('__docs__/ai-menu-manager/ai-menu-manager_validation.md');
+  const growthOsAddonFirebase = read('__docs__/growthos-addon/growthos-addon_firebase.md');
+  const growthOsAddonValidation = read('__docs__/growthos-addon/growthos-addon_validation.md');
+  const costSelfProtectionAudit = read('__docs__/cost-self-protection/firebase-cost-optimization-audit-2026-05-16.md');
+  const fiveYearVision = read('__docs__/strategy/five-year-vision-2026-complete.md');
+  const menulistCompleteFeatureSpec = read('__docs__/strategy/menulist-complete-feature-spec.md');
+  const productStrategy2026 = read('__docs__/strategy/product-strategy-2026.md');
+  const productStrategyMarketResearch = read('__docs__/strategy/product-strategy-market-research.md');
+  const futureIdeasBucketList = read('__docs__/strategy/future-ideas-bucket-list.md');
+  const answerlatticeActionItems = read('__docs__/answerlattice/doctrine/10-implementation-action-items.md');
+  const answerlatticeMultiProductTenancy = read('__docs__/answerlattice/doctrine/07-multi-product-tenancy.md');
+  const answerlatticeProductSeparation = read('__docs__/answerlattice/doctrine/08-product-separation-playbook.md');
+  const menuExtractionPipelineFirebase = read('__docs__/menu-extraction-pipeline/menu-extraction-pipeline_firebase.md');
+  const aiDataExtractionImpl = read('__docs__/projects/ai-data-extraction/ai-data-extraction_impl.md');
+  const aiDataExtractionFinalAudit = read('__docs__/projects/ai-data-extraction/final-production-readiness-audit.md');
+  const aiDataExtractionProductionAudit = read('__docs__/projects/ai-data-extraction/production-audit-mar13-2026.md');
+  const aiDataExtractionCfExecutionAudit = read('__docs__/projects/ai-data-extraction/cf-execution-audit-mar13-2026.md');
+  const aiExtractionMonitoringSpec = read('__docs__/ai-extraction-monitoring/ai-extraction-monitoring_spec.md');
+  const aiExtractionMonitoringImpl = read('__docs__/ai-extraction-monitoring/ai-extraction-monitoring_impl.md');
+  const menuExtractionPipelineVerifier = read('scripts/verification/verify-menu-extraction-pipeline.js');
+  const menuLinkImportValidation = read('__docs__/menu-link-import/menu-link-import_validation.md');
+  const codexAnswerlatticeRules = read('.codex/rules/ANSWERLATTICE_RULES.md');
+  const cascadeAnswerlatticeRules = read('.cascade/rules/ANSWERLATTICE_RULES.md');
+  const rootPackageJson = JSON.parse(read('package.json'));
   const firebaserc = JSON.parse(read('.firebaserc'));
   const answerlatticeFunctionsPackage = JSON.parse(read('functions-answerlattice/package.json'));
 
   assert(DEPLOYMENT_TARGETS.local.menulist.url === 'http://localhost:3000/', 'Local MenuList URL must be localhost root');
-  assert(DEPLOYMENT_TARGETS.local.constantlayer.url === 'http://localhost:3000/__constantlayer/', 'Local ConstantLayer URL must be /__constantlayer');
+  assert(DEPLOYMENT_TARGETS.local.neelvara.url === 'http://localhost:3000/__neelvara/', 'Local Neelvara URL must be /__neelvara');
   assert(DEPLOYMENT_TARGETS.local.answerlattice.url === 'http://localhost:3000/__answerlattice/', 'Local Answerlattice URL must be /__answerlattice');
   assert(DEPLOYMENT_TARGETS.local.campaigncue.url === 'http://localhost:3000/__campaigncue/', 'Local CampaignCue URL must be /__campaigncue');
   assert(DEPLOYMENT_TARGETS.local.mycodex.url === 'http://localhost:3000/__mycodex/', 'Local MyCodex URL must be /__mycodex');
-  assert(getProductDeploymentTarget('constantlayer', 'local').devPathPrefix === '/__constantlayer', 'Local ConstantLayer dev prefix must be /__constantlayer');
+  assert(getProductDeploymentTarget('neelvara', 'local').devPathPrefix === '/__neelvara', 'Local Neelvara dev prefix must be /__neelvara');
   assert(getProductDeploymentTarget('answerlattice', 'local').devPathPrefix === '/__answerlattice', 'Local Answerlattice dev prefix must be /__answerlattice');
   assert(getProductDeploymentTarget('campaigncue', 'local').devPathPrefix === '/__campaigncue', 'Local CampaignCue dev prefix must be /__campaigncue');
   assert(getProductDeploymentTarget('mycodex', 'local').devPathPrefix === '/__mycodex', 'Local MyCodex dev prefix must be /__mycodex');
   assert(getExpectedFirebaseProjectId('menulist', 'local') === 'menulist-qa', 'Local MenuList Firebase project must be menulist-qa');
-  assert(getExpectedFirebaseProjectId('constantlayer', 'local') === '', 'Local ConstantLayer must not require a Firebase project');
+  assert(getExpectedFirebaseProjectId('neelvara', 'local') === '', 'Local Neelvara must not require a Firebase project');
   assert(getExpectedFirebaseProjectId('answerlattice', 'local') === 'answerlattice-qa', 'Local Answerlattice Firebase project must be answerlattice-qa');
   assert(getExpectedFirebaseProjectId('campaigncue', 'local') === 'campaigncue-qa', 'Local CampaignCue Firebase project must be campaigncue-qa');
   assert(getExpectedFirebaseProjectId('mycodex', 'local') === '', 'Local MyCodex must not require a Firebase project');
 
   assert(DEPLOYMENT_TARGETS.preview.menulist.domains.includes('menulist.online'), 'Preview MenuList domain must include menulist.online');
-  assert(DEPLOYMENT_TARGETS.preview.constantlayer.domains.includes('constantlayer.menulist.online'), 'Preview ConstantLayer domain must include constantlayer.menulist.online');
+  assert(DEPLOYMENT_TARGETS.preview.neelvara.domains.includes('neelvara.menulist.online'), 'Preview Neelvara domain must include neelvara.menulist.online');
   assert(DEPLOYMENT_TARGETS.preview.answerlattice.domains.includes('answerlattice.menulist.online'), 'Preview Answerlattice domain must include answerlattice.menulist.online');
   assert(DEPLOYMENT_TARGETS.preview.campaigncue.domains.includes('campaigncue.menulist.online'), 'Preview CampaignCue domain must include campaigncue.menulist.online');
   assert(DEPLOYMENT_TARGETS.preview.mycodex.domains.includes('menulist.digital'), 'Preview MyCodex domain must include menulist.digital');
   assert(getExpectedFirebaseProjectId('menulist', 'preview') === 'menulist-qa', 'Preview MenuList Firebase project must be menulist-qa');
-  assert(getExpectedFirebaseProjectId('constantlayer', 'preview') === '', 'Preview ConstantLayer must not require a Firebase project');
+  assert(getExpectedFirebaseProjectId('neelvara', 'preview') === '', 'Preview Neelvara must not require a Firebase project');
   assert(getExpectedFirebaseProjectId('answerlattice', 'preview') === 'answerlattice-qa', 'Preview Answerlattice Firebase project must be answerlattice-qa');
   assert(getExpectedFirebaseProjectId('campaigncue', 'preview') === 'campaigncue-qa', 'Preview CampaignCue Firebase project must be campaigncue-qa');
   assert(getExpectedFirebaseProjectId('mycodex', 'preview') === '', 'Preview MyCodex must not require a Firebase project');
 
   assert(DEPLOYMENT_TARGETS.production.menulist.domains.includes('menulist.ai'), 'Production MenuList domain must include menulist.ai');
-  assert(DEPLOYMENT_TARGETS.production.constantlayer.domains.includes('constantlayer.in'), 'Production ConstantLayer domain must include constantlayer.in');
+  assert(DEPLOYMENT_TARGETS.production.neelvara.domains.includes('neelvara.com'), 'Production Neelvara domain must include neelvara.com');
   assert(DEPLOYMENT_TARGETS.production.answerlattice.domains.includes('answerlattice.com'), 'Production Answerlattice domain must include answerlattice.com');
   assert(DEPLOYMENT_TARGETS.production.campaigncue.domains.includes('campaigncue.ai'), 'Production CampaignCue domain must include campaigncue.ai');
   assert(DEPLOYMENT_TARGETS.production.mycodex.domains.includes('menulist.digital'), 'Production MyCodex domain must include menulist.digital');
   assert(getExpectedFirebaseProjectId('menulist', 'production') === 'menulist', 'Production MenuList Firebase project must be menulist');
-  assert(getExpectedFirebaseProjectId('constantlayer', 'production') === '', 'Production ConstantLayer must not require a Firebase project');
+  assert(getExpectedFirebaseProjectId('neelvara', 'production') === '', 'Production Neelvara must not require a Firebase project');
   assert(getExpectedFirebaseProjectId('answerlattice', 'production') === 'answerlattice', 'Production Answerlattice Firebase project must be answerlattice');
   assert(getExpectedFirebaseProjectId('campaigncue', 'production') === 'campaigncue', 'Production CampaignCue Firebase project must be campaigncue');
   assert(getExpectedFirebaseProjectId('mycodex', 'production') === '', 'Production MyCodex must not require a Firebase project');
@@ -124,6 +401,10 @@ function verifyEnvironmentTargets() {
   assertIncludes(urls, 'QA: menulist.online', 'Platform URL domain contract');
   assertIncludes(urls, 'QA: answerlattice.menulist.online', 'Platform URL domain contract');
   assertIncludes(envValidation, 'getExpectedFirebaseProjectId', 'Environment validation');
+  assertIncludes(envValidation, "'WHATSAPP_PHONE_NUMBER_ID'", 'Environment validation WhatsApp provider prerequisite warnings');
+  assertIncludes(envValidation, "'WHATSAPP_ACCESS_TOKEN'", 'Environment validation WhatsApp provider prerequisite warnings');
+  assertIncludes(envValidation, "'WHATSAPP_APP_SECRET'", 'Environment validation WhatsApp provider prerequisite warnings');
+  assertIncludes(envValidation, "'WHATSAPP_VERIFY_TOKEN'", 'Environment validation WhatsApp provider prerequisite warnings');
   assertIncludes(deploymentTargets, 'resolveKnownProductIdByHostname', 'Deployment target helper');
   assertIncludes(middleware, 'resolveKnownProductIdByHostname', 'Inactive product-domain redirect guard');
   assertIncludes(middleware, 'NextResponse.redirect(url, 308)', 'Inactive product-domain redirect guard');
@@ -162,6 +443,15 @@ function verifyEnvironmentTargets() {
     assertIncludes(content, 'MYCODEX_BASIC_AUTH_USER', `${label} MyCodex static auth env`);
     assertIncludes(content, 'MYCODEX_BASIC_AUTH_PASSWORD', `${label} MyCodex static auth env`);
     assertIncludes(content, 'MYCODEX_SESSION_SECRET', `${label} MyCodex static auth env`);
+    assertIncludes(content, 'WHATSAPP_ACCESS_TOKEN', `${label} WhatsApp provider env naming`);
+    assertIncludes(content, 'FIREBASE_PROJECT_ID=', `${label} Cloud Tasks project id prerequisite`);
+    assertIncludes(content, 'FIREBASE_PROJECT_LOCATION=us-central1', `${label} Cloud Tasks queue location prerequisite`);
+    assertIncludes(content, 'Uses FIREBASE_PROJECT_ID and FIREBASE_PROJECT_LOCATION above to build the queue path.', `${label} Cloud Tasks project/location note`);
+    assertIncludes(content, 'BATCH_IMAGE_GENERATION_WORKER_URL', `${label} Cloud Tasks worker URL prerequisite`);
+    assertIncludes(content, 'BATCH_IMAGE_GENERATION_QUEUE_ID', `${label} Cloud Tasks queue id prerequisite`);
+    assertIncludes(content, 'BATCH_IMAGE_GENERATION_WORKER_SECRET', `${label} Cloud Tasks worker secret prerequisite`);
+    assertIncludes(content, 'ENABLE_MESSAGING_ONBOARDING=false', `${label} messaging onboarding provider processing must fail closed`);
+    assertNotIncludes(content, 'WHATSAPP_API_TOKEN', `${label} must not use stale WhatsApp API token env naming`);
     assertNotIncludes(content, 'NEXT_PUBLIC_AL_', `${label} must not use shorthand Answerlattice env keys`);
     assertNotIncludes(content, 'AL_FIREBASE_PROJECT_ID', `${label} must not use shorthand Answerlattice env keys`);
     assertNotIncludes(content, 'NEXT_PUBLIC_CC_', `${label} must not use shorthand CampaignCue env keys`);
@@ -174,6 +464,1227 @@ function verifyEnvironmentTargets() {
   assertIncludes(productSetupDoc, 'Use full product names in environment variable keys', 'Product setup doc env-key naming contract');
   assertIncludes(productSetupDoc, 'CampaignCue uses `CC` as its internal product code and `campaigncue` as its runtime product slug', 'Product setup doc CampaignCue product-code boundary');
   assertIncludes(productSetupDoc, 'MyCodex uses `MC` as its reserved internal product code and `mycodex` as its runtime product slug', 'Product setup doc MyCodex product-code boundary');
+  assert(
+    productSetupDoc.indexOf('| Optional webhooks |') < productSetupDoc.indexOf('Firebase Admin credential and local ADC diagnostics'),
+    'Product setup doc environment variable table must stay contiguous before diagnostic notes',
+  );
+  assertIncludes(productSetupDoc, '| Cloud Tasks | `FIREBASE_PROJECT_ID`, `FIREBASE_PROJECT_LOCATION`, `BATCH_IMAGE_GENERATION_WORKER_URL`, `BATCH_IMAGE_GENERATION_QUEUE_ID`, `BATCH_IMAGE_GENERATION_WORKER_SECRET` | Google Cloud Tasks |', 'Product setup doc Cloud Tasks readiness variables');
+  assertIncludes(productSetupDoc, 'Do not substitute `ecomsai`, `menulist-ai`, `canonica-qa`, or a sample project.', 'Product setup doc active Firebase target guard');
+  assertIncludes(productSetupDoc, 'firebase deploy --project menulist-qa --config firebase.json --only functions:menulistMaintenanceScheduler --non-interactive', 'Product setup doc latest MenuList QA function deploy command');
+  assertIncludes(productSetupDoc, 'HTTP Error: 403, The caller does not have permission.', 'Product setup doc latest Cloud Resource Manager blocker');
+  assert(rootPackageJson.scripts['verify:mycodex-pwa-assets'] === 'node scripts/verification/verify-mycodex-pwa-assets.js', 'Root package must expose the MyCodex PWA static verifier');
+  assert(rootPackageJson.scripts['verify:signaldesk-security-rules'] === 'node scripts/verification/verify-signaldesk-security-rules.js', 'Root package must expose the SignalDesk security rules static verifier');
+  const recycleBinVerifier = read('scripts/verification/verify-recycle-bin.js');
+  const verificationReadme = read('scripts/verification/README.md');
+  assertIncludes(recycleBinVerifier, 'recycle-bin source gate passed', 'Recycle-bin verifier source-gate output');
+  assertIncludes(recycleBinVerifier, 'Not covered: authenticated browser smoke, visual QA, live Firestore reads/writes, Firebase deploy, Vercel deploy, or production-host behavior.', 'Recycle-bin verifier local-only proof boundary');
+  assertNotIncludes(recycleBinVerifier, 'Ready for manual testing', 'Recycle-bin verifier must not imply aggregate readiness for manual QA');
+  assertNotIncludes(recycleBinVerifier, 'Start dev server: npm run dev', 'Recycle-bin verifier must not print dev-server manual QA instructions');
+  assertIncludes(productionReadinessLocalRunner, 'local source gate only; does not run Next.js production build, Firebase deploy, Vercel deploy, provider smoke, browser/device QA, live Firestore/Storage writes, or production-host behavior.', 'Local readiness runner aggregate proof boundary');
+  assertIncludes(productionReadinessLocalRunner, '[local-readiness] boundary:', 'Local readiness runner must print boundary before checks');
+  assertIncludes(productionReadinessLocalRunner, '[local-readiness-summary] boundary:', 'Local readiness runner must print boundary in summary');
+  assertIncludes(publicBusinessTruthVerifier, 'function verifyStoreUpdatesRequireAcknowledgement()', 'Public business truth verifier generic store-update acknowledgement gate');
+  assertIncludes(publicBusinessTruthVerifier, 'Every src updateStore() call must require assertStoreUpdateSucceeded()', 'Public business truth verifier generic store-update failure copy');
+  assertIncludes(verificationReadme, 'Explicit local source-gate scope and the browser/cloud/deploy gates it does not prove', 'Verification README recycle-bin source-gate output boundary');
+  assertIncludes(verificationReadme, 'Prints the local-only boundary so a green aggregate is not mistaken for browser QA, provider smoke, deploy, or production-host certification', 'Verification README aggregate source-gate output boundary');
+  assertNotIncludes(verificationReadme, 'Next steps for manual testing', 'Verification README recycle-bin stale manual-testing output');
+  assertIncludes(featureSweepMasterReport, '`npm run verify:recycle-bin` | Passed | 6 passed; source gate only, with browser/cloud/deploy/production-host gates explicitly not covered', 'Feature sweep report recycle-bin source-gate boundary');
+  assertNotIncludes(featureSweepMasterReport, '`npm run verify:recycle-bin` | Passed | 6 passed, manual testing still required', 'Feature sweep report stale recycle-bin manual-testing wording');
+  assertIncludes(productionCertificationRunbook, 'The aggregate includes the public menu rate-limit fail-closed gate, dependency freeze verifier, System Strengthening SS-1 through SS-9, production-testing-guide launch-boundary guard, and recycle-bin source-gate output boundary', 'Production certification runbook latest local aggregate evidence coverage');
+  assertIncludes(productionCertificationRunbook, 'The aggregate runner now prints its own local-only boundary so green output cannot be mistaken for authenticated browser/manual QA or deploy certification.', 'Production certification runbook latest aggregate source-gate boundary');
+  assertIncludes(urlRoutingArchitecture, '| Preview     | `https://menulist.online`', 'URL routing architecture current MenuList preview URL');
+  assertNotIncludes(urlRoutingArchitecture, '| Preview     | `https://menulist-ai.vercel.app`', 'URL routing architecture stale MenuList preview Vercel URL');
+  assertIncludes(productionReadinessReadme, 'External Certification Runbook', 'Production readiness checklist external certification link');
+  assertIncludes(productionReadinessReadme, 'Firebase Functions deploy evidence captured', 'Production readiness checklist Functions deploy evidence wording');
+  assertIncludes(productionReadinessReadme, 'run `npm run verify:functions-deploy-preflight` before the scoped Firebase deploy retry', 'Production readiness checklist scoped Functions deploy preflight');
+  assertIncludes(productionReadinessReadme, 'latest documented `menulist-qa` deploy attempts for the source-file path hardening subset, `processMenuImagesJob`, and the scheduler completed predeploy lint/build', 'Production readiness checklist latest Functions deploy blocker evidence');
+  assertIncludes(productionReadinessReadme, 'Firebase Storage rules cutover deployed', 'Production readiness checklist Storage deploy evidence wording');
+  assertIncludes(productionReadinessReadme, 'Gate 2A in [External Certification Runbook](./external-certification-runbook.md): local gates pass, but latest `menulist-qa` deploy failed before rules upload with Service Usage HTTP 403 project access/availability blocker', 'Production readiness checklist Storage deploy blocker evidence');
+  assertIncludes(productionReadinessReadme, 'firebase deploy --only firestore:indexes --project menulist-qa --config firebase.json', 'Production readiness checklist scoped QA index deploy command');
+  assertIncludes(productionReadinessReadme, 'firebase deploy --only firestore:rules --project menulist-qa --config firebase.json', 'Production readiness checklist scoped QA rules deploy command');
+  assertIncludes(productionReadinessReadme, 'production rules deploy requires QA evidence and explicit production approval', 'Production readiness checklist production rules approval gate');
+  assertIncludes(productionReadinessReadme, 'Every [External Certification Runbook](./external-certification-runbook.md) gate has evidence recorded in `__docs__/audits/menulist-production-readiness-audit.md`', 'Production readiness checklist launch verdict external evidence requirement');
+  assertIncludes(productionReadinessReadme, 'Any external certification gate is blocked or missing evidence', 'Production readiness checklist not-ready external gate boundary');
+  assertNotIncludes(productionReadinessReadme, '| Firebase Functions deployed | ☐ | `firebase deploy --only functions` |', 'Production readiness checklist broad Functions deploy command');
+  assertNotIncludes(productionReadinessReadme, '| Firestore indexes deployed | ☐ | `firebase deploy --only firestore:indexes` |', 'Production readiness checklist broad Firestore indexes deploy command');
+  assertNotIncludes(productionReadinessReadme, '| Firestore security rules deployed | ☐ | `firebase deploy --only firestore:rules` |', 'Production readiness checklist broad Firestore rules deploy command');
+  assertIncludes(productionTestingGuide, 'Companion manual checklist only', 'Production testing guide manual companion boundary');
+  assertIncludes(productionTestingGuide, 'The active launch authority is [External Certification Runbook](./production-readiness/external-certification-runbook.md)', 'Production testing guide external certification authority');
+  assertIncludes(productionTestingGuide, 'do not force all flags on', 'Production testing guide feature flag governance');
+  assertIncludes(productionTestingGuide, 'Do not use this manual guide to approve Firebase deploys, Vercel deploys, or full production launch.', 'Production testing guide launch approval boundary');
+  assertNotIncludes(productionTestingGuide, 'All flags `true`', 'Production testing guide stale all-flags instruction');
+  assertNotIncludes(productionTestingGuide, 'FINAL PRODUCTION CHECKLIST', 'Production testing guide stale final launch checklist heading');
+  assertNotIncludes(productionTestingGuide, 'PRODUCTION READY: [ ] YES', 'Production testing guide stale production-ready signoff');
+  assertIncludes(rootDocsReadme, 'Active documentation index; not current launch certification', 'Root docs README launch boundary status');
+  assertIncludes(rootDocsReadme, 'This file is a documentation map only. It is not MenuList production-launch approval.', 'Root docs README launch approval boundary');
+  assertNotIncludes(rootDocsReadme, '**Status**: Production Ready', 'Root docs README stale production-ready status');
+  for (const [label, content] of [
+    ['Upload file processing README', uploadFileProcessingReadme],
+    ['Upload file processing Firebase doc', uploadFileProcessingFirebase],
+    ['B2B view Firebase doc', b2bViewFirebase],
+    ['Multi-language translation README', multiLanguageTranslationReadme],
+    ['Decision Intelligence spec', decisionIntelligenceSpec],
+    ['Auth Firebase cost doc', authFirebaseDoc],
+    ['Firebase Auth sync note', firebaseAuthSyncDoc],
+    ['Firebase Auth null-fix note', firebaseAuthNullFixDoc],
+    ['Stores Management Firebase doc', storesManagementFirebase],
+    ['System Strengthening Firebase doc', systemStrengtheningFirebase],
+  ]) {
+    assertIncludes(content, 'not current launch certification', `${label} launch boundary status`);
+    assertIncludes(content, 'production-readiness audit', `${label} audit launch boundary`);
+    assertIncludes(content, 'External Certification Runbook', `${label} external certification boundary`);
+  }
+  assertIncludes(uploadFileProcessingReadme, 'verify:menu-extraction-pipeline', 'Upload README menu extraction source gate');
+  assertIncludes(uploadFileProcessingFirebase, 'Storage quota/rules evidence', 'Upload Firebase storage launch gate');
+  for (const [label, content] of [
+    ['Upload file processing marketing doc', uploadFileProcessingMarketing],
+    ['AI data extraction marketing doc', aiDataExtractionMarketing],
+  ]) {
+    assertIncludes(content, 'Historical marketing draft; not current sales, publication, or launch certification', `${label} launch boundary status`);
+    assertIncludes(content, 'Current Sales/Launch Boundary', `${label} current sales boundary heading`);
+    assertIncludes(content, 'External Certification Runbook', `${label} external certification boundary`);
+    assertIncludes(content, 'npm run verify:menu-extraction-pipeline', `${label} extraction source gate`);
+    assertIncludes(content, 'Release-specific evidence', `${label} release-specific claim boundary`);
+    assertNotIncludes(content, '_Document Status: ✅ READY FOR USE_', `${label} stale ready-for-use status`);
+  }
+  assertIncludes(uploadFileProcessingMarketing, 'Storage quota/rules/deploy evidence', 'Upload marketing storage deploy evidence boundary');
+  assertIncludes(uploadFileProcessingMarketing, 'Extraction-job evidence for the target worker path', 'Upload marketing extraction-job evidence boundary');
+  assertIncludes(aiDataExtractionMarketing, 'npm run verify:ai-accounting', 'AI extraction marketing AI accounting source gate');
+  assertIncludes(aiDataExtractionMarketing, 'Provider smoke for the target extraction model and environment', 'AI extraction marketing provider smoke boundary');
+  assertIncludes(productionReadinessAudit, 'Projects marketing collateral boundary checkpoint', 'Production readiness audit Projects marketing collateral checkpoint');
+  assertIncludes(productionReadinessAudit, 'no longer present January/February 2026 positioning drafts as ready for use', 'Production readiness audit Projects marketing stale ready-for-use boundary');
+  assertIncludes(productionReadinessAudit, 'release-specific evidence for numeric speed, accuracy, language-count, quality, or customer-behavior claims', 'Production readiness audit Projects marketing numeric-claim boundary');
+  assertIncludes(changelog, 'Projects Marketing Collateral Boundary', 'Changelog Projects marketing collateral boundary entry');
+  assertIncludes(productionReadinessReadme, 'Clarified Projects marketing collateral docs', 'Production readiness README Projects marketing collateral boundary version row');
+  assertIncludes(productionReadinessAudit, 'PONR, Physical Surfaces, and Image Editing historical-readiness checkpoint', 'Production readiness audit historical-readiness checkpoint');
+  assertIncludes(productionReadinessAudit, 'no longer present January/November 2025-2026 planning and assessment labels as current implementation approval', 'Production readiness audit historical-readiness stale label boundary');
+  assertIncludes(changelog, 'Historical Readiness Label Boundary', 'Changelog historical-readiness boundary entry');
+  assertIncludes(productionReadinessReadme, 'Clarified PONR onboarding, Physical Surfaces, and Image Editing historical readiness labels', 'Production readiness README historical-readiness boundary version row');
+  assertIncludes(productionReadinessAudit, 'Mobile, strategy, and multi-outlet reference-boundary checkpoint', 'Production readiness audit mobile/strategy/multi-outlet reference-boundary checkpoint');
+  assertIncludes(changelog, 'Mobile Strategy And Multi-Outlet Reference Boundary', 'Changelog mobile/strategy/multi-outlet reference-boundary entry');
+  assertIncludes(productionReadinessReadme, 'Clarified mobile operational specs, strategy bucket-list, and Multi-Outlet AI extraction analysis', 'Production readiness README mobile/strategy/multi-outlet reference-boundary row');
+  assertIncludes(physicalSurfacesSpec, 'Historical legacy spec; not current implementation approval', 'Physical Surfaces spec historical legacy footer boundary');
+  assertIncludes(physicalSurfacesSpec, 'Current Release Boundary', 'Physical Surfaces spec current release boundary heading');
+  assertIncludes(physicalSurfacesSpec, 'current Menu Kit and Menu Card Export source truth', 'Physical Surfaces spec Menu Kit/Menu Card Export boundary');
+  assertIncludes(physicalSurfacesSpec, 'npm run verify:menu-card-export', 'Physical Surfaces spec menu-card-export source gate');
+  assertNotIncludes(physicalSurfacesSpec, '**Document Status:** Ready for implementation', 'Physical Surfaces spec stale implementation-ready footer');
+  assertIncludes(b2bViewFirebase, 'API/export security review', 'B2B Firebase API/export launch gate');
+  assertIncludes(multiLanguageTranslationReadme, 'public renderer fallback/RTL evidence', 'Multi-language README renderer/RTL launch gate');
+  assertIncludes(decisionIntelligenceSpec, 'scoped scheduler deploy evidence', 'Decision Intelligence spec scheduler deploy launch gate');
+  assertIncludes(authCompleteGuide, 'Auth architecture/source evidence; not current launch certification', 'Auth complete guide launch boundary status');
+  assertIncludes(authCompleteGuide, 'npm run verify:auth-security-failure-matrix', 'Auth complete guide auth-security source gate');
+  assertIncludes(authCompleteGuide, 'auth browser/API smoke', 'Auth complete guide browser/API launch gate');
+  assertIncludes(authCompleteGuide, 'Firebase Auth custom-claims/token smoke', 'Auth complete guide custom-claims launch gate');
+  assertIncludes(authCompleteGuide, 'App Check/session-cookie review', 'Auth complete guide App Check/session-cookie launch gate');
+  assertIncludes(authCompleteGuide, 'login/logout/OAuth/password/staff-passcode QA', 'Auth complete guide login-flow launch gate');
+  assertIncludes(authReadme, 'Auth documentation hub; not current launch certification', 'Auth README launch boundary status');
+  assertIncludes(authReadme, 'npm run verify:auth-security-failure-matrix', 'Auth README auth-security source gate');
+  assertIncludes(authReadme, 'auth browser/API smoke', 'Auth README browser/API launch gate');
+  assertIncludes(authReadme, 'Firebase Auth custom-claims/token smoke', 'Auth README custom-claims launch gate');
+  assertIncludes(authReadme, 'App Check/session-cookie review', 'Auth README App Check/session-cookie launch gate');
+  assertIncludes(authFirebaseDoc, 'auth browser/API smoke', 'Auth Firebase browser/API launch gate');
+  assertIncludes(firebaseAuthSyncDoc, 'Firebase Auth custom-claims evidence', 'Firebase Auth sync custom-claims launch gate');
+  assertIncludes(firebaseAuthNullFixDoc, 'Historical fix note; not current launch certification', 'Firebase Auth null-fix historical boundary');
+  assertIncludes(storesManagementFirebase, 'public cache evidence for store-output writes', 'Stores Management Firebase public cache launch gate');
+  assertIncludes(systemStrengtheningFirebase, 'verify:system-strengthening', 'System Strengthening Firebase source gate');
+  assertNotIncludes(uploadFileProcessingReadme, '**Status:** ✅ Production Ready', 'Upload README stale production-ready status');
+  assertNotIncludes(uploadFileProcessingFirebase, '**Status:** ✅ Production Ready', 'Upload Firebase stale production-ready status');
+  assertNotIncludes(b2bViewFirebase, '**Status:** ✅ Production Ready', 'B2B Firebase stale production-ready status');
+  assertNotIncludes(multiLanguageTranslationReadme, '> **Status:** ✅ COMPLETE (Production Ready)', 'Multi-language README stale production-ready status');
+  assertNotIncludes(decisionIntelligenceSpec, '**Status:** 🔒 **LOCKED — Production Ready**', 'Decision Intelligence spec stale production-ready status');
+  assertNotIncludes(authCompleteGuide, '**Status:** Production Active', 'Auth complete guide stale production-active status');
+  assertNotIncludes(authReadme, '**Status:** ✅ Production Active', 'Auth README stale production-active footer');
+  assertNotIncludes(authFirebaseDoc, '**Status:** ✅ Production Ready', 'Auth Firebase stale production-ready status');
+  assertNotIncludes(firebaseAuthSyncDoc, '**Status:** ✅ Production Ready', 'Firebase Auth sync stale production-ready status');
+  assertNotIncludes(firebaseAuthSyncDoc, '**Status:** ✅ Production Active', 'Firebase Auth sync stale production-active footer');
+  assertNotIncludes(firebaseAuthNullFixDoc, '**Status:** ✅ Production Ready', 'Firebase Auth null-fix stale production-ready status');
+  assertNotIncludes(storesManagementFirebase, '**Status:** ✅ Production Ready', 'Stores Management Firebase stale production-ready status');
+  assertNotIncludes(systemStrengtheningFirebase, '**Status:** ✅ Production Ready', 'System Strengthening Firebase stale production-ready status');
+  assertIncludes(productionReadinessAudit, 'Active cost/source doc launch-boundary checkpoint', 'Production readiness audit active cost/source doc checkpoint');
+  assertIncludes(productionReadinessAudit, 'no longer present upload, B2B, translation, auth, store, system-strengthening, or Decision Intelligence source/cost evidence as current production certification', 'Production readiness audit active cost/source doc boundary summary');
+  assertIncludes(productionReadinessAudit, 'Auth guide production-active boundary checkpoint', 'Production readiness audit auth production-active checkpoint');
+  assertIncludes(productionReadinessAudit, 'no longer present auth architecture, the auth hub, or Firebase Auth sync as current "Production Active" launch approval', 'Production readiness audit auth production-active stale-label boundary');
+  assertIncludes(productionReadinessAudit, 'Onboarding Centralization status-boundary checkpoint', 'Production readiness audit onboarding centralization checkpoint');
+  assertIncludes(changelog, 'Auth Guide Production-Active Boundary', 'Changelog auth production-active boundary entry');
+  assertIncludes(changelog, 'Onboarding Centralization Status Boundary', 'Changelog onboarding centralization boundary entry');
+  for (const gate of [
+    'browser/mobile upload QA',
+    'Storage quota/rules evidence',
+    'API/export security review',
+    'auth browser/API smoke',
+    'store CRUD/browser QA',
+    'scoped scheduler deploy evidence',
+    '`npm run verify:system-strengthening`',
+  ]) {
+    assertIncludes(productionReadinessAudit, gate, `Production readiness audit active cost/source external gate ${gate}`);
+  }
+  for (const [label, content] of [
+    ['Five-year vision strategy note', fiveYearVision],
+    ['MenuList complete feature spec', menulistCompleteFeatureSpec],
+    ['Product strategy 2026 doc', productStrategy2026],
+    ['Product strategy market research doc', productStrategyMarketResearch],
+    ['MOL v0 implementation plan', molV0ImplementationPlan],
+    ['Upload implementation completion note', developmentDoneUploadImpl],
+    ['Upload cross-check note', developmentDoneUploadCrossCheck],
+    ['Upload testing guide', uploadTestingGuide],
+    ['Security implementation summary', developmentDoneSecuritySummary],
+  ]) {
+    assertIncludes(content, 'not current launch certification', `${label} launch boundary status`);
+    assertIncludes(content, 'production-readiness audit', `${label} audit launch boundary`);
+    assertIncludes(content, 'External Certification Runbook', `${label} external certification boundary`);
+  }
+  assertIncludes(fiveYearVision, 'Current Launch Certification: NO - see active audit/runbook evidence', 'Five-year vision current launch certification boundary');
+  assertIncludes(menulistCompleteFeatureSpec, 'Codebase-derived feature map; not current launch certification', 'MenuList complete feature spec source-map boundary');
+  assertIncludes(productStrategy2026, 'Historical founder strategy reference; not current launch certification', 'Product strategy 2026 historical strategy boundary');
+  assertIncludes(productStrategy2026, 'January 2026 Source-State Snapshot', 'Product strategy 2026 historical source-state heading');
+  assertIncludes(productStrategyMarketResearch, 'Historical market-research reference; not current launch certification', 'Product strategy market research historical strategy boundary');
+  assertIncludes(productStrategyMarketResearch, 'Historical MVP filter', 'Product strategy market research historical MVP boundary');
+  assertIncludes(futureIdeasBucketList, 'High-priority historical strategy candidate; not current implementation approval or launch certification', 'Future ideas bucket list historical strategy candidate boundary');
+  assertNotIncludes(futureIdeasBucketList, 'Ready for implementation', 'Future ideas bucket list stale implementation-ready priority');
+  assertIncludes(molV0ImplementationPlan, 'Firestore/cost evidence', 'MOL v0 Firestore/cost launch gate');
+  assertIncludes(molV0ImplementationPlan, 'scoped scheduler/deploy evidence', 'MOL v0 scoped scheduler/deploy launch gate');
+  assertIncludes(molV0ImplementationPlan, 'Historical Sprint 1 and 2 implementation evidence only; current testing or deploy approval requires', 'MOL v0 footer current approval boundary');
+  assertIncludes(developmentDoneUploadImpl, 'browser/mobile upload QA', 'Upload implementation completion browser/mobile launch gate');
+  assertIncludes(developmentDoneUploadImpl, 'Storage quota/rules evidence', 'Upload implementation completion Storage launch gate');
+  assertIncludes(developmentDoneUploadCrossCheck, 'Historical upload cross-check evidence; not current testing approval and not current launch certification', 'Upload cross-check historical testing boundary');
+  assertIncludes(developmentDoneUploadCrossCheck, 'Current upload testing, deploy, or release approval requires', 'Upload cross-check current approval routing');
+  assertIncludes(developmentDoneUploadCrossCheck, 'browser/mobile upload QA', 'Upload cross-check browser/mobile launch gate');
+  assertIncludes(developmentDoneUploadCrossCheck, 'Storage quota/rules evidence', 'Upload cross-check Storage launch gate');
+  assertIncludes(uploadTestingGuide, 'upload/browser/mobile/Storage results', 'Upload testing guide current evidence routing');
+  assertIncludes(developmentDoneSecuritySummary, 'current Projects API/security verifiers', 'Security implementation summary source verifier launch gate');
+  assertIncludes(developmentDoneSecuritySummary, 'browser/API smoke', 'Security implementation summary browser/API launch gate');
+  assertIncludes(developmentDoneSecuritySummary, 'Historical status**: Source evidence only; not current deploy approval', 'Security implementation summary historical deploy-status boundary');
+  assertNotIncludes(fiveYearVision, '**Status:** ✅ Complete & Production Ready', 'Five-year vision stale production-ready status');
+  assertNotIncludes(fiveYearVision, 'Production Ready:            YES', 'Five-year vision stale production-ready table value');
+  assertNotIncludes(menulistCompleteFeatureSpec, '**Status:** ✅ Production Ready', 'MenuList complete feature spec stale production-ready status');
+  assertNotIncludes(productStrategy2026, '✅ Production |', 'Product strategy 2026 stale production status rows');
+  assertNotIncludes(productStrategy2026, '**Core product is DONE.** No major new features needed.', 'Product strategy 2026 stale done/launch wording');
+  assertNotIncludes(productStrategyMarketResearch, 'Only these 4 features are allowed before public beta. Everything else is Phase 2+.', 'Product strategy market research stale public-beta strict rule');
+  assertNotIncludes(molV0ImplementationPlan, '> **Status**: ✅ COMPLETE - Sprint 1 & 2 Production Ready', 'MOL v0 stale production-ready status');
+  assertNotIncludes(molV0ImplementationPlan, '**Status**: ✅ COMPLETE — Ready for testing and deployment', 'MOL v0 stale testing/deployment approval status');
+  assertNotIncludes(developmentDoneUploadImpl, '**Production Ready:** ✅ YES (after testing)', 'Upload implementation completion stale production-ready status');
+  assertNotIncludes(developmentDoneUploadCrossCheck, '**Confidence Level**: 🟢 **HIGH** - Ready for testing phase', 'Upload cross-check stale ready-for-testing confidence');
+  assertNotIncludes(developmentDoneSecuritySummary, '**Status**: ✅ **COMPLETE** - Production Ready', 'Security implementation summary stale production-ready status');
+  assertNotIncludes(developmentDoneSecuritySummary, '**Status**: ✅ Ready to Deploy', 'Security implementation summary stale ready-to-deploy status');
+  assertNotIncludes(developmentDoneSecuritySummary, '4. **Production Ready** - All security measures in place', 'Security implementation summary stale production-ready achievement');
+  assertNotIncludes(uploadTestingGuide, '**Ready for Production:** Yes / No', 'Upload testing guide stale ready-for-production checkbox');
+  assertIncludes(productionReadinessAudit, 'Active strategy and legacy implementation launch-boundary checkpoint', 'Production readiness audit active strategy/legacy checkpoint');
+  assertIncludes(productionReadinessAudit, 'no longer present strategic feature maps, founder strategy notes, market-research scope filters, MOL v0 history, upload implementation notes, upload testing checklist, or security implementation summaries as current production certification', 'Production readiness audit strategy/legacy boundary summary');
+  assertIncludes(productionReadinessAudit, 'Upload cross-check testing-phase boundary checkpoint', 'Production readiness audit upload cross-check testing boundary');
+  assertIncludes(productionReadinessAudit, 'MOL v0 footer testing/deploy boundary checkpoint', 'Production readiness audit MOL v0 footer boundary checkpoint');
+  assertIncludes(changelog, 'MOL V0 Footer Testing Deploy Boundary', 'Changelog MOL v0 footer boundary entry');
+  for (const gate of [
+    'current source verifiers',
+    'browser/mobile upload QA',
+    'Storage quota/rules evidence',
+    'current Projects API/security verifiers',
+    'Firestore/cost evidence',
+    'scoped scheduler/deploy evidence',
+  ]) {
+    assertIncludes(productionReadinessAudit, gate, `Production readiness audit strategy/legacy external gate ${gate}`);
+  }
+  assertIncludes(projectsReadme, 'Complete source documentation; not current launch certification', 'Projects README launch boundary status');
+  assertIncludes(projectsReadme, 'Current release readiness must be decided from the active [production-readiness audit]', 'Projects README launch authority boundary');
+  assertIncludes(projectsReadme, 'Historical Readiness Assessments', 'Projects README historical readiness assessments heading');
+  assertNotIncludes(projectsReadme, '**Status**: ✅ Complete & Production Ready', 'Projects README stale production-ready status');
+  assertNotIncludes(projectsReadme, '✅ **PRODUCTION READY**', 'Projects README stale production-ready assessment row');
+  assertNotIncludes(projectsReadme, '✅ Production |', 'Projects README stale production status table rows');
+  assertIncludes(projectsOverview, 'Implemented reference; not current launch certification', 'Projects overview launch boundary status');
+  assertIncludes(projectsOverview, 'It is not current production-launch approval.', 'Projects overview launch approval boundary');
+  assertNotIncludes(projectsOverview, '**Status:** ✅ Production Ready', 'Projects overview stale production-ready status');
+  assertIncludes(projectsUtilities, 'Implemented reference; not current launch certification', 'Projects utilities launch boundary status');
+  assertIncludes(projectsUtilities, 'It is not production-launch approval.', 'Projects utilities launch approval boundary');
+  assertNotIncludes(projectsUtilities, '**Status**: ✅ Production Ready', 'Projects utilities stale production-ready status');
+  assertIncludes(projectsOwnerDashboard, 'Implemented reference with localStorage caching; not current launch certification', 'Projects owner-dashboard launch boundary status');
+  assertIncludes(projectsOwnerDashboard, 'It is not production-launch approval.', 'Projects owner-dashboard launch approval boundary');
+  assertNotIncludes(projectsOwnerDashboard, '**Status:** Production Ready', 'Projects owner-dashboard stale production-ready status');
+  assertIncludes(projectsEditorReadme, 'Implemented source documentation; not current launch certification', 'Projects Editor README launch boundary status');
+  assertIncludes(projectsEditorReadme, 'browser/mobile editor QA', 'Projects Editor README browser/mobile QA launch gate');
+  assertIncludes(projectsEditorReadme, 'publish/cache evidence for edited public truth', 'Projects Editor README publish/cache launch gate');
+  assertIncludes(projectsEditorReadme, 'upload/image/editor regression smoke', 'Projects Editor README regression smoke launch gate');
+  assertNotIncludes(projectsEditorReadme, '**Status**: ✅ Production Ready', 'Projects Editor README stale production-ready status');
+  assertIncludes(projectsEditorAutoSaveDoc, 'implementation evidence, not current launch certification', 'Projects Editor auto-save doc launch boundary');
+  assertNotIncludes(projectsEditorAutoSaveDoc, 'production-ready auto-save system', 'Projects Editor auto-save stale production-ready wording');
+  assertIncludes(projectsEditorAutoSaveDoc, 'Implemented source documentation; not current launch certification', 'Projects Editor auto-save doc launch boundary status');
+  assertIncludes(projectsEditorAutoSaveDoc, 'browser/mobile editor QA', 'Projects Editor auto-save doc browser/mobile launch gate');
+  assertIncludes(projectsEditorAutoSaveDoc, 'Firestore write observation for the target environment', 'Projects Editor auto-save doc Firestore observation gate');
+  assertNotIncludes(projectsEditorAutoSaveDoc, 'production-ready auto-save system', 'Projects Editor auto-save doc stale production-ready wording');
+  assertIncludes(editorMain, 'import EditorActionsPopover', 'Projects Editor source imports actions popover');
+  assertIncludes(editorMain, 'useEditorKeyboardShortcuts', 'Projects Editor source wires keyboard shortcuts hook');
+  assertIncludes(editorMain, 'AUTOSAVE_DEBOUNCE_MS', 'Projects Editor source imports auto-save debounce');
+  assertIncludes(editorMain, 'AUTOSAVE_MIN_INTERVAL_MS', 'Projects Editor source imports auto-save min interval');
+  assertIncludes(editorMain, 'lastAutoSaveRef', 'Projects Editor source tracks last auto-save time');
+  assertIncludes(editorMain, 'window.addEventListener("beforeunload"', 'Projects Editor source warns on unsaved changes');
+  assertIncludes(editorMain, '<AdvancedView', 'Projects Editor source renders AdvancedView');
+  assertIncludes(editorMain, '<TraditionalView', 'Projects Editor source renders TraditionalView');
+  assertIncludes(editorMain, '<FocusView', 'Projects Editor source renders FocusView');
+  assertIncludes(editorMain, '<KeyboardShortcutsHelp', 'Projects Editor source renders keyboard help');
+  assertIncludes(editorContent, 'useEditorLogic({', 'Projects Editor content uses shared editor logic');
+  assertIncludes(editorActionsPopover, 'export default function EditorActionsPopover', 'Projects Editor actions popover source gate');
+  assertIncludes(editorShortcutsConfig, 'export const EDITOR_SHORTCUTS', 'Projects Editor shortcut config source gate');
+  assertIncludes(editorKeyboardShortcutsHook, 'EDITOR_SHORTCUTS', 'Projects Editor keyboard shortcut hook source gate');
+  assertIncludes(editorLogicHook, 'export const useEditorLogic', 'Projects Editor logic hook source gate');
+  assertIncludes(editorFileImagePreview, '<ZoomableImage', 'Projects Editor file image preview source gate');
+  assertIncludes(editorAdvancedView, '<FileImagePreview', 'Projects Editor AdvancedView image preview source gate');
+  assertIncludes(editorTraditionalView, 'export const TraditionalView', 'Projects Editor TraditionalView source gate');
+  assertIncludes(editorFocusView, '<FileImagePreview', 'Projects Editor FocusView image preview source gate');
+  assertIncludes(projectsProductionReadinessAssessment, 'Historical assessment snapshot - not current launch certification', 'Projects production-readiness assessment historical boundary');
+  assertIncludes(projectsProductionReadinessAssessment, 'Do not treat it as current MenuList production-launch approval.', 'Projects production-readiness assessment current launch approval boundary');
+  assertIncludes(projectsProductionReadinessAssessment, 'Current Launch Boundary', 'Projects production-readiness assessment current launch boundary section');
+  assertIncludes(projectsProductionReadinessAssessment, "Outside this historical assessment's launch-blocker scope", 'Projects production-readiness assessment medium-priority boundary wording');
+  assertNotIncludes(projectsProductionReadinessAssessment, '**Status**: ✅ **PRODUCTION READY**', 'Projects production-readiness assessment stale production-ready status');
+  assertNotIncludes(projectsProductionReadinessAssessment, '**Launch Status**: Ready for Production Deployment', 'Projects production-readiness assessment stale launch status');
+  assertNotIncludes(projectsProductionReadinessAssessment, 'Readiness Scorecard ✅ PRODUCTION READY', 'Projects production-readiness assessment stale production-ready scorecard heading');
+  assertNotIncludes(projectsProductionReadinessAssessment, 'System ready for production launch', 'Projects production-readiness assessment stale launch progress wording');
+  assertNotIncludes(projectsProductionReadinessAssessment, 'The Projects feature is now **production-ready** and can be deployed for live users.', 'Projects production-readiness assessment stale deploy approval wording');
+  assertNotIncludes(projectsProductionReadinessAssessment, 'post-launch', 'Projects production-readiness assessment stale post-launch wording');
+  assertIncludes(projectsTestingChecklist, 'active production-readiness audit accepts the risk', 'Projects testing checklist launch-risk boundary');
+  assertNotIncludes(projectsTestingChecklist, 'fixed post-launch', 'Projects testing checklist stale post-launch wording');
+  assertIncludes(projectsMiscellaneousTask, 'Historical backlog evidence; not current launch certification', 'Projects miscellaneous backlog launch boundary status');
+  assertIncludes(projectsMiscellaneousTask, 'Do not use it as approval to defer current launch blockers.', 'Projects miscellaneous backlog launch-blocker boundary');
+  assertIncludes(projectsMiscellaneousTask, 'Current Use Boundary', 'Projects miscellaneous backlog current use boundary');
+  assertIncludes(projectsMiscellaneousTask, 'Conditional / Not Current Launch Gates', 'Projects miscellaneous backlog conditional summary');
+  assertNotIncludes(projectsMiscellaneousTask, 'Phase 2', 'Projects miscellaneous backlog stale phase-2 wording');
+  assertNotIncludes(projectsMiscellaneousTask, 'Phase 3', 'Projects miscellaneous backlog stale phase-3 wording');
+  assertNotIncludes(projectsMiscellaneousTask, 'post-launch', 'Projects miscellaneous backlog stale post-launch wording');
+  assertNotIncludes(projectsMiscellaneousTask, 'Deferred To', 'Projects miscellaneous backlog stale deferred-to wording');
+  assertNotIncludes(projectsMiscellaneousTask, 'Still Deferred', 'Projects miscellaneous backlog stale still-deferred wording');
+  assertIncludes(mainWebsiteReadme, 'source-gated Menu Link Import', 'Main website README menu-link source-gated wording');
+  assertNotIncludes(mainWebsiteReadme, 'production-ready Menu Link Import', 'Main website README stale menu-link production-ready wording');
+  assertIncludes(mobilePwaAnalysis, 'Implemented source analysis; not current launch certification', 'Mobile PWA analysis launch boundary status');
+  assertIncludes(mobilePwaAnalysis, 'Current Operational Baseline', 'Mobile PWA analysis current baseline wording');
+  assertIncludes(mobilePwaAnalysis, 'Conditional Additions (Only If PWA Adoption Proves Need)', 'Mobile PWA analysis conditional-additions wording');
+  assertIncludes(mobilePwaAnalysis, 'Separate scoped audit', 'Mobile PWA analysis scoped-audit wording');
+  assertNotIncludes(mobilePwaAnalysis, '3 months post-launch', 'Mobile PWA analysis stale post-launch timing');
+  assertNotIncludes(mobilePwaAnalysis, 'After launch', 'Mobile PWA analysis stale after-launch timing');
+  assertNotIncludes(mobilePwaAnalysis, 'Phase 3', 'Mobile PWA analysis stale phase-3 wording');
+  assertNotIncludes(mobilePwaAnalysis, 'Keep Phase 2', 'Mobile PWA analysis stale phase-2 action item');
+  assertNotIncludes(mobilePwaAnalysis, 'phased approach', 'Mobile PWA analysis stale phased-approach wording');
+  assertNotIncludes(mobilePwaAnalysis, '✅ IMPLEMENTED', 'Mobile PWA analysis stale implemented launch badge');
+  for (const [label, content] of [
+    ['Projects upload assessment', projectsUploadAssessment],
+    ['Projects AI extraction assessment', projectsAiExtractionAssessment],
+    ['Projects performance assessment', projectsPerformanceAssessment],
+    ['Projects security assessment', projectsSecurityAssessment],
+    ['Projects UX assessment', projectsUxAssessment],
+    ['Projects AI image generation assessment', projectsAiImageGenerationAssessment],
+    ['Projects image editing assessment', projectsImageEditingAssessment],
+    ['Projects B2B view assessment', projectsB2bViewAssessment],
+    ['Projects management assessment', projectsManagementAssessment],
+    ['Projects menu job queue implementation', menuJobQueueAssessment],
+  ]) {
+    assertIncludes(content, 'Historical assessment result only; not current launch certification', `${label} historical launch boundary`);
+    assertIncludes(content, 'External Certification Runbook', `${label} external certification boundary`);
+  }
+  assertIncludes(projectsUploadAssessment, 'Storage rules/deploy evidence', 'Projects upload assessment storage deploy boundary');
+  assertIncludes(projectsAiExtractionAssessment, 'AI accounting/source gates', 'Projects AI extraction assessment AI accounting boundary');
+  assertIncludes(projectsPerformanceAssessment, 'browser/device performance QA', 'Projects performance assessment runtime QA boundary');
+  assertIncludes(projectsSecurityAssessment, 'auth/tenant-isolation review', 'Projects security assessment tenant-isolation boundary');
+  assertIncludes(projectsUxAssessment, 'owner desktop/mobile QA', 'Projects UX assessment owner QA boundary');
+  assertIncludes(projectsAiImageGenerationAssessment, 'provider smoke', 'Projects AI image generation assessment provider smoke boundary');
+  assertIncludes(projectsImageEditingAssessment, 'Storage rules/deploy evidence', 'Projects image editing assessment storage deploy boundary');
+  assertIncludes(projectsImageEditingAssessment, 'Historical Production-Readiness Assessment (Not Current Launch Approval)', 'Projects image editing assessment historical production-readiness heading');
+  assertIncludes(projectsImageEditingAssessment, 'not current production-ready approval', 'Projects image editing assessment production-ready approval boundary');
+  assertIncludes(projectsB2bViewAssessment, 'API/export security review', 'Projects B2B view assessment API security boundary');
+  assertIncludes(b2cViewAssessment, 'require current launch-boundary review before release', 'B2C view assessment current launch-boundary review wording');
+  assertIncludes(projectsManagementAssessment, 'public cache evidence for publish-state writes', 'Projects management assessment public cache boundary');
+  assertIncludes(menuJobQueueAssessment, 'Cloud Function/deploy evidence', 'Projects menu job queue assessment function deploy boundary');
+  assertIncludes(serverSideDataProcessingArchitecture, 'architecture discussion evidence, not production launch certification', 'Projects server-side data processing ADR launch boundary');
+  assertIncludes(serverSideDataProcessingArchitecture, 'queue/runtime QA', 'Projects server-side data processing ADR queue QA boundary');
+  assertNotIncludes(projectsUploadAssessment, '**Production Ready**: ❌ NO → ✅ YES (after testing)', 'Projects upload assessment stale production-ready metadata');
+  assertNotIncludes(projectsAiExtractionAssessment, '**Production Ready**: ❌ NO → ✅ YES (after testing)', 'Projects AI extraction assessment stale production-ready metadata');
+  assertNotIncludes(projectsPerformanceAssessment, '**Production Ready**: ❌ NO → ✅ YES (optimized for production)', 'Projects performance assessment stale production-ready metadata');
+  assertNotIncludes(projectsSecurityAssessment, '**Production Ready**: ❌ NO → ✅ YES (security hardened)', 'Projects security assessment stale production-ready metadata');
+  assertNotIncludes(projectsUxAssessment, '**Production Ready**: ⚠️ NEEDS IMPROVEMENT → ✅ YES (UX polished)', 'Projects UX assessment stale production-ready metadata');
+  assertNotIncludes(projectsAiImageGenerationAssessment, '**Production Ready**: ✅ YES', 'Projects AI image generation assessment stale production-ready metadata');
+  assertNotIncludes(projectsAiImageGenerationAssessment, '| **Code Quality**       | ✅ PRODUCTION READY |', 'Projects AI image generation assessment stale production-ready code-quality row');
+  assertNotIncludes(projectsAiImageGenerationAssessment, '**Status**: ✅ **PRODUCTION READY** - Feature can launch immediately', 'Projects AI image generation assessment stale launch approval footer');
+  assertNotIncludes(projectsAiImageGenerationAssessment, 'post-launch implementation', 'Projects AI image generation assessment stale post-launch wording');
+  assertNotIncludes(projectsImageEditingAssessment, '**Production Ready**: ✅ **YES** (After Firebase rules deployment)', 'Projects image editing assessment stale production-ready metadata');
+  assertNotIncludes(projectsImageEditingAssessment, '**Status**: ✅ **PRODUCTION READY**', 'Projects image editing assessment stale production-ready section status');
+  assertNotIncludes(projectsImageEditingAssessment, '**After deployment**: Feature is 100% production ready! ✅', 'Projects image editing assessment stale post-deploy launch claim');
+  assertNotIncludes(projectsImageEditingAssessment, '**Grade**: **A-** (Production Ready after deployment)', 'Projects image editing assessment stale production-ready grade');
+  assertNotIncludes(projectsImageEditingAssessment, '**Overall Grade**: **A-** - Production ready with minor enhancements needed', 'Projects image editing assessment stale production-ready overall grade');
+  assertNotIncludes(projectsB2bViewAssessment, '**Production Ready**: ⚠️ NEEDS REVIEW', 'Projects B2B view assessment stale production-ready metadata');
+  assertNotIncludes(projectsManagementAssessment, '**Production Ready**: ✅ **YES** (All P0 items completed)', 'Projects management assessment stale production-ready metadata');
+  assertNotIncludes(projectsManagementAssessment, '**Ready for Production**: ✅ **YES**', 'Projects management assessment stale ready-for-production section');
+  assertNotIncludes(projectsManagementAssessment, '**Grade**: **A-** (Production Ready)', 'Projects management assessment stale production-ready grade');
+  assertNotIncludes(projectsManagementAssessment, '**Final Status**: ✅ **PRODUCTION READY**', 'Projects management assessment stale final production-ready status');
+  assertNotIncludes(menuJobQueueAssessment, '> **Status:** Production Ready', 'Projects menu job queue implementation stale production-ready status');
+  assertNotIncludes(serverSideDataProcessingArchitecture, 'make it production-ready', 'Projects server-side data processing ADR stale production-ready implementation claim');
+  assertIncludes(developmentDoneReadme, 'Historical implementation ledger; not current launch certification', 'Projects development_done README historical launch boundary');
+  assertIncludes(developmentDoneReadme, 'current Projects source verifiers', 'Projects development_done README current verifier launch gate');
+  assertNotIncludes(developmentDoneReadme, '**Production Ready**: Yes', 'Projects development_done README stale production-ready status');
+  assertNotIncludes(developmentDoneReadme, '**Production Ready**: ✅ Yes', 'Projects development_done README stale production-ready checked status');
+  assertIncludes(developmentDoneUploadCrossCheck, 'production-readiness audit', 'Projects development_done upload cross-check audit boundary');
+  assertIncludes(developmentDoneUploadCrossCheck, 'External Certification Runbook', 'Projects development_done upload cross-check external certification boundary');
+  assertIncludes(developmentDoneAiExtractionImpl, 'Historical AI extraction implementation evidence; not current launch certification', 'Projects development_done AI extraction historical boundary');
+  assertIncludes(developmentDoneAiExtractionImpl, '`npm run verify:menu-extraction-pipeline`', 'Projects development_done AI extraction current verifier gate');
+  assertNotIncludes(developmentDoneAiExtractionImpl, '**Production Ready**: ✅ YES (after testing)', 'Projects development_done AI extraction stale production-ready status');
+  assertIncludes(editorCompletionDevelopmentNote, 'Historical editor UX implementation evidence; not current launch certification', 'Editor completion development note launch boundary status');
+  assertIncludes(editorCompletionDevelopmentNote, 'browser/mobile editor QA', 'Editor completion development note editor QA launch gate');
+  assertIncludes(editorCompletionDevelopmentNote, 'publish/cache evidence for edited public truth', 'Editor completion development note public truth cache launch gate');
+  assertNotIncludes(editorCompletionDevelopmentNote, '**Status**: 🟢 **PRODUCTION READY**', 'Editor completion development note stale production-ready section status');
+  assertNotIncludes(editorCompletionDevelopmentNote, '**Status**: ✅ **READY FOR PRODUCTION**', 'Editor completion development note stale ready-for-production footer');
+  assertNotIncludes(editorCompletionDevelopmentNote, 'bulk ops post-launch', 'Editor completion development note stale post-launch wording');
+  assertIncludes(developmentDoneSecurityImpl, 'Historical security implementation evidence; not current launch certification', 'Projects development_done security historical boundary');
+  assertIncludes(developmentDoneSecurityImpl, 'current Projects API/security verifiers', 'Projects development_done security current verifier gate');
+  assertNotIncludes(developmentDoneSecurityImpl, '**Production Ready**: ✅ **YES**', 'Projects development_done security stale production-ready status');
+  assertNotIncludes(developmentDoneSecurityImpl, 'Ready for immediate deployment', 'Projects development_done security stale immediate deployment claim');
+  assertNotIncludes(developmentDoneSecurityImpl, '**Status**: ✅ Production Ready', 'Projects development_done security stale footer production-ready status');
+  assertIncludes(aiExtractionTestingGuide, 'Launch Certification Testing Checklist', 'AI extraction testing guide launch certification checklist heading');
+  assertNotIncludes(aiExtractionTestingGuide, 'Before marking as production-ready:', 'AI extraction testing guide stale production-ready checklist intro');
+  assertIncludes(trustSecurityPageDoc, 'Historical page-build record; not current launch certification', 'Trust/security page historical evidence boundary');
+  assertIncludes(trustSecurityPageDoc, 'Do not treat this page-build note as proof of full MenuList launch readiness.', 'Trust/security page launch approval boundary');
+  assertNotIncludes(trustSecurityPageDoc, '**Status:** ✅ **COMPLETE & PRODUCTION READY**', 'Trust/security page stale production-ready status');
+  assertNotIncludes(trustSecurityPageDoc, '**Ready for Production: YES!**', 'Trust/security page stale footer production-ready status');
+  assertNotIncludes(trustSecurityPageDoc, 'production-ready React/TypeScript', 'Trust/security page stale production-ready implementation claim');
+  assertIncludes(profileModalRedesignDoc, 'Implemented source evidence; not current launch certification', 'Profile modal redesign launch boundary status');
+  assertIncludes(profileModalRedesignDoc, 'auth/profile API source review', 'Profile modal redesign auth/profile launch gate');
+  assertIncludes(profileModalRedesignDoc, 'permission-boundary checks', 'Profile modal redesign permission-boundary launch gate');
+  assertNotIncludes(profileModalRedesignDoc, 'The profile modal is now production-ready!', 'Profile modal redesign stale production-ready footer');
+  assertIncludes(networkStatusMonitoringDoc, 'Implemented source evidence; not current launch certification', 'Network status monitoring launch boundary status');
+  assertIncludes(networkStatusMonitoringDoc, 'browser/device QA for offline and slow-network behavior', 'Network status monitoring browser/device QA boundary');
+  assertIncludes(networkStatusMonitoringDoc, 'target-shell smoke for every product that mounts the provider', 'Network status monitoring product-shell launch boundary');
+  assertNotIncludes(networkStatusMonitoringDoc, '**Status**: ✅ Production Ready', 'Network status monitoring stale production-ready status');
+  assertNotIncludes(networkStatusMonitoringDoc, 'Network monitoring is now active! The app will automatically handle poor connectivity.', 'Network status monitoring stale launch-certification footer');
+  assertIncludes(networkStatusHook, 'navigator.onLine', 'Network status hook online/offline source evidence');
+  assertIncludes(networkStatusHook, "connection.addEventListener('change', updateNetworkStatus);", 'Network status hook connection-change source evidence');
+  assertIncludes(networkStatusHook, 'downlink !== undefined && downlink < 1', 'Network status hook slow downlink threshold');
+  assertIncludes(networkStatusHook, 'rtt !== undefined && rtt > 500', 'Network status hook slow RTT threshold');
+  assertIncludes(networkStatusProvider, 'closable={false}', 'Network status provider non-closable modal');
+  assertIncludes(networkStatusProvider, 'maskClosable={false}', 'Network status provider non-mask-closable modal');
+  assertIncludes(networkStatusProvider, 'keyboard={false}', 'Network status provider keyboard-close guard');
+  assertIncludes(networkStatusProvider, "fetch('/favicon.ico', { method: 'HEAD', cache: 'no-cache' })", 'Network status provider manual connection check');
+  assertIncludes(layoutWrapper, '<NetworkStatusProvider>', 'MenuList layout mounts network status provider');
+  assertIncludes(campaignCueLayout, '<NetworkStatusProvider>', 'CampaignCue layout mounts shared network status provider');
+  assertIncludes(clientMenuReadme, 'Implemented customer-facing menu documentation; not current launch certification', 'Client menu README launch boundary status');
+  assertIncludes(clientMenuReadme, 'Digital Menu Output Constitution checks', 'Client menu README digital menu output launch gate');
+  assertNotIncludes(clientMenuReadme, '**Status:** ✅ Production Ready', 'Client menu README stale production-ready status');
+  assertIncludes(clientMenuSpec, 'not current production certification', 'Client menu spec launch certification boundary');
+  assertIncludes(clientMenuSpec, 'Digital Menu Output Constitution checks', 'Client menu spec digital menu output launch gate');
+  assertNotIncludes(clientMenuSpec, '**Status:** ✅ Production Ready', 'Client menu spec stale header production-ready status');
+  assertNotIncludes(clientMenuSpec, '_Document Status: ✅ PRODUCTION READY_', 'Client menu spec stale production-ready status');
+  assertIncludes(clientMenuImpl, 'P0 manual/device verification criteria before client-menu launch approval', 'Client menu implementation P0 launch approval boundary');
+  assertIncludes(clientMenuImpl, 'External Certification Runbook evidence', 'Client menu implementation external certification boundary');
+  assertIncludes(clientMenuImpl, 'Digital Menu Output Constitution checks', 'Client menu implementation digital menu output launch gate');
+  assertNotIncludes(clientMenuImpl, '**Status:** ✅ Production Ready', 'Client menu implementation stale header production-ready status');
+  assertNotIncludes(clientMenuImpl, 'These are the ONLY verification criteria before declaring production-ready.', 'Client menu implementation stale only-verification claim');
+  assertNotIncludes(clientMenuImpl, '_Document Status: ✅ PRODUCTION READY_', 'Client menu implementation stale production-ready status');
+  assertIncludes(clientMenuMarketing, 'Marketing evidence - not current launch certification', 'Client menu marketing launch boundary status');
+  assertIncludes(clientMenuMarketing, 'External Certification Runbook', 'Client menu marketing external certification boundary');
+  assertIncludes(clientMenuMarketing, 'Digital Menu Output Constitution checks', 'Client menu marketing output launch gate');
+  assertNotIncludes(clientMenuMarketing, '**Status:** ✅ Ready for Use', 'Client menu marketing stale ready-for-use header status');
+  assertNotIncludes(clientMenuMarketing, '_Document Status: ✅ READY FOR USE_', 'Client menu marketing stale ready-for-use footer status');
+  assertNotIncludes(clientMenuMarketing, 'Smart recommendations', 'Client menu marketing stale smart-recommendations copy');
+  assertNotIncludes(clientMenuMarketing, 'Our AI extracts items and prices', 'Client menu marketing stale AI extraction setup copy');
+  for (const [label, content] of [
+    ['Client menu Firebase cost doc', clientMenuFirebase],
+    ['Client menu AutoSell Firebase cost doc', clientMenuAutosellFirebase],
+    ['Client menu analytics Firebase cost doc', clientMenuAnalyticsFirebase],
+  ]) {
+    assertIncludes(content, 'not current launch certification', `${label} launch boundary status`);
+    assertIncludes(content, 'External Certification Runbook', `${label} external certification boundary`);
+    assertNotIncludes(content, '**Status:** ✅ Production Ready', `${label} stale production-ready status`);
+  }
+  assertIncludes(b2cMenuLayoutConstitution, 'Historical implementation note; not current launch certification', 'B2C menu layout constitution historical launch boundary');
+  assertIncludes(b2cMenuLayoutConstitution, 'Digital Menu Output Constitution checks', 'B2C menu layout constitution output launch gate');
+  assertNotIncludes(b2cMenuLayoutConstitution, '**Status:** ✅ PRODUCTION READY', 'B2C menu layout constitution stale production-ready status');
+  assertIncludes(menuEditorPhase4Advanced, 'historical implementation evidence only', 'Menu editor Phase 4 historical launch boundary');
+  assertIncludes(menuEditorPhase4Advanced, 'Digital Menu Output Constitution checks', 'Menu editor Phase 4 output launch gate');
+  assertNotIncludes(menuEditorPhase4Advanced, '**Phase 4 = SHIP READY** ✅', 'Menu editor Phase 4 stale ship-ready status');
+  for (const [label, content] of [
+    ['B2C view README', b2cViewReadme],
+    ['B2C view spec', b2cViewSpec],
+    ['B2C view implementation', b2cViewImpl],
+  ]) {
+    assertIncludes(content, 'not current launch certification', `${label} launch boundary status`);
+    assertIncludes(content, 'External Certification Runbook', `${label} external certification boundary`);
+    assertIncludes(content, 'Digital Menu Output Constitution checks', `${label} digital menu output launch gate`);
+    assertNotIncludes(content, '**Status:** ✅ Production Ready', `${label} stale header production-ready status`);
+    assertNotIncludes(content, '_Document Status: ✅ PRODUCTION READY_', `${label} stale footer production-ready status`);
+  }
+  assertIncludes(b2cViewMarketing, 'Marketing evidence - not current launch certification', 'B2C view marketing launch boundary status');
+  assertIncludes(b2cViewMarketing, 'Digital Menu Output Constitution checks', 'B2C view marketing output launch gate');
+  assertNotIncludes(b2cViewMarketing, '_Document Status: ✅ READY FOR USE_', 'B2C view marketing stale ready-for-use status');
+  assertIncludes(b2cViewAssessment, 'Historical assessment result only; not current launch certification', 'B2C view assessment historical boundary');
+  assertIncludes(b2cViewAssessment, 'browser/mobile customer-menu QA', 'B2C view assessment browser/mobile QA boundary');
+  assertNotIncludes(b2cViewAssessment, '**Production Ready**: ✅ READY', 'B2C view assessment stale production-ready status');
+  assertNotIncludes(b2cViewAssessment, 'Core functionality is production-ready.', 'B2C view assessment stale production-ready result');
+  assertNotIncludes(b2cViewAssessment, '**Result**: ✅ **PRODUCTION READY**', 'B2C view assessment stale production-ready final result');
+  assertNotIncludes(b2cViewAssessment, 'P1 post-launch', 'B2C view assessment stale post-launch wording');
+  for (const [label, content] of [
+    ['Description generation spec', descriptionGenerationSpec],
+    ['Description generation implementation', descriptionGenerationImpl],
+  ]) {
+    assertIncludes(content, 'not current launch certification', `${label} launch boundary status`);
+    assertIncludes(content, 'External Certification Runbook', `${label} external certification boundary`);
+    assertIncludes(content, 'target feature-flag/provider review', `${label} feature/provider launch gate`);
+    assertIncludes(content, 'AI accounting/source gates', `${label} AI accounting launch gate`);
+    assertNotIncludes(content, '**Status:** ✅ Production Ready', `${label} stale header production-ready status`);
+    assertNotIncludes(content, '_Document Status: ✅ PRODUCTION READY_', `${label} stale footer production-ready status`);
+  }
+  assertIncludes(descriptionGenerationReadme, 'Implemented source evidence; not current launch certification', 'Description generation README launch boundary status');
+  assertIncludes(descriptionGenerationReadme, 'AI accounting/source gates', 'Description generation README AI accounting launch gate');
+  assertNotIncludes(descriptionGenerationReadme, '> **Status:** ✅ Production Ready', 'Description generation README stale production-ready status');
+  assertIncludes(descriptionGenerationFirebase, 'Firebase cost evidence; not current launch certification', 'Description generation Firebase launch boundary status');
+  assertIncludes(descriptionGenerationFirebase, 'provider smoke', 'Description generation Firebase provider smoke boundary');
+  assertNotIncludes(descriptionGenerationFirebase, '**Status:** ✅ Production Ready', 'Description generation Firebase stale production-ready status');
+  assertIncludes(descriptionGenerationMarketing, 'Historical marketing draft; not current sales, publication, or launch certification', 'Description generation marketing launch boundary status');
+  assertIncludes(descriptionGenerationMarketing, 'Current Sales/Launch Boundary', 'Description generation marketing current sales boundary heading');
+  assertIncludes(descriptionGenerationMarketing, 'npm run verify:agent-readiness', 'Description generation marketing agent-readiness source gate');
+  assertIncludes(descriptionGenerationMarketing, 'npm run verify:ai-accounting', 'Description generation marketing AI accounting source gate');
+  assertIncludes(descriptionGenerationMarketing, 'Target feature-flag/provider review', 'Description generation marketing provider review boundary');
+  assertIncludes(descriptionGenerationMarketing, 'Authenticated desktop/mobile editor QA', 'Description generation marketing browser/mobile editor QA boundary');
+  assertNotIncludes(descriptionGenerationMarketing, '_Document Status: ✅ READY FOR USE_', 'Description generation marketing stale ready-for-use status');
+  assertIncludes(descriptionGenerationProductionAudit, 'Historical code-audit evidence; not current launch certification', 'Description generation production audit historical boundary');
+  assertIncludes(descriptionGenerationProductionAudit, 'Historical Code-Audit Result', 'Description generation production audit historical result section');
+  assertIncludes(descriptionGenerationProductionAudit, '| Overall               | 9.5/10 | Historical code-audit score; not current launch certification |', 'Description generation production audit table historical boundary');
+  assertNotIncludes(descriptionGenerationProductionAudit, '**Verdict: GO - Production Ready**', 'Description generation production audit stale production-ready verdict');
+  assertNotIncludes(descriptionGenerationProductionAudit, '| Overall               | 9.5/10 | Production ready', 'Description generation production audit stale production-ready table verdict');
+  assertIncludes(descriptionGenerationAssessment, 'Historical assessment result only; not current launch certification', 'Description generation assessment historical boundary');
+  assertIncludes(descriptionGenerationAssessment, 'Do not treat this assessment as current production deployment approval', 'Description generation assessment launch approval boundary');
+  assertNotIncludes(descriptionGenerationAssessment, 'Ready for production testing ✅', 'Description generation assessment stale production-testing status');
+  assertNotIncludes(descriptionGenerationAssessment, '**Ready for Production**: ✅ **YES**', 'Description generation assessment stale ready-for-production verdict');
+  assertNotIncludes(descriptionGenerationAssessment, '**Final Status**: ✅ **PRODUCTION READY**', 'Description generation assessment stale final production-ready status');
+  for (const [label, content] of [
+    ['Multi-language translation spec', multiLanguageTranslationSpec],
+    ['Multi-language translation implementation', multiLanguageTranslationImpl],
+  ]) {
+    assertIncludes(content, 'not current launch certification', `${label} launch boundary status`);
+    assertIncludes(content, 'External Certification Runbook', `${label} external certification boundary`);
+    assertIncludes(content, 'translated menu flows', `${label} translated-flow launch gate`);
+    assertIncludes(content, 'public renderer fallback/RTL evidence', `${label} renderer/RTL launch gate`);
+    assertNotIncludes(content, '> **Status:** ✅ Production Ready', `${label} stale header production-ready status`);
+    assertNotIncludes(content, '_Document Status: ✅ PRODUCTION READY_', `${label} stale footer production-ready status`);
+  }
+  assertIncludes(multiLanguageTranslationMarketing, 'Historical marketing draft; not current sales, publication, or launch certification', 'Multi-language translation marketing launch boundary status');
+  assertIncludes(multiLanguageTranslationMarketing, 'Current Sales/Launch Boundary', 'Multi-language translation marketing current sales boundary heading');
+  assertIncludes(multiLanguageTranslationMarketing, 'npm run verify:agent-readiness', 'Multi-language translation marketing source gate');
+  assertIncludes(multiLanguageTranslationMarketing, 'Public renderer fallback/RTL evidence', 'Multi-language translation marketing renderer/RTL boundary');
+  assertIncludes(multiLanguageTranslationMarketing, 'Customer-menu browser/device QA', 'Multi-language translation marketing customer-menu QA boundary');
+  assertNotIncludes(multiLanguageTranslationMarketing, '_Document Status: ✅ READY FOR USE_', 'Multi-language translation marketing stale ready-for-use status');
+  for (const [label, content] of [
+    ['Data editor README', dataEditorReadme],
+    ['Data editor spec', dataEditorSpec],
+    ['Data editor implementation', dataEditorImpl],
+    ['Data editor Firebase cost doc', dataEditorFirebase],
+  ]) {
+    assertIncludes(content, 'not current launch certification', `${label} launch boundary status`);
+    assertIncludes(content, 'External Certification Runbook', `${label} external certification boundary`);
+    assertIncludes(content, 'browser/mobile editor QA', `${label} editor QA launch gate`);
+    assertIncludes(content, 'publish/cache evidence for edited public truth', `${label} public truth cache launch gate`);
+    assertNotIncludes(content, '**Status:** ✅ Production Ready', `${label} stale header production-ready status`);
+    assertNotIncludes(content, '_Document Status: ✅ PRODUCTION READY_', `${label} stale footer production-ready status`);
+  }
+  assertIncludes(dataEditorMarketing, 'Marketing evidence - not current launch certification', 'Data editor marketing launch boundary status');
+  assertIncludes(dataEditorMarketing, 'publish/cache evidence for edited public truth', 'Data editor marketing public truth launch gate');
+  assertNotIncludes(dataEditorMarketing, '_Document Status: ✅ READY FOR USE_', 'Data editor marketing stale ready-for-use status');
+  assertIncludes(dataEditorAssessment, 'Historical assessment result only; not current launch certification', 'Data editor assessment historical boundary');
+  assertIncludes(dataEditorAssessment, 'publish/cache evidence for edited public truth', 'Data editor assessment public truth launch gate');
+  assertNotIncludes(dataEditorAssessment, '**Production Ready**: ✅ YES', 'Data editor assessment stale production-ready status');
+  assertNotIncludes(dataEditorAssessment, '**Status**: ✅ **PRODUCTION READY**', 'Data editor assessment stale production-ready section status');
+  assertNotIncludes(dataEditorAssessment, 'post-launch', 'Data editor assessment stale post-launch wording');
+  assertIncludes(socialContentReadme, 'Owner generation path: deleted', 'Social content README owner-generation deletion boundary');
+  assertIncludes(socialContentImpl, 'not current launch certification', 'Social content implementation launch boundary status');
+  assertIncludes(socialContentImpl, 'External Certification Runbook', 'Social content implementation external certification boundary');
+  assertIncludes(socialContentImpl, 'Today/mobile/browser QA', 'Social content implementation Today/mobile QA gate');
+  assertNotIncludes(socialContentImpl, '**Document Status:** ✅ PRODUCTION READY', 'Social content implementation stale production-ready status');
+  assertIncludes(socialContentValidation, 'Historical Validation Report - Social Content (Today Tab)', 'Social content validation historical heading');
+  assertIncludes(socialContentValidation, 'Current Release Boundary:', 'Social content validation current release boundary');
+  assertIncludes(socialContentValidation, 'Today desktop/mobile/browser QA', 'Social content validation Today/browser QA boundary');
+  assertIncludes(socialContentValidation, 'npm run verify:public-business-truth', 'Social content validation source gate boundary');
+  assertNotIncludes(socialContentValidation, '# ✅ FINAL PRODUCTION VALIDATION REPORT - Social Content (Today Tab)', 'Social content validation stale final production heading');
+  assertNotIncludes(socialContentValidation, '**Status:** ✅ SHIP READY', 'Social content validation stale ship-ready status');
+  assertNotIncludes(socialContentValidation, '## 🚀 PRODUCTION QUALITY GATE: PASS', 'Social content validation stale production quality gate');
+  assertNotIncludes(socialContentValidation, '**Ready For:** Vercel deploy + SMB testing', 'Social content validation stale Vercel/SMB readiness line');
+  assertNotIncludes(socialContentValidation, '**Status:** SHIP READY', 'Social content validation stale final ship-ready status');
+  assertIncludes(socialContentStrategy, 'not current launch certification', 'Social content strategy launch boundary status');
+  assertIncludes(socialContentStrategy, 'External Certification Runbook', 'Social content strategy external certification boundary');
+  assertIncludes(socialContentStrategy, 'npm run verify:agent-readiness', 'Social content strategy agent-readiness source gate');
+  assertIncludes(socialContentStrategy, 'npm run verify:public-business-truth', 'Social content strategy public-business-truth source gate');
+  assertIncludes(socialContentStrategy, 'Today desktop/mobile/browser QA', 'Social content strategy Today/browser QA boundary');
+  assertIncludes(socialContentStrategy, 'Owner generation path: deleted', 'Social content strategy owner-generation deletion boundary');
+  assertIncludes(socialContentStrategy, 'Treat QR tent and TV image as separate scoped additions', 'Social content strategy separate-scope wording');
+  assertNotIncludes(socialContentStrategy, 'Add QR tent + TV image **post-launch**', 'Social content strategy stale post-launch wording');
+  assertNotIncludes(socialContentStrategy, '**Status:** 🔒 **LOCKED — Ready for Implementation**', 'Social content strategy stale locked implementation status');
+  assertNotIncludes(socialContentStrategy, '**Document Status:** ✅ Ready for Implementation (3-Year Architecture Freeze)', 'Social content strategy stale implementation-ready footer');
+  assertIncludes(socialContentLogicVerification, 'Historical Logic Verification Result: Source Evidence Only', 'Social content logic verification historical verdict boundary');
+  assertIncludes(socialContentLogicVerification, 'not current launch certification', 'Social content logic verification launch boundary status');
+  assertIncludes(socialContentLogicVerification, 'External Certification Runbook', 'Social content logic verification external certification boundary');
+  assertIncludes(socialContentLogicVerification, 'npm run verify:agent-readiness', 'Social content logic verification agent-readiness source gate');
+  assertIncludes(socialContentLogicVerification, 'npm run verify:public-business-truth', 'Social content logic verification public-business-truth source gate');
+  assertIncludes(socialContentLogicVerification, 'Today desktop/mobile/browser QA', 'Social content logic verification Today/browser QA boundary');
+  assertIncludes(socialContentLogicVerification, 'Owner generation path: deleted', 'Social content logic verification owner-generation deletion boundary');
+  assertNotIncludes(socialContentLogicVerification, '**Status:** ✅ **DEPLOYABLE**', 'Social content logic verification stale deployable status');
+  assertNotIncludes(socialContentLogicVerification, '## FINAL VERDICT: ✅ DEPLOYABLE', 'Social content logic verification stale deployable verdict');
+  assertNotIncludes(socialContentLogicVerification, 'Social Content logic verification complete. All 6 flows verified. Zero critical issues.', 'Social content logic verification stale zero-issues certification');
+  assertIncludes(posWebhookSyncImpl, 'Separate scoped addition', 'POS webhook sync WhatsApp separate-scope wording');
+  assertNotIncludes(posWebhookSyncImpl, 'Deferred to post-launch', 'POS webhook sync stale post-launch wording');
+  assertIncludes(decisionIntelligenceMarketing, 'not current launch certification', 'Decision Intelligence marketing launch boundary status');
+  assertIncludes(decisionIntelligenceMarketing, 'External Certification Runbook', 'Decision Intelligence marketing external certification boundary');
+  assertIncludes(decisionIntelligenceMarketing, 'scoped scheduler deploy evidence', 'Decision Intelligence marketing scheduler deploy gate');
+  assertNotIncludes(decisionIntelligenceMarketing, '**Status:** ✅ **PRODUCTION READY**', 'Decision Intelligence marketing stale production-ready status');
+  assertIncludes(decisionIntelligenceLogicVerification, 'Historical Logic Verification Result: Source Evidence Only', 'Decision Intelligence logic verification historical result boundary');
+  assertIncludes(decisionIntelligenceLogicVerification, 'not current launch certification', 'Decision Intelligence logic verification launch boundary status');
+  assertIncludes(decisionIntelligenceLogicVerification, 'External Certification Runbook', 'Decision Intelligence logic verification external certification boundary');
+  assertIncludes(decisionIntelligenceLogicVerification, 'npm run verify:agent-readiness', 'Decision Intelligence logic verification agent-readiness source gate');
+  assertIncludes(decisionIntelligenceLogicVerification, 'npm run verify:functions-deploy-preflight', 'Decision Intelligence logic verification Functions preflight source gate');
+  assertIncludes(decisionIntelligenceLogicVerification, 'scoped scheduler deploy evidence', 'Decision Intelligence logic verification scoped scheduler deploy boundary');
+  assertIncludes(decisionIntelligenceLogicVerification, 'browser/mobile customer-menu QA', 'Decision Intelligence logic verification browser/mobile QA boundary');
+  assertNotIncludes(decisionIntelligenceLogicVerification, '**Status:** ✅ **DEPLOYABLE**', 'Decision Intelligence logic verification stale deployable status');
+  assertNotIncludes(decisionIntelligenceLogicVerification, 'PRODUCTION READINESS: SAFE', 'Decision Intelligence logic verification stale production-readiness line');
+  assertNotIncludes(decisionIntelligenceLogicVerification, '## FINAL VERDICT: ✅ DEPLOYABLE', 'Decision Intelligence logic verification stale deployable verdict');
+  assertNotIncludes(decisionIntelligenceLogicVerification, 'Decision Blocks logic verification complete. All 7 flows verified. Zero critical issues.', 'Decision Intelligence logic verification stale zero-issues certification');
+  assertIncludes(internalFeedbackVerification, 'source-verified evidence for the Guest Feedback feature, not standalone production deployment approval', 'Internal feedback verification launch boundary');
+  assertIncludes(internalFeedbackVerification, 'Current Launch Boundary', 'Internal feedback verification current launch boundary section');
+  assertIncludes(internalFeedbackReadme, 'load claims require current audit evidence before release', 'Internal feedback README load-claim launch boundary');
+  assertNotIncludes(internalFeedbackReadme, 'Hardening deferred to post-launch', 'Internal feedback README stale post-launch wording');
+  assertNotIncludes(internalFeedbackVerification, 'feature production-ready', 'Internal feedback verification stale production-ready status');
+  assertNotIncludes(internalFeedbackVerification, '### Ready for Production', 'Internal feedback verification stale ready-for-production heading');
+  assertNotIncludes(internalFeedbackVerification, 'The Internal Feedback System is **ready for production deployment**', 'Internal feedback verification stale deployment approval wording');
+  assertIncludes(multiLanguageTranslationVerification, 'source-verified feature evidence, not standalone production deployment approval', 'Multi-language verification launch boundary');
+  assertIncludes(multiLanguageTranslationVerification, 'translated menu flows', 'Multi-language verification translated-flow QA boundary');
+  assertNotIncludes(multiLanguageTranslationVerification, 'feature is **production-ready** and **well-implemented**', 'Multi-language verification stale production-ready conclusion');
+  assertIncludes(multiLanguageTranslationAssessment, 'Historical assessment result only; not current launch certification', 'Multi-language assessment historical launch boundary');
+  assertIncludes(multiLanguageTranslationAssessment, 'translated menu flows', 'Multi-language assessment translated-flow QA boundary');
+  assertNotIncludes(multiLanguageTranslationAssessment, 'The Multi-Language feature is now **production-ready**', 'Multi-language assessment stale production-ready conclusion');
+  assertIncludes(comprehensiveSecurityAudit, 'Historical code-audit snapshot — not current launch certification', 'Comprehensive security audit historical evidence boundary');
+  assertIncludes(comprehensiveSecurityAudit, 'Current production approval requires the active production-readiness audit, External Certification Runbook evidence', 'Comprehensive security audit current launch approval boundary');
+  assertNotIncludes(comprehensiveSecurityAudit, '**Overall Status**: ✅ **PRODUCTION READY**', 'Comprehensive security audit stale production-ready overall status');
+  assertNotIncludes(comprehensiveSecurityAudit, '**Status**: ✅ **PRODUCTION READY**', 'Comprehensive security audit stale production-ready final status');
+  assertNotIncludes(comprehensiveSecurityAudit, '**Recommendation**: **APPROVED FOR PRODUCTION**', 'Comprehensive security audit stale approved-for-production recommendation');
+  assertIncludes(launchPrerequisites, 'Current blocker logged July 2, 2026', 'Launch prerequisites current Firebase deploy blocker timestamp');
+  assertIncludes(launchPrerequisites, 'latest documented scoped QA deploy attempts for the source-file path hardening subset (`functions:processMenuImages`, `functions:processMenuImagesJob`, `functions:startGeneration`, `functions:embedArticleWorker`, and `functions:regenerateEmbedding`), the SAFE_MODE worker retry (`functions:processMenuImagesJob`), and the scheduler retry (`functions:menulistMaintenanceScheduler`) passed predeploy lint/build', 'Launch prerequisites latest scoped deploy blocker set');
+  assertIncludes(launchPrerequisites, 'firebase deploy --project menulist-qa --config firebase.json --only functions:menulistMaintenanceScheduler --non-interactive', 'Launch prerequisites latest scoped scheduler deploy retry command');
+  assertNotIncludes(launchPrerequisites, 'firebase deploy --only functions:menulistMaintenanceScheduler --project menulist-qa\n', 'Launch prerequisites stale scheduler deploy command without config/non-interactive');
+  assertIncludes(launchPrerequisites, 'Error: Request to https://cloudresourcemanager.googleapis.com/v1/projects/menulist-qa had HTTP Error: 403, The caller does not have permission', 'Launch prerequisites latest Cloud Resource Manager blocker');
+  assertIncludes(launchPrerequisites, 'Deploy Functions blocker set', 'Launch prerequisites summary scoped Functions deploy wording');
+  assertIncludes(launchPrerequisites, 'latest documented `menulist-qa` source-file path hardening subset, `processMenuImagesJob`, and scheduler deploy attempts completed predeploy lint/build', 'Launch prerequisites summary latest Functions blocker evidence');
+  assertIncludes(launchPrerequisites, 'then retry the documented scoped Firebase Functions target set or the exact changed subset being certified', 'Launch prerequisites summary scoped Functions deploy target');
+  assertIncludes(launchPrerequisites, 'Deploy Storage rules cutover', 'Launch prerequisites summary Storage deploy wording');
+  assertIncludes(launchPrerequisites, 'latest `menulist-qa` deploy failed before rules upload with Service Usage HTTP 403 project access/availability blocker', 'Launch prerequisites summary Storage blocker evidence');
+  assertNotIncludes(launchPrerequisites, '| Deploy functions              | ❌ Manual  | `firebase deploy --only functions`             |', 'Launch prerequisites broad Functions deploy summary row');
+  assertIncludes(launchPrerequisites, '| Confirm feature flag evidence | ☐ Pre-prod verify | Check current `src/config/features.ts` source state, target secrets/provider setup, scoped deploy evidence, and External Certification Runbook evidence. Do not treat three code lines as launch approval. |', 'Launch prerequisites feature flag evidence row');
+  assertNotIncludes(launchPrerequisites, '| Enable feature flags          | ❌ Manual  | 3 lines in features.ts                         |', 'Launch prerequisites stale feature flag activation row');
+  assertIncludes(launchPrerequisites, 'firebase deploy --only firestore:indexes --project menulist-qa --config firebase.json', 'Launch prerequisites scoped QA Firestore indexes deploy command');
+  assertIncludes(launchPrerequisites, 'Production index deploy requires QA evidence and explicit production approval.', 'Launch prerequisites production index approval gate');
+  assertNotIncludes(launchPrerequisites, 'firebase deploy --only firestore:indexes\n', 'Launch prerequisites broad Firestore indexes deploy command');
+  assertIncludes(launchPrerequisites, 'production send-out still needs final channel configuration and deploy evidence before launch', 'Launch prerequisites platform alert deploy evidence boundary');
+  assertIncludes(launchPrerequisites, 'Store Telegram secrets in QA first.', 'Launch prerequisites top Telegram QA-first secret setup');
+  assertIncludes(launchPrerequisites, 'Store SMTP secrets in QA first.', 'Launch prerequisites top SMTP QA-first secret setup');
+  assertIncludes(launchPrerequisites, 'Create the missing Secret Manager values in QA first', 'Launch prerequisites platform alert QA-first secret setup');
+  assertIncludes(launchPrerequisites, 'firebase functions:secrets:set TELEGRAM_BOT_TOKEN --project menulist-qa', 'Launch prerequisites platform alert QA Telegram secret command');
+  assertIncludes(launchPrerequisites, 'firebase functions:secrets:set SMTP_PASS --project menulist-qa', 'Launch prerequisites platform alert QA SMTP secret command');
+  assertIncludes(launchPrerequisites, 'After QA alert delivery evidence and explicit production secret approval, repeat', 'Launch prerequisites platform alert production secret approval gate');
+  assertNotIncludes(launchPrerequisites, 'firebase functions:secrets:set TELEGRAM_BOT_TOKEN\n', 'Launch prerequisites unscoped Telegram bot secret command');
+  assertNotIncludes(launchPrerequisites, 'firebase functions:secrets:set TELEGRAM_CHAT_ID\n', 'Launch prerequisites unscoped Telegram chat secret command');
+  assertNotIncludes(launchPrerequisites, 'firebase functions:secrets:set SMTP_HOST\n', 'Launch prerequisites unscoped SMTP host secret command');
+  assertNotIncludes(launchPrerequisites, 'firebase functions:secrets:set SMTP_PASS\n', 'Launch prerequisites unscoped SMTP password secret command');
+  assertNotIncludes(launchPrerequisites, 'firebase functions:secrets:set TELEGRAM_BOT_TOKEN --project menulist\nfirebase functions:secrets:set TELEGRAM_CHAT_ID --project menulist\nfirebase functions:secrets:set SMTP_HOST --project menulist\nfirebase functions:secrets:set SMTP_PORT --project menulist\nfirebase functions:secrets:set SMTP_USER --project menulist\nfirebase functions:secrets:set SMTP_PASS --project menulist', 'Launch prerequisites direct production platform alert secret block');
+  assertIncludes(launchPrerequisites, 'Redeploy the affected Firebase Functions to QA first, then production only after QA evidence and explicit production deploy approval', 'Launch prerequisites platform alert QA-first deploy wording');
+  assertIncludes(launchPrerequisites, 'npm run verify:functions-deploy-preflight', 'Launch prerequisites platform alert Functions preflight');
+  assertIncludes(launchPrerequisites, 'firebase deploy --project menulist-qa --config firebase.json --only functions:menulistMaintenanceScheduler,functions:computeDecisionBlocksScores,functions:triggerStoreNightlyScheduler,functions:triggerDecisionBlocksScoring,functions:verifyMenuPublish,functions:forceRepublish,functions:gcpBudgetAlertWebhook,functions:messagingOnboarding,functions:msgExtractionWatcher --non-interactive', 'Launch prerequisites platform alert QA deploy command');
+  assertIncludes(launchPrerequisites, 'After QA evidence and explicit production deploy approval', 'Launch prerequisites platform alert production approval gate');
+  assertIncludes(launchPrerequisites, 'Record the exact widened target list and reason in `__docs__/audits/menulist-production-readiness-audit.md` if this Step 7B list differs from Gate 1', 'Launch prerequisites platform alert widened target audit requirement');
+  assertNotIncludes(launchPrerequisites, 'firebase deploy --only functions:menulistMaintenanceScheduler,functions:computeDecisionBlocksScores,functions:triggerStoreNightlyScheduler,functions:triggerDecisionBlocksScoring,functions:verifyMenuPublish,functions:forceRepublish,functions:gcpBudgetAlertWebhook,functions:messagingOnboarding,functions:msgExtractionWatcher --project menulist\n', 'Launch prerequisites direct production platform alert deploy command');
+  for (const [label, content] of [
+    ['Ops infrastructure guide', opsInfrastructureGuide],
+    ['Ops alerting delivery implementation', opsAlertingDeliveryImpl],
+  ]) {
+    assertIncludes(content, 'firebase functions:secrets:set TELEGRAM_BOT_TOKEN --project menulist-qa', `${label} QA Telegram bot secret command`);
+    assertIncludes(content, 'firebase functions:secrets:set TELEGRAM_CHAT_ID --project menulist-qa', `${label} QA Telegram chat secret command`);
+    assertIncludes(content, 'Production values require QA alert-delivery evidence and explicit production secret approval', `${label} production Telegram secret approval gate`);
+    assertNotIncludes(content, 'firebase functions:secrets:set TELEGRAM_BOT_TOKEN\n', `${label} unscoped Telegram bot secret command`);
+    assertNotIncludes(content, 'firebase functions:secrets:set TELEGRAM_CHAT_ID\n', `${label} unscoped Telegram chat secret command`);
+  }
+  assertIncludes(productionCertificationRunbook, 'firebase deploy --project menulist-qa --config firebase.json --only functions:processMenuImages,functions:processMenuImagesJob,functions:menulistMaintenanceScheduler,functions:computeDecisionBlocksScores,functions:triggerDecisionBlocksScoring,functions:triggerStoreNightlyScheduler,functions:verifyMenuPublish --non-interactive', 'Production certification runbook current blocked function deploy set');
+  assertIncludes(productionCertificationRunbook, 'source-file path hardening slice changes the shared Functions temp-file helper', 'Production certification runbook source-file path hardening subset note');
+  assertIncludes(productionCertificationRunbook, 'firebase deploy --project menulist-qa --config firebase.json --only functions:processMenuImages,functions:processMenuImagesJob,functions:startGeneration,functions:embedArticleWorker,functions:regenerateEmbedding --non-interactive', 'Production certification runbook source-file path hardening scoped retry command');
+  assertIncludes(productionCertificationRunbook, 'Founder Monitor scheduler slice changes `functions/src/schedulers/founderMonitorSnapshot.ts` and `functions/src/schedulers/menulistMaintenanceScheduler.ts`', 'Production certification runbook Founder Monitor scheduler subset note');
+  assertIncludes(productionCertificationRunbook, 'menu extraction SAFE_MODE worker guard changes `functions/src/logic/processMenuImagesJob.ts`', 'Production certification runbook SAFE_MODE worker subset note');
+  assertIncludes(productionCertificationRunbook, 'firebase deploy --project menulist-qa --config firebase.json --only functions:processMenuImagesJob --non-interactive', 'Production certification runbook SAFE_MODE worker scoped retry command');
+  assertIncludes(productionCertificationRunbook, 'latest documented scoped attempts for the source-file path hardening subset (`functions:processMenuImages`, `functions:processMenuImagesJob`, `functions:startGeneration`, `functions:embedArticleWorker`, and `functions:regenerateEmbedding`), the SAFE_MODE worker retry (`functions:processMenuImagesJob`), and the scheduler retry (`functions:menulistMaintenanceScheduler`) completed predeploy lint/build', 'Production certification runbook current Functions deploy blocker evidence');
+  assertIncludes(productionCertificationRunbook, 'No Cloud Resource Manager, IAM, billing, or Secret Manager blocker.', 'Production certification runbook cloud-blocker evidence split');
+  assertIncludes(productionCertificationRunbook, 'npm run verify:functions-deploy-preflight', 'Production certification runbook Functions deploy local preflight source gate');
+  assertIncludes(productionCertificationRunbook, 'It does not prove Firebase CLI authentication, project IAM, enabled Google Cloud APIs, Secret Manager access, function upload, deployed revisions, scheduler execution, callable behavior, trigger delivery, or live production effect.', 'Production certification runbook Functions deploy external-proof boundary');
+  assertIncludes(productionCertificationRunbook, '## Gate 2A: Firebase Storage Rules Deployment', 'Production certification runbook Storage rules gate heading');
+  assertIncludes(productionCertificationRunbook, 'npm run verify:storage-paths', 'Production certification runbook Storage rules local preflight source gate');
+  assertIncludes(productionCertificationRunbook, 'firebase deploy --project menulist-qa --config firebase.json --only storage --non-interactive', 'Production certification runbook scoped QA Storage deploy command');
+  assertIncludes(productionCertificationRunbook, 'Service Usage HTTP 403: project `menulist-qa` not found or permission denied', 'Production certification runbook current Storage deploy blocker evidence');
+  assertIncludes(productionCertificationRunbook, 'Production Storage rules deploy requires QA evidence and explicit production approval', 'Production certification runbook Storage production approval gate');
+  assertIncludes(productionCertificationRunbook, 'It does not prove Firebase CLI authentication, project IAM, Storage rules upload, deployed rules propagation, or live bucket behavior.', 'Production certification runbook Storage deploy external-proof boundary');
+  assertIncludes(productionCertificationRunbook, 'npm run verify:tenant-block-backfill-safety', 'Production certification runbook tenant-block backfill local preflight source gate');
+  assertIncludes(productionCertificationRunbook, 'It does not prove Firestore read access, target dataset review, dry-run candidate counts, write mutation success, or production data parity.', 'Production certification runbook tenant-block backfill external-proof boundary');
+  assertIncludes(productionCertificationRunbook, 'npm run verify:billing-entitlement-boundary', 'Production certification runbook Razorpay local preflight source gate');
+  assertIncludes(productionCertificationRunbook, 'subscription/top-up sequencing, webhook cheap-fail/idempotency, browser acknowledgement, and entitlement/cache sync guard coverage only', 'Production certification runbook Razorpay preflight boundary');
+  assertIncludes(productionCertificationRunbook, 'npm run verify:messaging-onboarding-monitor-boundary', 'Production certification runbook WhatsApp messaging monitor local preflight source gate');
+  assertIncludes(productionCertificationRunbook, 'npm run verify:menu-extraction-pipeline', 'Production certification runbook WhatsApp messaging publish local preflight source gate');
+  assertIncludes(productionCertificationRunbook, 'platform-only messaging onboarding monitor coverage, preview/fix/publish source gates, messaging extraction destination routing, public cache-tag writes', 'Production certification runbook WhatsApp provider local-only boundary');
+  assertIncludes(productionCertificationRunbook, 'It does not prove Meta webhook delivery, provider media download, outbound WhatsApp delivery, provider asset configuration, or provider-mode correctness.', 'Production certification runbook WhatsApp provider external-proof boundary');
+  assertIncludes(productionCertificationRunbook, 'npm run verify:mobile-shell-route-map', 'Production certification runbook mobile shell local preflight source gate');
+  assertIncludes(productionCertificationRunbook, 'npm run verify:staff-roles-route-parity', 'Production certification runbook Staff/Roles mobile local preflight source gate');
+  assertIncludes(productionCertificationRunbook, 'npm run verify:customer-app-pwa', 'Production certification runbook customer app local preflight source gate');
+  assertIncludes(productionCertificationRunbook, 'npm run verify:public-business-truth', 'Production certification runbook public business truth local preflight source gate');
+  assertIncludes(productionCertificationRunbook, 'npm run verify:menu-extraction-pipeline', 'Production certification runbook menu extraction local preflight source gate');
+  assertIncludes(productionCertificationRunbook, 'npm run verify:public-truth-tools', 'Production certification runbook public truth tools local preflight source gate');
+  assertIncludes(productionCertificationRunbook, 'It does not prove real device rendering, authenticated owner-shell visual behavior, touch ergonomics, browser console cleanliness, or public route runtime rendering.', 'Production certification runbook mobile/browser external-proof boundary');
+  assertIncludes(productionCertificationRunbook, 'npm run verify:pos-sync-boundary', 'Production certification runbook POS local preflight source gate');
+  assertIncludes(productionCertificationRunbook, 'Passing preflight proves the maintained source-only POS boundary gate', 'Production certification runbook POS maintained verifier boundary');
+  assertNotIncludes(productionCertificationRunbook, 'npx tsx -e "import { validatePosSyncWebhookUrl', 'Production certification runbook must not use ad hoc inline POS URL probe');
+  assertIncludes(productionCertificationRunbook, 'npm run verify:agent-readiness', 'Production certification runbook batch worker env setup preflight source gate');
+  assertIncludes(productionCertificationRunbook, 'It does not prove Cloud Tasks enqueue, worker invocation, worker secret acceptance, provider image generation, review state, or project persistence.', 'Production certification runbook batch worker external-proof boundary');
+  assertIncludes(productionCertificationRunbook, 'npm run verify:production-readiness-local', 'Production certification runbook production-host local preflight aggregate');
+  assertIncludes(productionCertificationRunbook, 'It does not prove a Vercel build, deployed artifact, production environment variables, custom-domain routing, CDN behavior, Firebase production access, or production-host runtime behavior.', 'Production certification runbook production-host external-proof boundary');
+  assertIncludes(productionCertificationRunbook, 'Do not run Vercel deploy, preview deploy, production deploy, or production-host smoke from this runbook unless that approval exists in the active session.', 'Production certification runbook explicit Vercel approval guard');
+  assertIncludes(productionDeploymentChecklist, 'Do not run Vercel deploys, preview deploys, production deploys, Vercel remote builds, or production-host smoke from this checklist unless the user explicitly asks for a Vercel deploy in the active session.', 'Production deployment checklist explicit Vercel approval guard');
+  assertIncludes(productionDeploymentChecklist, 'Firebase infrastructure auto-deploy applies only to Firebase rules, indexes, Storage rules, and Firebase Cloud Function logic.', 'Production deployment checklist Firebase auto-deploy boundary');
+  assertIncludes(productionDeploymentChecklist, 'npm run verify:production-readiness-local', 'Production deployment checklist aggregate local preflight');
+  assertIncludes(productionDeploymentChecklist, 'firebase deploy --project menulist-qa --config firebase.json --only functions:processMenuImages,functions:processMenuImagesJob,functions:menulistMaintenanceScheduler,functions:computeDecisionBlocksScores,functions:triggerDecisionBlocksScoring,functions:triggerStoreNightlyScheduler,functions:verifyMenuPublish --non-interactive', 'Production deployment checklist scoped MenuList QA Functions target');
+  assertIncludes(productionDeploymentChecklist, 'If certification is retrying only the July 2 source-file path hardening slice', 'Production deployment checklist source-file subset boundary');
+  assertIncludes(productionDeploymentChecklist, 'firebase deploy --project menulist-qa --config firebase.json --only functions:processMenuImages,functions:processMenuImagesJob,functions:startGeneration,functions:embedArticleWorker,functions:regenerateEmbedding --non-interactive', 'Production deployment checklist source-file subset target');
+  assertIncludes(productionDeploymentChecklist, 'Storage rules cutover: run `npm run verify:storage-paths`, then retry `firebase deploy --project menulist-qa --config firebase.json --only storage --non-interactive`', 'Production deployment checklist scoped Storage deploy command');
+  assertIncludes(productionDeploymentChecklist, 'production Storage rules deploy requires QA evidence and explicit production approval', 'Production deployment checklist Storage production approval gate');
+  assertIncludes(productionDeploymentChecklist, 'If approval is missing, do not deploy. Record the deploy command as pending instead.', 'Production deployment checklist missing-approval stop rule');
+  assertNotIncludes(productionDeploymentChecklist, 'vercel --prod', 'Production deployment checklist stale Vercel production command');
+  assertNotIncludes(productionDeploymentChecklist, 'git push origin main', 'Production deployment checklist stale push-to-main deploy instruction');
+  assertNotIncludes(productionDeploymentChecklist, 'firebase deploy --only functions\n', 'Production deployment checklist broad Functions deploy command');
+  assertNotIncludes(productionDeploymentChecklist, 'cd ~/Projects/MenuListAi/dashboard', 'Production deployment checklist stale dashboard path');
+  assertNotIncludes(productionDeploymentChecklist, 'firestore-indexes-auth.json', 'Production deployment checklist stale auth index config');
+  assertIncludes(productionReadinessAudit, 'latest documented MenuList staging Firebase Function deploy attempts for the source-file path hardening subset (`functions:processMenuImages`, `functions:processMenuImagesJob`, `functions:startGeneration`, `functions:embedArticleWorker`, and `functions:regenerateEmbedding`), `functions:processMenuImagesJob`, and `functions:menulistMaintenanceScheduler` targeted `menulist-qa`', 'Production readiness audit latest Firebase Function deploy blocker summary');
+  assertIncludes(productionReadinessAudit, 'latest documented scoped staging attempts against `menulist-qa` for the source-file path hardening subset, `functions:processMenuImagesJob`, and `functions:menulistMaintenanceScheduler` passed predeploy lint/build', 'Production readiness audit remaining-risk Functions blocker summary');
+  assertIncludes(productionReadinessAudit, 'Cloud Resource Manager HTTP 403 caller permission before upload', 'Production readiness audit latest Cloud Resource Manager blocker');
+  assertIncludes(productionReadinessAudit, 'latest MenuList staging Storage rules deploy attempt also targeted `menulist-qa` and remains blocked by Service Usage HTTP 403: project not found or permission denied before rules upload', 'Production readiness audit latest Storage deploy blocker summary');
+  assertIncludes(productionReadinessAudit, 'Storage rules legacy-project cutover checkpoint', 'Production readiness audit Storage cutover checkpoint');
+  assertIncludes(productionReadinessAudit, 'firebase deploy --project menulist-qa --config firebase.json --only storage --non-interactive', 'Production readiness audit scoped Storage deploy command');
+  assertIncludes(productionReadinessAudit, 'the latest `npm run docs:check-links` run passed with 0 broken links and 0 naming violations', 'Production readiness audit docs link health summary');
+  assertNotIncludes(productionReadinessAudit, 'across 1,995 active docs files', 'Production readiness audit stale docs link file count');
+  assertIncludes(productionReadinessAudit, 'AI extraction historical-audit boundary checkpoint', 'Production readiness audit AI extraction historical boundary checkpoint');
+  assertIncludes(productionReadinessAudit, 'historical code-readiness evidence, not current MenuList launch certification', 'Production readiness audit AI extraction historical boundary wording');
+  assertIncludes(productionReadinessAudit, 'AI extraction monitoring launch-boundary checkpoint', 'Production readiness audit AI extraction monitoring boundary checkpoint');
+  assertIncludes(productionReadinessAudit, 'feature flag OFF" as production readiness', 'Production readiness audit AI extraction monitoring flag-off boundary wording');
+  assertIncludes(menuExtractionPipelineVerifier, 'controlled internal testing ready, not launch certification', 'Menu extraction verifier AI extraction monitoring launch boundary');
+  assertIncludes(menuExtractionPipelineVerifier, 'Feature flag OFF, ready for production', 'Menu extraction verifier stale AI extraction monitoring wording rejection');
+  for (const [label, content] of [
+    ['AI extraction monitoring spec', aiExtractionMonitoringSpec],
+    ['AI extraction monitoring implementation', aiExtractionMonitoringImpl],
+  ]) {
+    assertIncludes(content, 'controlled internal testing ready, not launch certification', `${label} launch boundary`);
+    assertIncludes(content, 'External Certification Runbook', `${label} external certification gate`);
+    assertIncludes(content, 'source-verified for controlled internal testing', `${label} source verification boundary`);
+    assertIncludes(content, 'current production-readiness audit', `${label} audit gate`);
+    assertNotIncludes(content, 'Feature flag OFF, ready for production', `${label} stale flag-off production-ready wording`);
+  }
+  assertIncludes(productionReadinessAudit, 'Store update acknowledgement source-gate checkpoint', 'Production readiness audit store update acknowledgement checkpoint');
+  assertIncludes(productionReadinessAudit, 'scans every active `src` `updateStore()` call', 'Production readiness audit generic store update acknowledgement scan');
+  assertIncludes(productionReadinessAudit, 'Aggregate local readiness output boundary checkpoint', 'Production readiness audit local aggregate output boundary checkpoint');
+  assertIncludes(productionReadinessAudit, 'does not run a Next.js production build, Firebase deploy, Vercel deploy, provider smoke, browser/device QA, live Firestore/Storage writes, or production-host behavior', 'Production readiness audit local aggregate output boundary details');
+  assertIncludes(productionReadinessAudit, 'Recycle-bin verifier output boundary checkpoint', 'Production readiness audit recycle-bin output boundary checkpoint');
+  assertIncludes(productionReadinessAudit, 'aggregate verifier text cannot be mistaken for a manual/browser certification pass', 'Production readiness audit recycle-bin aggregate wording guard');
+  assertIncludes(productionReadinessAudit, 'Aggregate verifier coverage checkpoint', 'Production readiness audit current aggregate verifier checkpoint');
+  assertIncludes(productionReadinessAudit, '`verify:owner-business-health-boundary` are now exposed as root `verify:*` scripts', 'Production readiness audit Owner Business Health aggregate alias evidence');
+  assertIncludes(productionReadinessAudit, 'Menu Project Editor route/save/cache/mobile/docs parity', 'Production readiness audit Menu Project Editor aggregate coverage evidence');
+  assertIncludes(productionReadinessAudit, 'Owner Business Health route/API/mobile/docs parity by default', 'Production readiness audit Owner Business Health aggregate coverage evidence');
+  assertIncludes(productionReadinessAudit, '`npm run verify:menu-project-editor-boundary` guards Projects route, editor save/publish, project DAL cache/screen invalidation, mobile persistence, mobile project mutations, and docs parity', 'Production readiness audit Menu Project Editor verifier detail');
+  assertIncludes(productionReadinessAudit, '`npm run verify:owner-business-health-boundary` guards Business Health route, API read/answer/feedback admission, bounded response parsing, MobileShell read-only behavior, removed action surfaces, and docs parity.', 'Production readiness audit Owner Business Health verifier detail');
+  assertIncludes(productionReadinessAudit, 'Latest aggregate source gate: `npm run verify:production-readiness-local` passed with 78/78 checks, including 74 child root `verify:*` scripts.', 'Production readiness audit current aggregate verifier evidence');
+  assertIncludes(productionReadinessAudit, 'At that baseline checkpoint, the aggregate local boundary passed 56/56 checks', 'Production readiness audit historical aggregate baseline wording');
+  assertNotIncludes(productionReadinessAudit, 'The latest aggregate local boundary passed 56/56', 'Production readiness audit stale latest aggregate wording');
+  assertIncludes(opsInfrastructureGuide, 'npm run verify:functions-deploy-preflight', 'Ops infrastructure guide Functions deploy preflight');
+  assertIncludes(opsInfrastructureGuide, 'External Certification Runbook', 'Ops infrastructure guide external certification routing');
+  assertIncludes(opsInfrastructureGuide, 'Code flags are not a launch approval signal.', 'Ops infrastructure guide feature-flag launch boundary');
+  assertIncludes(opsInfrastructureGuide, 'Do not turn every flag on as a generic launch step.', 'Ops infrastructure guide blanket flag activation guard');
+  assertNotIncludes(opsInfrastructureGuide, 'Deploy Cloud Functions: `firebase deploy --only functions`', 'Ops infrastructure guide broad Functions deploy inline command');
+  assertNotIncludes(opsInfrastructureGuide, 'firebase deploy --only functions\n', 'Ops infrastructure guide broad Functions deploy block command');
+  assertNotIncludes(opsInfrastructureGuide, '**All flags are OFF by default.** Enable when ready for production.', 'Ops infrastructure guide stale all-flags-off instruction');
+  assertNotIncludes(opsInfrastructureGuide, '| SAFE_MODE | `ENABLE_COST_PROTECTION` | OFF |', 'Ops infrastructure guide stale SAFE_MODE source state');
+  assertIncludes(ownerActionItems, 'Confirm local and preview MenuList env vars point to `menulist-qa`', 'Owner action items current MenuList QA target task');
+  assertIncludes(ownerActionItems, 'menu extraction worker updates, source-file path hardening updates, and the consolidated maintenance scheduler', 'Owner action items current Functions blocker scope');
+  assertIncludes(ownerActionItems, 'Latest documented `menulist-qa` source-file path hardening subset, `processMenuImagesJob`, and scheduler deploy attempts on July 2, 2026 completed predeploy lint/build', 'Owner action items latest Functions blocker evidence');
+  assertIncludes(ownerActionItems, 'Deploy MenuList Storage rules cutover to QA', 'Owner action items Storage deploy task');
+  assertIncludes(ownerActionItems, 'Gate 2A requires `npm run verify:storage-paths`, then `firebase deploy --project menulist-qa --config firebase.json --only storage --non-interactive` before production approval', 'Owner action items Storage deploy preflight and command');
+  assertIncludes(ownerActionItems, 'Latest local retry on July 2, 2026 was blocked by Service Usage HTTP 403: `menulist-qa` not found or permission denied before rules upload', 'Owner action items latest Storage deploy blocker evidence');
+  assertIncludes(ownerActionItems, 'Confirm Vercel Production MenuList env vars point to `menulist`', 'Owner action items current MenuList production target task');
+  assertIncludes(ownerActionItems, 'Confirm monitoring feature flag evidence', 'Owner action items monitoring flag evidence task');
+  assertIncludes(ownerActionItems, 'Confirm production feature flag evidence before launch', 'Owner action items production flag evidence task');
+  assertIncludes(ownerActionItems, 'No blanket activation order', 'Owner action items feature flag activation boundary');
+  assertIncludes(ownerActionItems, 'firebase functions:secrets:set GEMINI_AI_KEY_2 --project menulist-qa', 'Owner action items Gemini rotation QA secret command');
+  assertIncludes(ownerActionItems, 'Repeat for production values only after QA evidence and explicit production secret/deploy approval', 'Owner action items Gemini rotation production approval gate');
+  assertIncludes(ownerActionItems, 'firebase deploy --only firestore:indexes --project menulist-qa --config firebase.json', 'Owner action items current QA index deploy command');
+  assertIncludes(ownerActionItems, 'firebase deploy --only firestore:rules --project menulist-qa --config firebase.json', 'Owner action items current QA rules deploy command');
+  assertIncludes(ownerActionItems, 'Production requires QA evidence and explicit production approval.', 'Owner action items production approval gate');
+  assertNotIncludes(ownerActionItems, 'run `firebase deploy --only firestore:indexes`', 'Owner action items broad Firestore index deploy instruction');
+  assertNotIncludes(ownerActionItems, 'Deploy updated Firestore rules: `firebase deploy --only firestore:rules`', 'Owner action items broad Firestore rules task title');
+  assertNotIncludes(ownerActionItems, 'firebase deploy --only firestore:rules\n', 'Owner action items broad Firestore rules deploy command block');
+  assertNotIncludes(ownerActionItems, 'cd functions && npm run deploy', 'Owner action items broad Functions package deploy command');
+  assertNotIncludes(ownerActionItems, 'Create `menulist-dev` Firebase project', 'Owner action items stale MenuList dev project task');
+  assertNotIncludes(ownerActionItems, '--project menulist-dev', 'Owner action items stale MenuList dev deploy command');
+  assertNotIncludes(ownerActionItems, 'Enable monitoring feature flags', 'Owner action items stale monitoring flag enable task');
+  assertNotIncludes(ownerActionItems, 'Enable production feature flags in order', 'Owner action items stale production flag enable task');
+  assertNotIncludes(ownerActionItems, 'firebase functions:secrets:set GEMINI_AI_KEY_2\n', 'Owner action items unscoped Gemini rotation key 2 command');
+  assertNotIncludes(ownerActionItems, 'firebase functions:secrets:set GEMINI_AI_KEY_3\n', 'Owner action items unscoped Gemini rotation key 3 command');
+  assertNotIncludes(ownerActionItems, 'firebase functions:secrets:set GEMINI_AI_KEY_4\n', 'Owner action items unscoped Gemini rotation key 4 command');
+  assertNotIncludes(ownerActionItems, '# 4. Redeploy CF + Vercel', 'Owner action items stale broad deploy instruction');
+  assertIncludes(menulistSignalDeskValidation, 'Legacy local `.env` values can still point the default MenuList Firebase project at `ecomsai`', 'SignalDesk validation legacy local env warning');
+  assertIncludes(menulistSignalDeskValidation, 'Current tracked templates and deployment constants keep MenuList local/preview on `menulist-qa`', 'SignalDesk validation current MenuList QA target');
+  assertNotIncludes(menulistSignalDeskValidation, 'Current `.env` points the default Firebase project at `ecomsai`', 'SignalDesk validation stale current env wording');
+  for (const [label, content] of [
+    ['Nightly scheduler architecture', nightlySchedulerArchitecture],
+    ['Continuous Menu Intelligence implementation', continuousMenuIntelligenceImpl],
+    ['Continuous Menu Intelligence validation', continuousMenuIntelligenceValidation],
+    ['MOL V0 implementation plan', molV0ImplementationPlan],
+    ['Customer App Firebase doc', customerAppFirebase],
+    ['Messaging onboarding implementation', messagingOnboardingImpl],
+    ['Messaging onboarding validation', messagingOnboardingValidation],
+    ['Menu job queue assessment', menuJobQueueAssessment],
+  ]) {
+    assertIncludes(content, 'npm run verify:functions-deploy-preflight', `${label} Functions deploy preflight`);
+    assertNotIncludes(content, 'cd functions && npm run deploy', `${label} broad Functions package deploy command`);
+  }
+  assertIncludes(nightlySchedulerArchitecture, 'external-certification-runbook.md` Gate 1', 'Nightly scheduler architecture external certification routing');
+  assertNotIncludes(nightlySchedulerArchitecture, 'Deploy: `firebase deploy --only functions:computeDecisionBlocksScores`', 'Nightly scheduler architecture broad computeDecisionBlocksScores deploy instruction');
+  assertIncludes(continuousMenuIntelligenceImpl, 'Current retry evidence must use `npm run verify:functions-deploy-preflight`', 'CMI implementation current retry preflight boundary');
+  assertIncludes(continuousMenuIntelligenceImpl, 'scoped `menulist-qa` Firebase Functions target', 'CMI implementation current QA target boundary');
+  assertNotIncludes(continuousMenuIntelligenceImpl, 'Deploy function to staging: `firebase deploy --only functions:computeDecisionBlocksScores`', 'CMI implementation broad staging function deploy command');
+  assertIncludes(continuousMenuIntelligenceValidation, 'historical implementation-validation evidence', 'CMI validation historical evidence boundary');
+  assertIncludes(continuousMenuIntelligenceValidation, 'Historical Validation Result: Source Evidence Only', 'CMI validation residual historical result heading');
+  assertIncludes(continuousMenuIntelligenceValidation, 'Current Release Boundary:', 'CMI validation residual current release boundary');
+  assertIncludes(continuousMenuIntelligenceValidation, 'Current launch approval remains gated by the active production-readiness audit and External Certification Runbook evidence.', 'CMI validation current launch approval boundary');
+  assertNotIncludes(continuousMenuIntelligenceValidation, 'ChatGPT feedback validated the implementation as production-ready.', 'CMI validation stale ChatGPT production-ready claim');
+  assertNotIncludes(continuousMenuIntelligenceValidation, '## FINAL STATUS: READY FOR PRODUCTION', 'CMI validation stale ready-for-production heading');
+  assertNotIncludes(continuousMenuIntelligenceValidation, '**Status:** ✅ **READY FOR TESTING**', 'CMI validation stale ready-for-testing status');
+  assertNotIncludes(continuousMenuIntelligenceValidation, '## ✅ FINAL VERDICT: READY FOR TESTING', 'CMI validation stale ready-for-testing verdict');
+  assertNotIncludes(continuousMenuIntelligenceValidation, '**Status:** ✅ SHIP READY', 'CMI validation stale ship-ready status');
+  assertNotIncludes(continuousMenuIntelligenceValidation, '## 🚀 PRODUCTION QUALITY GATE: PASS', 'CMI validation stale production quality gate');
+  assertNotIncludes(continuousMenuIntelligenceValidation, '**Ready For:** Cloud Functions deploy + SMB testing', 'CMI validation stale deploy and SMB-testing readiness line');
+  assertNotIncludes(continuousMenuIntelligenceValidation, '**Status:** SHIP READY', 'CMI validation stale final ship-ready status');
+  assertIncludes(continuousMenuIntelligenceValidation, 'firebase deploy --project menulist-qa --config firebase.json --only functions:computeDecisionBlocksScores --non-interactive', 'CMI validation scoped QA function deploy command');
+  assertIncludes(continuousMenuIntelligenceValidation, 'Production deploy requires QA evidence and explicit production deploy approval.', 'CMI validation production approval gate');
+  assertNotIncludes(continuousMenuIntelligenceValidation, 'firebase deploy --only functions:computeDecisionBlocksScores\n', 'CMI validation broad function deploy command');
+  assertIncludes(continuousMenuIntelligenceLogicVerification, 'Historical Logic Verification Result: Source Evidence Only', 'CMI logic verification historical result boundary');
+  assertIncludes(continuousMenuIntelligenceLogicVerification, 'not current launch certification', 'CMI logic verification launch boundary status');
+  assertIncludes(continuousMenuIntelligenceLogicVerification, 'External Certification Runbook', 'CMI logic verification external certification boundary');
+  assertIncludes(continuousMenuIntelligenceLogicVerification, 'npm run verify:agent-readiness', 'CMI logic verification agent-readiness source gate');
+  assertIncludes(continuousMenuIntelligenceLogicVerification, 'npm run verify:functions-deploy-preflight', 'CMI logic verification Functions preflight source gate');
+  assertIncludes(continuousMenuIntelligenceLogicVerification, 'scoped `menulist-qa` deploy evidence', 'CMI logic verification scoped deploy boundary');
+  assertNotIncludes(continuousMenuIntelligenceLogicVerification, '**Status:** ✅ **DEPLOYABLE**', 'CMI logic verification stale deployable status');
+  assertNotIncludes(continuousMenuIntelligenceLogicVerification, 'PRODUCTION READINESS: SAFE', 'CMI logic verification stale production-readiness line');
+  assertNotIncludes(continuousMenuIntelligenceLogicVerification, '## FINAL VERDICT: ✅ DEPLOYABLE', 'CMI logic verification stale deployable verdict');
+  assertNotIncludes(continuousMenuIntelligenceLogicVerification, 'CMI logic verification complete. All 6 flows verified. Zero critical issues.', 'CMI logic verification stale zero-issues certification');
+  assertIncludes(projectsDatabase, 'await revalidatePublicClientCacheForProject(data.projectId as string, "updateProject");', 'Pricing current project save public cache invalidation');
+  assertNotIncludes(projectsDatabase, 'runPricingIntegrity', 'Pricing dormant engine must not be wired into updateProject');
+  assertIncludes(publicClientCache, 'await touchDigitalScreenContentVersion(storeId, context, { projectId });', 'Pricing current screen content-version touch path');
+  assertIncludes(pricingIntegrityEngine, 'export async function runPricingIntegrity', 'Pricing dormant engine source scaffold');
+  assertIncludes(pricingPdfQueue, 'const ENABLE_BACKGROUND_PDF_REGEN = false;', 'Pricing background PDF queue disabled source');
+  assertIncludes(projectShareModal, "const { generateMenuPdf, downloadPdf } = await import('@lib/export/menuPdfGenerator');", 'Pricing current on-demand PDF share path');
+  assertIncludes(menuPdfGenerator, 'snapshotHash: artifact.sourceHash', 'Pricing current PDF snapshot hash source');
+  assertIncludes(pricingIntegrityReadme, 'Current source-boundary documentation, not current launch certification', 'Pricing README current source boundary');
+  for (const [label, content] of [
+    ['Pricing Integrity README', pricingIntegrityReadme],
+    ['Pricing Integrity spec', pricingIntegritySpec],
+    ['Pricing Integrity implementation plan', pricingIntegrityImpl],
+    ['Pricing Integrity Firebase cost doc', pricingIntegrityFirebase],
+    ['Pricing Integrity mobile support doc', pricingIntegrityMobile],
+    ['Pricing Integrity website doc', pricingIntegrityWebsite],
+    ['Pricing Integrity helpdoc', pricingIntegrityHelpdoc],
+    ['Pricing Integrity marketing doc', pricingIntegrityMarketing],
+    ['Pricing Integrity validation report', pricingIntegrityValidation],
+  ]) {
+    assertIncludes(content, 'not current launch certification', `${label} launch boundary status`);
+    assertIncludes(content, 'External Certification Runbook evidence', `${label} external certification boundary`);
+    assertIncludes(content, '`npm run verify:agent-readiness`', `${label} agent-readiness source gate boundary`);
+    assertIncludes(content, '`npm run verify:menulist-api-tenant-safety`', `${label} tenant-safety source gate boundary`);
+    assertIncludes(content, 'public menu and PDF artifact QA', `${label} public/PDF QA boundary`);
+    assertNotIncludes(content, 'READY FOR IMPLEMENTATION', `${label} stale ready-for-implementation status`);
+    assertNotIncludes(content, 'Ready for Implementation', `${label} stale ready-for-implementation title-case status`);
+    assertNotIncludes(content, 'PDF regenerates automatically', `${label} stale automatic PDF claim`);
+    assertNotIncludes(content, 'The PDF stays fresh automatically', `${label} stale automatic PDF claim`);
+    assertNotIncludes(content, 'Menu PDF automatic update hota hai', `${label} stale automatic PDF claim`);
+    assertNotIncludes(content, 'all update automatically', `${label} stale all-surfaces automatic claim`);
+    assertNotIncludes(content, 'all show the same price, always', `${label} stale all-surfaces certainty claim`);
+  }
+  assertIncludes(pricingIntegritySpec, '`runPricingIntegrity()` has no current caller', 'Pricing spec dormant engine boundary');
+  assertIncludes(pricingIntegrityImpl, 'No background PDF job is created by this share path.', 'Pricing implementation on-demand PDF boundary');
+  assertIncludes(pricingIntegrityFirebase, 'There is no active background PDF queue cost.', 'Pricing Firebase disabled queue cost boundary');
+  assertIncludes(pricingIntegrityMobile, 'Mobile does not have a separate Pricing Integrity UI.', 'Pricing mobile source boundary');
+  assertIncludes(pricingIntegrityWebsite, 'Background PDF regeneration is not active runtime.', 'Pricing website public claim boundary');
+  assertIncludes(pricingIntegrityHelpdoc, 'MenuList does not currently run a background PDF regeneration job after every price edit.', 'Pricing helpdoc disabled background PDF boundary');
+  assertIncludes(pricingIntegrityMarketing, '`ENABLE_BACKGROUND_PDF_REGEN` is false.', 'Pricing marketing disabled background PDF boundary');
+  assertIncludes(pricingIntegrityValidation, 'Historical Validation Result: Source Evidence Only', 'Pricing Integrity validation historical result heading');
+  assertIncludes(pricingIntegrityValidation, 'Current release approval still requires the active production-readiness audit', 'Pricing Integrity validation current release boundary');
+  assertIncludes(pricingIntegrityValidation, 'authenticated desktop/mobile editor price-change QA', 'Pricing Integrity validation editor/mobile QA boundary');
+  assertIncludes(pricingIntegrityValidation, 'public menu and PDF artifact QA', 'Pricing Integrity validation public/PDF QA boundary');
+  assertIncludes(pricingIntegrityValidation, '`runPricingIntegrity()` is dormant source scaffold with no current caller.', 'Pricing validation dormant engine source boundary');
+  assertNotIncludes(pricingIntegrityValidation, '**Status:** ✅ READY FOR TESTING', 'Pricing Integrity validation stale ready-for-testing status');
+  assertNotIncludes(pricingIntegrityValidation, '## ✅ FINAL VERDICT: READY FOR TESTING', 'Pricing Integrity validation stale ready-for-testing verdict');
+  assertNotIncludes(pricingIntegrityValidation, '**Verdict:** ✅ "Completed enough to lock for 3 years"', 'Pricing Integrity validation stale external-review launch verdict');
+  assertIncludes(hoursHolidayAccuracyValidation, 'Historical Validation Result: Source Evidence Only', 'Hours validation historical result heading');
+  assertIncludes(hoursHolidayAccuracyValidation, 'Current release approval still requires the active production-readiness audit', 'Hours validation current release boundary');
+  assertIncludes(hoursHolidayAccuracyValidation, 'authenticated desktop/mobile working-hours save QA', 'Hours validation desktop/mobile QA boundary');
+  assertIncludes(hoursHolidayAccuracyValidation, 'customer-facing public menu/OBP hours output QA', 'Hours validation public output QA boundary');
+  assertNotIncludes(hoursHolidayAccuracyValidation, '**Status:** ✅ READY FOR TESTING', 'Hours validation stale ready-for-testing status');
+  assertNotIncludes(hoursHolidayAccuracyValidation, '## ✅ FINAL VERDICT: READY FOR TESTING', 'Hours validation stale ready-for-testing verdict');
+  assertNotIncludes(hoursHolidayAccuracyValidation, '**Ready For:** Manual QA Testing', 'Hours validation stale manual-QA readiness line');
+  assertIncludes(menuCommandCenterValidation, 'Historical Validation Result: Source Evidence Only', 'Menu Command Center validation historical result heading');
+  assertIncludes(menuCommandCenterValidation, 'Current Release Boundary', 'Menu Command Center validation current release boundary heading');
+  assertIncludes(menuCommandCenterValidation, 'authenticated desktop editor QA', 'Menu Command Center validation desktop QA boundary');
+  assertIncludes(menuCommandCenterValidation, 'mobile bulk availability/show-hide parity QA', 'Menu Command Center validation mobile QA boundary');
+  assertNotIncludes(menuCommandCenterValidation, '## FINAL VERDICT: READY FOR TESTING', 'Menu Command Center validation stale ready-for-testing verdict');
+  assertNotIncludes(menuCommandCenterValidation, '**FINAL STATUS:** READY', 'Menu Command Center validation stale final ready status');
+  assertIncludes(itemPhotoCaptureAssistValidation, 'Historical validation/source evidence; not current launch certification', 'Item photo capture validation historical boundary status');
+  assertIncludes(itemPhotoCaptureAssistValidation, 'Current Release Boundary', 'Item photo capture validation current release boundary heading');
+  assertIncludes(itemPhotoCaptureAssistValidation, 'Authenticated desktop owner browser QA', 'Item photo capture validation desktop owner browser QA boundary');
+  assertIncludes(itemPhotoCaptureAssistValidation, 'Authenticated mobile owner-shell QA inside `MobileShell`', 'Item photo capture validation mobile shell QA boundary');
+  assertIncludes(itemPhotoCaptureAssistValidation, "prepareMediaImage(file, 'menuItem')", 'Item photo capture validation media preparation boundary');
+  assertIncludes(itemPhotoCaptureAssistValidation, 'Real-device camera QA on at least one iOS Safari device and one mid-range Android Chrome device', 'Item photo capture validation real-device QA boundary');
+  assertNotIncludes(itemPhotoCaptureAssistValidation, 'READY FOR OWNER-SIDE BROWSER SMOKE', 'Item photo capture validation stale owner-side browser smoke verdict');
+  assertIncludes(itemPhotoCaptureAssistMobile, 'Implemented mobile support evidence; not current launch certification', 'Item photo capture mobile support launch boundary status');
+  assertIncludes(itemPhotoCaptureAssistMobile, 'Current Release Boundary (July 2, 2026)', 'Item photo capture mobile support current release boundary heading');
+  assertIncludes(itemPhotoCaptureAssistMobile, 'authenticated mobile owner-shell QA inside `MobileShell`', 'Item photo capture mobile support owner-shell QA boundary');
+  assertIncludes(itemPhotoCaptureAssistMobile, 'real-device camera QA on iOS Safari and mid-range Android Chrome', 'Item photo capture mobile support real-device camera QA boundary');
+  assertIncludes(itemPhotoCaptureAssistMobile, "media preparation/upload QA through `prepareMediaImage(file, 'menuItem')`", 'Item photo capture mobile support media preparation boundary');
+  assertNotIncludes(itemPhotoCaptureAssistMobile, '**Status:** Approved for mobile implementation', 'Item photo capture mobile support stale implementation approval status');
+  assertIncludes(productionReadinessAudit, 'Item Photo Capture Assist validation boundary checkpoint', 'Production readiness audit item-photo validation boundary checkpoint');
+  assertIncludes(productionReadinessAudit, 'Item Photo Capture Assist mobile-support boundary checkpoint', 'Production readiness audit item-photo mobile-support boundary checkpoint');
+  assertIncludes(productionReadinessAudit, 'authenticated mobile owner-shell QA inside `MobileShell`', 'Production readiness audit item-photo mobile owner-shell QA boundary');
+  assertIncludes(changelog, 'Item Photo Capture Assist Validation Boundary', 'Changelog item-photo validation boundary entry');
+  assertIncludes(changelog, 'Item Photo Capture Assist Mobile Boundary', 'Changelog item-photo mobile boundary entry');
+  assertIncludes(productionReadinessReadme, 'Clarified Item Photo Capture Assist validation report', 'Production readiness README item-photo validation boundary version row');
+  assertIncludes(molV0ImplementationPlan, 'firebase deploy --project menulist-qa --config firebase.json --only functions:computeDecisionBlocksScores --non-interactive', 'MOL V0 implementation plan scoped QA function deploy command');
+  assertNotIncludes(molV0ImplementationPlan, 'Then deploy: `firebase deploy --only functions:computeDecisionBlocksScores`', 'MOL V0 implementation plan broad function deploy instruction');
+  assertIncludes(customerAppFirebase, 'firebase deploy --project menulist-qa --config firebase.json --only functions:computeDecisionBlocksScores --non-interactive', 'Customer App Firebase scoped QA function deploy command');
+  assertNotIncludes(customerAppFirebase, '**Deployment:** `firebase deploy --only functions:computeDecisionBlocksScores`', 'Customer App Firebase broad function deploy instruction');
+  assertIncludes(messagingOnboardingValidation, 'firebase functions:secrets:set WHATSAPP_ACCESS_TOKEN --project menulist-qa', 'Messaging onboarding validation QA secret setup');
+  assertIncludes(messagingOnboardingValidation, 'firebase deploy --only firestore:indexes --project menulist-qa --config firebase.json', 'Messaging onboarding validation scoped QA index deploy command');
+  assertIncludes(messagingOnboardingValidation, 'firebase deploy --only firestore:rules --project menulist-qa --config firebase.json', 'Messaging onboarding validation scoped QA rules deploy command');
+  assertNotIncludes(messagingOnboardingValidation, 'Deploy Firestore indexes: `firebase deploy --only firestore:indexes`', 'Messaging onboarding validation broad index deploy instruction');
+  assertNotIncludes(messagingOnboardingValidation, 'Deploy Firestore rules: `firebase deploy --only firestore:rules`', 'Messaging onboarding validation broad rules deploy instruction');
+  assertIncludes(maintenanceTasks, 'Do not run Vercel deploys from this maintenance checklist unless the user', 'Maintenance tasks Vercel approval guard');
+  assertNotIncludes(maintenanceTasks, 'vercel --prod', 'Maintenance tasks direct Vercel production deploy command');
+  assertIncludes(securityAuthenticationGuide, 'firebase deploy --only firestore:indexes --project menulist-qa --config firebase.json', 'Security authentication guide scoped QA index deploy command');
+  assertIncludes(securityAuthenticationGuide, 'Production index deploy requires QA evidence and explicit production approval.', 'Security authentication guide production approval gate');
+  assertIncludes(securityAuthenticationGuide, 'Security implementation guide; not current launch certification', 'Security authentication guide launch boundary status');
+  assertIncludes(securityAuthenticationGuide, 'auth browser/API smoke', 'Security authentication guide browser/API launch gate');
+  assertIncludes(securityAuthenticationGuide, 'Reconfirm the current route inventory before launch.', 'Security authentication guide route inventory recertification');
+  assertNotIncludes(securityAuthenticationGuide, '**Status**: ✅ Production Ready', 'Security authentication guide stale production-ready status');
+  assertNotIncludes(securityAuthenticationGuide, '✅ **Production-ready authentication system**', 'Security authentication guide stale production-ready summary');
+  assertNotIncludes(securityAuthenticationGuide, '**0 security gaps**', 'Security authentication guide stale zero-gap claim');
+  assertNotIncludes(securityAuthenticationGuide, 'firebase deploy --only firestore:indexes\n', 'Security authentication guide broad index deploy command');
+  assertIncludes(securityEmailValidationGuide, 'Security implementation guide; not current launch certification', 'Security email validation guide launch boundary status');
+  assertIncludes(securityEmailValidationGuide, 'disposable-domain update evidence', 'Security email validation guide disposable-domain launch gate');
+  assertIncludes(securityEmailValidationGuide, 'Do not run a Vercel deploy from this guide unless the user explicitly approves', 'Security email validation guide Vercel approval guard');
+  assertNotIncludes(securityEmailValidationGuide, '**Status:** ✅ Production Ready', 'Security email validation guide stale production-ready status');
+  assertNotIncludes(securityEmailValidationGuide, '✅ **Production ready** (tested and deployed)', 'Security email validation guide stale production-ready deployment claim');
+  assertNotIncludes(securityEmailValidationGuide, 'vercel --prod', 'Security email validation guide direct Vercel production deploy command');
+  assertIncludes(securityAppCheckGuide, '`menulist-qa` (MenuList QA/staging Firebase project)', 'Security App Check guide current QA project example');
+  assertIncludes(securityAppCheckGuide, '`menulist` (MenuList production Firebase project)', 'Security App Check guide current production project example');
+  assertIncludes(securityAppCheckGuide, 'Code/setup guide; not current launch certification', 'Security App Check guide launch boundary status');
+  assertIncludes(securityAppCheckGuide, 'provider token smoke', 'Security App Check guide provider-token launch gate');
+  assertNotIncludes(securityAppCheckGuide, 'Code Ready → Needs 15min Setup → Production Ready', 'Security App Check guide stale production-ready progression');
+  assertNotIncludes(securityAppCheckGuide, 'Don\'t launch without this!', 'Security App Check guide stale direct launch instruction');
+  assertNotIncludes(securityAppCheckGuide, '`ecomsai` (Firebase project name)', 'Security App Check guide stale Firebase project example');
+  assertIncludes(securityPaymentAnalysis, 'Historical payment/onboarding security analysis; implemented source evidence only; not current launch certification', 'Payment security analysis launch boundary status');
+  assertIncludes(securityPaymentAnalysis, 'Current Release Boundary (July 3, 2026)', 'Payment security analysis current release boundary');
+  assertIncludes(securityPaymentAnalysis, 'server-owned onboarding route `src/app/api/onboarding/create-subscription/route.ts`', 'Payment security analysis source baseline onboarding route');
+  assertIncludes(securityPaymentAnalysis, '`npm run verify:billing-entitlement-boundary`', 'Payment security analysis billing source gate');
+  assertIncludes(securityPaymentAnalysis, 'Razorpay sandbox subscription/top-up/webhook smoke', 'Payment security analysis provider smoke launch gate');
+  assertIncludes(securityPaymentAnalysis, 'Provider-failure compensation evidence for tenant/store creation and subscription creation.', 'Payment security analysis compensation launch gate');
+  assertIncludes(securityPaymentAnalysis, 'not current testing approval and not current launch certification', 'Payment security analysis testing-footer boundary');
+  assertNotIncludes(securityPaymentAnalysis, '**Status:** Analysis Complete - Ready for Implementation', 'Payment security analysis stale implementation-ready status');
+  assertNotIncludes(securityPaymentAnalysis, '**If everything works:** We proceed to **Phase 2**', 'Payment security analysis stale phase-2 proceed instruction');
+  assertNotIncludes(securityPaymentAnalysis, '**Phase 1 is complete and ready for testing!** 🎉', 'Payment security analysis stale ready-for-testing footer');
+  assertIncludes(securityObjectSanitizationPattern, 'Security pattern guide; not current launch certification', 'Security object sanitization pattern launch boundary status');
+  assertIncludes(securityObjectSanitizationPattern, 'dangerous-key filtering and Firestore undefined-value sanitization', 'Security object sanitization source review gate');
+  assertNotIncludes(securityObjectSanitizationPattern, '**Status:** ✅ Production Ready', 'Security object sanitization stale production-ready status');
+  assertNotIncludes(securityObjectSanitizationPattern, '**Pattern Status:** ✅ Production Standard', 'Security object sanitization stale production-standard footer');
+  assertIncludes(securityFirebaseCost, 'Firebase cost evidence; not current launch certification', 'Security Firebase cost doc launch boundary status');
+  assertIncludes(securityFirebaseCost, 'cost monitoring covers any security path that now writes Firebase data', 'Security Firebase cost doc launch cost-monitoring gate');
+  assertNotIncludes(securityFirebaseCost, '**Status:** ✅ Production Ready', 'Security Firebase cost doc stale production-ready status');
+  assertIncludes(securityLoginSourceTracking, 'Security implementation guide; not current launch certification', 'Security login-source tracking launch boundary status');
+  assertIncludes(securityLoginSourceTracking, 'privacy-safe logging review', 'Security login-source tracking privacy launch gate');
+  assertIncludes(securityLoginSourceTracking, 'Source tracking documented - verify current deployment before launch', 'Security login-source tracking footer boundary');
+  assertNotIncludes(securityLoginSourceTracking, '**Status:** ✅ Production Ready', 'Security login-source tracking stale production-ready status');
+  assertNotIncludes(securityLoginSourceTracking, '**Status:** ✅ Production Active', 'Security login-source tracking stale production-active status');
+  for (const [label, content] of [
+    ['Auth onboarding README', authOnboardingReadme],
+    ['Auth onboarding spec', authOnboardingSpec],
+    ['Auth onboarding implementation', authOnboardingImpl],
+  ]) {
+    assertIncludes(content, 'Implemented source evidence; not current launch certification', `${label} launch boundary status`);
+    assertIncludes(content, 'External Certification Runbook', `${label} external certification boundary`);
+    assertIncludes(content, 'Razorpay sandbox', `${label} Razorpay sandbox launch gate`);
+    assertIncludes(content, 'mobile browser onboarding/payment QA', `${label} mobile onboarding/payment launch gate`);
+    assertNotIncludes(content, '**Status:** ✅ Production Ready', `${label} stale production-ready status`);
+    assertNotIncludes(content, '**DOCUMENT STATUS:** ✅ Production Ready', `${label} stale production-ready footer`);
+  }
+  assertIncludes(ponrOnboardingSpec, 'Historical PONR strategy draft; not current implementation approval or launch certification', 'PONR onboarding spec historical strategy boundary status');
+  assertIncludes(ponrOnboardingSpec, 'Current Release Boundary', 'PONR onboarding spec current release boundary heading');
+  assertIncludes(ponrOnboardingSpec, 'current onboarding/auth/payment source gates', 'PONR onboarding spec auth/payment source-gate boundary');
+  assertIncludes(ponrOnboardingSpec, 'Historical January 2026 planning checklist only; not current implementation approval.', 'PONR onboarding spec historical checklist boundary');
+  assertNotIncludes(ponrOnboardingSpec, '**Status:** 🔒 **LOCKED — READY FOR IMPLEMENTATION**', 'PONR onboarding spec stale implementation-ready status');
+  assertNotIncludes(ponrOnboardingSpec, '**Document Status:** Ready for implementation', 'PONR onboarding spec stale implementation-ready footer');
+  assertIncludes(authOnboardingFirebase, 'Firebase cost evidence; not current launch certification', 'Auth onboarding Firebase launch boundary status');
+  assertIncludes(authOnboardingFirebase, 'Firebase Auth custom-claims/token smoke', 'Auth onboarding Firebase custom-claims launch gate');
+  assertIncludes(authOnboardingFirebase, 'provider-failure compensation evidence', 'Auth onboarding Firebase provider-failure launch gate');
+  assertNotIncludes(authOnboardingFirebase, '**Status:** ✅ Production Ready', 'Auth onboarding Firebase stale production-ready status');
+  assertIncludes(authOnboardingMobileSupport, 'Desktop-first does not mean mobile launch evidence is optional.', 'Auth onboarding mobile support launch boundary');
+  assertIncludes(authOnboardingMobileSupport, 'mobile pricing, onboarding modal, Google OAuth return, Razorpay checkout', 'Auth onboarding mobile browser QA gate');
+  assertIncludes(onboardingCentralizationReadme, 'Implemented source evidence; not current launch certification', 'Onboarding centralization launch boundary status');
+  assertIncludes(onboardingCentralizationReadme, 'Current Release Boundary (July 2, 2026)', 'Onboarding centralization current release boundary heading');
+  assertIncludes(onboardingCentralizationReadme, 'createTenantStoreInTransaction', 'Onboarding centralization source helper reference');
+  assertIncludes(onboardingCentralizationReadme, 'npm run verify:agent-readiness', 'Onboarding centralization source gate');
+  assertIncludes(onboardingCentralizationReadme, 'npm run verify:auth-security-failure-matrix', 'Onboarding centralization auth-security source gate');
+  assertIncludes(onboardingCentralizationReadme, 'Razorpay sandbox evidence where subscription creation is in release scope', 'Onboarding centralization Razorpay launch gate');
+  assertIncludes(onboardingCentralizationReadme, 'provider-failure compensation evidence for create-subscription and public claim flows', 'Onboarding centralization compensation launch gate');
+  assertNotIncludes(onboardingCentralizationReadme, '> **Status:** Implementation Ready', 'Onboarding centralization stale implementation-ready status');
+  assertIncludes(authIndex, 'maxAge: 7 * 24 * 60 * 60', 'Auth options seven-day session source gate');
+  assertIncludes(authIndex, 'const emailValidation = validateEmail(email);', 'Auth options disposable email validation source gate');
+  assertIncludes(authIndex, 'dbUser = await addAuthPlatformUser(newUser);', 'Auth options OAuth user creation source gate');
+  assertIncludes(authIndex, 'tenantId: null', 'Auth options new OAuth tenant unset source gate');
+  assertIncludes(authIndex, 'storeId: null', 'Auth options new OAuth store unset source gate');
+  assertIncludes(authIndex, "platformRole: 'OWNER'", 'Auth options first OAuth platform role source gate');
+  assertIncludes(onboardingCreateSubscriptionRoute, 'export const POST = withAuth', 'Onboarding create-subscription withAuth source gate');
+  assertIncludes(onboardingCreateSubscriptionRoute, "getRateLimitForFeature('PAYMENT_ONBOARDING')", 'Onboarding create-subscription rate limit source gate');
+  assertIncludes(onboardingCreateSubscriptionRoute, 'readBoundedJsonBody(request, ONBOARDING_SUBSCRIPTION_MAX_BODY_BYTES', 'Onboarding create-subscription bounded body source gate');
+  assertIncludes(onboardingCreateSubscriptionRoute, 'validateAPIInput(OnboardingSubscriptionSchema, body)', 'Onboarding create-subscription Zod validation source gate');
+  assertIncludes(onboardingCreateSubscriptionRoute, 'createTenantStoreInTransaction(transaction, db, {', 'Onboarding create-subscription atomic tenant/store helper source gate');
+  assertIncludes(onboardingCreateSubscriptionRoute, 'updateUserWithTenantStore(transaction, db, userId, core);', 'Onboarding create-subscription user update source gate');
+  assertIncludes(onboardingCreateSubscriptionRoute, 'revalidateMenuCache(result.storeId, { tId: result.tenantId })', 'Onboarding create-subscription public cache revalidation source gate');
+  assertIncludes(onboardingCreateSubscriptionRoute, 'compensateFailedTenantStoreOnboarding', 'Onboarding create-subscription provider-failure compensation source gate');
+  assertIncludes(onboardingCreateSubscriptionRoute, 'razorpayClient.subscriptions.create', 'Onboarding create-subscription Razorpay subscription source gate');
+  assertIncludes(onboardingCreateSubscriptionRoute, 'createInitialSubscription(razorpaySubscription.id, subscriptionPayload)', 'Onboarding create-subscription initial subscription source gate');
+  assertIncludes(businessTypeDataModelReadme, 'Implemented source evidence; migration guarded; not current launch certification', 'Business type data model launch boundary status');
+  assertIncludes(businessTypeDataModelReadme, 'Local Source Gate', 'Business type data model source gate documentation');
+  assertIncludes(businessTypeDataModelReadme, 'scripts/migrate-business-type-swap.ts', 'Business type data model migration script documentation');
+  assertIncludes(businessTypeDataModelReadme, '--write --confirm-project <projectId> --all-stores-and-tenants', 'Business type migration live command boundary');
+  assertIncludes(businessTypeDataModelReadme, 'The local source gate verifies code and documentation contracts only.', 'Business type data model local-only boundary');
+  assertNotIncludes(businessTypeDataModelReadme, 'Planning — Pre-Implementation', 'Business type data model stale planning status');
+  assertNotIncludes(businessTypeDataModelReadme, 'Phase 2', 'Business type data model stale phase-2 wording');
+  assertNotIncludes(businessTypeDataModelReadme, 'Phase 3', 'Business type data model stale phase-3 wording');
+  assertNotIncludes(businessTypeDataModelReadme, 'DRY_RUN=false', 'Business type data model stale live migration command');
+  assertNotIncludes(businessTypeDataModelReadme, 'businessType: userType', 'Business type data model stale userType businessType write');
+  assertNotIncludes(authOnboardingSpec, "businessType: 'B2C'", 'Auth onboarding spec stale tenant/store businessType example');
+  assertNotIncludes(authOnboardingSpec, "businessIndustry: 'Restaurant'", 'Auth onboarding spec stale tenant businessIndustry example');
+  assertNotIncludes(authOnboardingSpec, "businessCategory: 'food_beverage'", 'Auth onboarding spec stale businessCategory example');
+  assertIncludes(authOnboardingSpec, "businessType: 'Restaurant'", 'Auth onboarding spec actual business type example');
+  assertIncludes(authOnboardingSpec, "businessIndustry: 'B2C'", 'Auth onboarding spec plan-type marker example');
+  assertIncludes(authOnboardingSpec, "businessCategory: 'food'", 'Auth onboarding spec canonical business category example');
+  assertNotIncludes(authOnboardingImpl, 'businessType: userType', 'Auth onboarding implementation stale userType businessType example');
+  assertNotIncludes(authOnboardingImpl, 'getBusinessCategory(userType)', 'Auth onboarding implementation stale category derivation example');
+  assertIncludes(authOnboardingImpl, 'businessType: businessIndustry || FALLBACK_BUSINESS_TYPE', 'Auth onboarding implementation actual business type contract');
+  assertIncludes(authOnboardingImpl, 'businessIndustry: userType', 'Auth onboarding implementation plan-type marker contract');
+  assertIncludes(onboardingCreateSubscriptionRoute, 'businessType: businessIndustry || FALLBACK_BUSINESS_TYPE,', 'Onboarding route actual business type source gate');
+  assertIncludes(onboardingCreateSubscriptionRoute, 'businessIndustry: userType,', 'Onboarding route plan-type marker source gate');
+  assertIncludes(onboardingCreateTenantStore, 'businessType: string;', 'Central tenant/store creator actual business type input');
+  assertIncludes(onboardingCreateTenantStore, 'businessIndustry?: string;', 'Central tenant/store creator plan-type input');
+  assertIncludes(onboardingCreateTenantStore, 'const businessCategory = resolveStoreBusinessCategory(businessType, explicitBusinessCategory);', 'Central tenant/store creator shared category resolver');
+  assertIncludes(onboardingCreateTenantStore, 'businessType,', 'Central tenant/store creator writes businessType');
+  assertIncludes(onboardingCreateTenantStore, 'businessIndustry,', 'Central tenant/store creator writes businessIndustry');
+  assertIncludes(storeTypeSource, "businessIndustry?: string; // Plan type marker: 'B2C' | 'B2B'.", 'StoreDataType businessIndustry source contract');
+  assert(businessTypesSharedSource === businessTypesFunctionsSource, 'Business type shared data must match Functions mirror byte-for-byte');
+  assertIncludes(businessTypeMigrationScript, "const DRY_RUN = !args.includes('--write');", 'Business type migration dry-run default');
+  assertIncludes(businessTypeMigrationScript, "getArg('--project-id') || process.env.FIREBASE_PROJECT_ID || process.env.GCLOUD_PROJECT", 'Business type migration explicit project selection');
+  assertIncludes(businessTypeMigrationScript, 'Refusing write: pass --confirm-project', 'Business type migration project confirmation guard');
+  assertIncludes(businessTypeMigrationScript, 'Refusing write: pass --all-stores-and-tenants', 'Business type migration broad-scope confirmation guard');
+  assertIncludes(businessTypeMigrationScript, 'getBusinessCategoryFromSharedData(businessType)', 'Business type migration shared category resolver');
+  assertNotIncludes(businessTypeMigrationScript, 'BUSINESS_TYPE_TO_CATEGORY', 'Business type migration must not duplicate business type category map');
+  assertNotIncludes(businessTypeMigrationScript, 'DRY_RUN=false', 'Business type migration stale env live command');
+  assertIncludes(setClaimsRoute, 'export const POST = withAuth', 'Set claims route withAuth source gate');
+  assertIncludes(setClaimsRoute, 'readOptionalBoundedJsonBody(request, SET_CLAIMS_MAX_BODY_BYTES', 'Set claims bounded body source gate');
+  assertIncludes(setClaimsRoute, 'validateAPIInput(setClaimsSchema, body)', 'Set claims validation source gate');
+  assertIncludes(setClaimsRoute, 'authAdmin.setCustomUserClaims(uid, customClaims)', 'Set claims custom claims source gate');
+  assertIncludes(setClaimsRoute, 'authAdmin.createCustomToken(uid, customClaims)', 'Set claims custom token source gate');
+  assertIncludes(setClaimsRoute, 'storeIds: getStoreIdsClaim(dbUser)', 'Set claims storeIds source gate');
+  assertIncludes(paymentHandlerHook, 'const executePostOnboarding = useCallback(async (purchaseIntent: PurchaseIntent) => {', 'Payment handler post-onboarding source gate');
+  assertIncludes(paymentHandlerHook, "fetch('/api/onboarding/create-subscription'", 'Payment handler onboarding API source gate');
+  assertIncludes(paymentHandlerHook, 'readPaymentResponseJson<{', 'Payment handler bounded response parsing source gate');
+  assertIncludes(paymentHandlerHook, 'tenantId?: string;', 'Payment handler tenant response shape source gate');
+  assertIncludes(paymentHandlerHook, 'await update({', 'Payment handler session update source gate');
+  assertIncludes(paymentHandlerHook, 'razorpay_signature: paymentResponse.razorpay_signature', 'Payment handler Razorpay signature forwarding source gate');
+  assertIncludes(razorpayVerifySubscriptionRoute, 'verifyRazorpaySubscriptionSignature', 'Razorpay verify subscription signature function source gate');
+  assertIncludes(razorpayVerifySubscriptionRoute, 'timingSafeEqual', 'Razorpay verify subscription timing-safe comparison source gate');
+  assertIncludes(razorpayVerifySubscriptionRoute, 'validateAPIInput(VerifyPaymentRequestSchema, rawData)', 'Razorpay verify subscription validation source gate');
+  assertIncludes(razorpayVerifySubscriptionRoute, 'verifyTenantAccess(session, tenantId, storeId, request)', 'Razorpay verify subscription tenant access source gate');
+  assertIncludes(razorpayVerifySubscriptionRoute, "canManageBillingMutation(session, request, '/api/razorpay/verify-subscription')", 'Razorpay verify subscription billing mutation access source gate');
+  assertIncludes(razorpayVerifySubscriptionRoute, 'providerSubscription?.id !== razorpay_subscription_id', 'Razorpay verify subscription provider id mismatch source gate');
+  assertIncludes(razorpayVerifySubscriptionRoute, "payment.status !== 'captured'", 'Razorpay verify subscription captured-payment source gate');
+  assertIncludes(razorpayVerifySubscriptionRoute, 'const subscriptionMatchesScope = Number(internalSub.tenantId) === Number(tenantId)', 'Razorpay verify subscription scope match source gate');
+  assertIncludes(razorpayVerifySubscriptionRoute, "validateTransition(internalSub.status, 'active', 'api:verify-subscription')", 'Razorpay verify subscription state transition source gate');
+  assertIncludes(razorpayVerifySubscriptionRoute, 'updateProductSubscription(productId, razorpay_subscription_id, updatePayload)', 'Razorpay verify subscription update source gate');
+  assertIncludes(securityFileUploadGuide, 'Implementation guide; not current launch certification', 'Security file-upload guide launch boundary status');
+  assertIncludes(securityFileUploadGuide, 'Storage rules/deploy evidence where changed', 'Security file-upload guide storage/deploy launch gate');
+  assertNotIncludes(securityFileUploadGuide, '**Status**: ✅ Fully Implemented & Consolidated', 'Security file-upload guide stale fully-implemented status');
+  assertNotIncludes(securityFileUploadGuide, '**Status**: ✅ Production Ready', 'Security file-upload guide stale production-ready status');
+  assertIncludes(securityWebhookGuide, 'Implementation guide; not current launch certification', 'Security webhook guide launch boundary status');
+  assertIncludes(securityWebhookGuide, 'QA/provider webhook smoke', 'Security webhook guide provider smoke gate');
+  assertIncludes(securityWebhookGuide, 'replay/idempotency evidence', 'Security webhook guide replay/idempotency launch gate');
+  assertNotIncludes(securityWebhookGuide, '**Status**: ✅ Fully Implemented', 'Security webhook guide stale fully-implemented status');
+  assertNotIncludes(securityWebhookGuide, '**Status**: ✅ Production Ready', 'Security webhook guide stale production-ready status');
+  assertIncludes(securityMonitoringGuide, 'Implementation guide; not current launch certification', 'Security monitoring guide launch boundary status');
+  assertIncludes(securityMonitoringGuide, 'target Sentry/alert destination verification', 'Security monitoring guide alert destination launch gate');
+  assertNotIncludes(securityMonitoringGuide, '**Status**: ✅ Fully Implemented', 'Security monitoring guide stale fully-implemented status');
+  assertNotIncludes(securityMonitoringGuide, '**Status**: ✅ Production Ready', 'Security monitoring guide stale production-ready status');
+  assertNotIncludes(securityMonitoringGuide, '**Coverage**: 100% of security-critical paths', 'Security monitoring guide stale 100 percent coverage claim');
+  assertIncludes(securityCorsGuide, 'Implementation guide; not current launch certification', 'Security CORS guide launch boundary status');
+  assertIncludes(securityCorsGuide, 'current allowed-origin review', 'Security CORS guide allowed-origin launch gate');
+  assertIncludes(securityCorsGuide, 'CORS failure-mode evidence', 'Security CORS guide failure-mode launch gate');
+  assertNotIncludes(securityCorsGuide, '**Status**: ✅ Fully Implemented', 'Security CORS guide stale fully-implemented status');
+  assertNotIncludes(securityCorsGuide, '**Status**: ✅ Production Ready', 'Security CORS guide stale production-ready status');
+  assertIncludes(securityCorsComplete, 'Historical implementation note; not current launch certification', 'Security CORS completion note launch boundary status');
+  assertIncludes(securityCorsComplete, 'Launch Certification', 'Security CORS completion note launch certification boundary');
+  assertNotIncludes(securityCorsComplete, '**Status**: ✅ **IMPLEMENTED**', 'Security CORS completion note stale implemented status');
+  assertNotIncludes(securityCorsComplete, '**Production Ready**: ✅ **YES**', 'Security CORS completion note stale production-ready signoff');
+  assertIncludes(securityApiStatus, 'Historical implementation checklist; not current launch certification', 'Security API status launch boundary status');
+  assertIncludes(securityApiStatus, 'current API route inventory', 'Security API status current route inventory gate');
+  assertNotIncludes(securityApiStatus, '✅ **Production-ready** - Enterprise-grade security', 'Security API status stale production-ready enterprise claim');
+  assertIncludes(securityOwaspImplementation, 'Historical OWASP implementation evidence; not current launch certification', 'Security OWASP implementation launch boundary status');
+  assertIncludes(securityOwaspImplementation, 'OWASP gap review for touched routes', 'Security OWASP implementation gap-review gate');
+  assertNotIncludes(securityOwaspImplementation, '**Security Status:** Production Ready', 'Security OWASP implementation stale production-ready footer');
+  assertIncludes(comprehensiveSecurityAudit, 'Historical Source Evidence', 'Comprehensive security audit historical evidence heading');
+  assertIncludes(comprehensiveSecurityAudit, '95% source-coverage snapshot', 'Comprehensive security audit historical coverage boundary');
+  assertNotIncludes(comprehensiveSecurityAudit, '## ✅ What\'s Production Ready', 'Comprehensive security audit stale production-ready heading');
+  assertNotIncludes(comprehensiveSecurityAudit, '**Current Status**: **95% Ready**', 'Comprehensive security audit stale current-ready status');
+  assertIncludes(internalFeedbackValidation, 'firebase deploy --only firestore:indexes --project menulist-qa --config firebase.json', 'Internal feedback validation scoped QA index deploy command');
+  assertIncludes(internalFeedbackValidation, 'firebase deploy --only firestore:rules --project menulist-qa --config firebase.json', 'Internal feedback validation scoped QA rules deploy command');
+  assertNotIncludes(internalFeedbackValidation, 'firebase deploy --only firestore:indexes\n', 'Internal feedback validation broad index deploy command');
+  assertNotIncludes(internalFeedbackValidation, 'firebase deploy --only firestore:rules\n', 'Internal feedback validation broad rules deploy command');
+  assertIncludes(aiDataExtractionFinalAudit, 'historical code-readiness evidence, not current MenuList launch certification', 'AI data extraction final audit historical launch boundary');
+  assertIncludes(aiDataExtractionFinalAudit, 'What\'s Needed Before Launch Certification', 'AI data extraction final audit current launch certification checklist');
+  assertIncludes(aiDataExtractionFinalAudit, 'firebase deploy --only firestore:indexes --project menulist-qa --config firebase.json', 'AI data extraction final audit scoped QA index deploy command');
+  assertIncludes(aiDataExtractionFinalAudit, 'Production index deploy requires QA evidence and explicit production approval.', 'AI data extraction final audit production approval gate');
+  assertNotIncludes(aiDataExtractionFinalAudit, '# ✅ READY FOR PRODUCTION', 'AI data extraction final audit stale ready-for-production verdict');
+  assertIncludes(aiDataExtractionProductionAudit, 'historical code-audit evidence, not current MenuList launch certification', 'AI data extraction production audit historical launch boundary');
+  assertNotIncludes(aiDataExtractionProductionAudit, 'The AI Data Extraction feature is production-ready.', 'AI data extraction production audit stale production-ready claim');
+  assertIncludes(aiDataExtractionCfExecutionAudit, 'historical Cloud Functions code-audit evidence, not current MenuList launch certification', 'AI data extraction CF audit historical launch boundary');
+  assertNotIncludes(aiDataExtractionCfExecutionAudit, 'The extraction pipeline Cloud Functions are **production-ready**.', 'AI data extraction CF audit stale production-ready claim');
+  assertIncludes(menuExtractionPipelineVerifier, 'AI extraction final audit is marked as historical code-readiness evidence', 'Menu extraction verifier AI historical audit source gate');
+  assertNotIncludes(aiDataExtractionFinalAudit, 'Deploy Firestore indexes: `firebase deploy --only firestore:indexes`', 'AI data extraction final audit broad index deploy instruction');
+  assertIncludes(creativeEditorTemplateRegistryValidation, 'Historical deployment evidence only for the retired shared MenuList project', 'Creative editor registry historical ecomsai boundary');
+  assertIncludes(creativeEditorTemplateRegistryValidation, 'current MenuList rules/storage deploy evidence must target `menulist-qa` first with `firebase.json`', 'Creative editor registry current QA target boundary');
+  assertIncludes(aiMenuManagerValidation, 'firebase deploy --only firestore:rules --project menulist-qa --config firebase.json', 'AI Menu Manager validation current QA rules command');
+  assertIncludes(aiMenuManagerValidation, 'Historical `ecomsai` deploy evidence from June 18, 2026 is retained as past validation only.', 'AI Menu Manager validation historical ecomsai boundary');
+  assertNotIncludes(aiMenuManagerValidation, 'firebase deploy --only firestore:rules --project ecomsai\n', 'AI Menu Manager validation stale active ecomsai rules command');
+  assertIncludes(growthOsAddonFirebase, 'Historical deployment evidence:', 'GrowthOS Firebase doc historical deployment heading');
+  assertIncludes(growthOsAddonFirebase, 'This is historical evidence only; do not reuse it as current deployment guidance. Current MenuList rules deploy evidence must target `menulist-qa` first with `firebase.json`', 'GrowthOS Firebase doc current QA target boundary');
+  assertIncludes(growthOsAddonValidation, 'This is historical evidence only; do not reuse it as current deployment guidance. Current MenuList rules deploy evidence must target `menulist-qa` first with `firebase.json`', 'GrowthOS validation current QA target boundary');
+  assertIncludes(costSelfProtectionAudit, 'FIREBASE_PROJECT_ID=menulist-qa node scripts/verification/verify-public-routing-summary-backfill.mjs', 'Cost self-protection audit current QA backfill verifier command');
+  assertIncludes(costSelfProtectionAudit, 'Historical MenuList Functions deploy evidence targeted the retired shared project `ecomsai`', 'Cost self-protection audit historical ecomsai deploy boundary');
+  assertNotIncludes(costSelfProtectionAudit, 'FIREBASE_PROJECT_ID=ecomsai node scripts/verification/verify-public-routing-summary-backfill.mjs', 'Cost self-protection audit stale ecomsai backfill verifier command');
+  assertIncludes(devProdEnvironmentGuide, 'Do not use `menulist-dev` for the current local/preview path.', 'Dev/prod guide current MenuList QA target warning');
+  assertIncludes(devProdEnvironmentGuide, 'Create or confirm a test tenant/store in `menulist-qa`.', 'Dev/prod guide current QA fixture task');
+  assertIncludes(devProdEnvironmentGuide, 'Local/preview Firebase targets confirmed for `menulist-qa` and `answerlattice-qa`', 'Dev/prod guide current local/preview target checklist');
+  assertIncludes(devProdEnvironmentGuide, 'Firebase QA Project Access', 'Dev/prod guide current Firebase account summary');
+  assertIncludes(devProdEnvironmentGuide, 'Feature Flags: Target-Environment Review', 'Dev/prod guide feature-flag target review heading');
+  assertIncludes(devProdEnvironmentGuide, 'This guide does not authorize blanket env-specific overrides or a "turn everything on" launch ritual.', 'Dev/prod guide feature-flag launch boundary');
+  assertIncludes(devProdEnvironmentGuide, 'Do not flip every operational flag as a launch ritual.', 'Dev/prod guide blanket operational flag guard');
+  assertIncludes(devProdEnvironmentGuide, 'Every External Certification Runbook gate relevant to the release has audit evidence', 'Dev/prod guide launch verdict external evidence requirement');
+  assertIncludes(devProdEnvironmentGuide, 'Deploy MenuList production rules/indexes/functions explicitly with `--project menulist` only after QA evidence and explicit production approval.', 'Dev/prod guide production infrastructure approval gate');
+  assertIncludes(devProdEnvironmentGuide, 'Do not copy `.env.local` or `.env.prod` wholesale into Vercel.', 'Dev/prod guide legacy env file Vercel guard');
+  assertIncludes(devProdEnvironmentGuide, 'Configure MenuList QA secrets first with commands that include `--project menulist-qa`.', 'Dev/prod guide QA-first Functions secret setup');
+  assertIncludes(devProdEnvironmentGuide, 'Repeat for `--project menulist` only after QA evidence and explicit production secret approval.', 'Dev/prod guide production secret approval gate');
+  assertNotIncludes(devProdEnvironmentGuide, 'Firebase dev project created and configured', 'Dev/prod guide stale Firebase dev checklist');
+  assertNotIncludes(devProdEnvironmentGuide, 'Create test tenant/store in dev project', 'Dev/prod guide stale dev fixture wording');
+  assertNotIncludes(devProdEnvironmentGuide, '--project menulist-dev', 'Dev/prod guide stale MenuList dev deploy command');
+  assertNotIncludes(devProdEnvironmentGuide, 'Feature Flags: Dev vs Prod Recommended State', 'Dev/prod guide stale env-specific flag heading');
+  assertNotIncludes(devProdEnvironmentGuide, 'When ready for production, change these flags to `true` in order:', 'Dev/prod guide stale blanket production flag instruction');
+  assertNotIncludes(devProdEnvironmentGuide, '## Production Go-Live Checklist', 'Dev/prod guide stale go-live checklist heading');
+  assertNotIncludes(devProdEnvironmentGuide, 'You go LIVE only when:', 'Dev/prod guide stale direct launch approval wording');
+  assertNotIncludes(devProdEnvironmentGuide, 'Set "Production" scope for prod values (.env.prod)', 'Dev/prod guide stale .env.prod Vercel scope instruction');
+  assertNotIncludes(devProdEnvironmentGuide, 'Copy ALL variables from `.env.local`', 'Dev/prod guide stale .env.local bulk Vercel copy instruction');
+  assertNotIncludes(devProdEnvironmentGuide, 'Copy ALL variables from `.env.prod`', 'Dev/prod guide stale .env.prod bulk Vercel copy instruction');
+  assertNotIncludes(devProdEnvironmentGuide, 'Update `[CHANGE FOR PROD]` marked variables', 'Dev/prod guide stale .env.prod production marker instruction');
+  assertNotIncludes(devProdEnvironmentGuide, 'firebase functions:secrets:set GEMINI_AI_KEY\n', 'Dev/prod guide unscoped GEMINI secret command');
+  assertNotIncludes(devProdEnvironmentGuide, 'firebase functions:secrets:set TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID`', 'Dev/prod guide unscoped Telegram secret summary');
+  for (const [label, content] of [
+    ['MenuList QA Functions env', functionsQaEnv],
+    ['MenuList production Functions env', functionsProductionEnv],
+    ['MenuList QA Functions env template', functionsQaEnvExample],
+    ['MenuList production Functions env template', functionsProductionEnvExample],
+  ]) {
+    assertIncludes(content, 'ENABLE_MESSAGING_ONBOARDING=false', `${label} messaging onboarding provider processing must fail closed`);
+    assertIncludes(content, 'MESSAGING_ONBOARDING_PROVIDERS=whatsapp', `${label} messaging onboarding provider list`);
+    assertIncludes(content, 'ENABLE_MESSAGING_ONBOARDING_TRACKING=true', `${label} messaging onboarding tracking default`);
+  }
+  assertIncludes(functionsEnvSetup, 'Messaging onboarding processing is disabled by default in those files.', 'Functions env setup messaging onboarding fail-closed docs');
+  assertIncludes(functionsEnvSetup, 'ENABLE_MESSAGING_ONBOARDING=false', 'Functions env setup messaging onboarding disabled default');
+  assertIncludes(productSetupDoc, 'Keep `ENABLE_MESSAGING_ONBOARDING=false` until real WhatsApp secrets', 'Product setup doc messaging onboarding fail-closed setup');
+  assertIncludes(productSetupDoc, 'Set `ENABLE_MESSAGING_ONBOARDING=true` only for the target being smoked', 'Product setup doc messaging onboarding targeted enable step');
+  assertIncludes(messagingOnboardingReadme, 'checked-in provider processing defaults off until real credentials and webhook registration are configured', 'Messaging onboarding README status fail-closed wording');
+  assertIncludes(messagingOnboardingReadme, 'repo env files default false until real Meta secrets and webhook registration exist', 'Messaging onboarding README fail-closed runtime gate');
+  assertIncludes(messagingOnboardingImpl, 'checked-in provider processing defaults off until real credentials and webhook registration are configured', 'Messaging onboarding impl status fail-closed wording');
+  assertIncludes(messagingOnboardingImpl, '`false` in checked-in MenuList Functions env files/templates', 'Messaging onboarding impl fail-closed runtime gate');
+  assertIncludes(messagingOnboardingSpec, 'checked-in provider processing defaults off until real credentials and webhook registration are configured', 'Messaging onboarding spec status fail-closed wording');
+  assertIncludes(messagingOnboardingSpec, 'checked-in Cloud Function runtime env templates default `false`', 'Messaging onboarding spec fail-closed runtime gate');
+  assertIncludes(messagingOnboardingFirebase, 'checked-in provider processing defaults off until real credentials and webhook registration are configured', 'Messaging onboarding firebase doc status fail-closed wording');
+  assertIncludes(messagingOnboardingValidation, 'Checked-in runtime env files default `ENABLE_MESSAGING_ONBOARDING=false`', 'Messaging onboarding validation fail-closed setup');
+  assertIncludes(messagingOnboardingRunbook, 'Checked-in MenuList Functions env files default `false`', 'Messaging onboarding runbook fail-closed setup');
+  assertIncludes(ownerActionItems, 'Keep `ENABLE_MESSAGING_ONBOARDING=false` until real Firebase secrets and Meta webhook registration are in place', 'Owner action items messaging onboarding fail-closed task');
+  assertIncludes(productionCertificationRunbook, '`ENABLE_MESSAGING_ONBOARDING=true` only after real secrets and Meta webhook registration exist for the target.', 'Production certification runbook WhatsApp targeted enable prerequisite');
+  assertIncludes(productSetupDoc, 'npm run verify:functions-deploy-preflight', 'Product setup doc MenuList Functions deploy preflight');
+  assertIncludes(productSetupDoc, 'firebase deploy --project menulist-qa --config firebase.json --only firestore:rules,firestore:indexes,storage --non-interactive', 'Product setup doc MenuList QA rules/indexes/storage deploy command');
+  assertIncludes(productSetupDoc, 'MenuList production Firebase infrastructure deploys require staging evidence and explicit production approval in the active session.', 'Product setup doc MenuList production infrastructure approval gate');
+  assertIncludes(productSetupDoc, 'For the current Storage rules cutover, record Gate 2A QA evidence in `__docs__/production-readiness/external-certification-runbook.md` before production Storage rules deploy approval.', 'Product setup doc MenuList Storage Gate 2A production approval gate');
+  assertIncludes(productSetupDoc, 'firebase deploy --project menulist --config firebase.json --only firestore:rules,firestore:indexes,storage --non-interactive', 'Product setup doc MenuList production rules/indexes/storage deploy command');
+  assertIncludes(productSetupDoc, 'Do not replace the scoped target list with a broad `--only functions` deploy', 'Product setup doc broad MenuList Functions deploy guard');
+  assertNotIncludes(productSetupDoc, 'firebase deploy --project menulist-qa --config firebase.json --only functions\n', 'Product setup doc broad MenuList QA Functions deploy command');
+  assertNotIncludes(productSetupDoc, 'firebase deploy --project menulist --config firebase.json --only functions\n', 'Product setup doc broad MenuList production Functions deploy command');
+  assertIncludes(fiveYearVision, 'Use production Functions deploys only through `__docs__/production-readiness/external-certification-runbook.md` Gate 1 after QA evidence and explicit production deploy approval.', 'Five-year vision MenuList Functions Gate 1 deploy boundary');
+  assertIncludes(fiveYearVision, 'Do not replace the scoped target list with a broad `--only functions` deploy.', 'Five-year vision broad Functions deploy guard');
+  assertIncludes(answerlatticeActionItems, 'Use External Certification Gate 1; do not run a broad --only functions deploy.', 'Answerlattice action items MenuList deploy boundary');
+  assertIncludes(answerlatticeMultiProductTenancy, 'MenuList production Functions require QA evidence and explicit production deploy approval.', 'Answerlattice multi-product tenancy MenuList production deploy boundary');
+  assertIncludes(answerlatticeProductSeparation, 'MenuList production Functions require QA evidence and explicit production deploy approval.', 'Answerlattice product separation MenuList production deploy boundary');
+  assertIncludes(menuExtractionPipelineFirebase, 'Current retry evidence must not target `ecomsai`: treat that project as historical only.', 'Menu extraction pipeline historical ecomsai boundary');
+  assertIncludes(menuExtractionPipelineFirebase, 'External Certification Runbook Gate 1 scoped deploy against `menulist-qa`', 'Menu extraction pipeline current MenuList QA deploy boundary');
+  assertIncludes(aiDataExtractionImpl, 'That `ecomsai` target is historical evidence only', 'AI data extraction historical ecomsai boundary');
+  assertIncludes(aiDataExtractionImpl, 'External Certification Runbook Gate 1 flow with `menulist-qa`', 'AI data extraction current MenuList QA deploy boundary');
+  assertIncludes(menuLinkImportValidation, 'This `ecomsai` deployment is historical validation evidence only', 'Menu link import historical ecomsai boundary');
+  assertIncludes(menuLinkImportValidation, 'External Certification Runbook Gate 1 flow against `menulist-qa`', 'Menu link import current MenuList QA deploy boundary');
+  assertNotIncludes(menuExtractionPipelineFirebase, 'Retry the same scoped deploy after billing/project access is restored.', 'Menu extraction pipeline stale ecomsai retry instruction');
+  for (const [label, content] of [
+    ['Codex Answerlattice rules', codexAnswerlatticeRules],
+    ['Cascade Answerlattice rules', cascadeAnswerlatticeRules],
+  ]) {
+    assertIncludes(content, "separate from MenuList's current `menulist-qa` local/preview target and `menulist` production target", `${label} current MenuList target wording`);
+    assertNotIncludes(content, "MenuList's `ecomsai`", `${label} stale MenuList project wording`);
+  }
+  for (const [label, content] of [
+    ['Five-year vision', fiveYearVision],
+    ['Answerlattice implementation action items', answerlatticeActionItems],
+    ['Answerlattice multi-product tenancy', answerlatticeMultiProductTenancy],
+    ['Answerlattice product separation playbook', answerlatticeProductSeparation],
+  ]) {
+    assertNotIncludes(content, 'firebase deploy --only functions --project menulist-qa', `${label} broad MenuList QA Functions deploy command`);
+    assertNotIncludes(content, 'firebase deploy --only functions --project menulist', `${label} broad MenuList production Functions deploy command`);
+  }
+  assertIncludes(productSetupDoc, '`MOBILE_QA_REQUIRE_EXPLICIT_FIXTURE`', 'Product setup doc mobile QA verification-only env boundary');
+  assertIncludes(envStagingExample, 'RAZORPAY_KEY_ID=rzp_test_<id>', 'Staging env template Razorpay test key prefix');
+  assertIncludes(envStagingExample, 'NEXT_PUBLIC_RAZORPAY_KEY_ID=rzp_test_<id>', 'Staging env template Razorpay public test key prefix');
+  assertIncludes(envProductionExample, 'RAZORPAY_KEY_ID=rzp_live_<id>', 'Production env template Razorpay live key prefix');
+  assertIncludes(envProductionExample, 'NEXT_PUBLIC_RAZORPAY_KEY_ID=rzp_live_<id>', 'Production env template Razorpay public live key prefix');
+  assertIncludes(productionCertificationRunbook, '`RAZORPAY_KEY_ID` and `NEXT_PUBLIC_RAZORPAY_KEY_ID` both start with `rzp_test_`', 'Production certification runbook Razorpay sandbox public/private key prefix');
+  assertIncludes(productionCertificationRunbook, '`RAZORPAY_KEY_SECRET` belongs to the same Razorpay test account as `RAZORPAY_KEY_ID`', 'Production certification runbook Razorpay same-account secret');
+  assertIncludes(productionCertificationRunbook, '`RAZORPAY_WEBHOOK_SECRET` belongs to the same Razorpay test webhook endpoint used for this smoke', 'Production certification runbook Razorpay webhook secret scope');
+  assertIncludes(productionCertificationRunbook, 'MOBILE_QA_REQUIRE_EXPLICIT_FIXTURE=1', 'Production certification runbook mobile owner explicit fixture mode');
+  assertIncludes(productionCertificationRunbook, 'MOBILE_QA_PROJECT_ID=<non-production-project-id>', 'Production certification runbook mobile owner project id prerequisite');
+  assertIncludes(productionCertificationRunbook, 'MOBILE_QA_PROJECT_NAME="<expected menu/project name>"', 'Production certification runbook mobile owner project name prerequisite');
+  assertIncludes(productionCertificationRunbook, 'The selected owner store has active subscription access or unexpired starter activation', 'Production certification runbook mobile owner eligible fixture prerequisite');
+  assertIncludes(mobileOwnerMenuVerifier, "MOBILE_QA_ENV_FILE || '.env'", 'Mobile owner verifier env-file override');
+  assertIncludes(mobileOwnerMenuVerifier, "MOBILE_QA_REQUIRE_EXPLICIT_FIXTURE === '1'", 'Mobile owner verifier explicit fixture mode');
+  assertIncludes(mobileOwnerMenuVerifier, "MOBILE_QA_CDP_TIMEOUT_MS", 'Mobile owner verifier CDP timeout env');
+  assertIncludes(mobileOwnerMenuVerifier, 'await mkdir(outputDir, { recursive: true });', 'Mobile owner verifier screenshot output directory creation');
+  assertIncludes(functionsSecrets, "WHATSAPP_ACCESS_TOKEN: 'WHATSAPP_ACCESS_TOKEN'", 'Functions WhatsApp secret registry');
+  assertIncludes(functionsSecrets, 'SECRETS.WHATSAPP_ACCESS_TOKEN', 'Functions WhatsApp secret group');
+  assertNotIncludes(functionsSecrets, 'WHATSAPP_API_TOKEN', 'Functions WhatsApp secret registry must not use stale token naming');
+  assertIncludes(messagingOnboardingImpl, 'firebase functions:secrets:set WHATSAPP_ACCESS_TOKEN --project menulist-qa', 'Messaging onboarding active QA access token secret setup docs');
+  assertIncludes(messagingOnboardingImpl, 'firebase functions:secrets:set WHATSAPP_PHONE_NUMBER_ID --project menulist-qa', 'Messaging onboarding active QA phone number secret setup docs');
+  assertIncludes(messagingOnboardingImpl, 'firebase functions:secrets:set WHATSAPP_VERIFY_TOKEN --project menulist-qa', 'Messaging onboarding active QA verify token secret setup docs');
+  assertIncludes(messagingOnboardingImpl, 'firebase functions:secrets:set WHATSAPP_APP_SECRET --project menulist-qa', 'Messaging onboarding active QA app secret setup docs');
+  assertIncludes(messagingOnboardingImpl, 'Production values require QA provider smoke evidence and explicit production secret approval', 'Messaging onboarding active production secret approval gate');
+  assertNotIncludes(messagingOnboardingImpl, 'firebase functions:secrets:set WHATSAPP_ACCESS_TOKEN\n', 'Messaging onboarding active unscoped access token secret command');
+  assertNotIncludes(messagingOnboardingImpl, 'firebase functions:secrets:set WHATSAPP_PHONE_NUMBER_ID\n', 'Messaging onboarding active unscoped phone number secret command');
+  assertNotIncludes(messagingOnboardingImpl, 'firebase functions:secrets:set WHATSAPP_VERIFY_TOKEN\n', 'Messaging onboarding active unscoped verify token secret command');
+  assertNotIncludes(messagingOnboardingImpl, 'firebase functions:secrets:set WHATSAPP_APP_SECRET\n', 'Messaging onboarding active unscoped app secret command');
+  assertNotIncludes(messagingOnboardingImpl, 'WHATSAPP_API_TOKEN', 'Messaging onboarding active docs must not use stale WhatsApp API token naming');
   assertIncludes(answerlatticeFunctionsPackage.scripts['deploy:qa'], '--project answerlattice-qa', 'Answerlattice Functions QA deploy script');
   assertIncludes(answerlatticeFunctionsPackage.scripts['deploy:prod'], '--project answerlattice', 'Answerlattice Functions production deploy script');
 }
@@ -214,6 +1725,12 @@ function verifyMenuListDiscovery() {
   const robots = read('public/robots.txt');
   const llms = read('public/llms.txt');
   const llmsFull = read('public/llms-full.txt');
+  const featureConfig = read('src/config/features.ts');
+  const agentReadinessReadme = read('__docs__/agent-readiness-strategy/README.md');
+  const agentReadinessSpec = read('__docs__/agent-readiness-strategy/agent-readiness-strategy_spec.md');
+  const agentReadinessImpl = read('__docs__/agent-readiness-strategy/agent-readiness-strategy_impl.md');
+  const agentReadinessFirebase = read('__docs__/agent-readiness-strategy/agent-readiness-strategy_firebase.md');
+  const agentReadinessMobile = read('__docs__/agent-readiness-strategy/agent-readiness-strategy_mobile-support.md');
   const menulistWebsiteConstants = read('src/constants/menulist/website.ts');
   const schemaMarkup = read('src/components/website/SchemaMarkup.tsx');
   const pageStructuredData = read('src/components/website/WebsitePageStructuredData.tsx');
@@ -229,6 +1746,58 @@ function verifyMenuListDiscovery() {
   const homepage = read('src/app/(website)/page.tsx');
   const nextConfig = read('next.config.js');
   const middleware = read('src/middleware.ts');
+  assertIncludes(featureConfig, 'ENABLE_AGENT_DISCOVERY: false', 'MenuList agent discovery reserved flag default');
+  assertIncludes(featureConfig, 'RESERVED ONLY — No code is connected to this flag', 'MenuList agent discovery reserved flag source comment');
+  assertIncludes(featureConfig, 'Production: Keep false until an approved endpoint reads it', 'MenuList agent discovery reserved flag production boundary');
+  assertNotIncludes(featureConfig, 'ENABLE_AGENT_DISCOVERY: true', 'MenuList agent discovery reserved flag must stay disabled until source-backed endpoint exists');
+  assert(!exists('src/app/api/agent-discovery/route.ts'), 'MenuList must not expose an unapproved agent-discovery API route');
+  assert(!exists('src/app/api/agents/route.ts'), 'MenuList must not expose an unapproved agents API route');
+  [
+    ['Agent readiness README', agentReadinessReadme],
+    ['Agent readiness spec', agentReadinessSpec],
+    ['Agent readiness implementation doc', agentReadinessImpl],
+    ['Agent readiness Firebase doc', agentReadinessFirebase],
+    ['Agent readiness mobile doc', agentReadinessMobile],
+  ].forEach(([label, doc]) => {
+    [
+      'Phase 2',
+      'Phase 3',
+      'PHASE 2',
+      'PHASE 3',
+      'post-launch',
+      'future',
+      'Future',
+      'DEFER',
+      'deferred',
+      'placeholder',
+      'Placeholder',
+      'Current Phase',
+    ].forEach((token) => {
+      assertNotIncludes(doc, token, `${label} stale agent-roadmap wording`);
+    });
+  });
+  [
+    'reserved disabled flag only',
+    'No current MenuList route, API, or Cloud Function reads `ENABLE_AGENT_DISCOVERY`',
+  ].forEach((token) => {
+    assertIncludes(agentReadinessReadme, token, `Agent readiness README source contract ${token}`);
+  });
+  [
+    'STATIC DISCOVERY LAYER COMPLETE — no dynamic agent endpoint',
+    'NOT CURRENT RUNTIME — keep reserved flag disabled',
+    'Not connected to any current route, API, Cloud Function, or client workflow',
+    'Conditional Agent Endpoint Candidates (Not Current Runtime)',
+  ].forEach((token) => {
+    assertIncludes(agentReadinessImpl, token, `Agent readiness implementation source contract ${token}`);
+  });
+  [
+    'Current Static Discovery Layer',
+    'disabled and not connected to any current route, API, Cloud Function, or client workflow',
+    'reserved for a separate source-backed implementation decision',
+  ].forEach((token) => {
+    assertIncludes(agentReadinessSpec, token, `Agent readiness spec source contract ${token}`);
+  });
+  assertIncludes(agentReadinessFirebase, '`ENABLE_AGENT_DISCOVERY` is disabled and unused', 'Agent readiness Firebase disabled flag boundary');
   if (exists('.env')) {
     assertIncludes(read('.env'), 'NEXT_PUBLIC_PLATFORM_DOMAIN=menulist.ai', 'Local platform domain config');
   }
@@ -267,7 +1836,11 @@ function verifyMenuListDiscovery() {
   assertIncludes(signinPage, 'follow: false', 'MenuList signin page noindex metadata');
   assertIncludes(forgotPasswordPage, 'index: false', 'MenuList forgot-password page noindex metadata');
   assertIncludes(forgotPasswordPage, 'follow: false', 'MenuList forgot-password page noindex metadata');
-  assertIncludes(clientMenuPage, 'const missingProjectPath = shouldLoadProjectMetadata', 'MenuList stale public menu noindex guard');
+  assertIncludes(clientMenuPage, 'let hasUnsafeProjectPath = Boolean(slugSegments[0] && !projectSlugForLookup);', 'MenuList unsafe public menu path noindex guard');
+  assertIncludes(clientMenuPage, 'hasUnsafeProjectPath = Boolean(slugSegments[1] && !projectSlugForLookup);', 'MenuList outlet unsafe public menu path noindex guard');
+  assertIncludes(clientMenuPage, 'const missingProjectPath = hasUnsafeProjectPath || (', 'MenuList stale public menu noindex guard');
+  assertIncludes(clientMenuPage, 'shouldLoadProjectMetadata', 'MenuList stale public menu noindex guard');
+  assertIncludes(clientMenuPage, '&& !metadataProjectResult', 'MenuList stale public menu noindex guard');
   assertIncludes(clientMenuPage, "reason: 'missing_menu_content' as const", 'MenuList stale public menu noindex reason');
   assertIncludes(clientMenuPage, 'missingProjectFallbackCanonical', 'MenuList stale public menu canonical fallback');
   assertIncludes(clientMenuPage, 'Menu not available | ${resolvedStoreName}', 'MenuList stale public menu title');
@@ -528,6 +2101,7 @@ function verifyAnswerlatticeInstallContract() {
   const widgetV1Route = read('src/app/widget/v1/answerlattice-widget.js/route.ts');
   const widgetManagement = read('src/components/templates/answerlattice/widgetManagement/AnswerlatticeWidgetManagement.tsx');
   const installCenter = read('src/components/templates/answerlattice/install/AnswerlatticeInstallCenter.tsx');
+  const answerlatticeSupportClipboard = read('src/lib/answerlattice/supportClipboard.ts');
   const routePermissions = read('src/constants/answerlattice/permissions.ts');
   const answerlatticeRoutes = read('src/constants/answerlattice/routes.ts');
   const answerlatticeDomains = read('src/constants/answerlattice/domains.ts');
@@ -549,6 +2123,21 @@ function verifyAnswerlatticeInstallContract() {
   assertIncludes(publicWidget, 'setContext', 'Answerlattice public widget global API');
   assertIncludes(publicWidget, 'page:', 'Answerlattice public widget page API');
   assertIncludes(publicWidget, 'sensitiveContextPattern', 'Answerlattice public widget context PII guard');
+  assertIncludes(widgetManagement, 'answerlattice_widget_management_copy_failed', 'Answerlattice widget management copy failure diagnostics');
+  assertIncludes(widgetManagement, 'answerlattice_widget_management_copy_clipboard_unavailable', 'Answerlattice widget management unavailable clipboard code');
+  assertIncludes(widgetManagement, 'answerlattice_widget_management_copy_fallback_failed', 'Answerlattice widget management failed fallback clipboard code');
+  assertIncludes(widgetManagement, 'copyAnswerlatticeSupportTextToClipboard', 'Answerlattice widget management shared clipboard helper');
+  assertIncludes(widgetManagement, 'hasClipboardWrite', 'Answerlattice widget management clipboard support metadata');
+  assertIncludes(widgetManagement, 'hasCopyFallback', 'Answerlattice widget management fallback support metadata');
+  assertIncludes(installCenter, 'answerlattice_install_copy_failed', 'Answerlattice install center copy failure diagnostics');
+  assertIncludes(installCenter, 'answerlattice_install_copy_clipboard_unavailable', 'Answerlattice install center unavailable clipboard code');
+  assertIncludes(installCenter, 'answerlattice_install_copy_fallback_failed', 'Answerlattice install center failed fallback clipboard code');
+  assertIncludes(installCenter, 'copyAnswerlatticeSupportTextToClipboard', 'Answerlattice install center shared clipboard helper');
+  assertIncludes(installCenter, 'hasClipboardWrite', 'Answerlattice install center clipboard support metadata');
+  assertIncludes(installCenter, 'hasCopyFallback', 'Answerlattice install center fallback support metadata');
+  assertIncludes(answerlatticeSupportClipboard, "const copied = document.execCommand('copy');", 'Answerlattice support clipboard helper acknowledged fallback copy result');
+  assertNotIncludes(widgetManagement, 'await navigator.clipboard.writeText(value);', 'Answerlattice widget management direct Clipboard copy');
+  assertNotIncludes(installCenter, 'await navigator.clipboard.writeText(value);', 'Answerlattice install center direct Clipboard copy');
 
   assert(exists('src/app/sites/answerlattice/install/page.tsx'), 'Answerlattice public install page must exist');
   [
@@ -655,6 +2244,7 @@ function main() {
     console.log('Environment target matrix verified');
     return;
   }
+  verifyVerificationRegistryCoverage();
   verifyMenuListDiscovery();
   verifyAnswerlatticeDiscovery();
   verifyAnswerlatticeInstallContract();

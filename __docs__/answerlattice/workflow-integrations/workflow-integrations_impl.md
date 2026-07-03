@@ -1,7 +1,7 @@
 # Answerlattice — External Workflow Integrations — Implementation
 
-> **Version:** 1.1.1
-> **Last Updated:** 2026-05-24
+> **Version:** 1.1.11
+> **Last Updated:** 2026-06-29
 > **Audience:** Developers
 > **Feature Flag:** `ENABLE_ANSWERLATTICE_WORKFLOW_INTEGRATIONS` (client + CF)
 
@@ -71,6 +71,8 @@ src/
 │   └── AnswerlatticeSettings.tsx        # Settings UI (enable/disable, config, health, test)
 └── config/features.ts              # + ENABLE_ANSWERLATTICE_WORKFLOW_INTEGRATIONS
 ```
+
+`AnswerlatticeSettings.tsx` validates workflow-integration route responses through a 64 KB bounded JSON reader before updating local form state, health state, or success copy. `GET/PUT /api/answerlattice/integrations` responses must contain the safe Slack/email config, event type arrays, default filters, and health object. `POST /api/answerlattice/integrations/test` must return a non-empty `eventId`. Malformed, oversized, rejected, or wrong-shape responses log fixed `answerlattice_settings_response_*` diagnostics and keep fixed owner-facing failure copy.
 
 ---
 
@@ -158,7 +160,9 @@ The processor reads/writes these docs by direct ID inside transactions. No colle
 
 **Storage:** `platformSummary/integrationHealth_{tId}_{sId}`
 
-This doc stores sanitized last attempt/success/failure state per adapter. The owner settings UI reads this through the server API, so it never queries raw delivery logs.
+This doc stores sanitized last attempt/success/failure state per adapter. The owner settings UI reads this through the server API, so it never queries raw delivery logs. The API keeps stored delivery error text server-side and returns a fixed `Delivery needs review.` marker when an adapter has a last error, preserving the dashboard status signal without exposing provider/runtime text.
+
+The settings GET route applies the shared Answerlattice dashboard `DATA_READ` limiter before permission and `platformSummary` reads. Load/save route failures use fixed runtime diagnostic codes with bounded tenant/store metadata. The controlled test-event route applies its workspace limiter before permission, config reads, and event writes; unexpected failures use fixed-code bounded tenant/store diagnostics.
 
 ---
 
@@ -306,7 +310,7 @@ export async function emitIntegrationEvent(params: {
 5. Cloud Function `processIntegrationEvent` triggers on `onCreate`
 
 **Wiring points (nightly batch):**
-- Step 13 reads whether a tenant has any enabled adapter.
+- Step 13 reads whether a tenant has any enabled adapter. A config-read failure is recorded as `ANSWERLATTICE_INTEGRATION_ADAPTER_CHECK_FAILED`, marks that tenant's workflow integration task failed, and keeps event delivery fail-closed for that tenant instead of reporting a normal no-adapter skip.
 - It emits `coverage_drop` immediately only when coverage is below threshold.
 - It emits one tenant `nightly_summary` digest when the tenant has governance/support activity.
 - It does not emit per-drift/per-proposal/per-gap fan-out by default; those event types remain available for explicit flows and controlled rollout.
@@ -492,12 +496,13 @@ Existing Steps 1-12 (unchanged)
      ▼
 Step 13: Integration Event Emission
   - Skip tenants with no enabled adapter
+  - Mark adapter-config read failure as a bounded failed task
   - Emit coverage_drop only below threshold
   - Emit one tenant nightly_summary digest when there is activity
   - Let Firestore TTL own old event/log/counter cleanup
 ```
 
-**Cost:** One config read per tenant to skip unused work, plus 0-2 event writes for active tenants. No cleanup queries.
+**Cost:** One config read per tenant to skip unused work, plus 0-2 event writes for active tenants. Failed config reads do not add retry reads or event writes. No cleanup queries.
 
 ---
 
@@ -561,12 +566,50 @@ Step 13: Integration Event Emission
 9. `src/app/api/answerlattice/integrations/test/route.ts` — controlled test event API
 10. `src/components/templates/answerlattice/AnswerlatticeSettings.tsx` — settings UI
 
+The browser response validation adds no Firestore reads/writes. It only refuses malformed or oversized route responses before the Settings UI treats integration settings or test notifications as saved/queued.
+
 ### Controlled-Rollout Adapters
 
 1. `functions-answerlattice/src/integrations/adapters/linearAdapter.ts`
 2. `functions-answerlattice/src/integrations/adapters/githubAdapter.ts`
 
 These adapters are not exposed in owner settings until the per-tenant secret lifecycle is implemented.
+
+### Adapter Target Safety
+
+Workflow delivery runs inside the separate Answerlattice Functions codebase. The Slack adapter now resolves stored Incoming Webhook URLs through `functions-answerlattice/src/utils/networkTarget.ts` before delivery. Valid Slack targets must keep the fixed `https://hooks.slack.com/services/` shape and pass public DNS validation before the adapter fetches the normalized URL. Rejected targets fail only that delivery attempt and flow through the existing delivery log, health summary, and circuit-breaker behavior.
+
+The GitHub adapter keeps the fixed `https://api.github.com` provider host and now URL-encodes the normalized owner and repo path segments before creating issues. GitHub and Linear success logs keep provider ID/URL presence and length metadata instead of raw provider URLs or IDs. Slack, email, Linear, and GitHub payload shapes, event filtering, rate caps, retry counts, circuit breakers, and tenant config storage are unchanged.
+
+### Delivery Logger Diagnostics
+
+`functions-answerlattice/src/integrations/deliveryLogger.ts` still writes the intended delivery-log and health-summary documents with event and tenant/store scope because those fields are the audit contract. Best-effort logger failures now emit stable `answerlattice_integration_*` failure codes with event ID presence/length metadata, tenant/store scope booleans, adapter/status/result metadata, and source error name/code/status only. Firestore exception text, raw event IDs, and raw tenant/store IDs are not emitted in logger failure breadcrumbs.
+
+### Event Bus Diagnostics
+
+`functions-answerlattice/src/integrations/eventBus.ts` still writes the intended integration event document with tenant/store scope, event type, severity, sanitized payload, status, and TTL because that document is the delivery trigger contract. Event cap, event emitted, and event emit failure breadcrumbs now use stable event-bus failure codes, tenant/store scope booleans, payload key counts, and source error name/code/status only. Raw tenant/store IDs, tenant keys, and Firestore exception text are not emitted in event-bus logger breadcrumbs.
+
+### Event Processor Entrypoint Diagnostics
+
+`functions-answerlattice/src/index.ts` keeps the deployed `processIntegrationEvent` trigger and still passes the raw event ID to `processEvent()` because Firestore document lookup requires it. Runtime breadcrumbs now log event ID presence/length metadata instead of raw event IDs when an integration event starts and completes processing.
+
+### Event Processor Runtime Diagnostics
+
+`functions-answerlattice/src/integrations/eventProcessor.ts` still uses raw event IDs and tenant/store scope for the required status updates, delivery logs, rate-limit documents, health summaries, and adapter dispatch contracts. Its runtime breadcrumbs now use stable invalid-event failure codes, event ID presence/length metadata, and tenant/store scope booleans instead of raw event IDs or raw `tId/sId` values for invalid-event, delivery-attempt, and no-enabled-adapter logs.
+
+Status-update, rate-limit-counter, email-recipient-limit, and circuit-breaker success/failure record side effects stay non-blocking and fail closed where they already did. Rejected side effects now log stable `answerlattice_integration_*` processor failure codes with bounded event ID presence/length, tenant/store scope booleans, adapter/status/reason labels, counts, and source error name/code/status metadata instead of empty promise catches. This preserves the delivery contract while making processor side-effect failures observable.
+
+### Nightly Adapter Check Diagnostics
+
+`functions-answerlattice/src/answerlattice/answerlatticeNightly.ts` still uses `hasEnabledIntegrationAdapter(tId, sId)` once per tenant before emitting nightly workflow events. If that config read fails, Step 13 records `ANSWERLATTICE_INTEGRATION_ADAPTER_CHECK_FAILED` with tenant/store scope booleans and source error name/code/status metadata, marks the tenant workflow integration task failed, and continues the rest of the scheduler run. A legitimate disabled/no-config adapter still records a normal skipped task with `reason: 'no_enabled_adapter'`.
+
+### Circuit Breaker Diagnostics
+
+`functions-answerlattice/src/integrations/configStore.ts` still writes the existing circuit-breaker state into the integration config summary document. The circuit-breaker-opened breadcrumb now logs `answerlattice_integration_circuit_breaker_opened`, adapter type, consecutive failure count, and tenant/store scope booleans instead of raw `tId/sId` values.
+
+### Adapter Failure Text
+
+Slack, email, GitHub, and Linear adapters still return local configuration errors, numeric provider status codes when available, duration, and success/failure state to the delivery logger. Provider response bodies, GraphQL error messages, and thrown SMTP/fetch exception messages are no longer read into delivery results. Provider/runtime failures now use fixed local failure text so delivery logs and health summaries do not persist provider response bodies or exception text.
 
 ---
 
@@ -586,6 +629,17 @@ These adapters are not exposed in owner settings until the per-tenant secret lif
 
 | Date | Version | Change |
 |------|---------|--------|
+| 2026-06-30 | 1.1.12 | Added bounded Settings response validation for integration load/save/test results before UI state or success copy advances. |
+| 2026-06-29 | 1.1.11 | Recorded nightly adapter-config read failures as bounded failed scheduler tasks instead of silent no-adapter skips. |
+| 2026-06-29 | 1.1.10 | Bounded event-processor side-effect failure diagnostics while preserving status, rate-limit, circuit-breaker, and delivery behavior. |
+| 2026-06-28 | 1.1.9 | Moved controlled test-event route rate limiting before permission/config/event work and switched unexpected route failures to bounded runtime diagnostics. |
+| 2026-06-28 | 1.1.8 | Bounded workflow adapter provider/runtime failure text while preserving status codes and delivery records. |
+| 2026-06-28 | 1.1.7 | Bounded workflow integration circuit-breaker-opened breadcrumbs while preserving config summary writes. |
+| 2026-06-28 | 1.1.6 | Bounded workflow event processor breadcrumbs while preserving delivery, rate-limit, status, and health-summary records. |
+| 2026-06-28 | 1.1.5 | Bounded processIntegrationEvent entrypoint breadcrumbs while preserving event document processing. |
+| 2026-06-28 | 1.1.4 | Bounded event-bus event-cap, emitted, and emit-failure diagnostics while preserving integration-event documents. |
+| 2026-06-28 | 1.1.3 | Bounded delivery-log, event-status, and integration-health failure diagnostics while preserving delivery-log and health-summary data contracts. |
+| 2026-06-28 | 1.1.2 | Added Slack webhook DNS target validation, GitHub owner/repo path-segment encoding, and bounded GitHub/Linear success diagnostics. |
 | 2026-05-24 | 1.1.1 | Added per-tenant/per-adapter daily delivery cap and nightly repeated-AI-failure alert emission. |
 | 2026-05-24 | 1.1.0 | Hardened workflow integrations with digest-first emissions, Firestore TTL, compact health summaries, rate counters, owner test notifications, and Slack/email production scope. |
 | 2026-03-09 | 1.0.0 | Initial implementation blueprint |

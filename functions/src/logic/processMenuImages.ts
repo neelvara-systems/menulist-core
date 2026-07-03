@@ -40,6 +40,11 @@ import type {
     ExtractedBusinessProfileSuggestion,
 } from "../sharedData/extractedBusinessProfile";
 import {
+    MENU_EXTRACTION_DESTINATION_TYPES,
+    MENU_EXTRACTION_JOB_LIMITS,
+    MENU_EXTRACTION_SOURCES,
+} from "../sharedData/menuExtractionJob";
+import {
     ExtractedMenuData,
     MenuCategory,
     MenuFileToProcess,
@@ -50,6 +55,12 @@ import {
     QualityScore,
     TargetLanguage
 } from "../types";
+import {
+    isResponseBodyTooLargeError,
+    readResponseUint8ArrayWithLimit,
+} from "../utils/boundedResponseBody";
+import { validateNetworkTargetUrl } from "../utils/networkTarget";
+import { buildSafeTempFilePath } from "../utils/safeTempFile";
 import { processAIResponseForFirebase } from "./aiResponseUtils";
 import { ExistingCategoriesContext, getParallelProcessingPrompt } from "./parallelProcessingPrompt";
 
@@ -75,30 +86,215 @@ const PROFILE_CONFIDENCE_RANK: Record<ExtractedBusinessProfileConfidence, number
     medium: 2,
     low: 1,
 };
+const DEFAULT_STORAGE_BUCKET = "menulist-qa.appspot.com";
+const MENU_IMAGE_FILE_URL_MISSING_CODE = 'MENU_IMAGE_FILE_URL_MISSING';
+const MENU_IMAGE_FILE_URL_REJECTED_CODE = 'MENU_IMAGE_FILE_URL_REJECTED';
+const MENU_IMAGE_FILE_FETCH_FAILED_CODE = 'MENU_IMAGE_FILE_FETCH_FAILED';
+const MENU_IMAGE_FILE_TOO_LARGE_CODE = 'MENU_IMAGE_FILE_TOO_LARGE';
+const MENU_IMAGE_FILE_UPLOAD_FAILED_CODE = 'MENU_IMAGE_FILE_UPLOAD_FAILED';
+const MENU_IMAGE_FILE_CLEANUP_FAILED_CODE = 'MENU_IMAGE_FILE_CLEANUP_FAILED';
+const MENU_IMAGE_RETRY_CLIENT_ERROR_CODE = 'MENU_IMAGE_RETRY_CLIENT_ERROR';
+const MENU_IMAGE_RETRY_RATE_LIMIT_CODE = 'MENU_IMAGE_RETRY_RATE_LIMIT';
+const MENU_IMAGE_RETRY_EXHAUSTED_CODE = 'MENU_IMAGE_RETRY_EXHAUSTED';
+const MENU_IMAGE_AI_EMPTY_RESPONSE_CODE = 'MENU_IMAGE_AI_EMPTY_RESPONSE';
+const MENU_IMAGE_BATCH_FAILED_CODE = 'MENU_IMAGE_BATCH_FAILED';
+const MENU_IMAGE_REQUEST_FAILED_CODE = 'MENU_IMAGE_REQUEST_FAILED';
+const MENU_IMAGE_AI_OPERATION_WRITE_FAILED_CODE = 'MENU_IMAGE_AI_OPERATION_WRITE_FAILED';
+const MENU_IMAGE_FAILURE_TRANSACTION_WRITE_FAILED_CODE = 'MENU_IMAGE_FAILURE_TRANSACTION_WRITE_FAILED';
+const MENU_EXTRACTION_FAILED_MESSAGE = 'Menu extraction failed';
+
+function getExtractionErrorName(error: unknown): string {
+    if (error instanceof Error) return (error.name || 'Error').slice(0, 96);
+    return typeof error;
+}
+
+function getExtractionErrorCode(error: unknown): string | number | undefined {
+    if (!error || typeof error !== 'object') return undefined;
+    const code = (error as { code?: unknown }).code;
+    if (typeof code === 'number') return code;
+    if (typeof code === 'string') return code.slice(0, 96);
+    return undefined;
+}
+
+function getExtractionErrorStatus(error: unknown): number | undefined {
+    if (!error || typeof error !== 'object') return undefined;
+    const value = 'status' in error
+        ? (error as { status?: unknown }).status
+        : (error as { statusCode?: unknown }).statusCode;
+    const status = Number(value);
+    return Number.isFinite(status) ? status : undefined;
+}
+
+function getExtractionErrorContext(error: unknown): {
+    sourceErrorName: string;
+    sourceErrorCode?: string | number;
+    sourceErrorStatus?: number;
+} {
+    return {
+        sourceErrorName: getExtractionErrorName(error),
+        sourceErrorCode: getExtractionErrorCode(error),
+        sourceErrorStatus: getExtractionErrorStatus(error),
+    };
+}
+
+function getExtractionIdLogContext(label: string, value: unknown): Record<string, boolean | number> {
+    const normalized = value === undefined || value === null ? '' : String(value);
+    return {
+        [`${label}Present`]: normalized.length > 0,
+        [`${label}Length`]: normalized.length,
+    };
+}
+
+function getExtractionRequestLogContext(context: {
+    fileId?: unknown;
+    projectId?: unknown;
+    requestId?: unknown;
+    transactionId?: unknown;
+}): Record<string, boolean | number> {
+    return {
+        ...getExtractionIdLogContext('requestId', context.requestId),
+        ...getExtractionIdLogContext('projectId', context.projectId),
+        ...getExtractionIdLogContext('fileId', context.fileId),
+        ...getExtractionIdLogContext('transactionId', context.transactionId),
+    };
+}
+
+function createProcessingError(code: string, context: Record<string, unknown> = {}): Error {
+    const error = new Error(code);
+    (error as any).code = code;
+    Object.entries(context).forEach(([key, value]) => {
+        (error as any)[key] = value;
+    });
+    return error;
+}
+
+function getAllowedStorageBucket(): string {
+    return process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || process.env.FIREBASE_STORAGE_BUCKET || DEFAULT_STORAGE_BUCKET;
+}
+
+function getStoragePathFromDownloadUrl(value: string): string | null {
+    try {
+        const url = new URL(value);
+        if (process.env.FUNCTIONS_EMULATOR === "true" && ["localhost", "127.0.0.1"].includes(url.hostname)) {
+            return "local-dev";
+        }
+        if (url.protocol !== "https:") return null;
+
+        const allowedBucket = getAllowedStorageBucket();
+        if (url.hostname === "firebasestorage.googleapis.com") {
+            const match = url.pathname.match(/^\/v0\/b\/([^/]+)\/o\/([^?]+)$/);
+            if (decodeURIComponent(match?.[1] || "") !== allowedBucket) return null;
+            return match?.[2] ? decodeURIComponent(match[2]) : null;
+        }
+
+        if (url.hostname === "storage.googleapis.com") {
+            const parts = url.pathname.split("/").filter(Boolean);
+            const bucket = decodeURIComponent(parts[0] || "");
+            if (bucket !== allowedBucket) return null;
+            return parts.length >= 2 ? decodeURIComponent(parts.slice(1).join("/")) : null;
+        }
+
+        return null;
+    } catch {
+        return null;
+    }
+}
+
+function isAllowedExtractionFileStoragePath(request: ProcessMenuImagesRequest, storagePath: string): boolean {
+    if (storagePath === "local-dev") return process.env.FUNCTIONS_EMULATOR === "true";
+
+    const context = request.auditContext;
+    if (!context) return false;
+
+    const tId = context.tId === undefined || context.tId === null ? "" : String(context.tId);
+    const sId = context.sId === undefined || context.sId === null ? "" : String(context.sId);
+    const projectId = request.projectId || "";
+    const destinationId = context.destinationId || "";
+
+    if (
+        context.destinationType === MENU_EXTRACTION_DESTINATION_TYPES.PUBLIC_MENU_DRAFT &&
+        destinationId
+    ) {
+        return storagePath.startsWith(`publicMenuDrafts/${destinationId}/`);
+    }
+
+    if (
+        context.destinationType === MENU_EXTRACTION_DESTINATION_TYPES.MESSAGING_ONBOARDING &&
+        destinationId
+    ) {
+        return storagePath.startsWith(`messagingOnboarding/${destinationId}/`);
+    }
+
+    if (
+        context.source === MENU_EXTRACTION_SOURCES.MESSAGING_ONBOARDING &&
+        projectId.startsWith("msg-onboarding-")
+    ) {
+        const sessionId = projectId.replace(/^msg-onboarding-/, "");
+        return Boolean(sessionId) && storagePath.startsWith(`messagingOnboarding/${sessionId}/`);
+    }
+
+    if (context.source === MENU_EXTRACTION_SOURCES.MENU_LINK_IMPORT) {
+        return Boolean(tId && sId && projectId) &&
+            storagePath.startsWith(`menuLinkImports/${tId}/${sId}/${projectId}/`);
+    }
+
+    return Boolean(tId && sId) && storagePath.startsWith(`projects/files/${tId}/${sId}/`);
+}
+
+async function resolveValidatedFileFetchUrl(
+    file: MenuFileToProcess,
+    request: ProcessMenuImagesRequest,
+): Promise<string> {
+    const storagePath = getStoragePathFromDownloadUrl(file.url);
+    if (!storagePath || !isAllowedExtractionFileStoragePath(request, storagePath)) {
+        throw createProcessingError(MENU_IMAGE_FILE_URL_REJECTED_CODE);
+    }
+
+    const targetValidation = await validateNetworkTargetUrl(file.url, {
+        allowLocalhostInEmulator: true,
+        allowedProtocols: process.env.FUNCTIONS_EMULATOR === "true" ? ["https:", "http:"] : ["https:"],
+    });
+    if (!targetValidation.valid || !targetValidation.normalizedUrl) {
+        throw createProcessingError(MENU_IMAGE_FILE_URL_REJECTED_CODE);
+    }
+
+    return targetValidation.normalizedUrl;
+}
 
 /**
  * Upload a single file to Gemini
  */
-async function uploadFileToGemini(file: MenuFileToProcess): Promise<UploadedFile | null> {
+async function uploadFileToGemini(
+    file: MenuFileToProcess,
+    request: ProcessMenuImagesRequest,
+): Promise<UploadedFile | null> {
     const logger = functions.logger;
-    const uniqueId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-    const tempFilePath = `/tmp/${uniqueId}-${file.name}`;
+    const tempFilePath = buildSafeTempFilePath(file.name, "menu-source-file");
 
     try {
         // Validate file URL
         if (!file.url) {
-            throw new Error('File URL is required');
+            throw createProcessingError(MENU_IMAGE_FILE_URL_MISSING_CODE);
         }
 
         // Fetch file from URL
-        const response = await fetch(file.url);
+        const fileFetchUrl = await resolveValidatedFileFetchUrl(file, request);
+        const response = await fetch(fileFetchUrl);
         if (!response.ok) {
-            throw new Error(`Failed to fetch file: ${response.status} ${response.statusText}`);
+            throw createProcessingError(MENU_IMAGE_FILE_FETCH_FAILED_CODE, {
+                status: response.status,
+            });
         }
 
-        const blob = await response.blob();
-        const arrayBuffer = await blob.arrayBuffer();
-        const uint8Array = new Uint8Array(arrayBuffer);
+        let uint8Array: Uint8Array;
+        try {
+            uint8Array = await readResponseUint8ArrayWithLimit(response, MENU_EXTRACTION_JOB_LIMITS.MAX_FILE_SIZE_BYTES);
+        } catch (error) {
+            if (isResponseBodyTooLargeError(error)) {
+                throw createProcessingError(MENU_IMAGE_FILE_TOO_LARGE_CODE);
+            }
+            throw error;
+        }
 
         // Write to temp file
         fs.writeFileSync(tempFilePath, uint8Array);
@@ -109,7 +305,10 @@ async function uploadFileToGemini(file: MenuFileToProcess): Promise<UploadedFile
             config: { mimeType: file.type },
         });
 
-        logger.info(`[uploadFileToGemini] Upload successful: ${file.name}`, { documentName: document?.name });
+        logger.info('[uploadFileToGemini] Upload successful', {
+            fileNameLength: file.name.length,
+            ...getExtractionIdLogContext('documentName', document?.name),
+        });
 
         return {
             uri: document.uri!,
@@ -117,7 +316,11 @@ async function uploadFileToGemini(file: MenuFileToProcess): Promise<UploadedFile
             name: file.name,
         };
     } catch (error) {
-        logger.error(`[uploadFileToGemini] Failed to upload: ${file.name}`, error);
+        logger.error('[uploadFileToGemini] Failed to upload', undefined, {
+            failureCode: MENU_IMAGE_FILE_UPLOAD_FAILED_CODE,
+            fileNameLength: file.name.length,
+            ...getExtractionErrorContext(error),
+        });
         return null;
     } finally {
         // Cleanup temp file
@@ -126,7 +329,11 @@ async function uploadFileToGemini(file: MenuFileToProcess): Promise<UploadedFile
                 fs.unlinkSync(tempFilePath);
             }
         } catch (cleanupError) {
-            logger.warn(`[uploadFileToGemini] Cleanup warning: ${tempFilePath}`);
+            logger.warn('[uploadFileToGemini] Cleanup warning', {
+                failureCode: MENU_IMAGE_FILE_CLEANUP_FAILED_CODE,
+                tempFilePathLength: tempFilePath.length,
+                ...getExtractionErrorContext(cleanupError),
+            });
         }
     }
 }
@@ -134,11 +341,14 @@ async function uploadFileToGemini(file: MenuFileToProcess): Promise<UploadedFile
 /**
  * Upload all files in parallel using Promise.all
  */
-async function uploadFilesInParallel(files: MenuFileToProcess[]): Promise<UploadedFile[]> {
+async function uploadFilesInParallel(
+    files: MenuFileToProcess[],
+    request: ProcessMenuImagesRequest,
+): Promise<UploadedFile[]> {
     const logger = functions.logger;
     logger.info(`[uploadFilesInParallel] Starting parallel upload of ${files.length} files`);
 
-    const uploadPromises = files.map(file => uploadFileToGemini(file));
+    const uploadPromises = files.map(file => uploadFileToGemini(file, request));
     const results = await Promise.all(uploadPromises);
 
     // Filter out failed uploads
@@ -241,39 +451,57 @@ async function retryWithBackoff<T>(
     baseDelay: number = 2000
 ): Promise<T> {
     const logger = functions.logger;
-    let lastError: Error | undefined;
+    let lastError: unknown;
 
     for (let attempt = 0; attempt <= maxAttempts; attempt++) {
         try {
             return await fn();
-        } catch (error: any) {
+        } catch (error) {
             lastError = error;
+            const status = getExtractionErrorStatus(error);
+            const processingCode = getProcessingErrorCode(error);
 
             // Don't retry on client errors
-            if (error.status >= 400 && error.status < 500) {
-                logger.warn(`[Retry] Client error (${error.status}) - not retrying`);
+            if (status && status >= 400 && status < 500) {
+                logger.warn('[Retry] Client error - not retrying', {
+                    failureCode: MENU_IMAGE_RETRY_CLIENT_ERROR_CODE,
+                    sourceErrorStatus: status,
+                    sourceErrorCode: getExtractionErrorCode(error),
+                });
                 throw error;
             }
 
             // Don't retry on quota errors
-            if (error.message?.toLowerCase().includes('quota') ||
-                error.message?.toLowerCase().includes('limit exceeded')) {
-                logger.warn('[Retry] Quota error - not retrying');
+            if (processingCode === 'RATE_LIMIT') {
+                logger.warn('[Retry] Quota error - not retrying', {
+                    failureCode: MENU_IMAGE_RETRY_RATE_LIMIT_CODE,
+                    ...getExtractionErrorContext(error),
+                });
                 throw error;
             }
 
             if (attempt === maxAttempts) {
-                logger.error(`[Retry] Max attempts (${maxAttempts + 1}) reached`);
+                logger.error('[Retry] Max attempts reached', {
+                    failureCode: MENU_IMAGE_RETRY_EXHAUSTED_CODE,
+                    attempts: maxAttempts + 1,
+                    ...getExtractionErrorContext(error),
+                });
                 throw lastError;
             }
 
             const delay = baseDelay * Math.pow(2, attempt);
-            logger.info(`[Retry] Attempt ${attempt + 1}/${maxAttempts + 1} failed - retrying in ${delay}ms`);
+            logger.info('[Retry] Attempt failed - retrying', {
+                attempt: attempt + 1,
+                attempts: maxAttempts + 1,
+                delayMs: delay,
+                processingCode,
+                ...getExtractionErrorContext(error),
+            });
             await new Promise(resolve => setTimeout(resolve, delay));
         }
     }
 
-    throw lastError || new Error('Retry failed');
+    throw lastError || createProcessingError(MENU_IMAGE_RETRY_EXHAUSTED_CODE);
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -359,8 +587,10 @@ function summarizeFilesForOperation(files: MenuFileToProcess[]) {
 
 function summarizeClientResponseForOperation(response: any) {
     const data = response?.data || {};
+    const message = typeof response?.message === 'string' ? response.message : '';
     return {
-        message: typeof response?.message === 'string' ? response.message.slice(0, 300) : null,
+        messagePresent: message.length > 0,
+        messageLength: message.length,
         qualityScore: response?.qualityScore ?? null,
         qualityDetails: response?.qualityDetails ?? null,
         dataSummary: {
@@ -407,41 +637,54 @@ async function addAiOperation(transactionObject: TransactionObject): Promise<str
         });
 
         const docRef = await firestoreAdmin.collection(AI_OPERATIONS_COLLECTION).add(cleanedTransaction);
-        logger.info(`[addAiOperation] Transaction recorded: ${docRef.id}`);
+        logger.info('[addAiOperation] Transaction recorded', getExtractionRequestLogContext({ transactionId: docRef.id }));
         return docRef.id;
     } catch (error) {
-        logger.error('[addAiOperation] Failed to record transaction', error);
+        logger.error('[addAiOperation] Failed to record transaction', undefined, {
+            failureCode: MENU_IMAGE_AI_OPERATION_WRITE_FAILED_CODE,
+            ...getExtractionErrorContext(error),
+        });
         throw error;
     }
 }
 
-function truncateForAudit(value: unknown, maxLength: number = 2000): string {
-    const text = typeof value === 'string' ? value : JSON.stringify(value || '');
-    return text.length > maxLength ? `${text.slice(0, maxLength)}...` : text;
-}
+function getProcessingErrorCode(error: unknown): string {
+    const sourceCode = String(getExtractionErrorCode(error) || '').toUpperCase();
+    const sourceName = getExtractionErrorName(error).toUpperCase();
+    const sourceStatus = getExtractionErrorStatus(error);
 
-function getProcessingErrorCode(error: any): string {
-    const message = String(error?.message || error || '').toLowerCase();
-    if (message.includes('rate limit') || message.includes('quota') || message.includes('resource_exhausted')) return 'RATE_LIMIT';
-    if (message.includes('timeout')) return 'TIMEOUT';
-    if (message.includes('circuit') || message.includes('breaker')) return 'CIRCUIT_BREAKER';
-    if (message.includes('gemini') || message.includes('ai')) return 'AI_ERROR';
-    if (message.includes('upload') || message.includes('file')) return 'FILE_ERROR';
+    if (
+        sourceStatus === 429 ||
+        sourceCode.includes('RATE_LIMIT') ||
+        sourceCode.includes('QUOTA') ||
+        sourceCode.includes('RESOURCE_EXHAUSTED')
+    ) return 'RATE_LIMIT';
+    if (
+        sourceStatus === 408 ||
+        sourceStatus === 504 ||
+        sourceCode.includes('TIMEOUT') ||
+        sourceName.includes('TIMEOUT') ||
+        sourceName.includes('ABORT')
+    ) return 'TIMEOUT';
+    if (sourceCode.includes('CIRCUIT') || sourceName.includes('CIRCUIT') || sourceName.includes('BREAKER')) {
+        return 'CIRCUIT_BREAKER';
+    }
+    if (sourceCode.includes('UPLOAD') || sourceCode.includes('FILE') || sourceCode.includes('FETCH')) return 'FILE_ERROR';
+    if (sourceStatus && sourceStatus >= 500) return 'AI_ERROR';
+    if (sourceCode.includes('GEMINI') || sourceCode.includes('AI') || sourceName.includes('GOOGLE')) return 'AI_ERROR';
     return 'INTERNAL_ERROR';
 }
 
-function isRetryableProcessingError(error: any): boolean {
+function isRetryableProcessingError(error: unknown): boolean {
     const code = getProcessingErrorCode(error);
     return code === 'RATE_LIMIT' || code === 'TIMEOUT' || code === 'CIRCUIT_BREAKER' || code === 'AI_ERROR';
 }
 
-function extractRetryAfterSeconds(error: any): number | null {
-    const message = String(error?.message || error || '');
-    const retryDelayMatch = message.match(/retryDelay["']?\s*:\s*["']?(\d+(?:\.\d+)?)s/i);
-    const retryInMatch = message.match(/retry in\s+(\d+(?:\.\d+)?)s/i);
-    const waitSecondsMatch = message.match(/wait\s+(\d+(?:\.\d+)?)\s+seconds/i);
-    const value = retryDelayMatch?.[1] || retryInMatch?.[1] || waitSecondsMatch?.[1];
-    if (!value) return null;
+function extractRetryAfterSeconds(error: unknown): number | null {
+    if (!error || typeof error !== 'object') return null;
+    const source = error as { retryAfterSeconds?: unknown; retryAfter?: unknown; retryDelaySeconds?: unknown };
+    const value = source.retryAfterSeconds ?? source.retryAfter ?? source.retryDelaySeconds;
+    if (value === undefined || value === null) return null;
     const seconds = Number(value);
     return Number.isFinite(seconds) && seconds > 0 ? Math.ceil(seconds) : null;
 }
@@ -460,7 +703,7 @@ async function recordFailedAiOperation(params: {
     auditContext?: ProcessMenuImagesRequest['auditContext'];
 }): Promise<string | null> {
     const errorCode = getProcessingErrorCode(params.error);
-    const errorMessage = truncateForAudit(params.error?.message || params.error || 'Unknown extraction error');
+    const errorMessage = MENU_EXTRACTION_FAILED_MESSAGE;
     const retryAfterSeconds = extractRetryAfterSeconds(params.error);
     const transactionObject: TransactionObject = {
         transactionId: null,
@@ -482,7 +725,7 @@ async function recordFailedAiOperation(params: {
         },
         geminiResponse: JSON.stringify({
             errorCode,
-            errorMessage,
+            failureCode: MENU_IMAGE_REQUEST_FAILED_CODE,
             retryAfterSeconds,
         }),
         generationConfig: GENERATION_CONFIG,
@@ -524,8 +767,12 @@ async function recordFailedAiOperation(params: {
 
     transactionObject.transactionId = await addAiOperation(transactionObject);
     logger.info('[processMenuImages] Failure transaction recorded', {
-        requestId: params.requestId,
-        transactionId: transactionObject.transactionId,
+        ...getExtractionRequestLogContext({
+            requestId: params.requestId,
+            projectId: params.projectId,
+            fileId: params.fileId,
+            transactionId: transactionObject.transactionId,
+        }),
         errorCode,
         retryAfterSeconds,
     });
@@ -782,7 +1029,7 @@ async function processSingleBatch(
         ];
 
         logger.info(`[processSingleBatch] Processing batch ${batchIndex + 1}`, {
-            requestId,
+            ...getExtractionRequestLogContext({ requestId }),
             batchIndex,
             filesCount: uploadedFiles.length,
             hasExistingContext: !!existingContext,
@@ -816,7 +1063,9 @@ async function processSingleBatch(
         if (!responseText) {
             const candidates = (response as any).candidates;
             const finishReason = candidates?.[0]?.finishReason;
-            throw new Error(`Empty response from AI (finishReason: ${finishReason || 'unknown'})`);
+            throw createProcessingError(MENU_IMAGE_AI_EMPTY_RESPONSE_CODE, {
+                finishReason: typeof finishReason === 'string' ? finishReason.slice(0, 64) : 'unknown',
+            });
         }
 
         // Preserve raw AI response for extraction provenance (P0 hardening)
@@ -840,7 +1089,7 @@ async function processSingleBatch(
         });
 
         logger.info(`[processSingleBatch] Batch ${batchIndex + 1} completed`, {
-            requestId,
+            ...getExtractionRequestLogContext({ requestId }),
             batchIndex,
             categoriesCount: parsedData.data?.categories?.length || 0,
             itemsCount: parsedData.data?.items?.length || 0,
@@ -863,6 +1112,7 @@ async function processSingleBatch(
         };
     } catch (error: any) {
         const duration = Date.now() - startTime;
+        const errorCode = getProcessingErrorCode(error);
 
         // Track AI call failure
         logger.aiCall('Gemini Extract', 'error', {
@@ -870,18 +1120,21 @@ async function processSingleBatch(
             batchIndex,
             totalBatches,
             duration,
-            error: error.message,
+            error: errorCode,
         });
 
-        logger.error(`[processSingleBatch] Batch ${batchIndex + 1} failed`, error, {
-            requestId,
+        logger.error(`[processSingleBatch] Batch ${batchIndex + 1} failed`, undefined, {
+            ...getExtractionRequestLogContext({ requestId }),
             batchIndex,
+            failureCode: MENU_IMAGE_BATCH_FAILED_CODE,
+            processingErrorCode: errorCode,
+            ...getExtractionErrorContext(error),
         });
 
         return {
             success: false,
             data: null,
-            message: `Batch ${batchIndex + 1} failed: ${error.message}`,
+            message: `Batch ${batchIndex + 1} failed.`,
             batchIndex,
             filesProcessed: 0,
             tokenUsage: {
@@ -958,28 +1211,36 @@ export async function processMenuImagesLogic(
     // Start performance transaction
     const transaction = Sentry.startTransaction('processMenuImages', 'ai.image-processing');
 
-    logger.info(`[processMenuImages] Starting request ${requestId}`, {
+    logger.info(`[processMenuImages] Starting request`, {
+        ...getExtractionRequestLogContext({ requestId, projectId, fileId }),
         filesCount: files.length,
-        targetLanguages: targetLanguages.map(l => l.code),
-        projectId,
-        fileId,
+        targetLanguageCount: targetLanguages.length,
         maxImagesPerBatch: MAX_IMAGES_PER_BATCH,
     });
 
-    logger.milestone('Request started', { requestId, filesCount: files.length });
+    logger.milestone('Request started', {
+        ...getExtractionRequestLogContext({ requestId, projectId, fileId }),
+        filesCount: files.length,
+    });
 
     try {
         // Step 0: Check rate limit using Upstash (matches route.ts checkExpensiveAILimit)
         const rateLimit = await checkExpensiveAIRateLimit(projectId);
         if (!rateLimit.allowed) {
             const waitSeconds = Math.ceil((rateLimit.resetAt - Date.now()) / 1000);
-            logger.warn(`[processMenuImages] Rate limit exceeded`, { projectId, waitSeconds });
-            throw new Error(`Rate limit exceeded. Please wait ${waitSeconds} seconds and try again.`);
+            logger.warn(`[processMenuImages] Rate limit exceeded`, {
+                ...getExtractionRequestLogContext({ requestId, projectId, fileId }),
+                waitSeconds,
+            });
+            throw createProcessingError('RATE_LIMIT', {
+                retryAfterSeconds: waitSeconds,
+                status: 429,
+            });
         }
 
         // Step 1: Upload all files in parallel
         const uploadStartedAt = Date.now();
-        const uploadedFiles = await uploadFilesInParallel(files);
+        const uploadedFiles = await uploadFilesInParallel(files, request);
         const uploadCompletedAt = Date.now();
 
         if (uploadedFiles.length === 0) {
@@ -993,7 +1254,7 @@ export async function processMenuImagesLogic(
         const totalBatches = fileBatches.length;
 
         logger.info(`[processMenuImages] Processing ${totalBatches} batch(es)`, {
-            requestId,
+            ...getExtractionRequestLogContext({ requestId, projectId, fileId }),
             totalFiles: uploadedFiles.length,
             totalBatches,
             batchSizes: fileBatches.map(b => b.length),
@@ -1025,7 +1286,7 @@ export async function processMenuImagesLogic(
             if (batchIndex > 0) {
                 const delayMs = calculateBatchDelay(batchIndex - 1);
                 logger.info(`[processMenuImages] Throttling: waiting ${delayMs}ms before batch ${batchIndex + 1}`, {
-                    requestId,
+                    ...getExtractionRequestLogContext({ requestId, projectId, fileId }),
                     batchIndex,
                     delayMs,
                 });
@@ -1067,7 +1328,7 @@ export async function processMenuImagesLogic(
                 allFailedFileIndices.push(...batchResult.failedFileIndices);
                 batchMessages.push(batchResult.message);
                 logger.warn(`[processMenuImages] Batch ${batchIndex + 1} failed, continuing with remaining batches`, {
-                    requestId,
+                    ...getExtractionRequestLogContext({ requestId, projectId, fileId }),
                     batchIndex,
                     failedIndices: batchResult.failedFileIndices,
                 });
@@ -1082,7 +1343,7 @@ export async function processMenuImagesLogic(
         // Log batch processing summary
         const successfulBatches = batchResults.filter(b => b.success).length;
         logger.info(`[processMenuImages] Batch processing completed`, {
-            requestId,
+            ...getExtractionRequestLogContext({ requestId, projectId, fileId }),
             totalBatches,
             successfulBatches,
             failedBatches: totalBatches - successfulBatches,
@@ -1095,11 +1356,9 @@ export async function processMenuImagesLogic(
         // Step 3b: Fail if ALL batches failed (no data extracted)
         // Without this check, empty data would be saved to the project as COMPLETED
         if (successfulBatches === 0) {
-            const failureMessages = batchResults.map(b => b.message).filter(Boolean).join('; ');
-            throw new Error(
-                `All ${totalBatches} extraction batch(es) failed — no data extracted. ` +
-                `Details: ${failureMessages || 'Unknown error'}`
-            );
+            throw createProcessingError(MENU_IMAGE_BATCH_FAILED_CODE, {
+                totalBatches,
+            });
         }
 
         // Step 4: Score quality
@@ -1182,17 +1441,20 @@ export async function processMenuImagesLogic(
         try {
             transactionObject.transactionId = await addAiOperation(transactionObject);
             logger.info('[processMenuImages] Transaction recorded', {
-                requestId,
-                transactionId: transactionObject.transactionId
+                ...getExtractionRequestLogContext({
+                    requestId,
+                    projectId,
+                    fileId,
+                    transactionId: transactionObject.transactionId,
+                }),
             });
         } catch (transactionError) {
             transactionRecorded = false;
-            logger.error('[processMenuImages] Failed to record transaction', {
-                requestId,
-                projectId,
-                fileId,
+            logger.error('[processMenuImages] Failed to record transaction', undefined, {
+                ...getExtractionRequestLogContext({ requestId, projectId, fileId }),
                 totalCharge: transactionObject.totalCharge,
-                error: (transactionError as Error).message,
+                failureCode: MENU_IMAGE_AI_OPERATION_WRITE_FAILED_CODE,
+                ...getExtractionErrorContext(transactionError),
             });
         }
 
@@ -1200,20 +1462,24 @@ export async function processMenuImagesLogic(
 
         // Step 8: Log success
         logger.info(`[processMenuImages] Request completed`, {
-            requestId,
+            ...getExtractionRequestLogContext({
+                requestId,
+                projectId,
+                fileId,
+                transactionId: transactionObject.transactionId,
+            }),
             processingTime,
             qualityScore: quality.score,
             categoriesCount: accumulatedData.categories.length,
             itemsCount: accumulatedData.items.length,
             transactionRecorded,
-            transactionId: transactionObject.transactionId,
             totalBatches,
             successfulBatches,
         });
 
         // Step 9: Return response
         logger.milestone('Request completed', {
-            requestId,
+            ...getExtractionRequestLogContext({ requestId, projectId, fileId }),
             processingTime,
             qualityScore: quality.score,
             totalItems: accumulatedData.items.length,
@@ -1277,19 +1543,19 @@ export async function processMenuImagesLogic(
                 auditContext,
             });
         } catch (transactionError: any) {
-            logger.error('[processMenuImages] Failed to record failure transaction', {
-                requestId,
-                projectId,
-                fileId,
-                error: transactionError?.message || String(transactionError),
+            logger.error('[processMenuImages] Failed to record failure transaction', undefined, {
+                ...getExtractionRequestLogContext({ requestId, projectId, fileId }),
+                failureCode: MENU_IMAGE_FAILURE_TRANSACTION_WRITE_FAILED_CODE,
+                ...getExtractionErrorContext(transactionError),
             });
         }
 
-        logger.error(`[processMenuImages] Request failed`, error, {
-            requestId,
-            projectId,
-            fileId,
+        logger.error(`[processMenuImages] Request failed`, undefined, {
+            ...getExtractionRequestLogContext({ requestId, projectId, fileId }),
             processingTime,
+            failureCode: MENU_IMAGE_REQUEST_FAILED_CODE,
+            processingErrorCode: getProcessingErrorCode(error),
+            ...getExtractionErrorContext(error),
         });
 
         transaction.finish('error');

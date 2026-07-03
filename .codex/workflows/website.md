@@ -16,6 +16,15 @@ Use when building or modifying anything on the main marketing website at `src/ap
 
 ## Website Rules (MANDATORY)
 
+### 0. Taste Skill Design Audit Layer
+- Repo-local Taste skills may be used for website visual/design work: `$design-taste-frontend`, `$redesign-existing-projects`, and `$full-output-enforcement`.
+- Taste is a secondary audit layer only. This workflow, `AGENTS.md`, current source code, `__docs__/main-website/*`, localization, SEO/discovery rules, privacy/legal copy, analytics consent behavior, and product truth override Taste when there is any conflict.
+- Use Taste to audit hierarchy, typography, spacing rhythm, section repetition, generic SaaS patterns, visual polish, responsive fit, and incomplete output.
+- Do not use Taste to silently change routes, nav labels, URL structure, form fields, analytics hooks, legal/privacy/cookie copy, public product claims, dependencies, icon-library rules, locale architecture, or the core MenuList website story.
+- For existing MenuList website pages, run audit-first: design read, current stack, current website truth, findings, ranked improvements, likely files, and risks before editing code.
+- Default outcome is targeted evolution: small, high-leverage hierarchy, copy-fit, spacing, responsive, proof, or visual-polish changes. Do not redesign the whole website from a generic landing-page brief.
+- Ignore Taste defaults that conflict with MenuList, including alternate icon-library preferences, generic new font/package recommendations, placeholder image recommendations, "only source of design rules" wording, high-motion defaults, or advice to rewrite product positioning.
+
 ### 1. Canonical Website Rule
 - The current implemented website is the only default website source.
 - Do not create parallel website versions, restoration branches, or old-version code backups.

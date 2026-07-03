@@ -1,8 +1,10 @@
 # Owner Notifications - Help Documentation Draft
 
-**Status:** Help draft for future implementation
+**Status:** Source-bounded help draft; not current support-publication approval
 **Date:** 2026-06-02
 **Audience:** Non-technical owner
+
+> **Current publication boundary (July 2, 2026):** This help draft is source evidence only. It is not current support-publication, website, or launch approval. Publishing owner-facing notification help requires the active [production-readiness audit](../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../production-readiness/external-certification-runbook.md) evidence, `npm run verify:owner-notifications-boundary`, SMTP/WhatsApp provider smoke where enabled, authenticated owner settings/status QA for the target surface, platform recovery monitor browser QA, target deploy evidence, and production-host smoke.
 
 ## Summary
 
@@ -41,7 +43,7 @@ Notifications use your business settings where available:
 
 ## How To Test
 
-When the feature is available:
+When notification settings are exposed in the target owner surface:
 
 1. Open business or account settings.
 2. Go to notification settings.

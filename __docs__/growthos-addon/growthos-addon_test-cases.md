@@ -25,8 +25,8 @@
 
 | Test | Expected result |
 | --- | --- |
-| Free/base store opens desktop route directly | Access denied with owner-safe message. |
-| Free/base store calls generate API directly | API returns forbidden/payment/entitlement response before provider call. |
+| Starter/base plan store opens desktop route directly | Access denied with owner-safe message. |
+| Starter/base plan store calls generate API directly | API returns forbidden/payment/entitlement response before provider call. |
 | Starter store has explicit GrowthOS add-on flags | Access remains denied because Growth Kits is Pro/Premium only. |
 | Pro eligible store opens module | Growth Kits summary appears. |
 | Premium eligible store opens module | Growth Kits summary appears. |
@@ -131,7 +131,7 @@
 | Refresh/generation failure | Latest loaded kit remains visible with retry state. |
 | Staff Brief mobile card | Copy/share/mark-used works with 44px targets. |
 | Counter line mobile card | Counter line is copyable when the pack is fresh. |
-| Free/base store | Cannot access through mobile route or deep link. |
+| Starter/base plan store | Cannot access through mobile route or deep link. |
 
 ## 9. Review Reply Tests
 

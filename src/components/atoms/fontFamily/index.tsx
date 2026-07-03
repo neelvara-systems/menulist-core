@@ -2,6 +2,7 @@ import { getFontPresets } from '@database/static/fontPresets';
 import { useAppDispatch } from '@hook/useAppDispatch';
 import { useAppSelector } from '@hook/useAppSelector';
 import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from '@providers/platformProviders/platformGlobalDataProvider';
+import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { getDarkModeState } from '@reduxSlices/clientThemeConfig';
 import { startLoader, stopLoader } from '@reduxSlices/loader';
 import { FontPresetsType } from '@type/assets';
@@ -78,10 +79,11 @@ export default function FontFamily({ value, onChange, showLabel = false, style =
         if (fontsList?.length > 0) return;
         getFontPresets().then((res) => {
             if (Boolean(res)) {
-                console.log("res", res)
                 setFontsList(res);
                 addFontFaceStyle(res)
             }
+        }).catch((error) => {
+            logRuntimeFailure('font_family_presets_load_failed', error);
         })
     }, [])
 
@@ -104,7 +106,9 @@ export default function FontFamily({ value, onChange, showLabel = false, style =
             onChange('fontFamily', fontCode)
             dispatch(stopLoader("FontFamily:onChangeValue"))
         }).catch((err) => {
-            console.log(err);
+            logRuntimeFailure('font_family_load_failed', err, {
+                ...getBoundedRuntimeStringContext('fontCode', fontCode),
+            });
             dispatch(stopLoader("FontFamily:onChangeValue"))
         });
     }

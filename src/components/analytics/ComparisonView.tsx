@@ -142,9 +142,9 @@ export function ComparisonView({
             />
 
             <MetricCardWithComparison
-              title="Active Users"
-              value={comparison.activeUsers.current}
-              comparison={comparison.activeUsers}
+              title="Total Messages"
+              value={comparison.totalMessages.current}
+              comparison={comparison.totalMessages}
               format={(v) => v.toLocaleString()}
             />
           </div>
@@ -212,9 +212,9 @@ function getInsights(comparison: PeriodComparison): string[] {
     );
   }
 
-  // User engagement
-  if (comparison.activeUsers.changePercent > 15) {
-    insights.push(`Strong user growth: ${comparison.activeUsers.changePercent.toFixed(1)}% more active users`);
+  // Message volume
+  if (comparison.totalMessages.changePercent > 15) {
+    insights.push(`Message volume increased by ${comparison.totalMessages.changePercent.toFixed(1)}%`);
   }
 
   // Default insight if no significant changes

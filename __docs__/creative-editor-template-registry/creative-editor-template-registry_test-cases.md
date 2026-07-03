@@ -28,7 +28,7 @@
 | Generated fallback still loads | Simulate platform catalog failure or empty catalog. | Generated MenuList template family cards render with no blocking global error. Registry failures stay inline to the template section. |
 | Save customized template | Open a generated template in editor; change copy; click Save as template. | Success message appears; template is added to Saved designs. |
 | Save line-heavy print template | Open a Table Tent or other print template that includes vertical or horizontal divider lines; click Save as template. | Valid line layers with one zero dimension are accepted; zero-size layers are still rejected. |
-| Storage quota reached | Force Firebase Storage to return `storage/quota-exceeded`; click Save as template. | Editor shows a clear storage-full message and does not create broken metadata. |
+| Storage quota reached | Force Firebase Storage to return structured code `storage/quota-exceeded`; click Save as template. | Editor shows a clear storage-full message and does not create broken metadata or depend on raw provider exception text. |
 | Saved template opens | Click a Saved designs card. | Fullscreen editor opens with saved layout. |
 | Current QR is rehydrated | Change selected project, then open saved template. | QR layer value uses selected project's current menu/feedback URL. |
 | Save failure is recoverable | Simulate DAL/Storage failure on save. | Editor remains open and generated templates still work. |

@@ -1,5 +1,5 @@
 import PasteUpload, { PastedFile } from '@atoms/PasteUpload';
-import { addTicket } from '@database/tickets';
+import { addTicket, assertSupportTicketCreateSucceeded } from '@database/tickets';
 import { useAppDispatch } from '@hook/useAppDispatch';
 import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from '@providers/platformProviders/platformGlobalDataProvider';
 import { startLoader, stopLoader } from '@reduxSlices/loader';
@@ -11,6 +11,7 @@ import { RcFile } from 'antd/es/upload';
 import { Timestamp } from 'firebase/firestore';
 import { useSession } from 'next-auth/react';
 import React, { useContext, useMemo, useRef, useState } from 'react';
+import { getBoundedSupportTicketStringContext, logSupportTicketFailure } from './supportTicketDiagnostics';
 
 const { Text, Title, Paragraph } = Typography;
 
@@ -89,14 +90,24 @@ const AddSupportTicket: React.FC<AddTicketModalProps> = ({ visible = false, onCl
                 },
             };
             const newTicket = await addTicket(payload);
+            assertSupportTicketCreateSucceeded(
+                newTicket,
+                'support_ticket_submit_create_rejected',
+            );
             message.success(`Ticket submitted successfully. Ticket ID is #${newTicket.displayId}.`);
             form.resetFields();
             setAttachments([]);
             onTicketSubmitted(newTicket);
             onClose();
-        } catch (error: any) {
-            const errorMessage = error?.message ? `Submission failed: ${error.message}` : 'Submission failed. Please try again.';
-            message.error(errorMessage);
+        } catch (error) {
+            logSupportTicketFailure('support_ticket_submit_failed', error, {
+                attachmentCount: attachments.length,
+                ...getBoundedSupportTicketStringContext('tenantId', storeDetails?.tenantId),
+                ...getBoundedSupportTicketStringContext('storeId', storeDetails?.storeId),
+                ...getBoundedSupportTicketStringContext('category', values?.category),
+                ...getBoundedSupportTicketStringContext('priority', values?.priority),
+            });
+            message.error('Submission failed. Please try again.');
         } finally {
             dispatch(stopLoader("Submitting ticket..."));
         }

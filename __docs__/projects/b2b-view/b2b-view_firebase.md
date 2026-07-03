@@ -1,9 +1,11 @@
 # B2B View (JSON Editor) — Firebase Cost Tracking
 
 **Feature:** Raw Data JSON Editor for Internal/B2B Use  
-**Status:** ✅ Production Ready  
+**Status:** Firebase cost evidence; not current launch certification
 **Last Updated:** February 7, 2026  
 **Priority:** LOW — Internal tool. Read-only JSON view with occasional edits.
+
+> **Launch Boundary:** This file records Firebase cost evidence for the B2B JSON editor, not current production-launch approval. Current release approval requires the active [production-readiness audit](../../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../../production-readiness/external-certification-runbook.md) evidence, API/export security review, browser QA for any exposed B2B editor flow, publish/cache evidence if edited public truth is saved, target deploy evidence, and production-host smoke.
 
 ---
 

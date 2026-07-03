@@ -5,14 +5,15 @@ import { answerlatticeStorageAdmin } from '@lib/firebase/answerlatticeFirebaseAd
 import { handlePublicApiCorsPreflight, withPublicApiCors } from '@lib/publicApi/auth';
 import { checkRateLimit } from '@lib/rateLimit';
 import { getRateLimitForFeature } from '@lib/rateLimit/configs';
-import { secureError } from '@lib/security/secureLogger';
-import { getClientIp } from 'src/middleware/publicApi';
+import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
+import { getClientIp, hashPublicRateLimitValue } from 'src/middleware/publicApi';
 import { NextRequest, NextResponse } from 'next/server';
 
 const PUBLIC_BUNDLE_PATH_PATTERN = /^pb_[A-Za-z0-9_-]{8,80}\/v\d+\/[A-Za-z0-9_./-]+\.json$/;
 const PUBLIC_BUNDLE_PROXY_CACHE_TTL_MS = 10 * 60 * 1000;
 const MAX_PUBLIC_BUNDLE_PROXY_CACHE_ENTRIES = 300;
-const MAX_PUBLIC_BUNDLE_PROXY_CACHE_BYTES = 512 * 1024;
+const MAX_PUBLIC_BUNDLE_PROXY_DOWNLOAD_BYTES = 512 * 1024;
+const MAX_PUBLIC_BUNDLE_PROXY_CACHE_BYTES = MAX_PUBLIC_BUNDLE_PROXY_DOWNLOAD_BYTES;
 
 type PublicBundleProxyCacheEntry = {
     buffer: Buffer;
@@ -57,11 +58,19 @@ const rememberPublicBundle = (storagePath: string, buffer: Buffer, cacheControl:
     });
 };
 
+const buildBundleUnavailableResponse = (request: NextRequest): NextResponse => jsonResponse(request, { error: 'Bundle unavailable' }, {
+    status: 503,
+    headers: {
+        'Cache-Control': 'no-store',
+    },
+});
+
 const checkBundleCacheMissRateLimit = async (request: NextRequest): Promise<NextResponse | null> => {
     const config = getRateLimitForFeature('ANSWERLATTICE_PUBLIC_BUNDLE');
+    const ipHash = hashPublicRateLimitValue(getClientIp(request));
     try {
         const result = await checkRateLimit({
-            key: `answerlattice-public-bundle:${getClientIp(request)}`,
+            key: `answerlattice-public-bundle:${ipHash}`,
             limit: config.limit,
             window: config.window,
         });
@@ -89,7 +98,9 @@ const checkBundleCacheMissRateLimit = async (request: NextRequest): Promise<Next
             },
         });
     } catch (error) {
-        secureError('[Answerlattice Bundles] Bundle proxy rate limit check failed', error as Error);
+        logRuntimeFailure('answerlattice_public_bundle_rate_limit_check_failed', error, {
+            ...getBoundedRuntimeStringContext('path', request.nextUrl.pathname),
+        });
         if (FEATURE_FLAGS.ENABLE_RATE_LIMITING) {
             return jsonResponse(request, { error: 'Bundle temporarily unavailable' }, {
                 status: 503,
@@ -107,8 +118,9 @@ export function OPTIONS(request: NextRequest) {
 }
 
 export async function GET(request: NextRequest, context: { params: { path?: string[] } }) {
+    let requestedPath = '';
     try {
-        const requestedPath = (context.params.path || []).join('/');
+        requestedPath = (context.params.path || []).join('/');
         if (!PUBLIC_BUNDLE_PATH_PATTERN.test(requestedPath) || requestedPath.includes('..')) {
             return jsonResponse(request, { error: 'Not found' }, { status: 404 });
         }
@@ -129,18 +141,32 @@ export async function GET(request: NextRequest, context: { params: { path?: stri
             return jsonResponse(request, { error: 'Not found' }, { status: 404 });
         }
 
+        const [metadata] = await file.getMetadata().catch(() => [null as any]);
+        const metadataSize = Number(metadata?.size);
+        if (Number.isFinite(metadataSize) && metadataSize > MAX_PUBLIC_BUNDLE_PROXY_DOWNLOAD_BYTES) {
+            logRuntimeFailure('answerlattice_public_bundle_proxy_oversized', undefined, {
+                ...getBoundedRuntimeStringContext('bundlePath', requestedPath),
+                sizeBytes: metadataSize,
+            });
+            return buildBundleUnavailableResponse(request);
+        }
+
         const [buffer] = await file.download();
-        const [metadata] = await file.getMetadata().catch(() => [{ cacheControl: 'public, max-age=300' } as any]);
-        const cacheControl = metadata.cacheControl || 'public, max-age=300';
+        if (buffer.byteLength > MAX_PUBLIC_BUNDLE_PROXY_DOWNLOAD_BYTES) {
+            logRuntimeFailure('answerlattice_public_bundle_proxy_oversized', undefined, {
+                ...getBoundedRuntimeStringContext('bundlePath', requestedPath),
+                sizeBytes: buffer.byteLength,
+            });
+            return buildBundleUnavailableResponse(request);
+        }
+
+        const cacheControl = metadata?.cacheControl || 'public, max-age=300';
         rememberPublicBundle(storagePath, buffer, cacheControl);
         return buildBundleResponse(request, buffer, cacheControl);
     } catch (error) {
-        secureError('[Answerlattice Bundles] Public bundle proxy failed', error as Error);
-        return jsonResponse(request, { error: 'Bundle unavailable' }, {
-            status: 503,
-            headers: {
-                'Cache-Control': 'no-store',
-            },
+        logRuntimeFailure('answerlattice_public_bundle_proxy_failed', error, {
+            ...getBoundedRuntimeStringContext('bundlePath', requestedPath),
         });
+        return buildBundleUnavailableResponse(request);
     }
 }

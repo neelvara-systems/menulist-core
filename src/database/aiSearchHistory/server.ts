@@ -2,6 +2,7 @@ import { DB_COLLECTIONS } from '@constant/database';
 import { PRODUCT_IDS } from '@constant/product';
 import { getAnswerlatticeRetentionFields } from '@lib/answerlattice/dataRetention';
 import { answerlatticeFirestoreAdmin as firestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
+import { createRuntimeId } from '@lib/runtime/randomId';
 import { AiSearchHistory } from '@type/aiSearchHistory';
 import LoginUserType from '@type/loginUser';
 
@@ -21,12 +22,7 @@ const SEARCH_HISTORY_OMIT_KEYS = new Set([
     '_vector',
 ]);
 
-const createTraceId = () => {
-    if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
-        return `al_${crypto.randomUUID()}`;
-    }
-    return `al_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
-};
+const createTraceId = () => createRuntimeId('al');
 
 const sanitizeForFirestore = (value: any): any => {
     if (value === undefined) return null;

@@ -12,9 +12,15 @@
  */
 
 import { trackMenuKitDownload } from '@lib/analytics/unified';
+import {
+    copyExportTextToClipboard,
+    getBoundedExportStringContext,
+    hasExportClipboardWrite,
+    hasExportCopyFallback,
+    logExportFailure,
+} from '@lib/export/exportDiagnostics';
 import { getOfferingLabels } from '@lib/menu-kit/businessTypeLabels';
 import { downloadBlob, generateMenuKit, generateMenuKitAsset, type MenuKitAssetKey, shareBlob } from '@lib/menu-kit/menuKitGenerator';
-import { secureError } from '@lib/security/secureLogger';
 import { Button, Card, Flex, message, theme, Tooltip, Typography } from 'antd';
 import { Timestamp } from 'firebase/firestore';
 import { useEffect, useState } from 'react';
@@ -63,6 +69,19 @@ export default function MenuKitSection({
         return undefined;
     };
 
+    const getMenuKitExportLogContext = () => ({
+        ...getBoundedExportStringContext('storeName', storeName),
+        ...getBoundedExportStringContext('menuUrl', menuUrl),
+        ...getBoundedExportStringContext('shortLink', shortLink),
+        ...getBoundedExportStringContext('businessType', businessType),
+        ...getBoundedExportStringContext('businessCategory', businessCategory),
+        ...getBoundedExportStringContext('locale', locale),
+        hasLogo: Boolean(logoUrl),
+        hasBrandColor: Boolean(brandColor),
+        hasActivePlanType: Boolean(activePlanType),
+        hasMenuModifiedOn: Boolean(menuModifiedOn),
+    });
+
     const handleDownloadKit = async () => {
         setGenerating(true);
         try {
@@ -88,7 +107,7 @@ export default function MenuKitSection({
             trackMenuKitDownload('zip_download');
             message.success('Menu Kit downloaded');
         } catch (error) {
-            secureError('[MenuKit] Generation failed', error instanceof Error ? error : new Error(String(error)));
+            logExportFailure('project_share_menu_kit_generation_failed', error, getMenuKitExportLogContext());
             message.error('Failed to generate Menu Kit. Please try again.');
         } finally {
             setGenerating(false);
@@ -121,33 +140,62 @@ export default function MenuKitSection({
                 downloadBlob(asset.blob, asset.filename);
                 message.success(`${label} downloaded`);
             }
-        } catch {
+        } catch (error) {
+            logExportFailure('project_share_menu_kit_asset_generation_failed', error, {
+                ...getMenuKitExportLogContext(),
+                assetKey,
+            });
             message.error('Failed to generate asset');
         }
     };
 
     const handleCopyShareMessage = async () => {
+        const msg = `${labels.shareMessagePrefix}\n${menuUrl}`;
         try {
-            const msg = `${labels.shareMessagePrefix}\n${menuUrl}`;
-            await navigator.clipboard.writeText(msg);
+            await copyExportTextToClipboard(msg);
             message.success('Share message copied');
-        } catch {
+        } catch (error) {
+            logExportFailure('project_share_menu_kit_message_copy_failed', error, {
+                ...getMenuKitExportLogContext(),
+                messageLength: msg.length,
+                hasClipboardWrite: hasExportClipboardWrite(),
+                hasCopyFallback: hasExportCopyFallback(),
+            });
             message.error('Failed to copy');
         }
     };
 
     const handleCopyStaffScript = async () => {
         try {
-            await navigator.clipboard.writeText(labels.staffScript);
+            await copyExportTextToClipboard(labels.staffScript);
             message.success('Staff line copied');
-        } catch {
+        } catch (error) {
+            logExportFailure('project_share_menu_kit_staff_script_copy_failed', error, {
+                ...getMenuKitExportLogContext(),
+                staffScriptLength: labels.staffScript.length,
+                hasClipboardWrite: hasExportClipboardWrite(),
+                hasCopyFallback: hasExportCopyFallback(),
+            });
             message.error('Failed to copy');
         }
     };
 
     const handleWhatsAppShare = () => {
         const msg = `${labels.shareMessagePrefix}\n${menuUrl}\n(Always updated)`;
-        window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
+        const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(msg)}`;
+        try {
+            const opened = window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
+            if (!opened) {
+                throw new Error('project_share_menu_kit_whatsapp_open_blocked');
+            }
+        } catch (error) {
+            logExportFailure('project_share_menu_kit_whatsapp_open_failed', error, {
+                ...getMenuKitExportLogContext(),
+                messageLength: msg.length,
+                whatsappUrlLength: whatsappUrl.length,
+            });
+            message.error('Failed to open WhatsApp');
+        }
     };
 
     return (

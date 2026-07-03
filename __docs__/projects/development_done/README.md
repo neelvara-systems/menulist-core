@@ -2,6 +2,10 @@
 
 This folder contains all **completed implementation documentation** for finished assessments.
 
+**Status:** Historical implementation ledger; not current launch certification.
+
+**Launch Boundary:** These November 2025 assessment notes record historical implementation work. They are not current production-launch approval. Current release readiness belongs to the active [production-readiness audit](../../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../../production-readiness/external-certification-runbook.md) evidence, current Projects source verifiers, browser/mobile QA, provider smoke where relevant, deploy evidence, and production-host smoke.
+
 ---
 
 ## 📂 Folder Structure
@@ -24,51 +28,51 @@ Note: X = Assessment number (1, 2, 3, etc.)
 
 | Document                                                                     | Description                                  |
 | ---------------------------------------------------------------------------- | -------------------------------------------- |
-| [1-IMPLEMENTATION-UPLOAD-COMPLETE.md](./1-IMPLEMENTATION-UPLOAD-COMPLETE.md) | Complete implementation guide with all fixes |
-| [1-TESTING-GUIDE-UPLOAD.md](./1-TESTING-GUIDE-UPLOAD.md)                     | Testing checklist and scenarios              |
-| [1-CROSS-CHECK-UPLOAD.md](./1-CROSS-CHECK-UPLOAD.md)                         | Verification report and metrics              |
+| [1-implementation-upload-complete.md](./1-implementation-upload-complete.md) | Complete implementation guide with all fixes |
+| [1-testing-guide-upload.md](./1-testing-guide-upload.md)                     | Testing checklist and scenarios              |
+| [1-cross-check-upload.md](./1-cross-check-upload.md)                         | Verification report and metrics              |
 
 **Status**: ✅ 7/7 Critical & High Priority issues resolved  
 **Files Modified**: 6 files (3 new, 3 updated)  
-**Production Ready**: Yes (after testing)
+**Launch status**: Historical implementation evidence only; current approval requires active production-readiness gates
 
 ### **ASSESSMENT-02: AI Extraction & OCR** (Nov 14, 2025)
 
 | Document                                                                                   | Description                                                                   |
 | ------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------- |
-| [2-IMPLEMENTATION-AI-EXTRACTION-COMPLETE.md](./2-IMPLEMENTATION-AI-EXTRACTION-COMPLETE.md) | Complete implementation with validation, sanitization, retry, quality scoring |
-| [2-TESTING-GUIDE-AI-EXTRACTION.md](./2-TESTING-GUIDE-AI-EXTRACTION.md)                     | Testing checklist for XSS, validation, quality scoring                        |
-| [2-CROSS-CHECK-AI-EXTRACTION.md](./2-CROSS-CHECK-AI-EXTRACTION.md)                         | Verification report and user requirement check                                |
+| [2-implementation-ai-extraction-complete.md](./2-implementation-ai-extraction-complete.md) | Complete implementation with validation, sanitization, retry, quality scoring |
+| [2-testing-guide-ai-extraction.md](./2-testing-guide-ai-extraction.md)                     | Testing checklist for XSS, validation, quality scoring                        |
+| [2-cross-check-ai-extraction.md](./2-cross-check-ai-extraction.md)                         | Verification report and user requirement check                                |
 
 **Status**: ✅ 4/4 High Priority issues resolved (1 P0 already in place!)  
 **Files Modified**: 2 files (1 new utility module, 1 updated route)  
-**Production Ready**: Yes (after testing, budget tracking deferred)
+**Launch status**: Historical implementation evidence only; current approval requires active production-readiness gates
 
 ### **ASSESSMENT-03: Editor UX** (Nov 14, 2025)
 
 | Document                                                                     | Description                                                                          |
 | ---------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
-| [3-IMPLEMENTATION-EDITOR-COMPLETE.md](./3-IMPLEMENTATION-EDITOR-COMPLETE.md) | Complete implementation with auto-save, validation, undo/redo, shortcuts, reordering |
+| [3-implementation-editor-complete.md](./3-implementation-editor-complete.md) | Complete implementation with auto-save, validation, undo/redo, shortcuts, reordering |
 | 3-TESTING-GUIDE-EDITOR.md                                                    | Testing checklist (optional, not yet created)                                        |
 | 3-CROSS-CHECK-EDITOR.md                                                      | Verification report (optional, not yet created)                                      |
 
 **Status**: ✅ 5/5 Critical & High Priority issues resolved  
 **Files Modified**: 4 files (2 new components, 2 updated)  
-**Production Ready**: Yes
+**Launch status**: Historical implementation evidence only; current approval requires active production-readiness gates
 
 ### **ASSESSMENT-05: Security - Code Consolidation** (Nov 14, 2025)
 
 | Document                                                                         | Description                                                    |
 | -------------------------------------------------------------------------------- | -------------------------------------------------------------- |
-| [5-REFACTOR-FILE-VALIDATION.md](./5-REFACTOR-FILE-VALIDATION.md)                 | Eliminated duplication between client/server file validation   |
-| [5-SECURITY-DOCS-ANALYSIS.md](./5-SECURITY-DOCS-ANALYSIS.md)                     | Cross-reference analysis of ASSESSMENT-05 vs **docs**/security |
-| [5-SECURITY-IMPLEMENTATION-COMPLETE.md](./5-SECURITY-IMPLEMENTATION-COMPLETE.md) | Complete security implementation for Projects feature          |
+| [5-refactor-file-validation.md](./5-refactor-file-validation.md)                 | Eliminated duplication between client/server file validation   |
+| [5-security-docs-analysis.md](./5-security-docs-analysis.md)                     | Cross-reference analysis of ASSESSMENT-05 vs **docs**/security |
+| [5-security-implementation-complete.md](./5-security-implementation-complete.md) | Complete security implementation for Projects feature          |
 
 **Status**: ✅ Implementation complete, ✅ Documentation complete  
 **Files Modified**: 3 code files + 4 documentation files  
 **Security Docs Created**: 2 comprehensive guides (3,200+ lines)  
 **Coverage**: 100% of Projects feature APIs  
-**Production Ready**: ✅ Yes
+**Launch status**: Historical implementation evidence only; current approval requires active production-readiness gates
 
 ---
 
@@ -166,7 +170,7 @@ Contains:
 
 - [Parent Assessment Index](../README.md)
 - [Production Readiness Assessment](../production-readiness-assessment.md)
-- [Quick Start Fixes](../QUICK-START-FIXES.md)
+- Quick Start Fixes - legacy quick reference guide, no longer present in active docs
 
 ---
 

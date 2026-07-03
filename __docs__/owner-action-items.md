@@ -34,7 +34,7 @@
 
 | #   | Task                                                                 | Why                                                                                                              | Priority                    | Status |
 | --- | -------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- | --------------------------- | ------ |
-| 1   | Fix or replace the configured Upstash Redis endpoint                  | Local public upload/claim rate-limit checks logged DNS `ENOTFOUND`; launch needs rate limits to fail closed enough to protect AI/Firebase cost. | P0 (before public traffic)  | ⬜     |
+| 1   | Fix or replace the configured Upstash Redis endpoint                  | Local public upload/claim rate-limit checks logged DNS `ENOTFOUND`; code now fails closed for public menu setup and claim when the provider is unavailable, but launch still needs a working Upstash endpoint before public traffic. | P0 (before public traffic)  | ⬜     |
 | 2   | Confirm Gemini quota/key capacity for public menu extraction          | The local verification key returned quota errors; public upload-before-auth depends on reliable extraction capacity or additional rotated keys. | P0 (before public traffic)  | ⬜     |
 | 3   | Deploy Firestore rules, indexes, and updated Cloud Functions scheduler | `publicMenuDrafts` must stay server-only, and expired draft images/docs need the `public_menu_draft_cleanup` scheduler task live.              | P0 (before public traffic)  | ⬜     |
 | 4   | Confirm Razorpay recurring/autopay capability for hosted checkout     | Signed webhook processing passed locally, but hosted recurring checkout still depends on merchant/account capability.                         | P0 (before paid launch)     | ⬜     |
@@ -45,7 +45,7 @@
 | #   | Task                                                                             | Why                                                                                                                                         | Priority                                | Status |
 | --- | -------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------- | ------ |
 | 1   | Enable `ENABLE_EXTRACTION_MONITORING_DASHBOARD` flag in `src/config/features.ts` | Turns on the extraction pipeline health dashboard at `/ops/extraction`. Read-only, ~$0.04/month cost.                                       | P1 (after first real extractions)       | ⬜     |
-| 2   | Verify Firestore indexes for extraction monitoring queries                       | May already exist — run `firebase deploy --only firestore:indexes` to ensure composite indexes are deployed.                                | P1 (before enabling flag)               | ⬜     |
+| 2   | Verify Firestore indexes for extraction monitoring queries                       | May already exist — run `firebase deploy --only firestore:indexes --project menulist-qa --config firebase.json` after `npm run verify:env-targets` passes; production requires QA evidence and explicit production approval. | P1 (before enabling flag)               | ⬜     |
 | 3   | P2: Wire Telegram alerts for extraction failure spikes                           | Auto-alerts when failure rate > 5% or quality drops. Infrastructure exists (`sendTelegramAlert()`), just needs wiring in nightly scheduler. | P2 (when extraction volume grows)       | ⬜     |
 | 4   | P3: Add HCR (Human Correction Rate) metric from extraction learning loop data    | Data already collected via `menuChangeLog` + `platformSummary/extractionLearning`. Just needs dashboard display.                            | P3 (when enough correction data exists) | ⬜     |
 
@@ -63,30 +63,32 @@
 
 ```bash
 # 1. Create 2-3 extra keys at https://aistudio.google.com/apikey
-# 2. Add to Firebase Secrets:
-firebase functions:secrets:set GEMINI_AI_KEY_2
-firebase functions:secrets:set GEMINI_AI_KEY_3
-firebase functions:secrets:set GEMINI_AI_KEY_4
+# 2. Add to Firebase Secrets in QA first:
+firebase functions:secrets:set GEMINI_AI_KEY_2 --project menulist-qa
+firebase functions:secrets:set GEMINI_AI_KEY_3 --project menulist-qa
+firebase functions:secrets:set GEMINI_AI_KEY_4 --project menulist-qa
 
-# 3. Add same keys to Vercel → Settings → Environment Variables
-# 4. Redeploy CF + Vercel
+# 3. Add the same QA keys to the Vercel Preview environment only
+# 4. Run npm run verify:functions-deploy-preflight, then use External Certification Gate 1 for the scoped QA Functions deploy
+# 5. Repeat for production values only after QA evidence and explicit production secret/deploy approval
 ```
 
 ### AI Data Extraction — Security Fixes
 
 | #   | Task                                                                     | Why                                                                                                                              | Priority           | Status |
 | --- | ------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------- | ------------------ | ------ |
-| 1   | Deploy updated Firestore rules: `firebase deploy --only firestore:rules` | 3 security fixes: tenant validation on job creation (CRITICAL), AI operations rules, platform admin read override for monitoring | P0 (before launch) | ⬜     |
+| 1   | Deploy updated Firestore rules to QA: `firebase deploy --only firestore:rules --project menulist-qa --config firebase.json` | 3 security fixes: tenant validation on job creation (CRITICAL), AI operations rules, platform admin read override for monitoring. Production requires QA evidence and explicit production approval. | P0 (before launch) | ⬜     |
 | 2   | Deploy updated Cloud Functions                                           | Server-side defense-in-depth: projectId ↔ tId/sId mismatch validation in extraction CF                                           | P0 (before launch) | ⬜     |
 
 **How to do #1 + #2:**
 
 ```bash
-# 1. Deploy Firestore rules (3 fixes: V1 tenant validation, V2 AI operations, V3 platform admin read)
-firebase deploy --only firestore:rules
+# 1. Deploy Firestore rules to QA after targeted validation
+firebase deploy --only firestore:rules --project menulist-qa --config firebase.json
 
-# 2. Deploy Cloud Functions (updated processMenuImagesJob.ts with Step 0 tenant validation)
-cd functions && npm run deploy
+# 2. Deploy Cloud Functions through External Certification Gate 1
+npm run verify:functions-deploy-preflight
+# Then use the scoped menulist-qa Gate 1 command from __docs__/production-readiness/external-certification-runbook.md
 ```
 
 > **Fixed by Cascade (Mar 13, 2026):** Security Surface Audit — 3 vulnerabilities fixed (1 CRITICAL). See `__docs__/projects/ai-data-extraction/security-surface-audit-mar13-2026.md`
@@ -97,26 +99,29 @@ cd functions && npm run deploy
 | --- | ---------------------------------- | ----------------------------------------------------------------------- | ------------------ | ------ |
 | 1   | Create Telegram Bot + set secrets  | Required for ops alerts (payment failures, publish errors, cost spikes) | P0 (before launch) | ⬜     |
 | 2   | Set GCP Budget Alerts              | Auto-activates SAFE_MODE when cost threshold exceeded                   | P0 (before launch) | ⬜     |
-| 3   | Deploy Cloud Functions             | Deploys verifyMenuPublish, alertEscalation, gcpBudgetAlertWebhook       | P0 (before launch) | ⬜     |
+| 3   | Deploy Cloud Functions             | Deploys verifyMenuPublish, alertEscalation, gcpBudgetAlertWebhook, menu extraction worker updates, source-file path hardening updates, and the consolidated maintenance scheduler. Latest documented `menulist-qa` source-file path hardening subset, `processMenuImagesJob`, and scheduler deploy attempts on July 2, 2026 completed predeploy lint/build and then failed with Cloud Resource Manager HTTP 403 caller permission. | P0 (before launch) | ⬜     |
 | 4   | Deploy Firestore indexes           | Required for alert escalation queries                                   | P0 (before launch) | ⬜     |
-| 5   | Enable monitoring feature flags    | ENABLE_COST_PROTECTION, ENABLE_OPS_ALERTS, ENABLE_MENU_HEALTH_MONITOR   | P0 (before launch) | ⬜     |
+| 5   | Confirm monitoring feature flag evidence | Check current `src/config/features.ts` source state, QA secrets/deploy evidence, provider smoke evidence where applicable, and External Certification Runbook records for `ENABLE_COST_PROTECTION`, `ENABLE_OPS_ALERTS`, and `ENABLE_MENU_HEALTH_MONITOR`. | P0 (before launch) | ⬜     |
 | 6   | Setup UptimeRobot                  | External uptime monitoring (free)                                       | P1 (before launch) | ⬜     |
 | 7   | Setup SMTP for lifecycle messaging | Enables billing emails, renewal reminders, suspension warnings          | P1 (before launch) | ⬜     |
+| 8   | Run the external certification runbook | Full MenuList production certification still needs Firebase deploy, mobile/browser QA, Razorpay sandbox, WhatsApp provider, POS provider, batch worker, and production-host evidence recorded in the audit. | P0 (before production certification) | ⬜     |
+| 9   | Deploy MenuList Storage rules cutover to QA | Legacy project Storage paths are now read-only in code. Gate 2A requires `npm run verify:storage-paths`, then `firebase deploy --project menulist-qa --config firebase.json --only storage --non-interactive` before production approval. Latest local retry on July 2, 2026 was blocked by Service Usage HTTP 403: `menulist-qa` not found or permission denied before rules upload. | P0 (before production certification) | ⬜     |
 
 > **Full setup guide:** `__docs__/production-readiness/launch-prerequisites.md`
+> **External certification guide:** `__docs__/production-readiness/external-certification-runbook.md`
 
-### Dev/Prod Environment Separation
+### Environment Target Separation
 
 | #   | Task                                                             | Why                                                                                          | Priority           | Status |
 | --- | ---------------------------------------------------------------- | -------------------------------------------------------------------------------------------- | ------------------ | ------ |
-| 1   | Create `menulist-dev` Firebase project                           | Data isolation — dev data must never mix with customer data                                  | P0 (before launch) | ⬜     |
-| 2   | Configure `.env.local` with dev Firebase credentials             | Local dev points to dev project, Vercel prod points to prod project                          | P0 (before launch) | ⬜     |
-| 3   | Set all Vercel env vars (production scope) for `menulist-qa` project | Ensures production deployment uses correct Firebase project                                  | P0 (before launch) | ⬜     |
-| 4   | Get Razorpay test mode keys for development                      | Prevents real charges during development testing                                             | P0 (before launch) | ⬜     |
-| 5   | Deploy Firestore indexes to dev project                          | `firebase deploy --only firestore:indexes --project menulist-dev`                            | P0 (after step 1)  | ⬜     |
-| 6   | Copy Firestore security rules to dev project                     | `firebase deploy --only firestore:rules --project menulist-dev`                              | P0 (after step 1)  | ⬜     |
-| 7   | Seed test tenant/store in dev project                            | Need test data for development                                                               | P1 (after step 1)  | ⬜     |
-| 8   | Enable production feature flags in order                         | SAFE_MODE first, then Sentry, then OPS_ALERTS, then HEALTH_MONITOR, then LIFECYCLE_MESSAGING | P0 (at launch)     | ⬜     |
+| 1   | Confirm local and preview MenuList env vars point to `menulist-qa` | Current contract keeps local/preview on the QA Firebase target; do not create or use `menulist-dev` for this path | P0 (before launch) | ⬜     |
+| 2   | Confirm Vercel Production MenuList env vars point to `menulist` | Production traffic must use the production Firebase target, not QA or a stale sample project | P0 (before launch) | ⬜     |
+| 3   | Confirm Answerlattice env vars stay separated                    | Local/preview use `answerlattice-qa`; production uses `answerlattice`                         | P0 (before launch) | ⬜     |
+| 4   | Get Razorpay test mode keys for non-production smoke             | Prevents real charges during staging/testing                                                 | P0 (before launch) | ⬜     |
+| 5   | Deploy Firestore indexes to the current QA target after access is ready | Use `firebase deploy --only firestore:indexes --project menulist-qa --config firebase.json` only after `npm run verify:env-targets` passes | P0 (before QA smoke) | ⬜     |
+| 6   | Deploy Firestore rules to the current QA target after access is ready | Use `firebase deploy --only firestore:rules --project menulist-qa --config firebase.json` only after targeted validation passes | P0 (before QA smoke) | ⬜     |
+| 7   | Seed or confirm a test tenant/store in `menulist-qa`             | Required for non-production owner/mobile and publish smoke without touching production data   | P1 (after target access) | ⬜     |
+| 8   | Confirm production feature flag evidence before launch           | No blanket activation order; review SAFE_MODE, Sentry, Ops Alerts, Health Monitor, and Lifecycle Messaging against target secrets, QA evidence, provider smoke, deploy evidence, and explicit production approval. | P0 (at launch)     | ⬜     |
 
 > **Full guide:** `__docs__/production-readiness/dev-prod-environment-guide.md`
 
@@ -130,7 +135,7 @@ cd functions && npm run deploy
 | 4   | Generate test credentials for the non-production app only                                | Provides the real provider values needed by Firebase Functions without using production tokens                  | P0 (before enabling the feature) | ⬜     |
 | 5   | Set non-production Firebase secrets for the intended Firebase target                     | The messaging function needs real secrets; dummy WhatsApp secrets are not allowed                               | P0 (before enabling the feature) | ⬜     |
 | 6   | Register the Meta webhook URL for the non-production function                            | Required for inbound WhatsApp messages and media uploads to reach MenuList                                      | P0 (before live testing)         | ⬜     |
-| 7   | Keep `ENABLE_MESSAGING_ONBOARDING=true` in MenuList Functions env files/templates         | Enables the runtime gate once real Firebase secrets and Meta webhook registration are in place                  | P0 (before live testing)         | ✅     |
+| 7   | Keep `ENABLE_MESSAGING_ONBOARDING=false` until real Firebase secrets and Meta webhook registration are in place, then enable only the smoke target | Prevents repo-side env defaults from accepting provider webhooks before real non-production setup exists | P0 (before live testing)         | ⬜     |
 | 8   | Run the full test flow: text message, image/PDF upload, preview, approve, publish, reply | Proves the Cloud API path works before any owner-facing or customer-facing launch                               | P0 (before beta)                 | ⬜     |
 | 9   | Decide and register the production business entity path                                  | Meta production readiness needs a real business identity before serious launch                                  | P0 (before production launch)    | ⬜     |
 | 10  | Prepare India business verification documents                                            | Likely required/supporting documents include PAN, GST/Udyam/shop registration, address proof, or bank proof     | P0 (before production launch)    | ⬜     |

@@ -3,9 +3,11 @@
 **Issue:** `firebaseAuth.currentUser` returns `null` even when logged in via NextAuth (Google OAuth)  
 **Root Cause:** NextAuth and Firebase Auth are separate systems that need syncing  
 **Solution:** Use `useFirebaseAuthSync()` hook  
-**Status:** ✅ Fixed
+**Status:** Historical fix note; not current launch certification
 
 ---
+
+> **Launch Boundary:** This file records a historical Firebase Auth sync fix, not current production-launch approval. Current release approval requires the active [production-readiness audit](../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../production-readiness/external-certification-runbook.md) evidence, auth browser/API smoke, Firebase Auth custom-claims evidence, App Check/session-cookie review, target deploy evidence, and production-host smoke.
 
 ## 🐛 **The Problem**
 
@@ -85,25 +87,18 @@ The hook automatically:
 ## 🧪 **Testing**
 
 ### **Before Fix:**
-```typescript
-// After Google OAuth login
-console.log(session);                   // ✅ { user: { email: '...' } }
-console.log(firebaseAuth.currentUser);  // ❌ null
-```
+
+After Google OAuth login, the NextAuth session existed but the Firebase Auth client user stayed null, so Firestore reads failed under security rules.
 
 ### **After Fix:**
 ```typescript
-// After Google OAuth login + hook sync
-console.log(session);                   // ✅ { user: { email: '...' } }
-console.log(firebaseUser);              // ✅ { email: '...', uid: '...' }
+// After Google OAuth login + hook sync, the dashboard should leave
+// the "Connecting Account" loader and Firestore reads should succeed.
 ```
 
-### **Check Console Logs:**
-```
-[Firebase Auth Sync] Starting sync...
-[Firebase Auth Sync] ✅ Sync complete
-[Firebase Auth Sync] User: your@email.com
-```
+### **Check Diagnostics:**
+
+Successful sync is intentionally quiet. Failed sync paths emit bounded Firebase bootstrap diagnostics with normalized failure codes only. Do not log `session`, `firebaseAuth.currentUser`, emails, tenant/store IDs, custom tokens, or raw provider errors.
 
 ---
 
@@ -168,24 +163,24 @@ const { firebaseUser } = useFirebaseAuthSync();
 2. **Check for errors:**
    ```typescript
    const { error } = useFirebaseAuthSync();
-   if (error) console.error(error);
+   // The hook exposes a generic error; internal details stay in bounded diagnostics.
    ```
 
 3. **Check API route:**
    - Open `/api/auth/set-claims/route.ts`
    - Make sure it exists and returns `customToken`
 
-4. **Check console logs:**
-   - Look for "[Firebase Auth Sync]" messages
-   - Any errors will show here
+4. **Check bounded diagnostics:**
+   - Use Firebase bootstrap failure codes from `src/lib/firebase/firebaseDiagnostics.ts`
+   - Do not add raw browser logs for session, Firebase user, or provider error objects
 
 ---
 
 ## 🚀 **Next Steps**
 
 1. **Login with Google** → http://localhost:3001
-2. **Check console** → Should see sync logs
-3. **Verify `firebaseUser`** → Should have data
+2. **Check loader state** → Dashboard should leave "Connecting Account"
+3. **Verify Firestore access** → Owner data should load without permission errors
 4. **Done!** ✅
 
 ---
@@ -197,4 +192,4 @@ See `__docs__/auth/firebase-auth-sync.md` for complete details.
 ---
 
 **Fixed:** November 6, 2025  
-**Status:** ✅ Production Ready
+**Status:** Historical fix note; not current launch certification

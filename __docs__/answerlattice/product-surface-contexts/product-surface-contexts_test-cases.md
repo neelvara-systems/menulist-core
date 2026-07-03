@@ -8,6 +8,13 @@
 - Rebuild the context summary.
 - Refresh the page and confirm surfaces load.
 
+## Failure Acknowledgement
+
+- Simulate `saveProductSurface()` returning a malformed/fallback result and confirm local selection, reload, summary rebuild, and success copy do not advance.
+- Simulate `archiveProductSurface()` returning a malformed/fallback result and confirm the surface is not shown locally as archived.
+- Simulate starter-template creation returning a malformed/fallback result and confirm the template flow shows fixed failure copy instead of counting the template as added.
+- Simulate a successful rebuild-summary HTTP response without a valid `summary` object and confirm local summary state and success copy do not advance.
+
 ## Content Linking
 
 - Link a KB article to a surface.

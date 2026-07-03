@@ -7,7 +7,7 @@ import '@/styles/website.css';
 import { Metadata } from 'next';
 
 const title = 'QR Menu and Share Links - MenuList | One Current Menu Everywhere';
-const description = 'Create QR menus, stable share links, and saveable customer shortcuts from the same owner-approved menu source. Print files stay available when needed.';
+const description = 'Create QR menus, stable share links, and saveable customer shortcuts from the same approved menu. Print files stay available when needed.';
 
 export const metadata: Metadata = {
   title,

@@ -3,6 +3,7 @@ import SelectedItemCheck from '@atoms/selectedItemCheck';
 import { IMAGE_GENERATION_STYLES } from '@constant/AI';
 import { useAppDispatch } from '@hook/useAppDispatch';
 import useDeviceType from '@hook/useDeviceType';
+import { createUppercaseRandomIdSegment } from '@lib/runtime/randomId';
 import Loader from '@organisms/loader';
 import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from '@providers/platformProviders/platformGlobalDataProvider';
 import { ProjectsDataContext, ProjectsDataProviderType } from '@providers/projectsDataProvider';
@@ -21,6 +22,11 @@ import ChatWidgetUi from './ChatWidgetUi'; // Import the new component
 import { getImageViewTypeForBusiness } from './imageViewType';
 import MultiSelectAttributeSelector from './MultiSelectAttributeSelector';
 import StyleSelector from './StyleSelector';
+import {
+    getBoundedMenuEditorStringContext,
+    getMenuEditorProjectLogContext,
+    logMenuEditorFailure,
+} from '../../utils/editorDiagnostics';
 
 interface AiImageGeneratorProps {
     selectedItem: ItemForDropdown | null;
@@ -147,7 +153,7 @@ const AiImageGenerator: React.FC<AiImageGeneratorProps> = ({
 
                 // Create a new reference image object
                 const newGenImages: UserUploadedFileType[] = genratedImages.map((image: { base64: string; mimeType: string }, index: number) => {
-                    const uniqueId = Math.random().toString(36).substring(2, 5).toUpperCase();
+                    const uniqueId = createUppercaseRandomIdSegment(6);
                     let name = imageName;
                     if (generationConfig.isMultiMode) {
                         name = `${imageName}_${generationConfig.selectedImageTypes[index]}`;
@@ -180,7 +186,20 @@ const AiImageGenerator: React.FC<AiImageGeneratorProps> = ({
             if (error instanceof AICapacityError) {
                 message.info('Get more enhancements to continue. Visit Billing to add an enhancement pack.');
             } else {
-                message.error(`Image generation failed: ${error.message}`);
+                logMenuEditorFailure('menu_editor_ai_image_generate_failed', error, {
+                    ...getMenuEditorProjectLogContext(activeProject?.projectId, activeProject?.masterProjectId),
+                    ...getBoundedMenuEditorStringContext('itemId', selectedItem?.id),
+                    ...getBoundedMenuEditorStringContext('itemName', selectedItem?.itemName),
+                    isMultiMode: Boolean(generationConfig.isMultiMode),
+                    promptLength: generationConfig.prompt?.length || 0,
+                    referenceImageCount: Array.isArray(generationConfig.referanceImages)
+                        ? generationConfig.referanceImages.length
+                        : 0,
+                    selectedImageTypeCount: Array.isArray(generationConfig.selectedImageTypes)
+                        ? generationConfig.selectedImageTypes.length
+                        : 0,
+                });
+                message.error('Image generation failed. Please try again.');
             }
             dispatch(stopLoader("Generating Image"))
             setGenerationConfig({ ...generationConfig, loading: false });

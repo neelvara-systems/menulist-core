@@ -4,6 +4,25 @@
 **Audience:** Sales Team, Marketing, Partners  
 **Last Updated:** January 31, 2026  
 **Version:** 2.0
+**Status:** Historical marketing draft; not current sales, publication, or launch certification
+
+---
+
+## Current Sales/Launch Boundary
+
+This document preserves January 2026 positioning notes only. Do not use it as current sales collateral, website copy, partner copy, or launch approval until release-specific evidence is recorded.
+
+Current Description Generation collateral approval requires:
+
+- Active production-readiness audit evidence.
+- External Certification Runbook evidence.
+- `npm run verify:agent-readiness`.
+- `npm run verify:ai-accounting`.
+- Target feature-flag/provider review.
+- Provider smoke for the target description model and environment.
+- Authenticated desktop/mobile editor QA for generation, editing, save, and publish behavior.
+- Target deploy evidence and production-host smoke.
+- Release-specific evidence for any numeric timing, quality, or language claims before those claims are used.
 
 ---
 
@@ -257,10 +276,10 @@ If descriptions are already complete, the feature is invisible. This is correct.
 
 Avoid language that trains users to "try again" or "experiment with styles."
 
-**Say:** "Edit any description to your preference"  
+**Say:** "Edit any description to your preference"
 **Don't say:** "Don't like it? Regenerate with different settings"
 
 ---
 
-_Document Status: ✅ READY FOR USE_  
+_Document Status: Historical marketing draft; not current sales or launch certification._
 _Follows `IDE_PROMPTS/6. DOCUMENTATION STRUCTURE PROMPT.md` standards._

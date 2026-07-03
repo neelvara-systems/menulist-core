@@ -39,6 +39,65 @@ const RAZORPAY_STATUS_MAP: Record<string, PaymentStatus> = {
     expired: 'expired',
 };
 
+const BILLING_SUBSCRIPTION_RECONCILIATION_SUBSCRIPTION_FAILED =
+    'BILLING_SUBSCRIPTION_RECONCILIATION_SUBSCRIPTION_FAILED';
+
+function getReconciliationStringContext(label: string, value: unknown): Record<string, boolean | number> {
+    const normalized = value === undefined || value === null ? '' : String(value);
+    return {
+        [`${label}Present`]: normalized.length > 0,
+        [`${label}Length`]: normalized.length,
+    };
+}
+
+function getReconciliationErrorContext(error: unknown): Record<string, string> {
+    if (error instanceof Error) {
+        const record = error as Error & { code?: unknown; status?: unknown; statusCode?: unknown };
+        const status = record.status ?? record.statusCode;
+
+        return {
+            sourceErrorName: (error.name || 'Error').slice(0, 80),
+            ...(record.code === undefined || record.code === null ? {} : {
+                sourceErrorCode: String(record.code).slice(0, 64),
+            }),
+            ...(status === undefined || status === null ? {} : {
+                sourceErrorStatus: String(status).slice(0, 32),
+            }),
+        };
+    }
+
+    return {
+        sourceErrorName: typeof error,
+    };
+}
+
+function getReconciliationSubscriptionLogContext(
+    sub: Record<string, any>,
+    providerSubId?: string | null,
+): Record<string, boolean | number> {
+    return {
+        ...getReconciliationStringContext('subscriptionId', sub?.id),
+        ...getReconciliationStringContext('providerSubscriptionId', providerSubId || sub?.providerSubscriptionId),
+        ...getReconciliationStringContext('tenantId', sub?.tenantId ?? sub?.tId),
+        ...getReconciliationStringContext('storeId', sub?.storeId ?? sub?.sId),
+        ...getReconciliationStringContext('status', sub?.status),
+        ...getReconciliationStringContext('activePlanType', sub?.activePlanType),
+        hasAnalyticsEntitlement: Boolean(sub?.analyticsEntitlement),
+    };
+}
+
+function getReconciliationUpdateLogContext(updates: Record<string, any>): Record<string, boolean | number> {
+    const updateKeys = Object.keys(updates);
+    return {
+        updateFieldCount: updateKeys.length,
+        hasStatusUpdate: updateKeys.includes('status'),
+        hasCycleStartUpdate: updateKeys.includes('cycleStartDate'),
+        hasCycleEndUpdate: updateKeys.includes('cycleEndDate'),
+        hasPaidCountUpdate: updateKeys.includes('totalPaymentsMadeCount'),
+        hasRenewsOnUpdate: updateKeys.includes('renewsOn'),
+    };
+}
+
 function normalizePlanId(planId: unknown): string | null {
     const normalized = String(planId || '').trim().toLowerCase();
     return normalized || null;
@@ -85,7 +144,9 @@ async function syncStorePlanEntitlement(
     ]);
 
     await Promise.all([
-        revalidatePublicClientCacheForStore(storeId, source),
+        revalidatePublicClientCacheForStore(storeId, source, {
+            touchDigitalScreen: true,
+        }),
         invalidateOwnerBusinessAssistantContextPackets({
             tId: sub.tenantId ?? sub.tId,
             sId: storeId,
@@ -107,16 +168,36 @@ const VALID_TRANSITIONS: Record<string, PaymentStatus[]> = {
     completed: [],
 };
 
+function getTransitionLogContext(
+    from: string,
+    to: string,
+    context: string,
+    allowedTransitions: PaymentStatus[] = [],
+): Record<string, boolean | number> {
+    return {
+        ...getReconciliationStringContext('fromStatus', from),
+        ...getReconciliationStringContext('toStatus', to),
+        ...getReconciliationStringContext('transitionContext', context),
+        allowedTransitionCount: allowedTransitions.length,
+    };
+}
+
 function validateTransition(from: string, to: string, context: string): boolean {
     if (from === to) return true;
     const allowed = VALID_TRANSITIONS[from];
     if (!allowed) {
-        functions.logger.warn(`[Reconciliation] Unknown state: "${from}" → "${to}" (${context})`);
+        functions.logger.warn(
+            '[Reconciliation] Unknown subscription state transition',
+            getTransitionLogContext(from, to, context),
+        );
         return false;
     }
     const isValid = allowed.includes(to as PaymentStatus);
     if (!isValid) {
-        functions.logger.warn(`[Reconciliation] Invalid transition: "${from}" → "${to}" (${context})`);
+        functions.logger.warn(
+            '[Reconciliation] Invalid subscription state transition',
+            getTransitionLogContext(from, to, context, allowed),
+        );
     }
     return isValid;
 }
@@ -198,9 +279,10 @@ export async function reconcileSubscriptions(): Promise<ReconciliationResult> {
     for (const docSnap of snapshot.docs) {
         const sub = { id: docSnap.id, ...docSnap.data() } as any;
         processed++;
+        let providerSubId: string | null = null;
 
         try {
-            const providerSubId = getRazorpayManagedSubscriptionId(sub);
+            providerSubId = getRazorpayManagedSubscriptionId(sub);
             if (!providerSubId) {
                 continue;
             }
@@ -283,8 +365,8 @@ export async function reconcileSubscriptions(): Promise<ReconciliationResult> {
                 synced++;
 
                 logger.info('[Reconciliation] Subscription synced', {
-                    subId: sub.id,
-                    updates: Object.keys(updates),
+                    ...getReconciliationSubscriptionLogContext(sub, providerSubId),
+                    ...getReconciliationUpdateLogContext(updates),
                 });
             }
 
@@ -306,9 +388,9 @@ export async function reconcileSubscriptions(): Promise<ReconciliationResult> {
         } catch (subError: any) {
             errors++;
             logger.error('[Reconciliation] Failed to process subscription', {
-                subId: sub.id,
-                providerSubId: sub.providerSubscriptionId,
-                error: subError.message,
+                failureCode: BILLING_SUBSCRIPTION_RECONCILIATION_SUBSCRIPTION_FAILED,
+                ...getReconciliationSubscriptionLogContext(sub, providerSubId),
+                ...getReconciliationErrorContext(subError),
             });
         }
     }

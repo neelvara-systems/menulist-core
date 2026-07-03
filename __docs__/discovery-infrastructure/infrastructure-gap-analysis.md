@@ -1,7 +1,7 @@
 # MenuList Infrastructure Gap Analysis
 
 > **24-Layer Infrastructure Audit Against Canonical SMB Truth Architecture**
-> Date: March 10, 2026 | Source: ChatGPT Future Outlook + Full Codebase Audit
+> Date: March 10, 2026 | Source: External Outlook + Full Codebase Audit
 
 ---
 
@@ -13,7 +13,7 @@
 4. [24-Layer Audit](#4-24-layer-audit)
 5. [Gap Summary Matrix](#5-gap-summary-matrix)
 6. [Critical Gaps](#6-critical-gaps)
-7. [Implementation Roadmap](#7-implementation-roadmap)
+7. [Conditional Gap Register](#7-conditional-gap-register)
 
 ---
 
@@ -71,7 +71,7 @@ Covers: name, email, phone, logo, description, address, city/state/country, geo 
 
 ### Offering Entity (`ExtractedDataItem` — `extractedData.types.ts`)
 
-Fields: id, name{lang}, description{lang}, descriptionSource('ai'|'manual'), price, category(ref), attributes[](variants with name{lang}/price), tags[], images[], active, available, isBestSeller, duration, ownerBoost, orderIndex.
+Fields: id, name{lang}, description{lang}, descriptionSource('ai'|'manual'), price, category(ref), attributes with name{lang}/price variants, tags[], images[], active, available, isBestSeller, duration, ownerBoost, orderIndex.
 
 ### Category Entity (`ExtractedDataCategory`)
 
@@ -120,8 +120,8 @@ See `24-layer-audit.md` for the full detailed analysis of each layer.
 | 9   | Change Intelligence              | ✅ STRONG   | ✅ STRONG   | Low    | —                                                       |
 | 10  | Drift Detection                  | ✅ STRONG   | ✅ STRONG   | Low    | —                                                       |
 | 11  | Data Freshness Tracking          | ⚠️ PARTIAL+ | ⚠️ PARTIAL+ | Low    | Time-based decay model                                  |
-| 12  | Structured Data APIs             | ⚠️ PARTIAL  | ⚠️ PARTIAL  | Medium | API v2 + OpenAPI spec (Phase 3)                         |
-| 13  | Data Feed Infrastructure         | ⚠️ PARTIAL  | ⚠️ PARTIAL  | Medium | Generic webhooks (Phase 3)                              |
+| 12  | Structured Data APIs             | ⚠️ PARTIAL  | ⚠️ PARTIAL  | Medium | API v2 + OpenAPI spec after scoped audit                 |
+| 13  | Data Feed Infrastructure         | ⚠️ PARTIAL  | ⚠️ PARTIAL  | Medium | Generic webhooks after scoped audit                      |
 | 14  | Schema Compatibility Layer       | ⚠️ PARTIAL  | ⚠️ PARTIAL+ | Low    | Pluggable adapter framework                             |
 | 15  | Business Entity Graph            | ❌ MISSING  | ⚠️ PARTIAL  | Medium | Nightly scheduler task + query API                      |
 | 16  | Cross-Business Taxonomy          | ⚠️ PARTIAL  | ⚠️ PARTIAL+ | Low    | Activate in nightly pipeline                            |
@@ -194,11 +194,13 @@ Field-level confidence missing. Only `descriptionSource` tracks AI vs manual pro
 
 ---
 
-## 7. Implementation Roadmap
+## 7. Conditional Gap Register
 
-### PHASE 1: Core Data Infrastructure (Weeks 1-6)
+This section is not current launch scope and is not release certification. Each item requires a scoped feature proposal, owner-value review, security review for any cross-tenant or public API behavior, Firebase cost note, docs parity, and source-gate coverage before implementation.
 
-**1A. Offering Taxonomy System (Layer 4 + 16)**
+### Data Foundation Candidates
+
+**Offering Taxonomy System (Layer 4 + 16)**
 
 - Create `src/data/shared/offeringTaxonomy.ts` — standard category vocabulary per business category
 - Map: food → {Starters, Mains, Beverages, Desserts, ...}, salon → {Haircut, Coloring, ...}
@@ -206,16 +208,16 @@ Field-level confidence missing. Only `descriptionSource` tracks AI vs manual pro
 - AI extraction maps detected categories to standard taxonomy (best-effort)
 - Zero breaking changes — existing free-text preserved, taxonomy is additive
 
-**1B. Field-Level Provenance (Layer 6 + 18)**
+**Field-Level Provenance (Layer 6 + 18)**
 
 - Extend item model with `_provenance?: Record<field, {source, confidence, verifiedAt}>`
 - Populate during AI extraction (source='ai', confidence=score)
 - Populate on manual edit (source='owner', confidence=1.0)
 - Stripped by sanitizeForClient (internal only, like \_mce)
 
-### PHASE 2: Data Intelligence (Weeks 7-12)
+### Data Intelligence Candidates
 
-**2A. Business Entity Index (Layer 15)**
+**Business Entity Index (Layer 15)**
 
 - Create `businessIndex` Firestore collection — denormalized per-business summary
 - Fields: storeId, name, businessType, geo, standardCategories[], topItems[], attributes, hours, freshness
@@ -223,15 +225,15 @@ Field-level confidence missing. Only `descriptionSource` tracks AI vs manual pro
 - Enables: "restaurants with outdoor seating within 5km" queries
 - NOT a graph database — a queryable index for discovery use cases
 
-**2B. Dietary/Attribute Enum System (Layer 4)**
+**Dietary/Attribute Enum System (Layer 4)**
 
 - Convert free-text tags to formal enum: `DIETARY_TAGS = ['vegetarian', 'vegan', 'halal', 'gluten_free', ...]`
 - AI extraction maps to enum (fuzzy matching)
 - Preserve original free-text in `tags`, add structured `dietaryTags` enum array
 
-### PHASE 3: Ecosystem Interoperability (Weeks 13-20)
+### Ecosystem Interoperability Candidates
 
-**3A. Generic Webhook System (Layer 13)**
+**Generic Webhook System (Layer 13)**
 
 - Extend POS webhook pattern to generic "subscribe to changes" system
 - Collection: `webhookSubscriptions/{subscriberId}` — URL, events, secret, status
@@ -239,7 +241,7 @@ Field-level confidence missing. Only `descriptionSource` tracks AI vs manual pro
 - Fire-and-forget delivery with retry + circuit breaker (reuse POS pattern)
 - Feature flag: `ENABLE_WEBHOOK_SUBSCRIPTIONS`
 
-**3B. API v2 Design (Layer 12)**
+**API v2 Design (Layer 12)**
 
 - OpenAPI 3.0 spec autogenerated
 - Field selection (`?fields=name,hours,menu`)
@@ -247,18 +249,18 @@ Field-level confidence missing. Only `descriptionSource` tracks AI vs manual pro
 - Change event endpoint (`GET /api/public/v2/changes?since=timestamp`)
 - Formal versioning with deprecation policy
 
-**3C. Standard Feed Formats (Layer 13 + 14)**
+**Standard Feed Formats (Layer 13 + 14)**
 
 - JSON Feed at `/{subdomain}/feed.json` — standard structured business data
 - Menu data in universally consumable format
-- Adapter framework for marketplace feeds (Zomato, Swiggy format — future)
+- Adapter framework for marketplace feeds (Zomato, Swiggy format) only after scoped integration approval
 
-### PHASE 4: Distribution Infrastructure (Weeks 21-26)
+### Distribution Infrastructure Candidates
 
-**4A. Discovery API (Layer 15)**
+**Discovery API (Layer 15)**
 
 - `GET /api/public/v2/discover` — geo + category + attribute search
-- Reads from businessIndex (Phase 2A)
+- Reads from businessIndex only after index writer/query design is approved
 - Returns ranked results with schema.org-compatible output
 - Rate limited, API key authenticated
 
@@ -268,12 +270,12 @@ Field-level confidence missing. Only `descriptionSource` tracks AI vs manual pro
 - Design: field-level source priority map + conflict audit log
 - Defer until actual need arises (POS import, booking platform sync)
 
-### Phase Dependencies
+### Candidate Dependencies
 
 ```
-Phase 1A (Taxonomy) ──→ Phase 2A (Entity Index) ──→ Phase 4A (Discovery API)
-Phase 1B (Provenance) ─┘                            Phase 3A (Webhooks) ──→ Phase 3B (API v2)
-Phase 2B (Enums) ──────→ Phase 3C (Feeds)
+Taxonomy ──→ Entity Index ──→ Discovery API
+Provenance ─┘                 Webhooks ──→ API v2
+Enums ──────→ Feeds
 ```
 
 ### Priority vs Current Stage
@@ -281,10 +283,10 @@ Phase 2B (Enums) ──────→ Phase 3C (Feeds)
 Per MenuList doctrine: **Distribution > Features > Infrastructure depth**.
 The roadmap is ordered by infrastructure value, but implementation should be gated by adoption:
 
-- **Now (pre-scale):** Phase 1A + 1B (low cost, high future value)
-- **At 100+ businesses:** Phase 2A + 2B (entity index justifies itself)
-- **At ecosystem demand:** Phase 3A-3C (only when external systems request it)
-- **At scale:** Phase 4A-4B (discovery API when query volume exists)
+- **Pre-scale:** Taxonomy + provenance candidates remain low-cost utilities until a scoped implementation is approved.
+- **At 100+ businesses:** Entity index and enum candidates need cost justification and public-data safeguards.
+- **At ecosystem demand:** Webhooks, API v2, and feed candidates should wait until external systems request them.
+- **At scale:** Discovery API and conflict-resolution candidates should wait until query volume or integration pressure exists.
 
 ---
 

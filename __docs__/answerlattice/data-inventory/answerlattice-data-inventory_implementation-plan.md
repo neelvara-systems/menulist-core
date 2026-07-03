@@ -69,6 +69,8 @@ Implemented files:
 - `src/lib/answerlattice/dataRetention.ts`
 - `functions-answerlattice/src/answerlattice/dataRetention.ts`
 
+Functions-side cleanup task failures report `ANSWERLATTICE_RETENTION_TASK_FAILED` plus bounded source-error metadata in logs. Scheduler run errors keep fixed task failure codes instead of raw exception text. Retention windows, cleanup queries, batch limits, and Storage deletion limits are unchanged.
+
 Implemented policy constants:
 
 | Data | Implemented default | Reason |

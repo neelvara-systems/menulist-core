@@ -7,17 +7,17 @@
  * Domain Architecture (Multi-Product):
  *   Local: localhost:3000     — MenuList marketing/app shell
  *   Local tenant URL host: menulist.online — local generated customer links mirror staging
- *   Local: /__constantlayer       — ConstantLayer website
+ *   Local: /__neelvara       — Neelvara website
  *   Local: /__answerlattice        — Answerlattice website
  *   Local: /__campaigncue          — CampaignCue website
  *   Local: /signaldesk             — private MenuList SignalDesk app
  *   QA: menulist.online       — MenuList preview/staging
- *   QA: constantlayer.menulist.online — ConstantLayer preview/staging
+ *   QA: neelvara.menulist.online — Neelvara preview/staging
  *   QA: answerlattice.menulist.online — Answerlattice preview/staging
  *   QA: campaigncue.menulist.online — CampaignCue preview/staging
  *   QA: signaldesk.menulist.online — private SignalDesk preview app
  *   Prod: menulist.ai         — MenuList production
- *   Prod: constantlayer.in    — ConstantLayer production
+ *   Prod: neelvara.com    — Neelvara production
  *   Prod: answerlattice.com        — Answerlattice production
  *   Prod: campaigncue.ai      — CampaignCue production
  *   Prod: signaldesk.menulist.ai — private SignalDesk production app
@@ -36,7 +36,7 @@
 
 import { ALL_PRODUCT_DOMAINS } from './productDomains';
 import { CAMPAIGNCUE_PRODUCT_SLUG } from '@constant/campaigncue/product';
-import { CONSTANTLAYER_PRODUCT_SLUG } from '@constant/constantlayer/product';
+import { NEELVARA_PRODUCT_SLUG } from '@constant/neelvara/product';
 import {
     getActiveProductDomains,
     getDeploymentStage,
@@ -268,6 +268,6 @@ export const RESERVED_SUBDOMAINS = [
     SUPPORT_SUBDOMAIN,
     'status',
     'signaldesk',
-    CONSTANTLAYER_PRODUCT_SLUG,
+    NEELVARA_PRODUCT_SLUG,
     CAMPAIGNCUE_PRODUCT_SLUG,
 ];

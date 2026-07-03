@@ -1,9 +1,9 @@
 # Ticket → Knowledge Loop — Implementation Blueprint
 
 > **Status:** IMPLEMENTED AND ENABLED WITH CAPS
-> **Version:** 1.1.0
+> **Version:** 1.1.1
 > **Created:** 2026-03-09
-> **Last Updated:** 2026-05-22
+> **Last Updated:** 2026-06-29
 > **Audience:** Developers
 > **Feature Flag:** `ENABLE_ANSWERLATTICE_TICKET_KNOWLEDGE`
 
@@ -71,6 +71,8 @@ Step 13: [NEW] Ticket Resolution Knowledge Extraction <- THIS FEATURE
 | ----------------------- | ---------------------------------------------------------- | ---------------------------------------------------- |
 | Resolution extractor    | `functions-answerlattice/src/answerlattice/resolutionExtractor.ts`   | Extract problem/resolution from ticket conversations |
 | Ticket knowledge prompt | `functions-answerlattice/src/answerlattice/ticketKnowledgePrompt.ts` | Gemini prompt for resolution extraction              |
+
+Ticket knowledge diagnostics use fixed codes and bounded context. Optional existing-answer title lookup failures log `ANSWERLATTICE_TICKET_KNOWLEDGE_EXISTING_ANSWERS_LOAD_FAILED` and continue with an empty title list so extraction can still process the cluster without storing raw exception text.
 
 ### §2.3 — What Must Be Modified
 
@@ -225,6 +227,8 @@ async function extractTicketKnowledge(
   // 4. Audit log each extraction attempt
 }
 ```
+
+Failure diagnostics use fixed `ANSWERLATTICE_TICKET_KNOWLEDGE_*` codes. Missing-entity, parse, entity-extraction, and fatal errors returned to the scheduler are fixed-code strings; logs carry source error name/code/status, tenant/store scope booleans, and entity ID presence/length metadata instead of raw exception text or raw entity identifiers.
 
 ### §4.3 — Resolution Extraction Prompt (Cloud Function)
 

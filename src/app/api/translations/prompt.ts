@@ -72,9 +72,31 @@ interface PromptParams {
   sourceLang: string;
 }
 
+const TRANSLATION_PROMPT_TEXT_MAX_LENGTH = 2000;
+const TRANSLATION_PROMPT_MAX_ITEMS = 1000;
+
+function sanitizeTranslationPromptText(value: string): string {
+  return value
+    .replace(/[\u0000-\u001f\u007f]/g, ' ')
+    .replace(/[{}<>`$\\]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, TRANSLATION_PROMPT_TEXT_MAX_LENGTH)
+    .trim();
+}
+
+function buildPromptInputJson(inputJson: Record<string, string>): Record<string, string> {
+  return Object.fromEntries(
+    Object.entries(inputJson)
+      .slice(0, TRANSLATION_PROMPT_MAX_ITEMS)
+      .map(([key, value]) => [key, sanitizeTranslationPromptText(value)])
+  );
+}
+
 const getPrompt = ({ inputJson, targetLang, sourceLang }: PromptParams) => {
   const isBatch = Array.isArray(targetLang);
   const targetLabel = isBatch ? targetLang.join(', ') : targetLang;
+  const promptInputJson = buildPromptInputJson(inputJson);
   const outputFormat = isBatch
     ? `{
   "translationsByLanguage": {
@@ -95,7 +117,7 @@ const getPrompt = ({ inputJson, targetLang, sourceLang }: PromptParams) => {
   }
 }`;
 
-  return `Translate the following JSON data from ${sourceLang} to ${targetLang}, adhering strictly to the format specified in the system instructions. The system instructions outline the expected input and output JSON formats, the importance of preserving IDs, how to handle untranslatable strings, and the requirement for valid JSON output. Preserve business names consistently across fields, preserve place names unless a standard local-language form exists, and avoid inventing alternate spellings of the same brand. Your response must ONLY be the JSON as detailed in the system instructions.
+  return `Translate the following JSON data from ${sourceLang} to ${targetLabel}, adhering strictly to the format specified in the system instructions. The system instructions outline the expected input and output JSON formats, the importance of preserving IDs, how to handle untranslatable strings, and the requirement for valid JSON output. Preserve business names consistently across fields, preserve place names unless a standard local-language form exists, and avoid inventing alternate spellings of the same brand. Your response must ONLY be the JSON as detailed in the system instructions.
 
 Use this exact output structure:
 
@@ -106,7 +128,7 @@ ${outputFormat}
 Here is the data to translate:
 
 \`\`\`json
-${JSON.stringify(inputJson, null, 2)}
+${JSON.stringify(promptInputJson, null, 2)}
 \`\`\`
 
 Target languages: ${targetLabel}`;

@@ -1,8 +1,8 @@
 # Special Menu Switching — Implementation Blueprint
 
-**Status:** 🧊 FROZEN — Structurally Complete, Flag OFF. See `__docs__/constitution/14-feature-lifecycle-doctrine.md`  
-**Author:** Cascade (Lead Architect)  
-**Date:** February 20, 2026  
+**Status:** ✅ IMPLEMENTED — Active behind `ENABLE_SPECIAL_MENU_SWITCHING`; expansion remains governed by `__docs__/constitution/14-feature-lifecycle-doctrine.md`
+**Author:** Cascade (Lead Architect)
+**Date:** February 20, 2026
 **Audience:** Developers, future maintainers
 
 ---
@@ -166,7 +166,7 @@ All functions live in `src/database/projects/index.ts`:
 | `deactivateSpecialMenu(projectId)` | Set status=expired, clear store fields      | 2R + 2-3W                 |
 | `cancelSpecialMenu(projectId)`     | Set status=cancelled (scheduled only)       | 1R + 2W                   |
 
-The `useSpecialMenus()` SWR hook in `src/hooks/useSpecialMenus.ts` calls these DAL functions directly.
+The `useSpecialMenus()` SWR hook in `src/hooks/useSpecialMenus.ts` calls these DAL functions directly. It must require explicit acknowledgement for create, update, activate, deactivate, and cancel calls before returning success or mutating local SWR state. Create acknowledgements must include the created `projectId` and `summaryData`. Update acknowledgements must include the requested `projectId` and resulting `status`. Lifecycle acknowledgements must include `success: true`, the requested `projectId`, and the expected resulting status (`active`, `expired`, or `cancelled`). The project DAL remains the write authority, but the hook rejects `apiCallComposer()` fallback values such as `[]` through `special_menu_create_rejected`, `special_menu_update_rejected`, `special_menu_activate_rejected`, `special_menu_deactivate_rejected`, or `special_menu_cancel_rejected` before owner UI shows success.
 
 ---
 
@@ -247,8 +247,8 @@ function mergeOverlay(base: Project, special: Project): Project {
    - Activate: set `status: 'active'`, update `store.activeSpecialMenuId`, set temp status banner
    - Deactivate: set `status: 'expired'`, clear `store.activeSpecialMenuId`, clear temp status
    - **Codebase:** `functions/src/decisionBlocksScoring.ts:801-920` — full activate/deactivate logic
-   - **Flag:** `ENABLE_SPECIAL_MENU_SWITCHING` (currently `false` in Cloud Functions, `true` in client)
-   - Invalidate cache: `revalidateTag('client-stores')` + `revalidateTag('menu-store-{sId}')`
+   - **Flag:** `ENABLE_SPECIAL_MENU_SWITCHING` (currently `true` in Cloud Functions and client)
+   - Invalidate cache: shared public cache revalidation clears `client-stores`, `menu-store-{sId}`, store, and screen-data tags; scheduled Functions paths also touch initialized screen versions.
 
 2. **Client-Side DAL** (for same-day precision)
    - When owner creates a special menu starting "now" or within the hour
@@ -268,7 +268,7 @@ Nightly scheduler OR client-side DAL triggers at startsAt
     → Set store.activeSpecialMenuId = projectId
     → Set store.tempStatus = { type: 'special_menu', message: displayName, expiresAt: endsAt }
     → Invalidate cache tags
-    → Bump menuVersion (triggers screen refresh, POS webhook)
+    → Bump initialized screen contentVersion/safe mirror when a screen token exists
 
 Nightly scheduler OR auto-check at endsAt
     → Set project._specialMenu.status = 'expired'
@@ -276,7 +276,7 @@ Nightly scheduler OR auto-check at endsAt
     → Clear store.activeSpecialMenuId
     → Clear store.tempStatus (if it was special_menu type)
     → Invalidate cache tags
-    → Bump menuVersion
+    → Bump initialized screen contentVersion/safe mirror when a screen token exists
 ```
 
 ---
@@ -467,4 +467,4 @@ async function validateNoConflict(
 
 ---
 
-**Last Updated:** February 21, 2026
+**Last Updated:** June 28, 2026

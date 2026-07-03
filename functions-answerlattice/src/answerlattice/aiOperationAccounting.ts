@@ -2,7 +2,8 @@ import { Timestamp } from 'firebase-admin/firestore';
 import * as logger from 'firebase-functions/logger';
 import { ANSWERLATTICE_EMBEDDING_MODEL, ANSWERLATTICE_TEXT_MODEL } from '../constants/ai';
 import { DB_COLLECTIONS } from '../constants/database';
-import { firestoreAdmin as db, vertexAIClient } from '../firebaseAdmin';
+import { firestoreAdmin as db } from '../firebaseAdmin';
+import { answerlatticeGenAIClient } from '../genAiClient';
 
 export const ANSWERLATTICE_AI_ACTIONS = {
     KB_EMBEDDING: 'answerlattice_kb_embedding',
@@ -128,19 +129,19 @@ export const callAnswerlatticeGeminiContent = async (params: {
     userPrompt: string;
 }): Promise<AnswerlatticeGeminiCallResult> => {
     const modelName = params.model || GEMINI_MODEL;
-    const generativeModel = vertexAIClient.getGenerativeModel({ model: modelName });
     const request = {
+        model: modelName,
         contents: [
             {
                 role: 'user',
                 parts: [{ text: params.userPrompt }],
             },
         ],
-        ...(params.systemPrompt ? { systemInstruction: params.systemPrompt } : {}),
+        ...(params.systemPrompt ? { config: { systemInstruction: params.systemPrompt } } : {}),
     };
 
     const startedAt = Date.now();
-    const result = await (generativeModel as any).generateContent(request);
+    const result = await answerlatticeGenAIClient.models.generateContent(request);
     const text = extractGeminiResultText(result);
 
     return {

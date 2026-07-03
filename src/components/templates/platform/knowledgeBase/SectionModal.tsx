@@ -1,4 +1,4 @@
-import { updateCategory } from "@database/knowledgeBase/categories";
+import { assertKnowledgeBaseCategoryWriteSucceeded, updateCategory } from "@database/knowledgeBase/categories";
 import { useAppDispatch } from "@hook/useAppDispatch";
 import { startLoader, stopLoader } from "@reduxSlices/loader";
 import { KnowledgeBaseCategoriesType, KnowledgeBaseCategory, KnowledgeBaseSection } from "@type/knowledgeBase";
@@ -62,7 +62,12 @@ const SectionModal = ({ open, editingSection, form, onOk, onCancel, onSuccess, c
             const updatedSections = updateList(selectedCategory.sections || [], sectionToSave, 'last', 'id');
             const updatedCategory = { ...selectedCategory, sections: updatedSections };
 
-            await updateCategory(updatedCategory);
+            const result = await updateCategory(updatedCategory);
+            assertKnowledgeBaseCategoryWriteSucceeded(
+                result,
+                updatedCategory.id,
+                isEditing ? 'platform_kb_section_update_rejected' : 'platform_kb_section_create_rejected',
+            );
 
             const updatedCategoriesMap = {
                 ...categoriesData.categories,

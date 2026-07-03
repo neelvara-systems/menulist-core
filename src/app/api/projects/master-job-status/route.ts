@@ -5,18 +5,65 @@ import { DB_COLLECTIONS } from "@constant/database";
 import { PERMISSIONS } from "@constant/permissions";
 import { admin } from "@lib/firebase/firebaseAdmin";
 import { requireAnyStorePermissionForStoreData } from "@lib/permissions/server";
-import { secureError } from "@lib/security/secureLogger";
+import { checkRateLimit } from "@lib/rateLimit";
+import { getRateLimitForFeature } from "@lib/rateLimit/configs";
+import { getBoundedRuntimeStringContext, logRuntimeFailure } from "@lib/runtime/runtimeDiagnostics";
 import { NextRequest, NextResponse } from "next/server";
+import { hashPublicRateLimitValue } from "src/middleware/publicApi";
 import { z } from "zod";
 import { verifyTenantAccess, withAuth } from "../../../../middleware/auth";
 
 const ACTIVE_MASTER_JOB_STATUSES = ["pending", "processing", "preview_ready"] as const;
+const MASTER_JOB_STATUS_RATE_LIMIT_KEY = "master-job-status";
 
 const projectIdSchema = z.string().min(1).max(200).regex(/^[a-zA-Z0-9_-]+$/);
 const querySchema = z.object({
     masterProjectId: projectIdSchema,
     outletProjectId: projectIdSchema.optional(),
 });
+
+const getMasterJobStatusRouteLogContext = (request: NextRequest, session: any) => ({
+    endpoint: "/api/projects/master-job-status",
+    ...getBoundedRuntimeStringContext("tenantId", session?.tId),
+    ...getBoundedRuntimeStringContext("storeId", session?.sId),
+    ...getBoundedRuntimeStringContext("masterProjectId", request.nextUrl.searchParams.get("masterProjectId")),
+    ...getBoundedRuntimeStringContext("outletProjectId", request.nextUrl.searchParams.get("outletProjectId")),
+});
+
+const applyMasterJobStatusRateLimit = async (session: any) => {
+    const rateLimitConfig = getRateLimitForFeature("DATA_READ");
+    const userId = session?.uId || session?.user?.id || "unknown";
+    const tenantId = session?.tId || session?.user?.tenantId || "unknown";
+    const storeId = session?.sId || session?.user?.storeId || "unknown";
+    const userRateLimitHash = hashPublicRateLimitValue(userId);
+    const tenantRateLimitHash = hashPublicRateLimitValue(tenantId);
+    const storeRateLimitHash = hashPublicRateLimitValue(storeId);
+
+    const rateLimit = await checkRateLimit({
+        key: `${MASTER_JOB_STATUS_RATE_LIMIT_KEY}:${userRateLimitHash}:${tenantRateLimitHash}:${storeRateLimitHash}`,
+        ...rateLimitConfig,
+    });
+
+    if (rateLimit.allowed) return null;
+
+    const waitSeconds = Math.max(1, Math.ceil((rateLimit.resetAt - Date.now()) / 1000));
+    return NextResponse.json(
+        {
+            error: "Too many requests. Please try again later.",
+            retryAfter: waitSeconds,
+            resetAt: rateLimit.resetAt,
+        },
+        {
+            headers: {
+                "Retry-After": String(waitSeconds),
+                "X-RateLimit-Limit": String(rateLimitConfig.limit),
+                "X-RateLimit-Remaining": String(rateLimit.remaining),
+                "X-RateLimit-Reset": String(rateLimit.resetAt),
+            },
+            status: 429,
+        },
+    );
+};
 
 const parseSafeProjectId = (projectId: string) => {
     const parts = projectId.split("-");
@@ -36,6 +83,9 @@ export const GET = withAuth(async (request: NextRequest, session) => {
     }
 
     try {
+        const rateLimitResponse = await applyMasterJobStatusRateLimit(session);
+        if (rateLimitResponse) return rateLimitResponse;
+
         const validation = querySchema.safeParse({
             masterProjectId: request.nextUrl.searchParams.get("masterProjectId"),
             outletProjectId: request.nextUrl.searchParams.get("outletProjectId") || undefined,
@@ -116,10 +166,7 @@ export const GET = withAuth(async (request: NextRequest, session) => {
             masterJobStatus: status,
         });
     } catch (error) {
-        secureError("[Projects] Master job status failed", error as Error, {
-            tenantId: session?.tId,
-            storeId: session?.sId,
-        });
+        logRuntimeFailure("master_job_status_route_failed", error, getMasterJobStatusRouteLogContext(request, session));
         return NextResponse.json({ error: "Master job status failed" }, { status: 500 });
     }
 });

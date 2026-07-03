@@ -64,7 +64,7 @@ This table is the compact map. Detailed behavior follows in later sections.
 | `systemAlerts` | Health/error/performance/security/usage alerts with severity, metadata, acknowledgement state. | Health monitor failures, notification failures, monitoring rules. | Platform operator visibility and incident handling. |
 | `systemHealth` | Time-limited health reports by tenant/store/day with component status. | Health-check functions. | Platform health monitoring with 7-day TTL. |
 | `schedulerRunLogs` | Meaningful scheduler run summaries, failures, activity, compact details, expiry. | Consolidated MenuList maintenance scheduler and hourly decision scheduler. | Time-bounded operational audit without logging empty maintenance runs. |
-| `menulistAiOperations/{tId}/{sId}` | AI operation accounting: action, tokens, model, cost/charge, units, scope, status, and compact response/accounting metadata by default. Raw provider details are detailed-mode only and expire. | Menu extraction, business copy, review reply suggestion, image/AI actions using shared accounting. | Billing, cost control, owner/platform AI operation history without permanent provider payload storage. |
+| `menulistAiOperations/{tId}/{sId}` | AI operation accounting: action, tokens, model, cost/charge, units, scope, status, compact response/accounting metadata, and detailed-mode response presence/length metadata. Raw provider response text is not stored. | Menu extraction, business copy, review reply suggestion, image/AI actions using shared accounting. | Billing, cost control, owner/platform AI operation history without provider payload storage. |
 | `menuImageProcessingJobs` | Extraction/import job state, input file/artifact metadata, processing summaries, quality/confidence summaries, short-lived raw batch response metadata, token/credit accounting, and detail-retention metadata. | Menu image upload, menu link import, public menu draft extraction, re-extraction. | Async extraction workflow and owner preview/result handling; completed auto-saved job details are pruned after the configured detail window. |
 | `menuLinkImportArtifacts` | Imported link artifact metadata: source/final URL, content hash/type, storage path, text preview, redirect count. | Menu link import. | Traceability and repeatability for URL-based menu import. |
 | Firebase Storage `menuLinkImports/...` | Source artifact file captured from menu link import. | Menu link import. | Stable source file for extraction. |
@@ -380,7 +380,7 @@ MenuList writes AI operation logs under `menulistAiOperations/{tId}/{sId}`. Typi
 - charge/cost/credit fields;
 - billing mode and units consumed;
 - project/file/source context;
-- compact response/client-response summary by default; raw provider response only in detailed mode with expiry;
+- compact response/client-response summary by default; detailed mode keeps provider usage metadata and response presence/length only;
 - user/session identifiers.
 
 Owner-facing AI operations API sanitizes platform-only fields for owners.
@@ -575,7 +575,7 @@ Known retention/cleanup paths in the inspected code:
 | Owner assistant actions/feedback | `expiresAt` around 90 days and cleaned by scheduler. |
 | Owner assistant drafts | `expiresAt` around 7 days and cleaned by scheduler. |
 | Owner assistant threads | `expiresAt` around 30 days and max history trimming; cleaned by scheduler. |
-| AI operation details | Default accounting-only mode avoids raw provider detail storage; detailed-mode records carry `detailExpiresAt` and scheduler detail compaction. |
+| AI operation details | Default accounting-only mode avoids provider response storage; detailed-mode records carry response presence/length metadata plus `detailExpiresAt` and scheduler detail compaction. |
 | Menu extraction job details | Completed auto-saved jobs are pruned after the configured detail window; raw batch responses are deleted with combined extracted data. |
 | Menu snapshots | Publish snapshots carry `expiresAt`; maintenance scheduler deletes expired nested snapshot docs in bounded batches. |
 | Image batch status history | Status history is capped to the latest 20 entries. |

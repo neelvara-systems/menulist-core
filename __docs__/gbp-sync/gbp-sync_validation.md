@@ -1,220 +1,72 @@
-# ✅ GBP SYNC — Validation Report
+# GBP Sync — Validation Report
 
-**Feature:** #3 — Google Business Profile Minimal Sync  
-**Version:** 1.2 (Phase 0 Implementation)  
-**Status:** ✅ PHASE 0 COMPLETE | 🔶 PHASES 1-3 BLOCKED  
-**Last Updated:** January 19, 2026  
-**Author:** Lead Architect (Cascade)
+**Feature:** Google Business Profile Sync
+**Status:** Source scaffolding present; Google sync blocked by API/OAuth/provider gates
+**Last Updated:** July 2, 2026
 
 ---
 
-## 📚 DOC ↔ CODE ALIGNMENT (POST-FEEDBACK)
+## Current Source Boundary
 
-| Doc Section                            | Status | Code/Doc Verification                                                       |
-| -------------------------------------- | ------ | --------------------------------------------------------------------------- |
-| spec.md — Hours weekly only            | ✅     | Matches `workingHours` simple format in `src/types/platform/store.ts:87-89` |
-| spec.md — websiteUri only              | ✅     | Clarified per GBP API reality                                               |
-| impl.md — Token path `gbp/{sId}`       | ✅     | Clean namespace for future integrations                                     |
-| impl.md — Algorithm overnight handling | ✅     | Prevents false mismatches                                                   |
-| impl.md — specialHours ignored         | ✅     | Phase 1 scope limit                                                         |
-| marketing.md — Language governance     | ✅     | Removed unverified claims, notification language                            |
-| All docs — 3-Year Freeze               | ✅     | No "Phase 2" language, extensible schema                                    |
+Current code proves only the disabled/reserved boundary:
 
----
+| Check | Status | Evidence |
+| --- | --- | --- |
+| Feature flag default | ✅ blocked | `ENABLE_GBP_SYNC: false` in `src/config/features.ts` |
+| Token store | ✅ fail-closed | `src/database/integrations/gbp.ts` throws `GBP_TOKEN_STORE_DISABLED` |
+| Owner UI | ✅ gated | The Google Business Profile card is behind `gbpEnabled`; the shared Integrations tab may still host Platform Pull API controls |
+| Google OAuth routes | ❌ not shipped | No active `/api/integrations/gbp/*` OAuth/connect/apply route is current runtime |
+| Nightly sync worker | ❌ not shipped | No active GBP Cloud Function or scheduler task is current runtime |
+| Public claims | ✅ bounded after July 2 update | Website/help/marketing docs now describe manual Google handoff, not automatic sync |
 
-## 📝 Feedback Applied
+This validation report is historical source evidence plus current source-boundary documentation. It is not ready for testing, ready for implementation, launch approval, or production certification.
 
-| #   | ChatGPT Feedback              | Status     | Changes Made                                                                  |
-| --- | ----------------------------- | ---------- | ----------------------------------------------------------------------------- |
-| 1   | Hours drift underspecified    | ✅ Applied | spec.md: Added "weekly only", overnight → UNKNOWN. impl.md: Algorithm updated |
-| 2   | Menu link field ambiguous     | ✅ Applied | spec.md + impl.md: Clarified `websiteUri` only                                |
-| 3   | Token path naming             | ✅ Applied | impl.md: Changed `gbpTokens/{sId}` → `gbp/{sId}`                              |
-| 4   | Marketing language violations | ✅ Applied | Removed "78%", "Get alerted", "No credit card"                                |
+## Current Owner Behavior
 
----
+Owners keep Google Business Profile aligned manually:
 
-## ❌ Feedback Rejected
+1. Copy the current MenuList Official Business Page link or menu link.
+2. Open Google Business Profile in Google.
+3. Paste/update the website or menu field Google allows for that listing.
+4. Save in Google.
 
-_None — all 4 points were valid improvements aligned with codebase reality._
+MenuList does not currently write to Google.
 
----
+## Reserved Integration Gates
 
-## 🔒 FINAL LOCKED SCOPE (Phase 1)
+Direct GBP sync cannot be claimed, tested as release-ready, or shown in public copy until all of these gates have evidence:
 
-### ✅ Will Do
+| Gate | Required evidence |
+| --- | --- |
+| Google API access | Approved Google Business Profile API access for the target project |
+| OAuth setup | Separate OAuth credentials and target secrets configured |
+| API routes | Auth URL, callback, connect-location, disconnect, and apply-hours routes implemented and source-gated |
+| Provider smoke | Real Google test listing smoke for connect, read, disconnect, and allowed write paths |
+| Function scope | Scoped scheduler/function implementation and deploy evidence if sync workers are added |
+| Security | Token storage rules deny client access; routes use auth, permission, validation, rate limits, and bounded diagnostics |
+| UI QA | Authenticated desktop/mobile QA for all exposed owner paths |
+| Production host | Target environment smoke after deploy |
 
-1. Connect GBP via separate OAuth
-2. Store mapping: accountId + locationId per store
-3. Compute canonical MenuList URL
-4. Nightly read GBP `websiteUri` + `regularHours`
-5. Auto-fix `websiteUri` when safe
-6. Mark hours mismatch (weekly only, overnight → UNKNOWN)
-7. Manual "Apply hours to Google"
-8. MOL logs for every action
+## Documentation Status
 
-### ❌ Will NOT Do
+| Document | Current status |
+| --- | --- |
+| `README.md` | Current disabled-source boundary |
+| `gbp-sync_spec.md` | Reserved integration spec; not current runtime |
+| `gbp-sync_impl.md` | Reserved implementation blueprint plus disabled scaffold evidence |
+| `gbp-sync_firebase.md` | Reserved cost model; no active GBP reads/writes/functions |
+| `gbp-sync_mobile-support.md` | No current mobile sync surface while flag is off |
+| `gbp-sync_website.md` | Manual Google handoff copy only |
+| `gbp-sync_helpdoc.md` | Manual Google handoff help only |
+| `gbp-sync_marketing.md` | Source-gated internal handoff copy only |
 
-- Reviews, posts, photos, Q&A
-- Performance dashboards
-- Push notifications
-- Auto-write hours without approval
-- Holiday/special hours sync
-- Separate "menu URL" field management
+## Current Verdict
 
----
+GBP Sync is not release-ready and not active runtime. The current production-safe claim is:
 
-## 📋 ENGINEERING CHECKLIST
-
-### Phase 0 Foundation Tasks (IMPLEMENTED)
-
-| #   | Checklist Item                         | Status  | Evidence                                          |
-| --- | -------------------------------------- | ------- | ------------------------------------------------- |
-| 1   | Add `gbp`, `gbpState` to StoreDataType | ✅ PASS | `src/types/platform/store.ts:111-137`             |
-| 2   | Add `INTEGRATIONS` to DB_COLLECTIONS   | ✅ PASS | `src/constants/database.ts:73-76`                 |
-| 3   | Add GBP event types to MOL             | ✅ PASS | `src/types/mol.types.ts:27-35`                    |
-| 4   | Add `ENABLE_GBP_SYNC` feature flag     | ✅ PASS | `src/config/features.ts:561-596`                  |
-| 5   | Create integrations DAL skeleton       | ✅ PASS | `src/database/integrations/gbp.ts:1-146`          |
-| 6   | Add UI stub in Business Settings       | ✅ PASS | `businessSettings/tabs/IntegrationsTab.tsx:1-141` |
-
-### Phases 1-3 (BLOCKED - Awaiting GBP API Access)
-
-| #     | Task                      | Status     | Blocking Reason         |
-| ----- | ------------------------- | ---------- | ----------------------- |
-| 7-11  | OAuth + Connection routes | ⏳ BLOCKED | GBP API access required |
-| 12-15 | Sync + Apply              | ⏳ BLOCKED | GBP API access required |
-| 16-19 | Hardening                 | ⏳ BLOCKED | GBP API access required |
+> MenuList provides the Official Business Page and menu link owners can copy into Google Business Profile. Direct Google sync is reserved until API/OAuth/provider/deploy/browser gates are complete.
 
 ---
 
-## ✅ Architecture Checklist (6/6 PASS)
-
-| Item                   | Status | Evidence                                          |
-| ---------------------- | ------ | ------------------------------------------------- |
-| Feature flag gating    | ✅     | `ENABLE_GBP_SYNC: false` in features.ts:596       |
-| Extensible schema      | ✅     | `gbp`, `gbpState` fields support future expansion |
-| DB collection constant | ✅     | `DB_COLLECTIONS.INTEGRATIONS` added               |
-| MOL event types        | ✅     | 7 new GBP event types in mol.types.ts             |
-| DAL pattern followed   | ✅     | Server-only functions, proper path helpers        |
-| UI component pattern   | ✅     | IntegrationsTab follows existing tab patterns     |
-
----
-
-## ✅ UI Checklist (3/3 PASS)
-
-| Item                      | Status | Evidence                                        |
-| ------------------------- | ------ | ----------------------------------------------- |
-| IntegrationsTab created   | ✅     | `tabs/IntegrationsTab.tsx`                      |
-| Exported in tabs/index.ts | ✅     | Line 4: `export { default as IntegrationsTab }` |
-| Added to TAB_ITEMS_LIST   | ✅     | `businessSettings/index.tsx:173-183`            |
-
----
-
-## ✅ Security Checklist (4/4 PASS)
-
-| Item                        | Status | Evidence                                    |
-| --------------------------- | ------ | ------------------------------------------- |
-| Token storage server-only   | ✅     | DAL functions throw before API access       |
-| Feature flag default OFF    | ✅     | `ENABLE_GBP_SYNC: false`                    |
-| Token path uses DB constant | ✅     | `DB_COLLECTIONS.INTEGRATIONS` in path       |
-| UI hidden when flag OFF     | ✅     | IntegrationsTab returns null if !gbpEnabled |
-
----
-
-## ✅ Firebase Cost Checklist (3/3 PASS)
-
-| Item                        | Status | Evidence                              |
-| --------------------------- | ------ | ------------------------------------- |
-| No new reads in Phase 0     | ✅     | DAL functions are stubs only          |
-| No new writes in Phase 0    | ✅     | DAL functions throw, no actual writes |
-| Collection constant defined | ✅     | `INTEGRATIONS: "integrations"`        |
-
----
-
-## 📁 Files Created/Modified
-
-| File                                        | Lines | Status      | Issues |
-| ------------------------------------------- | ----- | ----------- | ------ |
-| `src/types/platform/store.ts`               | +27   | ✅ Modified | None   |
-| `src/constants/database.ts`                 | +5    | ✅ Modified | None   |
-| `src/types/mol.types.ts`                    | +9    | ✅ Modified | None   |
-| `src/config/features.ts`                    | +37   | ✅ Modified | None   |
-| `src/database/integrations/gbp.ts`          | 146   | ✅ Created  | None   |
-| `businessSettings/tabs/IntegrationsTab.tsx` | 141   | ✅ Created  | None   |
-| `businessSettings/tabs/index.ts`            | +1    | ✅ Modified | None   |
-| `businessSettings/index.tsx`                | +13   | ✅ Modified | None   |
-
----
-
-## 🔐 Security Compliance Table
-
-| Requirement           | Status | Evidence                                                      |
-| --------------------- | ------ | ------------------------------------------------------------- |
-| Tokens server-only    | ✅     | DAL in `src/database/integrations/gbp.ts` - no client exports |
-| Feature flag gated    | ✅     | UI returns null when `ENABLE_GBP_SYNC: false`                 |
-| Store isolation ready | ✅     | Schema includes `tId` + `sId` in token path                   |
-| No tokens to client   | ✅     | IntegrationsTab only receives `storeDetails` prop             |
-
----
-
-## 🏗️ 3-Year Architecture Freeze Compliance
-
-| Criterion                | Status | Evidence                                                        |
-| ------------------------ | ------ | --------------------------------------------------------------- |
-| Feature flag default OFF | ✅     | `ENABLE_GBP_SYNC: false`                                        |
-| Extensible schema        | ✅     | `gbp.menuLinkMode`, `gbpState.linkStatus/hoursStatus`           |
-| No "Phase 2" language    | ✅     | All impl.md tasks are Phase 0/1 only                            |
-| Complete at launch       | ✅     | Foundation ready for immediate implementation when API approved |
-
----
-
-## 🐛 Bugs Fixed During Implementation
-
-_None — clean implementation._
-
----
-
-## ✅ FINAL VERDICT: PHASE 0 READY FOR TESTING
-
-| Metric              | Value                     |
-| ------------------- | ------------------------- |
-| **Total Files**     | 8 (5 modified, 3 created) |
-| **Lines of Code**   | ~379                      |
-| **Spec Compliance** | 100% (6/6 Phase 0 items)  |
-| **Overall Status**  | ✅ PHASE 0 COMPLETE       |
-
----
-
-## 🚀 To Enable & Test
-
-### Phase 0 (Current - Foundation Only)
-
-1. **Feature flag is OFF** — UI stub hidden until enabled
-2. To see UI stub: Set `ENABLE_GBP_SYNC: true` in `src/config/features.ts`
-3. Navigate to: Business Settings → Integrations tab
-4. Expected: "Coming Soon" alert with disabled "Connect Google" button
-
-### Phase 1+ (After GBP API Access)
-
-1. Apply for GBP API access at https://developers.google.com/my-business/content/prereqs
-2. Create separate OAuth client for GBP scopes
-3. Set env vars: `GOOGLE_GBP_CLIENT_ID`, `GOOGLE_GBP_CLIENT_SECRET`
-4. Implement API routes per impl.md Phase 1 tasks
-5. Enable feature flag and test OAuth flow
-
----
-
-## 📄 Document Set (Complete)
-
-| Document                         | Status | Version |
-| -------------------------------- | ------ | ------- |
-| `gbp-sync_spec.md`               | ✅     | 1.1     |
-| `gbp-sync_impl.md`               | ✅     | 1.1     |
-| `gbp-sync_marketing.md`          | ✅     | 1.1     |
-| `gbp-sync_doc-feedback-audit.md` | ✅     | 1.0     |
-| `gbp-sync_validation.md`         | ✅     | 1.2     |
-| `gbp-chatgpt-critical-review.md` | ✅     | 1.0     |
-
----
-
-**VALIDATION SIGNATURE:** Lead Architect (Cascade)  
-**TIMESTAMP:** January 19, 2026
+**VALIDATION SIGNATURE:** Source-boundary audit
+**TIMESTAMP:** July 2, 2026

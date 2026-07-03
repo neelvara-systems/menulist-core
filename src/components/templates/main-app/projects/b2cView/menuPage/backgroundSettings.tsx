@@ -3,6 +3,7 @@ import { prepareMediaImage, type MediaImageCropIntent } from '@lib/media/prepare
 import MediaImageCard from '@/components/shared/media/MediaImageCard';
 import MediaImageAdjustModal from '@/components/shared/media/MediaImageAdjustModal';
 import MediaPublicContextPreview from '@/components/shared/media/MediaPublicContextPreview';
+import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { removeObjRef } from '@util/utils';
 import { Button, Card, ColorPicker, Divider, Flex, Tabs, Tooltip, Typography, message, theme } from 'antd';
 import type { Color } from 'antd/es/color-picker';
@@ -147,7 +148,6 @@ export default function BackgroundSettings({ config, onUpdate, previewAccentColo
                 backgroundRepeat: 'no-repeat'
             };
         }
-        console.log(configCopy);
         onUpdate(configCopy);
     };
 
@@ -209,7 +209,11 @@ export default function BackgroundSettings({ config, onUpdate, previewAccentColo
             });
             return true;
         } catch (error) {
-            message.error(error instanceof Error ? error.message : 'Failed to process image. Please try another image.');
+            logRuntimeFailure('menu_background_image_prepare_failed', error, {
+                ...getBoundedRuntimeStringContext('fileName', file.name),
+                ...getBoundedRuntimeStringContext('sourceView', from),
+            });
+            message.error('Failed to process image. Please try another image.');
             return false;
         }
     };
@@ -348,8 +352,6 @@ export default function BackgroundSettings({ config, onUpdate, previewAccentColo
                 colorMode={backgroundMode}
                 onClose={() => setIsColorPresetsOpen(false)}
                 onColorSelect={(colorOrGradient) => {
-                    console.log('Color preset selected:', colorOrGradient);
-
                     // Check if it's a gradient object
                     if (typeof colorOrGradient === 'object' && colorOrGradient.type === 'gradient') {
                         // Set background mode to gradient

@@ -1,6 +1,6 @@
 # Roles & Permissions — Mobile Support
 
-**Last Updated:** June 11, 2026 (v6 — current-store staff isolation verified)
+**Last Updated:** July 1, 2026 (v11 - Staff/Roles route parity source gate)
 **Decision:** ✅ MOBILE SUPPORTED — Owner can manage roles and permissions from phone
 
 ---
@@ -44,7 +44,9 @@
 ## DAL Parity
 
 - Uses same `/api/staff`, `/api/staff/password-reset`, `/api/staff/force-signout`, and `/api/staff/roles` server contracts as desktop
-- Mobile add/reset supports email, phone, and Staff ID aliases. When mobile create has a phone number, it sends the store country/dial code as the fallback phone context. Owner create/reset shows a temporary passcode once in a closeable mobile sheet with row-level copy icons, equal-width **WhatsApp** and **Share** actions, and a `wa.me` share link that targets the staff phone number when one is saved.
+- Uses the same shared staff client response boundary as desktop: staff/role API responses are capped at 256KB and successful list/mutation/role envelopes are shape-checked before mobile state updates
+- Mobile staff create, update, remove, reset-passcode, and force-sign-out flows inherit operation-specific mutation acknowledgement checks from `src/lib/staffManagement/client.ts`: the response must include the expected `mode`, `user`, and `userId`, and `user.id` must match `userId`, before mobile rows, selected-user state, passcode sheets, or success copy advance
+- Mobile add/reset supports email, phone, and Staff ID aliases. When mobile create has a phone number, it sends the store country/dial code as the fallback phone context. Owner create/reset shows a temporary passcode once in a closeable mobile sheet with row-level copy icons, equal-width **WhatsApp** and **Share** actions, and a `wa.me` share link that targets the staff phone number when one is saved. Failed row-copy, fallback copy, WhatsApp open, and native share actions log bounded `mobile_staff_login_details_*` diagnostics only; raw Staff IDs, passcodes, phone numbers, and generated login messages must not be logged.
 - Mobile self-service password change uses the shared `/api/auth/change-password` route from the signed-in profile screen. The old top-level More row is intentionally removed because account access is a rare profile action, not a daily settings action.
 - Mobile signed-in profile edit uses `/api/auth/update-profile` for the current user's name, display/contact email, and phone fields. This does not change the Firebase Auth login email; password/passcode changes stay under Account access.
 - Same `storeDetails.roles` data source
@@ -52,6 +54,15 @@
 - Same route/screen permission taxonomy as desktop via `src/lib/permissions/permissionRequirements.ts`
 - Same `StoreRoleDataType` type
 - Same `RolesPermissionInitialData` defaults for new roles
+
+## Route And Source Parity
+
+- Staff/Roles route parity source gate: `npm run verify:staff-roles-route-parity`
+- `/users` and `/users/list` render the desktop staff list.
+- `/users/permissions` renders the desktop roles/permissions screen.
+- `/users`, `/users/list`, and `/users/permissions` enter `MobileShell` More sub-screens on mobile.
+- Mobile Staff opens only when `userPermissions?.canManageUsers === true`; mobile Roles opens only when `userPermissions?.canAssignRoles === true`.
+- Mobile Staff and Roles continue to call the shared staff client instead of adding direct Firestore reads or mobile-only API contracts.
 
 ## Key Files
 

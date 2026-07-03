@@ -18,6 +18,8 @@ import {
     revalidatePublicClientCacheForProject,
 } from "@lib/cache/publicClientCache";
 import { firebaseClient } from "@lib/firebase/firebaseClient";
+import { readJsonResponseWithLimit } from "@lib/security/boundedResponseBody";
+import { MULTI_OUTLET_ACTION_REQUEST_POLICY } from "@lib/multiOutlet/outletActionResponseGuards";
 import {
     createOverrideAppliedEvent,
     createStoreLinkEvent,
@@ -25,6 +27,11 @@ import {
     createStoreUnlinkEvent,
     logMultiOutletEvent,
 } from "@lib/multiOutlet/molEvents";
+import {
+    getBoundedMultiOutletStringContext,
+    getMultiOutletProjectLogContext,
+    logMultiOutletFailure,
+} from "@lib/multiOutlet/diagnostics";
 import { createEmptyOverrides } from "@lib/multiOutlet/overrideUtils";
 import { parseProjectId } from "@lib/multiOutlet/resolveProject";
 import {
@@ -32,9 +39,61 @@ import {
     ItemOverride,
     ProjectOverrides,
 } from "@template/main-app/projects/types/project.types";
+import { DEFAULT_OUTLET_POLICY, type OutletPolicy } from "@type/multiOutlet.types";
 import { deleteField, doc, getDoc, increment, Timestamp, updateDoc } from "firebase/firestore";
 
 const COLLECTION = DB_COLLECTIONS.PROJECTS;
+const OUTLET_POLICY_RESPONSE_JSON_MAX_BYTES = 16 * 1024;
+
+type OutletPolicyResponse = {
+    masterPromoted: boolean;
+    outletPolicy: OutletPolicy;
+    success: true;
+};
+
+const isRecord = (value: unknown): value is Record<string, unknown> => (
+    Boolean(value) && typeof value === "object" && !Array.isArray(value)
+);
+
+const isOutletPolicyValue = (value: unknown): value is OutletPolicy => (
+    isRecord(value)
+    && Object.keys(DEFAULT_OUTLET_POLICY).every((key) => typeof value[key] === "boolean")
+);
+
+const isOutletPolicyResponse = (value: unknown): value is OutletPolicyResponse => (
+    isRecord(value)
+    && value.success === true
+    && typeof value.masterPromoted === "boolean"
+    && isOutletPolicyValue(value.outletPolicy)
+);
+
+const createMultiOutletStatusError = (
+    failureCode: string,
+    status?: number,
+): Error & { code: string; status?: number } => Object.assign(new Error("Failed to update outlet policy"), {
+    code: failureCode,
+    status,
+});
+
+const readOutletPolicyResponse = async (
+    response: Response,
+    storeId: number,
+): Promise<unknown> => {
+    try {
+        return await readJsonResponseWithLimit<unknown>(
+            response,
+            OUTLET_POLICY_RESPONSE_JSON_MAX_BYTES,
+        );
+    } catch (error) {
+        logMultiOutletFailure("multi_outlet_outlet_policy_response_parse_failed", error, {
+            ...getBoundedMultiOutletStringContext("storeId", storeId),
+            maxBytes: OUTLET_POLICY_RESPONSE_JSON_MAX_BYTES,
+            responseOk: response.ok,
+            responseStatus: response.status,
+        });
+        throw createMultiOutletStatusError("outlet_policy_response_parse_failed", response.status);
+    }
+};
 
 function withOutletLocalState<T extends Record<string, unknown>>(
     updateData: T,
@@ -330,11 +389,10 @@ export const linkStoreToMaster = async (
                         null, // No lastDiff on initial link
                     ) as unknown as Record<string, unknown>;
                 } catch (e) {
-                    // Silent fail — don't block linking
-                    console.warn(
-                        "[MasterUpdateAwareness] Initial snapshot creation failed (non-blocking):",
-                        e,
-                    );
+                    // Snapshot capture is best-effort; linking still succeeds with diagnostics.
+                    logMultiOutletFailure('master_update_awareness_initial_snapshot_failed', e, {
+                        ...getMultiOutletProjectLogContext(storeProjectId, masterProjectId),
+                    });
                 }
             }
 
@@ -456,10 +514,9 @@ export const switchStoreMaster = async (
                         null,
                     ) as unknown as Record<string, unknown>;
                 } catch (e) {
-                    console.warn(
-                        "[MasterUpdateAwareness] Switch master snapshot failed (non-blocking):",
-                        e,
-                    );
+                    logMultiOutletFailure('master_update_awareness_switch_snapshot_failed', e, {
+                        ...getMultiOutletProjectLogContext(storeProjectId, newMasterProjectId),
+                    });
                 }
             }
 
@@ -1043,28 +1100,34 @@ export function canHaveLinkedOutlets(tenantDetails: {
  */
 export const updateOutletPolicy = async (
     storeId: number,
-    policy: Partial<import("@type/multiOutlet.types").OutletPolicy>,
+    policy: Partial<OutletPolicy>,
 ) => {
     if (!FEATURE_FLAGS.ENABLE_MULTI_OUTLET) {
         throw new Error("Multi-store feature is disabled");
     }
 
-    return await apiCallComposer(
-        async () => {
-            const res = await fetch("/api/outlets/policy", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ policy }),
-            });
-            const data = await res.json().catch(() => ({}));
-            if (!res.ok) {
-                throw new Error(data.error || "Failed to update outlet policy");
-            }
-            return data;
-        },
-        { storeId, policy },
-        "updateOutletPolicy",
-    );
+    const res = await fetch("/api/outlets/policy", {
+        ...MULTI_OUTLET_ACTION_REQUEST_POLICY,
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ policy }),
+    });
+    if (!res.ok) {
+        const error = createMultiOutletStatusError("outlet_policy_update_rejected", res.status);
+        throw error;
+    }
+
+    const data = await readOutletPolicyResponse(res, storeId);
+    if (!isOutletPolicyResponse(data)) {
+        const error = createMultiOutletStatusError("outlet_policy_response_invalid", res.status);
+        logMultiOutletFailure("multi_outlet_outlet_policy_response_invalid", error, {
+            ...getBoundedMultiOutletStringContext("storeId", storeId),
+            responseOk: res.ok,
+            responseStatus: res.status,
+        });
+        throw error;
+    }
+    return data;
 };
 
 // ══════════════════════════════════════════════════════════════════════════

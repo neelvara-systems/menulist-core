@@ -1,11 +1,13 @@
 # Store Onboarding Flow — Specification & Gap Analysis
 
 **Feature:** #4C — Store Onboarding (Master + Local Outlet)  
-**Status:** ✅ Production Ready  
+**Status:** Implemented source evidence; not current launch certification
 **Original Date:** February 7, 2026  
-**Last Reviewed:** February 13, 2026  
+**Last Reviewed:** July 2, 2026
 **Analyst:** Cascade (Full Codebase Access)  
 **ICP:** Premium SMB Groups (2–10 stores)
+
+> **Launch Boundary:** This spec records store-onboarding implementation evidence, not current production-launch approval. Current release approval requires the active [production-readiness audit](../../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../../production-readiness/external-certification-runbook.md) evidence, `npm run verify:multi-location-boundary`, desktop/mobile Locations browser QA, outlet create/deactivate/rename QA, Razorpay sandbox evidence where billing is involved, Firebase deploy evidence where rules/functions change, and target-environment smoke.
 
 ---
 
@@ -552,6 +554,6 @@ Banner hidden. Snapshot updated. Next change starts fresh.
 
 ---
 
-**DOCUMENT STATUS:** 📋 ANALYSIS COMPLETE — AWAITING PRODUCT OWNER REVIEW  
-**NEXT STEPS:** Answer Q1-Q5, then implement Phase 1-4  
+**DOCUMENT STATUS:** Implemented source evidence - not current launch certification
+**NEXT STEPS:** Current release approval follows the Launch Boundary above.
 **ESTIMATED EFFORT:** Phase 1 (2 hours), Phase 2 (4 hours), Phase 3 (2-3 days), Phase 4 (1 day)
