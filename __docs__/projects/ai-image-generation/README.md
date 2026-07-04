@@ -1,9 +1,9 @@
 # AI Image Generation — Documentation Hub
 
 > **Feature:** Menu Image Generation & Editing
-> **Status:** Controlled owner testing ready after June 2026 worker/auth/logging hardening
-> **Last Updated:** June 11, 2026
-> **Version:** 2.2
+> **Status:** Controlled owner testing ready after July 2026 worker/auth/logging/preference diagnostics hardening
+> **Last Updated:** July 5, 2026
+> **Version:** 2.3
 
 ---
 
@@ -74,6 +74,7 @@ Plus **AI Image Editing** to enhance, modify backgrounds, and apply professional
 | **Cloud Task Client**     | `src/lib/google/cloudTask/index.ts`                                                                                              |
 | **Batch Job Listener**    | `src/hooks/useImageBatchJobListener.ts`                                                                                          |
 | **Batch Job DAL**         | `src/database/imageBatchProcessing/index.tsx`                                                                                    |
+| **Preference Persistence** | `src/lib/imageGenPreferences.ts`                                                                                                 |
 | **Types**                 | `src/components/templates/main-app/projects/types/imageGeneration.types.ts`                                                      |
 | **Batch Job Types**       | `src/components/templates/main-app/projects/types/batchJob.types.ts`                                                             |
 | **AI Constants**          | `src/constants/AI/index.tsx`                                                                                                     |
@@ -105,6 +106,7 @@ Toggle to disable AI image generation without code changes.
 
 | Version | Date         | Changes                                                                                                                                                       |
 | ------- | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2.3     | Jul 5, 2026  | Added bounded browser-local diagnostics for image-generation preference save/load/clear failures                                                               |
 | 2.2     | Jan 30, 2026 | **Model upgrade to Gemini 2.5 Flash!** Consolidated `FEATURE_FRIENDLY_INFO` into type, added Quick Generate, improved multi-mode toggle, added style previews |
 | 2.1     | Jan 30, 2026 | **Verification complete!** Added feature flag, removed debugger, fixed console.log, created verification.md                                                   |
 | 2.0     | Jan 29, 2026 | **All P2 complete!** UX-13, UX-18, UX-19, UX-26 (inline upload, simplified confirmations)                                                                     |

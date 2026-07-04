@@ -136,7 +136,7 @@ Updates title, description, template family, and status without uploading the fu
 
 ### `deleteCreativeEditorPlatformTemplate`
 
-Removes the template summary from the category catalog, then best-effort deletes its Storage document and preview. Generic template deletes fan out across every category catalog where the copied summary exists and clean up the shared Storage payload once. Platform delete is not exposed through owner Assets.
+Removes the template summary from the category catalog, then best-effort deletes its Storage document and preview. Generic template deletes fan out across every category catalog where the copied summary exists and clean up the shared Storage payload once. Platform delete is not exposed through owner Assets. Missing Storage objects are treated as an expected cleanup no-op; other Storage cleanup failures log the stable `creative_editor_template_storage_cleanup_failed` diagnostic with bounded path, template, product, source, asset-type, business-category, origin, and cleanup-target metadata.
 
 ### `saveCreativeEditorTemplate`
 
@@ -159,7 +159,7 @@ Returns metadata summary and full `CreativeEditorDocument`. `templateType=platfo
 
 ### `deleteCreativeEditorTemplate`
 
-Deletes the current store's matching index entry, then cleans up Storage document/preview objects. The match uses template id, `productId`, `sourceSurface`, and optional `assetTypeId`; metadata removal happens before best-effort Storage cleanup so a failed write cannot leave a broken visible template. Platform templates cannot be deleted from the owner DAL.
+Deletes the current store's matching index entry, then cleans up Storage document/preview objects. The match uses template id, `productId`, `sourceSurface`, and optional `assetTypeId`; metadata removal happens before best-effort Storage cleanup so a failed write cannot leave a broken visible template. Missing Storage objects are treated as an expected cleanup no-op; other cleanup failures log `creative_editor_template_storage_cleanup_failed` with bounded context and do not restore deleted metadata. Platform templates cannot be deleted from the owner DAL.
 
 ## Security
 
@@ -198,4 +198,5 @@ The flow is enabled by feature flags. Turning off `ENABLE_PRINTABLE_ASSET_USER_T
 - If Storage is unavailable during user save, save fails without corrupting the existing index; the editor stays open. Quota and permission messages are derived from structured Storage error code/status/name indicators, while owner-visible local validation errors stay allowlisted.
 - If save fails, the editor stays open and shows a message.
 - If a saved template document is missing, the owner sees a failure message; generated templates still work.
+- If Storage cleanup fails after a successful template metadata delete, the delete remains successful and the cleanup failure is logged with bounded diagnostics for operational follow-up.
 - Template previews are stored in Storage only when the editor provides a bounded preview data URL; no preview base64 is written into Firestore metadata.

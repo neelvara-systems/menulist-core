@@ -112,7 +112,7 @@ The visual implementation now follows the current-color Neelvara Prism glass par
 - About, Legal, Privacy, and Terms inherit the same mesh/glass shell, page hero, spotlight cards, glass text panels, policy dates where applicable, and page-specific final CTAs
 - Products and Contact use custom page flows with the same Prism hero/panel treatment for product relationship explanation and inquiry routing
 - the large hero studio mock remains on desktop/tablet; small phones hide it so the entity ledger appears in the first mobile viewport
-- scroll reveal remains local to Neelvara sections, one-time on viewport entry, and disabled for reduced-motion users
+- scroll reveal remains local to Neelvara sections, one-time on viewport entry, aligned with the Answerlattice/CampaignCue pending/visible model, route-aware on client navigation, and disabled for reduced-motion users
 - no pricing table, testimonials, customer logos, lead form, product checkout, analytics, API route, Firebase runtime, or owner app behavior was added
 - SaaS pricing/customer sections were translated into entity-safe equivalents: problem-first company sections, product lineup, and business/legal/privacy contact routing
 - homepage proof avoids numeric product-count and page-count signals; products are listed as operated products lower on the page

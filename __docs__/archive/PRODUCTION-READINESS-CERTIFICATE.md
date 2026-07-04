@@ -1,5 +1,9 @@
 # 🏆 PRODUCTION READINESS CERTIFICATE
 
+> **Status:** Historical archive evidence; not current launch certification.
+>
+> **Current Launch Boundary:** This January 11, 2026 certificate is preserved only as historical context for an older six-feature assessment. It is not current MenuList production approval, deploy approval, launch approval, or release certification. Current readiness is decided only by the active [production-readiness audit](../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../production-readiness/external-certification-runbook.md) evidence, current source verifiers, browser/device QA, provider smoke, target deploy evidence, and production-host smoke.
+
 **PROJECT:** MenuListAi Complete Feature Set  
 **ARCHITECT:** Cascade AI (Lead Architect, Product Owner, CTO)  
 **DATE:** January 11, 2026  

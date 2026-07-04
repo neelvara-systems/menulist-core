@@ -144,6 +144,13 @@ type OwnerUploadFileFingerprint = {
   size: number;
 };
 
+type OwnerUploadStorageMetadata = {
+  contentType?: string;
+  crc32c?: string;
+  md5Hash?: string;
+  size?: number | string;
+};
+
 type OwnerUploadSourceFingerprint = {
   fileFingerprints: OwnerUploadFileFingerprint[];
   fingerprint: string;
@@ -262,7 +269,19 @@ async function getOwnerUploadFileFingerprint(
   if (!storagePath || storagePath === "local-dev") return null;
   if (!storagePath.startsWith(`projects/files/${ids.tId}/${ids.sId}/`)) return null;
 
-  const [metadata] = await storageAdmin.bucket().file(storagePath).getMetadata().catch(() => [null as any]);
+  let metadata: OwnerUploadStorageMetadata | null = null;
+  try {
+    [metadata] = await storageAdmin.bucket().file(storagePath).getMetadata();
+  } catch (error) {
+    logMenuProcessingFailure("menu_extraction_owner_upload_metadata_lookup_failed", error, {
+      ...getMenuExtractionJobRouteLogContext({ tId: ids.tId, sId: ids.sId }),
+      ...getBoundedMenuProcessingStringContext("ownerUploadFileUid", file.uid),
+      ...getBoundedMenuProcessingStringContext("ownerUploadFileType", file.type),
+      ...getBoundedMenuProcessingStringContext("ownerUploadStoragePath", storagePath),
+      ownerUploadFileSize: Number.isFinite(Number(file.size)) ? Number(file.size) : null,
+    });
+    return null;
+  }
   if (!metadata) return null;
   const md5Hash = typeof metadata.md5Hash === "string" ? metadata.md5Hash : "";
   const crc32c = typeof metadata.crc32c === "string" ? metadata.crc32c : "";

@@ -300,7 +300,7 @@ Flow:
 
 Evidence:
 
-- Menu extraction job route uses `withAuth`, tenant checks, zod validation, safe mode, rate limit, Storage URL ownership, identity check, and job creation. See `src/app/api/menu-extraction/jobs/route.ts:402`, `src/app/api/menu-extraction/jobs/route.ts:427`, `src/app/api/menu-extraction/jobs/route.ts:554`, `src/app/api/menu-extraction/jobs/route.ts:642`.
+- Menu extraction job route uses `withAuth`, tenant checks, zod validation, safe mode, rate limit, Storage URL ownership, identity check, and job creation. See `src/app/api/menu-extraction/jobs/route.ts:473`, `src/app/api/menu-extraction/jobs/route.ts:483`, `src/app/api/menu-extraction/jobs/route.ts:505`, `src/app/api/menu-extraction/jobs/route.ts:551`, `src/app/api/menu-extraction/jobs/route.ts:670`, `src/app/api/menu-extraction/jobs/route.ts:685`, `src/app/api/menu-extraction/jobs/route.ts:758`.
 - Image generation route uses `withAuth`, safe mode, rate limit, validation, outlet policy, capacity, and accounting. See `src/app/api/image-generation/route.ts:24`, `src/app/api/image-generation/route.ts:31`, `src/app/api/image-generation/route.ts:36`, `src/app/api/image-generation/route.ts:106`, `src/app/api/image-generation/route.ts:220`.
 - Image generation UI filters outlet image generation to allowed items only. Outlet stores are limited to local-only items unless image override policy allows inherited image override. Evidence: `src/components/templates/main-app/projects/editorView/ImageUploadModal.tsx:231`, `src/components/templates/main-app/projects/editorView/ImageUploadModal.tsx:233`.
 

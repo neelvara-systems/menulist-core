@@ -47,7 +47,7 @@ The route:
 7. Allows only configured Firebase Storage URLs under `projects/files/{tId}/{sId}/`.
 8. Requires the target project document to exist.
 9. Reuses an existing active job if present.
-10. Computes a server-trusted owner-upload `sourceFingerprint` from Firebase Storage metadata when the request is a normal owner upload.
+10. Computes a server-trusted owner-upload `sourceFingerprint` from Firebase Storage metadata when the request is a normal owner upload. If metadata lookup fails, the route logs `menu_extraction_owner_upload_metadata_lookup_failed` with bounded tenant/store, file UID/type, Storage-path presence/length, file-size, and normalized source error metadata only, then continues without a fingerprint for that request.
 11. Reuses a recent completed first-extraction project job for the same project/user/fingerprint before running new AI work.
 12. Applies `AI_EXPENSIVE` rate limiting only when a new extraction job is still needed.
 13. Runs menu-intake identity when enabled.
@@ -57,7 +57,7 @@ June 29 follow-up: the protected owner upload route and menu-intake identity pre
 
 The protected owner route treats source lineage as server-owned. It does not accept client-provided `source` or `sourceMetadata`; retry jobs load those fields from the original failed job after verifying owner, tenant, store, and project ownership.
 
-Owner-upload completed-job reuse is intentionally narrow. The route uses server-read Storage `md5Hash`/`crc32c` metadata, target languages, action, business type, and business category to build the fingerprint. It only scans the latest bounded completed jobs for the same project/user, reuses completed `owner_upload` project jobs within 24 hours, skips forced-review and retry jobs, skips non-project destinations, skips reuse when the project was updated after the previous extraction, and deletes the duplicate newly-uploaded Storage objects when reuse succeeds.
+Owner-upload completed-job reuse is intentionally narrow. The route uses server-read Storage `md5Hash`/`crc32c` metadata, target languages, action, business type, and business category to build the fingerprint. It only scans the latest bounded completed jobs for the same project/user, reuses completed `owner_upload` project jobs within 24 hours, skips forced-review and retry jobs, skips non-project destinations, skips reuse when the project was updated after the previous extraction, and deletes the duplicate newly-uploaded Storage objects when reuse succeeds. Metadata lookup failures remain non-blocking so owner uploads do not fail only because the dedupe optimization cannot fingerprint the file.
 
 ## Client Job Diagnostics
 

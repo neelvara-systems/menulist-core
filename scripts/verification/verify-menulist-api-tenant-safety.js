@@ -2788,9 +2788,14 @@ function verifyAnalyticsErrorBoundary() {
   assertIncludes(
     'src/database/analytics/index.ts',
     [
-      "import { getAnalyticsQueueContext, getAnalyticsTrackingContext, logAnalyticsFailure } from \"@lib/analytics/analyticsDiagnostics\";",
+      "import { getAnalyticsQueueContext, getAnalyticsTrackingContext, getBoundedAnalyticsStringContext, logAnalyticsFailure } from \"@lib/analytics/analyticsDiagnostics\";",
       'analytics_queue_flush_failed',
       'getAnalyticsQueueContext(queueKey, queued)',
+      'analytics_queue_persist_failed',
+      'reportedAnalyticsQueuePersistFailure',
+      'queueEntryCount: analyticsWriteQueue.size',
+      'queuedEventCount: getQueuedAnalyticsEventCount()',
+      "getBoundedAnalyticsStringContext('serializedQueue', serializedQueue)",
       'analytics_persisted_queue_invalid',
       'analytics_missing_required_identity',
       'analytics_enqueue_failed',
@@ -2804,6 +2809,8 @@ function verifyAnalyticsErrorBoundary() {
   );
   assert(!/\bconsole\.(?:error|warn|log)\s*\(/.test(analyticsDatabase), 'analytics database helper must not direct-console queue/write failures');
   assert(!/\blogger\.(?:error|warn|log)\s*\(/.test(analyticsDatabase), 'analytics database helper must not raw-log queue/write failures');
+  assert(!analyticsDatabase.includes('} catch {\n    // Analytics must never break the public menu.'), 'analytics queue persistence must not silently swallow localStorage failures');
+  assert(!analyticsDatabase.includes('window.localStorage.setItem(ANALYTICS_QUEUE_STORAGE_KEY, JSON.stringify(serializable));'), 'analytics queue persistence must keep serialized queue metadata bounded for diagnostics');
 
   assertIncludes(
     'src/lib/analytics/unified.ts',
@@ -2816,11 +2823,41 @@ function verifyAnalyticsErrorBoundary() {
       'analytics_track_event_failed',
       'analytics_firebase_event_failed',
       'analytics_ga4_event_failed',
+      'analytics_session_milestones_read_failed',
+      'analytics_session_milestones_write_failed',
+      'analytics_session_source_read_failed',
+      'analytics_session_source_write_failed',
+      'analytics_active_filter_read_failed',
+      'analytics_active_filter_write_failed',
+      'getAnalyticsSessionStorageContext',
+      'getSessionMilestoneStateContext',
+      "getBoundedAnalyticsStringContext('storageKey', key)",
+      "getBoundedAnalyticsStringContext('serializedState', serializedState)",
+      "getBoundedAnalyticsStringContext('entrySource', entrySource)",
+      "getBoundedAnalyticsStringContext('filterLabel', label)",
     ],
     'analytics unified client bounded diagnostics',
   );
   assert(!/\bconsole\.(?:error|warn|log)\s*\(/.test(analyticsUnified), 'analytics unified helper must not direct-console tracking failures');
   assert(!/\blogger\.(?:error|warn|log)\s*\(/.test(analyticsUnified), 'analytics unified helper must not raw-log tracking failures');
+  assert(!analyticsUnified.includes('} catch {\n    return null;\n  }'), 'analytics unified sessionStorage helpers must not silently return null on storage/parse failures');
+  assert(!analyticsUnified.includes('Session milestones are additive analytics only; never block customer UX.'), 'analytics unified session milestone writes must not silently swallow storage failures');
+  assert(!analyticsUnified.includes('Source quality is additive analytics only; never block customer UX.'), 'analytics unified source writes must not silently swallow storage failures');
+  assert(!analyticsUnified.includes('Filter intent is additive analytics only; never block customer UX.'), 'analytics unified filter writes must not silently swallow storage failures');
+
+  assertIncludes(
+    'src/lib/analytics/geo.ts',
+    [
+      'analytics_geolocation_position_failed',
+      'isGeolocationPermissionDenied',
+      'GEOLOCATION_PERMISSION_DENIED_CODE',
+      'getGeolocationAttemptContext',
+      "fallback: 'timezone'",
+      "typeof navigator !== 'undefined'",
+    ],
+    'analytics geolocation fallback bounded diagnostics',
+  );
+  assert(!analyticsGeo.includes('}).catch(() => null);'), 'analytics geolocation lookup must not silently swallow position failures');
 
   [
     ['src/lib/analytics/device.ts', analyticsDevice, 'analytics_device_user_agent_parse_failed'],

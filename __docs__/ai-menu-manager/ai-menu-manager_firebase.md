@@ -234,7 +234,7 @@ Evidence: `src/app/api/image-generation/route.ts:106`, `src/app/api/image-genera
 | Reuse active/completed job | Existing API | Can avoid duplicate job write and cleanup unreferenced uploads. |
 | Review/apply result | Existing extraction review/project update flow | Same as current import. |
 
-Evidence: `src/app/api/menu-extraction/jobs/route.ts:491`, `src/app/api/menu-extraction/jobs/route.ts:523`, `src/app/api/menu-extraction/jobs/route.ts:642`.
+Evidence: `src/app/api/menu-extraction/jobs/route.ts:490`, `src/app/api/menu-extraction/jobs/route.ts:522`, `src/app/api/menu-extraction/jobs/route.ts:640`.
 
 ### Mobile PWA Operational Actions
 

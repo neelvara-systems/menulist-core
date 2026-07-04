@@ -2,8 +2,8 @@
 
 > **Feature:** #4 — Multi-Store Menu Consistency  
 > **Status:** Implemented source evidence; not current launch certification
-> **Last Updated:** May 19, 2026
-> **Version:** 4.2
+> **Last Updated:** July 5, 2026
+> **Version:** 4.3
 
 > **Scope:** Master/outlet store linking, project replication, override fields, AI extraction integration, and store onboarding. For permissions, see [Roles & Permissions](../roles-permissions/) (Layer 1) and [Multi-Chain Permissions](../multi-chain-permissions/) (Layer 2). For platform admin store CRUD, see [Stores Management](../stores-management/).
 >
@@ -171,6 +171,7 @@ Contains:
 | **AI Extraction**      | `src/lib/extraction/comparisonEngine.ts`                            |
 | **Job Listener**       | `src/hooks/useMenuProcessingJob.ts`                                 |
 | **Master Job Status**  | `src/hooks/useMasterJobStatus.ts`                                   |
+| **Session Store Context** | `src/providers/sessionProvider.tsx`                              |
 
 ### Store Onboarding (Feature #4C)
 

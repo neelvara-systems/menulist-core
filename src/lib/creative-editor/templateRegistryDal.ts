@@ -15,6 +15,7 @@ import { BUSINESS_CATEGORIES } from "@data/shared/businessTypes";
 import { requestBodyComposer } from "@lib/apiHelper";
 import { firebaseClient, firebaseStorage } from "@lib/firebase/firebaseClient";
 import { createRandomIdSegment } from "@lib/runtime/randomId";
+import { getBoundedRuntimeStringContext, logRuntimeFailure } from "@lib/runtime/runtimeDiagnostics";
 import type { CreativeEditorDocument, CreativeEditorTemplateOrigin, CreativeEditorTemplateSummary } from "@/modules/creative-editor/types";
 import {
     creativeEditorTemplateGetQuerySchema,
@@ -114,6 +115,16 @@ export type CreativeEditorPlatformTemplateMetadataParams = Omit<CreativeEditorTe
 };
 
 type TemplateStorageBackend = "storage";
+
+type TemplateStorageCleanupContext = {
+    assetTypeId?: string;
+    businessCategory?: string;
+    cleanupTarget: "document" | "preview";
+    productId?: string;
+    sourceSurface?: string;
+    templateId?: string;
+    templateOrigin: "platform" | "user";
+};
 
 type CreativeEditorTemplateRecord = {
     assetTypeId?: string;
@@ -506,11 +517,37 @@ async function readStorageJson<T>(path: string): Promise<T> {
     return JSON.parse(raw) as T;
 }
 
-async function deleteStoragePath(path?: string | null) {
-    if (!path) return;
-    await deleteObject(ref(firebaseStorage, path)).catch((error) => {
-        if ((error as any)?.code !== "storage/object-not-found") throw error;
+const isMissingStorageObjectError = (error: unknown): boolean => (
+    Boolean(error)
+    && typeof error === "object"
+    && (error as { code?: unknown }).code === "storage/object-not-found"
+);
+
+const logTemplateStorageCleanupFailure = (
+    error: unknown,
+    path: string,
+    context: TemplateStorageCleanupContext,
+) => {
+    logRuntimeFailure("creative_editor_template_storage_cleanup_failed", error, {
+        cleanupTarget: context.cleanupTarget,
+        templateOrigin: context.templateOrigin,
+        ...getBoundedRuntimeStringContext("assetTypeId", context.assetTypeId),
+        ...getBoundedRuntimeStringContext("businessCategory", context.businessCategory),
+        ...getBoundedRuntimeStringContext("productId", context.productId),
+        ...getBoundedRuntimeStringContext("sourceSurface", context.sourceSurface),
+        ...getBoundedRuntimeStringContext("storagePath", path),
+        ...getBoundedRuntimeStringContext("templateId", context.templateId),
     });
+};
+
+async function deleteStoragePath(path: string | null | undefined, context: TemplateStorageCleanupContext) {
+    if (!path) return;
+    try {
+        await deleteObject(ref(firebaseStorage, path));
+    } catch (error) {
+        if (isMissingStorageObjectError(error)) return;
+        logTemplateStorageCleanupFailure(error, path, context);
+    }
 }
 
 function requireStoreScope(scope?: CreativeEditorTemplateScope | null): CreativeEditorTemplateScope {
@@ -1055,10 +1092,18 @@ async function deleteCreativeEditorTemplateRaw(params: CreativeEditorTemplateCon
 
     // Metadata removal is the owner-visible delete. Storage cleanup runs after
     // the index update so a failed write cannot leave a broken visible template.
+    const cleanupContext = {
+        assetTypeId: record.assetTypeId,
+        businessCategory: record.businessCategory,
+        productId: record.productId,
+        sourceSurface: record.sourceSurface,
+        templateId: record.id,
+        templateOrigin: "user" as const,
+    };
     await Promise.all([
-        deleteStoragePath(record.documentPath),
-        deleteStoragePath(record.previewPath),
-    ]).catch(() => undefined);
+        deleteStoragePath(record.documentPath, { ...cleanupContext, cleanupTarget: "document" }),
+        deleteStoragePath(record.previewPath, { ...cleanupContext, cleanupTarget: "preview" }),
+    ]);
 }
 
 export async function deleteCreativeEditorTemplate(params: CreativeEditorTemplateContext & { templateId: string }): Promise<void> {
@@ -1108,10 +1153,18 @@ async function deleteCreativeEditorPlatformTemplateRaw(params: CreativeEditorTem
 
     if (!anyDeleted || !primaryRecord) throwTemplateRegistryLocalError("TEMPLATE_NOT_FOUND");
 
+    const cleanupContext = {
+        assetTypeId: primaryRecord.assetTypeId,
+        businessCategory: primaryRecord.businessCategory || businessCategory,
+        productId: primaryRecord.productId,
+        sourceSurface: primaryRecord.sourceSurface,
+        templateId: primaryRecord.id,
+        templateOrigin: "platform" as const,
+    };
     await Promise.all([
-        deleteStoragePath(primaryRecord.documentPath),
-        deleteStoragePath(primaryRecord.previewPath),
-    ]).catch(() => undefined);
+        deleteStoragePath(primaryRecord.documentPath, { ...cleanupContext, cleanupTarget: "document" }),
+        deleteStoragePath(primaryRecord.previewPath, { ...cleanupContext, cleanupTarget: "preview" }),
+    ]);
 }
 
 export async function deleteCreativeEditorPlatformTemplate(params: CreativeEditorTemplateContext & { templateId: string }): Promise<void> {

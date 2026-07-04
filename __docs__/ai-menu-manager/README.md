@@ -110,7 +110,7 @@ Feedback link and feedback QR requests are dedicated browser-local export cards,
 | --- | --- |
 | `updateProject()` customer-truth invariant | AMM project/menu writes must preserve the existing DAL path and side effects. Evidence: `src/database/projects/index.ts:945` |
 | Public cache invalidation | Approved public-menu changes must revalidate menu, owner Business Assistant cache, and screen content version. Evidence: `src/lib/cache/publicClientCache.ts:77` |
-| Menu extraction jobs | AMM import/upload cards reuse the protected extraction job API. Evidence: `src/app/api/menu-extraction/jobs/route.ts:402` |
+| Menu extraction jobs | AMM import/upload cards reuse the protected extraction job API. Evidence: `src/app/api/menu-extraction/jobs/route.ts:473` |
 | Existing image generation API | AMM generated-image cards reuse existing safe mode, rate limit, capacity, and accounting flow. Evidence: `src/app/api/image-generation/route.ts:24` |
 | Menu Observation Layer | AMM should not create a second noisy change log; approved menu writes flow into existing MOL where applicable. Evidence: `src/database/menuChangeLog/index.ts:1` |
 | Current menu data shape | AMM edits `Project.files[].extractedData.data.categories/items`, not a new Menu Graph collection. Evidence: `src/components/templates/main-app/projects/types/extractedData.types.ts:149` |

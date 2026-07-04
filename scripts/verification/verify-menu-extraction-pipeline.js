@@ -572,11 +572,13 @@ contains(
   [
     'getMenuExtractionJobRouteLogContext',
     'menu_extraction_owner_upload_cleanup_partially_failed',
+    'menu_extraction_owner_upload_metadata_lookup_failed',
     'menu_extraction_reusing_completed_owner_upload_job',
     'menu_extraction_owner_job_created',
     'menu_extraction_owner_job_creation_failed',
     'logMenuProcessingDiagnostic',
     'logMenuProcessingFailure',
+    'getBoundedMenuProcessingStringContext("ownerUploadStoragePath", storagePath)',
     'targetLanguageCount: targetLanguages.length',
   ],
   'Menu extraction job route diagnostics are bounded',
@@ -588,11 +590,43 @@ notContains(
     'secureLog(',
     'secureError(',
     '[MenuExtractionJob] Duplicate owner upload cleanup partially failed',
+    '.getMetadata().catch(() => [null as any])',
     '[MenuExtractionJob] Reusing completed owner upload job',
     '[MenuExtractionJob] Owner job created',
     '[MenuExtractionJob] Job creation failed',
   ],
   'Menu extraction job route does not log raw job/project diagnostics',
+);
+
+contains(
+  '__docs__/menu-extraction-pipeline/README.md',
+  [
+    'menu_extraction_owner_upload_metadata_lookup_failed',
+    'job creation still continues',
+    'the fingerprint is skipped for that request',
+    'without raw file names, URLs, paths, or identifiers',
+  ],
+  'Menu extraction README documents owner-upload metadata lookup fallback diagnostics',
+);
+
+contains(
+  '__docs__/menu-extraction-pipeline/menu-extraction-pipeline_impl.md',
+  [
+    'menu_extraction_owner_upload_metadata_lookup_failed',
+    'continues without a fingerprint for that request',
+    'Metadata lookup failures remain non-blocking',
+  ],
+  'Menu extraction implementation doc documents owner-upload metadata lookup fallback diagnostics',
+);
+
+contains(
+  '__docs__/menu-extraction-pipeline/menu-extraction-pipeline_firebase.md',
+  [
+    'menu_extraction_owner_upload_metadata_lookup_failed',
+    'continues without completed-job fingerprint reuse for that request',
+    'adds no new Firestore reads/writes/deletes',
+  ],
+  'Menu extraction Firebase doc documents owner-upload metadata lookup fallback cost boundary',
 );
 
 contains(
@@ -1085,7 +1119,12 @@ contains(
     "const copiedViaFallback = document.execCommand('copy');",
     'public_create_menu_success_copy_failed',
     'public_create_menu_success_whatsapp_open_failed',
+    'public_create_menu_success_starter_signal_write_failed',
+    'public_create_menu_success_starter_signal_claim_read_failed',
+    'getCreateMenuSuccessStarterSignalContext',
     'getBoundedCreateMenuSuccessStringContext',
+    'storeIdPresent',
+    'getBoundedCreateMenuSuccessStringContext(\'rawClaim\', rawClaim)',
     "setHandoffError(t('CreateMenuSuccess.copyFailed'))",
     "setHandoffError(t('CreateMenuSuccess.whatsAppFailed'))",
     "const opened = window.open(whatsappUrl, '_blank', 'noopener,noreferrer')",
@@ -1101,6 +1140,8 @@ notContains(
     'document.body.appendChild(input);\n                input.select();',
     'navigator.clipboard.writeText(menuUrl);\n            } catch',
     'await navigator.clipboard.writeText(menuUrl);\n        return;\n    }',
+    'recordStarterActivationSignal(storeId, signal).catch(() =>',
+    '} catch {\n            // Non-blocking: the success page remains useful even if telemetry cannot be recorded.',
     "document.execCommand('copy');\n    } finally {\n        document.body.removeChild(input);",
   ],
   'Public create-menu success copy avoids implicit nested clipboard fallback flow',

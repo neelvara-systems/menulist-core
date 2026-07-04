@@ -56,7 +56,7 @@ The visuals must communicate:
 
 ## Primary Goal
 
-Create a complete production-ready asset workflow covering:
+Create a complete source-backed asset workflow covering:
 - hero visuals
 - screenshots
 - composites
@@ -271,7 +271,7 @@ works best
 
 ## Part 8 - Production-Quality Image Generation Prompts
 
-Create production-ready prompts for:
+Create source-backed prompts for:
 - hero composite
 - 5 feature visuals
 - synchronization visual

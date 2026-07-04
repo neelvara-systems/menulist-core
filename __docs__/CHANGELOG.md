@@ -8,6 +8,161 @@
 
 ---
 
+## July 5, 2026 - Analytics Session Storage Diagnostics
+
+### Fixed
+
+- **Analytics session milestone storage failures are no longer silent** - public analytics still keeps menu rendering non-blocking and still skips tab-scoped de-duplication when `sessionStorage` is unavailable or malformed, but milestone, entry-source, and active-filter read/write failures now log bounded diagnostics.
+- **The boundary is source-gated** - `npm run verify:menulist-api-tenant-safety` now requires `analytics_session_milestones_*`, `analytics_session_source_*`, and `analytics_active_filter_*` failure codes, bounded storage-key/value metadata, milestone counts, and rejects the old silent sessionStorage catches.
+
+### Boundaries
+
+- This changes browser-local analytics sessionStorage diagnostics only. It does not change analytics event admission, counters, Firestore writes, queue coalescing, public analytics route validation, GA4 forwarding, owner analytics reads, location consent, cache behavior, Firebase/Vercel deploys, production builds, browser/device QA, production-host smoke, launch approval, or release certification.
+
+## July 5, 2026 - Active Store Context Load Fallback
+
+### Fixed
+
+- **Store-context load failures no longer leave stale store state quietly** - when an HQ/master session has a valid active store context but the target store or subscription load fails, the session provider now logs bounded `session_provider_active_store_context_load_failed` diagnostics, clears stale active-subscription state, resets the active context, and falls back to the login store.
+- **The boundary is source-gated** - `npm run verify:auth-security-failure-matrix` now requires the active store-context failure code, bounded target/previous store metadata, and rejects the old silent `loadTargetStore()` catch.
+
+### Boundaries
+
+- This changes owner session-provider fallback behavior for failed active store-context loading only. It does not change `/api/auth/switch-store`, successful store switching, Firebase Auth claim refresh, tenant/store writes, subscription reads on valid paths, public output, cache invalidation, Firestore rules/indexes, Cloud Function logic, Firebase/Vercel deploys, production builds, browser/device QA, production-host smoke, launch approval, or release certification.
+
+## July 5, 2026 - Image Generation Preferences Diagnostics
+
+### Fixed
+
+- **Image-generation preference storage failures are no longer silent** - owner image-generation preferences remain browser-local and zero-Firestore-cost, but failed save, load, or clear localStorage paths now log bounded `image_generation_preferences_*_failed` diagnostics.
+- **The boundary is source-gated** - `npm run verify:auth-security-failure-matrix` now requires shared hook diagnostics, bounded tenant/store/storage-key metadata, preference counts, serialized/stored payload presence-length metadata, and rejects the old silent localStorage comments.
+
+### Boundaries
+
+- This changes browser-local owner image-generation preference diagnostics only. It does not change generated-image prompts/provider calls, preference values, defaults, Firestore reads/writes, Storage operations, image generation jobs, AI accounting, public menu output, Firebase/Vercel deploys, production builds, browser/device QA, production-host smoke, launch approval, or release certification.
+
+## July 5, 2026 - Analytics Queue Persistence Diagnostics
+
+### Fixed
+
+- **Analytics queue persistence failures are no longer silent** - public/customer analytics still never blocks menu rendering when browser storage is unavailable, full, or blocked, but failed local queue persistence now logs bounded `analytics_queue_persist_failed` diagnostics once per failing browser session.
+- **The boundary is source-gated** - `npm run verify:menulist-api-tenant-safety` now requires the persistence failure code, one-per-session guard, queue counts, serialized-payload presence/length metadata, and rejects the old silent localStorage persistence catch.
+
+### Boundaries
+
+- This changes browser-local analytics queue persistence diagnostics only. It does not change analytics event admission, coalescing, public analytics route validation, Firestore analytics writes, GA4 forwarding, owner analytics reads, location consent, cache behavior, Firebase/Vercel deploys, production builds, browser/device QA, production-host smoke, launch approval, or release certification.
+
+## July 5, 2026 - Error Page Theme Fallback Diagnostics
+
+### Fixed
+
+- **Error-page theme fallback failures are no longer silent** - global and wrapped error pages still fall back to the default dark MenuList theme when Redux Persist theme state is unavailable or malformed, but storage/JSON failures now log bounded `error_page_theme_persisted_state_read_failed` diagnostics.
+- **The parser is shared and source-gated** - `src/app/global-error.tsx` and `src/components/atoms/ErrorPageThemeWrapper/index.tsx` now use `readPersistedErrorPageTheme()`, and `npm run verify:auth-security-failure-matrix` rejects duplicate silent persisted-theme parsers while requiring bounded persisted-state and client-theme metadata.
+
+### Boundaries
+
+- This changes browser-local error-page theme fallback diagnostics only. It does not change crash rendering, reset behavior, explicit error reports, normal theme settings, Redux persistence, auth, Firestore reads/writes, Storage operations, Cloud Function logic, Firebase/Vercel deploys, production builds, browser/device QA, production-host smoke, launch approval, or release certification.
+
+## July 5, 2026 - Neelvara Viewport Reveal Stabilization
+
+### Fixed
+
+- **Neelvara scroll reveal no longer leaves visible sections pending** - the viewport-entry reveal layer now uses explicit pending/visible states, route-aware reinitialization, initial viewport handling, sibling-based delays, and a lower threshold for Neelvara's large section blocks.
+- **Reduced-motion behavior stays direct** - reduced-motion users receive visible content with reveal transitions disabled.
+
+### Boundaries
+
+- This is Neelvara website presentation polish only. It does not change routes, product domains, logo geometry, typography assets, legal copy meaning, product runtime behavior, Firebase, auth, APIs, analytics, Vercel deploys, production builds, or launch approval.
+
+## July 5, 2026 - Menu Extraction Owner Upload Metadata Diagnostics
+
+### Fixed
+
+- **Owner-upload fingerprint metadata failures are no longer silent** - normal owner uploads still continue when Firebase Storage metadata cannot be read, but completed-job reuse now logs bounded `menu_extraction_owner_upload_metadata_lookup_failed` diagnostics before falling back to a new extraction path.
+- **The boundary is source-gated** - `npm run verify:menu-extraction-pipeline` now requires the bounded metadata lookup diagnostic and rejects the old silent `getMetadata().catch(() => [null as any])` fallback.
+
+### Boundaries
+
+- This changes owner-upload dedupe metadata diagnostics only. It does not change upload admission, Storage URL allowlisting, project ownership checks, file fingerprints when metadata is available, active-job reuse, completed-job reuse success behavior, extraction job writes, AI/provider behavior, owner-facing copy, Firestore reads/writes, Storage operation counts, Firebase/Vercel deploys, production builds, browser/device QA, production-host smoke, launch approval, or release certification.
+
+## July 5, 2026 - Analytics Geolocation Fallback Diagnostics
+
+### Fixed
+
+- **Opt-in analytics geolocation fallback failures are no longer silent** - customer location analytics still falls back to timezone and keeps normal permission denial quiet, but timeout or position-unavailable browser geolocation failures now log bounded `analytics_geolocation_position_failed` diagnostics.
+- **The boundary is source-gated** - `npm run verify:menulist-api-tenant-safety` now rejects the old silent geolocation `.catch(() => null)` pattern and requires the permission-denial exception plus bounded fallback diagnostics.
+
+### Boundaries
+
+- This changes analytics location diagnostics only. It does not change location opt-in rules, analytics preferences, event admission, location key format, Firestore analytics writes, GA4 forwarding, public analytics API behavior, cache behavior, Firebase/Vercel deploys, production builds, browser/device QA, production-host smoke, launch approval, or release certification.
+
+## July 5, 2026 - Create Menu Success Starter Signal Diagnostics
+
+### Fixed
+
+- **Create Menu success starter-signal failures are no longer silent** - `/create-menu/success` still records starter activation signals only after copy or WhatsApp handoff success, keeps telemetry non-blocking, and now logs bounded diagnostics when session-storage claim context cannot be read or when the existing starter-signal write attempt fails.
+- **The boundary is source-gated** - `npm run verify:menu-extraction-pipeline` now requires `public_create_menu_success_starter_signal_claim_read_failed` / `public_create_menu_success_starter_signal_write_failed` and rejects the old silent starter-signal catch patterns.
+
+### Boundaries
+
+- This changes public Create Menu success-page telemetry diagnostics only. It does not change valid upload/link import, preview polling, claim/publish, public URLs, QR rendering, copy/open handoff behavior, starter activation write timing, successful-path Firestore reads/writes, Storage operations, Firebase/Vercel deploys, production builds, browser/device QA, production-host smoke, launch approval, or release certification.
+
+## July 5, 2026 - Creative Editor Template Cleanup Diagnostics
+
+### Fixed
+
+- **Template Storage cleanup failures are no longer silent** - Creative Editor user and platform template deletes still remove metadata first, still ignore already-missing Storage objects, and now log bounded `creative_editor_template_storage_cleanup_failed` diagnostics when document or preview object cleanup fails for another reason.
+- **The boundary is source-gated** - `npm run verify:auth-security-failure-matrix` and `node scripts/verification/verify-printable-asset-templates.js` now reject the old silent best-effort cleanup swallow and require bounded cleanup diagnostics.
+
+### Boundaries
+
+- This changes Creative Editor template-registry cleanup diagnostics only. It does not change template list/open/save/update/delete metadata behavior, Firestore reads/writes, Storage upload/delete attempts, owner-visible failure copy, platform manager access, feature flags, Firebase/Vercel deploys, production builds, browser/device QA, production-host smoke, launch approval, or release certification.
+
+## July 5, 2026 - Server DAL Session Lookup Diagnostics
+
+### Fixed
+
+- **Server DAL session lookup failures are no longer silent** - protected `apiCallComposerServer` calls now log a bounded `dal_server_session_lookup_failed` diagnostic when `getActiveSession()` throws before returning the same unauthenticated fallback.
+- **The boundary is source-gated** - `npm run verify:auth-security-failure-matrix` now rejects the old silent `getActiveSession().catch(() => null)` pattern and requires normalized session lookup diagnostics.
+
+### Boundaries
+
+- This changes server DAL diagnostics only. It does not change route authorization, session semantics, ignored webhook/helper function behavior, DAL return shapes, Firestore reads/writes, Firebase Auth behavior, Firebase/Vercel deploys, production builds, browser/device QA, production-host smoke, launch approval, or release certification.
+
+## July 5, 2026 - System Ledger Pending Validation Cleanup
+
+### Fixed
+
+- **System-strengthening ledger no longer preserves a stale pending validation row** - the Reseller Operations Browser Request Boundary now records scoped `git diff --check` as passed instead of pending.
+- **The cleanup is source-gated** - `npm run verify:agent-readiness` now rejects the stale pending diff-check wording in the system data-flow audit.
+
+### Boundaries
+
+- This is audit-ledger evidence cleanup only. It does not change runtime behavior, reseller APIs, browser request policy, feature flags, Firebase rules/indexes, Cloud Function logic, provider behavior, Firebase/Vercel deploys, production builds, browser/device QA, production-host smoke, launch approval, or release certification.
+
+## July 5, 2026 - Production Audit Prompt Launch Boundary
+
+### Fixed
+
+- **Production audit prompts now separate source confidence from launch approval** - the master audit governance and final verdict prompts now state that high scores cannot override missing External Certification Runbook evidence.
+- **The boundary is source-gated** - `npm run verify:agent-readiness` now requires the launch-authority wording in both active testing/audit prompt templates.
+- **Website asset prompt wording no longer implies launch certification** - the screenshot/asset production prompt now asks for source-backed visual asset workflows and prompts instead of "production-ready" assets.
+
+### Boundaries
+
+- This changes audit/process documentation and verifier coverage only. It does not change runtime behavior, feature flags, Firebase rules/indexes, Cloud Function logic, provider behavior, Firebase/Vercel deploys, production builds, browser/device QA, production-host smoke, launch approval, or release certification.
+
+## July 5, 2026 - Archive Launch Certification Boundary
+
+### Fixed
+
+- **Archived launch/certification claims now declare their historical-only status** - archive files with old production-ready, ready-for-testing, ship-approved, or deploy-all wording now state that they are historical context, not current launch certification.
+- **The boundary is source-gated** - `npm run verify:agent-readiness` now scans archive markdown files for launch/certification wording and requires a top-of-file historical boundary, plus the docs index archive warning.
+
+### Boundaries
+
+- This is archive documentation governance only. It does not change runtime behavior, feature flags, Firebase rules/indexes, Cloud Function logic, provider behavior, Vercel/Firebase deploys, production builds, browser/device QA, or current launch approval.
+
 ## July 5, 2026 - Public Truth Tools Public HTTPS Evidence Text
 
 ### Fixed

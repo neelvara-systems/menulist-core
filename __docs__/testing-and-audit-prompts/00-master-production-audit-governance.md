@@ -20,6 +20,12 @@ for real-world deployment at scale.
 
 Every phase must follow this master governance.
 
+## Launch Authority Boundary
+
+This prompt may produce local source-readiness findings and a release recommendation, but it is not launch approval by itself. A high score cannot override missing [External Certification Runbook](../production-readiness/external-certification-runbook.md) evidence.
+
+When external gates are missing, use "source-gate evidence passed" or "controlled-owner-testing ready" only. Do not mark MenuList launch ready, production approved, release certified, or deploy approved unless the active runbook and production-readiness audit contain evidence for browser/device QA, provider smoke, target Firebase/Vercel deploys where applicable, production-host smoke, and owner-controlled setup.
+
 ---
 
 # CORE OPERATING PRINCIPLES (NON-NEGOTIABLE)

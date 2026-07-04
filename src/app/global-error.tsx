@@ -1,45 +1,12 @@
 "use client";
 
 import ErrorReportButton from "@/components/shared/debug/ErrorReportButton";
+import { getDefaultErrorPageTheme, readPersistedErrorPageTheme } from "@lib/runtime/errorPageTheme";
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from "@lib/runtime/runtimeDiagnostics";
 import { useEffect, useState } from "react";
 
-// Default colors from constants/common.ts
-const DEFAULT_DARK_COLOR = '#3B82F6';
-const DEFAULT_LIGHT_COLOR = '#1E40AF';
-
-/**
- * Reads theme from localStorage (Redux Persist storage)
- * This runs client-side only
- */
-function getPersistedTheme(): { darkMode: boolean; primaryColor: string } {
-  const defaults = { darkMode: true, primaryColor: DEFAULT_DARK_COLOR };
-
-  if (typeof window === 'undefined') {
-    return defaults;
-  }
-
-  try {
-    const persistedState = localStorage.getItem('persist:nextjs');
-    if (!persistedState) return defaults;
-
-    const parsed = JSON.parse(persistedState);
-    if (!parsed.clientThemeConfig) return defaults;
-
-    const themeConfig = JSON.parse(parsed.clientThemeConfig);
-    return {
-      darkMode: themeConfig.darkMode ?? true,
-      primaryColor: themeConfig.darkMode
-        ? (themeConfig.darkColor ?? DEFAULT_DARK_COLOR)
-        : (themeConfig.lightColor ?? DEFAULT_LIGHT_COLOR)
-    };
-  } catch {
-    return defaults;
-  }
-}
-
 export default function GlobalError({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
-  const [theme, setTheme] = useState({ darkMode: true, primaryColor: DEFAULT_DARK_COLOR });
+  const [theme, setTheme] = useState(getDefaultErrorPageTheme);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -47,7 +14,7 @@ export default function GlobalError({ error, reset }: { error: Error & { digest?
       hasDigest: Boolean(error?.digest),
       ...getBoundedRuntimeStringContext('digest', error?.digest),
     });
-    setTheme(getPersistedTheme());
+    setTheme(readPersistedErrorPageTheme('global-error-boundary'));
     setMounted(true);
   }, [error]);
 

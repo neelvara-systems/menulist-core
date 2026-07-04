@@ -64,7 +64,7 @@ Session milestones are added to existing daily-doc writes. They do not create a 
 | `intentSessions` | First session with search, 2 distinct item views, unavailable-item tap, Decision Block tap, or final action | Measures buying intent without claiming conversion |
 | `actionSessions` | First final menu action per session | Measures sessions that moved to call/WhatsApp/directions/reserve/order |
 
-Milestone state is stored in `sessionStorage` by tenant/store/project/local date/session id. If browser storage is unavailable, normal counters still write, but milestone de-duplication is skipped to avoid unsafe persistence assumptions.
+Milestone state is stored in `sessionStorage` by tenant/store/project/local date/session id. If browser storage is unavailable, full, blocked, or malformed, normal counters still write, but milestone/source/filter de-duplication or attribution persistence is skipped to avoid unsafe persistence assumptions. Those failure paths log bounded diagnostics only; they do not create fallback writes.
 
 ### Source Quality and Owner Action Plan
 

@@ -1,6 +1,6 @@
 import { DB_COLLECTIONS } from "@constant/database";
 import { apiCallComposer } from "@lib/apiHelper/apiCallComposer";
-import { getAnalyticsQueueContext, getAnalyticsTrackingContext, logAnalyticsFailure } from "@lib/analytics/analyticsDiagnostics";
+import { getAnalyticsQueueContext, getAnalyticsTrackingContext, getBoundedAnalyticsStringContext, logAnalyticsFailure } from "@lib/analytics/analyticsDiagnostics";
 import { getBusinessAnalyticsDateKey } from "@lib/analytics/businessDay";
 import { addDaysToAnalyticsDateKey } from "@lib/analytics/dateKey";
 import { filterAnalyticsUpdateData } from "@lib/analytics/writePolicy";
@@ -56,9 +56,33 @@ type QueuedAnalyticsWrite = {
 const analyticsWriteQueue = new Map<string, QueuedAnalyticsWrite>();
 const flushingAnalyticsKeys = new Set<string>();
 const reportedAnalyticsQueueFailures = new Set<string>();
+let reportedAnalyticsQueuePersistFailure = false;
+
+const getQueuedAnalyticsEventCount = () => (
+  Array.from(analyticsWriteQueue.values()).reduce((total, queued) => total + (queued.eventCount || 0), 0)
+);
+
+const reportAnalyticsQueuePersistError = (
+  error: unknown,
+  phase: 'remove-empty' | 'serialize' | 'set',
+  serializedQueue: string | null,
+) => {
+  if (reportedAnalyticsQueuePersistFailure) return;
+  reportedAnalyticsQueuePersistFailure = true;
+
+  logAnalyticsFailure('analytics_queue_persist_failed', error, {
+    phase,
+    queueEntryCount: analyticsWriteQueue.size,
+    queuedEventCount: getQueuedAnalyticsEventCount(),
+    ...getBoundedAnalyticsStringContext('serializedQueue', serializedQueue),
+  });
+};
 
 const persistAnalyticsQueue = () => {
   if (typeof window === 'undefined') return;
+  let phase: 'remove-empty' | 'serialize' | 'set' = 'serialize';
+  let serializedQueue: string | null = null;
+
   try {
     const serializable = Array.from(analyticsWriteQueue.entries()).map(([queueKey, queued]) => [
       queueKey,
@@ -75,13 +99,19 @@ const persistAnalyticsQueue = () => {
     ]);
 
     if (serializable.length === 0) {
+      phase = 'remove-empty';
       window.localStorage.removeItem(ANALYTICS_QUEUE_STORAGE_KEY);
+      reportedAnalyticsQueuePersistFailure = false;
       return;
     }
 
-    window.localStorage.setItem(ANALYTICS_QUEUE_STORAGE_KEY, JSON.stringify(serializable));
-  } catch {
+    serializedQueue = JSON.stringify(serializable);
+    phase = 'set';
+    window.localStorage.setItem(ANALYTICS_QUEUE_STORAGE_KEY, serializedQueue);
+    reportedAnalyticsQueuePersistFailure = false;
+  } catch (error) {
     // Analytics must never break the public menu.
+    reportAnalyticsQueuePersistError(error, phase, serializedQueue);
   }
 };
 

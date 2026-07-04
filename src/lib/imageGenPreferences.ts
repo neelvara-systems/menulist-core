@@ -9,6 +9,8 @@
  * Zero Firestore cost. Per-device. Graceful fallback to defaults.
  */
 
+import { getBoundedHookStringContext, logHookFailure } from '@hook/hookDiagnostics';
+
 const STORAGE_KEY_PREFIX = 'imgGenPrefs';
 
 export interface ImageGenPreferences {
@@ -32,6 +34,27 @@ function getStorageKey(tId: string | number, sId: string | number): string {
     return `${STORAGE_KEY_PREFIX}_${tId}_${sId}`;
 }
 
+const getPreferenceScopeLogContext = (
+    tId: string | number,
+    sId: string | number,
+    storageKey: string,
+) => ({
+    ...getBoundedHookStringContext('tenantId', tId),
+    ...getBoundedHookStringContext('storeId', sId),
+    ...getBoundedHookStringContext('storageKey', storageKey),
+});
+
+const getPreferenceShapeLogContext = (prefs?: ImageGenPreferences | null) => ({
+    styleCount: Array.isArray(prefs?.styles) ? prefs.styles.length : 0,
+    environmentCount: Array.isArray(prefs?.environments) ? prefs.environments.length : 0,
+    lightingCount: Array.isArray(prefs?.lighting) ? prefs.lighting.length : 0,
+    colorCount: Array.isArray(prefs?.colors) ? prefs.colors.length : 0,
+    moodCount: Array.isArray(prefs?.moods) ? prefs.moods.length : 0,
+    compositionCount: Array.isArray(prefs?.compositions) ? prefs.compositions.length : 0,
+    hasNegativePrompt: Boolean(prefs?.negativePrompt),
+    negativePromptLength: typeof prefs?.negativePrompt === 'string' ? prefs.negativePrompt.length : 0,
+});
+
 /**
  * Save image generation preferences for the current store.
  * Only persists style/visual preferences — not prompts, images, or transient state.
@@ -41,9 +64,13 @@ export function saveImageGenPreferences(
     sId: string | number,
     prefs: ImageGenPreferences
 ): void {
+    let storageKey = '';
+    let serializedPreferences = '';
+    let phase: 'build' | 'serialize' | 'write' = 'build';
+
     try {
         if (typeof window === 'undefined') return;
-        const key = getStorageKey(tId, sId);
+        storageKey = getStorageKey(tId, sId);
         const data: ImageGenPreferences = {
             stylesCategory: prefs.stylesCategory,
             styles: prefs.styles,
@@ -60,9 +87,17 @@ export function saveImageGenPreferences(
             isMultiMode: prefs.isMultiMode,
             savedAt: new Date().toISOString(),
         };
-        localStorage.setItem(key, JSON.stringify(data));
-    } catch {
-        // localStorage full or unavailable — silently ignore
+        phase = 'serialize';
+        serializedPreferences = JSON.stringify(data);
+        phase = 'write';
+        localStorage.setItem(storageKey, serializedPreferences);
+    } catch (error) {
+        logHookFailure('image_generation_preferences_save_failed', error, {
+            phase,
+            ...getPreferenceScopeLogContext(tId, sId, storageKey),
+            ...getPreferenceShapeLogContext(prefs),
+            ...getBoundedHookStringContext('serializedPreferences', serializedPreferences),
+        });
     }
 }
 
@@ -74,16 +109,23 @@ export function loadImageGenPreferences(
     tId: string | number,
     sId: string | number
 ): ImageGenPreferences | null {
+    let storageKey = '';
+    let rawPreferences: string | null = null;
+
     try {
         if (typeof window === 'undefined') return null;
-        const key = getStorageKey(tId, sId);
-        const raw = localStorage.getItem(key);
-        if (!raw) return null;
-        const data = JSON.parse(raw) as ImageGenPreferences;
+        storageKey = getStorageKey(tId, sId);
+        rawPreferences = localStorage.getItem(storageKey);
+        if (!rawPreferences) return null;
+        const data = JSON.parse(rawPreferences) as ImageGenPreferences;
         // Basic validation — must have at least stylesCategory
         if (!data.stylesCategory) return null;
         return data;
-    } catch {
+    } catch (error) {
+        logHookFailure('image_generation_preferences_load_failed', error, {
+            ...getPreferenceScopeLogContext(tId, sId, storageKey),
+            ...getBoundedHookStringContext('storedPreferences', rawPreferences),
+        });
         return null;
     }
 }
@@ -95,10 +137,15 @@ export function clearImageGenPreferences(
     tId: string | number,
     sId: string | number
 ): void {
+    let storageKey = '';
+
     try {
         if (typeof window === 'undefined') return;
-        localStorage.removeItem(getStorageKey(tId, sId));
-    } catch {
-        // silently ignore
+        storageKey = getStorageKey(tId, sId);
+        localStorage.removeItem(storageKey);
+    } catch (error) {
+        logHookFailure('image_generation_preferences_clear_failed', error, {
+            ...getPreferenceScopeLogContext(tId, sId, storageKey),
+        });
     }
 }

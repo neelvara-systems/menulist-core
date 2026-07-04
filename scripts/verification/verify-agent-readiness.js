@@ -48,6 +48,46 @@ function assertNodeCheck(relPath) {
   );
 }
 
+function listMarkdownFiles(relDir) {
+  const absoluteDir = path.join(ROOT, relDir);
+  const files = [];
+
+  function walk(dir) {
+    for (const entryName of fs.readdirSync(dir)) {
+      const absolutePath = path.join(dir, entryName);
+      const stat = fs.statSync(absolutePath);
+      if (stat.isDirectory()) {
+        walk(absolutePath);
+      } else if (absolutePath.endsWith('.md')) {
+        files.push(path.relative(ROOT, absolutePath).split(path.sep).join('/'));
+      }
+    }
+  }
+
+  walk(absoluteDir);
+  return files.sort();
+}
+
+function verifyArchiveLaunchCertificationBoundaries() {
+  const staleLaunchPattern = /production ready|production-ready|certified production ready|ready for testing|ready for production|ready for deployment|ship approved|deploy all|launch ready|ship ready/i;
+  const missingBoundary = [];
+
+  for (const relPath of listMarkdownFiles('__docs__/archive')) {
+    const content = read(relPath);
+    if (!staleLaunchPattern.test(content)) continue;
+
+    const topBoundary = content.split(/\r?\n/).slice(0, 8).join('\n');
+    if (!/not current launch certification/i.test(topBoundary)) {
+      missingBoundary.push(relPath);
+    }
+  }
+
+  assert(
+    missingBoundary.length === 0,
+    `Archived docs with launch/certification wording must start with a historical launch-certification boundary: ${missingBoundary.join(', ')}`,
+  );
+}
+
 function verifyVerificationRegistryCoverage() {
   const packageJson = JSON.parse(read('package.json'));
   const scriptEntries = Object.entries(packageJson.scripts || {});
@@ -75,9 +115,37 @@ function verifyVerificationRegistryCoverage() {
   const productionReadinessAudit = read('__docs__/audits/menulist-production-readiness-audit.md');
   const changelog = read('__docs__/CHANGELOG.md');
   const productionCertificationRunbook = read('__docs__/production-readiness/external-certification-runbook.md');
+  const docsReadme = read('__docs__/README.md');
+  const systemDataFlowAudit = read('__docs__/system-strengthening/menulist-system-data-flow-audit-2026-06-20.md');
+  const masterProductionAuditGovernance = read('__docs__/testing-and-audit-prompts/00-master-production-audit-governance.md');
+  const finalProductionReadinessVerdict = read('__docs__/testing-and-audit-prompts/12-final-production-readiness-verdict.md');
+  const archivedProductionReadinessCertificate = read('__docs__/archive/PRODUCTION-READINESS-CERTIFICATE.md');
+  const archivedChatgptSsotTranscript = read('__docs__/archive/Single Source of Truth (SSOT) - ChatGPT/conversastion.md');
   assertIncludes(changelog, 'Release Certification Boundary', 'Changelog historical release certification boundary heading');
   assertIncludes(changelog, 'This changelog is chronological history, not current launch approval.', 'Changelog historical release certification boundary');
   assertIncludes(changelog, 'Current MenuList production readiness is decided only by the active', 'Changelog current launch authority boundary');
+  assertIncludes(docsReadme, 'not current launch certification', 'Documentation archive index launch-certification boundary');
+  assertIncludes(masterProductionAuditGovernance, 'Launch Authority Boundary', 'Master production audit governance launch boundary heading');
+  assertIncludes(masterProductionAuditGovernance, 'A high score cannot override missing [External Certification Runbook]', 'Master production audit governance external evidence boundary');
+  assertIncludes(masterProductionAuditGovernance, 'Do not mark MenuList launch ready, production approved, release certified, or deploy approved', 'Master production audit governance launch approval boundary');
+  assertIncludes(finalProductionReadinessVerdict, 'Launch Authority Boundary', 'Final production-readiness verdict launch boundary heading');
+  assertIncludes(finalProductionReadinessVerdict, 'A 9-10 source-confidence score is not launch-ready if any [External Certification Runbook]', 'Final production-readiness verdict external evidence boundary');
+  assertIncludes(finalProductionReadinessVerdict, 'Source-ready / not launch certified', 'Final production-readiness verdict missing-external-gate label');
+  assertIncludes(productionReadinessAudit, 'Production audit prompt launch-authority checkpoint', 'Production readiness audit prompt launch-authority checkpoint');
+  assertIncludes(changelog, 'Production Audit Prompt Launch Boundary', 'Changelog production audit prompt launch-boundary entry');
+  assertNotIncludes(systemDataFlowAudit, 'Pending scoped `git diff --check`', 'System data-flow ledger stale pending diff-check note');
+  assertIncludes(productionReadinessAudit, 'System ledger pending-validation cleanup checkpoint', 'Production readiness audit system ledger pending-validation checkpoint');
+  assertIncludes(changelog, 'System Ledger Pending Validation Cleanup', 'Changelog system ledger pending-validation entry');
+  verifyArchiveLaunchCertificationBoundaries();
+  assertIncludes(archivedProductionReadinessCertificate, 'Historical archive evidence; not current launch certification.', 'Archived production-readiness certificate launch boundary status');
+  assertIncludes(archivedProductionReadinessCertificate, 'Current Launch Boundary', 'Archived production-readiness certificate launch boundary section');
+  assertIncludes(archivedProductionReadinessCertificate, 'This January 11, 2026 certificate is preserved only as historical context', 'Archived production-readiness certificate historical context boundary');
+  assertIncludes(archivedProductionReadinessCertificate, 'It is not current MenuList production approval, deploy approval, launch approval, or release certification.', 'Archived production-readiness certificate current approval boundary');
+  assertIncludes(archivedChatgptSsotTranscript, 'Historical ChatGPT transcript; not current launch certification.', 'Archived ChatGPT SSOT transcript launch boundary status');
+  assertIncludes(archivedChatgptSsotTranscript, 'Current Launch Boundary', 'Archived ChatGPT SSOT transcript launch boundary section');
+  assertIncludes(archivedChatgptSsotTranscript, 'It is not current MenuList source of truth, production approval, deploy approval, launch approval, or release certification.', 'Archived ChatGPT SSOT transcript current approval boundary');
+  assertIncludes(productionReadinessAudit, 'Archive launch-certification boundary checkpoint', 'Production readiness audit archive launch-certification boundary checkpoint');
+  assertIncludes(changelog, 'Archive Launch Certification Boundary', 'Changelog archive launch-certification boundary entry');
   assertIncludes(productionReadinessAudit, 'Changelog historical entry boundary checkpoint', 'Production readiness audit changelog historical boundary checkpoint');
   assertIncludes(changelog, 'Recycle-Bin Verifier Boundary', 'Changelog recycle-bin verifier boundary entry');
   assertIncludes(changelog, '`npm run verify:recycle-bin` no longer prints manual-testing readiness or dev-server next steps', 'Changelog recycle-bin local-only output boundary');

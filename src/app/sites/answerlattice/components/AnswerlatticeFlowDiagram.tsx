@@ -42,10 +42,41 @@ type AnswerlatticeLoopDiagramProps = {
     className?: string;
 };
 
+type AnswerlatticeHeroAutomationDiagramProps = {
+    className?: string;
+};
+
 const MOBILE_HUB_INPUT_PATH = 'M180 305 C180 332 180 354 180 382';
 const MOBILE_HUB_OUTPUT_PATH = 'M180 432 C180 468 180 528 180 573';
 const MOBILE_SEQUENCE_INPUT_PATH = 'M180 80 C180 245 180 320 180 380';
 const MOBILE_SEQUENCE_OUTPUT_PATH = 'M180 432 C180 500 180 610 180 700';
+
+const HERO_AUTOMATION_SOURCES = [
+    { label: 'Docs', glyph: 'D', tone: 'teal', className: 'al-hero-automation__source--docs' },
+    { label: 'Tickets', glyph: 'T', tone: 'coral', className: 'al-hero-automation__source--tickets' },
+    { label: 'Replies', glyph: 'R', tone: 'indigo', className: 'al-hero-automation__source--replies' },
+    { label: 'Notes', glyph: 'N', tone: 'green', className: 'al-hero-automation__source--notes' },
+    { label: 'Release', glyph: 'V', tone: 'amber', className: 'al-hero-automation__source--release' },
+    { label: 'Context', glyph: 'C', tone: 'blue', className: 'al-hero-automation__source--context' },
+];
+
+const HERO_AUTOMATION_OUTPUTS = [
+    {
+        title: 'Approved answer',
+        meta: 'Official',
+        className: 'al-hero-automation__output--answer',
+    },
+    {
+        title: 'Widget response',
+        meta: 'In app',
+        className: 'al-hero-automation__output--widget',
+    },
+    {
+        title: 'Hosted help card',
+        meta: 'Help page',
+        className: 'al-hero-automation__output--help',
+    },
+];
 
 function cssVars(values: Record<string, string>): CSSProperties {
     return values as CSSProperties;
@@ -78,6 +109,73 @@ export function AnswerlatticeDiagramCore({ idPrefix, className = '' }: Answerlat
             <span className="al-diagram-ring al-diagram-ring--outer" />
             <div className="al-diagram-mark">
                 <AnswerlatticeLogoMark height={42} idPrefix={idPrefix} />
+            </div>
+        </div>
+    );
+}
+
+export function AnswerlatticeHeroAutomationDiagram({ className = '' }: AnswerlatticeHeroAutomationDiagramProps) {
+    return (
+        <div
+            className={`al-hero-automation ${className}`.trim()}
+            aria-label="Scattered product sources move into AnswerLattice and approved support cards come out."
+        >
+            <div className="al-hero-automation__haze" aria-hidden="true" />
+            <svg className="al-hero-automation__paths" viewBox="0 0 1000 520" aria-hidden="true" focusable="false">
+                <path className="al-hero-automation__guide al-hero-automation__guide--input" d="M42 364 C150 320 226 322 314 292 C382 269 425 250 476 268" />
+                <path className="al-hero-automation__guide al-hero-automation__guide--input" d="M152 468 C240 420 310 380 366 340 C421 302 452 281 489 281" />
+                <path className="al-hero-automation__guide al-hero-automation__guide--input" d="M0 295 C118 276 228 289 336 282 C400 279 450 278 490 284" />
+                <path className="al-hero-automation__guide al-hero-automation__guide--output" d="M550 270 C612 237 653 199 725 160 C790 126 853 100 942 88" />
+                <path className="al-hero-automation__guide al-hero-automation__guide--output" d="M548 294 C630 294 687 284 759 260 C827 237 894 224 1000 228" />
+                <path className="al-hero-automation__guide al-hero-automation__guide--output" d="M536 318 C615 361 674 394 762 416 C839 435 912 440 1000 426" />
+                <path className="al-hero-automation__pulse al-hero-automation__pulse--input" pathLength={1} d="M42 364 C150 320 226 322 314 292 C382 269 425 250 476 268" />
+                <path className="al-hero-automation__pulse al-hero-automation__pulse--input al-hero-automation__pulse--delay-1" pathLength={1} d="M152 468 C240 420 310 380 366 340 C421 302 452 281 489 281" />
+                <path className="al-hero-automation__pulse al-hero-automation__pulse--output" pathLength={1} d="M550 270 C612 237 653 199 725 160 C790 126 853 100 942 88" />
+                <path className="al-hero-automation__pulse al-hero-automation__pulse--output al-hero-automation__pulse--delay-2" pathLength={1} d="M548 294 C630 294 687 284 759 260 C827 237 894 224 1000 228" />
+            </svg>
+
+            <div className="al-hero-automation__target" aria-hidden="true">
+                <span className="al-hero-automation__target-shadow" />
+                <span className="al-hero-automation__target-base" />
+                <span className="al-hero-automation__target-disc">
+                    <span />
+                    <span />
+                    <span />
+                </span>
+                <span className="al-hero-automation__target-orbit" />
+            </div>
+
+            <div className="al-hero-automation__source-layer" aria-hidden="true">
+                {HERO_AUTOMATION_SOURCES.map((source, index) => (
+                    <span
+                        key={source.label}
+                        className={`al-hero-automation__source al-hero-automation__source--${source.tone} ${source.className}`}
+                        style={cssVars({ '--al-hero-source-index': `${index}` })}
+                    >
+                        <span>{source.glyph}</span>
+                    </span>
+                ))}
+            </div>
+
+            <div className="al-hero-automation__output-layer" aria-hidden="true">
+                {HERO_AUTOMATION_OUTPUTS.map((output, index) => (
+                    <span
+                        key={output.title}
+                        className={`al-hero-automation__output ${output.className}`}
+                        style={cssVars({ '--al-hero-output-index': `${index}` })}
+                    >
+                        <span className="al-hero-automation__output-dots">
+                            <i />
+                            <i />
+                            <i />
+                        </span>
+                        <span className="al-hero-automation__output-copy">
+                            <strong>{output.title}</strong>
+                            <em>{output.meta}</em>
+                        </span>
+                        <span className="al-hero-automation__output-action" />
+                    </span>
+                ))}
             </div>
         </div>
     );

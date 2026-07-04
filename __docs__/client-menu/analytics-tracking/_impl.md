@@ -183,7 +183,8 @@ MENU_ACTION_CLICK -> engagedSessions + intentSessions + actionSessions
 
 - Milestone state lives in `sessionStorage`, keyed by tenant/store/project/local date/session id.
 - Milestones are attached to existing Firestore counter writes; there is no raw event table and no extra event document.
-- If storage is unavailable, normal menu/item/search/action counters still write, but milestone de-duplication is skipped.
+- If storage is unavailable, full, blocked, or malformed, normal menu/item/search/action counters still write, but milestone/source/filter de-duplication or attribution persistence is skipped.
+- Failed milestone/source/filter `sessionStorage` read/write/remove paths log bounded `analytics_session_milestones_*`, `analytics_session_source_*`, and `analytics_active_filter_*` diagnostics with storage-key and payload presence-length metadata plus small counts/booleans only.
 - Category interest only comes from existing item view/click events. MenuList does not track category scroll/open events.
 - Public PDP tracking resolves the stable category id/name from the project file categories before sending analytics metadata.
 - Entry source is stored in sessionStorage and attached to existing `MENU_VIEW` / `MENU_ACTION_CLICK` writes as `viewsByEntrySource`, `menuSessionsBySource`, `actionSessionsBySource`, and `menuActionClicksBySource`. This supports action-rate-by-source without a new source event stream.
@@ -287,7 +288,8 @@ export async function trackAnalyticsEvent(
 
 - `src/lib/analytics/analyticsDiagnostics.ts` is the shared diagnostic layer for client analytics helpers, the analytics write queue, `POST /api/public/analytics/track`, owner analytics API routes, Google Analytics report routes, ROI metrics, and the Google Analytics server helper.
 - `src/lib/analytics/unified.ts`, `device.ts`, `geo.ts`, and `session.ts` log only normalized failure codes plus bounded identifier presence/length metadata.
-- `src/database/analytics/index.ts` uses the same bounded diagnostics for queue flush, persisted queue recovery, missing identity, enqueue, and summary update failures.
+- `src/lib/analytics/geo.ts` keeps browser geolocation permission denial quiet as an expected privacy outcome, but logs non-permission geolocation failures such as timeout or position unavailable through `analytics_geolocation_position_failed` before returning the same timezone fallback. The diagnostic records only fallback policy/support metadata and normalized source error name/code/status metadata.
+- `src/database/analytics/index.ts` uses the same bounded diagnostics for queue flush, browser-local queue persistence, persisted queue recovery, missing identity, enqueue, and summary update failures. Queue persistence failures log only phase, queue counts, serialized-payload presence/length, and normalized source error metadata; raw queued analytics payloads are not logged.
 - Public analytics route failures log `public_analytics_track_failed` with tenant/store/project presence and length metadata, update-field count, date-request presence, and source error name/code/status metadata only. They must not pass raw route exceptions or raw tenant/store/project IDs to `secureError()`.
 - Public analytics target validation must reject inactive, deleted, platform-blocked, or tenant-blocked stores before preference filtering or Admin SDK writes. The target validator reads the tenant document on 300-second cache misses only; this keeps blocked tenants from refreshing anonymous analytics while preserving the existing coalesced daily-doc write model.
 - Owner analytics API route failures log stable codes such as `analytics_realtime_api_failed`, `analytics_menu_api_failed`, `analytics_locations_api_failed`, `analytics_realtime_detail_api_failed`, and `analytics_roi_metrics_api_failed` with bounded route/query/session metadata and source error name/code/status metadata only. They must not import or call `secureError()` directly.

@@ -16,6 +16,12 @@ All previous phases are now complete.
 This phase is not testing.
 This phase is a **brutally honest production verdict**.
 
+## Launch Authority Boundary
+
+This phase can certify only the evidence that exists. A 9-10 source-confidence score is not launch-ready if any [External Certification Runbook](../production-readiness/external-certification-runbook.md) gate is missing.
+
+When external gates are missing, the verdict must say "source-gate evidence passed" or "controlled-owner-testing ready" only. Do not mark MenuList launch ready, production approved, release certified, or deploy approved unless the active runbook and production-readiness audit contain evidence for browser/device QA, provider smoke, target Firebase/Vercel deploys where applicable, production-host smoke, and owner-controlled setup.
+
 You must now answer one question:
 
 > If MenuList goes live to real paying SMBs tomorrow —
@@ -219,7 +225,8 @@ Give final score:
 
 Then verdict:
 
-- 9–10 → Launch ready
+- 9–10 + every required external certification gate evidenced → Launch ready
+- 9–10 with any missing external certification gate → Source-ready / not launch certified
 - 7–8 → Launchable with minor fixes
 - 5–6 → Risky launch
 - <5 → Do not launch

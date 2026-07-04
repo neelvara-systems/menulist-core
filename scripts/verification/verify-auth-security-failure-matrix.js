@@ -1421,11 +1421,13 @@ const fileValidation = read('src/lib/security/fileValidation.ts');
 const webhookValidation = read('src/lib/security/webhookValidation.ts');
 const razorpayWebhookValidator = read('src/lib/razorpay/webhook-validator.ts');
 const runtimeDiagnostics = read('src/lib/runtime/runtimeDiagnostics.ts');
+const errorPageTheme = read('src/lib/runtime/errorPageTheme.ts');
 const randomIdRuntime = read('src/lib/runtime/randomId.ts');
 const performanceUtils = read('src/lib/utils/performance.ts');
 const rootLayout = read('src/app/layout.tsx');
 const serviceWorkerRegister = read('src/components/ServiceWorkerRegister.tsx');
 const globalError = read('src/app/global-error.tsx');
+const errorPageThemeWrapper = read('src/components/atoms/ErrorPageThemeWrapper/index.tsx');
 const appError = read('src/app/error.tsx');
 const globalPagesError = read('src/app/(global-pages)/error.tsx');
 const errorReportButton = read('src/components/shared/debug/ErrorReportButton.tsx');
@@ -1487,6 +1489,7 @@ const prepareMediaImage = read('src/lib/media/prepareMediaImage.ts');
 const itemPhotoCaptureAssistLib = read('src/lib/media/itemPhotoCaptureAssist.ts');
 const itemPhotoCaptureAssist = read('src/components/shared/media/ItemPhotoCaptureAssist.tsx');
 const mediaImageAdjustModal = read('src/components/shared/media/MediaImageAdjustModal.tsx');
+const imageGenPreferences = read('src/lib/imageGenPreferences.ts');
 const tooltipElement = read('src/components/antdComponent/tolltipElement/index.tsx');
 const platformAssetDetailsModal = read('src/components/templates/platform/assets/detailsModal.tsx');
 const platformAssetTemplates = read('src/components/templates/platform/assetTemplates/index.tsx');
@@ -2183,6 +2186,17 @@ assertIncludes(serviceWorkerRegister, 'activeWorker: getRegisteredSwLabel(active
 assertIncludes(serviceWorkerRegister, 'targetWorker: getTargetSwLabel(targetUrl)', 'Service worker unregister diagnostics must use bounded target-worker labels.');
 assert(!serviceWorkerRegister.includes('reg.unregister().catch(() => { })'), 'Service worker unregister failures must not be silently swallowed.');
 assertIncludes(globalError, 'global_error_boundary_rendered', 'Global error boundary must code crash diagnostics.');
+assertIncludes(errorPageTheme, 'error_page_theme_persisted_state_read_failed', 'Error page persisted theme fallback failures must be coded.');
+assertIncludes(errorPageTheme, "getBoundedRuntimeStringContext('persistedState'", 'Error page persisted theme diagnostics must bound persisted Redux state metadata.');
+assertIncludes(errorPageTheme, "getBoundedRuntimeStringContext('clientThemeConfig'", 'Error page persisted theme diagnostics must bound client theme metadata.');
+assertIncludes(errorPageTheme, 'themeSource: source', 'Error page persisted theme diagnostics must identify the stable caller source.');
+assertIncludes(errorPageTheme, 'readPhase', 'Error page persisted theme diagnostics must identify the stable read phase.');
+assert(!errorPageTheme.includes('persistedState,'), 'Error page persisted theme diagnostics must not log raw persisted Redux state.');
+assert(!errorPageTheme.includes('clientThemeConfig,'), 'Error page persisted theme diagnostics must not log raw client theme config.');
+assertIncludes(globalError, "readPersistedErrorPageTheme('global-error-boundary')", 'Global error boundary must use the shared persisted theme reader.');
+assertIncludes(errorPageThemeWrapper, "readPersistedErrorPageTheme('error-page-theme-wrapper')", 'Wrapped error pages must use the shared persisted theme reader.');
+assert(!globalError.includes('function getPersistedTheme'), 'Global error boundary must not keep a duplicate silent persisted-theme parser.');
+assert(!errorPageThemeWrapper.includes('function getPersistedTheme'), 'Wrapped error pages must not keep a duplicate silent persisted-theme parser.');
 assertIncludes(appError, 'app_error_boundary_rendered', 'App route error boundary must code crash diagnostics.');
 assertIncludes(appError, "getBoundedRuntimeStringContext('location'", 'App route error boundary must bound location diagnostics.');
 assertIncludes(appError, "getBoundedRuntimeStringContext('userAgent'", 'App route error boundary must bound user-agent diagnostics.');
@@ -2464,7 +2478,11 @@ assertIncludes(templateRegistryDal, 'isTemplateRegistryLocalErrorCode(code)', 'T
 assertIncludes(templateRegistryDal, 'throwTemplateRegistryLocalError("TEMPLATE_NOT_FOUND")', 'Template registry DAL must throw typed template-not-found errors.');
 assertIncludes(templateRegistryDal, 'throwTemplateRegistryLocalError("TEMPLATE_DOCUMENT_TOO_LARGE")', 'Template registry DAL must throw typed document-size errors.');
 assertIncludes(templateRegistryDal, 'payloadBlob.size > MAX_DOCUMENT_BYTES', 'Template registry DAL must cap stored document reads before text decoding.');
+assertIncludes(templateRegistryDal, 'creative_editor_template_storage_cleanup_failed', 'Template registry DAL must code Storage cleanup failures.');
+assertIncludes(templateRegistryDal, 'getBoundedRuntimeStringContext("storagePath", path)', 'Template registry DAL must bound Storage cleanup path diagnostics.');
+assertIncludes(templateRegistryDal, 'isMissingStorageObjectError', 'Template registry DAL must keep missing Storage objects as an expected cleanup no-op.');
 assert(!templateRegistryDal.includes('return JSON.parse(await payloadBlob.text())'), 'Template registry DAL must not decode stored template blobs before the size guard.');
+assert(!templateRegistryDal.includes(']).catch(() => undefined);'), 'Template registry DAL must not silently swallow best-effort Storage cleanup failures.');
 assert(!templateRegistryDal.includes('message.startsWith("Template ")'), 'Template registry DAL must not trust arbitrary Template-prefixed exception messages.');
 assert(!templateRegistryDal.includes('error instanceof Error ? error.message'), 'Template registry DAL must not branch on raw Error.message for local failures.');
 assertIncludes(templateRegistryDal, '"Template storage is not available for this account."', 'Template registry DAL must keep fixed permission failure copy.');
@@ -2869,6 +2887,9 @@ assertNoDirectConsole(hookDiagnostics, 'Shared hook diagnostics must not direct-
     ['recently viewed storage helper', recentlyViewedHelper, 'recently_viewed_read_failed'],
     ['recently viewed storage helper', recentlyViewedHelper, 'recently_viewed_write_failed'],
     ['recently viewed storage helper', recentlyViewedHelper, 'recently_viewed_clear_failed'],
+    ['image generation preferences helper', imageGenPreferences, 'image_generation_preferences_save_failed'],
+    ['image generation preferences helper', imageGenPreferences, 'image_generation_preferences_load_failed'],
+    ['image generation preferences helper', imageGenPreferences, 'image_generation_preferences_clear_failed'],
     ['content feedback storage helper', contentFeedbackStorage, 'content_feedback_storage_parse_failed'],
     ['content feedback storage helper', contentFeedbackStorage, 'content_feedback_storage_read_failed'],
     ['content feedback storage helper', contentFeedbackStorage, 'content_feedback_storage_write_failed'],
@@ -2928,6 +2949,19 @@ assert(!useIngestionJobsListener.includes('logger.debug('), 'Ingestion jobs list
 });
 assert(!useImageBatchJobListener.includes('import { logger }'), 'Image batch job listener must not import raw logger diagnostics.');
 assert(!useImageBatchJobListener.includes('logger.debug('), 'Image batch job listener must not route lifecycle diagnostics through raw logger.debug.');
+[
+    'getPreferenceScopeLogContext',
+    "getBoundedHookStringContext('tenantId', tId)",
+    "getBoundedHookStringContext('storeId', sId)",
+    "getBoundedHookStringContext('storageKey', storageKey)",
+    "getBoundedHookStringContext('serializedPreferences', serializedPreferences)",
+    "getBoundedHookStringContext('storedPreferences', rawPreferences)",
+    'negativePromptLength',
+].forEach((token) => {
+    assertIncludes(imageGenPreferences, token, `Image generation preferences must include bounded diagnostic token ${token}.`);
+});
+assert(!imageGenPreferences.includes('localStorage full or unavailable'), 'Image generation preferences must not silently ignore unavailable localStorage.');
+assert(!imageGenPreferences.includes('// silently ignore'), 'Image generation preferences must not keep silent localStorage cleanup comments.');
 [
     [useContentViewTracking, 'Unable to persist recently viewed'],
     [useFullscreen, 'Fullscreen error:'],
@@ -3076,11 +3110,15 @@ assert(!firebaseAuthSyncHelper.includes('Firebase Auth token check failed'), 'Fi
 assert(!firebaseAuthSyncHelper.includes('const data = await response.json()'), 'Firebase Auth sync helper must not parse unbounded set-claims responses.');
 assertIncludes(sessionProvider, 'firebase_auth_session_provider_sync_failed', 'Session provider must securely log Firebase Auth bootstrap failures.');
 assertIncludes(sessionProvider, 'session_provider_store_bootstrap_failed', 'Session provider must code store bootstrap failures.');
+assertIncludes(sessionProvider, 'session_provider_active_store_context_load_failed', 'Session provider must code active store-context load failures.');
 assertIncludes(sessionProvider, 'session_provider_master_outlet_policy_load_failed', 'Session provider must code master outlet policy failures.');
+assertIncludes(sessionProvider, "getBoundedFirebaseStringContext('targetStoreId'", 'Session provider must bound target store diagnostics.');
+assertIncludes(sessionProvider, "getBoundedFirebaseStringContext('previousStoreId'", 'Session provider must bound previous store diagnostics.');
 assertIncludes(sessionProvider, "getBoundedFirebaseStringContext('masterStoreId'", 'Session provider must bound master store diagnostics.');
 assert(!sessionProvider.includes("logger.error('[MenuList] Firebase Auth sync failed before store bootstrap'"), 'Session provider must not logger.error raw auth sync failures.');
 assert(!sessionProvider.includes("logger.error('[MenuList] Store bootstrap failed'"), 'Session provider must not logger.error raw store bootstrap failures.');
 assert(!sessionProvider.includes("logger.error('[MenuList] Master outlet policy load failed'"), 'Session provider must not logger.error raw master outlet policy failures.');
+assert(!sessionProvider.includes('void loadTargetStore().catch(() => {'), 'Session provider must not silently swallow active store-context load failures.');
 assert(!sessionProvider.includes('import { clearUserContext, logger, setUserContext }'), 'Session provider must not import raw logger diagnostics.');
 assert(!sessionProvider.includes('[MenuList session debug]'), 'Session provider must not direct-console session debug payloads.');
 assertIncludes(
@@ -3399,6 +3437,9 @@ assertIncludes(dragAndDropHook, 'errors.forEach((safeError) => message.error(saf
 });
 assertIncludes(apiCallComposerServer, "import { secureError } from", 'Server DAL composer must use secure logging.');
 assertIncludes(apiCallComposerServer, "new Error('dal_server_call_failed')", 'Server DAL composer must normalize logged errors.');
+assertIncludes(apiCallComposerServer, "new Error('dal_server_session_lookup_failed')", 'Server DAL composer must normalize session lookup failures.');
+assertIncludes(apiCallComposerServer, "'[DAL Server] Session lookup failed'", 'Server DAL composer must log session lookup failures.');
+assert(!apiCallComposerServer.includes('getActiveSession().catch(() => null)'), 'Server DAL composer must not silently swallow session lookup failures.');
 assertIncludes(apiCallComposerServer, 'ignoredSessionFunction: isIgnoredFunctionCall', 'Server DAL composer must preserve ignored-session metadata.');
 assertIncludes(apiCallComposerServer, "if (typeof arg === 'string') return { type: 'string', length: arg.length };", 'Server DAL composer must log string argument length instead of raw values.');
 assert(!/\bconsole\.(?:error|warn|log)\s*\(/.test(apiCallComposerServer), 'Server DAL composer must not direct-console DAL calls.');

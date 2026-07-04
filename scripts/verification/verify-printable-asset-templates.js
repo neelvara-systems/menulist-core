@@ -380,11 +380,19 @@ const templateRegistryDal = read('src/lib/creative-editor/templateRegistryDal.ts
   'getTemplateRegistryErrorIndicators',
   'getTemplateRegistryLocalErrorMessage',
   'isTemplateRegistryLocalErrorCode',
+  'creative_editor_template_storage_cleanup_failed',
+  'getBoundedRuntimeStringContext("storagePath", path)',
+  'isMissingStorageObjectError',
+  'cleanupTarget: "document"',
+  'cleanupTarget: "preview"',
   'payloadBlob.size > MAX_DOCUMENT_BYTES',
   'storage/quota-exceeded',
 ].forEach((token) => requireToken(templateRegistryDal, token, 'creative editor template registry DAL'));
 if (templateRegistryDal.includes('return JSON.parse(await payloadBlob.text())')) {
   failures.push('creative editor template registry DAL must size-check stored documents before reading blob text');
+}
+if (templateRegistryDal.includes(']).catch(() => undefined);')) {
+  failures.push('creative editor template registry DAL must log best-effort Storage cleanup failures instead of swallowing them');
 }
 [
   'String(error)',

@@ -73,6 +73,26 @@ type ActiveAttributeFilterState = {
   selectedAt?: number;
 };
 
+const getAnalyticsSessionStorageContext = (
+  key: string | null,
+  value?: unknown,
+  includeValue = false,
+) => ({
+  ...getBoundedAnalyticsStringContext('storageKey', key),
+  ...(includeValue ? getBoundedAnalyticsStringContext('storedValue', value) : {}),
+});
+
+const getSessionMilestoneStateContext = (state?: SessionMilestoneState | null) => ({
+  hasMenuSession: Boolean(state?.menuSession),
+  hasEngagedSession: Boolean(state?.engaged),
+  hasIntentSession: Boolean(state?.intent),
+  hasActionSession: Boolean(state?.action),
+  itemIdCount: Array.isArray(state?.itemIds) ? state.itemIds.length : 0,
+  viewedItemIdCount: Array.isArray(state?.viewedItemIds) ? state.viewedItemIds.length : 0,
+  languageSessionCount: Array.isArray(state?.languageSessions) ? state.languageSessions.length : 0,
+  languageAdoptionCount: Array.isArray(state?.languageAdoptions) ? state.languageAdoptions.length : 0,
+});
+
 /**
  * Check if event should be rate limited
  * Returns true if event should be BLOCKED
@@ -176,52 +196,73 @@ const getSessionFilterKey = (data: Partial<TrackingData>, localDate: string, ses
 
 const readSessionMilestoneState = (key: string | null): SessionMilestoneState | null => {
   if (!key || typeof window === 'undefined') return null;
+  let raw: string | null = null;
   try {
-    const raw = window.sessionStorage.getItem(key);
+    raw = window.sessionStorage.getItem(key);
     return raw ? JSON.parse(raw) : {};
-  } catch {
+  } catch (error) {
+    logAnalyticsFailure('analytics_session_milestones_read_failed', error, {
+      ...getAnalyticsSessionStorageContext(key, raw, true),
+    });
     return null;
   }
 };
 
 const writeSessionMilestoneState = (key: string | null, state: SessionMilestoneState | null): void => {
   if (!key || !state || typeof window === 'undefined') return;
+  let serializedState = '';
   try {
-    window.sessionStorage.setItem(key, JSON.stringify({
+    serializedState = JSON.stringify({
       ...state,
       itemIds: Array.from(new Set(state.itemIds || [])).slice(-10),
       viewedItemIds: Array.from(new Set(state.viewedItemIds || [])).slice(-20),
       languageSessions: Array.from(new Set(state.languageSessions || [])).slice(-8),
       languageAdoptions: Array.from(new Set(state.languageAdoptions || [])).slice(-8),
-    }));
-  } catch {
-    // Session milestones are additive analytics only; never block customer UX.
+    });
+    window.sessionStorage.setItem(key, serializedState);
+  } catch (error) {
+    logAnalyticsFailure('analytics_session_milestones_write_failed', error, {
+      ...getAnalyticsSessionStorageContext(key),
+      ...getSessionMilestoneStateContext(state),
+      ...getBoundedAnalyticsStringContext('serializedState', serializedState),
+    });
   }
 };
 
 const readSessionEntrySource = (key: string | null): EntrySource | null => {
   if (!key || typeof window === 'undefined') return null;
+  let raw: string | null = null;
   try {
-    const raw = window.sessionStorage.getItem(key);
+    raw = window.sessionStorage.getItem(key);
     return raw ? JSON.parse(raw)?.entrySource || null : null;
-  } catch {
+  } catch (error) {
+    logAnalyticsFailure('analytics_session_source_read_failed', error, {
+      ...getAnalyticsSessionStorageContext(key, raw, true),
+    });
     return null;
   }
 };
 
 const writeSessionEntrySource = (key: string | null, entrySource: EntrySource | null): void => {
   if (!key || !entrySource || typeof window === 'undefined') return;
+  let serializedSource = '';
   try {
-    window.sessionStorage.setItem(key, JSON.stringify({ entrySource }));
-  } catch {
-    // Source quality is additive analytics only; never block customer UX.
+    serializedSource = JSON.stringify({ entrySource });
+    window.sessionStorage.setItem(key, serializedSource);
+  } catch (error) {
+    logAnalyticsFailure('analytics_session_source_write_failed', error, {
+      ...getAnalyticsSessionStorageContext(key),
+      ...getBoundedAnalyticsStringContext('entrySource', entrySource),
+      ...getBoundedAnalyticsStringContext('serializedSource', serializedSource),
+    });
   }
 };
 
 const readActiveAttributeFilter = (key: string | null): ActiveAttributeFilterState | null => {
   if (!key || typeof window === 'undefined') return null;
+  let raw: string | null = null;
   try {
-    const raw = window.sessionStorage.getItem(key);
+    raw = window.sessionStorage.getItem(key);
     const parsed = raw ? JSON.parse(raw) : null;
     const filter = String(parsed?.filter || '').trim();
     return ALLOWED_ATTRIBUTE_FILTERS.has(filter) ? {
@@ -229,7 +270,10 @@ const readActiveAttributeFilter = (key: string | null): ActiveAttributeFilterSta
       label: parsed?.label,
       selectedAt: parsed?.selectedAt,
     } : null;
-  } catch {
+  } catch (error) {
+    logAnalyticsFailure('analytics_active_filter_read_failed', error, {
+      ...getAnalyticsSessionStorageContext(key, raw, true),
+    });
     return null;
   }
 };
@@ -240,19 +284,29 @@ const writeActiveAttributeFilter = (
   label?: string,
 ): void => {
   if (!key || typeof window === 'undefined') return;
+  let serializedFilter = '';
+  let operation: 'remove' | 'write' = 'write';
   try {
     if (!filter || !ALLOWED_ATTRIBUTE_FILTERS.has(filter)) {
+      operation = 'remove';
       window.sessionStorage.removeItem(key);
       return;
     }
 
-    window.sessionStorage.setItem(key, JSON.stringify({
+    serializedFilter = JSON.stringify({
       filter,
       label: label || filter,
       selectedAt: Date.now(),
-    }));
-  } catch {
-    // Filter intent is additive analytics only; never block customer UX.
+    });
+    window.sessionStorage.setItem(key, serializedFilter);
+  } catch (error) {
+    logAnalyticsFailure('analytics_active_filter_write_failed', error, {
+      operation,
+      ...getAnalyticsSessionStorageContext(key),
+      ...getBoundedAnalyticsStringContext('filter', filter),
+      ...getBoundedAnalyticsStringContext('filterLabel', label),
+      ...getBoundedAnalyticsStringContext('serializedFilter', serializedFilter),
+    });
   }
 };
 

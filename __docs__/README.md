@@ -86,7 +86,7 @@
 | **[sales/](./sales/)**                                   | Sales materials                                                      |
 | **[patterns/](./patterns/)**                             | Reusable code patterns                                               |
 | **[editor-ux-improvements/](./editor-ux-improvements/)** | Editor UX improvement plans                                          |
-| **[archive/](./archive/)**                               | Historical reports, ChatGPT analyses, phase reports, superseded docs |
+| **[archive/](./archive/)**                               | Historical reports, ChatGPT analyses, phase reports, and superseded docs; not current launch certification |
 
 ### Root-Level Docs (Cross-Cutting)
 

@@ -8,6 +8,29 @@
 
 ---
 
+## July 5, 2026 Viewport Reveal Stabilization
+
+The Neelvara viewport-entry reveal layer was aligned with the smoother Answerlattice and CampaignCue public-site reveal model.
+
+Applied changes:
+
+- Replaced the old root-wide `nv-reveal-ready` hiding rule with explicit `nv-reveal--pending` and `nv-reveal--visible` states.
+- Added route-aware reveal reinitialization so client navigation between Neelvara pages does not keep stale animation state.
+- Added initial viewport handling, animation-frame scheduling, sibling-based delays, fallback viewport check, and cleanup for observer/timer/frame resources.
+- Tuned the intersection threshold for Neelvara's large section-level reveal targets so mobile sections reveal as they enter the viewport instead of staying hidden until too much of the section is visible.
+- Kept the animation limited to opacity, transform, and blur, with reduced-motion users receiving visible content and no reveal transitions.
+
+Verification completed in this pass:
+
+- `npm run lint -- --dir src/app/sites/neelvara --file src/app/layout.tsx --file src/middleware.ts`: pass.
+- `npx tsc --noEmit --incremental false --pretty false`: pass.
+- Local route smoke through `http://127.0.0.1:3000`: Home returns `200`, Products returns `200`, and missing route returns `404`.
+- Rendered browser scroll audit at `1440x1000`: Home reveal targets progress from pending to visible through scroll, final scroll reveals all targets, no pending target remains visible in the viewport, and no horizontal overflow is present.
+- Rendered browser scroll audit at `390x844`: Home reveal targets progress from pending to visible through scroll, final scroll reveals all targets, no pending target remains visible in the viewport, and no horizontal overflow is present.
+- Rendered reduced-motion audit at `390x844`: all reveal targets are visible, no target remains pending, and reveal transitions are disabled.
+
+---
+
 ## July 5, 2026 Akshar Typography Unification
 
 The Neelvara website now uses self-hosted Akshar as the primary typeface across every Neelvara public website surface.

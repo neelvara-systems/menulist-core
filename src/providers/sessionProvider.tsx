@@ -478,8 +478,20 @@ export default function SessionProvider({ children, session }: Props) {
             }
         };
 
-        void loadTargetStore().catch(() => {
+        void loadTargetStore().catch((error) => {
             if (!cancelled) {
+                logFirebaseBootstrapFailure('session_provider_active_store_context_load_failed', error, {
+                    ...getFirebaseAuthSessionLogContext(session),
+                    ...getBoundedFirebaseStringContext('targetStoreId', targetStoreId),
+                    ...getBoundedFirebaseStringContext('previousStoreId', storeDetails?.storeId),
+                    hasTargetSummary: Boolean(targetSummary),
+                    targetSummaryHasDetails: Boolean(targetSummary?.storeDetails),
+                });
+                activeSubscriptionStoreIdRef.current = null;
+                activeSubscriptionRequestStoreIdRef.current = null;
+                setActiveSubscription(null);
+                setActiveStoreContext(null);
+                setStoreDetails(loginStoreDetails);
                 setActiveSubscriptionLoading(false);
             }
         });

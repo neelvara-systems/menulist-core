@@ -430,8 +430,11 @@ June 30 prompt-input boundary: `src/app/api/image-editing/promptsList/promptInpu
 | `src/services/ai/image/triggerBatchImageGenerationApi.ts` | 53  | Batch trigger service        |
 | `src/services/ai/image/editImageViaApi.ts`                | 73  | Image editing service        |
 | `src/hooks/useImageBatchJobListener.ts`                   | 94  | Firestore real-time listener |
+| `src/lib/imageGenPreferences.ts`                          | 120 | Browser-local preference persistence |
 
 June 29 response diagnostics: the single-image and edit-image clients parse successful image responses through bounded 24MB readers because valid payloads can include base64 image data. The batch-trigger client parses its acknowledgement through a 64KB reader. Malformed, oversized, empty, or non-object responses log `ai_image_generation_response_parse_failed` / `ai_image_generation_response_invalid`, `ai_image_edit_response_parse_failed` / `ai_image_edit_response_invalid`, or `ai_batch_image_trigger_response_parse_failed` / `ai_batch_image_trigger_response_invalid` before the existing owner fallback behavior runs.
+
+July 5 preference diagnostics: `src/lib/imageGenPreferences.ts` persists owner visual preferences under `imgGenPrefs_{tId}_{sId}` in browser localStorage only. Save, load, and clear failures now log bounded `image_generation_preferences_save_failed`, `image_generation_preferences_load_failed`, and `image_generation_preferences_clear_failed` diagnostics through shared hook diagnostics with tenant/store/storage-key presence-length metadata, preference counts, serialized/stored payload presence-length metadata, and source error metadata only. The helper still falls back to defaults/null without blocking image generation, still stores no prompts or images, and still creates no Firestore, Storage, provider, or AI accounting work.
 
 ### Database & Infrastructure
 
@@ -682,6 +685,14 @@ safetySettings: [
    - Apply edit
    - Use edited image as source
    - Apply another edit
+
+### Preference Persistence Testing
+
+1. **Browser Storage Failure**
+   - Simulate unavailable or quota-limited localStorage
+   - Save, load, and clear image-generation preferences
+   - Verify image generation still falls back to defaults
+   - Verify bounded `image_generation_preferences_*_failed` diagnostics omit raw preference payloads
 
 ---
 

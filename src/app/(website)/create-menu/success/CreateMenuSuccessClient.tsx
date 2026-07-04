@@ -69,6 +69,20 @@ function logCreateMenuSuccessFailure(
     });
 }
 
+function getCreateMenuSuccessStarterSignalContext(
+    signal: StarterActivationSignal,
+    rawClaim: string | null,
+    storeId?: unknown,
+) {
+    const numericStoreId = Number(storeId);
+
+    return {
+        signal,
+        storeIdPresent: Number.isFinite(numericStoreId) && numericStoreId > 0,
+        ...getBoundedCreateMenuSuccessStringContext('rawClaim', rawClaim),
+    };
+}
+
 function hasCreateMenuSuccessClipboardWrite() {
     return typeof navigator !== 'undefined'
         && typeof navigator.clipboard?.writeText === 'function';
@@ -126,18 +140,28 @@ export default function CreateMenuSuccessClient() {
 
     const recordStarterSignal = useCallback((signal: StarterActivationSignal) => {
         if (recordedSignalsRef.current.has(signal)) return;
+        let rawClaim: string | null = null;
         try {
-            const rawClaim = window.sessionStorage.getItem('menulist:create-menu:last-claim');
+            rawClaim = window.sessionStorage.getItem('menulist:create-menu:last-claim');
             const claim = rawClaim ? JSON.parse(rawClaim) : null;
             const storeId = Number(claim?.storeId);
             if (!storeId) return;
 
             recordedSignalsRef.current.add(signal);
-            recordStarterActivationSignal(storeId, signal).catch(() => {
+            recordStarterActivationSignal(storeId, signal).catch((error) => {
                 recordedSignalsRef.current.delete(signal);
+                logCreateMenuSuccessFailure(
+                    'public_create_menu_success_starter_signal_write_failed',
+                    error,
+                    getCreateMenuSuccessStarterSignalContext(signal, rawClaim, storeId),
+                );
             });
-        } catch {
-            // Non-blocking: the success page remains useful even if telemetry cannot be recorded.
+        } catch (error) {
+            logCreateMenuSuccessFailure(
+                'public_create_menu_success_starter_signal_claim_read_failed',
+                error,
+                getCreateMenuSuccessStarterSignalContext(signal, rawClaim),
+            );
         }
     }, []);
 

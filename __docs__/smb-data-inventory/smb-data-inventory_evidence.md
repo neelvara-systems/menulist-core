@@ -49,7 +49,7 @@ This appendix lists the source evidence used by [SMB data map](./smb-data-invent
 | Browser analytics queue uses localStorage key `menulist_pending_analytics_queue_v1`, flush interval/max batch, direct/API write paths, recovery, dashboard reads, `trackAnalyticsEvent`, and the shared write policy. | `src/database/analytics/index.ts` |
 | Unified analytics applies debounce/cooldown, resolves device/location/session, keeps session ID local for dedupe, writes aggregate fields, and supports menu, OBP, decision-block, customer-app, search, item, and GA4-only events. | `src/lib/analytics/unified.ts` |
 | Analytics preferences control store/menu/customer/decision/location/OBP tracking and external IDs. | `src/lib/analytics/preferences.ts:1-38` |
-| Geolocation can store coarse rounded lat/lng or timezone fallback. | `src/lib/analytics/geo.ts:6-44` |
+| Geolocation can store coarse rounded lat/lng or timezone fallback, keeps permission denial quiet, and logs non-permission geolocation failures with bounded fallback diagnostics. | `src/lib/analytics/geo.ts:6-79` |
 | Analytics session ID uses sessionStorage with 30-minute timeout. | `src/lib/analytics/session.ts:6-47` |
 | Device parser derives type/browser/OS. | `src/lib/analytics/device.ts:13-34` |
 | Customer analytics aggregation defines daily/summary/weekly/monthly patterns and a 90-day daily delete window. | `functions/src/aggregateCustomerAnalytics.ts:24-75`, `functions/src/aggregateCustomerAnalytics.ts:186-218` |
@@ -119,7 +119,7 @@ This appendix lists the source evidence used by [SMB data map](./smb-data-invent
 | --- | --- |
 | AI operation log stores cost/token/model/accounting context under `menulistAiOperations/{tId}/{sId}` and defaults raw provider response storage to accounting-only mode. | `src/lib/ai/operationLog.ts` |
 | AI operations API reads operation docs and sanitizes platform-only fields for owner responses. | `src/app/api/ai-operations/route.ts:1-80`, `src/app/api/ai-operations/route.ts:242-279` |
-| Menu extraction jobs write files/source metadata, project/business context, status, tenant/store/user, and target languages. | `src/app/api/menu-extraction/jobs/route.ts:600-677` |
+| Menu extraction jobs write files/source metadata, project/business context, status, tenant/store/user, and target languages. | `src/app/api/menu-extraction/jobs/route.ts:758-793` |
 | Menu link import stores source artifact in Storage and writes artifact metadata plus an extraction job. | `src/app/api/menu-link-imports/route.ts:156-239` |
 | Processing jobs update public drafts with extracted/detected business data or failure state. | `functions/src/logic/processMenuImagesJob.ts:490-541` |
 | Extraction result storage includes combined data, business profile, quality/confidence, short-lived raw batch metadata, timings, file results, token/credit accounting, and detail-retention metadata. | `functions/src/logic/processMenuImagesJob.ts`, `functions/src/schedulers/menuJobCleanup.ts` |

@@ -19,6 +19,18 @@ Current MenuList Functions retry evidence must start with `npm run verify:functi
 
 ## Fix Ledger
 
+### July 5 follow-up: Server DAL session lookup diagnostics
+
+Status: Fixed.
+
+The protected server DAL composer already used secure logging for downstream DAL failures and preserved the ignored-session function allowlist for webhook/payment helpers. The remaining gap was the session-admission branch: a thrown `getActiveSession()` call was collapsed into the same `null` fallback as a legitimate anonymous session, leaving session lookup infrastructure failures invisible.
+
+`src/lib/apiHelper/apiCallComposerServer.ts` now logs `dal_server_session_lookup_failed` through `secureError()` when protected server DAL session lookup throws. The diagnostic keeps the existing bounded function name, normalized error name, bounded argument summary, and ignored-session metadata. The helper still returns `null` for unauthenticated protected calls, and ignored webhook/helper functions still bypass session lookup as before. `scripts/verification/verify-auth-security-failure-matrix.js` now requires the normalized session-lookup diagnostic and rejects the old silent `getActiveSession().catch(() => null)` pattern.
+
+Validation: `node --check scripts/verification/verify-auth-security-failure-matrix.js`, `npm run verify:auth-security-failure-matrix`, `npm run verify:menulist-api-tenant-safety`, `npx tsc --noEmit --incremental false --pretty false`, `npm run docs:check-links`, `git diff --check`, and `npm run verify:production-readiness-local` with 93/93 checks, including 89 child root `verify:*` scripts.
+
+Impact: valid route authorization, session semantics, ignored webhook/helper function behavior, DAL return shapes, Firestore reads/writes, Firebase Auth behavior, rules/indexes, Cloud Functions, Firebase deploy requirement, owner/mobile UI behavior, and Vercel deploy execution remain unchanged. This is server DAL diagnostic hardening only.
+
 ### June 30 follow-up: CampaignCue API security-log boundary
 
 Status: Fixed.
@@ -1794,9 +1806,21 @@ Analytics diagnostics now go through `src/lib/analytics/analyticsDiagnostics.ts`
 
 June 28 follow-up: `POST /api/public/analytics/track` now uses the same bounded analytics diagnostics helper for unexpected target-validation/write failures. The route logs `public_analytics_track_failed` with tenant/store/project presence and length metadata, update-field count, date-request presence, and source error name/code/status metadata only instead of passing raw route exceptions and raw tenant/store/project IDs into `secureError()`.
 
-`npm run verify:menulist-api-tenant-safety` now guards the analytics diagnostics helper, unified client dispatcher, device/location/session helpers, and analytics write queue against direct console logging and raw logger regressions. `__docs__/client-menu/analytics-tracking/_impl.md` now records the bounded diagnostics contract.
+July 5 follow-up: `src/lib/analytics/geo.ts` no longer silently swallows browser geolocation timeout or position-unavailable failures before falling back to timezone. Permission denial remains quiet as an expected privacy outcome, but non-permission geolocation failures now log bounded `analytics_geolocation_position_failed` diagnostics with geolocation API support, timeout, maximum-age, fallback-policy, and normalized source error metadata only.
 
-Impact: valid public menu, OBP, Customer App, owner menu-kit, Firestore analytics, public analytics target validation/writes, and GA4 behavior is unchanged. This adds no Firestore reads/writes, no analytics counters, no provider calls, no cache invalidations, no route behavior changes, and no owner-facing setting. It changes only diagnostics for failure and skipped-event paths.
+July 5 follow-up: `persistAnalyticsQueue()` no longer silently swallows browser-local queue persistence failures. If `localStorage` is unavailable, full, blocked, or rejects writes while the public/customer analytics queue is being removed or saved, `src/database/analytics/index.ts` logs `analytics_queue_persist_failed` once per failing browser session through the bounded analytics diagnostics helper. The diagnostic records only persistence phase, queue entry count, queued event count, serialized-payload presence/length, and normalized source error metadata. It does not log raw queued analytics payloads, queue keys, tenant IDs, store IDs, project IDs, date values, URLs, user agents, or browser exception messages. Successful persistence resets the one-per-session guard. Existing public menu rendering, analytics event admission, queue coalescing, persisted recovery, public route flush, public route validation, Firestore analytics writes, and GA4 forwarding are unchanged.
+
+July 5 follow-up: `src/lib/analytics/unified.ts` no longer silently swallows session milestone, entry-source, or active-filter `sessionStorage` read/write/remove failures. If tab-scoped storage is unavailable, full, blocked, or malformed, analytics still skips unsafe de-duplication/source/filter persistence and keeps valid counters non-blocking, but now logs bounded `analytics_session_milestones_*`, `analytics_session_source_*`, and `analytics_active_filter_*` diagnostics. These diagnostics include storage-key and stored/serialized payload presence-length metadata, small milestone counts/booleans, entry-source/filter presence-length metadata, operation, and normalized source error metadata only. They do not log raw storage keys, tenant IDs, store IDs, project IDs, session IDs, item IDs, language codes, entry-source payloads, filter labels, URLs, user agents, or browser exception messages.
+
+`npm run verify:menulist-api-tenant-safety` now guards the analytics diagnostics helper, unified client dispatcher, device/location/session helpers, analytics write queue, opt-in geolocation fallback diagnostics, browser-local analytics queue persistence diagnostics, and analytics sessionStorage milestone/source/filter diagnostics against direct console logging, raw logger regressions, silent geolocation position failures, silent queue persistence failures, and silent sessionStorage storage/parse failures. `__docs__/client-menu/analytics-tracking/_impl.md` now records the bounded diagnostics contract.
+
+Impact: valid public menu, OBP, Customer App, owner menu-kit, Firestore analytics, public analytics target validation/writes, opt-in location preference behavior, timezone fallback, public analytics route flush, browser-local analytics queue coalescing/recovery, and GA4 behavior is unchanged. This adds no Firestore reads/writes, no analytics counters, no provider calls, no cache invalidations, no route behavior changes, and no owner-facing setting. It changes only diagnostics for failure and skipped-event paths.
+
+Validation note: local `node --check scripts/verification/verify-menulist-api-tenant-safety.js`, `npm run verify:menulist-api-tenant-safety`, targeted geolocation silent-catch scan, `npm run verify:public-business-truth`, `npx tsc --noEmit --incremental false --pretty false`, `npm run docs:check-links`, `git diff --check`, and `npm run verify:production-readiness-local` with 93/93 checks passed after the analytics geo helper, verifier, and docs changes.
+
+Queue persistence validation note: local `node --check scripts/verification/verify-menulist-api-tenant-safety.js`, `npm run verify:menulist-api-tenant-safety`, `npx tsc --noEmit --incremental false --pretty false`, `npm run docs:check-links`, `git diff --check`, and `npm run verify:production-readiness-local` with 93/93 checks passed after the analytics queue persistence helper, verifier, and docs changes.
+
+SessionStorage diagnostics validation note: local `node --check scripts/verification/verify-menulist-api-tenant-safety.js`, `npm run verify:menulist-api-tenant-safety`, `npx tsc --noEmit --incremental false --pretty false`, `npm run docs:check-links`, `git diff --check`, and `npm run verify:production-readiness-local` with 93/93 checks passed after the analytics session milestone/source/filter storage helper, verifier, and docs changes.
 
 ### 50. Menu extraction job helper and status hook logged raw job details
 
@@ -1806,9 +1830,11 @@ Status: Fixed during the June 27 continuation audit.
 
 Menu extraction job diagnostics now go through `src/lib/firebase/menuProcessingDiagnostics.ts`, which logs normalized failure codes plus bounded job/project/status presence and length metadata. Successful job creation/reuse/cancellation/status updates stay quiet, multiple-active-job diagnostics record counts instead of IDs, and cancel-missing/invalid-status caller errors are generic. The helper still creates jobs through `POST /api/menu-extraction/jobs`, keeps development trigger support, preserves active/completed job reuse, preserves pending/processing cancellation writes, and the hook still exposes the same realtime derived job states.
 
-`npm run verify:menu-extraction-pipeline` now guards the diagnostics helper, client job helper, and status hook against direct console logging, raw job ID diagnostics, and raw status-update diagnostics. `__docs__/menu-extraction-pipeline/menu-extraction-pipeline_impl.md` and `_firebase.md` now record the diagnostics and no-cost boundary.
+July 5 follow-up: `POST /api/menu-extraction/jobs` no longer silently drops Firebase Storage metadata lookup failures while computing owner-upload fingerprints for completed-job reuse. Metadata lookup remains a non-blocking dedupe optimization: when it fails, the route returns no fingerprint for that request and continues toward normal job creation, but it now logs `menu_extraction_owner_upload_metadata_lookup_failed` with bounded tenant/store, file UID/type, Storage-path presence/length, file-size, and normalized source error metadata only.
 
-Impact: valid owner/mobile extraction job creation, active-job reuse, development trigger, cancellation, realtime listener, review, retry, and public render behavior is unchanged. This adds no Firestore reads/writes, no Storage operations, no Cloud Function calls, no AI provider calls, no cache invalidations, no job fields, no indexes, and no owner-facing setting. It changes only diagnostics and generic caller error text for invalid cancellation paths.
+`npm run verify:menu-extraction-pipeline` now guards the diagnostics helper, client job helper, status hook, and owner-upload metadata fallback against direct console logging, raw job ID diagnostics, raw status-update diagnostics, and the old silent `getMetadata().catch(() => [null as any])` fallback. `__docs__/menu-extraction-pipeline/menu-extraction-pipeline_impl.md` and `_firebase.md` now record the diagnostics and no-cost boundary.
+
+Impact: valid owner/mobile extraction job creation, upload admission, Storage URL allowlisting, file fingerprints when metadata is available, active-job reuse, completed-job reuse success behavior, development trigger, cancellation, realtime listener, review, retry, and public render behavior is unchanged. This adds no Firestore reads/writes, no Storage operation counts beyond the existing metadata lookup attempt, no Cloud Function calls, no AI provider calls, no cache invalidations, no job fields, no indexes, and no owner-facing setting. It changes only diagnostics and generic caller error text for invalid cancellation paths plus metadata lookup failure diagnostics.
 
 ### 51. Shared payment hook logged raw Razorpay verification and checkout details
 
@@ -4926,13 +4952,13 @@ Status: Fixed during the June 29 continuation audit.
 
 The Creative Editor template registry already mapped Firebase Storage quota and permission failures to fixed copy, and platform/owner UIs already displayed fixed messages around their actions. The shared wrapper still treated any caught exception message beginning with `Template ` as a local message. That broad prefix check was wider than the DAL's actual local messages and could let a future provider/runtime exception shaped as `Template ...` become visible through the registry's thrown error.
 
-`getTemplateRegistryErrorMessage()` now uses typed local `TemplateRegistryLocalError` codes for the local registry failures the DAL intentionally throws. Fixed quota and permission copy remains unchanged, and any non-allowlisted caught exception falls back to the caller's fixed load/open/save/update/delete message. June 29 follow-up: the wrapper no longer branches on raw `Error.message` even for local registry failures; it maps local codes to fixed copy. June 30 follow-up: `readStorageJson()` now rejects stored template document blobs over `MAX_DOCUMENT_BYTES` before `payloadBlob.text()` and maps that path to the existing fixed `TEMPLATE_DOCUMENT_TOO_LARGE` local error.
+`getTemplateRegistryErrorMessage()` now uses typed local `TemplateRegistryLocalError` codes for the local registry failures the DAL intentionally throws. Fixed quota and permission copy remains unchanged, and any non-allowlisted caught exception falls back to the caller's fixed load/open/save/update/delete message. June 29 follow-up: the wrapper no longer branches on raw `Error.message` even for local registry failures; it maps local codes to fixed copy. June 30 follow-up: `readStorageJson()` now rejects stored template document blobs over `MAX_DOCUMENT_BYTES` before `payloadBlob.text()` and maps that path to the existing fixed `TEMPLATE_DOCUMENT_TOO_LARGE` local error. July 5 follow-up: user and platform template deletes still remove visible metadata before best-effort Storage cleanup, still ignore expected `storage/object-not-found` cleanup misses, and now log bounded `creative_editor_template_storage_cleanup_failed` diagnostics for other document/preview cleanup failures instead of silently swallowing them.
 
-`npm run verify:auth-security-failure-matrix` now guards the template registry DAL for typed local errors, rejects the old `message.startsWith("Template ")`, raw `Error.message`, and pre-size-check blob text patterns, and keeps the fixed quota/permission copy checks. `node scripts/verification/verify-printable-asset-templates.js` also guards the stored document read-size check.
+`npm run verify:auth-security-failure-matrix` now guards the template registry DAL for typed local errors, rejects the old `message.startsWith("Template ")`, raw `Error.message`, pre-size-check blob text patterns, and silent best-effort Storage cleanup swallows, and keeps the fixed quota/permission copy checks. `node scripts/verification/verify-printable-asset-templates.js` also guards the stored document read-size check and cleanup diagnostic boundary.
 
-Impact: valid template list/open/save/update/delete behavior, platform template manager actions, owner saved-design actions, existing Firestore reads/writes, Storage uploads/deletes, schema shape, template document paths, platform catalog mutation behavior, and fixed UI failure toasts remain unchanged except that oversized stored document blobs are rejected before JSON decoding. This changes MenuList client-DAL failure-copy selection and stored document read admission only. It adds no Firestore reads/writes/deletes, Storage operations beyond existing template document reads, Firebase Auth operations, Cloud Function logic changes, extra Cloud Function calls, API routes, provider calls, cache invalidations, rules/indexes/schema changes, tenant-shape changes, permission-model changes, public routes, durable event streams, owner-facing settings, Firebase deploy requirement, or Vercel deploy requirement.
+Impact: valid template list/open/save/update/delete behavior, platform template manager actions, owner saved-design actions, existing Firestore reads/writes, Storage uploads/deletes, schema shape, template document paths, platform catalog mutation behavior, and fixed UI failure toasts remain unchanged except that oversized stored document blobs are rejected before JSON decoding and non-missing cleanup failures are now observable. This changes MenuList client-DAL failure-copy selection, stored document read admission, and cleanup diagnostics only. It adds no Firestore reads/writes/deletes, Storage operations beyond existing template document reads and delete attempts, Firebase Auth operations, Cloud Function logic changes, extra Cloud Function calls, API routes, provider calls, cache invalidations, rules/indexes/schema changes, tenant-shape changes, permission-model changes, public routes, durable event streams, owner-facing settings, Firebase deploy requirement, or Vercel deploy requirement.
 
-Validation note: local `npm run verify:auth-security-failure-matrix`, `npx tsc --noEmit --incremental false --pretty false`, and `git diff --check` passed after the DAL, verifier, and docs changes.
+Validation note: local `node --check scripts/verification/verify-auth-security-failure-matrix.js`, `node --check scripts/verification/verify-printable-asset-templates.js`, `node scripts/verification/verify-printable-asset-templates.js`, `npm run verify:auth-security-failure-matrix`, targeted cleanup-silence scan, `npx tsc --noEmit --incremental false --pretty false`, `npm run docs:check-links`, `git diff --check`, and `npm run verify:production-readiness-local` with 93/93 checks passed after the DAL, verifier, and docs changes.
 
 ### 300. Shared image upload toasts exposed local filenames and validation details
 
@@ -5611,7 +5637,7 @@ Validation note: local `node --check scripts/verification/verify-menulist-api-te
 - Desktop Projects page review found create/update, modal delete, reset, duplicate, selector delete, project-list load, and selected-project load failures still emitted raw project-management diagnostics. They now use bounded project-page diagnostics, and `npm run verify:public-business-truth` covers the desktop shell directly.
 - Use MenuList review found the desktop output hub still raw-logged load failures and left copy/Menu Kit/QR/PDF/feedback QR/starter-signal failures without bounded diagnostics. They now use bounded Use MenuList diagnostics, and `npm run verify:menu-card-export` covers the helper and desktop output surface directly.
 - Ops diagnostics review found the Ops DAL, Scheduler DAL, Scheduler Monitor, and alert helper still emitted raw provider/ops diagnostics or raw manual-recovery failure text. They now use bounded ops diagnostics, and `npm run verify:menulist-api-tenant-safety` covers the helper, DALs, monitor, and alert helper directly.
-- Shared hook diagnostics review found content-view tracking, fullscreen, recent colors, safe Redux selector, safe Redux dispatch fallback, ingestion job listener, and batch image job listener paths still emitted raw browser/localStorage/Redux/listener diagnostics. They now use bounded hook diagnostics, and `npm run verify:auth-security-failure-matrix` covers the hook helper and callers directly. June 29 follow-up: the ingestion jobs listener active-job breadcrumb now uses development-only `ingestion_jobs_listener_active_job_found` with bounded job id/status metadata instead of the raw generic logger path.
+- Shared hook diagnostics review found content-view tracking, fullscreen, recent colors, safe Redux selector, safe Redux dispatch fallback, ingestion job listener, and batch image job listener paths still emitted raw browser/localStorage/Redux/listener diagnostics. They now use bounded hook diagnostics, and `npm run verify:auth-security-failure-matrix` covers the hook helper and callers directly. June 29 follow-up: the ingestion jobs listener active-job breadcrumb now uses development-only `ingestion_jobs_listener_active_job_found` with bounded job id/status metadata instead of the raw generic logger path. July 5 follow-up: image-generation preference save/load/clear localStorage failures now use the same hook diagnostic boundary with bounded tenant/store/storage-key, preference-shape, and payload presence-length metadata instead of silent browser-storage fallbacks.
 - Answerlattice client cache review found changelog, article, ticket, and feedback hooks still emitted raw cache/debug/feedback diagnostics. They now use bounded hook diagnostics or stay quiet on normal cache paths, and `npm run verify:answerlattice-runtime-truth` covers the hooks directly.
 - Answerlattice callable wrapper review found `regenerateEmbedding` and `publishApprovedJobFn` still emitted raw Firebase callable/provider failures. They now use bounded callable diagnostics, and `npm run verify:answerlattice-runtime-truth` covers the shared callable wrapper directly.
 - Answerlattice chat analytics review found today's live-stats fallback paths still emitted raw Firebase/provider warnings. They now use bounded chat analytics diagnostics, and `npm run verify:answerlattice-runtime-truth` covers the DAL directly.
@@ -7769,8 +7795,11 @@ Validation:
 ```bash
 node --check scripts/verification/verify-menu-extraction-pipeline.js
 npm run verify:menu-extraction-pipeline
+rg -n "recordStarterActivationSignal\\(storeId, signal\\)\\.catch\\(\\(\\) =>|public_create_menu_success_starter_signal_(claim_read|write)_failed|getCreateMenuSuccessStarterSignalContext" 'src/app/(website)/create-menu/success/CreateMenuSuccessClient.tsx' scripts/verification/verify-menu-extraction-pipeline.js __docs__/public-menu-entry __docs__/audits/menulist-production-readiness-audit.md __docs__/system-strengthening/menulist-system-data-flow-audit-2026-06-20.md __docs__/CHANGELOG.md
 npx tsc --noEmit --incremental false --pretty false
+npm run docs:check-links
 git diff --check
+npm run verify:production-readiness-local
 ```
 
 Cost/deploy boundary: this is MenuList public preview browser-handoff hardening and docs/verifier parity only. It adds no Firestore reads/writes/deletes, Storage operations, Firebase Auth operations, provider calls, cache invalidations, API routes, rules, indexes, schema changes, Cloud Function logic changes, owner-facing settings, Firebase deploy requirement, or Vercel deploy action. Existing valid preview loading, approve/fix behavior, publish output, and provider confirmation behavior are unchanged.
@@ -7789,6 +7818,7 @@ Fixes:
 - `scripts/verification/verify-menu-extraction-pipeline.js` now guards the success-page failure codes, bounded context helper, safe WhatsApp open signature, localized English/Hindi failure copy, and absence of raw share samples.
 - `__docs__/public-menu-entry/public-menu-entry_impl.md`, `__docs__/public-menu-entry/public-menu-entry_firebase.md`, `__docs__/main-website/main-website_content.md`, and `__docs__/main-website/main-website_impl.md` now record the browser-local handoff boundary.
 - June 30 follow-up: Copy Link now falls through from rejected Clipboard API writes to acknowledged textarea fallback before failure, keeps copied state and starter activation tied to acknowledgement, and `verify-menu-extraction-pipeline` guards the rejection fallback, fallback failure code, and support metadata.
+- July 5 follow-up: starter activation signal telemetry remains non-blocking, but session-storage claim-context read/parse failures now log `public_create_menu_success_starter_signal_claim_read_failed`, and failed `recordStarterActivationSignal()` attempts now log `public_create_menu_success_starter_signal_write_failed` while deleting the debounce marker for retry. Diagnostics include only bounded signal, raw-claim presence/length, store-presence, and normalized source error metadata.
 
 Validation:
 
@@ -7799,7 +7829,7 @@ npx tsc --noEmit --incremental false --pretty false
 git diff --check
 ```
 
-Cost/deploy boundary: this is MenuList public website browser-handoff hardening and docs/verifier parity only. It adds no Firestore reads/writes/deletes beyond avoiding false starter activation writes on failed browser actions, no Storage operations, Firebase Auth operations, provider calls, cache invalidations, API routes, rules, indexes, schema changes, Cloud Function logic changes, owner-facing settings, Firebase deploy requirement, or Vercel deploy action. Existing valid create-menu upload/link import, preview, claim/publish, success rendering, and successful starter activation behavior are unchanged.
+Cost/deploy boundary: this is MenuList public website browser-handoff and starter-signal diagnostic hardening plus docs/verifier parity only. It adds no Firestore reads/writes/deletes beyond avoiding false starter activation writes on failed browser actions and logging failed existing telemetry attempts, no Storage operations, Firebase Auth operations, provider calls, cache invalidations, API routes, rules, indexes, schema changes, Cloud Function logic changes, owner-facing settings, Firebase deploy requirement, or Vercel deploy action. Existing valid create-menu upload/link import, preview, claim/publish, success rendering, copy/open behavior, and successful starter activation behavior are unchanged.
 
 ## June 29 Follow-up: Use MenuList Direct Open Hardening
 
@@ -7875,6 +7905,32 @@ git diff --check
 ```
 
 Cost/deploy boundary: this is route-level app error-boundary browser-handoff hardening and docs/verifier parity only. It adds no Firestore reads/writes/deletes, Storage operations, Firebase Auth operations, provider calls, cache invalidations, API routes, rules, indexes, schema changes, Cloud Function logic changes, owner-facing settings, Firebase deploy requirement, or Vercel deploy action. Existing valid error rendering, refresh/reset, and diagnostic-report behavior are unchanged except for safe browser features and same-tab fallback on blocked Help opens.
+
+## July 5 Follow-up: Error Page Theme Fallback Diagnostics
+
+The error-page theme sweep found `src/app/global-error.tsx` and `src/components/atoms/ErrorPageThemeWrapper/index.tsx` both read Redux Persist theme state from `persist:nextjs` directly and returned default colors from silent catch blocks. The fallback itself was safe, but malformed persisted JSON, blocked browser storage, or invalid persisted theme payloads could make real error pages fall back without any support-triage signal.
+
+Fixes:
+
+- `src/lib/runtime/errorPageTheme.ts` now owns the default error-page theme and shared persisted-theme reader.
+- `src/app/global-error.tsx` and `src/components/atoms/ErrorPageThemeWrapper/index.tsx` both call `readPersistedErrorPageTheme()` instead of keeping duplicate local parsers.
+- Failed browser storage or JSON parsing logs `error_page_theme_persisted_state_read_failed` through `src/lib/runtime/runtimeDiagnostics.ts`.
+- Diagnostic context records only stable caller source, read phase, persisted-state presence/length, client-theme-config presence/length, and normalized source error metadata. It does not log raw Redux Persist state, raw theme config JSON, raw colors, browser exception messages, user identity, URLs, or project/store IDs.
+- Missing storage or absent `clientThemeConfig` still falls back quietly to the default dark theme because that is an expected first-load or pre-persist state.
+- `scripts/verification/verify-auth-security-failure-matrix.js` now guards the shared reader, bounded metadata, caller wiring, and absence of duplicate silent persisted-theme parsers.
+
+Validation:
+
+```bash
+node --check scripts/verification/verify-auth-security-failure-matrix.js
+npm run verify:auth-security-failure-matrix
+npx tsc --noEmit --incremental false --pretty false
+npm run docs:check-links
+git diff --check
+npm run verify:production-readiness-local
+```
+
+Cost/deploy boundary: this is browser-local error-page theme fallback diagnostics and docs/verifier parity only. It adds no Firestore reads/writes/deletes, Storage operations, Firebase Auth operations, provider calls, cache invalidations, API routes, public routes, rules, indexes, schema changes, Cloud Function logic changes, owner-facing settings, Firebase deploy requirement, or Vercel deploy action. Existing crash rendering, refresh/reset behavior, explicit error reports, normal theme settings, Redux persistence, and default dark fallback behavior are unchanged except for bounded diagnostics on malformed or blocked persisted theme reads.
 
 ## June 29 Follow-up: Platform Attachment Open Hardening
 
@@ -12127,7 +12183,7 @@ Validation:
 - Passed `npm run verify:public-business-truth`.
 - Passed `npm run verify:menulist-api-tenant-safety`.
 - Passed `npx tsc --noEmit --incremental false --pretty false`.
-- Pending scoped `git diff --check`.
+- Passed scoped `git diff --check`.
 
 Cost/deploy boundary: this is browser-local reseller request hardening only. It adds no Firestore reads/writes/deletes beyond existing valid reseller management, onboarding, and add-location capacity requests; no Firebase Auth operations beyond existing valid reseller/owner account creation; no Storage operations; no Cloud Function logic changes; no provider calls beyond existing valid Razorpay subscription behavior; no new API routes; no public routes; no cache invalidations beyond existing valid onboarding behavior; no rules; no indexes; no schema changes; no tenant-shape changes; no owner-facing settings; no MenuList Firebase deploy requirement; and no Vercel deploy action. Existing route auth, platform/reseller role checks, rate limits, response shapes, billing behavior, cache invalidation, desktop/mobile UI state, bounded response parsing, and fixed owner/platform copy remain unchanged except for no-store cache, same-origin credentials, and manual redirect handling on the browser request side.
 

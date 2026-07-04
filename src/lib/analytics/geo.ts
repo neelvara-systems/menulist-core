@@ -3,6 +3,47 @@
  */
 import { logAnalyticsFailure } from './analyticsDiagnostics';
 
+const GEOLOCATION_TIMEOUT_MS = 5000;
+const GEOLOCATION_MAXIMUM_AGE_MS = 600000;
+const GEOLOCATION_PERMISSION_DENIED_CODE = 1;
+
+const hasBrowserGeolocation = (): boolean => (
+  typeof navigator !== 'undefined'
+  && Boolean(navigator.geolocation)
+);
+
+const isGeolocationPermissionDenied = (error: unknown): boolean => (
+  Boolean(error)
+  && typeof error === 'object'
+  && Number((error as { code?: unknown }).code) === GEOLOCATION_PERMISSION_DENIED_CODE
+);
+
+const getGeolocationAttemptContext = () => ({
+  hasGeolocationApi: hasBrowserGeolocation(),
+  maximumAgeMs: GEOLOCATION_MAXIMUM_AGE_MS,
+  timeoutMs: GEOLOCATION_TIMEOUT_MS,
+  fallback: 'timezone',
+});
+
+const getBrowserPosition = async (): Promise<GeolocationPosition | null> => {
+  if (!hasBrowserGeolocation()) return null;
+
+  try {
+    return await new Promise<GeolocationPosition>((resolve, reject) => {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => resolve(pos),
+        (err) => reject(err),
+        { timeout: GEOLOCATION_TIMEOUT_MS, maximumAge: GEOLOCATION_MAXIMUM_AGE_MS }
+      );
+    });
+  } catch (error) {
+    if (!isGeolocationPermissionDenied(error)) {
+      logAnalyticsFailure('analytics_geolocation_position_failed', error, getGeolocationAttemptContext());
+    }
+    return null;
+  }
+};
+
 /**
  * Get the user's location information if available
  * This uses the browser's Geolocation API if permission is granted
@@ -10,29 +51,19 @@ import { logAnalyticsFailure } from './analyticsDiagnostics';
  */
 export const getLocationInfo = async (): Promise<string> => {
   try {
-    // Check if geolocation is available in the browser
-    if (navigator.geolocation) {
-      // Try to get the user's position with a timeout
-      const position = await new Promise<GeolocationPosition>((resolve, reject) => {
-        navigator.geolocation.getCurrentPosition(
-          (pos) => resolve(pos),
-          (err) => reject(err),
-          { timeout: 5000, maximumAge: 600000 } // 5s timeout, 10min cache
-        );
-      }).catch(() => null);
+    const position = await getBrowserPosition();
 
-      // If we got a position, use it to create a location key
-      if (position) {
-        const { latitude, longitude } = position.coords;
-        
-        // Round coordinates to reduce precision for privacy
-        const roundedLat = Math.round(latitude * 10) / 10;
-        const roundedLng = Math.round(longitude * 10) / 10;
-        
-        return `geo_${roundedLat}_${roundedLng}`;
-      }
+    // If we got a position, use it to create a location key
+    if (position) {
+      const { latitude, longitude } = position.coords;
+
+      // Round coordinates to reduce precision for privacy
+      const roundedLat = Math.round(latitude * 10) / 10;
+      const roundedLng = Math.round(longitude * 10) / 10;
+
+      return `geo_${roundedLat}_${roundedLng}`;
     }
-    
+
     // Fallback: Use timezone to approximate region
     const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
     if (timezone && timezone !== 'UTC') {
@@ -40,7 +71,7 @@ export const getLocationInfo = async (): Promise<string> => {
       const region = timezone.split('/')[0];
       return `tz_${region}`;
     }
-    
+
     // Last resort fallback
     return 'unknown';
   } catch (error) {

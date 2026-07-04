@@ -24,11 +24,10 @@ import PageProofStrip from './components/PageProofStrip';
 import PricingPreviewSection from './components/PricingPreviewSection';
 import SectionHeader from './components/SectionHeader';
 import SupportSurfaceStoryNav from './components/SupportSurfaceStoryNav';
-import { AnswerlatticeDiagramCore, AnswerlatticeLoopDiagram } from './components/AnswerlatticeFlowDiagram';
+import { AnswerlatticeDiagramCore, AnswerlatticeHeroAutomationDiagram, AnswerlatticeLoopDiagram } from './components/AnswerlatticeFlowDiagram';
 import {
     ANSWERLATTICE_FEATURE_ASSETS,
     ANSWERLATTICE_DEMO_SURFACE_ASSETS,
-    ANSWERLATTICE_HOME_HERO_ASSET,
     ANSWERLATTICE_PRODUCT_AREA_ASSETS,
     ANSWERLATTICE_PRODUCT_PREVIEW_ASSETS,
 } from './answerlatticeWebsiteAssets';
@@ -598,14 +597,8 @@ function HomepageHero({ basePath }: { basePath: string }) {
                     ))}
                 </div>
 
-                <div className="al-home-hero__image mx-auto mt-12 max-w-6xl rounded-[2rem] border border-white/[0.08] bg-[#09091a] p-2 shadow-2xl shadow-black/35 sm:p-3">
-                    <AnswerlatticeAssetImage
-                        asset={ANSWERLATTICE_HOME_HERO_ASSET}
-                        assetSlotId="home.hero.product-loop"
-                        assetRole="hero-product-scene"
-                        priority
-                        className="rounded-[1.5rem] border border-white/[0.08]"
-                    />
+                <div className="al-home-hero__image mx-auto mt-12 max-w-6xl" data-answerlattice-visual-slot="home.hero.product-loop">
+                    <AnswerlatticeHeroAutomationDiagram />
                 </div>
 
                 <div className="al-home-hero__proof">

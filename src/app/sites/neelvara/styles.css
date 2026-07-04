@@ -210,20 +210,28 @@
 
 .nv-reveal {
     --nv-reveal-delay: 0ms;
-}
-
-.nv-reveal-ready .nv-reveal {
-    opacity: 0;
-    transform: translateY(18px);
-    transition:
-        opacity 800ms cubic-bezier(0.2, 0.7, 0.2, 1),
-        transform 800ms cubic-bezier(0.2, 0.7, 0.2, 1);
+    --nv-reveal-distance: 28px;
+    --nv-reveal-duration: 780ms;
+    opacity: 1;
+    transition-property: opacity, transform, filter;
+    transition-duration: var(--nv-reveal-duration);
+    transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
     transition-delay: var(--nv-reveal-delay);
 }
 
-.nv-reveal-ready .nv-reveal.is-visible {
+.nv-reveal--pending {
+    opacity: 0;
+    filter: blur(8px);
+    transform: translate3d(0, var(--nv-reveal-distance), 0) scale(0.988);
+    will-change: opacity, transform, filter;
+}
+
+.nv-reveal--visible,
+.nv-reveal.is-visible {
     opacity: 1;
+    filter: blur(0);
     transform: none;
+    will-change: auto;
 }
 
 .nv-header {
@@ -1909,10 +1917,14 @@
         animation: none;
     }
 
-    .nv-reveal-ready .nv-reveal {
+    .nv-reveal,
+    .nv-reveal--pending,
+    .nv-reveal--visible {
+        filter: none;
         opacity: 1;
         transform: none;
         transition: none;
+        will-change: auto;
     }
 
     .nv-button,

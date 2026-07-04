@@ -45,7 +45,18 @@ export const apiCallComposerServer = async (fn, ...args) => {
 
     // Only require session for non-webhook calls
     if (!isIgnoredFunctionCall) {
-        const session = await getActiveSession().catch(() => null);
+        let session = null;
+        try {
+            session = await getActiveSession();
+        } catch (sessionError) {
+            secureError('[DAL Server] Session lookup failed', new Error('dal_server_session_lookup_failed'), {
+                functionName,
+                errorName: sessionError instanceof Error ? sessionError.name : typeof sessionError,
+                params: summarizeDalArgs(args),
+                ignoredSessionFunction: isIgnoredFunctionCall,
+            });
+        }
+
         if (!Boolean(session?.user)) {
             return null;
         }

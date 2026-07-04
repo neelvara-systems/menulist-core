@@ -7,7 +7,7 @@
 **Constraints:** 3-year architecture freeze • backwards-compatible • feature-flagged  
 **Default:** OFF (`ENABLE_MULTI_OUTLET: false`)  
 **Original Date:** January 19, 2026  
-**Last Reviewed:** July 2, 2026
+**Last Reviewed:** July 5, 2026
 **Author:** Lead Architect
 
 > **Launch Boundary:** This technical blueprint records Multi-Outlet implementation source evidence, not current production-launch approval. Current release approval requires the active [production-readiness audit](../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../production-readiness/external-certification-runbook.md) evidence, `npm run verify:multi-location-boundary`, desktop/mobile Locations browser QA, linked outlet save QA, Razorpay sandbox evidence where billing is involved, Firebase deploy evidence where rules/functions change, and target-environment smoke.
@@ -33,6 +33,7 @@
 > - **July 1, 2026 multi-location source gate:** Multi-location boundary source gate: `npm run verify:multi-location-boundary` locks outlet create/deactivate/rename/policy route admission, linked outlet project-save policy enforcement, desktop/mobile bounded acknowledgements, MobileShell Locations routing, and docs/audit parity. The gate is source-only and does not run browser, Razorpay, Firebase deploy, or live Firestore smoke.
 > - **July 1, 2026 desktop rename failure-path hardening:** Desktop `OutletRenameModal` now parses the bounded `/api/outlets/rename` response before the non-OK branch, records the safe `currentSlug` field for same-slug rejection diagnostics, and keeps fixed owner copy. `verify:multi-location-boundary` also checks required public/screen cache invalidation tags without depending on quote style.
 > - **July 2, 2026 active-cap hardening:** `POST /api/outlets/create` now enforces `MAX_OUTLETS_PER_TENANT` against active non-master outlets only, matching billing quantity, desktop/mobile counters, public visibility, and deactivation-as-replacement-slot behavior.
+> - **July 5, 2026 active store-context fallback hardening:** `src/providers/sessionProvider.tsx` logs bounded `session_provider_active_store_context_load_failed` diagnostics when a validated target store context cannot finish store/subscription loading, clears stale active-subscription state, resets the active context, and falls back to the login store. This preserves the existing `/api/auth/switch-store` and Firebase Auth claim refresh behavior; it only hardens the provider fallback after a failed target load.
 
 ---
 
