@@ -2,24 +2,24 @@
   <title>Neelvara Systems</title>
   <defs>
     <linearGradient id="g1" x1="96" y1="292" x2="507" y2="28" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#8EB1EF"/>
-      <stop offset="0.52" stop-color="#8997E2"/>
-      <stop offset="1" stop-color="#B7A9E6"/>
+      <stop offset="0" stop-color="#A9C2F5"/>
+      <stop offset="0.52" stop-color="#9CA8EC"/>
+      <stop offset="1" stop-color="#D0C8F4"/>
     </linearGradient>
     <linearGradient id="g2" x1="195" y1="245" x2="528" y2="162" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#7AA5F0"/>
-      <stop offset="0.58" stop-color="#778AE0"/>
-      <stop offset="1" stop-color="#C2ADE7"/>
+      <stop offset="0" stop-color="#9ABAF4"/>
+      <stop offset="0.58" stop-color="#8798E7"/>
+      <stop offset="1" stop-color="#D9CBF3"/>
     </linearGradient>
     <linearGradient id="g3" x1="98" y1="178" x2="322" y2="205" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#76A9EF"/>
-      <stop offset="0.57" stop-color="#768EE0"/>
-      <stop offset="1" stop-color="#9A8ADB"/>
+      <stop offset="0" stop-color="#9FC6F6"/>
+      <stop offset="0.57" stop-color="#8FA2E8"/>
+      <stop offset="1" stop-color="#B7ACEF"/>
     </linearGradient>
   </defs>
   <g transform="translate(0 110.78) scale(0.885813)" fill-rule="nonzero" stroke-linejoin="round" stroke-linecap="round">
-    <path d="M101 139 L445 27 C461 22 474 31 480 51 L506 149 C512 169 504 183 490 187 L166 291 C149 296 134 286 128 269 L100 174 C95 157 96 145 101 139 Z" fill="url(#g1)" fill-opacity="0.42" stroke="#7093E7" stroke-opacity="0.70" stroke-width="1.8"/>
-    <path d="M230 121 L506 158 C523 160 531 175 527 194 L516 258 C512 278 499 290 481 288 L218 252 C201 250 192 236 195 219 L209 148 C212 130 221 120 230 121 Z" fill="url(#g2)" fill-opacity="0.42" stroke="#7093E7" stroke-opacity="0.70" stroke-width="1.8"/>
-    <path d="M145 94 L309 174 C324 181 329 195 323 213 L309 239 C302 257 286 267 270 259 L106 179 C95 174 92 159 99 140 L113 114 C121 97 132 88 145 94 Z" fill="url(#g3)" fill-opacity="0.40" stroke="#7093E7" stroke-opacity="0.70" stroke-width="1.8"/>
+    <path d="M101 139 L445 27 C461 22 474 31 480 51 L506 149 C512 169 504 183 490 187 L166 291 C149 296 134 286 128 269 L100 174 C95 157 96 145 101 139 Z" fill="url(#g1)" fill-opacity="0.48" stroke="#6F86E2" stroke-opacity="0.86" stroke-width="2.1"/>
+    <path d="M230 121 L506 158 C523 160 531 175 527 194 L516 258 C512 278 499 290 481 288 L218 252 C201 250 192 236 195 219 L209 148 C212 130 221 120 230 121 Z" fill="url(#g2)" fill-opacity="0.47" stroke="#6F86E2" stroke-opacity="0.86" stroke-width="2.1"/>
+    <path d="M145 94 L309 174 C324 181 329 195 323 213 L309 239 C302 257 286 267 270 259 L106 179 C95 174 92 159 99 140 L113 114 C121 97 132 88 145 94 Z" fill="url(#g3)" fill-opacity="0.46" stroke="#6F86E2" stroke-opacity="0.86" stroke-width="2.1"/>
   </g>
 </svg>

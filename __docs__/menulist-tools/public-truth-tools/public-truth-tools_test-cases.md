@@ -1,6 +1,6 @@
 # Public Truth Tools - Test Cases
 
-**Status:** Active family tests - Public Truth Check V0/V1, Business Facts Copy Pack V0, WhatsApp Reply Pack V0, Customer FAQ Reply Pack V0, QR Link Health Check V0, Menu Readability Check V0/V1, Customer Question Coverage Check V0/V1, Booking Inquiry Readiness Check V0/V1, Price Availability Gap Check V0/V1, Menu PDF Cleanup Check V0/V1, Google Profile Basics Checklist V0/V1, One Customer Link Preview V0, Social Bio Link Consistency Check V0, Shareable Tool Reports V0, WhatsApp Action Link Check V0, Hours Check V0, and Photo Gap Check V0 implemented
+**Status:** Active family tests - sixteen public tools, five public asset makers, shareable reports, eighteen V1 owner readiness modules, and V2 paid add-on runtime gate covered
 **Last Updated:** July 4, 2026
 **Audience:** QA, developers
 
@@ -43,6 +43,9 @@
 | PTT-019 | V1 owner readiness omits any implemented V0 tool family module | Verification fails |
 | PTT-020 | V1 owner readiness row has no exact desktop or mobile fix target | Verification fails |
 | PTT-021 | V1 owner readiness gaps do not derive a bounded desktop/mobile fix list from existing module rows | Verification fails |
+| PTT-022 | V2 paid add-on runtime is changed without entitlement, capped history, source policy, audit, and cost controls | Verification fails |
+| PTT-023 | Public V0 report treats `http://localhost`, private IPs, raw IPs, `.local`, credentialed URLs, or explicit `http://` as ready public customer links | Verification fails |
+| PTT-024 | Public V0 report uses generic URL-format evidence instead of naming the public HTTPS URL boundary | Verification fails |
 
 ---
 
@@ -81,7 +84,7 @@
 | Google/maps/holiday hours inspection | No in Hours Check V0 | Owner-entered hours facts are checked locally only |
 | Image upload/analysis | No in Photo Gap Check V0 | Owner-selected photo facts are checked locally only |
 | Owner-pasted public text | Yes | Check text only |
-| Arbitrary public URL | Conditional | Store reference only unless adapter approved |
+| Arbitrary public URL | Conditional | Count only after the shared public HTTPS URL boundary; store reference only unless adapter approved |
 | Login-only page | No | Reject or mark not checked |
 | Private social group | No | Reject or mark not checked |
 | External source as canonical truth | No | Requires owner confirmation first |

@@ -1,3 +1,4 @@
+import { isPublicHttpsUrl as isValidHttpUrl } from './publicUrlValidation';
 import type {
   WhatsAppReplyBlock,
   WhatsAppReplyPackAction,
@@ -69,28 +70,6 @@ function isLikelyWhatsAppPhone(rawValue: string): boolean {
     && hasLikelyCountryCode(rawValue, digits);
 }
 
-function getUrlWithProtocol(value: string): string {
-  if (/^https?:\/\//i.test(value)) return value;
-  if (/^[a-z0-9.-]+\.[a-z]{2,}(?:[/:?#].*)?$/i.test(value)) {
-    return `https://${value}`;
-  }
-  return value;
-}
-
-function isValidHttpUrl(value: string): boolean {
-  if (!value) return false;
-
-  try {
-    const url = new URL(getUrlWithProtocol(value));
-    const hostLooksUsable = url.hostname === 'localhost'
-      || url.hostname === '127.0.0.1'
-      || url.hostname.includes('.');
-    return (url.protocol === 'http:' || url.protocol === 'https:') && hostLooksUsable;
-  } catch {
-    return false;
-  }
-}
-
 function getWhatsAppReplyPackEvidenceText(evidence: WhatsAppReplyPackEvidence): string {
   switch (evidence) {
     case 'owner_entered':
@@ -102,9 +81,9 @@ function getWhatsAppReplyPackEvidenceText(evidence: WhatsAppReplyPackEvidence): 
     case 'local_phone_format_unclear':
       return 'Phone number shape was checked locally. Add country code if this is the customer WhatsApp number.';
     case 'local_url_format_valid':
-      return 'URL format was checked locally. The URL was not opened or fetched.';
+      return 'Public HTTPS URL format was checked locally. The URL was not opened or fetched.';
     case 'local_url_format_invalid':
-      return 'URL format was checked locally. The URL was not opened or fetched.';
+      return 'Public HTTPS URL format was checked locally. The URL was not opened or fetched.';
     case 'deterministic_copy':
       return 'Replies were generated from owner-entered facts only. No AI rewrite was generated.';
     case 'external_boundary':

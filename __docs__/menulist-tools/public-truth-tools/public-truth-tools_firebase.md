@@ -1,6 +1,6 @@
 # Public Truth Tools - Firebase Cost Tracking
 
-**Status:** Active family; sixteen V0 tools, a public shareable report layer, and twelve V1 owner readiness modules implemented
+**Status:** Active family; sixteen V0 tools, five public asset makers, a public shareable report layer, and eighteen V1 owner readiness modules implemented
 **Last Updated:** July 4, 2026
 **Audience:** Founder, developers, cost auditors
 
@@ -10,7 +10,7 @@
 
 The family now has sixteen V0 runtime tools: Public Truth Check, Business Facts Copy Pack, WhatsApp Reply Pack, Customer FAQ Reply Pack, QR Link Health Check, Menu Readability Check, Customer Question Coverage Check, Booking Inquiry Readiness Check, Price Availability Gap Check, Menu PDF Cleanup Check, Google Profile Basics Checklist, One Customer Link Preview, Social Bio Link Consistency Check, WhatsApp Action Link Check, Hours Check, and Photo Gap Check. Their report/check paths add no Firebase usage; their optional follow-up forms reuse the existing public contact enquiry write after consent.
 
-The logged-in owner V1 card now shows twelve readiness modules inside Business Health using the existing owner store context, project summary cache, mobile project cache, and at most one selected/default project read when not already cached. It writes no report state. Customer Question Coverage Check, Booking Inquiry Readiness Check, Price Availability Gap Check, Menu PDF Cleanup Check, and Google Profile Basics Checklist are computed from current MenuList business facts, menu/service truth, public-link readiness, and owner-confirmed handoff fields only. One Customer Link Preview and Social Bio Link Consistency Check map to existing public-link, Share, Public Discovery, and Business Health readiness surfaces without duplicate owner modules. Menu Freshness is owner-only and computed from already-loaded MenuList store/project fields. No V1 module scans Google, Maps, Search, or external sites.
+The logged-in owner V1 card now shows eighteen readiness modules inside Business Health using the existing owner store context, project summary cache, mobile project cache, and at most one selected/default project read when not already cached. It writes no report state. Business Facts Copy Pack, WhatsApp Reply Pack, Customer FAQ Reply Pack, Customer Link Preview, Social Bio Link Consistency Check, Print & Share Assets, Customer Question Coverage Check, Booking Inquiry Readiness Check, Price Availability Gap Check, Menu PDF Cleanup Check, and Google Profile Basics Checklist are computed from current MenuList business facts, menu/service truth, public-link readiness, and owner-confirmed handoff fields only. Menu Freshness is owner-only and computed from already-loaded MenuList store/project fields. No V1 module scans Google, Maps, Search, social profiles, QR placements, print materials, WhatsApp, or external sites.
 
 July 1 acknowledgement note: accepted optional follow-up state now requires the existing contact route to return the shared source/status/help-topic acknowledgement after the enquiry write. This changes only response shape and browser guards; it adds no Firestore reads/writes/deletes, Storage operations, Cloud Functions, AI/provider calls, Firebase deploy requirement, or Vercel deploy action.
 
@@ -41,7 +41,7 @@ Estimated current monthly cost: `0`.
 | --- | --- | --- | --- |
 | V0 public free tool | Public acquisition check, basic report, export, and optional handoff | Prefer static/browser-local behavior with no provider calls; consented handoff may reuse an existing bounded contact/setup flow | Do not store leads unless there is explicit consent and an approved capped contact/setup flow |
 | V1 logged-in owner check | Included owner check from current MenuList truth | Current V1 readiness modules reuse owner store context, project summary read, mobile project cache, and at most one selected/default project read; writes nothing | Store at most latest/capped status only if a future Business Health/Public Discovery persistence need is approved |
-| V2 paid add-on behavior | Recurring checks, saved history, monthly report, multi-location scan, agency report | Paid entitlement must cover Firestore, scheduler, external adapter, and provider cost | Dedicated capped history is allowed only after paid add-on approval and retention rules |
+| V2 paid add-on behavior | Saved history, monthly/partner text report, later scheduler/multi-location when explicitly enabled | Paid entitlement covers current Firestore reads/writes; scheduler/external adapter/provider cost remains zero while off | Current capped history lives in `platformSummary/publicTruthMonitor_{storeId}` |
 
 Do not charge for a better one-time check. Paid value must come from recurrence, saved history, multi-location reporting, agency/client export, partner/reseller reporting, or owner-approved repair work.
 
@@ -133,4 +133,4 @@ The current implemented V0 tools are documented separately in:
 - `__docs__/menulist-tools/hours-check/hours-check_firebase.md`
 - `__docs__/menulist-tools/photo-gap-check/photo-gap-check_firebase.md`
 
-The framework itself remains zero-cost until runtime code exists.
+The public V0 framework itself remains zero-cost; the paid V2 monitor adds only the capped owner-authenticated reads/writes documented in the add-on Firebase doc.

@@ -8,9 +8,9 @@
 
 ## 1. Executive Summary
 
-**What:** A simple status checklist showing restaurant owners where their menu is visible to customers — and where it's missing.
+**What:** A simple status checklist showing source-derived readiness and owner-confirmed external placement status for the surfaces where customers may look for the menu.
 
-**Why:** Owners publish their menu once and forget to distribute it. They miss placing the link on Google Business, Instagram, WhatsApp, or printing QR cards. This means customers searching for the restaurant can't find the menu. Menu Presence Monitor surfaces these gaps with simple ✓/⚠ signals.
+**Why:** Owners publish their menu once and forget distribution work. They may still need to place the link on Google Business, Instagram, WhatsApp, or review printed QR placement. Menu Presence Monitor surfaces those gaps with simple ✓/⚠ signals without claiming external-platform verification.
 
 **For Whom:** All MenuList business owners (restaurants, salons, cafes, gyms — any business type).
 
@@ -24,6 +24,7 @@
 2. Gently encourage deployment to key surfaces (Google, Instagram, WhatsApp)
 3. Celebrate completed deployment (✓ signals feel like progress)
 4. Zero cognitive load — no decisions required, just status signals
+5. Keep status language source-bound: MenuList-recorded readiness/actions vs owner-confirmed external placement
 
 ## 3. Non-Goals (Out of Scope)
 
@@ -33,6 +34,7 @@
 - ❌ Complex onboarding flows
 - ❌ Notifications or reminders to add links
 - ❌ Multi-outlet surface tracking (v1 = store-level only)
+- ❌ External platform placement verification by crawling or provider APIs
 
 ---
 
@@ -51,7 +53,7 @@
 1. Owner opens `/use-menulist` page
 2. At the top (below Quick Actions), sees **"Menu Visibility"** card
 3. Card shows 6 surface statuses with ✓/⚠ icons
-4. Automatic surfaces (QR, Screens, Feedback) already show correct status
+4. MenuList-recorded surfaces (QR, Screens, Feedback) show source-derived readiness status
 5. Manual surfaces (Google, Instagram, WhatsApp) show ⚠ until confirmed
 
 ### 5.2 Confirm Manual Surface
@@ -78,7 +80,7 @@
 | **Google Business**  | #1 discovery surface for restaurants. Customers search → see menu.                 | Manual                     |
 | **Instagram Bio**    | Second most common discovery for food businesses. Bio link = menu access.          | Manual                     |
 | **WhatsApp Profile** | Many Indian SMBs use WhatsApp Business. Profile description should have menu link. | Manual                     |
-| **Table QR**         | Primary in-restaurant access point. Must be physically printed and placed.         | Auto (Menu Kit downloaded) |
+| **Table QR**         | Primary in-restaurant access point. Printed placement still needs owner review.    | Source-derived readiness   |
 | **Digital Screens**  | Visual menu display for counter/wall.                                              | Auto (screen token exists) |
 | **Feedback QR**      | Post-dining feedback collection surface.                                           | Auto (feedback enabled)    |
 
@@ -174,8 +176,9 @@ Surface IDs are **IMMUTABLE** — never rename. Max **6 surfaces forever**.
 
 ## 10. Success Criteria
 
-- Owner can see presence status in under 3 seconds
-- Confirming a surface takes 1 tap
+- Owner can understand source-derived and owner-confirmed status without external-platform verification
+- Confirm/remove actions use explicit owner acknowledgement and typed write acknowledgement before local success state
+- No fixed timing claim; release-specific browser/device QA is required before quoting speed
 - Zero new Firebase collections
 - Zero new API routes (client-side DAL only)
 - Feature flag OFF by default

@@ -154,7 +154,7 @@ assertIncludes(report, 'aiRewriteGenerated: false', 'Business Facts Copy Pack re
 assertIncludes(report, 'aiOrSearchChecked: false', 'Business Facts Copy Pack report AI/search boundary');
 assertIncludes(report, 'rankingPromise: false', 'Business Facts Copy Pack report ranking boundary');
 assertIncludes(report, 'getBusinessFactsCopyPackEvidenceText', 'Business Facts Copy Pack explicit evidence text');
-assertIncludes(report, 'URL format was checked locally. The URL was not opened or fetched.', 'Business Facts Copy Pack URL evidence boundary');
+assertIncludes(report, 'Public HTTPS URL format was checked locally. The URL was not opened or fetched.', 'Business Facts Copy Pack URL evidence boundary');
 assertIncludes(report, 'Copy was generated from owner-entered facts only. No AI rewrite was generated.', 'Business Facts Copy Pack deterministic copy evidence boundary');
 assertIncludes(report, 'External profiles and platforms were not opened, inspected, or updated.', 'Business Facts Copy Pack external platform evidence boundary');
 

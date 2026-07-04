@@ -1,7 +1,7 @@
 # Neelvara Main Website - Specification
 
 **Status:** Implemented and validated; pending owner/legal launch review
-**Stage:** Implemented static website with Neelvara blue redesign
+**Stage:** Implemented static website with current-color Prism glass relayout
 **Scope:** Neelvara Systems public company/entity trust website
 **Primary transcript input:** [`neelvara-main-website_chatgpt-transcript.md`](./neelvara-main-website_chatgpt-transcript.md)
 
@@ -239,7 +239,7 @@ Search query ownership targets:
 
 ## 11. Accessibility And UX Requirements
 
-The site must be calm, readable, and fast. The approved Neelvara blue redesign may use a fixed restrained mesh layer, grain, glass panels, spotlight cards, and editorial typography, but those visuals must stay presentation-only and must not add product-funnel behavior.
+The site must be calm, readable, and fast. The approved current-color Prism glass relayout may use a fixed restrained mesh layer, grain, glass panels, prism panels, marquee/reference modules, spotlight cards, and editorial typography, but those visuals must stay presentation-only and must not add product-funnel behavior.
 
 Required:
 
@@ -250,7 +250,7 @@ Required:
 - Plain HTML links
 - No motion-heavy effects
 - No cards nested inside cards
-- No unrelated hue systems beyond the approved Neelvara blue palette: `#071323`, `#1457D9`, `#2384FF`, `#2737C8`, `#6542E8`, `#F7F9FC`, `#EEF3FA`, and `#5D6678`
+- No unrelated hue systems beyond the approved Neelvara current palette: site tokens `#071323`, `#1457D9`, `#2384FF`, `#2737C8`, `#6542E8`, `#F7F9FC`, `#EEF3FA`, `#5D6678`, plus logo-only frosted periwinkle and silver-lavender stops
 - No oversized product hero that hides the next section
 - High color contrast
 - No text overlap at 320px width
@@ -269,7 +269,7 @@ The docs and implementation are considered current when:
 - Firebase cost is zero by design.
 - Mobile support decision is documented.
 - Test cases cover content, legal, SEO, responsive behavior, and no-Firebase boundaries.
-- The Neelvara blue redesign keeps the same legal, data, route, and product-boundary constraints.
+- The current-color Prism glass relayout keeps the same legal, data, route, and product-boundary constraints.
 
 The website is ready to launch only when:
 

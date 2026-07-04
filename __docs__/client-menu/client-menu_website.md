@@ -24,7 +24,7 @@ Featured choice, Quick choice, Value choice — your menu quietly highlights wha
 
 ### 3. Works on Any Phone
 No app to download. Customers scan a QR code and see your menu in their phone browser — on any phone, any browser, any supported language.
-> **Visual:** QR code being scanned → menu loading in under 2 seconds on a basic Android phone
+> **Visual:** QR code being scanned → menu opening on a supported phone after the current public refresh
 
 ### 4. Your Brand, Your Look
 Custom colors, your logo, your domain. It looks like YOUR menu, not a generic platform page.
@@ -32,7 +32,7 @@ Custom colors, your logo, your domain. It looks like YOUR menu, not a generic pl
 
 ### 5. Quiet Daily Operation
 Once set up, the same live link keeps serving the owner-approved menu while availability, time-based categories, and prepared choice sections follow the current source data.
-> **Visual:** Calendar showing "30 days" with checkmark — owner hasn't logged in, menu still perfect
+> **Visual:** Calendar showing "30 days" with checkmark — the same approved link still opens the public menu
 
 ## How It Works
 1. **Upload Your Menu** — Take a photo or upload a PDF. We extract everything automatically.
@@ -42,7 +42,7 @@ Once set up, the same live link keeps serving the owner-approved menu while avai
 ## Social Proof Slots
 - **Testimonial 1:** [Restaurant Owner] — "I haven't touched my menu in 3 weeks. It just works."
 - **Testimonial 2:** [Cafe Owner] — "Customers ask how we keep the menu so current. It's MenuList."
-- **Stat:** Menu loads in under 2 seconds on any device
+- **Evidence slot:** Add release-specific browser and device load evidence before publishing a fixed speed claim
 
 ## FAQ
 

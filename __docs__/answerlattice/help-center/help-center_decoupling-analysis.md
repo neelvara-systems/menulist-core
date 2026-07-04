@@ -28,7 +28,7 @@ As of 2026-05-25, MenuList `/help-center` behaves as an independent Answerlattic
 
 | # | Dimension | Score (1-10) | Risk | Assessment |
 |---|-----------|:---:|:---:|------------|
-| 1 | **Data Isolation** | 7/10 | Low | KB is global (platform-wide), chat/tickets/changelog are tenant-scoped. Minor refactor needed for KB tenant isolation. |
+| 1 | **Data Isolation** | 9/10 | Low | KB articles, categories, jobs, chat, tickets, changelog, feedback, and search history are tenant/store scoped for non-platform callers. Platform-admin global reads remain administrative-only. |
 | 2 | **Auth Abstraction** | 4/10 | Medium | Deeply coupled to NextAuth + MenuList session shape. `getActiveSession()` returns MenuList-specific `tId`, `sId`, `uId`. Would need auth adapter layer. |
 | 3 | **Tenant Abstraction** | 6/10 | Medium | Tenant model works (tId/sId), but numeric IDs and MenuList-specific session fields are hardcoded throughout. Need generic tenant interface. |
 | 4 | **Namespace Independence** | 5/10 | Medium | Collection names are generic (`chatSessions`, `supportTickets`). But `DB_COLLECTIONS` constant lives in MenuList's shared constants. File paths reference `@constant/database`, `@lib/apiHelper`, etc. |
@@ -42,7 +42,7 @@ As of 2026-05-25, MenuList `/help-center` behaves as an independent Answerlattic
 
 ## 3. Detailed Analysis Per Dimension
 
-### 3.1 Data Isolation (7/10 — Low Risk)
+### 3.1 Data Isolation (9/10 — Low Risk)
 
 **What works:**
 - Chat sessions: Tenant-scoped (`tId + uId`)
@@ -55,14 +55,11 @@ As of 2026-05-25, MenuList `/help-center` behaves as an independent Answerlattic
 - Storage paths: Tenant+Store-scoped (`{collection}/{fileType}/{tId}/{sId}/{fileId}`)
 
 **What needs work:**
-- `kb_articles` — **No tenant scoping**. Articles are global (platform-wide). For multi-tenant SaaS, each tenant needs their own KB. This requires either:
-  - Adding `tId` field to articles + tenant filter on all queries (recommended)
-  - Or separate collections per tenant (over-engineering)
-- `kb_categories` — **Single global document**. Same issue as articles.
-- `queryEmbeddings` — **No tenant scoping**. Cache keys are query-based, not tenant-scoped. Different tenants with same question would share cache.
-- `kb_generation_jobs` — Has `tId + sId` fields but `getIngestionJobs()` fetches ALL jobs without filter.
+- Keep platform-admin global reads administrative-only; do not expose them through owner or public routes.
+- Preserve scoped query-embedding cache keys. Runtime search keys include `tId`, `sId`, KB cache version, context, and mode before calling `getCachedEmbedding()` / `saveCachedEmbedding()`.
+- Keep deprecated compatibility helpers (`getArticles()` and `getIngestionJobs()`) scoped for non-platform callers.
 
-**Effort estimate:** 2-3 days to add tenant scoping to KB collections and update all queries.
+**Effort estimate:** small ongoing audit work only; the original KB tenant-scope refactor is complete in the active runtime paths.
 
 ### 3.2 Auth Abstraction (4/10 — Medium Risk)
 

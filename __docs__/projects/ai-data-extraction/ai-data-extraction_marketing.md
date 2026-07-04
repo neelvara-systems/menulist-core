@@ -1,7 +1,7 @@
-# AI Data Extraction — Marketing & Sales
+# AI Data Extraction - Marketing & Sales
 
-**Feature:** OCR & Menu Extraction with Gemini AI  
-**Audience:** Sales Team, Marketing, Partners  
+**Feature:** Menu Review Draft Extraction
+**Audience:** Sales Team, Marketing, Partners
 **Last Updated:** January 2026
 **Status:** Historical marketing draft; not current sales, publication, or launch certification
 
@@ -21,7 +21,7 @@ Current AI Data Extraction collateral approval requires:
 - Authenticated desktop/mobile upload and extraction-review QA.
 - QA Firebase Functions and Storage deploy evidence where the release depends on worker or Storage behavior.
 - Target deploy evidence and production-host smoke.
-- Release-specific evidence for any numeric speed, accuracy, or volume claims before those claims are used.
+- Release-specific evidence for any numeric speed, accuracy, page-count, language-count, provider, or volume claims before those claims are used.
 
 ---
 
@@ -29,11 +29,11 @@ Current AI Data Extraction collateral approval requires:
 
 ### One-Liner
 
-> "Our AI reads your menu and types it all out for you—in seconds."
+> "Upload a clear menu photo or PDF, review the extracted draft, and publish only the approved menu."
 
 ### 30-Second Pitch
 
-> "You know how painful it is to type out a 30-item menu? Our AI does it in seconds. Upload a photo of your menu, and our Gemini-powered system reads every item, every price, every description. No more data entry. No more typos. Just upload, review, and publish."
+> "Typing a paper menu into a digital editor takes time. MenuList prepares a structured review draft from a clear photo or supported PDF, then the owner checks items, prices, categories, and descriptions before publishing. The draft saves typing, but owner review stays part of the flow."
 
 ---
 
@@ -41,25 +41,25 @@ Current AI Data Extraction collateral approval requires:
 
 ### The Problem
 
-Digitizing a menu manually is tedious and error-prone:
+Digitizing a menu manually is tedious and easy to get wrong:
 
-- **Time:** Hours of typing for a medium-sized menu
-- **Errors:** Typos in prices cause customer complaints
-- **Descriptions:** Often skipped because too tedious to type
-- **Updates:** Every change means more manual work
+- **Time:** Owners do not want to type every item from scratch.
+- **Prices:** Small typos can create customer confusion.
+- **Descriptions:** Existing descriptions are easy to skip during manual entry.
+- **Updates:** New source material still needs a reviewed digital version.
 
 ### The Solution
 
-MenuList's AI extraction eliminates manual data entry:
+MenuList prepares an extraction review draft:
 
-- **Photo → Data** — AI reads your menu image automatically
-- **Categories & Items** — Organized just like your physical menu
-- **Prices & Descriptions** — Captured accurately from the image
-- **Multi-Language** — Detects and extracts text in multiple languages
+- **Source upload:** Start from a clear photo or supported PDF.
+- **Structured draft:** Menu fields are prepared for review after processing.
+- **Owner review:** Items, categories, prices, and descriptions stay editable before publishing.
+- **Source-bound workflow:** Published output comes from approved menu data, not raw extraction output.
 
 ### The Result
 
-A complete digital menu in **minutes instead of hours**. Restaurant owners review and edit instead of typing from scratch.
+Less typing from scratch, with owner approval before customer-facing menu output changes.
 
 ---
 
@@ -67,21 +67,21 @@ A complete digital menu in **minutes instead of hours**. Restaurant owners revie
 
 ### vs. Manual Data Entry
 
-| Aspect                | Manual Entry    | MenuList AI             |
-| --------------------- | --------------- | ----------------------- |
-| Time for 50-item menu | 2-4 hours       | 5 minutes               |
-| Typo risk             | High            | Low (AI reads directly) |
-| Descriptions          | Often skipped   | Automatically captured  |
-| Multi-language        | Double the work | Same effort             |
+| Aspect                | Manual Entry       | MenuList |
+| --------------------- | ------------------ | -------- |
+| Entry effort          | Type item by item  | Review a prepared draft |
+| Price checks          | Manual             | Owner review before publish |
+| Descriptions          | Manually retyped   | Drafted from source when available |
+| Updates               | Repeat manual work | Re-upload or edit, then approve |
 
 ### vs. Generic OCR Tools
 
-| Aspect        | Generic OCR     | MenuList AI            |
-| ------------- | --------------- | ---------------------- |
-| Output        | Raw text        | Structured menu data   |
-| Categories    | Manual sorting  | Auto-detected          |
-| Prices        | Mixed with text | Properly associated    |
-| Menu-specific | No              | Yes, trained for menus |
+| Aspect        | Generic OCR | MenuList |
+| ------------- | ----------- | -------- |
+| Output        | Raw text    | Menu review draft |
+| Categories    | Manual sorting | Structured fields when detected |
+| Prices        | Manual association | Draft associations for review |
+| Menu workflow | Separate tool | Built into the menu editor path |
 
 ---
 
@@ -89,59 +89,59 @@ A complete digital menu in **minutes instead of hours**. Restaurant owners revie
 
 ### Slide 1: The Problem
 
-**"Menu digitization is a data entry nightmare"**
+**"Menu digitization creates avoidable typing work"**
 
-- Hours of typing for a single menu
-- Every typo is a customer complaint waiting to happen
-- Updates require repeating the whole process
+- Paper menus need a digital version.
+- Manual entry makes price and category mistakes easy.
+- Updates should still stay under owner control.
 
 ### Slide 2: The Solution
 
-**"AI that actually understands menus"**
+**"A review draft from the uploaded menu source"**
 
-- Upload a photo → Get structured data
-- Categories, items, prices, descriptions
-- Review and publish, don't type and pray
+- Upload a clear photo or supported PDF.
+- Processing prepares structured menu fields.
+- Owner review happens before publishing.
 
 ### Slide 3: How It Works
 
-**"Three steps to digital"**
+**"Upload, review, publish"**
 
-1. Upload menu photo or PDF
-2. AI extracts everything (30 seconds)
-3. Review, edit if needed, publish
+1. Upload a menu photo or supported PDF.
+2. Review extracted items, prices, categories, and descriptions.
+3. Publish only the approved menu.
 
-### Slide 4: The Technology
+### Slide 4: Provider Boundary
 
-**"Powered by Google Gemini"**
+**"Provider claims require target-run evidence"**
 
-- State-of-the-art vision AI
-- Trained to understand menu layouts
-- Multi-language support built-in
+- Do not name a provider in sales copy without release-specific evidence.
+- Do not quote timing or accuracy without target-run evidence.
+- Do not imply publish-without-review behavior.
 
 ### Slide 5: Quality You Can Trust
 
-**"Smart enough to tell you when it's unsure"**
+**"Owner review is the quality gate"**
 
-- Quality scoring (0-100)
-- Warnings on unclear extractions
-- You always have final say
+- Extraction output is a draft.
+- Low-quality sources can need more correction.
+- The owner has final say before customers see changes.
 
-### Slide 6: Real Results
+### Slide 6: Evidence Before Claims
 
-**"From hours to minutes"**
+**"Release copy follows release evidence"**
 
-- 50-item menu: 4 hours manual → 5 minutes with AI
-- 95%+ extraction accuracy on clear menus
-- Multi-language menus handled seamlessly
+- Speed claims require target-run timing evidence.
+- Accuracy claims require target-run evaluation evidence.
+- Page-count, file-size, language-count, and provider claims require release-specific support evidence.
 
 ### Slide 7: CTA
 
-**"See it work on YOUR menu"**
+**"Review a menu draft from your source"**
 
-- Free trial available
-- Upload your menu today
-- Watch the magic happen
+- Upload a clear source menu.
+- Check the extracted fields.
+- Publish only approved output.
 
 ---
 
@@ -149,31 +149,29 @@ A complete digital menu in **minutes instead of hours**. Restaurant owners revie
 
 ### Hero Headline
 
-> **"Your menu, digitized in seconds."**
+> **"Menu draft from your uploaded source."**
 
 ### Subheading
 
-> "Upload a photo. Our AI reads every item, price, and description. You just review and publish."
+> "Upload a clear menu photo or supported PDF, review extracted items and prices, then publish the approved menu."
 
 ### Key Benefit Bullets
 
-- **🤖 AI-Powered** — Google Gemini reads your menu like a human would
-- **⚡ Instant Results** — 30 seconds, not 3 hours
-- **✅ Accuracy Check** — Quality score shows extraction confidence
-- **🌍 Multi-Language** — Hindi, English, or both? No problem
-- **✏️ Full Control** — Edit anything before publishing
+- **Less typing from scratch** - Start with a review draft after processing.
+- **Review before publish** - Check items, prices, categories, and descriptions.
+- **Source-bound** - Draft output starts from the uploaded menu source.
+- **Editable** - Fix any field before customer-facing output changes.
+- **Evidence-bound** - Speed, accuracy, provider, and volume claims require release-specific proof.
 
 ### Social Proof Placeholders
 
-> "I uploaded our entire 45-item menu and it got every single price right." — _Restaurant Owner, Delhi_
-
-> "Finally, I can update my menu without spending my whole afternoon typing." — _Café Manager, Pune_
+Do not use testimonials, accuracy claims, speed claims, or customer-behavior claims without approved customer evidence.
 
 ### CTA Copy Variants
 
-- **Primary:** "Try AI Extraction Free"
-- **Secondary:** "See a Demo"
-- **Subtle:** "Upload Your Menu"
+- **Primary:** "Review a Menu Draft"
+- **Secondary:** "See the Upload Flow"
+- **Subtle:** "Upload Your Menu Source"
 
 ---
 
@@ -181,80 +179,82 @@ A complete digital menu in **minutes instead of hours**. Restaurant owners revie
 
 ### India Messaging
 
-> "एक फोटो, पूरा मेनू तैयार"
-> "One photo, complete menu ready"
+> "Upload the menu. Review the draft."
 
-**Focus:** Speed, accuracy, no typing needed
+**Focus:** Less typing, owner review, approved publishing.
 
 ### Non-India Messaging
 
-> "AI menu digitization that actually works"
+> "A structured menu draft from your uploaded source."
 
-**Focus:** Technology, accuracy, time savings
+**Focus:** Menu workflow, review control, approved output.
 
 ---
 
 ## Sales Talking Points
 
-### Objection: "AI can't read my handwritten menu"
+### Objection: "Can it read my handwritten menu?"
 
-**Response:** "You're right—handwritten menus are tricky for any AI. Our system works best with printed menus. But even for handwritten ones, we often capture 60-70% correctly, which is still faster than typing from scratch."
+**Response:** "Clear printed sources work best. Handwritten or low-quality sources can need more correction, so treat the output as a review draft before publishing."
 
-### Objection: "What if the AI makes mistakes?"
+### Objection: "What if the extraction makes mistakes?"
 
-**Response:** "It might, and that's why we show you a quality score. If the score is low, you know to review more carefully. But on clear printed menus, accuracy is typically above 95%."
+**Response:** "That is why the flow keeps owner review before publishing. You can edit extracted fields before customers see the menu."
 
 ### Objection: "My menu has multiple languages"
 
-**Response:** "Perfect—our AI is trained on multi-language menus. It detects Hindi, English, Tamil, and more automatically. You get all languages in one extraction."
+**Response:** "Use release-specific evidence before promising language coverage. Mixed-language sources should be reviewed carefully before publishing."
 
 ### Objection: "I tried OCR before and it was terrible"
 
-**Response:** "Generic OCR gives you raw text. Our system is menu-specific—it understands categories, items, prices, and descriptions as separate things. You get organized data, not a wall of text."
+**Response:** "Generic OCR gives you raw text. MenuList keeps the work inside the menu editor path so you review menu fields instead of copying text between tools."
 
 ---
 
 ## Approved Language
 
-### Terms to Use ✅
+### Terms to Use
 
-- "AI extraction" (not "OCR" — too technical)
-- "Reads your menu" (human-like language)
-- "In seconds" (speed benefit)
-- "Quality score" (transparency)
-- "Review and edit" (user control)
+- "Review draft after processing"
+- "Clear photo or supported PDF"
+- "Review extracted fields"
+- "Publish only the approved menu"
+- "No typing from scratch"
 
-### Terms to Avoid ❌
+### Terms to Avoid
 
-- "Machine learning" (jargon)
-- "Computer vision" (jargon)
-- "100% accurate" (overpromise)
-- "Automatic" alone (imply no review needed)
-- "Data parsing" (technical)
+- "In seconds"
+- "Instant"
+- "Every item, every price, every description"
+- "Google Gemini" or other provider names without release-specific provider evidence
+- "100% accurate"
+- "Automatic" alone
+- "No more data entry"
+- "No more typos"
 
 ---
 
-## Demo Script (2 minutes)
+## Demo Script (Historical Draft)
 
-### Setup (20 sec)
+### Setup
 
-"Let me show you our AI in action. I have a photo of a real restaurant menu—about 40 items across 6 categories."
+"Let me show you how the upload flow starts from a menu source and prepares a draft for review."
 
-### Upload (20 sec)
+### Upload
 
-"I upload the image... and hit 'Upload & Continue'. Watch the progress—it's processing each section."
+"I upload a clear menu photo or supported PDF. The flow processes the source and prepares menu fields for review."
 
-### Results (40 sec)
+### Results
 
-"Done—30 seconds. Look at this: 6 categories extracted, 40 items with prices, descriptions where they existed on the menu. And see this quality score? 85 out of 100. That means we're confident in the extraction."
+"Now I check the extracted categories, items, prices, and descriptions. Anything uncertain stays editable before publishing."
 
-### Edit (20 sec)
+### Edit
 
-"Now I can review. Most items look perfect. I see one price that looks off—I can fix it right here. That's the power: AI does the heavy lifting, you do the quality check."
+"If a price or item name needs correction, I fix it in the editor before the customer-facing menu changes."
 
-### Close (20 sec)
+### Close
 
-"What would have taken 3 hours took 3 minutes. And I caught one error that I might have made myself typing."
+"MenuList reduces typing from scratch, while the owner still approves the menu before customers see it."
 
 ---
 
@@ -262,23 +262,23 @@ A complete digital menu in **minutes instead of hours**. Restaurant owners revie
 
 | Asset                  | Purpose                      | Spec               |
 | ---------------------- | ---------------------------- | ------------------ |
-| Before/after           | Menu photo → Structured data | Side-by-side image |
-| Processing animation   | AI "reading" the menu        | 5-10 sec video     |
-| Quality score UI       | Showing confidence level     | Screenshot         |
-| Multi-language example | Hindi + English menu         | Extraction result  |
-| Edit workflow          | User correcting one item     | Screen recording   |
+| Before/after           | Menu source -> review draft  | Side-by-side image |
+| Processing state       | Upload flow in progress      | Short demo         |
+| Review UI              | Owner checking extracted fields | Screenshot      |
+| Mixed-language example | Source that needs careful review | Review screenshot |
+| Edit workflow          | Owner correcting one item     | Screen recording   |
 
 ---
 
 ## Key Stats for Marketing
 
-| Stat                      | Value            | Source           |
-| ------------------------- | ---------------- | ---------------- |
-| Time to extract 50 items  | ~30 seconds      | Internal testing |
-| Manual time for same      | 2-4 hours        | Industry average |
-| Accuracy on printed menus | >95%             | Internal testing |
-| Quality score threshold   | 40/100 = warning | Product spec     |
-| Multi-language support    | Yes              | Product spec     |
+| Stat                      | Value                             | Source |
+| ------------------------- | --------------------------------- | ------ |
+| Time to process source    | Requires target-run evidence      | Target release QA |
+| Manual time comparison    | Do not use without current evidence | Market evidence |
+| Accuracy on printed menus | Requires target-run evaluation evidence | Target release QA |
+| Quality score threshold   | Use only if confirmed in current UI/runtime | Product spec and QA |
+| Multi-language support    | Requires release-specific language evidence | Product spec and QA |
 
 ---
 

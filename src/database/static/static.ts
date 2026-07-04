@@ -12,6 +12,29 @@ import { arrayRemove, arrayUnion, deleteDoc, doc, getDocs, updateDoc } from "fir
 import { getStaticAssetEntityLogContext, logStaticAssetDiagnostic, logStaticAssetFailure } from "./staticDiagnostics";
 
 const COLLECTION = `${DB_COLLECTIONS.COMMON}/${DB_COLLECTIONS.ASSETS}/`;
+const FIREBASE_STORAGE_DOWNLOAD_HOSTS = new Set([
+    "firebasestorage.googleapis.com",
+    "storage.googleapis.com",
+]);
+
+const isFirebaseStorageReference = (value: unknown): boolean => {
+    if (typeof value !== "string") return false;
+
+    const trimmedValue = value.trim();
+    if (!trimmedValue) return false;
+    if (trimmedValue.startsWith("gs://")) return true;
+
+    try {
+        const url = new URL(trimmedValue);
+        return url.protocol === "https:"
+            && (
+                FIREBASE_STORAGE_DOWNLOAD_HOSTS.has(url.hostname)
+                || url.hostname.endsWith(".firebasestorage.app")
+            );
+    } catch {
+        return false;
+    }
+};
 
 const getCollectionRef = async (type) => {
     return collection(firebaseClient, `${COLLECTION}${type}`)
@@ -25,8 +48,7 @@ const getPreviewUrl = (type, data: any) => {
     return new Promise(async (res, rej) => {
         if (data.newPreview) {
             const id = String(new Date().getTime())
-            if (data.preview && data.preview.includes("menulist-qa.appspot.com")) await deleteFileByUrl(data.preview);
-            //deployed url : "https://firebasestorage.googleapis.com/v0/b/menulist-qa.appspot.com/o/craftBuilder%2Fassets%2Fillustrations%2F1725798041128?alt=media&token=..."
+            if (isFirebaseStorageReference(data.preview)) await deleteFileByUrl(data.preview);
             //upload new preview image 
             let previewUrl = await uploadBase64ToStorage({
                 cacheControl: STORAGE_CACHE_CONTROL.immutablePublic,

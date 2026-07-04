@@ -715,7 +715,7 @@
                 "linkCopied": "Link copied",
                 "couldNotCopy": "Could not copy link",
                 "title": "This is your official customer menu link",
-                "description": "Use this instead of sending menu photos or PDFs. Customers will always see your latest menu.",
+                "description": "Use this instead of sending menu photos or PDFs. Customers open the owner-approved menu link.",
                 "copied": "Copied",
                 "copy": "Copy"
             },

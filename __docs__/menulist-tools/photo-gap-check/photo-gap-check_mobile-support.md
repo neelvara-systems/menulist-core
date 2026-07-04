@@ -22,7 +22,7 @@ V0 is a public website tool and must work on mobile browsers. It is not an owner
 | Touch | Pass | Inputs, select control, checkboxes, and report actions work with thumb interaction |
 | Value | Pass | Owners often manage business photos from a phone |
 
-Result: public mobile web support is required. Owner-PWA V1 should be considered only when using existing MenuList media/profile truth inside OBP readiness, Business Health, Public Discovery, or setup flow.
+Result: public mobile web support is required. Owner-PWA V1 is implemented through existing MenuList media/profile truth inside the shared Business Health/Public Truth owner card.
 
 ---
 
@@ -44,7 +44,7 @@ Result: public mobile web support is required. Owner-PWA V1 should be considered
 | Image analysis | Not implemented |
 | Google/Instagram inspection | Not implemented |
 | Report storage | Not implemented |
-| Owner PWA card | Not implemented |
-| MobileShell route | Not implemented |
+| Dedicated owner PWA card | Not implemented; shared Business Health module is implemented |
+| Separate MobileShell route | Not implemented; shared Business Health route is used |
 
-V1 owner check should reuse existing MenuList media truth and mobile shell patterns if added later.
+V1 owner check reuses existing MenuList media truth and mobile shell patterns.

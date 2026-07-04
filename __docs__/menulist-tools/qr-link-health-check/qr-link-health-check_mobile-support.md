@@ -31,9 +31,9 @@ The mobile page should tell owners to scan the QR using their phone camera and p
 
 ---
 
-## Future V1 Owner Mobile Direction
+## V1 Owner Mobile Direction
 
-If V1 owner QR/share readiness is added, it should appear inside existing mobile owner surfaces:
+V1 owner QR/share readiness appears inside existing mobile owner surfaces:
 
 - Share tab
 - Business Health screen

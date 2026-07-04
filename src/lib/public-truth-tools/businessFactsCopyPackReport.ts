@@ -1,3 +1,4 @@
+import { isPublicHttpsUrl as isValidHttpUrl } from './publicUrlValidation';
 import type {
   BusinessFactsCopyBlock,
   BusinessFactsCopyPackAction,
@@ -57,28 +58,6 @@ function hasContactHint(value: string): boolean {
   return digits.length >= 7 || /(?:wa\.me|whatsapp|tel:|phone|call)/i.test(cleaned);
 }
 
-function getUrlWithProtocol(value: string): string {
-  if (/^https?:\/\//i.test(value)) return value;
-  if (/^[a-z0-9.-]+\.[a-z]{2,}(?:[/:?#].*)?$/i.test(value)) {
-    return `https://${value}`;
-  }
-  return value;
-}
-
-function isValidHttpUrl(value: string): boolean {
-  if (!value) return false;
-
-  try {
-    const url = new URL(getUrlWithProtocol(value));
-    const hostLooksUsable = url.hostname === 'localhost'
-      || url.hostname === '127.0.0.1'
-      || url.hostname.includes('.');
-    return (url.protocol === 'http:' || url.protocol === 'https:') && hostLooksUsable;
-  } catch {
-    return false;
-  }
-}
-
 function getBusinessFactsCopyPackEvidenceText(evidence: BusinessFactsCopyPackEvidence): string {
   switch (evidence) {
     case 'owner_entered':
@@ -86,9 +65,9 @@ function getBusinessFactsCopyPackEvidenceText(evidence: BusinessFactsCopyPackEvi
     case 'owner_selected':
       return 'Checked owner-selected action only.';
     case 'local_format_valid':
-      return 'URL format was checked locally. The URL was not opened or fetched.';
+      return 'Public HTTPS URL format was checked locally. The URL was not opened or fetched.';
     case 'local_format_invalid':
-      return 'URL format was checked locally. The URL was not opened or fetched.';
+      return 'Public HTTPS URL format was checked locally. The URL was not opened or fetched.';
     case 'deterministic_copy':
       return 'Copy was generated from owner-entered facts only. No AI rewrite was generated.';
     case 'external_boundary':

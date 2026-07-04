@@ -96,7 +96,7 @@ Implemented owner behavior is `menulist_owner`. It appears inside Business Healt
 
 The owner report also derives a bounded `setupJobList` from missing, unclear, or not-checked readiness modules. This turns the owner-side gaps into a practical fix list without adding saved reports, action drafts, or mutation paths.
 
-The V1 expansion keeps the same owner hook and report builder, but adds twelve module rows aligned to the public tool family:
+The V1 expansion keeps the same owner hook and report builder, but adds eighteen module rows aligned to the public tool family:
 
 - Public truth basics
 - QR link health

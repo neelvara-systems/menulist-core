@@ -4,6 +4,7 @@ import './sites/answerlattice/styles.css';
 import './sites/answerlattice/scroll-reveal.css';
 import './sites/campaigncue/styles.css';
 import './sites/campaigncue/scroll-reveal.css';
+import './sites/neelvara/styles.css';
 import 'antd/dist/reset.css';
 import { Metadata } from 'next';
 import { APP_THEME_COLOR } from 'src/constants/common';

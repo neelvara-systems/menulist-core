@@ -1,15 +1,16 @@
 # Reseller Dashboard — Help Documentation
 
 **Feature:** Assisted Onboarding Portal for Authorized Resellers  
-**Status:** 📝 DOCUMENTED  
+**Status:** Source-bound help draft
 **Created:** February 27, 2026  
+**Last Updated:** July 4, 2026
 **Audience:** Reseller Partners (Customer-Facing Help Article)
 
 ---
 
 ## Quick Summary
 
-The Reseller Dashboard lets you set up MenuList accounts for local businesses on their behalf. You enter their details, upload their menu, select a plan, and collect payment — the business gets a fully working digital menu in minutes.
+The Reseller Dashboard lets you set up MenuList accounts for local businesses on their behalf. You enter their details, select a plan, collect or share payment, and hand over the dashboard/customer links. Menu content is added later through the normal MenuList owner dashboard and import/review flows.
 
 ---
 
@@ -18,7 +19,7 @@ The Reseller Dashboard lets you set up MenuList accounts for local businesses on
 ### Prerequisites
 - A MenuList account with Reseller access (set up by the MenuList team)
 - A smartphone or computer with internet access
-- The business owner's menu (photo or digital file)
+- The business owner's menu source if they want to add it after account handoff
 - The business owner's phone number
 
 ### First-Time Setup
@@ -40,10 +41,10 @@ The Reseller Dashboard lets you set up MenuList accounts for local businesses on
 - **Owner Phone** — Select country and enter the business owner's phone number (required)
 - **Owner Email** — Optional, but helps with login
 
-### Step 3: Upload Menu (Optional)
-- Take a clear photo of the business's physical menu
-- Upload it — the system will extract all items, prices, and categories automatically
-- You can skip this step if the owner wants to upload later
+### Step 3: Confirm Account Handoff
+- Confirm the owner phone and optional email
+- Make sure the owner knows where the dashboard link and customer link will be shared
+- Menu photos, PDFs, or typed content are added later from the normal owner dashboard/import flow
 
 ### Step 4: Select Plan
 - **Pricing Tier** — Select from available options
@@ -60,15 +61,15 @@ The system shows the total amount automatically.
 2. Click "Create & Generate Payment Link"
 3. Share the payment link with the business owner (WhatsApp, SMS)
 4. The account activates automatically when they pay
-5. The business owner receives login details
+5. Share the dashboard/customer links after payment is complete
 
 **If Offline Payment:**
 1. Collect payment from the business owner (cash, UPI, bank transfer)
 2. Review the summary
 3. Check the "I confirm payment has been received" box
 4. Click "Create & Activate"
-5. The account is active immediately
-6. The business owner receives login details
+5. The account is active immediately for the selected prepaid period
+6. Share the dashboard/customer links with the business owner
 
 ---
 
@@ -105,7 +106,7 @@ Online clients can add locations only after the subscription is active. If Razor
 
 | Status | What It Means |
 |--------|---------------|
-| 🟢 **Active** | Business is live and running |
+| 🟢 **Active** | Paid account access is active; menu content still depends on owner import/edit/publish state |
 | 🟡 **Pending Payment** | Waiting for online payment |
 | 🟠 **Expiring Soon** | Less than 30 days until expiry |
 | 🔴 **Expired** | Plan has ended — needs renewal |
@@ -147,16 +148,16 @@ Online payment links expire after 7 days. If the client hasn't paid:
 1. Go to the client's detail page
 2. The system will show the option to generate a new payment link
 
-### Menu didn't extract correctly
-This can happen with low-quality photos. The business owner can edit their menu in the MenuList dashboard after logging in, or you can provide a better quality photo to the MenuList team.
+### Menu still needs to be added
+The reseller onboarding flow creates the account and links. The business owner adds photos, PDFs, typed menu content, or other sources from the normal MenuList dashboard/import flow after logging in.
 
 ---
 
 ## Tips & Best Practices
 
-1. **Take clear menu photos** — Good lighting, flat surface, sharp focus. Better photos = better extraction.
+1. **Collect the right menu source** — Good photos, PDFs, or typed text make the later owner import/review flow easier.
 2. **Collect payment during setup** — Don't leave without payment. Use offline mode and confirm on the spot.
-3. **Show the result** — After setup, show the business owner their live digital menu on your phone. It builds confidence.
+3. **Show the handoff** — After setup, show the business owner the dashboard link, customer link, and where menu content is added.
 4. **Save the QR code** — Download the QR code and share it with the business owner for their tables.
 5. **Check expiry dates** — Visit "My Clients" weekly to catch upcoming expirations before they happen.
 
@@ -176,5 +177,5 @@ This can happen with low-quality photos. The business owner can edit their menu 
 
 ---
 
-**DOCUMENT STATUS:** 📝 DOCUMENTED  
-**Last Updated:** May 20, 2026
+**DOCUMENT STATUS:** Source-bound help draft
+**Last Updated:** July 4, 2026

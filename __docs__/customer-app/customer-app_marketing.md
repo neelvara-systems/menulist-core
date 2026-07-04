@@ -3,7 +3,7 @@
 **Feature Name:** Customer App (Installable Customer-Facing Menu)  
 **Document Type:** Marketing & Sales Strategy  
 **Status:** Source-backed marketing draft; publish/use with current Customer App runtime boundary
-**Last Updated:** July 2, 2026
+**Last Updated:** July 4, 2026
 **Audience:** Sales, Marketing, CEO
 
 ---
@@ -16,7 +16,7 @@
 
 **30-second expansion:**
 
-"Every restaurant wants repeat customers. But customers forget where they found your menu. With the Customer App, your regulars add your menu to their phone just like any app — your logo, your name, your colors. They tap it, your menu opens instantly. No typing URLs. No searching. You don't build it. You don't maintain it. MenuList creates it automatically from your menu."
+"Every restaurant wants repeat customers. But customers forget where they found your menu. With the Customer App, your regulars add your menu to their phone just like any app — your logo, your name, your colors. They tap it, and your public menu opens in the app view. No typing URLs. No searching. You don't build it. You don't maintain it. MenuList creates it from your menu."
 
 ---
 
@@ -35,25 +35,25 @@ Restaurant owners know the pain:
 
 ### The Solution
 
-MenuList's **Customer App** creates automatic persistence:
+MenuList's **Customer App** creates persistent customer access:
 
 1. Customer visits the menu (QR scan, link, Google)
 2. After a few visits, we suggest: "Save this menu for faster access"
 3. Customer adds to home screen — sees the restaurant's logo and name
 4. Now the restaurant has a permanent icon on that customer's phone
-5. One tap opens the live menu — no friction, no forgetting
+5. One tap opens the public menu path — fewer steps, less searching
 
 ### Why This Matters
 
 For the **restaurant owner:**
-- No additional work — it's automatic
+- No custom app build — generated from existing menu settings
 - No additional cost — included with MenuList
-- Increased repeat visits — reduced friction wins
+- Repeat-visit friction reduced — customers have a shorter path back
 
 For the **customer:**
-- No app store download — instant
+- No app store download — browser save-to-phone flow
 - No registration or account — just the menu
-- Always current — syncs with live menu automatically
+- Current public menu path — approved changes show after the supported public cache or return-to-app refresh path
 
 ---
 
@@ -64,9 +64,9 @@ For the **customer:**
 | Competitor | What They Offer | MenuList Advantage |
 |------------|-----------------|-------------------|
 | Generic QR menus | A link that opens a web page | "Your own app on their phone" |
-| PDF menus | Static file, never updates | "Live menu that updates itself" |
+| PDF menus | Static file, never updates | "Public menu path that refreshes through the supported cache path" |
 | Third-party delivery | Commission on every order | "Direct connection, no middleman" |
-| App builders | Weeks to build, $$$ to maintain | "Zero effort, zero maintenance" |
+| Separate app builders | Separate build and maintenance work | "No custom app build; MenuList-managed app shell" |
 
 ### The "Customer App" Frame vs. "PWA" Frame
 
@@ -75,7 +75,7 @@ For the **customer:**
 | "PWA support" | "Your own customer app" |
 | "Installable web app" | "Icon on their home screen" |
 | "Add to home screen feature" | "Be one tap away from repeat customers" |
-| "Progressive web app technology" | "Your branded app, automatically" |
+| "Progressive web app technology" | "Your branded app" |
 
 ---
 
@@ -99,7 +99,7 @@ For the **customer:**
 1. Customer visits your MenuList menu a few times
 2. We suggest: "Save this for faster access"
 3. They tap once — your logo appears on their home screen
-4. One tap anytime — your live menu opens instantly
+4. One tap anytime — your public menu opens in the app view
 
 **Visual:** Phone home screen with restaurant app icon among other apps
 
@@ -111,7 +111,7 @@ For the **customer:**
 |---------|---------------|
 | Your branding | Your logo, your name — not MenuList |
 | One-tap open | No browser, no search, no typing |
-| Always current | Updates when you update your menu |
+| Current public menu path | Opens the refreshed public menu after supported cache or return-to-app refresh |
 | Works on all phones | iPhone, Android — no app store needed |
 | Call & directions | Tap to call or get directions |
 
@@ -129,10 +129,10 @@ For the **customer:**
 ### Slide 5: Use Cases
 
 **Case 1: The Regular Who Orders Weekly**
-> "Raju visits his favorite biryani place every Friday. Used to search WhatsApp for the menu link. Now taps the app icon. Order placed 30 seconds faster. Restaurant just earned a frictionless repeat."
+> "Raju visits his favorite biryani place every Friday. He used to search WhatsApp for the menu link. Now he taps the app icon and reaches the menu with fewer steps."
 
 **Case 2: The Tourist Who Promises to Return**
-> "Sarah visits a cafe in Goa, loves it, says she'll come back. Adds their app to her phone before leaving. Three months later, back in Goa — taps the app, the cafe's current menu opens. She returns."
+> "Sarah visits a cafe in Goa, loves it, says she'll come back. Adds their app to her phone before leaving. Three months later, back in Goa — taps the app, and the cafe's approved menu path opens."
 
 **Case 3: The Family with a Go-To Restaurant**
 > "The Sharma family orders from the same Chinese place every Sunday. Each family member has the app. The restaurant just became their default choice — no decision fatigue, no searching."
@@ -142,13 +142,13 @@ For the **customer:**
 **Headline:** "Repeat customers without the work."
 
 **Body:**
-- No setup time — automatic from your existing menu
-- No maintenance — updates when you update
+- No separate app build — generated from your existing menu settings
+- Public menu refresh path — approved changes flow through the supported cache or return-to-app refresh path
 - No additional cost — included with MenuList
 - Result: Reduced friction for your best customers
 
 **Quote slot:**
-> "I didn't realize my customers were using it as an app until three people showed me their home screens." — Restaurant Owner, Bangalore
+Use only an owner-approved quote from a live Customer App customer.
 
 ### Slide 7: CTA
 
@@ -169,35 +169,33 @@ Every MenuList menu is already app-ready. Just toggle it on.
 |---------|------|
 | A (Emotional) | "Stay one tap away from repeat customers." |
 | B (Outcome) | "Your business on their home screen." |
-| C (Simple) | "Your own customer app. Automatically." |
+| C (Simple) | "Your own customer app." |
 | D (Problem/Solution) | "They forget links. They remember apps." |
 
 **Recommended:** Version A for primary headline
 
 ### Subheadline
 
-> "Give your regulars an app for your business — with your logo, your name, one-tap access to your live menu. No app store. No download. No work from you."
+> "Give your regulars an app for your business — with your logo, your name, one-tap access to your public menu path. No app store. No download. No custom app build from you."
 
 ### Key Benefit Bullets
 
 - **Your branding, not ours** — Customers see your logo and name on their home screen
 - **One tap to your menu** — No browser, no search, no forgetting your URL
-- **Always current** — Updates automatically when you update your menu
-- **Works on every phone** — iPhone, Android, any modern browser
-- **Zero maintenance** — MenuList handles everything automatically
+- **Current public menu path** — Approved menu changes appear after the supported public cache or return-to-app refresh path
+- **Works on supported modern browsers** — iPhone and Android browser behavior still needs release-device QA
+- **No app maintenance** — MenuList handles the app shell and icon setup
 
 ### Social Proof Placeholders
 
 **Testimonial 1:**
-> "Three regulars showed me they have our restaurant as an app on their phone. I didn't do anything — it just happened."  
-> — **Owner, Family Restaurant, Mumbai**
+Reserved for an owner-approved quote from a live Customer App customer.
 
 **Testimonial 2:**
-> "Our repeat order rate is up since we turned this on. Customers say it's just easier."  
-> — **Owner, Quick Service Restaurant, Delhi**
+Reserved for an owner-approved quote from a live Customer App customer.
 
 **Stat placeholder:**
-> "X% of MenuList restaurants have customers with their app installed"
+Use live Customer App analytics only after release evidence exists.
 
 ---
 
@@ -212,14 +210,14 @@ Every MenuList menu is already app-ready. Just toggle it on.
 > "Add our menu to your phone: [link]. Tap 'Add to Home Screen' — now we're one tap away."
 
 **Local context:**
-- Emphasize "no download from Play Store" (saves data, no storage worry)
-- Emphasize "works on Jio phone, iPhone, any phone"
+- Emphasize "no download from Play Store" without making storage or data-use claims
+- Emphasize supported iPhone and Android browser coverage, then verify local device coverage before launch
 - Use "save karo" language in Hindi
 
 ### Non-India Messaging (Full Platform, Automation Narrative)
 
 **Primary message:**
-> "Every customer who installs your app is a customer who won't forget you. MenuList creates your branded customer app automatically — no development, no maintenance, no app store process."
+> "Every customer who installs your app has a simpler path back to your menu. MenuList creates your branded customer app from your menu settings — no custom development, no app store process."
 
 **Key differentiator:**
 - Contrast with "building an app" (expensive, slow)
@@ -265,7 +263,7 @@ Every MenuList menu is already app-ready. Just toggle it on.
 ### Objection: "I need to build a real app, not this web thing."
 
 **Response:**
-> "Real apps cost ₹5-10 lakh to build and ₹50,000/month to maintain. They need app store approval. Updates take days. This gives you 90% of the value — your icon on their phone, one-tap access — at zero cost and zero maintenance. Start here. Scale up if you outgrow it."
+> "Custom native apps need separate build, review, maintenance, and release work. Customer App gives you branded home-screen presence and one-tap menu access without a custom app project. Use exact cost comparisons only with current market evidence."
 
 ---
 
@@ -280,7 +278,7 @@ Every MenuList menu is already app-ready. Just toggle it on.
 | "One tap away" | Simple benefit |
 | "Home screen" | Universal concept |
 | "No download needed" | Removes friction concern |
-| "Automatically" | Reduces perceived effort |
+| "Created from your menu" | Reduces perceived build effort without implying live background sync |
 | "Included" | No extra cost implication |
 
 ### Terms to Avoid (Forbidden)
@@ -291,8 +289,8 @@ Every MenuList menu is already app-ready. Just toggle it on.
 | "Progressive Web App" | Technical jargon | "Installable menu" or "Your app" |
 | "Add to Home Screen" | Technical instruction | "Save to your phone" or "Get the app" |
 | "Web app" | Weakens positioning | "App" or "Customer App" |
-| "Browser-based" | Weakens positioning | "Works on any phone" |
-| "AI-powered" | Violates Language Governance | Nothing, or "Automatic" |
+| "Browser-based" | Weakens positioning | "Works on supported modern browsers" |
+| "AI-powered" | Violates Language Governance | Nothing, or "Simple" |
 | "Smart" | Violates Language Governance | Nothing, or "Simple" |
 | "Optimizes" | Violates Language Governance | "Handles" |
 | "Increases sales" | Unverifiable claim | "Reduces friction" |
@@ -314,11 +312,11 @@ Every MenuList menu is already app-ready. Just toggle it on.
 |----------|------|------|-------------|
 | Build native app | ₹5-10 lakh | 3-6 months | ₹50K/month |
 | App builder SaaS | ₹2,000-5,000/month | 1-2 weeks | DIY updates |
-| **MenuList Customer App** | **Included** | **Instant** | **Automatic** |
+| **MenuList Customer App** | **Included** | **No custom app build** | **MenuList-managed app shell** |
 
 ### Value Anchoring
 
-> "If this feature increased your repeat customers by even 5%, what would that be worth? For a restaurant doing ₹3 lakh/month, 5% more repeats is ₹15,000/month. The feature costs nothing extra."
+> "Use this feature to reduce repeat-order friction. Add ROI numbers only after an owner-approved case study or analytics-backed cohort exists."
 
 ---
 
@@ -353,7 +351,7 @@ Use this in pricing pages and feature comparisons:
 > "Your menu is now app-ready. Your customers can add it to their home screen — your logo, your name, one tap away. Toggle it on in your Surfaces."
 
 **Social media:**
-> "Your customers can have your restaurant as an app on their phone. Not kidding. One tap, your menu opens. MenuList does this automatically."
+> "Your customers can have your restaurant as an app on their phone. One tap opens your menu path. MenuList prepares the app shell from your menu settings."
 
 ### Post-Launch
 
@@ -377,4 +375,4 @@ Use this in pricing pages and feature comparisons:
 ---
 
 _Document Status: Source-backed marketing draft; not standalone launch certification_
-_Last Updated: July 2, 2026_
+_Last Updated: July 4, 2026_

@@ -160,7 +160,7 @@ Do not make the H1 a slogan. The brand/entity name should be the first signal.
 
 Use:
 
-- Neelvara blue mesh, grain, and glass-panel treatment as a scoped visual system
+- Neelvara current-color Prism mesh, grain, prism-panel, and glass-panel treatment as a scoped visual system
 - meaningful hero artifact focused on company routing instead of blank decoration or product-count proof
 - problem-first bento and spotlight sections
 - actual product marks for MenuList, Answerlattice, and CampaignCue

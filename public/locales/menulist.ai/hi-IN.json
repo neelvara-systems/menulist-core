@@ -2265,7 +2265,7 @@
     "saveQrImage": "Save QR Image",
     "obpNudgeHint": "This is your official menu link. Send this whenever customers ask for your menu.",
     "obpShareHint": "Share this link everywhere — customers see your business info + menu",
-    "menuNudgeHint": "Print and place on tables or counter. Customers can always access your latest menu.",
+    "menuNudgeHint": "Print and place on tables or counter. Customers can open the approved menu link.",
     "menuScanHint": "Scan to view your menu",
     "menuPdf": "Menu PDF",
     "menuPdfDesc": "Download printable menu for your shop",
@@ -6130,7 +6130,7 @@
         "owner_entered": "Is check में entered",
         "owner_selected": "Owner selected",
         "source_text_hint": "Entered text में मिला",
-        "valid_public_url": "Valid public URL format",
+        "valid_public_url": "Valid public HTTPS URL format",
         "invalid_public_url": "URL correction चाहिए",
         "not_provided": "Not provided",
         "not_checked": "First version में checked नहीं"
@@ -6330,7 +6330,7 @@
         },
         "url_format": {
           "label": "URL format",
-          "helper": "Target browser-openable link जैसा दिखना चाहिए।"
+          "helper": "Target public HTTPS link होना चाहिए।"
         },
         "menulist_customer_link": {
           "label": "MenuList customer link",
@@ -8824,6 +8824,10 @@
         "trustSetup": {
           "title": "Trust / Setup",
           "description": "Simple setup gaps खोजें जिनसे public page incomplete या hard to trust लगता है."
+        },
+        "printShareAssets": {
+          "title": "Print & Share Assets",
+          "description": "One customer link से simple posters, cards, status images और QR handouts बनाएं."
         }
       },
       "ownerPaths": {
@@ -8850,7 +8854,7 @@
         "customerFaqReplyPack": {
           "meta": "FAQ replies",
           "title": "Customer FAQ Reply Pack",
-          "description": "Repeated questions और entered facts से reusable FAQ, staff, website और message answers बनाएं."
+          "description": "Repeated customer questions और entered business facts से reusable FAQ और auto-reply text बनाएं."
         },
         "customerLinkPreview": {
           "meta": "One link",
@@ -8912,10 +8916,30 @@
           "title": "Social Bio Link Consistency Check",
           "description": "Check करें कि social bios, public profiles, website links, QR codes और print materials one current customer link पर point करते हैं या नहीं."
         },
-        "customerFaqReplyPack": {
-          "meta": "FAQ replies",
-          "title": "Customer FAQ Reply Pack",
-          "description": "Repeated customer questions और entered business facts से reusable FAQ और auto-reply text बनाएं."
+        "qrPosterMaker": {
+          "meta": "QR poster",
+          "title": "QR Poster Maker",
+          "description": "One current customer link के लिए printable QR poster बनाएं."
+        },
+        "whatsappMenuStatusMaker": {
+          "meta": "WhatsApp status",
+          "title": "WhatsApp Menu Status Maker",
+          "description": "Current link पर customers को भेजने वाला WhatsApp Status या story image बनाएं."
+        },
+        "holidayHoursPosterMaker": {
+          "meta": "Holiday hours",
+          "title": "Holiday Hours Poster Maker",
+          "description": "Current customer link के QR code के साथ special-hours poster बनाएं."
+        },
+        "customerLinkCardMaker": {
+          "meta": "Counter card",
+          "title": "Customer Link Card Maker",
+          "description": "Counters, takeaway bags, staff replies और service desks के लिए छोटा QR card बनाएं."
+        },
+        "feedbackQrCardMaker": {
+          "meta": "Feedback QR",
+          "title": "Feedback QR Card Maker",
+          "description": "Owner-provided feedback या review link से ethical feedback QR card बनाएं."
         }
       },
       "boundaryEyebrow": "Tool boundary",
@@ -9463,7 +9487,243 @@
         "boundary1": "No report storage",
         "boundary2": "No ranking promise"
       }
-    }  },
+    },
+    "PrintShareToolPage": {
+      "eyebrow": "MenuList Print & Share Tools",
+      "trustLabel": "Public asset tool boundaries",
+      "trust0": "No login",
+      "trust1": "Browser-local render",
+      "trust2": "No external fetch",
+      "formTitle": "Asset details डालें",
+      "fields": {
+        "businessName": "Business name",
+        "businessNamePlaceholder": "Example: Blue Spoon Cafe",
+        "cityOrArea": "City या area",
+        "cityOrAreaPlaceholder": "Example: Pune, Baner",
+        "customerLink": "Customer link या feedback link",
+        "customerLinkPlaceholder": "https://your-current-link.example",
+        "accentColor": "Asset color",
+        "headline": "Headline",
+        "headlinePlaceholder": "Example: Scan for our current menu",
+        "body": "Short message",
+        "bodyPlaceholder": "Customers को बताएं scan करने के बाद क्या मिलेगा.",
+        "secondaryText": "Small note",
+        "secondaryTextPlaceholder": "Example: किसी भी phone camera से scan करें",
+        "hoursText": "Hours text",
+        "hoursTextPlaceholder": "Example: Diwali week: 11 AM to 7 PM. Monday closed.",
+        "whatsappNumber": "WhatsApp number या label",
+        "whatsappNumberPlaceholder": "Example: WhatsApp +91 98765 43210"
+      },
+      "factsLegend": "Asset use करने से पहले confirm करें",
+      "facts": {
+        "customerLinkCurrent": "Customer link current है",
+        "customerActionClear": "Customer का next action clear है",
+        "readyToPrintOrShare": "Review के बाद यह print या share करने के लिए ready है",
+        "ethicalFeedbackOnly": "यह सिर्फ honest feedback या owner-provided review link के लिए है"
+      },
+      "rendering": "Asset बन रहा है",
+      "generateAsset": "Asset बनाएं",
+      "reset": "Reset",
+      "renderFailed": "Asset render नहीं हुआ. Link check करके फिर try करें.",
+      "reportEyebrow": "Asset report",
+      "summaryLabel": "Print and share tool summary",
+      "summary": {
+        "present": "{count} present",
+        "missing": "{count} missing",
+        "unclear": "{count} unclear",
+        "notChecked": "{count} not checked"
+      },
+      "results": {
+        "present": "Present",
+        "missing": "Missing",
+        "unclear": "Unclear",
+        "not_applicable": "Not needed",
+        "not_checked": "Not checked"
+      },
+      "assetPreview": {
+        "ariaLabel": "Generated local asset preview",
+        "alt": "{tool} preview generated from entered fields"
+      },
+      "checks": {
+        "business_identity": {
+          "label": "Business identity",
+          "helper": "The asset needs a clear business name so customers know who it belongs to."
+        },
+        "customer_link": {
+          "label": "Customer link",
+          "helper": "The QR needs one public HTTPS customer link or owner-provided feedback link."
+        },
+        "asset_message": {
+          "label": "Asset message",
+          "helper": "The poster or card should say what the customer gets after scanning."
+        },
+        "customer_action": {
+          "label": "Customer action",
+          "helper": "Customers should know whether to view, order, book, message, visit, or leave feedback."
+        },
+        "print_share_context": {
+          "label": "Print or share context",
+          "helper": "Review the asset before printing, posting, or giving it to staff."
+        },
+        "template_render": {
+          "label": "Template render",
+          "helper": "The asset is rendered from a MenuList template contract in the browser."
+        },
+        "external_source_inspection": {
+          "label": "External inspection",
+          "helper": "This tool does not open websites, inspect profiles, verify review pages, or check QR placement."
+        }
+      },
+      "statuses": {
+        "ready": {
+          "title": "Asset is ready to review",
+          "description": "The entered details are enough to download, print, or share after your own review."
+        },
+        "missing_basics": {
+          "title": "Asset is missing basics",
+          "description": "Add the business name, customer link, and message before using this asset."
+        },
+        "unclear": {
+          "title": "Asset needs cleanup",
+          "description": "The asset can render, but the customer action or print context is still unclear."
+        },
+        "not_checked": {
+          "title": "Asset was not checked",
+          "description": "Enter the basic fields before generating a useful asset report."
+        },
+        "manual_review_needed": {
+          "title": "Review before using",
+          "description": "The feedback or review boundary needs confirmation before this should be printed or shared."
+        }
+      },
+      "nextActions": {
+        "create_customer_link": {
+          "title": "Create one current customer link",
+          "description": "Use MenuList to create the stable link behind the QR before printing or sharing widely.",
+          "cta": "Create customer link"
+        },
+        "download_asset": {
+          "title": "Download and review the asset",
+          "description": "Keep the PNG or PDF, test the QR from a phone, then print or post it where customers will see it.",
+          "cta": "Create customer link"
+        },
+        "review_before_printing": {
+          "title": "Review before printing",
+          "description": "Use this only for honest feedback or an owner-provided review link. Do not generate or pressure reviews.",
+          "cta": "Create customer link"
+        }
+      },
+      "reportActions": {
+        "title": "Use the asset and report",
+        "body": "Download the asset, print from the browser, or copy a public report link for a setup handoff.",
+        "downloadPng": "Download PNG",
+        "downloadPdf": "Download PDF",
+        "print": "Print",
+        "copyReport": "Copy report",
+        "downloadReport": "Download report",
+        "statuses": {
+          "asset_ready": "Asset rendered locally.",
+          "copied": "Report copied.",
+          "downloaded_png": "PNG downloaded.",
+          "downloaded_pdf": "PDF downloaded.",
+          "downloaded_report": "Report downloaded.",
+          "printed": "Print window opened.",
+          "action_failed": "Could not complete that action.",
+          "render_failed": "Could not render the asset."
+        },
+        "shareUrlLabel": "Public report link",
+        "openPublicReport": "Open public report"
+      },
+      "export": {
+        "title": "{tool} report",
+        "business": "Business",
+        "city": "City or area",
+        "customerLink": "Customer link",
+        "template": "Template",
+        "status": "Status",
+        "generatedAt": "Generated at",
+        "summary": "Summary",
+        "checks": "Checks",
+        "nextStep": "Next step",
+        "notProvided": "Not provided",
+        "boundary": "Boundary: this report uses entered fields only. It does not fetch websites, inspect Google or social profiles, verify WhatsApp accounts, verify review pages, store reports, save templates, call AI/search providers, or update external platforms."
+      },
+      "shareReport": {
+        "reportTitle": "{tool} report",
+        "checkedSourceText": "Checked owner-entered asset fields and the public HTTPS URL format only.",
+        "notCheckedText": "Did not inspect external pages, QR placements, WhatsApp accounts, review pages, search results, AI answers, or external platforms.",
+        "boundary0": "Asset rendered in the browser only.",
+        "boundary1": "No report or file was stored.",
+        "boundary2": "No authenticated template was saved.",
+        "boundary3": "No external platform was updated."
+      },
+      "empty": {
+        "title": "Asset preview generation के बाद दिखेगा",
+        "body": "यह public tool entered fields only use करता है. यह link open नहीं करता, file store नहीं करता, template save नहीं करता.",
+        "boundaryLabel": "Print share tool boundaries",
+        "boundary0": "No login",
+        "boundary1": "No storage",
+        "boundary2": "No external scan"
+      },
+      "finalEyebrow": "Fix path",
+      "finalTitle": "Useful asset को one current link चाहिए",
+      "finalBody": "ये tools public और free हैं. MenuList customer link create, clean up और current रखने का path है.",
+      "finalPrimary": "Customer link बनाएं",
+      "finalSecondary": "All tools देखें",
+      "tools": {
+        "qr-poster-maker": {
+          "title": "QR Poster Maker",
+          "shortTitle": "QR poster",
+          "heroTitle": "Make a QR poster for one current link.",
+          "heroHighlight": "one current link",
+          "heroSubtitle": "Enter your business name and customer link. Download a poster without logging in.",
+          "heroCardTitle": "Built for counters, tables, and entrances.",
+          "heroCardBody": "Use it when a customer should scan and reach the current menu, services, hours, or contact options.",
+          "formSubtitle": "This renders a poster from entered fields only. Test the QR before printing."
+        },
+        "whatsapp-menu-status-maker": {
+          "title": "WhatsApp Menu Status Maker",
+          "shortTitle": "WhatsApp status",
+          "heroTitle": "Make a status image for the current link.",
+          "heroHighlight": "current link",
+          "heroSubtitle": "Create a WhatsApp Status or story image that sends customers to one customer link.",
+          "heroCardTitle": "Useful for daily mobile sharing.",
+          "heroCardBody": "Post the image when customers already ask for menus, services, prices, or bookings on WhatsApp.",
+          "formSubtitle": "This does not send WhatsApp messages or verify a WhatsApp account."
+        },
+        "holiday-hours-poster-maker": {
+          "title": "Holiday Hours Poster Maker",
+          "shortTitle": "Holiday hours",
+          "heroTitle": "Make a poster for special hours.",
+          "heroHighlight": "special hours",
+          "heroSubtitle": "Create a holiday or event-hours poster with a QR code to the current customer link.",
+          "heroCardTitle": "Useful when regular hours change.",
+          "heroCardBody": "Use it for festivals, holidays, events, renovations, staff breaks, or short closures.",
+          "formSubtitle": "Enter the hours text customers need. The tool does not verify external opening hours."
+        },
+        "customer-link-card-maker": {
+          "title": "Customer Link Card Maker",
+          "shortTitle": "Link card",
+          "heroTitle": "Make a small card for your customer link.",
+          "heroHighlight": "customer link",
+          "heroSubtitle": "Create a counter card or business-card style QR asset from one current link.",
+          "heroCardTitle": "Small enough for handoffs.",
+          "heroCardBody": "Use it in takeaway bags, reception desks, staff replies, service counters, or local events.",
+          "formSubtitle": "This renders a card only. It does not save a customer profile or update printed material for you."
+        },
+        "feedback-qr-card-maker": {
+          "title": "Feedback QR Card Maker",
+          "shortTitle": "Feedback QR",
+          "heroTitle": "Make an ethical feedback QR card.",
+          "heroHighlight": "feedback QR card",
+          "heroSubtitle": "Create a feedback card from an owner-provided feedback or review link. No review text is generated.",
+          "heroCardTitle": "Feedback, not review pressure.",
+          "heroCardBody": "Use this to collect honest feedback or send customers to your own approved review link.",
+          "formSubtitle": "Confirm ethical use before printing. This tool does not generate reviews or inspect review pages."
+        }
+      }
+    }
+  },
   "MobileProjectSelector": {
     "loadFailed": "मेन्यू लोड नहीं हो सके",
     "activateBeforeUsing": "इस्तेमाल से पहले इस मेन्यू को सक्रिय करें",

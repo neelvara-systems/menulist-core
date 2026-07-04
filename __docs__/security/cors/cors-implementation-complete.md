@@ -126,9 +126,12 @@ Webhooks are server-to-server and don't use CORS:
 ```typescript
 const ALLOWED_ORIGINS = [
   process.env.NEXT_PUBLIC_APP_URL,
-  "http://localhost:3000",
-  "http://localhost:3001",
-].filter(Boolean);
+  ...(!isProductionRuntime ? LOCAL_DEVELOPMENT_ORIGINS : []),
+  PLATFORM_URL,
+  DASHBOARD_URL,
+].filter((origin): origin is string =>
+  Boolean(origin) && (!isProductionRuntime || !isLocalDevelopmentOrigin(origin))
+);
 ```
 
 **Behavior**:
@@ -136,6 +139,7 @@ const ALLOWED_ORIGINS = [
 - ✅ Requests from allowed origins → Accepted
 - ❌ Requests from other origins → **403 Forbidden**
 - ✅ Same-origin requests (no Origin header) → Accepted
+- ✅ Localhost origins → Development-only; production allowlist filters them out even if `NEXT_PUBLIC_APP_URL` is misconfigured
 
 ---
 
@@ -303,7 +307,8 @@ curl -X POST https://yourdomain.com/api/descriptions \
 - [x] All 15 protected routes automatically secured
 - [x] Security logging configured
 - [x] Preflight handling automated
-- [ ] Update `ALLOWED_ORIGINS` with production domains
+- [x] Production domains sourced from `PLATFORM_URL` and `DASHBOARD_URL`
+- [x] Localhost origins are development-only
 - [ ] Test with actual production frontend
 - [ ] Monitor Sentry for CORS failures
 
@@ -311,16 +316,17 @@ curl -X POST https://yourdomain.com/api/descriptions \
 
 ### Configuration
 
-**Update allowed origins** in `src/lib/security/corsValidation.ts`:
+**Allowed origins** in `src/lib/security/corsValidation.ts`:
 
 ```typescript
 const ALLOWED_ORIGINS = [
   process.env.NEXT_PUBLIC_APP_URL,
-  "http://localhost:3000", // Remove in production
-  "http://localhost:3001", // Remove in production
-  "https://menulist.ai", // ← Add production domain
-  "https://app.menulist.ai", // ← Add production domain
-].filter(Boolean);
+  ...(!isProductionRuntime ? LOCAL_DEVELOPMENT_ORIGINS : []),
+  PLATFORM_URL,
+  DASHBOARD_URL,
+].filter((origin): origin is string =>
+  Boolean(origin) && (!isProductionRuntime || !isLocalDevelopmentOrigin(origin))
+);
 ```
 
 ---

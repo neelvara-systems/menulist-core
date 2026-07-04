@@ -219,7 +219,7 @@ export default function GoogleListingGuide({
             </Flex>
 
             <Paragraph type="secondary" style={{ fontSize: 13, margin: '0 0 16px' }}>
-                So customers always see the correct menu and information when they find you on Google.
+                So Google points customers to your MenuList-approved page.
             </Paragraph>
 
             {/* OBP URL with copy */}
@@ -328,7 +328,7 @@ export default function GoogleListingGuide({
                 showIcon={false}
                 message={
                     <Text style={{ fontSize: 12 }}>
-                        Takes less than 30 seconds. Customers clicking &quot;Website&quot; on Google will see your latest published menu and info.
+                        After Google saves the field, its Website button points customers to your MenuList-approved page. Google controls when profile edits appear.
                     </Text>
                 }
                 style={{ marginBottom: 16, borderRadius: 8 }}

@@ -173,6 +173,8 @@ The mobile More tab does not route-hop to `/answerlattice/*`; it renders `src/co
 
 The public widget is mobile-first and uses `100dvh`, 44px launcher/input actions, MIME-safe image preview, canonical answer badges, guided workflow rendering, safe page context from `AnswerlatticeWidget.page()/setContext()`, and fire-and-forget feedback. Widget keys are managed as bounded named keys on `stores/{sId}.answerlatticeWidgetApi`; malformed keys short-circuit before Firestore lookup, runtime validation uses key hashes, raw keys are shown only once at creation time, and widget search/feedback JSON bodies are byte-capped after API key, rate-limit, product, purpose, scope, and origin admission. The iframe client also bounds and shape-validates widget search responses before rendering assistant messages. The public site avoids exposing tenant/store ids and routes completed onboarding to `/answerlattice/activation`.
 
+Widget iframe frame headers are relaxed only on Answerlattice product hosts resolved by middleware or on local development hosts outside Vercel. `/widget/*` on MenuList and other product hosts must not inherit the Answerlattice embeddable frame policy by path alone.
+
 ### API Routes
 
 - `POST /api/helpCenter/search-kb` — Non-streaming RAG search

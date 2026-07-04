@@ -13,7 +13,7 @@
 
 A separate dashboard accessible to authorized resellers (friends, sales partners) who onboard SMB clients on their behalf. Resellers can:
 
-1. Create stores and upload menus for clients
+1. Create stores/accounts for clients and hand over dashboard/customer links
 2. Select from predefined pricing tiers (not arbitrary prices)
 3. Choose payment mode: Online (Razorpay) or Offline (cash/UPI collected manually)
 4. Select license duration: 3 / 6 / 12 months
@@ -70,6 +70,8 @@ A separate dashboard accessible to authorized resellers (friends, sales partners
 
 This is a local source gate only. It does not perform Razorpay sandbox payment smoke, authenticated browser QA, physical-device mobile QA, Firebase deploys, Vercel deploys, production builds, live Firestore writes, or provider calls.
 
+Current reseller onboarding creates the tenant/store account, subscription state, dashboard link, and public customer link. It does not upload or extract menu files inside the reseller onboarding API path; menu content is added later through the normal owner dashboard and import/review flows.
+
 ---
 
 ## Relationship to Existing Systems
@@ -102,5 +104,5 @@ This is a local source gate only. It does not perform Razorpay sandbox payment s
 
 ---
 
-**Last Updated:** July 2, 2026
-**Version:** 1.2 (added production-readiness source gate)
+**Last Updated:** July 4, 2026
+**Version:** 1.3 (added reseller onboarding account/link boundary)

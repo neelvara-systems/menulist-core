@@ -46,22 +46,24 @@ The public route can live under `/tools/...`, but the docs live here so the grow
 | [tools-hub](./tools-hub/README.md) | Public website index for current MenuList Tools routes | Implemented static V0 index |
 | [shareable-tool-reports](./shareable-tool-reports/README.md) | Public report-link layer for MenuList Tools output | Implemented V0 viewer, all source-tool integrations, and structured follow-up metadata |
 | [public-truth-tools](./public-truth-tools/README.md) | Reusable tool/add-on family for public business truth checks | Active family |
+| [public-truth-monitor-addon](./public-truth-monitor-addon/README.md) | Paid V2 add-on for saved public truth history and owner/partner reports | Runtime implemented for entitlement-gated saved history; scheduler and external adapters remain off |
+| [print-share-tools](./print-share-tools/README.md) | Public browser-local asset makers for QR posters, WhatsApp Status images, holiday-hours posters, customer link cards, and feedback QR cards | Implemented V0 with V1 owner readiness coverage |
 | [public-truth-check](./public-truth-check/README.md) | First public and owner tool for checking whether visible business facts are clear | Implemented V0 and V1 |
-| [business-facts-copy-pack](./business-facts-copy-pack/README.md) | Public tool for turning owner-entered business facts into reusable profile, WhatsApp, social, website, staff, and customer-link copy | Implemented V0 |
-| [whatsapp-reply-pack](./whatsapp-reply-pack/README.md) | Public tool for turning owner-entered business facts into reusable WhatsApp customer replies | Implemented V0 |
-| [customer-faq-reply-pack](./customer-faq-reply-pack/README.md) | Public tool for turning repeated customer questions and owner-entered facts into reusable FAQ answers | Implemented V0 |
-| [qr-link-health-check](./qr-link-health-check/README.md) | Public tool for checking QR target readiness | Implemented V0 |
-| [menu-readability-check](./menu-readability-check/README.md) | Public tool for checking pasted menu/service text clarity | Implemented V0 |
+| [business-facts-copy-pack](./business-facts-copy-pack/README.md) | Public tool for turning owner-entered business facts into reusable profile, WhatsApp, social, website, staff, and customer-link copy | Implemented V0 and V1 |
+| [whatsapp-reply-pack](./whatsapp-reply-pack/README.md) | Public tool for turning owner-entered business facts into reusable WhatsApp customer replies | Implemented V0 and V1 |
+| [customer-faq-reply-pack](./customer-faq-reply-pack/README.md) | Public tool for turning repeated customer questions and owner-entered facts into reusable FAQ answers | Implemented V0 and V1 |
+| [qr-link-health-check](./qr-link-health-check/README.md) | Public tool for checking QR target readiness | Implemented V0 and V1 |
+| [menu-readability-check](./menu-readability-check/README.md) | Public tool for checking pasted menu/service text clarity | Implemented V0 and V1 |
 | [customer-question-coverage-check](./customer-question-coverage-check/README.md) | Public tool and owner module for checking whether common customer questions are answered | Implemented V0 and V1 |
 | [booking-inquiry-readiness-check](./booking-inquiry-readiness-check/README.md) | Public tool and owner module for checking whether customers can clearly act | Implemented V0 and V1 |
 | [price-availability-gap-check](./price-availability-gap-check/README.md) | Public tool and owner module for checking whether prices, variants, availability, and quote paths are clear | Implemented V0 and V1 |
 | [menu-pdf-cleanup-check](./menu-pdf-cleanup-check/README.md) | Public tool and owner module for checking whether old PDFs should be replaced with one current customer link | Implemented V0 and V1 |
 | [google-profile-basics-checklist](./google-profile-basics-checklist/README.md) | Public tool that maps to the existing owner Google profile handoff module | Implemented V0 and V1 |
-| [customer-link-preview](./customer-link-preview/README.md) | Public tool for previewing whether one customer-facing link has the basics customers need | Implemented V0 |
-| [social-bio-link-check](./social-bio-link-check/README.md) | Public tool for checking whether social bios, profiles, website links, QR codes, and print materials point to one current customer link | Implemented V0 |
-| [whatsapp-action-link-check](./whatsapp-action-link-check/README.md) | Public tool for checking WhatsApp one-tap action readiness | Implemented V0 |
-| [hours-check](./hours-check/README.md) | Public tool for checking regular, closed-day, and holiday-hours clarity | Implemented V0 |
-| [photo-gap-check](./photo-gap-check/README.md) | Public tool for checking basic visual proof and photo coverage | Implemented V0 |
+| [customer-link-preview](./customer-link-preview/README.md) | Public tool for previewing whether one customer-facing link has the basics customers need | Implemented V0 and V1 |
+| [social-bio-link-check](./social-bio-link-check/README.md) | Public tool for checking whether social bios, profiles, website links, QR codes, and print materials point to one current customer link | Implemented V0 and V1 |
+| [whatsapp-action-link-check](./whatsapp-action-link-check/README.md) | Public tool for checking WhatsApp one-tap action readiness | Implemented V0 and V1 |
+| [hours-check](./hours-check/README.md) | Public tool for checking regular, closed-day, and holiday-hours clarity | Implemented V0 and V1 |
+| [photo-gap-check](./photo-gap-check/README.md) | Public tool for checking basic visual proof and photo coverage | Implemented V0 and V1 |
 | [tool-intake-template](./tool-intake-template.md) | Admission checklist for future MenuList tools | Active template |
 
 ---
@@ -91,10 +93,21 @@ Immediate order:
 | 15 | One Customer Link Preview | First P1 follow-on; shows why one current customer-facing link is the fix path |
 | 16 | Social Bio Link Consistency Check | Checks whether public profile and social placements point customers to the same current link |
 
+Public asset cluster:
+
+| Tool | Why it belongs |
+| --- | --- |
+| QR Poster Maker | Gives the owner an immediate printable asset around one current customer link |
+| WhatsApp Menu Status Maker | Fits mobile-first SMB sharing without sending messages or automating WhatsApp |
+| Holiday Hours Poster Maker | Turns a recurring trust problem into a simple printable/shareable asset |
+| Customer Link Card Maker | Helps staff, counters, packages, and reception points point to one current link |
+| Feedback QR Card Maker | Supports ethical feedback collection without generating or pressuring reviews |
+
 Current public index:
 
 - `/tools` is the MenuList Tools hub and groups the implemented public checks by owner job.
 - `/tools/reports` is the public shareable report viewer for MenuList Tool report links.
+- `/tools/qr-poster-maker`, `/tools/whatsapp-menu-status-maker`, `/tools/holiday-hours-poster-maker`, `/tools/customer-link-card-maker`, and `/tools/feedback-qr-card-maker` are public, browser-local Print & Share asset makers.
 - `/tools` is not a report runner, plugin marketplace, paid add-on, crawler, or SEO audit.
 - Individual tool routes keep their own V0/V1/V2 contracts and evidence text.
 

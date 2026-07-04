@@ -29,7 +29,6 @@ import { validateServerNetworkTargetUrl } from "@lib/security/serverNetworkTarge
 
 export const MAX_MENU_INTAKE_PREFLIGHT_FILES = 8;
 export const MAX_MENU_INTAKE_PREFLIGHT_FILE_SIZE = MENU_EXTRACTION_JOB_LIMITS.MAX_FILE_SIZE_BYTES;
-export const DEFAULT_STORAGE_BUCKET = "menulist-qa.appspot.com";
 
 const SUPPORTED_MIME_TYPES = new Set<string>(OWNER_MENU_UPLOAD_MIME_TYPES);
 const SUPPORTED_TEXT_MIME_TYPES = new Set<string>(MENU_LINK_IMPORT_TEXT_MIME_TYPES);
@@ -78,8 +77,18 @@ export function isSupportedMenuIntakeIdentityMimeType(type: string): boolean {
   return SUPPORTED_MIME_TYPES.has(type) || SUPPORTED_TEXT_MIME_TYPES.has(type);
 }
 
+function getProjectStorageBucketFallback(): string {
+  const projectId = process.env.FIREBASE_PROJECT_ID
+    || process.env.GCLOUD_PROJECT
+    || process.env.GCP_PROJECT
+    || process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
+  return projectId ? `${projectId}.appspot.com` : "";
+}
+
 export function getAllowedStorageBucket(): string {
-  return process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || process.env.FIREBASE_STORAGE_BUCKET || DEFAULT_STORAGE_BUCKET;
+  return process.env.FIREBASE_STORAGE_BUCKET
+    || process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
+    || getProjectStorageBucketFallback();
 }
 
 export function isAllowedUploadUrl(value: string): boolean {

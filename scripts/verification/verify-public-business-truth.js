@@ -1044,7 +1044,10 @@ function verifyPublicMenuGoLiveCopyMatchesPublishBoundary() {
   const behaviorEngineeringWebsite = read('__docs__/behavior-engineering/behavior-engineering_website.md');
   const behaviorEngineeringHelpdoc = read('__docs__/behavior-engineering/behavior-engineering_helpdoc.md');
   const behaviorEngineeringMarketing = read('__docs__/behavior-engineering/behavior-engineering_marketing.md');
+  const imageGenerationWebsite = read('__docs__/projects/ai-image-generation/ai-image-generation_website.md');
   const imageGenerationMarketing = read('__docs__/projects/ai-image-generation/ai-image-generation_marketing.md');
+  const imageGenerationHelpdoc = read('__docs__/projects/ai-image-generation/ai-image-generation_helpdoc.md');
+  const msgPreviewPage = read('src/app/(global-pages)/msg-preview/[sessionId]/page.tsx');
   const menuKitLabels = read('src/lib/menu-kit/businessTypeLabels.ts');
   const desktopUseMenuList = read('src/components/templates/main-app/useMenuList/index.tsx');
   const projectShareModal = read('src/components/templates/main-app/projects/b2cView/shareModal/index.tsx');
@@ -1054,6 +1057,19 @@ function verifyPublicMenuGoLiveCopyMatchesPublishBoundary() {
   const mobileDesignEditor = read('src/components/mobile/screens/MobileDesignEditorScreen.tsx');
   const mobileUploadSheet = read('src/components/mobile/sheets/MenuUploadSheet.tsx');
   const clientMenuPage = read('src/app/client/[[...slug]]/page.tsx');
+  const shareNudgeLocales = [
+    'public/locales/menulist.ai/en-US.json',
+    'public/locales/menulist.ai/en-GB.json',
+    'public/locales/menulist.ai/hi-IN.json',
+    'public/locales/menulist.ai/ta-IN.json',
+    'public/locales/menulist.ai/es-ES.json',
+    'public/locales/menulist.ai/bn-IN.json',
+    'public/locales/menulist.ai/mr-IN.json',
+    'public/locales/menulist.ai/ar-SA.json',
+    'public/locales/menulist.ai/te-IN.json',
+    'public/locales/menulist.ai/ks-IN.json',
+    'public/locales/menulist.ai/brx-IN.json',
+  ].map((file) => [read(file), file]);
 
   [
     [publicEntryWebsite, 'Public Menu Entry website'],
@@ -1070,7 +1086,9 @@ function verifyPublicMenuGoLiveCopyMatchesPublishBoundary() {
     [multiOutletHelpdoc, 'Multi-outlet helpdoc'],
     [posWebhookWebsite, 'POS webhook website'],
     [behaviorEngineeringMarketing, 'Behavior engineering marketing'],
+    [imageGenerationWebsite, 'AI image generation website'],
     [imageGenerationMarketing, 'AI image generation marketing'],
+    [imageGenerationHelpdoc, 'AI image generation helpdoc'],
   ].forEach(([content, label]) => {
     [
       'Changes go live instantly',
@@ -1112,6 +1130,7 @@ function verifyPublicMenuGoLiveCopyMatchesPublishBoundary() {
     [desktopUseMenuList, 'Desktop Use MenuList copy'],
     [projectShareModal, 'Project share modal copy'],
     [menuKitSection, 'Menu kit section copy'],
+    [msgPreviewPage, 'Post-publish preview share copy'],
   ].forEach(([content, label]) => {
     [
       'always shows',
@@ -1134,10 +1153,21 @@ function verifyPublicMenuGoLiveCopyMatchesPublishBoundary() {
       'always-current',
       'updates automatically',
       '(Always updated)',
+      'It stays updated.',
     ].forEach((stalePhrase) => {
       assertNotIncludes(content, stalePhrase, `${label} behavior-link freshness copy`);
     });
   });
+
+  assertIncludes(msgPreviewPage, 'Here is our menu link:', 'Post-publish preview WhatsApp bounded menu-link copy');
+  assertIncludes(msgPreviewPage, 'It opens the approved menu.', 'Post-publish preview approved-menu helper copy');
+  assertNotIncludes(msgPreviewPage, 'Here is our latest menu:', 'Post-publish preview stale latest-menu WhatsApp copy');
+  for (const [content, label] of shareNudgeLocales) {
+    assertNotIncludes(content, 'Customers can always access your latest menu.', `${label} stale MobileShare always-latest nudge`);
+    assertNotIncludes(content, 'Customers will always see your latest menu.', `${label} stale behavior-nudge always-latest copy`);
+  }
+  assertIncludes(shareNudgeLocales[0][0], 'Customers can open the approved menu link.', 'en-US MobileShare approved menu-link nudge');
+  assertIncludes(shareNudgeLocales[0][0], 'Customers open the owner-approved menu link.', 'en-US behavior nudge approved menu-link copy');
 
   assertIncludes(publicEntryWebsite, 'version the owner approved and published', 'Public Menu Entry website owner-approved version copy');
   assertIncludes(publicEntryWebsite, 'save the approved edit', 'Public Menu Entry website save boundary copy');
@@ -1176,7 +1206,91 @@ function verifyPublicMenuGoLiveCopyMatchesPublishBoundary() {
   assertIncludes(productionAudit, 'Support automation manual-template freshness-copy checkpoint', 'Production audit records support automation freshness checkpoint');
   assertIncludes(changelog, 'Support Automation Freshness Copy Boundary', 'Changelog records support automation freshness checkpoint');
   assertIncludes(menuKitSection, 'const msg = `${labels.shareMessagePrefix}\\n${menuUrl}`;', 'Menu kit WhatsApp message source-bounded copy');
+  assertIncludes(imageGenerationWebsite, 'Source-backed website draft; not current publication or launch certification', 'AI image generation website launch boundary status');
+  assertIncludes(imageGenerationWebsite, 'Current Website/Launch Boundary', 'AI image generation website launch boundary heading');
+  assertIncludes(imageGenerationWebsite, '`npm run verify:ai-accounting`', 'AI image generation website AI accounting source gate');
+  assertIncludes(imageGenerationWebsite, '`npm run verify:public-business-truth`', 'AI image generation website public truth source gate');
+  assertIncludes(imageGenerationWebsite, 'reviewed before publishing', 'AI image generation website review-before-publish boundary');
+  assertIncludes(imageGenerationWebsite, 'where plan and credits allow', 'AI image generation website plan/credit boundary');
+  assertIncludes(imageGenerationMarketing, 'Source-backed marketing draft; not current sales, publication, or launch certification', 'AI image generation marketing launch boundary status');
+  assertIncludes(imageGenerationMarketing, 'Current Sales/Launch Boundary', 'AI image generation marketing launch boundary heading');
+  assertIncludes(imageGenerationMarketing, '`npm run verify:ai-accounting`', 'AI image generation marketing AI accounting source gate');
+  assertIncludes(imageGenerationMarketing, '`npm run verify:public-business-truth`', 'AI image generation marketing public truth source gate');
+  assertIncludes(imageGenerationMarketing, 'review before publishing', 'AI image generation marketing review-before-publish boundary');
   assertIncludes(imageGenerationMarketing, 'ready-to-apply updates', 'AI image generation marketing update boundary copy');
+  assertIncludes(imageGenerationHelpdoc, 'Prepare image drafts for selected menu items where the feature, plan, credits, provider, and safety checks allow.', 'AI image generation helpdoc draft boundary copy');
+  assertIncludes(imageGenerationHelpdoc, 'Review each draft before using it on a customer-facing menu.', 'AI image generation helpdoc review-before-use copy');
+  assertIncludes(imageGenerationHelpdoc, 'Batch size, processing time, and retry behavior depend on the current release, credits, provider status, and safety checks.', 'AI image generation helpdoc bounded batch copy');
+  assertIncludes(imageGenerationHelpdoc, 'Review generated drafts before applying them to the public menu', 'AI image generation helpdoc public menu review copy');
+  [
+    'Professional Menu Photos Without a Photographer',
+    'Generate beautiful food images for every menu item',
+    'One click per item, or process your entire menu at once',
+    'Professional food photography costs',
+    'MenuList generates professional-quality images for your menu items automatically',
+    'No photographer, no studio, no waiting',
+    'One click and your item has a photo',
+    'One Click Per Image',
+    'get a professional-looking food photo in seconds',
+    'Bulk Generation for Full Menus',
+    'Got 50 items without photos? Process them all at once',
+    '32 of 50 items generated',
+    'Consistent Style Across Your Menu',
+    'No photographer needed. No expensive equipment. Just AI magic.',
+    'Timeline:** 30 seconds per image',
+    'Professional-quality images, consistent style, ready-to-apply updates',
+    'Generate in 30 seconds',
+    '$0, regenerate instantly',
+    'Uniform style across all',
+    '70% of customers look at menu images before ordering',
+    'Poor photos reduce perceived value by up to 40%',
+    'Professional menu photos, zero photography',
+    'AI does the rest',
+    '30-second turnaround',
+    'Process entire menu overnight',
+    '50+ items at once',
+    'Start generating in minutes',
+    '30-Second Professional Photos',
+    'Process Your Entire Menu Overnight',
+    '200 items? No problem',
+    'Every image matches your aesthetic. Uniform quality across all items.',
+    'Generate images 100x faster than traditional photography',
+    'Save $50-200 per menu item on photography costs',
+    'For digital menus, absolutely',
+    'Regenerate as many times as you want',
+    'Generated images are yours to use anywhere',
+    'AI process everything. You\'ll get real-time progress updates',
+    'Match your cozy brand aesthetic automatically',
+    '200 items need photos? Done by tomorrow morning',
+    'most people can\'t tell the difference',
+    'Our AI handles everything from fusion dishes to traditional recipes',
+    'AI handles that too',
+    '| "Generate instantly" | Speed benefit |',
+    '| Turnaround | Days/weeks | Seconds |',
+    '| Style consistency | Depends on photographer | Guaranteed |',
+    '| Matches your actual dish | ❌ Never | ✅ Yes |',
+    '| Brand consistency | ⚠️ Hit or miss | ✅ Style control |',
+    '| Time investment | Hours styling | 30 seconds |',
+    'Time-saved calculator',
+    'Refresh your entire menu',
+    'Same Quality, Every Location',
+    'Generate professional-looking photos for your menu items automatically',
+    'Works for single items or your entire menu at once',
+    'Wait 5-10 seconds for the image to appear',
+    'How to generate images for your entire menu (bulk)',
+    'A 50-item menu takes about 5 minutes',
+    'You can only generate 5 images per minute',
+    'Use bulk generation to save time on large menus',
+    'rejected ones cost nothing extra',
+  ].forEach((stalePhrase) => {
+    assertNotIncludes(imageGenerationWebsite, stalePhrase, 'AI image generation website stale public claim');
+    assertNotIncludes(imageGenerationMarketing, stalePhrase, 'AI image generation marketing stale public claim');
+    assertNotIncludes(imageGenerationHelpdoc, stalePhrase, 'AI image generation helpdoc stale public claim');
+  });
+  assertIncludes(productionAudit, 'AI Image Generation website/marketing claim boundary checkpoint', 'Production audit records AI image generation website/marketing claim checkpoint');
+  assertIncludes(productionAudit, 'AI Image Generation helpdoc claim boundary checkpoint', 'Production audit records AI image generation helpdoc claim checkpoint');
+  assertIncludes(changelog, 'AI Image Generation Website Marketing Claim Boundary', 'Changelog records AI image generation website/marketing claim checkpoint');
+  assertIncludes(changelog, 'AI Image Generation Helpdoc Claim Boundary', 'Changelog records AI image generation helpdoc claim checkpoint');
 
   assertIncludes(projectDal, '// INVARIANT: All customer-facing truth must pass through updateProject().', 'Project DAL public truth invariant');
   assertIncludes(projectDal, 'await revalidatePublicClientCacheForProject(data.projectId as string, "updateProject");', 'Project DAL save cache revalidation');
@@ -1195,7 +1309,9 @@ function verifyPublicMenuGoLiveCopyMatchesPublishBoundary() {
 
 function verifyPresenceDominanceDocsUsePublicSourceBoundaries() {
   const docs = {
+    readme: read('__docs__/presence-dominance/README.md'),
     spec: read('__docs__/presence-dominance/presence-dominance_spec.md'),
+    impl: read('__docs__/presence-dominance/presence-dominance_impl.md'),
     website: read('__docs__/presence-dominance/presence-dominance_website.md'),
     marketing: read('__docs__/presence-dominance/presence-dominance_marketing.md'),
     audit: read('__docs__/audits/menulist-production-readiness-audit.md'),
@@ -1216,10 +1332,25 @@ function verifyPresenceDominanceDocsUsePublicSourceBoundaries() {
     'customers see the change within 60 seconds — everywhere',
     'updates automatically when you change anything',
   ].forEach((stalePhrase) => {
+    assertNotIncludes(docs.readme, stalePhrase, 'Presence Dominance README stale freshness/correctness claim');
     assertNotIncludes(docs.spec, stalePhrase, 'Presence Dominance spec stale freshness/correctness claim');
+    assertNotIncludes(docs.impl, stalePhrase, 'Presence Dominance implementation stale freshness/correctness claim');
     assertNotIncludes(docs.website, stalePhrase, 'Presence Dominance website stale freshness/correctness claim');
     assertNotIncludes(docs.marketing, stalePhrase, 'Presence Dominance marketing stale freshness/correctness claim');
   });
+
+  [
+    'Here is our latest menu',
+    '(Always updated)',
+    'It stays updated',
+  ].forEach((stalePhrase) => {
+    assertNotIncludes(docs.readme, stalePhrase, 'Presence Dominance README stale behavior-link claim');
+    assertNotIncludes(docs.impl, stalePhrase, 'Presence Dominance implementation stale behavior-link claim');
+  });
+
+  assertIncludes(docs.readme, 'WhatsApp menu-link message', 'Presence Dominance README bounded WhatsApp copy');
+  assertIncludes(docs.impl, 'Here is our menu link:\\n{url}', 'Presence Dominance implementation bounded WhatsApp copy');
+  assertIncludes(docs.impl, 'It opens the approved menu.', 'Presence Dominance implementation approved-menu copy');
 
   [
     'owner-approved public source',
@@ -1743,8 +1874,10 @@ function verifyGbpSyncDocsMatchDisabledRuntime() {
   assertIncludes(docs.criticalReview, '`npm run verify:public-business-truth`', 'GBP critical review source gate boundary');
   assertIncludes(docs.audit, 'GBP Sync disabled-runtime public-claim checkpoint', 'Production audit GBP disabled-runtime checkpoint');
   assertIncludes(docs.audit, 'GBP critical review implementation-boundary checkpoint', 'Production audit GBP critical-review boundary checkpoint');
+  assertIncludes(docs.audit, 'Google listing guide owner-copy boundary checkpoint', 'Production audit Google listing owner-copy checkpoint');
   assertIncludes(docs.changelog, 'July 2, 2026 - GBP Sync Disabled Runtime Boundary', 'Changelog GBP disabled-runtime checkpoint');
   assertIncludes(docs.changelog, 'GBP Critical Review Implementation Boundary', 'Changelog GBP critical-review boundary checkpoint');
+  assertIncludes(docs.changelog, 'Google Listing Guide Owner Copy Boundary', 'Changelog Google listing owner-copy checkpoint');
 
   const activeDocs = [
     docs.readme,
@@ -3269,8 +3402,20 @@ function verifyOfficialBusinessPageOwnerDiagnosticsAreBounded() {
   assertIncludes(googleListingGuide, 'hasCopyFallback', 'GoogleListingGuide fallback support metadata');
   assertIncludes(googleListingGuide, 'kitLineCount: profileKitRows.length', 'GoogleListingGuide profile-kit bounded line-count metadata');
   assertIncludes(googleListingGuide, 'Google profile handoff kit', 'GoogleListingGuide profile-kit owner copy');
+  assertIncludes(googleListingGuide, 'So Google points customers to your MenuList-approved page.', 'GoogleListingGuide owner-managed Google handoff copy');
+  assertIncludes(googleListingGuide, 'Google controls when profile edits appear.', 'GoogleListingGuide bounded Google profile edit timing copy');
   assertIncludes(googleListingGuide, "const copied = document.execCommand('copy');", 'GoogleListingGuide textarea copy acknowledgement');
   assertIncludes(googleListingGuide, "window.open('https://business.google.com/', '_blank', 'noopener,noreferrer')", 'GoogleListingGuide safe Google open');
+  assertNotIncludes(
+    googleListingGuide,
+    'So customers always see the correct menu and information when they find you on Google.',
+    'GoogleListingGuide stale Google correctness overclaim',
+  );
+  assertNotIncludes(
+    googleListingGuide,
+    'Takes less than 30 seconds. Customers clicking &quot;Website&quot; on Google will see your latest published menu and info.',
+    'GoogleListingGuide stale fixed-time latest-menu overclaim',
+  );
 
   [
     'owner_dashboard_google_listing_copy_failed',

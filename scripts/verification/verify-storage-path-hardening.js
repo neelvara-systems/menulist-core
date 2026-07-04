@@ -94,6 +94,7 @@ function verifyMenuListBrowserSurfacesDoNotMutateStorageDirectly() {
 }
 
 const projectsDal = read('src/database/projects/index.ts');
+const staticAssetsDal = read('src/database/static/static.ts');
 const storageRules = read('storage.rules');
 const tracker = read('__docs__/production-readiness/infrastructure-risk-tracker.md');
 const uploadImpl = read('__docs__/projects/upload-file-processing/upload-file-processing_impl.md');
@@ -103,6 +104,21 @@ const changelog = read('__docs__/CHANGELOG.md');
 const packageJson = JSON.parse(read('package.json'));
 
 verifyMenuListBrowserSurfacesDoNotMutateStorageDirectly();
+
+assert(
+  !staticAssetsDal.includes('menulist-qa.appspot.com'),
+  'static asset preview cleanup must not key replacement deletes to the QA Storage bucket',
+);
+[
+  'const FIREBASE_STORAGE_DOWNLOAD_HOSTS = new Set',
+  'const isFirebaseStorageReference = (value: unknown): boolean',
+  'trimmedValue.startsWith("gs://")',
+  'FIREBASE_STORAGE_DOWNLOAD_HOSTS.has(url.hostname)',
+  'url.hostname.endsWith(".firebasestorage.app")',
+  'if (isFirebaseStorageReference(data.preview)) await deleteFileByUrl(data.preview);',
+].forEach((token) => {
+  assert(staticAssetsDal.includes(token), `static asset preview cleanup uses bucket-neutral Storage reference token ${token}`);
+});
 
 [
   'const getTenantScopedProjectUploadFileId',
@@ -192,6 +208,8 @@ assert(
 [
   'Browser surface Storage mutation boundary checkpoint',
   'scans active MenuList browser surfaces for direct Firebase Storage mutation helper imports',
+  'Static asset preview cleanup bucket checkpoint',
+  'no longer keys replacement-preview deletion to `menulist-qa.appspot.com`',
 ].forEach((token) => {
   assert(productionReadinessAudit.includes(token), `production audit documents browser Storage mutation boundary token ${token}`);
 });
@@ -199,6 +217,8 @@ assert(
 [
   'Browser Storage mutations are source-gated',
   '`npm run verify:storage-paths` now scans active MenuList browser surfaces for direct Firebase Storage mutation helper imports',
+  'Static Asset Preview Cleanup Bucket Boundary',
+  'replacement cleanup now detects Firebase Storage references generically',
 ].forEach((token) => {
   assert(changelog.includes(token), `changelog documents browser Storage mutation boundary token ${token}`);
 });

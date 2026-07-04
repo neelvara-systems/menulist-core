@@ -221,18 +221,55 @@ const PUBLIC_TOOL_MANIFEST = [
   },
 ];
 
+const PUBLIC_ASSET_TOOL_MANIFEST = [
+  {
+    slug: 'qr-poster-maker',
+    label: 'QR Poster Maker',
+    key: 'qrPosterMaker',
+    featureFlag: 'ENABLE_PUBLIC_ASSET_QR_POSTER_MAKER',
+  },
+  {
+    slug: 'whatsapp-menu-status-maker',
+    label: 'WhatsApp Menu Status Maker',
+    key: 'whatsappMenuStatusMaker',
+    featureFlag: 'ENABLE_PUBLIC_ASSET_WHATSAPP_MENU_STATUS_MAKER',
+  },
+  {
+    slug: 'holiday-hours-poster-maker',
+    label: 'Holiday Hours Poster Maker',
+    key: 'holidayHoursPosterMaker',
+    featureFlag: 'ENABLE_PUBLIC_ASSET_HOLIDAY_HOURS_POSTER_MAKER',
+  },
+  {
+    slug: 'customer-link-card-maker',
+    label: 'Customer Link Card Maker',
+    key: 'customerLinkCardMaker',
+    featureFlag: 'ENABLE_PUBLIC_ASSET_CUSTOMER_LINK_CARD_MAKER',
+  },
+  {
+    slug: 'feedback-qr-card-maker',
+    label: 'Feedback QR Card Maker',
+    key: 'feedbackQrCardMaker',
+    featureFlag: 'ENABLE_PUBLIC_ASSET_FEEDBACK_QR_CARD_MAKER',
+  },
+];
+
 const VERIFIERS = [
   'verify-tools-hub.js',
   'verify-shareable-tool-reports.js',
   'verify-report-leads-boundary.js',
+  'verify-print-share-tools.js',
+  'verify-public-truth-monitor-addon.js',
   ...PUBLIC_TOOL_MANIFEST.map((tool) => tool.verifier),
 ];
 
 const ACTIVE_TOOL_DOC_DIRS = [
   '__docs__/menulist-tools',
   '__docs__/menulist-tools/public-truth-tools',
+  '__docs__/menulist-tools/public-truth-monitor-addon',
   '__docs__/menulist-tools/tools-hub',
   '__docs__/menulist-tools/shareable-tool-reports',
+  '__docs__/menulist-tools/print-share-tools',
   ...PUBLIC_TOOL_MANIFEST.map((tool) => `__docs__/menulist-tools/${tool.slug}`),
 ];
 
@@ -251,9 +288,18 @@ function getActualToolRoutes() {
 
 function assertPublicToolInventoryBoundary() {
   const manifestSlugs = PUBLIC_TOOL_MANIFEST.map((tool) => tool.slug).sort();
+  const publicToolRouteSlugs = [
+    ...manifestSlugs,
+    ...PUBLIC_ASSET_TOOL_MANIFEST.map((tool) => tool.slug),
+  ].sort();
   const actualSlugs = getActualToolRoutes();
   const expectedToolModules = [
     'ownerPublicTruthReadiness.ts',
+    'publicTruthMonitorDiagnostics.ts',
+    'publicTruthMonitorEntitlements.ts',
+    'publicTruthMonitorReport.ts',
+    'publicUrlValidation.ts',
+    'serverPublicTruthMonitorEntitlements.ts',
     'shareableToolReport.ts',
     ...PUBLIC_TOOL_MANIFEST.flatMap((tool) => [
       path.basename(tool.reportPath),
@@ -262,7 +308,7 @@ function assertPublicToolInventoryBoundary() {
   ].sort();
   const actualToolModules = listPublicTruthToolModules();
 
-  assertSameSet(actualSlugs, manifestSlugs, 'Public Truth Tools route inventory');
+  assertSameSet(actualSlugs, publicToolRouteSlugs, 'MenuList public tools route inventory');
   assertSameSet(actualToolModules, expectedToolModules, 'Public Truth Tools report/type module inventory');
   assertSameSet(
     PUBLIC_TOOL_MANIFEST.map((tool) => tool.verifier).sort(),
@@ -270,6 +316,8 @@ function assertPublicToolInventoryBoundary() {
       'verify-tools-hub.js',
       'verify-shareable-tool-reports.js',
       'verify-report-leads-boundary.js',
+      'verify-print-share-tools.js',
+      'verify-public-truth-monitor-addon.js',
     ].includes(verifier)).sort(),
     'Public Truth Tools verifier inventory',
   );
@@ -283,6 +331,7 @@ function assertPublicToolInventoryBoundary() {
   const llmsFull = read('public/llms-full.txt');
   const toolsReadme = read('__docs__/menulist-tools/README.md');
   const familyReadme = read('__docs__/menulist-tools/public-truth-tools/README.md');
+  const familySpec = read('__docs__/menulist-tools/public-truth-tools/public-truth-tools_spec.md');
   const familyImpl = read('__docs__/menulist-tools/public-truth-tools/public-truth-tools_impl.md');
   const familyFirebase = read('__docs__/menulist-tools/public-truth-tools/public-truth-tools_firebase.md');
   const familyTests = read('__docs__/menulist-tools/public-truth-tools/public-truth-tools_test-cases.md');
@@ -294,13 +343,39 @@ function assertPublicToolInventoryBoundary() {
   const shareableVerifier = read('scripts/verification/verify-shareable-tool-reports.js');
   const enUS = JSON.parse(read('public/locales/menulist.ai/en-US.json'));
   const hiIN = JSON.parse(read('public/locales/menulist.ai/hi-IN.json'));
+  const publicUrlValidation = read('src/lib/public-truth-tools/publicUrlValidation.ts');
 
   assertIncludes(features, 'ENABLE_PUBLIC_TRUTH_TOOLS: true', 'Public Truth Tools family feature flag');
+  assertIncludes(features, 'ENABLE_PUBLIC_ASSET_TOOLS: true', 'Public asset tools family feature flag');
+  assertIncludes(features, 'ENABLE_PUBLIC_TRUTH_MONITOR_ADDON: true', 'Public Truth Monitor Add-On feature flag');
   assertIncludes(familyReadme, 'sixteen public tools', 'Public Truth Tools family count');
+  assertIncludes(familyReadme, 'eighteen owner readiness modules', 'Public Truth Tools owner module count');
   assertIncludes(familyReadme, 'owner fix lists', 'Public Truth Tools owner fix-list boundary');
   assertIncludes(familyImpl, 'buildOwnerPublicTruthSetupJobList', 'Public Truth Tools owner fix-list implementation');
   assertIncludes(familyTests, 'PTT-021', 'Public Truth Tools owner fix-list test boundary');
+  assertIncludes(familyTests, 'PTT-022', 'Public Truth Tools V2 paid add-on test boundary');
+  assertIncludes(familyTests, 'PTT-023', 'Public Truth Tools public HTTPS URL boundary test');
+  assertIncludes(familyTests, 'PTT-024', 'Public Truth Tools public HTTPS URL evidence text boundary test');
+  assertIncludes(familyReadme, 'shared public HTTPS URL validation', 'Public Truth Tools README shared URL boundary');
+  assertIncludes(familyImpl, '## 1.1C Public URL Boundary', 'Public Truth Tools implementation shared URL boundary');
+  assertIncludes(familySpec, 'shared public HTTPS URL boundary', 'Public Truth Tools spec shared URL boundary');
+  assertIncludes(publicUrlValidation, 'parsePublicHttpsUrl', 'Public Truth Tools shared public HTTPS URL parser');
+  assertIncludes(publicUrlValidation, "url.protocol !== 'https:'", 'Public Truth Tools shared URL parser must reject insecure protocols');
+  assertIncludes(publicUrlValidation, "normalized === 'localhost'", 'Public Truth Tools shared URL parser must reject localhost');
+  assertIncludes(publicUrlValidation, "normalized.endsWith('.local')", 'Public Truth Tools shared URL parser must reject local hostnames');
+  assertIncludes(publicUrlValidation, 'isPrivateIpv4', 'Public Truth Tools shared URL parser must reject private IPv4');
+  assertIncludes(publicUrlValidation, 'url.username || url.password', 'Public Truth Tools shared URL parser must reject credentialed URLs');
   assertIncludes(toolsReadme, '16 | Social Bio Link Consistency Check', 'MenuList Tools ranked tool count');
+  assertIncludes(toolsReadme, '[public-truth-monitor-addon](./public-truth-monitor-addon/README.md)', 'MenuList Tools V2 paid add-on docs link');
+  const ownerReadiness = read('src/lib/public-truth-tools/ownerPublicTruthReadiness.ts');
+  [
+    'business_facts_copy_pack',
+    'customer_faq_reply_pack',
+    'customer_link_preview',
+    'social_bio_link_consistency',
+    'whatsapp_reply_pack',
+    'print_share_assets',
+  ].forEach((moduleId) => assertIncludes(ownerReadiness, moduleId, `Owner readiness module ${moduleId}`));
 
   assertIncludes(headerComponent, '{ href: "/tools", key: "resourceToolsHub", icon: LuWrench }', 'desktop Resources dropdown Tools Hub link');
   assertIncludes(headerComponent, 'resourceDropdownLinks.map', 'shared resource dropdown renderer');
@@ -361,6 +436,7 @@ function assertPublicToolInventoryBoundary() {
     assertIncludes(features, `${docRoot}/${tool.slug}_impl.md`, `${tool.slug} feature flag doc pointer`);
 
     const route = read(routeFile);
+    const report = read(tool.reportPath);
     assertIncludes(route, `path="${routePath}"`, `${tool.slug} structured data path`);
     assertIncludes(route, 'FEATURE_FLAGS.ENABLE_PUBLIC_TRUTH_TOOLS', `${tool.slug} family feature flag route guard`);
     assertIncludes(route, `FEATURE_FLAGS.${tool.featureFlag}`, `${tool.slug} feature flag route guard`);
@@ -383,6 +459,16 @@ function assertPublicToolInventoryBoundary() {
 
     assertIncludes(shareableVerifier, tool.componentPath, `${tool.slug} shareable report source component`);
     assertIncludes(shareableVerifier, `'${tool.slug}'`, `${tool.slug} shareable report tool id`);
+    assertIncludes(report, 'publicUrlValidation', `${tool.slug} report must use the shared public URL boundary helper`);
+    assertIncludes(report, 'Public HTTPS', `${tool.slug} report must disclose the public HTTPS URL evidence boundary`);
+    assert(!report.includes("url.protocol === 'http:' || url.protocol === 'https:'"), `${tool.slug} report must not accept insecure HTTP URL protocols`);
+    assert(!report.includes("url.hostname === 'localhost'"), `${tool.slug} report must not treat localhost as a valid public URL`);
+    assert(!report.includes("url.hostname === '127.0.0.1'"), `${tool.slug} report must not treat loopback as a valid public URL`);
+    assert(!report.includes('hostLooksUsable'), `${tool.slug} report must not use the old local/HTTP URL helper`);
+    assert(!report.includes("return 'URL format was checked locally. The URL was not opened or fetched.'"), `${tool.slug} report must not use generic URL evidence text`);
+    assert(!report.includes("return 'Customer-link format was checked locally. The link was not opened or fetched.'"), `${tool.slug} report must not use generic customer-link evidence text`);
+    assert(!report.includes("return 'Customer link format was checked locally. The URL was not opened or fetched.'"), `${tool.slug} report must not use generic customer link evidence text`);
+    assert(!report.includes("return 'URL format was checked. The URL was not fetched and no Google profile was inspected.'"), `${tool.slug} report must not use generic public truth URL evidence text`);
 
     assert(enUS.Website?.[tool.localePage], `en-US ${tool.localePage} locale namespace must exist`);
     assert(hiIN.Website?.[tool.localePage], `hi-IN ${tool.localePage} locale namespace must exist`);
@@ -390,7 +476,39 @@ function assertPublicToolInventoryBoundary() {
     assert(hiIN.Website.ToolsHubPage?.tools?.[tool.key], `hi-IN Tools Hub ${tool.key} locale card must exist`);
   }
 
-  console.log(`Public Truth Tools inventory verification passed (${PUBLIC_TOOL_MANIFEST.length} public tools)`);
+  for (const tool of PUBLIC_ASSET_TOOL_MANIFEST) {
+    const routePath = `/tools/${tool.slug}`;
+    const routeFile = `src/app/(website)/tools/${tool.slug}/page.tsx`;
+
+    assert(exists(routeFile), `Public asset tool route missing for ${tool.slug}: ${routeFile}`);
+    assert(packageScripts['verify:print-share-tools'] === 'node scripts/verification/verify-print-share-tools.js', 'verify:print-share-tools must run node scripts/verification/verify-print-share-tools.js');
+    assertIncludes(features, `${tool.featureFlag}: true`, `${tool.slug} feature flag`);
+
+    const route = read(routeFile);
+    assertIncludes(route, `path="${routePath}"`, `${tool.slug} structured data path`);
+    assertIncludes(route, 'FEATURE_FLAGS.ENABLE_PUBLIC_TRUTH_TOOLS', `${tool.slug} public tools family feature flag route guard`);
+    assertIncludes(route, 'FEATURE_FLAGS.ENABLE_PUBLIC_ASSET_TOOLS', `${tool.slug} public asset tools feature flag route guard`);
+    assertIncludes(route, `FEATURE_FLAGS.${tool.featureFlag}`, `${tool.slug} feature flag route guard`);
+
+    assertIncludes(discoveryPolicy, `path: '${routePath}'`, `${tool.slug} discovery policy`);
+    assertIncludes(sitemap, `https://menulist.ai${routePath}`, `${tool.slug} sitemap`);
+    assertIncludes(llms, `https://menulist.ai${routePath}`, `${tool.slug} llms.txt`);
+    assertIncludes(llmsFull, `https://menulist.ai${routePath}`, `${tool.slug} llms-full.txt`);
+    assertIncludes(toolsReadme, '[print-share-tools](./print-share-tools/README.md)', `${tool.slug} MenuList Tools README family link`);
+
+    assertIncludes(toolsHubComponent, `href: '${routePath}'`, `${tool.slug} Tools Hub route`);
+    assertIncludes(toolsHubComponent, `key: '${tool.key}'`, `${tool.slug} Tools Hub key`);
+    assertIncludes(toolsHubVerifier, routePath, `${tool.slug} Tools Hub verifier route`);
+    assertIncludes(toolsHubVerifier, tool.key, `${tool.slug} Tools Hub verifier key`);
+    assertIncludes(shareableVerifier, 'src/components/website/printShareTools/PrintShareToolPage.tsx', `${tool.slug} shareable report source component`);
+
+    assert(enUS.Website.ToolsHubPage?.tools?.[tool.key], `en-US Tools Hub ${tool.key} locale card must exist`);
+    assert(hiIN.Website.ToolsHubPage?.tools?.[tool.key], `hi-IN Tools Hub ${tool.key} locale card must exist`);
+    assert(enUS.Website.PrintShareToolPage?.tools?.[tool.slug], `en-US PrintShareToolPage ${tool.slug} locale must exist`);
+    assert(hiIN.Website.PrintShareToolPage?.tools?.[tool.slug], `hi-IN PrintShareToolPage ${tool.slug} locale must exist`);
+  }
+
+  console.log(`MenuList public tools inventory verification passed (${PUBLIC_TOOL_MANIFEST.length} truth tools, ${PUBLIC_ASSET_TOOL_MANIFEST.length} asset tools)`);
 }
 
 assertPublicToolInventoryBoundary();

@@ -17,7 +17,7 @@ Do not publish one-click, instant, universal-language, full-menu, quality, custo
 - **CTA Link:** /features/multi-language
 
 ## Problem Statement
-Your restaurant serves customers who speak different languages. A menu only in English (or only in Hindi) means some customers can't read what you offer. They order less, ask more questions, and leave frustrated.
+Your restaurant may serve customers who speak different languages. A single-language menu can make the customer menu harder to read for some visitors.
 
 ## Solution Statement
 MenuList prepares localized menu fields for supported project languages. Item names, descriptions, categories, and supported public-facing labels can render in the customer-selected language when approved localized content exists.
@@ -30,11 +30,11 @@ Select a supported language and prepare a translated draft from the current appr
 
 ### 2. Review Localized Wording
 Review translated names, descriptions, categories, and supported labels before the customer-facing menu uses them.
-> **Visual:** Side-by-side: English menu item → naturally translated Hindi version
+> **Visual:** Side-by-side: source menu item → translated draft → owner-approved wording
 
 ### 3. Customers Choose Their Language
 When customers scan your QR code, they can choose from the published languages available for that menu. Supported localized fields render from the approved translated content.
-> **Visual:** Phone screen showing language picker with 3 flags
+> **Visual:** Phone screen showing language picker with published languages
 
 ## How It Works
 1. **Add a Language** — Select from supported languages in your project settings

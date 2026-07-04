@@ -7,9 +7,17 @@
 
 ---
 
+## Current Sales/Launch Boundary
+
+This collateral is internal source evidence for the lightweight PDF Surface. It is not current launch certification, visual print artifact approval, or a sales guarantee. Current release approval still requires the active [production-readiness audit](../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../production-readiness/external-certification-runbook.md) evidence, `npm run verify:menu-export`, authenticated desktop/mobile Share screen QA, visual PDF artifact review, target deploy evidence, and production-host smoke.
+
+Do not use fixed generation-speed, every-item, print-shop-quality, no-review, or stale-artifact freshness claims without release-specific evidence.
+
+---
+
 ## One-Line Pitch
 
-Every menu download looks like it came from a professional print shop — automatically.
+Download a versioned menu PDF generated from the current project data, then review the file before printing or sharing it.
 
 ---
 
@@ -21,21 +29,21 @@ Restaurant owners print menus from their phone or laptop. Without MenuList, this
 - The printed menu has no branding, no structure, no visual hierarchy
 - The owner has no way to know if the PDF they're holding matches current prices
 
-MenuList generates a print-ready PDF on demand, stamped with the current date and a version ID. The PDF looks like a real printed menu — not a Word document.
+MenuList generates a print-ready PDF on demand, stamped with the current date and a version ID. The file is a generated artifact, so owners should review the PDF and replace older downloads or printed copies after menu changes.
 
 ---
 
 ## What Makes It Different
 
-Traditional PDF tools give owners a blank canvas and ask them to design. MenuList gives owners nothing to configure — the system decides the layout, and the output is always professional.
+Traditional PDF tools give owners a blank canvas and ask them to design. MenuList keeps the lightweight PDF layout constrained and generated from the current project source so owners can review a consistent file without configuring a design tool.
 
 | Feature | Manual design tools | MenuList PDF Surface |
 |---------|--------------------|--------------------|
 | Layout | Owner designs | System-decided |
 | Source freshness | Only if owner remembers to update | Generated from the current project data at download time |
 | Version tracking | Never | Every PDF has a version ID |
-| Print quality | Depends on owner skill | Consistent, professional |
-| Time to print | 15–30 min design time | Under 5 seconds |
+| Print quality | Depends on owner skill | Consistent generated layout for review |
+| Time to print | 15-30 min design time | Requires release-specific timing evidence before quoting |
 
 ---
 
@@ -47,7 +55,7 @@ Traditional PDF tools give owners a blank canvas and ask them to design. MenuLis
 
 3. **"Works from your phone"** — Owner can generate and download a PDF from the Share screen on mobile. No desktop required.
 
-4. **"No setup needed"** — Owner never configures layout, colors, or fonts. Download once, looks professional every time.
+4. **"No setup needed"** — Owner does not configure layout, colors, or fonts in the lightweight PDF flow. Review the generated file before printing or sharing.
 
 ---
 

@@ -2,7 +2,7 @@
 
 > **Feature:** MenuList Business Facts Copy Pack
 > **Route:** `/tools/business-facts-copy-pack`
-> **Status:** Implemented V0 public browser-local tool
+> **Status:** Implemented V0 public browser-local tool and V1 owner readiness module
 > **Last Updated:** July 4, 2026
 
 ---
@@ -32,7 +32,7 @@ The tool exists because SMB owners repeatedly rewrite the same facts across Goog
 | Lane | Shape | Status |
 | --- | --- | --- |
 | V0 | Public free browser-local copy pack | Implemented |
-| V1 | Logged-in owner copy pack from current MenuList store/project truth | Documented only |
+| V1 | Logged-in owner readiness from current MenuList store/project truth | Implemented inside Business Health |
 | V2 | Paid recurring/multi-location/agency fact-copy governance | Documented only |
 
 ## Boundary

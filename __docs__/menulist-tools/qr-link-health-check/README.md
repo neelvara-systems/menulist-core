@@ -1,7 +1,7 @@
 # QR Link Health Check - Documentation Hub
 
 > **Feature:** QR Link Health Check
-> **Status:** Implemented - public V0 browser-local checker
+> **Status:** Implemented - public V0 browser-local checker and V1 owner readiness module
 > **Last Updated:** July 4, 2026
 > **Version:** 0.1
 
@@ -57,7 +57,7 @@ It is not:
 | Version | Product shape | Primary user | Input | Output | Runtime boundary | Status |
 | --- | --- | --- | --- | --- | --- | --- |
 | V0 | Public free tool / lead magnet | Prospect, owner, agency | Pasted URL that the QR opens, business name, city/locality, intended destination, and owner-marked visible facts | Basic QR target report, copy/download checklist, MenuList setup handoff, optional consented follow-up | Browser-local deterministic check; QR image is not decoded; target URL is not fetched; no AI/provider call; optional follow-up reuses `/api/public/contact` | Implemented |
-| V1 | Logged-in MenuList owner check | Existing MenuList owner | Existing MenuList store/project/public link truth | QR/share readiness inside Business Health, Public Discovery, or Share surfaces | Reuses owner store/project truth and current QR/link generation contracts; no report storage by default | Planned |
+| V1 | Logged-in MenuList owner check | Existing MenuList owner | Existing MenuList store/project/public link truth | QR/share readiness inside Business Health, Public Discovery, or Share surfaces | Reuses owner store/project truth and current QR/link generation contracts; no report storage by default | Implemented |
 | V2 | Paid add-on behavior | Multi-location owner, partner, agency | Owner-approved locations, printed QR inventory, schedule, and report scope | Recurring QR health history, multi-location QR table, monthly report, agency export | Paid entitlement, capped history, owner-approved locations, no per-scan ledger | Planned |
 
 ---

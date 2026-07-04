@@ -3,7 +3,7 @@
 > **Tool:** WhatsApp Reply Pack
 > **Family:** MenuList Public Truth Tools
 > **Route:** `/tools/whatsapp-reply-pack`
-> **Status:** Implemented V0 public browser-local tool
+> **Status:** Implemented V0 public browser-local tool and V1 owner readiness module
 > **Last Updated:** July 4, 2026
 
 ---
@@ -33,7 +33,7 @@ The tool exists because many small businesses answer the same customer questions
 | Lane | Shape | Status |
 | --- | --- | --- |
 | V0 | Public free browser-local reply pack | Implemented |
-| V1 | Logged-in owner reply pack from current MenuList store/project truth | Documented only |
+| V1 | Logged-in owner readiness from current MenuList store/project truth | Implemented inside Business Health |
 | V2 | Paid recurring/multi-location/agency reply governance | Documented only |
 
 ## Boundary

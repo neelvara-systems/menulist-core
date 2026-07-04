@@ -16,6 +16,7 @@ The route groups current tools by owner job:
 - Public Truth
 - Menu / Service Clarity
 - Customer Action Readiness
+- Print & Share Assets
 - Trust / Setup
 
 The hub does not run a report. It routes owners to the individual tool routes that already preserve their own evidence text, source policy, and report boundary.
@@ -54,6 +55,7 @@ Tools Hub is V0 public website infrastructure. It is not a paid add-on by itself
 | Public Truth | Public Truth Check, Business Facts Copy Pack, Customer Question Coverage Check, Customer FAQ Reply Pack, One Customer Link Preview, Social Bio Link Consistency Check, Google Profile Basics Checklist |
 | Menu / Service Clarity | Menu Readability Check, Price Availability Gap Check, Menu PDF Cleanup Check |
 | Customer Action Readiness | QR Link Health Check, Booking Inquiry Readiness Check, WhatsApp Action Link Check, WhatsApp Reply Pack, Hours Check |
+| Print & Share Assets | QR Poster Maker, WhatsApp Menu Status Maker, Holiday Hours Poster Maker, Customer Link Card Maker, Feedback QR Card Maker |
 | Trust / Setup | Photo Gap Check |
 
 ---

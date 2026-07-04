@@ -1,7 +1,7 @@
 # Hours Check - Documentation Hub
 
 > **Tool:** MenuList Hours & Holiday Hours Check
-> **Status:** Implemented - V0 public browser-local checker
+> **Status:** Implemented - V0 public browser-local checker and V1 owner readiness module
 > **Last Updated:** July 4, 2026
 > **Route:** `/tools/hours-check`
 
@@ -38,8 +38,8 @@ The tool checks owner-entered hours facts. It does not inspect Google, maps, web
 | Version | Product shape | Status |
 | --- | --- | --- |
 | V0 | Public free tool at `/tools/hours-check` | Implemented |
-| V1 | Logged-in MenuList owner check inside Business Health, Public Discovery, OBP readiness, or Share/QR readiness | Not implemented |
-| V2 | Paid recurring hours monitor with history, multi-location reports, and agency exports | Not implemented |
+| V1 | Logged-in MenuList owner check inside Business Health, Public Discovery, OBP readiness, or Share/QR readiness | Implemented |
+| V2 | Paid recurring hours monitor with history, multi-location reports, and agency exports | Documented only |
 
 ---
 

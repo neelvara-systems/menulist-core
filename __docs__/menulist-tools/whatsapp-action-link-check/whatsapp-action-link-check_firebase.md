@@ -51,7 +51,7 @@ V0 does not persist:
 
 ---
 
-## Future V1/V2 Cost Requirements
+## V1/V2 Cost Requirements
 
 Any future logged-in or paid behavior must document:
 

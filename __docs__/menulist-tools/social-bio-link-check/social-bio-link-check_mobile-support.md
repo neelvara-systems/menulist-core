@@ -10,7 +10,9 @@ The public route uses existing website responsive components. It works as a lead
 
 ## V1
 
-V1 maps to existing owner mobile Share, Public Discovery, and Business Health surfaces. It should not become a separate mobile dashboard.
+V1 maps to existing owner mobile Share, Public Discovery, and Business Health surfaces.
+
+V1 uses the shared Business Health/Public Truth owner card and routes to existing owner mobile Share, Public Discovery, and Business Health surfaces. It should not become a separate mobile dashboard.
 
 Expected owner-mobile mapping:
 

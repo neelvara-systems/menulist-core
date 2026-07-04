@@ -12298,7 +12298,7 @@ body[data-menulist-website="true"] {
   display: flex;
   align-items: center;
   gap: var(--ws-space-2);
-  min-height: 46px;
+  min-height: 48px;
   padding: 0.72rem 0.82rem;
   border: 1px solid var(--ws-border-default);
   border-radius: var(--ws-radius-md);
@@ -12314,8 +12314,8 @@ body[data-menulist-website="true"] {
 }
 
 .ws-public-truth-check-facts input {
-  width: 17px;
-  height: 17px;
+  width: 22px;
+  height: 22px;
   accent-color: var(--ws-brand-secondary);
   flex: 0 0 auto;
 }
@@ -13059,6 +13059,108 @@ body[data-menulist-website="true"] {
   color: var(--ws-text-muted);
   font-size: 0.82rem;
   line-height: 1.45;
+}
+
+.ws-print-share-tool-preview {
+  display: grid;
+  place-items: center;
+  margin-top: var(--ws-space-5);
+  padding: clamp(0.8rem, 2vw, 1.2rem);
+  border: 1px solid var(--ws-border-default);
+  border-radius: var(--ws-radius-md);
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--ws-bg-subtle) 92%, var(--ws-brand-secondary) 8%), var(--ws-bg-surface));
+}
+
+.ws-print-share-tool-preview img {
+  display: block;
+  width: min(100%, 520px);
+  max-height: 680px;
+  border-radius: calc(var(--ws-radius-md) - 2px);
+  background: #fff;
+  box-shadow: var(--ws-shadow-lg);
+  object-fit: contain;
+}
+
+.ws-print-share-tool-mini-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ws-space-2);
+  margin-top: var(--ws-space-2);
+}
+
+.ws-print-share-tool-mini-grid a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 36px;
+  padding: 0.42rem 0.72rem;
+  border: 1px solid var(--ws-border-default);
+  border-radius: var(--ws-radius-md);
+  background: var(--ws-bg-subtle);
+  color: var(--ws-text-secondary);
+  font-size: 0.84rem;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.ws-print-share-tool-mini-grid a:hover,
+.ws-print-share-tool-mini-grid a:focus-visible,
+.ws-print-share-tool-mini-grid a.is-active {
+  border-color: color-mix(in srgb, var(--ws-brand-secondary) 42%, var(--ws-border-default));
+  color: var(--ws-brand-secondary);
+  outline: none;
+}
+
+.ws-print-share-tool-report-link-box {
+  display: grid;
+  gap: var(--ws-space-3);
+  width: 100%;
+  padding-top: var(--ws-space-2);
+}
+
+.ws-print-share-tool-report-link-box label {
+  display: grid;
+  gap: var(--ws-space-2);
+}
+
+.ws-print-share-tool-report-link-box span {
+  color: var(--ws-text-secondary);
+  font-size: 0.85rem;
+  font-weight: 800;
+}
+
+.ws-print-share-tool-report-link-box input {
+  width: 100%;
+  min-height: 44px;
+  padding: 0.72rem 0.84rem;
+  border: 1px solid var(--ws-border-default);
+  border-radius: var(--ws-radius-md);
+  background: var(--ws-bg-surface);
+  color: var(--ws-text-primary);
+  font-size: 0.82rem;
+}
+
+.ws-print-share-tool-report-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--ws-space-2);
+  min-height: 44px;
+  width: fit-content;
+  padding: 0.68rem 0.9rem;
+  border: 1px solid color-mix(in srgb, var(--ws-brand-secondary) 32%, var(--ws-border-default));
+  border-radius: var(--ws-radius-md);
+  color: var(--ws-brand-secondary);
+  font-size: 0.9rem;
+  font-weight: 850;
+  text-decoration: none;
+}
+
+.ws-print-share-tool-report-link:hover,
+.ws-print-share-tool-report-link:focus-visible {
+  background: color-mix(in srgb, var(--ws-brand-secondary) 10%, var(--ws-bg-surface));
+  color: var(--ws-brand-secondary);
+  outline: none;
 }
 
 @media (max-width: 980px) {

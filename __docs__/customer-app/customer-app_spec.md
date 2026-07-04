@@ -3,7 +3,7 @@
 **Feature Name:** Customer App (Installable Customer-Facing Menu)  
 **Document Type:** Product Requirements Document (PRD)  
 **Status:** Runtime implemented and source-gated; manual device QA still required
-**Last Updated:** July 2, 2026
+**Last Updated:** July 4, 2026
 **Audience:** Product, CEO, Business Teams, Non-Technical Stakeholders
 
 ---
@@ -20,7 +20,7 @@ An **installable customer retention surface** that:
 - Shows the restaurant's logo and name (not MenuList branding)
 - Opens directly to the menu — no browser chrome
 - Works on iPhone and Android without app store downloads
-- Requires zero maintenance from the restaurant owner
+- Requires no custom app build or daily app maintenance from the restaurant owner
 
 ### What It Is NOT
 
@@ -28,17 +28,17 @@ An **installable customer retention surface** that:
 - ❌ A custom app with configurable colors, layouts, or behavior
 - ❌ An ordering system with checkout (menu remains read-only)
 - ❌ A loyalty program or gamification tool
-- ❌ Push notifications (deferred to future phase)
+- ❌ Push notifications (not part of the frozen Customer App runtime; requires separate architecture review)
 
 ### Business Value
 
 | Metric                     | Value                                     |
 | -------------------------- | ----------------------------------------- |
-| Customer Retention         | One-tap access increases repeat visits    |
-| Brand Ownership            | Restaurant's app icon on customer phones  |
-| Zero Owner Effort          | Auto-generated from existing menu data    |
-| Competitive Moat           | "Your own customer app" vs. "a menu link" |
-| Infrastructure Positioning | MenuList powers thousands of branded apps |
+| Customer Retention         | One-tap access reduces steps for repeat visitors; retention lift requires cohort evidence |
+| Brand Ownership            | Restaurant's app icon on customer phones                                          |
+| Owner Effort               | No custom app build; settings and branding are MenuList-managed                   |
+| Competitive Moat           | "Your own customer app" vs. "a menu link"                                        |
+| Infrastructure Positioning | MenuList can serve branded installable surfaces per eligible store                |
 
 ---
 
@@ -53,12 +53,12 @@ An **installable customer retention surface** that:
 
 ### Success Metrics
 
-| Metric                  | Target                  | How Measured         |
-| ----------------------- | ----------------------- | -------------------- |
-| Install conversion rate | >5% of repeat visitors  | Install analytics    |
-| App opens per month     | >3 per installed user   | Usage analytics      |
-| Owner activation rate   | >60% enable the feature | Feature flag metrics |
-| Customer retention lift | +20% repeat visit rate  | Cohort analysis      |
+| Metric                  | Evidence Rule                                      | How Measured         |
+| ----------------------- | -------------------------------------------------- | -------------------- |
+| Install conversion rate | Release-specific target; not certified by this spec | Install analytics    |
+| App opens per month     | Release-specific target; not certified by this spec | Usage analytics      |
+| Owner activation rate   | Release-specific target; not certified by this spec | Feature flag metrics |
+| Customer retention lift | Requires cohort analysis before any public claim    | Cohort analysis      |
 
 ---
 
@@ -86,7 +86,7 @@ An **installable customer retention surface** that:
 | Feature                                  | Rejection Reason                                              |
 | ---------------------------------------- | ------------------------------------------------------------- |
 | Offline menu caching                     | Strategic decision — no caching                               |
-| Push notifications                       | Deferred — scope protection                                   |
+| Push notifications                       | Not part of frozen Customer App runtime; requires separate architecture review |
 | Background sync                          | Not needed without offline                                    |
 | Theme customization                      | Avoids website-builder complexity                             |
 | App layout changes                       | System behavior fixed, identity only dynamic                  |
@@ -109,7 +109,7 @@ An **installable customer retention surface** that:
 | #   | As a...          | I want to...                                        | So that...                                   |
 | --- | ---------------- | --------------------------------------------------- | -------------------------------------------- |
 | C1  | Regular customer | Add my favorite restaurant to my home screen        | I can open their menu with one tap           |
-| C2  | Customer         | See the restaurant's logo as the app icon           | I recognize it instantly among my apps       |
+| C2  | Customer         | See the restaurant's logo as the app icon           | I recognize it quickly among my apps         |
 | C3  | Customer         | Call the restaurant directly from the app shortcuts | I can order without searching for the number |
 | C4  | Customer         | Get directions from the app shortcuts               | I can find the restaurant easily             |
 
@@ -635,7 +635,7 @@ Detailed breakdown in `customer-app_firebase.md`.
 
 **What It Does:**
 
-- Installs immediately (`skipWaiting`)
+- Calls `skipWaiting` during service-worker install
 - Claims clients on activate
 - NO caching logic
 - NO precache
@@ -756,4 +756,4 @@ This creates natural lock-in without contracts.
 ---
 
 _Document Status: Source-gated runtime evidence; not standalone launch certification_
-_Last Updated: July 2, 2026_
+_Last Updated: July 4, 2026_

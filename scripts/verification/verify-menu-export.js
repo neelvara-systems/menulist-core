@@ -228,8 +228,11 @@ async function main() {
         [pdfSurfaceDocs.spec, 'version ID and generation timestamp', 'PDF Surface spec version evidence'],
         [pdfSurfaceDocs.marketing, 'Generated from the current project data at download time', 'PDF Surface marketing generation-time boundary'],
         [pdfSurfaceDocs.marketing, 'The version is clear', 'PDF Surface marketing versioned talking point'],
+        [pdfSurfaceDocs.marketing, 'Do not use fixed generation-speed, every-item, print-shop-quality, no-review, or stale-artifact freshness claims without release-specific evidence.', 'PDF Surface marketing claim boundary'],
+        [pdfSurfaceDocs.marketing, 'review the file before printing or sharing it', 'PDF Surface marketing review-before-use boundary'],
         [pdfSurfaceDocs.helpdoc, 'Download a fresh PDF after menu changes', 'PDF Surface helpdoc freshness boundary'],
         [pdfSurfaceDocs.helpdoc, 'printed or shared copies represent the version generated at that time', 'PDF Surface helpdoc generated-artifact boundary'],
+        [pdfSurfaceDocs.helpdoc, 'Review the file before printing or sharing it.', 'PDF Surface helpdoc review-before-use boundary'],
         [pdfSurfaceDocs.website, 'Your menu. Print-ready. Versioned.', 'PDF Surface website versioned headline'],
         [pdfSurfaceDocs.website, 'Generated from current project data at download time', 'PDF Surface website generation-time boundary'],
         [pdfSurfaceDocs.website, 'Download a print-ready PDF generated from current project data at download time.', 'PDF Surface website speed-claim replacement'],
@@ -240,9 +243,11 @@ async function main() {
         [pdfSurfaceDocs.audit, 'PDF and physical-surface freshness-copy checkpoint', 'Production audit records PDF/physical freshness checkpoint'],
         [pdfSurfaceDocs.audit, '`npm run verify:menu-export` now rejects stale PDF/physical-surface always-current artifact claims', 'Production audit records PDF/physical verifier boundary'],
         [pdfSurfaceDocs.audit, 'PDF Surface website speed/all-field copy checkpoint', 'Production audit records PDF website speed/all-field checkpoint'],
+        [pdfSurfaceDocs.audit, 'PDF Surface marketing/help fixed-speed print-quality copy checkpoint', 'Production audit records PDF marketing/help speed/quality checkpoint'],
         [pdfSurfaceDocs.changelog, 'PDF And Physical Surface Freshness Copy Boundary', 'Changelog records PDF/physical freshness checkpoint'],
         [pdfSurfaceDocs.changelog, '`npm run verify:menu-export` now rejects stale PDF/physical-surface always-current artifact claims', 'Changelog records PDF/physical verifier boundary'],
         [pdfSurfaceDocs.changelog, 'PDF Surface Website Speed All-Field Copy Boundary', 'Changelog records PDF website speed/all-field checkpoint'],
+        [pdfSurfaceDocs.changelog, 'PDF Surface Marketing Help Fixed-Speed Print-Quality Copy Boundary', 'Changelog records PDF marketing/help speed/quality checkpoint'],
     ].forEach(([content, token, label]) => {
         assert(content.includes(token), `${label} must include ${token}`);
     });
@@ -264,6 +269,12 @@ async function main() {
         'always matching',
         'Download a print-ready PDF of your menu in seconds',
         'Every item, every price, every category',
+        'Every menu download looks like it came from a professional print shop',
+        'the output is always professional',
+        'Under 5 seconds',
+        'within a few seconds',
+        'looks professional every time',
+        'Everything is handled automatically',
     ];
     const pdfFreshnessDocs = `${pdfSurfaceDocs.spec}\n${pdfSurfaceDocs.marketing}\n${pdfSurfaceDocs.helpdoc}\n${pdfSurfaceDocs.website}\n${pdfSurfaceDocs.physicalWebsite}`;
     pdfFreshnessForbiddenTokens.forEach((token) => {

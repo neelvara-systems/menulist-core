@@ -23,6 +23,6 @@ const PUT = (path: string, data: any, config: AxiosRequestConfig = {}): Promise<
     axios.put(path, data, getAxiosConfig(config));
 
 const PATCH = (path: string, data: any, config: AxiosRequestConfig = {}): Promise<AxiosResponse> =>
-    axios.post(path, data, getAxiosConfig(config));
+    axios.patch(path, data, getAxiosConfig(config));
 
 export const axiosClient = { GET, DELETE, POST, PUT, PATCH };

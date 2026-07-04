@@ -22,7 +22,7 @@ The only write path is the existing `/api/public/contact` route after explicit c
 
 ## V1 Boundary
 
-V1 should reuse existing owner truth, Share/QR readiness, Public Discovery, Business Health, and mobile shell contracts. Do not add a new Firestore collection for this V1 unless recurrence/history becomes a paid add-on.
+V1 uses the `social_bio_link_consistency` owner module and reuses existing owner truth, Share/QR readiness, Public Discovery, Business Health, and mobile shell contracts. Do not add a new Firestore collection for this V1 unless recurrence/history becomes a paid add-on.
 
 ## V2 Boundary
 

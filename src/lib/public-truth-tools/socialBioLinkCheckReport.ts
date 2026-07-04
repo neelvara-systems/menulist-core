@@ -1,3 +1,4 @@
+import { isPublicHttpsUrl as isValidHttpUrl } from './publicUrlValidation';
 import type {
   SocialBioLinkCheckEvidence,
   SocialBioLinkCheckId,
@@ -16,28 +17,6 @@ function trimToSingleLine(value?: string): string {
   return (value || '').replace(/\s+/g, ' ').trim();
 }
 
-function getUrlWithProtocol(value: string): string {
-  if (/^https?:\/\//i.test(value)) return value;
-  if (/^[a-z0-9.-]+\.[a-z]{2,}(?:[/:?#].*)?$/i.test(value)) {
-    return `https://${value}`;
-  }
-  return value;
-}
-
-function isValidHttpUrl(value: string): boolean {
-  if (!value) return false;
-
-  try {
-    const url = new URL(getUrlWithProtocol(value));
-    const hostLooksUsable = url.hostname === 'localhost'
-      || url.hostname === '127.0.0.1'
-      || url.hostname.includes('.');
-    return (url.protocol === 'http:' || url.protocol === 'https:') && hostLooksUsable;
-  } catch {
-    return false;
-  }
-}
-
 function getSocialBioLinkCheckEvidenceText(evidence: SocialBioLinkCheckEvidence): string {
   switch (evidence) {
     case 'owner_entered':
@@ -45,9 +24,9 @@ function getSocialBioLinkCheckEvidenceText(evidence: SocialBioLinkCheckEvidence)
     case 'owner_selected':
       return 'Checked owner-selected social/profile link facts only. No social profile was opened, fetched, inspected, or changed.';
     case 'valid_customer_url':
-      return 'Customer-link format was checked locally. The link was not opened or fetched.';
+      return 'Public HTTPS customer-link format was checked locally. The link was not opened or fetched.';
     case 'invalid_customer_url':
-      return 'Customer-link format was checked locally. The link was not opened or fetched.';
+      return 'Public HTTPS customer-link format was checked locally. The link was not opened or fetched.';
     case 'not_provided':
       return 'This placement was not confirmed by the owner.';
     case 'not_checked':

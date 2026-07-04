@@ -50,15 +50,20 @@ Cross-Origin Resource Sharing (CORS) validation prevents unauthorized domains fr
 ```typescript
 const ALLOWED_ORIGINS = [
   process.env.NEXT_PUBLIC_APP_URL,
-  "http://localhost:3000",
-  "http://localhost:3001",
-].filter(Boolean) as string[];
+  ...(!isProductionRuntime ? LOCAL_DEVELOPMENT_ORIGINS : []),
+  PLATFORM_URL,
+  DASHBOARD_URL,
+].filter((origin): origin is string =>
+  Boolean(origin) && (!isProductionRuntime || !isLocalDevelopmentOrigin(origin))
+);
 ```
 
 **Configuration**:
 
 - Production: `NEXT_PUBLIC_APP_URL` from environment
-- Development: `localhost:3000` and `localhost:3001`
+- Production domains: `PLATFORM_URL` and `DASHBOARD_URL`
+- Development: localhost origins from `LOCAL_DEVELOPMENT_ORIGINS`
+- Localhost origins are filtered out in production, including a misconfigured `NEXT_PUBLIC_APP_URL`
 - Whitelist only, no wildcard `*`
 
 ---
@@ -357,15 +362,13 @@ Access to fetch at 'http://localhost:3000/api/...' from origin 'http://localhost
 has been blocked by CORS policy
 ```
 
-**Solution**: Add dev origins to whitelist
+**Solution**: Add dev origins to the development-only list
 
 ```typescript
-const ALLOWED_ORIGINS = [
-  process.env.NEXT_PUBLIC_APP_URL,
+const LOCAL_DEVELOPMENT_ORIGINS = [
   "http://localhost:3000",
-  "http://localhost:3001", // ← Add this
-  "http://localhost:5173", // Vite dev server
-].filter(Boolean) as string[];
+  "http://127.0.0.1:3000",
+];
 ```
 
 ---

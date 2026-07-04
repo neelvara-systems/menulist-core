@@ -22,7 +22,7 @@ V0 is a public website tool and must work on mobile browsers. It is not an owner
 | Touch | Pass | Inputs, select controls, checkbox, and report actions work with thumb interaction |
 | Value | Pass | Owners often manage hours from phone, especially around holidays or closures |
 
-Result: public mobile web support is required. Owner-PWA V1 should be considered only when using existing MenuList store/project truth inside Business Health, Public Discovery, OBP readiness, or Share/QR readiness.
+Result: public mobile web support is required. Owner-PWA V1 is implemented through existing MenuList store/project truth inside the shared Business Health/Public Truth owner card.
 
 ---
 
@@ -43,7 +43,7 @@ Result: public mobile web support is required. Owner-PWA V1 should be considered
 | Google/maps inspection | Not implemented |
 | Holiday calendar lookup | Not implemented |
 | Report storage | Not implemented |
-| Owner PWA card | Not implemented |
-| MobileShell route | Not implemented |
+| Dedicated owner PWA card | Not implemented; shared Business Health module is implemented |
+| Separate MobileShell route | Not implemented; shared Business Health route is used |
 
-V1 owner check should reuse existing MenuList truth and mobile shell patterns if added later.
+V1 owner check reuses existing MenuList truth and mobile shell patterns.

@@ -2,7 +2,7 @@
 
 ## Quick Summary
 
-Your digital menu is what customers see when they scan your QR code. It shows your menu items, prices, and categories from your latest published MenuList data, on any phone.
+Your digital menu is what customers see when they scan your QR code. It shows the owner-approved published MenuList data through the current public menu path, on supported phones and browsers.
 
 ---
 
@@ -20,7 +20,7 @@ Your digital menu is what customers see when they scan your QR code. It shows yo
 1. Go to **Projects** in your dashboard
 2. Click **Create New Project** and give it a name (e.g., "Food Menu")
 3. Upload your menu (photo, PDF, or enter items manually)
-4. Wait for the system to extract your items — this takes about 30 seconds
+4. Wait for the system to extract your items. Processing time depends on file quality, menu size, provider status, and current system load.
 5. Review and edit your items in the Editor
 6. Click **Preview** to see how customers will see it
 7. Your QR code is ready — print it and place it on tables!
@@ -114,7 +114,7 @@ Your digital menu is what customers see when they scan your QR code. It shows yo
 **How to fix it:**
 
 1. Reduce image sizes in the editor (the system compresses automatically, but very large originals take longer)
-2. The menu is optimized for mobile — it should load in under 2 seconds on a normal connection
+2. The menu is optimized for mobile, but load speed still depends on menu size, images, device, connection, and current hosting/provider behavior.
 3. If the customer's connection drops, the installed customer app shows a clear offline screen and reloads the live menu after reconnecting
 
 ### Items are showing in the wrong order

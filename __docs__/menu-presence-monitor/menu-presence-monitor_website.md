@@ -9,19 +9,19 @@
 ## Hero Section
 
 **Headline:** Know where your menu is visible
-**Subheadline:** A simple checklist shows you which surfaces have your menu — Google, Instagram, WhatsApp, QR, screens — and which ones you still need to set up.
+**Subheadline:** A simple checklist shows MenuList-recorded QR/screen/feedback readiness and owner-confirmed external placements for Google, Instagram, and WhatsApp.
 **CTA:** Upload Your Menu →
 
 ## Feature Benefit Block
 
 **Title:** Menu Visibility Check
-**Description:** See at a glance whether your menu is on Google Business, Instagram, WhatsApp, and every QR surface. One tap to confirm each one.
+**Description:** See recorded and confirmed menu placement status in one place. MenuList records product actions where it can, and owners confirm external placements after adding the link.
 **Visual:** Checklist card with ✓/⚠ status icons
 
 ## SEO Meta
 
 - **Page Title:** Menu Presence Monitor — See Where Your Menu Is Visible | MenuList
-- **Meta Description:** Check if your menu is visible on Google, Instagram, WhatsApp, and QR codes. Simple status signals help you deploy your menu everywhere customers look.
+- **Meta Description:** See MenuList-recorded readiness and owner-confirmed placement status for Google, Instagram, WhatsApp, QR, screens, and feedback.
 - **Keywords:** menu visibility, restaurant menu distribution, QR menu deployment
 
 ---

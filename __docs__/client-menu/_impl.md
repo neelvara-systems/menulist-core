@@ -681,19 +681,19 @@ useEffect(() => {
 | Availability             | Sold out items fade                     | ✅ PASS |
 | Time-Based               | Categories show/hide by time            | ✅ PASS |
 | Analytics                | Events tracked correctly                | ✅ PASS |
-| Offline                  | Cached content accessible               | ✅ PASS |
+| Offline                  | Clear reconnect screen; no stale menu cache | Source gate only |
 | State persistence        | Scroll/filter restored                  | ✅ PASS |
 | Back button              | Modal closes, doesn't exit              | ✅ PASS |
 
 ### Performance Metrics
 
-| Metric                   | Target  | Actual | Status  |
-| ------------------------ | ------- | ------ | ------- |
-| First Contentful Paint   | < 1.5s  | 1.2s   | ✅ PASS |
-| Largest Contentful Paint | < 2.5s  | 2.1s   | ✅ PASS |
-| Time to Interactive      | < 3.5s  | 2.8s   | ✅ PASS |
-| Total Blocking Time      | < 300ms | 180ms  | ✅ PASS |
-| Cumulative Layout Shift  | < 0.1   | 0.05   | ✅ PASS |
+| Metric                   | Target  | Current status |
+| ------------------------ | ------- | -------------- |
+| First Contentful Paint   | Target release evidence required | Not certified by this historical implementation note |
+| Largest Contentful Paint | Target release evidence required | Not certified by this historical implementation note |
+| Time to Interactive      | Target release evidence required | Not certified by this historical implementation note |
+| Total Blocking Time      | Target release evidence required | Not certified by this historical implementation note |
+| Cumulative Layout Shift  | Target release evidence required | Not certified by this historical implementation note |
 
 ### Firestore Reads Per Page Load
 

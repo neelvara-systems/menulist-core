@@ -47,13 +47,13 @@ Expected mobile behavior:
 | Phone verification | Not implemented |
 | Camera/QR scanning | Not implemented |
 | File upload | Not implemented |
-| Owner mobile PWA card | Not implemented |
+| Dedicated owner mobile PWA card | Not implemented; shared Business Health module is implemented |
 
 ---
 
 ## V1 Owner Mobile Direction
 
-If this becomes an owner-side check, it should appear inside an existing owner surface such as Business Health, Public Discovery, OBP readiness, Share, or QR readiness.
+The owner-side check appears inside the shared Business Health/Public Truth owner card rather than a separate WhatsApp dashboard.
 
 Owner mobile implementation should reuse:
 

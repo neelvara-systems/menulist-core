@@ -2155,7 +2155,7 @@
     "saveQrImage": "Save QR Image",
     "obpNudgeHint": "This is your official menu link. Send this whenever customers ask for your menu.",
     "obpShareHint": "Share this link everywhere — customers see your business info + menu",
-    "menuNudgeHint": "Print and place on tables or counter. Customers can always access your latest menu.",
+    "menuNudgeHint": "Print and place on tables or counter. Customers can open the approved menu link.",
     "menuScanHint": "Scan to view your menu",
     "menuPdf": "Menu PDF",
     "menuPdfDesc": "Download printable menu for your shop",
@@ -2706,7 +2706,7 @@
         "linkCopied": "Link copied",
         "couldNotCopy": "Could not copy link",
         "title": "This is your official customer menu link",
-        "description": "Use this instead of sending menu photos or PDFs. Customers will always see your latest menu.",
+        "description": "Use this instead of sending menu photos or PDFs. Customers open the owner-approved menu link.",
         "copied": "Copied",
         "copy": "Copy"
       },
@@ -3369,8 +3369,8 @@
       "obp3Desc": "Copy a ready-to-send message for WhatsApp. When customers ask for your menu, just paste — link included.",
       "obp4Title": "Search & discovery ready",
       "obp4Desc": "Clear business details help search engines and discovery tools understand your page. Your official page gives them a clearer page to read when they choose to read or show public menu details.",
-      "obp5Title": "Always Correct",
-      "obp5Desc": "Hours, prices, availability, and recent updates stay on the same official page. Customers see what's real, not what's outdated.",
+      "obp5Title": "Current page cues",
+      "obp5Desc": "Hours, prices, availability, and recent update cues can sit on the same official page so customers are less likely to trust old files.",
       "ctaTitle": "Your menu deserves one official home.",
       "ctaCta": "Upload your menu →",
       "ctaCaption": "Start in minutes. No technical setup. No ongoing work."

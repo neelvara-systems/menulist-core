@@ -20,7 +20,7 @@ Implemented files:
 | `src/lib/public-truth-tools/menuReadabilityReport.ts` | Deterministic pasted-text checks |
 | `scripts/verification/verify-menu-readability-check.js` | Boundary verifier for route, flags, docs, locales, discovery, and no external fetch |
 
-No V1 owner card, paid add-on history, file upload, PDF parser, OCR, report API route, storage path, Cloud Function, or AI/search provider call is implemented in V0.
+V1 owner readiness is implemented through the shared Business Health/Public Truth owner card. No standalone readability dashboard, paid add-on history, file upload, PDF parser, OCR, report API route, storage path, Cloud Function, or AI/search provider call is implemented in V0.
 
 ---
 
@@ -166,7 +166,7 @@ If upload or AI cleanup is later approved, it must use an approved setup/manual-
 
 ## 8. V1 Owner Implementation Direction
 
-V1 should reuse existing owner truth and project DAL:
+V1 reuses existing owner truth and project DAL:
 
 - active project/menu/service data
 - item/service categories

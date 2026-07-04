@@ -13,18 +13,6 @@ import { DASHBOARD_URL, PLATFORM_URL } from '@constant/urls';
 import { NextResponse } from 'next/server';
 import { secureLog } from './secureLogger';
 
-/**
- * Allowed origins for CORS requests
- * @see src/constants/urls.ts — Single source of truth for platform URLs
- */
-const ALLOWED_ORIGINS = [
-    process.env.NEXT_PUBLIC_APP_URL,
-    'http://localhost:3000',
-    ...(process.env.NODE_ENV !== 'production' ? ['http://127.0.0.1:3000'] : []),
-    PLATFORM_URL,
-    DASHBOARD_URL,
-].filter(Boolean) as string[]; // Remove undefined values
-
 const parseOrigin = (value: string | null): URL | null => {
     if (!value) return null;
 
@@ -34,6 +22,33 @@ const parseOrigin = (value: string | null): URL | null => {
         return null;
     }
 };
+
+const isProductionRuntime = process.env.NODE_ENV === 'production';
+const LOCAL_DEVELOPMENT_ORIGINS = [
+    'http://localhost:3000',
+    'http://127.0.0.1:3000',
+];
+
+const isLocalDevelopmentOrigin = (origin: string): boolean => {
+    const originUrl = parseOrigin(origin);
+    if (!originUrl) return false;
+
+    return originUrl.hostname === 'localhost'
+        || originUrl.hostname === '127.0.0.1'
+        || originUrl.hostname === '::1'
+        || originUrl.hostname.startsWith('192.168.');
+};
+
+/**
+ * Allowed origins for CORS requests
+ * @see src/constants/urls.ts — Single source of truth for platform URLs
+ */
+const ALLOWED_ORIGINS = [
+    process.env.NEXT_PUBLIC_APP_URL,
+    ...(!isProductionRuntime ? LOCAL_DEVELOPMENT_ORIGINS : []),
+    PLATFORM_URL,
+    DASHBOARD_URL,
+].filter((origin): origin is string => Boolean(origin) && (!isProductionRuntime || !isLocalDevelopmentOrigin(origin)));
 
 const isConfiguredOriginAllowed = (origin: string, allowedOrigin: string): boolean => {
     const originUrl = parseOrigin(origin);

@@ -27,12 +27,12 @@ Provide a hierarchical documentation system where platform administrators create
 
 ### Out of Scope
 
-- Tenant-specific KB (articles are platform-wide, shared across all tenants)
+- Cross-tenant shared KB; workspace KB articles and categories are tenant/store scoped, with platform-admin administrative access only
 - Article versioning / revision history
 - Article commenting / discussion threads
 - Multi-language articles
 - Article scheduling (publish at future date)
-- Article permissions (all published articles visible to all owners)
+- Cross-tenant article visibility; published articles are visible only through the scoped workspace/public content path unless opened by a platform admin
 
 ---
 
@@ -256,13 +256,13 @@ Content: {plainTextFromTipTapJSON}
 
 | Aspect             | Implementation                                          |
 | ------------------ | ------------------------------------------------------- |
-| **KB Articles**    | **Global** (platform-wide, no tenant filter)            |
-| **KB Categories**  | **Global** (single document, shared across all tenants) |
-| **Article reads**  | No auth required on DAL level (public within platform)  |
+| **KB Articles**    | Tenant+store scoped for non-platform callers; platform admins can perform global administrative reads |
+| **KB Categories**  | Tenant+store scoped document (`categories_{tId}_{sId}`), with platform-only legacy fallback |
+| **Article reads**  | Firestore rules and DAL helpers require readable tenant/store scope unless caller is platform admin |
 | **Article writes** | Platform admin only (no explicit auth check in DAL)     |
-| **Vector search**  | No tenant filter — searches all published articles      |
+| **Vector search**  | Tenant/store-aware through Answerlattice retrieval scope |
 
-**Critical:** KB is intentionally platform-wide. All owners see the same documentation. This is correct for a platform help center but would be a blocker for multi-tenant SaaS extraction.
+**Critical:** KB content is Answerlattice-scoped. Non-platform reads must stay tenant/store filtered; platform admin global reads are operational/admin-only.
 
 ---
 
@@ -270,9 +270,9 @@ Content: {plainTextFromTipTapJSON}
 
 | #   | Item                                                                         | Status                                                |
 | --- | ---------------------------------------------------------------------------- | ----------------------------------------------------- |
-| 1   | No tenant scoping on KB articles                                             | By design (platform-wide)                             |
+| 1   | No tenant scoping on KB articles                                             | ✅ RESOLVED — non-platform reads are tenant/store scoped |
 | 2   | Non-atomic article feedback (likes/dislikes)                                 | ✅ RESOLVED — actually uses `runTransaction` (atomic) |
-| 3   | `getArticles()` fetches ALL articles with no filter                          | Used in platform admin only                           |
+| 3   | Deprecated `getArticles()` compatibility helper could read globally          | ✅ RESOLVED — deprecated helper now scopes non-platform reads |
 | 4   | Single categories document could hit 1MB limit with many categories/sections | Low risk — typical KB has <50 categories              |
 | 5   | No article revision history                                                  | Not implemented                                       |
 | 6   | `console.log` in platform KB component                                       | ✅ RESOLVED — removed in audit                        |

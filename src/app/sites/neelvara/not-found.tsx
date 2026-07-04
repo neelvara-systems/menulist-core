@@ -1,6 +1,6 @@
 import { LuArrowRight, LuExternalLink } from 'react-icons/lu';
 import { NEELVARA_PRODUCT_LINEUP } from './siteConfig';
-import { PageShell } from './content';
+import { PagePrismPanel, PageShell } from './content';
 import { NeelvaraLink } from './SiteHeaderNav';
 
 export default function NeelvaraNotFound() {
@@ -8,37 +8,44 @@ export default function NeelvaraNotFound() {
         <PageShell>
             <section className="nv-page-hero">
                 <div className="nv-wrap nv-page-hero-inner">
-                    <span className="nv-eyebrow mono">
-                        <span className="nv-pip" aria-hidden="true" />
-                        Page not found
-                    </span>
-                    <h1 className="serif">Page not found</h1>
-                    <p>
-                        The page you requested is not available on the Neelvara Systems
-                        company reference website.
-                    </p>
-                    <div className="nv-actions nv-not-found-actions">
-                        <NeelvaraLink className="nv-button nv-button-solid nv-button-large" href="/">
-                            Home
-                            <LuArrowRight aria-hidden="true" />
-                        </NeelvaraLink>
-                        <NeelvaraLink className="nv-button nv-button-glass nv-button-large" href="/products">
-                            Products
-                        </NeelvaraLink>
-                        <NeelvaraLink className="nv-button nv-button-glass nv-button-large" href="/contact">
-                            Contact
-                        </NeelvaraLink>
+                    <div className="nv-page-hero-copy nv-reveal">
+                        <span className="nv-eyebrow mono">
+                            <span className="nv-pip" aria-hidden="true" />
+                            Page not found
+                        </span>
+                        <h1 className="serif">Page not found</h1>
+                        <p>
+                            The page you requested is not available on the Neelvara Systems
+                            company reference website.
+                        </p>
+                        <div className="nv-actions nv-not-found-actions">
+                            <NeelvaraLink className="nv-button nv-button-solid nv-button-large" href="/">
+                                Home
+                                <LuArrowRight aria-hidden="true" />
+                            </NeelvaraLink>
+                            <NeelvaraLink className="nv-button nv-button-glass nv-button-large" href="/products">
+                                Products
+                            </NeelvaraLink>
+                            <NeelvaraLink className="nv-button nv-button-glass nv-button-large" href="/contact">
+                                Contact
+                            </NeelvaraLink>
+                        </div>
                     </div>
+                    <PagePrismPanel
+                        eyebrow="Recovery routes"
+                        title="Page not found"
+                        rows={[
+                            'Home',
+                            'Products',
+                            'Contact',
+                        ]}
+                    />
                 </div>
             </section>
 
             <section className="nv-section nv-section-tight nv-reveal">
                 <div className="nv-wrap nv-text-panel glass">
                     <div>
-                        <span className="nv-eyebrow mono">
-                            <span className="nv-pip" aria-hidden="true" />
-                            Product sites
-                        </span>
                         <h2 className="serif">Looking for a product website?</h2>
                         <p>
                             Product support, onboarding, billing, documentation, and account

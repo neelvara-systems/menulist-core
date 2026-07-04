@@ -37,6 +37,19 @@ const BLOCKED_LOCALE_FRESHNESS_COPY_CLAIMS = [
   'All surfaces read from the same official version. Once published, your menu appears wherever customers look.',
 ];
 
+const BLOCKED_LOCALE_OBP_CORRECTNESS_COPY_CLAIMS = [
+  'Always Correct',
+  'Siempre correcto',
+  'دائماً صحيح',
+  'validated and verified',
+  'validados y verificados',
+  'مُتحقق منها ومُوثقة',
+  "Customers see what's real, not what's outdated.",
+  'العملاء يرون ما هو حقيقي وليس ما هو قديم.',
+  'تكون فيه قائمته دائماً صحيحة',
+  'su menú siempre sea correcto',
+];
+
 function resolvePath(relativePath) {
   return path.join(ROOT, relativePath);
 }
@@ -126,6 +139,7 @@ function verifyLocaleAndDiscoveryCopy() {
     .sort();
   const blockedHits = [];
   const freshnessHits = [];
+  const obpCorrectnessHits = [];
 
   for (const filename of localeFiles) {
     const data = JSON.parse(read(path.join(WEBSITE_LOCALE_DIR, filename)));
@@ -142,11 +156,17 @@ function verifyLocaleAndDiscoveryCopy() {
           freshnessHits.push(`${filename}:${keyPath}:${claim}`);
         }
       }
+      for (const claim of BLOCKED_LOCALE_OBP_CORRECTNESS_COPY_CLAIMS) {
+        if (value.includes(claim)) {
+          obpCorrectnessHits.push(`${filename}:${keyPath}:${claim}`);
+        }
+      }
     });
   }
 
   assert(blockedHits.length === 0, `Website locale namespace blocked-copy hits:\n${blockedHits.join('\n')}`);
   assert(freshnessHits.length === 0, `Website locale freshness-copy hits:\n${freshnessHits.join('\n')}`);
+  assert(obpCorrectnessHits.length === 0, `Website locale OBP correctness-copy hits:\n${obpCorrectnessHits.join('\n')}`);
 
   assertNoBlockedClaims('public/llms.txt', read('public/llms.txt'));
   assertNoBlockedClaims('public/llms-full.txt', read('public/llms-full.txt'));
@@ -516,6 +536,22 @@ function verifyDocsBoundary() {
     changelog,
     '`npm run verify:website-public-copy-boundary` now rejects stale locale QR/PDF freshness claims',
     'Changelog locale freshness verifier boundary',
+  );
+  assertIncludes(
+    productionAudit,
+    'Localized OBP correctness public-copy checkpoint',
+    'Production readiness audit localized OBP correctness source gate',
+  );
+  assertIncludes(
+    productionAudit,
+    '`npm run verify:website-public-copy-boundary` now rejects stale localized OBP blanket-correctness claims',
+    'Production readiness audit localized OBP correctness verifier boundary',
+  );
+  assertIncludes(changelog, 'Localized OBP Correctness Public Copy Boundary', 'Changelog localized OBP correctness boundary entry');
+  assertIncludes(
+    changelog,
+    '`npm run verify:website-public-copy-boundary` now rejects stale localized OBP blanket-correctness claims',
+    'Changelog localized OBP correctness verifier boundary',
   );
 }
 

@@ -288,7 +288,7 @@ export default function MsgPreviewPage() {
   function handleSharePublishedLinkOnWhatsApp() {
     if (!publishResult?.publicUrl) return;
 
-    const message = `Here is our latest menu:\n${publishResult.publicUrl}\n(Always updated)`;
+    const message = `Here is our menu link:\n${publishResult.publicUrl}`;
     const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
 
     try {
@@ -342,7 +342,7 @@ export default function MsgPreviewPage() {
             Your official menu link is ready.
           </p>
           <p style={{ ...styles.successText, fontSize: 14, color: '#666', marginTop: 4 }}>
-            Send this link when customers ask for your menu. It stays updated.
+            Send this link when customers ask for your menu. It opens the approved menu.
           </p>
           <a
             href={publishResult.publicUrl}

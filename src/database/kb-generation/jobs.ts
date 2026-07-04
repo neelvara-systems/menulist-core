@@ -1,7 +1,8 @@
 import { DB_COLLECTIONS } from "@constant/database";
-import { addDoc, collection, doc, getDoc, getDocs, limit, orderBy, query, runTransaction, setDoc, where } from "@firebase/firestore";
+import { addDoc, collection, doc, getDoc, getDocs, limit, orderBy, query, QueryConstraint, runTransaction, setDoc, where } from "@firebase/firestore";
 import { answerlatticeRequestBodyComposer } from '@lib/answerlattice/documentComposer';
 import { apiCallComposer } from "@lib/apiHelper/apiCallComposer";
+import getActiveSession from "@lib/auth/getActiveSession";
 import { bumpAnswerlatticeCacheVersion } from "@lib/answerlattice/cacheVersionClient";
 import { ANSWERLATTICE_CACHE_SOURCES } from "@lib/answerlattice/cacheVersionManifest";
 import { answerlatticeFirebaseClient, answerlatticeStorage } from "@lib/firebase/answerlatticeFirebaseClient";
@@ -25,6 +26,12 @@ export type IngestionJobDeleteResult = {
     success: true;
     jobId: string;
     deleted: true;
+};
+
+type ReadableIngestionJobScope = {
+    isPlatform: boolean;
+    tId?: number;
+    sId?: number;
 };
 
 const getCollectionRef = () => {
@@ -77,14 +84,61 @@ export const getIngestionJobCollectionRef = (session: any) => {
     );
 };
 
+const resolveReadableIngestionJobScope = async (session?: any): Promise<ReadableIngestionJobScope> => {
+    const activeSession = session || await getActiveSession().catch(() => null);
+    const tId = Number(activeSession?.tId);
+    const sId = Number(activeSession?.sId);
+    return {
+        isPlatform: activeSession?.platformRole === 'PLATFORM',
+        ...(Number.isFinite(tId) && tId > 0 ? { tId } : {}),
+        ...(Number.isFinite(sId) && sId > 0 ? { sId } : {}),
+    };
+};
+
+const getReadableIngestionJobFilters = (scope: ReadableIngestionJobScope): QueryConstraint[] => {
+    if (scope.isPlatform) {
+        return [];
+    }
+    if (!scope.tId || !scope.sId) {
+        return [];
+    }
+    return [
+        where("tId", "==", scope.tId),
+        where("sId", "==", scope.sId),
+    ];
+};
+
+const readableIngestionJobScopeAllowsJob = (
+    scope: ReadableIngestionJobScope,
+    job: Partial<IngestionJob> | null | undefined,
+) => {
+    if (scope.isPlatform) {
+        return true;
+    }
+    return Boolean(
+        scope.tId
+        && scope.sId
+        && Number(job?.tId) === scope.tId
+        && Number(job?.sId) === scope.sId
+    );
+};
+
 export const getIngestionJobs = async () => {
     return await apiCallComposer(
         async () => {
-            const q = query(getCollectionRef(), orderBy("createdOn", "desc"), limit(ALL_JOB_LIMIT));
+            const scope = await resolveReadableIngestionJobScope();
+            if (!scope.isPlatform && (!scope.tId || !scope.sId)) {
+                return [];
+            }
+            const filters = getReadableIngestionJobFilters(scope);
+            const q = query(getCollectionRef(), ...filters, orderBy("createdOn", "desc"), limit(ALL_JOB_LIMIT));
             const querySnapshot = await getDocs(q);
             const list: IngestionJob[] = [];
             querySnapshot.forEach((doc) => {
-                list.push({ ...doc.data(), id: doc.id } as IngestionJob);
+                const job = { ...doc.data(), id: doc.id } as IngestionJob;
+                if (readableIngestionJobScopeAllowsJob(scope, job)) {
+                    list.push(job);
+                }
             });
             return list.sort((a, b) => new Date(b.createdOn.toDate()).getTime() - new Date(a.createdOn.toDate()).getTime());
         },

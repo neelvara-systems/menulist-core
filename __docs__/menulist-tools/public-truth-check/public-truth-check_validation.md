@@ -10,7 +10,7 @@
 
 This validation covers the owner-side expansion of Public Truth Check inside Business Health, the exact owner fix loop, and the July 4, 2026 derived fix-list layer.
 
-The implementation keeps the existing `menulist_owner` report path and includes twelve read-only module rows:
+The implementation keeps the existing `menulist_owner` report path and includes eighteen read-only module rows:
 
 - Public truth basics
 - QR link health
@@ -30,7 +30,7 @@ The implementation keeps the existing `menulist_owner` report path and includes 
 | Check | Status | Evidence |
 | --- | --- | --- |
 | Owner report remains `menulist_owner` | Pass | `src/lib/public-truth-tools/ownerPublicTruthReadiness.ts` |
-| Twelve V1 modules exist | Pass | `OwnerPublicTruthReadinessModuleId` in `ownerPublicTruthReadiness.ts` |
+| Eighteen V1 modules exist | Pass | `OwnerPublicTruthReadinessModuleId` in `ownerPublicTruthReadiness.ts` |
 | Desktop Business Health renders module rows | Pass | `PublicTruthOwnerCheckCard.tsx` renders `report.modules.map` |
 | Desktop rows route to existing owner fix surfaces | Pass | Module `fixHref` values route to `/business-settings`, `/projects`, or `/qr-code` |
 | Desktop primary action uses the first missing module fix target | Pass | `PublicTruthOwnerCheckCard.tsx` resolves `moduleAction.fixHref` and `moduleAction.actionLabel` |

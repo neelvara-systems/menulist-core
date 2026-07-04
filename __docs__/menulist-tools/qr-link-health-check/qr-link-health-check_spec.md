@@ -85,7 +85,7 @@ Required V0 rows:
 | Row | Meaning |
 | --- | --- |
 | QR target | Whether a target URL was entered |
-| URL format | Whether the pasted target looks like a valid customer-openable URL |
+| URL format | Whether the pasted target looks like a valid public HTTPS customer-openable URL |
 | MenuList customer link | Whether the URL appears to be MenuList-owned from the host only |
 | Current link confidence | Owner-marked current/stale/unknown state |
 | Customer action | Owner-marked action visibility or action hint in the URL |
@@ -99,7 +99,7 @@ Required V0 rows:
 | Status | Rule |
 | --- | --- |
 | `not_checked` | No meaningful input exists |
-| `missing_basics` | Missing target URL or target URL is not http/https |
+| `missing_basics` | Missing target URL or target URL is not public HTTPS |
 | `ready` | Target URL is valid, appears MenuList-owned, current state is marked current, customer action is visible, and printed context is clear |
 | `manual_review_needed` | Owner says the QR is old/stale/replacement-needed even if a URL exists |
 | `unclear` | Any valid target has unresolved gaps but is not clearly broken |
@@ -113,10 +113,10 @@ Do not infer that the destination page works. V0 never opens it.
 | Source | Allowed? | Storage rule | Notes |
 | --- | --- | --- | --- |
 | Owner-entered fields | Yes | Browser-local only | Used for report |
-| Pasted QR target URL | Yes | Browser-local only | URL is parsed locally but not fetched |
+| Pasted QR target URL | Yes | Browser-local only | Public HTTPS URL is parsed locally but not fetched |
 | Uploaded QR image | No in V0 | Not stored | Add only after approved decoder/source policy |
 | Existing MenuList store/project truth | Not in V0 | N/A | V1 owner check only |
-| External public URL | Reference only | Not stored by report | No fetch |
+| External public HTTPS URL | Reference only | Not stored by report | No fetch |
 | Google/Instagram/WhatsApp profile | Reference only | Not stored by report | No inspection |
 | AI/search provider answer | No | N/A | Not part of QR V0 |
 

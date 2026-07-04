@@ -30,6 +30,8 @@ const COMPONENT_PATH = 'src/components/website/toolReports/ToolReportPage.tsx';
 const SHARED_PATH = 'src/lib/public-truth-tools/shareableToolReport.ts';
 const CONTACT_ROUTE_PATH = 'src/app/api/public/contact/route.ts';
 const SOCIAL_COMPONENT_PATH = 'src/components/website/socialBioLinkCheck/SocialBioLinkCheckPage.tsx';
+const PRINT_SHARE_COMPONENT_PATH = 'src/components/website/printShareTools/PrintShareToolPage.tsx';
+const PRINT_SHARE_CONFIG_PATH = 'src/lib/public-asset-tools/printShareToolConfig.ts';
 const SOURCE_TOOL_COMPONENTS = [
   ['src/components/website/publicTruthCheck/PublicTruthCheckPage.tsx', 'public-truth-check', 'public_truth_check', true],
   ['src/components/website/qrLinkHealthCheck/QrLinkHealthCheckPage.tsx', 'qr-link-health-check', 'qr_link_health_check', true],
@@ -69,6 +71,8 @@ for (const file of [
   SHARED_PATH,
   CONTACT_ROUTE_PATH,
   ...SOURCE_TOOL_COMPONENTS.map(([sourceToolPath]) => sourceToolPath),
+  PRINT_SHARE_COMPONENT_PATH,
+  PRINT_SHARE_CONFIG_PATH,
   ...REQUIRED_DOCS,
 ]) {
   assert(exists(file), `Shareable Tool Reports file missing: ${file}`);
@@ -90,6 +94,8 @@ const component = read(COMPONENT_PATH);
 const shared = read(SHARED_PATH);
 const contactRoute = read(CONTACT_ROUTE_PATH);
 const socialComponent = read(SOCIAL_COMPONENT_PATH);
+const printShareComponent = read(PRINT_SHARE_COMPONENT_PATH);
+const printShareConfig = read(PRINT_SHARE_CONFIG_PATH);
 const sourceToolComponents = SOURCE_TOOL_COMPONENTS.map(([sourceToolPath, toolId, eventPrefix, usesSharedBuilder]) => ({
   content: read(sourceToolPath),
   eventPrefix,
@@ -238,6 +244,33 @@ assertIncludes(socialComponent, 'handleCopyShareLink', 'Social Bio Link Check sh
 assertIncludes(socialComponent, "t('reportActions.shareLink')", 'Social Bio Link Check share link copy');
 assertIncludes(socialVerifier, 'shareLink', 'Social Bio Link Check verifier share key');
 
+assertIncludes(printShareComponent, 'createShareableToolReportUrl(shareableReportPayload)', 'Print & Share Tools share URL builder');
+assertIncludes(printShareComponent, "primaryLabel: sharedT('primaryLabel')", 'Print & Share Tools shared summary primary label');
+assertIncludes(printShareComponent, 'value={shareableReportUrl}', 'Print & Share Tools visible share URL fallback');
+assertIncludes(printShareComponent, 'ws-print-share-tool-report-link', 'Print & Share Tools open public report link');
+assertIncludes(printShareComponent, 'toolId: report.toolSlug', 'Print & Share Tools share payload tool id');
+assertIncludes(printShareComponent, 'checkedSourceText', 'Print & Share Tools share checked text');
+assertIncludes(printShareComponent, 'notCheckedText', 'Print & Share Tools share not-checked text');
+assertIncludes(printShareComponent, 'evidenceText: check.evidenceText', 'Print & Share Tools share evidence preservation');
+assertIncludes(printShareComponent, 'setupJobList: buildShareableToolReportSetupJobs(checks, nextAction)', 'Print & Share Tools share setup jobs');
+assertIncludes(printShareComponent, 'handleCopyShareLink', 'Print & Share Tools share link handler');
+assertIncludes(printShareComponent, 'sharedT(\'reportActions.shareLink\')', 'Print & Share Tools shared report button copy');
+assertIncludes(printShareComponent, 'sharedT(\'reportActions.statuses.share_copied\')', 'Print & Share Tools shared report status copy');
+assertIncludes(printShareComponent, '`${config.eventPrefix}_share_link_copy_clicked`', 'Print & Share Tools share click analytics');
+assertIncludes(printShareComponent, '`${config.eventPrefix}_share_link_copied`', 'Print & Share Tools share copied analytics');
+assertIncludes(printShareComponent, '`${config.eventPrefix}_share_link_copy_failed`', 'Print & Share Tools share copy failure diagnostic');
+
+for (const [slug, eventPrefix] of [
+  ['qr-poster-maker', 'qr_poster_maker'],
+  ['whatsapp-menu-status-maker', 'whatsapp_menu_status_maker'],
+  ['holiday-hours-poster-maker', 'holiday_hours_poster_maker'],
+  ['customer-link-card-maker', 'customer_link_card_maker'],
+  ['feedback-qr-card-maker', 'feedback_qr_card_maker'],
+]) {
+  assertIncludes(printShareConfig, `slug: '${slug}'`, `Print & Share Tools config slug ${slug}`);
+  assertIncludes(printShareConfig, `eventPrefix: '${eventPrefix}'`, `Print & Share Tools config event prefix ${eventPrefix}`);
+}
+
 for (const sourceTool of sourceToolComponents) {
   assertIncludes(sourceTool.content, 'createShareableToolReportUrl(shareableReportPayload)', `${sourceTool.toolId} share URL builder`);
   assertIncludes(sourceTool.content, `toolId: '${sourceTool.toolId}'`, `${sourceTool.toolId} share payload tool id`);
@@ -324,7 +357,7 @@ assert(hiIN.Website.SocialBioLinkCheckPage.reportActions?.shareLink, 'hi-IN Soci
 assert(enUS.Website.SocialBioLinkCheckPage.shareReport?.checkedSourceText, 'en-US Social Bio share report checked text must exist');
 assert(hiIN.Website.SocialBioLinkCheckPage.shareReport?.checkedSourceText, 'hi-IN Social Bio share report checked text must exist');
 
-for (const content of [route, component, shared, socialComponent, llms, llmsFull]) {
+for (const content of [route, component, shared, socialComponent, printShareComponent, llms, llmsFull]) {
   assertNotIncludes(content, 'guaranteed ranking', 'Shareable Tool Reports ranking claim');
   assertNotIncludes(content, 'guaranteed citation', 'Shareable Tool Reports citation claim');
   assertNotIncludes(content, 'guaranteed AI visibility', 'Shareable Tool Reports AI visibility claim');

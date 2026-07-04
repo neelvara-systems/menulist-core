@@ -3,14 +3,14 @@
 **Feature Name:** Customer App (Installable Customer-Facing Menu)  
 **Document Type:** Customer-Facing Help Documentation  
 **Status:** Source-backed help draft; publish/use with current Customer App runtime boundary
-**Last Updated:** July 2, 2026
+**Last Updated:** July 4, 2026
 **Audience:** Restaurant owners (non-technical, SMB)
 
 ---
 
 ## Quick Summary
 
-The **Customer App** lets your customers add your menu to their phone's home screen — like any other app. They see your logo and restaurant name. One tap opens your live menu. No download needed. Works on iPhone and Android. Included with your MenuList subscription.
+The **Customer App** lets your customers add your menu to their phone's home screen — like any other app. They see your logo and restaurant name. One tap opens your public menu path. No download needed. Works on supported iPhone and Android browsers. Included with your MenuList subscription.
 
 ---
 
@@ -37,7 +37,7 @@ The **Customer App** lets your customers add your menu to their phone's home scr
 2. Turn it **ON** (blue)
 3. Your menu is now app-ready
 
-> 💡 **Tip:** This takes effect immediately. Customers can now add your menu to their phones.
+> 💡 **Tip:** After the save is acknowledged and the public menu path is available, customers can add your menu to their phones.
 
 #### Step 3: Decide on Promotion
 
@@ -168,7 +168,7 @@ Phone home screens only show about 12 characters under app icons.
 **Why this happens:**
 The customer opened your app while online, then left it open in the background for a while. When they came back, they saw the version from when they first opened it. The app fetches fresh data when:
 
-- They first open the app (always fetches latest)
+- They first open the app online (uses the current public menu path)
 - They return to the app after switching away for 60+ seconds
 - Their internet reconnects after being offline
 
@@ -181,7 +181,7 @@ Tell the customer:
 1. Close the app completely (swipe it away from recent apps)
 2. Reopen the app with internet on
 
-That's it — they'll see your latest menu immediately.
+That's it — they'll see the approved public menu after the supported cache or return-to-app refresh path completes.
 
 > 💡 **Note:** The app never caches your menu for offline use. If they're offline, they'll see an "offline" screen, not a stale menu. This prevents showing wrong prices or sold-out items.
 
@@ -223,7 +223,7 @@ This is standard mobile app behavior, not specific to MenuList.
 
 ### 💡 Enable It Even If You're Not Sure
 
-The Customer App is automatic. If customers don't use it, nothing bad happens. If they do use it, you get repeat customers with less friction. Turn it on and let customers decide.
+The Customer App is generated from your menu settings. If customers don't use it, nothing changes for them. If they do use it, they have fewer steps to reach your menu. Turn it on and let customers decide.
 
 ### 💡 Tell Your Regulars
 
@@ -291,7 +291,7 @@ Yes. Your existing **"Track menu views"** setting in analytics settings also con
 
 ## Related Features
 
-- **[Digital Menu](../client-menu/client-menu_helpdoc.md)** — The live menu customers see in the app
+- **[Digital Menu](../client-menu/client-menu_helpdoc.md)** — The public menu customers see in the app
 - **[Official Business Page](../official-business-page/official-business-page_helpdoc.md)** — Your public web presence
 - **[QR Code Sharing](../client-menu/client-menu_helpdoc.md)** — How customers first find your menu
 - **[PDF Menu](../pdf-surface/pdf-surface_helpdoc.md)** — Printable menu for sharing
@@ -309,4 +309,4 @@ We typically reply within 2 hours during business hours (9 AM - 7 PM IST).
 ---
 
 _Document Status: Source-backed help draft; not standalone launch certification_
-_Last Updated: July 2, 2026_
+_Last Updated: July 4, 2026_

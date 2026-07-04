@@ -1,7 +1,7 @@
 # Menu Readability Check - Documentation Hub
 
 > **Feature:** Menu / Service Readability Check
-> **Status:** Implemented - public V0 browser-local checker
+> **Status:** Implemented - public V0 browser-local checker and V1 owner readiness module
 > **Last Updated:** July 4, 2026
 > **Version:** 0.1
 
@@ -58,7 +58,7 @@ It is not:
 | Version | Product shape | Primary user | Input | Output | Runtime boundary | Status |
 | --- | --- | --- | --- | --- | --- | --- |
 | V0 | Public free tool / lead magnet | Prospect, owner, agency | Pasted menu/service text, optional public link, business name, city/locality, and owner-marked clarity facts | Basic readability gap report, copy/download checklist, MenuList setup handoff, optional consented follow-up | Browser-local deterministic check; no file upload; no URL fetch; no AI/provider call; optional follow-up reuses `/api/public/contact` | Implemented |
-| V1 | Logged-in MenuList owner check | Existing MenuList owner | Existing MenuList project/menu/service truth | Missing prices, vague categories, missing descriptions, weak action gaps inside Business Health, Public Discovery, or OBP readiness | Reuses owner store/project truth and existing DAL/cache; no report storage by default | Planned |
+| V1 | Logged-in MenuList owner check | Existing MenuList owner | Existing MenuList project/menu/service truth | Missing prices, vague categories, missing descriptions, weak action gaps inside Business Health, Public Discovery, or OBP readiness | Reuses owner store/project truth and existing DAL/cache; no report storage by default | Implemented |
 | V2 | Paid add-on behavior | Multi-location owner, partner, agency | Owner-approved stores/projects, schedule, report scope | Monthly clarity report, agency setup checklist, multi-location content consistency | Paid entitlement, capped history, source policy, and cost controls | Planned |
 
 ---

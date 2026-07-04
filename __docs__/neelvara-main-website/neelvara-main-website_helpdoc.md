@@ -12,7 +12,7 @@ Do not create a help center for Neelvara v1.
 
 The company website only needs a short FAQ-style support policy that can live on the Contact or Legal page. Product support belongs to the relevant product site.
 
-The Neelvara blue visual redesign does not change support routing, data collection, legal scope, or product-support boundaries.
+The Neelvara current-color Prism glass relayout does not change support routing, data collection, legal scope, or product-support boundaries.
 
 ---
 

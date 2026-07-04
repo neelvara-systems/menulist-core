@@ -197,6 +197,44 @@ for (const [label, content] of docs) {
 }
 
 [
+  'Performance, device-coverage, QR adoption, indexing, sharing, and customer-behavior claims need release-specific evidence',
+  'supported browser',
+  'Preview before publish',
+  'Performance claims follow QA evidence',
+  'Do not use testimonials, QR adoption stats, load-time stats, or customer-behavior claims without approved evidence.',
+  'Requires target-run evidence',
+].forEach((token) => requireToken(marketingDoc, token, 'B2C marketing performance/device boundary'));
+
+[
+  'Customers scan a QR code and see your full menu instantly',
+  'loads fast, looks professional, and works on every phone',
+  'Instant loading',
+  'Under 2 seconds on mobile',
+  'customers can access instantly',
+  '| Load time         | 5-10 seconds | < 2 seconds',
+  '| Updates           | Re-upload    | Instant',
+  'Beautiful menus, instant access',
+  'Menu loads instantly',
+  'First paint: < 1.8 seconds',
+  'Full load: < 2.5 seconds',
+  'Works offline (cached)',
+  'Google-discoverable',
+  'Loads in under 2 seconds',
+  'Customers love it. No more zooming on PDFs.',
+  'QR adoption has skyrocketed',
+  'Most people are comfortable scanning now',
+  'Demo Script (90 seconds)',
+  'Watch... 1 second, 2 seconds',
+  'sharing is one click',
+  'Scan → Menu',
+  'Speed comparison',
+  '| First Contentful Paint | < 1.8 seconds',
+  '| Full load time         | < 2.5 seconds',
+  '| Mobile users           | 70%+',
+  '| QR code adoption       | 94% of US consumers',
+].forEach((token) => forbidToken(marketingDoc, token, 'B2C marketing stale performance/device claim'));
+
+[
   ['inventory', inventory, 'design_presentation'],
   ['inventory', inventory, 'menu-design-presentation boundary source gate passed'],
   ['report', report, '## Menu Design Presentation Boundary'],
@@ -205,6 +243,8 @@ for (const [label, content] of docs) {
   ['audit', audit, '`npm run verify:menu-design-presentation-boundary`'],
   ['changelog', changelog, 'Menu Design Presentation Boundary'],
   ['changelog', changelog, '`npm run verify:menu-design-presentation-boundary`'],
+  ['audit', audit, 'B2C View marketing performance/device-coverage copy checkpoint'],
+  ['changelog', changelog, 'B2C View Marketing Performance Device-Coverage Copy Boundary'],
 ].forEach(([label, source, token]) => requireToken(source, token, `B2C design ledger ${label}`));
 
 if (failures.length > 0) {

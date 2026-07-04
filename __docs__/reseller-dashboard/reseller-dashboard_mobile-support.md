@@ -3,7 +3,7 @@
 **Feature:** Assisted Onboarding Portal for Authorized Resellers  
 **Status:** Implemented - reseller boundary source gate added July 2, 2026
 **Created:** February 27, 2026  
-**Last Updated:** July 2, 2026
+**Last Updated:** July 4, 2026
 **Audience:** Internal
 
 ---
@@ -22,11 +22,11 @@ The reseller dashboard is primarily a **field-sales tool**. Resellers onboard cl
 
 ### Gate 2: Speed — ✅ PASS
 **Question:** Completes in <5 seconds on mobile?  
-**Answer:** Individual actions (view client, confirm payment) complete instantly. Full onboarding ~2-3 minutes but each step is fast.
+**Answer:** Individual actions such as view client, confirm payment, copy link, and open payment link complete in the current mobile UI. Full account/payment handoff timing depends on the payment path and network conditions.
 
 ### Gate 3: Touch — ✅ PASS
 **Question:** Works with thumb-only interaction?  
-**Answer:** Yes. Form fields, dropdowns, buttons, photo upload — all standard mobile interactions. No precision-dependent UI.
+**Answer:** Yes. Form fields, dropdowns, buttons, and link handoffs are standard mobile interactions. No precision-dependent UI.
 
 ### Gate 4: Value — ✅ PASS
 **Question:** Needed while owner is away from desk?  
@@ -49,13 +49,13 @@ The reseller dashboard is primarily a **field-sales tool**. Resellers onboard cl
 
 ### Mobile-Specific Considerations
 
-1. **Camera integration for menu upload** — Use existing `MenuUploadSheet` pattern from `src/components/mobile/sheets/MenuUploadSheet.tsx`
+1. **Menu-source handoff** — The reseller onboarding mobile path does not upload menu files; owners add menu sources later through the normal MenuList mobile/desktop import flow.
 2. **Large touch targets** — 44px minimum for all action buttons (confirm payment, submit onboarding)
 3. **Optimistic updates** — Show "Creating store..." immediately, sync in background
 4. **Offline indicator** — If reseller has poor connectivity at client location, show clear status
 5. **Share payment link** — Native share sheet for sending Razorpay link via WhatsApp/SMS, plus dashboard copy/open actions for pending online payments if the initial link is lost. Copy/share/open failures use bounded mobile diagnostics and fixed owner-facing copy.
 6. **Billing parity** — Mobile Billing must show pending reseller-online subscriptions with Pay Now, and manual reseller-offline subscriptions as one-time prepaid access with no Razorpay pause/cancel/upgrade controls.
-7. **Manual location capacity** — Mobile reseller dashboard exposes "Add prepaid location" for active offline clients, using the same `/api/reseller/add-location-capacity` route as desktop. This is required so field resellers can collect cash/UPI and immediately unlock owner outlet creation from the client's phone.
+7. **Manual location capacity** — Mobile reseller dashboard exposes "Add prepaid location" for active offline clients, using the same `/api/reseller/add-location-capacity` route as desktop. This is required so field resellers can collect cash/UPI and unlock paid owner outlet capacity from the client's phone after the write is acknowledged.
 
 ---
 
@@ -95,7 +95,7 @@ Reseller mobile shell has simplified bottom tabs:
 ## ICP Compliance
 
 - **User:** Non-tech person selling to non-tech SMB owners
-- **Language:** Zero jargon. "Upload menu photo" not "Upload extraction source"
+- **Language:** Zero jargon. "Add menu from the dashboard" not "Upload extraction source"
 - **Feedback:** Toast confirmations, not console logs
 - **Error messages:** "Could not create the account. Please try again." not "Transaction failed: ROLLBACK"
 

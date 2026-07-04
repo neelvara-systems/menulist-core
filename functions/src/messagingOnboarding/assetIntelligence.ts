@@ -29,14 +29,23 @@ import {
 import { validateNetworkTargetUrl } from "../utils/networkTarget";
 
 const logger = functions.logger;
-const DEFAULT_STORAGE_BUCKET = "menulist-qa.appspot.com";
 const ASSET_VALIDATION_UPLOAD_FETCH_FAILED = "ASSET_VALIDATION_UPLOAD_FETCH_FAILED";
 const ASSET_VALIDATION_UPLOAD_TOO_LARGE = "ASSET_VALIDATION_UPLOAD_TOO_LARGE";
 const ASSET_VALIDATION_UPLOAD_URL_REJECTED = "ASSET_VALIDATION_UPLOAD_URL_REJECTED";
 const ASSET_VALIDATION_RESPONSE_PARSE_FAILED = "ASSET_VALIDATION_RESPONSE_PARSE_FAILED";
 
+function getProjectStorageBucketFallback(): string {
+  const projectId = process.env.FIREBASE_PROJECT_ID
+    || process.env.GCLOUD_PROJECT
+    || process.env.GCP_PROJECT
+    || process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
+  return projectId ? `${projectId}.appspot.com` : "";
+}
+
 function getAllowedStorageBucket(): string {
-  return process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || process.env.FIREBASE_STORAGE_BUCKET || DEFAULT_STORAGE_BUCKET;
+  return process.env.FIREBASE_STORAGE_BUCKET
+    || process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
+    || getProjectStorageBucketFallback();
 }
 
 function getStoragePathFromDownloadUrl(value: string): string | null {

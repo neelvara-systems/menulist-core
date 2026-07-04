@@ -8,11 +8,11 @@
 
 ## Quick Summary
 
-Menu Presence Monitor shows you where your menu is visible to customers. It checks 6 key surfaces — Google Business, Instagram, WhatsApp, QR codes, digital screens, and feedback — and tells you which ones are set up and which ones need attention.
+Menu Presence Monitor shows one checklist for the places where your menu should be easy to find. Some rows are MenuList-recorded, such as QR, screen, or feedback readiness. Google Business, Instagram, and WhatsApp are owner-confirmed: MenuList stores your confirmation after you add the link, but it does not crawl or verify Google Business, Instagram, or WhatsApp for you.
 
 ## Getting Started
 
-No setup needed. The presence checklist appears automatically on your "Use MenuList" page after you publish your menu.
+No separate setup is needed for the checklist itself. Review the status as MenuList-recorded or owner-confirmed, then add the menu link to any external platform that still needs it.
 
 ## How to Use
 
@@ -21,8 +21,8 @@ No setup needed. The presence checklist appears automatically on your "Use MenuL
 1. Open the **Use MenuList** page from the sidebar
 2. Look at the **Menu Visibility** card near the top
 3. You'll see 6 surfaces with status indicators:
-   - ✓ = Your menu is visible on this surface
-   - ⚠ = Your menu is not yet added to this surface
+   - ✓ = MenuList recorded the action/readiness, or you confirmed an external placement
+   - ⚠ = MenuList has not recorded the action/readiness, or you have not confirmed the external placement
 
 ### Add Your Menu to a Missing Surface
 
@@ -43,12 +43,12 @@ If you removed your menu link from a surface:
 
 | Surface | What It Means |
 |---------|--------------|
-| **Google Business** | Your menu link appears when customers search for your business on Google |
-| **Instagram Bio** | Your menu link is in your Instagram profile bio |
-| **WhatsApp Profile** | Your menu link is in your WhatsApp Business profile description |
-| **Table QR** | You've downloaded and printed QR cards for tables |
-| **Digital Screens** | You have a screen displaying your menu |
-| **Feedback QR** | Customer feedback collection is enabled |
+| **Google Business** | You confirm after adding your menu link to your Google Business profile |
+| **Instagram Bio** | You confirm after adding your menu link to your Instagram bio |
+| **WhatsApp Profile** | You confirm after adding your menu link to your WhatsApp Business profile |
+| **Table QR** | MenuList has menu/QR readiness for your current menu; printed placement still needs your review |
+| **Digital Screens** | MenuList has recorded screen readiness for the store |
+| **Feedback QR** | Feedback collection is enabled for the store |
 
 ## Tips
 

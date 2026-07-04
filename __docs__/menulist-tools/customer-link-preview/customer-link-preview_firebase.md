@@ -24,4 +24,4 @@ If the owner explicitly submits the follow-up form, the tool reuses the existing
 
 ## V1 Cost Boundary
 
-V1 maps to existing owner readiness surfaces and already-loaded MenuList store/project truth. No additional report storage or customer-link scan is introduced by this tool.
+V1 uses the `customer_link_preview` owner module with already-loaded MenuList store/project truth. No additional report storage or customer-link scan is introduced by this tool.

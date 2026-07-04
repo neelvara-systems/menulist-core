@@ -6,7 +6,7 @@ import {
     NEELVARA_PRODUCT_LINEUP,
     buildNeelvaraUrl,
 } from '../siteConfig';
-import { DirectoryCards, PageShell, StructuredData } from '../content';
+import { DirectoryCards, PagePrismPanel, PageShell, StructuredData } from '../content';
 import { NeelvaraLink } from '../SiteHeaderNav';
 
 export const metadata: Metadata = {
@@ -42,21 +42,31 @@ export default function NeelvaraContactPage() {
             <StructuredData />
             <section className="nv-page-hero">
                 <div className="nv-wrap nv-page-hero-inner">
-                    <span className="nv-eyebrow mono">
-                        <span className="nv-pip" aria-hidden="true" />
-                        Contact Neelvara Systems
-                    </span>
-                    <h1 className="serif">Choose the right contact route.</h1>
-                    <p>
-                        Contact Neelvara Systems for company, legal, privacy, partnership,
-                        or business inquiries. Product support, onboarding, billing, and
-                        account questions should start from the product website.
-                    </p>
-                    <div className="nv-page-hero-meta glass">
-                        <span className="mono">company reference</span>
-                        <span className="mono">direct email</span>
-                        <span className="mono">India</span>
+                    <div className="nv-page-hero-copy nv-reveal">
+                        <span className="nv-eyebrow mono">
+                            <span className="nv-pip" aria-hidden="true" />
+                            Contact Neelvara Systems
+                        </span>
+                        <h1 className="serif">Choose the right contact route.</h1>
+                        <p>
+                            Company, legal, privacy, partnership, and business inquiries
+                            use direct Neelvara email routes.
+                        </p>
+                        <div className="nv-page-hero-meta glass">
+                            <span className="mono">company reference</span>
+                            <span className="mono">direct email</span>
+                            <span className="mono">India</span>
+                        </div>
                     </div>
+                    <PagePrismPanel
+                        eyebrow="Contact routes"
+                        title="Contact"
+                        rows={[
+                            'Business inbox',
+                            'Legal inbox',
+                            'Privacy inbox',
+                        ]}
+                    />
                 </div>
             </section>
 
@@ -82,10 +92,6 @@ export default function NeelvaraContactPage() {
             <section className="nv-section nv-section-tight nv-reveal">
                 <div className="nv-wrap nv-text-panel glass">
                     <div>
-                        <span className="nv-eyebrow mono">
-                            <span className="nv-pip" aria-hidden="true" />
-                        Product support
-                    </span>
                         <h2 className="serif">Looking for product support?</h2>
                         <p>
                             MenuList, Answerlattice, and CampaignCue keep product-specific
@@ -108,10 +114,6 @@ export default function NeelvaraContactPage() {
             <section className="nv-section nv-section-tight nv-reveal">
                 <div className="nv-wrap nv-text-panel glass">
                     <div>
-                        <span className="nv-eyebrow mono">
-                            <span className="nv-pip" aria-hidden="true" />
-                            Before you contact us
-                        </span>
                         <h2 className="serif">Keep the first message focused.</h2>
                         <p>
                             Do not include private records, secrets, customer datasets, or
@@ -130,10 +132,6 @@ export default function NeelvaraContactPage() {
             <section className="nv-section nv-final-section nv-reveal">
                 <div className="nv-wrap nv-final-band glass">
                     <div>
-                        <span className="nv-eyebrow mono">
-                            <span className="nv-pip" aria-hidden="true" />
-                            Company contact
-                        </span>
                         <h2 className="serif">Company questions start with email.</h2>
                         <p>
                             For company questions about Neelvara Systems, email

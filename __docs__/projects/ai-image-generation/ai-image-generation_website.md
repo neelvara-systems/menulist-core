@@ -1,49 +1,56 @@
-# AI Image Generation — Website Content
+# AI Image Generation - Website Content
+
+**Status:** Source-backed website draft; not current publication or launch certification
 
 ## Current Public Website Placement
 
-As of June 9, 2026, menu image generation is marketed on the combined Menu Content Prep feature page at `/features/menu-content-prep` together with descriptions and customer languages. Do not create a standalone public image-generation page unless acquisition evidence later justifies it. Public website copy should say menu images can be prepared where plan and credits allow, then reviewed before publishing; avoid `AI-powered`, unchecked publishing, photoshoot-cost guarantees, and generic image-tool positioning.
+As of June 9, 2026, menu image generation is marketed on the combined Menu Content Prep feature page at `/features/menu-content-prep` together with descriptions and customer languages. Do not create a standalone public image-generation page unless acquisition evidence later justifies it. Public website copy should say menu images can be prepared where plan, credits, source quality, provider availability, and safety checks allow, then reviewed before publishing; avoid `AI-powered`, unchecked publishing, photoshoot-cost guarantees, professional-photography replacement claims, fixed speed claims, full-menu guarantees, and generic image-tool positioning.
+
+## Current Website/Launch Boundary
+
+Do not publish one-click, instant, full-menu, every-item, professional-quality, photoshoot-cost, third-party-platform, customer-behavior, or provider claims without the active production-readiness audit, External Certification Runbook evidence, `npm run verify:ai-accounting`, `npm run verify:public-business-truth`, target feature-flag/provider review, provider smoke for the target image model and environment, browser/mobile editor QA for image draft review, public menu image-rendering QA, target deploy evidence, production-host smoke, and release-specific evidence for the claim.
 
 ## Hero Section
-- **Headline:** Professional Menu Photos Without a Photographer
-- **Subheadline:** Generate beautiful food images for every menu item. One click per item, or process your entire menu at once.
-- **CTA Text:** See Examples
-- **CTA Link:** /features/image-generation
+- **Headline:** Menu Images Prepared For Review
+- **Subheadline:** Prepare menu item image drafts where plan and credits allow, review the results, and publish only images that match the real business.
+- **CTA Text:** Review Image Options
+- **CTA Link:** /features/menu-content-prep
 
 ## Problem Statement
-Professional food photography costs ₹3,000-15,000 per dish. Most restaurant owners skip it entirely, leaving their digital menu with blank spaces where photos should be.
+Menu items often need better visual support, but owners may not have current usable photos for every item.
 
 ## Solution Statement
-MenuList generates professional-quality images for your menu items automatically. No photographer, no studio, no waiting. One click and your item has a photo.
+MenuList can prepare image drafts for selected menu items when the feature, plan, credits, provider, and safety checks allow. Owners review each result, keep only approved images, and publish approved customer-facing output.
 
 ## Feature Benefits
 
-### 1. One Click Per Image
-Select an item, click generate, and get a professional-looking food photo in seconds. Review it before using it.
-> **Visual:** Before/after — menu item without image → same item with generated photo
+### 1. Image Drafts For Selected Items
+Choose items that need visual support and prepare image drafts for review.
+> **Visual:** Menu item without image -> image draft -> owner-approved image
 
-### 2. Bulk Generation for Full Menus
-Got 50 items without photos? Process them all at once. The system works through your menu item by item and shows results as they come in.
-> **Visual:** Progress bar showing "32 of 50 items generated" with sample results
+### 2. Bounded Batch Preparation
+Prepare a bounded batch where the current release and plan support it. Review results as drafts before using them.
+> **Visual:** Review queue with accepted, rejected, and pending draft images
 
-### 3. Edit and Refine
-Not quite right? Describe what you want changed and the system adjusts the image. No starting over from scratch.
-> **Visual:** Original image → "make the background darker" → refined image
+### 3. Review And Refine
+If an image draft does not match the business, reject it, retry where credits and provider status allow, or keep the existing image.
+> **Visual:** Owner review controls for keep, replace, or discard
 
-### 4. Consistent Style Across Your Menu
-All generated images share a consistent look and feel, so your menu looks cohesive — not like a random collection of photos from different sources.
-> **Visual:** Grid of 6 menu items all with matching visual style
+### 4. Approved Images Only
+Customer-facing menus should show images the owner has reviewed and accepted.
+> **Visual:** Customer menu item using an approved image
 
 ## How It Works
-1. **Select Items** — Choose which items need photos (or select all)
-2. **Generate** — The system creates images based on item names and descriptions
-3. **Review & Accept** — Preview each image. Accept the ones you like, regenerate the rest.
+1. **Select Items** - Choose the items that need image support
+2. **Prepare Drafts** - Generate image drafts where plan, credits, provider, and safety checks allow
+3. **Review Results** - Keep only images that match the real business
+4. **Publish Approved Output** - Customer-facing menus use approved images through the supported publish/cache path
 
 ## SEO Meta
-- **Page Title:** Menu Item Image Generation | Professional Food Photos | MenuList
-- **Meta Description:** Generate professional food photos for your menu items automatically. No photographer needed. One click per item or bulk process your entire menu.
-- **Target Keywords:** menu item photos, food image generation, restaurant menu images, digital menu photos
+- **Page Title:** Menu Image Preparation | Review Menu Item Images | MenuList
+- **Meta Description:** Prepare menu item image drafts where plan and credits allow, review the results, and publish only approved customer-facing images.
+- **Target Keywords:** menu item images, restaurant menu images, digital menu photos, menu image review
 
 ## Approved Language
-### USE: "Generate images", "professional-quality", "one click", "bulk processing"
-### NEVER USE: "AI-powered", "Machine learning", "Neural network", "Smart generation"
+### USE: "Prepare image drafts", "review before publishing", "approved images", "where plan and credits allow"
+### NEVER USE: "AI-powered", "one click", "in seconds", "every item", "professional photos without a photographer", "no photoshoot needed", "replace photographers", "use anywhere", "guaranteed quality"

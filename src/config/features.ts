@@ -1643,7 +1643,7 @@ export const FEATURE_FLAGS = {
      * - ShareModal shows behavior-guiding copy instead of generic text
      * - MobileShareScreen shows behavior-guiding copy
      * - BehaviorNudgeCard appears on dashboard home (dismissible)
-     * - WhatsApp share pre-fills "Here is our latest menu" instead of "Check out our menu"
+     * - WhatsApp share pre-fills "Here is our menu link" instead of "Check out our menu"
      * - Post-publish success screen includes adoption tips
      *
      * When disabled:
@@ -3087,7 +3087,30 @@ export const FEATURE_FLAGS = {
     ENABLE_PUBLIC_TRUTH_HOURS_CHECK: true,
     ENABLE_PUBLIC_TRUTH_PHOTO_GAP_CHECK: true,
     ENABLE_PUBLIC_TRUTH_BUSINESS_FACTS_COPY_PACK: true,
+    /**
+     * MenuList public Print & Share Tools.
+     *
+     * @see __docs__/menulist-tools/print-share-tools/print-share-tools_impl.md
+     *
+     * Public V0 routes use owner-entered fields only, render assets in the
+     * browser from the shared creative-editor/template contract, and offer
+     * PNG/PDF/print/share-report outputs without login, storage, external
+     * fetches, AI/provider calls, or authenticated template-registry writes.
+     */
+    ENABLE_PUBLIC_ASSET_TOOLS: true,
+    ENABLE_PUBLIC_ASSET_QR_POSTER_MAKER: true,
+    ENABLE_PUBLIC_ASSET_WHATSAPP_MENU_STATUS_MAKER: true,
+    ENABLE_PUBLIC_ASSET_HOLIDAY_HOURS_POSTER_MAKER: true,
+    ENABLE_PUBLIC_ASSET_CUSTOMER_LINK_CARD_MAKER: true,
+    ENABLE_PUBLIC_ASSET_FEEDBACK_QR_CARD_MAKER: true,
     ENABLE_PUBLIC_TRUTH_OWNER_CHECK: true,
+    ENABLE_PUBLIC_TRUTH_MONITOR_ADDON: true,
+    PUBLIC_TRUTH_MONITOR_ACCESS: "paid" as "disabled" | "pilot" | "paid",
+    PUBLIC_TRUTH_MONITOR_PILOT_STORE_IDS: [] as Array<string | number>,
+    PUBLIC_TRUTH_MONITOR_PAID_PLAN_IDS: ["pro", "premium"] as string[],
+    PUBLIC_TRUTH_MONITOR_HISTORY_LIMIT: 6,
+    PUBLIC_TRUTH_MONITOR_MULTI_LOCATION_LIMIT: 10,
+    PUBLIC_TRUTH_MONITOR_SCHEDULER_MODE: "manual" as "disabled" | "manual" | "scheduled",
     ENABLE_PUBLIC_TRUTH_CHECK_EXTERNAL_ADAPTERS: false,
     ENABLE_PUBLIC_TRUTH_CHECK_AI_READABILITY: false,
     ENABLE_PUBLIC_TRUTH_MAPS_PLACE_CHECK: false,

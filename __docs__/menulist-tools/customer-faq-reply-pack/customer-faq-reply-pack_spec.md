@@ -53,7 +53,7 @@ V0 must not:
 
 ## V1 Owner Scope
 
-V1 should live inside Business Health, Public Discovery, Share, or setup readiness. It can use current MenuList store/project truth to show missing answers for menu/service, hours, prices, location/contact, actions, and current customer link.
+V1 lives inside the shared Business Health/Public Truth owner card. It uses current MenuList store/project truth to show missing answer facts for menu/service, hours, prices, location/contact, actions, and current customer link.
 
 ## V2 Paid/Add-On Scope
 
@@ -73,7 +73,7 @@ Paid value is recurrence, history, agency reporting, and multi-location consiste
 Every row needs evidence text that says what was actually checked. Examples:
 
 - Checked owner-entered questions and business facts only.
-- URL format was checked locally. The URL was not opened or fetched.
+- Public HTTPS URL format was checked locally. The URL was not opened or fetched.
 - FAQ replies were generated from owner-entered facts only. No AI answer was generated.
 - No customer conversation logs were read, no chatbot was created, no automation was configured, and no message was sent.
 

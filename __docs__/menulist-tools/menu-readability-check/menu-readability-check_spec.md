@@ -88,7 +88,7 @@ Required V0 rows:
 | Prices or rates | Whether prices are visible when needed |
 | Descriptions or details | Whether details help customers understand choices |
 | Customer action | Whether the next step is clear |
-| Current customer link | Whether there is a browser-openable link to share |
+| Current customer link | Whether there is a public HTTPS link to share |
 
 ---
 

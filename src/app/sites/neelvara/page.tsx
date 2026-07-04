@@ -17,7 +17,9 @@ import {
 import {
     DirectoryCards,
     HeroStudioMock,
+    MarqueeBand,
     PageShell,
+    ComparisonTable,
     StructuredData,
 } from './content';
 import BentoReferenceSection from './BentoReferenceSection';
@@ -72,7 +74,7 @@ export default function NeelvaraHomePage() {
                             <span className="nv-pip" aria-hidden="true" />
                             Software infrastructure for customer-facing business information
                         </span>
-                        <h1 className="serif">
+                        <h1 className="serif nv-brand-title">
                             Neelvara <em>Systems</em>
                         </h1>
                         <p>
@@ -101,6 +103,8 @@ export default function NeelvaraHomePage() {
                     <HeroStudioMock />
                 </div>
             </section>
+
+            <MarqueeBand />
 
             <section className="nv-ledger-section nv-reveal" aria-label="Neelvara operating summary">
                 <div className="nv-wrap">
@@ -145,6 +149,22 @@ export default function NeelvaraHomePage() {
                             This is the company reference for the current lineup. Product websites explain each product.
                         </figcaption>
                     </figure>
+                </div>
+            </section>
+
+            <section className="nv-section nv-reveal">
+                <div className="nv-wrap nv-section-head nv-section-head-stack">
+                    <div>
+                        <h2 className="serif">
+                            Company reference, product websites, and product apps stay separated.
+                        </h2>
+                    </div>
+                    <p>
+                        This company website stays narrow by design. Product commitments and signed-in work stay on the right product surface.
+                    </p>
+                </div>
+                <div className="nv-wrap">
+                    <ComparisonTable />
                 </div>
             </section>
 
@@ -196,18 +216,14 @@ export default function NeelvaraHomePage() {
                 <div className="nv-wrap">
                     <div className="nv-final-band glass">
                         <div>
-                            <span className="nv-eyebrow mono">
-                                <span className="nv-pip" aria-hidden="true" />
-                                Company questions
-                            </span>
-                        <h2 className="serif">
-                            Company, legal, or privacy questions?
-                        </h2>
-                        <p>
-                            Email Neelvara Systems for company questions. Product
-                            support, onboarding, billing, and account questions stay on the
-                            relevant product site.
-                        </p>
+                            <h2 className="serif">
+                                Company, legal, or privacy questions?
+                            </h2>
+                            <p>
+                                Email Neelvara Systems for company questions. Product
+                                support, onboarding, billing, and account questions stay on the
+                                relevant product site.
+                            </p>
                         </div>
                         <div className="nv-actions">
                             <a className="nv-button nv-button-solid nv-button-large" href={`mailto:${NEELVARA_CONTACT_EMAIL}`}>

@@ -16,11 +16,13 @@ The Customer-Facing Digital Menu is the **public-facing interface** that restaur
 
 A **live, intelligent digital menu** that:
 
-- Updates in real-time when owners make changes
+- Refreshes through the current public cache path after owner-approved changes
 - Shows Featured choices without exposing internal scoring
 - Works on any device (mobile-first, responsive)
 - Supports custom branding and multi-language
 - Preserves a locked public information structure even when the owner chooses a project-wise menu mood or layout
+
+This historical spec does not certify fixed load-time, decision-time, engagement, retention, or real-time freshness metrics for the current release. Current approval requires the active production-readiness audit, External Certification Runbook evidence, public cache/deploy evidence, and browser/device QA.
 
 ### What It Is NOT
 
@@ -34,9 +36,9 @@ A **live, intelligent digital menu** that:
 
 | Metric                 | Value                            |
 | ---------------------- | -------------------------------- |
-| First Contentful Paint | < 1.5s                           |
-| Customer Decision Time | 60s → 15s (with Featured section) |
-| Owner Effort           | Zero (auto-updates)              |
+| First Contentful Paint | Release-specific browser/device evidence required |
+| Customer Decision Time | No fixed reduction certified by this historical spec |
+| Owner Effort           | Low routine effort after setup; owner-approved saves still required |
 | Word-of-Mouth Trigger  | 3 Auto-Sell Features             |
 
 ---
@@ -54,10 +56,10 @@ A **live, intelligent digital menu** that:
 
 | Metric                    | Target           | How Measured     |
 | ------------------------- | ---------------- | ---------------- |
-| Menu load time            | < 2 seconds      | Lighthouse       |
-| Featured section engagement | > 10% click rate | Analytics        |
-| Return visits             | > 30% same-week  | Session tracking |
-| Owner retention           | > 70% 30-day     | Platform metrics |
+| Menu load time            | Target release measurement | Lighthouse and browser/device QA |
+| Featured section engagement | Release-specific measurement | Analytics where enabled |
+| Return visits             | Release-specific measurement | Session tracking where enabled |
+| Owner retention           | Release-specific measurement | Platform metrics |
 
 ---
 
@@ -252,7 +254,7 @@ No owner action required
 
 | ID   | Requirement                         | Priority | Status |
 | ---- | ----------------------------------- | -------- | ------ |
-| FR1  | Menu loads in < 2 seconds on 3G     | P0       | ✅     |
+| FR1  | Menu follows the target release performance budget verified by browser/device QA | P0       | Source gate only |
 | FR2  | Subdomain routing works             | P0       | ✅     |
 | FR3  | Custom domain routing works         | P0       | ✅     |
 | FR4  | Decision Blocks display correctly   | P0       | ✅     |
@@ -270,9 +272,9 @@ No owner action required
 
 | ID   | Requirement              | Target          |
 | ---- | ------------------------ | --------------- |
-| NFR1 | First Contentful Paint   | < 1.5s          |
-| NFR2 | Largest Contentful Paint | < 2.5s          |
-| NFR3 | Time to Interactive      | < 3.5s          |
+| NFR1 | First Contentful Paint   | Target release evidence required |
+| NFR2 | Largest Contentful Paint | Target release evidence required |
+| NFR3 | Time to Interactive      | Target release evidence required |
 | NFR4 | Mobile responsiveness    | 100%            |
 | NFR5 | WCAG 2.1 AA compliance   | 100%            |
 | NFR6 | Offline data persistence | Session storage |

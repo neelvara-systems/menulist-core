@@ -2,7 +2,7 @@
 
 > **Feature:** MenuList Customer FAQ Reply Pack
 > **Route:** `/tools/customer-faq-reply-pack`
-> **Status:** Implemented V0 public browser-local tool
+> **Status:** Implemented V0 public browser-local tool and V1 owner readiness module
 > **Last Updated:** July 4, 2026
 
 ---
@@ -32,7 +32,7 @@ The tool exists because SMB owners answer the same questions by hand across What
 | Lane | Shape | Status |
 | --- | --- | --- |
 | V0 | Public free browser-local FAQ/reply pack | Implemented |
-| V1 | Logged-in owner FAQ/reply pack from current MenuList store/project truth | Documented only |
+| V1 | Logged-in owner readiness from current MenuList store/project truth | Implemented inside Business Health |
 | V2 | Paid recurring/multi-location/agency FAQ consistency reporting | Documented only |
 
 ## Boundary

@@ -7,7 +7,7 @@ import {
     NEELVARA_RELATIONSHIP_LINE,
     buildNeelvaraUrl,
 } from '../siteConfig';
-import { PageShell, StructuredData } from '../content';
+import { PagePrismPanel, PageShell, StructuredData } from '../content';
 import ProductLogo, { type NeelvaraProductName } from '../ProductLogo';
 import { NeelvaraLink } from '../SiteHeaderNav';
 
@@ -58,21 +58,31 @@ export default function NeelvaraProductsPage() {
             <StructuredData />
             <section className="nv-page-hero">
                 <div className="nv-wrap nv-page-hero-inner">
-                    <span className="nv-eyebrow mono">
-                        <span className="nv-pip" aria-hidden="true" />
-                        Current products
-                    </span>
-                    <h1 className="serif">Products operated by Neelvara Systems.</h1>
-                    <p>
-                        The current lineup covers public business facts, approved answers,
-                        and reusable business context. Each product keeps its own website,
-                        documentation, support, and terms.
-                    </p>
-                    <div className="nv-page-hero-meta glass">
-                        <span className="mono">company reference</span>
-                        <span className="mono">product boundaries</span>
-                        <span className="mono">separate terms</span>
+                    <div className="nv-page-hero-copy nv-reveal">
+                        <span className="nv-eyebrow mono">
+                            <span className="nv-pip" aria-hidden="true" />
+                            Current products
+                        </span>
+                        <h1 className="serif">Products operated by Neelvara Systems.</h1>
+                        <p>
+                            The current lineup covers public facts, approved answers,
+                            and reusable business context.
+                        </p>
+                        <div className="nv-page-hero-meta glass">
+                            <span className="mono">company reference</span>
+                            <span className="mono">product boundaries</span>
+                            <span className="mono">separate terms</span>
+                        </div>
                     </div>
+                    <PagePrismPanel
+                        eyebrow="Product map"
+                        title="Operated Products"
+                        rows={[
+                            'MenuList: public facts',
+                            'Answerlattice: approved answers',
+                            'CampaignCue: reusable context',
+                        ]}
+                    />
                 </div>
             </section>
 
@@ -139,10 +149,6 @@ export default function NeelvaraProductsPage() {
             <section className="nv-section nv-section-tight nv-reveal">
                 <div className="nv-wrap nv-text-panel glass">
                     <div>
-                        <span className="nv-eyebrow mono">
-                            <span className="nv-pip" aria-hidden="true" />
-                            Product boundaries
-                        </span>
                         <h2 className="serif">Company information and product commitments stay separate.</h2>
                         <p>
                             Product pricing, onboarding, support, documentation, privacy,
@@ -162,10 +168,6 @@ export default function NeelvaraProductsPage() {
             <section className="nv-section nv-final-section nv-reveal">
                 <div className="nv-wrap nv-final-band glass">
                     <div>
-                        <span className="nv-eyebrow mono">
-                            <span className="nv-pip" aria-hidden="true" />
-                            Routing rule
-                        </span>
                         <h2 className="serif">Use product sites for product work and Neelvara for company verification.</h2>
                         <p>
                             Product support, onboarding, billing, and account questions stay on

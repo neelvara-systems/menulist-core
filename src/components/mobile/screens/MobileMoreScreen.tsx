@@ -392,11 +392,7 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ targetStoreId }),
                 });
-                if (!res.ok) {
-                    const switchError = new Error('mobile_more_store_switch_rejected') as Error & { status?: number };
-                    switchError.status = res.status;
-                    throw switchError;
-                }
+                await readAuthAccountResponse(res, 'switch_store');
                 await refreshFirebaseAuthClaims(targetStoreId);
                 setActiveStoreContext(targetStoreId);
             }

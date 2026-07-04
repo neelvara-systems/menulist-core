@@ -42,7 +42,7 @@ Do not place GSTIN, PAN, residential address, or unreviewed entity claims in glo
 
 ## 3. Visual System
 
-Neelvara uses a blue-rooted institutional palette. The site should feel global, durable, and parent-company appropriate, not spiritual, decorative, crypto-like, or consumer SaaS-like.
+Neelvara uses a blue-rooted institutional palette expressed through the Prism glass layout language. The site should feel global, durable, and parent-company appropriate, not spiritual, decorative, crypto-like, or consumer SaaS-like.
 
 Approved palette:
 
@@ -64,14 +64,24 @@ Usage ratio:
 - about 8% blue
 - about 2% violet
 
+Layout language:
+
+- fixed restrained mesh plus subtle grain behind the page
+- glass panels with consistent stroke, blur, and inset highlight
+- current-color prism panels on major page heroes and not-found recovery
+- Akshar typography across display headlines, compact labels, and concise body copy, with Inter retained only as fallback
+- home page uses the Prism rhythm of hero, marquee, ledger, bento/reference modules, spotlight cards, quote, comparison table, product lineup, contact routing, CTA, and footer
+- secondary pages use a two-column page hero with a Prism panel and alternating glass text sections
+
 Logo rule:
 
-- use the uploaded glass-prism Neelvara mark exactly as provided
+- use the glass-prism Neelvara mark with the supplied three-path geometry preserved
 - `public/neelvara-logo.svg` is the source website mark used in header, footer, 404, and structured data
-- the source SVG is a true vector file and must not be redrawn, recolored, filtered, or simplified
+- the source SVG is a true vector file; path geometry must not be redrawn, filtered, simplified, or replaced by an embedded raster image
+- the approved logo palette is frosted periwinkle, muted blue-violet, and silver-lavender so the parent mark stays distinct from MenuList blue, Answerlattice green, and CampaignCue dark-blue/pink
 - the visible website logo must not sit inside a square, rounded-rectangle, card, or boxed frame
 - PNG derivatives are only for browser/favicon, Open Graph, or platform compatibility surfaces
-- `public/neelvara-favicon.svg` is the preferred browser favicon and keeps the uploaded mark centered on a transparent square canvas
+- `public/neelvara-favicon.svg` is the preferred browser favicon and keeps the refined mark centered on a transparent square canvas
 - favicon PNG fallbacks, Apple touch icon, and manifest PNG derivatives are generated from the source mark and must not show a visible frame
 - wordmark/page text stays `#071323`
 
@@ -79,6 +89,7 @@ Avoid:
 
 - cyan-heavy gradients
 - pure purple branding
+- MenuList-blue, Answerlattice-green, or CampaignCue-pink logo recolors
 - rose, amber, peach, or warm SaaS palettes
 - black-only luxury styling
 - broad AI-tool, crypto, or spiritual visual cues
@@ -116,13 +127,15 @@ Purpose: establish entity identity, explain why the company exists, show the ope
 Required flow:
 
 1. Hero: `Neelvara Systems`, category eyebrow, support copy, `View Products`, `Email Neelvara`.
-2. Entity ledger: company, products, contact.
-3. Why Neelvara exists: problem-first bento cards for company, products, contact, policies, support, and legal boundary.
-4. Spotlight cards: public business facts need one accountable source; each product handles a distinct information job; company questions stay separate from product support.
-5. Company relationship quote using the canonical relationship sentence.
-6. Current products: linked rows with actual MenuList, Answerlattice, and CampaignCue marks.
-7. Contact routes: business, legal, and privacy inbox cards.
-8. Final company-contact band.
+2. Marquee band: company reference, product boundaries, direct email, public facts, approved answers, reusable context.
+3. Entity ledger: company, products, contact.
+4. Why Neelvara exists: problem-first bento cards for company, products, contact, policies, support, and legal boundary.
+5. Spotlight cards: public business facts need one accountable source; each product handles a distinct information job; company questions stay separate from product support.
+6. Company relationship quote using the canonical relationship sentence.
+7. Comparison/reference table separating company reference, product websites, and product apps.
+8. Current products: linked rows with actual MenuList, Answerlattice, and CampaignCue marks.
+9. Contact routes: business, legal, and privacy inbox cards.
+10. Final company-contact band.
 
 Do not show product-count stats, page-count stats, internal implementation labels, storage claims, API claims, or broad boundary tables on the homepage. The hero artifact should show company routing and verification context, not a numeric product total.
 
@@ -296,3 +309,4 @@ Required secondary content:
 
 - Product shortcuts to MenuList, Answerlattice, and CampaignCue.
 - Plain explanation that product support, onboarding, billing, documentation, and account questions should start from the relevant product site.
+- Current-color Prism recovery panel with Home, Products, and Contact routes.

@@ -265,9 +265,9 @@ End users interact with the **AI chatbot** through the search modal or help chat
 | **Tenant** (`tId`) | All user data is tenant-isolated                   | Firestore queries with `where('tId', '==', session.tId)` |
 | **Store** (`sId`)  | Multi-store tenants have store-level isolation     | Firestore queries with `where('sId', '==', session.sId)` |
 | **User** (`uId`)   | Chat sessions are per-user within tenant           | Firestore queries with `where('uId', '==', session.uId)` |
-| **Platform**       | KB articles, categories are platform-wide (shared) | No tenant filter — all owners see same KB                |
+| **Platform Admin** | Platform administrators can perform administrative KB reads across workspaces | Platform role plus DAL/rules checks |
 
-**Critical distinction:** Knowledge Base is **global** (platform-wide), not tenant-scoped. All owners access the same KB articles. This is intentional — it's a platform help center, not per-tenant documentation.
+**Critical distinction:** Workspace Knowledge Base content is tenant/store scoped. Platform-admin global reads are administrative only; owners and public Answerlattice surfaces must read through the tenant/store scope.
 
 ---
 

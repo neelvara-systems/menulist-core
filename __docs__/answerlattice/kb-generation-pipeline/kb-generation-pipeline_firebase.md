@@ -16,7 +16,7 @@
 | **Collection** | `kb_generation_jobs` |
 | **DB_COLLECTIONS constant** | `DB_COLLECTIONS.KB_GENERATION_JOBS` |
 | **Doc ID** | Auto-generated |
-| **Scoping** | `tId` + `sId` fields (but `getIngestionJobs()` has no filter) |
+| **Scoping** | `tId` + `sId` fields; non-platform `getIngestionJobs()` reads are tenant/store scoped |
 | **Avg Doc Size** | 5-50 KB (grows with generated categories/articles metadata) |
 | **Growth Rate** | Per-upload (infrequent) |
 

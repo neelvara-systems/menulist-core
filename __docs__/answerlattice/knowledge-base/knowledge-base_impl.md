@@ -65,7 +65,7 @@ When Answerlattice product surfaces are enabled, KB article create/update and ap
 
 | Function | Reads | Writes | Notes |
 |----------|:-----:|:------:|-------|
-| `getArticles()` | All | 0 | Fetches entire collection — **NO tenant filter** |
+| `getArticles()` | Scoped list | 0 | Deprecated compatibility helper; non-platform callers are filtered by tenant/store, platform admins can read the global list |
 | `addArticle(data)` | 0 | 1 | Uses `requestBodyComposer` |
 | `updateArticle(data)` | 0 | 1 | Merge update, returns acknowledged article |
 | `deleteArticle(id)` | 0 | 1 | Hard delete, returns `{ success: true, id }` |
@@ -238,11 +238,11 @@ Article saved/published
 
 | # | Issue | Severity | File:Line | Notes |
 |---|-------|----------|-----------|-------|
-| 1 | `getArticles()` fetches ALL articles — no pagination, no tenant filter | Medium | `articles.ts:19` | Only used in platform admin |
+| 1 | Deprecated `getArticles()` compatibility helper could read globally | Resolved | `articles.ts` | Deprecated helper now scopes non-platform reads and keeps only platform-admin global read behavior |
 | 2 | `updateArticleFeedback` is read-then-write (not transaction) | Low | `articles.ts:154` | Could drift under concurrent writes |
 | 3 | No explicit auth check in KB DAL functions | Medium | All DAL | Relies on component-level access control |
 | 4 | `console.log("knowledge base categories", categoriesResult)` in platform | Low | `platform/knowledgeBase/index.tsx:48` | Debug log in production code |
-| 5 | KB articles have no tenant scoping | By Design | All DAL | Platform-wide KB — intentional |
+| 5 | KB articles have no tenant scoping | Resolved | All DAL | Non-platform reads are tenant/store scoped; platform-admin global reads remain operational/admin-only |
 | 6 | Categories doc could hit 1MB with very large KB | Very Low | `categories.ts` | Current scale is far below limit |
 
 ---

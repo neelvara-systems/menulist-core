@@ -36,9 +36,9 @@ V0 is mobile-relevant and approved for the public website because many SMB owner
 
 ---
 
-## Future V1 Owner Mobile Direction
+## V1 Owner Mobile Direction
 
-If V1 owner readability is added, it should appear inside existing mobile owner surfaces:
+V1 owner readability appears inside existing mobile owner surfaces:
 
 - Menu screen readiness
 - Business Health screen

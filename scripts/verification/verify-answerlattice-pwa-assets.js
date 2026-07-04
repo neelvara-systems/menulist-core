@@ -75,7 +75,7 @@ function verifyLoaderBranding() {
   assertIncludes(globalLoader, '<AnswerlatticeLoaderLogo idPrefix="answerlattice-global-loader" />', 'global loader Answerlattice logo');
   assertIncludes(logoMark, 'viewBox="0 0 8367 5131"', 'Answerlattice inline logo source viewBox');
   assertIncludes(logoMark, 'strokeWidth="545"', 'Answerlattice inline logo final stroke width');
-  assertIncludes(logoMark, 'stopColor="#A4FFFA"', 'Answerlattice inline logo final left gradient');
+  assertIncludes(logoMark, 'stopColor="#5EEAD4"', 'Answerlattice inline logo final left gradient');
   assertIncludes(logoMark, 'stopColor="#08513E"', 'Answerlattice inline logo final right gradient');
   assertNotIncludes(logoMark, '<img', 'Answerlattice logo mark');
   assertIncludes(loaderLogo, '<AnswerlatticeLogoMark', 'Answerlattice loader shared SVG-path source');

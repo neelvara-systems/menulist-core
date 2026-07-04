@@ -194,6 +194,11 @@ Tool pages:
 - https://menulist.ai/tools/whatsapp-reply-pack
 - https://menulist.ai/tools/hours-check
 - https://menulist.ai/tools/photo-gap-check
+- https://menulist.ai/tools/qr-poster-maker
+- https://menulist.ai/tools/whatsapp-menu-status-maker
+- https://menulist.ai/tools/holiday-hours-poster-maker
+- https://menulist.ai/tools/customer-link-card-maker
+- https://menulist.ai/tools/feedback-qr-card-maker
 
 Feature pages:
 

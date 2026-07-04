@@ -150,6 +150,7 @@ assertIncludes(report, 'aiOrSearchChecked: false', 'Booking Inquiry Readiness Ch
 assertIncludes(report, 'rankingPromise: false', 'Booking Inquiry Readiness Check report ranking boundary');
 assertIncludes(report, 'getBookingInquiryEvidenceText', 'Booking Inquiry Readiness Check explicit evidence text');
 assertIncludes(report, 'Action destination format was checked locally. The link, phone number, inbox, calendar, or provider was not opened.', 'Booking Inquiry Readiness Check action destination evidence boundary');
+assertIncludes(report, 'Public HTTPS customer link format was checked locally. The URL was not opened or fetched.', 'Booking Inquiry Readiness Check public HTTPS customer-link evidence boundary');
 assertIncludes(report, 'Booking providers, calendars, payments, inboxes, external pages, and messages were not inspected.', 'Booking Inquiry Readiness Check external provider evidence boundary');
 assertIncludes(ownerReport, "'booking_inquiry_readiness'", 'Booking Inquiry Readiness Check owner module id');
 assertIncludes(ownerReport, 'Booking and inquiry readiness', 'Booking Inquiry Readiness Check owner module title');

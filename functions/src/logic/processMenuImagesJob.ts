@@ -60,7 +60,6 @@ const CONFIDENCE_SCORE_MAP: Record<string, number> = { high: 1, medium: 0.6, low
 const DEFAULT_OUTLET_EXTRACTION_POLICY = {
     canUseMenuExtraction: false,
 };
-const DEFAULT_STORAGE_BUCKET = "menulist-qa.appspot.com";
 const OWNER_JOB_FILE_TYPES = new Set<string>(OWNER_MENU_UPLOAD_MIME_TYPES);
 const PUBLIC_CREATE_MENU_IMAGE_FILE_TYPES = new Set<string>(PUBLIC_CREATE_MENU_IMAGE_MIME_TYPES);
 const LINK_IMPORT_JOB_FILE_TYPES = new Set<string>(MENU_LINK_IMPORT_MIME_TYPES);
@@ -217,8 +216,18 @@ function shouldSkipProjectSave(job: MenuImageProcessingJob): boolean {
         job.projectId?.startsWith("msg-onboarding-");
 }
 
+function getProjectStorageBucketFallback(): string {
+    const projectId = process.env.FIREBASE_PROJECT_ID
+        || process.env.GCLOUD_PROJECT
+        || process.env.GCP_PROJECT
+        || process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
+    return projectId ? `${projectId}.appspot.com` : "";
+}
+
 function getAllowedStorageBucket(): string {
-    return process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || process.env.FIREBASE_STORAGE_BUCKET || DEFAULT_STORAGE_BUCKET;
+    return process.env.FIREBASE_STORAGE_BUCKET
+        || process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
+        || getProjectStorageBucketFallback();
 }
 
 function getStoragePathFromDownloadUrl(value: string): string | null {

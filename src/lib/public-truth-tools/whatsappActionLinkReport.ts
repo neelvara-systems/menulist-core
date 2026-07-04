@@ -1,3 +1,7 @@
+import {
+  getUrlWithPublicHttpsProtocol,
+  isPublicHttpsUrl as isValidHttpUrl,
+} from './publicUrlValidation';
 import type {
   WhatsAppActionLinkCheckId,
   WhatsAppActionLinkEvidence,
@@ -45,11 +49,11 @@ function isLikelyWhatsAppPhone(rawValue: string): boolean {
 }
 
 function getUrlWithProtocol(value: string): string {
-  if (/^https?:\/\//i.test(value) || /^whatsapp:\/\//i.test(value)) return value;
+  if (/^whatsapp:\/\//i.test(value)) return value;
   if (/^(?:wa\.me|api\.whatsapp\.com|web\.whatsapp\.com)\//i.test(value)) {
     return `https://${value}`;
   }
-  return value;
+  return getUrlWithPublicHttpsProtocol(value);
 }
 
 function parseWhatsAppUrl(value: string): URL | null {
@@ -95,20 +99,6 @@ function getValidLinkPhone(rawLink: string): string {
   return phone.length >= 8 && phone.length <= 15 && !phone.startsWith('0') ? phone : '';
 }
 
-function isValidHttpUrl(value: string): boolean {
-  if (!value) return false;
-
-  try {
-    const url = new URL(/^https?:\/\//i.test(value) ? value : `https://${value}`);
-    const hostLooksUsable = url.hostname === 'localhost'
-      || url.hostname === '127.0.0.1'
-      || url.hostname.includes('.');
-    return (url.protocol === 'http:' || url.protocol === 'https:') && hostLooksUsable;
-  } catch {
-    return false;
-  }
-}
-
 function hasMessageActionHint(value: string): boolean {
   return /(?:\border\b|\bbook\b|\breserve\b|\bquote\b|\bprice\b|\bask\b|\bquestion\b|\bmenu\b|\bservice\b|\bappointment\b|\bdelivery\b|\bpickup\b|\bhelp\b|\bsupport\b|\bavailable\b|\btoday\b|\bslot\b)/i.test(value);
 }
@@ -142,7 +132,7 @@ function getWhatsAppActionLinkEvidenceText(evidence: WhatsAppActionLinkEvidence)
     case 'message_text_hint':
       return 'Checked action words and message length in the entered message only.';
     case 'customer_link_format':
-      return 'Customer link format was checked locally. The link was not opened or fetched.';
+      return 'Public HTTPS customer link format was checked locally. The link was not opened or fetched.';
     case 'not_provided':
       return 'No owner-entered source was provided for this fact.';
     case 'not_checked':

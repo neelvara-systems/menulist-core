@@ -1,151 +1,130 @@
-# AI Image Generation — Marketing & Sales
+# AI Image Generation - Marketing & Sales
 
-**Feature:** Menu Image Generation & Editing
-**Status:** Controlled owner testing ready after June 2026 worker/auth/logging hardening
+**Feature:** Menu Image Preparation For Review
+**Status:** Source-backed marketing draft; not current sales, publication, or launch certification
 **Last Updated:** June 11, 2026
 **Audience:** Sales Team, Marketing, Landing Page Writers
 
 ---
 
-## Elevator Pitch (30-Second Hook)
+## Current Sales/Launch Boundary
 
-> "MenuList helps owners prepare menu item images for review before publishing. Generate one image or prepare a bounded batch, then keep only the images that match the real business."
+This document is source-backed marketing context for menu image preparation. Do not use it as current sales collateral, website copy, partner copy, or launch approval until release-specific evidence is recorded.
+
+Current AI Image Generation collateral approval requires:
+
+- Active production-readiness audit evidence.
+- External Certification Runbook evidence.
+- `npm run verify:ai-accounting`.
+- `npm run verify:public-business-truth`.
+- Target feature-flag, plan, credit, and provider review.
+- Provider smoke for the target image model and environment.
+- Authenticated desktop/mobile editor QA for image draft review.
+- Public menu image-rendering QA for approved images.
+- Target deploy evidence and production-host smoke.
+- Release-specific evidence before using timing, quality, cost-savings, full-menu, third-party-platform, customer-behavior, or provider claims.
 
 ---
 
-## Feature Narrative (Business Value)
+## Elevator Pitch
+
+> "MenuList helps owners prepare menu item image drafts for review before publishing. Generate one image or prepare a bounded batch where plan and credits allow, then keep only the images that match the real business."
+
+---
+
+## Feature Narrative
 
 ### The Problem
 
-Every restaurant owner faces the same dilemma:
+Owners often have incomplete or inconsistent menu images:
 
-**Option A: Professional Photography**
-- Cost: $50-200 per dish
-- Timeline: 2-4 weeks to schedule
-- Result: Beautiful photos that need updating every menu change
-
-**Option B: DIY Phone Photos**
-- Cost: Free
-- Timeline: Immediate
-- Result: Inconsistent quality that hurts brand perception
-
-**Option C: No Images**
-- Cost: Nothing
-- Timeline: N/A
-- Result: Lower customer engagement, harder to sell dishes
+- **Missing images:** Some items have no usable visual support.
+- **Old photos:** Existing images may no longer match the item.
+- **Inconsistent style:** Photos collected over time can look uneven.
+- **Review burden:** Generated or edited visuals still need owner judgment.
 
 ### The Solution
 
-MenuList AI Image Generation offers **Option D**:
+MenuList prepares image drafts for owner review:
 
-- **Cost:** Included in your subscription
-- **Timeline:** 30 seconds per image
-- **Result:** Professional-quality images, consistent style, ready-to-apply updates
+- **Selected items:** Owners choose which menu items need image support.
+- **Plan and credit scope:** Draft generation follows the current plan, credit, feature-flag, and provider limits.
+- **Review-first flow:** Drafts are not customer-facing until the owner keeps and publishes them.
+- **Ready-to-apply updates:** Approved image drafts become ready-to-apply updates through the supported editor and public menu path.
 
-### Real Impact
+### The Result
 
-| Scenario | Before MenuList | With MenuList |
-|----------|-----------------|---------------|
-| New menu item | Wait 2 weeks for photographer OR no image | Generate in 30 seconds |
-| Menu redesign | $2,000-5,000 for reshoot | $0, regenerate instantly |
-| Seasonal update | Reuse old photos or skip | Fresh images every season |
-| Multi-location consistency | Each location shoots differently | Uniform style across all |
+Owners get a bounded image-preparation workflow without claiming guaranteed quality, fixed speed, full-menu coverage, photoshoot replacement, or third-party platform rights.
 
 ---
 
-## Pitch Deck Outline (7 Slides)
+## Pitch Deck Outline
 
-### Slide 1: The Menu Image Crisis
+### Slide 1: The Menu Image Gap
 
-**Header:** "Your menu photos are costing you customers."
+**Header:** "Some menu items need better visual support."
 
 **Key Points:**
-- 70% of customers look at menu images before ordering
-- Poor photos reduce perceived value by up to 40%
-- Most restaurants can't afford professional photography
+- Many menus have missing or outdated item images.
+- Mixed image sources can make the customer menu feel uneven.
+- Owners still need to approve visuals before customers see them.
 
-**Visual:** Split screen: professional vs phone photo of same dish
+### Slide 2: Why Current Options Are Hard
 
----
+| Option | Cost | Time | Control |
+| ------ | ---- | ---- | ------- |
+| Photography | Requires current market evidence before quoting | Scheduling varies | High when managed well |
+| DIY photos | Low direct cost | Owner effort | Quality varies |
+| Stock photos | License-dependent | Search/edit time | May not match the actual item |
 
-### Slide 2: Traditional Solutions Don't Scale
+### Slide 3: MenuList Image Drafts
 
-**Header:** "Why current options fail."
+**Header:** "Image drafts inside the menu workflow."
 
-| Option | Cost | Time | Consistency | Updates |
-|--------|------|------|-------------|---------|
-| Professional | $$$ | Weeks | ✅ | ❌ Expensive |
-| DIY | Free | Hours | ❌ | ⚠️ Inconsistent |
-| Stock Photos | $ | Minutes | ⚠️ | ❌ Generic |
+**Key Message:** "Prepare, review, keep, and publish approved images."
 
-**Conclusion:** No option is sustainable for growing businesses.
+### Slide 4: Two Preparation Paths
 
----
+**Single Item:**
+- Useful for a new or missing item image.
+- Owner reviews before applying.
+- Retry depends on credits, provider status, and current release behavior.
 
-### Slide 3: Introducing MenuList AI Images
+**Bounded Batch:**
+- Useful for selected groups of items.
+- Batch size and availability follow the current release.
+- Results stay drafts until reviewed.
 
-**Header:** "Professional menu photos, zero photography."
+### Slide 5: Controls That Matter
 
-**Demo:** Live generation of a dish image
-
-**Key Message:** "Just describe your dish. AI does the rest."
-
----
-
-### Slide 4: Two Modes for Every Need
-
-**Single Mode:**
-- Perfect for new items
-- Real-time preview
-- Style customization
-- 30-second turnaround
-
-**Batch Mode:**
-- Process entire menu overnight
-- 50+ items at once
-- Consistent styling
-- Progress tracking
-
----
-
-### Slide 5: Features That Matter
-
-**Style Control:**
-- Photography styles (studio, natural, dramatic)
-- Backgrounds (white, wood, marble, custom)
-- Lighting (soft, dramatic, natural)
-- Compositions (top-down, side view, close-up)
+**Image Direction:**
+- Prompt or style options where supported.
+- Existing item names and descriptions can inform the draft.
+- Business-specific review remains required.
 
 **Image Editing:**
-- Enhance existing photos
-- Replace backgrounds
-- Add appetizing effects
-- Business-specific features
+- Existing-photo enhancement or replacement depends on the current release scope.
+- Owners keep, replace, or discard results.
+- Approved images remain tied to the menu workflow.
 
----
-
-### Slide 6: Security & Quality
+### Slide 6: Safety And Review
 
 **Content Safety:**
-- AI filters inappropriate content
-- Professional output only
-- Brand-safe results
+- Provider and route safety checks apply.
+- Unsafe or mismatched results should be rejected.
+- Owner review is the quality gate.
 
 **Quality Assurance:**
-- Preview before using
-- Regenerate if needed
-- Edit and refine
+- Preview before publishing.
+- Keep existing images when a draft is not right.
+- Use release evidence before quality claims.
 
----
-
-### Slide 7: Get Started Today
+### Slide 7: Launch Copy
 
 **Call to Action:**
-- Included in all MenuList plans
-- No additional setup required
-- Start generating in minutes
-
-**Support:** Live demo available, training included
+- Review image options.
+- Prepare a selected item draft.
+- Publish only approved customer-facing images.
 
 ---
 
@@ -154,56 +133,48 @@ MenuList AI Image Generation offers **Option D**:
 ### Hero Section
 
 **Headline:**
-> "Turn Menu Text Into Stunning Photos"
+> "Prepare menu images for review."
 
 **Subhead:**
-> No photographer needed. No expensive equipment. Just AI magic.
+> "Create image drafts where plan and credits allow, then publish only the visuals that match the real business."
 
-**CTA:** "Generate Your First Image Free"
+**CTA:** "Review Image Options"
 
 ---
 
 ### Feature Section Headers
 
-1. **"30-Second Professional Photos"**
-   > Type your dish name. Watch AI create appetizing images that sell.
+1. **"Drafts before customer display"**
+   > Prepare image options and review them before customer-facing menus change.
 
-2. **"Process Your Entire Menu Overnight"**
-   > 200 items? No problem. Batch mode handles everything while you sleep.
+2. **"Selected item or bounded batch"**
+   > Work on one item or a supported batch, depending on plan, credits, provider status, and release scope.
 
-3. **"Consistent Brand Style"**
-   > Every image matches your aesthetic. Uniform quality across all items.
+3. **"Owner-approved visuals"**
+   > Keep only images that match the actual business and menu item.
 
-4. **"Edit Without Reshooting"**
-   > Enhance, change backgrounds, add effects. No new photos needed.
+4. **"Ready-to-apply updates"**
+   > Approved images can be applied through the supported editor and public menu path.
 
 ---
 
 ### Social Proof Section
 
-**Quote Template:**
-> "We used to spend $3,000 every time we updated our menu. Now I generate new images while drinking my morning coffee." — [Restaurant Owner]
-
-**Stat Callouts:**
-- "Generate images 100x faster than traditional photography"
-- "Save $50-200 per menu item on photography costs"
-- "Zero technical skills required"
-
----
+Do not use testimonials, cost-savings claims, speed claims, customer-behavior claims, or quality claims without approved evidence.
 
 ### FAQ Section
 
-**Q: Is it really as good as professional photography?**
-> A: For digital menus, absolutely. Our AI is trained on professional food photography styles and produces appetizing, brand-appropriate images.
+**Q: Is it as good as professional photography?**
+> A: Do not make professional-photography equivalence claims without target evidence. Treat generated images as drafts for owner review.
 
-**Q: What if I don't like the generated image?**
-> A: Regenerate as many times as you want. You only use the images you love.
+**Q: What if I do not like the generated image?**
+> A: Keep the existing image, reject the draft, or retry where credits, provider status, and current release behavior allow.
 
 **Q: Can I use these on third-party delivery apps?**
-> A: Yes! Generated images are yours to use anywhere.
+> A: Do not promise third-party platform use without current rights, policy, and export evidence for the target release.
 
 **Q: How does batch mode work?**
-> A: Select items, configure your style once, and let AI process everything. You'll get real-time progress updates and can review all images before using them.
+> A: Batch preparation is bounded by the current release, plan, credits, feature flags, and provider behavior. Results should be reviewed before use.
 
 ---
 
@@ -211,35 +182,35 @@ MenuList AI Image Generation offers **Option D**:
 
 ### For Restaurants
 
-- "Stop paying photographers every time you add a dish"
-- "Your seasonal menu can have fresh images every time"
-- "Consistent quality across all 5 of your locations"
+- "Fill selected image gaps without changing the approved menu source."
+- "Review image drafts before customers see them."
+- "Use release evidence before making cost, speed, or quality claims."
 
 ### For Cafes
 
-- "That new specialty latte deserves a gorgeous photo"
-- "Update your pastry case images daily if you want"
-- "Match your cozy brand aesthetic automatically"
+- "Prepare a draft for a new item image."
+- "Keep existing photos when they are better."
+- "Review visuals against the actual business before publishing."
 
 ### For Food Delivery
 
-- "200 items need photos? Done by tomorrow morning"
-- "Stand out from competitors with professional images"
-- "No more blank product cards on delivery apps"
+- "Do not promise delivery-app use without target platform evidence."
+- "MenuList image drafts are first for the MenuList customer-menu workflow."
+- "Use approved images only where rights and platform policy allow."
 
 ### Objection Handling
 
-**"AI images look fake"**
-> "Our AI is specifically trained on professional food photography. Let me show you examples—most people can't tell the difference."
+**"Generated images look fake"**
+> "That can happen. The workflow is review-first: keep only drafts that match the real business."
 
 **"We already have a photographer"**
-> "That's great for your signature dishes. Use AI for the everyday items and menu updates. Save your photography budget for what matters most."
+> "Keep using professional photos where they matter. MenuList can help prepare drafts for selected gaps or updates, subject to plan and release scope."
 
 **"Our food is too unique"**
-> "Describe it in detail. Our AI handles everything from fusion dishes to traditional recipes. The more specific you are, the better the result."
+> "Unique items need careful review. Use source details where supported and keep only images that match the real item."
 
 **"What about food styling?"**
-> "AI handles that too. Steam on hot dishes, garnish placement, appetizing angles—it's all built in."
+> "Do not claim styling quality without release evidence. The owner review step is the quality gate."
 
 ---
 
@@ -247,21 +218,23 @@ MenuList AI Image Generation offers **Option D**:
 
 ### Use These Phrases
 
-| ✅ Approved | Why |
-|-------------|-----|
-| "Automatic image generation" | Clear, accurate |
-| "Professional-quality output" | Describes result |
-| "Handles your menu photos" | Implies reliability |
-| "Generate instantly" | Speed benefit |
+| Approved | Why |
+| -------- | --- |
+| "Prepare image drafts" | Review-first and bounded |
+| "Review before publishing" | Matches the owner approval flow |
+| "Approved images" | Avoids unchecked output |
+| "Where plan and credits allow" | Preserves billing/provider boundary |
+| "Ready-to-apply updates" | Keeps existing source-gated copy |
 
 ### Avoid These Phrases
 
-| ❌ Avoid | Why | ✅ Use Instead |
-|----------|-----|----------------|
-| "AI-powered magic" | Overpromises | "Automatic generation" |
-| "Perfect photos every time" | Unrealistic | "Professional-quality photos" |
-| "Replaces photographers" | Aggressive | "Complements your workflow" |
-| "Smart image creation" | Vague | "Automatic image generation" |
+| Avoid | Why | Use Instead |
+| ----- | --- | ----------- |
+| "AI-powered magic" | Overpromises | "Image draft preparation" |
+| "Perfect photos every time" | Unrealistic | "Review image drafts" |
+| "Replaces photographers" | Aggressive and unsupported | "Complements your workflow" |
+| "Generate instantly" | Unsupported timing claim | "Prepare drafts where supported" |
+| "Use anywhere" | Rights/platform overclaim | "Use where rights and platform policy allow" |
 
 ---
 
@@ -269,29 +242,29 @@ MenuList AI Image Generation offers **Option D**:
 
 ### vs. Traditional Photography
 
-| Aspect | Traditional | MenuList AI |
-|--------|-------------|-------------|
-| Cost per image | $50-200 | Included |
-| Turnaround | Days/weeks | Seconds |
-| Style consistency | Depends on photographer | Guaranteed |
-| Updates | New photoshoot needed | Regenerate free |
+| Aspect | Traditional | MenuList |
+| ------ | ----------- | -------- |
+| Cost per image | Requires current market evidence before quoting | Follows plan and credit scope |
+| Turnaround | Scheduling varies | Requires target-run evidence before quoting |
+| Style consistency | Depends on shoot and direction | Requires owner review |
+| Updates | New source may be needed | Prepare drafts where supported |
 
 ### vs. Stock Photos
 
-| Aspect | Stock | MenuList AI |
-|--------|-------|-------------|
-| Matches your actual dish | ❌ Never | ✅ Yes |
-| Unique to your business | ❌ Same as competitors | ✅ Custom generated |
-| Brand consistency | ⚠️ Hit or miss | ✅ Style control |
+| Aspect | Stock | MenuList |
+| ------ | ----- | -------- |
+| Matches actual dish | Requires owner review | Requires owner review |
+| Unique to business | License/source-dependent | Draft is generated for the item but still needs review |
+| Brand consistency | Varies | Review against business style |
 
 ### vs. DIY Phone Photos
 
-| Aspect | Phone Photos | MenuList AI |
-|--------|--------------|-------------|
-| Quality | Inconsistent | Professional |
-| Time investment | Hours styling | 30 seconds |
-| Equipment needed | Lighting, props, skills | Just text |
-| Results | Amateur look | Commercial quality |
+| Aspect | Phone Photos | MenuList |
+| ------ | ------------ | -------- |
+| Quality | Varies | Draft quality varies and needs review |
+| Time investment | Owner effort | Requires target-run evidence before quoting |
+| Equipment needed | Phone and setup | Feature, plan, credits, and provider availability |
+| Results | Owner-controlled | Owner-approved draft output |
 
 ---
 
@@ -299,32 +272,32 @@ MenuList AI Image Generation offers **Option D**:
 
 ### Launch Campaign
 
-**Theme:** "Your Menu Deserves Better Photos"
+**Theme:** "Review image drafts before publishing"
 
 **Content:**
-- Before/after comparisons
-- Time-saved calculator
-- Customer testimonials
+- Source image gap examples
+- Owner review workflow
+- Approved-image customer-menu examples with release evidence
 
 ### Seasonal Campaign
 
-**Theme:** "New Season, New Menu, New Images"
+**Theme:** "Review selected seasonal item images"
 
-**Timing:** Monthly seasonal menu updates
+**Timing:** Seasonal menu update windows
 
 **Content:**
-- Generate seasonal imagery
-- Refresh your entire menu
-- No photoshoot needed
+- Prepare drafts for selected seasonal items
+- Review and publish approved visuals
+- Avoid photoshoot replacement or fixed timing claims
 
 ### Multi-Location Campaign
 
-**Theme:** "Same Quality, Every Location"
+**Theme:** "Owner-approved visual consistency"
 
 **Content:**
-- Consistency across outlets
-- Centralized brand control
-- Scalable image generation
+- Review image drafts centrally where release scope supports it
+- Keep approved images tied to the menu workflow
+- Avoid every-location uniformity claims without target evidence
 
 ---
 

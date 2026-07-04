@@ -1,7 +1,7 @@
 # Photo Gap Check - Documentation Hub
 
 > **Tool:** MenuList Photo / Visual Identity Gap Check
-> **Status:** Implemented - V0 public browser-local checker
+> **Status:** Implemented - V0 public browser-local checker and V1 owner readiness module
 > **Last Updated:** July 4, 2026
 > **Route:** `/tools/photo-gap-check`
 
@@ -38,8 +38,8 @@ The tool checks owner-selected visual facts. It does not upload images, analyze 
 | Version | Product shape | Status |
 | --- | --- | --- |
 | V0 | Public free tool at `/tools/photo-gap-check` | Implemented |
-| V1 | Logged-in MenuList owner check inside OBP readiness, Business Health, Public Discovery, or setup flow | Not implemented |
-| V2 | Paid recurring visual coverage report with history, multi-location reports, and agency exports | Not implemented |
+| V1 | Logged-in MenuList owner check inside OBP readiness, Business Health, Public Discovery, or setup flow | Implemented |
+| V2 | Paid recurring visual coverage report with history, multi-location reports, and agency exports | Documented only |
 
 ---
 

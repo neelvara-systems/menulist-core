@@ -10,7 +10,7 @@
 | WRP-001 | Owner enters business name, phone number with country code, current customer link, offer summary, hours, and action path | Report returns ready or mostly present rows and generates reply blocks |
 | WRP-002 | Owner omits WhatsApp number | WhatsApp number row is missing and no preview link is generated |
 | WRP-003 | Owner enters a phone-like value without country code | Phone row is unclear and explains local format only |
-| WRP-004 | Owner enters current customer link text with invalid URL shape | Link row is unclear and says URL format was checked locally only |
+| WRP-004 | Owner enters current customer link text with invalid URL shape | Link row is unclear and says public HTTPS URL format was checked locally only |
 | WRP-005 | Owner copies a reply block | Browser copies the block with its evidence text |
 | WRP-006 | Owner copies or downloads the report | Browser-local copy/download works without report storage |
 | WRP-007 | Owner copies a public report link | Hash-fragment shareable report URL is generated without server report storage |

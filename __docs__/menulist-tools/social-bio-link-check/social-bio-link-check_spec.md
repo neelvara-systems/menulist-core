@@ -1,6 +1,6 @@
 # Social Bio Link Consistency Check - Specification
 
-**Status:** Implemented V0 public tool; V1 maps to existing MenuList owner readiness surfaces
+**Status:** Implemented V0 public tool and V1 owner readiness module
 **Last Updated:** July 4, 2026
 **Owner Job:** "Show me whether all the places customers find me point to the same current link."
 
@@ -58,7 +58,7 @@ V0 does not open social profiles, fetch social profiles, inspect websites, inspe
 
 The logged-in owner experience does not need a duplicate module. MenuList already has Share, QR, Public Discovery, Official Business Page, and Business Health surfaces that know the current customer link and the owner's canonical public facts.
 
-V1 should route owners into:
+V1 uses the `social_bio_link_consistency` module in `ownerPublicTruthReadiness.ts` and routes owners into:
 
 - Share and QR readiness when the current link is missing or stale
 - Public Discovery when the public customer source is incomplete

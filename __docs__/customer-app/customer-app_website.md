@@ -3,7 +3,7 @@
 **Feature Name:** Customer App (Installable Customer-Facing Menu)  
 **Document Type:** Public Website Content  
 **Status:** Source-backed website draft; publish/use with current Customer App runtime boundary
-**Last Updated:** July 2, 2026
+**Last Updated:** July 4, 2026
 **Audience:** Potential customers visiting menulist.ai
 
 ---
@@ -16,7 +16,7 @@
 
 **Subheadline:**
 
-> Your customers can add your menu to their home screen as your branded app — your logo, your name, one-tap access. No app store. No download. Works on iPhone and Android automatically.
+> Your customers can add your menu to their home screen as your branded app — your logo, your name, one-tap access. No app store. No download. Works on modern iPhone and Android browsers.
 
 **CTA Text:** See How It Works
 **CTA Link:** #how-it-works
@@ -47,11 +47,11 @@ QR codes get buried. Links get forgotten. Bookmarks are too much work.
 
 MenuList creates your **Customer App** automatically. When customers visit your menu a few times, we invite them to save it to their home screen.
 
-They see **your logo**. They see **your restaurant name**. They tap it — your live menu opens instantly.
+They see **your logo**. They see **your restaurant name**. They tap it — your public menu opens in the app view.
 
 No browser chrome. No typing. No searching. One tap, just like any other app.
 
-And when you update your menu? Their app updates automatically. No action needed from you. No action needed from them.
+When you update your menu, the app opens the current public menu path. Customers see approved changes after the public cache or return-to-app refresh path completes.
 
 ---
 
@@ -71,16 +71,16 @@ Customers see your restaurant's name and logo on their home screen — not MenuL
 **Title:** Friction removed
 
 **Description:**
-No typing URLs. No searching Google. No scrolling through chat history for that link. One tap from home screen → live menu. For repeat customers, this is the difference between "maybe I'll order" and "done."
+No typing URLs. No searching Google. No scrolling through chat history for that link. One tap from home screen opens the public menu path. For repeat customers, this reduces the steps between "maybe I'll order" and checking your menu.
 
 **Visual:** Side-by-side comparison: Left shows "Old way" (5 steps: unlock → open browser → type URL → wait → menu), Right shows "New way" (2 steps: unlock → tap app)
 
-### Benefit 3: Always Current
+### Benefit 3: Current Menu Path
 
-**Title:** Updates without effort
+**Title:** Approved updates stay on the same path
 
 **Description:**
-Change a price? Add a new dish? Mark something sold out? Your Customer App reflects it immediately. Customers always see your current menu — never outdated PDFs or old screenshots.
+Change a price, add a dish, or mark something sold out, then the Customer App opens the refreshed public menu after the supported cache or return-to-app refresh path completes. Active sessions do not mutate in the background, and the app does not serve stale offline menu content.
 
 **Visual:** Split screen showing owner making a change in dashboard, customer phone showing updated menu with "Updated" indicator
 
@@ -125,7 +125,7 @@ On their third visit, we gently suggest: "Save this menu for faster access." No 
 ### Step 3: They Add It — Done
 
 **Copy:**
-One tap. Your logo appears on their home screen. From now on, one tap opens your live menu. They order faster. You earn loyalty easier.
+One tap. Your logo appears on their home screen. From now on, one tap opens your public menu path. Customers have fewer steps to return to your menu.
 
 **Visual:** Animation: App icon appears on home screen → tap → menu opens
 
@@ -133,25 +133,21 @@ One tap. Your logo appears on their home screen. From now on, one tap opens your
 
 ## Social Proof Slots
 
-### Testimonial 1
+### Testimonial Slot 1
 
-> "I didn't realize my customers were using it as an app until three regulars showed me their home screens. One tap, my menu opens. They order more often now."
+Use only an owner-approved quote from a live Customer App customer. Do not publish invented names, locations, or performance outcomes.
 
-**— Ramesh K., Owner, South Indian Restaurant, Bangalore**
+### Testimonial Slot 2
 
-### Testimonial 2
-
-> "We have families who eat here every Sunday. Now they all have our app on their phones. No searching, no links — just tap and order."
-
-**— Priya S., Owner, Family Dining, Mumbai**
+Use only an owner-approved quote from a live Customer App customer. Do not publish invented names, locations, or performance outcomes.
 
 ### Stat Block
 
-| Stat                        | Value                  |
-| --------------------------- | ---------------------- |
-| Customer App installs       | Growing daily          |
-| Average app opens per month | 3+ per customer        |
-| Repeat visit lift           | +20% with Customer App |
+| Stat                  | Value                                      |
+| --------------------- | ------------------------------------------ |
+| Customer App installs | Use live Customer App analytics evidence   |
+| App opens             | Use live Customer App analytics evidence   |
+| Repeat visits         | Use owner-approved or analytics evidence   |
 
 ---
 
@@ -159,7 +155,7 @@ One tap. Your logo appears on their home screen. From now on, one tap opens your
 
 ### Q: Do my customers need to download something?
 
-**A:** No download needed. They tap "Add to Home Screen" in their browser — your app icon appears instantly. Takes 5 seconds. Uses no storage space. Works on iPhone, Android, any phone.
+**A:** No download needed. They use the browser's save-to-phone flow, and your app icon appears on their home screen after that browser confirms the action. Exact wording and timing vary by device and browser.
 
 ### Q: Does this cost extra?
 
@@ -167,7 +163,7 @@ One tap. Your logo appears on their home screen. From now on, one tap opens your
 
 ### Q: What if I change my menu?
 
-**A:** Their app updates automatically. Change prices, add items, mark sold out — it reflects immediately in their app. No action needed from you. No action needed from them.
+**A:** It opens the current public menu path. Approved changes appear after the public cache refresh or return-to-app visibility refresh completes; active sessions do not mutate in the background.
 
 ### Q: Is this a real app or just a shortcut?
 
@@ -175,7 +171,7 @@ One tap. Your logo appears on their home screen. From now on, one tap opens your
 
 ### Q: Can I customize how it looks?
 
-**A:** Your app uses your logo and name automatically. You can optionally customize the app name if your restaurant name is long. The layout and behavior are standardized — we keep it simple so it always works.
+**A:** Your app uses your logo and name automatically. You can optionally customize the app name if your restaurant name is long. The layout and behavior are standardized so the experience stays predictable.
 
 ---
 
@@ -183,9 +179,9 @@ One tap. Your logo appears on their home screen. From now on, one tap opens your
 
 **Page Title:** Customer App — Your Restaurant on Their Home Screen | MenuList
 
-**Meta Description:** Give your customers an app for your restaurant — your logo, your name, one-tap access to your live menu. No download. No app store. Works on iPhone and Android automatically. Included with MenuList.
+**Meta Description:** Give your customers an app for your restaurant — your logo, your name, one-tap access to your public menu. No download. No app store. Included with MenuList.
 
-**OG Title:** Your Own Customer App — Automatically
+**OG Title:** Your Own Customer App
 
 **OG Description:** Your customers can add your menu to their home screen as your branded app. One tap access. No download needed. Included with MenuList.
 
@@ -211,7 +207,7 @@ One tap. Your logo appears on their home screen. From now on, one tap opens your
 - "No download needed"
 - "Works on iPhone and Android"
 - "Included with MenuList"
-- "Updates automatically"
+- "Opens the current public menu path"
 - "Your branded app"
 
 ### Never Use:

@@ -5,7 +5,7 @@ import { AUTH_BROWSER_REQUEST_POLICY } from './browserRequestPolicy';
 export const AUTH_ACCOUNT_RESPONSE_JSON_MAX_BYTES = 16 * 1024;
 export const AUTH_ACCOUNT_REQUEST_POLICY = AUTH_BROWSER_REQUEST_POLICY;
 
-export type AuthAccountResponseKind = 'profile_update' | 'password_change';
+export type AuthAccountResponseKind = 'profile_update' | 'password_change' | 'switch_store';
 
 export type AuthProfileUpdateResponse = {
     success: true;
@@ -16,6 +16,13 @@ export type AuthProfileUpdateResponse = {
 export type AuthPasswordChangeResponse = {
     message?: string;
     success: true;
+};
+
+export type AuthSwitchStoreResponse = {
+    isMaster?: boolean;
+    success: true;
+    targetStoreId: number;
+    targetStoreName?: string;
 };
 
 type AuthAccountLogContext = Record<string, boolean | number | string | undefined>;
@@ -36,14 +43,24 @@ const isPasswordChangeResponse = (value: unknown): value is AuthPasswordChangeRe
     isRecord(value) && value.success === true
 );
 
+const isSwitchStoreResponse = (value: unknown): value is AuthSwitchStoreResponse => (
+    isRecord(value)
+    && value.success === true
+    && typeof value.targetStoreId === 'number'
+    && Number.isInteger(value.targetStoreId)
+    && value.targetStoreId > 0
+    && (value.targetStoreName === undefined || typeof value.targetStoreName === 'string')
+    && (value.isMaster === undefined || typeof value.isMaster === 'boolean')
+);
+
 const isExpectedAuthAccountResponse = (
     kind: AuthAccountResponseKind,
     value: unknown,
-): value is AuthProfileUpdateResponse | AuthPasswordChangeResponse => (
-    kind === 'profile_update'
-        ? isProfileUpdateResponse(value)
-        : isPasswordChangeResponse(value)
-);
+): value is AuthProfileUpdateResponse | AuthPasswordChangeResponse | AuthSwitchStoreResponse => {
+    if (kind === 'profile_update') return isProfileUpdateResponse(value);
+    if (kind === 'password_change') return isPasswordChangeResponse(value);
+    return isSwitchStoreResponse(value);
+};
 
 const getAuthAccountResponseLogContext = (
     kind: AuthAccountResponseKind,
@@ -74,12 +91,15 @@ const getRejectedResponseCode = (
     if (isRecord(payload) && typeof payload.code === 'string') {
         return payload.code;
     }
+    if (kind === 'switch_store') {
+        return 'AUTH_SWITCH_STORE_REJECTED';
+    }
     return kind === 'profile_update'
         ? 'AUTH_PROFILE_UPDATE_REJECTED'
         : 'AUTH_PASSWORD_CHANGE_REJECTED';
 };
 
-export const readAuthAccountResponse = async <T extends AuthProfileUpdateResponse | AuthPasswordChangeResponse>(
+export const readAuthAccountResponse = async <T extends AuthProfileUpdateResponse | AuthPasswordChangeResponse | AuthSwitchStoreResponse>(
     response: Response,
     kind: AuthAccountResponseKind,
 ): Promise<T> => {

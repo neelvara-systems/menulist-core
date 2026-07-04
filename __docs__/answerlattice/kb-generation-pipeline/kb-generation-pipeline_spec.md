@@ -154,7 +154,7 @@ This ensures no orphaned articles or categories remain.
 
 | #   | Item                                                                                                   | Status                                                                              |
 | --- | ------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------- |
-| 1   | `getIngestionJobs()` fetches ALL jobs with no tenant filter                                            | Dead code — never called. Harmless but should be removed or scoped.                 |
+| 1   | Deprecated `getIngestionJobs()` compatibility helper could read globally                              | ✅ RESOLVED — non-platform reads are tenant/store scoped; platform admins keep the administrative list path. |
 | 2   | No retry mechanism for failed jobs                                                                     | ✅ RESOLVED — `retryJob()` DAL + UI button implemented                              |
 | 3   | No job timeout (stuck in processing forever)                                                           | ✅ RESOLVED — Watchdog in hourly scheduler auto-fails after 30 min                  |
 | 4   | Source files not cleaned up on job failure or cancellation                                             | By design — preserves files for retry, audit, and review. Cleaned on explicit job delete. |

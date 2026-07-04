@@ -1,6 +1,6 @@
 # Neelvara Main Website
 
-**Status:** Implemented and Neelvara-blue recalibrated in the shared Next/Vercel app; pending owner/legal launch review
+**Status:** Implemented with current-color Prism glass relayout in the shared Next/Vercel app; pending owner/legal launch review
 **Owner:** Founder / engineering
 **Feature folder:** `__docs__/neelvara-main-website/`
 **Primary source input:** [`neelvara-main-website_chatgpt-transcript.md`](./neelvara-main-website_chatgpt-transcript.md)
@@ -31,7 +31,7 @@ Build Neelvara inside the existing Next.js/Vercel product-site architecture:
 - no API routes, auth, CMS, contact form, analytics, or cookie banner in v1
 - optional public contact email env keys only: `NEXT_PUBLIC_NEELVARA_CONTACT_EMAIL`, `NEXT_PUBLIC_NEELVARA_LEGAL_EMAIL`, `NEXT_PUBLIC_NEELVARA_PRIVACY_EMAIL`
 - no Neelvara-owned browser preference storage is required in v1
-- Neelvara blue visual system applied only to presentation: ice-white canvas, deep navy text, blue/indigo/violet mark gradient, restrained mesh, glass cards, spotlight cards, and responsive section layout; no product funnel behavior added
+- current-color Prism glass visual system applied only to presentation: ice-white canvas, deep navy text, frosted parent-brand mark gradient, fixed restrained mesh, grain, glass cards, prism panels, spotlight cards, marquee/reference modules, and responsive section layout; no product funnel behavior added
 
 Reason: the repo already uses a shared Vercel app with hostname/path-prefix routing for public product sites. Neelvara should follow that routing architecture while staying outside database-backed product identity.
 
@@ -82,7 +82,7 @@ Validation completed:
 - no `PRODUCT_IDS` entry or Firebase requirement added
 - no API routes, forms, auth, Firestore, Storage, Cloud Functions, or schedulers added
 - Neelvara contact, legal, and privacy email addresses are read from optional public env-backed constants with current address fallbacks
-- Neelvara blue redesign route and responsive checks completed at desktop, mobile, and narrow-mobile viewports
+- current-color Prism glass relayout route and responsive checks completed at desktop, mobile, and narrow-mobile viewports
 - legal/privacy/terms/contact content audit completed against current official DPDP and e-commerce references
 - Open Graph image and `.well-known/security.txt` are present for the company website
 - `/nv` internal alias responses are marked `noindex, nofollow`; `https://neelvara.com` remains canonical

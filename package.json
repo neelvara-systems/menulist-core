@@ -85,6 +85,8 @@
     "verify:whatsapp-action-link-check": "node scripts/verification/verify-whatsapp-action-link-check.js",
     "verify:whatsapp-reply-pack": "node scripts/verification/verify-whatsapp-reply-pack.js",
     "verify:hours-check": "node scripts/verification/verify-hours-check.js",
+    "verify:public-truth-monitor-addon": "node scripts/verification/verify-public-truth-monitor-addon.js",
+    "verify:print-share-tools": "node scripts/verification/verify-print-share-tools.js",
     "verify:messaging-onboarding-monitor-boundary": "node scripts/verification/verify-messaging-onboarding-monitor-boundary.js",
     "verify:working-hours-boundary": "node scripts/verification/verify-working-hours-boundary.js",
     "verify:temporary-status-boundary": "node scripts/verification/verify-temporary-status-boundary.js",

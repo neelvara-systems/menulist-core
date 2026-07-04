@@ -3,7 +3,7 @@
 **Feature Name:** Customer App (Installable Customer-Facing Menu)  
 **Document Type:** Mobile Support Assessment  
 **Status:** Runtime implemented; manual device QA still required
-**Last Updated:** June 30, 2026
+**Last Updated:** July 4, 2026
 **Audience:** Engineering, Product
 
 ---
@@ -29,7 +29,7 @@ The Customer App feature has two distinct components with different mobile requi
 | Gate          | Test                          | Result  | Reason                            |
 | ------------- | ----------------------------- | ------- | --------------------------------- |
 | **Frequency** | Daily/multiple times per day? | ✅ PASS | Customers visit menu repeatedly   |
-| **Speed**     | Completes in <5 seconds?      | ✅ PASS | One tap to dismiss or install     |
+| **Speed**     | Short, thumb-friendly flow?   | ✅ PASS | One primary action to dismiss or start install |
 | **Touch**     | Works with thumb-only?        | ✅ PASS | Bottom sheet, large tap targets   |
 | **Value**     | Needed while away from desk?  | ✅ PASS | Customers install on their phones |
 
@@ -40,7 +40,7 @@ The Customer App feature has two distinct components with different mobile requi
 | Gate          | Test                          | Result     | Reason                       |
 | ------------- | ----------------------------- | ---------- | ---------------------------- |
 | **Frequency** | Daily/multiple times per day? | ⚠️ PARTIAL | Rare setup, but useful during launch/onboarding |
-| **Speed**     | Completes in <5 seconds?      | ✅ PASS    | Toggle switches and short-name edits are quick |
+| **Speed**     | Short, thumb-friendly flow?   | ✅ PASS    | Toggle switches and short-name edits avoid deep navigation |
 | **Touch**     | Works with thumb-only?        | ✅ PASS    | Mobile screen uses large controls and image picker |
 | **Value**     | Needed while away from desk?  | ✅ PASS    | Owner can finish customer-app setup from phone |
 
@@ -322,4 +322,4 @@ The install prompt inherits theme settings from the customer menu:
 ---
 
 _Document Status: Source-gated runtime evidence; real-device QA still required_
-_Last Updated: July 2, 2026_
+_Last Updated: July 4, 2026_

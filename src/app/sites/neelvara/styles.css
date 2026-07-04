@@ -1,4 +1,42 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500&display=swap');
+@font-face {
+    font-family: "Neelvara Akshar";
+    font-style: normal;
+    font-weight: 300;
+    font-display: swap;
+    src: url("/fonts/neelvara/akshar-300.ttf") format("truetype");
+}
+
+@font-face {
+    font-family: "Neelvara Akshar";
+    font-style: normal;
+    font-weight: 400;
+    font-display: swap;
+    src: url("/fonts/neelvara/akshar-400.ttf") format("truetype");
+}
+
+@font-face {
+    font-family: "Neelvara Akshar";
+    font-style: normal;
+    font-weight: 500;
+    font-display: swap;
+    src: url("/fonts/neelvara/akshar-500.ttf") format("truetype");
+}
+
+@font-face {
+    font-family: "Neelvara Akshar";
+    font-style: normal;
+    font-weight: 600;
+    font-display: swap;
+    src: url("/fonts/neelvara/akshar-600.ttf") format("truetype");
+}
+
+@font-face {
+    font-family: "Neelvara Akshar";
+    font-style: normal;
+    font-weight: 700;
+    font-display: swap;
+    src: url("/fonts/neelvara/akshar-700.ttf") format("truetype");
+}
 
 .neelvara-site {
     --bg: #f7f9fc;
@@ -7,28 +45,33 @@
     --ink: #071323;
     --ink-soft: rgb(7 19 35 / 74%);
     --ink-mute: rgb(93 102 120 / 82%);
-    --ink-faint: rgb(20 87 217 / 15%);
+    --ink-faint: rgb(111 134 226 / 15%);
     --line: rgb(7 19 35 / 10%);
-    --line-2: rgb(20 87 217 / 18%);
-    --m-blue: #1457d9;
-    --m-clear: #2384ff;
-    --m-indigo: #2737c8;
-    --m-violet: #6542e8;
+    --line-2: rgb(111 134 226 / 18%);
+    --m-blue: #6f86e2;
+    --m-clear: #9fc6f6;
+    --m-indigo: #8798e7;
+    --m-violet: #b7acef;
+    --m-frost: #a9c2f5;
+    --m-lavender: #d9cbf3;
+    --m-lavender-2: #d0c8f4;
     --m-slate: #5d6678;
-    --glass-fill: rgb(255 255 255 / 78%);
-    --glass-fill-2: rgb(238 243 250 / 88%);
-    --glass-stroke: rgb(7 19 35 / 11%);
-    --glass-stroke-2: rgb(20 87 217 / 20%);
+    --glass-fill: rgb(255 255 255 / 70%);
+    --glass-fill-2: rgb(238 243 250 / 78%);
+    --glass-stroke: rgb(111 134 226 / 14%);
+    --glass-stroke-2: rgb(111 134 226 / 24%);
     --glass-blur: 24px;
+    --site-font: "Neelvara Akshar", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    --wordmark-font: var(--site-font);
     --wrap: min(1200px, calc(100% - 56px));
     width: 100%;
-    min-height: 100vh;
+    min-height: 100dvh;
     overflow-x: hidden;
     position: relative;
     isolation: isolate;
     color: var(--ink);
     background: var(--bg);
-    font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    font-family: var(--site-font);
     font-size: 15px;
     line-height: 1.55;
     letter-spacing: 0;
@@ -39,6 +82,11 @@
 .neelvara-site *::before,
 .neelvara-site *::after {
     box-sizing: border-box;
+}
+
+.neelvara-site,
+.neelvara-site * {
+    font-family: var(--site-font) !important;
 }
 
 .neelvara-site a {
@@ -52,16 +100,36 @@
     z-index: 2;
 }
 
-.serif {
-    font-family: "Instrument Serif", Georgia, serif;
-    font-weight: 400;
+.neelvara-site .serif {
+    font-family: var(--site-font);
 }
 
-.mono {
-    font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+.neelvara-site .mono {
+    font-family: var(--site-font);
 }
 
-.gradient-text,
+.neelvara-site .nv-wordmark,
+.neelvara-site .nv-brand-title {
+    font-family: var(--wordmark-font);
+    font-weight: 700;
+    letter-spacing: -0.025em;
+}
+
+.neelvara-site .nv-brand-title {
+    line-height: 0.96;
+}
+
+.neelvara-site .nv-brand-title em {
+    color: currentColor;
+    background: none;
+    font-family: var(--wordmark-font);
+    font-weight: 700;
+    font-style: normal;
+    letter-spacing: inherit;
+    -webkit-text-fill-color: currentColor;
+}
+
+.neelvara-site .gradient-text,
 .neelvara-site h1 em,
 .neelvara-site h2 em {
     color: transparent;
@@ -78,14 +146,15 @@
     z-index: 0;
     pointer-events: none;
     opacity: 0.9;
-    filter: blur(72px) saturate(108%);
+    filter: blur(66px) saturate(112%);
     animation: nv-drift 24s ease-in-out infinite alternate;
     background:
-        radial-gradient(40% 30% at 12% 18%, rgb(35 132 255 / 18%) 0%, transparent 60%),
-        radial-gradient(36% 28% at 88% 22%, rgb(39 55 200 / 14%) 0%, transparent 65%),
-        radial-gradient(34% 26% at 22% 78%, rgb(20 87 217 / 12%) 0%, transparent 60%),
-        radial-gradient(32% 24% at 78% 82%, rgb(101 66 232 / 9%) 0%, transparent 60%),
-        radial-gradient(28% 22% at 50% 50%, rgb(7 19 35 / 5%) 0%, transparent 70%);
+        radial-gradient(42% 34% at 8% 12%, rgb(159 198 246 / 20%) 0%, transparent 62%),
+        radial-gradient(34% 28% at 86% 16%, rgb(169 194 245 / 24%) 0%, transparent 64%),
+        radial-gradient(38% 30% at 18% 82%, rgb(111 134 226 / 14%) 0%, transparent 62%),
+        radial-gradient(34% 28% at 78% 78%, rgb(183 172 239 / 12%) 0%, transparent 62%),
+        radial-gradient(30% 24% at 54% 44%, rgb(217 203 243 / 28%) 0%, transparent 70%),
+        radial-gradient(24% 20% at 45% 96%, rgb(135 152 231 / 9%) 0%, transparent 70%);
 }
 
 .nv-page-mesh::after {
@@ -126,17 +195,17 @@
     margin: 0 auto;
 }
 
-.glass {
+.neelvara-site .glass {
     position: relative;
     border: 1px solid var(--glass-stroke);
     background: var(--glass-fill);
-    border-radius: 18px;
+    border-radius: 22px;
     backdrop-filter: blur(var(--glass-blur)) saturate(140%);
     -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(140%);
     box-shadow:
         inset 0 1px 0 rgb(255 255 255 / 78%),
-        inset 0 -1px 0 rgb(20 87 217 / 4%),
-        0 28px 72px -52px rgb(7 19 35 / 36%);
+        inset 0 -1px 0 rgb(111 134 226 / 7%),
+        0 34px 86px -58px rgb(7 19 35 / 42%);
 }
 
 .nv-reveal {
@@ -173,7 +242,26 @@
     padding: 0 18px;
     border-radius: 999px;
     background: rgb(255 255 255 / 78%);
+    overflow: hidden;
     box-shadow: 0 18px 52px -38px rgb(7 19 35 / 42%);
+}
+
+.nv-header-inner::before,
+.nv-final-band::before,
+.nv-page-prism::before {
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    background: linear-gradient(135deg, rgb(255 255 255 / 58%), rgb(255 255 255 / 4%) 38%, rgb(111 134 226 / 8%) 100%);
+    content: "";
+}
+
+.nv-header-inner > *,
+.nv-final-band > *,
+.nv-page-prism > * {
+    position: relative;
+    z-index: 1;
 }
 
 .nv-brand,
@@ -194,6 +282,11 @@
     height: 33px;
     flex: 0 0 58px;
     background: url("/neelvara-logo.svg") center / contain no-repeat;
+}
+
+.nv-brand .nv-wordmark {
+    font-size: 1.04rem;
+    line-height: 1;
 }
 
 .nv-header nav {
@@ -222,7 +315,11 @@
 .nv-header nav a:focus-visible,
 .nv-button:focus-visible,
 .nv-product-row:focus-visible,
+.nv-product-architecture-card:focus-visible,
 .nv-routing-card:focus-visible,
+.nv-support-product-link:focus-visible,
+.nv-check-list a:focus-visible,
+.nv-footer-links a:focus-visible,
 .nv-spot:focus-visible {
     outline: 2px solid var(--m-clear);
     outline-offset: 4px;
@@ -274,7 +371,7 @@
 }
 
 .nv-button-glass {
-    border-color: rgb(20 87 217 / 22%);
+    border-color: rgb(111 134 226 / 22%);
     color: var(--ink);
     background: rgb(255 255 255 / 68%);
     backdrop-filter: blur(12px);
@@ -291,28 +388,34 @@
 
 .nv-button-glass:hover,
 .nv-button-glass:focus-visible {
-    border-color: rgb(20 87 217 / 34%);
+    transform: translateY(-1px);
+    border-color: rgb(111 134 226 / 34%);
     background: rgb(238 243 250 / 86%);
 }
 
 .neelvara-site .nv-button-solid {
     min-height: 44px;
     padding: 0 22px;
-    color: #ffffff;
-    background: linear-gradient(135deg, var(--m-blue) 0%, var(--m-indigo) 68%, var(--m-violet) 100%);
+    border-color: rgb(111 134 226 / 34%);
+    color: var(--ink);
+    background: linear-gradient(135deg, var(--m-clear) 0%, var(--m-frost) 36%, var(--m-indigo) 72%, var(--m-lavender) 100%);
     box-shadow:
-        inset 0 1px 0 rgb(255 255 255 / 24%),
-        0 16px 34px -18px rgb(20 87 217 / 65%);
+        inset 0 1px 0 rgb(255 255 255 / 58%),
+        0 16px 34px -18px rgb(111 134 226 / 58%);
 }
 
 .neelvara-site .nv-button-solid:visited,
 .neelvara-site .nv-button-solid svg {
-    color: #ffffff;
+    color: var(--ink);
 }
 
 .neelvara-site .nv-button-solid:hover,
 .neelvara-site .nv-button-solid:focus-visible {
     transform: translateY(-1px);
+}
+
+.nv-button:active {
+    transform: translateY(0) scale(0.99);
 }
 
 .nv-button-large {
@@ -355,7 +458,7 @@
     flex: 0 0 6px;
     border-radius: 999px;
     background: var(--m-clear);
-    box-shadow: 0 0 10px rgb(35 132 255 / 54%);
+    box-shadow: 0 0 10px rgb(159 198 246 / 54%);
 }
 
 .neelvara-site h1,
@@ -411,6 +514,7 @@
     color: var(--ink-soft);
     font-size: 1rem;
     line-height: 1.62;
+    text-wrap: pretty;
 }
 
 .nv-hero-copy > p {
@@ -466,7 +570,7 @@
     width: 9px;
     height: 9px;
     border-radius: 999px;
-    background: rgb(20 87 217 / 18%);
+    background: rgb(111 134 226 / 18%);
 }
 
 .nv-hero-mock-grid {
@@ -611,7 +715,7 @@
     padding: 24px 0;
     border-top: 1px solid var(--line);
     border-bottom: 1px solid var(--line);
-    background: rgb(238 243 250 / 68%);
+    background: rgb(255 255 255 / 54%);
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
 }
@@ -676,6 +780,16 @@
     margin-bottom: 36px;
 }
 
+.nv-section-head-stack {
+    display: block;
+    max-width: 920px;
+}
+
+.nv-section-head-stack p {
+    max-width: 680px;
+    margin-top: 18px;
+}
+
 .nv-section-head > p {
     margin: 0;
 }
@@ -703,7 +817,7 @@
     border-radius: 999px;
     color: var(--ink-soft);
     background: transparent;
-    font-family: "JetBrains Mono", ui-monospace, monospace;
+    font-family: var(--site-font);
     font-size: 0.76rem;
     letter-spacing: 0.08em;
     text-transform: uppercase;
@@ -713,14 +827,14 @@
 }
 
 .nv-segmented button:focus-visible {
-    outline: 3px solid rgb(35 132 255 / 34%);
+    outline: 3px solid rgb(159 198 246 / 34%);
     outline-offset: 3px;
 }
 
 .nv-segmented .is-active {
-    color: #ffffff;
+    color: var(--ink);
     background: linear-gradient(135deg, var(--m-blue), var(--m-indigo));
-    box-shadow: 0 10px 24px -18px rgb(20 87 217 / 72%);
+    box-shadow: 0 10px 24px -18px rgb(111 134 226 / 72%);
 }
 
 .nv-bento {
@@ -784,7 +898,7 @@
     border: 1px solid var(--glass-stroke);
     border-radius: 12px;
     color: var(--m-blue);
-    background: rgb(20 87 217 / 8%);
+    background: rgb(111 134 226 / 8%);
 }
 
 .nv-card-icon svg {
@@ -802,7 +916,7 @@
     border-radius: 16px;
     overflow: hidden;
     background:
-        radial-gradient(60% 60% at 50% 50%, rgb(35 132 255 / 12%), transparent 70%),
+        radial-gradient(60% 60% at 50% 50%, rgb(159 198 246 / 12%), transparent 70%),
         rgb(238 243 250 / 62%);
 }
 
@@ -812,7 +926,7 @@
     height: 48%;
     border: 1px solid var(--glass-stroke-2);
     border-radius: 18px;
-    background: linear-gradient(135deg, rgb(35 132 255 / 20%), rgb(20 87 217 / 16%), rgb(39 55 200 / 18%), rgb(101 66 232 / 10%));
+    background: linear-gradient(135deg, rgb(159 198 246 / 20%), rgb(111 134 226 / 16%), rgb(135 152 231 / 18%), rgb(183 172 239 / 10%));
     box-shadow: inset 0 1px 0 rgb(255 255 255 / 58%);
     transform: rotate(-18deg);
 }
@@ -889,7 +1003,7 @@
     overflow: hidden;
     position: relative;
     border: 1px solid var(--glass-stroke);
-    border-radius: 18px;
+    border-radius: 22px;
     color: inherit;
     background: var(--glass-fill);
     text-decoration: none;
@@ -905,9 +1019,33 @@
     inset: 0;
     opacity: 0;
     pointer-events: none;
-    background: radial-gradient(220px circle at var(--mx) var(--my), rgb(20 87 217 / 10%), transparent 58%);
+    background: radial-gradient(220px circle at var(--mx) var(--my), rgb(111 134 226 / 10%), transparent 58%);
     transition: opacity 180ms ease;
     content: "";
+}
+
+.nv-spot::after,
+.nv-mock-tile::after,
+.nv-bento-card::after,
+.nv-product-detail-card::after,
+.nv-routing-card::after,
+.nv-text-panel::after {
+    position: absolute;
+    inset: 1px;
+    border-radius: inherit;
+    pointer-events: none;
+    background: linear-gradient(145deg, rgb(255 255 255 / 34%), transparent 36%, rgb(159 198 246 / 5%) 100%);
+    content: "";
+}
+
+.nv-spot > *,
+.nv-mock-tile > *,
+.nv-bento-card > *,
+.nv-product-detail-card > *,
+.nv-routing-card > *,
+.nv-text-panel > * {
+    position: relative;
+    z-index: 1;
 }
 
 .nv-spot:hover::before,
@@ -916,15 +1054,15 @@
 }
 
 .nv-spot-blue::before {
-    background: radial-gradient(240px circle at var(--mx) var(--my), rgb(35 132 255 / 16%), transparent 60%);
+    background: radial-gradient(240px circle at var(--mx) var(--my), rgb(159 198 246 / 16%), transparent 60%);
 }
 
 .nv-spot-indigo::before {
-    background: radial-gradient(240px circle at var(--mx) var(--my), rgb(39 55 200 / 15%), transparent 60%);
+    background: radial-gradient(240px circle at var(--mx) var(--my), rgb(135 152 231 / 15%), transparent 60%);
 }
 
 .nv-spot-violet::before {
-    background: radial-gradient(240px circle at var(--mx) var(--my), rgb(101 66 232 / 12%), transparent 60%);
+    background: radial-gradient(240px circle at var(--mx) var(--my), rgb(183 172 239 / 12%), transparent 60%);
 }
 
 .nv-spot > * {
@@ -988,8 +1126,8 @@
     border-radius: inherit;
     pointer-events: none;
     background:
-        radial-gradient(70% 60% at 50% 0%, rgb(20 87 217 / 11%), transparent 68%),
-        radial-gradient(40% 44% at 88% 84%, rgb(101 66 232 / 9%), transparent 70%);
+        radial-gradient(70% 60% at 50% 0%, rgb(111 134 226 / 11%), transparent 68%),
+        radial-gradient(40% 44% at 88% 84%, rgb(183 172 239 / 9%), transparent 70%);
     content: "";
 }
 
@@ -1071,14 +1209,14 @@
 
 .nv-comparison-table thead th {
     color: var(--ink);
-    font-family: "JetBrains Mono", ui-monospace, monospace;
+    font-family: var(--site-font);
     font-size: 0.78rem;
     letter-spacing: 0.1em;
     text-transform: uppercase;
 }
 
 .nv-comparison-table thead th:nth-child(2) {
-    background: rgb(20 87 217 / 7%);
+    background: rgb(111 134 226 / 7%);
 }
 
 .nv-comparison-table thead th span {
@@ -1106,7 +1244,7 @@
 
 .nv-comparison-table tbody td:nth-child(2) {
     color: var(--ink);
-    background: rgb(20 87 217 / 5%);
+    background: rgb(111 134 226 / 5%);
 }
 
 .nv-comparison-table tr:last-child th,
@@ -1119,22 +1257,21 @@
 }
 
 .nv-product-section {
-    --ink: #f7f9fc;
-    --ink-soft: rgb(247 249 252 / 74%);
-    --ink-mute: rgb(238 243 250 / 58%);
-    --line: rgb(255 255 255 / 14%);
-    --glass-stroke: rgb(255 255 255 / 14%);
     display: grid;
     grid-template-columns: minmax(280px, 0.72fr) minmax(0, 1.28fr);
     gap: 42px;
     padding: 34px;
     overflow: hidden;
-    border-color: rgb(255 255 255 / 16%);
+    border-color: var(--glass-stroke-2);
     background:
-        linear-gradient(135deg, #071323 0%, #0b1d3a 54%, #102d66 100%);
+        radial-gradient(72% 90% at 0% 0%, rgb(159 198 246 / 14%), transparent 68%),
+        radial-gradient(64% 80% at 100% 100%, rgb(217 203 243 / 18%), transparent 70%),
+        linear-gradient(145deg, rgb(255 255 255 / 76%), rgb(238 243 250 / 72%)),
+        var(--glass-fill);
     box-shadow:
-        inset 0 1px 0 rgb(255 255 255 / 10%),
-        0 32px 86px -48px rgb(7 19 35 / 70%);
+        inset 0 1px 0 rgb(255 255 255 / 78%),
+        inset 0 -1px 0 rgb(111 134 226 / 7%),
+        0 34px 86px -58px rgb(7 19 35 / 42%);
 }
 
 .nv-product-section::before {
@@ -1142,8 +1279,7 @@
     inset: 0;
     pointer-events: none;
     background:
-        radial-gradient(58% 70% at 0% 0%, rgb(35 132 255 / 20%), transparent 70%),
-        radial-gradient(48% 60% at 100% 100%, rgb(101 66 232 / 12%), transparent 70%);
+        linear-gradient(135deg, rgb(255 255 255 / 44%), rgb(255 255 255 / 4%) 42%, rgb(111 134 226 / 7%) 100%);
     content: "";
 }
 
@@ -1188,13 +1324,19 @@
     text-decoration: none;
     transition:
         padding-left 160ms ease,
-        background 160ms ease;
+        background 160ms ease,
+        transform 160ms ease;
 }
 
 .nv-product-row:hover,
 .nv-product-row:focus-visible {
+    transform: translateY(-1px);
     padding-left: 14px;
-    background: rgb(255 255 255 / 6%);
+    background: rgb(111 134 226 / 7%);
+}
+
+.nv-product-row:active {
+    transform: translateY(0) scale(0.995);
 }
 
 .nv-product-row strong {
@@ -1222,7 +1364,7 @@
     width: 54px;
     height: 54px;
     align-self: center;
-    border: 1px solid rgb(20 87 217 / 18%);
+    border: 1px solid rgb(111 134 226 / 18%);
     border-radius: 18px;
     background:
         linear-gradient(145deg, rgb(255 255 255 / 78%), rgb(238 243 250 / 68%)),
@@ -1295,6 +1437,21 @@
     padding: 18px;
     color: inherit;
     text-decoration: none;
+    transition:
+        background 160ms ease,
+        border-color 160ms ease,
+        transform 160ms ease;
+}
+
+.nv-product-architecture-card:hover,
+.nv-product-architecture-card:focus-visible {
+    transform: translateY(-2px);
+    border-color: rgb(111 134 226 / 24%);
+    background: rgb(255 255 255 / 78%);
+}
+
+.nv-product-architecture-card:active {
+    transform: translateY(0) scale(0.995);
 }
 
 .nv-product-architecture-card .nv-product-logo-wrap {
@@ -1381,6 +1538,24 @@
     padding: 28px;
     color: inherit;
     text-decoration: none;
+    transition:
+        border-color 160ms ease,
+        transform 160ms ease,
+        box-shadow 160ms ease;
+}
+
+.nv-routing-card:hover,
+.nv-routing-card:focus-visible {
+    transform: translateY(-2px);
+    border-color: rgb(111 134 226 / 24%);
+    box-shadow:
+        inset 0 1px 0 rgb(255 255 255 / 78%),
+        inset 0 -1px 0 rgb(111 134 226 / 7%),
+        0 34px 84px -56px rgb(111 134 226 / 44%);
+}
+
+.nv-routing-card:active {
+    transform: translateY(0) scale(0.995);
 }
 
 .nv-routing-card .mono {
@@ -1423,11 +1598,21 @@
     color: inherit;
     background: rgb(238 243 250 / 58%);
     text-decoration: none;
+    transition:
+        background 160ms ease,
+        border-color 160ms ease,
+        transform 160ms ease;
 }
 
 .nv-support-product-link:hover,
 .nv-support-product-link:focus-visible {
-    background: rgb(20 87 217 / 7%);
+    transform: translateY(-1px);
+    border-color: rgb(111 134 226 / 22%);
+    background: rgb(111 134 226 / 7%);
+}
+
+.nv-support-product-link:active {
+    transform: translateY(0) scale(0.995);
 }
 
 .nv-support-product-link strong {
@@ -1445,15 +1630,22 @@
 .nv-page-hero {
     position: relative;
     z-index: 2;
-    padding: 112px 0 56px;
+    padding: 92px 0 48px;
 }
 
 .nv-page-hero-inner {
-    max-width: 920px;
+    display: grid;
+    grid-template-columns: minmax(0, 0.92fr) minmax(320px, 0.58fr);
+    gap: 34px;
+    align-items: center;
+}
+
+.nv-page-hero-copy {
+    min-width: 0;
 }
 
 .nv-page-hero h1 {
-    font-size: 5rem;
+    font-size: 4.85rem;
 }
 
 .nv-page-hero p {
@@ -1477,6 +1669,88 @@
     text-transform: uppercase;
 }
 
+.nv-page-prism {
+    min-height: 430px;
+    padding: 24px;
+    overflow: hidden;
+}
+
+.nv-page-prism-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+.nv-page-prism-top .mono {
+    color: var(--ink-mute);
+    font-size: 0.78rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+}
+
+.nv-page-prism-visual {
+    position: relative;
+    min-height: 210px;
+    margin: 28px 0;
+    border: 1px solid var(--line);
+    border-radius: 20px;
+    overflow: hidden;
+    background:
+        radial-gradient(72% 70% at 18% 20%, rgb(159 198 246 / 16%), transparent 68%),
+        radial-gradient(64% 62% at 80% 78%, rgb(217 203 243 / 28%), transparent 68%),
+        rgb(255 255 255 / 46%);
+}
+
+.nv-page-prism-visual span {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 70%;
+    height: 34%;
+    border: 1px solid rgb(111 134 226 / 48%);
+    border-radius: 26px;
+    background: linear-gradient(112deg, rgb(169 194 245 / 40%), rgb(156 168 236 / 34%), rgb(217 203 243 / 38%));
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 66%);
+    transform: translate(-50%, -50%) rotate(-17deg);
+}
+
+.nv-page-prism-visual span:nth-child(2) {
+    width: 62%;
+    transform: translate(-43%, -33%) rotate(8deg);
+}
+
+.nv-page-prism-visual span:nth-child(3) {
+    width: 42%;
+    height: 30%;
+    transform: translate(-62%, -10%) rotate(31deg);
+}
+
+.nv-page-prism-rows {
+    display: grid;
+    gap: 10px;
+}
+
+.nv-page-prism-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 42px;
+    padding: 10px 12px;
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    color: var(--ink-soft);
+    background: rgb(255 255 255 / 46%);
+    font-size: 0.9rem;
+}
+
+.nv-page-prism-row svg {
+    width: 16px;
+    height: 16px;
+    flex: 0 0 16px;
+    color: var(--m-blue);
+}
+
 .nv-text-panel,
 .nv-final-band {
     display: grid;
@@ -1484,6 +1758,25 @@
     gap: 42px;
     align-items: start;
     padding: 42px;
+}
+
+.nv-secondary-section-1 .nv-text-panel {
+    grid-template-columns: minmax(280px, 420px) minmax(0, 1fr);
+}
+
+.nv-secondary-section-1 .nv-text-panel > div {
+    grid-column: 2;
+}
+
+.nv-secondary-section-1 .nv-text-panel > ul {
+    grid-column: 1;
+    grid-row: 1;
+}
+
+.nv-secondary-section-2 .nv-text-panel {
+    background:
+        radial-gradient(60% 80% at 0% 0%, rgb(159 198 246 / 8%), transparent 70%),
+        var(--glass-fill);
 }
 
 .nv-text-panel h2,
@@ -1521,7 +1814,7 @@
     height: 8px;
     border-radius: 999px;
     background: var(--m-blue);
-    box-shadow: 0 0 10px rgb(35 132 255 / 34%);
+    box-shadow: 0 0 10px rgb(159 198 246 / 34%);
     content: "";
 }
 
@@ -1575,6 +1868,11 @@
     min-width: 0;
 }
 
+.nv-footer-brandline .nv-wordmark {
+    color: var(--ink);
+    font-weight: 700;
+}
+
 .nv-footer p {
     margin: 0;
     color: var(--ink-mute);
@@ -1616,6 +1914,39 @@
         transform: none;
         transition: none;
     }
+
+    .nv-button,
+    .nv-product-row,
+    .nv-product-architecture-card,
+    .nv-routing-card,
+    .nv-support-product-link {
+        transition: none;
+    }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+    .neelvara-site {
+        --glass-fill: rgb(255 255 255 / 92%);
+        --glass-fill-2: rgb(247 249 252 / 96%);
+        --glass-blur: 0px;
+    }
+
+    .nv-page-mesh {
+        opacity: 0.35;
+        filter: blur(42px) saturate(100%);
+    }
+
+    .nv-grain {
+        opacity: 0.04;
+    }
+
+    .neelvara-site .glass,
+    .nv-header-inner,
+    .nv-segmented,
+    .nv-button-glass {
+        backdrop-filter: none;
+        -webkit-backdrop-filter: none;
+    }
 }
 
 @media (max-width: 1080px) {
@@ -1634,6 +1965,7 @@
 
     .nv-hero-mock-grid,
     .nv-product-section,
+    .nv-page-hero-inner,
     .nv-product-architecture {
         grid-template-columns: 1fr;
     }
@@ -1677,6 +2009,12 @@
         grid-template-columns: 1fr;
     }
 
+    .nv-secondary-section-1 .nv-text-panel > div,
+    .nv-secondary-section-1 .nv-text-panel > ul {
+        grid-column: auto;
+        grid-row: auto;
+    }
+
     .nv-section-head {
         gap: 24px;
         align-items: start;
@@ -1714,6 +2052,10 @@
     .nv-footer-inner,
     .nv-footer-links {
         justify-content: flex-start;
+    }
+
+    .nv-page-prism {
+        max-width: 560px;
     }
 }
 
@@ -1847,6 +2189,22 @@
     .nv-hero-copy > p,
     .nv-page-hero p {
         font-size: 1rem;
+    }
+
+    .nv-page-prism {
+        min-height: 0;
+        padding: 20px;
+    }
+
+    .nv-page-prism-visual {
+        min-height: 112px;
+        margin: 14px 0;
+    }
+
+    .nv-page-prism-row {
+        min-height: 36px;
+        padding: 8px 10px;
+        font-size: 0.82rem;
     }
 
     .nv-hero-meta {

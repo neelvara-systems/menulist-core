@@ -61,7 +61,7 @@ The optional handoff uses existing `/api/public/contact` only after consent. The
 
 ## V1 Mapping
 
-No new owner module is needed for V1. The existing MenuList Business Health/Public Discovery modules already cover the facts this preview exposes: public basics, menu/service clarity, QR link health, WhatsApp action links, hours, photos, booking/inquiry readiness, price availability, PDF cleanup, Google profile handoff, and menu freshness.
+The `customer_link_preview` owner module in `ownerPublicTruthReadiness.ts` covers the facts this preview exposes: public basics, menu/service clarity, customer actions, hours, location, and customer-link readiness.
 
 ## Verification
 

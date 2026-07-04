@@ -213,6 +213,59 @@ const readme = read('__docs__/menu-presence-monitor/README.md');
 ].forEach((token) => requireToken(readme, token, 'Menu Presence Monitor README'));
 forbidToken(readme, 'Key Files (Planned)', 'Menu Presence Monitor README');
 
+const spec = read('__docs__/menu-presence-monitor/menu-presence-monitor_spec.md');
+[
+  'source-derived readiness and owner-confirmed external placement status',
+  'External platform placement verification by crawling or provider APIs',
+  'MenuList-recorded surfaces (QR, Screens, Feedback) show source-derived readiness status',
+  'No fixed timing claim; release-specific browser/device QA is required before quoting speed',
+].forEach((token) => requireToken(spec, token, 'Menu Presence Monitor spec'));
+[
+  'Owner can see presence status in under 3 seconds',
+  'Confirming a surface takes 1 tap',
+  'Automatic surfaces (QR, Screens, Feedback) already show correct status',
+].forEach((token) => forbidToken(spec, token, 'Menu Presence Monitor spec'));
+
+const marketing = read('__docs__/menu-presence-monitor/menu-presence-monitor_marketing.md');
+[
+  'Current Sales/Launch Boundary',
+  'MenuList records owner actions where the product can observe them and stores owner confirmations for external placements.',
+  'Do not claim instant visibility, zero setup for external placement, automatic Google/Instagram/WhatsApp verification, one-tap external deployment, or every-surface visibility without release-specific evidence.',
+  'MenuList recorded',
+  'Owner confirmed',
+].forEach((token) => requireToken(marketing, token, 'Menu Presence Monitor marketing doc'));
+[
+  'This shows you instantly.',
+  'Zero setup — it works automatically',
+  'no customer ever searches',
+  'Most owners miss 2-3 key surfaces',
+  'takes one tap to confirm the rest',
+].forEach((token) => forbidToken(marketing, token, 'Menu Presence Monitor marketing doc'));
+
+const website = read('__docs__/menu-presence-monitor/menu-presence-monitor_website.md');
+[
+  'MenuList-recorded QR/screen/feedback readiness',
+  'owner-confirmed external placements',
+  'See recorded and confirmed menu placement status in one place.',
+].forEach((token) => requireToken(website, token, 'Menu Presence Monitor website doc'));
+[
+  'every QR surface',
+  'One tap to confirm each one',
+  'deploy your menu everywhere customers look',
+].forEach((token) => forbidToken(website, token, 'Menu Presence Monitor website doc'));
+
+const helpdoc = read('__docs__/menu-presence-monitor/menu-presence-monitor_helpdoc.md');
+[
+  'does not crawl or verify Google Business, Instagram, or WhatsApp for you',
+  'Review the status as MenuList-recorded or owner-confirmed',
+  'MenuList recorded the action/readiness, or you confirmed an external placement',
+].forEach((token) => requireToken(helpdoc, token, 'Menu Presence Monitor help doc'));
+[
+  'checks 6 key surfaces',
+  'No setup needed.',
+  'Your menu link appears when customers search',
+].forEach((token) => forbidToken(helpdoc, token, 'Menu Presence Monitor help doc'));
+
 const impl = read('__docs__/menu-presence-monitor/menu-presence-monitor_impl.md');
 [
   'npm run verify:menu-presence-monitor-boundary',
@@ -241,10 +294,14 @@ const mobileDoc = read('__docs__/menu-presence-monitor/menu-presence-monitor_mob
   'assertMenuPresenceUpdateSucceeded()',
   'active-session store guard',
   'npm run verify:menu-presence-monitor-boundary',
+  'No fixed timing claim is approved from this source gate.',
 ].forEach((token) => requireToken(mobileDoc, token, 'Menu Presence Monitor mobile doc'));
 [
   'Switch` or `CheckList',
   'swipe to remove',
+  'Completes in <5 seconds?',
+  'View + confirm = 2 seconds',
+  'Single tap to confirm',
 ].forEach((token) => forbidToken(mobileDoc, token, 'Menu Presence Monitor mobile doc'));
 
 const inventory = read('FEATURE_SWEEP_MASTER_INVENTORY.md');
@@ -260,6 +317,7 @@ const report = read('FEATURE_SWEEP_MASTER_REPORT.md');
 const audit = read('__docs__/audits/menulist-production-readiness-audit.md');
 [
   'Menu Presence Monitor boundary checkpoint',
+  'Menu Presence Monitor copy claim boundary checkpoint',
   'npm run verify:menu-presence-monitor-boundary',
   'No Menu Presence Monitor runtime behavior',
 ].forEach((token) => requireToken(audit, token, 'production readiness audit'));
@@ -267,6 +325,7 @@ const audit = read('__docs__/audits/menulist-production-readiness-audit.md');
 const changelog = read('__docs__/CHANGELOG.md');
 [
   'July 2, 2026 - Menu Presence Monitor Boundary',
+  'Menu Presence Monitor Copy Claim Boundary',
   'verify:menu-presence-monitor-boundary',
   'source/docs verification only',
 ].forEach((token) => requireToken(changelog, token, 'changelog'));

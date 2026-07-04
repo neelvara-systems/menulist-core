@@ -1385,6 +1385,7 @@ const assertNoOwnerVisibleRawErrorMessage = (content, label) => {
 };
 
 const publicApi = read('src/middleware/publicApi.ts');
+const corsValidation = read('src/lib/security/corsValidation.ts');
 const secureLogger = read('src/lib/security/secureLogger.ts');
 const loggerSource = read('src/lib/monitoring/logger.ts');
 const clientConsoleBuffer = read('src/lib/debug/clientConsoleBuffer.ts');
@@ -3245,7 +3246,6 @@ assertNoDirectConsole(internalUserApi, 'Internal user API helper must not direct
 assert(!internalUserApi.includes('NEXT_PUBLIC_UPDATE_ADDRESS'), 'Internal user API helper must not keep stale commented URL diagnostics.');
 [
     'mobile_more_store_switch_failed',
-    'mobile_more_store_switch_rejected',
     'mobile_account_profile_update_failed',
     'mobile_account_profile_update_rejected',
     'mobile_account_password_change_failed',
@@ -3256,13 +3256,13 @@ assert(!internalUserApi.includes('NEXT_PUBLIC_UPDATE_ADDRESS'), 'Internal user A
 assertIncludes(mobileMoreScreen, 'logAuthFailure', 'Mobile More auth flows must use bounded auth diagnostics.');
 assertIncludes(mobileMoreScreen, 'getBoundedAuthStringContext', 'Mobile More auth flows must use bounded auth context.');
 assertIncludes(mobileMoreScreen, 'AUTH_ACCOUNT_REQUEST_POLICY', 'Mobile More store switching must use the shared auth account request policy.');
+assertIncludes(mobileMoreScreen, "readAuthAccountResponse(res, 'switch_store')", 'Mobile More store switching must validate the switch-store response envelope.');
 assert(!mobileMoreScreen.includes('throw new Error(data.error'), 'Mobile More auth flows must not throw raw API response text.');
 assert(!mobileMoreScreen.includes('error?.message'), 'Mobile More auth flows must not show raw exception text.');
 assert(!mobileMoreScreen.includes('Toast.show({ content: error'), 'Mobile More auth flows must not toast raw exception values.');
 assert(!mobileMoreScreen.includes("logger.error('[MobileMore] Store switch failed'"), 'Mobile More store switching must not raw-log failures.');
 [
     'header_store_switch_failed',
-    'header_store_switch_rejected',
     'getHeaderStoreSwitchLogContext',
     'logAuthFailure(HEADER_STORE_SWITCH_FAILED',
     "getBoundedAuthStringContext('targetStoreId'",
@@ -3273,6 +3273,7 @@ assert(!mobileMoreScreen.includes("logger.error('[MobileMore] Store switch faile
     assertIncludes(storeSwitcher, token, `Header StoreSwitcher must include bounded store-switch diagnostic token ${token}.`);
 });
 assertIncludes(storeSwitcher, 'AUTH_ACCOUNT_REQUEST_POLICY', 'Header StoreSwitcher must use the shared auth account request policy.');
+assertIncludes(storeSwitcher, "readAuthAccountResponse(res, 'switch_store')", 'Header StoreSwitcher must validate the switch-store response envelope.');
 assert(!storeSwitcher.includes('throw new Error(data.error'), 'Header StoreSwitcher must not throw raw switch-store response text.');
 assert(!storeSwitcher.includes("logger.error('[StoreSwitcher] Switch failed'"), 'Header StoreSwitcher must not raw-log switch failures.');
 assert(!storeSwitcher.includes('import { logger }'), 'Header StoreSwitcher must not import raw logger diagnostics.');
@@ -3607,6 +3608,28 @@ assert(
     'endpoint: request.nextUrl.pathname,\n                    error:',
 ].forEach((token) => {
     assert(!authMiddleware.includes(token), `Auth middleware must not keep raw security context token ${token}.`);
+});
+[
+    "const isProductionRuntime = process.env.NODE_ENV === 'production';",
+    'const LOCAL_DEVELOPMENT_ORIGINS = [',
+    "'http://localhost:3000'",
+    "'http://127.0.0.1:3000'",
+    '...(!isProductionRuntime ? LOCAL_DEVELOPMENT_ORIGINS : [])',
+    '!isProductionRuntime || !isLocalDevelopmentOrigin(origin)',
+].forEach((token) => {
+    assertIncludes(corsValidation, token, `CORS validation must keep production-localhost allowlist boundary token ${token}.`);
+});
+assert(
+    !corsValidation.includes("const ALLOWED_ORIGINS = [\n    process.env.NEXT_PUBLIC_APP_URL,\n    'http://localhost:3000',"),
+    'CORS validation must not include localhost directly in the production-capable allowlist.',
+);
+[
+    ['production audit', read('__docs__/audits/menulist-production-readiness-audit.md'), 'CORS production localhost allowlist checkpoint'],
+    ['changelog', read('__docs__/CHANGELOG.md'), 'CORS Production Localhost Allowlist Boundary'],
+    ['CORS implementation guide', read('__docs__/security/cors/cors-implementation.md'), 'Localhost origins are filtered out in production'],
+    ['CORS completion guide', read('__docs__/security/cors/cors-implementation-complete.md'), 'Localhost origins are development-only'],
+].forEach(([label, content, token]) => {
+    assertIncludes(content, token, `${label} must document the CORS production-localhost allowlist boundary.`);
 });
 
 assertIncludes(

@@ -8,34 +8,42 @@
 
 ## Elevator Pitch
 
-Your menu is live — but can customers actually find it? Menu Presence Monitor shows you exactly where your menu is visible and where it's missing, so no customer ever searches for your business and leaves without seeing your menu.
+Your menu is live. Menu Presence Monitor gives owners one checklist for MenuList-recorded actions and owner-confirmed external placements, so missing setup work is easier to spot before customers ask for the menu.
 
 ## Feature Narrative
 
-Most business owners publish their menu and stop there. They forget to add the link to Google, Instagram, or WhatsApp. Customers searching for the restaurant can't find the menu. Menu Presence Monitor is a simple checklist that shows which surfaces have the menu and which don't — helping owners deploy everywhere customers look.
+Most business owners publish their menu and stop there. They may still need to add the link to Google, Instagram, or WhatsApp, or use the MenuList QR and screen surfaces already available to them. Menu Presence Monitor is a simple checklist that separates what MenuList can record from what the owner has confirmed on external platforms.
+
+## Current Sales/Launch Boundary
+
+MenuList records owner actions where the product can observe them and stores owner confirmations for external placements. It does not crawl Google Business, Instagram, WhatsApp, printed tables, or customer devices to prove live placement.
+
+Do not claim instant visibility, zero setup for external placement, automatic Google/Instagram/WhatsApp verification, one-tap external deployment, or every-surface visibility without release-specific evidence.
 
 ## Pitch Deck Outline
 
 1. **Problem:** Owners publish menus but forget to distribute them across discovery surfaces
-2. **Solution:** Simple ✓/⚠ status checklist showing deployment across 6 key surfaces
-3. **Key Features:** Auto-detection for QR/screens, manual confirmation for Google/Instagram/WhatsApp
+2. **Solution:** Simple ✓/⚠ status checklist showing MenuList-recorded readiness and owner-confirmed external placements
+3. **Key Features:** MenuList-recorded QR/screen/feedback readiness, manual confirmation for Google/Instagram/WhatsApp
 4. **Differentiation:** No competitor offers presence monitoring — they only host the menu
 5. **Use Case:** Owner sees "Google Business — Not added" → copies link → adds it → done
-6. **Value:** More surface coverage = more customers finding the menu
+6. **Value:** Owners can see missing setup work in one place
 7. **CTA:** Included in all MenuList plans
 
 ## Sales Talking Points
 
-- "Your menu is live, but is it visible on Google? Instagram? WhatsApp? This shows you instantly."
-- "Most owners miss 2-3 key surfaces. This checklist closes those gaps."
-- "Zero setup — it works automatically for QR and screens, and takes one tap to confirm the rest."
+- "Your menu is live. This shows recorded and owner-confirmed placement status in one place."
+- "The checklist helps catch missing setup work before customers ask for the menu."
+- "MenuList records the actions it can observe and lets owners confirm Google, Instagram, and WhatsApp placement after they add the link."
 
 ## Approved Language
 
 - ✅ "Menu visibility" / "Where your menu appears"
 - ✅ "Simple status check" / "Quick overview"
+- ✅ "MenuList recorded" / "Owner confirmed"
 - ❌ Never say "analytics" / "monitoring dashboard" / "tracking"
 - ❌ Never say "AI-powered presence detection"
+- ❌ Never say external platforms are verified unless release-specific provider/crawl evidence exists
 
 ---
 

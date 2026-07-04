@@ -95,7 +95,7 @@ function applySecurityHeaders(request: NextRequest, response: NextResponse): Nex
     const isVercelPreview = process.env.VERCEL === '1' && process.env.VERCEL_ENV !== 'production';
     const isProduction = process.env.NODE_ENV === 'production' && !isVercelPreview;
     const isDev = !isProduction;
-    const isAnswerlatticeWidgetRoute = request.nextUrl.pathname === '/widget' || request.nextUrl.pathname.startsWith('/widget/');
+    const isAnswerlatticeWidgetRoute = isAnswerlatticeWidgetFrameRoute(request);
     const frameAncestorsDirective = isAnswerlatticeWidgetRoute
         ? 'frame-ancestors https: http://localhost:* http://127.0.0.1:*'
         : "frame-ancestors 'none'";
@@ -216,6 +216,16 @@ function isLocalDevelopmentHost(hostname: string | null): boolean {
     return normalizedHost === 'localhost'
         || normalizedHost === '127.0.0.1'
         || normalizedHost.startsWith('192.168.');
+}
+
+function isAnswerlatticeWidgetFrameRoute(request: NextRequest): boolean {
+    const pathname = request.nextUrl.pathname;
+    if (pathname !== '/widget' && !pathname.startsWith('/widget/')) return false;
+
+    const hostname = request.headers.get('host');
+    if (resolveKnownProductIdByHostname(hostname) === 'answerlattice') return true;
+
+    return !process.env.VERCEL && isLocalDevelopmentHost(hostname);
 }
 
 function isLegacyAnswerlatticePublicHostname(hostname: string | null): boolean {

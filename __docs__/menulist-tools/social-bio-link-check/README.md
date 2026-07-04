@@ -1,6 +1,6 @@
 # Social Bio Link Consistency Check
 
-**Status:** Implemented V0 public tool; V1 maps to existing MenuList Share, Public Discovery, and Business Health readiness surfaces
+**Status:** Implemented V0 public tool and V1 owner readiness module
 **Last Updated:** July 4, 2026
 **Route:** `/tools/social-bio-link-check`
 **Local Source Gate:** `npm run verify:social-bio-link-check`
@@ -29,7 +29,7 @@ It is not a social profile crawler, SEO audit, ranking tracker, social posting t
 | Lane | Behavior | Status |
 | --- | --- | --- |
 | V0 | Public free tool. Owner enters a customer link, marks where it appears, and receives a browser-local consistency report. | Implemented |
-| V1 | Logged-in MenuList owner check. Uses existing MenuList Share, Public Discovery, and Business Health surfaces instead of a duplicate owner module. | Mapped to existing owner surfaces |
+| V1 | Logged-in MenuList owner check. Uses existing MenuList customer-link readiness inside Business Health and routes to Share/Public Discovery handoff. | Implemented |
 | V2 | Paid add-on behavior: recurring link placement checks, saved history, multi-location profile-link reports, agency setup exports, or owner-approved managed cleanup. | Documented only |
 
 ## Runtime Files

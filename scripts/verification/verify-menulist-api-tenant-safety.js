@@ -1110,9 +1110,8 @@ function verifyMobileLocationsFailureContract() {
   assertIncludes(
     'src/components/mobile/screens/MobileLocationsScreen.tsx',
     [
-      'mobile_location_store_switch_rejected',
       'mobile_location_store_switch_failed',
-      'switchError.status = res.status',
+      "readAuthAccountResponse(res, 'switch_store')",
       'logMultiOutletFailure',
       "buildMobileLocationLogContext('switch_store'",
       "getBoundedMultiOutletStringContext('targetStoreId', storeId)",
@@ -1241,6 +1240,53 @@ function verifySessionScopedPublicTruthRoutes() {
     'public create-menu existing-account claim must complete transaction reads before writes',
   );
   assert(!read('src/app/api/public/create-menu/claim/route.ts').includes('key: `public-menu-claim:${userId}`'), 'public create-menu claim must not store raw user IDs in rate-limit keys');
+
+  [
+    ['src/app/api/public-truth-monitor/summary/route.ts', 'GET', 'Public Truth Monitor summary'],
+    ['src/app/api/public-truth-monitor/refresh/route.ts', 'POST', 'Public Truth Monitor refresh'],
+  ].forEach(([routePath, method, label]) => {
+    assertIncludes(
+      routePath,
+      [
+        'withAuth',
+        `export const ${method} = withAuth(async`,
+        'verifyTenantAccess(session, session.tId, session.sId, request)',
+        'const storeData = await readPublicTruthMonitorStoreDataServer(session.sId);',
+        'const permissionError = requireAnyStorePermissionForStoreData(',
+        '[PERMISSIONS.VIEW_ANALYTICS]',
+        'if (permissionError) return permissionError;',
+        'evaluatePublicTruthMonitorServerEntitlement',
+      ],
+      `${label} session-scoped permission and entitlement guard`,
+    );
+  });
+
+  assertOrder(
+    'src/app/api/public-truth-monitor/summary/route.ts',
+    [
+      'const rateLimitResponse = await checkAIRateLimit("DATA_READ", "public-truth-monitor-read");',
+      'if (!verifyTenantAccess(session, session.tId, session.sId, request))',
+      'const storeData = await readPublicTruthMonitorStoreDataServer(session.sId);',
+      'const permissionError = requireAnyStorePermissionForStoreData(',
+      'const entitlement = await evaluatePublicTruthMonitorServerEntitlement({',
+      '? await readPublicTruthMonitorSummaryServer(session.sId)',
+    ],
+    'Public Truth Monitor summary must rate-limit, tenant-check, permission-check, then read saved summary',
+  );
+
+  assertOrder(
+    'src/app/api/public-truth-monitor/refresh/route.ts',
+    [
+      'const rateLimitResponse = await checkDataWriteLimit();',
+      'const validation = validateAPIInput(PublicTruthMonitorRefreshRequestSchema, jsonBody.data);',
+      'if (!verifyTenantAccess(session, session.tId, session.sId, request))',
+      'const storeData = await readPublicTruthMonitorStoreDataServer(session.sId);',
+      'const permissionError = requireAnyStorePermissionForStoreData(',
+      'const entitlement = await evaluatePublicTruthMonitorServerEntitlement({',
+      'await writePublicTruthMonitorSummaryServer({',
+    ],
+    'Public Truth Monitor refresh must rate-limit, validate, tenant-check, permission-check, then write summary',
+  );
 
   assertIncludes(
     'src/app/api/domain/route.ts',
@@ -6751,9 +6797,13 @@ function verifyAuthAccountClientResponseDiagnostics() {
   assert(authAccountResponses.includes('auth_account_response_invalid'), 'auth account client responses must log invalid successful response envelopes');
   assert(authAccountResponses.includes('isProfileUpdateResponse'), 'auth account client responses must validate profile update envelopes');
   assert(authAccountResponses.includes('isPasswordChangeResponse'), 'auth account client responses must validate password change envelopes');
+  assert(authAccountResponses.includes('isSwitchStoreResponse'), 'auth account client responses must validate switch-store envelopes');
+  assert(authAccountResponses.includes("AuthAccountResponseKind = 'profile_update' | 'password_change' | 'switch_store'"), 'auth account client responses must include switch-store response kind');
   assert(authAccountResponses.includes('success: true'), 'auth account client responses must require successful envelopes');
   assert(authAccountResponses.includes('Array.isArray(value.updated)'), 'profile update response must include updated field names');
   assert(authAccountResponses.includes('isRecord(value.updates)'), 'profile update response must include updates object');
+  assert(authAccountResponses.includes('Number.isInteger(value.targetStoreId)'), 'switch-store response must include an integer target store id');
+  assert(authAccountResponses.includes('AUTH_SWITCH_STORE_REJECTED'), 'switch-store rejected responses must map to fixed auth account codes');
   assert(authAccountResponses.includes('createAuthDiagnosticError(\'Auth account request failed\''), 'auth account client errors must use fixed local error text');
   assert(authAccountResponses.includes('error.status = response.status'), 'auth account client errors must preserve status-only diagnostics');
   assert(authAccountResponses.includes('error.code = code.slice(0, 64)'), 'auth account client errors may keep bounded response codes');
@@ -6787,6 +6837,7 @@ function verifyAuthAccountClientResponseDiagnostics() {
   ].forEach(([source, label]) => {
     assert(source.includes('/api/auth/switch-store'), `${label} must remain a switch-store caller`);
     assert(source.includes('AUTH_ACCOUNT_REQUEST_POLICY'), `${label} must use the shared auth account request policy for switch-store calls`);
+    assert(source.includes("readAuthAccountResponse(res, 'switch_store')"), `${label} must parse and validate switch-store responses before accepting success`);
   });
 
   assert(!mobileMoreScreen.includes('const data = await res.json()'), 'mobile More account screens must not use direct profile/password response parsing');

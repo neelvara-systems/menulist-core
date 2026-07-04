@@ -1,8 +1,9 @@
 # Reseller Dashboard — Website Content
 
 **Feature:** Assisted Onboarding Portal for Authorized Resellers  
-**Status:** 📝 DOCUMENTED  
+**Status:** Source-bound draft
 **Created:** February 27, 2026  
+**Last Updated:** July 4, 2026
 **Audience:** Public (Partner Program Landing Page — if/when needed)
 
 ---
@@ -10,7 +11,7 @@
 ## 1. Hero Section
 
 **Headline:** Help Local Businesses Go Digital  
-**Subheadline:** Become a MenuList distribution partner. Set up restaurants in 5 minutes. No technical skills needed.  
+**Subheadline:** Become a MenuList distribution partner. Create accounts, collect or share payment, and hand over the dashboard link. No technical skills needed.
 **CTA:** Apply to Become a Partner
 
 ---
@@ -23,7 +24,7 @@
 
 ## 3. Solution Statement
 
-> MenuList gives you a simple dashboard to onboard local businesses. Upload their menu, pick a plan, collect payment — their digital menu is live in minutes. You handle the relationship. MenuList handles the technology.
+> MenuList gives you a simple dashboard to onboard local businesses. Enter business details, pick a plan, collect or share payment, and hand over dashboard and customer links. Menu content is added through the normal owner dashboard and import/review flow.
 
 ---
 
@@ -32,27 +33,27 @@
 ### Step 1: Enter Business Details
 Enter the business name, type, and owner's contact. Takes 30 seconds.
 
-### Step 2: Upload the Menu
-Take a photo of their physical menu. MenuList's system extracts everything automatically.
+### Step 2: Set Up Access
+Enter owner contact details, choose the paid location count, and prepare the dashboard/customer-link handoff.
 
 ### Step 3: Activate
-Select the plan, collect payment, and activate. The business has a live digital menu before you leave.
+Select the plan, collect or share payment, and activate the account when the payment path allows. The owner then adds or approves menu content from the normal MenuList dashboard.
 
 ---
 
 ## 5. Feature Benefits
 
 ### Benefit 1: No Technical Skills Required
-If you can use WhatsApp, you can use the Reseller Dashboard. Upload a photo, fill a form, done.
+If you can use WhatsApp, you can use the Reseller Dashboard. Fill the form, choose the plan, and share the right link.
 
 ### Benefit 2: Cash Payment Accepted
 Collect cash on the spot. No need for the business owner to set up online payments. Works the way Indian businesses already operate.
 
-### Benefit 3: Instant Activation
-The restaurant's digital menu goes live immediately after setup. No waiting, no approval process, no delays.
+### Benefit 3: Clear Account Handoff
+Offline prepaid clients get an active owner account after payment confirmation; online clients activate after Razorpay payment. Menu content still goes through owner review before customer use.
 
 ### Benefit 4: Full Support for Your Clients
-Every business you onboard gets the same MenuList experience — dashboard access, QR codes, shareable links, automatic updates.
+Every business you onboard gets the same MenuList experience — dashboard access, customer links, QR options, and normal menu import/edit/publish flows.
 
 ---
 
@@ -78,7 +79,7 @@ Currently available in India only. We'll expand based on demand.
 ## 7. SEO Meta
 
 **Page Title:** Become a MenuList Partner — Help Local Businesses Go Digital  
-**Meta Description:** Join MenuList's partner program. Set up restaurants and local businesses with digital menus in 5 minutes. No technical skills needed. Cash payments accepted.  
+**Meta Description:** Join MenuList's partner program. Create accounts for restaurants and local businesses, collect or share payment, and hand over dashboard access. No technical skills needed. Cash payments accepted.
 **OG Title:** MenuList Partner Program  
 **OG Description:** Help local restaurants go digital. 5-minute setup, cash payments accepted, no technical skills needed.  
 **Target Keywords:** MenuList partner, digital menu reseller, restaurant technology partner, local business digitization
@@ -87,11 +88,11 @@ Currently available in India only. We'll expand based on demand.
 
 ## 8. Language Governance Compliance
 
-- ✅ No "AI-powered" — uses "system extracts automatically"
-- ✅ No "Smart" or "Dynamic" — uses "automatic", "live"
-- ✅ No "Helps you" — uses "You handle", "You onboard"
-- ✅ No excitement language — calm, factual tone
-- ✅ Outcome-focused — "live in minutes", "before you leave"
+- No "AI-powered" — this page does not describe provider output
+- No "Smart" or "Dynamic" — uses account, payment, and handoff wording
+- No "Helps you" — uses "You handle", "You onboard"
+- No excitement language — calm, factual tone
+- Outcome-focused — account and link handoff first; menu content stays owner-approved
 
 ---
 
@@ -99,5 +100,5 @@ Currently available in India only. We'll expand based on demand.
 
 ---
 
-**DOCUMENT STATUS:** 📝 DOCUMENTED  
-**Last Updated:** February 27, 2026
+**DOCUMENT STATUS:** Source-bound draft
+**Last Updated:** July 4, 2026

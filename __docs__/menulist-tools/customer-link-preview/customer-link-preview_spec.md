@@ -1,6 +1,6 @@
 # One Customer Link Preview - Specification
 
-**Status:** Implemented V0 public tool; V1 maps to existing MenuList owner readiness surfaces
+**Status:** Implemented V0 public tool and V1 owner readiness module
 **Last Updated:** July 4, 2026
 **Owner Job:** "Show me whether one link has the facts customers need before I share it."
 
@@ -57,9 +57,7 @@ V0 does not open links, fetch customer pages, inspect websites, inspect Google p
 
 ## V1 Owner Mapping
 
-The logged-in owner experience does not need a duplicate module. MenuList already has owner readiness modules for public truth basics, menu/service clarity, QR link health, WhatsApp action links, hours readiness, photo identity, booking/inquiry readiness, price availability, and Google profile handoff.
-
-V1 should route owners into the existing Business Health/Public Discovery and public page readiness surfaces.
+The logged-in owner experience uses the `customer_link_preview` module in `ownerPublicTruthReadiness.ts`. It checks MenuList public-link, business, action, hours, location, and menu facts and routes owners into the existing Business Health/Public Discovery and public page readiness surfaces.
 
 ## V2 Add-On Lane
 

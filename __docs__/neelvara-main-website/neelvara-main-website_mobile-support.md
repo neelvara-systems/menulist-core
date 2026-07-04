@@ -43,7 +43,7 @@ Required:
 - no fixed headers covering content
 - no large hero that hides all next-section context
 - footer legal links visible on mobile
-- Neelvara blue redesign keeps the full desktop/tablet hero studio mock, but hides the large mock on small phones so the entity ledger starts inside the first mobile viewport.
+- Neelvara current-color Prism glass relayout keeps the full desktop/tablet hero studio mock, but hides the large mock on small phones so the entity ledger starts inside the first mobile viewport. Secondary page Prism panels compact before they can force horizontal scroll.
 
 ---
 
@@ -95,5 +95,6 @@ Current redesign verification checked:
 - no off-screen nav
 - no horizontal overflow (`scrollWidth === viewport width`)
 - home page next-section signal visible in desktop and mobile viewport audits
+- page Prism panels, product cards, legal text panels, and static 404 recovery layout checked for no horizontal overflow
 
 No MenuList mobile verifier is required unless this site is later moved into the shared app, which is not the current recommendation.

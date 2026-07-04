@@ -24,6 +24,7 @@
 | No URL | `missing_basics` |
 | `not-a-url` | `missing_basics` |
 | `ftp://example.com/menu` | `missing_basics` |
+| `http://localhost/menu` or `http://192.168.1.10/menu` | `missing_basics` |
 | `https://example.com/menu` with no current/action/context selections | `unclear` |
 | `https://menulist.ai/client/demo` with current/action/context selected | `ready` |
 | Valid URL with replacement needed selected | `manual_review_needed` |
@@ -35,7 +36,7 @@
 Each row must show explicit evidence text:
 
 - QR target row says the URL was owner-entered or missing.
-- URL format row says the URL was parsed locally and not fetched.
+- URL format row says the public HTTPS URL was parsed locally and not fetched, or that local/private/insecure targets are not accepted.
 - MenuList row says host-based inference only.
 - Current/action/context rows say they are owner-selected.
 - Target page inspection says the target page was not opened.

@@ -136,8 +136,8 @@ export default function AnswerlatticeLogoMark({
                 <linearGradient id={paint0Id} x1="4892" y1="2542" x2="1308.5" y2="2542" gradientUnits="userSpaceOnUse">
                     <stop stopColor="#12847A" />
                     <stop offset="0.339195" stopColor="#25B9A6" />
-                    <stop offset="0.671316" stopColor="#AAF6E9" />
-                    <stop offset="1" stopColor="#A4FFFA" />
+                    <stop offset="0.671316" stopColor="#78F1E4" />
+                    <stop offset="1" stopColor="#5EEAD4" />
                 </linearGradient>
                 <linearGradient id={paint1Id} x1="3264.5" y1="2573.55" x2="7055.92" y2="2573.63" gradientUnits="userSpaceOnUse">
                     <stop stopColor="#42C0AB" />

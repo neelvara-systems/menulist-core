@@ -47,7 +47,7 @@ IMPLEMENTED: Behavioral Adoption Layer (Feb 19, 2026):
   ShareModal behavior-guiding copy        ← ✅ DONE (desktop)
   MobileShareScreen behavior-guiding copy ← ✅ DONE (mobile)
   Post-publish adoption tips              ← ✅ DONE (msg-preview)
-  WhatsApp "Always updated" message       ← ✅ DONE (desktop + mobile)
+  WhatsApp menu-link message              ← ✅ DONE (desktop + mobile)
   Full docs: __docs__/behavior-engineering/
 ```
 

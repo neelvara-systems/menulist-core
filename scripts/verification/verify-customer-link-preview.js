@@ -105,7 +105,7 @@ assertIncludes(validationDoc, 'Current release approval still requires the activ
 assertIncludes(validationDoc, 'npm run verify:customer-link-preview', 'One Customer Link Preview validation source gate');
 assertIncludes(toolsReadmeDoc, '[customer-link-preview](./customer-link-preview/README.md)', 'MenuList Tools README');
 assertIncludes(familyReadmeDoc, '[One Customer Link Preview](../customer-link-preview/README.md)', 'Public Truth Tools family docs');
-assertIncludes(familyReadmeDoc, 'sixteen public tools, a public shareable report layer, and twelve owner readiness modules', 'Public Truth Tools family status');
+assertIncludes(familyReadmeDoc, 'sixteen public tools, five public asset makers, a public shareable report layer, and eighteen owner readiness modules', 'Public Truth Tools family status');
 assertIncludes(familyReadmeDoc, '/tools/customer-link-preview', 'Public Truth Tools route list');
 assertIncludes(familySpecDoc, 'One Customer Link Preview V0', 'Public Truth Tools spec implementation summary');
 assertIncludes(familyImplDoc, 'customerLinkPreviewReport.ts', 'Public Truth Tools implementation docs');
@@ -153,6 +153,7 @@ assertIncludes(report, 'aiOrSearchChecked: false', 'One Customer Link Preview re
 assertIncludes(report, 'rankingPromise: false', 'One Customer Link Preview report ranking boundary');
 assertIncludes(report, 'getCustomerLinkPreviewEvidenceText', 'One Customer Link Preview explicit evidence text');
 assertIncludes(report, 'The customer link was not opened or fetched.', 'One Customer Link Preview link evidence boundary');
+assertIncludes(report, 'Public HTTPS customer-link format was checked locally. The link was not opened or fetched.', 'One Customer Link Preview public HTTPS customer-link evidence boundary');
 assertIncludes(report, 'External links, websites, profiles, search results, and AI answers were not inspected.', 'One Customer Link Preview external inspection evidence boundary');
 
 for (const content of [route, report, types]) {

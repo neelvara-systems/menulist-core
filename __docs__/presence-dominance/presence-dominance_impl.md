@@ -70,14 +70,14 @@ Dismissible card on Owner Dashboard reinforcing official link adoption.
 Added nudge micro-copy below the link card.
 
 **File:** `src/components/.../businessSettings/OBPLinkCard.tsx`  
-**Copy:** "Use this link whenever customers ask for your menu. Always updated."
+**Copy:** "Use this link whenever customers ask for your menu. It opens the approved menu."
 
 ### Phase 3: Desktop ShareModal Enhancement
 
 Updated header subtitle, QR section copy, WhatsApp message, staff sharing hint.
 
 **File:** `src/components/.../shareModal/index.tsx`  
-**WhatsApp message:** "Here is our latest menu:\n{url}\n(Always updated)"
+**WhatsApp message:** "Here is our menu link:\n{url}"
 
 ### Phase 4: MobileShareScreen Enhancement
 
@@ -127,7 +127,7 @@ Enhanced with "official link" framing, Copy/WhatsApp buttons, adoption tips.
 3. Click dismiss (×) → card disappears permanently (check localStorage)
 4. Open Share Modal → verify updated header, QR copy, WhatsApp message
 5. Open MobileShareScreen → verify updated OBP text, QR text, WhatsApp message
-6. Click WhatsApp share → message should say "Here is our latest menu: [link] (Always updated)"
+6. Click WhatsApp share -> message should say "Here is our menu link: [link]"
 7. Open msg-preview after publish → verify tips section + Copy/WhatsApp buttons
 8. Set `ENABLE_BEHAVIOR_NUDGES: false` → all nudges revert to original copy
 

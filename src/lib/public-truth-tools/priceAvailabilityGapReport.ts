@@ -1,3 +1,4 @@
+import { isPublicHttpsUrl as isValidHttpUrl } from './publicUrlValidation';
 import type {
   PriceAvailabilityGapCheckId,
   PriceAvailabilityGapEvidence,
@@ -26,28 +27,6 @@ function normalizeSourceText(value?: string): string {
 
 function hasUsefulSource(value: string): boolean {
   return value.replace(/\s+/g, ' ').trim().length >= 40;
-}
-
-function getUrlWithProtocol(value: string): string {
-  if (/^https?:\/\//i.test(value)) return value;
-  if (/^[a-z0-9.-]+\.[a-z]{2,}(?:[/:?#].*)?$/i.test(value)) {
-    return `https://${value}`;
-  }
-  return value;
-}
-
-function isValidHttpUrl(value: string): boolean {
-  if (!value) return false;
-
-  try {
-    const url = new URL(getUrlWithProtocol(value));
-    const hostLooksUsable = url.hostname === 'localhost'
-      || url.hostname === '127.0.0.1'
-      || url.hostname.includes('.');
-    return (url.protocol === 'http:' || url.protocol === 'https:') && hostLooksUsable;
-  } catch {
-    return false;
-  }
 }
 
 function hasPriceHint(value: string): boolean {
@@ -99,9 +78,9 @@ function getPriceAvailabilityEvidenceText(evidence: PriceAvailabilityGapEvidence
     case 'not_applicable_self_report':
       return 'Owner marked this as not needed for the current public source.';
     case 'valid_public_url':
-      return 'URL format was checked locally. The URL was not opened or fetched.';
+      return 'Public HTTPS URL format was checked locally. The URL was not opened or fetched.';
     case 'invalid_public_url':
-      return 'URL format was checked locally. The URL was not opened or fetched.';
+      return 'Public HTTPS URL format was checked locally. The URL was not opened or fetched.';
     case 'not_provided':
       return 'No pasted source was provided for this fact.';
     case 'not_checked':

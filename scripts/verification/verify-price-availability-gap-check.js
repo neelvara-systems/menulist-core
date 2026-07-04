@@ -154,7 +154,7 @@ assertIncludes(report, 'externalPlatformUpdated: false', 'Price Availability Gap
 assertIncludes(report, 'aiOrSearchChecked: false', 'Price Availability Gap Check report AI/search boundary');
 assertIncludes(report, 'rankingPromise: false', 'Price Availability Gap Check report ranking boundary');
 assertIncludes(report, 'getPriceAvailabilityEvidenceText', 'Price Availability Gap Check explicit evidence text');
-assertIncludes(report, 'URL format was checked locally. The URL was not opened or fetched.', 'Price Availability Gap Check URL evidence boundary');
+assertIncludes(report, 'Public HTTPS URL format was checked locally. The URL was not opened or fetched.', 'Price Availability Gap Check URL evidence boundary');
 assertIncludes(report, 'External URLs, POS systems, ordering providers, live inventory, and AI/search answers were not inspected.', 'Price Availability Gap Check external provider evidence boundary');
 assertIncludes(ownerReport, "'price_availability_gap'", 'Price Availability Gap Check owner module id');
 assertIncludes(ownerReport, 'Price and availability clarity', 'Price Availability Gap Check owner module title');

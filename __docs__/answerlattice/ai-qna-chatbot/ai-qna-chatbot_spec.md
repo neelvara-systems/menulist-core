@@ -225,7 +225,7 @@ Every AI answer includes:
 | #   | Item                                                                | Status                                                        |
 | --- | ------------------------------------------------------------------- | ------------------------------------------------------------- |
 | 1   | Missing `withAuth()` on all 3 helpCenter API routes                 | Documented — relies on `getActiveSession()`                   |
-| 2   | KB articles are platform-wide (no tenant-scoped KB)                 | By design — all owners see same KB                            |
+| 2   | KB article reads must stay tenant/store scoped                      | ✅ RESOLVED — search and compatibility helpers require tenant/store scope for non-platform callers |
 | 3   | No explicit 401 response for unauthenticated users on search routes | Session returns null, search proceeds without tenant filter   |
 | 4   | Streaming mode currently OFF — untested in production               | Feature-flagged, ready to enable                              |
 | 5   | `console.error` used instead of `secureError` in search routes      | ✅ RESOLVED — all console.log/error removed in audit          |

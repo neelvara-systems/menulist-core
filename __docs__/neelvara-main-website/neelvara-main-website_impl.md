@@ -54,14 +54,14 @@ Middleware uses the existing generic product-site rewrite flow. No Neelvara-spec
 | `src/app/sites/neelvara/robots.txt/route.ts` | Product-domain robots response |
 | `src/app/sites/neelvara/sitemap.xml/route.ts` | Product-domain sitemap response |
 | `src/app/sites/neelvara/.well-known/security.txt/route.ts` | Static security-contact discovery response |
-| `src/app/sites/neelvara/styles.css` | Scoped Neelvara blue tokens, mesh/grain background, glass primitives, and responsive layout |
-| `public/neelvara-logo.svg` | Uploaded true-vector Neelvara source logo copied as-is for site chrome, footer identity, 404, and structured data |
-| `public/neelvara-logo.png` | Transparent PNG render generated from the uploaded true-vector SVG for compatibility surfaces |
-| `public/neelvara-favicon.svg` | Square true-vector SVG favicon wrapper using the same paths, gradients, and colors as the uploaded source mark |
-| `public/neelvara-favicon-16.png`, `public/neelvara-favicon-32.png` | PNG favicon fallbacks centered from the uploaded mark on transparent square canvases |
-| `public/neelvara-apple-touch-icon.png` | Apple touch icon derivative from the uploaded mark |
-| `public/neelvara-icon-96.png`, `public/neelvara-icon-128.png`, `public/neelvara-icon-180.png`, `public/neelvara-icon-192.png`, `public/neelvara-icon-512.png`, `public/neelvara-icon.png` | Transparent app/manifest icon canvases using the uploaded mark without a visible frame |
-| `public/neelvara-og-image.png` | Open Graph image using the uploaded glass-prism mark |
+| `src/app/sites/neelvara/styles.css` | Scoped current-color Neelvara Prism tokens, fixed mesh/grain background, glass primitives, prism panels, and responsive layout |
+| `public/neelvara-logo.svg` | True-vector Neelvara source logo using the supplied three-path geometry with a frosted parent-brand glass palette for site chrome, footer identity, 404, and structured data |
+| `public/neelvara-logo.png` | Transparent PNG render generated from the refined true-vector SVG for compatibility surfaces |
+| `public/neelvara-favicon.svg` | Square true-vector SVG favicon wrapper using the same paths, gradients, and colors as the refined source mark |
+| `public/neelvara-favicon-16.png`, `public/neelvara-favicon-32.png` | PNG favicon fallbacks centered from the refined mark on transparent square canvases |
+| `public/neelvara-apple-touch-icon.png` | Apple touch icon derivative from the refined mark |
+| `public/neelvara-icon-96.png`, `public/neelvara-icon-128.png`, `public/neelvara-icon-180.png`, `public/neelvara-icon-192.png`, `public/neelvara-icon-512.png`, `public/neelvara-icon.png` | Transparent app/manifest icon canvases using the refined mark without a visible frame |
+| `public/neelvara-og-image.png` | Open Graph image using the refined glass-prism mark |
 
 ---
 
@@ -95,19 +95,22 @@ Middleware uses the existing generic product-site rewrite flow. No Neelvara-spec
 
 ## 6. UI/UX Contract
 
-The visual implementation now follows the Neelvara blue parent-brand system while preserving the company-site boundary:
+The visual implementation now follows the current-color Neelvara Prism glass parent-brand system while preserving the company-site boundary:
 
 - ice-white canvas with deep navy primary text and legal/docs surfaces
-- uploaded Neelvara mark used as transparent PNG without a visible square or rectangle frame
+- refined Neelvara mark used as transparent PNG without a visible square or rectangle frame
 - dark navy wordmark/text treatment; wordmark text is not gradient-rendered
-- restrained mesh and SVG grain layer behind every section
-- shared glass primitive for header, hero mock, bento cells, spotlight cards, contact cards, policy panels, and CTA bands
+- self-hosted Akshar font as the primary typeface across all Neelvara website text, with Inter retained only as the fallback font
+- fixed restrained mesh and SVG grain layer behind every section
+- shared glass primitive for header, hero mock, bento cells, spotlight cards, comparison tables, product cards, contact cards, policy panels, and CTA bands
+- shared page Prism panels on Products, Contact, About, Legal, Privacy, Terms, and not-found routes
+- homepage Prism rhythm includes hero, marquee band, entity ledger, bento/reference modules, spotlight cards, quote, comparison table, product lineup, contact routing, CTA, and footer
 - navy product band used as the controlled 20% deep-brand surface
-- Instrument Serif display headlines, Inter body text, and JetBrains Mono labels
+- Akshar-only typography across display headings, body copy, buttons, labels, legal pages, product cards, and inline 404 output; `Inter` remains the first fallback in the font stack
 - floating pill navigation with local-prefix-aware links for `/__neelvara` and `/nv`; primary header nav shows Products, About, and Contact only
-- home page anatomy: floating nav, hero, company-routing studio mock, entity ledger, problem-first bento grid, spotlight cards, pull quote, product lineup, contact routing cards, CTA, footer
+- home page anatomy: floating nav, hero, company-routing studio mock, marquee band, entity ledger, problem-first bento grid, spotlight cards, pull quote, comparison table, product lineup, contact routing cards, CTA, footer
 - About, Legal, Privacy, and Terms inherit the same mesh/glass shell, page hero, spotlight cards, glass text panels, policy dates where applicable, and page-specific final CTAs
-- Products and Contact use custom page flows for product relationship explanation and inquiry routing
+- Products and Contact use custom page flows with the same Prism hero/panel treatment for product relationship explanation and inquiry routing
 - the large hero studio mock remains on desktop/tablet; small phones hide it so the entity ledger appears in the first mobile viewport
 - scroll reveal remains local to Neelvara sections, one-time on viewport entry, and disabled for reduced-motion users
 - no pricing table, testimonials, customer logos, lead form, product checkout, analytics, API route, Firebase runtime, or owner app behavior was added
@@ -131,7 +134,7 @@ Implemented:
 - product-domain `sitemap.xml`
 - product-domain `.well-known/security.txt`
 - site logo in `public/neelvara-logo.svg`
-- browser favicon, Apple touch icon, and manifest icon derivatives from the uploaded mark
+- browser favicon, Apple touch icon, and manifest icon derivatives from the refined mark
 - duplicate `/home` route canonicalized to `/`; it remains indexable because the local root alias renders through the same route
 - `X-Robots-Tag: noindex, nofollow` on the `/nv` internal alias response so `neelvara.com` remains the canonical public URL
 
@@ -165,7 +168,7 @@ npm run lint -- --dir src/app/sites/neelvara
 node scripts/verification/verify-agent-readiness.js --env-targets-only
 ```
 
-Result: pass.
+Result: scoped Neelvara lint, full TypeScript, route smoke, agent-readiness target check, browser visual checks, and whitespace checks pass.
 
 Additional browser/routing evidence is tracked in [`neelvara-main-website_validation.md`](./neelvara-main-website_validation.md).
 

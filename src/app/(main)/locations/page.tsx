@@ -9,7 +9,7 @@
 import AddOutletModal from '@organisms/AddOutletModal';
 import OutletPolicyEditor from '@organisms/OutletPolicyEditor';
 import OutletRenameModal from '@organisms/OutletRenameModal';
-import { AUTH_ACCOUNT_REQUEST_POLICY } from '@lib/auth/accountClientResponses';
+import { AUTH_ACCOUNT_REQUEST_POLICY, readAuthAccountResponse } from '@lib/auth/accountClientResponses';
 import { refreshFirebaseAuthClaims } from '@lib/auth/firebaseAuthSync';
 import { canCreateOutletLocation, canManageLocationSettings } from '@lib/multiOutlet/locationAccess';
 import { getBoundedMultiOutletStringContext, logMultiOutletFailure } from '@lib/multiOutlet/diagnostics';
@@ -109,14 +109,7 @@ export default function LocationsPage() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ targetStoreId }),
             });
-            if (!res.ok) {
-                logMultiOutletFailure('desktop_location_store_switch_failed', createMultiOutletStatusError('desktop_location_store_switch_rejected', res.status), {
-                    ...getBoundedMultiOutletStringContext('targetStoreId', targetStoreId),
-                    ...getBoundedMultiOutletStringContext('currentStoreId', storeDetails?.storeId),
-                });
-                message.error('Store switch failed');
-                return;
-            }
+            await readAuthAccountResponse(res, 'switch_store');
             await refreshFirebaseAuthClaims(targetStoreId);
             setActiveStoreContext(targetStoreId);
         } catch (error) {

@@ -139,7 +139,7 @@ Context is normalized and size-limited before it leaves the host page, then pass
 
 The iframe sends `answerlattice-widget-ready` after its message listener mounts. The loader responds by resending current visibility and context. The loader also retries this sync shortly after iframe load/open so mount-time context is not lost if the React iframe hydrates after the native iframe `load` event.
 
-Global security headers keep `frame-ancestors 'none'` for the app by default. `/widget/*` is the explicit exception: middleware omits `X-Frame-Options` and allows HTTPS/localhost frame ancestors so the embeddable iframe can render. API calls still enforce API-key auth, rate limits, and the per-store origin allowlist.
+Global security headers keep `frame-ancestors 'none'` for the app by default. `/widget/*` is embeddable only after the middleware confirms the host boundary: middleware omits `X-Frame-Options` only when the request is on an Answerlattice product host, or on a local development host outside Vercel. MenuList and other product hosts keep the default frame-deny policy even if the path is `/widget/*`. API calls still enforce API-key auth, rate limits, and the per-store origin allowlist.
 
 The loader reads saved dashboard config with `GET /api/widget/config` unless `data-use-remote-config="false"` is present. Merge order is:
 

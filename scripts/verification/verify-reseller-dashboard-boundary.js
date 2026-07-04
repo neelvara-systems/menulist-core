@@ -457,13 +457,15 @@ function verifyMobileSurfaces(dashboard, management, onboarding, mobileShell, mo
   });
 }
 
-function verifyDocs(readme, spec, impl, marketingDoc, firebaseDoc, mobileDoc, auditDoc) {
+function verifyDocs(readme, spec, impl, marketingDoc, websiteDoc, helpDoc, firebaseDoc, mobileDoc, auditDoc) {
   [
     'verify:reseller-dashboard-boundary',
     'This is NOT:',
     'A white-label platform',
     'Reuse existing subscription system',
     'Feature Flag',
+    'Current reseller onboarding creates the tenant/store account, subscription state, dashboard link, and public customer link.',
+    'It does not upload or extract menu files inside the reseller onboarding API path',
   ].forEach((token) => assertIncludes(readme, token, 'Reseller README docs'));
 
   [
@@ -473,6 +475,9 @@ function verifyDocs(readme, spec, impl, marketingDoc, firebaseDoc, mobileDoc, au
     'Commission or referral payouts are not part of the current runtime.',
     'No current commission runtime exists.',
     'Other currencies require a separate pricing, tax, billing, and docs audit before they are exposed.',
+    'Menu upload/extraction happens later through the normal owner dashboard and import/review flows',
+    'The reseller onboarding route creates the tenant/store account and claim/login handoff.',
+    'Menu images/PDFs/text are not uploaded or extracted in this onboarding API path',
   ].forEach((token) => assertIncludes(spec, token, 'Reseller spec launch-boundary docs'));
 
   [
@@ -483,11 +488,29 @@ function verifyDocs(readme, spec, impl, marketingDoc, firebaseDoc, mobileDoc, au
     'Passwords are never stored in Firestore',
     '@see spec §8.2 Scale Thresholds',
     '## 13. Implementation Checklist',
+    'Active reseller onboarding creates the tenant/store account, owner access, subscription state, dashboard link, and public customer link handoff.',
+    'It does not upload menu files or run menu extraction inside `/api/reseller/onboard`',
+    'compatibility field; active route does not upload/extract menu files',
   ].forEach((token) => assertIncludes(impl, token, 'Reseller implementation docs'));
 
   [
     'MenuList does not promise commission or referral payouts in the current program.',
+    'The owner can then add or approve menu content through the normal MenuList flow.',
+    'Offline clients get an active account and customer link after payment confirmation; online clients activate after Razorpay payment',
+    'Menu content is added through the normal owner/import/review flow',
   ].forEach((token) => assertIncludes(marketingDoc, token, 'Reseller marketing docs'));
+
+  [
+    'Menu content is added through the normal owner dashboard and import/review flow.',
+    'Offline prepaid clients get an active owner account after payment confirmation; online clients activate after Razorpay payment.',
+    'Menu content still goes through owner review before customer use.',
+  ].forEach((token) => assertIncludes(websiteDoc, token, 'Reseller website docs'));
+
+  [
+    'Menu content is added later through the normal MenuList owner dashboard and import/review flows.',
+    'Menu photos, PDFs, or typed content are added later from the normal owner dashboard/import flow',
+    'Paid account access is active; menu content still depends on owner import/edit/publish state',
+  ].forEach((token) => assertIncludes(helpDoc, token, 'Reseller help docs'));
 
   [
     'Phase 2',
@@ -497,8 +520,31 @@ function verifyDocs(readme, spec, impl, marketingDoc, firebaseDoc, mobileDoc, au
     'Implementation Phases',
     'introduce commission later',
     'earning you recurring income',
+    'upload their menu',
+    'Upload their menu',
+    'upload menu images',
+    'Upload menu images',
+    'AI extraction runs',
+    'AI extracts everything',
+    "MenuList's AI does the rest",
+    'Professional digital menu (AI-powered)',
+    'digital menu live in 60 seconds',
+    'live digital menu immediately',
+    'menu is live before',
+    'Menu is live before',
+    'live before you leave',
+    'digital menu is live in minutes',
+    'fully working digital menu in minutes',
+    'system will extract all items',
+    'Business is live and running',
+    'sees uploaded menu',
+    'photo upload',
+    'Camera integration for menu upload',
+    'Set up restaurants in 5 minutes',
+    'live in minutes',
+    'automatic updates',
   ].forEach((token) => assertNotIncludes(
-    `${spec}\n${impl}\n${marketingDoc}`,
+    `${readme}\n${spec}\n${impl}\n${marketingDoc}\n${websiteDoc}\n${helpDoc}\n${mobileDoc}`,
     token,
     'Reseller launch-boundary docs',
   ));
@@ -515,6 +561,8 @@ function verifyDocs(readme, spec, impl, marketingDoc, firebaseDoc, mobileDoc, au
     'Mobile Relevance Decision: **YES',
     'Mobile uses the same `/api/reseller/clients`, `/api/reseller/monthly-summary`, `/api/reseller/onboard`, and `/api/reseller/add-location-capacity` routes as desktop.',
     'Mobile reseller write actions use the same `DATA_WRITE` throttled, 16KB bounded JSON API routes as desktop.',
+    'The reseller onboarding mobile path does not upload menu files',
+    'owners add menu sources later through the normal MenuList mobile/desktop import flow.',
   ].forEach((token) => assertIncludes(mobileDoc, token, 'Reseller mobile docs'));
 
   [
@@ -549,6 +597,8 @@ const files = {
   spec: read('__docs__/reseller-dashboard/reseller-dashboard_spec.md'),
   impl: read('__docs__/reseller-dashboard/reseller-dashboard_impl.md'),
   marketingDoc: read('__docs__/reseller-dashboard/reseller-dashboard_marketing.md'),
+  websiteDoc: read('__docs__/reseller-dashboard/reseller-dashboard_website.md'),
+  helpDoc: read('__docs__/reseller-dashboard/reseller-dashboard_helpdoc.md'),
   firebaseDoc: read('__docs__/reseller-dashboard/reseller-dashboard_firebase.md'),
   mobileDoc: read('__docs__/reseller-dashboard/reseller-dashboard_mobile-support.md'),
   auditDoc: read('__docs__/audits/menulist-production-readiness-audit.md'),
@@ -571,6 +621,6 @@ verifyMobileSurfaces(
   files.mobileShell,
   files.mobileMore,
 );
-verifyDocs(files.readme, files.spec, files.impl, files.marketingDoc, files.firebaseDoc, files.mobileDoc, files.auditDoc);
+verifyDocs(files.readme, files.spec, files.impl, files.marketingDoc, files.websiteDoc, files.helpDoc, files.firebaseDoc, files.mobileDoc, files.auditDoc);
 
 console.log('Reseller dashboard boundary verification passed');

@@ -37,7 +37,9 @@ const firebaseClient = firebaseApp ? getFirestore(firebaseApp) : null as any;
 const firebaseAuth = firebaseApp ? getAuth(firebaseApp) : null as any;
 const firebaseStorage = firebaseApp ? getStorage(firebaseApp) : null as any;
 const firebaseDatabase = firebaseApp ? getDatabase(firebaseApp) : null as any;
-const firebaseStorageUrl = `https://firebasestorage.googleapis.com/v0/b/${firebaseConfig.storageBucket || 'menulist-qa.appspot.com'}/o`;
+const firebaseStorageUrl = firebaseConfig.storageBucket
+    ? `https://firebasestorage.googleapis.com/v0/b/${firebaseConfig.storageBucket}/o`
+    : '';
 const signOutFirebaseAuth = () => firebaseAuth ? signOut(firebaseAuth) : Promise.resolve();
 const functions = firebaseApp ? getFunctions(firebaseApp) : null as any;
 

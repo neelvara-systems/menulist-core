@@ -39,7 +39,7 @@ Allowed mobile placement:
 
 Implemented owner mobile behavior:
 
-- Business Health shows twelve compact readiness modules from `useOwnerPublicTruthReadiness()`: eleven public-tool-aligned checks plus Menu Freshness. One Customer Link Preview and Social Bio Link Consistency Check map to existing public page, Share, Public Discovery, and Business Health readiness surfaces without duplicate owner modules.
+- Business Health shows eighteen compact readiness modules from `useOwnerPublicTruthReadiness()`: sixteen public-tool-aligned checks, one Print & Share asset-readiness check, and Menu Freshness.
 - The module report is read-only on mobile and stays inside `MobileShell`.
 - Module action buttons map to existing mobile destinations: Menu tab, Share tab, basic settings, domain settings, hours edit, Official Page, or Presence Monitor.
 - It reuses `useMobileProjects()` and does not create a mobile-only DAL.

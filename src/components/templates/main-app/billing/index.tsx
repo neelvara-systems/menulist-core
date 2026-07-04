@@ -10,7 +10,7 @@ import { getBillingHistoryForStore } from '@database/subscriptions/paymentTransa
 import { getBoundedPaymentStringContext, logPaymentFailure } from '@hook/paymentDiagnostics';
 import { useAppDispatch } from '@hook/useAppDispatch';
 import usePaymentHandler from '@hook/usePaymentHandler';
-import { AUTH_ACCOUNT_REQUEST_POLICY } from '@lib/auth/accountClientResponses';
+import { AUTH_ACCOUNT_REQUEST_POLICY, readAuthAccountResponse } from '@lib/auth/accountClientResponses';
 import { refreshFirebaseAuthClaims } from '@lib/auth/firebaseAuthSync';
 import { formatBillingHistoryEvents } from '@lib/billing/billingHistoryFormatter';
 import { getAccessibleStoreSummaries } from '@lib/multiOutlet/storeSwitchAccess';
@@ -156,11 +156,7 @@ function BillingPage() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ targetStoreId }),
             });
-            if (!res.ok) {
-                const switchError = new Error('billing_store_switch_rejected') as Error & { status?: number };
-                switchError.status = res.status;
-                throw switchError;
-            }
+            await readAuthAccountResponse(res, 'switch_store');
             await refreshFirebaseAuthClaims(targetStoreId);
             setActiveStoreContext(targetStoreId);
         } catch (error) {

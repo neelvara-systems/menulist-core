@@ -107,7 +107,7 @@ assertIncludes(validationDoc, 'Current release approval still requires the activ
 assertIncludes(validationDoc, 'npm run verify:social-bio-link-check', 'Social Bio Link Consistency Check validation source gate');
 assertIncludes(toolsReadmeDoc, '[social-bio-link-check](./social-bio-link-check/README.md)', 'MenuList Tools README');
 assertIncludes(familyReadmeDoc, '[Social Bio Link Consistency Check](../social-bio-link-check/README.md)', 'Public Truth Tools family docs');
-assertIncludes(familyReadmeDoc, 'sixteen public tools, a public shareable report layer, and twelve owner readiness modules', 'Public Truth Tools family status');
+assertIncludes(familyReadmeDoc, 'sixteen public tools, five public asset makers, a public shareable report layer, and eighteen owner readiness modules', 'Public Truth Tools family status');
 assertIncludes(familyReadmeDoc, '/tools/social-bio-link-check', 'Public Truth Tools route list');
 assertIncludes(familySpecDoc, 'Social Bio Link Consistency Check V0', 'Public Truth Tools spec implementation summary');
 assertIncludes(familyImplDoc, 'socialBioLinkCheckReport.ts', 'Public Truth Tools implementation docs');
@@ -161,6 +161,7 @@ assertIncludes(report, 'externalPlatformUpdated: false', 'Social Bio Link Consis
 assertIncludes(report, 'aiOrSearchChecked: false', 'Social Bio Link Consistency Check report AI/search boundary');
 assertIncludes(report, 'rankingPromise: false', 'Social Bio Link Consistency Check report ranking boundary');
 assertIncludes(report, 'getSocialBioLinkCheckEvidenceText', 'Social Bio Link Consistency Check explicit evidence text');
+assertIncludes(report, 'Public HTTPS customer-link format was checked locally. The link was not opened or fetched.', 'Social Bio Link Consistency Check public HTTPS customer-link evidence boundary');
 assertIncludes(report, 'No social profile was opened, fetched, inspected, or changed.', 'Social Bio Link Consistency Check profile evidence boundary');
 assertIncludes(report, 'Instagram, Facebook, WhatsApp, Google, websites, QR codes, print materials, search results, and AI answers were not inspected.', 'Social Bio Link Consistency Check external inspection evidence boundary');
 

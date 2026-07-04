@@ -11,7 +11,7 @@
 
 ### What
 
-A controlled, role-gated dashboard where authorized resellers (friends, sales partners) manually onboard SMB clients into MenuList. Resellers handle business setup, menu upload, pricing selection, and payment coordination — the client receives a ready-to-use MenuList account.
+A controlled, role-gated dashboard where authorized resellers (friends, sales partners) manually onboard SMB clients into MenuList. Resellers handle business account setup, pricing selection, and payment coordination; the client receives a MenuList owner account plus dashboard and customer-link handoff. Menu upload/extraction happens later through the normal owner dashboard and import/review flows, not inside the reseller onboarding API path.
 
 ### Why
 
@@ -22,7 +22,7 @@ A controlled, role-gated dashboard where authorized resellers (friends, sales pa
 
 ### Scope
 
-- **In scope:** Reseller dashboard, store creation, pricing tier selection, online/offline payment, license management, reseller tracking, auto-expiry
+- **In scope:** Reseller dashboard, store/account creation, pricing tier selection, online/offline payment, license management, dashboard/customer-link handoff, reseller tracking, auto-expiry
 - **Out of scope:** White-labeling, reseller self-registration, commission calculations, reseller billing, public partner program, API access for resellers
 
 ### Success Metric
@@ -47,7 +47,7 @@ A controlled, role-gated dashboard where authorized resellers (friends, sales pa
 **What they can do:**
 
 - Create stores for new clients
-- Upload menus on behalf of clients
+- Create owner accounts and share dashboard/customer links with clients
 - Select pricing tier from predefined list
 - Select payment mode (online / offline)
 - Select license duration (3 / 6 / 12 months)
@@ -78,9 +78,9 @@ A controlled, role-gated dashboard where authorized resellers (friends, sales pa
 
 **Experience:**
 
-- Receives a ready MenuList account
+- Receives a MenuList owner account and handoff links
 - Logs in with credentials provided during onboarding
-- Sees their menu already uploaded
+- Adds/uploads menu content through the standard MenuList owner dashboard and import/review flows
 - Full owner dashboard access (same as self-serve customers)
 - No awareness they were onboarded by a reseller (transparent)
 - For online payment: completes Razorpay checkout via activation link
@@ -217,11 +217,11 @@ Reseller enters:
 - **Owner Phone** (required — country dropdown + local phone number for client's login/contact)
 - **Owner Email** (optional contact email — dashboard access is delivered through the claim link unless an existing unclaimed user is found)
 
-### Step 2: Menu Upload
+### Step 2: Account & Link Setup
 
-- Upload menu images (reuses existing upload pipeline)
-- AI extraction runs (same as self-serve)
-- Reseller can skip this step → client uploads later
+- The reseller onboarding route creates the tenant/store account and claim/login handoff.
+- The route returns the dashboard link and generated public customer link when available.
+- Menu images/PDFs/text are not uploaded or extracted in this onboarding API path; the owner adds menu content later through the standard dashboard import/review flows.
 
 ### Step 3: License Setup
 
@@ -248,7 +248,7 @@ Summary screen showing:
 - Payment mode
 - Validity dates
 
-Reseller confirms → System creates everything atomically.
+Reseller confirms → System creates the tenant/store/account records and then creates the selected subscription record.
 
 ### Step 5: Activation
 
@@ -267,11 +267,12 @@ Reseller confirms → System creates everything atomically.
 
 ### Step 6: Client Access Links
 
-System creates:
+System returns:
 
 - Public menu link from the generated subdomain.
 - Dashboard claim link for the client to connect Google or set email/password.
 - Razorpay payment link for online reseller sales.
+- Menu content still needs the standard owner/import/review flow before the customer link has an approved menu.
 
 ---
 
@@ -450,4 +451,4 @@ The client has **zero awareness** of the reseller layer:
 ---
 
 **DOCUMENT STATUS:** ✅ IMPLEMENTED  
-**Last Updated:** May 20, 2026 (v1.3 — manual/offline location capacity and quantity-aware billing)
+**Last Updated:** July 4, 2026 (v1.4 — reseller onboarding account/link boundary)

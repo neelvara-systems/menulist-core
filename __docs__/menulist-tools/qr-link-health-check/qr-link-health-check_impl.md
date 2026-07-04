@@ -20,7 +20,7 @@ Implemented files:
 | `src/lib/public-truth-tools/qrLinkHealthReport.ts` | Deterministic pasted-target checks |
 | `scripts/verification/verify-qr-link-health-check.js` | Boundary verifier for route, flags, docs, locales, discovery, and no external fetch |
 
-No V1 owner card, paid add-on history, QR image decoder, report API route, storage path, Cloud Function, or AI/search provider call is implemented in V0.
+V1 owner readiness is implemented through the shared Business Health/Public Truth owner card. No standalone QR dashboard, paid add-on history, QR image decoder, report API route, storage path, Cloud Function, or AI/search provider call is implemented in V0.
 
 ---
 
@@ -99,14 +99,14 @@ Every `QrLinkHealthItem` includes `evidenceText: string`.
 | Check | Source | Rule |
 | --- | --- | --- |
 | QR target | `qrTargetUrl` | Present when a URL string exists |
-| URL format | `qrTargetUrl` | Present only for valid `http:` or `https:` URLs |
+| URL format | `qrTargetUrl` | Present only for public HTTPS URLs |
 | MenuList customer link | URL host/path | Present when host is an active MenuList domain or MenuList-looking customer host; unclear for valid external URLs |
 | Current link confidence | owner selection | Present when owner marks the QR target current; missing when replacement is needed |
 | Customer action | owner selection plus URL hints | Present when owner marks a visible action or URL hints menu/order/book/WhatsApp/call/direction |
 | Printed context | owner selection | Present when owner says the QR is labeled or placed clearly for customers |
 | Target page inspection | fixed boundary | Always `not_checked` in V0 |
 
-The code must never claim that the target page works, loads, or contains specific content.
+The local URL parser accepts bare public domains by normalizing them to HTTPS. It rejects explicit `http://`, localhost, `.local`, private IP, raw IP, loopback IPv6, and credentialed targets. The code must never claim that the target page works, loads, or contains specific content.
 
 ---
 
@@ -165,7 +165,7 @@ If QR image decoding is later approved, it must be browser-local by default, mus
 
 ## 8. V1 Owner Implementation Direction
 
-V1 should reuse existing owner truth and link generation:
+V1 reuses existing owner truth and link generation:
 
 - store/project state from owner context and DAL
 - current public menu/customer link generation

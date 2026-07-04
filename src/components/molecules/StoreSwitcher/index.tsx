@@ -6,7 +6,7 @@
  */
 
 import { getStoreContextName } from '@lib/businessIdentity/names';
-import { AUTH_ACCOUNT_REQUEST_POLICY } from '@lib/auth/accountClientResponses';
+import { AUTH_ACCOUNT_REQUEST_POLICY, readAuthAccountResponse } from '@lib/auth/accountClientResponses';
 import { refreshFirebaseAuthClaims } from '@lib/auth/firebaseAuthSync';
 import { getBoundedAuthStringContext, logAuthFailure } from '@lib/auth/authDiagnostics';
 import { getAccessibleStoreSummaries } from '@lib/multiOutlet/storeSwitchAccess';
@@ -17,7 +17,6 @@ import { useContext, useMemo } from 'react';
 import { LuMapPin, LuStar } from 'react-icons/lu';
 
 const HEADER_STORE_SWITCH_FAILED = 'header_store_switch_failed';
-const HEADER_STORE_SWITCH_REJECTED = 'header_store_switch_rejected';
 
 export default function StoreSwitcher() {
     const { tenantDetails, storeDetails, userPermissions, activeStoreContext, setActiveStoreContext } =
@@ -74,11 +73,7 @@ export default function StoreSwitcher() {
                 body: JSON.stringify({ targetStoreId }),
             });
 
-            if (!res.ok) {
-                const switchError = new Error(HEADER_STORE_SWITCH_REJECTED) as Error & { status?: number };
-                switchError.status = res.status;
-                throw switchError;
-            }
+            await readAuthAccountResponse(res, 'switch_store');
 
             await refreshFirebaseAuthClaims(targetStoreId);
             setActiveStoreContext(targetStoreId);

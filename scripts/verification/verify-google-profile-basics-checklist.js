@@ -109,7 +109,7 @@ assertIncludes(validationDoc, 'Current release approval still requires the activ
 assertIncludes(validationDoc, 'npm run verify:google-profile-basics-checklist', 'Google Profile Basics Checklist validation source gate');
 assertIncludes(toolsReadmeDoc, '[google-profile-basics-checklist](./google-profile-basics-checklist/README.md)', 'MenuList Tools README');
 assertIncludes(familyReadmeDoc, '[Google Profile Basics Checklist](../google-profile-basics-checklist/README.md)', 'Public Truth Tools family docs');
-assertIncludes(familyReadmeDoc, 'sixteen public tools, a public shareable report layer, and twelve owner readiness modules', 'Public Truth Tools family status');
+assertIncludes(familyReadmeDoc, 'sixteen public tools, five public asset makers, a public shareable report layer, and eighteen owner readiness modules', 'Public Truth Tools family status');
 assertIncludes(familyReadmeDoc, '/tools/google-profile-basics-checklist', 'Public Truth Tools route list');
 assertIncludes(familySpecDoc, 'Google Profile Basics Checklist V0/V1', 'Public Truth Tools spec implementation summary');
 assertIncludes(familyImplDoc, 'googleProfileBasicsReport.ts', 'Public Truth Tools implementation docs');
@@ -158,6 +158,7 @@ assertIncludes(report, 'externalPlatformUpdated: false', 'Google Profile Basics 
 assertIncludes(report, 'aiOrSearchChecked: false', 'Google Profile Basics Checklist report AI/search boundary');
 assertIncludes(report, 'rankingPromise: false', 'Google Profile Basics Checklist report ranking boundary');
 assertIncludes(report, 'getGoogleProfileBasicsEvidenceText', 'Google Profile Basics Checklist explicit evidence text');
+assertIncludes(report, 'Public HTTPS customer-link format was checked locally. The link was not opened or fetched.', 'Google Profile Basics Checklist public HTTPS customer-link evidence boundary');
 assertIncludes(report, 'Google was not opened, scanned, or changed.', 'Google Profile Basics Checklist Google evidence boundary');
 assertIncludes(report, 'Google Search, Google Maps, Business Profile, external URLs, rankings, and AI answers were not inspected.', 'Google Profile Basics Checklist external inspection evidence boundary');
 assertIncludes(ownerReport, "'google_profile_handoff'", 'Google Profile Basics Checklist owner module id');

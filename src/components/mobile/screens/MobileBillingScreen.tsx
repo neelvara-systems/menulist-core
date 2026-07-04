@@ -7,7 +7,7 @@ import { getActiveSubscriptionForStore } from '@database/subscriptions';
 import { getBillingHistoryForStore } from '@database/subscriptions/paymentTransactions';
 import { getBoundedPaymentStringContext, logPaymentFailure } from '@hook/paymentDiagnostics';
 import usePaymentHandler from '@hook/usePaymentHandler';
-import { AUTH_ACCOUNT_REQUEST_POLICY } from '@lib/auth/accountClientResponses';
+import { AUTH_ACCOUNT_REQUEST_POLICY, readAuthAccountResponse } from '@lib/auth/accountClientResponses';
 import { refreshFirebaseAuthClaims } from '@lib/auth/firebaseAuthSync';
 import { formatBillingHistoryEvents } from '@lib/billing/billingHistoryFormatter';
 import { getAccessibleStoreSummaries } from '@lib/multiOutlet/storeSwitchAccess';
@@ -323,11 +323,7 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ targetStoreId }),
             });
-            if (!res.ok) {
-                const switchError = new Error('mobile_billing_store_switch_rejected') as Error & { status?: number };
-                switchError.status = res.status;
-                throw switchError;
-            }
+            await readAuthAccountResponse(res, 'switch_store');
             await refreshFirebaseAuthClaims(targetStoreId);
             setActiveStoreContext(targetStoreId);
             setShowStorePicker(false);

@@ -20,7 +20,7 @@ Implemented files:
 | `src/lib/public-truth-tools/whatsappActionLinkReport.ts` | Deterministic phone/link/message checks |
 | `scripts/verification/verify-whatsapp-action-link-check.js` | Boundary verifier for route, flags, docs, locales, discovery, and no external send/fetch |
 
-No V1 owner card, paid add-on history, WhatsApp API integration, message sending, number verification, report API route, storage path, Cloud Function, or AI/search provider call is implemented in V0.
+V1 owner readiness is implemented through the shared Business Health/Public Truth owner card. No standalone WhatsApp dashboard, paid add-on history, WhatsApp API integration, message sending, number verification, report API route, storage path, Cloud Function, or AI/search provider call is implemented in V0.
 
 ---
 
@@ -170,7 +170,7 @@ If an adapter is later approved, it must use explicit consent, entitlement/cost 
 
 ## 8. V1 Owner Implementation Direction
 
-V1 should reuse existing owner truth and public-page action data:
+V1 reuses existing owner truth and public-page action data:
 
 - WhatsApp number/action field
 - current customer link

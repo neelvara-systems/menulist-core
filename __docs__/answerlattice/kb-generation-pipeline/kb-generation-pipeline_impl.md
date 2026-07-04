@@ -70,7 +70,7 @@ The active job card and processing progress component must not keep commented te
 
 | Function | Reads | Writes | Notes |
 |----------|:-----:|:------:|-------|
-| `getIngestionJobs()` | N | 0 | ALL jobs, NO tenant filter |
+| `getIngestionJobs()` | N | 0 | Deprecated compatibility helper; non-platform callers are filtered by tenant/store, platform admins can read the administrative list |
 | `getIngestionJobCollectionRef(session)` | 0 | 0 | Returns query ref with tId + sId + active status filter |
 | `getPreviousIngestionJobs(session)` | N | 0 | Completed/failed/cancelled for tenant |
 | `updateJob(jobId, data)` | 0 | 1 | Merge update; returns acknowledged `{ success, id, updatedFields }` |
@@ -202,7 +202,7 @@ deleteIngestionJob(jobId)
 
 | # | Issue | Severity | File:Line | Notes |
 |---|-------|----------|-----------|-------|
-| 1 | `getIngestionJobs()` fetches ALL jobs (no tenant filter) | Medium | `jobs.ts:26` | Should filter by tId+sId |
+| 1 | Deprecated `getIngestionJobs()` compatibility helper could read globally | Resolved | `jobs.ts` | Non-platform reads are tenant/store scoped; platform admins keep the administrative list path |
 | 2 | Dev/prod behavior difference in `addIngestionJob` | Low | `jobs.ts:140` | Dev manually triggers CF, prod uses Firestore trigger |
 | 3 | No job timeout/retry for stuck processing | Medium | — | Job could stay in `processing` forever |
 | 4 | Source files not cleaned up on failure | Low | — | Only deleted on explicit job delete |

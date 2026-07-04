@@ -1,6 +1,6 @@
 # One Customer Link Preview
 
-**Status:** Implemented V0 public tool; V1 maps to existing MenuList public page and Business Health readiness
+**Status:** Implemented V0 public tool and V1 owner readiness module
 **Last Updated:** July 4, 2026
 **Route:** `/tools/customer-link-preview`
 **Local Source Gate:** `npm run verify:customer-link-preview`
@@ -29,7 +29,7 @@ It is not a website crawler, link monitor, ranking tracker, SEO audit, AI visibi
 | Lane | Behavior | Status |
 | --- | --- | --- |
 | V0 | Public free tool. Owner enters a current or planned customer link, marks visible facts, and receives a browser-local preview report. | Implemented |
-| V1 | Logged-in MenuList owner check. Uses existing MenuList public page readiness and Business Health modules instead of a new owner module. | Mapped to existing owner surfaces |
+| V1 | Logged-in MenuList owner check. Uses existing MenuList public-link, business, action, hours, location, and menu facts inside Business Health. | Implemented |
 | V2 | Paid add-on behavior: recurring link readiness reports, saved history, multi-location link previews, agency setup exports, or owner-approved managed setup. | Documented only |
 
 ## Runtime Files

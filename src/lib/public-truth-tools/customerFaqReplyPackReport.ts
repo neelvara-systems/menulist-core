@@ -1,3 +1,4 @@
+import { isPublicHttpsUrl as isValidHttpUrl } from './publicUrlValidation';
 import type {
   CustomerFaqReplyBlock,
   CustomerFaqReplyPackAction,
@@ -49,28 +50,6 @@ function hasUsefulText(value: string, minimum = 3): boolean {
   return trimToSingleLine(value).length >= minimum;
 }
 
-function getUrlWithProtocol(value: string): string {
-  if (/^https?:\/\//i.test(value)) return value;
-  if (/^[a-z0-9.-]+\.[a-z]{2,}(?:[/:?#].*)?$/i.test(value)) {
-    return `https://${value}`;
-  }
-  return value;
-}
-
-function isValidHttpUrl(value: string): boolean {
-  if (!value) return false;
-
-  try {
-    const url = new URL(getUrlWithProtocol(value));
-    const hostLooksUsable = url.hostname === 'localhost'
-      || url.hostname === '127.0.0.1'
-      || url.hostname.includes('.');
-    return (url.protocol === 'http:' || url.protocol === 'https:') && hostLooksUsable;
-  } catch {
-    return false;
-  }
-}
-
 function getCustomerFaqReplyPackEvidenceText(evidence: CustomerFaqReplyPackEvidence): string {
   switch (evidence) {
     case 'owner_entered':
@@ -79,7 +58,7 @@ function getCustomerFaqReplyPackEvidenceText(evidence: CustomerFaqReplyPackEvide
       return 'Checked owner-selected action only.';
     case 'local_url_format_valid':
     case 'local_url_format_invalid':
-      return 'URL format was checked locally. The URL was not opened or fetched.';
+      return 'Public HTTPS URL format was checked locally. The URL was not opened or fetched.';
     case 'deterministic_copy':
       return 'FAQ replies were generated from owner-entered facts only. No AI answer was generated.';
     case 'automation_boundary':

@@ -7,7 +7,6 @@ import { UserUploadedFileType } from "@type/common";
 
 const MAX_AI_REFERENCE_IMAGE_BYTES = 10 * 1024 * 1024;
 const SUPPORTED_AI_IMAGE_TYPES = new Set(['image/jpeg', 'image/jpg', 'image/png', 'image/webp']);
-const DEFAULT_STORAGE_BUCKET = "menulist-qa.appspot.com";
 
 export interface ImageFetchStorageScope {
     sId?: string | number | null;
@@ -28,6 +27,14 @@ function getApproximateBase64Bytes(base64: string) {
     return Math.floor((base64.replace(/=+$/, '').length * 3) / 4);
 }
 
+function getProjectStorageBucketFallback(): string {
+    const projectId = process.env.FIREBASE_PROJECT_ID
+        || process.env.GCLOUD_PROJECT
+        || process.env.GCP_PROJECT
+        || process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
+    return projectId ? `${projectId}.appspot.com` : "";
+}
+
 function parseImageDataUrl(dataUrl: string): { base64ImageData: string; mimeType: string } {
     const match = dataUrl.match(/^data:(image\/(?:jpeg|jpg|png|webp));base64,([\s\S]+)$/i);
     if (!match) {
@@ -46,7 +53,9 @@ function parseImageDataUrl(dataUrl: string): { base64ImageData: string; mimeType
 }
 
 function getAllowedStorageBucket(): string {
-    return process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || process.env.FIREBASE_STORAGE_BUCKET || DEFAULT_STORAGE_BUCKET;
+    return process.env.FIREBASE_STORAGE_BUCKET
+        || process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
+        || getProjectStorageBucketFallback();
 }
 
 function getStoragePathFromFirebaseStorageUrl(value: string): string | null {

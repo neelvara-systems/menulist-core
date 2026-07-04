@@ -288,7 +288,7 @@ Both the Help Center route and Widget route are **thin auth wrappers** that call
 
 | Function                                            | Reads    | Writes | Notes                                         |
 | --------------------------------------------------- | -------- | ------ | --------------------------------------------- |
-| `getArticles()`                                     | All docs | 0      | Fetches entire collection (no tenant filter!) |
+| `getArticles()`                                     | Scoped list | 0      | Deprecated compatibility helper; non-platform callers are filtered by tenant/store, platform admins can read the global list |
 | `addArticle(data)`                                  | 0        | 1      | Uses `requestBodyComposer`                    |
 | `updateArticle(data)`                               | 0        | 1      | Merge update                                  |
 | `deleteArticle(id)`                                 | 0        | 1      | Hard delete                                   |
@@ -299,7 +299,7 @@ Both the Help Center route and Widget route are **thin auth wrappers** that call
 | `getArticleById(id)`                                | 1        | 0      | Single doc get                                |
 | `updateArticleFeedback(articleId, type, increment)` | 1        | 1      | Read-then-write (not atomic)                  |
 
-**Critical observation:** `getArticles()` fetches ALL articles with no tenant/store filter. KB articles are platform-wide, not tenant-scoped.
+**Scope observation:** `getArticles()` is a deprecated compatibility helper. It now resolves the readable article scope before querying: non-platform sessions require tenant/store scope and platform admins can still perform the global administrative read.
 
 ### 3.2 KB Categories (`src/database/knowledgeBase/categories.ts`)
 
@@ -423,7 +423,7 @@ Ticket mutation hardening: `src/database/tickets/index.ts` validates selected ti
 
 | Function                            | Reads | Writes | Notes                                                           |
 | ----------------------------------- | ----- | ------ | --------------------------------------------------------------- |
-| `getIngestionJobs()`                | N     | 0      | All jobs (no tenant filter!)                                    |
+| `getIngestionJobs()`                | N     | 0      | Deprecated compatibility helper; non-platform callers are tenant/store scoped |
 | `getPreviousIngestionJobs(session)` | N     | 0      | Completed/failed/cancelled for tenant                           |
 | `updateJob(jobId, data)`            | 0     | 1      | Merge update                                                    |
 | `deleteIngestionJob(jobId)`         | 1+N   | 1+N    | Transaction: delete job + articles + categories + storage files |
@@ -654,8 +654,8 @@ KB source generation and embedding helpers in `functions/src/logic/startGenerati
 
 ### 8.1 Missing Tenant Isolation
 
-- `getArticles()` in `src/database/knowledgeBase/articles.ts` fetches ALL articles with no tenant filter. This is by design (platform-wide KB), but means KB content is shared across all tenants.
-- `getIngestionJobs()` in `src/database/kb-generation/jobs.ts` also fetches all jobs with no tenant filter.
+- `getArticles()` in `src/database/knowledgeBase/articles.ts` is deprecated but scoped: non-platform sessions require tenant/store scope, while platform admins can still use the global administrative read.
+- `getIngestionJobs()` in `src/database/kb-generation/jobs.ts` is also deprecated but scoped: non-platform callers require tenant/store scope, while platform admins can use the administrative list path.
 
 ### 8.2 Non-Atomic Feedback Update
 

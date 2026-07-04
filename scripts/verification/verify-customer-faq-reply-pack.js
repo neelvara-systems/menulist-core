@@ -162,7 +162,7 @@ for (const needle of [
 }
 
 assertIncludes(report, 'getCustomerFaqReplyPackEvidenceText', 'Customer FAQ Reply Pack explicit evidence text');
-assertIncludes(report, 'URL format was checked locally. The URL was not opened or fetched.', 'Customer FAQ Reply Pack URL evidence boundary');
+assertIncludes(report, 'Public HTTPS URL format was checked locally. The URL was not opened or fetched.', 'Customer FAQ Reply Pack URL evidence boundary');
 assertIncludes(report, 'FAQ replies were generated from owner-entered facts only. No AI answer was generated.', 'Customer FAQ Reply Pack deterministic reply evidence boundary');
 assertIncludes(report, 'No customer conversation logs were read, no chatbot was created, no automation was configured, and no message was sent.', 'Customer FAQ Reply Pack automation evidence boundary');
 

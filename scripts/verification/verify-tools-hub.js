@@ -75,6 +75,11 @@ const TOOL_ROUTES = [
   '/tools/whatsapp-reply-pack',
   '/tools/hours-check',
   '/tools/photo-gap-check',
+  '/tools/qr-poster-maker',
+  '/tools/whatsapp-menu-status-maker',
+  '/tools/holiday-hours-poster-maker',
+  '/tools/customer-link-card-maker',
+  '/tools/feedback-qr-card-maker',
 ];
 
 const TOOL_KEYS = [
@@ -94,6 +99,11 @@ const TOOL_KEYS = [
   'whatsappReplyPack',
   'hoursCheck',
   'photoGapCheck',
+  'qrPosterMaker',
+  'whatsappMenuStatusMaker',
+  'holidayHoursPosterMaker',
+  'customerLinkCardMaker',
+  'feedbackQrCardMaker',
 ];
 
 for (const file of [
@@ -217,6 +227,7 @@ for (const locale of [enUS, hiIN]) {
   assert(locale.Website.ToolsHubPage.groups.publicTruth, 'Tools Hub publicTruth group locale must exist');
   assert(locale.Website.ToolsHubPage.groups.menuServiceClarity, 'Tools Hub menuServiceClarity group locale must exist');
   assert(locale.Website.ToolsHubPage.groups.customerActionReadiness, 'Tools Hub customerActionReadiness group locale must exist');
+  assert(locale.Website.ToolsHubPage.groups.printShareAssets, 'Tools Hub printShareAssets group locale must exist');
   assert(locale.Website.ToolsHubPage.groups.trustSetup, 'Tools Hub trustSetup group locale must exist');
   for (const key of TOOL_KEYS) {
     assert(locale.Website.ToolsHubPage.tools[key], `Tools Hub locale tool copy missing: ${key}`);

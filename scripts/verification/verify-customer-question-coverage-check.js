@@ -146,7 +146,7 @@ assertIncludes(report, 'customerConversationLogsRead: false', 'Customer Question
 assertIncludes(report, 'externalPlatformUpdated: false', 'Customer Question Coverage Check report external mutation boundary');
 assertIncludes(report, 'rankingPromise: false', 'Customer Question Coverage Check report ranking boundary');
 assertIncludes(report, 'getCustomerQuestionCoverageEvidenceText', 'Customer Question Coverage Check explicit evidence text');
-assertIncludes(report, 'URL format was checked locally. The URL was not opened or fetched.', 'Customer Question Coverage Check URL evidence boundary');
+assertIncludes(report, 'Public HTTPS URL format was checked locally. The URL was not opened or fetched.', 'Customer Question Coverage Check URL evidence boundary');
 assertIncludes(report, 'Links are not opened, customer conversations are not read, and AI answers are not generated.', 'Customer Question Coverage Check chatbot/conversation evidence boundary');
 assertIncludes(ownerReport, "'customer_question_coverage'", 'Customer Question Coverage Check owner module id');
 assertIncludes(ownerReport, 'Customer question coverage', 'Customer Question Coverage Check owner module title');

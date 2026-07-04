@@ -6,6 +6,11 @@
 **Last Updated:** July 2, 2026
 **Audience:** Developers
 
+July 4, 2026 account/link boundary correction:
+
+- Active reseller onboarding creates the tenant/store account, owner access, subscription state, dashboard link, and public customer link handoff.
+- It does not upload menu files or run menu extraction inside `/api/reseller/onboard`; menu content is added through the standard owner dashboard and import/review flows after account handoff.
+
 July 2, 2026 source-gate correction:
 
 - `npm run verify:reseller-dashboard-boundary` now locks reseller route admission order, platform/reseller role separation, hashed read/write rate-limit keys, bounded request/response parsing, offline/manual entitlement sync, online-provider failure compensation, desktop/mobile shell parity, and docs parity.
@@ -401,7 +406,7 @@ const ResellerOnboardSchema = z.object({
   commitmentMonths: z.enum(["3", "6", "12"]).transform(Number).optional(), // Tracking only for online, duration for offline
   locationCount: z.number().int().min(1).max(30).optional().default(1),
   paymentMode: z.enum(["online", "offline"]),
-  skipMenuUpload: z.boolean().optional().default(true),
+  skipMenuUpload: z.boolean().optional().default(true), // compatibility field; active route does not upload/extract menu files
 });
 ```
 
@@ -933,7 +938,7 @@ When reseller onboards a client, the system must return a usable owner access pa
 | 4   | Reseller hits offline cap                      | Error: "Maximum offline activations reached"                                              |
 | 5   | Non-reseller accesses /reseller                | Redirect to /dashboard                                                                    |
 | 6   | Reseller tries to see other reseller's clients | Empty list (data isolation)                                                               |
-| 7   | Client logs in after reseller onboarding       | Full dashboard access, sees uploaded menu                                                 |
+| 7   | Client logs in after reseller onboarding       | Full dashboard access and handoff links; menu content is added through normal owner/import flows |
 | 8   | Reseller renews expired offline store          | New transaction, validUntil starts from now (renewal anchor rule)                         |
 | 9   | Founder views all reseller data                | Full visibility across all resellers                                                      |
 | 10  | Online payment fails                           | Status stays pending, reseller can retry                                                  |
@@ -943,4 +948,4 @@ When reseller onboards a client, the system must return a usable owner access pa
 ---
 
 **DOCUMENT STATUS:** ✅ IMPLEMENTED  
-**Last Updated:** July 1, 2026 (v1.7 - consolidated reseller license expiry scheduler)
+**Last Updated:** July 4, 2026 (v1.8 - reseller onboarding account/link boundary)

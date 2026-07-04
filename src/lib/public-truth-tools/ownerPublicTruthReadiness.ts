@@ -50,16 +50,22 @@ export type OwnerPublicTruthReadinessReport = PublicTruthCheckReport & {
 
 export type OwnerPublicTruthReadinessModuleId =
   | 'public_truth_basics'
+  | 'business_facts_copy_pack'
   | 'qr_link_health'
   | 'menu_service_readability'
   | 'price_availability_gap'
   | 'menu_pdf_cleanup'
   | 'whatsapp_action_link'
+  | 'whatsapp_reply_pack'
   | 'hours_readiness'
   | 'photo_visual_identity'
   | 'customer_question_coverage'
+  | 'customer_faq_reply_pack'
   | 'booking_inquiry_readiness'
   | 'google_profile_handoff'
+  | 'customer_link_preview'
+  | 'social_bio_link_consistency'
+  | 'print_share_assets'
   | 'menu_freshness';
 
 export type OwnerPublicTruthReadinessModuleStatus =
@@ -695,6 +701,47 @@ export function buildOwnerPublicTruthReadinessReport(input: BuildOwnerPublicTrut
         : menuDaysSinceUpdate <= 90
           ? 'check'
           : 'needs_attention';
+  const businessFactsCopyPackStatus: OwnerPublicTruthReadinessModuleStatus = !hasPublicIdentity
+    || !hasContact
+    || !hasCustomerAction
+    ? 'needs_attention'
+    : !hasWorkingHours || !hasLocation || publicLinkResult !== 'present'
+      ? 'check'
+      : 'ready';
+  const customerFaqReplyPackStatus: OwnerPublicTruthReadinessModuleStatus = !hasMenuSource
+    || !hasWorkingHours
+    || !hasContact
+    || !hasCustomerAction
+    ? 'needs_attention'
+    : pricesResult === 'present' && hasLocation && publicLinkResult === 'present'
+      ? 'ready'
+      : 'check';
+  const whatsAppReplyPackStatus: OwnerPublicTruthReadinessModuleStatus = !hasWhatsAppNumber
+    ? hasContact
+      ? 'check'
+      : 'needs_attention'
+    : !hasMenuSource || !hasWorkingHours || publicLinkResult !== 'present'
+      ? 'check'
+      : 'ready';
+  const customerLinkPreviewStatus: OwnerPublicTruthReadinessModuleStatus = publicLinkResult === 'missing'
+    ? 'needs_attention'
+    : !hasPublicIdentity || !hasMenuSource || !hasContact || !hasCustomerAction
+      ? 'check'
+      : publicLinkResult === 'present' && hasWorkingHours && hasLocation
+        ? 'ready'
+        : 'check';
+  const socialBioLinkConsistencyStatus: OwnerPublicTruthReadinessModuleStatus = publicLinkResult === 'missing'
+    ? 'needs_attention'
+    : publicLinkResult === 'unclear'
+      ? 'check'
+      : hasMenuSource && hasCustomerAction
+        ? 'ready'
+        : 'check';
+  const printShareAssetsStatus: OwnerPublicTruthReadinessModuleStatus = publicLinkResult === 'missing'
+    ? 'needs_attention'
+    : !hasPublicIdentity || !hasCustomerAction
+      ? 'check'
+      : 'ready';
   const basicsNeedsDomain = publicLinkResult !== 'present';
   const basicsNeedsMenu = !hasMenuSource;
   const basicsFixHref = basicsNeedsDomain
@@ -707,6 +754,28 @@ export function buildOwnerPublicTruthReadinessReport(input: BuildOwnerPublicTrut
     : basicsNeedsMenu
       ? 'menu_tab'
       : 'basic_settings';
+  const businessFactsCopyPackFixHref = !hasPublicIdentity
+    ? buildBusinessSettingsFixHref('business-profile', 'identity')
+    : (!hasContact || !hasCustomerAction)
+      ? buildBusinessSettingsFixHref('business-profile', 'official-page-actions')
+      : !hasWorkingHours
+        ? buildBusinessSettingsFixHref('hours', 'working-hours')
+        : !hasLocation
+          ? buildBusinessSettingsFixHref('business-profile', 'location')
+          : publicLinkResult !== 'present'
+            ? buildBusinessSettingsFixHref('search-discovery', 'customer-link')
+            : buildBusinessSettingsFixHref('business-profile', 'identity');
+  const businessFactsCopyPackMobileFixTarget: OwnerPublicTruthReadinessMobileFixTarget = !hasPublicIdentity
+    ? 'basic_settings'
+    : (!hasContact || !hasCustomerAction)
+      ? 'official_page'
+      : !hasWorkingHours
+        ? 'hours_edit'
+        : !hasLocation
+          ? 'basic_settings'
+          : publicLinkResult !== 'present'
+            ? 'domain_settings'
+            : 'basic_settings';
   const qrFixHref = qrStatus === 'ready'
     ? '/qr-code?focus=qr'
     : buildBusinessSettingsFixHref('search-discovery', 'customer-link');
@@ -772,6 +841,48 @@ export function buildOwnerPublicTruthReadinessReport(input: BuildOwnerPublicTrut
         : publicLinkResult !== 'present'
           ? 'domain_settings'
           : 'official_page';
+  const whatsAppReplyPackFixHref = !hasWhatsAppNumber
+    ? buildBusinessSettingsFixHref('business-profile', 'official-page-actions')
+    : !hasMenuSource
+      ? menuFixHref
+      : !hasWorkingHours
+        ? buildBusinessSettingsFixHref('hours', 'working-hours')
+        : publicLinkResult !== 'present'
+          ? buildBusinessSettingsFixHref('search-discovery', 'customer-link')
+          : buildBusinessSettingsFixHref('business-profile', 'official-page-actions');
+  const whatsAppReplyPackMobileFixTarget: OwnerPublicTruthReadinessMobileFixTarget = !hasWhatsAppNumber
+    ? 'official_page'
+    : !hasMenuSource
+      ? 'menu_tab'
+      : !hasWorkingHours
+        ? 'hours_edit'
+        : publicLinkResult !== 'present'
+          ? 'domain_settings'
+          : 'official_page';
+  const customerLinkPreviewFixHref = publicLinkResult !== 'present'
+    ? buildBusinessSettingsFixHref('search-discovery', 'customer-link')
+    : !hasMenuSource
+      ? menuFixHref
+      : (!hasContact || !hasCustomerAction)
+        ? buildBusinessSettingsFixHref('business-profile', 'official-page-actions')
+        : !hasWorkingHours
+          ? buildBusinessSettingsFixHref('hours', 'working-hours')
+          : buildBusinessSettingsFixHref('business-profile', 'identity');
+  const customerLinkPreviewMobileFixTarget: OwnerPublicTruthReadinessMobileFixTarget = publicLinkResult !== 'present'
+    ? 'domain_settings'
+    : !hasMenuSource
+      ? 'menu_tab'
+      : (!hasContact || !hasCustomerAction)
+        ? 'official_page'
+        : !hasWorkingHours
+          ? 'hours_edit'
+          : 'basic_settings';
+  const socialBioLinkConsistencyFixHref = publicLinkResult === 'present'
+    ? '/qr-code?focus=share'
+    : buildBusinessSettingsFixHref('search-discovery', 'customer-link');
+  const printShareAssetsFixHref = publicLinkResult === 'present'
+    ? '/qr-code?focus=print'
+    : buildBusinessSettingsFixHref('search-discovery', 'customer-link');
   const googleFixHref = hasLiveOfficialPage
     ? buildBusinessSettingsFixHref('search-discovery', 'presence-monitor')
     : buildBusinessSettingsFixHref('search-discovery', 'customer-link');
@@ -791,6 +902,19 @@ export function buildOwnerPublicTruthReadinessReport(input: BuildOwnerPublicTrut
       relatedCheckIds: ['business_identity', 'menu_or_service_source', 'public_link', 'contact', 'customer_actions'],
     }),
     makeModule({
+      id: 'business_facts_copy_pack',
+      status: businessFactsCopyPackStatus,
+      title: 'Business facts copy pack',
+      description: businessFactsCopyPackStatus === 'ready'
+        ? 'Core facts are ready to reuse in public profiles, staff replies, and customer-link handoffs.'
+        : 'Review business facts before reusing copy across profiles, WhatsApp, social bios, staff replies, or printed materials.',
+      evidenceText: 'Checked MenuList business identity, hours, location, contact, actions, and customer link only. External profiles were not inspected or changed.',
+      fixHref: businessFactsCopyPackFixHref,
+      mobileFixTarget: businessFactsCopyPackMobileFixTarget,
+      actionLabel: businessFactsCopyPackStatus === 'ready' ? 'Review facts' : 'Complete facts',
+      relatedCheckIds: ['business_identity', 'hours', 'location', 'contact', 'customer_actions', 'public_link'],
+    }),
+    makeModule({
       id: 'qr_link_health',
       status: qrStatus,
       title: 'QR link health',
@@ -802,6 +926,45 @@ export function buildOwnerPublicTruthReadinessReport(input: BuildOwnerPublicTrut
       mobileFixTarget: qrStatus === 'ready' ? 'share_tab' : 'domain_settings',
       actionLabel: qrStatus === 'ready' ? 'Open QR tools' : 'Set customer link',
       relatedCheckIds: ['public_link', 'menu_or_service_source'],
+    }),
+    makeModule({
+      id: 'social_bio_link_consistency',
+      status: socialBioLinkConsistencyStatus,
+      title: 'Social bio link consistency',
+      description: socialBioLinkConsistencyStatus === 'ready'
+        ? 'A current MenuList customer link is ready to use in bios, profiles, QR codes, and print placements.'
+        : 'Prepare one current customer link before updating bios, profiles, QR codes, or print placements.',
+      evidenceText: 'Checked MenuList customer-link readiness only. Social profiles, websites, QR scans, and print materials were not inspected.',
+      fixHref: socialBioLinkConsistencyFixHref,
+      mobileFixTarget: socialBioLinkConsistencyStatus === 'ready' ? 'share_tab' : 'domain_settings',
+      actionLabel: socialBioLinkConsistencyStatus === 'ready' ? 'Open share tools' : 'Set customer link',
+      relatedCheckIds: ['public_link', 'menu_or_service_source', 'customer_actions'],
+    }),
+    makeModule({
+      id: 'customer_link_preview',
+      status: customerLinkPreviewStatus,
+      title: 'Customer link preview',
+      description: customerLinkPreviewStatus === 'ready'
+        ? 'The customer link has the core facts customers need before they act.'
+        : 'Review the facts customers should see when they open the current customer link.',
+      evidenceText: 'Checked current MenuList public-link, business, action, hours, location, and menu facts only. The public page was not fetched as an external scan.',
+      fixHref: customerLinkPreviewFixHref,
+      mobileFixTarget: customerLinkPreviewMobileFixTarget,
+      actionLabel: customerLinkPreviewStatus === 'ready' ? 'Review customer link' : 'Fix customer link',
+      relatedCheckIds: ['business_identity', 'menu_or_service_source', 'hours', 'location', 'contact', 'customer_actions', 'public_link'],
+    }),
+    makeModule({
+      id: 'print_share_assets',
+      status: printShareAssetsStatus,
+      title: 'Print and share assets',
+      description: printShareAssetsStatus === 'ready'
+        ? 'A current customer link is ready for QR posters, status images, counter cards, and feedback cards.'
+        : 'Prepare the customer link and action facts before printing or sharing assets.',
+      evidenceText: 'Checked MenuList customer-link, identity, and customer action readiness only. Printed assets, scans, social posts, and external pages were not inspected.',
+      fixHref: printShareAssetsFixHref,
+      mobileFixTarget: printShareAssetsStatus === 'ready' ? 'share_tab' : 'domain_settings',
+      actionLabel: printShareAssetsStatus === 'ready' ? 'Open print tools' : 'Prepare link',
+      relatedCheckIds: ['business_identity', 'public_link', 'customer_actions'],
     }),
     makeModule({
       id: 'menu_service_readability',
@@ -871,6 +1034,19 @@ export function buildOwnerPublicTruthReadinessReport(input: BuildOwnerPublicTrut
       relatedCheckIds: ['hours'],
     }),
     makeModule({
+      id: 'whatsapp_reply_pack',
+      status: whatsAppReplyPackStatus,
+      title: 'WhatsApp reply pack',
+      description: whatsAppReplyPackStatus === 'ready'
+        ? 'MenuList has the WhatsApp, hours, menu/source, and customer-link facts needed for reusable replies.'
+        : 'Review WhatsApp, hours, menu/source, or customer-link facts before staff reuse replies.',
+      evidenceText: 'Checked MenuList WhatsApp action settings, hours, menu/source, and customer-link readiness only. WhatsApp was not opened and no messages were sent.',
+      fixHref: whatsAppReplyPackFixHref,
+      mobileFixTarget: whatsAppReplyPackMobileFixTarget,
+      actionLabel: whatsAppReplyPackStatus === 'ready' ? 'Review replies' : 'Fix reply facts',
+      relatedCheckIds: ['contact', 'customer_actions', 'hours', 'menu_or_service_source', 'public_link'],
+    }),
+    makeModule({
       id: 'photo_visual_identity',
       status: photoStatus,
       title: 'Photo and visual identity',
@@ -894,6 +1070,19 @@ export function buildOwnerPublicTruthReadinessReport(input: BuildOwnerPublicTrut
       fixHref: customerQuestionCoverageFixHref,
       mobileFixTarget: customerQuestionCoverageMobileFixTarget,
       actionLabel: customerQuestionCoverageStatus === 'ready' ? 'Review customer source' : 'Review answers',
+      relatedCheckIds: ['menu_or_service_source', 'hours', 'prices', 'location', 'contact', 'customer_actions', 'public_link'],
+    }),
+    makeModule({
+      id: 'customer_faq_reply_pack',
+      status: customerFaqReplyPackStatus,
+      title: 'Customer FAQ reply pack',
+      description: customerFaqReplyPackStatus === 'ready'
+        ? 'MenuList has the core facts needed for repeated customer questions and FAQ replies.'
+        : 'Review the facts staff reuse in repeated customer answers: offer, hours, price, location, contact, action, and link.',
+      evidenceText: 'Checked MenuList business settings and selected/default menu only. Customer chats, external inboxes, automations, and AI answers were not checked.',
+      fixHref: customerQuestionCoverageFixHref,
+      mobileFixTarget: customerQuestionCoverageMobileFixTarget,
+      actionLabel: customerFaqReplyPackStatus === 'ready' ? 'Review FAQ facts' : 'Fix FAQ facts',
       relatedCheckIds: ['menu_or_service_source', 'hours', 'prices', 'location', 'contact', 'customer_actions', 'public_link'],
     }),
     makeModule({

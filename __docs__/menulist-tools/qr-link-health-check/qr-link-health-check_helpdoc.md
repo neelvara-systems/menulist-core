@@ -28,7 +28,7 @@ It shows whether the entered link looks ready, missing, unclear, or needs review
 ## What It Checks
 
 - Whether a QR target URL was entered.
-- Whether the URL format can open in a browser.
+- Whether the URL uses a public HTTPS address.
 - Whether the URL appears to be a MenuList customer link.
 - Whether you marked the target as current.
 - Whether customers can act from the target.
@@ -44,6 +44,8 @@ It shows whether the entered link looks ready, missing, unclear, or needs review
 - It does not track QR scans.
 - It does not change external platforms.
 - It does not promise search ranking, AI visibility, or more orders.
+
+Local, private, insecure, and credentialed targets are treated as missing basics because customers should not receive QR codes that point to non-public or unsafe links.
 
 ---
 

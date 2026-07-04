@@ -163,6 +163,18 @@ function verifyClientMenuOfflineDocsMatchServiceWorkerPolicy() {
       '100% of updates reflected instantly',
       'Sold out items disappear instantly',
       'Change reflects in < 1 second',
+      'Updates in real-time when owners make changes',
+      'First Contentful Paint | < 1.5s',
+      'Customer Decision Time | 60s → 15s',
+      'Owner Effort           | Zero (auto-updates)',
+      'Menu load time            | < 2 seconds',
+      'Menu loads in < 2 seconds on 3G',
+      'Menu loads in under 2 seconds on any device',
+      'menu loading in under 2 seconds',
+      'this takes about 30 seconds',
+      'should load in under 2 seconds',
+      'menu still perfect',
+      'Cached content accessible',
       'see menu instantly',
       'Mark items sold out instantly',
       'Your menu, always live.',
@@ -189,9 +201,13 @@ function verifyClientMenuOfflineDocsMatchServiceWorkerPolicy() {
   assertIncludes(readme, 'Customer service worker shows `/offline`; no stale menu cache', 'Client Menu README offline fallback copy');
   assertIncludes(spec, 'Offline mode shows a clear reconnect screen instead of cached menu content', 'Client Menu spec offline fallback requirement');
   assertIncludes(spec, 'SSR, Vercel Data Cache, optimized images', 'Client Menu spec performance mitigation');
+  assertIncludes(spec, 'This historical spec does not certify fixed load-time, decision-time, engagement, retention, or real-time freshness metrics for the current release.', 'Client Menu spec fixed-metric launch boundary');
+  assertIncludes(spec, 'Menu follows the target release performance budget verified by browser/device QA', 'Client Menu spec target-release performance boundary');
   assertIncludes(impl, 'Customer service worker with offline fallback only', 'Client Menu implementation PWA tech boundary');
   assertIncludes(impl, 'never caches menu HTML, menu data, Firestore', 'Client Menu implementation no menu cache boundary');
   assertIncludes(impl, 'Offline state must show reconnect screen, not stale menu content', 'Client Menu implementation offline expected behavior');
+  assertIncludes(impl, 'Clear reconnect screen; no stale menu cache', 'Client Menu implementation validation offline boundary');
+  assertIncludes(impl, 'Not certified by this historical implementation note', 'Client Menu implementation performance evidence boundary');
   assertIncludes(marketing, 'public menu refreshes through the current cache path', 'Client Menu marketing cache refresh copy');
   assertIncludes(marketing, 'one live menu link backed by the approved source', 'Client Menu marketing source-truth copy');
   assertIncludes(
@@ -225,12 +241,107 @@ function verifyClientMenuOfflineDocsMatchServiceWorkerPolicy() {
   assertIncludes(autosellFirebase, '### 2. Availability State (sold-out items fade after public menu refresh)', 'AutoSell Firebase availability cache-boundary heading');
   assertIncludes(website, 'MenuList does not serve cached menu content offline', 'Client Menu website offline fallback copy');
   assertIncludes(website, 'current cache refresh', 'Client Menu website cache refresh copy');
+  assertIncludes(website, 'release-specific browser and device load evidence', 'Client Menu website fixed-speed evidence boundary');
   assertIncludes(helpdoc, 'offline screen and reloads the live menu after reconnecting', 'Client Menu helpdoc offline fallback copy');
+  assertIncludes(helpdoc, 'Processing time depends on file quality, menu size, provider status, and current system load.', 'Client Menu helpdoc extraction timing boundary');
+  assertIncludes(helpdoc, 'load speed still depends on menu size, images, device, connection, and current hosting/provider behavior.', 'Client Menu helpdoc load-speed boundary');
   assertIncludes(mobileSupport, 'Offline mode must show a clear reconnect screen instead of cached menu content that could be stale.', 'Client Menu mobile support offline fallback rule');
   assertIncludes(productionAudit, 'Client Menu availability refresh-copy checkpoint', 'Production audit Client Menu availability refresh-copy checkpoint');
   assertIncludes(productionAudit, 'Client Menu marketing freshness-copy checkpoint', 'Production audit Client Menu marketing freshness-copy checkpoint');
+  assertIncludes(productionAudit, 'Client Menu performance and realtime-doc boundary checkpoint', 'Production audit Client Menu performance/realtime doc checkpoint');
   assertIncludes(changelog, 'Client Menu Availability Refresh Copy Boundary', 'Changelog Client Menu availability refresh-copy checkpoint');
   assertIncludes(changelog, 'Client Menu Marketing Freshness Copy Boundary', 'Changelog Client Menu marketing freshness-copy checkpoint');
+  assertIncludes(changelog, 'Client Menu Performance Realtime Doc Boundary', 'Changelog Client Menu performance/realtime doc checkpoint');
+}
+
+function verifyCustomerAppPublicCopyFreshnessBoundary() {
+  const customerAppSpec = read('__docs__/customer-app/customer-app_spec.md');
+  const customerAppMobile = read('__docs__/customer-app/customer-app_mobile-support.md');
+  const customerAppHelp = read('__docs__/customer-app/customer-app_helpdoc.md');
+  const customerAppMarketing = read('__docs__/customer-app/customer-app_marketing.md');
+  const customerAppWebsite = read('__docs__/customer-app/customer-app_website.md');
+  const productionAudit = read('__docs__/audits/menulist-production-readiness-audit.md');
+  const changelog = read('__docs__/CHANGELOG.md');
+
+  for (const [label, content] of [
+    ['Customer App marketing doc', customerAppMarketing],
+    ['Customer App website doc', customerAppWebsite],
+    ['Customer App help doc', customerAppHelp],
+    ['Customer App mobile doc', customerAppMobile],
+    ['Customer App spec', customerAppSpec],
+  ]) {
+    [
+      'Their app updates automatically. No action needed from you. No action needed from them.',
+      'Their app updates automatically.',
+      'Always Current',
+      'Always current',
+      'reflects it immediately',
+      'Customers always see your current menu',
+      'Updates automatically',
+      'updates automatically when you update your menu',
+      'syncs with live menu automatically',
+      'Updates when you update your menu',
+      'Live menu that updates itself',
+      'No maintenance — updates when you update',
+      'Your live menu opens instantly',
+      'menu opens instantly',
+      'opens instantly',
+      'app icon appears instantly',
+      'Takes 5 seconds',
+      '3+ per customer',
+      '+20% with Customer App',
+      'Our repeat order rate is up since we turned this on.',
+      'Order placed 30 seconds faster',
+      'If this feature increased your repeat customers by even 5%',
+      '| **MenuList Customer App** | **Included** | **Instant** | **Automatic** |',
+      'This takes effect immediately.',
+      'always fetches latest',
+      "they'll see your latest menu immediately",
+      'Completes in <5 seconds?',
+      'Push notifications (deferred to future phase)',
+      'One-tap access increases repeat visits',
+      'MenuList powers thousands of branded apps',
+      '>5% of repeat visitors',
+      '>3 per installed user',
+      '>60% enable the feature',
+      '+20% repeat visit rate',
+      'Weeks to build, $$$ to maintain',
+      'Zero effort, zero maintenance',
+      'Works on every phone',
+      'works on Jio phone, iPhone, any phone',
+      'Real apps cost ₹5-10 lakh',
+      '90% of the value',
+      'One tap opens the live menu',
+      'one-tap access to your live menu',
+      'One tap from home screen → live menu',
+      'one tap opens your live menu',
+      'They order faster. You earn loyalty easier.',
+      'Increased repeat visits — reduced friction wins',
+      'I recognize it instantly among my apps',
+      'so it always works',
+    ].forEach((stalePhrase) => {
+      assertNotIncludes(content, stalePhrase, `${label} public freshness/social-proof boundary`);
+    });
+  }
+
+  assertIncludes(customerAppSpec, 'return-from-hidden freshness safeguard', 'Customer App spec return-from-hidden freshness boundary');
+  assertIncludes(customerAppSpec, 'must not evolve into periodic background syncing', 'Customer App spec no pseudo-realtime boundary');
+  assertIncludes(customerAppSpec, 'Release-specific target; not certified by this spec', 'Customer App spec evidence-bound KPI targets');
+  assertIncludes(customerAppSpec, 'Requires cohort analysis before any public claim', 'Customer App spec retention evidence boundary');
+  assertIncludes(customerAppMobile, 'Short, thumb-friendly flow?', 'Customer App mobile no fixed-speed admission gate');
+  assertIncludes(customerAppHelp, 'After the save is acknowledged and the public menu path is available', 'Customer App helpdoc save acknowledgement freshness boundary');
+  assertIncludes(customerAppHelp, 'the approved public menu after the supported cache or return-to-app refresh path completes', 'Customer App helpdoc public-cache freshness boundary');
+  assertIncludes(customerAppWebsite, 'Customers see approved changes after the public cache or return-to-app refresh path completes.', 'Customer App website public-cache freshness copy');
+  assertIncludes(customerAppWebsite, 'active sessions do not mutate in the background.', 'Customer App website active-session boundary copy');
+  assertIncludes(customerAppWebsite, 'Use only an owner-approved quote from a live Customer App customer.', 'Customer App website social-proof evidence boundary');
+  assertIncludes(customerAppMarketing, 'Current public menu path', 'Customer App marketing current public path copy');
+  assertIncludes(customerAppMarketing, 'supported public cache or return-to-app refresh path', 'Customer App marketing cache/refocus freshness copy');
+  assertIncludes(customerAppMarketing, 'Use live Customer App analytics only after release evidence exists.', 'Customer App marketing analytics evidence boundary');
+  assertIncludes(customerAppMarketing, 'Use exact cost comparisons only with current market evidence.', 'Customer App marketing cost-comparison evidence boundary');
+  assertIncludes(productionAudit, 'Customer App freshness public-copy boundary checkpoint', 'Production audit Customer App public-copy checkpoint');
+  assertIncludes(productionAudit, 'Customer App companion evidence-bound docs checkpoint', 'Production audit Customer App companion-doc checkpoint');
+  assertIncludes(changelog, 'Customer App Freshness Public Copy Boundary', 'Changelog Customer App public-copy checkpoint');
+  assertIncludes(changelog, 'Customer App Companion Evidence Boundaries', 'Changelog Customer App companion-doc checkpoint');
 }
 
 function verifyNextPwaScoping() {
@@ -924,6 +1035,7 @@ const checks = [
   ['manifest route', verifyManifestRoute],
   ['customer service worker policy', verifyCustomerServiceWorkerPolicy],
   ['client menu offline docs', verifyClientMenuOfflineDocsMatchServiceWorkerPolicy],
+  ['customer app public copy freshness boundary', verifyCustomerAppPublicCopyFreshnessBoundary],
   ['next-pwa scoping', verifyNextPwaScoping],
   ['owner auth manifest', verifyOwnerAuthManifest],
   ['owner transparent favicons', verifyOwnerFaviconsTransparent],

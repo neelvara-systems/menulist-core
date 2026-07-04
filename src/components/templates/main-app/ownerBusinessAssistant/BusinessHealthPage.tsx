@@ -14,6 +14,7 @@ import { BusinessHealthPriorityChecks } from './BusinessHealthPriorityChecks';
 import { BusinessHealthProjectScopeSelector } from './BusinessHealthProjectScopeSelector';
 import { BusinessHealthSummaryCard } from './BusinessHealthSummaryCard';
 import { OwnerAssistantPanel } from './OwnerAssistantPanel';
+import { PublicTruthMonitorPanel } from './PublicTruthMonitorPanel';
 import { PublicTruthOwnerCheckCard } from './PublicTruthOwnerCheckCard';
 import styles from './OwnerBusinessAssistant.module.scss';
 
@@ -74,6 +75,10 @@ export function BusinessHealthPage({ projectId }: { projectId?: string }) {
                 isLoading={isPublicTruthLoading}
                 onRefresh={() => void refreshPublicTruth()}
                 report={publicTruthReport}
+              />
+              <PublicTruthMonitorPanel
+                selectedProjectId={scopedProjectId}
+                storeId={storeDetails?.storeId}
               />
               <BusinessHealthLocationSummary
                 enabled={hasMultipleStores}

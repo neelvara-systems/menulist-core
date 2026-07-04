@@ -1,7 +1,7 @@
-# B2C View — Marketing & Sales
+# B2C View - Marketing & Sales
 
-**Feature:** Customer-Facing Digital Menu  
-**Audience:** Sales Team, Marketing, Partners  
+**Feature:** Customer-Facing Digital Menu
+**Audience:** Sales Team, Marketing, Partners
 **Last Updated:** January 2026
 
 ---
@@ -10,17 +10,19 @@
 
 This marketing document is sales/source evidence for the customer-facing menu. It is not current launch certification or current production deployment approval. Current release approval requires the active [production-readiness audit](../../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../../production-readiness/external-certification-runbook.md) evidence, Digital Menu Output Constitution checks, `npm run verify:menu-design-presentation-boundary`, public cache/deploy evidence, browser/mobile customer-menu QA, and target production smoke.
 
+Performance, device-coverage, QR adoption, indexing, sharing, and customer-behavior claims need release-specific evidence before use in public or sales collateral.
+
 ---
 
 ## Elevator Pitch
 
 ### One-Liner
 
-> "Beautiful digital menus your customers will love—no app download required."
+> "A mobile-friendly customer menu link with controlled brand presentation and no app download."
 
 ### 30-Second Pitch
 
-> "Your menu, your brand, clearly displayed on any device. Customers scan a QR code and see your full menu instantly—no app to download. You set a mood, compatible layout, brand accent, and logo inside safe design rails. It loads fast, looks professional, and works on every phone."
+> "Your approved menu can be published as a customer-facing link. Customers open it in a supported browser, and the menu uses controlled brand settings like mood, compatible layout, accent, and logo. Owners preview the customer menu before publishing, and release copy should only use performance or device-coverage claims after browser/mobile QA."
 
 ---
 
@@ -28,27 +30,27 @@ This marketing document is sales/source evidence for the customer-facing menu. I
 
 ### The Problem
 
-Restaurant menus face challenges in the digital age:
+Restaurant menus face practical digital challenges:
 
-- **PDF menus:** Hard to read on phones, slow to load
-- **Third-party apps:** Customers don't want to download
-- **Generic templates:** Don't match restaurant branding
-- **Slow loading:** Customers lose patience
+- **PDF menus:** Customers may need to pinch, zoom, or wait on large files.
+- **Third-party apps:** Some menu experiences push customers into another app.
+- **Generic templates:** Menu output can look disconnected from the business.
+- **Unverified performance claims:** Load-time promises need target-device evidence.
 
 ### The Solution
 
-MenuList's B2C View:
+MenuList customer-facing menu output:
 
-- **Instant loading:** Under 2 seconds on mobile
-- **No app needed:** Works in any browser
-- **Your brand:** Set mood, brand accent, logo, and compatible layout
-- **Multiple layouts:** List, grid, or card views filtered by mood compatibility
-- **Mobile-first:** Designed for phone browsing
-- **QR ready:** One-click QR code generation
+- **Browser-based access:** Opens through a customer menu link in supported browsers.
+- **Controlled brand fit:** Owners set mood, brand accent, logo, and compatible layout.
+- **Preview before publish:** Owners check the customer menu before public changes go live.
+- **Supported refresh path:** Saved/published changes refresh through the public menu cache path.
+- **Mobile-oriented presentation:** The customer menu is designed for phone browsing and still needs target browser/mobile QA before release claims.
+- **QR/share assets:** QR and link sharing use the supported share flow and require a ready public address.
 
 ### The Result
 
-A **beautiful, fast, branded digital menu** customers can access instantly.
+A mobile-friendly, brand-controlled digital menu from the approved and published project.
 
 ---
 
@@ -56,22 +58,22 @@ A **beautiful, fast, branded digital menu** customers can access instantly.
 
 ### vs. PDF Menus
 
-| Aspect            | PDF          | MenuList B2C       |
-| ----------------- | ------------ | ------------------ |
-| Mobile experience | Pinch/zoom   | Native responsive  |
-| Load time         | 5-10 seconds | < 2 seconds        |
-| Branding          | Static       | Fully customizable |
-| Updates           | Re-upload    | Instant            |
-| Search            | None         | Built-in           |
+| Aspect            | PDF          | MenuList B2C |
+| ----------------- | ------------ | ------------ |
+| Mobile experience | Pinch/zoom risk | Responsive customer menu layout |
+| Load time         | Depends on file/device/network | Requires target QA evidence before quoting |
+| Branding          | Static file  | Controlled brand settings |
+| Updates           | Replace or re-share the file | Publish through supported menu/cache path |
+| Search            | None in the file | Search behavior depends on implemented customer menu scope |
 
 ### vs. Third-Party Apps
 
-| Aspect   | Apps              | MenuList B2C  |
-| -------- | ----------------- | ------------- |
-| Friction | Download required | No download   |
-| Branding | App's branding    | Your branding |
-| Cost     | Commission/fees   | Included      |
-| Control  | Limited           | Full control  |
+| Aspect   | Apps              | MenuList B2C |
+| -------- | ----------------- | ------------ |
+| Friction | Download may be required | Opens in supported browser |
+| Branding | App's branding    | Business brand settings |
+| Cost     | Commission/fees may apply | Follows MenuList plan scope |
+| Control  | Platform-dependent | Owner-approved menu source |
 
 ---
 
@@ -79,65 +81,62 @@ A **beautiful, fast, branded digital menu** customers can access instantly.
 
 ### Slide 1: The Problem
 
-**"PDFs aren't mobile menus"**
+**"PDFs are not always comfortable phone menus"**
 
-- Hard to read on phones
-- Slow to load
-- No branding
-- Hard to update
+- Customers may need to zoom.
+- Large files can be slower on weak networks.
+- Static files need replacement after changes.
 
 ### Slide 2: The Solution
 
-**"Beautiful menus, instant access"**
+**"A customer menu link from the approved source"**
 
-- No app download
-- Your menu mood and brand accent
-- Fast loading
-- Easy updates
+- No app download for supported browsers.
+- Controlled menu mood and brand accent.
+- Preview before publishing.
+- Public refresh follows the supported cache path.
 
 ### Slide 3: How It Works
 
-**"Scan, browse, order"**
+**"Open, browse, choose"**
 
-1. Customer scans QR code
-2. Menu loads instantly
-3. Easy navigation by category
-4. Beautiful item display
+1. Customer opens the QR/link.
+2. The published customer menu loads through the supported public route.
+3. Customers browse by the available menu navigation.
+4. Item display follows approved project content and presentation settings.
 
 ### Slide 4: Customization
 
-**"Your brand, your way"**
+**"Brand fit without unsafe design freedom"**
 
-- Menu mood and brand accent
-- Upload your logo
-- Choose a compatible layout style
-- Preview on devices
+- Menu mood and brand accent.
+- Logo where configured.
+- Compatible layout style.
+- Device preview where available.
 
 ### Slide 5: Performance
 
-**"Fast on any phone"**
+**"Performance claims follow QA evidence"**
 
-- First paint: < 1.8 seconds
-- Full load: < 2.5 seconds
-- Works offline (cached)
-- No app store approval
+- Do not quote first-paint or full-load timing without target-run evidence.
+- Do not claim offline support without verified runtime scope.
+- Browser/mobile customer-menu QA is required before launch copy.
 
 ### Slide 6: Sharing
 
-**"One link, infinite reach"**
+**"One customer menu link, supported share assets"**
 
-- Shareable URL
-- QR code download
-- Social sharing
-- Google-discoverable
+- Shareable customer URL when the store has a ready public address.
+- QR code download through the supported share flow.
+- Social sharing copy should not imply external-platform sync or indexing guarantees.
 
 ### Slide 7: CTA
 
-**"See your menu live"**
+**"Preview the customer menu"**
 
-- Preview your brand
-- Try different layouts
-- Share with customers today
+- Check the customer view.
+- Review the brand presentation.
+- Publish approved output.
 
 ---
 
@@ -145,31 +144,29 @@ A **beautiful, fast, branded digital menu** customers can access instantly.
 
 ### Hero Headline
 
-> **"Your menu. Beautifully digital."**
+> **"Your approved menu, ready for customers to open."**
 
 ### Subheading
 
-> "Fast-loading, mobile-friendly menus with your branding. No app required."
+> "A mobile-friendly customer menu link with controlled brand settings and no app download for supported browsers."
 
 ### Key Benefit Bullets
 
-- **⚡ Instant** — Loads in under 2 seconds
-- **📱 Mobile-First** — Designed for phones
-- **Your Brand** — Brand accent, logo, and controlled display settings
-- **📲 No Download** — Works in any browser
-- **🔗 Easy Sharing** — QR codes, links, social
+- **Mobile-friendly** - Designed for phone browsing, with target QA required before performance claims.
+- **No app download** - Opens through supported browsers.
+- **Your brand** - Brand accent, logo, mood, and compatible layout settings.
+- **Preview before publish** - Check the customer menu before public changes go live.
+- **Supported sharing** - QR and link assets use the configured public address.
 
 ### Social Proof Placeholders
 
-> "Customers love it. No more zooming on PDFs." — _Restaurant Owner_
-
-> "We added QR codes to every table. Customers scan and browse." — _Café Manager_
+Do not use testimonials, QR adoption stats, load-time stats, or customer-behavior claims without approved evidence.
 
 ### CTA Copy Variants
 
-- **Primary:** "Preview Your Menu"
-- **Secondary:** "See Examples"
-- **Subtle:** "Try it free"
+- **Primary:** "Preview Customer Menu"
+- **Secondary:** "See Menu Examples"
+- **Subtle:** "Open Menu Preview"
 
 ---
 
@@ -177,84 +174,91 @@ A **beautiful, fast, branded digital menu** customers can access instantly.
 
 ### Objection: "We already have PDF menus"
 
-**Response:** "PDFs work, but they're hard to read on phones. Customers have to pinch and zoom. Our digital menus are designed for mobile—easy to browse, fast to load, and they show off your brand."
+**Response:** "PDFs can work, but customers may need to pinch and zoom on phones. The customer menu is designed for supported browser viewing and uses the approved menu source instead of a static file."
 
 ### Objection: "Customers prefer physical menus"
 
-**Response:** "Many still do! QR codes don't replace physical menus—they supplement them. Customers can choose. But post-pandemic, many prefer contactless options."
+**Response:** "Physical menus can stay. QR and customer menu links are additional access paths, and printed/downloaded assets still need replacement after changes."
 
 ### Objection: "Will customers actually scan QR codes?"
 
-**Response:** "QR adoption has skyrocketed. Most people are comfortable scanning now. And there's no app to download—it just opens in their browser."
+**Response:** "Use venue-specific evidence before making QR adoption claims. The product supports QR/link access, but adoption depends on placement, staff guidance, and customer context."
 
 ### Objection: "Can we customize it to match our brand?"
 
-**Response:** "Absolutely. You set the mood, brand accent, logo, and compatible layout. It looks like your menu without letting the customer view become hard to read."
+**Response:** "Owners set the mood, brand accent, logo, and compatible layout. The controls stay constrained so the customer view remains readable."
 
 ---
 
 ## Approved Language
 
-### Terms to Use ✅
+### Terms to Use
 
 - "Digital menu"
 - "Mobile-friendly"
-- "Your brand"
-- "Instant access"
-- "No app required"
+- "Supported browser"
+- "Customer menu link"
+- "Preview before publish"
+- "No app download"
 
-### Terms to Avoid ❌
+### Terms to Avoid
 
-- "Replaces physical menus" (not true)
-- "Revolutionary" (overused)
-- "Best in class" (subjective)
+- Instant customer-menu performance claims
+- Fixed under-2-second load metrics
+- Every-phone support claims
+- "First paint" or "full load" metrics without target QA evidence
+- "One click" sharing claims without target flow evidence
+- Indexing guarantees without deployed metadata/indexing evidence
+- "Replaces physical menus"
+- "Revolutionary"
+- "Best in class"
 
 ---
 
-## Demo Script (90 seconds)
+## Demo Script (Historical Draft)
 
-### Setup (15 sec)
+### Setup
 
-"Let me show you how customers see your menu. I'll scan this QR code with my phone."
+"Let me show you how customers open the published menu link."
 
-### Load Time (15 sec)
+### Load
 
-"Watch... 1 second, 2 seconds, and the menu is fully loaded. No app download, no waiting."
+"The customer menu opens in a supported browser. Use release QA before quoting load timing."
 
-### Browsing (25 sec)
+### Browsing
 
-"I can browse by category here—tap Appetizers, see all the items with photos and prices. Tap an item for details. Search if I know what I want."
+"Customers browse the available navigation, view items, prices, photos where configured, and item details where available."
 
-### Branding (20 sec)
+### Branding
 
-"Notice the style? This matches the restaurant's brand. They chose a mood, added their logo, and set a brand accent in the dashboard."
+"This presentation uses the restaurant's configured mood, logo, brand accent, and compatible layout."
 
-### Sharing (15 sec)
+### Sharing
 
-"And for the restaurant, sharing is one click. Download the QR code, get the link, share on social. That's it."
+"The restaurant can use the supported share flow to get the customer menu link and QR asset once the public address is ready."
 
 ---
 
 ## Visual Assets Needed
 
-| Asset               | Purpose               | Spec                |
-| ------------------- | --------------------- | ------------------- |
-| Phone mockup        | Menu on iPhone        | High-res screenshot |
-| QR scan demo        | Scan → Menu           | 5-10 sec video      |
-| Layout comparison   | Grid vs List vs Card  | Side-by-side        |
-| Theme customization | Before/after branding | Comparison          |
-| Speed comparison    | PDF vs MenuList       | Load time video     |
+| Asset               | Purpose               | Spec |
+| ------------------- | --------------------- | ---- |
+| Phone screenshot    | Customer menu on a supported mobile browser | High-res screenshot |
+| QR/link demo        | Customer opens the published menu link | Short demo |
+| Layout comparison   | Compatible layouts    | Side-by-side |
+| Brand settings      | Before/after brand presentation | Comparison |
+| Performance evidence | Target-device run when using timing claims | QA capture |
 
 ---
 
 ## Key Stats for Marketing
 
-| Stat                   | Value               | Source          |
-| ---------------------- | ------------------- | --------------- |
-| First Contentful Paint | < 1.8 seconds       | Product testing |
-| Full load time         | < 2.5 seconds       | Product testing |
-| Mobile users           | 70%+                | Industry data   |
-| QR code adoption       | 94% of US consumers | Statista 2023   |
+| Stat                   | Value                             | Source |
+| ---------------------- | --------------------------------- | ------ |
+| First Contentful Paint | Requires target-run evidence      | Target release QA |
+| Full load time         | Requires target-run evidence      | Target release QA |
+| Mobile users           | Do not use without current market evidence | Market evidence |
+| QR code adoption       | Do not use without current market evidence | Market evidence |
 
 ---
 

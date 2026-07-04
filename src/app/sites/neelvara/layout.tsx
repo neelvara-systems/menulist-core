@@ -1,5 +1,4 @@
 import type { Metadata, Viewport } from 'next';
-import './styles.css';
 import {
     NEELVARA_OG_IMAGE_PATH,
     NEELVARA_SITE_DESCRIPTION,

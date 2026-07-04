@@ -145,7 +145,7 @@ assertIncludes(report, 'externalPlatformUpdated: false', 'Photo Gap Check report
 assertIncludes(report, 'aiOrSearchChecked: false', 'Photo Gap Check report AI/search boundary');
 assertIncludes(report, 'rankingPromise: false', 'Photo Gap Check report ranking boundary');
 assertIncludes(report, 'getPhotoGapEvidenceText', 'Photo Gap Check explicit evidence text');
-assertIncludes(report, 'URL format was checked locally. The URL was not opened or fetched.', 'Photo Gap Check URL evidence boundary');
+assertIncludes(report, 'Public HTTPS URL format was checked locally. The URL was not opened or fetched.', 'Photo Gap Check URL evidence boundary');
 assertIncludes(report, 'Images were not uploaded, analyzed, fetched, or inspected on external platforms.', 'Photo Gap Check image inspection evidence boundary');
 
 for (const content of [route, report, types]) {

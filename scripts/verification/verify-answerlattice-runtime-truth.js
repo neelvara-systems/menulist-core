@@ -128,6 +128,7 @@ function verifyDedicatedAnswerlatticeFirebase() {
 }
 
 function verifyPublicApiAndWidgetIsolation() {
+  const middleware = read('src/middleware.ts');
   const publicAnswers = read('src/app/api/answerlattice/public/v1/answers/route.ts');
   const publicEntities = read('src/app/api/answerlattice/public/v1/entities/route.ts');
   const publicSignals = read('src/app/api/answerlattice/public/v1/signals/route.ts');
@@ -140,6 +141,10 @@ function verifyPublicApiAndWidgetIsolation() {
   const mcpSession = read('src/app/api/answerlattice/mcp/session/route.ts');
   const publicAuth = read('src/lib/answerlattice/publicApi.ts');
   const sharedAuth = read('src/lib/publicApi/auth.ts');
+  const answerlatticeReadme = read('__docs__/answerlattice/README.md');
+  const helpWidgetImpl = read('__docs__/answerlattice/help-widget/help-widget_impl.md');
+  const productionAudit = read('__docs__/audits/menulist-production-readiness-audit.md');
+  const changelog = read('__docs__/CHANGELOG.md');
 
   assertIncludes(publicAnswers, 'authenticateAnswerlatticePublicApi', 'Answerlattice public answers API');
   assertIncludes(publicEntities, 'authenticateAnswerlatticePublicApi', 'Answerlattice public entities API');
@@ -149,6 +154,16 @@ function verifyPublicApiAndWidgetIsolation() {
   assertIncludes(publicAuth, "result.credentialSource !== 'publicApi'", 'Answerlattice public API key-source guard');
   assertIncludes(sharedAuth, 'answerlatticeFirestoreAdmin', 'Shared public API auth Answerlattice DB selection');
   assertIncludes(sharedAuth, 'Answerlattice API key validation failed closed because Answerlattice Firestore Admin is not configured', 'Shared public API auth fail-closed behavior');
+  assertIncludes(middleware, 'const isAnswerlatticeWidgetRoute = isAnswerlatticeWidgetFrameRoute(request);', 'Answerlattice widget middleware frame route');
+  assertIncludes(middleware, 'function isAnswerlatticeWidgetFrameRoute(request: NextRequest): boolean', 'Answerlattice widget middleware host-aware helper');
+  assertIncludes(middleware, "resolveKnownProductIdByHostname(hostname) === 'answerlattice'", 'Answerlattice widget middleware product host scope');
+  assertIncludes(middleware, '!process.env.VERCEL && isLocalDevelopmentHost(hostname)', 'Answerlattice widget middleware local dev frame scope');
+  assertNotIncludes(middleware, "const isAnswerlatticeWidgetRoute = request.nextUrl.pathname === '/widget' || request.nextUrl.pathname.startsWith('/widget/');", 'Answerlattice widget middleware path-only frame route');
+  assertIncludes(answerlatticeReadme, 'Widget iframe frame headers are relaxed only on Answerlattice product hosts', 'Answerlattice widget host-boundary docs');
+  assertIncludes(helpWidgetImpl, 'middleware omits `X-Frame-Options` only when the request is on an Answerlattice product host', 'Answerlattice help-widget frame host-boundary docs');
+  assertNotIncludes(helpWidgetImpl, '`/widget/*` is the explicit exception: middleware omits `X-Frame-Options` and allows HTTPS/localhost frame ancestors', 'Answerlattice help-widget path-only frame docs');
+  assertIncludes(productionAudit, 'Answerlattice widget frame host checkpoint', 'Answerlattice widget frame host audit checkpoint');
+  assertIncludes(changelog, 'Answerlattice Widget Frame Host Boundary', 'Answerlattice widget frame host changelog entry');
   assertIncludes(publicAnswers, "logRuntimeFailure('answerlattice_public_answers_retrieval_failed'", 'Answerlattice public answers bounded diagnostic');
   assertIncludes(publicAnswers, "getBoundedRuntimeStringContext('tenantId', auth.context.tId)", 'Answerlattice public answers bounded tenant metadata');
   assertIncludes(publicAnswers, "getBoundedRuntimeStringContext('storeId', auth.context.sId)", 'Answerlattice public answers bounded store metadata');
@@ -1784,6 +1799,18 @@ function verifySearchAndRetrievalTruth() {
   const platformWeeklyDigest = read('src/components/templates/platform/chatManagement/WeeklyDigest.tsx');
   const platformRoiCalculator = read('src/components/templates/platform/chatManagement/ROICalculator.tsx');
   const answerlatticeSupportClipboard = read('src/lib/answerlattice/supportClipboard.ts');
+  const knowledgeBaseSpec = read('__docs__/answerlattice/knowledge-base/knowledge-base_spec.md');
+  const knowledgeBaseImpl = read('__docs__/answerlattice/knowledge-base/knowledge-base_impl.md');
+  const kbGenerationSpec = read('__docs__/answerlattice/kb-generation-pipeline/kb-generation-pipeline_spec.md');
+  const kbGenerationImpl = read('__docs__/answerlattice/kb-generation-pipeline/kb-generation-pipeline_impl.md');
+  const kbGenerationFirebase = read('__docs__/answerlattice/kb-generation-pipeline/kb-generation-pipeline_firebase.md');
+  const aiQnaSpec = read('__docs__/answerlattice/ai-qna-chatbot/ai-qna-chatbot_spec.md');
+  const helpCenterSpec = read('__docs__/answerlattice/help-center/help-center_spec.md');
+  const helpCenterImpl = read('__docs__/answerlattice/help-center/help-center_impl.md');
+  const helpCenterWebsite = read('__docs__/answerlattice/help-center/help-center_website.md');
+  const helpCenterDecoupling = read('__docs__/answerlattice/help-center/help-center_decoupling-analysis.md');
+  const productionAudit = read('__docs__/audits/menulist-production-readiness-audit.md');
+  const changelog = read('__docs__/CHANGELOG.md');
 
   assertIncludes(searchCore, ".where('tId', '==', tId)", 'Answerlattice search tenant-scoped vector lookup');
   assertIncludes(searchCore, ".where('sId', '==', sId)", 'Answerlattice search store-scoped vector lookup');
@@ -1865,6 +1892,29 @@ function verifySearchAndRetrievalTruth() {
   assertIncludes(knowledgeBaseArticles, 'KnowledgeBaseArticleDeleteResult', 'Answerlattice KB article delete explicit result');
   assertIncludes(knowledgeBaseArticles, 'assertKnowledgeBaseArticleBulkStatusUpdateSucceeded', 'Answerlattice KB article bulk status acknowledgement guard');
   assertIncludes(knowledgeBaseArticles, 'satisfies KnowledgeBaseArticleBulkStatusUpdateResult', 'Answerlattice KB article bulk status explicit result');
+  assertIncludes(knowledgeBaseArticles, 'const scope = await resolveReadableArticleScope();', 'Answerlattice KB article legacy list scope resolver');
+  assertIncludes(knowledgeBaseArticles, 'const filters = getReadableScopeFilters(scope);', 'Answerlattice KB article legacy list readable filters');
+  assertIncludes(knowledgeBaseArticles, 'if (readableScopeAllowsArticle(scope, article))', 'Answerlattice KB article legacy list final scope guard');
+  assertNotIncludes(knowledgeBaseArticles, 'This fetches ALL articles globally with no tenant filter', 'Answerlattice KB article legacy global list comment');
+  assertNotIncludes(knowledgeBaseArticles, 'const q = query(await getCollectionRef(), limit(KB_ARTICLE_LIST_LIMIT));', 'Answerlattice KB article legacy global list query');
+  assertIncludes(knowledgeBaseSpec, 'Deprecated `getArticles()` compatibility helper could read globally', 'Answerlattice KB spec scoped getArticles resolved risk');
+  assertIncludes(knowledgeBaseSpec, 'workspace KB articles and categories are tenant/store scoped', 'Answerlattice KB spec tenant-scoped workspace KB boundary');
+  assertIncludes(knowledgeBaseImpl, 'Deprecated `getArticles()` compatibility helper could read globally', 'Answerlattice KB impl scoped getArticles resolved risk');
+  assertIncludes(aiQnaSpec, 'KB article reads must stay tenant/store scoped', 'Answerlattice AI QnA KB tenant-scope docs');
+  assertIncludes(helpCenterSpec, 'Workspace Knowledge Base content is tenant/store scoped', 'Answerlattice help-center spec KB tenant-scope docs');
+  assertIncludes(helpCenterImpl, 'non-platform sessions require tenant/store scope', 'Answerlattice help-center scoped getArticles docs');
+  assertIncludes(helpCenterWebsite, 'Workspace knowledge base content is scoped to your tenant and store', 'Answerlattice help-center website KB tenant-scope docs');
+  assertIncludes(helpCenterDecoupling, 'KB articles, categories, jobs, chat, tickets, changelog, feedback, and search history are tenant/store scoped for non-platform callers', 'Answerlattice decoupling KB tenant-scope docs');
+  assertIncludes(productionAudit, 'Answerlattice KB article list scope checkpoint', 'Answerlattice KB article list scope audit checkpoint');
+  assertIncludes(changelog, 'Answerlattice KB Article List Scope Boundary', 'Answerlattice KB article list scope changelog entry');
+  assertNotIncludes(knowledgeBaseSpec, 'Tenant-specific KB (articles are platform-wide, shared across all tenants)', 'Answerlattice KB spec stale platform-wide non-goal');
+  assertNotIncludes(knowledgeBaseSpec, '**Global** (platform-wide, no tenant filter)', 'Answerlattice KB spec stale global article scope');
+  assertNotIncludes(knowledgeBaseImpl, '| `getArticles()` | All | 0 | Fetches entire collection', 'Answerlattice KB impl stale global article list row');
+  assertNotIncludes(aiQnaSpec, 'KB articles are platform-wide (no tenant-scoped KB)', 'Answerlattice AI QnA stale platform-wide KB risk');
+  assertNotIncludes(helpCenterSpec, 'Knowledge Base is **global** (platform-wide), not tenant-scoped', 'Answerlattice help-center spec stale platform-wide KB distinction');
+  assertNotIncludes(helpCenterImpl, '`getArticles()` fetches ALL articles with no tenant/store filter', 'Answerlattice help-center stale getArticles global note');
+  assertNotIncludes(helpCenterWebsite, 'The knowledge base is platform-wide', 'Answerlattice help-center website stale platform-wide KB copy');
+  assertNotIncludes(helpCenterDecoupling, 'KB is global (platform-wide)', 'Answerlattice decoupling stale global KB score');
   assertIncludes(knowledgeBaseCategories, 'assertKnowledgeBaseCategoryWriteSucceeded', 'Answerlattice KB category write acknowledgement guard');
   assertIncludes(knowledgeBaseCategories, 'assertKnowledgeBaseCategoriesMutationSucceeded', 'Answerlattice KB categories mutation acknowledgement guard');
   assertIncludes(knowledgeBaseCategories, 'satisfies KnowledgeBaseCategoryWriteResult', 'Answerlattice KB category write explicit result');
@@ -1873,6 +1923,19 @@ function verifySearchAndRetrievalTruth() {
   assertIncludes(kbGenerationJobs, 'assertIngestionJobDeleteSucceeded', 'Answerlattice KB generation job delete acknowledgement guard');
   assertIncludes(kbGenerationJobs, 'satisfies IngestionJobWriteResult', 'Answerlattice KB generation job write explicit result');
   assertIncludes(kbGenerationJobs, 'satisfies IngestionJobDeleteResult', 'Answerlattice KB generation job delete explicit result');
+  assertIncludes(kbGenerationJobs, 'resolveReadableIngestionJobScope', 'Answerlattice KB generation legacy job list scope resolver');
+  assertIncludes(kbGenerationJobs, 'const filters = getReadableIngestionJobFilters(scope);', 'Answerlattice KB generation legacy job list readable filters');
+  assertIncludes(kbGenerationJobs, 'if (readableIngestionJobScopeAllowsJob(scope, job))', 'Answerlattice KB generation legacy job list final scope guard');
+  assertNotIncludes(kbGenerationJobs, 'const q = query(getCollectionRef(), orderBy("createdOn", "desc"), limit(ALL_JOB_LIMIT));', 'Answerlattice KB generation legacy global job list query');
+  assertIncludes(kbGenerationSpec, 'Deprecated `getIngestionJobs()` compatibility helper could read globally', 'Answerlattice KB generation spec scoped getIngestionJobs resolved risk');
+  assertIncludes(kbGenerationImpl, 'Deprecated `getIngestionJobs()` compatibility helper could read globally', 'Answerlattice KB generation impl scoped getIngestionJobs resolved risk');
+  assertIncludes(kbGenerationFirebase, '`tId` + `sId` fields; non-platform `getIngestionJobs()` reads are tenant/store scoped', 'Answerlattice KB generation Firebase scoped getIngestionJobs docs');
+  assertIncludes(helpCenterImpl, '`getIngestionJobs()` in `src/database/kb-generation/jobs.ts` is also deprecated but scoped', 'Answerlattice help-center scoped getIngestionJobs docs');
+  assertIncludes(productionAudit, 'Answerlattice KB generation job list scope checkpoint', 'Answerlattice KB generation job list scope audit checkpoint');
+  assertIncludes(changelog, 'Answerlattice KB Generation Job List Scope Boundary', 'Answerlattice KB generation job list scope changelog entry');
+  assertNotIncludes(kbGenerationSpec, '`getIngestionJobs()` fetches ALL jobs with no tenant filter', 'Answerlattice KB generation spec stale global job risk');
+  assertNotIncludes(kbGenerationImpl, '| `getIngestionJobs()` | N | 0 | ALL jobs, NO tenant filter |', 'Answerlattice KB generation impl stale global job row');
+  assertNotIncludes(kbGenerationFirebase, '(but `getIngestionJobs()` has no filter)', 'Answerlattice KB generation Firebase stale job scoping note');
   assertIncludes(productSurfacesDal, 'AnswerlatticeProductSurfaceWriteResult', 'Answerlattice product surface write explicit result');
   assertIncludes(productSurfacesDal, 'AnswerlatticeProductSurfaceArchiveResult', 'Answerlattice product surface archive explicit result');
   assertIncludes(productSurfacesDal, 'assertAnswerlatticeProductSurfaceWriteSucceeded', 'Answerlattice product surface write acknowledgement guard');

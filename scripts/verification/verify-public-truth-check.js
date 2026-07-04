@@ -155,7 +155,7 @@ assertIncludes(checkImplDoc, 'V1 Exact Fix Targets', 'Public Truth Check impleme
 assertIncludes(checkImplDoc, 'no uploaded-file storage exists in V0', 'Public Truth Check implementation upload-storage verifier gate');
 assertIncludes(checkFirebaseDoc, 'V0 does not store uploaded files', 'Public Truth Check Firebase upload-storage boundary');
 assertIncludes(checkFirebaseDoc, 'navigation-only', 'Public Truth Check Firebase fix-target cost boundary');
-assertIncludes(checkValidationDoc, 'twelve read-only module rows', 'Public Truth Check V1 validation module boundary');
+assertIncludes(checkValidationDoc, 'eighteen read-only module rows', 'Public Truth Check V1 validation module boundary');
 assertIncludes(checkValidationDoc, 'Owner report derives setup jobs', 'Public Truth Check V1 setup job validation');
 assertIncludes(checkValidationDoc, 'Desktop Business Health renders fix list', 'Public Truth Check desktop setup job validation');
 assertIncludes(checkValidationDoc, 'Mobile Business Health renders fix list', 'Public Truth Check mobile setup job validation');
@@ -293,7 +293,7 @@ assertIncludes(report, 'externalSourcesFetched: false', 'Public Truth Check repo
 assertIncludes(report, 'aiOrSearchChecked: false', 'Public Truth Check report boundary');
 assertIncludes(report, 'rankingPromise: false', 'Public Truth Check report boundary');
 assertIncludes(report, 'getSelfReportEvidenceText', 'Public Truth Check self-report explicit evidence text');
-assertIncludes(report, 'URL was not fetched and no Google profile was inspected', 'Public Truth Check URL evidence boundary');
+assertIncludes(report, 'Public HTTPS URL format was checked locally. The URL was not fetched and no Google profile was inspected.', 'Public Truth Check public HTTPS URL evidence boundary');
 assertIncludes(component, "mode: 'self_report'", 'Public Truth Check input contract');
 
 for (const content of [route, report, types]) {

@@ -2,33 +2,114 @@
 
 **Status:** Validated; pending owner/legal launch review
 **Implementation date:** June 20, 2026
-**Last cross-check:** July 4, 2026
+**Last cross-check:** July 5, 2026
 **Runtime:** Shared Next.js/Vercel app under `src/app/sites/neelvara/`
 **Local QA URL:** `http://localhost:3000/__neelvara`
 
 ---
 
-## July 4, 2026 Neelvara True-Vector Logo Replacement
+## July 5, 2026 Akshar Typography Unification
 
-The Neelvara website now uses the supplied true-vector glass-prism logo as the source logo everywhere.
+The Neelvara website now uses self-hosted Akshar as the primary typeface across every Neelvara public website surface.
 
 Applied changes:
 
-- Replaced `public/neelvara-logo.svg` with the uploaded `logo_3shape_true_svg_no_bg.svg` source copied as-is.
-- Replaced `public/neelvara-favicon.svg` with a square true-vector wrapper using the same paths, gradients, and colors as the uploaded source mark.
-- Regenerated `public/neelvara-logo.png`, favicon PNGs, Apple touch icon, manifest icon, generic app-icon PNGs, and `public/neelvara-og-image.png` from the true-vector source.
-- Updated the header/footer visible logo box to `58px x 33px`, preserving the uploaded mark aspect ratio with `background-size: contain`.
-- Updated logo docs to reflect that the source SVG is true vector and contains no embedded raster payload.
+- Expanded Akshar from brand lockups to site-wide text: display headings, body copy, buttons, nav, compact labels, product cards, legal pages, footer, header, and segment not-found UI.
+- Replaced the earlier mixed Instrument Serif, Inter, and JetBrains Mono runtime stack with one Akshar-first stack.
+- Retained `Inter` only as the first fallback font after Akshar.
+- Updated the standalone inline 404 response so missing routes do not fall back to Inter or Georgia.
+- Kept routes, logo geometry, legal copy meaning, product content, Prism glass layout, and color tokens unchanged.
 
 Verification completed in this pass:
 
-- `cmp -s /Users/danny/Downloads/logo_3shape_true_svg_no_bg.svg public/neelvara-logo.svg`: pass.
+- `git diff --check -- src/app/sites/neelvara src/app/sites/neelvara/[...missing]/route.ts __docs__/neelvara-main-website __docs__/CHANGELOG.md public/fonts/neelvara`: pass.
+- Runtime font-family scan: pass for Neelvara source and active website docs; the old Instrument Serif, JetBrains Mono, Georgia, and Google Fonts runtime stack is not present in Neelvara runtime source.
+- Font asset validation: pass; `public/fonts/neelvara/akshar-300.ttf`, `akshar-400.ttf`, `akshar-500.ttf`, `akshar-600.ttf`, and `akshar-700.ttf` are valid TrueType files and served locally as `font/ttf`.
+- `npm run lint -- --dir src/app/sites/neelvara --file src/app/layout.tsx --file src/middleware.ts`: pass.
+- `npx tsc --noEmit --incremental false --pretty false`: pass.
+- Local HTTP smoke through `http://127.0.0.1:3000`: Home returns `200`, missing route returns `404`, and Akshar font assets return `200`.
+- Rendered browser font audit at `1440x1000`: Home, Products, Privacy, and missing route all resolve sampled visible text to an Akshar-first font stack with no non-Akshar sampled text and no horizontal overflow.
+- Rendered browser font probe at `390x844`: Akshar 300, 400, and 700 resolve when requested, and the mobile Home page has no horizontal overflow.
+
+---
+
+## July 4, 2026 Final Prism Polish
+
+The Neelvara website received a final presentation polish pass after the current-color Prism relayout.
+
+Applied changes:
+
+- Removed repeated final CTA eyebrow labels from Home, Products, Contact, About, Legal, Privacy, and Terms so closing sections read as direct company guidance instead of another labeled content block.
+- Added consistent hover, focus, and active states for glass CTAs, product rows, product architecture cards, contact routing cards, support product links, footer links, and checklist links.
+- Added paragraph `text-wrap: pretty` handling to reduce awkward final-line breaks in public copy.
+- Adjusted the active reference tab to dark text over the parent-logo gradient for better contrast.
+- Added reduced-motion and reduced-transparency handling for the glass interface without changing the logo geometry, product routing, legal copy, or static-site boundary.
+- Applied the repo-local Taste pre-flight: the Home product lineup now stays in the same light/frosted page theme instead of switching to a dark band, and Neelvara viewport-height guards now use `100dvh`.
+- Added a self-hosted Akshar wordmark font for the header brand, footer brandline, and Home brand H1 only. Body copy, nav labels, legal text, product descriptions, routes, and logo geometry remained unchanged in that pass.
+
+Verification completed in this pass:
+
+- `npm run lint -- --dir src/app/sites/neelvara --file src/app/layout.tsx --file src/middleware.ts`: pass.
+- `npx tsc --noEmit --incremental false --pretty false`: pass.
+- `git diff --check -- src/app/sites/neelvara src/app/layout.tsx src/constants/neelvara __docs__/neelvara-main-website __docs__/CHANGELOG.md public/neelvara*`: pass.
+- Old saturated-gradient color scan over Neelvara runtime, logo SVGs, and website docs: pass; no `#1457D9`, `#2384FF`, `#2737C8`, or `#6542E8` remnants were found.
+- Taste hard-tell scan over Neelvara runtime: pass for visible em-dashes/en-dashes, numbered eyebrows, Acme/Lorem/Oops placeholder copy, startup cliches, old saturated colors, `100vh`, and cookie/storage banner strings.
+- Local route smoke through `http://127.0.0.1:3000`: Home, Products, Contact, About, Legal, Privacy, Terms return `200`; missing route returns `404`.
+- CSS delivery smoke: `/_next/static/css/app/layout.css` returns `200`, contains the approved logo palette, contains `.nv-page-prism`, `.nv-final-band`, and the reduced-transparency fallback.
+- In-app browser visual smoke at `1440x1000`: Home renders the Neelvara logo SVG, styled Prism hero, visible first-viewport CTAs, light/frosted product lineup, no cookie/storage banner text, no final-band eyebrow, and no horizontal overflow.
+- In-app browser visual smoke at `390x844`: Home and Products render styled Prism surfaces, product CTAs fit the viewport, no cookie/storage banner text, no final-band eyebrow, and no horizontal overflow.
+
+---
+
+## July 4, 2026 Current-Color Prism Glass Relayout
+
+The Neelvara website now applies the initial Prism glass layout language across every Neelvara public page while keeping the current Neelvara color system.
+
+Applied changes:
+
+- Home keeps the company-reference content direction and adds Prism rhythm: hero, marquee band, ledger, bento/reference modules, spotlight cards, quote, comparison table, product lineup, contact routing, CTA, and footer.
+- Products and Contact now use the same two-column page hero and current-color Prism panel pattern as the secondary pages.
+- About, Legal, Privacy, and Terms inherit the shared secondary-page Prism hero, alternating glass section rhythm, and compact page panels.
+- Static not-found output now uses the same light Prism mesh/glass treatment and product-shortcut recovery links.
+- Neelvara global CSS is imported from `src/app/layout.tsx`, matching the existing Answerlattice/CampaignCue product-site CSS pattern so the Neelvara styles are emitted inside `/_next/static/css/app/layout.css`.
+- Generic presentation selectors such as `glass`, `serif`, `mono`, and `gradient-text` are scoped under `.neelvara-site` so the root CSS import does not leak Neelvara styling into other app surfaces.
+- Brand gradients and inline color chips now use the actual Neelvara logo palette: `#6F86E2`, `#9FC6F6`, `#8798E7`, `#B7ACEF`, `#A9C2F5`, `#D0C8F4`, and `#D9CBF3`; the older saturated site gradient colors are not present in Neelvara source, rendered HTML, or the emitted CSS asset.
+- No product funnel, pricing, lead form, analytics, auth, API route, Firebase runtime, cookie banner, Vercel deploy, or production build was added.
+
+Verification completed in this pass:
+
+- `npm run lint -- --dir src/app/sites/neelvara --file src/app/layout.tsx --file src/middleware.ts`: pass.
+- `npx tsc --noEmit --incremental false --pretty false`: pass.
+- `node scripts/verification/verify-agent-readiness.js --env-targets-only`: pass.
+- `git diff --check -- src/app/sites/neelvara src/app/layout.tsx src/constants/neelvara __docs__/neelvara-main-website __docs__/CHANGELOG.md public/neelvara*`: pass.
+- HTTP smoke through `http://localhost:3000` for `/__neelvara`, `/__neelvara/`, `/__neelvara/home`, Products, About, Contact, Legal, Privacy, Terms, robots, sitemap, security.txt, and a missing route: pass.
+- CSS delivery smoke: `/_next/static/css/app/layout.css` returns `200` and contains `.neelvara-site`, `.nv-page-prism`, and `.nv-marquee`.
+- Logo-gradient smoke: Neelvara source, rendered Home/Products/404 HTML, and emitted CSS contain the logo palette and no `#1457D9`, `#2384FF`, `#2737C8`, or `#6542E8` gradient/color-chip remnants.
+- In-app browser visual smoke: desktop Home renders styled Prism glass chrome; mobile Products, Contact, Legal, and missing route render styled Prism panels without obvious horizontal spill or fallback text.
+
+---
+
+## July 4, 2026 Neelvara Parent Glass Logo Palette Refinement
+
+The Neelvara website now uses the supplied true-vector glass-prism geometry with a parent-brand glass palette everywhere.
+
+Applied changes:
+
+- Preserved the supplied three-path SVG geometry from `logo_3shape_true_svg_no_bg.svg`.
+- Refined only the gradient stops, fill opacity, stroke color, stroke opacity, and stroke width toward frosted periwinkle, muted blue-violet, and silver-lavender.
+- Replaced `public/neelvara-favicon.svg` with a square true-vector wrapper using the same paths, gradients, and colors as the refined source mark.
+- Regenerated `public/neelvara-logo.png`, favicon PNGs, Apple touch icon, manifest icon, generic app-icon PNGs, and `public/neelvara-og-image.png` from the refined true-vector source.
+- Updated logo docs to reflect that the source SVG is true vector, product-color-separated, and contains no embedded raster payload.
+
+Verification completed in this pass:
+
+- Supplied-geometry smoke: pass; the three path `d` values in `public/neelvara-logo.svg` match `/Users/danny/Downloads/logo_3shape_true_svg_no_bg.svg`.
 - True-vector SVG smoke: pass for `public/neelvara-logo.svg` and `public/neelvara-favicon.svg`; no `<image>`, `base64`, or `data:image` payloads remain.
 - SVG source size check: `public/neelvara-logo.svg` is 1,763 bytes and `public/neelvara-favicon.svg` is 1,845 bytes.
 - PNG dimension and transparency smoke: pass for `public/neelvara-logo.png`, favicon derivatives, Apple touch icon, manifest icons, generic `neelvara-icon.png`, and `public/neelvara-og-image.png`.
 - `git diff --check` over Neelvara runtime/constants/docs/assets: pass.
 - Scoped Neelvara lint with middleware: pass.
-- Full TypeScript check with `npx tsc --noEmit --incremental false --pretty false`: pass.
+- Full TypeScript check with `npx tsc --noEmit --incremental false --pretty false`: blocked in that logo-asset pass by an unrelated public-asset-tools type error that is no longer present in the current Prism relayout validation.
 - `node scripts/verification/verify-agent-readiness.js --env-targets-only`: pass.
 - HTTP smoke through `http://localhost:3000` for `/__neelvara/`, `/__neelvara/products`, `/neelvara-logo.svg`, `/neelvara-favicon.svg`, PNG icon derivatives, Open Graph image, and manifest: pass.
 - Local rendered PNG visual inspection for `public/neelvara-logo.png`, `public/neelvara-icon-512.png`, and `public/neelvara-og-image.png`: pass.
@@ -177,9 +258,9 @@ Owner-side launch blocker: configure and verify SPF, DKIM, and DMARC for `neelva
 
 ---
 
-## Neelvara Blue Redesign Validation
+## Neelvara Current-Color Prism Glass Validation
 
-The Neelvara site was recalibrated against the approved blue-rooted Neelvara brand direction while preserving the company-site legal/data boundary.
+The Neelvara site was recalibrated against the approved blue-rooted Neelvara brand direction and then relaid out with the Prism glass format while preserving the company-site legal/data boundary.
 
 | Check | Status | Evidence |
 | --- | --- | --- |
@@ -189,12 +270,12 @@ The Neelvara site was recalibrated against the approved blue-rooted Neelvara bra
 | Warm palette removed | Pass | Runtime styles and public SVG assets no longer use rose, peach, amber, cyan-heavy, or pure-purple branding |
 | Mesh and grain layers present | Pass | `src/app/sites/neelvara/styles.css` defines `.nv-page-mesh` and `.nv-grain` |
 | Shared glass primitive present | Pass | `styles.css` defines `.glass` and spotlight cards reuse the same fill/stroke/blur treatment |
-| Editorial/mono typography present | Pass | `styles.css` imports Instrument Serif, Inter, and JetBrains Mono |
+| Akshar typography present | Pass | `styles.css` self-hosts Akshar and uses it as the primary font across display headings, body copy, buttons, labels, legal pages, product cards, and page chrome, with Inter only as fallback |
 | Floating glass nav present | Pass | `src/app/sites/neelvara/content.tsx` renders `nv-header-inner glass` |
-| Home page rebuilt in company-site section order | Pass | Home includes hero, studio mock, ledger, problem-first bento, spotlight cards, quote, product lineup, contact routes, CTA, and footer |
-| Secondary pages redesigned | Pass | `SecondaryPage` renders mesh/glass page hero, spotlight cards, glass text panels, policy dates where needed, and page-specific final CTAs for About, Legal, Privacy, and Terms |
-| Custom Products page | Pass | `/products` explains operated products, product boundaries, focus chips, and direct product-site CTAs |
-| Custom Contact page | Pass | `/contact` routes company inboxes, product support links, before-you-contact guidance, and country of operation |
+| Home page rebuilt in company-site section order | Pass | Home includes hero, studio mock, marquee, ledger, problem-first bento, spotlight cards, quote, comparison table, product lineup, contact routes, CTA, and footer |
+| Secondary pages redesigned | Pass | `SecondaryPage` renders mesh/glass page hero, current-color Prism panel, spotlight cards, glass text panels, policy dates where needed, and page-specific final CTAs for About, Legal, Privacy, and Terms |
+| Custom Products page | Pass | `/products` explains operated products, product boundaries, focus chips, direct product-site CTAs, and uses the shared Prism page panel |
+| Custom Contact page | Pass | `/contact` routes company inboxes, product support links, before-you-contact guidance, country of operation, and uses the shared Prism page panel |
 | Product/legal boundary preserved | Pass | No pricing, checkout, lead form, account, API route, Firebase, analytics, or owner app surface added |
 | Small-phone hero behavior | Pass | `styles.css` hides the large hero mock under `640px`; CDP audit at `375x812` shows ledger top at `688px` and no overflow |
 | Solid CTA contrast | Pass | Primary CTA uses white text on Neel blue/indigo gradient |
@@ -323,7 +404,7 @@ Audit date: June 20, 2026.
 
 Targeted legal route checks on local runtime:
 
-Rechecked after the Neelvara blue redesign at `http://localhost:3000/__neelvara`.
+Rechecked after the Neelvara current-color Prism glass relayout at `http://localhost:3000/__neelvara`.
 
 Result: all returned `200`.
 
@@ -356,9 +437,9 @@ Current Chrome DevTools Protocol checks passed for `/legal`, `/privacy`, `/terms
 ## Validation Commands
 
 ```bash
-git diff --check -- src/app/sites/neelvara src/components/shared/publicCookieConsent/PublicCookieConsentBanner.module.css __docs__/neelvara-main-website
+git diff --check -- src/app/sites/neelvara src/app/layout.tsx src/constants/neelvara __docs__/neelvara-main-website __docs__/CHANGELOG.md public/neelvara*
 npx tsc --noEmit --incremental false --pretty false
-npm run lint -- --dir src/app/sites/neelvara
+npm run lint -- --dir src/app/sites/neelvara --file src/app/layout.tsx --file src/middleware.ts
 node scripts/verification/verify-agent-readiness.js --env-targets-only
 ```
 
@@ -414,7 +495,7 @@ Additional measured evidence:
 - home text color: `rgb(7, 19, 35)`
 - primary CTA background: `linear-gradient(135deg, rgb(20, 87, 217) 0%, rgb(39, 55, 200) 68%, rgb(101, 66, 232) 100%)`
 - logo mark background: `url("/neelvara-logo.svg") center / contain no-repeat`
-- visible logo mark source: `public/neelvara-logo.svg`, copied as-is from the uploaded 578x328 true-vector source SVG
+- visible logo mark source: `public/neelvara-logo.svg`, using the uploaded 578x328 true-vector path geometry with the approved frosted parent palette
 - `public/neelvara-logo.png`, favicon derivatives, Apple touch icon, and manifest icon derivatives have transparent corner pixels
 - page metadata exposes title, description, canonical, Open Graph, Twitter, manifest, favicon, Apple touch icon, theme color, and Organization JSON-LD on all public pages
 - desktop home H1: `Neelvara Systems`
@@ -440,9 +521,9 @@ Additional measured evidence:
 
 | Check | Status | Evidence |
 | --- | --- | --- |
-| Feature README status updated | Pass | README now records the Neelvara blue redesign and current validation commands |
-| Spec no longer draft | Pass | Specification status is implemented/validated and includes Neelvara blue presentation constraints |
-| Marketing no longer pre-redesign | Pass | Presentation direction accepts scoped Neelvara mesh/glass and rejects unrelated gradient systems |
+| Feature README status updated | Pass | README now records the current-color Prism glass relayout and current validation commands |
+| Spec no longer draft | Pass | Specification status is implemented/validated and includes current-color Prism glass presentation constraints |
+| Marketing no longer pre-redesign | Pass | Presentation direction accepts scoped Neelvara mesh/prism/glass and rejects unrelated gradient systems |
 | Help/support boundary current | Pass | Helpdoc confirms the redesign does not alter support routing or data scope |
 | Test cases include visual checks | Pass | Test cases include Neelvara mesh/glass, section order, mobile hero, and CTA contrast checks |
 | Implementation inventory current | Pass | Implementation doc lists `SpotlightCard.tsx`, Neelvara styles, and confirms no Neelvara cookie-banner mount remains |

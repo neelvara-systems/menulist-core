@@ -179,6 +179,85 @@ function verifyGeneratedArtifactTrackingBoundary() {
   );
 }
 
+function verifySharedHttpClientBoundary() {
+  const axiosClient = read('src/lib/axios/axiosClient.ts');
+  const productionReadinessAudit = read('__docs__/audits/menulist-production-readiness-audit.md');
+  const changelog = read('__docs__/CHANGELOG.md');
+
+  assertIncludes(
+    axiosClient,
+    'const PATCH = (path: string, data: any, config: AxiosRequestConfig = {}): Promise<AxiosResponse> =>\n    axios.patch(path, data, getAxiosConfig(config));',
+    'Shared axios PATCH helper must use the PATCH HTTP verb',
+  );
+  assertNotIncludes(
+    axiosClient,
+    'const PATCH = (path: string, data: any, config: AxiosRequestConfig = {}): Promise<AxiosResponse> =>\n    axios.post(path, data, getAxiosConfig(config));',
+    'Shared axios PATCH helper must not route PATCH through POST',
+  );
+  assertIncludes(
+    productionReadinessAudit,
+    'Shared axios PATCH verb checkpoint:',
+    'Production readiness audit shared axios PATCH verb checkpoint',
+  );
+  assertIncludes(
+    changelog,
+    'Shared Axios PATCH Verb Boundary',
+    'Changelog shared axios PATCH verb boundary',
+  );
+}
+
+function verifyMenuListStorageBucketFallbackBoundary() {
+  const productionReadinessAudit = read('__docs__/audits/menulist-production-readiness-audit.md');
+  const changelog = read('__docs__/CHANGELOG.md');
+  const bucketResolutionFiles = [
+    'src/lib/firebase/firebaseClient.ts',
+    'src/lib/apiUtils/index.ts',
+    'src/lib/menu-extraction/menuIntakeIdentityServer.ts',
+    'functions/src/logic/processMenuImages.ts',
+    'functions/src/logic/processMenuImagesJob.ts',
+    'functions/src/messagingOnboarding/assetIntelligence.ts',
+  ];
+
+  for (const file of bucketResolutionFiles) {
+    const content = read(file);
+    assertNotIncludes(content, 'menulist-qa.appspot.com', `${file} must not fallback to the QA Storage bucket`);
+    assertNotIncludes(content, 'DEFAULT_STORAGE_BUCKET', `${file} must not keep a hardcoded Storage bucket fallback`);
+  }
+
+  [
+    'src/lib/apiUtils/index.ts',
+    'src/lib/menu-extraction/menuIntakeIdentityServer.ts',
+    'functions/src/logic/processMenuImages.ts',
+    'functions/src/logic/processMenuImagesJob.ts',
+    'functions/src/messagingOnboarding/assetIntelligence.ts',
+  ].forEach((file) => {
+    const content = read(file);
+    assertIncludes(content, 'function getProjectStorageBucketFallback()', `${file} project-derived Storage bucket fallback`);
+    assertIncludes(content, 'process.env.FIREBASE_STORAGE_BUCKET', `${file} server Storage bucket env`);
+    assertIncludes(content, 'process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET', `${file} public Storage bucket env`);
+    assertIncludes(content, 'process.env.GCLOUD_PROJECT', `${file} active Firebase project fallback`);
+    assertIncludes(content, 'process.env.GCP_PROJECT', `${file} active GCP project fallback`);
+    assertIncludes(content, 'process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID', `${file} public Firebase project fallback`);
+  });
+
+  const firebaseClient = read('src/lib/firebase/firebaseClient.ts');
+  assertIncludes(
+    firebaseClient,
+    'const firebaseStorageUrl = firebaseConfig.storageBucket\n    ? `https://firebasestorage.googleapis.com/v0/b/${firebaseConfig.storageBucket}/o`\n    : \'\';',
+    'Firebase client Storage URL must fail closed when Storage bucket config is absent',
+  );
+  assertIncludes(
+    productionReadinessAudit,
+    'MenuList Storage bucket fallback checkpoint:',
+    'Production readiness audit MenuList Storage bucket fallback checkpoint',
+  );
+  assertIncludes(
+    changelog,
+    'MenuList Storage Bucket Fallback Boundary',
+    'Changelog MenuList Storage bucket fallback boundary',
+  );
+}
+
 function verifyEnvironmentTargets() {
   const {
     DEPLOYMENT_TARGETS,
@@ -288,11 +367,13 @@ function verifyEnvironmentTargets() {
   const descriptionGenerationFirebase = read('__docs__/projects/description-generation/description-generation_firebase.md');
   const descriptionGenerationWebsite = read('__docs__/projects/description-generation/description-generation_website.md');
   const descriptionGenerationMarketing = read('__docs__/projects/description-generation/description-generation_marketing.md');
+  const descriptionGenerationHelpdoc = read('__docs__/projects/description-generation/description-generation_helpdoc.md');
   const descriptionGenerationProductionAudit = read('__docs__/projects/description-generation/description-generation_production-audit.md');
   const descriptionGenerationAssessment = read('__docs__/projects/Assessments/assessment-09-description-generation.md');
   const multiLanguageTranslationReadme = read('__docs__/projects/multi-language-translation/README.md');
   const multiLanguageTranslationSpec = read('__docs__/projects/multi-language-translation/multi-language-translation_spec.md');
   const multiLanguageTranslationImpl = read('__docs__/projects/multi-language-translation/multi-language-translation_impl.md');
+  const multiLanguageTranslationWebsite = read('__docs__/projects/multi-language-translation/multi-language-translation_website.md');
   const multiLanguageTranslationMarketing = read('__docs__/projects/multi-language-translation/multi-language-translation_marketing.md');
   const dataEditorReadme = read('__docs__/projects/data-editor/README.md');
   const dataEditorSpec = read('__docs__/projects/data-editor/data-editor_spec.md');
@@ -708,6 +789,57 @@ function verifyEnvironmentTargets() {
   assertIncludes(changelog, 'Upload File Processing Website Speed All-Field Copy Boundary', 'Changelog upload website speed/all-field checkpoint');
   assertIncludes(aiDataExtractionMarketing, 'npm run verify:ai-accounting', 'AI extraction marketing AI accounting source gate');
   assertIncludes(aiDataExtractionMarketing, 'Provider smoke for the target extraction model and environment', 'AI extraction marketing provider smoke boundary');
+  assertIncludes(aiDataExtractionMarketing, 'Upload a clear menu photo or PDF, review the extracted draft', 'AI extraction marketing review-draft pitch');
+  assertIncludes(aiDataExtractionMarketing, 'Publish only the approved menu', 'AI extraction marketing approved-menu copy');
+  assertIncludes(aiDataExtractionMarketing, 'Speed, accuracy, provider, and volume claims require release-specific proof', 'AI extraction marketing evidence-bound copy');
+  [
+    'Our AI reads your menu and types it all out for you—in seconds',
+    'Our AI does it in seconds',
+    'Gemini-powered system reads every item, every price, every description',
+    'No more data entry. No more typos',
+    'AI extraction eliminates manual data entry',
+    'Photo → Data',
+    'AI reads your menu image automatically',
+    'Captured accurately from the image',
+    'A complete digital menu in **minutes instead of hours**',
+    '| Time for 50-item menu | 2-4 hours       | 5 minutes',
+    '| Typo risk             | High            | Low (AI reads directly)',
+    '| Descriptions          | Often skipped   | Automatically captured',
+    '| Multi-language        | Double the work | Same effort',
+    'AI extracts everything (30 seconds)',
+    '**"Powered by Google Gemini"**',
+    'State-of-the-art vision AI',
+    'Trained to understand menu layouts',
+    '50-item menu: 4 hours manual → 5 minutes with AI',
+    '95%+ extraction accuracy on clear menus',
+    'Watch the magic happen',
+    'Your menu, digitized in seconds',
+    'Our AI reads every item, price, and description',
+    '**🤖 AI-Powered**',
+    '**⚡ Instant Results**',
+    '30 seconds, not 3 hours',
+    'I uploaded our entire 45-item menu and it got every single price right',
+    '**Focus:** Speed, accuracy, no typing needed',
+    'AI menu digitization that actually works',
+    'we often capture 60-70% correctly',
+    'accuracy is typically above 95%',
+    'detects Hindi, English, Tamil, and more automatically',
+    'all languages in one extraction',
+    '- "In seconds" (speed benefit)',
+    'Demo Script (2 minutes)',
+    'about 40 items across 6 categories',
+    'Done—30 seconds',
+    'Most items look perfect',
+    'What would have taken 3 hours took 3 minutes',
+    'AI "reading" the menu',
+    '5-10 sec video',
+    '| Time to extract 50 items  | ~30 seconds',
+    '| Accuracy on printed menus | >95%',
+  ].forEach((staleClaim) => {
+    assertNotIncludes(aiDataExtractionMarketing, staleClaim, 'AI extraction marketing stale speed/provider/every-field claim');
+  });
+  assertIncludes(productionReadinessAudit, 'AI Data Extraction marketing speed/every-field copy checkpoint', 'Production readiness audit AI extraction marketing speed/every-field checkpoint');
+  assertIncludes(changelog, 'AI Data Extraction Marketing Speed Every-Field Copy Boundary', 'Changelog AI extraction marketing speed/every-field checkpoint');
   assertIncludes(aiDataExtractionWebsite, 'Source-backed website draft; not current publication or launch certification', 'AI extraction website launch boundary status');
   assertIncludes(aiDataExtractionWebsite, 'Current Website/Launch Boundary', 'AI extraction website boundary heading');
   assertIncludes(aiDataExtractionWebsite, 'External Certification Runbook', 'AI extraction website external certification boundary');
@@ -1176,6 +1308,11 @@ function verifyEnvironmentTargets() {
   assertIncludes(descriptionGenerationMarketing, 'Authenticated desktop/mobile editor QA', 'Description generation marketing browser/mobile editor QA boundary');
   assertIncludes(descriptionGenerationMarketing, 'menu description drafts for owner review before publishing', 'Description generation marketing review-draft boundary');
   assertIncludes(descriptionGenerationMarketing, 'Owner-reviewed wording', 'Description generation marketing owner-review wording');
+  assertIncludes(descriptionGenerationHelpdoc, 'Prepare description drafts for selected menu items.', 'Description generation helpdoc draft boundary');
+  assertIncludes(descriptionGenerationHelpdoc, 'save only the approved descriptions before publishing', 'Description generation helpdoc approved publish boundary');
+  assertIncludes(descriptionGenerationHelpdoc, 'timing depends on provider status, item count, and current system conditions', 'Description generation helpdoc timing boundary');
+  assertIncludes(descriptionGenerationHelpdoc, 'Description drafts follow the languages configured for the project and the current release behavior', 'Description generation helpdoc language boundary');
+  assertIncludes(descriptionGenerationHelpdoc, 'The route is rate-limited to protect credits and provider capacity.', 'Description generation helpdoc rate-limit boundary');
   [
     'Professional, appetizing descriptions for every item',
     'Generated in seconds',
@@ -1206,12 +1343,22 @@ function verifyEnvironmentTargets() {
     'ready as-is',
     'Seconds per item',
     'ready-to-use',
+    'Automatically generate professional descriptions for your menu items',
+    'Works for items without descriptions or to rewrite all descriptions at once',
+    'descriptions are generated in ALL languages at once',
+    'No extra steps needed',
+    'Limit is 5 requests per minute',
+    "they're created simultaneously",
+    'Translate your entire menu',
   ].forEach((staleClaim) => {
     assertNotIncludes(descriptionGenerationWebsite, staleClaim, 'Description generation website stale speed/every-item claim');
     assertNotIncludes(descriptionGenerationMarketing, staleClaim, 'Description generation marketing stale speed/every-item claim');
+    assertNotIncludes(descriptionGenerationHelpdoc, staleClaim, 'Description generation helpdoc stale speed/every-item claim');
   });
   assertIncludes(productionReadinessAudit, 'Description Generation website speed/every-item copy checkpoint', 'Production readiness audit description generation website checkpoint');
+  assertIncludes(productionReadinessAudit, 'Description Generation helpdoc speed/language/full-rewrite copy checkpoint', 'Production readiness audit description generation helpdoc checkpoint');
   assertIncludes(changelog, 'Description Generation Website Speed Every-Item Copy Boundary', 'Changelog description generation website checkpoint');
+  assertIncludes(changelog, 'Description Generation Helpdoc Speed Language Full-Rewrite Copy Boundary', 'Changelog description generation helpdoc checkpoint');
   assertNotIncludes(descriptionGenerationMarketing, '_Document Status: ✅ READY FOR USE_', 'Description generation marketing stale ready-for-use status');
   assertIncludes(descriptionGenerationProductionAudit, 'Historical code-audit evidence; not current launch certification', 'Description generation production audit historical boundary');
   assertIncludes(descriptionGenerationProductionAudit, 'Historical Code-Audit Result', 'Description generation production audit historical result section');
@@ -1239,6 +1386,58 @@ function verifyEnvironmentTargets() {
   assertIncludes(multiLanguageTranslationMarketing, 'npm run verify:agent-readiness', 'Multi-language translation marketing source gate');
   assertIncludes(multiLanguageTranslationMarketing, 'Public renderer fallback/RTL evidence', 'Multi-language translation marketing renderer/RTL boundary');
   assertIncludes(multiLanguageTranslationMarketing, 'Customer-menu browser/device QA', 'Multi-language translation marketing customer-menu QA boundary');
+  assertIncludes(multiLanguageTranslationWebsite, 'Source-backed website draft; not current publication or launch certification', 'Multi-language translation website launch boundary status');
+  assertIncludes(multiLanguageTranslationWebsite, 'Current Website/Launch Boundary', 'Multi-language translation website launch boundary heading');
+  assertIncludes(multiLanguageTranslationWebsite, '`npm run verify:agent-readiness`', 'Multi-language translation website source gate');
+  assertIncludes(multiLanguageTranslationWebsite, 'public renderer fallback/RTL evidence', 'Multi-language translation website renderer/RTL boundary');
+  assertIncludes(multiLanguageTranslationWebsite, 'customer-menu browser/device QA', 'Multi-language translation website customer-menu QA boundary');
+  assertIncludes(multiLanguageTranslationWebsite, 'Prepare customer-language menu drafts from the approved source', 'Multi-language translation website approved-source copy');
+  assertIncludes(multiLanguageTranslationWebsite, 'publish only the approved output', 'Multi-language translation website review-before-publish copy');
+  assertIncludes(multiLanguageTranslationMarketing, 'Prepare customer-language menu drafts from the approved menu source', 'Multi-language translation marketing approved-source copy');
+  assertIncludes(multiLanguageTranslationMarketing, 'Translated drafts for supported project languages', 'Multi-language translation marketing supported-language boundary');
+  [
+    'Your menu in 90+ languages',
+    'translated in seconds',
+    'translates your entire menu',
+    '90+ languages automatically',
+    'Add Spanish, Arabic, Hindi—any language—with one click',
+    'Add a language in seconds',
+    'Same quality across all languages',
+    'Serve **every customer in their language**',
+    '| Time              | Days/weeks       | Seconds',
+    '| Updates           | Re-hire          | One click',
+    '| Consistency       | Varies           | Uniform',
+    '| Effort       | Copy each item    | One click for all',
+    '41 languages, one click',
+    'AI translation in seconds',
+    'AI translation into 41 languages',
+    'Add Spanish, Arabic, Hindi—in seconds',
+    '41 Languages',
+    'All languages at once',
+    'tourist orders doubled',
+    'customers order 20-30% more',
+    'Demo Script (90 seconds)',
+    'complete menu with 20 items',
+    '10 seconds for 20 items',
+    'every item translated',
+    '41 languages, one click each',
+    'Show 41 languages',
+    '10-15 sec video',
+    '| Languages supported    | 41',
+    '| Translation time       | 10 seconds/file',
+    'Add languages to your digital menu with one click',
+    'localizes your digital menu into any language automatically',
+    'Your entire menu — every item, every description, every category',
+    'Translating 48 items',
+    'switch instantly',
+    'Translate your restaurant menu into any language automatically',
+    'Translates automatically',
+  ].forEach((staleClaim) => {
+    assertNotIncludes(multiLanguageTranslationWebsite, staleClaim, 'Multi-language translation website stale speed/language-count claim');
+    assertNotIncludes(multiLanguageTranslationMarketing, staleClaim, 'Multi-language translation marketing stale speed/language-count claim');
+  });
+  assertIncludes(productionReadinessAudit, 'Multi-Language Translation website speed/language-count copy checkpoint', 'Production readiness audit multi-language website checkpoint');
+  assertIncludes(changelog, 'Multi-Language Translation Website Speed Language-Count Copy Boundary', 'Changelog multi-language website checkpoint');
   assertNotIncludes(multiLanguageTranslationMarketing, '_Document Status: ✅ READY FOR USE_', 'Multi-language translation marketing stale ready-for-use status');
   for (const [label, content] of [
     ['Data editor README', dataEditorReadme],
@@ -2758,6 +2957,8 @@ function main() {
   verifyVerificationRegistryCoverage();
   verifyRuntimeLogTrackingBoundary();
   verifyGeneratedArtifactTrackingBoundary();
+  verifySharedHttpClientBoundary();
+  verifyMenuListStorageBucketFallbackBoundary();
   verifyMenuListDiscovery();
   verifyAnswerlatticeDiscovery();
   verifyAnswerlatticeInstallContract();

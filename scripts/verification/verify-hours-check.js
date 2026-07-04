@@ -141,7 +141,7 @@ assertIncludes(report, 'externalPlatformUpdated: false', 'Hours Check report ext
 assertIncludes(report, 'aiOrSearchChecked: false', 'Hours Check report AI/search boundary');
 assertIncludes(report, 'rankingPromise: false', 'Hours Check report ranking boundary');
 assertIncludes(report, 'getHoursEvidenceText', 'Hours Check explicit evidence text');
-assertIncludes(report, 'The URL was not opened or fetched', 'Hours Check URL evidence boundary');
+assertIncludes(report, 'Public HTTPS URL format was checked locally. The URL was not opened or fetched.', 'Hours Check public HTTPS URL evidence boundary');
 assertIncludes(report, 'Google, maps, websites, holiday calendars, and AI/search answers were not inspected', 'Hours Check external inspection evidence boundary');
 
 for (const content of [route, report, types]) {

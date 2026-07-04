@@ -1,3 +1,4 @@
+import { isPublicHttpsUrl as isValidHttpUrl } from './publicUrlValidation';
 import type {
   PublicTruthCheckEvidence,
   PublicTruthCheckFactId,
@@ -28,17 +29,6 @@ function normalizeTextarea(value?: string): string {
 
 function hasUsefulText(value: string): boolean {
   return value.trim().length >= 20;
-}
-
-function isValidHttpUrl(value: string): boolean {
-  if (!value) return false;
-
-  try {
-    const url = new URL(value);
-    return url.protocol === 'http:' || url.protocol === 'https:';
-  } catch {
-    return false;
-  }
 }
 
 function hasPriceHint(value: string): boolean {
@@ -85,9 +75,9 @@ function getSelfReportEvidenceText(evidence: PublicTruthCheckEvidence): string {
     case 'source_text_hint':
       return 'Checked the pasted source text only. No linked page was fetched.';
     case 'valid_public_url':
-      return 'URL format was checked. The URL was not fetched and no Google profile was inspected.';
+      return 'Public HTTPS URL format was checked locally. The URL was not fetched and no Google profile was inspected.';
     case 'invalid_public_url':
-      return 'URL format was checked. The URL was not fetched and no Google profile was inspected.';
+      return 'Public HTTPS URL format was checked locally. The URL was not fetched and no Google profile was inspected.';
     case 'not_provided':
       return 'No source was provided for this fact.';
     case 'not_checked':

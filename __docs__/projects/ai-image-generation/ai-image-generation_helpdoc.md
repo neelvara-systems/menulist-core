@@ -1,7 +1,7 @@
 # AI Image Generation — Help Documentation
 
 ## Quick Summary
-Generate professional-looking photos for your menu items automatically. Works for single items or your entire menu at once.
+Prepare image drafts for selected menu items where the feature, plan, credits, provider, and safety checks allow. Review each draft before using it on a customer-facing menu.
 
 ---
 
@@ -10,6 +10,7 @@ Generate professional-looking photos for your menu items automatically. Works fo
 ### Prerequisites
 - A menu project with items already extracted or entered
 - Items should have names (descriptions help improve image quality)
+- Image generation must be enabled for your workspace, and enough credits must be available for the request
 
 ---
 
@@ -19,38 +20,39 @@ Generate professional-looking photos for your menu items automatically. Works fo
 1. Go to **Projects** → select your project → **Editor**
 2. Find the item you want an image for
 3. Click the **image area** (or camera icon) on the item
-4. Click **Generate Image**
-5. Wait 5-10 seconds for the image to appear
-6. If you like it, click **Use This Image**
-7. If not, click **Generate Again** for a different result
+4. Click **Generate Image** if the option is available
+5. Wait for the draft to finish processing; timing depends on provider status and current queue behavior
+6. Review the draft against the real item
+7. If it matches the item, click **Use This Image**
+8. If not, keep the existing image or try again where credits and provider status allow
 
 > 📸 **Screenshot:** Image generation modal with preview and accept/reject buttons
 
-### How to generate images for your entire menu (bulk)
+### How to prepare a supported batch
 1. Go to your project → **Editor**
-2. Click the **Bulk Generate** option (available in the image upload modal)
-3. Choose which items to include (items without images, or all items)
+2. Click the **Bulk Generate** option if it is available in the image upload modal
+3. Choose the supported items to include
 4. Click **Start Generation**
-5. Watch progress as each item is processed
-6. Review results — accept or reject individual images
-7. Click **Save Accepted** to apply all approved images
+5. Watch progress as the selected items are processed
+6. Review each result before applying it
+7. Save only the images that match the real business and menu item
 
-> 💡 **Tip:** Bulk generation processes items one at a time. A 50-item menu takes about 5 minutes.
+> 💡 **Tip:** Batch size, processing time, and retry behavior depend on the current release, credits, provider status, and safety checks.
 
 ### How to edit a generated image
 1. Click on an existing image in the Editor
-2. Click **Edit Image**
+2. Click **Edit Image** if image editing is available
 3. Describe what you want changed (e.g., "make the plate white", "add garnish")
-4. Wait for the edited version
-5. Accept or reject the edit
+4. Wait for the edited draft
+5. Review and accept only if the result matches the real item
 
 ---
 
 ## Troubleshooting
 
 ### "Rate limit exceeded" error
-**Why:** You can only generate 5 images per minute.
-**Fix:** Wait 1 minute and try again.
+**Why:** Image generation is rate-limited to protect credits and provider capacity.
+**Fix:** Wait and try again, or reduce the batch size if you are preparing several items.
 
 ### Generated image doesn't look like my dish
 **Why:** The system generates based on the item name and description. Generic names like "Special #3" give generic results.
@@ -60,24 +62,24 @@ Generate professional-looking photos for your menu items automatically. Works fo
 **Why:** Network interruption or temporary service issue.
 **Fix:** The progress is saved. Refresh the page and resume from where it stopped.
 
-### Image quality is low
+### Image draft does not match the item
 **Fix:** 
 1. Make sure your item has a clear, descriptive name
 2. Add a description if there isn't one
-3. Try generating again — each generation is unique
+3. Keep the existing image or generate another draft where credits and provider status allow
 
 ---
 
 ## Tips
 - 💡 Descriptive item names = better images ("Grilled Salmon with Lemon Butter" > "Fish")
-- 💡 Add descriptions before generating — they improve accuracy
-- 💡 Use bulk generation to save time on large menus
+- 💡 Add descriptions before generating — they can improve the prompt context
+- 💡 Use supported batch generation for selected groups of items when available
 - 💡 You can always replace a generated image with your own photo later
-- 💡 Generated images are saved only when you accept them — rejected ones cost nothing extra
+- 💡 Review generated drafts before applying them to the public menu
 
 ## Related Features
 - **[Data Editor]** — Where you view and manage item images
-- **[Description Generation]** — Auto-generate descriptions (helps improve image quality)
+- **[Description Generation]** — Prepare descriptions that may improve image prompt context
 - **[Upload & File Processing]** — Upload your own photos instead of generating
 
 ## Need More Help?

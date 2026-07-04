@@ -1,9 +1,9 @@
 # Public Truth Tools - Documentation Hub
 
 > **Feature family:** MenuList Public Truth Tools
-> **Status:** Active family - sixteen public tools, a public shareable report layer, and twelve owner readiness modules with exact fix targets and owner fix lists implemented
+> **Status:** Active family - sixteen public tools, five public asset makers, a public shareable report layer, and eighteen owner readiness modules with exact fix targets and owner fix lists implemented
 > **Last Updated:** July 4, 2026
-> **Version:** 2.9
+> **Version:** 2.10
 
 ---
 
@@ -61,7 +61,7 @@ Public Truth Tools can grow as a MenuList module/add-on family, but each tool mu
 | Lane | Product shape | Example | Monetization rule | Runtime rule |
 | --- | --- | --- | --- | --- |
 | V0 | Public free tool / lead magnet | Public Truth Check route where an owner enters a business URL/menu link/Google profile reference and visible facts | Free acquisition and education | No fake scan claims; external URLs are references unless an approved adapter exists |
-| V1 | Logged-in MenuList owner check | Business Health/Public Discovery status from actual store/project truth | Included owner value | Implemented inside desktop/mobile Business Health as twelve read-only readiness modules with exact fix targets and bounded fix lists; reuse existing MenuList truth, DAL, cache, and mobile shell patterns |
+| V1 | Logged-in MenuList owner check | Business Health/Public Discovery status from actual store/project truth | Included owner value | Implemented inside desktop/mobile Business Health as eighteen read-only readiness modules with exact fix targets and bounded fix lists; reuse existing MenuList truth, DAL, cache, and mobile shell patterns |
 | V2 | Paid add-on behavior | Recurring checks, saved history, monthly report, multi-location scan, partner/agency reports | Paid only when recurrence/history create value | Requires entitlement, capped history, source policy, audit logs, and cost controls |
 
 This lets the list keep growing without creating a new SaaS product or adding owner dashboard noise.
@@ -139,6 +139,7 @@ Implemented public routes:
 - `/tools/hours-check`
 - `/tools/photo-gap-check`
 - browser-local `self_report` mode only
+- shared public HTTPS URL validation for owner-entered links
 - no external fetch
 - no report-time Firebase writes
 - optional consented follow-up through existing `/api/public/contact`
@@ -150,12 +151,18 @@ Implemented public routes:
 Implemented logged-in owner modules:
 
 - Public truth basics
+- Business facts copy pack
 - QR link health
+- Social bio link consistency
+- Customer link preview
+- Print and share assets
 - Menu or service clarity
 - WhatsApp action link
+- WhatsApp reply pack
 - Hours readiness
 - Photo and visual identity
 - Customer question coverage
+- Customer FAQ reply pack
 - Booking and inquiry readiness
 - Price and availability clarity
 - PDF cleanup readiness
@@ -175,24 +182,24 @@ Provider-backed owner/admin prototype:
 | Rank | Tool | Primary user | Core job | Product boundary |
 | --- | --- | --- | --- | --- |
 | 1 | Public Truth Check | Prospect, owner, agency | Show whether public business facts are clear | V0 public route and V1 Business Health owner readiness modules implemented; no external posting |
-| 2 | Business Facts Copy Pack | Prospect, owner, agency | Create reusable public business copy from entered facts | V0 public route implemented with owner-entered facts only; no external profile inspection or update |
-| 3 | QR Link Health Check | Physical-location SMB | Verify QR targets resolve to the current customer link | V0 public route implemented with pasted URL only; no QR image decoding or broad crawl |
-| 4 | Menu / Service Readability Check | Food/service SMB | Check whether menu, service, price, and action content is understandable | V0 public route implemented with pasted text only; no uploaded-file storage |
+| 2 | Business Facts Copy Pack | Prospect, owner, agency | Create reusable public business copy from entered facts | V0 public route implemented with owner-entered facts only; V1 owner module checks MenuList business facts without external profile inspection or update |
+| 3 | QR Link Health Check | Physical-location SMB | Verify QR targets resolve to the current customer link | V0 public route implemented with pasted URL only; V1 owner module checks MenuList customer-link readiness; no QR image decoding or broad crawl |
+| 4 | Menu / Service Readability Check | Food/service SMB | Check whether menu, service, price, and action content is understandable | V0 public route implemented with pasted text only; V1 owner module checks selected/default MenuList menu truth; no uploaded-file storage |
 | 5 | Customer Question Coverage Check | Owner/prospect | Check whether current public source answers common customer questions | V0 public route implemented with pasted source/questions only; V1 owner module checks MenuList truth |
-| 6 | Customer FAQ Reply Pack | Owner/prospect | Create reusable FAQ and auto-reply text from repeated customer questions and owner-entered facts | V0 public route implemented with owner-entered facts only; no conversation logs, chatbot, automation, message sending, AI answers, or external fetches |
+| 6 | Customer FAQ Reply Pack | Owner/prospect | Create reusable FAQ and auto-reply text from repeated customer questions and owner-entered facts | V0 public route implemented with owner-entered facts only; V1 owner module checks FAQ source facts; no conversation logs, chatbot, automation, message sending, AI answers, or external fetches |
 | 7 | Booking Inquiry Readiness Check | Owner/prospect | Check whether customers can clearly order, book, reserve, call, message, request a quote, or visit | V0 public route implemented with action-path format/readiness only; V1 owner module checks MenuList action, contact, hours, location, and customer link |
 | 8 | Price & Availability Gap Check | Food/service/retail SMB | Check whether prices, variants, unavailable items, and quote paths are clear | V0 public route implemented with pasted source text only; V1 owner module checks MenuList project prices, variant prices, and availability flags |
 | 9 | Menu PDF Cleanup Check | PDF-heavy SMB | Check whether old PDFs should be replaced with one current customer link | V0 public route implemented with owner-entered PDF reference/facts only; V1 owner module checks MenuList source and link readiness |
 | 10 | Google Profile Basics Checklist | Owner/agency | Check whether owner-maintained Google Business Profile basics are ready for customers | V0 public route implemented with owner-selected facts only; V1 maps to existing Google profile handoff module |
-| 11 | WhatsApp Action Link Check | Mobile-first SMB | Check whether customers can tap once to message, order, book, or call | V0 public route implemented with format/action readiness only; no message sending |
-| 12 | WhatsApp Reply Pack | Mobile-first SMB | Create reusable WhatsApp greeting, hours, menu, price, order, delivery, fallback, and customer-link replies | V0 public route implemented with owner-entered facts only; no WhatsApp API calls, no number verification, and no message sending |
-| 13 | Hours & Holiday Hours Check | Owner | Check regular and special hours clarity | V0 public route implemented with owner-entered hours only; MenuList store hours in V1 |
-| 14 | Photo / Visual Identity Gap Check | Owner | Show missing public visual proof slots | V0 public route implemented with owner-selected photo facts only; OBP photo contract in V1 |
-| 15 | One Customer Link Preview | Prospect/owner | Show what customers see when they open the business link | V0 public route implemented with owner-entered facts only; V1 maps to existing MenuList public page and Business Health readiness surfaces |
-| 16 | Social Bio Link Consistency Check | Prospect/owner/agency | Check whether social bios, public profiles, website links, QR codes, and print materials point to one current customer link | V0 public route implemented with owner-selected placement facts only; V1 maps to existing Share, Public Discovery, and Business Health readiness surfaces |
+| 11 | WhatsApp Action Link Check | Mobile-first SMB | Check whether customers can tap once to message, order, book, or call | V0 public route implemented with format/action readiness only; V1 owner module checks MenuList action settings; no message sending |
+| 12 | WhatsApp Reply Pack | Mobile-first SMB | Create reusable WhatsApp greeting, hours, menu, price, order, delivery, fallback, and customer-link replies | V0 public route implemented with owner-entered facts only; V1 owner module checks reusable reply facts; no WhatsApp API calls, no number verification, and no message sending |
+| 13 | Hours & Holiday Hours Check | Owner | Check regular and special hours clarity | V0 public route implemented with owner-entered hours only; V1 owner module checks MenuList store hours |
+| 14 | Photo / Visual Identity Gap Check | Owner | Show missing public visual proof slots | V0 public route implemented with owner-selected photo facts only; V1 owner module checks OBP and menu photo truth |
+| 15 | One Customer Link Preview | Prospect/owner | Show what customers see when they open the business link | V0 public route implemented with owner-entered facts only; V1 owner module checks MenuList public-link readiness and core page facts |
+| 16 | Social Bio Link Consistency Check | Prospect/owner/agency | Check whether social bios, public profiles, website links, QR codes, and print materials point to one current customer link | V0 public route implemented with owner-selected placement facts only; V1 owner module checks one-current-link readiness for Share/Public Discovery handoff |
 | P1 | Booking / Order / Reservation Readiness | Owner | Check whether customer next actions are clear | Check action paths, not provider integrations |
 | P2 | Multi-location Consistency Check | Multi-outlet owner | Compare shared and outlet-level public facts | Owner-authenticated paid/add-on candidate |
-| P2 | Public Truth Monitor | Serious owner, agency | Scheduled checks, history, monthly report | Paid only because recurrence/history create value |
+| P2 | Public Truth Monitor | Serious owner, agency | Saved history and monthly/partner report; scheduled checks remain off until explicitly enabled | Paid only because recurrence/history create value |
 | P2 | AI/Search Readability Sampling | Internal, agency, paid advanced tier | Sample whether a MenuList-owned source is easy to summarize | No ranking or citation claim |
 
 ---
@@ -216,6 +223,9 @@ Provider-backed owner/admin prototype:
 
 | Version | Date | Changes |
 | --- | --- | --- |
+| 2.12 | July 5, 2026 | Made manifest-backed public report URL evidence text name the public HTTPS boundary and source-gated rejection of generic URL-format evidence |
+| 2.11 | July 4, 2026 | Moved public V0 URL readiness checks to the shared public HTTPS URL boundary so local, private, insecure, raw-IP, and credentialed links are not treated as ready public customer links |
+| 2.10 | July 4, 2026 | Expanded V1 owner readiness to eighteen modules covering the remaining public tool jobs and the Print & Share asset cluster without new storage, APIs, or external scans |
 | 2.8 | July 4, 2026 | Added Customer FAQ Reply Pack as a V0 public tool with deterministic FAQ answer blocks, shareable report links, and no chatbot, automation, message sending, or AI answer generation |
 | 2.7 | July 4, 2026 | Added WhatsApp Reply Pack as a V0 public tool with deterministic reply blocks, shareable report links, and no WhatsApp API calls or message sending |
 | 2.6 | July 4, 2026 | Added Business Facts Copy Pack as an output-first V0 public tool with deterministic copy blocks, shareable report links, and no external profile inspection |

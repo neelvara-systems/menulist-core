@@ -88,4 +88,4 @@ A: Yes. Attach documents, screenshots, or any file to your support ticket. Files
 A: Three priority levels (Low, Normal, High) with configurable SLA timers. The system tracks response and resolution times automatically.
 
 **Q: Is the knowledge base shared across all users?**
-A: The knowledge base is platform-wide — all users access the same documentation. Support tickets, chat history, and feedback are private to each tenant.
+A: No. Workspace knowledge base content is scoped to your tenant and store. Support tickets, chat history, and feedback are also private to each tenant.

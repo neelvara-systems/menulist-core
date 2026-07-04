@@ -1,6 +1,6 @@
 # Multi-Language Translation — Marketing & Sales
 
-**Feature:** AI-Powered Menu Translation  
+**Feature:** Menu Customer-Language Preparation
 **Audience:** Sales Team, Marketing, Partners  
 **Last Updated:** February 2026
 **Status:** Historical marketing draft; not current sales, publication, or launch certification
@@ -30,11 +30,11 @@ Current Multi-Language Translation collateral approval requires:
 
 ### One-Liner
 
-> "Your menu in 90+ languages—translated in seconds."
+> "Prepare customer-language menu drafts from the approved menu source, then review before publishing."
 
 ### 30-Second Pitch
 
-> "Tourist areas, diverse neighborhoods, international chains—they all need multilingual menus. Hiring translators is expensive and slow. MenuList translates your entire menu into 90+ languages automatically. Add Spanish, Arabic, Hindi—any language—with one click. Works for RTL languages too."
+> "Tourist areas, diverse neighborhoods, and multi-location operators often need customer-language menu output. MenuList prepares translated drafts from the approved menu source for supported project languages, then owners review the localized fields before publishing."
 
 ---
 
@@ -44,7 +44,7 @@ Current Multi-Language Translation collateral approval requires:
 
 Multi-language menus are expensive and complex:
 
-- **Translation cost:** $50-200+ per language
+- **Translation cost:** Varies by language, vendor, and review scope
 - **Time:** Days or weeks for human translation
 - **Maintenance:** Updates need re-translation
 - **RTL challenges:** Arabic, Hebrew need special handling
@@ -53,17 +53,17 @@ Many restaurants skip translation entirely, losing international customers.
 
 ### The Solution
 
-MenuList's AI Translation:
+MenuList Customer-Language Preparation:
 
-- **90+ languages:** Including Arabic, Hebrew, Hindi, Chinese
-- **RTL support:** Right-to-left languages handled correctly
-- **Instant:** Add a language in seconds
-- **Consistent:** Same quality across all languages
-- **Automatic:** Translates during OCR or on-demand
+- **Supported languages:** Use release-specific evidence before language-count claims
+- **RTL support:** Requires public renderer fallback/RTL evidence for the target release
+- **Review-first:** Translated fields are prepared for owner review
+- **Editable:** Owners approve localized wording before publishing
+- **Source-bound:** Drafts start from the approved menu source
 
 ### The Result
 
-Serve **every customer in their language**—without the translation bill.
+Serve published customer-language menu output from reviewed localized content.
 
 ---
 
@@ -71,21 +71,21 @@ Serve **every customer in their language**—without the translation bill.
 
 ### vs. Human Translation
 
-| Aspect            | Human Translator | MenuList AI |
-| ----------------- | ---------------- | ----------- |
-| Cost per language | $50-200+         | Included    |
-| Time              | Days/weeks       | Seconds     |
-| Updates           | Re-hire          | One click   |
-| Consistency       | Varies           | Uniform     |
+| Aspect            | Human Translator | MenuList |
+| ----------------- | ---------------- | -------- |
+| Cost per language | Use current market evidence before quoting | Included according to plan scope |
+| Time              | Manual workflow  | Review draft after processing |
+| Updates           | Re-hire or edit  | Prepare and review localized fields |
+| Consistency       | Varies           | Owner-approved wording |
 
 ### vs. Google Translate Manual
 
-| Aspect       | Manual Copy-Paste | MenuList AI       |
-| ------------ | ----------------- | ----------------- |
-| Effort       | Copy each item    | One click for all |
-| RTL handling | Manual            | Automatic         |
-| Integration  | None              | Built-in          |
-| Editing      | Spreadsheet       | Visual editor     |
+| Aspect       | Manual Copy-Paste | MenuList |
+| ------------ | ----------------- | -------- |
+| Effort       | Copy each item    | Prepare selected language drafts |
+| RTL handling | Manual            | Requires renderer evidence |
+| Integration  | None              | Built into menu workflow |
+| Editing      | Spreadsheet       | Visual editor |
 
 ---
 
@@ -102,27 +102,28 @@ Serve **every customer in their language**—without the translation bill.
 
 ### Slide 2: The Solution
 
-**"41 languages, one click"**
+**"Customer languages from one approved source"**
 
-- AI translation in seconds
-- RTL support built-in
-- Add languages anytime
-- No translation fees
+- Translated drafts for supported project languages
+- RTL support requires renderer evidence
+- Review localized fields before publishing
+- Pricing claims follow plan and release evidence
 
 ### Slide 3: How It Works
 
-**"Automatic or on-demand"**
+**"Prepare, review, publish"**
 
-1. **During upload:** Select languages → AI extracts AND translates
-2. **Add later:** Click "Add Language" → AI translates existing menu
+1. **Prepare:** Select a supported project language for the approved menu source
+2. **Review:** Check translated names, descriptions, categories, and supported labels
+3. **Publish:** Customer-facing output uses approved localized content
 
 ### Slide 4: RTL Support
 
 **"Arabic, Hebrew, and more"**
 
-- Text direction handled automatically
+- Text direction support is verified by renderer evidence
 - UI adapts for RTL languages
-- Professional display quality
+- Review display behavior before release claims
 
 ### Slide 5: Language Management
 
@@ -134,10 +135,10 @@ Serve **every customer in their language**—without the translation bill.
 
 ### Slide 6: CTA
 
-**"Reach every customer"**
+**"Serve published customer-language output"**
 
-- Try adding a language free
-- See the quality yourself
+- Review a configured customer-language draft
+- Review the localized output
 
 ---
 
@@ -145,23 +146,23 @@ Serve **every customer in their language**—without the translation bill.
 
 ### Hero Headline
 
-> **"Your menu speaks every language."**
+> **"Customer languages from your approved menu."**
 
 ### Subheading
 
-> "AI translation into 41 languages. Add Spanish, Arabic, Hindi—in seconds."
+> "Prepare translated menu drafts for supported customer languages, review the fields, then publish approved localized output."
 
 ### Key Benefit Bullets
 
-- **🌍 41 Languages** — Including RTL (Arabic, Hebrew)
-- **⚡ Instant** — Add languages in seconds
-- **💰 No Translation Fees** — Included in subscription
-- **✏️ Editable** — Fine-tune any translation
-- **🔄 Automatic Updates** — Re-translate anytime
+- **Customer-language drafts** — Scope follows configured project support
+- **RTL-aware** — Requires renderer evidence before public claims
+- **Plan-bound** — Pricing claims follow current plan evidence
+- **Editable** — Review localized fields before publishing
+- **Source-bound** — Re-prepare from the approved menu source when needed
 
 ### Social Proof Placeholders
 
-> "We added Spanish and Arabic overnight. Our tourist orders doubled." — _Restaurant in Tourist Area_
+Do not use testimonials or customer-behavior claims without approved customer evidence.
 
 > "Finally, proper RTL support. Our Arabic menu looks professional." — _Middle Eastern Restaurant_
 
@@ -175,21 +176,21 @@ Serve **every customer in their language**—without the translation bill.
 
 ## Sales Talking Points
 
-### Objection: "AI translation isn't accurate enough"
+### Objection: "Will translations be accurate enough?"
 
-**Response:** "It's remarkably good for menu items—food names and descriptions are well-understood by AI. Plus, you can edit any translation. Most customers use AI as a starting point and make minor tweaks if needed."
+**Response:** "Treat the translated content as a draft for owner review. You can edit localized fields before publishing customer-facing output."
 
 ### Objection: "We already have translated menus"
 
-**Response:** "Great! But what happens when you add new items or change prices? With MenuList, updates are instant. No waiting for translators."
+**Response:** "Great. MenuList can help keep localized fields tied to the approved menu source, but any update still needs review before publishing."
 
 ### Objection: "Our customers prefer English anyway"
 
-**Response:** "Studies show customers order 20-30% more when menus are in their language. Even if they read English, seeing their language builds trust and comfort."
+**Response:** "Use translated output only when it helps your customers read the menu. Do not use behavior or revenue claims without release-specific evidence."
 
 ### Objection: "What about cultural nuances?"
 
-**Response:** "AI handles common food terminology well, but you can always edit. The visual editor makes it easy to review and adjust any translation."
+**Response:** "The visual editor is the review surface. Check localized wording and adjust it before publishing."
 
 ---
 
@@ -197,41 +198,43 @@ Serve **every customer in their language**—without the translation bill.
 
 ### Terms to Use ✅
 
-- "AI translation"
-- "41 languages"
+- "Customer-language menu output"
+- "Configured project languages"
 - "RTL support"
 - "Multi-language"
-- "Instant"
+- "Review translated fields"
 
 ### Terms to Avoid ❌
 
 - "Perfect translation" (overpromise)
 - "Native quality" (overpromise)
 - "Replaces translators" (threatening)
+- "Instant" (unsupported timing claim)
+- "One click" (tool framing)
 
 ---
 
-## Demo Script (90 seconds)
+## Demo Script (Historical Draft)
 
-### Setup (15 sec)
+### Setup
 
-"Let me show you how to add Spanish to this English menu. I have a complete menu with 20 items."
+"Let me show you how a customer-language draft starts from the approved menu source."
 
-### Add Language (25 sec)
+### Add Language
 
-"I click 'Manage Languages'... Here's my primary language (English), locked. I select Spanish from the list and click Add. Watch the progress..."
+"I open language management, keep the primary language locked, and select a supported project language for a translated draft."
 
-### Result (20 sec)
+### Result
 
-"Done—10 seconds for 20 items. Now I can switch to Spanish and see every item translated. Names, descriptions, everything."
+"The translated draft is ready for review. I check names, descriptions, categories, and supported labels before publishing."
 
-### RTL Demo (20 sec)
+### RTL Demo
 
-"Now let me add Arabic. Same process... and notice how the text direction is right-to-left. That's automatic—no manual configuration needed."
+"If an RTL language is in scope, verify the renderer behavior before using RTL claims in release copy."
 
-### Close (10 sec)
+### Close
 
-"41 languages, one click each. Serve every customer in their language."
+"MenuList keeps customer-language output tied to the approved menu source and owner review."
 
 ---
 
@@ -239,10 +242,10 @@ Serve **every customer in their language**—without the translation bill.
 
 | Asset             | Purpose                | Spec                |
 | ----------------- | ---------------------- | ------------------- |
-| Language list     | Show 41 languages      | Grid of flags/names |
+| Language list     | Show configured language examples | Grid of names |
 | Before/after      | English → Spanish menu | Side-by-side        |
-| RTL showcase      | Arabic menu display    | Screenshot          |
-| Translation demo  | Add language flow      | 10-15 sec video     |
+| RTL showcase      | Renderer-verified RTL display | Screenshot          |
+| Translation demo  | Add language review flow | Short demo          |
 | Language switcher | UI in action           | GIF                 |
 
 ---
@@ -251,10 +254,10 @@ Serve **every customer in their language**—without the translation bill.
 
 | Stat                   | Value                             | Source           |
 | ---------------------- | --------------------------------- | ---------------- |
-| Languages supported    | 41                                | Product spec     |
-| RTL languages          | 4 (Arabic, Hebrew, Persian, Urdu) | Product spec     |
-| Translation time       | 10 seconds/file                   | Product testing  |
-| Human translation cost | $50-200/language                  | Industry average |
+| Languages supported    | Requires release-specific evidence | Product spec and QA |
+| RTL languages          | Requires renderer evidence         | Product spec and QA |
+| Translation time       | Do not use without target-run evidence | Target release QA |
+| Human translation cost | Do not use without current market evidence | Market evidence |
 
 ---
 

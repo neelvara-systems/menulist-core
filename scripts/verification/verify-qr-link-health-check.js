@@ -60,6 +60,7 @@ const route = read(ROUTE_PATH);
 const component = read(COMPONENT_PATH);
 const report = read(REPORT_PATH);
 const types = read(TYPES_PATH);
+const publicUrlValidation = read('src/lib/public-truth-tools/publicUrlValidation.ts');
 const readmeDoc = read(`${DOC_ROOT_PATH}/README.md`);
 const specDoc = read(`${DOC_ROOT_PATH}/qr-link-health-check_spec.md`);
 const implDoc = read(`${DOC_ROOT_PATH}/qr-link-health-check_impl.md`);
@@ -87,9 +88,12 @@ assertIncludes(specDoc, 'The owner can scan the QR with their phone or camera ap
 assertIncludes(specDoc, 'Evidence text', 'QR Link Health Check report evidence contract');
 assertIncludes(implDoc, 'evidenceText: string', 'QR Link Health Check implementation evidence contract');
 assertIncludes(implDoc, 'Do not add QR image decoding in V0', 'QR Link Health Check decoder boundary');
+assertIncludes(implDoc, 'public HTTPS', 'QR Link Health Check implementation public HTTPS target boundary');
+assertIncludes(specDoc, 'public HTTPS', 'QR Link Health Check spec public HTTPS target boundary');
 assertIncludes(firebaseDoc, 'Storage operations | 0', 'QR Link Health Check storage boundary');
 assertIncludes(mobileDoc, 'Camera/scan integration | Not implemented', 'QR Link Health Check mobile decoder boundary');
 assertIncludes(testCasesDoc, 'No file input', 'QR Link Health Check upload test boundary');
+assertIncludes(testCasesDoc, 'http://localhost', 'QR Link Health Check local/insecure target test coverage');
 assertIncludes(familyReadmeDoc, '[QR Link Health Check](../qr-link-health-check/README.md)', 'Public Truth Tools family docs');
 assertIncludes(familyImplDoc, 'qrLinkHealthReport.ts', 'Public Truth Tools implementation docs');
 
@@ -131,8 +135,21 @@ assertIncludes(report, 'aiOrSearchChecked: false', 'QR Link Health Check report 
 assertIncludes(report, 'externalPlatformUpdated: false', 'QR Link Health Check report external mutation boundary');
 assertIncludes(report, 'rankingPromise: false', 'QR Link Health Check report ranking boundary');
 assertIncludes(report, 'getQrLinkHealthEvidenceText', 'QR Link Health Check explicit evidence text');
+assertIncludes(report, 'parsePublicHttpsUrl', 'QR Link Health Check public HTTPS URL parser');
+assertIncludes(report, 'publicUrlValidation', 'QR Link Health Check shared public URL helper');
+assertIncludes(publicUrlValidation, 'function hasExplicitProtocol', 'QR Link Health Check shared public HTTPS URL parser');
+assertIncludes(publicUrlValidation, "url.protocol !== 'https:'", 'QR Link Health Check must reject insecure URL protocols');
+assertIncludes(publicUrlValidation, "normalized === 'localhost'", 'QR Link Health Check must reject localhost targets');
+assertIncludes(publicUrlValidation, "normalized.endsWith('.local')", 'QR Link Health Check must reject local network hostnames');
+assertIncludes(publicUrlValidation, 'isPrivateIpv4', 'QR Link Health Check must reject private IPv4 targets');
+assertIncludes(publicUrlValidation, 'url.username || url.password', 'QR Link Health Check must reject credentialed URLs');
+assertIncludes(report, 'Public HTTPS URL format was checked locally', 'QR Link Health Check public HTTPS evidence boundary');
+assertIncludes(report, 'Local, private, or insecure targets were not opened or fetched', 'QR Link Health Check invalid URL evidence boundary');
 assertIncludes(report, 'The target page was not opened or fetched', 'QR Link Health Check target evidence boundary');
 assertIncludes(report, 'QR images are not decoded and target pages are not opened', 'QR Link Health Check QR decode evidence boundary');
+assertNotIncludes(report, "url.protocol === 'http:' || url.protocol === 'https:'", 'QR Link Health Check must not accept insecure URL protocols');
+assertNotIncludes(report, "url.hostname === 'localhost'", 'QR Link Health Check must not accept localhost targets');
+assertNotIncludes(report, "url.hostname === '127.0.0.1'", 'QR Link Health Check must not accept loopback targets');
 
 for (const content of [route, report, types]) {
   assertNotIncludes(content, 'fetch(', 'QR Link Health Check default runtime');

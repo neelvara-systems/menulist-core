@@ -141,7 +141,7 @@ assertIncludes(report, 'rankingPromise: false', 'WhatsApp Action Link Check repo
 assertIncludes(report, 'getWhatsAppActionLinkEvidenceText', 'WhatsApp Action Link Check explicit evidence text');
 assertIncludes(report, 'The number was not verified with WhatsApp', 'WhatsApp Action Link Check number verification evidence boundary');
 assertIncludes(report, 'no message was sent', 'WhatsApp Action Link Check message send evidence boundary');
-assertIncludes(report, 'The link was not opened or fetched', 'WhatsApp Action Link Check URL evidence boundary');
+assertIncludes(report, 'Public HTTPS customer link format was checked locally. The link was not opened or fetched.', 'WhatsApp Action Link Check public HTTPS URL evidence boundary');
 
 for (const content of [route, report, types]) {
   assertNotIncludes(content, 'fetch(', 'WhatsApp Action Link Check default runtime');

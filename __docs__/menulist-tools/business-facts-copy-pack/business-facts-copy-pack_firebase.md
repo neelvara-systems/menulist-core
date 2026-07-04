@@ -45,7 +45,7 @@ V0 does not persist:
 - action link
 - copied/downloaded content
 
-## Future V1/V2 Cost Requirements
+## V1/V2 Cost Requirements
 
 Any future logged-in or paid behavior must document:
 

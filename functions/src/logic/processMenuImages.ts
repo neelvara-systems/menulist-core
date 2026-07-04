@@ -86,7 +86,6 @@ const PROFILE_CONFIDENCE_RANK: Record<ExtractedBusinessProfileConfidence, number
     medium: 2,
     low: 1,
 };
-const DEFAULT_STORAGE_BUCKET = "menulist-qa.appspot.com";
 const MENU_IMAGE_FILE_URL_MISSING_CODE = 'MENU_IMAGE_FILE_URL_MISSING';
 const MENU_IMAGE_FILE_URL_REJECTED_CODE = 'MENU_IMAGE_FILE_URL_REJECTED';
 const MENU_IMAGE_FILE_FETCH_FAILED_CODE = 'MENU_IMAGE_FILE_FETCH_FAILED';
@@ -168,8 +167,18 @@ function createProcessingError(code: string, context: Record<string, unknown> = 
     return error;
 }
 
+function getProjectStorageBucketFallback(): string {
+    const projectId = process.env.FIREBASE_PROJECT_ID
+        || process.env.GCLOUD_PROJECT
+        || process.env.GCP_PROJECT
+        || process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
+    return projectId ? `${projectId}.appspot.com` : "";
+}
+
 function getAllowedStorageBucket(): string {
-    return process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || process.env.FIREBASE_STORAGE_BUCKET || DEFAULT_STORAGE_BUCKET;
+    return process.env.FIREBASE_STORAGE_BUCKET
+        || process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
+        || getProjectStorageBucketFallback();
 }
 
 function getStoragePathFromDownloadUrl(value: string): string | null {

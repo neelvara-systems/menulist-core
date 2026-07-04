@@ -2,7 +2,7 @@
 
 > **Tool:** WhatsApp Action Link Check
 > **Family:** MenuList Public Truth Tools
-> **Status:** Implemented - V0 public browser-local checker
+> **Status:** Implemented - V0 public browser-local checker and V1 owner readiness module
 > **Last Updated:** July 4, 2026
 > **Version:** 0.1
 
@@ -45,7 +45,7 @@ It does not send a WhatsApp message, verify a WhatsApp account, fetch the linked
 | Version | Product shape | Runtime rule |
 | --- | --- | --- |
 | V0 | Public free lead magnet at `/tools/whatsapp-action-link-check` | Browser-local deterministic check, optional consented contact handoff |
-| V1 | Logged-in MenuList owner check | Use MenuList public page action links, WhatsApp number, CTA settings, and current customer link |
+| V1 | Logged-in MenuList owner check | Implemented inside Business Health using MenuList public page action links, WhatsApp number, CTA settings, and current customer link |
 | V2 | Paid add-on behavior | Recurring action-link checks, multi-location governance, agency reports, and WhatsApp-ready handoff packs |
 
 V0 exists to reveal one public action gap and route the owner toward MenuList. Paid value should wait for recurrence, history, multi-location reporting, partner reporting, or owner-approved setup help.

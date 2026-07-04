@@ -4,6 +4,7 @@ import {
     LuArrowRight,
     LuArrowUpRight,
     LuBuilding2,
+    LuCheckCircle2,
     LuExternalLink,
     LuFileText,
     LuGlobe2,
@@ -628,7 +629,7 @@ export function SiteHeader() {
             <div className="nv-header-inner glass">
                 <NeelvaraLink href="/" className="nv-brand" aria-label="Neelvara Systems home">
                     <NeelvaraLogoMark />
-                    <span>Neelvara</span>
+                    <span className="nv-wordmark">Neelvara</span>
                 </NeelvaraLink>
                 <SiteHeaderNav items={NAV_ITEMS} />
                 <div className="nv-header-actions">
@@ -651,7 +652,7 @@ export function SiteFooter() {
             <div className="nv-wrap nv-footer-inner">
                 <div className="nv-footer-brandline">
                     <NeelvaraLogoMark />
-                    <p>© 2026 Neelvara Systems</p>
+                    <p>© 2026 <span className="nv-wordmark">Neelvara Systems</span></p>
                 </div>
                 <div className="nv-footer-links" aria-label="Footer navigation">
                     <NeelvaraLink href="/products">Products</NeelvaraLink>
@@ -776,10 +777,10 @@ export function StructuredData() {
 
 export function HeroStudioMock() {
     const pipelineRows = [
-        ['Company', 'reference', '#2384ff'],
-        ['Products', 'operated', '#2737c8'],
-        ['Policies', 'separate', '#6542e8'],
-        ['Contact', 'email', '#1457d9'],
+        ['Company', 'reference', '#9fc6f6'],
+        ['Products', 'operated', '#8798e7'],
+        ['Policies', 'separate', '#b7acef'],
+        ['Contact', 'email', '#6f86e2'],
     ] as const;
 
     return (
@@ -817,6 +818,38 @@ export function HeroStudioMock() {
                 </div>
             </div>
         </div>
+    );
+}
+
+export function PagePrismPanel({
+    eyebrow,
+    title,
+    rows,
+}: {
+    eyebrow: string;
+    title: string;
+    rows: string[];
+}) {
+    return (
+        <aside className="nv-page-prism glass nv-reveal" aria-label={`${title} routing summary`}>
+            <div className="nv-page-prism-top">
+                <span className="mono">{eyebrow}</span>
+                <NeelvaraLogoMark />
+            </div>
+            <div className="nv-page-prism-visual" aria-hidden="true">
+                <span />
+                <span />
+                <span />
+            </div>
+            <div className="nv-page-prism-rows">
+                {rows.map((row) => (
+                    <div className="nv-page-prism-row" key={row}>
+                        <LuCheckCircle2 aria-hidden="true" />
+                        <span>{row}</span>
+                    </div>
+                ))}
+            </div>
+        </aside>
     );
 }
 
@@ -901,17 +934,28 @@ export function SecondaryPage({ page }: { page: PageData }) {
             <StructuredData />
             <section className="nv-page-hero">
                 <div className="nv-wrap nv-page-hero-inner">
-                    <span className="nv-eyebrow mono">
-                        <span className="nv-pip" aria-hidden="true" />
-                        {page.eyebrow}
-                    </span>
-                    <h1 className="serif">{page.title}</h1>
-                    <p>{page.description}</p>
-                    <div className="nv-page-hero-meta glass">
-                        {page.lastUpdated ? <span className="mono">Last updated: {page.lastUpdated}</span> : null}
-                        <span className="mono">company website</span>
-                        <span className="mono">{page.slug}</span>
+                    <div className="nv-page-hero-copy nv-reveal">
+                        <span className="nv-eyebrow mono">
+                            <span className="nv-pip" aria-hidden="true" />
+                            {page.eyebrow}
+                        </span>
+                        <h1 className="serif">{page.title}</h1>
+                        <p>{page.description}</p>
+                        <div className="nv-page-hero-meta glass">
+                            {page.lastUpdated ? <span className="mono">Last updated: {page.lastUpdated}</span> : null}
+                            <span className="mono">company website</span>
+                            <span className="mono">{page.slug}</span>
+                        </div>
                     </div>
+                    <PagePrismPanel
+                        eyebrow="Company website"
+                        title={page.title}
+                        rows={[
+                            page.lastUpdated ? `Updated ${page.lastUpdated}` : 'Company reference',
+                            'Product boundaries',
+                            'Direct email routing',
+                        ]}
+                    />
                 </div>
             </section>
             <section className="nv-section nv-reveal">
@@ -919,14 +963,13 @@ export function SecondaryPage({ page }: { page: PageData }) {
                     <OperatingRows rows={page.cards} />
                 </div>
             </section>
-            {page.sections.map((section) => (
-                <section className="nv-section nv-section-tight nv-reveal" key={section.title}>
+            {page.sections.map((section, index) => (
+                <section
+                    className={`nv-section nv-section-tight nv-reveal nv-secondary-section nv-secondary-section-${index % 3}`}
+                    key={section.title}
+                >
                     <div className="nv-wrap nv-text-panel glass">
                         <div>
-                            <span className="nv-eyebrow mono">
-                                <span className="nv-pip" aria-hidden="true" />
-                                {page.slug === 'privacy' || page.slug === 'terms' ? 'Policy section' : 'Company note'}
-                            </span>
                             <h2 className="serif">{section.title}</h2>
                             <p>{section.body}</p>
                         </div>
@@ -943,10 +986,6 @@ export function SecondaryPage({ page }: { page: PageData }) {
             <section className="nv-section nv-final-section nv-reveal">
                 <div className="nv-wrap nv-final-band glass">
                     <div>
-                        <span className="nv-eyebrow mono">
-                            <span className="nv-pip" aria-hidden="true" />
-                            {closing.eyebrow}
-                        </span>
                         <h2 className="serif">{closing.title}</h2>
                         <p>{closing.body}</p>
                     </div>

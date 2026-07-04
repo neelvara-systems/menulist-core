@@ -8,12 +8,383 @@
 
 ---
 
+## July 5, 2026 - Public Truth Tools Public HTTPS Evidence Text
+
+### Fixed
+
+- **Public tool URL evidence now names the public HTTPS boundary** - manifest-backed public report builders now say public HTTPS URL/customer-link format was checked locally instead of the older generic URL-format wording.
+- **The evidence boundary is source-gated** - `npm run verify:public-truth-tools` now requires public HTTPS evidence text in every manifest-backed public tool report and rejects the old generic URL evidence return strings.
+
+### Boundaries
+
+- This is browser-local report evidence and source-gate hardening only. It does not fetch, open, resolve DNS, crawl, inspect, store, or mutate URL targets; add API routes; add Firebase state; call providers; deploy Firebase/Vercel; run production builds; perform browser/device QA; or certify launch readiness.
+
+## July 5, 2026 - Neelvara Akshar Typography Unification
+
+### Improved
+
+- **Neelvara typography now uses Akshar site-wide** - The Neelvara public website now self-hosts Akshar as the primary font across headings, body copy, labels, buttons, legal pages, product cards, footer, header, and the inline 404, with Inter retained only as fallback and logo geometry unchanged.
+
+### Boundaries
+
+- This is Neelvara website typography polish only. It does not change routes, product domains, logo geometry, legal copy meaning, product runtime behavior, Firebase, auth, APIs, analytics, Vercel deploys, production builds, or launch approval.
+
+## July 4, 2026 - Public Truth Tools Shared HTTPS URL Boundary
+
+### Fixed
+
+- **Public V0 tool URL checks now share one public HTTPS boundary** - report builders now use `publicUrlValidation.ts` so owner-entered customer/public links are not treated as ready when they use explicit `http://`, localhost, `.local`, private IP, raw IP, loopback IPv6, or embedded credentials.
+- **The boundary is source-gated** - `npm run verify:public-truth-tools` now requires the shared parser, rejects the old local/HTTP helper pattern across manifest-backed public tool reports, and checks the family docs/test-case boundary.
+
+### Boundaries
+
+- This is browser-local URL readiness validation only. It does not fetch, open, resolve DNS, crawl, inspect, store, or mutate URL targets; it does not add API routes, Firebase state, provider calls, external adapters, Firebase/Vercel deploys, production builds, browser/device QA, or launch certification.
+
+## July 4, 2026 - QR Link Health Public HTTPS Target Boundary
+
+### Fixed
+
+- **QR Link Health Check no longer treats local or insecure QR targets as valid** - pasted QR targets must now be public HTTPS URLs; explicit `http://`, localhost, `.local`, private IP, raw IP, loopback IPv6, and credentialed targets are marked missing basics.
+- **The boundary is source-gated** - `npm run verify:qr-link-health-check` now rejects the old HTTP/localhost acceptance path and requires the public HTTPS evidence wording.
+
+### Boundaries
+
+- This is browser-local QR-target validation only. It does not decode QR images, fetch target pages, inspect external profiles, call AI/search providers, store reports, add API routes, mutate MenuList truth, deploy Firebase/Vercel, run production builds, perform browser/device QA, or certify launch readiness.
+
+## July 4, 2026 - Print Share Public HTTPS Link Boundary
+
+### Fixed
+
+- **Print & Share asset tools no longer treat insecure or local URLs as ready QR targets** - customer-link validation now requires a public HTTPS URL, rejects localhost, `.local`, private IP, raw IP, credentialed URLs, and explicit `http://` URLs, and falls back away from invalid QR targets.
+- **The boundary is source-gated** - `npm run verify:print-share-tools` now rejects the old `http://` / localhost acceptance path and requires the invalid-link QR fallback behavior.
+
+### Boundaries
+
+- This is browser-local public asset validation only. It does not fetch the destination page, call providers, store files or reports, add API routes, mutate MenuList truth, change Firebase rules/indexes, change Cloud Function logic, deploy Firebase/Vercel, run production builds, perform browser/device QA, or certify launch readiness.
+
+## July 4, 2026 - Public Truth Monitor Runtime
+
+### Added
+
+- **Public truth history is now implemented as a paid owner add-on** - entitled owners can run a saved Public Truth check from Business Health, keep capped latest/history state, and download a text report for owner or partner handoff.
+- **Business Health permissions guard the saved-history APIs** - summary reads and manual refresh writes require the existing store-level `VIEW_ANALYTICS` permission in addition to authentication, tenant access, paid entitlement, and rate limits.
+- **The add-on reuses MenuList truth only** - reports are built from the existing owner Public Truth readiness modules and explicitly state that no external sites, social profiles, Google profiles, AI answers, rankings, QR scans, or third-party platforms were inspected or changed.
+- **The boundary is source-gated** - `npm run verify:public-truth-monitor-addon` checks entitlement, auth, tenant verification, bounded parsing, capped storage, desktop/mobile placement, and no provider/external-fetch path; `npm run verify:menulist-api-tenant-safety` also guards the monitor API admission order.
+
+### Boundaries
+
+- This does not add a public V2 route, external crawling, AI/search sampling, report emails, external platform mutation, managed repair workflow, Firestore rules changes, Cloud Function scheduler changes, Firebase deploys, Vercel deploys, production builds, launch approval, or release certification.
+
+## July 4, 2026 - MenuList Tools V1/V2 Boundary
+
+### Added
+
+- **Public Truth owner readiness now covers the full public tool set** - Business Health now receives eighteen read-only Public Truth readiness modules, including Business Facts Copy Pack, Customer FAQ Reply Pack, WhatsApp Reply Pack, Customer Link Preview, Social Bio Link Consistency, and the Print & Share asset cluster.
+- **The V2 paid add-on contract is documented** - `__docs__/menulist-tools/public-truth-monitor-addon/` now defines the paid monitor boundary for recurring checks, saved history, monthly reports, multi-location scans, agency exports, and owner-approved setup work.
+- **The boundary is source-gated** - `npm run verify:public-truth-tools` now checks the expanded owner module set and the V2 add-on docs link.
+
+### Boundaries
+
+- This is a read-only owner readiness and documentation update. It does not add paid runtime, billing entitlement, report history writes, scheduled checks, agency exports, external source fetching, AI/search sampling, external platform mutation, Firebase deploys, Vercel deploys, production builds, or launch approval.
+
+## July 4, 2026 - Answerlattice KB Article List Scope Boundary
+
+### Fixed
+
+- **Deprecated KB article list reads no longer default to global scope** - `getArticles()` now resolves the active readable article scope, filters non-platform reads by tenant/store, and keeps the global list path only for platform-admin use.
+- **The boundary is source-gated** - `npm run verify:answerlattice-runtime-truth` now rejects the old unscoped compatibility query and stale KB docs that describe it as an all-tenant read.
+
+### Boundaries
+
+- This is Answerlattice KB article read-scope hardening only. Active UI call sites already use scoped category/section/id helpers, so this primarily hardens the deprecated compatibility helper for future imports. It does not change KB article writes, KB category writes, public content cache shape, Firestore rules/indexes, Cloud Function logic, Firebase deploys, Vercel deploys, production builds, browser/device QA, provider smoke, launch approval, or release certification.
+
+## July 4, 2026 - Answerlattice KB Generation Job List Scope Boundary
+
+### Fixed
+
+- **Deprecated KB generation job list reads no longer default to global scope** - `getIngestionJobs()` now resolves the active readable job scope, filters non-platform reads by tenant/store, and keeps the global list path only for platform-admin use.
+- **The boundary is source-gated** - `npm run verify:answerlattice-runtime-truth` now rejects the old unscoped compatibility query and stale KB generation docs that describe it as an all-tenant job read.
+
+### Boundaries
+
+- This is Answerlattice KB generation job read-scope hardening only. Active UI call sites already use scoped active/previous job helpers, so this primarily hardens the deprecated compatibility helper for future imports. It does not change KB job writes, job deletion cleanup, Storage cleanup, KB article/category writes, Firestore rules/indexes, Cloud Function logic, Firebase deploys, Vercel deploys, production builds, browser/device QA, provider smoke, launch approval, or release certification.
+
+## July 4, 2026 - Answerlattice KB Tenant Scope Documentation Boundary
+
+### Fixed
+
+- **Active Answerlattice KB docs no longer describe workspace KB as platform-wide** - Knowledge Base, Help Center, AI QnA, and decoupling docs now state that workspace KB articles, categories, jobs, and related search/history paths are tenant/store scoped for non-platform callers, with platform-admin global reads kept administrative-only.
+- **The docs boundary is source-gated** - `npm run verify:answerlattice-runtime-truth` now rejects stale platform-wide KB claims in the active Answerlattice docs.
+
+### Boundaries
+
+- This is Answerlattice documentation parity only. Runtime tenant/store scoping was already enforced by the scoped helper and retrieval changes in this pass. It does not change KB writes, public content cache shape, Firestore rules/indexes, Cloud Function logic, Firebase deploys, Vercel deploys, production builds, browser/device QA, provider smoke, launch approval, or release certification.
+
+## July 4, 2026 - Social Bio Link Mobile Boundary Restore
+
+### Fixed
+
+- **Social Bio Link mobile-support docs again carry the V1 owner-mobile boundary** - the doc explicitly maps V1 to existing owner mobile Share, Public Discovery, and Business Health surfaces instead of a separate mobile dashboard.
+- **The boundary is source-gated** - `npm run verify:social-bio-link-check` and `npm run verify:public-truth-tools` now pass with the restored mobile-support text.
+
+### Boundaries
+
+- This is documentation boundary restoration only. It does not change Social Bio Link runtime behavior, public tool behavior, owner Business Health modules, mobile routing, report storage, external URL fetching, AI/provider calls, Firestore rules/indexes, Cloud Function logic, Firebase deploys, Vercel deploys, production builds, browser/device QA, launch approval, or release certification.
+
+## July 4, 2026 - Public Truth Monitor Source Gate Alignment
+
+### Fixed
+
+- **Public Truth Monitor docs and package scripts now describe the same live verifier** - the add-on implementation doc, root package script, and aggregate public-tools verifier all treat `scripts/verification/verify-public-truth-monitor-addon.js` as the current source gate for the implemented paid saved-history runtime.
+- **The source gate is registered in the aggregate** - `npm run verify:production-readiness-local` now includes `verify:public-truth-monitor-addon`.
+
+### Boundaries
+
+- This supersedes the earlier future-only verifier wording after the runtime slice landed. It does not add background scheduling, multi-location comparison runtime, report emails, external adapters, AI/search sampling, public V2 routes, managed repair workflow, Firestore rules changes, Cloud Function scheduler changes, Firebase/Vercel deploys, production builds, browser/device QA, launch approval, or release certification.
+
+## July 4, 2026 - Answerlattice Widget Frame Host Boundary
+
+### Fixed
+
+- **Widget frame headers are no longer relaxed by path alone** - `/widget/*` keeps embeddable frame headers only on Answerlattice product hosts or local development, preventing MenuList and other product hosts from inheriting Answerlattice iframe policy by route path.
+- **The boundary is source-gated** - `npm run verify:answerlattice-runtime-truth` now rejects middleware and Answerlattice widget-doc regressions that make the widget frame policy path-only again.
+
+### Boundaries
+
+- This is middleware security-header hardening only. It does not change widget API key validation, widget search/config/feedback routes, allowed widget origins, public API scope checks, Answerlattice Firestore data, Cloud Function logic, Firebase deploys, Vercel deploys, production builds, browser/device QA, provider smoke, launch approval, or release certification.
+
+## July 4, 2026 - CORS Production Localhost Allowlist Boundary
+
+### Fixed
+
+- **Production CORS no longer allowlists localhost by default** - `withCORS()` keeps localhost and `127.0.0.1` as development-only allowed origins, and filters local origins out of the production allowlist even if `NEXT_PUBLIC_APP_URL` is misconfigured.
+- **The boundary is source-gated** - `npm run verify:auth-security-failure-matrix` now rejects a regression where localhost is added directly to the production-capable CORS allowlist.
+
+### Boundaries
+
+- This is CORS allowlist hardening only. Same-origin local development requests remain allowed through the existing same-origin check. It does not change route authentication, public rate limits, Turnstile validation, request body validation, Firestore writes, Firebase rules, Cloud Function logic, Firebase deploys, Vercel deploys, production builds, browser/device QA, provider smoke, launch approval, or release certification.
+
+## July 4, 2026 - Static Asset Preview Cleanup Bucket Boundary
+
+### Fixed
+
+- **Static asset preview replacement no longer checks only the QA bucket** - replacement cleanup now detects Firebase Storage references generically (`gs://`, Firebase download URLs, `storage.googleapis.com`, and Firebase Storage app hosts) before deleting an old replacement preview.
+- **The cleanup boundary is source-gated** - `npm run verify:storage-paths` now rejects a regression where static-asset replacement cleanup keys deletes to `menulist-qa.appspot.com`.
+
+### Boundaries
+
+- This is platform static-asset cleanup hardening only. It does not change upload paths, Storage rules, platform asset Firestore document shape, public menu output, customer-facing assets, Cloud Function logic, Firebase deploys, Vercel deploys, production builds, browser/device QA, live Storage writes/deletes, launch approval, or release certification.
+
+## July 4, 2026 - MenuList Storage Bucket Fallback Boundary
+
+### Fixed
+
+- **MenuList runtime helpers no longer fall back to the QA Storage bucket** - Firebase client URL construction, AI reference-image fetch guards, menu-intake preflight guards, queued extraction Functions, and messaging asset intelligence now use configured MenuList bucket env vars or derive the bucket from the active project id when available.
+- **Missing bucket config fails closed** - Browser Storage URL construction now returns an empty URL when the public Storage bucket is absent instead of pointing at `menulist-qa.appspot.com`.
+- **The boundary is source-gated** - `npm run verify:agent-readiness` now rejects hardcoded QA bucket fallbacks in the active bucket-resolution helpers.
+
+### Boundaries
+
+- This is app/server/Functions Storage target hardening only. It does not change valid upload paths, Storage rules, Firestore reads/writes, extraction request shape, AI provider behavior, messaging onboarding flow shape, public menu output, cache invalidation, Vercel deploys, production builds, browser/device QA, provider smoke, launch approval, or release certification. MenuList Functions still require the scoped Firebase deploy gate before the function-side change has live effect.
+
+## July 4, 2026 - Shared Axios PATCH Verb Boundary
+
+### Fixed
+
+- **Shared PATCH requests now use the PATCH verb** - `axiosClient.PATCH()` now delegates to `axios.patch()` instead of `axios.post()`, removing a latent helper-level method mismatch before any future caller depends on it.
+- **The helper boundary is source-gated** - `npm run verify:agent-readiness` now rejects a regression where the shared PATCH helper routes through POST.
+
+### Boundaries
+
+- This is shared HTTP helper hardening only. No active MenuList caller currently uses `axiosClient.PATCH()`, so this changes no current owner/customer flow, API route contract, Firestore read/write, Storage operation, Firebase rule, Cloud Function logic, Firebase deploy, Vercel deploy, production build, browser/device QA, provider smoke, launch approval, or release certification.
+
+## July 4, 2026 - Store Switch Response Envelope Boundary
+
+### Fixed
+
+- **Store switching no longer accepts status-only success** - Desktop header, desktop Billing, desktop Locations, mobile More, mobile Billing, and mobile Locations now read `/api/auth/switch-store` through the shared bounded auth-account parser before refreshing Firebase claims or changing active store context.
+- **Switch-store envelopes are source-gated** - The shared auth account response helper now validates `success: true` plus an integer `targetStoreId`, and the tenant-safety/auth verifiers require every switch-store caller to use that parser.
+
+### Boundaries
+
+- This is browser-local switch-store response hardening only. It does not change switch-store route authorization, tenant/store access checks, Firebase claim refresh behavior, active-store context semantics, Firestore reads, Firestore rules, Storage rules, Cloud Function logic, Firebase deploys, Vercel deploys, production builds, browser/device QA, provider smoke, Firestore writes, Storage writes, launch approval, or release certification.
+
+## July 4, 2026 - Customer App Freshness Public Copy Boundary
+
+### Fixed
+
+- **Customer App public copy no longer promises immediate freshness** - The website and marketing drafts now describe the current public menu path and supported public-cache or return-to-app refresh path instead of automatic/immediate menu mutation.
+- **Fixed timing and invented proof are removed** - Customer App public drafts no longer publish fixed save/open timing, repeat-visit lift, per-customer app-open stats, or invented testimonials without live evidence.
+- **The boundary is source-gated** - `npm run verify:customer-app-pwa` now rejects stale immediate freshness, fixed timing, and unsupported social-proof phrasing in Customer App website and marketing docs.
+
+### Boundaries
+
+- This is documentation and verifier work only. It does not change Customer App runtime behavior, manifest behavior, service-worker behavior, public menu rendering, public cache behavior, visibility refresh behavior, analytics behavior, Firestore rules, Storage rules, Cloud Function logic, Firebase deploys, Vercel deploys, production builds, provider smoke, browser/device QA, Firestore writes, Storage writes, launch approval, or release certification.
+
+## July 4, 2026 - Customer App Companion Evidence Boundaries
+
+### Fixed
+
+- **Customer App companion docs no longer preserve fixed speed or KPI targets as release proof** - The help, mobile-support, and spec docs now route immediate/latest-menu, `<5 seconds`, conversion/open/activation/retention, and cohort-lift claims to save acknowledgement, supported public refresh paths, release-specific targets, and live evidence.
+- **Marketing cost and device claims are evidence-bound** - The marketing draft no longer uses unsupported native-app cost numbers, broad every-phone/Jio-phone coverage, or 90%-of-native-app value claims without current evidence.
+- **The boundary is source-gated** - `npm run verify:customer-app-pwa` now rejects stale fixed timing, immediate freshness, unsupported metric targets, future-phase wording, unsupported cost comparisons, and broad device-coverage phrases across Customer App companion docs.
+
+### Boundaries
+
+- This is documentation and verifier work only. It does not change Customer App runtime behavior, manifest behavior, service-worker behavior, public menu rendering, public cache behavior, visibility refresh behavior, analytics behavior, mobile routing behavior, Firestore rules, Storage rules, Cloud Function logic, Firebase deploys, Vercel deploys, production builds, provider smoke, browser/device QA, Firestore writes, Storage writes, launch approval, or release certification.
+
+## July 4, 2026 - Neelvara Final Prism Polish
+
+### Improved
+
+- **Neelvara final CTA sections are quieter** - Home, Products, Contact, and shared secondary pages now close without repeated small-caps CTA labels.
+- **Neelvara interactive states are more complete** - Glass CTAs, product links, routing cards, support links, footer links, and checklist links now have tighter focus, hover, active, reduced-motion, and reduced-transparency behavior.
+- **Neelvara passes the Taste pre-flight cleanup** - The Home product lineup now stays inside the same light/frosted page theme, viewport-height guards use `100dvh`, and the runtime scan is clean for visible em-dashes, numbered section labels, placeholder copy, old saturated colors, and cookie/storage banner strings.
+- **Neelvara brand lockups now use Akshar** - The header brand, footer brandline, and Home brand H1 use a self-hosted Akshar wordmark font while body copy, nav labels, legal text, routes, and logo geometry stayed unchanged in that pass.
+- **The current logo palette remains the site palette** - The polish keeps the frosted periwinkle, blue-violet, and silver-lavender palette derived from the Neelvara mark.
+
+### Boundaries
+
+- This is Neelvara website presentation and documentation polish only. It does not change logo geometry, routes, product domains, legal copy meaning, product runtime behavior, Firebase, auth, APIs, analytics, Vercel deploys, production builds, or launch approval.
+
+## July 4, 2026 - Neelvara Current-Color Prism Glass Relayout
+
+### Improved
+
+- **Neelvara now uses the Prism glass layout language across the full site** - Home, Products, Contact, About, Legal, Privacy, Terms, and the static 404 now use the fixed mesh/grain background, glass surfaces, prism visual panels, tighter secondary-page heroes, bento/spotlight rhythm, marquee band, and comparison/reference table while keeping the existing Neelvara color system.
+- **Secondary pages now feel like one website** - Shared company, legal, privacy, terms, product, contact, and not-found surfaces use the same current-color Prism page hero and panel treatment instead of flat text blocks.
+- **The company-site boundary is unchanged** - The relayout keeps Neelvara as a static company reference surface with no forms, analytics, auth, Firebase runtime, API route, pricing funnel, product app, cookie banner, or production deploy.
+
+### Boundaries
+
+- This is Neelvara website presentation, copy-structure, and documentation work only. It does not change logo geometry, product domains, legal entity status, product runtime behavior, Firebase, auth, APIs, analytics, Vercel deploys, production builds, or launch approval.
+
+## July 4, 2026 - Google Listing Guide Owner Copy Boundary
+
+### Fixed
+
+- **Google Listing guide no longer promises always-correct Google output** - The Business Settings guide now tells owners to point Google to the MenuList-approved page instead of saying customers always see correct menu and business information on Google.
+- **Google edit timing is bounded** - The guide no longer claims the manual Google edit takes less than 30 seconds or makes Google show the latest published MenuList menu/info; it states that Google controls when profile edits appear.
+- **The disabled GBP boundary is source-gated** - `npm run verify:public-business-truth` now rejects stale Google correctness, fixed-time, and latest-menu claims in the active Google Listing guide and requires the owner-managed MenuList-approved page copy.
+
+### Boundaries
+
+- This is owner copy and verifier work only. It does not change Google provider behavior, Google Business Profile update behavior, token storage behavior, Business Settings save behavior, public menu or OBP runtime behavior, public cache behavior, Firestore rules, Storage rules, Cloud Function logic, Firebase deploys, Vercel deploys, production builds, Google API calls, browser/device QA, Firestore writes, Storage writes, launch approval, or release certification.
+
+## July 4, 2026 - Localized OBP Correctness Public Copy Boundary
+
+### Fixed
+
+- **Localized OBP website copy no longer promises blanket correctness** - Active `Website.HowItWorks` locale strings now use current-page/current-source cue wording instead of "Always Correct", "validated and verified", or localized equivalents.
+- **Arabic and Spanish About/Contact copy is bounded** - The public copy now describes a trusted place where the current menu starts instead of claiming the menu is always correct.
+- **The locale boundary is source-gated** - `npm run verify:website-public-copy-boundary` now rejects stale localized OBP blanket-correctness claims.
+
+### Boundaries
+
+- This is public locale copy and verifier work only. It does not change public menu or OBP runtime behavior, website routing, locale loading, public cache behavior, Firebase rules, Storage rules, Cloud Function logic, Firebase deploys, Vercel deploys, production builds, browser/device QA, provider smoke, Firestore writes, Storage writes, launch approval, or release certification.
+
+## July 4, 2026 - Presence Dominance Behavior Link Freshness Boundary
+
+### Fixed
+
+- **Post-publish WhatsApp copy no longer promises always-updated menus** - The preview handoff now sends a neutral menu-link message instead of "latest menu" plus "Always updated."
+- **Share nudge copy is bounded to the approved menu link** - Presence Dominance docs and Menu Kit/behavior nudge locale overrides now use approved-menu/menu-link wording instead of saying customers always see the latest menu.
+- **The boundary is source-gated** - `npm run verify:public-business-truth` now reads the post-publish preview page, Presence Dominance README/implementation docs, and affected locale overrides for stale behavior-link freshness phrases.
+
+### Boundaries
+
+- This changes customer/share copy and verification only. It does not change publish behavior, public menu rendering, OBP runtime behavior, public cache behavior, PDF behavior, Google/provider behavior, Firestore rules, Storage rules, Cloud Function logic, Firebase deploys, Vercel deploys, production builds, browser/device QA, provider smoke, Firestore writes, Storage writes, launch approval, or release certification.
+
+## July 4, 2026 - Public Print Share Asset Makers
+
+### Added
+
+- **Five public Print & Share asset makers are implemented** - QR Poster Maker, WhatsApp Menu Status Maker, Holiday Hours Poster Maker, Customer Link Card Maker, and Feedback QR Card Maker now run as public browser-local MenuList Tools routes with PNG, PDF, print, text report, and shareable-report outputs.
+- **The asset makers reuse the creative-editor template contract without exposing the full editor** - The shared report builder creates a bounded `CreativeEditorDocument`, QR element, text elements, and template metadata without writing to the owner template registry.
+- **Public report links stay usable without clipboard access** - Generated asset reports now show a readonly public report URL and direct open link, and the shareable report summary uses the localized primary label.
+- **The tool family has a dedicated docs and verification set** - `__docs__/menulist-tools/print-share-tools/` documents the V0/V1/V2 contract, Firebase cost posture, website/help copy, mobile support, test cases, and validation. `npm run verify:print-share-tools` guards public access, browser-local rendering, no storage, no external fetch, no AI/provider calls, and discovery parity.
+
+### Boundaries
+
+- This is public website/tool implementation only. It does not add owner authentication requirements, report storage, file uploads, template-registry writes, external URL fetches, AI/search checks, Google/WhatsApp/social/review inspection, external-platform updates, Firestore reads/writes, Storage operations, Cloud Function logic, Firebase deploys, Vercel deploys, production builds, or launch approval.
+
+## July 4, 2026 - Public Print Share Tool Discovery and Safe Print Boundary
+
+### Fixed
+
+- **Existing print/share tool routes are in discovery metadata** - The QR Poster Maker, WhatsApp Menu Status Maker, Holiday Hours Poster Maker, Customer Link Card Maker, and Feedback QR Card Maker routes are now registered in the discovery policy, website route inventory, sitemap, and LLM context files.
+- **Print handoff no longer uses a writable blank popup** - Browser-local print now uses an owned temporary iframe with `no-referrer` instead of `window.open('', '_blank', ...)`.
+- **The boundary is source-gated** - `npm run verify:agent-readiness`, `npm run verify:auth-security-failure-matrix`, and `npm run verify:print-share-tools` now agree on route discovery and the iframe/no-popup print contract.
+
+### Boundaries
+
+- This changes only discovery metadata for existing public tool routes and the browser-local print handoff. It does not change report storage, template storage, external fetch behavior, AI/provider behavior, Firestore rules, Storage rules, Cloud Function logic, Firebase deploys, Vercel deploys, production builds, browser/device QA, provider smoke, Firestore writes, Storage writes, launch approval, or release certification.
+
+## July 4, 2026 - Reseller Dashboard Account Link Boundary
+
+### Fixed
+
+- **Reseller docs no longer say onboarding uploads or extracts the menu** - The active README, spec, implementation, marketing, website, help, and mobile-support docs now state that reseller onboarding creates the account, subscription state, dashboard link, and customer-link handoff.
+- **Live-menu timing claims are removed** - The docs no longer claim a fully working/live digital menu in minutes, menu live before the reseller leaves, AI-powered menu output, or mobile photo upload inside the reseller onboarding flow.
+- **The boundary is source-gated** - `npm run verify:reseller-dashboard-boundary` now reads the website and help docs and rejects stale live-menu/upload/extraction wording.
+
+### Boundaries
+
+- This is documentation and verifier work only. It does not change reseller runtime behavior, billing behavior, pricing constants, feature flags, API behavior, mobile behavior, menu import behavior, AI extraction behavior, Firebase rules, Cloud Functions, Firebase deploys, Vercel deploys, production builds, provider smoke, browser/device QA, Firestore writes, Storage writes, launch approval, or release certification.
+
+## July 4, 2026 - Neelvara Parent Glass Logo Palette
+
+### Improved
+
+- **Neelvara logo palette refined for parent-brand separation** - Kept the supplied three-path true-vector geometry, then shifted the mark away from product-brand blue/green/pink territory into a frosted periwinkle, muted blue-violet, and silver-lavender glass palette.
+- **Neelvara icon family regenerated from the refined mark** - Rebuilt the transparent PNG logo, SVG favicon wrapper, favicon PNG fallbacks, Apple touch icon, manifest icons, generic app icon, and Open Graph image from the updated source mark.
+
+### Boundaries
+
+- This is Neelvara website identity asset and documentation work only. It does not change path geometry, site copy, routes, product claims, legal entity status, Firebase, auth, APIs, analytics, Vercel deploys, production builds, or launch approval.
+
+## July 4, 2026 - AI Image Generation Helpdoc Claim Boundary
+
+### Fixed
+
+- **AI Image Generation help copy no longer promises professional automatic photos** - The help doc now describes selected-item or supported-batch image drafts where feature, plan, credits, provider, and safety checks allow.
+- **Timing, full-menu, and cost claims are evidence-bound** - The help doc no longer preserves 5-10 second generation, 50-item/5-minute batch timing, entire-menu-at-once, owner-facing per-minute policy, save-time, or rejected-drafts-cost-nothing wording.
+- **The boundary is source-gated** - `npm run verify:public-business-truth` now reads the AI Image Generation help doc with the existing website/marketing boundary and rejects stale speed, quality, full-menu, and cost wording.
+
+### Boundaries
+
+- This is documentation and verifier work only. It does not change AI Image Generation runtime behavior, image generation route behavior, batch worker behavior, image editing behavior, AI accounting behavior, public menu image-rendering behavior, Storage behavior, Firestore rules, Storage rules, Cloud Function logic, Firebase deploys, Vercel deploys, production builds, browser/device QA, provider smoke, Firestore writes, Storage writes, launch approval, or release certification.
+
+## July 4, 2026 - Description Generation Helpdoc Speed Language Full-Rewrite Copy Boundary
+
+### Fixed
+
+- **Description Generation help copy no longer promises automatic professional descriptions** - The help doc now describes selected-item description drafts where generation is enabled and credited, followed by owner review/editing and saving approved descriptions before publishing.
+- **Timing, language, and full-rewrite claims are evidence-bound** - The help doc no longer preserves fixed processing speed, fixed per-minute policy, all-languages-at-once, no-extra-steps, simultaneous language creation, translate-entire-menu, or blanket all-description rewrite wording.
+- **The boundary is source-gated** - `npm run verify:agent-readiness` now reads the Description Generation help doc with the existing website/marketing boundary and rejects stale speed, language, all-description, no-review, and fixed-policy wording.
+
+### Boundaries
+
+- This is documentation and verifier work only. It does not change description generation runtime behavior, provider behavior, AI accounting behavior, editor behavior, save behavior, publish behavior, public menu runtime, Firebase rules, Storage rules, Cloud Function logic, Firebase deploys, Vercel deploys, production builds, browser/device QA, provider smoke, Firestore writes, Storage writes, launch approval, or release certification.
+
+## July 4, 2026 - Menu Presence Monitor Copy Claim Boundary
+
+### Fixed
+
+- **Menu Presence Monitor copy no longer implies external-platform verification** - The marketing, website, help, spec, and mobile-support docs now separate MenuList-recorded readiness/actions from owner-confirmed Google, Instagram, and WhatsApp placements.
+- **Speed, setup, and every-surface claims are evidence-bound** - The docs no longer preserve instant visibility, zero-setup external placement, one-tap external deployment, checked external surfaces, QR print placement proof, or fixed mobile completion-speed wording without release-specific evidence.
+- **The boundary is source-gated** - `npm run verify:menu-presence-monitor-boundary` now rejects stale Menu Presence public/help/spec claim wording while keeping the existing active-store guard, typed acknowledgement, diagnostics, routing, and starter activation proof checks.
+
+### Boundaries
+
+- This is documentation and verifier work only. It does not change Menu Presence Monitor runtime behavior, `menuPresence` write behavior, `starterActivationSignals` write behavior, Use MenuList runtime behavior, Business Settings runtime behavior, MobileShell routing behavior, starter activation logic, public menu runtime behavior, external-provider behavior, crawler behavior, Firestore rules, Storage rules, Cloud Function logic, Firebase deploys, Vercel deploys, production builds, browser/device QA, live Firestore writes, Storage writes, launch approval, or release certification.
+
 ## July 4, 2026 - Neelvara True Vector Logo Source
 
 ### Improved
 
-- **Neelvara logo source is now true vector** - Replaced the previous raster-embedded SVG wrapper with the supplied `logo_3shape_true_svg_no_bg.svg` mark copied as-is to `public/neelvara-logo.svg`.
-- **Neelvara icon family regenerated from the vector source** - Rebuilt the transparent PNG logo, SVG favicon wrapper, favicon PNG fallbacks, Apple touch icon, manifest icons, generic app icon, and Open Graph image from the true-vector mark without recoloring or redrawing the shape.
+- **Neelvara logo source is now true vector** - Replaced the previous raster-embedded SVG wrapper with the supplied `logo_3shape_true_svg_no_bg.svg` three-path geometry as the source for `public/neelvara-logo.svg`.
+- **Neelvara icon family regenerated from the vector source** - Rebuilt the transparent PNG logo, SVG favicon wrapper, favicon PNG fallbacks, Apple touch icon, manifest icons, generic app icon, and Open Graph image from the true-vector mark while preserving the supplied path geometry.
 
 ### Boundaries
 
@@ -92,6 +463,30 @@
 
 - This is documentation and verifier work only. It does not change Special Menu Switching runtime behavior, public route resolver behavior, OBP behavior, Digital Screens behavior, scheduler behavior, cache behavior, PDF generation behavior, POS/provider behavior, Firestore rules, Storage rules, Cloud Function logic, Firebase deploys, Vercel deploys, production builds, provider calls, browser/device QA, Firestore writes, Storage writes, launch approval, or release certification.
 
+## July 4, 2026 - B2C View Marketing Performance Device-Coverage Copy Boundary
+
+### Fixed
+
+- **B2C View marketing no longer promises instant customer-menu performance** - The marketing draft now avoids instant access, fixed under-2-second load timing, every-phone support, offline support, and Google-discoverable claims without release-specific evidence.
+- **Sharing and QR claims are evidence-bound** - The draft no longer preserves one-click sharing, fake testimonials, QR adoption stats, or customer-behavior claims as usable current collateral.
+- **The boundary is source-gated** - `npm run verify:menu-design-presentation-boundary` now rejects stale B2C marketing performance, device, sharing, and QR adoption claims while requiring supported-browser, preview-before-publish, and evidence-bound customer-menu copy.
+
+### Boundaries
+
+- This is documentation and verifier work only. It does not change B2C View runtime behavior, customer menu runtime, design settings behavior, publish behavior, public cache behavior, share modal behavior, QR generation behavior, public route behavior, Firestore rules, Storage rules, Cloud Function logic, Firebase deploys, Vercel deploys, production builds, browser/device QA, production-host smoke, Firestore writes, Storage writes, launch approval, or release certification.
+
+## July 4, 2026 - AI Image Generation Website Marketing Claim Boundary
+
+### Fixed
+
+- **AI Image Generation public collateral no longer promises instant professional photos** - The website and marketing drafts now avoid one-click, fixed-timing, every-item, full-menu, professional-quality, perfect-style, and photoshoot replacement claims without release-specific evidence.
+- **Plan, credit, provider, and review boundaries are explicit** - The docs now frame image generation as reviewable drafts prepared only where plan, credits, feature flags, provider behavior, and safety checks allow.
+- **The boundary is source-gated** - `npm run verify:public-business-truth` now reads both AI Image Generation public-collateral docs and rejects stale speed, quality, cost, full-menu, platform-use, fake-testimonial, and customer-behavior wording.
+
+### Boundaries
+
+- This is documentation and verifier work only. It does not change AI Image Generation runtime behavior, image generation route behavior, batch worker behavior, image editing behavior, AI accounting behavior, public menu image-rendering behavior, Storage behavior, Firestore rules, Storage rules, Cloud Function logic, Firebase deploys, Vercel deploys, production builds, browser/device QA, provider smoke, Firestore writes, Storage writes, launch approval, or release certification.
+
 ## July 4, 2026 - AI Data Extraction Website Claim Boundary
 
 ### Fixed
@@ -104,6 +499,18 @@
 ### Boundaries
 
 - This is documentation and verifier work only. It does not change AI Data Extraction runtime behavior, upload behavior, extraction worker behavior, review behavior, publish behavior, public menu runtime, provider calls, AI accounting behavior, Firestore rules, Storage rules, Cloud Function logic, Firebase deploys, Vercel deploys, production builds, browser/device QA, Firestore writes, Storage writes, launch approval, or release certification.
+
+## July 4, 2026 - AI Data Extraction Marketing Speed Every-Field Copy Boundary
+
+### Fixed
+
+- **AI Data Extraction marketing copy no longer promises instant every-field extraction** - The marketing draft now describes a review draft from a clear photo or supported PDF instead of extraction in seconds, every item/price/description capture, or no-review output.
+- **Provider, accuracy, and demo stats are evidence-bound** - The draft no longer preserves provider, fixed accuracy, fixed timing, fake testimonial, no-typo, no-data-entry, or fixed-demo-stat claims as usable current collateral.
+- **The boundary is source-gated** - `npm run verify:agent-readiness` now rejects stale AI Data Extraction marketing speed, provider, every-field, accuracy, and demo-stat wording while requiring the current review-draft and evidence-bound copy.
+
+### Boundaries
+
+- This is documentation and verifier work only. It does not change AI Data Extraction runtime behavior, upload behavior, extraction worker behavior, review behavior, publish behavior, public menu runtime, provider calls, AI accounting behavior, Firestore rules, Storage rules, Cloud Function logic, Firebase deploys, Vercel deploys, production builds, browser/device QA, provider smoke, Firestore writes, Storage writes, launch approval, or release certification.
 
 ## July 4, 2026 - AI System Layer Website Reference Claim Boundary
 
@@ -124,6 +531,18 @@
 - **PDF Surface website copy no longer promises PDF download speed without evidence** - The active website doc now describes generation from current project data at download time instead of "in seconds."
 - **PDF Surface website copy stays review/artifact-bound** - The doc now says the PDF uses the approved source, is ready after owner review, and older downloads or printed copies need replacement after changes.
 - **The boundary is source-gated** - `npm run verify:menu-export` now rejects stale PDF speed/all-field wording while keeping the generation-time/versioned-output guard.
+
+### Boundaries
+
+- This is documentation and verifier work only. It does not change PDF generation runtime behavior, Menu Kit behavior, print template behavior, generated artifact metadata, share modal behavior, public menu routing, cache behavior, Firebase rules, Storage rules, Cloud Function logic, Firebase deploys, Vercel deploys, production builds, browser/device QA, visual print artifact review, provider calls, Firestore writes, Storage writes, launch approval, or release certification.
+
+## July 4, 2026 - PDF Surface Marketing Help Fixed-Speed Print-Quality Copy Boundary
+
+### Fixed
+
+- **PDF Surface marketing/help copy no longer promises fixed-speed PDF generation** - The internal marketing and help docs now avoid under-5-second, few-seconds, and no-review/no-action wording without release-specific evidence.
+- **Generated PDF quality is review-bound** - The docs no longer present PDF output as professional-print-shop quality automatically or always-professional output; they now describe a versioned generated artifact that owners review before printing or sharing.
+- **The boundary is source-gated** - `npm run verify:menu-export` now rejects stale PDF Surface marketing/help speed and print-quality wording while requiring generation-time, versioned-output, and review-before-use copy.
 
 ### Boundaries
 
@@ -152,6 +571,18 @@
 ### Boundaries
 
 - This is documentation and verifier work only. It does not change description generation runtime behavior, provider behavior, AI accounting behavior, editor behavior, save behavior, publish behavior, public menu runtime, Firebase rules, Storage rules, Cloud Function logic, Firebase deploys, Vercel deploys, production builds, browser/device QA, provider smoke, Firestore writes, Storage writes, launch approval, or release certification.
+
+## July 4, 2026 - Multi-Language Translation Website Speed Language-Count Copy Boundary
+
+### Fixed
+
+- **Multi-Language Translation website copy no longer promises instant one-click language output** - The active website doc now describes customer-language drafts from the approved menu source, owner review, and approved localized output for supported project languages.
+- **Multi-Language Translation marketing draft is evidence-bound** - The draft no longer preserves fixed language-count, timing, all-language, one-click, uniform-quality, customer-behavior, or fixed-demo claims as usable current collateral.
+- **The boundary is source-gated** - `npm run verify:agent-readiness` now reads the Multi-Language Translation website doc and rejects stale speed, language-count, one-click, full-menu, quality, customer-behavior, and demo timing wording.
+
+### Boundaries
+
+- This is documentation and verifier work only. It does not change translation runtime behavior, provider behavior, editor behavior, public renderer behavior, RTL behavior, customer menu runtime, external-platform behavior, Firebase rules, Storage rules, Cloud Function logic, Firebase deploys, Vercel deploys, production builds, browser/device QA, provider smoke, Firestore writes, Storage writes, launch approval, or release certification.
 
 ## July 4, 2026 - Neelvara Infrastructure Copy Alignment
 
@@ -210,6 +641,18 @@
 ### Boundaries
 
 - This is documentation and verifier work only. It does not change Client Menu runtime behavior, item availability behavior, owner saves, public menu rendering, public cache behavior, customer app service worker behavior, Digital Screens behavior, Firestore rules, Storage rules, Cloud Function logic, Firebase deploys, Vercel deploys, production builds, provider calls, browser/device QA, Firestore writes, Storage writes, launch approval, or release certification.
+
+## July 4, 2026 - Client Menu Performance Realtime Doc Boundary
+
+### Fixed
+
+- **Client Menu docs no longer certify fixed speed metrics without release evidence** - Active spec, implementation, website, and help docs now route load-time/FCP/LCP/TTI claims to target-release browser/device evidence instead of hard-coding under-2-second or historical PASS numbers.
+- **Real-time and offline-cache wording is bounded** - The docs now keep customer-visible freshness on the public cache path and preserve the customer service-worker policy: offline mode shows a reconnect screen, not cached menu content.
+- **The boundary is source-gated** - `npm run verify:customer-app-pwa` now rejects stale fixed-speed, real-time, auto-update, and offline-cache wording across the active Client Menu doc set.
+
+### Boundaries
+
+- This is documentation and verifier work only. It does not change Client Menu runtime behavior, item availability behavior, extraction behavior, public menu rendering, public cache behavior, customer app service worker behavior, analytics behavior, Firestore rules, Storage rules, Cloud Function logic, Firebase deploys, Vercel deploys, production builds, provider calls, browser/device QA, Firestore writes, Storage writes, launch approval, or release certification.
 
 ## July 4, 2026 - Main Website Publish-Surface Copy Boundary
 

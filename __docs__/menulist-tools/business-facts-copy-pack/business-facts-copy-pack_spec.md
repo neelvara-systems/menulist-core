@@ -109,7 +109,7 @@ V0 must not:
 
 ## 8. V1 Owner Check
 
-V1 should live inside existing owner surfaces such as Business Health, Public Discovery, OBP readiness, or setup flows.
+V1 lives inside the shared Business Health/Public Truth owner card and may also surface through Public Discovery, OBP readiness, or setup flows.
 
 V1 can generate the same copy blocks from actual MenuList store/project truth:
 
@@ -121,7 +121,7 @@ V1 can generate the same copy blocks from actual MenuList store/project truth:
 - action links
 - phone/WhatsApp
 
-V1 should not create a new dashboard.
+V1 does not create a new dashboard.
 
 ## 9. V2 Paid Add-On
 

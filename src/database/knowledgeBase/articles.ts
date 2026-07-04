@@ -183,19 +183,27 @@ const bumpKnowledgeBaseVersion = async (
 
 /**
  * @deprecated Use getArticlesByCategoryId() or getArticlesBySectionId() instead.
- * This fetches ALL articles globally with no tenant filter — risky at scale.
- * Kept for backward compatibility but should not be used in new code.
+ * Kept for backward compatibility. Non-platform callers are still scoped to
+ * the active tenant/store so future imports cannot accidentally read globally.
  */
 export const getArticles = async () => {
     return await apiCallComposer(
         async () => {
-            const q = query(await getCollectionRef(), limit(KB_ARTICLE_LIST_LIMIT));
+            const scope = await resolveReadableArticleScope();
+            if (!scope.isPlatform && (!scope.tId || !scope.sId)) {
+                return [];
+            }
+            const filters = getReadableScopeFilters(scope);
+            const q = query(await getCollectionRef(), ...filters, limit(KB_ARTICLE_LIST_LIMIT));
             const querySnapshot = await getDocs(q);
-            const list = [];
+            const list: KnowledgeBaseArticleType[] = [];
             querySnapshot.forEach((doc) => {
-                list.push({ ...doc.data(), id: doc.id })
+                const article = { ...doc.data(), id: doc.id } as KnowledgeBaseArticleType;
+                if (readableScopeAllowsArticle(scope, article)) {
+                    list.push(article);
+                }
             });
-            return (list);
+            return list;
         },
         "getArticles"
     );

@@ -12,11 +12,13 @@
 | Gate | Question | Answer | Pass? |
 |------|----------|--------|-------|
 | **Frequency** | Daily or multiple times per day? | Weekly check after sharing menu | ⚠ Borderline |
-| **Speed** | Completes in <5 seconds? | View + confirm = 2 seconds | ✓ Pass |
-| **Touch** | Works with thumb-only? | Single tap to confirm | ✓ Pass |
+| **Speed** | Short mobile task? | Designed as a compact row + bottom-sheet flow; no fixed timing claim without device QA | ✓ Pass for admission |
+| **Touch** | Works with thumb-only? | Explicit bottom-sheet buttons for copy/open/mark/remove | ✓ Pass |
 | **Value** | Needed away from desk? | YES — owner at restaurant wants to check deployment | ✓ Pass |
 
 **Result:** 3 of 4 gates pass clearly. Frequency is borderline but acceptable — owners check this when they're at the restaurant setting up, which is often mobile.
+
+No fixed timing claim is approved from this source gate. Release copy needs browser/device QA before quoting completion speed.
 
 ## Mobile Implementation
 

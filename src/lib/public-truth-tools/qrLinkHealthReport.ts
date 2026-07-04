@@ -4,6 +4,7 @@ import {
   RESERVED_SUBDOMAINS,
 } from '@constant/urls';
 import { getProductDeploymentTarget } from '@constant/deploymentTargets';
+import { parsePublicHttpsUrl } from './publicUrlValidation';
 import type {
   QrLinkExpectedDestination,
   QrLinkHealthCheckId,
@@ -34,32 +35,6 @@ const KNOWN_MENULIST_DOMAINS = Array.from(new Set([
 
 function trimToSingleLine(value?: string): string {
   return (value || '').replace(/\s+/g, ' ').trim();
-}
-
-function getUrlWithProtocol(value: string): string {
-  if (/^https?:\/\//i.test(value)) return value;
-  if (/^[a-z0-9.-]+\.[a-z]{2,}(?:[/:?#].*)?$/i.test(value)) {
-    return `https://${value}`;
-  }
-  return value;
-}
-
-function parseHttpUrl(value: string): URL | null {
-  if (!value) return null;
-
-  try {
-    const url = new URL(getUrlWithProtocol(value));
-    const hostLooksUsable = url.hostname === 'localhost'
-      || url.hostname === '127.0.0.1'
-      || url.hostname.includes('.');
-    if ((url.protocol === 'http:' || url.protocol === 'https:') && hostLooksUsable) {
-      return url;
-    }
-  } catch {
-    return null;
-  }
-
-  return null;
 }
 
 function getRootDomainMatch(hostname: string): string | null {
@@ -114,9 +89,9 @@ function getQrLinkHealthEvidenceText(evidence: QrLinkHealthEvidence): string {
     case 'owner_selected':
       return 'Checked owner-selected QR facts only.';
     case 'valid_target_url':
-      return 'URL format was checked locally. The target page was not opened or fetched.';
+      return 'Public HTTPS URL format was checked locally. The target page was not opened or fetched.';
     case 'invalid_target_url':
-      return 'URL format was checked locally. The target page was not opened or fetched.';
+      return 'The QR target must use a public HTTPS URL. Local, private, or insecure targets were not opened or fetched.';
     case 'menulist_host_hint':
       return 'MenuList ownership was inferred from the URL host/path only. The target page was not opened.';
     case 'external_host_reference':
@@ -187,7 +162,7 @@ export function buildQrLinkHealthReport(input: QrLinkHealthInput): QrLinkHealthR
   const businessName = trimToSingleLine(input.businessName);
   const cityOrArea = trimToSingleLine(input.cityOrArea);
   const qrTargetUrl = trimToSingleLine(input.qrTargetUrl);
-  const url = parseHttpUrl(qrTargetUrl);
+  const url = parsePublicHttpsUrl(qrTargetUrl);
   const hasTarget = qrTargetUrl.length > 0;
   const hasValidTargetUrl = Boolean(url);
   const appearsMenuListOwned = appearsMenuListCustomerLink(url);

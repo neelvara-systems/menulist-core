@@ -33,9 +33,9 @@
 - no saved report history
 - no mobile owner-shell route in V0
 
-## Future V1 Mobile Path
+## V1 Mobile Path
 
-V1 should appear inside existing owner surfaces, not a new dashboard:
+V1 appears inside existing owner surfaces, not a new dashboard:
 
 - Business Health
 - Public Discovery

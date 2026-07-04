@@ -3,7 +3,7 @@
 import { FEATURE_FLAGS } from '@config/features';
 import { OUTLET_POLICY_CATEGORIES } from '@config/outletPolicy';
 import { updateOutletPolicy } from '@database/multiOutlet';
-import { AUTH_ACCOUNT_REQUEST_POLICY } from '@lib/auth/accountClientResponses';
+import { AUTH_ACCOUNT_REQUEST_POLICY, readAuthAccountResponse } from '@lib/auth/accountClientResponses';
 import { refreshFirebaseAuthClaims } from '@lib/auth/firebaseAuthSync';
 import { getStoreContextName } from '@lib/businessIdentity/names';
 import { getBoundedMultiOutletStringContext, logMultiOutletFailure } from '@lib/multiOutlet/diagnostics';
@@ -199,11 +199,7 @@ export default function MobileLocationsScreen({ onBack, onOpenBilling }: MobileL
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ targetStoreId: storeId }),
             });
-            if (!res.ok) {
-                const switchError = new Error('mobile_location_store_switch_rejected') as Error & { status?: number };
-                switchError.status = res.status;
-                throw switchError;
-            }
+            await readAuthAccountResponse(res, 'switch_store');
             await refreshFirebaseAuthClaims(storeId);
             setActiveStoreContext(storeId);
             Toast.show({ content: t('switchedStore'), duration: 1500 });

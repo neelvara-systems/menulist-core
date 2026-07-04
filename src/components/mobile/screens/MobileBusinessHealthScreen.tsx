@@ -26,6 +26,7 @@ import { type ReactNode, useContext, useEffect, useMemo, useRef, useState } from
 import { LuActivity, LuCheckCircle2, LuLayers, LuSend, LuSparkles, LuUser, LuX } from 'react-icons/lu';
 import { ProjectSelectorList, ProjectSelectorTrigger, type ProjectSelectorItem } from '../../shared/ProjectSelector';
 import { Button, Card, Flex, Input, Popup, Tag, Text, Title, Toast } from '../antd';
+import MobilePublicTruthMonitorCard from '../components/MobilePublicTruthMonitorCard';
 import MobilePublicTruthOwnerCheckCard from '../components/MobilePublicTruthOwnerCheckCard';
 import MobileSettingsScreenHeader from '../components/MobileSettingsScreenHeader';
 import { useMobileProjects } from '../providers/MobileProjectsProvider';
@@ -466,6 +467,11 @@ export default function MobileBusinessHealthScreen({ onBack, onOpenMenuTab, onOp
                     isLoading={isPublicTruthLoading}
                     onFixTarget={handlePublicTruthFixTarget}
                     report={publicTruthReport}
+                />
+
+                <MobilePublicTruthMonitorCard
+                    selectedProjectId={scopedProjectId}
+                    storeId={storeDetails?.storeId}
                 />
 
                 {isHealthReady && analyticsMetrics.length ? (

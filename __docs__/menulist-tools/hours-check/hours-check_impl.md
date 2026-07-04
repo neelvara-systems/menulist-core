@@ -20,7 +20,7 @@ Implemented files:
 | `src/lib/public-truth-tools/hoursCheckReport.ts` | Deterministic hours, special-hours, fallback, and link checks |
 | `scripts/verification/verify-hours-check.js` | Boundary verifier for route, flags, docs, locales, discovery, and no external fetch/provider behavior |
 
-No V1 owner card, paid add-on history, Google inspection, holiday API, report API route, storage path, Cloud Function, or AI/search provider call is implemented in V0.
+V1 owner readiness is implemented through the shared Business Health/Public Truth owner card. No standalone hours dashboard, paid add-on history, Google inspection, holiday API, report API route, storage path, Cloud Function, or AI/search provider call is implemented in V0.
 
 ---
 
@@ -170,7 +170,7 @@ If an adapter is later approved, it must use explicit consent, source policy, en
 
 ## 8. V1 Owner Implementation Direction
 
-V1 should reuse existing owner truth and public-page hours data:
+V1 reuses existing owner truth and public-page hours data:
 
 - store hours
 - temp status

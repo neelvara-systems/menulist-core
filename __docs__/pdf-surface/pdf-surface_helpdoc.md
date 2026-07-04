@@ -14,7 +14,7 @@
 4. Scroll to the **Download PDF** section
 5. Tap **Download PDF**
 
-The PDF downloads to your device within a few seconds.
+The PDF is generated from the current project data and then downloads to your device. Review the file before printing or sharing it.
 
 ---
 
@@ -52,7 +52,7 @@ If you see a yellow warning near the PDF download button that says "Menu updated
 ## Frequently Asked Questions
 
 **Can I change the layout or colors of the PDF?**
-No. The layout is handled automatically. This keeps every PDF consistent and professional without any setup work on your part.
+No. MenuList uses a constrained PDF layout so you do not need to design it yourself. Review the generated PDF before printing or sharing it.
 
 **Can I add my logo to the PDF?**
 Not currently. Logo embedding is planned for a future update.
@@ -67,4 +67,4 @@ Yes — each menu project has its own Share button and PDF download.
 
 ## Need help?
 
-Contact support from your dashboard. Everything is handled automatically — no action needed unless you see the freshness warning.
+Contact support from your dashboard if the generated PDF does not look right or if the freshness warning does not clear after downloading a fresh copy.
