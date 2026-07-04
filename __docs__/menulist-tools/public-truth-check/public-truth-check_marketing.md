@@ -1,7 +1,7 @@
 # Public Truth Check - Marketing Notes
 
 **Status:** Implemented - public self-report route
-**Last Updated:** June 30, 2026
+**Last Updated:** July 4, 2026
 **Audience:** Internal marketing, sales, founder
 
 ---

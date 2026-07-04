@@ -3,12 +3,13 @@
 **Feature:** AI Discovery for Your Business
 **Last Updated:** February 19, 2026
 **Audience:** Existing customers (SMB owners)
+**Source gate:** `npm run verify:agent-readiness`
 
 ---
 
 ## Quick Summary
 
-MenuList automatically makes your business discoverable by AI assistants like ChatGPT, Google Gemini, and voice assistants. When someone asks AI about your business, your menu, hours, and info are always accurate — because MenuList structures your data in a format AI understands.
+MenuList publishes your owner-approved menu and business information in a structured format on your public MenuList pages. AI and search systems can read that public source when they crawl or open the page, but they decide what they show, cite, or refresh.
 
 ---
 
@@ -20,7 +21,7 @@ MenuList automatically makes your business discoverable by AI assistants like Ch
 
 ### Is There Anything I Need to Set Up?
 
-**No.** AI discovery works automatically for every MenuList business. There's nothing to configure, enable, or pay extra for. As long as your menu is published and your business info is current, AI systems can read your structured data.
+**No.** MenuList structures your published menu and business info automatically. There's nothing to configure, enable, or pay extra for. As long as your menu is published and your business info is current, your public MenuList page has structured data available for systems that crawl or open it.
 
 ---
 
@@ -30,8 +31,8 @@ MenuList automatically makes your business discoverable by AI assistants like Ch
 
 1. You update your menu and business info on MenuList
 2. MenuList automatically structures this into a format AI can read (called "schema.org")
-3. When someone asks an AI assistant about your business, it reads this structured data
-4. The AI gives the customer accurate, up-to-date information
+3. When an AI or search system crawls or opens your MenuList page, it can read this structured data
+4. The external system decides what to show, cite, or summarize
 
 ### What Information AI Can Read
 
@@ -87,7 +88,7 @@ From your MenuList page, AI assistants can see:
 - Keep your menu items descriptive — "Grilled Chicken Caesar Salad" is better than "Salad #3"
 - Add dietary tags to items (vegetarian, vegan, gluten-free) — AI uses these to answer specific customer questions
 - Update your hours whenever they change — wrong hours damage trust with both customers and AI
-- Use your MenuList link as your primary public link everywhere — the more visible it is, the more AI trusts it
+- Use your MenuList link as your primary public link everywhere so external systems have one clear source to read
 
 ---
 
@@ -101,7 +102,7 @@ From your MenuList page, AI assistants can see:
 
 ## Need More Help?
 
-Contact us on WhatsApp or email support@menulist.ai — we're happy to help you make sure AI finds your business correctly.
+Contact us on WhatsApp or email support@menulist.ai if your public MenuList page is missing the menu, hours, or business details customers need.
 
 ---
 

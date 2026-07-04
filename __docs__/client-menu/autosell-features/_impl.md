@@ -114,7 +114,7 @@ export function LiveIndicator({ modifiedOn }: LiveIndicatorProps) {
 
 ---
 
-## Feature #2: Instant Availability
+## Feature #2: Availability State
 
 ### Data Model
 
@@ -451,7 +451,7 @@ When an existing preset is edited, `updatePresetInAllCategories()` scans the cur
 | Integrated in menu page | ✅     |
 | Mobile responsive       | ✅     |
 
-### Feature #2: Instant Availability
+### Feature #2: Availability State
 
 | Item                            | Status |
 | ------------------------------- | ------ |

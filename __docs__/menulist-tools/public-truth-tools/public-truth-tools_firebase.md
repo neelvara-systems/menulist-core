@@ -1,14 +1,14 @@
 # Public Truth Tools - Firebase Cost Tracking
 
-**Status:** Active family; thirteen V0 tools, a public shareable report layer, and twelve V1 owner readiness modules implemented
-**Last Updated:** July 3, 2026
+**Status:** Active family; sixteen V0 tools, a public shareable report layer, and twelve V1 owner readiness modules implemented
+**Last Updated:** July 4, 2026
 **Audience:** Founder, developers, cost auditors
 
 ---
 
 ## Summary
 
-The family now has thirteen V0 runtime tools: Public Truth Check, QR Link Health Check, Menu Readability Check, Customer Question Coverage Check, Booking Inquiry Readiness Check, Price Availability Gap Check, Menu PDF Cleanup Check, Google Profile Basics Checklist, One Customer Link Preview, Social Bio Link Consistency Check, WhatsApp Action Link Check, Hours Check, and Photo Gap Check. Their report/check paths add no Firebase usage; their optional follow-up forms reuse the existing public contact enquiry write after consent.
+The family now has sixteen V0 runtime tools: Public Truth Check, Business Facts Copy Pack, WhatsApp Reply Pack, Customer FAQ Reply Pack, QR Link Health Check, Menu Readability Check, Customer Question Coverage Check, Booking Inquiry Readiness Check, Price Availability Gap Check, Menu PDF Cleanup Check, Google Profile Basics Checklist, One Customer Link Preview, Social Bio Link Consistency Check, WhatsApp Action Link Check, Hours Check, and Photo Gap Check. Their report/check paths add no Firebase usage; their optional follow-up forms reuse the existing public contact enquiry write after consent.
 
 The logged-in owner V1 card now shows twelve readiness modules inside Business Health using the existing owner store context, project summary cache, mobile project cache, and at most one selected/default project read when not already cached. It writes no report state. Customer Question Coverage Check, Booking Inquiry Readiness Check, Price Availability Gap Check, Menu PDF Cleanup Check, and Google Profile Basics Checklist are computed from current MenuList business facts, menu/service truth, public-link readiness, and owner-confirmed handoff fields only. One Customer Link Preview and Social Bio Link Consistency Check map to existing public-link, Share, Public Discovery, and Business Health readiness surfaces without duplicate owner modules. Menu Freshness is owner-only and computed from already-loaded MenuList store/project fields. No V1 module scans Google, Maps, Search, or external sites.
 
@@ -112,11 +112,14 @@ Scheduled maintenance, if ever needed, must use the consolidated MenuList mainte
 
 ---
 
-## Cost Forecast For First Tool
+## Cost Forecast For Current Tools
 
 The current implemented V0 tools are documented separately in:
 
 - `__docs__/menulist-tools/public-truth-check/public-truth-check_firebase.md`
+- `__docs__/menulist-tools/business-facts-copy-pack/business-facts-copy-pack_firebase.md`
+- `__docs__/menulist-tools/whatsapp-reply-pack/whatsapp-reply-pack_firebase.md`
+- `__docs__/menulist-tools/customer-faq-reply-pack/customer-faq-reply-pack_firebase.md`
 - `__docs__/menulist-tools/qr-link-health-check/qr-link-health-check_firebase.md`
 - `__docs__/menulist-tools/menu-readability-check/menu-readability-check_firebase.md`
 - `__docs__/menulist-tools/customer-question-coverage-check/customer-question-coverage-check_firebase.md`

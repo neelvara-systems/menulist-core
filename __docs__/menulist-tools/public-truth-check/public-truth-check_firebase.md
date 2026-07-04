@@ -1,7 +1,7 @@
 # Public Truth Check - Firebase Cost Tracking
 
 **Status:** Implemented - public self-report route and logged-in owner check
-**Last Updated:** June 30, 2026
+**Last Updated:** July 4, 2026
 **Audience:** Founder, developers, cost auditors
 
 ---
@@ -13,6 +13,8 @@ The implemented public report runs in the browser. The optional follow-up form c
 July 1 acknowledgement note: the optional follow-up still reuses `/api/public/contact`, but the browser now requires the route's source/status/help-topic acknowledgement before submitted state. This changes no report-time Firebase usage and adds no new write path.
 
 The implemented owner report runs inside Business Health. It reads existing MenuList owner truth through the current store context, the project summary DAL, and at most one selected/default project DAL read when the project is not already cached. It writes no Public Truth report state.
+
+The July 4 owner fix list is cost-neutral. `setupJobList` is derived in memory from already-computed readiness modules and adds no Firestore reads, writes, deletes, Storage operations, Cloud Functions, provider calls, report history, or public-truth mutation.
 
 | Resource | Current operations | Current cost |
 | --- | --- | --- |

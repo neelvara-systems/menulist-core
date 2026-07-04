@@ -13,7 +13,7 @@
 
 **What:** A governance framework for systems that silently detect, correct, and enforce business truth across all MenuList surfaces — without owner intervention, without dashboards, without explanation.
 
-**Why:** MenuList's identity is "the system keeps working when no one is watching." Silent Correction Systems formalize HOW that promise is delivered. They ensure customers never see wrong hours, wrong prices, broken menus, or inconsistent data — even when owners forget to update.
+**Why:** MenuList's identity is "the system keeps working when no one is watching." Silent Correction Systems formalize HOW that promise is delivered. They define the guardrails for preventing confident wrong hours, wrong prices, broken menus, or inconsistent data from reaching customers through supported surfaces.
 
 **For whom:** Every MenuList business and their customers. Owners benefit from reduced anxiety. Customers benefit from reliable information.
 
@@ -61,7 +61,7 @@ If a proposed system fails ANY of these → don't build it.
 
 **Goal:** Confidence-gated rendering across all surfaces.
 
-**What exists:** All surfaces read from same Firestore data. 60-second propagation guaranteed. But every surface renders raw values without checking confidence.
+**What exists:** Supported live surfaces read from saved project/store truth through their own cache, refresh, listener, download, or provider paths. Public menu and Official Business Page output can take up to 60 seconds to refresh, and generated or provider-backed artifacts require their own evidence. But many surfaces still render raw values without checking confidence.
 
 **What's missing:**
 - A rendering layer that checks confidence before displaying
@@ -193,7 +193,7 @@ The ChatGPT conversation proposed systems optimized for correctness. These corre
 
 ### Correction 7: Price Anomaly Stabilization Window
 
-**Problem:** Staff typo (₹199 → ₹19) propagates instantly to all surfaces.
+**Problem:** Staff typo (₹199 → ₹19) can reach supported live surfaces before downstream artifacts, screens, or provider paths have separate evidence.
 
 **Fix:** If price change > 70%, mark as ANOMALY internally. Delay propagation to PDF/screens for 30-60s (aligns with existing debounce). Allow on web/QR immediately (reversible).
 

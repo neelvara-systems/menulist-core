@@ -66,7 +66,7 @@ When a customer subscribes (onboarding or plan change):
 
 ```
 monthlyCreditsAllowance = plan's monthly credit value (e.g., 200 for Pro)
-monthlyCredits = 200  (full balance — ready to use)
+monthlyCredits = 200  (full starting balance after subscription activation)
 topUpCredits = 0
 creditsLastResetMonth = current billing period key (YYYYMM)
 ```

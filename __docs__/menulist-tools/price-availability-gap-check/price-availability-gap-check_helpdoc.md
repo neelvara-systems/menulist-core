@@ -1,5 +1,7 @@
 # Price Availability Gap Check - Help Doc
 
+**Last Updated:** July 4, 2026
+
 Price Availability Gap Check shows whether customers can understand prices and availability from the public source you already share.
 
 ## What It Checks

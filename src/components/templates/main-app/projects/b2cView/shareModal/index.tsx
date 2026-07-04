@@ -205,7 +205,7 @@ function ShareModal({
         const urls = {
             whatsapp: `https://wa.me/?text=${encodeURIComponent(
                 FEATURE_FLAGS.ENABLE_BEHAVIOR_NUDGES
-                    ? `Here is ${labels.yourLatest}:\n${urlWithUTM}\n(Always updated)`
+                    ? `${labels.shareMessagePrefix}\n${urlWithUTM}`
                     : `Check out our ${labels.offeringLower}: ${urlWithUTM}`
             )}`,
             facebook: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(urlWithUTM)}`,

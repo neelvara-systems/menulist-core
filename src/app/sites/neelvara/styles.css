@@ -190,9 +190,9 @@
 }
 
 .nv-logo-mark {
-    width: 44px;
-    height: 28px;
-    flex: 0 0 44px;
+    width: 58px;
+    height: 33px;
+    flex: 0 0 58px;
     background: url("/neelvara-logo.svg") center / contain no-repeat;
 }
 
@@ -693,18 +693,28 @@
     -webkit-backdrop-filter: blur(18px);
 }
 
-.nv-segmented span {
+.nv-segmented button {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    min-height: 34px;
+    min-height: 44px;
+    border: 0;
     padding: 0 14px;
     border-radius: 999px;
     color: var(--ink-soft);
+    background: transparent;
     font-family: "JetBrains Mono", ui-monospace, monospace;
     font-size: 0.76rem;
     letter-spacing: 0.08em;
     text-transform: uppercase;
+    cursor: pointer;
+    transition: color 160ms ease, background 160ms ease, box-shadow 160ms ease;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.nv-segmented button:focus-visible {
+    outline: 3px solid rgb(35 132 255 / 34%);
+    outline-offset: 3px;
 }
 
 .nv-segmented .is-active {
@@ -726,6 +736,15 @@
     min-height: 238px;
     padding: 24px;
     overflow: hidden;
+}
+
+.nv-bento-feature,
+.nv-bento-support {
+    grid-column: span 3;
+}
+
+.nv-bento-feature {
+    min-height: 460px;
 }
 
 .nv-bento-tall {
@@ -1607,7 +1626,9 @@
     .nv-bento-tall,
     .nv-bento-wide,
     .nv-bento-med,
-    .nv-bento-small {
+    .nv-bento-small,
+    .nv-bento-feature,
+    .nv-bento-support {
         grid-column: span 2;
     }
 
@@ -1704,9 +1725,23 @@
     .nv-bento-tall,
     .nv-bento-wide,
     .nv-bento-med,
-    .nv-bento-small {
+    .nv-bento-small,
+    .nv-bento-feature,
+    .nv-bento-support {
         grid-column: span 1;
         min-height: 0;
+    }
+
+    .nv-segmented {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        width: 100%;
+    }
+
+    .nv-segmented button {
+        min-width: 0;
+        padding-right: 10px;
+        padding-left: 10px;
     }
 
     .nv-boundary-list {
@@ -1851,7 +1886,7 @@
         overflow-x: auto;
     }
 
-    .nv-segmented span {
+    .nv-segmented button {
         flex: 1;
         min-width: max-content;
     }

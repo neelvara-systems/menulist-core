@@ -50,9 +50,9 @@ Approved palette:
 | --- | --- | --- | --- |
 | Primary ink | Neelvara Navy | `#071323` | Wordmark text, headings, legal/docs presence |
 | Primary blue | Neel Blue | `#1457D9` | CTAs, links, key identity moments |
-| Gradient blue | Clear Blue | `#2384FF` | Left side of icon gradient, highlights |
-| Bridge color | Royal Indigo | `#2737C8` | Middle of icon gradient, structured accents |
-| Accent violet | Controlled Violet | `#6542E8` | Rare icon/accent use only |
+| Gradient blue | Clear Blue | `#2384FF` | Logo-adjacent highlights and restrained accents |
+| Bridge color | Royal Indigo | `#2737C8` | Structured accents |
+| Accent violet | Controlled Violet | `#6542E8` | Rare accent use only |
 | Background | Ice White | `#F7F9FC` | Website background and decks |
 | Soft surface | Pale Blue Grey | `#EEF3FA` | Cards, panels, subtle dividers |
 | Secondary text | Slate | `#5D6678` | Body text and captions |
@@ -66,11 +66,13 @@ Usage ratio:
 
 Logo rule:
 
-- use the uploaded infinity/eye-style Neelvara mark as the website logo
+- use the uploaded glass-prism Neelvara mark exactly as provided
 - `public/neelvara-logo.svg` is the source website mark used in header, footer, 404, and structured data
+- the source SVG is a true vector file and must not be redrawn, recolored, filtered, or simplified
 - the visible website logo must not sit inside a square, rounded-rectangle, card, or boxed frame
 - PNG derivatives are only for browser/favicon, Open Graph, or platform compatibility surfaces
-- favicon, Apple touch icon, and manifest PNG derivatives are generated from the source mark and must not show a visible frame
+- `public/neelvara-favicon.svg` is the preferred browser favicon and keeps the uploaded mark centered on a transparent square canvas
+- favicon PNG fallbacks, Apple touch icon, and manifest PNG derivatives are generated from the source mark and must not show a visible frame
 - wordmark/page text stays `#071323`
 
 Avoid:
@@ -88,7 +90,7 @@ Avoid:
 Category sentence:
 
 ```text
-Neelvara Systems builds software infrastructure for customer-facing business information.
+Neelvara Systems operates software infrastructure for customer-facing business information.
 ```
 
 Relationship sentence:
@@ -100,7 +102,7 @@ MenuList, Answerlattice, and CampaignCue are operated by Neelvara Systems.
 Homepage support copy:
 
 ```text
-Neelvara Systems builds focused products that help businesses keep public facts, approved answers, and business context accurate, usable, and consistent across customer-facing surfaces.
+Neelvara Systems operates products that keep public business facts, approved answers, and reusable business context clear before they reach customers.
 ```
 
 Do not use the old relationship phrasing in runtime copy. Use `operated by`.
@@ -109,14 +111,14 @@ Do not use the old relationship phrasing in runtime copy. Use `operated by`.
 
 ## 5. Home Page
 
-Purpose: establish entity identity, explain why the company exists, show the operated products, and route company-level inquiries.
+Purpose: establish entity identity, explain why the company exists, show the operated products, and route company inquiries.
 
 Required flow:
 
 1. Hero: `Neelvara Systems`, category eyebrow, support copy, `View Products`, `Email Neelvara`.
 2. Entity ledger: company, products, contact.
 3. Why Neelvara exists: problem-first bento cards for company, products, contact, policies, support, and legal boundary.
-4. Spotlight cards: customer-facing facts need a stable foundation; focused products handle different parts of the same problem; company questions route separately from product questions.
+4. Spotlight cards: public business facts need one accountable source; each product handles a distinct information job; company questions stay separate from product support.
 5. Company relationship quote using the canonical relationship sentence.
 6. Current products: linked rows with actual MenuList, Answerlattice, and CampaignCue marks.
 7. Contact routes: business, legal, and privacy inbox cards.
@@ -128,17 +130,17 @@ Do not show product-count stats, page-count stats, internal implementation label
 
 ## 6. Products Page
 
-Purpose: explain how products fit together without turning the company website into a product funnel.
+Purpose: map operated products without turning the company website into a product funnel.
 
 Required H1:
 
 ```text
-Focused products. One shared direction.
+Products operated by Neelvara Systems.
 ```
 
 Required sections:
 
-- Information layer: `Different products. One information layer.`
+- Product map: `Each product has a distinct role.`
 - Product architecture cards:
   - MenuList: `Public business information`
   - Answerlattice: `Approved business answers`
@@ -149,9 +151,9 @@ Required sections:
 
 Product summaries:
 
-- MenuList: `Public business facts, starting with menus, hours, profiles, and customer-facing details.`
-- Answerlattice: `Governed answers for support, help content, and approved business responses.`
-- CampaignCue: `Prepared business context for campaign briefs and reusable marketing assets.`
+- MenuList: `Keeps menus, hours, profiles, and customer-facing details in a public business information source.`
+- Answerlattice: `Keeps support knowledge, help content, and business responses tied to approved answers.`
+- CampaignCue: `Keeps campaign briefs, reusable content, and marketing assets tied to business context.`
 
 Only show products approved for company-site mention. Do not show Canonica, GrowthOS, KitStamp, SurfaceOS, MyCodex, private/internal tools, placeholder products, or future-product cards.
 
@@ -164,20 +166,20 @@ Purpose: explain the company focus and the boundaries of what it does not build.
 Opening:
 
 ```text
-Neelvara Systems builds infrastructure for customer-facing business information that should stay accurate without constant maintenance.
+Neelvara Systems operates infrastructure for customer-facing business information that should stay accurate without constant maintenance.
 ```
 
 Required themes:
 
 - Business information: public facts, approved answers, and reusable business context.
-- Quiet operation: reliable foundations over noisy dashboards or broad public promises.
-- Small business fit: less maintenance, fewer decisions, and clearer customer-facing output.
+- Quiet operation: maintained information sources over noisy dashboards or broad public promises.
+- Operational fit: fewer repeated updates, clearer public facts, and less support drift.
 
 Required `What we do not build` content:
 
 - No POS, payroll, accounting, CRM, delivery, or internal operations platform is claimed on this company website.
-- Product pages explain product-specific capabilities.
-- Company pages make product ownership and contact routes easy to verify.
+- Product websites explain product capabilities.
+- Company pages make product operation and contact routes easy to verify.
 
 GSTIN, PAN, residential address, and sensitive registration details belong to legal review and should not be explained on About.
 

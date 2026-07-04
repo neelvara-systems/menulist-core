@@ -1,5 +1,7 @@
 # Tools Hub - Marketing Notes
 
+**Last Updated:** July 4, 2026
+
 ## Internal Positioning
 
 MenuList Tools is the public acquisition layer around public business truth.

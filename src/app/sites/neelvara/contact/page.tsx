@@ -11,11 +11,11 @@ import { NeelvaraLink } from '../SiteHeaderNav';
 
 export const metadata: Metadata = {
     title: 'Contact',
-    description: 'Company, legal, privacy, partnership, and business contact routes for Neelvara Systems.',
+    description: 'Company, legal, privacy, partnership, and business inquiry routes for Neelvara Systems.',
     alternates: { canonical: buildNeelvaraUrl('/contact') },
     openGraph: {
         title: 'Contact | Neelvara Systems',
-        description: 'Company, legal, privacy, partnership, and business contact routes for Neelvara Systems.',
+        description: 'Company, legal, privacy, partnership, and business inquiry routes for Neelvara Systems.',
         url: buildNeelvaraUrl('/contact'),
         siteName: 'Neelvara Systems',
         type: 'website',
@@ -31,7 +31,7 @@ export const metadata: Metadata = {
     twitter: {
         card: 'summary_large_image',
         title: 'Contact | Neelvara Systems',
-        description: 'Company, legal, privacy, partnership, and business contact routes for Neelvara Systems.',
+        description: 'Company, legal, privacy, partnership, and business inquiry routes for Neelvara Systems.',
         images: [buildNeelvaraUrl(NEELVARA_OG_IMAGE_PATH)],
     },
 };
@@ -49,11 +49,11 @@ export default function NeelvaraContactPage() {
                     <h1 className="serif">Choose the right contact route.</h1>
                     <p>
                         Contact Neelvara Systems for company, legal, privacy, partnership,
-                        or business-related inquiries. Product support, onboarding, billing, and
+                        or business inquiries. Product support, onboarding, billing, and
                         account questions should start from the product website.
                     </p>
                     <div className="nv-page-hero-meta glass">
-                        <span className="mono">company website</span>
+                        <span className="mono">company reference</span>
                         <span className="mono">direct email</span>
                         <span className="mono">India</span>
                     </div>
@@ -84,8 +84,8 @@ export default function NeelvaraContactPage() {
                     <div>
                         <span className="nv-eyebrow mono">
                             <span className="nv-pip" aria-hidden="true" />
-                            Product support
-                        </span>
+                        Product support
+                    </span>
                         <h2 className="serif">Looking for product support?</h2>
                         <p>
                             MenuList, Answerlattice, and CampaignCue keep product-specific
@@ -136,7 +136,7 @@ export default function NeelvaraContactPage() {
                         </span>
                         <h2 className="serif">Company questions start with email.</h2>
                         <p>
-                            For company-level questions about Neelvara Systems, email
+                            For company questions about Neelvara Systems, email
                             {' '}
                             {NEELVARA_CONTACT_EMAIL}.
                         </p>

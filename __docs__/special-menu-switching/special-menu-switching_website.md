@@ -37,7 +37,7 @@ Create special menus for festivals, events, or seasons. Set the dates. Your regu
 
 - Your regular menu stays exactly as it is
 - Special menus appear on schedule and disappear automatically
-- Customers always see the right menu for the right time
+- Customers using your MenuList public link see the scheduled menu after the supported refresh path
 - You set it once and forget it
 
 ---
@@ -56,9 +56,9 @@ Schedule your Diwali menu weeks in advance. It shows up on your page exactly whe
 
 When the special period ends, your regular menu returns automatically. No manual work. No "I forgot to remove the Diwali combos."
 
-### 4. Works everywhere your menu appears
+### 4. Works where your MenuList menu appears
 
-Your QR code, your public page, your digital screens — everything shows the right menu at the right time. One change, everywhere updated.
+Your QR code link, public page, and configured digital screens follow the scheduled menu through their supported refresh paths. Downloaded or printed menus should be regenerated or replaced after changes.
 
 ### 5. Same editor you already know
 
@@ -78,7 +78,7 @@ Choose when it starts and when it ends. Tomorrow, next week, or next month — y
 
 ### Step 3: That's it
 
-MenuList handles the rest. Your special menu appears on schedule, shows on all your surfaces, and your regular menu comes back automatically when it's over.
+MenuList handles the scheduled switch. Your special menu appears on the public link, OBP menu entry, and configured screens through their supported refresh paths, and your regular menu comes back automatically when it's over.
 
 ---
 
@@ -122,7 +122,7 @@ No. You create special menus using the exact same editor you use for your regula
 
 ### Does it work on QR codes, screens, and my public page?
 
-Yes. Every surface that shows your menu automatically shows the right one — regular or special.
+Yes for MenuList-controlled live surfaces: your QR code link/public page, OBP menu entry, and configured screens follow the active menu through their supported refresh paths. Downloaded PDFs, printed copies, and connected provider systems need replacement, regeneration, or integration evidence.
 
 ---
 
@@ -134,7 +134,7 @@ Special Menu Switching | MenuList — Festival & Seasonal Menus
 
 ### Meta Description
 
-Create special menus for festivals, events, and seasons. Set dates, let MenuList switch automatically. Your regular menu stays safe. Works on QR, screens, and public pages.
+Create special menus for festivals, events, and seasons. Set dates, let MenuList switch the active menu path automatically. Your regular menu stays safe. Works on the QR link, public page, and configured screens through supported refresh paths.
 
 ### Keywords
 

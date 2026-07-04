@@ -32,12 +32,16 @@
 | `npm run verify:ai-accounting` | PASS |
 | `git diff --check -- [touched paths]` | PASS |
 | `npx tsc --noEmit --incremental false --pretty false` | PASS |
-| `firebase deploy --only functions:mapsPlaceCheck --project menulist-qa --non-interactive` | BLOCKED after predeploy lint/build passed: Cloud Resource Manager 403 |
+| `npm run verify:functions-deploy-preflight` | Current retry prerequisite; rerun before any scoped deploy attempt |
+| `firebase deploy --project menulist-qa --config firebase.json --only functions:mapsPlaceCheck --non-interactive` | Current scoped QA retry command after preflight and audit evidence |
 
 ## Runtime Notes
 
 - The callable is deployed only when Firebase Functions deployment succeeds.
-- The July 3, 2026 deploy attempt did not reach deployment because the active caller lacks permission on `menulist-qa`.
+- The July 3, 2026 deploy attempt did not reach deployment because the active caller lacks permission on `menulist-qa`; preserve it as historical blocker evidence only.
+- Do not reuse the older command shape from that attempt.
+- Current Maps Place Check retry evidence must start with `npm run verify:functions-deploy-preflight`, use the scoped `menulist-qa` command above, and record the exact target and reason in the production-readiness audit before deploy retry.
+- Production deploys require QA evidence and explicit production deploy approval.
 - The feature is off by default until `PUBLIC_TRUTH_MAPS_PLACE_CHECK_ENABLED=true` is set in the Functions runtime or the code flag is intentionally changed.
 - Do not enable the feature until a real provider smoke test confirms Maps grounding works through the pinned `@google/genai` `1.16.0` `generateContent` path, or until a scoped SDK migration moves this callable to the currently documented Interactions API path.
 - Any UI that displays generated Maps-grounded content must show Google Maps sources immediately after the generated content or within one user interaction.

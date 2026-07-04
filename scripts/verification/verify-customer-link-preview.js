@@ -105,7 +105,7 @@ assertIncludes(validationDoc, 'Current release approval still requires the activ
 assertIncludes(validationDoc, 'npm run verify:customer-link-preview', 'One Customer Link Preview validation source gate');
 assertIncludes(toolsReadmeDoc, '[customer-link-preview](./customer-link-preview/README.md)', 'MenuList Tools README');
 assertIncludes(familyReadmeDoc, '[One Customer Link Preview](../customer-link-preview/README.md)', 'Public Truth Tools family docs');
-assertIncludes(familyReadmeDoc, 'thirteen public tools, a public shareable report layer, and twelve owner readiness modules', 'Public Truth Tools family status');
+assertIncludes(familyReadmeDoc, 'sixteen public tools, a public shareable report layer, and twelve owner readiness modules', 'Public Truth Tools family status');
 assertIncludes(familyReadmeDoc, '/tools/customer-link-preview', 'Public Truth Tools route list');
 assertIncludes(familySpecDoc, 'One Customer Link Preview V0', 'Public Truth Tools spec implementation summary');
 assertIncludes(familyImplDoc, 'customerLinkPreviewReport.ts', 'Public Truth Tools implementation docs');

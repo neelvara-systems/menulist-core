@@ -27,11 +27,11 @@ The PDF downloads to your device within a few seconds.
 
 ---
 
-## The PDF always reflects your current menu
+## Download a fresh PDF after menu changes
 
-Every time you download a PDF, it is generated fresh from your live menu data. If you changed a price yesterday, the PDF you download today will show the new price.
+Every time you download a PDF, it is generated from the current project data at that moment. If you changed a price yesterday, download a fresh PDF before printing or sharing it.
 
-There is no "saved" PDF — each download is created on the spot.
+There is no saved PDF copy inside MenuList — each download is created on the spot, and printed or shared copies represent the version generated at that time.
 
 ---
 

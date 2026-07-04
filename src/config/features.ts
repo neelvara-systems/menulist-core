@@ -3052,6 +3052,7 @@ export const FEATURE_FLAGS = {
      * @see __docs__/menulist-tools/qr-link-health-check/qr-link-health-check_impl.md
      * @see __docs__/menulist-tools/menu-readability-check/menu-readability-check_impl.md
      * @see __docs__/menulist-tools/customer-question-coverage-check/customer-question-coverage-check_impl.md
+     * @see __docs__/menulist-tools/customer-faq-reply-pack/customer-faq-reply-pack_impl.md
      * @see __docs__/menulist-tools/booking-inquiry-readiness-check/booking-inquiry-readiness-check_impl.md
      * @see __docs__/menulist-tools/price-availability-gap-check/price-availability-gap-check_impl.md
      * @see __docs__/menulist-tools/menu-pdf-cleanup-check/menu-pdf-cleanup-check_impl.md
@@ -3059,8 +3060,10 @@ export const FEATURE_FLAGS = {
      * @see __docs__/menulist-tools/customer-link-preview/customer-link-preview_impl.md
      * @see __docs__/menulist-tools/social-bio-link-check/social-bio-link-check_impl.md
      * @see __docs__/menulist-tools/whatsapp-action-link-check/whatsapp-action-link-check_impl.md
+     * @see __docs__/menulist-tools/whatsapp-reply-pack/whatsapp-reply-pack_impl.md
      * @see __docs__/menulist-tools/hours-check/hours-check_impl.md
      * @see __docs__/menulist-tools/photo-gap-check/photo-gap-check_impl.md
+     * @see __docs__/menulist-tools/business-facts-copy-pack/business-facts-copy-pack_impl.md
      * @see __docs__/menulist-tools/tools-hub/tools-hub_impl.md
      * @see __docs__/menulist-tools/shareable-tool-reports/shareable-tool-reports_impl.md
      */
@@ -3072,6 +3075,7 @@ export const FEATURE_FLAGS = {
     ENABLE_PUBLIC_TRUTH_QR_LINK_HEALTH_CHECK: true,
     ENABLE_PUBLIC_TRUTH_MENU_READABILITY_CHECK: true,
     ENABLE_PUBLIC_TRUTH_CUSTOMER_QUESTION_COVERAGE_CHECK: true,
+    ENABLE_PUBLIC_TRUTH_CUSTOMER_FAQ_REPLY_PACK: true,
     ENABLE_PUBLIC_TRUTH_BOOKING_INQUIRY_READINESS_CHECK: true,
     ENABLE_PUBLIC_TRUTH_PRICE_AVAILABILITY_GAP_CHECK: true,
     ENABLE_PUBLIC_TRUTH_MENU_PDF_CLEANUP_CHECK: true,
@@ -3079,8 +3083,10 @@ export const FEATURE_FLAGS = {
     ENABLE_PUBLIC_TRUTH_CUSTOMER_LINK_PREVIEW: true,
     ENABLE_PUBLIC_TRUTH_SOCIAL_BIO_LINK_CHECK: true,
     ENABLE_PUBLIC_TRUTH_WHATSAPP_ACTION_LINK_CHECK: true,
+    ENABLE_PUBLIC_TRUTH_WHATSAPP_REPLY_PACK: true,
     ENABLE_PUBLIC_TRUTH_HOURS_CHECK: true,
     ENABLE_PUBLIC_TRUTH_PHOTO_GAP_CHECK: true,
+    ENABLE_PUBLIC_TRUTH_BUSINESS_FACTS_COPY_PACK: true,
     ENABLE_PUBLIC_TRUTH_OWNER_CHECK: true,
     ENABLE_PUBLIC_TRUTH_CHECK_EXTERNAL_ADAPTERS: false,
     ENABLE_PUBLIC_TRUTH_CHECK_AI_READABILITY: false,

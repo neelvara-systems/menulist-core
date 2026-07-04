@@ -4,13 +4,15 @@
 **Source:** ChatGPT Strategic Planning Sessions (2 sessions) + Cascade Codebase Audit + Independent Web Research  
 **Authority:** Founder reference document  
 **Review Frequency:** Quarterly  
-**Status:** 🔒 LOGGED FOR FUTURE — Not active development
+**Status:** Historical roadmap/source-state reference; not current launch certification
 
 ---
 
+> **Launch Boundary:** This file preserves February 2026 roadmap and source-state evidence. It is not live feature-flag truth, current implementation approval, current testing approval, current launch approval, or production certification. Current MenuList readiness is decided only by the active [production-readiness audit](../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../production-readiness/external-certification-runbook.md), current source verifiers, browser/device QA, provider smoke, target deploy evidence, and production-host smoke. For live feature flags, inspect `src/config/features.ts`.
+
 ## How to Read This Document
 
-This document captures **every strategic topic** discussed across two ChatGPT planning sessions, cross-checked against the actual MenuList codebase and validated with independent web research. Each item includes:
+This document captures **every strategic topic** discussed across two ChatGPT planning sessions, cross-checked against the MenuList codebase snapshot available at the time and validated with independent web research. Treat all "built", "done", "flag off", and "priority" labels below as historical planning evidence unless a current verifier, runtime source file, and external gate now prove the same claim. Each item includes:
 
 - **ChatGPT's position** — what was recommended
 - **Codebase reality** — what actually exists today
@@ -20,11 +22,11 @@ This document captures **every strategic topic** discussed across two ChatGPT pl
 
 ---
 
-# PART 1: CURRENT STATE AUDIT (CODEBASE TRUTH)
+# PART 1: FEBRUARY 2026 SOURCE-STATE SNAPSHOT
 
-> Before planning the future, we must know exactly where we stand. This is the ground truth from `src/config/features.ts` and the codebase.
+> Historical snapshot only. This section is not current codebase truth and must not be used as launch, testing, deploy, or activation approval. Current flags live in `src/config/features.ts`; current readiness lives in the production-readiness audit and External Certification Runbook.
 
-## ✅ FULLY BUILT & PRODUCTION-READY
+## Implemented Source Evidence (Not Launch Certification)
 
 | #   | Feature                           | Flag                          | Status   | Key Files                                        |
 | --- | --------------------------------- | ----------------------------- | -------- | ------------------------------------------------ |
@@ -48,7 +50,7 @@ This document captures **every strategic topic** discussed across two ChatGPT pl
 | 18  | Physical Surfaces                 | N/A                           | ✅ BUILT | Tent cards, stickers, PDF export                 |
 | 19  | Razorpay Billing                  | N/A                           | ✅ ON    | Subscription + quantity-based billing            |
 
-## ✅ BUILT BUT FLAG OFF (Ready for Testing/Activation)
+## Historical Flag-Off / Activation Candidates (Not Testing Approval)
 
 | #   | Feature                          | Flag                                    | Status     | Key Files                                               |
 | --- | -------------------------------- | --------------------------------------- | ---------- | ------------------------------------------------------- |
@@ -101,8 +103,8 @@ This document captures **every strategic topic** discussed across two ChatGPT pl
 
 | Phase       | Feature                      | ChatGPT Rationale                               | Current State                              |
 | ----------- | ---------------------------- | ----------------------------------------------- | ------------------------------------------ |
-| **Phase 1** | Menu Correctness Engine      | Trust firewall — wrong menu destroys everything | ✅ **DONE** (flag OFF, ready to test)      |
-| **Phase 2** | Full Mobile Support          | Real-world usability — owners live on phone     | ✅ **DONE** (flag OFF, ready to test)      |
+| **Phase 1** | Menu Correctness Engine      | Trust firewall — wrong menu destroys everything | Historical implementation evidence; current approval requires active gates |
+| **Phase 2** | Full Mobile Support          | Real-world usability — owners live on phone     | Historical implementation evidence; current approval requires active gates |
 | **Phase 3** | Messaging Onboarding         | Growth unlock — frictionless acquisition        | 📝 **DOCUMENTED** (docs complete, no code) |
 | **Phase 4** | Official Public Presence     | Identity layer — become their default link      | ✅ **DONE** (OBP built, flag OFF)          |
 | **Phase 5** | Reputation Infrastructure    | Lock-in layer — own reviews + responses         | 📝 **DOCUMENTED** (no code)                |
@@ -712,8 +714,8 @@ Hours status badge + per-item availability toggles already cover 70% of scenario
 
 This is not a menu tool. It is the layer between a business and its customers that ensures:
 
-- What customers see is always correct
-- What customers experience is consistent
+- What customers see from supported MenuList surfaces has a single owner-approved source
+- What customers experience is consistent where MenuList owns the surface
 - What customers decide is guided intelligently
 - What customers feel is trust and reliability
 
@@ -733,7 +735,7 @@ This is not a menu tool. It is the layer between a business and its customers th
 
 2. **Public presence hardens.** Once the OBP link is on Google, Instagram, QR codes, and signage — changing it means updating everything.
 
-3. **Correctness becomes expected.** Once customers trust MenuList pages are always accurate, going back to PDFs or manual updates feels dangerous.
+3. **Correctness becomes expected.** Once customers trust MenuList pages as the owner-approved source, going back to unmanaged PDFs or manual updates feels dangerous.
 
 4. **Network effects (subtle).** As more businesses in a locality use MenuList, customers start expecting all businesses to have it.
 
@@ -752,9 +754,9 @@ If MenuList doesn't onboard real stores in 2026, the infrastructure becomes theo
 | Priority | Action                                                                       | Status              | Owner       | Estimated Effort     |
 | -------- | ---------------------------------------------------------------------------- | ------------------- | ----------- | -------------------- |
 | **P0**   | **Founder-Led Installation: Onboard 20-50 premium SMBs using 5-Step Ritual** | **NEXT ACTION**     | **Founder** | **30 days**          |
-| **P0**   | Enable & test MCE (Menu Correctness Engine)                                  | Ready to test       | Founder     | 1-2 days testing     |
-| **P0**   | Enable & test Mobile UI                                                      | Ready to test       | Founder     | 2-3 days testing     |
-| **P0**   | Enable & test OBP (Official Business Page)                                   | Ready to test       | Founder     | 1-2 days testing     |
+| **P0**   | Enable & test MCE (Menu Correctness Engine)                                  | Historical activation candidate; current approval requires active gates | Founder     | 1-2 days testing     |
+| **P0**   | Enable & test Mobile UI                                                      | Historical activation candidate; current approval requires active gates | Founder     | 2-3 days testing     |
+| **P0**   | Enable & test OBP (Official Business Page)                                   | Historical activation candidate; current approval requires active gates | Founder     | 1-2 days testing     |
 | **P1**   | Build Messaging Onboarding                                                   | Docs complete       | Engineering | 2-3 weeks            |
 | **P1**   | Design OBP adoption nudges                                                   | ✅ **DONE**         | Engineering | Implemented (Feb 19) |
 | **P2**   | Build Real-Time Status Layer                                                 | ✅ **DONE**         | Engineering | Implemented (Feb 19) |
@@ -876,7 +878,7 @@ If MenuList doesn't onboard real stores in 2026, the infrastructure becomes theo
 - **ControlOS Concept (18 ChatGPT docs):** "Control Layer" = MenuList evolving from menu truth to business truth infrastructure. NOT a separate product. Silent autopilot system. 5 Pillars: Business Identity Truth, Operational Public Truth, Menu & Offering Truth, Public Communication Layer, Presence Consistency Layer.
 - **"5-Minute Understanding" Rule (NEW):** Non-tech SMB must understand MenuList in 5 minutes without help. If owner needs training → too complex.
 - **"Calm, Elite Infrastructure" Identity (LOCKED 3 years):** Simple surface, deep underneath. Invisible power. Not feature-heavy SaaS.
-- **Silent Autopilot Philosophy:** Owner updates once → correct everywhere. Minimal UI. No dashboards.
+- **Silent Autopilot Philosophy:** Owner updates once → supported MenuList surfaces follow their verified refresh paths. External platforms and printed/downloaded artifacts need placement or replacement. Minimal UI. No dashboards.
 - **ControlOS-GrowthOS Boundary:** Truth authority (ControlOS) vs growth execution (GrowthOS). Never merge. GrowthOS reads from truth layer, never writes.
 - **GrowthOS Framework (9 ChatGPT docs):** Revenue execution engine. Entirely DEFERRED. Only after MenuList = system-of-record.
 - **KitStamp:** Optional forever. Never allowed to distract.

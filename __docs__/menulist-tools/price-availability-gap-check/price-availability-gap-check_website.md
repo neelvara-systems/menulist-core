@@ -1,5 +1,7 @@
 # Price Availability Gap Check - Website Copy
 
+**Last Updated:** July 4, 2026
+
 **Route:** `/tools/price-availability-gap-check`
 
 ## Page Metadata

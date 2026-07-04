@@ -13,13 +13,15 @@ This specification describes the current Menu Correctness Engine source contract
 
 Current release approval requires the active [production-readiness audit](../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../production-readiness/external-certification-runbook.md) evidence, `npm run verify:public-business-truth`, browser/mobile save and publish-gate QA, customer-facing surface smoke for validated project data, Firestore rules/deploy evidence if rules change, target deploy evidence, and production-host smoke.
 
+Current public claim boundary: MCE validates project data at save time and stamps `_mce` metadata on the existing project document. It does not certify every customer-facing surface, artifact, device, or provider target without separate target evidence.
+
 ## 1. Executive Summary
 
-The Menu Correctness Engine (MCE) is a validation layer that runs on every menu save, ensuring project data is complete, valid, and safe before it reaches customer-facing surfaces. MCE validates — it does not duplicate, route, or store separate copies of data.
+The Menu Correctness Engine (MCE) is a validation layer that runs on every menu save, checking whether project data is complete, valid, and safe before supported customer-facing publishing flows continue. MCE validates — it does not duplicate, route, or store separate copies of data.
 
-All surfaces (QR code, website, digital screen, PDF, POS, staff prompt) already read from the same Firestore project document. MCE adds the missing piece: **deterministic validation that catches errors at save-time** and stamps the project data as verified.
+Supported surfaces read from the same Firestore project document through their existing refresh, download, device, or provider paths. MCE adds the missing piece: **deterministic validation that catches errors at save-time** and stamps the project data as verified.
 
-This is invisible infrastructure. Owners never interact with it. They save their menu, MCE validates it silently, and surfaces serve verified data.
+This is invisible infrastructure. Owners do not manage it. They save their menu, MCE validates it silently, and supported publishing flows can use the verified project data.
 
 ---
 
@@ -27,16 +29,16 @@ This is invisible infrastructure. Owners never interact with it. They save their
 
 ### Primary Goal
 
-**Ensure menu data is validated and correct before it reaches any customer-facing surface.**
+**Ensure menu data is validated before supported customer-facing publishing flows continue.**
 
-No invalid price, no missing item name, no broken category reference, no orphaned outlet data should ever reach customers.
+Invalid prices, missing item names, broken category references, and orphaned outlet data should be caught in the save/publish-gate path before a release claims customer-facing output is certified.
 
 ### Secondary Goals
 
-- **Reduce owner anxiety:** Owners should never need to manually check each surface after making a change.
+- **Reduce owner anxiety:** Owners should have less manual checking for supported MenuList surfaces after making a change.
 - **Prevent revenue-damaging errors:** Wrong prices, missing items, or stale menus cause real financial harm to restaurant owners.
-- **Build permanent trust:** When MenuList is always correct, it becomes the system owners open first for any menu issue.
-- **Enable future surface expansion:** New surfaces (e.g., Google Business Profile, third-party aggregators) automatically inherit correctness guarantees.
+- **Build permanent trust:** When MenuList validates menu data consistently, it becomes the system owners open first for any menu issue.
+- **Enable future surface expansion:** New surfaces (e.g., Google Business Profile, third-party aggregators) can reuse the same validation metadata once they have target-specific runtime and QA evidence.
 
 ### Non-Goals
 
@@ -62,7 +64,7 @@ MCE must never become any of the following. If it starts drifting toward these, 
 | Manual "verify" button    | Verification is automatic. Manual checks = tool, not infrastructure |
 | Separate data storage     | Project data IS the truth. No duplicate collections needed          |
 
-**Governing principle:** If an owner ever "uses" MCE, the design is wrong. They should only _feel_ that MenuList never lets wrong menus exist.
+**Governing principle:** If an owner ever "uses" MCE, the design is wrong. They should only _feel_ that MenuList validates menu data before supported publishing flows continue.
 
 ---
 
@@ -95,7 +97,7 @@ Today, when an owner edits a menu item in the dashboard:
 4. POS webhooks send data on next debounced trigger
 5. Staff prompts update immediately (Firestore live read)
 
-**The gap:** There is no single system that verifies "the menu I just saved is complete, valid, and ready for all surfaces." Each surface independently reads data with different timing, different logic, and different failure modes.
+**The gap:** There is no single system that verifies "the menu I just saved is complete, valid, and ready for supported publishing flows." Each surface independently reads data with different timing, different logic, and different failure modes.
 
 ### Real-World Failure Scenarios
 
@@ -105,7 +107,7 @@ Today, when an owner edits a menu item in the dashboard:
 | 2   | Price saved but screen hasn't refreshed            | Screen shows old price for up to 18 seconds              | Version polling (partial)             |
 | 3   | Outlet inherits wrong price from master            | Wrong price in one location                              | Multi-outlet resolution (partial)     |
 | 4   | Item marked unavailable but PDF already downloaded | PDF shows unavailable item as available                  | Staleness tracking (partial)          |
-| 5   | Editor save fails silently                         | All surfaces show stale data                             | Error toast (easy to miss)            |
+| 5   | Editor save fails silently                         | Supported surfaces can show stale data                   | Error toast (easy to miss)            |
 | 6   | Bulk price change via Command Center               | Some surfaces update before others                       | None                                  |
 | 7   | Peak-hour price edit during rush                   | QR correct, screen old, staff confused, billing conflict | None                                  |
 | 8   | Item runs out mid-rush, staff disables             | Still visible on screen/QR until cache refreshes         | None                                  |
@@ -125,14 +127,14 @@ Today, when an owner edits a menu item in the dashboard:
 
 1. **Owner edits menu** — nothing changes in their workflow.
 2. **MCE validates the edit** — checks that all required fields are present, prices are valid, categories are intact, and multi-outlet rules are respected.
-3. **If valid:** MCE stamps the project data as verified (`_mce.verified: true`). All surfaces continue serving this verified data directly from the same project document.
+3. **If valid:** MCE stamps the project data as verified (`_mce.verified: true`). Supported surfaces continue reading the same project document through their own refresh, download, device, or provider paths.
 4. **If invalid:** The data is still saved (raw write always succeeds) but marked as unverified (`_mce.verified: false`). The **Publish-Gate** (separate from MCE core) reads this metadata and blocks "Continue to UI Editor" until critical issues are fixed. Surfaces continue reading from the project document directly — MCE v1 does not gate surface exposure (see §18 Exposure Control Doctrine).
 
 ### The Four Guarantees
 
 | #   | Guarantee                     | What It Means                                                                                  |
 | --- | ----------------------------- | ---------------------------------------------------------------------------------------------- |
-| 1   | **Single Source of Truth**    | Every surface reads from the same Firestore project document — no duplicate copies             |
+| 1   | **Single Source of Truth**    | Supported surfaces read from the same Firestore project document — no duplicate copies         |
 | 2   | **Validation Before Marking** | No menu data is marked as verified (`_mce.verified: true`) without passing all critical checks |
 | 3   | **Never Block the Owner**     | If validation fails, the raw data write still succeeds — the owner's work is never lost        |
 | 4   | **Zero Owner Configuration**  | MCE works automatically — no setup, no settings, no toggles                                    |
@@ -143,10 +145,10 @@ These are the permanent, deterministic rules that define "correct" for MCE. Not 
 
 | Law | Name                       | Definition                                                                                                                                                               | Scope for v1                      |
 | --- | -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------- |
-| 1   | **Price Integrity**        | A single item must have one correct, valid price per outlet per context. No conflicting price sources, no overwrite conflicts, no empty/invalid prices for visible items | All surfaces                      |
-| 2   | **Availability Integrity** | Customer never sees an item that cannot be sold. Disabled items must disappear everywhere simultaneously. Outlet-specific overrides respected                            | All surfaces                      |
-| 3   | **Hours Data Consistency** | Store open/closed state and working hours must be consistent across all surfaces that display them. If hours data exists, all surfaces reflect the same truth            | QR/web, official page, future GBP |
-| 4   | **Data Completeness**      | All customer-facing fields must be present and valid. No empty names, no orphan categories, no broken references, no duplicate IDs                                       | All surfaces                      |
+| 1   | **Price Integrity**        | A single item must have one correct, valid price per outlet per context. No conflicting price sources, no overwrite conflicts, no empty/invalid prices for visible items | Supported save/publish paths      |
+| 2   | **Availability Integrity** | Disabled items are removed from saved project data; outlet-specific overrides remain respected                                                                         | Supported save/publish paths      |
+| 3   | **Hours Data Consistency** | Store open/closed state and working hours must be consistent in the saved source that supported surfaces read                                                          | QR/web, official page, future GBP |
+| 4   | **Data Completeness**      | All customer-facing fields must be present and valid. No empty names, no orphan categories, no broken references, no duplicate IDs                                       | Supported save/publish paths      |
 | 5   | **Structural Integrity**   | Master-to-outlet inheritance must remain stable. Local overrides preserved during master edits. No orphan items, no broken category references after merge               | Multi-outlet stores               |
 
 > **Note on Law 3:** MenuList does not currently have scheduled menus (breakfast vs. dinner). The Hours Status Display feature (`ENABLE_HOURS_STATUS_DISPLAY`) handles open/closed logic via `src/lib/hours/hoursEngine.ts`. MCE validates that hours data, when present, is consistent — it does not build automatic time-based menu switching.
@@ -199,7 +201,7 @@ These rules define how MCE governs exposure without becoming annoying software.
 
 | ID   | Story                                                                                                  | Acceptance Criteria                                                                  |
 | ---- | ------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------ |
-| US-1 | As an owner, I want every surface to show the same menu so customers never see conflicting information | All surfaces read from the same verified project data                                |
+| US-1 | As an owner, I want supported surfaces to use the same menu source so customers see consistent MenuList output | Supported surfaces read from the same verified project data through their audited paths |
 | US-2 | As an owner, I want to be told if my menu has issues before it goes live so I can fix them             | Validation errors shown clearly before proceeding to UI Editor                       |
 | US-3 | As an owner, I don't want to manually check each surface after making changes                          | MCE validates automatically on every save — zero manual steps                        |
 | US-4 | As a multi-outlet owner, I want all locations to reflect my master menu changes correctly              | MCE validates master→outlet propagation correctness on every outlet save             |
@@ -270,7 +272,7 @@ MCE is designed for the 3-Year Architecture Freeze. Once implemented:
 
 - No validation logic needs to change for 3+ years
 - New validation rules are added to the CSR without touching surface code
-- New surfaces automatically benefit from validated project data
+- New surfaces can use validated project data once their runtime path and QA evidence are added
 - If future needs require snapshot collections or background monitoring, the `_mce` metadata provides the foundation
 
 ---
@@ -312,13 +314,13 @@ MCE must pass all three stress tests before production rollout. These are derive
 | --- | --------------------------------- | ------------------------------------------------------------------------------- |
 | 4   | Item out of stock, staff disables | CSR validates on save; item removed from project data; surfaces update normally |
 | 6   | Screen device restarts            | Screen loads from localStorage cache + fetches fresh data on reconnect          |
-| 8   | Staff shares old PDF via WhatsApp | PDF generates on-demand from current project data — always fresh                |
+| 8   | Staff shares old PDF via WhatsApp | Fresh PDF downloads generate from current project data; old downloaded PDFs should be replaced |
 | 12  | Staff bulk-edits wrong price      | CSR catches invalid price format; stamps `_mce.verified: false` with warnings   |
 | 15  | Weak internet inside store        | Screen shows localStorage cached version; reconnects auto-refresh               |
 | 18  | Multiple rapid edits              | Editor debounce handles this natively; CSR validates final state                |
 | 30  | Owner returns                     | Zero complaints, zero mismatches, no manual intervention needed                 |
 
-**Ultimate criterion:** Owner can disappear indefinitely and customers never see wrong menu.
+**Ultimate criterion:** Owner can rely on save-time validation plus target-specific release evidence for supported customer-facing output.
 
 ### Test 2: Multi-Outlet Chain Chaos Test (12 Outlets)
 
@@ -347,7 +349,7 @@ MCE must pass all three stress tests before production rollout. These are derive
 | PDF generation fails                               | Other surfaces unaffected — PDF failure is isolated                      |
 | 3 screens reconnect simultaneously                 | Each independently fetches fresh data via `contentVersion` listener      |
 
-**Ultimate criterion:** Customer never sees wrong menu, even when everything goes wrong.
+**Ultimate criterion:** Save-time validation, per-outlet isolation, and target-specific refresh evidence keep supported output bounded during failure scenarios.
 
 ---
 
@@ -378,7 +380,7 @@ MCE is not just a correctness feature. It is the foundation for MenuList's strat
 
 ### Layer 1 — Truth Infrastructure (NOW — MCE)
 
-MCE ensures: correct menu data through validation on every save. Everything internally verified. This is MenuList Core.
+MCE ensures: project data is validated on every audited save path. This is MenuList Core.
 
 ### Layer 2 — Presence Authority (NEXT)
 
@@ -388,7 +390,7 @@ Once validation is in place, MenuList becomes the single source of verified busi
 
 Once truth + presence are stable, MenuList can push verified data to external surfaces: Google Business Profile, WhatsApp catalog, discovery platforms. Distribution becomes trivial because the truth layer already validates data.
 
-**Why MCE must be right before Layer 2–3:** You cannot distribute incorrect data globally. MCE is the prerequisite.
+**Why MCE must be right before Layer 2–3:** Distribution should start from validated source data, and each external target still needs its own runtime and QA evidence.
 
 ---
 
@@ -404,7 +406,7 @@ These decisions were made during the design phase after evaluating the full Chat
 
 **Rationale:**
 
-- All surfaces already read from the same Firestore project document. There is no routing problem to solve.
+- Supported surfaces already read from the same Firestore project document through their own paths. There is no routing problem to solve inside MCE.
 - All write points are already controlled through `updateProject()`. There is no untrusted data path.
 - A separate collection would add 3 extra writes per save ($0.000360/save) and extra reads per surface request.
 - The `sanitizeForClient()` function already strips internal metadata at read-time. Snapshots would just move this to write-time — same result, more complexity.

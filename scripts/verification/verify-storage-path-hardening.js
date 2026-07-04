@@ -24,12 +24,85 @@ function escapeRegExp(value) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
+function listSourceFiles(dir) {
+  const absDir = path.join(repoRoot, dir);
+  const entries = fs.readdirSync(absDir, { withFileTypes: true });
+  return entries.flatMap((entry) => {
+    const relPath = path.join(dir, entry.name);
+    if (entry.isDirectory()) {
+      if (entry.name === 'node_modules' || entry.name.startsWith('.')) return [];
+      return listSourceFiles(relPath);
+    }
+    if (!/\.(?:ts|tsx)$/.test(entry.name) || entry.name.endsWith('.d.ts')) return [];
+    return [relPath];
+  });
+}
+
+function listMenuListBrowserSurfaceFiles() {
+  return [
+    ...listSourceFiles('src/app'),
+    ...listSourceFiles('src/components'),
+  ].filter((relPath) => (
+    !relPath.startsWith('src/app/api/')
+    && !relPath.startsWith('src/app/sites/answerlattice/')
+    && !relPath.includes('/answerlattice/')
+  ));
+}
+
+function verifyMenuListBrowserSurfacesDoNotMutateStorageDirectly() {
+  const mutationSymbols = [
+    'deleteObject',
+    'getDownloadURL',
+    'getStorage',
+    'ref',
+    'uploadBytes',
+    'uploadBytesResumable',
+    'uploadString',
+  ];
+  const importPattern = /import\s+(?!type\b){([^}]+)}\s*from\s*['"](?:@firebase|firebase)\/storage['"]/gs;
+  const namespaceImportPattern = /import\s+\*\s+as\s+\w+\s+from\s*['"](?:@firebase|firebase)\/storage['"]/;
+  const failures = [];
+
+  for (const relPath of listMenuListBrowserSurfaceFiles()) {
+    const content = read(relPath);
+
+    for (const match of content.matchAll(importPattern)) {
+      const importedSymbols = match[1]
+        .split(',')
+        .map((entry) => entry.trim().split(/\s+as\s+/)[0].trim())
+        .filter(Boolean);
+      const importedMutationSymbols = importedSymbols.filter((symbol) => mutationSymbols.includes(symbol));
+      if (importedMutationSymbols.length > 0) {
+        failures.push(`${relPath}: imports ${importedMutationSymbols.join(', ')} from firebase/storage`);
+      }
+    }
+
+    if (namespaceImportPattern.test(content)) {
+      const usesMutationSymbol = mutationSymbols.some((symbol) => new RegExp(`\\.${symbol}\\s*\\(`).test(content));
+      if (usesMutationSymbol) {
+        failures.push(`${relPath}: imports firebase/storage namespace and calls a mutation helper`);
+      }
+    }
+  }
+
+  assert(
+    failures.length === 0,
+    failures.length > 0
+      ? `MenuList browser surfaces must not import direct Firebase Storage mutation helpers; use storage DAL/helpers or API routes instead:\n${failures.join('\n')}`
+      : 'MenuList browser surfaces must not import direct Firebase Storage mutation helpers; use storage DAL/helpers or API routes instead',
+  );
+}
+
 const projectsDal = read('src/database/projects/index.ts');
 const storageRules = read('storage.rules');
 const tracker = read('__docs__/production-readiness/infrastructure-risk-tracker.md');
 const uploadImpl = read('__docs__/projects/upload-file-processing/upload-file-processing_impl.md');
 const extractionSecurityAudit = read('__docs__/projects/ai-data-extraction/security-surface-audit-mar13-2026.md');
+const productionReadinessAudit = read('__docs__/audits/menulist-production-readiness-audit.md');
+const changelog = read('__docs__/CHANGELOG.md');
 const packageJson = JSON.parse(read('package.json'));
+
+verifyMenuListBrowserSurfacesDoNotMutateStorageDirectly();
 
 [
   'const getTenantScopedProjectUploadFileId',
@@ -114,6 +187,20 @@ assert(
   'Legacy project Storage paths are read-only',
 ].forEach((token) => {
   assert(extractionSecurityAudit.includes(token), `extraction security audit documents storage-path token ${token}`);
+});
+
+[
+  'Browser surface Storage mutation boundary checkpoint',
+  'scans active MenuList browser surfaces for direct Firebase Storage mutation helper imports',
+].forEach((token) => {
+  assert(productionReadinessAudit.includes(token), `production audit documents browser Storage mutation boundary token ${token}`);
+});
+
+[
+  'Browser Storage mutations are source-gated',
+  '`npm run verify:storage-paths` now scans active MenuList browser surfaces for direct Firebase Storage mutation helper imports',
+].forEach((token) => {
+  assert(changelog.includes(token), `changelog documents browser Storage mutation boundary token ${token}`);
 });
 
 assert(

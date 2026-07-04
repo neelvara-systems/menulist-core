@@ -1,6 +1,6 @@
 # Multi-Outlet Consistency — Mobile Support
 
-**Last Updated:** July 1, 2026 (v13 - extraction apply acknowledgement)
+**Last Updated:** July 4, 2026 (v14 - master update acknowledgement snapshot hardening)
 
 **Decision:** ✅ MOBILE SUPPORTED — Owner can manage outlets and chain policy from phone
 
@@ -41,6 +41,7 @@
 - `/api/projects/outlet-save` enforces OutletPolicy server-side for price, availability, description, image, language additions, local items/categories, project deactivation, theme, brand, and layout changes, so mobile controls are not the only protection.
 - Linked outlet description/image APIs and menu extraction jobs also enforce OutletPolicy server-side before provider calls, so hidden mobile actions cannot be bypassed by direct API or job requests.
 - Mobile menu now shows the same master-update awareness contract as desktop: current diff, outlet impact notes, "Got it" acknowledgment, and "Last changes" history.
+- Mobile and desktop "Got it" acknowledgements write a Firestore-safe `masterSnapshot.lastDiff`: optional diff fields are omitted before persistence, so missing outlet override values do not block the acknowledgement. The local desktop/mobile project cache still updates only after the project write succeeds.
 - Mobile menu linked-outlet resolution and related owner-menu failure paths use bounded diagnostics (`src/lib/multiOutlet/diagnostics.ts` and `src/components/mobile/utils/mobileMenuDiagnostics.ts`) instead of direct-console raw project/store/job payloads.
 - Linked outlet local saves, direct overrides, and extraction apply stamp `outletLocalState` only on the outlet project, so mobile local work is observable without writing master data.
 - Same `updateOutletPolicy` DAL function, now server-owned for policy writes. Mobile sends only changed policy flags; the server merges them into the master policy and the shared DAL requires a bounded, complete policy acknowledgement before local state updates.

@@ -296,6 +296,8 @@ function verifyClientBoundaries(files) {
     actionGuards,
     linkedOutletSaveResponse,
     multiOutletDal,
+    masterUpdateDiff,
+    awarenessHook,
     desktopLocations,
     addOutletModal,
     outletRenameModal,
@@ -338,6 +340,30 @@ function verifyClientBoundaries(files) {
     'fetch("/api/outlets/policy"',
     'outlet_policy_response_invalid',
   ].forEach((token) => assertIncludes(multiOutletDal, token, 'Multi-outlet DAL policy acknowledgement'));
+
+  [
+    'const toFirestoreSafeOutletContext = (',
+    'const toFirestoreSafeOperationalChange = (',
+    'const toFirestoreSafeMasterUpdateDiff = (',
+    'changes: diff.changes.map(toFirestoreSafeOperationalChange)',
+    'const firestoreSafeChanges = changes.map(toFirestoreSafeOperationalChange);',
+    'changes: firestoreSafeChanges',
+    'lastDiff: toFirestoreSafeMasterUpdateDiff(lastDiff)',
+    'price: item.price || ""',
+    'categoryId: item.category || ""',
+    'active: item.active !== false',
+    'price: attr.price || ""',
+    'active: attr.active !== false',
+    'active: cat.active !== false',
+  ].forEach((token) => assertIncludes(masterUpdateDiff, token, 'Master update awareness Firestore-safe snapshot boundary'));
+
+  [
+    'const newSnapshot = createMasterSnapshot(',
+    'await updateDoc(projectRef, {',
+    'masterSnapshot: newSnapshot',
+    'onProjectUpdate?.({ masterSnapshot: newSnapshot });',
+    'master_update_awareness_acknowledge_failed',
+  ].forEach((token) => assertIncludes(awarenessHook, token, 'Master update awareness acknowledge boundary'));
 
   [
     'canManageLocationSettings({',
@@ -437,6 +463,7 @@ function verifyDocs(packageJson, docs) {
     specDoc,
     testCasesDoc,
     aiExtractionDoc,
+    websiteDoc,
     storeOnboardingSpecDoc,
     storeOnboardingImplDoc,
     storeOnboardingBillingDoc,
@@ -537,6 +564,7 @@ function verifyDocs(packageJson, docs) {
     'MobileShell route mapping',
     'shared outlet action request policy',
     'bounded acknowledgement guards',
+    'Firestore-safe `masterSnapshot.lastDiff`',
     'server-side maximum-outlet cap',
   ].forEach((token) => assertIncludes(mobileDoc, token, 'Multi-outlet mobile source gate docs'));
 
@@ -544,6 +572,8 @@ function verifyDocs(packageJson, docs) {
     'Multi-location boundary source gate: `npm run verify:multi-location-boundary`',
     'performs no Firestore reads/writes/deletes',
     'does not call Razorpay',
+    'Master update awareness snapshot hardening is cost-neutral',
+    'nested `undefined` values that Firestore rejects',
     'Active-only max-outlet cap is cost-neutral',
   ].forEach((token) => assertIncludes(firebaseDoc, token, 'Multi-outlet Firebase source gate docs'));
 
@@ -553,6 +583,45 @@ function verifyDocs(packageJson, docs) {
     'linked outlet save acknowledgement',
     'Replacement cap',
   ].forEach((token) => assertIncludes(verificationDoc, token, 'Multi-outlet verification source gate docs'));
+
+  [
+    'saved changes through the outlet sync/cache path',
+    'saved master updates',
+  ].forEach((token) => assertIncludes(websiteDoc, token, 'Multi-outlet website sync/cache claim boundary'));
+
+  [
+    'linked stores inherit the saved changes through the outlet sync/cache path',
+    'current outlet sync/cache path',
+  ].forEach((token) => assertIncludes(specDoc, token, 'Multi-outlet spec sync/cache claim boundary'));
+
+  [
+    'Saved changes flow to linked outlets automatically',
+    'Saved master changes flow through the outlet sync/cache path',
+    'Save the master price once; linked outlets inherit it through the outlet sync/cache path',
+    'Save once; linked outlets inherit through the sync/cache path',
+  ].forEach((token) => assertIncludes(marketingDoc, token, 'Multi-outlet marketing sync/cache claim boundary'));
+
+  [
+    'linked stores inherit the saved changes through the outlet sync/cache path',
+  ].forEach((token) => assertIncludes(readmeDoc, token, 'Multi-outlet README sync/cache claim boundary'));
+
+  [
+    'All stores update instantly',
+    'Every store sees it instantly',
+    'Master changes flow to all stores instantly',
+    'Changes propagate instantly',
+    'Menu consistency guaranteed by default',
+    'brand consistency guaranteed',
+    'Instant sync',
+    'Update once, update everywhere',
+    'update everywhere',
+    'Instant updates',
+  ].forEach((token) => {
+    assertNotIncludes(readmeDoc, token, 'Multi-outlet README stale instant/guarantee claim');
+    assertNotIncludes(specDoc, token, 'Multi-outlet spec stale instant/guarantee claim');
+    assertNotIncludes(marketingDoc, token, 'Multi-outlet marketing stale instant/guarantee claim');
+    assertNotIncludes(websiteDoc, token, 'Multi-outlet website stale instant/guarantee claim');
+  });
 
   [
     'Multi-location boundary source gate',
@@ -575,6 +644,42 @@ function verifyDocs(packageJson, docs) {
   ].forEach((token) => assertIncludes(auditDoc, token, 'Production audit multi-location companion footer-boundary evidence'));
 
   [
+    'Master update awareness Firestore-safe snapshot checkpoint',
+    'No master/outlet inheritance behavior',
+    'masterSnapshot.lastDiff',
+  ].forEach((token) => assertIncludes(auditDoc, token, 'Production audit master update awareness snapshot hardening evidence'));
+
+  [
+    'Multi-Outlet public claim sync/cache checkpoint',
+    'saved master updates flow to linked stores through the outlet sync/cache path',
+    'No Multi-Outlet runtime behavior',
+  ].forEach((token) => assertIncludes(auditDoc, token, 'Production audit multi-outlet sync/cache claim-boundary evidence'));
+
+  [
+    'Multi-Outlet marketing update-everywhere checkpoint',
+    'saved master changes flowing through the outlet sync/cache path',
+    'No Multi-Outlet runtime behavior',
+  ].forEach((token) => assertIncludes(auditDoc, token, 'Production audit multi-outlet marketing update-everywhere evidence'));
+
+  [
+    'Multi-Outlet Sync/Cache Claim Boundary',
+    'no longer promises instant customer freshness',
+    'npm run verify:multi-location-boundary',
+  ].forEach((token) => assertIncludes(changelogDoc, token, 'Changelog multi-outlet sync/cache claim-boundary evidence'));
+
+  [
+    'Multi-Outlet Marketing Update-Everywhere Boundary',
+    'no longer uses the shorter update-everywhere slogans',
+    'npm run verify:multi-location-boundary',
+  ].forEach((token) => assertIncludes(changelogDoc, token, 'Changelog multi-outlet marketing update-everywhere evidence'));
+
+  [
+    'Master Update Awareness Snapshot Boundary',
+    'Firestore-safe before persistence',
+    'npm run verify:multi-location-boundary',
+  ].forEach((token) => assertIncludes(changelogDoc, token, 'Changelog master update awareness snapshot hardening evidence'));
+
+  [
     'Multi-Outlet Companion Footer Boundary',
     'Old bottom labels are source-bounded',
     'npm run verify:multi-location-boundary',
@@ -592,6 +697,8 @@ function verifyMultiLocationBoundary() {
     actionGuards: read('src/lib/multiOutlet/outletActionResponseGuards.ts'),
     linkedOutletSaveResponse: read('src/lib/multiOutlet/linkedOutletSaveResponse.ts'),
     multiOutletDal: read('src/database/multiOutlet/index.ts'),
+    masterUpdateDiff: read('src/lib/multiOutlet/masterUpdateDiff.ts'),
+    awarenessHook: read('src/hooks/useMasterUpdateAwareness.ts'),
     desktopLocations: read('src/app/(main)/locations/page.tsx'),
     addOutletModal: read('src/components/organisms/AddOutletModal/index.tsx'),
     outletRenameModal: read('src/components/organisms/OutletRenameModal/index.tsx'),
@@ -610,6 +717,7 @@ function verifyMultiLocationBoundary() {
     specDoc: read('__docs__/multi-outlet-consistency/multi-outlet-consistency_spec.md'),
     testCasesDoc: read('__docs__/multi-outlet-consistency/multi-outlet-consistency_test-cases.md'),
     aiExtractionDoc: read('__docs__/multi-outlet-consistency/multi-outlet-consistency_ai-extraction.md'),
+    websiteDoc: read('__docs__/multi-outlet-consistency/multi-outlet-consistency_website.md'),
     storeOnboardingSpecDoc: read('__docs__/multi-outlet-consistency/store-onboarding/store-onboarding_spec.md'),
     storeOnboardingImplDoc: read('__docs__/multi-outlet-consistency/store-onboarding/store-onboarding_impl.md'),
     storeOnboardingBillingDoc: read('__docs__/multi-outlet-consistency/store-onboarding/store-onboarding-billing_impl.md'),

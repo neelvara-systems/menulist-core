@@ -432,7 +432,7 @@ For speed, use this sequence:
 
 ### Not Yet Ready For Production
 
-The following items are still required before this can be called **production-ready under the 3-year freeze standard**:
+The following items are still required before this can clear the 3-year freeze production gate:
 
 1. Real-device install-flow QA
 2. Real tenant-origin manifest/icon validation
@@ -455,8 +455,7 @@ The following items are still required before this can be called **production-re
 ### B. Deployment Checklist
 
 - [ ] Deploy web app changes
-- [ ] Deploy Cloud Function changes:
-  `firebase deploy --only functions:aggregateCustomerAnalytics`
+- [ ] Deploy Cloud Function changes through External Certification Runbook Gate 1 after `npm run verify:functions-deploy-preflight`. Customer App analytics runs inside the shared scheduler and `triggerCustomerAnalyticsManually`; do not use a standalone `aggregateCustomerAnalytics` deploy target unless a future audit adds it to a documented scoped subset.
 - [ ] Confirm `public/sw.js` and `public/sw-customer.js` are both present in deployed output
 - [ ] Confirm deployed app is serving the latest Customer App code paths
 
@@ -609,7 +608,7 @@ Verify event writes and dashboard visibility for `projectId='customerApp'`.
 
 ### L. KPI Production Signoff
 
-This is the final analytics truth table. Each KPI is production-ready only when all three layers pass:
+This is the final analytics truth table. Each KPI clears production analytics signoff only when all three layers pass:
 
 - event capture
 - rollup / summary aggregation
@@ -685,7 +684,7 @@ Use this sequence for each KPI verification pass:
 
 ### N. Production Analytics Signoff Rule
 
-Analytics is production-ready only if all are true:
+Analytics clears production signoff only if all are true:
 
 - [ ] Android native install flow verified end to end
 - [ ] iOS manual install flow verified end to end

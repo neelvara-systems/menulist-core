@@ -1,6 +1,7 @@
 # Menu PDF Cleanup Check
 
 **Status:** Implemented V0 public tool and V1 owner readiness module
+**Last Updated:** July 4, 2026
 **Route:** `/tools/menu-pdf-cleanup-check`
 **Local Source Gate:** `npm run verify:menu-pdf-cleanup-check`
 **Family:** [Public Truth Tools](../public-truth-tools/README.md)

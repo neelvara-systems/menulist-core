@@ -2,7 +2,11 @@
 
 **Feature:** In-Store Digital Menu Display (TV/Tablet Screens)
 **Status:** 🔒 v2.3 LOCKED (readability, owner-trust, public-read, listener-isolation, bounded-diagnostics hardening, and dedicated source-gate verification applied July 2026) — Only readability/reliability/scale fixes allowed.
-**One-liner:** "Your full menu on your shop TV. Always up to date. Never touch it."
+**One-liner:** "Your current menu on your shop TV. One link. No separate screen editing."
+
+## Source Gate
+
+Digital Screens copy must stay tied to the active screen runtime: `/screen/[token]` uses a 60-second `screen-data` server cache, both screen clients render cache-first from localStorage, and connected screens refresh after an acknowledged public-output change bumps `screen.contentVersion` and the public-safe `platformSummary/screen_{storeId}` listener mirror. Do not describe screen freshness as immediate, absolute, or independent of the cache/listener boundary. Guard with `npm run verify:digital-screens-boundary`.
 
 ---
 
@@ -94,7 +98,7 @@ scripts/verification/verify-digital-screens-boundary.js # Dedicated local source
 
 **Trust signal:** The settings screen shows when a TV was last seen after it sends the daily screen signal.
 
-**Content management:** Owner edits menu in Projects/Editor. Screen updates automatically. No separate screen content management.
+**Content management:** Owner edits menu in Projects/Editor. A saved public-output change refreshes the screen path through cache invalidation and the screen content-version listener. No separate screen content management.
 
 **Upload acknowledgement:** Custom slide uploads only show success after the DAL returns a shaped owner-upload slide. Storage or add-slide fallback values route to the existing failed-upload message.
 

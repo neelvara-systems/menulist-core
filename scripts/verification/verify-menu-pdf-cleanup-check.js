@@ -109,7 +109,7 @@ assertIncludes(validationDoc, 'Current release approval still requires the activ
 assertIncludes(validationDoc, 'npm run verify:menu-pdf-cleanup-check', 'Menu PDF Cleanup Check validation source gate');
 assertIncludes(toolsReadmeDoc, '[menu-pdf-cleanup-check](./menu-pdf-cleanup-check/README.md)', 'MenuList Tools README');
 assertIncludes(familyReadmeDoc, '[Menu PDF Cleanup Check](../menu-pdf-cleanup-check/README.md)', 'Public Truth Tools family docs');
-assertIncludes(familyReadmeDoc, 'thirteen public tools, a public shareable report layer, and twelve owner readiness modules', 'Public Truth Tools family status');
+assertIncludes(familyReadmeDoc, 'sixteen public tools, a public shareable report layer, and twelve owner readiness modules', 'Public Truth Tools family status');
 assertIncludes(familyReadmeDoc, '/tools/menu-pdf-cleanup-check', 'Public Truth Tools route list');
 assertIncludes(familyReadmeDoc, 'PDF cleanup readiness', 'Public Truth Tools owner module list');
 assertIncludes(familySpecDoc, 'Menu PDF Cleanup Check V0/V1', 'Public Truth Tools spec implementation summary');

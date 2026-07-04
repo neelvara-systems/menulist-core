@@ -26,6 +26,11 @@ const ShareableToolReportStatusSchema = z.enum([
     'not_checked',
     'manual_review_needed',
 ]);
+const ShareableToolReportSetupJobSchema = z.object({
+    id: z.string().trim().max(80).optional().nullable(),
+    label: z.string().trim().min(1).max(160),
+    reason: z.string().trim().min(1).max(260),
+}).strict();
 
 const ShareableToolReportSourceContextSchema = z.object({
     sourceKind: z.literal('shareable_tool_report'),
@@ -38,6 +43,7 @@ const ShareableToolReportSourceContextSchema = z.object({
     unclearCount: z.number().int().min(0).max(999).optional().nullable(),
     notCheckedCount: z.number().int().min(0).max(999).optional().nullable(),
     primaryNumber: z.number().int().min(0).max(999).optional().nullable(),
+    setupJobList: z.array(ShareableToolReportSetupJobSchema).max(6).optional().nullable(),
 }).strict();
 
 const ContactRequestSchema = z.object({
@@ -65,6 +71,21 @@ const cleanNumber = (value?: number | null): number | null => {
     return Math.max(0, Math.min(999, Math.floor(value)));
 };
 
+const cleanShareableToolReportSetupJobList = (
+    setupJobList?: ShareableToolReportSourceContext['setupJobList'],
+) => {
+    if (!Array.isArray(setupJobList)) return [];
+
+    return setupJobList
+        .slice(0, 6)
+        .map((job, index) => ({
+            id: clean(job.id, 80) || `job_${index + 1}`,
+            label: clean(job.label, 160),
+            reason: clean(job.reason, 260),
+        }))
+        .filter((job) => Boolean(job.label && job.reason));
+};
+
 const cleanShareableToolReportSourceContext = (
     sourceContext?: ShareableToolReportSourceContext | null,
 ) => {
@@ -81,6 +102,7 @@ const cleanShareableToolReportSourceContext = (
         unclearCount: cleanNumber(sourceContext.unclearCount),
         notCheckedCount: cleanNumber(sourceContext.notCheckedCount),
         primaryNumber: cleanNumber(sourceContext.primaryNumber),
+        setupJobList: cleanShareableToolReportSetupJobList(sourceContext.setupJobList),
     };
 };
 

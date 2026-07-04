@@ -6,6 +6,12 @@
 
 ---
 
+## Current Source Boundary
+
+Current runtime covers owner-set weekly working hours, public open/closed status, Today quick-hours edits, and time-slot presets. Holiday calendars and date-specific exception managers are not shipped; unscheduled closures must use Temporary Status or today's hours until a source-backed exception runtime exists.
+
+---
+
 ## Feature Split (Updated January 18, 2026)
 
 This feature is split into two layers:
@@ -109,8 +115,8 @@ Display "Open now" / "Closed" badge on:
 | **WorkingHoursTab UI**  | ✅ Already exists | Basic per-day picker in Business Settings               |
 | **timeZone field**      | ✅ Already exists | `stores/{storeId}.timeZone`                             |
 | **Schema.org hours**    | ✅ Already exists | Client menu uses hours for SEO                          |
-| **Open/Closed display** | ❌ Missing        | **P0 deliverable (Feature #2A)**                        |
-| **Holiday calendars**   | ❌ Missing        | P1 deliverable (Feature #2B)                            |
+| **Open/Closed display** | ✅ Implemented    | Current public badge behavior from saved `workingHours` |
+| **Holiday calendars**   | ❌ Missing        | Not shipped; requires a separate source-backed decision |
 
 ---
 
@@ -130,7 +136,7 @@ This prevents "Feature #2 is dead" perception while keeping the roadmap honest.
 
 ### What is this?
 
-Hours + Holiday Accuracy ensures your business hours are **always correct** across MenuList surfaces — without the owner needing to "remember to update".
+Hours + Holiday Accuracy currently keeps MenuList open/closed status tied to the owner-set working-hours source. It does not auto-manage holiday closures or date-specific exceptions.
 
 ### Why it matters
 
@@ -142,18 +148,18 @@ Wrong hours = instant trust destruction:
 
 ### The Promise
 
-> **Set hours once. MenuList keeps them correct everywhere.**
+> **Set weekly hours once. MenuList shows the current open/closed status from that source.**
 
 ---
 
 ## 1) Goals
 
-| Goal                               | Success Metric                                 |
-| ---------------------------------- | ---------------------------------------------- |
-| Eliminate wrong open/closed status | Zero incorrect status across MenuList surfaces |
-| Reduce owner mental load           | Owner does not "manage hours weekly"           |
-| Premium trust protection           | Customers never feel misled                    |
-| Works without external APIs        | 100% inside MenuList first                     |
+| Goal                               | Success Metric                                      |
+| ---------------------------------- | --------------------------------------------------- |
+| Ground open/closed status          | Status computed consistently from saved store hours |
+| Reduce owner mental load           | Owner edits weekly hours or today's hours once      |
+| Premium trust protection           | Customers see the current MenuList status source    |
+| Works without external APIs        | 100% inside MenuList first                          |
 
 ---
 
@@ -215,25 +221,22 @@ This is pure responsibility burden. MenuList removes it.
 
 ### 4.1 Store Hours Model
 
-A store has:
+A store currently uses:
 
 1. **Weekly schedule** — Default hours per day
-2. **Exceptions** — Owner-defined overrides for specific dates
-3. **Holiday calendar** — Pre-known closures (India/Global)
-4. **Computed status** — Open/Closed/Opens later (real-time)
+2. **Computed status** — Open/Closed/Opens later from saved `workingHours`
+3. **One-off closure path** — Temporary Status or today's hours when the regular schedule does not apply
 
 ### 4.2 Truth Rule
 
 MenuList is the source of truth for MenuList surfaces only.
 No external surfaces are updated in Feature #2.
 
-### 4.3 Priority Order (Non-Negotiable)
+### 4.3 Deferred Priority Order
 
-For any given date:
+The future holiday/exception runtime is not shipped. If it is added later, the implementation plan must source-gate an explicit priority order before any public claim is exposed.
 
-1. **Manual Exception** (highest priority)
-2. **Holiday Calendar closure** (if enabled)
-3. **Weekly Schedule** (default fallback)
+Current runtime priority is weekly working hours plus owner-triggered Temporary Status or today's-hours edits.
 
 ---
 
@@ -246,13 +249,15 @@ Owner sets:
 - Mon–Fri: 11:00–23:00
 - Sat–Sun: 09:00–23:30
 
-**Expected:** Menu shows correct status always. Owner never touches it again.
+**Expected:** Menu shows current status from saved weekly hours.
+**Current boundary:** Owner updates today's hours or Temporary Status when the schedule is not true for a one-off day.
 
-### Story B — Holiday closure
+### Story B — Holiday closure (deferred)
 
-Owner selects holiday calendar: **India**
+Future owner selects holiday calendar: **India**
 
-**Expected:** On marked holidays, menu shows closure message automatically.
+**Future expected:** On marked holidays, menu shows closure message automatically.
+**Current boundary:** Not shipped. Use Temporary Status or today's hours for holiday closures until a holiday-calendar runtime exists.
 
 ### Story C — Manual exception
 
@@ -260,7 +265,8 @@ Owner sets:
 
 - "Closed for private event" on Feb 14, 2026
 
-**Expected:** Menu reflects closure for that entire day.
+**Future expected:** Menu reflects closure for that entire day.
+**Current boundary:** Date-specific exception management is not shipped. Use Temporary Status or today's hours for the active closure window.
 
 ### Story D — Special hours exception
 
@@ -268,7 +274,8 @@ Owner sets:
 
 - "Open 18:00-23:00 only" on Dec 31, 2026 (New Year's Eve)
 
-**Expected:** Menu shows special hours for that day, overriding weekly schedule.
+**Future expected:** Menu shows special hours for that day, overriding weekly schedule.
+**Current boundary:** Date-specific special-hours exceptions are not shipped. Update today's hours or weekly hours for the active source.
 
 ### Story E — Time-based categories compatibility
 
@@ -377,9 +384,9 @@ Existing `WorkingHoursTab.tsx` is sufficient. Owner already sets hours.
 
 ## 10) Success Metric (Definition of Done)
 
-**Owner stops thinking about hours updates.**
+**Owner sets weekly hours once and has a clear path for one-off changes.**
 
-Customers stop showing up to closed doors because MenuList stayed correct.
+Customers see MenuList's current open/closed status from saved store truth.
 
 ---
 
@@ -425,5 +432,5 @@ Customers stop showing up to closed doors because MenuList stayed correct.
 | Set once, runs forever   | Weekly hours set once, system handles rest  |
 | Conservative messaging   | Simple statuses: "Open now", "Closed today" |
 | Silence by default       | No daily notifications or reminders         |
-| Owner stays in control   | Manual exceptions always override           |
+| Owner stays in control   | Owner edits weekly hours, today's hours, or Temporary Status |
 | Premium trust protection | Consistent status across all surfaces       |

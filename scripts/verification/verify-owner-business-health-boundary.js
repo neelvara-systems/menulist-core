@@ -53,7 +53,9 @@ const packageJson = read('package.json');
 const businessHealthRoute = read('src/app/(main)/business-health/page.tsx');
 const businessHealthPage = read('src/components/templates/main-app/ownerBusinessAssistant/BusinessHealthPage.tsx');
 const ownerAssistantPanel = read('src/components/templates/main-app/ownerBusinessAssistant/OwnerAssistantPanel.tsx');
+const publicTruthOwnerCard = read('src/components/templates/main-app/ownerBusinessAssistant/PublicTruthOwnerCheckCard.tsx');
 const mobileHealthScreen = read('src/components/mobile/screens/MobileBusinessHealthScreen.tsx');
+const mobilePublicTruthOwnerCard = read('src/components/mobile/components/MobilePublicTruthOwnerCheckCard.tsx');
 const mobileShell = read('src/components/mobile/MobileShell.tsx');
 const mobileMoreScreen = read('src/components/mobile/screens/MobileMoreScreen.tsx');
 const currentRoute = read('src/app/api/owner-business-assistant/current/route.ts');
@@ -70,6 +72,7 @@ const domainMatrix = read('src/lib/ownerBusinessAssistant/server/domainCapabilit
 const answerResolver = read('src/lib/ownerBusinessAssistant/server/resolveOwnerBusinessAssistantAnswer.ts');
 const threadStore = read('src/lib/ownerBusinessAssistant/server/threadStore.ts');
 const businessSignals = read('src/lib/ownerBusinessAssistant/businessSignals.ts');
+const ownerPublicTruthReadiness = read('src/lib/public-truth-tools/ownerPublicTruthReadiness.ts');
 const currentHook = read('src/hooks/ownerBusinessAssistant/useOwnerBusinessHealthCurrent.ts');
 const analyticsHook = read('src/hooks/ownerBusinessAssistant/useOwnerBusinessAnalyticsIndex.ts');
 const answerHook = read('src/hooks/ownerBusinessAssistant/useOwnerBusinessAssistantAnswer.ts');
@@ -140,6 +143,26 @@ forbidToken(mobileHealthScreen, 'useOwnerBusinessAssistantAction', 'mobile busin
 forbidToken(mobileHealthScreen, 'MobileBusinessHealthActionSheet', 'mobile business health action sheet');
 forbidToken(mobileHealthScreen, 'window.location', 'mobile business health route bypass');
 forbidToken(ownerAssistantPanel, 'OwnerAssistantActionSheet', 'desktop business health action sheet');
+
+[
+  'Public readiness',
+  'report.modules.map',
+  'report.setupJobList',
+  'Fix list',
+  'job.fixHref',
+  'job.actionLabel',
+  'No external sites were scanned',
+].forEach((token) => requireToken(publicTruthOwnerCard, token, 'desktop public truth owner card'));
+
+[
+  'report.modules.map',
+  'report?.setupJobList',
+  'Fix list',
+  'job.mobileFixTarget',
+  'job.actionLabel',
+  'No external sites scanned',
+].forEach((token) => requireToken(mobilePublicTruthOwnerCard, token, 'mobile public truth owner card'));
+forbidToken(mobilePublicTruthOwnerCard, 'window.location', 'mobile public truth owner card route bypass');
 
 [
   "'/business-health': { tab: 'more', todayScreen: 'main', moreScreen: 'businessHealth' }",
@@ -284,6 +307,15 @@ forbidToken(contextPacketBuilder, 'actionCatalog', 'context packet action catalo
 ].forEach((token) => requireToken(businessSignals, token, 'business signals'));
 
 [
+  'OwnerPublicTruthSetupJob',
+  'OWNER_PUBLIC_TRUTH_MAX_SETUP_JOBS = 6',
+  'buildOwnerPublicTruthSetupJobList',
+  'setupJobList,',
+  'fixHref: module.fixHref',
+  'mobileFixTarget: module.mobileFixTarget',
+].forEach((token) => requireToken(ownerPublicTruthReadiness, token, 'owner public truth readiness setup jobs'));
+
+[
   [currentHook, 'readOwnerBusinessAssistantCurrentResponse', 'current hook'],
   [currentHook, 'OWNER_BUSINESS_ASSISTANT_REQUEST_POLICY', 'current hook'],
   [analyticsHook, 'readOwnerBusinessAssistantAnalyticsResponse', 'analytics hook'],
@@ -323,6 +355,7 @@ forbidToken(platformMonitorRoute, 'OWNER_BUSINESS_ASSISTANT_ACTIONS', 'platform 
   '`npm run verify:owner-business-health-boundary`',
   'read-only Business Health and grounded answer surface',
   'must not prepare action drafts',
+  'public readiness fix list',
   'Browser read-model hooks parse current, analytics, locations, and thread responses through a shared 256KB bounded reader',
 ].forEach((token) => requireToken(readme, token, 'owner business README'));
 
@@ -332,6 +365,8 @@ forbidToken(platformMonitorRoute, 'OWNER_BUSINESS_ASSISTANT_ACTIONS', 'platform 
   'read-only AI diagnostic runtime',
   'Business Health must not',
   'update menu/store/outlet/staff/public truth',
+  'Public readiness fix list',
+  'treat public readiness fix-list rows as action drafts',
 ].forEach((token) => requireToken(businessHealthDoc, token, 'business health doc'));
 
 [
@@ -340,17 +375,20 @@ forbidToken(platformMonitorRoute, 'OWNER_BUSINESS_ASSISTANT_ACTIONS', 'platform 
   'MobileShell read-only screen',
   'desktop route bypass through `window.location`',
   'Asking for a mutation does not mutate truth and does not open an action sheet',
+  'Public readiness fix-list buttons route through',
 ].forEach((token) => requireToken(mobileSupportDoc, token, 'mobile support doc'));
 
 [
   '`npm run verify:owner-business-health-boundary`',
   'read-only source gate',
   'No public truth writes',
+  'Public Truth owner fix list is Firebase-cost neutral',
 ].forEach((token) => requireToken(firebaseDoc, token, 'firebase doc'));
 
 [
   '`npm run verify:owner-business-health-boundary`',
   'read-only boundary',
+  'public readiness fix list',
 ].forEach((token) => requireToken(validationDoc, token, 'validation doc'));
 
 [

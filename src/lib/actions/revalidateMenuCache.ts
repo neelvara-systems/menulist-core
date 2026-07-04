@@ -2,8 +2,8 @@
  * Server Action: Revalidate customer menu cache (GPT FIX 1)
  *
  * Called from updateProject() after menu saves.
- * Invalidates per-store Vercel Data Cache tags so customers
- * see updated menu instantly (instead of waiting 60s TTL).
+ * Invalidates per-store Vercel Data Cache tags so customer
+ * pages refresh from the acknowledged source before the next TTL cycle.
  *
  * Tag format matches page.tsx cached wrappers:
  * - `menu-store-${storeId}` → project data, decision blocks
@@ -11,8 +11,8 @@
  * - `client-stores` → public lookup and OBP summary helpers
  * - `screen-data` → digital screen SSR reads
  *
- * 3-Year Freeze: Without instant invalidation, price changes
- * could show stale data for up to 60s — unacceptable for infra product.
+ * 3-Year Freeze: Without explicit invalidation, price changes
+ * could show stale data until the 60s cache window expires.
  */
 "use server";
 

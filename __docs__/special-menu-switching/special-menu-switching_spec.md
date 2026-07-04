@@ -68,7 +68,7 @@ Hardware stores, medical stores, electronics shops, general retail — their cat
 - Automatic revert to base menu when expired
 - Business-type-aware behavior (food gets full power, salon gets simpler version)
 - Integration with Temp Status Layer (auto-show "Special menu available" banner)
-- Works on digital menu, OBP, screens, PDF — all surfaces automatically
+- Works on the public menu/QR link, OBP, and configured screens through active menu, cache, and screen refresh paths; exported PDFs/printed copies and POS/provider targets require separate export, replacement, or integration evidence
 - MCE validation on special menu before activation
 - Mobile support for creating and managing special menus
 
@@ -174,7 +174,7 @@ System uses `getBusinessCategory(businessType)` to determine template. **No owne
 | INV-5 | One active at a time            | No overlapping active menus. Block at creation time.                        |
 | INV-6 | System decides behavior         | Business type determines available modes. No configuration UI.              |
 | INV-7 | Not a campaign engine           | No discounts, coupons, notifications, marketing. Pure menu truth switching. |
-| INV-8 | All surfaces auto-update        | Digital menu, OBP, screens, PDF — all get resolved menu automatically.      |
+| INV-8 | Supported live surfaces follow active menu path | Public menu/QR link, OBP, and configured screens resolve the active special menu through their supported paths; PDF/printed and POS/provider targets stay evidence-bound. |
 
 ---
 
@@ -185,9 +185,9 @@ System uses `getBusinessCategory(businessType)` to determine template. **No owne
 | **Temp Status Layer**             | Complementary. When special menu activates, system auto-sets `special_menu` temp status banner. |
 | **MCE (Menu Correctness Engine)** | Special menu validated by MCE before activation — same as regular menu.                         |
 | **Decision Blocks**               | Run on active menu (base or special). Seamless.                                                 |
-| **Digital Screens**               | Auto-display active menu. No separate config needed.                                            |
+| **Digital Screens**               | Configured screen data uses the active special menu id and screen content-version path.          |
 | **Multi-Outlet**                  | Each outlet manages own special menus independently.                                            |
-| **POS Webhook**                   | Sends resolved menu snapshot (base or special) on activation change.                            |
+| **POS Webhook**                   | Integration-bound; require provider evidence before claiming POS updates from activation changes. |
 | **OBP**                           | Shows active menu link. If special menu active, OBP reflects it.                                |
 
 ---
@@ -197,11 +197,11 @@ System uses `getBusinessCategory(businessType)` to determine template. **No owne
 | Competitor           | What They Do                                   | How MenuList Differs                           |
 | -------------------- | ---------------------------------------------- | ---------------------------------------------- |
 | TouchBistro          | Schedule menus by time/season (POS-integrated) | MenuList is customer-facing truth, not POS     |
-| LOOK Digital Signage | Day-parting for menu boards                    | MenuList covers ALL surfaces, not just screens |
+| LOOK Digital Signage | Day-parting for menu boards                    | MenuList covers public menu, OBP, and configured screen paths, not just screens |
 | UpMenu               | Quick digital menu creation for specials       | MenuList reuses existing editor — zero new UI  |
 | Orders.co            | Real-time menu updates across platforms        | MenuList adds scheduling + auto-revert         |
 
-**MenuList's unique advantage:** Not signage, not POS — **operational menu infrastructure** with automatic lifecycle control across all customer touchpoints.
+**MenuList's unique advantage:** Not signage, not POS — **operational menu infrastructure** with lifecycle control across supported customer touchpoints.
 
 ---
 

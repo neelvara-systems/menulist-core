@@ -99,11 +99,11 @@ The site should not optimize for:
 
 ### Approved Positioning
 
-Neelvara Systems builds software infrastructure for customer-facing business information.
+Neelvara Systems operates software infrastructure for customer-facing business information.
 
 Use this long-form positioning internally and in public copy where appropriate:
 
-> Neelvara Systems builds focused products that help businesses keep public facts, approved answers, and business context accurate, usable, and consistent across customer-facing surfaces.
+> Neelvara Systems operates products that keep public business facts, approved answers, and reusable business context clear before they reach customers.
 
 Use this relationship line exactly:
 

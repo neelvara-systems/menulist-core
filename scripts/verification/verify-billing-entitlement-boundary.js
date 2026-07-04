@@ -70,6 +70,7 @@ function verifyBillingEntitlementBoundary() {
   const aiEnhancementHelpDoc = read('__docs__/ai-enhancement-packs/ai-enhancement-packs_helpdoc.md');
   const aiEnhancementWebsiteDoc = read('__docs__/ai-enhancement-packs/ai-enhancement-packs_website.md');
   const aiEnhancementMarketingDoc = read('__docs__/ai-enhancement-packs/ai-enhancement-packs_marketing.md');
+  const aiBillingExplainerDoc = read('__docs__/ai-enhancement-packs/ai-billing-explainer.md');
   const pricingStrategyDoc = read('__docs__/strategy/pricing-strategy.md');
   const auditDoc = read('__docs__/audits/menulist-production-readiness-audit.md');
 
@@ -266,6 +267,22 @@ function verifyBillingEntitlementBoundary() {
     ].forEach((token) => assertIncludes(content, token, `${label} public billing launch boundary`));
   });
 
+  assertIncludes(
+    aiBillingExplainerDoc,
+    '**Status: Implemented — billing-slice audited; full MenuList certification pending**',
+    'AI billing explainer launch boundary',
+  );
+  assertIncludes(
+    aiBillingExplainerDoc,
+    'monthlyCredits = 200  (full starting balance after subscription activation)',
+    'AI billing explainer activation timing boundary',
+  );
+  assertIncludes(
+    aiEnhancementMarketingDoc,
+    'Your AI Enhancement Pack has been activated. Additional AI capacity is now available for your menu.',
+    'AI Enhancement Packs marketing activation copy boundary',
+  );
+
   [
     ['Razorpay README', razorpayReadmeDoc, '**Status:** Production Ready — Billing Architecture FROZEN | Razorpay is the ONLY payment provider'],
     ['Pricing strategy', pricingStrategyDoc, '**Status:** ✅ Production Ready'],
@@ -279,6 +296,8 @@ function verifyBillingEntitlementBoundary() {
     ['AI Enhancement Packs helpdoc', aiEnhancementHelpDoc, 'Your AI features are ready immediately'],
     ['AI Enhancement Packs website', aiEnhancementWebsiteDoc, 'continue immediately'],
     ['AI Enhancement Packs marketing', aiEnhancementMarketingDoc, 'Ready when your menu needs it'],
+    ['AI billing explainer', aiBillingExplainerDoc, 'full balance — ready to use'],
+    ['AI Enhancement Packs marketing', aiEnhancementMarketingDoc, "Your menu's AI features are ready to use"],
   ].forEach(([label, content, token]) => assertNotIncludes(content, token, `${label} stale production-ready billing claim`));
 
   [

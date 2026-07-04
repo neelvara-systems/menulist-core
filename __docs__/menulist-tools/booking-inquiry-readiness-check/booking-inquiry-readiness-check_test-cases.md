@@ -1,7 +1,7 @@
 # Booking Inquiry Readiness Check - Test Cases
 
 **Status:** Source-gated acceptance cases
-**Last Updated:** July 2, 2026
+**Last Updated:** July 4, 2026
 
 ---
 

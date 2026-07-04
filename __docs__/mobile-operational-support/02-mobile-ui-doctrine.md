@@ -92,11 +92,11 @@ Search must be:
 - Works on item name and category name
 - Results appear as user types
 
-### Law 5 — Auto-Publish for Operational Edits
+### Law 5 — Fast Save for Operational Edits
 
-> **All small operational edits go live instantly. No publish button on mobile.**
+> **Small operational edits use the shared save/cache path. Screens with an explicit Publish action keep it. Customer menus can take up to 60 seconds to refresh.**
 
-Auto-publish applies to:
+Fast save applies to:
 - Price changes
 - Availability toggles
 - Item name corrections

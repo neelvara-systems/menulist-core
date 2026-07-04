@@ -52,7 +52,7 @@
 
 **Problem Solved:** Premium restaurant groups with 2–10 stores face constant drift — item names differ, prices change silently, items disappear at certain locations. HQ cannot trust what guests are seeing.
 
-**Solution:** HQ updates menu once → All stores update instantly → Menu consistency guaranteed by default.
+**Solution:** HQ updates menu once → linked stores inherit the saved changes through the outlet sync/cache path → brand-critical fields stay consistent by default.
 
 ---
 

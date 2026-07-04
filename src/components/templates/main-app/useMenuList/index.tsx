@@ -1058,7 +1058,7 @@ export default function UseMenuList({ view = 'overview' }: UseMenuListProps) {
                 <Col xs={24} sm={data.installAppLink ? 8 : 12}>
                     <ShareLinkCard
                         title="Business Profile Link"
-                        description={`Share this with customers — always shows ${labels.yourLatest}`}
+                        description={`Share this with customers - points to ${labels.yourLatest}`}
                         url={data.obpLink}
                         shortUrl={data.obpLink.replace(/^https?:\/\//, '')}
                         sharePrefix={labels.shareMessagePrefix}

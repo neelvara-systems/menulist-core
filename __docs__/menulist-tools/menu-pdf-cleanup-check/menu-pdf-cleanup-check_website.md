@@ -1,5 +1,7 @@
 # Menu PDF Cleanup Check - Website Copy
 
+**Last Updated:** July 4, 2026
+
 **Route:** `/tools/menu-pdf-cleanup-check`
 
 ## Page Metadata

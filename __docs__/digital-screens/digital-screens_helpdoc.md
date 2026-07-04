@@ -2,6 +2,10 @@
 
 **Last Updated:** June 2, 2026
 
+## Source Gate
+
+Help copy must tell owners that saved MenuList changes refresh screens through public cache invalidation and the screen content-version listener. Do not promise instant or absolute freshness. Guard with `npm run verify:digital-screens-boundary`.
+
 ## Quick Summary
 
 Digital Screens puts your menu on any TV or screen in your shop. You get two display modes from one system:
@@ -9,7 +13,7 @@ Digital Screens puts your menu on any TV or screen in your shop. You get two dis
 - **Menu Board** (default) — your full menu with categories, items, and prices
 - **Highlights** — rotating promotional slides with featured items
 
-Both update automatically. You never manage screen content separately — it comes from your menu data.
+Both use your current MenuList menu source. Saved menu changes refresh connected screens through the screen update path; you never manage screen content separately.
 
 ---
 
@@ -43,9 +47,9 @@ If you have two screens — e.g., one above the counter and one in the waiting a
 3. Open the **Menu Board** link on your **counter TV** (shows full menu with prices)
 4. Open the **Highlights** link on your **waiting area TV** (shows rotating promotions)
 5. Bookmark both. Press F11 for fullscreen on each.
-6. Both screens update automatically. You never touch them again.
+6. Both screens follow saved MenuList changes through the same screen update path. You do not edit screen content separately.
 
-Both links always follow your store's current active menu automatically. You do not need to assign a project to the screen.
+Both links follow your store's current active menu source after saved changes and screen refresh. You do not need to assign a project to the screen.
 
 ---
 
@@ -53,7 +57,7 @@ Both links always follow your store's current active menu automatically. You do 
 
 ### Menu Board — What shows and why
 
-The Menu Board displays your **full menu** automatically:
+The Menu Board displays your **full menu** from the current MenuList source:
 
 - **Categories** — from your menu structure in the Editor
 - **Items** — all available items, grouped by category
@@ -61,7 +65,7 @@ The Menu Board displays your **full menu** automatically:
 - **Availability** — sold-out items disappear automatically
 - **Pages** — if your menu is large, pages rotate automatically
 
-**You don't choose what appears.** The screen shows whatever is in your menu right now.
+**You don't choose what appears on the Menu Board.** It follows the saved menu source after the screen update path refreshes.
 
 ### Highlights — What shows and why
 
@@ -80,10 +84,10 @@ The Highlights screen shows rotating promotional slides:
 
 | What you do in MenuList | What happens on screen              |
 | ----------------------- | ----------------------------------- |
-| Add a new menu item     | Appears on Menu Board automatically |
+| Add a new menu item     | Appears on Menu Board after save and screen refresh |
 | Mark item as sold out   | Disappears from both screens        |
-| Change a price          | Updates on Menu Board automatically |
-| Add a new category      | Appears on Menu Board automatically |
+| Change a price          | Updates on Menu Board after save and screen refresh |
+| Add a new category      | Appears on Menu Board after save and screen refresh |
 | Upload a custom image   | Appears on Highlights screen        |
 
 Content management IS menu management. There is no separate "screen content" to manage.
@@ -143,10 +147,10 @@ Upload the poster image in Settings → Digital Screen. It appears on the **High
 
 ### "I changed my prices but the screen still shows old prices"
 
-The screen updates automatically within minutes. If it doesn't:
+Saved changes normally refresh connected screens after public cache invalidation and the screen content-version listener. If a TV still shows old prices:
 
 1. Check that you saved your edits in the Editor
-2. Wait 2-3 minutes for the real-time update
+2. Wait a few minutes for the screen cache/listener path to settle
 3. If still wrong, refresh the TV browser manually
 
 ---
@@ -163,10 +167,10 @@ The screen updates automatically within minutes. If it doesn't:
 
 ### Content looks outdated
 
-Content updates automatically when you make changes in the Editor. If changes aren't showing:
+Saved Editor changes refresh screens through public cache invalidation and the screen content-version listener. If changes aren't showing:
 
 1. Check that you saved your edits
-2. Wait a few minutes for the real-time update
+2. Wait a few minutes for the screen cache/listener path to settle
 3. If needed, refresh the TV browser manually
 
 ### Screen works but then goes blank after a while
@@ -187,7 +191,7 @@ The system auto-paginates for large menus. Page timing is system-controlled (15-
 - **Counter TV** → Use Menu Board (full menu with prices)
 - **Entrance/waiting area** → Use Highlights (rotating promotions)
 - Use **landscape orientation** for best layout
-- Keep your menu updated — screens pull from your live menu data
+- Keep your menu updated — screens pull from the saved MenuList source
 - Consider a dedicated cheap tablet if you don't have a TV
 - No need to turn off the screen — it runs itself indefinitely
 

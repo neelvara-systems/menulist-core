@@ -1,6 +1,7 @@
 # Social Bio Link Consistency Check
 
 **Status:** Implemented V0 public tool; V1 maps to existing MenuList Share, Public Discovery, and Business Health readiness surfaces
+**Last Updated:** July 4, 2026
 **Route:** `/tools/social-bio-link-check`
 **Local Source Gate:** `npm run verify:social-bio-link-check`
 **Family:** [Public Truth Tools](../public-truth-tools/README.md)

@@ -2,7 +2,7 @@
 
 **Feature:** Owner Business Assistant / Business Health
 **Status:** Read-only AI diagnostic runtime
-**Last Updated:** June 17, 2026
+**Last Updated:** July 4, 2026
 
 ## Purpose
 
@@ -23,6 +23,7 @@ Public positioning may call Business Health an AI health check or AI diagnostic 
 - Multi-location summary
 - Source/freshness notes
 - Feedback summaries
+- Public readiness fix list derived from existing MenuList truth
 - Suggested questions
 - Grounded typed answers
 - Safe handoff wording to AI Menu Manager or existing owner screens
@@ -36,6 +37,7 @@ Business Health must not:
 - store action drafts
 - render confirmation sheets
 - update menu/store/outlet/staff/public truth
+- treat public readiness fix-list rows as action drafts
 - publish to external platforms
 - generate or apply images
 - create rules or automation

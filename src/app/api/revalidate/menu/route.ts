@@ -82,6 +82,21 @@ function normalizeStoreId(value: string | number): string | null {
     return STORE_ID_PATTERN.test(normalized) ? normalized : null;
 }
 
+function getStoreIdFromCacheTag(tag: string): string | null {
+    const match = tag.match(/^(?:menu-store|store)-(\d{1,20})$/);
+    return match ? normalizeStoreId(match[1]) : null;
+}
+
+function deriveSingleStoreIdFromTags(tags: string[]): string | undefined {
+    const storeIds = new Set<string>();
+    tags.forEach((tag) => {
+        const storeId = getStoreIdFromCacheTag(tag);
+        if (storeId) storeIds.add(storeId);
+    });
+
+    return storeIds.size === 1 ? Array.from(storeIds)[0] : undefined;
+}
+
 function isPlatformSession(session: any | null): boolean {
     return session?.user?.platformRole === 'PLATFORM' || session?.platformRole === 'PLATFORM';
 }
@@ -151,6 +166,7 @@ async function handleRevalidateMenuCache(request: NextRequest, session: any | nu
                 return NextResponse.json({ error: "Forbidden" }, { status: 403 });
             }
             tags = body.tags.map((tag) => tag.trim()).filter(isValidTag);
+            requestedStoreId = deriveSingleStoreIdFromTags(tags);
         }
 
         if (tags.length === 0) {

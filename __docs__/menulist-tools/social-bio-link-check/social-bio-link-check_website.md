@@ -1,5 +1,7 @@
 # Social Bio Link Consistency Check - Website Notes
 
+**Last Updated:** July 4, 2026
+
 **Route:** `/tools/social-bio-link-check`
 
 ## Public Page Goal

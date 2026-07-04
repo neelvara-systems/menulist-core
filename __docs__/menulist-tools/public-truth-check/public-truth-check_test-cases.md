@@ -1,7 +1,7 @@
 # Public Truth Check - Test Cases
 
 **Status:** Implemented - public self-report route and logged-in owner check
-**Last Updated:** June 30, 2026
+**Last Updated:** July 4, 2026
 **Audience:** QA, developers
 
 ---

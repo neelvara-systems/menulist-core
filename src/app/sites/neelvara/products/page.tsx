@@ -8,17 +8,16 @@ import {
     buildNeelvaraUrl,
 } from '../siteConfig';
 import { PageShell, StructuredData } from '../content';
+import ProductLogo, { type NeelvaraProductName } from '../ProductLogo';
 import { NeelvaraLink } from '../SiteHeaderNav';
-import MenuListLogoMark from '@/components/website/shared/LogoMark';
-import AnswerlatticeLogoMark from '@/components/atoms/answerlatticeLogoMark';
 
 export const metadata: Metadata = {
-    title: 'Focused Products',
-    description: 'Focused products operated by Neelvara Systems.',
+    title: 'Operated Products',
+    description: 'Current operated products and product website routing for Neelvara Systems.',
     alternates: { canonical: buildNeelvaraUrl('/products') },
     openGraph: {
-        title: 'Focused Products | Neelvara Systems',
-        description: 'Focused products operated by Neelvara Systems.',
+        title: 'Operated Products | Neelvara Systems',
+        description: 'Current operated products and product website routing for Neelvara Systems.',
         url: buildNeelvaraUrl('/products'),
         siteName: 'Neelvara Systems',
         type: 'website',
@@ -33,13 +32,13 @@ export const metadata: Metadata = {
     },
     twitter: {
         card: 'summary_large_image',
-        title: 'Focused Products | Neelvara Systems',
-        description: 'Focused products operated by Neelvara Systems.',
+        title: 'Operated Products | Neelvara Systems',
+        description: 'Current operated products and product website routing for Neelvara Systems.',
         images: [buildNeelvaraUrl(NEELVARA_OG_IMAGE_PATH)],
     },
 };
 
-type ProductName = typeof NEELVARA_PRODUCT_LINEUP[number]['name'];
+type ProductName = NeelvaraProductName;
 
 const PRODUCT_FOCUS: Record<ProductName, string[]> = {
     MenuList: ['Menus', 'Hours', 'Business profiles', 'Customer-facing details'],
@@ -53,28 +52,6 @@ const PRODUCT_CATEGORY: Record<ProductName, string> = {
     CampaignCue: 'Reusable business context',
 };
 
-function ProductLogo({ name }: { name: ProductName }) {
-    if (name === 'MenuList') {
-        return <MenuListLogoMark height={28} className="nv-product-logo-svg" />;
-    }
-
-    if (name === 'Answerlattice') {
-        return <AnswerlatticeLogoMark height={30} className="nv-product-logo-svg" idPrefix="neelvara-answerlattice-products-logo" />;
-    }
-
-    return (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-            alt=""
-            aria-hidden="true"
-            className="nv-product-logo-img"
-            height={38}
-            src="/campaigncue-icon.svg"
-            width={38}
-        />
-    );
-}
-
 export default function NeelvaraProductsPage() {
     return (
         <PageShell>
@@ -85,16 +62,16 @@ export default function NeelvaraProductsPage() {
                         <span className="nv-pip" aria-hidden="true" />
                         Current products
                     </span>
-                    <h1 className="serif">Focused products. One shared direction.</h1>
+                    <h1 className="serif">Products operated by Neelvara Systems.</h1>
                     <p>
-                        Neelvara Systems builds independent software products that solve
-                        different parts of customer-facing business information. Each product has
-                        its own website, documentation, support, and product-specific terms.
+                        The current lineup covers public business facts, approved answers,
+                        and reusable business context. Each product keeps its own website,
+                        documentation, support, and terms.
                     </p>
                     <div className="nv-page-hero-meta glass">
-                        <span className="mono">company website</span>
-                        <span className="mono">product routing</span>
-                        <span className="mono">separate product terms</span>
+                        <span className="mono">company reference</span>
+                        <span className="mono">product boundaries</span>
+                        <span className="mono">separate terms</span>
                     </div>
                 </div>
             </section>
@@ -104,12 +81,12 @@ export default function NeelvaraProductsPage() {
                     <div>
                         <span className="nv-eyebrow mono">
                             <span className="nv-pip" aria-hidden="true" />
-                            Information layer
+                            Product map
                         </span>
-                        <h2 className="serif">Different products. One information layer.</h2>
+                        <h2 className="serif">Each product has a distinct role.</h2>
                         <p>
-                            The shared direction is simple: customer-facing business information
-                            should be accurate, approved, reusable, and easy to route.
+                            This company website identifies the lineup. Product websites
+                            explain capabilities, support, pricing, and commitments.
                         </p>
                     </div>
                     <div className="nv-product-architecture-grid">
@@ -168,16 +145,16 @@ export default function NeelvaraProductsPage() {
                         </span>
                         <h2 className="serif">Company information and product commitments stay separate.</h2>
                         <p>
-                            Product-specific pricing, onboarding, support, documentation, privacy,
+                            Product pricing, onboarding, support, documentation, privacy,
                             and terms remain on the individual product websites. Neelvara
-                            Systems provides company-level information, legal information, and
-                            product relationship context.
+                            Systems provides company reference information, legal information,
+                            and product routing context.
                         </p>
                     </div>
                     <ul className="nv-check-list">
                         <li>{NEELVARA_RELATIONSHIP_LINE}</li>
-                        <li>Products evolve independently while the company provides the long-term foundation behind them.</li>
-                        <li>Company-level questions can use Neelvara contact routes.</li>
+                        <li>Each product has its own website, policy, support path, and operating commitments.</li>
+                        <li>Company questions can use Neelvara contact routes.</li>
                     </ul>
                 </div>
             </section>
@@ -187,9 +164,9 @@ export default function NeelvaraProductsPage() {
                     <div>
                         <span className="nv-eyebrow mono">
                             <span className="nv-pip" aria-hidden="true" />
-                            Looking for something specific?
+                            Routing rule
                         </span>
-                        <h2 className="serif">Use product sites for product questions and Neelvara for company questions.</h2>
+                        <h2 className="serif">Use product sites for product work and Neelvara for company verification.</h2>
                         <p>
                             Product support, onboarding, billing, and account questions stay on
                             product websites. Company, legal, privacy, partnership, or business

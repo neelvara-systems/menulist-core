@@ -14,7 +14,7 @@ It verifies the operating company behind the current operated product lineup, ex
 
 The site should make a visitor understand:
 
-- Neelvara Systems builds software infrastructure for customer-facing business information.
+- Neelvara Systems operates software infrastructure for customer-facing business information.
 - MenuList, Answerlattice, and CampaignCue are operated by Neelvara Systems.
 - The company scope is clear and narrow.
 - Company, legal, privacy, and product-support routes are separated.
@@ -29,7 +29,7 @@ Short:
 
 Long:
 
-> Neelvara Systems builds focused products that help businesses keep public facts, approved answers, and business context accurate, usable, and consistent across customer-facing surfaces.
+> Neelvara Systems operates products that keep public business facts, approved answers, and reusable business context clear before they reach customers.
 
 Relationship:
 
@@ -45,11 +45,11 @@ Entity description:
 
 Allowed:
 
-- Neelvara Systems builds software infrastructure for customer-facing business information.
+- Neelvara Systems operates software infrastructure for customer-facing business information.
 - MenuList, Answerlattice, and CampaignCue are operated by Neelvara Systems.
-- MenuList focuses on public business facts such as menus, hours, profiles, and customer-facing details.
-- Answerlattice focuses on governed support answers, help content, and approved business responses.
-- CampaignCue focuses on prepared business context for campaign briefs and reusable marketing assets.
+- MenuList keeps menus, hours, profiles, and customer-facing details in a public business information source.
+- Answerlattice keeps support knowledge, help content, and business responses tied to approved answers.
+- CampaignCue keeps campaign briefs, reusable content, and marketing assets tied to business context.
 - Neelvara Systems does not claim POS, payroll, accounting, CRM, delivery, or internal operations software on this company website.
 
 Only show products approved for company-site mention. Do not add future-product cards, placeholder products, or private/internal product names.
@@ -150,7 +150,7 @@ Hero eyebrow:
 
 Hero support copy:
 
-> Neelvara Systems builds focused products that help businesses keep public facts, approved answers, and business context accurate, usable, and consistent across customer-facing surfaces.
+> Neelvara Systems operates products that keep public business facts, approved answers, and reusable business context clear before they reach customers.
 
 Do not make the H1 a slogan. The brand/entity name should be the first signal.
 
@@ -183,13 +183,13 @@ Reject:
 
 Products section:
 
-> Different products solve different parts of customer-facing business information.
+> The company site identifies operated products and points visitors to the right product website.
 
 Product summaries:
 
-- MenuList: public business facts, starting with menus, hours, profiles, and customer-facing details.
-- Answerlattice: governed answers for support, help content, and approved business responses.
-- CampaignCue: prepared business context for campaign briefs and reusable marketing assets.
+- MenuList: keeps menus, hours, profiles, and customer-facing details in a public business information source.
+- Answerlattice: keeps support knowledge, help content, and business responses tied to approved answers.
+- CampaignCue: keeps campaign briefs, reusable content, and marketing assets tied to business context.
 
 Product pricing, onboarding, support, documentation, privacy, and terms remain on individual product websites.
 
@@ -199,7 +199,7 @@ Product pricing, onboarding, support, documentation, privacy, and terms remain o
 
 Legal:
 
-> This page provides company-level information for Neelvara Systems. It is not a product pricing page, owner dashboard, or customer support portal.
+> This page provides company reference information for Neelvara Systems. It is not a product pricing page, product app, or customer support portal.
 
 Privacy:
 
@@ -218,12 +218,12 @@ Both Privacy and Terms must show `Last updated: June 26, 2026`.
 Home:
 
 - Title: `Neelvara Systems - Customer-Facing Business Information Infrastructure`
-- Description: `Neelvara Systems builds software infrastructure for customer-facing business information.`
+- Description: `Neelvara Systems operates software infrastructure for customer-facing business information.`
 
 Products:
 
-- Title: `Focused Products - Neelvara Systems`
-- Description: `Focused products operated by Neelvara Systems.`
+- Title: `Operated Products - Neelvara Systems`
+- Description: `Operated products and product boundaries for Neelvara Systems.`
 
 About:
 

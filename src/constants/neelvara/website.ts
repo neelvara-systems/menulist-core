@@ -4,7 +4,7 @@ export const NEELVARA_SITE_URL = getProductDeploymentTarget('neelvara', 'product
 export const NEELVARA_SITE_TITLE =
     'Neelvara Systems - Customer-Facing Business Information Infrastructure';
 export const NEELVARA_SITE_DESCRIPTION =
-    'Neelvara Systems builds software infrastructure for customer-facing business information.';
+    'Neelvara Systems operates software infrastructure for customer-facing business information.';
 export const NEELVARA_LOGO_PATH = '/neelvara-logo.svg';
 export const NEELVARA_OG_IMAGE_PATH = '/neelvara-og-image.png';
 
@@ -33,19 +33,19 @@ export const NEELVARA_PRODUCT_LINEUP = [
         name: 'MenuList',
         status: 'Operated product',
         url: NEELVARA_MENULIST_URL,
-        summary: 'Public business facts, starting with menus, hours, profiles, and customer-facing details.',
+        summary: 'Keeps menus, hours, profiles, and customer-facing details in a public business information source.',
     },
     {
         name: 'Answerlattice',
         status: 'Operated product',
         url: NEELVARA_ANSWERLATTICE_URL,
-        summary: 'Governed answers for support, help content, and approved business responses.',
+        summary: 'Keeps support knowledge, help content, and business responses tied to approved answers.',
     },
     {
         name: 'CampaignCue',
         status: 'Operated product',
         url: NEELVARA_CAMPAIGNCUE_URL,
-        summary: 'Prepared business context for campaign briefs and reusable marketing assets.',
+        summary: 'Keeps campaign briefs, reusable content, and marketing assets tied to business context.',
     },
 ] as const;
 
@@ -65,8 +65,8 @@ export const NEELVARA_PUBLIC_PAGES: Array<{
     },
     {
         path: '/products',
-        title: 'Focused Products - Neelvara Systems',
-        description: 'Focused products operated by Neelvara Systems.',
+        title: 'Operated Products - Neelvara Systems',
+        description: 'Current operated products and product website routing for Neelvara Systems.',
         priority: 0.8,
         changeFrequency: 'monthly',
     },

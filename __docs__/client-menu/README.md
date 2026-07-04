@@ -61,12 +61,12 @@ The **Customer-Facing Digital Menu** (Client Menu) is the public-facing interfac
 | SEO optimization         | Metadata, Schema.org, BreadcrumbList, FAQ, sitemap  | ✅     |
 | Decision Blocks          | Featured choices (precomputed nightly)              | ✅     |
 | Live Indicator           | "Updated just now" trust signal                     | ✅     |
-| Instant Availability     | Sold-out items fade instantly                       | ✅     |
+| Availability State      | Sold-out items fade after public menu refresh       | ✅     |
 | Time-Based Categories    | Auto-switch by time                                 | ✅     |
 | Multi-language           | Customer language selection                         | ✅     |
 | Fuzzy menu search        | Client-side spelling/phonetic search with exact visible-name matches ranked first | ✅     |
 | Analytics tracking       | Internal + optional GA4/FB Pixel per store          | ✅     |
-| Offline support          | PWA with service worker and no stale menu cache     | ✅     |
+| Offline fallback         | Customer service worker shows `/offline`; no stale menu cache | ✅     |
 | State persistence        | Scroll, filter preserved                            | ✅     |
 | Infrastructure hardening | Timeout, retry, skeleton, Vercel Data Cache         | ✅     |
 | OBP Integration          | Root = Official Business Page, /menu = default menu | ✅     |

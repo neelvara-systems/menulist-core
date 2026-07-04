@@ -157,6 +157,219 @@ const assertNoUnsafeBlankWindowOpen = () => {
     });
 };
 
+const listMenuListBrowserSurfaceFiles = () => [
+    ...listSourceFiles('src/app'),
+    ...listSourceFiles('src/components'),
+].filter((relativePath) => {
+    if (relativePath.startsWith('src/app/api/')) return false;
+    if (relativePath.startsWith('src/app/sites/answerlattice/')) return false;
+    if (relativePath.includes('/answerlattice/')) return false;
+    return true;
+});
+
+const FIREBASE_AUTH_DIRECT_METHOD_ALLOWLIST = new Map([
+    ['src/components/templates/loginPage/index.tsx', new Set([
+        'signInWithEmailAndPassword',
+        'signInWithCustomToken',
+    ])],
+    ['src/components/templates/forgotPassword/index.tsx', new Set([
+        'sendPasswordResetEmail',
+    ])],
+]);
+
+const getAllowedFirebaseAuthDirectMethods = (relativePath) => (
+    FIREBASE_AUTH_DIRECT_METHOD_ALLOWLIST.get(relativePath) || new Set()
+);
+
+const getImportedFirebaseAuthNames = (importClause) => {
+    const namedMatch = importClause.match(/\{([\s\S]*?)\}/);
+    if (!namedMatch) return [];
+
+    return namedMatch[1]
+        .split(',')
+        .map((specifier) => specifier.trim())
+        .filter(Boolean)
+        .map((specifier) => specifier.replace(/^type\s+/, '').split(/\s+as\s+/i)[0].trim())
+        .filter(Boolean);
+};
+
+const assertMenuListBrowserSurfacesUseAllowedFirebaseAuthDirectMethods = () => {
+    const staticImportPattern = /import\s+(type\s+)?([^;]*?)\s+from\s+['"](?:firebase\/auth|@firebase\/auth)['"]\s*;?/g;
+    const dynamicImportPattern = /(?:const|let|var)\s+\{\s*([^}]+?)\s*\}\s*=\s*(?:await\s+)?import\(\s*['"](?:firebase\/auth|@firebase\/auth)['"]\s*\)/g;
+
+    listMenuListBrowserSurfaceFiles().forEach((relativePath) => {
+        const content = read(relativePath);
+        const allowedMethods = getAllowedFirebaseAuthDirectMethods(relativePath);
+
+        for (const match of content.matchAll(staticImportPattern)) {
+            const isTypeOnlyImport = Boolean(match[1]);
+            if (isTypeOnlyImport) continue;
+
+            const importClause = match[2];
+            const importedNames = getImportedFirebaseAuthNames(importClause);
+
+            assert(
+                importedNames.length > 0,
+                `${relativePath} must not use default or namespace firebase/auth imports from browser surfaces.`,
+            );
+
+            importedNames.forEach((importedName) => {
+                assert(
+                    allowedMethods.has(importedName),
+                    `${relativePath} must not import ${importedName} from firebase/auth outside the auth-entry allowlist.`,
+                );
+            });
+        }
+
+        for (const match of content.matchAll(dynamicImportPattern)) {
+            getImportedFirebaseAuthNames(`{${match[1]}}`).forEach((importedName) => {
+                assert(
+                    allowedMethods.has(importedName),
+                    `${relativePath} must not dynamically import ${importedName} from firebase/auth outside the auth-entry allowlist.`,
+                );
+            });
+        }
+    });
+};
+
+const REALTIME_DATABASE_DIRECT_IMPORT_ALLOWLIST = new Map([
+    ['src/lib/firebase/firebaseClient.ts', new Set([
+        'getDatabase',
+    ])],
+    ['src/database/loggers/applicationLogger.ts', new Set([
+        'child',
+        'get',
+        'onValue',
+        'ref',
+        'set',
+    ])],
+    ['src/database/loggers/errorLogger.ts', new Set([
+        'child',
+        'get',
+        'onValue',
+        'ref',
+        'set',
+    ])],
+]);
+
+const getAllowedRealtimeDatabaseImports = (relativePath) => (
+    REALTIME_DATABASE_DIRECT_IMPORT_ALLOWLIST.get(relativePath) || new Set()
+);
+
+const getImportedRealtimeDatabaseNames = (importClause) => {
+    const namedMatch = importClause.match(/\{([\s\S]*?)\}/);
+    if (!namedMatch) return [];
+
+    return namedMatch[1]
+        .split(',')
+        .map((specifier) => specifier.trim())
+        .filter(Boolean)
+        .map((specifier) => specifier.replace(/^type\s+/, '').split(/\s+as\s+/i)[0].trim())
+        .filter(Boolean);
+};
+
+const assertRealtimeDatabaseDirectImportBoundary = () => {
+    const sourceFiles = [
+        ...listSourceFiles('src/app'),
+        ...listSourceFiles('src/components'),
+        ...listSourceFiles('src/config'),
+        ...listSourceFiles('src/hooks'),
+        ...listSourceFiles('src/database'),
+        ...listSourceFiles('src/lib'),
+    ];
+
+    const staticImportPattern = /import\s+(type\s+)?([^;]*?)\s+from\s+['"](?:firebase\/database|@firebase\/database)['"]\s*;?/g;
+    const dynamicImportPattern = /(?:const|let|var)\s+\{\s*([^}]+?)\s*\}\s*=\s*(?:await\s+)?import\(\s*['"](?:firebase\/database|@firebase\/database)['"]\s*\)/g;
+
+    sourceFiles.forEach((relativePath) => {
+        const content = read(relativePath);
+        const allowedImports = getAllowedRealtimeDatabaseImports(relativePath);
+
+        for (const match of content.matchAll(staticImportPattern)) {
+            const isTypeOnlyImport = Boolean(match[1]);
+            if (isTypeOnlyImport) continue;
+
+            const importedNames = getImportedRealtimeDatabaseNames(match[2]);
+            assert(
+                importedNames.length > 0,
+                `${relativePath} must not use default or namespace firebase/database imports outside the logger/client allowlist.`,
+            );
+
+            importedNames.forEach((importedName) => {
+                assert(
+                    allowedImports.has(importedName),
+                    `${relativePath} must not import ${importedName} from firebase/database outside the bounded logger/client allowlist.`,
+                );
+            });
+        }
+
+        for (const match of content.matchAll(dynamicImportPattern)) {
+            getImportedRealtimeDatabaseNames(`{${match[1]}}`).forEach((importedName) => {
+                assert(
+                    allowedImports.has(importedName),
+                    `${relativePath} must not dynamically import ${importedName} from firebase/database outside the bounded logger/client allowlist.`,
+                );
+            });
+        }
+    });
+};
+
+const assertRealtimeDatabaseLoggerBoundaryDocs = () => {
+    const changelog = read('__docs__/CHANGELOG.md');
+    const productionAudit = read('__docs__/audits/menulist-production-readiness-audit.md');
+
+    [
+        'Browser Realtime Database Logger Boundary',
+        'verify:auth-security-failure-matrix',
+        'firebase/database',
+        'src/lib/firebase/firebaseClient.ts',
+        'src/database/loggers/applicationLogger.ts',
+        'src/database/loggers/errorLogger.ts',
+        'bounded logger/client allowlist',
+    ].forEach((token) => {
+        assertIncludes(changelog, token, `Changelog must document the Realtime Database logger boundary token: ${token}`);
+    });
+
+    [
+        'Realtime Database logger boundary checkpoint',
+        'verify:auth-security-failure-matrix',
+        'firebase/database',
+        'src/lib/firebase/firebaseClient.ts',
+        'src/database/loggers/applicationLogger.ts',
+        'src/database/loggers/errorLogger.ts',
+        'bounded logger/client allowlist',
+    ].forEach((token) => {
+        assertIncludes(productionAudit, token, `Production audit must document the Realtime Database logger boundary token: ${token}`);
+    });
+};
+
+const assertBrowserFirebaseAuthBoundaryDocs = () => {
+    const changelog = read('__docs__/CHANGELOG.md');
+    const productionAudit = read('__docs__/audits/menulist-production-readiness-audit.md');
+
+    [
+        'Browser Firebase Auth Direct-Method Boundary',
+        'verify:auth-security-failure-matrix',
+        'signInWithEmailAndPassword',
+        'signInWithCustomToken',
+        'sendPasswordResetEmail',
+        'NextAuth signOut',
+    ].forEach((token) => {
+        assertIncludes(changelog, token, `Changelog must document the browser Firebase Auth boundary token: ${token}`);
+    });
+
+    [
+        'Browser Firebase Auth direct-method boundary checkpoint',
+        'verify:auth-security-failure-matrix',
+        'signInWithEmailAndPassword',
+        'signInWithCustomToken',
+        'sendPasswordResetEmail',
+        'NextAuth signOut',
+    ].forEach((token) => {
+        assertIncludes(productionAudit, token, `Production audit must document the browser Firebase Auth boundary token: ${token}`);
+    });
+};
+
 const assertLifecycleMessagingLoggerRouting = () => {
     const messagingEngine = read('functions/src/messaging/messagingEngine.ts');
     assertNoDirectConsole(
@@ -1869,6 +2082,8 @@ assertIncludes(errorLogger, "logDatabaseLoggerFailure('error_log_write_failed'",
 assertIncludes(errorLogger, "logDatabaseLoggerFailure('error_log_read_failed'", 'Error logger must securely log read failures.');
 assertIncludes(errorLogger, "logDatabaseLoggerFailure('error_log_read_by_id_failed'", 'Error logger must securely log read-by-id failures.');
 assertIncludes(errorLogger, 'res(null);', 'Error logger failures must resolve instead of hanging.');
+assertRealtimeDatabaseDirectImportBoundary();
+assertRealtimeDatabaseLoggerBoundaryDocs();
 assertIncludes(
     runtimeDiagnostics,
     "import { secureError, secureLog } from '@lib/security/secureLogger';",
@@ -2363,9 +2578,13 @@ assertIncludes(localLogUtils, 'sourceStatusCode: getLocalLogErrorStatus(error)',
 assertIncludes(localLogUtils, 'sanitizeLocalLogData', 'Local log utility must summarize data payloads before writing files.');
 assertIncludes(localLogUtils, 'safeLogKey', 'Local log utility must sanitize object keys before writing files.');
 assertIncludes(localLogUtils, 'summary.keys = keys.map(safeLogKey)', 'Local log utility must sanitize retained object-key summaries.');
+assertIncludes(localLogUtils, "return normalized || 'local.log';", 'Local log utility must fall back to a safe local filename.');
+assertIncludes(localLogUtils, 'const sanitizedLogFileName = safeLogFileName(logFileName);', 'Local log utility must sanitize filenames before path join.');
+assertIncludes(localLogUtils, 'const logFilePath = join(logDirectory, sanitizedLogFileName);', 'Local log utility must only join sanitized local filenames.');
 assertIncludes(localLogUtils, "JSON.stringify(getLocalLogStringContext('userId', userId))", 'Local log utility must bound user IDs in file headers.');
 assertIncludes(localLogUtils, "JSON.stringify(getLocalLogStringContext('projectId', projectId))", 'Local log utility must bound project IDs in file headers.');
 assertIncludes(localLogUtils, "JSON.stringify(sanitizeLocalLogData(data))", 'Local log utility must write sanitized data payloads only.');
+assert(!localLogUtils.includes('join(logDirectory, logFileName)'), 'Local log utility must not join raw log filenames.');
 assert(!localLogUtils.includes('Original log data'), 'Local log utility must not dump original log payloads on write failure.');
 assert(!localLogUtils.includes('error instanceof Error ? error.message'), 'Local log utility must not write raw exception messages.');
 assert(!localLogUtils.includes('error.stack'), 'Local log utility must not write raw exception stacks.');
@@ -2398,9 +2617,13 @@ assertIncludes(functionsLogUtils, 'sourceStatusCode: getLocalLogErrorStatus(erro
 assertIncludes(functionsLogUtils, 'sanitizeLocalLogData', 'Functions local log utility must summarize data payloads before writing files.');
 assertIncludes(functionsLogUtils, 'safeLogKey', 'Functions local log utility must sanitize object keys before writing files.');
 assertIncludes(functionsLogUtils, 'summary.keys = keys.map(safeLogKey)', 'Functions local log utility must sanitize retained object-key summaries.');
+assertIncludes(functionsLogUtils, "return normalized || 'local.log';", 'Functions local log utility must fall back to a safe local filename.');
+assertIncludes(functionsLogUtils, 'const sanitizedLogFileName = safeLogFileName(logFileName);', 'Functions local log utility must sanitize filenames before path join.');
+assertIncludes(functionsLogUtils, 'const logFilePath = join(logDirectory, sanitizedLogFileName);', 'Functions local log utility must only join sanitized local filenames.');
 assertIncludes(functionsLogUtils, "JSON.stringify(getLocalLogStringContext('userId', userId))", 'Functions local log utility must bound user IDs in file headers.');
 assertIncludes(functionsLogUtils, "JSON.stringify(getLocalLogStringContext('projectId', projectId))", 'Functions local log utility must bound project IDs in file headers.');
 assertIncludes(functionsLogUtils, "JSON.stringify(sanitizeLocalLogData(data))", 'Functions local log utility must write sanitized data payloads only.');
+assert(!functionsLogUtils.includes('join(logDirectory, logFileName)'), 'Functions local log utility must not join raw log filenames.');
 assert(!functionsLogUtils.includes('Original log data'), 'Functions local log utility must not dump original log payloads on write failure.');
 assert(!functionsLogUtils.includes('error instanceof Error ? error.message'), 'Functions local log utility must not write raw exception messages.');
 assert(!functionsLogUtils.includes('error.stack'), 'Functions local log utility must not write raw exception stacks.');
@@ -3013,6 +3236,8 @@ assert(!getActiveSessionHelper.includes('tId: effectiveSession'), 'Active sessio
     });
     assertIncludes(source, 'AUTH_BROWSER_REQUEST_POLICY', `${label} must use the shared browser auth request policy.`);
 });
+assertMenuListBrowserSurfacesUseAllowedFirebaseAuthDirectMethods();
+assertBrowserFirebaseAuthBoundaryDocs();
 assertIncludes(internalUserApi, 'internal_user_login_failed', 'Internal user API helper must code login failures.');
 assertIncludes(internalUserApi, 'internal_user_token_lookup_failed', 'Internal user API helper must code token lookup failures.');
 assertIncludes(internalUserApi, 'logAuthFailure', 'Internal user API helper must use bounded auth diagnostics.');

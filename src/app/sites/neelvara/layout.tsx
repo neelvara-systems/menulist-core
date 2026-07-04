@@ -23,6 +23,7 @@ export const metadata: Metadata = {
     manifest: '/neelvara.webmanifest',
     icons: {
         icon: [
+            { url: '/neelvara-favicon.svg', type: 'image/svg+xml', sizes: 'any' },
             { url: '/neelvara-favicon-16.png', type: 'image/png', sizes: '16x16' },
             { url: '/neelvara-favicon-32.png', type: 'image/png', sizes: '32x32' },
             { url: '/neelvara-icon-192.png', type: 'image/png', sizes: '192x192' },

@@ -14,7 +14,7 @@
 ## Hero Section
 
 - **Headline:** Your menu updates your POS automatically
-- **Subheadline:** Change a price, add a dish, remove an item — your POS system receives the update within seconds. No manual work.
+- **Subheadline:** Change a price, add a dish, remove an item — configured POS sync receives the owner-approved update through the integration path. No manual re-entry.
 - **CTA Text:** See How It Works
 - **CTA Link:** #how-it-works
 

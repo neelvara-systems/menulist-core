@@ -1,5 +1,7 @@
 # Google Profile Basics Checklist - Website Copy
 
+**Last Updated:** July 4, 2026
+
 **Route:** `/tools/google-profile-basics-checklist`
 
 ## Meta

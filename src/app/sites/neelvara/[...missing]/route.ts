@@ -19,6 +19,7 @@ const notFoundHtml = `<!doctype html>
   <meta name="robots" content="noindex" />
   <meta name="theme-color" content="#f7f9fc" />
   <link rel="manifest" href="/neelvara.webmanifest" />
+  <link rel="icon" href="/neelvara-favicon.svg" type="image/svg+xml" sizes="any" />
   <link rel="icon" href="/neelvara-favicon-32.png" type="image/png" sizes="32x32" />
   <link rel="apple-touch-icon" href="/neelvara-apple-touch-icon.png" type="image/png" sizes="180x180" />
   <title>Page not found | ${NEELVARA_SITE_TITLE}</title>
@@ -148,15 +149,15 @@ const notFoundHtml = `<!doctype html>
       <img class="brand-mark" src="/neelvara-logo.svg" alt="" aria-hidden="true" />
       <span class="eyebrow">Page not found</span>
       <h1>Page not found</h1>
-      <p>The page you requested is not available on the Neelvara Systems company website. ${NEELVARA_SITE_DESCRIPTION}</p>
+      <p>The page you requested is not available on the Neelvara Systems company reference website. ${NEELVARA_SITE_DESCRIPTION}</p>
       <nav aria-label="Not found navigation">
         <a id="nv-home-link" href="/">Home</a>
         <a id="nv-products-link" href="/products">Products</a>
         <a id="nv-contact-link" href="/contact">Contact</a>
       </nav>
       <div class="product-shortcuts">
-        <h2>Product shortcuts</h2>
-        <p>Product support, onboarding, billing, documentation, and account questions should start from the relevant product site.</p>
+        <h2>Product sites</h2>
+        <p>Product support, onboarding, billing, documentation, and account questions start from the relevant product site.</p>
         <nav aria-label="Product shortcuts">
           ${productShortcutLinks}
         </nav>

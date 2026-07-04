@@ -73,6 +73,7 @@ const readme = read('__docs__/temp-status-layer/README.md');
 const impl = read('__docs__/temp-status-layer/temp-status-layer_impl.md');
 const firebaseDoc = read('__docs__/temp-status-layer/temp-status-layer_firebase.md');
 const mobileDoc = read('__docs__/temp-status-layer/temp-status-layer_mobile-support.md');
+const mobileScreensSpec = read('__docs__/mobile-operational-support/03-mobile-screens-spec.md');
 const validationDoc = read('__docs__/temp-status-layer/temp-status-layer_validation.md');
 const inventory = read('FEATURE_SWEEP_MASTER_INVENTORY.md');
 const report = read('FEATURE_SWEEP_MASTER_REPORT.md');
@@ -289,6 +290,23 @@ forbidToken(impl, 'src/app/_client/obp/OBPContent.tsx', 'Temporary Status implem
 ].forEach((token) => requireToken(mobileDoc, token, 'Temporary Status mobile doc'));
 
 [
+  'Owner UI closes immediately; Temporary Status syncs and customer output refreshes through supported paths',
+  'Owner UI reopens immediately; Temporary Status clears and customer output refreshes through supported paths',
+  'storeDetails.tempStatus → active Temporary Status from the store document',
+  'POST /api/store/temp-status with action set/clear.',
+  'Optimistic state remains only after { success: true }; failure rolls back.',
+  'interface StoreTemporaryStatus',
+].forEach((token) => requireToken(mobileScreensSpec, token, 'Mobile Screens Hours/Status Temporary Status boundary'));
+[
+  'Instant close + auto-publish to all surfaces',
+  'Instant reopen + auto-publish',
+  'auto-publish to all surfaces',
+  'todayOverride?:',
+  'tempCloseUntil?:',
+  'interface StoreHoursOverride',
+].forEach((token) => forbidToken(mobileScreensSpec, token, 'Mobile Screens Hours/Status stale Temporary Status boundary'));
+
+[
   'Current Source Boundary',
   'src/app/client/obp/OBPResolvedSurface.tsx',
   'default `true`',
@@ -309,10 +327,19 @@ requireToken(inventory, 'temporary-status boundary source gate passed; browser/m
   'public pull API expired-status hiding',
 ].forEach((token) => requireToken(audit, token, 'production readiness audit'));
 [
+  'Mobile Hours/Status Temporary Status docs checkpoint',
+  '`npm run verify:temporary-status-boundary` now rejects the stale all-surface auto-publish wording',
+  'store `tempStatus` field and `/api/store/temp-status` response-confirmation boundary',
+].forEach((token) => requireToken(audit, token, 'production readiness audit mobile Hours/Status boundary'));
+[
   'July 2, 2026 - Temporary Status Boundary',
   'verify:temporary-status-boundary',
   'public pull API expired-status hiding',
 ].forEach((token) => requireToken(changelog, token, 'changelog'));
+[
+  'Mobile Hours/Status Temporary Status Docs Boundary',
+  '`npm run verify:temporary-status-boundary` now rejects the stale all-surface auto-publish wording',
+].forEach((token) => requireToken(changelog, token, 'changelog mobile Hours/Status boundary'));
 
 if (failures.length > 0) {
   console.error('FAIL verify-temporary-status-boundary');

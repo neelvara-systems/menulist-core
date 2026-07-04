@@ -1,5 +1,7 @@
 # Social Bio Link Consistency Check - Mobile Support
 
+**Last Updated:** July 4, 2026
+
 **Admission Result:** V0 public website route is responsive; no owner mobile screen is added.
 
 ## V0

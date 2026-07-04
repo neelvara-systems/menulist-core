@@ -6,17 +6,21 @@
 **Audience:** Sales Team, Marketing Team, Partnership Discussions  
 **Last Audit:** February 8, 2026 (Market Research + Strategic Review → Two-surface positioning)
 
+## Source Gate
+
+Marketing copy must describe Digital Screens as a saved MenuList source display that refreshes through the screen update path, not as instant, absolute, or independently fresh. The active runtime uses a 60-second `screen-data` cache, cache-first clients, public cache invalidation, and the screen content-version listener. Guard with `npm run verify:digital-screens-boundary`.
+
 ---
 
 ## Elevator Pitch
 
 ### 1-Liner (5 seconds)
 
-> **"Your full menu on your shop TV. Always up to date. Never touch it."**
+> **"Your current menu on your shop TV. One link. No separate screen editing."**
 
 ### 30-Second Pitch
 
-> "You already have a TV in your shop. Right now it's either blank, showing old content, or running something generic. With MenuList, you open one link on your TV, and your full menu appears — categories, items, prices — updated in real-time. Sold out? It disappears. New item? It appears. You never touch it again. Got a second screen? Use the highlights link for rotating promotions."
+> "You already have a TV in your shop. Right now it's either blank, showing old content, or running something generic. With MenuList, you open one link on your TV, and your full menu appears — categories, items, prices — from the same saved source your customer menu uses. When you save menu changes, connected screens refresh through the screen update path. Got a second screen? Use the highlights link for rotating promotions."
 
 ### Why It Matters (For the Pitch)
 
@@ -63,11 +67,11 @@ MenuList already knows your menu. It knows what's available. It knows what custo
 - Popular items with prices
 - QR code to full menu
 
-**You never update either. They update themselves.**
+**You update the MenuList source once. The screen path refreshes from that saved source.**
 
 ### The Emotional Hook
 
-> "Imagine your full menu on your shop TV — always current, always correct. You never touch it. That's what MenuList does."
+> "Imagine your full menu on your shop TV — from the same saved source as your MenuList menu. No separate screen editing. That's what MenuList does."
 
 ---
 
@@ -87,7 +91,7 @@ MenuList already knows your menu. It knows what's available. It knows what custo
 | We ARE                      | What It Means                                |
 | --------------------------- | -------------------------------------------- |
 | Your menu on your TV        | Full menu with categories, items, and prices |
-| Part of your menu system    | Connected to your real-time availability     |
+| Part of your menu system    | Connected to saved availability and screen-version refresh |
 | Zero-effort display         | Works without you touching it                |
 | A decision remover          | You open a link, not manage a system         |
 | Two screens from one system | Menu board + highlights, same data           |
@@ -96,7 +100,7 @@ MenuList already knows your menu. It knows what's available. It knows what custo
 
 | Alternative             | Problem                                   | MenuList Advantage                      |
 | ----------------------- | ----------------------------------------- | --------------------------------------- |
-| **Blank TV**            | Wasted opportunity                        | Always showing something relevant       |
+| **Blank TV**            | Wasted opportunity                        | Keeps showing relevant menu content     |
 | **USB slideshow**       | Never updated, manual effort              | Auto-updates from your menu             |
 | **Generic signage CMS** | Expensive, complex, another tool to learn | Free with MenuList, zero learning curve |
 | **Hire a designer**     | Expensive, slow, still need to update     | No design needed, real-time updates     |
@@ -133,8 +137,8 @@ MenuList already knows your menu. It knows what's available. It knows what custo
 **Key Points:**
 
 - Open one link on your TV
-- Content updates automatically
-- Sold out items disappear instantly
+- Saved content refreshes through the screen update path
+- Sold out items leave the screen after save and refresh
 
 **Speaker Note:**
 
@@ -162,7 +166,7 @@ MenuList already knows your menu. It knows what's available. It knows what custo
 
 ### Slide 4: What Your TV Shows
 
-**Title:** Your Full Menu, Always Current
+**Title:** Your Full Menu, From One Source
 
 **Visual:** Side-by-side mockups of Menu Board and Highlights modes
 
@@ -170,7 +174,7 @@ MenuList already knows your menu. It knows what's available. It knows what custo
 
 - Full menu with categories and prices
 - Sold out items disappear
-- New items appear automatically
+- New items appear after save and refresh
 - Pages rotate for large menus
 
 **Highlights (optional second screen):**
@@ -181,7 +185,7 @@ MenuList already knows your menu. It knows what's available. It knows what custo
 
 **Speaker Note:**
 
-> "The main screen shows your full menu. If you have a second TV, use the highlights link for promotions. Both update themselves. You do nothing."
+> "The main screen shows your full menu. If you have a second TV, use the highlights link for promotions. Both follow the saved MenuList source after the screen update path refreshes."
 
 ---
 
@@ -191,11 +195,11 @@ MenuList already knows your menu. It knows what's available. It knows what custo
 
 **Scenario 1: The Restaurant (Menu Board)**
 
-> TV above counter shows full menu with prices. Customer walks in, sees what's available, knows what to order before reaching the counter. Butter chicken sells out at 8 PM — it disappears from the screen. Owner didn't do anything.
+> TV above counter shows full menu with prices. Customer walks in, sees what's available, knows what to order before reaching the counter. Owner marks butter chicken sold out in MenuList; the connected screen refreshes from the saved source.
 
 **Scenario 2: The Cake Shop (Two screens)**
 
-> Main screen above counter: full menu with prices. Waiting area screen: rotating highlights of today's specials. Both update automatically.
+> Main screen above counter: full menu with prices. Waiting area screen: rotating highlights of today's specials. Both follow the saved MenuList source.
 
 **Scenario 3: Diwali Festival**
 
@@ -255,7 +259,7 @@ MenuList already knows your menu. It knows what's available. It knows what custo
 
 **Subheadline:**
 
-> One link. Always showing the right thing. Never touch it again.
+> One link. Current menu source on screen. No separate screen editing.
 
 **CTA Button:**
 
@@ -265,9 +269,9 @@ MenuList already knows your menu. It knows what's available. It knows what custo
 
 ### Benefit Bullets
 
-- ✓ **Your full menu on screen** — Categories, items, prices. Always current.
+- ✓ **Your full menu on screen** — Categories, items, prices from one saved source.
 - ✓ **Sold out? It disappears** — No embarrassment, no manual updates.
-- ✓ **New item? It appears** — Add to MenuList, screen updates automatically.
+- ✓ **New item? It appears** — Add to MenuList, save, and the screen refreshes through the update path.
 - ✓ **Works offline** — Internet drops? Screen keeps running.
 - ✓ **Two modes, one link** — Menu board for ordering, highlights for promotions.
 - ✓ **Zero learning curve** — One link. Fullscreen. Done.
@@ -286,7 +290,7 @@ MenuList already knows your menu. It knows what's available. It knows what custo
 
 **Step 3: Forget**
 
-> That's it. It updates itself. Forever.
+> That's it. The screen follows saved MenuList changes through the screen update path.
 
 ---
 
@@ -335,7 +339,7 @@ MenuList already knows your menu. It knows what's available. It knows what custo
 
 **Sample Copy:**
 
-> "You already share on WhatsApp Status with MenuList. Now your shop TV shows your full menu with prices — automatically. No pendrive. No design. Just your menu, always current."
+> "You already share on WhatsApp Status with MenuList. Now your shop TV shows your full menu with prices from the same saved source. No pendrive. No design. Just your current MenuList menu on screen."
 
 **Regional Language Adaptations:**
 
@@ -355,7 +359,7 @@ MenuList already knows your menu. It knows what's available. It knows what custo
 
 **Sample Copy:**
 
-> "Digital menu boards are expensive and complicated. MenuList puts your full menu on your TV — with prices, categories, and real-time availability — without the software, without the cost, without the complexity."
+> "Digital menu boards are expensive and complicated. MenuList puts your full menu on your TV — with prices, categories, and saved availability — without the software, without the cost, without the complexity."
 
 ---
 
@@ -365,9 +369,9 @@ MenuList already knows your menu. It knows what's available. It knows what custo
 
 | Objection                                 | Response                                                                                                                                 |
 | ----------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
-| **"We already have a TV slideshow"**      | "With MenuList, your full menu appears on screen with prices — not just slideshows. And it updates itself when you change your menu."    |
+| **"We already have a TV slideshow"**      | "With MenuList, your full menu appears on screen with prices — not just slideshows. Saved menu changes refresh through the screen update path." |
 | **"We don't have a TV"**                  | "This feature is optional. But if you ever add one, you're ready. Focus on what matters to you today."                                   |
-| **"Isn't this just content generation?"** | "No. This is your live menu on screen. When butter chicken sells out at 8 PM, it disappears from your screen at 8 PM."                   |
+| **"Isn't this just content generation?"** | "No. This is your saved MenuList menu on screen. When you mark butter chicken sold out, the connected screen refreshes from that source." |
 | **"Will this help our sales?"**           | "Customers who see the full menu with prices decide faster. We don't promise numbers, but we make sure customers see what's available."  |
 | **"We use [signage tool X]"**             | "Great tools for big chains with dedicated teams. MenuList is for owners who want zero management. One link, full menu, never touch it." |
 | **"Can I customize the design?"**         | "The menu board is designed for readability. You can upload images on the highlights screen for special occasions."                      |
@@ -376,7 +380,7 @@ MenuList already knows your menu. It knows what's available. It knows what custo
 ### Key Differentiators to Emphasize
 
 1. **Full menu on screen** — Categories, items, prices. Not just slideshows.
-2. **Connected to real data** — Not static images, live menu data
+2. **Connected to real data** — Not static images, saved MenuList source data
 3. **Zero management** — Set once, never touch again
 4. **Availability-aware** — Sold out = removed automatically
 5. **Two modes, one system** — Menu board + highlights from same link
@@ -392,11 +396,11 @@ MenuList already knows your menu. It knows what's available. It knows what custo
 | Term             | Context                           |
 | ---------------- | --------------------------------- |
 | "Automatic"      | "Your screen runs automatically"  |
-| "Always current" | "Always showing what's available" |
+| "Current source" | "Showing the saved MenuList menu source" |
 | "One link"       | "Just open one link"              |
 | "Zero effort"    | "Zero effort to maintain"         |
 | "Just works"     | "It just works"                   |
-| "Self-updating"  | "Self-updating display"           |
+| "Screen refresh" | "Refreshes after saved menu changes" |
 
 ### Terms to AVOID (Forbidden Phrases)
 
@@ -416,7 +420,7 @@ MenuList already knows your menu. It knows what's available. It knows what custo
 
 - **Calm, not urgent** — No FOMO, no pressure
 - **Practical, not hype** — Focus on what it does, not what it promises
-- **Outcome-focused** — "Never touch it again" > "Saves time"
+- **Outcome-focused** — "No separate screen editing" > "Saves time"
 - **SMB-respectful** — They're busy, don't waste their attention
 
 ---
@@ -465,7 +469,7 @@ Potential paths:
 
 ### The 10-Second Pitch
 
-> "One link on your TV. Your full menu with prices. Updates automatically. Never touch it again."
+> "One link on your TV. Your full menu with prices from the saved MenuList source. No separate screen editing."
 
 ### The 3 Key Points
 

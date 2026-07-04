@@ -4,12 +4,13 @@
 **Status:** Active
 **Last Updated:** February 19, 2026
 **Audience:** Sales team, Marketing, Internal strategy
+**Source gate:** `npm run verify:agent-readiness`
 
 ---
 
 ## Elevator Pitch (30 Seconds)
 
-MenuList doesn't just give businesses a digital menu — it makes their business **discoverable by AI**. When customers ask ChatGPT, Gemini, or any AI assistant about a restaurant, salon, or cafe, MenuList's structured data ensures the business shows up with accurate menus, hours, and contact info. No other menu platform provides this level of machine-readable business truth.
+MenuList doesn't just give businesses a digital menu — it gives them a machine-readable public source. When customers ask ChatGPT, Gemini, or another AI assistant about a restaurant, salon, or cafe, MenuList's structured pages give external systems owner-approved menu, hours, and contact facts to read when they crawl or open the page. This is a discovery-readiness layer, not a guarantee that any external system will show, cite, rank, or refresh the business.
 
 ---
 
@@ -29,12 +30,12 @@ MenuList automatically creates the deepest structured data profile for every bus
 - Business hours with timezone-aware open/closed status
 - Location with coordinates for local discovery
 - Business type classification for proper categorization
-- All updated in real-time by the owner
+- All updated from the owner-approved public source after save and cache refresh
 
 This data is embedded in every MenuList page using schema.org standards — the same language AI systems understand.
 
 ### The Outcome
-Businesses using MenuList are **more likely to be correctly represented** when AI assistants answer customer queries. Their menu is always accurate, their hours always current, their info always structured.
+Businesses using MenuList have a cleaner public source for AI and search systems to evaluate. Their owner-approved menu, hours, and business information are structured; external systems still decide what they show or cite.
 
 ---
 
@@ -44,7 +45,7 @@ Businesses using MenuList are **more likely to be correctly represented** when A
 |---------|---------|----------------------|------|-------------------|
 | Owner-maintained menu data | ✅ | ❌ (no item-level detail) | ❌ (user-generated) | ⚠️ (often outdated) |
 | Schema.org structured data | ✅ Deep (MenuItem, Offer, Diet) | ✅ Basic | ❌ | ❌ |
-| Real-time accuracy | ✅ Instant publish | ⚠️ Delayed sync | ❌ | ⚠️ Developer needed |
+| Freshness boundary | ✅ Owner-approved source + public cache refresh | ⚠️ Delayed sync | ❌ | ⚠️ Developer needed |
 | AI-readable format | ✅ JSON-LD + llms.txt | ⚠️ Own ecosystem only | ❌ | ❌ |
 | Data validation | ✅ MCE correctness engine | ❌ | ❌ | ❌ |
 
@@ -65,8 +66,8 @@ Businesses using MenuList are **more likely to be correctly represented** when A
 - Businesses with clean data get recommended first
 
 ### Slide 3: How MenuList Solves It
-"Update your menu once. AI understands it everywhere."
-- Owner updates menu → instantly structured for AI
+"Update your menu once. The public source is structured."
+- Owner-approved changes refresh into structured public data
 - Schema.org deep integration (menus, hours, location, dietary info)
 - No technical setup needed — it just works
 
@@ -78,14 +79,14 @@ Businesses using MenuList are **more likely to be correctly represented** when A
 - Owner-maintained = always fresh
 
 ### Slide 5: Use Cases
-1. **Restaurant owner:** Menu always accurate when customer asks AI
+1. **Restaurant owner:** Owner-approved menu is available in structured public data
 2. **Salon owner:** Hours and services correctly represented in voice search
 3. **Cafe owner:** Vegan/dietary options discoverable by AI assistants
 
 ### Slide 6: The Long-Term Value
 "Your business data becomes an asset, not just a page."
 - Structured data compounds over time
-- AI systems learn to trust consistent sources
+- AI systems can evaluate consistent public sources
 - Early adopters get discovered first
 
 ### Slide 7: Get Started
@@ -105,7 +106,7 @@ Businesses using MenuList are **more likely to be correctly represented** when A
 **Response:** Most websites have menus as PDFs or images — AI can't read those. Even HTML menus usually lack structured data markup. MenuList automatically generates schema.org structured data for every item, making your menu machine-readable without any technical work.
 
 ### Objection: "AI search isn't that important yet"
-**Response:** 20% of holiday retail in 2025 was already influenced by AI agents. Voice search is growing. ChatGPT, Gemini, and Perplexity are being used millions of times daily for local business queries. The businesses with structured data get found first.
+**Response:** 20% of holiday retail in 2025 was already influenced by AI agents. Voice search is growing. ChatGPT, Gemini, and Perplexity are used for local business queries. Businesses with structured public data give those systems a clearer source to evaluate, without a ranking or citation guarantee.
 
 ### Objection: "This sounds expensive"
 **Response:** There's no extra cost. Every MenuList plan includes structured data generation automatically. You're already getting it — this isn't an add-on, it's built into the platform.
@@ -115,10 +116,10 @@ Businesses using MenuList are **more likely to be correctly represented** when A
 ## Go-to-Market Messaging
 
 ### India Messaging (WhatsApp-first)
-"Your menu, structured for AI. When customers ask their phone 'What's on the menu at [your business]?' — MenuList makes sure the answer is right."
+"Your menu, structured for AI and search systems. When customers ask their phone 'What's on the menu at [your business]?' — MenuList gives external systems a clear owner-approved source to read."
 
 ### Global Messaging
-"The menu platform AI trusts. Structured data that makes your business discoverable by every AI assistant, search engine, and voice device."
+"Owner-approved menu data, structured for public AI and search discovery. External systems decide what they crawl, cite, show, or summarize."
 
 ---
 
@@ -127,8 +128,8 @@ Businesses using MenuList are **more likely to be correctly represented** when A
 ### USE:
 - "Structured for AI discovery"
 - "Machine-readable business truth"
-- "AI finds your business accurately"
-- "Your menu, always correct — even for AI"
+- "AI and search systems can read the owner-approved source"
+- "Your menu, structured for public discovery"
 - "Discoverable by AI assistants"
 
 ### NEVER USE:

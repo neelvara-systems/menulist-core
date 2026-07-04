@@ -8,6 +8,12 @@
 
 ---
 
+## Source Gate
+
+This spec is source-gated by `npm run verify:public-business-truth`. Behavior Engineering copy must point owners to one stable customer link and one current owner-approved source. It must not promise instant visibility, always-latest public output, or automatic freshness beyond the existing save/publish path and public cache refresh.
+
+---
+
 ## Executive Summary
 
 MenuList's engineering is world-class — OBP, QR codes, share modals, schema.org, mobile PWA all built. But owners still send PDFs and photos out of **muscle memory**. The product gap is not technology — it's **behavioral adoption**.
@@ -47,7 +53,7 @@ This spec defines a systematic approach to replace the owner's default "send PDF
 Customer: "But menu says ₹180..."  
 Owner: "Old menu..."  
 **Impact:** Owner looks unprofessional and disorganized.  
-**MenuList relief:** Link always shows latest prices and items.
+**MenuList relief:** Link points customers to the current approved prices and items.
 
 ### 2. Repeated WhatsApp Work (Interruption Fatigue)
 
@@ -71,11 +77,11 @@ Owner must explain: price changed, item removed, offer ended.
 | 2   | Staff inconsistency         | Staff sends old/wrong/cropped photos                      | One official link for all staff            |
 | 3   | "Do you have...?" questions | Repeated price/availability/item questions                | Link shows everything clearly              |
 | 4   | Instagram DM chaos          | Switch apps to send menu on different channels            | Same link works everywhere                 |
-| 5   | Old menu circulating        | Customers screenshot old PDFs, forward for months         | Link always shows current version          |
+| 5   | Old menu circulating        | Customers screenshot old PDFs, forward for months         | Link points to the current approved version |
 | 6   | Wrong expectation walk-ins  | Customer arrives expecting old prices/items               | Customer sees current reality before visit |
 | 7   | Explaining menu on calls    | "What do you have? Tell starters..."                      | Send link → call ends faster               |
 | 8   | Multi-link confusion        | Google photos, Instagram highlights, PDF, WhatsApp images | One canonical link                         |
-| 9   | Menu update stress          | Change price → must resend everywhere                     | Update once → everywhere updated           |
+| 9   | Menu update stress          | Change price → must resend everywhere                     | Update once → same link refreshes after save/publish and cache refresh |
 | 10  | Premium perception anxiety  | Sending photos/PDF feels cheap for premium venues         | Official clean link = premium feel         |
 
 ---
@@ -113,7 +119,7 @@ Each loop is a daily-life replacement. Individually small. Together → removal 
 ### Loop 2: "Update Once, Done Everywhere" Loop
 
 - **Trigger:** Owner changes price/item/availability
-- **Relief:** Update once → all customers see latest
+- **Relief:** Update once → the same link serves the current approved source after save/publish and cache refresh
 - **Lock-in:** Owner stops worrying about outdated menus. Removing = must resend everywhere manually.
 
 ### Loop 3: Staff Alignment Loop
@@ -185,7 +191,7 @@ For each of the first 20-50 premium cafes, founder personally ensures:
 | ----------------------- | ------------------------------- | ------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
 | **1. Identity Install** | State the official link         | "This is now your official menu link. Send this whenever anyone asks for menu." | Not a suggestion — a statement. Identity formation begins.                            |
 | **2. WhatsApp Reflex**  | Save link in WhatsApp self-chat | "Save this in your WhatsApp so sending menu is faster than finding the PDF."    | Sending MenuList becomes faster than finding PDF in gallery. Habit rewired instantly. |
-| **3. Instagram Bio**    | Add link to bio                 | "Do you use Instagram? Add this link in bio. Customers always see latest menu." | MenuList becomes public entry point. Removal = bio breaks.                            |
+| **3. Instagram Bio**    | Add link to bio                 | "Do you use Instagram? Add this link in bio. It points to your current approved menu." | MenuList becomes public entry point. Removal = bio breaks.                            |
 | **4. Staff Loop**       | Share with staff                | "Who else sends menu to customers? Share this link with them."                  | Dependency multiplies from 1 person to 5+. Owner won't remove what team depends on.   |
 | **5. QR Placement**     | Print and place                 | "Print and keep this on tables or counter."                                     | MenuList enters physical world. Removal = must redesign + reprint everything.         |
 
@@ -286,9 +292,9 @@ Based on BJ Fogg's Behavior Model (Stanford): **Behavior = Motivation × Ability
 ### USE:
 
 - "Your official menu link"
-- "Customers will always see your latest menu"
+- "Customers use your current approved menu link"
 - "Use this instead of sending menu photos or PDFs"
-- "Always updated"
+- "Current approved menu"
 - "Send this whenever customers ask for menu"
 
 ### NEVER USE:
@@ -329,7 +335,7 @@ Based on BJ Fogg's Behavior Model (Stanford): **Behavior = Motivation × Ability
 | Constitution Law 2 conflict | Nudges are owner-operational (like editor onboarding), not system intelligence. Dismissible. Feature-flagged. |
 | Owner ignores nudges        | Nudges appear at action moments (when copying, sharing, downloading) — not random                             |
 | Staff doesn't adopt         | Owner shares link with staff. Staff sends same link.                                                          |
-| PDF habit too strong        | Reinforce "always updated" pain point repeatedly                                                              |
+| PDF habit too strong        | Reinforce current-approved-source link repeatedly                                                             |
 | Owner doesn't print QR      | QR download moment includes "Print and place on tables" guidance                                              |
 
 ---

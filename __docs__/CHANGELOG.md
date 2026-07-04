@@ -3,6 +3,1464 @@
 > What's new, improved, and fixed. Updated with every release.
 >
 > **Language Rule:** All entries must follow [Language Governance](./constitution/02-language-governance.md). No hype, no "exciting updates". Calm, factual, confident.
+>
+> **Release Certification Boundary:** This changelog is chronological history, not current launch approval. Older entries may preserve the wording used at the time, including historical "production ready" or readiness notes. Current MenuList production readiness is decided only by the active [production-readiness audit](./audits/menulist-production-readiness-audit.md), [External Certification Runbook](./production-readiness/external-certification-runbook.md) evidence, current source verifiers, browser/device QA, provider smoke, target deploy evidence, and production-host smoke.
+
+---
+
+## July 4, 2026 - Neelvara True Vector Logo Source
+
+### Improved
+
+- **Neelvara logo source is now true vector** - Replaced the previous raster-embedded SVG wrapper with the supplied `logo_3shape_true_svg_no_bg.svg` mark copied as-is to `public/neelvara-logo.svg`.
+- **Neelvara icon family regenerated from the vector source** - Rebuilt the transparent PNG logo, SVG favicon wrapper, favicon PNG fallbacks, Apple touch icon, manifest icons, generic app icon, and Open Graph image from the true-vector mark without recoloring or redrawing the shape.
+
+### Boundaries
+
+- This is Neelvara website identity asset and documentation work only. It does not change site copy, routes, product claims, legal entity status, Firebase, auth, APIs, analytics, Vercel deploys, production builds, or launch approval.
+
+## July 4, 2026 - Main Website Transformation Demo Speed Copy Boundary
+
+### Fixed
+
+- **Main website marketing demo no longer promises under-a-minute business-online output** - The active transformation demo playbook now shows review draft, owner approval/publish, QR/customer link, Official Business Page, customer scan, and review-before-publish overlay copy.
+- **The boundary is source-gated** - `npm run verify:website-public-copy-boundary` now rejects the stale "Business online in under a minute" demo copy and requires the bounded review-before-publish replacement.
+
+### Boundaries
+
+- This is documentation and verifier work only. It does not change main website runtime behavior, upload behavior, extraction worker behavior, review behavior, publish behavior, public menu runtime, OBP runtime, QR generation, PDF behavior, public cache behavior, Firestore rules, Storage rules, Cloud Function logic, Firebase deploys, Vercel deploys, production builds, provider calls, browser/device QA, Firestore writes, Storage writes, launch approval, or release certification.
+
+## July 4, 2026 - Mobile Hours/Status Temporary Status Docs Boundary
+
+### Fixed
+
+- **Mobile Hours/Status spec no longer says close/reopen auto-publishes to all surfaces** - The active mobile screen spec now says the owner UI updates immediately, Temporary Status syncs through the supported API path, and customer output refreshes through supported public paths.
+- **Mobile Hours/Status fields match current source** - The spec now documents the existing store `tempStatus` field instead of unimplemented `todayOverride` / `tempCloseUntil` fields.
+- **The boundary is source-gated** - `npm run verify:temporary-status-boundary` now rejects the stale all-surface auto-publish wording and obsolete field sketch.
+
+### Boundaries
+
+- This is documentation and verifier work only. It does not change mobile runtime behavior, MobileShell behavior, Temporary Status API behavior, Today/Hours runtime behavior, public menu runtime, OBP runtime, Digital Screens behavior, public pull API behavior, public cache behavior, Firestore rules, Storage rules, Cloud Function logic, Firebase deploys, Vercel deploys, production builds, provider calls, browser/device QA, Firestore writes, Storage writes, launch approval, or release certification.
+
+## July 4, 2026 - Future Roadmap Supported-Surface Correctness Boundary
+
+### Fixed
+
+- **Future Roadmap doctrine no longer uses blanket correctness language** - The 10-year thesis now describes supported MenuList surfaces sharing one owner-approved source instead of saying everything customers see is always correct.
+- **External surfaces and artifacts stay evidence-bound** - The Silent Autopilot line now says supported MenuList surfaces follow verified refresh paths, while external platforms and printed/downloaded artifacts need placement or replacement.
+- **The boundary is source-gated** - `npm run verify:agent-readiness` now rejects stale blanket correctness doctrine in the Future Roadmap SSOT.
+
+### Boundaries
+
+- This is strategy documentation and verifier work only. It does not change roadmap approval, runtime behavior, public menu runtime, OBP runtime, Digital Screens behavior, PDF generation, external-platform integration, public cache behavior, Firestore rules, Storage rules, Cloud Function logic, Firebase deploys, Vercel deploys, production builds, provider calls, browser/device QA, Firestore writes, Storage writes, launch approval, or release certification.
+
+## July 4, 2026 - Main Website Current-Source Copy Boundary
+
+### Fixed
+
+- **Main website content no longer promises never-check-again currentness** - The active content doc now says one approved source becomes customer links/assets and that supported public paths refresh through their own cache, device, or replacement rules.
+- **Hours copy is source-bound** - The current-source section now says hours display from weekly hours, today's-hours edits, or Temporary Status when owners set it instead of promising real-time customer-visible truth.
+- **The boundary is source-gated** - `npm run verify:website-public-copy-boundary` now rejects stale every-surface, never-check-again, broad currentness, and real-time hours claims in the active main website content doc.
+
+### Boundaries
+
+- This is documentation and verifier work only. It does not change main website runtime behavior, homepage mounted component behavior, public menu runtime, OBP runtime, Digital Screens behavior, PDF generation behavior, hours/Temporary Status runtime, public cache behavior, Firestore rules, Storage rules, Cloud Function logic, Firebase deploys, Vercel deploys, production builds, provider calls, browser/device QA, Firestore writes, Storage writes, launch approval, or release certification.
+
+## July 4, 2026 - Menu Command Center Public Claim Boundary
+
+### Fixed
+
+- **Menu Command Center docs no longer promise automatic every-surface propagation** - Active spec, website, and marketing docs now avoid claims that Command Center bulk edits instantly update POS, PDFs, QR, screens, connected systems, or every surface automatically.
+- **Bulk edits are tied to the verified editor save path** - The docs now state that Command Center updates editor state, saves through the single `updateProject()` project DAL path, and routes MenuList-controlled public links and configured screens through supported refresh paths.
+- **Artifacts and connected systems stay evidence-bound** - Downloaded PDFs and printed copies need replacement after changes, while POS/external systems require connected integration evidence.
+- **The boundary is source-gated** - `npm run verify:menu-project-editor-boundary` now rejects stale all-surface, instant, POS/PDF propagation, and connected-system automatic claims in active Menu Command Center docs.
+
+### Boundaries
+
+- This is documentation and verifier work only. It does not change Menu Command Center runtime behavior, editor persistence behavior, project DAL behavior, public menu runtime, Digital Screens behavior, PDF generation behavior, POS/provider behavior, public cache behavior, Firestore rules, Storage rules, Cloud Function logic, Firebase deploys, Vercel deploys, production builds, provider calls, browser/device QA, Firestore writes, Storage writes, launch approval, or release certification.
+
+## July 4, 2026 - Special Menu Switching Surface Boundary
+
+### Fixed
+
+- **Special Menu Switching docs no longer promise automatic every-surface updates** - Active README, spec, implementation, validation, website, marketing, and help docs now avoid claims that special-menu activation automatically resolves PDF, POS, every surface, or every customer view without target-specific evidence.
+- **Supported live surfaces are source-bound** - The docs now state that active special menus resolve through `activeSpecialMenuId` on the public menu/QR link, OBP menu entry, and configured Digital Screen data/version paths.
+- **Artifacts and provider targets stay evidence-bound** - Downloaded PDFs and printed copies need regeneration or replacement after changes, while POS/provider targets require connected integration evidence.
+- **The boundary is source-gated** - `npm run verify:public-business-truth` now rejects stale all-surface, PDF/POS, and everywhere/right-menu claims in active Special Menu Switching docs.
+
+### Boundaries
+
+- This is documentation and verifier work only. It does not change Special Menu Switching runtime behavior, public route resolver behavior, OBP behavior, Digital Screens behavior, scheduler behavior, cache behavior, PDF generation behavior, POS/provider behavior, Firestore rules, Storage rules, Cloud Function logic, Firebase deploys, Vercel deploys, production builds, provider calls, browser/device QA, Firestore writes, Storage writes, launch approval, or release certification.
+
+## July 4, 2026 - AI Data Extraction Website Claim Boundary
+
+### Fixed
+
+- **AI Data Extraction website draft no longer promises extraction speed without evidence** - The website doc now avoids live-menu-in-seconds, under-a-minute, all-format, and every-field automatic extraction claims.
+- **Review-before-publish is the public-copy contract** - The draft now says extraction creates a review draft after processing, and owners review/edit before publishing an approved menu.
+- **Provider and numeric claims are gated** - Website copy now requires provider smoke plus release-specific speed, accuracy, page-count, language-count, and volume evidence before using those claims.
+- **The boundary is source-gated** - `npm run verify:agent-readiness` now rejects stale AI Data Extraction website speed/provider claims and requires the current launch/publication boundary.
+
+### Boundaries
+
+- This is documentation and verifier work only. It does not change AI Data Extraction runtime behavior, upload behavior, extraction worker behavior, review behavior, publish behavior, public menu runtime, provider calls, AI accounting behavior, Firestore rules, Storage rules, Cloud Function logic, Firebase deploys, Vercel deploys, production builds, browser/device QA, Firestore writes, Storage writes, launch approval, or release certification.
+
+## July 4, 2026 - AI System Layer Website Reference Claim Boundary
+
+### Fixed
+
+- **AI System Layer website references no longer promise menu creation in seconds** - The internal infrastructure doc now avoids speed claims and all-field automatic extraction copy in reusable public wording.
+- **Review-before-publish is explicit** - The indirect website references now describe a review draft after processing, owner review/editing, and publishing only after approval.
+- **The boundary is source-gated** - `npm run verify:agent-readiness` now rejects stale speed, all-field, and publish-without-review claims in the AI System Layer website reference.
+
+### Boundaries
+
+- This is documentation and verifier work only. It does not change AI System Layer runtime behavior, upload behavior, extraction worker behavior, review behavior, publish behavior, public menu runtime, provider calls, AI accounting behavior, Firestore rules, Storage rules, Cloud Function logic, Firebase deploys, Vercel deploys, production builds, browser/device QA, Firestore writes, Storage writes, launch approval, or release certification.
+
+## July 4, 2026 - PDF Surface Website Speed All-Field Copy Boundary
+
+### Fixed
+
+- **PDF Surface website copy no longer promises PDF download speed without evidence** - The active website doc now describes generation from current project data at download time instead of "in seconds."
+- **PDF Surface website copy stays review/artifact-bound** - The doc now says the PDF uses the approved source, is ready after owner review, and older downloads or printed copies need replacement after changes.
+- **The boundary is source-gated** - `npm run verify:menu-export` now rejects stale PDF speed/all-field wording while keeping the generation-time/versioned-output guard.
+
+### Boundaries
+
+- This is documentation and verifier work only. It does not change PDF generation runtime behavior, Menu Kit behavior, print template behavior, generated artifact metadata, share modal behavior, public menu routing, cache behavior, Firebase rules, Storage rules, Cloud Function logic, Firebase deploys, Vercel deploys, production builds, browser/device QA, visual print artifact review, provider calls, Firestore writes, Storage writes, launch approval, or release certification.
+
+## July 4, 2026 - Upload File Processing Website Speed All-Field Copy Boundary
+
+### Fixed
+
+- **Upload File Processing website copy no longer promises 60-second conversion** - The active website doc now describes a structured review draft after processing instead of a digital menu in 60 seconds or under a minute.
+- **Upload File Processing demo copy is evidence-bound** - The marketing draft no longer uses fixed page-count timing, automatic every-field extraction, or provider-demo wording as current sales copy.
+- **The boundary is source-gated** - `npm run verify:agent-readiness` now reads the upload website doc and rejects stale upload speed, all-field, page-count, and provider-demo wording.
+
+### Boundaries
+
+- This is documentation and verifier work only. It does not change upload runtime behavior, extraction worker behavior, provider behavior, review behavior, publish behavior, public menu runtime, Storage rules, Firestore rules, Cloud Function logic, Firebase deploys, Vercel deploys, production builds, browser/device QA, Storage writes, Firestore writes, launch approval, or release certification.
+
+## July 4, 2026 - Description Generation Website Speed Every-Item Copy Boundary
+
+### Fixed
+
+- **Description Generation website copy no longer promises instant every-item output** - The active website doc now describes description suggestions for selected items, owner review/editing, and saving approved descriptions before publishing.
+- **Description Generation marketing draft is evidence-bound** - The draft no longer preserves fixed timing, all-language, copywriter-quality, no-editing, or fake-proof copy as usable current collateral.
+- **The boundary is source-gated** - `npm run verify:agent-readiness` now reads the Description Generation website doc and rejects stale speed, every-item, all-language, quality, no-editing, and demo timing wording.
+
+### Boundaries
+
+- This is documentation and verifier work only. It does not change description generation runtime behavior, provider behavior, AI accounting behavior, editor behavior, save behavior, publish behavior, public menu runtime, Firebase rules, Storage rules, Cloud Function logic, Firebase deploys, Vercel deploys, production builds, browser/device QA, provider smoke, Firestore writes, Storage writes, launch approval, or release certification.
+
+## July 4, 2026 - Neelvara Infrastructure Copy Alignment
+
+### Improved
+
+- **Neelvara website copy now reads as company infrastructure** - Replaced generic portfolio wording with maintained-information-source, product-boundary, company-reference, and routing language across the Neelvara Home, Products, About, Contact, 404, metadata, and companion docs.
+- **Product pages stay relationship-led** - Product copy maps operated products to their public roles without demo, pricing, sales, login, or roadmap framing.
+
+### Boundaries
+
+- This is Neelvara website copy and documentation work only. It does not change routes, products, legal entity status, Firebase, auth, APIs, analytics, Vercel deploys, production builds, or launch approval.
+
+## July 4, 2026 - Working Hours Public Claim Boundary
+
+### Fixed
+
+- **Hours docs no longer promise universal correctness or shipped holiday handling** - Active README, spec, website, and marketing docs now limit the current claim to owner-set weekly working hours, public open/closed status, Today quick-hours edits, time-slot presets, Temporary Status, and today's-hours edits for one-off changes.
+- **Holiday and exception behavior stays source-bound** - Holiday calendars and date-specific exception managers remain not shipped runtime, and the docs now avoid public-copy blocks that imply built-in holiday calendars, automatic holiday closures, or exception screens.
+- **The boundary is source-gated** - `npm run verify:working-hours-boundary` now rejects stale always-correct/holiday/exception claims in the active Hours docs and requires the current source-boundary wording.
+
+### Boundaries
+
+- This is documentation and verifier work only. It does not change Working Hours runtime behavior, Time Slot runtime behavior, public menu rendering, public cache behavior, Firestore rules, Storage rules, Cloud Function logic, Firebase deploys, Vercel deploys, production builds, provider calls, browser/device QA, live working-hours writes, live time-slot writes, Firestore writes, Storage writes, launch approval, or release certification.
+
+## July 4, 2026 - Menu Correctness Engine Public Claim Boundary
+
+### Fixed
+
+- **MCE docs no longer promise every surface is always correct** - Active README, spec, and marketing docs now frame MCE as save-time project-data validation and `_mce` metadata, not blanket certification for every surface, artifact, device, or provider target.
+- **Surface and artifact freshness stays target-bound** - Supported surfaces remain behind their own refresh, download, device, provider, and QA evidence; generated/downloaded artifacts should be replaced after later edits.
+- **The boundary is source-gated** - `npm run verify:public-business-truth` now rejects stale MCE always-correct, correct-everywhere, instant-update, guaranteed-validation, and always-fresh artifact claims in the active MCE README/spec/marketing docs.
+
+### Boundaries
+
+- This is documentation and verifier work only. It does not change MCE runtime behavior, project save behavior, publish-gate behavior, customer-facing output, public cache behavior, Digital Screens behavior, PDF generation behavior, POS/provider behavior, Firestore rules, Storage rules, Cloud Function logic, Firebase deploys, Vercel deploys, production builds, provider calls, browser/device QA, Firestore writes, Storage writes, launch approval, or release certification.
+
+## July 4, 2026 - Client Menu Availability Refresh Copy Boundary
+
+### Fixed
+
+- **Client Menu docs no longer imply instant customer freshness for sold-out changes** - Active README, spec, marketing, and AutoSell docs now use "Availability State" instead of "Instant Availability."
+- **Availability copy follows the cache boundary** - Sold-out items are described as fading after public menu refresh, with customer-visible freshness tied to the current public cache path and the existing up-to-60-second window.
+- **The boundary is source-gated** - `npm run verify:customer-app-pwa` now rejects stale instant-availability and instant-update wording across the active Client Menu and AutoSell docs.
+
+### Boundaries
+
+- This is documentation and verifier work only. It does not change Client Menu runtime behavior, item availability behavior, owner saves, public menu rendering, public cache behavior, customer app service worker behavior, Digital Screens behavior, Firestore rules, Storage rules, Cloud Function logic, Firebase deploys, Vercel deploys, production builds, provider calls, browser/device QA, Firestore writes, Storage writes, launch approval, or release certification.
+
+## July 4, 2026 - Client Menu Marketing Freshness Copy Boundary
+
+### Fixed
+
+- **Client Menu marketing no longer implies immediate customer freshness** - Active marketing hero, testimonial placeholder, and CTA copy now point to an approved menu link and customer-visible refresh instead of "always live" or one-minute price-update copy.
+- **The boundary is source-gated** - `npm run verify:customer-app-pwa` now rejects stale always-live, one-minute-update, and live-menu CTA claims in the active Client Menu marketing doc.
+
+### Boundaries
+
+- This is documentation and verifier work only. It does not change Client Menu runtime behavior, item availability behavior, owner saves, public menu rendering, public cache behavior, customer app service worker behavior, Digital Screens behavior, Firestore rules, Storage rules, Cloud Function logic, Firebase deploys, Vercel deploys, production builds, provider calls, browser/device QA, Firestore writes, Storage writes, launch approval, or release certification.
+
+## July 4, 2026 - Main Website Publish-Surface Copy Boundary
+
+### Fixed
+
+- **Main website Publish copy no longer says all surfaces update together** - The content doc now removes the stale "Atomic publishing" line.
+- **Live surfaces and artifacts are separated** - The Publish section now says live surfaces refresh through supported cache, listener, or device paths, while fresh PDF downloads should replace older downloaded or printed copies.
+- **The boundary is source-gated** - `npm run verify:website-public-copy-boundary` now rejects the stale atomic/all-surface publishing claim in main website content.
+
+### Boundaries
+
+- This is documentation and verifier work only. It does not change main website runtime behavior, homepage mounted components, public menu runtime, OBP runtime, Digital Screens behavior, PDF generation behavior, public cache behavior, Firestore rules, Storage rules, Cloud Function logic, Firebase deploys, Vercel deploys, production builds, provider calls, browser/device QA, Firestore writes, Storage writes, launch approval, or release certification.
+
+## July 4, 2026 - Main Website Marketing Distribution Copy Boundary
+
+### Fixed
+
+- **Main website marketing/source copy no longer says one update makes the menu correct everywhere** - Active marketing ad, lifecycle nudge, and communication-doctrine copy now use one approved source, approved-link sharing, and old-link/PDF replacement language.
+- **PDFs and external links stay evidence-bound** - The publish commitment copy now tells owners to replace older PDFs or external links that customers may still find.
+- **The boundary is source-gated** - `npm run verify:website-public-copy-boundary` now rejects stale always-correct and correct-everywhere distribution claims in the active main website marketing doc.
+
+### Boundaries
+
+- This is documentation and verifier work only. It does not change main website runtime behavior, website mounted components, lifecycle notification runtime, Menu Presence Monitor behavior, public menu runtime, OBP runtime, PDF behavior, external-provider behavior, public cache behavior, Firestore rules, Storage rules, Cloud Function logic, Firebase deploys, Vercel deploys, production builds, provider calls, browser/device QA, Firestore writes, Storage writes, launch approval, or release certification.
+
+## July 4, 2026 - Main Website Where-It-Lives Surface Copy Boundary
+
+### Fixed
+
+- **Main website source and locale copy no longer say a published menu appears across every customer surface automatically** - The Where It Lives section and active locale packs now separate MenuList-controlled links/assets from owner-placed external profiles and older downloaded or printed copies.
+- **Screens and artifacts stay target-bound** - Digital Screens are described through configured screen refresh paths, and print files now tell owners to replace older downloaded or printed copies after changes.
+- **The boundary is source-gated** - `npm run verify:website-public-copy-boundary` now rejects stale every-surface publish copy in the active main website content doc and locale strings.
+
+### Boundaries
+
+- This is documentation, locale-copy, and verifier work only. It does not change main website runtime behavior, website mounted components, locale routing behavior, public menu runtime, OBP runtime, Digital Screens behavior, PDF generation behavior, external-profile placement, public cache behavior, Firestore rules, Storage rules, Cloud Function logic, Firebase deploys, Vercel deploys, production builds, provider calls, browser/device QA, Firestore writes, Storage writes, launch approval, or release certification.
+
+## July 4, 2026 - Presence Dominance Public Source Boundary
+
+### Fixed
+
+- **Presence Dominance copy no longer makes blanket freshness claims** - Active website, marketing, and spec docs now describe the official link as an owner-approved public source instead of "always updated", "always accurate", or "live everywhere."
+- **Provider and artifact targets stay evidence-bound** - Google/provider surfaces require their own evidence, and old downloaded PDFs should be replaced after approved changes.
+- **The boundary is source-gated** - `npm run verify:public-business-truth` now rejects stale Presence Dominance freshness/correctness claims and requires the public-source/cache-window wording.
+
+### Boundaries
+
+- This is documentation and verifier work only. It does not change Presence Dominance runtime behavior, OBP runtime, public menu runtime, Google/provider behavior, PDF behavior, public cache behavior, Firestore rules, Storage rules, Cloud Function logic, Firebase deploys, Vercel deploys, production builds, provider calls, browser/device QA, Firestore writes, Storage writes, launch approval, or release certification.
+
+## July 4, 2026 - Neelvara Favicon Production Asset
+
+### Improved
+
+- **Neelvara browser favicon now has an SVG source** - Added a square SVG favicon wrapper that uses the supplied glass-prism artwork without redrawing, recoloring, filtering, or changing the visible mark.
+- **PNG icon fallbacks stay available** - Regenerated favicon, Apple touch, manifest, and generic app-icon PNGs as transparent square canvases centered from the supplied mark.
+- **Static 404 identity matches site metadata** - The Neelvara static 404 now advertises the SVG favicon before PNG fallbacks.
+
+### Boundaries
+
+- This changes only Neelvara public website identity assets, metadata links, and documentation. It does not change the supplied source logo, visible header/footer logo shape, Open Graph artwork, routes, product claims, legal copy, Firebase, auth, APIs, analytics, Vercel deploys, production builds, or launch approval.
+
+## July 4, 2026 - Silent Correction Supported Surface Boundary
+
+### Fixed
+
+- **Silent Correction spec no longer makes blanket freshness guarantees** - The active spec now frames Silent Correction as guardrails for supported surfaces instead of saying customers never see wrong data or that all surfaces have guaranteed 60-second propagation.
+- **Generated and provider-backed targets stay evidence-bound** - The spec now distinguishes public menu/Official Business Page cache refresh from generated artifacts, screens, and provider-backed targets that require separate evidence.
+- **The boundary is source-gated** - `npm run verify:public-business-truth` now rejects the stale blanket correctness and propagation phrases in the Silent Correction spec.
+
+### Boundaries
+
+- This is documentation and verifier work only. It does not change Silent Correction runtime behavior, MCE behavior, public menu runtime, OBP runtime, Digital Screens behavior, PDF/provider behavior, public cache behavior, Firestore rules, Storage rules, Cloud Function logic, Firebase deploys, Vercel deploys, production builds, provider calls, browser/device QA, Firestore writes, Storage writes, launch approval, or release certification.
+
+## July 4, 2026 - Multi-Outlet Sync/Cache Claim Boundary
+
+### Fixed
+
+- **Multi-Outlet claim copy no longer promises instant customer freshness** - Active README, spec, marketing, help, and website docs now describe saved master updates flowing through the outlet sync/cache path instead of saying every store updates instantly or that consistency is guaranteed by default.
+- **Website and help copy carry the cache boundary** - Public-facing Multi-Outlet copy keeps the customer-menu refresh window visible where saved changes affect customer output.
+- **The boundary is source-gated** - `npm run verify:multi-location-boundary` now rejects stale instant/guarantee wording in active Multi-Outlet README/spec/marketing/website docs, and `npm run verify:public-business-truth` guards the website/helpdoc go-live wording.
+
+### Boundaries
+
+- This is documentation and verifier work only. It does not change Multi-Outlet runtime behavior, linked outlet saves, outlet policy behavior, public menu runtime, public cache behavior, Firestore rules, Storage rules, Cloud Function logic, Firebase deploys, Vercel deploys, production builds, provider calls, browser/device QA, Firestore writes, Storage writes, launch approval, or release certification.
+
+## July 4, 2026 - Multi-Outlet Marketing Update-Everywhere Boundary
+
+### Fixed
+
+- **Multi-Outlet marketing no longer uses the shorter update-everywhere slogans** - Active marketing copy now says saved master changes flow through the outlet sync/cache path instead of "update once, update everywhere" or "instant updates."
+- **Linked outlet inheritance stays source-bound** - Price-change and value-prop copy now says linked outlets inherit saved master changes through the outlet sync/cache path.
+- **The boundary is source-gated** - `npm run verify:multi-location-boundary` now rejects stale update-everywhere and instant-update slogans in the active Multi-Outlet marketing doc.
+
+### Boundaries
+
+- This is documentation and verifier work only. It does not change Multi-Outlet runtime behavior, linked outlet saves, outlet policy behavior, public menu runtime, public cache behavior, Firestore rules, Storage rules, Cloud Function logic, Firebase deploys, Vercel deploys, production builds, provider calls, browser/device QA, Firestore writes, Storage writes, launch approval, or release certification.
+
+## July 4, 2026 - Support Automation Freshness Copy Boundary
+
+### Fixed
+
+- **Manual support template no longer overstates menu freshness** - The deferred Support Automation WhatsApp share-link template now says the link opens the owner-published menu and repeats the existing customer-menu refresh window.
+- **The boundary is source-gated** - `npm run verify:public-business-truth` now rejects the stale "live menu / always up to date" support-template phrase and requires owner-published/cache-window replacement copy.
+
+### Boundaries
+
+- This is documentation and verifier work only. It does not change support automation runtime, WhatsApp Business API integration, public menu routing, publish behavior, customer-facing output, public cache tags, Firestore rules, Storage rules, Cloud Function logic, Firebase deploys, Vercel deploys, production builds, provider calls, browser/device QA, Firestore writes, Storage writes, launch approval, or release certification.
+
+## July 4, 2026 - Master Update Awareness Snapshot Boundary
+
+### Fixed
+
+- **Master update acknowledgements are Firestore-safe before persistence** - `masterSnapshot.lastDiff` now omits optional `undefined` fields before the outlet project write, preventing "Got it" acknowledgements from failing when an outlet has no override value for a changed master price.
+- **Desktop and mobile share the same hardened path** - `useMasterUpdateAwareness` still performs the same single outlet project update and updates local desktop/mobile project state only after the write succeeds.
+- **The boundary is source-gated** - `npm run verify:multi-location-boundary` now checks the Firestore-safe diff/snapshot builders, acknowledge write ordering, and matching mobile/Firebase docs.
+
+### Boundaries
+
+- This changes only the master update awareness snapshot payload shape. It does not change master/outlet inheritance behavior, linked outlet save behavior, menu publish behavior, customer-facing menu output, public cache tags, Firestore rules, Storage rules, Cloud Function logic, Firebase deploys, Vercel deploys, production builds, provider calls, browser/device QA, extra Firestore reads, extra Firestore writes, Storage writes, launch approval, or release certification.
+
+## July 4, 2026 - Historical Readiness Score Wording Boundary
+
+### Fixed
+
+- **Historical readiness score rows no longer read as current launch approval** - Social Content logic verification now labels its January 2026 result as historical code-readiness evidence, and AI Data Extraction labels the March 13 score row as a historical code-audit category.
+- **Current approval remains audit-runbook controlled** - These docs now avoid standalone production-readiness score wording that could bypass the active production-readiness audit, External Certification Runbook, source gates, browser/mobile/provider/deploy evidence, and production-host smoke.
+- **The boundary is source-gated** - `npm run verify:agent-readiness` now rejects the stale Social Content `PRODUCTION READINESS: SAFE` line and the stale AI Data Extraction `Production Readiness | 10/10` score row.
+
+### Boundaries
+
+- This is documentation and verifier work only. It does not change runtime behavior, AI extraction behavior, Social Content Today behavior, provider calls, Cloud Function logic, Firebase deploys, Vercel deploys, production builds, Firestore writes, Storage writes, browser/device QA, or launch certification.
+
+## July 4, 2026 - AI Data Extraction Retired Deploy Command Boundary
+
+### Fixed
+
+- **AI Data Extraction implementation no longer embeds a retired deploy command** - The implementation doc now preserves the old `ecomsai` callable-hardening attempt as historical blocker evidence without exposing the exact command as current guidance.
+- **Current retry guidance is preflight-first** - Callable retry evidence now starts with `npm run verify:functions-deploy-preflight`, routes through External Certification Runbook Gate 1 against `menulist-qa`, and keeps production deploys behind QA evidence plus explicit production deploy approval.
+- **The boundary is source-gated** - `npm run verify:agent-readiness` now rejects the stale retired-target deploy command in the active AI Data Extraction implementation doc.
+
+### Boundaries
+
+- This is documentation and verifier work only. It does not change runtime behavior, Cloud Function logic, Firebase deploys, Cloud Function uploads, deployed revisions, extraction behavior, provider calls, Firestore writes, Storage writes, Vercel deploys, production builds, browser/device QA, or launch certification.
+
+## July 4, 2026 - Owner Notifications Deploy Retry Doc Boundary
+
+### Fixed
+
+- **Owner Notifications deploy evidence no longer exposes stale retry commands** - The Firebase doc now preserves June 28-29 `menulist-qa` deploy attempts as historical blocker evidence only.
+- **Current retry guidance is preflight-first** - Owner Notifications Functions retry evidence now starts with `npm run verify:functions-deploy-preflight`, routes through External Certification Runbook Gate 1 against `menulist-qa`, and requires production-readiness audit evidence for any target-list deviation.
+- **The boundary is source-gated** - `npm run verify:owner-notifications-boundary` now rejects stale `firebase deploy --only functions...` command shapes and PATH-wrapped deploy commands in the active Firebase doc.
+
+### Boundaries
+
+- This is documentation and verifier work only. It does not change runtime behavior, Cloud Function logic, Firebase deploys, Cloud Function uploads, deployed revisions, owner notification delivery behavior, provider calls, Firestore writes, Storage writes, Vercel deploys, production builds, browser/device QA, or launch certification.
+
+## July 4, 2026 - System Strengthening Deploy Evidence Boundary
+
+### Fixed
+
+- **The system-strengthening audit now labels deploy commands as historical evidence** - The audit keeps its old deploy command blocks for traceability but no longer leaves them without current-runbook context.
+- **Current retry guidance is source-gated** - System Strengthening deploy retries now route through `npm run verify:functions-deploy-preflight`, External Certification Runbook Gate 1 against `menulist-qa`, and production-readiness audit evidence for any target-list deviation.
+- **The boundary is verified** - `npm run verify:system-strengthening` now requires the current deploy-evidence boundary in the audit.
+
+### Boundaries
+
+- This is documentation and verifier work only. It does not change runtime behavior, Cloud Function logic, Firebase deploys, Cloud Function uploads, deployed revisions, historical deploy evidence, Firestore writes, Storage writes, Vercel deploys, production builds, browser/device QA, or launch certification.
+
+## July 4, 2026 - Menu Link Import Retired Deploy Target Boundary
+
+### Fixed
+
+- **Menu Link Import validation no longer embeds a retired deploy command** - The validation doc now keeps the old `ecomsai` deployment as historical evidence without exposing the exact command as current guidance.
+- **Current retry guidance is preflight-first** - Menu Link Import deploy retry evidence now starts with `npm run verify:functions-deploy-preflight` and routes through External Certification Runbook Gate 1 against `menulist-qa`.
+- **The boundary is source-gated** - `npm run verify:agent-readiness` now rejects the stale retired-target deploy command in the active validation doc.
+
+### Boundaries
+
+- This is documentation and verifier work only. It does not change runtime behavior, Cloud Function logic, Firebase deploys, Cloud Function uploads, deployed revisions, menu link import job behavior, source acquisition behavior, Firestore writes, Storage writes, Vercel deploys, production builds, browser/device QA, or launch certification.
+
+## July 4, 2026 - Maps Place Check Deploy Retry Doc Boundary
+
+### Fixed
+
+- **Maps Place Check deploy evidence no longer exposes a stale retry command** - The validation doc now preserves the July 3 Cloud Resource Manager 403 as historical blocker evidence only.
+- **Current retry guidance is preflight-first** - Maps Place Check retries now start with `npm run verify:functions-deploy-preflight`, use the scoped `menulist-qa` command with `firebase.json`, and require production-readiness audit evidence before retry.
+- **The boundary is source-gated** - `npm run verify:agent-readiness` now rejects the stale Maps Place Check deploy command shape.
+
+### Boundaries
+
+- This is documentation and verifier work only. It does not change runtime behavior, Cloud Function logic, Firebase deploys, Cloud Function uploads, deployed revisions, Google Maps/Gemini provider calls, Firestore writes, Storage writes, Vercel deploys, production builds, browser/device QA, or launch certification.
+
+## July 4, 2026 - Menu Health Monitor Deploy Retry Doc Boundary
+
+### Fixed
+
+- **Menu Health Monitor deploy evidence no longer exposes a stale retry command** - The Firebase doc now preserves the June 28 shared network-target/menu-health deploy attempt as historical blocker evidence only.
+- **Current retry guidance is preflight-first** - Menu Health Monitor retries now start with `npm run verify:functions-deploy-preflight`, and any menu-health-specific Functions subset must be recorded in the production-readiness audit before retry.
+- **The boundary is source-gated** - `npm run verify:agent-readiness` now rejects stale Menu Health Monitor deploy command shapes in the active Firebase doc.
+
+### Boundaries
+
+- This is documentation and verifier work only. It does not change runtime behavior, Cloud Function logic, Firebase deploys, Cloud Function uploads, deployed revisions, menu health fetch behavior, Firestore writes, Storage writes, Vercel deploys, production builds, browser/device QA, or launch certification.
+
+## July 4, 2026 - MenuList Setup Guide Deploy Command Boundary
+
+### Fixed
+
+- **MenuList setup guide no longer repeats the older QA Functions command shape** - The historical health-check attempt is now blocker evidence only, and current retry work points to the scoped `menulist-qa` owner-action command.
+- **The setup boundary is source-gated** - `npm run verify:agent-readiness` now rejects the stale setup-guide MenuList QA deploy command.
+
+### Boundaries
+
+- This is documentation and verifier work only. It does not change runtime behavior, Cloud Function logic, Firebase deploys, Cloud Function uploads, deployed revisions, Secret Manager values, Firestore writes, Storage writes, Vercel deploys, production builds, browser/device QA, or launch certification.
+
+## July 4, 2026 - Menu Extraction Deploy Retry Doc Boundary
+
+### Fixed
+
+- **Menu Extraction deploy evidence no longer exposes stale retry commands** - The Firebase doc now preserves retired `ecomsai` deploy evidence and June 28-29 MenuList QA deploy attempts as historical blocker evidence only.
+- **Current retry guidance is Gate 1 scoped** - Menu Extraction retries now start with `npm run verify:functions-deploy-preflight`, use External Certification Runbook Gate 1 against `menulist-qa`, and require any smaller extraction-specific Functions subset to be recorded in the production-readiness audit before retry.
+- **The boundary is source-gated** - `npm run verify:agent-readiness` now rejects stale Menu Extraction deploy command shapes in the active Firebase doc.
+
+### Boundaries
+
+- This is documentation and verifier work only. It does not change runtime behavior, Cloud Function logic, Firebase deploys, Cloud Function uploads, deployed revisions, Gemini provider calls, Firestore writes, Storage writes, Vercel deploys, production builds, browser/device QA, or launch certification.
+
+## July 4, 2026 - Messaging Onboarding Deploy Retry Doc Boundary
+
+### Fixed
+
+- **Messaging Onboarding deploy evidence no longer repeats stale retry commands** - The Firebase doc now preserves June 28-29 deploy attempts as historical blocker evidence only instead of reusable `firebase deploy --only functions:... --project menulist-qa` instructions.
+- **Current retry guidance is preflight-first** - Messaging Onboarding Cloud Function retry evidence now starts with `npm run verify:functions-deploy-preflight`, and any messaging-specific Functions subset must be recorded in the production-readiness audit with its exact scoped `menulist-qa` target list before retry.
+- **The boundary is source-gated** - `npm run verify:messaging-onboarding-monitor-boundary` now rejects the stale active-doc command shapes.
+
+### Boundaries
+
+- This is documentation and verifier work only. It does not change runtime behavior, Cloud Function logic, Firebase deploys, Cloud Function uploads, deployed revisions, Meta/WhatsApp provider calls, Firestore writes, Storage writes, Vercel deploys, production builds, browser/device QA, or launch certification.
+
+## July 4, 2026 - Active Firebase Deploy Retry Doc Boundary
+
+### Fixed
+
+- **Ops Alerting Delivery no longer exposes stale deploy commands as retry instructions** - Historical June 28-29 deploy attempts are preserved as blocker evidence only; current retry evidence now runs through `npm run verify:functions-deploy-preflight` and the scoped MenuList QA platform-alert deploy command.
+- **AI System Layer retry guidance routes through Gate 1** - Gateway structured-classification retries now point to External Certification Runbook Gate 1, and any extra Gemini consumer Function must be listed in the production-readiness audit before deploy retry.
+- **External runbook local evidence was refreshed** - The latest local boundary now records `npm run verify:production-readiness-local` passing with 91/91 checks, including 87 child root `verify:*` scripts.
+- **Deploy retry docs are source-gated** - `npm run verify:agent-readiness` and `npm run verify:ai-accounting` now reject the stale active-doc command shapes.
+
+### Boundaries
+
+- This is documentation and verifier work only. It does not change runtime behavior, Cloud Function logic, Firebase deploys, Cloud Function uploads, deployed revisions, provider calls, Firestore writes, Storage writes, Vercel deploys, production builds, browser/device QA, or launch certification.
+
+## July 4, 2026 - Neelvara Logo Replacement
+
+### Changed
+
+- **Uploaded Neelvara logo is now the source mark** - Applied the supplied glass-prism logo source as-is, and regenerated the PNG, favicon, Apple touch icon, manifest icon, generic app icon, and Open Graph derivatives from that artwork.
+- **Visible logo sizing adjusted** - Header and footer logo marks now use a `58 x 33` display box with `contain`, preserving the uploaded source aspect while improving mobile legibility.
+- **Open Graph artwork updated** - The social preview image now uses the uploaded glass-prism artwork.
+
+### Verified
+
+- Exact SVG source copy, PNG dimensions, transparent icon corners, scoped Neelvara lint, TypeScript, env-target readiness, and browser QA across Home, Products, About, Contact, Legal, Privacy, Terms, and a missing route passed.
+
+### Boundaries
+
+- This is Neelvara website identity asset work only. It does not change product routing, Firebase rules, Storage rules, Cloud Functions, API routes, analytics, Vercel deployment, production build, DNS, inbox setup, or legal launch approval.
+
+## July 4, 2026 - Feature Deploy Command Boundary
+
+### Fixed
+
+- **Platform Founder Monitor deploy docs use the scoped command shape** - Active deploy docs now use `firebase deploy --project menulist-qa --config firebase.json --only functions:menulistMaintenanceScheduler --non-interactive`.
+- **Customer App no longer names a stale standalone Function deploy target** - The go-live checklist now routes Cloud Function changes through External Certification Runbook Gate 1 after `npm run verify:functions-deploy-preflight`; Customer App analytics runs inside the shared scheduler and `triggerCustomerAnalyticsManually`.
+- **Feature deploy docs are source-gated** - `npm run verify:platform-founder-monitor-boundary` and `npm run verify:customer-app-pwa` now fail if those stale deploy commands return.
+
+### Boundaries
+
+- This is feature-doc and verifier work only. It does not change runtime behavior, Cloud Function logic, Firebase deploys, Cloud Function uploads, deployed revisions, scheduler behavior, customer analytics behavior, Firestore writes, Storage writes, Vercel deploys, production builds, browser/device QA, or launch certification.
+
+## July 4, 2026 - Functions Package Deploy Script Boundary
+
+### Fixed
+
+- **Default Functions deploy fails closed** - `functions/package.json` no longer exposes a default-project broad `firebase deploy --only functions` script. The default `deploy` script now points to the scoped QA deploy workflow instead of deploying anything.
+- **Scoped QA package command added** - `npm --prefix functions run deploy:menulist-qa` mirrors the External Certification Runbook Gate 1 target set with `--project menulist-qa`, `--config ../firebase.json`, and `--non-interactive`.
+- **Deploy script boundary is source-gated** - `npm run verify:agent-readiness` and `npm run verify:functions-deploy-preflight` now fail if the Functions package reintroduces a broad/default-project deploy script.
+
+### Boundaries
+
+- This is package-script, docs, and verifier work only. It does not run Firebase deploys, upload Cloud Functions, change deployed revisions, change scheduler/callable behavior, approve production deployment, call providers, write Firestore or Storage, run Vercel deploys, run production builds, run browser/device QA, or certify launch readiness.
+
+## July 4, 2026 - Local Log Filename Hardening
+
+### Fixed
+
+- **Local log filenames are sanitized before write paths** - App and Functions local log helpers now sanitize `logFileName` before joining it with the local `logs/` directory, normalize slash/backslash and parent-directory dot runs, and fall back to `local.log` for empty or dot-only filenames.
+- **Filename path handling is source-gated** - `npm run verify:auth-security-failure-matrix` now fails if either helper joins the raw log filename into the local write path.
+
+### Boundaries
+
+- This is non-production local-log helper hardening and verifier work only. It does not change production logging behavior, API routes, exported Function triggers, provider calls, Firebase rules, Storage rules, Firebase deploy, Vercel deploy, production build, browser/device QA, live log writes, launch approval, or release certification.
+
+## July 4, 2026 - Generated Artifact Tracking Boundary
+
+### Fixed
+
+- **Root TypeScript cache leaves source** - The stale tracked root `tsconfig.tsbuildinfo` file is being removed now that `tsconfig.json` writes build info to ignored `.next/cache/tsconfig.tsbuildinfo`.
+- **Local QA outputs are ignored** - `.gitignore` now ignores root `routes-manifest.json` route-inspection output and local `tmp/` screenshots/logs.
+- **Generated artifacts are source-gated** - `npm run verify:agent-readiness` now fails if `tsconfig.tsbuildinfo`, `routes-manifest.json`, or anything under `tmp/` is present as a tracked source file.
+
+### Boundaries
+
+- This is generated-artifact source hygiene, docs, and verifier work only. It does not change TypeScript compiler settings, typecheck behavior, route behavior, screenshot/browser QA behavior, Firebase rules, Storage rules, Cloud Functions, Firebase deploy, Vercel deploy, production build, provider smoke, launch approval, or release certification.
+
+## July 4, 2026 - Runtime Local-Log Tracking Boundary
+
+### Fixed
+
+- **Runtime local logs are source hygiene only** - Tracked `logs/*.log` runtime captures are being removed from source, and `.gitignore` now ignores local runtime log files created during non-production API work.
+- **Tracked log captures are source-gated** - `npm run verify:agent-readiness` now fails if any tracked `logs/*.log` file is present in the working tree.
+- **Secure logging docs state the boundary** - The secure logging guide now records that local runtime log files are ignored development artifacts and must not be committed.
+
+### Boundaries
+
+- This is source hygiene, docs, and verifier work only. It does not change logging runtime behavior, secure logger sanitizer behavior, API routes, provider calls, Firebase rules, Storage rules, Cloud Functions, Firebase deploy, Vercel deploy, production build, browser/device QA, live log writes, launch approval, or release certification.
+
+## July 4, 2026 - Neelvara Product Icon Tiles
+
+### Fixed
+
+- **Answerlattice product mark renders cleanly in Neelvara tiles** - Home and Products now use a shared Neelvara product-logo renderer with a compact no-filter Answerlattice SVG variant for small icon tiles.
+
+### Verified
+
+- Scoped Neelvara lint passed with `src/middleware.ts`.
+- Mobile browser QA at `390x844` confirmed the Answerlattice mark renders as the compact SVG on Home and Products pages, with no SVG filters and no horizontal overflow.
+
+### Boundaries
+
+- This is a Neelvara visual asset/rendering fix only. It does not change Answerlattice product branding globally, routes, metadata, legal copy, product claims, Firebase, API routes, auth, analytics, Vercel deploy, or production build state.
+
+---
+
+## July 4, 2026 - Neelvara Mobile Reference Tabs
+
+### Fixed
+
+- **Homepage reference tabs are interactive** - The Neelvara homepage Company, Products, and Contact segmented control now uses real client-side tab buttons and switches the visible bento panel on mobile and desktop.
+- **Mobile tap targets are explicit** - The segmented control now uses 44px button targets with selected-state semantics instead of static labels.
+
+### Verified
+
+- Scoped Neelvara lint passed with `src/middleware.ts`.
+- Mobile browser QA at `390x844` confirmed Company, Products, and Contact switch the panel content, update `aria-selected`, and keep zero horizontal overflow.
+
+### Boundaries
+
+- This is a Neelvara static-site UI fix only. It does not change routes, metadata, legal copy, product claims, Firebase, API routes, auth, analytics, Vercel deploy, or production build state.
+
+---
+
+## July 4, 2026 - Customer FAQ Reply Pack Source Gate Boundary
+
+### Improved
+
+- **Customer FAQ Reply Pack is complete and source-gated** - Added the `/tools/customer-faq-reply-pack` route, browser-local component, deterministic report/types, focused verifier, locale namespaces, Tools Hub card, shareable report integration, discovery policy entry, sitemap entry, LLM context entries, and package script.
+- **Report and type modules are source-gated** - `npm run verify:public-truth-tools` now checks `src/lib/public-truth-tools/` and fails if a report/type module exists without a matching public tool manifest entry, except for the explicit shared helpers `shareableToolReport.ts` and `ownerPublicTruthReadiness.ts`.
+- **Tools Hub cards are exact-set checked** - `npm run verify:tools-hub` now compares the component's literal `/tools/*` card routes and locale keys against the expected sixteen public tools, so stale cards for unimplemented routes fail.
+
+### Verified
+
+- `node --check scripts/verification/verify-customer-faq-reply-pack.js` passed.
+- `node --check scripts/verification/verify-public-truth-tools.js` passed.
+- `node --check scripts/verification/verify-tools-hub.js` passed.
+- `npm run verify:customer-faq-reply-pack` passed.
+- `npm run verify:tools-hub` passed.
+- `npm run verify:shareable-tool-reports` passed.
+- `npm run verify:public-truth-tools` passed and printed `Public Truth Tools inventory verification passed (16 public tools)`.
+- `npm run verify:agent-readiness` passed.
+
+### Boundaries
+
+- This is public website route/component/locale/discovery/docs/verifier work only. It does not read customer conversations, create chatbots, configure automation, send messages, fetch entered links, store report documents, call AI/search providers, mutate external platforms, change owner dashboard runtime, customer menu/OBP runtime, Firebase rules, Storage rules, Cloud Functions, Firebase deploy, Vercel deploy, production build, browser/device QA, provider smoke, launch approval, or release certification.
+
+---
+
+## July 4, 2026 - Main Website Route Inventory Boundary
+
+### Improved
+
+- **Website route inventory is source-gated** - `npm run verify:agent-readiness` now derives concrete `/tools/*` and `/industries/*` website routes from `src/app/(website)/tools/*/page.tsx` and `src/app/(website)/industries/*/page.tsx`, then fails if those routes are missing from `PLATFORM_DISCOVERY_PAGES` or the main website implementation route table.
+- **Route count matches generated pages** - `__docs__/main-website/main-website_impl.md` now records 184 implemented website routes: 57 concrete route files, 15 generated English resource articles, 7 reviewed localized resource hubs, and 105 reviewed localized resource articles.
+- **Tool and industry docs match source** - The implementation route table now includes `/tools/reports`, all sixteen public tool pages, and all seven industry pages, and the content doc no longer describes the current industry set as four pages.
+
+### Verified
+
+- `node --check scripts/verification/verify-agent-readiness.js` passed.
+- `npm run verify:agent-readiness` passed.
+- `npm run docs:check-links` passed with 0 broken links and 0 naming violations.
+- `npm run verify:production-readiness-local` passed with 91/91 checks, including 87 child root `verify:*` scripts, `docs:check-links`, `typecheck`, `lint`, and `git diff --check`.
+- `git diff --check` passed.
+
+### Boundaries
+
+- This is verifier/docs/discovery-parity hardening only. It does not change website runtime behavior, public tool runtime behavior, industry page runtime behavior, generated resource routes, locale copy, Firebase rules, Storage rules, Cloud Functions, Firebase deploy, Vercel deploy, production build, browser/device QA, external crawler behavior, sitemap submission, launch approval, or release certification.
+
+---
+
+## July 4, 2026 - Public Truth Tools Inventory Gate Boundary
+
+### Improved
+
+- **Public tool inventory is source-gated** - `npm run verify:public-truth-tools` now derives the expected sixteen public `/tools/*` routes from a single manifest and fails if an implemented tool route is missing its child verifier, package script, route page, website component, report builder, type contract, doc set, feature flag, discovery policy entry, sitemap entry, LLM context entry, Tools Hub card, shareable-report source integration, or en-US/hi-IN locale namespace.
+- **Tools Hub verifier matches the current family** - `npm run verify:tools-hub` now checks Business Facts Copy Pack, WhatsApp Reply Pack, and Customer FAQ Reply Pack routes/keys with the rest of the hub cards.
+- **Family Firebase docs include the full implemented set** - Public Truth Tools Firebase cost docs now point to the Business Facts Copy Pack, WhatsApp Reply Pack, and Customer FAQ Reply Pack firebase docs and describe the section as current-tool cost coverage rather than first-tool coverage.
+
+### Verified
+
+- `node --check scripts/verification/verify-public-truth-tools.js` passed.
+- `node --check scripts/verification/verify-tools-hub.js` passed.
+- `npm run verify:tools-hub` passed.
+- `npm run verify:public-truth-tools` passed and printed `Public Truth Tools inventory verification passed (16 public tools)`.
+- `npm run verify:production-readiness-local` passed with 91/91 checks, including 87 child root `verify:*` scripts, `docs:check-links`, `typecheck`, `lint`, and `git diff --check`.
+
+### Boundaries
+
+- This is verifier/docs hardening only. It does not change public tool runtime behavior, Tools Hub runtime behavior, shareable report payload shape, `/api/public/contact`, report lead ops behavior, Firebase rules, Storage rules, Cloud Functions, Firebase deploy, Vercel deploy, production build, browser/device QA, provider calls, report storage, external profile inspection, external platform updates, or launch certification.
+
+---
+
+## July 4, 2026 - Business Facts Copy Pack Source Gate Boundary
+
+### Improved
+
+- **Business Facts Copy Pack is source-gated** - Added `npm run verify:business-facts-copy-pack` to validate the route, component, report builder, type contract, docs, feature flag, localized copy, and V0 boundaries.
+- **Public Truth Tools aggregate includes the tool** - `npm run verify:public-truth-tools` now runs the Business Facts Copy Pack verifier with the rest of the public tool family.
+- **Discovery parity is guarded** - The focused verifier now checks Tools Hub, public discovery policy, sitemap, LLM context, and en-US/hi-IN locale coverage for the route.
+
+### Verified
+
+- `node --check scripts/verification/verify-business-facts-copy-pack.js` passed.
+- `node --check scripts/verification/verify-public-truth-tools.js` passed.
+- `npm run verify:business-facts-copy-pack` passed.
+- `npm run verify:doc-npm-scripts` passed.
+- `npm run verify:public-truth-tools` passed.
+- `npm run docs:check-links` passed with 0 broken links and 0 naming violations.
+- `git diff --check` passed.
+- `npm run verify:production-readiness-local` passed with 91/91 checks, including 87 child root `verify:*` scripts, `typecheck`, `lint`, and `git diff --check`.
+
+### Boundaries
+
+- This is verifier/docs/discovery hardening only. It does not change Business Facts Copy Pack runtime behavior, report generation, shareable report payload shape, `/api/public/contact`, Firebase rules, Storage rules, Cloud Functions, Firebase deploy, Vercel deploy, production build, browser/device QA, provider calls, report storage, external profile inspection, external platform updates, or launch certification.
+
+---
+
+## July 4, 2026 - Browser Realtime Database Logger Boundary
+
+### Improved
+
+- **Realtime Database direct imports are source-gated** - `npm run verify:auth-security-failure-matrix` now scans active `src` app, component, hook, config, database, and lib files for direct `firebase/database` and `@firebase/database` imports.
+- **Logger/client ownership stays explicit** - The bounded logger/client allowlist is limited to `src/lib/firebase/firebaseClient.ts` for `getDatabase`, plus `src/database/loggers/applicationLogger.ts` and `src/database/loggers/errorLogger.ts` for the existing bounded logger helpers `child`, `get`, `onValue`, `ref`, and `set`.
+- **New Realtime Database paths must be reviewed** - Browser and shared source cannot add new direct Realtime Database read, write, or listener helpers unless the path is intentionally reviewed and added to the source gate.
+
+### Verified
+
+- `node --check scripts/verification/verify-auth-security-failure-matrix.js` passed.
+- `npm run verify:auth-security-failure-matrix` passed.
+- Focused Realtime Database direct-import boundary scan passed.
+- `npm run docs:check-links` passed with 0 broken links and 0 naming violations.
+- `git diff --check` passed.
+- `npm run verify:production-readiness-local` passed with 88/88 checks, including 84 child root `verify:*` scripts, `typecheck`, `lint`, and `git diff --check`.
+
+### Boundaries
+
+- This is verifier/docs hardening only. It does not change Realtime Database logging behavior, logger read/write/listener behavior, Firebase client initialization, Firestore rules, Storage rules, Realtime Database rules, Cloud Functions, Firebase deploy, Vercel deploy, production build, browser/device QA, provider calls, Firestore writes, Storage writes, or Realtime Database writes.
+
+---
+
+## July 4, 2026 - Browser Firestore Read Listener Boundary
+
+### Improved
+
+- **Browser Firestore reads and listeners are source-gated** - `npm run verify:public-business-truth` now scans active MenuList browser surfaces for direct Firestore read/listener helper imports and fails if UI code imports new read helpers outside the approved UI allowlist.
+- **Approved direct UI reads stay explicit** - The allowlist is limited to Digital Screens public state listeners, the POS Sync delivery-log read, and the platform Weekly Digest read.
+- **DAL/API ownership remains the default** - New owner, public, platform, and screen UI reads should use existing DALs, API routes, or shared helpers unless a direct listener/read path is intentionally reviewed and source-gated.
+
+### Verified
+
+- `node --check scripts/verification/verify-public-business-truth.js` passed.
+- `npm run verify:public-business-truth` passed.
+- Focused browser Firestore read/listener boundary scan passed.
+- `npm run docs:check-links` passed with 0 broken links and 0 naming violations.
+- `git diff --check` passed.
+- `npm run verify:production-readiness-local` passed with 88/88 checks, including 84 child root `verify:*` scripts, `typecheck`, `lint`, and `git diff --check`.
+
+### Boundaries
+
+- This is verifier/docs hardening only. It does not change Digital Screens listeners, POS Sync delivery-log reads, Weekly Digest reads, browser behavior, Firestore rules, Storage rules, Cloud Functions, Firebase deploy, Vercel deploy, production build, browser/device QA, provider calls, Firestore writes, or Storage writes.
+
+---
+
+## July 4, 2026 - Browser Firebase Functions Callable Boundary
+
+### Improved
+
+- **Browser Firebase Functions callables are source-gated** - `npm run verify:menulist-api-tenant-safety` now scans active MenuList browser surfaces for direct `firebase/functions` and `@firebase/functions` imports.
+- **Platform recovery controls stay explicit** - The allowlist is limited to the existing desktop/mobile Ops Control Room `forceRepublish` callable and desktop/mobile Scheduler Monitor `triggerStoreNightlyScheduler` callable.
+- **Shared helpers remain the boundary for normal UI** - Browser surfaces can continue to use approved API routes and shared helpers such as `@lib/firebase/functions`, but new direct `httpsCallable` browser imports must be reviewed and added to the source gate intentionally.
+
+### Verified
+
+- `node --check scripts/verification/verify-menulist-api-tenant-safety.js` passed.
+- `npm run verify:menulist-api-tenant-safety` passed.
+- Focused browser Firebase Functions callable boundary scan passed.
+- `npm run docs:check-links` passed with 0 broken links and 0 naming violations.
+- `git diff --check` passed.
+- `npm run verify:production-readiness-local` passed with 88/88 checks, including 84 child root `verify:*` scripts, `typecheck`, `lint`, and `git diff --check`.
+
+### Boundaries
+
+- This is verifier/docs hardening only. It does not change platform recovery controls, callable payloads, callable permissions, API route behavior, shared Firebase Functions helpers, Cloud Function logic, Firebase deploy, Vercel deploy, production build, browser/device QA, provider calls, Firestore writes, or Storage writes.
+
+---
+
+## July 4, 2026 - Browser Firebase Auth Direct-Method Boundary
+
+### Improved
+
+- **Browser Firebase Auth direct methods are source-gated** - `npm run verify:auth-security-failure-matrix` now scans active MenuList browser surfaces for direct Firebase Auth imports and fails if UI code imports new client auth methods outside the existing auth-entry allowlist.
+- **Auth entry points stay explicit** - The login page may continue to use `signInWithEmailAndPassword` and `signInWithCustomToken` for the established NextAuth-to-Firebase client sync handoff, and the forgot-password page may continue to use `sendPasswordResetEmail`.
+- **NextAuth sign-out stays separate** - `NextAuth signOut` imports from `next-auth/react` remain allowed; the gate targets only `firebase/auth` and `@firebase/auth` direct browser imports.
+
+### Verified
+
+- `node --check scripts/verification/verify-auth-security-failure-matrix.js` passed.
+- `npm run verify:auth-security-failure-matrix` passed.
+- Focused browser Firebase Auth direct-method boundary scan passed.
+- `npm run docs:check-links` passed with 0 broken links and 0 naming violations.
+- `git diff --check` passed.
+- `npm run verify:production-readiness-local` passed with 88/88 checks, including 84 child root `verify:*` scripts, `typecheck`, `lint`, and `git diff --check`.
+
+### Boundaries
+
+- This is verifier/docs hardening only. It does not change login behavior, password-reset behavior, Firebase Auth sync behavior, NextAuth session behavior, sign-out behavior, API route behavior, auth middleware, Firestore rules, Storage rules, Cloud Functions, Firebase deploy, Vercel deploy, production build, browser/device QA, provider calls, Firestore writes, or Storage writes.
+
+---
+
+## July 4, 2026 - Browser Storage Mutation Boundary
+
+### Improved
+
+- **Browser Storage mutations are source-gated** - `npm run verify:storage-paths` now scans active MenuList browser surfaces for direct Firebase Storage mutation helper imports and fails if UI code imports `getStorage`, `ref`, `uploadBytes`, `uploadBytesResumable`, `uploadString`, `getDownloadURL`, or `deleteObject` from Firebase Storage.
+- **Tenant-scoped storage helpers are protected** - Owner, platform, public, and screen UI must keep Storage writes/deletes behind existing storage DAL helpers, project upload helpers, media helpers, or server/API routes instead of direct Firebase Storage calls.
+- **Type-only metadata imports stay allowed** - Type-only `firebase/storage` imports, such as `UploadMetadata`, remain allowed when they do not expose browser write/delete helpers.
+
+### Verified
+
+- `node --check scripts/verification/verify-storage-path-hardening.js` passed.
+- `npm run verify:storage-paths` passed.
+- Focused browser Storage mutation boundary scan passed.
+- `npm run docs:check-links` passed with 0 broken links and 0 naming violations.
+- `git diff --check` passed.
+- `npm run verify:production-readiness-local` passed with 88/88 checks, including 84 child root `verify:*` scripts, `typecheck`, `lint`, and `git diff --check`.
+
+### Boundaries
+
+- This is verifier/docs hardening only. It does not change browser behavior, Storage reads, Storage uploads, Storage deletes, project upload helpers, media helpers, API route behavior, public menu behavior, Firebase rules, Storage rules, Cloud Functions, Firebase deploy, Vercel deploy, production build, browser/device QA, provider calls, Firestore writes, or Storage writes.
+
+---
+
+## July 4, 2026 - Browser Firestore Mutation Boundary
+
+### Improved
+
+- **Browser Firestore mutations are source-gated** - `npm run verify:public-business-truth` now scans active MenuList browser surfaces for direct Firestore mutation helper imports and fails if UI code imports `addDoc`, `setDoc`, `updateDoc`, `deleteDoc`, `writeBatch`, or `runTransaction` from Firestore.
+- **DAL/API ownership is protected** - Owner, platform, public, and screen UI may still use Firestore timestamps, reads, and listeners where already established, but browser write mutations must stay behind DAL helpers or server/API routes.
+- **Verifier guard added** - The source gate covers `src/app` and `src/components` MenuList browser surfaces while excluding API routes and Answerlattice surfaces.
+
+### Verified
+
+- `node --check scripts/verification/verify-public-business-truth.js` passed.
+- `npm run verify:public-business-truth` passed.
+- Focused browser Firestore mutation boundary scan passed.
+- `npm run docs:check-links` passed with 0 broken links and 0 naming violations.
+- `git diff --check` passed.
+- `npm run verify:production-readiness-local` passed with 88/88 checks, including 84 child root `verify:*` scripts, `typecheck`, `lint`, and `git diff --check`.
+
+### Boundaries
+
+- This is verifier/docs hardening only. It does not change browser behavior, Firestore reads, Firestore listeners, DAL behavior, API route behavior, public menu behavior, public cache, Firebase rules, Storage rules, Cloud Functions, Firebase deploy, Vercel deploy, production build, browser/device QA, provider calls, Firestore writes, or Storage writes.
+
+---
+
+## July 4, 2026 - Tenant And Platform User Acknowledgement Source Gate
+
+### Improved
+
+- **Tenant and platform-user writes are source-gated globally** - `npm run verify:public-business-truth` now scans every active `src` tenant write/stores-list call and platform-user write call and fails unless the matching acknowledgement guard appears in the nearby follow-up block.
+- **Owner/account false-success risk is guarded** - Tenant create/update paths require `assertTenantUpdateSucceeded()`, tenant stores-list updates require `assertTenantsStoresListUpdateSucceeded()`, and platform-user writes require `assertUserUpdateSucceeded()` before local owner/account state can be trusted.
+- **Verifier guard added** - The source gate covers `addTenant()`, `updateTenant()`, `updateTenantsStoreslist()`, `addPlatformUser()`, `updatePlatformUser()`, and `addStoreToUser()` outside their DAL implementations.
+
+### Verified
+
+- `node --check scripts/verification/verify-public-business-truth.js` passed.
+- `npm run verify:public-business-truth` passed.
+- Focused tenant/platform-user acknowledgement source-gate scans passed.
+- `npm run docs:check-links` passed with 0 broken links and 0 naming violations.
+- `git diff --check` passed.
+- `npm run verify:production-readiness-local` passed with 88/88 checks, including 84 child root `verify:*` scripts, `typecheck`, `lint`, and `git diff --check`.
+
+### Boundaries
+
+- This is verifier/docs hardening only. It does not change tenant writes, tenant stores-list writes, platform-user writes, store writes, project writes, staff creation, auth behavior, public menu, public cache, Firebase rules, Storage rules, Cloud Functions, Firebase deploy, Vercel deploy, production build, browser/device QA, provider calls, Firestore writes, or Storage writes.
+
+---
+
+## July 4, 2026 - Project Lifecycle Acknowledgement Source Gate
+
+### Improved
+
+- **Project lifecycle mutations are source-gated globally** - `npm run verify:public-business-truth` now scans every active `src` project delete/activate/duplicate/restore call and fails unless the matching project acknowledgement guard appears in the nearby follow-up block.
+- **Delete and lifecycle false-success risk is guarded** - Project deletion requires `assertProjectDeleteSucceeded()`, while activation, duplication, and restoration require `assertProjectUpdateSucceeded()` before local lifecycle state can be trusted.
+- **Verifier guard added** - The source gate covers `deleteProject()`, `setProjectActive()`, `duplicateProject()`, and `restoreProject()` outside the project DAL implementation.
+
+### Verified
+
+- `node --check scripts/verification/verify-public-business-truth.js` passed.
+- `npm run verify:public-business-truth` passed.
+- Focused project lifecycle acknowledgement source-gate scan passed.
+- `npm run docs:check-links` passed with 0 broken links and 0 naming violations.
+- `git diff --check` passed.
+- `npm run verify:production-readiness-local` passed with 88/88 checks, including 84 child root `verify:*` scripts, `typecheck`, `lint`, and `git diff --check`.
+
+### Boundaries
+
+- This is verifier/docs hardening only. It does not change project deletion, activation, duplication, restoration, save, publish, metadata, editor, mobile menu, public menu, public cache, Digital Screens, Firebase rules, Storage rules, Cloud Functions, Firebase deploy, Vercel deploy, production build, browser/device QA, provider calls, Firestore writes, or Storage writes.
+
+---
+
+## July 4, 2026 - Project Write Acknowledgement Source Gate
+
+### Improved
+
+- **Project writes are source-gated globally** - `npm run verify:public-business-truth` now scans every active `src` project write/create/publish call and fails unless `assertProjectUpdateSucceeded()` appears in the nearby follow-up block.
+- **False success risk is guarded** - Menu/project save, create, publish, metadata, and background persistence call sites must prove the DAL returned the expected project shape before local saved/published state can be trusted.
+- **Verifier guard added** - The source gate covers `addProject()`, `publishProject()`, `updateProject()`, `updateProjectMetadata()`, and `updateProjectWithoutLoader()` outside the project DAL implementation.
+
+### Verified
+
+- `node --check scripts/verification/verify-public-business-truth.js` passed.
+- `npm run verify:public-business-truth` passed.
+- Focused project write acknowledgement source-gate scan passed.
+- `npm run docs:check-links` passed with 0 broken links and 0 naming violations.
+- `git diff --check` passed.
+- `npm run verify:production-readiness-local` passed with 88/88 checks, including 84 child root `verify:*` scripts, `typecheck`, `lint`, and `git diff --check`.
+
+### Boundaries
+
+- This is verifier/docs hardening only. It does not change project save, create, publish, metadata, deletion, active-state, duplicate, editor, mobile menu, public menu, public cache, Digital Screens, Firebase rules, Storage rules, Cloud Functions, Firebase deploy, Vercel deploy, production build, browser/device QA, provider calls, Firestore writes, or Storage writes.
+
+---
+
+## July 4, 2026 - PDF And Physical Surface Freshness Copy Boundary
+
+### Improved
+
+- **Generated artifacts are source-bounded** - Active PDF Surface docs now describe PDFs as generated from current project data at download time, with a version ID and generation timestamp.
+- **Print collateral no longer claims live freshness** - PDF and Physical Surfaces website/help/marketing/spec copy no longer says printed menus are always current, always matching, or guaranteed to match online prices after later edits.
+- **Verifier guard added** - `npm run verify:menu-export` now rejects stale PDF/physical-surface always-current artifact claims and requires generation-time/versioned-output boundary wording.
+
+### Verified
+
+- `node --check scripts/verification/verify-menu-export.js` passed.
+- `npm run verify:menu-export` passed.
+- Targeted PDF/physical-surface stale freshness-copy scan passed.
+- `npm run docs:check-links` passed with 0 broken links and 0 naming violations.
+- `git diff --check` passed.
+- `npm run verify:production-readiness-local` passed with 88/88 checks, including 84 child root `verify:*` scripts, `typecheck`, `lint`, and `git diff --check`.
+
+### Boundaries
+
+- This is PDF/physical-surface docs/source-gate hardening only. It does not change PDF generation, Menu Kit generation, print templates, generated artifact metadata, share modal behavior, public menu routing, cache behavior, Firebase rules, Storage rules, Cloud Functions, Firebase deploy, Vercel deploy, production build, browser/device QA, visual print artifact review, provider calls, Firestore writes, or Storage writes.
+
+---
+
+## July 4, 2026 - Locale Freshness Public Copy Boundary
+
+### Improved
+
+- **Locale QR copy is source-bounded** - Active locale strings now say QR materials open the current published menu instead of promising they always open the current menu.
+- **Locale PDF copy no longer overpromises freshness** - Active Bengali, Marathi, Tamil, and Telugu feature copy now describes a print-ready PDF generated from menu data instead of saying it always reflects the current menu.
+- **Verifier guard added** - `npm run verify:website-public-copy-boundary` now rejects stale locale QR/PDF freshness claims across active locale JSON files.
+
+### Verified
+
+- `node --check scripts/verification/verify-website-public-copy-boundary.js` passed.
+- `npm run verify:website-public-copy-boundary` passed.
+- Targeted locale freshness public-copy scan passed.
+- `npm run verify:website-resource-locales` passed.
+- `npm run docs:check-links` passed with 0 broken links and 0 naming violations.
+- `git diff --check` passed.
+- `npm run verify:production-readiness-local` passed with 88/88 checks, including 84 child root `verify:*` scripts, `typecheck`, `lint`, and `git diff --check`.
+
+### Boundaries
+
+- This changes active locale public copy only. It does not change QR generation, public menu routing, PDF generation, print templates, cache behavior, website routing, Firebase rules, Storage rules, Cloud Functions, Firebase deploy, Vercel deploy, production build, browser/device QA, provider calls, Firestore writes, or Storage writes.
+
+---
+
+## July 4, 2026 - Public FAQ Schema Freshness Copy Boundary
+
+### Improved
+
+- **Structured FAQ copy is source-bounded** - `buildFaqSchema()` now uses "full published menu" fallback wording instead of telling search/AI consumers that the menu is always up to date.
+- **Localized FAQ answers no longer overpromise freshness** - Active `publicFaqMenuAnswer` translations in English (GB), Arabic, Bengali, Spanish, Gujarati, Marathi, Tamil, Telugu, and Simplified Chinese now avoid always-current menu claims.
+- **Verifier guard added** - `npm run verify:public-business-truth` now parses every active locale JSON file and rejects stale `publicFaqMenuAnswer` freshness promises, while also guarding the schema fallback string.
+
+### Verified
+
+- `node --check scripts/verification/verify-public-business-truth.js` passed.
+- `npm run verify:public-business-truth` passed.
+- Targeted public FAQ schema freshness-copy scan passed.
+- `npm run docs:check-links` passed with 0 broken links and 0 naming violations.
+- `git diff --check` passed.
+- `npm run verify:production-readiness-local` passed with 88/88 checks, including 84 child root `verify:*` scripts, `typecheck`, `lint`, and `git diff --check`.
+
+### Boundaries
+
+- This changes public structured-data FAQ answer copy and active locale FAQ answer copy only. It does not change schema shape, route behavior, public menu data selection, OBP rendering, cache behavior, sitemap/robots behavior, Firebase rules, Storage rules, Cloud Functions, Firebase deploy, Vercel deploy, production build, browser/device QA, provider calls, Firestore writes, or Storage writes.
+
+---
+
+## July 4, 2026 - Pricing Public Copy Freshness Boundary
+
+### Improved
+
+- **Pricing copy is source-bounded** - Pricing FAQ copy now says approved updates flow through the public menu and business page refresh paths instead of promising real-time updates across all surfaces.
+- **Plan feature descriptions no longer overpromise freshness** - Official Business Page copy now says current status, and webhook copy says supported event notifications instead of real-time status/notification guarantees.
+- **Verifier guard added** - `npm run verify:website-public-copy-boundary` now rejects stale pricing and plan-feature real-time/all-surface public claims and requires the bounded replacement copy.
+
+### Verified
+
+- `node --check scripts/verification/verify-website-public-copy-boundary.js` passed.
+- `npm run verify:website-public-copy-boundary` passed.
+- Targeted pricing/feature stale real-time public-claim scan passed.
+- `npm run docs:check-links` passed with 0 broken links and 0 naming violations.
+- `git diff --check` passed.
+- `npm run verify:production-readiness-local` passed with 88/88 checks, including 84 child root `verify:*` scripts, `typecheck`, `lint`, and `git diff --check`.
+
+### Boundaries
+
+- This is pricing and feature-list public-copy/source-gate hardening only. It does not change pricing plans, entitlements, billing behavior, public menu behavior, OBP behavior, webhook behavior, notification behavior, Firebase rules, Storage rules, Cloud Functions, Firebase deploy, Vercel deploy, production build, browser/device QA, provider calls, Firestore writes, or Storage writes.
+
+---
+
+## July 4, 2026 - Truth & Accuracy Dominance Source Boundary
+
+### Improved
+
+- **Truth and accuracy claims are source-bounded** - Active Truth & Accuracy Dominance docs now describe supported MenuList surfaces reading saved and verified project/store data after their normal refresh, publish, cache, download, or provider flow completes.
+- **Blanket freshness promises removed** - The docs no longer claim MenuList is always correct, universally current, instantly propagated, synchronized across every surface, or covered by a blanket 60-second guarantee.
+- **Verifier guard added** - `npm run verify:public-business-truth` now rejects stale Truth & Accuracy blanket correctness and freshness claims and requires the production audit, External Certification Runbook, public-output QA, public cache, Digital Screens, mobile, provider/artifact, and `ENABLE_MCE: true` source boundaries.
+
+### Verified
+
+- `node --check scripts/verification/verify-public-business-truth.js` passed.
+- `npm run verify:public-business-truth` passed.
+- Targeted active Truth & Accuracy Dominance stale blanket-claim scan passed.
+- `npm run docs:check-links` passed with 0 broken links and 0 naming violations.
+- `git diff --check` passed.
+- `npm run verify:production-readiness-local` passed with 88/88 checks, including 84 child root `verify:*` scripts, `typecheck`, `lint`, and `git diff --check`.
+
+### Boundaries
+
+- This is Truth & Accuracy Dominance docs/source-gate hardening only. It does not change MCE runtime behavior, project save behavior, publish behavior, public cache behavior, Digital Screens cache/listener behavior, provider behavior, generated artifacts, Firebase rules, Storage rules, Cloud Functions, Firebase deploy, Vercel deploy, production build, browser/device QA, provider calls, Firestore writes, or Storage writes.
+
+---
+
+## July 4, 2026 - Product Universe SSOT Launch Boundary
+
+### Improved
+
+- **Product Universe status is source-bounded** - `__docs__/strategy/product-universe-ssot.md` now identifies itself as historical February 2026 product-universe/source-state strategy, not current launch certification.
+- **Universal correctness claims are bounded** - The doc now describes MenuList as the canonical source for supported customer-facing business truth surfaces and routes external platforms, printed artifacts, and cached third-party surfaces through their own integration or refresh evidence.
+- **Verifier guard added** - `npm run verify:agent-readiness` now rejects stale Product Universe production table rows, core-product-done wording, universal-correctness positioning, automatic all-surface correction claims, and built-status quick-card wording.
+
+### Verified
+
+- `node --check scripts/verification/verify-agent-readiness.js` passed.
+- `npm run verify:agent-readiness` passed.
+- Targeted Product Universe stale launch/correctness scan passed.
+- `npm run docs:check-links` passed with 0 broken links and 0 naming violations.
+- `git diff --check` passed.
+- `npm run verify:production-readiness-local` passed with 88/88 checks, including 84 child root `verify:*` scripts, `typecheck`, `lint`, and `git diff --check`.
+
+### Boundaries
+
+- This is strategy-doc/source-gate hardening only. It does not change runtime behavior, feature flags, public output, cache behavior, Firebase rules, Storage rules, Cloud Functions, Firebase deploy, Vercel deploy, production build, browser/device QA, provider calls, Firestore writes, or Storage writes.
+
+---
+
+## July 4, 2026 - Digital Screens Freshness-Copy Boundary
+
+### Improved
+
+- **Screen freshness copy is source-bounded** - Active Digital Screens README, spec, implementation, website, marketing, and help docs now describe screens as current MenuList source displays that refresh after acknowledged saves, public cache invalidation, and the screen content-version listener.
+- **Absolute freshness phrases removed** - Digital Screens docs no longer describe the TV link as instant, always-current, real-time, or independently self-updating.
+- **Verifier guard added** - `npm run verify:digital-screens-boundary` now rejects stale Digital Screens freshness phrases and requires the 60-second `screen-data` cache, cache-first client, listener, and manual-refresh fallback boundaries.
+
+### Verified
+
+- `node --check scripts/verification/verify-digital-screens-boundary.js` passed.
+- `npm run verify:digital-screens-boundary` passed.
+- Targeted active Digital Screens stale freshness-copy scan passed.
+- `npm run docs:check-links` passed with 0 broken links and 0 naming violations.
+- `git diff --check` passed.
+- `npm run verify:production-readiness-local` passed with 88/88 checks, including 84 child root `verify:*` scripts, `typecheck`, `lint`, and `git diff --check`.
+
+### Boundaries
+
+- This is Digital Screens docs/source-gate hardening only. It does not change public screen route behavior, screen rendering, screen cache behavior, listener behavior, owner settings behavior, Firebase rules, Storage rules, Cloud Functions, Firebase deploy, Vercel deploy, production build, browser TV smoke, physical-device QA, Firestore writes, or Storage writes.
+
+---
+
+## July 4, 2026 - Behavior Engineering Official Link Freshness Boundary
+
+### Improved
+
+- **Official-link copy is source-bounded** - Behavior Engineering README, spec, implementation, website, helpdoc, and marketing docs now describe one stable customer link that points to the current approved source after save/publish and public cache refresh.
+- **Live share copy no longer overpromises freshness** - Menu kit labels, desktop Use MenuList share-card copy, project share modal WhatsApp text, and Menu Kit WhatsApp text no longer claim every edit is always/latest/instant.
+- **Verifier guard added** - `npm run verify:public-business-truth` now rejects stale Behavior Engineering official-link freshness phrases across active docs and shared share-copy sources.
+
+### Verified
+
+- `node --check scripts/verification/verify-public-business-truth.js` passed.
+- `npm run verify:public-business-truth` passed.
+- Targeted Behavior Engineering stale official-link freshness scan passed.
+- `npm run docs:check-links` passed with 0 broken links and 0 naming violations.
+- `npx tsc --noEmit --pretty false --incremental false` passed.
+- `git diff --check` passed.
+- `npm run verify:production-readiness-local` passed with 88/88 checks, including 84 child root `verify:*` scripts, `typecheck`, `lint`, and `git diff --check`.
+
+### Boundaries
+
+- This is Behavior Engineering copy/source-gate hardening only. It does not change menu save behavior, publish behavior, public cache tag names, Digital Screen content-version touch ownership, Firebase rules, Storage rules, Cloud Functions, Firebase deploy, Vercel deploy, production build, browser/device QA, provider calls, Firestore writes, or Storage writes.
+
+---
+
+## July 4, 2026 - Menu Revalidation Explicit Tag Assistant Cache Boundary
+
+### Improved
+
+- **Explicit tag revalidation clears assistant cache** - `/api/revalidate/menu` now derives a single store id from valid explicit `menu-store-{id}` / `store-{id}` tag arrays so platform or secret callers clear the matching Owner Business Assistant packet cache instead of only revalidating Vercel cache tags.
+- **Route contract is clearer** - The Client Menu Firebase doc now separates cache-tag revalidation, Owner Business Assistant packet cache invalidation, and live Digital Screen content-version touches.
+- **Verifier guard added** - `npm run verify:public-business-truth` and `npm run verify:menulist-api-tenant-safety` now guard the explicit-tag store-id derivation and docs boundary.
+
+### Verified
+
+- `node --check scripts/verification/verify-public-business-truth.js` passed.
+- `node --check scripts/verification/verify-menulist-api-tenant-safety.js` passed.
+- `npm run verify:public-business-truth` passed.
+- `npm run verify:menulist-api-tenant-safety` passed.
+- `npm run docs:check-links` passed with 0 broken links and 0 naming violations.
+- `npx tsc --noEmit` passed.
+- `npm run verify:production-readiness-local` passed with 88/88 checks, including 84 child root `verify:*` scripts, `typecheck`, `lint`, and `git diff --check`.
+
+### Boundaries
+
+- This is a scoped public-cache route hardening change. It does not change cache tag names, store/project write behavior, live Digital Screen content-version touch ownership, Firebase rules, Storage rules, Cloud Functions, Firebase deploy, Vercel deploy, production build, browser/device QA, provider calls, Firestore writes, or Storage writes.
+
+---
+
+## July 4, 2026 - Agent Readiness External Claim Boundary
+
+### Improved
+
+- **Agent-readiness promise is source-bounded** - Active Agent Readiness docs now describe machine-readable public facts, not guaranteed AI assistant accuracy, instant external readability, ranking, citation, or universal visibility.
+- **Public LLM context is bounded** - `public/llms-full.txt` now says public facts reflect owner-approved saves after the public cache refresh path settles, and the existing external-crawler guarantee boundary remains explicit.
+- **Source evidence is explicit** - The boundary is tied to static `llms.txt`/`llms-full.txt`, schema.org JSON-LD, sitemap/robots policy, the reserved-disabled `ENABLE_AGENT_DISCOVERY` flag, and the absence of dynamic agent endpoints.
+- **Verifier guard added** - `npm run verify:agent-readiness` now rejects stale Agent Readiness external-system guarantee phrases and requires the matching docs/source evidence.
+
+### Verified
+
+- `node --check scripts/verification/verify-agent-readiness.js` passed.
+- `npm run verify:agent-readiness` passed.
+- Targeted active Agent Readiness stale external-claim scan passed.
+- `npm run docs:check-links` passed with 0 broken links and 0 naming violations.
+- `git diff --check` passed.
+- `npm run verify:production-readiness-local` passed with 88/88 checks, including 84 child root `verify:*` scripts.
+
+### Boundaries
+
+- This is documentation/public-LLM-context/source-gate hardening only. It does not change Agent Readiness runtime behavior, public website runtime behavior, schema generation behavior, public menu/OBP runtime behavior, public API behavior, POS webhook behavior, Firebase rules, Storage rules, Cloud Functions, deploy Firebase, deploy Vercel, run a production build, run browser/device QA, call providers, write Firestore, write Storage, control external crawler behavior, approve launch, or certify release readiness.
+
+---
+
+## July 4, 2026 - Official Business Page Freshness Copy Boundary
+
+### Improved
+
+- **OBP freshness promise is source-bounded** - Active OBP docs now describe owner changes as visible after the acknowledged save and public cache refresh, not as unconditional instant/latest updates.
+- **Stale instant/latest wording removed** - OBP README, website, marketing, helpdoc, and implementation docs no longer claim store data updates instantly, customers always see latest info, pages update themselves without an acknowledged save, or every update lands everywhere immediately.
+- **Source evidence is explicit** - The boundary is tied to `revalidatePublicClientCache()`, `/api/revalidate/menu`, `menu-store-{storeId}`, `store-{storeId}`, `client-stores`, and the current 60-second public cache window.
+- **Verifier guard added** - `npm run verify:official-business-page-boundary` now rejects stale OBP freshness phrases and requires the matching docs/source evidence.
+
+### Verified
+
+- `node --check scripts/verification/verify-official-business-page-boundary.js` passed.
+- `npm run verify:official-business-page-boundary` passed.
+- Targeted active OBP stale freshness scan passed.
+- `npm run docs:check-links` passed with 0 broken links and 0 naming violations.
+- `git diff --check` passed.
+- `npm run verify:production-readiness-local` passed with 88/88 checks, including 84 child root `verify:*` scripts.
+
+### Boundaries
+
+- This is documentation/source-gate hardening plus a source-comment wording correction only. It does not change OBP runtime behavior, public menu runtime behavior, store-DAL behavior, public cache behavior, Firebase rules, Storage rules, Cloud Functions, deploy Firebase, deploy Vercel, run a production build, run browser/device QA, call providers, write Firestore, write Storage, approve launch, or certify release readiness.
+
+---
+
+## July 4, 2026 - Custom Domain SSL Verification Boundary
+
+### Improved
+
+- **Custom-domain promise is source-bounded** - Active Client Menu custom-domain docs now say domains serve after DNS and verification, not as unconditional automatic SSL.
+- **Stale setup wording removed** - The multi-tenant architecture doc no longer presents manual Vercel Dashboard setup as the runtime path or labels the Vercel Domains API as future automation.
+- **Verification contract is explicit** - The docs now match `/api/domain`: add starts with `domainVerified: false`, status checks Vercel config, verified domains flip to `domainVerified: true`, and public lookup only serves verified active custom domains.
+- **Verifier guard added** - `npm run verify:public-business-truth` now source-gates the custom-domain docs against stale SSL/live/setup phrases and requires the domain route, Vercel helper, public lookup, and client page evidence.
+
+### Verified
+
+- `node --check scripts/verification/verify-public-business-truth.js` passed.
+- `npm run verify:public-business-truth` passed.
+- Targeted active custom-domain stale-claim scan passed.
+- `npm run docs:check-links` passed with 0 broken links and 0 naming violations.
+- `git diff --check` passed.
+- `npm run verify:production-readiness-local` passed with 88/88 checks, including 84 child root `verify:*` scripts.
+
+### Boundaries
+
+- This is documentation/source-gate hardening only. It does not change custom-domain runtime behavior, Vercel behavior, DNS behavior, certificate behavior, public cache behavior, Firebase rules, Storage rules, Cloud Functions, deploy Firebase, deploy Vercel, run a production build, run browser/device QA, call providers, write Firestore, write Storage, approve launch, or certify release readiness.
+
+---
+
+## July 4, 2026 - Client Menu Offline Freshness Boundary
+
+### Improved
+
+- **Client Menu offline promise is source-bounded** - Active Client Menu docs now match the frozen customer service-worker contract: network-first navigation, `/offline` fallback only, and no stale cached menu content.
+- **Stale offline/instant copy removed** - Client Menu README, spec, implementation, marketing, website, helpdoc, and mobile-support docs no longer claim cached menu browsing, offline item interaction, Workbox menu caching, instant customer visibility, WhatsApp-based menu editing, or self-updating menu behavior.
+- **Freshness contract is explicit** - Public update copy now routes owner changes through the approved source and current public cache window instead of promising immediate customer visibility.
+- **Verifier guard added** - `npm run verify:customer-app-pwa` now source-gates the Client Menu offline/freshness docs against the customer service-worker and offline-page source evidence.
+
+### Verified
+
+- `node --check scripts/verification/verify-customer-app-pwa.js` passed.
+- `npm run verify:customer-app-pwa` passed.
+- Targeted active Client Menu stale offline/freshness scan passed.
+- `npm run docs:check-links` passed with 0 broken links and 0 naming violations.
+- `git diff --check` passed.
+- `npm run verify:production-readiness-local` passed with 88/88 checks, including 84 child root `verify:*` scripts.
+
+### Boundaries
+
+- This is documentation/source-gate hardening only. It does not change customer menu runtime behavior, service-worker behavior, public cache behavior, Firebase rules, Storage rules, Cloud Functions, deploy Firebase, deploy Vercel, run a production build, run browser/device QA, call providers, write Firestore, write Storage, approve launch, or certify release readiness.
+
+---
+
+## July 4, 2026 - Public Menu Go-Live Copy Boundary
+
+### Improved
+
+- **Public menu update promise is source-bounded** - Active menu/editor/mobile/support/client-menu/multi-outlet docs now say saved menu edits use the shared save/cache path, while screens with explicit Publish actions keep that action.
+- **Stale instant-live copy removed** - Active docs no longer claim changes go live instantly, skip publishing universally, show immediately, or appear to customers within seconds.
+- **Source evidence is explicit** - The boundary is tied to the `updateProject()` public-truth/cache invariant, `publishProject()`, `menuVersion`, `lastPublishedAt`, desktop/mobile publish controls, review-before-publish upload copy, and client `revalidate: 60` cache metadata.
+- **Verifier guard added** - `npm run verify:public-business-truth` now rejects the stale go-live phrases in the active doc set and requires the save/cache/publish source evidence.
+
+### Verified
+
+- `node --check scripts/verification/verify-public-business-truth.js` passed.
+- `npm run verify:public-business-truth` passed.
+- Targeted active MenuList stale go-live scan passed.
+- `npm run docs:check-links` passed with 0 broken links and 0 naming violations.
+- `git diff --check` passed.
+- `npm run verify:production-readiness-local` passed with 88/88 checks, including 84 child root `verify:*` scripts.
+
+### Boundaries
+
+- This is documentation/source-gate hardening only. It does not change public menu runtime behavior, editor behavior, publish behavior, cache behavior, Firebase rules, Storage rules, Cloud Functions, deploy Firebase, deploy Vercel, run a production build, run browser/device QA, call providers, write Firestore, write Storage, approve launch, or certify release readiness.
+
+---
+
+## July 4, 2026 - Future Roadmap SSOT Boundary
+
+### Improved
+
+- **Future roadmap is source-bounded** - `__docs__/strategy/menulist-future-roadmap-ssot.md` now identifies itself as a historical February 2026 roadmap/source-state reference, not current launch certification.
+- **Live source of truth is explicit** - The roadmap now points live feature-flag checks to `src/config/features.ts` and routes current readiness to the production-readiness audit, External Certification Runbook, current verifiers, browser/device QA, provider smoke, target deploy evidence, and production-host smoke.
+- **Stale readiness labels removed** - The old production-ready heading, testing/activation heading, and ready-to-test action statuses are replaced with historical source-evidence wording.
+- **Verifier guard added** - `npm run verify:agent-readiness` now source-gates the Future Roadmap SSOT boundary.
+
+### Verified
+
+- `node --check scripts/verification/verify-agent-readiness.js` passed.
+- `npm run verify:agent-readiness` passed.
+- Targeted Future Roadmap stale readiness scan passed.
+- `npm run docs:check-links` passed with 0 broken links and 0 naming violations.
+- `git diff --check` passed.
+- `npm run verify:production-readiness-local` passed with 88/88 checks, including 84 child root `verify:*` scripts.
+
+### Boundaries
+
+- This is documentation/source-gate hardening only. It does not change runtime behavior, feature flag values, Firebase rules, Storage rules, Cloud Functions, deploy Firebase, deploy Vercel, run a production build, run browser/device QA, call providers, write Firestore, write Storage, approve testing, approve activation, approve launch, or certify release readiness.
+
+---
+
+## July 4, 2026 - Local Readiness List Mode
+
+### Improved
+
+- **Aggregate gate inventory is no-execution** - `npm run verify:production-readiness-local -- --list` now prints the aggregate check inventory, count, child `verify:*` count, and local-only proof boundary without running child checks.
+- **Operator docs are explicit** - The verification README and External Certification Runbook now document when to use the list mode instead of a full local boundary refresh.
+- **Verifier guard added** - `npm run verify:agent-readiness` now requires the runner list-only path, command output shape, README usage, and runbook wording.
+
+### Verified
+
+- `node --check scripts/verification/run-production-readiness-local.js` passed.
+- `node --check scripts/verification/verify-agent-readiness.js` passed.
+- `npm run verify:production-readiness-local -- --list` passed.
+- `npm run verify:agent-readiness` passed.
+- `npm run docs:check-links` passed with 0 broken links and 0 naming violations.
+- `git diff --check` passed.
+- `npm run verify:production-readiness-local` passed with 88/88 checks, including 84 child root `verify:*` scripts.
+
+### Boundaries
+
+- This is verifier tooling and documentation hardening only. It does not change runtime behavior, deploy Firebase, deploy Vercel, run a Next.js production build, call providers, run browser/device QA, write Firestore, write Storage, approve launch, or certify release readiness.
+
+---
+
+## July 4, 2026 - Local Readiness Typecheck Script Boundary
+
+### Improved
+
+- **Root typecheck is script-backed** - Added `npm run typecheck` for the root TypeScript gate using `tsc --noEmit --incremental false --pretty false`.
+- **Build verification reuses typecheck** - `npm run build:verify` now delegates to `npm run typecheck` instead of duplicating the TypeScript command.
+- **Incremental cache leaves the tracked root** - `tsconfig.json` now writes TypeScript build-info to ignored `.next/cache/tsconfig.tsbuildinfo`.
+- **Aggregate runner uses the script** - `npm run verify:production-readiness-local` now calls `npm run typecheck` instead of a raw TypeScript invocation.
+- **Verifier guard added** - `npm run verify:agent-readiness` now requires the root typecheck script, the `build:verify` delegation, the ignored build-info cache location, and prevents the aggregate runner from bypassing it.
+
+### Verified
+
+- `node --check scripts/verification/run-production-readiness-local.js` passed.
+- `node --check scripts/verification/verify-agent-readiness.js` passed.
+- `npm run typecheck` passed.
+- `npm run build:verify` passed.
+- `npm run verify:agent-readiness` passed.
+- `npm run verify:doc-npm-scripts` passed.
+- `npm run docs:check-links` passed with 0 broken links and 0 naming violations.
+- `git diff --check` passed.
+- `npm run verify:production-readiness-local` passed with 88/88 checks, including 84 child root `verify:*` scripts.
+
+### Boundaries
+
+- This is local verification hardening only. It does not change runtime behavior, deploy Firebase, deploy Vercel, run a Next.js production build, call providers, run browser/device QA, write Firestore, write Storage, approve launch, or certify release readiness.
+
+---
+
+## July 4, 2026 - Social Content Code Review Boundary
+
+### Improved
+
+- **Social Content code review is source-bounded** - The January 2026 Today Tab code-review note no longer ends with a standalone production-ready signoff.
+- **Release gates are explicit** - Current approval remains tied to the production-readiness audit, External Certification Runbook evidence, source verifiers, Today desktop/mobile/browser QA, provider smoke where enabled, target deploy evidence, and production-host smoke.
+- **Verifier guard added** - `npm run verify:agent-readiness` now reads the Social Content code-review doc and rejects the old production-ready signoff.
+
+### Verified
+
+- `node --check scripts/verification/verify-agent-readiness.js` passed.
+- `npm run verify:agent-readiness` passed.
+- `npm run verify:public-business-truth` passed.
+- Targeted Social Content code-review stale readiness scan passed.
+- `npm run docs:check-links` passed with 0 broken links and 0 naming violations.
+- `git diff --check` passed.
+- `npm run verify:production-readiness-local` passed with 88/88 checks, including 84 child root `verify:*` scripts.
+
+### Boundaries
+
+- This is documentation/source-gate hardening only. It does not change Social Content runtime behavior, Today behavior, GrowthOS summary reads, campaign provider behavior, Firestore rules, Storage rules, Cloud Functions, deploy Firebase, deploy Vercel, run a production build, call providers, run browser/device QA, write Firestore, write Storage, approve launch, or certify release readiness.
+
+---
+
+## July 4, 2026 - Help Chat Source Docs Boundary
+
+### Improved
+
+- **Help Chat source docs are source-bounded** - The README and source-adjacent summary now identify Help Chat as a source-gated owner help interface/UI slice instead of current production approval.
+- **External gates are explicit** - Backend integration, provider behavior, browser/device QA, launch certification, target deploy evidence, and production-host smoke remain routed through the Help Center verifier, production-readiness audit, and External Certification Runbook.
+- **Verifier guard added** - `npm run verify:help-center-boundary` now reads the Help Chat README and implementation summary, then rejects the old production-ready and ready-for-user-testing phrases.
+
+### Verified
+
+- `node --check scripts/verification/verify-help-center-boundary.js` passed.
+- `npm run verify:help-center-boundary` passed.
+- Targeted Help Chat source-doc readiness wording scan passed.
+- `npm run docs:check-links` passed with 0 broken links and 0 naming violations.
+- `git diff --check` passed.
+- `npm run verify:production-readiness-local` passed with 88/88 checks, including 84 child root `verify:*` scripts.
+
+### Boundaries
+
+- This is documentation/source-gate hardening only. It does not change Help Chat runtime behavior, Help Center search behavior, Answerlattice support behavior, mobile help behavior, ticket behavior, public route behavior, Firestore rules, Storage rules, Cloud Functions, deploy Firebase, deploy Vercel, run a production build, run browser/device QA, call providers, write Firestore, write Storage, approve launch, or certify release readiness.
+
+---
+
+## July 4, 2026 - SignalDesk Feedback Boundary
+
+### Improved
+
+- **SignalDesk roadmap feedback is source-bounded** - The feature map and ChatGPT feedback review now say the external feedback is an operating-layer roadmap, not SignalDesk launch certification.
+- **Public/product scope remains unchanged** - The docs still block provider-send, paid campaign, public page, and social automation expansion from that feedback.
+- **Verifier guard added** - `npm run verify:signaldesk` now requires the launch-certification boundary and rejects the old proof-of-readiness phrase in both active SignalDesk feedback-boundary docs.
+
+### Verified
+
+- `node --check scripts/verification/verify-signaldesk-runtime.js` passed.
+- `npm run verify:signaldesk` passed.
+- Targeted active SignalDesk readiness wording scan passed.
+- `npm run docs:check-links` passed with 0 broken links and 0 naming violations.
+- `git diff --check` passed.
+- `npm run verify:production-readiness-local` passed with 88/88 checks, including 84 child root `verify:*` scripts.
+
+### Boundaries
+
+- This is documentation/source-gate hardening only. It does not change SignalDesk runtime behavior, provider-send behavior, paid campaign behavior, public route behavior, MenuList truth-write behavior, Firestore rules, Storage rules, Cloud Functions, deploy Firebase, deploy Vercel, run a production build, run browser/device QA, call providers, write Firestore, write Storage, approve launch, or certify release readiness.
+
+---
+
+## July 4, 2026 - Customer App Production Signoff Boundary
+
+### Improved
+
+- **Customer App checklist wording is source-bounded** - The pre-production test doc now says Customer App must clear the 3-year freeze production gate instead of using direct production-ready wording.
+- **KPI signoff language is explicit** - The analytics truth table now requires each KPI to clear production analytics signoff only after event capture, rollup/summary aggregation, and dashboard rendering pass.
+- **Verifier guard added** - `npm run verify:customer-app-pwa` now requires the new checklist/signoff wording and rejects the old production-ready phrases.
+
+### Verified
+
+- `node --check scripts/verification/verify-customer-app-pwa.js` passed.
+- `npm run verify:customer-app-pwa` passed.
+- Targeted Customer App test readiness wording scan passed.
+- `npm run docs:check-links` passed with 0 broken links and 0 naming violations.
+- `git diff --check` passed.
+- `npm run verify:production-readiness-local` passed with 88/88 checks, including 84 child root `verify:*` scripts.
+
+### Boundaries
+
+- This is documentation/source-gate hardening only. It does not change Customer App runtime behavior, PWA behavior, analytics behavior, dashboard behavior, public route behavior, customer/menu output behavior, Firestore rules, Storage rules, Cloud Functions, deploy Firebase, deploy Vercel, run a production build, run browser/device QA, call providers, write Firestore, write Storage, approve launch, or certify release readiness.
+
+---
+
+## July 4, 2026 - AI Enhancement Pack Billing Copy Boundary
+
+### Improved
+
+- **Billing activation wording is source-bounded** - The billing explainer now describes `monthlyCredits` as the full starting balance after subscription activation instead of saying the balance is ready to use.
+- **Post-purchase copy is activation-scoped** - The AI Enhancement Pack confirmation copy now says additional AI capacity is available after pack activation.
+- **Verifier guard added** - `npm run verify:billing-entitlement-boundary` now reads the AI billing explainer and rejects the old ready-to-use phrases in the active billing/marketing docs.
+
+### Verified
+
+- `node --check scripts/verification/verify-billing-entitlement-boundary.js` passed.
+- `npm run verify:billing-entitlement-boundary` passed.
+- Targeted active AI Enhancement Pack ready-to-use scan passed.
+- `npm run docs:check-links` passed with 0 broken links and 0 naming violations.
+- `git diff --check` passed.
+- `npm run verify:production-readiness-local` passed with 88/88 checks, including 84 child root `verify:*` scripts.
+
+### Boundaries
+
+- This is documentation/source-gate hardening only. It does not change billing runtime behavior, Razorpay behavior, AI capacity accounting behavior, entitlement behavior, customer/menu output behavior, public route behavior, Firestore rules, Storage rules, Cloud Functions, deploy Firebase, deploy Vercel, run a production build, run browser/device QA, call providers, write Firestore, write Storage, approve launch, or certify release readiness.
+
+---
+
+## July 4, 2026 - AI Menu Manager Website Claim Boundary
+
+### Improved
+
+- **AI Menu Manager launch claims are source-bounded** - Website/spec copy now avoids unqualified readiness wording for full speech-to-command and requires separate launch-use verification before making that claim.
+- **Allowed public capability scope is explicit** - Current AMM public copy remains limited to verified daily menu operations, selected-menu answers, local exports, and unsupported handoffs.
+- **Verifier guard added** - `npm run verify:ai-menu-manager` now requires the AMM website/spec claim boundary and rejects the stale full speech-to-command readiness wording.
+
+### Verified
+
+- `node --check scripts/verification/verify-ai-menu-manager.js` passed.
+- `npm run verify:ai-menu-manager` passed.
+- Targeted AMM readiness wording scan passed.
+- `npm run docs:check-links` passed with 0 broken links and 0 naming violations.
+- `git diff --check` passed.
+- `npm run verify:production-readiness-local` passed with 88/88 checks, including 84 child root `verify:*` scripts.
+
+### Boundaries
+
+- This is documentation/source-gate hardening only. It does not change AMM runtime behavior, AI behavior, speech input behavior, provider behavior, customer/menu output behavior, public route behavior, Firestore rules, Storage rules, Cloud Functions, deploy Firebase, deploy Vercel, run a production build, run browser/device QA, write Firestore, write Storage, approve launch, or certify release readiness.
+
+---
+
+## July 3, 2026 - Changelog Historical Entry Boundary
+
+### Improved
+
+- **Historical release notes are source-bounded** - The changelog now states that older release entries are chronological history, not current production-launch approval.
+- **Current certification authority is explicit** - Current launch readiness routes to the production-readiness audit, External Certification Runbook, current source verifiers, browser/device QA, provider smoke, target deploy evidence, and production-host smoke.
+- **Verifier guard added** - `npm run verify:agent-readiness` now requires the changelog-level release certification boundary so old entries cannot be mistaken for current launch evidence.
+
+### Verified
+
+- `node --check scripts/verification/verify-agent-readiness.js` passed.
+- `npm run verify:agent-readiness` passed.
+- Targeted changelog release-certification boundary scan passed.
+- `npm run docs:check-links` passed with 0 broken links and 0 naming violations.
+- `git diff --check` passed.
+- `npm run verify:production-readiness-local` passed with 88/88 checks, including 84 child root `verify:*` scripts.
+
+### Boundaries
+
+- This is documentation/source-gate hardening only. It does not change product runtime behavior, public route behavior, billing behavior, AI behavior, Firestore rules, Storage rules, Cloud Functions, deploy Firebase, deploy Vercel, run a production build, run browser/device QA, call providers, write Firestore, write Storage, approve launch, or certify release readiness.
+
+---
+
+## July 3, 2026 - GBP Critical Review Implementation Boundary
+
+### Improved
+
+- **GBP critical review is source-bounded** - The January 2026 ChatGPT review no longer treats GBP Sync as ready to implement, ready to proceed, or current launch approval.
+- **Current GBP gates are explicit** - GBP Sync implementation or release approval now routes through the production-readiness audit, External Certification Runbook, `npm run verify:public-business-truth`, Google Business Profile API access, OAuth and secret setup, provider smoke, scoped deploy evidence where routes/rules/functions change, browser/device QA, and production-host smoke.
+- **Verifier guard added** - `npm run verify:public-business-truth` now rejects the stale ready-to-implement heading, stale implementation-ready verdict row, stale ready-to-proceed prerequisite note, and stale schema/DAL dev-action instruction in the critical-review companion doc.
+
+### Verified
+
+- `node --check scripts/verification/verify-public-business-truth.js` passed.
+- `npm run verify:public-business-truth` passed.
+- Targeted stale GBP critical-review implementation scan returned no stale doc matches.
+- `npm run docs:check-links` passed with 0 broken links and 0 naming violations.
+- `git diff --check` passed.
+- `npm run verify:production-readiness-local` passed with 88/88 checks, including 84 child root `verify:*` scripts.
+
+### Boundaries
+
+- This is documentation/source-gate hardening only. It does not change GBP runtime behavior, Google provider behavior, token storage behavior, Integrations tab runtime behavior, Firestore rules, Storage rules, Cloud Functions, deploy Firebase, deploy Vercel, run a production build, call Google APIs, run browser/device QA, write Firestore, write Storage, approve implementation, approve launch, or certify release readiness.
 
 ---
 
@@ -16,7 +1474,14 @@
 
 ### Verified
 
-- Pending in current session.
+- `node --check scripts/verification/verify-website-public-copy-boundary.js` passed.
+- `npm run verify:website-public-copy-boundary` passed.
+- `npm run verify:website-resource-locales` passed.
+- `npm run verify:agent-readiness` passed.
+- Targeted stale Stage 7 website launch scan returned no stale doc matches.
+- `npm run docs:check-links` passed with 0 broken links and 0 naming violations.
+- `git diff --check` passed.
+- `npm run verify:production-readiness-local` passed with 88/88 checks, including 84 child root `verify:*` scripts.
 
 ### Boundaries
 
@@ -9409,7 +10874,7 @@
 
 - **Neelvara parent website rename** - renamed the earlier parent operating website working name to Neelvara Systems across the product-site route group, shared constants, deployment/domain routing, local prefix, private portfolio alias, public assets, optional public env keys, and documentation packet.
 - **Neelvara blue brand system applied** - recalibrated the parent website from the earlier dark/warm glass direction to the Neelvara blue system: ice-white canvas, deep navy text, Neel blue CTAs, blue/indigo/violet mark gradient, controlled violet accents, refreshed icon/OG assets, and updated website/validation docs.
-- **Uploaded Neelvara logo applied** - replaced the generated square mark with the uploaded transparent Neelvara SVG mark in site chrome, footer identity, 404, and Organization JSON-LD; retained transparent PNG derivatives for favicon/manifest and Open Graph imagery without a visible square or rectangle frame.
+- **Uploaded Neelvara logo applied** - applied the uploaded transparent Neelvara SVG mark in site chrome, footer identity, 404, and Organization JSON-LD; retained transparent PNG derivatives for favicon/manifest and Open Graph imagery without a visible square or rectangle frame.
 - **Neelvara metadata and icon coverage tightened** - added explicit favicon, Apple touch icon, and manifest icon derivatives from the SVG mark, kept duplicate `/home` canonicalized to `/`, and made secondary-page Twitter metadata page-specific.
 
 ### Boundaries

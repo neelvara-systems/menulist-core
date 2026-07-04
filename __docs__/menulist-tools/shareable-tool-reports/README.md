@@ -1,9 +1,9 @@
 # Shareable Tool Reports - Documentation Hub
 
 > **Feature:** Shareable public report layer for MenuList Tools
-> **Status:** Implemented V0 for public report viewing, all current public MenuList Tools, structured consented report follow-up capture, and internal Report Leads triage
-> **Last Updated:** July 3, 2026
-> **Version:** 0.5
+> **Status:** Implemented V0 for public report viewing, all current public MenuList Tools, setup job lists, structured consented report follow-up capture, and internal Report Leads triage
+> **Last Updated:** July 4, 2026
+> **Version:** 0.6
 
 ---
 
@@ -38,6 +38,7 @@ The V0 implementation is intentionally light:
 - no AI/provider call
 - report payload is carried in the URL hash fragment
 - all current public MenuList Tools can copy a public report link
+- each report carries a bounded setup job list derived from its visible gaps
 - optional report follow-up form reuses the existing consented `/api/public/contact` path and stores bounded `sourceContext` metadata on that existing enquiry
 - internal platform route: `/ops/report-leads` for manual triage of consented report leads
 
@@ -60,6 +61,7 @@ Every report must show:
 - explicit evidence text
 - one honest number
 - clear check rows
+- a bounded setup job list
 - one MenuList next action
 - no ranking, citation, traffic, or external-update promise
 
@@ -67,6 +69,7 @@ This matches the microtool funnel:
 
 ```txt
 free tool -> shareable report -> MenuList fix path
+                    report gaps -> setup job list
                          -> optional consented follow-up
 ```
 
@@ -80,13 +83,16 @@ free tool -> shareable report -> MenuList fix path
 | QR Link Health Check | `/tools/qr-link-health-check` | Implemented: Copy public report link |
 | Menu Readability Check | `/tools/menu-readability-check` | Implemented: Copy public report link |
 | Customer Question Coverage Check | `/tools/customer-question-coverage-check` | Implemented: Copy public report link |
+| Customer FAQ Reply Pack | `/tools/customer-faq-reply-pack` | Implemented: Copy public report link |
 | Booking Inquiry Readiness Check | `/tools/booking-inquiry-readiness-check` | Implemented: Copy public report link |
 | Price Availability Gap Check | `/tools/price-availability-gap-check` | Implemented: Copy public report link |
 | Menu PDF Cleanup Check | `/tools/menu-pdf-cleanup-check` | Implemented: Copy public report link |
 | Google Profile Basics Checklist | `/tools/google-profile-basics-checklist` | Implemented: Copy public report link |
+| Business Facts Copy Pack | `/tools/business-facts-copy-pack` | Implemented: Copy public report link |
 | One Customer Link Preview | `/tools/customer-link-preview` | Implemented: Copy public report link |
 | Social Bio Link Consistency Check | `/tools/social-bio-link-check` | Implemented: Copy public report link |
 | WhatsApp Action Link Check | `/tools/whatsapp-action-link-check` | Implemented: Copy public report link |
+| WhatsApp Reply Pack | `/tools/whatsapp-reply-pack` | Implemented: Copy public report link |
 | Hours Check | `/tools/hours-check` | Implemented: Copy public report link |
 | Photo Gap Check | `/tools/photo-gap-check` | Implemented: Copy public report link |
 
@@ -98,6 +104,7 @@ Future tools must adopt the shared payload contract when their report cards are 
 
 | Version | Date | Changes |
 | --- | --- | --- |
+| 0.6 | July 4, 2026 | Added bounded setup job lists to shareable report payloads, public viewer output, consented source metadata, and Report Leads triage |
 | 0.5 | July 3, 2026 | Added internal Report Leads monitor at `/ops/report-leads` for bounded platform-admin triage of consented report follow-ups |
 | 0.4 | July 3, 2026 | Added structured `sourceContext` metadata to report follow-up enquiries plus the operations follow-up playbook |
 | 0.3 | July 3, 2026 | Added optional consented report follow-up capture on `/tools/reports` through existing `/api/public/contact` |

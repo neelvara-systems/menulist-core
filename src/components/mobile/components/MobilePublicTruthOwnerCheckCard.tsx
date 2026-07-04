@@ -3,7 +3,7 @@
 import type { OwnerPublicTruthReadinessMobileFixTarget, OwnerPublicTruthReadinessReport } from '@lib/public-truth-tools/ownerPublicTruthReadiness';
 import type { PublicTruthCheckFactId, PublicTruthCheckResult } from '@lib/public-truth-tools/publicTruthCheckTypes';
 import { theme } from 'antd';
-import { LuAlertCircle, LuArrowRight, LuCheckCircle2, LuInfo, LuSearch } from 'react-icons/lu';
+import { LuAlertCircle, LuArrowRight, LuCheckCircle2, LuInfo, LuListChecks, LuSearch } from 'react-icons/lu';
 import { Button, Card, Flex, Tag, Text } from '../antd';
 
 const CHECK_LABELS: Record<PublicTruthCheckFactId, string> = {
@@ -74,6 +74,7 @@ export default function MobilePublicTruthOwnerCheckCard({
 
     const status = report ? getStatus(report) : null;
     const attentionChecks = report?.checks.filter((check) => check.result !== 'present' && check.result !== 'not_applicable') || [];
+    const setupJobs = report?.setupJobList || [];
 
     return (
         <Card>
@@ -116,6 +117,68 @@ export default function MobilePublicTruthOwnerCheckCard({
                         <Tag color="success">Ready modules {report.modules.filter((module) => module.status === 'ready').length}/{report.modules.length}</Tag>
                         {report.summary.missing ? <Tag color="danger">Missing {report.summary.missing}</Tag> : null}
                         {report.summary.unclear ? <Tag color="warning">Check {report.summary.unclear}</Tag> : null}
+                    </Flex>
+                ) : null}
+
+                {setupJobs.length ? (
+                    <Flex
+                        gap={8}
+                        style={{
+                            background: token.colorBgContainer,
+                            border: `1px solid ${token.colorBorderSecondary}`,
+                            borderRadius: 10,
+                            padding: 10,
+                        }}
+                        vertical
+                    >
+                        <Flex align="center" gap={6}>
+                            <LuListChecks color={token.colorTextSecondary} size={15} />
+                            <Text strong>Fix list</Text>
+                            <Tag color="default">{setupJobs.length}</Tag>
+                        </Flex>
+                        {setupJobs.slice(0, 4).map((job) => {
+                            const statusLabel = MODULE_STATUS_LABELS[job.status];
+                            return (
+                                <Flex
+                                    gap={7}
+                                    key={job.id}
+                                    style={{
+                                        borderTop: `1px solid ${token.colorBorderSecondary}`,
+                                        paddingTop: 8,
+                                    }}
+                                    vertical
+                                >
+                                    <Flex align="flex-start" gap={8} justify="space-between">
+                                        <Flex flex={1} gap={2} style={{ minWidth: 0 }} vertical>
+                                            <Text strong>{job.title}</Text>
+                                            <Text type="secondary" style={{ fontSize: 12, lineHeight: 1.35 }}>
+                                                {job.reason}
+                                            </Text>
+                                            <Text type="secondary" style={{ fontSize: 12, lineHeight: 1.35 }}>
+                                                {job.evidenceText}
+                                            </Text>
+                                        </Flex>
+                                        <Tag color={statusLabel.color}>{statusLabel.label}</Tag>
+                                    </Flex>
+                                    {onFixTarget ? (
+                                        <Button
+                                            fill="outline"
+                                            onClick={() => onFixTarget(job.mobileFixTarget)}
+                                            size="small"
+                                            style={{
+                                                alignSelf: 'flex-start',
+                                                minHeight: 44,
+                                            }}
+                                        >
+                                            <Flex align="center" gap={6}>
+                                                <Text>{job.actionLabel}</Text>
+                                                <LuArrowRight size={14} />
+                                            </Flex>
+                                        </Button>
+                                    ) : null}
+                                </Flex>
+                            );
+                        })}
                     </Flex>
                 ) : null}
 

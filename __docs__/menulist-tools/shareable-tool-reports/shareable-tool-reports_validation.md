@@ -1,7 +1,7 @@
 # Shareable Tool Reports - Validation
 
 **Status:** V0 validation evidence; not production launch certification
-**Last Updated:** July 3, 2026
+**Last Updated:** July 4, 2026
 
 ---
 
@@ -41,6 +41,7 @@ The V0 verifier checks:
 - consented follow-up uses only `/api/public/contact`
 - follow-up request uses no-store, same-origin credentials, manual redirect, Turnstile, and bounded response parsing
 - follow-up request includes bounded `shareable_tool_report` source metadata
+- setup job list is derived from visible report gaps and included in report text, source metadata, and Report Leads triage
 - contact route validates, sanitizes, and stores report lead metadata on the existing enquiry write
 - Report Leads ops monitor is platform-admin only, manual-refresh, response-bounded, and read-only
 - Social Bio tool exposes Copy public report link

@@ -9,12 +9,17 @@ Aggregate local source gate for the current codebase boundary.
 
 **Purpose:**
 - Runs every root `verify:*` script except itself
-- Runs documentation link checks, TypeScript, lint, and `git diff --check`
+- Runs documentation link checks, `npm run typecheck`, lint, and `git diff --check`
 - Prints the local-only boundary so a green aggregate is not mistaken for browser QA, provider smoke, deploy, or production-host certification
 
 **Usage:**
 ```bash
 npm run verify:production-readiness-local
+```
+
+List the gate inventory without executing child checks:
+```bash
+npm run verify:production-readiness-local -- --list
 ```
 
 **Output:**

@@ -1,11 +1,11 @@
 # Multi-Outlet Consistency — Website Content
 
-**Last Updated:** May 19, 2026
+**Last Updated:** July 4, 2026
 
 ## Hero Section
 
 - **Headline:** One Menu for Every Location
-- **Subheadline:** Update your menu once. Every store sees it instantly. Local adjustments allowed — brand consistency guaranteed.
+- **Subheadline:** Update your menu once. Linked stores receive the saved changes through the outlet sync/cache path. Local adjustments stay controlled.
 - **CTA Text:** See How It Works
 - **CTA Link:** /features/multi-outlet
 
@@ -15,15 +15,15 @@ Running multiple locations means managing multiple menus. Prices drift, items di
 
 ## Solution Statement
 
-MenuList's multi-outlet system lets you maintain one master menu. Update it once, and every linked store gets the changes instantly. Stores can adjust local prices or mark items as unavailable — but the core menu stays consistent.
+MenuList's multi-outlet system lets you maintain one master menu. Update it once, and linked stores receive the saved changes through the outlet save/cache path. Stores can adjust local prices or mark items as unavailable — but the core menu stays consistent.
 
 ## Feature Benefits
 
-### 1. Master Menu, Instant Updates
+### 1. Master Menu, Controlled Updates
 
-Change a price on the master menu → every store's menu updates within seconds. No syncing, no emailing spreadsheets, no calling each location.
+Change a price on the master menu → linked stores receive the saved update through the current sync/cache path. Customer menus can take up to 60 seconds to refresh.
 
-> **Visual:** Master menu being edited → 5 outlet menus all updating simultaneously
+> **Visual:** Master menu being edited → linked outlet menus receiving the saved update
 
 ### 2. Controlled Local Flexibility
 
@@ -58,17 +58,17 @@ The Chain Control Panel shows all your stores in one place. See which outlets ar
 1. **Create Master Menu** — Build your core menu at HQ
 2. **Add Outlets** — Click "Add Outlet" from the Locations page. Menus are copied automatically.
 3. **Local Adjustments** — Each store can adjust prices or availability
-4. **Automatic Sync** — Master changes flow to all stores instantly
+4. **Automatic Sync** — Saved master changes flow to linked stores through the current sync/cache path; customer menus can take up to 60 seconds to refresh
 5. **Manage from HQ** — Switch between stores, view billing, control outlet permissions
 
 ## SEO Meta
 
 - **Page Title:** Multi-Location Menu Management | One Master Menu | MenuList
-- **Meta Description:** Manage menus for multiple restaurant locations from one master. Instant sync, controlled local flexibility, brand consistency guaranteed.
+- **Meta Description:** Manage menus for multiple restaurant locations from one master. Saved master updates, controlled local flexibility, and protected brand consistency.
 - **Target Keywords:** multi-location menu, restaurant chain menu management, master menu, franchise menu consistency
 
 ## Approved Language
 
-### USE: "One master menu", "instant sync", "controlled flexibility", "brand consistency"
+### USE: "One master menu", "saved master updates", "controlled flexibility", "brand consistency"
 
 ### NEVER USE: "AI-powered sync", "Smart menu inheritance", "Intelligent distribution"

@@ -37,6 +37,8 @@ Middleware uses the existing generic product-site rewrite flow. No Neelvara-spec
 | `src/constants/neelvara/index.ts` | Neelvara constant exports |
 | `src/app/sites/neelvara/layout.tsx` | Metadata, viewport, icon configuration |
 | `src/app/sites/neelvara/content.tsx` | Shared content, shell, header/footer, cards, structured data |
+| `src/app/sites/neelvara/BentoReferenceSection.tsx` | Client-side Company/Products/Contact reference tabs for the homepage bento panel |
+| `src/app/sites/neelvara/ProductLogo.tsx` | Shared Neelvara product-logo renderer with compact Answerlattice mark for small product tiles |
 | `src/app/sites/neelvara/ScrollRevealController.tsx` | Local viewport-entry reveal controller with reduced-motion fallback |
 | `src/app/sites/neelvara/SpotlightCard.tsx` | Client-side cursor spotlight primitive for glass cards |
 | `src/app/sites/neelvara/page.tsx` | Home page |
@@ -53,12 +55,13 @@ Middleware uses the existing generic product-site rewrite flow. No Neelvara-spec
 | `src/app/sites/neelvara/sitemap.xml/route.ts` | Product-domain sitemap response |
 | `src/app/sites/neelvara/.well-known/security.txt/route.ts` | Static security-contact discovery response |
 | `src/app/sites/neelvara/styles.css` | Scoped Neelvara blue tokens, mesh/grain background, glass primitives, and responsive layout |
-| `public/neelvara-logo.svg` | Uploaded transparent Neelvara source logo mark for site chrome, footer identity, 404, and structured data |
-| `public/neelvara-logo.png` | Transparent PNG derivative of the uploaded Neelvara mark for compatibility surfaces |
-| `public/neelvara-favicon-16.png`, `public/neelvara-favicon-32.png` | Browser favicon derivatives from the uploaded mark |
+| `public/neelvara-logo.svg` | Uploaded true-vector Neelvara source logo copied as-is for site chrome, footer identity, 404, and structured data |
+| `public/neelvara-logo.png` | Transparent PNG render generated from the uploaded true-vector SVG for compatibility surfaces |
+| `public/neelvara-favicon.svg` | Square true-vector SVG favicon wrapper using the same paths, gradients, and colors as the uploaded source mark |
+| `public/neelvara-favicon-16.png`, `public/neelvara-favicon-32.png` | PNG favicon fallbacks centered from the uploaded mark on transparent square canvases |
 | `public/neelvara-apple-touch-icon.png` | Apple touch icon derivative from the uploaded mark |
 | `public/neelvara-icon-96.png`, `public/neelvara-icon-128.png`, `public/neelvara-icon-180.png`, `public/neelvara-icon-192.png`, `public/neelvara-icon-512.png`, `public/neelvara-icon.png` | Transparent app/manifest icon canvases using the uploaded mark without a visible frame |
-| `public/neelvara-og-image.png` | Open Graph image using the uploaded mark |
+| `public/neelvara-og-image.png` | Open Graph image using the uploaded glass-prism mark |
 
 ---
 

@@ -124,12 +124,24 @@ function verifyDocsBoundary() {
   const report = read('FEATURE_SWEEP_MASTER_REPORT.md');
   const audit = read('__docs__/audits/menulist-production-readiness-audit.md');
   const changelog = read('__docs__/CHANGELOG.md');
+  const helpChatReadme = read('src/components/templates/main-app/helpChat/README.md');
+  const helpChatSummary = read('src/components/templates/main-app/helpChat/IMPLEMENTATION_SUMMARY.md');
 
   assertIncludes(inventory, 'help_center | Owner Help Center', 'Help Center inventory row');
   assertIncludes(inventory, 'scoped ticket mutation gate passed', 'Help Center inventory scoped ticket status');
   assertIncludes(report, 'Help Center Answerlattice Support Boundary', 'Help Center sweep report checkpoint');
   assertIncludes(audit, 'Help Center Answerlattice support boundary checkpoint', 'Help Center production audit checkpoint');
   assertIncludes(changelog, 'Help Center Answerlattice Support Boundary', 'Help Center changelog entry');
+  assertIncludes(helpChatReadme, 'A source-gated help interface designed for non-technical owners.', 'Help Chat README source-gated overview');
+  assertIncludes(helpChatReadme, 'Launch certification still requires the active Help Center verifier', 'Help Chat README launch certification boundary');
+  assertNotIncludes(helpChatReadme, 'A production help interface designed for non-technical owners.', 'Help Chat README stale production overview');
+  assertIncludes(helpChatSummary, 'Help Chat System - Source-Gated UI Slice', 'Help Chat summary source-gated title');
+  assertIncludes(helpChatSummary, 'The current Help Chat UI slice is implemented and source-gated for the reviewed owner help interface.', 'Help Chat summary source-gated boundary');
+  assertIncludes(helpChatSummary, 'Backend integration, provider behavior, browser/device QA, and launch certification remain gated', 'Help Chat summary launch boundary');
+  assertNotIncludes(helpChatSummary, 'Production-Ready Features Implemented', 'Help Chat summary stale production-ready heading');
+  assertNotIncludes(helpChatSummary, 'Ready for Production', 'Help Chat summary stale ready-for-production heading');
+  assertNotIncludes(helpChatSummary, 'A production-ready, emotionally engaging help chat system', 'Help Chat summary stale production-ready mission');
+  assertNotIncludes(helpChatSummary, 'Ready for user testing and backend integration', 'Help Chat summary stale user-testing signoff');
 }
 
 verifySearchBoundary();

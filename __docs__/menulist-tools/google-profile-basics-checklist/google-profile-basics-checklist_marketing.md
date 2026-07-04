@@ -1,5 +1,7 @@
 # Google Profile Basics Checklist - Marketing Notes
 
+**Last Updated:** July 4, 2026
+
 **Public name:** Google Profile Basics Checklist
 
 ## Positioning

@@ -1,5 +1,7 @@
 # Menu PDF Cleanup Check - Test Cases
 
+**Last Updated:** July 4, 2026
+
 ## Route and Flag Tests
 
 | Case | Expected |

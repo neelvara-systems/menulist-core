@@ -10,7 +10,7 @@
 
 ## 1. What This Is
 
-The PDF Surface is the printable representation of a MenuList digital menu. It generates a print-ready A4 PDF from live menu data, guaranteeing that prices on printed menus always match prices online.
+The PDF Surface is the printable representation of a MenuList digital menu. It generates a print-ready A4 PDF from the current project data at download time, with a version ID and generation timestamp so printed copies can be checked against the approved source later.
 
 This is infrastructure. It runs automatically. Owners do not configure it.
 
@@ -22,7 +22,7 @@ Successor note: PDF Surface remains the active lightweight PDF path. The long-te
 
 Printed menus go stale. Owners print a PDF, prices change online, and customers are quoted wrong prices. The PDF Surface eliminates this problem by:
 
-1. Generating PDFs on-demand from live data (no stale content)
+1. Generating PDFs on-demand from the current project data at download time
 2. Stamping every PDF with a version hash and generation timestamp
 3. Printing the official menu URL so stale PDFs can be identified
 4. Warning owners when menu data has changed since their last download

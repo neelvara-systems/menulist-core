@@ -9,7 +9,7 @@
 
 ## Hero Section
 
-- **Headline:** Update your entire menu in seconds.
+- **Headline:** Update many menu items in one controlled pass.
 - **Subheadline:** Change prices, availability, visibility, and categories for hundreds of items at once — with preview and undo.
 - **CTA Text:** See How It Works
 - **CTA Link:** /features/menu-command-center
@@ -24,7 +24,7 @@ Updating menu prices is a time-consuming, stressful task. Supplier costs go up, 
 
 ## Solution Statement
 
-MenuList lets you select any number of items, preview the exact changes, and apply them in one click. Prices, availability, visibility, and categories — all updated across every surface automatically. No item-by-item editing. No guesswork. No stress.
+MenuList lets you select any number of items, preview the exact changes, and apply them in one click. Prices, availability, visibility, and categories are saved through the MenuList editor source. MenuList-controlled live surfaces refresh through supported paths; downloaded PDFs, printed menus, and external systems need their own replacement or connected integration evidence. No item-by-item editing. No guesswork. No stress.
 
 ---
 
@@ -35,10 +35,10 @@ MenuList lets you select any number of items, preview the exact changes, and app
 - **Description:** See exactly which items will change, what the old and new prices will be, and the overall impact — before anything goes live. No surprises.
 - **Visual:** Screenshot of the impact preview panel showing price before/after table with summary stats.
 
-### 2. Update Everywhere at Once
+### 2. Update the MenuList Source Once
 
-- **Description:** One change in MenuList updates your QR menu, screen displays, PDF menu, and connected systems automatically. You update once — everything follows.
-- **Visual:** Illustration showing one action propagating to QR, screen, PDF icons.
+- **Description:** One approved change updates the MenuList source used by your public link and configured screens through their supported refresh paths. Fresh PDFs or printed copies should be downloaded or replaced after changes, and external systems follow only where an integration is connected and verified.
+- **Visual:** Illustration showing one source update with separate public link, screen, PDF replacement, and connected-system paths.
 
 ### 3. Protected From Mistakes
 
@@ -47,7 +47,7 @@ MenuList lets you select any number of items, preview the exact changes, and app
 
 ### 4. Works for Chains and Multiple Outlets
 
-- **Description:** If you manage multiple locations, changes respect your outlet-specific pricing. Master menu changes flow to branches automatically — local overrides stay untouched.
+- **Description:** If you manage multiple locations, changes respect your outlet-specific pricing. Saved master menu changes flow through the outlet inheritance path while local overrides stay untouched.
 - **Visual:** Diagram showing master → outlet price flow with "override protected" badge.
 
 ### 5. Multiple Actions in One Session
@@ -61,13 +61,13 @@ MenuList lets you select any number of items, preview the exact changes, and app
 
 1. **Select items** — Pick a category, specific items, or your entire menu.
 2. **Choose what to change** — Adjust pricing, change availability, show or hide items, or move items between categories. Preview every change before applying.
-3. **Apply** — Changes update across all your menu surfaces automatically. Undo anytime within 30 seconds.
+3. **Apply** — The editor saves the change through the project path. Your MenuList-controlled live surfaces refresh through their supported paths. Undo anytime within 30 seconds, and replace exported or printed files after changes.
 
 ---
 
 ## Social Proof Slots
 
-- **Testimonial 1:** [Restaurant Owner] — "Updating prices used to take an hour. Now it takes 30 seconds."
+- **Testimonial 1:** [Restaurant Owner] — "Updating prices used to take an hour. Now it is one controlled menu pass."
 - **Testimonial 2:** [Chain Operator] — "I updated pricing across all branches without worrying about local overrides breaking."
 - **Stat:** "Handles menus with 800+ items without slowing down."
 
@@ -79,11 +79,11 @@ The Command Center changes how owners think about menu management.
 
 Before: open POS, find items, update one by one, hope nothing breaks, repeat for QR menu and printed menu.
 
-After: open MenuList, select items, preview changes, apply once — everything updates everywhere.
+After: open MenuList, select items, preview changes, and apply once through the menu source. The public link and configured screens follow their supported refresh paths; downloaded or printed files are replaced when needed.
 
 No spreadsheets. No designer. No POS-first workflow. No manual item-by-item editing across systems.
 
-MenuList becomes the fastest way to manage your menu — and the only place you need to update.
+MenuList becomes the central place for MenuList-controlled menu changes.
 
 ---
 
@@ -108,9 +108,9 @@ MenuList becomes the fastest way to manage your menu — and the only place you 
 
 ## SEO Meta
 
-- **Page Title:** Bulk Menu Updates — Update Prices & Availability Instantly | MenuList
-- **Meta Description:** Update prices, availability, and categories for your entire menu in seconds. Preview changes before applying. Safe, instant, and reversible.
-- **OG Title:** Update Your Entire Menu in Seconds
+- **Page Title:** Bulk Menu Updates — Update Prices & Availability Safely | MenuList
+- **Meta Description:** Update prices, availability, and categories for many menu items in one controlled pass. Preview changes before applying. Safe, previewed, and reversible.
+- **OG Title:** Update Many Menu Items at Once
 - **OG Description:** Bulk pricing, availability, and category changes with live preview and one-click undo. Built for restaurants, cafés, and chains.
 - **Target Keywords:** bulk menu update, restaurant price change tool, menu pricing software, bulk availability update, menu management for chains, hide menu items, show hide menu items bulk
 
@@ -122,10 +122,10 @@ MenuList becomes the fastest way to manage your menu — and the only place you 
 
 - "Update", "Change", "Apply", "Select"
 - "Preview before applying"
-- "Updates everywhere automatically"
+- "MenuList-controlled live surfaces refresh through supported paths"
 - "Protected from mistakes"
-- "Handled automatically"
-- "No action needed" (for downstream sync)
+- "Replace downloaded or printed copies after changes"
+- "Connected systems require verified integration"
 
 ### NEVER USE
 

@@ -2,7 +2,7 @@
 
 **Version:** 1.2
 **Last Updated:** February 14, 2026
-**Status:** ✅ Implementation Complete
+**Status:** Source documentation; not current launch certification
 **Audience:** CEO, PM, Clients (non-technical)
 
 ---
@@ -25,7 +25,7 @@ SMB owners regularly need to update many items at once: supplier cost increases,
 
 ### Strategic Value
 
-This feature moves MenuList from **menu display tool** to **menu control surface**. When owners start updating prices inside MenuList first, MenuList becomes the source of truth — and POS, screens, PDFs all follow.
+This feature moves MenuList from **menu display tool** to **menu control surface**. When owners start updating prices inside MenuList first, MenuList becomes the source of truth for MenuList-controlled menu display. The public link and configured screens follow their supported refresh paths; POS, downloaded PDFs, printed menus, and external systems stay behind integration, export, replacement, or provider evidence.
 
 ---
 
@@ -42,7 +42,7 @@ This feature moves MenuList from **menu display tool** to **menu control surface
 
 ## Target Customers (ICP)
 
-1. **Solo restaurant owner** — 80-150 items, needs to increase prices due to inflation, wants it done in under 30 seconds
+1. **Solo restaurant owner** — 80-150 items, needs to increase prices due to inflation, wants it done without editing each item one by one
 2. **Chain operator** — 2-5 outlets, needs to apply master price change that respects outlet overrides
 3. **Multi-category business** — Salon/spa with services + products, needs to mark seasonal items unavailable in bulk
 
@@ -87,7 +87,7 @@ This feature moves MenuList from **menu display tool** to **menu control surface
 
 **As** a restaurant owner,
 **I want to** increase my entire menu by 8% because supplier costs increased,
-**So that** I can update all 120 items in under 30 seconds instead of editing each one.
+**So that** I can update all 120 items in one controlled pass instead of editing each one.
 
 **Flow:**
 
@@ -100,7 +100,7 @@ This feature moves MenuList from **menu display tool** to **menu control surface
 7. Clicks "Apply Changes"
 8. Confirms in mini-dialog
 9. Toast: "Prices updated for 120 items — Undo"
-10. Prices update instantly in editor
+10. Prices update in the editor after apply
 
 ### US-2: Category-Only Price Change
 
@@ -128,7 +128,7 @@ This feature moves MenuList from **menu display tool** to **menu control surface
 2. Selects 15 specific items across categories
 3. Selects "Change Availability" → "Mark as Unavailable"
 4. Preview: "15 items will be marked unavailable"
-5. Applies → instant update everywhere
+5. Applies → editor state updates, then saved customer output follows the supported refresh path after persistence
 
 ### US-4: Multi-Outlet Master Price Change
 
@@ -142,7 +142,7 @@ This feature moves MenuList from **menu display tool** to **menu control surface
 2. Opens Command Center → Adjust Pricing → +10%
 3. Left panel shows: "Outlet: Master menu"
 4. Preview excludes items with outlet overrides
-5. Applies → master prices update, outlets inherit automatically (except overridden items)
+5. Applies → saved master prices follow the outlet inheritance path except overridden items
 
 ### US-5: Move Items to Different Category
 
@@ -266,7 +266,7 @@ All changes are computed **locally in frontend** on `projectData` clone. Only th
 ### MenuList Identity Alignment
 
 - **Dependability > Features**: Preview + guardrails + undo = dependable
-- **Invisible infrastructure**: Changes propagate silently to all surfaces
+- **Invisible infrastructure**: Saved changes propagate through supported MenuList refresh paths without extra owner decisions
 - **Calm system**: Financial-grade UI, no drama, no celebration screens
 - **Reduces owner responsibility**: Bulk operations replace manual item-by-item editing
 
@@ -277,7 +277,7 @@ All changes are computed **locally in frontend** on `projectData` clone. Only th
 ### Key Strategic Decisions (Locked)
 
 1. **MenuList = Global SMB infrastructure from day one** — not a fast-moving feature SaaS
-2. **Menu correctness across all surfaces** is the single non-negotiable promise
+2. **Menu correctness across supported MenuList surfaces** is the single non-negotiable promise
 3. **Reliable system that never surprises** — the emotional goal for every feature
 4. **Problem-fixing speed** determines which system owners open first
 5. **Authority is fragile** — one pricing mistake = permanent trust loss
@@ -323,9 +323,9 @@ Treat this feature with zero tolerance for bugs — same standard as a billing s
 
 ### The 5 Relief Pillars for SMB Owners
 
-1. "If I change it here, it’s correct everywhere"
+1. "If I change it here, the approved MenuList source is correct and supported customer paths refresh from it"
 2. Nothing breaks accidentally
-3. Out-of-stock handled instantly
+3. Out-of-stock handled from the editor with the supported refresh path
 4. Multi-outlet consistency without headache
 5. Menu always ready to share
 

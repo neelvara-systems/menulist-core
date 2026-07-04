@@ -35,7 +35,7 @@ Email addresses are env-backed public display values with current code fallbacks
 
 ### What is Neelvara Systems?
 
-Neelvara Systems builds software infrastructure for customer-facing business information.
+Neelvara Systems operates software infrastructure for customer-facing business information.
 
 ### What products are in the Neelvara lineup?
 
@@ -53,7 +53,7 @@ No. This website provides company, product-routing, contact, privacy, and terms 
 
 Use the contact addresses listed on the Contact page.
 
-### Can I ask a company-level question?
+### Can I ask a company question?
 
 Yes. Email the configured Neelvara business contact with a short note. Keep the first message high level and do not include private records, secrets, or customer datasets. Product support and account questions should go through the relevant product website.
 
@@ -101,7 +101,7 @@ Do not answer product-data questions from the Neelvara company website policy un
 
 If a user asks for legal identity:
 
-> Neelvara Systems builds software infrastructure for customer-facing business information. MenuList, Answerlattice, and CampaignCue are operated by Neelvara Systems.
+> Neelvara Systems operates software infrastructure for customer-facing business information. MenuList, Answerlattice, and CampaignCue are operated by Neelvara Systems.
 
 If a user asks for GSTIN/PAN/address:
 
@@ -119,7 +119,7 @@ Neelvara website legal pages cover:
 - basic contact
 - static website privacy
 - entity/trade-name information
-- company-level product relationship references
+- company product relationship references
 
 Product legal pages should cover, when applicable:
 

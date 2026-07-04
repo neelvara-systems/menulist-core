@@ -55,6 +55,151 @@ function listSourceFiles(dir) {
   });
 }
 
+function listMenuListBrowserSurfaceFiles() {
+  return [
+    ...listSourceFiles('src/app'),
+    ...listSourceFiles('src/components'),
+  ].filter((relPath) => (
+    !relPath.startsWith('src/app/api/')
+    && !relPath.startsWith('src/app/sites/answerlattice/')
+    && !relPath.includes('/answerlattice/')
+  ));
+}
+
+function collectValuesByKey(value, targetKey, values = []) {
+  if (!value || typeof value !== 'object') {
+    return values;
+  }
+
+  for (const [key, child] of Object.entries(value)) {
+    if (key === targetKey && typeof child === 'string') {
+      values.push(child);
+      continue;
+    }
+
+    collectValuesByKey(child, targetKey, values);
+  }
+
+  return values;
+}
+
+function verifyMenuListBrowserSurfacesDoNotWriteFirestoreDirectly() {
+  const mutationSymbols = [
+    'addDoc',
+    'deleteDoc',
+    'runTransaction',
+    'setDoc',
+    'updateDoc',
+    'writeBatch',
+  ];
+  const importPattern = /import\s*{([^}]+)}\s*from\s*['"](?:@firebase|firebase)\/firestore['"]/gs;
+  const namespaceImportPattern = /import\s+\*\s+as\s+\w+\s+from\s*['"](?:@firebase|firebase)\/firestore['"]/;
+  const failures = [];
+
+  for (const relPath of listMenuListBrowserSurfaceFiles()) {
+    const content = read(relPath);
+
+    for (const match of content.matchAll(importPattern)) {
+      const importedSymbols = match[1]
+        .split(',')
+        .map((entry) => entry.trim().split(/\s+as\s+/)[0].trim())
+        .filter(Boolean);
+      const importedMutationSymbols = importedSymbols.filter((symbol) => mutationSymbols.includes(symbol));
+      if (importedMutationSymbols.length > 0) {
+        failures.push(`${relPath}: imports ${importedMutationSymbols.join(', ')} from firebase/firestore`);
+      }
+    }
+
+    if (namespaceImportPattern.test(content)) {
+      const usesMutationSymbol = mutationSymbols.some((symbol) => new RegExp(`\\.${symbol}\\s*\\(`).test(content));
+      if (usesMutationSymbol) {
+        failures.push(`${relPath}: imports firebase/firestore namespace and calls a mutation helper`);
+      }
+    }
+  }
+
+  const productionReadinessAudit = read('__docs__/audits/menulist-production-readiness-audit.md');
+  const changelog = read('__docs__/CHANGELOG.md');
+
+  assert(
+    failures.length === 0,
+    `MenuList browser surfaces must not import direct Firestore mutation helpers; use DALs or API routes instead:\n${failures.join('\n')}`,
+  );
+  assertIncludes(productionReadinessAudit, 'Browser surface Firestore mutation boundary checkpoint', 'Production readiness audit browser Firestore mutation boundary checkpoint');
+  assertIncludes(productionReadinessAudit, 'scans active MenuList browser surfaces for direct Firestore mutation helper imports', 'Production readiness audit browser Firestore mutation scan');
+  assertIncludes(changelog, 'Browser Firestore mutations are source-gated', 'Changelog browser Firestore mutation source gate');
+  assertIncludes(changelog, '`npm run verify:public-business-truth` now scans active MenuList browser surfaces for direct Firestore mutation helper imports', 'Changelog browser Firestore mutation scan');
+}
+
+const DIRECT_FIRESTORE_READ_LISTENER_ALLOWLIST = new Map([
+  ['src/app/screen/[token]/ScreenDisplay.tsx', new Set(['doc', 'onSnapshot'])],
+  ['src/app/screen/[token]/MenuBoardDisplay.tsx', new Set(['doc', 'onSnapshot'])],
+  ['src/components/templates/main-app/businessSettings/tabs/PosSyncTab.tsx', new Set([
+    'collection',
+    'getDocs',
+    'limit',
+    'orderBy',
+    'query',
+  ])],
+  ['src/components/templates/platform/chatManagement/WeeklyDigest.tsx', new Set(['doc', 'getDoc'])],
+]);
+
+function verifyMenuListBrowserSurfacesUseAllowedFirestoreReadsOnly() {
+  const readOrListenerSymbols = [
+    'collection',
+    'doc',
+    'documentId',
+    'getCountFromServer',
+    'getDoc',
+    'getDocs',
+    'limit',
+    'onSnapshot',
+    'orderBy',
+    'query',
+    'startAfter',
+    'where',
+  ];
+  const importPattern = /import\s*{([^}]+)}\s*from\s*['"](?:@firebase|firebase)\/firestore['"]/gs;
+  const namespaceImportPattern = /import\s+\*\s+as\s+\w+\s+from\s*['"](?:@firebase|firebase)\/firestore['"]/;
+  const failures = [];
+
+  for (const relPath of listMenuListBrowserSurfaceFiles()) {
+    const content = read(relPath);
+    const allowedSymbols = DIRECT_FIRESTORE_READ_LISTENER_ALLOWLIST.get(relPath) || new Set();
+
+    for (const match of content.matchAll(importPattern)) {
+      const importedSymbols = match[1]
+        .split(',')
+        .map((entry) => entry.trim().replace(/^type\s+/, '').split(/\s+as\s+/)[0].trim())
+        .filter(Boolean);
+      const importedReadSymbols = importedSymbols.filter((symbol) => readOrListenerSymbols.includes(symbol));
+      const unapprovedReadSymbols = importedReadSymbols.filter((symbol) => !allowedSymbols.has(symbol));
+      if (unapprovedReadSymbols.length > 0) {
+        failures.push(`${relPath}: imports ${unapprovedReadSymbols.join(', ')} from firebase/firestore`);
+      }
+    }
+
+    if (namespaceImportPattern.test(content)) {
+      const usesReadSymbol = readOrListenerSymbols.some((symbol) => new RegExp(`\\.${symbol}\\s*\\(`).test(content));
+      if (usesReadSymbol && !DIRECT_FIRESTORE_READ_LISTENER_ALLOWLIST.has(relPath)) {
+        failures.push(`${relPath}: imports firebase/firestore namespace and calls a read/listener helper`);
+      }
+    }
+  }
+
+  const productionReadinessAudit = read('__docs__/audits/menulist-production-readiness-audit.md');
+  const changelog = read('__docs__/CHANGELOG.md');
+
+  assert(
+    failures.length === 0,
+    `MenuList browser surfaces must not import direct Firestore read/listener helpers outside the approved UI allowlist; use DALs, API routes, or shared helpers instead:\n${failures.join('\n')}`,
+  );
+  assertIncludes(productionReadinessAudit, 'Browser surface Firestore read/listener boundary checkpoint', 'Production readiness audit browser Firestore read/listener boundary checkpoint');
+  assertIncludes(productionReadinessAudit, 'direct Firestore read/listener helper imports', 'Production readiness audit browser Firestore read/listener scan');
+  assertIncludes(changelog, 'Browser Firestore reads and listeners are source-gated', 'Changelog browser Firestore read/listener source gate');
+  assertIncludes(changelog, '`npm run verify:public-business-truth` now scans active MenuList browser surfaces for direct Firestore read/listener helper imports', 'Changelog browser Firestore read/listener scan');
+}
+
 function verifyStoreUpdatesRequireAcknowledgement() {
   const storesDal = read('src/database/stores/index.tsx');
   assertIncludes(storesDal, 'export function assertStoreUpdateSucceeded', 'Store update acknowledgement guard');
@@ -82,6 +227,163 @@ function verifyStoreUpdatesRequireAcknowledgement() {
   assert(
     failures.length === 0,
     `Every src updateStore() call must require assertStoreUpdateSucceeded() before local success state; missing near:\n${failures.join('\n')}`,
+  );
+}
+
+function verifyTenantWritesRequireAcknowledgement() {
+  const tenantsDal = read('src/database/tenants/index.tsx');
+  assertIncludes(tenantsDal, 'export function assertTenantUpdateSucceeded', 'Tenant update acknowledgement guard');
+  assertIncludes(tenantsDal, 'export function assertTenantsStoresListUpdateSucceeded', 'Tenant stores-list acknowledgement guard');
+
+  const tenantHelpers = [
+    { helper: 'addTenant(', acknowledgement: 'assertTenantUpdateSucceeded(' },
+    { helper: 'updateTenant(', acknowledgement: 'assertTenantUpdateSucceeded(' },
+    { helper: 'updateTenantsStoreslist(', acknowledgement: 'assertTenantsStoresListUpdateSucceeded(' },
+  ];
+  const failures = [];
+
+  for (const relPath of listSourceFiles('src')) {
+    const content = read(relPath);
+    if (!tenantHelpers.some(({ helper }) => content.includes(helper))) continue;
+
+    const lines = content.split('\n');
+    lines.forEach((line, index) => {
+      const trimmed = line.trim();
+      const match = tenantHelpers.find(({ helper }) => trimmed.includes(helper));
+      if (!match) return;
+      if (trimmed.startsWith('//') || trimmed.startsWith('*')) return;
+      if (relPath === 'src/database/tenants/index.tsx') return;
+      if (/^(?:export\s+)?(?:async\s+)?function\s+(?:addTenant|updateTenant|updateTenantsStoreslist)\b/.test(trimmed)) return;
+      if (/^(?:export\s+)?const\s+(?:addTenant|updateTenant|updateTenantsStoreslist)\b/.test(trimmed)) return;
+
+      const followup = lines.slice(index, index + 45).join('\n');
+      if (!followup.includes(match.acknowledgement)) {
+        failures.push(`${relPath}:${index + 1}:${match.helper}`);
+      }
+    });
+  }
+
+  assert(
+    failures.length === 0,
+    `Every src tenant write/stores-list call must require its tenant acknowledgement guard before local success state; missing near:\n${failures.join('\n')}`,
+  );
+}
+
+function verifyPlatformUserWritesRequireAcknowledgement() {
+  const usersDal = read('src/database/users/index.ts');
+  assertIncludes(usersDal, 'export function assertUserUpdateSucceeded', 'User update acknowledgement guard');
+
+  const userHelpers = [
+    'addPlatformUser(',
+    'addStoreToUser(',
+    'updatePlatformUser(',
+  ];
+  const failures = [];
+
+  for (const relPath of listSourceFiles('src')) {
+    const content = read(relPath);
+    if (!userHelpers.some((helper) => content.includes(helper))) continue;
+
+    const lines = content.split('\n');
+    lines.forEach((line, index) => {
+      const trimmed = line.trim();
+      const helper = userHelpers.find((candidate) => trimmed.includes(candidate));
+      if (!helper) return;
+      if (trimmed.startsWith('//') || trimmed.startsWith('*')) return;
+      if (relPath === 'src/database/users/index.ts') return;
+      if (/^(?:export\s+)?(?:async\s+)?function\s+(?:addPlatformUser|addStoreToUser|updatePlatformUser)\b/.test(trimmed)) return;
+      if (/^(?:export\s+)?const\s+(?:addPlatformUser|addStoreToUser|updatePlatformUser)\b/.test(trimmed)) return;
+
+      const followup = lines.slice(index, index + 45).join('\n');
+      if (!followup.includes('assertUserUpdateSucceeded(')) {
+        failures.push(`${relPath}:${index + 1}:${helper}`);
+      }
+    });
+  }
+
+  assert(
+    failures.length === 0,
+    `Every src platform-user write call must require assertUserUpdateSucceeded() before local success state; missing near:\n${failures.join('\n')}`,
+  );
+}
+
+function verifyProjectWritesRequireAcknowledgement() {
+  const projectsDal = read('src/database/projects/index.ts');
+  assertIncludes(projectsDal, 'export function assertProjectUpdateSucceeded', 'Project update acknowledgement guard');
+
+  const writeHelpers = [
+    'addProject(',
+    'publishProject(',
+    'updateProject(',
+    'updateProjectMetadata(',
+    'updateProjectWithoutLoader(',
+  ];
+  const failures = [];
+
+  for (const relPath of listSourceFiles('src')) {
+    const content = read(relPath);
+    if (!writeHelpers.some((helper) => content.includes(helper))) continue;
+
+    const lines = content.split('\n');
+    lines.forEach((line, index) => {
+      const trimmed = line.trim();
+      const helper = writeHelpers.find((candidate) => trimmed.includes(candidate));
+      if (!helper) return;
+      if (trimmed.startsWith('//') || trimmed.startsWith('*')) return;
+      if (relPath === 'src/database/projects/index.ts') return;
+      if (/^(?:export\s+)?(?:async\s+)?function\s+(?:addProject|publishProject|updateProject|updateProjectMetadata|updateProjectWithoutLoader)\b/.test(trimmed)) return;
+      if (/^(?:export\s+)?const\s+(?:addProject|publishProject|updateProject|updateProjectMetadata|updateProjectWithoutLoader)\b/.test(trimmed)) return;
+
+      const followup = lines.slice(index, index + 45).join('\n');
+      if (!followup.includes('assertProjectUpdateSucceeded(')) {
+        failures.push(`${relPath}:${index + 1}:${helper}`);
+      }
+    });
+  }
+
+  assert(
+    failures.length === 0,
+    `Every src project write/create/publish call must require assertProjectUpdateSucceeded() before local success state; missing near:\n${failures.join('\n')}`,
+  );
+}
+
+function verifyProjectLifecycleMutationsRequireAcknowledgement() {
+  const projectsDal = read('src/database/projects/index.ts');
+  assertIncludes(projectsDal, 'export function assertProjectUpdateSucceeded', 'Project update acknowledgement guard');
+  assertIncludes(projectsDal, 'export function assertProjectDeleteSucceeded', 'Project delete acknowledgement guard');
+
+  const lifecycleHelpers = [
+    { helper: 'deleteProject(', acknowledgement: 'assertProjectDeleteSucceeded(' },
+    { helper: 'duplicateProject(', acknowledgement: 'assertProjectUpdateSucceeded(' },
+    { helper: 'restoreProject(', acknowledgement: 'assertProjectUpdateSucceeded(' },
+    { helper: 'setProjectActive(', acknowledgement: 'assertProjectUpdateSucceeded(' },
+  ];
+  const failures = [];
+
+  for (const relPath of listSourceFiles('src')) {
+    const content = read(relPath);
+    if (!lifecycleHelpers.some(({ helper }) => content.includes(helper))) continue;
+
+    const lines = content.split('\n');
+    lines.forEach((line, index) => {
+      const trimmed = line.trim();
+      const match = lifecycleHelpers.find(({ helper }) => trimmed.includes(helper));
+      if (!match) return;
+      if (trimmed.startsWith('//') || trimmed.startsWith('*')) return;
+      if (relPath === 'src/database/projects/index.ts') return;
+      if (/^(?:export\s+)?(?:async\s+)?function\s+(?:deleteProject|duplicateProject|restoreProject|setProjectActive)\b/.test(trimmed)) return;
+      if (/^(?:export\s+)?const\s+(?:deleteProject|duplicateProject|restoreProject|setProjectActive)\b/.test(trimmed)) return;
+
+      const followup = lines.slice(index, index + 45).join('\n');
+      if (!followup.includes(match.acknowledgement)) {
+        failures.push(`${relPath}:${index + 1}:${match.helper}`);
+      }
+    });
+  }
+
+  assert(
+    failures.length === 0,
+    `Every src project lifecycle mutation call must require its project acknowledgement guard before local success state; missing near:\n${failures.join('\n')}`,
   );
 }
 
@@ -211,6 +513,53 @@ function verifyVercelDomainPathSegmentsAreEncoded() {
   assertNotIncludes(helper, 'response.json().catch(() => ({} as T))', 'Vercel domain helper raw JSON parsing');
   assertNotIncludes(helper, '`/v6/domains/${domain}/config`', 'Vercel domain config raw path interpolation');
   assertNotIncludes(helper, '`/v9/projects/${getVercelDomainProjectId()}/domains/${domain}`', 'Vercel remove-domain raw path interpolation');
+}
+
+function verifyCustomDomainDocsMatchVerificationBoundary() {
+  const website = read('__docs__/client-menu/client-menu_website.md');
+  const architecture = read('__docs__/client-menu/MULTI-TENANT-ARCHITECTURE.md');
+  const route = read('src/app/api/domain/route.ts');
+  const helper = read('src/lib/domains/vercelDomains.ts');
+  const lookup = read('src/lib/firestore/clientStoreLookup.ts');
+  const clientPage = read('src/app/client/[[...slug]]/page.tsx');
+
+  [
+    [website, 'Client Menu website'],
+    [architecture, 'Client Menu multi-tenant architecture'],
+  ].forEach(([content, label]) => {
+    [
+      'Custom domains are fully supported with automatic SSL',
+      'fully supported with automatic SSL',
+      'automatic SSL',
+      'Vercel auto-provisions SSL certificate',
+      'Vercel Domains API (Future Automation)',
+      'You add the domain in Vercel Dashboard',
+      'Manual per Client',
+      'custom domains are live immediately',
+      'Custom domains go live instantly',
+    ].forEach((stalePhrase) => {
+      assertNotIncludes(content, stalePhrase, `${label} custom-domain verification copy`);
+    });
+  });
+
+  assertIncludes(website, 'MenuList serves it after verification', 'Client Menu website custom-domain verification copy');
+  assertIncludes(website, 'Vercel handles the certificate after the domain is accepted and configured', 'Client Menu website certificate boundary copy');
+  assertIncludes(architecture, '`/api/domain` writes `domainVerified: true`', 'Client Menu architecture verified-domain write boundary');
+  assertIncludes(architecture, 'writes the store routing fields with `domainVerified: false`', 'Client Menu architecture starts custom domains unverified');
+  assertIncludes(architecture, 'flips `domainVerified: true` only after Vercel reports the domain configured', 'Client Menu architecture Vercel verification boundary');
+  assertIncludes(architecture, 'Certificate provisioning is provider-managed after the domain is accepted and configured', 'Client Menu architecture certificate boundary');
+  assertIncludes(architecture, 'https://api.vercel.com/v10/projects/{projectId}/domains', 'Client Menu architecture Vercel add-domain API version');
+
+  assertIncludes(route, 'domainVerified: false,', 'Custom domain add route starts domain unverified');
+  assertIncludes(route, 'const isConfigured = isVercelDomainConfigured(configResult.data);', 'Custom domain status route checks Vercel config');
+  assertIncludes(route, 'if (isConfigured && !storeData.domainVerified)', 'Custom domain status route only flips newly verified domains');
+  assertIncludes(route, 'domainVerified: true,', 'Custom domain status route verified write');
+  assertIncludes(route, 'await revalidateMenuCache(storeId, { tId: tenantId });', 'Custom domain route public cache invalidation');
+  assertIncludes(helper, 'return config?.misconfigured === false;', 'Vercel domain config verification helper');
+  assertIncludes(lookup, ".where('customDomain', '==', domain.toLowerCase())", 'Public custom-domain lookup uses normalized domain');
+  assertIncludes(lookup, ".where('domainVerified', '==', true)", 'Public custom-domain lookup verification gate');
+  assertIncludes(clientPage, 'storeData = await withRetry(() => getStoreByCustomDomain(customDomain));', 'Client menu page custom-domain lookup path');
+  assertIncludes(clientPage, 'storeData.customDomain && storeData.domainVerified', 'Client menu page subdomain redirect waits for verified custom domain');
 }
 
 function verifyClaimAccountStoreEmailInvalidatesPublicCache() {
@@ -366,6 +715,7 @@ function verifyFunctionsPublicCacheRevalidationLoggingIsBounded() {
 
 function verifyMenuRevalidationRouteLoggingIsBounded() {
   const route = read('src/app/api/revalidate/menu/route.ts');
+  const clientMenuFirebase = read('__docs__/client-menu/client-menu_firebase.md');
 
   assertIncludes(route, 'logRuntimeFailure', 'Menu revalidation route bounded runtime failure logging');
   assertIncludes(route, 'menu_cache_revalidation_failed', 'Menu revalidation route stable failure code');
@@ -374,6 +724,11 @@ function verifyMenuRevalidationRouteLoggingIsBounded() {
   assertIncludes(route, "getBoundedRuntimeStringContext('storeId'", 'Menu revalidation route bounded store context');
   assertIncludes(route, 'tagCount', 'Menu revalidation route tag count metadata');
   assertIncludes(route, 'hasSession', 'Menu revalidation route session presence metadata');
+  assertIncludes(route, 'function getStoreIdFromCacheTag', 'Menu revalidation route explicit tag store-id parser');
+  assertIncludes(route, 'function deriveSingleStoreIdFromTags', 'Menu revalidation route single-store explicit tag derivation');
+  assertIncludes(route, 'requestedStoreId = deriveSingleStoreIdFromTags(tags);', 'Menu revalidation route must clear assistant packet cache for single-store explicit tag arrays');
+  assertIncludes(clientMenuFirebase, 'Explicit single-store tag arrays derive the same store id before clearing the Owner Business Assistant packet cache.', 'Client Menu Firebase explicit tag assistant-cache boundary');
+  assertIncludes(clientMenuFirebase, 'Live Digital Screens content-version touches stay in the caller helpers after public-truth writes.', 'Client Menu Firebase live screen-touch boundary');
   assertNotIncludes(route, "secureError('[Menu Cache] Revalidation failed'", 'Menu revalidation route raw secure error');
   assertNotIncludes(route, 'secureError(', 'Menu revalidation route must not pass raw exceptions to secureError');
 }
@@ -481,6 +836,66 @@ function verifyOBPCustomerQuickAnswersAreVisibleAndBounded() {
   assertIncludes(hiIN, '"publicCustomerAnswersTitle"', 'hi-IN OBP customer quick answers locale');
   assertNotIncludes(enUS, 'It is always up to date.', 'OBP FAQ menu answer must not overclaim freshness');
   assertNotIncludes(hiIN, 'यह हमेशा अपडेट रहता है', 'OBP FAQ menu answer must not overclaim freshness');
+}
+
+function verifyPublicFaqSchemaFreshnessCopyIsBounded() {
+  const schema = read('src/lib/schema/index.ts');
+  const productionAudit = read('__docs__/audits/menulist-production-readiness-audit.md');
+  const changelog = read('__docs__/CHANGELOG.md');
+  const localeDir = path.join(ROOT, 'public/locales/menulist.ai');
+  const stalePublicFaqFreshnessPhrases = [
+    'It is always up to date',
+    'Always up to date',
+    'always up to date',
+    'Siempre está actualizado',
+    'يتم تحديثها دائماً',
+    'હંમેશા અપડેટ',
+    'সবসময় আপডেট',
+    '始终保持最新',
+    'नेहमी अद्ययावत',
+    'எப்போதும் புதுப்பிக்கப்பட்டிருக்கும்',
+    'ఎల్లప్పుడూ నవీకరించబడి ఉంటుంది',
+  ];
+
+  assertIncludes(
+    schema,
+    '`You can view the full published menu at ${catalogUrl}.`',
+    'Public FAQ schema menu answer source-bound fallback',
+  );
+  assertNotIncludes(schema, 'It is always up to date.', 'Public FAQ schema fallback freshness overclaim');
+
+  const localeHits = [];
+  for (const filename of fs.readdirSync(localeDir).filter((entry) => entry.endsWith('.json')).sort()) {
+    const relPath = `public/locales/menulist.ai/${filename}`;
+    const locale = JSON.parse(read(relPath));
+    const answers = collectValuesByKey(locale, 'publicFaqMenuAnswer');
+
+    answers.forEach((answer, index) => {
+      stalePublicFaqFreshnessPhrases.forEach((phrase) => {
+        if (answer.includes(phrase)) {
+          localeHits.push(`${relPath}:publicFaqMenuAnswer[${index}] includes stale freshness phrase ${phrase}`);
+        }
+      });
+    });
+  }
+
+  assert(localeHits.length === 0, `Public FAQ schema locale answers must not overclaim menu freshness:\n${localeHits.join('\n')}`);
+  assertIncludes(
+    productionAudit,
+    'Public FAQ schema freshness-copy checkpoint',
+    'Production audit records public FAQ schema freshness checkpoint',
+  );
+  assertIncludes(
+    productionAudit,
+    '`npm run verify:public-business-truth` now parses every active locale JSON file and source-gates `publicFaqMenuAnswer`',
+    'Production audit records public FAQ schema locale verifier boundary',
+  );
+  assertIncludes(changelog, 'Public FAQ Schema Freshness Copy Boundary', 'Changelog public FAQ schema freshness checkpoint');
+  assertIncludes(
+    changelog,
+    '`npm run verify:public-business-truth` now parses every active locale JSON file and rejects stale `publicFaqMenuAnswer` freshness promises',
+    'Changelog public FAQ schema locale verifier boundary',
+  );
 }
 
 function verifyPublicMenuAnalyticsLoggingIsBounded() {
@@ -605,6 +1020,225 @@ function verifyMenuHealthPublishLoggingIsBounded() {
   assertNotIncludes(helper, 'console.warn', 'Menu health publish direct warn logging');
   assertNotIncludes(b2cView, "const { getMenuUrl } = await import('@constant/urls');", 'B2C publish verification must not target tenant root instead of menu/project URL');
   assertNotIncludes(b2cView, '} catch { /* non-blocking */ }', 'B2C publish verification setup silent catch');
+}
+
+function verifyPublicMenuGoLiveCopyMatchesPublishBoundary() {
+  const publicEntryWebsite = read('__docs__/public-menu-entry/public-menu-entry_website.md');
+  const publicEntryMarketing = read('__docs__/public-menu-entry/public-menu-entry_marketing.md');
+  const publicEntryHelpdoc = read('__docs__/public-menu-entry/public-menu-entry_helpdoc.md');
+  const dataEditorWebsite = read('__docs__/projects/data-editor/data-editor_website.md');
+  const workflowsGuide = read('__docs__/workflows-guide/README.md');
+  const supportAutomation = read('__docs__/support-automation/README.md');
+  const mobileDoctrine = read('__docs__/mobile-operational-support/02-mobile-ui-doctrine.md');
+  const mobileScreensSpec = read('__docs__/mobile-operational-support/03-mobile-screens-spec.md');
+  const clientMenuWebsite = read('__docs__/client-menu/client-menu_website.md');
+  const clientMenuHelpdoc = read('__docs__/client-menu/client-menu_helpdoc.md');
+  const multiOutletWebsite = read('__docs__/multi-outlet-consistency/multi-outlet-consistency_website.md');
+  const multiOutletHelpdoc = read('__docs__/multi-outlet-consistency/multi-outlet-consistency_helpdoc.md');
+  const posWebhookWebsite = read('__docs__/pos-webhook-sync/pos-webhook-sync_website.md');
+  const productionAudit = read('__docs__/audits/menulist-production-readiness-audit.md');
+  const changelog = read('__docs__/CHANGELOG.md');
+  const behaviorEngineeringReadme = read('__docs__/behavior-engineering/README.md');
+  const behaviorEngineeringSpec = read('__docs__/behavior-engineering/behavior-engineering_spec.md');
+  const behaviorEngineeringImpl = read('__docs__/behavior-engineering/behavior-engineering_impl.md');
+  const behaviorEngineeringWebsite = read('__docs__/behavior-engineering/behavior-engineering_website.md');
+  const behaviorEngineeringHelpdoc = read('__docs__/behavior-engineering/behavior-engineering_helpdoc.md');
+  const behaviorEngineeringMarketing = read('__docs__/behavior-engineering/behavior-engineering_marketing.md');
+  const imageGenerationMarketing = read('__docs__/projects/ai-image-generation/ai-image-generation_marketing.md');
+  const menuKitLabels = read('src/lib/menu-kit/businessTypeLabels.ts');
+  const desktopUseMenuList = read('src/components/templates/main-app/useMenuList/index.tsx');
+  const projectShareModal = read('src/components/templates/main-app/projects/b2cView/shareModal/index.tsx');
+  const menuKitSection = read('src/components/templates/main-app/projects/b2cView/shareModal/MenuKitSection.tsx');
+  const projectDal = read('src/database/projects/index.ts');
+  const desktopProjectHeader = read('src/components/templates/main-app/projects/ProjectsSubHeader.tsx');
+  const mobileDesignEditor = read('src/components/mobile/screens/MobileDesignEditorScreen.tsx');
+  const mobileUploadSheet = read('src/components/mobile/sheets/MenuUploadSheet.tsx');
+  const clientMenuPage = read('src/app/client/[[...slug]]/page.tsx');
+
+  [
+    [publicEntryWebsite, 'Public Menu Entry website'],
+    [publicEntryMarketing, 'Public Menu Entry marketing'],
+    [publicEntryHelpdoc, 'Public Menu Entry helpdoc'],
+    [dataEditorWebsite, 'Data Editor website'],
+    [workflowsGuide, 'Workflows guide mobile doctrine'],
+    [supportAutomation, 'Support automation templates'],
+    [mobileDoctrine, 'Mobile UI doctrine'],
+    [mobileScreensSpec, 'Mobile screens spec'],
+    [clientMenuWebsite, 'Client Menu website'],
+    [clientMenuHelpdoc, 'Client Menu helpdoc'],
+    [multiOutletWebsite, 'Multi-outlet website'],
+    [multiOutletHelpdoc, 'Multi-outlet helpdoc'],
+    [posWebhookWebsite, 'POS webhook website'],
+    [behaviorEngineeringMarketing, 'Behavior engineering marketing'],
+    [imageGenerationMarketing, 'AI image generation marketing'],
+  ].forEach(([content, label]) => {
+    [
+      'Changes go live instantly',
+      'changes go live instantly',
+      'go live instantly',
+      'go live on your customer menu instantly',
+      'no need to re-publish',
+      'Customers see the change within seconds',
+      'customers see the change within seconds',
+      'Customers see the new price within seconds',
+      'Customers always see the latest menu',
+      'every store\'s menu updates within seconds',
+      'All linked outlets receive the changes within seconds',
+      'Changes sync within seconds',
+      'receives the update within seconds',
+      'shows immediately',
+      'always current, everywhere',
+      'This is your live menu — always up to date.',
+      'live menu — always up to date',
+      'instant updates',
+      'Changes go live instantly on your digital menu',
+      'Every store sees it instantly',
+      'Master changes flow to all stores instantly',
+      'Instant sync',
+      'instant sync',
+    ].forEach((stalePhrase) => {
+      assertNotIncludes(content, stalePhrase, `${label} publish-boundary copy`);
+		  });
+  });
+
+  [
+    [behaviorEngineeringReadme, 'Behavior engineering README'],
+    [behaviorEngineeringSpec, 'Behavior engineering spec'],
+    [behaviorEngineeringImpl, 'Behavior engineering implementation'],
+    [behaviorEngineeringWebsite, 'Behavior engineering website'],
+    [behaviorEngineeringHelpdoc, 'Behavior engineering helpdoc'],
+    [behaviorEngineeringMarketing, 'Behavior engineering marketing'],
+    [menuKitLabels, 'Menu kit labels'],
+    [desktopUseMenuList, 'Desktop Use MenuList copy'],
+    [projectShareModal, 'Project share modal copy'],
+    [menuKitSection, 'Menu kit section copy'],
+  ].forEach(([content, label]) => {
+    [
+      'always shows',
+      'always see',
+      'Customers always',
+      'customers always',
+      'will always',
+      'Always updated',
+      'always updated',
+      'latest menu',
+      'latest prices',
+      'latest items',
+      'latest version',
+      'latest services',
+      'latest offerings',
+      'sees the update instantly',
+      'see it instantly',
+      'see the latest',
+      'always current',
+      'always-current',
+      'updates automatically',
+      '(Always updated)',
+    ].forEach((stalePhrase) => {
+      assertNotIncludes(content, stalePhrase, `${label} behavior-link freshness copy`);
+    });
+  });
+
+  assertIncludes(publicEntryWebsite, 'version the owner approved and published', 'Public Menu Entry website owner-approved version copy');
+  assertIncludes(publicEntryWebsite, 'save the approved edit', 'Public Menu Entry website save boundary copy');
+  assertIncludes(publicEntryWebsite, 'publish design or page changes when needed', 'Public Menu Entry website publish boundary copy');
+  assertIncludes(publicEntryMarketing, 'Customers see the owner-published menu', 'Public Menu Entry marketing owner-published menu copy');
+  assertIncludes(publicEntryMarketing, 'owner-controlled save and publish paths', 'Public Menu Entry marketing save/publish boundary copy');
+  assertIncludes(publicEntryHelpdoc, 'If the screen shows **Publish**, click **Publish**', 'Public Menu Entry helpdoc conditional publish copy');
+  assertIncludes(dataEditorWebsite, 'public truth and cache path', 'Data Editor website public truth/cache copy');
+  assertIncludes(dataEditorWebsite, 'current public menu cache refresh', 'Data Editor website customer-facing cache copy');
+  assertIncludes(dataEditorWebsite, 'usually within 60 seconds', 'Data Editor website cache window copy');
+  assertIncludes(workflowsGuide, 'shared save/cache path', 'Workflows guide mobile save/cache boundary');
+  assertIncludes(workflowsGuide, 'Screens with an explicit **Publish** action keep that action', 'Workflows guide explicit publish boundary');
+  assertIncludes(supportAutomation, 'Customer menus can take up to 60 seconds to refresh', 'Support automation cache window copy');
+  assertIncludes(supportAutomation, 'This opens the owner-published menu.', 'Support automation owner-published menu copy');
+  assertIncludes(mobileDoctrine, 'Screens with an explicit Publish action keep it', 'Mobile doctrine explicit publish boundary');
+  assertIncludes(mobileDoctrine, 'Customer menus can take up to 60 seconds to refresh', 'Mobile doctrine cache window copy');
+  assertIncludes(mobileScreensSpec, 'current public cache path and can take up to 60 seconds', 'Mobile screens public cache window copy');
+  assertIncludes(clientMenuWebsite, 'current cache window can be up to 60 seconds', 'Client Menu website cache window copy');
+  assertIncludes(clientMenuHelpdoc, 'usually within 60 seconds', 'Client Menu helpdoc cache window copy');
+  assertIncludes(multiOutletWebsite, 'outlet save/cache path', 'Multi-outlet website save/cache copy');
+  assertIncludes(multiOutletWebsite, 'Customer menus can take up to 60 seconds to refresh', 'Multi-outlet website cache window copy');
+  assertIncludes(multiOutletWebsite, 'saved master updates', 'Multi-outlet website saved-update boundary copy');
+  assertIncludes(multiOutletHelpdoc, 'Outlet sync and customer menu cache refresh can take up to 60 seconds', 'Multi-outlet helpdoc cache window copy');
+  assertIncludes(posWebhookWebsite, 'configured POS sync receives the owner-approved update through the integration path', 'POS webhook integration-path copy');
+  assertIncludes(behaviorEngineeringReadme, 'This doc is source-gated by `npm run verify:public-business-truth`', 'Behavior Engineering README source gate');
+  assertIncludes(behaviorEngineeringSpec, 'This spec is source-gated by `npm run verify:public-business-truth`', 'Behavior Engineering spec source gate');
+  assertIncludes(behaviorEngineeringImpl, 'This implementation doc is source-gated by `npm run verify:public-business-truth`', 'Behavior Engineering implementation source gate');
+  assertIncludes(behaviorEngineeringWebsite, 'This website copy is source-gated by `npm run verify:public-business-truth`', 'Behavior Engineering website source gate');
+  assertIncludes(behaviorEngineeringHelpdoc, 'This help doc is source-gated by `npm run verify:public-business-truth`', 'Behavior Engineering helpdoc source gate');
+  assertIncludes(behaviorEngineeringMarketing, 'This marketing doc is source-gated by `npm run verify:public-business-truth`', 'Behavior Engineering marketing source gate');
+  assertIncludes(behaviorEngineeringMarketing, 'current approved menu', 'Behavior engineering marketing update boundary copy');
+  assertIncludes(menuKitLabels, 'Customers use your current approved menu link.', 'Menu kit label current-approved share subtitle');
+  assertIncludes(menuKitLabels, "yourLatest: 'your current approved menu'", 'Menu kit label current-approved share noun');
+  assertIncludes(desktopUseMenuList, 'points to ${labels.yourLatest}', 'Desktop Use MenuList current-approved share card copy');
+  assertIncludes(projectShareModal, '? `${labels.shareMessagePrefix}\\n${urlWithUTM}`', 'Project share modal source-bounded WhatsApp message');
+  assertIncludes(productionAudit, 'Support automation manual-template freshness-copy checkpoint', 'Production audit records support automation freshness checkpoint');
+  assertIncludes(changelog, 'Support Automation Freshness Copy Boundary', 'Changelog records support automation freshness checkpoint');
+  assertIncludes(menuKitSection, 'const msg = `${labels.shareMessagePrefix}\\n${menuUrl}`;', 'Menu kit WhatsApp message source-bounded copy');
+  assertIncludes(imageGenerationMarketing, 'ready-to-apply updates', 'AI image generation marketing update boundary copy');
+
+  assertIncludes(projectDal, '// INVARIANT: All customer-facing truth must pass through updateProject().', 'Project DAL public truth invariant');
+  assertIncludes(projectDal, 'await revalidatePublicClientCacheForProject(data.projectId as string, "updateProject");', 'Project DAL save cache revalidation');
+  assertIncludes(projectDal, 'export const publishProject = async (data: Partial<Project>) => {', 'Project DAL explicit publish path');
+  assertIncludes(projectDal, 'await revalidatePublicClientCacheForProject(data.projectId, "publishProject");', 'Project DAL publish cache revalidation');
+  assertIncludes(projectDal, 'updatedData.menuVersion = increment(1);', 'Project DAL publish menu version bump');
+  assertIncludes(projectDal, 'updatedData.lastPublishedAt = Timestamp.now();', 'Project DAL publish timestamp');
+  assertIncludes(desktopProjectHeader, '"No changes to publish"', 'Desktop project header explicit publish state');
+  assertIncludes(mobileDesignEditor, 'const updated = await publishProject(normalizedDraft);', 'Mobile design editor explicit publish path');
+  assertIncludes(mobileDesignEditor, 'void verifyMenuPublish({', 'Mobile design editor publish verification');
+  assertIncludes(mobileUploadSheet, 'draft for review before anything is published', 'Mobile menu upload review-before-publish copy');
+  assertIncludes(clientMenuPage, 'hasPublishedMenu: Boolean', 'Client menu page published-menu metadata boundary');
+  assertIncludes(clientMenuPage, 'menuVersion', 'Client menu page menu version metadata');
+  assertIncludes(clientMenuPage, 'revalidate: 60', 'Client menu page public cache revalidation window');
+}
+
+function verifyPresenceDominanceDocsUsePublicSourceBoundaries() {
+  const docs = {
+    spec: read('__docs__/presence-dominance/presence-dominance_spec.md'),
+    website: read('__docs__/presence-dominance/presence-dominance_website.md'),
+    marketing: read('__docs__/presence-dominance/presence-dominance_marketing.md'),
+    audit: read('__docs__/audits/menulist-production-readiness-audit.md'),
+    changelog: read('__docs__/CHANGELOG.md'),
+  };
+
+  [
+    'always updated',
+    'Always Updated',
+    'always accurate',
+    'Always accurate',
+    'Always live',
+    'always live',
+    'live everywhere',
+    'Live everywhere',
+    'correct everywhere',
+    'Correct everywhere',
+    'customers see the change within 60 seconds — everywhere',
+    'updates automatically when you change anything',
+  ].forEach((stalePhrase) => {
+    assertNotIncludes(docs.spec, stalePhrase, 'Presence Dominance spec stale freshness/correctness claim');
+    assertNotIncludes(docs.website, stalePhrase, 'Presence Dominance website stale freshness/correctness claim');
+    assertNotIncludes(docs.marketing, stalePhrase, 'Presence Dominance marketing stale freshness/correctness claim');
+  });
+
+  [
+    'owner-approved public source',
+    'Public menu and Official Business Page output can take up to 60 seconds to refresh',
+  ].forEach((token) => {
+    assertIncludes(docs.website, token, 'Presence Dominance website public-source/cache boundary');
+    assertIncludes(docs.marketing, token, 'Presence Dominance marketing public-source/cache boundary');
+  });
+
+  [
+    'owner-approved public source',
+    'Google/provider surfaces still require their own evidence',
+    'old downloaded PDFs should be replaced',
+  ].forEach((token) => {
+    assertIncludes(docs.spec, token, 'Presence Dominance spec provider/artifact boundary');
+  });
+
+  assertIncludes(docs.audit, 'Presence Dominance public-source freshness checkpoint', 'Production audit records Presence Dominance checkpoint');
+  assertIncludes(docs.changelog, 'Presence Dominance Public Source Boundary', 'Changelog records Presence Dominance checkpoint');
 }
 
 function verifyDigitalScreenReloadDiagnosticsAreBounded() {
@@ -742,11 +1376,15 @@ function verifyMenuCorrectnessEngineDocsMatchRuntime() {
   const website = read('__docs__/menu-correctness-engine/menu-correctness-engine_website.md');
   const marketing = read('__docs__/menu-correctness-engine/menu-correctness-engine_marketing.md');
   const helpdoc = read('__docs__/menu-correctness-engine/menu-correctness-engine_helpdoc.md');
+  const productionAudit = read('__docs__/audits/menulist-production-readiness-audit.md');
+  const changelog = read('__docs__/CHANGELOG.md');
 
   assertIncludes(features, 'ENABLE_MCE: true', 'MCE runtime feature flag');
   assertIncludes(projectDal, 'if (FEATURE_FLAGS.ENABLE_MCE && data.projectId)', 'MCE updateProject runtime hook');
   assertIncludes(projectDal, '(data as any)._mce = toMCEMetadata(result);', 'MCE metadata same-write hook');
   assertIncludes(readme, '| `ENABLE_MCE` | `true` | Enable Menu Correctness Engine |', 'MCE README runtime flag');
+  assertIncludes(readme, '**Menu data is validated at save time before supported publishing flows continue.**', 'MCE README supported publishing-flow claim boundary');
+  assertIncludes(readme, 'Supported surfaces read from the same Firestore project document through their existing refresh, download, device, or provider paths.', 'MCE README supported surface path boundary');
   assertIncludes(impl, '**Status:** ✅ IMPLEMENTED — Active (`ENABLE_MCE: true`)', 'MCE implementation runtime status');
   assertIncludes(spec, 'active runtime flag (`ENABLE_MCE: true`); not current launch certification', 'MCE spec active runtime boundary');
   assertIncludes(spec, 'Current release approval requires the active [production-readiness audit]', 'MCE spec launch boundary');
@@ -754,6 +1392,8 @@ function verifyMenuCorrectnessEngineDocsMatchRuntime() {
   assertIncludes(spec, '`npm run verify:public-business-truth`', 'MCE spec source-gate boundary');
   assertIncludes(spec, 'browser/mobile save and publish-gate QA', 'MCE spec browser/mobile QA boundary');
   assertIncludes(spec, 'Treat that rating only as historical external-review evidence, not current launch certification.', 'MCE spec historical ChatGPT audit boundary');
+  assertIncludes(spec, 'Current public claim boundary: MCE validates project data at save time and stamps `_mce` metadata on the existing project document.', 'MCE spec current public claim boundary');
+  assertIncludes(spec, 'It does not certify every customer-facing surface, artifact, device, or provider target without separate target evidence.', 'MCE spec target evidence boundary');
   assertNotIncludes(spec, '**Status:** ✅ IMPLEMENTED — Flag OFF (ENABLE_MCE: false)', 'MCE spec stale disabled flag status');
   assertNotIncludes(spec, 'Production ready: Yes.', 'MCE spec stale external launch verdict');
 
@@ -772,6 +1412,8 @@ function verifyMenuCorrectnessEngineDocsMatchRuntime() {
   assertIncludes(marketing, '`npm run verify:public-business-truth`', 'MCE marketing source-gate boundary');
   assertIncludes(marketing, 'It must not promise instant sync, universal surface certification, or POS/PDF/device behavior without matching target evidence.', 'MCE marketing absolute-claim boundary');
   assertIncludes(marketing, 'Supported surfaces read the same validated project data through their audited paths', 'MCE marketing audited-surface boundary');
+  assertIncludes(marketing, '### Slide 5: The Source Commitments', 'MCE marketing source commitments boundary');
+  assertIncludes(marketing, 'PDF: generated artifacts should be replaced after later edits', 'MCE marketing generated artifact boundary');
 
   assertIncludes(helpdoc, '**Status:** Source-gated help evidence; not current launch certification', 'MCE helpdoc source-gated status');
   assertIncludes(helpdoc, 'source-gated draft evidence for the current Menu Correctness Engine runtime', 'MCE helpdoc source-gated boundary');
@@ -796,6 +1438,158 @@ function verifyMenuCorrectnessEngineDocsMatchRuntime() {
   assertNotIncludes(contentDocs, 'Your menu will be published to all surfaces once everything is correct.', 'MCE content docs stale all-surface publish claim');
   assertNotIncludes(contentDocs, 'Your digital screens refresh automatically with the verified menu. No manual action needed.', 'MCE content docs stale screen refresh claim');
   assertNotIncludes(contentDocs, 'Digital screens refresh automatically via version polling. QR/web menus update within 30 seconds of saving.', 'MCE content docs stale timing claim');
+
+  const activeClaimDocs = `${readme}\n${spec}\n${marketing}`;
+  [
+    'Your menu is always correct',
+    'always correct',
+    'correct everywhere',
+    'guaranteed to be validated',
+    'disappear everywhere simultaneously',
+    'Customer never sees wrong menu',
+    'customers never see wrong',
+    'always fresh',
+    'correctness guarantees',
+    'automatically inherit',
+    'automatically benefit',
+    'absolute correctness',
+    'updates instantly',
+    'Digital screen: updates in 18 seconds',
+    'ready for all surfaces',
+    'All surfaces show stale data',
+    'All surfaces already read',
+  ].forEach((stalePhrase) => {
+    assertNotIncludes(activeClaimDocs, stalePhrase, 'MCE active docs stale blanket surface/correctness claim');
+  });
+
+  [
+    'Menu Correctness Engine public claim boundary checkpoint',
+    '`npm run verify:public-business-truth`',
+  ].forEach((token) => assertIncludes(productionAudit, token, 'Production audit MCE public claim boundary'));
+
+  [
+    'Menu Correctness Engine Public Claim Boundary',
+    '`npm run verify:public-business-truth`',
+  ].forEach((token) => assertIncludes(changelog, token, 'Changelog MCE public claim boundary'));
+}
+
+function verifySilentCorrectionDocsUseSupportedSurfaceBoundaries() {
+  const spec = read('__docs__/silent-correction-systems/silent-correction-systems_spec.md');
+  const productionAudit = read('__docs__/audits/menulist-production-readiness-audit.md');
+  const changelog = read('__docs__/CHANGELOG.md');
+
+  [
+    'they ensure customers never see wrong hours, wrong prices, broken menus, or inconsistent data',
+    '60-second propagation guaranteed',
+    'All surfaces read from same Firestore data. 60-second propagation guaranteed.',
+    'propagates instantly to all surfaces',
+  ].forEach((stalePhrase) => {
+    assertNotIncludes(spec, stalePhrase, 'Silent Correction Systems stale blanket freshness/correctness claim');
+  });
+
+  [
+    'guardrails for preventing confident wrong hours, wrong prices, broken menus, or inconsistent data from reaching customers through supported surfaces',
+    'Supported live surfaces read from saved project/store truth through their own cache, refresh, listener, download, or provider paths',
+    'Public menu and Official Business Page output can take up to 60 seconds to refresh',
+    'generated or provider-backed artifacts require their own evidence',
+    'can reach supported live surfaces before downstream artifacts, screens, or provider paths have separate evidence',
+  ].forEach((token) => {
+    assertIncludes(spec, token, 'Silent Correction Systems supported-surface boundary');
+  });
+
+  assertIncludes(productionAudit, 'Silent Correction supported-surface freshness checkpoint', 'Production audit records Silent Correction supported-surface checkpoint');
+  assertIncludes(changelog, 'Silent Correction Supported Surface Boundary', 'Changelog records Silent Correction supported-surface checkpoint');
+}
+
+function verifyTruthAccuracyDominanceDocsMatchRuntime() {
+  const features = read('src/config/features.ts');
+  const docs = {
+    readme: read('__docs__/truth-accuracy-dominance/README.md'),
+    spec: read('__docs__/truth-accuracy-dominance/truth-accuracy-dominance_spec.md'),
+    firebase: read('__docs__/truth-accuracy-dominance/truth-accuracy-dominance_firebase.md'),
+    mobile: read('__docs__/truth-accuracy-dominance/truth-accuracy-dominance_mobile-support.md'),
+    audit: read('__docs__/audits/menulist-production-readiness-audit.md'),
+    changelog: read('__docs__/CHANGELOG.md'),
+  };
+
+  assertIncludes(features, 'ENABLE_MCE: true', 'Truth Accuracy Dominance MCE runtime flag');
+
+  assertIncludes(docs.readme, '**Status:** Source-gated pillar reference; not current launch certification', 'Truth Accuracy README source-gated status');
+  assertIncludes(docs.readme, 'supported menu, hours, availability, and business-info surfaces', 'Truth Accuracy README supported-surface boundary');
+  assertIncludes(docs.readme, "each surface's normal refresh, publish, cache, download, or provider flow completes", 'Truth Accuracy README surface-specific timing boundary');
+  assertIncludes(docs.readme, 'Current release approval still requires the active [production-readiness audit]', 'Truth Accuracy README launch approval boundary');
+  assertIncludes(docs.readme, 'External Certification Runbook', 'Truth Accuracy README external certification boundary');
+  assertIncludes(docs.readme, '`npm run verify:public-business-truth`', 'Truth Accuracy README source verifier boundary');
+  assertIncludes(docs.readme, 'Public Cache Window', 'Truth Accuracy README public cache boundary');
+  assertIncludes(docs.readme, 'Surface-Specific Refresh', 'Truth Accuracy README target evidence boundary');
+  assertIncludes(docs.readme, '| `src/config/features.ts` | `ENABLE_MCE: true` | Active source flag |', 'Truth Accuracy README runtime flag parity');
+
+  assertIncludes(docs.spec, '**Status:** Source-gated pillar reference; not current launch certification', 'Truth Accuracy spec source-gated status');
+  assertIncludes(docs.spec, 'normal refresh, publish, cache, download, or provider flow completes', 'Truth Accuracy spec surface-specific timing boundary');
+  assertIncludes(docs.spec, '## Launch Boundary', 'Truth Accuracy spec launch boundary section');
+  assertIncludes(docs.spec, 'public menu/OBP/Digital Screens browser and device QA', 'Truth Accuracy spec browser/device QA boundary');
+  assertIncludes(docs.spec, 'Active runtime flag: `ENABLE_MCE: true`', 'Truth Accuracy spec runtime flag parity');
+  assertIncludes(docs.spec, 'Public menu/OBP follow the 60-second public cache window', 'Truth Accuracy spec public cache boundary');
+  assertIncludes(docs.spec, 'Digital Screens use their own `screen-data` cache', 'Truth Accuracy spec digital screens cache boundary');
+  assertIncludes(docs.spec, 'PDF artifacts, POS integrations, Google/third-party surfaces', 'Truth Accuracy spec external target boundary');
+  assertIncludes(docs.spec, 'The cache window is not a universal freshness promise', 'Truth Accuracy spec freshness boundary');
+  assertIncludes(docs.spec, 'External Certification Runbook', 'Truth Accuracy spec external certification boundary');
+  assertIncludes(docs.spec, '`npm run verify:public-business-truth`', 'Truth Accuracy spec source verifier boundary');
+
+  assertIncludes(docs.firebase, '**Status:** Source-gated Firebase cost reference; not current launch certification', 'Truth Accuracy Firebase source-gated status');
+  assertIncludes(docs.firebase, 'adds no new feature-specific Firebase collections, Firestore reads/writes/deletes, Storage operations, Cloud Functions, indexes, rules, schedulers, provider calls, or cache invalidation jobs', 'Truth Accuracy Firebase no-new-operations boundary');
+  assertIncludes(docs.firebase, '`npm run verify:public-business-truth`', 'Truth Accuracy Firebase source verifier boundary');
+  assertIncludes(docs.firebase, 'Public menu/OBP cache: current public cache tags and the 60-second public cache window', 'Truth Accuracy Firebase public cache boundary');
+  assertIncludes(docs.firebase, 'Digital Screens: separate `screen-data` cache and content-version listener path', 'Truth Accuracy Firebase digital screens boundary');
+  assertIncludes(docs.firebase, 'Downloaded or provider targets: require separate artifact/provider evidence before freshness claims', 'Truth Accuracy Firebase target evidence boundary');
+
+  assertIncludes(docs.mobile, '**Status:** Source-gated mobile support reference; mobile QA still required', 'Truth Accuracy mobile source-gated status');
+  assertIncludes(docs.mobile, 'Mobile release approval is not automatic.', 'Truth Accuracy mobile launch boundary');
+  assertIncludes(docs.mobile, 'MCE runs on project update paths covered by the current source gates.', 'Truth Accuracy mobile MCE path boundary');
+  assertIncludes(docs.mobile, 'Public menu/OBP output follows the current public cache window; Digital Screens use the `screen-data` cache/listener path.', 'Truth Accuracy mobile public-output boundary');
+  assertIncludes(docs.mobile, 'mobile save/publish smoke, public menu/OBP viewport QA, Digital Screens device QA where relevant', 'Truth Accuracy mobile QA evidence boundary');
+
+  assertIncludes(docs.audit, 'Truth & Accuracy Dominance source-boundary checkpoint', 'Production audit records Truth Accuracy checkpoint');
+  assertIncludes(docs.audit, '`npm run verify:public-business-truth` now source-gates the Truth & Accuracy Dominance docs', 'Production audit records Truth Accuracy verifier gate');
+  assertIncludes(docs.changelog, 'Truth & Accuracy Dominance Source Boundary', 'Changelog records Truth Accuracy checkpoint');
+  assertIncludes(docs.changelog, '`npm run verify:public-business-truth` now rejects stale Truth & Accuracy blanket correctness and freshness claims', 'Changelog records Truth Accuracy verifier gate');
+
+  const forbiddenTruthClaims = [
+    'always correct',
+    'always accurate',
+    'truth guarantees',
+    'structural guarantee',
+    '60s propagation guarantee',
+    'instant propagation',
+    'all surfaces updated within 60 seconds',
+    'obp, digital menu, digital screens, qr pages',
+    'multi-surface sync',
+    'enable_mce: false',
+    'ready to activate',
+    '60s propagation applies regardless of device',
+    'mce runs on every save',
+    'all built. this pillar is about',
+    'zero additional cost',
+    'real-time',
+    'reflected immediately',
+    'complete truth stack',
+    'guarantee',
+  ];
+
+  for (const [label, content] of Object.entries({
+    readme: docs.readme,
+    spec: docs.spec,
+    firebase: docs.firebase,
+    mobile: docs.mobile,
+  })) {
+    const lowerContent = content.toLowerCase();
+    for (const forbidden of forbiddenTruthClaims) {
+      assert(
+        !lowerContent.includes(forbidden),
+        `${label} must not carry stale Truth & Accuracy blanket claim: ${forbidden}`,
+      );
+    }
+  }
 }
 
 function verifyDiscoveryInfrastructureDocsMatchRuntime() {
@@ -902,6 +1696,7 @@ function verifyGbpSyncDocsMatchDisabledRuntime() {
     helpdoc: read('__docs__/gbp-sync/gbp-sync_helpdoc.md'),
     marketing: read('__docs__/gbp-sync/gbp-sync_marketing.md'),
     validation: read('__docs__/gbp-sync/gbp-sync_validation.md'),
+    criticalReview: read('__docs__/gbp-sync/GBP-CHATGPT-CRITICAL-REVIEW.md'),
     audit: read('__docs__/audits/menulist-production-readiness-audit.md'),
     changelog: read('__docs__/CHANGELOG.md'),
   };
@@ -943,8 +1738,13 @@ function verifyGbpSyncDocsMatchDisabledRuntime() {
   assertIncludes(docs.marketing, 'Reserved integration; current runtime is manual Google handoff', 'GBP marketing source boundary');
   assertIncludes(docs.marketing, 'No owner can currently connect Google', 'GBP marketing active claim boundary');
   assertIncludes(docs.validation, 'not ready for testing, ready for implementation, launch approval, or production certification', 'GBP validation release boundary');
+  assertIncludes(docs.criticalReview, 'Historical ChatGPT review; not current implementation approval or launch certification', 'GBP critical review historical boundary');
+  assertIncludes(docs.criticalReview, 'Current GBP Sync runtime remains disabled', 'GBP critical review disabled runtime boundary');
+  assertIncludes(docs.criticalReview, '`npm run verify:public-business-truth`', 'GBP critical review source gate boundary');
   assertIncludes(docs.audit, 'GBP Sync disabled-runtime public-claim checkpoint', 'Production audit GBP disabled-runtime checkpoint');
+  assertIncludes(docs.audit, 'GBP critical review implementation-boundary checkpoint', 'Production audit GBP critical-review boundary checkpoint');
   assertIncludes(docs.changelog, 'July 2, 2026 - GBP Sync Disabled Runtime Boundary', 'Changelog GBP disabled-runtime checkpoint');
+  assertIncludes(docs.changelog, 'GBP Critical Review Implementation Boundary', 'Changelog GBP critical-review boundary checkpoint');
 
   const activeDocs = [
     docs.readme,
@@ -956,6 +1756,7 @@ function verifyGbpSyncDocsMatchDisabledRuntime() {
     docs.helpdoc,
     docs.marketing,
     docs.validation,
+    docs.criticalReview,
   ].join('\n');
 
   [
@@ -968,12 +1769,18 @@ function verifyGbpSyncDocsMatchDisabledRuntime() {
     '## ✅ FINAL VERDICT: PHASE 0 READY FOR TESTING',
     '**Status:** ✅ PHASE 0 COMPLETE',
     '**MARKETING REVIEW STATUS:** READY FOR SALES TEAM',
+    '## ✅ VALIDATED RECOMMENDATIONS (Ready to Implement)',
+    '| **Ready for Implementation** | 🔶 AFTER PREREQUISITES',
+    'If approved → Ready to proceed',
+    '3. **Dev Action:** Prepare schema + DAL while waiting for API access',
   ].forEach((token) => assertNotIncludes(activeDocs, token, 'GBP active docs stale automatic-sync/readiness claim'));
 }
 
 function verifyProjectPersistenceDiagnosticsAreBounded() {
   const projectDal = read('src/database/projects/index.ts');
   const diagnostics = read('src/database/projects/diagnostics.ts');
+  const productionReadinessAudit = read('__docs__/audits/menulist-production-readiness-audit.md');
+  const changelog = read('__docs__/CHANGELOG.md');
 
   assertIncludes(diagnostics, 'secureError', 'Project persistence diagnostics secure failure logging');
   assertIncludes(diagnostics, 'secureLog', 'Project persistence diagnostics secure info logging');
@@ -997,6 +1804,14 @@ function verifyProjectPersistenceDiagnosticsAreBounded() {
   assertIncludes(projectDal, 'project_linked_outlet_save_rejected', 'Linked outlet save rejection diagnostics');
   assertIncludes(projectDal, 'project_linked_outlet_publish_rejected', 'Linked outlet publish rejection diagnostics');
   assertIncludes(projectDal, 'project_outlet_propagation_duplicate_failed', 'Project outlet propagation duplicate diagnostics');
+  assertIncludes(productionReadinessAudit, 'Project write acknowledgement source-gate checkpoint', 'Production readiness audit project write acknowledgement checkpoint');
+  assertIncludes(productionReadinessAudit, 'scans every active `src` project write/create/publish call', 'Production readiness audit generic project write acknowledgement scan');
+  assertIncludes(changelog, 'Project writes are source-gated globally', 'Changelog project write acknowledgement source gate');
+  assertIncludes(changelog, '`npm run verify:public-business-truth` now scans every active `src` project write/create/publish call', 'Changelog generic project write acknowledgement scan');
+  assertIncludes(productionReadinessAudit, 'Project lifecycle mutation acknowledgement source-gate checkpoint', 'Production readiness audit project lifecycle acknowledgement checkpoint');
+  assertIncludes(productionReadinessAudit, 'scans every active `src` project delete/activate/duplicate/restore call', 'Production readiness audit generic project lifecycle acknowledgement scan');
+  assertIncludes(changelog, 'Project lifecycle mutations are source-gated globally', 'Changelog project lifecycle acknowledgement source gate');
+  assertIncludes(changelog, '`npm run verify:public-business-truth` now scans every active `src` project delete/activate/duplicate/restore call', 'Changelog generic project lifecycle acknowledgement scan');
   assertNotIncludes(projectDal, 'backfillProjectsSummary', 'Project DAL temporary projects-summary backfill surface');
   assertNotIncludes(projectDal, '__backfillProjectsSummary', 'Project DAL browser-console projects-summary backfill exposure');
   assertNotIncludes(projectDal, 'projects_summary_backfill_', 'Project DAL projects-summary backfill diagnostics');
@@ -1091,6 +1906,8 @@ function verifyProjectsPageDiagnosticsAreBounded() {
   const mobileSpecialMenuScreen = read('src/components/mobile/screens/MobileSpecialMenuScreen.tsx');
   const specialMenuMobileSupportDoc = read('__docs__/special-menu-switching/special-menu-switching_mobile-support.md');
   const specialMenuReadme = read('__docs__/special-menu-switching/README.md');
+  const specialMenuSpec = read('__docs__/special-menu-switching/special-menu-switching_spec.md');
+  const specialMenuImpl = read('__docs__/special-menu-switching/special-menu-switching_impl.md');
   const specialMenuValidation = read('__docs__/special-menu-switching/special-menu-switching_validation.md');
   const specialMenuHelpdoc = read('__docs__/special-menu-switching/special-menu-switching_helpdoc.md');
   const specialMenuMarketing = read('__docs__/special-menu-switching/special-menu-switching_marketing.md');
@@ -1155,6 +1972,13 @@ function verifyProjectsPageDiagnosticsAreBounded() {
   assertIncludes(specialMenuHelpdoc, 'Active behind `ENABLE_SPECIAL_MENU_SWITCHING`', 'Special menu helpdoc active status');
   assertIncludes(specialMenuMarketing, 'Active behind `ENABLE_SPECIAL_MENU_SWITCHING`', 'Special menu marketing active status');
   assertIncludes(specialMenuWebsite, 'Active behind `ENABLE_SPECIAL_MENU_SWITCHING`', 'Special menu website active status');
+  assertIncludes(specialMenuReadme, 'Public menu and OBP resolution use `activeSpecialMenuId`; configured screens use their screen data/version path', 'Special menu README surface boundary');
+  assertIncludes(specialMenuSpec, 'exported PDFs/printed copies and POS/provider targets require separate export, replacement, or integration evidence', 'Special menu spec surface boundary');
+  assertIncludes(specialMenuImpl, 'Exported PDFs and POS/provider targets require separate export, replacement, or integration evidence', 'Special menu implementation surface boundary');
+  assertIncludes(specialMenuValidation, 'PDF/printed and POS/provider targets stay evidence-bound', 'Special menu validation surface boundary');
+  assertIncludes(specialMenuHelpdoc, 'Downloaded or printed PDFs should be regenerated or replaced after changes', 'Special menu helpdoc surface boundary');
+  assertIncludes(specialMenuMarketing, 'configured screens through supported refresh paths', 'Special menu marketing surface boundary');
+  assertIncludes(specialMenuWebsite, 'configured screens through their supported refresh paths', 'Special menu website surface boundary');
   assertIncludes(specialMenuDoctrine, 'Active guarded runtime; expansion-frozen', 'Special menu lifecycle current status');
   assertIncludes(features, 'ENABLE_SPECIAL_MENU_SWITCHING: true', 'Special menu frontend flag enabled');
   assertIncludes(functionsFeatures, 'ENABLE_SPECIAL_MENU_SWITCHING: true', 'Special menu Functions flag enabled');
@@ -1218,6 +2042,37 @@ function verifyProjectsPageDiagnosticsAreBounded() {
   assertNotIncludes(specialMenuMobileSupportDoc, 'Edit special menu content (requires full editor', 'Special menu mobile doc stale edit-disabled claim');
   assertNotIncludes(specialMenuReadme, 'Feature Flag OFF', 'Special menu README stale flag-off wording');
   assertNotIncludes(specialMenuValidation, 'ENABLE_SPECIAL_MENU_SWITCHING: false', 'Special menu validation stale flag-off wording');
+  [
+    specialMenuReadme,
+    specialMenuSpec,
+    specialMenuImpl,
+    specialMenuValidation,
+    specialMenuHelpdoc,
+    specialMenuMarketing,
+    specialMenuWebsite,
+  ].forEach((content) => {
+    [
+      'All surfaces (menu, OBP, screens, PDF, POS) automatically get resolved menu',
+      'Works on digital menu, OBP, screens, PDF — all surfaces automatically',
+      'All surfaces auto-update',
+      'Digital menu, OBP, screens, PDF — all get resolved menu automatically',
+      'Works on your public page, QR code, screens — everywhere',
+      'all surfaces update',
+      'All surfaces update',
+      'updates ALL surfaces',
+      'MenuList updates ALL surfaces',
+      'everything shows the right menu',
+      'One change, everywhere updated',
+      'shows on all your surfaces',
+      'Every surface that shows your menu automatically shows the right one',
+      'Everything updates automatically',
+      'Customers always see the right menu',
+      'QR code always points to the current active menu',
+      'Auto-display active menu',
+    ].forEach((staleToken) => {
+      assertNotIncludes(content, staleToken, 'Special menu active docs stale all-surface/PDF/POS claim');
+    });
+  });
   [specialMenuHelpdoc, specialMenuMarketing, specialMenuWebsite].forEach((content) => {
     assertNotIncludes(content, 'Flag OFF', 'Special menu active docs stale flag-off wording');
   });
@@ -1442,6 +2297,8 @@ function verifyStoreAndUserDalDiagnosticsAreBounded() {
   const mobileDomainSettings = read('src/components/mobile/screens/MobileDomainSettingsScreen.tsx');
   const mobilePosSync = read('src/components/mobile/screens/MobilePosSyncScreen.tsx');
   const mobileMore = read('src/components/mobile/screens/MobileMoreScreen.tsx');
+  const productionReadinessAudit = read('__docs__/audits/menulist-production-readiness-audit.md');
+  const changelog = read('__docs__/CHANGELOG.md');
   const domainRoute = read('src/app/api/domain/route.ts');
   const desktopDomainSettings = read('src/components/templates/main-app/businessSettings/tabs/DomainSettingsTab.tsx');
   const desktopPosSync = read('src/components/templates/main-app/businessSettings/tabs/PosSyncTab.tsx');
@@ -1463,6 +2320,11 @@ function verifyStoreAndUserDalDiagnosticsAreBounded() {
   assertIncludes(tenantsDal, 'export function assertTenantUpdateSucceeded', 'Tenant update acknowledgement guard');
   assertIncludes(tenantsDal, 'export function assertTenantsStoresListUpdateSucceeded', 'Tenant stores-list acknowledgement guard');
   assertIncludes(tenantsDal, "throw new Error(rejectionCode);", 'Tenant update rejected acknowledgement code');
+  assertIncludes(usersDal, 'export function assertUserUpdateSucceeded', 'User update acknowledgement guard');
+  assertIncludes(productionReadinessAudit, 'Tenant and platform-user acknowledgement source-gate checkpoint', 'Production readiness audit tenant/user acknowledgement checkpoint');
+  assertIncludes(productionReadinessAudit, 'scans every active `src` tenant write/stores-list call and platform-user write call', 'Production readiness audit generic tenant/user acknowledgement scan');
+  assertIncludes(changelog, 'Tenant and platform-user writes are source-gated globally', 'Changelog tenant/user acknowledgement source gate');
+  assertIncludes(changelog, '`npm run verify:public-business-truth` now scans every active `src` tenant write/stores-list call and platform-user write call', 'Changelog generic tenant/user acknowledgement scan');
   assertIncludes(storesDal, 'await revalidatePublicClientCache(data.storeId, "addStore");', 'Store create public cache invalidation');
   assertIncludes(storesDal, 'DIGITAL_SCREEN_STORE_OUTPUT_FIELDS', 'Store update digital screen output-field guard');
   assertIncludes(storesDal, 'await touchDigitalScreenContentVersion(data.storeId, "updateStore");', 'Store update digital screen refresh');
@@ -3587,12 +4449,19 @@ function verifyResellerDashboardResponseDiagnosticsAreBounded() {
 }
 
 verifyPublicMenuApiSourceOfTruth();
+verifyMenuListBrowserSurfacesDoNotWriteFirestoreDirectly();
+verifyMenuListBrowserSurfacesUseAllowedFirestoreReadsOnly();
 verifyStoreUpdatesRequireAcknowledgement();
+verifyTenantWritesRequireAcknowledgement();
+verifyPlatformUserWritesRequireAcknowledgement();
+verifyProjectWritesRequireAcknowledgement();
+verifyProjectLifecycleMutationsRequireAcknowledgement();
 verifyPublicCreateMenuRoutePrivacy();
 verifyHoursDoNotInventOpenState();
 verifyTimedCategoriesUseStoreTruth();
 verifyDomainOwnershipComparisonIsTypeSafe();
 verifyVercelDomainPathSegmentsAreEncoded();
+verifyCustomDomainDocsMatchVerificationBoundary();
 verifyClaimAccountStoreEmailInvalidatesPublicCache();
 verifyTenantHeaderLoggingIsBounded();
 verifyTenantDomainLookupLoggingIsBounded();
@@ -3604,12 +4473,17 @@ verifyPublicTruthWritesInvalidateScreenData();
 verifyPublicMenuResolutionLoggingIsBounded();
 verifyOBPAnalyticsLoggingIsBounded();
 verifyOBPCustomerQuickAnswersAreVisibleAndBounded();
+verifyPublicFaqSchemaFreshnessCopyIsBounded();
 verifyPublicMenuAnalyticsLoggingIsBounded();
 verifyClientMenuErrorBoundaryLoggingIsBounded();
 verifyMenuHealthPublishLoggingIsBounded();
+verifyPublicMenuGoLiveCopyMatchesPublishBoundary();
+verifyPresenceDominanceDocsUsePublicSourceBoundaries();
 verifyDigitalScreenReloadDiagnosticsAreBounded();
 verifyMenuEditorDiagnosticsAreBounded();
 verifyMenuCorrectnessEngineDocsMatchRuntime();
+verifySilentCorrectionDocsUseSupportedSurfaceBoundaries();
+verifyTruthAccuracyDominanceDocsMatchRuntime();
 verifyDiscoveryInfrastructureDocsMatchRuntime();
 verifyGbpSyncDocsMatchDisabledRuntime();
 verifyProjectPersistenceDiagnosticsAreBounded();

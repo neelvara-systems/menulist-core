@@ -181,7 +181,7 @@ export default function MenuKitSection({
     };
 
     const handleWhatsAppShare = () => {
-        const msg = `${labels.shareMessagePrefix}\n${menuUrl}\n(Always updated)`;
+        const msg = `${labels.shareMessagePrefix}\n${menuUrl}`;
         const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(msg)}`;
         try {
             const opened = window.open(whatsappUrl, '_blank', 'noopener,noreferrer');

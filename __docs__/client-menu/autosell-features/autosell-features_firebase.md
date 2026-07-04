@@ -1,6 +1,6 @@
 # AutoSell Features — Firebase Cost Tracking
 
-**Feature:** Automatic Menu Behaviors (Live Indicator, Instant Availability, Time-Based Categories)
+**Feature:** Automatic Menu Behaviors (Live Indicator, Availability State, Time-Based Categories)
 **Status:** Firebase cost evidence; not current launch certification
 **Last Updated:** February 7, 2026
 **Priority:** LOW — Zero incremental Firebase cost. All features use existing data.
@@ -28,7 +28,7 @@ This Firebase cost document is customer-facing menu-output cost evidence; it is 
 - **Data Source:** `project.modifiedOn` timestamp (already in project doc)
 - **Firebase Cost:** $0 — reads existing field from already-loaded project doc
 
-### 2. Instant Availability (sold-out items fade)
+### 2. Availability State (sold-out items fade after public menu refresh)
 - **Data Source:** `item.available` boolean (already in project doc)
 - **Firebase Cost:** $0 — reads existing field from already-loaded project doc
 

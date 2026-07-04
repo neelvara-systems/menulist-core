@@ -1,6 +1,6 @@
 # Description Generation — Marketing & Sales
 
-**Feature:** AI-Powered Menu Item Description Generation  
+**Feature:** Menu Item Description Preparation
 **Audience:** Sales Team, Marketing, Partners  
 **Last Updated:** January 31, 2026  
 **Version:** 2.0
@@ -30,11 +30,11 @@ Current Description Generation collateral approval requires:
 
 ### One-Liner
 
-> "MenuList prepares your menu language—professionally written, instantly ready."
+> "MenuList prepares menu description drafts for owner review before publishing."
 
 ### 30-Second Pitch
 
-> "Most business owners aren't copywriters. Writing appetizing descriptions for 50 menu items is tedious and time-consuming. MenuList automatically prepares professional descriptions for your entire menu. Your menu arrives ready to serve—no writing required."
+> "Most business owners are not copywriters. Writing useful descriptions across a menu is tedious and time-consuming. MenuList prepares description suggestions for the selected items, then the owner reviews, edits, and saves the approved copy."
 
 ---
 
@@ -44,7 +44,7 @@ Current Description Generation collateral approval requires:
 
 Writing menu descriptions is harder than it looks:
 
-- **Time-consuming:** 5-10 minutes per item manually
+- **Time-consuming:** Manual writing adds work item by item
 - **Inconsistent:** Different items get different quality
 - **Copywriting skills:** Not everyone can write appetizingly
 - **Multi-language:** Even harder in multiple languages
@@ -53,16 +53,16 @@ Many menus end up with bland or missing descriptions.
 
 ### The Solution
 
-MenuList's AI Description Generation:
+MenuList Description Preparation:
 
-- **Instant:** Descriptions prepared in seconds
-- **Professional:** Copywriter-quality text
-- **Multi-language:** Same quality in all your project languages
-- **Batch:** Entire menu prepared at once
+- **Draft-first:** Description suggestions are prepared for owner review
+- **Editable:** Owners approve the final wording before publishing
+- **Language-aware:** Language scope follows configured project support and release evidence
+- **Batch-friendly:** Selected menu items can be prepared together
 
 ### The Result
 
-Every item on the menu has a **professional description**—as part of the MenuList experience.
+Menu descriptions start from a review draft instead of a blank field, while the owner keeps final approval.
 
 ---
 
@@ -72,8 +72,8 @@ Every item on the menu has a **professional description**—as part of the MenuL
 
 | Aspect         | Manual                   | MenuList              |
 | -------------- | ------------------------ | --------------------- |
-| Time per item  | 5-10 minutes             | Seconds               |
-| Consistency    | Varies                   | Uniform quality       |
+| Time per item  | Blank-field writing      | Review draft after processing |
+| Consistency    | Varies                   | Owner-approved wording |
 | Multi-language | Hours more               | Included              |
 | Cost           | Staff time or copywriter | Part of the platform  |
 
@@ -82,8 +82,8 @@ Every item on the menu has a **professional description**—as part of the MenuL
 | Aspect     | Templates          | MenuList               |
 | ---------- | ------------------ | ---------------------- |
 | Uniqueness | Generic            | Customized to item     |
-| Matching   | Manual search      | Automatic              |
-| Languages  | Separate templates | Single generation      |
+| Matching   | Manual search      | Draft suggestions      |
+| Languages  | Separate templates | Configured workflow    |
 
 ---
 
@@ -93,7 +93,7 @@ Every item on the menu has a **professional description**—as part of the MenuL
 
 **"Menu descriptions are hard to write"**
 
-- Time-consuming (5-10 min per item)
+- Manual writing adds work item by item
 - Requires copywriting skills
 - Multi-language multiplies effort
 - Often skipped or bland
@@ -102,33 +102,33 @@ Every item on the menu has a **professional description**—as part of the MenuL
 
 **"MenuList prepares your menu language"**
 
-- Professional descriptions—automatically
-- All languages at once
+- Description suggestions for owner review
+- Language scope follows configured project support
 - Part of the menu digitization flow
 
 ### Slide 3: Content Quality
 
 **"Professional, appropriate, consistent"**
 
-- Copywriter-quality output
+- Owner-approved output
 - Culturally appropriate for each language
 - Consistent voice across menu
 
 ### Slide 4: Multi-Language
 
-**"Same quality in every language"**
+**"Language support stays evidence-bound"**
 
-- English, Hindi, Arabic, Spanish...
-- All generated simultaneously
-- Culturally appropriate phrasing
+- Use only configured project languages
+- Require release-specific evidence before language-count claims
+- Review translated or localized wording before publishing
 
 ### Slide 5: Results
 
-**"From blank to ready"**
+**"From blank to review draft"**
 
-- 50 items prepared in minutes
-- Professional quality throughout
-- Consistent across menu
+- Selected items prepared for review
+- Owner-approved wording before publishing
+- Consistent review flow across menu items
 
 ### Slide 6: CTA
 
@@ -143,24 +143,24 @@ Every item on the menu has a **professional description**—as part of the MenuL
 
 ### Hero Headline
 
-> **"Your menu, professionally written."**
+> **"Your menu descriptions, prepared for review."**
 
 ### Subheading
 
-> "MenuList prepares appetizing descriptions for every item—automatically."
+> "MenuList prepares description suggestions for selected items, then you review and approve the final wording."
 
 ### Key Benefit Bullets
 
-- **⚡ Fast** — Descriptions ready in seconds
-- **🌍 Multi-Language** — All languages at once
-- **📝 Professional** — Copywriter-quality text
-- **📦 Complete** — Entire menu prepared
+- **Review-first** — Draft descriptions before publishing
+- **Language-aware** — Scope follows configured project support
+- **Editable** — Owner-approved wording
+- **Batch-friendly** — Selected items prepared together
 
 ### Social Proof Placeholders
 
-> "I uploaded my menu and the descriptions were already done. Saved me hours." — _Restaurant Owner_
+Do not use testimonials without approved customer evidence.
 
-> "Professional descriptions in three languages—I didn't have to write a word." — _Café Manager_
+Do not use language-count proof without release-specific evidence.
 
 ### CTA Copy Variants
 
@@ -196,7 +196,7 @@ Every item on the menu has a **professional description**—as part of the MenuL
 
 - "MenuList prepares descriptions"
 - "Professional quality"
-- "Appetizing" / "ready-to-use"
+- "Appetizing" / "owner-approved"
 - "Multi-language"
 - "Part of digitization"
 
@@ -210,27 +210,27 @@ Every item on the menu has a **professional description**—as part of the MenuL
 
 ---
 
-## Demo Script (90 seconds)
+## Demo Script (Historical Draft)
 
-### Setup (15 sec)
+### Setup
 
-"When you upload your menu to MenuList, descriptions are prepared automatically. Let me show you."
+"When you prepare menu content in MenuList, descriptions can start as reviewable drafts. Let me show you."
 
-### Flow (30 sec)
+### Flow
 
-"I've uploaded a menu with 20 items. As you can see, every item now has a professional description. 'Paneer Tikka'—'Tender cubes of cottage cheese marinated in aromatic spices, grilled to golden perfection in our tandoor.'"
+"I have selected menu items that need descriptions. The system prepares draft text for review."
 
-### Multi-language (20 sec)
+### Multi-language
 
-"And since I have Hindi enabled, there's a Hindi description too—same quality, culturally appropriate."
+"If the project has customer languages configured, keep this part of the demo tied to the release evidence for that language flow."
 
-### Editing (15 sec)
+### Editing
 
-"If I want to tweak anything, I just edit here. But most items are ready as-is."
+"The owner edits anything that needs attention, then saves only the approved wording."
 
-### Close (10 sec)
+### Close
 
-"That's MenuList—your menu arrives prepared."
+"That's MenuList: menu descriptions start as a draft, and the owner approves the final wording."
 
 ---
 
@@ -239,9 +239,9 @@ Every item on the menu has a **professional description**—as part of the MenuL
 | Asset           | Purpose                 | Spec                 |
 | --------------- | ----------------------- | -------------------- |
 | Before/after    | Blank vs prepared menu  | Side-by-side view    |
-| Multi-language  | Same item, 3 languages  | Grid comparison      |
-| Quality example | Professional description| Text highlight       |
-| Full menu       | Complete prepared menu  | Screenshot           |
+| Multi-language  | Configured language example | Grid comparison      |
+| Quality example | Owner-approved description | Text highlight       |
+| Full menu       | Prepared draft menu     | Screenshot           |
 
 ---
 
@@ -249,10 +249,10 @@ Every item on the menu has a **professional description**—as part of the MenuL
 
 | Stat                 | Value               | Source           |
 | -------------------- | ------------------- | ---------------- |
-| Preparation time     | Seconds per item    | Product testing  |
-| Manual time per item | 5-10 minutes        | Industry average |
-| Languages supported  | All project langs   | Product spec     |
-| Quality level        | Professional        | User feedback    |
+| Preparation time     | Requires release-specific evidence | Target release QA |
+| Manual time per item | Do not use without source evidence | Market evidence |
+| Languages supported  | Configured workflow only           | Product spec and QA |
+| Quality level        | Owner-reviewed wording             | Owner QA |
 
 ---
 
@@ -269,7 +269,7 @@ MenuList **prepares** descriptions as part of menu digitization—not as a separ
 
 If descriptions are already complete, the feature is invisible. This is correct.
 
-**Say:** "MenuList ensures your menu is ready"  
+**Say:** "MenuList helps prepare menu content for review"
 **Don't say:** "Generate descriptions anytime"
 
 ### No Encouragement of Regeneration

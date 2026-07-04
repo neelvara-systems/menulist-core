@@ -67,7 +67,7 @@ const pricingFaqData = [
                     <li>Official Business Page with hours, contact, and menu</li>
                     <li>Owner-approved menu updates from one source</li>
                     <li>Stable customer-facing URL after activation</li>
-                    <li>Real-time updates across all surfaces</li>
+                    <li>Approved updates through the public menu and business page refresh paths</li>
                 </ul>
             </div>
         )

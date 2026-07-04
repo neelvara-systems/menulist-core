@@ -1,14 +1,14 @@
 # Menu Correctness Engine (MCE)
 
-**Your menu is always correct — everywhere, automatically.**
+**Menu data is validated at save time before supported publishing flows continue.**
 
 ---
 
 ## What This Is
 
-The Menu Correctness Engine is a validation layer that runs on every menu save, ensuring project data is complete, valid, and safe before it reaches customer-facing surfaces. MCE validates — it does not duplicate, route, or store separate copies of data.
+The Menu Correctness Engine is a validation layer that runs on every menu save, checking whether project data is complete, valid, and safe before supported customer-facing publishing flows continue. MCE validates — it does not duplicate, route, or store separate copies of data.
 
-All surfaces already read from the same Firestore project document. MCE adds the missing piece: **deterministic validation at save-time** and verification metadata (`_mce` field) stamped on the existing document.
+Supported surfaces read from the same Firestore project document through their existing refresh, download, device, or provider paths. MCE adds the missing piece: **deterministic validation at save-time** and verification metadata (`_mce` field) stamped on the existing document.
 
 | Surface                | How MCE Protects It                               |
 | ---------------------- | ------------------------------------------------- |
@@ -37,7 +37,7 @@ All surfaces already read from the same Firestore project document. MCE adds the
 
 **Without MCE:** A price change in the editor may reach Firestore but with invalid data (missing name, broken category reference, negative price). Each surface independently reads this data without any validation gate. The owner doesn't know if the menu state is complete and correct.
 
-**With MCE:** Every edit passes through CSR validation before the write. Invalid data is flagged immediately. Verification metadata is stamped on the project document. Surfaces continue reading from the same document — but the data is now guaranteed to be validated.
+**With MCE:** Every audited project edit passes through CSR validation before the write. Invalid data is flagged immediately. Verification metadata is stamped on the project document. Supported surfaces continue reading from the same document through their own refresh, download, device, or provider paths.
 
 ---
 
@@ -106,8 +106,8 @@ Every save must pass all 5 laws before project data is marked as verified.
 | Law | Name                       | Core Rule                                                              |
 | --- | -------------------------- | ---------------------------------------------------------------------- |
 | 1   | **Price Integrity**        | One correct, valid price per item per outlet. No conflicts, no empties |
-| 2   | **Availability Integrity** | Disabled items disappear everywhere simultaneously                     |
-| 3   | **Hours Data Consistency** | Hours data consistent across all surfaces that display it              |
+| 2   | **Availability Integrity** | Disabled items are removed from saved project data; supported surfaces refresh through their own paths |
+| 3   | **Hours Data Consistency** | Hours data consistent in the saved source that supported surfaces read |
 | 4   | **Data Completeness**      | All fields present and valid. No empty names, no broken references     |
 | 5   | **Structural Integrity**   | Master→outlet inheritance stable; local overrides preserved            |
 

@@ -28,6 +28,7 @@ export type OwnerPublicTruthProjectSummary = Partial<ProjectSummaryData> & {
 export type OwnerPublicTruthReadinessReport = PublicTruthCheckReport & {
   mode: 'menulist_owner';
   modules: OwnerPublicTruthReadinessModule[];
+  setupJobList: OwnerPublicTruthSetupJob[];
   selectedProjectId?: string;
   primaryProjectId?: string;
   sourceSummary: {
@@ -88,6 +89,18 @@ export type OwnerPublicTruthReadinessModule = {
   relatedCheckIds: PublicTruthCheckFactId[];
 };
 
+export type OwnerPublicTruthSetupJob = {
+  id: OwnerPublicTruthReadinessModuleId;
+  status: Exclude<OwnerPublicTruthReadinessModuleStatus, 'ready'>;
+  title: string;
+  reason: string;
+  evidenceText: string;
+  fixHref: string;
+  mobileFixTarget: OwnerPublicTruthReadinessMobileFixTarget;
+  actionLabel: string;
+  relatedCheckIds: PublicTruthCheckFactId[];
+};
+
 type BuildOwnerPublicTruthReadinessInput = {
   generatedAt?: string;
   projectData?: Partial<Project> | Record<string, any> | null;
@@ -105,6 +118,7 @@ const OWNER_REQUIRED_FACTS = new Set<PublicTruthCheckFactId>([
   'customer_actions',
   'public_link',
 ]);
+export const OWNER_PUBLIC_TRUTH_MAX_SETUP_JOBS = 6;
 
 function hasText(value: unknown): boolean {
   return typeof value === 'string' && value.trim().length > 0;
@@ -465,6 +479,47 @@ function getModuleStatusFromChecks(
   if (related.some((check) => check.result === 'missing')) return 'needs_attention';
   if (related.some((check) => check.result === 'unclear' || check.result === 'not_checked')) return 'check';
   return 'ready';
+}
+
+function getSetupJobStatusRank(status: OwnerPublicTruthReadinessModuleStatus): number {
+  if (status === 'needs_attention') return 0;
+  if (status === 'check') return 1;
+  if (status === 'not_checked') return 2;
+  return 3;
+}
+
+function getSetupJobReason(module: OwnerPublicTruthReadinessModule): string {
+  if (module.status === 'needs_attention') {
+    return module.description;
+  }
+
+  if (module.status === 'check') {
+    return `Check this before customers rely on it: ${module.description}`;
+  }
+
+  return `This was not fully checked from the current MenuList data: ${module.description}`;
+}
+
+export function buildOwnerPublicTruthSetupJobList(
+  modules: OwnerPublicTruthReadinessModule[],
+): OwnerPublicTruthSetupJob[] {
+  return modules
+    .filter((module) => module.status !== 'ready')
+    .sort((first, second) => (
+      getSetupJobStatusRank(first.status) - getSetupJobStatusRank(second.status)
+    ))
+    .slice(0, OWNER_PUBLIC_TRUTH_MAX_SETUP_JOBS)
+    .map((module) => ({
+      id: module.id,
+      status: module.status as Exclude<OwnerPublicTruthReadinessModuleStatus, 'ready'>,
+      title: module.title,
+      reason: getSetupJobReason(module),
+      evidenceText: module.evidenceText,
+      fixHref: module.fixHref,
+      mobileFixTarget: module.mobileFixTarget,
+      actionLabel: module.actionLabel,
+      relatedCheckIds: module.relatedCheckIds,
+    }));
 }
 
 export function buildOwnerPublicTruthReadinessReport(input: BuildOwnerPublicTruthReadinessInput): OwnerPublicTruthReadinessReport {
@@ -896,6 +951,7 @@ export function buildOwnerPublicTruthReadinessReport(input: BuildOwnerPublicTrut
     : missingRequiredChecks.length >= 3 || checks.some((check) => check.id === 'business_identity' && check.result !== 'present')
       ? 'missing_basics'
       : 'unclear';
+  const setupJobList = buildOwnerPublicTruthSetupJobList(modules);
 
   return {
     mode: 'menulist_owner',
@@ -906,6 +962,7 @@ export function buildOwnerPublicTruthReadinessReport(input: BuildOwnerPublicTrut
     sourceKind: getSourceKind(store),
     checks,
     modules,
+    setupJobList,
     summary: countSummary(checks),
     selectedProjectId: input.selectedProjectId || undefined,
     primaryProjectId: primaryProject?.projectId,

@@ -68,9 +68,9 @@ Your official page shows info from your Business Settings. To update:
 
 1. Go to **Settings** → **Business Profile**
 2. Update your phone number, address, or hours
-3. Changes appear on your official page automatically (within 1 minute)
+3. After the save succeeds, changes appear on your official page within the current 1-minute public cache window.
 
-You don't need to "publish" or "save" your page separately. It updates itself.
+You don't need to "publish" the official page separately. It uses the saved business info after the public refresh path settles.
 
 > 📸 **Screenshot:** Business Settings with phone/address fields
 

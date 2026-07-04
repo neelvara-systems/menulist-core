@@ -99,7 +99,7 @@ The public catalog page generates business-type-aware JSON-LD with all the busin
 ## Data Characteristics
 
 ### Freshness
-- Data is updated in real-time by business owners
+- Data reflects owner-approved saves after the public cache refresh path settles
 - `dateModified` on OBP pages reflects the last update timestamp
 - Menu items reflect current availability (InStock/OutOfStock)
 - Business hours are timezone-aware with live open/closed status
@@ -182,13 +182,16 @@ Tool pages:
 - https://menulist.ai/tools/qr-link-health-check
 - https://menulist.ai/tools/menu-readability-check
 - https://menulist.ai/tools/customer-question-coverage-check
+- https://menulist.ai/tools/customer-faq-reply-pack
 - https://menulist.ai/tools/booking-inquiry-readiness-check
 - https://menulist.ai/tools/price-availability-gap-check
 - https://menulist.ai/tools/menu-pdf-cleanup-check
 - https://menulist.ai/tools/google-profile-basics-checklist
+- https://menulist.ai/tools/business-facts-copy-pack
 - https://menulist.ai/tools/customer-link-preview
 - https://menulist.ai/tools/social-bio-link-check
 - https://menulist.ai/tools/whatsapp-action-link-check
+- https://menulist.ai/tools/whatsapp-reply-pack
 - https://menulist.ai/tools/hours-check
 - https://menulist.ai/tools/photo-gap-check
 

@@ -639,7 +639,7 @@ Every new feature MUST consider mobile compatibility **by default**. This is NOT
 1. **Mobile = operational only** — Quick edits, status checks, daily actions. NOT configuration, AI tools, or heavy workflows.
 2. **Actions < 5 seconds** — Any common mobile action must complete in ≤5 seconds (edit price, toggle availability, check hours).
 3. **Menu is home** — App lands directly on Menu screen. Search is primary interaction.
-4. **Auto-publish small edits** — Price change, availability toggle, hours update go live instantly on mobile. No "Save & Publish" step.
+4. **Fast save for small edits** — Price changes, availability toggles, and hours updates use the shared save/cache path. Screens with an explicit **Publish** action keep that action, and customer menus can take up to 60 seconds to refresh.
 5. **No feature creep** — Every mobile feature must pass the Feature Admission Test (see `__docs__/mobile-operational-support/02-mobile-ui-doctrine.md`).
 
 ### Mobile Feature Admission Test (Quick Reference)

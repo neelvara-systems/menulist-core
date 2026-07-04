@@ -113,6 +113,126 @@ function verifyCustomerServiceWorkerPolicy() {
   assertNotIncludes(rootLayout, '.catch(() => {});', 'root development service-worker silent catch');
 }
 
+function verifyClientMenuOfflineDocsMatchServiceWorkerPolicy() {
+  const sw = read('public/sw-customer.js');
+  const offlinePage = read('src/app/offline/page.tsx');
+  const readme = read('__docs__/client-menu/README.md');
+  const spec = read('__docs__/client-menu/_spec.md');
+  const impl = read('__docs__/client-menu/_impl.md');
+  const marketing = read('__docs__/client-menu/_marketing.md');
+  const website = read('__docs__/client-menu/client-menu_website.md');
+  const helpdoc = read('__docs__/client-menu/client-menu_helpdoc.md');
+  const mobileSupport = read('__docs__/client-menu/client-menu_mobile-support.md');
+  const autosellSpec = read('__docs__/client-menu/autosell-features/_spec.md');
+  const autosellImpl = read('__docs__/client-menu/autosell-features/_impl.md');
+  const autosellFirebase = read('__docs__/client-menu/autosell-features/autosell-features_firebase.md');
+  const productionAudit = read('__docs__/audits/menulist-production-readiness-audit.md');
+  const changelog = read('__docs__/CHANGELOG.md');
+
+  [
+    [readme, 'Client Menu README'],
+    [spec, 'Client Menu spec'],
+    [impl, 'Client Menu implementation'],
+    [marketing, 'Client Menu marketing'],
+    [website, 'Client Menu website'],
+    [helpdoc, 'Client Menu helpdoc'],
+    [mobileSupport, 'Client Menu mobile support'],
+    [autosellSpec, 'AutoSell spec'],
+    [autosellImpl, 'AutoSell implementation'],
+    [autosellFirebase, 'AutoSell Firebase'],
+  ].forEach(([content, label]) => {
+    [
+      'works offline thanks to built-in caching',
+      'The menu works offline after the first load',
+      'Offline mode works (cached content)',
+      'Cached content visible',
+      'Item opens (cached)',
+      'Service worker, offline cache',
+      'Service worker + cache',
+      'next-pwa with service worker',
+      'PWA caching',
+      'PWA with service worker and no stale menu cache',
+      'updates the moment you make a change',
+      'updates itself',
+      'see it instantly',
+      'Customers see it instantly',
+      'Customers see it immediately',
+      'customers see it immediately',
+      'Instant Availability',
+      'Sold-out items fade instantly',
+      '100% of updates reflected instantly',
+      'Sold out items disappear instantly',
+      'Change reflects in < 1 second',
+      'see menu instantly',
+      'Mark items sold out instantly',
+      'Your menu, always live.',
+      'the customer at 2:01 saw the new price',
+      'customer seeing it at 2:01',
+      'Get Your Live Menu',
+      'Get your live menu',
+      'the menu that runs itself',
+      'The Menu That Runs Itself',
+      'A live menu that thinks for itself',
+      'Live menu.*real-time',
+      'Update your menu from WhatsApp',
+    ].forEach((stalePhrase) => {
+      assertNotIncludes(content, stalePhrase, `${label} offline/freshness boundary`);
+    });
+  });
+
+  assertIncludes(sw, 'FROZEN: Offline page only. NEVER cached menu fallback.', 'Customer service worker frozen offline policy');
+  assertIncludes(sw, 'Menu HTML, menu data, Firestore responses, item images', 'Customer service worker no menu cache policy');
+  assertIncludes(sw, 'When offline, the customer sees the branded /offline page.', 'Customer service worker branded offline fallback policy');
+  assertIncludes(offlinePage, 'Reconnect to see the latest live menu.', 'Offline page latest-menu reconnect copy');
+
+  assertIncludes(readme, 'Offline fallback', 'Client Menu README offline fallback label');
+  assertIncludes(readme, 'Customer service worker shows `/offline`; no stale menu cache', 'Client Menu README offline fallback copy');
+  assertIncludes(spec, 'Offline mode shows a clear reconnect screen instead of cached menu content', 'Client Menu spec offline fallback requirement');
+  assertIncludes(spec, 'SSR, Vercel Data Cache, optimized images', 'Client Menu spec performance mitigation');
+  assertIncludes(impl, 'Customer service worker with offline fallback only', 'Client Menu implementation PWA tech boundary');
+  assertIncludes(impl, 'never caches menu HTML, menu data, Firestore', 'Client Menu implementation no menu cache boundary');
+  assertIncludes(impl, 'Offline state must show reconnect screen, not stale menu content', 'Client Menu implementation offline expected behavior');
+  assertIncludes(marketing, 'public menu refreshes through the current cache path', 'Client Menu marketing cache refresh copy');
+  assertIncludes(marketing, 'one live menu link backed by the approved source', 'Client Menu marketing source-truth copy');
+  assertIncludes(
+    marketing,
+    'Your menu link, backed by the approved source.',
+    'Client Menu marketing bounded hero copy',
+  );
+  assertIncludes(
+    marketing,
+    'customers saw the approved menu after refresh',
+    'Client Menu marketing bounded testimonial copy',
+  );
+  assertIncludes(
+    marketing,
+    'Get your approved menu link',
+    'Client Menu marketing bounded CTA copy',
+  );
+  assertIncludes(
+    marketing,
+    'customer menu showing the approved version after refresh',
+    'Client Menu marketing bounded launch-campaign hook',
+  );
+  assertIncludes(readme, '| Availability State      | Sold-out items fade after public menu refresh', 'Client Menu README availability cache-boundary copy');
+  assertIncludes(spec, '| Availability State          | Sold-out items fade after public menu refresh', 'Client Menu spec availability cache-boundary copy');
+  assertIncludes(spec, 'Current cache window can be up to 60 seconds', 'Client Menu spec availability cache window');
+  assertIncludes(marketing, '| **Availability State**      | Sold out? It fades after the public menu refresh |', 'Client Menu marketing availability cache-boundary copy');
+  assertIncludes(marketing, 'Customer menus refresh from the approved source', 'Client Menu marketing approved-source refresh copy');
+  assertIncludes(autosellSpec, '| 2   | Availability State    | Item fades after public menu refresh', 'AutoSell spec availability cache-boundary row');
+  assertIncludes(autosellSpec, 'Customer-visible freshness follows the current public cache path', 'AutoSell spec public cache boundary');
+  assertIncludes(autosellImpl, '## Feature #2: Availability State', 'AutoSell implementation availability heading');
+  assertIncludes(autosellFirebase, '### 2. Availability State (sold-out items fade after public menu refresh)', 'AutoSell Firebase availability cache-boundary heading');
+  assertIncludes(website, 'MenuList does not serve cached menu content offline', 'Client Menu website offline fallback copy');
+  assertIncludes(website, 'current cache refresh', 'Client Menu website cache refresh copy');
+  assertIncludes(helpdoc, 'offline screen and reloads the live menu after reconnecting', 'Client Menu helpdoc offline fallback copy');
+  assertIncludes(mobileSupport, 'Offline mode must show a clear reconnect screen instead of cached menu content that could be stale.', 'Client Menu mobile support offline fallback rule');
+  assertIncludes(productionAudit, 'Client Menu availability refresh-copy checkpoint', 'Production audit Client Menu availability refresh-copy checkpoint');
+  assertIncludes(productionAudit, 'Client Menu marketing freshness-copy checkpoint', 'Production audit Client Menu marketing freshness-copy checkpoint');
+  assertIncludes(changelog, 'Client Menu Availability Refresh Copy Boundary', 'Changelog Client Menu availability refresh-copy checkpoint');
+  assertIncludes(changelog, 'Client Menu Marketing Freshness Copy Boundary', 'Changelog Client Menu marketing freshness-copy checkpoint');
+}
+
 function verifyNextPwaScoping() {
   const nextConfig = read('next.config.js');
   const executableConfig = stripJsComments(nextConfig);
@@ -468,6 +588,15 @@ function verifyAnalyticsCoverage() {
   assertIncludes(customerAppFirebase, '`useCustomerAppDashboard` hook', 'Customer App Firebase current dashboard hook path');
   assertIncludes(customerAppFirebase, 'Live event-write, rollup, dashboard-value, real-device install, and production-host smoke still require', 'Customer App Firebase external certification boundary');
   assertIncludes(customerAppTest, 'The static source-chain gate proves field wiring only', 'Customer App test live analytics smoke boundary');
+  assertIncludes(customerAppTest, 'clear the 3-year freeze production gate', 'Customer App test production gate wording');
+  assertIncludes(customerAppTest, 'Each KPI clears production analytics signoff only when all three layers pass', 'Customer App test KPI signoff wording');
+  assertIncludes(customerAppTest, 'Analytics clears production signoff only if all are true', 'Customer App test analytics signoff wording');
+  assertIncludes(customerAppTest, 'Deploy Cloud Function changes through External Certification Runbook Gate 1 after `npm run verify:functions-deploy-preflight`', 'Customer App test scoped Functions deploy gate');
+  assertIncludes(customerAppTest, 'Customer App analytics runs inside the shared scheduler and `triggerCustomerAnalyticsManually`', 'Customer App test analytics Functions deploy target boundary');
+  assertNotIncludes(customerAppTest, 'production-ready under the 3-year freeze standard', 'Customer App test stale production-ready gate wording');
+  assertNotIncludes(customerAppTest, 'Each KPI is production-ready only when all three layers pass', 'Customer App test stale KPI production-ready wording');
+  assertNotIncludes(customerAppTest, 'Analytics is production-ready only if all are true', 'Customer App test stale analytics production-ready wording');
+  assertNotIncludes(customerAppTest, 'firebase deploy --only functions:aggregateCustomerAnalytics', 'Customer App test stale standalone aggregate deploy target');
   assertNotIncludes(customerAppFirebase, 'Dashboard reads use existing `useAnalyticsData` hook with `projectId=\'customerApp\'`', 'Customer App Firebase stale dashboard hook wording');
   for (const [label, content] of [
     ['Customer App spec', customerAppSpec],
@@ -794,6 +923,7 @@ const checks = [
   ['manifest link', verifyManifestLink],
   ['manifest route', verifyManifestRoute],
   ['customer service worker policy', verifyCustomerServiceWorkerPolicy],
+  ['client menu offline docs', verifyClientMenuOfflineDocsMatchServiceWorkerPolicy],
   ['next-pwa scoping', verifyNextPwaScoping],
   ['owner auth manifest', verifyOwnerAuthManifest],
   ['owner transparent favicons', verifyOwnerFaviconsTransparent],

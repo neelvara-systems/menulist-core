@@ -1,7 +1,7 @@
 # Public Truth Tools - Website Content
 
 **Status:** Planning documentation only
-**Last Updated:** July 3, 2026
+**Last Updated:** July 4, 2026
 **Audience:** Public website writers
 
 ---
@@ -36,18 +36,19 @@ The report shows what is present, what is missing, and what can be turned into o
 The public tool layer should launch as a small sequence, not a broad toolbox:
 
 1. Public Truth Check
-2. QR Link Health Check
-3. Menu / Service Readability Check
-4. Customer Question Coverage Check
-5. Booking Inquiry Readiness Check
-6. Price Availability Gap Check
-7. Menu PDF Cleanup Check
-8. Google Profile Basics Checklist
-9. WhatsApp Action Link Check
-10. Hours & Holiday Hours Check
-11. Photo / Visual Identity Gap Check
-12. One Customer Link Preview
-13. Social Bio Link Consistency Check
+2. Business Facts Copy Pack
+3. QR Link Health Check
+4. Menu / Service Readability Check
+5. Customer Question Coverage Check
+6. Booking Inquiry Readiness Check
+7. Price Availability Gap Check
+8. Menu PDF Cleanup Check
+9. Google Profile Basics Checklist
+10. WhatsApp Action Link Check
+11. Hours & Holiday Hours Check
+12. Photo / Visual Identity Gap Check
+13. One Customer Link Preview
+14. Social Bio Link Consistency Check
 
 Each tool should keep the same CTA: create, import, or fix one current MenuList customer link.
 

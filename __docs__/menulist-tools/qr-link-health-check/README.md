@@ -2,7 +2,7 @@
 
 > **Feature:** QR Link Health Check
 > **Status:** Implemented - public V0 browser-local checker
-> **Last Updated:** July 1, 2026
+> **Last Updated:** July 4, 2026
 > **Version:** 0.1
 
 ---

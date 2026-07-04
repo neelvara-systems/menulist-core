@@ -9,7 +9,7 @@
 
 ## Elevator Pitch (30 seconds)
 
-MenuList now lets you update prices, availability, visibility, and categories for your entire menu in seconds — not hours. Select items, preview changes, and apply with one click. Safe, instant, and reversible.
+MenuList lets owners update prices, availability, visibility, and categories for many menu items in one controlled pass instead of editing items one by one. Select items, preview changes, and apply with one click. Safe, previewed, and reversible.
 
 ---
 
@@ -28,13 +28,13 @@ MenuList's Menu Command Center lets owners update many items at once:
 - Select a category or pick specific items
 - Choose how to change (increase %, decrease %, set fixed, show/hide, move)
 - See exactly what will change before applying
-- Apply in one click — updates everywhere automatically
+- Apply in one click through the editor save path
 
 No mistakes. No stress. No double-checking.
 
 ### Why This Matters
 
-When pricing changes happen inside MenuList first, everything follows — QR, screens, PDFs, POS. The owner doesn’t need to update anything else. MenuList becomes where menu decisions happen.
+When pricing changes happen inside MenuList first, the public link and configured screens follow their supported refresh paths. Downloaded PDFs, printed menus, and POS/external systems need their own replacement or connected integration evidence. MenuList becomes where menu decisions happen.
 
 ### The Authority Shift
 
@@ -59,7 +59,7 @@ MenuList becomes the fastest control surface for menu operations.
 | No preview — apply and hope           | Preview every change before applying |
 | No undo — mistakes are permanent      | 30-second undo window                |
 | Ignores outlet differences            | Respects multi-outlet inheritance    |
-| Requires separate updates per surface | One change → updates everywhere      |
+| Requires separate item-by-item edits | One source change for MenuList-controlled outputs |
 
 ---
 
@@ -72,7 +72,7 @@ MenuList becomes the fastest control surface for menu operations.
 
 ### Slide 2: The Solution
 
-- "MenuList lets you update your entire menu in under 30 seconds."
+- "MenuList lets you update many menu items in one controlled pass."
 - Visual: Before/after — old workflow (many screens) vs MenuList (one modal)
 
 ### Slide 3: Key Capabilities
@@ -91,14 +91,14 @@ MenuList becomes the fastest control surface for menu operations.
 
 ### Slide 5: Real Use Cases
 
-- **Restaurant**: Inflation hit — increase all prices by 8% in 10 seconds
+- **Restaurant**: Inflation hit — increase selected prices by 8% in one session
 - **Café**: Coffee beans cost more — increase only beverages by 12%
 - **Salon**: Festival season — mark 20 services unavailable in one click
 
 ### Slide 6: The Bigger Picture
 
-- One change in MenuList → QR updated, screens updated, PDF updated, POS updated
-- Owner stops worrying about "did I update everywhere?"
+- One change in MenuList updates the approved menu source used by the public link and configured screen paths
+- Owner sees which outputs refresh through MenuList and which artifacts or connected systems need replacement or separate integration evidence
 - MenuList becomes the single source of menu truth
 - This is a control surface, not a tool — future capabilities (tax changes, tags, promotions) plug into the same Command Center
 
@@ -114,7 +114,7 @@ MenuList becomes the fastest control surface for menu operations.
 
 ### Hero Headline
 
-"Update your entire menu in seconds."
+"Update many menu items in one controlled pass."
 
 ### Subheading
 
@@ -123,7 +123,7 @@ MenuList becomes the fastest control surface for menu operations.
 ### Key Benefit Bullets
 
 - **See before you change** — Preview every price update before it goes live
-- **Update everywhere at once** — QR, screens, PDF, and POS update automatically
+- **Update the MenuList source once** — the public link and configured screens refresh through supported paths, while PDFs, printed menus, and connected systems stay separately evidence-bound
 - **Protected from mistakes** — Safety limits and one-click undo keep you safe
 - **Works for chains** — Respects outlet-specific pricing and overrides
 
@@ -184,14 +184,14 @@ All would plug into the same 3-panel modal (Selection → Action → Preview). T
 
 ### India Messaging (WhatsApp-first, daily operations)
 
-- "Supplier prices went up? Update your whole menu in 30 seconds."
+- "Supplier prices went up? Update many menu items in one controlled pass."
 - "No more editing items one by one. Select all, change price, done."
-- "Works for all your branches — master menu changes flow automatically."
+- "Works for branches — saved master menu changes follow the outlet sync/cache path."
 
 ### Non-India Messaging (full platform, automation narrative)
 
 - "Bulk menu management built for multi-location businesses."
-- "Price changes propagate across all digital surfaces instantly."
+- "MenuList-controlled digital surfaces refresh through supported paths."
 - "Preview, apply, undo — menu management without risk."
 
 ---
@@ -200,7 +200,7 @@ All would plug into the same 3-panel modal (Selection → Action → Preview). T
 
 ### "We already update prices in our POS"
 
-"MenuList becomes your pricing source of truth. Update once here — POS, QR, screens, and PDF all follow. No more updating multiple systems."
+"MenuList becomes your pricing source of truth for MenuList-controlled menu display. Save once here; the public link and configured screens refresh through supported paths. PDFs, printed copies, and POS/external systems need replacement or connected integration evidence."
 
 ### "What if we make a mistake?"
 
@@ -208,7 +208,7 @@ All would plug into the same 3-panel modal (Selection → Action → Preview). T
 
 ### "We only have one location, do we need this?"
 
-"Even with one location, updating 100+ items one-by-one takes time. This turns a 30-minute task into a 30-second task."
+"Even with one location, updating 100+ items one by one takes time. This turns a line-by-line task into one controlled pass."
 
 ### "Is this safe for our multi-outlet setup?"
 
@@ -222,9 +222,10 @@ All would plug into the same 3-panel modal (Selection → Action → Preview). T
 
 - "Update", "Change", "Apply"
 - "Preview before applying"
-- "Updates everywhere automatically"
+- "MenuList-controlled live surfaces refresh through supported paths"
 - "Protected from mistakes"
-- "Handled automatically"
+- "Replace downloaded or printed copies after changes"
+- "Connected systems require verified integration"
 - "Safe and reversible"
 
 ### NEVER USE

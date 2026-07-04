@@ -1,5 +1,7 @@
 # Google Profile Basics Checklist - Help Doc
 
+**Last Updated:** July 4, 2026
+
 Google Profile Basics Checklist shows whether the Google Business Profile facts you maintain are ready for customers and connected to one current MenuList customer link.
 
 ## What It Checks

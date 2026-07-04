@@ -1,5 +1,7 @@
 # Tools Hub - Firebase and Cost Boundary
 
+**Last Updated:** July 4, 2026
+
 ## Summary
 
 Tools Hub is static website UI. It has no report-time storage, no owner data reads, no public report writes, no Functions, and no provider calls.

@@ -1,7 +1,7 @@
 # Shareable Tool Reports - Product Spec
 
 **Status:** Implemented V0
-**Last Updated:** July 3, 2026
+**Last Updated:** July 4, 2026
 **Audience:** CEO / PM
 
 ---
@@ -15,6 +15,7 @@ Owner/prospect flow:
 ```txt
 Run a free public check
 -> see a concrete report
+-> report gaps become a practical setup job list
 -> copy public report link
 -> share with partner, staff, agency, or MenuList
 -> follow the natural MenuList fix path
@@ -49,6 +50,7 @@ V0 includes:
 - safe internal next-action link guard
 - explicit checked and not-checked text
 - explicit evidence text for every row
+- bounded setup job list derived from visible report gaps
 - copy report link, copy report text, and download report from the viewer
 - optional consented follow-up form on the viewer
 - bounded report source metadata on the existing contact enquiry when the user submits the follow-up form
@@ -85,6 +87,7 @@ Every shareable report must include:
 | `notCheckedText` | What it did not check |
 | `summary` | One honest number plus present/missing/unclear/not-checked counts |
 | `checks[]` | 3-16 rows, each with label, result, helper text, and evidence text |
+| `setupJobList` | Up to six practical setup jobs derived from visible report gaps |
 | `nextAction` | One MenuList action |
 | `publicBoundary[]` | Share-page limits |
 
@@ -98,7 +101,7 @@ The viewer is public by design.
 
 The user must not need to be a MenuList user to open a report link. The base viewer route is discoverable, while individual hash payloads are not added to sitemap because they are URL fragments.
 
-The viewer may accept a consented follow-up request through the existing `/api/public/contact` route. That request sends a bounded report summary, contact details, and a small `sourceContext` object with tool id, report status, owner-entered business context, and summary counts. It does not create a report record, stored report URL, or recurring report history.
+The viewer may accept a consented follow-up request through the existing `/api/public/contact` route. That request sends a bounded report summary, contact details, and a small `sourceContext` object with tool id, report status, owner-entered business context, summary counts, and setup job list. It does not create a report record, stored report URL, or recurring report history.
 
 ---
 

@@ -427,6 +427,7 @@ function verifyDocsAndPage() {
 
   const implDoc = read('__docs__/platform-founder-monitor/platform-founder-monitor_impl.md');
   const firebaseDoc = read('__docs__/platform-founder-monitor/platform-founder-monitor_firebase.md');
+  const validationDoc = read('__docs__/platform-founder-monitor/platform-founder-monitor_validation.md');
   [
     'precomputed',
     'founderRevenueMovements',
@@ -438,6 +439,21 @@ function verifyDocsAndPage() {
   ].forEach((token) => {
     assertIncludes(implDoc, token, 'Founder Monitor implementation docs');
     assertIncludes(firebaseDoc, token, 'Founder Monitor Firebase docs');
+  });
+  [
+    [firebaseDoc, 'Founder Monitor Firebase docs'],
+    [validationDoc, 'Founder Monitor validation docs'],
+  ].forEach(([content, label]) => {
+    assertIncludes(
+      content,
+      'firebase deploy --project menulist-qa --config firebase.json --only functions:menulistMaintenanceScheduler --non-interactive',
+      `${label} scoped QA deploy command`,
+    );
+    assertNotIncludes(
+      content,
+      'firebase deploy --only functions:menulistMaintenanceScheduler --project menulist-qa',
+      `${label} stale deploy command without config-first scoped target`,
+    );
   });
 }
 

@@ -7,6 +7,7 @@ import {
   LuCalendarClock,
   LuCamera,
   LuClipboardCheck,
+  LuFileQuestion,
   LuFileText,
   LuHelpCircle,
   LuImage,
@@ -52,10 +53,22 @@ const TOOLS_HUB_GROUPS: ToolsHubGroup[] = [
         ownerPathKey: 'create',
       },
       {
+        href: '/tools/business-facts-copy-pack',
+        key: 'businessFactsCopyPack',
+        icon: LuFileText,
+        ownerPathKey: 'create',
+      },
+      {
         href: '/tools/customer-question-coverage-check',
         key: 'customerQuestionCoverageCheck',
         icon: LuHelpCircle,
         ownerPathKey: 'fix',
+      },
+      {
+        href: '/tools/customer-faq-reply-pack',
+        key: 'customerFaqReplyPack',
+        icon: LuFileQuestion,
+        ownerPathKey: 'create',
       },
       {
         href: '/tools/customer-link-preview',
@@ -122,6 +135,12 @@ const TOOLS_HUB_GROUPS: ToolsHubGroup[] = [
         key: 'whatsappActionLinkCheck',
         icon: LuMessageCircle,
         ownerPathKey: 'fix',
+      },
+      {
+        href: '/tools/whatsapp-reply-pack',
+        key: 'whatsappReplyPack',
+        icon: LuMessageCircle,
+        ownerPathKey: 'create',
       },
       {
         href: '/tools/hours-check',

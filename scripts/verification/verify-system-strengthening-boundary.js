@@ -308,6 +308,21 @@ function verifyBillingReadWriteBoundary() {
   });
 }
 
+function verifySystemAuditDeployEvidenceBoundary() {
+  const audit = read('__docs__/system-strengthening/menulist-system-data-flow-audit-2026-06-20.md');
+  [
+    'This audit is append-only historical evidence, not a current deployment runbook.',
+    'do not reuse older `firebase deploy --only functions...` command shapes',
+    'no-config commands, PATH-wrapped local commands, broad `--only functions` commands, or retired `ecomsai` target commands',
+    'Current MenuList Functions retry evidence must start with `npm run verify:functions-deploy-preflight`',
+    'External Certification Runbook Gate 1 flow against `menulist-qa`',
+    'record the exact scoped target list and reason in `__docs__/audits/menulist-production-readiness-audit.md` before the retry',
+    'Production deploys require QA evidence and explicit production deploy approval in the active session.',
+  ].forEach((token) => {
+    assertIncludes(audit, token, `System audit deploy evidence boundary missing token ${token}`);
+  });
+}
+
 function verifyPresetCascadeBatching() {
   const route = 'src/database/projects/index.ts';
   const source = read(route);
@@ -358,6 +373,7 @@ verifyScreenSeenRateLimit();
 verifyAiRouteControls();
 verifyChatFeedbackAcceptedShape();
 verifyBillingReadWriteBoundary();
+verifySystemAuditDeployEvidenceBoundary();
 verifyPresetCascadeBatching();
 verifyNoApiOrDatabaseConsoleCalls();
 

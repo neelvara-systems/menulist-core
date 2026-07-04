@@ -1,7 +1,7 @@
 # Shareable Tool Reports - Firebase Cost Tracking
 
 **Status:** Implemented V0
-**Last Updated:** July 3, 2026
+**Last Updated:** July 4, 2026
 
 ---
 
@@ -45,9 +45,9 @@ The accepted enquiry also stores bounded lead-routing metadata:
 - `sourceToolId`
 - `sourceReportStatus`
 - `sourcePrimaryNumber`
-- nested `sourceContext` with owner-entered business context and summary counts
+- nested `sourceContext` with owner-entered business context, summary counts, and bounded `setupJobList`
 
-These fields are operational lead metadata on the existing enquiry write. They are not canonical MenuList truth and must not be copied into store/project truth without owner confirmation.
+These fields are operational lead metadata on the existing enquiry write. Setup jobs are derived from the visible report gaps so the team can triage paid setup work. They are not canonical MenuList truth and must not be copied into store/project truth without owner confirmation.
 
 Source tools can keep their existing optional consented handoff through `/api/public/contact`. These are contact enquiries, not report storage.
 

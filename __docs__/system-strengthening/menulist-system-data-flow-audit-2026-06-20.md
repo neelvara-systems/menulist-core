@@ -11,6 +11,12 @@ Excluded from MenuList findings:
 
 Firebase Functions logic changed in this pass, so MenuList Functions deployment is required after validation. Deployment status is tracked at the end of this document.
 
+## Current Deployment Boundary
+
+This audit is append-only historical evidence, not a current deployment runbook. Command blocks and inline deploy notes below preserve what was attempted at the time; do not reuse older `firebase deploy --only functions...` command shapes, no-config commands, PATH-wrapped local commands, broad `--only functions` commands, or retired `ecomsai` target commands from this file as current guidance.
+
+Current MenuList Functions retry evidence must start with `npm run verify:functions-deploy-preflight`, then use the External Certification Runbook Gate 1 flow against `menulist-qa`. If a smaller or wider target subset is required, record the exact scoped target list and reason in `__docs__/audits/menulist-production-readiness-audit.md` before the retry. Production deploys require QA evidence and explicit production deploy approval in the active session.
+
 ## Fix Ledger
 
 ### June 30 follow-up: CampaignCue API security-log boundary

@@ -31,7 +31,7 @@ Both share: Cache (localStorage) · Firebase listener on public-safe `screen_{st
 
 - **No separate screen collection** — canonical screen state stays in `platformSummary/campaigns_{sId}.screen`; public clients receive only a safe `platformSummary/screen_{sId}` listener mirror.
 - **No API routes for screen display** — server component + DAL pattern
-- **No polling** — Firebase `onSnapshot` doc listener for real-time updates
+- **No polling** — Firebase `onSnapshot` doc listener drives content-version reloads after acknowledged public-output changes
 - **No Service Worker** — removed; localStorage cache sufficient
 - **License check** — `getScreenDataByToken()` blocks inactive/blocked stores
 - **Default = Menu Board** — `/screen/token` renders full menu; `?mode=highlights` for slideshow
@@ -195,7 +195,7 @@ Settings page → DigitalScreenSettings/index.tsx
 > **Key principle:** Content management IS menu management. Owner never manages "screen content" separately.
 
 ```
-MENU BOARD: Owner edits menu → screen updates automatically
+MENU BOARD: Owner edits menu → screen refreshes through cache invalidation and the content-version listener
 ─────────────────────────────────────────────────────────────
 Owner edits item in Editor (price, name, availability)
   → save triggers public cache invalidation for the store

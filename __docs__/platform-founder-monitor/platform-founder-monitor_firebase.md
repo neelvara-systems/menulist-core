@@ -78,5 +78,5 @@ No customer, owner, or public endpoint is added.
 This feature changes Next.js app/API code and Firebase Cloud Function scheduler logic. The Functions side must be validated with `npm --prefix functions run build` and deployed with the scoped MenuList QA target:
 
 ```bash
-firebase deploy --only functions:menulistMaintenanceScheduler --project menulist-qa
+firebase deploy --project menulist-qa --config firebase.json --only functions:menulistMaintenanceScheduler --non-interactive
 ```

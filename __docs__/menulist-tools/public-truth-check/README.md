@@ -1,9 +1,9 @@
 # Public Truth Check - Documentation Hub
 
 > **Feature:** Public Truth Check
-> **Status:** Implemented - public self-report route and exact logged-in owner fix loop
-> **Last Updated:** July 1, 2026
-> **Version:** 0.7
+> **Status:** Implemented - public self-report route, owner readiness modules, and logged-in owner fix list
+> **Last Updated:** July 4, 2026
+> **Version:** 0.8
 
 ---
 
@@ -94,18 +94,24 @@ Implemented public route behavior is browser-local `self_report`. It does not fe
 
 Implemented owner behavior is `menulist_owner`. It appears inside Business Health on desktop and mobile, reads MenuList store/project truth through existing owner context and client DAL, reuses `evaluatePublicTruthIndexability`, and writes no report state.
 
-The July 1 V1 expansion keeps the same owner hook and report builder, but adds eight module rows aligned to the public tool family:
+The owner report also derives a bounded `setupJobList` from missing, unclear, or not-checked readiness modules. This turns the owner-side gaps into a practical fix list without adding saved reports, action drafts, or mutation paths.
+
+The V1 expansion keeps the same owner hook and report builder, but adds twelve module rows aligned to the public tool family:
 
 - Public truth basics
 - QR link health
 - Menu or service clarity
+- Price and availability clarity
+- PDF cleanup readiness
 - WhatsApp action link
 - Hours readiness
 - Photo and visual identity
+- Customer question coverage
+- Booking and inquiry readiness
 - Google profile handoff
 - Menu freshness
 
-These module rows are read-only reports with exact owner fix targets. Desktop Business Health links each missing or unclear module to an existing MenuList fix surface such as Business Settings, Projects, or QR tools with a focused query target. Mobile Business Health uses shell callbacks to open the Menu tab, Share tab, or More sub-screens without desktop-route bypasses.
+These module rows are read-only reports with exact owner fix targets. Desktop Business Health links each missing or unclear module and each fix-list item to an existing MenuList fix surface such as Business Settings, Projects, or QR tools with a focused query target. Mobile Business Health uses shell callbacks to open the Menu tab, Share tab, or More sub-screens without desktop-route bypasses.
 
 ---
 
@@ -126,6 +132,7 @@ These module rows are read-only reports with exact owner fix targets. Desktop Bu
 
 | Version | Date | Changes |
 | --- | --- | --- |
+| 0.8 | July 4, 2026 | Added owner-side `setupJobList` to turn missing/unclear Business Health readiness modules into a bounded desktop/mobile fix list without writes |
 | 0.7 | July 1, 2026 | Added exact V1 owner fix targets for desktop and mobile so each missing module routes to an existing MenuList fix surface without creating a new dashboard |
 | 0.6 | July 1, 2026 | Expanded V1 owner check into six module rows for public basics, QR link health, menu/service clarity, WhatsApp action, hours, and photos inside desktop/mobile Business Health |
 | 0.5 | June 30, 2026 | Added explicit per-row evidence text to V0/V1 reports and clarified that Public Truth Check V0 does not store uploaded files |

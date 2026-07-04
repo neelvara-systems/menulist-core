@@ -1,8 +1,8 @@
 # MenuList Main Website (menulist.ai)
 
-**Version:** 3.6.101 (Customer Link Inclusion Strip)
+**Version:** 3.6.104 (Customer FAQ Reply Pack)
 **Status:** ✅ IMPLEMENTED — Canonical
-**Last Updated:** July 3, 2026
+**Last Updated:** July 4, 2026
 **Workflow:** `.codex/workflows/website.md`
 
 ---
@@ -13,7 +13,15 @@ The current implementation is the only default MenuList marketing website.
 
 | Canonical Version | Name | Core Message | Status |
 | ----------------- | ---- | ------------ | ------ |
-| **3.6.101** | **Customer Link Inclusion Strip** | **Homepage now adds a compact proof strip after the customer preview showing what the customer link includes: official page, QR link, print files, customer actions, phone dashboard, and activity/feedback.** | **ACTIVE** |
+| **3.6.104** | **Customer FAQ Reply Pack** | **MenuList Tools now includes a public browser-local FAQ pack that turns repeated customer questions and owner-entered facts into reusable answers.** | **ACTIVE** |
+
+Version 3.6.104 adds `/tools/customer-faq-reply-pack` as a public MenuList Tools route. The tool runs browser-local self-report checks, generates deterministic FAQ/menu/hours/price/location/action/availability/fallback answers from owner-entered questions and facts, supports copy/download/shareable report actions, and can submit an optional consented follow-up through the existing bounded `/api/public/contact` route. It is feature-flagged through `ENABLE_PUBLIC_TRUTH_TOOLS` and `ENABLE_PUBLIC_TRUTH_CUSTOMER_FAQ_REPLY_PACK`, registered in Tools Hub, platform discovery, static sitemap, `llms.txt`, and `llms-full.txt`, and guarded by `npm run verify:customer-faq-reply-pack` against customer-conversation reads, chatbot creation, automation configuration, message sending, external source fetches, report storage, provider calls, and ranking/citation claims. This is public website route/component/locale/discovery/docs/verifier work only; owner dashboard runtime, customer menu/OBP runtime, external source adapters, AI/search readability checks, new Firebase collections, Firebase rules, Cloud Functions, Vercel deployment, production build, and DNS were not changed.
+
+Version 3.6.103 adds `/tools/whatsapp-reply-pack` as a public MenuList Tools route. The tool runs browser-local self-report checks, generates deterministic WhatsApp greeting/hours/menu/price/order/delivery/fallback/customer-link replies from owner-entered facts, supports copy/download/shareable report actions, and can submit an optional consented follow-up through the existing bounded `/api/public/contact` route. It is feature-flagged through `ENABLE_PUBLIC_TRUTH_TOOLS` and `ENABLE_PUBLIC_TRUTH_WHATSAPP_REPLY_PACK`, registered in Tools Hub, platform discovery, static sitemap, `llms.txt`, and `llms-full.txt`, and guarded by `npm run verify:whatsapp-reply-pack` against WhatsApp API calls, message sending, phone-number verification, external source fetches, platform updates, report storage, provider calls, and ranking/citation claims. This is public website route/component/locale/discovery/docs/verifier work only; owner dashboard runtime, customer menu/OBP runtime, external source adapters, AI/search readability checks, new Firebase collections, Firebase rules, Cloud Functions, Vercel deployment, production build, and DNS were not changed.
+
+Version 3.6.102 adds `/tools/business-facts-copy-pack` as a public MenuList Tools route. The tool runs browser-local self-report checks, generates deterministic profile/WhatsApp/social/website/staff/customer-link copy from owner-entered facts, supports copy/download/shareable report actions, and can submit an optional consented follow-up through the existing bounded `/api/public/contact` route. It is feature-flagged through `ENABLE_PUBLIC_TRUTH_TOOLS` and `ENABLE_PUBLIC_TRUTH_BUSINESS_FACTS_COPY_PACK`, registered in Tools Hub, platform discovery, static sitemap, `llms.txt`, and `llms-full.txt`, and guarded by `npm run verify:business-facts-copy-pack` against external source fetches, profile inspection, platform updates, report storage, provider calls, and ranking/citation claims. This is public website route/component/CSS/locale/discovery/docs/verifier work only; owner dashboard runtime, customer menu/OBP runtime, external source adapters, AI/search readability checks, new Firebase collections, Firebase rules, Cloud Functions, Vercel deployment, production build, and DNS were not changed.
+
+Version 3.6.103 remains WhatsApp Reply Pack and is preserved below as the previous website version note.
 
 Version 3.6.101 adds `CustomerLinkIncludesSection` between `CustomerBrowseSection` and `OwnerProofSection`. The section replaces any need to re-mount the heavier `SurfacesSection` by showing the six practical outputs SMB owners care about after approval: Official Business Page, QR link, print files, customer actions, phone dashboard, and activity/feedback. This keeps the homepage mobile try-first while preserving product depth. This is public website component/CSS/locale/docs work only; `/create-menu` upload/link runtime, preview processing, auth, pricing/payment, owner dashboard, customer menu/OBP runtime, Firebase rules, Cloud Functions, Vercel deployment, and DNS were not changed.
 

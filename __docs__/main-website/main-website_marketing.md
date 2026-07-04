@@ -242,12 +242,13 @@ Focus on ONE city (e.g., Bangalore, Mumbai, or Pune)
 2. Text: "This business has no website." (2s)
 3. Take photo / upload (3s)
 4. AI extraction happening — items appearing (5s)
-5. Digital menu generated (3s)
-6. QR code appears (2s)
-7. Official Business Page opens (5s)
-8. Customer scans QR on phone (3s)
-9. Text: "Business online in under a minute." (3s)
-10. MenuList logo (2s)
+5. Review draft appears (3s)
+6. Owner approves and publishes (3s)
+7. QR/customer link appears (2s)
+8. Official Business Page opens (5s)
+9. Customer scans QR on phone (3s)
+10. Text: "Review first. Publish the approved menu link." (3s)
+11. MenuList logo (2s)
 
 **Key rules:**
 
@@ -418,7 +419,7 @@ _Cut._
 
 This happens every day.
 
-One menu. Always correct.
+One approved source. Fewer old-menu moments.
 
 ### Ad Type 3 — Silent Authority
 
@@ -429,7 +430,7 @@ No talking. Just:
 - Text overlay:
 
 > Update once.
-> Correct everywhere.
+> Share the approved link.
 
 ---
 
@@ -448,7 +449,7 @@ Most products lose users after creation. The menu is "done" but not distributed.
 | After publish | "Your menu is live. Share it where customers look."        | Operational, calm   |
 | 24 hours      | "Your menu is live but only shared in one place."          | Factual observation |
 | 3 days        | "Customers may still see your old menu on some platforms." | Soft accusation     |
-| 7 days        | "Your menu is correct here. Is it correct everywhere?"     | Final nudge         |
+| 7 days        | "Your menu is current here. Have you replaced the old links elsewhere?" | Final nudge         |
 
 **Rules:**
 
@@ -461,7 +462,7 @@ Most products lose users after creation. The menu is "done" but not distributed.
 
 At publish moment, frame the action as commitment:
 
-> "This becomes your official menu link. Share it everywhere — it stays correct."
+> "This becomes your official menu link. Share it where customers look, and replace older PDFs or external links that customers may still find."
 
 This shifts perception from "I created a digital menu" to "I committed to one official source."
 

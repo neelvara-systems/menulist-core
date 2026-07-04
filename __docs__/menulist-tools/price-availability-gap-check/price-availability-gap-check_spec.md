@@ -1,6 +1,7 @@
 # Price Availability Gap Check - Specification
 
 **Status:** Implemented V0 public tool and V1 owner readiness module
+**Last Updated:** July 4, 2026
 **Route:** `/tools/price-availability-gap-check`
 **Local Source Gate:** `npm run verify:price-availability-gap-check`
 

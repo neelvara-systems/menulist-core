@@ -37,7 +37,7 @@ Your digital menu is what customers see when they scan your QR code. It shows yo
 2. Find the item you want to change
 3. Click on the price and type the new amount
 4. Click **Save**
-5. Customers see the new price within seconds
+5. The customer menu refreshes through the current public cache path, usually within 60 seconds
 
 > 📸 **Screenshot:** Editor view with price field highlighted
 
@@ -57,7 +57,7 @@ Your digital menu is what customers see when they scan your QR code. It shows yo
 2. Click **Add Item** in the category where it belongs
 3. Fill in: name, price, description (optional), image (optional)
 4. Click **Save**
-5. The new item appears on your customer menu immediately
+5. The customer menu refreshes through the current public cache path, usually within 60 seconds
 
 ### How to change your menu's look and feel
 
@@ -115,7 +115,7 @@ Your digital menu is what customers see when they scan your QR code. It shows yo
 
 1. Reduce image sizes in the editor (the system compresses automatically, but very large originals take longer)
 2. The menu is optimized for mobile — it should load in under 2 seconds on a normal connection
-3. The menu works offline after the first load
+3. If the customer's connection drops, the installed customer app shows a clear offline screen and reloads the live menu after reconnecting
 
 ### Items are showing in the wrong order
 

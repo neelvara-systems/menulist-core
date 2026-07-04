@@ -1,6 +1,7 @@
 # One Customer Link Preview - Firebase and Cost
 
 **Status:** Implemented V0 public browser-local checker
+**Last Updated:** July 4, 2026
 
 ## V0 Cost Boundary
 

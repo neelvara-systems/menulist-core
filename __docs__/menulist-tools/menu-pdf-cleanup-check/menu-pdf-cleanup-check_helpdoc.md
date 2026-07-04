@@ -1,5 +1,7 @@
 # Menu PDF Cleanup Check - Help Doc
 
+**Last Updated:** July 4, 2026
+
 Menu PDF Cleanup Check shows whether an old PDF source is still useful for customers or should be replaced with one current MenuList customer link.
 
 ## What It Checks

@@ -69,6 +69,10 @@ Firebase Functions monitoring follows the same boundary. `functions/src/lib/sent
 
 Fallback logging must not dump the original payload after another logger fails. For local file logs, `src/lib/logs/utils.ts` writes only in non-production and, if file append fails, emits a normalized `secureError()` with bounded metadata instead of printing the captured log message, provider response, request body, or stack.
 
+Local runtime log files (`logs/*.log`) are ignored development artifacts and must not be committed. The local log helpers may recreate those files during non-production API work, but production readiness treats tracked runtime captures as a source hygiene failure because even bounded development logs can contain route context, provider status, user/project identifiers, or historical payload residue from older helper versions.
+
+Local log helpers must sanitize `logFileName` before joining it with the local `logs/` directory. Slashes, backslashes, parent-directory dot runs, and empty/dot-only filenames are normalized so non-production diagnostics cannot write outside the local log directory even if a future caller passes an unsafe filename.
+
 ### **3. `containsSensitiveData()` - Validation guard**
 ```typescript
 import { containsSensitiveData } from '@lib/security/secureLogger';

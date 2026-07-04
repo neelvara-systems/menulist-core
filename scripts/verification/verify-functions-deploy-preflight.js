@@ -37,6 +37,7 @@ function run(label, command, args) {
 const runbook = read('__docs__/production-readiness/external-certification-runbook.md');
 const audit = read('__docs__/audits/menulist-production-readiness-audit.md');
 const launchPrerequisites = read('__docs__/production-readiness/launch-prerequisites.md');
+const functionsPackage = JSON.parse(read('functions/package.json'));
 
 assertIncludes(
   runbook,
@@ -57,6 +58,23 @@ assertIncludes(
   audit,
   'Cloud Resource Manager HTTP 403 caller permission before upload',
   'Production audit current Functions deploy blocker',
+);
+assertIncludes(
+  runbook,
+  'The default `functions/package.json` `deploy` script intentionally fails closed',
+  'Gate 1 Functions package deploy script boundary',
+);
+assert(
+  functionsPackage.scripts.deploy.includes('Use npm run deploy:menulist-qa after root npm run verify:functions-deploy-preflight'),
+  'Functions package default deploy script must fail closed with the scoped QA deploy instruction',
+);
+assert(
+  functionsPackage.scripts['deploy:menulist-qa'] === 'firebase deploy --project menulist-qa --config ../firebase.json --only functions:processMenuImages,functions:processMenuImagesJob,functions:menulistMaintenanceScheduler,functions:computeDecisionBlocksScores,functions:triggerDecisionBlocksScoring,functions:triggerStoreNightlyScheduler,functions:verifyMenuPublish --non-interactive',
+  'Functions package scoped QA deploy script must match Gate 1 current target set',
+);
+assert(
+  !functionsPackage.scripts.deploy.includes('firebase deploy --only functions'),
+  'Functions package default deploy script must not run a broad Functions deploy',
 );
 
 run('functions lint', 'npm', ['--prefix', 'functions', 'run', 'lint']);

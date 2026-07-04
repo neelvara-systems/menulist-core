@@ -2761,7 +2761,7 @@
         "qrCodesTitle": "QR codes",
         "qrCodesDesc": "Download the QR that matches where customers will scan it.",
         "storeMenuQr": "Store Menu QR",
-        "storeMenuQrDesc": "Best for tables, counters, and reprints. It always opens your current menu.",
+        "storeMenuQrDesc": "Best for tables, counters, and reprints. It opens your current published menu.",
         "businessProfileQr": "Business Profile QR",
         "businessProfileQrDesc": "Opens your official business page with menu and business details.",
         "projectMenuQr": "Project Menu QR",
@@ -5992,7 +5992,7 @@
             "step3Surface3": "Print files",
             "step3Surface4": "Shareable link",
             "step3Surface5": "Saved shortcut",
-            "surfacesTitle": "Your menu, everywhere your customers look.",
+            "surfacesTitle": "Your approved menu, ready for the places customers look.",
             "surfacesSubtitle": "MenuList pages and links can use the same official version, so customers see the approved menu instead of scattered files.",
             "step4Title": "Tell MenuList what changed.",
             "step4Subtitle": "Prepare a price change, sold-out update, special, photo task, or publish review from a simple message. AI Menu Manager prepares the card, shows what customers will see where supported, and waits for approval before applying important work.",
@@ -8519,6 +8519,701 @@
                 "submitFailed": "Could not send the report. Try again."
             }
         },
+        "BusinessFactsCopyPackPage": {
+            "eyebrow": "MenuList Tools",
+            "heroTitle": "Business Facts Copy Pack",
+            "heroHighlight": "Copy Pack",
+            "heroSubtitle": "Enter the details customers already need. MenuList returns profile, WhatsApp, social, website, staff, and customer-link copy.",
+            "trust0": "Runs in this browser",
+            "trust1": "No profile inspection",
+            "trust2": "Copy before signup",
+            "formTitle": "Enter business facts once",
+            "formSubtitle": "Use the facts you already repeat in profiles, messages, bios, and staff replies.",
+            "fields": {
+                "businessName": "Business name",
+                "businessType": "Business type",
+                "cityOrArea": "City or area",
+                "preferredAction": "Best customer action",
+                "offerSummary": "What customers can get",
+                "shortDescription": "Short business description",
+                "hours": "Hours",
+                "locationOrServiceArea": "Location or service area",
+                "phoneOrWhatsapp": "Phone or WhatsApp",
+                "currentCustomerLink": "Current customer link",
+                "actionLink": "Booking, order, or enquiry link"
+            },
+            "actionOptions": {
+                "message": "Message",
+                "call": "Call",
+                "book": "Book",
+                "order": "Order",
+                "visit": "Visit",
+                "request_quote": "Request quote",
+                "ask_question": "Ask a question"
+            },
+            "runCheck": "Create copy pack",
+            "reset": "Reset",
+            "resultsEyebrow": "Copy pack",
+            "resultsTitle": "Reusable copy before you publish",
+            "resultsHighlight": "Reusable copy",
+            "resultsSubtitle": "This tool does not open Google, WhatsApp, Instagram, Facebook, websites, directories, or maps. It uses entered facts only.",
+            "learnMore": "See Public Discovery",
+            "reportEyebrow": "Copy pack status",
+            "emptyTitle": "Copy pack appears after the check",
+            "emptyBody": "The pack will show reusable copy, present facts, missing facts, and the exact V0 boundary.",
+            "boundary0": "Uses only entered facts",
+            "boundary1": "Does not update external profiles",
+            "boundary2": "Stores nothing unless you submit the follow-up form",
+            "summaryLabel": "Business facts copy pack summary",
+            "summary": {
+                "present": "{count} present",
+                "missing": "{count} missing",
+                "unclear": "{count} unclear",
+                "notChecked": "{count} not checked"
+            },
+            "copyBlocksTitle": "Generated copy blocks",
+            "copyBlocksBody": "Copy one block at a time, or copy the full report below.",
+            "copyBlockAction": "Copy",
+            "copyBlockStatuses": {
+                "copied": "Copy block copied.",
+                "copy_failed": "Could not copy this block."
+            },
+            "copyBlocks": {
+                "google_profile_description": {
+                    "title": "Google/Profile description",
+                    "helper": "Use as owner-approved profile description copy."
+                },
+                "whatsapp_business_about": {
+                    "title": "WhatsApp Business about",
+                    "helper": "Use as short WhatsApp profile or reply copy."
+                },
+                "social_bio": {
+                    "title": "Instagram/Facebook bio",
+                    "helper": "Use where customers need a short public bio."
+                },
+                "website_contact_snippet": {
+                    "title": "Website/contact snippet",
+                    "helper": "Use on a website, landing page, or setup handoff."
+                },
+                "staff_answer_card": {
+                    "title": "Staff answer card",
+                    "helper": "Use as a simple reply guide for staff."
+                },
+                "customer_link_share_text": {
+                    "title": "Customer link share text",
+                    "helper": "Use when sending the current customer link."
+                }
+            },
+            "statuses": {
+                "ready": {
+                    "title": "Copy pack is ready",
+                    "description": "The entered facts cover the core details customers need. Use the same current customer link everywhere."
+                },
+                "missing_basics": {
+                    "title": "Important facts are missing",
+                    "description": "Add the missing business facts before using this copy as a public source."
+                },
+                "unclear": {
+                    "title": "Some facts are unclear",
+                    "description": "The copy pack is usable, but hours, location, action, or current link details still need cleanup."
+                },
+                "not_checked": {
+                    "title": "Facts were not checked",
+                    "description": "Enter business facts to create the local copy pack."
+                },
+                "manual_review_needed": {
+                    "title": "Manual review needed",
+                    "description": "A person should review these facts before they become public copy."
+                }
+            },
+            "results": {
+                "present": "Present",
+                "missing": "Missing",
+                "unclear": "Unclear",
+                "not_applicable": "Not needed",
+                "not_checked": "Not checked"
+            },
+            "checks": {
+                "business_identity": {
+                    "label": "Business identity",
+                    "helper": "Business name, type, and area are clear enough to reuse."
+                },
+                "public_description": {
+                    "label": "Public description",
+                    "helper": "A short owner-approved description is present or can be formed from the offer summary."
+                },
+                "offer_summary": {
+                    "label": "Offer summary",
+                    "helper": "Customers can understand what the business sells, serves, or provides."
+                },
+                "hours": {
+                    "label": "Hours",
+                    "helper": "Customer timing context is present."
+                },
+                "location_or_service_area": {
+                    "label": "Location or service area",
+                    "helper": "Customers can understand where the business is located or served."
+                },
+                "contact_path": {
+                    "label": "Contact path",
+                    "helper": "Phone or WhatsApp contact is present."
+                },
+                "customer_action": {
+                    "label": "Customer action",
+                    "helper": "The best next step is clear enough for profile, staff, or link copy."
+                },
+                "current_customer_link": {
+                    "label": "Current customer link",
+                    "helper": "A current customer-facing URL is present and locally format-checked."
+                },
+                "copy_pack": {
+                    "label": "Copy pack",
+                    "helper": "Reusable copy blocks were generated from entered facts."
+                },
+                "external_platform_update": {
+                    "label": "External platform update",
+                    "helper": "This confirms the boundary: external profiles and platforms were not opened or updated."
+                }
+            },
+            "nextActions": {
+                "create_customer_link": {
+                    "title": "Create one current customer link",
+                    "description": "Use MenuList as the stable link behind these profile, WhatsApp, social, website, staff, and customer handoffs.",
+                    "cta": "Create customer link"
+                },
+                "complete_business_facts": {
+                    "title": "Complete the source first",
+                    "description": "Add the missing business facts, then publish one current MenuList customer link as the stable source.",
+                    "cta": "Create customer link"
+                },
+                "manual_review": {
+                    "title": "Request setup help",
+                    "description": "Use this copy pack as setup material before publishing or replacing public links.",
+                    "cta": "Start setup"
+                }
+            },
+            "reportActions": {
+                "title": "Use this pack",
+                "body": "Copy, share, or download the report for setup or handoff.",
+                "copy": "Copy report",
+                "download": "Download",
+                "statuses": {
+                    "copied": "Report copied.",
+                    "downloaded": "Report downloaded.",
+                    "copy_failed": "Could not copy the report.",
+                    "download_failed": "Could not download the report."
+                }
+            },
+            "export": {
+                "title": "Business Facts Copy Pack report",
+                "business": "Business",
+                "city": "City or area",
+                "businessType": "Business type",
+                "preferredAction": "Preferred action",
+                "status": "Status",
+                "generatedAt": "Generated at",
+                "summary": "Summary",
+                "checks": "Checks",
+                "copyBlocks": "Copy blocks",
+                "nextStep": "Next step",
+                "boundary": "Boundary: checked entered facts only. Links were not opened, profiles were not inspected or updated, reports were not stored, and AI/search providers were not called.",
+                "notProvided": "Not provided"
+            },
+            "handoff": {
+                "title": "Send this to MenuList",
+                "body": "Share the copy pack when you want help turning these facts into one current customer link.",
+                "name": "Name",
+                "email": "Work email",
+                "phone": "Phone or WhatsApp",
+                "website": "Website",
+                "consentPrefix": "I agree to the ",
+                "privacy": "Privacy Policy",
+                "consentMiddle": " and ",
+                "terms": "Terms of Service",
+                "consentSuffix": ".",
+                "nameRequired": "Enter your name.",
+                "emailRequired": "Enter a valid email.",
+                "consentRequired": "Consent is required.",
+                "securityCheckRequired": "Complete the security check.",
+                "securityCheckLoadFailed": "Security check is temporarily unavailable.",
+                "submit": "Send copy pack",
+                "submitting": "Sending",
+                "success": "Copy pack sent.",
+                "submitFailed": "Could not send the copy pack. Try again."
+            }
+        },
+        "WhatsAppReplyPackPage": {
+            "eyebrow": "MenuList Tools",
+            "heroTitle": "WhatsApp Reply Pack",
+            "heroHighlight": "Reply Pack",
+            "heroSubtitle": "Turn the facts customers already ask for into reusable WhatsApp replies for greetings, hours, menu, prices, orders, delivery, fallback, and your current customer link.",
+            "trust0": "Runs in this browser",
+            "trust1": "No message is sent",
+            "trust2": "Copy before signup",
+            "formTitle": "Enter reply facts once",
+            "formSubtitle": "Use the details you want staff, WhatsApp Business quick replies, or customer messages to repeat consistently.",
+            "fields": {
+                "businessName": "Business name",
+                "cityOrArea": "City or area",
+                "whatsappNumber": "WhatsApp number with country code",
+                "preferredAction": "Best customer action",
+                "offerSummary": "Menu, services, or offer summary",
+                "currentCustomerLink": "Current customer link",
+                "actionLink": "Booking, order, or enquiry link",
+                "hours": "Hours",
+                "responseTime": "Usual reply time",
+                "locationOrServiceArea": "Location or service area",
+                "deliveryOrPickup": "Delivery or pickup details",
+                "paymentInfo": "Payment details"
+            },
+            "actionOptions": {
+                "ask_question": "Ask a question",
+                "order": "Order",
+                "book": "Book",
+                "request_quote": "Request quote",
+                "visit": "Visit"
+            },
+            "runCheck": "Create reply pack",
+            "reset": "Reset",
+            "resultsEyebrow": "Reply pack",
+            "resultsTitle": "Reusable WhatsApp replies from",
+            "resultsHighlight": "owner-entered facts",
+            "resultsSubtitle": "This tool does not open WhatsApp, verify phone numbers, call WhatsApp APIs, send messages, fetch links, store reports, or generate AI rewrites.",
+            "learnMore": "Check WhatsApp action link",
+            "reportEyebrow": "Reply pack status",
+            "emptyTitle": "Reply pack appears after the check",
+            "emptyBody": "The pack will show reusable replies, a local click-to-chat preview when possible, present facts, missing facts, and exact V0 boundaries.",
+            "boundary0": "Uses only entered facts",
+            "boundary1": "Does not send messages",
+            "boundary2": "Stores nothing unless you submit the follow-up form",
+            "summaryLabel": "WhatsApp reply pack summary",
+            "summary": {
+                "present": "{count} present",
+                "missing": "{count} missing",
+                "unclear": "{count} unclear",
+                "notChecked": "{count} not checked"
+            },
+            "copyBlocksTitle": "Generated reply blocks",
+            "copyBlocksBody": "Copy one reply at a time, or copy the full report below.",
+            "copyBlockAction": "Copy",
+            "copyBlockStatuses": {
+                "copied": "Reply copied.",
+                "copy_failed": "Could not copy this reply."
+            },
+            "copyBlocks": {
+                "greeting_reply": {
+                    "title": "Greeting reply",
+                    "helper": "Use as a welcome or first-response message."
+                },
+                "hours_reply": {
+                    "title": "Hours reply",
+                    "helper": "Use when customers ask when you are open or when you reply."
+                },
+                "menu_service_reply": {
+                    "title": "Menu or service reply",
+                    "helper": "Use when customers ask what is available."
+                },
+                "price_payment_reply": {
+                    "title": "Price and payment reply",
+                    "helper": "Use when customers ask about prices, payment, or availability."
+                },
+                "order_booking_reply": {
+                    "title": "Order or booking reply",
+                    "helper": "Use when moving the customer to the next action."
+                },
+                "delivery_pickup_reply": {
+                    "title": "Delivery or pickup reply",
+                    "helper": "Use when customers ask how collection, delivery, or visit details work."
+                },
+                "fallback_reply": {
+                    "title": "Fallback reply",
+                    "helper": "Use when a detail needs owner confirmation."
+                },
+                "customer_link_reply": {
+                    "title": "Customer link reply",
+                    "helper": "Use when sending the current customer link."
+                }
+            },
+            "preview": {
+                "title": "Local click-to-chat preview",
+                "body": "This link is generated locally from the entered number and message text. It was not opened or verified."
+            },
+            "statuses": {
+                "ready": {
+                    "title": "Reply pack is ready",
+                    "description": "The entered facts cover the main WhatsApp replies customers need. Keep the same current customer link behind every reply."
+                },
+                "missing_basics": {
+                    "title": "Important reply facts are missing",
+                    "description": "Add the business name, WhatsApp number, offer summary, and customer link before using this pack."
+                },
+                "unclear": {
+                    "title": "Some reply facts are unclear",
+                    "description": "The replies are usable, but hours, action links, payment, delivery, or customer-link details still need cleanup."
+                },
+                "not_checked": {
+                    "title": "Reply facts were not checked",
+                    "description": "Enter WhatsApp reply facts to create the local pack."
+                },
+                "manual_review_needed": {
+                    "title": "Manual review needed",
+                    "description": "A person should review these replies before staff or WhatsApp Business quick replies use them."
+                }
+            },
+            "results": {
+                "present": "Present",
+                "missing": "Missing",
+                "unclear": "Unclear",
+                "not_applicable": "Not needed",
+                "not_checked": "Not checked"
+            },
+            "checks": {
+                "business_identity": {
+                    "label": "Business identity",
+                    "helper": "Business name and area are clear enough to reuse in replies."
+                },
+                "whatsapp_number": {
+                    "label": "WhatsApp number",
+                    "helper": "Phone number shape is checked locally for a likely country-code format."
+                },
+                "current_customer_link": {
+                    "label": "Current customer link",
+                    "helper": "A current customer-facing URL is present and locally format-checked."
+                },
+                "offer_summary": {
+                    "label": "Offer summary",
+                    "helper": "Customers can understand what the business sells, serves, or provides."
+                },
+                "hours_expectation": {
+                    "label": "Hours and response time",
+                    "helper": "Replies include timing context instead of leaving customers guessing."
+                },
+                "action_path": {
+                    "label": "Action path",
+                    "helper": "The best next action is clear enough for a reply."
+                },
+                "payment_context": {
+                    "label": "Payment context",
+                    "helper": "Payment or price expectation is present where useful."
+                },
+                "delivery_pickup_context": {
+                    "label": "Delivery or pickup context",
+                    "helper": "Collection, delivery, visit, or service-area details are present where useful."
+                },
+                "reply_pack": {
+                    "label": "Reply pack",
+                    "helper": "Reusable reply blocks were generated from entered facts."
+                },
+                "wa_me_preview": {
+                    "label": "Click-to-chat preview",
+                    "helper": "A local wa.me preview can be generated only when the number shape is usable."
+                },
+                "message_delivery": {
+                    "label": "Message delivery",
+                    "helper": "This confirms the boundary: WhatsApp was not opened and no message was sent."
+                }
+            },
+            "nextActions": {
+                "create_customer_link": {
+                    "title": "Create one current customer link",
+                    "description": "Use MenuList as the stable link behind these WhatsApp replies, quick replies, QR links, and profile actions.",
+                    "cta": "Create customer link"
+                },
+                "complete_reply_facts": {
+                    "title": "Complete the reply facts first",
+                    "description": "Add the missing facts, then publish one current MenuList customer link as the source behind replies.",
+                    "cta": "Create customer link"
+                },
+                "manual_review": {
+                    "title": "Request setup help",
+                    "description": "Use this reply pack as setup material before staff or WhatsApp Business quick replies use it.",
+                    "cta": "Start setup"
+                }
+            },
+            "reportActions": {
+                "title": "Use this pack",
+                "body": "Copy, share, or download the report for setup or staff handoff.",
+                "copy": "Copy report",
+                "download": "Download",
+                "statuses": {
+                    "copied": "Report copied.",
+                    "downloaded": "Report downloaded.",
+                    "copy_failed": "Could not copy the report.",
+                    "download_failed": "Could not download the report."
+                }
+            },
+            "export": {
+                "title": "WhatsApp Reply Pack report",
+                "business": "Business",
+                "city": "City or area",
+                "preferredAction": "Preferred action",
+                "status": "Status",
+                "generatedAt": "Generated at",
+                "previewLink": "Preview link",
+                "notGenerated": "Not generated",
+                "summary": "Summary",
+                "checks": "Checks",
+                "copyBlocks": "Reply blocks",
+                "nextStep": "Next step",
+                "boundary": "Boundary: checked entered facts only. WhatsApp was not opened, phone numbers were not verified, messages were not sent, links were not fetched, reports were not stored, and AI/search providers were not called.",
+                "notProvided": "Not provided"
+            },
+            "handoff": {
+                "title": "Send this to MenuList",
+                "body": "Share the reply pack when you want help turning these facts into one current customer link.",
+                "name": "Name",
+                "email": "Work email",
+                "phone": "Phone or WhatsApp",
+                "website": "Website",
+                "consentPrefix": "I agree to the ",
+                "privacy": "Privacy Policy",
+                "consentMiddle": " and ",
+                "terms": "Terms of Service",
+                "consentSuffix": ".",
+                "nameRequired": "Enter your name.",
+                "emailRequired": "Enter a valid email.",
+                "consentRequired": "Consent is required.",
+                "securityCheckRequired": "Complete the security check.",
+                "securityCheckLoadFailed": "Security check is temporarily unavailable.",
+                "submit": "Send reply pack",
+                "submitting": "Sending",
+                "success": "Reply pack sent.",
+                "submitFailed": "Could not send the reply pack. Try again."
+            }
+        },
+        "CustomerFaqReplyPackPage": {
+            "eyebrow": "MenuList Tools",
+            "heroTitle": "Customer FAQ Reply Pack",
+            "heroHighlight": "FAQ Reply Pack",
+            "heroSubtitle": "Turn repeated customer questions and owner-entered business facts into reusable FAQ, staff, website, and message replies.",
+            "trust0": "Runs in this browser",
+            "trust1": "No conversations read",
+            "trust2": "Copy before signup",
+            "formTitle": "Enter repeated questions and facts",
+            "formSubtitle": "Use the questions customers already ask and the facts answers should repeat.",
+            "fields": {
+                "businessName": "Business name",
+                "cityOrArea": "City or area",
+                "currentCustomerLink": "Current customer link",
+                "preferredAction": "Best next action",
+                "menuOrServices": "Menu, services, or offer summary",
+                "hours": "Hours",
+                "prices": "Prices or quote path",
+                "locationContact": "Location or contact details",
+                "actionLink": "Booking, order, or enquiry link",
+                "availabilityNotes": "Availability notes",
+                "customerQuestions": "Repeated customer questions",
+                "answerSource": "Facts answers should use"
+            },
+            "actionOptions": {
+                "answer_question": "Answer questions",
+                "order": "Order",
+                "book": "Book",
+                "request_quote": "Request quote",
+                "visit": "Visit"
+            },
+            "runCheck": "Create FAQ pack",
+            "reset": "Reset",
+            "resultsEyebrow": "FAQ pack",
+            "resultsTitle": "Reusable answers from",
+            "resultsHighlight": "owner-entered facts",
+            "resultsSubtitle": "This tool does not read customer conversations, create a chatbot, configure automation, send messages, fetch links, store reports, or generate AI answers.",
+            "learnMore": "Check question coverage",
+            "reportEyebrow": "FAQ pack status",
+            "emptyTitle": "FAQ pack appears after the check",
+            "emptyBody": "The pack will show reusable answers, present facts, missing facts, and exact V0 boundaries.",
+            "boundary0": "Uses only entered facts",
+            "boundary1": "Does not create a chatbot",
+            "boundary2": "Stores nothing unless you submit the follow-up form",
+            "summaryLabel": "Customer FAQ reply pack summary",
+            "summary": {
+                "present": "{count} present",
+                "missing": "{count} missing",
+                "unclear": "{count} unclear",
+                "notChecked": "{count} not checked"
+            },
+            "copyBlocksTitle": "Generated FAQ answer blocks",
+            "copyBlocksBody": "Copy one answer at a time, or copy the full report below.",
+            "copyBlockAction": "Copy",
+            "copyBlockStatuses": {
+                "copied": "Answer copied.",
+                "copy_failed": "Could not copy this answer."
+            },
+            "copyBlocks": {
+                "faq_overview": {
+                    "title": "FAQ overview",
+                    "helper": "Use as a short guide for the repeated questions entered."
+                },
+                "menu_service_answer": {
+                    "title": "Menu or service answer",
+                    "helper": "Use when customers ask what is available."
+                },
+                "hours_answer": {
+                    "title": "Hours answer",
+                    "helper": "Use when customers ask when you are open."
+                },
+                "price_answer": {
+                    "title": "Price answer",
+                    "helper": "Use when customers ask about prices, rates, or quote paths."
+                },
+                "location_contact_answer": {
+                    "title": "Location and contact answer",
+                    "helper": "Use when customers ask where you are or how to contact you."
+                },
+                "order_booking_answer": {
+                    "title": "Order or booking answer",
+                    "helper": "Use when customers need the next step."
+                },
+                "availability_notes_answer": {
+                    "title": "Availability notes answer",
+                    "helper": "Use when customers ask what is available now."
+                },
+                "fallback_answer": {
+                    "title": "Fallback answer",
+                    "helper": "Use when a question needs owner confirmation."
+                }
+            },
+            "statuses": {
+                "ready": {
+                    "title": "FAQ pack is ready",
+                    "description": "The entered facts cover the repeated questions customers need answered. Keep the same current customer link behind every answer."
+                },
+                "missing_basics": {
+                    "title": "Important FAQ facts are missing",
+                    "description": "Add the business identity, repeated questions, and source facts before using this pack."
+                },
+                "unclear": {
+                    "title": "Some FAQ facts are unclear",
+                    "description": "The answers are usable, but customer link, menu, hours, prices, location, or action details still need cleanup."
+                },
+                "not_checked": {
+                    "title": "FAQ facts were not checked",
+                    "description": "Enter repeated customer questions and business facts to create the local pack."
+                },
+                "manual_review_needed": {
+                    "title": "Manual review needed",
+                    "description": "A person should review these answers before staff, website, FAQ, or message templates use them."
+                }
+            },
+            "results": {
+                "present": "Present",
+                "missing": "Missing",
+                "unclear": "Unclear",
+                "not_applicable": "Not needed",
+                "not_checked": "Not checked"
+            },
+            "checks": {
+                "business_identity": {
+                    "label": "Business identity",
+                    "helper": "Business name and area are clear enough to reuse in answers."
+                },
+                "customer_questions": {
+                    "label": "Customer questions",
+                    "helper": "Repeated customer questions were entered."
+                },
+                "answer_source": {
+                    "label": "Answer source facts",
+                    "helper": "The facts answers should use are present."
+                },
+                "current_customer_link": {
+                    "label": "Current customer link",
+                    "helper": "A current customer-facing URL is present and locally format-checked."
+                },
+                "menu_service_context": {
+                    "label": "Menu or service context",
+                    "helper": "Answers have enough context about what the business offers."
+                },
+                "hours_context": {
+                    "label": "Hours context",
+                    "helper": "Answers include timing context where useful."
+                },
+                "price_context": {
+                    "label": "Price context",
+                    "helper": "Answers include prices, rates, or quote-path context where useful."
+                },
+                "location_contact_context": {
+                    "label": "Location and contact context",
+                    "helper": "Answers include location or contact context where useful."
+                },
+                "action_context": {
+                    "label": "Action context",
+                    "helper": "The best next action is clear enough for a reusable answer."
+                },
+                "faq_reply_pack": {
+                    "label": "FAQ reply pack",
+                    "helper": "Reusable answer blocks were generated from entered facts."
+                },
+                "automation_boundary": {
+                    "label": "Automation boundary",
+                    "helper": "This confirms the boundary: no chatbot, automation, conversation read, or message send happened."
+                }
+            },
+            "nextActions": {
+                "create_customer_link": {
+                    "title": "Create one current customer link",
+                    "description": "Use MenuList as the stable source behind these FAQ, staff, website, and message answers.",
+                    "cta": "Create customer link"
+                },
+                "complete_faq_facts": {
+                    "title": "Complete the FAQ facts first",
+                    "description": "Add the missing questions and facts, then publish one current MenuList customer link as the source behind answers.",
+                    "cta": "Create customer link"
+                },
+                "manual_review": {
+                    "title": "Request setup help",
+                    "description": "Use this FAQ pack as setup material before staff, website, or message templates use it.",
+                    "cta": "Start setup"
+                }
+            },
+            "reportActions": {
+                "title": "Use this pack",
+                "body": "Copy, share, or download the report for setup or staff handoff.",
+                "copy": "Copy report",
+                "download": "Download",
+                "statuses": {
+                    "copied": "Report copied.",
+                    "downloaded": "Report downloaded.",
+                    "copy_failed": "Could not copy the report.",
+                    "download_failed": "Could not download the report."
+                }
+            },
+            "export": {
+                "title": "Customer FAQ Reply Pack report",
+                "business": "Business",
+                "city": "City or area",
+                "preferredAction": "Preferred action",
+                "status": "Status",
+                "generatedAt": "Generated at",
+                "summary": "Summary",
+                "checks": "Checks",
+                "copyBlocks": "FAQ answer blocks",
+                "nextStep": "Next step",
+                "boundary": "Boundary: checked entered questions and facts only. Customer conversations were not read, no chatbot was created, no automation was configured, no message was sent, links were not fetched, reports were not stored, and AI/search providers were not called.",
+                "notProvided": "Not provided"
+            },
+            "handoff": {
+                "title": "Send this to MenuList",
+                "body": "Share the FAQ pack when you want help turning these answers into one current customer link.",
+                "name": "Name",
+                "email": "Work email",
+                "phone": "Phone or WhatsApp",
+                "website": "Website",
+                "consentPrefix": "I agree to the ",
+                "privacy": "Privacy Policy",
+                "consentMiddle": " and ",
+                "terms": "Terms of Service",
+                "consentSuffix": ".",
+                "nameRequired": "Enter your name.",
+                "emailRequired": "Enter a valid email.",
+                "consentRequired": "Consent is required.",
+                "securityCheckRequired": "Complete the security check.",
+                "securityCheckLoadFailed": "Security check is temporarily unavailable.",
+                "submit": "Send FAQ pack",
+                "submitting": "Sending",
+                "success": "FAQ pack sent.",
+                "submitFailed": "Could not send the FAQ pack. Try again."
+            }
+        },
         "ToolsHubPage": {
             "eyebrow": "MenuList Tools",
             "heroTitle": "MenuList Tools for public business truth",
@@ -8578,10 +9273,20 @@
                     "title": "Public Truth Check",
                     "description": "Check whether the public source has name, list, prices, hours, location, contact, action, and current link basics."
                 },
+                "businessFactsCopyPack": {
+                    "meta": "Reusable copy",
+                    "title": "Business Facts Copy Pack",
+                    "description": "Turn entered business facts into profile, WhatsApp, social, website, staff, and customer-link copy."
+                },
                 "customerQuestionCoverageCheck": {
                     "meta": "Questions",
                     "title": "Customer Question Coverage Check",
                     "description": "Check whether pasted public text answers the questions customers ask before they act."
+                },
+                "customerFaqReplyPack": {
+                    "meta": "FAQ replies",
+                    "title": "Customer FAQ Reply Pack",
+                    "description": "Create reusable FAQ, staff, website, and message answers from repeated questions and entered facts."
                 },
                 "customerLinkPreview": {
                     "meta": "One link",
@@ -8623,6 +9328,11 @@
                     "title": "WhatsApp Action Link Check",
                     "description": "Check whether customers can tap once to message, order, book, or ask through WhatsApp."
                 },
+                "whatsappReplyPack": {
+                    "meta": "WhatsApp replies",
+                    "title": "WhatsApp Reply Pack",
+                    "description": "Create reusable greeting, hours, menu, price, order, delivery, fallback, and customer-link replies from entered facts."
+                },
                 "hoursCheck": {
                     "meta": "Hours",
                     "title": "Hours & Holiday Hours Check",
@@ -8637,6 +9347,11 @@
                     "meta": "Social bio links",
                     "title": "Social Bio Link Consistency Check",
                     "description": "Check whether social bios, public profiles, website links, QR codes, and print materials point to one current customer link."
+                },
+                "customerFaqReplyPack": {
+                    "meta": "FAQ replies",
+                    "title": "Customer FAQ Reply Pack",
+                    "description": "Create reusable FAQ and auto-reply text from repeated customer questions and entered business facts."
                 }
             },
             "boundaryEyebrow": "Tool boundary",
@@ -8897,6 +9612,10 @@
                 "defaultBusiness": "Business not provided",
                 "defaultContext": "Public tool report",
                 "generated": "Generated"
+            },
+            "setupJobs": {
+                "title": "Setup job list",
+                "body": "These are the practical fixes implied by the report. Each item should be confirmed by the owner before changing MenuList truth."
             },
             "reportActions": {
                 "title": "Share or keep this report",
@@ -9180,8 +9899,7 @@
                 "boundary1": "No report storage",
                 "boundary2": "No ranking promise"
             }
-        }
-    },
+        }    },
     "UseMenuList": {
         "qrSectionTitle": "QR Codes",
         "storeMenuQrTitle": "Store Menu QR",

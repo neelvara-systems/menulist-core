@@ -1,7 +1,7 @@
 # Hours Check - Product Spec
 
 **Status:** Implemented - V0 public browser-local checker
-**Last Updated:** July 1, 2026
+**Last Updated:** July 4, 2026
 **Audience:** CEO / PM / product reviewers
 
 ---

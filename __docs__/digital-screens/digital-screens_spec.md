@@ -68,7 +68,11 @@ Not a side feature. Infrastructure expansion.
 
 ### One-Line Value Proposition
 
-> **"Your full menu on your shop TV. Always up to date. Never touch it."**
+> **"Your current menu on your shop TV. One link. No separate screen editing."**
+
+### Source Gate
+
+Digital Screens freshness claims must match the active source path: `/screen/[token]` reads through a 60-second `screen-data` server cache, public display clients render cache-first from localStorage, and connected screens refresh after acknowledged public-output writes bump `screen.contentVersion` and the public-safe `platformSummary/screen_{storeId}` listener mirror. Manual browser refresh remains the owner-facing fallback when a TV does not receive the listener reload. Guard with `npm run verify:digital-screens-boundary`.
 
 ### The Defining Principle
 
@@ -240,7 +244,7 @@ Restaurant screens operate in:
 | ----- | ----------------------------------------------------------------- | ----------- | ---------- |
 | FR-1  | Highlights: Rotating slides (6-10 seconds each)                   | Must Have   | Highlights |
 | FR-2  | Screen never goes blank                                           | Must Have   | Both       |
-| FR-3  | Content auto-updates when menu/campaigns change                   | Must Have   | Both       |
+| FR-3  | Content refreshes after acknowledged menu/campaign changes through cache invalidation and the screen content-version listener | Must Have   | Both       |
 | FR-4  | Sold-out items auto-removed                                       | Must Have   | Both       |
 | FR-5  | Owner can view current screen state (read-only)                   | Must Have   | Both       |
 | FR-6  | Owner can upload custom images (highlights only)                  | Should Have | Highlights |
@@ -268,7 +272,7 @@ Restaurant screens operate in:
 | ----- | -------------------------- | --------------------------------------------- |
 | NFR-1 | Screen page load time      | < 3 seconds                                   |
 | NFR-2 | Offline cache duration     | 24 hours minimum                              |
-| NFR-3 | Data refresh interval      | Real-time (onSnapshot) + 6hr proactive reload |
+| NFR-3 | Data refresh path          | Public mirror listener reload + 6hr proactive reload, with a 60-second server cache window |
 | NFR-4 | Minimum slides guaranteed  | 2 (never blank)                               |
 | NFR-5 | Maximum slides in rotation | 8                                             |
 | NFR-6 | Menu Board page density    | 8 item slots target for distance readability |

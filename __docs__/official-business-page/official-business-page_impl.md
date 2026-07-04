@@ -26,7 +26,7 @@ Routing (when ENABLE_OBP = true):
 Cache Strategy:
   unstable_cache with per-store tags  ← same pattern as menu page
   60s revalidation                    ← same as existing
-  revalidateTag(`store-{storeId}`)    ← instant invalidation on store update
+  revalidateTag(`store-{storeId}`)    ← tag invalidation on acknowledged store update
 ```
 
 ---

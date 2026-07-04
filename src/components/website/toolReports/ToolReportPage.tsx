@@ -30,6 +30,7 @@ import {
   decodeShareableToolReportPayload,
   type ShareableToolReportPayload,
   type ShareableToolReportResult,
+  type ShareableToolReportSetupJob,
 } from '@/lib/public-truth-tools/shareableToolReport';
 import AnimateOnScroll, { AnimateStaggerChild } from '../shared/AnimateOnScroll';
 import WebsiteButton from '../shared/WebsiteButton';
@@ -71,7 +72,12 @@ function getResultIcon(result: ShareableToolReportResult) {
   return LuCircleDashed;
 }
 
+function getReportSetupJobs(report: ShareableToolReportPayload): ShareableToolReportSetupJob[] {
+  return report.setupJobList.slice(0, 6);
+}
+
 function buildReportText(report: ShareableToolReportPayload): string {
+  const setupJobs = getReportSetupJobs(report);
   const lines = [
     report.reportTitle,
     '',
@@ -86,6 +92,11 @@ function buildReportText(report: ShareableToolReportPayload): string {
     '',
     'Checks',
     ...report.checks.map((check) => `- ${check.label}: ${check.result} - ${check.evidenceText}`),
+    '',
+    'Setup job list',
+    ...(setupJobs.length > 0
+      ? setupJobs.map((job) => `- ${job.label}: ${job.reason}`)
+      : ['- No setup jobs were generated.']),
     '',
     `Next step: ${report.nextAction.title}`,
     report.nextAction.description,
@@ -172,6 +183,7 @@ function ToolReportLoaded({ report }: { report: ShareableToolReportPayload }) {
   const [captchaStatus, setCaptchaStatus] = useState<TurnstileStatus>(isTurnstileClientEnabled() ? 'loading' : 'disabled');
   const [captchaResetSignal, setCaptchaResetSignal] = useState(0);
   const reportText = useMemo(() => buildReportText(report), [report]);
+  const setupJobs = useMemo(() => getReportSetupJobs(report), [report]);
   const StatusIcon = report.status === 'ready' ? LuBadgeCheck : report.status === 'missing_basics' ? LuAlertTriangle : LuShieldCheck;
   const captchaRequired = isTurnstileClientEnabled();
   const eventContext = useMemo(() => ({
@@ -287,6 +299,11 @@ function ToolReportLoaded({ report }: { report: ShareableToolReportPayload }) {
       unclearCount: report.summary.unclear,
       notCheckedCount: report.summary.notChecked,
       primaryNumber: report.summary.primaryNumber,
+      setupJobList: setupJobs.map((job) => ({
+        id: job.id,
+        label: job.label,
+        reason: job.reason,
+      })),
     };
     const responseLogContext = {
       ...eventContext,
@@ -415,6 +432,21 @@ function ToolReportLoaded({ report }: { report: ShareableToolReportPayload }) {
               );
             })}
           </div>
+
+          {setupJobs.length > 0 ? (
+            <div className="ws-public-truth-check-empty">
+              <strong>{t('setupJobs.title')}</strong>
+              <p>{t('setupJobs.body')}</p>
+              <ul>
+                {setupJobs.map((job) => (
+                  <li key={`${job.id}-${job.label}`}>
+                    <span>{job.label}</span>
+                    <small>{job.reason}</small>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
 
           <div className="ws-public-truth-check-next">
             <div>

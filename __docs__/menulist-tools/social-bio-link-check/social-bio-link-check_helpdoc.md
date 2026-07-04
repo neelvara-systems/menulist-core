@@ -1,5 +1,7 @@
 # Social Bio Link Consistency Check - Help Doc Draft
 
+**Last Updated:** July 4, 2026
+
 ## What This Tool Does
 
 This tool helps you check whether your social bios, public profiles, website link, QR codes, and printed materials point customers to the same current customer link.

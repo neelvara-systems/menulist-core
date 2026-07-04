@@ -1,7 +1,7 @@
 # Shareable Tool Reports - Follow-Up Playbook
 
 **Status:** Operational playbook for consented report leads
-**Last Updated:** July 3, 2026
+**Last Updated:** July 4, 2026
 **Audience:** Founder, support, sales, setup partners
 
 ---
@@ -11,7 +11,7 @@
 The public report funnel should stay simple:
 
 ```txt
-free public tool -> shareable report -> consented follow-up -> MenuList setup/fix path
+free public tool -> shareable report -> report gaps become setup job list -> consented follow-up -> MenuList setup/fix path
 ```
 
 The follow-up form is not a saved report system. It creates one existing public contact enquiry and tags that enquiry with report metadata so the team can understand the requested work.
@@ -46,6 +46,7 @@ The nested `sourceContext` object carries the same bounded details:
 | `unclearCount` | Number of unclear rows in the shared report |
 | `notCheckedCount` | Number of not-checked rows in the shared report |
 | `primaryNumber` | The one honest number shown by the report |
+| `setupJobList` | Up to six bounded setup jobs derived from visible missing, unclear, or not-checked report rows |
 
 The `message` field contains a bounded text summary for human reading. It is not canonical truth and should not be written into MenuList business data without owner confirmation.
 
@@ -56,6 +57,8 @@ The ops view reads recent leads only. If an older lead is not visible there, use
 ## Triage
 
 Use the metadata to choose the first response.
+
+Start with `setupJobList` when present. The report gaps become the setup job list; each item is a paid/setup-work candidate only after the owner confirms the source truth.
 
 | Signal | Follow-up path |
 | --- | --- |
@@ -76,7 +79,7 @@ Thanks for sending the report. I checked the submitted MenuList tool summary.
 
 The useful next step is to create or clean up one current customer link for the business, then use that link wherever customers already look.
 
-We can help with:
+The report gaps become this setup job list:
 - menu/service cleanup
 - hours and action links
 - QR/share link readiness

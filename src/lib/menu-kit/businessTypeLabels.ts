@@ -64,11 +64,11 @@ export interface OfferingLabels {
     // ── Share flow labels ──
     /** "Share your menu" / "Share your services" */
     shareTitle: string;
-    /** "Send this instead of menu photos or PDFs. Customers always see your latest menu." */
+    /** "Send this instead of menu photos or PDFs. Customers use your current approved menu link." */
     shareSubtitle: string;
     /** "Share this link with your staff so everyone sends the same updated menu." */
     shareStaffHint: string;
-    /** "your latest menu" / "your latest offerings" */
+    /** "your current approved menu" / "your current approved offerings" */
     yourLatest: string;
 
     // ── Editor / Processing labels ──
@@ -137,9 +137,9 @@ const CATEGORY_LABELS: Record<string, OfferingLabels> = {
         thisMonthLabel: 'Your Menu This Month',
         // Share
         shareTitle: 'Share your menu',
-        shareSubtitle: 'Send this instead of menu photos or PDFs. Customers always see your latest menu.',
-        shareStaffHint: 'Share this link with your staff so everyone sends the same updated menu.',
-        yourLatest: 'your latest menu',
+        shareSubtitle: 'Send this instead of menu photos or PDFs. Customers use your current approved menu link.',
+        shareStaffHint: 'Share this link with your staff so everyone sends the same current menu link.',
+        yourLatest: 'your current approved menu',
         // Editor
         editorWelcome: 'Welcome to Your Menu Editor!',
         editorWelcomeDesc: 'Review and edit your menu data here. Your items have been extracted automatically.',
@@ -179,9 +179,9 @@ const CATEGORY_LABELS: Record<string, OfferingLabels> = {
         topItemsLabel: 'Top Services', performanceLabel: 'Page Performance',
         thisMonthLabel: 'Your Page This Month',
         shareTitle: 'Share your services',
-        shareSubtitle: 'Send this link to customers. They always see your latest services and prices.',
-        shareStaffHint: 'Share this link with your staff so everyone sends the same updated service list.',
-        yourLatest: 'your latest services',
+        shareSubtitle: 'Send this link to customers. They use your current approved services and prices.',
+        shareStaffHint: 'Share this link with your staff so everyone sends the same current service list.',
+        yourLatest: 'your current approved services',
         editorWelcome: 'Welcome to Your Editor!',
         editorWelcomeDesc: 'Review and edit your services here. Your content has been extracted automatically.',
         uploadLabel: 'Upload Your Content', uploadDesc: 'Upload photos or PDFs of your service list. You can upload multiple files at once.',
@@ -218,9 +218,9 @@ const CATEGORY_LABELS: Record<string, OfferingLabels> = {
         topItemsLabel: 'Top Products', performanceLabel: 'Catalog Performance',
         thisMonthLabel: 'Your Catalog This Month',
         shareTitle: 'Share your catalog',
-        shareSubtitle: 'Send this link to customers. They always see your latest products and prices.',
-        shareStaffHint: 'Share this link with your staff so everyone sends the same updated catalog.',
-        yourLatest: 'your latest catalog',
+        shareSubtitle: 'Send this link to customers. They use your current approved products and prices.',
+        shareStaffHint: 'Share this link with your staff so everyone sends the same current catalog.',
+        yourLatest: 'your current approved catalog',
         editorWelcome: 'Welcome to Your Editor!',
         editorWelcomeDesc: 'Review and edit your products here. Your content has been extracted automatically.',
         uploadLabel: 'Upload Your Content', uploadDesc: 'Upload photos or PDFs of your catalog. You can upload multiple files at once.',
@@ -257,9 +257,9 @@ const CATEGORY_LABELS: Record<string, OfferingLabels> = {
         topItemsLabel: 'Top Services', performanceLabel: 'Page Performance',
         thisMonthLabel: 'Your Page This Month',
         shareTitle: 'Share your services',
-        shareSubtitle: 'Send this link to customers. They always see your latest services and pricing.',
-        shareStaffHint: 'Share this link with your staff so everyone sends the same updated service list.',
-        yourLatest: 'your latest services',
+        shareSubtitle: 'Send this link to customers. They use your current approved services and pricing.',
+        shareStaffHint: 'Share this link with your staff so everyone sends the same current service list.',
+        yourLatest: 'your current approved services',
         editorWelcome: 'Welcome to Your Editor!',
         editorWelcomeDesc: 'Review and edit your services here. Your content has been extracted automatically.',
         uploadLabel: 'Upload Your Content', uploadDesc: 'Upload photos or PDFs of your service list. You can upload multiple files at once.',
@@ -296,9 +296,9 @@ const CATEGORY_LABELS: Record<string, OfferingLabels> = {
         topItemsLabel: 'Top Services', performanceLabel: 'Page Performance',
         thisMonthLabel: 'Your Page This Month',
         shareTitle: 'Share your services',
-        shareSubtitle: 'Send this link to customers. They always see your latest services.',
-        shareStaffHint: 'Share this link with your team so everyone sends the same updated service list.',
-        yourLatest: 'your latest services',
+        shareSubtitle: 'Send this link to customers. They use your current approved services.',
+        shareStaffHint: 'Share this link with your team so everyone sends the same current service list.',
+        yourLatest: 'your current approved services',
         editorWelcome: 'Welcome to Your Editor!',
         editorWelcomeDesc: 'Review and edit your services here. Your content has been extracted automatically.',
         uploadLabel: 'Upload Your Content', uploadDesc: 'Upload photos or PDFs of your services. You can upload multiple files at once.',
@@ -343,9 +343,9 @@ const CATEGORY_LABELS: Record<string, OfferingLabels> = {
         processingStepFinalizing: 'Finalizing your service page...',
         processingComplete: 'Your service page is ready!',
         shareTitle: 'Share your offerings',
-        shareSubtitle: 'Send this link to customers. They always see your latest offerings and pricing.',
-        shareStaffHint: 'Share this link with your team so everyone sends the same updated page.',
-        yourLatest: 'your latest offerings',
+        shareSubtitle: 'Send this link to customers. They use your current approved offerings and pricing.',
+        shareStaffHint: 'Share this link with your team so everyone sends the same current page.',
+        yourLatest: 'your current approved offerings',
         editorWelcome: 'Welcome to Your Editor!',
         editorWelcomeDesc: 'Review and edit your offerings here. Your content has been extracted automatically.',
         uploadLabel: 'Upload Your Content', uploadDesc: 'Upload photos or PDFs of your offerings. You can upload multiple files at once.',
@@ -382,9 +382,9 @@ const CATEGORY_LABELS: Record<string, OfferingLabels> = {
         topItemsLabel: 'Top Services', performanceLabel: 'Page Performance',
         thisMonthLabel: 'Your Page This Month',
         shareTitle: 'Share your services',
-        shareSubtitle: 'Send this link to customers. They always see your latest services and pricing.',
-        shareStaffHint: 'Share this link with your team so everyone sends the same updated page.',
-        yourLatest: 'your latest services',
+        shareSubtitle: 'Send this link to customers. They use your current approved services and pricing.',
+        shareStaffHint: 'Share this link with your team so everyone sends the same current page.',
+        yourLatest: 'your current approved services',
         editorWelcome: 'Welcome to Your Editor!',
         editorWelcomeDesc: 'Review and edit your services here. Your content has been extracted automatically.',
         uploadLabel: 'Upload Your Content', uploadDesc: 'Upload photos or PDFs of your services. You can upload multiple files at once.',

@@ -1,5 +1,7 @@
 # Menu PDF Cleanup Check - Marketing Notes
 
+**Last Updated:** July 4, 2026
+
 **Audience:** Internal sales, founder-led outreach, partner conversations
 **Public name:** Menu PDF Cleanup Check
 

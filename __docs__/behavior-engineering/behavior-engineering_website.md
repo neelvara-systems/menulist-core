@@ -3,14 +3,20 @@
 **Feature:** Behavior Engineering (Presence Dominance Activation)  
 **Created:** February 19, 2026  
 **Audience:** Potential customers visiting menulist.ai  
-**Status:** Implementation In Progress
+**Status:** Source-gated behavior-copy boundary
+
+---
+
+## Source Gate
+
+This website copy is source-gated by `npm run verify:public-business-truth`. It may position MenuList as one stable customer link, but it must not claim every edit is instantly visible, always latest, or automatically current outside the approved save/publish path and public cache refresh.
 
 ---
 
 ## Hero Section
 
 - **Headline:** One link for your entire menu
-- **Subheadline:** Stop sending PDFs and photos. Send this link instead. Customers always see your latest menu, prices, and hours.
+- **Subheadline:** Stop sending PDFs and photos. Send this link instead. Customers open your current approved menu, prices, and hours.
 - **CTA Text:** Get Your Official Menu Link
 - **CTA Link:** /signup
 
@@ -20,12 +26,12 @@ Every day you get dozens of "send me your menu" messages. You open your gallery,
 
 ## Solution Statement
 
-MenuList gives your business one official link that always shows your latest menu. Update once — every customer sees the update instantly. No more resending. No more outdated PDFs floating around. Your staff, your Instagram bio, your table QR — all point to the same always-current menu.
+MenuList gives your business one official link for the current approved menu. Update in MenuList, publish where required, and the same link refreshes through the public cache path. No more resending. No more outdated PDFs floating around. Your staff, your Instagram bio, your table QR — all point to the same customer link.
 
 ## Feature Benefits (4 blocks)
 
-### Always Up to Date
-Change a price or add an item — every customer sees it immediately. No more "but your menu said ₹180" conversations.  
+### Current Approved Source
+Change a price or add an item, then save or publish through MenuList. Customers use the same link after the public refresh path. No more "but your menu said ₹180" conversations.
 **Visual:** Before/after showing old PDF price vs live MenuList price
 
 ### One Link, Everywhere
@@ -33,7 +39,7 @@ Same link works on WhatsApp, Instagram bio, Google, QR codes, and any browser. N
 **Visual:** Link being shared across WhatsApp, Instagram, QR code
 
 ### Your Whole Team, Same Menu
-Share the link with your staff. Everyone sends the same updated menu to customers. No more wrong versions from different team members.  
+Share the link with your staff. Everyone sends the same current menu link to customers. No more wrong versions from different team members.
 **Visual:** Multiple staff members sharing the same link
 
 ### Print Once, Updated Forever
@@ -44,7 +50,7 @@ QR code on your table or counter links to your live menu. Menu changes? QR still
 
 1. **Upload your menu** — Send us photos of your menu or type it in. We'll create your digital menu.
 2. **Get your official link** — Your unique link like joespizza.menulist.ai is ready to share everywhere.
-3. **Share and forget** — Send this link whenever customers ask. Update your menu anytime — customers always see the latest.
+3. **Share the same link** — Send this link whenever customers ask. Menu changes keep the same link after the approved save/publish and public refresh path.
 
 ## Social Proof Slots
 
@@ -55,31 +61,31 @@ QR code on your table or counter links to your live menu. Menu changes? QR still
 ## FAQ
 
 - **Q:** What if I change my menu frequently?
-  **A:** That's exactly why MenuList exists. Update anytime — customers always see the latest version. No need to resend anything.
+  **A:** That's exactly why MenuList exists. Update anytime, save or publish through MenuList, and the same link keeps pointing to the current approved version.
 
 - **Q:** Do my customers need to download an app?
   **A:** No. They just tap the link and see your menu in their browser. Works on any phone.
 
 - **Q:** Can I use this for my Instagram bio?
-  **A:** Yes. Add your MenuList link to your Instagram bio. Customers can always access your latest menu from there.
+  **A:** Yes. Add your MenuList link to your Instagram bio. Customers can access your current approved menu from there.
 
 - **Q:** What about QR codes?
-  **A:** Download your QR code and print it for tables or counters. It links to your live menu — updates automatically, no reprinting needed.
+  **A:** Download your QR code and print it for tables or counters. It links to your current menu source, so the same QR stays useful after approved menu updates.
 
 ## SEO Meta
 
 - **Page Title:** Official Menu Link for Restaurants & Cafés | MenuList
-- **Meta Description:** One link for your entire menu. Always updated. Share on WhatsApp, Instagram, QR — customers always see your latest prices and items.
-- **OG Title:** One Link for Your Entire Menu — Always Updated
-- **OG Description:** Stop sending PDFs. Get your official menu link. Customers always see your latest menu.
+- **Meta Description:** One link for your entire menu. Share on WhatsApp, Instagram, and QR so customers open the current approved prices and items.
+- **OG Title:** One Link for Your Entire Menu
+- **OG Description:** Stop sending PDFs. Get your official menu link for the current approved menu.
 - **Target Keywords:** official menu link, digital menu for restaurants, QR code menu, WhatsApp menu link, restaurant menu online
 
 ## Approved Language
 
 ### USE:
 - "Official menu link"
-- "Always updated"
-- "Latest menu"
+- "Current approved menu"
+- "Same customer link"
 - "One link, everywhere"
 
 ### NEVER USE:

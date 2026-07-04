@@ -5,6 +5,7 @@ export const SHAREABLE_TOOL_REPORT_MAX_JSON_LENGTH = 24000;
 export const SHAREABLE_TOOL_REPORT_MAX_ENCODED_LENGTH = 36000;
 export const SHAREABLE_TOOL_REPORT_MAX_CHECKS = 16;
 export const SHAREABLE_TOOL_REPORT_MAX_BOUNDARIES = 8;
+export const SHAREABLE_TOOL_REPORT_MAX_SETUP_JOBS = 6;
 
 export type ShareableToolReportStatus =
   | 'ready'
@@ -35,6 +36,12 @@ export interface ShareableToolReportNextAction {
   href: string;
 }
 
+export interface ShareableToolReportSetupJob {
+  id: string;
+  label: string;
+  reason: string;
+}
+
 export interface ShareableToolReportSummary {
   present: number;
   missing: number;
@@ -59,6 +66,7 @@ export interface ShareableToolReportPayload {
   notCheckedText: string;
   summary: ShareableToolReportSummary;
   checks: ShareableToolReportCheck[];
+  setupJobList: ShareableToolReportSetupJob[];
   nextAction: ShareableToolReportNextAction;
   publicBoundary: string[];
 }
@@ -151,6 +159,52 @@ function coerceInternalHref(value: unknown): string {
   return '/create-menu';
 }
 
+function formatSetupJobResult(result: ShareableToolReportResult): string {
+  return result.replace(/_/g, ' ');
+}
+
+export function buildShareableToolReportSetupJobs(
+  checks: ShareableToolReportCheck[],
+  nextAction?: ShareableToolReportNextAction,
+): ShareableToolReportSetupJob[] {
+  const jobs = checks
+    .filter((check) => check.result === 'missing' || check.result === 'unclear' || check.result === 'not_checked')
+    .slice(0, SHAREABLE_TOOL_REPORT_MAX_SETUP_JOBS)
+    .map((check, index) => ({
+      id: coerceString(check.id, 80) || `check_${index + 1}`,
+      label: coerceString(check.label, 160),
+      reason: coerceString(`${formatSetupJobResult(check.result)}: ${check.evidenceText || check.helperText}`, 260),
+    }))
+    .filter((job) => job.label.length > 0 && job.reason.length > 0);
+
+  if (jobs.length > 0 || !nextAction?.title || !nextAction.description) {
+    return jobs;
+  }
+
+  return [{
+    id: 'next_action',
+    label: coerceString(nextAction.title, 160),
+    reason: coerceString(nextAction.description, 260),
+  }];
+}
+
+function coerceShareableToolReportSetupJobs(value: unknown): ShareableToolReportSetupJob[] {
+  if (!Array.isArray(value)) return [];
+
+  return value
+    .slice(0, SHAREABLE_TOOL_REPORT_MAX_SETUP_JOBS)
+    .map((job, index) => {
+      const row = job && typeof job === 'object' ? job as Record<string, unknown> : {};
+      const label = coerceString(row.label, 160);
+      return {
+        id: coerceString(row.id, 80) || `job_${index + 1}`,
+        label,
+        reason: coerceString(row.reason, 260),
+      };
+    })
+    .filter((job) => job.label.length > 0 && job.reason.length > 0);
+}
+
 function normalizeShareableToolReportPayload(value: unknown): ShareableToolReportPayload | null {
   if (!value || typeof value !== 'object') return null;
 
@@ -180,6 +234,14 @@ function normalizeShareableToolReportPayload(value: unknown): ShareableToolRepor
     })
     .filter((check) => check.label.length > 0 && check.evidenceText.length > 0);
 
+  const nextAction: ShareableToolReportNextAction = {
+    title: coerceString(rawNextAction.title, 160),
+    description: coerceString(rawNextAction.description, 360),
+    cta: coerceString(rawNextAction.cta, 80),
+    href: coerceInternalHref(rawNextAction.href),
+  };
+  const setupJobList = coerceShareableToolReportSetupJobs(source.setupJobList);
+
   const payload: ShareableToolReportPayload = {
     schemaVersion: SHAREABLE_TOOL_REPORT_SCHEMA_VERSION,
     toolId: coerceString(source.toolId, 80),
@@ -202,12 +264,10 @@ function normalizeShareableToolReportPayload(value: unknown): ShareableToolRepor
       primaryLabel: coerceString(rawSummary.primaryLabel, 120),
     },
     checks,
-    nextAction: {
-      title: coerceString(rawNextAction.title, 160),
-      description: coerceString(rawNextAction.description, 360),
-      cta: coerceString(rawNextAction.cta, 80),
-      href: coerceInternalHref(rawNextAction.href),
-    },
+    setupJobList: setupJobList.length > 0
+      ? setupJobList
+      : buildShareableToolReportSetupJobs(checks, nextAction),
+    nextAction,
     publicBoundary: rawBoundaries
       .slice(0, SHAREABLE_TOOL_REPORT_MAX_BOUNDARIES)
       .map((boundary) => coerceString(boundary, 220))
@@ -361,6 +421,19 @@ export function buildShareablePublicTruthToolReportPayload({
   businessContext,
 }: BuildShareablePublicTruthToolReportPayloadOptions): ShareableToolReportPayload {
   const issueCount = report.summary.missing + report.summary.unclear;
+  const checks = report.checks.map((check) => ({
+    id: check.id,
+    label: translateShareableToolReportText(t, `checks.${check.id}.label`),
+    result: check.result,
+    helperText: translateShareableToolReportText(t, `checks.${check.id}.helper`),
+    evidenceText: check.evidenceText,
+  }));
+  const nextAction = {
+    title: translateShareableToolReportText(t, `nextActions.${report.nextAction.type}.title`),
+    description: translateShareableToolReportText(t, `nextActions.${report.nextAction.type}.description`),
+    cta: translateShareableToolReportText(t, `nextActions.${report.nextAction.type}.cta`),
+    href: report.nextAction.href,
+  };
 
   return {
     schemaVersion: SHAREABLE_TOOL_REPORT_SCHEMA_VERSION,
@@ -383,19 +456,9 @@ export function buildShareablePublicTruthToolReportPayload({
       primaryNumber: issueCount,
       primaryLabel: translateShareableToolReportText(sharedT, 'primaryLabel'),
     },
-    checks: report.checks.map((check) => ({
-      id: check.id,
-      label: translateShareableToolReportText(t, `checks.${check.id}.label`),
-      result: check.result,
-      helperText: translateShareableToolReportText(t, `checks.${check.id}.helper`),
-      evidenceText: check.evidenceText,
-    })),
-    nextAction: {
-      title: translateShareableToolReportText(t, `nextActions.${report.nextAction.type}.title`),
-      description: translateShareableToolReportText(t, `nextActions.${report.nextAction.type}.description`),
-      cta: translateShareableToolReportText(t, `nextActions.${report.nextAction.type}.cta`),
-      href: report.nextAction.href,
-    },
+    checks,
+    setupJobList: buildShareableToolReportSetupJobs(checks, nextAction),
+    nextAction,
     publicBoundary: [
       translateShareableToolReportText(sharedT, 'boundary0'),
       translateShareableToolReportText(sharedT, 'boundary1'),

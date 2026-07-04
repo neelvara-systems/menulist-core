@@ -2,10 +2,14 @@
 
 **Last Updated:** February 8, 2026
 
+## Source Gate
+
+Website copy must describe Digital Screens as a current approved menu source display, not as instant or absolute freshness. The active runtime uses a 60-second `screen-data` cache, cache-first clients, public cache invalidation, and the screen content-version listener. Guard with `npm run verify:digital-screens-boundary`.
+
 ## Hero Section
 
 - **Headline:** Your Full Menu On Your Shop TV
-- **Subheadline:** Categories, items, prices — always up to date. Sold out? It disappears. New item? It appears. You never touch it.
+- **Subheadline:** Categories, items, prices from your current MenuList source. Save the menu, and connected screens refresh through the screen update path.
 - **CTA Text:** See How It Works
 - **CTA Link:** /features/digital-screens
 
@@ -15,7 +19,7 @@ That TV screen in your shop is either blank, showing a year-old slideshow, or ru
 
 ## Solution Statement
 
-MenuList puts your full menu on your TV — with categories, items, and prices. When something sells out, it disappears. When you add something new, it appears. You open one link and never touch it again.
+MenuList puts your full menu on your TV — with categories, items, and prices from your current approved menu source. When you save availability, item, or price changes, the screen path refreshes through public cache invalidation and the screen content-version listener.
 
 ## Feature Benefits
 
@@ -25,11 +29,11 @@ Categories, items, prices — exactly what customers need to decide. Not slidesh
 
 > **Visual:** TV screen above counter showing clean menu board with categories and prices
 
-### 2. Always Current, Always Correct
+### 2. Current Menu Source
 
-Sold-out items disappear automatically. New items appear. Prices update in real-time. The screen shows whatever is in your menu right now.
+Sold-out items, new items, and price changes follow the saved MenuList source. Connected screens reload after the content-version listener sees the acknowledged change; manual browser refresh remains the fallback if a TV misses the update.
 
-> **Visual:** Before/after — item sold out at 8 PM, screen updates instantly
+> **Visual:** Before/after — item marked sold out in MenuList, connected TV refreshes to the current menu board
 
 ### 3. Two Screens, One System
 
@@ -53,7 +57,7 @@ TV, tablet, LED display — if it has a browser, it works. No special hardware r
 
 1. **Open One Link** — On any TV or display with a browser
 2. **Press Fullscreen** — Your full menu appears with prices
-3. **Forget About It** — Content updates automatically from your menu data
+3. **Leave It Running** — Saved menu changes refresh through the screen update path
 
 ## Two Display Modes
 
@@ -71,12 +75,12 @@ Rotating promotional slides with featured items and a QR code. Designed for entr
 
 ## SEO Meta
 
-- **Page Title:** Digital Menu Board for Restaurants | Auto-Updating Prices | MenuList
-- **Meta Description:** Put your full menu on your shop TV — categories, items, prices. Auto-updates when your menu changes. Sold out? It disappears. Zero effort. Free with MenuList.
-- **Target Keywords:** digital menu board, restaurant TV menu, in-store menu display, auto-updating menu board, digital menu screen, restaurant screen display
+- **Page Title:** Digital Menu Board for Restaurants | Current Menu Prices | MenuList
+- **Meta Description:** Put your full menu on your shop TV — categories, items, prices from your current MenuList source. Saved menu changes refresh connected screens through the screen update path.
+- **Target Keywords:** digital menu board, restaurant TV menu, in-store menu display, current menu board, digital menu screen, restaurant screen display
 
 ## Approved Language
 
-### USE: "Full menu on screen", "always current", "zero effort", "any screen", "categories items prices", "two modes one system"
+### USE: "Full menu on screen", "current menu source", "zero effort", "any screen", "categories items prices", "two modes one system"
 
 ### NEVER USE: "AI-powered signage", "Smart display", "Dynamic content engine", "Digital signage", "Campaign management", "Playlist"

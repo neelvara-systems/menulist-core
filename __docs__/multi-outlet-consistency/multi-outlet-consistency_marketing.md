@@ -56,7 +56,7 @@ This creates a recurring burden for owners:
 
 ### How MenuList Solves This
 
-MenuList gives you **one master menu** that controls every outlet. Update once, update everywhere.
+MenuList gives you **one master menu** for linked outlets. Saved master changes flow through the outlet sync/cache path.
 
 But we understand each location is different. So outlets can still:
 
@@ -72,7 +72,7 @@ But we understand each location is different. So outlets can still:
 ## 4. Key Benefits (Bullet List)
 
 - **One master menu** for the entire brand
-- **Instant updates** across all outlets
+- **Saved updates** flow to linked outlets through the outlet sync/cache path
 - **Local changes stay local** (prices, availability, specials)
 - **No manual syncing** or spreadsheet chaos
 - **Prevents brand inconsistency** and menu drift
@@ -121,7 +121,7 @@ But we understand each location is different. So outlets can still:
 
 - Create your brand's master menu
 - Link each outlet to inherit automatically
-- Changes propagate instantly
+- Saved changes flow to linked outlets automatically
 - No manual syncing required
 
 ### Slide 3: How It Works
@@ -193,7 +193,7 @@ But we understand each location is different. So outlets can still:
 ### Key Benefits (Bullet Points)
 
 - ✓ One master menu controls all outlets
-- ✓ Change price once, update everywhere
+- ✓ Save the master price once; linked outlets inherit it through the outlet sync/cache path
 - ✓ Local flexibility for each location
 - ✓ Brand items stay protected
 - ✓ Zero spreadsheet chaos
@@ -238,7 +238,7 @@ Subject: "One menu. Every outlet. Zero sync effort."
 
 > Managing menus across multiple locations shouldn't mean spreadsheet chaos and constant WhatsApp reminders.
 >
-> MenuList gives you a master menu that controls every outlet. Update once, update everywhere—while each location keeps the flexibility to adjust prices and add local specials.
+> MenuList gives you a master menu for linked outlets. Saved master changes flow through the outlet sync/cache path while each location keeps the flexibility to adjust prices and add local specials.
 >
 > [See How It Works →]
 
@@ -362,7 +362,7 @@ Sell Multi-Outlet when customer:
 | -------------------- | -------------------------------------------------- |
 | **Feature Name**     | Multi-Outlet Menu Control                          |
 | **One-Liner**        | Run every outlet from one master menu              |
-| **Value Prop**       | Update once, update everywhere                     |
+| **Value Prop**       | Save once; linked outlets inherit through the sync/cache path |
 | **Key Benefit**      | Brand consistency + local flexibility              |
 | **Objection Killer** | "Local changes stay local. Brand stays protected." |
 | **Upgrade Trigger**  | Customer has 2+ outlets                            |

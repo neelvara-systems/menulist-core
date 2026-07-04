@@ -120,6 +120,13 @@ export const PLATFORM_DISCOVERY_PAGES: PlatformDiscoveryPage[] = [
         priority: 0.8,
     },
     {
+        label: 'Customer FAQ Reply Pack',
+        path: '/tools/customer-faq-reply-pack',
+        description: 'Browser-local reply pack that turns owner-entered customer questions and business facts into reusable FAQ and auto-reply text without reading conversations, creating a chatbot, sending messages, or calling AI providers',
+        changeFrequency: 'monthly',
+        priority: 0.8,
+    },
+    {
         label: 'Booking Inquiry Readiness Check',
         path: '/tools/booking-inquiry-readiness-check',
         description: 'Browser-local check for whether customers can clearly order, book, reserve, call, message, request a quote, or visit from the public business source they see',
@@ -148,6 +155,13 @@ export const PLATFORM_DISCOVERY_PAGES: PlatformDiscoveryPage[] = [
         priority: 0.8,
     },
     {
+        label: 'Business Facts Copy Pack',
+        path: '/tools/business-facts-copy-pack',
+        description: 'Browser-local copy pack that turns owner-entered business facts into reusable profile, WhatsApp, social, website, staff, and customer-link copy',
+        changeFrequency: 'monthly',
+        priority: 0.8,
+    },
+    {
         label: 'One Customer Link Preview',
         path: '/tools/customer-link-preview',
         description: 'Browser-local preview check for whether one customer-facing business link has the facts customers need before they call, visit, order, book, or ask a question',
@@ -165,6 +179,13 @@ export const PLATFORM_DISCOVERY_PAGES: PlatformDiscoveryPage[] = [
         label: 'WhatsApp Action Link Check',
         path: '/tools/whatsapp-action-link-check',
         description: 'Browser-local check for whether customers can tap once to message, order, book, or ask through WhatsApp with a clear customer link and fallback action',
+        changeFrequency: 'monthly',
+        priority: 0.8,
+    },
+    {
+        label: 'WhatsApp Reply Pack',
+        path: '/tools/whatsapp-reply-pack',
+        description: 'Browser-local reply pack that turns owner-entered business facts into reusable WhatsApp greeting, hours, menu, price, order, delivery, fallback, and customer-link replies',
         changeFrequency: 'monthly',
         priority: 0.8,
     },

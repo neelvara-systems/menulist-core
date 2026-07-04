@@ -70,9 +70,9 @@ Sign in first. No credit card for preview. Account setup connects the draft to t
 3. Salon owner pastes an existing services page link → gets a review-ready source
 
 **Slide 6 — Value:**
-- One link, always current, everywhere
-- Customers always see the latest menu
-- Owner updates once, correct everywhere
+- One approved link for QR, WhatsApp, and Google surfaces
+- Customers see the owner-published menu
+- Owner edits once, saves, and publishes design or page changes when needed
 
 **Slide 7 — CTA:**
 "Try it now — upload your menu at menulist.ai/create-menu"
@@ -89,7 +89,7 @@ Free to start. Review before publishing.
 **Key benefit bullets:**
 - Start from a photo or public link — no typing required
 - Share one link on WhatsApp, Google, and table QR codes
-- Update anytime from your phone — changes go live instantly
+- Update from your phone with owner-controlled save and publish paths
 - Works for restaurants, cafes, salons, and any service business
 
 **Social proof placeholders:**
@@ -132,7 +132,7 @@ Free to start. Review before publishing.
 
 ## 8. Approved Language
 
-**Use:** "live page", "official menu link", "always current", "works everywhere", "automatic", "handled"
+**Use:** "live page", "official menu link", "approved menu source", "published version", "works everywhere", "handled"
 **Avoid:** "AI-powered", "smart", "dynamic", "optimized", "real-time sync", "cutting-edge"
 
 Per Language Governance: infrastructure language, not marketing language.

@@ -243,7 +243,7 @@ Based on industry research (Linktree, Carrd, Notion, etc.):
    - Value: `cname.vercel-dns.com`
 4. User configures DNS at their domain provider
 5. User clicks "Verify" → System checks DNS
-6. Once verified, menu is live at custom domain
+6. Once Vercel reports the domain configured, `/api/domain` writes `domainVerified: true`, invalidates the public cache, and the custom domain can serve the menu.
 
 ---
 
@@ -281,19 +281,18 @@ Index 2: customDomain ASC, domainVerified ASC, active ASC
 
 Subdomains like `*.menulist.ai` are handled automatically via Vercel's wildcard DNS.
 
-### For Custom Domains (Manual per Client)
+### For Custom Domains (Owner DNS + MenuList/Vercel API)
 
 1. Client adds CNAME record at their DNS provider
-2. You add the domain in Vercel Dashboard:
-   - Project Settings → Domains → Add
-   - Enter: `menu.joespizza.com`
-   - Vercel auto-provisions SSL certificate
+2. `POST /api/domain` adds the domain to the Vercel project and writes the store routing fields with `domainVerified: false`
+3. `GET /api/domain` checks the Vercel domain config and flips `domainVerified: true` only after Vercel reports the domain configured
+4. Certificate provisioning is provider-managed after the domain is accepted and configured
 
-### Vercel Domains API (Future Automation)
+### Vercel Domains API
 
 ```typescript
-// Example: Add domain via API
-await fetch("https://api.vercel.com/v9/projects/{projectId}/domains", {
+// Runtime path used by /api/domain.
+await fetch("https://api.vercel.com/v10/projects/{projectId}/domains", {
   method: "POST",
   headers: { Authorization: `Bearer ${VERCEL_TOKEN}` },
   body: JSON.stringify({ name: "menu.joespizza.com" }),

@@ -1,5 +1,7 @@
 # Price Availability Gap Check - Marketing Notes
 
+**Last Updated:** July 4, 2026
+
 **Audience:** Internal sales, founder-led outreach, partner conversations
 **Public name:** Price Availability Gap Check
 

@@ -1,6 +1,7 @@
 # One Customer Link Preview - Validation
 
 **Status:** V0 validation evidence; not current launch certification
+**Last Updated:** July 4, 2026
 **Current release approval still requires the active production-readiness audit.**
 
 ## Local Source Gate

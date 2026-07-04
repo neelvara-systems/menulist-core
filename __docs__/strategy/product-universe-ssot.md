@@ -7,11 +7,18 @@
 **Created:** February 20, 2026  
 **Author:** Cascade (synthesized from 6 strategy docs, 3 constitution docs, 4 ChatGPT reviews, full codebase audit)  
 **Purpose:** Permanent founder reference — the honest top-view of everything we're building and why  
+**Status:** Historical product-universe/source-state reference; not current launch certification
 **Updates:** Only when a product's fundamental nature changes
 **May 31, 2026 Addendum:** GrowthOS implementation planning now uses `__docs__/growthos-addon/README.md`. GrowthOS is planned as a MenuList higher-tier add-on labelled Growth Kits, not as a standalone product.
 **June 1, 2026 Growth Engine Addendum:** Growth Engine is documented separately at `__docs__/growth-engine/README.md` as internal MenuList-owned distribution automation infrastructure. Lead generation is one input; the system's job is distribution target acquisition, Business Truth Graph candidate edges, owner claim routing, canonical MenuList truth activation, owned workflows, enrichment waterfalls, decision snapshots, surface publishing, discovery publishing, WhatsApp/message governance, freshness monitoring, and attribution. `MenuNexus` is the recommended name only after purchase and company-name checks. It is not GrowthOS, not a MenuList owner feature, and not part of the public product stack.
 
 ---
+
+> **Launch Boundary:** This file preserves February 2026 product-universe and source-state strategy. It is not live feature-flag truth, current implementation approval, current testing approval, current launch approval, or production certification. Current MenuList readiness is decided only by the active [production-readiness audit](../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../production-readiness/external-certification-runbook.md), current source verifiers, browser/device QA, provider smoke, target deploy evidence, and production-host smoke. For live feature flags, inspect `src/config/features.ts`.
+
+## How to Read This Document
+
+Treat all "built", "production", "done", "flag off", and "priority" labels below as historical strategic/source evidence unless current source files, current verifiers, and external gate evidence prove the same claim for the target release. Product identity statements below describe intended positioning; they do not guarantee that every external platform, printed artifact, cached surface, or unsupported channel is currently correct.
 
 ## Table of Contents
 
@@ -76,9 +83,9 @@ All four emerged from one day of deep ChatGPT thinking sessions (Feb 19, 2026), 
 
 ### What Is It? (Plain Language)
 
-**MenuList is the system that makes sure everything customers see about a small business is always correct and consistent.**
+**MenuList is the canonical source for supported customer-facing business truth surfaces.**
 
-When a restaurant owner updates their menu, it automatically becomes correct on their QR code, digital screen, official business page, Google listing, and printed PDF — everywhere. The owner doesn't think about channels. They think about truth. MenuList handles the rest.
+When a restaurant owner saves approved menu truth, supported MenuList surfaces refresh through their documented cache, publish, and output paths. External platforms, printed artifacts, and cached third-party surfaces still require their own integration or refresh evidence.
 
 ### Why Does It Exist?
 
@@ -95,26 +102,28 @@ This is not a technology problem. It's a **truth problem.** No single system own
 - Want to update once, have it work everywhere
 - Don't care about technology — care about not being embarrassed publicly
 
-### What's Built Today?
+### February 2026 Source-State Snapshot
 
-| Capability | Status |
-|-----------|--------|
-| Menu digitization (PDF/photo → digital) | ✅ Production |
-| Multi-language menus | ✅ Production |
-| AI image generation (single + batch) | ✅ Production |
-| Customer-facing QR menu | ✅ Production |
-| Decision Blocks (AI recommendations) | ✅ Production |
-| Continuous Menu Intelligence | ✅ Production |
-| Digital screens (TV/in-store) | ✅ Production |
-| Social Content Engine ("Today" screen) | ✅ Production |
-| Official Business Page (OBP) | ✅ Built (flag off) |
-| Temp Status Layer | ✅ Built (flag off) |
-| Menu Correctness Engine (17 rules) | ✅ Built (flag off) |
-| GBP Sync | ✅ Built (flag off) |
-| Owner Dashboard + Mobile | ✅ Production |
-| Multi-tenant architecture | ✅ Production |
+This table is historical source-state evidence from the February strategy synthesis. It is not current launch certification.
 
-**Core product is done.** The challenge is activation and adoption.
+| Capability | Historical source-state label |
+|-----------|-------------------------------|
+| Menu digitization (PDF/photo -> digital) | Source evidence present; current release approval requires active gates |
+| Multi-language menus | Source evidence present; current release approval requires active gates |
+| AI image generation (single + batch) | Source evidence present; current release approval requires active gates |
+| Customer-facing QR menu | Source evidence present; current release approval requires active gates |
+| Decision Blocks (AI recommendations) | Source evidence present; current release approval requires active gates |
+| Continuous Menu Intelligence | Source evidence present; current release approval requires active gates |
+| Digital screens (TV/in-store) | Source evidence present; current release approval requires active gates |
+| Social Content Engine ("Today" screen) | Source evidence present; current release approval requires active gates |
+| Official Business Page (OBP) | Historical flag-off/source evidence; current activation requires active gates |
+| Temp Status Layer | Historical flag-off/source evidence; current activation requires active gates |
+| Menu Correctness Engine (17 rules) | Historical flag-off/source evidence; current activation requires active gates |
+| GBP Sync | Historical flag-off/source evidence; current activation requires active gates |
+| Owner Dashboard + Mobile | Source evidence present; current release approval requires active gates |
+| Multi-tenant architecture | Source evidence present; current release approval requires active gates |
+
+**Core product source coverage is broad.** Current production readiness still requires the active audit, External Certification Runbook evidence, current source verifiers, browser/device QA, provider smoke where relevant, target deploy evidence, and production-host smoke.
 
 ### The Core Philosophy
 
@@ -163,7 +172,7 @@ This is not a technology problem. It's a **truth problem.** No single system own
 
 ### What Is It? (Plain Language)
 
-**The Control Layer is MenuList growing up.** Expanding from "controls your menu" to "controls everything customers see about your business." NOT a separate product. NOT something the owner would know about.
+**The Control Layer is MenuList growing up.** Expanding from "controls your menu" to supported customer-facing business truth surfaces. NOT a separate product. NOT something the owner would know about.
 
 ### Why Does It Exist?
 
@@ -476,9 +485,9 @@ Until the answer is yes, everything else is theoretical.
 ```
 WHAT:     Customer-facing business truth infrastructure
 WHO:      SMB owners (restaurants, salons, clinics)
-WHY:      "Everything customers see is always correct"
+WHY:      "Supported customer-facing truth comes from one approved source"
 AI:       Authority (silent, decisive)
-STATUS:   ✅ BUILT | PRIORITY: 🥇 #1 Always
+STATUS:   Historical source evidence | PRIORITY: #1 Always
 REVENUE:  Subscription | SUCCESS: Owner forgets the menu exists
 ```
 

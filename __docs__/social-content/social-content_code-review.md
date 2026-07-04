@@ -2,7 +2,9 @@
 
 **Date:** January 11, 2026  
 **Reviewer:** Cascade AI (Post-Implementation Quality Gate)  
-**Status:** 🔄 In Progress
+**Status:** Historical source-review evidence only; not current launch certification
+
+Current release approval still requires the active production-readiness audit, External Certification Runbook evidence, `npm run verify:agent-readiness`, `npm run verify:public-business-truth`, Today desktop/mobile/browser QA, campaign AI/provider smoke where enabled, target deploy evidence, and production-host smoke.
 
 ---
 
@@ -121,4 +123,4 @@
 | `StickerSection/index.tsx`  | Missing `notification` import | Added to antd imports |
 | `TentCardSection/index.tsx` | Missing `notification` import | Added to antd imports |
 
-Code is clean and spec-compliant. Production ready.
+This code review is source-bounded evidence for the January 2026 Today Tab slice. It is not release approval or production certification by itself.

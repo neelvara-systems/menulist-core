@@ -29,7 +29,7 @@ The canonical public identity endpoint of a business powered by MenuList. This i
 
 ## One-Liner
 
-The official public identity page of a business — auto-generated, always live, and updated from store data.
+The official public identity page of a business — auto-generated, always reachable, and served from store data through the public cache path.
 
 ## Problem Solved
 
@@ -37,7 +37,7 @@ Businesses share fragmented links (PDF, Zomato, Instagram, Google Drive) when cu
 
 ## Solution
 
-MenuList auto-generates an Official Business Page at the business's subdomain root (`joespizza.menulist.ai`). It shows business identity, live open/closed status, and a primary "View Menu" CTA that opens the existing digital menu. Updates instantly when store data changes.
+MenuList auto-generates an Official Business Page at the business's subdomain root (`joespizza.menulist.ai`). It shows business identity, live open/closed status, and a primary "View Menu" CTA that opens the existing digital menu. Store data changes refresh through the same public cache path used by the menu, with the current cache window documented as 60 seconds.
 
 ---
 

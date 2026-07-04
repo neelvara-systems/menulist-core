@@ -1,5 +1,7 @@
 # Google Profile Basics Checklist - Test Cases
 
+**Last Updated:** July 4, 2026
+
 ## V0 Report Cases
 
 | Case | Expected |

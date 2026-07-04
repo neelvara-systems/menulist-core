@@ -1,6 +1,7 @@
 # One Customer Link Preview - Specification
 
 **Status:** Implemented V0 public tool; V1 maps to existing MenuList owner readiness surfaces
+**Last Updated:** July 4, 2026
 **Owner Job:** "Show me whether one link has the facts customers need before I share it."
 
 ## Purpose

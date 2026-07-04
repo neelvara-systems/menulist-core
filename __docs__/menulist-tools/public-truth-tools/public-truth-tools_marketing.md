@@ -1,7 +1,7 @@
 # Public Truth Tools - Marketing Notes
 
 **Status:** Planning documentation only
-**Last Updated:** July 1, 2026
+**Last Updated:** July 4, 2026
 **Audience:** Internal marketing, sales, founder
 
 ---
@@ -85,6 +85,7 @@ Avoid:
 Use for acquisition:
 
 - Public Truth Check
+- Business Facts Copy Pack
 - QR Link Health Check
 - Menu Readability Check
 - Customer Question Coverage Check

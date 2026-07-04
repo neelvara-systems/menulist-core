@@ -727,6 +727,8 @@ function verifyDocsTruth() {
   const impl = read("__docs__/menulist-signaldesk/menulist-signaldesk_impl.md");
   const firebase = read("__docs__/menulist-signaldesk/menulist-signaldesk_firebase.md");
   const validation = read("__docs__/menulist-signaldesk/menulist-signaldesk_validation.md");
+  const featureMap = read("__docs__/menulist-signaldesk/menulist-signaldesk_feature-map.md");
+  const feedbackReview = read("__docs__/menulist-signaldesk/menulist-signaldesk_chatgpt-feedback-review-2026-06-24.md");
   const trustPartnerRail = read("__docs__/menulist-signaldesk/signaldesk-trust-partner-rail/README.md");
   const contentDistributionRail = read("__docs__/menulist-signaldesk/signaldesk-content-distribution-rail/README.md");
   const operatingLayer = read("__docs__/menulist-signaldesk/signaldesk-operating-layer/README.md");
@@ -742,6 +744,10 @@ function verifyDocsTruth() {
   assertIncludes(validation, "No Firebase deploy was run.", "SignalDesk deploy skip");
   assertIncludes(validation, "Local emulator data-flow smoke now runs through `scripts/verification/smoke-signaldesk-workflow.js`", "SignalDesk local workflow smoke status");
   assertIncludes(validation, "`npm run verify:signaldesk`", "SignalDesk verifier documented");
+  assertIncludes(featureMap, "operating-layer roadmap, not as SignalDesk launch certification", "SignalDesk feature-map launch certification boundary");
+  assertIncludes(feedbackReview, "Do not treat it as SignalDesk launch certification.", "SignalDesk feedback-review launch certification boundary");
+  assertNotIncludes(featureMap, "proof that SignalDesk is production-ready", "SignalDesk feature-map stale production-ready wording");
+  assertNotIncludes(feedbackReview, "proof that SignalDesk is production-ready", "SignalDesk feedback-review stale production-ready wording");
   assertIncludes(trustPartnerRail, "Runtime implemented for internal testing", "Trust Partner Rail runtime status");
   assertIncludes(trustPartnerRail, "Broad consumer influencer tactics are not copied", "Trust Partner Rail rejects consumer influencer copying");
   assertIncludes(contentDistributionRail, "Runtime implemented for internal testing", "Content Distribution Rail runtime status");

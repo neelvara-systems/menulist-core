@@ -79,6 +79,24 @@ function cleanCount(value: unknown): number {
   return Math.max(0, Math.min(999, Math.floor(numberValue)));
 }
 
+function cleanSetupJobList(value: unknown) {
+  if (!Array.isArray(value)) return [];
+
+  return value
+    .slice(0, 6)
+    .map((job, index) => {
+      const row = job && typeof job === 'object' ? job as Record<string, unknown> : {};
+      const label = cleanOpsText(row.label, 160);
+      const reason = cleanOpsText(row.reason, 260);
+      return {
+        id: cleanOpsText(row.id, 80) || `job_${index + 1}`,
+        label,
+        reason,
+      };
+    })
+    .filter((job) => job.label.length > 0 && job.reason.length > 0);
+}
+
 function normalizeReportStatus(value: unknown): ReportLeadReportStatus {
   const normalized = cleanOpsText(value, 80);
   return REPORT_LEAD_STATUSES.includes(normalized as ReportLeadReportStatus)
@@ -105,13 +123,23 @@ function buildSuggestedReply(lead: Omit<ReportLeadRow, 'suggestedReply'>): strin
     lead.unclearCount > 0 ? `${lead.unclearCount} unclear` : null,
     lead.notCheckedCount > 0 ? `${lead.notCheckedCount} not checked` : null,
   ].filter(Boolean).join(', ') || 'the checked rows';
+  const setupJobs = lead.setupJobList.length > 0
+    ? [
+      'The report gaps become this setup job list:',
+      ...lead.setupJobList.map((job) => `- ${job.label}: ${job.reason}`),
+      '',
+    ]
+    : [];
 
   return [
     `Thanks for sending the MenuList tool report for ${business}.`,
     '',
     `The report points to ${gaps}. The useful next step is to create or clean up one current customer link, then use that link wherever customers already look.`,
     '',
-    'We can help clean up the menu/service facts, hours, action links, QR/share readiness, and public page setup inside MenuList.',
+    ...setupJobs,
+    setupJobs.length > 0
+      ? 'We can turn that job list into owner-confirmed MenuList setup work.'
+      : 'We can help clean up the menu/service facts, hours, action links, QR/share readiness, and public page setup inside MenuList.',
     '',
     'This report did not inspect external platforms unless the tool explicitly said it did.',
   ].join('\n');
@@ -125,6 +153,7 @@ function serializeLead(doc: FirebaseFirestore.QueryDocumentSnapshot): ReportLead
   const sourceToolId = cleanOpsText(data.sourceToolId || sourceContext.toolId || 'unknown-tool', 80) || 'unknown-tool';
   const sourceReportStatus = normalizeReportStatus(data.sourceReportStatus || sourceContext.reportStatus);
   const primaryNumber = data.sourcePrimaryNumber ?? sourceContext.primaryNumber;
+  const setupJobList = cleanSetupJobList(sourceContext.setupJobList);
 
   const baseLead: Omit<ReportLeadRow, 'suggestedReply'> = {
     id: doc.id,
@@ -138,6 +167,7 @@ function serializeLead(doc: FirebaseFirestore.QueryDocumentSnapshot): ReportLead
     missingCount: cleanCount(sourceContext.missingCount),
     unclearCount: cleanCount(sourceContext.unclearCount),
     notCheckedCount: cleanCount(sourceContext.notCheckedCount),
+    setupJobList,
     contactName: cleanOpsText(data.name, 120) || null,
     workEmail: cleanOpsText(data.workEmail, 180) || null,
     phoneNumber: cleanOpsText(data.phoneNumber, 40) || null,

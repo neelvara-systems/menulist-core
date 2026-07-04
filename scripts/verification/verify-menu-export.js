@@ -213,6 +213,63 @@ async function main() {
         assert(!menuKitSection.includes(token), `Menu Kit section must not use raw diagnostic ${token}`);
     });
 
+    const pdfSurfaceDocs = {
+        spec: fs.readFileSync(path.join(root, '__docs__/pdf-surface/pdf-surface_spec.md'), 'utf8'),
+        marketing: fs.readFileSync(path.join(root, '__docs__/pdf-surface/pdf-surface_marketing.md'), 'utf8'),
+        helpdoc: fs.readFileSync(path.join(root, '__docs__/pdf-surface/pdf-surface_helpdoc.md'), 'utf8'),
+        website: fs.readFileSync(path.join(root, '__docs__/pdf-surface/pdf-surface_website.md'), 'utf8'),
+        physicalWebsite: fs.readFileSync(path.join(root, '__docs__/physical-surfaces/physical-surfaces_website.md'), 'utf8'),
+        audit: fs.readFileSync(path.join(root, '__docs__/audits/menulist-production-readiness-audit.md'), 'utf8'),
+        changelog: fs.readFileSync(path.join(root, '__docs__/CHANGELOG.md'), 'utf8'),
+    };
+
+    [
+        [pdfSurfaceDocs.spec, 'current project data at download time', 'PDF Surface spec generation-time boundary'],
+        [pdfSurfaceDocs.spec, 'version ID and generation timestamp', 'PDF Surface spec version evidence'],
+        [pdfSurfaceDocs.marketing, 'Generated from the current project data at download time', 'PDF Surface marketing generation-time boundary'],
+        [pdfSurfaceDocs.marketing, 'The version is clear', 'PDF Surface marketing versioned talking point'],
+        [pdfSurfaceDocs.helpdoc, 'Download a fresh PDF after menu changes', 'PDF Surface helpdoc freshness boundary'],
+        [pdfSurfaceDocs.helpdoc, 'printed or shared copies represent the version generated at that time', 'PDF Surface helpdoc generated-artifact boundary'],
+        [pdfSurfaceDocs.website, 'Your menu. Print-ready. Versioned.', 'PDF Surface website versioned headline'],
+        [pdfSurfaceDocs.website, 'Generated from current project data at download time', 'PDF Surface website generation-time boundary'],
+        [pdfSurfaceDocs.website, 'Download a print-ready PDF generated from current project data at download time.', 'PDF Surface website speed-claim replacement'],
+        [pdfSurfaceDocs.website, 'Older downloads and printed copies need replacement after changes.', 'PDF Surface website replacement boundary'],
+        [pdfSurfaceDocs.physicalWebsite, 'same approved source', 'Physical Surfaces website approved-source boundary'],
+        [pdfSurfaceDocs.physicalWebsite, 'Versioned Output', 'Physical Surfaces website versioned-output boundary'],
+        [pdfSurfaceDocs.physicalWebsite, 'Printed copies represent the version generated at that time.', 'Physical Surfaces website generated-artifact boundary'],
+        [pdfSurfaceDocs.audit, 'PDF and physical-surface freshness-copy checkpoint', 'Production audit records PDF/physical freshness checkpoint'],
+        [pdfSurfaceDocs.audit, '`npm run verify:menu-export` now rejects stale PDF/physical-surface always-current artifact claims', 'Production audit records PDF/physical verifier boundary'],
+        [pdfSurfaceDocs.audit, 'PDF Surface website speed/all-field copy checkpoint', 'Production audit records PDF website speed/all-field checkpoint'],
+        [pdfSurfaceDocs.changelog, 'PDF And Physical Surface Freshness Copy Boundary', 'Changelog records PDF/physical freshness checkpoint'],
+        [pdfSurfaceDocs.changelog, '`npm run verify:menu-export` now rejects stale PDF/physical-surface always-current artifact claims', 'Changelog records PDF/physical verifier boundary'],
+        [pdfSurfaceDocs.changelog, 'PDF Surface Website Speed All-Field Copy Boundary', 'Changelog records PDF website speed/all-field checkpoint'],
+    ].forEach(([content, token, label]) => {
+        assert(content.includes(token), `${label} must include ${token}`);
+    });
+
+    const pdfFreshnessForbiddenTokens = [
+        'guaranteeing that prices on printed menus always match prices online',
+        'no stale content',
+        'Always current',
+        'Always generated from live data',
+        'The prices are always correct',
+        'Generated from your live menu',
+        'The PDF always reflects your current menu',
+        'Every time you download a PDF, it is generated fresh from your live menu data',
+        'Your menu. Print-ready. Always current.',
+        'Generated from live data — prices are always current',
+        'Always matching, always current',
+        'both your digital and printed menus stay in sync',
+        '### 3. Always Current',
+        'always matching',
+        'Download a print-ready PDF of your menu in seconds',
+        'Every item, every price, every category',
+    ];
+    const pdfFreshnessDocs = `${pdfSurfaceDocs.spec}\n${pdfSurfaceDocs.marketing}\n${pdfSurfaceDocs.helpdoc}\n${pdfSurfaceDocs.website}\n${pdfSurfaceDocs.physicalWebsite}`;
+    pdfFreshnessForbiddenTokens.forEach((token) => {
+        assert(!pdfFreshnessDocs.includes(token), `PDF/physical surface docs must not include stale artifact freshness claim: ${token}`);
+    });
+
     console.log('PASS verify-menu-export');
     console.log('Validated dedupe, ordering, default flags, multilingual rows, attribute export sheets, and bounded share/export diagnostics.');
 }

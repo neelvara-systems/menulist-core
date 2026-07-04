@@ -150,7 +150,7 @@ MenuList includes AI features as part of every subscription. For businesses with
 
 **Body:**
 
-> Your AI Enhancement Pack has been activated. Your menu's AI features are ready to use.
+> Your AI Enhancement Pack has been activated. Additional AI capacity is now available for your menu.
 >
 > No setup needed. Continue using MenuList as usual.
 >

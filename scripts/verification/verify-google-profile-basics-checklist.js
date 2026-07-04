@@ -109,7 +109,7 @@ assertIncludes(validationDoc, 'Current release approval still requires the activ
 assertIncludes(validationDoc, 'npm run verify:google-profile-basics-checklist', 'Google Profile Basics Checklist validation source gate');
 assertIncludes(toolsReadmeDoc, '[google-profile-basics-checklist](./google-profile-basics-checklist/README.md)', 'MenuList Tools README');
 assertIncludes(familyReadmeDoc, '[Google Profile Basics Checklist](../google-profile-basics-checklist/README.md)', 'Public Truth Tools family docs');
-assertIncludes(familyReadmeDoc, 'thirteen public tools, a public shareable report layer, and twelve owner readiness modules', 'Public Truth Tools family status');
+assertIncludes(familyReadmeDoc, 'sixteen public tools, a public shareable report layer, and twelve owner readiness modules', 'Public Truth Tools family status');
 assertIncludes(familyReadmeDoc, '/tools/google-profile-basics-checklist', 'Public Truth Tools route list');
 assertIncludes(familySpecDoc, 'Google Profile Basics Checklist V0/V1', 'Public Truth Tools spec implementation summary');
 assertIncludes(familyImplDoc, 'googleProfileBasicsReport.ts', 'Public Truth Tools implementation docs');

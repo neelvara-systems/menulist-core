@@ -384,23 +384,29 @@ Reopens in 1h 30m (or at 3:00 PM)
 
 | Action            | Trigger         | Result                                                    |
 | ----------------- | --------------- | --------------------------------------------------------- |
-| Close for today   | Tap button      | Instant close + auto-publish to all surfaces              |
-| Reopen today      | Tap button      | Instant reopen + auto-publish                             |
+| Close for today   | Tap button      | Owner UI closes immediately; Temporary Status syncs and customer output refreshes through supported paths |
+| Reopen today      | Tap button      | Owner UI reopens immediately; Temporary Status clears and customer output refreshes through supported paths |
 | Temporarily close | Tap link        | Duration picker (1h, 2h, 3h, custom, until manual reopen) |
-| Reopen now        | Tap button      | Instant reopen from temp close                            |
+| Reopen now        | Tap button      | Owner UI reopens immediately after Temporary Status clears |
 | Edit day hours    | Tap any day row | Bottom sheet with time pickers                            |
 | Auto-reopen       | System          | When next scheduled open time arrives                     |
 
 ### Data Source
 
 ```typescript
-// Existing DAL — hours
+// Regular weekly hours
 import { updateStore } from "@database/stores";
 
 // From existing context
 const { storeDetails } = useContext(PlatformGlobalDataContext);
-// storeDetails.workingHours → weekly hours
-// New fields needed: todayOverride, tempCloseUntil
+// storeDetails.workingHours → regular weekly hours
+// storeDetails.tempStatus → active Temporary Status from the store document
+
+// Temporary Status shortcuts
+import { AUTH_BROWSER_REQUEST_POLICY } from "@lib/auth/browserRequestPolicy";
+import { readTempStatusResponse } from "@lib/tempStatus/clientResponse";
+// POST /api/store/temp-status with action set/clear.
+// Optimistic state remains only after { success: true }; failure rolls back.
 
 // Existing hooks — Today Actions (v1.1 addition)
 import { useTodayCampaigns } from "@template/main-app/today/hooks/useTodayCampaigns";
@@ -421,14 +427,18 @@ Runtime boundary (July 1, 2026): mobile Today uses the same campaign completion 
 - Only WhatsApp/social campaigns shown on mobile. Stickers, tent cards, physical surfaces = desktop only.
 - Uses existing `useTodayCampaigns` and `useCampaignActions` hooks — zero new DAL needed.
 
-### New Fields Required (Firestore)
+### Current Firestore Fields
 
 ```typescript
-// Add to store document (minimal addition)
-interface StoreHoursOverride {
-  todayOverride?: "open" | "closed" | "temp_closed" | null; // null = follow schedule
-  tempCloseUntil?: Timestamp | null; // When temp close expires
-  overrideDate?: string; // ISO date string, auto-clear next day
+// Existing store document field used by Temporary Status.
+interface StoreTemporaryStatus {
+  tempStatus?: {
+    type: "closed_today" | "opening_late" | "closing_early" | "kitchen_closed" | "special_menu" | "custom";
+    message: string;
+    expiresAt: string; // ISO datetime; expired statuses are hidden by public output.
+    createdAt: string;
+    createdBy?: string | null;
+  };
 }
 ```
 
@@ -656,7 +666,7 @@ Edit customer-facing business identity, contact details, address, map coordinate
 ### Save Behavior
 
 Auto-save on field blur (when user moves to next field). No save button needed.
-Show subtle "Saved" indicator. Changes go live instantly.
+Show subtle "Saved" indicator. Customer menu refresh follows the current public cache path and can take up to 60 seconds. Screens with an explicit Publish action keep that publish action.
 
 ### Data Source
 

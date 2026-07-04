@@ -1,5 +1,7 @@
 # Tools Hub - Website Copy Contract
 
+**Last Updated:** July 4, 2026
+
 ## Route
 
 `/tools`

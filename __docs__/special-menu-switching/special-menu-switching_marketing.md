@@ -29,7 +29,7 @@ MenuList now lets you create a separate special menu for any occasion. Set when 
 - Festivals, events, seasons handled cleanly
 - Automatic switch-back (no forgetting)
 - Same editor you already know
-- Works on your public page, QR code, screens — everywhere
+- Works on your public page, QR code link, and configured screens through supported refresh paths
 
 ---
 
@@ -65,7 +65,7 @@ MenuList now lets you create a separate special menu for any occasion. Set when 
 | 3 — Solution     | Special Menu Switching — activate temporary menus with auto-revert |
 | 4 — How It Works | Create → Schedule → System handles the rest (3 steps)              |
 | 5 — Use Cases    | Diwali menu, Sunday brunch, IPL night, seasonal specials           |
-| 6 — Advantage    | Same editor, all surfaces update, automatic switch-back            |
+| 6 — Advantage    | Same editor, supported live surfaces follow the active menu path, automatic switch-back |
 | 7 — CTA          | "Set up your first special menu in 5 minutes"                      |
 
 ---
@@ -91,7 +91,7 @@ MenuList now lets you create a separate special menu for any occasion. Set when 
 | Scheduled activation  | "Set it today, it appears when you want"              |
 | Auto-revert           | "Never forget to switch back"                         |
 | Same editor           | "No new tool to learn"                                |
-| All surfaces update   | "QR code, screens, website — all show the right menu" |
+| Supported live surfaces update | "QR code link, public page, and configured screens follow the scheduled menu path" |
 
 ---
 
@@ -121,7 +121,7 @@ MenuList now lets you create a separate special menu for any occasion. Set when 
 | Competitor                  | Their Approach              | Our Advantage                                                                |
 | --------------------------- | --------------------------- | ---------------------------------------------------------------------------- |
 | POS systems (TouchBistro)   | Menu scheduling tied to POS | MenuList works independently — no POS needed                                 |
-| Digital signage (LOOK DS)   | Screen-only menu switching  | MenuList updates ALL surfaces (page, QR, screens, OBP)                       |
+| Digital signage (LOOK DS)   | Screen-only menu switching  | MenuList covers public page, QR link, OBP, and configured screen paths       |
 | Generic menu tools (UpMenu) | Manual menu duplication     | MenuList does auto-revert + scheduling                                       |
 | None of the above           | —                           | MenuList is the only customer-facing truth layer with menu lifecycle control |
 

@@ -1,5 +1,7 @@
 # One Customer Link Preview - Website Copy
 
+**Last Updated:** July 4, 2026
+
 **Route:** `/tools/customer-link-preview`
 
 ## Metadata

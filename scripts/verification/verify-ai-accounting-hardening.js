@@ -478,6 +478,20 @@ for (const route of billableRoutes) {
     assert(aiSystemFirebase.includes(token), `AI system Firebase doc documents clientResponse compaction token ${token}`);
   });
   [
+    'Do not reuse the older broad command shape from that attempt.',
+    'Current retry evidence must route through `npm run verify:functions-deploy-preflight` and the External Certification Runbook Gate 1 scoped MenuList QA commands.',
+    'Any additional Gemini consumer Function beyond the documented Gate 1 or source-file hardening subsets must be listed in the production-readiness audit before deploy retry.',
+  ].forEach((token) => {
+    assert(aiSystemFirebase.includes(token), `AI system Firebase doc documents scoped Functions retry boundary token ${token}`);
+  });
+  [
+    'firebase deploy --only functions:',
+    'triggerWeeklyNarrativeManually',
+    'triggerCustomerAnalyticsManually --project menulist-qa',
+  ].forEach((token) => {
+    assert(!aiSystemFirebase.includes(token), `AI system Firebase doc must not retain stale broad Functions deploy token ${token}`);
+  });
+  [
     ['AI system README', aiSystemReadme],
     ['AI system spec', aiSystemSpec],
     ['AI system implementation doc', aiSystemImpl],

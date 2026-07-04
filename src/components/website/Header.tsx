@@ -436,43 +436,31 @@ export default function Header() {
             aria-hidden="true"
           />
           <div className="ws-drawer-panel ws-drawer-panel--open">
-            {/* Close button row */}
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "flex-end",
-                padding: "1rem 1rem 0.5rem",
-              }}
-            >
+            <div className="ws-drawer-header">
+              <Link
+                href="/"
+                onClick={closeDrawer}
+                className="ws-drawer-brand"
+                aria-label="MenuList"
+              >
+                <BrandWordmark
+                  className="ws-brand-wordmark"
+                  iconHeight={28}
+                  textClassName="ws-brand-wordmark__text"
+                />
+              </Link>
               <button
                 onClick={closeDrawer}
-                style={{
-                  background: "none",
-                  border: "none",
-                  cursor: "pointer",
-                  padding: "8px",
-                  borderRadius: "8px",
-                  display: "flex",
-                  alignItems: "center",
-                  color: "var(--ws-text-muted)",
-                  transition: "background-color 0.15s",
-                }}
-                onMouseEnter={(e) =>
-                  (e.currentTarget.style.backgroundColor = "var(--ws-bg-subtle)")
-                }
-                onMouseLeave={(e) =>
-                  (e.currentTarget.style.backgroundColor = "transparent")
-                }
+                className="ws-drawer-close"
                 aria-label={t("Header.closeMenu")}
               >
                 <LuX size={20} />
               </button>
             </div>
 
-            {/* Nav links */}
             <nav
               className="ws-mobile-drawer-nav"
-              style={{ flex: 1, padding: "0.25rem 0.75rem", overflowY: "auto" }}
+              style={{ flex: 1, overflowY: "auto" }}
             >
               {navItemKeys.map((item) => {
                 const Icon = item.icon;

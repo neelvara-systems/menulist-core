@@ -58,7 +58,7 @@
 | LEG-06 | Terms scope | Terms page covers the company website only |
 | LEG-07 | Product split | Product data/terms are not absorbed into company website terms |
 | LEG-08 | Paid service deferral | Refund/cancellation/payment terms deferred to relevant product sites |
-| LEG-09 | Structured data scope | JSON-LD does not claim product ownership, subsidiaries, or holding-company structure |
+| LEG-09 | Structured data scope | JSON-LD does not claim subsidiaries, holding-company structure, or legal ownership beyond the approved operated-by relationship |
 | LEG-10 | Privacy notice detail | Privacy page identifies likely technical logs and visitor-initiated email data |
 
 ---
@@ -74,7 +74,7 @@
 | SEO-05 | Sitemap | Public pages included |
 | SEO-06 | Robots | `robots.txt` references sitemap |
 | SEO-07 | JSON-LD | Organization JSON-LD present |
-| SEO-08 | Site logo and icons | `public/neelvara-logo.svg` exists as the source mark; favicon, Apple touch icon, and manifest PNG derivatives exist with transparent corners |
+| SEO-08 | Site logo and icons | `public/neelvara-logo.svg` exists as the source mark; `public/neelvara-favicon.svg` exists as the preferred browser favicon; favicon PNG fallbacks, Apple touch icon, and manifest PNG derivatives exist with transparent corners |
 | SEO-09 | Missing routes | Unmatched Neelvara URLs return HTTP `404` and `noindex` |
 | SEO-10 | Open Graph image | Neelvara pages expose `public/neelvara-og-image.png` in metadata |
 | SEO-11 | Security contact discovery | `/.well-known/security.txt` returns a static security contact file |

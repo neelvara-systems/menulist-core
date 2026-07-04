@@ -404,7 +404,7 @@ AMM must not reuse Business Health's disabled public-truth write path or turn Bu
 
 Website and launch copy may say AI Menu Manager handles verified daily menu operations, selected-menu answers, local exports, and unsupported handoffs.
 
-Website and launch copy must not imply every checklist action is executable, direct external posting is live, rule execution is live, durable rollback is universally available, provider-backed image/import/publish jobs are complete, or full speech-to-command is production-ready unless the matching adapter and runtime sweep have been verified.
+Website and launch copy must not imply every checklist action is executable, direct external posting is live, rule execution is live, durable rollback is universally available, provider-backed image/import/publish jobs are complete, or full speech-to-command is verified for launch use unless the matching adapter and runtime sweep have been verified.
 
 ---
 

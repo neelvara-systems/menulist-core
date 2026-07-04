@@ -1,7 +1,7 @@
 # Photo Gap Check - Test Cases
 
 **Status:** V0 acceptance matrix
-**Last Updated:** July 1, 2026
+**Last Updated:** July 4, 2026
 
 ---
 

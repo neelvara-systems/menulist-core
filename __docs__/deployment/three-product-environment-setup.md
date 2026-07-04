@@ -90,11 +90,7 @@ Do not substitute `ecomsai`, `menulist-ai`, `canonica-qa`, or a sample project.
 
 ### Deploy Attempts Already Run
 
-MenuList QA health-check deploy attempt:
-
-```bash
-firebase deploy --only functions:menulistMaintenanceScheduler --project menulist-qa --config firebase.json
-```
+Historical MenuList QA health-check deploy evidence targeted `menulist-qa` and reached predeploy lint/build. Do not reuse the older command shape from that attempt; the current scoped retry command is listed in the owner action register below.
 
 Result:
 

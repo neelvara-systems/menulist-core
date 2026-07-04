@@ -1,6 +1,7 @@
 # One Customer Link Preview
 
 **Status:** Implemented V0 public tool; V1 maps to existing MenuList public page and Business Health readiness
+**Last Updated:** July 4, 2026
 **Route:** `/tools/customer-link-preview`
 **Local Source Gate:** `npm run verify:customer-link-preview`
 **Family:** [Public Truth Tools](../public-truth-tools/README.md)

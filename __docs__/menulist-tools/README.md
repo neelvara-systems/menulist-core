@@ -2,7 +2,7 @@
 
 > **Scope:** MenuList-owned public, owner, and paid add-on tools
 > **Status:** Active documentation namespace
-> **Last Updated:** July 3, 2026
+> **Last Updated:** July 4, 2026
 
 ---
 
@@ -47,6 +47,9 @@ The public route can live under `/tools/...`, but the docs live here so the grow
 | [shareable-tool-reports](./shareable-tool-reports/README.md) | Public report-link layer for MenuList Tools output | Implemented V0 viewer, all source-tool integrations, and structured follow-up metadata |
 | [public-truth-tools](./public-truth-tools/README.md) | Reusable tool/add-on family for public business truth checks | Active family |
 | [public-truth-check](./public-truth-check/README.md) | First public and owner tool for checking whether visible business facts are clear | Implemented V0 and V1 |
+| [business-facts-copy-pack](./business-facts-copy-pack/README.md) | Public tool for turning owner-entered business facts into reusable profile, WhatsApp, social, website, staff, and customer-link copy | Implemented V0 |
+| [whatsapp-reply-pack](./whatsapp-reply-pack/README.md) | Public tool for turning owner-entered business facts into reusable WhatsApp customer replies | Implemented V0 |
+| [customer-faq-reply-pack](./customer-faq-reply-pack/README.md) | Public tool for turning repeated customer questions and owner-entered facts into reusable FAQ answers | Implemented V0 |
 | [qr-link-health-check](./qr-link-health-check/README.md) | Public tool for checking QR target readiness | Implemented V0 |
 | [menu-readability-check](./menu-readability-check/README.md) | Public tool for checking pasted menu/service text clarity | Implemented V0 |
 | [customer-question-coverage-check](./customer-question-coverage-check/README.md) | Public tool and owner module for checking whether common customer questions are answered | Implemented V0 and V1 |
@@ -72,18 +75,21 @@ Immediate order:
 | Rank | Tool | Why it is next |
 | --- | --- | --- |
 | 1 | Public Truth Check | Implemented umbrella entry point for one-current-source education |
-| 2 | QR Link Health Check | Strongest physical-world failure case; routes directly to current customer link |
-| 3 | Menu / Service Readability Check | Best source-import and setup conversion path |
-| 4 | Customer Question Coverage Check | Converts repeated customer questions into a one-current-link setup path |
-| 5 | Booking / Inquiry Readiness Check | Converts unclear order, booking, quote, visit, and contact paths into one customer-link setup path |
-| 6 | Price & Availability Gap Check | Converts unclear prices, variants, sold-out state, and quote paths into one current customer source |
-| 7 | Menu PDF Cleanup Check | Converts stale PDF/menu links into one current customer-link setup path |
-| 8 | Google Profile Basics Checklist | Converts Google profile setup gaps into one current customer-link handoff |
-| 9 | WhatsApp Action Link Check | Strong mobile-first SMB behavior, especially for India and service businesses |
-| 10 | Hours & Holiday Hours Check | Implemented simple trust gap with a clear owner fix path |
-| 11 | Photo / Visual Identity Gap Check | Implemented easy owner-understood gap that routes to Official Business Page completion |
-| 12 | One Customer Link Preview | First P1 follow-on; shows why one current customer-facing link is the fix path |
-| 13 | Social Bio Link Consistency Check | Checks whether public profile and social placements point customers to the same current link |
+| 2 | Business Facts Copy Pack | Output-first tool that turns entered facts into reusable copy before signup |
+| 3 | QR Link Health Check | Strongest physical-world failure case; routes directly to current customer link |
+| 4 | Menu / Service Readability Check | Best source-import and setup conversion path |
+| 5 | Customer Question Coverage Check | Converts repeated customer questions into a one-current-link setup path |
+| 6 | Customer FAQ Reply Pack | Output-first FAQ utility that turns repeated questions into reusable answers without creating a chatbot |
+| 7 | Booking / Inquiry Readiness Check | Converts unclear order, booking, quote, visit, and contact paths into one customer-link setup path |
+| 8 | Price & Availability Gap Check | Converts unclear prices, variants, sold-out state, and quote paths into one current customer source |
+| 9 | Menu PDF Cleanup Check | Converts stale PDF/menu links into one current customer-link setup path |
+| 10 | Google Profile Basics Checklist | Converts Google profile setup gaps into one current customer-link handoff |
+| 11 | WhatsApp Action Link Check | Strong mobile-first SMB behavior, especially for India and service businesses |
+| 12 | WhatsApp Reply Pack | Output-first WhatsApp utility that turns entered facts into reusable replies without sending messages |
+| 13 | Hours & Holiday Hours Check | Implemented simple trust gap with a clear owner fix path |
+| 14 | Photo / Visual Identity Gap Check | Implemented easy owner-understood gap that routes to Official Business Page completion |
+| 15 | One Customer Link Preview | First P1 follow-on; shows why one current customer-facing link is the fix path |
+| 16 | Social Bio Link Consistency Check | Checks whether public profile and social placements point customers to the same current link |
 
 Current public index:
 

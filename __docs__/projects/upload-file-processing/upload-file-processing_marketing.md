@@ -28,11 +28,11 @@ Current Upload & File Processing collateral approval requires:
 
 ### One-Liner
 
-> "Snap a photo of your paper menu, and watch it become a digital menu in minutes."
+> "Snap a photo of your paper menu, then review the structured draft before publishing."
 
 ### 30-Second Pitch
 
-> "Restaurant owners spend hours retyping their menus to get online. With MenuList, you upload photos or a PDF of your existing menu, and our AI reads it for you. No typing, no data entry, no hiring someone to do it. Your menu is digital in minutes, not days."
+> "Restaurant owners spend hours retyping their menus to get online. With MenuList, you upload photos or a PDF of your existing menu, and the system prepares a structured draft after processing. Review the draft, edit what needs fixing, and publish the approved menu."
 
 ---
 
@@ -50,15 +50,15 @@ Most restaurants have menus as PDFs or printed materials. Converting these to di
 
 ### The Solution
 
-MenuList's Upload feature eliminates the manual work:
+MenuList's Upload feature reduces the blank-page work:
 
 - **Upload once** — Take a photo with your phone or upload your existing PDF
-- **AI does the work** — Menu items, prices, categories extracted automatically
+- **Start from a draft** — Common menu structure is prepared for owner review
 - **Edit, don't create** — Review and tweak instead of building from scratch
 
 ### The Result
 
-What used to take **hours or days** now takes **minutes**. Restaurant owners can digitize their menu during a coffee break.
+What used to start from a blank form now starts from a review draft. Restaurant owners still approve the menu before customers see it.
 
 ---
 
@@ -68,8 +68,8 @@ What used to take **hours or days** now takes **minutes**. Restaurant owners can
 
 | Aspect  | Manual Entry              | MenuList Upload          |
 | ------- | ------------------------- | ------------------------ |
-| Time    | 2-4 hours                 | 5-10 minutes             |
-| Errors  | Common (typos)            | AI-verified              |
+| Time    | Blank-form data entry     | Review draft after processing |
+| Errors  | Common (typos)            | Owner review before publishing |
 | Cost    | Staff time or outsourcing | Included in subscription |
 | Updates | Repeat the process        | Quick edits              |
 
@@ -78,9 +78,9 @@ What used to take **hours or days** now takes **minutes**. Restaurant owners can
 | Aspect           | Basic Builders  | MenuList                      |
 | ---------------- | --------------- | ----------------------------- |
 | Starting point   | Blank template  | Your existing menu            |
-| Data entry       | 100% manual     | AI-assisted                   |
-| PDF support      | Copy-paste text | Smart page-by-page conversion |
-| Multi-page menus | Tedious         | Handled automatically         |
+| Data entry       | 100% manual     | Review draft after processing |
+| PDF support      | Copy-paste text | Page-by-page processing       |
+| Multi-page menus | Tedious         | Processed into one draft      |
 
 ---
 
@@ -252,27 +252,27 @@ Upload is included in all plans. It's not a premium feature—it's the **core en
 
 ---
 
-## Demo Script (3 minutes)
+## Demo Script (Historical Draft)
 
-### Setup (30 sec)
+### Setup
 
-"Let me show you how easy it is to digitize your menu. I have a PDF of a real restaurant menu here—20 pages, multiple categories."
+"Let me show you how the upload flow starts from an existing menu file instead of a blank form. I have a multi-page PDF of a restaurant menu here."
 
-### Upload (30 sec)
+### Upload
 
-"I drag it onto the upload zone... it converts each page to an image automatically. See the progress? 20 pages done in seconds."
+"I drag it onto the upload zone. The pages are prepared for processing, and the owner can track the upload state before continuing."
 
-### Preview (30 sec)
+### Preview
 
-"Here's the preview. I can see all 20 pages. If I uploaded the wrong file, I can delete it. Everything looks good."
+"Here's the preview. I can see the selected pages. If I uploaded the wrong file, I can delete it before continuing."
 
-### Process (1 min)
+### Process
 
-"Now I click 'Upload & Continue'. Watch—each file goes to our AI. It's reading the menu, finding items, prices, categories. This is where you'd normally spend hours typing."
+"Now I click 'Upload & Continue'. The source goes through the processing path and returns a structured draft for review."
 
-### Result (30 sec)
+### Result
 
-"Done. Here's my menu in the editor—all items extracted, organized by category. I can tweak anything, but most of it is ready to go. What took 4 hours is done in 4 minutes."
+"Done. Here's my menu draft in the editor, organized for review. I can fix anything that needs attention, then publish only the approved menu."
 
 ---
 

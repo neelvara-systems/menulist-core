@@ -62,7 +62,7 @@ The result: **One verified project truth that supported surfaces use through the
 
 ### Why This Matters for MenuList's Position
 
-MenuList's identity is "the calm system businesses depend on daily." Calmness requires absolute correctness. If a menu is ever wrong on any surface, the owner loses trust. MCE makes correctness invisible and automatic — the owner doesn't even know it's there, which is exactly the point.
+MenuList's identity is "the calm system businesses depend on daily." Calmness requires validated source data and target-specific release evidence. MCE makes save-time validation invisible and automatic — the owner doesn't even know it's there, which is exactly the point.
 
 ---
 
@@ -72,10 +72,10 @@ MenuList's identity is "the calm system businesses depend on daily." Calmness re
 
 | Situation                                                 | Message                                                                                                                                                          |
 | --------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Owner asks "How do I know my menu is correct everywhere?" | "MenuList verifies your menu automatically and keeps supported surfaces reading from the same project truth."                                                    |
+| Owner asks "How do I know my menu is using the right source?" | "MenuList verifies your menu automatically and keeps supported surfaces reading from the same project truth."                                                    |
 | Owner worries about price errors                          | "When you change a price, MenuList validates the menu state before customer-facing publishing flows continue."                                                   |
 | Multi-outlet owner asks about consistency                 | "Every location reads from verified project truth. Master changes and outlet overrides still need target QA for the exact release scope."                         |
-| Competitor comparison                                     | "Most menu systems write changes directly. MenuList verifies first, then publishes. That's the difference between hoping it's correct and knowing it's correct." |
+| Competitor comparison                                     | "Most menu systems write changes directly. MenuList verifies first, then publishing flows continue. That's the difference between hoping and having source evidence." |
 
 ### For Support Conversations
 
@@ -146,13 +146,13 @@ MenuList's identity is "the calm system businesses depend on daily." Calmness re
 
 ### Slide 1: The Problem
 
-"When a restaurant changes a price, how do they know it's correct everywhere?"
+"When a restaurant changes a price, how do they know supported surfaces use the validated source?"
 
 ### Slide 2: The Gap
 
-- QR menu: updates instantly
-- Digital screen: updates in 18 seconds
-- PDF: permanently stale
+- QR menu: follows the public refresh/cache path
+- Digital screen: follows its device polling/cache path
+- PDF: generated artifacts should be replaced after later edits
 - POS: updates after debounce
 - Owner: no way to verify
 
@@ -167,10 +167,10 @@ MenuList's identity is "the calm system businesses depend on daily." Calmness re
 3. Verification metadata stamped on project data
 4. Supported surfaces read the same validated project data through their audited paths
 
-### Slide 5: The Guarantees
+### Slide 5: The Source Commitments
 
 - Single source of truth for supported surfaces
-- Validation before exposure
+- Validation before supported publishing flows continue
 - Owner's work never lost (save always succeeds)
 - Zero owner configuration
 - Zero Firebase cost increase

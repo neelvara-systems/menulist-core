@@ -29,6 +29,62 @@ import type {
 } from "@type/multiOutlet.types";
 import { Timestamp } from "firebase/firestore";
 
+const toFirestoreSafeOutletContext = (
+    context: OperationalChange["outletContext"],
+): OperationalChange["outletContext"] | undefined => {
+    if (!context) return undefined;
+
+    const safeContext: NonNullable<OperationalChange["outletContext"]> = {
+        hasOverride: Boolean(context.hasOverride),
+    };
+
+    if (typeof context.overrideValue === "string") {
+        safeContext.overrideValue = context.overrideValue;
+    }
+
+    if (typeof context.impactNote === "string") {
+        safeContext.impactNote = context.impactNote;
+    }
+
+    return safeContext;
+};
+
+const toFirestoreSafeOperationalChange = (
+    change: OperationalChange,
+): OperationalChange => {
+    const safeChange: OperationalChange = {
+        type: change.type,
+        entityId: String(change.entityId || ""),
+        entityName: String(change.entityName || ""),
+    };
+
+    if (typeof change.oldValue === "string") {
+        safeChange.oldValue = change.oldValue;
+    }
+
+    if (typeof change.newValue === "string") {
+        safeChange.newValue = change.newValue;
+    }
+
+    const outletContext = toFirestoreSafeOutletContext(change.outletContext);
+    if (outletContext) {
+        safeChange.outletContext = outletContext;
+    }
+
+    return safeChange;
+};
+
+const toFirestoreSafeMasterUpdateDiff = (
+    diff: MasterUpdateDiff | null,
+): MasterUpdateDiff | null => {
+    if (!diff) return null;
+
+    return {
+        ...diff,
+        changes: diff.changes.map(toFirestoreSafeOperationalChange),
+    };
+};
+
 // ══════════════════════════════════════════════════════════════════
 // DIFF COMPUTATION
 // Compare snapshot vs current master to find operational changes
@@ -110,6 +166,9 @@ export function computeMasterUpdateDiff(
         const currentName = getItemPrimaryName(currentItem);
         const currentPrice = currentItem.price || "";
         const itemOverride = overrides.items[id];
+        const itemOverridePrice = typeof itemOverride?.price === "string"
+            ? itemOverride.price
+            : undefined;
 
         // Price change
         if (currentPrice !== snapItem.price) {
@@ -120,10 +179,10 @@ export function computeMasterUpdateDiff(
                 oldValue: snapItem.price,
                 newValue: currentPrice,
                 outletContext: {
-                    hasOverride: Boolean(itemOverride?.price),
-                    overrideValue: itemOverride?.price,
-                    impactNote: itemOverride?.price
-                        ? `Your outlet price (${itemOverride.price}) is unaffected`
+                    hasOverride: Boolean(itemOverridePrice),
+                    ...(itemOverridePrice ? { overrideValue: itemOverridePrice } : {}),
+                    impactNote: itemOverridePrice
+                        ? `Your outlet price (${itemOverridePrice}) is unaffected`
                         : `Your menu will show the new price: ${currentPrice}`,
                 },
             });
@@ -264,21 +323,25 @@ export function computeMasterUpdateDiff(
 
             const attrOverride = overrides.attributes[currentAttr.id];
             const attrDisplayName = `${currentName} — ${getAttributePrimaryName(currentAttr)}`;
+            const currentAttrPrice = currentAttr.price || "";
+            const attrOverridePrice = typeof attrOverride?.price === "string"
+                ? attrOverride.price
+                : undefined;
 
             // Variant price change
-            if (currentAttr.price !== snapAttr.price) {
+            if (currentAttrPrice !== snapAttr.price) {
                 changes.push({
                     type: "ATTRIBUTE_PRICE_CHANGED",
                     entityId: currentAttr.id,
                     entityName: attrDisplayName,
                     oldValue: snapAttr.price,
-                    newValue: currentAttr.price,
+                    newValue: currentAttrPrice,
                     outletContext: {
-                        hasOverride: Boolean(attrOverride?.price),
-                        overrideValue: attrOverride?.price,
-                        impactNote: attrOverride?.price
-                            ? `Your outlet variant price (${attrOverride.price}) is unaffected`
-                            : `Your menu will show the new variant price: ${currentAttr.price}`,
+                        hasOverride: Boolean(attrOverridePrice),
+                        ...(attrOverridePrice ? { overrideValue: attrOverridePrice } : {}),
+                        impactNote: attrOverridePrice
+                            ? `Your outlet variant price (${attrOverridePrice}) is unaffected`
+                            : `Your menu will show the new variant price: ${currentAttrPrice}`,
                     },
                 });
             }
@@ -382,12 +445,14 @@ export function computeMasterUpdateDiff(
         attributesEnabled: changes.filter((c) => c.type === "ATTRIBUTE_ENABLED").length,
     };
 
+    const firestoreSafeChanges = changes.map(toFirestoreSafeOperationalChange);
+
     return {
-        hasChanges: changes.length > 0,
-        changes,
+        hasChanges: firestoreSafeChanges.length > 0,
+        changes: firestoreSafeChanges,
         summary,
         masterModifiedOn,
-        totalChanges: changes.length,
+        totalChanges: firestoreSafeChanges.length,
     };
 }
 
@@ -419,8 +484,8 @@ export function createMasterSnapshot(
             id: item.id,
             name: getItemPrimaryName(item),
             price: item.price || "",
-            categoryId: item.category,
-            active: item.active,
+            categoryId: item.category || "",
+            active: item.active !== false,
         };
         // Only include optional fields when they have non-default values
         // to keep snapshot size minimal (Firestore 1MB limit)
@@ -431,8 +496,8 @@ export function createMasterSnapshot(
             snapItem.attributes = item.attributes.map((attr): SnapshotAttribute => ({
                 id: attr.id,
                 name: getAttributePrimaryName(attr),
-                price: attr.price,
-                active: attr.active,
+                price: attr.price || "",
+                active: attr.active !== false,
             }));
         }
         return snapItem;
@@ -441,7 +506,7 @@ export function createMasterSnapshot(
     const categories: SnapshotCategory[] = masterCategories.map((cat) => ({
         id: cat.id,
         name: getCategoryPrimaryName(cat),
-        active: cat.active,
+        active: cat.active !== false,
     }));
 
     return {
@@ -450,7 +515,7 @@ export function createMasterSnapshot(
         operationalVersion,
         items,
         categories,
-        lastDiff,
+        lastDiff: toFirestoreSafeMasterUpdateDiff(lastDiff),
     };
 }
 

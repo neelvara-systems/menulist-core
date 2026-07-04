@@ -1,5 +1,7 @@
 # One Customer Link Preview - Help Doc
 
+**Last Updated:** July 4, 2026
+
 One Customer Link Preview checks whether one public customer link contains the basics customers need.
 
 ## What You Enter

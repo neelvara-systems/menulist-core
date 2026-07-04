@@ -10,21 +10,21 @@
 ## Page Section: PDF Download
 
 **Headline:**
-Your menu. Print-ready. Always current.
+Your menu. Print-ready. Versioned.
 
 **Body:**
-Download a print-ready PDF of your menu in seconds. Every item, every price, every category — formatted and ready to hand to customers or send to a printer.
+Download a print-ready PDF generated from current project data at download time. It uses the items, prices, and categories in the approved source and is ready to hand to customers or send to a printer after you review the file.
 
-No design work. No templates to fill in. No outdated prices.
+No design work. No templates to fill in. Download a fresh copy after menu changes. Older downloads and printed copies need replacement after changes.
 
-The PDF is generated from your live menu every time you download it.
+The PDF is generated from the current project data every time you download it.
 
 ---
 
 ## Feature Bullets
 
 - Print-ready A4 format, professional layout
-- Generated from live data — prices are always current
+- Generated from current project data at download time
 - Works from your phone or computer
 - Each PDF is stamped with the date it was generated
 
@@ -34,7 +34,7 @@ The PDF is generated from your live menu every time you download it.
 
 | ❌ Avoid | ✅ Use instead |
 |---------|--------------|
-| "AI-powered PDF generation" | "Generated from your live menu" |
+| "AI-powered PDF generation" | "Generated from your current menu source" |
 | "Smart layout that adapts" | "Layout is handled automatically" |
 | "Beautiful, stunning PDFs" | "Print-ready, professional layout" |
 | "You're in control of your menu PDF" | "Download and print — nothing to configure" |

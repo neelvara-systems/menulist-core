@@ -170,7 +170,7 @@ local exports, and unsupported handoffs.
 Not allowed unless separately verified:
 every checklist action is executable, direct external posting is live, rule
 execution is live, durable rollback is universal, provider-backed image/import/
-publish execution is complete, or full speech-to-command is production-ready.
+publish execution is complete, or full speech-to-command is verified for launch use.
 ```
 
 ---

@@ -24,7 +24,7 @@ Auto-Sell Features make the digital menu **visibly different** from paper and st
 | #   | Feature               | Customer Sees                | Effect       | Status    |
 | --- | --------------------- | ---------------------------- | ------------ | --------- |
 | 1   | Live Indicator        | "🟢 Live · updated just now" | **Trust**    | ✅ Done   |
-| 2   | Instant Availability  | Item fades when sold out     | **Surprise** | ✅ Done   |
+| 2   | Availability State    | Item fades after public menu refresh | **Trust** | ✅ Done   |
 | 3   | Time-Based Categories | "Lunch starts in 12 min"     | **Stories**  | ✅ Done   |
 | 4   | Menu-as-Marketing     | Tasteful branding            | Distribution | 🔮 Future |
 
@@ -71,18 +71,18 @@ At the top of the menu:
 
 ---
 
-## Feature #2: Instant Availability
+## Feature #2: Availability State
 
 ### Purpose
 
-Creates **surprise** when customers see items fade out in real-time, breaking paper menu expectations.
+Creates **trust** when customers see unavailable items clearly marked after the public menu refresh, breaking paper menu expectations without promising instant customer freshness.
 
 ### What Customers See
 
 - Item fades to ~40% opacity
 - Shows label: "Sold out"
-- No page reload needed
-- Change reflects in < 1 second
+- Uses the loaded public menu data
+- Customer-visible freshness follows the current public cache path
 
 ### Owner Experience
 
@@ -207,8 +207,8 @@ After implementing features 1-3:
 
 **Owners can say:**
 
-- "Our menu updates live."
-- "Sold out items disappear instantly."
+- "Our menu refreshes from the approved source."
+- "Sold out items are clearly marked."
 - "Our menu switches automatically by time."
 
 **These sentences are distribution.**

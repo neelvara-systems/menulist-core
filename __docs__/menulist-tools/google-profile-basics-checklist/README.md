@@ -1,6 +1,7 @@
 # Google Profile Basics Checklist
 
 **Status:** Implemented V0 public tool; V1 maps to existing Google profile handoff owner module
+**Last Updated:** July 4, 2026
 **Route:** `/tools/google-profile-basics-checklist`
 **Local Source Gate:** `npm run verify:google-profile-basics-checklist`
 **Family:** [Public Truth Tools](../public-truth-tools/README.md)

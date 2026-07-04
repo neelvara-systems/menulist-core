@@ -1,7 +1,7 @@
 # Public Truth Tools - Test Cases
 
-**Status:** Active family tests - Public Truth Check V0/V1, QR Link Health Check V0, Menu Readability Check V0/V1, Customer Question Coverage Check V0/V1, Booking Inquiry Readiness Check V0/V1, Price Availability Gap Check V0/V1, Menu PDF Cleanup Check V0/V1, Google Profile Basics Checklist V0/V1, One Customer Link Preview V0, Social Bio Link Consistency Check V0, Shareable Tool Reports V0, WhatsApp Action Link Check V0, Hours Check V0, and Photo Gap Check V0 implemented
-**Last Updated:** July 3, 2026
+**Status:** Active family tests - Public Truth Check V0/V1, Business Facts Copy Pack V0, WhatsApp Reply Pack V0, Customer FAQ Reply Pack V0, QR Link Health Check V0, Menu Readability Check V0/V1, Customer Question Coverage Check V0/V1, Booking Inquiry Readiness Check V0/V1, Price Availability Gap Check V0/V1, Menu PDF Cleanup Check V0/V1, Google Profile Basics Checklist V0/V1, One Customer Link Preview V0, Social Bio Link Consistency Check V0, Shareable Tool Reports V0, WhatsApp Action Link Check V0, Hours Check V0, and Photo Gap Check V0 implemented
+**Last Updated:** July 4, 2026
 **Audience:** QA, developers
 
 ---
@@ -25,6 +25,9 @@
 | PTT-012 | New public tool omits explicit evidence text | Verification fails |
 | PTT-013 | WhatsApp tool sends messages or mutates external platform state | Blocked by product boundary |
 | PTT-014 | QR Link Health Check claims it decoded an image or opened the target page in V0 | Verification fails |
+| PTT-014A | Business Facts Copy Pack claims it inspected, opened, or updated Google, WhatsApp, Instagram, Facebook, websites, or directories in V0 | Verification fails |
+| PTT-014B | WhatsApp Reply Pack claims it sent a message, verified a number, opened WhatsApp, called WhatsApp APIs, fetched links, stored reports, or generated AI rewrites in V0 | Verification fails |
+| PTT-014C | Customer FAQ Reply Pack claims it read customer conversations, created a chatbot, configured automation, sent messages, fetched links, stored reports, or generated AI answers in V0 | Verification fails |
 | PTT-015 | Menu Readability Check claims it uploaded a file, read a PDF, opened a link, or rewrote content in V0 | Verification fails |
 | PTT-015A | Customer Question Coverage Check claims it opened links, read chats, called AI/search providers, or generated chatbot answers in V0 | Verification fails |
 | PTT-015B | Booking Inquiry Readiness Check claims it opened links, checked booking providers, inspected calendars/payments, sent messages, or called AI/search providers in V0 | Verification fails |
@@ -39,6 +42,7 @@
 | PTT-018 | Photo Gap Check claims it uploaded images, analyzed images, inspected Google/Instagram, or fetched a photo source in V0 | Verification fails |
 | PTT-019 | V1 owner readiness omits any implemented V0 tool family module | Verification fails |
 | PTT-020 | V1 owner readiness row has no exact desktop or mobile fix target | Verification fails |
+| PTT-021 | V1 owner readiness gaps do not derive a bounded desktop/mobile fix list from existing module rows | Verification fails |
 
 ---
 
@@ -47,7 +51,7 @@
 | Test | Pass condition |
 | --- | --- |
 | Add-on boundary | Paid behavior is recurring report/value, not one-time public check |
-| Build-order boundary | Current public tools follow Public Truth, QR, menu/service readability, customer question coverage, booking/inquiry readiness, price/availability, PDF cleanup, Google profile basics, WhatsApp action, hours, photo, One Customer Link Preview, and Social Bio Link Consistency Check unless docs record a new decision |
+| Build-order boundary | Current public tools follow Public Truth, Business Facts Copy Pack, WhatsApp Reply Pack, Customer FAQ Reply Pack, QR, menu/service readability, customer question coverage, booking/inquiry readiness, price/availability, PDF cleanup, Google profile basics, WhatsApp action, hours, photo, One Customer Link Preview, and Social Bio Link Consistency Check unless docs record a new decision |
 | GrowthOS boundary | Public Truth Tools do not generate promotional copy |
 | Growth Engine boundary | Public Truth Tools do not become internal lead/outreach automation |
 | Answerlattice boundary | Public Truth Tools do not reuse support-answer MCP claims |
@@ -70,6 +74,9 @@
 | Google profile self-report | Yes in Google Profile Basics Checklist V0 | Owner-selected profile facts only; no Google Search/Maps/Profile inspection, update, ranking check, or review inspection |
 | Customer link preview self-report | Yes in One Customer Link Preview V0 | Owner-entered link/facts only; no link open, website crawl, profile inspection, ranking check, AI/search provider call, or report storage |
 | Social bio link self-report | Yes in Social Bio Link Consistency Check V0 | Owner-selected placement facts only; no social profile open/fetch, website crawl, Google profile inspection, QR destination check, ranking check, AI/search provider call, or report storage |
+| Business facts copy self-report | Yes in Business Facts Copy Pack V0 | Owner-entered facts only; copy blocks are deterministic; no external profile inspection, platform update, AI rewrite, ranking check, or report storage |
+| WhatsApp reply self-report | Yes in WhatsApp Reply Pack V0 | Owner-entered facts only; reply blocks are deterministic; no WhatsApp API call, message send, number verification, external fetch, AI rewrite, ranking check, or report storage |
+| Customer FAQ reply self-report | Yes in Customer FAQ Reply Pack V0 | Owner-entered questions and facts only; FAQ answer blocks are deterministic; no conversation-log reading, chatbot creation, automation configuration, message sending, external fetch, AI answer, ranking check, or report storage |
 | WhatsApp message send/test | No in WhatsApp Action Link Check V0 | Owner-entered number/link/message fields are checked locally only |
 | Google/maps/holiday hours inspection | No in Hours Check V0 | Owner-entered hours facts are checked locally only |
 | Image upload/analysis | No in Photo Gap Check V0 | Owner-selected photo facts are checked locally only |
@@ -106,7 +113,7 @@
 npm run verify:public-truth-tools
 ```
 
-The family command runs the implemented Tools Hub, Public Truth Check, QR Link Health Check, Menu Readability Check, Customer Question Coverage Check, Booking Inquiry Readiness Check, Price Availability Gap Check, Menu PDF Cleanup Check, Google Profile Basics Checklist, One Customer Link Preview, Social Bio Link Consistency Check, WhatsApp Action Link Check, Hours Check, and Photo Gap Check verifiers.
+The family command runs the implemented Tools Hub, Public Truth Check, Business Facts Copy Pack, WhatsApp Reply Pack, Customer FAQ Reply Pack, QR Link Health Check, Menu Readability Check, Customer Question Coverage Check, Booking Inquiry Readiness Check, Price Availability Gap Check, Menu PDF Cleanup Check, Google Profile Basics Checklist, One Customer Link Preview, Social Bio Link Consistency Check, WhatsApp Action Link Check, Hours Check, and Photo Gap Check verifiers.
 
 Shareable Tool Reports is also included in the aggregate verifier and can be run directly:
 

@@ -248,6 +248,18 @@ function verifyDocsAndPackage(packageJson, opsDoc, auditDoc, docs) {
   });
 
   [
+    'Do not reuse the older command shapes from those historical attempts.',
+    'Current messaging-onboarding retry evidence must start with `npm run verify:functions-deploy-preflight`',
+    'record the exact scoped `menulist-qa` target list and reason in the production-readiness audit before deploy retry',
+    'Production deploys require QA evidence and explicit production deploy approval.',
+  ].forEach((token) => assertIncludes(docs.firebase, token, 'Messaging onboarding Firebase deploy retry boundary'));
+  [
+    'firebase deploy --only functions:',
+    'PATH="$HOME/.nvm/versions/node/v20.20.2/bin:$PATH" firebase deploy --only functions',
+    'triggerSchedulerManually --project menulist-qa',
+  ].forEach((token) => assertNotIncludes(docs.firebase, token, 'Messaging onboarding Firebase stale deploy command'));
+
+  [
     'WhatsApp as the only active registered provider',
     'Additional providers require a separate audited adapter',
     'providerRegistry` registers WhatsApp only',

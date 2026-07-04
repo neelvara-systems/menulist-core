@@ -1,5 +1,7 @@
 # Google Profile Basics Checklist - Mobile Support
 
+**Last Updated:** July 4, 2026
+
 **Decision:** Public mobile route approved; owner V1 uses existing Business Health card.
 
 ## Admission Test

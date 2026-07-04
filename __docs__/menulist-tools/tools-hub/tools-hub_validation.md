@@ -1,5 +1,7 @@
 # Tools Hub - Validation
 
+**Last Updated:** July 4, 2026
+
 ## Status
 
 Validated locally on July 3, 2026.

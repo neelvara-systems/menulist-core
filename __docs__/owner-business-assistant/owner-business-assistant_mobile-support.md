@@ -2,7 +2,7 @@
 
 **Owner-Facing Name:** Business Health
 **Status:** MobileShell read-only screen
-**Last Updated:** June 17, 2026
+**Last Updated:** July 4, 2026
 
 ## Mobile Boundary
 
@@ -24,6 +24,7 @@ Owner operations from mobile belong to Menu Manager and must use Menu Manager ca
 - Touch targets are at least 44px where controls exist.
 - Project selector keeps selected-menu context.
 - Store context follows the current mobile shell store.
+- Public readiness fix-list buttons route through `MobileShell` callbacks, not desktop URLs.
 
 ## Removed Mobile Behavior
 
@@ -41,6 +42,7 @@ Business Health mobile must not include:
 - analytics strip
 - source/freshness notes
 - priority checks as read-only cards
+- public readiness fix list from MenuList store/project truth
 - suggested questions
 - typed owner question input
 - read-only answers and artifacts
@@ -54,6 +56,7 @@ Verify:
 2. The screen keeps selected project/store context.
 3. Suggested questions and typed answers work.
 4. Priority checks render without action buttons.
-5. Asking for a mutation does not mutate truth and does not open an action sheet.
-6. The screen stays usable with keyboard open.
-7. Account, billing, reseller, platform, and Answerlattice surfaces are not directly mutable from Business Health.
+5. Public readiness fix-list buttons open the Menu tab, Share tab, or More sub-screens through shell callbacks.
+6. Asking for a mutation does not mutate truth and does not open an action sheet.
+7. The screen stays usable with keyboard open.
+8. Account, billing, reseller, platform, and Answerlattice surfaces are not directly mutable from Business Health.

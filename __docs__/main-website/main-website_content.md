@@ -1,7 +1,7 @@
 # Website Content — MenuList Main Website (menulist.ai)
 
 **Status:** ✅ CURRENT — Canonical website copy and section map
-**Last Updated:** July 3, 2026
+**Last Updated:** July 4, 2026
 **Governance:** All content follows `02-language-governance.md` + `10-communication-worldbuilding-doctrine.md`  
 **Test:** Every line passes: "Would a busy restaurant owner in Mumbai, reading this on their phone between lunch rush and dinner prep, immediately understand what this means for them?"
 
@@ -19,7 +19,7 @@
 
 > Resources planning note (June 1, 2026): The next content expansion should be an evergreen `/resources` layer, not a chronological blog. Planned resources must keep the same official-source discipline as the homepage: owner-useful quick answers, checklists, worksheets, comparison tables, and practical next steps without ranking guarantees, AI citation promises, or generic restaurant-tech hype. Use `__docs__/main-website/main-website_resources-plan.md` as the tracker before writing or implementing resource copy.
 
-> Resources hardening note (June 2, 2026; broad-SMB hub wording tightened June 27, 2026): The current release scope is not phased. The implemented website has the `/resources` hub, 15 article routes, four industry landing pages, a desktop Resources dropdown, mobile nested resource links, footer resource links, and a compact eight-card homepage bridge titled around keeping a public list current. The homepage remains product-led; resource links support discovery and owner education without becoming a blog index. The hub and homepage bridge should use menu/service-list/public-list language where they represent broad SMB acquisition, while individual restaurant/menu SEO articles may stay menu-specific.
+> Resources hardening note (June 2, 2026; broad-SMB hub wording tightened June 27, 2026; route count refreshed July 4, 2026): The current release scope is not phased. The implemented website has the `/resources` hub, 15 article routes, seven industry landing pages, a desktop Resources dropdown, mobile nested resource links, footer resource links, and a compact eight-card homepage bridge titled around keeping a public list current. The homepage remains product-led; resource links support discovery and owner education without becoming a blog index. The hub and homepage bridge should use menu/service-list/public-list language where they represent broad SMB acquisition, while individual restaurant/menu SEO articles may stay menu-specific.
 
 > Marketing feedback note (June 2, 2026): The priority English resource and restaurant industry pages now use `Official Menu Source` as the category concept and `current approved menu` as the owner-readable explanation. The accepted WhatsApp, price-change, cleanup, and comparison-page candidates remain documented for later content work; they are not part of the live route set until marketing has reviewed content depth and CTA fit.
 
@@ -327,7 +327,7 @@ The old `SolutionSection` with "One menu. Public places stay aligned.", a centra
 
 **Section heading:**
 
-> One menu becomes every customer surface.
+> One approved source becomes your customer links and assets.
 
 **Eyebrow:**
 
@@ -352,8 +352,8 @@ The old `SolutionSection` with "One menu. Public places stay aligned.", a centra
 | 1 | Start with the menu you already use | Photo, PDF, existing menu link, or typed menu. Start with what your business already uses. |
 | 2 | Prepare the customer-ready version | Items, sections, prices, descriptions, images, languages, and business details are prepared for review. |
 | 3 | Publish the approved menu and page | The customer-facing menu and Official Business Page go live only from the version the owner approves. |
-| 4 | Place it where customers look | QR, WhatsApp, Instagram, Google profile, packaging, print files, table cards, counters, and screens point to the same link. |
-| 5 | Operate daily changes from phone or AI Menu Manager | Owners update prices, sold-out items, specials, hours, QR links, screens, and customer-facing details without rebuilding every surface. |
+| 4 | Place it where customers look | Put the approved link and fresh assets on QR, WhatsApp, Instagram, Google profile, packaging, print files, table cards, counters, and configured screens. |
+| 5 | Operate daily changes from phone or AI Menu Manager | Owners update prices, sold-out items, specials, hours, QR links, screens, and customer-facing details from the approved source while supported public paths refresh through their own cache, device, or replacement rules. |
 | 6 | Improve with feedback and Business Health | Feedback, activity signals, quality checks, and Business Health show what needs correction. |
 
 **Step presentation:**
@@ -886,12 +886,13 @@ Key FAQ topics:
 
 **Body:**
 
-> When you publish, your MenuList-controlled public surfaces can point customers to the same approved source: QR menu, official page, digital screens, PDF, and share links. External placements such as Google, Instagram, and WhatsApp still require owner placement or checklist confirmation.
+> When you publish, your MenuList-controlled public surfaces can point customers to the same approved source: QR menu, official page, digital screens, fresh PDF downloads, and share links. External placements such as Google, Instagram, and WhatsApp still require owner placement or checklist confirmation.
 
 **Key points:**
 
-- Atomic publishing — all surfaces update together
-- No duplicate updates across MenuList-controlled surfaces
+- One approved source for controlled public surfaces
+- Live surfaces refresh through their supported cache, listener, or device paths
+- Fresh PDF downloads should replace older downloaded or printed copies
 - MenuList-controlled public surfaces can stay aligned from the approved source
 - Publish history lets you see what changed and when
 
@@ -903,41 +904,41 @@ Key FAQ topics:
 
 **Heading:**
 
-> Your menu, everywhere your customers look.
+> Your approved menu, ready for the places customers look.
 
 **Body:**
 
-> Once published, your menu appears across every surface customers already use.
+> Once published, MenuList gives you controlled links and assets to place where customers already look. External profiles and printed copies still need owner placement or fresh replacement.
 
 **Surfaces (detailed):**
 
 1. **QR Menu** — Customers scan and see your current published menu on any phone or browser. No app download needed.
-2. **Official Business Page** — One official link with your menu, hours, location, photos, profile photo checks, social links, and customer actions. Share it on WhatsApp, Instagram, packaging, Google profile, or QR.
+2. **Official Business Page** — One official link with your menu, hours, location, photos, profile photo checks, social links, and customer actions. Use it on WhatsApp, Instagram, packaging, Google profile, or QR where the owner has placed it.
 3. **Google Presence** — Your Google Business Profile can point customers toward the current MenuList public menu where configured.
-4. **Digital Screens** — Your full menu on your shop TV. Categories, items, prices, and visibility can follow the published MenuList source.
-5. **Print Files** — A PDF or printer handoff packet generated from the current approved menu. For print, WhatsApp, packaging, or internal use.
-6. **Shareable Link** — Direct link to your live menu. Works in any message, email, or social post.
+4. **Digital Screens** — Your full menu on configured shop TVs. Categories, items, prices, and visibility can follow the published MenuList source through the screen refresh path.
+5. **Print Files** — A PDF or printer handoff packet generated from the current approved menu at download time. Replace older downloaded or printed copies after changes.
+6. **Shareable Link** — Direct link to your approved menu. Works in any message, email, or social post where the owner shares it.
 
 **Source:** `client-menu_website.md`, `official-business-page_website.md`, `digital-screens_website.md`, `gbp-sync_website.md`
 
 ---
 
-### Section: Always Current
+### Section: Current From The Approved Source
 
 **Heading:**
 
-> Your menu stays correct. You never check again.
+> Keep one approved menu source current.
 
 **Body:**
 
-> Change a price, mark an item unavailable, or update business details from the owner-approved menu. Customer-facing pages can reflect the current published version without separate manual copies.
+> Change a price, mark an item unavailable, or update business details from the owner-approved menu. Supported customer-facing pages refresh through their configured paths; external profiles and older print/download files still need placement or replacement.
 
 **Key points:**
 
 - Price changes start from one owner-approved menu
 - Unavailable items can be hidden from controlled customer-facing menus
-- Hours displayed accurately — customers see "Open" or "Closed" in real time
-- One current menu reduces duplicate updates across controlled public pages
+- Hours display from weekly hours, today's-hours edits, or Temporary Status when owners set it
+- One current source reduces duplicate updates across controlled public pages
 
 **Source:** `pricing-integrity-system_website.md`, `hours-holiday-accuracy_website.md`
 
@@ -2015,8 +2016,8 @@ Source gate: `npm run verify:website-public-copy-boundary` locks the mounted hom
 | Law 3 — Worldbuilding             | Sections build from problem → standard → proof → identity                   |
 | Law 4 — Identity Mirroring        | "Serious businesses" / "growing businesses" / "businesses that care"        |
 | Law 5 — Cognitive Hospitality     | Short sentences, familiar words, zero jargon                                |
-| Law 6 — One Core Argument         | "Your menu, from one place, correct everywhere" — repeated throughout       |
-| Law 7 — Stories Beat Statistics   | Concrete scenarios: price change → customer sees it, QR scan → current menu |
+| Law 6 — One Core Argument         | One approved menu source; replace old links and PDFs so customers see it    |
+| Law 7 — Stories Beat Statistics   | Concrete scenarios: approved update → menu link refreshes, QR scan → current menu |
 | Law 8 — Dissonance                | "You update your menu. Customers still see the old one."                    |
 | Law 9 — Frame Shifts              | Never attacks current behavior. Small shift: "Wouldn't it be easier if..."  |
 

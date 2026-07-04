@@ -4,6 +4,7 @@
 **Status:** Active Strategy
 **Last Updated:** February 19, 2026
 **Audience:** CEO, PM, Founder, Non-technical stakeholders
+**Source gate:** `npm run verify:agent-readiness`
 
 ---
 
@@ -11,11 +12,11 @@
 
 ### What
 
-Position MenuList as the default structured data source that AI agents, search engines, and voice assistants trust when they need SMB business truth (menus, hours, contact info, availability).
+Position MenuList as a structured public data source that AI agents, search engines, and voice assistants can read when they crawl MenuList pages for SMB business truth (menus, hours, contact info, availability).
 
 ### Why
 
-The internet is shifting from human browsing to machine querying. By 2030, Morgan Stanley estimates $385B in US spending will be controlled by AI agents. These agents don't read marketing pages — they query structured data. MenuList already has the deepest schema.org structured data for SMB menus. This strategy ensures MenuList is **discoverable** by AI systems, not just well-structured.
+The internet is shifting from human browsing to machine querying. By 2030, Morgan Stanley estimates $385B in US spending will be controlled by AI agents. These agents don't read marketing pages — they query structured data. MenuList already has deep schema.org structured data for SMB menus. This strategy improves MenuList's machine-readable public source layer; it does not guarantee crawler access, ranking, citation, or answer placement.
 
 ### For Whom
 
@@ -49,7 +50,7 @@ The internet is shifting from human browsing to machine querying. By 2030, Morga
 | **Primary link adoption** | SMBs using MenuList OBP as their official public link                 | #1 priority — track actively         |
 | Dataset accuracy          | Schema.org validation pass rate + MCE pass rate                       | 100%                                 |
 | AI discoverability        | MenuList businesses cited in AI answers (ChatGPT, Gemini, Perplexity) | Monitor manually, establish baseline |
-| Trust signals             | dateModified freshness on OBP pages                                   | <24h after last update               |
+| Freshness signals         | dateModified freshness on OBP pages                                   | Reflects the owner-approved public source after save/cache refresh |
 
 > **Infrastructure baseline (not a goal):** `llms.txt` and `llms-full.txt` are served at their respective URLs. These are hygiene — table stakes for any serious structured data platform. They do not create competitive advantage on their own.
 
@@ -96,14 +97,14 @@ No more heavy "agent readiness" implementation needed for now. Shift focus back 
 ### New World (Agent Discovery)
 
 1. Customer asks AI assistant: "Find me a cafe with vegan options near me"
-2. Agent queries structured data sources
-3. Agent evaluates: completeness, freshness, schema depth, speed
-4. Agent recommends business with richest data
+2. Agent may query structured public sources
+3. Agent may evaluate completeness, freshness, schema depth, and speed
+4. Agent decides what to show based on its own retrieval and ranking rules
 5. Customer acts on recommendation
 
 ### MenuList's Role
 
-MenuList is **not** selling to agents. MenuList is the **canonical structured data source** that agents read and trust. The business model doesn't change (SMB subscriptions). What changes is that MenuList's structured data becomes a competitive advantage for the SMBs using it — their businesses get recommended by AI because their data is the cleanest.
+MenuList is **not** selling to agents. MenuList exposes an owner-approved structured public source that agents and search systems can read when they crawl MenuList pages. The business model doesn't change (SMB subscriptions). What changes is that MenuList's public data becomes clearer and easier to evaluate; external systems still decide what they crawl, cite, show, or summarize.
 
 ---
 
@@ -115,7 +116,7 @@ MenuList is **not** selling to agents. MenuList is the **canonical structured da
 | Yelp                    | Basic                    | Medium         | Scraped/user-generated     | Low                                                |
 | Restaurant websites     | None (unstructured HTML) | Slow           | Often outdated             | None                                               |
 | PDF menus               | None                     | N/A            | Static                     | None                                               |
-| **MenuList**            | **Deep schema.org**      | **<200ms SSR** | **Owner-updated, instant** | **Deep (Menu, MenuItem, Offer, Hours, Geo, Diet)** |
+| **MenuList**            | **Deep schema.org**      | **SSR + cache** | **Owner-approved source with public cache refresh** | **Deep (Menu, MenuItem, Offer, Hours, Geo, Diet)** |
 
 **MenuList Advantage:** Only platform where the menu data is:
 
@@ -175,14 +176,14 @@ Full doc suite documenting the long-term positioning, competitive analysis, and 
 
 ### Year 2-3: Recognition
 
-- AI systems start citing MenuList businesses regularly
+- AI systems may cite MenuList businesses when they crawl and trust the public source
 - OBP URLs spread across internet (Google listings, bios, QR)
 - MenuList becomes recognizable structured data source
 - **Decision point:** If agent API demand appears, build read-only endpoint
 
 ### Year 3-5: Default Source
 
-- AI assistants prefer MenuList data for SMB queries
+- MenuList remains a clear structured source for SMB queries
 - Structured data quality creates natural moat
 - Possible: lightweight read-only API for verified agent partners
 - Possible: trust/reliability metadata in responses

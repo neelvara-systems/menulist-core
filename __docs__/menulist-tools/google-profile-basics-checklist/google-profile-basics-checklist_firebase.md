@@ -1,6 +1,7 @@
 # Google Profile Basics Checklist - Firebase and Cost
 
 **Status:** V0 static/browser-local report path; V1 uses existing owner readiness context.
+**Last Updated:** July 4, 2026
 
 ## Cost Table
 

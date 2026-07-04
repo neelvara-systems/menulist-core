@@ -50,13 +50,13 @@ To edit your menu:
 1. Open dashboard
 2. Edit items
 3. Click publish
-Changes go live instantly.
+Customer menus can take up to 60 seconds to refresh.
 ```
 
 **Template 2: Change Price**
 ```
-Dashboard → edit item → change price → publish.
-Updated price shows immediately.
+Dashboard → edit item → change price → save.
+If the screen shows Publish, click Publish. Customer menus can take up to 60 seconds to refresh.
 ```
 
 **Template 3: Menu Not Updating**
@@ -72,7 +72,7 @@ Your menu link works everywhere:
 • Google Business
 • WhatsApp status
 • QR code (print from dashboard)
-This is your live menu — always up to date.
+This opens the owner-published menu. Customer menus can take up to 60 seconds to refresh after changes.
 ```
 
 **Template 5: How to Add Image**

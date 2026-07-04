@@ -4,7 +4,7 @@
 
 ## Quick Summary
 
-Multi-outlet lets you run multiple store locations from one master menu. Update the master → all outlets update. Each outlet can make local adjustments (prices, availability) without affecting the master. HQ controls what each outlet is allowed to change via outlet policies.
+Multi-outlet lets you run multiple store locations from one master menu. Update the master, and linked outlets receive the saved changes through the current sync/cache path. Each outlet can make local adjustments (prices, availability) without affecting the master. HQ controls what each outlet is allowed to change via outlet policies.
 
 ---
 
@@ -82,7 +82,7 @@ Multi-outlet lets you run multiple store locations from one master menu. Update 
 1. Edit the **master** menu (under **Projects** in your HQ dashboard)
 2. Make your changes (add items, change descriptions, update prices)
 3. Click **Save**
-4. All linked outlets receive the changes within seconds
+4. Linked outlets receive the saved changes through the current sync/cache path
 
 ---
 
@@ -90,7 +90,7 @@ Multi-outlet lets you run multiple store locations from one master menu. Update 
 
 ### Outlet menu doesn't reflect master changes
 
-**Why:** Changes sync within seconds, but the customer menu caches for up to 60 seconds.
+**Why:** Outlet sync and customer menu cache refresh can take up to 60 seconds.
 **Fix:** Wait 60 seconds and check again. If still not updated, refresh the outlet's Editor.
 
 ### I changed something on the master but outlet shows old price

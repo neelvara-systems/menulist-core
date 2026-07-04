@@ -1,6 +1,7 @@
 # One Customer Link Preview - Mobile Support
 
 **Status:** Public route is mobile-responsive; V1 maps to existing owner mobile Business Health surfaces.
+**Last Updated:** July 4, 2026
 
 ## Mobile Admission
 

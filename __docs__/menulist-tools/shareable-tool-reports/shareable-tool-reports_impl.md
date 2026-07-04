@@ -1,7 +1,7 @@
 # Shareable Tool Reports - Implementation
 
 **Status:** Implemented V0
-**Last Updated:** July 3, 2026
+**Last Updated:** July 4, 2026
 **Audience:** Developers
 
 ---
@@ -33,7 +33,7 @@ Source tool report card
   -> createShareableToolReportUrl(payload)
   -> /tools/reports#r={base64url-json}
   -> viewer decodes window.location.hash
-  -> viewer renders report rows, evidence, boundaries, and next action
+  -> viewer renders report rows, evidence, setup job list, boundaries, and next action
   -> optional consented follow-up posts bounded summary to /api/public/contact
 ```
 
@@ -52,6 +52,7 @@ The shared helper enforces:
 - max encoded length: `SHAREABLE_TOOL_REPORT_MAX_ENCODED_LENGTH`
 - max checks: `SHAREABLE_TOOL_REPORT_MAX_CHECKS`
 - max boundaries: `SHAREABLE_TOOL_REPORT_MAX_BOUNDARIES`
+- max setup jobs: `SHAREABLE_TOOL_REPORT_MAX_SETUP_JOBS`
 - safe internal next-action href only
 
 If a shared report link is incomplete, too large, or not a valid schema, the viewer shows an invalid-link state.
@@ -65,10 +66,11 @@ When adding a source tool:
 1. Use the report's existing deterministic output.
 2. Map localized labels and helper text into `checks[]`.
 3. Preserve each row's `evidenceText`.
-4. Add `checkedSourceText` and `notCheckedText`.
-5. Use one internal MenuList `nextAction.href`.
-6. Add a "Copy public report link" action.
-7. Update the source tool verifier.
+4. Let `buildShareableToolReportSetupJobs(...)` derive the setup job list from visible missing, unclear, and not-checked rows.
+5. Add `checkedSourceText` and `notCheckedText`.
+6. Use one internal MenuList `nextAction.href`.
+7. Add a "Copy public report link" action.
+8. Update the source tool verifier.
 
 Do not add a report API route, Firestore collection, external fetch, AI call, or hidden capture step for V0. The only allowed viewer-side write is the visible consented follow-up form using the existing `/api/public/contact` route.
 
@@ -86,6 +88,7 @@ The common builder is `buildShareablePublicTruthToolReportPayload(...)`. It maps
 - summary counts
 - localized check labels and helper text
 - each row's existing `evidenceText`
+- a bounded setup job list where report gaps become the job list
 - one internal MenuList next action
 - shared public boundaries
 
@@ -103,10 +106,10 @@ Implementation rules:
 - use `cache: 'no-store'`, `credentials: 'same-origin'`, and `redirect: 'manual'`
 - expect `source: menulist_public_contact`, `status: accepted`, and `helpTopic: general`
 - submit a bounded report summary, not the full hash payload as a stored report
-- submit bounded `sourceContext` metadata: `sourceKind`, `toolId`, `reportStatus`, owner-entered business context, generated timestamp, and summary counts
+- submit bounded `sourceContext` metadata: `sourceKind`, `toolId`, `reportStatus`, owner-entered business context, generated timestamp, summary counts, and `setupJobList`
 - keep the report link public and ungated
 
-The accepted write is one existing public contact enquiry. The route stores queryable top-level metadata (`sourceKind`, `sourceToolId`, `sourceReportStatus`, `sourcePrimaryNumber`) plus the bounded nested `sourceContext`. It is not report storage, saved history, or email-delivery automation.
+The accepted write is one existing public contact enquiry. The route stores queryable top-level metadata (`sourceKind`, `sourceToolId`, `sourceReportStatus`, `sourcePrimaryNumber`) plus the bounded nested `sourceContext`. The nested setup jobs are lead-routing context only; they are not canonical business truth, report storage, saved history, or email-delivery automation.
 
 ---
 
@@ -120,7 +123,7 @@ Runtime rules:
 - API is manual-refresh only
 - API reads recent `landingPageEnquiries`, filters `shareable_tool_report` leads in memory, and avoids new Firestore indexes
 - response is capped and parsed through `readReportLeadOpsSnapshotResponse`
-- UI can copy the first-reply template from the playbook
+- UI shows the setup job list and can copy the first-reply template from the playbook
 - no lead mutation
 - no report storage
 - no external fetch, crawler, AI/provider call, or canonical truth write

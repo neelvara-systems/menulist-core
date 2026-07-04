@@ -56,10 +56,10 @@ Confirm the business details, create the permanent MenuList link, and continue w
 Start from a photo or public menu link. Categories, items, prices, and descriptions are prepared into a structured preview.
 
 **Benefit 2: One link, everywhere**
-Share one link on WhatsApp, print it as a QR code, add it to Google Maps. Customers always find the latest version.
+Share one link on WhatsApp, print it as a QR code, add it to Google Maps. Customers find the version the owner approved and published.
 
 **Benefit 3: Update from your phone**
-Changed a price? Added a dish? Update your menu in seconds from your phone. Changes go live instantly.
+Changed a price? Added a dish? Update your menu from your phone, save the approved edit, and publish design or page changes when needed.
 
 **Benefit 4: Works for any business**
 Restaurants, cafes, bakeries, salons, gyms, clinics — any business with offerings customers need to see.
@@ -89,7 +89,7 @@ A: The preview usually appears after a short processing step. Clearer photos pro
 A: The first signed-in setup preview is free and rate-limited. QR, link, publishing, and plan setup continue from the account.
 
 **Q: Can I update my menu later?**
-A: Yes. After publishing, you can update your menu anytime from your phone or computer. Changes go live instantly.
+A: Yes. After publishing, you can update your menu anytime from your phone or computer. Save menu edits from Projects; publish design or page changes when needed. Customer menus can take up to 60 seconds to refresh.
 
 ---
 

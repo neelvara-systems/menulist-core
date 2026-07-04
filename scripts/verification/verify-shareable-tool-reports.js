@@ -35,13 +35,16 @@ const SOURCE_TOOL_COMPONENTS = [
   ['src/components/website/qrLinkHealthCheck/QrLinkHealthCheckPage.tsx', 'qr-link-health-check', 'qr_link_health_check', true],
   ['src/components/website/menuReadabilityCheck/MenuReadabilityCheckPage.tsx', 'menu-readability-check', 'menu_readability_check', true],
   ['src/components/website/customerQuestionCoverageCheck/CustomerQuestionCoverageCheckPage.tsx', 'customer-question-coverage-check', 'customer_question_coverage_check', true],
+  ['src/components/website/customerFaqReplyPack/CustomerFaqReplyPackPage.tsx', 'customer-faq-reply-pack', 'customer_faq_reply_pack', true],
   ['src/components/website/bookingInquiryReadinessCheck/BookingInquiryReadinessCheckPage.tsx', 'booking-inquiry-readiness-check', 'booking_inquiry_readiness_check', true],
   ['src/components/website/priceAvailabilityGapCheck/PriceAvailabilityGapCheckPage.tsx', 'price-availability-gap-check', 'price_availability_gap_check', true],
   ['src/components/website/menuPdfCleanupCheck/MenuPdfCleanupCheckPage.tsx', 'menu-pdf-cleanup-check', 'menu_pdf_cleanup_check', true],
   ['src/components/website/googleProfileBasicsChecklist/GoogleProfileBasicsChecklistPage.tsx', 'google-profile-basics-checklist', 'google_profile_basics_checklist', true],
+  ['src/components/website/businessFactsCopyPack/BusinessFactsCopyPackPage.tsx', 'business-facts-copy-pack', 'business_facts_copy_pack', true],
   ['src/components/website/customerLinkPreview/CustomerLinkPreviewPage.tsx', 'customer-link-preview', 'customer_link_preview', true],
   [SOCIAL_COMPONENT_PATH, 'social-bio-link-check', 'social_bio_link_check', false],
   ['src/components/website/whatsappActionLinkCheck/WhatsAppActionLinkCheckPage.tsx', 'whatsapp-action-link-check', 'whatsapp_action_link_check', true],
+  ['src/components/website/whatsappReplyPack/WhatsAppReplyPackPage.tsx', 'whatsapp-reply-pack', 'whatsapp_reply_pack', true],
   ['src/components/website/hoursCheck/HoursCheckPage.tsx', 'hours-check', 'hours_check', true],
   ['src/components/website/photoGapCheck/PhotoGapCheckPage.tsx', 'photo-gap-check', 'photo_gap_check', true],
 ];
@@ -137,8 +140,12 @@ assertIncludes(shared, 'SHAREABLE_TOOL_REPORT_MAX_JSON_LENGTH', 'Shareable Tool 
 assertIncludes(shared, 'SHAREABLE_TOOL_REPORT_MAX_ENCODED_LENGTH', 'Shareable Tool Reports encoded cap');
 assertIncludes(shared, 'SHAREABLE_TOOL_REPORT_MAX_CHECKS', 'Shareable Tool Reports check cap');
 assertIncludes(shared, 'SHAREABLE_TOOL_REPORT_MAX_BOUNDARIES', 'Shareable Tool Reports boundary cap');
+assertIncludes(shared, 'SHAREABLE_TOOL_REPORT_MAX_SETUP_JOBS', 'Shareable Tool Reports setup job cap');
 assertIncludes(shared, "| 'not_applicable'", 'Shareable Tool Reports not-applicable result preservation');
 assertIncludes(shared, 'evidenceText: string', 'Shareable Tool Reports evidence text type');
+assertIncludes(shared, 'ShareableToolReportSetupJob', 'Shareable Tool Reports setup job type');
+assertIncludes(shared, 'buildShareableToolReportSetupJobs', 'Shareable Tool Reports setup job builder');
+assertIncludes(shared, 'setupJobList: buildShareableToolReportSetupJobs(checks, nextAction)', 'Shareable Tool Reports shared setup job mapping');
 assertIncludes(shared, 'buildShareablePublicTruthToolReportPayload', 'Shareable Tool Reports shared source-tool builder');
 assertIncludes(shared, 'coerceInternalHref', 'Shareable Tool Reports internal href guard');
 assertIncludes(shared, "return '/create-menu'", 'Shareable Tool Reports unsafe href fallback');
@@ -155,6 +162,9 @@ assertIncludes(component, 'window.location.hash', 'Shareable Tool Reports hash-f
 assertIncludes(component, 'decodeShareableToolReportPayload(window.location.hash)', 'Shareable Tool Reports hash decoder');
 assertIncludes(component, 'window.addEventListener(\'hashchange\'', 'Shareable Tool Reports hashchange support');
 assertIncludes(component, 'check.evidenceText', 'Shareable Tool Reports evidence renderer');
+assertIncludes(component, 'getReportSetupJobs(report)', 'Shareable Tool Reports setup job renderer helper');
+assertIncludes(component, "t('setupJobs.title')", 'Shareable Tool Reports setup job title');
+assertIncludes(component, 'Setup job list', 'Shareable Tool Reports setup job report text');
 assertIncludes(component, 'report.checkedSourceText', 'Shareable Tool Reports checked text renderer');
 assertIncludes(component, 'report.notCheckedText', 'Shareable Tool Reports not-checked text renderer');
 assertIncludes(component, 'report.publicBoundary', 'Shareable Tool Reports boundary renderer');
@@ -175,6 +185,7 @@ assertIncludes(component, 'missingCount: report.summary.missing', 'Shareable Too
 assertIncludes(component, 'unclearCount: report.summary.unclear', 'Shareable Tool Reports contact unclear count');
 assertIncludes(component, 'notCheckedCount: report.summary.notChecked', 'Shareable Tool Reports contact not-checked count');
 assertIncludes(component, 'primaryNumber: report.summary.primaryNumber', 'Shareable Tool Reports contact primary number');
+assertIncludes(component, 'setupJobList: setupJobs.map', 'Shareable Tool Reports contact setup job list');
 assertIncludes(component, 'sourceContext,', 'Shareable Tool Reports contact source metadata submission');
 assertIncludes(component, 'TurnstileWidget', 'Shareable Tool Reports contact handoff security check');
 assertIncludes(component, 'menulist_shareable_tool_report', 'Shareable Tool Reports Turnstile action');
@@ -190,8 +201,11 @@ assertNotIncludes(component, '/api/shareable-tool-reports', 'Shareable Tool Repo
 
 assertIncludes(contactRoute, 'ShareableToolReportSourceContextSchema', 'MenuList public contact source-context schema');
 assertIncludes(contactRoute, "sourceKind: z.literal('shareable_tool_report')", 'MenuList public contact source-context kind');
+assertIncludes(contactRoute, 'ShareableToolReportSetupJobSchema', 'MenuList public contact setup job schema');
+assertIncludes(contactRoute, 'setupJobList: z.array(ShareableToolReportSetupJobSchema).max(6).optional().nullable()', 'MenuList public contact setup job cap');
 assertIncludes(contactRoute, 'sourceContext: ShareableToolReportSourceContextSchema.optional().nullable()', 'MenuList public contact request source-context field');
 assertIncludes(contactRoute, 'cleanShareableToolReportSourceContext', 'MenuList public contact source-context sanitizer');
+assertIncludes(contactRoute, 'cleanShareableToolReportSetupJobList', 'MenuList public contact setup job sanitizer');
 assertIncludes(contactRoute, 'sanitizeForFirestore', 'MenuList public contact Firestore sanitization');
 assertIncludes(contactRoute, 'sourceKind: sourceContext?.sourceKind || null', 'MenuList public contact source-kind write');
 assertIncludes(contactRoute, 'sourceToolId: sourceContext?.toolId || null', 'MenuList public contact source-tool write');
@@ -219,6 +233,7 @@ assertIncludes(socialComponent, "toolId: 'social-bio-link-check'", 'Social Bio L
 assertIncludes(socialComponent, 'checkedSourceText', 'Social Bio Link Check share checked text');
 assertIncludes(socialComponent, 'notCheckedText', 'Social Bio Link Check share not-checked text');
 assertIncludes(socialComponent, 'evidenceText: check.evidenceText', 'Social Bio Link Check share evidence preservation');
+assertIncludes(socialComponent, 'setupJobList: buildShareableToolReportSetupJobs(checks, nextAction)', 'Social Bio Link Check share setup jobs');
 assertIncludes(socialComponent, 'handleCopyShareLink', 'Social Bio Link Check share link handler');
 assertIncludes(socialComponent, "t('reportActions.shareLink')", 'Social Bio Link Check share link copy');
 assertIncludes(socialVerifier, 'shareLink', 'Social Bio Link Check verifier share key');
@@ -243,14 +258,17 @@ for (const sourceTool of sourceToolComponents) {
 
 assertIncludes(readmeDoc, '/tools/reports', 'Shareable Tool Reports README route');
 assertIncludes(readmeDoc, 'all current public MenuList Tools can copy a public report link', 'Shareable Tool Reports README coverage');
+assertIncludes(readmeDoc, 'bounded setup job list', 'Shareable Tool Reports README setup job coverage');
 assertIncludes(readmeDoc, 'optional consented report follow-up capture', 'Shareable Tool Reports README follow-up coverage');
 assertIncludes(specDoc, 'URL hash fragment', 'Shareable Tool Reports spec hash boundary');
 assertIncludes(specDoc, 'The user must not need to be a MenuList user to open a report link', 'Shareable Tool Reports public access rule');
 assertIncludes(specDoc, 'all current public MenuList Tool report-card integrations', 'Shareable Tool Reports spec coverage');
+assertIncludes(specDoc, '`setupJobList`', 'Shareable Tool Reports spec setup job contract');
 assertIncludes(specDoc, 'consented follow-up request through the existing `/api/public/contact` route', 'Shareable Tool Reports spec contact boundary');
 assertIncludes(implDoc, '/tools/reports#r=', 'Shareable Tool Reports implementation hash format');
 assertIncludes(implDoc, 'Do not add a report API route', 'Shareable Tool Reports implementation API boundary');
 assertIncludes(implDoc, 'All current public MenuList Tools are source-tool integrations', 'Shareable Tool Reports implementation coverage');
+assertIncludes(implDoc, 'where report gaps become the job list', 'Shareable Tool Reports implementation setup job mapping');
 assertIncludes(implDoc, 'The accepted write is one existing public contact enquiry', 'Shareable Tool Reports implementation contact boundary');
 assertIncludes(websiteDoc, 'Send report for follow-up', 'Shareable Tool Reports website follow-up copy');
 assertIncludes(websiteDoc, 'Do not say the report was emailed or delivered automatically', 'Shareable Tool Reports website delivery boundary');
@@ -260,15 +278,19 @@ assertIncludes(firebaseDoc, '0 for report viewing; 1 existing contact enquiry wr
 assertIncludes(firebaseDoc, 'Report storage | 0', 'Shareable Tool Reports Firebase report storage boundary');
 assertIncludes(firebaseDoc, 'The submitted message contains a bounded report summary', 'Shareable Tool Reports Firebase contact boundary');
 assertIncludes(firebaseDoc, 'sourceKind: shareable_tool_report', 'Shareable Tool Reports Firebase source kind metadata');
+assertIncludes(firebaseDoc, 'bounded `setupJobList`', 'Shareable Tool Reports Firebase setup job metadata');
 assertIncludes(followUpPlaybookDoc, 'sourceKind', 'Shareable Tool Reports follow-up playbook metadata');
+assertIncludes(followUpPlaybookDoc, 'report gaps become the setup job list', 'Shareable Tool Reports follow-up playbook setup job rule');
 assertIncludes(followUpPlaybookDoc, 'The paid value is the work, recurrence, history, multi-location reporting, or partner reporting.', 'Shareable Tool Reports follow-up playbook upgrade boundary');
 assertIncludes(mobileDoc, 'keep the follow-up form usable with 44px controls', 'Shareable Tool Reports mobile follow-up boundary');
 assertIncludes(testCasesDoc, 'STR-004', 'Shareable Tool Reports test case coverage');
 assertIncludes(testCasesDoc, 'STR-012', 'Shareable Tool Reports follow-up test case coverage');
 assertIncludes(testCasesDoc, 'STR-014', 'Shareable Tool Reports source metadata test case coverage');
+assertIncludes(testCasesDoc, 'setup job list', 'Shareable Tool Reports setup job test coverage');
 assertIncludes(validationDoc, 'npm run verify:shareable-tool-reports', 'Shareable Tool Reports validation gate');
 assertIncludes(validationDoc, 'consented follow-up uses only `/api/public/contact`', 'Shareable Tool Reports validation contact boundary');
 assertIncludes(validationDoc, 'follow-up request includes bounded `shareable_tool_report` source metadata', 'Shareable Tool Reports validation source metadata boundary');
+assertIncludes(validationDoc, 'setup job list is derived from visible report gaps', 'Shareable Tool Reports setup job validation gate');
 assertIncludes(toolsReadmeDoc, '[shareable-tool-reports](./shareable-tool-reports/README.md)', 'MenuList Tools README');
 assertIncludes(familyReadmeDoc, '[Shareable Tool Reports](../shareable-tool-reports/README.md)', 'Public Truth Tools README');
 assertIncludes(familyReadmeDoc, '/tools/reports', 'Public Truth Tools routes');
@@ -285,6 +307,8 @@ assert(enUS.Website?.ToolReportPage, 'en-US ToolReportPage locale keys must exis
 assert(hiIN.Website?.ToolReportPage, 'hi-IN ToolReportPage locale keys must exist');
 assert(enUS.Website.ToolReportPage.reportActions?.copyLink, 'en-US report copy-link key must exist');
 assert(hiIN.Website.ToolReportPage.reportActions?.copyLink, 'hi-IN report copy-link key must exist');
+assert(enUS.Website.ToolReportPage.setupJobs?.title, 'en-US report setup-job title key must exist');
+assert(hiIN.Website.ToolReportPage.setupJobs?.title, 'hi-IN report setup-job title key must exist');
 assert(enUS.Website.ToolReportPage.delivery?.submit, 'en-US report delivery submit key must exist');
 assert(hiIN.Website.ToolReportPage.delivery?.submit, 'hi-IN report delivery submit key must exist');
 assert(enUS.Website.ToolReportPage.delivery?.securityCheckRequired, 'en-US report delivery security key must exist');

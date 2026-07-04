@@ -1,5 +1,5 @@
 import { Alert, Button, Card, Flex, Space, Tag, Typography } from 'antd';
-import { LuAlertCircle, LuArrowRight, LuCheckCircle2, LuExternalLink, LuInfo, LuRefreshCw, LuSearch } from 'react-icons/lu';
+import { LuAlertCircle, LuArrowRight, LuCheckCircle2, LuExternalLink, LuInfo, LuListChecks, LuRefreshCw, LuSearch } from 'react-icons/lu';
 import type { OwnerPublicTruthReadinessReport } from '@lib/public-truth-tools/ownerPublicTruthReadiness';
 import type { PublicTruthCheckFactId, PublicTruthCheckResult } from '@lib/public-truth-tools/publicTruthCheckTypes';
 import styles from './OwnerBusinessAssistant.module.scss';
@@ -111,6 +111,7 @@ export function PublicTruthOwnerCheckCard({
   const primaryAction = getPrimaryAction(report);
   const attentionChecks = report.checks.filter((check) => check.result !== 'present' && check.result !== 'not_applicable');
   const readyModuleCount = report.modules.filter((module) => module.status === 'ready').length;
+  const setupJobs = report.setupJobList;
 
   return (
     <Card className={`${styles.dashboardCard} ${styles.publicTruthCheckCard}`}>
@@ -173,6 +174,47 @@ export function PublicTruthOwnerCheckCard({
             </span>
           </div>
         </div>
+
+        {setupJobs.length ? (
+          <div className={styles.publicTruthSetupJobList}>
+            <Flex align="center" gap={8}>
+              <LuListChecks size={16} />
+              <Text strong>Fix list</Text>
+              <Tag>{setupJobs.length}</Tag>
+            </Flex>
+            <div className={styles.publicTruthSetupJobGrid}>
+              {setupJobs.map((job) => {
+                const statusCopy = MODULE_STATUS_COPY[job.status];
+                return (
+                  <div className={styles.publicTruthSetupJobItem} key={job.id}>
+                    <Flex align="flex-start" gap={8} justify="space-between">
+                      <div className={styles.publicTruthCheckItemBody}>
+                        <Text strong>{job.title}</Text>
+                        <Text className={styles.publicTruthCheckEvidence} type="secondary">
+                          {job.reason}
+                        </Text>
+                      </div>
+                      <Tag color={statusCopy.color} style={{ marginInlineEnd: 0 }}>{statusCopy.label}</Tag>
+                    </Flex>
+                    <Text className={styles.publicTruthCheckEvidence} type="secondary">
+                      {job.evidenceText}
+                    </Text>
+                    <Button
+                      className={styles.publicTruthModuleAction}
+                      href={job.fixHref}
+                      icon={<LuArrowRight />}
+                      iconPosition="end"
+                      size="small"
+                      type="link"
+                    >
+                      {job.actionLabel}
+                    </Button>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        ) : null}
 
         <div className={styles.publicTruthModuleList}>
           {report.modules.map((module) => {

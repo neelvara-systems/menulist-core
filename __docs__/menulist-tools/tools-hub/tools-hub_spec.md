@@ -1,5 +1,7 @@
 # Tools Hub - Product Spec
 
+**Last Updated:** July 4, 2026
+
 ## Job
 
 An SMB owner, agency, or partner needs one page that answers:

@@ -28,7 +28,7 @@ Not run:
 The scoped MenuList QA deploy was attempted:
 
 ```bash
-firebase deploy --only functions:menulistMaintenanceScheduler --project menulist-qa --non-interactive
+firebase deploy --project menulist-qa --config firebase.json --only functions:menulistMaintenanceScheduler --non-interactive
 ```
 
 The Firebase predeploy lint/build steps passed, then deploy stopped before upload:
@@ -73,10 +73,10 @@ Not run:
 - Vercel build or deploy.
 - Firebase production deploy.
 
-This change modifies Firebase Cloud Function logic. The scoped MenuList QA deploy was attempted:
+This change modifies Firebase Cloud Function logic. The July 2 deploy attempt reached Firebase predeploy before upload; current retry evidence must use the scoped command shape below:
 
 ```bash
-firebase deploy --only functions:menulistMaintenanceScheduler --project menulist-qa
+firebase deploy --project menulist-qa --config firebase.json --only functions:menulistMaintenanceScheduler --non-interactive
 ```
 
 The deploy completed the Firebase predeploy lint/build steps, then stopped before upload:

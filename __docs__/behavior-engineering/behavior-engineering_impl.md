@@ -3,7 +3,13 @@
 **Feature:** Behavior Engineering (Presence Dominance Activation)  
 **Created:** February 19, 2026  
 **Audience:** Developers  
-**Status:** Implementation In Progress
+**Status:** Source-gated behavior-copy boundary
+
+---
+
+## Source Gate
+
+This implementation doc is source-gated by `npm run verify:public-business-truth`. Share and nudge copy must use the current owner-approved source wording and respect the existing save/publish plus public cache refresh boundary.
 
 ---
 
@@ -89,11 +95,11 @@ BEFORE:
 AFTER:
   [Globe icon] Your Official Business Link
   joespizza.menulist.ai
-  Use this link whenever customers ask for your menu. Always updated.
+  Use this link whenever customers ask for your menu. It points to the current approved menu.
   [Copy] [Open]
 ```
 
-**Micro-copy:** `"Use this link whenever customers ask for your menu. Always updated."`  
+**Micro-copy:** `"Use this link whenever customers ask for your menu. It points to the current approved menu."`
 **Tone:** Calm, factual, helpful. Not promotional.
 
 ---
@@ -106,18 +112,18 @@ AFTER:
 
 1. **Header subtitle change:**
    - Current: `"Works everywhere — WhatsApp, Instagram, QR, any browser"`
-   - New: `"Send this instead of menu photos or PDFs. Customers always see your latest menu."`
+   - New: `"Send this instead of menu photos or PDFs. Customers use your current approved menu link."`
 
 2. **WhatsApp share message improvement:**
    - Current: `"Check out our menu: {url}"`
-   - New: `"Here is our latest menu:\n{url}\n(Always updated)"`
+   - New: `"Here is our menu:\n{url}"`
 
 3. **QR section micro-copy change:**
    - Current: `"For tables, counters, posters"`
-   - New: `"Print and place on tables or counter. Customers can always scan for your latest menu."`
+   - New: `"Print and place on tables or counter. Customers scan the current menu link."`
 
 4. **Add staff sharing hint** (small text near bottom):
-   - `"Share this link with your staff so everyone sends the same updated menu."`
+   - `"Share this link with your staff so everyone sends the same current menu link."`
 
 ---
 
@@ -133,11 +139,11 @@ AFTER:
 
 2. **Menu QR section micro-copy change:**
    - Current: `"Scan to view your menu"`
-   - New: `"Print and place on tables or counter. Customers can always access your latest menu."`
+   - New: `"Print and place on tables or counter. Customers scan the current menu link."`
 
 3. **WhatsApp share message improvement:**
    - Current: `"Check out our menu: {url}"`
-   - New: `"Here is our latest menu:\n{url}\n(Always updated)"`
+   - New: `"Here is our menu:\n{url}"`
 
 ---
 
@@ -151,7 +157,7 @@ AFTER:
 │ [Link icon]                                       │
 │ This is your official customer menu link.         │
 │ Use this instead of sending menu photos or PDFs.  │
-│ Customers will always see your latest menu.       │
+│ It points to the current approved menu.           │
 │                                                    │
 │ joespizza.menulist.ai                [Copy] [×]   │
 └──────────────────────────────────────────────────┘
@@ -187,7 +193,7 @@ AFTER:
 
   Your official menu link is ready.
   Send this whenever customers ask for your menu.
-  Customers will always see your latest items and prices.
+  It points to your current approved items and prices.
 
   [link]
 
@@ -239,7 +245,7 @@ AFTER:
 ### Phase 6: Editor Post-Save Confidence Reinforcement (5 min) — IMPLEMENTED
 
 1. Add `hasShownConfidenceNudgeRef` in Editor component
-2. After first successful `syncChanges()`, show one-time toast: "Saved. Customers with your link see the latest."
+2. After first successful `syncChanges()`, show one-time toast with source-bounded save/cache wording.
 3. Gated by `ENABLE_BEHAVIOR_NUDGES`, fires once per editor session
 
 ---
@@ -261,9 +267,9 @@ AFTER:
 3. Click dismiss → card disappears permanently
 4. Open Share Modal → updated copy visible
 5. Open MobileShareScreen → updated copy visible
-6. Click WhatsApp share → message should say "Here is our latest menu: [link] (Always updated)"
+6. Click WhatsApp share → message should say "Here is our menu: [link]"
 7. Open post-publish success screen → enhanced copy + tips visible
-8. Open Editor → make any change → wait for autosave → subtle toast appears: "Saved. Customers with your link see the latest."
+8. Open Editor → make any change → wait for autosave → subtle toast appears with source-bounded save/cache wording.
 9. Make another change → toast does NOT appear again (once per session)
 
 ---

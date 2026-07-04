@@ -1,6 +1,7 @@
 # Social Bio Link Consistency Check - Validation
 
 **Status:** V0 validation evidence; not current launch certification
+**Last Updated:** July 4, 2026
 **Source Gate:** `npm run verify:social-bio-link-check`
 
 ## Current Evidence

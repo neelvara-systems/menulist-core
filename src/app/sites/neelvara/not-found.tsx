@@ -15,7 +15,7 @@ export default function NeelvaraNotFound() {
                     <h1 className="serif">Page not found</h1>
                     <p>
                         The page you requested is not available on the Neelvara Systems
-                        company website.
+                        company reference website.
                     </p>
                     <div className="nv-actions nv-not-found-actions">
                         <NeelvaraLink className="nv-button nv-button-solid nv-button-large" href="/">
@@ -37,12 +37,12 @@ export default function NeelvaraNotFound() {
                     <div>
                         <span className="nv-eyebrow mono">
                             <span className="nv-pip" aria-hidden="true" />
-                            Product shortcuts
+                            Product sites
                         </span>
                         <h2 className="serif">Looking for a product website?</h2>
                         <p>
                             Product support, onboarding, billing, documentation, and account
-                            questions should start from the relevant product site.
+                            questions start from the relevant product site.
                         </p>
                     </div>
                     <ul className="nv-check-list">

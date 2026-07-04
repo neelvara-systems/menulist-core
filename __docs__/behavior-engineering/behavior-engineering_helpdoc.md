@@ -6,9 +6,15 @@
 
 ---
 
+## Source Gate
+
+This help doc is source-gated by `npm run verify:public-business-truth`. It must describe the official link as a stable link to the current approved source after save/publish and public cache refresh, not as an instant or always-latest guarantee.
+
+---
+
 ## Quick Summary
 
-Your MenuList link is your official menu link. Share it whenever customers ask for your menu. They will always see your latest items, prices, and hours — no matter when they open it.
+Your MenuList link is your official menu link. Share it whenever customers ask for your menu. It points to the current approved items, prices, and hours after save or publish and the brief public refresh window.
 
 ## Getting Started
 
@@ -42,7 +48,7 @@ You can find it on your dashboard or in the Share section.
 4. Paste your MenuList link
 5. Save
 
-Now customers who visit your Instagram can always access your latest menu.
+Now customers who visit your Instagram can access your current approved menu.
 
 ### How to download and print your QR code
 
@@ -58,16 +64,16 @@ Now customers who visit your Instagram can always access your latest menu.
 2. Share it with your team on WhatsApp or any group chat
 3. Tell them: "Send this to customers instead of menu photos"
 
-Now everyone on your team sends the same updated menu.
+Now everyone on your team sends the same current menu link.
 
 ### How to update your menu
 
 1. Go to your **Menu Editor**
 2. Make changes (prices, items, availability)
 3. Click **Save**
-4. That's it — customers will automatically see the updated menu
+4. That's it — the same link refreshes after the save/publish path and public cache window
 
-> 💡 **Tip:** You don't need to resend the link. Customers who already have it will see the latest version when they open it.
+> 💡 **Tip:** You don't need to resend the link. Customers who already have it use the same customer link after the public refresh path settles.
 
 ## Troubleshooting / FAQ
 
@@ -89,7 +95,7 @@ Now everyone on your team sends the same updated menu.
 - 💡 **Share with staff** — Make sure everyone on your team uses the same link
 - 💡 **Add to Instagram** — Put your link in your Instagram bio
 - 💡 **Print QR** — Place QR on tables, counter, or packaging
-- 💡 **Stop sending PDFs** — Your link always shows the latest menu. No more outdated menus.
+- 💡 **Stop sending PDFs** — Your link points to the current approved menu. No more outdated menu files.
 
 ## Related Features
 

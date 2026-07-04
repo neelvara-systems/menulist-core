@@ -184,13 +184,22 @@ function verifyPublicHoursOutput(features, hoursEngine, storeStatusBadge, client
   ].forEach((token) => assertIncludes(trustSignals, token, 'Trust signals hours output boundary'));
 }
 
-function verifyDocs(readme, impl, firebaseDoc, mobileDoc, websiteDoc, helpDoc, marketingDoc, inventory, report, audit, changelog) {
+function verifyDocs(readme, spec, impl, firebaseDoc, mobileDoc, websiteDoc, helpDoc, marketingDoc, inventory, report, audit, changelog) {
   [
     '## Source Gate',
     '`npm run verify:working-hours-boundary`',
     'Current Source Contract',
     '`ENABLE_HOURS_STATUS_DISPLAY`',
+    'public open/closed status from saved weekly working hours',
+    "use Temporary Status or today's hours",
   ].forEach((token) => assertIncludes(readme, token, 'Working hours README source gate'));
+
+  [
+    '## Current Source Boundary',
+    'Current runtime covers owner-set weekly working hours, public open/closed status, Today quick-hours edits, and time-slot presets.',
+    'Holiday calendars and date-specific exception managers are not shipped',
+    "Temporary Status or today's hours",
+  ].forEach((token) => assertIncludes(spec, token, 'Working hours spec source boundary'));
 
   [
     '## Source Gate',
@@ -214,6 +223,9 @@ function verifyDocs(readme, impl, firebaseDoc, mobileDoc, websiteDoc, helpDoc, m
   [
     'Current Source Boundary',
     'No holiday-calendar or exception manager is shipped in the current runtime.',
+    "Customers See If You're Open",
+    'Customers see the status before they visit.',
+    'current open/closed status',
   ].forEach((token) => assertIncludes(websiteDoc, token, 'Working hours website source boundary'));
 
   [
@@ -226,6 +238,11 @@ function verifyDocs(readme, impl, firebaseDoc, mobileDoc, websiteDoc, helpDoc, m
     'Do not publish this as current public copy until a source-backed holiday/exception runtime exists.',
     'Working hours marketing launch boundary',
   );
+  [
+    'Current source-backed claim is limited to owner-set weekly working hours, public open/closed status, Today quick-hours edits, and time-slot presets.',
+    'One setup. Current status.',
+    "Use Temporary Status or today's hours",
+  ].forEach((token) => assertIncludes(marketingDoc, token, 'Working hours marketing source boundary'));
 
   [
     'working-hours boundary source gate passed; browser/manual mutation pending',
@@ -242,9 +259,19 @@ function verifyDocs(readme, impl, firebaseDoc, mobileDoc, websiteDoc, helpDoc, m
   ].forEach((token) => assertIncludes(audit, token, 'Production audit working-hours source gate'));
 
   [
+    'Working Hours public claim boundary checkpoint',
+    '`npm run verify:working-hours-boundary`',
+  ].forEach((token) => assertIncludes(audit, token, 'Production audit working-hours public claim boundary'));
+
+  [
     'Working Hours and Time-Slot Boundary',
     '`npm run verify:working-hours-boundary`',
   ].forEach((token) => assertIncludes(changelog, token, 'Changelog working-hours source gate'));
+
+  [
+    'Working Hours Public Claim Boundary',
+    '`npm run verify:working-hours-boundary`',
+  ].forEach((token) => assertIncludes(changelog, token, 'Changelog working-hours public claim boundary'));
 
   [
     'Holiday Exceptions (Coming Soon)',
@@ -254,6 +281,47 @@ function verifyDocs(readme, impl, firebaseDoc, mobileDoc, websiteDoc, helpDoc, m
     assertNotIncludes(readme, token, `Working hours README stale token ${token}`);
     assertNotIncludes(websiteDoc, token, `Working hours website stale token ${token}`);
     assertNotIncludes(helpDoc, token, `Working hours helpdoc stale token ${token}`);
+  });
+
+  const activeClaimDocs = [
+    ['README', readme],
+    ['spec', spec],
+    ['website', websiteDoc],
+    ['marketing', marketingDoc],
+  ];
+
+  [
+    'always correct',
+    'Always correct',
+    'correct everywhere',
+    'Correct everywhere',
+    'customers always know',
+    'Customers Always Know',
+    'Set hours once. MenuList keeps them correct everywhere',
+    'Your hours stay correct. Even on holidays.',
+    'Enable holiday calendar',
+    'Enable holiday handling',
+    "Holiday closures used to be a mess. Now it's automatic.",
+    'India holiday calendar built-in',
+    'Global holiday calendar available',
+    'One setup, always correct',
+    'Holiday selector label',
+    'Exception section label',
+    'Closed today (holiday)',
+    'Special hours today',
+    'Set once, stays correct',
+    'Holiday calendar handles it',
+    'Staff view always current',
+    'Menu shows correct status always',
+    'Owner never touches it again',
+    'Manual exceptions always override',
+    'Add an exception in 10 seconds',
+    'multiple windows per day. Morning and evening? No problem.',
+    'Consistent everywhere',
+  ].forEach((token) => {
+    activeClaimDocs.forEach(([label, content]) => {
+      assertNotIncludes(content, token, `Working hours ${label} stale claim ${token}`);
+    });
   });
 }
 
@@ -273,6 +341,7 @@ function main() {
   const clientWebsite = read('src/components/templates/website/clientWebsite/index.tsx');
   const trustSignals = read('src/components/atoms/TrustSignals.tsx');
   const readme = read('__docs__/hours-holiday-accuracy/README.md');
+  const spec = read('__docs__/hours-holiday-accuracy/hours-holiday-accuracy_spec.md');
   const impl = read('__docs__/hours-holiday-accuracy/hours-holiday-accuracy_impl.md');
   const firebaseDoc = read('__docs__/hours-holiday-accuracy/hours-holiday-accuracy_firebase.md');
   const mobileDoc = read('__docs__/hours-holiday-accuracy/hours-holiday-accuracy_mobile-support.md');
@@ -290,7 +359,7 @@ function main() {
   verifyDesktopSettings(businessSettings, timeSlotPresetsTab);
   verifyMobileSettings(mobileWorkingHours, mobileHours, mobileTimeSlots, mobileMore);
   verifyPublicHoursOutput(features, hoursEngine, storeStatusBadge, clientWebsite, trustSignals);
-  verifyDocs(readme, impl, firebaseDoc, mobileDoc, websiteDoc, helpDoc, marketingDoc, inventory, report, audit, changelog);
+  verifyDocs(readme, spec, impl, firebaseDoc, mobileDoc, websiteDoc, helpDoc, marketingDoc, inventory, report, audit, changelog);
 
   console.log('Working Hours and time-slot boundary verifier passed');
 }

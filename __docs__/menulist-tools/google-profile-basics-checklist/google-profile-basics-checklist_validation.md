@@ -1,6 +1,7 @@
 # Google Profile Basics Checklist - Validation
 
 **Status:** V0 validation evidence; not current launch certification
+**Last Updated:** July 4, 2026
 
 Current release approval still requires the active production-readiness audit, target deploy evidence where relevant, and production-host smoke.
 

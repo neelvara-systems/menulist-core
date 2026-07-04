@@ -1,7 +1,7 @@
 # Help Chat System - Dual-Mode Help Assistant
 
 ## 🎯 Overview
-A production help interface designed for non-technical owners. It supports QnA (quick answers) and Assistant (conversational) modes, uses the Answerlattice-backed search API, persists chat sessions through the local HelpChat data hooks, and keeps failure diagnostics bounded through `helpChatDiagnostics.ts`.
+A source-gated help interface designed for non-technical owners. It supports QnA (quick answers) and Assistant (conversational) modes, uses the Answerlattice-backed search API, persists chat sessions through the local HelpChat data hooks, and keeps failure diagnostics bounded through `helpChatDiagnostics.ts`. Launch certification still requires the active Help Center verifier, production-readiness audit, External Certification Runbook evidence, target deploy evidence, browser/device QA, and production-host smoke.
 
 ## ✨ Key Features
 

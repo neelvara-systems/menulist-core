@@ -1,5 +1,7 @@
 # Tools Hub - Test Cases
 
+**Last Updated:** July 4, 2026
+
 ## Source Gate
 
 ```bash

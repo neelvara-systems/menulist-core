@@ -137,6 +137,129 @@ function verifyComplianceBrowserRequestPolicyBoundary() {
   });
 }
 
+function listMenuListBrowserSurfaceFiles() {
+  return [
+    ...listFiles('src/app', (relativePath) => /\.(?:ts|tsx)$/.test(relativePath) && !/\.(?:test|spec)\.(?:ts|tsx)$/.test(relativePath)),
+    ...listFiles('src/components', (relativePath) => /\.(?:ts|tsx)$/.test(relativePath) && !/\.(?:test|spec)\.(?:ts|tsx)$/.test(relativePath)),
+  ].filter((relativePath) => {
+    if (relativePath.startsWith('src/app/api/')) return false;
+    if (relativePath.startsWith('src/app/sites/answerlattice/')) return false;
+    if (relativePath.includes('/answerlattice/')) return false;
+    return true;
+  });
+}
+
+const DIRECT_FIREBASE_FUNCTIONS_CALLABLE_ALLOWLIST = new Map([
+  ['src/components/templates/main-app/platform/opsControlRoom/index.tsx', {
+    imports: new Set(['getFunctions', 'httpsCallable']),
+    callables: new Set(['forceRepublish']),
+  }],
+  ['src/components/mobile/screens/MobileOpsControlRoomScreen.tsx', {
+    imports: new Set(['getFunctions', 'httpsCallable']),
+    callables: new Set(['forceRepublish']),
+  }],
+  ['src/components/templates/main-app/platform/schedulerMonitor/index.tsx', {
+    imports: new Set(['getFunctions', 'httpsCallable']),
+    callables: new Set(['triggerStoreNightlyScheduler']),
+  }],
+  ['src/components/mobile/screens/MobileSchedulerMonitorScreen.tsx', {
+    imports: new Set(['getFunctions', 'httpsCallable']),
+    callables: new Set(['triggerStoreNightlyScheduler']),
+  }],
+]);
+
+function getImportedNames(importClause) {
+  const namedMatch = importClause.match(/\{([\s\S]*?)\}/);
+  if (!namedMatch) return [];
+
+  return namedMatch[1]
+    .split(',')
+    .map((specifier) => specifier.trim())
+    .filter(Boolean)
+    .map((specifier) => specifier.replace(/^type\s+/, '').split(/\s+as\s+/i)[0].trim())
+    .filter(Boolean);
+}
+
+function verifyBrowserDirectFirebaseFunctionsCallableBoundary() {
+  const staticImportPattern = /import\s+(type\s+)?([^;]*?)\s+from\s+['"](?:firebase\/functions|@firebase\/functions)['"]\s*;?/g;
+  const dynamicImportPattern = /(?:const|let|var)\s+\{\s*([^}]+?)\s*\}\s*=\s*(?:await\s+)?import\(\s*['"](?:firebase\/functions|@firebase\/functions)['"]\s*\)/g;
+  const callableNamePattern = /httpsCallable\s*\([^,]+,\s*['"]([^'"]+)['"]/g;
+
+  listMenuListBrowserSurfaceFiles().forEach((relativePath) => {
+    const content = read(relativePath);
+    const allowlist = DIRECT_FIREBASE_FUNCTIONS_CALLABLE_ALLOWLIST.get(relativePath);
+    let importsFirebaseFunctionsDirectly = false;
+
+    for (const match of content.matchAll(staticImportPattern)) {
+      if (match[1]) continue;
+      importsFirebaseFunctionsDirectly = true;
+      const importedNames = getImportedNames(match[2]);
+
+      assert(
+        importedNames.length > 0,
+        `${relativePath} must not use default or namespace firebase/functions imports from browser surfaces`,
+      );
+
+      importedNames.forEach((importedName) => {
+        assert(
+          Boolean(allowlist?.imports.has(importedName)),
+          `${relativePath} must not import ${importedName} from firebase/functions outside the platform recovery allowlist`,
+        );
+      });
+    }
+
+    for (const match of content.matchAll(dynamicImportPattern)) {
+      importsFirebaseFunctionsDirectly = true;
+      getImportedNames(`{${match[1]}}`).forEach((importedName) => {
+        assert(
+          Boolean(allowlist?.imports.has(importedName)),
+          `${relativePath} must not dynamically import ${importedName} from firebase/functions outside the platform recovery allowlist`,
+        );
+      });
+    }
+
+    if (!importsFirebaseFunctionsDirectly) return;
+
+    assert(
+      Boolean(allowlist),
+      `${relativePath} must not call Firebase Functions directly from browser code; use an API route or approved helper`,
+    );
+
+    for (const match of content.matchAll(callableNamePattern)) {
+      const callableName = match[1];
+      assert(
+        Boolean(allowlist?.callables.has(callableName)),
+        `${relativePath} must not call Firebase callable ${callableName} outside the platform recovery allowlist`,
+      );
+    }
+  });
+}
+
+function verifyBrowserDirectFirebaseFunctionsCallableBoundaryDocs() {
+  const changelog = read('__docs__/CHANGELOG.md');
+  const productionAudit = read('__docs__/audits/menulist-production-readiness-audit.md');
+
+  [
+    'Browser Firebase Functions Callable Boundary',
+    'verify:menulist-api-tenant-safety',
+    'forceRepublish',
+    'triggerStoreNightlyScheduler',
+    'platform recovery controls',
+  ].forEach((token) => {
+    assert(changelog.includes(token), `changelog must document browser Firebase Functions callable boundary token ${token}`);
+  });
+
+  [
+    'Browser Firebase Functions callable boundary checkpoint',
+    'verify:menulist-api-tenant-safety',
+    'forceRepublish',
+    'triggerStoreNightlyScheduler',
+    'platform recovery controls',
+  ].forEach((token) => {
+    assert(productionAudit.includes(token), `production audit must document browser Firebase Functions callable boundary token ${token}`);
+  });
+}
+
 function verifyNoApiDirectBodyParsers() {
   const apiRouteFiles = listRouteFiles('src/app/api');
   assert(apiRouteFiles.length > 0, 'API direct body parser verifier found no route files');
@@ -1678,6 +1801,9 @@ function verifyAuthClaimAndCacheBoundaries() {
       'x-revalidate-secret',
       'const STORE_ID_PATTERN = /^\\d{1,20}$/;',
       'const VALID_TAG_PATTERNS = [/^menu-store-\\d{1,20}$/, /^store-\\d{1,20}$/];',
+      'function getStoreIdFromCacheTag(tag: string): string | null',
+      'function deriveSingleStoreIdFromTags(tags: string[]): string | undefined',
+      'requestedStoreId = deriveSingleStoreIdFromTags(tags);',
       'z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER)',
       'VALID_TAG_PATTERNS.some(pattern => pattern.test(tag))',
       'validTagPatterns: VALID_TAG_DESCRIPTIONS',
@@ -6813,6 +6939,8 @@ function verifyStaffClientDiagnostics() {
 
 verifyPublicPullApiResponseCacheBoundary();
 verifyComplianceBrowserRequestPolicyBoundary();
+verifyBrowserDirectFirebaseFunctionsCallableBoundary();
+verifyBrowserDirectFirebaseFunctionsCallableBoundaryDocs();
 verifyNoApiDirectBodyParsers();
 verifyNoApiRawZodFlattenDetails();
 verifyNoApiRouteConsoleCalls();

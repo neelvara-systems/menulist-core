@@ -145,7 +145,7 @@ The system won't allow overlapping schedules. You'll need to adjust the dates so
 
 ### Do QR codes and screens also show the special menu?
 
-**Yes.** Everything updates automatically — your public page, QR code, digital screens. Customers always see the right menu.
+**Yes for MenuList-controlled live surfaces.** Your public page, QR code link, and configured digital screens follow the active menu through their supported refresh paths. Downloaded or printed PDFs should be regenerated or replaced after changes, and connected provider systems need separate integration evidence.
 
 ### What happens if I forget about a special menu?
 
@@ -184,8 +184,8 @@ No. Special menu switching is included in your MenuList plan.
 ## Related Features
 
 - **Temporary Status Banners** — Show "Closed today" or "Opening late" notices alongside your menu
-- **Digital Screens** — Your screens automatically show the active menu (regular or special)
-- **QR Code** — Your QR code always points to the current active menu
+- **Digital Screens** — Configured screens follow the active menu through the screen data/version path
+- **QR Code** — Your QR code opens the MenuList public link, which follows the active menu through the supported refresh path
 
 ---
 

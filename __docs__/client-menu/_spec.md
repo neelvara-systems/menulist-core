@@ -71,13 +71,13 @@ A **live, intelligent digital menu** that:
 | SEO optimization            | Metadata, Schema.org, sitemap  | ✅ Done |
 | Featured section            | Featured choice, Quick choice, and Value choice | ✅ Done |
 | Live Indicator              | "Live · updated recently" trust signal | ✅ Done |
-| Instant Availability        | Sold-out items fade instantly  | ✅ Done |
+| Availability State          | Sold-out items fade after public menu refresh | ✅ Done |
 | Time-Based Categories       | Categories show/hide by time   | ✅ Done |
 | Multi-language support      | Customer selects language      | ✅ Done |
 | Fuzzy/transliteration search | Customers can find items despite common spelling and phonetic variants | ✅ Done |
 | Structured public truth      | JSON-LD uses active menu data, real freshness fields, and visible price rules | ✅ Done |
 | Analytics tracking          | Internal + third-party         | ✅ Done |
-| Offline resilience          | PWA with service worker, bounded network fallback, and no stale menu cache | ✅ Done |
+| Offline fallback            | Customer service worker shows `/offline` after network failure or timeout; no stale menu cache | ✅ Done |
 | State persistence           | Scroll, filter, category saved | ✅ Done |
 
 ### Out of Scope
@@ -98,7 +98,7 @@ A **live, intelligent digital menu** that:
 
 | #   | As a...             | I want to...                        | So that...                      |
 | --- | ------------------- | ----------------------------------- | ------------------------------- |
-| C1  | Restaurant customer | Scan QR and see menu instantly      | I can decide what to order      |
+| C1  | Restaurant customer | Scan QR and see the live menu link  | I can decide what to order      |
 | C2  | Customer            | See what's popular/recommended      | I don't have to read everything |
 | C3  | Customer            | Know if an item is sold out         | I don't order unavailable items |
 | C4  | Customer            | See menu in my language             | I understand all items          |
@@ -109,8 +109,8 @@ A **live, intelligent digital menu** that:
 
 | #   | As a...          | I want to...                    | So that...                         |
 | --- | ---------------- | ------------------------------- | ---------------------------------- |
-| O1  | Restaurant owner | Update menu and see it live     | Customers see current offerings    |
-| O2  | Owner            | Mark items sold out instantly   | Customers stop ordering them       |
+| O1  | Restaurant owner | Update menu and see the approved source refresh | Customers see current offerings    |
+| O2  | Owner            | Mark items sold out from one place | Customers stop ordering them after menu refresh |
 | O3  | Owner            | Set time windows for categories | Breakfast/lunch/dinner auto-switch |
 | O4  | Owner            | Have my branding on menu        | It looks like my restaurant        |
 | O5  | Owner            | Use my own domain               | It looks professional              |
@@ -159,10 +159,10 @@ Finds item, taps "Available/Unavailable" toggle
     ↓
 Change saves to Firestore
     ↓
-Customer menu updates instantly:
+Customer menu refreshes through the public cache path:
   - Item fades to 40% opacity
   - "Sold out" label appears
-  - No page reload needed
+  - Current cache window can be up to 60 seconds
 ```
 
 ### Flow 3: Time-Based Category Switch
@@ -218,7 +218,7 @@ No owner action required
 | Feature               | Customer Sees                | Effect   |
 | --------------------- | ---------------------------- | -------- |
 | Live Indicator        | "Live · updated recently" | Trust    |
-| Instant Availability  | Item fades when sold out     | Surprise |
+| Availability State    | Item fades after public menu refresh | Trust |
 | Time-Based Categories | "Lunch starts in 12 min"     | Stories  |
 
 ### 4. SEO Optimization
@@ -260,7 +260,7 @@ No owner action required
 | FR6  | Time-based categories work          | P1       | ✅     |
 | FR7  | Multi-language selection works      | P1       | ✅     |
 | FR8  | State persists on refresh           | P1       | ✅     |
-| FR9  | Offline mode works (cached content) | P1       | ✅     |
+| FR9  | Offline mode shows a clear reconnect screen instead of cached menu content | P1       | ✅     |
 | FR10 | Analytics track all events          | P1       | ✅     |
 | FR11 | Public category identity preserves owner-selected icon choices | P0 | ✅ |
 | FR12 | Public output uses localized fallback for menu/category/item labels | P0 | ✅ |
@@ -376,7 +376,7 @@ ClientMenuPage (Server Component)
 
 | Risk                             | Impact | Probability | Mitigation                              |
 | -------------------------------- | ------ | ----------- | --------------------------------------- |
-| Slow menu load on cheap phones   | High   | Medium      | SSR, PWA caching, optimized images      |
+| Slow menu load on cheap phones   | High   | Medium      | SSR, Vercel Data Cache, optimized images |
 | Decision Blocks show wrong items | Medium | Low         | Nightly precompute, availability filter |
 | Custom domain DNS issues         | Medium | Medium      | Clear setup docs, verification flow     |
 | Analytics tracking blocked       | Low    | Medium      | First-party tracking, fallback counters |

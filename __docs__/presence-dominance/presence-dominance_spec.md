@@ -136,9 +136,9 @@ Once link is:
 | Competitor | Approach | MenuList Advantage |
 |-----------|----------|-------------------|
 | Linktree | Generic link-in-bio (list of links) | MenuList is purpose-built: live hours, menu, contact actions |
-| Google Business Profile | Information panel (Google controls) | MenuList: owner controls, always accurate, not algorithm-dependent |
+| Google Business Profile | Information panel (Google controls) | MenuList: owner-approved public source; Google/provider surfaces still require their own evidence |
 | Zomato/Swiggy | Discovery platforms (commission-based) | MenuList: direct link, no commission, owner-branded |
-| PDF menus | Static, outdated quickly | MenuList: always live, auto-updated |
+| PDF menus | Static, outdated quickly | MenuList: public link stays available and refreshes after approved changes; old downloaded PDFs should be replaced |
 
 ### Market Context
 - Link-in-bio market: **$1.62 billion** (2024, Dataintelo)

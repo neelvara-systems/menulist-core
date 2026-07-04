@@ -7,9 +7,14 @@ const ROOT = path.resolve(__dirname, '..', '..');
 const SELF_SCRIPT = 'verify:production-readiness-local';
 const LOCAL_READINESS_BOUNDARY =
   'local source gate only; does not run Next.js production build, Firebase deploy, Vercel deploy, provider smoke, browser/device QA, live Firestore/Storage writes, or production-host behavior.';
+const listOnly = process.argv.slice(2).includes('--list');
 
 function readPackageJson() {
   return require(path.join(ROOT, 'package.json'));
+}
+
+function formatCommand(command, args) {
+  return [command, ...args].join(' ');
 }
 
 function runCheck(label, command, args) {
@@ -51,8 +56,8 @@ const checks = [
   },
   {
     label: 'typecheck',
-    command: 'npx',
-    args: ['tsc', '--noEmit', '--incremental', 'false', '--pretty', 'false'],
+    command: 'npm',
+    args: ['run', 'typecheck'],
   },
   {
     label: 'lint',
@@ -65,6 +70,17 @@ const checks = [
     args: ['diff', '--check'],
   },
 ];
+
+if (listOnly) {
+  console.log('\n[local-readiness-list]');
+  for (const check of checks) {
+    console.log(`${check.label}: ${formatCommand(check.command, check.args)}`);
+  }
+  console.log(`[local-readiness-list] ${checks.length} checks listed`);
+  console.log(`[local-readiness-list] child verify scripts: ${verifyScripts.length}`);
+  console.log(`[local-readiness-list] boundary: ${LOCAL_READINESS_BOUNDARY}`);
+  process.exit(0);
+}
 
 const results = [];
 

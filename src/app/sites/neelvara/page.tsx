@@ -15,18 +15,15 @@ import {
     buildNeelvaraUrl,
 } from './siteConfig';
 import {
-    BENTO_CARDS,
-    BoundaryList,
     DirectoryCards,
     HeroStudioMock,
     PageShell,
-    SegmentControl,
     StructuredData,
 } from './content';
+import BentoReferenceSection from './BentoReferenceSection';
+import ProductLogo from './ProductLogo';
 import { NeelvaraLink } from './SiteHeaderNav';
 import SpotlightCard from './SpotlightCard';
-import MenuListLogoMark from '@/components/website/shared/LogoMark';
-import AnswerlatticeLogoMark from '@/components/atoms/answerlatticeLogoMark';
 
 export const metadata: Metadata = {
     title: NEELVARA_SITE_TITLE,
@@ -44,47 +41,25 @@ const SPOTLIGHTS = [
     {
         icon: LuBuilding2,
         variant: 'blue' as const,
-        title: 'Customer-facing facts need a stable foundation.',
-        body: 'Menus, hours, business profiles, approved answers, and campaign context should not drift across public surfaces.',
-        stat: 'Company focus',
+        title: 'Public business facts need one accountable source.',
+        body: 'Menus, hours, profiles, approved answers, and campaign context should stay clear before they reach customers.',
+        stat: 'Company role',
     },
     {
         icon: LuLayers,
         variant: 'indigo' as const,
-        title: 'Focused products handle different parts of the same problem.',
-        body: 'MenuList keeps public business information aligned. Answerlattice governs approved answers. CampaignCue prepares reusable business context.',
-        stat: 'Shared direction',
+        title: 'Each product handles a distinct information job.',
+        body: 'MenuList, Answerlattice, and CampaignCue keep product responsibilities separate while sharing one operating company.',
+        stat: 'Product map',
     },
     {
         icon: LuMail,
         variant: 'violet' as const,
         title: 'Company questions stay separate from product support.',
-        body: 'Neelvara handles company, legal, privacy, and business inquiries. Product support starts on product websites.',
+        body: 'Neelvara handles company, legal, privacy, and business inquiries. Product support remains on product websites.',
         stat: 'Clear routing',
     },
 ] as const;
-
-function ProductLogo({ name }: { name: typeof NEELVARA_PRODUCT_LINEUP[number]['name'] }) {
-    if (name === 'MenuList') {
-        return <MenuListLogoMark height={28} className="nv-product-logo-svg" />;
-    }
-
-    if (name === 'Answerlattice') {
-        return <AnswerlatticeLogoMark height={30} className="nv-product-logo-svg" idPrefix="neelvara-answerlattice-product-logo" />;
-    }
-
-    return (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-            alt=""
-            aria-hidden="true"
-            className="nv-product-logo-img"
-            height={38}
-            src="/campaigncue-icon.svg"
-            width={38}
-        />
-    );
-}
 
 export default function NeelvaraHomePage() {
     return (
@@ -101,9 +76,9 @@ export default function NeelvaraHomePage() {
                             Neelvara <em>Systems</em>
                         </h1>
                         <p>
-                            Neelvara Systems builds focused products that help businesses
-                            keep public facts, approved answers, and business context accurate,
-                            usable, and consistent across customer-facing surfaces.
+                            Neelvara Systems operates products that keep public business
+                            facts, approved answers, and reusable business context clear
+                            before they reach customers.
                         </p>
                         <div className="nv-actions">
                             <NeelvaraLink className="nv-button nv-button-solid nv-button-large" href="/products">
@@ -116,9 +91,9 @@ export default function NeelvaraHomePage() {
                             </a>
                         </div>
                         <div className="nv-hero-meta mono" aria-label="Neelvara operating boundaries">
-                            <span>Company website</span>
+                            <span>Company reference</span>
                             <i aria-hidden="true" />
-                            <span>Product routing</span>
+                            <span>Product boundaries</span>
                             <i aria-hidden="true" />
                             <span>Direct email</span>
                         </div>
@@ -140,48 +115,7 @@ export default function NeelvaraHomePage() {
                 </div>
             </section>
 
-            <section className="nv-section nv-reveal">
-                <div className="nv-wrap nv-section-head">
-                    <div>
-                        <span className="nv-eyebrow mono">
-                            <span className="nv-pip" aria-hidden="true" />
-                            Why Neelvara exists
-                        </span>
-                        <h2 className="serif">
-                            Customer-facing information should stay correct without constant attention.
-                        </h2>
-                    </div>
-                    <SegmentControl items={['Company', 'Products', 'Contact']} />
-                </div>
-                <div className="nv-wrap">
-                    <div className="nv-bento">
-                        {BENTO_CARDS.map((card) => {
-                            const Icon = card.icon;
-
-                            return (
-                                <article className={`nv-bento-card glass ${card.className}`} key={card.title}>
-                                    <div className="nv-bento-card-head">
-                                        <span className="nv-card-icon">
-                                            <Icon aria-hidden="true" />
-                                        </span>
-                                        <span className="mono">{card.eyebrow}</span>
-                                    </div>
-                                    {card.className === 'nv-bento-tall' ? (
-                                        <div className="nv-prism-visual" aria-hidden="true">
-                                            <span />
-                                            <span />
-                                            <span />
-                                        </div>
-                                    ) : null}
-                                    {card.className === 'nv-bento-wide' ? <BoundaryList /> : null}
-                                    <h3>{card.title}</h3>
-                                    <p>{card.body}</p>
-                                </article>
-                            );
-                        })}
-                    </div>
-                </div>
-            </section>
+            <BentoReferenceSection />
 
             <section className="nv-section nv-reveal">
                 <div className="nv-wrap nv-spotlight-grid">
@@ -208,7 +142,7 @@ export default function NeelvaraHomePage() {
                         <span className="mono">Company relationship</span>
                         <blockquote className="serif">{NEELVARA_RELATIONSHIP_LINE}</blockquote>
                         <figcaption>
-                            This is the company-level reference for the current lineup. Product-specific websites explain each product.
+                            This is the company reference for the current lineup. Product websites explain each product.
                         </figcaption>
                     </figure>
                 </div>
@@ -218,8 +152,8 @@ export default function NeelvaraHomePage() {
                 <div className="nv-wrap nv-product-section glass">
                     <div className="nv-product-summary">
                         <span className="mono">Current products</span>
-                        <strong className="serif">Focused products</strong>
-                        <p>Different products solve different parts of customer-facing business information.</p>
+                        <strong className="serif">Operated products</strong>
+                        <p>The company site identifies the operated products and points visitors to the right product website.</p>
                     </div>
                     <div className="nv-product-list">
                         {NEELVARA_PRODUCT_LINEUP.map((product) => (
@@ -245,12 +179,12 @@ export default function NeelvaraHomePage() {
                             Contact routes
                         </span>
                         <h2 className="serif">
-                            Choose the right company contact route.
+                            Use the right company contact route.
                         </h2>
                     </div>
                     <p>
-                        Use the business inbox for company questions. Legal and privacy
-                        questions have separate routes. Product questions start on product websites.
+                        Business, legal, and privacy inquiries use company inboxes.
+                        Product support starts on product websites.
                     </p>
                 </div>
                 <div className="nv-wrap">
@@ -266,14 +200,14 @@ export default function NeelvaraHomePage() {
                                 <span className="nv-pip" aria-hidden="true" />
                                 Company questions
                             </span>
-                            <h2 className="serif">
-                                Company, legal, or privacy questions?
-                            </h2>
-                            <p>
-                                Email Neelvara Systems for company-level questions. Product
-                                support, onboarding, billing, and account questions start on the
-                                relevant product site.
-                            </p>
+                        <h2 className="serif">
+                            Company, legal, or privacy questions?
+                        </h2>
+                        <p>
+                            Email Neelvara Systems for company questions. Product
+                            support, onboarding, billing, and account questions stay on the
+                            relevant product site.
+                        </p>
                         </div>
                         <div className="nv-actions">
                             <a className="nv-button nv-button-solid nv-button-large" href={`mailto:${NEELVARA_CONTACT_EMAIL}`}>

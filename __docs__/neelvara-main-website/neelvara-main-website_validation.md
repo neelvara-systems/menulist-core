@@ -2,9 +2,80 @@
 
 **Status:** Validated; pending owner/legal launch review
 **Implementation date:** June 20, 2026
-**Last cross-check:** June 28, 2026
+**Last cross-check:** July 4, 2026
 **Runtime:** Shared Next.js/Vercel app under `src/app/sites/neelvara/`
 **Local QA URL:** `http://localhost:3000/__neelvara`
+
+---
+
+## July 4, 2026 Neelvara True-Vector Logo Replacement
+
+The Neelvara website now uses the supplied true-vector glass-prism logo as the source logo everywhere.
+
+Applied changes:
+
+- Replaced `public/neelvara-logo.svg` with the uploaded `logo_3shape_true_svg_no_bg.svg` source copied as-is.
+- Replaced `public/neelvara-favicon.svg` with a square true-vector wrapper using the same paths, gradients, and colors as the uploaded source mark.
+- Regenerated `public/neelvara-logo.png`, favicon PNGs, Apple touch icon, manifest icon, generic app-icon PNGs, and `public/neelvara-og-image.png` from the true-vector source.
+- Updated the header/footer visible logo box to `58px x 33px`, preserving the uploaded mark aspect ratio with `background-size: contain`.
+- Updated logo docs to reflect that the source SVG is true vector and contains no embedded raster payload.
+
+Verification completed in this pass:
+
+- `cmp -s /Users/danny/Downloads/logo_3shape_true_svg_no_bg.svg public/neelvara-logo.svg`: pass.
+- True-vector SVG smoke: pass for `public/neelvara-logo.svg` and `public/neelvara-favicon.svg`; no `<image>`, `base64`, or `data:image` payloads remain.
+- SVG source size check: `public/neelvara-logo.svg` is 1,763 bytes and `public/neelvara-favicon.svg` is 1,845 bytes.
+- PNG dimension and transparency smoke: pass for `public/neelvara-logo.png`, favicon derivatives, Apple touch icon, manifest icons, generic `neelvara-icon.png`, and `public/neelvara-og-image.png`.
+- `git diff --check` over Neelvara runtime/constants/docs/assets: pass.
+- Scoped Neelvara lint with middleware: pass.
+- Full TypeScript check with `npx tsc --noEmit --incremental false --pretty false`: pass.
+- `node scripts/verification/verify-agent-readiness.js --env-targets-only`: pass.
+- HTTP smoke through `http://localhost:3000` for `/__neelvara/`, `/__neelvara/products`, `/neelvara-logo.svg`, `/neelvara-favicon.svg`, PNG icon derivatives, Open Graph image, and manifest: pass.
+- Local rendered PNG visual inspection for `public/neelvara-logo.png`, `public/neelvara-icon-512.png`, and `public/neelvara-og-image.png`: pass.
+- Browser screenshot smoke was not rerun in this pass because the local `playwright` package is not installed in this workspace.
+
+---
+
+## July 4, 2026 Product Icon Tile Fix
+
+The Neelvara product lineup now uses one shared product-logo renderer for Home and Products pages.
+
+Applied changes:
+
+- Added `src/app/sites/neelvara/ProductLogo.tsx`.
+- Replaced the small Answerlattice product tile mark with a compact no-filter SVG variant for Neelvara product rows.
+- Reused the same product-logo renderer on `/__neelvara` and `/__neelvara/products`.
+- Kept MenuList and CampaignCue product marks unchanged.
+
+Verification completed in this pass:
+
+- Scoped Neelvara lint with middleware: pass.
+- Full TypeScript check with `npx tsc --noEmit --incremental false --pretty false`: pass.
+- Rendered mobile browser icon smoke at `390x844`: Home and Products pages use the compact Answerlattice SVG class, no SVG filters, two stroke paths, visible dimensions of `38 x 28`, and no horizontal overflow.
+- Screenshots captured:
+  - `tmp/neelvara-answerlattice-icon-fix-home-390-2026-07-04.png`
+  - `tmp/neelvara-product-icons-products-390-2026-07-04.png`
+
+---
+
+## July 4, 2026 Mobile Bento Tab Fix
+
+The homepage Company, Products, and Contact segmented control was changed from static visual labels to real client-side tabs.
+
+Applied changes:
+
+- Added `src/app/sites/neelvara/BentoReferenceSection.tsx` as the local client component for the homepage reference tabs.
+- Removed the stale static `SegmentControl`, `BoundaryList`, and `BENTO_CARDS` exports from `content.tsx`.
+- Updated the segmented control CSS to target `<button>` tabs with 44px visible tap targets.
+- Kept the section inside the existing static Neelvara product-site boundary: no Firebase, API route, auth, analytics, or route change was added.
+
+Verification completed in this pass:
+
+- Scoped Neelvara lint with middleware: pass.
+- Full TypeScript check with `npx tsc --noEmit --incremental false --pretty false`: pass.
+- Rendered mobile browser interaction at `390x844`: Company, Products, and Contact tabs are buttons, change `aria-selected`, and switch the visible panel title/body.
+- Mobile tab hit targets are `44px` high and no horizontal overflow was detected.
+- Screenshot captured: `tmp/neelvara-tabs-mobile-click-fix-2026-07-04.png`.
 
 ---
 
@@ -56,7 +127,7 @@ Applied changes:
 
 - Homepage changed from reference-sheet/product-count framing to problem-first company framing.
 - Relationship language changed to `MenuList, Answerlattice, and CampaignCue are operated by Neelvara Systems.`
-- Products page rebuilt around `Focused products. One shared direction.`
+- Products page rebuilt around operated products, product boundaries, and company-to-product routing.
 - Contact page rebuilt as routing: company inboxes, product support links, before-you-contact guidance, and country of operation.
 - Privacy and Terms now carry `Last updated: June 26, 2026` and page-specific policy sections.
 - Legal moved sensitive identifier guidance out of About and keeps entity copy narrow.
@@ -114,7 +185,7 @@ The Neelvara site was recalibrated against the approved blue-rooted Neelvara bra
 | --- | --- | --- |
 | Neelvara palette tokens present | Pass | `styles.css` defines `#071323`, `#1457D9`, `#2384FF`, `#2737C8`, `#6542E8`, `#F7F9FC`, `#EEF3FA`, and `#5D6678` |
 | Brand ratio preserved | Pass | Ice-white page canvas and pale surfaces dominate; navy product band and blue CTAs are controlled accents |
-| Uploaded logo applied | Pass | Header/footer, favicon metadata, manifest, Organization JSON-LD, and OG metadata use transparent uploaded-logo PNG assets with no visible frame |
+| Uploaded logo applied | Pass | Header/footer, favicon metadata, manifest, Organization JSON-LD, and OG metadata use the uploaded glass-prism logo source or derivatives with no visible frame |
 | Warm palette removed | Pass | Runtime styles and public SVG assets no longer use rose, peach, amber, cyan-heavy, or pure-purple branding |
 | Mesh and grain layers present | Pass | `src/app/sites/neelvara/styles.css` defines `.nv-page-mesh` and `.nv-grain` |
 | Shared glass primitive present | Pass | `styles.css` defines `.glass` and spotlight cards reuse the same fill/stroke/blur treatment |
@@ -122,7 +193,7 @@ The Neelvara site was recalibrated against the approved blue-rooted Neelvara bra
 | Floating glass nav present | Pass | `src/app/sites/neelvara/content.tsx` renders `nv-header-inner glass` |
 | Home page rebuilt in company-site section order | Pass | Home includes hero, studio mock, ledger, problem-first bento, spotlight cards, quote, product lineup, contact routes, CTA, and footer |
 | Secondary pages redesigned | Pass | `SecondaryPage` renders mesh/glass page hero, spotlight cards, glass text panels, policy dates where needed, and page-specific final CTAs for About, Legal, Privacy, and Terms |
-| Custom Products page | Pass | `/products` explains the shared information layer, product boundaries, focus chips, and direct product-site CTAs |
+| Custom Products page | Pass | `/products` explains operated products, product boundaries, focus chips, and direct product-site CTAs |
 | Custom Contact page | Pass | `/contact` routes company inboxes, product support links, before-you-contact guidance, and country of operation |
 | Product/legal boundary preserved | Pass | No pricing, checkout, lead form, account, API route, Firebase, analytics, or owner app surface added |
 | Small-phone hero behavior | Pass | `styles.css` hides the large hero mock under `640px`; CDP audit at `375x812` shows ledger top at `688px` and no overflow |
@@ -218,6 +289,8 @@ The premium redesign was checked against current public examples before the fina
 Additional applied outcome: the latest external audit removed internal reference labels, product-count proof, page-count proof, storage/API wording, and broad boundary tables from public copy while preserving the no-form, no-database, company-site boundary.
 
 Additional applied outcome: a follow-up polish pass changed the hero artifact from a numeric product-total proof to company routing, and changed the homepage bento boundary list from positive/negative checks to affirmative company, product-site, contact, and policy routing.
+
+Additional applied outcome: the July 4 content polish replaced generic portfolio/problem framing with infrastructure wording around maintained information sources, product boundaries, company reference, and routing.
 
 ---
 
@@ -341,7 +414,7 @@ Additional measured evidence:
 - home text color: `rgb(7, 19, 35)`
 - primary CTA background: `linear-gradient(135deg, rgb(20, 87, 217) 0%, rgb(39, 55, 200) 68%, rgb(101, 66, 232) 100%)`
 - logo mark background: `url("/neelvara-logo.svg") center / contain no-repeat`
-- visible logo mark source: `public/neelvara-logo.svg`, with no `<rect>`, no embedded raster `<image>`, and no background/checkerboard content
+- visible logo mark source: `public/neelvara-logo.svg`, copied as-is from the uploaded 578x328 true-vector source SVG
 - `public/neelvara-logo.png`, favicon derivatives, Apple touch icon, and manifest icon derivatives have transparent corner pixels
 - page metadata exposes title, description, canonical, Open Graph, Twitter, manifest, favicon, Apple touch icon, theme color, and Organization JSON-LD on all public pages
 - desktop home H1: `Neelvara Systems`

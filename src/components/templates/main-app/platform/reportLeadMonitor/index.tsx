@@ -76,6 +76,24 @@ function buildMailtoHref(record: ReportLeadRow): string {
     return `mailto:${encodeURIComponent(record.workEmail || '')}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(record.suggestedReply)}`;
 }
 
+function renderSetupJobTags(record: ReportLeadRow) {
+    if (record.setupJobList.length === 0) {
+        return <Text type="secondary">-</Text>;
+    }
+
+    const visibleJobs = record.setupJobList.slice(0, 2);
+    const hiddenCount = Math.max(0, record.setupJobList.length - visibleJobs.length);
+
+    return (
+        <Space size={4} wrap>
+            {visibleJobs.map((job) => (
+                <Tag key={`${record.id}-${job.id}`}>{job.label}</Tag>
+            ))}
+            {hiddenCount > 0 ? <Tag>+{hiddenCount}</Tag> : null}
+        </Space>
+    );
+}
+
 function Metric({ label, value, tone }: { label: string; value: number; tone?: 'danger' | 'warning' }) {
     const { token } = theme.useToken();
     return (
@@ -229,6 +247,12 @@ export default function ReportLeadMonitor() {
             width: 210,
         },
         {
+            title: 'Setup jobs',
+            key: 'setupJobList',
+            render: (_, record) => renderSetupJobTags(record),
+            width: 260,
+        },
+        {
             title: 'Contact',
             key: 'contact',
             render: (_, record) => (
@@ -335,7 +359,7 @@ export default function ReportLeadMonitor() {
                     columns={columns}
                     dataSource={snapshot?.leads || []}
                     pagination={{ pageSize: 20 }}
-                    scroll={{ x: 1260 }}
+                    scroll={{ x: 1520 }}
                     locale={{ emptyText: <Empty description="No report leads found in the recent scan" /> }}
                     onRow={(record) => ({
                         onClick: () => setSelectedLead(record),
@@ -363,6 +387,21 @@ export default function ReportLeadMonitor() {
                             <Descriptions.Item label="Source path">{selectedLead.sourcePath || '-'}</Descriptions.Item>
                             <Descriptions.Item label="Created">{formatTimestamp(selectedLead.createdAt, formatter)}</Descriptions.Item>
                         </Descriptions>
+
+                        <Card size="small" title="Setup job list">
+                            {selectedLead.setupJobList.length > 0 ? (
+                                <Space direction="vertical" size={8} style={{ width: '100%' }}>
+                                    {selectedLead.setupJobList.map((job) => (
+                                        <div key={`${selectedLead.id}-${job.id}`} style={{ borderBottom: `1px solid ${token.colorBorderSecondary}`, paddingBottom: 8 }}>
+                                            <Text strong>{job.label}</Text>
+                                            <Paragraph type="secondary" style={{ marginBottom: 0 }}>{job.reason}</Paragraph>
+                                        </div>
+                                    ))}
+                                </Space>
+                            ) : (
+                                <Text type="secondary">No setup jobs were submitted with this report.</Text>
+                            )}
+                        </Card>
 
                         <Card size="small" title="Submitted summary">
                             <Paragraph style={{ whiteSpace: 'pre-wrap', marginBottom: 0 }}>{selectedLead.messagePreview || '-'}</Paragraph>

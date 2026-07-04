@@ -1,6 +1,7 @@
 # One Customer Link Preview - Test Cases
 
 **Status:** Implemented V0 public browser-local checker
+**Last Updated:** July 4, 2026
 
 ## Acceptance Tests
 

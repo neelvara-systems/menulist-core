@@ -84,6 +84,9 @@ assertIncludes(aggregateVerifier, 'verify-report-leads-boundary.js', 'Report Lea
   '.limit(scanLimit)',
   "data.sourceKind === 'shareable_tool_report'",
   "sourceContext.sourceKind === 'shareable_tool_report'",
+  'cleanSetupJobList(sourceContext.setupJobList)',
+  'setupJobList,',
+  'The report gaps become this setup job list:',
   "headers: { 'Cache-Control': 'no-store' }",
   "logOpsFailure('report_lead_ops_route_failed'",
   'Manual refresh only. No realtime listener.',
@@ -128,6 +131,9 @@ assertIncludes(opsControlRoom, 'href="/ops/report-leads"', 'Ops Control Room Rep
   'hasRuntimeCopyFallback()',
   'Lead triage only',
   'It does not store reports, inspect external platforms, or mutate owner business truth.',
+  'renderSetupJobTags(record)',
+  'Setup job list',
+  'No setup jobs were submitted with this report.',
 ].forEach((token) => assertIncludes(monitor, token, 'Report Leads ops monitor'));
 
 [
@@ -140,6 +146,8 @@ assertIncludes(opsControlRoom, 'href="/ops/report-leads"', 'Ops Control Room Rep
 [
   'ReportLeadOpsSnapshot',
   'ReportLeadRow',
+  'ReportLeadSetupJob',
+  'setupJobList: ReportLeadSetupJob[]',
   "accessModel: 'platform_role'",
   'realtimeListeners: false',
   'writes: 0',
@@ -151,6 +159,8 @@ assertIncludes(opsControlRoom, 'href="/ops/report-leads"', 'Ops Control Room Rep
   "value.feature.accessModel === 'platform_role'",
   'value.feature.realtimeListeners === false',
   'isReportLeadRow',
+  'isReportLeadSetupJob',
+  'value.setupJobList.every(isReportLeadSetupJob)',
   'isReportLeadOpsCost',
   'REPORT_LEAD_OPS_RESPONSE_PARSE_FAILED',
   'REPORT_LEAD_OPS_RESPONSE_REJECTED',
@@ -173,17 +183,20 @@ assertIncludes(opsControlRoom, 'href="/ops/report-leads"', 'Ops Control Room Rep
   '/api/ops/report-leads',
   'no lead mutation',
   'no report storage',
+  'where report gaps become the job list',
 ].forEach((token) => assertIncludes(implDoc, token, 'Shareable Tool Reports implementation Report Leads coverage'));
 
 [
   'Report Lead Ops',
   'Reads recent `landingPageEnquiries`',
   '0 writes',
+  'bounded `setupJobList`',
 ].forEach((token) => assertIncludes(firebaseDoc, token, 'Shareable Tool Reports Firebase Report Leads coverage'));
 
 [
   '`/ops/report-leads`',
   'manual-refresh',
+  'report gaps become the setup job list',
 ].forEach((token) => assertIncludes(playbookDoc, token, 'Shareable Tool Reports playbook Report Leads coverage'));
 
 [
@@ -192,6 +205,8 @@ assertIncludes(opsControlRoom, 'href="/ops/report-leads"', 'Ops Control Room Rep
 ].forEach((token) => assertIncludes(mobileDoc, token, 'Shareable Tool Reports mobile Report Leads boundary'));
 
 assertIncludes(testCasesDoc, 'STR-015', 'Shareable Tool Reports Report Leads test coverage');
+assertIncludes(testCasesDoc, 'shows setup job lists', 'Shareable Tool Reports Report Leads setup job test coverage');
 assertIncludes(validationDoc, 'npm run verify:report-leads-boundary', 'Shareable Tool Reports Report Leads validation gate');
+assertIncludes(validationDoc, 'setup job list is derived from visible report gaps', 'Shareable Tool Reports Report Leads setup job validation gate');
 
 console.log('Report Leads boundary verification passed');

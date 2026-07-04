@@ -4,6 +4,7 @@ import type {
   ReportLeadReportStatus,
   ReportLeadReportStatusFilter,
   ReportLeadRow,
+  ReportLeadSetupJob,
 } from '@lib/ops/reportLeadTypes';
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';
@@ -39,6 +40,13 @@ function isReportStatusFilter(value: unknown): value is ReportLeadReportStatusFi
   return typeof value === 'string' && REPORT_STATUS_FILTERS.includes(value);
 }
 
+function isReportLeadSetupJob(value: unknown): value is ReportLeadSetupJob {
+  return isRecord(value)
+    && typeof value.id === 'string'
+    && typeof value.label === 'string'
+    && typeof value.reason === 'string';
+}
+
 function isReportLeadRow(value: unknown): value is ReportLeadRow {
   return isRecord(value)
     && typeof value.id === 'string'
@@ -52,6 +60,8 @@ function isReportLeadRow(value: unknown): value is ReportLeadRow {
     && isFiniteNumber(value.missingCount)
     && isFiniteNumber(value.unclearCount)
     && isFiniteNumber(value.notCheckedCount)
+    && Array.isArray(value.setupJobList)
+    && value.setupJobList.every(isReportLeadSetupJob)
     && isNullableString(value.contactName)
     && isNullableString(value.workEmail)
     && isNullableString(value.phoneNumber)

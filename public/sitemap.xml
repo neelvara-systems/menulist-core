@@ -63,6 +63,12 @@
     <priority>0.80</priority>
   </url>
   <url>
+    <loc>https://menulist.ai/tools/customer-faq-reply-pack</loc>
+    <lastmod>2026-07-04</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.80</priority>
+  </url>
+  <url>
     <loc>https://menulist.ai/tools/booking-inquiry-readiness-check</loc>
     <lastmod>2026-07-02</lastmod>
     <changefreq>monthly</changefreq>
@@ -87,6 +93,12 @@
     <priority>0.80</priority>
   </url>
   <url>
+    <loc>https://menulist.ai/tools/business-facts-copy-pack</loc>
+    <lastmod>2026-07-04</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.80</priority>
+  </url>
+  <url>
     <loc>https://menulist.ai/tools/customer-link-preview</loc>
     <lastmod>2026-07-03</lastmod>
     <changefreq>monthly</changefreq>
@@ -101,6 +113,12 @@
   <url>
     <loc>https://menulist.ai/tools/whatsapp-action-link-check</loc>
     <lastmod>2026-07-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.80</priority>
+  </url>
+  <url>
+    <loc>https://menulist.ai/tools/whatsapp-reply-pack</loc>
+    <lastmod>2026-07-04</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.80</priority>
   </url>

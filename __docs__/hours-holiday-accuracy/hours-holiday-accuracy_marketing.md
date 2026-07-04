@@ -49,16 +49,16 @@ Every owner carries the same background anxiety:
 
 ### The Solution
 
-MenuList handles hours like it handles your menu — set once, stays correct.
+MenuList handles hours like it handles your menu: one owner-set source, shown consistently across supported surfaces.
 
 - **Weekly schedule** — Define your regular hours once
 - **Open/closed status** — MenuList computes the current status from saved hours
 - **Temporary closure path** — Use Temporary Status or today's hours for one-off changes
-- **Consistent everywhere** — Menu, screens, and staff view all use the same store truth
+- **Consistent supported surfaces** — Menu, screens, and staff view all use the same store truth
 
 ### The Promise
 
-**You stop thinking about hours. Customers stop showing up to closed doors.**
+**You set the hours source once, then use clear one-off paths when the schedule changes.**
 
 ---
 
@@ -75,7 +75,7 @@ MenuList handles hours like it handles your menu — set once, stays correct.
 
 ### Slide 2: The Solution
 
-**"Hours that stay correct"**
+**"Open or closed from saved hours"**
 
 - Set weekly hours once
 - Use Temporary Status for one-off closures
@@ -120,7 +120,7 @@ MenuList handles hours like it handles your menu — set once, stays correct.
 - No more staff confusion
 - No more multi-platform updates
 
-**One setup. Stays correct.**
+**One setup. Current status.**
 
 ### Slide 7: Get Started
 
@@ -128,10 +128,10 @@ MenuList handles hours like it handles your menu — set once, stays correct.
 
 - Open Business Settings
 - Set your weekly hours
-- Enable holiday calendar (optional)
+- Use Temporary Status or today's hours for one-off changes
 - Done
 
-No complexity. No training. Just correct hours.
+No complexity. No training. Just current status from saved hours.
 
 ---
 
@@ -139,18 +139,18 @@ No complexity. No training. Just correct hours.
 
 ### Hero Headline
 
-**Your hours stay correct. Even on holidays.**
+**Show customers if you're open.**
 
 ### Subheading
 
-Set weekly hours once. Enable holiday handling. MenuList keeps everything consistent.
+Set weekly hours once. MenuList shows the current open/closed status from that source.
 
 ### Benefit Bullets
 
-- **Set once, stays correct** — Weekly hours defined one time
-- **Holiday handling** — Major holidays auto-handled
-- **Special hours supported** — Events, private bookings, extended hours
-- **Consistent everywhere** — Menu, screens, staff view all match
+- **Set weekly hours once** — Your regular schedule becomes the status source
+- **One-off closure path** — Use Temporary Status or today's hours when needed
+- **Time-slot presets** — Keep menu category windows aligned with store truth
+- **Consistent MenuList surfaces** — Menu, screens, and staff view use the same source
 - **No more anxiety** — Stop wondering "did we update?"
 
 ### Social Proof Placeholders
@@ -158,7 +158,7 @@ Set weekly hours once. Enable holiday handling. MenuList keeps everything consis
 > "We used to update hours in three places. Now it's just MenuList."
 > — [Premium Restaurant Owner]
 
-> "Holiday closures used to be a mess. Now it's automatic."
+> "One-off closures are clearer because we update the MenuList status source."
 > — [Café Owner, Mumbai]
 
 ### CTA Copy Variants
@@ -175,33 +175,33 @@ Set weekly hours once. Enable holiday handling. MenuList keeps everything consis
 
 **The hook:**
 
-> "100+ holidays a year. One place to manage them."
+> "Festival week? Keep your menu status tied to the hours you set."
 
 **Key points:**
 
-- Diwali, Holi, regional holidays handled
-- India holiday calendar built-in
+- Update today's hours or Temporary Status for one-off closures
+- Weekly hours continue to drive the regular open/closed badge
 - Works with your existing menu setup
 
 **WhatsApp-friendly:**
 
-> "Your menu hours stay correct — even during festival season. Set once, MenuList handles the rest."
+> "Set weekly hours once. For festival changes, update today's hours or Temporary Status."
 
 ### Non-India Messaging
 
 **The hook:**
 
-> "Hours that stay accurate. Automatically."
+> "Current open/closed status from saved hours."
 
 **Key points:**
 
-- Global holiday calendar available
-- Multiple windows per day (brunch + dinner)
-- Consistent across all customer touchpoints
+- Weekly working hours power the public menu badge
+- Today's hours and Temporary Status cover one-off changes
+- Consistent across supported MenuList surfaces
 
 **Full platform narrative:**
 
-> "MenuList keeps your hours accurate across your digital menu, screens, and staff view. One setup, always correct."
+> "MenuList shows open/closed status across your digital menu, screens, and staff view from the hours you save."
 
 ---
 
@@ -229,19 +229,19 @@ Set weekly hours once. Enable holiday handling. MenuList keeps everything consis
 
 **Response:**
 
-> "MenuList supports day-by-day hours and multiple windows per day. Morning and evening? No problem."
+> "MenuList supports day-by-day weekly hours. If today is different, update today's hours before customers scan."
 
 ### Objection: "We have private events sometimes"
 
 **Response:**
 
-> "Add an exception in 10 seconds. It overrides your regular hours for that date."
+> "Use Temporary Status or update today's hours before customers scan."
 
 ### Objection: "We're open late night"
 
 **Response:**
 
-> "MenuList supports evening hours. Set your dinner window, it shows correct status all night."
+> "Set evening hours in your weekly schedule. If today is different, update today's hours."
 
 ---
 
@@ -250,11 +250,12 @@ Set weekly hours once. Enable holiday handling. MenuList keeps everything consis
 ### Terms to Use
 
 - "Hours accuracy"
-- "Holiday handling"
-- "Exception"
+- "Open/closed status"
+- "Today's hours"
+- "Temporary Status"
 - "Open/Closed status"
-- "Consistent everywhere"
-- "Set once"
+- "Consistent MenuList surfaces"
+- "Set weekly hours once"
 - "Automatic"
 
 ### Terms to Avoid
@@ -288,7 +289,7 @@ Set weekly hours once. Enable holiday handling. MenuList keeps everything consis
 
 When combined with other features:
 
-> "Your menu stays priced right. Your hours stay correct. Your customers stay informed. That's MenuList."
+> "Your menu prices stay controlled. Your hours show current status. Your customers stay informed. That's MenuList."
 
 ---
 
@@ -298,15 +299,15 @@ When combined with other features:
 
 **Header:** Hours
 
-**Helper text:** Set weekly hours once. Add exceptions when needed.
+**Helper text:** Set weekly hours once. Use Temporary Status or today's hours for one-off changes.
 
-**Holiday selector label:** Holiday handling
+**Today quick edit label:** Today's hours
 
-**Holiday selector helper:** Applies closures for major holidays. You can override anytime.
+**Today quick edit helper:** Use when today's schedule is different from your regular hours.
 
-**Exception section label:** Exceptions
+**Temporary Status label:** Temporary Status
 
-**Exception helper:** Use for private events, special hours, or closures.
+**Temporary Status helper:** Use for an unscheduled closure or customer-facing notice.
 
 ### Customer-facing Banners
 
@@ -315,8 +316,8 @@ When combined with other features:
 | Open now      | "Open now · Closes 11:00 PM"                |
 | Opens later   | "Closed · Opens 11:00 AM"                   |
 | Closed today  | "Closed today"                              |
-| Holiday       | "Closed today (holiday)"                    |
-| Special hours | "Special hours today · Open until 10:00 PM" |
+| Temporary closure | "Temporarily closed"                    |
+| Updated today | "Open now · Closes 10:00 PM"                |
 
 ### Onboarding Copy
 
@@ -333,7 +334,7 @@ When combined with other features:
 | Google                   | MenuList                         |
 | ------------------------ | -------------------------------- |
 | Shows hours on Google    | Shows hours on your menu         |
-| Manual updates           | Set once, exceptions when needed |
+| Manual updates           | Weekly hours plus today's changes |
 | No integration with menu | Menu + hours = one system        |
 
 **Bridge message:**
@@ -345,8 +346,8 @@ When combined with other features:
 | Manual                    | MenuList                    |
 | ------------------------- | --------------------------- |
 | Update in multiple places | One source of truth         |
-| Forget holidays           | Holiday calendar handles it |
-| Staff doesn't see updates | Staff view always current   |
+| Forget one-off closures   | Use Temporary Status or today's hours |
+| Staff doesn't see updates | Staff view uses the same store truth |
 
 ---
 
@@ -366,13 +367,13 @@ When combined with other features:
 
 **Feature:** Hours Accuracy
 
-**One-liner:** Your hours stay correct. Even on holidays.
+**One-liner:** Your menu shows current open/closed status from saved hours.
 
 **Three bullets:**
 
 1. Set weekly hours once
-2. Enable holiday calendar
-3. Add exceptions when needed
+2. Use today's hours for one-off changes
+3. Use Temporary Status for unscheduled closures
 
 **CTA:** Set your hours
 

@@ -84,7 +84,7 @@ After publishing, you get:
 1. Sign in to your MenuList account
 2. Go to **Projects** in your dashboard
 3. Edit items, prices, categories
-4. Changes go live instantly — no need to re-publish
+4. Save the edit. If the screen shows **Publish**, click **Publish**. Customer menus can take up to 60 seconds to refresh.
 
 ---
 

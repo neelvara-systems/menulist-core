@@ -1,7 +1,7 @@
 # Photo Gap Check - Mobile Support
 
 **Status:** Mobile web supported through the public website route
-**Last Updated:** July 1, 2026
+**Last Updated:** July 4, 2026
 
 ---
 

@@ -1,7 +1,7 @@
 # Public Truth Check - Implementation Plan
 
 **Status:** Implemented - public self-report route and logged-in owner check
-**Last Updated:** June 30, 2026
+**Last Updated:** July 4, 2026
 **Audience:** Developers and future maintainers
 
 ---
@@ -80,6 +80,7 @@ Current V1 completion adds:
 - owner-side deterministic report from MenuList store/project truth
 - desktop Business Health card with focused fix links to existing Business Settings, Projects, and QR surfaces
 - mobile Business Health card with module action buttons that stay inside `MobileShell`
+- bounded owner-side `setupJobList` derived from missing, unclear, and not-checked readiness modules
 - public truth index reuse through `evaluatePublicTruthIndexability`
 - no report API route, no external scan, no AI/search check, no report history, and no write path
 
@@ -87,14 +88,20 @@ Current V1 completion adds:
 
 The owner readiness report is still read-only: it does not write report state and it does not mutate store/project truth. Each module now carries an action label, desktop `fixHref`, and mobile `mobileFixTarget` so the owner can reach the existing fix surface directly.
 
+The report also exposes `setupJobList`, capped by `OWNER_PUBLIC_TRUTH_MAX_SETUP_JOBS`. The list is derived from the same module rows and ordered with missing items first, then check/not-checked items. Desktop renders it as a fix list with existing `fixHref` links. Mobile renders the same list through `mobileFixTarget` shell callbacks. It is not an action queue, saved history, paid report, or canonical truth write.
+
 | Module | Desktop target | Mobile target |
 | --- | --- | --- |
 | Public truth basics | Business Settings profile/search-discovery or Projects editor, depending on the first missing fact | Basic settings, domain settings, or Menu tab |
 | QR link health | `/qr-code?focus=qr` when ready, otherwise customer-link settings | Share tab or domain settings |
 | Menu or service clarity | Projects editor with `focus=menu-readiness` and a quality action such as `prices` or `descriptions` | Menu tab |
+| Price and availability clarity | Projects editor with price or availability focus | Menu tab |
+| PDF cleanup readiness | Projects editor or customer-link settings, depending on missing source/link state | Menu tab or domain settings |
 | WhatsApp action link | Official Business Page action settings | Official Page sub-screen |
 | Hours readiness | Business Settings hours | Hours sub-screen |
 | Photo and visual identity | Business profile logo or Official Business Page photos | Basic settings or Official Page sub-screen |
+| Customer question coverage | Menu, hours, Official Business Page actions, customer-link settings, or Projects editor depending on the missing fact | Menu tab, hours, Official Page, or domain settings |
+| Booking and inquiry readiness | Official Business Page actions, hours, location, or customer-link settings depending on the missing action path | Official Page, hours, basic settings, or domain settings |
 | Google profile handoff | Presence Monitor when a live link exists, otherwise customer-link settings | Presence Monitor or domain settings |
 | Menu freshness | Projects editor with menu-readiness focus | Menu tab |
 

@@ -32,7 +32,7 @@ Traditional PDF tools give owners a blank canvas and ask them to design. MenuLis
 | Feature | Manual design tools | MenuList PDF Surface |
 |---------|--------------------|--------------------|
 | Layout | Owner designs | System-decided |
-| Always current | Only if owner remembers to update | Always generated from live data |
+| Source freshness | Only if owner remembers to update | Generated from the current project data at download time |
 | Version tracking | Never | Every PDF has a version ID |
 | Print quality | Depends on owner skill | Consistent, professional |
 | Time to print | 15–30 min design time | Under 5 seconds |
@@ -43,7 +43,7 @@ Traditional PDF tools give owners a blank canvas and ask them to design. MenuLis
 
 1. **"It looks like a real menu card"** — Dark header band, dotted leader lines between items and prices, structured category sections. Not a plain list.
 
-2. **"The prices are always correct"** — PDF is generated from live menu data. The version ID in the footer lets owners (and customers) verify which menu version they're looking at.
+2. **"The version is clear"** — PDF is generated from the current project data at download time. The version ID in the footer lets owners (and customers) verify which menu version they're looking at.
 
 3. **"Works from your phone"** — Owner can generate and download a PDF from the Share screen on mobile. No desktop required.
 
@@ -69,5 +69,5 @@ All customer-facing communication about this feature must avoid:
 
 Use instead:
 - "Print-ready menu" ✅
-- "Generated from your live menu" ✅
+- "Generated from your current menu source" ✅
 - "Download as PDF" ✅

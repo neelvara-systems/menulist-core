@@ -124,7 +124,7 @@ const PlatformFeaturesList = {
             "id": "official_business_page",
             "name": "Official Business Page",
             "category": "Online Presence",
-            "description": "A professional business page with your menu, hours, location, and real-time status. Link out to your existing booking and ordering platforms.",
+            "description": "A professional business page with your menu, hours, location, and current status. Link out to your existing booking and ordering platforms.",
             "valueLabel": "{name}",
             "values": {
                 "starter": true,
@@ -246,7 +246,7 @@ const PlatformFeaturesList = {
             "id": "webhooks",
             "name": "Webhooks",
             "category": "API & Integrations",
-            "description": "Receive real-time notifications for events in your account.",
+            "description": "Receive event notifications for supported account activity.",
             "valueLabel": "{name}",
             "values": {
                 "starter": true,

@@ -1,7 +1,7 @@
 # Main Website (menulist.ai) — Implementation
 
-**Status:** IMPLEMENTED — v3.6.100 Mobile Try-First Homepage Compression
-**Last Updated:** July 3, 2026
+**Status:** IMPLEMENTED — v3.6.102 Business Facts Copy Pack
+**Last Updated:** July 4, 2026
 **Audience:** Developers
 
 ---
@@ -55,6 +55,23 @@ Build:       Minimal src/pages defaults satisfy generated Pages Router manifest 
 | `/create-menu/success` | `(website)/create-menu/success/page.tsx` + `CreateMenuSuccessClient.tsx` | `CreateMenuSuccessClient` | Server metadata wrapper + client success UI | `noindex, nofollow, nocache` |
 | `/resources` | `(website)/resources/page.tsx` | `ResourcesHub` | Server | Per-page |
 | `/tools` | `(website)/tools/page.tsx` | `ToolsHubPage` | Feature-gated static route with client index component | Per-page |
+| `/tools/reports` | `(website)/tools/reports/page.tsx` | `ToolReportPage` | Server route + client hash-fragment report viewer | Per-page |
+| `/tools/public-truth-check` | `(website)/tools/public-truth-check/page.tsx` | `PublicTruthCheckPage` | Server route + client browser-local tool | Per-page |
+| `/tools/qr-link-health-check` | `(website)/tools/qr-link-health-check/page.tsx` | `QrLinkHealthCheckPage` | Server route + client browser-local tool | Per-page |
+| `/tools/menu-readability-check` | `(website)/tools/menu-readability-check/page.tsx` | `MenuReadabilityCheckPage` | Server route + client browser-local tool | Per-page |
+| `/tools/customer-question-coverage-check` | `(website)/tools/customer-question-coverage-check/page.tsx` | `CustomerQuestionCoverageCheckPage` | Server route + client browser-local tool | Per-page |
+| `/tools/customer-faq-reply-pack` | `(website)/tools/customer-faq-reply-pack/page.tsx` | `CustomerFaqReplyPackPage` | Server route + client browser-local tool | Per-page |
+| `/tools/booking-inquiry-readiness-check` | `(website)/tools/booking-inquiry-readiness-check/page.tsx` | `BookingInquiryReadinessCheckPage` | Server route + client browser-local tool | Per-page |
+| `/tools/price-availability-gap-check` | `(website)/tools/price-availability-gap-check/page.tsx` | `PriceAvailabilityGapCheckPage` | Server route + client browser-local tool | Per-page |
+| `/tools/menu-pdf-cleanup-check` | `(website)/tools/menu-pdf-cleanup-check/page.tsx` | `MenuPdfCleanupCheckPage` | Server route + client browser-local tool | Per-page |
+| `/tools/google-profile-basics-checklist` | `(website)/tools/google-profile-basics-checklist/page.tsx` | `GoogleProfileBasicsChecklistPage` | Server route + client browser-local tool | Per-page |
+| `/tools/business-facts-copy-pack` | `(website)/tools/business-facts-copy-pack/page.tsx` | `BusinessFactsCopyPackPage` | Server route + client browser-local tool | Per-page |
+| `/tools/customer-link-preview` | `(website)/tools/customer-link-preview/page.tsx` | `CustomerLinkPreviewPage` | Server route + client browser-local tool | Per-page |
+| `/tools/social-bio-link-check` | `(website)/tools/social-bio-link-check/page.tsx` | `SocialBioLinkCheckPage` | Server route + client browser-local tool | Per-page |
+| `/tools/whatsapp-action-link-check` | `(website)/tools/whatsapp-action-link-check/page.tsx` | `WhatsAppActionLinkCheckPage` | Server route + client browser-local tool | Per-page |
+| `/tools/whatsapp-reply-pack` | `(website)/tools/whatsapp-reply-pack/page.tsx` | `WhatsAppReplyPackPage` | Server route + client browser-local tool | Per-page |
+| `/tools/hours-check` | `(website)/tools/hours-check/page.tsx` | `HoursCheckPage` | Server route + client browser-local tool | Per-page |
+| `/tools/photo-gap-check` | `(website)/tools/photo-gap-check/page.tsx` | `PhotoGapCheckPage` | Server route + client browser-local tool | Per-page |
 | `/resources/[slug]` | `(website)/resources/[slug]/page.tsx` | `ArticleLayout` | Server static params | Dynamic per article |
 | `/{locale}/resources` | `(website)/[locale]/resources/page.tsx` | `ResourceHubPageShell` | Server static params | Localized per-page for `hi-IN`, `ta-IN`, `te-IN`, `mr-IN`, `bn-IN`, `ar-SA`, `es-ES` |
 | `/{locale}/resources/[slug]` | `(website)/[locale]/resources/[slug]/page.tsx` | `ResourceArticlePageShell` | Server static params | Localized per article for `hi-IN`, `ta-IN`, `te-IN`, `mr-IN`, `bn-IN`, `ar-SA`, `es-ES` |
@@ -62,18 +79,22 @@ Build:       Minimal src/pages defaults satisfy generated Pages Router manifest 
 | `/industries/cafes-bakeries` | `(website)/industries/cafes-bakeries/page.tsx` | `IndustryLandingPage` | Server | Per-page |
 | `/industries/takeaway-cloud-kitchens` | `(website)/industries/takeaway-cloud-kitchens/page.tsx` | `IndustryLandingPage` | Server | Per-page |
 | `/industries/multi-location-food-businesses` | `(website)/industries/multi-location-food-businesses/page.tsx` | `IndustryLandingPage` | Server | Per-page |
+| `/industries/salons-spas` | `(website)/industries/salons-spas/page.tsx` | `IndustryLandingPage` | Server | Per-page |
+| `/industries/service-list-businesses` | `(website)/industries/service-list-businesses/page.tsx` | `IndustryLandingPage` | Server | Per-page |
+| `/industries/local-service-businesses` | `(website)/industries/local-service-businesses/page.tsx` | `IndustryLandingPage` | Server | Per-page |
 | `/product` | `(website)/product/page.tsx` | **Permanent redirect → `/how-it-works`** | Server | — |
 | `/privacy-policy` | `(website)/privacy-policy/page.tsx` | `PrivacyPolicyPage` | Server | Per-page |
 | `/terms-of-service` | `(website)/terms-of-service/page.tsx` | `TermsOfServicePage` | Server | Per-page |
 | `/refund-policy` | `(website)/refund-policy/page.tsx` | `RefundPolicyPage` | Server | Per-page |
 
-**Total: 155 routes (8 core + FAQ + WhatsApp campaign + feature campaign pages + 3 create-menu + Tools Hub + 16 English resources + 112 reviewed localized resources + 4 industry pages + 1 redirect + 3 legal + 1 trust)**
+**Total: 184 implemented website routes (57 concrete route files + 15 generated English resource articles + 7 reviewed localized resource hubs + 105 reviewed localized resource articles)**
 
 ### Notes
 - Homepage (`/`) is a server route that renders `SchemaMarkup` as server HTML before mounting the client homepage composition.
 - `/whatsapp` is the public campaign route for the implemented messaging-onboarding flow. It uses localized copy, page-level structured data, a chat-style proof visual, trust boundaries, `PLATFORM_DISCOVERY_PAGES`, static sitemap, and LLM context coverage. Its primary and final CTA use a page-local external anchor to open the supplied test WhatsApp number with a prefilled owner-started onboarding message.
 - `/product` is a framework-level permanent redirect to `/how-it-works` (legacy URL preservation) and is intentionally omitted from sitemap and LLM discovery inventories.
 - `/faq` carries the full 16-question owner FAQ that was removed from the homepage scroll. It is registered in platform discovery, static sitemap, footer resources, `llms.txt`, and `llms-full.txt`.
+- `/tools` is the feature-gated public MenuList Tools hub. Concrete child routes under `/tools/*` are browser-local public acquisition tools, and `/tools/reports` is the hash-fragment public report viewer; all must stay in `PLATFORM_DISCOVERY_PAGES`, static sitemap, LLM context, and this route table.
 - `/create-menu` is feature-gated by `ENABLE_PUBLIC_MENU_ENTRY` — shows a locale-backed guided-setup fallback when OFF.
 - `/create-menu/success` is a post-setup utility route that may carry query-string menu URLs. It must remain outside discovery inventories and emit explicit `noindex, nofollow, nocache` robots metadata from the server wrapper, with a self canonical to `/create-menu/success`.
 - `/create-menu/success` Copy Link and WhatsApp handoffs are browser-local, use localized fixed failure copy, log bounded presence/length metadata only, open WhatsApp with `noopener,noreferrer`, and record starter activation signals only after copy/open succeeds. Copy Link falls through from rejected Clipboard API writes to acknowledged textarea fallback before failure.
@@ -229,9 +250,11 @@ The existing public platform-domain env config now uses `NEXT_PUBLIC_PLATFORM_DO
 
 **Resource navigation and discovery hardening:** v3.6.21 updates the website to match the complete resource strategy without changing product runtime. Header navigation is now Features -> How it works -> Multi-location -> Pricing -> Resources, with a compact desktop Resources dropdown and mobile nested resource links. The homepage Resources section now uses the eight strategic cards: Menu engineering, QR menu setup, Digital menu vs PDF, Google menu source, Restaurant menu SEO, AI search discovery, Official menu source, and Multi-location control. Footer Resources links now point to the core resource set plus Trust & Security. `public/robots.txt` now groups named search/AI crawlers with the same private-route disallows as the generic crawler group, `CCBot` is listed in `DISCOVERY_CRAWLERS`, and `llms.txt` / `llms-full.txt` now include preferred positioning and claim limits. Resource analytics uses consent-gated public website events and now includes secondary CTA, create-customer-link, pricing, checklist-copy, and AI/search referrer events including `chat.openai.com`, UTM/referrer properties, locale, entry page, and target URL without sending custom session identifiers. The search/discovery-ready product copy was softened so it describes a clearer public source for crawlers rather than implying search or AI systems must answer from MenuList. Owner dashboard, customer menu runtime, tenant routing, auth, middleware, Firebase, Cloud Functions, Canonica, Answerlattice, MyCodex, GrowthOS, and KitStamp surfaces were not changed.
 
-**Tools Hub website index:** v3.6.96 adds `/tools` as the static MenuList Tools index. `src/app/(website)/tools/page.tsx` gates the route with `ENABLE_PUBLIC_TRUTH_TOOLS` and `ENABLE_PUBLIC_TRUTH_TOOLS_HUB`, renders `ToolsHubPage`, and adds structured page data. `ToolsHubPage` groups the current 12 public tool routes by owner job and links to `/create-menu` and Business Health without running reports, submitting handoffs, fetching URLs, storing state, or calling providers. Header Resources and footer Start navigation now include MenuList Tools. Discovery updates flow through `PLATFORM_DISCOVERY_PAGES`, `public/sitemap.xml`, `public/llms.txt`, `public/llms-full.txt`, `__docs__/menulist-tools/tools-hub/`, and `npm run verify:tools-hub`.
+**Tools Hub website index:** v3.6.96 adds `/tools` as the static MenuList Tools index. `src/app/(website)/tools/page.tsx` gates the route with `ENABLE_PUBLIC_TRUTH_TOOLS` and `ENABLE_PUBLIC_TRUTH_TOOLS_HUB`, renders `ToolsHubPage`, and adds structured page data. `ToolsHubPage` groups the current 16 public tool routes by owner job and links to `/create-menu` and Business Health without running reports, submitting handoffs, fetching URLs, storing state, or calling providers. Header Resources and footer Start navigation now include MenuList Tools. Discovery updates flow through `PLATFORM_DISCOVERY_PAGES`, `public/sitemap.xml`, `public/llms.txt`, `public/llms-full.txt`, `__docs__/menulist-tools/tools-hub/`, and `npm run verify:tools-hub`.
 
-**Resource expansion and industry pages:** v3.6.22 adds three resource articles for restaurant menu schema, official menu URL checks, and common QR menu mistakes; updates every reviewed resource locale pack to the new source version; adds four industry landing pages for restaurants, cafes/bakeries, takeaway/cloud kitchens, and multi-location food businesses; extends sitemap, LLM context, and discovery-policy coverage; and adds a real checklist-copy button/event for visible checklist sections. `resource_template_download` remains intentionally absent because there are no downloadable assets to track. Owner dashboard, customer menu runtime, tenant routing, auth, middleware, Firebase, Cloud Functions, Canonica, Answerlattice, MyCodex, GrowthOS, and KitStamp surfaces were not changed.
+**Resource expansion and industry pages:** v3.6.22 adds three resource articles for restaurant menu schema, official menu URL checks, and common QR menu mistakes; updates every reviewed resource locale pack to the new source version; adds the initial restaurant, cafe/bakery, takeaway/cloud-kitchen, and multi-location food-business industry set; extends sitemap, LLM context, and discovery-policy coverage; and adds a real checklist-copy button/event for visible checklist sections. Later broad-SMB route expansion brings the current industry set to seven pages with salons/spas, service-list businesses, and local-service businesses. `resource_template_download` remains intentionally absent because there are no downloadable assets to track. Owner dashboard, customer menu runtime, tenant routing, auth, middleware, Firebase, Cloud Functions, Canonica, Answerlattice, MyCodex, GrowthOS, and KitStamp surfaces were not changed.
+
+**Main website route inventory guard:** v3.6.102 adds `npm run verify:agent-readiness` coverage for concrete `/tools/*` and `/industries/*` website route families. The gate derives routes from `src/app/(website)/tools/*/page.tsx` and `src/app/(website)/industries/*/page.tsx`, then requires matching `PLATFORM_DISCOVERY_PAGES` entries and matching route-table rows here. The same gate checks the implemented route total from concrete route files plus generated English and reviewed localized resource routes.
 
 **Marketing feedback quality pass:** v3.6.23 sharpens the highest-value English resource and industry pages after marketing review. The live copy now uses `Official Menu Source` as the category concept and `current approved menu` as the owner-readable explanation across `/resources/official-menu-source`, `/resources/menu-source-audit`, `/resources/google-business-profile-menu`, `/resources/qr-menu-for-restaurants`, `/resources/multi-location-menu-management`, and `/industries/restaurants`. The pass intentionally does not add comparison pages, bars/pubs, food trucks, or additional generic resources until there is enough reviewed content depth. Owner dashboard, customer menu runtime, tenant routing, auth, middleware, Firebase, Cloud Functions, Canonica, Answerlattice, MyCodex, GrowthOS, and KitStamp surfaces were not changed.
 

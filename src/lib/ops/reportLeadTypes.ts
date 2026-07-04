@@ -7,6 +7,12 @@ export type ReportLeadReportStatus =
 
 export type ReportLeadReportStatusFilter = ReportLeadReportStatus | 'all';
 
+export interface ReportLeadSetupJob {
+  id: string;
+  label: string;
+  reason: string;
+}
+
 export interface ReportLeadRow {
   id: string;
   status: string;
@@ -19,6 +25,7 @@ export interface ReportLeadRow {
   missingCount: number;
   unclearCount: number;
   notCheckedCount: number;
+  setupJobList: ReportLeadSetupJob[];
   contactName: string | null;
   workEmail: string | null;
   phoneNumber: string | null;

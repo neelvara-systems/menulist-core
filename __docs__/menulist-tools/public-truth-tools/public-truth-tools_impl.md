@@ -1,7 +1,7 @@
 # Public Truth Tools - Implementation Plan
 
-**Status:** Active family; thirteen V0 tools, shareable report viewer, and twelve V1 owner readiness modules implemented
-**Last Updated:** July 3, 2026
+**Status:** Active family; sixteen V0 tools, shareable report viewer, and twelve V1 owner readiness modules with owner fix lists implemented
+**Last Updated:** July 4, 2026
 **Audience:** Developers and future maintainers
 
 ---
@@ -38,7 +38,7 @@ New modules can be plugin-like internally, but they must still stay inside MenuL
 
 ## 1.1A Tools Hub
 
-Tools Hub is the static public index at `/tools`. It groups current public checks by owner job and links to each implemented route. It does not run reports, submit leads, fetch URLs, call providers, store report state, or mutate external platforms. Its source gate is `npm run verify:tools-hub`, and the aggregate family gate includes `verify-tools-hub.js`.
+Tools Hub is the static public index at `/tools`. It groups current public checks by owner job and links to each implemented route. It does not run reports, submit leads, fetch URLs, call providers, store report state, or mutate external platforms. Its source gate is `npm run verify:tools-hub`, and the aggregate family gate includes `verify-tools-hub.js`. The gate compares the component's route/key registry as an exact set so stale cards for unimplemented tools fail.
 
 ## 1.1B Shareable Tool Reports
 
@@ -68,18 +68,21 @@ The next implementation should not start a generic registry or broad toolbox. Ad
 | Rank | Tool | Public route | Implementation note |
 | --- | --- | --- | --- |
 | 1 | Public Truth Check | `/tools/public-truth-check` | Implemented V0 and V1 owner readiness modules |
-| 2 | QR Link Health Check | `/tools/qr-link-health-check` | Implemented V0 with pasted URL only; V1 owner module checks MenuList customer-link readiness |
-| 3 | Menu / Service Readability Check | `/tools/menu-readability-check` | Implemented V0 with pasted source text only; V1 owner module checks selected/default MenuList menu categories, items, and prices |
-| 4 | Customer Question Coverage Check | `/tools/customer-question-coverage-check` | Implemented V0 with pasted source/questions only; V1 owner module checks current MenuList facts behind common customer answers |
-| 5 | Booking Inquiry Readiness Check | `/tools/booking-inquiry-readiness-check` | Implemented V0 with owner-entered action path and destination checks; V1 owner module checks MenuList OBP actions, contact, hours, location, and customer link |
-| 6 | Price & Availability Gap Check | `/tools/price-availability-gap-check` | Implemented V0 with pasted source text and selected facts only; V1 owner module checks MenuList item prices, variant prices, and availability flags |
-| 7 | Menu PDF Cleanup Check | `/tools/menu-pdf-cleanup-check` | Implemented V0 with owner-entered PDF reference/facts only; V1 owner module checks MenuList source and customer-link readiness |
-| 8 | Google Profile Basics Checklist | `/tools/google-profile-basics-checklist` | Implemented V0 with owner-selected profile facts only; V1 maps to existing Google Profile Handoff module |
-| 9 | WhatsApp Action Link Check | `/tools/whatsapp-action-link-check` | Implemented V0 with click-to-chat format and action-message clarity checks; V1 owner module checks MenuList OBP/customer action settings |
-| 10 | Hours & Holiday Hours Check | `/tools/hours-check` | Implemented V0 with owner-entered regular hours, closed days, special-hours state, fallback, and current-link checks; V1 owner module checks store working hours |
-| 11 | Photo / Visual Identity Gap Check | `/tools/photo-gap-check` | Implemented V0 with owner-selected logo, cover, location/team, product/service, current-photo, public-page-image, and customer-link checks; V1 owner module checks MenuList logo, OBP photos, project image, and loaded item images |
-| 12 | One Customer Link Preview | `/tools/customer-link-preview` | Implemented V0 with owner-entered facts only; V1 maps to existing MenuList public page and Business Health readiness surfaces |
-| 13 | Social Bio Link Consistency Check | `/tools/social-bio-link-check` | Implemented V0 with owner-selected profile/link placement facts only; V1 maps to existing Share, Public Discovery, and Business Health readiness surfaces |
+| 2 | Business Facts Copy Pack | `/tools/business-facts-copy-pack` | Implemented V0 with owner-entered facts only; generates deterministic copy blocks and does not inspect or update external profiles |
+| 3 | QR Link Health Check | `/tools/qr-link-health-check` | Implemented V0 with pasted URL only; V1 owner module checks MenuList customer-link readiness |
+| 4 | Menu / Service Readability Check | `/tools/menu-readability-check` | Implemented V0 with pasted source text only; V1 owner module checks selected/default MenuList menu categories, items, and prices |
+| 5 | Customer Question Coverage Check | `/tools/customer-question-coverage-check` | Implemented V0 with pasted source/questions only; V1 owner module checks current MenuList facts behind common customer answers |
+| 6 | Customer FAQ Reply Pack | `/tools/customer-faq-reply-pack` | Implemented V0 with owner-entered questions/facts only; generates deterministic FAQ answer blocks and does not create chatbots, configure automation, send messages, or call AI providers |
+| 7 | Booking Inquiry Readiness Check | `/tools/booking-inquiry-readiness-check` | Implemented V0 with owner-entered action path and destination checks; V1 owner module checks MenuList OBP actions, contact, hours, location, and customer link |
+| 8 | Price & Availability Gap Check | `/tools/price-availability-gap-check` | Implemented V0 with pasted source text and selected facts only; V1 owner module checks MenuList item prices, variant prices, and availability flags |
+| 9 | Menu PDF Cleanup Check | `/tools/menu-pdf-cleanup-check` | Implemented V0 with owner-entered PDF reference/facts only; V1 owner module checks MenuList source and customer-link readiness |
+| 10 | Google Profile Basics Checklist | `/tools/google-profile-basics-checklist` | Implemented V0 with owner-selected profile facts only; V1 maps to existing Google Profile Handoff module |
+| 11 | WhatsApp Action Link Check | `/tools/whatsapp-action-link-check` | Implemented V0 with click-to-chat format and action-message clarity checks; V1 owner module checks MenuList OBP/customer action settings |
+| 12 | WhatsApp Reply Pack | `/tools/whatsapp-reply-pack` | Implemented V0 with owner-entered facts only; generates deterministic WhatsApp reply blocks and does not call WhatsApp APIs or send messages |
+| 13 | Hours & Holiday Hours Check | `/tools/hours-check` | Implemented V0 with owner-entered regular hours, closed days, special-hours state, fallback, and current-link checks; V1 owner module checks store working hours |
+| 14 | Photo / Visual Identity Gap Check | `/tools/photo-gap-check` | Implemented V0 with owner-selected logo, cover, location/team, product/service, current-photo, public-page-image, and customer-link checks; V1 owner module checks MenuList logo, OBP photos, project image, and loaded item images |
+| 15 | One Customer Link Preview | `/tools/customer-link-preview` | Implemented V0 with owner-entered facts only; V1 maps to existing MenuList public page and Business Health readiness surfaces |
+| 16 | Social Bio Link Consistency Check | `/tools/social-bio-link-check` | Implemented V0 with owner-selected profile/link placement facts only; V1 maps to existing Share, Public Discovery, and Business Health readiness surfaces |
 | Owner-only | Menu Freshness | Business Health | Implemented V1 owner module checks selected/default MenuList menu timestamps and asks for review when freshness is unclear or stale; external sites are not scanned |
 | Owner/admin prototype | Maps Place Check | Callable Function | Flag-off provider-backed check using Gemini Google Maps grounding. Returns evidence and Maps sources for owner/admin review only; no public route, no canonical writes |
 
@@ -101,6 +104,7 @@ V1 owner modules must expose the same report contract on desktop and mobile:
 - `fixHref`: desktop path to an existing MenuList fix surface
 - `mobileFixTarget`: shell-safe mobile target enum
 - `evidenceText`: what MenuList actually checked
+- `setupJobList`: bounded owner fix list derived from missing, unclear, or not-checked module rows
 
 Current mobile targets are `basic_settings`, `domain_settings`, `hours_edit`, `menu_tab`, `official_page`, `presence_monitor`, and `share_tab`. They are resolved inside `MobileBusinessHealthScreen` through `MobileShell` callbacks. Mobile cards must not open desktop URLs with `window.location`.
 
@@ -114,16 +118,24 @@ Current desktop focused surfaces are:
 
 These targets are navigation only. They add no Public Truth report storage, external scans, provider calls, or new write paths.
 
+The owner fix list is not a new dashboard or work queue. `buildOwnerPublicTruthSetupJobList(...)` derives it from already-computed readiness modules, caps it at `OWNER_PUBLIC_TRUTH_MAX_SETUP_JOBS`, and keeps every item tied to the same desktop/mobile fix target as its module.
+
 ---
 
 ## 2. Proposed Future File Layout
 
-Runtime files now exist for Public Truth Check V0/V1, QR Link Health Check V0, Menu Readability Check V0, Customer Question Coverage Check V0/V1, Booking Inquiry Readiness Check V0/V1, Price Availability Gap Check V0/V1, Menu PDF Cleanup Check V0/V1, Google Profile Basics Checklist V0/V1, One Customer Link Preview V0, Social Bio Link Consistency Check V0, WhatsApp Action Link Check V0, Hours Check V0, and Photo Gap Check V0. V1 owner readiness modules for eleven of those public tool jobs plus Menu Freshness live in `ownerPublicTruthReadiness.ts` and render inside desktop/mobile Business Health. One Customer Link Preview and Social Bio Link Consistency Check map to existing public page, Share, Public Discovery, and Business Health readiness surfaces without duplicate owner modules. Future tools should follow this shape without adding report APIs or persistence until their lane requires it:
+Runtime files now exist for Public Truth Check V0/V1, Business Facts Copy Pack V0, WhatsApp Reply Pack V0, Customer FAQ Reply Pack V0, QR Link Health Check V0, Menu Readability Check V0, Customer Question Coverage Check V0/V1, Booking Inquiry Readiness Check V0/V1, Price Availability Gap Check V0/V1, Menu PDF Cleanup Check V0/V1, Google Profile Basics Checklist V0/V1, One Customer Link Preview V0, Social Bio Link Consistency Check V0, WhatsApp Action Link Check V0, Hours Check V0, and Photo Gap Check V0. V1 owner readiness modules for eleven of those public tool jobs plus Menu Freshness live in `ownerPublicTruthReadiness.ts` and render inside desktop/mobile Business Health. Business Facts Copy Pack, WhatsApp Reply Pack, and Customer FAQ Reply Pack are V0-only in this pass and should later reuse MenuList store/project truth rather than create a new dashboard. One Customer Link Preview and Social Bio Link Consistency Check map to existing public page, Share, Public Discovery, and Business Health readiness surfaces without duplicate owner modules. Future tools should follow this shape without adding report APIs or persistence until their lane requires it:
 
 ```txt
 src/lib/public-truth-tools/
   publicTruthCheckTypes.ts
   publicTruthCheckReport.ts
+  businessFactsCopyPackTypes.ts
+  businessFactsCopyPackReport.ts
+  whatsappReplyPackTypes.ts
+  whatsappReplyPackReport.ts
+  customerFaqReplyPackTypes.ts
+  customerFaqReplyPackReport.ts
   ownerPublicTruthReadiness.ts
   qrLinkHealthTypes.ts
   qrLinkHealthReport.ts
@@ -426,11 +438,12 @@ No direct MCP write tool may publish menu, hours, prices, or business identity.
 
 ## 11. Verification Plan
 
-Future verifier should assert:
+The current verifier asserts:
 
 - every tool has a registry entry
 - every registry entry has a docs file
 - every public tool has a Firebase cost section
+- every report/type module in `src/lib/public-truth-tools/` is either a manifest-backed public tool module or an explicitly shared helper (`shareableToolReport.ts`, `ownerPublicTruthReadiness.ts`)
 - no tool copy includes ranking/citation guarantees
 - public routes are rate-limited and body-bounded
 - external fetch adapters are absent unless explicitly approved
@@ -443,11 +456,14 @@ Suggested command:
 npm run verify:public-truth-tools
 ```
 
-The command is an aggregate wrapper for the current public tool family verifiers, including Tools Hub, Shareable Tool Reports, and thirteen public tool checks:
+The command is an aggregate wrapper for the current public tool family verifiers, including Tools Hub, Shareable Tool Reports, and sixteen public tool checks:
 
 - `npm run verify:tools-hub`
 - `npm run verify:shareable-tool-reports`
 - `npm run verify:public-truth-check`
+- `npm run verify:business-facts-copy-pack`
+- `npm run verify:whatsapp-reply-pack`
+- `npm run verify:customer-faq-reply-pack`
 - `npm run verify:qr-link-health-check`
 - `npm run verify:menu-readability-check`
 - `npm run verify:customer-question-coverage-check`

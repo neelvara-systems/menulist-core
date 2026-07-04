@@ -25,6 +25,23 @@ function assertNotIncludes(content, needle, label) {
   assert(!content.includes(needle), `${label} must not include ${needle}`);
 }
 
+function assertSameSet(actual, expected, label) {
+  const actualSet = new Set(actual);
+  const expectedSet = new Set(expected);
+  const missing = expected.filter((value) => !actualSet.has(value));
+  const extra = actual.filter((value) => !expectedSet.has(value));
+
+  assert(
+    missing.length === 0 && extra.length === 0,
+    `${label} mismatch. Missing: ${missing.join(', ') || 'none'}. Extra: ${extra.join(', ') || 'none'}.`,
+  );
+}
+
+function collectComponentLiteralValues(content, field) {
+  const regex = new RegExp(`${field}: '([^']+)'`, 'g');
+  return Array.from(content.matchAll(regex), (match) => match[1]).sort();
+}
+
 const ROUTE_PATH = 'src/app/(website)/tools/page.tsx';
 const COMPONENT_PATH = 'src/components/website/toolsHub/ToolsHubPage.tsx';
 const DOC_ROOT_PATH = '__docs__/menulist-tools/tools-hub';
@@ -43,7 +60,9 @@ const REQUIRED_DOCS = [
 
 const TOOL_ROUTES = [
   '/tools/public-truth-check',
+  '/tools/business-facts-copy-pack',
   '/tools/customer-question-coverage-check',
+  '/tools/customer-faq-reply-pack',
   '/tools/customer-link-preview',
   '/tools/social-bio-link-check',
   '/tools/google-profile-basics-checklist',
@@ -53,13 +72,16 @@ const TOOL_ROUTES = [
   '/tools/qr-link-health-check',
   '/tools/booking-inquiry-readiness-check',
   '/tools/whatsapp-action-link-check',
+  '/tools/whatsapp-reply-pack',
   '/tools/hours-check',
   '/tools/photo-gap-check',
 ];
 
 const TOOL_KEYS = [
   'publicTruthCheck',
+  'businessFactsCopyPack',
   'customerQuestionCoverageCheck',
+  'customerFaqReplyPack',
   'customerLinkPreview',
   'socialBioLinkCheck',
   'googleProfileBasicsChecklist',
@@ -69,6 +91,7 @@ const TOOL_KEYS = [
   'qrLinkHealthCheck',
   'bookingInquiryReadinessCheck',
   'whatsappActionLinkCheck',
+  'whatsappReplyPack',
   'hoursCheck',
   'photoGapCheck',
 ];
@@ -135,6 +158,16 @@ assertIncludes(component, 'WebsiteButton href="/tools/public-truth-check"', 'Too
 assertIncludes(component, 'WebsiteButton href="/create-menu"', 'Tools Hub fix path CTA');
 assertIncludes(component, 'href="/features/business-health"', 'Tools Hub owner health CTA');
 assertIncludes(css, '.ws-tools-hub', 'Tools Hub styles');
+assertSameSet(
+  collectComponentLiteralValues(component, 'href').filter((href) => href.startsWith('/tools/')),
+  TOOL_ROUTES.slice().sort(),
+  'Tools Hub component route registry',
+);
+assertSameSet(
+  collectComponentLiteralValues(component, 'key').filter((key) => TOOL_KEYS.includes(key)),
+  TOOL_KEYS.slice().sort(),
+  'Tools Hub component key registry',
+);
 
 for (const routePath of TOOL_ROUTES) {
   assertIncludes(component, `href: '${routePath}'`, `Tools Hub component route ${routePath}`);

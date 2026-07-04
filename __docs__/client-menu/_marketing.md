@@ -18,11 +18,11 @@ This marketing document is sales/source evidence for the customer-facing menu. I
 
 ### 30-Second Version
 
-> "MenuListAi gives your restaurant a **live digital menu** that updates the moment you make a change. Customers see what's popular, what's sold out, and what's available right now — without you doing anything. It's the menu that runs itself."
+> "MenuListAi gives your restaurant a **live digital menu link** backed by owner-approved menu data. Customers see featured choices, sold-out status, and current menu information from one source instead of old PDFs or photos."
 
 ### One-Liner
 
-> "A live menu that thinks for itself."
+> "One live menu link customers can trust."
 
 ---
 
@@ -41,8 +41,8 @@ Restaurant owners don't have time to manage marketing. They're busy cooking, ser
 
 **The MenuListAi way:**
 
-- Update menu from your phone → customers see it instantly
-- Sold out? One tap. Customers see it immediately.
+- Update menu from your phone → the public menu refreshes through the current cache path
+- Sold out? Save the change and the customer menu follows the approved source
 - Popular items show up first → customers decide in 15 seconds
 - Menu switches from breakfast to lunch automatically
 
@@ -66,7 +66,7 @@ Restaurant owners don't have time to manage marketing. They're busy cooking, ser
 
 | Aspect                | Static QR | MenuListAi |
 | --------------------- | --------- | ---------- |
-| Real-time updates     | ❌        | ✅         |
+| Owner-approved updates | ❌        | ✅         |
 | Featured choices      | ❌        | ✅         |
 | Time-based categories | ❌        | ✅         |
 | Availability status   | ❌        | ✅         |
@@ -104,11 +104,11 @@ Restaurant owners don't have time to manage marketing. They're busy cooking, ser
 
 ### Slide 2: The Solution
 
-**Headline:** "A menu that runs itself."
+**Headline:** "One live menu link."
 
 **Content:**
 
-- Update from your phone → customers see it instantly
+- Update from your phone → customers see the approved menu after refresh
 - Mark items sold out with one tap
 - Popular items surface automatically
 - Breakfast switches to lunch on its own
@@ -125,7 +125,7 @@ Restaurant owners don't have time to manage marketing. They're busy cooking, ser
 | Feature                      | What It Does                              |
 | ---------------------------- | ----------------------------------------- |
 | **🟢 Live Indicator**        | "Updated just now" — customers trust it   |
-| **⚡ Instant Availability**  | Sold out? Fades instantly, no page reload |
+| **Availability State**      | Sold out? It fades after the public menu refresh |
 | **🎯 Featured section** | Featured choice, Quick choice, and Value choice appear first |
 | **⏰ Time-Based Menu**       | Breakfast → Lunch → Dinner automatically  |
 | **🌐 Multi-Language**        | Customer picks their language             |
@@ -158,7 +158,7 @@ Restaurant owners don't have time to manage marketing. They're busy cooking, ser
 
 - 50% faster customer decisions
 - 80% fewer "Is this available?" questions
-- 100% of updates reflected instantly
+- Customer menus refresh from the approved source
 
 **Quote placeholder:**
 
@@ -201,21 +201,21 @@ Restaurant owners don't have time to manage marketing. They're busy cooking, ser
 
 **Headline:**
 
-> "Your menu, always live."
+> "Your menu link, backed by the approved source."
 
 **Subheadline:**
 
-> Update your menu from your phone. Customers see it instantly. Sold-out items fade automatically. Popular dishes surface first.
+> Update your menu from your phone. Customer menus refresh from the approved source. Sold-out items fade and featured choices surface first.
 
-**CTA:** "Get Your Live Menu"
+**CTA:** "Get Your Menu Link"
 
 ---
 
 ### Key Benefits (3-5 Bullets)
 
-- **Update in seconds** — Change a price, add a dish, mark sold out. Customers see it immediately.
+- **Update from one place** — Change a price, add a dish, mark sold out. Customer menus refresh through the current public cache path.
 - **Customers decide faster** — Featured choices show what's popular, what's quick, and what's a good deal.
-- **Zero daily effort** — Time-based menus switch automatically. No morning toggle needed.
+- **Quiet daily operation** — Time-based menus switch automatically. No morning toggle needed.
 - **Works on any phone** — Customers just scan the QR. No app download.
 - **Your branding, your domain** — Looks like your restaurant, not ours.
 
@@ -227,8 +227,8 @@ Restaurant owners don't have time to manage marketing. They're busy cooking, ser
 
 **Testimonial placeholders:**
 
-- "I updated the price at 2pm and the customer at 2:01 saw the new price. Magic." — Owner
-- "My staff stopped answering 'Is this available?' — the menu handles it." — Manager
+- "I saved the price once and customers saw the approved menu after refresh." — Owner
+- "My staff stopped answering 'Is this available?' because the menu shows the availability state." — Manager
 - "Customers actually comment on how modern our menu looks." — Owner
 
 ---
@@ -237,7 +237,7 @@ Restaurant owners don't have time to manage marketing. They're busy cooking, ser
 
 | Style             | Copy                   |
 | ----------------- | ---------------------- |
-| Benefit-focused   | "Get your live menu"   |
+| Benefit-focused   | "Get your approved menu link" |
 | Action-focused    | "Start in 3 minutes"   |
 | Trust-focused     | "Try free for 14 days" |
 | Curiosity-focused | "See how it works"     |
@@ -258,9 +258,9 @@ Restaurant owners don't have time to manage marketing. They're busy cooking, ser
 
 **Key messages:**
 
-- "Update your menu from WhatsApp" (future capability)
+- "Share your menu on WhatsApp"
 - "One tap to mark sold out"
-- "Customers see it instantly on their phone"
+- "Customers see the approved menu on their phone"
 - "No app download needed — just QR"
 - "₹999/month — less than one day's printing cost"
 
@@ -274,7 +274,7 @@ Restaurant owners don't have time to manage marketing. They're busy cooking, ser
 
 **Key messages:**
 
-- "Your menu updates itself"
+- "Your menu stays tied to one approved source"
 - "Featured choices help customers decide"
 - "Analytics show what's working"
 - "Custom domain for professional presence"
@@ -340,12 +340,12 @@ Restaurant owners don't have time to manage marketing. They're busy cooking, ser
 
 | Approved                       | Why                               |
 | ------------------------------ | --------------------------------- |
-| "Live menu"                    | Implies real-time, modern         |
-| "Instant updates"              | Clear benefit                     |
+| "Live menu link"               | Plain, customer-facing address    |
+| "Owner-approved updates"       | Matches source/cache behavior     |
 | "Featured choices"             | Plain customer benefit without AI or algorithm language |
-| "Customers see it immediately" | Outcome-focused                   |
+| "Current menu source"          | Source-truth framing              |
 | "One tap"                      | Simplicity                        |
-| "Runs itself"                  | Zero effort promise               |
+| "Quiet daily operation"        | Low-effort promise without overclaiming |
 
 ### Terms to Avoid
 
@@ -367,7 +367,7 @@ Restaurant owners don't have time to manage marketing. They're busy cooking, ser
 
 **Don't say:** "₹999 for the Pro plan"
 
-**Say:** "For less than the cost of reprinting your menu once, you get a menu that updates itself forever."
+**Say:** "For less than the cost of reprinting your menu once, you get one live menu link backed by the approved source."
 
 ### Value Anchors
 
@@ -395,20 +395,20 @@ Restaurant owners don't have time to manage marketing. They're busy cooking, ser
 4. [Mark item sold out]
    "Watch this. I mark Paneer Tikka sold out..."
    [Item fades on customer menu]
-   "...and it fades instantly. No page reload."
+   "...and the public menu follows the approved source after refresh."
 
-5. "That's it. Update anything, customers see it immediately."
+5. "That's it. Update in one place, and the customer menu refreshes from the same source."
 ```
 
 ---
 
 ## Campaign Ideas
 
-### Launch Campaign: "The Menu That Runs Itself"
+### Launch Campaign: "One Approved Menu Link"
 
-- **Hook:** Video of owner updating menu at 2pm, customer seeing it at 2:01
+- **Hook:** Video of owner saving a menu change and the customer menu showing the approved version after refresh
 - **Channel:** Instagram Reels, WhatsApp Status
-- **CTA:** "Get your live menu"
+- **CTA:** "Get your approved menu link"
 
 ### Feature Campaign: "Sold Out? One Tap."
 

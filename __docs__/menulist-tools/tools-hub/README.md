@@ -3,7 +3,7 @@
 > **Feature:** MenuList Tools Hub
 > **Route:** `/tools`
 > **Status:** Implemented static website index
-> **Last Updated:** July 3, 2026
+> **Last Updated:** July 4, 2026
 
 ---
 
@@ -19,6 +19,19 @@ The route groups current tools by owner job:
 - Trust / Setup
 
 The hub does not run a report. It routes owners to the individual tool routes that already preserve their own evidence text, source policy, and report boundary.
+
+---
+
+## End-User Access
+
+End users can reach the public Tools Hub without logging in through:
+
+- direct public route: `/tools`
+- desktop header: Resources dropdown -> MenuList Tools
+- mobile header: hamburger menu -> Resources -> MenuList Tools
+- footer: Start column -> MenuList Tools
+
+`npm run verify:public-truth-tools` protects these access points so the hub cannot drift out of desktop navigation, mobile hamburger navigation, or footer navigation silently.
 
 ---
 
@@ -38,9 +51,9 @@ Tools Hub is V0 public website infrastructure. It is not a paid add-on by itself
 
 | Group | Tools |
 | --- | --- |
-| Public Truth | Public Truth Check, Customer Question Coverage Check, One Customer Link Preview, Social Bio Link Consistency Check, Google Profile Basics Checklist |
+| Public Truth | Public Truth Check, Business Facts Copy Pack, Customer Question Coverage Check, Customer FAQ Reply Pack, One Customer Link Preview, Social Bio Link Consistency Check, Google Profile Basics Checklist |
 | Menu / Service Clarity | Menu Readability Check, Price Availability Gap Check, Menu PDF Cleanup Check |
-| Customer Action Readiness | QR Link Health Check, Booking Inquiry Readiness Check, WhatsApp Action Link Check, Hours Check |
+| Customer Action Readiness | QR Link Health Check, Booking Inquiry Readiness Check, WhatsApp Action Link Check, WhatsApp Reply Pack, Hours Check |
 | Trust / Setup | Photo Gap Check |
 
 ---

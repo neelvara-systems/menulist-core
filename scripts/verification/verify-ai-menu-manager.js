@@ -126,6 +126,16 @@ assert(aiMenuManagerTechnicalTeamFlow.includes('Current release approval require
 assert(aiMenuManagerTechnicalTeamFlow.includes('supported-adapter smoke behind AMM feature flags'), 'AMM technical team flow must require adapter smoke evidence before release claims');
 assert(aiMenuManagerTechnicalTeamFlow.includes('discovery/reserved adapter rows'), 'AMM technical team flow must describe non-runtime checklist rows as reserved adapters');
 assert(!/ready for controlled launch|controlled launch ready|ready for testing|ship ready/i.test(aiMenuManagerTechnicalTeamFlow), 'AMM technical team flow must not use stale launch-readiness wording');
+const aiMenuManagerWebsiteDoc = read('__docs__/ai-menu-manager/ai-menu-manager_website.md');
+assert(aiMenuManagerWebsiteDoc.includes('Claim boundaries:'), 'AMM website doc must keep explicit public claim boundaries');
+assert(aiMenuManagerWebsiteDoc.includes('AI Menu Manager handles verified daily menu operations'), 'AMM website doc must scope public capability copy to verified daily operations');
+assert(aiMenuManagerWebsiteDoc.includes('full speech-to-command is verified for launch use'), 'AMM website doc must require verification before full speech-to-command launch claims');
+assert(!/full speech-to-command is production-ready/i.test(aiMenuManagerWebsiteDoc), 'AMM website doc must not use unqualified production-ready wording for speech claims');
+const aiMenuManagerSpec = read('__docs__/ai-menu-manager/ai-menu-manager_spec.md');
+assert(aiMenuManagerSpec.includes('## Website Claim Guard'), 'AMM spec must keep the website claim guard');
+assert(aiMenuManagerSpec.includes('Website and launch copy may say AI Menu Manager handles verified daily menu operations'), 'AMM spec must define allowed website claim scope');
+assert(aiMenuManagerSpec.includes('full speech-to-command is verified for launch use'), 'AMM spec must require verification before full speech-to-command launch claims');
+assert(!/full speech-to-command is production-ready/i.test(aiMenuManagerSpec), 'AMM spec must not use unqualified production-ready wording for speech claims');
 
 const actionTypes = read('src/lib/ai-menu-manager/actionTypes.ts');
 for (const actionType of requiredActionTypes) {

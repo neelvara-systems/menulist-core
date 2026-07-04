@@ -1,7 +1,7 @@
 # Customer Question Coverage Check - Mobile Support
 
 **Status:** Mobile support evidence; not current launch certification
-**Last Updated:** July 2, 2026
+**Last Updated:** July 4, 2026
 
 ---
 

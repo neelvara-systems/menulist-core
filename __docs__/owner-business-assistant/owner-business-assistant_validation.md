@@ -2,7 +2,7 @@
 
 **Owner-Facing Name:** Business Health
 **Status:** Read-only validation after action-support removal
-**Last Updated:** June 29, 2026
+**Last Updated:** July 4, 2026
 
 ## Validation Decision
 
@@ -38,6 +38,7 @@ Business Health supports:
 - suggested questions
 - typed answers
 - feedback/source/freshness signals
+- public readiness fix list derived from current MenuList truth
 - platform monitoring for answer quality and cost
 
 Business Health does not support:
@@ -46,6 +47,7 @@ Business Health does not support:
 - action drafts
 - action approval sheets
 - public-truth mutation
+- public-readiness fix-list action drafts
 - external publishing
 - generated image application
 - rollback/undo
@@ -81,7 +83,7 @@ Removing owner operation handling reduces mutation risk because Business Health 
 
 ## Mobile Confirmation
 
-Mobile Business Health remains inside `MobileShell`. It renders read-only checks and answers and does not import or display an action bottom sheet.
+Mobile Business Health remains inside `MobileShell`. It renders read-only checks, the public readiness fix list, and answers. Fix-list buttons route through shell callbacks and do not import or display an action bottom sheet.
 
 ## Verification Commands
 

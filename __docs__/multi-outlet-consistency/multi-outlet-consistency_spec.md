@@ -47,7 +47,7 @@ This creates a recurring mental burden:
 
 > **"Run every store from one master menu."**
 
-HQ updates menu once → All stores update instantly → Menu consistency guaranteed by default.
+HQ updates menu once → linked stores inherit the saved changes through the outlet sync/cache path → brand-critical fields stay consistent by default.
 
 ---
 
@@ -213,7 +213,7 @@ MenuList must clearly distinguish:
 **Acceptance Criteria:**
 
 - Adding item to master appears at all linked stores
-- Propagation is instant (read-time resolution)
+- Owner/editor propagation uses read-time resolution; customer menus still follow the current cache refresh window
 - No manual sync button needed
 - MOL logs propagation event
 
@@ -595,7 +595,7 @@ Feature #4 is considered complete when:
 6. ☐ Store can reorder categories locally
 7. ☐ Store can add local-only categories/items
 8. ☐ Inherited items cannot be edited for brand-critical fields
-9. ☐ Master updates propagate instantly to all linked stores
+9. ☐ Master updates propagate through read-time resolution and the current outlet sync/cache path
 10. ☐ MOL logs exist for all key actions
 11. ☐ Single-store tenants remain unchanged
 

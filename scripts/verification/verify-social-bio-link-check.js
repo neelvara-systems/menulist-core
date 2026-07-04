@@ -107,7 +107,7 @@ assertIncludes(validationDoc, 'Current release approval still requires the activ
 assertIncludes(validationDoc, 'npm run verify:social-bio-link-check', 'Social Bio Link Consistency Check validation source gate');
 assertIncludes(toolsReadmeDoc, '[social-bio-link-check](./social-bio-link-check/README.md)', 'MenuList Tools README');
 assertIncludes(familyReadmeDoc, '[Social Bio Link Consistency Check](../social-bio-link-check/README.md)', 'Public Truth Tools family docs');
-assertIncludes(familyReadmeDoc, 'thirteen public tools, a public shareable report layer, and twelve owner readiness modules', 'Public Truth Tools family status');
+assertIncludes(familyReadmeDoc, 'sixteen public tools, a public shareable report layer, and twelve owner readiness modules', 'Public Truth Tools family status');
 assertIncludes(familyReadmeDoc, '/tools/social-bio-link-check', 'Public Truth Tools route list');
 assertIncludes(familySpecDoc, 'Social Bio Link Consistency Check V0', 'Public Truth Tools spec implementation summary');
 assertIncludes(familyImplDoc, 'socialBioLinkCheckReport.ts', 'Public Truth Tools implementation docs');

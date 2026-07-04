@@ -1,5 +1,7 @@
 # Social Bio Link Consistency Check - Marketing Notes
 
+**Last Updated:** July 4, 2026
+
 ## Positioning
 
 Social Bio Link Consistency Check is a small public tool for owners who are not sure whether customers see the same current link across Instagram, Facebook, WhatsApp, Google, their website, QR codes, and printed materials.

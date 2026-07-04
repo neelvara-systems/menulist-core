@@ -510,7 +510,7 @@ export function buildFaqSchema(
                 ? translateSchemaText(t, 'publicFaqMenuQuestion', { storeName }, `Where can I see the menu for ${storeName}?`)
                 : translateSchemaText(t, 'publicFaqCatalogQuestion', { storeName }, `Where can I see what ${storeName} offers?`),
             answer: isFoodCatalog
-                ? translateSchemaText(t, 'publicFaqMenuAnswer', { url: catalogUrl }, `You can view the full menu at ${catalogUrl}. It is always up to date.`)
+                ? translateSchemaText(t, 'publicFaqMenuAnswer', { url: catalogUrl }, `You can view the full published menu at ${catalogUrl}.`)
                 : translateSchemaText(t, 'publicFaqCatalogAnswer', { url: catalogUrl }, `You can view current offerings at ${catalogUrl}.`),
         });
     }

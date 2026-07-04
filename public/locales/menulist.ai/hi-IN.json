@@ -2337,7 +2337,7 @@
     "qrCodesTitle": "QR codes",
     "qrCodesDesc": "Download the QR that matches where customers will scan it.",
     "storeMenuQr": "Store Menu QR",
-    "storeMenuQrDesc": "Best for tables, counters, and reprints. It always opens your current menu.",
+    "storeMenuQrDesc": "Best for tables, counters, and reprints. It opens your current published menu.",
     "businessProfileQr": "Business Profile QR",
     "businessProfileQrDesc": "Opens your official business page with menu and business details.",
     "projectMenuQr": "Project Menu QR",
@@ -8083,6 +8083,701 @@
         "submitFailed": "Report send नहीं हुआ. Try again."
       }
     },
+    "BusinessFactsCopyPackPage": {
+      "eyebrow": "MenuList Tools",
+      "heroTitle": "Business Facts Copy Pack",
+      "heroHighlight": "Copy Pack",
+      "heroSubtitle": "Customers को जो details चाहिए वो enter करें. MenuList profile, WhatsApp, social, website, staff और customer-link copy देता है.",
+      "trust0": "Browser में चलता है",
+      "trust1": "No profile inspection",
+      "trust2": "Signup से पहले copy",
+      "formTitle": "Business facts एक बार enter करें",
+      "formSubtitle": "वही facts डालें जो आप profiles, messages, bios और staff replies में बार-बार लिखते हैं.",
+      "fields": {
+        "businessName": "Business name",
+        "businessType": "Business type",
+        "cityOrArea": "City या area",
+        "preferredAction": "Best customer action",
+        "offerSummary": "Customers क्या पा सकते हैं",
+        "shortDescription": "Short business description",
+        "hours": "Hours",
+        "locationOrServiceArea": "Location या service area",
+        "phoneOrWhatsapp": "Phone या WhatsApp",
+        "currentCustomerLink": "Current customer link",
+        "actionLink": "Booking, order या enquiry link"
+      },
+      "actionOptions": {
+        "message": "Message",
+        "call": "Call",
+        "book": "Book",
+        "order": "Order",
+        "visit": "Visit",
+        "request_quote": "Request quote",
+        "ask_question": "Ask a question"
+      },
+      "runCheck": "Copy pack बनाएं",
+      "reset": "Reset",
+      "resultsEyebrow": "Copy pack",
+      "resultsTitle": "Publish करने से पहले reusable copy",
+      "resultsHighlight": "Reusable copy",
+      "resultsSubtitle": "यह tool Google, WhatsApp, Instagram, Facebook, websites, directories या maps open नहीं करता. यह सिर्फ entered facts use करता है.",
+      "learnMore": "Public Discovery देखें",
+      "reportEyebrow": "Copy pack status",
+      "emptyTitle": "Check के बाद copy pack दिखेगा",
+      "emptyBody": "Pack reusable copy, present facts, missing facts और exact V0 boundary दिखाएगा.",
+      "boundary0": "Only entered facts use करता है",
+      "boundary1": "External profiles update नहीं करता",
+      "boundary2": "Follow-up form submit किए बिना कुछ store नहीं होता",
+      "summaryLabel": "Business facts copy pack summary",
+      "summary": {
+        "present": "{count} present",
+        "missing": "{count} missing",
+        "unclear": "{count} unclear",
+        "notChecked": "{count} not checked"
+      },
+      "copyBlocksTitle": "Generated copy blocks",
+      "copyBlocksBody": "एक block copy करें, या नीचे full report copy करें.",
+      "copyBlockAction": "Copy",
+      "copyBlockStatuses": {
+        "copied": "Copy block copied.",
+        "copy_failed": "यह block copy नहीं हुआ."
+      },
+      "copyBlocks": {
+        "google_profile_description": {
+          "title": "Google/Profile description",
+          "helper": "Owner-approved profile description copy की तरह use करें."
+        },
+        "whatsapp_business_about": {
+          "title": "WhatsApp Business about",
+          "helper": "Short WhatsApp profile या reply copy की तरह use करें."
+        },
+        "social_bio": {
+          "title": "Instagram/Facebook bio",
+          "helper": "जहां customers को short public bio चाहिए वहां use करें."
+        },
+        "website_contact_snippet": {
+          "title": "Website/contact snippet",
+          "helper": "Website, landing page या setup handoff में use करें."
+        },
+        "staff_answer_card": {
+          "title": "Staff answer card",
+          "helper": "Staff के लिए simple reply guide की तरह use करें."
+        },
+        "customer_link_share_text": {
+          "title": "Customer link share text",
+          "helper": "Current customer link भेजते समय use करें."
+        }
+      },
+      "statuses": {
+        "ready": {
+          "title": "Copy pack ready है",
+          "description": "Entered facts customers को चाहिए core details cover करते हैं. Same current customer link everywhere use करें."
+        },
+        "missing_basics": {
+          "title": "Important facts missing हैं",
+          "description": "इस copy को public source की तरह use करने से पहले missing business facts add करें."
+        },
+        "unclear": {
+          "title": "कुछ facts unclear हैं",
+          "description": "Copy pack usable है, लेकिन hours, location, action या current link details cleanup चाहती हैं."
+        },
+        "not_checked": {
+          "title": "Facts check नहीं हुए",
+          "description": "Local copy pack बनाने के लिए business facts enter करें."
+        },
+        "manual_review_needed": {
+          "title": "Manual review चाहिए",
+          "description": "Public copy बनने से पहले इन facts को person review करे."
+        }
+      },
+      "results": {
+        "present": "Present",
+        "missing": "Missing",
+        "unclear": "Unclear",
+        "not_applicable": "Not needed",
+        "not_checked": "Not checked"
+      },
+      "checks": {
+        "business_identity": {
+          "label": "Business identity",
+          "helper": "Business name, type और area reusable copy के लिए clear हैं."
+        },
+        "public_description": {
+          "label": "Public description",
+          "helper": "Short owner-approved description present है या offer summary से बन सकती है."
+        },
+        "offer_summary": {
+          "label": "Offer summary",
+          "helper": "Customers समझ सकते हैं कि business क्या sell, serve या provide करता है."
+        },
+        "hours": {
+          "label": "Hours",
+          "helper": "Customer timing context present है."
+        },
+        "location_or_service_area": {
+          "label": "Location या service area",
+          "helper": "Customers समझ सकते हैं कि business कहां है या कहां serve करता है."
+        },
+        "contact_path": {
+          "label": "Contact path",
+          "helper": "Phone या WhatsApp contact present है."
+        },
+        "customer_action": {
+          "label": "Customer action",
+          "helper": "Profile, staff या link copy के लिए next step clear है."
+        },
+        "current_customer_link": {
+          "label": "Current customer link",
+          "helper": "Current customer-facing URL present है और locally format-check हुआ."
+        },
+        "copy_pack": {
+          "label": "Copy pack",
+          "helper": "Reusable copy blocks entered facts से generate हुए."
+        },
+        "external_platform_update": {
+          "label": "External platform update",
+          "helper": "यह boundary confirm करता है: external profiles और platforms open या update नहीं हुए."
+        }
+      },
+      "nextActions": {
+        "create_customer_link": {
+          "title": "One current customer link बनाएं",
+          "description": "MenuList को profile, WhatsApp, social, website, staff और customer handoffs के पीछे stable link की तरह use करें.",
+          "cta": "Customer link बनाएं"
+        },
+        "complete_business_facts": {
+          "title": "Source पहले complete करें",
+          "description": "Missing business facts add करें, फिर one current MenuList customer link stable source की तरह publish करें.",
+          "cta": "Customer link बनाएं"
+        },
+        "manual_review": {
+          "title": "Setup help request करें",
+          "description": "Public links publish या replace करने से पहले इस copy pack को setup material की तरह use करें.",
+          "cta": "Setup शुरू करें"
+        }
+      },
+      "reportActions": {
+        "title": "यह pack use करें",
+        "body": "Setup या handoff के लिए report copy, share या download करें.",
+        "copy": "Report copy करें",
+        "download": "Download",
+        "statuses": {
+          "copied": "Report copied.",
+          "downloaded": "Report downloaded.",
+          "copy_failed": "Report copy नहीं हुआ.",
+          "download_failed": "Report download नहीं हुआ."
+        }
+      },
+      "export": {
+        "title": "Business Facts Copy Pack report",
+        "business": "Business",
+        "city": "City या area",
+        "businessType": "Business type",
+        "preferredAction": "Preferred action",
+        "status": "Status",
+        "generatedAt": "Generated at",
+        "summary": "Summary",
+        "checks": "Checks",
+        "copyBlocks": "Copy blocks",
+        "nextStep": "Next step",
+        "boundary": "Boundary: सिर्फ entered facts check हुए. Links open नहीं हुए, profiles inspect या update नहीं हुए, reports store नहीं हुए, और AI/search providers call नहीं हुए.",
+        "notProvided": "Not provided"
+      },
+      "handoff": {
+        "title": "MenuList को भेजें",
+        "body": "जब आप इन facts को one current customer link में बदलने के लिए help चाहते हैं तब copy pack share करें.",
+        "name": "Name",
+        "email": "Work email",
+        "phone": "Phone या WhatsApp",
+        "website": "Website",
+        "consentPrefix": "मैं ",
+        "privacy": "Privacy Policy",
+        "consentMiddle": " और ",
+        "terms": "Terms of Service",
+        "consentSuffix": " से agree करता/करती हूं.",
+        "nameRequired": "Name enter करें.",
+        "emailRequired": "Valid email enter करें.",
+        "consentRequired": "Consent required है.",
+        "securityCheckRequired": "Security check complete करें.",
+        "securityCheckLoadFailed": "Security check temporarily unavailable है.",
+        "submit": "Copy pack भेजें",
+        "submitting": "Sending",
+        "success": "Copy pack sent.",
+        "submitFailed": "Copy pack send नहीं हुआ. फिर try करें."
+      }
+    },
+    "WhatsAppReplyPackPage": {
+      "eyebrow": "MenuList Tools",
+      "heroTitle": "WhatsApp Reply Pack",
+      "heroHighlight": "Reply Pack",
+      "heroSubtitle": "Customers जो facts WhatsApp पर पूछते हैं उन्हें greeting, hours, menu, prices, order, delivery, fallback और current customer link replies में बदलें.",
+      "trust0": "Browser में चलता है",
+      "trust1": "Message send नहीं होता",
+      "trust2": "Signup से पहले copy",
+      "formTitle": "Reply facts एक बार enter करें",
+      "formSubtitle": "वही details डालें जिन्हें staff, WhatsApp Business quick replies या customer messages में consistently repeat करना है.",
+      "fields": {
+        "businessName": "Business name",
+        "cityOrArea": "City या area",
+        "whatsappNumber": "Country code के साथ WhatsApp number",
+        "preferredAction": "Best customer action",
+        "offerSummary": "Menu, services या offer summary",
+        "currentCustomerLink": "Current customer link",
+        "actionLink": "Booking, order या enquiry link",
+        "hours": "Hours",
+        "responseTime": "Usual reply time",
+        "locationOrServiceArea": "Location या service area",
+        "deliveryOrPickup": "Delivery या pickup details",
+        "paymentInfo": "Payment details"
+      },
+      "actionOptions": {
+        "ask_question": "Ask a question",
+        "order": "Order",
+        "book": "Book",
+        "request_quote": "Request quote",
+        "visit": "Visit"
+      },
+      "runCheck": "Reply pack बनाएं",
+      "reset": "Reset",
+      "resultsEyebrow": "Reply pack",
+      "resultsTitle": "Owner-entered facts से reusable WhatsApp replies",
+      "resultsHighlight": "reusable WhatsApp replies",
+      "resultsSubtitle": "यह tool WhatsApp open नहीं करता, phone numbers verify नहीं करता, WhatsApp APIs call नहीं करता, messages send नहीं करता, links fetch नहीं करता, reports store नहीं करता, और AI rewrite generate नहीं करता.",
+      "learnMore": "WhatsApp action link check करें",
+      "reportEyebrow": "Reply pack status",
+      "emptyTitle": "Check के बाद reply pack दिखेगा",
+      "emptyBody": "Pack reusable replies, possible local click-to-chat preview, present facts, missing facts और exact V0 boundaries दिखाएगा.",
+      "boundary0": "Only entered facts use करता है",
+      "boundary1": "Messages send नहीं करता",
+      "boundary2": "Follow-up form submit किए बिना कुछ store नहीं होता",
+      "summaryLabel": "WhatsApp reply pack summary",
+      "summary": {
+        "present": "{count} present",
+        "missing": "{count} missing",
+        "unclear": "{count} unclear",
+        "notChecked": "{count} not checked"
+      },
+      "copyBlocksTitle": "Generated reply blocks",
+      "copyBlocksBody": "एक reply copy करें, या नीचे full report copy करें.",
+      "copyBlockAction": "Copy",
+      "copyBlockStatuses": {
+        "copied": "Reply copied.",
+        "copy_failed": "यह reply copy नहीं हुआ."
+      },
+      "copyBlocks": {
+        "greeting_reply": {
+          "title": "Greeting reply",
+          "helper": "Welcome या first-response message की तरह use करें."
+        },
+        "hours_reply": {
+          "title": "Hours reply",
+          "helper": "Customers open time या reply time पूछें तो use करें."
+        },
+        "menu_service_reply": {
+          "title": "Menu या service reply",
+          "helper": "Customers availability पूछें तो use करें."
+        },
+        "price_payment_reply": {
+          "title": "Price और payment reply",
+          "helper": "Prices, payment या availability questions के लिए use करें."
+        },
+        "order_booking_reply": {
+          "title": "Order या booking reply",
+          "helper": "Customer को next action तक ले जाने के लिए use करें."
+        },
+        "delivery_pickup_reply": {
+          "title": "Delivery या pickup reply",
+          "helper": "Collection, delivery, visit या service-area details पूछे जाएं तो use करें."
+        },
+        "fallback_reply": {
+          "title": "Fallback reply",
+          "helper": "जब detail owner confirmation चाहती है तब use करें."
+        },
+        "customer_link_reply": {
+          "title": "Customer link reply",
+          "helper": "Current customer link भेजते समय use करें."
+        }
+      },
+      "preview": {
+        "title": "Local click-to-chat preview",
+        "body": "यह link entered number और message text से locally generate हुआ. इसे open या verify नहीं किया गया."
+      },
+      "statuses": {
+        "ready": {
+          "title": "Reply pack ready है",
+          "description": "Entered facts main WhatsApp replies cover करते हैं. हर reply के पीछे same current customer link रखें."
+        },
+        "missing_basics": {
+          "title": "Important reply facts missing हैं",
+          "description": "इस pack को use करने से पहले business name, WhatsApp number, offer summary और customer link add करें."
+        },
+        "unclear": {
+          "title": "कुछ reply facts unclear हैं",
+          "description": "Replies usable हैं, लेकिन hours, action links, payment, delivery या customer-link details cleanup चाहती हैं."
+        },
+        "not_checked": {
+          "title": "Reply facts check नहीं हुए",
+          "description": "Local pack बनाने के लिए WhatsApp reply facts enter करें."
+        },
+        "manual_review_needed": {
+          "title": "Manual review चाहिए",
+          "description": "Staff या WhatsApp Business quick replies use करने से पहले person इन replies को review करे."
+        }
+      },
+      "results": {
+        "present": "Present",
+        "missing": "Missing",
+        "unclear": "Unclear",
+        "not_applicable": "Not needed",
+        "not_checked": "Not checked"
+      },
+      "checks": {
+        "business_identity": {
+          "label": "Business identity",
+          "helper": "Business name और area replies में reuse करने के लिए clear हैं."
+        },
+        "whatsapp_number": {
+          "label": "WhatsApp number",
+          "helper": "Phone number shape locally likely country-code format के लिए check हुआ."
+        },
+        "current_customer_link": {
+          "label": "Current customer link",
+          "helper": "Current customer-facing URL present है और locally format-check हुआ."
+        },
+        "offer_summary": {
+          "label": "Offer summary",
+          "helper": "Customers समझ सकते हैं कि business क्या sell, serve या provide करता है."
+        },
+        "hours_expectation": {
+          "label": "Hours और response time",
+          "helper": "Replies customers को timing context देते हैं."
+        },
+        "action_path": {
+          "label": "Action path",
+          "helper": "Reply के लिए best next action clear है."
+        },
+        "payment_context": {
+          "label": "Payment context",
+          "helper": "Payment या price expectation जहां useful है वहां present है."
+        },
+        "delivery_pickup_context": {
+          "label": "Delivery या pickup context",
+          "helper": "Collection, delivery, visit या service-area details जहां useful हैं वहां present हैं."
+        },
+        "reply_pack": {
+          "label": "Reply pack",
+          "helper": "Reusable reply blocks entered facts से generate हुए."
+        },
+        "wa_me_preview": {
+          "label": "Click-to-chat preview",
+          "helper": "Local wa.me preview तभी generate होता है जब number shape usable हो."
+        },
+        "message_delivery": {
+          "label": "Message delivery",
+          "helper": "यह boundary confirm करता है: WhatsApp open नहीं हुआ और message send नहीं हुआ."
+        }
+      },
+      "nextActions": {
+        "create_customer_link": {
+          "title": "One current customer link बनाएं",
+          "description": "MenuList को इन WhatsApp replies, quick replies, QR links और profile actions के पीछे stable link की तरह use करें.",
+          "cta": "Customer link बनाएं"
+        },
+        "complete_reply_facts": {
+          "title": "Reply facts पहले complete करें",
+          "description": "Missing facts add करें, फिर one current MenuList customer link replies के पीछे source की तरह publish करें.",
+          "cta": "Customer link बनाएं"
+        },
+        "manual_review": {
+          "title": "Setup help request करें",
+          "description": "Staff या WhatsApp Business quick replies use करने से पहले इस reply pack को setup material की तरह use करें.",
+          "cta": "Setup शुरू करें"
+        }
+      },
+      "reportActions": {
+        "title": "यह pack use करें",
+        "body": "Setup या staff handoff के लिए report copy, share या download करें.",
+        "copy": "Report copy करें",
+        "download": "Download",
+        "statuses": {
+          "copied": "Report copied.",
+          "downloaded": "Report downloaded.",
+          "copy_failed": "Report copy नहीं हुआ.",
+          "download_failed": "Report download नहीं हुआ."
+        }
+      },
+      "export": {
+        "title": "WhatsApp Reply Pack report",
+        "business": "Business",
+        "city": "City या area",
+        "preferredAction": "Preferred action",
+        "status": "Status",
+        "generatedAt": "Generated at",
+        "previewLink": "Preview link",
+        "notGenerated": "Not generated",
+        "summary": "Summary",
+        "checks": "Checks",
+        "copyBlocks": "Reply blocks",
+        "nextStep": "Next step",
+        "boundary": "Boundary: सिर्फ entered facts check हुए. WhatsApp open नहीं हुआ, phone numbers verify नहीं हुए, messages send नहीं हुए, links fetch नहीं हुए, reports store नहीं हुए, और AI/search providers call नहीं हुए.",
+        "notProvided": "Not provided"
+      },
+      "handoff": {
+        "title": "MenuList को भेजें",
+        "body": "जब आप इन facts को one current customer link में बदलने के लिए help चाहते हैं तब reply pack share करें.",
+        "name": "Name",
+        "email": "Work email",
+        "phone": "Phone या WhatsApp",
+        "website": "Website",
+        "consentPrefix": "मैं ",
+        "privacy": "Privacy Policy",
+        "consentMiddle": " और ",
+        "terms": "Terms of Service",
+        "consentSuffix": " से agree करता/करती हूं.",
+        "nameRequired": "Name enter करें.",
+        "emailRequired": "Valid email enter करें.",
+        "consentRequired": "Consent required है.",
+        "securityCheckRequired": "Security check complete करें.",
+        "securityCheckLoadFailed": "Security check temporarily unavailable है.",
+        "submit": "Reply pack भेजें",
+        "submitting": "Sending",
+        "success": "Reply pack sent.",
+        "submitFailed": "Reply pack send नहीं हुआ. फिर try करें."
+      }
+    },
+    "CustomerFaqReplyPackPage": {
+      "eyebrow": "MenuList Tools",
+      "heroTitle": "Customer FAQ Reply Pack",
+      "heroHighlight": "FAQ Reply Pack",
+      "heroSubtitle": "Repeated customer questions और owner-entered business facts को reusable FAQ, staff, website और message replies में बदलें.",
+      "trust0": "Browser में चलता है",
+      "trust1": "Conversations read नहीं करता",
+      "trust2": "Signup से पहले copy",
+      "formTitle": "Repeated questions और facts enter करें",
+      "formSubtitle": "वही questions डालें जो customers पूछते हैं और वही facts डालें जिन्हें answers repeat करें.",
+      "fields": {
+        "businessName": "Business name",
+        "cityOrArea": "City या area",
+        "currentCustomerLink": "Current customer link",
+        "preferredAction": "Best next action",
+        "menuOrServices": "Menu, services या offer summary",
+        "hours": "Hours",
+        "prices": "Prices या quote path",
+        "locationContact": "Location या contact details",
+        "actionLink": "Booking, order या enquiry link",
+        "availabilityNotes": "Availability notes",
+        "customerQuestions": "Repeated customer questions",
+        "answerSource": "Answers में use होने वाले facts"
+      },
+      "actionOptions": {
+        "answer_question": "Questions answer करें",
+        "order": "Order",
+        "book": "Book",
+        "request_quote": "Quote request",
+        "visit": "Visit"
+      },
+      "runCheck": "FAQ pack बनाएं",
+      "reset": "Reset",
+      "resultsEyebrow": "FAQ pack",
+      "resultsTitle": "Owner-entered facts से reusable answers",
+      "resultsHighlight": "reusable answers",
+      "resultsSubtitle": "यह tool customer conversations read नहीं करता, chatbot create नहीं करता, automation configure नहीं करता, messages send नहीं करता, links fetch नहीं करता, reports store नहीं करता और AI answers generate नहीं करता.",
+      "learnMore": "Question coverage check करें",
+      "reportEyebrow": "FAQ pack status",
+      "emptyTitle": "Check के बाद FAQ pack दिखेगा",
+      "emptyBody": "Pack reusable answers, present facts, missing facts और exact V0 boundaries दिखाएगा.",
+      "boundary0": "Only entered facts use करता है",
+      "boundary1": "Chatbot create नहीं करता",
+      "boundary2": "Follow-up form submit किए बिना कुछ store नहीं होता",
+      "summaryLabel": "Customer FAQ reply pack summary",
+      "summary": {
+        "present": "{count} present",
+        "missing": "{count} missing",
+        "unclear": "{count} unclear",
+        "notChecked": "{count} not checked"
+      },
+      "copyBlocksTitle": "Generated FAQ answer blocks",
+      "copyBlocksBody": "एक answer copy करें, या नीचे full report copy करें.",
+      "copyBlockAction": "Copy",
+      "copyBlockStatuses": {
+        "copied": "Answer copied.",
+        "copy_failed": "यह answer copy नहीं हुआ."
+      },
+      "copyBlocks": {
+        "faq_overview": {
+          "title": "FAQ overview",
+          "helper": "Entered repeated questions के लिए short guide की तरह use करें."
+        },
+        "menu_service_answer": {
+          "title": "Menu या service answer",
+          "helper": "Customers availability पूछें तो use करें."
+        },
+        "hours_answer": {
+          "title": "Hours answer",
+          "helper": "Customers open time पूछें तो use करें."
+        },
+        "price_answer": {
+          "title": "Price answer",
+          "helper": "Customers prices, rates या quote path पूछें तो use करें."
+        },
+        "location_contact_answer": {
+          "title": "Location और contact answer",
+          "helper": "Customers location या contact पूछें तो use करें."
+        },
+        "order_booking_answer": {
+          "title": "Order या booking answer",
+          "helper": "Customer को next step बताने के लिए use करें."
+        },
+        "availability_notes_answer": {
+          "title": "Availability notes answer",
+          "helper": "Customers पूछें कि अभी क्या available है, तब use करें."
+        },
+        "fallback_answer": {
+          "title": "Fallback answer",
+          "helper": "जब question owner confirmation चाहता है तब use करें."
+        }
+      },
+      "statuses": {
+        "ready": {
+          "title": "FAQ pack ready है",
+          "description": "Entered facts repeated customer questions cover करते हैं. हर answer के पीछे same current customer link रखें."
+        },
+        "missing_basics": {
+          "title": "Important FAQ facts missing हैं",
+          "description": "इस pack को use करने से पहले business identity, repeated questions और source facts add करें."
+        },
+        "unclear": {
+          "title": "कुछ FAQ facts unclear हैं",
+          "description": "Answers usable हैं, लेकिन customer link, menu, hours, prices, location या action details cleanup चाहती हैं."
+        },
+        "not_checked": {
+          "title": "FAQ facts check नहीं हुए",
+          "description": "Local pack बनाने के लिए repeated customer questions और business facts enter करें."
+        },
+        "manual_review_needed": {
+          "title": "Manual review चाहिए",
+          "description": "Staff, website, FAQ या message templates use करने से पहले person इन answers को review करे."
+        }
+      },
+      "results": {
+        "present": "Present",
+        "missing": "Missing",
+        "unclear": "Unclear",
+        "not_applicable": "Not needed",
+        "not_checked": "Not checked"
+      },
+      "checks": {
+        "business_identity": {
+          "label": "Business identity",
+          "helper": "Business name और area answers में reuse करने के लिए clear हैं."
+        },
+        "customer_questions": {
+          "label": "Customer questions",
+          "helper": "Repeated customer questions enter हुए."
+        },
+        "answer_source": {
+          "label": "Answer source facts",
+          "helper": "Answers में use होने वाले facts present हैं."
+        },
+        "current_customer_link": {
+          "label": "Current customer link",
+          "helper": "Current customer-facing URL present है और locally format-check हुआ."
+        },
+        "menu_service_context": {
+          "label": "Menu या service context",
+          "helper": "Answers में business क्या offer करता है उसका enough context है."
+        },
+        "hours_context": {
+          "label": "Hours context",
+          "helper": "Answers में useful timing context है."
+        },
+        "price_context": {
+          "label": "Price context",
+          "helper": "Answers में जहां useful है वहां prices, rates या quote-path context है."
+        },
+        "location_contact_context": {
+          "label": "Location और contact context",
+          "helper": "Answers में जहां useful है वहां location या contact context है."
+        },
+        "action_context": {
+          "label": "Action context",
+          "helper": "Reusable answer के लिए best next action clear है."
+        },
+        "faq_reply_pack": {
+          "label": "FAQ reply pack",
+          "helper": "Reusable answer blocks entered facts से generate हुए."
+        },
+        "automation_boundary": {
+          "label": "Automation boundary",
+          "helper": "यह boundary confirm करता है: chatbot, automation, conversation read या message send नहीं हुआ."
+        }
+      },
+      "nextActions": {
+        "create_customer_link": {
+          "title": "One current customer link बनाएं",
+          "description": "MenuList को इन FAQ, staff, website और message answers के पीछे stable source की तरह use करें.",
+          "cta": "Customer link बनाएं"
+        },
+        "complete_faq_facts": {
+          "title": "FAQ facts पहले complete करें",
+          "description": "Missing questions और facts add करें, फिर one current MenuList customer link answers के पीछे source की तरह publish करें.",
+          "cta": "Customer link बनाएं"
+        },
+        "manual_review": {
+          "title": "Setup help request करें",
+          "description": "Staff, website या message templates use करने से पहले इस FAQ pack को setup material की तरह use करें.",
+          "cta": "Setup शुरू करें"
+        }
+      },
+      "reportActions": {
+        "title": "यह pack use करें",
+        "body": "Setup या staff handoff के लिए report copy, share या download करें.",
+        "copy": "Report copy करें",
+        "download": "Download",
+        "statuses": {
+          "copied": "Report copied.",
+          "downloaded": "Report downloaded.",
+          "copy_failed": "Report copy नहीं हुआ.",
+          "download_failed": "Report download नहीं हुआ."
+        }
+      },
+      "export": {
+        "title": "Customer FAQ Reply Pack report",
+        "business": "Business",
+        "city": "City या area",
+        "preferredAction": "Preferred action",
+        "status": "Status",
+        "generatedAt": "Generated at",
+        "summary": "Summary",
+        "checks": "Checks",
+        "copyBlocks": "FAQ answer blocks",
+        "nextStep": "Next step",
+        "boundary": "Boundary: सिर्फ entered questions और facts check हुए. Customer conversations read नहीं हुए, chatbot create नहीं हुआ, automation configure नहीं हुआ, message send नहीं हुआ, links fetch नहीं हुए, reports store नहीं हुए, और AI/search providers call नहीं हुए.",
+        "notProvided": "Not provided"
+      },
+      "handoff": {
+        "title": "MenuList को भेजें",
+        "body": "जब आप इन answers को one current customer link में बदलने के लिए help चाहते हैं तब FAQ pack share करें.",
+        "name": "Name",
+        "email": "Work email",
+        "phone": "Phone या WhatsApp",
+        "website": "Website",
+        "consentPrefix": "मैं ",
+        "privacy": "Privacy Policy",
+        "consentMiddle": " और ",
+        "terms": "Terms of Service",
+        "consentSuffix": " से agree करता/करती हूं.",
+        "nameRequired": "Name enter करें.",
+        "emailRequired": "Valid email enter करें.",
+        "consentRequired": "Consent required है.",
+        "securityCheckRequired": "Security check complete करें.",
+        "securityCheckLoadFailed": "Security check temporarily unavailable है.",
+        "submit": "FAQ pack भेजें",
+        "submitting": "Sending",
+        "success": "FAQ pack sent.",
+        "submitFailed": "FAQ pack send नहीं हुआ. फिर try करें."
+      }
+    },
     "ToolsHubPage": {
       "eyebrow": "MenuList Tools",
       "heroTitle": "Public business truth के लिए MenuList Tools",
@@ -8142,10 +8837,20 @@
           "title": "Public Truth Check",
           "description": "Check करें कि public source में name, list, prices, hours, location, contact, action और current link basics हैं या नहीं."
         },
+        "businessFactsCopyPack": {
+          "meta": "Reusable copy",
+          "title": "Business Facts Copy Pack",
+          "description": "Entered business facts को profile, WhatsApp, social, website, staff और customer-link copy में बदलें."
+        },
         "customerQuestionCoverageCheck": {
           "meta": "Questions",
           "title": "Customer Question Coverage Check",
           "description": "Pasted public text customers के action से पहले पूछे जाने वाले questions answer करता है या नहीं, check करें."
+        },
+        "customerFaqReplyPack": {
+          "meta": "FAQ replies",
+          "title": "Customer FAQ Reply Pack",
+          "description": "Repeated questions और entered facts से reusable FAQ, staff, website और message answers बनाएं."
         },
         "customerLinkPreview": {
           "meta": "One link",
@@ -8187,6 +8892,11 @@
           "title": "WhatsApp Action Link Check",
           "description": "Check करें कि customers WhatsApp से one tap में message, order, book या ask कर सकते हैं."
         },
+        "whatsappReplyPack": {
+          "meta": "WhatsApp replies",
+          "title": "WhatsApp Reply Pack",
+          "description": "Entered facts से reusable greeting, hours, menu, price, order, delivery, fallback और customer-link replies बनाएं."
+        },
         "hoursCheck": {
           "meta": "Hours",
           "title": "Hours & Holiday Hours Check",
@@ -8201,6 +8911,11 @@
           "meta": "Social bio links",
           "title": "Social Bio Link Consistency Check",
           "description": "Check करें कि social bios, public profiles, website links, QR codes और print materials one current customer link पर point करते हैं या नहीं."
+        },
+        "customerFaqReplyPack": {
+          "meta": "FAQ replies",
+          "title": "Customer FAQ Reply Pack",
+          "description": "Repeated customer questions और entered business facts से reusable FAQ और auto-reply text बनाएं."
         }
       },
       "boundaryEyebrow": "Tool boundary",
@@ -8461,6 +9176,10 @@
         "defaultBusiness": "Business not provided",
         "defaultContext": "Public tool report",
         "generated": "Generated"
+      },
+      "setupJobs": {
+        "title": "Setup job list",
+        "body": "ये report से निकले practical fixes हैं. MenuList truth बदलने से पहले हर item owner से confirm होना चाहिए."
       },
       "reportActions": {
         "title": "इस report को share या keep करें",
@@ -8744,8 +9463,7 @@
         "boundary1": "No report storage",
         "boundary2": "No ranking promise"
       }
-    }
-  },
+    }  },
   "MobileProjectSelector": {
     "loadFailed": "मेन्यू लोड नहीं हो सके",
     "activateBeforeUsing": "इस्तेमाल से पहले इस मेन्यू को सक्रिय करें",

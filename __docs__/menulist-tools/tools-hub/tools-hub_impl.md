@@ -1,6 +1,7 @@
 # Tools Hub - Implementation
 
 **Status:** Implemented
+**Last Updated:** July 4, 2026
 **Local Source Gate:** `npm run verify:tools-hub`
 
 ## Runtime Files
@@ -11,8 +12,8 @@
 | `src/components/website/toolsHub/ToolsHubPage.tsx` | Static hub UI and grouped tool registry |
 | `src/styles/website.css` | Scoped responsive hub styles |
 | `src/config/features.ts` | `ENABLE_PUBLIC_TRUTH_TOOLS_HUB` gate |
-| `src/components/website/Header.tsx` | Resources dropdown and mobile resources link |
-| `src/components/website/Footer.tsx` | Footer Start link |
+| `src/components/website/Header.tsx` | Desktop Resources dropdown and mobile hamburger Resources link |
+| `src/components/website/Footer.tsx` | Footer Start column link |
 | `src/lib/seo/discoveryPolicy.ts` | Public discovery entry |
 | `public/locales/menulist.ai/en-US.json` | English hub copy |
 | `public/locales/menulist.ai/hi-IN.json` | Hindi hub copy |
@@ -37,6 +38,8 @@ ENABLE_PUBLIC_TRUTH_TOOLS: true
 
 `TOOLS_HUB_GROUPS` lives in the component because this is a static website index, not a shared runtime registry. Do not extract it into a generalized plugin system until at least two non-website surfaces need the same grouped navigation contract.
 
+The registry must stay an exact set with the implemented public tool family. `npm run verify:tools-hub` compares the literal `href` and `key` values in `TOOLS_HUB_GROUPS` against the expected sixteen public routes and locale keys, so a stale card for an unimplemented tool fails even if every expected card is still present.
+
 ## Runtime Boundary
 
 No report builder, API route, Firebase read/write, provider call, crawler, upload, or contact handoff is added.
@@ -47,7 +50,7 @@ The hub is allowed to:
 - link to implemented tool routes
 - link to `/create-menu`
 - link to `/features/business-health`
-- appear in header Resources navigation and footer Start navigation
+- appear in desktop header Resources navigation, mobile hamburger Resources navigation, and footer Start navigation
 
 The hub is not allowed to:
 
@@ -65,8 +68,9 @@ The hub is not allowed to:
 
 - route exists and is feature-flagged
 - component uses `Website.ToolsHubPage` locale copy
-- all 13 current tool routes are listed
+- all 16 current tool routes are listed, with no extra stale cards
 - no API/report/contact/runtime fetch path exists
 - docs live under `__docs__/menulist-tools/tools-hub/`
 - header/footer/discovery/sitemap/LLM context are wired
+- `/tools` remains reachable from desktop Resources, mobile hamburger Resources, and the footer Start column through the aggregate `verify:public-truth-tools` gate
 - English and Hindi locale keys exist

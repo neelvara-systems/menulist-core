@@ -40,7 +40,7 @@ MenuList AI Image Generation offers **Option D**:
 
 - **Cost:** Included in your subscription
 - **Timeline:** 30 seconds per image
-- **Result:** Professional-quality images, consistent style, instant updates
+- **Result:** Professional-quality images, consistent style, ready-to-apply updates
 
 ### Real Impact
 

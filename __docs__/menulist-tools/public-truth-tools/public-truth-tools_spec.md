@@ -1,7 +1,7 @@
 # Public Truth Tools - Product Specification
 
 **Status:** Active family; first V0 tools and V1 owner check implemented
-**Last Updated:** July 2, 2026
+**Last Updated:** July 4, 2026
 **Audience:** CEO, PM, product owner
 
 ---
@@ -34,7 +34,7 @@ Every Public Truth Tool must be assigned to a lane before implementation.
 | V1 | Logged-in MenuList owner check | Existing MenuList owner | Better gaps from actual MenuList store/project truth | Included inside Business Health, Public Discovery, OBP readiness, QR/share readiness |
 | V2 | Paid add-on behavior | Multi-location owner, partner, agency | Recurring checks, saved history, monthly report, multi-location scan, partner/agency report | Paid only when recurrence, history, reporting, or multi-location value exists |
 
-The current Public Truth Check implementation includes V0 public self-report and V1 logged-in owner check. QR Link Health Check V0, Menu Readability Check V0, Customer Question Coverage Check V0/V1, Booking Inquiry Readiness Check V0/V1, Price Availability Gap Check V0/V1, Menu PDF Cleanup Check V0/V1, Google Profile Basics Checklist V0/V1, One Customer Link Preview V0, Social Bio Link Consistency Check V0, WhatsApp Action Link Check V0, Hours Check V0, and Photo Gap Check V0 are also implemented as public browser-local tools. V2 remains a documented future lane, not shipped runtime behavior.
+The current Public Truth Check implementation includes V0 public self-report and V1 logged-in owner check. Business Facts Copy Pack V0, QR Link Health Check V0, Menu Readability Check V0, Customer Question Coverage Check V0/V1, Booking Inquiry Readiness Check V0/V1, Price Availability Gap Check V0/V1, Menu PDF Cleanup Check V0/V1, Google Profile Basics Checklist V0/V1, One Customer Link Preview V0, Social Bio Link Consistency Check V0, WhatsApp Action Link Check V0, Hours Check V0, and Photo Gap Check V0 are also implemented as public browser-local tools. V2 remains a documented future lane, not shipped runtime behavior.
 
 ---
 

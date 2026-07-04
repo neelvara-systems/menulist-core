@@ -5,7 +5,7 @@
 **Internal Slug:** `owner-business-assistant`
 **Product:** MenuList
 **Status:** Implemented as a read-only Business Health and grounded answer surface
-**Last Updated:** June 30, 2026
+**Last Updated:** July 4, 2026
 
 ## Current Decision
 
@@ -22,7 +22,7 @@ The accepted product shape is:
 3. Cache-first context packets for the dashboard, full Business Health page, mobile screen, and answer route.
 4. Grounded typed answers using only validated context-packet facts and deterministic fallbacks.
 5. Structured read-only artifacts: text, metric rows, compact tables, trend series, source/freshness notes, suggested questions, and health checks.
-6. Desktop dashboard card, analytics strip, full `/business-health` route, and mobile screen inside `MobileShell`.
+6. Desktop dashboard card, public readiness fix list, analytics strip, full `/business-health` route, and mobile screen inside `MobileShell`.
 7. Internal platform monitoring for answer quality, unsupported gaps, source coverage, feedback, and route read/write cost.
 8. Explicit packet invalidation tied to scheduler rebuilds and public-truth changes.
 

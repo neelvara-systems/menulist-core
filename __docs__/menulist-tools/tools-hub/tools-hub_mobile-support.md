@@ -1,5 +1,7 @@
 # Tools Hub - Mobile Support
 
+**Last Updated:** July 4, 2026
+
 ## Scope
 
 The public hub is responsive website UI only.

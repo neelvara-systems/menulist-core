@@ -1,6 +1,7 @@
 # Social Bio Link Consistency Check - Firebase Boundary
 
 **Status:** V0 is browser-local and zero report storage.
+**Last Updated:** July 4, 2026
 
 ## Operation Cost
 

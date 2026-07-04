@@ -37,6 +37,7 @@ import {
 } from '@lib/publicContact/contactClientResponse';
 import { trackWebsiteMarketingEvent } from '@lib/website/plausible';
 import {
+  buildShareableToolReportSetupJobs,
   createShareableToolReportUrl,
   type ShareableToolReportPayload,
 } from '@/lib/public-truth-tools/shareableToolReport';
@@ -184,6 +185,19 @@ function SocialBioLinkCheckReportCard({ report }: { report: SocialBioLinkCheckRe
   const eventContext = useMemo(() => buildReportEventContext(report), [report]);
   const shareableReportPayload = useMemo<ShareableToolReportPayload>(() => {
     const issueCount = report.summary.missing + report.summary.unclear;
+    const checks = report.checks.map((check) => ({
+      id: check.id,
+      label: t(`checks.${check.id}.label`),
+      result: check.result,
+      helperText: t(`checks.${check.id}.helper`),
+      evidenceText: check.evidenceText,
+    }));
+    const nextAction = {
+      title: t(`nextActions.${report.nextAction.type}.title`),
+      description: t(`nextActions.${report.nextAction.type}.description`),
+      cta: t(`nextActions.${report.nextAction.type}.cta`),
+      href: report.nextAction.href,
+    };
 
     return {
       schemaVersion: 1,
@@ -206,19 +220,9 @@ function SocialBioLinkCheckReportCard({ report }: { report: SocialBioLinkCheckRe
         primaryNumber: issueCount,
         primaryLabel: t('shareReport.primaryLabel'),
       },
-      checks: report.checks.map((check) => ({
-        id: check.id,
-        label: t(`checks.${check.id}.label`),
-        result: check.result,
-        helperText: t(`checks.${check.id}.helper`),
-        evidenceText: check.evidenceText,
-      })),
-      nextAction: {
-        title: t(`nextActions.${report.nextAction.type}.title`),
-        description: t(`nextActions.${report.nextAction.type}.description`),
-        cta: t(`nextActions.${report.nextAction.type}.cta`),
-        href: report.nextAction.href,
-      },
+      checks,
+      setupJobList: buildShareableToolReportSetupJobs(checks, nextAction),
+      nextAction,
       publicBoundary: [
         t('shareReport.boundary0'),
         t('shareReport.boundary1'),

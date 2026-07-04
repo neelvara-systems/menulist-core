@@ -4,15 +4,10 @@ import {
     LuArrowRight,
     LuArrowUpRight,
     LuBuilding2,
-    LuCheck,
-    LuCpu,
-    LuDatabase,
     LuExternalLink,
     LuFileText,
-    LuFingerprint,
     LuGlobe2,
     LuLayers,
-    LuLock,
     LuMail,
     LuMenuSquare,
     LuNetwork,
@@ -90,7 +85,7 @@ export const NAV_ITEMS: NavItem[] = [
 
 export const OPERATING_ROWS: InfoCard[] = [
     {
-        title: 'Company contact',
+        title: 'Company reference',
         description: 'Business, legal, and privacy questions route to direct Neelvara email addresses.',
         icon: LuBuilding2,
         meta: 'Direct inboxes',
@@ -105,7 +100,7 @@ export const OPERATING_ROWS: InfoCard[] = [
     },
     {
         title: 'Business inbox',
-        description: 'Company and product-relationship questions start with direct email routing.',
+        description: 'Company questions use direct email routing; product support remains on product sites.',
         icon: LuShieldCheck,
         meta: 'Company email',
         variant: 'violet',
@@ -117,7 +112,7 @@ export const DIRECTORY_ROWS = [
         label: 'Business',
         value: NEELVARA_CONTACT_EMAIL,
         href: `mailto:${NEELVARA_CONTACT_EMAIL}`,
-        description: 'General company and product-relationship questions.',
+        description: 'General company and product relationship questions.',
         icon: LuMail,
     },
     {
@@ -145,9 +140,9 @@ const PRODUCT_ICON_BY_NAME: Record<typeof NEELVARA_PRODUCT_LINEUP[number]['name'
 export const PAGE_DATA: Record<PageData['slug'], PageData> = {
     products: {
         slug: 'products',
-        title: 'Focused Products',
-        description: 'Focused products operated by Neelvara Systems.',
-        eyebrow: 'Focused products',
+        title: 'Operated Products',
+        description: 'Current operated products and product website routing for Neelvara Systems.',
+        eyebrow: 'Operated products',
         cards: NEELVARA_PRODUCT_LINEUP.map((product, index) => ({
             title: product.name,
             description: product.summary,
@@ -159,9 +154,9 @@ export const PAGE_DATA: Record<PageData['slug'], PageData> = {
         sections: [
             {
                 title: 'Product boundary',
-                body: 'Neelvara Systems operates the current product lineup. Product details, pricing, onboarding, and support remain on each product website.',
+                body: 'This company site identifies operated products and routes visitors to the correct product website.',
                 items: [
-                    'MenuList, Answerlattice, and CampaignCue keep separate product sites and product-specific documentation.',
+                    'MenuList, Answerlattice, and CampaignCue keep separate websites, policies, support paths, and product commitments.',
                     'Only approved operated products appear on this website.',
                     'Company, legal, and privacy questions route through the Neelvara contact paths.',
                 ],
@@ -171,8 +166,8 @@ export const PAGE_DATA: Record<PageData['slug'], PageData> = {
     about: {
         slug: 'about',
         title: 'About',
-        description: 'Neelvara Systems builds infrastructure for customer-facing business information that should stay accurate without constant maintenance.',
-        eyebrow: 'Company focus',
+        description: 'Neelvara Systems operates infrastructure for customer-facing business information that should stay accurate without constant maintenance.',
+        eyebrow: 'Company overview',
         cards: [
             {
                 title: 'Business information',
@@ -183,43 +178,43 @@ export const PAGE_DATA: Record<PageData['slug'], PageData> = {
             },
             {
                 title: 'Quiet operation',
-                description: 'The company favors reliable foundations over noisy dashboards or broad public promises.',
+                description: 'The company favors maintained information sources over noisy dashboards or broad public promises.',
                 icon: LuShieldCheck,
                 meta: 'Low noise',
                 variant: 'indigo',
             },
             {
-                title: 'Small business fit',
-                description: 'The primary lens is practical ownership: less maintenance, fewer decisions, and clearer customer-facing output.',
+                title: 'Operational fit',
+                description: 'The operating lens is maintenance reduction: fewer repeated updates, clearer public facts, and less support drift.',
                 icon: LuBuilding2,
-                meta: 'Owner lens',
+                meta: 'Infrastructure lens',
                 variant: 'violet',
             },
         ],
         sections: [
             {
-                title: 'Operating stance',
-                body: 'Neelvara Systems exists because stale or unclear business information creates daily customer friction.',
+                title: 'Why the company exists',
+                body: 'Neelvara Systems exists because unclear public facts, unapproved answers, and scattered business context create avoidable customer friction.',
                 items: [
                     'The company site stays calm, narrow, and factual.',
-                    'Product-specific marketing stays on product domains.',
+                    'Product details stay on product domains.',
                     'MenuList, Answerlattice, and CampaignCue operate as separate products with separate product surfaces.',
-                    'Company-level copy stays focused on the long-term foundation behind those products.',
+                    'Company copy identifies the operating company behind those products.',
                 ],
             },
             {
-                title: 'What we do not build',
-                body: 'Neelvara Systems does not present itself as a general back-office software suite.',
+                title: 'What this company website does not claim',
+                body: 'This company site does not present Neelvara Systems as a general back-office software suite.',
                 items: [
                     'No POS, payroll, accounting, CRM, delivery, or internal operations platform is claimed on this company website.',
-                    'Product pages should explain product-specific capabilities instead of stretching the company site.',
-                    'Company pages should make product ownership and contact routes easy to verify.',
+                    'Product websites explain product capabilities instead of stretching the company site.',
+                    'Company pages make product operation and contact routes easy to verify.',
                 ],
             },
         ],
         closing: {
             eyebrow: 'Company boundary',
-            title: 'Products evolve independently. The company provides the long-term foundation behind them.',
+            title: 'Products keep their own websites. Neelvara provides the company reference behind them.',
             body: NEELVARA_RELATIONSHIP_LINE,
             ctaLabel: 'View Products',
             ctaHref: '/products',
@@ -228,7 +223,7 @@ export const PAGE_DATA: Record<PageData['slug'], PageData> = {
     contact: {
         slug: 'contact',
         title: 'Contact',
-        description: 'Contact Neelvara Systems for company, legal, privacy, partnership, or business-related inquiries.',
+        description: 'Contact Neelvara Systems for company, legal, privacy, partnership, or business inquiries.',
         eyebrow: 'Contact points',
         cards: DIRECTORY_ROWS.map((row) => ({
             title: row.label,
@@ -241,7 +236,7 @@ export const PAGE_DATA: Record<PageData['slug'], PageData> = {
         sections: [
             {
                 title: 'Choose the right contact',
-                body: 'Use the email that best matches the inquiry. Product support, onboarding, billing, and account questions should start from the product website.',
+                body: 'Use the email that matches the company inquiry. Product support, onboarding, billing, and account questions should start from the product website.',
                 items: [
                     'Use the business email for general company or product relationship questions.',
                     'Use the legal email for vendor, entity, or contract verification.',
@@ -266,7 +261,7 @@ export const PAGE_DATA: Record<PageData['slug'], PageData> = {
         closing: {
             eyebrow: 'Company contact',
             title: 'Company questions start with email.',
-            body: `For company-level questions about Neelvara Systems, email ${NEELVARA_CONTACT_EMAIL}.`,
+            body: `For company questions about Neelvara Systems, email ${NEELVARA_CONTACT_EMAIL}.`,
             ctaLabel: 'Email Neelvara',
             ctaHref: `mailto:${NEELVARA_CONTACT_EMAIL}`,
             ctaExternal: true,
@@ -303,7 +298,7 @@ export const PAGE_DATA: Record<PageData['slug'], PageData> = {
         sections: [
             {
                 title: 'Public entity information',
-                body: 'This page provides company-level information for Neelvara Systems. It is not a product pricing page, owner dashboard, or customer support portal.',
+                body: 'This page provides company reference information for Neelvara Systems. It is not a product pricing page, product app, or customer support portal.',
                 items: [
                     'Operating trade name: Neelvara Systems.',
                     'Country of operation: India.',
@@ -312,10 +307,10 @@ export const PAGE_DATA: Record<PageData['slug'], PageData> = {
             },
             {
                 title: 'Product policy split',
-                body: 'Neelvara Systems keeps company-level legal information separate from product-specific policies.',
+                body: 'Neelvara Systems keeps company legal information separate from product policies.',
                 items: [
                     NEELVARA_RELATIONSHIP_LINE,
-                    'Product pricing, onboarding, support, billing, cancellation, refund, and service terms belong on the relevant product site.',
+                    'Product pricing, onboarding, support, billing, cancellation, refund, and service terms belong on the relevant product website.',
                     'This page does not claim private-limited status, subsidiaries, or a holding-company structure.',
                 ],
             },
@@ -569,14 +564,14 @@ export const COMPARISON_ROWS: ComparisonRow[] = [
     {
         label: 'Purpose',
         company: 'Company name, current products, and official contact routes.',
-        products: 'Product details, pricing, onboarding, and customer-facing promises.',
-        apps: 'Signed-in owner workflows, account settings, and product data.',
+        products: 'Product capabilities, pricing, onboarding, policies, and support.',
+        apps: 'Signed-in product workflows, account settings, and product data.',
     },
     {
         label: 'Contact',
         company: 'Business, legal, and privacy email addresses.',
-        products: 'Product support, sales, help docs, and account guidance.',
-        apps: 'Owner actions, team operations, and account work.',
+        products: 'Product support, help docs, and account guidance.',
+        apps: 'Signed-in actions, team operations, and account work.',
     },
     {
         label: 'Data',
@@ -586,8 +581,8 @@ export const COMPARISON_ROWS: ComparisonRow[] = [
     },
     {
         label: 'Claims',
-        company: 'Narrow, verifiable company-level statements.',
-        products: 'Capability, pricing, and product-specific promises.',
+        company: 'Narrow, verifiable company statements.',
+        products: 'Capability, pricing, and product commitments.',
         apps: 'Operational behavior shown to signed-in users.',
     },
 ];
@@ -680,18 +675,6 @@ export function PageShell({ children }: { children: React.ReactNode }) {
             <SiteHeader />
             <main>{children}</main>
             <SiteFooter />
-        </div>
-    );
-}
-
-export function SegmentControl({ items, activeIndex = 0 }: { items: string[]; activeIndex?: number }) {
-    return (
-        <div className="nv-segmented" aria-label="Reference areas">
-            {items.map((item, index) => (
-                <span className={index === activeIndex ? 'is-active' : undefined} key={item}>
-                    {item}
-                </span>
-            ))}
         </div>
     );
 }
@@ -793,7 +776,7 @@ export function StructuredData() {
 
 export function HeroStudioMock() {
     const pipelineRows = [
-        ['Company', 'current', '#2384ff'],
+        ['Company', 'reference', '#2384ff'],
         ['Products', 'operated', '#2737c8'],
         ['Policies', 'separate', '#6542e8'],
         ['Contact', 'email', '#1457d9'],
@@ -811,9 +794,9 @@ export function HeroStudioMock() {
             </div>
             <div className="nv-hero-mock-grid">
                 <div className="nv-mock-tile">
-                    <span className="nv-tile-label mono">Company routing</span>
-                    <strong className="serif">Clear</strong>
-                    <p>Company information, operated products, and contact routes stay easy to verify.</p>
+                    <span className="nv-tile-label mono">Reference routing</span>
+                    <strong className="serif">Mapped</strong>
+                    <p>Company identity, product boundaries, and contact routes stay easy to verify.</p>
                     <div className="nv-spark-bars" aria-hidden="true">
                         {[36, 44, 30, 58, 46, 68, 82, 74].map((height) => (
                             <span style={{ height: `${height}%` }} key={height} />
@@ -863,7 +846,7 @@ export function ComparisonTable() {
                             <th>Area</th>
                             <th>
                                 <span>Neelvara</span>
-                                <em>Company layer</em>
+                                <em>Company reference</em>
                             </th>
                             <th>Product websites</th>
                             <th>Owner apps</th>
@@ -901,26 +884,6 @@ export function ComparisonTable() {
                 ))}
             </div>
         </>
-    );
-}
-
-export function BoundaryList() {
-    const rows = [
-        'Company information',
-        'Product websites',
-        'Contact routes',
-        'Policy pages',
-    ] as const;
-
-    return (
-        <ul className="nv-boundary-list">
-            {rows.map((label) => (
-                <li key={label}>
-                    <LuCheck aria-hidden="true" />
-                    <span>{label}</span>
-                </li>
-            ))}
-        </ul>
     );
 }
 
@@ -1005,51 +968,6 @@ export function SecondaryPage({ page }: { page: PageData }) {
         </PageShell>
     );
 }
-
-export const BENTO_CARDS = [
-    {
-        className: 'nv-bento-tall',
-        icon: LuFingerprint,
-        eyebrow: 'Company',
-        title: 'Neelvara Systems builds infrastructure for customer-facing business information.',
-        body: 'The company site explains the operating company, the products it operates, and the official contact routes.',
-    },
-    {
-        className: 'nv-bento-wide',
-        icon: LuGlobe2,
-        eyebrow: 'Products',
-        title: 'Different products. One information layer.',
-        body: 'MenuList, Answerlattice, and CampaignCue solve different parts of the same customer-facing information problem.',
-    },
-    {
-        className: 'nv-bento-med',
-        icon: LuLock,
-        eyebrow: 'Contact',
-        title: 'Company questions have clear email routes.',
-        body: 'Visitors can email Neelvara for company, legal, or privacy questions. Product questions start on product websites.',
-    },
-    {
-        className: 'nv-bento-med',
-        icon: LuDatabase,
-        eyebrow: 'Policies',
-        title: 'Company policies point to the right legal surface.',
-        body: 'This website covers company-level privacy and terms. Product policies remain on the relevant product sites.',
-    },
-    {
-        className: 'nv-bento-small',
-        icon: LuCpu,
-        eyebrow: 'Support',
-        title: 'Product questions start at product sites.',
-        body: 'Each product owns its support path, documentation, onboarding, and account questions.',
-    },
-    {
-        className: 'nv-bento-small',
-        icon: LuScale,
-        eyebrow: 'Legal',
-        title: 'Company facts stay narrow and verifiable.',
-        body: 'Legal copy stays limited to public company information and approved product-relationship statements.',
-    },
-] as const;
 
 export function DirectoryCards() {
     return (

@@ -68,7 +68,7 @@ No module gets `_website.md` or public `_helpdoc.md` unless the project boundary
 
 ## ChatGPT Feedback Adoption - June 24, 2026
 
-The external feedback after the share brief is adopted as an operating-layer roadmap, not as proof that SignalDesk is production-ready.
+The external feedback after the share brief is adopted as an operating-layer roadmap, not as SignalDesk launch certification.
 
 | Feedback theme | Decision | Notes |
 | --- | --- | --- |

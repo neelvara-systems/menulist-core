@@ -2,7 +2,7 @@
 
 > **Use for:** Any new MenuList public tool, owner check, internal tool, or paid add-on module
 > **Folder rule:** `__docs__/menulist-tools/[tool-or-tool-family]/`
-> **Last Updated:** June 30, 2026
+> **Last Updated:** July 4, 2026
 
 ---
 

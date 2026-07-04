@@ -272,11 +272,20 @@ function verifyDocsAndPackage(packageJson, specDoc, implDoc, firebaseDoc, mobile
 
   [
     'canonical top-level `stores/{storeId}` first',
+    'Current Owner Notifications Functions retry evidence must start with `npm run verify:functions-deploy-preflight`',
+    'External Certification Runbook Gate 1 against `menulist-qa`',
+    'record the exact scoped target list and reason in `__docs__/audits/menulist-production-readiness-audit.md` before retry',
+    'Production deploys require QA evidence and explicit production deploy approval.',
+    'do not reuse older broad Functions command shapes',
     'No composite index was added',
     'The platform dashboard at `/ops/owner-notifications` is intentionally manual and bounded',
     'POST recovery actions keep the platform-role gate',
     'does not run Firestore reads/writes, SMTP, WhatsApp, browser smoke, Firebase deploy, or Vercel deploy',
   ].forEach((token) => assertIncludes(firebaseDoc, token, 'Owner notification Firebase docs'));
+  [
+    'firebase deploy --only functions:',
+    'PATH="$HOME/.nvm/versions/node/v20.20.2/bin:$PATH" firebase deploy --only functions',
+  ].forEach((token) => assertNotIncludes(firebaseDoc, token, 'Owner notification Firebase docs stale deploy command'));
 
   [
     'Source-bounded mobile boundary; not current launch certification',
@@ -303,16 +312,18 @@ function verifyDocsAndPackage(packageJson, specDoc, implDoc, firebaseDoc, mobile
     [helpDoc, 'When the feature is available:', 'Owner notification help stale availability wording'],
   ].forEach(([source, token, label]) => assertNotIncludes(source, token, label));
 
-  [
-    'Owner notification boundary source gate: `npm run verify:owner-notifications-boundary`',
-    'source-only owner-notification registry/API/processor/monitor/docs gate',
-    'Owner Notifications doc-boundary checkpoint',
-  ].forEach((token) => assertIncludes(auditDoc, token, 'Production audit owner notification checkpoint'));
+	  [
+	    'Owner notification boundary source gate: `npm run verify:owner-notifications-boundary`',
+	    'source-only owner-notification registry/API/processor/monitor/docs gate',
+	    'Owner Notifications doc-boundary checkpoint',
+	    'Owner Notifications deploy retry doc-boundary checkpoint',
+	  ].forEach((token) => assertIncludes(auditDoc, token, 'Production audit owner notification checkpoint'));
 
-  [
-    'Owner Notifications Doc Boundary',
-    '`npm run verify:owner-notifications-boundary`',
-  ].forEach((token) => assertIncludes(changelogDoc, token, 'Changelog owner notification checkpoint'));
+	  [
+	    'Owner Notifications Doc Boundary',
+	    'Owner Notifications Deploy Retry Doc Boundary',
+	    '`npm run verify:owner-notifications-boundary`',
+	  ].forEach((token) => assertIncludes(changelogDoc, token, 'Changelog owner notification checkpoint'));
 }
 
 function verifyOwnerNotificationsBoundary() {

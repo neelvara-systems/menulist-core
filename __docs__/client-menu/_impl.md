@@ -28,7 +28,7 @@ This document consolidates all technical implementation details for the Customer
 | **Database**  | Firebase Firestore                          |
 | **Hosting**   | Vercel                                      |
 | **Analytics** | Custom + GA4 + Facebook Pixel               |
-| **PWA**       | next-pwa with service worker                |
+| **PWA**       | Customer service worker with offline fallback only |
 
 ### Request Flow
 
@@ -584,7 +584,7 @@ const RATE_LIMIT = {
 | > 3 days          | "🟢 Live" (no time) |
 ```
 
-### Feature 2: Instant Availability
+### Feature 2: Availability State
 
 **Data Field:** `item.available: boolean`
 
@@ -616,32 +616,15 @@ function getNextSlotStart(category): string | null;
 
 ---
 
-## PWA & Offline Support
+## PWA & Offline Fallback
 
 ### Service Worker Configuration
 
 ```javascript
-// next.config.js
-const withPWA = require("next-pwa")({
-  dest: "public",
-  register: true,
-  skipWaiting: true,
-  runtimeCaching: [
-    {
-      urlPattern: /^https:\/\/.*\.menulist\.ai\/.*/i,
-      handler: "NetworkFirst",
-      options: { cacheName: "menulist-pages", networkTimeoutSeconds: 10 },
-    },
-    {
-      urlPattern: /\.(png|jpg|jpeg|webp|gif|svg)$/i,
-      handler: "CacheFirst",
-      options: {
-        cacheName: "menulist-images",
-        expiration: { maxEntries: 100 },
-      },
-    },
-  ],
-});
+// public/sw-customer.js
+// Customer tenant origins use a hand-rolled, network-first service worker.
+// It precaches /offline only and never caches menu HTML, menu data, Firestore
+// responses, or item images.
 ```
 
 ### State Persistence
@@ -792,7 +775,7 @@ Index: deleted ASC, active ASC
 | **Decision Blocks**             | Fetch, display, fallback                 | ✅ Complete |
 | **Analytics**                   | Internal + third-party tracking          | ✅ Complete |
 | **Auto-Sell Features**          | Live indicator, availability, time-based | ✅ Complete |
-| **PWA**                         | Service worker, offline cache            | ✅ Complete |
+| **PWA**                         | Service worker, offline fallback only    | ✅ Complete |
 | **State Persistence**           | Scroll, filter, category                 | ✅ Complete |
 | **UI Constitution**             | P0/P1/P2/P3 compliance                   | ✅ Complete |
 | **Infrastructure Hardening**    | Timeout, retry, skeleton, caching        | ✅ Complete |
@@ -922,8 +905,8 @@ Registry policy fields:
 
 | Aspect               | Current State                 | Verification                                |
 | -------------------- | ----------------------------- | ------------------------------------------- |
-| Offline Resilience   | ✅ Service worker + cache     | Test on cheap Android, 2G/3G, airplane mode |
-| Graceful Degradation | ✅ NetworkFirst + 10s timeout | Already-loaded content must persist         |
+| Offline Resilience   | ✅ Service worker + `/offline` fallback | Test on cheap Android, 2G/3G, airplane mode |
+| Graceful Degradation | ✅ Network-first + bounded timeout | Offline state must show reconnect screen, not stale menu content |
 
 **If NO → nothing else matters.**
 
@@ -958,17 +941,16 @@ Registry policy fields:
 - Unstable network (or network throttling)
 - Production URL (not localhost)
 
-### TEST 1: Offline Resilience
+### TEST 1: Offline Fallback
 
-| Step | Action                      | Expected               | Pass |
-| ---- | --------------------------- | ---------------------- | ---- |
-| 1    | Open menu via QR on Android | Page loads fully       | [ ]  |
-| 2    | Scroll through entire menu  | All images load        | [ ]  |
-| 3    | Enable airplane mode        | No crash               | [ ]  |
-| 4    | Scroll menu while offline   | Cached content visible | [ ]  |
-| 5    | Tap menu item while offline | Item opens (cached)    | [ ]  |
-| 6    | Disable airplane mode       | No reload required     | [ ]  |
-| 7    | Repeat steps 1-6 on iOS     | Same behavior          | [ ]  |
+| Step | Action                      | Expected                                      | Pass |
+| ---- | --------------------------- | --------------------------------------------- | ---- |
+| 1    | Open menu via QR on Android | Page loads fully                              | [ ]  |
+| 2    | Scroll through entire menu  | Current online menu renders                   | [ ]  |
+| 3    | Enable airplane mode        | Next navigation shows branded offline screen  | [ ]  |
+| 4    | Try to reload while offline | `/offline` fallback appears, not cached menu  | [ ]  |
+| 5    | Disable airplane mode       | Live menu reloads after reconnect             | [ ]  |
+| 6    | Repeat steps 1-5 on iOS     | Same behavior                                 | [ ]  |
 
 **Kill test:** Toggle airplane mode mid-scroll → should not crash
 

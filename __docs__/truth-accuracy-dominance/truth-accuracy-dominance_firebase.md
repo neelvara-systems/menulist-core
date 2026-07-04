@@ -2,22 +2,26 @@
 
 **Date:** February 19, 2026  
 **Pillar:** 2 of 6
+**Status:** Source-gated Firebase cost reference; not current launch certification
 
 ---
 
 ## Cost Summary
 
-**Monthly Additional Cost: ₹0 (Zero)**
+**Monthly Additional Cost From This Reference: none**
 
-This pillar documents EXISTING infrastructure. No new Firebase operations.
+This pillar documents existing source-boundary infrastructure. This documentation checkpoint adds no new feature-specific Firebase collections, Firestore reads/writes/deletes, Storage operations, Cloud Functions, indexes, rules, schedulers, provider calls, or cache invalidation jobs.
 
-All truth stack components (MCE, hours status, versioned publishing) are already built and their costs documented in their respective feature docs:
+Current release approval still requires the active [production-readiness audit](../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../production-readiness/external-certification-runbook.md), `npm run verify:public-business-truth`, public-output QA, target deploy evidence, and production-host smoke.
 
-- MCE: `__docs__/menu-correctness-engine/menu-correctness-engine_firebase.md` — Zero additional cost (client-side)
+The referenced source-stack components (MCE, hours status, versioned publishing) keep their costs documented in their respective feature docs:
+
+- MCE: `__docs__/menu-correctness-engine/menu-correctness-engine_firebase.md` - client-side validation on covered project update paths
 - Hours Status: Part of existing store document reads
-- Cache: CDN-level, not Firebase
-- Multi-surface sync: Existing `unstable_cache` pattern
+- Public menu/OBP cache: current public cache tags and the 60-second public cache window
+- Digital Screens: separate `screen-data` cache and content-version listener path
+- Downloaded or provider targets: require separate artifact/provider evidence before freshness claims
 
 ---
 
-**Last Updated:** February 19, 2026
+**Last Updated:** July 4, 2026

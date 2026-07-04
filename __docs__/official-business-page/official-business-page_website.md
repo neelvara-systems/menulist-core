@@ -9,7 +9,7 @@
 ## Hero Section
 
 - **Headline:** One link for your entire business.
-- **Subheadline:** Menu, hours, contact — everything your customers need, updated from your MenuList business data.
+- **Subheadline:** Menu, hours, contact — everything your customers need, updated from your MenuList business data through the public cache path.
 - **CTA Text:** See how it works
 - **CTA Link:** #how-it-works
 
@@ -23,13 +23,14 @@ When customers ask for your menu, you dig through photos, PDFs, and links. They 
 
 ## Solution Statement
 
-MenuList creates one official page for your business. It shows your menu, hours, location, Google rating, photos, social links, service options, payment methods, and contact actions in one clean link. Share it everywhere — it stays accurate automatically.
+MenuList creates one official page for your business. It shows your menu, hours, location, Google rating, photos, social links, service options, payment methods, and contact actions in one clean link. Share it everywhere — it stays tied to the same MenuList business source.
 
 ---
 
 ## Core Claims
 
 - External link safety: customer-facing reservation, order, directions, review, website, social, manifest, PWA handoff, and schema links are normalized before output. Invalid or unsafe stored links are hidden instead of rendered. Source gate: `npm run verify:official-business-page-boundary`.
+- Freshness source boundary: business, menu, and lookup changes appear after the acknowledged save and public cache refresh, with the current public cache window documented as 60 seconds.
 
 ---
 
@@ -41,9 +42,9 @@ Share one link on WhatsApp, Instagram, Google, packaging, and business cards. Cu
 
 **Visual:** Phone screen showing WhatsApp chat with single link shared
 
-### 2. Always Up to Date
+### 2. Updated From One Source
 
-Change your hours, phone number, or menu — your official page updates automatically. No republishing. No resending. Customers always see the latest info.
+Change your hours, phone number, or menu in MenuList. After the acknowledged save and public cache refresh, the official page reflects the current owner-approved source. No republishing. No resending.
 
 **Visual:** Split screen: owner updates hours → customer sees updated page
 
@@ -98,7 +99,7 @@ Download a Share QR for Instagram bio and packaging, or a Menu QR for table tent
 ## FAQ
 
 - **Q:** Is this a website?
-  **A:** No. It's your official business page — fast, clean, and updated from your MenuList business data. It works alongside your website if you have one.
+  **A:** No. It's your official business page — fast, clean, and updated from your MenuList business data through the public cache path. It works alongside your website if you have one.
 
 - **Q:** How much does it cost?
   **A:** Your official page is included with every MenuList account. No extra charge.

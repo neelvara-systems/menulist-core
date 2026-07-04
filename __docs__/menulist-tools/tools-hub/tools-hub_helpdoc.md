@@ -1,5 +1,7 @@
 # Tools Hub - Help Doc
 
+**Last Updated:** July 4, 2026
+
 ## What is MenuList Tools?
 
 MenuList Tools is a set of free checks that help you see whether your public business information is clear for customers.

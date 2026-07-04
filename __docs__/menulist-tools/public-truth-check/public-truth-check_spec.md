@@ -1,7 +1,7 @@
 # Public Truth Check - Product Specification
 
 **Status:** V0 and V1 implemented; V2 planned
-**Last Updated:** June 30, 2026
+**Last Updated:** July 4, 2026
 **Audience:** CEO, PM, product owner
 
 ---

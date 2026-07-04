@@ -46,9 +46,9 @@ RESOLVER (at data layer):
 
 | ADR   | Decision                                                     | Rationale                                                                                                                                                        |
 | ----- | ------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| ADR-1 | Special menu = regular project with `_specialMenu` metadata  | Reuses 100% of editor, AI extraction, MCE, publish, screens, PDF. Zero new UI for menu building.                                                                 |
+| ADR-1 | Special menu = regular project with `_specialMenu` metadata  | Reuses the existing editor, AI extraction, MCE, public link, configured screen paths, and export flows. Downloaded/printed artifacts are regenerated or replaced after changes. Zero new UI for menu building.                 |
 | ADR-2 | Metadata lives on project document (not separate collection) | Single read. No joins. Consistent with existing project patterns.                                                                                                |
-| ADR-3 | Resolver at `getProjectBySlugOrDefault()` level              | All surfaces (menu, OBP, screens, PDF, POS) automatically get resolved menu. Single point of logic.                                                              |
+| ADR-3 | Resolver at `getProjectBySlugOrDefault()` level              | Public menu and OBP resolution use `activeSpecialMenuId`; configured screens use their screen data/version path. Exported PDFs and POS/provider targets require separate export, replacement, or integration evidence.        |
 | ADR-4 | Nightly scheduler + client-side DAL for activation           | Nightly handles overnight transitions. Client-side DAL handles immediate activation. No API routes — follows existing `duplicateProject`/`updateStore` patterns. |
 | ADR-5 | `duplicateProject()` for "create from base" flow             | Owner gets pre-filled menu. Natural flow. Existing tested function.                                                                                              |
 | ADR-6 | `projectsSummary` stores special menu metadata               | Dashboard list shows special menus inline. No extra reads.                                                                                                       |
@@ -246,7 +246,7 @@ function mergeOverlay(base: Project, special: Project): Project {
    - At 2:30 AM UTC: check all stores for special menus that should activate/deactivate today
    - Activate: set `status: 'active'`, update `store.activeSpecialMenuId`, set temp status banner
    - Deactivate: set `status: 'expired'`, clear `store.activeSpecialMenuId`, clear temp status
-   - **Codebase:** `functions/src/decisionBlocksScoring.ts:801-920` — full activate/deactivate logic
+   - **Codebase:** `functions/src/decisionBlocksScoring.ts` — full activate/deactivate logic
    - **Flag:** `ENABLE_SPECIAL_MENU_SWITCHING` (currently `true` in Cloud Functions and client)
    - Invalidate cache: shared public cache revalidation clears `client-stores`, `menu-store-{sId}`, store, and screen-data tags; scheduled Functions paths also touch initialized screen versions.
 

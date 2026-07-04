@@ -1,35 +1,35 @@
 # Presence Dominance — Marketing & Sales Collateral
 
-**Date:** February 19, 2026  
-**Audience:** Sales, Marketing (INTERNAL)  
+**Date:** July 4, 2026
+**Audience:** Sales, Marketing (INTERNAL)
 **Pillar:** 1 of 6
 
 ---
 
 ## Elevator Pitch (30 seconds)
 
-"Every business needs one official link. Not a PDF. Not a Zomato page. Not an Instagram bio with 10 links. One clean, always-updated page with your menu, hours, and contact info. MenuList gives you that — and it's already live."
+"Every business needs one official link. Not a PDF. Not a Zomato page. Not an Instagram bio with 10 links. One clean public page with the owner-approved menu, hours, and contact info. MenuList gives you that — and keeps it available while approved changes refresh through supported public paths."
 
 ## Feature Narrative
 
 Small business owners spend their days answering the same questions: "Send menu", "Are you open?", "What's your address?" They reply with PDFs, screenshots, and outdated links. Customers get confused. Owners get frustrated.
 
-MenuList gives every business a single official link that always shows accurate info. When an owner updates their menu or hours, customers see the change within 60 seconds — everywhere. That link becomes the only thing the owner needs to share. Ever.
+MenuList gives every business a single official link backed by the owner-approved public source. When an owner updates their menu or hours, public menu and Official Business Page output can take up to 60 seconds to refresh, while generated or provider-backed targets require their own evidence. That link becomes the main thing the owner needs to share.
 
 ## Competitive Positioning
 
 | vs. | MenuList Advantage |
 |-----|-------------------|
-| PDF menus | Always live, never outdated, no reprinting |
+| PDF menus | Public link stays available and refreshes after approved changes; old downloaded PDFs should be replaced |
 | Linktree | Purpose-built for businesses — live hours, structured menu, call/WhatsApp buttons |
-| Google Business Profile | Owner-controlled, not algorithm-dependent, always accurate |
+| Google Business Profile | Owner-controlled public source, not algorithm-dependent; Google/provider surfaces still require their own evidence |
 | Zomato/Swiggy | No commission, direct to customer, owner-branded |
-| Custom website | Zero effort, auto-generated, auto-updated |
+| Custom website | Zero separate website editing for menu, hours, and contact basics |
 
 ## Pitch Deck Outline (7 slides)
 
 1. **Problem:** Business owners answer "send menu" 50 times a day with different links
-2. **Solution:** One official link — always updated, always accurate
+2. **Solution:** One official link — owner-approved public source
 3. **How it works:** Owner publishes menu → link auto-generates → share everywhere
 4. **Key features:** Live hours, menu access, call/WhatsApp, QR codes
 5. **Use cases:** Restaurant shares on WhatsApp, prints QR on tables, sets as Instagram bio
@@ -39,9 +39,9 @@ MenuList gives every business a single official link that always shows accurate 
 ## Landing Page Copy Hooks
 
 - **Hero:** "One link for your entire business."
-- **Sub:** "Menu, hours, contact — always updated. Share it everywhere."
+- **Sub:** "Menu, hours, contact — owner-approved public source. Share it everywhere."
 - **Benefits:**
-  - Always accurate — update once, live everywhere
+  - Current approved source — public menu and Official Business Page output refresh through the current cache path
   - Instant — page loads in under a second
   - Official — looks clean, feels trustworthy
   - Shareable — one tap to WhatsApp, Instagram, print
@@ -67,11 +67,13 @@ MenuList gives every business a single official link that always shows accurate 
 ## Approved Language
 
 - ✅ "Official business link" / "Official page"
-- ✅ "Always updated" / "Always accurate"
+- ✅ "Owner-approved public source" / "Current approved source"
+- ✅ "Public menu and Official Business Page output can take up to 60 seconds to refresh"
 - ✅ "One link for everything"
+- ❌ Never: blanket freshness/correctness claims, universal live-surface claims, or unsupported provider/artifact freshness claims
 - ❌ Never: "AI-powered", "Smart link", "Dynamic page"
 - ❌ Never: "Better than website" (we complement, not compete)
 
 ---
 
-**Last Updated:** February 19, 2026
+**Last Updated:** July 4, 2026

@@ -214,11 +214,13 @@ function verifyDocsParity() {
   const docs = {
     readme: read('__docs__/official-business-page/README.md'),
     impl: read('__docs__/official-business-page/official-business-page_impl.md'),
+    marketing: read('__docs__/official-business-page/official-business-page_marketing.md'),
     firebase: read('__docs__/official-business-page/official-business-page_firebase.md'),
     mobile: read('__docs__/official-business-page/official-business-page_mobile-support.md'),
     helpdoc: read('__docs__/official-business-page/official-business-page_helpdoc.md'),
     website: read('__docs__/official-business-page/official-business-page_website.md'),
     audit: read('__docs__/audits/menulist-production-readiness-audit.md'),
+    changelog: read('__docs__/CHANGELOG.md'),
   };
 
   for (const [name, content] of Object.entries(docs)) {
@@ -227,16 +229,74 @@ function verifyDocsParity() {
 
   assertIncludes(docs.readme, 'Public link safety boundary', 'OBP README public link boundary');
   assertIncludes(docs.impl, 'Public link safety boundary', 'OBP implementation public link boundary');
+  assertIncludes(docs.impl, 'tag invalidation on acknowledged store update', 'OBP implementation cache invalidation boundary');
+  assertIncludes(docs.marketing, 'public cache path', 'OBP marketing public cache path wording');
+  assertIncludes(docs.marketing, 'current owner-approved source', 'OBP marketing owner-approved freshness wording');
   assertIncludes(docs.firebase, 'Public link safety is render-time and cost-neutral', 'OBP Firebase cost-neutral public link boundary');
   assertIncludes(docs.mobile, 'Public OBP external-link source gate', 'OBP mobile external-link source gate');
   assertIncludes(docs.helpdoc, 'secure public links', 'OBP helpdoc secure public links wording');
+  assertIncludes(docs.helpdoc, 'After the save succeeds', 'OBP helpdoc save acknowledgement wording');
+  assertIncludes(docs.helpdoc, 'current 1-minute public cache window', 'OBP helpdoc cache-window wording');
   assertIncludes(docs.website, 'External link safety', 'OBP website external link safety claim');
+  assertIncludes(docs.website, 'acknowledged save and public cache refresh', 'OBP website freshness boundary');
+  assertIncludes(docs.readme, 'public cache path', 'OBP README public cache path wording');
+  assertIncludes(docs.readme, 'current cache window documented as 60 seconds', 'OBP README cache-window wording');
   assertIncludes(docs.audit, 'Official Business Page boundary source-gate checkpoint', 'Production audit OBP checkpoint');
+  assertIncludes(docs.audit, 'Official Business Page freshness-copy boundary checkpoint', 'Production audit OBP freshness checkpoint');
+  assertIncludes(docs.changelog, 'Official Business Page Freshness Copy Boundary', 'Changelog OBP freshness checkpoint');
+}
+
+function verifyFreshnessBoundary() {
+  const docs = {
+    readme: read('__docs__/official-business-page/README.md'),
+    impl: read('__docs__/official-business-page/official-business-page_impl.md'),
+    marketing: read('__docs__/official-business-page/official-business-page_marketing.md'),
+    helpdoc: read('__docs__/official-business-page/official-business-page_helpdoc.md'),
+    website: read('__docs__/official-business-page/official-business-page_website.md'),
+  };
+  const joinedDocs = Object.values(docs).join('\n');
+  const stalePhrases = [
+    'Updates instantly when store data changes',
+    'Customers always see the latest info',
+    'Updated instantly',
+    'updated instantly',
+    'This always shows your latest menu automatically',
+    'Your latest menu, always accessible',
+    'Update once, updated everywhere',
+    'instant invalidation on store update',
+    'Changes appear on your official page automatically (within 1 minute)',
+    'It updates itself',
+  ];
+
+  for (const phrase of stalePhrases) {
+    assertNotIncludes(joinedDocs, phrase, 'OBP active docs freshness boundary');
+  }
+
+  const revalidateAction = read('src/lib/actions/revalidateMenuCache.ts');
+  const publicClientCache = read('src/lib/cache/publicClientCache.ts');
+  const storeDal = read('src/database/stores/index.tsx');
+  const clientStoreLookup = read('src/lib/firestore/clientStoreLookup.ts');
+  const obpContent = read('src/app/client/obp/OBPContent.tsx');
+
+  for (const token of [
+    'revalidateTag(`menu-store-${storeId}`)',
+    'revalidateTag(`store-${storeId}`)',
+    "revalidateTag('client-stores')",
+  ]) {
+    assertIncludes(revalidateAction, token, 'OBP public cache tag invalidation source');
+  }
+
+  assertIncludes(publicClientCache, "fetch('/api/revalidate/menu'", 'OBP browser public cache revalidation endpoint');
+  assertIncludes(storeDal, 'await revalidatePublicClientCache(data.storeId, "updateStore")', 'OBP store update public cache revalidation');
+  assertIncludes(clientStoreLookup, "Tag `client-stores`", 'OBP lookup shared cache tag documentation');
+  assertIncludes(clientStoreLookup, "{ revalidate: 60, tags: ['client-stores'] }", 'OBP lookup 60s public cache window');
+  assertIncludes(obpContent, "{ revalidate: 60, tags: ['client-stores'] }", 'OBP content 60s public cache window');
 }
 
 verifyPackageScript();
 verifyPublicLinkHelperRuntime();
 verifyPublicRenderingBoundary();
 verifyDocsParity();
+verifyFreshnessBoundary();
 
 console.log('Official Business Page boundary verification passed.');

@@ -46,9 +46,9 @@
 
 ## What is this?
 
-Hours + Holiday Accuracy ensures your business hours are **always correct** across all MenuList surfaces — without the owner needing to remember to update.
+Hours + Holiday Accuracy currently covers public open/closed status from saved weekly working hours, Today quick-hours edits, and time-slot presets. Holiday calendars and date-specific exception managers are not part of the shipped runtime.
 
-**The Promise:** Set hours once. MenuList keeps them correct everywhere.
+**The Promise:** Set weekly hours once. MenuList shows the current open/closed status from that source; use Temporary Status or today's hours for one-off changes.
 
 ---
 

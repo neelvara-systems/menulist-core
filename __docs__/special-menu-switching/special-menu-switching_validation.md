@@ -103,7 +103,7 @@
 | INV-5 | One active at a time            | ✅ Overlap check in create route                                |
 | INV-6 | System decides behavior         | ✅ `getSpecialMenuCapabilities()` derives from businessType     |
 | INV-7 | Not a campaign engine           | ✅ No discounts, coupons, notifications, marketing features     |
-| INV-8 | All surfaces auto-update        | ✅ Single resolver point in `page.tsx`, all surfaces downstream |
+| INV-8 | Supported live surfaces follow active menu path | ✅ Public menu/QR link, OBP, and configured screen paths use active special menu/cache/screen refresh evidence; PDF/printed and POS/provider targets stay evidence-bound |
 
 ---
 

@@ -231,6 +231,9 @@ function verifyDocsParity() {
   const impl = read('__docs__/digital-screens/digital-screens_impl.md');
   const firebase = read('__docs__/digital-screens/digital-screens_firebase.md');
   const mobile = read('__docs__/digital-screens/digital-screens_mobile-support.md');
+  const website = read('__docs__/digital-screens/digital-screens_website.md');
+  const marketing = read('__docs__/digital-screens/digital-screens_marketing.md');
+  const helpdoc = read('__docs__/digital-screens/digital-screens_helpdoc.md');
   const audit = read('__docs__/audits/menulist-production-readiness-audit.md');
   const changelog = read('__docs__/CHANGELOG.md');
 
@@ -240,13 +243,66 @@ function verifyDocsParity() {
     [impl, 'Digital Screens implementation doc'],
     [firebase, 'Digital Screens Firebase doc'],
     [mobile, 'Digital Screens mobile doc'],
+    [website, 'Digital Screens website doc'],
+    [marketing, 'Digital Screens marketing doc'],
+    [helpdoc, 'Digital Screens help doc'],
   ].forEach(([content, label]) => {
     assertIncludes(content, 'npm run verify:digital-screens-boundary', `${label} dedicated verifier command`);
-    assertIncludes(content, 'source gate', `${label} source-gate wording`);
+    assert(
+      content.includes('source gate') || content.includes('Source Gate'),
+      `${label} must include source-gate wording`,
+    );
+  });
+
+  [
+    [readme, 'Digital Screens README'],
+    [spec, 'Digital Screens spec'],
+    [impl, 'Digital Screens implementation doc'],
+    [website, 'Digital Screens website doc'],
+    [marketing, 'Digital Screens marketing doc'],
+    [helpdoc, 'Digital Screens help doc'],
+  ].forEach(([content, label]) => {
+    [
+      'always up to date',
+      'Always up to date',
+      'always current',
+      'Always Current',
+      'always-current',
+      'always correct',
+      'Always Correct',
+      'updated in real-time',
+      'updates in real-time',
+      'real-time availability',
+      'disappear instantly',
+      'appears instantly',
+      'screen updates instantly',
+      'updates automatically',
+      'Content updates automatically',
+      'updates itself',
+      'update themselves',
+      'self-updating',
+      'Self-updating',
+      'live menu data',
+      'at 8 PM',
+      'shows whatever is in your menu right now',
+      'never touch it again',
+      'Never touch it',
+      'Always showing',
+      'always showing',
+      'Auto-updating',
+      'auto-updating',
+      'Auto-Updating',
+    ].forEach((stalePhrase) => {
+      assertNotIncludes(content, stalePhrase, `${label} stale freshness copy`);
+    });
   });
 
   assertIncludes(readme, 'public-safe `platformSummary/screen_{storeId}` mirror', 'Digital Screens README public listener boundary');
+  assertIncludes(readme, '60-second `screen-data` server cache', 'Digital Screens README freshness cache boundary');
+  assertIncludes(readme, 'screen content-version listener', 'Digital Screens README listener freshness boundary');
   assertIncludes(spec, 'source-bounded screen runtime evidence; not current launch certification', 'Digital Screens spec source-bounded status');
+  assertIncludes(spec, '60-second `screen-data` server cache', 'Digital Screens spec freshness cache boundary');
+  assertIncludes(spec, 'Manual browser refresh remains the owner-facing fallback', 'Digital Screens spec manual refresh fallback');
   assertIncludes(spec, 'Current Release Boundary (July 2, 2026)', 'Digital Screens spec current release boundary');
   assertIncludes(spec, 'External Certification Runbook', 'Digital Screens spec external certification gate');
   assertIncludes(spec, 'browser TV smoke for Menu Board and Highlights display modes', 'Digital Screens spec browser TV smoke gate');
@@ -257,13 +313,21 @@ function verifyDocsParity() {
   assertIncludes(spec, 'production-host smoke for the target tenant and screen URL', 'Digital Screens spec production-host smoke gate');
   assertNotIncludes(spec, 'Production complete. Only readability/reliability/scale fixes allowed.', 'Digital Screens spec stale production-complete status');
   assertIncludes(impl, 'Seen-signal request boundary', 'Digital Screens implementation seen-signal boundary');
+  assertIncludes(impl, 'content-version listener', 'Digital Screens implementation listener refresh boundary');
   assertIncludes(firebase, 'Seen signal cheap-fail ordering', 'Digital Screens Firebase cheap-fail optimization');
   assertIncludes(firebase, 'source-gate note', 'Digital Screens Firebase source-gate note');
   assertIncludes(mobile, 'acknowledged browser-local copy contract', 'Digital Screens mobile acknowledged copy contract');
+  assertIncludes(website, 'current approved menu source', 'Digital Screens website current-source copy');
+  assertIncludes(website, 'screen content-version listener', 'Digital Screens website listener refresh boundary');
+  assertIncludes(marketing, 'saved MenuList source', 'Digital Screens marketing saved-source copy');
+  assertIncludes(marketing, 'screen update path', 'Digital Screens marketing screen update path copy');
+  assertIncludes(helpdoc, 'screen content-version listener', 'Digital Screens helpdoc listener refresh boundary');
   assertIncludes(audit, 'Digital Screens boundary source-gate checkpoint', 'Production readiness audit Digital Screens checkpoint');
   assertIncludes(audit, 'Digital Screens spec launch-boundary checkpoint', 'Production readiness audit Digital Screens spec checkpoint');
+  assertIncludes(audit, 'Digital Screens freshness-copy boundary checkpoint', 'Production readiness audit Digital Screens freshness-copy checkpoint');
   assertIncludes(audit, '`npm run verify:digital-screens-boundary`', 'Production readiness audit Digital Screens verifier command');
   assertIncludes(changelog, 'Digital Screens Spec Launch Boundary', 'Changelog Digital Screens spec boundary entry');
+  assertIncludes(changelog, 'Digital Screens Freshness-Copy Boundary', 'Changelog Digital Screens freshness-copy boundary entry');
   assertIncludes(changelog, '`npm run verify:digital-screens-boundary` passed.', 'Changelog Digital Screens verifier evidence');
 }
 

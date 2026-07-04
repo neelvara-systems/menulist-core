@@ -3,6 +3,7 @@
 **Status:** IMPLEMENTED — 3-Year Freeze  
 **Date:** February 15, 2026 (Created) | March 11, 2026 (Rebuilt)  
 **Audience:** Sales team, marketing (INTERNAL)
+**Source gate:** `npm run verify:official-business-page-boundary`
 
 ---
 
@@ -50,7 +51,7 @@ Once the owner starts using this link everywhere — Instagram bio, Google profi
 | BentoBox        | Restaurant websites (₹8,000-16,000/mo) | Free, auto-generated, no design needed           |
 | Linktree        | Link-in-bio page                       | Menu-native, live hours, structured data         |
 | Google Business | Listing on Google                      | Business-controlled official destination to place on the profile |
-| PDF Menu        | Static document                        | Live public page updated from latest MenuList data |
+| PDF Menu        | Static document                        | Public page served from MenuList data and refreshed through the public cache path |
 
 ---
 
@@ -80,9 +81,9 @@ Live demo: name, open/closed, menu button, call, WhatsApp, directions.
 
 Instagram bio, Google profile, WhatsApp, packaging, table tent cards, bills, business cards.
 
-### Slide 6: Always Up to Date
+### Slide 6: Updated From One Source
 
-Change your hours? Updated instantly. Change your phone? Updated instantly. Update your menu? Updated instantly. No PDFs to resend. No websites to republish.
+Change hours, phone, or menu once in MenuList. After the acknowledged save and public cache refresh, the official page and linked menu reflect the current owner-approved source. No PDFs to resend. No websites to republish.
 
 ### Slide 7: Get Started
 
@@ -106,7 +107,7 @@ Change your hours? Updated instantly. Change your phone? Updated instantly. Upda
 
 ### When client says: "Why not just send PDF?"
 
-> PDFs get outdated and are hard to read on phones. This always shows your latest menu automatically. You never need to resend a new menu again.
+> PDFs get outdated and are hard to read on phones. This shows the owner-approved menu through the public refresh path, so there is no new PDF to resend after approved changes settle.
 
 ### When client says: "This is just a landing page"
 
@@ -126,14 +127,14 @@ Change your hours? Updated instantly. Change your phone? Updated instantly. Upda
 
 **Benefit bullets:**
 
-- Your latest menu, always accessible
+- Current owner-approved menu, always accessible
 - Live open/closed status — customers know before they visit
 - Google rating and business photos — trust built in
 - Call, WhatsApp, directions, reserve, order — one tap actions
 - Full business hours, cuisine type, price range — AI-ready structured data
 - Two QR codes: one for sharing, one for table menus
 - Works on every device, loads instantly
-- Update once, updated everywhere
+- Update once, refreshed through the public cache path
 
 **CTA:** "See your official page"
 

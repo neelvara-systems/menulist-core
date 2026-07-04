@@ -309,7 +309,7 @@ export const dev_triggerProcessMenuImages = onCall(
 
 `functions/src/triggers/shared.ts` still exports `processMenuImages` for compatibility, but the callable now fails closed with `failed-precondition` and does not invoke Gemini. Production extraction must enter through `menuImageProcessingJobs` so the protected API route, source allowlists, tenant checks, identity checks, retry metadata, cleanup scheduler, and public cache invalidation stay on one path.
 
-Deployment of this callable hardening was attempted on June 11, 2026 with `firebase deploy --only functions:processMenuImages --project ecomsai`; Firebase blocked the deploy during Secret Manager validation because billing is disabled on the `ecomsai` project. That `ecomsai` target is historical evidence only; current callable retry evidence belongs to the External Certification Runbook Gate 1 flow with `menulist-qa` after `npm run verify:functions-deploy-preflight`, and production still requires QA evidence plus explicit production deploy approval.
+Deployment of this callable hardening was attempted on June 11, 2026 against the retired `ecomsai` Functions target. Firebase blocked the deploy during Secret Manager validation because billing is disabled on the `ecomsai` project. That `ecomsai` target is historical evidence only; do not reuse that retired target or command shape. Current callable retry evidence belongs to the External Certification Runbook Gate 1 flow with `menulist-qa` after `npm run verify:functions-deploy-preflight`, and production still requires QA evidence plus explicit production deploy approval.
 
 ### Main Processing Logic
 
@@ -782,7 +782,7 @@ Full pipeline stress-test completed. See `failure-mode-scale-audit.md` for compl
 | Firebase Cost        | 10/10 |
 | CF Reliability       | 10/10 |
 | Security             | 10/10 |
-| Production Readiness | 10/10 |
+| Historical production-readiness code-audit category | 10/10 in Mar 13 review only |
 | Data Integrity       | 10/10 |
 
 **1 Bug Found & Fixed:**

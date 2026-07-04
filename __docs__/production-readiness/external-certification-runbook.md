@@ -14,13 +14,13 @@ The codebase-side gates are currently clean when the latest production-readiness
 - `npm run verify:dependency-freeze`
 - `npm run docs:check-links`
 - all child package `verify:*` scripts, excluding the aggregate command itself
-- `npx tsc --noEmit --incremental false --pretty false`
+- `npm run typecheck` (`tsc --noEmit --incremental false --pretty false`)
 - `npm run lint`
 - `git diff --check`
 
-Prefer `npm run verify:production-readiness-local` for a full local boundary refresh. It runs the child root `verify:*` scripts, including `npm run verify:dependency-freeze`, `docs:check-links`, TypeScript, lint, and `git diff --check` while excluding itself to avoid recursion. It can run targeted package builds required by local verifiers, such as the Functions TypeScript build inside `verify:catalog-analytics`, but it does not run a Next.js production build, Firebase deploy, Vercel deploy, provider smoke, Cloud Tasks enqueue, or Firestore write.
+Prefer `npm run verify:production-readiness-local` for a full local boundary refresh. It runs the child root `verify:*` scripts, including `npm run verify:dependency-freeze`, `docs:check-links`, `npm run typecheck`, lint, and `git diff --check` while excluding itself to avoid recursion. Use `npm run verify:production-readiness-local -- --list` when you only need the gate inventory without executing child checks. `npm run build:verify` delegates to the same root typecheck script. The aggregate can run targeted package builds required by local verifiers, such as the Functions TypeScript build inside `verify:catalog-analytics`, but it does not run a Next.js production build, Firebase deploy, Vercel deploy, provider smoke, Cloud Tasks enqueue, or Firestore write.
 
-Latest local boundary evidence on July 2, 2026: `npm run verify:production-readiness-local` passed with 67/67 checks, including 63 child root `verify:*` scripts. The aggregate includes the public menu rate-limit fail-closed gate, dependency freeze verifier, System Strengthening SS-1 through SS-9, production-testing-guide launch-boundary guard, and recycle-bin source-gate output boundary. The aggregate runner now prints its own local-only boundary so green output cannot be mistaken for authenticated browser/manual QA or deploy certification.
+Latest local boundary evidence on July 4, 2026: `npm run verify:production-readiness-local` passed with 91/91 checks, including 87 child root `verify:*` scripts. The aggregate includes the public menu rate-limit fail-closed gate, dependency freeze verifier, System Strengthening SS-1 through SS-9, production-testing-guide launch-boundary guard, and recycle-bin source-gate output boundary. The aggregate runner now prints its own local-only boundary, supports `npm run verify:production-readiness-local -- --list` for a no-execution gate inventory, and uses the root `npm run typecheck` script; `npm run build:verify` delegates to that same script so green output cannot be mistaken for authenticated browser/manual QA or deploy certification.
 
 This runbook is for the remaining external/runtime certification work. Do not mark MenuList fully production-ready until every gate below has evidence attached in `__docs__/audits/menulist-production-readiness-audit.md`.
 
@@ -92,6 +92,8 @@ Local preflight is especially important for Gates 4-7 because those gates can ot
 - Required staging secrets exist for the targeted functions.
 - Local package verifiers, TypeScript, lint, and Functions build pass.
 - The deploy target is intentionally scoped; do not deploy unrelated targets.
+
+The default `functions/package.json` `deploy` script intentionally fails closed so package-local muscle memory cannot run a broad/default-project Functions deploy. If a package-local command is required after the root preflight, use `npm --prefix functions run deploy:menulist-qa`; it mirrors the current Gate 1 `menulist-qa` target set. Production Functions deploys still require QA evidence and explicit production deploy approval.
 
 **Commands**
 

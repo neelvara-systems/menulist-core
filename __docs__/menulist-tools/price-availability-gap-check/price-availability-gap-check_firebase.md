@@ -1,6 +1,7 @@
 # Price Availability Gap Check - Firebase and Cost
 
 **Status:** V0 static/browser-local report path; V1 owner module uses existing owner data context.
+**Last Updated:** July 4, 2026
 
 ## V0 Cost Table
 

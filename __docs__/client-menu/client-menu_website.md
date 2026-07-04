@@ -1,8 +1,8 @@
 # Client Menu (Digital Menu) — Website Content
 
 ## Hero Section
-- **Headline:** Your Menu, Always Perfect
-- **Subheadline:** A live digital menu that updates itself. Customers scan, browse, and decide — no app download needed.
+- **Headline:** Your Live Menu Link
+- **Subheadline:** A digital menu customers can scan, browse, and trust — no app download needed.
 - **CTA Text:** See How It Works
 - **CTA Link:** /features/digital-menu
 
@@ -10,12 +10,12 @@
 Your paper menu is outdated the moment you print it. Prices change, items sell out, new dishes arrive — but the menu on the table stays the same. Customers see wrong prices, unavailable items, and yesterday's specials.
 
 ## Solution Statement
-MenuList keeps your menu current, every second of every day. When you update a price or mark something sold out, your customers see it instantly on their phones. No reprinting, no crossing things out with a pen.
+MenuList keeps one customer menu source connected to the owner-approved data. When you update a price or mark something sold out, the public menu refreshes through the current cache path instead of depending on printed copies.
 
 ## Feature Benefits
 
-### 1. Always Up to Date
-Your menu reflects reality. Change a price, add an item, mark something sold out — customers see it the moment they scan.
+### 1. Owner-Approved Updates
+Your menu reflects the latest approved source. Change a price, add an item, or mark something sold out, then customers see the saved public menu after the current cache refresh.
 > **Visual:** Split screen showing owner editing price on dashboard → customer seeing updated price on phone
 
 ### 2. Helps Customers Decide Faster
@@ -23,15 +23,15 @@ Featured choice, Quick choice, Value choice — your menu quietly highlights wha
 > **Visual:** Phone screen showing the Featured section with 3 highlighted items
 
 ### 3. Works on Any Phone
-No app to download. Customers scan a QR code and see your menu instantly — on any phone, any browser, any language.
+No app to download. Customers scan a QR code and see your menu in their phone browser — on any phone, any browser, any supported language.
 > **Visual:** QR code being scanned → menu loading in under 2 seconds on a basic Android phone
 
 ### 4. Your Brand, Your Look
 Custom colors, your logo, your domain. It looks like YOUR menu, not a generic platform page.
 > **Visual:** Three different restaurant menus showing unique branding and themes
 
-### 5. Zero Daily Effort
-Once set up, you never touch it again. The menu runs itself — updates, recommendations, availability — all automatic.
+### 5. Quiet Daily Operation
+Once set up, the same live link keeps serving the owner-approved menu while availability, time-based categories, and prepared choice sections follow the current source data.
 > **Visual:** Calendar showing "30 days" with checkmark — owner hasn't logged in, menu still perfect
 
 ## How It Works
@@ -50,29 +50,29 @@ Once set up, you never touch it again. The menu runs itself — updates, recomme
 **A:** No. They scan a QR code and see the menu in their phone's browser. Works on every phone.
 
 ### Q: What happens if I change a price?
-**A:** Customers see the new price within seconds. No delay, no cache issues.
+**A:** After the approved update is saved or published, customers see the new price after the public menu refresh. The current cache window can be up to 60 seconds.
 
 ### Q: Can I have multiple menus (food, drinks, desserts)?
 **A:** Yes. Each menu gets its own page. Customers can switch between them.
 
 ### Q: Does it work without internet?
-**A:** Yes. Once loaded, the menu works offline thanks to built-in caching.
+**A:** The installed customer app shows a clear offline screen if the network fails. MenuList does not serve cached menu content offline, because stale prices or availability would be worse than a clear reconnect message.
 
 ### Q: Can I use my own domain (like menu.myrestaurant.com)?
-**A:** Yes. Custom domains are fully supported with automatic SSL.
+**A:** Yes. Connect a domain you control, add the DNS record, and MenuList serves it after verification. Vercel handles the certificate after the domain is accepted and configured.
 
 ## SEO Meta
 - **Page Title:** Digital Menu for Restaurants | MenuList
-- **Meta Description:** Live digital menu that updates instantly. Customers scan a QR code, see your latest menu on any phone. No app needed. Free to start.
-- **OG Title:** Your Menu, Always Perfect — MenuList
-- **OG Description:** A live digital menu that keeps itself current. Prices, availability, recommendations — all automatic.
+- **Meta Description:** Live digital menu for restaurants. Customers scan a QR code and see the owner-approved menu on any phone. No app needed. Free to start.
+- **OG Title:** Your Live Menu Link — MenuList
+- **OG Description:** A digital menu customers can scan, browse, and trust from the current owner-approved source.
 - **Target Keywords:** digital menu, QR code menu, restaurant menu, online menu, contactless menu
 
 ## Approved Language
 ### USE:
-- "Live menu", "always current", "updates instantly"
+- "Live menu", "owner-approved menu", "current public menu"
 - "Customers scan and see", "works on any phone"
-- "Zero effort", "runs itself", "automatic"
+- "Quiet daily operation", "same live link", "current source data"
 - "Your brand, your look"
 
 ### NEVER USE:

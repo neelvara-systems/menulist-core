@@ -197,6 +197,6 @@ Recommended next sequence:
 
 Adopt the feedback as an operating-layer roadmap.
 
-Do not treat it as proof that SignalDesk is production-ready.
+Do not treat it as SignalDesk launch certification.
 
 Do not treat it as permission to widen provider, send, paid campaign, public page, or social automation scope.

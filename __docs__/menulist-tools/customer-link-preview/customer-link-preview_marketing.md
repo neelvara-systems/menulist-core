@@ -1,5 +1,7 @@
 # One Customer Link Preview - Marketing Notes
 
+**Last Updated:** July 4, 2026
+
 **Public name:** One Customer Link Preview
 **Internal positioning:** The simplest way to show why MenuList should become the business's current customer source.
 

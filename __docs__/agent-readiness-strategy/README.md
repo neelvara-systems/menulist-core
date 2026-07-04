@@ -1,6 +1,6 @@
 # Agent Readiness Strategy
 
-> **Position MenuList as the most trusted, structured, machine-readable source of SMB business truth — so AI agents, search engines, and assistants naturally prefer it.**
+> **Position MenuList as a structured, machine-readable public source of SMB business truth. External AI and search systems decide what they crawl, cite, show, or summarize.**
 
 This is a **strategic positioning feature**, not a product feature. It documents how MenuList prepares for the shift from human-centric discovery to machine-centric discovery, and what infrastructure changes are needed to ensure AI systems treat MenuList as a canonical data source.
 
@@ -24,7 +24,7 @@ This is a **strategic positioning feature**, not a product feature. It documents
 
 ## One-Liner
 
-Enhance MenuList's machine-readable discovery layer (llms.txt, schema.org, structured metadata) so AI agents and assistants naturally discover and trust MenuList as the canonical source of SMB business truth.
+Enhance MenuList's machine-readable discovery layer (llms.txt, schema.org, structured metadata) so owner-approved public business facts are available to AI and search systems when they crawl or read MenuList pages. This is not a ranking, citation, or answer-placement guarantee.
 
 ---
 
@@ -67,7 +67,7 @@ MenuList already has **deep schema.org structured data** on OBP and menu pages. 
 |---------|-------------|
 | **SEO/AEO Discovery Infrastructure** | PARENT — This extends that strategy with agent-specific discovery layer |
 | **Official Business Page (OBP)** | DEPENDENCY — OBP is the canonical page agents will read |
-| **Menu Correctness Engine (MCE)** | SUPPORTS — Data accuracy = agent trust |
+| **Menu Correctness Engine (MCE)** | SUPPORTS — Data accuracy keeps the public source reliable |
 | **Schema.org Structured Data** | FOUNDATION — Already deep, this strategy adds discovery metadata |
 | **GBP Sync** | RELATED — Another distribution channel for canonical truth |
 | **URL Routing Architecture** | SUPPORTS — Stable URLs = reliable agent references |

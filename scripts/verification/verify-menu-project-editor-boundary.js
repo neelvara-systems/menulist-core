@@ -65,6 +65,9 @@ const editorReadme = read('__docs__/projects/Editor/README.md');
 const projectsMobileSupport = read('__docs__/projects/projects_mobile-support.md');
 const commandCenterReadme = read('__docs__/menu-command-center/README.md');
 const commandCenterMobileSupport = read('__docs__/menu-command-center/menu-command-center_mobile-support.md');
+const commandCenterSpec = read('__docs__/menu-command-center/menu-command-center_spec.md');
+const commandCenterWebsite = read('__docs__/menu-command-center/menu-command-center_website.md');
+const commandCenterMarketing = read('__docs__/menu-command-center/menu-command-center_marketing.md');
 const inventory = read('FEATURE_SWEEP_MASTER_INVENTORY.md');
 const report = read('FEATURE_SWEEP_MASTER_REPORT.md');
 const audit = read('__docs__/audits/menulist-production-readiness-audit.md');
@@ -251,14 +254,54 @@ forbidToken(commandCenterReadme, 'Key Files in Codebase (planned)', 'command cen
 ].forEach((token) => requireToken(commandCenterMobileSupport, token, 'command center mobile support docs'));
 
 [
+  ['command center spec', commandCenterSpec, 'Source documentation; not current launch certification'],
+  ['command center spec', commandCenterSpec, 'configured screens follow their supported refresh paths'],
+  ['command center spec', commandCenterSpec, 'POS, downloaded PDFs, printed menus, and external systems stay behind integration, export, replacement, or provider evidence'],
+  ['command center spec', commandCenterSpec, 'saved customer output follows the supported refresh path after persistence'],
+  ['command center website', commandCenterWebsite, 'MenuList-controlled live surfaces refresh through supported paths'],
+  ['command center website', commandCenterWebsite, 'downloaded PDFs, printed menus, and external systems need their own replacement or connected integration evidence'],
+  ['command center website', commandCenterWebsite, 'configured screens through their supported refresh paths'],
+  ['command center marketing', commandCenterMarketing, 'Apply in one click through the editor save path'],
+  ['command center marketing', commandCenterMarketing, 'POS/external systems need their own replacement or connected integration evidence'],
+  ['command center marketing', commandCenterMarketing, 'saved master menu changes follow the outlet sync/cache path'],
+].forEach(([label, source, token]) => requireToken(source, token, label));
+
+[
+  'Update your entire menu in seconds',
+  'entire menu in seconds',
+  'entire menu in under 30 seconds',
+  'updates everywhere automatically',
+  'Updates everywhere automatically',
+  'Update Everywhere at Once',
+  'Update everywhere at once',
+  'One change → updates everywhere',
+  'everything updates everywhere',
+  'all updated across every surface automatically',
+  'connected systems automatically',
+  'Safe, instant, and reversible',
+  'QR updated, screens updated, PDF updated, POS updated',
+  'POS, QR, screens, and PDF all follow',
+  'instant update everywhere',
+  'Price changes propagate across all digital surfaces instantly',
+  'Changes propagate silently to all surfaces',
+  'correct everywhere',
+].forEach((token) => {
+  forbidToken(commandCenterSpec, token, 'command center spec');
+  forbidToken(commandCenterWebsite, token, 'command center website');
+  forbidToken(commandCenterMarketing, token, 'command center marketing');
+});
+
+[
   ['inventory', inventory, 'menu_project_editor'],
   ['inventory', inventory, 'menu-project-editor boundary source gate passed'],
   ['report', report, '## Menu Project Editor Boundary'],
   ['report', report, '`npm run verify:menu-project-editor-boundary`'],
   ['audit', audit, 'Menu Project Editor boundary checkpoint'],
   ['audit', audit, '`npm run verify:menu-project-editor-boundary`'],
+  ['audit', audit, 'Menu Command Center public claim boundary checkpoint'],
   ['changelog', changelog, 'Menu Project Editor Boundary'],
   ['changelog', changelog, '`npm run verify:menu-project-editor-boundary`'],
+  ['changelog', changelog, 'Menu Command Center Public Claim Boundary'],
 ].forEach(([label, source, token]) => requireToken(source, token, `menu project editor ledger ${label}`));
 
 requireAny(

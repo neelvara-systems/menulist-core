@@ -3,7 +3,9 @@
 **Feature:** #3 — Google Business Profile Minimal Sync  
 **Review Date:** January 18, 2026  
 **Architect:** Lead Architect (Cascade)  
-**Status:** CRITICAL REVIEW COMPLETE ✅
+**Status:** Historical ChatGPT review; not current implementation approval or launch certification
+
+> **Current Runtime Boundary (July 3, 2026):** This review is retained as historical external-suggestion analysis only. Current GBP Sync runtime remains disabled: `ENABLE_GBP_SYNC` is false, token operations fail closed with `GBP_TOKEN_STORE_DISABLED`, no Google OAuth/callback/apply-hours route is active, no GBP sync worker is active, and current owner behavior is manual Google handoff through OBP/menu links. Current implementation or release approval requires the active [production-readiness audit](../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../production-readiness/external-certification-runbook.md) evidence, `npm run verify:public-business-truth`, Google Business Profile API access, OAuth and secret setup, provider smoke, scoped deploy evidence where routes/rules/functions change, browser/device QA, and production-host smoke.
 
 ---
 
@@ -358,7 +360,7 @@ ChatGPT spec is **compliant**:
 
 ---
 
-## ✅ VALIDATED RECOMMENDATIONS (Ready to Implement)
+## ✅ HISTORICAL VALIDATED RECOMMENDATIONS (Not Current Implementation Approval)
 
 ### HIGH PRIORITY (P0)
 
@@ -432,7 +434,7 @@ ChatGPT spec is **compliant**:
 1. **API Access Status:** Have you applied for GBP API access? What's the current status?
    - If not applied → Apply first, wait 2-4 weeks
    - If pending → Wait before implementation
-   - If approved → Ready to proceed
+   - If approved → Re-check current source gates, docs, API access, provider smoke, and deploy evidence before any implementation
 
 2. **Test Account:** Do you have a verified GBP with 60+ day history for testing?
 
@@ -450,14 +452,14 @@ ChatGPT spec is **compliant**:
 | **Doctrine Fit**             | ✅ "Correctness, not marketing"    |
 | **Cost Impact**              | ✅ NEGLIGIBLE                      |
 | **Security**                 | ⚠️ NEEDS Firestore rules update    |
-| **Ready for Implementation** | 🔶 AFTER PREREQUISITES             |
+| **Current Implementation Approval** | ❌ NO — disabled runtime and external gates remain incomplete |
 
 ### Next Steps
 
 1. **User Action Required:** Apply for GBP API access if not already done
-2. **User Confirms:** Once API access approved, confirm to proceed
-3. **Dev Action:** Prepare schema + DAL while waiting for API access
-4. **Implementation:** Use `1. DOCUMENT CREATION PROMPT.md` to create spec/impl/marketing docs
+2. **User Confirms:** Once API access is approved, re-check the current source gates before any implementation work
+3. **Dev Action:** Do not prepare schema or DAL from this historical review alone; current runtime remains disabled
+4. **Implementation Planning:** Use the current master execution workflow and active GBP docs only after API access, OAuth/secrets, provider smoke, scoped deploy evidence, and browser/device QA are planned
 
 ---
 

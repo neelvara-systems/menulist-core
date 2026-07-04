@@ -77,8 +77,8 @@ Client-Side DAL (same-day precision)
 
 | Decision                                  | Why                                                                                           |
 | ----------------------------------------- | --------------------------------------------------------------------------------------------- |
-| Special menu = regular project + metadata | Reuses 100% of existing editor, AI extraction, MCE, publish, screens, PDF                     |
-| Resolver at data layer                    | All surfaces (menu, OBP, screens, PDF, POS) automatically get resolved menu                   |
+| Special menu = regular project + metadata | Reuses the existing editor, AI extraction, MCE, public link, configured screen paths, and export flows; downloaded or printed artifacts are regenerated or replaced after changes |
+| Resolver at data layer                    | Public menu and OBP resolution use `activeSpecialMenuId`; configured screens use their screen data/version path; exported PDFs and POS/provider targets require separate export, replacement, or integration evidence |
 | Business-type-aware behavior              | `getBusinessCategory()` determines available modes (replace/overlay). No owner configuration. |
 | One active at a time                      | Prevents conflict logic. Block overlapping at creation time.                                  |
 | Nightly + client-side DAL hybrid          | Cost-optimal. Nightly for overnight transitions, DAL for same-day precision.                  |
@@ -96,7 +96,7 @@ Client-Side DAL (same-day precision)
 | `src/components/templates/main-app/projects/CreateSpecialMenuModal.tsx` | Creation modal                         |
 | `src/components/templates/main-app/projects/SpecialMenuStatusBadge.tsx` | Status badge atom                      |
 | `src/components/mobile/screens/MobileSpecialMenuScreen.tsx`             | Mobile management                      |
-| `src/app/_client/[[...slug]]/page.tsx`                                  | Client resolver (replace/overlay)      |
+| `src/app/client/[[...slug]]/page.tsx`                                   | Client resolver (replace/overlay)      |
 | `functions/src/decisionBlocksScoring.ts`                                | Nightly activation/deactivation        |
 
 ---
@@ -116,9 +116,9 @@ ENABLE_SPECIAL_MENU_SWITCHING: true; // In src/config/features.ts and functions/
 | **Temp Status Layer** | Complementary — auto-sets "Special menu available" banner on activation |
 | **MCE**               | Special menus validated by MCE (same as regular menus)                  |
 | **Decision Blocks**   | Run on active menu seamlessly                                           |
-| **Digital Screens**   | Auto-display active menu                                                |
+| **Digital Screens**   | Configured screens refresh from the active menu path after screen data/version refresh |
 | **Multi-Outlet**      | Each outlet manages own special menus independently                     |
-| **POS Webhook**       | Sends resolved menu snapshot on activation change                       |
+| **POS Webhook**       | Integration-bound; do not claim automatic POS updates without provider evidence |
 
 ---
 

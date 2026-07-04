@@ -5,9 +5,14 @@ const enableLocalLogs = process.env.NODE_ENV !== 'production';
 
 const localLogLogger = functions.logger;
 
-const safeLogFileName = (logFileName: string): string => (
-    logFileName.replace(/[\\/]/g, '_').slice(0, 120)
-);
+const safeLogFileName = (logFileName: string): string => {
+    const normalized = logFileName
+        .replace(/[\\/]/g, '_')
+        .replace(/\.\.+/g, '.')
+        .replace(/^\.+$/, 'local')
+        .slice(0, 120);
+    return normalized || 'local.log';
+};
 
 const safeLogLabel = (value: string): string => (
     value.replace(/[\r\n\t]/g, ' ').slice(0, 120)
@@ -108,7 +113,8 @@ const sanitizeLocalLogData = (value: unknown, depth = 0): unknown => {
 export async function writeLogEntry({ logFileName, userId = 'N/A', projectId, fileId, logType, data, error, }: { logFileName: string; userId?: string; projectId?: string; fileId?: string; logType: string; data?: any; error?: any; }) {
     if (!enableLocalLogs) return;
     const logDirectory = join(process.cwd(), 'logs');
-    const logFilePath = join(logDirectory, logFileName); // Use the parameter
+    const sanitizedLogFileName = safeLogFileName(logFileName);
+    const logFilePath = join(logDirectory, sanitizedLogFileName);
 
     const timestamp = new Date().toISOString();
     let logMessage = `${timestamp} - User: ${JSON.stringify(getLocalLogStringContext('userId', userId))} - Type: ${safeLogLabel(logType)}`;
@@ -137,7 +143,7 @@ export async function writeLogEntry({ logFileName, userId = 'N/A', projectId, fi
     } catch (logFileError) {
         localLogLogger.error('[Local Log] Failed to write local log entry', {
             logType,
-            logFileName: safeLogFileName(logFileName),
+            logFileName: sanitizedLogFileName,
             hasData: Boolean(data),
             hasError: Boolean(error),
             error: {

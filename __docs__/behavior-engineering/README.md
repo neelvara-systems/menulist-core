@@ -4,9 +4,15 @@
 
 **Created:** February 19, 2026  
 **Source:** ChatGPT Strategic Session #4 + Cascade Codebase Audit + BJ Fogg Behavior Model Research  
-**Status:** 🆕 IMPLEMENTATION IN PROGRESS  
+**Status:** Source-gated behavior-copy boundary
 **Parent Strategy:** [`__docs__/presence-dominance/`](../presence-dominance/README.md)  
 **Pillar:** 1 of 6 — Customer-Facing Infrastructure
+
+---
+
+## Source Gate
+
+This doc is source-gated by `npm run verify:public-business-truth`. Behavior Engineering copy must describe one stable customer link that points to the current owner-approved public source after the save/publish path and public cache refresh. It must not claim every edit is instantly visible, always latest, or automatically current outside the source-backed cache/publish contract.
 
 ---
 
@@ -37,7 +43,7 @@ MenuList's engineering is complete. The remaining gap is **behavioral adoption**
 
 MenuList removes 3 daily irritations that create permanent dependency:
 
-1. **Outdated menu embarrassment** — "But menu says ₹180..." → Link always shows latest
+1. **Outdated menu embarrassment** — "But menu says ₹180..." → Link points customers to the current approved source
 2. **Repeated WhatsApp work** — Send menu 20-80 times/day → One link, done
 3. **Customer confusion** — Wrong expectations from old info → Single source of truth
 
@@ -74,7 +80,7 @@ ENABLE_BEHAVIOR_NUDGES: true  // Micro-copy nudges across share/dashboard screen
 
 1. **90/10 Tone Rule** — 90% silent professional system, 10% precise guiding assistant
 2. **Never say**: "AI learning", "collecting data", "smart menu", "digital transformation"
-3. **Always say**: "official link", "always updated", "latest menu"
+3. **Always say**: "official link", "current approved menu", "same customer link"
 4. **Identity framing** — "Your official business link" not "your digital menu"
 5. **No gamification** — No progress bars, badges, streaks, or fake urgency
 
